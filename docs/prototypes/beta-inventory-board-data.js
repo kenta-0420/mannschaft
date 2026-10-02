@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-01T01:45:52+00:00",
+  "generatedAt": "2026-10-02T02:18:26+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,19 +8,19 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "56bdd1add8565f36a75f337d8b90b112a4e518da",
-    "taskListCommit": "3aa93fbdcd713c665f0864c8acccc613b35d9e42",
+    "taskListCommit": "45a642f5df8e5b5537649377dcf77d81c15039a5",
     "inventorySha256": "50fcac2d602060752d611b7babe6f04327fc4b1b6a9ebccbcac383a464fef302",
-    "taskListSha256": "8f5c6c2b2323262ba4a68349a3fe3bad752e3300372c08129898696f7f58a801",
+    "taskListSha256": "a61e0008d8411a1e646111cae13f44f8f87244d7a16f4ddbb726f9d837acbafe",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "617efdda9a12d6bc8614da8d9a3cfde62fc71c733f42df7f7bcc9052d85cac81"
+    "githubSnapshotSha256": "f15719b3d0fce95266043683de550858f78d39bbea624481a94a03ea00ecc7b4"
   },
   "sourceCounts": {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 334,
+    "campaigns": 340,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 334
+      "campaigns": 340
     },
     "parsed": {
       "features": 44,
-      "campaigns": 334,
+      "campaigns": 340,
       "core": 25,
       "noncore": 19,
       "blockers": 22,
@@ -8381,59 +8381,7 @@ window.BETA_INVENTORY_DATA = {
       }
     }
   },
-  "b0RunOverlay": {
-    "schemaVersion": 1,
-    "runId": "run-260930",
-    "recordedAt": "2026-09-30T00:00:00.000Z",
-    "status": "partial",
-    "selectedJourneys": [
-      "B0-J6"
-    ],
-    "insights": [
-      {
-        "id": "PRICE-REV-260930-001",
-        "featureKey": "billing-payment",
-        "featureDetail": "決済・課金・会費",
-        "journeyId": "B0-J6",
-        "priority": "should",
-        "urgency": "when-free",
-        "title": "アリシゼーションテスト: 価格改定作成ダイアログが Esc 1回で閉じない",
-        "detail": "登録元: アリシゼーションテスト。住民4（年配 SYSTEM_ADMIN 相当、permission システムに最も近いのは P01だが年配の属性は一致しない）が /system-admin/price-revisions で作成ダイアログを開き、Esc キー1回で閉じないように見えると観測した。ただし2026-10-01の再撮影ではEsc 1回で閉じ、再現しなかった。環境差・操作差の可能性があり未確定のまま記録する。B0-J6は『階層ごとの権限範囲』で課金ジャーニー専有ではないが、現時点でbilling-paymentを直接カバーするB0ジャーニーが無いため最も近いものを暫定選択した。",
-        "page": "/system-admin/price-revisions",
-        "personaId": "P01",
-        "evidencePath": "docs/prototypes/alicization-price-rev-run-260930.md",
-        "screenshotPath": "docs/prototypes/evidence/price-rev-run-260930/24_price_revision_dialog_after_esc.png"
-      },
-      {
-        "id": "PRICE-REV-260930-002",
-        "featureKey": "billing-payment",
-        "featureDetail": "決済・課金・会費",
-        "journeyId": "B0-J6",
-        "priority": "should",
-        "urgency": "normal",
-        "title": "アリシゼーションテスト: 年配SYSTEM_ADMINペルソナが/system-adminトップの「価格改定」タイルに気付かない",
-        "detail": "登録元: アリシゼーションテスト。住民4（年配 SYSTEM_ADMIN 相当、permission システムに最も近いのは P01だが年配の属性は一致しない）が /system-admin トップの管理メニュー最終行左端にある「価格改定」タイルに気付かず、/system-admin/billing の一文リンク経由で遠回りして辿り着いた。タイル自体は存在する（2026-10-01の再撮影で確認済み）。発見しやすさ（視認性）の問題であり、仕様上の欠落ではない。未確定の観測として記録する。",
-        "page": "/system-admin",
-        "personaId": "P01",
-        "evidencePath": "docs/prototypes/alicization-price-rev-run-260930.md",
-        "screenshotPath": "docs/prototypes/evidence/price-rev-run-260930/20_system_admin_top.png"
-      },
-      {
-        "id": "PRICE-REV-260930-003",
-        "featureKey": "billing-payment",
-        "featureDetail": "決済・課金・会費",
-        "journeyId": "B0-J6",
-        "priority": "should",
-        "urgency": "normal",
-        "title": "アリシゼーションテスト: Billing Centerとプラン一覧に税抜/税込表記と価格改定告知が無い",
-        "detail": "登録元: アリシゼーションテスト。住民3（組織ADMIN、P10）が /organizations/org-000004/settings/billing の Billing Center とプラン一覧を確認したところ、「¥2,000/月」のような金額のみで税抜/税込の別が表記されておらず、価格改定の告知も見当たらなかった。2026-10-01の再撮影で表記の欠如は確認済みだが、表記の要否自体は仕様判断が必要なため気づきに留め、未確定の観測として記録する。",
-        "page": "/organizations/org-000004/settings/billing",
-        "personaId": "P10",
-        "evidencePath": "docs/prototypes/alicization-price-rev-run-260930.md",
-        "screenshotPath": "docs/prototypes/evidence/price-rev-run-260930/13_desktop_billing_plans.png"
-      }
-    ]
-  },
+  "b0RunOverlay": null,
   "decisions": {
     "schemaVersion": 1,
     "phase": "Phase 2A",
@@ -10964,7 +10912,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-003",
       "title": "村FE/BE契約不一致17件戦役",
-      "status": "unknown",
+      "status": "on-hold",
       "statusLabel": "保留",
       "stage": "未設定",
       "priority": "未設定",
@@ -10996,7 +10944,7 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未整理"
+        "保留"
       ],
       "githubRefs": [
         2284,
@@ -11041,7 +10989,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-004",
       "title": "WS外部ブローカー化＋IaCコスト削減戦役",
-      "status": "unknown",
+      "status": "on-hold",
       "statusLabel": "保留",
       "stage": "未設定",
       "priority": "未設定",
@@ -11087,7 +11035,7 @@ window.BETA_INVENTORY_DATA = {
         "AC-8"
       ],
       "tags": [
-        "未整理"
+        "保留"
       ],
       "githubRefs": [
         2218,
@@ -11777,7 +11725,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-009",
       "title": "F18 残高凍結＋AccountPurge法務対応",
-      "status": "unknown",
+      "status": "on-hold",
       "statusLabel": "保留",
       "stage": "未設定",
       "priority": "未設定",
@@ -11812,7 +11760,7 @@ window.BETA_INVENTORY_DATA = {
         "Phase"
       ],
       "tags": [
-        "未整理"
+        "保留"
       ],
       "githubRefs": [],
       "github": []
@@ -11820,7 +11768,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-010",
       "title": "収益化・信頼の輪・ベータ特典の方針（F20.3）",
-      "status": "unknown",
+      "status": "on-hold",
       "statusLabel": "保留",
       "stage": "未設定",
       "priority": "未設定",
@@ -11852,7 +11800,7 @@ window.BETA_INVENTORY_DATA = {
         "UTC"
       ],
       "tags": [
-        "未整理"
+        "保留"
       ],
       "githubRefs": [
         2215,
@@ -12217,7 +12165,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-019",
       "title": "TODO コメント棚卸し（FeatureFlag判定 34箇所ほか）",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "進行中（Wave 16: Issue #3498 / PR #3499。実機E2E 2/2 pass、B0-J5 partial。後続 #3502・#3503残）",
       "stage": "未設定",
       "priority": "未設定",
@@ -12253,7 +12201,7 @@ window.BETA_INVENTORY_DATA = {
         "txt"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [
         3253,
@@ -12625,21 +12573,22 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 3498,
           "kind": "issue",
-          "state": "open",
+          "state": "closed",
           "title": "CMP-019 Wave16: NO_SHOW確定後のペナルティ適用と本人へのURGENT確認通知",
           "url": "https://github.com/kenta-0420/mannschaft/issues/3498",
-          "updatedAt": "2026-09-27T20:32:46Z",
+          "updatedAt": "2026-09-30T00:46:33Z",
           "ci": null
         },
         {
           "number": 3499,
           "kind": "pull_request",
-          "state": "open",
+          "state": "merged",
           "title": "feat: CMP-019 Wave16 無断キャンセル確定と緊急確認通知",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3499",
-          "updatedAt": "2026-09-28T23:45:26Z",
+          "updatedAt": "2026-09-30T00:46:32Z",
           "ci": {
-            "status": "success",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -14395,7 +14344,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-042",
       "title": "ALL モードで `surveys.target_count` が一度も書かれず永久に0（Issue #2787）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -14430,7 +14379,7 @@ window.BETA_INVENTORY_DATA = {
         "target_count"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2787
@@ -15052,7 +15001,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-049",
       "title": "**Stripe 実徴収の実機検証（CMP-024 キャンセル料決済の未検証部分）**",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手（**前提未達につき着手不可**）",
       "stage": "未設定",
       "priority": "未設定",
@@ -15094,7 +15043,7 @@ window.BETA_INVENTORY_DATA = {
         "UNCOLLECTIBLE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -16871,7 +16820,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-110",
       "title": "**秘密情報混入の機械的防止（gitleaks 必須CIゲート＋`.gitignore` 強化）**",
-      "status": "unknown",
+      "status": "on-hold",
       "statusLabel": "**保留**（本体完了。AWS Secrets Manager での本番鍵ローテーション待ち）",
       "stage": "未設定",
       "priority": "未設定",
@@ -16906,7 +16855,7 @@ window.BETA_INVENTORY_DATA = {
         "CI"
       ],
       "tags": [
-        "未整理"
+        "保留"
       ],
       "githubRefs": [
         2749
@@ -17667,20 +17616,25 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3510,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "test: 推移的クロスドメインTransaction番人を追加",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3510",
+          "updatedAt": "2026-09-29T09:19:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260820-1017",
       "title": "`ResidentRegistryEntity`のbuilder公開範囲の縮小",
-      "status": "unknown",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "実装・検分完了（PR #3521、実機UI未完）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -17694,12 +17648,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "出典: F14.3設計書 §19.4・§20.2 U-18（§9.7.0.2.1）。F14.3はAC-269bの禁止リストで当面塞ぐが、本筋はbuilderを絞ること。既存コード（`ResidentRegistryService:64-80`等）がbuilderで生成しており広範な書き換えになる",
+          "label": "PR #3521で登録時入力16項目だけを受け取るprivate constructor＋`@Builder`へ変更し、builder契約4件・repository結合試験5件・Backend CI全6 shardをgreen確認。2026-10-01の事後検分は指摘なし。実機確認はAPIのlogin／users/me／組織検索と画面配信の200まで確認したが、Playwrightが対象画面到達前に停止し、アリシゼーション3住人もログイン画面またはdashboard初期化で進行不能だったため、実機UIと住人導線は未完として残す。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "出典: F14.3設計書 §19.4・§20.2 U-18（§9.7.0.2.1）。F14.3はAC-269bの禁止リストで当面塞ぐが、本筋はbuilderを絞ること。既存コード（`ResidentRegistryService:64-80`等）がbuilderで生成しており広範な書き換えになる"
+        "PR #3521で登録時入力16項目だけを受け取るprivate constructor＋`@Builder`へ変更し、builder契約4件・repository結合試験5件・Backend CI全6 shardをgreen確認。2026-10-01の事後検分は指摘なし。実機確認はAPIのlogin／users/me／組織検索と画面配信の200まで確認したが、Playwrightが対象画面到達前に停止し、アリシゼーション3住人もログイン画面またはdashboard初期化で進行不能だったため、実機UIと住人導線は未完として残す。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -17718,15 +17672,32 @@ window.BETA_INVENTORY_DATA = {
         "builder"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3521
+      ],
+      "github": [
+        {
+          "number": 3521,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "リファクタリング: 居住者builderを登録入力に限定",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3521",
+          "updatedAt": "2026-09-29T16:35:23Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-260820-1018",
       "title": "組合の代理入力同意書を一覧する管理画面が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -17761,7 +17732,7 @@ window.BETA_INVENTORY_DATA = {
         "API"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -17812,12 +17783,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3546,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 非現役SYSTEM_ADMINを管理者判定から除外",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3546",
+          "updatedAt": "2026-09-30T20:00:56Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -17897,7 +17873,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260821-1027",
       "title": "存在オラクルの本文正規化 — 越境と不在で応答本文の`error.code`が割れる層を全ドメインで畳む",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -17963,7 +17939,7 @@ window.BETA_INVENTORY_DATA = {
         "AC"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2887
@@ -17988,7 +17964,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260821-1235",
       "title": "frontend-deploy.yml のデプロイ経路が未検証（門番の検査範囲と task definition のパス）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -18025,7 +18001,7 @@ window.BETA_INVENTORY_DATA = {
         "main"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2895
@@ -18395,7 +18371,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260824-2217",
       "title": "予約マトリックス本人予約済み表示・待機防御・日付Accordion仕上げ",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "実装・検証中",
       "stage": "未設定",
       "priority": "未設定",
@@ -18433,7 +18409,7 @@ window.BETA_INVENTORY_DATA = {
         "OpenAPI"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -18441,7 +18417,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260822-1730",
       "title": "チームTZ対応・日跨ぎ予約枠",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "PR作成済み／CI確認中（#2922）",
       "stage": "未設定",
       "priority": "未設定",
@@ -18475,7 +18451,7 @@ window.BETA_INVENTORY_DATA = {
         "Instant"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [
         2922
@@ -18500,7 +18476,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260822-1026",
       "title": "永続化される enum への定数追加がローリング更新で旧タスクの読み取りを壊す（二段階展開の作法確立）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -18536,7 +18512,7 @@ window.BETA_INVENTORY_DATA = {
         "enum"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2909
@@ -18711,7 +18687,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260826-1921",
       "title": "OpenAPI がパス変数を「整数のみ」と偽っている（既存3コントローラ、CMP-054の残域）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -18749,7 +18725,7 @@ window.BETA_INVENTORY_DATA = {
         "FE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2956
@@ -19166,7 +19142,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0652",
       "title": "ダッシュボード直近予定が未公開シフトの割当を返す",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -19199,7 +19175,7 @@ window.BETA_INVENTORY_DATA = {
         "JPQL"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3086
@@ -19224,7 +19200,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0653",
       "title": "自分の希望・自分の交代申請の一覧にシフト表ステータスの境界が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -19266,7 +19242,7 @@ window.BETA_INVENTORY_DATA = {
         "listMySwapRequests"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3086
@@ -19291,7 +19267,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0654",
       "title": "シフト変更依頼の一覧・詳細にシフト表ステータスの境界が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -19324,7 +19300,7 @@ window.BETA_INVENTORY_DATA = {
         "get"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3086
@@ -19415,7 +19391,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0656",
       "title": "シフトPDF の認可が SYSTEM_ADMIN を短絡しない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -19452,7 +19428,7 @@ window.BETA_INVENTORY_DATA = {
         "PDF"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3086
@@ -19477,7 +19453,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0657",
       "title": "shift ドメインの越境応答が 403 と 404 に割れている",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -19509,7 +19485,7 @@ window.BETA_INVENTORY_DATA = {
         "shift"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3086
@@ -19534,7 +19510,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0658",
       "title": "シフト表のステータス遷移に遷移元のガードが無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -19570,7 +19546,7 @@ window.BETA_INVENTORY_DATA = {
         "COLLECTING"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3086
@@ -19595,7 +19571,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0659",
       "title": "shift_schedules.published_at に status との整合制約が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -19637,7 +19613,7 @@ window.BETA_INVENTORY_DATA = {
         "publish"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3086
@@ -19662,7 +19638,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0700",
       "title": "グローバル検索の件数が上限で頭打ちになる（全9種別）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -19696,7 +19672,7 @@ window.BETA_INVENTORY_DATA = {
         "Page"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3086
@@ -19721,7 +19697,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0701",
       "title": "交代申請の作成が未公開シフトの枠にも通る（存在オラクル）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -19754,7 +19730,7 @@ window.BETA_INVENTORY_DATA = {
         "slotId"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3086
@@ -19779,7 +19755,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260916-1042",
       "title": "F02.9 お気に入りで TEAM と ORGANIZATION の同一IDが混線し、チームの「開く」が数値URLで404になる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -19818,7 +19794,7 @@ window.BETA_INVENTORY_DATA = {
         "URL"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -20122,7 +20098,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260917-1350",
       "title": "組織の管理者向けGET 6件が MEMBER で取得できる認可漏れの根治",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "対応中",
       "stage": "未設定",
       "priority": "未設定",
@@ -20161,7 +20137,7 @@ window.BETA_INVENTORY_DATA = {
         "receipts"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -20169,7 +20145,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260917-1351",
       "title": "組織ページの管理者レンズがサイドバーに伝わらない／管理者ページ16枚にFEガードが無い",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "対応中",
       "stage": "未設定",
       "priority": "未設定",
@@ -20207,7 +20183,7 @@ window.BETA_INVENTORY_DATA = {
         "ID"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -20215,7 +20191,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260917-1352",
       "title": "リフレッシュトークンの誤リプレイ判定で全デバイスが強制ログアウトされる",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "対応中",
       "stage": "未設定",
       "priority": "未設定",
@@ -20250,7 +20226,7 @@ window.BETA_INVENTORY_DATA = {
         "closed"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -20334,7 +20310,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260918-0508",
       "title": "メンバー紹介 第2段 — 本人による自己編集許可設定と、退会時に本人へ「過去の紹介を残すか」を選ばせる仕組み",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -20385,7 +20361,7 @@ window.BETA_INVENTORY_DATA = {
         "photoS3Key"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3357
@@ -21489,7 +21465,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260822-1243",
       "title": "退会時匿名化の個人設定系テーブル取りこぼし全体棚卸し",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -21524,7 +21500,7 @@ window.BETA_INVENTORY_DATA = {
         "IT"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2919
@@ -21606,7 +21582,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260826-1100",
       "title": "backend CI の shard 5 が OutOfMemoryError で落ちる（重み付けシャード振り分け導入後）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手（**2026-08-26 実測発見**）",
       "stage": "未設定",
       "priority": "未設定",
@@ -21646,7 +21622,7 @@ window.BETA_INVENTORY_DATA = {
         "GB"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2906,
@@ -21701,7 +21677,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260826-1041",
       "title": "停滞している OPEN PR 42件の棚卸しと処遇決定（復活させるか閉じるか）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -21741,7 +21717,7 @@ window.BETA_INVENTORY_DATA = {
         "PR"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         1169,
@@ -21810,7 +21786,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260826-1455",
       "title": "BAN された村長・長老が権限操作を実行できうる（村メンバーシップの認可述語の誤用）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -21847,7 +21823,7 @@ window.BETA_INVENTORY_DATA = {
         "red"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -21855,7 +21831,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260826-1456",
       "title": "UNLISTED 村では申請者本人ですら自分の参加申請一覧を引けない（存在秘匿の副作用）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -21886,7 +21862,7 @@ window.BETA_INVENTORY_DATA = {
         "UNLISTED"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -21894,7 +21870,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260826-1457",
       "title": "招待・共有トークン7系統の平文保存をハッシュ保存へ統一（金庫の一元化）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -21926,7 +21902,7 @@ window.BETA_INVENTORY_DATA = {
         "DB"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2353
@@ -21951,7 +21927,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260826-2127",
       "title": "シフト表の未公開ステータスが API では絞られていない（#1170 は FE 表示のみ是正）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -21993,7 +21969,7 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         1170
@@ -22098,7 +22074,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260826-2129",
       "title": "本番インフラが一度も構築されていない（マスター確認済・未構築確定）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -22133,7 +22109,7 @@ window.BETA_INVENTORY_DATA = {
         "infra-apply"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         1502
@@ -22299,7 +22275,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260827-1808",
       "title": "村への入村が並行実行で不変条件を破る（現役所属の重複・参加上限100村の超過）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -22331,7 +22307,7 @@ window.BETA_INVENTORY_DATA = {
         "DB"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2979
@@ -22356,7 +22332,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260827-1152",
       "title": "付随通知の業務トランザクション巻き込み — CMP-056 リスト外の残存（Issue #2997）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手（要軍議）",
       "stage": "未設定",
       "priority": "未設定",
@@ -22396,7 +22372,7 @@ window.BETA_INVENTORY_DATA = {
         "Runner"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2834,
@@ -22557,7 +22533,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260901-0411",
       "title": "本陣クローンが shallow のため古いブランチのマージが不能・症状がリポジトリ破損に酷似する",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -22608,7 +22584,7 @@ window.BETA_INVENTORY_DATA = {
         "md"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -22616,7 +22592,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260901-1246",
       "title": "統合カレンダーのフォールバックチップ色が設計書§3.3の自動色要求を満たさない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -22648,7 +22624,7 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3045
@@ -22673,7 +22649,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260901-1247",
       "title": "統合カレンダーのレイヤー表示/非表示がサーバーへ永続化されず端末ごとに閉じる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手（要設計判断: localStorage とサーバー側 hidden のどちらを正本とするか）",
       "stage": "未設定",
       "priority": "未設定",
@@ -22705,7 +22681,7 @@ window.BETA_INVENTORY_DATA = {
         "hidden"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3045
@@ -22730,7 +22706,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260902-0058",
       "title": "共有予定の説明文が詳細パネルに永久に表示されない（description未返却）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手（要設計判断: ScheduleDetailResponseへの切替か可視性込みの再設計か）",
       "stage": "未設定",
       "priority": "未設定",
@@ -22765,7 +22741,7 @@ window.BETA_INVENTORY_DATA = {
         "visibility"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3051,
@@ -22805,7 +22781,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260902-0059",
       "title": "チーム削除が配下の予定を孤児にし、API では二度と消せない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -22842,7 +22818,7 @@ window.BETA_INVENTORY_DATA = {
         "DELETE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3051,
@@ -22882,7 +22858,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260902-1016",
       "title": "管理者向け管理メニュー基盤の新設",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -22915,7 +22891,7 @@ window.BETA_INVENTORY_DATA = {
         "admin"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3060
@@ -22940,7 +22916,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260902-1017",
       "title": "領収書の承認・無効化の権限分離",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -22974,7 +22950,7 @@ window.BETA_INVENTORY_DATA = {
         "F08"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3060
@@ -22999,7 +22975,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260902-1454",
       "title": "通知クレジットの Stripe Customer を組織単位へ作り直す",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23034,7 +23010,7 @@ window.BETA_INVENTORY_DATA = {
         "Customer"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3063
@@ -23059,7 +23035,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-1358",
       "title": "スコープ設定画面群の個人スコープガード欠落",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23109,7 +23085,7 @@ window.BETA_INVENTORY_DATA = {
         "API"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3078
@@ -23134,7 +23110,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260904-1003",
       "title": "領収書の宛名を受領者ごとに記憶する",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23171,7 +23147,7 @@ window.BETA_INVENTORY_DATA = {
         "F08"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -23179,7 +23155,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260905-0513",
       "title": "`AccessControlService.ADMIN_ROLES` に `SYSTEM_ADMIN` が無く、実効ロールが SYSTEM_ADMIN のユーザーが `checkAdminOrAbove` で弾かれる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23218,7 +23194,7 @@ window.BETA_INVENTORY_DATA = {
         "SYSTEM_ADMIN"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -23226,7 +23202,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260905-0514",
       "title": "同一ユーザーの近接ログインで `refresh_tokens` がデッドロックし 500 を返す（リトライ無し）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23258,7 +23234,7 @@ window.BETA_INVENTORY_DATA = {
         "refresh_tokens"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -23266,7 +23242,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260905-0515",
       "title": "Response DTO ネスト化（Wave 2-C-A / schedule）に FE が追従しておらず、ダッシュボードの表示が静かに欠落する",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23308,7 +23284,7 @@ window.BETA_INVENTORY_DATA = {
         "attendanceStats"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3126
@@ -23333,7 +23309,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260905-1630",
       "title": "シフトのサマリ API だけ 403 を返し、未公開シフト表の存在オラクルが残る",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23368,7 +23344,7 @@ window.BETA_INVENTORY_DATA = {
         "shift"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -23376,7 +23352,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260905-1631",
       "title": "シフト希望提出のウィザードが履歴も下書きも持たず、中断すると入力が消える",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23405,7 +23381,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -23413,7 +23389,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260905-1414",
       "title": "検索キーになる PII の保護方針を横断で定める",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23466,7 +23442,7 @@ window.BETA_INVENTORY_DATA = {
         "hmac-key"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -23474,7 +23450,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260905-1415",
       "title": "ローカル検証環境の立ち上げ手順を文書化する",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23541,7 +23517,7 @@ window.BETA_INVENTORY_DATA = {
         "development"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -23549,7 +23525,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260905-2214",
       "title": "UI 文字列の直書きが FE 全域に残存（i18n ルール違反の横断戦役）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23593,7 +23569,7 @@ window.BETA_INVENTORY_DATA = {
         "CI"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -23601,7 +23577,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260907-0001",
       "title": "画像URLプロバイダの `@Profile` 二分岐が本番以外でダミー文字列を返す（chart ドメイン）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23646,7 +23622,7 @@ window.BETA_INVENTORY_DATA = {
         "presign"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3150
@@ -23671,7 +23647,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260907-0002",
       "title": "領収書のPDFダウンロードが実ファイルを保存せず、再発行がプレビューなのに成功と表示する",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23706,7 +23682,7 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3146
@@ -23822,7 +23798,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260907-1532",
       "title": "`useInboxStore` の TypeError で全ページのUIが阻害される（右下ボタンがクリック不能）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -23858,7 +23834,7 @@ window.BETA_INVENTORY_DATA = {
         "TypeError"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3148
@@ -24140,7 +24116,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260907-1038",
       "title": "主要な操作要素のタップ領域が全画面共通で44x44px未満（モバイル）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -24174,7 +24150,7 @@ window.BETA_INVENTORY_DATA = {
         "Playwright"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -24182,7 +24158,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260908-2116",
       "title": "シフト交代の承諾・却下がUIから永久に押せない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -24217,7 +24193,7 @@ window.BETA_INVENTORY_DATA = {
         "E2E"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3148
@@ -24242,7 +24218,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260908-2117",
       "title": "手動割当したシフトがマイシフトに出ない（割当の保存先が二重）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -24278,7 +24254,7 @@ window.BETA_INVENTORY_DATA = {
         "confirmed-slots"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -24286,7 +24262,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260908-2118",
       "title": "シフト機能の導線欠落・軽微欠陥まとめ（6件）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -24315,7 +24291,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -24323,7 +24299,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-1033",
       "title": "参加申請（join request）の取消がシステム全体に存在しない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -24365,7 +24341,7 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3170
@@ -24390,7 +24366,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-1141",
       "title": "実装済みなのに画面から到達できないページ30ルート",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "進行中（Phase 1〜5 完了・続報PR #3362/#3365/#3366/本PRマージ済み・2026-09-18）",
       "stage": "未設定",
       "priority": "未設定",
@@ -24419,7 +24395,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [
         3161,
@@ -24624,7 +24600,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-1142",
       "title": "シフト希望に「入れる時間帯」を持たせる（マスター必須機能）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -24657,7 +24633,7 @@ window.BETA_INVENTORY_DATA = {
         "AC"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -24665,7 +24641,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-1143",
       "title": "同じ日に枠が2つあると2件目のシフト希望が出せない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -24696,7 +24672,7 @@ window.BETA_INVENTORY_DATA = {
         "CMP-260909-1142"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -24704,7 +24680,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0302",
       "title": "通知本文の zh/ko/es/de が未翻訳のまま日本語で配信される",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -24751,7 +24727,7 @@ window.BETA_INVENTORY_DATA = {
         "zh"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2715,
@@ -24816,7 +24792,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0303",
       "title": "シフト予算アラート再送の部分成功で、成功済み受信者へ重複配信される",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -24848,7 +24824,7 @@ window.BETA_INVENTORY_DATA = {
         "DB"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2990,
@@ -24883,7 +24859,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0304",
       "title": "支払担当引継（billing payer handover）の main 上既存欠陥 2件",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -24923,7 +24899,7 @@ window.BETA_INVENTORY_DATA = {
         "ADMIN"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2990,
@@ -24973,7 +24949,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0541",
       "title": "ShiftBudgetAllocationEntity と V11.030 の列不一致で F08.7 が Flyway 適用スキーマ上ほぼ全滅（500）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手（Entity 側の是正 PR は別途並行着手中）",
       "stage": "未設定",
       "priority": "未設定",
@@ -25031,7 +25007,7 @@ window.BETA_INVENTORY_DATA = {
         "Flyway"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2990
@@ -25051,7 +25027,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0542",
       "title": "シフト予算 閾値超過アラート通知の actionUrl が実在しない FE ルートを指す（404）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25088,7 +25064,7 @@ window.BETA_INVENTORY_DATA = {
         "shift-budget"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2990
@@ -25108,7 +25084,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0543",
       "title": "シフト予算 割当一覧の取得失敗が「登録されていません」の空状態に化ける（エラー握りつぶし）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25142,7 +25118,7 @@ window.BETA_INVENTORY_DATA = {
         "catch"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2990
@@ -25162,7 +25138,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0544",
       "title": "シフト予算 失敗イベント画面が生の SQL と Java 例外クラス名をそのまま利用者へ表示する（情報開示）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25204,7 +25180,7 @@ window.BETA_INVENTORY_DATA = {
         "apiUrl"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2990
@@ -25224,7 +25200,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-0545",
       "title": "/admin/shift-budget/* が運営コンソールからしか到達できず、組織 ADMIN に導線が無い／SYSTEM_ADMIN も個人スコープで行き止まる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25264,7 +25240,7 @@ window.BETA_INVENTORY_DATA = {
         "shift-budget"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2990
@@ -25284,7 +25260,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-2148",
       "title": "シフト割当の正本が二重（充足サマリーと人件費が別ソースを読む）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25317,7 +25293,7 @@ window.BETA_INVENTORY_DATA = {
         "shift_assignments"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -25325,7 +25301,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-2149",
       "title": "時給の削除メソッドに認可が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25359,7 +25335,7 @@ window.BETA_INVENTORY_DATA = {
         "public"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -25367,7 +25343,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-2150",
       "title": "時給未設定者の人件費が黙って0円で計上される",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25396,7 +25372,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -25404,7 +25380,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-2151",
       "title": "ShiftScheduleController の9本中8本に機能フラグが付いていない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25437,7 +25413,7 @@ window.BETA_INVENTORY_DATA = {
         "RequireFeature"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -25445,7 +25421,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-2152",
       "title": "月次締め後に取り消された人件費が会計仕訳とズレる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25476,7 +25452,7 @@ window.BETA_INVENTORY_DATA = {
         "CANCELLED"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -25484,7 +25460,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-2153",
       "title": "シフト枠の物理削除で希望も連鎖して消える",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25513,7 +25489,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -25521,7 +25497,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-2154",
       "title": "Flyway ドリフト番人の既知未返済台帳（38列）を空にする",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25555,7 +25531,7 @@ window.BETA_INVENTORY_DATA = {
         "API"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -25563,7 +25539,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-2155",
       "title": "労働基準法の休憩の検証が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25592,7 +25568,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -25600,7 +25576,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-0025",
       "title": "請求担当引継の RESUME に運用チームの権限経路が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25635,7 +25611,7 @@ window.BETA_INVENTORY_DATA = {
         "ADMIN"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3185
@@ -25660,7 +25636,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-0026",
       "title": "請求担当引継の並行実行・認可・スケジュール注釈を実 DB の IT で固定する",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25699,7 +25675,7 @@ window.BETA_INVENTORY_DATA = {
         "SQL"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3144,
@@ -25754,7 +25730,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-1445",
       "title": "手動アーカイブでシフト予算の消化が取り消されず、割当が恒久的に削除不能になる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25797,7 +25773,7 @@ window.BETA_INVENTORY_DATA = {
         "DB"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2990
@@ -25817,7 +25793,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-1446",
       "title": "通知の created_at が格納経路によって9時間ずれ、一覧の時系列が壊れる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25857,7 +25833,7 @@ window.BETA_INVENTORY_DATA = {
         "API"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2990
@@ -25877,7 +25853,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260909-1447",
       "title": "ShiftBudgetThresholdAlertNotificationBoundaryIT の部分文字列アサートがユーザーID1桁環境で偽陽性衝突する",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -25914,7 +25890,7 @@ window.BETA_INVENTORY_DATA = {
         "green"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2990,
@@ -25949,7 +25925,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-0041",
       "title": "通知の自動削除が保持期間より9時間早く走っている",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "commit済（検証中）",
       "stage": "未設定",
       "priority": "未設定",
@@ -25998,7 +25974,7 @@ window.BETA_INVENTORY_DATA = {
         "CMP-260909-1446"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -26006,7 +25982,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-0042",
       "title": "広告の配信可否判定と計測時刻が9時間ずれる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26054,7 +26030,7 @@ window.BETA_INVENTORY_DATA = {
         "CMP-260909-1446"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26062,7 +26038,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-0043",
       "title": "チャット退避・削除の境界が9時間ずれる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26107,7 +26083,7 @@ window.BETA_INVENTORY_DATA = {
         "CMP-260909-1446"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26115,7 +26091,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-0044",
       "title": "監査ログのアーカイブ基準が同一クラス内で食い違う",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26162,7 +26138,7 @@ window.BETA_INVENTORY_DATA = {
         "CMP-260909-1446"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26170,7 +26146,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-0045",
       "title": "郵便番号マスタの時刻列が JST で充填される",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26218,7 +26194,7 @@ window.BETA_INVENTORY_DATA = {
         "CMP-260909-1446"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26326,7 +26302,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1002",
       "title": "組織作成 API に未定義の orgType を渡すと 500 になる（400 が正しい）",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "commit済（検証中）",
       "stage": "未設定",
       "priority": "未設定",
@@ -26364,7 +26340,7 @@ window.BETA_INVENTORY_DATA = {
         "COMMON_999"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [],
       "github": []
@@ -26372,7 +26348,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1056",
       "title": "管理者専用セグメントの滞在防止が URL 直打ち・F5 では一度も発火しない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26413,7 +26389,7 @@ window.BETA_INVENTORY_DATA = {
         "goto"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26421,7 +26397,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1118",
       "title": "参加申請の申請者側に、自分が出した申請を一覧・追跡する導線が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26455,7 +26431,7 @@ window.BETA_INVENTORY_DATA = {
         "E2E"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26463,7 +26439,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-0127",
       "title": "シフト枠の日付を変更しても既存の希望の日付が追随しない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26497,7 +26473,7 @@ window.BETA_INVENTORY_DATA = {
         "slot_date"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26505,7 +26481,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1555",
       "title": "時給を登録する画面がアプリ内に1つも無く、シフト予算の消化が全件0円で記録される（F08.7）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26536,7 +26512,7 @@ window.BETA_INVENTORY_DATA = {
         "F08"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26544,7 +26520,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1556",
       "title": "シフト予算の月次締めが初回必ず500になり、消化だけ確定して確定額0円のまま予算帳簿が回復不能に壊れる（F08.7）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26578,7 +26554,7 @@ window.BETA_INVENTORY_DATA = {
         "confirmed_amount"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26586,7 +26562,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1557",
       "title": "日付欄にキーボードで日付を打つと別の日付が無警告で保存される（PrimeVue DatePicker・波及範囲未確認）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26620,7 +26596,7 @@ window.BETA_INVENTORY_DATA = {
         "DatePicker"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26628,7 +26604,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1558",
       "title": "壊れた予算割当が二度と削除できず後始末が不能になる（確定額0円なのに確定済み扱い）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26657,7 +26633,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26665,7 +26641,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1559",
       "title": "消化サマリの人別集計が自己矛盾している（時間と金額が合わない）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26696,7 +26672,7 @@ window.BETA_INVENTORY_DATA = {
         "by_user"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26704,7 +26680,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1600",
       "title": "シフト表を作成しても直後の画面は「スケジュールがありません」のままで、利用者が重複作成する",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26733,7 +26709,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26741,7 +26717,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1601",
       "title": "予算割当の新規作成が「IDを手で打て」という画面になっており管理者が値を知る手段が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26772,7 +26748,7 @@ window.BETA_INVENTORY_DATA = {
         "ID"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26780,7 +26756,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1602",
       "title": "予算割当ダイアログで保存に失敗しても画面が無反応で、BE の理由が捨てられる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26812,7 +26788,7 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26820,7 +26796,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1603",
       "title": "一般メンバーに「ポジション管理」タブが見えるが、押すと真っ白になる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26849,7 +26825,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26857,7 +26833,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1604",
       "title": "シフト詳細の「確定公開」に確認ダイアログが無く、全メンバーへの通知が押した瞬間に飛ぶ",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26889,7 +26865,7 @@ window.BETA_INVENTORY_DATA = {
         "id"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26897,7 +26873,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1605",
       "title": "チームのシフト表一覧から枠編集画面へ行けない（劣化コピーの一覧が行き止まり）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26930,7 +26906,7 @@ window.BETA_INVENTORY_DATA = {
         "edit"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26938,7 +26914,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1606",
       "title": "失敗イベントの「再実行」が直せないうえ元の診断情報を消してしまう",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -26967,7 +26943,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -26975,7 +26951,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1607",
       "title": "シフト系 BE のエラー処理の穴3件（不正 enum で500・未知フィールドで偽成功・acknowledge が冪等でない）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27011,7 +26987,7 @@ window.BETA_INVENTORY_DATA = {
         "acknowledge"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -27019,7 +26995,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1608",
       "title": "管理者の通知未読数が 1,687,652 件に達し実通知が完全に埋没している",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27048,7 +27024,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -27056,7 +27032,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1609",
       "title": "シフト予算・シフトボードの表示と作法の細かい欠陥7件（読み上げ不能・内部値露出・符号の黙殺・単位不統一など）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27085,7 +27061,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -27093,7 +27069,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1811",
       "title": "テスト用プロファイルで `application-test.yml` の機能フラグがテストに届かず、shift-budget の統合テスト29ファイルが機能無効のまま緑になっている（F08.7）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27147,7 +27123,7 @@ window.BETA_INVENTORY_DATA = {
         "yml"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3188,
@@ -27187,7 +27163,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260910-1812",
       "title": "シフトのステータス遷移に遷移表が無く、どの状態からでも任意の状態へ移れる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27220,7 +27196,7 @@ window.BETA_INVENTORY_DATA = {
         "ADJUSTING"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3219
@@ -27245,7 +27221,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260911-0109",
       "title": "モジュール価格設定画面 `/admin/module-pricing` はバックエンドが一行も存在せず、到達できても動かない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27280,7 +27256,7 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -27288,7 +27264,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260911-0110",
       "title": "`useModuleApi.toggleTeamModule` がボディを送っておらず、呼び出した瞬間に必ず400になる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27325,7 +27301,7 @@ window.BETA_INVENTORY_DATA = {
         "enabled"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -27333,7 +27309,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260912-1524",
       "title": "`@Transactional` の自己呼び出しで原子性が黙って失われている3クラス（CMP-260910-1556 の全体走査で発見）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27366,7 +27342,7 @@ window.BETA_INVENTORY_DATA = {
         "DB"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -27374,7 +27350,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260912-1525",
       "title": "チームメンバーの一括取得 API が無く、時給設定画面が全メンバーを得るのにページを繰り返し取得している",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27408,7 +27384,7 @@ window.BETA_INVENTORY_DATA = {
         "json"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -27416,7 +27392,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260912-1526",
       "title": "`generateOpenApiDocs` が完走せず `docs/openapi.json` を再生成できない（API 表面を変える全作業がブロックされる）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27455,7 +27431,7 @@ window.BETA_INVENTORY_DATA = {
         "json"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -27549,7 +27525,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260912-1823",
       "title": "`PageMeta.totalElements` は BE が送らないのに必須フィールドとして型付けされており、FE 8箇所以上で総件数が取れずページャーが出ない疑い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27588,7 +27564,7 @@ window.BETA_INVENTORY_DATA = {
         "PagedResponse"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -27720,7 +27696,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260913-1251",
       "title": "シフト予算ダッシュボードの「月次締め実行」ボタンが権限の無い利用者にも表示される（押すと403）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27749,7 +27725,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -27757,7 +27733,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260916-0053",
       "title": "通報管理のステータス絞り込みが BE 未対応のため機能せず、UI を削除した（復活には BE 対応が要る）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27797,7 +27773,7 @@ window.BETA_INVENTORY_DATA = {
         "DISMISSED"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3285
@@ -27822,7 +27798,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260916-0054",
       "title": "`useCirculationApi` の単数形パスを叩く14関数が全て死んでいる（BE は複数形しか持たない）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27855,7 +27831,7 @@ window.BETA_INVENTORY_DATA = {
         "FE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -27863,7 +27839,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260916-0055",
       "title": "`PointCardRematchBatchService` のページング取りこぼし（チャンクをコミットすると対象集合が縮んで窓がずれる）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27894,7 +27870,7 @@ window.BETA_INVENTORY_DATA = {
         "PointCardRematchBatchService"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3286
@@ -27919,7 +27895,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260916-0056",
       "title": "番人テストの `assertTimeout` が非プリエンプティブで、ハング時こそ機能しない（既存2クラス）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -27950,7 +27926,7 @@ window.BETA_INVENTORY_DATA = {
         "assertTimeout"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3283
@@ -27975,7 +27951,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260916-0336",
       "title": "Billing Center PR6b-3: 上位変更（upgrade）の取り消し機能を追加する",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -28022,7 +27998,7 @@ window.BETA_INVENTORY_DATA = {
         "paid"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -28030,7 +28006,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260916-1348",
       "title": "springdoc は operationId が衝突すると既存側を黙って改名し、無関係な API の識別子が静かに変わる",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -28068,7 +28044,7 @@ window.BETA_INVENTORY_DATA = {
         "API"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -28076,7 +28052,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260912-0909",
       "title": "【親タスク】運営管理ページ6枚がBE不在で動かない（FEだけ作られている）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -28111,7 +28087,7 @@ window.BETA_INVENTORY_DATA = {
         "composable"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -28240,7 +28216,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260916-2328",
       "title": "openapi 再生成の手順書で、★の主が `--dry-run` かどうかを利用者が判別できない（判定材料が表示されない）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -28273,7 +28249,7 @@ window.BETA_INVENTORY_DATA = {
         "dry-run"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3291
@@ -28298,7 +28274,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260917-0041",
       "title": "運営管理ページ4枚がスコープ配下の同機能ページと重複した残骸になっている",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "対応中（2026-09-18）",
       "stage": "未設定",
       "priority": "未設定",
@@ -28330,7 +28306,7 @@ window.BETA_INVENTORY_DATA = {
         "i18n"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [
         3350,
@@ -28370,7 +28346,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260917-0121",
       "title": "【BE実装】割引キャンペーンと販促（campaigns・promotions）のバックエンドが存在しない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -28418,7 +28394,7 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -28426,7 +28402,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260917-0122",
       "title": "【BE実装】パッケージ管理（packages）のバックエンドが存在しない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -28466,7 +28442,7 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -28474,7 +28450,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260917-0123",
       "title": "【BE実装】組織請求設定と税設定（org-billing・tax-settings）のバックエンドが存在しない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -28521,7 +28497,7 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -28529,7 +28505,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260917-1135",
       "title": "`@SelfScopedEndpoint` の番人新設とB判定7件の是正",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "部分完了→着手中（B判定7件は PR #3398、目安箱・通報の導出は PR #3462 でマージ済み。番人の新設は 2026-09-25〜 着手中。戦役台帳 2026-09-25-authz-softdelete-guard）",
       "stage": "未設定",
       "priority": "未設定",
@@ -28597,7 +28573,7 @@ window.BETA_INVENTORY_DATA = {
         "EP"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [
         3398,
@@ -28620,12 +28596,17 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 3462,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 目安箱の宛先検証と通報の宛先・作成者の導出（CMP-260917-1135 陣2）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3462",
+          "updatedAt": "2026-09-29T05:01:40Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -28750,7 +28731,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260917-0529",
       "title": "チーム／組織サイドバーの27項目が SYSTEM_ADMIN 以外に永久非表示（DEFAULT モジュールを OPTIONAL と同じ仕組みで判定）",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "対応中（2026-09-17）",
       "stage": "未設定",
       "priority": "未設定",
@@ -28788,7 +28769,7 @@ window.BETA_INVENTORY_DATA = {
         "TODO"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [
         3305
@@ -28813,7 +28794,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260918-0023",
       "title": "委員会一覧のステータス表示が壊れている（未再現・要追加調査）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -28842,7 +28823,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -28965,7 +28946,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260918-0404",
       "title": "【番人】「リンクはあるが条件で永久に消える」型を検出する番人が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -29001,7 +28982,7 @@ window.BETA_INVENTORY_DATA = {
         "red"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3161,
@@ -29071,7 +29052,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260918-1359",
       "title": "payment神クラスの段階分割とMoney値オブジェクト導入",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "対応中（第1段: 照会責務分割）",
       "stage": "未設定",
       "priority": "未設定",
@@ -29115,7 +29096,7 @@ window.BETA_INVENTORY_DATA = {
         "webhook"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [
         3353
@@ -29135,7 +29116,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260918-1406",
       "title": "D-5凍結ストアを段階返済する（初回: 地域マスタread窓口）",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "対応中",
       "stage": "未設定",
       "priority": "未設定",
@@ -29182,7 +29163,7 @@ window.BETA_INVENTORY_DATA = {
         "D-5"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [
         3354
@@ -29363,7 +29344,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260918-2312",
       "title": "予約の組織対応・org-billing（営利/非営利課金）はマスター裁可でいったん射程外（将来意向あり）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手（バックログ）",
       "stage": "未設定",
       "priority": "未設定",
@@ -29437,7 +29418,7 @@ window.BETA_INVENTORY_DATA = {
         "F20"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -29445,7 +29426,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260918-1344",
       "title": "ゲーミフィケーションのポイント付与アクション4種が未実装",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -29483,7 +29464,7 @@ window.BETA_INVENTORY_DATA = {
         "ActionType"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -29491,7 +29472,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260919-1139",
       "title": "i18n の `common.` 接頭辞の誤用が40種、FE 全体に残っている",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -29528,7 +29509,7 @@ window.BETA_INVENTORY_DATA = {
         "JSON"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3374
@@ -29553,7 +29534,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260919-1140",
       "title": "ダッシュボードの「メンバー」ウィジェットと上部タブ「メンバー」が別機能を指している",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -29582,7 +29563,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -29590,7 +29571,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260919-1141",
       "title": "実機E2E の既存テスト1本に構文エラーがあり、一括実行が全滅する",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -29627,7 +29608,7 @@ window.BETA_INVENTORY_DATA = {
         "CI"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -29768,7 +29749,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260917-2350",
       "title": "予約(tx1)が `REQUIRES_NEW` の provisioner を呼び、外側の接続を保持したまま2本目の接続を取る",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -29849,7 +29830,7 @@ window.BETA_INVENTORY_DATA = {
         "NULL"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -29857,7 +29838,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260919-0213",
       "title": "`billing_price_band_versions` に `product_kind='PLAN'` の行が1件も無く、upgrade 候補が恒久的に出ない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -29909,7 +29890,7 @@ window.BETA_INVENTORY_DATA = {
         "PR6b-1"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -29917,7 +29898,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260919-0214",
       "title": "PR6b-1 実機E2Eのハッピーパス（見積り→確定→3DS→APPLIED）が未検証",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -29969,7 +29950,7 @@ window.BETA_INVENTORY_DATA = {
         "CMP-260919-0213"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -29977,7 +29958,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260919-1504",
       "title": "`BillingAccessGuard.isScopeMember` が所属判定を `user_roles` のみで行い memberships を見ない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -30029,7 +30010,7 @@ window.BETA_INVENTORY_DATA = {
         "user_roles"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -30037,7 +30018,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260919-1505",
       "title": "テストが `roles.priority` に正準外の値を書けないようにする検出器が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -30092,7 +30073,7 @@ window.BETA_INVENTORY_DATA = {
         "ArchUnit"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -30894,19 +30875,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3507,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "CMP-260923-0953 シフト子テーブルへ論理削除を連鎖する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3507",
+          "updatedAt": "2026-09-30T07:23:56Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260923-0954",
       "title": "存在オラクル（403/404の使い分けでID存在が漏れる）の横断是正",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "着手中（2026-09-25〜。W1 PR #3461 マージ済み・W2 PR #3528・W3a 着手。戦役台帳 2026-09-25-authz-softdelete-guard。並行着手の前に本行を確認）",
       "stage": "未設定",
       "priority": "未設定",
@@ -30987,7 +30973,7 @@ window.BETA_INVENTORY_DATA = {
         "ShiftPositionService"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [
         3461,
@@ -30996,21 +30982,31 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3461,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: シフトの希望・ポジションの存在オラクルを解消し共通の秘匿ゲートを新設（CMP-260923-0954 W1）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3461",
+          "updatedAt": "2026-09-25T23:44:10Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3528,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: shift 交代申請・変更依頼・自動割当の存在オラクル是正（CMP-260923-0954 W2）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3528",
+          "updatedAt": "2026-10-01T15:34:03Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -31289,7 +31285,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260923-1732",
       "title": "組織通知fan-out母集団クエリのfilesort解消",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -31327,7 +31323,7 @@ window.BETA_INVENTORY_DATA = {
         "filesort"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -31376,19 +31372,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260924-0011",
       "title": "通報一覧に drill-down（詳細確認・対応・非表示化）への導線が存在しない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -31419,7 +31420,7 @@ window.BETA_INVENTORY_DATA = {
         "drill-down"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -31427,7 +31428,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260924-0012",
       "title": "Entity を持たないテーブル（`content_reports_archive` 等）は列欠落の番人の射程外",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -31460,7 +31461,7 @@ window.BETA_INVENTORY_DATA = {
         "Entity"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3406
@@ -31485,7 +31486,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260924-0033",
       "title": "配布済みdaimyo pluginのcacheがsource mainより古い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -31524,7 +31525,7 @@ window.BETA_INVENTORY_DATA = {
         "commit"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -31608,7 +31609,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260925-0901",
       "title": "シフト表・枠の作成ボタンの連打で二重作成される",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -31645,7 +31646,7 @@ window.BETA_INVENTORY_DATA = {
         "handleCreate"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -31653,7 +31654,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260925-0902",
       "title": "i18n の欠落（未定義キー・日本語直書き）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -31684,7 +31685,7 @@ window.BETA_INVENTORY_DATA = {
         "i18n"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -31692,7 +31693,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260925-0903",
       "title": "古い応答が新しい表示を上書きする競合（レースコンディション）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -31721,7 +31722,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3440,
@@ -31761,7 +31762,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260925-0904",
       "title": "取得失敗の扱いが残る画面",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -31797,7 +31798,7 @@ window.BETA_INVENTORY_DATA = {
         "vue"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -31805,7 +31806,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260925-0905",
       "title": "通知リマインドのバッチで遅延読み込みの失敗が大量に出ている",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -31834,7 +31835,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -31842,7 +31843,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260925-0906",
       "title": "本陣の BE（8080）が main に追随していない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -31876,7 +31877,7 @@ window.BETA_INVENTORY_DATA = {
         "main"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -31884,7 +31885,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260925-0907",
       "title": "実機E2E の安定化",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -31917,7 +31918,7 @@ window.BETA_INVENTORY_DATA = {
         "storageState"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3449
@@ -31957,12 +31958,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260922-2045",
       "issues": [
         {
-          "label": "PR #3545。共通分類と6言語文言、対象6画面、単体テスト15件、実機E2E期待値を更新。CIのLint・型チェック・全ユニットテスト・Smoke E2E・Lighthouse・OpenAPI等が合格。ローカル実機は検証用Nuxt SSRがHTTP応答を返さず、対象ロール横断specの単独実行は環境要因で未完了",
+          "label": "PR #3545。共通分類と6言語文言、対象6画面、単体テスト15件を実装し、CIのLint・型チェック・全ユニットテスト・Smoke E2E・Lighthouse・OpenAPI等が合格。2026-10-01に実DB・実APIのロール横断E2E 13件と、独立BrowserContextの3居住者アリシゼーションを全件完走。目視で見つけた390px幅のToast切れを共通レスポンシブCSSで修正し、境界値E2EとChromiumレイアウト検証（x=16、幅358px）を追加した。修正後の実画面再実行のみ、検証用Nuxt SSRがビルド完了後もHTTP応答を返さない環境事象により未完了",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3545。共通分類と6言語文言、対象6画面、単体テスト15件、実機E2E期待値を更新。CIのLint・型チェック・全ユニットテスト・Smoke E2E・Lighthouse・OpenAPI等が合格。ローカル実機は検証用Nuxt SSRがHTTP応答を返さず、対象ロール横断specの単独実行は環境要因で未完了"
+        "PR #3545。共通分類と6言語文言、対象6画面、単体テスト15件を実装し、CIのLint・型チェック・全ユニットテスト・Smoke E2E・Lighthouse・OpenAPI等が合格。2026-10-01に実DB・実APIのロール横断E2E 13件と、独立BrowserContextの3居住者アリシゼーションを全件完走。目視で見つけた390px幅のToast切れを共通レスポンシブCSSで修正し、境界値E2EとChromiumレイアウト検証（x=16、幅358px）を追加した。修正後の実画面再実行のみ、検証用Nuxt SSRがビルド完了後もHTTP応答を返さない環境事象により未完了"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -31979,12 +31980,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3545,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "CMP-260925-0908 エラー表示を原因別にやわらかく案内",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3545",
+          "updatedAt": "2026-09-30T17:17:01Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -32136,8 +32142,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260929-0654",
       "title": "主キー型ずれ（DDL `CHAR(36)` / Entity `UuidV7Entity`=`BINARY(16)`）の是正: 大会エントリー系3表と `user_interest_tags`",
-      "status": "unknown",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "着手中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -32151,12 +32157,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260924-0010",
       "issues": [
         {
-          "label": "—",
+          "label": "PR #3555（実機E2E・アリシゼーション未実施）。番人が対象外の違反 `point_card_provider_synonyms.provider_id`（UuidV7CharEntity 系で @JdbcTypeCode 漏れ）を1件検出し、同 PR で是正。 —",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "PR #3555（実機E2E・アリシゼーション未実施）。番人が対象外の違反 `point_card_provider_synonyms.provider_id`（UuidV7CharEntity 系で @JdbcTypeCode 漏れ）を1件検出し、同 PR で是正。 —"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -32184,27 +32190,47 @@ window.BETA_INVENTORY_DATA = {
         "UuidV7Entity"
       ],
       "tags": [
-        "未整理"
+        "進行中"
       ],
       "githubRefs": [
-        3518
+        3518,
+        3555
       ],
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3555,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 大会エントリー系・興味タグの主キー型ずれ是正（CMP-260929-0654）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3555",
+          "updatedAt": "2026-10-01T23:24:19Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260928-1233",
       "title": "F03.11 管理者手動ペナルティ解除の公開仕様未実装",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32237,7 +32263,7 @@ window.BETA_INVENTORY_DATA = {
         "E2E"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3502,
@@ -32267,7 +32293,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260929-1517",
       "title": "タイムライン投稿の可視性判定が公開状態を見ず、同じスコープの利用者が他人の DRAFT/SCHEDULED/HIDDEN 投稿を ID で読める疑い（優先度高）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32308,7 +32334,7 @@ window.BETA_INVENTORY_DATA = {
         "E2E"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3462
@@ -32316,19 +32342,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3462,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 目安箱の宛先検証と通報の宛先・作成者の導出（CMP-260917-1135 陣2）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3462",
+          "updatedAt": "2026-09-29T05:01:40Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260929-2235",
       "title": "人（利用者・プロフィール）を通報する機能: まず相手と共通のチーム・組織の管理者へ、次に運営へ",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32363,7 +32394,7 @@ window.BETA_INVENTORY_DATA = {
         "scope_type"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3462
@@ -32371,19 +32402,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3462,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 目安箱の宛先検証と通報の宛先・作成者の導出（CMP-260917-1135 陣2）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3462",
+          "updatedAt": "2026-09-29T05:01:40Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-0228",
       "title": "大会のメンバー番号入力・エントリーテンプレート保存の UI が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32415,7 +32451,7 @@ window.BETA_INVENTORY_DATA = {
         "CMP-260929-0654"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3518
@@ -32423,19 +32459,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-0229",
       "title": "回覧の本人スキップ・管理者スキップに UI の導線が無く、FE と BE の API パスも食い違っている",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32474,7 +32515,7 @@ window.BETA_INVENTORY_DATA = {
         "skippedBy"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3518
@@ -32482,19 +32523,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-0230",
       "title": "出欠（日次・時限）の登録が所属確認のみで、担任かどうかを判定していない（認可の欠陥）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32525,7 +32571,7 @@ window.BETA_INVENTORY_DATA = {
         "MEMBER"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3518
@@ -32533,19 +32579,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-0231",
       "title": "委員会の配信履歴画面が中身の無い行を並べ、配信操作の UI も無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32576,7 +32627,7 @@ window.BETA_INVENTORY_DATA = {
         "UI"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3518
@@ -32584,19 +32635,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-0232",
       "title": "代理投票一覧が常に空になり、作成ボタンが MEMBER にも表示される",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32627,7 +32683,7 @@ window.BETA_INVENTORY_DATA = {
         "MEMBER"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3518
@@ -32635,19 +32691,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-0233",
       "title": "駐車場申請の UI が無く、申請一覧 API の閲覧範囲に疑い（認可の要確認事項）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32679,7 +32740,7 @@ window.BETA_INVENTORY_DATA = {
         "API"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3518
@@ -32687,19 +32748,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-0234",
       "title": "組織に非所属のユーザーが委員会詳細 API を取得できる（設計上の許容範囲か要確認）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32732,7 +32798,7 @@ window.BETA_INVENTORY_DATA = {
         "NAME_ONLY"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3518
@@ -32740,19 +32806,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260926-0027",
       "title": "所属のない SYSTEM_ADMIN が組織・チームページの管理操作を通れない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32791,7 +32862,7 @@ window.BETA_INVENTORY_DATA = {
         "per-scope"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3387
@@ -32799,19 +32870,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3387,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー統合画面(一覧/紹介)サブタブのロール別可視性BE基盤(CMP-260919-1140 Phase 1)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3387",
+          "updatedAt": "2026-10-01T05:29:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260926-0028",
       "title": "`MemberProfileService#copyMembers` の N+1",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32844,7 +32920,7 @@ window.BETA_INVENTORY_DATA = {
         "SQL"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3387
@@ -32852,19 +32928,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3387,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー統合画面(一覧/紹介)サブタブのロール別可視性BE基盤(CMP-260919-1140 Phase 1)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3387",
+          "updatedAt": "2026-10-01T05:29:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260926-0029",
       "title": "`MemberProfileService#lookupMembers` の limit に 0・負数を渡したときの扱いが未定義",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32898,7 +32979,7 @@ window.BETA_INVENTORY_DATA = {
         "limit"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3387
@@ -32906,19 +32987,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3387,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー統合画面(一覧/紹介)サブタブのロール別可視性BE基盤(CMP-260919-1140 Phase 1)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3387",
+          "updatedAt": "2026-10-01T05:29:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260926-0030",
       "title": "DRAFT ページを DEPUTY_ADMIN が見られるかの仕様の揺れ",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -32951,7 +33037,7 @@ window.BETA_INVENTORY_DATA = {
         "DEPUTY_ADMIN"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3387
@@ -32959,20 +33045,25 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3387,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー統合画面(一覧/紹介)サブタブのロール別可視性BE基盤(CMP-260919-1140 Phase 1)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3387",
+          "updatedAt": "2026-10-01T05:29:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-1532",
       "title": "朝の点呼の欠席理由 enum が FE と BE で食い違い、「病気」「家庭の事情」を選ぶと提出が必ず 400 になる",
-      "status": "unknown",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -32986,12 +33077,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "PR #3518 のアリシゼーション（2026-09-30）で検出・殿裏取り済み: FE `types/school.ts:2`・`DailyRollCallSheet.vue:26-31` は ILLNESS/INJURY/FAMILY/OTHER、BE `AbsenceReason.java` は SICK/INJURY/FAMILY_REASON/BEREAVEMENT/INFECTIOUS_DISEASE/MENTAL_HEALTH/OFFICIAL_BUSINESS/OTHER。不一致で 400（COMMON_001・fieldErrors 空）。失敗しても画面に何も出ない（`useDailyRollCall.ts:44-46`）。提出ボタンの二重送信防止が無い（`daily-roll-call.vue:50`）",
+          "label": "PR #3542。実機E2E 5 passed / 0 failed（spec cmp-260930-1532-absence-reason.real.spec.ts、BE 8080・FE 3003、担任／一般メンバー／他チームのロール横断）。Codex 検分5巡（最終巡は重大・重要0）。アリシゼーション実施（2026-10-01、住民3体。確定した既存欠陥は CMP-261001-0630〜0632 に起票）。時限点呼は設計 F03.13 §3.1 に欠席理由の列が無いため、理由の選択 UI を撤去。PR #3518 のアリシゼーション（2026-09-30）で検出・殿裏取り済み: FE `types/school.ts:2`・`DailyRollCallSheet.vue:26-31` は ILLNESS/INJURY/FAMILY/OTHER、BE `AbsenceReason.java` は SICK/INJURY/FAMILY_REASON/BEREAVEMENT/INFECTIOUS_DISEASE/MENTAL_HEALTH/OFFICIAL_BUSINESS/OTHER。不一致で 400（COMMON_001・fieldErrors 空）。失敗しても画面に何も出ない（`useDailyRollCall.ts:44-46`）。提出ボタンの二重送信防止が無い（`daily-roll-call.vue:50`）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3518 のアリシゼーション（2026-09-30）で検出・殿裏取り済み: FE `types/school.ts:2`・`DailyRollCallSheet.vue:26-31` は ILLNESS/INJURY/FAMILY/OTHER、BE `AbsenceReason.java` は SICK/INJURY/FAMILY_REASON/BEREAVEMENT/INFECTIOUS_DISEASE/MENTAL_HEALTH/OFFICIAL_BUSINESS/OTHER。不一致で 400（COMMON_001・fieldErrors 空）。失敗しても画面に何も出ない（`useDailyRollCall.ts:44-46`）。提出ボタンの二重送信防止が無い（`daily-roll-call.vue:50`）"
+        "PR #3542。実機E2E 5 passed / 0 failed（spec cmp-260930-1532-absence-reason.real.spec.ts、BE 8080・FE 3003、担任／一般メンバー／他チームのロール横断）。Codex 検分5巡（最終巡は重大・重要0）。アリシゼーション実施（2026-10-01、住民3体。確定した既存欠陥は CMP-261001-0630〜0632 に起票）。時限点呼は設計 F03.13 §3.1 に欠席理由の列が無いため、理由の選択 UI を撤去。PR #3518 のアリシゼーション（2026-09-30）で検出・殿裏取り済み: FE `types/school.ts:2`・`DailyRollCallSheet.vue:26-31` は ILLNESS/INJURY/FAMILY/OTHER、BE `AbsenceReason.java` は SICK/INJURY/FAMILY_REASON/BEREAVEMENT/INFECTIOUS_DISEASE/MENTAL_HEALTH/OFFICIAL_BUSINESS/OTHER。不一致で 400（COMMON_001・fieldErrors 空）。失敗しても画面に何も出ない（`useDailyRollCall.ts:44-46`）。提出ボタンの二重送信防止が無い（`daily-roll-call.vue:50`）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -33006,27 +33097,47 @@ window.BETA_INVENTORY_DATA = {
         "AbsenceReason"
       ],
       "tags": [
-        "未整理"
+        "完了"
       ],
       "githubRefs": [
-        3518
+        3518,
+        3542
       ],
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3542,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 朝の点呼の欠席理由を BE の AbsenceReason に揃える（CMP-260930-1532）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3542",
+          "updatedAt": "2026-10-01T07:13:13Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-1533",
       "title": "投票・朝の点呼が一覧取得の 403 を握りつぶして「0件」表示にし、作成・提出ボタンを出す",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33055,7 +33166,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         2460,
@@ -33078,19 +33189,24 @@ window.BETA_INVENTORY_DATA = {
         },
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-1534",
       "title": "委員会詳細画面が JS エラー（TypeError）でメンバー欄を描画できない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33124,7 +33240,7 @@ window.BETA_INVENTORY_DATA = {
         "BE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3518
@@ -33132,19 +33248,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-1535",
       "title": "i18n の生キー表示: `common.back` 未定義・朝の点呼の欠席理由選択肢が関数の文字列で表示される",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33179,7 +33300,7 @@ window.BETA_INVENTORY_DATA = {
         "back"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3518
@@ -33187,19 +33308,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-1536",
       "title": "朝の点呼で生徒が氏名でなく user id で表示される",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33231,7 +33357,7 @@ window.BETA_INVENTORY_DATA = {
         "id"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3518
@@ -33239,19 +33365,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-1537",
       "title": "回覧の取り消し・削除の UI が無い（BE は実装済み）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33285,7 +33416,7 @@ window.BETA_INVENTORY_DATA = {
         "CANCELLED"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3518
@@ -33293,19 +33424,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-1538",
       "title": "チームの画面から投票（議決権行使）・学校出欠への導線が無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33334,7 +33470,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3518
@@ -33342,12 +33478,17 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3518,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+          "updatedAt": "2026-09-30T11:20:39Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -33401,46 +33542,66 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3447,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: 価格改定API・税コードマスタ・管理画面（F20.1 Billing Center）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3447",
+          "updatedAt": "2026-09-29T07:18:46Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3522,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 価格改定の実機E2Eで出た欠陥（取り消し500・導線・Stripe税コード入力・ID表示）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3522",
+          "updatedAt": "2026-09-30T09:28:16Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3527,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(FE依存): brace-expansion の high 脆弱性を override 引き上げで解消",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3527",
+          "updatedAt": "2026-09-30T06:03:28Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         },
         {
           "number": 3535,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 価格改定 実機E2E の待ち不足修正と PR-06 の既知欠陥明示",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3535",
+          "updatedAt": "2026-09-30T14:22:36Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-1931",
       "title": "料金表（`GET /api/v1/billing/plans`・Billing Center のプラン一覧/変更プレビュー）が価格改定の新価格を読まない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33493,7 +33654,7 @@ window.BETA_INVENTORY_DATA = {
         "ACTIVE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -33501,7 +33662,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-1932",
       "title": "募集ペナルティの緊急確認通知が、組織の通知クレジット不足で届かない疑い（要実証）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33516,12 +33677,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "PR #3499 のコードに対する Codex 検分の指摘（未実証）。`RecruitmentPenaltyAppliedNotificationListener.java:50-54` が ORGANIZATION スコープで `ConfirmableNotificationService#send` の通常課金経路に入り、猶予72時間超の残高不足で `notificationCreditService.consume` が例外→確認通知がロールバック→外側 catch で握りつぶし、ペナルティだけ確定する可能性。URGENT は強制配信の契約（`docs/features/F04.3_push_notification.md:1490`）。2026-10-01 コード読解で成立を確認（実行は未確認）: `ConfirmableNotificationService.java:518-520` が ORGANIZATION なら無条件に `consume`（優先度の分岐なし）→ 猶予超で `CREDIT_INSUFFICIENT` → send の tx ごとロールバック → リスナー 63-66 行の `catch (Exception)` で log のみ。設計書 F09.13:32『カウント対象外: 自動イベント通知、システム通知』と食い違う。同型: `RecruitmentAutoCancelBatch.java:236`（外側 @Transactional に参加し rollback-only で自動キャンセルごとロールバックする疑い）、`MarketFinalizeService.java:93`（申込 tx ごと失敗する疑い）。修正方針はマスター判断待ち",
+          "label": "PR #3499 のコードに対する Codex 検分の指摘（未実証）。`RecruitmentPenaltyAppliedNotificationListener.java:50-54` が ORGANIZATION スコープで `ConfirmableNotificationService#send` の通常課金経路に入り、猶予72時間超の残高不足で `notificationCreditService.consume` が例外→確認通知がロールバック→外側 catch で握りつぶし、ペナルティだけ確定する可能性。URGENT は強制配信の契約（`docs/features/F04.3_push_notification.md:1490`）。2026-10-01 コード読解で成立を確認（実行は未確認）: `ConfirmableNotificationService.java:518-520` が ORGANIZATION なら無条件に `consume`（優先度の分岐なし）→ 猶予超で `CREDIT_INSUFFICIENT` → send の tx ごとロールバック → リスナー 63-66 行の `catch (Exception)` で log のみ。設計書 F09.13:32『カウント対象外: 自動イベント通知、システム通知』と食い違う。同型: `RecruitmentAutoCancelBatch.java:236`（外側 @Transactional に参加し rollback-only で自動キャンセルごとロールバックする疑い）、`MarketFinalizeService.java:93`（申込 tx ごと失敗する疑い）。マスター裁可（2026-10-01）: 別戦役として軍議から根治。方針案A＝設計書 F09.13:32 に合わせシステム発の自動通知を課金対象外にし、ペナルティ通知・自動キャンセル・最終認証の3箇所をまとめて直す（既存テスト deliveryFailureDoesNotChangeCommittedPenalty の握りつぶし固定も見直す）。再現テスト案は足軽 worktree に未コミットで保存",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3499 のコードに対する Codex 検分の指摘（未実証）。`RecruitmentPenaltyAppliedNotificationListener.java:50-54` が ORGANIZATION スコープで `ConfirmableNotificationService#send` の通常課金経路に入り、猶予72時間超の残高不足で `notificationCreditService.consume` が例外→確認通知がロールバック→外側 catch で握りつぶし、ペナルティだけ確定する可能性。URGENT は強制配信の契約（`docs/features/F04.3_push_notification.md:1490`）。2026-10-01 コード読解で成立を確認（実行は未確認）: `ConfirmableNotificationService.java:518-520` が ORGANIZATION なら無条件に `consume`（優先度の分岐なし）→ 猶予超で `CREDIT_INSUFFICIENT` → send の tx ごとロールバック → リスナー 63-66 行の `catch (Exception)` で log のみ。設計書 F09.13:32『カウント対象外: 自動イベント通知、システム通知』と食い違う。同型: `RecruitmentAutoCancelBatch.java:236`（外側 @Transactional に参加し rollback-only で自動キャンセルごとロールバックする疑い）、`MarketFinalizeService.java:93`（申込 tx ごと失敗する疑い）。修正方針はマスター判断待ち"
+        "PR #3499 のコードに対する Codex 検分の指摘（未実証）。`RecruitmentPenaltyAppliedNotificationListener.java:50-54` が ORGANIZATION スコープで `ConfirmableNotificationService#send` の通常課金経路に入り、猶予72時間超の残高不足で `notificationCreditService.consume` が例外→確認通知がロールバック→外側 catch で握りつぶし、ペナルティだけ確定する可能性。URGENT は強制配信の契約（`docs/features/F04.3_push_notification.md:1490`）。2026-10-01 コード読解で成立を確認（実行は未確認）: `ConfirmableNotificationService.java:518-520` が ORGANIZATION なら無条件に `consume`（優先度の分岐なし）→ 猶予超で `CREDIT_INSUFFICIENT` → send の tx ごとロールバック → リスナー 63-66 行の `catch (Exception)` で log のみ。設計書 F09.13:32『カウント対象外: 自動イベント通知、システム通知』と食い違う。同型: `RecruitmentAutoCancelBatch.java:236`（外側 @Transactional に参加し rollback-only で自動キャンセルごとロールバックする疑い）、`MarketFinalizeService.java:93`（申込 tx ごと失敗する疑い）。マスター裁可（2026-10-01）: 別戦役として軍議から根治。方針案A＝設計書 F09.13:32 に合わせシステム発の自動通知を課金対象外にし、ペナルティ通知・自動キャンセル・最終認証の3箇所をまとめて直す（既存テスト deliveryFailureDoesNotChangeCommittedPenalty の握りつぶし固定も見直す）。再現テスト案は足軽 worktree に未コミットで保存"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -33532,7 +33693,7 @@ window.BETA_INVENTORY_DATA = {
         "URGENT"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3499
@@ -33541,12 +33702,13 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 3499,
           "kind": "pull_request",
-          "state": "open",
+          "state": "merged",
           "title": "feat: CMP-019 Wave16 無断キャンセル確定と緊急確認通知",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3499",
-          "updatedAt": "2026-09-28T23:45:26Z",
+          "updatedAt": "2026-09-30T00:46:32Z",
           "ci": {
-            "status": "success",
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -33556,7 +33718,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-1933",
       "title": "一般会員でも `/system-admin` トップのダッシュボードと管理メニュー一式が描画される（ALIC-1）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33590,7 +33752,7 @@ window.BETA_INVENTORY_DATA = {
         "system-admin"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -33598,7 +33760,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-1934",
       "title": "価格改定の作成フォームで商品キー・税コードが自由入力、税率が basis points の生数値入力（ALIC-2）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33631,7 +33793,7 @@ window.BETA_INVENTORY_DATA = {
         "ALIC-2"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -33683,19 +33845,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3539,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: チーム・組織の管理コンソールのカードが遷移しない欠陥（NuxtLink を文字列で渡していた）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3539",
+          "updatedAt": "2026-09-30T14:23:16Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-2355",
       "title": "価格改定の残論点（運用堅牢化・テスト強化）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33757,7 +33924,7 @@ window.BETA_INVENTORY_DATA = {
         "CAS"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -33765,7 +33932,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-2356",
       "title": "価格改定の future 予約を複数本にする（設計書 BC-18「次 future C も予約できる」）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33801,7 +33968,7 @@ window.BETA_INVENTORY_DATA = {
         "future_reservation_key"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -33809,7 +33976,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-2126",
       "title": "member ドメインの書き込み系メソッドが推移的に他ドメインへ触れる D-3T 凍結負債（約40行）の返済",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33843,7 +34010,7 @@ window.BETA_INVENTORY_DATA = {
         "EXPECTED_LINES_CROSS_DOMAIN_TX_D3T"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3387
@@ -33851,19 +34018,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3387,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー統合画面(一覧/紹介)サブタブのロール別可視性BE基盤(CMP-260919-1140 Phase 1)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3387",
+          "updatedAt": "2026-10-01T05:29:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260930-2127",
       "title": "既存の監査イベントリスナー（認証系・circulation）が `@Async(\"event-pool\")` のリスナーから `@Async` 付きの `AuditLogService#record` を呼び、event-pool（max5/queue100/AbortPolicy、`AsyncConfig.java`）へ二重投入している",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33906,7 +34078,7 @@ window.BETA_INVENTORY_DATA = {
         "recordSync"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3387
@@ -33914,19 +34086,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3387,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー統合画面(一覧/紹介)サブタブのロール別可視性BE基盤(CMP-260919-1140 Phase 1)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3387",
+          "updatedAt": "2026-10-01T05:29:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-261001-0834",
       "title": "組織の紹介サブタブで応援者の閲覧をどう扱うか（Phase 2）と 403 時の文言",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -33960,7 +34137,7 @@ window.BETA_INVENTORY_DATA = {
         "FE"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [
         3387
@@ -33968,19 +34145,24 @@ window.BETA_INVENTORY_DATA = {
       "github": [
         {
           "number": 3387,
-          "kind": "unsynced",
-          "state": "unknown",
-          "title": "",
-          "url": "",
-          "updatedAt": null,
-          "ci": null
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー統合画面(一覧/紹介)サブタブのロール別可視性BE基盤(CMP-260919-1140 Phase 1)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3387",
+          "updatedAt": "2026-10-01T05:29:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-261001-0835",
       "title": "応援者（SUPPORTER）が画面からフォローを解除できず、退出メニューが誤って表示される",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -34012,7 +34194,7 @@ window.BETA_INVENTORY_DATA = {
         "SUPPORTER"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -34020,7 +34202,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261001-0836",
       "title": "メンバー紹介のプロフィールを非表示にする操作が画面に無い",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -34049,7 +34231,7 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -34057,7 +34239,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261001-0837",
       "title": "公開範囲が PUBLIC のメンバー紹介ページを未ログインでは見られない",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -34089,7 +34271,7 @@ window.BETA_INVENTORY_DATA = {
         "PUBLIC"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -34097,7 +34279,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261001-0838",
       "title": "メンバー紹介ページ作成の使い勝手（必須項目の未案内・初期設定ダイアログの再表示）",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -34128,7 +34310,7 @@ window.BETA_INVENTORY_DATA = {
         "URL"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -34136,7 +34318,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261001-0839",
       "title": "`POST /api/v1/security/csp-reports` が application/csp-report・application/reports+json で 500 になり Javadoc の保証と矛盾する",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -34178,7 +34360,7 @@ window.BETA_INVENTORY_DATA = {
         "Content-Type"
       ],
       "tags": [
-        "未整理"
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -34186,7 +34368,7 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261001-1032",
       "title": "Billing Center のスマホ幅（390px）で見出し横の「使い方」が縦1文字ずつ折返し、操作要素4件がタップ領域44px未満",
-      "status": "unknown",
+      "status": "not-started",
       "statusLabel": "未着手",
       "stage": "未設定",
       "priority": "未設定",
@@ -34224,7 +34406,343 @@ window.BETA_INVENTORY_DATA = {
         "px"
       ],
       "tags": [
-        "未整理"
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260930-2346",
+      "title": "朝の点呼・時限点呼の対象日レコードを画面から作る入口が無い（生徒欄が既存の日次・時限レコードからしか作られない。時限点呼の BE 候補取得は簡易実装で TODO あり）",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "担任が画面の入口から、その日（その時限）の点呼を最初の1件から始められ、実機で確認されること",
+      "acceptance": [
+        "担任が画面の入口から、その日（その時限）の点呼を最初の1件から始められ、実機で確認されること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "PR #3542 の実機E2E（2026-10-01）で検出。前提レコードは API で作成して検証した"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "TODO"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3542
+      ],
+      "github": [
+        {
+          "number": 3542,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 朝の点呼の欠席理由を BE の AbsenceReason に揃える（CMP-260930-1532）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3542",
+          "updatedAt": "2026-10-01T07:13:13Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261001-0630",
+      "title": "学校出欠のクラス全体の閲覧が、所属確認だけで許されている（設計 F03.13 §8.1 では、クラス全体の閲覧は学級担任・副担任・ADMIN に限る。欠席理由は要配慮個人情報を含む）",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "日次・時限の出欠一覧など、クラス全体を返す閲覧系 API と画面が、§8.1 の権限を持つ者に限られ、一般 MEMBER・保護者では拒否されることを、権限あり／なしの両方でテストが示すこと。対象 API を棚卸しして列挙すること",
+      "acceptance": [
+        "日次・時限の出欠一覧など、クラス全体を返す閲覧系 API と画面が、§8.1 の権限を持つ者に限られ、一般 MEMBER・保護者では拒否されることを、権限あり／なしの両方でテストが示すこと。対象 API を棚卸しして列挙すること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "PR #3542 のアリシゼーション（2026-10-01）で検出・殿裏取り済み。CMP-260930-0230（登録側の同種欠陥）と同時に扱うのが自然"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "F03",
+        "ADMIN",
+        "API",
+        "MEMBER",
+        "API"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3542
+      ],
+      "github": [
+        {
+          "number": 3542,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 朝の点呼の欠席理由を BE の AbsenceReason に揃える（CMP-260930-1532）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3542",
+          "updatedAt": "2026-10-01T07:13:13Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261001-0631",
+      "title": "保護者の出欠連絡・タイムライン（`/me/attendance/notices`・`/me/attendance/timeline`）へ、画面からの入口が無い",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "保護者が画面の導線だけで、欠席・遅刻の連絡とタイムラインへ到達できることが実機で確認されること（チーム側の導線は CMP-260930-1538）",
+      "acceptance": [
+        "保護者が画面の導線だけで、欠席・遅刻の連絡とタイムラインへ到達できることが実機で確認されること（チーム側の導線は CMP-260930-1538）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "PR #3542 のアリシゼーション（2026-10-01）で検出・殿裏取り済み"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "me",
+        "attendance",
+        "notices",
+        "me",
+        "attendance",
+        "timeline",
+        "CMP-260930-1538"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3542
+      ],
+      "github": [
+        {
+          "number": 3542,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 朝の点呼の欠席理由を BE の AbsenceReason に揃える（CMP-260930-1532）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3542",
+          "updatedAt": "2026-10-01T07:13:13Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261001-0632",
+      "title": "学校出欠画面の遷移・表示の不備: 保護者連絡ページの「戻る」の先 `/me` が 404（マイページの実体は `/my`）、先生の受信一覧の「戻る」の先 `/teams/{slug}/school-attendance` にページが無い、タイムラインで日次未記録のとき状態が生キー `school.attendance.status.undefined`、`common.close`・`common.open` が生キー表示（`common.back` は CMP-260930-1535）、遅刻連絡でも項目名が「欠席理由」、保護者の連絡履歴が古い順で新しい連絡が最下部",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "各戻り先が実在するページに着き、上記の生キーが出ず、遅刻連絡の項目名が遅刻に合い、履歴が新しい順になることが実機で確認されること",
+      "acceptance": [
+        "各戻り先が実在するページに着き、上記の生キーが出ず、遅刻連絡の項目名が遅刻に合い、履歴が新しい順になることが実機で確認されること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "PR #3542 のアリシゼーション（2026-10-01）で検出・殿裏取り済み"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "me",
+        "my",
+        "teams",
+        "slug",
+        "school-attendance",
+        "school",
+        "attendance",
+        "status",
+        "undefined",
+        "common",
+        "close",
+        "common",
+        "open",
+        "common",
+        "back",
+        "CMP-260930-1535"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3542
+      ],
+      "github": [
+        {
+          "number": 3542,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 朝の点呼の欠席理由を BE の AbsenceReason に揃える（CMP-260930-1532）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3542",
+          "updatedAt": "2026-10-01T07:13:13Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-260930-2312",
+      "title": "大会エントリーのテンプレート一覧とメンバー取得の N+1（`TournamentEntryTemplateService` の一覧でテンプレートごとの件数 SQL、詳細・メンバー取得でユーザーごとの名前取得 SQL）",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "テンプレート・メンバーの件数が増えても SQL 発行数が一定であることをテストで示すこと",
+      "acceptance": [
+        "テンプレート・メンバーの件数が増えても SQL 発行数が一定であることをテストで示すこと"
+      ],
+      "blocker": "CMP-260929-0654",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "「CMP-260929-0654 の軍議（Codex 軍議検分）で判明」"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "TournamentEntryTemplateService",
+        "SQL",
+        "SQL",
+        "SQL"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260930-2313",
+      "title": "`FlywayFromScratchMigrationTest` の型照合を VARCHAR 長（Entity の length が DB の長さを超える列）まで広げる",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "全 Entity を棚卸しして違反0、または例外を1件ずつ理由つきで明記すること",
+      "acceptance": [
+        "全 Entity を棚卸しして違反0、または例外を1件ずつ理由つきで明記すること"
+      ],
+      "blocker": "CMP-260929-0654",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "「CMP-260929-0654 の軍議（Codex 軍議検分）で判明」"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FlywayFromScratchMigrationTest",
+        "VARCHAR",
+        "Entity",
+        "length",
+        "DB",
+        "Entity"
+      ],
+      "tags": [
+        "未着手"
       ],
       "githubRefs": [],
       "github": []
@@ -34233,7 +34751,7 @@ window.BETA_INVENTORY_DATA = {
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-09-29T06:18:22+00:00",
+    "synchronizedAt": "2026-10-02T02:15:36+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -34606,10 +35124,16 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260820-1015": [
         3445
       ],
-      "CMP-260820-1016": [],
-      "CMP-260820-1017": [],
+      "CMP-260820-1016": [
+        3510
+      ],
+      "CMP-260820-1017": [
+        3521
+      ],
       "CMP-260820-1018": [],
-      "CMP-260820-1019": [],
+      "CMP-260820-1019": [
+        3546
+      ],
       "CMP-260820-1550": [
         2878,
         2888
@@ -35077,7 +35601,8 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260917-0122": [],
       "CMP-260917-0123": [],
       "CMP-260917-1135": [
-        3398
+        3398,
+        3462
       ],
       "CMP-260917-1136": [
         3403
@@ -35170,8 +35695,13 @@ window.BETA_INVENTORY_DATA = {
         3423
       ],
       "CMP-260922-2245": [],
-      "CMP-260923-0953": [],
-      "CMP-260923-0954": [],
+      "CMP-260923-0953": [
+        3507
+      ],
+      "CMP-260923-0954": [
+        3461,
+        3528
+      ],
       "CMP-260923-1640": [
         3436
       ],
@@ -35180,7 +35710,9 @@ window.BETA_INVENTORY_DATA = {
         3438
       ],
       "CMP-260923-1732": [],
-      "CMP-260924-0010": [],
+      "CMP-260924-0010": [
+        3518
+      ],
       "CMP-260924-0011": [],
       "CMP-260924-0012": [
         3406
@@ -35202,7 +35734,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260925-0907": [
         3449
       ],
-      "CMP-260925-0908": [],
+      "CMP-260925-0908": [
+        3545
+      ],
       "CMP-260925-0923": [
         3455,
         3463
@@ -35210,10 +35744,122 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260928-1214": [
         3504
       ],
+      "CMP-260929-0654": [
+        3518,
+        3555
+      ],
       "CMP-260928-1233": [
         3502,
         3503
-      ]
+      ],
+      "CMP-260929-1517": [
+        3462
+      ],
+      "CMP-260929-2235": [
+        3462
+      ],
+      "CMP-260930-0228": [
+        3518
+      ],
+      "CMP-260930-0229": [
+        3518
+      ],
+      "CMP-260930-0230": [
+        3518
+      ],
+      "CMP-260930-0231": [
+        3518
+      ],
+      "CMP-260930-0232": [
+        3518
+      ],
+      "CMP-260930-0233": [
+        3518
+      ],
+      "CMP-260930-0234": [
+        3518
+      ],
+      "CMP-260926-0027": [
+        3387
+      ],
+      "CMP-260926-0028": [
+        3387
+      ],
+      "CMP-260926-0029": [
+        3387
+      ],
+      "CMP-260926-0030": [
+        3387
+      ],
+      "CMP-260930-1532": [
+        3518,
+        3542
+      ],
+      "CMP-260930-1533": [
+        2460,
+        3518
+      ],
+      "CMP-260930-1534": [
+        3518
+      ],
+      "CMP-260930-1535": [
+        3518
+      ],
+      "CMP-260930-1536": [
+        3518
+      ],
+      "CMP-260930-1537": [
+        3518
+      ],
+      "CMP-260930-1538": [
+        3518
+      ],
+      "CMP-260930-1930": [
+        3447,
+        3522,
+        3527,
+        3535
+      ],
+      "CMP-260930-1931": [],
+      "CMP-260930-1932": [
+        3499
+      ],
+      "CMP-260930-1933": [],
+      "CMP-260930-1934": [],
+      "CMP-260930-1935": [
+        3539
+      ],
+      "CMP-260930-2355": [],
+      "CMP-260930-2356": [],
+      "CMP-260930-2126": [
+        3387
+      ],
+      "CMP-260930-2127": [
+        3387
+      ],
+      "CMP-261001-0834": [
+        3387
+      ],
+      "CMP-261001-0835": [],
+      "CMP-261001-0836": [],
+      "CMP-261001-0837": [],
+      "CMP-261001-0838": [],
+      "CMP-261001-0839": [],
+      "CMP-261001-1032": [],
+      "CMP-260930-2346": [
+        3542
+      ],
+      "CMP-261001-0630": [
+        3542
+      ],
+      "CMP-261001-0631": [
+        3542
+      ],
+      "CMP-261001-0632": [
+        3542
+      ],
+      "CMP-260930-2312": [],
+      "CMP-260930-2313": []
     },
     "items": {
       "261": {
@@ -39627,6 +40273,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "3387": {
+        "number": 3387,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: メンバー統合画面(一覧/紹介)サブタブのロール別可視性BE基盤(CMP-260919-1140 Phase 1)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3387",
+        "updatedAt": "2026-10-01T05:29:17Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "3391": {
         "number": 3391,
         "kind": "pull_request",
@@ -39995,6 +40655,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "3447": {
+        "number": 3447,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加: 価格改定API・税コードマスタ・管理画面（F20.1 Billing Center）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3447",
+        "updatedAt": "2026-09-29T07:18:46Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "3448": {
         "number": 3448,
         "kind": "pull_request",
@@ -40072,6 +40746,34 @@ window.BETA_INVENTORY_DATA = {
         "title": "\"組織ガイドの実機検証で見つかった会員表示と機能枠説明を修正\"",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3457",
         "updatedAt": "2026-09-25T14:57:22Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3461": {
+        "number": 3461,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: シフトの希望・ポジションの存在オラクルを解消し共通の秘匿ゲートを新設（CMP-260923-0954 W1）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3461",
+        "updatedAt": "2026-09-25T23:44:10Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3462": {
+        "number": 3462,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 目安箱の宛先検証と通報の宛先・作成者の導出（CMP-260917-1135 陣2）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3462",
+        "updatedAt": "2026-09-29T05:01:40Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -40345,21 +41047,22 @@ window.BETA_INVENTORY_DATA = {
       "3498": {
         "number": 3498,
         "kind": "issue",
-        "state": "open",
+        "state": "closed",
         "title": "CMP-019 Wave16: NO_SHOW確定後のペナルティ適用と本人へのURGENT確認通知",
         "url": "https://github.com/kenta-0420/mannschaft/issues/3498",
-        "updatedAt": "2026-09-27T20:32:46Z",
+        "updatedAt": "2026-09-30T00:46:33Z",
         "ci": null
       },
       "3499": {
         "number": 3499,
         "kind": "pull_request",
-        "state": "open",
+        "state": "merged",
         "title": "feat: CMP-019 Wave16 無断キャンセル確定と緊急確認通知",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3499",
-        "updatedAt": "2026-09-28T23:45:26Z",
+        "updatedAt": "2026-09-30T00:46:32Z",
         "ci": {
-          "status": "success",
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
@@ -40423,13 +41126,195 @@ window.BETA_INVENTORY_DATA = {
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
+      },
+      "3507": {
+        "number": 3507,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "CMP-260923-0953 シフト子テーブルへ論理削除を連鎖する",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3507",
+        "updatedAt": "2026-09-30T07:23:56Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3510": {
+        "number": 3510,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "test: 推移的クロスドメインTransaction番人を追加",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3510",
+        "updatedAt": "2026-09-29T09:19:17Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3518": {
+        "number": 3518,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 凍結台帳KNOWN_UNPAID_DRIFT 22列をV228 migrationで全額返済（CMP-260924-0010）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3518",
+        "updatedAt": "2026-09-30T11:20:39Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3521": {
+        "number": 3521,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "リファクタリング: 居住者builderを登録入力に限定",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3521",
+        "updatedAt": "2026-09-29T16:35:23Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3522": {
+        "number": 3522,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 価格改定の実機E2Eで出た欠陥（取り消し500・導線・Stripe税コード入力・ID表示）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3522",
+        "updatedAt": "2026-09-30T09:28:16Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3527": {
+        "number": 3527,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正(FE依存): brace-expansion の high 脆弱性を override 引き上げで解消",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3527",
+        "updatedAt": "2026-09-30T06:03:28Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3528": {
+        "number": 3528,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: shift 交代申請・変更依頼・自動割当の存在オラクル是正（CMP-260923-0954 W2）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3528",
+        "updatedAt": "2026-10-01T15:34:03Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3535": {
+        "number": 3535,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 価格改定 実機E2E の待ち不足修正と PR-06 の既知欠陥明示",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3535",
+        "updatedAt": "2026-09-30T14:22:36Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3539": {
+        "number": 3539,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: チーム・組織の管理コンソールのカードが遷移しない欠陥（NuxtLink を文字列で渡していた）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3539",
+        "updatedAt": "2026-09-30T14:23:16Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3542": {
+        "number": 3542,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 朝の点呼の欠席理由を BE の AbsenceReason に揃える（CMP-260930-1532）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3542",
+        "updatedAt": "2026-10-01T07:13:13Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3545": {
+        "number": 3545,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "CMP-260925-0908 エラー表示を原因別にやわらかく案内",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3545",
+        "updatedAt": "2026-09-30T17:17:01Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3546": {
+        "number": 3546,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 非現役SYSTEM_ADMINを管理者判定から除外",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3546",
+        "updatedAt": "2026-09-30T20:00:56Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3555": {
+        "number": 3555,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 大会エントリー系・興味タグの主キー型ずれ是正（CMP-260929-0654）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3555",
+        "updatedAt": "2026-10-01T23:24:19Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
       }
     },
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-09-29T06:18:22+00:00",
-      "referenceCount": 394
+      "synchronizedAt": "2026-10-02T02:15:36+00:00",
+      "referenceCount": 411
     }
   }
 };
