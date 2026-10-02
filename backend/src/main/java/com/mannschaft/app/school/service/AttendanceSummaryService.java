@@ -43,7 +43,7 @@ public class AttendanceSummaryService {
     private final DailyAttendanceRecordRepository dailyRepository;
     private final PeriodAttendanceRecordRepository periodRepository;
     private final AccessControlService accessControlService;
-    private final SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
+    private final SchoolAttendanceAccessPolicy policy;
 
     /** 認可スコープ種別（出席集計は常にクラスチーム単位）。 */
     private static final String SCOPE_TEAM = "TEAM";
@@ -55,7 +55,9 @@ public class AttendanceSummaryService {
     /**
      * 生徒の出席集計を取得する。
      *
-     * <p>出席集計は児童の PII のため、対象クラスチームのメンバーであることを検証する。</p>
+     * <p>認可（AC-4）: 生徒本人、対象生徒への ACTIVE な careLink を持つ保護者、または
+     * 対象クラスの閲覧権（V: {@link SchoolAttendanceAccessPolicy#canView}）を持つ教職員のみ。
+     * 同級の一般 MEMBER・別クラスの教員・別テナントは 403（COMMON_002）。</p>
      *
      * @param studentUserId 生徒ユーザーID
      * @param teamId        チームID
@@ -67,7 +69,9 @@ public class AttendanceSummaryService {
      */
     public StudentSummaryResponse getStudentSummary(
             Long studentUserId, Long teamId, short academicYear, Long termId, Long currentUserId) {
-        accessControlService.checkMembership(currentUserId, teamId, SCOPE_TEAM);
+        if (!isSelfOrGuardian(studentUserId, currentUserId)) {
+            policy.checkCanView(currentUserId, teamId);
+        }
 
         StudentAttendanceSummaryEntity entity = summaryRepository
                 .findByStudentUserIdAndTeamIdAndAcademicYearAndTermId(
@@ -90,7 +94,7 @@ public class AttendanceSummaryService {
      */
     public ClassSummaryListResponse getClassSummaries(
             Long teamId, short academicYear, Long termId, Long currentUserId) {
-        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
+        policy.checkCanView(currentUserId, teamId);
 
         List<StudentAttendanceSummaryEntity> entities;
         if (termId == null) {
@@ -121,7 +125,9 @@ public class AttendanceSummaryService {
      * <p>日次出欠レコードを集計期間で取得し、ステータス・場所別に集計する。
      * 既存レコードがあれば {@code toBuilder()} で更新、なければ新規作成する。</p>
      *
-     * <p>児童の PII を書き換えるため、対象クラスチームのメンバーであることを検証する。</p>
+     * <p>認可（AC-13）: 日次登録権（R: {@link SchoolAttendanceAccessPolicy#canRecordDaily}）を持つ
+     * 担任・副担任・管理者のみ。対象生徒が当該クラスの在籍メンバーでなければ 404（SUMMARY_NOT_FOUND）。
+     * 時限記録の集計は当該クラス（teamId）の記録だけを対象とし、兼籍生徒の他クラスの記録を混ぜない（AC-21）。</p>
      *
      * @param studentUserId 生徒ユーザーID
      * @param req           再計算リクエスト
@@ -132,7 +138,10 @@ public class AttendanceSummaryService {
     @Transactional
     public RecalculateSummaryResponse recalculate(
             Long studentUserId, RecalculateSummaryRequest req, Long currentUserId) {
-        accessControlService.checkMembership(currentUserId, req.getTeamId(), SCOPE_TEAM);
+        policy.checkCanRecordDaily(currentUserId, req.getTeamId());
+        if (!accessControlService.listActiveMemberIds(req.getTeamId(), SCOPE_TEAM).contains(studentUserId)) {
+            throw new BusinessException(SchoolErrorCode.SUMMARY_NOT_FOUND);
+        }
 
         LocalDate from = LocalDate.parse(req.getPeriodFrom());
         LocalDate to = LocalDate.parse(req.getPeriodTo());
@@ -193,8 +202,8 @@ public class AttendanceSummaryService {
 
         // 時限別出欠レコード取得
         List<PeriodAttendanceRecordEntity> periodRecords =
-                periodRepository.findByStudentUserIdAndAttendanceDateBetweenOrderByAttendanceDateAscPeriodNumberAsc(
-                        studentUserId, from, to);
+                periodRepository.findByTeamIdAndStudentUserIdAndAttendanceDateBetweenOrderByAttendanceDateAscPeriodNumberAsc(
+                        req.getTeamId(), studentUserId, from, to);
 
         short totalPeriods = (short) periodRecords.size();
         short presentPeriods = 0;
@@ -277,5 +286,21 @@ public class AttendanceSummaryService {
                 .recalculatedAt(now)
                 .summary(StudentSummaryResponse.from(saved))
                 .build();
+    }
+
+    /**
+     * 閲覧者が対象生徒本人、または対象生徒への ACTIVE な careLink を持つ保護者かを返す。
+     * careLink が無い場合の {@code checkCareLink} の 403 は「保護者ではない」の意味に畳み、呼び出し側で判定を続ける。
+     */
+    private boolean isSelfOrGuardian(Long studentUserId, Long currentUserId) {
+        if (currentUserId != null && currentUserId.equals(studentUserId)) {
+            return true;
+        }
+        try {
+            accessControlService.checkCareLink(currentUserId, studentUserId);
+            return true;
+        } catch (BusinessException e) {
+            return false;
+        }
     }
 }
