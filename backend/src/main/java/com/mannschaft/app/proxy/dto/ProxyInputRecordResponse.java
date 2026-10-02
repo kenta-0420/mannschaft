@@ -1,7 +1,7 @@
 package com.mannschaft.app.proxy.dto;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
-import com.mannschaft.app.user.service.UserZoneLocalDateTimeParser;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
