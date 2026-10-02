@@ -6,6 +6,7 @@ import com.mannschaft.app.actionmemo.dto.UpdateActionMemoTagRequest;
 import com.mannschaft.app.actionmemo.service.ActionMemoTagService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,6 +33,14 @@ import java.util.List;
  *
  * <p>レートリミット: {@code POST /api/v1/action-memo-tags} は 20 req/分
  * （{@code ActionMemoRateLimitFilter} で設定済み）。</p>
+ *
+ * <p><b>認可根拠（{@link AuthorizedInService}）</b>: タグの所有者は
+ * {@link SecurityUtils#getCurrentUserId()} に固定され、リクエストで指定できない。
+ * ID を伴う更新・削除は {@code ActionMemoTagService#findOwnTagOrThrow}
+ * （ActionMemoTagService.java:250）が {@code (tagId, userId)} の複合条件で引き当てるため、
+ * 他ユーザーのタグは不存在と区別されず 404 で秘匿される。
+ * 認可番人の白名簿クラス経由ではないため監査済マーカーで明示承認する。
+ * 回帰は {@code ActionMemoScopeContractIT} で固定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/action-memo-tags")
@@ -46,6 +55,7 @@ public class ActionMemoTagController {
      */
     @GetMapping
     @Operation(summary = "タグ一覧取得")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<List<ActionMemoTagResponse>>> listTags() {
         List<ActionMemoTagResponse> tags = tagService.getTags(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(tags));
@@ -58,6 +68,7 @@ public class ActionMemoTagController {
     @PostMapping
     @Operation(summary = "タグ作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<ActionMemoTagResponse>> createTag(
             @Valid @RequestBody CreateActionMemoTagRequest request) {
         ActionMemoTagResponse response = tagService.createTag(request, SecurityUtils.getCurrentUserId());
@@ -69,6 +80,7 @@ public class ActionMemoTagController {
      */
     @PatchMapping("/{id}")
     @Operation(summary = "タグ更新")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<ActionMemoTagResponse>> updateTag(
             @PathVariable Long id,
             @Valid @RequestBody UpdateActionMemoTagRequest request) {
@@ -83,6 +95,7 @@ public class ActionMemoTagController {
     @DeleteMapping("/{id}")
     @Operation(summary = "タグ削除（論理削除）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    @AuthorizedInService
     public ResponseEntity<Void> deleteTag(@PathVariable Long id) {
         tagService.deleteTag(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();

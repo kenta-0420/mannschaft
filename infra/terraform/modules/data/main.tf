@@ -168,11 +168,20 @@ resource "aws_elasticache_subnet_group" "main" {
 # engine = "valkey": AWS provider 5.x で対応。Redis 互換の OSS フォーク。
 # ローカル開発: docker-compose.yml で valkey/valkey:8-alpine を使用（ポート 6379）。
 #
-# transit_encryption_enabled = false の理由:
-#   Spring Boot 側（Lettuce クライアント）の TLS 設定（spring.data.redis.ssl 等）が
-#   必要になるため、当面は無効化しシンプルな構成とする。
-#   本番トラフィック増加・コンプライアンス要件に応じて有効化予定。
-#   有効化する際はアプリ側の application-prod.yml も同時に変更すること。
+# transit_encryption_enabled = true（2026-07-11 隊3・設計:
+#   docs/architecture/websocket_external_broker_valkey.md §8.6・A.7）:
+#   WebSocket 外部ブローカー化（Valkey Pub/Sub relay・PR #2231 で BE 中核実装済み）により、
+#   relay flag（MANNSCHAFT_WEBSOCKET_RELAY_ENABLED）ON 時にチャット本文・通知本文（PII）が
+#   Valkey pub/sub チャネルを経由する新経路が生まれる。relay を ON にする前に転送時暗号化を
+#   有効化しておく必要があるため、本番未 apply（このリソースはまだ AWS 上に存在しない）の
+#   段階で TLS 有りの構成として初めて作成する。
+#   → 設計 A.7 の懸念（既存稼働中クラスタへの in-place 変更はダウンタイム/
+#     transit_encryption_mode の段階適用が必要になりうる）は、本番が未 apply のため
+#     そもそも発生しない（初回作成から TLS 有効な状態でスタートする）。
+#   アプリ側は application-prod.yml で spring.data.redis.ssl.enabled を
+#   SPRING_REDIS_SSL_ENABLED 環境変数から注入する（terraform: modules/app/main.tf）。
+#   接続は単一の LettuceConnectionFactory のため、キャッシュ・レート制限・
+#   presence TTL・relay の全 Redis 利用がまとめて TLS 化される。
 # -----------------------------------------------------------------------------
 resource "aws_elasticache_replication_group" "valkey" {
   replication_group_id = "${var.prefix}-valkey"
@@ -194,8 +203,8 @@ resource "aws_elasticache_replication_group" "valkey" {
   # 保存時暗号化: 有効化
   at_rest_encryption_enabled = true
 
-  # 転送時暗号化: 当面無効（理由は上部コメント参照）
-  transit_encryption_enabled = false
+  # 転送時暗号化: 有効化（理由は上部コメント参照。§8.6・A.7）
+  transit_encryption_enabled = true
 
   tags = {
     Name = "${var.prefix}-valkey"

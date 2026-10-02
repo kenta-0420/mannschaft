@@ -1,12 +1,28 @@
+<script setup lang="ts">
+// html[lang] をアクティブなロケールに追従させる。
+// locale が変わるたびにリアクティブに更新されるため、
+// リロード後・言語切替後ともに document.documentElement.lang が正しい値になる（AC-12 対応）。
+const { locale } = useI18n()
+useHead(() => ({
+  htmlAttrs: { lang: locale.value },
+}))
+</script>
+
 <template>
   <NuxtLayout>
     <ActiveIncidentBanner />
     <NuxtPage />
   </NuxtLayout>
-  <Toast />
+  <NavigationLoading />
+  <Toast>
+    <template #message="{ message }">
+      <AppToastMessage :message="message" />
+    </template>
+  </Toast>
   <ConfirmDialog />
   <DynamicDialog />
   <ErrorReportModal />
+  <PaywallModal />
 </template>
 
 <style>
@@ -42,5 +58,14 @@
 }
 .p-dark .p-button-outlined.p-button-secondary {
   background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* PrimeVue の既定幅（25rem）が狭い画面からはみ出さないようにする。 */
+@media screen and (max-width: 640px) {
+  .p-toast {
+    right: 1rem !important;
+    left: 1rem !important;
+    width: calc(100vw - 2rem) !important;
+  }
 }
 </style>

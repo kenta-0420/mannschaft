@@ -193,9 +193,11 @@ export interface CreateMatchProposalBody {
 }
 
 export interface MatchRequestSearchParams {
-  prefecture_code?: string
-  city_code?: string
-  activity_type?: MatchActivityType
+  // BE MatchRequestController が読むクエリパラメータ名は camelCase。
+  // snake_case で送ると null バインドされ無視されるため camelCase に揃える。
+  prefectureCode?: string
+  cityCode?: string
+  activityType?: MatchActivityType
   category?: MatchCategory
   keyword?: string
   level?: MatchLevel

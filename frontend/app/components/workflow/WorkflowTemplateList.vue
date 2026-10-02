@@ -37,7 +37,7 @@ async function loadTemplates() {
       size: rows.value,
     })
     templates.value = res.data
-    totalRecords.value = res.meta.totalElements
+    totalRecords.value = res.meta.total
   } catch {
     templates.value = []
   } finally {

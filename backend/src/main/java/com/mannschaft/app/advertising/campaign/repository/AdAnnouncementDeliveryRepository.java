@@ -18,6 +18,9 @@ public interface AdAnnouncementDeliveryRepository
     /** キャンペーン × 月キー (パーティション/レポート用)。 */
     List<AdAnnouncementDelivery> findByCampaignIdAndMonthKey(UUID campaignId, String monthKey);
 
+    /** 課金対象件数: delivered_at IS NOT NULL の行数（F09.17 月次課金ブリッジ用）。 */
+    long countByCampaignIdAndMonthKeyAndDeliveredAtIsNotNull(UUID campaignId, String monthKey);
+
     /** 退会時匿名化用: user_id 配下の配信実績を取得し、Service 層で NULL 化する。 */
     List<AdAnnouncementDelivery> findByUserId(Long userId);
 

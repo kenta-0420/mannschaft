@@ -1,6 +1,8 @@
 package com.mannschaft.app.timetable;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import com.mannschaft.app.timetable.entity.TimetableTermEntity;
 import com.mannschaft.app.timetable.repository.TimetableRepository;
 import com.mannschaft.app.timetable.repository.TimetableTermRepository;
@@ -32,7 +34,11 @@ class TimetableTermServiceTest {
 
     @Mock private TimetableTermRepository termRepository;
     @Mock private TimetableRepository timetableRepository;
+    @Mock private AccessControlService accessControlService;
+    @Mock private TeamOrgMembershipQueryService teamOrgMembershipQueryService;
     @InjectMocks private TimetableTermService service;
+
+    private static final Long ACTOR_USER_ID = 100L;
 
     @Nested
     @DisplayName("createTerm")
@@ -50,7 +56,7 @@ class TimetableTermServiceTest {
                     LocalDate.of(2025, 4, 1), LocalDate.of(2025, 7, 31), 1);
 
             // When
-            TimetableTermEntity result = service.createTerm(1L, true, data);
+            TimetableTermEntity result = service.createTerm(1L, true, data, ACTOR_USER_ID);
 
             // Then
             assertThat(result.getName()).isEqualTo("1学期");
@@ -78,7 +84,7 @@ class TimetableTermServiceTest {
                     LocalDate.of(2025, 10, 1), LocalDate.of(2025, 12, 31), 2);
 
             // When / Then
-            assertThatThrownBy(() -> service.createTerm(1L, true, data))
+            assertThatThrownBy(() -> service.createTerm(1L, true, data, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_020"));
@@ -114,7 +120,7 @@ class TimetableTermServiceTest {
             given(termRepository.save(any(TimetableTermEntity.class))).willAnswer(inv -> inv.getArgument(0));
 
             // When
-            service.updateTerm(10L, data);
+            service.updateTerm(10L, data, ACTOR_USER_ID);
 
             // Then
             // toBuilder().build() で別インスタンスを save していたら id=null の新規行 INSERT になる。

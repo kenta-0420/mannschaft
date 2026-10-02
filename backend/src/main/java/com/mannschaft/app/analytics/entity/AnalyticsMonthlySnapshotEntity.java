@@ -46,18 +46,23 @@ public class AnalyticsMonthlySnapshotEntity extends BaseEntity {
     private BigDecimal paybackMonths;
 
     @Builder.Default
+    @Column(nullable = false)
     private int totalUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int activeUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int payingUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int newUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int churnedUsers = 0;
 
     @Column(nullable = false)
@@ -77,6 +82,7 @@ public class AnalyticsMonthlySnapshotEntity extends BaseEntity {
     private BigDecimal adRevenue = BigDecimal.ZERO;
 
     @Builder.Default
+    @Column(nullable = false)
     private boolean reportSent = false;
 
     private LocalDateTime reportSentAt;

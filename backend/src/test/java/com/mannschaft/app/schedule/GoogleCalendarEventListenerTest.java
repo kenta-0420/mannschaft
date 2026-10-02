@@ -98,6 +98,8 @@ class GoogleCalendarEventListenerTest {
                     .build();
             given(syncSettingRepository.findByScopeTypeAndScopeIdAndIsEnabledTrue("TEAM", TEAM_ID))
                     .willReturn(List.of(syncSetting));
+            // AC-3: 可視性・min_view_role ゲートを通過する想定
+            given(googleCalendarService.isSchedulePushableToUser(schedule, USER_ID)).willReturn(true);
 
             // when
             eventListener.onScheduleCreated(event);
@@ -149,6 +151,8 @@ class GoogleCalendarEventListenerTest {
                     .personalSyncEnabled(true)
                     .build();
             given(connectionRepository.findByUserIdAndIsActiveTrue(USER_ID)).willReturn(Optional.of(conn));
+            // AC-3: 可視性・min_view_role ゲートを通過する想定
+            given(googleCalendarService.isSchedulePushableToUser(personalSchedule, USER_ID)).willReturn(true);
 
             // when
             eventListener.onScheduleCreated(event);
@@ -182,6 +186,8 @@ class GoogleCalendarEventListenerTest {
                     .build();
             given(syncSettingRepository.findByScopeTypeAndScopeIdAndIsEnabledTrue("TEAM", TEAM_ID))
                     .willReturn(List.of(syncSetting));
+            // 可視性・min_view_role ゲートを通過する想定（作成経路と同一ゲート）
+            given(googleCalendarService.isSchedulePushableToUser(schedule, USER_ID)).willReturn(true);
 
             // when
             eventListener.onScheduleUpdated(event);
@@ -220,7 +226,8 @@ class GoogleCalendarEventListenerTest {
             eventListener.onScheduleCancelled(event);
 
             // then
-            verify(googleCalendarService).syncScheduleToGoogle(schedule, USER_ID);
+            // AC-8: キャンセルは syncScheduleToGoogle ではなく Google イベント削除（cancelled 化）で表現する
+            verify(googleCalendarService).syncCancelledScheduleToGoogle(schedule.getId(), USER_ID);
         }
     }
 }

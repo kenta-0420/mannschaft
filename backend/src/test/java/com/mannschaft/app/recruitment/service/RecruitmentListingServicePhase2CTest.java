@@ -71,6 +71,14 @@ class RecruitmentListingServicePhase2CTest {
     @Mock
     private com.mannschaft.app.recruitment.repository.RecruitmentListingRegionRepository listingRegionRepository;
 
+    // Issue #2715 ロットA: 通知本文の i18n 化で RecruitmentListingService に追加した依存。
+    // このテストクラスでは confirmApplication / publish を呼ばないため未使用だが、
+    // @InjectMocks が null を注入するのを防ぐため（将来ここでその経路を検証する際の NPE 罠回避）宣言しておく。
+    @Mock
+    private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock
+    private org.springframework.context.MessageSource messageSource;
+
     @InjectMocks
     private RecruitmentListingService service;
 

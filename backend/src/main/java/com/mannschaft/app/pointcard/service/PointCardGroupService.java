@@ -62,9 +62,6 @@ public class PointCardGroupService {
     /** グループ内カード数上限（設計書 §6.2）。 */
     public static final int GROUP_ITEM_LIMIT = 20;
 
-    /** 現行規約バージョン（{@link PointCardService} と同期）。 */
-    private static final String CURRENT_TERMS_VERSION = "v1.0.0";
-
     private final PointCardGroupRepository groupRepository;
     private final PointCardGroupItemRepository itemRepository;
     private final UserPointCardRepository cardRepository;
@@ -138,7 +135,7 @@ public class PointCardGroupService {
      */
     @Transactional
     public GroupDetailResponse createGroup(Long userId, CreateGroupRequest req) {
-        userSettingsService.assertTermsAcceptedAndCurrent(userId, CURRENT_TERMS_VERSION);
+        userSettingsService.assertTermsAcceptedAndCurrent(userId, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
 
         long currentCount = groupRepository.countByUserId(userId);
         if (currentCount >= GROUP_LIMIT_PER_USER) {

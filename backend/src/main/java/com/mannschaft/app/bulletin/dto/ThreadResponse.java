@@ -4,39 +4,68 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
- * スレッドレスポンスDTO。
- * フィールドをドメイン区分でネストし、@Builder で構築する。
+ * スレッドレスポンス DTO（フラット構造）。
+ *
+ * <p>FE 型 {@code BulletinThreadResponse}（フラット）を正準とし、それに一致させる。
+ * 投稿者表示名・アバター・カテゴリ名/色・既読・リアクション集計の 5 項目は
+ * サービス層（{@code BulletinThreadService#enrichThreads}）でバッチ解決して inline 注入する。</p>
+ *
+ * <p>このクラスは継承を持たない単純 DTO のため {@code @Builder}（{@code @SuperBuilder} ではない）で構築する。
+ * 継承 Entity の標準は {@code @SuperBuilder} だが、本 DTO は継承しないため対象外。</p>
  */
 @Builder(toBuilder = true)
 @Getter
 public class ThreadResponse {
 
     Long id;
-    ThreadScopeDto scope;
-    ThreadContentDto content;
-    ThreadStateDto state;
-    ThreadStatsDto stats;
-    ThreadSourceDto source;
-    ThreadAuditDto audit;
 
-    /** スコープ情報（カテゴリ・スコープ種別・スコープID）。 */
-    public record ThreadScopeDto(Long categoryId, String scopeType, Long scopeId) {}
+    // --- カテゴリ ---
+    Long categoryId;
+    String categoryName;
+    String categoryColor;
 
-    /** コンテンツ情報（タイトル・本文・優先度・既読トラッキングモード）。 */
-    public record ThreadContentDto(String title, String body, String priority, String readTrackingMode) {}
+    // --- スコープ ---
+    String scopeType;
+    Long scopeId;
 
-    /** 状態情報（ピン留め・ロック・アーカイブ・アーカイブフォルダID）。 */
-    public record ThreadStateDto(Boolean isPinned, Boolean isLocked, Boolean isArchived, UUID archiveFolderId) {}
+    // --- 投稿者 ---
+    AuthorDto author;
 
-    /** 統計情報（返信数・既読数・最終返信日時）。 */
-    public record ThreadStatsDto(Integer replyCount, Integer readCount, LocalDateTime lastRepliedAt) {}
+    // --- コンテンツ ---
+    String title;
+    String body;
+    String priority;
+    String readTrackingMode;
 
-    /** ソース情報（ソース種別・ソースID）。 */
-    public record ThreadSourceDto(String sourceType, Long sourceId) {}
+    // --- 状態 ---
+    Boolean isPinned;
+    Boolean isLocked;
+    Boolean isArchived;
+    UUID archiveFolderId;
 
-    /** 監査情報（投稿者ID・作成日時・更新日時）。 */
-    public record ThreadAuditDto(Long authorId, LocalDateTime createdAt, LocalDateTime updatedAt) {}
+    // --- 統計 ---
+    Integer replyCount;
+    Integer readCount;
+    Boolean isRead;
+
+    // --- リアクション ---
+    Map<String, Integer> reactionSummary;
+    List<String> myReactions;
+
+    // --- 日時 ---
+    LocalDateTime lastRepliedAt;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
+
+    // --- ソース情報（FE 未使用だが互換のため保持）---
+    String sourceType;
+    Long sourceId;
+
+    /** 投稿者情報（ID・表示名・アバター URL）。 */
+    public record AuthorDto(Long id, String displayName, String avatarUrl) {}
 }

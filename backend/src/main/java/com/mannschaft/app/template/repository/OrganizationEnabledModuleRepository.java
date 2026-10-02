@@ -31,10 +31,19 @@ public interface OrganizationEnabledModuleRepository extends JpaRepository<Organ
     Optional<OrganizationEnabledModuleEntity> findByOrganizationIdAndModuleId(Long organizationId, Long moduleId);
 
     /**
-     * 有効なモジュール数を取得する（無料プラン上限チェック用）。
+     * 有効なモジュール数を取得する（Analytics 等の汎用集計用）。
      *
      * @param organizationId 組織ID
      * @return 有効なモジュール数
      */
     long countByOrganizationIdAndIsEnabledTrue(Long organizationId);
+
+    /**
+     * 無料プラン上限チェック用の有効モジュール数を取得する。
+     * グランドファザリング行（is_grandfathered=1）は既得機能として上限カウントから除外する。
+     *
+     * @param organizationId 組織ID
+     * @return グランドファザリングを除いた有効モジュール数
+     */
+    long countByOrganizationIdAndIsEnabledTrueAndIsGrandfatheredFalse(Long organizationId);
 }

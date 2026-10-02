@@ -74,6 +74,7 @@ public class PeriodAttendanceRecordEntity extends BaseEntity {
     @Column(nullable = false)
     private Long recordedBy;
 
+    @Column(nullable = false)
     private LocalDateTime recordedAt;
 
     /** 「前にいたのに今いない」検知通知送信日時 */

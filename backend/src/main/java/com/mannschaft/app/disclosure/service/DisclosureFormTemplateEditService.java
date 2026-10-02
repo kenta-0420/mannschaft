@@ -3,6 +3,7 @@ package com.mannschaft.app.disclosure.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.disclosure.DisclosureErrorCode;
 import com.mannschaft.app.disclosure.dto.DisclosureCustomTemplateRequest;
@@ -52,6 +53,7 @@ public class DisclosureFormTemplateEditService {
     private final DisclosureFormTemplateRepository templateRepository;
     private final DisclosureFormTemplateValidator validator;
     private final ObjectMapper objectMapper;
+    private final AccessControlService accessControlService;
 
     // =========================================================================
     // 作成
@@ -81,6 +83,8 @@ public class DisclosureFormTemplateEditService {
         if (organizationId == null) {
             throw new BusinessException(DisclosureErrorCode.DISCLOSURE_004);
         }
+        // 認可根治戦役 Wave3-B4: カスタム様式作成は ADMIN/DEPUTY_ADMIN 以上のみ許可する
+        accessControlService.checkAdminOrAbove(userId, organizationId, SCOPE_ORGANIZATION);
 
         // 1. 件数上限チェック
         long currentCount = templateRepository.countByScopeTypeAndScopeIdAndDeletedAtIsNull(
@@ -149,6 +153,7 @@ public class DisclosureFormTemplateEditService {
      */
     @Transactional
     public DisclosureFormTemplateResponse updateCustomTemplate(Long organizationId, Long templateId,
+                                                               Long userId,
                                                                DisclosureCustomTemplateRequest request) {
         if (organizationId == null || templateId == null) {
             throw new BusinessException(DisclosureErrorCode.DISCLOSURE_004);
@@ -160,6 +165,8 @@ public class DisclosureFormTemplateEditService {
 
         ensureCustomTemplate(entity);
         ensureSameOrganization(entity, organizationId);
+        // 認可根治戦役 Wave3-B4: カスタム様式更新は ADMIN/DEPUTY_ADMIN 以上のみ許可する
+        accessControlService.checkAdminOrAbove(userId, organizationId, SCOPE_ORGANIZATION);
 
         // 楽観的ロック検査（事前チェック。saveAndFlush でも発火するが、明示的に投げる）
         if (request.versionLock() == null) {
@@ -223,7 +230,7 @@ public class DisclosureFormTemplateEditService {
      * 別組織のテンプレートを指定した場合 {@link DisclosureErrorCode#DISCLOSURE_002}。</p>
      */
     @Transactional
-    public void deleteCustomTemplate(Long organizationId, Long templateId) {
+    public void deleteCustomTemplate(Long organizationId, Long userId, Long templateId) {
         if (organizationId == null || templateId == null) {
             throw new BusinessException(DisclosureErrorCode.DISCLOSURE_004);
         }
@@ -234,6 +241,8 @@ public class DisclosureFormTemplateEditService {
 
         ensureCustomTemplate(entity);
         ensureSameOrganization(entity, organizationId);
+        // 認可根治戦役 Wave3-B4: カスタム様式削除は ADMIN/DEPUTY_ADMIN 以上のみ許可する
+        accessControlService.checkAdminOrAbove(userId, organizationId, SCOPE_ORGANIZATION);
 
         entity.softDelete();
         templateRepository.save(entity);

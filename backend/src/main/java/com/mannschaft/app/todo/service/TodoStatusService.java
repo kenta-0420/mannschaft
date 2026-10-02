@@ -2,11 +2,13 @@ package com.mannschaft.app.todo.service;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.todo.TodoErrorCode;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.dto.BulkStatusChangeRequest;
+import com.mannschaft.app.todo.dto.BulkStatusChangeResponse;
 import com.mannschaft.app.todo.dto.ProjectResponse;
 import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
@@ -77,7 +79,7 @@ public class TodoStatusService {
 
             // status も同時に指定されている場合は整合チェック
             if (request.getStatus() != null && !request.getStatus().isBlank()) {
-                TodoStatus requested = TodoStatus.valueOf(request.getStatus());
+                TodoStatus requested = EnumInputParser.parse(TodoStatus.class, request.getStatus(), "status");
                 if (requested != newStatus) {
                     throw new BusinessException(TodoErrorCode.STATUS_LABEL_BUCKET_MISMATCH);
                 }
@@ -85,7 +87,7 @@ public class TodoStatusService {
             todo.changeStatusWithLabel(newStatus, labelId, userId);
         } else {
             // 後方互換: status のみ指定。ラベルは更新しない。
-            newStatus = TodoStatus.valueOf(request.getStatus());
+            newStatus = EnumInputParser.parse(TodoStatus.class, request.getStatus(), "status");
             todo.changeStatus(newStatus, userId);
         }
 
@@ -133,23 +135,25 @@ public class TodoStatusService {
      * @param scopeId   スコープID
      * @param request   一括ステータス変更リクエスト
      * @param userId    操作ユーザーID
-     * @return 変更結果リスト
+     * @return 変更結果とロックによりスキップした ID
      */
     @Transactional
-    public ApiResponse<List<TodoStatusChangeResponse>> bulkChangeStatus(
+    public BulkStatusChangeResponse bulkChangeStatus(
             TodoScopeType scopeType, Long scopeId, BulkStatusChangeRequest request, Long userId) {
         if (request.getTodoIds().size() > MAX_BULK_SIZE) {
             throw new BusinessException(TodoErrorCode.BULK_SIZE_EXCEEDED);
         }
 
-        TodoStatus newStatus = TodoStatus.valueOf(request.getStatus());
-        List<TodoEntity> todos = todoRepository.findByIdInAndDeletedAtIsNull(request.getTodoIds());
+        TodoStatus newStatus = EnumInputParser.parse(TodoStatus.class, request.getStatus(), "status");
+        // 認可根治（Wave5 todo硬化A・越境一括変更 BOLA 根治）:
+        // findByIdInAndDeletedAtIsNull は scope を無視した生取得のため、指定 scope に属する TODO のみに
+        // 絞り込む。scopeType/scopeId 不一致（他チーム/組織の id 混入）は対象から除外し、越境変更を封じる。
+        List<TodoEntity> todos = todoRepository.findByIdInAndDeletedAtIsNull(request.getTodoIds()).stream()
+                .filter(t -> t.getScopeType() == scopeType
+                        && java.util.Objects.equals(t.getScopeId(), scopeId))
+                .toList();
 
         // F02.7: ロック中 TODO をスキップする。
-        // TODO(F02.7 Phase 15-3 残件): 現在は skippedLockedIds をログ出力のみで、APIレスポンスには含めていない。
-        //   レスポンス DTO（List<TodoStatusChangeResponse>）を BulkStatusChangeResponse（skippedLockedIds を含む）に
-        //   差し替えるには、既存の呼び出し側（TeamTodoController / PersonalTodoController）とシグネチャ変更を要する。
-        //   破壊的変更を避けるため Phase 15-4 以降で対応予定。
         List<Long> skippedLockedIds = new ArrayList<>();
         List<TodoEntity> processable = new ArrayList<>();
         for (TodoEntity t : todos) {
@@ -196,6 +200,6 @@ public class TodoStatusService {
                     completedByInfo, projectProgress);
         }).toList();
 
-        return ApiResponse.of(responses);
+        return new BulkStatusChangeResponse(responses, skippedLockedIds);
     }
 }

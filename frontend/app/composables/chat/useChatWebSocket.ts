@@ -2,7 +2,9 @@ import type { Client, IFrame, StompSubscription } from '@stomp/stompjs'
 import { Client as StompClient } from '@stomp/stompjs'
 import { useEventBus } from '@vueuse/core'
 import { ref } from 'vue'
-import type { ChatChannelEvent, ChatMessageListResponse } from '~/types/chat'
+import { useWsUrl } from '~/composables/useWsUrl'
+import type { ChatChannelEvent } from '~/types/chat'
+import type { BeMessageListResponse } from './chatMessageMapper'
 
 // ============================================================
 // モジュールレベルのシングルトン状態（composable再呼び出しを跨いで維持）
@@ -41,6 +43,11 @@ let _isFirstConnect = true
  */
 export function useChatWebSocket() {
   const api = useApi()
+  // dev 環境（FE :3000 / BE :8080 が別ポート）では apiBase が絶対 URL になるため、
+  // ws(s) スキームに変換してバックエンドの /ws/websocket エンドポイントへ正しく接続する
+  // （共通ヘルパー useWsUrl 経由。BE は SockJS 登録のみのため bare /ws は 400 になる）。
+  // 本番（同一オリジン構成）では apiBase が空のため '/ws/websocket' のまま（挙動不変）。
+  const wsUrl = useWsUrl()
 
   /**
    * STOMP クライアントが未接続なら接続する。
@@ -55,7 +62,7 @@ export function useChatWebSocket() {
 
       const auth = useAuthStore()
       const client = new StompClient({
-        webSocketFactory: () => new WebSocket('/ws'),
+        webSocketFactory: () => new WebSocket(wsUrl),
         connectHeaders: { Authorization: `Bearer ${auth.accessToken ?? ''}` },
         beforeConnect: () => {
           // 再接続時に最新トークンを差し替える（リフレッシュ後の再接続でも有効なトークンを使う）
@@ -136,10 +143,14 @@ export function useChatWebSocket() {
     _stompSubscriptions.set(channelId, subscription)
   }
 
-  /** 切断中に届いたメッセージを REST API でフェッチしてEventBusに流す（キャッチアップ用）。 */
+  /**
+   * 切断中に届いたメッセージを REST API でフェッチしてEventBusに流す（キャッチアップ用）。
+   * REST は BE ネスト生形状を返すため、受信側ハンドラ（mapBeMessage）が変換できるよう
+   * 生のまま MESSAGE_CREATED として emit する。
+   */
   async function _catchupMessages(channelId: number, lastMessageId: number): Promise<void> {
     try {
-      const res = await api<ChatMessageListResponse>(
+      const res = await api<BeMessageListResponse>(
         `/api/v1/chat/channels/${channelId}/messages`,
         { query: { cursor: lastMessageId, direction: 'after', limit: 100 } },
       )
@@ -169,6 +180,7 @@ export function useChatWebSocket() {
           body: JSON.stringify({ channelId }),
         })
       })
+      // eslint-disable-next-line no-restricted-syntax -- タイピング通知は非クリティカルな補助機能。WS 不通時のサイレント失敗が正しい
       .catch(() => {}) // サイレント失敗（タイピング通知は非クリティカル）
   }
 
@@ -324,6 +336,7 @@ export function useChatWebSocket() {
           callback(frame.body)
         })
       })
+      // eslint-disable-next-line no-restricted-syntax -- 在席等の任意 STOMP 購読。WS 接続不可時のサイレント失敗が正しい（補助機能・非クリティカル）
       .catch(() => {}) // WebSocket 接続失敗時のサイレント失敗（在席等の補助機能・非クリティカル）
     return () => {
       subscription?.unsubscribe()
@@ -340,6 +353,7 @@ export function useChatWebSocket() {
         if (_stompClient === null || !_stompClient.connected) return
         _stompClient.publish({ destination, body })
       })
+      // eslint-disable-next-line no-restricted-syntax -- 在席等の任意 STOMP 送信。WS 接続不可時のサイレント失敗が正しい（本文は REST 経由・補助機能）
       .catch(() => {}) // WebSocket 接続失敗時のサイレント失敗（在席等の補助機能・非クリティカル）
   }
 

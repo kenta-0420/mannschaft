@@ -13,6 +13,7 @@ import com.mannschaft.app.tournament.dto.RankingSummaryResponse;
 import com.mannschaft.app.tournament.dto.StandingResponse;
 import com.mannschaft.app.tournament.dto.TeamTournamentHistoryResponse;
 import com.mannschaft.app.tournament.dto.TeamTournamentStatsResponse;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.tournament.service.RankingsCalculationService;
 import com.mannschaft.app.tournament.service.StandingsCalculationService;
 import com.mannschaft.app.tournament.service.StandingsQueryService;
@@ -56,6 +57,7 @@ public class StandingsController {
     private final StandingsCalculationService standingsCalculationService;
     private final RankingsCalculationService rankingsCalculationService;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    private final TeamService teamService;
 
     /**
      * 大会 visibility ガード。認証ユーザー（未認証なら null）が当該 tournament を閲覧できるか
@@ -127,14 +129,19 @@ public class StandingsController {
     @GetMapping("/api/v1/teams/{teamId}/tournament-history")
     @Operation(summary = "チームの大会参加履歴")
     public ResponseEntity<ApiResponse<TeamTournamentHistoryResponse>> getTeamHistory(
-            @PathVariable Long teamId) {
-        return ResponseEntity.ok(ApiResponse.of(standingsQueryService.getTeamHistory(teamId)));
+            @PathVariable String teamId) {
+        // slug（URL識別子）を内部 BIGINT に解決してからサービスへ渡す（survey resolveScopeId 流儀）。
+        // FE ダッシュボードは slug を渡すため Long のままだと型変換で 400 になりウィジェットが空表示になる。
+        Long resolvedTeamId = teamService.resolveTeamId(teamId);
+        return ResponseEntity.ok(ApiResponse.of(standingsQueryService.getTeamHistory(resolvedTeamId)));
     }
 
     @GetMapping("/api/v1/teams/{teamId}/tournament-stats")
     @Operation(summary = "チーム通算成績")
     public ResponseEntity<ApiResponse<TeamTournamentStatsResponse>> getTeamStats(
-            @PathVariable Long teamId) {
-        return ResponseEntity.ok(ApiResponse.of(standingsQueryService.getTeamStats(teamId)));
+            @PathVariable String teamId) {
+        // slug（URL識別子）を内部 BIGINT に解決してからサービスへ渡す（survey resolveScopeId 流儀）。
+        Long resolvedTeamId = teamService.resolveTeamId(teamId);
+        return ResponseEntity.ok(ApiResponse.of(standingsQueryService.getTeamStats(resolvedTeamId)));
     }
 }

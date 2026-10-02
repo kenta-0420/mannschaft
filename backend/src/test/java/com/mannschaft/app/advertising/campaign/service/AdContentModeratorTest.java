@@ -47,6 +47,9 @@ class AdContentModeratorTest {
 
     @BeforeEach
     void setUp() {
+        // issue #2544: 本番では @Autowired @Lazy で注入される自己プロキシ self を UT では自分自身で埋める。
+        org.springframework.test.util.ReflectionTestUtils.setField(moderator, "self", moderator);
+
         // デフォルト辞書: WARN「最高」「限定」、BLOCK「治る」「必ず儲かる」
         // 一部テストで上書きするため lenient() でスタブする
         lenient().when(adNgWordRepository.findByIsActiveTrue()).thenReturn(List.of(

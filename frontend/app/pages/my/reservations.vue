@@ -8,6 +8,7 @@ const { showError } = useNotification()
 
 const reservations = ref<ReservationResponse[]>([])
 const loading = ref(false)
+const showGuide = ref(false)
 
 async function load() {
   loading.value = true
@@ -47,8 +48,7 @@ onMounted(() => load())
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <BackButton to="/my" />
-    <PageHeader :title="t('reservation.page.my_title')" />
+    <PageHeader :title="t('reservation.page.my_title')" back-to="/my" help @help="showGuide = true" />
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-3">
       <SectionCard
@@ -65,5 +65,6 @@ onMounted(() => load())
       </SectionCard>
       <DashboardEmptyState v-if="reservations.length === 0" icon="pi-calendar" :message="t('reservation.empty.no_my_reservations')" />
     </div>
+    <ReservationGuideModal v-model:visible="showGuide" />
   </div>
 </template>

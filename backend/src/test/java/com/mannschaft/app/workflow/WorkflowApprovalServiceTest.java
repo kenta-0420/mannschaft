@@ -1,5 +1,6 @@
 package com.mannschaft.app.workflow;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.workflow.dto.ApprovalDecisionRequest;
 import com.mannschaft.app.workflow.dto.WorkflowRequestResponse;
@@ -57,6 +58,9 @@ class WorkflowApprovalServiceTest {
     @Mock
     private WorkflowMapper workflowMapper;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private WorkflowApprovalService workflowApprovalService;
 
@@ -89,6 +93,7 @@ class WorkflowApprovalServiceTest {
                     .title("テスト").requestedBy(1L).build();
 
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(any(), any(), any())).willReturn(true);
 
             // When & Then
             assertThatThrownBy(() -> workflowApprovalService.decide(REQUEST_ID, USER_ID, request))
@@ -109,6 +114,7 @@ class WorkflowApprovalServiceTest {
             step.startProgress();
 
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(any(), any(), any())).willReturn(true);
             given(requestStepRepository.findByRequestIdAndStepOrder(REQUEST_ID, 1))
                     .willReturn(Optional.of(step));
             given(approverRepository.findByRequestStepIdAndApproverUserId(any(), any()))
@@ -136,6 +142,7 @@ class WorkflowApprovalServiceTest {
             approver.approve("OK", null);
 
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(any(), any(), any())).willReturn(true);
             given(requestStepRepository.findByRequestIdAndStepOrder(REQUEST_ID, 1))
                     .willReturn(Optional.of(step));
             given(approverRepository.findByRequestStepIdAndApproverUserId(any(), any()))
@@ -165,6 +172,7 @@ class WorkflowApprovalServiceTest {
                     .isSealRequired(true).createdBy(1L).build();
 
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(any(), any(), any())).willReturn(true);
             given(requestStepRepository.findByRequestIdAndStepOrder(REQUEST_ID, 1))
                     .willReturn(Optional.of(step));
             given(approverRepository.findByRequestStepIdAndApproverUserId(any(), any()))
@@ -217,6 +225,7 @@ class WorkflowApprovalServiceTest {
                     null, null, null, null, null, null, List.of());
 
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(any(), any(), any())).willReturn(true);
             given(requestStepRepository.findByRequestIdAndStepOrder(REQUEST_ID, 1))
                     .willReturn(Optional.of(step));
             given(approverRepository.findByRequestStepIdAndApproverUserId(any(), any()))
@@ -270,6 +279,7 @@ class WorkflowApprovalServiceTest {
                     null, null, null, null, null, null, List.of());
 
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(any(), any(), any())).willReturn(true);
             given(requestStepRepository.findByRequestIdAndStepOrder(REQUEST_ID, 1))
                     .willReturn(Optional.of(currentStep));
             given(approverRepository.findByRequestStepIdAndApproverUserId(any(), any()))
@@ -320,6 +330,7 @@ class WorkflowApprovalServiceTest {
                     null, null, null, null, null, null, List.of());
 
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(any(), any(), any())).willReturn(true);
             given(requestStepRepository.findByRequestIdAndStepOrder(REQUEST_ID, 1))
                     .willReturn(Optional.of(currentStep));
             given(approverRepository.findByRequestStepIdAndApproverUserId(any(), any()))
@@ -367,6 +378,7 @@ class WorkflowApprovalServiceTest {
                     null, null, null, null, null, null, List.of());
 
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isMember(any(), any(), any())).willReturn(true);
             given(requestStepRepository.findByRequestIdAndStepOrder(REQUEST_ID, 1))
                     .willReturn(Optional.of(currentStep));
             given(approverRepository.findByRequestStepIdAndApproverUserId(any(), any()))

@@ -65,12 +65,16 @@ public class EventInviteTokenService {
     /**
      * 招待トークンを無効化する。
      *
+     * <p>親子BOLA根治: {@code tokenId} が {@code eventId} に属さない場合は
+     * 存在を漏らさないため INVITE_TOKEN_NOT_FOUND（404）で秘匿する。</p>
+     *
+     * @param eventId イベントID（URL パス由来。親子突合に使用）
      * @param tokenId トークンID
      * @return 更新された招待トークンレスポンス
      */
     @Transactional
-    public InviteTokenResponse deactivateToken(Long tokenId) {
-        EventGuestInviteTokenEntity entity = tokenRepository.findById(tokenId)
+    public InviteTokenResponse deactivateToken(Long eventId, Long tokenId) {
+        EventGuestInviteTokenEntity entity = tokenRepository.findByIdAndEventId(tokenId, eventId)
                 .orElseThrow(() -> new BusinessException(EventErrorCode.INVITE_TOKEN_NOT_FOUND));
 
         entity.deactivate();

@@ -1,5 +1,7 @@
 package com.mannschaft.app.proxy.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,8 @@ public class ProxyInputRecordRetentionJob {
      * 毎月1日 04:00 JST に実行する。
      * ShedLock により複数インスタンス環境でも1回だけ実行されることを保証する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると保管期限 5 年を超過した代理入力記録が物理削除されず、保持期限を超えた個人データが残留する。DisclosureAutoDeleteBatchService と同種の保持期間超過削除である")
     @BatchEndpoint(name = "proxy-input-record-retention-monthly", description = "保管期限 5 年超過の代理入力記録を毎月 1 日 04:00 に物理削除する")
     @Scheduled(cron = "0 0 4 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "ProxyInputRecordRetentionJob", lockAtMostFor = "PT1H", lockAtLeastFor = "PT5M")

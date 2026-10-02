@@ -60,6 +60,7 @@ public class CirculationStampDelegationEntity extends UuidV7Entity {
 
     private LocalDateTime fulfilledAt;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

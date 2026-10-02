@@ -56,6 +56,16 @@ class TodoStatusLabelServiceTest {
     @InjectMocks
     private TodoStatusLabelService labelService;
 
+    /**
+     * issue #2544: 本番では {@code @Autowired @Lazy} で注入される自己プロキシ {@code self} を、
+     * 純 Mockito UT では自分自身で埋める（キャッシュプロキシは介在しないので挙動は従来どおり）。
+     * 埋めないと自己プロキシ経由の呼び出しが NPE になる。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void setUpSelfProxy() {
+        org.springframework.test.util.ReflectionTestUtils.setField(labelService, "self", labelService);
+    }
+
     private static final Long ACTOR_ID = 100L;
     private static final Long TEAM_ID = 200L;
 

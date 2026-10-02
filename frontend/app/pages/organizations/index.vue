@@ -118,7 +118,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
 
     <!-- F15.3: フォルダタブ -->
     <div class="mb-4">
-      <ScopeFolderScopeFolderTabs
+      <ScopeFolderTabs
         scope-type="ORGANIZATION"
         :current-folder-id="currentFolderId"
         @update:current-folder-id="setCurrentFolderId"

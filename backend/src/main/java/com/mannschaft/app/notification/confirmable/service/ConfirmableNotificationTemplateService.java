@@ -4,16 +4,20 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.ScopeType;
+import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationTemplateResponse;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationTemplateEntity;
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationTemplateRepository;
+import com.mannschaft.app.notification.confirmable.repository.ConfirmableRecipientGroupRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 /**
  * F04.9 確認通知テンプレートサービス。
@@ -28,6 +32,7 @@ import java.util.List;
 public class ConfirmableNotificationTemplateService {
 
     private final ConfirmableNotificationTemplateRepository templateRepository;
+    private final ConfirmableRecipientGroupRepository recipientGroupRepository;
     private final UserRepository userRepository;
 
     /**
@@ -63,17 +68,20 @@ public class ConfirmableNotificationTemplateService {
      * @param body            テンプレート本文（任意）
      * @param defaultPriority デフォルト優先度（NULL の場合は NORMAL）
      * @param createdByUserId 作成者ユーザーID
-     * @return 作成されたテンプレートエンティティ
+     * @return 作成されたテンプレートのレスポンス
      */
     @Transactional
-    public ConfirmableNotificationTemplateEntity create(
+    public ConfirmableNotificationTemplateResponse create(
             ScopeType scopeType,
             Long scopeId,
             String name,
             String title,
             String body,
             ConfirmableNotificationPriority defaultPriority,
+            UUID defaultRecipientGroupId,
             Long createdByUserId) {
+
+        validateDefaultRecipientGroup(scopeType, scopeId, defaultRecipientGroupId);
 
         UserEntity createdBy = userRepository.findById(createdByUserId).orElse(null);
 
@@ -87,13 +95,14 @@ public class ConfirmableNotificationTemplateService {
                         .defaultPriority(defaultPriority != null
                                 ? defaultPriority
                                 : ConfirmableNotificationPriority.NORMAL)
+                        .defaultRecipientGroupId(defaultRecipientGroupId)
                         .createdBy(createdBy)
                         .build();
 
         ConfirmableNotificationTemplateEntity saved = templateRepository.save(template);
         log.info("確認通知テンプレート作成: templateId={}, scopeType={}, scopeId={}",
                 saved.getId(), scopeType, scopeId);
-        return saved;
+        return toResponse(saved);
     }
 
     /**
@@ -104,19 +113,21 @@ public class ConfirmableNotificationTemplateService {
      * @param title           テンプレートタイトル
      * @param body            テンプレート本文（任意）
      * @param defaultPriority デフォルト優先度
-     * @return 更新されたテンプレートエンティティ
+     * @return 更新されたテンプレートのレスポンス
      * @throws BusinessException テンプレートが存在しないまたは削除済みの場合
      */
     @Transactional
-    public ConfirmableNotificationTemplateEntity update(
+    public ConfirmableNotificationTemplateResponse update(
             Long templateId,
             String name,
             String title,
             String body,
-            ConfirmableNotificationPriority defaultPriority) {
+            ConfirmableNotificationPriority defaultPriority,
+            UUID defaultRecipientGroupId) {
 
         // 論理削除済みのテンプレートは更新不可
         ConfirmableNotificationTemplateEntity existing = findById(templateId);
+        validateDefaultRecipientGroup(existing.getScopeType(), existing.getScopeId(), defaultRecipientGroupId);
 
         ConfirmableNotificationTemplateEntity updated = existing.toBuilder()
                 .name(name)
@@ -125,11 +136,41 @@ public class ConfirmableNotificationTemplateService {
                 .defaultPriority(defaultPriority != null
                         ? defaultPriority
                         : existing.getDefaultPriority())
+                .defaultRecipientGroupId(defaultRecipientGroupId)
                 .build();
 
         ConfirmableNotificationTemplateEntity saved = templateRepository.save(updated);
         log.info("確認通知テンプレート更新: templateId={}", templateId);
-        return saved;
+        return toResponse(saved);
+    }
+
+    private ConfirmableNotificationTemplateResponse toResponse(
+            ConfirmableNotificationTemplateEntity template) {
+        return ConfirmableNotificationTemplateResponse.builder()
+                .id(template.getId())
+                .scopeType(template.getScopeType())
+                .scopeId(template.getScopeId())
+                .name(template.getName())
+                .title(template.getTitle())
+                .body(template.getBody())
+                .defaultPriority(template.getDefaultPriority())
+                .defaultRecipientGroupId(template.getDefaultRecipientGroupId())
+                .createdAt(template.getCreatedAt())
+                .build();
+    }
+
+    private void validateDefaultRecipientGroup(
+            ScopeType scopeType, Long scopeId, UUID defaultRecipientGroupId) {
+        if (defaultRecipientGroupId == null) {
+            return;
+        }
+        boolean valid = recipientGroupRepository.findByIdAndDeletedAtIsNull(defaultRecipientGroupId)
+                .filter(group -> group.getScopeType() == scopeType
+                        && Objects.equals(group.getScopeId(), scopeId))
+                .isPresent();
+        if (!valid) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.RECIPIENT_GROUP_NOT_FOUND);
+        }
     }
 
     /**

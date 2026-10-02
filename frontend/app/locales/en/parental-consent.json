@@ -3,7 +3,7 @@
     "pending_title": "Parental consent required",
     "pending_description": "Since you are under 18, parental consent is required. Please enter your parent's email address to send an invitation.",
     "invite_email_label": "Parent's email address",
-    "invite_email_placeholder": "parent@example.com",
+    "invite_email_placeholder": "parent{'@'}example.com",
     "send_invite": "Send invitation",
     "cancel_invite": "Cancel invitation",
     "invite_sent": "Invitation email sent",

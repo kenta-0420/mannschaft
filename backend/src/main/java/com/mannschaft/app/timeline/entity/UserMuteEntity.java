@@ -37,6 +37,7 @@ public class UserMuteEntity {
     @Column(nullable = false)
     private Long mutedId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

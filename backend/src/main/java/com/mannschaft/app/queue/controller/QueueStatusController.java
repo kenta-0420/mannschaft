@@ -4,6 +4,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.queue.QueueScopeType;
 import com.mannschaft.app.queue.dto.CategoryResponse;
 import com.mannschaft.app.queue.dto.QueueStatusResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.queue.service.QueueAccessGuard;
 import com.mannschaft.app.queue.service.QueueCategoryService;
 import com.mannschaft.app.queue.service.QueueStatsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +21,9 @@ import java.util.List;
 
 /**
  * 順番待ちステータスコントローラー。リアルタイムのキュー状況と統計APIを提供する。
+ *
+ * <p>認可根治戦役 Wave5: read のため membership を {@link QueueAccessGuard} で要求する。
+ * 集計対象の categoryId は URL パスの scope 内カテゴリのみから導出されるため、追加の ID 束縛は不要。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/queue/status")
@@ -28,6 +33,7 @@ public class QueueStatusController {
 
     private final QueueStatsService statsService;
     private final QueueCategoryService categoryService;
+    private final QueueAccessGuard accessGuard;
 
     /**
      * チーム全体のリアルタイムキューステータスを取得する。
@@ -37,6 +43,7 @@ public class QueueStatusController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<QueueStatusResponse>>> getQueueStatus(
             @PathVariable Long teamId) {
+        accessGuard.requireScopeMember(QueueScopeType.TEAM, teamId, SecurityUtils.getCurrentUserId());
         List<CategoryResponse> categories = categoryService.listCategories(
                 QueueScopeType.TEAM, teamId);
         List<Long> categoryIds = categories.stream()

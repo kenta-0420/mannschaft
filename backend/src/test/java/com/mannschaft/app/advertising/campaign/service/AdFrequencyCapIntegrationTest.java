@@ -17,6 +17,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -111,7 +112,7 @@ class AdFrequencyCapIntegrationTest {
         userRepository = mock(UserRepository.class);
         lenient().when(userRepository.findTimezoneById(anyLong())).thenReturn(Optional.of("Asia/Tokyo"));
 
-        service = new AdFrequencyCapService(redisTemplate, userRepository, config);
+        service = new AdFrequencyCapService(redisTemplate, userRepository, config, Clock.systemUTC());
 
         counterRepository = mock(UserAdDeliveryCounterRepository.class);
         // upsert 用: 常に「未存在」を返してテストでは新規作成として扱う
@@ -141,7 +142,7 @@ class AdFrequencyCapIntegrationTest {
         assertThat(service.tryConsume(userId, adv4, UUID.randomUUID())).isFalse();
 
         // Valkey 上の個人合計カウンタは 3 で確定（ロールバック済み）
-        LocalDate weekStart = AdFrequencyCapService.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
+        LocalDate weekStart = service.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
         assertThat(service.getCurrentCount(userId, weekStart)).isEqualTo(3);
     }
 
@@ -160,8 +161,51 @@ class AdFrequencyCapIntegrationTest {
         assertThat(service.tryConsume(userId, 101L, UUID.randomUUID())).isTrue();
 
         // 個人合計は 2（広告主 100 の 1 件 + 広告主 101 の 1 件）
-        LocalDate weekStart = AdFrequencyCapService.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
+        LocalDate weekStart = service.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
         assertThat(service.getCurrentCount(userId, weekStart)).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("実 Valkey: 同一ユーザー・同一広告主への並行 tryConsume は 1 回しか成功しない（原子性の実証）")
+    void 実Valkey_並行tryConsumeは1回のみ成功() throws Exception {
+        // AdCampaignDeliveryWorker のロック保持区間は候補一覧取得のみであり、配信ループ自体は
+        // 排他されない。実際に同一ユーザーへの重複配信を防いでいるのは、この tryConsume の
+        // Valkey INCR による原子性（同一週・同一広告主で 1 件までしか許可しない）である。
+        // ここでは複数スレッドから真に同時に tryConsume を呼び、成功が高々 1 件であることを
+        // 実 Valkey で検証する（Mockito では原子性そのものは検証できない）。
+        Long userId = 5010L;
+        Long advertiser = 900L;
+        int concurrency = 20;
+
+        java.util.concurrent.ExecutorService pool =
+                java.util.concurrent.Executors.newFixedThreadPool(concurrency);
+        java.util.concurrent.CyclicBarrier barrier = new java.util.concurrent.CyclicBarrier(concurrency);
+        List<java.util.concurrent.Future<Boolean>> futures = new ArrayList<>();
+        try {
+            for (int i = 0; i < concurrency; i++) {
+                futures.add(pool.submit(() -> {
+                    barrier.await();
+                    return service.tryConsume(userId, advertiser, UUID.randomUUID());
+                }));
+            }
+            long successCount = 0;
+            for (java.util.concurrent.Future<Boolean> f : futures) {
+                if (f.get()) {
+                    successCount++;
+                }
+            }
+
+            // weeklyPerAdvertiser=1 のため、20 並行呼び出しのうち成功は 1 回のみ
+            assertThat(successCount).isEqualTo(1L);
+
+            LocalDate weekStart = service.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
+            String perAdvKey = AdFrequencyCapService.buildPerAdvertiserKey(advertiser, userId, weekStart);
+            // ロールバックが正しく効いていれば、失敗した 19 回分は増減が相殺され最終値は 1
+            String raw = redisTemplate.opsForValue().get(perAdvKey);
+            assertThat(raw).isEqualTo("1");
+        } finally {
+            pool.shutdownNow();
+        }
     }
 
     @Test
@@ -170,7 +214,7 @@ class AdFrequencyCapIntegrationTest {
         Long userId = 5003L;
         service.tryConsume(userId, 200L, UUID.randomUUID());
 
-        LocalDate weekStart = AdFrequencyCapService.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
+        LocalDate weekStart = service.currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
         String key = AdFrequencyCapService.buildTotalKey(userId, weekStart);
         Long ttl = redisTemplate.getExpire(key, TimeUnit.SECONDS);
 

@@ -30,7 +30,7 @@ public class WeatherLocationBootstrapJobEntity {
 
     /** 固定値 1（シングルトン制約）。 */
     @Id
-    @Column(name = "id", columnDefinition = "TINYINT UNSIGNED")
+    @Column(name = "id", nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Short id;
 
     /** ジョブ完了日時。NULL のときは未完了。 */

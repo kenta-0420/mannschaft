@@ -7,13 +7,12 @@
  * <p>店頭掲示用に QR を大きく表示する。{@code deepLinkUrl}（mannschaft://...）を QR にエンコード
  * し、Web フォールバック URL も別途テキストで提示する。
  *
- * <p>QR 生成は qrcode ライブラリの SVG 出力を v-html で挿入する（外部入力を含むのは事業者発行の
- * URL のみで XSS 観点は無し / 信頼できる API レスポンスを使う）。
+ * <p>QR 描画は共有コンポーネント {@link QrCodeImage} に委譲する（誤り訂正 H・ブランド緑モジュール・
+ * 中央ブランドバッジを共通化）。エンコード対象は事業者発行の URL のみで XSS 観点は無い。
  *
  * @prop visible モーダル表示状態（v-model）
  * @prop qr     CustomerQrResponse
  */
-import QRCode from 'qrcode'
 import type { CustomerQrResponse } from '~/types/orgPointCard'
 
 interface Props {
@@ -29,40 +28,32 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const qrSvg = ref<string>('')
+/** QR にエンコードするディープリンク URL。未表示なら null。 */
+const qrValue = ref<string | null>(null)
 const renderError = ref<string | null>(null)
 const copiedDeep = ref(false)
 const copiedWeb = ref(false)
-
-async function render() {
-  if (!props.qr) {
-    qrSvg.value = ''
-    return
-  }
-  renderError.value = null
-  try {
-    qrSvg.value = await QRCode.toString(props.qr.deepLinkUrl, {
-      type: 'svg',
-      errorCorrectionLevel: 'M',
-      margin: 1,
-      width: 512,
-    })
-  } catch (e) {
-    qrSvg.value = ''
-    renderError.value = t('wallet.admin.customer_qr.render_failed')
-    console.warn('[CustomerQrModal] QR render failed', e)
-  }
-}
+/** ダウンロード用に QrCodeImage の生成済み SVG を取得する参照。 */
+const qrImageRef = ref<{ getSvg: () => string } | null>(null)
 
 watch(
   () => [props.visible, props.qr?.providerId],
   () => {
     if (props.visible && props.qr) {
-      void render()
+      renderError.value = null
+      qrValue.value = props.qr.deepLinkUrl
+    } else {
+      qrValue.value = null
     }
   },
   { immediate: true },
 )
+
+/** QrCodeImage の描画失敗を受けてエラー表示する（握りつぶさない）。 */
+function onQrError(message: string) {
+  renderError.value = t('wallet.admin.customer_qr.render_failed')
+  console.warn('[CustomerQrModal] QR render failed', message)
+}
 
 async function copy(text: string, target: 'deep' | 'web') {
   try {
@@ -84,8 +75,9 @@ function close() {
 }
 
 function downloadSvg() {
-  if (!qrSvg.value || !props.qr) return
-  const blob = new Blob([qrSvg.value], { type: 'image/svg+xml' })
+  const svg = qrImageRef.value?.getSvg()
+  if (!svg || !props.qr) return
+  const blob = new Blob([svg], { type: 'image/svg+xml' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -135,13 +127,14 @@ function downloadSvg() {
             role="img"
             :aria-label="t('wallet.admin.customer_qr.title')"
           >
-            <!-- eslint-disable vue/no-v-html -->
-            <div
-              v-if="qrSvg"
-              class="h-full w-full"
-              v-html="qrSvg"
+            <QrCodeImage
+              v-if="qrValue"
+              ref="qrImageRef"
+              class="!w-full"
+              :value="qrValue"
+              :size="512"
+              @error="onQrError"
             />
-            <!-- eslint-enable vue/no-v-html -->
             <div
               v-else
               class="flex h-full items-center justify-center text-sm text-surface-500"
@@ -194,7 +187,7 @@ function downloadSvg() {
           <button
             type="button"
             class="rounded bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-            :disabled="!qrSvg"
+            :disabled="!qrValue"
             @click="downloadSvg"
           >
             {{ t('wallet.admin.customer_qr.download') }}

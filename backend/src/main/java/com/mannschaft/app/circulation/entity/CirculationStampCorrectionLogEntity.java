@@ -53,6 +53,7 @@ public class CirculationStampCorrectionLogEntity extends UuidV7Entity {
     @Column(length = 255)
     private String reason;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

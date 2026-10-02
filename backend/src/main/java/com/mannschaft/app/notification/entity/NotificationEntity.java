@@ -81,6 +81,7 @@ public class NotificationEntity {
 
     private LocalDateTime snoozedUntil;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

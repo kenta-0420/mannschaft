@@ -1,6 +1,7 @@
 package com.mannschaft.app.gallery.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.gallery.dto.DownloadResponse;
 import com.mannschaft.app.gallery.dto.PhotoResponse;
 import com.mannschaft.app.gallery.dto.UpdatePhotoRequest;
@@ -38,7 +39,7 @@ public class PhotoController {
     public ResponseEntity<ApiResponse<PhotoResponse>> updatePhoto(
             @PathVariable Long id,
             @Valid @RequestBody UpdatePhotoRequest request) {
-        PhotoResponse response = photoService.updatePhoto(id, request);
+        PhotoResponse response = photoService.updatePhoto(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -49,7 +50,7 @@ public class PhotoController {
     @Operation(summary = "写真削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePhoto(@PathVariable Long id) {
-        photoService.deletePhoto(id);
+        photoService.deletePhoto(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -60,7 +61,7 @@ public class PhotoController {
     @Operation(summary = "写真ダウンロード")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "ダウンロードURL生成成功")
     public ResponseEntity<ApiResponse<DownloadResponse>> downloadPhoto(@PathVariable Long id) {
-        DownloadResponse response = photoService.getPhotoDownloadUrl(id);
+        DownloadResponse response = photoService.getPhotoDownloadUrl(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

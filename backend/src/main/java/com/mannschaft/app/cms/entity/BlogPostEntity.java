@@ -167,17 +167,109 @@ public class BlogPostEntity extends BaseEntity {
 
     /**
      * 公開ステータスを変更する。
+     *
+     * <p><b>DRAFT へ戻す遷移では公開日時（{@code published_at}）を破棄する</b>
+     * （issue #2616 の回帰対策・AC-18/19）。予約公開バッチ
+     * {@code BlogScheduledPublishBatchService} の走査条件は
+     * 「{@code status = DRAFT} かつ {@code published_at <= 現在時刻}」であり、
+     * 過去の公開日時を残したまま DRAFT へ戻すと、意図的に非公開化した記事が
+     * 「公開時刻を過ぎた予約記事」と区別できず毎分のバッチに再公開されてしまう。
+     * 仕様 {@code docs/features/F06.1_cms_blog.md} が定める
+     * 「{@code published_at} が NULL ＝ 予約なし」の意味論に揃え、
+     * 遷移そのものの中で不変条件を保証する（呼び出し側に委ねない）。</p>
+     *
+     * <p>ただし<b>未来の {@code published_at}（＝予約中）は消してはならない</b>。
+     * 予約中の記事は DRAFT のまま未来時刻を持つのが正常な状態であり、
+     * DRAFT → DRAFT の再保存やセルフレビューでの差し戻しで予約が失われては本末転倒である。
+     * したがって破棄するのは「過去または現在時刻の公開日時」だけに限定する。</p>
+     *
+     * <p>ARCHIVED など DRAFT 以外への遷移では公開日時を保持する。アーカイブは
+     * 「公開した事実を残したまま一覧から下げる」操作であり公開日時は履歴として意味を持つうえ、
+     * バッチは {@code status = DRAFT} しか走査しないため再公開の危険もない。
+     * ARCHIVED から DRAFT へ戻す場合は本メソッドの DRAFT 分岐で公開日時が破棄されるため、
+     * 経路が増えても不変条件は漏れない。</p>
+     *
+     * <p><b>基準時刻は引数で受け取る（エンティティは現在時刻を自ら取得しない）。</b>
+     * 時刻の取得はアプリケーション層（Service / バッチ）の責務であり、エンティティを
+     * 実時刻から切り離すことで遷移の判定が決定的・テスト可能になる
+     * （番人 {@code DateTimeAndZoneGuardTest} / CMP-023 時刻設計の全域是正）。</p>
+     *
+     * @param newStatus 遷移先ステータス
+     * @param baseTime  「公開時刻が到来済みか」を判定する基準時刻（{@code published_at} と同じ時間基準）
      */
-    public void changeStatus(PostStatus newStatus) {
+    public void changeStatus(PostStatus newStatus, LocalDateTime baseTime) {
+        if (newStatus == PostStatus.DRAFT) {
+            unpublish(baseTime);
+            return;
+        }
         this.status = newStatus;
     }
 
     /**
-     * 公開日時を設定する。
+     * 公開状態を解除して下書きへ戻す（issue #2616 の回帰対策）。
+     *
+     * <p>過去の公開日時を残したまま DRAFT へ戻すと予約公開バッチに再公開されるため、
+     * 「既に公開時刻が到来している公開日時」は NULL に消す。
+     * 未来の公開日時は予約設定そのものなので維持する（AC-20）。</p>
+     *
+     * <p>基準時刻は引数で受け取る（エンティティは現在時刻を自ら取得しない）。
+     * 呼び出し側は注入した {@code Clock} から {@code published_at} と同じ時間基準の
+     * 時刻を渡すこと。</p>
+     *
+     * @param baseTime 「公開時刻が到来済みか」を判定する基準時刻
      */
-    public void publish(LocalDateTime publishedAt) {
+    public void unpublish(LocalDateTime baseTime) {
+        this.status = PostStatus.DRAFT;
+        if (this.publishedAt != null && !this.publishedAt.isAfter(baseTime)) {
+            this.publishedAt = null;
+        }
+    }
+
+    /**
+     * 公開日時を設定する（予約公開の判定を含む・issue #2616 / F06.1 §2210-2226）。
+     *
+     * <p><b>公開日時が未来なら「予約」であり、即時公開してはならない。</b>
+     * 予約中の記事は {@code status = DRAFT} のまま {@code published_at} に未来時刻を持つ
+     * （{@code PostStatus.SCHEDULED} は新設しない）。公開系クエリはすべて
+     * {@code status = PUBLISHED} の等値判定であるため、予約中記事は
+     * 「まだ DRAFT だから公開系に出ない」という構造的な理由で漏れない。
+     * 公開時刻に達した記事は {@code BlogScheduledPublishBatchService} が
+     * {@link #completeScheduledPublish()} で {@code PUBLISHED} へ遷移させる。</p>
+     *
+     * <p>プレビュートークンは<b>実際に公開した場合のみ</b>破棄する。予約中の記事は
+     * まだ公開前でありレビュー用のプレビュー URL が生き続ける必要があるため、
+     * 予約設定でトークンを消してはならない。</p>
+     *
+     * <p>基準時刻は引数で受け取る（エンティティは現在時刻を自ら取得しない）。
+     * 時刻の取得はアプリケーション層の責務であり、これにより「未来なら予約」の判定が
+     * 決定的になりテストで固定できる。</p>
+     *
+     * @param publishedAt 公開日時（{@code null} なら {@code baseTime}＝即時公開）
+     * @param baseTime    予約判定の基準時刻（{@code published_at} と同じ時間基準）
+     */
+    public void publish(LocalDateTime publishedAt, LocalDateTime baseTime) {
+        LocalDateTime effectiveAt = publishedAt != null ? publishedAt : baseTime;
+        this.publishedAt = effectiveAt;
+
+        if (effectiveAt.isAfter(baseTime)) {
+            // 予約公開: 公開時刻まで DRAFT に留め置き、バッチの遷移を待つ。
+            this.status = PostStatus.DRAFT;
+            return;
+        }
+
         this.status = PostStatus.PUBLISHED;
-        this.publishedAt = publishedAt;
+        this.previewToken = null;
+        this.previewTokenExpiresAt = null;
+    }
+
+    /**
+     * 予約公開バッチが公開時刻に達した記事を公開へ遷移させる（issue #2616）。
+     *
+     * <p>{@code published_at} は<b>ユーザーが指定した予約時刻のまま保持する</b>
+     * （バッチ実行時刻で上書きしない。最大 1 分の実行遅延が公開日時に混入するのを防ぐ）。</p>
+     */
+    public void completeScheduledPublish() {
+        this.status = PostStatus.PUBLISHED;
         this.previewToken = null;
         this.previewTokenExpiresAt = null;
     }

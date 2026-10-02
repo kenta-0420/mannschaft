@@ -3,6 +3,7 @@ package com.mannschaft.app.village.dto;
 import lombok.Builder;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,6 +21,7 @@ public record MeetupVoteSummaryResponse(
     public record CandidateDateSummary(
             UUID candidateDateId,
             LocalDate candidateDate,
+            LocalTime candidateTime,
             int availableCount,
             int maybeCount,
             int unavailableCount) {

@@ -1,5 +1,7 @@
 package com.mannschaft.app.pointcard.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.pointcard.entity.PointCardProviderEntity;
 import com.mannschaft.app.pointcard.entity.PointCardProviderSynonymEntity;
 import com.mannschaft.app.pointcard.event.ProviderCacheRefreshEvent;
@@ -116,6 +118,8 @@ public class ProviderMatchService {
     /**
      * プロバイダーマスタ更新通知を受信したら provider / synonym 両キャッシュを再構築する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。提携プロバイダのキャッシュ再読込であり、プロセス内キャッシュの更新に閉じる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @EventListener(ProviderCacheRefreshEvent.class)
     public void onProviderCacheRefresh(ProviderCacheRefreshEvent event) {
         log.info("ProviderCacheRefreshEvent を受信しました。fuzzy match キャッシュを再構築します");

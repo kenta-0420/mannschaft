@@ -1,7 +1,13 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.ShiftPreference;
+import com.mannschaft.app.shift.dto.AvailabilityDefaultRequest;
 import com.mannschaft.app.shift.dto.AvailabilityDefaultResponse;
 import com.mannschaft.app.shift.dto.BulkAvailabilityDefaultRequest;
 import com.mannschaft.app.shift.entity.MemberAvailabilityDefaultEntity;
@@ -11,7 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * シフト勤務可能時間サービス。メンバーのデフォルト勤務可能時間の管理を担当する。
@@ -24,6 +32,12 @@ public class ShiftAvailabilityService {
 
     private final MemberAvailabilityDefaultRepository availabilityRepository;
     private final ShiftMapper shiftMapper;
+    private final AccessControlService accessControlService;
+    /**
+     * D-5（クロスドメイン Repository 依存の禁止）により team ドメインの Repository を
+     * 直接引けないため、common の越境窓口 {@link NameResolverService} を使って teamId の実在確認を行う。
+     */
+    private final NameResolverService nameResolverService;
 
     /**
      * デフォルト勤務可能時間を取得する。
@@ -33,6 +47,7 @@ public class ShiftAvailabilityService {
      * @return デフォルト勤務可能時間一覧
      */
     public List<AvailabilityDefaultResponse> getAvailabilityDefaults(Long userId, Long teamId) {
+        checkTeamAccess(userId, teamId);
         List<MemberAvailabilityDefaultEntity> entities = availabilityRepository
                 .findByUserIdAndTeamIdOrderByDayOfWeekAscStartTimeAsc(userId, teamId);
         return shiftMapper.toAvailabilityResponseList(entities);
@@ -49,8 +64,24 @@ public class ShiftAvailabilityService {
     @Transactional
     public List<AvailabilityDefaultResponse> setAvailabilityDefaults(Long userId, Long teamId,
                                                                      BulkAvailabilityDefaultRequest req) {
+        // 認可検証は delete より前に行う（拒否経路で既存行を破壊的に消さないため）
+        checkTeamAccess(userId, teamId);
+
+        // 入力検証も delete より前に行う（拒否経路で既存行を破壊的に消さないため。CMP-260912-1758）
+        validateAvailabilities(req.getAvailabilities());
+
         // 既存データを全削除
+        // 【根治治療 CMP-260923】deleteByUserIdAndTeamId は導出delete（select→remove）のため、
+        // DELETE の実SQLはこの時点では発行されず flush まで遅延される。一方、下記 saveAll の
+        // 対象エンティティは @GeneratedValue(IDENTITY) のため、Hibernate は persist() 時点で
+        // INSERT を即時発行する（IDENTITY 採番の仕様上、通常の flush キュー順序に従わない）。
+        // その結果、同一 (user_id, team_id, day_of_week, start_time, end_time) の内容で
+        // 保存ボタンを2回連続で押すと、古い行がまだ削除されていない状態で同じ内容の行を
+        // INSERT しようとし、UNIQUE 制約 uq_mad_user_team_dow_time に衝突して 500 になっていた
+        // （内容が1文字でも違えば一意キーが衝突しないため症状が出ず、気づかれにくかった）。
+        // ここで明示的に flush して DELETE を先に確定させることで、PUT の冪等性を保証する。
         availabilityRepository.deleteByUserIdAndTeamId(userId, teamId);
+        availabilityRepository.flush();
 
         // 新規作成
         List<MemberAvailabilityDefaultEntity> entities = req.getAvailabilities().stream()
@@ -78,7 +109,81 @@ public class ShiftAvailabilityService {
      */
     @Transactional
     public void deleteAvailabilityDefaults(Long userId, Long teamId) {
+        checkTeamAccess(userId, teamId);
         availabilityRepository.deleteByUserIdAndTeamId(userId, teamId);
         log.info("デフォルト勤務可能時間削除: userId={}, teamId={}", userId, teamId);
+    }
+
+    /**
+     * デフォルト勤務可能時間一括設定の入力を検証する（CMP-260912-1758）。
+     *
+     * <p>{@code dayOfWeek} の範囲（0〜6）は {@link AvailabilityDefaultRequest} の Bean Validation で
+     * 検証済み（{@code @Min}/{@code @Max}）。ここではリスト全体を見なければ判定できない検証のみ行う。</p>
+     *
+     * <p><b>15分グリッドに揃えない理由（設計判断・決定済み）:</b> 枠側の
+     * {@code ShiftSlotTimeValidator}（戦役A-1）は15分刻みを要求するが、曜日既定はこれに揃えない。
+     * 既存データが全件 {@code 00:00}-{@code 23:59} であり、{@code 23:59} は15分グリッドに乗らないため、
+     * 揃えると既存データが全件不正になる。ここでは前後関係のみ検証する。</p>
+     *
+     * @throws BusinessException {@code startTime >= endTime} なら {@link ShiftErrorCode#INVALID_TIME_RANGE}、
+     *                           同一 {@code dayOfWeek} の重複行があれば
+     *                           {@link ShiftErrorCode#DUPLICATE_AVAILABILITY_DAY_OF_WEEK}、
+     *                           {@code preference} が {@link ShiftPreference} の有効値でなければ
+     *                           {@link ShiftErrorCode#INVALID_AVAILABILITY_PREFERENCE}
+     */
+    private void validateAvailabilities(List<AvailabilityDefaultRequest> availabilities) {
+        Set<Integer> seenDaysOfWeek = new HashSet<>();
+        for (AvailabilityDefaultRequest avail : availabilities) {
+            if (!avail.getStartTime().isBefore(avail.getEndTime())) {
+                throw new BusinessException(ShiftErrorCode.INVALID_TIME_RANGE);
+            }
+            if (!seenDaysOfWeek.add(avail.getDayOfWeek())) {
+                throw new BusinessException(ShiftErrorCode.DUPLICATE_AVAILABILITY_DAY_OF_WEEK);
+            }
+            try {
+                ShiftPreference.valueOf(avail.getPreference());
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException(ShiftErrorCode.INVALID_AVAILABILITY_PREFERENCE);
+            }
+        }
+    }
+
+    /**
+     * 対象 teamId への per-scope 認可を検証する（AccessControlService をこのメソッドから直接呼ぶ。
+     * 番人 {@code AuthzControllerGuardArchTest} の委譲探索は深さ2までのため）。
+     *
+     * <p>認可式: {@code isSystemAdmin || isAdminOrAbove || (isMember && !isSupporter)}</p>
+     * <ul>
+     *   <li>{@code isAdminOrAbove} との論理和が必要な理由: {@code AccessControlService#isMember} は
+     *       memberships のみを見るため、{@code user_roles} にしか ADMIN 行を持たない利用者を落とす</li>
+     *   <li>{@code isSystemAdmin} を別途先頭に置く理由: {@code isAdminOrAbove} が参照する
+     *       {@code ADMIN_ROLES} は SYSTEM_ADMIN を含まない</li>
+     *   <li>{@code !isSupporter} で明示的に除く理由: {@code isMember} は SUPPORTER 種別のメンバーも
+     *       true を返すため</li>
+     * </ul>
+     *
+     * <p>存在しない teamId は、SYSTEM_ADMIN であっても非メンバーと同一の 403 とする
+     * （存在オラクルを作らない。実在確認をアプリ層で行う理由は
+     * {@code member_availability_defaults.team_id} のクロスドメイン FK が既に削除済みで DB が止めないため）。
+     * D-5（クロスドメイン Repository 依存の禁止）により team ドメインの Repository を直接引けないため、
+     * common の越境窓口 {@link NameResolverService} を使う。{@code findAllById} の結果に現れないことが
+     * 非実在を意味する。</p>
+     *
+     * @throws BusinessException 認可拒否時（{@link CommonErrorCode#COMMON_002} / 403）
+     */
+    private void checkTeamAccess(Long userId, Long teamId) {
+        if (!nameResolverService.resolveTeamNames(Set.of(teamId)).containsKey(teamId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
+            return;
+        }
+        if (!accessControlService.isMember(userId, teamId, "TEAM")
+                || accessControlService.isSupporter(userId, teamId, "TEAM")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 }

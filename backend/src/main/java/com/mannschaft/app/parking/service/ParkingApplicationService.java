@@ -1,5 +1,6 @@
 package com.mannschaft.app.parking.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.parking.ApplicationStatus;
@@ -29,6 +30,12 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 区画申請サービス。申請・承認・拒否・抽選を担当する。
+ *
+ * <p>認可根治戦役 Wave2 トランシェ2B: approve/reject/cancel/executeLottery は
+ * これまで {@code findById} でテナント串刺し取得していた（他スコープの申請を承認/拒否/キャンセル/抽選できるBOLA）。
+ * 対象の {@link ParkingApplicationEntity#getSpaceId()} から区画を scope 込みで fetch し、
+ * entity 由来の scopeType/scopeId で {@code checkAdminOrAbove} を敷設した。
+ * cancel のみ申請者本人によるセルフキャンセルを許容する。</p>
  */
 @Slf4j
 @Service
@@ -41,6 +48,7 @@ public class ParkingApplicationService {
     private final ParkingMapper parkingMapper;
     private final ProxyInputContext proxyInputContext;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * 申請一覧をページング取得する。
@@ -108,9 +116,9 @@ public class ParkingApplicationService {
      * 申請を承認する。
      */
     @Transactional
-    public ApplicationResponse approve(Long id) {
-        ParkingApplicationEntity entity = applicationRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ParkingErrorCode.APPLICATION_NOT_FOUND));
+    public ApplicationResponse approve(String scopeType, Long scopeId, Long id, Long actorUserId) {
+        ParkingApplicationEntity entity = findScopeApplicationOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
         if (entity.getStatus() != ParkingApplicationStatus.PENDING && entity.getStatus() != ParkingApplicationStatus.LOTTERY_PENDING) {
             throw new BusinessException(ParkingErrorCode.INVALID_APPLICATION_STATUS);
         }
@@ -124,9 +132,9 @@ public class ParkingApplicationService {
      * 申請を拒否する。
      */
     @Transactional
-    public ApplicationResponse reject(Long id, RejectApplicationRequest request) {
-        ParkingApplicationEntity entity = applicationRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ParkingErrorCode.APPLICATION_NOT_FOUND));
+    public ApplicationResponse reject(String scopeType, Long scopeId, Long id, RejectApplicationRequest request, Long actorUserId) {
+        ParkingApplicationEntity entity = findScopeApplicationOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
         if (entity.getStatus() != ParkingApplicationStatus.PENDING && entity.getStatus() != ParkingApplicationStatus.LOTTERY_PENDING) {
             throw new BusinessException(ParkingErrorCode.INVALID_APPLICATION_STATUS);
         }
@@ -137,12 +145,14 @@ public class ParkingApplicationService {
     }
 
     /**
-     * 申請をキャンセルする。
+     * 申請をキャンセルする（申請者本人 または ADMIN 以上）。
      */
     @Transactional
-    public void cancel(Long id, Long userId) {
-        ParkingApplicationEntity entity = applicationRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ParkingErrorCode.APPLICATION_NOT_FOUND));
+    public void cancel(String scopeType, Long scopeId, Long id, Long actorUserId) {
+        ParkingApplicationEntity entity = findScopeApplicationOrThrow(scopeType, scopeId, id);
+        if (!entity.getUserId().equals(actorUserId)) {
+            accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
+        }
         if (entity.getStatus() != ParkingApplicationStatus.PENDING && entity.getStatus() != ParkingApplicationStatus.LOTTERY_PENDING) {
             throw new BusinessException(ParkingErrorCode.INVALID_APPLICATION_STATUS);
         }
@@ -155,9 +165,10 @@ public class ParkingApplicationService {
      * 抽選を実行する。
      */
     @Transactional
-    public List<ApplicationResponse> executeLottery(Long spaceId) {
-        ParkingSpaceEntity space = spaceRepository.findById(spaceId)
+    public List<ApplicationResponse> executeLottery(String scopeType, Long scopeId, Long spaceId, Long actorUserId) {
+        ParkingSpaceEntity space = spaceRepository.findByIdAndScopeTypeAndScopeId(spaceId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(ParkingErrorCode.SPACE_NOT_FOUND));
+        accessControlService.checkAdminOrAbove(actorUserId, space.getScopeId(), space.getScopeType());
 
         List<ParkingApplicationEntity> candidates = applicationRepository.findBySpaceIdAndStatus(spaceId, ParkingApplicationStatus.PENDING);
         if (candidates.isEmpty()) {
@@ -177,6 +188,21 @@ public class ParkingApplicationService {
 
         log.info("抽選実行: spaceId={}, candidates={}", spaceId, candidates.size());
         return parkingMapper.toApplicationResponseList(candidates);
+    }
+
+    /**
+     * 対象申請を scope 込みで取得する（他スコープの申請へのBOLA防止）。
+     *
+     * <p>申請自体は scopeType/scopeId を保持しないため、紐づく区画を経由して
+     * 対象スコープに属するかを検証する。区画がスコープ外、または申請自体が
+     * 見つからない場合は同一の {@code APPLICATION_NOT_FOUND} を返し存在秘匿する。</p>
+     */
+    private ParkingApplicationEntity findScopeApplicationOrThrow(String scopeType, Long scopeId, Long id) {
+        ParkingApplicationEntity entity = applicationRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ParkingErrorCode.APPLICATION_NOT_FOUND));
+        spaceRepository.findByIdAndScopeTypeAndScopeId(entity.getSpaceId(), scopeType, scopeId)
+                .orElseThrow(() -> new BusinessException(ParkingErrorCode.APPLICATION_NOT_FOUND));
+        return entity;
     }
 
     /**

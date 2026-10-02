@@ -1,5 +1,6 @@
 package com.mannschaft.app.signage.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.signage.SignageLayout;
 import com.mannschaft.app.signage.SignageTransitionEffect;
@@ -35,6 +36,9 @@ class SignageScreenServiceTest {
 
     @Mock
     private SignageScreenRepository screenRepository;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private SignageScreenService screenService;
@@ -127,7 +131,7 @@ class SignageScreenServiceTest {
 
             // When
             SignageScreenService.SignageScreenResponse result =
-                    screenService.updateScreen(SCREEN_ID, req);
+                    screenService.updateScreen(SCREEN_ID, CREATED_BY, req);
 
             // Then: save に渡るのが findById の同一インスタンスであることを検証
             ArgumentCaptor<SignageScreenEntity> captor = ArgumentCaptor.forClass(SignageScreenEntity.class);
@@ -176,7 +180,7 @@ class SignageScreenServiceTest {
                     new SignageScreenService.UpdateSignageScreenRequest(
                             null, null, null, null, null, null);
 
-            screenService.updateScreen(SCREEN_ID, req);
+            screenService.updateScreen(SCREEN_ID, CREATED_BY, req);
 
             ArgumentCaptor<SignageScreenEntity> captor = ArgumentCaptor.forClass(SignageScreenEntity.class);
             verify(screenRepository).save(captor.capture());
@@ -198,7 +202,7 @@ class SignageScreenServiceTest {
                     new SignageScreenService.UpdateSignageScreenRequest(
                             "新名前", null, null, null, null, null);
 
-            assertThatThrownBy(() -> screenService.updateScreen(SCREEN_ID, req))
+            assertThatThrownBy(() -> screenService.updateScreen(SCREEN_ID, CREATED_BY, req))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -224,7 +228,7 @@ class SignageScreenServiceTest {
             given(screenRepository.findByIdAndDeletedAtIsNull(SCREEN_ID)).willReturn(Optional.of(entity));
             given(screenRepository.save(any(SignageScreenEntity.class))).willAnswer(inv -> inv.getArgument(0));
 
-            screenService.deleteScreen(SCREEN_ID);
+            screenService.deleteScreen(SCREEN_ID, CREATED_BY);
 
             verify(screenRepository).save(any(SignageScreenEntity.class));
         }

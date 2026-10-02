@@ -69,7 +69,7 @@ function onAddClick(): void {
         :aria-disabled="isMaxReached"
         :title="isMaxReached ? $t('chat.tab.maxReached', { max: 10 }) : $t('chat.tab.addNew')"
         :class="[
-          'flex h-7 w-7 items-center justify-center rounded transition-colors duration-150',
+          'flex h-7 w-7 items-center justify-center rounded transition-colors duration-150 max-md:h-11 max-md:w-11',
           isMaxReached
             ? 'cursor-not-allowed opacity-40'
             : 'cursor-pointer hover:bg-surface-200 dark:hover:bg-surface-700 text-surface-500 dark:text-surface-400 hover:text-surface-800 dark:hover:text-surface-100',

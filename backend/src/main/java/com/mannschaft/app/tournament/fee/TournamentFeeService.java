@@ -2,6 +2,7 @@ package com.mannschaft.app.tournament.fee;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.payment.dto.CheckoutResponse;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
@@ -90,7 +91,7 @@ public class TournamentFeeService {
         PaymentItemEntity paymentItem = requireOrganizationPaymentItem(request.getPaymentItemId(), organizationId);
 
         TournamentFeeTargetScope scope = request.getTargetScope() != null
-                ? TournamentFeeTargetScope.valueOf(request.getTargetScope())
+                ? EnumInputParser.parse(TournamentFeeTargetScope.class, request.getTargetScope(), "targetScope")
                 : TournamentFeeTargetScope.ALL_TEAMS;
 
         TournamentFeeEntity fee = TournamentFeeEntity.builder()

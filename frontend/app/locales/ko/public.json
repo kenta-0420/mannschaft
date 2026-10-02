@@ -158,6 +158,16 @@
     "events": {
       "title": "이벤트",
       "empty": "이벤트가 없습니다"
+    },
+    "tabs": {
+      "posts": "게시물",
+      "timeline": "타임라인",
+      "events": "이벤트",
+      "activities": "활동 기록"
+    },
+    "activities": {
+      "sectionTitle": "활동 기록",
+      "empty": "공개된 활동 기록이 아직 없습니다"
     }
   }
 }

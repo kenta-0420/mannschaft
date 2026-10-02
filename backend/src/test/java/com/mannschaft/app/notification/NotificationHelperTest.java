@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification;
 
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -18,8 +19,11 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.util.List;
+import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -48,6 +52,13 @@ class NotificationHelperTest {
      */
     @Mock
     private ContentVisibilityChecker visibilityChecker;
+
+    /**
+     * {@link NotificationHelper#notifyAllLocalized} が受信者ごとの locale を
+     * 一括解決するために用いる（N+1 防止の検証対象）。
+     */
+    @Mock
+    private UserLocaleCache userLocaleCache;
 
     @InjectMocks
     private NotificationHelper notificationHelper;
@@ -279,6 +290,119 @@ class NotificationHelperTest {
                     any(), eq(NOTIFICATION_TYPE), eq(NotificationPriority.HIGH),
                     eq(TITLE), eq(BODY), eq(SOURCE_TYPE), eq(SOURCE_ID),
                     eq(NotificationScopeType.TEAM), eq(SCOPE_ID), eq(ACTION_URL), eq(ACTOR_ID));
+            verify(dispatchService, times(2)).dispatch(entity);
+        }
+    }
+
+    // ========================================
+    // notifyAllLocalized (受信者別 locale 一括通知: 前段フィルタ ＋ locale 一括解決)
+    // ========================================
+    //
+    // 注記(2026-08-14訂正): 「notify 逐次ループは可視性フィルタを迂回し情報漏洩する」という
+    // 当初の検分判断は誤りだった。NotificationService#createNotification が単発経路でも
+    // canView による可視性ガードを担保しているため、notify 直呼びループでも漏洩は無かった。
+    // notifyAllLocalized の filterAccessibleRecipients はその前段に置かれる多層防御の一層であり、
+    // 主目的は「閲覧不可ユーザー分の本文組み立て・createNotification 呼び出しを無駄に行わないこと」
+    // である。以下のテストも「可視性が無いと漏洩する」ではなく「前段フィルタで除外される」という
+    // 実態に合わせた名称・説明にしてある。
+
+    @Nested
+    @DisplayName("notifyAllLocalized (受信者別 locale 一括通知)")
+    class NotifyAllLocalized {
+
+        @Test
+        @DisplayName("canView が false の受信者は前段フィルタで除外され createNotification が呼ばれない")
+        void canViewがfalseの受信者は前段フィルタで除外される() {
+            // Given: userId=2 のみ canView=false（前段の filterAccessibleRecipients で除外される）
+            given(visibilityChecker.canView(eq(ReferenceType.SCHEDULE), eq(SOURCE_ID), eq(1L))).willReturn(true);
+            given(visibilityChecker.canView(eq(ReferenceType.SCHEDULE), eq(SOURCE_ID), eq(2L))).willReturn(false);
+            given(visibilityChecker.canView(eq(ReferenceType.SCHEDULE), eq(SOURCE_ID), eq(3L))).willReturn(true);
+            given(userLocaleCache.getLocales(any())).willReturn(Map.of(1L, "ja", 3L, "ja"));
+            given(notificationService.createNotification(
+                    any(), eq(NOTIFICATION_TYPE), eq(NotificationPriority.NORMAL), eq(TITLE), eq(BODY),
+                    eq(SOURCE_TYPE), eq(SOURCE_ID),
+                    eq(NotificationScopeType.TEAM), eq(SCOPE_ID), eq(ACTION_URL), eq(ACTOR_ID)))
+                    .willReturn(createNotificationEntity());
+
+            // When
+            notificationHelper.notifyAllLocalized(List.of(1L, 2L, 3L), NOTIFICATION_TYPE,
+                    SOURCE_TYPE, SOURCE_ID, NotificationScopeType.TEAM, SCOPE_ID,
+                    ACTION_URL, ACTOR_ID,
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(TITLE, BODY));
+
+            // Then: canView=false だった userId=2 は前段フィルタで除外され createNotification が一切呼ばれない
+            verify(notificationService, never()).createNotification(
+                    eq(2L), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            // canView=true の 1L・3L は作られる
+            verify(notificationService, times(1)).createNotification(
+                    eq(1L), eq(NOTIFICATION_TYPE), eq(NotificationPriority.NORMAL), eq(TITLE), eq(BODY),
+                    eq(SOURCE_TYPE), eq(SOURCE_ID),
+                    eq(NotificationScopeType.TEAM), eq(SCOPE_ID), eq(ACTION_URL), eq(ACTOR_ID));
+            verify(notificationService, times(1)).createNotification(
+                    eq(3L), eq(NOTIFICATION_TYPE), eq(NotificationPriority.NORMAL), eq(TITLE), eq(BODY),
+                    eq(SOURCE_TYPE), eq(SOURCE_ID),
+                    eq(NotificationScopeType.TEAM), eq(SCOPE_ID), eq(ACTION_URL), eq(ACTOR_ID));
+        }
+
+        @Test
+        @DisplayName("受信者N人でも locale 解決の bulk クエリ相当呼び出しは1回のみ（N+1防止）")
+        void locale解決はgetLocalesを1回だけ呼ぶ() {
+            // Given: 5人全員 canView=true
+            given(visibilityChecker.canView(any(ReferenceType.class), any(), any())).willReturn(true);
+            List<Long> userIds = List.of(1L, 2L, 3L, 4L, 5L);
+            given(userLocaleCache.getLocales(anyCollection())).willReturn(
+                    Map.of(1L, "ja", 2L, "en", 3L, "ja", 4L, "en", 5L, "ja"));
+            given(notificationService.createNotification(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .willReturn(createNotificationEntity());
+
+            // When
+            notificationHelper.notifyAllLocalized(userIds, NOTIFICATION_TYPE,
+                    SOURCE_TYPE, SOURCE_ID, NotificationScopeType.TEAM, SCOPE_ID,
+                    ACTION_URL, ACTOR_ID,
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(TITLE, BODY));
+
+            // Then: 受信者数(5)に比例せず、bulk 解決は1回のみ
+            verify(userLocaleCache, times(1)).getLocales(anyCollection());
+            verify(userLocaleCache, never()).getLocale(any());
+            verify(notificationService, times(5)).createNotification(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("空リストなら getLocales も createNotification も呼ばれない")
+        void 空リスト_何も呼ばれない() {
+            notificationHelper.notifyAllLocalized(List.of(), NOTIFICATION_TYPE,
+                    SOURCE_TYPE, SOURCE_ID, NotificationScopeType.TEAM, SCOPE_ID,
+                    ACTION_URL, ACTOR_ID,
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(TITLE, BODY));
+
+            verify(userLocaleCache, never()).getLocales(any());
+            verify(notificationService, never()).createNotification(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("1件の失敗が他の受信者を巻き込まない")
+        void 一部失敗しても残りは継続して送信される() {
+            given(visibilityChecker.canView(any(ReferenceType.class), any(), any())).willReturn(true);
+            given(userLocaleCache.getLocales(any())).willReturn(Map.of(1L, "ja", 2L, "ja", 3L, "ja"));
+            NotificationEntity entity = createNotificationEntity();
+            given(notificationService.createNotification(
+                    eq(1L), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .willReturn(entity);
+            given(notificationService.createNotification(
+                    eq(2L), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .willThrow(new RuntimeException("通知作成失敗"));
+            given(notificationService.createNotification(
+                    eq(3L), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .willReturn(entity);
+
+            notificationHelper.notifyAllLocalized(List.of(1L, 2L, 3L), NOTIFICATION_TYPE,
+                    SOURCE_TYPE, SOURCE_ID, NotificationScopeType.TEAM, SCOPE_ID,
+                    ACTION_URL, ACTOR_ID,
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(TITLE, BODY));
+
             verify(dispatchService, times(2)).dispatch(entity);
         }
     }

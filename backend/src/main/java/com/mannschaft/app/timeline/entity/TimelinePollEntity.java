@@ -45,6 +45,7 @@ public class TimelinePollEntity {
     @Builder.Default
     private Boolean isClosed = false;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

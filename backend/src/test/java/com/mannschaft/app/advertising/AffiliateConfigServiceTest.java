@@ -54,7 +54,7 @@ class AffiliateConfigServiceTest {
             given(advertisingMapper.toResponse(any(AffiliateConfigEntity.class)))
                     .willReturn(new AffiliateConfigResponse(1L, "AMAZON", "tag-123",
                             "SIDEBAR_RIGHT", "説明", null, null, null, null, true, null, null,
-                            (short) 1, null, null, null, null, null));
+                            (short) 1, null, null, null, null, null, false));
 
             // When
             AffiliateConfigResponse result = service.create(req);
@@ -82,7 +82,7 @@ class AffiliateConfigServiceTest {
             given(advertisingMapper.toResponse(any(AffiliateConfigEntity.class)))
                     .willReturn(new AffiliateConfigResponse(2L, "GOOGLE_ADSENSE", "ca-pub-123",
                             "IN_FEED", null, null, null, null, null, true, null, null,
-                            (short) 0, "sports", "東京都", "ja", null, null));
+                            (short) 0, "sports", "東京都", "ja", null, null, false));
 
             // When
             AffiliateConfigResponse result = service.create(req);
@@ -110,7 +110,7 @@ class AffiliateConfigServiceTest {
                     .willReturn(new AffiliateConfigResponse(3L, "DIRECT", "direct-001",
                             "BANNER_HEADER", "自社広告", "https://example.com/banner.png",
                             (short) 728, (short) 90, "広告バナー", true, null, null,
-                            (short) 0, null, null, null, null, null));
+                            (short) 0, null, null, null, null, null, false));
 
             // When
             AffiliateConfigResponse result = service.create(req);
@@ -213,6 +213,53 @@ class AffiliateConfigServiceTest {
             given(affiliateConfigRepository.findTargetedAds(
                     any(LocalDateTime.class), eq(null), eq(null), eq(null)))
                     .willReturn(List.of());
+
+            // When
+            List<ActiveAdResponse> result = service.findTargetedAds(null, null, null);
+
+            // Then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("findActiveAds / findTargetedAds（CMP-260918-0025: プレースホルダ除外）")
+    class PlaceholderExclusion {
+
+        @Test
+        @DisplayName("異常系: findActiveAds は tag_id がプレースホルダの行を除外する")
+        void アクティブ広告_プレースホルダ除外() {
+            // Given
+            AffiliateConfigEntity placeholder = AffiliateConfigEntity.builder()
+                    .provider(AffiliateProvider.AMAZON).tagId("PLACEHOLDER_AMAZON_TAG")
+                    .placement(AdPlacement.DASHBOARD_TILE).build();
+            AffiliateConfigEntity real = AffiliateConfigEntity.builder()
+                    .provider(AffiliateProvider.RAKUTEN).tagId("mannschaft-22")
+                    .placement(AdPlacement.DASHBOARD_TILE).build();
+            given(affiliateConfigRepository.findActiveAds(any(LocalDateTime.class)))
+                    .willReturn(List.of(placeholder, real));
+            given(advertisingMapper.toActiveAdResponse(real))
+                    .willReturn(new ActiveAdResponse(1L, "RAKUTEN", "mannschaft-22",
+                            "DASHBOARD_TILE", null, null, null, null, (short) 0));
+
+            // When
+            List<ActiveAdResponse> result = service.findActiveAds();
+
+            // Then
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getProvider()).isEqualTo("RAKUTEN");
+        }
+
+        @Test
+        @DisplayName("異常系: findTargetedAds は tag_id がプレースホルダの行を除外する")
+        void ターゲティング広告_プレースホルダ除外() {
+            // Given
+            AffiliateConfigEntity placeholder = AffiliateConfigEntity.builder()
+                    .provider(AffiliateProvider.AMAZON).tagId("PLACEHOLDER_AMAZON_TAG")
+                    .placement(AdPlacement.IN_FEED).build();
+            given(affiliateConfigRepository.findTargetedAds(
+                    any(LocalDateTime.class), eq(null), eq(null), eq(null)))
+                    .willReturn(List.of(placeholder));
 
             // When
             List<ActiveAdResponse> result = service.findTargetedAds(null, null, null);

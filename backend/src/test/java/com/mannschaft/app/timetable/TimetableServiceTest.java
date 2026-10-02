@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.entity.TimetableEntity;
 import com.mannschaft.app.timetable.entity.TimetableTermEntity;
@@ -36,9 +37,11 @@ class TimetableServiceTest {
     @Mock private TimetableSlotRepository slotRepository;
     @Mock private TimetableTermRepository termRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private TimetableService service;
 
     private static final Long TEAM_ID = 1L;
+    private static final Long ACTOR_USER_ID = 100L;
 
     @Nested
     @DisplayName("getById")
@@ -51,7 +54,7 @@ class TimetableServiceTest {
             given(timetableRepository.findByIdAndTeamId(1L, TEAM_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.getById(1L, TEAM_ID))
+            assertThatThrownBy(() -> service.getById(1L, TEAM_ID, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_001"));
@@ -79,7 +82,7 @@ class TimetableServiceTest {
                     false, null, null, null, 100L);
 
             // When
-            TimetableEntity result = service.create(TEAM_ID, data);
+            TimetableEntity result = service.create(TEAM_ID, data, ACTOR_USER_ID);
 
             // Then
             assertThat(result.getName()).isEqualTo("テスト時間割");
@@ -96,7 +99,7 @@ class TimetableServiceTest {
                     1L, "テスト", null, null, null, false, null, null, null, 100L);
 
             // When / Then
-            assertThatThrownBy(() -> service.create(TEAM_ID, data))
+            assertThatThrownBy(() -> service.create(TEAM_ID, data, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_002"));
@@ -136,7 +139,7 @@ class TimetableServiceTest {
             given(timetableRepository.save(any(TimetableEntity.class))).willAnswer(inv -> inv.getArgument(0));
 
             // When
-            service.update(20L, TEAM_ID, data);
+            service.update(20L, TEAM_ID, data, ACTOR_USER_ID);
 
             // Then
             // toBuilder().build() で別インスタンスを save していたら id=null の新規行 INSERT になる。
@@ -166,7 +169,7 @@ class TimetableServiceTest {
             given(timetableRepository.findByIdAndTeamId(1L, TEAM_ID)).willReturn(Optional.of(entity));
 
             // When / Then
-            assertThatThrownBy(() -> service.activate(1L, TEAM_ID))
+            assertThatThrownBy(() -> service.activate(1L, TEAM_ID, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_011"));
@@ -188,7 +191,7 @@ class TimetableServiceTest {
             given(timetableRepository.findByIdAndTeamId(1L, TEAM_ID)).willReturn(Optional.of(entity));
 
             // When / Then
-            assertThatThrownBy(() -> service.delete(1L, TEAM_ID))
+            assertThatThrownBy(() -> service.delete(1L, TEAM_ID, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_011"));

@@ -10,7 +10,7 @@ import type {
   ChangeType,
 } from '~/types/timetable'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
@@ -136,7 +136,7 @@ async function navigateWeek(direction: 'prev' | 'next' | 'current') {
     const base = currentWeekOf.value ? new Date(currentWeekOf.value) : new Date()
     date = new Date(base)
     date.setDate(date.getDate() + (direction === 'next' ? 7 : -7))
-    currentWeekOf.value = date.toISOString().slice(0, 10)
+    currentWeekOf.value = toLocalDateString(date)
   }
   try {
     weeklyView.value = await timetableApi.getWeekly(

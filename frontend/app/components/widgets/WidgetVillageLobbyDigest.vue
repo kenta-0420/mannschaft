@@ -55,7 +55,7 @@ async function load() {
     const presenceResults = await Promise.allSettled(
       pinnedVillages.value.slice(0, 5).map(async (v) => {
         const res: LobbyPresenceResponse = await villageApi.getLobbyPresence(v.id)
-        return { id: v.id, count: res.count }
+        return { id: v.id, count: res.activeCount }
       }),
     )
     const nextMap = new Map<string, number>()

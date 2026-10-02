@@ -75,6 +75,34 @@ class ShiftPositionServiceTest {
     }
 
     // ========================================
+    // resolvePositionScope（Facade が認可の前に呼ぶ readOnly の読み取り）
+    // ========================================
+
+    @Nested
+    @DisplayName("resolvePositionScope")
+    class ResolvePositionScope {
+
+        @Test
+        @DisplayName("scope 解決_正常_実体由来の teamId を返す")
+        void scope解決_正常() {
+            given(positionRepository.findById(POSITION_ID)).willReturn(Optional.of(createPositionEntity()));
+
+            assertThat(shiftPositionService.resolvePositionScope(POSITION_ID).teamId()).isEqualTo(TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("scope 解決_不在_SHIFT_004")
+        void scope解決_不在() {
+            given(positionRepository.findById(POSITION_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> shiftPositionService.resolvePositionScope(POSITION_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.SHIFT_POSITION_NOT_FOUND));
+        }
+    }
+
+    // ========================================
     // listPositions
     // ========================================
 

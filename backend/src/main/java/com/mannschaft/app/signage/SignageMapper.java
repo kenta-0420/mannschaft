@@ -89,7 +89,7 @@ public class SignageMapper {
 
     /**
      * SignageAccessTokenEntity を SignageAccessTokenResponse に変換する。
-     * expiredAt は Entity に格納されていないため null を設定する。
+     * expiredAt は永続化された Entity の値をそのまま返す（NULL は無期限）。
      */
     public SignageAccessTokenResponse toTokenResponse(SignageAccessTokenEntity e) {
         return new SignageAccessTokenResponse(
@@ -99,7 +99,7 @@ public class SignageMapper {
                 e.getName(),
                 e.getIsActive(),
                 parseAllowedIps(e.getAllowedIps()),
-                null, // expiredAt は Entity に存在しないため null
+                e.getExpiredAt(),
                 e.getCreatedAt()
         );
     }

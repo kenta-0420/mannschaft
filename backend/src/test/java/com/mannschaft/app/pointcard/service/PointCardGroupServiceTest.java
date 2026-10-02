@@ -65,7 +65,6 @@ class PointCardGroupServiceTest {
 
     private static final Long USER_ID = 100L;
     private static final Long OTHER_USER_ID = 999L;
-    private static final String CURRENT_TERMS_VERSION = "v1.0.0";
 
     @Mock
     private PointCardGroupRepository groupRepository;
@@ -143,7 +142,7 @@ class PointCardGroupServiceTest {
     @Test
     @DisplayName("createGroup: 空グループ作成 / 監査ログ POINT_CARD_GROUP_CREATED が card_count=0 で発火")
     void createGroup_empty_recordsAuditWithZero() {
-        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, CURRENT_TERMS_VERSION);
+        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
         given(groupRepository.countByUserId(USER_ID)).willReturn(0L);
         given(groupRepository.save(any(PointCardGroupEntity.class)))
                 .willAnswer(inv -> {
@@ -174,7 +173,7 @@ class PointCardGroupServiceTest {
     @Test
     @DisplayName("createGroup: cardIds 指定でアイテム保存 + 監査ログに card_count が入る")
     void createGroup_withCardIds_savesItemsAndLogsCount() {
-        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, CURRENT_TERMS_VERSION);
+        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
         given(groupRepository.countByUserId(USER_ID)).willReturn(5L);
 
         UserPointCardEntity card1 = sampleCard(USER_ID, null);
@@ -206,7 +205,7 @@ class PointCardGroupServiceTest {
     @Test
     @DisplayName("createGroup: 50 個上限超過で GROUP_LIMIT_EXCEEDED (409)")
     void createGroup_overLimit_throwsGroupLimitExceeded() {
-        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, CURRENT_TERMS_VERSION);
+        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
         given(groupRepository.countByUserId(USER_ID)).willReturn(50L);
 
         CreateGroupRequest req = new CreateGroupRequest("追加", null, null);
@@ -222,7 +221,7 @@ class PointCardGroupServiceTest {
     @Test
     @DisplayName("createGroup: cardIds 21 件で GROUP_ITEM_LIMIT_EXCEEDED (409)")
     void createGroup_tooManyCardIds_throwsGroupItemLimitExceeded() {
-        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, CURRENT_TERMS_VERSION);
+        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
         given(groupRepository.countByUserId(USER_ID)).willReturn(0L);
 
         // 21 件の UUID（重複なし）
@@ -244,7 +243,7 @@ class PointCardGroupServiceTest {
     @Test
     @DisplayName("createGroup: 他人のカード ID 混入で CARD_NOT_FOUND (IDOR 防止)")
     void createGroup_otherUsersCard_throwsCardNotFound() {
-        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, CURRENT_TERMS_VERSION);
+        willDoNothing().given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
         given(groupRepository.countByUserId(USER_ID)).willReturn(0L);
 
         UserPointCardEntity own = sampleCard(USER_ID, null);
@@ -268,7 +267,7 @@ class PointCardGroupServiceTest {
     @DisplayName("createGroup: 規約未同意は WALLET_NOT_ENABLED を伝播")
     void createGroup_termsNotAccepted_propagatesWalletNotEnabled() {
         willThrow(new BusinessException(PointCardErrorCode.WALLET_NOT_ENABLED))
-                .given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, CURRENT_TERMS_VERSION);
+                .given(userSettingsService).assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
 
         CreateGroupRequest req = new CreateGroupRequest("名", null, null);
 

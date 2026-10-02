@@ -1,5 +1,6 @@
 package com.mannschaft.app.school.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.school.dto.TransitionAlertListResponse;
 import com.mannschaft.app.school.dto.TransitionAlertResponse;
@@ -28,6 +29,7 @@ import java.util.List;
 public class TransitionAlertService {
 
     private final AttendanceTransitionAlertRepository alertRepository;
+    private final AccessControlService accessControlService;
 
     // ========================================
     // アラート一覧取得
@@ -36,13 +38,19 @@ public class TransitionAlertService {
     /**
      * 指定クラス・日付のアラート一覧を取得する。
      *
+     * <p>認可（束4）: 閲覧はチーム所属の教職員のみ（{@link AccessControlService#checkMembership}）。</p>
+     *
      * @param teamId          クラスチームID
      * @param date            対象日
      * @param unresolvedOnly  true の場合は未解決のみ取得
+     * @param currentUserId   閲覧者のユーザーID
      * @return アラート一覧レスポンス
      */
     @Transactional(readOnly = true)
-    public TransitionAlertListResponse getAlerts(Long teamId, LocalDate date, boolean unresolvedOnly) {
+    public TransitionAlertListResponse getAlerts(
+            Long teamId, LocalDate date, boolean unresolvedOnly, Long currentUserId) {
+        accessControlService.checkMembership(currentUserId, teamId, "TEAM");
+
         List<AttendanceTransitionAlertEntity> entities;
         if (unresolvedOnly) {
             entities = alertRepository.findByTeamIdAndAttendanceDateAndResolvedAtIsNullOrderByCreatedAtDesc(teamId, date);
@@ -74,6 +82,10 @@ public class TransitionAlertService {
     /**
      * 指定アラートを解決済みにする。
      *
+     * <p>認可（束4）: 確認・解決はチームの ADMIN／DEPUTY_ADMIN のみ
+     * （{@link AccessControlService#checkAdminOrAbove}）。</p>
+     *
+     * @param teamId          クラスチームID
      * @param alertId         アラートID
      * @param resolverUserId  解決者のユーザーID
      * @param note            解決理由
@@ -81,9 +93,22 @@ public class TransitionAlertService {
      * @throws BusinessException アラートが見つからない場合（TRANSITION_ALERT_NOT_FOUND）
      * @throws BusinessException アラートが既に解決済みの場合（TRANSITION_ALERT_ALREADY_RESOLVED）
      */
-    public TransitionAlertResponse resolveAlert(Long alertId, Long resolverUserId, String note) {
+    public TransitionAlertResponse resolveAlert(
+            Long teamId, Long alertId, Long resolverUserId, String note) {
+        // BOLA封鎖（アンチパターンE・path値の鵜呑み禁止）:
+        // path の teamId で認可すると、自チーム ADMIN が
+        // /teams/{自team}/…/{他teamのalertId}/resolve で他チームのアラートを握り潰せる。
+        // よって先に alert を fetch し、entity 由来 scope（alert.teamId）で照合・認可する（束1と同型）。
         AttendanceTransitionAlertEntity entity = alertRepository.findById(alertId)
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND));
+
+        // path の teamId 配下でない alert は存在秘匿のため 404 を返す（他テナントの存在を漏らさない）。
+        if (!entity.getTeamId().equals(teamId)) {
+            throw new BusinessException(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND);
+        }
+
+        // 認可: entity 由来 scope（= path と一致確認済みの teamId）の ADMIN／DEPUTY_ADMIN のみ。
+        accessControlService.checkAdminOrAbove(resolverUserId, entity.getTeamId(), "TEAM");
 
         if (entity.getResolvedAt() != null) {
             throw new BusinessException(SchoolErrorCode.TRANSITION_ALERT_ALREADY_RESOLVED);

@@ -73,7 +73,8 @@ public class TeamEquipmentController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "name,asc") String sort) {
         Sort sortObj = parseSortParam(sort);
-        Page<EquipmentItemResponse> result = itemService.listByTeam(teamId, category, status, nameLike,
+        Page<EquipmentItemResponse> result = itemService.listByTeam(teamId, SecurityUtils.getCurrentUserId(),
+                category, status, nameLike,
                 PageRequest.of(page, Math.min(size, 100), sortObj));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -89,7 +90,7 @@ public class TeamEquipmentController {
     public ResponseEntity<ApiResponse<EquipmentItemResponse>> getEquipment(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        EquipmentItemResponse response = itemService.getByTeam(teamId, id);
+        EquipmentItemResponse response = itemService.getByTeam(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -102,7 +103,7 @@ public class TeamEquipmentController {
     public ResponseEntity<ApiResponse<EquipmentItemResponse>> createEquipment(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateEquipmentItemRequest request) {
-        EquipmentItemResponse response = itemService.createForTeam(teamId, request);
+        EquipmentItemResponse response = itemService.createForTeam(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -116,7 +117,7 @@ public class TeamEquipmentController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateEquipmentItemRequest request) {
-        EquipmentItemResponse response = itemService.updateForTeam(teamId, id, request);
+        EquipmentItemResponse response = itemService.updateForTeam(teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -129,7 +130,7 @@ public class TeamEquipmentController {
     public ResponseEntity<Void> deleteEquipment(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        itemService.deleteForTeam(teamId, id);
+        itemService.deleteForTeam(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -176,7 +177,7 @@ public class TeamEquipmentController {
             @PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<AssignmentResponse> result = assignmentService.getHistoryForTeam(teamId, id, PageRequest.of(page, size));
+        Page<AssignmentResponse> result = assignmentService.getHistoryForTeam(teamId, id, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -192,7 +193,7 @@ public class TeamEquipmentController {
             @PathVariable Long teamId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<AssignmentResponse> result = assignmentService.getOverdueForTeam(teamId, PageRequest.of(page, size));
+        Page<AssignmentResponse> result = assignmentService.getOverdueForTeam(teamId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -208,7 +209,7 @@ public class TeamEquipmentController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<String>>> getCategories(
             @PathVariable Long teamId) {
-        List<String> categories = itemService.getCategoriesByTeam(teamId);
+        List<String> categories = itemService.getCategoriesByTeam(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(categories));
     }
 
@@ -240,7 +241,7 @@ public class TeamEquipmentController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody PresignedUrlRequest request) {
-        PresignedUrlResponse response = itemService.getPresignedUrlForTeam(teamId, id, request);
+        PresignedUrlResponse response = itemService.getPresignedUrlForTeam(teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -253,7 +254,7 @@ public class TeamEquipmentController {
     public ResponseEntity<Void> deleteImage(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        itemService.deleteImageForTeam(teamId, id);
+        itemService.deleteImageForTeam(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -301,7 +302,7 @@ public class TeamEquipmentController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String nameLike) {
-        List<QrCodeResponse> response = itemService.getQrCodesByTeam(teamId, ids, category, status, nameLike);
+        List<QrCodeResponse> response = itemService.getQrCodesByTeam(teamId, SecurityUtils.getCurrentUserId(), ids, category, status, nameLike);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

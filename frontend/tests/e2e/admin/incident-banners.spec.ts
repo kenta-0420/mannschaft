@@ -47,7 +47,7 @@ const MOCK_BANNER_LIST = {
       ],
     },
   ],
-  meta: { page: 0, size: 20, totalElements: 2, totalPages: 1 },
+  meta: { page: 0, size: 20, total: 2, totalPages: 1 },
 }
 
 const MOCK_SUGGESTIONS = {

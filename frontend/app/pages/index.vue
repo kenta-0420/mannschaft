@@ -43,12 +43,12 @@ useHead({
 
 <template>
   <div>
-    <LandingHero />
-    <LandingStats />
-    <LandingFeatures />
-    <LandingSteps />
-    <LandingUseCases />
-    <LandingFaq />
-    <LandingCta />
+    <!-- pageTransition out-in の制約により template 直下はこの <div> 1ノードのみ（コメントも置くと非要素根で遷移先が空白になる） -->
+    <LpHero />
+    <LpFeatureChips />
+    <LpUseCaseRow />
+    <LpPwaInstall />
+    <LpTrustBadges />
+    <LpFinalCta />
   </div>
 </template>

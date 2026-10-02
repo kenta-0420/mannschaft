@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Chart, CreateChartRequest } from '~/types/chart'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
@@ -24,7 +24,7 @@ async function loadData(page = 0) {
     await loadPermissions()
     const res = await chartApi.list(teamSlug.value, { page, size: 20 })
     charts.value = res.data
-    totalRecords.value = res.meta.totalElements
+    totalRecords.value = res.meta.total
   } catch {
     notification.error('カルテの取得に失敗しました')
   } finally {

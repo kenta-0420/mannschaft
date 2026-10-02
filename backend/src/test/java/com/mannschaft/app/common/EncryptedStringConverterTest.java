@@ -26,8 +26,24 @@ class EncryptedStringConverterTest {
     private EncryptedStringConverter converter;
     private EncryptionService encryptionService;
 
+    /**
+     * 差し替える前の {@link EncryptionServiceHolder} の登録値。
+     *
+     * <p>{@link EncryptionServiceHolder} は JVM グローバルな静的状態である。
+     * 旧実装は {@code tearDown()} で無条件に {@code set(null)} していたため、
+     * 同一テスト JVM 内で本テストより<b>後に</b>走る結合テストが
+     * {@code IllegalStateException: EncryptionService has not been initialized} で落ちていた
+     * （Spring コンテキストは既に生成済みで {@code EncryptionConfig} が再度 set しないため）。
+     * 発火するか否かは shard 内のクラス実行順にしか依存しないので、
+     * <b>テストクラスを1つ足すだけで無関係な結合テストが決定的に壊れる</b>という
+     * 極めて追いにくい壊れ方をする（実際に Gate 基盤工事④-B の PR で shard 2 が落ちた）。
+     * 退避して必ず元へ戻す。</p>
+     */
+    private EncryptionService previousHolderValue;
+
     @BeforeEach
     void setUp() {
+        previousHolderValue = EncryptionServiceHolder.peek();
         byte[] encKey = new byte[32];
         byte[] hmacKey = new byte[32];
         new SecureRandom().nextBytes(encKey);
@@ -40,7 +56,8 @@ class EncryptedStringConverterTest {
 
     @AfterEach
     void tearDown() {
-        EncryptionServiceHolder.set(null);
+        // null で潰さず、差し替える前の値へ戻す（フィールドの Javadoc 参照）。
+        EncryptionServiceHolder.set(previousHolderValue);
     }
 
     @Test

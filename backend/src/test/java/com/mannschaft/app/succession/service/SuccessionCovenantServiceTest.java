@@ -193,6 +193,31 @@ class SuccessionCovenantServiceTest {
         }
 
         @Test
+        @DisplayName("異常系(BOLA): 他人の residentRegistryId を指定すると RESIDENT_REGISTRY_NOT_FOUND"
+                + "（存在秘匿・PDF生成に到達しない）")
+        void signCovenant_otherUsersResidentRegistry_notFound() {
+            when(residentRegistryRepository.findById(RESIDENT_ID)).thenReturn(Optional.of(resident));
+            SignCovenantRequest req = SignCovenantRequest.builder()
+                    .covenantType("PRIVACY_CONSENT")
+                    .residentRegistryId(RESIDENT_ID)
+                    .covenantVersion("v1.0.0")
+                    .confirmedItems(List.of("agree_personal_data_collection", "agree_data_retention_10y"))
+                    .build();
+
+            // resident の userId は SIGNER_USER_ID であり、OTHER_USER_ID とは別人。
+            assertThatThrownBy(() -> service.signCovenant(req, OTHER_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(SuccessionErrorCode.RESIDENT_REGISTRY_NOT_FOUND);
+
+            // 他人の台帳情報（PII含む）を使った PDF 生成・アップロード・保存へ到達しないことの裏取り。
+            verify(dwellingUnitRepository, never()).findById(any());
+            verify(pdfGeneratorService, never()).generateSignedCovenantPdf(any());
+            verify(storageService, never()).upload(anyString(), any(byte[].class), anyString());
+            verify(covenantRepository, never()).save(any());
+        }
+
+        @Test
         @DisplayName("異常系: 必須同意項目が不足なら COVENANT_CONFIRMED_ITEMS_INSUFFICIENT")
         void signCovenant_confirmed_items_insufficient() {
             when(residentRegistryRepository.findById(RESIDENT_ID)).thenReturn(Optional.of(resident));

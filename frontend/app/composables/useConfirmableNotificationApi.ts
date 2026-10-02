@@ -2,9 +2,14 @@ import type {
   ConfirmableNotificationSettings,
   ConfirmableNotificationSummary,
   ConfirmableNotificationDetail,
-  ConfirmableNotificationRecipientItem,
+  ConfirmableNotificationRecipientPage,
   ConfirmableNotificationTemplate,
+  ConfirmableRecipientGroup,
+  ConfirmableNotificationSendAccepted,
+  ConfirmableRecipientPreview,
+  ConfirmableRecipientPreviewRequest,
   CreateConfirmableNotificationRequest,
+  CreateConfirmableRecipientGroupRequest,
   UpdateConfirmableNotificationSettingsRequest,
   CreateConfirmableNotificationTemplateRequest,
 } from '~/types/confirmable'
@@ -42,6 +47,11 @@ export function useConfirmableNotificationApi() {
     return `/api/v1/${prefix}/${scopeId}/confirmable-notification-templates`
   }
 
+  function buildRecipientGroupBaseUrl(scopeType: 'TEAM' | 'ORGANIZATION', scopeId: string): string {
+    const prefix = scopeType === 'TEAM' ? 'teams' : 'organizations'
+    return `/api/v1/${prefix}/${scopeId}/confirmable-recipient-groups`
+  }
+
   // === Settings ===
 
   /** 確認通知設定を取得する（存在しない場合はデフォルト値で作成） */
@@ -69,7 +79,7 @@ export function useConfirmableNotificationApi() {
     scopeId: string,
     data: CreateConfirmableNotificationRequest,
   ) {
-    return api<{ data: ConfirmableNotificationDetail }>(buildBaseUrl(scopeType, scopeId), {
+    return api<{ data: ConfirmableNotificationSendAccepted }>(buildBaseUrl(scopeType, scopeId), {
       method: 'POST',
       body: data,
     })
@@ -118,9 +128,15 @@ export function useConfirmableNotificationApi() {
     scopeType: 'TEAM' | 'ORGANIZATION',
     scopeId: string,
     notificationId: number,
+    params: { page: number; size: number; unconfirmedOnly?: boolean },
   ) {
-    return api<{ data: ConfirmableNotificationRecipientItem[] }>(
-      `${buildBaseUrl(scopeType, scopeId)}/${notificationId}/recipients`,
+    const query = new URLSearchParams({
+      page: String(params.page),
+      size: String(params.size),
+      unconfirmedOnly: String(params.unconfirmedOnly ?? false),
+    })
+    return api<{ data: ConfirmableNotificationRecipientPage }>(
+      `${buildBaseUrl(scopeType, scopeId)}/${notificationId}/recipients/page?${query.toString()}`,
     )
   }
 
@@ -142,6 +158,13 @@ export function useConfirmableNotificationApi() {
     return api<{ data: ConfirmableNotificationSummary[] }>(
       '/api/v1/me/confirmable-notifications/pending',
     )
+  }
+
+  /** 個人・プラットフォームスコープの自分宛て確認通知を確認済みにする */
+  async function confirmPersonalNotification(notificationId: number) {
+    return api(`/api/v1/me/confirmable-notifications/${notificationId}/confirm`, {
+      method: 'POST',
+    })
   }
 
   // === Templates ===
@@ -187,10 +210,48 @@ export function useConfirmableNotificationApi() {
     })
   }
 
+  /** 送信前に同じ宛先展開を行い、重複を除いた見込み人数を取得する。 */
+  async function previewRecipients(
+    scopeType: 'TEAM' | 'ORGANIZATION', scopeId: string,
+    data: ConfirmableRecipientPreviewRequest,
+  ) {
+    return api<{ data: ConfirmableRecipientPreview }>(`${buildBaseUrl(scopeType, scopeId)}/recipient-preview`, {
+      method: 'POST', body: data,
+    })
+  }
+
+  async function listRecipientGroups(scopeType: 'TEAM' | 'ORGANIZATION', scopeId: string) {
+    return api<{ data: ConfirmableRecipientGroup[] }>(buildRecipientGroupBaseUrl(scopeType, scopeId))
+  }
+
+  async function createRecipientGroup(
+    scopeType: 'TEAM' | 'ORGANIZATION',
+    scopeId: string,
+    data: CreateConfirmableRecipientGroupRequest,
+  ) {
+    return api<{ data: ConfirmableRecipientGroup }>(buildRecipientGroupBaseUrl(scopeType, scopeId), {
+      method: 'POST', body: data,
+    })
+  }
+
+  async function updateRecipientGroup(
+    scopeType: 'TEAM' | 'ORGANIZATION', scopeId: string, groupId: string,
+    data: CreateConfirmableRecipientGroupRequest,
+  ) {
+    return api<{ data: ConfirmableRecipientGroup }>(`${buildRecipientGroupBaseUrl(scopeType, scopeId)}/${groupId}`, {
+      method: 'PUT', body: data,
+    })
+  }
+
+  async function deleteRecipientGroup(scopeType: 'TEAM' | 'ORGANIZATION', scopeId: string, groupId: string) {
+    return api(`${buildRecipientGroupBaseUrl(scopeType, scopeId)}/${groupId}`, { method: 'DELETE' })
+  }
+
   return {
     getSettings,
     updateSettings,
     sendNotification,
+    previewRecipients,
     listNotifications,
     getNotificationDetail,
     cancelNotification,
@@ -198,9 +259,14 @@ export function useConfirmableNotificationApi() {
     getRecipients,
     confirmNotification,
     getPendingNotifications,
+    confirmPersonalNotification,
     listTemplates,
     createTemplate,
     updateTemplate,
     deleteTemplate,
+    listRecipientGroups,
+    createRecipientGroup,
+    updateRecipientGroup,
+    deleteRecipientGroup,
   }
 }

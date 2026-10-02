@@ -94,4 +94,12 @@ public interface ChatChannelRepository extends JpaRepository<ChatChannelEntity, 
      * 組織スコープのレンズ ⑤ {@code ADMIN_ORG_ALERT} で未読問い合わせを集計するために使う。
      */
     List<ChatChannelEntity> findByOrganizationIdAndIsInquiryChannelTrue(Long organizationId);
+
+    /**
+     * アイコンのオブジェクトキーからチャンネルを 1 件取得する。
+     *
+     * <p>署名付きダウンロード URL の発行時に、キーが実在のチャンネルアイコンを指しているかを確認し、
+     * そのチャンネルの閲覧認可へ結び付けるために用いる。</p>
+     */
+    Optional<ChatChannelEntity> findFirstByIconKey(String iconKey);
 }

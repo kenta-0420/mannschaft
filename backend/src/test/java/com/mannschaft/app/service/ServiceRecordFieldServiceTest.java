@@ -1,5 +1,6 @@
 package com.mannschaft.app.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.service.dto.CreateFieldRequest;
 import com.mannschaft.app.service.dto.FieldResponse;
@@ -31,12 +32,15 @@ class ServiceRecordFieldServiceTest {
     @Mock private ServiceRecordSettingsRepository settingsRepository;
     @Mock private ServiceRecordMapper mapper;
     @Mock private ObjectMapper objectMapper;
+    /** 認可 Wave7 で注入された依存。ここでは認可の可否ではなく業務ロジックを検証するため素通し（mock）。 */
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ServiceRecordFieldService service;
 
     private static final Long TEAM_ID = 1L;
     private static final Long FIELD_ID = 10L;
+    private static final Long ACTOR_ID = 100L;
 
     @Nested
     @DisplayName("createField")
@@ -49,7 +53,7 @@ class ServiceRecordFieldServiceTest {
             request.setFieldName("新フィールド");
             request.setFieldType("TEXT");
 
-            assertThatThrownBy(() -> service.createField(TEAM_ID, request))
+            assertThatThrownBy(() -> service.createField(TEAM_ID, ACTOR_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("SERVICE_RECORD_007"));
@@ -67,7 +71,7 @@ class ServiceRecordFieldServiceTest {
             given(fieldRepository.save(any())).willReturn(saved);
             given(mapper.toFieldResponse(saved)).willReturn(FieldResponse.builder().build());
 
-            FieldResponse result = service.createField(TEAM_ID, request);
+            FieldResponse result = service.createField(TEAM_ID, ACTOR_ID, request);
             assertThat(result).isNotNull();
         }
     }
@@ -79,7 +83,7 @@ class ServiceRecordFieldServiceTest {
         @DisplayName("異常系: フィールド不在でSERVICE_RECORD_002例外")
         void 無効化_不在_例外() {
             given(fieldRepository.findByIdAndTeamId(FIELD_ID, TEAM_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.deactivateField(TEAM_ID, FIELD_ID))
+            assertThatThrownBy(() -> service.deactivateField(TEAM_ID, FIELD_ID, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("SERVICE_RECORD_002"));

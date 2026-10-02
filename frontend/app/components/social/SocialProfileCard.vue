@@ -38,8 +38,12 @@ const emit = defineEmits<{
           <p class="text-sm text-surface-500">@{{ profile.handle }}</p>
           <p v-if="profile.bio" class="mt-1 text-sm text-surface-600 dark:text-surface-400">{{ profile.bio }}</p>
           <div class="mt-2 flex gap-4 text-xs text-surface-500">
-            <span>{{ profile.followerCount }} フォロワー</span>
-            <span>{{ profile.followingCount }} フォロー中</span>
+            <NuxtLink to="/profile/followers" class="hover:underline">
+              {{ profile.followerCount }} {{ $t('label.followers') }}
+            </NuxtLink>
+            <NuxtLink to="/profile/following" class="hover:underline">
+              {{ profile.followingCount }} {{ $t('label.following') }}
+            </NuxtLink>
           </div>
         </div>
         <div v-if="showActions" class="flex gap-1">

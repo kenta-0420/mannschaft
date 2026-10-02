@@ -14,12 +14,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -63,6 +63,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             List<String> roles = claims.get("roles", List.class);
             // access token の jti を取得（SecurityUtils.getCurrentSessionHash() で session_hash 計算に使用）
             String jtiClaim = claims.getId();
+            // F01.9 保護者同意ゲート: ppc（pending parental consent）クレームを取得。
+            // 旧トークンには存在しないため null は false 扱い。
+            Boolean ppcClaim = claims.get("ppc", Boolean.class);
+            boolean pendingParentalConsent = Boolean.TRUE.equals(ppcClaim);
 
             List<SimpleGrantedAuthority> authorities = roles != null
                     ? roles.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role)).toList()
@@ -70,12 +74,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userId, null, authorities);
-            // jti を details に格納して SecurityUtils から取得可能にする
+            // jti / ppc を details Map に格納して SecurityUtils・ParentalConsentGateFilter から取得可能にする。
+            // 従来 jti 単独を格納していた要領を踏襲しつつ ppc を追加する（HashMap: null 混在に備える）。
+            Map<String, Object> details = new HashMap<>();
             if (jtiClaim != null && !jtiClaim.isBlank()) {
-                authentication.setDetails(Map.of("jti", jtiClaim));
-            } else {
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                details.put("jti", jtiClaim);
             }
+            details.put("ppc", pendingParentalConsent);
+            authentication.setDetails(details);
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (BusinessException e) {

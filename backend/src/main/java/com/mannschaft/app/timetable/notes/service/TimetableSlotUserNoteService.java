@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.timetable.notes.TimetableSlotKind;
 import com.mannschaft.app.timetable.notes.dto.TimetableSlotUserNoteResponse;
@@ -145,7 +146,7 @@ public class TimetableSlotUserNoteService {
             // 楽観排他チェック
             if (ifUnmodifiedSinceEpochMillis != null && entity.getUpdatedAt() != null) {
                 long entityMillis = entity.getUpdatedAt()
-                        .atZone(java.time.ZoneId.systemDefault())
+                        .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
                         .toInstant()
                         .toEpochMilli();
                 // 1 秒の精度差を許容

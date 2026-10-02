@@ -3,6 +3,8 @@ import type { SidebarCategory, SidebarItem } from '~/types/sidebar'
 
 const props = defineProps<{
   orgId: string
+  /** 管理者/メンバーレンズが「メンバー」プレビュー中か。BaseSidebar.vue へそのまま転送する。 */
+  memberLensActive?: boolean
 }>()
 
 const categories: SidebarCategory[] = [
@@ -14,8 +16,11 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.timeline', icon: 'pi pi-comments', path: 'timeline', moduleSlug: 'timeline', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.chat', icon: 'pi pi-comment', path: 'chat', moduleSlug: 'chat', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.bulletin', icon: 'pi pi-megaphone', path: 'bulletin', moduleSlug: 'bulletin', requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.blog', icon: 'pi pi-pen-to-square', path: 'blog', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.blog', icon: 'pi pi-pen-to-square', path: 'blog', moduleSlug: 'blog_cms', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.circulation', icon: 'pi pi-sync', path: 'circulation', moduleSlug: 'circular', requiredRole: 'MEMBER' },
+      // クイック確認（F04.9）は日常の連絡手段として回覧板の隣に置く。
+      // 既存URLと checkAdminOrAbove に合わせた権限は後方互換のため維持する。
+      { labelKey: 'orgSidebar.confirmableNotifications', icon: 'pi pi-verified', path: 'settings/confirmable-notifications', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
     ],
   },
   {
@@ -25,7 +30,7 @@ const categories: SidebarCategory[] = [
     items: [
       { labelKey: 'orgSidebar.schedule', icon: 'pi pi-calendar', path: 'schedule', moduleSlug: 'schedule', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.events', icon: 'pi pi-calendar-plus', path: 'events', moduleSlug: 'schedule', requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.timetable', icon: 'pi pi-table', path: 'timetable', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.timetable', icon: 'pi pi-table', path: 'timetable', moduleSlug: 'timetable', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.annualPlan', icon: 'pi pi-chart-bar', path: 'annual-plan', moduleSlug: null, requiredRole: 'MEMBER' },
     ],
   },
@@ -47,13 +52,21 @@ const categories: SidebarCategory[] = [
     icon: 'pi pi-briefcase',
     items: [
       { labelKey: 'orgSidebar.todos', icon: 'pi pi-check-square', path: 'todos', moduleSlug: 'todo', requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.workflows', icon: 'pi pi-sitemap', path: 'workflows', moduleSlug: null, requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.forms', icon: 'pi pi-file-edit', path: 'forms', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.workflows', icon: 'pi pi-sitemap', path: 'workflows', moduleSlug: 'workflow', requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.forms', icon: 'pi pi-file-edit', path: 'forms', moduleSlug: 'form', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.surveys', icon: 'pi pi-chart-pie', path: 'surveys', moduleSlug: 'survey', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.voting', icon: 'pi pi-check-circle', path: 'voting', moduleSlug: 'voting', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.safety', icon: 'pi pi-heart', path: 'safety', moduleSlug: 'safety_check', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.incidents', icon: 'pi pi-exclamation-triangle', path: 'incidents', moduleSlug: null, requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.committees', icon: 'pi pi-building', path: 'committees', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.committees', icon: 'pi pi-building', path: 'committees', moduleSlug: 'committee', requiredRole: 'MEMBER' },
+    ],
+  },
+  {
+    key: 'market',
+    labelKey: 'orgSidebar.category.market',
+    icon: 'pi pi-shop',
+    items: [
+      { labelKey: 'orgSidebar.market', icon: 'pi pi-shop', path: 'market', moduleSlug: null, requiredRole: 'MEMBER' },
     ],
   },
   {
@@ -65,6 +78,9 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.equipment', icon: 'pi pi-box', path: 'equipment', moduleSlug: 'equipment', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.parking', icon: 'pi pi-car', path: 'parking', moduleSlug: 'parking', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.signage', icon: 'pi pi-desktop', path: 'signage', moduleSlug: null, requiredRole: 'ADMIN' },
+      // CMP-260909-1141 Phase 3: 業者マスタ（/admin/vendors）。repair_longterm_plan は ORGANIZATION/TEAM
+      // 両レベルで有効化可能（V13.053）。TeamSidebar と同じ根拠で DEPUTY_ADMIN・クエリ付き absolutePath。
+      { labelKey: 'orgSidebar.vendors', icon: 'pi pi-briefcase', path: '', absolutePath: `/admin/vendors?scope=organizations&scopeId=${props.orgId}`, moduleSlug: 'repair_longterm_plan', requiredRole: 'DEPUTY_ADMIN' },
     ],
   },
   {
@@ -83,7 +99,7 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.files', icon: 'pi pi-folder', path: 'files', moduleSlug: 'file_sharing', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.kb', icon: 'pi pi-book', path: 'kb', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.analytics', icon: 'pi pi-chart-line', path: 'analytics', moduleSlug: 'analytics', requiredRole: 'ADMIN' },
-      { labelKey: 'orgSidebar.budget', icon: 'pi pi-wallet', path: 'budget', moduleSlug: null, requiredRole: 'ADMIN' },
+      { labelKey: 'orgSidebar.budget', icon: 'pi pi-wallet', path: 'budget', moduleSlug: 'budget', requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.auditLogs', icon: 'pi pi-list', path: 'audit-logs', moduleSlug: 'audit_log', requiredRole: 'ADMIN' },
     ],
   },
@@ -92,12 +108,21 @@ const categories: SidebarCategory[] = [
     labelKey: 'orgSidebar.category.other',
     icon: 'pi pi-ellipsis-h',
     items: [
-      { labelKey: 'orgSidebar.gamification', icon: 'pi pi-star', path: 'gamification', moduleSlug: null, requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.tournaments', icon: 'pi pi-trophy', path: 'tournaments', moduleSlug: null, requiredRole: 'MEMBER' },
+      // CMP-260918-0024: ゲーミフィケーションはチーム固有機能（マスター裁可）。BE が
+      // /api/v1/teams/{teamId}/gamification/... のチームスコープ専用実装であり、組織スコープの
+      // API が存在しないため、ここでは項目そのものを削除した（moduleSlug で弾く方式ではない）。
+      // 加えて BE 側でも組織での有効化自体を封じるため、module_level_availability の
+      // ORGANIZATION 行を is_available=0 で投入した（Flyway V216）。ModuleService.isLevelAvailable
+      // は行が無い場合「制約なし＝利用可」（orElse(true)、ModuleService.java:225-229）として扱う
+      // ため、行の追加そのものが必須だった。二段構え（導線を消す＋BEで有効化を封じる）にすることで、
+      // 万一サイドバーへ項目が復活しても組織 ADMIN が機能設定画面から有効化できない。
+      { labelKey: 'orgSidebar.tournaments', icon: 'pi pi-trophy', path: 'tournaments', moduleSlug: 'tournament', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.leagueTransfers', icon: 'pi pi-arrow-right-arrow-left', path: 'league-transfers', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.queue', icon: 'pi pi-sort-numeric-up', path: 'queue', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.timelineDigest', icon: 'pi pi-align-left', path: 'timeline-digest', moduleSlug: null, requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.translations', icon: 'pi pi-language', path: 'translations', moduleSlug: null, requiredRole: 'ADMIN' },
+      // CMP-260917-1351 課題C: 実装（translations.vue は middleware:'auth' のみ・ADMIN限定ではない）に
+      // 合わせて MEMBER 可へ訂正（殿の裁可済み）。
+      { labelKey: 'orgSidebar.translations', icon: 'pi pi-language', path: 'translations', moduleSlug: null, requiredRole: 'MEMBER' },
     ],
   },
   {
@@ -106,6 +131,14 @@ const categories: SidebarCategory[] = [
     icon: 'pi pi-credit-card',
     items: [
       { labelKey: 'orgSidebar.payments', icon: 'pi pi-credit-card', path: 'payments', moduleSlug: 'payment', requiredRole: 'MEMBER' },
+      // CMP-260907-0851: 領収書の2画面（/admin/receipts・/admin/receipt-settings）はスコープ配下ではなく
+      // 横断ルートに置かれており、これまでアプリ内のどこからも辿り着けなかった。
+      // 画面自体は現在スコープ（useScopeStore）を見て動くため、組織サイドバーからの遷移で正しく機能する。
+      // 領収書は「決済（payment）」モジュールの一部（モジュール説明にも「領収書発行を含む」と明記）なので、
+      // 無効な組織では BaseSidebar の moduleSlug 判定により項目自体が出ない（死んだ導線を作らない）。
+      // 操作は BE 側で checkAdminOrAbove を要求するため DEPUTY_ADMIN 以上に限る。
+      { labelKey: 'orgSidebar.receipts', icon: 'pi pi-receipt', path: '', absolutePath: '/admin/receipts', moduleSlug: 'payment', requiredRole: 'DEPUTY_ADMIN' },
+      { labelKey: 'orgSidebar.receiptSettings', icon: 'pi pi-id-card', path: '', absolutePath: '/admin/receipt-settings', moduleSlug: 'payment', requiredRole: 'DEPUTY_ADMIN' },
       { labelKey: 'orgSidebar.directMail', icon: 'pi pi-envelope', path: 'direct-mail', moduleSlug: 'direct_mail', requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.advertiser', icon: 'pi pi-megaphone', path: 'advertiser', moduleSlug: 'ad_display', requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.webhooks', icon: 'pi pi-code', path: 'webhooks', moduleSlug: null, requiredRole: 'ADMIN' },
@@ -116,12 +149,24 @@ const categories: SidebarCategory[] = [
     labelKey: 'orgSidebar.category.settings',
     icon: 'pi pi-cog',
     items: [
+      { labelKey: 'orgSidebar.guide', icon: 'pi pi-book', path: 'guide', moduleSlug: null, requiredRole: 'MEMBER' },
       // F10.1.1 P2a: 管理コンソール（L2 ハブ）への入口。DEPUTY_ADMIN 以上に表示。
       { labelKey: 'orgSidebar.adminConsole', icon: 'pi pi-shield', path: 'admin', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      { labelKey: 'orgSidebar.memberPermissions', icon: 'pi pi-user-edit', path: '', absolutePath: '/admin/member-permissions', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.settingsModules', icon: 'pi pi-sliders-h', path: '', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.notificationCredits', icon: 'pi pi-bell', path: 'settings/notification-credits', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.todoStatusLabels', icon: 'pi pi-tags', path: 'settings/todo-status-labels', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.faqSettings', icon: 'pi pi-question-circle', path: 'settings/faq-settings', moduleSlug: null, requiredRole: 'ADMIN' },
+
+      // F20.1: 課金・プラン管理（閲覧はメンバー可・操作はADMIN限定。ナビはメンバー以上に表示）
+      { labelKey: 'orgSidebar.billing', icon: 'pi pi-credit-card', path: 'settings/billing', moduleSlug: null, requiredRole: 'MEMBER' },
+      // CMP-260909-1141 Phase 3: TeamSidebar と同じ根拠（LineBotConfigService/SnsFeedConfigService の
+      // checkAdminOrAbove → DEPUTY_ADMIN、moduleSlug は該当モジュール無しのため null）。
+      { labelKey: 'orgSidebar.lineSettings', icon: 'pi pi-comment', path: '', absolutePath: '/admin/line-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      { labelKey: 'orgSidebar.snsSettings', icon: 'pi pi-share-alt', path: '', absolutePath: '/admin/sns-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      { labelKey: 'orgSidebar.scheduleSettings', icon: 'pi pi-calendar-times', path: '', absolutePath: '/admin/schedule-settings', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
+      // カテゴリ CRUD は requireManageContent を要求する（TeamSidebar と同じ根拠）。
+      { labelKey: 'orgSidebar.bulletinCategories', icon: 'pi pi-tags', path: '', absolutePath: '/admin/bulletin-categories', moduleSlug: 'bulletin', requiredRole: 'DEPUTY_ADMIN' },
     ],
   },
 ]
@@ -148,6 +193,7 @@ function handleTabNavigate(item: SidebarItem) {
     scope-type="organization"
     :scope-id="props.orgId"
     :categories="categories"
+    :member-lens-active="props.memberLensActive"
     @tab-navigate="handleTabNavigate"
   />
 </template>

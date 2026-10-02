@@ -62,6 +62,7 @@ public class SurveyQuestionEntity {
     @Column(length = 50)
     private String scaleMaxLabel;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

@@ -9,6 +9,7 @@ const MOCK_PROFILE = {
   data: {
     id: 1,
     displayName: 'テストユーザー',
+    nickname: 'テストユーザー',  // profile.vue の v-model="profile.nickname" に対応
     email: 'test@example.com',
     phoneNumber: '090-1234-5678',
     avatarUrl: null,
@@ -23,7 +24,8 @@ const MOCK_HANDLE = {
 /**
  * profile.vue は onMounted で /api/v1/users/me（GET）と
  * /api/v1/users/me/contact-handle（GET）の 2 本を呼ぶ。
- * テスト中は両方をモックし、保存ボタンクリック時の PATCH を観測する。
+ * テスト中は両方をモックし、保存ボタンクリック時の PUT を観測する。
+ * ※ 表示名保存は PUT /api/v1/users/me（BE: @PutMapping("/me")）。PATCH は 405 になる。
  */
 async function setupProfileMocks(page: import('@playwright/test').Page) {
   await page.route('**/api/v1/users/me/contact-handle', async (route) => {
@@ -51,7 +53,7 @@ async function setupProfileMocks(page: import('@playwright/test').Page) {
 }
 
 test.describe('SET-DEEP profile: プロフィール設定フォーム深掘り', () => {
-  test('SET-DEEP-001: 表示名を変更して保存ボタンを押すと PATCH /api/v1/users/me が呼ばれる', async ({
+  test('SET-DEEP-001: 表示名を変更して保存ボタンを押すと PUT /api/v1/users/me が呼ばれる', async ({
     page,
   }) => {
     await setupProfileMocks(page)
@@ -72,26 +74,26 @@ test.describe('SET-DEEP profile: プロフィール設定フォーム深掘り',
 
     await clearAndFillInput(displayNameInput, '更新後ユーザー')
 
-    // 保存ボタンクリック → PATCH リクエストを観測
-    const patchPromise = page.waitForRequest(
+    // 保存ボタンクリック → PUT リクエストを観測（PATCHではなくPUT: BE は @PutMapping("/me")）
+    const putPromise = page.waitForRequest(
       (req) =>
         req.url().includes('/api/v1/users/me') &&
         !req.url().includes('contact-handle') &&
-        req.method() === 'PATCH',
+        req.method() === 'PUT',
       { timeout: 10_000 },
     )
 
     await page.getByRole('button', { name: '保存' }).first().click()
-    const patchReq = await patchPromise
+    const putReq = await putPromise
 
-    const body = JSON.parse(patchReq.postData() ?? '{}')
-    expect(body.displayName).toBe('更新後ユーザー')
+    const body = JSON.parse(putReq.postData() ?? '{}')
+    expect(body.nickname).toBe('更新後ユーザー')
 
     // 成功通知が表示される
     await expect(page.getByText('プロフィールを更新しました')).toBeVisible({ timeout: 10_000 })
   })
 
-  test('SET-DEEP-002: 電話番号を別形式に書き換えて保存すると PATCH ボディに反映される', async ({
+  test('SET-DEEP-002: 電話番号を別形式に書き換えて保存すると PUT ボディに反映される', async ({
     page,
   }) => {
     await setupProfileMocks(page)
@@ -107,17 +109,17 @@ test.describe('SET-DEEP profile: プロフィール設定フォーム深掘り',
 
     await clearAndFillInput(phoneInput, '080-9999-0000')
 
-    const patchPromise = page.waitForRequest(
+    const putPromise = page.waitForRequest(
       (req) =>
         req.url().includes('/api/v1/users/me') &&
         !req.url().includes('contact-handle') &&
-        req.method() === 'PATCH',
+        req.method() === 'PUT',
       { timeout: 10_000 },
     )
     await page.getByRole('button', { name: '保存' }).first().click()
-    const patchReq = await patchPromise
+    const putReq = await putPromise
 
-    const body = JSON.parse(patchReq.postData() ?? '{}')
+    const body = JSON.parse(putReq.postData() ?? '{}')
     expect(body.phoneNumber).toBe('080-9999-0000')
   })
 
@@ -222,5 +224,145 @@ test.describe('SET-DEEP profile: プロフィール設定フォーム深掘り',
       .first()
     await fillInput(displayNameInput, '_追記')
     await expect(displayNameInput).toHaveValue('テストユーザー_追記')
+  })
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // SET-DEEP-006〜007: API 契約回帰テスト（実機E2Eで確定した 405/500 バグの再発防止）
+  // - 表示名保存は PATCH ではなく PUT を使う（BE: @PutMapping("/me")）
+  // - アバターは廃止済みの /users/me/avatar を叩かず presigned 方式の /profile-media/icon/upload-url を叩く
+  // ──────────────────────────────────────────────────────────────────────────
+
+  test('SET-DEEP-006: 表示名保存は PUT /api/v1/users/me を発火し PATCH は発火しない', async ({
+    page,
+  }) => {
+    await setupProfileMocks(page)
+
+    // PATCH が届いたらテストを失敗させるセンチネル
+    const patchRequests: string[] = []
+    await page.route('**/api/v1/users/me', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        patchRequests.push(route.request().url())
+        await route.fulfill({
+          status: 405,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { message: 'Method Not Allowed' } }),
+        })
+      } else if (route.request().method() === 'PUT') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(MOCK_PROFILE),
+        })
+      } else {
+        // GET
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(MOCK_PROFILE),
+        })
+      }
+    })
+
+    await page.goto('/settings/profile')
+    await waitForHydration(page)
+    await expect(page.getByRole('heading', { name: 'プロフィール設定' })).toBeVisible({
+      timeout: 10_000,
+    })
+
+    // PUT リクエストの発火を観測する
+    const putPromise = page.waitForRequest(
+      (req) =>
+        req.url().includes('/api/v1/users/me') &&
+        !req.url().includes('contact-handle') &&
+        req.method() === 'PUT',
+      { timeout: 10_000 },
+    )
+
+    await page.getByRole('button', { name: '保存' }).first().click()
+    await putPromise
+
+    // PATCH は一度も発火していないことを確認
+    expect(patchRequests).toHaveLength(0)
+
+    await expect(page.getByText('プロフィールを更新しました')).toBeVisible({ timeout: 10_000 })
+  })
+
+  test('SET-DEEP-007: アバター選択時に /profile-media/icon/upload-url へ向かい 旧EP /users/me/avatar は叩かない', async ({
+    page,
+  }) => {
+    await setupProfileMocks(page)
+
+    // 旧EP への POST が届いたらセンチネルに記録
+    const legacyAvatarRequests: string[] = []
+    await page.route('**/api/v1/users/me/avatar', async (route) => {
+      legacyAvatarRequests.push(route.request().url())
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { message: 'Not Found' } }),
+      })
+    })
+
+    // presigned upload-url EP をモック
+    await page.route('**/profile-media/icon/upload-url', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            uploadUrl: 'https://mock-r2.example.com/upload',
+            r2Key: 'users/mock-user-id/icon/test.jpg',
+          },
+        }),
+      })
+    })
+
+    // R2 直接 PUT をモック（fetch は page.route で傍受可能）
+    await page.route('https://mock-r2.example.com/upload', async (route) => {
+      await route.fulfill({ status: 200 })
+    })
+
+    // コミット EP をモック
+    await page.route('**/profile-media/icon', async (route) => {
+      if (route.request().method() === 'PUT') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              mediaRole: 'icon',
+              url: 'https://cdn.example.com/users/mock-user-id/icon/test.jpg',
+            },
+          }),
+        })
+      } else {
+        await route.fallback()
+      }
+    })
+
+    await page.goto('/settings/profile')
+    await waitForHydration(page)
+    await expect(page.getByRole('heading', { name: 'プロフィール設定' })).toBeVisible({
+      timeout: 10_000,
+    })
+
+    // upload-url EP が呼ばれることを観測するリスナーを設定
+    const uploadUrlPromise = page.waitForRequest(
+      (req) => req.url().includes('profile-media/icon/upload-url'),
+      { timeout: 10_000 },
+    )
+
+    // ダミー画像ファイルを file input に注入
+    const fileInput = page.locator('input[type="file"][accept="image/*"]')
+    await fileInput.setInputFiles({
+      name: 'avatar.jpg',
+      mimeType: 'image/jpeg',
+      buffer: Buffer.from('fake-image-content'),
+    })
+
+    await uploadUrlPromise
+
+    // 旧 EP への POST は一切発火していないことを確認（契約回帰）
+    expect(legacyAvatarRequests).toHaveLength(0)
   })
 })

@@ -32,12 +32,13 @@ export function useMatchApi() {
   const notification = useNotification()
   const { t } = useI18n()
 
-  const base = (orgId: number, teamId: number) =>
-    `/api/v1/organizations/${orgId}/teams/${teamId}/matches`
+  const base = (orgId: number | null, teamId: number) => orgId === null
+    ? `/api/v1/teams/${teamId}/matches`
+    : `/api/v1/organizations/${orgId}/teams/${teamId}/matches`
 
   /** 試合一覧（kind/status/sport/from/to/page/size でフィルタ・ページング） */
   async function listMatches(
-    orgId: number,
+    orgId: number | null,
     teamId: number,
     params?: ListMatchesParams,
   ): Promise<PagedResponseMatchSummaryResponse> {
@@ -53,7 +54,7 @@ export function useMatchApi() {
 
   /** 試合詳細 */
   async function getMatch(
-    orgId: number,
+    orgId: number | null,
     teamId: number,
     matchId: string,
   ): Promise<MatchResponse> {
@@ -72,7 +73,7 @@ export function useMatchApi() {
    * BE は存在しない場合 200 + data:null を返すため、戻り値も `MatchSummaryResponse | null`。
    */
   async function resolveMatchBySchedule(
-    orgId: number,
+    orgId: number | null,
     teamId: number,
     scheduleId: number,
   ): Promise<MatchSummaryResponse | null> {
@@ -93,7 +94,7 @@ export function useMatchApi() {
    * BE は存在しない場合 200 + data:null を返すため、戻り値も `MatchSummaryResponse | null`。
    */
   async function resolveMatchByFixture(
-    orgId: number,
+    orgId: number | null,
     teamId: number,
     fixtureId: number,
   ): Promise<MatchSummaryResponse | null> {
@@ -110,7 +111,7 @@ export function useMatchApi() {
 
   /** 試合作成（クイックスタート＝kind＋相手名が最小） */
   async function createMatch(
-    orgId: number,
+    orgId: number | null,
     teamId: number,
     body: CreateMatchRequest,
   ): Promise<MatchResponse> {
@@ -129,7 +130,7 @@ export function useMatchApi() {
 
   /** 試合更新（venue/duration/日時/メモ等の後追い補完） */
   async function updateMatch(
-    orgId: number,
+    orgId: number | null,
     teamId: number,
     matchId: string,
     body: UpdateMatchRequest,
@@ -149,7 +150,7 @@ export function useMatchApi() {
 
   /** ステータス遷移（PLANNED/IN_PROGRESS/COMPLETED/CLOSED/CANCELLED） */
   async function changeStatus(
-    orgId: number,
+    orgId: number | null,
     teamId: number,
     matchId: string,
     body: ChangeStatusRequest,
@@ -168,7 +169,7 @@ export function useMatchApi() {
 
   /** スコア確定 */
   async function finalizeScore(
-    orgId: number,
+    orgId: number | null,
     teamId: number,
     matchId: string,
     body: FinalizeScoreRequest,
@@ -187,7 +188,7 @@ export function useMatchApi() {
 
   /** 記録モード変更（記録係の有無・割当） */
   async function changeRecordingMode(
-    orgId: number,
+    orgId: number | null,
     teamId: number,
     matchId: string,
     body: ChangeRecordingModeRequest,
@@ -205,7 +206,7 @@ export function useMatchApi() {
   }
 
   /** 試合削除 */
-  async function deleteMatch(orgId: number, teamId: number, matchId: string): Promise<void> {
+  async function deleteMatch(orgId: number | null, teamId: number, matchId: string): Promise<void> {
     try {
       await api(`${base(orgId, teamId)}/${matchId}`, { method: 'DELETE' })
       notification.success(t('match.list.delete_success'))

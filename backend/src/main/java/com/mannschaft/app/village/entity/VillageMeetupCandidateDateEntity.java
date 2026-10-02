@@ -14,6 +14,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 /**
@@ -38,6 +39,10 @@ public class VillageMeetupCandidateDateEntity extends UuidV7Entity {
     /** 候補日 */
     @Column(name = "candidate_date", nullable = false)
     private LocalDate candidateDate;
+
+    /** 候補の時刻（任意・NULL は終日）。#2357 */
+    @Column(name = "candidate_time")
+    private LocalTime candidateTime;
 
     /** 表示順 */
     @Column(name = "sort_order", nullable = false)

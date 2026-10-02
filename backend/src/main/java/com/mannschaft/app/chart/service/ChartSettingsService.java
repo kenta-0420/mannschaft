@@ -24,7 +24,9 @@ import com.mannschaft.app.chart.repository.ChartCustomValueRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.chart.repository.ChartRecordTemplateRepository;
 import com.mannschaft.app.chart.repository.ChartSectionSettingRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -55,6 +57,10 @@ public class ChartSettingsService {
     private final ChartRecordRepository recordRepository;
     private final ChartRecordTemplateRepository recordTemplateRepository;
     private final ChartMapper chartMapper;
+    private final AccessControlService accessControlService;
+
+    /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
 
     // ========================
     // セクション設定
@@ -63,7 +69,12 @@ public class ChartSettingsService {
     /**
      * セクション設定を取得する。
      */
-    public List<SectionSettingResponse> getSectionSettings(Long teamId) {
+    public List<SectionSettingResponse> getSectionSettings(Long teamId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+        return getSectionSettingsInternal(teamId);
+    }
+
+    private List<SectionSettingResponse> getSectionSettingsInternal(Long teamId) {
         List<ChartSectionSettingEntity> settings = sectionSettingRepository.findByTeamId(teamId);
         return chartMapper.toSectionSettingResponseList(settings);
     }
@@ -72,7 +83,10 @@ public class ChartSettingsService {
      * セクション設定を一括更新する。
      */
     @Transactional
-    public List<SectionSettingResponse> updateSectionSettings(Long teamId, UpdateSectionSettingsRequest request) {
+    public List<SectionSettingResponse> updateSectionSettings(Long teamId, Long actorUserId,
+                                                               UpdateSectionSettingsRequest request) {
+        // 作成先スコープ（path teamId）でcheckAdminOrAbove。セクション設定はteam単位の設定行のため entity は存在しない。
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
         for (SectionSettingRequest sectionReq : request.getSections()) {
             // enumバリデーション
             SectionType.valueOf(sectionReq.getSectionType());
@@ -89,7 +103,7 @@ public class ChartSettingsService {
         }
 
         log.info("セクション設定更新: teamId={}", teamId);
-        return getSectionSettings(teamId);
+        return getSectionSettingsInternal(teamId);
     }
 
     // ========================
@@ -99,7 +113,8 @@ public class ChartSettingsService {
     /**
      * カスタムフィールド一覧を取得する。
      */
-    public List<CustomFieldResponse> listCustomFields(Long teamId) {
+    public List<CustomFieldResponse> listCustomFields(Long teamId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         List<ChartCustomFieldEntity> fields = customFieldRepository.findByTeamIdOrderBySortOrder(teamId);
         return chartMapper.toCustomFieldResponseList(fields);
     }
@@ -108,9 +123,11 @@ public class ChartSettingsService {
      * カスタムフィールドを作成する。
      */
     @Transactional
-    public CustomFieldResponse createCustomField(Long teamId, CreateCustomFieldRequest request) {
+    public CustomFieldResponse createCustomField(Long teamId, Long actorUserId, CreateCustomFieldRequest request) {
+        // createは作成先スコープ（path teamId）でcheckAdminOrAbove。
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
         // enumバリデーション
-        CustomFieldType.valueOf(request.getFieldType());
+        EnumInputParser.parse(CustomFieldType.class, request.getFieldType(), "fieldType");
 
         long activeCount = customFieldRepository.countByTeamIdAndIsActiveTrue(teamId);
         if (activeCount >= MAX_CUSTOM_FIELDS_PER_TEAM) {
@@ -134,11 +151,14 @@ public class ChartSettingsService {
      * カスタムフィールドを更新する。
      */
     @Transactional
-    public CustomFieldResponse updateCustomField(Long teamId, Long fieldId, UpdateCustomFieldRequest request) {
+    public CustomFieldResponse updateCustomField(Long teamId, Long fieldId, Long actorUserId,
+                                                  UpdateCustomFieldRequest request) {
         ChartCustomFieldEntity entity = customFieldRepository.findByIdAndTeamId(fieldId, teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CUSTOM_FIELD_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
 
-        CustomFieldType.valueOf(request.getFieldType());
+        EnumInputParser.parse(CustomFieldType.class, request.getFieldType(), "fieldType");
 
         entity.update(request.getFieldName(), request.getFieldType(), request.getOptions(),
                 request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder());
@@ -152,9 +172,11 @@ public class ChartSettingsService {
      * カスタムフィールドを無効化する（論理削除）。
      */
     @Transactional
-    public void deactivateCustomField(Long teamId, Long fieldId) {
+    public void deactivateCustomField(Long teamId, Long fieldId, Long actorUserId) {
         ChartCustomFieldEntity entity = customFieldRepository.findByIdAndTeamId(fieldId, teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CUSTOM_FIELD_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
 
         entity.deactivate();
         customFieldRepository.save(entity);
@@ -168,8 +190,10 @@ public class ChartSettingsService {
     /**
      * 経過グラフ用データを取得する。
      */
-    public ProgressResponse getProgressData(Long teamId, Long customerUserId,
+    public ProgressResponse getProgressData(Long teamId, Long customerUserId, Long actorUserId,
                                              String fieldIdsParam, LocalDate visitDateFrom, LocalDate visitDateTo) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+
         // NUMBER型カスタムフィールドを取得
         List<ChartCustomFieldEntity> numberFields;
         if (fieldIdsParam != null && !fieldIdsParam.isBlank()) {
@@ -225,7 +249,8 @@ public class ChartSettingsService {
     /**
      * カルテテンプレート一覧を取得する。
      */
-    public List<RecordTemplateResponse> listRecordTemplates(Long teamId) {
+    public List<RecordTemplateResponse> listRecordTemplates(Long teamId, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         List<ChartRecordTemplateEntity> templates = recordTemplateRepository.findByTeamIdOrderBySortOrder(teamId);
         return chartMapper.toRecordTemplateResponseList(templates);
     }
@@ -234,7 +259,9 @@ public class ChartSettingsService {
      * カルテテンプレートを作成する。
      */
     @Transactional
-    public RecordTemplateResponse createRecordTemplate(Long teamId, CreateRecordTemplateRequest request) {
+    public RecordTemplateResponse createRecordTemplate(Long teamId, Long actorUserId, CreateRecordTemplateRequest request) {
+        // createは作成先スコープ（path teamId）でcheckAdminOrAbove。
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
         long currentCount = recordTemplateRepository.countByTeamId(teamId);
         if (currentCount >= MAX_RECORD_TEMPLATES_PER_TEAM) {
             throw new BusinessException(ChartErrorCode.RECORD_TEMPLATE_LIMIT_EXCEEDED);
@@ -259,9 +286,12 @@ public class ChartSettingsService {
      * カルテテンプレートを更新する。
      */
     @Transactional
-    public RecordTemplateResponse updateRecordTemplate(Long teamId, Long templateId, UpdateRecordTemplateRequest request) {
+    public RecordTemplateResponse updateRecordTemplate(Long teamId, Long templateId, Long actorUserId,
+                                                        UpdateRecordTemplateRequest request) {
         ChartRecordTemplateEntity entity = recordTemplateRepository.findByIdAndTeamId(templateId, teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.RECORD_TEMPLATE_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
 
         entity.update(
                 request.getTemplateName(),
@@ -281,9 +311,11 @@ public class ChartSettingsService {
      * カルテテンプレートを物理削除する。
      */
     @Transactional
-    public void deleteRecordTemplate(Long teamId, Long templateId) {
+    public void deleteRecordTemplate(Long teamId, Long templateId, Long actorUserId) {
         ChartRecordTemplateEntity entity = recordTemplateRepository.findByIdAndTeamId(templateId, teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.RECORD_TEMPLATE_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
 
         recordTemplateRepository.delete(entity);
         log.info("カルテテンプレート削除: templateId={}", templateId);

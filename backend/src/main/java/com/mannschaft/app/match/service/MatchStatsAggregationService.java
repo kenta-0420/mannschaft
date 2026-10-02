@@ -510,7 +510,11 @@ public class MatchStatsAggregationService {
      * イベント一覧＋スコア整合警告（{@code scoreMismatch}・02 §E.5・soccer §4.2）を返す。
      */
     public MatchEventsResponse getMatchEvents(UUID matchId, Long organizationId) {
-        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId);
+        return getMatchEvents(matchId, organizationId, null);
+    }
+
+    public MatchEventsResponse getMatchEvents(UUID matchId, Long organizationId, Long teamId) {
+        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId, teamId);
         List<MatchEventEntity> events =
                 matchEventRepository.findByMatchIdOrderByPeriodAscMinuteAscSortSeqAsc(matchId);
 
@@ -531,7 +535,12 @@ public class MatchStatsAggregationService {
      * 試合内の出場記録一覧を取得する（02 §F.4・両サイド・computed_minutes 込み）。
      */
     public List<PlayerAppearanceResponse> getMatchAppearances(UUID matchId, Long organizationId) {
-        matchService.getMatchOrThrow(matchId, organizationId); // テナント帰属確認（IDOR 1 段目）
+        return getMatchAppearances(matchId, organizationId, null);
+    }
+
+    public List<PlayerAppearanceResponse> getMatchAppearances(UUID matchId, Long organizationId,
+                                                               Long teamId) {
+        matchService.getMatchOrThrow(matchId, organizationId, teamId);
         return appearanceRepository.findByMatchId(matchId).stream()
                 .map(PlayerAppearanceResponse::from)
                 .toList();

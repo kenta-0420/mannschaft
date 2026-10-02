@@ -3,6 +3,7 @@ package com.mannschaft.app.disclosure.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.excel.ExcelGeneratorService;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
@@ -78,6 +79,7 @@ class DisclosureExportServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private SealStampService sealStampService;
     @Mock private SealStampLogRepository sealStampLogRepository;
+    @Mock private AccessControlService accessControlService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -99,7 +101,7 @@ class DisclosureExportServiceTest {
                 exportRepository, draftService, templateService,
                 validationService, fileService, storageService,
                 organizationRepository, dwellingUnitRepository, objectMapper,
-                sealStampService, sealStampLogRepository);
+                accessControlService, sealStampService, sealStampLogRepository);
     }
 
     @Test
@@ -276,7 +278,7 @@ class DisclosureExportServiceTest {
         when(r2StorageService.download("files/ORGANIZATION/100/abc.pdf"))
                 .thenReturn("DIFFERENT_CONTENT".getBytes());
 
-        assertThatThrownBy(() -> service.generateDownloadUrl(100L, 7L))
+        assertThatThrownBy(() -> service.generateDownloadUrl(100L, 1L, 7L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(DisclosureErrorCode.DISCLOSURE_010);
@@ -303,7 +305,7 @@ class DisclosureExportServiceTest {
         when(exportRepository.save(any(DisclosureExportEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
         java.time.LocalDateTime newExpiresAt = java.time.LocalDateTime.now().plusYears(1);
-        DisclosureExportResponse res = service.extendExpiry(100L, 7L, newExpiresAt);
+        DisclosureExportResponse res = service.extendExpiry(100L, 1L, 7L, newExpiresAt);
 
         assertThat(res.expiresAt()).isEqualTo(newExpiresAt);
         verify(exportRepository).save(e);
@@ -314,7 +316,7 @@ class DisclosureExportServiceTest {
     @DisplayName("extendExpiry(): 過去日時は DISCLOSURE_011")
     void extendExpiry_past() {
         java.time.LocalDateTime past = java.time.LocalDateTime.now().minusDays(1);
-        assertThatThrownBy(() -> service.extendExpiry(100L, 7L, past))
+        assertThatThrownBy(() -> service.extendExpiry(100L, 1L, 7L, past))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(DisclosureErrorCode.DISCLOSURE_011);
@@ -324,7 +326,7 @@ class DisclosureExportServiceTest {
     @DisplayName("extendExpiry(): 7年超は DISCLOSURE_011")
     void extendExpiry_over7Years() {
         java.time.LocalDateTime tooFar = java.time.LocalDateTime.now().plusYears(7).plusDays(2);
-        assertThatThrownBy(() -> service.extendExpiry(100L, 7L, tooFar))
+        assertThatThrownBy(() -> service.extendExpiry(100L, 1L, 7L, tooFar))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(DisclosureErrorCode.DISCLOSURE_011);
@@ -333,7 +335,7 @@ class DisclosureExportServiceTest {
     @Test
     @DisplayName("extendExpiry(): null は DISCLOSURE_011")
     void extendExpiry_null() {
-        assertThatThrownBy(() -> service.extendExpiry(100L, 7L, null))
+        assertThatThrownBy(() -> service.extendExpiry(100L, 1L, 7L, null))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(DisclosureErrorCode.DISCLOSURE_011);
@@ -352,7 +354,7 @@ class DisclosureExportServiceTest {
         when(exportRepository.findByIdAndDeletedAtIsNull(7L)).thenReturn(Optional.of(e));
 
         java.time.LocalDateTime newExpiresAt = java.time.LocalDateTime.now().plusYears(1);
-        assertThatThrownBy(() -> service.extendExpiry(100L, 7L, newExpiresAt))
+        assertThatThrownBy(() -> service.extendExpiry(100L, 1L, 7L, newExpiresAt))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(DisclosureErrorCode.DISCLOSURE_002);
@@ -388,7 +390,7 @@ class DisclosureExportServiceTest {
         when(r2StorageService.download("files/ORGANIZATION/100/x.pdf")).thenReturn(data);
         when(r2StorageService.generateDownloadUrl(anyString(), any())).thenReturn("https://r2/url");
 
-        DisclosureExportResponse res = service.generateDownloadUrl(100L, 7L);
+        DisclosureExportResponse res = service.generateDownloadUrl(100L, 1L, 7L);
         assertThat(res.downloadUrl()).isEqualTo("https://r2/url");
         assertThat(res.sha256()).isEqualTo(expectedSha);
     }
@@ -434,7 +436,7 @@ class DisclosureExportServiceTest {
         setEntityIdViaReflection(e, 7L);
         setupValidSha256Download("files/ORGANIZATION/100/x.pdf", e);
 
-        DisclosureExportResponse res = service.generateDownloadUrl(100L, 7L);
+        DisclosureExportResponse res = service.generateDownloadUrl(100L, 1L, 7L);
 
         assertThat(res.downloadUrl()).isEqualTo("https://r2/url");
         // seal_stamp_logs の照合は呼ばれていないこと
@@ -469,7 +471,7 @@ class DisclosureExportServiceTest {
         when(sealStampService.verifyStamp(901L))
                 .thenReturn(new StampVerifyResponse(901L, true, false, "OK"));
 
-        DisclosureExportResponse res = service.generateDownloadUrl(100L, 7L);
+        DisclosureExportResponse res = service.generateDownloadUrl(100L, 1L, 7L);
 
         assertThat(res.downloadUrl()).isEqualTo("https://r2/url");
         verify(sealStampService).verifyStamp(901L);
@@ -496,7 +498,7 @@ class DisclosureExportServiceTest {
         when(r2StorageService.download("files/ORGANIZATION/100/y.pdf"))
                 .thenReturn("DIFFERENT".getBytes());
 
-        assertThatThrownBy(() -> service.generateDownloadUrl(100L, 7L))
+        assertThatThrownBy(() -> service.generateDownloadUrl(100L, 1L, 7L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(DisclosureErrorCode.DISCLOSURE_010);
@@ -533,7 +535,7 @@ class DisclosureExportServiceTest {
         when(sealStampService.verifyStamp(901L))
                 .thenReturn(new StampVerifyResponse(901L, false, false, "印鑑が押印後に変更されています"));
 
-        assertThatThrownBy(() -> service.generateDownloadUrl(100L, 7L))
+        assertThatThrownBy(() -> service.generateDownloadUrl(100L, 1L, 7L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(DisclosureErrorCode.DISCLOSURE_010);
@@ -564,7 +566,7 @@ class DisclosureExportServiceTest {
                 StampTargetType.CIRCULATION, 555L))
                 .thenReturn(List.of(revoked));
 
-        DisclosureExportResponse res = service.generateDownloadUrl(100L, 7L);
+        DisclosureExportResponse res = service.generateDownloadUrl(100L, 1L, 7L);
 
         assertThat(res.downloadUrl()).isEqualTo("https://r2/url");
         // 取消済はスキップ → verifyStamp は呼ばれない

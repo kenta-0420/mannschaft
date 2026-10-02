@@ -51,8 +51,12 @@ public class TeamAdvertiserAccountController {
      * 登録後は SYSTEM_ADMIN による審査（{@code /system-admin/advertiser-accounts/{id}/approve}）
      * を経てアクティブになる。</p>
      *
+     * <p>決済方式はクレジットカード（Stripe）一本。後払い（請求書方式）は F08.12 §5.0 により
+     * 廃止済みで、{@code billingMethod=INVOICE} を指定した登録は {@code AD_036} で拒否される。
+     * 省略時は既定値 {@code STRIPE} で作成される。</p>
+     *
      * @param teamId  チーム ID（パスパラメータ）
-     * @param request 登録リクエスト（companyName / contactEmail / billingMethod）
+     * @param request 登録リクエスト（companyName / contactEmail / billingMethod。省略可・INVOICE指定は拒否）
      * @return 作成された広告主アカウント情報（status = PENDING）
      */
     @PostMapping("/register")

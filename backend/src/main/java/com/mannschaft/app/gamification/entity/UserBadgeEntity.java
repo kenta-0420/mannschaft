@@ -48,6 +48,7 @@ public class UserBadgeEntity {
     @Column(nullable = false, length = 20)
     private AwardedBy awardedBy;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

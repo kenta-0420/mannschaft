@@ -22,8 +22,8 @@ import { ref } from 'vue'
  * テストケース一覧:
  *  FAV-TGL-001: 未認証時はボタンが描画されない
  *  FAV-TGL-002: マウント時に check API が呼ばれる
- *  FAV-TGL-003: check 結果 isFavorited=false のとき ☆ 表示
- *  FAV-TGL-004: check 結果 isFavorited=true のとき ★ 表示
+ *  FAV-TGL-003: check 結果 isFavorited=false のとき ☆（pi-star アイコン）表示
+ *  FAV-TGL-004: check 結果 isFavorited=true のとき ★（pi-star-fill アイコン）表示
  *  FAV-TGL-005: ☆クリックで addFavorite 呼ばれ ★に切替 + toggled emit
  *  FAV-TGL-006: ★クリックで removeFavorite 呼ばれ ☆に切替 + toggled emit
  *  FAV-TGL-007: FAV_002 エラー時に disabled + エラートースト
@@ -55,10 +55,16 @@ vi.mock('~/composables/useFavoritesApi', () => ({
 // useAuthStore は ref ベースで isAuthenticated を切替できるようにする
 const mockIsAuthenticated = ref(true)
 vi.mock('~/stores/useAuthStore', () => ({
+  // app/plugins/auth.client.ts が mount 毎に loadFromStorage() を呼ぶため必須（#2609 是正）。
   useAuthStore: () => ({
     get isAuthenticated() {
       return mockIsAuthenticated.value
     },
+    loadFromStorage: vi.fn(),
+    // isAuthenticated=true の既定値だと auth.client.ts の armProactiveRefresh が発火し、
+    // トークン更新失敗時に authStore.logout() を呼ぶ（#2609是正: 未モックで Unhandled Rejection）。
+    // このテストでは検証対象外の副作用のため無害化する。
+    logout: vi.fn(),
   }),
 }))
 
@@ -112,7 +118,7 @@ describe('FavoriteToggleButton.vue', () => {
     expect(mockCheck).toHaveBeenCalledWith('TEAM', '123')
   })
 
-  it('FAV-TGL-003: check 結果 isFavorited=false のとき ☆ 表示', async () => {
+  it('FAV-TGL-003: check 結果 isFavorited=false のとき ☆（pi-star）表示', async () => {
     mockCheck.mockResolvedValue({ isFavorited: false, favoriteId: null })
 
     const wrapper = await mountSuspended(FavoriteToggleButton, {
@@ -121,13 +127,15 @@ describe('FavoriteToggleButton.vue', () => {
     // onMounted の非同期解決を待つ
     await new Promise((r) => setTimeout(r, 0))
 
-    expect(wrapper.text()).toContain('☆')
-    expect(wrapper.text()).not.toContain('★')
+    // #1349 でアイコン切れ修正のため ☆/★ の Unicode 文字ではなく PrimeVue の
+    // アイコンフォントクラス（pi-star / pi-star-fill）で表示状態を判定する。
+    expect(wrapper.find('.pi-star').exists()).toBe(true)
+    expect(wrapper.find('.pi-star-fill').exists()).toBe(false)
     const btn = wrapper.find('button')
     expect(btn.attributes('aria-pressed')).toBe('false')
   })
 
-  it('FAV-TGL-004: check 結果 isFavorited=true のとき ★ 表示', async () => {
+  it('FAV-TGL-004: check 結果 isFavorited=true のとき ★（pi-star-fill）表示', async () => {
     mockCheck.mockResolvedValue({ isFavorited: true, favoriteId: 'fav-001' })
 
     const wrapper = await mountSuspended(FavoriteToggleButton, {
@@ -135,7 +143,7 @@ describe('FavoriteToggleButton.vue', () => {
     })
     await new Promise((r) => setTimeout(r, 0))
 
-    expect(wrapper.text()).toContain('★')
+    expect(wrapper.find('.pi-star-fill').exists()).toBe(true)
     const btn = wrapper.find('button')
     expect(btn.attributes('aria-pressed')).toBe('true')
   })
@@ -168,7 +176,7 @@ describe('FavoriteToggleButton.vue', () => {
     await new Promise((r) => setTimeout(r, 0))
 
     expect(mockAddFavorite).toHaveBeenCalledWith('TEAM', '123')
-    expect(wrapper.text()).toContain('★')
+    expect(wrapper.find('.pi-star-fill').exists()).toBe(true)
     expect(wrapper.emitted('toggled')).toBeTruthy()
     const ev = wrapper.emitted('toggled')!
     expect(ev[0]?.[0]).toEqual({ isFavorited: true })
@@ -188,7 +196,8 @@ describe('FavoriteToggleButton.vue', () => {
     await new Promise((r) => setTimeout(r, 0))
 
     expect(mockRemoveFavorite).toHaveBeenCalledWith('fav-001')
-    expect(wrapper.text()).toContain('☆')
+    expect(wrapper.find('.pi-star').exists()).toBe(true)
+    expect(wrapper.find('.pi-star-fill').exists()).toBe(false)
     expect(wrapper.emitted('toggled')).toBeTruthy()
     const ev = wrapper.emitted('toggled')!
     expect(ev[0]?.[0]).toEqual({ isFavorited: false })
@@ -213,8 +222,9 @@ describe('FavoriteToggleButton.vue', () => {
     expect(mockNotificationError).toHaveBeenCalled()
     const btn = wrapper.find('button')
     expect(btn.attributes('disabled')).toBeDefined()
-    // 状態は未登録のままで ☆ 表示が継続する
-    expect(wrapper.text()).toContain('☆')
+    // 状態は未登録のままで ☆（pi-star）表示が継続する
+    expect(wrapper.find('.pi-star').exists()).toBe(true)
+    expect(wrapper.find('.pi-star-fill').exists()).toBe(false)
   })
 
   it('FAV-TGL-008: ARIA 属性（aria-pressed, aria-label）が正しい', async () => {

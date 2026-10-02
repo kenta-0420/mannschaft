@@ -1,6 +1,7 @@
 package com.mannschaft.app.publicview.service;
 
 import com.mannschaft.app.cms.repository.BlogPostRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.publicview.dto.PublicOrganizationSearchResultResponse;
@@ -38,6 +39,7 @@ public class PublicOrganizationSearchQueryService {
 
     private final OrganizationRepository organizationRepository;
     private final BlogPostRepository blogPostRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 公開組織を keyword / prefecture で検索する。
@@ -46,18 +48,23 @@ public class PublicOrganizationSearchQueryService {
      *
      * @param keyword    組織名・読み仮名の部分一致キーワード（null または空文字で全件対象）
      * @param prefecture 都道府県名の完全一致（null または空文字で絞り込みなし）
+     * @param acceptingTeamApplications true なら、チームからの加盟申請を受け付けている組織だけに絞る
+     *                                  （F01.2.1 §10.1。null・false は絞り込みなし）
      * @param pageable   ページング情報
      * @return PUBLIC 組織の検索結果ページ
      */
     public Page<PublicOrganizationSearchResultResponse> search(
-            String keyword, String prefecture, Pageable pageable) {
+            String keyword, String prefecture, Boolean acceptingTeamApplications, Pageable pageable) {
 
         // null や空文字は null として扱い、クエリ側で「絞り込みなし」として処理する
         String effectiveKeyword = StringUtils.hasText(keyword) ? keyword : null;
         String effectivePrefecture = StringUtils.hasText(prefecture) ? prefecture : null;
 
+        // true のときだけ絞り込む（false を「受付 off の組織だけ」とは解釈しない）
+        Boolean onlyAccepting = Boolean.TRUE.equals(acceptingTeamApplications) ? Boolean.TRUE : null;
+
         Page<OrganizationEntity> orgPage = organizationRepository.searchPublicOrganizations(
-                effectiveKeyword, effectivePrefecture, pageable);
+                effectiveKeyword, effectivePrefecture, onlyAccepting, pageable);
 
         if (orgPage.isEmpty()) {
             return Page.empty(pageable);
@@ -74,9 +81,11 @@ public class PublicOrganizationSearchQueryService {
                         org.getId(),
                         org.getSlug(),
                         org.getName(),
-                        org.getIconUrl(),
+                        // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                        mediaUrlResolver.resolve(org.getIconUrl()),
                         0, // 組織はmember_count集計カラムを持たないため、メンバー数は0として返す
-                        lastPostDateMap.get(org.getId())
+                        lastPostDateMap.get(org.getId()),
+                        Boolean.TRUE.equals(org.getTeamApplicationEnabled())
                 ))
                 .toList();
 

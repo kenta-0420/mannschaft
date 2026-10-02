@@ -1,5 +1,7 @@
 package com.mannschaft.app.resume.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.gdpr.entity.GdprS3PurgeFailureEntity;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
@@ -67,6 +69,8 @@ public class ResumePurgeEventListener {
      * 他リスナーの処理を妨げない）。
      * 失敗分は夜次補正バッチ（Phase D）で再処理する運用とする。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会確定者の履歴書レコードと R2 オブジェクトが削除されず、GDPR 第17条の消去期限を直接破ったうえ外部ストレージに個人データが残留する")
     @Async("purge-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)

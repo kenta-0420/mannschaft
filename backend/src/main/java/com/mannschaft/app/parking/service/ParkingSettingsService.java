@@ -1,5 +1,6 @@
 package com.mannschaft.app.parking.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.parking.ParkingMapper;
 import com.mannschaft.app.parking.dto.ParkingSettingsResponse;
 import com.mannschaft.app.parking.dto.UpdateSettingsRequest;
@@ -12,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 駐車場設定サービス。
+ *
+ * <p>認可根治戦役 Wave2 トランシェ2B: 閲覧は checkMembership、変更は checkAdminOrAbove を敷設。</p>
  */
 @Slf4j
 @Service
@@ -21,11 +24,13 @@ public class ParkingSettingsService {
 
     private final ParkingSettingsRepository settingsRepository;
     private final ParkingMapper parkingMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * 設定を取得する。存在しない場合はデフォルト値で作成する。
      */
-    public ParkingSettingsResponse getSettings(String scopeType, Long scopeId) {
+    public ParkingSettingsResponse getSettings(String scopeType, Long scopeId, Long currentUserId) {
+        accessControlService.checkMembership(currentUserId, scopeId, scopeType);
         ParkingSettingsEntity entity = settingsRepository.findByScopeTypeAndScopeId(scopeType, scopeId)
                 .orElseGet(() -> ParkingSettingsEntity.builder()
                         .scopeType(scopeType)
@@ -38,7 +43,8 @@ public class ParkingSettingsService {
      * 設定を更新する。
      */
     @Transactional
-    public ParkingSettingsResponse updateSettings(String scopeType, Long scopeId, UpdateSettingsRequest request) {
+    public ParkingSettingsResponse updateSettings(String scopeType, Long scopeId, UpdateSettingsRequest request, Long currentUserId) {
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
         ParkingSettingsEntity entity = settingsRepository.findByScopeTypeAndScopeId(scopeType, scopeId)
                 .orElseGet(() -> ParkingSettingsEntity.builder()
                         .scopeType(scopeType)

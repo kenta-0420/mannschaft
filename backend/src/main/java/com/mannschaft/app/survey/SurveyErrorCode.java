@@ -42,7 +42,7 @@ public enum SurveyErrorCode implements ErrorCode {
     RESULT_ACCESS_DENIED("SURVEY_010", "アンケート結果を閲覧する権限がありません", Severity.WARN),
 
     /** 開始時刻と終了時刻の整合性エラー */
-    INVALID_TIME_RANGE("SURVEY_011", "開始時刻は終了時刻より前である必要があります", Severity.ERROR),
+    INVALID_TIME_RANGE("SURVEY_011", "開始時刻は終了時刻より前である必要があります", Severity.WARN),
 
     /** 設問なしで公開不可 */
     NO_QUESTIONS("SURVEY_012", "設問が1つも登録されていないアンケートは公開できません", Severity.WARN),

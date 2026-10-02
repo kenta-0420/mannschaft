@@ -47,10 +47,16 @@ public class TournamentEntryTemplateEntity extends UuidV7Entity {
     @Builder.Default
     private Short sortOrder = 0;
 
+    /** 作成者ユーザーID（クロスドメインFK禁止のためインデックスなし。DDL は NOT NULL） */
+    @Column(nullable = false, updatable = false)
+    private Long createdBy;
+
     /** 論理削除日時（nullの場合は有効） */
     private LocalDateTime deletedAt;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

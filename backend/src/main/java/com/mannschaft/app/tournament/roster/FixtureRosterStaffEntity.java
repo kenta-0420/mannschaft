@@ -52,8 +52,10 @@ public class FixtureRosterStaffEntity extends UuidV7Entity {
     /** 紐付くユーザー（user ドメインへの ID 参照・NULL 可） */
     private Long userId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

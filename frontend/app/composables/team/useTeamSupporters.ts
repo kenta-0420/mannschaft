@@ -25,7 +25,7 @@ interface FollowStatusResponse {
 
 interface PagedData<T> {
   data: T[]
-  meta: { page: number; size: number; totalElements: number; totalPages: number }
+  meta: { page: number; size: number; total: number; totalPages: number }
 }
 
 /**

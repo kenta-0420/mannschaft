@@ -63,6 +63,10 @@ public class AdMessagingCampaignChannel extends UuidV7Entity {
     @Column(name = "banner_creative_id")
     private Long bannerCreativeId;
 
+    /** 掲載面（BANNER 時のみ・{@code AdPlacement} 語彙。{@code ads.placement} と一致させる。F09.19.2 サービング用） */
+    @Column(name = "placement", length = 30)
+    private String placement;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -31,39 +31,44 @@ public interface BulletinMapper {
     List<CategoryResponse> toCategoryResponseList(List<BulletinCategoryEntity> entities);
 
     /**
-     * スレッドエンティティをネスト設計の ThreadResponse に変換する。
-     * MapStruct の自動マッピングはフラット→ネスト構造では機能しないため、
-     * default メソッドでビルダーを明示的に使用する。
+     * スレッドエンティティをフラット設計の ThreadResponse に変換する（基底変換）。
+     *
+     * <p>FE 型 {@code BulletinThreadResponse}（フラット）を正準とし、それに一致させる。
+     * MapStruct の自動マッピングはここでは使わず、default メソッドでビルダーを明示的に使用する。</p>
+     *
+     * <p>enrichment 5 項目（投稿者表示名/アバター・カテゴリ名/色・既読・リアクション集計）は
+     * このメソッドでは解決しない（{@code author.displayName/avatarUrl=null}、{@code categoryName/Color=null}、
+     * {@code isRead=false}、{@code reactionSummary={}}、{@code myReactions=[]}）。
+     * これらは {@code BulletinThreadService#enrichThreads} がバッチ解決して上書きする。</p>
      */
     default ThreadResponse toThreadResponse(BulletinThreadEntity entity) {
         if (entity == null) return null;
         return ThreadResponse.builder()
                 .id(entity.getId())
-                .scope(new ThreadResponse.ThreadScopeDto(
-                        entity.getCategoryId(),
-                        entity.getScopeType() != null ? entity.getScopeType().name() : null,
-                        entity.getScopeId()))
-                .content(new ThreadResponse.ThreadContentDto(
-                        entity.getTitle(),
-                        entity.getBody(),
-                        entity.getPriority() != null ? entity.getPriority().name() : null,
-                        entity.getReadTrackingMode() != null ? entity.getReadTrackingMode().name() : null))
-                .state(new ThreadResponse.ThreadStateDto(
-                        entity.getIsPinned(),
-                        entity.getIsLocked(),
-                        entity.getIsArchived(),
-                        entity.getArchiveFolderId()))
-                .stats(new ThreadResponse.ThreadStatsDto(
-                        entity.getReplyCount(),
-                        entity.getReadCount(),
-                        entity.getLastRepliedAt()))
-                .source(new ThreadResponse.ThreadSourceDto(
-                        entity.getSourceType(),
-                        entity.getSourceId()))
-                .audit(new ThreadResponse.ThreadAuditDto(
-                        entity.getAuthorId(),
-                        entity.getCreatedAt(),
-                        entity.getUpdatedAt()))
+                .categoryId(entity.getCategoryId())
+                .categoryName(null)
+                .categoryColor(null)
+                .scopeType(entity.getScopeType() != null ? entity.getScopeType().name() : null)
+                .scopeId(entity.getScopeId())
+                .author(new ThreadResponse.AuthorDto(entity.getAuthorId(), null, null))
+                .title(entity.getTitle())
+                .body(entity.getBody())
+                .priority(entity.getPriority() != null ? entity.getPriority().name() : null)
+                .readTrackingMode(entity.getReadTrackingMode() != null ? entity.getReadTrackingMode().name() : null)
+                .isPinned(entity.getIsPinned())
+                .isLocked(entity.getIsLocked())
+                .isArchived(entity.getIsArchived())
+                .archiveFolderId(entity.getArchiveFolderId())
+                .replyCount(entity.getReplyCount())
+                .readCount(entity.getReadCount())
+                .isRead(false)
+                .reactionSummary(java.util.Collections.emptyMap())
+                .myReactions(java.util.Collections.emptyList())
+                .lastRepliedAt(entity.getLastRepliedAt())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .sourceType(entity.getSourceType())
+                .sourceId(entity.getSourceId())
                 .build();
     }
 

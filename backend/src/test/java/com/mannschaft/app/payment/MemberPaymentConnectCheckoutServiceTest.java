@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -64,6 +65,15 @@ class MemberPaymentConnectCheckoutServiceTest {
     @Mock private PaymentAuthorizationService paymentAuthorizationService;
     @Mock private ConnectChargeService connectChargeService;
     @Mock private ConnectAccountRepository connectAccountRepository;
+    @Mock private com.mannschaft.app.payment.service.MemberPaymentCheckoutPersistenceService memberPaymentCheckoutPersistenceService;
+    @Mock private AccessControlService accessControlService;
+    @Mock private com.mannschaft.app.payment.service.PaymentBeneficiarySettingService paymentBeneficiarySettingService;
+    @Mock private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+    // Issue #2715 ロットA: 通知本文の i18n 化で MemberPaymentService に追加した依存。
+    // このテストクラスは sendRemind を呼ばないため未使用だが、@InjectMocks が null を注入するのを防ぐため
+    // （将来ここで sendRemind 経路を検証する際の NPE 罠回避）宣言しておく。
+    @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock private org.springframework.context.MessageSource messageSource;
 
     @InjectMocks
     private MemberPaymentService service;
@@ -116,7 +126,7 @@ class MemberPaymentConnectCheckoutServiceTest {
                             .userId(PAYER).stripeCustomerId("cus_payer").build()));
             given(connectChargeService.charge(any(MembershipChargeCommand.class)))
                     .willReturn(new MembershipChargeResult(ESCROW_ID, "cs_secret", "pi_123", EscrowStatus.AUTHORIZED));
-            given(memberPaymentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(memberPaymentCheckoutPersistenceService.persist(any())).willAnswer(inv -> inv.getArgument(0));
 
             ConnectCheckoutResponse response = service.createConnectCheckout(
                     ITEM_ID, BENEFICIARY, PAYER, IDEMPOTENCY_KEY);
@@ -131,20 +141,77 @@ class MemberPaymentConnectCheckoutServiceTest {
             assertThat(cmd.payerUserId()).isEqualTo(PAYER);
             assertThat(cmd.sourceId()).isEqualTo(ITEM_ID);
             assertThat(cmd.idempotencyKey()).isEqualTo(IDEMPOTENCY_KEY);
+            assertThat(cmd.beneficiaryUserId()).isEqualTo(BENEFICIARY);
 
             // 起票された member_payment は PENDING・払い手列・escrow_transaction_id を持つ。
-            ArgumentCaptor<MemberPaymentEntity> payCaptor = ArgumentCaptor.forClass(MemberPaymentEntity.class);
-            verify(memberPaymentRepository).save(payCaptor.capture());
-            MemberPaymentEntity saved = payCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(PaymentStatus.PENDING);
-            assertThat(saved.getUserId()).isEqualTo(BENEFICIARY);
-            assertThat(saved.getPayerUserId()).isEqualTo(PAYER);
-            assertThat(saved.getPayerRelationship()).isEqualTo(PayerRelationship.SELF);
-            assertThat(saved.getEscrowTransactionId()).isEqualTo(ESCROW_ID);
-            assertThat(saved.getPaymentMethod()).isEqualTo(PaymentMethod.STRIPE);
+            ArgumentCaptor<com.mannschaft.app.payment.service.MemberPaymentCheckoutRecord> payCaptor =
+                    ArgumentCaptor.forClass(com.mannschaft.app.payment.service.MemberPaymentCheckoutRecord.class);
+            verify(memberPaymentCheckoutPersistenceService).persist(payCaptor.capture());
+            var saved = payCaptor.getValue();
+            assertThat(saved.status()).isEqualTo(PaymentStatus.PENDING);
+            assertThat(saved.userId()).isEqualTo(BENEFICIARY);
+            assertThat(saved.payerUserId()).isEqualTo(PAYER);
+            assertThat(saved.payerRelationship()).isEqualTo(PayerRelationship.SELF);
+            assertThat(saved.escrowTransactionId()).isEqualTo(ESCROW_ID);
+            assertThat(saved.paymentMethod()).isEqualTo(PaymentMethod.STRIPE);
 
             assertThat(response.getClientSecret()).isEqualTo("cs_secret");
             assertThat(response.getEscrowTransactionId()).isEqualTo(ESCROW_ID);
+        }
+
+        @Test
+        @DisplayName("同じ escrow の再送は既存 member_payment と clientSecret を返し再保存しない")
+        void sameIdempotencyKey_reusesExistingMemberPayment() {
+            MemberPaymentEntity existing = MemberPaymentEntity.builder()
+                    .id(91L)
+                    .userId(BENEFICIARY).paymentItemId(ITEM_ID).payerUserId(PAYER)
+                    .escrowTransactionId(ESCROW_ID).build();
+            given(paymentItemService.findByIdOrThrow(ITEM_ID)).willReturn(teamItem());
+            given(paymentAuthorizationService.authorizePayment(PAYER, BENEFICIARY, ITEM_ID, false))
+                    .willReturn(PayerRelationship.SELF);
+            given(memberPaymentRepository.existsValidPaidPayment(BENEFICIARY, ITEM_ID)).willReturn(false);
+            given(connectAccountRepository.findByScopeKindAndScopeIdAndDeletedAtIsNull(ScopeKind.TEAM, TEAM_ID))
+                    .willReturn(Optional.of(readyAccount()));
+            given(stripeCustomerRepository.findByUserId(PAYER)).willReturn(Optional.of(
+                    StripeCustomerEntity.builder().userId(PAYER).stripeCustomerId("cus_payer").build()));
+            given(connectChargeService.charge(any(MembershipChargeCommand.class)))
+                    .willReturn(new MembershipChargeResult(ESCROW_ID, null, "pi_reused", EscrowStatus.AUTHORIZED));
+            given(memberPaymentRepository.findByEscrowTransactionId(ESCROW_ID)).willReturn(Optional.of(existing));
+            given(stripePaymentProvider.retrievePaymentIntentClientSecret("pi_reused"))
+                    .willReturn(new StripePaymentProvider.PaymentIntentInfo("pi_reused", "secret_reused", "requires_confirmation"));
+
+            ConnectCheckoutResponse response = service.createConnectCheckout(
+                    ITEM_ID, BENEFICIARY, PAYER, IDEMPOTENCY_KEY);
+
+            assertThat(response.getMemberPaymentId()).isEqualTo(91L);
+            assertThat(response.getClientSecret()).isEqualTo("secret_reused");
+            verify(memberPaymentCheckoutPersistenceService, never()).persist(any());
+        }
+
+        @Test
+        @DisplayName("並行競合で別受益者の member_payment が回収された場合は 409 相当で拒否する")
+        void concurrentIdempotencyKeyReuseForDifferentBeneficiary_rejected() {
+            given(paymentItemService.findByIdOrThrow(ITEM_ID)).willReturn(teamItem());
+            given(paymentAuthorizationService.authorizePayment(PAYER, BENEFICIARY, ITEM_ID, false))
+                    .willReturn(PayerRelationship.SELF);
+            given(memberPaymentRepository.existsValidPaidPayment(BENEFICIARY, ITEM_ID)).willReturn(false);
+            given(connectAccountRepository.findByScopeKindAndScopeIdAndDeletedAtIsNull(ScopeKind.TEAM, TEAM_ID))
+                    .willReturn(Optional.of(readyAccount()));
+            given(stripeCustomerRepository.findByUserId(PAYER)).willReturn(Optional.of(
+                    StripeCustomerEntity.builder().userId(PAYER).stripeCustomerId("cus_payer").build()));
+            given(connectChargeService.charge(any(MembershipChargeCommand.class)))
+                    .willReturn(new MembershipChargeResult(ESCROW_ID, "cs_secret", "pi_123", EscrowStatus.AUTHORIZED));
+            given(memberPaymentCheckoutPersistenceService.persist(any())).willReturn(
+                    new com.mannschaft.app.payment.service.MemberPaymentCheckoutRecord(
+                            null, 999L, ITEM_ID, new BigDecimal("5000"), "JPY",
+                            PaymentMethod.STRIPE, PaymentStatus.PENDING, PAYER,
+                            PayerRelationship.SELF, ESCROW_ID));
+
+            assertThatThrownBy(() -> service.createConnectCheckout(
+                    ITEM_ID, BENEFICIARY, PAYER, IDEMPOTENCY_KEY))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MembershipBillingErrorCode.MEMBERSHIP_IDEMPOTENCY_KEY_REUSED);
         }
 
         @Test
@@ -285,11 +352,13 @@ class MemberPaymentConnectCheckoutServiceTest {
             given(memberPaymentRepository.existsValidPaidPayment(BENEFICIARY, ITEM_ID)).willReturn(false);
             given(paymentAuthorizationService.authorizePayment(eq(OTHER_PAYER), eq(BENEFICIARY), eq(ITEM_ID), anyBoolean()))
                     .willReturn(PayerRelationship.ADMIN_MANUAL);
+            // AC-6: 受益者のスコープ所属検証（成功系ゆえ所属メンバーとして true を返す）
+            given(accessControlService.isMemberOrDescendant(any(), any(), any(), anyBoolean())).willReturn(true);
             given(memberPaymentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(paymentMapper.toMemberPaymentResponse(any())).willReturn(null);
 
             var request = new com.mannschaft.app.payment.dto.CreateManualPaymentRequest(
-                    BENEFICIARY, new BigDecimal("5000"), java.time.LocalDateTime.now(), null, null, null);
+                    BENEFICIARY, new BigDecimal("5000"), java.time.LocalDateTime.now(), null, null, null, null);
 
             service.createManualPayment(ITEM_ID, OTHER_PAYER, request);
 

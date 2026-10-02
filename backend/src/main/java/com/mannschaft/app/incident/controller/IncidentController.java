@@ -3,6 +3,8 @@ package com.mannschaft.app.incident.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.incident.service.IncidentCommentService;
+import com.mannschaft.app.incident.service.IncidentCommentService.IncidentCommentResponse;
 import com.mannschaft.app.incident.service.IncidentService;
 import com.mannschaft.app.incident.service.IncidentService.AssignIncidentRequest;
 import com.mannschaft.app.incident.service.IncidentService.IncidentResponse;
@@ -39,6 +41,7 @@ import java.util.List;
 public class IncidentController {
 
     private final IncidentService incidentService;
+    private final IncidentCommentService incidentCommentService;
 
     // ========================================
     // 内部DTO定義（ステータス変更リクエスト）
@@ -69,7 +72,8 @@ public class IncidentController {
      */
     @GetMapping("/{id}")
     public ApiResponse<IncidentResponse> getIncident(@PathVariable Long id) {
-        IncidentResponse response = incidentService.getIncident(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        IncidentResponse response = incidentService.getIncident(id, userId);
         return ApiResponse.of(response);
     }
 
@@ -84,9 +88,10 @@ public class IncidentController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        Long userId = SecurityUtils.getCurrentUserId();
         Pageable pageable = PageRequest.of(page, size);
         Page<IncidentSummaryResponse> result =
-                incidentService.listIncidents(scopeType, scopeId, status, pageable);
+                incidentService.listIncidents(scopeType, scopeId, status, pageable, userId);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(),
                 result.getNumber(),
@@ -130,8 +135,9 @@ public class IncidentController {
     public ApiResponse<IncidentResponse> assignIncident(
             @PathVariable Long id,
             @Validated @RequestBody AssignIncidentRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         IncidentResponse response =
-                incidentService.assignIncident(id, request.assigneeId(), request.assigneeType());
+                incidentService.assignIncident(id, request.assigneeId(), request.assigneeType(), userId);
         return ApiResponse.of(response);
     }
 
@@ -141,16 +147,16 @@ public class IncidentController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteIncident(@PathVariable Long id) {
-        incidentService.deleteIncident(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        incidentService.deleteIncident(id, userId);
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * インシデントのコメント一覧を取得する。
-     * TODO: コメント機能実装後に本実装に差し替えること
-     */
+    /** インシデントの可視コメントを取得する。 */
     @GetMapping("/{id}/comments")
-    public ResponseEntity<ApiResponse<List<Object>>> listComments(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(List.of()));
+    public ResponseEntity<ApiResponse<List<IncidentCommentResponse>>> listComments(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<IncidentCommentResponse> response = incidentCommentService.listComments(id, userId);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

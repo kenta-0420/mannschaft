@@ -47,6 +47,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -227,6 +228,11 @@ class EventDelegationControllerTest {
     // DELETE /me
     // ==================================================================
 
+    /**
+     * EventDelegationController#withdraw の自己スコープ性を固定する契約テスト。
+     * {@code delegationService.withdraw(eventId, delegatorId)} は検索条件に
+     * {@code SecurityUtils.getCurrentUserId()} のみを渡すため、他人の代理を取り消す余地がない。
+     */
     @Nested
     @DisplayName("DELETE /api/v1/events/{eventId}/delegations/me")
     class Withdraw {
@@ -238,6 +244,38 @@ class EventDelegationControllerTest {
 
             mockMvc.perform(delete("/api/v1/events/{eventId}/delegations/me", EVENT_ID))
                     .andExpect(status().isNoContent());
+        }
+    }
+
+    // ==================================================================
+    // GET /me
+    // ==================================================================
+
+    /**
+     * EventDelegationController#me の自己スコープ性を固定する契約テスト。
+     * {@code findAsDelegator} / {@code findAsDelegate} はいずれも
+     * {@code SecurityUtils.getCurrentUserId()} を検索条件に束縛するため、
+     * URL に他人の識別子を含める余地が構造的に無い（{@code eventId} のみが変数）。
+     */
+    @Nested
+    @DisplayName("GET /api/v1/events/{eventId}/delegations/me")
+    class Me {
+
+        @Test
+        @DisplayName("正常系: 自分の代理状況（委任者・代理人視点）を返す")
+        void me_200() throws Exception {
+            given(delegationService.findAsDelegator(EVENT_ID, DELEGATE_ID))
+                    .willReturn(Optional.of(buildDelegation(EventDelegationStatus.ACCEPTED)));
+            given(delegationService.findAsDelegate(EVENT_ID, DELEGATE_ID))
+                    .willReturn(Optional.empty());
+
+            mockMvc.perform(get("/api/v1/events/{eventId}/delegations/me", EVENT_ID))
+                    .andExpect(status().isOk());
+
+            // 検索条件は常にログインユーザー（DELEGATE_ID = 自認証主体）のみ。
+            // 他人の userId をクエリ/パスに渡す経路が存在しないことを検証する。
+            verify(delegationService).findAsDelegator(EVENT_ID, DELEGATE_ID);
+            verify(delegationService).findAsDelegate(EVENT_ID, DELEGATE_ID);
         }
     }
 

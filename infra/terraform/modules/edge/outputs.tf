@@ -12,7 +12,18 @@ output "r2_bucket_name" {
   value       = cloudflare_r2_bucket.storage.name
 }
 
-output "acm_validation_record_fqdns" {
-  description = "ACM 証明書検証 CNAME レコードの FQDN 一覧。ルートの aws_acm_certificate_validation で validation_record_fqdns に渡す"
-  value       = [for record in cloudflare_record.acm_validation : record.hostname]
+output "cloudflared_tunnel_id" {
+  description = "Cloudflare Tunnel の ID（<id>.cfargotunnel.com のルーティング先）"
+  value       = cloudflare_zero_trust_tunnel_cloudflared.this.id
+}
+
+output "cloudflared_tunnel_cname" {
+  description = "Cloudflare Tunnel の CNAME（<tunnel_id>.cfargotunnel.com）。origin CNAME の向き先"
+  value       = cloudflare_zero_trust_tunnel_cloudflared.this.cname
+}
+
+output "cloudflared_tunnel_token" {
+  description = "cloudflared サイドカーの run トークン。apply 後に AWS Secrets Manager の箱（<prefix>/cloudflared-tunnel-token）へ手動投入する"
+  value       = cloudflare_zero_trust_tunnel_cloudflared.this.tunnel_token
+  sensitive   = true
 }

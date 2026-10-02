@@ -40,6 +40,7 @@ public class IncidentCommentAttachmentEntity {
     @Column(nullable = false)
     private Long createdBy;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

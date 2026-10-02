@@ -2,6 +2,8 @@ package com.mannschaft.app.tournament.fee;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.tournament.fee.dto.MyTournamentFeesResponse;
 import com.mannschaft.app.tournament.fee.dto.TournamentFeeCheckoutRequest;
 import com.mannschaft.app.tournament.fee.dto.TournamentFeeCheckoutResponse;
@@ -40,6 +42,8 @@ public class TournamentFeeCheckoutController {
     /**
      * 認証ユーザーが対象となっている大会参加費一覧を取得する。
      */
+    @SelfScopedEndpoint("一覧のスコープは SecurityUtils.getCurrentUserId() で確定した認証主体の"
+            + "所属組織／チームに限定される（TournamentFeePaymentService#getMyTournamentFees）")
     @GetMapping("/my")
     @Operation(summary = "自分の大会参加費一覧",
             description = "認証ユーザーが属する組織／チームを対象とした参加費を返す。支払い済みフラグ付き")
@@ -51,7 +55,14 @@ public class TournamentFeeCheckoutController {
 
     /**
      * 大会参加費の Connect 決済チェックアウトを実行する。
+     *
+     * <p><b>認可根拠（{@link AuthorizedInService}）</b>:
+     * {@code TournamentFeePaymentService#requireEligible} が {@code getMyTournamentFees} と
+     * 同一基準（主催組織のアクティブメンバーであること、{@code SPECIFIC_TEAMS} の場合は対象チームの
+     * アクティブメンバーであること）を fee 実体から検証し、対象外は不存在と同じ
+     * {@code FEE_NOT_FOUND}（404）で存在を秘匿する。</p>
      */
+    @AuthorizedInService
     @PostMapping("/{feeId}/checkout")
     @Operation(summary = "大会参加費 Connect 決済チェックアウト",
             description = "指定した参加費を Stripe Connect 経由で支払う。clientSecret を返すので Stripe.js で confirm する")

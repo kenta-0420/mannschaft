@@ -133,10 +133,10 @@ class BlogPostPublicVisibleControllerTest {
     }
 
     @Test
-    @DisplayName("BLOG_VIS_004: PATCH /blog/posts/{id}/public-visible: 存在しない postId → 400（CMS_001 / Severity.WARN デフォルト）")
-    void patchPublicVisible_postNotFound_returns400() throws Exception {
-        // CMS_001 は GlobalExceptionHandler の個別マッピングに存在しないため、
-        // Severity.WARN のデフォルト (400 BAD_REQUEST) が返る
+    @DisplayName("BLOG_VIS_004: PATCH /blog/posts/{id}/public-visible: 存在しない postId → 404（CMS_001）")
+    void patchPublicVisible_postNotFound_returns404() throws Exception {
+        // 認可根治戦役 Wave3-B7: CMS_001 は GlobalExceptionHandler に IDOR 秘匿のため 404 で
+        // 個別マッピングした（Severity.WARN 既定の 400 を上書き。他ドメインの BOLA 存在秘匿と同流儀）。
         willThrow(new BusinessException(com.mannschaft.app.cms.CmsErrorCode.POST_NOT_FOUND))
                 .given(postService).patchPublicVisible(eq(POST_ID), eq(USER_ID), anyBoolean());
 
@@ -145,7 +145,7 @@ class BlogPostPublicVisibleControllerTest {
                         .content("""
                                 { "publicVisible": true }
                                 """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test

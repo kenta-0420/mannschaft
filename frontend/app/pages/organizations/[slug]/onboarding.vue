@@ -3,7 +3,7 @@ import type { OnboardingTemplate, OnboardingProgress, OnboardingPreset } from '~
 
 definePageMeta({
   layout: 'organization',
-  middleware: 'auth',
+  middleware: ['auth', 'org-role-guard'],
 })
 
 const route = useRoute()

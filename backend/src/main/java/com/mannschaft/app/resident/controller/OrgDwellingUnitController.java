@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 組織居室管理コントローラー。
@@ -41,7 +42,8 @@ public class OrgDwellingUnitController {
             @PathVariable Long orgId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<DwellingUnitResponse> result = dwellingUnitService.listByOrganization(orgId, PageRequest.of(page, Math.min(size, 100)));
+        Page<DwellingUnitResponse> result = dwellingUnitService.listByOrganization(
+                SecurityUtils.getCurrentUserId(), orgId, PageRequest.of(page, Math.min(size, 100)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -52,14 +54,16 @@ public class OrgDwellingUnitController {
     public ResponseEntity<ApiResponse<DwellingUnitResponse>> create(
             @PathVariable Long orgId,
             @Valid @RequestBody CreateDwellingUnitRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(dwellingUnitService.createForOrganization(orgId, request)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.of(dwellingUnitService.createForOrganization(SecurityUtils.getCurrentUserId(), orgId, request)));
     }
 
     @GetMapping("/api/v1/organizations/{orgId}/dwelling-units/{id}")
     @Operation(summary = "居室詳細")
     public ResponseEntity<ApiResponse<DwellingUnitResponse>> get(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(dwellingUnitService.getByOrganization(orgId, id)));
+        return ResponseEntity.ok(
+                ApiResponse.of(dwellingUnitService.getByOrganization(SecurityUtils.getCurrentUserId(), orgId, id)));
     }
 
     @PutMapping("/api/v1/organizations/{orgId}/dwelling-units/{id}")
@@ -67,13 +71,14 @@ public class OrgDwellingUnitController {
     public ResponseEntity<ApiResponse<DwellingUnitResponse>> update(
             @PathVariable Long orgId, @PathVariable Long id,
             @Valid @RequestBody CreateDwellingUnitRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(dwellingUnitService.updateForOrganization(orgId, id, request)));
+        return ResponseEntity.ok(ApiResponse.of(
+                dwellingUnitService.updateForOrganization(SecurityUtils.getCurrentUserId(), orgId, id, request)));
     }
 
     @DeleteMapping("/api/v1/organizations/{orgId}/dwelling-units/{id}")
     @Operation(summary = "居室削除")
     public ResponseEntity<Void> delete(@PathVariable Long orgId, @PathVariable Long id) {
-        dwellingUnitService.deleteForOrganization(orgId, id);
+        dwellingUnitService.deleteForOrganization(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.noContent().build();
     }
 
@@ -82,6 +87,7 @@ public class OrgDwellingUnitController {
     public ResponseEntity<ApiResponse<List<DwellingUnitResponse>>> batchCreate(
             @PathVariable Long orgId,
             @Valid @RequestBody BatchCreateDwellingUnitRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(dwellingUnitService.batchCreateForOrganization(orgId, request)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.of(dwellingUnitService.batchCreateForOrganization(SecurityUtils.getCurrentUserId(), orgId, request)));
     }
 }

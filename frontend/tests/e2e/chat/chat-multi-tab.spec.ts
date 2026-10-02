@@ -14,26 +14,19 @@ test.use({ storageState: 'tests/e2e/.auth/user.json' })
 
 // ─── テスト用モックデータ ────────────────────────────────────────────
 
+// BE ChannelResponse のネスト正準形（identity / meta / settings / lastMessage + viewer 等）
 function buildChannel(id: number, name: string) {
   return {
     id,
-    channelType: 'TEAM',
-    team: { id: 10, name: 'テストチーム' },
-    organization: null,
-    name,
-    iconUrl: null,
-    description: null,
-    isPrivate: false,
-    isArchived: false,
-    lastMessageAt: null,
-    lastMessagePreview: null,
-    unreadCount: 0,
-    isMuted: false,
-    isPinned: false,
+    identity: { channelType: 'TEAM_PUBLIC', teamId: 10, organizationId: null },
+    meta: { name, iconKey: null, description: null },
+    settings: { isPrivate: false, isInquiryChannel: false, isArchived: false, version: 1 },
+    lastMessage: { lastMessageAt: null, lastMessagePreview: null },
+    source: { sourceType: null, sourceId: null },
+    audit: { createdBy: null, createdAt: null, updatedAt: null },
     memberCount: 5,
     dmPartner: null,
-    sourceType: null,
-    sourceId: null,
+    viewer: { unreadCount: 0, isMuted: false, isPinned: false, category: null, role: null },
   }
 }
 
@@ -41,9 +34,9 @@ const MOCK_CHANNEL_1 = buildChannel(1, '全体連絡')
 const MOCK_CHANNEL_2 = buildChannel(2, '開発チーム')
 const MOCK_CHANNEL_3 = buildChannel(3, '雑談')
 
+// チャンネル一覧の BE 実形状は { data: [...] } のみ（meta は返らない）
 const MOCK_CHANNELS_LIST = {
   data: [MOCK_CHANNEL_1, MOCK_CHANNEL_2, MOCK_CHANNEL_3],
-  meta: { nextCursor: null, hasMore: false },
 }
 
 const MOCK_MESSAGES = {

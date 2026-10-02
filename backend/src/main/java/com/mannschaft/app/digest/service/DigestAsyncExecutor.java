@@ -1,6 +1,7 @@
 package com.mannschaft.app.digest.service;
 
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.digest.DigestProperties;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -12,6 +13,7 @@ import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,13 +41,22 @@ public class DigestAsyncExecutor {
     private final DigestAiProvider aiProvider;
     private final NotificationHelper notificationHelper;
     private final NameResolverService nameResolverService;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
     private final DigestProperties digestProperties;
 
     /**
      * AI スタイルのダイジェストを非同期生成する。
      * 別クラスに切り出すことで Spring AOP プロキシ経由の @Async 呼び出しを保証する。
+     *
+     * <p>Issue #2990 L4: executor を {@code job-pool} に明示する（是正前は無指定で
+     * {@code @Primary} の {@code event-pool} へ載っていた）。本メソッドは AI プロバイダへの
+     * ネットワーク呼び出しを含む長時間処理であり、{@code event-pool}（core=2/max=5）を占有すると
+     * 他ドメインの AFTER_COMMIT 通知配送リスナーが軒並み詰まる（Issue #2953 で問題化した
+     * event-pool の自己飽和と同じ経路）。{@code job-pool} は「定期実行タスクや重い処理」用であり、
+     * 通知配送と実行資源を分離できる。</p>
      */
-    @Async
+    @Async("job-pool")
     @Transactional
     public void generateAiDigestAsync(Long digestId, String scopeType, Long scopeId,
                                        String digestStyle, String customPrompt,
@@ -118,8 +130,14 @@ public class DigestAsyncExecutor {
             // ダイジェスト生成完了通知（作成者に送信）
             NotificationScopeType notifScope = "TEAM".equals(scopeType)
                     ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
+            Locale completedLocale = Locale.forLanguageTag(userLocaleCache.getLocale(digest.getTriggeredBy()));
             notificationHelper.notify(digest.getTriggeredBy(), "DIGEST_COMPLETED",
-                    "ダイジェスト生成完了", "AIダイジェストの生成が完了しました。",
+                    messageSource.getMessage(
+                            "notification.digest.completed.title", null,
+                            "ダイジェスト生成完了", completedLocale),
+                    messageSource.getMessage(
+                            "notification.digest.completed.body", null,
+                            "AIダイジェストの生成が完了しました。", completedLocale),
                     "DIGEST", digestId, notifScope, scopeId,
                     "/digests/" + digestId, null);
 
@@ -142,9 +160,16 @@ public class DigestAsyncExecutor {
             if (failedDigest != null && failedDigest.getTriggeredBy() != null) {
                 NotificationScopeType notifScope = "TEAM".equals(scopeType)
                         ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
+                Locale failedLocale = Locale.forLanguageTag(
+                        userLocaleCache.getLocale(failedDigest.getTriggeredBy()));
                 notificationHelper.notify(failedDigest.getTriggeredBy(), "DIGEST_FAILED",
                         NotificationPriority.HIGH,
-                        "ダイジェスト生成失敗", "AIダイジェストの生成に失敗しました。再試行してください。",
+                        messageSource.getMessage(
+                                "notification.digest.failed.title", null,
+                                "ダイジェスト生成失敗", failedLocale),
+                        messageSource.getMessage(
+                                "notification.digest.failed.body", null,
+                                "AIダイジェストの生成に失敗しました。再試行してください。", failedLocale),
                         "DIGEST", digestId, notifScope, scopeId,
                         "/digests/" + digestId, null);
             }

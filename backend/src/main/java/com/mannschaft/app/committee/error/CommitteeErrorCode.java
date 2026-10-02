@@ -53,7 +53,12 @@ public enum CommitteeErrorCode implements ErrorCode {
     /** 議事録は既にCONFIRMED済み */
     MINUTES_ALREADY_CONFIRMED("COMMITTEE_MINUTES_ALREADY_CONFIRMED", "議事録は既に確定済みです", Severity.WARN),
 
-    /** 議事録が委員会スコープでない */
+    /**
+     * 議事録が委員会スコープでない（他委員会・非委員会スコープの活動記録を指した越境）。
+     *
+     * <p><b>越境の存在秘匿のため 404 固定</b>。不在（{@link #NOT_FOUND}）と同じステータスに
+     * 揃えないと、recordId の列挙で他委員会の議事録の実在が判別できる（存在オラクル）。</p>
+     */
     MINUTES_NOT_COMMITTEE_SCOPE("COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE", "指定された活動記録は委員会スコープではありません", Severity.WARN);
 
     private final String code;

@@ -1,0 +1,302 @@
+{
+  "reflection": {
+    "title": "Reflexiones",
+    "nav": {
+      "today": "Reflexiones de hoy",
+      "themes": "Temas",
+      "settings": "Ajustes de notificación",
+      "dashboard": "Panel de control"
+    },
+    "widget": {
+      "pending_recall": "Pendiente de recuerdo",
+      "unwritten": "Sin escribir",
+      "open_today": "Abrir reflexiones de hoy",
+      "empty": "No hay temas para hoy"
+    },
+    "today": {
+      "heading": "Reflexiones de hoy",
+      "date_label": "Fecha",
+      "empty": "No hay clases ni temas para hoy. Crea un tema para empezar a reflexionar.",
+      "free_themes": "Temas (fuera del horario)",
+      "timetable_slots": "Clases de hoy",
+      "no_theme": "Sin tema",
+      "create_theme_for_slot": "Crear un tema para esta franja",
+      "create_entry": "Escribir una reflexión",
+      "edit_entry": "Editar reflexión",
+      "open_recall": "Prueba de recuerdo",
+      "masked_badge": "Pendiente de recuerdo",
+      "has_entry": "Escrito",
+      "period_label": "Período {period}",
+      "main_theme_label": "Tema principal",
+      "created_at_label": "Primera creación",
+      "last_reflected_label": "Última reflexión",
+      "never_reflected": "Aún no"
+    },
+    "theme": {
+      "list_heading": "Temas",
+      "create": "Crear tema",
+      "edit": "Editar tema",
+      "delete": "Eliminar",
+      "delete_confirm": "¿Eliminar este tema y todas sus reflexiones?",
+      "empty": "Aún no hay temas. Crea tu primer tema.",
+      "title_label": "Nombre del tema",
+      "title_placeholder": "p. ej. Matemáticas II / Proyecto X / Diario",
+      "description_label": "Descripción",
+      "description_placeholder": "Nota opcional",
+      "source_type_label": "Tipo",
+      "exam_date_label": "Fecha del examen",
+      "exam_date_help": "Si se establece, se envían recordatorios 14/7/3/1 días antes del examen",
+      "exam_date_past_warning": "No se generan recordatorios para fechas pasadas",
+      "exam_date_clear": "Borrar fecha del examen",
+      "recall_interval_label": "Intervalo de recuerdo",
+      "recall_interval_fixed": "Prueba de recuerdo {days} días después (fijo)",
+      "open": "Abrir",
+      "view_entries": "Ver reflexiones",
+      "subject_link_label": "Vincular a asignatura",
+      "subject_link_none": "Sin vínculo",
+      "subject_link_placeholder": "Seleccionar de las asignaturas del horario",
+      "subject_link_help": "Este tema aparecerá en todas las clases de la asignatura seleccionada en la vista de hoy",
+      "subject_link_empty": "No hay horario registrado",
+      "academic_year_label": "Año académico",
+      "term_label_label": "Período",
+      "academic_year_placeholder": "Ej.: 2026",
+      "term_label_placeholder": "Ej.: 1.º trimestre, Primer semestre, Q1",
+      "suggest_from_timetable": "Sugerido automáticamente desde el horario (no sobreescribe los valores existentes)",
+      "parent_theme_label": "Tema padre (asignar asignatura sobre una unidad)",
+      "parent_none": "Sin padre (nivel superior)"
+    },
+    "archive": {
+      "label": "Archivo",
+      "action": {
+        "archive": "Archivar",
+        "restore": "Restaurar"
+      },
+      "confirm": {
+        "archive": "¿Archivar este tema? Se detendrán los recordatorios de repaso espaciado.",
+        "restore": "¿Restaurar este tema?"
+      },
+      "bulk_archive_button": "Archivar esta carpeta",
+      "folder": {
+        "title": "Carpetas de archivo",
+        "theme_count": "{n} temas",
+        "no_subject": "Sin asignatura",
+        "no_year": "Sin año",
+        "no_term": "Sin período"
+      },
+      "search": {
+        "placeholder": "Buscar por título o descripción",
+        "empty": "No se encontraron temas archivados"
+      }
+    },
+    "source_type": {
+      "SUBJECT": "Clase",
+      "PROJECT": "Trabajo / Proyecto",
+      "DIARY": "Diario",
+      "FREE": "Libre"
+    },
+    "template": {
+      "label": "Plantilla",
+      "help": "Elige encabezados predefinidos para tu entrada",
+      "heading_selector_label": "Encabezados a incluir",
+      "heading_optional_badge": "opcional",
+      "NORMAL": "Normal",
+      "DIARY": "Diario",
+      "WORK": "Reflexión laboral",
+      "CLASS": "Reflexión de clase",
+      "normal_desc": "Sin encabezados, escritura libre",
+      "diary_desc": "Sucesos / Sentimientos / Para mañana",
+      "work_desc": "Resultados / Problemas / Aprendizajes / Próximas acciones",
+      "class_desc": "Lo que aprendí / Dificultades / Puntos clave a recordar",
+      "preset": {
+        "diary": {
+          "event": "Sucesos",
+          "feeling": "Sentimientos",
+          "tomorrow": "Para mañana"
+        },
+        "work": {
+          "result": "Resultados",
+          "issue": "Problemas",
+          "learning": "Aprendizajes",
+          "next": "Próximas acciones"
+        },
+        "class": {
+          "learned": "Lo que aprendí",
+          "stumble": "Dificultades",
+          "keypoint": "Puntos clave a recordar"
+        },
+        "vocab": {
+          "cards": "今日の単語"
+        }
+      },
+      "VOCAB": "単語帳",
+      "vocab_desc": "語句と意味を暗記カードとして登録し、想起テストで交互に出題する"
+    },
+    "entry": {
+      "list_heading": "Reflexiones",
+      "create": "Crear reflexión",
+      "edit": "Editar reflexión",
+      "delete": "Eliminar",
+      "delete_confirm": "¿Eliminar esta reflexión?",
+      "empty": "Aún no hay reflexiones.",
+      "target_date_label": "Fecha",
+      "main_theme_label": "Tema principal",
+      "main_theme_placeholder": "p. ej. Máximos y mínimos de funciones cuadráticas",
+      "section_heading_label": "Encabezado",
+      "section_heading_placeholder": "p. ej. Completar el cuadrado",
+      "add_section": "Añadir encabezado",
+      "remove_section": "Eliminar encabezado",
+      "sub_heading_label": "Subencabezado",
+      "sub_heading_placeholder": "p. ej. Transformar a la forma estándar",
+      "add_subsection": "Añadir subencabezado",
+      "remove_subsection": "Eliminar subencabezado",
+      "detail_label": "Detalle",
+      "detail_placeholder": "Escribe lo que aprendiste",
+      "supplement_label": "Complemento",
+      "supplement_placeholder": "Complemento / nota",
+      "free_note_label": "Nota libre (excluida del recuerdo)",
+      "free_note_placeholder": "Impresiones o notas de preguntas",
+      "save": "Guardar",
+      "saved": "Guardado",
+      "save_failed": "Error al guardar",
+      "conflict": "Se actualizó en otro lugar. Recarga lo más reciente e inténtalo de nuevo.",
+      "masked_notice": "Es un objetivo de prueba de recuerdo. El contenido está oculto.",
+      "exported_badge": "Exportado al blog",
+      "exported_edited_badge": "Editado tras exportar"
+    },
+    "recall": {
+      "heading": "Prueba de recuerdo",
+      "intro": "Sin mirar el contenido, recuerda y escribe lo que recuerdes.",
+      "hint_theme": "Tema",
+      "hint_target_date": "Fecha",
+      "hint_due_dates": "Fechas de recuerdo programadas",
+      "input_label": "Lo que recordaste",
+      "input_placeholder": "Escribe todo lo que recuerdes",
+      "self_rating_label": "Autoevaluación",
+      "rating": {
+        "REMEMBERED": "Lo recordé",
+        "PARTIAL": "Parcial",
+        "FORGOT": "Lo olvidé"
+      },
+      "submit": "Guardar y revelar",
+      "submitting": "Guardando...",
+      "saved": "Recuerdo registrado",
+      "save_failed": "Error al guardar el recuerdo",
+      "revealed_heading": "Respuesta (contenido original)",
+      "your_recall": "Tu recuerdo",
+      "history_heading": "Historial de recuerdos",
+      "history_empty": "Aún no hay historial de recuerdos.",
+      "not_masked": "Esta entrada no está oculta. Puedes editarla normalmente.",
+      "back_to_entry": "Volver a la reflexión",
+      "card_answer_placeholder": "答えを入力...",
+      "outline_scaffold": {
+        "panel_heading": "Pistas de andamiaje",
+        "main_theme_label": "Tema",
+        "level_note_partial": "Solo se muestran los primeros caracteres de cada encabezado. Intenta recordar el resto.",
+        "aria_panel": "Panel de pistas de andamiaje OUTLINE"
+      }
+    },
+    "export": {
+      "button": "Exportar al blog",
+      "dialog_title": "Exportar al blog",
+      "title_label": "Título de la publicación",
+      "title_placeholder": "Si se omite, se usan el nombre del tema y la fecha",
+      "submit": "Exportar",
+      "submitting": "Exportando...",
+      "success": "Exportado al blog (privado)",
+      "failed": "Error al exportar",
+      "already_exported": "Esta reflexión ya se ha exportado",
+      "view_post": "Ver publicación exportada"
+    },
+    "settings": {
+      "heading": "Ajustes de notificación de recuerdo",
+      "remind_hour_label": "Hora de notificación",
+      "remind_hour_help": "La hora para enviar recordatorios de prueba de recuerdo (tu zona horaria)",
+      "save": "Guardar",
+      "saved": "Ajustes guardados",
+      "save_failed": "Error al guardar los ajustes",
+      "hour_format": "{hour}:00"
+    },
+    "calendar": {
+      "entry_mark": "Reflexión",
+      "recall_mark": "Recuerdo pendiente"
+    },
+    "common": {
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "loading": "Cargando...",
+      "load_failed": "Error al cargar"
+    },
+    "guide": {
+      "page_title": "Cómo usar el aprendizaje por recuperación activa",
+      "what": {
+        "title": "¿Qué es el aprendizaje por recuperación activa?",
+        "body": "La recuperación activa es un método de aprendizaje que fortalece la memoria mediante el acto de «recordar» lo aprendido. Escribe tu reflexión de hoy y, a partir del día siguiente, intenta recordar el contenido con él oculto antes de verificar tus respuestas."
+      },
+      "theme": {
+        "title": "Crear un tema",
+        "body": "Un «tema» es la unidad básica de tus reflexiones. Crea temas para las asignaturas, certificaciones, proyectos, un diario u otras áreas que quieras seguir repasando. Puedes vincularlo a un horario o usarlo como tema libre independiente."
+      },
+      "today": {
+        "title": "Escribir la reflexión de hoy",
+        "body": "La vista «Reflexiones de hoy» muestra las clases y temas del día. Abre cada tarjeta, escribe lo que aprendiste y tus ideas, y guarda."
+      },
+      "recall": {
+        "title": "Prueba de recuerdo (recuperación activa)",
+        "body": "A partir del día siguiente, el contenido que escribiste se oculta automáticamente. Intenta recordarlo con tus propias palabras y luego comprueba tus respuestas. El esfuerzo de recordar fortalece tu memoria."
+      },
+      "reminder": {
+        "title": "Recordatorios y calendario",
+        "body": "Recibirás notificaciones cuando sea el momento de repasar. Los días en que escribiste una reflexión quedan marcados en Mi calendario, para que puedas ver tu progreso de un vistazo."
+      }
+    },
+    "section": {
+      "type": {
+        "outline": "アウトライン",
+        "term_card": "暗記カード"
+      },
+      "type_label": "中見出しの型",
+      "expand": "展開する",
+      "collapse": "折りたたむ",
+      "summary_subsections": "小見出し{n}件",
+      "summary_cards": "カード{n}枚"
+    },
+    "card": {
+      "term_label": "語句",
+      "meaning_label": "意味",
+      "add": "カードを追加",
+      "remove": "カードを削除"
+    },
+    "vocab": {
+      "title": "単語帳（期間横断）",
+      "period_from": "開始日",
+      "period_to": "終了日",
+      "filter_theme": "テーマで絞り込み",
+      "filter_subject": "科目で絞り込み",
+      "mode": {
+        "view": "一覧",
+        "quiz": "自己クイズ"
+      },
+      "direction": {
+        "meaning_to_term": "意味→語句",
+        "term_to_meaning": "語句→意味",
+        "shuffle": "シャッフル"
+      },
+      "flip": "めくる",
+      "empty": "この期間に暗記カードはありません",
+      "total_cards": "{n}枚のカード",
+      "source_label": "出典",
+      "subjects_all": "全教科",
+      "subjects_filter": "教科フィルター",
+      "shuffle": "シャッフル",
+      "shuffle_note": "取得のたびに順番が変わります",
+      "card_limit_warning": "カードが多すぎます。教科または期間を絞ってください（最大500件）",
+      "inline": {
+        "title": "＋単語を追加",
+        "term_placeholder": "語句 (例: apple)",
+        "meaning_placeholder": "意味 (例: りんご)",
+        "add_button": "追加",
+        "added": "追加しました"
+      }
+    }
+  }
+}

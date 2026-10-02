@@ -3,6 +3,7 @@ package com.mannschaft.app.chat.controller;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
+import com.mannschaft.app.chat.dto.ChannelResponse;
 import com.mannschaft.app.chat.dto.MemberResponse;
 import com.mannschaft.app.chat.dto.UpdateMyChannelSettingsRequest;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
@@ -36,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -150,6 +152,33 @@ class ChatChannelControllerTest {
                             .contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isPayloadTooLarge())
                     .andExpect(jsonPath("$.error.code").value("CHAT_022"));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /chat/channels/{id} — per-user 拡張の配線")
+    class GetChannelDetail {
+
+        @Test
+        @DisplayName("AC-B5: memberCount / viewer / dmPartner がレスポンスに含まれる")
+        void AC_B5_per_user拡張が応答に出る() throws Exception {
+            ChannelResponse response = ChannelResponse.builder()
+                    .id(CHANNEL_ID)
+                    .identity(new ChannelResponse.ChannelIdentityDto("DM", null, null))
+                    .settings(new ChannelResponse.ChannelSettingsDto(false, false, false, null))
+                    .memberCount(2)
+                    .viewer(new ChannelResponse.ViewerStateDto(3, true, false, "仕事", "OWNER"))
+                    .dmPartner(new ChannelResponse.DmPartnerDto(200L, "田中太郎", "http://x/a.png"))
+                    .build();
+            given(channelService.getChannel(eq(CHANNEL_ID), eq(USER_ID))).willReturn(response);
+
+            mockMvc.perform(get("/api/v1/chat/channels/{id}", CHANNEL_ID))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.memberCount").value(2))
+                    .andExpect(jsonPath("$.data.viewer.unreadCount").value(3))
+                    .andExpect(jsonPath("$.data.viewer.role").value("OWNER"))
+                    .andExpect(jsonPath("$.data.dmPartner.userId").value(200))
+                    .andExpect(jsonPath("$.data.dmPartner.displayName").value("田中太郎"));
         }
     }
 

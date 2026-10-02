@@ -155,7 +155,7 @@ const MOCK_LISTING_FREE = {
 const MOCK_LISTINGS_PAGED = {
   data: [MOCK_LISTING_OPEN.data, MOCK_LISTING_FULL.data],
   meta: {
-    totalElements: 2,
+    total: 2,
     pageNumber: 0,
     pageSize: 20,
     totalPages: 1,

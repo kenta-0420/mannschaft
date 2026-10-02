@@ -40,7 +40,8 @@ public class OrgFolderController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<FolderResponse>>> listRootFolders(
             @PathVariable Long organizationId) {
-        List<FolderResponse> response = folderService.listOrgRootFolders(organizationId);
+        List<FolderResponse> response =
+                folderService.listOrgRootFolders(organizationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

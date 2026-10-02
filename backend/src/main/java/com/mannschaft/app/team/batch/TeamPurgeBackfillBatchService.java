@@ -1,5 +1,7 @@
 package com.mannschaft.app.team.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import lombok.RequiredArgsConstructor;
@@ -61,6 +63,8 @@ public class TeamPurgeBackfillBatchService {
      * <p>02:00 の {@code TeamMemberCountBackfillBatchService} より 1 時間後に実行することで
      * 深夜 DB 負荷を分散する。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると論理削除済みチーム関連行の物理削除 backfill が進まず、消したはずのチーム個人データが残り続ける")
     @BatchEndpoint(
             name = "team-purge-backfill-daily",
             description = "AccountPurgedEvent 処理漏れの team_org_memberships を毎日 03:00 に補正する"

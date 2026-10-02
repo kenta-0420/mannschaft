@@ -5,9 +5,7 @@ import com.mannschaft.app.timeline.TimelineErrorCode;
 import com.mannschaft.app.timeline.TimelineMapper;
 import com.mannschaft.app.timeline.dto.BookmarkResponse;
 import com.mannschaft.app.timeline.entity.TimelineBookmarkEntity;
-import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelineBookmarkRepository;
-import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -39,10 +37,10 @@ class TimelineBookmarkServiceTest {
     private TimelineBookmarkRepository bookmarkRepository;
 
     @Mock
-    private TimelinePostRepository postRepository;
+    private TimelineMapper timelineMapper;
 
     @Mock
-    private TimelineMapper timelineMapper;
+    private TimelinePostVisibilityAccessGuard postVisibilityGuard;
 
     @InjectMocks
     private TimelineBookmarkService timelineBookmarkService;
@@ -61,12 +59,11 @@ class TimelineBookmarkServiceTest {
         @DisplayName("正常系: ブックマークを追加できる")
         void ブックマークを追加できる() {
             // given
-            TimelinePostEntity post = TimelinePostEntity.builder().userId(USER_ID).build();
             TimelineBookmarkEntity bookmark = TimelineBookmarkEntity.builder()
                     .userId(USER_ID).timelinePostId(POST_ID).build();
             BookmarkResponse expected = new BookmarkResponse(1L, USER_ID, POST_ID, LocalDateTime.now());
 
-            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            // 認可根治 Wave7: postVisibilityGuard.requireVisiblePost はデフォルト（何もしない＝可視）
             given(bookmarkRepository.existsByUserIdAndTimelinePostId(USER_ID, POST_ID)).willReturn(false);
             given(bookmarkRepository.save(any(TimelineBookmarkEntity.class))).willReturn(bookmark);
             given(timelineMapper.toBookmarkResponse(any(TimelineBookmarkEntity.class))).willReturn(expected);
@@ -82,8 +79,9 @@ class TimelineBookmarkServiceTest {
         @Test
         @DisplayName("異常系: 存在しない投稿のブックマークはエラー")
         void 存在しない投稿のブックマークはエラー() {
-            // given
-            given(postRepository.findById(POST_ID)).willReturn(Optional.empty());
+            // given: 認可根治 Wave7 — 不可視/不存在は requireVisiblePost が POST_NOT_FOUND を投げる
+            org.mockito.BDDMockito.willThrow(new BusinessException(TimelineErrorCode.POST_NOT_FOUND))
+                    .given(postVisibilityGuard).requireVisiblePost(POST_ID, USER_ID);
 
             // when & then
             assertThatThrownBy(() -> timelineBookmarkService.addBookmark(POST_ID, USER_ID))
@@ -95,9 +93,7 @@ class TimelineBookmarkServiceTest {
         @Test
         @DisplayName("異常系: 既にブックマーク済みの場合はエラー")
         void 既にブックマーク済みの場合はエラー() {
-            // given
-            TimelinePostEntity post = TimelinePostEntity.builder().userId(USER_ID).build();
-            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            // given: postVisibilityGuard.requireVisiblePost はデフォルト（何もしない＝可視）
             given(bookmarkRepository.existsByUserIdAndTimelinePostId(USER_ID, POST_ID)).willReturn(true);
 
             // when & then

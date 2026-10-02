@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ActivityTemplate } from '~/types/activity'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
@@ -9,6 +9,7 @@ const teamSlug = computed(() => String(route.params.slug))
 const { getTemplates, deleteTemplate, duplicateTemplate } = useActivityApi()
 const { showError, showSuccess } = useNotification()
 const { formatDate } = useDatetime()
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const templates = ref<ActivityTemplate[]>([])
 const loading = ref(false)
@@ -27,7 +28,10 @@ async function loadTemplates() {
   }
 }
 
-onMounted(loadTemplates)
+onMounted(() => {
+  loadTemplates()
+  loadPermissions()
+})
 
 function openCreate() {
   editingTemplate.value = null
@@ -66,7 +70,12 @@ async function handleDuplicate(id: number) {
   <div class="p-4">
     <div class="mb-4 flex items-center justify-between">
       <h1 class="text-xl font-bold">活動テンプレート管理</h1>
-      <Button label="テンプレートを作成" icon="pi pi-plus" @click="openCreate" />
+      <Button
+        v-if="isAdminOrDeputy"
+        label="テンプレートを作成"
+        icon="pi pi-plus"
+        @click="openCreate"
+      />
     </div>
 
     <PageLoading v-if="loading" size="40px" />
@@ -98,7 +107,7 @@ async function handleDuplicate(id: number) {
         </template>
       </Column>
 
-      <Column header="操作" style="width: 160px">
+      <Column v-if="isAdminOrDeputy" header="操作" style="width: 160px">
         <template #body="{ data }">
           <div class="flex items-center gap-1">
             <Button

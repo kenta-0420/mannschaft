@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.publicview.dto.PublicUserPostSummaryResponse;
 import com.mannschaft.app.publicview.dto.PublicUserProfileResponse;
 import com.mannschaft.app.publicview.error.PublicViewErrorCode;
@@ -38,6 +39,7 @@ public class PublicUserProfileQueryService {
     private final BlogPostRepository blogPostRepository;
     // TODO: publicview → team のクロスドメイン参照。将来はチーム名をスナップショットで保持する方式に移行予定。
     private final TeamRepository teamRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 公開プロフィールを取得する。
@@ -57,7 +59,8 @@ public class PublicUserProfileQueryService {
         return new PublicUserProfileResponse(
                 user.getId(),
                 user.getDisplayName(),
-                user.getAvatarUrl(),
+                // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                mediaUrlResolver.resolve(user.getAvatarUrl()),
                 user.getCreatedAt().toLocalDate()
         );
     }
@@ -82,6 +85,7 @@ public class PublicUserProfileQueryService {
                 .filter(u -> u.isPublicProfileEnabled())
                 .orElseThrow(() -> new BusinessException(PublicViewErrorCode.PUBLIC_007));
 
+        // 組織の公開ページ用 slug（orgSlug）は Controller が organization ドメインの Service で解決して載せる。
         return blogPostRepository.findPublicPostsByAuthorId(userId, pageable)
                 .map(post -> toPostSummary(post));
     }
@@ -101,7 +105,8 @@ public class PublicUserProfileQueryService {
                     "TEAM",
                     team != null ? team.getName() : "",
                     post.getTeamId() != null ? String.valueOf(post.getTeamId()) : "",
-                    post.getCreatedAt()
+                    post.getCreatedAt(),
+                    null
             );
         } else {
             return new PublicUserPostSummaryResponse(
@@ -110,7 +115,8 @@ public class PublicUserProfileQueryService {
                     "ORGANIZATION",
                     "",
                     post.getOrganizationId() != null ? String.valueOf(post.getOrganizationId()) : "",
-                    post.getCreatedAt()
+                    post.getCreatedAt(),
+                    null
             );
         }
     }

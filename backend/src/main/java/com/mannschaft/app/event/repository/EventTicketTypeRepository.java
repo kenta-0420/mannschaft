@@ -4,6 +4,7 @@ import com.mannschaft.app.event.entity.EventTicketTypeEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * イベントチケット種別リポジトリ。
@@ -14,6 +15,11 @@ public interface EventTicketTypeRepository extends JpaRepository<EventTicketType
      * イベントのチケット種別一覧を取得する。
      */
     List<EventTicketTypeEntity> findByEventIdOrderBySortOrder(Long eventId);
+
+    /**
+     * チケット種別IDとイベントIDでチケット種別を取得する（親子BOLA根治: 越境ID指定を404で秘匿）。
+     */
+    Optional<EventTicketTypeEntity> findByIdAndEventId(Long id, Long eventId);
 
     /**
      * イベントの有効なチケット種別一覧を取得する。

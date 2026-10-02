@@ -74,8 +74,10 @@ public class TournamentFeeEntity extends UuidV7Entity {
     @Column(nullable = false)
     private Long createdBy;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     private LocalDateTime deletedAt;

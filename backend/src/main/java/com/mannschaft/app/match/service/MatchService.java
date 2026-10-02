@@ -3,6 +3,8 @@ package com.mannschaft.app.match.service;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.match.MatchCompletedEvent;
 import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.catalog.VolleyballSetRules;
@@ -16,6 +18,7 @@ import com.mannschaft.app.match.dto.MatchSummaryResponse;
 import com.mannschaft.app.match.entity.MatchEntity;
 import com.mannschaft.app.match.live.MatchLiveUpdateEvent;
 import com.mannschaft.app.match.repository.MatchRepository;
+import com.mannschaft.app.match.repository.MatchAttachmentRepository;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +60,8 @@ public class MatchService {
     private static final String TEAM = "TEAM";
 
     private final MatchRepository matchRepository;
+    private final MatchAttachmentRepository attachmentRepository;
+    private final StorageAclService storageAclService;
     private final MatchAccessService matchAccessService;
     private final PlayingTimeCalculationService playingTimeCalculationService;
     private final ApplicationEventPublisher eventPublisher;
@@ -73,6 +78,17 @@ public class MatchService {
     public MatchEntity getMatchOrThrow(UUID matchId, Long organizationId) {
         return matchRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(matchId, organizationId)
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_001));
+    }
+
+    public MatchEntity getStandaloneMatchOrThrow(UUID matchId, Long teamId) {
+        return matchRepository.findByIdAndTeamIdAndOrganizationIdIsNullAndDeletedAtIsNull(matchId, teamId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_001));
+    }
+
+    public MatchEntity getMatchOrThrow(UUID matchId, Long organizationId, Long teamId) {
+        return organizationId != null
+                ? getMatchOrThrow(matchId, organizationId)
+                : getStandaloneMatchOrThrow(matchId, teamId);
     }
 
     // ─────────────────────────────────────────────
@@ -103,9 +119,14 @@ public class MatchService {
         // 第一防御: 当該チームのメンバー以上であること（非メンバーは 403）
         matchAccessService.assertCanListTeamMatches(actorUserId, teamId);
         ListFilter f = filter != null ? filter : ListFilter.builder().build();
-        return matchRepository.findTeamMatches(
+        Page<MatchEntity> matches = orgId != null
+                ? matchRepository.findTeamMatches(
                         orgId, teamId, f.getStatus(), f.getKind(), f.getSport(),
                         f.getFrom(), f.getTo(), pageable)
+                : matchRepository.findStandaloneTeamMatches(
+                        teamId, f.getStatus(), f.getKind(), f.getSport(),
+                        f.getFrom(), f.getTo(), pageable);
+        return matches
                 .map(MatchSummaryResponse::from);
     }
 
@@ -348,7 +369,13 @@ public class MatchService {
     @Transactional
     public MatchEntity updateMeta(UUID matchId, Long organizationId, Long actorUserId,
                                   UpdateMetaCommand command) {
-        MatchEntity match = getMatchOrThrow(matchId, organizationId);
+        return updateMeta(matchId, organizationId, null, actorUserId, command);
+    }
+
+    @Transactional
+    public MatchEntity updateMeta(UUID matchId, Long organizationId, Long teamId, Long actorUserId,
+                                  UpdateMetaCommand command) {
+        MatchEntity match = getMatchOrThrow(matchId, organizationId, teamId);
         matchAccessService.assertCanEditMeta(actorUserId, match);
 
         if (command.getHomeAway() != null) {
@@ -380,7 +407,15 @@ public class MatchService {
     public MatchEntity finalizeScore(UUID matchId, Long organizationId, Long actorUserId,
                                      Integer homeScore, Integer awayScore,
                                      Integer homePenaltyScore, Integer awayPenaltyScore) {
-        MatchEntity match = getMatchOrThrow(matchId, organizationId);
+        return finalizeScore(matchId, organizationId, null, actorUserId, homeScore, awayScore,
+                homePenaltyScore, awayPenaltyScore);
+    }
+
+    @Transactional
+    public MatchEntity finalizeScore(UUID matchId, Long organizationId, Long teamId, Long actorUserId,
+                                     Integer homeScore, Integer awayScore,
+                                     Integer homePenaltyScore, Integer awayPenaltyScore) {
+        MatchEntity match = getMatchOrThrow(matchId, organizationId, teamId);
         matchAccessService.assertCanEditMeta(actorUserId, match);
 
         Integer beforeHome = match.getHomeScore();
@@ -424,7 +459,13 @@ public class MatchService {
     @Transactional
     public MatchEntity changeStatus(UUID matchId, Long organizationId, Long actorUserId,
                                     MatchStatus newStatus) {
-        MatchEntity match = getMatchOrThrow(matchId, organizationId);
+        return changeStatus(matchId, organizationId, null, actorUserId, newStatus);
+    }
+
+    @Transactional
+    public MatchEntity changeStatus(UUID matchId, Long organizationId, Long teamId, Long actorUserId,
+                                    MatchStatus newStatus) {
+        MatchEntity match = getMatchOrThrow(matchId, organizationId, teamId);
         matchAccessService.assertCanEditMeta(actorUserId, match);
 
         MatchStatus before = match.getStatus();
@@ -560,7 +601,15 @@ public class MatchService {
     @Transactional
     public MatchEntity changeRecordingMode(UUID matchId, Long organizationId, Long actorUserId,
                                            boolean hasScorekeeper, Long scorekeeperUserId) {
-        MatchEntity match = getMatchOrThrow(matchId, organizationId);
+        return changeRecordingMode(matchId, organizationId, null, actorUserId,
+                hasScorekeeper, scorekeeperUserId);
+    }
+
+    @Transactional
+    public MatchEntity changeRecordingMode(UUID matchId, Long organizationId, Long teamId,
+                                           Long actorUserId, boolean hasScorekeeper,
+                                           Long scorekeeperUserId) {
+        MatchEntity match = getMatchOrThrow(matchId, organizationId, teamId);
         matchAccessService.assertCanEditMeta(actorUserId, match);
 
         boolean beforeMode = match.isHasScorekeeper();
@@ -593,8 +642,16 @@ public class MatchService {
      */
     @Transactional
     public void softDelete(UUID matchId, Long organizationId, Long actorUserId) {
-        MatchEntity match = getMatchOrThrow(matchId, organizationId);
+        softDelete(matchId, organizationId, null, actorUserId);
+    }
+
+    @Transactional
+    public void softDelete(UUID matchId, Long organizationId, Long teamId, Long actorUserId) {
+        MatchEntity match = getMatchOrThrow(matchId, organizationId, teamId);
         matchAccessService.assertCanEditMeta(actorUserId, match);
+        attachmentRepository.findByMatchIdOrderByCreatedAtAsc(matchId).forEach(attachment ->
+                storageAclService.releaseClaimed(attachment.getFileKey(),
+                        new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attachment.getId().toString())));
         match.softDelete();
         matchRepository.save(match);
     }

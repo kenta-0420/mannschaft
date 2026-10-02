@@ -1,5 +1,7 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.event.ConfirmableNotificationConfirmedEvent;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
@@ -36,6 +38,8 @@ public class MarketFinalizeConfirmedListener {
      *
      * @param event 確認応答イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。募集確定通知の確認受付に伴う締結処理。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onConfirmed(ConfirmableNotificationConfirmedEvent event) {

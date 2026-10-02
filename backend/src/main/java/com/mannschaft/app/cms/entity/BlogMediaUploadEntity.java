@@ -24,6 +24,13 @@ public class BlogMediaUploadEntity {
 
     private Long uploaderId;
 
+    /** 認可済み所有スコープ。旧データの未検証行はNULLのまま読み取りを拒否する。 */
+    @Column(name = "scope_type", length = 20)
+    private String scopeType;
+
+    @Column(name = "scope_id")
+    private Long scopeId;
+
     /** メディア種別（DB: ENUM('IMAGE','VIDEO')、デフォルト 'IMAGE'）。 */
     @Column(nullable = false, length = 10)
     @Builder.Default

@@ -13,8 +13,7 @@ import com.mannschaft.app.notification.credit.repository.NotificationCreditPurch
 import com.mannschaft.app.notification.credit.repository.NotificationMonthlyUsageRepository;
 import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
 import com.mannschaft.app.notification.credit.service.NotificationCreditService;
-import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.notification.credit.event.NotificationCreditFreeQuotaAlertEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
@@ -61,10 +61,7 @@ class NotificationCreditServiceTest {
     private NotificationMonthlyUsageRepository monthlyUsageRepository;
 
     @Mock
-    private NotificationHelper notificationHelper;
-
-    @Mock
-    private UserRoleRepository userRoleRepository;
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private NotificationCreditService service;
@@ -131,15 +128,14 @@ class NotificationCreditServiceTest {
             given(monthlyUsageRepository.findByOrganizationIdAndMonthAndSourceType(any(), any(), any()))
                     .willReturn(Optional.empty());
             given(monthlyUsageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(userRoleRepository.findAdminUserIdsByOrganizationId(anyLong()))
-                    .willReturn(java.util.List.of());
-
             // when
             service.consume(1L, 200, NotificationSourceType.NOTIFY_ALL);
 
             // then: 9100通 >= 9000 → アラートフラグが立つ
             assertThat(balance.getFreeUsedThisMonth()).isEqualTo(9100L);
             assertThat(balance.getAlertSentThisMonth()).isTrue();
+            // Issue #2990 L2: 業務TX内では通知を発火せず、イベントを publish するだけである。
+            verify(eventPublisher).publishEvent(new NotificationCreditFreeQuotaAlertEvent(1L));
         }
 
         /**

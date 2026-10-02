@@ -36,6 +36,11 @@ export type RetrieveSetupIntentResult =
   | { status: 'ok'; setupIntent: SetupIntent }
   | { status: 'error'; message: string }
 
+/** retrievePaymentIntent の戻り値（3DS 復帰時に状態を確認する）。 */
+export type RetrievePaymentIntentResult =
+  | { status: 'ok'; paymentIntent: PaymentIntent }
+  | { status: 'error'; message: string }
+
 /**
  * confirmPayment の戻り値（F22.1 謝礼エスクローの manual-capture PaymentIntent 用）。
  *   - succeeded: 与信（amount_capturable）確定。manual capture では PaymentIntent.status は
@@ -44,6 +49,15 @@ export type RetrieveSetupIntentResult =
  *   - リダイレクト（3DS）発生時は本関数が解決せずブラウザが returnUrl へ遷移する。
  */
 export type StripePaymentResult =
+  | { status: 'succeeded'; paymentIntentStatus: PaymentIntent['status'] }
+  | { status: 'error'; message: string }
+
+/**
+ * Billing Center PR6b-1 AC-73: `confirmPaymentAction` の戻り値。
+ * `confirmPayment`（{@link StripePaymentResult}）と同じ 2 分岐（succeeded / error）だが、
+ * `handleNextAction` はマウント済み `elements` を要求しないため専用の関数として分離する。
+ */
+export type StripePaymentActionResult =
   | { status: 'succeeded'; paymentIntentStatus: PaymentIntent['status'] }
   | { status: 'error'; message: string }
 
@@ -152,6 +166,22 @@ export function useStripeSetup() {
     return { status: 'ok', setupIntent: result.setupIntent }
   }
 
+  /** 3DS リダイレクト復帰用に PaymentIntent を取得する。 */
+  async function retrievePaymentIntent(clientSecret: string): Promise<RetrievePaymentIntentResult> {
+    const stripe = await getStripe()
+    const result = await stripe.retrievePaymentIntent(clientSecret)
+    if (result.error) {
+      return {
+        status: 'error',
+        message: result.error.message ?? t('payment.membership.subscribe.genericError'),
+      }
+    }
+    if (!result.paymentIntent) {
+      return { status: 'error', message: t('payment.membership.subscribe.genericError') }
+    }
+    return { status: 'ok', paymentIntent: result.paymentIntent }
+  }
+
   /**
    * PaymentIntent を確定する（F22.1 謝礼エスクローの manual-capture・redirect:'if_required'）。
    *   - 成功（非リダイレクト）: { status:'succeeded', paymentIntentStatus } を返す。
@@ -185,12 +215,49 @@ export function useStripeSetup() {
     return { status: 'succeeded', paymentIntentStatus: result.paymentIntent.status }
   }
 
+  /**
+   * Billing Center PR6b-1 AC-73: プラン変更の 3DS を **clientSecret だけ**で発火する。
+   *
+   * <p>既存 {@link confirmPayment} はマウント済み `elements`（PaymentElement を出す画面）を
+   * 要求するため、プラン変更ダイアログのように PaymentElement を表示しない画面では使えない。
+   * `stripe.handleNextAction({ clientSecret })` は Stripe が自前で 3DS のモーダル/リダイレクトを
+   * 処理するため、呼び出し側は clientSecret を渡すだけでよい。</p>
+   *
+   * <p>`returnUrl` は現状 `handleNextAction` には渡さない（AC-72: in-page 解決が主系であり
+   * リダイレクトを要しない）。将来リダイレクト系の 3DS 経路が必要になった場合の呼び出し規約を
+   * 固定するためシグネチャに残す。</p>
+   *
+   * <p>AC-59: clientSecret を localStorage/sessionStorage へ書かない（Stripe.js に一度渡すだけで
+   * 本 composable 側では一切保持しない）。</p>
+   */
+  async function confirmPaymentAction(params: {
+    clientSecret: string
+    returnUrl: string
+  }): Promise<StripePaymentActionResult> {
+    const stripe = await getStripe()
+    const result = await stripe.handleNextAction({ clientSecret: params.clientSecret })
+
+    if (result.error) {
+      return {
+        status: 'error',
+        message: result.error.message ?? t('payment.membership.subscribe.genericError'),
+      }
+    }
+
+    if (!result.paymentIntent) {
+      return { status: 'error', message: t('payment.membership.subscribe.genericError') }
+    }
+    return { status: 'succeeded', paymentIntentStatus: result.paymentIntent.status }
+  }
+
   return {
     getStripe,
     mountPaymentElement,
     confirmSetup,
     confirmPayment,
+    confirmPaymentAction,
     retrieveSetupIntent,
+    retrievePaymentIntent,
   }
 }
 

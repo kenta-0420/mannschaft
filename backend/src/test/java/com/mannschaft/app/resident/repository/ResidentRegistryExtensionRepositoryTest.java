@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -161,11 +162,9 @@ class ResidentRegistryExtensionRepositoryTest extends AbstractMySqlIntegrationTe
     @DisplayName("F09.16: SECONDARY_HOME 区分のとき isSecondaryHome=true として保存できる")
     void shouldPersistSecondaryHomeFlag() {
         DwellingUnitEntity unit = persistDwellingUnit("105");
-        ResidentRegistryEntity entity = baseResident(unit.getId()).toBuilder()
-                .occupancyStatus(OccupancyStatus.SECONDARY_HOME)
-                .isSecondaryHome(true)
-                .ageEstimated(72)
-                .build();
+        ResidentRegistryEntity entity = baseResident(unit.getId());
+        entity.updateOccupancyStatus(OccupancyStatus.SECONDARY_HOME, true);
+        ReflectionTestUtils.setField(entity, "ageEstimated", 72);
 
         ResidentRegistryEntity saved = residentRegistryRepository.saveAndFlush(entity);
         em.clear();

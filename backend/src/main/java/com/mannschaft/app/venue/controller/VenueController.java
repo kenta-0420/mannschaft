@@ -16,15 +16,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 
 import java.util.List;
 
 /**
  * 施設検索・登録コントローラー。
+ *
+ * <p>{@link com.mannschaft.app.venue.entity.VenueEntity} は組織/チームに属さない
+ * 全テナント共有のマスタデータ（Google Places 由来 or 手動登録の住所録）であり、
+ * organizationId/teamId のようなテナントスコープを持たない。そのため各 EP は
+ * SecurityConfig の deny-by-default（anyRequest().authenticated()）による認証必須のみで足り、
+ * 全認証済みユーザーに同一の応答を返す（ユーザー固有情報を含まない）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/venues")
 @RequiredArgsConstructor
+@AuthorizedByPathConfig("anyRequest().authenticated()")
 public class VenueController {
 
     private final VenueService venueService;

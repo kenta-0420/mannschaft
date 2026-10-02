@@ -3,8 +3,7 @@ package com.mannschaft.app.recruitment.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.matching.entity.CityEntity;
-import com.mannschaft.app.matching.repository.CityRepository;
-import com.mannschaft.app.matching.repository.PrefectureRepository;
+import com.mannschaft.app.matching.service.RegionMasterLookupService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,10 +26,7 @@ import static org.mockito.BDDMockito.given;
 class MarketRegionValidatorTest {
 
     @Mock
-    private PrefectureRepository prefectureRepository;
-
-    @Mock
-    private CityRepository cityRepository;
+    private RegionMasterLookupService regionMasterLookupService;
 
     @InjectMocks
     private MarketRegionValidator validator;
@@ -46,6 +42,10 @@ class MarketRegionValidatorTest {
         }
     }
 
+    private static RegionMasterLookupService.City regionCity(String code, String prefCode) {
+        return new RegionMasterLookupService.City(code, prefCode, "city");
+    }
+
     @Test
     @DisplayName("両方 null → 地域なし（prefecture/city ともに null）")
     void bothNull_returnsEmpty() {
@@ -57,7 +57,8 @@ class MarketRegionValidatorTest {
     @Test
     @DisplayName("city 指定・prefecture 未指定 → 上位2桁で自動補完")
     void cityOnly_autoFillsPrefecture() {
-        given(cityRepository.findById("44202")).willReturn(Optional.of(city("44202", "44")));
+        given(regionMasterLookupService.findCityByCode("44202"))
+                .willReturn(Optional.of(regionCity("44202", "44")));
 
         MarketRegionValidator.ResolvedRegion r = validator.validateAndNormalize(null, "44202");
         assertThat(r.prefectureCode()).isEqualTo("44");
@@ -67,7 +68,7 @@ class MarketRegionValidatorTest {
     @Test
     @DisplayName("city がマスタ不在 → MARKET_001")
     void cityNotFound_throws() {
-        given(cityRepository.findById("99999")).willReturn(Optional.empty());
+        given(regionMasterLookupService.findCityByCode("99999")).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> validator.validateAndNormalize(null, "99999"))
                 .isInstanceOf(BusinessException.class)
@@ -78,7 +79,8 @@ class MarketRegionValidatorTest {
     @Test
     @DisplayName("city の上位2桁 != prefecture → MARKET_001")
     void cityPrefectureMismatch_throws() {
-        given(cityRepository.findById("44202")).willReturn(Optional.of(city("44202", "44")));
+        given(regionMasterLookupService.findCityByCode("44202"))
+                .willReturn(Optional.of(regionCity("44202", "44")));
 
         assertThatThrownBy(() -> validator.validateAndNormalize("13", "44202"))
                 .isInstanceOf(BusinessException.class)
@@ -89,7 +91,7 @@ class MarketRegionValidatorTest {
     @Test
     @DisplayName("prefecture のみ・存在 → そのまま返す")
     void prefectureOnly_exists() {
-        given(prefectureRepository.existsById("44")).willReturn(true);
+        given(regionMasterLookupService.existsPrefectureByCode("44")).willReturn(true);
 
         MarketRegionValidator.ResolvedRegion r = validator.validateAndNormalize("44", null);
         assertThat(r.prefectureCode()).isEqualTo("44");
@@ -99,7 +101,7 @@ class MarketRegionValidatorTest {
     @Test
     @DisplayName("prefecture のみ・不在 → MARKET_001")
     void prefectureOnly_notFound_throws() {
-        given(prefectureRepository.existsById("99")).willReturn(false);
+        given(regionMasterLookupService.existsPrefectureByCode("99")).willReturn(false);
 
         assertThatThrownBy(() -> validator.validateAndNormalize("99", null))
                 .isInstanceOf(BusinessException.class)
@@ -121,8 +123,8 @@ class MarketRegionValidatorTest {
     @Test
     @DisplayName("複数県 → 各要素を検証し順序を保って返す")
     void all_multiplePrefectures_validatedInOrder() {
-        given(prefectureRepository.existsById("13")).willReturn(true);
-        given(prefectureRepository.existsById("14")).willReturn(true);
+        given(regionMasterLookupService.existsPrefectureByCode("13")).willReturn(true);
+        given(regionMasterLookupService.existsPrefectureByCode("14")).willReturn(true);
 
         List<MarketRegionValidator.ResolvedRegion> result = validator.validateAndNormalizeAll(List.of(
                 new MarketRegionValidator.RegionPair("13", null),
@@ -136,7 +138,8 @@ class MarketRegionValidatorTest {
     @Test
     @DisplayName("city 指定は上位2桁で prefecture 補完される（複数地域）")
     void all_cityAutoFillsPrefecture() {
-        given(cityRepository.findById("44202")).willReturn(Optional.of(city("44202", "44")));
+        given(regionMasterLookupService.findCityByCode("44202"))
+                .willReturn(Optional.of(regionCity("44202", "44")));
 
         List<MarketRegionValidator.ResolvedRegion> result = validator.validateAndNormalizeAll(List.of(
                 new MarketRegionValidator.RegionPair(null, "44202")));
@@ -149,7 +152,7 @@ class MarketRegionValidatorTest {
     @Test
     @DisplayName("重複指定（同一県を 2 回）は重複排除されて 1 件")
     void all_dedupesDuplicates() {
-        given(prefectureRepository.existsById("13")).willReturn(true);
+        given(regionMasterLookupService.existsPrefectureByCode("13")).willReturn(true);
 
         List<MarketRegionValidator.ResolvedRegion> result = validator.validateAndNormalizeAll(List.of(
                 new MarketRegionValidator.RegionPair("13", null),
@@ -162,7 +165,7 @@ class MarketRegionValidatorTest {
     @Test
     @DisplayName("両 null 要素は地域なし扱いとしてリストに含めない")
     void all_bothNullElement_excluded() {
-        given(prefectureRepository.existsById("13")).willReturn(true);
+        given(regionMasterLookupService.existsPrefectureByCode("13")).willReturn(true);
 
         List<MarketRegionValidator.ResolvedRegion> result = validator.validateAndNormalizeAll(List.of(
                 new MarketRegionValidator.RegionPair("13", null),
@@ -175,7 +178,7 @@ class MarketRegionValidatorTest {
     @Test
     @DisplayName("1 要素でもマスタ不在なら MARKET_001（全体が失敗）")
     void all_anyInvalid_throws() {
-        given(prefectureRepository.existsById("99")).willReturn(false);
+        given(regionMasterLookupService.existsPrefectureByCode("99")).willReturn(false);
 
         assertThatThrownBy(() -> validator.validateAndNormalizeAll(List.of(
                 new MarketRegionValidator.RegionPair("99", null))))

@@ -98,8 +98,10 @@ class FriendNotificationServiceTest {
 
             doNothing().when(accessControlService)
                     .checkPermission(USER_ID, TEAM_ID, "TEAM", "MANAGE_FRIEND_TEAMS");
+            // scope_type は enum で渡すこと（.name() の String はリポジトリ層で型不一致 → 実行時 500）。
+            // 実 DB での回帰は FriendNotificationScopeQueryContractIT が担保する。
             given(notificationRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
-                    NotificationScopeType.FRIEND_TEAM.name(), TEAM_ID, pageable))
+                    NotificationScopeType.FRIEND_TEAM, TEAM_ID, pageable))
                     .willReturn(entityPage);
             given(notificationMapper.toNotificationResponse(entity)).willReturn(response);
 
@@ -111,7 +113,7 @@ class FriendNotificationServiceTest {
             assertThat(result.getContent()).hasSize(1);
             assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
             verify(notificationRepository).findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
-                    NotificationScopeType.FRIEND_TEAM.name(), TEAM_ID, pageable);
+                    NotificationScopeType.FRIEND_TEAM, TEAM_ID, pageable);
         }
 
         @Test
@@ -124,7 +126,7 @@ class FriendNotificationServiceTest {
             doNothing().when(accessControlService)
                     .checkPermission(USER_ID, TEAM_ID, "TEAM", "MANAGE_FRIEND_TEAMS");
             given(notificationRepository.findByScopeTypeAndScopeIdAndIsReadOrderByCreatedAtDesc(
-                    NotificationScopeType.FRIEND_TEAM.name(), TEAM_ID, false, pageable))
+                    NotificationScopeType.FRIEND_TEAM, TEAM_ID, false, pageable))
                     .willReturn(emptyPage);
 
             // when
@@ -134,7 +136,7 @@ class FriendNotificationServiceTest {
             // then
             assertThat(result.isEmpty()).isTrue();
             verify(notificationRepository).findByScopeTypeAndScopeIdAndIsReadOrderByCreatedAtDesc(
-                    NotificationScopeType.FRIEND_TEAM.name(), TEAM_ID, false, pageable);
+                    NotificationScopeType.FRIEND_TEAM, TEAM_ID, false, pageable);
             verify(notificationRepository, never()).findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
                     any(), any(), any());
         }

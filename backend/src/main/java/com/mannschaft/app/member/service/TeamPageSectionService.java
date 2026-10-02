@@ -1,12 +1,14 @@
 package com.mannschaft.app.member.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.member.MemberErrorCode;
 import com.mannschaft.app.member.MemberMapper;
 import com.mannschaft.app.member.SectionType;
 import com.mannschaft.app.member.dto.CreateSectionRequest;
 import com.mannschaft.app.member.dto.SectionResponse;
 import com.mannschaft.app.member.dto.UpdateSectionRequest;
+import com.mannschaft.app.member.entity.TeamPageEntity;
 import com.mannschaft.app.member.entity.TeamPageSectionEntity;
 import com.mannschaft.app.member.repository.TeamPageSectionRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,11 +20,16 @@ import java.util.List;
 
 /**
  * ページセクションサービス。セクションのCRUDを担当する。
+ *
+ * <p><b>TX 境界（PR #3387 D-3T 根治）</b>: クラス単位の {@code @Transactional} を付けない。閲覧系メソッドは
+ * 他ドメインの権限確認（{@code AccessControlService}）を読むので、member の TX の外で走らせる
+ * （付けると権限確認が member の TX に入り、D-3T が赤になる）。書き込みメソッドは必ずメソッド単位の
+ * {@code @Transactional} を持つこと。閲覧で生じる短い隙の扱いは
+ * docs/features/F06.6_member_subtab_visibility.md「TX 境界とレース」節を参照。</p>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class TeamPageSectionService {
 
     private final TeamPageSectionRepository sectionRepository;
@@ -32,9 +39,10 @@ public class TeamPageSectionService {
     /**
      * セクション一覧を取得する。
      */
-    public List<SectionResponse> listSections(Long pageId) {
-        // ページ存在確認
-        pageService.findPageOrThrow(pageId);
+    public List<SectionResponse> listSections(Long actorUserId, Long pageId) {
+        // ページ存在確認 + entity 由来スコープでメンバー検証（Wave3-B2 member 認可根治）
+        TeamPageEntity page = pageService.findPageOrThrow(pageId);
+        pageService.checkPageViewableOrNotFound(actorUserId, page);
         List<TeamPageSectionEntity> entities = sectionRepository.findByTeamPageIdOrderBySortOrder(pageId);
         return memberMapper.toSectionResponseList(entities);
     }
@@ -43,11 +51,12 @@ public class TeamPageSectionService {
      * セクションを追加する。
      */
     @Transactional
-    public SectionResponse createSection(Long pageId, CreateSectionRequest request) {
-        // ページ存在確認
-        pageService.findPageOrThrow(pageId);
+    public SectionResponse createSection(Long actorUserId, Long pageId, CreateSectionRequest request) {
+        // ページ存在確認 + entity 由来スコープで ADMIN 以上検証（Wave3-B2 member 認可根治）
+        TeamPageEntity page = pageService.findPageOrThrow(pageId);
+        pageService.checkPageAdminOrNotFound(actorUserId, page);
 
-        SectionType sectionType = SectionType.valueOf(request.getSectionType());
+        SectionType sectionType = EnumInputParser.parse(SectionType.class, request.getSectionType(), "sectionType");
         Integer sortOrder = request.getSortOrder() != null ? request.getSortOrder() : 0;
 
         TeamPageSectionEntity entity = TeamPageSectionEntity.builder()
@@ -69,8 +78,12 @@ public class TeamPageSectionService {
      * セクションを更新する。
      */
     @Transactional
-    public SectionResponse updateSection(Long sectionId, UpdateSectionRequest request) {
+    public SectionResponse updateSection(Long actorUserId, Long sectionId, UpdateSectionRequest request) {
         TeamPageSectionEntity entity = findSectionOrThrow(sectionId);
+        // URL に pageId/teamId を含まない bare id エンドポイントのため、entity 由来（teamPageId経由の
+        // ページ）スコープで ADMIN 以上を検証する（Wave3-B2 member BOLA対策）。
+        TeamPageEntity page = pageService.findPageOrThrow(entity.getTeamPageId());
+        pageService.checkPageAdminOrNotFound(actorUserId, page);
 
         Integer sortOrder = request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder();
 
@@ -86,8 +99,11 @@ public class TeamPageSectionService {
      * セクションを削除する。
      */
     @Transactional
-    public void deleteSection(Long sectionId) {
+    public void deleteSection(Long actorUserId, Long sectionId) {
         TeamPageSectionEntity entity = findSectionOrThrow(sectionId);
+        // BOLA対策: entity 由来（teamPageId経由のページ）スコープで ADMIN 以上を検証する（Wave3-B2 member）。
+        TeamPageEntity page = pageService.findPageOrThrow(entity.getTeamPageId());
+        pageService.checkPageAdminOrNotFound(actorUserId, page);
         sectionRepository.delete(entity);
         log.info("セクション削除: sectionId={}", sectionId);
     }

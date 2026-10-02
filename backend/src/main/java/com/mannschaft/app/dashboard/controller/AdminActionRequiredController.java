@@ -70,7 +70,7 @@ public class AdminActionRequiredController {
      */
     @GetMapping("/organization/{orgSlug}/admin-action-required")
     @Operation(summary = "組織横断承認待ち集約",
-            description = "ADMIN/DEPUTY 向け。組織が発行した未収請求（SENT/VIEWED/OVERDUE）を集約。preview_size=0 で件数のみ")
+            description = "ADMIN/DEPUTY 向け。組織が発行した未収請求（SENT/VIEWED/PROCESSING/OVERDUE）を集約。preview_size=0 で件数のみ")
     public ResponseEntity<ApiResponse<AdminActionRequiredResponse>> getOrgAdminActionRequired(
             @PathVariable String orgSlug,
             @RequestParam(name = "preview_size", required = false) Integer previewSize) {

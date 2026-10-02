@@ -9,6 +9,7 @@ import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
 import com.mannschaft.app.payment.dto.GateCheckResponse;
 import com.mannschaft.app.payment.service.PaymentGateService;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 import com.mannschaft.app.social.announcement.AnnouncementFeedRepository;
 import com.mannschaft.app.payment.constant.ContentGateType;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
@@ -118,6 +119,8 @@ class AnnouncementFeedVisibilityResolverTest {
                     FEED_ID, AnnouncementFeedVisibility.PUBLIC, null, null);
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
+            when(paymentGateService.checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(), eq(null), any()))
+                    .thenReturn(Map.of(FEED_ID, new GateCheckResponse(true, false, List.of())));
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);
 
@@ -135,6 +138,8 @@ class AnnouncementFeedVisibilityResolverTest {
                     Map.of(), Set.of(), Set.of());
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(snapshot);
+            when(paymentGateService.checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(), eq(VIEWER_ID), any()))
+                    .thenReturn(Map.of(FEED_ID, new GateCheckResponse(true, false, List.of())));
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);
 
@@ -170,6 +175,8 @@ class AnnouncementFeedVisibilityResolverTest {
                     Map.of(), Set.of(), Set.of());
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(snapshot);
+            when(paymentGateService.checkAccessBatch(eq(ContentGateType.ANNOUNCEMENT), any(), eq(VIEWER_ID), any()))
+                    .thenReturn(Map.of(FEED_ID, new GateCheckResponse(true, false, List.of())));
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);
 
@@ -194,7 +201,7 @@ class AnnouncementFeedVisibilityResolverTest {
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
             when(paymentGateService.checkAccess(
-                    eq(ContentGateType.ANNOUNCEMENT), eq(FEED_ID), eq(VIEWER_ID)))
+                    eq(ContentGateType.ANNOUNCEMENT), eq(FEED_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                     .thenReturn(new GateCheckResponse(true, false, List.of()));
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);
@@ -210,7 +217,7 @@ class AnnouncementFeedVisibilityResolverTest {
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
             when(paymentGateService.checkAccess(
-                    eq(ContentGateType.ANNOUNCEMENT), eq(FEED_ID), eq(VIEWER_ID)))
+                    eq(ContentGateType.ANNOUNCEMENT), eq(FEED_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                     .thenReturn(new GateCheckResponse(false, false, List.of()));
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);
@@ -240,7 +247,7 @@ class AnnouncementFeedVisibilityResolverTest {
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
             when(paymentGateService.checkAccess(
-                    eq(ContentGateType.ANNOUNCEMENT), eq(FEED_ID), eq(VIEWER_ID)))
+                    eq(ContentGateType.ANNOUNCEMENT), eq(FEED_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                     .thenReturn(new GateCheckResponse(true, false, List.of()));
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);
@@ -257,7 +264,7 @@ class AnnouncementFeedVisibilityResolverTest {
             when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
                     .thenReturn(UserScopeRoleSnapshot.empty());
             when(paymentGateService.checkAccess(
-                    eq(ContentGateType.ANNOUNCEMENT), eq(FEED_ID), eq(VIEWER_ID)))
+                    eq(ContentGateType.ANNOUNCEMENT), eq(FEED_ID), eq(VIEWER_ID), any(ContentGateTarget.class)))
                     .thenReturn(new GateCheckResponse(false, false, List.of()));
 
             AnnouncementFeedVisibilityResolver directResolver = resolverWithProjection(p);

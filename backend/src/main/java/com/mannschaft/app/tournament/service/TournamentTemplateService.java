@@ -1,6 +1,8 @@
 package com.mannschaft.app.tournament.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.tournament.StatAggregationType;
 import com.mannschaft.app.tournament.StatDataType;
 import com.mannschaft.app.tournament.TiebreakerCriteria;
@@ -35,6 +37,12 @@ import java.util.List;
 
 /**
  * テンプレート管理サービス。
+ *
+ * <h2>認可（認可根治戦役 Wave2 トランシェ2C）</h2>
+ * <p>従来は認可が完全に欠落しており、認証さえあれば他組織のテンプレートを閲覧/更新/削除できる
+ * IDOR/BOLA の穴だった（findTemplateOrThrow が全テナント串刺しの findById）。閲覧は組織メンバー、
+ * 変更（作成/更新/削除）は主催組織 ADMIN/DEPUTY_ADMIN を要求し、templateId は必ず path orgId
+ * 配下であることを束縛検証する（他組織の templateId を自組織 URL に指定した越境を 404 で遮断）。</p>
  */
 @Slf4j
 @Service
@@ -49,20 +57,30 @@ public class TournamentTemplateService {
     private final SystemTournamentPresetTiebreakerRepository presetTiebreakerRepository;
     private final SystemTournamentPresetStatDefRepository presetStatDefRepository;
     private final TournamentMapper mapper;
+    private final AccessControlService accessControlService;
 
     /**
-     * テンプレート一覧を取得する。
+     * テンプレート一覧を取得する（閲覧系）。組織メンバーであることを要求する。
      */
-    public Page<TemplateResponse> listTemplates(Long orgId, Pageable pageable) {
+    public Page<TemplateResponse> listTemplates(Long orgId, Long userId, Pageable pageable) {
+        accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
         return templateRepository.findByOrganizationIdOrderByCreatedAtDesc(orgId, pageable)
                 .map(entity -> mapper.toTemplateResponse(entity,
                         List.of(), List.of()));
     }
 
     /**
-     * テンプレート詳細を取得する。
+     * テンプレート詳細を取得する（閲覧系）。組織メンバーであることを要求し、
+     * templateId が path orgId 配下であることを束縛検証する（他組織 templateId の越境を 404 で遮断）。
      */
-    public TemplateResponse getTemplate(Long orgId, Long templateId) {
+    public TemplateResponse getTemplate(Long orgId, Long templateId, Long userId) {
+        accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
+        findTemplateInOrgOrThrow(orgId, templateId);
+        return buildTemplateResponse(templateId);
+    }
+
+    /** 内部専用: 認可済みの文脈からのみ呼ぶこと（作成/更新直後のレスポンス構築等）。 */
+    private TemplateResponse buildTemplateResponse(Long templateId) {
         TournamentTemplateEntity template = findTemplateOrThrow(templateId);
         List<TiebreakerResponse> tiebreakers = tiebreakerRepository
                 .findByTemplateIdOrderByPriorityAsc(templateId)
@@ -74,10 +92,11 @@ public class TournamentTemplateService {
     }
 
     /**
-     * テンプレートを作成する。
+     * テンプレートを作成する（変更系）。主催組織 ADMIN/DEPUTY_ADMIN を要求する。
      */
     @Transactional
     public TemplateResponse createTemplate(Long orgId, Long userId, CreateTemplateRequest request) {
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
         TournamentTemplateEntity template = TournamentTemplateEntity.builder()
                 .organizationId(orgId)
                 .name(request.getName())
@@ -101,14 +120,15 @@ public class TournamentTemplateService {
         saveTemplateTiebreakers(template.getId(), request.getTiebreakers());
         saveTemplateStatDefs(template.getId(), request.getStatDefs());
 
-        return getTemplate(orgId, template.getId());
+        return buildTemplateResponse(template.getId());
     }
 
     /**
-     * プリセットから複製してテンプレートを作成する。
+     * プリセットから複製してテンプレートを作成する（変更系）。主催組織 ADMIN/DEPUTY_ADMIN を要求する。
      */
     @Transactional
     public TemplateResponse cloneFromPreset(Long orgId, Long userId, Long presetId) {
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
         SystemTournamentPresetEntity preset = presetRepository.findById(presetId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.PRESET_NOT_FOUND));
 
@@ -161,15 +181,17 @@ public class TournamentTemplateService {
                         .sortOrder(psd.getSortOrder())
                         .build()));
 
-        return getTemplate(orgId, templateId);
+        return buildTemplateResponse(templateId);
     }
 
     /**
-     * テンプレートを更新する。
+     * テンプレートを更新する（変更系）。templateId が path orgId 配下であることを束縛検証した上で
+     * 主催組織 ADMIN/DEPUTY_ADMIN を要求する（BOLA 是正）。
      */
     @Transactional
-    public TemplateResponse updateTemplate(Long orgId, Long templateId, UpdateTemplateRequest request) {
-        TournamentTemplateEntity template = findTemplateOrThrow(templateId);
+    public TemplateResponse updateTemplate(Long orgId, Long templateId, Long userId, UpdateTemplateRequest request) {
+        TournamentTemplateEntity template = findTemplateInOrgOrThrow(orgId, templateId);
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
         template.update(
                 request.getName() != null ? request.getName() : template.getName(),
                 request.getDescription() != null ? request.getDescription() : template.getDescription(),
@@ -196,15 +218,17 @@ public class TournamentTemplateService {
             saveTemplateStatDefs(templateId, request.getStatDefs());
         }
 
-        return getTemplate(orgId, templateId);
+        return buildTemplateResponse(templateId);
     }
 
     /**
-     * テンプレートを論理削除する。
+     * テンプレートを論理削除する（変更系）。templateId が path orgId 配下であることを束縛検証した上で
+     * 主催組織 ADMIN/DEPUTY_ADMIN を要求する（BOLA 是正）。
      */
     @Transactional
-    public void deleteTemplate(Long templateId) {
-        TournamentTemplateEntity template = findTemplateOrThrow(templateId);
+    public void deleteTemplate(Long orgId, Long templateId, Long userId) {
+        TournamentTemplateEntity template = findTemplateInOrgOrThrow(orgId, templateId);
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
         template.softDelete();
         templateRepository.save(template);
     }
@@ -214,6 +238,17 @@ public class TournamentTemplateService {
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.TEMPLATE_NOT_FOUND));
     }
 
+    /**
+     * テンプレートが path orgId 配下であることを検証する（BOLA 対策・IDOR 対策で 404 に統一）。
+     */
+    private TournamentTemplateEntity findTemplateInOrgOrThrow(Long orgId, Long templateId) {
+        TournamentTemplateEntity template = findTemplateOrThrow(templateId);
+        if (!template.getOrganizationId().equals(orgId)) {
+            throw new BusinessException(TournamentErrorCode.TEMPLATE_NOT_FOUND);
+        }
+        return template;
+    }
+
     private void saveTemplateTiebreakers(Long templateId,
                                          List<com.mannschaft.app.tournament.dto.TiebreakerRequest> requests) {
         if (requests == null) return;
@@ -221,9 +256,9 @@ public class TournamentTemplateService {
                 TournamentTemplateTiebreakerEntity.builder()
                         .templateId(templateId)
                         .priority(req.getPriority())
-                        .criteria(TiebreakerCriteria.valueOf(req.getCriteria()))
+                        .criteria(EnumInputParser.parse(TiebreakerCriteria.class, req.getCriteria(), "criteria"))
                         .direction(req.getDirection() != null
-                                ? TiebreakerDirection.valueOf(req.getDirection())
+                                ? EnumInputParser.parse(TiebreakerDirection.class, req.getDirection(), "direction")
                                 : TiebreakerDirection.DESC)
                         .build()));
     }
@@ -238,10 +273,10 @@ public class TournamentTemplateService {
                         .statKey(req.getStatKey())
                         .unit(req.getUnit())
                         .dataType(req.getDataType() != null
-                                ? StatDataType.valueOf(req.getDataType())
+                                ? EnumInputParser.parse(StatDataType.class, req.getDataType(), "dataType")
                                 : StatDataType.INTEGER)
                         .aggregationType(req.getAggregationType() != null
-                                ? StatAggregationType.valueOf(req.getAggregationType())
+                                ? EnumInputParser.parse(StatAggregationType.class, req.getAggregationType(), "aggregationType")
                                 : StatAggregationType.SUM)
                         .isRankingTarget(req.getIsRankingTarget() != null ? req.getIsRankingTarget() : true)
                         .rankingLabel(req.getRankingLabel())

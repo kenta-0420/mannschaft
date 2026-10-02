@@ -132,7 +132,7 @@ B 案では復帰は **集約時判定** で実現する：
 MVP の「開いたら戻っている」だけでは能動的な催促が無いため、Phase 3 ② で **復帰 push 再通知バッチ**を追加した。
 
 - **バッチ**: `inbox/batch/InboxSnoozeRevivalBatchService`（`@BatchEndpoint(name="inbox-snooze-revival")`）。
-  - スケジュール: 5 分毎（`cron="0 */5 * * * *" zone="Asia/Tokyo"`）。`@SchedulerLock(lockAtMostFor="PT4M", lockAtLeastFor="PT10S")` で多重起動を防ぐ。
+  - スケジュール: 5 分毎（`cron="0 */5 * * * *" zone="Asia/Tokyo"`）。`@SchedulerLock(lockAtMostFor="PT15M", lockAtLeastFor="PT10S")` で多重起動を防ぐ。
   - 横断クエリ: `InboxItemStateRepository.findDueForRevival(now, Pageable)` が **全ユーザー横断**で
     `snoozed_until <= now AND snooze_notified_at IS NULL AND archived_at IS NULL` を `snoozed_until` 昇順に取得（1 回 500 件上限で暴走防止）。
   - **復帰 push はベストエフォート 1 回**: 各行へ push を **1 度だけ**試行し、**成否に関わらず** `snooze_notified_at = now` を刻んで保存する。これにより **2 回目以降の実行では再送しない（冪等・上限 1 回）**。

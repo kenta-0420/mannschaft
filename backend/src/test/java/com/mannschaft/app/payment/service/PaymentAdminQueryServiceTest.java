@@ -65,6 +65,22 @@ class PaymentAdminQueryServiceTest {
     }
 
     @Test
+    @DisplayName("PROCESSING は未収集合に含め、期限超過集合には含めない")
+    void processingIsIncludedInUnsettledSet() {
+        given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                eq(ScopeKind.ORG), eq(ORG_ID), anyCollection())).willReturn(1L);
+
+        service.unsettledForOrg(ORG_ID, ORG_SLUG, 0);
+
+        org.mockito.ArgumentCaptor<java.util.Collection<PaymentRequestStatus>> statuses =
+                org.mockito.ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(paymentRequestRepository).countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                eq(ScopeKind.ORG), eq(ORG_ID), statuses.capture());
+        assertThat(statuses.getValue()).contains(PaymentRequestStatus.PROCESSING)
+                .doesNotContain(PaymentRequestStatus.PAID, PaymentRequestStatus.CANCELLED);
+    }
+
+    @Test
     @DisplayName("preview_size>0 → ORG + StatusIn でプレビュー取得・発行者名バルク解決・detail_route は id を含む個別遷移先")
     void countAndPreview() {
         given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(

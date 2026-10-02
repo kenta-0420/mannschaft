@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 一般ユーザー向けフィードバック（目安箱）コントローラー。
@@ -36,6 +38,11 @@ public class FeedbackController {
 
     /**
      * フィードバックを投稿する。
+     *
+     * <p>本文の宛先（scopeType / scopeId）を受け取るため自己スコープ EP ではない。
+     * TEAM / ORGANIZATION 宛ては {@code FeedbackService#createFeedback} が
+     * {@code AccessControlService#checkMembership} で投稿者の在籍を検証し、GENERAL（運営宛て）は
+     * 認証済みの誰でも投稿できる（CMP-260917-1135）。</p>
      */
     @PostMapping
     @Operation(summary = "フィードバック投稿")
@@ -49,6 +56,8 @@ public class FeedbackController {
     /**
      * 自分のフィードバック一覧を取得する。
      */
+    @SelfScopedEndpoint("FeedbackService#getMyFeedbacks は"
+        + "SecurityUtils.getCurrentUserId() のフィードバックのみ findBySubmittedBy で返す")
     @GetMapping("/me")
     @Operation(summary = "自分のフィードバック一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -61,7 +70,11 @@ public class FeedbackController {
 
     /**
      * フィードバックに投票する。
+     *
+     * <p>FeedbackService#vote は existsById で対象フィードバックの実在を検証し、
+     * SecurityUtils.getCurrentUserId() 単位の重複投票を existsByFeedbackIdAndUserId で防ぐ。</p>
      */
+    @AuthorizedInService
     @PostMapping("/{id}/votes")
     @Operation(summary = "フィードバック投票")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "投票成功")
@@ -72,7 +85,11 @@ public class FeedbackController {
 
     /**
      * フィードバックの投票を取り消す。
+     *
+     * <p>FeedbackService#unvote は SecurityUtils.getCurrentUserId() 自身の
+     * 投票のみ existsByFeedbackIdAndUserId で検証してから取り消す。</p>
      */
+    @AuthorizedInService
     @DeleteMapping("/{id}/votes")
     @Operation(summary = "フィードバック投票取消")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")

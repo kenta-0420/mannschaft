@@ -641,7 +641,6 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
     private void switchToMember(Long orgId) {
         Long memberUserId = insertUser("kanban-member-" + System.nanoTime() + "@example.jp");
         MembershipTestHelper.insertMembership(em, memberUserId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, memberUserId, "MEMBER", null, orgId);
         em.flush();
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(memberUserId.toString(), null, List.of()));

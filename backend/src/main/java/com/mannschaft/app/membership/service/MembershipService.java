@@ -1,6 +1,8 @@
 package com.mannschaft.app.membership.service;
 
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
@@ -18,11 +20,13 @@ import com.mannschaft.app.membership.event.MembershipEndedEvent;
 import com.mannschaft.app.membership.repository.MemberPositionRepository;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.repository.PositionRepository;
-import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.role.repository.RoleRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
+import com.mannschaft.app.role.service.RolePermissionCleanupService;
 import com.mannschaft.app.team.event.TeamMemberAuditEvent;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import com.mannschaft.app.organization.event.OrganizationMemberAuditEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +35,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -52,11 +58,16 @@ import java.util.Optional;
 public class MembershipService {
 
     private final MembershipRepository membershipRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final MemberPositionRepository memberPositionRepository;
     private final PositionRepository positionRepository;
-    private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final ApplicationEventPublisher eventPublisher;
+
+    private final UserRowLockService userRowLockService;
+    private final AdminRoleMutationLockService adminRoleMutationLockService;
+    private final EntityManager entityManager;
+    private final RolePermissionCleanupService rolePermissionCleanupService;
 
     /**
      * 入会処理。
@@ -71,6 +82,11 @@ public class MembershipService {
      */
     @Transactional
     public MembershipDto join(MembershipCreateRequest req) {
+        Objects.requireNonNull(req, "req must not be null");
+        Objects.requireNonNull(req.getUserId(), "userId must not be null");
+        Objects.requireNonNull(req.getScopeType(), "scopeType must not be null");
+        Objects.requireNonNull(req.getScopeId(), "scopeId must not be null");
+        lockUser(req.getUserId());
         validateScope(req.getScopeType(), req.getScopeId());
 
         // 冪等性チェック（§13.7）
@@ -145,21 +161,35 @@ public class MembershipService {
      */
     @Transactional
     public MembershipDto leave(Long membershipId, MembershipLeaveRequest req) {
-        MembershipEntity entity = membershipRepository.findById(membershipId)
+        Objects.requireNonNull(req, "req must not be null");
+        Objects.requireNonNull(req.getLeaveReason(), "leaveReason must not be null");
+        Long userId = membershipRepository.findUserIdById(membershipId)
                 .orElseThrow(() -> new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_NOT_FOUND));
+
+        // Entityを管理状態にする前にuser行をロックし、その後の悲観ロック読取で最新状態を取得する。
+        // 通常のfindByIdを先に呼ぶとMySQL RRのsnapshotとL1 cacheが残り、同時二重退会を見落とす。
+        lockUser(userId);
+        MembershipEntity entity = membershipRepository.findByIdForUpdate(membershipId)
+                .orElseThrow(() -> new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_NOT_FOUND));
+        // 外側transactionが同じEntityを既に管理していても、DBの最新行で必ず上書きする。
+        entityManager.refresh(entity, LockModeType.PESSIMISTIC_WRITE);
 
         if (!entity.isActive()) {
             throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_ALREADY_LEFT);
         }
 
         // 最後の ADMIN 保護（user_roles 側で判定）— RoleService の checkLastAdmin 相当を委譲
-        checkLastAdminProtectedByUserRoles(entity);
+        List<Long> lockedAdminUserIds = adminRoleMutationLockService.lockScopeAdminRows(
+                entity.getScopeId(), entity.getScopeType().name(), entity.getUserId());
+        checkLastAdminProtectedByUserRoles(entity, lockedAdminUserIds);
 
         // memberships を退会状態に更新
         LocalDateTime now = LocalDateTime.now();
         entity.setLeftAt(now);
         entity.setLeaveReason(req.getLeaveReason());
         membershipRepository.save(entity);
+        rolePermissionCleanupService.removeMismatched(
+                entity.getUserId(), entity.getScopeId(), entity.getScopeType().name(), null);
 
         // 紐付く現役役職を自動離任
         List<MemberPositionEntity> activePositions =
@@ -206,12 +236,81 @@ public class MembershipService {
     }
 
     /**
+     * ユーザー × スコープ指定での退会処理（{@link #leave(Long, MembershipLeaveRequest)} の窓口版）。
+     *
+     * <p>membershipId ではなく「誰が・どのスコープを」離脱するかしか判らない呼び出し元
+     * （role ドメインの除名・退会など）のために、アクティブ membership の解決を membership ドメイン内に
+     * 閉じ込める。呼び出し元が {@link MembershipRepository} を直接注入する必要をなくす
+     * （D-3 ArchUnit 準拠: {@code @Transactional} クラスは別ドメイン Repository に直接依存しない）。</p>
+     *
+     * <p>退会本体のロジックは {@link #leave(Long, MembershipLeaveRequest)} に委譲する。left_at /
+     * leave_reason の確定・現役役職の自動離任・{@code MembershipChangedEvent(REMOVED)} /
+     * {@code MembershipEndedEvent} / 監査イベントの発火はすべて委譲先が担う。</p>
+     *
+     * @param userId      対象ユーザー ID
+     * @param scopeType   スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId     スコープ ID
+     * @param leaveReason 退会理由
+     * @param removedBy   除名を実行した操作者 ID（自主退会・システム処理では null）
+     * @return アクティブ membership を退会させた場合 true、対象が無く何もしなかった場合 false
+     */
+    @Transactional
+    public boolean leaveByUserAndScope(Long userId, ScopeType scopeType, Long scopeId,
+                                       LeaveReason leaveReason, Long removedBy) {
+        Objects.requireNonNull(leaveReason, "leaveReason must not be null");
+        lockUser(userId);
+        Optional<MembershipEntity> active =
+                membershipRepository.findActiveByUserAndScope(userId, scopeType, scopeId);
+        if (active.isEmpty()) {
+            return false;
+        }
+        MembershipLeaveRequest req = new MembershipLeaveRequest();
+        req.setLeaveReason(leaveReason);
+        req.setRemovedBy(removedBy);
+        leave(active.get().getId(), req);
+        return true;
+    }
+
+    /**
+     * {@code user_roles} を持たない一般会員が、自分の membership だけを根拠に自主退会する。
+     *
+     * <p>MEMBER と SUPPORTER は同じ memberships テーブルに格納されるため、この窓口は
+     * {@link RoleKind#MEMBER} に限定する。SUPPORTER の解除は支援者専用経路へ残し、
+     * 会員退会 API から迂回できないようにする。対象行は user 行ロック後に悲観ロックで取得し、
+     * 退会本体は {@link #leave(Long, MembershipLeaveRequest)} に委譲する。</p>
+     *
+     * @param userId    対象ユーザー ID
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID
+     * @return MEMBER membership を退会させた場合 true、対象が無いか SUPPORTER の場合 false
+     */
+    @Transactional
+    public boolean leaveMemberByUserAndScope(Long userId, ScopeType scopeType, Long scopeId) {
+        lockUser(userId);
+        Optional<MembershipEntity> active =
+                membershipRepository.findActiveByUserAndScopeForUpdate(userId, scopeType, scopeId);
+        if (active.isEmpty() || active.get().getRoleKind() != RoleKind.MEMBER) {
+            return false;
+        }
+        MembershipLeaveRequest req = new MembershipLeaveRequest();
+        req.setLeaveReason(LeaveReason.SELF);
+        leave(active.get().getId(), req);
+        return true;
+    }
+
+    private void lockUser(Long userId) {
+        userRowLockService.lock(userId);
+    }
+
+    /**
      * 役職割当。
      *
      * <p>設計書 §7.4.2 に従い、スコープ越境を必ず検証する。</p>
      */
     @Transactional
     public MemberPositionDto assignPosition(Long membershipId, AssignPositionRequest req) {
+        Objects.requireNonNull(req, "req must not be null");
+        Objects.requireNonNull(req.getPositionId(), "positionId must not be null");
         MembershipEntity m = membershipRepository.findById(membershipId)
                 .orElseThrow(() -> new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_NOT_FOUND));
 
@@ -302,30 +401,141 @@ public class MembershipService {
     /**
      * 最後の ADMIN 保護を user_roles 側で判定する。memberships の MEMBER/SUPPORTER 退会には影響しない（FR-11）。
      */
-    private void checkLastAdminProtectedByUserRoles(MembershipEntity entity) {
+    private void checkLastAdminProtectedByUserRoles(
+            MembershipEntity entity, List<Long> lockedAdminUserIds) {
         if (entity.getUserId() == null) {
             return;
         }
-        Optional<RoleEntity> adminRoleOpt = roleRepository.findByName("ADMIN");
-        if (adminRoleOpt.isEmpty()) {
-            return;
-        }
-        Long adminRoleId = adminRoleOpt.get().getId();
-
-        boolean isAdmin;
-        long adminCount;
-        if (entity.getScopeType() == ScopeType.TEAM) {
-            isAdmin = userRoleRepository.existsByUserIdAndTeamIdAndRoleId(
-                    entity.getUserId(), entity.getScopeId(), adminRoleId);
-            adminCount = userRoleRepository.countByTeamIdAndRoleId(entity.getScopeId(), adminRoleId);
-        } else {
-            isAdmin = userRoleRepository.existsByUserIdAndOrganizationIdAndRoleId(
-                    entity.getUserId(), entity.getScopeId(), adminRoleId);
-            adminCount = userRoleRepository.countByOrganizationIdAndRoleId(entity.getScopeId(), adminRoleId);
-        }
-        if (isAdmin && adminCount <= 1) {
+        boolean isAdmin = lockedAdminUserIds.contains(entity.getUserId());
+        if (isAdmin && lockedAdminUserIds.size() <= 1) {
             throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_LAST_ADMIN_BLOCKED);
         }
+    }
+
+    /**
+     * 同一scopeのADMIN行を先にID順でロックし、最新のロック読取集合をlast-admin判定へ渡す。
+     * 通常の find / exists / COUNT は MySQL REPEATABLE READ でロック待機前の snapshot を
+     * 再利用し得るため、安全判定には使わない。対象 user が ADMIN でなくても ADMIN 定義行と
+     * scope 内の ADMIN 行をロック読取し、同一の最新集合から退会可否を判定する。
+     */
+
+    /**
+     * 指定ユーザーがアクティブ（退会していない）に所属するチームの ID 一覧を返す。
+     *
+     * <p>マイページ チームプロジェクト集約（{@code GET /api/v1/me/team-projects}）が
+     * 所属チーム ID 集合を取得する際、{@code todo} ドメインの {@code ProjectService} が
+     * {@code membership} ドメインの {@code MembershipRepository} を直接注入することを避けるために
+     * 本メソッドを提供する（D-3 ArchUnit 準拠: @Transactional クラスは別ドメイン Repository に
+     * 直接依存しない）。プリミティブ（{@code List<Long>}）のみを返し、Entity を漏らさない。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return アクティブに所属するチームの scopeId 一覧（退会済みは除外）
+     */
+    public List<Long> getActiveTeamIdsByUser(Long userId) {
+        return membershipScopeQueryService.findCurrentMembershipTeamIds(userId);
+    }
+
+    public List<Long> getActiveTeamIdsIncludingRoleAssignments(Long userId) {
+        return java.util.stream.Stream.concat(
+                        membershipScopeQueryService.findActiveTeamIds(userId).stream(),
+                        membershipScopeQueryService.findCurrentMembershipTeamIds(userId).stream())
+                .distinct()
+                .toList();
+    }
+
+    /**
+     * 指定ユーザーがアクティブ（退会していない）に所属する組織の ID 一覧を返す。
+     *
+     * <p>マイページ 組織プロジェクト集約（{@code GET /api/v1/me/org-projects}）が
+     * 所属組織 ID 集合を取得する際、{@code todo} ドメインの {@code ProjectService} が
+     * {@code membership} ドメインの {@code MembershipRepository} を直接注入することを避けるために
+     * 本メソッドを提供する（D-3 ArchUnit 準拠）。プリミティブ（{@code List<Long>}）のみを返し、
+     * Entity を漏らさない。</p>
+     *
+     * <p>{@link #getActiveTeamIdsByUser(Long)} の {@code ScopeType.ORGANIZATION} 版。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return アクティブに所属する組織の scopeId 一覧（退会済みは除外）
+     */
+    public List<Long> getActiveOrgIdsByUser(Long userId) {
+        return membershipScopeQueryService.findCurrentMembershipOrganizationIds(userId);
+    }
+
+    public List<Long> getActiveOrgIdsIncludingRoleAssignments(Long userId) {
+        return java.util.stream.Stream.concat(
+                        membershipScopeQueryService.findActiveOrganizationIds(userId).stream(),
+                        membershipScopeQueryService.findCurrentMembershipOrganizationIds(userId).stream())
+                .distinct()
+                .toList();
+    }
+
+    /**
+     * 指定ユーザーが指定スコープ（単一）のアクティブメンバーかどうかを返す。
+     *
+     * <p>{@code schedule} ドメインの {@code GoogleCalendarService}（{@code @Transactional} クラス）が
+     * 同期トグルの IDOR 閉塞（非メンバー拒否）でメンバーシップを確認する際、
+     * {@code membership} ドメインの {@link MembershipRepository} を直接注入することを避けるための
+     * 公開窓口（D-3 ArchUnit 準拠: @Transactional クラスは別ドメイン Repository に直接依存しない）。
+     * {@code boolean} のみを返し、Entity を漏らさない。</p>
+     *
+     * @param userId    対象ユーザー ID
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID（team_id または organization_id）
+     * @return アクティブメンバーなら true（退会済み・非メンバーは false）
+     */
+    public boolean isActiveMember(Long userId, ScopeType scopeType, Long scopeId) {
+        return membershipRepository.existsActiveByUserAndScope(userId, scopeType, scopeId);
+    }
+
+    /** user行ロック後の変更処理向けに、RR snapshotへ依存しない現在の在籍有無を返す。 */
+    @Transactional
+    public boolean isActiveMemberForUpdate(Long userId, ScopeType scopeType, Long scopeId) {
+        return membershipRepository.findActiveByUserAndScopeForUpdate(userId, scopeType, scopeId).isPresent();
+    }
+
+    /** authz統合用にactive direct membershipのrole_kindだけを返す。 */
+    public Optional<RoleKind> findActiveRoleKind(Long userId, ScopeType scopeType, Long scopeId) {
+        return membershipRepository.findActiveByUserAndScope(userId, scopeType, scopeId)
+                .map(MembershipEntity::getRoleKind);
+    }
+
+    /**
+     * 認可根治 Wave6: 指定スコープ集合（TEAM / ORGANIZATION 混在）に在籍する利用者の ID 一覧を返す。
+     *
+     * <p>{@code search} ドメインの横断検索が「閲覧者と同一スコープに所属する利用者」だけを
+     * 利用者検索の候補に絞る際に用いる公開窓口。{@code search} ドメインが {@code membership}
+     * ドメインの Repository を直接注入することを避ける（D-3 ArchUnit 準拠）。
+     * プリミティブ（{@code List<Long>}）のみを返し、Entity を漏らさない。</p>
+     *
+     * <p>呼び出し側は {@code teamIds} / {@code orgIds} が空の場合、{@code IN ()} の発行を避けるため
+     * ダミー値（{@code -1L}）で埋めること。</p>
+     *
+     * @param teamIds 対象チーム scopeId 集合（非空・空ならダミー値）
+     * @param orgIds  対象組織 scopeId 集合（非空・空ならダミー値）
+     * @return 在籍者の user_id 一覧（DISTINCT・退会済みは除外）
+     */
+    public List<Long> getActiveUserIdsInScopes(Collection<Long> teamIds, Collection<Long> orgIds) {
+        return membershipRepository.findActiveDistinctUserIdsByScopes(teamIds, orgIds);
+    }
+
+    /**
+     * 指定スコープ（単一）に在籍するアクティブメンバーの user_id 一覧を joined_at 昇順で返す。
+     *
+     * <p>{@code schedule} ドメインの {@code ScheduleCommentService} がメンション候補の母集団
+     * （親スコープの直属メンバー）を取得する際、{@code membership} ドメインの
+     * {@link MembershipRepository} を直接注入することを避けるための公開窓口
+     * （D-5 ArchUnit 準拠: 別ドメインの Repository へ直接依存しない）。
+     * プリミティブ（{@code List<Long>}）のみを返し、Entity を漏らさない
+     * （{@link #getActiveUserIdsInScopes(Collection, Collection)} の単一スコープ版）。</p>
+     *
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID
+     * @return 在籍者の user_id 一覧（joined_at 昇順・退会済みは除外）
+     */
+    public List<Long> getActiveMemberUserIds(ScopeType scopeType, Long scopeId) {
+        return membershipRepository.findAllActiveByScope(scopeType, scopeId).stream()
+                .map(MembershipEntity::getUserId)
+                .toList();
     }
 
 }

@@ -34,6 +34,7 @@ public class SurveyTargetEntity {
     @Column(nullable = false)
     private Long userId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

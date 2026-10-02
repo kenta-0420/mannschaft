@@ -2,6 +2,7 @@ package com.mannschaft.app.recruitment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.recruitment.dto.RecruitmentFeedItemResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
 import com.mannschaft.app.recruitment.service.RecruitmentListingService;
@@ -32,6 +33,8 @@ public class MyRecruitmentController {
     /**
      * 自分の参加中・参加予定の募集一覧 (CONFIRMED/WAITLISTED/APPLIED)。
      */
+    @SelfScopedEndpoint("RecruitmentListingService#getMyListings が "
+            + "SecurityUtils.getCurrentUserId() のみを検索条件に束縛する")
     @GetMapping("/recruitment-listings")
     @Operation(summary = "自分の参加中・参加予定の募集一覧")
     public ResponseEntity<ApiResponse<List<RecruitmentParticipantResponse>>> myActiveParticipations() {
@@ -42,6 +45,8 @@ public class MyRecruitmentController {
     /**
      * フォロー先・サポーター先スコープの最新 OPEN 募集フィード (Phase 2)。
      */
+    @SelfScopedEndpoint("RecruitmentListingService#getMyFeed が "
+            + "SecurityUtils.getCurrentUserId() のフォロー関係のみを検索条件に束縛する")
     @GetMapping("/recruitment-feed")
     @Operation(summary = "フォロー先・サポーター先の新着募集フィード", description = "フォロー先チーム/組織の最新OPEN募集を最大20件返す")
     public ResponseEntity<ApiResponse<List<RecruitmentFeedItemResponse>>> myFeed() {

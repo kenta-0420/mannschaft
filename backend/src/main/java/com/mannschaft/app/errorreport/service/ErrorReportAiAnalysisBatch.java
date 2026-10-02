@@ -3,6 +3,8 @@ package com.mannschaft.app.errorreport.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.admin.entity.BatchJobLogEntity;
 import com.mannschaft.app.admin.service.BatchJobLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
@@ -39,11 +41,13 @@ public class ErrorReportAiAnalysisBatch {
     /**
      * バッチエントリポイント。{@code @Scheduled(fixedDelay = 300_000)}（5 分間隔）。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。未分析エラーレポートの AI 分析であり、運用基盤に属し機能フラグを持たない。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "errorreport-ai-analysis", description = "未分析エラーレポートを 5 分毎に AI 分析する")
     @Scheduled(fixedDelay = 300_000)
     @SchedulerLock(
             name = "errorReportAiAnalysisBatch",
-            lockAtMostFor = "PT4M",
+            lockAtMostFor = "PT15M",
             lockAtLeastFor = "PT30S")
     public void execute() {
         executeAt(LocalDateTime.now());
