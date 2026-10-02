@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { expect, test, type BrowserContext, type Page, type TestInfo } from '@playwright/test'
+import { expect, test, type BrowserContext, type Page, type Request, type TestInfo } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 
@@ -251,13 +251,35 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
       }
       await evidence(page, info, `${index === 0 ? '非所属' : '別所属'}-カレンダー非表示`)
       const known = teams[3]!
-      const denied = page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/teams/${known.slug}/todos/${known.todoId}`)
-      await page.goto(`/teams/${known.slug}/todos/${known.todoId}`)
-      await waitForHydration(page)
-      expect([403, 404], '実画面の直接URL取得が認可境界で拒否される').toContain((await denied).status())
-      await expect(page.getByText('TODOの取得に失敗しました', { exact: true }).first()).toBeVisible()
-      await expect(page.getByText(known.todoTitle!, { exact: true })).toHaveCount(0)
-      await evidence(page, info, `${index === 0 ? '非所属' : '別所属'}-直接URL拒否`)
+      const teamPath = `/api/v1/teams/${known.slug}`
+      const todoPath = `${teamPath}/todos/${known.todoId}`
+      const childRequests: string[] = []
+      const observeChild = (request: Request) => {
+        if (request.method() === 'GET' && new URL(request.url()).pathname === todoPath) childRequests.push(todoPath)
+      }
+      page.on('request', observeChild)
+      try {
+        // 親チームシェルが取得拒否で子TODOをmountしない。UI拒否とTODO API認可を別々に証明する。
+        const denied = page.waitForResponse(response => response.request().method() === 'GET' && new URL(response.url()).pathname === teamPath)
+        await page.goto(`/teams/${known.slug}/todos/${known.todoId}`)
+        await waitForHydration(page)
+        const parentResponse = await denied
+        expect([403, 404], '実画面の親チーム取得が拒否される').toContain(parentResponse.status())
+        await expect(page.getByText('情報を取得できませんでした', { exact: true })).toBeVisible()
+        await expect(page.getByText('時間をおいて再度お試しください。権限がない場合は表示できないことがあります。', { exact: true })).toBeVisible()
+        await expect(page.locator('body')).not.toContainText(run)
+        await expect(page.getByText('担当者', { exact: true })).toHaveCount(0)
+        expect(childRequests, '親取得拒否により子TODO GETは発行されない').toHaveLength(0)
+        await evidence(page, info, `${index === 0 ? '非所属' : '別所属'}-直接URLの親シェル拒否`)
+        const cookie = (await page.context().cookies()).find(value => value.name === 'access_token')
+        expect(cookie).toBeDefined()
+        const todoResponse = await page.request.get(`${apiBase}${todoPath}`, { headers: { Authorization: `Bearer ${cookie!.value}` } })
+        expect(todoResponse.status(), '同じログインでもTODO APIは非所属者を403で拒否する').toBe(403)
+        await info.attach(`${index === 0 ? '非所属' : '別所属'}-拒否通信metadata`, { body: JSON.stringify({ uiUrl: page.url(), parent: { method: 'GET', path: teamPath, status: parentResponse.status() }, childUiGetCount: childRequests.length, directApi: { method: 'GET', path: todoPath, status: todoResponse.status() } }), contentType: 'application/json' })
+      }
+      finally {
+        page.off('request', observeChild)
+      }
     }
   })
 })
