@@ -650,17 +650,6 @@ public class ConfirmableNotificationService {
     }
 
     /**
-     * CMP-260920-1040: 受信者一覧をページングして取得する（軍議第8版確定稿 §9.5・AC-30・AC-59・AC-60）。
-     *
-     * <p>実装は {@link ConfirmableNotificationQueryService#getRecipientsPage} に委譲。</p>
-     */
-    @Transactional(readOnly = true)
-    public com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientPageResponse
-            getRecipientsPage(Long notificationId, Long requesterUserId, int page, int size, boolean unconfirmedOnly) {
-        return queryService.getRecipientsPage(notificationId, requesterUserId, page, size, unconfirmedOnly);
-    }
-
-    /**
      * スコープ内の確認通知一覧を取得する（作成日時降順）。
      *
      * <p>実装は {@link ConfirmableNotificationQueryService#listByScope(ScopeType, Long)} に委譲。</p>
