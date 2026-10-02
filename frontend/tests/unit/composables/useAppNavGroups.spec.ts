@@ -18,6 +18,7 @@ import { useTeamStore } from '~/stores/useTeamStore'
 import { useAuthStore } from '~/stores/useAuthStore'
 import { useSyncStore } from '~/stores/useSyncStore'
 import { useInboxStore } from '~/stores/useInboxStore'
+import { useOrganizationStore } from '~/stores/useOrganizationStore'
 import type { NavFeatureItem } from '~/types/nav'
 
 function makeFeature(overrides: Partial<NavFeatureItem> = {}): NavFeatureItem {
@@ -43,14 +44,31 @@ describe('useAppNavGroups', () => {
     it('nav_features マスタ相当の全 key が groups のいずれかに含まれる', () => {
       const navSettingsStore = useNavSettingsStore()
       const allKeys = [
-        'calendar', 'settings', 'todo', 'shift-management', 'timeline', 'chat',
-        'my-shift', 'my-page', 'qa', 'villages', 'blog',
-        'reservations', 'wallet', 'inbox', 'market', 'jobs', 'matching', 'my-files',
+        'calendar',
+        'settings',
+        'todo',
+        'shift-management',
+        'timeline',
+        'chat',
+        'my-shift',
+        'my-page',
+        'qa',
+        'villages',
+        'blog',
+        'reservations',
+        'wallet',
+        'inbox',
+        'market',
+        'jobs',
+        'matching',
+        'my-files',
       ]
-      navSettingsStore.features = allKeys.map(key => makeFeature({ key, path: `/${key}`, visible: true }))
+      navSettingsStore.features = allKeys.map((key) =>
+        makeFeature({ key, path: `/${key}`, visible: true }),
+      )
 
       const { groups } = useAppNavGroups()
-      const groupedKeys = groups.value.flatMap(g => g.items.map(i => i.key))
+      const groupedKeys = groups.value.flatMap((g) => g.items.map((i) => i.key))
 
       // 固定のダッシュボードを含め、visibleFeatures 全件が漏れなくいずれかのグループに出力される
       expect(groupedKeys).toContain('dashboard')
@@ -67,7 +85,7 @@ describe('useAppNavGroups', () => {
       ]
 
       const { groups } = useAppNavGroups()
-      const groupedKeys = groups.value.flatMap(g => g.items.map(i => i.key))
+      const groupedKeys = groups.value.flatMap((g) => g.items.map((i) => i.key))
       expect(groupedKeys).toContain('todo')
       expect(groupedKeys).not.toContain('chat')
     })
@@ -79,9 +97,9 @@ describe('useAppNavGroups', () => {
       navSettingsStore.features = [makeFeature({ key: 'brand-new-unmapped-feature', path: '/new' })]
 
       const { groups } = useAppNavGroups()
-      const otherGroup = groups.value.find(g => g.key === 'other')
+      const otherGroup = groups.value.find((g) => g.key === 'other')
       expect(otherGroup).toBeDefined()
-      expect(otherGroup?.items.map(i => i.key)).toContain('brand-new-unmapped-feature')
+      expect(otherGroup?.items.map((i) => i.key)).toContain('brand-new-unmapped-feature')
     })
   })
 
@@ -97,15 +115,15 @@ describe('useAppNavGroups', () => {
 
       // dashboard は固定項目として必ず home グループに1件だけ出力される
       expect(groups!.value.length).toBeGreaterThan(0)
-      const nonEmptyGroups = groups!.value.every(g => g.items.length > 0)
+      const nonEmptyGroups = groups!.value.every((g) => g.items.length > 0)
       expect(nonEmptyGroups).toBe(true)
 
-      const homeGroup = groups!.value.find(g => g.key === 'home')
-      expect(homeGroup?.items.map(i => i.key)).toEqual(['dashboard'])
+      const homeGroup = groups!.value.find((g) => g.key === 'home')
+      expect(homeGroup?.items.map((i) => i.key)).toEqual(['dashboard'])
 
       // 条件付き項目（proxy-desk/system-admin/sync）を出す条件が全て false のため
       // living/work/account/admin/other グループは出力されない
-      expect(groups!.value.map(g => g.key)).toEqual(['home'])
+      expect(groups!.value.map((g) => g.key)).toEqual(['home'])
     })
   })
 
@@ -113,31 +131,58 @@ describe('useAppNavGroups', () => {
     it('NEIGHBORHOOD テンプレート×DEPUTY_ADMIN のチームがあれば表示される（admin グループ）', () => {
       const teamStore = useTeamStore()
       teamStore.myTeams = [
-        { id: 1, slug: 't1', name: 'T1', nickname1: null, iconUrl: null, role: 'DEPUTY_ADMIN', template: 'NEIGHBORHOOD', memberCount: 1 },
+        {
+          id: 1,
+          slug: 't1',
+          name: 'T1',
+          nickname1: null,
+          iconUrl: null,
+          role: 'DEPUTY_ADMIN',
+          template: 'NEIGHBORHOOD',
+          memberCount: 1,
+        },
       ]
 
       const { groups, showProxyDeskNav } = useAppNavGroups()
       expect(showProxyDeskNav.value).toBe(true)
-      const adminGroup = groups.value.find(g => g.key === 'admin')
-      expect(adminGroup?.items.map(i => i.key)).toContain('proxy-desk')
+      const adminGroup = groups.value.find((g) => g.key === 'admin')
+      expect(adminGroup?.items.map((i) => i.key)).toContain('proxy-desk')
     })
 
     it('CONDO テンプレート×MEMBER のみのチームでは表示されない（境界: DEPUTY_ADMIN未満）', () => {
       const teamStore = useTeamStore()
       teamStore.myTeams = [
-        { id: 1, slug: 't1', name: 'T1', nickname1: null, iconUrl: null, role: 'MEMBER', template: 'CONDO', memberCount: 1 },
+        {
+          id: 1,
+          slug: 't1',
+          name: 'T1',
+          nickname1: null,
+          iconUrl: null,
+          role: 'MEMBER',
+          template: 'CONDO',
+          memberCount: 1,
+        },
       ]
 
       const { groups, showProxyDeskNav } = useAppNavGroups()
       expect(showProxyDeskNav.value).toBe(false)
-      const groupedKeys = groups.value.flatMap(g => g.items.map(i => i.key))
+      const groupedKeys = groups.value.flatMap((g) => g.items.map((i) => i.key))
       expect(groupedKeys).not.toContain('proxy-desk')
     })
 
     it('テンプレートが NEIGHBORHOOD/CONDO 以外なら ADMIN でも表示されない', () => {
       const teamStore = useTeamStore()
       teamStore.myTeams = [
-        { id: 1, slug: 't1', name: 'T1', nickname1: null, iconUrl: null, role: 'ADMIN', template: 'SPORTS_CLUB', memberCount: 1 },
+        {
+          id: 1,
+          slug: 't1',
+          name: 'T1',
+          nickname1: null,
+          iconUrl: null,
+          role: 'ADMIN',
+          template: 'SPORTS_CLUB',
+          memberCount: 1,
+        },
       ]
 
       const { showProxyDeskNav } = useAppNavGroups()
@@ -146,19 +191,79 @@ describe('useAppNavGroups', () => {
   })
 
   describe('AC9: SYSTEM — isSystemAdmin の場合のみ表示', () => {
+    it('SYSTEM_ADMINは組合ADMIN兼任でも代理入力業務導線を持たずSYSTEM導線を維持する', () => {
+      const authStore = useAuthStore()
+      // @ts-expect-error テスト用に最小ユーザーstateを代入
+      authStore.user = { id: 1, systemRole: 'SYSTEM_ADMIN' }
+      useTeamStore().myTeams = [
+        {
+          id: 1,
+          slug: 't1',
+          name: 'T1',
+          nickname1: null,
+          iconUrl: null,
+          role: 'ADMIN',
+          template: 'CONDO',
+          memberCount: 1,
+        },
+      ]
+      useOrganizationStore().myOrganizations = [
+        {
+          id: 10,
+          slug: 'o1',
+          name: 'O1',
+          nickname1: null,
+          iconUrl: null,
+          role: 'ADMIN',
+          orgType: 'ASSOCIATION',
+          memberCount: 1,
+        },
+      ]
+
+      const { items } = useAppNavGroups()
+
+      expect(items.value.map((item) => item.key)).not.toContain('proxy-desk')
+      expect(items.value.map((item) => item.key)).not.toContain('proxy-consents')
+      expect(items.value.map((item) => item.key)).not.toContain('proxy-records')
+      expect(items.value.find((item) => item.key === 'system-admin')?.path).toBe('/system-admin')
+    })
+
+    it('自組合DEPUTY_ADMINには同意管理と監査の正本パスが表示される', () => {
+      useOrganizationStore().myOrganizations = [
+        {
+          id: 10,
+          slug: 'o1',
+          name: 'O1',
+          nickname1: null,
+          iconUrl: null,
+          role: 'DEPUTY_ADMIN',
+          orgType: 'ASSOCIATION',
+          memberCount: 1,
+        },
+      ]
+
+      const { items } = useAppNavGroups()
+
+      expect(items.value.find((item) => item.key === 'proxy-consents')?.path).toBe(
+        '/admin/proxy/consents',
+      )
+      expect(items.value.find((item) => item.key === 'proxy-records')?.path).toBe(
+        '/admin/proxy/records',
+      )
+    })
     it('systemRole=SYSTEM_ADMIN のとき SYSTEM が admin グループに出る', () => {
       const authStore = useAuthStore()
       // @ts-expect-error テスト用に private相当のstateへ直接代入
       authStore.user = { id: 1, systemRole: 'SYSTEM_ADMIN' }
 
       const { groups } = useAppNavGroups()
-      const adminGroup = groups.value.find(g => g.key === 'admin')
-      expect(adminGroup?.items.map(i => i.key)).toContain('system-admin')
+      const adminGroup = groups.value.find((g) => g.key === 'admin')
+      expect(adminGroup?.items.map((i) => i.key)).toContain('system-admin')
     })
 
     it('systemRole が無ければ SYSTEM は出ない', () => {
       const { groups } = useAppNavGroups()
-      const groupedKeys = groups.value.flatMap(g => g.items.map(i => i.key))
+      const groupedKeys = groups.value.flatMap((g) => g.items.map((i) => i.key))
       expect(groupedKeys).not.toContain('system-admin')
     })
   })
@@ -173,8 +278,8 @@ describe('useAppNavGroups', () => {
 
       const { groups, showSyncNav } = useAppNavGroups()
       expect(showSyncNav.value).toBe(true)
-      const accountGroup = groups.value.find(g => g.key === 'account')
-      const syncItem = accountGroup?.items.find(i => i.key === 'sync')
+      const accountGroup = groups.value.find((g) => g.key === 'account')
+      const syncItem = accountGroup?.items.find((i) => i.key === 'sync')
       expect(syncItem).toBeDefined()
       expect(syncItem?.badgeCount).toBe(2)
     })
@@ -182,7 +287,7 @@ describe('useAppNavGroups', () => {
     it('コンフリクトが無ければ sync 項目は出ない', () => {
       const { groups, showSyncNav } = useAppNavGroups()
       expect(showSyncNav.value).toBe(false)
-      const groupedKeys = groups.value.flatMap(g => g.items.map(i => i.key))
+      const groupedKeys = groups.value.flatMap((g) => g.items.map((i) => i.key))
       expect(groupedKeys).not.toContain('sync')
     })
   })
@@ -195,8 +300,8 @@ describe('useAppNavGroups', () => {
       inboxStore.summaryByState = { INBOX: 7 }
 
       const { groups } = useAppNavGroups()
-      const groupedItems = groups.value.flatMap(g => g.items)
-      const inboxItem = groupedItems.find(i => i.key === 'inbox')
+      const groupedItems = groups.value.flatMap((g) => g.items)
+      const inboxItem = groupedItems.find((i) => i.key === 'inbox')
       expect(inboxItem?.badgeCount).toBe(7)
     })
 
@@ -208,9 +313,9 @@ describe('useAppNavGroups', () => {
       ]
 
       const { groups } = useAppNavGroups()
-      const groupedItems = groups.value.flatMap(g => g.items)
-      const inboxItem = groupedItems.find(i => i.key === 'inbox')
-      const todoItem = groupedItems.find(i => i.key === 'todo')
+      const groupedItems = groups.value.flatMap((g) => g.items)
+      const inboxItem = groupedItems.find((i) => i.key === 'inbox')
+      const todoItem = groupedItems.find((i) => i.key === 'todo')
       expect(inboxItem?.badgeCount).toBe(0)
       expect(todoItem?.badgeCount).toBeUndefined()
     })
