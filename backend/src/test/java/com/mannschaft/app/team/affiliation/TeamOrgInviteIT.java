@@ -313,7 +313,11 @@ class TeamOrgInviteIT extends TeamOrgInviteItSupport {
         long membershipId = inviteAndGetId(groupedAdmin, grouped.slug(), team.slug(), null, g1);
         em.createNativeQuery("UPDATE organizations SET team_groups_enabled = 0 WHERE id = :id")
                 .setParameter("id", grouped.id()).executeUpdate();
+        // 招待の時に読み込んだ組織 Entity が同じテストトランザクションの永続化コンテキストに残っていると、
+        // ロック付きの読み取りでもキャッシュ済みの（機能 on の）値が返る。本番はリクエストごとに別トランザクションなので、
+        // ここでも「別のリクエストで off にされた」状態を再現するためにコンテキストを捨てる
         em.flush();
+        em.clear();
 
         accept(ta, team.slug(), membershipId).andExpect(status().isOk());
         assertThat(membershipRow(membershipId)[2]).isNull();
