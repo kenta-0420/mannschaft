@@ -1,9 +1,6 @@
 package com.mannschaft.app.shift.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
-import com.mannschaft.app.common.ScopeConcealingAccessGate;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.dto.CreatePositionRequest;
@@ -19,23 +16,20 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * シフトポジションサービス。チーム内のシフト役割の定義・管理を担当する。
+ * シフトポジションの <b>トランザクション本体</b>（自ドメイン = shift の Repository だけに触れる）。
  *
- * <p><b>認可（認可根治 Wave6）:</b> 全 public メソッドが操作者 {@code userId} を受け取り、
- * per-scope 認可する。更新系は<b>ポジション実体由来の teamId</b> で判定し、
- * パス変数・クエリの scope 値を鵜呑みにしない（BOLA 封鎖）。</p>
+ * <p><b>認可はここに置かない（CMP-260923-0954 W1 の作り替え / 認可をトランザクションの外へ）:</b>
+ * 権限の確認は非トランザクションの {@link ShiftPositionFacade} が行い、通ったものだけを本クラスの
+ * メソッドが実行する。{@code AccessControlService} / {@code ScopeConcealingAccessGate} への依存と
+ * 認可用の private メソッドは本クラスに持たない（D-3T 番人と {@code ShiftTxFacadeArchTest} が固定）。
+ * 認可の契約（主体 × 結果）は {@link ShiftPositionFacade} の Javadoc を参照。</p>
  *
- * <ul>
- *   <li><b>参照</b>: 当該チームのメンバー（SUPPORTER 不可）</li>
- *   <li><b>作成・更新・削除</b>: ADMIN/DEPUTY_ADMIN 以上（SYSTEM_ADMIN 短絡）</li>
- * </ul>
- *
- * <p><b>存在秘匿（CMP-260923-0954）:</b> positionId 指定の更新・削除は {@link ScopeConcealingAccessGate} に委ね、
- * 越境（当該チームに所属しない利用者）には不在時と完全同一の {@code SHIFT_004}（404）を返す。
- * {@code ?teamId=} 指定の一覧・作成は非メンバーに常に同一の 403 のまま（01_authorization_baseline.md §3.3.1）。</p>
- *
- * <p>同一チーム内の認可失敗は {@code COMMON_002}（403）。同ドメインの {@code ShiftScheduleScopeContractIT} /
- * {@code ShiftSlotScopeContractIT} の規約に揃える。</p>
+ * <p><b>scope の解決と読み直し:</b> positionId 指定の更新・削除は、Facade が認可の前に
+ * {@link #resolvePositionScope}（readOnly）で<b>ポジション実体由来の teamId</b> を得る（パス変数・クエリの
+ * scope 値を鵜呑みにしない＝BOLA 封鎖）。書き込み tx では同じ経路でポジションを読み直し、認可の後に
+ * 消えていれば解決時と同じ {@code SHIFT_004}（404）を投げて DB を変えない（K1/K5）。
+ * ポジションは親（スケジュール等）を持たず、team は shift 外なので、たどり直す親は無い。
+ * ポジションの teamId 列は不変という前提。</p>
  */
 @Slf4j
 @Service
@@ -44,20 +38,33 @@ import java.util.List;
 public class ShiftPositionService {
 
     private final ShiftPositionRepository positionRepository;
-    private final AccessControlService accessControlService;
-    private final ScopeConcealingAccessGate accessGate;
     private final ShiftMapper shiftMapper;
 
     /**
-     * チームのポジション一覧を取得する。
+     * ポジションの scope（所属チーム ID）。Entity は返さない。
+     *
+     * @param teamId 所属チーム ID
+     */
+    public record PositionScope(Long teamId) { }
+
+    /**
+     * positionId から scope を解決する（更新・削除用。Facade が認可の前に呼ぶ readOnly の読み取り）。
+     * 不在なら {@code SHIFT_004}（404）。
+     *
+     * @param positionId ポジションID
+     * @return scope
+     */
+    public PositionScope resolvePositionScope(Long positionId) {
+        return new PositionScope(findPositionOrThrow(positionId).getTeamId());
+    }
+
+    /**
+     * チームのポジション一覧を取得する（認可は {@link ShiftPositionFacade} 済み）。
      *
      * @param teamId チームID
-     * @param userId 操作者ユーザーID
      * @return ポジション一覧
-     * @throws BusinessException 当該チームのメンバーでない場合（COMMON_002 / 403）
      */
-    public List<ShiftPositionResponse> listPositions(Long teamId, Long userId) {
-        checkTeamMemberAccess(teamId, userId);
+    public List<ShiftPositionResponse> listPositions(Long teamId) {
         List<ShiftPositionEntity> entities = positionRepository.findByTeamIdOrderByDisplayOrderAsc(teamId);
         return shiftMapper.toPositionResponseList(entities);
     }
@@ -67,14 +74,12 @@ public class ShiftPositionService {
      *
      * @param teamId チームID
      * @param req    作成リクエスト
-     * @param userId 操作者ユーザーID
      * @return 作成されたポジション
-     * @throws BusinessException 当該チームの ADMIN 以上でない場合（COMMON_002 / 403）
+     * @throws BusinessException 名前の重複（POSITION_NAME_DUPLICATE）
      */
     @Transactional
-    public ShiftPositionResponse createPosition(Long teamId, CreatePositionRequest req, Long userId) {
-        checkTeamAdminAccess(teamId, userId);
-
+    public ShiftPositionResponse createPosition(Long teamId, CreatePositionRequest req) {
+        // 認可（当該チームの ADMIN 以上）は Facade 済み。
         // 重複チェック
         positionRepository.findByTeamIdAndName(teamId, req.getName())
                 .ifPresent(existing -> {
@@ -97,14 +102,13 @@ public class ShiftPositionService {
      *
      * @param positionId ポジションID
      * @param req        更新リクエスト
-     * @param userId     操作者ユーザーID
      * @return 更新されたポジション
-     * @throws BusinessException 不在・越境（SHIFT_004 / 404）、同チームの権限不足（COMMON_002 / 403）
+     * @throws BusinessException 不在（SHIFT_004 / 404）
      */
     @Transactional
-    public ShiftPositionResponse updatePosition(Long positionId, UpdatePositionRequest req, Long userId) {
+    public ShiftPositionResponse updatePosition(Long positionId, UpdatePositionRequest req) {
+        // 認可は Facade 済み。認可の後にポジションが消えた競合を 404 にするため読み直す。
         ShiftPositionEntity entity = findPositionOrThrow(positionId);
-        accessGate.requireAdminOrConceal(userId, entity.getTeamId(), "TEAM", ShiftErrorCode.SHIFT_POSITION_NOT_FOUND);
 
         if (req.getName() != null) {
             // 名前変更時は重複チェック
@@ -135,13 +139,12 @@ public class ShiftPositionService {
      * ポジションを削除する。
      *
      * @param positionId ポジションID
-     * @param userId     操作者ユーザーID
-     * @throws BusinessException 不在・越境（SHIFT_004 / 404）、同チームの権限不足（COMMON_002 / 403）
+     * @throws BusinessException 不在（SHIFT_004 / 404）
      */
     @Transactional
-    public void deletePosition(Long positionId, Long userId) {
+    public void deletePosition(Long positionId) {
+        // 認可は Facade 済み。認可の後にポジションが消えた競合を 404 にするため読み直す。
         ShiftPositionEntity entity = findPositionOrThrow(positionId);
-        accessGate.requireAdminOrConceal(userId, entity.getTeamId(), "TEAM", ShiftErrorCode.SHIFT_POSITION_NOT_FOUND);
         positionRepository.delete(entity);
         log.info("シフトポジション削除: id={}", positionId);
     }
@@ -152,36 +155,5 @@ public class ShiftPositionService {
     private ShiftPositionEntity findPositionOrThrow(Long id) {
         return positionRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_POSITION_NOT_FOUND));
-    }
-
-    /**
-     * 管理操作の per-scope 認可（SYSTEM_ADMIN 短絡 or 当該チームの ADMIN/DEPUTY_ADMIN）。
-     *
-     * @param teamId 対象チームID
-     * @param userId 操作者ユーザーID
-     * @throws BusinessException 権限が無い場合（COMMON_002 / 403）
-     */
-    private void checkTeamAdminAccess(Long teamId, Long userId) {
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
-    }
-
-    /**
-     * 参照の per-scope 認可（当該チームのメンバー、ただし SUPPORTER は不可）。
-     *
-     * @param teamId 対象チームID
-     * @param userId 操作者ユーザーID
-     * @throws BusinessException メンバーでない場合、または SUPPORTER の場合（COMMON_002 / 403）
-     */
-    private void checkTeamMemberAccess(Long teamId, Long userId) {
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        if (!accessControlService.isMember(userId, teamId, "TEAM")
-                || accessControlService.isSupporter(userId, teamId, "TEAM")) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
     }
 }

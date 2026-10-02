@@ -9,6 +9,7 @@ import com.mannschaft.app.billing.api.dto.PlanAdminResponse;
 import com.mannschaft.app.billing.api.dto.PlanFeaturesReplaceRequest;
 import com.mannschaft.app.billing.api.dto.PlanUpsertRequest;
 import com.mannschaft.app.billing.api.dto.PriceBandsReplaceRequest;
+import com.mannschaft.app.billing.api.dto.TeamParentOrganizationsResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,6 +47,7 @@ import java.util.List;
 public class SystemAdminBillingController {
 
     private final SystemAdminBillingService service;
+    private final SystemAdminTeamParentOrganizationQueryService teamParentOrganizationQueryService;
 
     // ============================================================
     // プラン CRUD
@@ -172,6 +174,14 @@ public class SystemAdminBillingController {
         Long sysAdminUserId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.of(service.grant(request, sysAdminUserId)));
+    }
+
+    @GetMapping("/teams/{teamId}/parent-organizations")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    @Operation(summary = "チームの親組織候補", description = "手動付与で組織を選ぶための ACTIVE な親組織一覧と代表親組織（§9.3）。")
+    public ResponseEntity<ApiResponse<TeamParentOrganizationsResponse>> teamParentOrganizations(
+            @PathVariable Long teamId) {
+        return ResponseEntity.ok(ApiResponse.of(teamParentOrganizationQueryService.teamParentOrganizations(teamId)));
     }
 
     @GetMapping("/contracts")

@@ -558,6 +558,21 @@ public class RoleService {
     }
 
     /**
+     * 指定チームの在籍中 MEMBER（現役の候補資格を満たす者。SUPPORTER・GUEST・退会者を除く）の
+     * ユーザー ID 一覧を返す。
+     *
+     * <p>shift の提出状況サマリーが、提出対象メンバーの列挙を {@code UserRoleRepository} の直参照ではなく
+     * Service 経由で行うための窓口（CMP-260923-0954 W1 Codex検分1巡目 P2）。
+     * {@code findMemberCandidateIdsByTeam} への委譲のみで、範囲は従来と同一。</p>
+     *
+     * @param teamId 対象チーム ID
+     * @return 候補メンバーのユーザー ID（加入順）
+     */
+    public List<Long> getMemberCandidateUserIdsByTeamId(Long teamId) {
+        return userRoleRepository.findMemberCandidateIdsByTeam(teamId);
+    }
+
+    /**
      * 指定組織で指定ロールを持つユーザー ID 一覧を返す（{@link #getUserIdsByTeamIdAndRoleName} の ORG 版）。
      *
      * <p>柱③-B 請求担当引継（CMP-260901-1538・Codex検分2巡目 P1-1）で追加。

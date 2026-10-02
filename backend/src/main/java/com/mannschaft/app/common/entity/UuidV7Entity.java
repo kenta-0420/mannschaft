@@ -22,7 +22,9 @@ import java.util.UUID;
  * <h2>適用対象</h2>
  * <ul>
  *   <li>新規テーブル作成時（既存テーブルの ID 型変更は破壊的変更につき禁止）</li>
- *   <li>DDL の id カラム型は {@code CHAR(36)} または {@code BINARY(16)} を推奨</li>
+ *   <li>DDL の id カラム型は {@code BINARY(16)} でなければならない（Hibernate は UUID を 16 バイトの BINARY 表現で書く。
+ *       {@code CHAR(36)} だと保存のたびに {@code Incorrect string value} で失敗する。{@code CHAR(36)} の表は
+ *       {@link UuidV7CharEntity} を継承すること。食い違いは {@code FlywayFromScratchMigrationTest} の UUID 列型の番人が検出する）</li>
  * </ul>
  *
  * <h2>使用例</h2>
