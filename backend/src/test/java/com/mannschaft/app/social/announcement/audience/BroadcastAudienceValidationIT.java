@@ -288,6 +288,121 @@ class BroadcastAudienceValidationIT extends AbstractBroadcastAudienceIT {
     }
 
     @Nested
+    @DisplayName("明示の空配列・テンプレートだけの指定は「すべてのチーム」に倒さない（Codex 検分 高2・高3）")
+    class NoSilentFallbackToAll {
+
+        @Test
+        @DisplayName("targetTeamIds=[] は 400 BROADCAST_009（送信もプレビューも）")
+        void emptyTeamIds_is009() throws Exception {
+            long before = feedCount(orgX.getId());
+            assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of("targetTeamIds", List.of()))),
+                    "BROADCAST_009", orgX.getId(), before);
+            preview(XA, orgX.getId(), bulletinBody(Map.of("targetTeamIds", List.of())))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("BROADCAST_009"));
+        }
+
+        @Test
+        @DisplayName("targetGroupIds=[] だけ（範囲も未分類も無い）は 400 BROADCAST_009（送信もプレビューも）")
+        void emptyGroupIds_is009() throws Exception {
+            long before = feedCount(orgX.getId());
+            assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of("targetGroupIds", List.of()))),
+                    "BROADCAST_009", orgX.getId(), before);
+            preview(XA, orgX.getId(), bulletinBody(Map.of("targetGroupIds", List.of())))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("BROADCAST_009"));
+        }
+
+        @Test
+        @DisplayName("targetGroupIds=[] でも範囲を指定していれば、範囲で送れる")
+        void emptyGroupIdsWithRange_isAccepted() throws Exception {
+            long feedId = feedIdOf(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of(
+                            "targetGroupIds", List.of(),
+                            "targetGroupRange", range(g1.getId(), g1.getId()))))
+                    .andExpect(status().isCreated()));
+            assertThat(snapshotPairs(feedId)).containsExactly(pair(g1.getId(), t1.getId()));
+        }
+
+        @Test
+        @DisplayName("targetTeamIds=[] とグループ指定の併用は 400 BROADCAST_011")
+        void emptyTeamIdsWithGroups_is011() throws Exception {
+            long before = feedCount(orgX.getId());
+            assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of(
+                            "targetTeamIds", List.of(),
+                            "targetGroupIds", ids(g1.getId())))),
+                    "BROADCAST_011", orgX.getId(), before);
+        }
+
+        @Test
+        @DisplayName("宛先を明示せず templateId だけの送信・プレビューは 400 COMMON_001（テンプレートの解決は 6-B まで未実装）")
+        void templateOnly_isRejected() throws Exception {
+            long before = feedCount(orgX.getId());
+            assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of("templateId", 123_456L))),
+                    "COMMON_001", orgX.getId(), before);
+            preview(XA, orgX.getId(), bulletinBody(Map.of("templateId", 123_456L)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_001"));
+        }
+
+        @Test
+        @DisplayName("templateId だけの送信でも、非メンバーには 400 ではなく 403（認可が先）")
+        void templateOnlyByNonMember_is403() throws Exception {
+            broadcastToOrg(YA, orgX.getId(), bulletinBody(Map.of("templateId", 123_456L)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+        }
+    }
+
+    @Nested
+    @DisplayName("アーカイブ済み・論理削除済みのチームは候補にも展開にも入らない（Codex 検分 中1）")
+    class ArchivedTeams {
+
+        @Test
+        @DisplayName("アーカイブ済み・論理削除済みのチームを選ぶと 400 BROADCAST_002")
+        void archivedOrDeletedTeam_is002() throws Exception {
+            TeamEntity archived = activeTeam(orgX.getId(), null, "TA");
+            archived.archive();
+            teamRepository.saveAndFlush(archived);
+            TeamEntity deleted = activeTeam(orgX.getId(), null, "TD");
+            deleted.softDelete();
+            teamRepository.saveAndFlush(deleted);
+            flushAndClear();
+
+            long before = feedCount(orgX.getId());
+            assertRejected(broadcastToOrg(XA, orgX.getId(),
+                            bulletinBody(Map.of("targetTeamIds", List.of(archived.getId())))),
+                    "BROADCAST_002", orgX.getId(), before);
+            assertRejected(broadcastToOrg(XA, orgX.getId(),
+                            bulletinBody(Map.of("targetTeamIds", List.of(deleted.getId())))),
+                    "BROADCAST_002", orgX.getId(), before);
+        }
+
+        @Test
+        @DisplayName("グループ・未分類の展開、プレビュー、スナップショットからも除かれる")
+        void archivedOrDeletedTeamIsNotExpanded() throws Exception {
+            TeamEntity archivedInG1 = activeTeam(orgX.getId(), g1.getId(), "TA1");
+            archivedInG1.archive();
+            teamRepository.saveAndFlush(archivedInG1);
+            TeamEntity deletedUnassigned = activeTeam(orgX.getId(), null, "TD0");
+            deletedUnassigned.softDelete();
+            teamRepository.saveAndFlush(deletedUnassigned);
+            flushAndClear();
+
+            String json = bulletinBody(Map.of("targetGroupIds", ids(g1.getId()), "includeUnassigned", true));
+            preview(XA, orgX.getId(), json)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.resolvedTeamCount").value(2)); // T1 と T0 だけ
+            long feedId = feedIdOf(broadcastToOrg(XA, orgX.getId(), json).andExpect(status().isCreated()));
+            assertThat(snapshotPairs(feedId)).containsExactly(pair(g1.getId(), t1.getId()));
+            assertThat(savedTargetAudience(feedId).path("teamCount").asInt()).isEqualTo(2);
+
+            preview(XA, orgX.getId(), bulletinBody(Map.of()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.resolvedTeamCount").value(4)); // T1・T2・T3・T0
+        }
+    }
+
+    @Nested
     @DisplayName("AC-H14b 上限と重複")
     class LimitsAndDuplicates {
 

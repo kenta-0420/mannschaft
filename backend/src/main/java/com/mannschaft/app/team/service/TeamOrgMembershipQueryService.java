@@ -117,7 +117,7 @@ public class TeamOrgMembershipQueryService {
      * 指定チームのうち、組織に ACTIVE で加盟しているチーム ID だけを返す（F01.2.1 §8.3・AC-K07）。
      *
      * <p>告知の「チームを選ぶ」の候補の検証に使う。PENDING（申請中・招待中）、加盟行の無いチーム
-     * （離脱済み・他組織）は返らない。{@code user_roles} は見ない。</p>
+     * （離脱済み・他組織）、アーカイブ済み・論理削除済みのチームは返らない。{@code user_roles} は見ない。</p>
      *
      * @param organizationId 組織 ID
      * @param teamIds        確かめるチーム ID（null・空なら空リスト）

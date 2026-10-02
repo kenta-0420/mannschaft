@@ -47,6 +47,7 @@ public class AudiencePreviewRequestDto {
 
     /** 宛先項目だけを取り出す。 */
     public BroadcastAudienceSpec toSpec() {
-        return new BroadcastAudienceSpec(targetTeamIds, targetGroupIds, targetGroupRange, includeUnassigned);
+        return new BroadcastAudienceSpec(
+                targetTeamIds, targetGroupIds, targetGroupRange, includeUnassigned, templateId, targetRole);
     }
 }

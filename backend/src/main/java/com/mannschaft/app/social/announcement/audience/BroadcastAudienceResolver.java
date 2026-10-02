@@ -2,11 +2,15 @@ package com.mannschaft.app.social.announcement.audience;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.MembershipStatsQueryService;
 import com.mannschaft.app.organization.teamgroup.service.OrgTeamGroupService;
 import com.mannschaft.app.organization.teamgroup.service.OrgTeamGroupService.TeamGroupCatalog;
 import com.mannschaft.app.organization.teamgroup.service.OrgTeamGroupView;
 import com.mannschaft.app.social.announcement.AnnouncementChannel;
 import com.mannschaft.app.social.announcement.AnnouncementErrorCode;
+import com.mannschaft.app.social.announcement.AnnouncementVisibility;
 import com.mannschaft.app.social.announcement.dto.AudiencePreviewRequestDto;
 import com.mannschaft.app.social.announcement.dto.AudiencePreviewResponseDto;
 import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
@@ -64,6 +68,7 @@ public class BroadcastAudienceResolver {
     private final TeamOrgMembershipQueryService membershipQueryService;
     private final OrgTeamGroupService orgTeamGroupService;
     private final TeamService teamService;
+    private final MembershipStatsQueryService membershipStatsQueryService;
 
     /**
      * broadcast 用に宛先を解決する。グループ指定で宛先チームも直属メンバーも 0 なら 400 {@code BROADCAST_009}。
@@ -121,7 +126,7 @@ public class BroadcastAudienceResolver {
 
     private ResolvedBroadcastAudience resolve(
             Long callerUserId, String scopeType, Long scopeId, BroadcastAudienceSpec spec) {
-        BroadcastAudienceSpec s = spec != null ? spec : new BroadcastAudienceSpec(null, null, null, null);
+        BroadcastAudienceSpec s = spec != null ? spec : new BroadcastAudienceSpec(null, null, null, null, null, null);
         if (TEAM.equals(scopeType)) {
             if (s.hasGroupItems()) {
                 throw new BusinessException(AnnouncementErrorCode.BROADCAST_012);
@@ -131,20 +136,38 @@ public class BroadcastAudienceResolver {
         if (!ORGANIZATION.equals(scopeType)) {
             return ResolvedBroadcastAudience.unrestricted();
         }
+        if (s.isTemplateOnly()) {
+            // 暫定（部隊 6-B で置き換える）: テンプレートの宛先のサーバー側解決（§8.6）は 6-B の受け持ちで、
+            // まだ実装していない。宛先を明示せずに templateId だけで送ると「すべてのチーム」に倒れて
+            // 絞ったはずの告知が全チームへ出るため、閉じる側に倒して拒否する。
+            // 設計書 §11 に該当する BROADCAST コードが無いため、入力不備の COMMON_001 を使う。
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
         if (s.hasTeamItems() && s.hasGroupItems()) {
             throw new BusinessException(AnnouncementErrorCode.BROADCAST_011);
         }
+        boolean includeSupporters = includesSupporters(s.targetRole());
         if (s.hasTeamItems()) {
-            return resolveTeams(callerUserId, scopeId, s.targetTeamIds());
+            return resolveTeams(callerUserId, scopeId, s.targetTeamIds(), includeSupporters);
         }
         if (s.hasGroupItems()) {
-            return resolveGroups(callerUserId, scopeId, s);
+            return resolveGroups(callerUserId, scopeId, s, includeSupporters);
         }
         return ResolvedBroadcastAudience.unrestricted();
     }
 
-    /** 「チームを選ぶ」: 上限 → 重複排除 → ACTIVE 加盟の照合（1 件でも外れれば全体を拒否）。 */
-    private ResolvedBroadcastAudience resolveTeams(Long callerUserId, Long organizationId, List<Long> requested) {
+    /** MEMBERS_AND_ABOVE（と未指定）は純 SUPPORTER を含めない。SUPPORTERS_AND_ABOVE・PUBLIC は含める（§8.5.2）。 */
+    private static boolean includesSupporters(String targetRole) {
+        return targetRole != null && !AnnouncementVisibility.MEMBERS_AND_ABOVE.equals(targetRole);
+    }
+
+    /** 「チームを選ぶ」: 空配列の拒否 → 上限 → 重複排除 → ACTIVE 加盟の照合（1 件でも外れれば全体を拒否）。 */
+    private ResolvedBroadcastAudience resolveTeams(
+            Long callerUserId, Long organizationId, List<Long> requested, boolean includeSupporters) {
+        if (requested.isEmpty()) {
+            // 明示の空配列は「誰も選ばなかった」。すべてのチームに倒さない
+            throw new BusinessException(AnnouncementErrorCode.BROADCAST_009);
+        }
         if (requested.size() > MAX_TARGET_TEAMS) {
             throw new BusinessException(AnnouncementErrorCode.BROADCAST_010);
         }
@@ -156,7 +179,7 @@ public class BroadcastAudienceResolver {
         if (!active.containsAll(distinct)) {
             throw new BusinessException(AnnouncementErrorCode.BROADCAST_002);
         }
-        int direct = countDirectMembers(callerUserId, organizationId);
+        int direct = countDirectMembers(callerUserId, organizationId, includeSupporters);
         TargetAudience audience = new TargetAudience(
                 TargetAudience.MODE_TEAMS, List.of(), null, false, distinct.size(), direct);
         return new ResolvedBroadcastAudience(ResolvedBroadcastAudience.Mode.TEAMS, distinct, List.of(), false,
@@ -164,10 +187,17 @@ public class BroadcastAudienceResolver {
     }
 
     /** 「チームグループで選ぶ」: 機能の有効確認 → 個別・範囲の検証と展開 → ACTIVE 加盟から宛先チームを引く。 */
-    private ResolvedBroadcastAudience resolveGroups(Long callerUserId, Long organizationId, BroadcastAudienceSpec spec) {
+    private ResolvedBroadcastAudience resolveGroups(
+            Long callerUserId, Long organizationId, BroadcastAudienceSpec spec, boolean includeSupporters) {
         TeamGroupCatalog catalog = orgTeamGroupService.findAudienceCatalog(organizationId);
         if (!catalog.enabled()) {
             throw new BusinessException(AnnouncementErrorCode.BROADCAST_007);
+        }
+        boolean nothingChosen = spec.targetGroupIds() != null && spec.targetGroupIds().isEmpty()
+                && spec.targetGroupRange() == null && !Boolean.TRUE.equals(spec.includeUnassigned());
+        if (nothingChosen) {
+            // 個別の空配列だけ（範囲も未分類も無い）は「誰も選ばなかった」。すべてのチームに倒さない
+            throw new BusinessException(AnnouncementErrorCode.BROADCAST_009);
         }
         List<OrgTeamGroupView> live = catalog.liveGroups();
         Map<UUID, Integer> indexOf = new HashMap<>();
@@ -238,7 +268,7 @@ public class BroadcastAudienceResolver {
             resolvedTeams.addAll(unassigned);
         }
 
-        int direct = countDirectMembers(callerUserId, organizationId);
+        int direct = countDirectMembers(callerUserId, organizationId, includeSupporters);
         TargetAudience audience = new TargetAudience(TargetAudience.MODE_GROUPS, List.copyOf(groups), rangeRef,
                 includeUnassigned, resolvedTeams.size(), direct);
         Map<UUID, List<Long>> frozen = new LinkedHashMap<>();
@@ -258,11 +288,12 @@ public class BroadcastAudienceResolver {
     /**
      * 直属メンバー数。組織スコープの ACTIVE メンバーから送信者本人を除いた人数とする
      * （送信者は必ず組織メンバーなので、本人を数えると「対象になる人がいない」が成立しなくなる。§8.3）。
+     * 告知対象ロールが MEMBERS_AND_ABOVE なら純 SUPPORTER を数えない（告知が見えない人を数えない）。
      */
-    private int countDirectMembers(Long callerUserId, Long organizationId) {
-        int members = accessControlService.countActiveDistinctMembers(ORGANIZATION, organizationId);
-        int self = accessControlService.isMember(callerUserId, organizationId, ORGANIZATION) ? 1 : 0;
-        return Math.max(0, members - self);
+    private int countDirectMembers(Long callerUserId, Long organizationId, boolean includeSupporters) {
+        long members = membershipStatsQueryService.countActiveMembersExcluding(
+                ScopeType.ORGANIZATION, organizationId, includeSupporters, callerUserId);
+        return Math.toIntExact(members);
     }
 
     // ───────── プレビューの付帯情報 ─────────

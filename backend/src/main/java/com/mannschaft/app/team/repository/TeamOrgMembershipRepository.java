@@ -300,22 +300,26 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
 
     /**
      * 指定チームのうち、組織に ACTIVE で加盟しているチーム ID を返す（「チームを選ぶ」の候補の検証。§8.3・AC-K07）。
-     * PENDING・加盟行の無いチーム（離脱済み・他組織）は返らない。
+     * PENDING・加盟行の無いチーム（離脱済み・他組織）と、アーカイブ済み・論理削除済みのチームは返らない。
      */
     @Query("SELECT m.teamId FROM TeamOrgMembershipEntity m "
+        + "JOIN TeamEntity t ON t.id = m.teamId "
         + "WHERE m.organizationId = :organizationId "
         + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
+        + "AND t.archivedAt IS NULL AND t.deletedAt IS NULL "
         + "AND m.teamId IN :teamIds")
     List<Long> findActiveTeamIdsByOrganizationIdAndTeamIdIn(@Param("organizationId") Long organizationId,
                                                             @Param("teamIds") java.util.Collection<Long> teamIds);
 
     /**
      * 組織に ACTIVE で加盟しているチームと、その所属グループ ID（未分類は NULL）を team_id 昇順で返す
-     * （グループ宛ての展開。§8.2）。
+     * （グループ宛ての展開。§8.2）。アーカイブ済み・論理削除済みのチームは返らない。
      */
     @Query("SELECT m.teamId AS teamId, m.groupId AS groupId FROM TeamOrgMembershipEntity m "
+        + "JOIN TeamEntity t ON t.id = m.teamId "
         + "WHERE m.organizationId = :organizationId "
         + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
+        + "AND t.archivedAt IS NULL AND t.deletedAt IS NULL "
         + "ORDER BY m.teamId ASC")
     List<TeamGroupAssignmentProjection> findActiveTeamGroupAssignments(@Param("organizationId") Long organizationId);
 }

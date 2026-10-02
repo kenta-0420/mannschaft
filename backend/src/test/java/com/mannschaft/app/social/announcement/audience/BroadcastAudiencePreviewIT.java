@@ -85,6 +85,27 @@ class BroadcastAudiencePreviewIT extends AbstractBroadcastAudienceIT {
         }
 
         @Test
+        @DisplayName("直属メンバー数は告知対象ロールに合わせる: MEMBERS_AND_ABOVE は純 SUPPORTER を数えず、SUPPORTERS_AND_ABOVE は数える")
+        void directMemberCountFollowsTargetRole() throws Exception {
+            Long xs = 940601060L;
+            seedUserOnly(xs);
+            com.mannschaft.app.support.test.MembershipTestHelper.insertMembership(
+                    em, xs, com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION, orgX.getId(),
+                    com.mannschaft.app.membership.domain.RoleKind.SUPPORTER);
+            flushAndClear();
+            java.util.Map<String, Object> members = new java.util.LinkedHashMap<>();
+            members.put("targetGroupIds", ids(g1.getId()));
+            members.put("targetRole", "MEMBERS_AND_ABOVE");
+            preview(XA, orgX.getId(), bulletinBody(members))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.directMemberCount").value(3)); // XD2・XM・XO
+            members.put("targetRole", "SUPPORTERS_AND_ABOVE");
+            preview(XA, orgX.getId(), bulletinBody(members))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.directMemberCount").value(4)); // ＋XS
+        }
+
+        @Test
         @DisplayName("XM（MEMBER）・XD2（MANAGE_CONTENT なし）が呼ぶと pushEnabled=false")
         void memberAndDeputyWithoutPermission_noPush() throws Exception {
             String json = body("SURVEY", Map.of("targetGroupRange", range(null, g2.getId())));
