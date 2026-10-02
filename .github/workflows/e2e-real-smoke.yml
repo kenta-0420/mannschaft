@@ -2,7 +2,7 @@
 # E2E Real Smoke — seed データ投入 + Backend API smoke チェック
 # =============================================================================
 # 概要:
-#   1. MySQL サービスコンテナを起動
+#   1. MySQL と Valkey のサービスコンテナを起動
 #   2. Spring Boot を ci プロファイルで起動（Flyway マイグレーションを自動適用）
 #   3. seed-e2e-data.js で E2E テスト用データを投入
 #   4. smoke-check.sh で API を叩き、HTTP 200 を確認する
@@ -28,9 +28,8 @@
 #   - smoke チェック: 約 30 秒
 #
 # 制限事項:
-#   - Valkey (Redis) は CI 環境に存在しない。
-#     既存の fail-open 機構（ValkeyFailSilentAspect 等）が接続失敗をスキップするため、
-#     Valkey を使用する機能（セッション管理・レートリミット等）は smoke 対象外とする。
+#   - Valkey は ci プロファイルの localhost:6379 に接続する専用サービスとして起動する。
+#     ブラウザの補助 API も実依存で検証し、接続失敗を合格扱いにしない。
 #   - bcrypt ハッシュ（seed スクリプトが投入した $2a$ 形式）は DelegatingPasswordEncoder の
 #     setDefaultPasswordEncoderForMatches(BCrypt) により正常に検証できる。
 #     Argon2id 移行（PR #1094）の影響でログインが失敗することはない。
@@ -72,6 +71,16 @@ jobs:
           - 3306:3306
         options: >-
           --health-cmd "mysqladmin ping -h localhost -u mannschaft -pmannschaft"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
