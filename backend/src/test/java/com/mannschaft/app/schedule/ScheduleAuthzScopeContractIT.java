@@ -225,7 +225,8 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                         .andExpect(jsonPath("$.data.detail.color").value("#a855f7"))
                         .andExpect(jsonPath("$.data.detail.visibility").value("MEMBERS_ONLY"))
                         .andExpect(jsonPath("$.data.content.title").value("詳細契約テスト"))
-                        .andExpect(jsonPath("$.data.time.startAt").value("2026-04-05T10:00:00"))
+                        // addFilters=false のためユーザー TZ は未解決。既存 Jackson 契約で JST の保存日時を UTC へ変換する。
+                        .andExpect(jsonPath("$.data.time.startAt").value("2026-04-05T01:00:00Z"))
                         .andExpect(jsonPath("$.data.scope.scopeName").value(organization ? "W4C 組織" : "W4C チーム"))
                         .andExpect(jsonPath("$.data.reminders").isArray())
                         .andExpect(jsonPath("$.data.scheduledTasks").isArray());
