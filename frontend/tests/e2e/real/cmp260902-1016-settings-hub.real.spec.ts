@@ -129,14 +129,21 @@ test.describe('CMP1016 設定一覧の実ブラウザ（API smokeとは別判定
         const permission = await deputy.request.get(`${API}/api/v1/${type}/${slug}/me/permissions`)
         expect(permission.status()).toBe(200)
         expect((await permission.json()).data.roleName).toBe('DEPUTY_ADMIN')
-        const modules = await owner.request.get(`${API}/api/v1/${type}/${slug}/modules`)
-        expect(modules.status()).toBe(200)
-        const payment = ((await modules.json()).data as Array<{ moduleId: number; moduleSlug: string; isEnabled: boolean }>).find(item => item.moduleSlug === 'payment')
-        expect(payment, '既存paymentモジュールを使う').toBeDefined()
+        // 登録済み一覧には初期未登録のpaymentが無いため、既存のscope別カタログでIDを解決する。
+        const catalog = await owner.request.get(`${API}/api/v1/${type}/${slug}/modules/catalog`)
+        expect(catalog.status()).toBe(200)
+        const payment = ((await catalog.json()).data.modules as Array<{ moduleId: number; slug: string; isEnabled: boolean; levelAvailable: boolean; requiresPaidPlan: boolean }>).find(item => item.slug === 'payment')
+        expect(payment, '既存paymentカタログを使う').toBeDefined()
+        expect(payment!.levelAvailable).toBe(true)
+        expect(payment!.requiresPaidPlan).toBe(false)
         if (!payment!.isEnabled) {
           const toggled = await owner.request.patch(`${API}/api/v1/${type}/${slug}/modules/${payment!.moduleId}/toggle`, { data: { moduleId: payment!.moduleId, enabled: true } })
           expect(toggled.status()).toBe(200)
         }
+        const modules = await owner.request.get(`${API}/api/v1/${type}/${slug}/modules`)
+        expect(modules.status()).toBe(200)
+        expect(((await modules.json()).data as Array<{ moduleId: number; moduleSlug: string; isEnabled: boolean }>).find(item => item.moduleSlug === 'payment'))
+          .toMatchObject({ moduleId: payment!.moduleId, isEnabled: true })
       }
     }
     finally {
