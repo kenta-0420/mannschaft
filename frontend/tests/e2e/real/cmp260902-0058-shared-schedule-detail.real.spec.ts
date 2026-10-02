@@ -98,7 +98,7 @@ test.describe('CMP-260902-0058 実ブラウザ（API smoke と別判定）', () 
         expect(memberRows).toHaveLength(1)
         const scopeId = Number(scopeRows[0]!.id)
         const [adminMemberships] = await db.execute(
-          'SELECT sm.id FROM scope_memberships sm JOIN users u ON u.id = sm.user_id '
+          'SELECT sm.id FROM memberships sm JOIN users u ON u.id = sm.user_id '
           + 'WHERE u.email = ? AND sm.scope_type = ? AND sm.scope_id = ? AND sm.left_at IS NULL',
           [ADMIN, scope.type === 'teams' ? 'TEAM' : 'ORGANIZATION', scopeId],
         )
