@@ -57,6 +57,6 @@ export function useProxyManagementScope() {
   }
 
   onMounted(() => { void load() })
-  watch(() => [scope.current.type, scope.current.id, auth.isSystemAdmin], () => { void load() })
+  watch(() => [scope.current.type, scope.current.id, auth.isSystemAdmin, auth.user?.id], () => { void load() })
   return { organizations: choices, organization, loading, failed, allowed, permissions, load, select }
 }

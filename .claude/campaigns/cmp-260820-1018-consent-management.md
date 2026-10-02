@@ -3,7 +3,7 @@
 - ブランチ: `feature/cmp-260820-1018-consent-management-20261002`
 - 基点: `b3efd80c58`
 - 担当: 足軽B（Sol / medium、Terra代替）。軍議・成果検分・出荷判断は殿。
-- 状態: 管理65契約を含む既存Proxy・必要認可・標準Arch回帰224件が全green（0 failures/errors/skipped、main追従前）。最新main追従と標準H2 OpenAPI/生成FE型は完了。FE初期実装・API単体5件green、全体型チェック再測定中。同意管理実機・最終検分は未達。
+- 状態: 管理65契約を含む既存Proxy・必要認可・標準Arch回帰224件が全green（0 failures/errors/skipped、main追従前）。最新main追従と標準H2 OpenAPI/生成FE型は完了。FE実装・API単体5件・ナビ16件・機能ゲート17件・全体型チェックがgreen。同意管理実機・最終検分は未達。
 
 ## 方針
 
@@ -104,3 +104,9 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - process限定8GBの全体typecheckはexit2、組合管理hubのnumericId optionalとname shapeの2診断のみ。numericIdを検証し、basicInfo.nameへ修正した。修正後再測定はWindows空きRAMが安全閾値未満のためpreflight exit3/実行未開始が続き、型チェックGREENは未達。既存proxy-desk E2Eのmockも実organizationId/status/撤回監査項目へ同期したが、回帰実行は後段に残す。
 - immutable d189 jarをown8081（PID90673/cwd・jarSHA一致、事前listenerなし、旧local profile/private設定読み取り/CORS同条件）で起動し、Started/health200/schema up-to-dateを観測。ただしprivate application-local.ymlがvalidate-on-migrate=falseだったので、Flyway validation成功とは扱わない。自所有PIDだけTERMし停止を確認、実機には未使用。共有YAMLやDBrepair・他PIDは無変更。次起動は殿の確認に従いprocess限定validate-on-migrate=trueで検証する。
 - 住民配役案は既存アリシゼーションの2軸を使う。一般×素直（ADMINの同意承認/紙撤回と履歴確認）、スマホ片手×表示崩れ（390/360、長い翻訳/理由/立会選択）、一般×隙間狙い（他組合/非管理/自己承認/SYS業務UI）。殿が実機GREEN後に別context/1loginずつ起動し、目的のみで探索する。personaId/journeyIdの既存正本との対応は殿確認前に捏造しない。
+
+## FE検証の終端
+
+- 機能ゲートは新しい管理2経路を含め17 tests/0 failures/0 errors/0 skipped。標準prefix末尾の重複slashを避け、実測の静的47/動的47にコメントと試験を同期した。raw XMLはignored artifacts/fe-api1/gates-green.xml。
+- 型チェック再測定session56399はprocess限定8192MiBでexit0、診断0件、OOMなし。stdio SHA256は2e27bf779c471c2b52c95971b8bf2684f4c6aeec70ff9cfaa411510b32a890ac。typecheck-1790965167653に終端証拠を保全した。Nuxt試験が更新した自所有.nuxtrcメタデータは正本へ復元し、依存変更に含めない。
+- useProxyManagementScopeの認証主体切替も再取得対象へ追加。今回差分3ファイルのESLintとgit diff --checkはexit0。実機・取消PATCH0・途中失敗・既存Desk実行と3住民は未達のまま。
