@@ -141,6 +141,10 @@ class ReservationControllerTest {
         @Mock
         private ReservationService reservationService;
 
+        /** 予約詳細の閲覧認可ファサード（トランザクション外）。 */
+        @Mock
+        private com.mannschaft.app.reservation.service.ReservationDetailFacade detailFacade;
+
         @Mock
         private ReservationReminderService reminderService;
 
@@ -189,7 +193,7 @@ class ReservationControllerTest {
         @Test
         @DisplayName("予約詳細取得_正常_200返却")
         void 予約詳細取得_正常_200返却() {
-            given(reservationService.getReservation(TEAM_ID, RESERVATION_ID))
+            given(detailFacade.getReservation(TEAM_ID, RESERVATION_ID))
                     .willReturn(createReservationResponse());
 
             ResponseEntity<ApiResponse<ReservationResponse>> result =

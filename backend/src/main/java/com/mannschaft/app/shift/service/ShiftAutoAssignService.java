@@ -3,7 +3,6 @@ package com.mannschaft.app.shift.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.AssignmentStrategyType;
 import com.mannschaft.app.shift.ShiftAssignmentRunStatus;
@@ -44,15 +43,19 @@ import java.util.stream.Collectors;
 /**
  * シフト自動割当サービス。割当アルゴリズムの実行・確定・取消・履歴管理を担当する。
  *
- * <p><b>認可（認可根治 Wave7）:</b> {@link AccessControlService} を用いて全 public 入口に
- * per-scope 認可を敷設した。方針は同ドメインの兄弟
- * {@code ShiftScheduleService#checkScheduleAdminAccess} / {@code ShiftSlotService#checkScheduleAdminAccess}
- * と同一（SYSTEM_ADMIN 短絡許可 → 当該チームの ADMIN/DEPUTY_ADMIN のみ）。</p>
+ * <p><b>認可はここに置かない（CMP-260923-0954 W2）:</b> 権限の確認は非トランザクションの
+ * {@link ShiftAutoAssignFacade} が行い、通ったものだけを本クラスの tx が実行する。
+ * {@code AccessControlService} / {@code ScopeConcealingAccessGate} への依存と認可用の private メソッドは持たない
+ * （D-3T 番人と {@code ShiftTxFacadeArchTest} が固定）。</p>
  *
  * <p><b>BOLA 封鎖:</b> スコープ（チーム）は<b>パス変数ではなく実体由来</b>で解決する。
- * {@code runId} を受ける経路は run 実体 → {@code scheduleId} → スケジュール実体 → {@code teamId} と
- * 辿って認可する。パスの {@code scheduleId} と run 実体の {@code scheduleId} が食い違う場合は
- * <b>存在を秘匿して 404</b>（{@code ASSIGNMENT_RUN_NOT_FOUND}）を返す。</p>
+ * Facade は認可の前に {@link #resolveScheduleTeamId} / {@link #resolveRunTeamId}（readOnly・ロックなし）で
+ * run 実体 → {@code scheduleId} → スケジュール実体 → {@code teamId} とたどる。パスの {@code scheduleId} と
+ * run 実体の {@code scheduleId} が食い違う場合は<b>存在を秘匿して 404</b>（{@code ASSIGNMENT_RUN_NOT_FOUND}）。</p>
+ *
+ * <p><b>ロックの順序（K6）:</b> スケジュール行の {@code FOR UPDATE}（親削除との直列化）は<b>認可の後</b>、
+ * tx の中で取る（素の読み取り → 認可 → FOR UPDATE して読み直す）。部外者のリクエストが他チームの行ロックを
+ * 取って待たせることがない。tx 内では解決時と同じ経路で読み直し、不在なら解決時と同じコードの 404（DB 不変）。</p>
  */
 @Slf4j
 @Service
@@ -68,13 +71,12 @@ public class ShiftAutoAssignService {
     private final ShiftAssignmentRunRepository assignmentRunRepository;
     private final List<ShiftAssignmentStrategy> strategies;
     private final ObjectMapper objectMapper;
-    private final AccessControlService accessControlService;
 
     /**
      * 自動割当を実行する。
      *
-     * <p>認可（Wave7）: スケジュール実体から解決したチームの ADMIN/DEPUTY_ADMIN のみ実行可
-     * （{@code triggeredBy} を用いて判定する）。</p>
+     * <p>認可（スケジュール実体から解決したチームの ADMIN/DEPUTY_ADMIN のみ）は
+     * {@link ShiftAutoAssignFacade#runAutoAssign} が tx の外で済ませる。</p>
      *
      * @param scheduleId  スケジュールID
      * @param request     自動割当リクエスト
@@ -83,11 +85,10 @@ public class ShiftAutoAssignService {
      */
     @Transactional
     public AssignmentRunResponse runAutoAssign(Long scheduleId, AutoAssignRequest request, Long triggeredBy) {
-        // スケジュール存在チェック
+        // 認可は Facade 済み。ここで初めて親行を FOR UPDATE する（K6: 部外者にはロックを取らせない）。
+        // 認可の後・tx の前にスケジュールが消えた競合は、読み直しの不在で 404（Facade の解決時と同じコード・DB 不変）。
         ShiftScheduleEntity schedule = scheduleRepository.findByIdForUpdate(scheduleId)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
-        // 認可（Wave7）: scope は実体（schedule.teamId）由来。
-        checkScheduleAdminAccess(schedule, triggeredBy);
 
         // パラメータのデフォルト値補完
         AssignmentParametersDto params = request.parameters() != null
@@ -169,18 +170,18 @@ public class ShiftAutoAssignService {
     /**
      * 自動割当提案を確定する。
      *
-     * <p>認可（Wave7）: run 実体 → スケジュール実体 → チームと辿り、当該チームの
-     * ADMIN/DEPUTY_ADMIN のみ確定可。パスの {@code scheduleId} と run 実体の食い違いは 404。</p>
+     * <p>認可（run 実体 → スケジュール実体 → チームと辿り、当該チームの ADMIN/DEPUTY_ADMIN のみ）は
+     * {@link ShiftAutoAssignFacade#confirmAutoAssign} が済ませる。パスの {@code scheduleId} と run 実体の
+     * 食い違いは 404。</p>
      *
      * @param scheduleId スケジュールID
      * @param request    確定リクエスト
-     * @param userId     操作者ユーザーID
      */
     @Transactional
-    public void confirmAutoAssign(Long scheduleId, ConfirmAutoAssignRequest request, Long userId) {
-        // 実行ログの存在・ステータスチェック（認可は run 実体由来の scope で行う）
+    public void confirmAutoAssign(Long scheduleId, ConfirmAutoAssignRequest request) {
+        // 認可は Facade 済み。run を読み直し、パスのスケジュールとの突合・親行の FOR UPDATE をここで行う。
         ShiftAssignmentRunEntity run = findRunOrThrow(request.runId());
-        checkRunAdminAccess(run, scheduleId, userId);
+        lockScheduleOfRun(run, scheduleId);
 
         if (run.getStatus() != ShiftAssignmentRunStatus.CONFIRMED) {
             throw new BusinessException(ShiftErrorCode.VISUAL_REVIEW_REQUIRED);
@@ -209,16 +210,16 @@ public class ShiftAutoAssignService {
     /**
      * 自動割当提案を破棄する（PROPOSED → REVOKED 一括更新）。
      *
-     * <p>認可（Wave7）: run 実体由来のチームの ADMIN/DEPUTY_ADMIN のみ破棄可。</p>
+     * <p>認可（run 実体由来のチームの ADMIN/DEPUTY_ADMIN のみ）は
+     * {@link ShiftAutoAssignFacade#revokeAutoAssign} が済ませる。</p>
      *
      * @param scheduleId スケジュールID
      * @param runId      実行ログID
-     * @param userId     操作者ユーザーID
      */
     @Transactional
-    public void revokeAutoAssign(Long scheduleId, Long runId, Long userId) {
+    public void revokeAutoAssign(Long scheduleId, Long runId) {
         ShiftAssignmentRunEntity run = findRunOrThrow(runId);
-        checkRunAdminAccess(run, scheduleId, userId);
+        lockScheduleOfRun(run, scheduleId);
 
         // PROPOSED の割当を全て REVOKED に更新
         List<ShiftAssignmentEntity> proposals = assignmentRepository.findAllByRunId(runId).stream()
@@ -239,16 +240,16 @@ public class ShiftAutoAssignService {
     /**
      * スケジュールの自動割当実行履歴一覧を取得する。
      *
-     * <p>認可（Wave7）: 自動割当は管理者専用の運用機能であり、履歴には誰がいつ実行したか・
-     * 何枠が埋まったか等の運用情報が含まれる。書き込み系と同じ ADMIN/DEPUTY_ADMIN 粒度とする。</p>
+     * <p>認可: 自動割当は管理者専用の運用機能であり、履歴には誰がいつ実行したか・
+     * 何枠が埋まったか等の運用情報が含まれる。書き込み系と同じ ADMIN/DEPUTY_ADMIN 粒度とする
+     * （{@link ShiftAutoAssignFacade#getAssignmentRuns} が tx の外で判定する）。</p>
      *
      * @param scheduleId スケジュールID
-     * @param userId     操作者ユーザーID
      * @return 実行ログ一覧
      */
-    public List<AssignmentRunResponse> getAssignmentRuns(Long scheduleId, Long userId) {
-        ShiftScheduleEntity schedule = findScheduleOrThrow(scheduleId);
-        checkScheduleAdminAccess(schedule, userId);
+    public List<AssignmentRunResponse> getAssignmentRuns(Long scheduleId) {
+        // 認可は Facade 済み。認可の後にスケジュールが消えた競合を 404 にするため読み直す。
+        findScheduleOrThrow(scheduleId);
 
         List<ShiftAssignmentRunEntity> runs = assignmentRunRepository
                 .findAllByScheduleIdOrderByStartedAtDesc(scheduleId);
@@ -260,17 +261,17 @@ public class ShiftAutoAssignService {
     /**
      * 自動割当実行ログ詳細を取得する（割当提案一覧を含む）。
      *
-     * <p>認可（Wave7）: 詳細は「誰をどの枠に入れる提案か」＝メンバーの {@code userId} 一覧を含むため、
-     * run 実体由来のチームの ADMIN/DEPUTY_ADMIN のみ閲覧可。パス変数にスコープが無い
-     * （{@code /assignment-runs/{runId}}）ため、突合対象の scheduleId は渡さない。</p>
+     * <p>認可: 詳細は「誰をどの枠に入れる提案か」＝メンバーの {@code userId} 一覧を含むため、
+     * run 実体由来のチームの ADMIN/DEPUTY_ADMIN のみ閲覧可（{@link ShiftAutoAssignFacade#getAssignmentRunDetail}）。
+     * パス変数にスコープが無い（{@code /assignment-runs/{runId}}）ため、突合対象の scheduleId は渡さない。</p>
      *
      * @param runId  実行ログID
-     * @param userId 操作者ユーザーID
      * @return 実行ログ詳細
      */
-    public AssignmentRunResponse getAssignmentRunDetail(Long runId, Long userId) {
+    public AssignmentRunResponse getAssignmentRunDetail(Long runId) {
         ShiftAssignmentRunEntity run = findRunOrThrow(runId);
-        checkRunAdminAccessConcealed(run, userId);
+        // 認可は Facade 済み。認可の後にスケジュールが消えた競合を 404（ASSIGNMENT_RUN_NOT_FOUND）にする。
+        traceTeamIdOfRunConcealed(run);
 
         List<ShiftAssignmentEntity> assignments = assignmentRepository.findAllByRunId(runId);
         return toRunResponse(
@@ -283,9 +284,10 @@ public class ShiftAutoAssignService {
     /**
      * 目視確認を完了させる。
      *
-     * <p>認可（Wave7）: 本 API は {@code confirmAutoAssign} の前提条件
+     * <p>認可: 本 API は {@code confirmAutoAssign} の前提条件
      * （{@code VISUAL_REVIEW_REQUIRED}）を解除する操作のため、確定と<b>同一粒度</b>
-     * （run 実体由来のチームの ADMIN/DEPUTY_ADMIN）で独立に認可する。</p>
+     * （run 実体由来のチームの ADMIN/DEPUTY_ADMIN）で独立に認可する
+     * （{@link ShiftAutoAssignFacade#confirmVisualReview} が tx の外で判定する）。</p>
      *
      * @param runId  実行ログID
      * @param note   確認備考
@@ -294,7 +296,8 @@ public class ShiftAutoAssignService {
     @Transactional
     public void confirmVisualReview(Long runId, String note, Long userId) {
         ShiftAssignmentRunEntity run = findRunOrThrow(runId);
-        checkRunAdminAccessConcealed(run, userId);
+        // 認可は Facade 済み。認可の後にスケジュールが消えた競合を 404（ASSIGNMENT_RUN_NOT_FOUND）にする。
+        traceTeamIdOfRunConcealed(run);
 
         if (run.getStatus() != ShiftAssignmentRunStatus.SUCCEEDED) {
             throw new BusinessException(ShiftErrorCode.INVALID_ASSIGNMENT_RUN_STATUS);
@@ -338,77 +341,69 @@ public class ShiftAutoAssignService {
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND));
     }
 
+    // ═════════════════════════════════════════════════════════════════════
+    // scope 解決（Facade が認可の前に呼ぶ readOnly の読み取り。ロックは取らない。Entity は返さない）
+    // ═════════════════════════════════════════════════════════════════════
+
     /**
-     * シフトスケジュールに対する管理者認可（SYSTEM_ADMIN 短絡 or 当該チームの ADMIN/DEPUTY_ADMIN）。
+     * スケジュール ID から所属チーム ID を解決する。不在・論理削除済みなら {@code SHIFT_SCHEDULE_NOT_FOUND}。
      *
-     * <p>判定内容は {@code ShiftScheduleService#checkScheduleAdminAccess} /
-     * {@code ShiftSlotService#checkScheduleAdminAccess} と同一。ArchUnit 認可番人の委譲追跡は
-     * 2 ホップまで（{@code MAX_DELEGATION_DEPTH=2}）のため、{@link AccessControlService} を
-     * <b>本メソッドから直接</b>呼んでフラット化してある（更に委譲すると番人から見えなくなる）。</p>
-     *
-     * @param schedule 対象スケジュール（scope は実体由来＝BOLA 封鎖）
-     * @param userId   操作ユーザー ID
-     * @throws BusinessException 権限がない場合（COMMON_002 / 403）
+     * @param scheduleId スケジュール ID
+     * @return 所属チーム ID
      */
-    private void checkScheduleAdminAccess(ShiftScheduleEntity schedule, Long userId) {
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
+    public Long resolveScheduleTeamId(Long scheduleId) {
+        return findScheduleOrThrow(scheduleId).getTeamId();
     }
 
     /**
-     * 実行ログ（run）に対する管理者認可。scope を run 実体から解決する（BOLA 封鎖）。
+     * run 実体から所属チーム ID を解決する。
      *
-     * <p>{@code expectedScheduleId} が非 null の場合は「パス変数の scheduleId」と
-     * 「run 実体の scheduleId」を突合し、食い違えば<b>存在を秘匿して 404</b>
-     * （{@code ASSIGNMENT_RUN_NOT_FOUND}）を返す。403 と 404 を撃ち分けると
-     * 他チームの runId の存在有無が観測できてしまうため、越境時は未存在と同じ応答に寄せる。</p>
+     * <p>{@code expectedScheduleId} が非 null（パスにスケジュールを持つ確定・破棄）の場合は、run 実体の
+     * scheduleId と突合し、食い違えば存在を秘匿して {@code ASSIGNMENT_RUN_NOT_FOUND}、スケジュールが不在なら
+     * {@code SHIFT_SCHEDULE_NOT_FOUND}。null（パスにスコープを持たない詳細・目視確認）の場合は、
+     * スケジュールが不在でも {@code ASSIGNMENT_RUN_NOT_FOUND}（是正前の応答と同一）。</p>
      *
-     * <p>{@link #checkScheduleAdminAccess} へ委譲せず {@link AccessControlService} を直接呼ぶのは
-     * ArchUnit 認可番人の委譲追跡上限（2 ホップ）に収めるため。</p>
-     *
-     * @param run                対象の実行ログ
+     * @param runId              実行ログ ID
      * @param expectedScheduleId パス変数由来のスケジュール ID（突合しない経路は null）
-     * @param userId             操作ユーザー ID
+     * @return 所属チーム ID
      */
-    private void checkRunAdminAccess(ShiftAssignmentRunEntity run, Long expectedScheduleId, Long userId) {
-        if (!expectedScheduleId.equals(run.getScheduleId())) {
-            // パスのスケジュールに属さない run は「存在しない」と同じ応答に寄せる。
-            throw new BusinessException(ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND);
+    public Long resolveRunTeamId(Long runId, Long expectedScheduleId) {
+        ShiftAssignmentRunEntity run = findRunOrThrow(runId);
+        if (expectedScheduleId == null) {
+            return traceTeamIdOfRunConcealed(run);
         }
-        ShiftScheduleEntity schedule = scheduleRepository.findByIdForUpdate(run.getScheduleId())
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
+        assertRunBelongsToPathSchedule(run, expectedScheduleId);
+        return findScheduleOrThrow(run.getScheduleId()).getTeamId();
     }
 
     /**
-     * run 実体由来の管理者認可（<b>存在秘匿版</b>）。権限が無い場合も 403 ではなく
-     * {@code ASSIGNMENT_RUN_NOT_FOUND}（404）を返す。
-     *
-     * <p>パスにスコープを持たない {@code /assignment-runs/{runId}} 系の EP 専用。403 と 404 を
-     * 撃ち分けると「その runId が実在する」ことが観測でき、他チームの割当実行の有無を総当りで
-     * 探れてしまう。同ドメインの {@code ShiftChangeRequestService#get}（越境は
-     * {@code CHANGE_REQUEST_NOT_FOUND}）と同一方針。</p>
-     *
-     * <p>{@code checkAdminOrAbove}（例外送出）でなく {@code isAdminOrAbove}（真偽）を使うのは、
-     * 例外を握り潰して詰め替えるのではなく<b>最初から意図した応答を組み立てる</b>ため。</p>
-     *
-     * @param run    対象の実行ログ
-     * @param userId 操作ユーザー ID
+     * パスのスケジュールに属さない run は「存在しない」と同じ応答（404）に寄せる。
+     * 403 と 404 を撃ち分けると他チームの runId の存在有無が観測できてしまうため。
      */
-    private void checkRunAdminAccessConcealed(ShiftAssignmentRunEntity run, Long userId) {
-        ShiftScheduleEntity schedule = scheduleRepository.findById(run.getScheduleId())
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND));
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        if (!accessControlService.isAdminOrAbove(userId, schedule.getTeamId(), "TEAM")) {
+    private void assertRunBelongsToPathSchedule(ShiftAssignmentRunEntity run, Long expectedScheduleId) {
+        if (!expectedScheduleId.equals(run.getScheduleId())) {
             throw new BusinessException(ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND);
         }
+    }
+
+    /**
+     * 確定・破棄の tx 内: パスのスケジュールとの突合のあと、親スケジュール行を {@code FOR UPDATE} で読み直す
+     * （親削除と子の更新を同じ親行のロックで直列化する）。呼び出しは Facade の認可の<b>後</b>。
+     */
+    private void lockScheduleOfRun(ShiftAssignmentRunEntity run, Long expectedScheduleId) {
+        assertRunBelongsToPathSchedule(run, expectedScheduleId);
+        scheduleRepository.findByIdForUpdate(run.getScheduleId())
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+    }
+
+    /**
+     * run からスケジュールを経由してチーム ID を解決する（<b>存在秘匿版</b>）。
+     * スケジュールが不在なら {@code ASSIGNMENT_RUN_NOT_FOUND}。
+     */
+    private Long traceTeamIdOfRunConcealed(ShiftAssignmentRunEntity run) {
+        return scheduleRepository.findById(run.getScheduleId())
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.ASSIGNMENT_RUN_NOT_FOUND))
+                .getTeamId();
     }
 
     private ShiftAssignmentStrategy findStrategy(AssignmentStrategyType type) {

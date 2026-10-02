@@ -23,11 +23,6 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     List<TeamOrgMembershipEntity> findByOrganizationIdAndStatus(Long organizationId, TeamOrgMembershipEntity.Status status);
 
     /**
-     * チームが所属するACTIVE状態の組織を取得する（通常1件）。
-     */
-    Optional<TeamOrgMembershipEntity> findFirstByTeamIdAndStatus(Long teamId, TeamOrgMembershipEntity.Status status);
-
-    /**
      * チームが所属する全組織を取得する。
      */
     List<TeamOrgMembershipEntity> findByTeamIdAndStatus(Long teamId, TeamOrgMembershipEntity.Status status);
@@ -46,7 +41,7 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     @Query("UPDATE TeamOrgMembershipEntity m SET m.respondedBy = NULL WHERE m.respondedBy = :userId")
     int nullifyRespondedBy(@Param("userId") Long userId);
 
-    // ========================================================================
+    // =================================================================
     // Phase D-3: AccountPurgedEvent 処理漏れの孤児補正（夜次バッチ用）
     //
     // TeamPurgeEventListener が失敗した場合、退会済みユーザーへの参照が残存する。
@@ -150,6 +145,38 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     List<TeamOrgMembershipEntity> findActiveByTeamIdOrderByRespondedAtAndOrganizationId(@Param("teamId") Long teamId);
 
     /**
+     * 複数チームの ACTIVE な親組織 ID を、チームごとに代表親組織の規則順
+     * （{@code COALESCE(responded_at, created_at)} 昇順 → {@code organization_id} 昇順）の List で返す
+     * （F01.2.1 §9.2 #7・#8。先頭が代表親組織 §9.3）。SQL は 1 本。親組織が 0 件のチームは entry に含めない。
+     *
+     * @param teamIds 対象チーム ID 集合（空・null なら SQL を発行せず空 Map）
+     * @return チーム ID → 親組織 ID（代表親組織が先頭・重複なし）
+     */
+    default Map<Long, List<Long>> findOrganizationIdsInPrimaryOrderByTeamIdIn(Set<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<Long>> result = new java.util.LinkedHashMap<>();
+        for (TeamOrgIdProjection p : findTeamOrgIdProjectionsInPrimaryOrderByTeamIdIn(teamIds)) {
+            List<Long> orgIds = result.computeIfAbsent(p.getTeamId(), k -> new java.util.ArrayList<>());
+            if (!orgIds.contains(p.getOrganizationId())) {
+                orgIds.add(p.getOrganizationId());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * {@link #findOrganizationIdsInPrimaryOrderByTeamIdIn(Set)} の内部 JPQL 実装（teamIds は非空）。
+     */
+    @Query("SELECT m.teamId AS teamId, m.organizationId AS organizationId "
+        + "FROM TeamOrgMembershipEntity m "
+        + "WHERE m.teamId IN :teamIds "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
+        + "ORDER BY m.teamId ASC, COALESCE(m.respondedAt, m.createdAt) ASC, m.organizationId ASC")
+    List<TeamOrgIdProjection> findTeamOrgIdProjectionsInPrimaryOrderByTeamIdIn(@Param("teamIds") Set<Long> teamIds);
+
+    /**
      * {@link #findOrganizationIdByTeamIdIn(Set)} の内部 JPQL 実装。
      * 空集合チェックは default メソッド側で行うため、本メソッドは {@code teamIds}
      * 非空でのみ呼び出される。
@@ -170,4 +197,100 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
         + "WHERE m.teamId IN :teamIds "
         + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE")
     List<Long> findDistinctOrganizationIdsByTeamIdIn(@Param("teamIds") Set<Long> teamIds);
+
+    // ========================================================================
+    // F01.2.1 2-B1: チーム側の加盟申請（§6.1・§6.4・§10.6）
+    //
+    // 「チーム側から引くクエリは必ず team_id を条件に含め、ID 指定の取得は (id, team_id) の組でだけ行う」
+    // （§5.1。AbstractTenantAwareRepository を継承しない代わりの規約。TeamAffiliationScopeContractIT が担保）。
+    // ========================================================================
+
+    /**
+     * 加盟 ID とチーム ID の組で1件引く（越境した ID・存在しない ID・削除済みはすべて空になる）。
+     */
+    Optional<TeamOrgMembershipEntity> findByIdAndTeamId(Long id, Long teamId);
+
+    /**
+     * {@link #findByIdAndTeamId} の {@code SELECT ... FOR UPDATE} 版。承認・取下げの競合を行ロックで直列化し、
+     * ロック取得後は REPEATABLE READ でも最新のコミット済みの状態を読む（§6.4 の判定表を一意に決める）。
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM TeamOrgMembershipEntity m WHERE m.id = :id AND m.teamId = :teamId")
+    Optional<TeamOrgMembershipEntity> findByIdAndTeamIdForUpdate(@Param("id") Long id, @Param("teamId") Long teamId);
+
+    /**
+     * チームの PENDING な加盟を向き別に数える（同時申請数の上限 §6.1 step 9）。
+     */
+    @Query("SELECT COUNT(m) FROM TeamOrgMembershipEntity m "
+        + "WHERE m.teamId = :teamId AND m.status = :status AND m.direction = :direction")
+    long countByTeamIdAndStatusAndDirection(
+            @Param("teamId") Long teamId,
+            @Param("status") TeamOrgMembershipEntity.Status status,
+            @Param("direction") com.mannschaft.app.team.entity.TeamOrgAffiliationDirection direction);
+
+    /**
+     * チームの申請中一覧（PENDING / TEAM_APPLY）を申請日時の降順で引く（§10.6）。
+     *
+     * <p>同時刻の行の並びを決定的にするため ID の降順を副キーにする。</p>
+     */
+    @Query(value = "SELECT m FROM TeamOrgMembershipEntity m "
+            + "WHERE m.teamId = :teamId AND m.status = :status AND m.direction = :direction "
+            + "ORDER BY m.invitedAt DESC, m.id DESC",
+            countQuery = "SELECT COUNT(m) FROM TeamOrgMembershipEntity m "
+            + "WHERE m.teamId = :teamId AND m.status = :status AND m.direction = :direction")
+    org.springframework.data.domain.Page<TeamOrgMembershipEntity> findPageByTeamIdAndStatusAndDirection(
+            @Param("teamId") Long teamId,
+            @Param("status") TeamOrgMembershipEntity.Status status,
+            @Param("direction") com.mannschaft.app.team.entity.TeamOrgAffiliationDirection direction,
+            org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * チーム側の取下げ: 条件付き DELETE（{@code id, team_id, PENDING, TEAM_APPLY}。§4.1・§6.4）。
+     *
+     * <p>状態を変える更新は必ず条件付きで行い、影響行数 0 のときの応答は §6.4 の判定表で決める。
+     * 承認（条件付き UPDATE）と競合したとき、ちょうど一方だけが成功する。</p>
+     *
+     * @return 削除した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM TeamOrgMembershipEntity m WHERE m.id = :id AND m.teamId = :teamId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
+        + "AND m.direction = com.mannschaft.app.team.entity.TeamOrgAffiliationDirection.TEAM_APPLY")
+    int deletePendingApplication(@Param("id") Long id, @Param("teamId") Long teamId);
+
+    // ========================================================================
+    // F01.2.1 チームグループ（4-A）: 件数集計と、グループ削除後の付け替え
+    // ========================================================================
+
+    /**
+     * 組織の ACTIVE な加盟数を返す（チームグループ一覧の unassignedTeamCount の母数）。
+     */
+    long countByOrganizationIdAndStatus(Long organizationId, TeamOrgMembershipEntity.Status status);
+
+    /**
+     * 組織の ACTIVE な加盟を、グループ ID ごとに数える（グループ一覧の teamCount。SQL は 1 本）。
+     *
+     * <p>{@code group_id} が NULL（未分類）の行は含めない。削除済みグループを指す行も本クエリには
+     * 含まれて返るため、呼び出し側が生存グループの ID だけを拾い、残りを未分類として数える
+     * （リスナーによる付け替えが非同期であるため。§5.1）。PENDING は数えない。</p>
+     */
+    @Query("SELECT m.groupId AS groupId, COUNT(m) AS teamCount "
+        + "FROM TeamOrgMembershipEntity m "
+        + "WHERE m.organizationId = :organizationId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE "
+        + "AND m.groupId IS NOT NULL "
+        + "GROUP BY m.groupId")
+    List<GroupTeamCountProjection> countActiveGroupByOrganizationId(@Param("organizationId") Long organizationId);
+
+    /**
+     * 削除されたグループを指す {@code group_id} を NULL（未分類）へ戻す。ステータスを問わない（PENDING も含む）。
+     *
+     * @return 更新した行数
+     */
+    @Modifying
+    @Query("UPDATE TeamOrgMembershipEntity m SET m.groupId = NULL, m.updatedAt = :now "
+        + "WHERE m.organizationId = :organizationId AND m.groupId = :groupId")
+    int clearGroupId(@Param("organizationId") Long organizationId,
+                     @Param("groupId") java.util.UUID groupId,
+                     @Param("now") java.time.Instant now);
 }

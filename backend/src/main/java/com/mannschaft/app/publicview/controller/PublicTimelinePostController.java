@@ -2,6 +2,7 @@ package com.mannschaft.app.publicview.controller;
 
 import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.dto.PublicTimelinePostResponse;
+import com.mannschaft.app.publicview.service.PublicOrganizationQueryService;
 import com.mannschaft.app.publicview.service.PublicTimelinePostQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -58,6 +59,7 @@ public class PublicTimelinePostController {
     /** 1 ページあたりのデフォルト件数。 */
     private static final int DEFAULT_PAGE_SIZE = 20;
 
+    private final PublicOrganizationQueryService publicOrganizationQueryService;
     private final PublicTimelinePostQueryService publicTimelinePostQueryService;
 
     /**
@@ -87,16 +89,18 @@ public class PublicTimelinePostController {
      * @param page  ページ番号（0 始まり）
      * @param size  1 ページあたりの件数（最大 {@value MAX_PAGE_SIZE}）
      */
-    @GetMapping("/api/v1/public/organizations/{orgId}/timeline-posts")
+    @GetMapping("/api/v1/public/organizations/{slug}/timeline-posts")
     @Operation(
             summary = "組織の公開タイムライン投稿一覧（未ログイン公開）",
             description = "PUBLIC 組織で timeline_posts_public=true の場合のみ PUBLISHED 投稿一覧を返す。"
                     + " フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。")
     public Page<PublicTimelinePostResponse> listOrganizationTimelinePosts(
-            @PathVariable Long orgId,
+            @PathVariable String slug,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = buildPageable(page, size);
+        // slug → 組織 ID。非公開・archived・削除済・不在は親 API と同じ PUBLIC_001（404）
+        Long orgId = publicOrganizationQueryService.getPublicOrganization(slug).id();
         return publicTimelinePostQueryService.getOrganizationTimelinePosts(orgId, pageable);
     }
 

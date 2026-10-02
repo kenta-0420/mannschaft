@@ -94,6 +94,7 @@
   "overrides": {
     "brace-expansion": "^5.0.12",
     "cac": "^6.7.14",
+    "devalue": "^5.9.4",
     "commander": "^13.1.0",
     "esbuild": "^0.28.1",
     "nanoid": "^3.3.18",

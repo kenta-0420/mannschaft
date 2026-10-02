@@ -87,6 +87,12 @@ function previewLabels(section: SectionDefinition): string {
     .join(' / ')
 }
 
+function previewSummary(section: SectionDefinition): string {
+  const labels = previewLabels(section)
+  const remainingCount = (sectionWidgets.value.get(section.key)?.length ?? 0) - 2
+  return remainingCount > 0 ? `${labels} ${moreCount(remainingCount)}` : labels
+}
+
 function moreCount(count: number): string {
   return t('dashboard.personal_accordion.more_count', { count })
 }
@@ -134,12 +140,9 @@ function badgeLabel(count: number): string {
           <i :class="section.icon" class="text-primary" aria-hidden="true" />
           <span class="min-w-0 flex-1">
             <span class="block font-semibold">{{ t(section.labelKey) }}</span>
-            <span v-if="previewLabels(section)" class="block truncate text-xs text-surface-500"
-              >{{ previewLabels(section)
-              }}<template v-if="(sectionWidgets.get(section.key)?.length ?? 0) > 2">
-                {{ moreCount((sectionWidgets.get(section.key)?.length ?? 0) - 2) }}</template
-              ></span
-            >
+            <span v-if="previewSummary(section)" class="block truncate text-xs text-surface-500">
+              {{ previewSummary(section) }}
+            </span>
           </span>
           <span
             class="min-w-5 rounded-full px-2 py-0.5 text-center text-xs font-bold tabular-nums"

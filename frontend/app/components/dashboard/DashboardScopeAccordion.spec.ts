@@ -70,4 +70,36 @@ describe('DashboardScopeAccordion', () => {
     await section.get('button').trigger('click')
     expect(section.get('.rendered-widgets').text()).toBe('future-widget')
   })
+
+  it('英語とドイツ語のプレビューを翻訳し、追加件数との間に空白を入れる', async () => {
+    const wrapper = await mountAccordion([
+      widget('upcoming-events'),
+      widget('activities'),
+      widget('schedule'),
+    ])
+    const i18n = wrapper.vm.$i18n as {
+      locale: string
+      setLocale?: (locale: string) => Promise<void>
+    }
+
+    async function switchLocale(locale: string, expectedText?: string) {
+      if (i18n.setLocale) await i18n.setLocale(locale)
+      else i18n.locale = locale
+      for (let i = 0; i < 20; i++) {
+        await wrapper.vm.$nextTick()
+        if (!expectedText || wrapper.text().includes(expectedText)) return
+        await new Promise((resolve) => setTimeout(resolve, 25))
+      }
+    }
+
+    try {
+      await switchLocale('en', 'Upcoming Events')
+      expect(wrapper.text()).toContain('Upcoming Events / Activity Log and 1 more')
+
+      await switchLocale('de', 'Bevorstehende Termine')
+      expect(wrapper.text()).toContain('Bevorstehende Termine / Aktivitätsprotokoll und 1 weitere')
+    } finally {
+      await switchLocale('ja')
+    }
+  }, 30000)
 })

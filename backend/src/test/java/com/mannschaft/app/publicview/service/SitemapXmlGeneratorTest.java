@@ -72,15 +72,36 @@ class SitemapXmlGeneratorTest {
         @DisplayName("組織エントリが urlset に含まれる")
         void generate_orgEntries_containsOrgUrls() {
             List<SitemapEntry> orgs = List.of(
-                    new SitemapEntry(10L, NOW)
+                    new SitemapEntry(10L, "org-ten", NOW)
             );
 
             String xml = generator.generate(BASE_URL, List.of(), orgs, List.of(), List.of(), List.of());
 
             assertThat(xml).contains("<urlset");
-            assertThat(xml).contains(BASE_URL + "/public/organizations/10");
+            assertThat(xml).contains(BASE_URL + "/public/organizations/org-ten");
         }
 
+        @Test
+        @DisplayName("組織の URL は slug で出し、数値 ID の URL は出さない（AC-A13）")
+        void generate_orgEntries_useSlugNotNumericId() {
+            String xml = generator.generate(BASE_URL, List.of(),
+                    List.of(new SitemapEntry(10L, "org-ten", NOW)),
+                    List.of(), List.of(new SitemapPostEntry(10L, "org-ten", 200L, NOW)), List.of());
+
+            assertThat(xml).contains("<loc>" + BASE_URL + "/public/organizations/org-ten</loc>");
+            assertThat(xml).contains("<loc>" + BASE_URL + "/public/organizations/org-ten/posts/200</loc>");
+            assertThat(xml).doesNotContain("/public/organizations/10");
+        }
+
+        @Test
+        @DisplayName("slug を持たない組織エントリは URL を出さない（数値 ID へフォールバックしない）")
+        void generate_orgEntryWithoutSlug_isOmitted() {
+            String xml = generator.generate(BASE_URL, List.of(),
+                    List.of(new SitemapEntry(10L, NOW)),
+                    List.of(), List.of(new SitemapPostEntry(10L, 200L, NOW)), List.of());
+
+            assertThat(xml).doesNotContain("/public/organizations/");
+        }
         @Test
         @DisplayName("チーム投稿エントリが urlset に含まれる")
         void generate_teamPostEntries_containsTeamPostUrls() {
@@ -98,13 +119,13 @@ class SitemapXmlGeneratorTest {
         @DisplayName("組織投稿エントリが urlset に含まれる")
         void generate_orgPostEntries_containsOrgPostUrls() {
             List<SitemapPostEntry> orgPosts = List.of(
-                    new SitemapPostEntry(10L, 200L, NOW)
+                    new SitemapPostEntry(10L, "org-ten", 200L, NOW)
             );
 
             String xml = generator.generate(BASE_URL, List.of(), List.of(), List.of(), orgPosts, List.of());
 
             assertThat(xml).contains("<urlset");
-            assertThat(xml).contains(BASE_URL + "/public/organizations/10/posts/200");
+            assertThat(xml).contains(BASE_URL + "/public/organizations/org-ten/posts/200");
         }
 
         @Test
@@ -131,15 +152,15 @@ class SitemapXmlGeneratorTest {
             String xml = generator.generate(
                     BASE_URL,
                     List.of(new SitemapEntry(1L, NOW)),
-                    List.of(new SitemapEntry(10L, NOW)),
+                    List.of(new SitemapEntry(10L, "org-ten", NOW)),
                     List.of(new SitemapPostEntry(1L, 100L, NOW)),
-                    List.of(new SitemapPostEntry(10L, 200L, NOW)),
+                    List.of(new SitemapPostEntry(10L, "org-ten", 200L, NOW)),
                     List.of(new SitemapEntry(42L, NOW)));
 
             assertThat(xml).contains("<loc>" + BASE_URL + "/public/teams/1</loc>");
-            assertThat(xml).contains("<loc>" + BASE_URL + "/public/organizations/10</loc>");
+            assertThat(xml).contains("<loc>" + BASE_URL + "/public/organizations/org-ten</loc>");
             assertThat(xml).contains("<loc>" + BASE_URL + "/public/teams/1/posts/100</loc>");
-            assertThat(xml).contains("<loc>" + BASE_URL + "/public/organizations/10/posts/200</loc>");
+            assertThat(xml).contains("<loc>" + BASE_URL + "/public/organizations/org-ten/posts/200</loc>");
             assertThat(xml).contains("<loc>" + BASE_URL + "/activity/42</loc>");
             // 活動記録がスコープ配下 URL として出ていないこと（URL 形式の取り違え防止）
             assertThat(xml).doesNotContain("/public/teams/42");

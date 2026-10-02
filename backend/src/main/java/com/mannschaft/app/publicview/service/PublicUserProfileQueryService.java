@@ -85,6 +85,7 @@ public class PublicUserProfileQueryService {
                 .filter(u -> u.isPublicProfileEnabled())
                 .orElseThrow(() -> new BusinessException(PublicViewErrorCode.PUBLIC_007));
 
+        // 組織の公開ページ用 slug（orgSlug）は Controller が organization ドメインの Service で解決して載せる。
         return blogPostRepository.findPublicPostsByAuthorId(userId, pageable)
                 .map(post -> toPostSummary(post));
     }
@@ -104,7 +105,8 @@ public class PublicUserProfileQueryService {
                     "TEAM",
                     team != null ? team.getName() : "",
                     post.getTeamId() != null ? String.valueOf(post.getTeamId()) : "",
-                    post.getCreatedAt()
+                    post.getCreatedAt(),
+                    null
             );
         } else {
             return new PublicUserPostSummaryResponse(
@@ -113,7 +115,8 @@ public class PublicUserProfileQueryService {
                     "ORGANIZATION",
                     "",
                     post.getOrganizationId() != null ? String.valueOf(post.getOrganizationId()) : "",
-                    post.getCreatedAt()
+                    post.getCreatedAt(),
+                    null
             );
         }
     }
