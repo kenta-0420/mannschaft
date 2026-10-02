@@ -2,8 +2,16 @@ package com.mannschaft.app.team.repository;
 
 import com.mannschaft.app.team.entity.TeamOrgAffiliationDirection;
 import com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionEntity;
+import com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionKind;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import jakarta.persistence.LockModeType;
+
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,4 +26,81 @@ public interface TeamOrgAffiliationRestrictionRepository
 
     Optional<TeamOrgAffiliationRestrictionEntity> findByOrganizationIdAndTeamIdAndDirection(
             Long organizationId, Long teamId, TeamOrgAffiliationDirection direction);
+
+    /**
+     * 同じ組み合わせの制限行を {@code SELECT ... FOR UPDATE} で取得する（合成規則の読み書きを直列化する。§5.4）。
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM TeamOrgAffiliationRestrictionEntity r "
+            + "WHERE r.organizationId = :organizationId AND r.teamId = :teamId AND r.direction = :direction")
+    Optional<TeamOrgAffiliationRestrictionEntity> findForUpdate(
+            @Param("organizationId") Long organizationId,
+            @Param("teamId") Long teamId,
+            @Param("direction") TeamOrgAffiliationDirection direction);
+
+    /**
+     * 有効な制限の件数（§5.4「判定」: {@code kind='BLOCK' OR restricted_until > :now}）。
+     *
+     * <p>期限切れの COOLDOWN は判定で無視する（物理削除は夜間バッチ）。{@code :now} は呼び出し側の Clock から渡す
+     * （SQL の {@code NOW()} を判定に使わない。§4.6）。</p>
+     */
+    @Query("SELECT COUNT(r) FROM TeamOrgAffiliationRestrictionEntity r "
+            + "WHERE r.organizationId = :organizationId AND r.teamId = :teamId AND r.direction = :direction "
+            + "AND (r.kind = :blockKind OR r.restrictedUntil > :now)")
+    long countActive(@Param("organizationId") Long organizationId,
+                     @Param("teamId") Long teamId,
+                     @Param("direction") TeamOrgAffiliationDirection direction,
+                     @Param("blockKind") TeamOrgAffiliationRestrictionKind blockKind,
+                     @Param("now") Instant now);
+
+    /**
+     * 期限付き（COOLDOWN）の制限行が無ければ作る。既にあれば何もしない（UNIQUE 衝突は例外にしない）。
+     *
+     * <p>{@code INSERT ... ON DUPLICATE KEY UPDATE id = id} なので、並行して2本が走っても1行に収束し、
+     * 呼び出し側のトランザクションを rollback-only にしない（AC-G135）。既存行との合成（BLOCK を上書きしない・
+     * 期限の遅いほうを残す）は、この後に行ロックを取って Java 側の合成規則で行う。</p>
+     *
+     * <p>{@code restricted_until} は UTC 壁時計の DATETIME。Java の日時型をプレースホルダへ束縛すると
+     * JDBC のタイムゾーン変換に依存するため、エポック秒を {@code TIMESTAMPADD} で UTC 壁時計へ戻す
+     * （セッションのタイムゾーン設定に依らない）。{@code created_at} / {@code updated_at} は
+     * {@code UTC_TIMESTAMP()}。</p>
+     */
+    @Modifying
+    @Query(value = """
+            INSERT INTO team_org_affiliation_restrictions
+                (id, organization_id, team_id, direction, kind, reason, restricted_until, created_by,
+                 created_at, updated_at)
+            VALUES
+                (:id, :organizationId, :teamId, :direction, 'COOLDOWN', :reason,
+                 TIMESTAMPADD(SECOND, :untilEpochSecond, '1970-01-01 00:00:00'), :createdBy,
+                 UTC_TIMESTAMP(), UTC_TIMESTAMP())
+            ON DUPLICATE KEY UPDATE id = id
+            """, nativeQuery = true)
+    int insertCooldownIfAbsent(@Param("id") UUID id,
+                               @Param("organizationId") Long organizationId,
+                               @Param("teamId") Long teamId,
+                               @Param("direction") String direction,
+                               @Param("reason") String reason,
+                               @Param("untilEpochSecond") long untilEpochSecond,
+                               @Param("createdBy") Long createdBy);
+
+    /**
+     * 無期限（BLOCK）の制限行が無ければ作る。既にあれば何もしない。意味は {@link #insertCooldownIfAbsent}。
+     */
+    @Modifying
+    @Query(value = """
+            INSERT INTO team_org_affiliation_restrictions
+                (id, organization_id, team_id, direction, kind, reason, restricted_until, created_by,
+                 created_at, updated_at)
+            VALUES
+                (:id, :organizationId, :teamId, :direction, 'BLOCK', :reason, NULL, :createdBy,
+                 UTC_TIMESTAMP(), UTC_TIMESTAMP())
+            ON DUPLICATE KEY UPDATE id = id
+            """, nativeQuery = true)
+    int insertBlockIfAbsent(@Param("id") UUID id,
+                            @Param("organizationId") Long organizationId,
+                            @Param("teamId") Long teamId,
+                            @Param("direction") String direction,
+                            @Param("reason") String reason,
+                            @Param("createdBy") Long createdBy);
 }

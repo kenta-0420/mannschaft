@@ -195,6 +195,7 @@ jobs:
       # 生成後の docs/openapi.json に差分があれば「BE 変更が未反映」とみなして fail する。
       # working-directory は backend なのでリポジトリルートのパスを ../ で指定する。
       - name: Check for OpenAPI drift
+        id: drift
         if: steps.changes.outputs.openapi_related == 'true'
         run: |
           if ! git diff --exit-code ../docs/openapi.json; then
@@ -207,6 +208,20 @@ jobs:
             exit 1
           fi
           echo "docs/openapi.json は BE の現状と同期しています。"
+
+      # ドリフト判定ステップ（id: drift）が失敗したときだけ、CI が生成した openapi.json を artifact に残す。
+      # 上の検査ログは差分の先頭 100 行しか出さないため、生成物そのものを取れないと
+      # 「CI が生成した内容に docs/openapi.json を合わせる」修繕ができない
+      # （ローカルでの再生成は turnstile 待ちで長時間かかりうる）。
+      # artifact をダウンロードして docs/openapi.json へ置き、`npm run generate:types` で生成型を作り直す。
+      - name: Upload generated openapi.json（ドリフト検出時のみ）
+        if: always() && steps.drift.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-openapi-json
+          path: docs/openapi.json
+          if-no-files-found: warn
+          retention-days: 7
 
       # 関連変更が無い PR はここで明示的に「スキップした」旨を残して success で終わる。
       # これにより required status check「OpenAPI Drift Check」が必ず結果を報告し、
