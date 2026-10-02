@@ -98,6 +98,9 @@
     "vendor": {
       "title": "업체 마스터",
       "subtitle": "시공・점검 업체 마스터 관리",
+      "notice": {
+        "personalScopeUnsupported": "업체 마스터는 개인 스코프에서는 이용할 수 없습니다. 팀 또는 조직 스코프로 전환해 주세요."
+      },
       "newVendor": "신규 업체 추가",
       "editVendor": "업체 편집",
       "deleteConfirm": "이 업체를 논리 삭제할까요?",
@@ -142,6 +145,30 @@
       "close": "닫기",
       "back": "목록으로",
       "changeStatus": "상태 변경"
+    },
+    "residents": {
+      "title": "주민 대장",
+      "create": "세대 추가",
+      "createTitle": "세대 추가",
+      "unitNumber": "세대 번호",
+      "unitNumberPlaceholder": "예: 101",
+      "floor": "층",
+      "unitType": "세대 유형",
+      "layout": "구조",
+      "areaSqm": "면적",
+      "notes": "메모",
+      "residentCount": "거주자 {count}명",
+      "occupied": "입주 중",
+      "vacant": "공실",
+      "empty": "세대 정보가 없습니다",
+      "createSuccess": "세대를 추가했습니다",
+      "createFailed": "세대 추가에 실패했습니다",
+      "validation": {
+        "unitNumberRequired": "세대 번호를 입력하세요",
+        "unitNumberMax": "세대 번호는 50자 이하여야 합니다",
+        "unitTypeMax": "세대 유형은 20자 이하여야 합니다",
+        "layoutMax": "구조는 20자 이하여야 합니다"
+      }
     },
     "errors": {
       "loadFailed": "불러오기에 실패했습니다",

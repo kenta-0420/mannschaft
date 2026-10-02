@@ -1,14 +1,16 @@
 package com.mannschaft.app.succession.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.succession.entity.DelinquencyEscalationEntity;
 import com.mannschaft.app.succession.entity.DelinquencyEscalationStage;
 import com.mannschaft.app.succession.repository.DelinquencyEscalationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -45,17 +47,26 @@ import static com.mannschaft.app.succession.entity.DelinquencyEscalationStage.ST
 public class DelinquencyEscalationBatchService {
 
     private final DelinquencyEscalationRepository escalationRepository;
-    private final DelinquencyEscalationService escalationService;
+    private final DelinquencyEscalationAdvanceRunner advanceRunner;
 
     /**
      * 日次バッチ: 経過日数に応じてエスカレーションを自動昇格する。
      *
      * <p>処理対象: {@code resolved_at IS NULL AND frozen_at IS NULL} の全エスカレーション。
-     * バッチ失敗時のリトライ安全性を確保するため、各昇格は個別トランザクションで実行する。
+     * バッチ失敗時のリトライ安全性を確保するため、各昇格は個別トランザクションで実行する
+     * （{@link DelinquencyEscalationAdvanceRunner} を {@code REQUIRES_NEW} で経由する）。
+     * 本メソッド自体は読み取りのみのため {@code @Transactional} を付けない。
+     *
+     * <p>1 件の処理は昇格要否の判定を含めて全体を捕捉する。ステージ文字列の解釈は
+     * 判定段階で行われるため、ここを保護しないと 1 行の異常データでバッチ全体が停止する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SUCCESSION_PROXY_ENABLED",
+            reason = "昇格判定は滞納の経過日数のみで決まるため、止めても再開後の初回実行で本来到達すべき段階まで一度に追いつける")
     @BatchEndpoint(name = "succession-delinquency-escalation-daily", description = "滞納エスカレーションを毎日 02:00 に経過日数で 5 段階自動昇格する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
-    @Transactional
+    // 起動間隔は日次 02:00。滞納契約の段階昇格と通知送出で、契約数に比例する。余裕を取り 1 時間を上限とする。
+    @SchedulerLock(name = "successionDelinquencyEscalationDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     public void advanceEscalations() {
         List<DelinquencyEscalationEntity> actives =
                 escalationRepository.findByResolvedAtIsNullAndFrozenAtIsNullAndDeletedAtIsNull();
@@ -66,19 +77,23 @@ public class DelinquencyEscalationBatchService {
         int advancedCount = 0;
 
         for (DelinquencyEscalationEntity e : actives) {
-            long daysElapsed = ChronoUnit.DAYS.between(e.getDelinquencyStartedAt(), today);
-            DelinquencyEscalationStage requiredStage = determineRequiredStage(daysElapsed);
+            // 昇格要否の判定自体も try の内側に置く。DB のステージ文字列が不正な場合に
+            // shouldAdvance が例外を投げるため、外に出すと 1 行の異常データでバッチ全体が停止する。
+            try {
+                long daysElapsed = ChronoUnit.DAYS.between(e.getDelinquencyStartedAt(), today);
+                DelinquencyEscalationStage requiredStage = determineRequiredStage(daysElapsed);
 
-            if (shouldAdvance(e.getCurrentStage(), requiredStage)) {
-                try {
-                    escalationService.advanceStage(e.getId(), e.getOrganizationId());
+                if (shouldAdvance(e.getCurrentStage(), requiredStage)) {
+                    // 別トランザクション（REQUIRES_NEW）で実行するため、このループで
+                    // 取得済みのエンティティは使わず ID で再フェッチさせる。
+                    advanceRunner.advanceStage(e.getId(), e.getOrganizationId());
                     advancedCount++;
                     log.info("エスカレーション自動昇格: id={}, currentStage={}, daysElapsed={}",
                             e.getId(), e.getCurrentStage(), daysElapsed);
-                } catch (Exception ex) {
-                    // 個別エスカレーションの失敗でバッチ全体を停止しない
-                    log.error("エスカレーション昇格失敗 (id={}): {}", e.getId(), ex.getMessage(), ex);
                 }
+            } catch (Exception ex) {
+                // 個別エスカレーションの失敗でバッチ全体を停止しない
+                log.error("エスカレーション昇格失敗 (id={}): {}", e.getId(), ex.getMessage(), ex);
             }
         }
 

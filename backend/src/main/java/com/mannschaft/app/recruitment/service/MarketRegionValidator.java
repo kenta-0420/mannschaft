@@ -2,9 +2,7 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.market.MarketErrorCode;
-import com.mannschaft.app.matching.entity.CityEntity;
-import com.mannschaft.app.matching.repository.CityRepository;
-import com.mannschaft.app.matching.repository.PrefectureRepository;
+import com.mannschaft.app.matching.service.RegionMasterLookupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -34,8 +32,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class MarketRegionValidator {
 
-    private final PrefectureRepository prefectureRepository;
-    private final CityRepository cityRepository;
+    private final RegionMasterLookupService regionMasterLookupService;
 
     /**
      * 地域コードを検証・正規化する。
@@ -50,14 +47,14 @@ public class MarketRegionValidator {
         String normalizedCity = blankToNull(cityCode);
 
         if (normalizedCity != null) {
-            CityEntity city = cityRepository.findById(normalizedCity)
+            RegionMasterLookupService.City city = regionMasterLookupService.findCityByCode(normalizedCity)
                     .orElseThrow(() -> new BusinessException(MarketErrorCode.REGION_INVALID));
             String derivedPref = normalizedCity.substring(0, 2);
             if (normalizedPref == null) {
                 // 自動補完
                 normalizedPref = derivedPref;
             } else if (!normalizedPref.equals(derivedPref)
-                    || !normalizedPref.equals(city.getPrefectureCode())) {
+                    || !normalizedPref.equals(city.prefectureCode())) {
                 // 上位 2 桁不一致 / マスタの prefecture_code 不一致
                 throw new BusinessException(MarketErrorCode.REGION_INVALID);
             }
@@ -65,7 +62,7 @@ public class MarketRegionValidator {
         }
 
         if (normalizedPref != null) {
-            if (!prefectureRepository.existsById(normalizedPref)) {
+            if (!regionMasterLookupService.existsPrefectureByCode(normalizedPref)) {
                 throw new BusinessException(MarketErrorCode.REGION_INVALID);
             }
             return new ResolvedRegion(normalizedPref, null);

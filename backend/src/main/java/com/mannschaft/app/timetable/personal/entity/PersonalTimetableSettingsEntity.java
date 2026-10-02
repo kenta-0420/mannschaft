@@ -53,8 +53,10 @@ public class PersonalTimetableSettingsEntity {
     @Builder.Default
     private String visibleDefaultFields = "[\"preparation\",\"review\",\"items_to_bring\",\"free_memo\"]";
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

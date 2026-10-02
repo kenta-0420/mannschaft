@@ -25,11 +25,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 
 
 /**
  * テンプレート管理コントローラー（組織ADMIN）。
  * 7 endpoints: GET list, POST create, POST clone, GET detail, PATCH update, DELETE, GET public presets
+ *
+ * <p>認可根治戦役 Wave2 トランシェ2C: 従来は認可が完全欠落しており、認証さえあれば他組織の
+ * テンプレートを閲覧/更新/削除できる IDOR/BOLA の穴だった（{@link TournamentTemplateService}
+ * 参照）。閲覧は組織メンバー、変更（作成/複製/更新/削除）は主催組織 ADMIN/DEPUTY_ADMIN。</p>
  */
 @RestController
 @Tag(name = "大会テンプレート管理", description = "F08.7 テンプレートCRUD")
@@ -46,7 +51,8 @@ public class TournamentTemplateController {
             @PathVariable Long orgId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<TemplateResponse> result = templateService.listTemplates(orgId, PageRequest.of(page, size));
+        Page<TemplateResponse> result = templateService.listTemplates(
+                orgId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         return ResponseEntity.ok(PagedResponse.of(result.getContent(),
                 new PagedResponse.PageMeta(result.getTotalElements(), page, size, result.getTotalPages())));
     }
@@ -74,7 +80,8 @@ public class TournamentTemplateController {
     public ResponseEntity<ApiResponse<TemplateResponse>> getTemplate(
             @PathVariable Long orgId,
             @PathVariable Long templateId) {
-        return ResponseEntity.ok(ApiResponse.of(templateService.getTemplate(orgId, templateId)));
+        return ResponseEntity.ok(ApiResponse.of(
+                templateService.getTemplate(orgId, templateId, SecurityUtils.getCurrentUserId())));
     }
 
     @PatchMapping("/api/v1/organizations/{orgId}/tournament-templates/{templateId}")
@@ -83,7 +90,8 @@ public class TournamentTemplateController {
             @PathVariable Long orgId,
             @PathVariable Long templateId,
             @Valid @RequestBody UpdateTemplateRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(templateService.updateTemplate(orgId, templateId, request)));
+        return ResponseEntity.ok(ApiResponse.of(templateService.updateTemplate(
+                orgId, templateId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @DeleteMapping("/api/v1/organizations/{orgId}/tournament-templates/{templateId}")
@@ -91,10 +99,13 @@ public class TournamentTemplateController {
     public ResponseEntity<Void> deleteTemplate(
             @PathVariable Long orgId,
             @PathVariable Long templateId) {
-        templateService.deleteTemplate(templateId);
+        templateService.deleteTemplate(orgId, templateId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
+    // SecurityConfig の anyRequest().authenticated() で認証必須。全組織共通のシステム公開
+    // プリセット一覧を返すのみで、ユーザー固有情報は含まない。
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/api/v1/tournament-presets")
     @Operation(summary = "公開プリセット一覧")
     public ResponseEntity<PagedResponse<PresetResponse>> listPublicPresets(

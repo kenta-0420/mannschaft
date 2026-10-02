@@ -14,4 +14,11 @@ public class UpdateNavSettingsRequest {
     @NotNull
     @Size(max = 50)
     private List<String> hiddenNavKeys;
+
+    /**
+     * 個人別ナビ表示順（nav_features.key の配列）。任意。
+     * null の場合はマスタ sort_order 順にリセットする。
+     */
+    @Size(max = 100)
+    private List<String> navDisplayOrder;
 }

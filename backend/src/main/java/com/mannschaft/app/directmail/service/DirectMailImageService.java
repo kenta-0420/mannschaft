@@ -1,5 +1,6 @@
 package com.mannschaft.app.directmail.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.directmail.DirectMailErrorCode;
@@ -31,15 +32,23 @@ public class DirectMailImageService {
             "image/jpeg", "image/png", "image/gif", "image/webp"
     );
 
+    /** 認可根治戦役 Wave2 トランシェ2C: スコープ認可基盤 */
+    private final AccessControlService accessControlService;
+
     private final DirectMailImageUploadRepository imageUploadRepository;
     private final StorageService storageService;
 
     /**
      * 画像をアップロードする。
+     *
+     * <p>認可（認可根治戦役 Wave2 トランシェ2C）: DM 作成フロー専用の変更系のため、
+     * 操作者はスコープの ADMIN 以上であること（ストレージ到達前に遮断）。</p>
      */
     @Transactional
     public DirectMailImageUploadResponse uploadImage(String scopeType, Long scopeId, Long userId,
                                                       MultipartFile file) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
+
         // バリデーション
         if (file.getSize() > MAX_IMAGE_SIZE) {
             throw new BusinessException(DirectMailErrorCode.IMAGE_SIZE_EXCEEDED);

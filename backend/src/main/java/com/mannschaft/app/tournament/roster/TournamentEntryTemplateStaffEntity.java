@@ -59,8 +59,10 @@ public class TournamentEntryTemplateStaffEntity extends UuidV7Entity {
     @Builder.Default
     private Short sortOrder = 0;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

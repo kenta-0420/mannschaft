@@ -7,6 +7,8 @@ import com.mannschaft.app.cms.dto.BlogMediaUploadUrlResponse;
 import com.mannschaft.app.cms.entity.BlogMediaUploadEntity;
 import com.mannschaft.app.cms.repository.BlogMediaUploadRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
@@ -19,6 +21,7 @@ import com.mannschaft.app.files.service.MultipartUploadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,7 +81,7 @@ public class BlogMediaService {
     private static final String BLOG_PREFIX_TEMPLATE = "blog/%s/%d/";
 
     /** F13 Phase 4-δ: storage_usage_logs.reference_type に記録するテーブル名。 */
-    private static final String REFERENCE_TYPE = "blog_media_uploads";
+    static final String REFERENCE_TYPE = "blog_media_uploads";
 
     // ==================== 依存 ====================
 
@@ -87,6 +90,10 @@ public class BlogMediaService {
     private final BlogMediaUploadRepository blogMediaUploadRepository;
     /** F13 Phase 4-δ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
+    /** Issue #2601: 1 件処理を REQUIRES_NEW 独立トランザクションで実行する Bean。 */
+    private final BlogMediaOrphanCleanupRunner orphanCleanupRunner;
+    private final BlogMediaAclService mediaAclService;
+    private final com.mannschaft.app.common.storage.acl.StorageAclService storageAclService;
 
     // ==================== 公開メソッド ====================
 
@@ -104,10 +111,11 @@ public class BlogMediaService {
      */
     @Transactional
     public BlogMediaUploadUrlResponse generateUploadUrl(Long uploaderId, BlogMediaUploadUrlRequest req) {
+        var actualScope = mediaAclService.resolveUploadScope(uploaderId, req);
         validateRequest(req);
 
         // F13 Phase 4-δ: 統合クォータチェック（presign 前）
-        StorageScopeType scopeType = StorageScopeType.valueOf(req.getScopeType().toUpperCase());
+        StorageScopeType scopeType = actualScope.scopeType();
         try {
             storageQuotaService.checkQuota(scopeType, req.getScopeId(), req.getFileSize());
         } catch (StorageQuotaExceededException e) {
@@ -132,38 +140,60 @@ public class BlogMediaService {
      * <p><b>F13 Phase 4-δ</b>: R2 削除成功後に {@link StorageQuotaService#recordDeletion} で
      * 使用量を減算する。s3Key のプレフィックス（{@code blog/{SCOPE_TYPE}/{SCOPE_ID}/}）から
      * スコープを復元する。スコープ解析に失敗した場合は警告ログのみで減算をスキップする。</p>
+     *
+     * <p><b>使用量減算は「この実行が実際に削除した行」に対してのみ行う（claim-then-act）。</b>
+     * 使用量の更新は read-modify-write（現在値を読んで差分を適用して書き戻す）であり、
+     * 同じ孤立行を 2 つの実行が処理すると同じ容量が 2 回引かれて {@code used_bytes} が過少になる。
+     * 過少になったクォータは以後の上限判定を誤らせ、ドリフト検出バッチが走るまで是正されない。
+     * {@code @SchedulerLock} は同時実行を減らすが、ロック期限切れや手動起動との競合まで塞ぐものではなく、
+     * また「冪等である」ことは「同時に走らない」ことを意味しない。
+     * そこで減算の前に {@link BlogMediaUploadRepository#deleteOrphanById} で行を<b>先に確保</b>し、
+     * 1 行削除できた実行だけが減算する。条件付き DELETE は行ロックで直列化されるため、
+     * 同じ行に対して 2 回目以降は 0 行となり、二重減算が構造的に起こり得なくなる。</p>
+     *
+     * <p><b>Issue #2601</b>: 1 件の処理（行の確保 → R2 削除 → 使用量減算）は
+     * {@link BlogMediaOrphanCleanupRunner#cleanupOne} に {@code REQUIRES_NEW} の独立トランザクションで
+     * 委譲する。R2 削除は取り消せない外部操作であり、本メソッド全体を単一トランザクションに包むと
+     * 途中の 1 件で例外が発生した際にロールバックで DB 行が復活する一方、既に削除済みの R2 オブジェクトは
+     * 戻らず実体の無い行が残ってしまう。本メソッド自体は対象一覧の読み取りのみのため
+     * {@code @Transactional} を付けない。</p>
+     *
+     * <p>1 件の呼び出し自体も try で囲む。想定外の例外で 1 件が失敗してもバッチ全体を止めない。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。孤立ブログメディアの物理削除であり、再開後に同じ条件で拾い直せる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "cms-blog-media-orphan-cleanup", description = "72 時間以上孤立した blog メディアを毎日 02:00 に R2 から物理削除する")
     @Scheduled(cron = "0 0 2 * * *")
-    @Transactional
+    // 起動間隔は日次 02:00。処理量は「72 時間以内に孤立したメディア」に限られるが、1 件ごとに R2 削除 2 回（本体・サムネ）
+    // が走るため最悪ケースを 1 件 1 秒 × 数千件と見積もり 1 時間を上限とする。
+    @SchedulerLock(name = "cmsBlogMediaOrphanCleanup", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     public void cleanupOrphanMedia() {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(72);
         List<BlogMediaUploadEntity> orphans = blogMediaUploadRepository
                 .findByBlogPostIdIsNullAndCreatedAtBefore(cutoff);
 
+        int deletedCount = 0;
+        int r2FailureCount = 0;
         for (BlogMediaUploadEntity orphan : orphans) {
             try {
-                r2StorageService.delete(orphan.getS3Key());
-                if (orphan.getThumbnailR2Key() != null) {
-                    r2StorageService.delete(orphan.getThumbnailR2Key());
-                }
-                // F13 Phase 4-δ: 使用量減算（s3Key からスコープを復元）
-                if (orphan.getFileSize() != null && orphan.getFileSize() > 0) {
-                    resolveScopeFromKey(orphan.getS3Key()).ifPresent(scope ->
-                            storageQuotaService.recordDeletion(
-                                    scope.scopeType(), scope.scopeId(),
-                                    orphan.getFileSize(), StorageFeatureType.CMS,
-                                    REFERENCE_TYPE, orphan.getId(), orphan.getUploaderId()));
+                BlogMediaOrphanCleanupRunner.OrphanCleanupResult result =
+                        orphanCleanupRunner.cleanupOne(orphan, this::resolveScopeFromKey);
+                if (result.claimed()) {
+                    deletedCount++;
+                    if (result.r2DeleteFailed()) {
+                        r2FailureCount++;
+                    }
+                } else {
+                    log.debug("孤立メディアは別実行が処理済みのためスキップ: mediaId={}", orphan.getId());
                 }
             } catch (Exception e) {
-                // R2 削除失敗は警告ログのみ（DB 削除は続行する）
-                log.warn("孤立メディアの R2 削除に失敗しました（DB 削除は続行）: mediaId={}, key={}",
-                        orphan.getId(), orphan.getS3Key(), e);
+                // 個別メディアの失敗でバッチ全体を停止しない
+                log.error("孤立メディアのクリーンアップに失敗しました: mediaId={}", orphan.getId(), e);
             }
         }
 
-        blogMediaUploadRepository.deleteAll(orphans);
-        log.info("孤立メディアのクリーンアップ完了: 削除件数={}", orphans.size());
+        log.info("孤立メディアのクリーンアップ完了: 対象={}件, 本実行が削除={}件, R2削除失敗={}件",
+                orphans.size(), deletedCount, r2FailureCount);
     }
 
     /**
@@ -279,22 +309,21 @@ public class BlogMediaService {
         BlogMediaUploadEntity entity = BlogMediaUploadEntity.builder()
                 .blogPostId(req.getBlogPostId())
                 .uploaderId(uploaderId)
+                .scopeType(scopeType.name())
+                .scopeId(req.getScopeId())
                 .mediaType("IMAGE")
                 .s3Key(r2Key)
                 .fileSize(req.getFileSize())
                 .contentType(req.getContentType())
-                .processingStatus("READY")
+                .processingStatus("UPLOADING")
                 .build();
         BlogMediaUploadEntity saved = blogMediaUploadRepository.save(entity);
+        var target = BlogMediaAclService.targetOf(saved);
+        storageAclService.registerPending(r2Key, uploaderId, target.scope(), req.getContentType(),
+                IMAGE_UPLOAD_TTL, target.parent());
 
         log.info("画像アップロード Presigned URL 発行: uploaderId={}, mediaId={}, key={}",
                 uploaderId, saved.getId(), r2Key);
-
-        // F13 Phase 4-δ: 使用量加算（IMAGE は presign 発行＋INSERT 完了を確定とみなす）
-        storageQuotaService.recordUpload(
-                scopeType, req.getScopeId(), req.getFileSize(),
-                StorageFeatureType.CMS,
-                REFERENCE_TYPE, saved.getId(), uploaderId);
 
         return BlogMediaUploadUrlResponse.builder()
                 .mediaId(saved.getId())
@@ -303,6 +332,47 @@ public class BlogMediaService {
                 .uploadUrl(result.uploadUrl())
                 .expiresIn(IMAGE_UPLOAD_TTL_SECONDS)
                 .build();
+    }
+
+    /**
+     * 単発PUT画像がR2へ実在することをHEADで確認してから、ACLと使用量を一度だけ確定する。
+     */
+    @Transactional
+    public void confirmImageUpload(Long mediaId, Long uploaderId) {
+        BlogMediaUploadEntity media = blogMediaUploadRepository.findByIdForUploadCompletion(mediaId)
+                .orElseThrow(() -> new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND));
+        if (!java.util.Objects.equals(media.getUploaderId(), uploaderId)
+                || !"IMAGE".equals(media.getMediaType())) {
+            throw new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND);
+        }
+        if ("READY".equals(media.getProcessingStatus())) {
+            return;
+        }
+        if (!"UPLOADING".equals(media.getProcessingStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "画像アップロードは完了確認できない状態です");
+        }
+
+        var target = mediaAclService.resolveMultipartTarget(media.getS3Key(), uploaderId)
+                .orElseThrow(() -> new BusinessException(com.mannschaft.app.common.storage.StorageErrorCode.ACL_NOT_FOUND));
+        if (!r2StorageService.objectExists(media.getS3Key())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "アップロード済み画像が見つかりません");
+        }
+        long actualSize = r2StorageService.getObjectSize(media.getS3Key());
+        if (actualSize != media.getFileSize()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "アップロード済み画像のサイズが申告値と一致しません");
+        }
+        try {
+            storageQuotaService.checkQuota(StorageScopeType.valueOf(media.getScopeType()), media.getScopeId(), actualSize);
+        } catch (StorageQuotaExceededException e) {
+            throw new BusinessException(CmsErrorCode.MEDIA_QUOTA_EXCEEDED, e);
+        }
+        storageAclService.claimPending(media.getS3Key(), uploaderId,
+                target.scope(), target.parent(), target.binding());
+        storageQuotaService.recordUpload(
+                StorageScopeType.valueOf(media.getScopeType()), media.getScopeId(), actualSize,
+                StorageFeatureType.CMS, REFERENCE_TYPE, media.getId(), uploaderId);
+        media.updateProcessingStatus("READY");
+        blogMediaUploadRepository.save(media);
     }
 
     /**
@@ -338,19 +408,25 @@ public class BlogMediaService {
                 prefix                   // targetPrefix
         );
 
-        StartMultipartUploadResponse startResponse = multipartUploadService.startUpload(uploaderId, startReq);
+        String r2Key = prefix + fileName;
 
         // blog_media_uploads に INSERT（processingStatus=PENDING: Workers による後処理を待つ）
         BlogMediaUploadEntity entity = BlogMediaUploadEntity.builder()
                 .blogPostId(req.getBlogPostId())
                 .uploaderId(uploaderId)
+                .scopeType(scopeType.name())
+                .scopeId(req.getScopeId())
                 .mediaType("VIDEO")
-                .s3Key(startResponse.getFileKey())
+                .s3Key(r2Key)
                 .fileSize(req.getFileSize())
                 .contentType(req.getContentType())
                 .processingStatus("PENDING")
                 .build();
         BlogMediaUploadEntity saved = blogMediaUploadRepository.save(entity);
+
+        // 保存台帳を先に作り、multipart側が親とscopeをサーバー側で復元できる状態にする。
+        StartMultipartUploadResponse startResponse =
+                multipartUploadService.startContentUpload(uploaderId, startReq, r2Key);
 
         log.info("動画 Multipart Upload 開始: uploaderId={}, mediaId={}, uploadId={}, key={}",
                 uploaderId, saved.getId(), startResponse.getUploadId(), startResponse.getFileKey());

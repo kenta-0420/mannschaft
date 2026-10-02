@@ -4,14 +4,18 @@
       "home": "Inicio",
       "schedule": "Horario",
       "match": "Partidos",
+      "market": "Mercado",
       "member": "Miembros",
       "ops": "Operaciones",
+      "ops_work": "Tareas y progreso",
+      "ops_admin": "Administración y presupuesto",
       "facility": "Instalaciones",
       "data": "Datos",
       "settings": "Configuración"
     },
     "item": {
       "dashboard": "Panel",
+      "member_profiles": "メンバー紹介",
       "announcements": "Anuncios",
       "chat": "Chat",
       "bulletin": "Tablón de anuncios",
@@ -22,6 +26,7 @@
       "annual_plan": "Plan anual",
       "matches": "Registros de partidos",
       "matchAnalytics": "Análisis de partidos",
+      "market": "Mercado",
       "members": "Miembros",
       "circulation": "Circulación",
       "safety_check": "Control de seguridad",
@@ -32,6 +37,7 @@
       "budget": "Gestión de presupuesto",
       "advertiser": "Gestión de anunciantes",
       "repair_plan": "Plan de reparación",
+      "incidents": "Incidentes",
       "equipment": "Gestión de equipos",
       "parking": "Estacionamiento",
       "files": "Archivos",
@@ -39,8 +45,20 @@
       "audit_logs": "Registros de auditoría",
       "settings": "Configuración",
       "faqSettings": "Configuración de FAQ",
+      "confirmableNotifications": "Confirmación rápida",
+      "billing": "Facturación y gestión de planes",
+      "guide": "Guía, precios y límites del equipo",
       "leagueTransfers": "Ascensos y descensos",
-      "adminConsole": "Consola de administración"
+      "adminConsole": "Consola de administración",
+      "memberPermissions": "Permisos predeterminados de MEMBER",
+      "receipts": "Recibos",
+      "receiptSettings": "Configuración del emisor de recibos",
+      "hourlyRate": "時給設定",
+      "vendors": "Maestro de proveedores",
+      "lineSettings": "Configuración de LINE",
+      "snsSettings": "Configuración de redes sociales",
+      "scheduleSettings": "Configuración de calendario",
+      "bulletinCategories": "Categorías del tablón"
     }
   }
 }

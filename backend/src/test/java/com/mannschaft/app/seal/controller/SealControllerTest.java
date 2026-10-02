@@ -1,16 +1,21 @@
 package com.mannschaft.app.seal.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.seal.dto.CreateSealRequest;
 import com.mannschaft.app.seal.dto.SealResponse;
 import com.mannschaft.app.seal.dto.UpdateSealRequest;
 import com.mannschaft.app.seal.service.SealService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +32,9 @@ import static org.mockito.Mockito.verify;
 /**
  * {@link SealController} の単体テスト。
  * 印鑑CRUD APIを検証する。
+ *
+ * <p>認可導入（本人突合）に伴い、{@link SecurityUtils#getCurrentUserId()} を
+ * MockedStatic で本人ID固定する。ThreadLocal 漏れ防止のため close を確実に行う。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SealController 単体テスト")
@@ -40,6 +48,19 @@ class SealControllerTest {
 
     private static final Long USER_ID = 1L;
     private static final Long SEAL_ID = 10L;
+
+    private MockedStatic<SecurityUtils> securityUtilsMock;
+
+    @BeforeEach
+    void setUp() {
+        securityUtilsMock = Mockito.mockStatic(SecurityUtils.class);
+        securityUtilsMock.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+    }
+
+    @AfterEach
+    void tearDown() {
+        securityUtilsMock.close();
+    }
 
     private SealResponse buildSealResponse() {
         return new SealResponse(SEAL_ID, USER_ID, "LAST_NAME", "田中",
@@ -82,7 +103,7 @@ class SealControllerTest {
                     controller.getSeal(USER_ID, SEAL_ID);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody().getData().getId()).isEqualTo(SEAL_ID);
+            assertThat(response.getBody().getData().getSealId()).isEqualTo(SEAL_ID);
             assertThat(response.getBody().getData().getVariant()).isEqualTo("LAST_NAME");
         }
     }
@@ -130,6 +151,32 @@ class SealControllerTest {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData().getDisplayText()).isEqualTo("田中二郎");
+        }
+    }
+
+    // ========================================
+    // regenerateSeals
+    // ========================================
+    @Nested
+    @DisplayName("regenerateSeals")
+    class RegenerateSeals {
+
+        @Test
+        @DisplayName("正常系: 印鑑一括再生成")
+        void regenerateSeals_正常() {
+            // Given
+            List<SealResponse> seals = List.of(
+                    new SealResponse(1L, USER_ID, "LAST_NAME", "田中", "<svg/>", "hash1", 2, null, null));
+            given(sealService.regenerateSeals(USER_ID)).willReturn(seals);
+
+            // When
+            ResponseEntity<ApiResponse<List<SealResponse>>> response = controller.regenerateSeals(USER_ID);
+
+            // Then
+            assertThat(response.getStatusCode().value()).isEqualTo(200);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getData()).hasSize(1);
+            verify(sealService).regenerateSeals(USER_ID);
         }
     }
 

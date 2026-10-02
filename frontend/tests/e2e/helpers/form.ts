@@ -111,11 +111,16 @@ export async function toggleCheckbox(locator: Locator): Promise<void> {
 }
 
 /**
- * PrimeVue Dialog が開くのを待つ。
- * トリガークリック後に [role="dialog"] の出現を確認する。
+ * PrimeVue Dialog / ConfirmDialog が開くのを待つ。
+ * トリガークリック後に [role="dialog"] または [role="alertdialog"] の出現を確認する。
+ *
+ * ConfirmDialog（useConfirm().require() で開くもの）は role="alertdialog" を使う
+ * （通常の Dialog コンポーネントの role="dialog" とは異なる。PrimeVue confirmdialog/index.mjs 参照）。
+ * 2026-07-14 F09.19 実機E2E作成時に発見: role="dialog" のみのマッチだと ConfirmDialog を
+ * 検出できず待機がタイムアウトしていた。
  */
 export async function waitForDialog(page: Page): Promise<Locator> {
-  const dialog = page.locator('[role="dialog"]').last()
+  const dialog = page.locator('[role="dialog"], [role="alertdialog"]').last()
   await expect(dialog).toBeVisible({ timeout: 5_000 })
   return dialog
 }

@@ -7,12 +7,15 @@ import com.mannschaft.app.cms.entity.BlogPostRevisionEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogPostRevisionRepository;
 import com.mannschaft.app.cms.service.BlogPostRevisionService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -23,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -40,6 +44,14 @@ class BlogPostRevisionServiceTest {
     private BlogPostRevisionRepository revisionRepository;
     @Mock
     private CmsMapper cmsMapper;
+    @Mock
+    private AccessControlService accessControlService;
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
+
+    /** 本番の {@code ClockConfig#utcClock} と同じ UTC 固定 Clock を実インスタンスで注入する。 */
+    @Spy
+    private java.time.Clock clock = java.time.Clock.systemUTC();
 
     @InjectMocks
     private BlogPostRevisionService service;
@@ -133,6 +145,40 @@ class BlogPostRevisionServiceTest {
             assertThat(entity.getStatus()).isEqualTo(PostStatus.DRAFT);
             // 復元前に現状をリビジョン保存する
             verify(revisionRepository).save(any(BlogPostRevisionEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系(認可根治Wave3-B7・BOLA): リビジョンが他postID配下でCMS_004例外（存在秘匿）")
+        void 復元_他post配下のリビジョン_例外() {
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            // revision.blogPostId=999（POST_ID=10 とは別記事）＝越境アクセス
+            BlogPostRevisionEntity otherPostRevision = BlogPostRevisionEntity.builder()
+                    .blogPostId(999L).revisionNumber(1).title("他post").body("他post本文").editorId(USER_ID).build();
+            given(revisionRepository.findById(77L)).willReturn(Optional.of(otherPostRevision));
+
+            assertThatThrownBy(() -> service.restoreRevision(POST_ID, 77L, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("CMS_004"));
+        }
+
+        @Test
+        @DisplayName("異常系(認可根治Wave3-B7): 個人記事(team/org無し)を非所有者が復元しようとすると403(COMMON_002)")
+        void 復元_個人記事_非所有者_例外() {
+            BlogPostEntity entity = BlogPostEntity.builder()
+                    .userId(USER_ID).authorId(USER_ID)
+                    .title("個人記事").slug("s").body("b")
+                    .postType(PostType.BLOG).visibility(Visibility.MEMBERS_ONLY)
+                    .priority(PostPriority.NORMAL).status(PostStatus.PUBLISHED)
+                    .readingTimeMinutes((short) 1).build();
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.restoreRevision(POST_ID, 5L, 999L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            verify(revisionRepository, never()).findById(any());
         }
     }
 

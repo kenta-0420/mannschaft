@@ -229,7 +229,7 @@ class UserScopeRoleSnapshotTest {
             UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
                     false,
                     Map.of(),
-                    Map.of(TEAM_1, 10L),
+                    Map.of(TEAM_1, Set.of(10L)),
                     Set.of(ORG_10),
                     Set.of());
             assertThat(s.isMemberOfParentOrg(TEAM_1)).isTrue();
@@ -241,7 +241,7 @@ class UserScopeRoleSnapshotTest {
             UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
                     false,
                     Map.of(),
-                    Map.of(TEAM_1, 10L),
+                    Map.of(TEAM_1, Set.of(10L)),
                     Set.of(),
                     Set.of());
             assertThat(s.isMemberOfParentOrg(TEAM_1)).isFalse();
@@ -265,7 +265,7 @@ class UserScopeRoleSnapshotTest {
             UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
                     false,
                     Map.of(),
-                    Map.of(ORG_10, 10L),
+                    Map.of(ORG_10, Set.of(10L)),
                     Set.of(ORG_10),
                     Set.of());
             assertThat(s.isMemberOfParentOrg(ORG_10)).isTrue();
@@ -282,7 +282,7 @@ class UserScopeRoleSnapshotTest {
             UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
                     false,
                     Map.of(),
-                    Map.of(TEAM_1, 10L),
+                    Map.of(TEAM_1, Set.of(10L)),
                     Set.of(),
                     Set.of(10L));
             assertThat(s.isParentOrgInactive(TEAM_1)).isTrue();
@@ -294,7 +294,7 @@ class UserScopeRoleSnapshotTest {
             UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
                     false,
                     Map.of(),
-                    Map.of(TEAM_1, 10L),
+                    Map.of(TEAM_1, Set.of(10L)),
                     Set.of(),
                     Set.of(20L));
             assertThat(s.isParentOrgInactive(TEAM_1)).isFalse();

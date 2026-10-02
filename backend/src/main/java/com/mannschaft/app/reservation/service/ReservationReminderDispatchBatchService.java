@@ -1,6 +1,9 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
@@ -12,11 +15,13 @@ import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +75,8 @@ public class ReservationReminderDispatchBatchService {
     private final ReservationRepository reservationRepository;
     private final ReservationSlotRepository slotRepository;
     private final NotificationHelper notificationHelper;
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
 
     /**
      * {@code remind_at} が到来した PENDING リマインダーを拾って通知送出する。
@@ -79,6 +86,8 @@ public class ReservationReminderDispatchBatchService {
      */
     @BatchEndpoint(name = "reservation-reminder-dispatch",
             description = "予約リマインド（remind_at 到来済み PENDING）を 1 分毎に通知送出する")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。予約リマインドの配信。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(fixedDelay = 60_000)
     @SchedulerLock(name = "reservationReminderDispatchBatch", lockAtLeastFor = "30s", lockAtMostFor = "5m")
     @Transactional
@@ -147,12 +156,19 @@ public class ReservationReminderDispatchBatchService {
      * </ul>
      */
     private void sendReminder(ReservationEntity reservation, ReservationSlotEntity slot) {
+        Locale locale = resolveLocale(reservation.getUserId());
         LocalDateTime slotStartAt = slot.getSlotDate().atTime(slot.getStartTime());
         String slotAtStr = slotStartAt.format(SLOT_AT_FORMAT);
-        String slotTitle = slot.getTitle() != null ? slot.getTitle() : "ご予約";
+        String slotTitle = slot.getTitle() != null ? slot.getTitle()
+                : messageSource.getMessage("notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
 
-        String title = "予約リマインド";
-        String body = String.format("%s に「%s」のご予約があります。", slotAtStr, slotTitle);
+        String title = messageSource.getMessage(
+                "notification.reservation.reminder.title", null, "予約リマインド", locale);
+        String body = messageSource.getMessage(
+                "notification.reservation.reminder.body",
+                new Object[]{slotAtStr, slotTitle},
+                slotAtStr + " に「" + slotTitle + "」のご予約があります。",
+                locale);
         String actionUrl = "/teams/" + reservation.getTeamId() + "/reservations";
 
         notificationHelper.notify(
@@ -170,5 +186,13 @@ public class ReservationReminderDispatchBatchService {
 
         log.info("予約リマインド送出: reservationId={}, userId={}, slotStartAt={}",
                 reservation.getId(), reservation.getUserId(), slotStartAt);
+    }
+
+    /**
+     * 受信者ユーザーの locale を解決する（{@link UserLocaleCache} 経由。D-5: 予約ドメインから
+     * auth ドメインのリポジトリへ直接依存しない・{@code common.i18n} 配下の共有サービス経由に限定する）。
+     */
+    private Locale resolveLocale(Long userId) {
+        return Locale.forLanguageTag(userLocaleCache.getLocale(userId));
     }
 }

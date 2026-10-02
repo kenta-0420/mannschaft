@@ -34,6 +34,7 @@ public class TeamAccessRequirementEntity {
     @Column(nullable = false)
     private Long paymentItemId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

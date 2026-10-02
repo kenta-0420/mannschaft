@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { BulletinThreadResponse } from '~/types/bulletin'
 
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()

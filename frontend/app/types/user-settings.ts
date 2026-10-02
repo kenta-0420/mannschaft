@@ -11,6 +11,8 @@ export interface UserProfileResponse {
   isSearchable: boolean
   avatarUrl: string | null
   phoneNumber: string
+  /** 郵便番号（本人プロフィール専用）。未設定時は null。 */
+  postalCode: string | null
   locale: string
   /** ISO 3166-1 alpha-2 国コード（例: JP・US・DE）。未設定時は null。 */
   countryCode: string | null

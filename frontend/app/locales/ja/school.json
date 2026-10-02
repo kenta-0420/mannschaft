@@ -8,9 +8,13 @@
         "UNDECIDED": "未確認"
       },
       "absenceReason": {
-        "ILLNESS": "病気",
+        "SICK": "体調不良",
         "INJURY": "怪我",
-        "FAMILY": "家庭の事情",
+        "FAMILY_REASON": "家庭の事情",
+        "BEREAVEMENT": "忌引",
+        "INFECTIOUS_DISEASE": "出席停止（感染症）",
+        "MENTAL_HEALTH": "心身の不調",
+        "OFFICIAL_BUSINESS": "公的活動",
         "OTHER": "その他"
       },
       "dailyRollCall": {

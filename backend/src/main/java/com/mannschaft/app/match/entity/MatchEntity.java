@@ -44,8 +44,18 @@ import java.util.UUID;
 @EqualsAndHashCode(callSuper = true)
 public class MatchEntity extends UuidV7Entity {
 
-    /** テナント（organization ドメインへの ID 参照・FK なし・原則1/7） */
-    @Column(name = "organization_id", nullable = false)
+    /**
+     * テナント（organization ドメインへの ID 参照・FK なし・原則1/7）。
+     *
+     * <p>検分是正（2026-08-15）: {@code V181.20260812030534__unify_id_columns_unsigned_wave2.sql}
+     * が「matches.organization_id は現実のスキーマが NULL 許容であり、NULL 行が存在しうる。
+     * NOT NULL 化の是非は設計判断として別途扱う」と明記した上で、符号統一（signed→UNSIGNED）の
+     * みを目的に既存の NULL 許容を意図的に維持している。DDL が正であるため Entity 側も
+     * {@code nullable=false} を外して揃えた（{@code match_events.period} と同型の判断）。
+     * NOT NULL 化すべきか自体は当該 migration 内でも未決の設計判断として残されており、
+     * 本コミットでは判断しない（要判断として報告のみ）。</p>
+     */
+    @Column(name = "organization_id")
     private Long organizationId;
 
     /** 記録/ホーム主体チーム（team ドメイン ID 参照・FK なし） */

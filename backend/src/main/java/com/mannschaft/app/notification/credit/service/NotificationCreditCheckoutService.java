@@ -9,6 +9,8 @@ import com.mannschaft.app.notification.credit.dto.NotificationCreditCheckoutResp
 import com.mannschaft.app.notification.credit.entity.NotificationCreditPackageEntity;
 import com.mannschaft.app.notification.credit.entity.NotificationCreditPurchaseEntity;
 import com.mannschaft.app.notification.credit.entity.NotificationCreditPurchaseStatus;
+import com.mannschaft.app.notification.credit.event.NotificationCreditPurchasePaidEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import com.mannschaft.app.notification.credit.error.NotificationCreditErrorCode;
 import com.mannschaft.app.notification.credit.repository.NotificationCreditPackageRepository;
 import com.mannschaft.app.notification.credit.repository.NotificationCreditPurchaseRepository;
@@ -42,6 +44,7 @@ public class NotificationCreditCheckoutService {
     private final NotificationCreditService creditService;
     private final AuditLogService auditLogService;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${app.base-url}")
     private String appBaseUrl;
@@ -192,6 +195,10 @@ public class NotificationCreditCheckoutService {
 
         // クレジット残高に加算
         creditService.addCredits(purchase.getId());
+
+        // 運営領収書の発行契機（F08.12 §5.2）。ID だけを載せてドメイン境界を越える。
+        // 受け手は AFTER_COMMIT で受けるため、本トランザクションが落ちれば発行も起きない。
+        eventPublisher.publishEvent(new NotificationCreditPurchasePaidEvent(purchase.getId()));
 
         // 監査ログ記録
         auditLogService.record(

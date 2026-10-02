@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * パフォーマンス指標コントローラー。指標定義のCRUD・テンプレート・並び順管理APIを提供する。
@@ -47,7 +48,7 @@ public class PerformanceMetricController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<MetricResponse>>> listMetrics(
             @PathVariable Long teamId) {
-        List<MetricResponse> metrics = metricService.listMetrics(teamId);
+        List<MetricResponse> metrics = metricService.listMetrics(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(metrics));
     }
 
@@ -60,7 +61,7 @@ public class PerformanceMetricController {
     public ResponseEntity<ApiResponse<MetricResponse>> createMetric(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateMetricRequest request) {
-        MetricResponse response = metricService.createMetric(teamId, request);
+        MetricResponse response = metricService.createMetric(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -74,7 +75,7 @@ public class PerformanceMetricController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateMetricRequest request) {
-        MetricResponse response = metricService.updateMetric(teamId, id, request);
+        MetricResponse response = metricService.updateMetric(teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -87,7 +88,7 @@ public class PerformanceMetricController {
     public ResponseEntity<Void> deactivateMetric(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        metricService.deactivateMetric(teamId, id);
+        metricService.deactivateMetric(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -100,7 +101,7 @@ public class PerformanceMetricController {
     public ResponseEntity<ApiResponse<FromTemplateResponse>> createFromTemplate(
             @PathVariable Long teamId,
             @Valid @RequestBody FromTemplateRequest request) {
-        FromTemplateResponse response = metricService.createFromTemplate(teamId, request);
+        FromTemplateResponse response = metricService.createFromTemplate(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -113,7 +114,7 @@ public class PerformanceMetricController {
     public ResponseEntity<ApiResponse<SortOrderResponse>> updateSortOrder(
             @PathVariable Long teamId,
             @Valid @RequestBody SortOrderRequest request) {
-        SortOrderResponse response = metricService.updateSortOrder(teamId, request);
+        SortOrderResponse response = metricService.updateSortOrder(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -125,7 +126,7 @@ public class PerformanceMetricController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<LinkableFieldResponse>>> listLinkableFields(
             @PathVariable Long teamId) {
-        List<LinkableFieldResponse> fields = metricService.listLinkableFields(teamId);
+        List<LinkableFieldResponse> fields = metricService.listLinkableFields(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(fields));
     }
 }

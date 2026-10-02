@@ -9,7 +9,6 @@ import com.mannschaft.app.village.entity.enums.VillageBulletinVisibility;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,10 +48,18 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class VillageBulletinAccessService {
 
-    private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     private final PostingIdentityService postingIdentityService;
     private final AccessControlService accessControlService;
+
+    /**
+     * 村自体の存在確認と可視性判定を一元化する共通ゲート。
+     *
+     * <p>従来は {@code findByIdAndDeletedAtIsNullAndArchivedAtIsNull} を直推しており、
+     * {@code visibility} を見ていなかった。そのため UNLISTED 村の非村人は 403 を受け取り、
+     * 不在の 404 との差で<b>村 ID の実在が漏れていた</b>（存在オラクル）。</p>
+     */
+    private final VillageAccessGate villageAccessGate;
 
     /**
      * 村掲示板の閲覧認可を検証する。認可違反時は例外を投げる（正常時は何も返さない）。
@@ -69,10 +76,9 @@ public class VillageBulletinAccessService {
             throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
 
-        // 削除／凍結済みは 404（IDOR 対策で統一）
-        VillageEntity village = villageRepository
-                .findByIdAndDeletedAtIsNullAndArchivedAtIsNull(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
+        // 不在／削除／凍結済みに加え、<b>UNLISTED 村の非村人</b>もここで 404 に畳む（存在オラクル遮断）。
+        // PUBLIC 村はゲートを素通りし、非村人かどうかは後段の bulletinVisibility 判定（403）に委ねる。
+        VillageEntity village = villageAccessGate.loadReadableVillage(villageId, userId);
 
         VillageBulletinVisibility visibility = village.getBulletinVisibility();
         // 既存村で NULL の可能性に備え、安全側（MEMBERS_ONLY）にフォールバック
@@ -117,10 +123,8 @@ public class VillageBulletinAccessService {
             throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
 
-        // 削除／凍結済みは 404（IDOR 対策で統一）
-        villageRepository
-                .findByIdAndDeletedAtIsNullAndArchivedAtIsNull(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
+        // 不在／削除／凍結済みに加え、UNLISTED 村の非村人も 404 に畳む（閲覧側と同じゲート）。
+        villageAccessGate.loadReadableVillage(villageId, userId);
 
         // SYSTEM_ADMIN は常に許可
         if (userId != null && accessControlService.isSystemAdmin(userId)) {
@@ -140,5 +144,30 @@ public class VillageBulletinAccessService {
             }
         }
         throw new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN);
+    }
+
+    /**
+     * 村ニュースレターの編集認可: <strong>現役</strong>の HEADMAN または ELDER 以外なら
+     * {@link VillageErrorCode#MODERATION_FORBIDDEN}（403）を投げる（②-4 堅牢性 AC-15/16）。
+     *
+     * <p>従来 {@code VillageNewsletterService} と {@code VillageNewsletterIssueService} に
+     * バイト同一の private 実装が二重に存在した（重複ロジック）。認可述語をこの一箇所へ寄せることで
+     * 「呼び出し元まかせ・実装ドリフト」を構造的に防ぐ。「現役」の判定（退村 {@code leftAt} /
+     * BAN {@code bannedAt} の除外）は正準クエリ {@code findActiveByVillageIdAndSubject} に委譲する。</p>
+     *
+     * <p>本メソッドは編集系の主体検証専用であり、村の存在確認は行わない（呼び出し元が閲覧認可
+     * {@link #checkVillageBulletinViewAccess} や号ロードで村スコープを担保している）。</p>
+     *
+     * @param villageId   対象村 ID
+     * @param actorUserId 操作しようとするユーザー ID
+     * @throws BusinessException 現役 HEADMAN / ELDER でない場合（{@link VillageErrorCode#MODERATION_FORBIDDEN}）
+     */
+    public void requireHeadmanOrElder(UUID villageId, Long actorUserId) {
+        VillageMembershipEntity actor = membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
+        if (actor.getRole() != VillageRole.HEADMAN && actor.getRole() != VillageRole.ELDER) {
+            throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
+        }
     }
 }

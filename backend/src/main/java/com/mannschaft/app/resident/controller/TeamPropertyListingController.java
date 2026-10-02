@@ -46,7 +46,8 @@ public class TeamPropertyListingController {
             @RequestParam(required = false) String listingType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<PropertyListingResponse> result = listingService.listByTeam(teamId, status, listingType, PageRequest.of(page, Math.min(size, 50)));
+        Page<PropertyListingResponse> result = listingService.listByTeam(
+                SecurityUtils.getCurrentUserId(), teamId, status, listingType, PageRequest.of(page, Math.min(size, 50)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -65,7 +66,7 @@ public class TeamPropertyListingController {
     @Operation(summary = "物件詳細")
     public ResponseEntity<ApiResponse<PropertyListingResponse>> get(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(listingService.getByTeam(teamId, id)));
+        return ResponseEntity.ok(ApiResponse.of(listingService.getByTeam(SecurityUtils.getCurrentUserId(), teamId, id)));
     }
 
     @PutMapping("/api/v1/teams/{teamId}/property-listings/{id}")
@@ -73,13 +74,14 @@ public class TeamPropertyListingController {
     public ResponseEntity<ApiResponse<PropertyListingResponse>> update(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody UpdatePropertyListingRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(listingService.updateForTeam(teamId, id, request)));
+        return ResponseEntity.ok(ApiResponse.of(
+                listingService.updateForTeam(SecurityUtils.getCurrentUserId(), teamId, id, request)));
     }
 
     @DeleteMapping("/api/v1/teams/{teamId}/property-listings/{id}")
     @Operation(summary = "物件削除")
     public ResponseEntity<Void> delete(@PathVariable Long teamId, @PathVariable Long id) {
-        listingService.deleteForTeam(teamId, id);
+        listingService.deleteForTeam(SecurityUtils.getCurrentUserId(), teamId, id);
         return ResponseEntity.noContent().build();
     }
 
@@ -96,6 +98,6 @@ public class TeamPropertyListingController {
     @Operation(summary = "問い合わせ一覧")
     public ResponseEntity<ApiResponse<List<InquiryResponse>>> listInquiries(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(listingService.listInquiries(id)));
+        return ResponseEntity.ok(ApiResponse.of(listingService.listInquiries(SecurityUtils.getCurrentUserId(), id)));
     }
 }

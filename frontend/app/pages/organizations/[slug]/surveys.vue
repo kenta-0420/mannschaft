@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SurveyResponse } from '~/types/survey'
 
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const orgSlug = String(route.params.slug)
@@ -30,8 +30,7 @@ async function onCreated(_survey: SurveyResponse) {
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton />
+    <div class="mb-4">
       <PageHeader :title="t('surveys.pageTitle')" />
     </div>
 

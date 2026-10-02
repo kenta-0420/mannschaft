@@ -12,6 +12,7 @@ import com.mannschaft.app.todo.TodoErrorCode;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
+import com.mannschaft.app.todo.security.TodoAccessGuard;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ public class TodoScheduleLinkService {
 
     private final TodoRepository todoRepository;
     private final ScheduleRepository scheduleRepository;
+    private final TodoAccessGuard todoAccessGuard;
 
     /**
      * 既存スケジュールを既存TODOに連携する（双方向リンク設定）。
@@ -44,10 +46,18 @@ public class TodoScheduleLinkService {
      *
      * @param scheduleId    連携するスケジュールID
      * @param todoId        連携先TODO ID
+     * @param scopeType     path スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId       path 内部スコープ ID（内部 teamId / orgId）
      * @param parentId      子TODOとして配置する場合の親TODO ID（nullable）
      * @param currentUserId 操作ユーザーID
      */
-    public void linkScheduleToTodo(Long scheduleId, Long todoId, Long parentId, Long currentUserId) {
+    public void linkScheduleToTodo(Long scheduleId, Long todoId,
+                                   TodoScopeType scopeType, Long scopeId,
+                                   Long parentId, Long currentUserId) {
+        // 認可根治（Wave5 todo硬化B）: 対象TODOの scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        // 既存のスケジュール↔TODO スコープ整合性チェックはこの後段で維持する。
+        todoAccessGuard.verifyScopeAndMembership(todoId, scopeType, scopeId, currentUserId);
+
         // スケジュールを取得
         ScheduleEntity schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
@@ -150,9 +160,15 @@ public class TodoScheduleLinkService {
      * TODOとスケジュールの連携を解除する（双方向でNULL化）。
      *
      * @param todoId        連携解除対象TODO ID
+     * @param scopeType     path スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId       path 内部スコープ ID（内部 teamId / orgId）
      * @param currentUserId 操作ユーザーID
      */
-    public void unlinkScheduleFromTodo(Long todoId, Long currentUserId) {
+    public void unlinkScheduleFromTodo(Long todoId, TodoScopeType scopeType, Long scopeId,
+                                       Long currentUserId) {
+        // 認可根治（Wave5 todo硬化B）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(todoId, scopeType, scopeId, currentUserId);
+
         TodoEntity todo = todoRepository.findByIdAndDeletedAtIsNull(todoId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
 

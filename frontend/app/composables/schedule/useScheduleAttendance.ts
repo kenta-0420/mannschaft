@@ -54,14 +54,24 @@ export function useScheduleAttendance() {
     )
   }
 
+  /**
+   * 自分自身の出欠を回答する。
+   *
+   * 実在する BE エンドポイントは `PATCH /api/v1/schedules/{scheduleId}/responses` のみで、
+   * scheduleId 単体で一意に特定できるスコープ非依存の EP である
+   * （`PUT .../attendances/me` は存在しないエンドポイントで常時 404 になっていた）。
+   * scopeType / scopeId 引数は呼出元の後方互換のために残しているが、URL には使用しない。
+   *
+   * body.status は BE 正準の 'ATTENDING' | 'PARTIAL' | 'ABSENT' | 'UNDECIDED' の完全一致が必要。
+   */
   async function respondAttendance(
     scopeType: 'team' | 'organization',
     scopeId: string,
     scheduleId: number,
     body: { status: string; comment?: string },
   ) {
-    return api(`${buildBase(scopeType, scopeId)}/schedules/${scheduleId}/attendances/me`, {
-      method: 'PUT',
+    return api(`/api/v1/schedules/${scheduleId}/responses`, {
+      method: 'PATCH',
       body,
     })
   }

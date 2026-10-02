@@ -1,6 +1,7 @@
 package com.mannschaft.app.publicview.service;
 
 import com.mannschaft.app.cms.repository.BlogPostRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.publicview.dto.PublicTeamSearchResultResponse;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -38,6 +39,8 @@ public class PublicTeamSearchQueryService {
 
     private final TeamRepository teamRepository;
     private final BlogPostRepository blogPostRepository;
+    /** 画像 URL 根治 Phase 1: 生 R2 キー → 署名付き表示 URL の解決を担う共通部品。 */
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 公開チームを keyword / prefecture（名称）で検索する（後方互換オーバーロード）。
@@ -95,7 +98,8 @@ public class PublicTeamSearchQueryService {
                         team.getId(),
                         team.getSlug(),
                         team.getName(),
-                        team.getIconUrl(),
+                        // 画像 URL 根治 Phase 1: icon を署名付き表示 URL へ解決する。
+                        mediaUrlResolver.resolve(team.getIconUrl()),
                         team.getMemberCount() != null ? Math.toIntExact(team.getMemberCount()) : 0,
                         lastPostDateMap.get(team.getId()),
                         team.getPrefectureCode(),

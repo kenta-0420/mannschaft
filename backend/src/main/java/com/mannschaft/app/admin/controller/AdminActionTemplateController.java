@@ -4,6 +4,7 @@ import com.mannschaft.app.admin.dto.ActionTemplateResponse;
 import com.mannschaft.app.admin.dto.CreateActionTemplateRequest;
 import com.mannschaft.app.admin.dto.UpdateActionTemplateRequest;
 import com.mannschaft.app.admin.service.AdminActionTemplateService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,7 +35,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class AdminActionTemplateController {
 
     private final AdminActionTemplateService templateService;
-
+    private final AccessControlService accessControlService;
 
     /**
      * テンプレート一覧を取得する。
@@ -44,6 +45,9 @@ public class AdminActionTemplateController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ActionTemplateResponse>>> getTemplates(
             @RequestParam(required = false) String actionType) {
+        // 認可根治 Wave5: scope 引数を持たない全体共通マスタのため SYSTEM_ADMIN 限定
+        // （SecurityConfig のパス単位 hasRole と二重防御）。以下 3 EP も同様。
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         List<ActionTemplateResponse> templates;
         if (actionType != null && !actionType.isBlank()) {
             templates = templateService.getTemplatesByActionType(actionType);
@@ -61,6 +65,7 @@ public class AdminActionTemplateController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ActionTemplateResponse>> createTemplate(
             @Valid @RequestBody CreateActionTemplateRequest request) {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         ActionTemplateResponse response = templateService.createTemplate(request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -74,6 +79,7 @@ public class AdminActionTemplateController {
     public ResponseEntity<ApiResponse<ActionTemplateResponse>> updateTemplate(
             @PathVariable Long id,
             @Valid @RequestBody UpdateActionTemplateRequest request) {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         ActionTemplateResponse response = templateService.updateTemplate(id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -85,6 +91,7 @@ public class AdminActionTemplateController {
     @Operation(summary = "アクションテンプレート削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteTemplate(@PathVariable Long id) {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         templateService.deleteTemplate(id);
         return ResponseEntity.noContent().build();
     }

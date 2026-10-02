@@ -3,11 +3,14 @@ package com.mannschaft.app.payment.controller;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.payment.dto.FeeStatementResponse;
 import com.mannschaft.app.payment.service.FeeStatementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.YearMonth;
+import java.util.Map;
 
 /**
  * F08.9 P8 月次手数料明細コントローラー。
@@ -38,6 +42,7 @@ public class TeamFeeStatementController {
 
     private final FeeStatementService feeStatementService;
     private final AccessControlService accessControlService;
+    private final PdfGeneratorService pdfGeneratorService;
 
     /**
      * チームの月次手数料明細を取得する。
@@ -59,5 +64,21 @@ public class TeamFeeStatementController {
 
         FeeStatementResponse response = feeStatementService.getTeamFeeStatement(teamId, targetPeriod);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    @GetMapping("/fee-statements/pdf")
+    @Operation(summary = "月次手数料明細PDF")
+    public ResponseEntity<byte[]> downloadFeeStatementPdf(
+            @PathVariable Long teamId,
+            @RequestParam(required = false) String period) {
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), teamId, SCOPE_TYPE_TEAM);
+        YearMonth targetPeriod = period != null ? YearMonth.parse(period) : null;
+        FeeStatementResponse statement = feeStatementService.getTeamFeeStatement(teamId, targetPeriod);
+        byte[] pdf = pdfGeneratorService.generateFromTemplate("pdf/fee-statement", Map.of("statement", statement));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"fee-statement-" + statement.getPeriod() + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

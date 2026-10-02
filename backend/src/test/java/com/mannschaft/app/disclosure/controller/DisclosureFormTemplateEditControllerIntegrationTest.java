@@ -83,6 +83,8 @@ class DisclosureFormTemplateEditControllerIntegrationTest extends AbstractDisclo
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
         MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, ORG_ID, RoleKind.MEMBER);
+        // 認可根治戦役 Wave3-B4: カスタム様式 CRUD は checkAdminOrAbove の対象になったため ADMIN を付与
+        MembershipTestHelper.insertUserRole(em, userId, "ADMIN", null, ORG_ID);
         em.flush();
     }
 

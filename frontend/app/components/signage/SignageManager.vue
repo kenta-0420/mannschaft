@@ -377,10 +377,7 @@ onMounted(loadScreens)
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton />
-      <PageHeader title="デジタルサイネージ" />
-    </div>
+    <PageHeader title="デジタルサイネージ" class="mb-4" />
 
     <!-- Screen list -->
     <div v-if="loadingScreens" class="flex justify-center py-10">

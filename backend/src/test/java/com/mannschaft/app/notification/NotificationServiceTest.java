@@ -8,8 +8,10 @@ import com.mannschaft.app.notification.dto.NotificationStatsResponse;
 import com.mannschaft.app.notification.dto.SnoozeRequest;
 import com.mannschaft.app.notification.dto.UnreadCountResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
+import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
+import com.mannschaft.app.scopefolder.service.MyScopeFolderQueryService;
 import com.mannschaft.app.notification.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,6 +39,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 /**
  * {@link NotificationService} の単体テスト。
@@ -56,12 +60,18 @@ class NotificationServiceTest {
     @Mock
     private NotificationMapper notificationMapper;
 
+    @Mock
+    private ConfirmableNotificationRecipientRepository confirmableNotificationRecipientRepository;
+
     /**
      * F00 Phase F セキュリティガード用の visibility checker (mock)。
      * 既存テストは「visibility 通過済み」を前提とするため、デフォルトで allow。
      */
     @Mock
     private ContentVisibilityChecker visibilityChecker;
+
+    @Mock
+    private MyScopeFolderQueryService myScopeFolderQueryService;
 
     @InjectMocks
     private NotificationService notificationService;
@@ -118,6 +128,38 @@ class NotificationServiceTest {
                 .readAt(null)
                 .channelsSent(null)
                 .snoozedUntil(null)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+
+    private NotificationEntity createConfirmableNotification(Long confirmableNotificationId) {
+        return NotificationEntity.builder()
+                .userId(USER_ID)
+                .notificationType("RECRUITMENT_PENALTY_APPLIED")
+                .priority(NotificationPriority.URGENT)
+                .title("確認が必要です")
+                .body("本文")
+                .sourceType("CONFIRMABLE_NOTIFICATION")
+                .sourceId(confirmableNotificationId)
+                .scopeType(NotificationScopeType.TEAM)
+                .scopeId(5L)
+                .build();
+    }
+
+    private NotificationResponse createConfirmableResponse(Long confirmableNotificationId) {
+        return NotificationResponse.builder()
+                .id(NOTIFICATION_ID)
+                .userId(USER_ID)
+                .notificationType("RECRUITMENT_PENALTY_APPLIED")
+                .priority("URGENT")
+                .title("確認が必要です")
+                .body("本文")
+                .sourceType("CONFIRMABLE_NOTIFICATION")
+                .sourceId(confirmableNotificationId)
+                .scopeType("TEAM")
+                .scopeId(5L)
+                .isRead(false)
+                .isConfirmed(null)
                 .createdAt(LocalDateTime.now())
                 .build();
     }
@@ -192,6 +234,88 @@ class NotificationServiceTest {
             assertThat(result.getContent()).hasSize(2);
             assertThat(result.getTotalElements()).isEqualTo(2);
         }
+
+        @Test
+        @DisplayName("確認通知の本人状態を一括照会し、通常・他人・除外済みはnullのまま返す")
+        void 確認通知の本人状態を一括照会する() {
+            Pageable pageable = PageRequest.of(0, 10);
+            NotificationEntity pending = createConfirmableNotification(901L);
+            NotificationEntity normal = createUnreadNotification();
+            Page<NotificationEntity> page = new PageImpl<>(List.of(pending, normal), pageable, 2);
+            NotificationResponse pendingResponse = createConfirmableResponse(901L);
+            NotificationResponse normalResponse = createNotificationResponse();
+
+            given(notificationRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, pageable)).willReturn(page);
+            given(notificationMapper.toNotificationResponse(pending)).willReturn(pendingResponse);
+            given(notificationMapper.toNotificationResponse(normal)).willReturn(normalResponse);
+            given(confirmableNotificationRecipientRepository.findConfirmationStatesByUserIdAndNotificationIdIn(
+                    USER_ID, List.of(901L))).willReturn(List.<Object[]>of(new Object[] {901L, false}));
+
+            Page<NotificationResponse> result = notificationService.listNotifications(USER_ID, pageable);
+
+            assertThat(result.getContent().get(0).getIsConfirmed()).isFalse();
+            assertThat(result.getContent().get(1).getIsConfirmed()).isNull();
+            verify(confirmableNotificationRecipientRepository)
+                    .findConfirmationStatesByUserIdAndNotificationIdIn(USER_ID, List.of(901L));
+        }
+
+        @Test
+        @DisplayName("重複sourceIdは一度だけ照会し、他人・除外済みの行が無い通知はnullを返す")
+        void 重複sourceIdを一度だけ照会し本人状態だけ補充する() {
+            Pageable pageable = PageRequest.of(0, 10);
+            NotificationEntity pending1 = createConfirmableNotification(901L);
+            NotificationEntity pending2 = createConfirmableNotification(901L);
+            NotificationEntity excludedOrForeign = createConfirmableNotification(902L);
+            Page<NotificationEntity> page = new PageImpl<>(List.of(pending1, pending2, excludedOrForeign), pageable, 3);
+            given(notificationRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, pageable)).willReturn(page);
+            given(notificationMapper.toNotificationResponse(pending1)).willReturn(createConfirmableResponse(901L));
+            given(notificationMapper.toNotificationResponse(pending2)).willReturn(createConfirmableResponse(901L));
+            given(notificationMapper.toNotificationResponse(excludedOrForeign)).willReturn(createConfirmableResponse(902L));
+            // 902 の本人行は除外済み、999 は別人の行を想定し、Repository結果には含めない。
+            given(confirmableNotificationRecipientRepository.findConfirmationStatesByUserIdAndNotificationIdIn(
+                    USER_ID, List.of(901L, 902L))).willReturn(List.<Object[]>of(new Object[] {901L, true}));
+
+            Page<NotificationResponse> result = notificationService.listNotifications(USER_ID, pageable);
+
+            assertThat(result.getContent()).extracting(NotificationResponse::getIsConfirmed)
+                    .containsExactly(true, true, null);
+            verify(confirmableNotificationRecipientRepository, times(1))
+                    .findConfirmationStatesByUserIdAndNotificationIdIn(USER_ID, List.of(901L, 902L));
+        }
+
+        @Test
+        @DisplayName("空ページと確認通知なしページではrecipient照会をしない")
+        void 確認通知が無いページではrecipient照会をしない() {
+            Pageable pageable = PageRequest.of(0, 10);
+            NotificationEntity normal = createUnreadNotification();
+            given(notificationRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, pageable))
+                    .willReturn(new PageImpl<>(List.of(normal), pageable, 1));
+            given(notificationMapper.toNotificationResponse(normal)).willReturn(createNotificationResponse());
+
+            notificationService.listNotifications(USER_ID, pageable);
+
+            verify(confirmableNotificationRecipientRepository, never())
+                    .findConfirmationStatesByUserIdAndNotificationIdIn(any(), any());
+        }
+
+        @Test
+        @DisplayName("フォルダ一覧も本人の確認状態を一括補充する")
+        void フォルダ一覧も本人の確認状態を一括補充する() {
+            Pageable pageable = PageRequest.of(0, 10);
+            NotificationEntity pending = createConfirmableNotification(901L);
+            given(myScopeFolderQueryService.getScopeIdsInFolder(USER_ID, 77L)).willReturn(List.of(5L));
+            given(notificationRepository.findByUserIdAndScopeTypeAndScopeIdInOrderByCreatedAtDesc(
+                    USER_ID, NotificationScopeType.TEAM, List.of(5L), pageable))
+                    .willReturn(new PageImpl<>(List.of(pending), pageable, 1));
+            given(notificationMapper.toNotificationResponse(pending)).willReturn(createConfirmableResponse(901L));
+            given(confirmableNotificationRecipientRepository.findConfirmationStatesByUserIdAndNotificationIdIn(
+                    USER_ID, List.of(901L))).willReturn(List.<Object[]>of(new Object[] {901L, false}));
+
+            Page<NotificationResponse> result = notificationService.listNotificationsByFolder(
+                    USER_ID, 77L, com.mannschaft.app.scopefolder.entity.enums.ScopeType.TEAM, pageable);
+
+            assertThat(result.getContent()).extracting(NotificationResponse::getIsConfirmed).containsExactly(false);
+        }
     }
 
     // ========================================
@@ -258,6 +382,22 @@ class NotificationServiceTest {
         }
 
         @Test
+        @DisplayName("確認待ち通知を既読にしても本人の未確認状態を返す")
+        void 確認待ち通知を既読にしても未確認状態を返す() {
+            NotificationEntity entity = createConfirmableNotification(901L);
+            NotificationResponse response = createConfirmableResponse(901L);
+            given(notificationRepository.findByIdAndUserId(NOTIFICATION_ID, USER_ID)).willReturn(Optional.of(entity));
+            given(notificationRepository.save(entity)).willReturn(entity);
+            given(notificationMapper.toNotificationResponse(entity)).willReturn(response);
+            given(confirmableNotificationRecipientRepository.findConfirmationStatesByUserIdAndNotificationIdIn(
+                    USER_ID, List.of(901L))).willReturn(List.<Object[]>of(new Object[] {901L, false}));
+
+            NotificationResponse result = notificationService.markAsRead(USER_ID, NOTIFICATION_ID);
+
+            assertThat(result.getIsConfirmed()).isFalse();
+        }
+
+        @Test
         @DisplayName("既読化_既に既読_NOTIFICATION_006例外")
         void 既読化_既に既読_NOTIFICATION006例外() {
             // Given
@@ -295,6 +435,27 @@ class NotificationServiceTest {
     @Nested
     @DisplayName("markAsUnread")
     class MarkAsUnread {
+
+        @Test
+        @DisplayName("確認済み通知を未読に戻しても本人の確認済み状態を保つ")
+        void 確認済み通知を未読に戻しても確認済み状態を返す() {
+            NotificationEntity entity = createConfirmableNotification(901L);
+            entity.markAsRead();
+            given(notificationRepository.findByIdAndUserId(NOTIFICATION_ID, USER_ID))
+                    .willReturn(Optional.of(entity));
+            given(notificationRepository.save(entity)).willReturn(entity);
+            given(notificationMapper.toNotificationResponse(entity)).willAnswer(invocation ->
+                    createConfirmableResponse(901L).toBuilder().isRead(entity.getIsRead()).build());
+            given(confirmableNotificationRecipientRepository.findConfirmationStatesByUserIdAndNotificationIdIn(
+                    USER_ID, List.of(901L))).willReturn(List.<Object[]>of(new Object[] {901L, true}));
+
+            NotificationResponse result = notificationService.markAsUnread(USER_ID, NOTIFICATION_ID);
+
+            assertThat(entity.getIsRead()).isFalse();
+            assertThat(result.getIsRead()).isFalse();
+            assertThat(result.getIsConfirmed()).isTrue();
+            verify(notificationRepository).save(entity);
+        }
 
         @Test
         @DisplayName("未読戻し_正常_未読状態に更新")

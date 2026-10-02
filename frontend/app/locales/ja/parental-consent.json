@@ -3,7 +3,7 @@
     "pending_title": "保護者の同意が必要です",
     "pending_description": "18歳未満のため、保護者の同意が必要です。保護者のメールアドレスを入力して招待を送信してください。",
     "invite_email_label": "保護者のメールアドレス",
-    "invite_email_placeholder": "parent@example.com",
+    "invite_email_placeholder": "parent{'@'}example.com",
     "send_invite": "招待を送信",
     "cancel_invite": "招待を取消",
     "invite_sent": "招待メールを送信しました",

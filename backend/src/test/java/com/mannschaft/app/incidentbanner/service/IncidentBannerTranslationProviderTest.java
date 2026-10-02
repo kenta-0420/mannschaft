@@ -31,7 +31,8 @@ class IncidentBannerTranslationProviderTest {
 
     @BeforeEach
     void setUp() {
-        provider = new IncidentBannerTranslationProvider(new ObjectMapper());
+        provider = new IncidentBannerTranslationProvider(
+                new ObjectMapper(), new IncidentBannerTranslationProperties());
     }
 
     @Test

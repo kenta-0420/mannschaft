@@ -1,5 +1,6 @@
 package com.mannschaft.app.webhook.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.webhook.WebhookErrorCode;
@@ -36,6 +37,7 @@ public class WebhookEndpointService {
     private final WebhookEndpointRepository endpointRepository;
     private final WebhookEventSubscriptionRepository subscriptionRepository;
     private final SsrfGuard ssrfGuard;
+    private final AccessControlService accessControlService;
 
     // ========================================
     // DTOクラス定義
@@ -119,6 +121,9 @@ public class WebhookEndpointService {
      */
     @Transactional
     public ApiResponse<WebhookEndpointCreatedResponse> createEndpoint(Long createdBy, CreateWebhookEndpointRequest req) {
+        // 認可: 作成先スコープの ADMIN/DEPUTY_ADMIN のみ作成可能
+        accessControlService.checkAdminOrAbove(createdBy, req.scopeId(), req.scopeType());
+
         // SSRF対策: URLを検証
         validateUrl(req.url());
 
@@ -162,11 +167,15 @@ public class WebhookEndpointService {
     /**
      * Webhookエンドポイントを取得する。
      *
-     * @param id エンドポイントID
+     * @param actorUserId 操作者ユーザーID（認可検証用）
+     * @param id          エンドポイントID
      * @return エンドポイント情報
      */
-    public ApiResponse<WebhookEndpointResponse> getEndpoint(Long id) {
+    public ApiResponse<WebhookEndpointResponse> getEndpoint(Long actorUserId, Long id) {
+        // ★BOLA対策: pathのidから対象entityを先にfetchし、entity由来のscopeで認可する
         WebhookEndpointEntity entity = findEndpointOrThrow(id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
+
         List<String> eventTypes = getEventTypes(id);
         return ApiResponse.of(toResponse(entity, eventTypes));
     }
@@ -174,11 +183,15 @@ public class WebhookEndpointService {
     /**
      * スコープに紐づくWebhookエンドポイント一覧を取得する。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
+     * @param actorUserId 操作者ユーザーID（認可検証用）
+     * @param scopeType   スコープ種別
+     * @param scopeId     スコープID
      * @return エンドポイント一覧
      */
-    public ApiResponse<List<WebhookEndpointResponse>> listEndpoints(String scopeType, Long scopeId) {
+    public ApiResponse<List<WebhookEndpointResponse>> listEndpoints(Long actorUserId, String scopeType, Long scopeId) {
+        // 認可: 一覧取得先スコープの ADMIN/DEPUTY_ADMIN のみ閲覧可能（クエリ引数のscopeがそのまま照会対象）
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
+
         List<WebhookEndpointEntity> entities =
                 endpointRepository.findByScopeTypeAndScopeIdAndIsActiveTrueAndDeletedAtIsNull(scopeType, scopeId);
         List<WebhookEndpointResponse> responses = entities.stream()
@@ -194,13 +207,16 @@ public class WebhookEndpointService {
      *   <li>eventTypesが渡された場合は既存購読を削除して再登録</li>
      * </ul>
      *
-     * @param id  エンドポイントID
-     * @param req 更新リクエスト
+     * @param actorUserId 操作者ユーザーID（認可検証用）
+     * @param id          エンドポイントID
+     * @param req         更新リクエスト
      * @return 更新後エンドポイント情報
      */
     @Transactional
-    public ApiResponse<WebhookEndpointResponse> updateEndpoint(Long id, UpdateWebhookEndpointRequest req) {
+    public ApiResponse<WebhookEndpointResponse> updateEndpoint(Long actorUserId, Long id, UpdateWebhookEndpointRequest req) {
+        // ★BOLA対策: pathのidから対象entityを先にfetchし、entity由来のscopeで認可する
         WebhookEndpointEntity entity = findEndpointOrThrow(id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
 
         // URL変更時はSSRFガードで再検証
         String newUrl = req.url() != null ? req.url() : entity.getUrl();
@@ -246,11 +262,15 @@ public class WebhookEndpointService {
     /**
      * Webhookエンドポイントを論理削除する。
      *
-     * @param id エンドポイントID
+     * @param actorUserId 操作者ユーザーID（認可検証用）
+     * @param id          エンドポイントID
      */
     @Transactional
-    public void deleteEndpoint(Long id) {
+    public void deleteEndpoint(Long actorUserId, Long id) {
+        // ★BOLA対策: pathのidから対象entityを先にfetchし、entity由来のscopeで認可する
         WebhookEndpointEntity entity = findEndpointOrThrow(id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
+
         entity.softDelete();
         endpointRepository.save(entity);
         log.info("Webhookエンドポイント論理削除: id={}", id);

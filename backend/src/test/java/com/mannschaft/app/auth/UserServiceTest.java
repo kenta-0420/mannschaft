@@ -14,6 +14,8 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.service.ParentalConsentService;
 import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.postal.CountryResolver;
+import com.mannschaft.app.postal.PostalCodePolicyRegistry;
 import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.auth.dto.ChangePasswordRequest;
@@ -26,6 +28,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,8 +36,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -94,6 +100,31 @@ class UserServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    // 柱①ADMINゼロ根治: requestWithdrawal 冒頭の GDPR_011 ガード
+    @Mock
+    private com.mannschaft.app.role.service.RoleSuccessionService roleSuccessionService;
+
+    // 柱①ADMINゼロ根治 §12.5: cancelWithdrawal 冒頭の purge×cancel 勝敗判定
+    @Mock
+    private com.mannschaft.app.gdpr.service.PurgeStartGuard purgeStartGuard;
+
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
+
+    // Issue #2487: プロフィール更新で timezone / locale が変わったときのキャッシュ即時無効化
+    @Mock
+    private com.mannschaft.app.common.timezone.UserTimezoneCache userTimezoneCache;
+
+    @Mock
+    private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+
+    // F02.10 §391 郵便番号検証基盤: 実ロジック（JP 固定）を使う
+    @Spy
+    private CountryResolver countryResolver = new CountryResolver();
+
+    @Spy
+    private PostalCodePolicyRegistry postalCodePolicyRegistry = new PostalCodePolicyRegistry();
 
     @InjectMocks
     private UserService userService;
@@ -258,6 +289,46 @@ class UserServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("AUTH_009"));
         }
+
+        @Test
+        @DisplayName("正常系: 3種ちょうど（記号なし）のパスワードが変更時に受理される")
+        void changePassword_3種ちょうど記号なし_受理() {
+            // Given: "Passw0rd1" は 大文字+小文字+数字 = 3種（記号なし）。
+            //   旧ポリシー（4種すべて必須）では弾かれたが、登録時と統一した新ポリシー（3種以上）では受理されること。
+            String newPassword = "Passw0rd1";
+            ChangePasswordRequest req = new ChangePasswordRequest("OldPassword1!", newPassword);
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(passwordEncoder.matches("OldPassword1!", ENCODED_PASSWORD)).willReturn(true);
+            given(passwordEncoder.matches(newPassword, ENCODED_PASSWORD)).willReturn(false);
+            given(passwordEncoder.encode(newPassword)).willReturn("$2a$12$newHash");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+
+            // When
+            userService.changePassword(USER_ID, req, TEST_IP);
+
+            // Then: ポリシー違反でスローされず、更新が完了すること
+            verify(userRepository).save(any(UserEntity.class));
+            verify(authTokenService).setUserInvalidationTimestamp(USER_ID);
+        }
+
+        @Test
+        @DisplayName("異常系: 1種のみ（小文字のみ）の弱いパスワードはAUTH_008で拒否される")
+        void changePassword_1種のみ_AUTH008例外() {
+            // Given: "password" は小文字のみ = 1種。新ポリシー（3種以上）でも当然拒否されること。
+            ChangePasswordRequest req = new ChangePasswordRequest("OldPassword1!", "password");
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(passwordEncoder.matches("OldPassword1!", ENCODED_PASSWORD)).willReturn(true);
+            given(passwordEncoder.matches("password", ENCODED_PASSWORD)).willReturn(false);
+
+            // When / Then
+            assertThatThrownBy(() -> userService.changePassword(USER_ID, req, TEST_IP))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_008"));
+        }
     }
 
     // ========================================
@@ -348,7 +419,7 @@ class UserServiceTest {
         void cancelWithdrawal_未申請_AUTH032例外() {
             // Given
             UserEntity user = createActiveUser(); // deletedAt = null
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(userRepository.findByIdForUpdateIncludingDeleted(USER_ID)).willReturn(Optional.of(user));
 
             // When / Then
             assertThatThrownBy(() -> userService.cancelWithdrawal(USER_ID))
@@ -363,7 +434,12 @@ class UserServiceTest {
             // Given
             UserEntity user = createActiveUserWithDeletedAt();
             assertThat(user.getDeletedAt()).isNotNull(); // 事前確認
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            // 【重要】ここを findById でスタブしてはならない（柱③-B PR-3・Codex 検分3巡目 P1-1）。
+            // UserEntity には @SQLRestriction("deleted_at IS NULL") が付いており、
+            // 「findById が deletedAt != null のユーザーを返す」のは本番では起こり得ない状態である。
+            // 是正前の本テストはその不可能な行をフィクスチャで作っていたため、
+            // 実際には常に AUTH_015 で終了していた退会取消を「正常系 green」と偽っていた。
+            given(userRepository.findByIdForUpdateIncludingDeleted(USER_ID)).willReturn(Optional.of(user));
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
 
             // When
@@ -380,7 +456,8 @@ class UserServiceTest {
         void cancelWithdrawal_正常_イベント発行() {
             // Given
             UserEntity user = createActiveUserWithDeletedAt();
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            // findById は @SQLRestriction により退会者を返さない。本番と同じ窓口でスタブする。
+            given(userRepository.findByIdForUpdateIncludingDeleted(USER_ID)).willReturn(Optional.of(user));
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
 
             // When
@@ -397,7 +474,7 @@ class UserServiceTest {
         void cancelWithdrawal_未申請時_イベント未発行() {
             // Given
             UserEntity user = createActiveUser(); // deletedAt = null
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(userRepository.findByIdForUpdateIncludingDeleted(USER_ID)).willReturn(Optional.of(user));
 
             // When / Then
             assertThatThrownBy(() -> userService.cancelWithdrawal(USER_ID))
@@ -427,6 +504,30 @@ class UserServiceTest {
                     .status(UserEntity.UserStatus.ACTIVE)
                     .build();
             String newPassword = "NewPassword1!";
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(oauthUser));
+            given(passwordEncoder.encode(newPassword)).willReturn("$2a$12$newHash");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            ApiResponse<MessageResponse> response = userService.setupPassword(USER_ID, newPassword);
+
+            // Then
+            assertThat(response.getData().getMessage()).contains("パスワードを設定しました");
+            verify(userRepository).save(any(UserEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: 3種ちょうど（記号なし）のパスワードが設定時に受理される")
+        void setupPassword_3種ちょうど記号なし_受理() {
+            // Given: setupPassword も changePassword と同じ統一ポリシー（3種以上）であることを確認する。
+            UserEntity oauthUser = UserEntity.builder()
+                    .email(TEST_EMAIL).passwordHash(null)
+                    .lastName("田中").firstName("花子")
+                    .displayName("hanako").isSearchable(true)
+                    .locale("ja").timezone("Asia/Tokyo")
+                    .status(UserEntity.UserStatus.ACTIVE)
+                    .build();
+            String newPassword = "Passw0rd1"; // 大文字+小文字+数字 = 3種（記号なし）
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(oauthUser));
             given(passwordEncoder.encode(newPassword)).willReturn("$2a$12$newHash");
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
@@ -613,6 +714,99 @@ class UserServiceTest {
     @DisplayName("updateProfile")
     class UpdateProfile {
 
+        // ============================================================
+        // Issue #2487: キャッシュ evict は「コミット確定後」でなければならない
+        // ------------------------------------------------------------
+        // コミット前に evict すると、evict とコミットの隙に別スレッドがキャッシュミス →
+        // READ_COMMITTED 下で未コミットの更新が見えない DB を読み → 旧値を TTL 5 分ぶん
+        // 再ポピュレートしてしまう（F20.1 の教訓・BillingContractService#evictAfterCommit と同型）。
+        // 下記 3 テストは「コミット前 evict」に戻すと必ず赤くなる。
+        // ============================================================
+
+        /** トランザクション同期を張った状態で updateProfile を呼び、登録された同期を返す。 */
+        private List<TransactionSynchronization> updateProfileWithinTransaction(UpdateProfileRequest req) {
+            UserEntity user = createActiveUser(); // locale=ja / timezone=Asia/Tokyo
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(encryptionService.hmac(anyString())).willReturn("hashed-value");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webauthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(oauthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            TransactionSynchronizationManager.initSynchronization();
+            try {
+                userService.updateProfile(USER_ID, req);
+                return List.copyOf(TransactionSynchronizationManager.getSynchronizations());
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization();
+            }
+        }
+
+        @Test
+        @DisplayName("#2487: timezone 変更時、evict はコミット前には走らず afterCommit で初めて走る")
+        void updateProfile_timezone変更_evictはコミット後() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, null, null, "America/Los_Angeles",
+                    null, null, null, null, null);
+
+            List<TransactionSynchronization> syncs = updateProfileWithinTransaction(req);
+
+            // コミット前は evict されていない（ここが「コミット前 evict」への退行を機械的に弾く）
+            verify(userTimezoneCache, never()).evict(USER_ID);
+            assertThat(syncs).as("コミット後に実行する同期が 1 件登録される").hasSize(1);
+
+            // コミット確定を模して afterCommit を発火 → ここで初めて evict される
+            syncs.forEach(TransactionSynchronization::afterCommit);
+            verify(userTimezoneCache).evict(USER_ID);
+            // locale は変わっていないので evict されない
+            verify(userLocaleCache, never()).evict(USER_ID);
+        }
+
+        @Test
+        @DisplayName("#2487: locale 変更時も evict は afterCommit まで遅延される")
+        void updateProfile_locale変更_evictはコミット後() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, "en", null, null,
+                    null, null, null, null, null);
+
+            List<TransactionSynchronization> syncs = updateProfileWithinTransaction(req);
+
+            verify(userLocaleCache, never()).evict(USER_ID);
+
+            syncs.forEach(TransactionSynchronization::afterCommit);
+            verify(userLocaleCache).evict(USER_ID);
+            verify(userTimezoneCache, never()).evict(USER_ID);
+        }
+
+        @Test
+        @DisplayName("#2487: ロールバック（afterCommit 未発火）ではキャッシュを捨てない（DB と乖離させない）")
+        void updateProfile_ロールバック時はevictしない() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, "en", null, "America/Los_Angeles",
+                    null, null, null, null, null);
+
+            // afterCommit を発火させない ＝ ロールバックされた世界線
+            updateProfileWithinTransaction(req);
+
+            verify(userTimezoneCache, never()).evict(USER_ID);
+            verify(userLocaleCache, never()).evict(USER_ID);
+        }
+
+        @Test
+        @DisplayName("#2487: timezone / locale が変わらなければ同期の登録も evict も行わない")
+        void updateProfile_変更なし_evict予約もしない() {
+            // createActiveUser と同値（locale=ja / timezone=Asia/Tokyo）＝実質未変更
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, "ja", null, "Asia/Tokyo",
+                    null, null, null, null, null);
+
+            List<TransactionSynchronization> syncs = updateProfileWithinTransaction(req);
+
+            assertThat(syncs).as("捨てるものが無いので同期も登録しない").isEmpty();
+            verify(userTimezoneCache, never()).evict(any());
+            verify(userLocaleCache, never()).evict(any());
+        }
+
         @Test
         @DisplayName("正常系: プロフィールが更新される")
         void updateProfile_正常_プロフィール更新() {
@@ -634,6 +828,103 @@ class UserServiceTest {
             ApiResponse<UserProfileResponse> response = userService.updateProfile(USER_ID, req);
 
             // Then
+            assertThat(response.getData()).isNotNull();
+            verify(userRepository).save(any(UserEntity.class));
+        }
+
+        // AC-1: JP・郵便番号フォーマット不正（"111"）→ AUTH_072
+        @Test
+        @DisplayName("AC-1 異常系: JP・郵便番号フォーマット不正でAUTH_072例外")
+        void updateProfile_郵便番号フォーマット不正_AUTH072例外() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, "111", null);
+            UserEntity user = createActiveUser(); // locale=ja → JP（対応国）
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> userService.updateProfile(USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_072"));
+            verify(userRepository, never()).save(any());
+        }
+
+        // AC-2: JP・正値（ハイフンあり "123-4567"）→ 成功
+        @Test
+        @DisplayName("AC-2 正常系: JP・正値（123-4567）で更新成功")
+        void updateProfile_正値ハイフンあり_成功() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, "123-4567", null);
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(encryptionService.hmac(anyString())).willReturn("hashed-value");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webauthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(oauthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            ApiResponse<UserProfileResponse> response = userService.updateProfile(USER_ID, req);
+
+            assertThat(response.getData()).isNotNull();
+            verify(userRepository).save(any(UserEntity.class));
+        }
+
+        // AC-3: JP・正値（ハイフンなし "1234567"）→ 成功
+        @Test
+        @DisplayName("AC-3 正常系: JP・正値（1234567）で更新成功")
+        void updateProfile_正値ハイフンなし_成功() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, "1234567", null);
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(encryptionService.hmac(anyString())).willReturn("hashed-value");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webauthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(oauthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            ApiResponse<UserProfileResponse> response = userService.updateProfile(USER_ID, req);
+
+            assertThat(response.getData()).isNotNull();
+            verify(userRepository).save(any(UserEntity.class));
+        }
+
+        // AC-7: 明示的に空文字 "" でクリア → 対応国では空に戻せない → AUTH_071
+        @Test
+        @DisplayName("AC-7 異常系: 明示的に空文字でクリアするとAUTH_071例外（対応国では空不可）")
+        void updateProfile_郵便番号空文字クリア_AUTH071例外() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, "", null);
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> userService.updateProfile(USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_071"));
+            verify(userRepository, never()).save(any());
+        }
+
+        // AC-7: postalCode == null（欄据置・未変更）→ 検証スキップ・既存値維持で成功
+        @Test
+        @DisplayName("AC-7 正常系: postalCode=null（据置）は検証スキップで既存値維持")
+        void updateProfile_郵便番号null据置_検証スキップ_成功() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    "佐藤", null, null, null, null, null, null, null, null,
+                    null, null, null, null, null);
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(encryptionService.hmac(anyString())).willReturn("hashed-value");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webauthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(oauthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            ApiResponse<UserProfileResponse> response = userService.updateProfile(USER_ID, req);
+
             assertThat(response.getData()).isNotNull();
             verify(userRepository).save(any(UserEntity.class));
         }

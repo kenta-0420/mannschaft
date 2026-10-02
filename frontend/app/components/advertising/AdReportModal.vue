@@ -1,19 +1,25 @@
 <script setup lang="ts">
 import type { AdReportReason } from '~/types/adPreferences'
+import type { AdChannelType } from '~/types/adMessagingCampaign'
 
 /**
- * F09.17 広告通報モーダル
+ * F09.17 / F09.19.9 広告通報モーダル
  *
  * - reason 5 種から選択（OFFENSIVE / MISLEADING / SPAM / IRRELEVANT / OTHER）
  * - 任意の自由記述
- * - POST `/api/v1/me/ad-reports` で送信
+ * - POST `/api/v1/me/ad-reports` で送信（メッセージ型 = campaignId / 運用型 = operationalCampaignId の XOR）
  * - 送信成功でモーダル自動クローズ + トースト通知
  * - 429 (受信者向けレート制限) の専用ハンドリング
  */
 
 const props = defineProps<{
   visible: boolean
-  campaignId: string
+  /** メッセージ型キャンペーン ID（UUID）。運用型通報時は未指定 */
+  campaignId?: string | null
+  /** 運用型キャンペーン ID（数値）。メッセージ型通報時は未指定 */
+  operationalCampaignId?: number | null
+  /** 通報元チャネル（既定 BANNER。アナウンス広告の通報などは 'ANNOUNCEMENT' を渡す） */
+  channelType?: AdChannelType
 }>()
 
 const emit = defineEmits<{
@@ -61,9 +67,11 @@ async function handleSubmit() {
   submitting.value = true
   try {
     await deliveriesApi.createReport({
-      campaignId: props.campaignId,
-      reason: selectedReason.value,
-      detail: detail.value.trim() || null,
+      campaignId: props.campaignId ?? undefined,
+      operationalCampaignId: props.operationalCampaignId ?? undefined,
+      channelType: props.channelType ?? 'BANNER',
+      reasonCode: selectedReason.value,
+      comment: detail.value.trim() || null,
     })
     notification.success(t('advertising.report_dialog.submitted'))
     emit('submitted')

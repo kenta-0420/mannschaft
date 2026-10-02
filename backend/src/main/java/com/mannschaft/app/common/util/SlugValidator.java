@@ -35,6 +35,17 @@ public final class SlugValidator {
     private static final Pattern FORMAT_PATTERN = Pattern.compile("^[a-z0-9]+(-[a-z0-9]+)*$");
 
     /**
+     * 数字だけの slug（{@code 123} {@code 007} 等）を検出するパターン。
+     *
+     * <p>CMP-054 P1是正: {@link com.mannschaft.app.config.ScopeSlugResolution} は数値文字列を
+     * 内部 BIGINT ID として解釈する高速パスを slug 解決より先に通す。数字だけの slug を許すと、
+     * その slug を持つスコープへ意図せず別スコープ（内部ID一致）が誤って解決されうる
+     * （権限を持つ利用者が誤ったスコープを閲覧・操作する事故）。本番に実データが無い今のうちに
+     * 書式検査そのもので禁止し、根を断つ（{@code 123-a} {@code a123} のように数字以外を含めば可）。</p>
+     */
+    private static final Pattern DIGITS_ONLY_PATTERN = Pattern.compile("^[0-9]+$");
+
+    /**
      * 予約語マスタ（小文字）。
      *
      * <p>フロントエンドの固定ルートセグメント（{@code /teams/index}・{@code /teams/search}・
@@ -72,7 +83,11 @@ public final class SlugValidator {
         if (len < MIN_LENGTH || len > MAX_LENGTH) {
             return false;
         }
-        return FORMAT_PATTERN.matcher(slug).matches();
+        if (!FORMAT_PATTERN.matcher(slug).matches()) {
+            return false;
+        }
+        // 数字だけの slug は内部BIGINT IDの高速パスと衝突するため拒否する（CMP-054 P1是正）。
+        return !DIGITS_ONLY_PATTERN.matcher(slug).matches();
     }
 
     /**

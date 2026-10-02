@@ -1,6 +1,8 @@
 package com.mannschaft.app.team.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.mannschaft.app.common.validation.ValidTimezone;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
@@ -21,6 +23,10 @@ import lombok.Setter;
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class UpdateTeamRequest {
+
+    @ValidTimezone
+    @Schema(description = "チームのIANAタイムゾーン")
+    private String timezone;
 
     private String name;
     private String nameKana;
@@ -65,7 +71,7 @@ public class UpdateTeamRequest {
     public UpdateTeamRequest(String name, String nameKana, String nickname1, String nickname2,
                              String template, String prefecture, String city, String visibility,
                              Boolean supporterEnabled, String mapEmbedUrl, Long version) {
-        this(name, nameKana, nickname1, nickname2, template, prefecture, city,
+        this(null, name, nameKana, nickname1, nickname2, template, prefecture, city,
                 null, null, visibility, supporterEnabled, mapEmbedUrl, version);
     }
 }

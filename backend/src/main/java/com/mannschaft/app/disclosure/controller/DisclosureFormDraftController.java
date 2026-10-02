@@ -29,10 +29,10 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>設計書 §4 ドラフト API に対応。組織スコープのみ提供（{@code /api/v1/organizations/{id}/disclosure-drafts}）。</p>
  *
- * <p><strong>権限制御</strong>: 本フェーズでは {@link SecurityUtils#getCurrentUserId()} による認証ガードのみ。
- * 設計書 §2 で要求される ADMIN / DEPUTY_ADMIN(DISCLOSURE_VIEW) 判定は Phase 2-β-5 以降で
- * permissionGroupService 経由で実装する。
- * FIXME(Phase 2-β-5): role/permission チェックを追加すること。</p>
+ * <p><strong>権限制御</strong>（認可根治戦役 Wave3-B4 で実装）: 閲覧系（一覧・詳細）は
+ * {@code AccessControlService.checkMembership}、変更系（作成・更新・自動引用更新・削除）は
+ * {@code checkAdminOrAbove} を {@link DisclosureFormDraftService} 側で検証する。
+ * DEPUTY_ADMIN の Permission 単位（DISCLOSURE_VIEW）細分化は引き続き Phase 2-β-5 以降の課題として残す。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{organizationId}/disclosure-drafts")
@@ -47,9 +47,9 @@ public class DisclosureFormDraftController {
             @RequestParam(value = "status", required = false) DraftStatus status,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
-        SecurityUtils.getCurrentUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         Pageable pageable = PageRequest.of(page, size);
-        Page<DisclosureFormDraftResponse> result = draftService.list(organizationId, status, pageable);
+        Page<DisclosureFormDraftResponse> result = draftService.list(organizationId, userId, status, pageable);
         return PagedResponse.of(
                 result.getContent(),
                 new PagedResponse.PageMeta(
@@ -63,8 +63,8 @@ public class DisclosureFormDraftController {
     public ApiResponse<DisclosureFormDraftResponse> get(
             @PathVariable("organizationId") Long organizationId,
             @PathVariable("draftId") Long draftId) {
-        SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(draftService.get(organizationId, draftId));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(draftService.get(organizationId, userId, draftId));
     }
 
     @PostMapping
@@ -99,8 +99,8 @@ public class DisclosureFormDraftController {
     public ResponseEntity<Void> delete(
             @PathVariable("organizationId") Long organizationId,
             @PathVariable("draftId") Long draftId) {
-        SecurityUtils.getCurrentUserId();
-        draftService.delete(organizationId, draftId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        draftService.delete(organizationId, userId, draftId);
         return ResponseEntity.noContent().build();
     }
 }

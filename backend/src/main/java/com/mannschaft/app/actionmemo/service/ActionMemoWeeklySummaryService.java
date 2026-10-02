@@ -14,17 +14,20 @@ import com.mannschaft.app.cms.PostType;
 import com.mannschaft.app.cms.Visibility;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -73,8 +76,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ActionMemoWeeklySummaryService {
 
-    private static final ZoneId ZONE_JST = ZoneId.of("Asia/Tokyo");
-
     /** 週次まとめの集計期間（日数） */
     private static final int SUMMARY_DAYS = 7;
 
@@ -93,6 +94,8 @@ public class ActionMemoWeeklySummaryService {
     private final ActionMemoTagRepository tagRepository;
     private final BlogPostRepository blogPostRepository;
     private final ActionMemoMetrics actionMemoMetrics;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     // ==================================================================
     // エントリポイント（スケジュール起動）
@@ -107,12 +110,14 @@ public class ActionMemoWeeklySummaryService {
      * <p>バッチ全体で例外が出ないよう、個別ユーザーの生成は try/catch で隔離される。
      * 1ユーザーの失敗は次のユーザーの処理に影響しない。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。行動メモの週次まとめ生成。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "actionmemo-weekly-summary", description = "行動メモ週次まとめブログを生成する（毎週日曜 21:00 JST）")
     @Scheduled(cron = "0 0 21 * * SUN", zone = "Asia/Tokyo")
     @SchedulerLock(name = "actionMemoWeeklySummary",
             lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     public void generateWeeklySummaries() {
-        LocalDate today = LocalDate.now(ZONE_JST);
+        LocalDate today = LocalDate.now(wallClock);
         LocalDate from = today.minusDays(SUMMARY_DAYS);
         LocalDate to = today.minusDays(1);
 
@@ -206,7 +211,7 @@ public class ActionMemoWeeklySummaryService {
      * Controller / Service で「期間省略時のデフォルト」を共有するため公開している。
      */
     public LocalDate[] currentPeriod() {
-        LocalDate today = LocalDate.now(ZONE_JST);
+        LocalDate today = LocalDate.now(wallClock);
         return new LocalDate[]{today.minusDays(SUMMARY_DAYS), today.minusDays(1)};
     }
 
@@ -258,7 +263,7 @@ public class ActionMemoWeeklySummaryService {
                 .postType(PostType.BLOG)
                 .visibility(Visibility.PRIVATE)
                 .status(PostStatus.PUBLISHED)
-                .publishedAt(LocalDateTime.now())
+                .publishedAt(LocalDateTime.now(wallClock))
                 .crossPostToTimeline(false)
                 .targetType("ALL")
                 .build();

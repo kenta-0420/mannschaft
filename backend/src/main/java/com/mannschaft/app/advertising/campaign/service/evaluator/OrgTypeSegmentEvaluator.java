@@ -44,20 +44,7 @@ public class OrgTypeSegmentEvaluator implements AdSegmentEvaluator {
     @Override
     @SuppressWarnings("unchecked")
     public Set<Long> resolveUserIds(AdAudienceSegment segment) {
-        Map<String, Object> value = deserialize(segment.getSegmentValue());
-        Object templatesObj = value.get("templates");
-        if (!(templatesObj instanceof List<?> rawList) || rawList.isEmpty()) {
-            log.warn("ORG_TYPE segment に templates 配列がありません: campaignId={}, segmentId={}",
-                    segment.getCampaignId(), segment.getId());
-            throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
-        }
-        List<String> templates = rawList.stream()
-                .filter(String.class::isInstance)
-                .map(String.class::cast)
-                .toList();
-        if (templates.isEmpty()) {
-            throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
-        }
+        List<String> templates = validateAndResolveTemplates(segment);
 
         // teams.template に該当する team_id 群に所属するユーザーを user_roles から抽出。
         // クロスドメインだが SELECT のみで FK は使わない（CLAUDE.md 原則 1 準拠）。
@@ -79,6 +66,47 @@ public class OrgTypeSegmentEvaluator implements AdSegmentEvaluator {
             }
         }
         return result;
+    }
+
+    @Override
+    public long countUserIds(AdAudienceSegment segment) {
+        List<String> templates = validateAndResolveTemplates(segment);
+
+        // COUNT(DISTINCT ...) で件数のみ取得し、user_id 集合をアプリ層に展開しない。
+        Object countResult = entityManager
+                .createNativeQuery(
+                        "SELECT COUNT(DISTINCT ur.user_id) FROM user_roles ur " +
+                        "JOIN teams t ON t.id = ur.team_id " +
+                        "JOIN users u ON u.id = ur.user_id " +
+                        "WHERE t.template IN (:templates) " +
+                        "  AND t.deleted_at IS NULL " +
+                        "  AND u.deleted_at IS NULL " +
+                        "  AND u.status = 'ACTIVE'")
+                .setParameter("templates", templates)
+                .getSingleResult();
+        return ((Number) countResult).longValue();
+    }
+
+    /**
+     * segment_value をバリデーションし、template リストへ変換する。
+     * {@link #resolveUserIds} / {@link #countUserIds} 共通のバリデーションロジック。
+     */
+    private List<String> validateAndResolveTemplates(AdAudienceSegment segment) {
+        Map<String, Object> value = deserialize(segment.getSegmentValue());
+        Object templatesObj = value.get("templates");
+        if (!(templatesObj instanceof List<?> rawList) || rawList.isEmpty()) {
+            log.warn("ORG_TYPE segment に templates 配列がありません: campaignId={}, segmentId={}",
+                    segment.getCampaignId(), segment.getId());
+            throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
+        }
+        List<String> templates = rawList.stream()
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .toList();
+        if (templates.isEmpty()) {
+            throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
+        }
+        return templates;
     }
 
     private Map<String, Object> deserialize(String json) {

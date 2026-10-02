@@ -62,18 +62,10 @@ class SurveyVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTe
 
     @BeforeEach
     void setUp() {
-        em.createNativeQuery(
-                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('SYSTEM_ADMIN', 'システム管理者', 1, 1, NOW(), NOW())")
-                .executeUpdate();
-        em.createNativeQuery(
-                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('ADMIN', '管理者', 2, 0, NOW(), NOW())")
-                .executeUpdate();
-        em.createNativeQuery(
-                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
-                .executeUpdate();
+        // 冪等化: insertRoleIfAbsent 参照（存在確認してから INSERT。INSERT IGNORE は使用禁止）
+        insertRoleIfAbsent("SYSTEM_ADMIN", "システム管理者", 1, true);
+        insertRoleIfAbsent("ADMIN", "管理者", 2, false);
+        insertRoleIfAbsent("MEMBER", "メンバー", 4, false);
         em.flush();
 
         memberRoleId = ((Number) em.createNativeQuery(
@@ -159,6 +151,28 @@ class SurveyVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTe
                         + "VALUES (:tid, :oid, 'ACTIVE', NOW(), NOW())")
                 .setParameter("tid", teamId)
                 .setParameter("oid", orgId)
+                .executeUpdate();
+    }
+
+    private void insertRoleIfAbsent(String name, String displayName, int priority, boolean isSystem) {
+        // 冪等化: roles はグローバル参照テーブルのため、既存なら再利用し二重INSERTしない
+        // （同一 name の重複INSERTは roles の UNIQUE 制約違反になる。INSERT IGNORE は
+        // 重複キー以外にもデータ切り詰め・NOT NULL違反等の異常を警告に格下げして黙って
+        // 通してしまうため使用禁止。CI shard 再編成で同居テストが変わり得るため
+        // 事前に SELECT で存在確認する）。
+        Number existingRoleCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM roles WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult();
+        if (existingRoleCount.longValue() > 0) {
+            return;
+        }
+        em.createNativeQuery(
+                        "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                                + "VALUES (:name, :dn, :priority, :sys, NOW(), NOW())")
+                .setParameter("name", name)
+                .setParameter("dn", displayName)
+                .setParameter("priority", priority)
+                .setParameter("sys", isSystem ? 1 : 0)
                 .executeUpdate();
     }
 
@@ -294,8 +308,15 @@ class SurveyVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTe
     // CUSTOM: AFTER_CLOSE
     // =========================================================================
 
+    /**
+     * <p><b>期待値の是正（Issue #2774）</b>: 本テストは元々「締切後は<b>誰でも</b>可視」
+     * （非所属者・未認証も {@code true}）を固定していたが、これは所属確認が判定に入っていない
+     * という欠陥そのものを仕様として写し取ったものであった。締切を過ぎていることは可視の
+     * <b>必要条件であって十分条件ではない</b>という不変条件に合わせ、
+     * 「所属者は可視・非所属者は不可視」へ改めた（変更は当該 2 行の期待値のみ）。</p>
+     */
     @Test
-    @DisplayName("AFTER_CLOSE — expiresAt が過去なら誰でも閲覧可、未来なら一般ユーザー不可視")
+    @DisplayName("AFTER_CLOSE — expiresAt が過去なら所属者のみ閲覧可、未来なら一般ユーザー不可視")
     void after_close_visibility() {
         Long expiredId = insertSurvey("sv-after-close-expired", memberUserId, "CLOSED",
                 "AFTER_CLOSE", LocalDateTime.now().minusHours(1));
@@ -304,10 +325,10 @@ class SurveyVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTe
         em.flush();
         em.clear();
 
-        // 締切後: 誰でも可視
-        assertThat(checker.canView(ReferenceType.SURVEY, expiredId, null)).isTrue();
+        // 締切後: 当該スコープの所属者のみ可視（未認証・非所属は不可視）
+        assertThat(checker.canView(ReferenceType.SURVEY, expiredId, null)).isFalse();
         assertThat(checker.canView(ReferenceType.SURVEY, expiredId, memberUserId)).isTrue();
-        assertThat(checker.canView(ReferenceType.SURVEY, expiredId, nonMemberUserId)).isTrue();
+        assertThat(checker.canView(ReferenceType.SURVEY, expiredId, nonMemberUserId)).isFalse();
 
         // 未締切: 一般ユーザーは不可視、SystemAdmin のみ可視
         assertThat(checker.canView(ReferenceType.SURVEY, activeId, memberUserId)).isFalse();
@@ -403,10 +424,16 @@ class SurveyVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTe
                 ReferenceType.SURVEY, List.of(s1, s2, s3), viewerUserId);
         assertThat(viewerSet).containsExactlyInAnyOrder(s2, s3);
 
-        // adminUserId → s1(ADMIN) と s2(締切後) のみ
+        // adminUserId → 全件。s1 は ADMIN 閾値、s2 は締切後、s3 は名簿に無いが
+        // 設計書 F05.4 L116 / L1625-1628 の上位条件（優先順 2 = ADMIN+ は results_visibility を
+        // 無視してフルアクセス）で貫通する（CMP-041 五番隊で明示化）。
+        // 「名簿判定はロール閾値と直交する」という不変条件は、上の viewerUserId（一般 MEMBER）の
+        // アサーションが引き続き固定している（名簿に無い s1 は見えない）。
         Set<Long> adminSet = checker.filterAccessible(
                 ReferenceType.SURVEY, List.of(s1, s2, s3), adminUserId);
-        assertThat(adminSet).containsExactlyInAnyOrder(s1, s2);
+        assertThat(adminSet)
+                .as("ADMIN は上位条件により VIEWERS_ONLY も貫通する")
+                .containsExactlyInAnyOrder(s1, s2, s3);
 
         // sysAdmin → 全件（高速パス）
         Set<Long> sysAdminSet = checker.filterAccessible(

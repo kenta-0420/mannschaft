@@ -72,7 +72,7 @@ async function loadEvents() {
       size: rows.value,
     })
     events.value = res.data
-    totalRecords.value = res.meta.totalElements
+    totalRecords.value = res.meta.total
   } catch {
     events.value = []
   } finally {

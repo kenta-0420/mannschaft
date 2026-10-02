@@ -34,19 +34,72 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
     List<ShiftRequestEntity> findByScheduleIdAndSlotDate(Long scheduleId, LocalDate slotDate);
 
     /**
-     * スケジュール・ユーザー・日付で希望を検索する（重複チェック用）。
+     * スケジュール・ユーザー・<b>枠</b>で希望を検索する（枠単位の重複チェック用。設計 §11.5.1）。
+     *
+     * <p>同一日に枠が複数あるとき、希望は<b>枠ごとに 1 件</b>成立する。</p>
      */
-    Optional<ShiftRequestEntity> findByScheduleIdAndUserIdAndSlotDate(Long scheduleId, Long userId, LocalDate slotDate);
+    Optional<ShiftRequestEntity> findByScheduleIdAndUserIdAndSlotId(Long scheduleId, Long userId, Long slotId);
+
+    /**
+     * スケジュール・ユーザー・日付で<b>日単位希望</b>（{@code slotId IS NULL}）を検索する
+     *（重複チェック用。設計 §11.5.1「{@code slotId} が NULL の日単位希望は従来どおり日で判定」）。
+     */
+    Optional<ShiftRequestEntity> findByScheduleIdAndUserIdAndSlotIdIsNullAndSlotDate(
+            Long scheduleId, Long userId, LocalDate slotDate);
 
     /**
      * スケジュールの希望提出ユーザー数を取得する。
      */
     long countDistinctUserIdByScheduleId(Long scheduleId);
 
+    /** 現役 MEMBER 候補に含まれる希望提出者だけを数える。 */
+    @Query("SELECT COUNT(DISTINCT r.userId) FROM ShiftRequestEntity r "
+            + "WHERE r.scheduleId = :scheduleId AND r.userId IN :memberIds")
+    long countSubmittedMembersByScheduleId(@Param("scheduleId") Long scheduleId,
+                                           @Param("memberIds") List<Long> memberIds);
+
     /**
      * ユーザーの全希望を取得する。
      */
     List<ShiftRequestEntity> findByUserIdOrderBySlotDateDesc(Long userId);
+
+    /** 認証主体の提出履歴専用。削除済みも含むが、必ず本人のIDへ束縛する。 */
+    @Query(value = """
+            SELECT r.* FROM shift_requests r
+            WHERE r.user_id = :userId
+              AND (r.deleted_at IS NULL OR r.delete_reason = 'PARENT_DELETED')
+            ORDER BY r.slot_date DESC
+            """,
+            nativeQuery = true)
+    List<ShiftRequestEntity> findHistoryByUserIdIncludingDeleted(@Param("userId") Long userId);
+
+    /** 親削除のみの連鎖。提出日時・希望値・更新日時は保持する。 */
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE shift_requests r
+            SET r.deleted_at = (SELECT sc.deleted_at FROM shift_schedules sc WHERE sc.id = :scheduleId),
+                r.delete_reason = 'PARENT_DELETED',
+                r.updated_at = r.updated_at
+            WHERE r.schedule_id = :scheduleId AND r.deleted_at IS NULL
+            """, nativeQuery = true)
+    int softDeleteByScheduleId(@Param("scheduleId") Long scheduleId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE shift_requests r
+            JOIN shift_slots s ON s.id = r.slot_id
+            SET r.deleted_at = s.deleted_at, r.delete_reason = 'SLOT_DELETED', r.updated_at = r.updated_at
+            WHERE r.slot_id = :slotId AND r.deleted_at IS NULL
+            """, nativeQuery = true)
+    int softDeleteBySlotId(@Param("slotId") Long slotId);
+
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            UPDATE shift_requests
+            SET deleted_at = UTC_TIMESTAMP(), delete_reason = 'WITHDRAWN', updated_at = updated_at
+            WHERE id = :requestId AND deleted_at IS NULL
+            """, nativeQuery = true)
+    int softDeleteById(@Param("requestId") Long requestId);
 
     /**
      * スケジュールと preference で希望件数を集計する（v2: 5 段階集計用）。
@@ -69,6 +122,6 @@ public interface ShiftRequestRepository extends JpaRepository<ShiftRequestEntity
      * 指定スケジュール ID の希望を物理削除する（ARCHIVED 30 日後クリーンアップ用）。
      */
     @Modifying
-    @Query("DELETE FROM ShiftRequestEntity r WHERE r.scheduleId IN :scheduleIds")
+    @Query(value = "DELETE FROM shift_requests WHERE schedule_id IN (:scheduleIds)", nativeQuery = true)
     int deleteByScheduleIds(@Param("scheduleIds") List<Long> scheduleIds);
 }

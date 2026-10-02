@@ -1,103 +1,32 @@
 interface GcalStatus {
-  isConnected: boolean
-  email: string | null
-  lastSyncedAt: string | null
+  connected: boolean
+  googleAccountEmail: string | null
 }
 
-interface GcalSync {
-  personalSync: boolean
-  teamSyncIds: string[]
-  orgSyncIds: string[]
-}
-
+/**
+ * アカウント設定ページ（account.vue）向けの Google Calendar 連携状態取得。
+ *
+ * チーム/組織別の同期ON/OFFはすべて詳細設定ページ（/settings/calendar-sync）に一本化したため、
+ * ここでは「接続状態の簡易表示」に必要な最小限のデータのみ扱う。
+ * 実際のトグル操作・接続/解除・手動同期は SettingsGcalSection から
+ * /settings/calendar-sync への導線のみを提供し、詳細設定ページ側で行う。
+ */
 export function useAccountGcal() {
-  const notification = useNotification()
   const gcalApi = useGoogleCalendarApi()
 
   const gcalStatus = ref<GcalStatus | null>(null)
-  const gcalSyncSettings = ref<GcalSync | null>(null)
-  const gcalSyncing = ref(false)
 
   async function loadGcal() {
     try {
-      const [statusRes, settingsRes] = await Promise.all([
-        gcalApi.getConnectionStatus(),
-        gcalApi.getPersonalSync(),
-      ])
-      gcalStatus.value = statusRes.data as GcalStatus
-      gcalSyncSettings.value = settingsRes as unknown as GcalSync
+      const res = await gcalApi.getConnectionStatus()
+      gcalStatus.value = res.data
     } catch {
-      /* silent */
+      gcalStatus.value = null
     }
-  }
-
-  async function connectGoogle() {
-    try {
-      const res = await gcalApi.connect()
-      window.location.href = (res.data as { authUrl: string }).authUrl
-    } catch {
-      notification.error('接続に失敗しました')
-    }
-  }
-
-  async function disconnectGoogle() {
-    if (!confirm('Google Calendar連携を解除しますか？')) return
-    try {
-      await gcalApi.disconnect()
-      notification.success('連携を解除しました')
-      await loadGcal()
-    } catch {
-      notification.error('解除に失敗しました')
-    }
-  }
-
-  async function saveGcalSettings() {
-    if (!gcalSyncSettings.value) return
-    try {
-      await gcalApi.updatePersonalSync(gcalSyncSettings.value as unknown as Record<string, unknown>)
-      notification.success('同期設定を保存しました')
-    } catch {
-      notification.error('保存に失敗しました')
-    }
-  }
-
-  async function manualGcalSync() {
-    gcalSyncing.value = true
-    try {
-      await gcalApi.manualSync()
-      notification.success('同期を実行しました')
-      await loadGcal()
-    } catch {
-      notification.error('同期に失敗しました')
-    } finally {
-      gcalSyncing.value = false
-    }
-  }
-
-  function toggleTeamSync(teamId: string) {
-    if (!gcalSyncSettings.value) return
-    const idx = gcalSyncSettings.value.teamSyncIds.indexOf(teamId)
-    if (idx >= 0) gcalSyncSettings.value.teamSyncIds.splice(idx, 1)
-    else gcalSyncSettings.value.teamSyncIds.push(teamId)
-  }
-
-  function toggleOrgSync(orgId: string) {
-    if (!gcalSyncSettings.value) return
-    const idx = gcalSyncSettings.value.orgSyncIds.indexOf(orgId)
-    if (idx >= 0) gcalSyncSettings.value.orgSyncIds.splice(idx, 1)
-    else gcalSyncSettings.value.orgSyncIds.push(orgId)
   }
 
   return {
     gcalStatus,
-    gcalSyncSettings,
-    gcalSyncing,
     loadGcal,
-    connectGoogle,
-    disconnectGoogle,
-    saveGcalSettings,
-    manualGcalSync,
-    toggleTeamSync,
-    toggleOrgSync,
   }
 }

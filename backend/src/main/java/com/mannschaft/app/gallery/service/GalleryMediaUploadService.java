@@ -1,5 +1,6 @@
 package com.mannschaft.app.gallery.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
@@ -42,6 +43,8 @@ public class GalleryMediaUploadService {
     private final PhotoAlbumService albumService;
     /** F13 Phase 4-δ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
+    /** 認可根治戦役 Wave3-B5: アップロード可否の scope 認可用。 */
+    private final AccessControlService accessControlService;
 
     /**
      * アルバムのスコープ情報と mediaType に応じた R2 Presigned PUT URL を発行する。
@@ -54,6 +57,17 @@ public class GalleryMediaUploadService {
     public MediaUploadUrlResponse generateUploadUrl(Long albumId, MediaUploadUrlRequest request, Long userId) {
         PhotoAlbumEntity album = albumService.findAlbumOrThrow(albumId);
         validateContentType(request.getMediaType(), request.getContentType());
+
+        // 認可根治戦役 Wave3-B5: uploadPhotos と同一ポリシー（メンバー必須 かつ
+        // ADMIN/DEPUTY_ADMIN または allowMemberUpload=true）。
+        Long authzScopeId = PhotoAlbumService.resolveScopeId(album.getTeamId(), album.getOrganizationId());
+        String authzScopeType = PhotoAlbumService.resolveScopeType(album.getTeamId());
+        accessControlService.checkMembership(userId, authzScopeId, authzScopeType);
+        boolean canUpload = accessControlService.isAdminOrAbove(userId, authzScopeId, authzScopeType)
+                || Boolean.TRUE.equals(album.getAllowMemberUpload());
+        if (!canUpload) {
+            throw new BusinessException(GalleryErrorCode.UPLOAD_NOT_ALLOWED);
+        }
 
         // teamId/organizationId でスコープを判定
         StorageScopeType scopeType;

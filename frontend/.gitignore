@@ -37,3 +37,4 @@ frontend/
 
 # 孤立した API 仕様成果物（型生成は docs/openapi.json を入力とする）
 swagger.json
+tests/e2e/.artifacts/

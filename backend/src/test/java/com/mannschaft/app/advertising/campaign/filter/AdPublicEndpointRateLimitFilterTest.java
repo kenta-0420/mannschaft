@@ -155,6 +155,47 @@ class AdPublicEndpointRateLimitFilterTest {
     }
 
     @Nested
+    @DisplayName("(公開網漏れ是正) POST /api/v1/ads/{campaignId}/click — 60 req/分・IP キー")
+    class ClickLimit {
+
+        @Test
+        @DisplayName("60 回通過、61 回目で 429")
+        void exceedsLimit() throws Exception {
+            String ip = "10.0.3.1";
+            for (int i = 0; i < 60; i++) {
+                assertThat(invoke(req("POST", "/api/v1/ads/501/click", ip)).getStatus())
+                        .as("click POST #%d", i + 1)
+                        .isEqualTo(HttpStatus.OK.value());
+            }
+            MockHttpServletResponse over = invoke(req("POST", "/api/v1/ads/501/click", ip));
+            assertThat(over.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+
+            verify(rateLimiter, atLeastOnce()).tryConsume(
+                    eq("ad-public:click"), eq("ip:" + ip), eq(60), eq(Duration.ofMinutes(1)));
+        }
+
+        @Test
+        @DisplayName("GET click はフィルタ対象外（POST のみ）")
+        void getIsNotFiltered() {
+            assertThat(filter.shouldNotFilter(req("GET", "/api/v1/ads/501/click", "10.0.0.1"))).isTrue();
+        }
+
+        @Test
+        @DisplayName("zone は unsubscribe / pixel とは独立")
+        void zoneIsIndependentFromOthers() throws Exception {
+            String ip = "10.0.3.2";
+            for (int i = 0; i < 60; i++) {
+                invoke(req("POST", "/api/v1/ads/501/click", ip));
+            }
+            assertThat(invoke(req("POST", "/api/v1/ads/501/click", ip)).getStatus())
+                    .isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+            // unsubscribe は別 zone のためまだ通る
+            assertThat(invoke(req("GET", "/api/v1/ads/unsubscribe", ip)).getStatus())
+                    .isEqualTo(HttpStatus.OK.value());
+        }
+    }
+
+    @Nested
     @DisplayName("zone 分離 — unsubscribe と pixel は独立")
     class ZoneIsolation {
 

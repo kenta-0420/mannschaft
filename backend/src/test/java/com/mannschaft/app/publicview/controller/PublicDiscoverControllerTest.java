@@ -164,7 +164,7 @@ class PublicDiscoverControllerTest {
                 sampleOrg(10L, "東京商工会議所"),
                 sampleOrg(11L, "大阪市役所")
         );
-        given(publicOrganizationSearchQueryService.search(eq(null), eq(null), any()))
+        given(publicOrganizationSearchQueryService.search(eq(null), eq(null), eq(null), any()))
                 .willReturn(page);
 
         mockMvc.perform(get("/api/v1/public/organizations/search"))
@@ -181,7 +181,7 @@ class PublicDiscoverControllerTest {
         Page<PublicOrganizationSearchResultResponse> page = buildOrgPage(
                 sampleOrg(10L, "東京商工会議所")
         );
-        given(publicOrganizationSearchQueryService.search(eq("東京"), eq(null), any()))
+        given(publicOrganizationSearchQueryService.search(eq("東京"), eq(null), eq(null), any()))
                 .willReturn(page);
 
         mockMvc.perform(get("/api/v1/public/organizations/search").param("keyword", "東京"))
@@ -237,7 +237,8 @@ class PublicDiscoverControllerTest {
                 name,
                 "https://cdn.example.com/org-icons/" + id + ".png",
                 0,
-                LocalDateTime.of(2026, 5, 10, 9, 0, 0)
+                LocalDateTime.of(2026, 5, 10, 9, 0, 0),
+                false
         );
     }
 }

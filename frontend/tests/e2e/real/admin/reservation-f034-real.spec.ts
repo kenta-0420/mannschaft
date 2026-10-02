@@ -44,7 +44,7 @@
  *   - CONFIRMED 時のリマインド自動生成なし（手動作成のみ）。
  */
 
-import { test as base, expect, request as playwrightRequest, type APIRequestContext } from '@playwright/test'
+import { test as base, expect, request as playwrightRequest, type APIRequestContext, type Page } from '@playwright/test'
 import { waitForHydration } from '../../helpers/wait'
 
 const BE = 'http://localhost:8080'
@@ -253,6 +253,32 @@ function futureDate(daysAhead: number): string {
   const d = new Date()
   d.setDate(d.getDate() + daysAhead)
   return d.toISOString().slice(0, 10)
+}
+
+const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'] as const
+
+/** マトリックスの行ラベル "YYYY/MM/DD (ddd)"（SlotMatrixPicker の dayjs ja 表記と一致）。 */
+function matrixRowDateLabel(iso: string): string {
+  return `${iso.replaceAll('-', '/')} (${WEEKDAY_JA[new Date(`${iso}T00:00:00Z`).getUTCDay()]})`
+}
+
+/**
+ * マトリックス（月曜起点の週表示）で対象日を含む週まで週ナビを進める。
+ * 写経元: reservation-v2-d-group.spec.ts の goToWeekContaining。
+ */
+async function goToWeekContaining(page: Page, targetIso: string): Promise<void> {
+  const weekBtn = page.getByRole('button', { name: /^週 /, exact: false })
+  await expect(weekBtn).toBeVisible({ timeout: 20_000 })
+  const nextWeekBtn = page.locator('button').filter({ has: page.locator('.pi-angle-right') }).first()
+  for (let i = 0; i < 10; i++) {
+    const text = (await weekBtn.textContent()) ?? ''
+    const m = text.match(/(\d{4})\/(\d{2})\/(\d{2}) - (\d{4})\/(\d{2})\/(\d{2})/)
+    if (!m) throw new Error(`週ラベル取得失敗: "${text}"`)
+    if (targetIso >= `${m[1]}-${m[2]}-${m[3]}` && targetIso <= `${m[4]}-${m[5]}-${m[6]}`) return
+    await nextWeekBtn.click()
+    await page.waitForTimeout(400)
+  }
+  throw new Error(`週範囲内に ${targetIso} が見つからない`)
 }
 
 // ===========================================================================
@@ -717,10 +743,14 @@ test.describe('RSV-F034-UI: 実ブラウザで予約管理ページが描画さ�
     const lineName = `F034UI_${Date.now()}`
     const line = await createLine(request, adminToken, lineName)
     const slotDate = futureDate(40)
-    const startM = Date.now() % 60
-    const startTime = `14:${String(startM).padStart(2, '0')}`
-    const endTotalMin = 14 * 60 + startM + 30
-    const endTime = `${String(Math.floor(endTotalMin / 60)).padStart(2, '0')}:${String(endTotalMin % 60).padStart(2, '0')}`
+    // 【旧表示撤去 2026-08-04 追従】旧リスト表示（SlotPicker）は撤去され、予約タブはマトリックス一本。
+    // 本テストが検証したい ReservationForm（確認ダイアログ「予約確認」）経路へは
+    // 長尺枠（span>1）セルからのみ到達するため60分枠にする。また、マトリックスのヘッダ列は
+    // 30分刻みのため開始時刻は :00/:30 に揃える（半端な分の枠は列に整列できず描画から落ちる）。
+    // 枠の一意性は一意なライン名（行が別になる）で担保する。
+    const startHour = 10 + (Date.now() % 6) // 10〜15時（営業時間内）
+    const startTime = `${String(startHour).padStart(2, '0')}:00`
+    const endTime = `${String(startHour + 1).padStart(2, '0')}:00`
     const slot = await createSlot(request, adminToken, { slotDate, startTime, endTime })
     let reservationId: number | null = null
 
@@ -732,27 +762,16 @@ test.describe('RSV-F034-UI: 実ブラウザで予約管理ページが描画さ�
       const bookTab = page.getByRole('tab', { name: '予約する' })
       if (await bookTab.count()) await bookTab.click()
 
-      const lineSelect = page.locator('.p-select').first()
-      await lineSelect.waitFor({ state: 'visible', timeout: 15_000 })
-      await lineSelect.click()
-      await page.getByRole('option', { name: lineName }).click()
+      await expect(page.getByText('メニューで絞り込む')).toBeVisible({ timeout: 20_000 })
+      // 作成枠の日付(40日後)を含む週まで週ナビを進める
+      await goToWeekContaining(page, slotDate)
 
-      const ymd = slotDate.replaceAll('-', '/')
-      const dateInput = page.locator('.p-datepicker-input').first()
-      await dateInput.waitFor({ state: 'visible', timeout: 15_000 })
-      await dateInput.click()
-      await dateInput.press('Escape')
-      await dateInput.fill(ymd)
-      await dateInput.press('Enter')
-      await dateInput.press('Tab')
-
-      const slotTimeRe = new RegExp(`${startTime}:00.*空きあり`)
-      const slotButton = page.getByRole('button', { name: slotTimeRe }).first()
+      // 該当セル（一意なライン名の行・60分の長尺枠）をクリック
+      const cellName = `${matrixRowDateLabel(slotDate)} ${startTime} ${lineName} 空き`
+      const slotButton = page.getByRole('button', { name: cellName, exact: true })
       await slotButton.waitFor({ state: 'visible', timeout: 15_000 })
       await slotButton.click()
 
-      // PrimeVue の DatePicker パネルも role="dialog" を持つため、確認モーダル(名前: 予約確認)に限定する
-      // （getByRole('dialog') 単独だと datepicker パネルと strict mode 衝突する）。
       const dialog = page.getByRole('dialog', { name: '予約確認' })
       await dialog.waitFor({ state: 'visible', timeout: 10_000 })
       await dialog.getByRole('button', { name: '予約する' }).click()

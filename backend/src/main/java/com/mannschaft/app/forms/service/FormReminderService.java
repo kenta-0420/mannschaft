@@ -2,8 +2,10 @@ package com.mannschaft.app.forms.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.forms.FormErrorCode;
+import com.mannschaft.app.forms.FormScopes;
 import com.mannschaft.app.forms.FormStatus;
 import com.mannschaft.app.forms.dto.FormRemindResponse;
 import com.mannschaft.app.forms.entity.FormTemplateEntity;
@@ -48,6 +50,7 @@ public class FormReminderService {
     private final FormSubmissionRepository submissionRepository;
     private final AuditLogService auditLogService;
     private final ApplicationEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
 
     /**
      * 全未提出者リマインドを送信する。
@@ -68,6 +71,8 @@ public class FormReminderService {
         FormTemplateEntity template = templateRepository
                 .findByIdAndScopeTypeAndScopeId(templateId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.TEMPLATE_NOT_FOUND));
+        // 認可根治戦役 Wave3-B4: リマインド送信は ADMIN/DEPUTY_ADMIN 以上のみ許可する
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, FormScopes.canonical(scopeType));
 
         if (template.getStatus() != FormStatus.PUBLISHED) {
             throw new BusinessException(FormErrorCode.INVALID_TEMPLATE_STATUS);
@@ -113,6 +118,8 @@ public class FormReminderService {
         FormTemplateEntity template = templateRepository
                 .findByIdAndScopeTypeAndScopeId(templateId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.TEMPLATE_NOT_FOUND));
+        // 認可根治戦役 Wave3-B4: リマインド送信は ADMIN/DEPUTY_ADMIN 以上のみ許可する
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, FormScopes.canonical(scopeType));
 
         if (template.getStatus() != FormStatus.PUBLISHED) {
             throw new BusinessException(FormErrorCode.INVALID_TEMPLATE_STATUS);

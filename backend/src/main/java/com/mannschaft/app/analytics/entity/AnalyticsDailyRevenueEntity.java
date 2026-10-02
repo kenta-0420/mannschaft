@@ -46,5 +46,6 @@ public class AnalyticsDailyRevenueEntity extends BaseEntity {
     private BigDecimal netRevenue = BigDecimal.ZERO;
 
     @Builder.Default
+    @Column(nullable = false)
     private int transactionCount = 0;
 }

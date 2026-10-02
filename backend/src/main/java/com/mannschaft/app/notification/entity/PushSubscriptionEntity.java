@@ -34,7 +34,7 @@ public class PushSubscriptionEntity {
     @Column(nullable = false, length = 2000)
     private String endpoint;
 
-    @Column(nullable = false, length = 500)
+    @Column(name = "p256dh_key", nullable = false, length = 500)
     private String p256dhKey;
 
     @Column(nullable = false, length = 500)
@@ -43,6 +43,7 @@ public class PushSubscriptionEntity {
     @Column(length = 500)
     private String userAgent;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     private LocalDateTime lastUsedAt;

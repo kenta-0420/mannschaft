@@ -37,7 +37,7 @@ public class ResidentDocumentEntity {
     @Column(nullable = false, length = 255)
     private String fileName;
 
-    @Column(nullable = false, length = 500)
+    @Column(name = "s3_key", nullable = false, length = 500)
     private String s3Key;
 
     @Column(nullable = false)
@@ -50,5 +50,6 @@ public class ResidentDocumentEntity {
     private Long uploadedBy;
 
     @Builder.Default
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 }

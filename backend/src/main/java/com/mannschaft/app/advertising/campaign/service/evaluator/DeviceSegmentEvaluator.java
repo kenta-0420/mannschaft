@@ -61,6 +61,30 @@ public class DeviceSegmentEvaluator implements AdSegmentEvaluator {
 
     @Override
     public Set<Long> resolveUserIds(AdAudienceSegment segment) {
+        Set<DeviceType> targetTypes = validateAndResolveTargetTypes(segment);
+        return matchUserIds(targetTypes, segment);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>注意: DEVICE セグメントの判定は {@code push_subscriptions.user_agent} を
+     * {@link UserAgentParser}（uap-java）でアプリ層パースする必要があり、SQL の COUNT
+     * クエリ1本には還元できない。したがって本実装は {@link #resolveUserIds} と同じ行走査を
+     * 行った上で件数のみ返す（結果集合は呼び出し元に返さず、user_id をメモリに保持する期間を
+     * 最小化する点のみ改善する）。</p>
+     */
+    @Override
+    public long countUserIds(AdAudienceSegment segment) {
+        Set<DeviceType> targetTypes = validateAndResolveTargetTypes(segment);
+        return matchUserIds(targetTypes, segment).size();
+    }
+
+    /**
+     * segment_value をバリデーションし、対象 {@link DeviceType} 集合へ変換する。
+     * {@link #resolveUserIds} / {@link #countUserIds} 共通のバリデーションロジック。
+     */
+    private Set<DeviceType> validateAndResolveTargetTypes(AdAudienceSegment segment) {
         Map<String, Object> value = deserialize(segment.getSegmentValue());
         Object devicesObj = value.get("devices");
         if (!(devicesObj instanceof List<?> rawList) || rawList.isEmpty()) {
@@ -85,7 +109,13 @@ public class DeviceSegmentEvaluator implements AdSegmentEvaluator {
         if (targetTypes.isEmpty()) {
             throw new BusinessException(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
         }
+        return targetTypes;
+    }
 
+    /**
+     * push_subscriptions を走査し、対象デバイス種別に一致するユーザーIDを集約する。
+     */
+    private Set<Long> matchUserIds(Set<DeviceType> targetTypes, AdAudienceSegment segment) {
         // push_subscriptions の user_agent をアプリ層でパースして該当ユーザーを集約。
         // クロスドメイン (auth.push_subscriptions) だが SELECT のみで FK は使わない
         // （CLAUDE.md 原則 1 準拠）。

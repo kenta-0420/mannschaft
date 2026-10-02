@@ -8,7 +8,6 @@ import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignResponse;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentRegisterRequest;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentResponse;
 import com.mannschaft.app.workflow.dto.WorkflowRequestResponse;
-import com.mannschaft.app.workflow.repository.WorkflowRequestAttachmentRepository;
 import com.mannschaft.app.workflow.service.WorkflowCommentService;
 import com.mannschaft.app.workflow.service.WorkflowRequestAttachmentService;
 import com.mannschaft.app.workflow.service.WorkflowRequestService;
@@ -53,13 +52,7 @@ class WorkflowAttachmentControllerTest {
     private WorkflowCommentService commentService;
 
     @Mock
-    private WorkflowRequestAttachmentRepository attachmentRepository;
-
-    @Mock
     private WorkflowRequestAttachmentService attachmentService;
-
-    @Mock
-    private WorkflowMapper workflowMapper;
 
     @Mock
     private WorkflowRequestService requestService;
@@ -75,8 +68,7 @@ class WorkflowAttachmentControllerTest {
     void setUp() {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
-        commentController = new WorkflowCommentController(
-                commentService, attachmentRepository, attachmentService, workflowMapper);
+        commentController = new WorkflowCommentController(commentService, attachmentService);
         myController = new WorkflowRequestMyController(requestService);
     }
 

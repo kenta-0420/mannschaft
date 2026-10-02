@@ -8,6 +8,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import com.lowagie.text.pdf.BaseFont;
 import org.xhtmlrenderer.pdf.ITextFontResolver;
 import org.xhtmlrenderer.pdf.ITextRenderer;
 
@@ -233,7 +234,7 @@ public class PdfGeneratorService {
             ITextRenderer renderer = new ITextRenderer();
             registerFonts(renderer);
 
-            String baseUrl = new ClassPathResource("/").getURL().toExternalForm();
+            String baseUrl = resolveBaseUrl();
             renderer.setDocumentFromString(html, baseUrl);
             renderer.layout();
             renderer.createPDF(outputStream);
@@ -247,6 +248,33 @@ public class PdfGeneratorService {
         }
     }
 
+    /**
+     * PDF テンプレート内の相対 URL（{@code <link rel="stylesheet" href="/css/...">} や
+     * CSS の {@code @font-face src: url('/fonts/...')}）を解決する基準 URL を求める。
+     *
+     * <p>{@code new ClassPathResource("/").getURL()} はクラスローダーの実効クラスパスの
+     * うち<strong>最初に見つかったルート</strong>を返す。Gradle のテスト実行や IDE 実行では
+     * クラスパスが {@code build/classes/java/main}（クラスファイル）と
+     * {@code build/resources/main}（リソース）に分離されており、前者が先に来ると
+     * css/fonts を含まないディレクトリを base URL にしてしまう。この場合スタイルシートの
+     * 読み込みが例外にならず静かに失敗し、{@code body} に日本語フォント指定が一切
+     * 当たらないまま CJK グリフだけが欠落した PDF が生成される（本番の fat jar では
+     * クラスパスルートが単一に統合されるため顕在化しない差異）。
+     *
+     * <p>実際に {@code css/pdf-common.css} を含むルートを {@link ClassPathResource} 経由
+     * （クラスローダー全体を検索する）で特定し、そのルートを base URL とすることで、
+     * クラスパスのレイアウトに依存せず css/fonts を確実に解決できるようにする。
+     */
+    private String resolveBaseUrl() throws java.io.IOException {
+        String cssRelativePath = "css/pdf-common.css";
+        String cssUrl = new ClassPathResource(cssRelativePath).getURL().toExternalForm();
+        if (!cssUrl.endsWith(cssRelativePath)) {
+            // 想定外のURL形状（jar内パス等）の場合は従来どおりのフォールバック。
+            return new ClassPathResource("/").getURL().toExternalForm();
+        }
+        return cssUrl.substring(0, cssUrl.length() - cssRelativePath.length());
+    }
+
     private void registerFonts(ITextRenderer renderer) {
         ITextFontResolver fontResolver = renderer.getFontResolver();
         for (PdfFontConfig.FontEntry font : pdfFontConfig.getRegisteredFonts()) {
@@ -254,7 +282,16 @@ public class PdfGeneratorService {
                 ClassPathResource resource = new ClassPathResource(font.classpathLocation());
                 try (InputStream is = resource.getInputStream()) {
                     String fontUrl = resource.getURL().toExternalForm();
-                    fontResolver.addFont(fontUrl, true);
+                    // CJK（日本語）グリフを埋め込むには IDENTITY_H エンコーディングが必須。
+                    // 既定の addFont(path, embedded) は BaseFont.CP1252 を使うため、
+                    // 埋め込み自体は成功しても日本語グリフが欠落し無音で失敗する。
+                    //
+                    // また family 名はここで familyName() へ明示的に上書きする。TTF内部の
+                    // name テーブル（例: "Noto Sans JP"、スペースあり）を自動採用させると、
+                    // pdf-common.css の font-family: 'NotoSansJP'（スペースなし）と一致せず
+                    // Flying Saucer がCJK非対応のフォールバックフォントへ静かに切り替わり、
+                    // 日本語グリフが欠落する。
+                    fontResolver.addFont(fontUrl, font.familyName(), BaseFont.IDENTITY_H, true, null);
                 }
             } catch (Exception e) {
                 log.error("フォント登録失敗: {}", font.familyName(), e);

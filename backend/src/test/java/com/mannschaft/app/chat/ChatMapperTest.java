@@ -298,5 +298,32 @@ class ChatMapperTest {
             assertThat(response.getEngagement().attachments()).hasSize(1);
             assertThat(response.getEngagement().reactions()).hasSize(1);
         }
+
+        @Test
+        @DisplayName("送信者なし3引数版_sender_nullになる")
+        void 送信者なし3引数版_senderはnull() {
+            ChatMessageEntity entity = ChatMessageEntity.builder()
+                    .channelId(10L).senderId(1L).body("詳細").build();
+            MessageResponse response = mapper.toMessageResponseWithDetails(entity, List.of(), List.of());
+            assertThat(response.getSender()).isNull();
+        }
+
+        @Test
+        @DisplayName("送信者あり4引数版_sender_表示名とアバターが付与される")
+        void 送信者あり4引数版_senderが付与される() {
+            ChatMessageEntity entity = ChatMessageEntity.builder()
+                    .channelId(10L).senderId(7L).body("詳細").build();
+            MessageResponse.SenderDto sender =
+                    new MessageResponse.SenderDto(7L, "山田太郎", "https://cdn.example/a.png");
+            MessageResponse response =
+                    mapper.toMessageResponseWithDetails(entity, List.of(), List.of(), sender);
+            assertThat(response.getSender()).isNotNull();
+            assertThat(response.getSender().id()).isEqualTo(7L);
+            assertThat(response.getSender().displayName()).isEqualTo("山田太郎");
+            assertThat(response.getSender().avatarUrl()).isEqualTo("https://cdn.example/a.png");
+            // 既存フィールドが壊れていないこと（toBuilder 更新破壊の番人）
+            assertThat(response.getSenderId()).isEqualTo(7L);
+            assertThat(response.getContent().body()).isEqualTo("詳細");
+        }
     }
 }

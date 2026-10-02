@@ -3,6 +3,7 @@ import { computed, ref, watch, onMounted } from 'vue'
 import type { AtRiskStudentResponse, EvaluationStatus, ResolveEvaluationRequest, DisclosureRequest, WithholdRequest } from '~/types/school'
 
 definePageMeta({
+  layout: 'team',
   middleware: 'auth',
 })
 

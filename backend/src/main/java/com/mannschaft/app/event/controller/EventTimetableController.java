@@ -5,6 +5,7 @@ import com.mannschaft.app.event.dto.CreateTimetableItemRequest;
 import com.mannschaft.app.event.dto.ReorderTimetableRequest;
 import com.mannschaft.app.event.dto.TimetableItemResponse;
 import com.mannschaft.app.event.dto.UpdateTimetableItemRequest;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import com.mannschaft.app.event.service.EventTimetableService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,11 +22,15 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 import java.util.List;
 
 /**
  * イベントタイムテーブルコントローラー。タイムテーブル項目のCRUD・並び替えAPIを提供する。
+ *
+ * <p>認可: 一覧はプログラムとして参加者（スコープメンバー）が閲覧する必要があるためメンバー権限で
+ * 許可し、作成・更新・削除・並び替えは当該イベントスコープの ADMIN/DEPUTY_ADMIN 専用とする。</p>
  */
 @RestController
 @RequestMapping("/api/v1/events/{eventId}/timetable")
@@ -34,6 +39,7 @@ import java.util.List;
 public class EventTimetableController {
 
     private final EventTimetableService timetableService;
+    private final EventScopeAccessGuard eventScopeAccessGuard;
 
     /**
      * タイムテーブル一覧を取得する。
@@ -43,12 +49,13 @@ public class EventTimetableController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TimetableItemResponse>>> listTimetableItems(
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireMemberByEventId(SecurityUtils.getCurrentUserId(), eventId);
         List<TimetableItemResponse> response = timetableService.listTimetableItems(eventId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
-     * タイムテーブル項目を作成する。
+     * タイムテーブル項目を作成する（ADMIN専用）。
      */
     @PostMapping
     @Operation(summary = "タイムテーブル項目作成")
@@ -56,12 +63,13 @@ public class EventTimetableController {
     public ResponseEntity<ApiResponse<TimetableItemResponse>> createTimetableItem(
             @PathVariable Long eventId,
             @Valid @RequestBody CreateTimetableItemRequest request) {
+        eventScopeAccessGuard.requireAdminByEventId(SecurityUtils.getCurrentUserId(), eventId);
         TimetableItemResponse response = timetableService.createTimetableItem(eventId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     /**
-     * タイムテーブル項目を更新する。
+     * タイムテーブル項目を更新する（ADMIN専用）。
      */
     @PatchMapping("/{itemId}")
     @Operation(summary = "タイムテーブル項目更新")
@@ -70,12 +78,13 @@ public class EventTimetableController {
             @PathVariable Long eventId,
             @PathVariable Long itemId,
             @Valid @RequestBody UpdateTimetableItemRequest request) {
-        TimetableItemResponse response = timetableService.updateTimetableItem(itemId, request);
+        eventScopeAccessGuard.requireAdminByEventId(SecurityUtils.getCurrentUserId(), eventId);
+        TimetableItemResponse response = timetableService.updateTimetableItem(eventId, itemId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
-     * タイムテーブル項目を削除する。
+     * タイムテーブル項目を削除する（ADMIN専用）。
      */
     @DeleteMapping("/{itemId}")
     @Operation(summary = "タイムテーブル項目削除")
@@ -83,12 +92,13 @@ public class EventTimetableController {
     public ResponseEntity<Void> deleteTimetableItem(
             @PathVariable Long eventId,
             @PathVariable Long itemId) {
-        timetableService.deleteTimetableItem(itemId);
+        eventScopeAccessGuard.requireAdminByEventId(SecurityUtils.getCurrentUserId(), eventId);
+        timetableService.deleteTimetableItem(eventId, itemId);
         return ResponseEntity.noContent().build();
     }
 
     /**
-     * タイムテーブル項目を並び替える。
+     * タイムテーブル項目を並び替える（ADMIN専用）。
      */
     @PutMapping("/reorder")
     @Operation(summary = "タイムテーブル並び替え")
@@ -96,6 +106,7 @@ public class EventTimetableController {
     public ResponseEntity<ApiResponse<List<TimetableItemResponse>>> reorderTimetableItems(
             @PathVariable Long eventId,
             @Valid @RequestBody ReorderTimetableRequest request) {
+        eventScopeAccessGuard.requireAdminByEventId(SecurityUtils.getCurrentUserId(), eventId);
         List<TimetableItemResponse> response = timetableService.reorderTimetableItems(eventId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

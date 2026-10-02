@@ -155,8 +155,8 @@ class DashboardWidgetVisibilityServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: TEAM スコープ → ADMIN 限定除く 11 件のウィジェットが返る（F08.7.1 で 2 件・F08.10 で 1 件追加）")
-        void TEAM_管理対象11件() {
+        @DisplayName("正常系: TEAM スコープ → ADMIN 限定除く 19 件のウィジェットが返る（F08.7.1 で 2 件・F08.10 で 1 件・対象2 で 8 件追加）")
+        void TEAM_管理対象19件() {
             given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(repository.findByScopeTypeAndScopeId(ScopeType.TEAM, TEAM_ID))
                     .willReturn(List.of());
@@ -166,7 +166,7 @@ class DashboardWidgetVisibilityServiceTest {
 
             assertThat(response.getScopeType()).isEqualTo(ScopeType.TEAM);
             assertThat(response.getScopeId()).isEqualTo(TEAM_ID);
-            assertThat(response.getWidgets()).hasSize(11);
+            assertThat(response.getWidgets()).hasSize(19);
 
             // 管理対象外（ADMIN 限定）は含まれない
             assertThat(response.getWidgets())
@@ -176,8 +176,8 @@ class DashboardWidgetVisibilityServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: ORGANIZATION スコープ → ADMIN 限定除く 6 件のウィジェットが返る（F08.7.1 で 1 件追加）")
-        void ORGANIZATION_管理対象6件() {
+        @DisplayName("正常系: ORGANIZATION スコープ → ADMIN 限定除く 18 件のウィジェットが返る（F08.7.1 で 1 件・対象2 で 12 件追加）")
+        void ORGANIZATION_管理対象18件() {
             given(accessControlService.isMember(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
             given(repository.findByScopeTypeAndScopeId(ScopeType.ORGANIZATION, ORG_ID))
                     .willReturn(List.of());
@@ -185,7 +185,7 @@ class DashboardWidgetVisibilityServiceTest {
             WidgetVisibilityResponse response =
                     service.getSettings(USER_ID, ScopeType.ORGANIZATION, ORG_ID);
 
-            assertThat(response.getWidgets()).hasSize(6);
+            assertThat(response.getWidgets()).hasSize(18);
             assertThat(response.getWidgets())
                     .extracting(WidgetVisibilityItemDto::getWidgetKey)
                     .doesNotContain("ORG_BILLING");

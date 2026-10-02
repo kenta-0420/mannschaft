@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.entity.TimetablePeriodTemplateEntity;
 import com.mannschaft.app.timetable.repository.TimetablePeriodTemplateRepository;
@@ -28,7 +29,10 @@ import static org.mockito.Mockito.verify;
 class TimetablePeriodTemplateServiceTest {
 
     @Mock private TimetablePeriodTemplateRepository periodTemplateRepository;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private TimetablePeriodTemplateService service;
+
+    private static final Long ACTOR_USER_ID = 100L;
 
     @Nested
     @DisplayName("replaceAll")
@@ -44,7 +48,7 @@ class TimetablePeriodTemplateServiceTest {
             given(periodTemplateRepository.saveAll(anyList())).willAnswer(inv -> inv.getArgument(0));
 
             // When
-            List<TimetablePeriodTemplateEntity> result = service.replaceAll(1L, periods);
+            List<TimetablePeriodTemplateEntity> result = service.replaceAll(1L, periods, ACTOR_USER_ID);
 
             // Then
             assertThat(result).hasSize(2);
@@ -63,7 +67,7 @@ class TimetablePeriodTemplateServiceTest {
             }
 
             // When / Then
-            assertThatThrownBy(() -> service.replaceAll(1L, periods))
+            assertThatThrownBy(() -> service.replaceAll(1L, periods, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_031"));
@@ -78,7 +82,7 @@ class TimetablePeriodTemplateServiceTest {
                     new PeriodTemplateData(1, "1時限再", LocalTime.of(9, 45), LocalTime.of(10, 35), false));
 
             // When / Then
-            assertThatThrownBy(() -> service.replaceAll(1L, periods))
+            assertThatThrownBy(() -> service.replaceAll(1L, periods, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_031"));

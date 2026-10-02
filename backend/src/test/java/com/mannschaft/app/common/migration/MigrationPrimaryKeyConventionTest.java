@@ -55,39 +55,48 @@ class MigrationPrimaryKeyConventionTest {
     /** 本規約を適用し始める major バージョン（原則 #6 導入時期相当）。 */
     private static final int CONVENTION_MIN_MAJOR = 70;
 
-    /**
-     * 既知の許容済み逸脱（allowlist）。これらは AUTO_INCREMENT 主キーでも fail させない。
-     * <ul>
-     *   <li>{@code csp_reports}（V71.014）— CSP 違反レポートの追記専用ログ表</li>
-     *   <li>{@code schedule_media_uploads}（V75.001）</li>
-     * </ul>
-     */
-    private static final Set<String> ALLOWLISTED_TABLES = Set.of(
-        "csp_reports",
-        "schedule_media_uploads");
+    /** 既知の許容済み逸脱（allowlist）。 */
+    private static final Set<String> ALLOWLISTED_TABLES = Set.of();
 
     /** {@code V<major>.<minor>__name.sql} から major を取り出す。 */
     private static final Pattern VERSION_PATTERN =
         Pattern.compile("^V(\\d+)\\..*\\.sql$");
 
-    /** {@code CREATE TABLE [IF NOT EXISTS] `?name`?} のテーブル名抽出。 */
+    /**
+     * {@code CREATE [TEMPORARY] TABLE [IF NOT EXISTS] `?name`?} のテーブル名抽出。
+     *
+     * <p>group(1) が非 null なら {@code TEMPORARY}、group(2) がテーブル名。
+     * {@code TEMPORARY} を<b>認識だけはする</b>のが要点で、認識しないと
+     * 一時表の本体が直前の実テーブルの本体に紛れ込み、違反を別のテーブルのせいにしてしまう。</p>
+     */
     private static final Pattern CREATE_TABLE_PATTERN = Pattern.compile(
-        "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?`?([A-Za-z0-9_]+)`?",
+        "CREATE\\s+(TEMPORARY\\s+)?TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?`?([A-Za-z0-9_]+)`?",
         Pattern.CASE_INSENSITIVE);
 
     private static final Pattern AUTO_INCREMENT_PATTERN =
         Pattern.compile("AUTO_INCREMENT", Pattern.CASE_INSENSITIVE);
+
+    /** 後続 migration で補助 UUID 列を BINARY(16) 主キーへ交換した ALTER TABLE 文。 */
+    private static final Pattern ALTER_TABLE_STATEMENT_PATTERN = Pattern.compile(
+        "ALTER\\s+TABLE\\s+`?([A-Za-z0-9_]+)`?\\s+([^;]+);",
+        Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
+    private static final Pattern UUID_PRIMARY_KEY_REPLACEMENT_PATTERN = Pattern.compile(
+        "CHANGE\\s+(?:COLUMN\\s+)?`?id_uuid`?\\s+`?id`?\\s+BINARY\\s*\\(\\s*16\\s*\\)"
+            + ".*ADD\\s+PRIMARY\\s+KEY\\s*\\(\\s*`?id`?\\s*\\)",
+        Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     @Test
     @DisplayName("major>=70 の CREATE TABLE 主キーに AUTO_INCREMENT が使われていない_allowlist 除く")
     void newTablesMustNotUseAutoIncrementPrimaryKey() {
         Path migrationDir = locateMigrationDir();
         List<String> violations = new ArrayList<>();
+        Set<String> uuidMigratedTables = findTablesMigratedToUuidPrimaryKey(migrationDir);
 
         try (Stream<Path> files = Files.list(migrationDir)) {
             files.filter(p -> p.getFileName().toString().endsWith(".sql"))
                 .sorted()
-                .forEach(p -> collectViolations(p, violations));
+                .forEach(p -> collectViolations(p, uuidMigratedTables, violations));
         } catch (IOException e) {
             throw new UncheckedIOException(
                 "マイグレーションディレクトリの走査に失敗: " + migrationDir, e);
@@ -105,30 +114,54 @@ class MigrationPrimaryKeyConventionTest {
      * 1 ファイルを検査し、major>=70 かつ allowlist 外の AUTO_INCREMENT 主キーがあれば
      * {@code violations} に追記する。
      */
-    private static void collectViolations(Path sqlFile, List<String> violations) {
+    private static void collectViolations(
+            Path sqlFile,
+            Set<String> uuidMigratedTables,
+            List<String> violations) {
         String fileName = sqlFile.getFileName().toString();
         Integer major = extractMajor(fileName);
         if (major == null || major < CONVENTION_MIN_MAJOR) {
             return;
         }
-        String content;
+        String raw;
         try {
-            content = Files.readString(sqlFile, StandardCharsets.UTF_8);
+            raw = Files.readString(sqlFile, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException("SQL 読み込み失敗: " + fileName, e);
         }
+        // コメントは DDL ではない。除去せずに走査すると、
+        // 「AUTO_INCREMENT を使わない」と説明した注釈自体を違反として検出してしまう
+        // （実際に V175 でこの誤検知が起きた）。
+        String content = SqlTextScanningUtils.stripComments(raw);
 
         // CREATE TABLE 文ごとにテーブル本体を切り出し、AUTO_INCREMENT の有無を判定。
         Matcher createMatcher = CREATE_TABLE_PATTERN.matcher(content);
         while (createMatcher.find()) {
-            String tableName = createMatcher.group(1);
+            boolean temporary = createMatcher.group(1) != null;
+            String tableName = createMatcher.group(2);
+
+            // 一時テーブルは対象外。
+            // 原則 #6（新規テーブルは UuidV7Entity 継承＝主キー UUIDv7）は
+            // ドメインの「永続表」に対する規約であり、マイグレーション実行中だけ存在して
+            // セッション終了で消える作業用の一時表には Entity も主キー設計も存在しない。
+            // 除外は番人を緩めるのではなく、対象範囲を規約の意図に合わせる修正である。
+            // （履歴上、一時表を含むマイグレーションは V175 が唯一であり、
+            //   従来 allowlist で黙らされていた一時表は存在しない＝既存の検出力は落ちない）
+            if (temporary) {
+                continue;
+            }
+
+            // 本体は「当該 CREATE TABLE 文の終端（;）まで」に限定する。
+            // 以前は「次の CREATE TABLE まで」としていたため、
+            // 認識できない CREATE TEMPORARY TABLE を挟むとその中身まで
+            // 直前の実テーブルの本体に含まれ、違反を別のテーブルのせいにしていた。
             int bodyStart = createMatcher.end();
-            // 当該 CREATE TABLE の本体（次の CREATE TABLE か文末まで）を対象にする。
-            int nextCreate = findNextCreateTable(content, bodyStart);
-            String body = content.substring(bodyStart, nextCreate);
+            String body = content.substring(bodyStart,
+                SqlTextScanningUtils.findStatementEnd(content, bodyStart));
 
             if (AUTO_INCREMENT_PATTERN.matcher(body).find()
-                    && !ALLOWLISTED_TABLES.contains(tableName)) {
+                    && !ALLOWLISTED_TABLES.contains(tableName)
+                    && !uuidMigratedTables.contains(tableName)) {
                 violations.add(String.format(
                     "%s: テーブル %s が AUTO_INCREMENT 主キーを使用（major=%d）",
                     fileName, tableName, major));
@@ -136,14 +169,38 @@ class MigrationPrimaryKeyConventionTest {
         }
     }
 
-    /** {@code from} 以降で次の {@code CREATE TABLE} が始まる位置（無ければ文末）。 */
-    private static int findNextCreateTable(String content, int from) {
-        Matcher m = CREATE_TABLE_PATTERN.matcher(content);
-        if (m.find(from)) {
-            return m.start();
+    /**
+     * 歴史的な CREATE TABLE は改変せず、後続 migration が実際に UUID 主キーへ交換した表を抽出する。
+     * 単なる手動 allowlist ではなく、BINARY(16) への列交換と PRIMARY KEY 追加の両方を要求する。
+     */
+    private static Set<String> findTablesMigratedToUuidPrimaryKey(Path migrationDir) {
+        Set<String> migrated = new java.util.HashSet<>();
+        try (Stream<Path> files = Files.list(migrationDir)) {
+            files.filter(p -> p.getFileName().toString().endsWith(".sql"))
+                .sorted()
+                .forEach(path -> {
+                    try {
+                        String content = SqlTextScanningUtils.stripComments(
+                            Files.readString(path, StandardCharsets.UTF_8));
+                        Matcher alterMatcher = ALTER_TABLE_STATEMENT_PATTERN.matcher(content);
+                        while (alterMatcher.find()) {
+                            if (UUID_PRIMARY_KEY_REPLACEMENT_PATTERN
+                                    .matcher(alterMatcher.group(2)).find()) {
+                                migrated.add(alterMatcher.group(1));
+                            }
+                        }
+                    } catch (IOException e) {
+                        throw new UncheckedIOException("SQL 読み込み失敗: " + path, e);
+                    }
+                });
+        } catch (IOException e) {
+            throw new UncheckedIOException("migration ディレクトリ走査失敗: " + migrationDir, e);
         }
-        return content.length();
+        return migrated;
     }
+
+    // SQL コメント除去・引用符スキップ・文末検出は SqlTextScanningUtils（同パッケージ）に
+    // 共通化してある（CMP-022: 番人ごとに不統一だった前処理ロジックの一本化）。
 
     /** ファイル名から major バージョンを抽出（取れなければ {@code null}）。 */
     private static Integer extractMajor(String fileName) {

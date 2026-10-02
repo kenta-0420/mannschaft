@@ -1,6 +1,8 @@
 package com.mannschaft.app.budget.event;
 
 import com.mannschaft.app.budget.service.BudgetTransactionService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -22,6 +24,8 @@ public class BudgetPaymentListener {
     /**
      * 決済完了イベントを処理し、収入を自動記帳する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると決済済みなのに収入の自動記帳が行われず帳簿が合わなくなる。上流の payment は別ドメインであり一緒には閉じない")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePaymentCompleted(PaymentCompletedEvent event) {

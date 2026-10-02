@@ -1,6 +1,7 @@
 {
   "appearance": {
     "bgColorLabel": "Color de fondo",
+    "darkBgColorLabel": "Color de fondo oscuro",
     "color": {
       "cream": "Crema",
       "white": "Blanco",
@@ -12,6 +13,16 @@
       "sand": "Arena",
       "sage": "Salvia",
       "slate": "Pizarra"
+    },
+    "darkColor": {
+      "charcoal": "Carbón",
+      "black": "Negro",
+      "graphite": "Grafito",
+      "slate": "Pizarra",
+      "navy": "Azul marino",
+      "forest": "Bosque",
+      "coffee": "Café",
+      "wine": "Vino"
     }
   }
 }

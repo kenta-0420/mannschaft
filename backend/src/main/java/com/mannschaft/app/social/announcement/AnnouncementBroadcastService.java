@@ -2,6 +2,7 @@ package com.mannschaft.app.social.announcement;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.announcement.adapter.AnnouncementChannelAdapter;
 import com.mannschaft.app.social.announcement.adapter.AnnouncementChannelAdapterRegistry;
@@ -66,6 +67,16 @@ public class AnnouncementBroadcastService {
             throw new BusinessException(AnnouncementErrorCode.BROADCAST_001);
         }
 
+        // 2.5. MEMBER の target_role 制限
+        // MEMBER は自スコープの内輪（MEMBERS_AND_ABOVE）にしか告知できない。
+        // SUPPORTERS_AND_ABOVE / PUBLIC はスコープの所属者を越えて可視になり、
+        // 事実上の「組織／チーム公式発信」として機能するため ADMIN/DEPUTY_ADMIN 以上に限定する
+        // （設計書 F02.8 §3 は priority のみ言及し target_role の権限線引きを定めていなかったため、
+        // 　根治として本チェックを追加。判断根拠は PR 説明を参照）。
+        if (!isAdmin && !AnnouncementVisibility.MEMBERS_AND_ABOVE.equals(req.getTargetRole())) {
+            throw new BusinessException(AnnouncementErrorCode.BROADCAST_005);
+        }
+
         // 3. target_team_ids 検証（ORGANIZATION スコープ かつ 絞り込みあり）
         if ("ORGANIZATION".equals(req.getScopeType())
                 && req.getTargetTeamIds() != null
@@ -76,7 +87,7 @@ public class AnnouncementBroadcastService {
         // 4. テンプレート検証
         if (req.getTemplateId() != null) {
             AnnouncementScopeType announcementScopeType =
-                    AnnouncementScopeType.valueOf(req.getScopeType());
+                    EnumInputParser.parse(AnnouncementScopeType.class, req.getScopeType(), "scopeType");
             templateRepository.findById(req.getTemplateId())
                     .filter(t -> t.getScopeType() == announcementScopeType
                               && t.getScopeId().equals(req.getScopeId()))
@@ -99,7 +110,7 @@ public class AnnouncementBroadcastService {
 
         // 6. お知らせフィード登録
         AnnouncementScopeType announcementScopeType =
-                AnnouncementScopeType.valueOf(req.getScopeType());
+                EnumInputParser.parse(AnnouncementScopeType.class, req.getScopeType(), "scopeType");
 
         // titleCache: コンテンツのタイトルから設定（null の場合は空文字で代替）
         String titleCache = req.getContent() != null ? req.getContent().getTitle() : null;

@@ -3,6 +3,7 @@ package com.mannschaft.app.translation.controller;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.translation.service.TranslationConfigService;
 import com.mannschaft.app.translation.service.TranslationConfigService.TranslationConfigResponse;
 import com.mannschaft.app.translation.service.TranslationConfigService.UpsertTranslationConfigRequest;
@@ -62,6 +63,7 @@ public class TranslationConfigController {
      * @return 翻訳設定
      */
     @GetMapping("/api/v1/teams/{teamId}/translations/config")
+    @RequireFeature("FEATURE_TRANSLATION_SEARCH_ENABLED")
     public ApiResponse<TranslationConfigResponse> getTeamConfig(
             @PathVariable Long teamId) {
 

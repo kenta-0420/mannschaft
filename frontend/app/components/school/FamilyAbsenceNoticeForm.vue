@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import { ref, computed } from 'vue'
+import { ABSENCE_REASONS } from '~/constants/absenceReason'
 import type { FamilyAttendanceNoticeRequest, FamilyNoticeType, FamilyNoticeReason } from '~/types/school'
 
 const props = defineProps<{
@@ -32,16 +33,12 @@ const NOTICE_TYPE_OPTIONS: { value: FamilyNoticeType; label: () => string }[] = 
   { value: 'OTHER', label: () => t('school.familyNotice.noticeType.OTHER') },
 ]
 
-const REASON_OPTIONS: { value: FamilyNoticeReason; label: () => string }[] = [
-  { value: 'SICK', label: () => t('school.familyNotice.reason.SICK') },
-  { value: 'INJURY', label: () => t('school.familyNotice.reason.INJURY') },
-  { value: 'FAMILY_REASON', label: () => t('school.familyNotice.reason.FAMILY_REASON') },
-  { value: 'BEREAVEMENT', label: () => t('school.familyNotice.reason.BEREAVEMENT') },
-  { value: 'INFECTIOUS_DISEASE', label: () => t('school.familyNotice.reason.INFECTIOUS_DISEASE') },
-  { value: 'MENTAL_HEALTH', label: () => t('school.familyNotice.reason.MENTAL_HEALTH') },
-  { value: 'OFFICIAL_BUSINESS', label: () => t('school.familyNotice.reason.OFFICIAL_BUSINESS') },
-  { value: 'OTHER', label: () => t('school.familyNotice.reason.OTHER') },
-]
+const REASON_OPTIONS = computed(() =>
+  ABSENCE_REASONS.map((value) => ({
+    value,
+    label: t(`school.familyNotice.reason.${value}`),
+  })),
+)
 
 const showArrivalTime = computed(() => noticeType.value === 'LATE')
 const showLeaveTime = computed(() => noticeType.value === 'EARLY_LEAVE')
@@ -164,7 +161,7 @@ function onSubmit(): void {
         <Button
           :label="$t('school.familyNotice.submit')"
           :loading="submitting"
-          :disabled="!attendanceDate"
+          :disabled="!attendanceDate || submitting"
           class="w-full"
           data-testid="family-notice-submit"
           @click="onSubmit"

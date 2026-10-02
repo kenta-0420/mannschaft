@@ -22,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
@@ -66,6 +65,8 @@ public class JobPostingService {
      * Phase C 試験的置換: {@link #listByTeamForViewer(Long, JobPostingStatus, Long, Pageable)} で利用。
      */
     private final ContentVisibilityChecker visibilityChecker;
+    /** CMP-028 Phase C: 求人一覧の可視レベル解決（SQL 述語化）のため。 */
+    private final com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
 
     // ---------------------------------------------------------------------
     // コマンド系（更新）
@@ -86,7 +87,7 @@ public class JobPostingService {
         Objects.requireNonNull(userId, "userId は必須");
 
         if (!jobPolicy.canCreatePosting(userId, cmd.teamId())) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw new BusinessException(JobmatchingErrorCode.JOB_CREATE_PERMISSION_DENIED);
         }
 
         validateVisibilityScope(cmd.visibilityScope());
@@ -267,57 +268,98 @@ public class JobPostingService {
     // ---------------------------------------------------------------------
 
     /**
-     * 求人 ID で取得する。見つからない場合は {@code JOB_NOT_FOUND} を送出する。
-     */
-    public JobPostingEntity findById(Long postingId) {
-        return findOrThrow(postingId);
-    }
-
-    /**
-     * チーム配下の求人一覧をページング取得する内部ヘルパー。status が null の場合は全ステータス対象。
+     * 求人 ID で取得する（viewer 視点の可視性チェック込み）。
      *
-     * <p>可視性フィルタリングは行わない。外部からは
-     * {@link #listByTeamForViewer(Long, JobPostingStatus, Long, Pageable)} を使うこと。</p>
+     * <p>BOLA対策: 一覧（{@link #listByTeamForViewer}）では {@link ContentVisibilityChecker}
+     * によるフィルタリングを行っているが、詳細取得はこれまで存在確認のみで viewer の可視性を
+     * 見ていなかった（他チームの DRAFT 求人等が id 直打ちで閲覧できてしまう欠陥）。
+     * {@link ContentVisibilityChecker#assertCanView} で一覧と同じ可視性基盤を通す。</p>
+     *
+     * @param postingId    求人ID
+     * @param viewerUserId 閲覧者ユーザーID（未認証は {@code null}）
+     * @return 求人エンティティ
      */
-    private Page<JobPostingEntity> listByTeam(Long teamId, JobPostingStatus status, Pageable pageable) {
-        if (status == null) {
-            return postingRepository.findByTeamId(teamId, pageable);
-        }
-        return postingRepository.findByTeamIdAndStatus(teamId, status, pageable);
+    public JobPostingEntity findById(Long postingId, Long viewerUserId) {
+        JobPostingEntity posting = findOrThrow(postingId);
+        visibilityChecker.assertCanView(ReferenceType.JOB_POSTING, postingId, viewerUserId);
+        return posting;
     }
 
     /**
      * チーム配下の求人一覧を viewer 視点でフィルタしてページング取得する。
      *
-     * <p>F00 Phase C 試験的置換: {@link ContentVisibilityChecker#filterAccessible} で
-     * viewer に閲覧可能な ID のみに絞り込む。ページング統計（totalElements/totalPages）は
-     * フィルタ後の数で再計算する（過剰開示を避けるため、生の DB 件数は出さない）。</p>
+     * <h2>CMP-028 Phase C: SQL 述語化によるページング歯抜けの根治</h2>
+     * <p>旧実装は SQL で 1 ページ分（{@code size=limit}）を取得してから
+     * {@link ContentVisibilityChecker#filterAccessible} でメモリ上フィルタしており、
+     * 非公開求人が混ざると要求件数ちょうどが返らない歯抜けが起きていた
+     * （{@code ActivityResultService} と同種の欠陥）。
+     * {@link com.mannschaft.app.common.visibility.MembershipBatchQueryService#resolveVisibleLevels}
+     * が返す「行に依存せず判定できる可視 {@code StandardVisibility} ラダー集合」を
+     * {@link com.mannschaft.app.common.visibility.mapping.JobMatchingVisibilityMapper#toFunctional}
+     * で機能 enum へ逆写像し、SQL の {@code WHERE visibility_scope IN (...)} へ渡す。
+     * 判定器は F00 のままであり、SQL はその出力の機械的な転写に過ぎない。</p>
      *
-     * <p>F00 設計書 §10.3 の移行パスに準拠。{@code AccessControlService} 直叩きの判定や
-     * Service 内部の {@code isVisibleTo()} と機能横断的に等価な可視性判断を共通基盤に集約する。</p>
+     * <p><b>{@code JOBBER_INTERNAL}（{@code StandardVisibility.CUSTOM}）の翻訳</b>:
+     * {@code resolveVisibleLevels} は行依存の CUSTOM 軸をラダー集合に含めないため、
+     * {@code JobPostingVisibilityResolver#evaluateCustom} と同一の判定
+     * （viewer が対象求人のチームで {@code JOBBER} ロールを保有するか）を {@code EXISTS}
+     * サブクエリとして OR で組み合わせる（{@link JobPostingRepository#findVisibleByTeamId} 参照）。</p>
+     *
+     * <p><b>{@code CUSTOM_TEMPLATE} は意図的に SQL 対象外（fail-closed・殿の判断待ち）</b>:
+     * テンプレート評価は行ごとの動的判定が必要で SQL 述語に落とせない。現行 MVP では
+     * {@link #MVP_ALLOWED_SCOPES} が {@code JOBBER_INTERNAL} / {@code CUSTOM_TEMPLATE} の
+     * <b>書き込みを禁止</b>しており到達しないため、当面は SQL から除外する（将来これらの値の
+     * 書き込みが解放された瞬間に静かに壊れないよう、{@code JobMatchingVisibilityMapper} 側で
+     * ラダー集合に含めない設計にしている）。</p>
+     *
+     * <p><b>第二の門（保険）</b>: SQL が通した行を F00 {@link ContentVisibilityChecker} で
+     * 再確認する。通常は 1 件も落ちない。乖離した場合は fail-closed で除外し {@code log.warn} に
+     * 記録する（{@code ActivityResultService#listActivities} と同じ流儀）。</p>
      *
      * @param teamId       対象チーム ID
      * @param status       絞り込み status（{@code null} で全ステータス）
      * @param viewerUserId 閲覧者 user_id（{@code null} 可、未認証）
      * @param pageable     ページング指定
-     * @return viewer に閲覧可能な求人のページ（フィルタ後の集計）
+     * @return viewer に閲覧可能な求人のページ（総件数は DB 総件数ベースで正確値）
      */
     public Page<JobPostingEntity> listByTeamForViewer(
             Long teamId, JobPostingStatus status, Long viewerUserId, Pageable pageable) {
-        Page<JobPostingEntity> raw = listByTeam(teamId, status, pageable);
-        if (raw.isEmpty()) {
+        com.mannschaft.app.common.visibility.ScopeKey scope =
+                new com.mannschaft.app.common.visibility.ScopeKey("TEAM", teamId);
+        com.mannschaft.app.common.visibility.UserScopeRoleSnapshot snapshot =
+                membershipBatchQueryService.snapshotForUser(viewerUserId, Set.of(scope), Set.of(scope));
+        Set<com.mannschaft.app.common.visibility.StandardVisibility> visibleLevels =
+                membershipBatchQueryService.resolveVisibleLevels(scope, snapshot);
+        Set<VisibilityScope> visibleScopes =
+                com.mannschaft.app.common.visibility.mapping.JobMatchingVisibilityMapper
+                        .toFunctional(visibleLevels);
+        // StandardVisibility.PUBLIC は resolveVisibleLevels が常に含めるため
+        // visibleScopes は非空（IN () の不正 SQL は起きない）。
+
+        Page<JobPostingEntity> raw = postingRepository.findVisibleByTeamId(
+                teamId, status, visibleScopes, viewerUserId, snapshot.isSystemAdmin(), pageable);
+
+        List<JobPostingEntity> rawContent = raw.getContent();
+        if (rawContent.isEmpty()) {
             return raw;
         }
-        List<JobPostingEntity> rawContent = raw.getContent();
+
+        // 第二の門（保険）: SQL 述語と F00 の判定が食い違った場合を検知する。
         List<Long> ids = rawContent.stream().map(JobPostingEntity::getId).toList();
         Set<Long> accessibleIds = visibilityChecker.filterAccessible(
                 ReferenceType.JOB_POSTING, ids, viewerUserId);
-        // 入力の順序を維持しつつフィルタ
+        if (accessibleIds.size() == rawContent.size()) {
+            return raw;
+        }
+        List<Long> divergentIds = ids.stream().filter(id -> !accessibleIds.contains(id)).toList();
+        log.warn("求人一覧: SQL 述語と F00 可視性判定が乖離しました（fail-closed で除外）。"
+                        + "teamId={}, viewerUserId={}, divergentIds={}",
+                teamId, viewerUserId, divergentIds);
         List<JobPostingEntity> filtered = rawContent.stream()
                 .filter(e -> accessibleIds.contains(e.getId()))
-                .sorted(Comparator.comparingInt(e -> ids.indexOf(e.getId())))
                 .toList();
-        return new PageImpl<>(filtered, pageable, filtered.size());
+        long totalElements = Math.max(0L, raw.getTotalElements() - divergentIds.size());
+        return new PageImpl<>(filtered, pageable, totalElements);
     }
 
     /**

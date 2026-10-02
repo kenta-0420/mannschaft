@@ -76,7 +76,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, teamId, "TEAM");
 
-        return contentTranslationService.getTranslation(id);
+        return contentTranslationService.getTranslation("TEAM", teamId, id);
     }
 
     /**
@@ -93,7 +93,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, teamId, "TEAM");
 
-        return contentTranslationService.getTranslationForContent(contentType, contentId, language);
+        return contentTranslationService.getTranslationForContent("TEAM", teamId, contentType, contentId, language);
     }
 
     /**
@@ -109,7 +109,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, teamId, "TEAM");
 
-        return contentTranslationService.listTranslationsForContent(contentType, contentId);
+        return contentTranslationService.listTranslationsForContent("TEAM", teamId, contentType, contentId);
     }
 
     /**
@@ -145,7 +145,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, teamId, "TEAM");
 
-        return contentTranslationService.updateTranslation(id, userId, req);
+        return contentTranslationService.updateTranslation(id, "TEAM", teamId, userId, req);
     }
 
     /**
@@ -161,7 +161,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, teamId, "TEAM");
 
-        return contentTranslationService.changeStatus(id, req);
+        return contentTranslationService.changeStatus(id, "TEAM", teamId, req);
     }
 
     /**
@@ -176,7 +176,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
 
-        return contentTranslationService.publishTranslation(id);
+        return contentTranslationService.publishTranslation(id, "TEAM", teamId);
     }
 
     /**
@@ -193,7 +193,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
 
-        int count = contentTranslationService.markAsStale(contentType, contentId);
+        int count = contentTranslationService.markAsStale("TEAM", teamId, contentType, contentId);
         return ApiResponse.of(count);
     }
 
@@ -223,7 +223,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
 
-        contentTranslationService.deleteTranslation(id);
+        contentTranslationService.deleteTranslation(id, "TEAM", teamId);
         return ResponseEntity.noContent().build();
     }
 
@@ -255,7 +255,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
 
-        return contentTranslationService.getTranslation(id);
+        return contentTranslationService.getTranslation("ORGANIZATION", orgId, id);
     }
 
     @GetMapping("/api/v1/organizations/{orgId}/translations/content")
@@ -268,7 +268,8 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
 
-        return contentTranslationService.getTranslationForContent(contentType, contentId, language);
+        return contentTranslationService.getTranslationForContent(
+                "ORGANIZATION", orgId, contentType, contentId, language);
     }
 
     @GetMapping("/api/v1/organizations/{orgId}/translations/content/all")
@@ -280,7 +281,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
 
-        return contentTranslationService.listTranslationsForContent(contentType, contentId);
+        return contentTranslationService.listTranslationsForContent("ORGANIZATION", orgId, contentType, contentId);
     }
 
     @GetMapping("/api/v1/organizations/{orgId}/translations")
@@ -308,7 +309,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
 
-        return contentTranslationService.updateTranslation(id, userId, req);
+        return contentTranslationService.updateTranslation(id, "ORGANIZATION", orgId, userId, req);
     }
 
     @PatchMapping("/api/v1/organizations/{orgId}/translations/{id}/status")
@@ -320,7 +321,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
 
-        return contentTranslationService.changeStatus(id, req);
+        return contentTranslationService.changeStatus(id, "ORGANIZATION", orgId, req);
     }
 
     @PatchMapping("/api/v1/organizations/{orgId}/translations/{id}/publish")
@@ -331,7 +332,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
 
-        return contentTranslationService.publishTranslation(id);
+        return contentTranslationService.publishTranslation(id, "ORGANIZATION", orgId);
     }
 
     @PostMapping("/api/v1/organizations/{orgId}/translations/mark-stale")
@@ -344,7 +345,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
 
-        int count = contentTranslationService.markAsStale(contentType, contentId);
+        int count = contentTranslationService.markAsStale("ORGANIZATION", orgId, contentType, contentId);
         return ApiResponse.of(count);
     }
 
@@ -366,7 +367,7 @@ public class ContentTranslationController {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
 
-        contentTranslationService.deleteTranslation(id);
+        contentTranslationService.deleteTranslation(id, "ORGANIZATION", orgId);
         return ResponseEntity.noContent().build();
     }
 }

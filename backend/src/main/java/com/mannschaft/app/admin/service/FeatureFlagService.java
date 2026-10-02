@@ -3,6 +3,7 @@ package com.mannschaft.app.admin.service;
 import com.mannschaft.app.admin.AdminErrorCode;
 import com.mannschaft.app.admin.AdminMapper;
 import com.mannschaft.app.admin.dto.FeatureFlagResponse;
+import com.mannschaft.app.admin.dto.PublicFeatureFlagResponse;
 import com.mannschaft.app.admin.dto.UpdateFeatureFlagRequest;
 import com.mannschaft.app.admin.entity.FeatureFlagEntity;
 import com.mannschaft.app.admin.repository.FeatureFlagRepository;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,10 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class FeatureFlagService {
+
+    /** F09.14 第一陣。行が無い場合も FeatureFlagService は false を返すため fail-closed。 */
+    public static final String F09_14_TIMELINE_PAID_DELIVERY_ENABLED =
+            "F09_14_TIMELINE_PAID_DELIVERY_ENABLED";
 
     private final FeatureFlagRepository featureFlagRepository;
     private final AdminMapper adminMapper;
@@ -47,10 +53,22 @@ public class FeatureFlagService {
     }
 
     /**
-     * フィーチャーフラグを更新する。Valkeyキャッシュを自動無効化する。
+     * 一般ユーザー向け公開フィーチャーフラグ一覧を取得する（Gate基盤工事①）。
+     * flagKey / enabled のみを返し、description / updatedBy / id 等の管理者専用情報は含まない。
+     */
+    @Cacheable(value = "featureFlagsPublicList")
+    public List<PublicFeatureFlagResponse> getPublicFlags() {
+        return adminMapper.toPublicFeatureFlagResponseList(featureFlagRepository.findAll());
+    }
+
+    /**
+     * フィーチャーフラグを更新する。Valkeyキャッシュ（単一キー・公開一覧の両方）を自動無効化する。
      */
     @Transactional
-    @CacheEvict(value = "featureFlags", key = "#flagKey")
+    @Caching(evict = {
+            @CacheEvict(value = "featureFlags", key = "#flagKey"),
+            @CacheEvict(value = "featureFlagsPublicList", allEntries = true)
+    })
     public FeatureFlagResponse updateFlag(String flagKey, UpdateFeatureFlagRequest req, Long userId) {
         FeatureFlagEntity entity = featureFlagRepository.findByFlagKey(flagKey)
                 .orElseThrow(() -> new BusinessException(AdminErrorCode.FEATURE_FLAG_NOT_FOUND));

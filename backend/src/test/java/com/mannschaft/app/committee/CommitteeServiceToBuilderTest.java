@@ -1,34 +1,39 @@
 package com.mannschaft.app.committee;
 
+import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.committee.dto.CommitteeCreateRequest;
 import com.mannschaft.app.committee.dto.CommitteeStatusTransitionRequest;
 import com.mannschaft.app.committee.dto.CommitteeUpdateRequest;
 import com.mannschaft.app.committee.entity.CommitteeEntity;
-import com.mannschaft.app.committee.entity.CommitteeMemberEntity;
-import com.mannschaft.app.committee.entity.CommitteeRole;
 import com.mannschaft.app.committee.entity.CommitteeStatus;
 import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.committee.repository.CommitteeRepository;
+import com.mannschaft.app.committee.service.CommitteeAccessGuard;
 import com.mannschaft.app.committee.service.CommitteeService;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * CommitteeService の toBuilder 廃止・id 保持を固定する回帰テスト。
@@ -46,12 +51,31 @@ class CommitteeServiceToBuilderTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private UserRowLockService userRowLockService;
+
+    /** 委員会内ロール判定ガード（本テストの関心外のため既定の no-op / false で通す）。 */
+    @Mock
+    private CommitteeAccessGuard committeeAccessGuard;
+
     @InjectMocks
     private CommitteeService committeeService;
 
     private static final Long COMMITTEE_ID = 1L;
     private static final Long USER_ID = 10L;
     private static final Long ORG_ID = 100L;
+    private static final Long INITIAL_CHAIR_USER_ID = 11L;
+
+    private CommitteeCreateRequest createRequest() throws Exception {
+        CommitteeCreateRequest request = new CommitteeCreateRequest();
+        java.lang.reflect.Field nameField = findField(request.getClass(), "name");
+        nameField.setAccessible(true);
+        nameField.set(request, "committee");
+        java.lang.reflect.Field chairField = findField(request.getClass(), "initialChairUserId");
+        chairField.setAccessible(true);
+        chairField.set(request, INITIAL_CHAIR_USER_ID);
+        return request;
+    }
 
     private CommitteeEntity buildCommittee() throws Exception {
         CommitteeEntity entity = CommitteeEntity.builder()
@@ -76,6 +100,44 @@ class CommitteeServiceToBuilderTest {
     }
 
     @Nested
+    @DisplayName("createCommittee - initial chair organization membership")
+    class CreateCommittee {
+
+        @Test
+        @DisplayName("locks initial chair before checking active organization membership")
+        void locksInitialChairBeforeMembershipCheck() throws Exception {
+            CommitteeCreateRequest request = createRequest();
+            given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION"))
+                    .willReturn(true);
+
+            committeeService.createCommittee(ORG_ID, request, USER_ID);
+
+            InOrder order = inOrder(userRowLockService, accessControlService);
+            order.verify(userRowLockService).lockAll(INITIAL_CHAIR_USER_ID);
+            order.verify(accessControlService).checkMembership(
+                    INITIAL_CHAIR_USER_ID, ORG_ID, "ORGANIZATION");
+            order.verify(accessControlService).isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+            verify(committeeRepository).save(any(CommitteeEntity.class));
+            verify(committeeMemberRepository).save(any());
+        }
+
+        @Test
+        @DisplayName("rejects an initial chair without active organization membership")
+        void rejectsInitialChairWithoutActiveOrganizationMembership() throws Exception {
+            CommitteeCreateRequest request = createRequest();
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkMembership(INITIAL_CHAIR_USER_ID, ORG_ID, "ORGANIZATION");
+
+            assertThatThrownBy(() -> committeeService.createCommittee(ORG_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class);
+
+            verify(committeeRepository, never()).save(any());
+            verify(committeeMemberRepository, never()).save(any());
+        }
+    }
+
+    @Nested
     @DisplayName("updateCommittee - save に渡るのが findById の同一インスタンスかつ id 保持")
     class UpdateCommittee {
 
@@ -85,14 +147,9 @@ class CommitteeServiceToBuilderTest {
             CommitteeEntity entity = buildCommittee();
             CommitteeUpdateRequest request = new CommitteeUpdateRequest();
 
-            // CHAIR メンバーを返す stub（hasCommitteeRole を通過させる）
-            CommitteeMemberEntity chairMember = CommitteeMemberEntity.builder()
-                    .committeeId(COMMITTEE_ID).userId(USER_ID).role(CommitteeRole.CHAIR).build();
-
             given(committeeRepository.findById(COMMITTEE_ID)).willReturn(Optional.of(entity));
-            // updateCommittee は isAdminOrAbove を呼ばず、committeeMemberRepository のみ呼ぶ
-            given(committeeMemberRepository.findByCommitteeIdAndUserIdAndLeftAtIsNull(COMMITTEE_ID, USER_ID))
-                    .willReturn(Optional.of(chairMember));
+            // updateCommittee の認可は CommitteeAccessGuard#requireCommitteeRole に委譲される
+            // （拒否時に例外を投げる契約であり、no-op モックは「許可」を意味する）
             given(committeeRepository.save(any())).willReturn(entity);
 
             committeeService.updateCommittee(COMMITTEE_ID, request, USER_ID);
@@ -121,9 +178,7 @@ class CommitteeServiceToBuilderTest {
 
             given(committeeRepository.findById(COMMITTEE_ID)).willReturn(Optional.of(entity));
             given(accessControlService.isAdminOrAbove(eq(USER_ID), any(), any())).willReturn(true);
-            // isChair チェックも呼ばれるが isAdmin=true で通過するため lenient stub
-            lenient().when(committeeMemberRepository.findByCommitteeIdAndUserIdAndLeftAtIsNull(anyLong(), anyLong()))
-                    .thenReturn(Optional.empty());
+            // CHAIR 判定（ガード）は false を返すが、組織 ADMIN であるため遷移は許可される
             given(committeeRepository.save(any())).willReturn(entity);
 
             committeeService.transitionStatus(COMMITTEE_ID, request, USER_ID);

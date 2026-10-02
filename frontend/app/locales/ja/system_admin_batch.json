@@ -33,6 +33,7 @@
         "failed": "失敗",
         "running": "実行中",
         "skipped": "スキップ",
+        "resumed": "再開",
         "locked": "ロック中",
         "accepted": "受付済",
         "completed": "完了",

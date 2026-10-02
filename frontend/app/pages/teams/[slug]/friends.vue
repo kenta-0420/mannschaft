@@ -15,7 +15,7 @@
  */
 import type { FollowTeamResponse } from '~/types/friends'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
@@ -56,12 +56,9 @@ onMounted(() => {
 <template>
   <div>
     <div class="mb-6 flex items-start justify-between gap-3">
-      <div class="flex items-start gap-3">
-        <BackButton />
-        <div>
-          <PageHeader :title="t('friends.title')" />
-          <p class="text-sm text-surface-500">{{ t('friends.subtitle') }}</p>
-        </div>
+      <div>
+        <PageHeader :title="t('friends.title')" />
+        <p class="text-sm text-surface-500">{{ t('friends.subtitle') }}</p>
       </div>
       <Button
         v-if="canManageFriends"

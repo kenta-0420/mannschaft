@@ -36,6 +36,10 @@ public class ReservationBusinessHourEntity extends BaseEntity {
 
     private LocalTime closeTime;
 
+    @Column(name = "ends_next_day", nullable = false)
+    @Builder.Default
+    private Boolean endsNextDay = false;
+
     /**
      * 営業時間を更新する。
      *
@@ -47,5 +51,10 @@ public class ReservationBusinessHourEntity extends BaseEntity {
         this.isOpen = isOpen;
         this.openTime = openTime;
         this.closeTime = closeTime;
+    }
+
+    public void updateHours(Boolean isOpen, LocalTime openTime, LocalTime closeTime, Boolean endsNextDay) {
+        updateHours(isOpen, openTime, closeTime);
+        this.endsNextDay = endsNextDay == null ? false : endsNextDay;
     }
 }

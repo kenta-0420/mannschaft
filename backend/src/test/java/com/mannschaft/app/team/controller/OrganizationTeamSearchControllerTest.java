@@ -3,6 +3,8 @@ package com.mannschaft.app.team.controller;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.config.OrgScopeIdConverter;
 import com.mannschaft.app.organization.exception.OrganizationNotFoundException;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +32,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -50,6 +55,7 @@ import com.mannschaft.app.common.security.AccessGuard;
  */
 @WebMvcTest(OrganizationTeamSearchController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(OrgScopeIdConverter.class)
 @DisplayName("OrganizationTeamSearchController 結合テスト")
 class OrganizationTeamSearchControllerTest {
 
@@ -89,6 +95,10 @@ class OrganizationTeamSearchControllerTest {
     @MockitoBean
     private AccessGuard accessGuard;
 
+    /** 画像 URL 根治 Phase 1: 生 R2 キー → 署名付き表示 URL の解決を担う共通部品。 */
+    @MockitoBean
+    private MediaUrlResolver mediaUrlResolver;
+
     @BeforeEach
     void setUp() {
         SecurityContextHolder.clearContext();
@@ -125,12 +135,17 @@ class OrganizationTeamSearchControllerTest {
         // 未ログインなのでメンバー判定は呼ばれないが、安全側に false を返しておく
         given(accessControlService.isMember(any(), eq(ORG_ID), eq("ORGANIZATION")))
                 .willReturn(false);
+        // 画像 URL 根治 Phase 1: 生キーは署名付き表示 URL へ解決されて返る
+        given(mediaUrlResolver.resolve("https://cdn/icon.png"))
+                .willReturn("https://signed/icon.png?sig=abc");
 
         mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_SLUG))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].name").value("公開店舗A"))
                 .andExpect(jsonPath("$.data[0].prefecture").value("東京都"))
                 .andExpect(jsonPath("$.data[0].city").value("渋谷区"))
+                // 抑制版でも iconUrl は署名付き表示 URL へ解決される
+                .andExpect(jsonPath("$.data[0].iconUrl").value("https://signed/icon.png?sig=abc"))
                 // F22.1: camelCase の地域コードが併存して返る
                 .andExpect(jsonPath("$.data[0].prefectureCode").value("13"))
                 .andExpect(jsonPath("$.data[0].cityCode").value("13113"))
@@ -140,6 +155,19 @@ class OrganizationTeamSearchControllerTest {
                 .andExpect(jsonPath("$.data[0].supporterEnabled").doesNotExist())
                 .andExpect(jsonPath("$.data[0].memberCount").doesNotExist())
                 .andExpect(jsonPath("$.meta.total").value(1));
+    }
+
+    @Test
+    @DisplayName("CMP-112: 数値組織IDはslug解決を呼ばず検索する")
+    void search_numericOrgId_usesCanonicalScopeId() throws Exception {
+        given(teamSearchService.search(eq(42L), any(TeamSearchCriteria.class), any(), any(Pageable.class)))
+                .willReturn(Page.empty());
+
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", "42"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isEmpty());
+
+        verify(organizationService, never()).resolveOrgId("42");
     }
 
     @Test
@@ -166,13 +194,20 @@ class OrganizationTeamSearchControllerTest {
                 .willReturn(page);
         given(accessControlService.isMember(eq(MEMBER_USER_ID), eq(ORG_ID), eq("ORGANIZATION")))
                 .willReturn(true);
+        // 画像 URL 根治 Phase 1: icon/banner は生キーから署名付き表示 URL へ解決されて返る
+        given(mediaUrlResolver.resolve("https://cdn/icon2.png"))
+                .willReturn("https://signed/icon2.png?sig=ic2");
+        given(mediaUrlResolver.resolve("https://cdn/banner2.png"))
+                .willReturn("https://signed/banner2.png?sig=bn2");
 
         mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_SLUG))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].name").value("詳細店舗B"))
                 // 詳細版には visibility / bannerUrl / supporterEnabled / memberCount が含まれる
                 .andExpect(jsonPath("$.data[0].visibility").value("GUESTS_AND_ABOVE"))
-                .andExpect(jsonPath("$.data[0].bannerUrl").value("https://cdn/banner2.png"))
+                // icon/banner は署名付き表示 URL へ解決される（生キー直返しではない）
+                .andExpect(jsonPath("$.data[0].iconUrl").value("https://signed/icon2.png?sig=ic2"))
+                .andExpect(jsonPath("$.data[0].bannerUrl").value("https://signed/banner2.png?sig=bn2"))
                 .andExpect(jsonPath("$.data[0].supporterEnabled").value(false))
                 .andExpect(jsonPath("$.data[0].memberCount").value(17))
                 // F22.1: camelCase の地域コードが併存して返る
@@ -191,6 +226,17 @@ class OrganizationTeamSearchControllerTest {
                 .andExpect(jsonPath("$.data").isArray())
                 .andExpect(jsonPath("$.data.length()").value(0))
                 .andExpect(jsonPath("$.meta.total").value(0));
+    }
+
+    @Test
+    @DisplayName("CMP-112: 数値IDの組織パスでも公開検索を行える")
+    void search_numericOrgId_returns200() throws Exception {
+        given(teamSearchService.search(eq(ORG_ID), any(TeamSearchCriteria.class), any(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/organizations/{orgPublicId}/teams/search", ORG_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
     }
 
     // ════════════════════════════════════════════════════════════

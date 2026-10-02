@@ -46,6 +46,7 @@ public class RecruitmentReminderEntity {
     /** 送信した通知のID (ON DELETE SET NULL のため nullable) */
     private Long notificationId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

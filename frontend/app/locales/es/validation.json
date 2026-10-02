@@ -4,5 +4,7 @@
   "min_length": "Debe tener al menos {min} caracteres",
   "max_length": "Debe tener como maximo {max} caracteres",
   "password_mismatch": "Las contrasenas no coinciden",
-  "invalid_format": "Formato invalido"
+  "invalid_format": "Formato invalido",
+  "postal_code_format": "Formato de codigo postal incorrecto (por ejemplo: 123-4567)",
+  "postal_code_required": "El codigo postal es obligatorio"
 }

@@ -1,5 +1,6 @@
 package com.mannschaft.app.promotion.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.promotion.PromotionErrorCode;
 import com.mannschaft.app.promotion.dto.AudienceEstimateResponse;
@@ -44,20 +45,26 @@ public class PromotionService {
     private final PromotionSegmentRepository segmentRepository;
     private final PromotionDeliverySummaryRepository summaryRepository;
     private final com.mannschaft.app.role.repository.UserRoleRepository userRoleRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * プロモーション一覧を取得する。
+     * 認可根治戦役 Wave2-2B: スコープメンバーであることを要求する（非メンバーは403）。
      */
-    public Page<PromotionResponse> list(String scopeType, Long scopeId, String status, Pageable pageable) {
+    public Page<PromotionResponse> list(String scopeType, Long scopeId, String status, Pageable pageable,
+                                         Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
         return promotionRepository.findByScopeTypeAndScopeId(scopeType, scopeId, status, pageable)
                 .map(entity -> toResponse(entity));
     }
 
     /**
      * プロモーションを作成する。
+     * 認可根治戦役 Wave2-2B: 作成先スコープのADMIN/DEPUTY_ADMINであることを要求する。
      */
     @Transactional
     public PromotionResponse create(String scopeType, Long scopeId, Long userId, CreatePromotionRequest request) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
         PromotionEntity entity = PromotionEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
@@ -80,18 +87,23 @@ public class PromotionService {
 
     /**
      * プロモーション詳細を取得する。
+     * 認可根治戦役 Wave2-2B: entity由来のscopeでメンバーシップを検証する（BOLA対策）。
      */
-    public PromotionResponse get(String scopeType, Long scopeId, Long id) {
+    public PromotionResponse get(String scopeType, Long scopeId, Long id, Long actorUserId) {
         PromotionEntity entity = findOrThrow(scopeType, scopeId, id);
+        accessControlService.checkMembership(actorUserId, entity.getScopeId(), entity.getScopeType());
         return toResponse(entity);
     }
 
     /**
      * プロモーションを更新する。
+     * 認可根治戦役 Wave2-2B: entity由来のscopeでADMIN/DEPUTY_ADMINを検証する（BOLA対策）。
      */
     @Transactional
-    public PromotionResponse update(String scopeType, Long scopeId, Long id, UpdatePromotionRequest request) {
+    public PromotionResponse update(String scopeType, Long scopeId, Long id, UpdatePromotionRequest request,
+                                     Long actorUserId) {
         PromotionEntity entity = findOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
         if (!entity.isEditable()) {
             throw new BusinessException(PromotionErrorCode.PROMOTION_NOT_EDITABLE);
         }
@@ -110,10 +122,12 @@ public class PromotionService {
 
     /**
      * プロモーションを削除する。
+     * 認可根治戦役 Wave2-2B: entity由来のscopeでADMIN/DEPUTY_ADMINを検証する（BOLA対策）。
      */
     @Transactional
-    public void delete(String scopeType, Long scopeId, Long id) {
+    public void delete(String scopeType, Long scopeId, Long id, Long actorUserId) {
         PromotionEntity entity = findOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
         entity.softDelete();
         promotionRepository.save(entity);
         log.info("プロモーション削除: id={}", id);
@@ -121,10 +135,13 @@ public class PromotionService {
 
     /**
      * 即時配信する。
+     * 認可根治戦役 Wave2-2B: entity由来のscopeでADMIN/DEPUTY_ADMINを検証する（BOLA対策）。
+     * 他組織になりすまして課金対象の配信を発生させる穴を封鎖する。
      */
     @Transactional
-    public PromotionResponse publish(String scopeType, Long scopeId, Long id) {
+    public PromotionResponse publish(String scopeType, Long scopeId, Long id, Long actorUserId) {
         PromotionEntity entity = findOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
         if (!entity.isPublishable()) {
             throw new BusinessException(PromotionErrorCode.PROMOTION_NOT_PUBLISHABLE);
         }
@@ -137,10 +154,13 @@ public class PromotionService {
 
     /**
      * 予約配信を設定する。
+     * 認可根治戦役 Wave2-2B: entity由来のscopeでADMIN/DEPUTY_ADMINを検証する（BOLA対策）。
      */
     @Transactional
-    public PromotionResponse schedule(String scopeType, Long scopeId, Long id, SchedulePromotionRequest request) {
+    public PromotionResponse schedule(String scopeType, Long scopeId, Long id, SchedulePromotionRequest request,
+                                       Long actorUserId) {
         PromotionEntity entity = findOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
         if (!entity.isPublishable()) {
             throw new BusinessException(PromotionErrorCode.PROMOTION_NOT_PUBLISHABLE);
         }
@@ -153,10 +173,12 @@ public class PromotionService {
 
     /**
      * 配信をキャンセルする。
+     * 認可根治戦役 Wave2-2B: entity由来のscopeでADMIN/DEPUTY_ADMINを検証する（BOLA対策）。
      */
     @Transactional
-    public PromotionResponse cancel(String scopeType, Long scopeId, Long id) {
+    public PromotionResponse cancel(String scopeType, Long scopeId, Long id, Long actorUserId) {
         PromotionEntity entity = findOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
         if (!entity.isCancellable()) {
             throw new BusinessException(PromotionErrorCode.PROMOTION_NOT_CANCELLABLE);
         }
@@ -168,10 +190,12 @@ public class PromotionService {
 
     /**
      * 承認する。
+     * 認可根治戦役 Wave2-2B: entity由来のscopeでADMIN/DEPUTY_ADMINを検証する（BOLA対策）。
      */
     @Transactional
     public PromotionResponse approve(String scopeType, Long scopeId, Long id, Long approverId) {
         PromotionEntity entity = findOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(approverId, entity.getScopeId(), entity.getScopeType());
         if (!entity.isApprovable()) {
             throw new BusinessException(PromotionErrorCode.PROMOTION_NOT_APPROVABLE);
         }
@@ -183,9 +207,11 @@ public class PromotionService {
 
     /**
      * 効果測定データを取得する。
+     * 認可根治戦役 Wave2-2B: entity由来のscopeでメンバーシップを検証する（BOLA対策）。
      */
-    public PromotionStatsResponse getStats(String scopeType, Long scopeId, Long id) {
+    public PromotionStatsResponse getStats(String scopeType, Long scopeId, Long id, Long actorUserId) {
         PromotionEntity entity = findOrThrow(scopeType, scopeId, id);
+        accessControlService.checkMembership(actorUserId, entity.getScopeId(), entity.getScopeType());
         List<PromotionDeliverySummaryEntity> summaries =
                 summaryRepository.findByPromotionIdOrderBySummaryDateAsc(id);
 
@@ -209,8 +235,11 @@ public class PromotionService {
 
     /**
      * 配信対象を見積もる。
+     * 認可根治戦役 Wave2-2B: スコープメンバーであることを要求する（非メンバーは403）。
      */
-    public AudienceEstimateResponse estimateAudience(String scopeType, Long scopeId, EstimateAudienceRequest request) {
+    public AudienceEstimateResponse estimateAudience(String scopeType, Long scopeId, EstimateAudienceRequest request,
+                                                      Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
         if (request.getSegments() == null || request.getSegments().isEmpty()) {
             int totalMembers = userRoleRepository.countMembersByScope(scopeType, scopeId);
             return new AudienceEstimateResponse(totalMembers);

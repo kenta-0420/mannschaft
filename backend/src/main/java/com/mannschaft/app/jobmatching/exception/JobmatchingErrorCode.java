@@ -45,8 +45,31 @@ public enum JobmatchingErrorCode implements ErrorCode {
     /** 許可されていない状態遷移 */
     JOB_INVALID_STATE_TRANSITION("JOB_INVALID_STATE_TRANSITION", "この状態遷移は許可されていません", Severity.WARN),
 
-    /** 操作権限がない */
+    /**
+     * 操作権限がない（404）。
+     *
+     * <p><b>これは「意味が割れている」のではなく意図的な集約である。分割してはならない。</b>
+     * 本コードは (1) 他人が当事者である求人・応募・契約 ID への越境アクセス と (2) 当事者ではあるが当該操作を行えない者による権限拒否 の両方に使われる。この2つを別コード・別ステータスに分けると、応答の差から
+     * 「そのIDのリソースは実在する」ことを外部から判定できる存在オラクルになる。</p>
+     *
+     * <p><b>ステータスは404固定。</b>不在（{@link #JOB_CONTRACT_NOT_FOUND}）と同一の404に畳むことで秘匿を達成する。
+     * このコードベースには PARKING_020 を起点とする「越境は存在秘匿で404」の流儀が確立しており
+     * （equipment/membership/todo/corkboard/pointcard/skill で実装済み）、それに揃えた。
+     * かつては 403 を返しており、不在（404）と越境（403）でステータスが割れて存在オラクルになっていた。
+     * 「403に戻すべきでは」と迷った場合は、この理由を思い出すこと。
+     * （{@code GlobalExceptionHandlerTest.ExistenceOracleParity} が
+     * 「不在と越境の応答が一致すること」を契約として固定している）。</p>
+     */
     JOB_PERMISSION_DENIED("JOB_PERMISSION_DENIED", "この操作を行う権限がありません", Severity.WARN),
+
+    /**
+     * 求人の新規作成権限がない（403）。
+     *
+     * <p>これは {@link #JOB_PERMISSION_DENIED} とは別物である。求人 ID を一切引かない汎用の権限拒否であり、
+     * 秘匿すべきリソース ID が存在しないため、ID 越境の 404 化（存在秘匿）の対象にはならない。
+     * したがってステータスは 403 のまま据え置く。</p>
+     */
+    JOB_CREATE_PERMISSION_DENIED("JOB_CREATE_PERMISSION_DENIED", "求人を作成する権限がありません", Severity.WARN),
 
     /** 指定された公開範囲は MVP 未対応 */
     JOB_VIS_NOT_SUPPORTED("JOB_VIS_NOT_SUPPORTED", "指定された公開範囲は現在サポートされていません", Severity.WARN),

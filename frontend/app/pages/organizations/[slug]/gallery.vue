@@ -1,13 +1,12 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const orgSlug = String(route.params.slug)
 </script>
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton />
+    <div class="mb-4">
       <PageHeader title="ギャラリー" />
     </div>
     <GalleryAlbumGrid scope-type="ORGANIZATION" :scope-id="orgSlug" />

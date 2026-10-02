@@ -2,7 +2,10 @@ package com.mannschaft.app.schedule.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.config.jackson.LenientOffsetDateTimeDeserializer;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.ScheduledTaskStatus;
@@ -18,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
@@ -39,8 +43,11 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class ScheduleScheduledTaskService {
 
-    /** ScheduledAt 保存時に OffsetDateTime を変換する先のタイムゾーン（バッチ側は LocalDateTime.now()=JST と比較）。 */
-    private static final ZoneId STORAGE_ZONE = ZoneId.of("Asia/Tokyo");
+    /**
+     * ScheduledAt 保存時に OffsetDateTime を変換する先のタイムゾーン（バッチ側は LocalDateTime.now()=JST と比較）。
+     * サーバー保持形式の正準定義は {@link UserZoneLocalDateTimeParser#SERVER_ZONE} を参照。
+     */
+    private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final ScheduleScheduledTaskRepository scheduledTaskRepository;
     private final ObjectMapper objectMapper;
@@ -269,12 +276,22 @@ public class ScheduleScheduledTaskService {
      *
      * <p>JSON 直列化のため getter/no-arg constructor を Jackson が利用できるよう record で表現する。</p>
      *
-     * @param attendanceDeadline 出欠回答期限（任意）
+     * <p><b>Issue #2508 早馬（後方互換）</b>: {@code attendanceDeadline} は元々
+     * {@code LocalDateTime} 宣言だったが、直列化に使う {@link ObjectMapper} には
+     * {@code LocalDateTimeTimezoneSerializer}（ユーザー TZ でオフセット付き文字列を書き出す）が
+     * 登録されているため、<b>書き込みはオフセット付き・読み出しはオフセット無ししか受け付けない</b>
+     * という非対称になっていた。既存行はオフセット付き（{@code +09:00} / {@code -04:00} など TZ 混在）で
+     * 溜まっているため、{@link OffsetDateTime} で受けたうえで
+     * {@link com.mannschaft.app.config.jackson.LenientOffsetDateTimeDeserializer} により
+     * オフセット無しの行も JST として読めるようにしている。</p>
+     *
+     * @param attendanceDeadline 出欠回答期限（任意・TZ 付き）
      * @param commentOption      コメント要否（任意）
      * @param minResponseRole    最低応答ロール（任意）
      */
     public record AttendancePayload(
-            java.time.LocalDateTime attendanceDeadline,
+            @JsonDeserialize(using = LenientOffsetDateTimeDeserializer.class)
+            OffsetDateTime attendanceDeadline,
             String commentOption,
             String minResponseRole) {
     }

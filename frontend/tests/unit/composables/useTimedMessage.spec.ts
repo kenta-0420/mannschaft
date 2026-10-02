@@ -1,6 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
+
+// mockHour で dayjs.tz(..., 'Asia/Tokyo') を使うため、mount 前（本番の plugins/dayjs.ts が
+// 走るより前）に utc/timezone プラグインを明示的に登録しておく。
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 /**
  * useTimedMessage のユニットテスト。
@@ -82,10 +90,19 @@ const TimedMessageHost = defineComponent({
 
 // ============================================================
 // 時刻モック用ヘルパー
+//
+// useTimedMessage は dayjs().tz(userTimezone) で「ユーザーTZ（既定 Asia/Tokyo）の壁時計」を
+// 判定するため、テストが固定すべきは「実行機のローカル壁時計」ではなく
+// 「Asia/Tokyo での壁時計」に対応する絶対時刻（instant）である。
+// `new Date(year, month, day, hour, ...)` は実行機のローカルTZで解釈されるため、
+// CI（UTC）とローカル（JST）で異なる instant になり判定結果がずれていた
+// （実測: UTC 実行機では 9 時間分ずれて別の period が選ばれる）。
+// dayjs.tz(...) で明示的に Asia/Tokyo の壁時計として instant を組み立てることで、
+// 実行機のTZに依存しない再現を得る。
 // ============================================================
 
 function mockHour(hour: number) {
-  const fixed = new Date(2026, 4, 18, hour, 0, 0)
+  const fixed = dayjs.tz(`2026-05-18 ${String(hour).padStart(2, '0')}:00:00`, 'Asia/Tokyo').toDate()
   vi.useFakeTimers({ shouldAdvanceTime: true })
   vi.setSystemTime(fixed)
 }

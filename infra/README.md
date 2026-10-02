@@ -16,11 +16,15 @@ infra/terraform/
 │   └── README.md       # ★マスターが最初に読む実行手順書
 ├── envs/prod/          # 本番環境ルート（module 結線の司令塔・CI の実行対象）
 └── modules/
-    ├── network/        # VPC / サブネット / SG
+    ├── network/        # VPC / サブネット / SG（app_sg はアウトバウンドのみ）
     ├── data/           # RDS MySQL 8.0 / ElastiCache Valkey
-    ├── app/            # ALB / ACM / ECR / ECS Fargate (Spring Boot)
-    └── edge/           # Cloudflare DNS / Pages (Nuxt) / R2
+    ├── app/            # ECR / ECS Fargate (Spring Boot + cloudflared サイドカー)
+    └── edge/           # Cloudflare DNS / Pages (Nuxt) / R2 / Tunnel
 ```
+
+> **2026-07-10 コスト削減**: 入口を ALB → Cloudflare Tunnel へ移行（ALB/ACM 撤去で固定費 約$20/月減）、
+> ECS を Graviton(ARM64) 化（約2割減）、Container Insights 無効化＋CloudWatch Logs 保持 90→30 日（数ドル/月減）。
+> 詳細は各 module のコメントおよび `docs/operations/PRODUCTION_SETUP.md` を参照。
 
 ## 進軍順序（導入ロードマップ）
 
@@ -30,10 +34,11 @@ infra/terraform/
 | 2 | **CI 有効化** | bootstrap output を GitHub variables/secrets に設定 → `INFRA_CI_ENABLED=true` | 手順書あり |
 | 3 | **network** | VPC・サブネット・SG（module 実装 → PR plan → マージ apply）| 実装済み |
 | 4 | **data** | RDS + Valkey | 実装済み |
-| 5 | **app** | ALB + ACM + ECR + ECS Fargate | 実装済み |
-| 6 | **edge** | Cloudflare DNS / Pages / R2・同一オリジン入口の完成 | 実装済み |
+| 5 | **app** | ECR + ECS Fargate（Spring Boot + cloudflared サイドカー）| 実装済み |
+| 6 | **edge** | Cloudflare DNS / Pages / R2 / Tunnel・同一オリジン入口の完成 | 実装済み |
 
-module は 3→6 の順に依存する（network の出力を data/app が使い、app の出力を edge が使う）。
+module は 3→6 の順に依存する（network の出力を data/app が使う）。
+入口は edge の Cloudflare Tunnel が担い、app（ECS）とは Secrets Manager の箱（トークン手動投入）で疎結合。
 契約（各 module の variables/outputs）は `envs/prod/main.tf` で確定済み。実装時に勝手に変えないこと。
 
 ## CI の仕組み
@@ -67,6 +72,8 @@ module は 3→6 の順に依存する（network の出力を data/app が使い
 | Cloudflare API トークン | GitHub secret / ローカル環境変数 `CLOUDFLARE_API_TOKEN` |
 | DB マスターパスワード | AWS Secrets Manager（RDS の自動管理。Terraform state にも平文を残さない） |
 | アプリ秘密（JWT 鍵 / Stripe 鍵 等） | **AWS Secrets Manager**（app module が箱だけ作成。値は手動投入。ECS タスク定義の secrets で参照） |
+| Cloudflare Tunnel シークレット | Terraform state（edge module の `random_id` 自動生成。人手管理不要） |
+| cloudflared run トークン | **AWS Secrets Manager**（`<prefix>/cloudflared-tunnel-token` の箱は Terraform 作成。値は apply 後に `terraform output -raw cloudflared_tunnel_token` を手動投入。ECS の cloudflared サイドカーが `TUNNEL_TOKEN` で参照） |
 | AWS 認証（CI） | なし（GitHub OIDC の短期クレデンシャル） |
 
 > 注意: 旧ドキュメントに「SSM Parameter Store」とあったが、実装は **Secrets Manager** を使用。

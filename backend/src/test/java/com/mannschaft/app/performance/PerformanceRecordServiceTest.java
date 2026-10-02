@@ -1,5 +1,6 @@
 package com.mannschaft.app.performance;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.performance.dto.CreateRecordRequest;
 import com.mannschaft.app.performance.dto.RecordResponse;
@@ -10,6 +11,7 @@ import com.mannschaft.app.performance.repository.PerformanceRecordRepository;
 import com.mannschaft.app.performance.service.PerformanceMetricService;
 import com.mannschaft.app.performance.service.PerformanceRecordService;
 import com.mannschaft.app.performance.service.PerformanceSummaryService;
+import com.mannschaft.app.schedule.service.ScheduleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,8 @@ class PerformanceRecordServiceTest {
     @Mock private PerformanceMetricService metricService;
     @Mock private PerformanceSummaryService summaryService;
     @Mock private PerformanceMapper performanceMapper;
+    @Mock private AccessControlService accessControlService;
+    @Mock private ScheduleService scheduleService;
 
     @InjectMocks
     private PerformanceRecordService service;
@@ -143,7 +147,7 @@ class PerformanceRecordServiceTest {
         @DisplayName("異常系: 記録不在でPERF_002例外")
         void 削除_不在_例外() {
             given(recordRepository.findById(99L)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.deleteRecord(TEAM_ID, 99L))
+            assertThatThrownBy(() -> service.deleteRecord(TEAM_ID, 99L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PERF_002"));

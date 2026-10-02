@@ -125,7 +125,7 @@ class TeamRegionBackfillBatchEndpointTest {
     static class TestConfig {
         @Bean
         public BatchEndpointRegistry batchEndpointRegistry(GenericApplicationContext context) {
-            return new BatchEndpointRegistry(context);
+            return new BatchEndpointRegistry(context, true);
         }
 
         @Bean

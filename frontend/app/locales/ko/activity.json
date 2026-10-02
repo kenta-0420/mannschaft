@@ -44,6 +44,7 @@
       "TEXT": "텍스트",
       "NUMBER": "숫자",
       "DATE": "날짜",
+      "DATETIME": "날짜 및 시간",
       "SELECT": "선택",
       "CHECKBOX": "체크박스",
       "TEXTAREA": "텍스트 영역"

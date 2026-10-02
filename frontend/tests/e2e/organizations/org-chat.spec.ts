@@ -11,10 +11,21 @@ test.describe('ORG-FEAT-010〜013: 組織チャット', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
+          // BE ChannelResponse のネスト正準形
           data: [
-            { id: 1, name: 'general', description: '一般チャンネル', memberCount: 5 },
+            {
+              id: 1,
+              identity: { channelType: 'ORG_PUBLIC', teamId: null, organizationId: ORG_ID },
+              meta: { name: 'general', iconKey: null, description: '一般チャンネル' },
+              settings: { isPrivate: false, isInquiryChannel: false, isArchived: false, version: 1 },
+              lastMessage: { lastMessageAt: null, lastMessagePreview: null },
+              source: { sourceType: null, sourceId: null },
+              audit: { createdBy: null, createdAt: null, updatedAt: null },
+              memberCount: 5,
+              dmPartner: null,
+              viewer: { unreadCount: 0, isMuted: false, isPinned: false, category: null, role: null },
+            },
           ],
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
         }),
       })
     })

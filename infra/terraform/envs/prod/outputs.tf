@@ -3,9 +3,20 @@
 # =============================================================================
 # apply 後の運用（デプロイ設定・疎通確認・Cloudflare 設定）に使う値をまとめて出す。
 
-output "alb_dns_name" {
-  description = "ALB の DNS 名。Cloudflare の /api/** ・ /ws ルーティング先"
-  value       = module.app.alb_dns_name
+output "cloudflared_tunnel_id" {
+  description = "Cloudflare Tunnel の ID（origin.<domain> → <id>.cfargotunnel.com）"
+  value       = module.edge.cloudflared_tunnel_id
+}
+
+output "cloudflared_tunnel_token" {
+  description = "cloudflared サイドカーの run トークン。apply 後に `<prefix>/cloudflared-tunnel-token` の箱へ手動投入する（`terraform output -raw cloudflared_tunnel_token`）"
+  value       = module.edge.cloudflared_tunnel_token
+  sensitive   = true
+}
+
+output "cloudflared_tunnel_token_secret_arn" {
+  description = "cloudflared トークンを投入する Secrets Manager の箱の ARN"
+  value       = module.app.cloudflared_tunnel_token_secret_arn
 }
 
 output "ecr_repository_url" {

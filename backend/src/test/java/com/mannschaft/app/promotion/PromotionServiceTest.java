@@ -1,5 +1,6 @@
 package com.mannschaft.app.promotion;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.promotion.dto.CreatePromotionRequest;
 import com.mannschaft.app.promotion.entity.PromotionEntity;
@@ -36,6 +37,7 @@ class PromotionServiceTest {
     @Mock private PromotionSegmentRepository segmentRepository;
     @Mock private PromotionDeliverySummaryRepository summaryRepository;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks private PromotionService service;
 
@@ -80,7 +82,7 @@ class PromotionServiceTest {
                     .willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.get(SCOPE_TYPE, SCOPE_ID, 1L))
+            assertThatThrownBy(() -> service.get(SCOPE_TYPE, SCOPE_ID, 1L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PROMOTION_001"));
@@ -103,7 +105,7 @@ class PromotionServiceTest {
             given(promotionRepository.save(any(PromotionEntity.class))).willReturn(entity);
 
             // When
-            service.delete(SCOPE_TYPE, SCOPE_ID, 1L);
+            service.delete(SCOPE_TYPE, SCOPE_ID, 1L, USER_ID);
 
             // Then
             verify(promotionRepository).save(any(PromotionEntity.class));

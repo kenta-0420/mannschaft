@@ -132,7 +132,7 @@ class BulletinMapperTest {
     class ToThreadResponse {
 
         @Test
-        @DisplayName("正常系: エンティティがDTOに変換される")
+        @DisplayName("正常系: エンティティがフラット DTO に変換される")
         void 変換_正常_フィールドが正しくマップされる() {
             // Given
             BulletinThreadEntity entity = BulletinThreadEntity.builder()
@@ -149,19 +149,29 @@ class BulletinMapperTest {
             // When
             ThreadResponse response = mapper.toThreadResponse(entity);
 
-            // Then
-            assertThat(response.getScope().categoryId()).isEqualTo(5L);
-            assertThat(response.getScope().scopeType()).isEqualTo("TEAM");
-            assertThat(response.getScope().scopeId()).isEqualTo(1L);
-            assertThat(response.getAudit().authorId()).isEqualTo(10L);
-            assertThat(response.getContent().title()).isEqualTo("テストスレッド");
-            assertThat(response.getContent().body()).isEqualTo("スレッドの本文");
-            assertThat(response.getContent().priority()).isEqualTo("IMPORTANT");
-            assertThat(response.getContent().readTrackingMode()).isEqualTo("INDIVIDUAL");
-            assertThat(response.getState().isPinned()).isFalse();
-            assertThat(response.getState().isLocked()).isFalse();
-            assertThat(response.getState().isArchived()).isFalse();
-            assertThat(response.getStats().replyCount()).isZero();
+            // Then: フラット構造で値が入る
+            assertThat(response.getCategoryId()).isEqualTo(5L);
+            assertThat(response.getScopeType()).isEqualTo("TEAM");
+            assertThat(response.getScopeId()).isEqualTo(1L);
+            assertThat(response.getAuthor()).isNotNull();
+            assertThat(response.getAuthor().id()).isEqualTo(10L);
+            assertThat(response.getTitle()).isEqualTo("テストスレッド");
+            assertThat(response.getBody()).isEqualTo("スレッドの本文");
+            assertThat(response.getPriority()).isEqualTo("IMPORTANT");
+            assertThat(response.getReadTrackingMode()).isEqualTo("INDIVIDUAL");
+            assertThat(response.getIsPinned()).isFalse();
+            assertThat(response.getIsLocked()).isFalse();
+            assertThat(response.getIsArchived()).isFalse();
+            assertThat(response.getReplyCount()).isZero();
+            assertThat(response.getReadCount()).isZero();
+            // enrichment は基底変換では未解決（デフォルト値）
+            assertThat(response.getAuthor().displayName()).isNull();
+            assertThat(response.getAuthor().avatarUrl()).isNull();
+            assertThat(response.getCategoryName()).isNull();
+            assertThat(response.getCategoryColor()).isNull();
+            assertThat(response.getIsRead()).isFalse();
+            assertThat(response.getReactionSummary()).isEmpty();
+            assertThat(response.getMyReactions()).isEmpty();
         }
 
         @Test
@@ -183,9 +193,9 @@ class BulletinMapperTest {
             ThreadResponse response = mapper.toThreadResponse(entity);
 
             // Then
-            assertThat(response.getScope().scopeType()).isEqualTo("ORGANIZATION");
-            assertThat(response.getContent().priority()).isEqualTo("INFO");
-            assertThat(response.getContent().readTrackingMode()).isEqualTo("COUNT_ONLY");
+            assertThat(response.getScopeType()).isEqualTo("ORGANIZATION");
+            assertThat(response.getPriority()).isEqualTo("INFO");
+            assertThat(response.getReadTrackingMode()).isEqualTo("COUNT_ONLY");
         }
 
         @Test
@@ -209,9 +219,9 @@ class BulletinMapperTest {
             ThreadResponse response = mapper.toThreadResponse(entity);
 
             // Then
-            assertThat(response.getState().isPinned()).isTrue();
-            assertThat(response.getState().isLocked()).isTrue();
-            assertThat(response.getContent().priority()).isEqualTo("URGENT");
+            assertThat(response.getIsPinned()).isTrue();
+            assertThat(response.getIsLocked()).isTrue();
+            assertThat(response.getPriority()).isEqualTo("URGENT");
         }
     }
 
@@ -239,8 +249,8 @@ class BulletinMapperTest {
 
             // Then
             assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).getContent().title()).isEqualTo("スレッド1");
-            assertThat(responses.get(1).getContent().title()).isEqualTo("スレッド2");
+            assertThat(responses.get(0).getTitle()).isEqualTo("スレッド1");
+            assertThat(responses.get(1).getTitle()).isEqualTo("スレッド2");
         }
 
         @Test

@@ -1,10 +1,14 @@
 package com.mannschaft.app.resident;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.resident.dto.ResidentDocumentResponse;
 import com.mannschaft.app.resident.dto.UploadDocumentRequest;
+import com.mannschaft.app.resident.entity.DwellingUnitEntity;
 import com.mannschaft.app.resident.entity.ResidentDocumentEntity;
+import com.mannschaft.app.resident.entity.ResidentRegistryEntity;
 import com.mannschaft.app.resident.mapper.ResidentMapper;
+import com.mannschaft.app.resident.repository.DwellingUnitRepository;
 import com.mannschaft.app.resident.repository.ResidentDocumentRepository;
 import com.mannschaft.app.resident.repository.ResidentRegistryRepository;
 import com.mannschaft.app.resident.service.ResidentDocumentService;
@@ -30,8 +34,19 @@ class ResidentDocumentServiceTest {
 
     @Mock private ResidentDocumentRepository documentRepository;
     @Mock private ResidentRegistryRepository residentRepository;
+    @Mock private DwellingUnitRepository dwellingUnitRepository;
     @Mock private ResidentMapper residentMapper;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private ResidentDocumentService service;
+
+    private static ResidentRegistryEntity residentOf(Long dwellingUnitId) {
+        return ResidentRegistryEntity.builder()
+                .dwellingUnitId(dwellingUnitId).lastName("田中").firstName("太郎").build();
+    }
+
+    private static DwellingUnitEntity unit() {
+        return DwellingUnitEntity.builder().scopeType("TEAM").teamId(1L).unitNumber("101").build();
+    }
 
     @Nested
     @DisplayName("upload")
@@ -41,7 +56,8 @@ class ResidentDocumentServiceTest {
         @DisplayName("正常系: 書類がアップロードされる")
         void アップロード_正常_保存() {
             // Given
-            given(residentRepository.existsById(1L)).willReturn(true);
+            given(residentRepository.findById(1L)).willReturn(Optional.of(residentOf(1L)));
+            given(dwellingUnitRepository.findById(1L)).willReturn(Optional.of(unit()));
             given(documentRepository.save(any(ResidentDocumentEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(residentMapper.toDocumentResponse(any(ResidentDocumentEntity.class)))
                     .willReturn(new ResidentDocumentResponse(1L, 1L, "CONTRACT", "file.pdf", "s3key", 1024, "application/pdf", 100L, null));
@@ -60,7 +76,7 @@ class ResidentDocumentServiceTest {
         @DisplayName("異常系: 居住者不在でRESIDENT_003例外")
         void アップロード_居住者不在_例外() {
             // Given
-            given(residentRepository.existsById(1L)).willReturn(false);
+            given(residentRepository.findById(1L)).willReturn(Optional.empty());
 
             // When / Then
             assertThatThrownBy(() -> service.upload(1L, 100L,
@@ -79,11 +95,12 @@ class ResidentDocumentServiceTest {
         @DisplayName("異常系: 書類不在でRESIDENT_004例外")
         void 削除_不在_例外() {
             // Given
-            given(residentRepository.existsById(1L)).willReturn(true);
+            given(residentRepository.findById(1L)).willReturn(Optional.of(residentOf(1L)));
+            given(dwellingUnitRepository.findById(1L)).willReturn(Optional.of(unit()));
             given(documentRepository.findById(1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.delete(1L, 1L))
+            assertThatThrownBy(() -> service.delete(100L, 1L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("RESIDENT_004"));

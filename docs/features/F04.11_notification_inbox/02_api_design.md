@@ -142,6 +142,10 @@
 ```
 - `action`: `ARCHIVE` / `UNARCHIVE` / `SNOOZE`（`snoozedUntil` 同梱）/ `LABEL_ADD`（`labelId` 同梱）。
 - レスポンスは成功/失敗件数（`BulkAssignResultResponse` 手本）。部分失敗を許容し全体は 200。
+- **認可（`LABEL_ADD`）**: `labelId` の所有検証は **items ループより前に 1 回**行い、他人のラベル / 不存在は
+  全体を `INBOX_LABEL_NOT_FOUND`（404・存在秘匿）で止める。認可を業務処理より前に置くことで、
+  ラベル ID の妥当性が「全件スキップ」という結果差から推測されるのを防ぐ。
+  個々の item の対象通知の可視性は従来どおり item ごとに検証し、非可視はスキップ計上（全体 200）。
 
 ### 3.5a `POST /api/v1/inbox/labels/suggest-apply`（自動ラベリング提案の 1 タップ付与・案C・Phase 4）
 

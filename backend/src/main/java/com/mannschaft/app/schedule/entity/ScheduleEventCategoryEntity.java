@@ -38,8 +38,9 @@ public class ScheduleEventCategoryEntity extends BaseEntity {
     @Builder.Default
     private Boolean isDayOffCategory = false;
 
-    @Column(columnDefinition = "TINYINT UNSIGNED")
-    private Integer sortOrder;
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
+    @Builder.Default
+    private Integer sortOrder = 0;
 
     /**
      * チームスコープかどうかを判定する。

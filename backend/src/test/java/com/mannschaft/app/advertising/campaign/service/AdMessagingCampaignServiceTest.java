@@ -60,6 +60,8 @@ class AdMessagingCampaignServiceTest {
     private AdMessagingCampaignChannelRepository channelRepository;
     @Mock
     private AdAudienceSegmentRepository segmentRepository;
+    @Mock
+    private AdAudienceResolver audienceResolver;
 
     // Mapper は ObjectMapper を含むため Mock より実体を注入する方が挙動が確実。
     private final AdMessagingCampaignMapper mapper = new AdMessagingCampaignMapper(new ObjectMapper());
@@ -69,7 +71,7 @@ class AdMessagingCampaignServiceTest {
     @BeforeEach
     void setUp() {
         service = new AdMessagingCampaignService(
-                campaignRepository, channelRepository, segmentRepository, mapper);
+                campaignRepository, channelRepository, segmentRepository, mapper, audienceResolver);
     }
 
     // ─────────────────────────────────────────────

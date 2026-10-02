@@ -12,6 +12,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -53,6 +54,22 @@ public class ChatMessageEntity extends BaseEntity {
     private Long postedAsSubjectId;
 
     private Long parentId;
+
+    /**
+     * メッセージ種別（F04.12）。TEXT（通常本文）/ INVITE_CARD（チーム/組織への招待カード）。
+     * 将来拡張のため VARCHAR + アプリ層 enum バリデーション（MySQL ENUM にはしない）。デフォルトは TEXT。
+     */
+    @Column(name = "message_type", nullable = false, length = 20)
+    @ColumnDefault("'TEXT'")
+    @Builder.Default
+    private String messageType = "TEXT";
+
+    /**
+     * 招待カードが参照する招待トークン ID（F04.12）。{@code messageType == INVITE_CARD} のときのみ値を持つ。
+     * invite_tokens は role ドメインのためクロスドメイン FK は張らない（原則1）。通常メッセージは NULL。
+     */
+    @Column(name = "invite_token_id")
+    private Long inviteTokenId;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String body;

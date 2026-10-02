@@ -42,6 +42,7 @@ public class IncidentAssignmentEntity {
     @Column(length = 100)
     private String externalName;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

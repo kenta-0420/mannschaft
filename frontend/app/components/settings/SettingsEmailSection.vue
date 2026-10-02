@@ -14,24 +14,24 @@ defineEmits<{
 </script>
 
 <template>
-  <SectionCard title="メールアドレス変更">
+  <SectionCard :title="$t('settings.email.section_title')">
     <template v-if="!emailSent">
       <div class="space-y-4">
         <div>
-          <label class="mb-1 block text-sm font-medium">現在のメールアドレス</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('settings.email.current_email') }}</label>
           <InputText :model-value="currentEmail" class="w-full" disabled />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">新しいメールアドレス</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('settings.email.new_email') }}</label>
           <InputText
             v-model="emailForm.newEmail"
             type="email"
             class="w-full"
-            placeholder="new@example.com"
+            :placeholder="$t('settings.email.new_email_placeholder')"
           />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">現在のパスワード</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('settings.email.current_password') }}</label>
           <Password
             v-model="emailForm.currentPassword"
             :feedback="false"
@@ -42,7 +42,8 @@ defineEmits<{
         </div>
         <div class="flex justify-end">
           <Button
-            label="確認メールを送信"
+            translate="no"
+            :label="$t('settings.email.send_confirmation')"
             icon="pi pi-envelope"
             :loading="submittingEmail"
             :disabled="!canSubmitEmail"
@@ -54,12 +55,9 @@ defineEmits<{
     <template v-else>
       <div class="py-6 text-center">
         <i class="pi pi-check-circle mb-3 text-5xl text-green-500" />
-        <p class="mb-1 font-semibold">確認メールを送信しました</p>
+        <p class="mb-1 font-semibold">{{ $t('settings.email.sent_title') }}</p>
         <p class="text-sm text-surface-500">
-          {{
-            emailForm.newEmail
-          }}
-          に確認メールを送信しました。リンクをクリックして変更を完了してください。
+          {{ $t('settings.email.sent_description', { email: emailForm.newEmail }) }}
         </p>
       </div>
     </template>

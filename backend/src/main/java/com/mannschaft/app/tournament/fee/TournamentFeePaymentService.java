@@ -2,11 +2,16 @@ package com.mannschaft.app.tournament.fee;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.common.MembershipScopeQueryService;
+import com.mannschaft.app.payment.FeeBreakdown;
+import com.mannschaft.app.payment.FeePolicy;
+import com.mannschaft.app.payment.FeePolicyResolver;
+import com.mannschaft.app.payment.PaymentFeeCalculator;
 import com.mannschaft.app.payment.dto.ConnectCheckoutResponse;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
+import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.service.MemberPaymentService;
 import com.mannschaft.app.payment.service.PaymentItemService;
@@ -50,7 +55,10 @@ public class TournamentFeePaymentService {
     private final PaymentItemService paymentItemService;
     private final MemberPaymentRepository memberPaymentRepository;
     private final MembershipRepository membershipRepository;
+    private final MembershipScopeQueryService membershipScopeQueryService;
     private final TournamentRepository tournamentRepository;
+    private final PaymentFeeCalculator paymentFeeCalculator;
+    private final FeePolicyResolver feePolicyResolver;
 
     /**
      * 認証ユーザーが対象の大会参加費一覧を返す。
@@ -63,10 +71,9 @@ public class TournamentFeePaymentService {
      */
     public MyTournamentFeesResponse getMyTournamentFees(Long userId) {
         // 1. ユーザーが所属する組織 ID 一覧を取得（アクティブな ORGANIZATION スコープのメンバーシップ）
-        List<Long> orgIds = membershipRepository
-                .findActiveByUserAndScopeType(userId, ScopeType.ORGANIZATION)
+        List<Long> orgIds = membershipScopeQueryService
+                .findCurrentMembershipOrganizationIds(userId)
                 .stream()
-                .map(MembershipEntity::getScopeId)
                 .distinct()
                 .toList();
 
@@ -75,10 +82,9 @@ public class TournamentFeePaymentService {
         }
 
         // 2. ユーザーが所属するチーム ID 一覧を取得（SPECIFIC_TEAMS の eligibility チェック用）
-        List<Long> teamIds = membershipRepository
-                .findActiveByUserAndScopeType(userId, ScopeType.TEAM)
+        List<Long> teamIds = membershipScopeQueryService
+                .findCurrentMembershipTeamIds(userId)
                 .stream()
-                .map(MembershipEntity::getScopeId)
                 .distinct()
                 .toList();
 
@@ -107,6 +113,12 @@ public class TournamentFeePaymentService {
                 .distinct()
                 .toList();
 
+        // 5b. 手数料パターンを解決（実課金経路 = ConnectChargeService#charge と同一の解決条件で揃える）。
+        //    大会参加費は MemberPaymentService#createConnectCheckout 経由で MembershipChargeCommand の
+        //    後方互換コンストラクタ（subKey=null）を用いて charge されるため、表示側も
+        //    resolve(MEMBERSHIP, null) で揃える（同じ計算経路を使い、独自計算を書かない）。
+        FeePolicy feePolicy = feePolicyResolver.resolve(EscrowSourceKind.MEMBERSHIP, null);
+
         List<MyTournamentFeeItem> result = new ArrayList<>();
         for (TournamentFeeEntity fee : allFees) {
             // 6. SPECIFIC_TEAMS の場合は eligibility チェック
@@ -122,6 +134,11 @@ public class TournamentFeePaymentService {
             // 7. payment_item から金額取得
             PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(fee.getPaymentItemId());
             int faceAmount = paymentItem.getAmount().intValue();
+
+            // 7b. 手数料内訳を PaymentFeeCalculator で算出（実課金と同一計算・独自計算しない）。
+            FeeBreakdown feeBreakdown = paymentFeeCalculator.calculate(faceAmount, feePolicy);
+            int payerSurcharge = Math.toIntExact(feeBreakdown.payerFee());
+            int totalCharge = Math.toIntExact(feeBreakdown.chargeAmount());
 
             // 8. 支払い済みチェック（自分個人の member_payments で PAID を確認）
             boolean alreadyPaid = memberPaymentRepository.existsValidPaidPayment(userId, fee.getPaymentItemId());
@@ -149,8 +166,8 @@ public class TournamentFeePaymentService {
                     fee.getTitle(),
                     fee.getPaymentItemId(),
                     faceAmount,
-                    0,          // payerSurcharge: PaymentFeeCalculator 連携は今後対応
-                    faceAmount, // totalCharge = faceAmount + surcharge
+                    payerSurcharge, // PaymentFeeCalculator による算出（実課金と同一計算経路・根治済み）
+                    totalCharge,    // totalCharge = faceAmount + payerSurcharge
                     fee.getPaymentDue(),
                     alreadyPaid,
                     paidAt
@@ -163,7 +180,11 @@ public class TournamentFeePaymentService {
     /**
      * 大会参加費の Connect 決済チェックアウトを実行する。
      *
-     * <p>fee の存在確認後、{@link MemberPaymentService#createConnectCheckout} に委譲する。
+     * <p>fee の存在確認後、{@link #requireEligible} で {@link #getMyTournamentFees} と同一の
+     * 対象判定（主催組織のアクティブメンバー、かつ {@code SPECIFIC_TEAMS} の場合は対象チームの
+     * アクティブメンバー）を通し、対象外の fee は不存在と同じ {@code FEE_NOT_FOUND}（404）で
+     * 存在を秘匿する。判定を通過した場合のみ
+     * {@link MemberPaymentService#createConnectCheckout} に委譲する。
      * 受益者・払い手ともに認証ユーザー本人（SELF）とする（F08.7.1 §6 ・選手自払い）。</p>
      *
      * @param feeId          参加費 ID
@@ -176,6 +197,9 @@ public class TournamentFeePaymentService {
         // 1. fee 存在確認（@SQLRestriction により削除済みは自動除外）
         TournamentFeeEntity fee = tournamentFeeRepository.findById(feeId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.FEE_NOT_FOUND));
+
+        // 1b. 対象判定（getMyTournamentFees と同一基準）。対象外は不存在と同じ扱いで秘匿する。
+        requireEligible(fee, payerUserId);
 
         // 2. idempotencyKey 補完
         String key = (idempotencyKey != null && !idempotencyKey.isBlank())
@@ -200,5 +224,32 @@ public class TournamentFeePaymentService {
                 resp.getMemberPaymentId(),
                 resp.getEscrowTransactionId()
         );
+    }
+
+    /**
+     * fee の対象ユーザーであることを検証する（{@link #getMyTournamentFees} と同一基準）。
+     * 主催組織のアクティブメンバーであること、かつ {@code targetScope == SPECIFIC_TEAMS} の場合は
+     * 対象チームのいずれかにアクティブメンバーとして所属していることを要求する。
+     * 対象外の場合は不存在と同じ {@code FEE_NOT_FOUND}（404）で存在を秘匿する。
+     */
+    private void requireEligible(TournamentFeeEntity fee, Long userId) {
+        boolean isOrgMember = membershipRepository
+                .existsActiveByUserAndScope(userId, ScopeType.ORGANIZATION, fee.getOrganizationId());
+        if (!isOrgMember) {
+            throw new BusinessException(TournamentErrorCode.FEE_NOT_FOUND);
+        }
+
+        if (fee.getTargetScope() == TournamentFeeTargetScope.SPECIFIC_TEAMS) {
+            List<Long> teamIds = membershipScopeQueryService
+                    .findCurrentMembershipTeamIds(userId)
+                    .stream()
+                    .distinct()
+                    .toList();
+            boolean eligible = teamIds.stream()
+                    .anyMatch(teamId -> tournamentFeeTargetRepository.existsByFeeIdAndTeamId(fee.getId(), teamId));
+            if (!eligible) {
+                throw new BusinessException(TournamentErrorCode.FEE_NOT_FOUND);
+            }
+        }
     }
 }

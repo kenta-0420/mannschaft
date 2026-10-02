@@ -88,6 +88,8 @@
   - **モジュールスラッグ名は推測で断定しない（Y-1 訂正）**。現行 `MODULE_SLUG_MAP` には `performance`/`project`/`chat`/`analytics` の 4 スラッグのみ登録があり、**大会用スラッグは未登録**（実装時に新規登録が必要）。スラッグの正式名（`tournament` か別名か）・モジュール番号（「#14」は仮）は、**実装時に `WidgetKey.java` の `MODULE_SLUG_MAP` および選択式モジュール定義の正本を grep して確定**すること。本書では仮に `tournament` と記すが、これは確定値ではない。
 - 新設 API `GET /api/v1/organizations/{orgId}/tournaments/summary`（②用）。Controller / Service / DTO を tournament ドメインに追加。認可は組織所属 MEMBER 以上（§6 の min_role に従う）。`@Transactional(readOnly=true)` は tournament ドメイン内に閉じる。
 
+> **【path 変数の scope id は slug を受理する（必須）】** ①の `GET /teams/{teamId}/tournament-stats`・`GET /teams/{teamId}/tournament-history`、②の `GET /api/v1/organizations/{orgId}/tournaments/summary` は、ダッシュボードが URL 識別子（slug。例 `team-000017` / `org-000001`）を渡す。Controller は `@PathVariable String` で受け、`teamService.resolveTeamId(slug)` / `organizationService.resolveOrgId(slug)`（survey の `resolveScopeId` 流儀）で内部 BIGINT に解決してから認可・サービスへ渡すこと。`@PathVariable Long` のままだと Spring の型変換に失敗して 400 となり、ウィジェットが（`captureQuiet`+空配列で握り潰され）空表示になる。なお③順位表の `getStandings(orgId, ...)` の `orgId` は `tournament-history` レスポンスの `organizationId`（数値 BIGINT）から FE が取得して渡すため、こちらの org 系 path（standings/matrix/rankings）は数値のまま（`@PathVariable Long`）でよい。
+
 ### 4.2 フロントエンド
 
 - `frontend/app/composables/useDashboardWidgets.ts`: `ALL_WIDGETS` ＋ `WidgetKeyMap` ＋ `WidgetDefaultMinRoleMap` に 3 件追加。

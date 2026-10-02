@@ -36,8 +36,13 @@
 | ページ内セクション・カード | `<SectionCard>` | 同上 |
 | ページヘッダー（タイトル+説明） | `<PageHeader>` | `<h1 class="text-2xl font-bold ...">` の直書き |
 | ローディング表示 | `<PageLoading>` | `<ProgressSpinner>` や独自スピナーの直書き |
-| 空状態表示 | `<DashboardEmptyState>` | `flex flex-col items-center text-center ...` の直書き |
+| 空状態表示（取得成功・0件） | `<DashboardEmptyState>` | `flex flex-col items-center text-center ...` の直書き |
+| エラー状態表示（取得失敗） | `<DashboardErrorState>` | 空状態コンポーネントへのフォールバック・エラーの握りつぶし |
 | 削除・操作確認 | `<ConfirmDialog>`（PrimeVue）または `useConfirm()` | ネイティブ `confirm()` の使用禁止 |
+
+> **取得失敗を空状態へフォールバックさせてはならない【必須】**: 一覧・詳細の取得が失敗した場合、`catch` でデータを空にリセットするだけで済ませると、権限エラー・通信断が「未登録」「該当なし」として誤読される（CMP-260922-2045）。取得状態（`loading`/`error`/`empty`/`loaded` 等）を持ち、`catch` では空状態ではなく `<DashboardErrorState>`（再試行ボタン付き）を描画すること。手本: `frontend/app/pages/my/shift-availability.vue`。
+>
+> **`<DashboardErrorState>` の再試行は、初回表示と同じ取得処理を呼ぶこと【必須】**: 初回表示（`onMounted`）が「A取得→成功なら依存するB取得」のように複数の取得を連鎖させている場合、`@retry` が A だけを呼ぶ実装にすると、A失敗→再試行で復旧してもBが未取得のまま欠落する（CMP-260922-2045 検分差し戻し・`teams/[slug]/jobs/[jobId]/index.vue` で発生）。初回と再試行は同じ1つの関数（例: `loadPage`）を通すこと。
 
 ### 共通 Composable（既存）— 新規実装時は必ずこれを使うこと
 
@@ -51,6 +56,14 @@
 ### 判断基準
 - **同じコードが2箇所以上に出現したら共通化する**。コピペで済ませない。
 - 共通コンポーネントが要件に合わない場合は、直書きせずコンポーネント自体を拡張する（props を追加するなど）。
+
+## 3b. レスポンシブ / モバイル **【必須】**
+
+- **タップターゲットは最小 44x44px**: `<button>` 等のインタラクティブ要素はヒット領域を 44x44px 以上確保する。アイコンの視覚サイズ（`text-xs` / `pi` のフォントサイズ等）はそのままでよく、`min-h-11 min-w-11`（`2.75rem` = 44px）＋ `flex items-center justify-center` でパディング側だけ拡大する。密集したアイコン列（通知の既読/スヌーズ、投稿カードのアクションバー等）はこのパターンで統一する。
+  - デスクトップの視覚密度を崩さない範囲であればブレークポイント指定なしで適用してよい。タブバーの「＋」ボタンのようにチュラム（chrome）自体の高さが変わり密度が崩れる場合のみ `max-md:` を付けてモバイル限定にする。
+- **横スクロール（横パン）禁止**: 390px 幅（iPhone SE 相当）でページ全体が横に伸びてはならない。flex の子要素には `min-w-0` を付けて縮小可能にし、本来横に伸びる要素（テーブル・タブ列・コード表示等）は自コンテナ内に `overflow-x-auto` を付けて横スクロールを閉じ込める。
+- **ブレークポイント境界**: `md`（768px）を FE のモバイル/デスクトップの正の境界とする。レイアウト切り替え（サイドバーの折りたたみ等）の判定はこれに揃える。
+- **入力要素のフォントサイズは 16px 以上**: `<input>` / `<textarea>` 等の `font-size` が 16px 未満だと iOS Safari がフォーカス時に自動ズームする。Tailwind の `text-sm`（デフォルト14px）を入力欄に直接使わず、`text-base` 以上を使うか、`tailwind.config.ts` の `fontSize.xs` のように明示的に上書きされたスケールを使うこと。
 
 ## 4. ディレクトリ構成と責務 (Directory Structure)
 | ディレクトリ | 役割・責務 |
@@ -93,12 +106,28 @@ Access Token の期限切れで 401 が返った場合、即座にログイン�
 ```
 1. 401 受信
 2. Refresh Token で POST /api/v1/auth/refresh を呼ぶ
-   ├── 成功 → 新しい Access Token + Refresh Token を localStorage に保存
-   │         → 元のリクエストを新トークンで自動リトライ
-   └── 失敗（Refresh Token も期限切れ等）
-             → AuthStore をクリア + ログイン画面へリダイレクト
+   ├── 'refreshed'（成功）→ 新しい Access Token + Refresh Token を保存（Cookie / in-memory）
+   │                        → 元のリクエストを新トークンで自動リトライ + 先回りタイマーを再武装
+   ├── 'auth_failed'（401/403。Refresh Token が無効・失効済み）
+   │                        → AuthStore をクリア + /login?reason=session_expired へリダイレクト
+   └── 'transient'（timeout / ネットワーク断 / 5xx）
+                            → ログアウトしない（回線が遅いだけのユーザーを落とさない）
 ```
+- **返り値は 3 状態**: `performTokenRefresh` は boolean ではなく `'refreshed' | 'auth_failed' | 'transient'` を返す。boolean だと「本物の認証失敗」と「一時的な失敗」が区別できず、回線が遅いだけのユーザーを誤ってログアウトさせてしまう
+- **`auth_failed` の判定は 401/403**: バックエンドは無効な refresh_token に対し `AUTH_007` を **401** で返す（`GlobalExceptionHandler.ERROR_CODE_STATUS_MAP`。`docs/security/06` §7.5）。`400` も認証失敗として受理するが、これは旧 BE・旧モバイルクライアント互換の後方互換措置であり、新規実装が 400 に依存してはならない
 - **二重リフレッシュ防止**: 複数リクエストが同時に 401 を受けた場合、リフレッシュ処理は1回だけ実行し、他のリクエストはその結果を待つ（Promise の共有パターン）
+- **二重ログアウト防止**: `auth_failed` は「先回りリフレッシュ経路」と「401 interceptor 経路」の双方から同時に観測され得るため、ログアウトは `handleAuthFailureLogout()` の single-flight ガードを必ず経由する（`navigateTo` の二重発火を防ぐ）
+
+### 先回り（proactive）リフレッシュ
+`armProactiveRefresh()` が access_token 失効の 60 秒前にリフレッシュを発火し、背景ポーラーが 401 ノイズを出す前にトークンを新鮮に保つ。発火結果による分岐は上記 3 状態と対応する:
+
+| 結果 | 挙動 |
+|---|---|
+| `refreshed` | 新しい失効時刻でタイマーを再武装する |
+| `transient` | 30 秒後に再武装してリトライする（ログアウトしない）|
+| `auth_failed` | **再武装せず**ログアウトする。リトライしても永久に回復しないため、再武装すると確実に失敗するリクエストを 30 秒おきに投げ続けるゾンビセッションになる |
+
+タイマーは常に 1 本のみ武装し、SSR では張らない（`import.meta.client` ガード）。ログアウト時は `disarmProactiveRefresh()` で解除する。
 
 ### 型安全な API 呼び出し
 OpenAPI Generator で自動生成された型を活用し、API レスポンスに型パラメータを付与する:
@@ -144,6 +173,7 @@ const created = await api<ApiResponse<TeamDetailResponse>>(
 - **送信方法**: APIリクエストごとに `Authorization: Bearer <token>` ヘッダーをプログラムで付与する。
 - **Cookie 使用禁止**: 認証トークンを Cookie に格納しないこと。Cookie を利用しないことで CSRF 攻撃を構造的に排除する。
 - **XSS対策との併用**: トークン漏洩（XSS）リスクに対しては、Access Token の有効期限を短く（15分）設定し、Refresh Token Rotation を併用することで軽減する。
+- **⚠️ 開発環境の罠（Refresh 用 Cookie は `SameSite=Strict`）**: `Authorization: Bearer` の他に、Refresh Token ローテーション用の `access_token` / `refresh_token` は BE から `SameSite=Strict` の Cookie としても発行される。SameSite の同一サイト判定はホスト名の文字列一致で行われるため、開発時にアプリを `http://127.0.0.1:3000` で開くと `http://localhost:8080` からの `Set-Cookie` が保存されない。ログイン直後は body のトークンが in-memory に載るため正常に見えるが、15分後の先回りリフレッシュ（`armProactiveRefresh`）が Cookie 送信できず 401 となり強制ログアウトされる。**dev サーバーの URL は必ず `http://localhost:3000` を使うこと（`127.0.0.1` は使わない）**。`nuxt.config.ts` の `devServer.host` を `'::'`（デュアルスタック bind）にしてあるため、`localhost` / `127.0.0.1` / `[::1]` のいずれで叩いても正常に 200 が返る。再発防止テスト: `frontend/tests/e2e/real/auth-cookie-origin.spec.ts`。
 
 ### フロント・バック間のバリデーション同期
 - **方針**: バックエンドが提供する OpenAPI (Swagger) 仕様書を正（Single Source of Truth）とする。
@@ -516,3 +546,26 @@ date.toLocaleDateString(locale.value, { weekday: 'short' })
 1. **6 言語すべて**（ja/en/zh/ko/es/de）に同じファイル名で JSON を配置する（未翻訳ならひとまず日本語と同じ値で可、後で翻訳でもよい）。
 2. `nuxt.config.ts` の各ロケール定義の `files:` 配列にファイル名を追加する（6 箇所）。
 3. `npm run dev` で該当画面を目視し、キーが実テキストに解決されていることを確認する。
+
+---
+
+## 16. 日付入力（DatePicker）**【必須】**
+
+日付・日時の入力欄は PrimeVue の **`<DatePicker>` を使う**。`<Calendar>` は PrimeVue 3 時代の名前で、v4 では `DatePicker` を継承した非推奨エイリアス（マウント時に `console.warn` を出す）にすぎない。新規に書かないこと。
+
+### 手入力（キーボード入力）は共通パッチで担保されている
+
+PrimeVue 4.5.4 の `DatePicker` には、**キーボードで日付を打つと桁が落ちる**欠陥がある（CMP-260910-1557）。
+
+- 入力欄は `<InputText :defaultValue="inputFieldValue">` として描画され、`InputText` 側は `:value="d_value"` で DOM を完全制御している。
+- 1打鍵ごとに `onInput` がモデルを更新すると `inputFieldValue`（ゼロ詰め済みの整形文字列）が変化し、**利用者が打っている途中の文字列が整形済み文字列で上書きされる**。さらに `DatePicker` の `updated()` が打鍵前のキャレット位置を復元するため、桁がずれた位置に次の文字が入る。
+- 結果、`2026/09/30` と打つと `2026/09/03` が**無警告で保存される**（途中表示は `2026/09/003`）。
+
+この欠陥は `app/plugins/primevue-datepicker-manual-input.client.ts` が `primevue/datepicker` のコンポーネント定義そのものにパッチを当てることで、**アプリ内の全 `<DatePicker>` に一括で効く**。実装は `app/utils/primevueDatePickerManualInput.ts`。
+
+したがって:
+
+- **画面ごとに `@input` を握って自前で整形し直すなどの個別対処をしないこと。** 共通パッチと二重に DOM を書き換えると再び桁ずれる。
+- パッチは区切り文字も正規化するため、`dateFormat` が `yy/mm/dd` の欄に `2026-09-30` や `２０２６年９月３０日` と打っても受理される。
+- 正規化は `selectionMode` を見て、**日付どうしの区切り**（範囲選択の ` - `、複数選択の `,`）で一旦分割してから各日付を個別に処理する。これをしないと `dateFormat="yy/mm/dd"` の範囲選択で `2026/09/01 - 2026/09/30` の ` - ` まで `/` に置換され、`parseValue()` が終了日を分割できず**モデルが無警告で更新されなくなる**。範囲選択の日付欄を新設する場合も画面側の対処は不要だが、この分割規則は PrimeVue の `parseValue()` 実装に追随させること。
+- PrimeVue を更新した際は `tests/unit/components/datepicker/manualInput.spec.ts` が回帰の番人になる。上流が修正されたらパッチを外し、このテストだけ残すこと。

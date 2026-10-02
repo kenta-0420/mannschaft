@@ -13,8 +13,6 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
-import lombok.Builder;
-import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,7 +28,8 @@ import java.util.UUID;
  * 「チーム ADMIN 個人の Stripe Customer で立替課金」（案3・README §6.3）して支払う。</p>
  *
  * <p>状態遷移:
- * {@code DRAFT}（発行）→ {@code SENT}（配信）→ {@code VIEWED}（閲覧）→ {@code PAID}（支払い）。
+ * {@code DRAFT}（発行）→ {@code SENT}（配信）→ {@code VIEWED}（閲覧）→ {@code PROCESSING}（決済処理中）→
+ * {@code PAID}（成功 webhook 確定）。
  * 期限超過は @Scheduled バッチが {@code SENT}/{@code VIEWED} → {@code OVERDUE}。{@code DRAFT}/{@code SENT}
  * は {@code CANCELLED} 可。再請求は CANCELLED 後に新行を起票し旧行の {@code supersededById} に新行を指す。</p>
  *
@@ -107,6 +106,9 @@ public class PaymentRequestEntity extends UuidV7Entity {
     @Column(name = "status", nullable = false, length = 12)
     @Builder.Default
     private PaymentRequestStatus status = PaymentRequestStatus.DRAFT;
+
+    @Column(name = "current_payment_attempt_id")
+    private UUID currentPaymentAttemptId;
 
     /** 支払い時に money rail へ連結（F22.1 escrow）。論理参照・FK なし。 */
     @Column(name = "escrow_transaction_id")
@@ -231,5 +233,22 @@ public class PaymentRequestEntity extends UuidV7Entity {
         this.status = PaymentRequestStatus.PAID;
         this.escrowTransactionId = escrowTransactionId;
         this.paidAt = LocalDateTime.now();
+    }
+
+    public void markAsProcessing(UUID attemptId, UUID escrowTransactionId) {
+        this.status = PaymentRequestStatus.PROCESSING;
+        this.currentPaymentAttemptId = attemptId;
+        this.escrowTransactionId = escrowTransactionId;
+    }
+
+    /** 現在の試行だけが失敗時に開始前状態へ戻せる。古い試行の webhook は現行状態を変更しない。 */
+    public boolean restoreAfterFailedPaymentAttempt(UUID attemptId, PaymentRequestStatus previousStatus) {
+        if (!attemptId.equals(this.currentPaymentAttemptId)) {
+            return false;
+        }
+        this.status = previousStatus;
+        this.currentPaymentAttemptId = null;
+        this.escrowTransactionId = null;
+        return true;
     }
 }

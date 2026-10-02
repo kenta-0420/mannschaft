@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.entity;
 import com.mannschaft.app.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
@@ -10,19 +11,28 @@ import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
+import java.time.Instant;
 import java.time.LocalTime;
 
 /**
  * シフト枠エンティティ。特定日時のシフト枠を管理する。
  */
 @Entity
-@Table(name = "shift_slots")
+@SQLRestriction("deleted_at IS NULL")
+@Table(name = "shift_slots", indexes = {
+        @Index(name = "idx_sslot_schedule_date", columnList = "schedule_id, slot_date, start_time")
+})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
 public class ShiftSlotEntity extends BaseEntity {
+
+    /** 論理削除日時。native UPDATE だけが書き込み、古い実体の save では蘇生させない。 */
+    @Column(name = "deleted_at", insertable = false, updatable = false)
+    private Instant deletedAt;
 
     @Column(nullable = false)
     private Long scheduleId;
@@ -37,6 +47,16 @@ public class ShiftSlotEntity extends BaseEntity {
     private LocalTime endTime;
 
     private Long positionId;
+
+    /**
+     * 翌日終了（日跨ぎ）か。設計 F03.5 §11.2.5 規則5。
+     *
+     * <p>既存行は日跨ぎでないため既定 {@code false}（DDL も {@code ends_next_day BOOLEAN NOT NULL DEFAULT FALSE}）。
+     * 日跨ぎは本フラグで明示し、暗黙の {@code end_time < start_time} では表現しない。</p>
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean endsNextDay = false;
 
     @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
@@ -77,9 +97,11 @@ public class ShiftSlotEntity extends BaseEntity {
      * @param requiredCount   新必要人数（null なら現値維持）
      * @param assignedUserIds 新割当ユーザーID JSON（null なら現値維持）
      * @param note            新メモ（null なら現値維持）
+     * @param endsNextDay     新・日跨ぎフラグ（null なら現値維持）
      */
     public void applyUpdate(LocalDate slotDate, LocalTime startTime, LocalTime endTime,
-                            Long positionId, Integer requiredCount, String assignedUserIds, String note) {
+                            Long positionId, Integer requiredCount, String assignedUserIds, String note,
+                            Boolean endsNextDay) {
         if (slotDate != null) {
             this.slotDate = slotDate;
         }
@@ -101,6 +123,18 @@ public class ShiftSlotEntity extends BaseEntity {
         if (note != null) {
             this.note = note;
         }
+        if (endsNextDay != null) {
+            this.endsNextDay = endsNextDay;
+        }
+    }
+
+    /**
+     * 日跨ぎか（{@code null} を {@code false} に畳んだ値）。
+     *
+     * @return 翌日終了なら true
+     */
+    public boolean isEndsNextDay() {
+        return Boolean.TRUE.equals(this.endsNextDay);
     }
 
     /**

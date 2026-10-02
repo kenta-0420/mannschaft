@@ -1,5 +1,6 @@
 package com.mannschaft.app.parking.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.parking.ApplicationStatus;
 import com.mannschaft.app.parking.ParkingApplicationStatus;
@@ -58,6 +59,9 @@ class ParkingApplicationServiceTest {
     @Mock
     private ProxyInputRecordRepository proxyInputRecordRepository;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private ParkingApplicationService parkingApplicationService;
 
@@ -65,6 +69,8 @@ class ParkingApplicationServiceTest {
     // テスト用定数・ヘルパー
     // ========================================
 
+    private static final String SCOPE_TYPE = "TEAM";
+    private static final Long SCOPE_ID = 1L;
     private static final Long SPACE_ID = 1L;
     private static final Long USER_ID = 100L;
     private static final Long VEHICLE_ID = 200L;
@@ -279,11 +285,13 @@ class ParkingApplicationServiceTest {
             // Given
             ParkingApplicationEntity entity = createPendingApplication();
             given(applicationRepository.findById(APPLICATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createAcceptingSpace()));
             given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(parkingMapper.toApplicationResponse(any())).willReturn(createApplicationResponse());
 
             // When
-            ApplicationResponse result = parkingApplicationService.approve(APPLICATION_ID);
+            ApplicationResponse result = parkingApplicationService.approve(SCOPE_TYPE, SCOPE_ID, APPLICATION_ID, USER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -297,11 +305,13 @@ class ParkingApplicationServiceTest {
             // Given
             ParkingApplicationEntity entity = createLotteryPendingApplication();
             given(applicationRepository.findById(APPLICATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createAcceptingSpace()));
             given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(parkingMapper.toApplicationResponse(any())).willReturn(createApplicationResponse());
 
             // When
-            ApplicationResponse result = parkingApplicationService.approve(APPLICATION_ID);
+            ApplicationResponse result = parkingApplicationService.approve(SCOPE_TYPE, SCOPE_ID, APPLICATION_ID, USER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -315,7 +325,23 @@ class ParkingApplicationServiceTest {
             given(applicationRepository.findById(APPLICATION_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> parkingApplicationService.approve(APPLICATION_ID))
+            assertThatThrownBy(() -> parkingApplicationService.approve(SCOPE_TYPE, SCOPE_ID, APPLICATION_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("PARKING_004"));
+        }
+
+        @Test
+        @DisplayName("異常系: 他スコープの申請はPARKING_004例外（BOLA防止）")
+        void approve_他スコープ_PARKING004例外() {
+            // Given
+            ParkingApplicationEntity entity = createPendingApplication();
+            given(applicationRepository.findById(APPLICATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.empty());
+
+            // When / Then
+            assertThatThrownBy(() -> parkingApplicationService.approve(SCOPE_TYPE, SCOPE_ID, APPLICATION_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_004"));
@@ -328,9 +354,11 @@ class ParkingApplicationServiceTest {
             ParkingApplicationEntity entity = createPendingApplication();
             entity.approve(); // 既にAPPROVED
             given(applicationRepository.findById(APPLICATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createAcceptingSpace()));
 
             // When / Then
-            assertThatThrownBy(() -> parkingApplicationService.approve(APPLICATION_ID))
+            assertThatThrownBy(() -> parkingApplicationService.approve(SCOPE_TYPE, SCOPE_ID, APPLICATION_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_015"));
@@ -352,11 +380,13 @@ class ParkingApplicationServiceTest {
             ParkingApplicationEntity entity = createPendingApplication();
             RejectApplicationRequest request = new RejectApplicationRequest("条件不備");
             given(applicationRepository.findById(APPLICATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createAcceptingSpace()));
             given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(parkingMapper.toApplicationResponse(any())).willReturn(createApplicationResponse());
 
             // When
-            ApplicationResponse result = parkingApplicationService.reject(APPLICATION_ID, request);
+            ApplicationResponse result = parkingApplicationService.reject(SCOPE_TYPE, SCOPE_ID, APPLICATION_ID, request, USER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -371,7 +401,8 @@ class ParkingApplicationServiceTest {
             given(applicationRepository.findById(APPLICATION_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> parkingApplicationService.reject(APPLICATION_ID, new RejectApplicationRequest("理由")))
+            assertThatThrownBy(() -> parkingApplicationService.reject(SCOPE_TYPE, SCOPE_ID, APPLICATION_ID,
+                    new RejectApplicationRequest("理由"), USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_004"));
@@ -384,9 +415,12 @@ class ParkingApplicationServiceTest {
             ParkingApplicationEntity entity = createPendingApplication();
             entity.cancel();
             given(applicationRepository.findById(APPLICATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createAcceptingSpace()));
 
             // When / Then
-            assertThatThrownBy(() -> parkingApplicationService.reject(APPLICATION_ID, new RejectApplicationRequest("理由")))
+            assertThatThrownBy(() -> parkingApplicationService.reject(SCOPE_TYPE, SCOPE_ID, APPLICATION_ID,
+                    new RejectApplicationRequest("理由"), USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_015"));
@@ -402,18 +436,38 @@ class ParkingApplicationServiceTest {
     class Cancel {
 
         @Test
-        @DisplayName("正常系: 申請がキャンセルされる")
+        @DisplayName("正常系: 申請者本人がキャンセルできる")
         void cancel_正常_キャンセルされる() {
             // Given
             ParkingApplicationEntity entity = createPendingApplication();
             given(applicationRepository.findById(APPLICATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createAcceptingSpace()));
 
             // When
-            parkingApplicationService.cancel(APPLICATION_ID, USER_ID);
+            parkingApplicationService.cancel(SCOPE_TYPE, SCOPE_ID, APPLICATION_ID, USER_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(ParkingApplicationStatus.CANCELLED);
             verify(applicationRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("正常系: 本人以外でもADMIN以上ならキャンセルできる")
+        void cancel_ADMIN_キャンセルされる() {
+            // Given
+            ParkingApplicationEntity entity = createPendingApplication(); // userId=USER_ID
+            Long adminUserId = 999L;
+            given(applicationRepository.findById(APPLICATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createAcceptingSpace()));
+
+            // When
+            parkingApplicationService.cancel(SCOPE_TYPE, SCOPE_ID, APPLICATION_ID, adminUserId);
+
+            // Then: checkAdminOrAbove が呼ばれる（申請者本人でないため）
+            verify(accessControlService).checkAdminOrAbove(adminUserId, SCOPE_ID, SCOPE_TYPE);
+            assertThat(entity.getStatus()).isEqualTo(ParkingApplicationStatus.CANCELLED);
         }
 
         @Test
@@ -423,7 +477,7 @@ class ParkingApplicationServiceTest {
             given(applicationRepository.findById(APPLICATION_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> parkingApplicationService.cancel(APPLICATION_ID, USER_ID))
+            assertThatThrownBy(() -> parkingApplicationService.cancel(SCOPE_TYPE, SCOPE_ID, APPLICATION_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_004"));
@@ -436,9 +490,11 @@ class ParkingApplicationServiceTest {
             ParkingApplicationEntity entity = createPendingApplication();
             entity.reject("拒否理由");
             given(applicationRepository.findById(APPLICATION_ID)).willReturn(Optional.of(entity));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createAcceptingSpace()));
 
             // When / Then
-            assertThatThrownBy(() -> parkingApplicationService.cancel(APPLICATION_ID, USER_ID))
+            assertThatThrownBy(() -> parkingApplicationService.cancel(SCOPE_TYPE, SCOPE_ID, APPLICATION_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_015"));
@@ -458,7 +514,8 @@ class ParkingApplicationServiceTest {
         void executeLottery_正常_抽選実行() {
             // Given
             ParkingSpaceEntity space = createAcceptingSpace();
-            given(spaceRepository.findById(SPACE_ID)).willReturn(Optional.of(space));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(space));
 
             ParkingApplicationEntity app1 = createPendingApplication();
             ParkingApplicationEntity app2 = ParkingApplicationEntity.builder()
@@ -468,7 +525,7 @@ class ParkingApplicationServiceTest {
             given(parkingMapper.toApplicationResponseList(anyList())).willReturn(List.of(createApplicationResponse()));
 
             // When
-            java.util.List<ApplicationResponse> result = parkingApplicationService.executeLottery(SPACE_ID);
+            java.util.List<ApplicationResponse> result = parkingApplicationService.executeLottery(SCOPE_TYPE, SCOPE_ID, SPACE_ID, USER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -483,10 +540,11 @@ class ParkingApplicationServiceTest {
         @DisplayName("異常系: 区画が見つからない場合PARKING_001例外")
         void executeLottery_区画不在_PARKING001例外() {
             // Given
-            given(spaceRepository.findById(SPACE_ID)).willReturn(Optional.empty());
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> parkingApplicationService.executeLottery(SPACE_ID))
+            assertThatThrownBy(() -> parkingApplicationService.executeLottery(SCOPE_TYPE, SCOPE_ID, SPACE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_001"));
@@ -496,12 +554,13 @@ class ParkingApplicationServiceTest {
         @DisplayName("異常系: 候補者がいない場合PARKING_033例外")
         void executeLottery_候補者なし_PARKING033例外() {
             // Given
-            given(spaceRepository.findById(SPACE_ID)).willReturn(Optional.of(createAcceptingSpace()));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createAcceptingSpace()));
             given(applicationRepository.findBySpaceIdAndStatus(SPACE_ID, ParkingApplicationStatus.PENDING))
                     .willReturn(List.of());
 
             // When / Then
-            assertThatThrownBy(() -> parkingApplicationService.executeLottery(SPACE_ID))
+            assertThatThrownBy(() -> parkingApplicationService.executeLottery(SCOPE_TYPE, SCOPE_ID, SPACE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_033"));
@@ -512,14 +571,15 @@ class ParkingApplicationServiceTest {
         void executeLottery_候補者1人_抽選実行() {
             // Given
             ParkingSpaceEntity space = createAcceptingSpace();
-            given(spaceRepository.findById(SPACE_ID)).willReturn(Optional.of(space));
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(space));
             ParkingApplicationEntity singleApp = createPendingApplication();
             given(applicationRepository.findBySpaceIdAndStatus(SPACE_ID, ParkingApplicationStatus.PENDING))
                     .willReturn(List.of(singleApp));
             given(parkingMapper.toApplicationResponseList(anyList())).willReturn(List.of(createApplicationResponse()));
 
             // When
-            java.util.List<ApplicationResponse> result = parkingApplicationService.executeLottery(SPACE_ID);
+            java.util.List<ApplicationResponse> result = parkingApplicationService.executeLottery(SCOPE_TYPE, SCOPE_ID, SPACE_ID, USER_ID);
 
             // Then
             assertThat(result).isNotNull();

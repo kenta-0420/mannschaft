@@ -1,9 +1,12 @@
 package com.mannschaft.app.auth;
 
+import com.mannschaft.app.auth.AuditEventCategory;
+import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.auth.dto.LoginHistoryResponse;
 import com.mannschaft.app.auth.dto.SessionResponse;
 import com.mannschaft.app.auth.entity.RefreshTokenEntity;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
+import com.mannschaft.app.auth.service.AuditLogQueryService;
 import com.mannschaft.app.auth.service.AuthSessionService;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.ApiResponse;
@@ -27,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -50,6 +54,9 @@ class AuthSessionServiceTest {
 
     @Mock
     private DomainEventPublisher eventPublisher;
+
+    @Mock
+    private AuditLogQueryService auditLogQueryService;
 
     @InjectMocks
     private AuthSessionService authSessionService;
@@ -268,11 +275,20 @@ class AuthSessionServiceTest {
     class GetLoginHistory {
 
         @Test
-        @DisplayName("正常系: 空のログイン履歴が返る（未実装）")
+        @DisplayName("正常系: AuditLogQueryServiceからAUTHカテゴリのログを取得する")
         void getLoginHistory_正常_空リスト() {
+            // Given
+            CursorPagedResponse<AuditLogResponse> emptyResponse = CursorPagedResponse.of(
+                    List.of(),
+                    new CursorPagedResponse.CursorMeta(null, false, 10));
+            given(auditLogQueryService.getMyLogs(
+                    eq(1L), isNull(), eq(List.of(AuditEventCategory.AUTH)),
+                    isNull(), isNull(), isNull(), eq(10)))
+                    .willReturn(emptyResponse);
+
             // When
             CursorPagedResponse<LoginHistoryResponse> response =
-                    authSessionService.getLoginHistory(1L, null, 10);
+                    authSessionService.getLoginHistory(1L, null, 10, null, null);
 
             // Then
             assertThat(response.getData()).isEmpty();

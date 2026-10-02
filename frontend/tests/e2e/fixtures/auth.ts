@@ -15,8 +15,21 @@ import { waitForHydration } from '../helpers/wait'
 export async function loginViaApi(
   page: Page,
   credentials: { email: string; password: string },
+  options: { apiBaseUrl?: string; deferNavigation?: boolean } = {},
 ): Promise<void> {
-  const loginRes = await page.request.post('/api/v1/auth/login', {
+  // FE dev server が /api/v1/** をプロキシしていない場合 (NUXT_API_PROXY=true 未設定)、
+  // バックエンドへ完全 URL で直接リクエストする。
+  // Cookie の domain は 'localhost' で統一されているため、
+  // :8080 に送った Set-Cookie も :3000 起源のブラウザコンテキストで有効になる。
+  const apiBase = options.apiBaseUrl ?? process.env.API_BASE_URL ?? ''
+
+  if (!options.deferNavigation) {
+    // storageState を生成する既存呼び出しでは、localStorage のオリジンを先に確立する。
+    // SSR が重い画面を開く必要はなく、同一オリジンの静的ファイルで localStorage を確立する。
+    await page.goto('/robots.txt', { waitUntil: 'domcontentloaded' })
+  }
+
+  const loginRes = await page.request.post(`${apiBase}/api/v1/auth/login`, {
     data: { email: credentials.email, password: credentials.password },
   })
   if (!loginRes.ok()) {
@@ -26,7 +39,7 @@ export async function loginViaApi(
   }
 
   // フルプロフィール取得（access_token Cookie は page.request が自動送信する）
-  const meRes = await page.request.get('/api/v1/users/me')
+  const meRes = await page.request.get(`${apiBase}/api/v1/users/me`)
   if (!meRes.ok()) {
     throw new Error(`/api/v1/users/me 取得失敗: ${meRes.status()} ${await meRes.text()}`)
   }
@@ -39,15 +52,16 @@ export async function loginViaApi(
     systemRole: string | null
     timezone: string | null
   }
+  const accessTokenCookie = (await page.context().cookies()).find(
+    (cookie) => cookie.name === 'access_token',
+  )
+  if (!accessTokenCookie || accessTokenCookie.expires <= 0) {
+    throw new Error('API ログイン成功後の access_token Cookie に有効期限がありません')
+  }
+  const tokenExpiresAt = accessTokenCookie.expires * 1000
 
-  // アプリのオリジンへ遷移してから localStorage を書き込む（オリジンに紐づくため）。
-  // useAuthStore は currentUser の有無で isAuthenticated を判定する。
-  await page.goto('/')
-  await page.evaluate(
-    (user) => {
-      localStorage.setItem('currentUser', JSON.stringify(user))
-    },
-    {
+  const authState = {
+    user: {
       id: me.id,
       email: me.email,
       fullName: `${me.lastName} ${me.firstName}`,
@@ -55,7 +69,19 @@ export async function loginViaApi(
       systemRole: me.systemRole ?? undefined,
       timezone: me.timezone ?? undefined,
     },
-  )
+    expiresAt: tokenExpiresAt,
+  }
+  const restoreAuth = ({ user, expiresAt }: typeof authState) => {
+      localStorage.setItem('currentUser', JSON.stringify(user))
+      localStorage.setItem('tokenExpiresAt', String(expiresAt))
+  }
+
+  if (options.deferNavigation) {
+    // 重い SSR を避ける実機テストでは、初回 document のアプリコードより先に復元する。
+    await page.addInitScript(restoreAuth, authState)
+  } else {
+    await page.evaluate(restoreAuth, authState)
+  }
 }
 
 export type AuthFixtures = {
@@ -101,7 +127,11 @@ export async function loginAs(
   await passwordInput.click()
   await passwordInput.pressSequentially(credentials.password, { delay: 10 })
 
-  await page.getByRole('button', { name: 'ログイン' }).click()
+  // exact: true が必須。login.vue には「Googleでログイン」ボタンも存在し、
+  // exact 指定なしだと部分一致で2要素にマッチして strict mode violation になる
+  // （2026-07-14 F09.19 実機E2E作成時に発見。module-settings-catalog.spec.ts は
+  // 独自ログイン関数で exact: true 済みだったが、共有ヘルパーの本箇所は未修正だった）。
+  await page.getByRole('button', { name: 'ログイン', exact: true }).click()
   // ログイン成功後は '/' にリダイレクトされる（login.vue の navigateTo(redirect) デフォルト値）
   // dev サーバーはダッシュボード SSR が重いため commit まで待ち、タイムアウトを 30s に延ばす
   await page.waitForURL((url) => !url.pathname.includes('/login'), {

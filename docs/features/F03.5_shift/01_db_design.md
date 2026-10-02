@@ -9,13 +9,13 @@
 |-----------|------|---------|
 | `shift_schedules` | シフトスケジュールマスター（期間・状態・設定） | あり |
 | `shift_positions` | チームのポジションマスター（表示名・並び順） | なし |
-| `shift_slots` | 個別のシフト枠（日付・時間帯・ポジション・必要人数）。同一日に複数スロットを定義可能（時間帯分割） | なし |
-| `shift_requests` | メンバーのシフト希望（希望収集フェーズ）。preference は5段階 | なし |
+| `shift_slots` | 個別のシフト枠（日付・時間帯・ポジション・必要人数）。同一日に複数スロットを定義可能（時間帯分割） | 親削除時に連鎖 |
+| `shift_requests` | メンバーのシフト希望（希望収集フェーズ）。preference は5段階 | 親削除時に連鎖 |
 | `shift_swap_requests` | 公開後のシフト交代リクエスト（1 対 1 指名＋**【v2.1】**オープンコール全体募集） | なし |
 | `shift_change_requests` | **【v2.1 新規】** 確定前（DRAFT/COLLECTING/ADJUSTING）の割当変更依頼 | なし |
 | `member_availability_defaults` | メンバーの週間デフォルト可否プロファイル。preference は5段階 | なし |
 | `shift_hourly_rates` | メンバーの時給設定（給与概算表示用） | なし |
-| `shift_assignments` | 自動割当の実行結果履歴（監査・差し戻し用）【v2 新規】 | なし |
+| `shift_assignments` | 自動割当の実行結果履歴（監査・差し戻し用）【v2 新規】 | 親削除時に連鎖 |
 | `member_work_constraints` | メンバー単位の任意勤務制約（月次時間上限・連勤上限等）【v2 新規】 | なし |
 | `shift_assignment_runs` | 自動割当バッチの実行ログ（実行ユーザー・戦略・実行時間・警告集計・**【v2.1】**目視確認承認記録） | なし |
 
@@ -58,7 +58,11 @@ INDEX idx_shift_schedules_period (start_date, end_date)         -- 期間指定�
 **制約・備考**
 - `status` のライフサイクル: `DRAFT` → `COLLECTING`（希望収集開始）→ `ADJUSTING`（希望締切後、管理者調整中）→ `PUBLISHED`（確定・公開）→ `ARCHIVED`（期間終了後）
 - `COLLECTING` 状態の `shift_schedules` は同一チーム内で同時に複数存在可能（複数週分の希望を並行収集）
-- 論理削除時: 配下の `shift_slots` と `shift_requests` はそのまま保持（復元時に復活）
+- 論理削除時: 親行を排他ロックし、壁時計から得た秒精度の同一削除日時を `shift_assignments` → `shift_requests` → `shift_slots` → 親 `shift_schedules` の固定4更新で設定する。全更新は同一トランザクションで、子更新の失敗時には親の更新SQLを実行せず全体をロールバックする。行・ID・業務値は保持し、通常読取では `@SQLRestriction` で非表示とする（CMP-260923-0953）。復元機能は設けない。
+- 子の作成・更新と親削除は親行の排他ロックで直列化する。削除コミット後の子追加を拒否し、削除途中の失敗は親子ともロールバックする。
+- 既存の削除済み親配下の子は移行時に親の `deleted_at` をコピーする。既に子へ削除日時が設定されている場合は保持する。件数を固定せず、ID・希望・割当状態・JSON・操作者を変更しない。
+- `GET /shifts/my/requests` の提出履歴は本人の `user_id` を条件に削除済み子も取得し、`scheduleDeleted=true` で表示する。子詳細・更新へのアクセスは404とする。
+- コードを旧版に戻す場合も追加列と保存行を保持する。削除日時の一括リセット・列DROPは復元手段として行わず、移行前後の対象IDと件数を比較する。
 - `period_type = 'CUSTOM'` は任意期間（例: 年末年始シフト等の変則期間）に使用
 - `start_date` と `end_date` のバリデーション: `end_date >= start_date`。WEEKLY の場合は `end_date - start_date = 6日`、MONTHLY の場合は `start_date` が月初、`end_date` が月末であることを Service 層で検証
 - `version`: 楽観的ロック（.claudecode.md §22）。PUT / PATCH 更新時に `WHERE version = :expected` で競合検出。競合時は 409 Conflict を返却
@@ -102,9 +106,11 @@ INDEX idx_shift_positions_team (team_id, display_order)              -- チー�
 | `slot_date` | DATE | NO | — | シフト日付（深夜跨ぎスロットの場合は開始日を格納。例: 22:00-06:00 のスロットは slot_date = 開始日） |
 | `start_time` | TIME | NO | — | 開始時刻 |
 | `end_time` | TIME | NO | — | 終了時刻 |
+| `ends_next_day` | BOOLEAN | NO | FALSE | 翌日終了（日跨ぎ）か。日跨ぎは本フラグで**明示**し、暗黙の `end_time < start_time` では表現しない（設計 §11.2.5 規則5・`06_manual_authoring.md`）。導入時のマイグレーション（V208）で既存の `end_time < start_time` の行を TRUE へバックフィルする（`end_time = start_time` の枠長ゼロ行は 24 時間枠を捏造しないため FALSE のまま） |
 | `position_id` | BIGINT UNSIGNED | YES | NULL | FK → shift_positions。ON DELETE SET NULL。NULL = ポジション指定なし |
 | `required_count` | TINYINT UNSIGNED | NO | 1 | 必要人数（時間帯単位） |
 | `assigned_user_ids` | JSON | YES | NULL | 確定した担当者の user_id 配列（例: `[10, 11, 12]`）。公開前は NULL |
+| `deleted_at` | DATETIME | YES | NULL | 親削除時の論理削除日時。既設定の日時は保持する |
 | `note` | VARCHAR(200) | YES | NULL | 枠ごとの備考（例: 「新人研修あり」） |
 | `version` | BIGINT | NO | 0 | 楽観的ロックバージョン（@Version） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
@@ -122,7 +128,7 @@ INDEX idx_shift_slots_schedule_position (schedule_id, position_id, slot_date)  -
 - **時間帯分割（v2）**: 同一 `schedule_id + slot_date + position_id` に対し複数レコードを INSERT することで、時間帯別の必要人数設定を実現する。UNIQUE 制約は敢えて設けない（同日同ポジションで時間帯違いの複数枠を許容するため）。時間帯の重複は Service 層で検証し、完全重複（`start_time` と `end_time` が同一）は 409 エラー、部分重複は警告のみ（意図的な重複配置を許容。例: フル出勤者と短時間出勤者を同枠に配置）
 - `assigned_user_ids` は JSON 配列で管理。正規化テーブルも検討したが、シフト枠あたりの割り当て人数が少数（通常1〜5人）のため JSON で十分。配列内の各 user_id はチームメンバーであることを Service 層で検証する。`GET /shifts/my` での検索（`JSON_CONTAINS`）はインデックスが効かないため、パフォーマンスが課題になった場合は Valkey キャッシュ（`mannschaft:cache:user-shifts:{userId}`、TTL 30分、シフト公開・変更時に無効化）で対応する
 - `position_id`: FK → shift_positions。ポジションマスターから選択。`ON DELETE SET NULL` によりポジション削除時もスロットは保持（ポジション無指定扱いになる）。API レスポンスでは `position` オブジェクト（`{ "id": 1, "name": "ホール" }`）として返却
-- スロットの削除は物理削除（論理削除不要。`shift_schedules` の論理削除で管理単位ごと保持する設計）
+- 単独のスロット削除も `deleted_at DATETIME NULL` による論理削除とし、枠に紐づく割当と枠指定希望へ同じ削除日時を連鎖する。日単位希望は巻き込まない。親シフト表の削除時は全子へ親と同じ削除日時を連鎖する。
 - `required_count` と `assigned_user_ids` の要素数が一致しない場合は「欠員」として UI で表示する
 - `version`: 楽観的ロック。複数の ADMIN/DEPUTY_ADMIN が同一スロットの `assigned_user_ids` を同時編集する競合を防止。PUT 更新時に競合検出、409 Conflict を返却
 - **既存スロットの移行（v2）**: v1 時点で存在する単一時間帯スロットはそのまま有効。v2 UI は同一日の複数スロットを時間軸に沿ってタイムラインで描画する
@@ -130,6 +136,8 @@ INDEX idx_shift_slots_schedule_position (schedule_id, position_id, slot_date)  -
 #### `shift_requests`
 
 メンバーのシフト希望。希望収集フェーズ（`COLLECTING`）中にメンバーが提出する。
+
+単独の希望取り下げは `delete_reason=WITHDRAWN` の論理削除、枠削除の連鎖は `SLOT_DELETED`、親削除の連鎖は `PARENT_DELETED` とする。本人履歴に復元表示するのは `PARENT_DELETED` だけである。`active_uq` 生成列を一意制約へ含めるため、取り下げ後は同じ希望を再提出できる。`ARCHIVED` 後30日経過の cleanup は削除理由を問わず物理削除する。
 
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|---|------|-----------|------|
@@ -141,11 +149,14 @@ INDEX idx_shift_slots_schedule_position (schedule_id, position_id, slot_date)  -
 | `preference` | VARCHAR(20) | NO | — | 希望度（**v2 5段階**: PREFERRED / AVAILABLE / WEAK_REST / STRONG_REST / ABSOLUTE_REST） |
 | `note` | VARCHAR(200) | YES | NULL | 補足コメント（例: 「午後なら可」「早番希望」） |
 | `submitted_at` | DATETIME | NO | CURRENT_TIMESTAMP | 提出日時 |
+| `deleted_at` | DATETIME | YES | NULL | 論理削除日時 |
+| `delete_reason` | VARCHAR(20) | YES | NULL | `WITHDRAWN` / `PARENT_DELETED` / `SLOT_DELETED`。NULL は有効行 |
+| `active_uq` | TINYINT（生成列） | YES | — | `IF(deleted_at IS NULL, 1, NULL)`。有効行だけ一意制約の対象にする |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 
 **インデックス**
 ```sql
-UNIQUE KEY uq_shift_requests_user_slot (schedule_id, user_id, slot_id, slot_date)  -- 同一ユーザーの同一枠の重複防止（※ slot_id が NULL の場合 MySQL の NULL!=NULL により制約が効かないため、Service 層で追加バリデーション必須）
+UNIQUE KEY uq_sr_schedule_user_slot_active (schedule_id, user_id, slot_id_uq, slot_date_uq, active_uq)  -- 有効な同一希望の重複防止。削除後の再提出は許可
 INDEX idx_shift_requests_schedule_user (schedule_id, user_id)                       -- ユーザー別の希望一覧
 INDEX idx_shift_requests_schedule_date (schedule_id, slot_date)                     -- 日付別の希望集計
 ```
@@ -189,7 +200,7 @@ INDEX idx_shift_requests_schedule_date (schedule_id, slot_date)                 
 | `claimed_by` | BIGINT UNSIGNED | YES | NULL | **【v2.1 新規】** FK → users。オープンコールで先着した候補メンバー（先着優先、楽観ロックで競合防止） |
 | `claimed_at` | DATETIME | YES | NULL | **【v2.1 新規】** `claimed_by` が決まった日時 |
 | `accepter_id` | BIGINT UNSIGNED | YES | NULL | FK → users。実際に交代を引き受けるメンバー。個別交代では指名相手、オープンコールでは `claimed_by` と同値になるのが通常。管理者が別候補に差し替えると上書き可能 |
-| `status` | VARCHAR(20) | NO | 'PENDING' | リクエスト状態（PENDING / OPEN_CALL / CLAIMED / ACCEPTED / APPROVED / REJECTED / CANCELLED） |
+| `status` | VARCHAR(20) | NO | 'PENDING' | リクエスト状態（PENDING / ACCEPTED / APPROVED / REJECTED / CANCELLED）。`OPEN_CALL` / `CLAIMED` は **廃止（CMP-260903-0655）**。enum 定数は旧行の読み出し互換のため残置しているが、新規に書き込む経路は無い |
 | `reason` | VARCHAR(500) | YES | NULL | 交代理由（例: 「体調不良のため」） |
 | `admin_note` | VARCHAR(500) | YES | NULL | 管理者コメント（承認・却下時） |
 | `resolved_by` | BIGINT UNSIGNED | YES | NULL | FK → users。承認・却下した管理者 |
@@ -210,12 +221,12 @@ INDEX idx_shift_swap_requests_target (target_user_id, status)         -- 【v2.1
 **制約・備考**
 - ステータスライフサイクル:
   - **個別交代（is_open_call=FALSE, target_user_id=NOT NULL）**: `PENDING` → `ACCEPTED`（指名相手が引き受け）→ `APPROVED`（管理者承認）/ `REJECTED`（管理者却下）/ `CANCELLED`（依頼者取下）
-  - **オープンコール（is_open_call=TRUE, target_user_id=NULL）**: `OPEN_CALL`（募集中）→ `CLAIMED`（先着メンバー確定 = `claimed_by` 記録）→ `ACCEPTED`（依頼者 or 管理者が候補を確定、`accepter_id` = `claimed_by`）→ `APPROVED` / `REJECTED` / `CANCELLED`
+  - **オープンコール（is_open_call=TRUE, target_user_id=NULL）**: `PENDING`（募集中）→ `ACCEPTED` → `APPROVED` / `REJECTED` / `CANCELLED`。**【CMP-260903-0655】** 当初設計の `OPEN_CALL` → `CLAIMED`（手挙げ→候補者選定）の2段階は、作成経路が status を `PENDING` のままにしており到達不能な半実装だったため削除した。`claimed_by` / `claimed_at` / `version` 列と `PATCH /{id}/claim` の記述も同時に失効している
 - `APPROVED` 時の処理: スロットの `assigned_user_ids` から `requester_id` を除去し `accepter_id` を追加（1トランザクション内）。両メンバーにプッシュ通知
-- 同一スロットに `PENDING` / `OPEN_CALL` / `CLAIMED` / `ACCEPTED` の交代リクエストは1件のみ（Service 層バリデーション）
+- 同一スロットに `PENDING` / `ACCEPTED` の交代リクエストは1件のみ（Service 層バリデーション）
 - `PUBLISHED` 状態のスケジュールに属するスロットのみ交代リクエスト可能
 - **【v2.1】`is_open_call` と `target_user_id` の排他**: CHECK 制約で `(is_open_call = TRUE AND target_user_id IS NULL) OR (is_open_call = FALSE)` を強制
-- **【v2.1】`claimed_by` のレース条件対策**: 楽観的ロック（@Version）で「最初に `PATCH /{id}/claim` を発行した者が勝ち」のセマンティクスを保証。2人目以降は 409 Conflict で差し戻し、UI で「別の方が先に応じたため締め切られました」と Toast 表示
+- ~~**【v2.1】`claimed_by` のレース条件対策**~~ → **廃止（CMP-260903-0655）**。手挙げ API ごと削除したため、`claimed_by` / `claimed_at` は書き込まれない（列は既存行のため残置）
 - **【v2.1】オープンコールの悪用防止**: 同一ユーザーが 1 ヶ月（作成時点の年月）に作成できるオープンコール数の上限を **3 件** とする。超過時は 429 Too Many Requests。カウントは `SELECT COUNT(*) FROM shift_swap_requests WHERE requester_id = ? AND is_open_call = TRUE AND YEAR(created_at) = ? AND MONTH(created_at) = ?` で判定
 - **【v2.1】チーム全員への通知**: オープンコール作成時、チームメンバー全員（自分・SUPPORTER・GUEST を除く）にプッシュ + アプリ内通知を配信。ただし個人設定で「代打募集通知を受け取らない」を ON にしたユーザーは送信対象から除外（F04.3 通知設定を参照）
 - **【v2.1】候補選定の裁量**: `CLAIMED` 状態でも管理者（ADMIN/DEPUTY_ADMIN）は `accepter_id` を別メンバーに差し替える裁量を持つ（例: 先着者がスキル不足の場合、他候補に差し替えて `ACCEPTED` に進める）。依頼者は差し替え不可（管理者のみ）
@@ -338,6 +349,40 @@ INDEX idx_hourly_rates_team (team_id, user_id)                                 -
 
 自動割当の実行結果を保存する監査・差し戻し用のテーブル。`shift_slots.assigned_user_ids` は「現在の割当状態」を示すキャッシュ的な JSON 配列であるのに対し、本テーブルは「誰がいつどの戦略で割り当てたか」を個別レコードとして履歴保持する。手動割当も自動割当も同じテーブルに記録する。
 
+##### 二表の役割分担（正本はどちらか）— CMP-260908-2117
+
+| 観点 | `shift_slots.assigned_user_ids`（JSON） | `shift_assignments` |
+|---|---|---|
+| 役割 | **現在の割当状態の正本** | 操作履歴（監査証跡） |
+| 読み出し | 自分のシフト／今後の予定／充足サマリー／PDF／タスク生成／人件費予算はすべてこちら | 状態問い合わせには使わない |
+| 書き込み | 手動割当・枠更新・自動割当の確定同期 | 手動割当・自動割当の双方が追記 |
+
+**この分担が守られていなかったことによる不具合（CMP-260908-2117）**: 読み出しのうち 3 経路
+（`ShiftMyService#getMyConfirmedSlots` / 個人ダッシュボードの「今後の予定」 / `ShiftScheduleService#getScheduleSummary`）が
+`shift_assignments.status = CONFIRMED` を現在状態として引いていた。しかし同表に書き込むのは
+`ShiftAutoAssignService` だけであり、手動割当（`PATCH /shifts/slots/{id}/assignments`・枠更新）は
+JSON 列にしか書かない。結果として**手動で割り当てられた人のシフトはどこにも表示されず**、
+管理者の充足サマリーも埋まった枠を「未充足」と表示していた。
+
+現在は上記 3 経路とも JSON 列を引く（MySQL の `JSON_CONTAINS` を使うネイティブクエリ。
+JPQL では表現できないため、この挙動を固定できるのは実 MySQL の統合テストだけである）。
+併せて手動割当も本表に履歴を残すようになった。
+
+**未公開シフト表の遮断（CMP-260826-2127 との関係）**: 旧実装では `status = CONFIRMED` が
+偶然の公開ガードとして働いていた面があるため、JSON 参照へ移す際に可視性条件を明示している。
+「自分のシフト」「今後の予定」は割当そのものを返す経路なので、通すのは
+`ShiftScheduleVisibilityPolicy.Visibility.FULL`（PUBLISHED / 公開済み ARCHIVED）だけであり、
+割当を伏せる `MASKED`（COLLECTING / ADJUSTING）も通さない。SQL 側の述語は
+`ShiftScheduleEntity.FULLY_VISIBLE_SQL` が唯一の定義を持つ。
+
+**手動割当の履歴の書き方**（`ShiftSlotService#recordAssignmentHistory`）:
+
+- 1 行 = 1 回の割当。`created_at` が割当時刻、`REVOKED` へ遷移した時の `updated_at` が解除時刻
+- **追加**: 当該 (slot, user) に非 REVOKED 行が無ければ `CONFIRMED` 行を INSERT（`run_id` は NULL = 手動、`assigned_by` は操作者）。既にあれば何もしない（冪等）
+- **解除**: 当該 (slot, user) の非 REVOKED 行をすべて `REVOKED` へ遷移。自動割当由来の行も対象に含める（外したという事実は割当の出自によらず、残すと履歴表が現状と食い違うため）
+- **外して再度入れる**: 結果として REVOKED 行と新しい CONFIRMED 行が並ぶ。実 DDL の UNIQUE KEY は `(slot_id, user_id, run_id)` であり、`run_id` が NULL のとき MySQL は重複を許すため制約違反にならない
+- **既知の限界**: 解除した操作者は記録されない（`assigned_by` は割り当てた者を保持する）。記録するには列追加が必要で、本 CMP の射程外とした
+
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|---|------|-----------|------|
 | `id` | BIGINT UNSIGNED | NO | AUTO_INCREMENT | PK |
@@ -345,6 +390,7 @@ INDEX idx_hourly_rates_team (team_id, user_id)                                 -
 | `user_id` | BIGINT UNSIGNED | NO | — | FK → users。ON DELETE CASCADE |
 | `status` | VARCHAR(20) | NO | 'PROPOSED' | 割当状態（PROPOSED / CONFIRMED / REVOKED） |
 | `assigned_by_strategy` | VARCHAR(40) | NO | — | 採用された割当戦略（`MANUAL` / `GREEDY_V1` / `CSP_V1` など） |
+| `deleted_at` | DATETIME | YES | NULL | 親削除時の論理削除日時。割当状態や給与・実績に関わる履歴値は変更しない |
 | `score` | INT | YES | NULL | 戦略が算出したスコア値。`MANUAL` のときは NULL |
 | `run_id` | BIGINT UNSIGNED | YES | NULL | FK → shift_assignment_runs。ON DELETE SET NULL。自動割当実行のグループ ID |
 | `assigned_by` | BIGINT UNSIGNED | YES | NULL | FK → users。ON DELETE SET NULL。手動割当時の実施管理者 ID |

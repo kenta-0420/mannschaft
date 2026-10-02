@@ -72,6 +72,7 @@ public class ProxyDelegationController {
     @GetMapping("/{id}/attendance")
     @Operation(summary = "出席・委任状況")
     public ResponseEntity<ApiResponse<AttendanceResponse>> getAttendance(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(delegationService.getAttendance(id)));
+        return ResponseEntity.ok(ApiResponse.of(
+                delegationService.getAttendance(id, SecurityUtils.getCurrentUserId())));
     }
 }

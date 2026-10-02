@@ -24,7 +24,7 @@ public enum SearchErrorCode implements ErrorCode {
     HISTORY_NOT_FOUND("SEARCH_004", "検索履歴が見つかりません", Severity.WARN),
 
     /** 保存済みクエリの上限超過 */
-    MAX_SAVED_QUERIES_EXCEEDED("SEARCH_005", "保存済みクエリは最大20件です", Severity.ERROR);
+    MAX_SAVED_QUERIES_EXCEEDED("SEARCH_005", "保存済みクエリは最大20件です", Severity.WARN);
 
     private final String code;
     private final String message;

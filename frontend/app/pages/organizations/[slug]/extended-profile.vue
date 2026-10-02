@@ -302,8 +302,7 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <div class="mb-6 flex items-center gap-3">
-      <BackButton />
+    <div class="mb-6">
       <PageHeader :title="$t('extended_profile.title')" />
     </div>
 

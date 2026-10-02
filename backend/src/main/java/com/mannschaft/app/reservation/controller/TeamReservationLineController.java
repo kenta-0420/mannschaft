@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.reservation.dto.CreateReservationLineRequest;
 import com.mannschaft.app.reservation.dto.ReservationLineResponse;
 import com.mannschaft.app.reservation.dto.UpdateReservationLineRequest;
@@ -11,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -41,7 +43,8 @@ public class TeamReservationLineController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ReservationLineResponse>>> listLines(
             @PathVariable Long teamId) {
-        List<ReservationLineResponse> lines = lineService.listLines(teamId);
+        List<ReservationLineResponse> lines =
+                lineService.listLines(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(lines));
     }
 
@@ -51,6 +54,7 @@ public class TeamReservationLineController {
     @PostMapping
     @Operation(summary = "予約ライン作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationLineResponse>> createLine(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateReservationLineRequest request) {
@@ -64,6 +68,7 @@ public class TeamReservationLineController {
     @PatchMapping("/{lineId}")
     @Operation(summary = "予約ライン更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationLineResponse>> updateLine(
             @PathVariable Long teamId,
             @PathVariable Long lineId,
@@ -78,6 +83,7 @@ public class TeamReservationLineController {
     @DeleteMapping("/{lineId}")
     @Operation(summary = "予約ライン削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<Void> deleteLine(
             @PathVariable Long teamId,
             @PathVariable Long lineId) {
