@@ -48,6 +48,11 @@ on:
     # 毎週日曜 20:00 UTC = 月曜 JST 05:00
     - cron: '0 20 * * 0'
   workflow_dispatch:
+    inputs:
+      run_calendar_browser:
+        description: '検分後のカレンダー実ブラウザ検証を実行する'
+        type: boolean
+        default: false
 
 jobs:
   seed-and-api-smoke:
@@ -167,6 +172,39 @@ jobs:
         run: |
           chmod +x backend/scripts/smoke-check.sh
           bash backend/scripts/smoke-check.sh http://localhost:8080
+
+      # PR 自動実行は従来の API smoke のみ。検分後の明示実行で本物の UI を検証する。
+      - name: Install browser test dependencies
+        if: github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
+        working-directory: frontend
+        env:
+          HUSKY: '0'
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run calendar browser verification (real backend)
+        if: github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
+        working-directory: frontend
+        env:
+          BASE_URL: http://localhost:8081
+          API_BASE_URL: http://localhost:8080
+          E2E_ISOLATED_DB: 'true'
+        run: >-
+          npx playwright test
+          'cmp26090(1-1246|2-0058).*real.spec.ts'
+          --project=chromium-real --workers=1
+
+      # storageState・Cookie・トークンを含む .auth は成果物へ含めない。
+      - name: Upload browser evidence
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
+        uses: actions/upload-artifact@v4
+        with:
+          name: calendar-browser-evidence-${{ github.run_id }}
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
 
       # 失敗時のデバッグ用にバックエンドログをアップロードする
       - name: バックエンドログをアップロード（失敗時）
