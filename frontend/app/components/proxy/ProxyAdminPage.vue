@@ -125,6 +125,10 @@ async function executeAction(consent: ProxyInputConsent, action: 'approve' | 're
           option-value="slug"
           :disabled="loading || busy"
           class="w-full text-base md:max-w-sm"
+          :pt="{
+            root: { style: { minHeight: '44px', minWidth: '44px' } },
+            dropdown: { style: { minHeight: '44px', minWidth: '44px' } },
+          }"
           data-testid="proxy-organization"
           @update:model-value="changeOrganization"
         />
@@ -243,6 +247,17 @@ async function executeAction(consent: ProxyInputConsent, action: 'approve' | 're
           :rows="rows"
           :total-records="totalRecords"
           :rows-per-page-options="[20, 50, 100]"
+          :pt="{
+            first: { style: { minHeight: '44px', minWidth: '44px' } },
+            prev: { style: { minHeight: '44px', minWidth: '44px' } },
+            page: { style: { minHeight: '44px', minWidth: '44px' } },
+            next: { style: { minHeight: '44px', minWidth: '44px' } },
+            last: { style: { minHeight: '44px', minWidth: '44px' } },
+            pcRowPerPageDropdown: {
+              root: { style: { minHeight: '44px', minWidth: '44px' } },
+              dropdown: { style: { minHeight: '44px', minWidth: '44px' } },
+            },
+          }"
           :class="{ 'pointer-events-none opacity-50': busy }"
           :aria-busy="busy"
           data-testid="proxy-admin-pagination"
