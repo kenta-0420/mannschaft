@@ -4,8 +4,6 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
-import com.mannschaft.app.payment.escrow.ConnectChargeService;
-import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.CancellationSource;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
@@ -67,10 +65,8 @@ class RecruitmentCancellationFeeApplyBlockTest {
     @Mock private RecruitmentListingService listingService;
     @Mock private AccessControlService accessControlService;
     @Mock private RecruitmentMapper mapper;
-    @Mock private MarketFinalizeService marketFinalizeService;
     @Mock private ContentVisibilityChecker visibilityChecker;
     @Mock private ApplicationEventPublisher eventPublisher;
-    @Mock private ConnectChargeService connectChargeService;
     @Mock private AuditLogService auditLogService;
 
     private static final Long USER_ID = 1L;
@@ -83,13 +79,13 @@ class RecruitmentCancellationFeeApplyBlockTest {
         return new RecruitmentParticipantService(
                 participantRepository, listingRepository, historyRepository, cancellationRecordRepository,
                 penaltyRepository,
-                policyService, listingService, accessControlService, mapper, marketFinalizeService,
+                policyService, listingService, mapper,
                 visibilityChecker, eventPublisher);
     }
 
     private RecruitmentCancellationFeeWaiveService waiveService() {
         return new RecruitmentCancellationFeeWaiveService(
-                cancellationRecordRepository, connectChargeService, accessControlService, auditLogService);
+                cancellationRecordRepository, listingRepository, auditLogService);
     }
 
     /**
@@ -138,9 +134,11 @@ class RecruitmentCancellationFeeApplyBlockTest {
         given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(openListing()));
         wireUnpaidLookup();
         wireRecordStore();
-        // 受取先 A・受取先 B のどちらの管理者でもある操作者を仮定する（判定自体は AC-27/28 が担う）。
-        given(connectChargeService.isPayeeSettlementManager(
-                any(EscrowSourceKind.class), anyLong(), anyLong(), anyLong())).willReturn(true);
+        // 認可（受取先 A・受取先 B のどちらの管理者でもある操作者）は tx の外の RecruitmentMoneyFacade が担う
+        // （判定自体は RecruitmentMoneyFacadeTest / AC-27/28）。tx 本体には許可済みとして payeeSide=true を渡す。
+        // tx 本体は募集の生存だけを確かめる（論理削除だけを見る）。
+        given(listingRepository.lockLiveListingIdIgnoringModeration(anyLong()))
+                .willAnswer(invocation -> Optional.of((Long) invocation.getArgument(0)));
 
         // A チーム受取の未払いと B チーム受取の未払いを 1 件ずつ。
         store.add(unpaidRecord(1001L, 201L, 11L));
@@ -152,13 +150,13 @@ class RecruitmentCancellationFeeApplyBlockTest {
                 .isTrue();
 
         // (2) 片方を免除しても、もう片方が残っているためブロックは続く（本 AC の本体）。
-        waive.waive(1001L, 55L, "A チームの主催者が免除");
+        waive.waive(1001L, 55L, "A チームの主催者が免除", true);
         assertThat(blockedByUnpaidFee(service))
                 .as("片方を免除しただけでは申込制限は解除されない")
                 .isTrue();
 
         // (3) 最後の 1 件が免除された瞬間にブロックが外れる。
-        waive.waive(1002L, 66L, "B チームの主催者が免除");
+        waive.waive(1002L, 66L, "B チームの主催者が免除", true);
         assertThat(blockedByUnpaidFee(service))
                 .as("最後の 1 件が免除されればブロックは外れる")
                 .isFalse();

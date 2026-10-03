@@ -1,9 +1,7 @@
 package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -57,7 +55,6 @@ class ShiftPreferenceReminderBatchServiceTest {
     // Phase 11 事後検分 fixup（2026-05-19）: triggerManualReminder の Valkey 連打防止ロック用 Mock。
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private ValueOperations<String, String> valueOps;
-    @Mock private AccessControlService accessControlService;
 
     /**
      * Issue #2715 CMP-055 ロットC-4: 実物の MessageSource を使う（モックが引数をそのまま返す形だと
@@ -85,7 +82,7 @@ class ShiftPreferenceReminderBatchServiceTest {
         batchService = new ShiftPreferenceReminderBatchService(
                 scheduleRepository, requestRepository, userRoleRepository,
                 notificationHelper, teamShiftSettingsRepository, auditLogService,
-                redisTemplate, accessControlService, messageSource);
+                redisTemplate, messageSource);
     }
 
     // =========================================================
@@ -198,6 +195,13 @@ class ShiftPreferenceReminderBatchServiceTest {
     // 手動リマインド (Phase 11 第二陣 2-α)
     // =========================================================
 
+    /**
+     * 手動リマインドの認可（越境は不在と同じ 404・権限不足は 403・SYSTEM_ADMIN 短絡）は tx の外の
+     * {@code ShiftScheduleFacade#remindUnsubmitted} へ移した（CMP-260923-0954 W6a）。その検証は
+     * {@code ShiftScheduleFacadeTest} と {@code ShiftScheduleSlotFacadeContractIT} が持つ。
+     * 本クラスの {@code triggerManualReminder} は認可の後の tx 本体（Valkey の連打防止ロック → 読み直し →
+     * 状態判定 → 通知 → 監査ログ）を固定する。
+     */
     @Nested
     @DisplayName("triggerManualReminder")
     class TriggerManualReminder {
@@ -297,41 +301,6 @@ class ShiftPreferenceReminderBatchServiceTest {
                     .extracting("errorCode")
                     .isEqualTo(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
             verifyNoInteractions(notificationHelper, auditLogService);
-        }
-
-        @Test
-        @DisplayName("非権限者（当該チームの ADMIN でない）_COMMON_002 で遮断")
-        void 非権限者_COMMON_002() {
-            ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-            given(accessControlService.isSystemAdmin(OPERATOR_ID)).willReturn(false);
-            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkAdminOrAbove(OPERATOR_ID, TEAM_ID, "TEAM");
-
-            assertThatThrownBy(() -> batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(CommonErrorCode.COMMON_002);
-            // 認可で弾かれるため通知・監査ログは発生しない
-            verifyNoInteractions(notificationHelper, auditLogService);
-        }
-
-        @Test
-        @DisplayName("SYSTEM_ADMIN_短絡でチーム ADMIN チェックを経ずに通過")
-        void SYSTEM_ADMIN_短絡で通過() {
-            ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-            given(accessControlService.isSystemAdmin(OPERATOR_ID)).willReturn(true);
-            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
-                    .willReturn(List.of(buildRequest(SCHEDULE_ID, USER_A)));
-            given(userRoleRepository.findMemberCandidateIdsByTeam(TEAM_ID))
-                    .willReturn(List.of(USER_A, USER_B));
-
-            ManualRemindResponse response = batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID);
-
-            assertThat(response.getScheduleId()).isEqualTo(SCHEDULE_ID);
-            // SYSTEM_ADMIN はチーム ADMIN チェックを経由しない
-            verify(accessControlService, never()).checkAdminOrAbove(anyLong(), anyLong(), anyString());
         }
     }
 

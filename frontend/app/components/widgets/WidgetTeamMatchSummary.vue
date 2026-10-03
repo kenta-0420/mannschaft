@@ -14,6 +14,7 @@
  * エラーは captureQuiet で通知し、ウィジェットとして致命的クラッシュしないようにする。
  */
 import type { TeamMatchStatsResponse, MatchSummaryResponse } from '~/types/match'
+import type { MatchOrgOption } from '~/composables/match/useMatchOrgContext'
 
 const props = defineProps<{
   teamId: string
@@ -26,6 +27,11 @@ const { captureQuiet } = useErrorReport()
 
 const loading = ref(false)
 const orgId = ref<number | null>(null)
+/** 親組織が複数のとき、集計する組織はウィジェット内のセレクタで選ぶ（URL を持たないため状態に持つ）。 */
+const organizations = ref<MatchOrgOption[]>([])
+const selectedOrgId = ref<number | null>(null)
+/** 遷移先へ選択中の組織を引き継ぐクエリ。 */
+const orgQs = computed(() => (orgId.value !== null ? `?org=${orgId.value}` : ''))
 const stats = ref<TeamMatchStatsResponse | null>(null)
 const inProgressMatch = ref<MatchSummaryResponse | null>(null)
 
@@ -51,8 +57,9 @@ function formResultClass(result: string): string {
 async function load(): Promise<void> {
   loading.value = true
   try {
-    const ctx = await resolveContext(props.teamId)
+    const ctx = await resolveContext(props.teamId, { orgId: selectedOrgId.value })
     orgId.value = ctx?.orgId ?? null
+    organizations.value = ctx?.organizations ?? []
     if (ctx === null) {
       stats.value = null
       inProgressMatch.value = null
@@ -63,7 +70,9 @@ async function load(): Promise<void> {
       : analytics.getTeamStats(ctx.orgId, ctx.teamId)
     const [statsResult, inProgressResult] = await Promise.allSettled([
       statsRequest,
-      matchApi.listMatches(ctx.orgId, ctx.teamId, { status: 'IN_PROGRESS', size: 1 }),
+      ctx.orgId === null
+        ? Promise.resolve(null)
+        : matchApi.listMatches(ctx.orgId, ctx.teamId, { status: 'IN_PROGRESS', size: 1 }),
     ])
     stats.value = statsResult.status === 'fulfilled' ? statsResult.value : null
     const page = inProgressResult.status === 'fulfilled' ? inProgressResult.value : null
@@ -78,11 +87,27 @@ async function load(): Promise<void> {
 }
 
 onMounted(load)
-watch(() => props.teamId, load)
+watch(() => props.teamId, () => {
+  selectedOrgId.value = null
+  void load()
+})
+
+function onSelectOrg(id: number): void {
+  selectedOrgId.value = id
+  void load()
+}
 </script>
 
 <template>
   <div @click.stop>
+    <!-- 組織選択（親組織が複数のときだけ表示。選んだ組織の試合を集計する） -->
+    <MatchOrgSelect
+      :organizations="organizations"
+      :org-id="orgId"
+      :sync-query="false"
+      @update:org-id="onSelectOrg"
+    />
+
     <!-- Skeleton ローディング -->
     <div v-if="loading" class="space-y-2 py-4">
       <Skeleton height="2rem" />
@@ -98,7 +123,7 @@ watch(() => props.teamId, load)
       <i class="pi pi-flag text-3xl text-surface-300" />
       <p class="text-sm">{{ $t('match.analytics.widget.summary.no_matches') }}</p>
       <NuxtLink
-        :to="`/teams/${teamId}/matches`"
+        :to="`/teams/${teamId}/matches${orgQs}`"
         class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-contrast"
         @click.stop
       >
@@ -122,7 +147,7 @@ watch(() => props.teamId, load)
           </span>
         </div>
         <NuxtLink
-          :to="`/teams/${teamId}/matches/${inProgressMatch.id}/live`"
+          :to="`/teams/${teamId}/matches/${inProgressMatch.id}/live${orgQs}`"
           class="inline-flex items-center gap-1 rounded-md bg-orange-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-orange-600"
           @click.stop
         >
@@ -177,7 +202,7 @@ watch(() => props.teamId, load)
       <!-- 詳細分析導線 -->
       <div class="pt-1">
         <NuxtLink
-          :to="`/teams/${teamId}/match-analytics`"
+          :to="`/teams/${teamId}/match-analytics${orgQs}`"
           class="flex items-center gap-1 text-xs text-primary hover:underline"
           @click.stop
         >

@@ -190,17 +190,63 @@ class NotificationTransactionBoundaryGuardTest {
             "com.mannschaft.app.schedule.service.ScheduleCommentNotificationRunner");
 
     /**
-     * 監査済み例外 — 通知自体が業務目的である経路（CMP-056 で対象外と裁可された4クラス）。
+     * 監査済み例外 — 通知自体が業務目的である経路（CMP-056 で対象外と裁可されたクラス）。
      *
      * <p>これらは「業務処理に<b>付随</b>する通知」ではなく、通知の作成・確定こそがユースケースの本体である。
      * 業務TXと通知を同時にロールバックさせることが正しい振る舞いなので、契約の適用対象から外す。
      * <b>本番人はこれらを違反として挙げてはならない。</b>
+     *
+     * <p><b>注意（CMP-260930-1932）</b>: ここに載せたクラスは自身の走査だけでなく
+     * {@link #notificationFiringMethods} も空になり、<b>そのクラスへ委譲する全呼び出し元</b>が
+     * {@code TX_NOTIFY_VIA_DELEGATE} から外れる（原則5-1 が禁じるクラス単位免除の副作用）。
+     * {@code ConfirmableNotificationService} はこの副作用で自動キャンセル・最終認証の業務TX内同期送信を
+     * 沈黙させていたため、{@link #SELF_EXEMPT_NOTIFICATION_SERVICES}（自身だけ対象外・呼び出し元は判定する）
+     * へ移した。残りのクラスも同じ副作用を持つ（移行は別台帳で扱う）。
      */
     static final Set<String> AUDITED_EXCEPTIONS = Set.of(
-            "com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService",
             "com.mannschaft.app.social.service.FriendNotificationService",
             "com.mannschaft.app.advertising.campaign.service.AdPushChannelService",
             "com.mannschaft.app.family.service.CareEventNotificationService");
+
+    /**
+     * CMP-260930-1932: 自身の本体だけを契約の対象外にする通知サービス（<b>呼び出し元は沈黙させない</b>）。
+     *
+     * <p>{@link #AUDITED_EXCEPTIONS} と同じく「通知の作成・確定こそが本体」のクラスなので、そのクラス自身の
+     * メソッド（業務TX内で配送層を呼ぶ形）は挙げない。一方で {@link #notificationFiringMethods} は通常どおり
+     * 計算するため、業務TX（{@code @Transactional}）から同期 {@code send} / {@code sendFromSource} を呼ぶ
+     * 呼び出し元は {@code TX_NOTIFY_VIA_DELEGATE} として挙がる。呼び出し元を許すのは、
+     * 業務TXと原子的に巻き戻るのが正しいと監査した {@link #AUDITED_ROLLBACK_COUPLED_CALLERS} だけである。</p>
+     */
+    static final Set<String> SELF_EXEMPT_NOTIFICATION_SERVICES = Set.of(
+            "com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService");
+
+    /**
+     * CMP-260930-1932: 業務TXの内側から確認通知を同期送信してよいと監査した呼び出し元
+     * （<b>メソッド粒度</b>。キー {@code <完全修飾クラス名>#<メソッド名>} → 許可する委譲先の単純名）。
+     *
+     * <h2>{@link #AUDITED_EXCEPTION_METHODS} と基準が逆である</h2>
+     * <p>{@code AUDITED_EXCEPTION_METHODS} は「呼び出し元TXから<b>切り離されている</b>」こと
+     * （{@code NOT_SUPPORTED} / {@code NEVER} / {@code @Async}）を前提にした免除であり、その宣言を機械検査する。
+     * こちらは逆に「業務TXと通知が<b>同時に巻き戻ることが正しい</b>」経路である。通知そのものが
+     * ユースケースの成果物（委員会の伝達記録・支払い依頼の送付記録が確認通知IDを保持する）であり、
+     * 通知が作れなければ業務の記録も残してはならない。切り離しの宣言を前提にしないので、同じリストに混ぜない。</p>
+     *
+     * <ul>
+     *   <li>{@code CommitteeDistributionService#distribute}: 委員会の伝達。伝達ログが作成した確認通知IDを保持し、
+     *       通知の作成失敗時に伝達ログだけ残ると「伝達済みなのに誰にも届いていない」記録になる。</li>
+     *   <li>{@code PaymentRequestService#send}: 支払い依頼の送付。依頼の送付遷移と確認通知IDの保持が一体であり、
+     *       通知が作れないまま送付済みになると督促・確認の起点が失われる。</li>
+     * </ul>
+     *
+     * <p>許可は<b>そのメソッドから、指定した委譲先への</b> {@code TX_NOTIFY_VIA_DELEGATE} に限る
+     * （同じクラスの別メソッド・別の委譲先・他の違反種別は従来どおり挙がる）。キーのドリフトは
+     * {@link #原子的巻き戻りの監査済み呼び出し元はドリフトしていない()} が検査する。</p>
+     */
+    static final java.util.Map<String, String> AUDITED_ROLLBACK_COUPLED_CALLERS = java.util.Map.of(
+            "com.mannschaft.app.committee.service.CommitteeDistributionService#distribute",
+            "ConfirmableNotificationService",
+            "com.mannschaft.app.payment.service.PaymentRequestService#send",
+            "ConfirmableNotificationService");
 
     /**
      * 監査済み例外（<b>メソッド粒度</b>）— {@code <完全修飾クラス名>#<メソッド名>}。
@@ -440,7 +486,8 @@ class NotificationTransactionBoundaryGuardTest {
     static ScanResult scanSourceDetailed(String fqcn, String rawSource) {
         List<Violation> violations = new ArrayList<>();
         List<String> ambiguities = new ArrayList<>();
-        if (DELIVERY_INFRASTRUCTURE.contains(fqcn) || AUDITED_EXCEPTIONS.contains(fqcn)) {
+        if (DELIVERY_INFRASTRUCTURE.contains(fqcn) || AUDITED_EXCEPTIONS.contains(fqcn)
+                || SELF_EXEMPT_NOTIFICATION_SERVICES.contains(fqcn)) {
             return new ScanResult(violations, ambiguities);
         }
         String src = JavaSourceScanningUtils.maskCommentsAndLiterals(rawSource);
@@ -536,6 +583,11 @@ class NotificationTransactionBoundaryGuardTest {
                         continue;
                     }
                     if (!fires) {
+                        continue;
+                    }
+                    // CMP-260930-1932: 業務TXと原子的に巻き戻るのが正しいと監査した呼び出し元（メソッド粒度・委譲先限定）。
+                    String auditedDelegate = AUDITED_ROLLBACK_COUPLED_CALLERS.get(fqcn + "#" + m.name());
+                    if (auditedDelegate != null && receiverTypes.equals(Set.of(auditedDelegate))) {
                         continue;
                     }
                     String label = String.join("/", new TreeSet<>(receiverTypes)) + "#" + callee;
@@ -2085,14 +2137,57 @@ class NotificationTransactionBoundaryGuardTest {
     }
 
     @Test
-    @DisplayName("監査済み例外4クラスを違反として挙げない")
+    @DisplayName("監査済み例外クラス・自身のみ対象外の通知サービスを違反として挙げない")
     void 監査済み例外を違反として挙げない() {
         List<Violation> found = mainScan().violations();
         Set<String> owners = found.stream().map(Violation::ownerFqcn)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         assertThat(owners)
                 .as("監査済み例外（通知自体が業務目的）は契約の対象外であり、番人が挙げてはならない")
-                .doesNotContainAnyElementsOf(AUDITED_EXCEPTIONS);
+                .doesNotContainAnyElementsOf(AUDITED_EXCEPTIONS)
+                .doesNotContainAnyElementsOf(SELF_EXEMPT_NOTIFICATION_SERVICES);
+    }
+
+    @Test
+    @DisplayName("CMP-260930-1932: 原子的巻き戻りの監査済み呼び出し元はキーが実在し、許可した委譲先を実際に呼んでいる")
+    void 原子的巻き戻りの監査済み呼び出し元はドリフトしていない() {
+        List<String> problems = new ArrayList<>();
+        for (java.util.Map.Entry<String, String> e : AUDITED_ROLLBACK_COUPLED_CALLERS.entrySet()) {
+            String key = e.getKey();
+            String fqcn = key.substring(0, key.indexOf('#'));
+            String methodName = key.substring(key.indexOf('#') + 1);
+            TypeRef ref = typeIndex().getOrDefault(fqcn.substring(fqcn.lastIndexOf('.') + 1), List.of())
+                    .stream().filter(r -> r.fqcn().equals(fqcn)).findFirst().orElse(null);
+            if (ref == null) {
+                problems.add(key + " : クラスが見つからない（改名・移動でキーがドリフトした）");
+                continue;
+            }
+            String masked = JavaSourceScanningUtils.maskCommentsAndLiterals(read(ref.file()));
+            String block = typeBlock(masked, ref.simpleName());
+            java.util.Map<String, Set<String>> declared = declaredTypes(masked);
+            List<MethodBlock> found = parseMethods(block == null ? masked : block).stream()
+                    .filter(m -> m.name().equals(methodName))
+                    .collect(Collectors.toList());
+            if (found.isEmpty()) {
+                problems.add(key + " : メソッドが見つからない（改名でキーがドリフトした）");
+                continue;
+            }
+            boolean callsDelegate = false;
+            for (MethodBlock m : found) {
+                Matcher call = QUALIFIED_CALL.matcher(m.body());
+                while (call.find()) {
+                    if (declared.getOrDefault(call.group(1), Set.of()).contains(e.getValue())) {
+                        callsDelegate = true;
+                    }
+                }
+            }
+            if (!callsDelegate) {
+                problems.add(key + " : 許可した委譲先 " + e.getValue() + " を呼んでいない（不要になった許可は外すこと）");
+            }
+        }
+        assertThat(problems)
+                .as("AUDITED_ROLLBACK_COUPLED_CALLERS のキーが実装からドリフトしている")
+                .isEmpty();
     }
 
     private static String describe(List<Violation> found, Set<String> keys) {

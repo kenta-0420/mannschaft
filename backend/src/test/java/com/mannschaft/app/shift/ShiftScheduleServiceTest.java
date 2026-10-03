@@ -1,8 +1,6 @@
 package com.mannschaft.app.shift;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import org.mockito.ArgumentCaptor;
 import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
@@ -41,17 +39,19 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link ShiftScheduleService} の単体テスト。
+ * {@link ShiftScheduleService}（tx 本体）の単体テスト。
  * シフトスケジュールのCRUD・ステータス遷移・複製を検証する。
+ *
+ * <p>認可（per-scope・越境の 404 隠蔽・SYSTEM_ADMIN）は tx の外の {@code ShiftScheduleFacade} へ移した
+ * （CMP-260923-0954 W6a）。その単体検証は {@code ShiftScheduleFacadeTest}、応答契約は
+ * {@code ShiftScheduleSlotFacadeContractIT} が持つ。本クラスは tx 本体が認可に依存しないこと
+ * （Mock に認可クラスが無い）と、tx の中の読み直し・可視性の再判定を固定する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ShiftScheduleService 単体テスト")
@@ -88,9 +88,6 @@ class ShiftScheduleServiceTest {
 
     @Mock
     private DomainEventPublisher eventPublisher;
-
-    @Mock
-    private AccessControlService accessControlService;
 
     /**
      * CMP-260909-1445 で {@code ShiftScheduleService} に追加された依存（{@code ClockConfig#wallClock}）。
@@ -163,48 +160,18 @@ class ShiftScheduleServiceTest {
             // Given
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.findByTeamIdOrderByStartDateDesc(TEAM_ID))
                     .willReturn(List.of(entity));
             given(shiftMapper.toScheduleResponseList(List.of(entity)))
                     .willReturn(List.of(response));
 
             // When
-            List<ShiftScheduleResponse> result = shiftScheduleService.listSchedules(TEAM_ID, USER_ID);
+            List<ShiftScheduleResponse> result = shiftScheduleService.listSchedules(TEAM_ID, false);
 
             // Then
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getContent().title()).isEqualTo("3月第1週シフト");
             verify(scheduleRepository).findByTeamIdOrderByStartDateDesc(TEAM_ID);
-        }
-
-        @Test
-        @DisplayName("非メンバーは参照不可_COMMON_002")
-        void 非メンバーは参照不可_COMMON_002() {
-            // Given
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
-
-            // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.listSchedules(TEAM_ID, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(CommonErrorCode.COMMON_002));
-            verify(scheduleRepository, never()).findByTeamIdOrderByStartDateDesc(anyLong());
-        }
-
-        @Test
-        @DisplayName("SUPPORTERは参照不可_COMMON_002")
-        void サポーターは参照不可_COMMON_002() {
-            // Given
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-            given(accessControlService.isSupporter(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-
-            // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.listSchedules(TEAM_ID, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(CommonErrorCode.COMMON_002));
-            verify(scheduleRepository, never()).findByTeamIdOrderByStartDateDesc(anyLong());
         }
     }
 
@@ -224,7 +191,6 @@ class ShiftScheduleServiceTest {
             LocalDate to = LocalDate.of(2026, 3, 31);
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.findByTeamIdAndStartDateBetweenOrderByStartDateDesc(TEAM_ID, from, to))
                     .willReturn(List.of(entity));
             given(shiftMapper.toScheduleResponseList(List.of(entity)))
@@ -232,25 +198,10 @@ class ShiftScheduleServiceTest {
 
             // When
             List<ShiftScheduleResponse> result =
-                    shiftScheduleService.listSchedulesByPeriod(TEAM_ID, from, to, USER_ID);
+                    shiftScheduleService.listSchedulesByPeriod(TEAM_ID, from, to, false);
 
             // Then
             assertThat(result).hasSize(1);
-        }
-
-        @Test
-        @DisplayName("非メンバーは期間指定でも参照不可_COMMON_002")
-        void 非メンバーは期間指定でも参照不可_COMMON_002() {
-            // Given
-            LocalDate from = LocalDate.of(2026, 3, 1);
-            LocalDate to = LocalDate.of(2026, 3, 31);
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
-
-            // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.listSchedulesByPeriod(TEAM_ID, from, to, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(CommonErrorCode.COMMON_002));
         }
     }
 
@@ -268,12 +219,11 @@ class ShiftScheduleServiceTest {
             // Given
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
 
             // When
-            ShiftScheduleResponse result = shiftScheduleService.getSchedule(SCHEDULE_ID, USER_ID);
+            ShiftScheduleResponse result = shiftScheduleService.getSchedule(SCHEDULE_ID, false);
 
             // Then
             assertThat(result.getContent().title()).isEqualTo("3月第1週シフト");
@@ -286,25 +236,57 @@ class ShiftScheduleServiceTest {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.getSchedule(SCHEDULE_ID, USER_ID))
+            assertThatThrownBy(() -> shiftScheduleService.getSchedule(SCHEDULE_ID, false))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+        }
+    }
+
+    // ========================================
+    // resolveScope / 可視性の再判定（tx の中。認可は Facade の責務）
+    // ========================================
+
+    @Nested
+    @DisplayName("resolveScope・可視性の再判定")
+    class ScopeAndVisibility {
+
+        @Test
+        @DisplayName("resolveScope_チームIDと公開状態を返す")
+        void resolveScope_チームIDと公開状態を返す() {
+            ShiftScheduleEntity entity = createScheduleEntity();
+            ReflectionTestUtils.setField(entity, "id", SCHEDULE_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+
+            var scope = shiftScheduleService.resolveScope(SCHEDULE_ID);
+
+            assertThat(scope.scheduleId()).isEqualTo(SCHEDULE_ID);
+            assertThat(scope.teamId()).isEqualTo(TEAM_ID);
+            assertThat(scope.status()).isEqualTo(ShiftScheduleStatus.PUBLISHED);
+            assertThat(scope.isHidden()).isFalse();
+        }
+
+        @Test
+        @DisplayName("resolveScope_不在_SHIFT_SCHEDULE_NOT_FOUND")
+        void resolveScope_不在_SHIFT_SCHEDULE_NOT_FOUND() {
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> shiftScheduleService.resolveScope(SCHEDULE_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
         }
 
         @Test
-        // CMP-260917-1137: 越境（scopeはスケジュール実体のteamIdで解決、所属すらしていない）は
-        // scheduleId 総当りでの存在オラクル対策として、不在時と同一の SHIFT_SCHEDULE_NOT_FOUND(404) に
-        // 変更した（旧: COMMON_002/403）。
-        @DisplayName("別チームのユーザーは単体取得不可_SHIFT_SCHEDULE_NOT_FOUND（BOLA封鎖・存在オラクル解消）")
-        void 別チームのユーザーは単体取得不可_SHIFT_SCHEDULE_NOT_FOUND() {
-            // Given: scope はスケジュール実体の teamId で解決される
-            ShiftScheduleEntity entity = createScheduleEntity();
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        @DisplayName("getSchedule_未公開は管理者側でなければ404（SHIFT_001）")
+        void getSchedule_未公開は管理者側でなければ404() {
+            ShiftScheduleEntity draft = ShiftScheduleEntity.builder()
+                    .teamId(TEAM_ID).title("下書き").periodType(ShiftPeriodType.WEEKLY)
+                    .startDate(LocalDate.of(2026, 3, 1)).endDate(LocalDate.of(2026, 3, 7))
+                    .status(ShiftScheduleStatus.DRAFT).createdBy(USER_ID).build();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(draft));
 
-            // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.getSchedule(SCHEDULE_ID, USER_ID))
+            assertThatThrownBy(() -> shiftScheduleService.getSchedule(SCHEDULE_ID, false))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
@@ -312,37 +294,40 @@ class ShiftScheduleServiceTest {
         }
 
         @Test
-        @DisplayName("SUPPORTERは単体取得不可_COMMON_002")
-        void サポーターは単体取得不可_COMMON_002() {
-            // Given
-            ShiftScheduleEntity entity = createScheduleEntity();
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-            given(accessControlService.isSupporter(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-
-            // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.getSchedule(SCHEDULE_ID, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(CommonErrorCode.COMMON_002));
-            verify(shiftMapper, never()).toScheduleResponse(any());
-        }
-
-        @Test
-        @DisplayName("SYSTEM_ADMINは単体取得可能（短絡許可）")
-        void システム管理者は単体取得可能() {
-            // Given
-            ShiftScheduleEntity entity = createScheduleEntity();
+        @DisplayName("getSchedule_未公開でも管理者側（privileged）は取得できる")
+        void getSchedule_未公開でも管理者側は取得できる() {
+            ShiftScheduleEntity draft = ShiftScheduleEntity.builder()
+                    .teamId(TEAM_ID).title("下書き").periodType(ShiftPeriodType.WEEKLY)
+                    .startDate(LocalDate.of(2026, 3, 1)).endDate(LocalDate.of(2026, 3, 7))
+                    .status(ShiftScheduleStatus.DRAFT).createdBy(USER_ID).build();
             ShiftScheduleResponse response = createScheduleResponse();
-            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(draft));
+            given(shiftMapper.toScheduleResponse(draft)).willReturn(response);
 
-            // When
-            ShiftScheduleResponse result = shiftScheduleService.getSchedule(SCHEDULE_ID, USER_ID);
+            assertThat(shiftScheduleService.getSchedule(SCHEDULE_ID, true)).isSameAs(response);
+        }
 
-            // Then
-            assertThat(result.getContent().title()).isEqualTo("3月第1週シフト");
+        @Test
+        @DisplayName("listSchedules_未公開は管理者側でなければ一覧から除外、管理者側は全量")
+        void listSchedules_未公開は管理者側でなければ除外() {
+            ShiftScheduleEntity published = createScheduleEntity();
+            ShiftScheduleEntity draft = ShiftScheduleEntity.builder()
+                    .teamId(TEAM_ID).title("下書き").periodType(ShiftPeriodType.WEEKLY)
+                    .startDate(LocalDate.of(2026, 3, 8)).endDate(LocalDate.of(2026, 3, 14))
+                    .status(ShiftScheduleStatus.DRAFT).createdBy(USER_ID).build();
+            given(scheduleRepository.findByTeamIdOrderByStartDateDesc(TEAM_ID))
+                    .willReturn(List.of(draft, published));
+            given(shiftMapper.toScheduleResponseList(any())).willReturn(List.of());
+
+            shiftScheduleService.listSchedules(TEAM_ID, false);
+            shiftScheduleService.listSchedules(TEAM_ID, true);
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<ShiftScheduleEntity>> captor =
+                    ArgumentCaptor.forClass((Class<List<ShiftScheduleEntity>>) (Class<?>) List.class);
+            verify(shiftMapper, org.mockito.Mockito.times(2)).toScheduleResponseList(captor.capture());
+            assertThat(captor.getAllValues().get(0)).containsExactly(published);
+            assertThat(captor.getAllValues().get(1)).containsExactly(draft, published);
         }
     }
 
@@ -411,26 +396,6 @@ class ShiftScheduleServiceTest {
             assertThat(result).isNotNull();
             verify(scheduleRepository).save(any(ShiftScheduleEntity.class));
         }
-
-        @Test
-        @DisplayName("スケジュール作成_非権限者_COMMON_002")
-        void スケジュール作成_非権限者_COMMON_002() {
-            // Given
-            CreateShiftScheduleRequest req = new CreateShiftScheduleRequest(
-                    "3月第1週シフト", "WEEKLY",
-                    LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 7),
-                    null, null);
-            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
-
-            // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.createSchedule(TEAM_ID, req, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(CommonErrorCode.COMMON_002);
-            verify(scheduleRepository, never()).save(any(ShiftScheduleEntity.class));
-        }
     }
 
     // ========================================
@@ -450,12 +415,11 @@ class ShiftScheduleServiceTest {
                     "更新タイトル", null, null, null, null, null, null);
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willReturn(entity);
             given(shiftMapper.toScheduleResponse(any(ShiftScheduleEntity.class))).willReturn(response);
 
             // When
-            ShiftScheduleResponse result = shiftScheduleService.updateSchedule(SCHEDULE_ID, req, USER_ID);
+            ShiftScheduleResponse result = shiftScheduleService.updateSchedule(SCHEDULE_ID, req);
 
             // Then
             assertThat(result).isNotNull();
@@ -471,7 +435,7 @@ class ShiftScheduleServiceTest {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.updateSchedule(SCHEDULE_ID, req, USER_ID))
+            assertThatThrownBy(() -> shiftScheduleService.updateSchedule(SCHEDULE_ID, req))
                     .isInstanceOf(BusinessException.class);
         }
 
@@ -484,35 +448,12 @@ class ShiftScheduleServiceTest {
                     null, null, LocalDate.of(2026, 3, 10), LocalDate.of(2026, 3, 1),
                     null, null, null);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.updateSchedule(SCHEDULE_ID, req, USER_ID))
+            assertThatThrownBy(() -> shiftScheduleService.updateSchedule(SCHEDULE_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.INVALID_DATE_RANGE));
-        }
-
-        @Test
-        @DisplayName("スケジュール更新_非権限者_COMMON_002")
-        void スケジュール更新_非権限者_COMMON_002() {
-            // Given
-            ShiftScheduleEntity entity = createScheduleEntity();
-            UpdateShiftScheduleRequest req = new UpdateShiftScheduleRequest(
-                    "更新タイトル", null, null, null, null, null, null);
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            // CMP-260917-1137: 同一チーム内の権限不足（isMember=true, isAdminOrAbove=false）は
-            // 隠す必要が無いため従来どおり COMMON_002/403。越境（isMember=false）だけを 404 化した。
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
-
-            // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.updateSchedule(SCHEDULE_ID, req, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(CommonErrorCode.COMMON_002);
-            verify(scheduleRepository, never()).save(any(ShiftScheduleEntity.class));
         }
     }
 
@@ -547,12 +488,11 @@ class ShiftScheduleServiceTest {
             ShiftScheduleResponse response = createScheduleResponse();
 
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(existing));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(shiftMapper.toScheduleResponse(any(ShiftScheduleEntity.class))).willReturn(response);
 
             // When
-            shiftScheduleService.updateSchedule(SCHEDULE_ID, req, USER_ID);
+            shiftScheduleService.updateSchedule(SCHEDULE_ID, req);
 
             // Then: save に渡るのは findById で取得した「まさにその」managed entity
             // （toBuilder().build() で作り直した別インスタンスではない）。
@@ -579,12 +519,11 @@ class ShiftScheduleServiceTest {
             ShiftScheduleResponse response = createScheduleResponse();
 
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(existing));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willAnswer(inv -> inv.getArgument(0));
             given(shiftMapper.toScheduleResponse(any(ShiftScheduleEntity.class))).willReturn(response);
 
             // When
-            shiftScheduleService.updateSchedule(SCHEDULE_ID, req, USER_ID);
+            shiftScheduleService.updateSchedule(SCHEDULE_ID, req);
 
             // Then: periodType が enum に解決されて managed entity に反映
             ArgumentCaptor<ShiftScheduleEntity> captor = ArgumentCaptor.forClass(ShiftScheduleEntity.class);
@@ -610,7 +549,6 @@ class ShiftScheduleServiceTest {
             // Given
             ShiftScheduleEntity entity = createScheduleEntity();
             given(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.saveAndFlush(entity)).willReturn(entity);
 
             // When
@@ -631,7 +569,6 @@ class ShiftScheduleServiceTest {
         void 子の更新失敗時は後続の削除と予算取消イベントを実行しない() {
             ShiftScheduleEntity entity = createScheduleEntity();
             given(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(assignmentRepository.softDeleteByScheduleId(SCHEDULE_ID))
                     .willThrow(new IllegalStateException("子の更新失敗"));
 
@@ -654,25 +591,6 @@ class ShiftScheduleServiceTest {
             assertThatThrownBy(() -> shiftScheduleService.deleteSchedule(SCHEDULE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
         }
-
-        @Test
-        @DisplayName("スケジュール論理削除_非権限者_COMMON_002")
-        void スケジュール論理削除_非権限者_COMMON_002() {
-            // Given
-            ShiftScheduleEntity entity = createScheduleEntity();
-            given(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            // CMP-260917-1137: 同一チーム内の権限不足は隠す必要が無いため従来どおり 403。
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
-
-            // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.deleteSchedule(SCHEDULE_ID, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(CommonErrorCode.COMMON_002);
-            verify(scheduleRepository, never()).save(any(ShiftScheduleEntity.class));
-        }
     }
 
     // ========================================
@@ -690,7 +608,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
 
@@ -709,7 +626,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
 
@@ -727,7 +643,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
 
@@ -747,7 +662,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity entity = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(entity)).willReturn(entity);
             given(shiftMapper.toScheduleResponse(entity)).willReturn(response);
 
@@ -764,33 +678,12 @@ class ShiftScheduleServiceTest {
             // Given
             ShiftScheduleEntity entity = createScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
             assertThatThrownBy(() -> shiftScheduleService.transitionStatus(SCHEDULE_ID, "DRAFT", USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.INVALID_SCHEDULE_STATUS));
-        }
-
-        @Test
-        @DisplayName("ステータス遷移_PUBLISHED_非権限者_COMMON_002")
-        void ステータス遷移_PUBLISHED_非権限者_COMMON_002() {
-            // Given
-            ShiftScheduleEntity entity = createScheduleEntity();
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            // CMP-260917-1137: 同一チーム内の権限不足は隠す必要が無いため従来どおり 403。
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
-
-            // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.transitionStatus(SCHEDULE_ID, "PUBLISHED", USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(CommonErrorCode.COMMON_002);
-            verify(scheduleRepository, never()).save(any(ShiftScheduleEntity.class));
-            verify(autoAssignService, never()).assertNoUnreviewedRuns(SCHEDULE_ID);
         }
     }
 
@@ -810,7 +703,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity duplicate = createScheduleEntity();
             ShiftScheduleResponse response = createScheduleResponse();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(source));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willReturn(duplicate);
             given(shiftMapper.toScheduleResponse(duplicate)).willReturn(response);
 
@@ -832,25 +724,6 @@ class ShiftScheduleServiceTest {
             assertThatThrownBy(() -> shiftScheduleService.duplicateSchedule(SCHEDULE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
         }
-
-        @Test
-        @DisplayName("スケジュール複製_非権限者(複製元scope由来)_COMMON_002")
-        void スケジュール複製_非権限者_COMMON_002() {
-            // Given: 複製元(source)のチームに対して権限が無い（BOLA是正の検証）
-            ShiftScheduleEntity source = createScheduleEntity();
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(source));
-            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            // CMP-260917-1137: 同一チーム内の権限不足は隠す必要が無いため従来どおり 403。
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
-
-            // When & Then
-            assertThatThrownBy(() -> shiftScheduleService.duplicateSchedule(SCHEDULE_ID, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(CommonErrorCode.COMMON_002);
-            verify(scheduleRepository, never()).save(any(ShiftScheduleEntity.class));
-        }
     }
 
     // ========================================
@@ -868,7 +741,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity schedule = createScheduleEntity();
             ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // ポジション
             ShiftPositionEntity posHall = ShiftPositionEntity.builder().teamId(TEAM_ID).name("ホール").build();
@@ -908,7 +780,7 @@ class ShiftScheduleServiceTest {
 
             // When
             ShiftScheduleSummaryResponse response =
-                    shiftScheduleService.getScheduleSummary(SCHEDULE_ID, USER_ID);
+                    shiftScheduleService.getScheduleSummary(SCHEDULE_ID);
 
             // Then
             assertThat(response.getScheduleId()).isEqualTo(SCHEDULE_ID);
@@ -931,7 +803,7 @@ class ShiftScheduleServiceTest {
         @DisplayName("スケジュール非存在_BusinessException")
         void 非存在_BusinessException() {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> shiftScheduleService.getScheduleSummary(SCHEDULE_ID, USER_ID))
+            assertThatThrownBy(() -> shiftScheduleService.getScheduleSummary(SCHEDULE_ID))
                     .isInstanceOf(BusinessException.class);
         }
 
@@ -941,7 +813,6 @@ class ShiftScheduleServiceTest {
             ShiftScheduleEntity schedule = createScheduleEntity();
             ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
                     .willReturn(List.of());
             given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
@@ -950,7 +821,7 @@ class ShiftScheduleServiceTest {
                     .willReturn(List.of());
 
             ShiftScheduleSummaryResponse response =
-                    shiftScheduleService.getScheduleSummary(SCHEDULE_ID, USER_ID);
+                    shiftScheduleService.getScheduleSummary(SCHEDULE_ID);
 
             assertThat(response.getScheduleId()).isEqualTo(SCHEDULE_ID);
             assertThat(response.getSummaryByDate()).isEmpty();
@@ -959,45 +830,5 @@ class ShiftScheduleServiceTest {
         // ========================================
         // per-scope 認可（Track2 第二陣 / 2026-05-29）
         // ========================================
-
-        @Test
-        @DisplayName("非権限者_COMMON_002")
-        void 非権限者_COMMON_002() {
-            ShiftScheduleEntity schedule = createScheduleEntity();
-            ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            // CMP-260917-1137: 当該チームの ADMIN/DEPUTY_ADMIN でない（同一チーム内の権限不足）は
-            // 隠す必要が無いため従来どおり 403。
-            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
-            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
-
-            assertThatThrownBy(() -> shiftScheduleService.getScheduleSummary(SCHEDULE_ID, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(CommonErrorCode.COMMON_002);
-        }
-
-        @Test
-        @DisplayName("SYSTEM_ADMIN_短絡で通過")
-        void SYSTEM_ADMIN_短絡で通過() {
-            ShiftScheduleEntity schedule = createScheduleEntity();
-            ReflectionTestUtils.setField(schedule, "id", SCHEDULE_ID);
-            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
-            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
-            given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
-                    .willReturn(List.of());
-            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
-                    .willReturn(List.of());
-            given(positionRepository.findByTeamIdOrderByDisplayOrderAsc(TEAM_ID))
-                    .willReturn(List.of());
-
-            ShiftScheduleSummaryResponse response =
-                    shiftScheduleService.getScheduleSummary(SCHEDULE_ID, USER_ID);
-
-            assertThat(response.getScheduleId()).isEqualTo(SCHEDULE_ID);
-            // SYSTEM_ADMIN は team ADMIN チェックを経由しない
-            verify(accessControlService, never()).checkAdminOrAbove(anyLong(), anyLong(), anyString());
-        }
     }
 }
