@@ -1,7 +1,5 @@
 package com.mannschaft.app.gdpr.service;
 
-import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
-import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.entity.UserEntity;
@@ -10,13 +8,15 @@ import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
 import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.OAuthLinkTokenRepository;
-import com.mannschaft.app.auth.repository.PasswordResetTokenRepository;
 import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
+import com.mannschaft.app.auth.repository.PasswordResetTokenRepository;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.util.SessionHashUtil;
 import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
@@ -34,7 +34,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -57,6 +59,7 @@ public class AccountPurgeService {
 
     private final UserRepository userRepository;
     private final PurgeStartGuard purgeStartGuard;
+    private final PlatformTransactionManager transactionManager;
     private final DataExportRepository dataExportRepository;
     private final StorageService storageService;
 
@@ -88,13 +91,18 @@ public class AccountPurgeService {
 
         int successCount = 0;
         int failedCount = 0;
+        int skippedCount = 0;
 
         for (UserEntity user : targets) {
             try {
                 if (dryRun) {
                     log.info("[DRY-RUN] userId={}: 削除対象", user.getId());
                 } else {
-                    purgeUser(user);
+                    if (!purgeUser(user.getId(), cutoff)) {
+                        log.info("最新の退会状態が削除対象外のためスキップ: userId={}", user.getId());
+                        skippedCount++;
+                        continue;
+                    }
                     log.info("ユーザー物理削除完了: userId={}", user.getId());
                 }
                 successCount++;
@@ -104,17 +112,33 @@ public class AccountPurgeService {
             }
         }
 
-        log.info("物理削除バッチ完了{}: 対象={}件, 成功={}件, 失敗={}件",
-                dryRun ? "（DRY-RUN）" : "", targets.size(), successCount, failedCount);
+        log.info("物理削除バッチ完了{}: 対象={}件, 成功={}件, 失敗={}件, スキップ={}件",
+                dryRun ? "（DRY-RUN）" : "", targets.size(), successCount, failedCount, skippedCount);
     }
 
-    @Transactional
-    void purgeUser(UserEntity user) {
-        Long userId = user.getId();
+    boolean purgeUser(Long userId, LocalDateTime cutoff) {
+        // 本体 TX で users をロックする前に、開始マークだけを独立コミットする。
+        if (!purgeStartGuard.markPurgeStartedIfEligible(userId, cutoff)) {
+            return false;
+        }
 
-        // 柱①ADMINゼロ根治 §12.5: purge開始マークを先に独立コミットする（AC11）。
-        // これにより本メソッドの以降の処理が失敗しても cancel-withdrawal は確実に止まる。
-        purgeStartGuard.markPurgeStarted(userId);
+        // scheduled メソッドからの自己呼び出しにも実 TX を設ける。共有 Template は変更しない。
+        TransactionTemplate purgeTransaction = new TransactionTemplate(transactionManager);
+        purgeTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return Boolean.TRUE.equals(purgeTransaction.execute(status -> {
+            // detached の旧候補を merge せず、論理削除行を本体 TX 内で managed として取得する。
+            UserEntity user = userRepository.findByIdForUpdateIncludingDeleted(userId).orElse(null);
+            if (user == null || user.getId() == 0L || user.getDeletedAt() == null
+                    || !user.getDeletedAt().isBefore(cutoff) || user.getPurgedAt() != null) {
+                return false;
+            }
+            purgeUserInTransaction(user);
+            return true;
+        }));
+    }
+
+    private void purgeUserInTransaction(UserEntity user) {
+        Long userId = user.getId();
 
         // Phase 1: トークン・セッション系の削除
         refreshTokenRepository.findByUserIdAndRevokedAtIsNull(userId)
@@ -207,7 +231,13 @@ public class AccountPurgeService {
         // 完了トラッキング/リトライ対象に登録する（従来 gdpr の completion_status に未登録だったため
         // リスナー失敗時の再試行が配線されていなかった・GdprPurgeRetryService 側にも合わせて登録）。
         List<String> purgeTargetDomains = List.of(
-                "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing");
+                "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing",
+                "actionmemo", "pointcard", "timeline", "search", "dashboard",
+                "scopefolder", "quickmemo", "auth", "notification", "filesharing",
+                "contact", "user", "appearance", "navsettings", "gamification",
+                "reflection", "timetable.personal", "cms", "chat", "knowledgebase",
+                "favorite", "membership", "weather", "inbox", "timetable.notes",
+                "seal", "schedule");
         LocalDateTime purgeAttemptedAt = LocalDateTime.now();
         purgeTargetDomains.forEach(domain -> {
             AccountPurgeCompletionStatusEntity pending = new AccountPurgeCompletionStatusEntity();

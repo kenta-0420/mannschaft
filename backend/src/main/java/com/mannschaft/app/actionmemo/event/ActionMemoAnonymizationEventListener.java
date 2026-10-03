@@ -1,12 +1,13 @@
 package com.mannschaft.app.actionmemo.event;
 
-import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
-import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.actionmemo.repository.ActionMemoRepository;
 import com.mannschaft.app.actionmemo.repository.ActionMemoTagRepository;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -15,6 +16,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * actionmemo ドメインの退会データ削除リスナー（クロスドメインFK撤廃キャンペーン 第二陣D）。
@@ -65,13 +68,15 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * </ul>
  * </p>
  *
- * <p>例外は WARN ログのみで伝播させない（他ドメインリスナーの処理を妨げない／
- * GDPR タイムリミットを優先する）。</p>
+ * <p>弱側の例外隔離は維持する。強側の削除失敗は所有TXをロールバックさせ、PENDINGを維持する。
+ * 完了記録は所有TXのコミット成立後だけ行う。</p>
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ActionMemoAnonymizationEventListener {
+
+    private final AccountPurgeCompletionService completionService;
 
     private final ActionMemoRepository actionMemoRepository;
     private final ActionMemoTagRepository actionMemoTagRepository;
@@ -102,27 +107,33 @@ public class ActionMemoAnonymizationEventListener {
         }
     }
 
-    /**
-     * 退会30日後の物理削除（{@link AccountPurgedEvent}）を購読し、
-     * タグマスタ・ユーザー設定（個人設定・復元価値）を削除する。
-     *
-     * @param event アカウント物理削除完了イベント
-     */
+    /** 30日後の強匿名化。所有データの削除コミット後にのみ完了を記録する。 */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-            reason = "止めると退会・完全削除済み利用者の個人情報がアクションメモ側に残存し、退会済みなのに PII が残るという不整合になる")
+            reason = "完全削除済み利用者の個人設定を消去する。停止すると設定が残留し、消去イベントは再生されない")
     @Async("purge-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onAccountPurged(AccountPurgedEvent event) {
         Long userId = event.getUserId();
-        try {
-            int deletedTags = actionMemoTagRepository.deleteAllByUserIdIncludingDeleted(userId);
-            int deletedSettings = userActionMemoSettingsRepository.deleteByUserId(userId);
-            log.info("ユーザー退会 actionmemo purge 完了: タグ・設定削除: userId={}, "
-                    + "deletedTags={}, deletedSettings={}", userId, deletedTags, deletedSettings);
-        } catch (Exception e) {
-            log.warn("ユーザー退会 actionmemo purge: タグ・設定削除失敗: userId={}, error={}",
-                    userId, e.getMessage(), e);
-        }
+        purgeSettings(userId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                completionService.markDomainSuccess(userId, "actionmemo");
+            }
+        });
+    }
+
+    /** 手動再試行。呼出元はこの新規TXのコミット成立後に完了状態を更新する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean retryPurge(Long userId) {
+        purgeSettings(userId);
+        return true;
+    }
+
+    /** 同じ所有domain内の全削除を一つのTXで実行し、途中失敗を伝播させる。 */
+    private void purgeSettings(Long userId) {
+        actionMemoTagRepository.deleteAllByUserIdIncludingDeleted(userId);
+        userActionMemoSettingsRepository.deleteByUserId(userId);
     }
 }
