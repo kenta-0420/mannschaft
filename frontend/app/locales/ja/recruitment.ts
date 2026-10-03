@@ -240,7 +240,6 @@ export default {
     "error": {
       "RECRUITMENT_001": "募集が見つかりません",
       "RECRUITMENT_002": "募集の作成権限がありません",
-      "RECRUITMENT_003": "公開範囲によりこの募集を閲覧できません",
       "RECRUITMENT_005": "定員に達しています",
       "RECRUITMENT_007": "参加形式が一致しません",
       "RECRUITMENT_008": "最小定員が定員を超えています",
