@@ -87,9 +87,63 @@ for (const severity of ['high', 'critical']) {
     value.vulnerabilities['node-forge'].via.push(
       advisory(severity, 'https://github.com/advisories/GHSA-other'),
     )
-    assert.throws(() => check(value), /許可されない advisory|深刻度が不一致/)
+    assert.throws(
+      () => check(value),
+      /許可されない(advisory|脆弱性)|深刻度が不一致/,
+    )
   })
 }
+
+const BRACES_URL = 'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm'
+const BRACES_LOCK = { packages: { 'node_modules/braces': { version: '3.0.3' } } }
+const bracesAdvisory = () => ({
+  name: 'braces',
+  dependency: 'braces',
+  severity: 'high',
+  url: BRACES_URL,
+  range: '<=3.0.3',
+})
+const bracesGraph = () => ({
+  braces: entry('braces', [bracesAdvisory()]),
+  micromatch: entry('micromatch', ['braces']),
+  chokidar: entry('chokidar', ['braces']),
+})
+test('braces GHSA は名指しで通り、期限・lock版・範囲・消費者を検証する', () => {
+  assert.equal(check(report(bracesGraph()), NOW, BRACES_LOCK), true)
+  assert.throws(
+    () =>
+      check(report(bracesGraph()), Date.parse('2026-10-17T00:00:00Z'), BRACES_LOCK),
+    /GHSA-vfj7-8cjw-p6xm の除外期限切れ/,
+  )
+  assert.throws(
+    () =>
+      check(report(bracesGraph()), NOW, {
+        packages: { 'node_modules/braces': { version: '3.0.4' } },
+      }),
+    /許可されない advisory/,
+  )
+  const ranged = bracesGraph()
+  ranged.braces.via[0].range = '<=9.0.0'
+  assert.throws(() => check(report(ranged), NOW, BRACES_LOCK), /許可されない advisory/)
+  const unknown = bracesGraph()
+  unknown.other = entry('other', ['braces'])
+  assert.throws(
+    () => check(report(unknown), NOW, BRACES_LOCK),
+    /許可されない脆弱性/,
+  )
+})
+test('braces 除外は node-forge の消費者名を流用できず、逆も拒否する', () => {
+  const g = report({
+    ...bracesGraph(),
+    listhen: entry('listhen', ['braces']),
+  })
+  assert.throws(() => check(g, NOW, BRACES_LOCK), /許可されない脆弱性/)
+  const forge = {
+    'node-forge': entry('node-forge', [advisory()]),
+    micromatch: entry('micromatch', ['node-forge']),
+  }
+  assert.throws(() => check(report(forge)), /許可されない脆弱性/)
+})
 test('同じGHSAでもcritical・別package・別range・直接依存・別versionは拒否する', () => {
   const mutations = [
     (value) => {
