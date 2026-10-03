@@ -70,7 +70,7 @@ class BillingPlanChangeAuditRegressionRedIT extends AbstractBillingPlanChangeApi
         change(userId, contractId, previewId, contractVersion(), newKey())
                 .andExpect(status().isAccepted());
 
-        // AuditLogService.record は @Async のため、HTTP応答後に記録完了を期限付きで待つ。
+        // AuditLogService.record は @Async のため、HTTP応答後に監査の呼び出しを期限付きで待つ。
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
                 org.mockito.Mockito.verify(auditLogService, org.mockito.Mockito.atLeastOnce())
                         .record(eq(AuditEventType.BILLING_PLAN_CHANGE_REQUESTED.name()),
