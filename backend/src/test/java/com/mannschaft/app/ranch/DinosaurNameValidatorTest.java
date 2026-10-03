@@ -36,4 +36,41 @@ class DinosaurNameValidatorTest {
         assertThatThrownBy(() -> validator.normalize("a" + "\u0301".repeat(161)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void 十家族絵文字とIndic結合は十書記素で十一個は拒否する() {
+        for (String cluster : new String[] {"👨‍👩‍👧‍👦", "क्ष", "🇯🇵"}) {
+            assertThat(validator.normalize(cluster.repeat(10))).isEqualTo(cluster.repeat(10));
+            assertThatThrownBy(() -> validator.normalize(cluster.repeat(11)))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Test
+    void 一書記素でもcodePoint上限とUTF8上限を独立に守る() {
+        String maxCodePoints = "b" + "\u0301".repeat(159);
+        assertThat(validator.normalize(maxCodePoints)).isEqualTo(maxCodePoints);
+        assertThatThrownBy(() -> validator.normalize(maxCodePoints + "\u0301"))
+                .isInstanceOf(IllegalArgumentException.class);
+        String modifiers = "🏽".repeat(127);
+        assertThat(validator.normalize("aaaa" + modifiers)).isEqualTo("aaaa" + modifiers);
+        assertThatThrownBy(() -> validator.normalize("aaaaa" + modifiers))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void 前後NBSPも除き不可視のみと制御と未対応surrogateを拒否する() {
+        assertThat(validator.normalize("\u00a0ひかり\u00a0")).isEqualTo("ひかり");
+        for (String input : new String[] {"\u2060", "\u3164", "\ufe0f", "\nひかり", "ひ\u2028かり", "ひ\u202eかり", "\ud800"}) {
+            assertThatThrownBy(() -> validator.normalize(input)).isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Test
+    void Gurmukhiのvirama列をIndic一般と誤って一書記素にまとめない() {
+        String twoGraphemes = "ਕ੍ਕ";
+        assertThat(validator.normalize(twoGraphemes.repeat(5))).isEqualTo(twoGraphemes.repeat(5));
+        assertThatThrownBy(() -> validator.normalize(twoGraphemes.repeat(6)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

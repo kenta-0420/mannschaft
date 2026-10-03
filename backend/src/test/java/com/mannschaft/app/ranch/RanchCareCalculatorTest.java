@@ -44,4 +44,11 @@ class RanchCareCalculatorTest {
         assertThatThrownBy(() -> calculator.gainedXp(0, 5, 0)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> calculator.gainedXp(1, 5, 6)).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void 残枠の端数だけを付与して零枠と負台帳を拒否する() {
+        assertThat(calculator.gainedXp(3, 5, 4)).isEqualTo(1);
+        assertThatThrownBy(() -> calculator.gainedXp(1, 0, 0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> calculator.gainedXp(1, 5, -1)).isInstanceOf(IllegalArgumentException.class);
+    }
 }
