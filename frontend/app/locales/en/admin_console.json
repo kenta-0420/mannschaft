@@ -124,6 +124,23 @@
         "summary": "{enabled} enabled / {total} total",
         "fetchFailed": "Could not load module information"
       }
+    },
+    "settingsHub": {
+      "title": "Administration settings",
+      "scopeSettings": "Group settings",
+      "integrations": "Integrations and issuer settings",
+      "confirmingScope": "Confirming the current group before opening integration settings.",
+      "items": {
+        "shift": "Shift settings",
+        "faq": "FAQ settings",
+        "public": "Visibility settings",
+        "care": "My care settings",
+        "todoLabels": "TODO status labels",
+        "notificationCredits": "Notification credits",
+        "modules": "Module settings",
+        "line": "LINE integration",
+        "receipts": "Receipt issuer settings"
+      }
     }
   }
 }

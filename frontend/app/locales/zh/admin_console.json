@@ -124,6 +124,23 @@
         "summary": "已启用 {enabled} / 共 {total}",
         "fetchFailed": "无法获取模块信息"
       }
+    },
+    "settingsHub": {
+      "title": "管理设置列表",
+      "scopeSettings": "团体设置",
+      "integrations": "集成与开票方设置",
+      "confirmingScope": "正在确认当前团体，确认后即可打开集成设置。",
+      "items": {
+        "shift": "排班设置",
+        "faq": "常见问题设置",
+        "public": "公开设置",
+        "care": "个人关怀设置",
+        "todoLabels": "待办状态名称",
+        "notificationCredits": "通知额度",
+        "modules": "功能设置",
+        "line": "LINE集成设置",
+        "receipts": "收据开票方设置"
+      }
     }
   }
 }

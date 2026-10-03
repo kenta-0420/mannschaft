@@ -124,6 +124,23 @@
         "summary": "{enabled} activos / {total} en total",
         "fetchFailed": "No se pudo cargar la información de módulos"
       }
+    },
+    "settingsHub": {
+      "title": "Ajustes de administración",
+      "scopeSettings": "Ajustes del grupo",
+      "integrations": "Integraciones y emisor",
+      "confirmingScope": "Se está confirmando el grupo actual antes de abrir los ajustes de integración.",
+      "items": {
+        "shift": "Ajustes de turnos",
+        "faq": "Ajustes de preguntas frecuentes",
+        "public": "Ajustes de visibilidad",
+        "care": "Mi configuración de cuidados",
+        "todoLabels": "Nombres de estados de TODO",
+        "notificationCredits": "Créditos de notificaciones",
+        "modules": "Ajustes de módulos",
+        "line": "Integración con LINE",
+        "receipts": "Ajustes del emisor de recibos"
+      }
     }
   }
 }

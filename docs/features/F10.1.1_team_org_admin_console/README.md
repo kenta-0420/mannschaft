@@ -20,6 +20,19 @@
 
 ## 1. 概要
 
+### CMP-260902-1016 設定一覧の実装範囲（検証中）
+
+既存 L2 管理コンソール、ADMIN/DEPUTY のサイドバー、LINE・領収書・機能設定への導線は実装済みである。本 CMP は不足している `/teams|organizations/[slug]/admin/settings` の一覧だけを追加し、既存設定の ACL・API・配置を変更しない。
+
+- L2 の設定カードは **exact ADMIN** のみ新一覧へ向ける。DEPUTY_ADMIN と既存 SYSTEM_ADMIN は従来の shift/FAQ URL を維持する。新一覧は [security03 §3.5](../../security/03_role_authority_model.md) に従い SYSTEM_ADMIN を表示対象に含めない。既存 `useRoleAccess.isAdmin` の SYS 許可と他画面の表示差は本 CMP では変更しない。
+- TEAM: shift、FAQ、公開、**本人のケア設定**、TODO ステータス表示名。ORG: FAQ、通知クレジット、公開、TODO ステータス表示名。両方に既存の機能設定を案内する。
+- LINE・領収書発行者設定は既存の横断 URL を使う。`/admin/settings` は親シェルの本体取得対象外のため、既存 resolver と本人所属一覧で URL の type/slug・内部 ID を照合し、同期後の type/ID が同じ団体と確認できるまでリンクを出さない。古い currentScope の ID だけでは許可しない。領収書は既存 sidebar と同じ payment モジュール条件を使う。空・取得失敗を区別し、失敗時には明示再試行を提供する。
+- CMP-260917-0041 で廃止した ORG 予約設定は復活しない。税設定は SYSTEM_ADMIN 専用 API のため掲載しない。
+- 所属取得中に別団体・横断設定へ移った場合、旧団体の遅延応答は現在スコープを書き換えない。既存同期 helper の任意ガードを新一覧と起動/ルート変更 plugin に適用し、確定済みのスコープは横断設定で保持する。
+- **未解決仕様**: 本設計の DEPUTY 権限グループ別設定と、現行 ORG FAQ の ADMIN-only ACL は一致していない。本 CMP は原 AC の ADMIN 設定一覧に限定するため、DEPUTY 細粒度化や F10.1.1 全体の完了を主張しない。
+
+検証: 7 AC（L2 入口、既存設定一覧、団体引継ぎ、未確定/失敗、除外/互換、6言語/操作性、取得回数）を正常・空/null・境界・途中失敗・認可の5類型で確認する。試験先行 `561ca28` の Linux CI run `37047484957` は TEAM/ORG の新ハブ href 欠落を assertion failure で確認した（lint/typecheck 成功）。同 run の未確定 role 2件は mock の ref 表現の問題であり red 根拠に含めず、`77124d5` で本物の Vue ref へ補正した。新ハブ試験は API 通信のみモックし、ロール・所属ストア・スコープ同期は本物を使う。Windows 正規依存での Nuxt 共通初期化 timeout は未実行として保持し、green・実画面は後続の同 head 証跡で確認する。
+
 チーム/組織の管理者（ADMIN / DEPUTY_ADMIN）は、現状メンバーとほぼ同一のダッシュボードしか閲覧できず、運営に必要な「予約確認」「予算管理」「承認待ち処理」「メンバー管理」「設定変更」といった管理機能が、ナビゲーション上に散在する `settings/*`・`member-*`・`admin/point-cards/*` 等の個別ルートに分散している。本ドキュメントは、これらを**管理者専用の3層ビュー**として体系化する設計を定義する。
 
 ```

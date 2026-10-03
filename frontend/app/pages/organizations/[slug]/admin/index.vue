@@ -46,7 +46,7 @@ const route = useRoute()
 const { t } = useI18n()
 
 const orgSlug = computed(() => String(route.params.slug))
-const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
+const { roleName, isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 const { getAdminActionRequired } = useScopeTabApi()
 
 // P2b: 横断承認待ち集約のバッジ状態（team ハブと同方針・03 §4.3）。
@@ -121,7 +121,8 @@ const cards = computed<AdminConsoleCard[]>(() => [
     titleKey: 'adminConsole.cards.settings.title',
     descKey: 'adminConsole.cards.settings.desc',
     icon: 'pi pi-cog',
-    to: `${base.value}/settings/faq-settings`,
+    // 新ハブはスコープ ADMIN 向け。DEPUTY/SYS の既存入口は変えない（security03 §3.5）。
+    to: roleName.value === 'ADMIN' ? `${base.value}/admin/settings` : `${base.value}/settings/faq-settings`,
   },
   {
     key: 'pointCards',

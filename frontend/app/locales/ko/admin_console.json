@@ -124,6 +124,23 @@
         "summary": "활성화 {enabled} / 전체 {total}",
         "fetchFailed": "모듈 정보를 가져오지 못했습니다"
       }
+    },
+    "settingsHub": {
+      "title": "관리 설정 목록",
+      "scopeSettings": "단체 설정",
+      "integrations": "연동 및 발행자 설정",
+      "confirmingScope": "연동 설정을 열기 전에 현재 단체를 확인하고 있습니다.",
+      "items": {
+        "shift": "교대 설정",
+        "faq": "FAQ 설정",
+        "public": "공개 설정",
+        "care": "본인의 케어 설정",
+        "todoLabels": "TODO 상태 표시 이름",
+        "notificationCredits": "알림 크레딧",
+        "modules": "기능 설정",
+        "line": "LINE 연동 설정",
+        "receipts": "영수증 발행자 설정"
+      }
     }
   }
 }

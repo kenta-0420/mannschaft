@@ -12,6 +12,8 @@
  * 現在スコープの正本とする。切替 UI を新設せず、既存のナビゲーションがそのまま
  * スコープ切替になる（URL 直打ち・他画面からのリンクでも効く）。</p>
  */
+import { parseScopeRoute } from '~/composables/useScopeRouteSync'
+
 export default defineNuxtPlugin(() => {
   const scopeStore = useScopeStore()
   scopeStore.loadFromStorage()
@@ -19,9 +21,20 @@ export default defineNuxtPlugin(() => {
   const router = useRouter()
   const { syncFromPath } = useScopeRouteSync()
 
+  function synchronizeCurrentRoute(path: string) {
+    const requested = parseScopeRoute(path)
+    const isCurrent = () => {
+      const current = parseScopeRoute(router.currentRoute.value.path)
+      return requested !== null && current !== null
+        && requested.scopeType === current.scopeType && requested.slug === current.slug
+    }
+    // 初期取得が遅れても、別団体や横断設定へ移った後に旧団体を書き込まない。
+    void syncFromPath(path, isCurrent)
+  }
+
   // 初期表示（URL 直打ち・リロード）と、以後のクライアント遷移の双方で同期する。
-  void syncFromPath(router.currentRoute.value.path)
+  synchronizeCurrentRoute(router.currentRoute.value.path)
   router.afterEach((to) => {
-    void syncFromPath(to.path)
+    synchronizeCurrentRoute(to.path)
   })
 })
