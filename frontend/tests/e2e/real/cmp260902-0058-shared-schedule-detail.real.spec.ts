@@ -240,9 +240,22 @@ test.describe('CMP-260902-0058 実ブラウザ（API smoke と別判定）', () 
   test('完全非所属者: 同じ直接 URL と実 GET は説明・名簿を開示しない', async ({ page }, info) => {
     await loginViaApi(page, { email: OUTSIDER, password: PASSWORD }, { apiBaseUrl: API })
     for (const fixture of fixtures) {
+      const scopeEndpoint = `/api/v1/${fixture.type}/${fixture.slug}`
+      const initialScopeResponse = page.waitForResponse(response => {
+        const path = new URL(response.url()).pathname
+        return response.request().method() === 'GET'
+          && [scopeEndpoint, `${scopeEndpoint}/me/permissions`, `${scopeEndpoint}/schedules`].includes(path)
+      })
       await page.goto(screenPath(fixture))
+      expect([200, 403], '直接 URL の実初期 GET は正常取得または認可拒否').toContain((await initialScopeResponse).status())
       const response = await page.request.get(`${API}${endpoint(fixture)}`)
       expect(response.status(), 'ANYONE は MEMBERS_ONLY を緩めない').toBe(403)
+      // 親の取得失敗表示、または予定ページの空詳細は、既存のロード終了後にだけ描画される。
+      const terminal = page.getByText('イベントを選択してください', { exact: true })
+        .or(page.getByText('情報を取得できませんでした', { exact: true })).filter({ visible: true })
+      await expect(terminal, '403 後の既存画面がロード途中でなく終端へ到達').toBeVisible()
+      await expect(page.locator('body > .pointer-events-none.fixed.inset-0'), 'グローバル読み込み終了').toBeHidden()
+      expect(new URL(page.url()).pathname, '拒否時も同じ団体の直接 URL を検証').toBe(screenPath(fixture))
       await expect(page.getByText(DESCRIPTION, { exact: true })).toHaveCount(0)
       await expect(page.getByLabel(fixture.memberName, { exact: true })).toHaveCount(0)
       await screenshot(page, info, `${fixture.type}-outsider-denied`)
