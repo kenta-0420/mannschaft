@@ -93,9 +93,9 @@ class R2StorageServiceSdkWireTest {
     @BeforeEach
     void 準備_既存checksum設定のままloopbackへ限定する(TestReporter reporter) throws Exception {
         // BOM宣言やcacheの版を推測せず、実classpathのjar名と内容hashを各caseへ残す。
-        reporter.publishEntry("cmp1041.runtime.s3", runtimeJar(S3Client.class));
-        reporter.publishEntry("cmp1041.runtime.sdk-core", runtimeJar(ClientOverrideConfiguration.class));
-        reporter.publishEntry("cmp1041.runtime.apache-client", runtimeJar(ApacheHttpClient.class));
+        publish(reporter, "cmp1041.runtime.s3", runtimeJar(S3Client.class));
+        publish(reporter, "cmp1041.runtime.sdk-core", runtimeJar(ClientOverrideConfiguration.class));
+        publish(reporter, "cmp1041.runtime.apache-client", runtimeJar(ApacheHttpClient.class));
         // 共有環境のchecksum上書きを消さず、baselineを変える条件なら明示失敗にする。
         for (String name : List.of("AWS_REQUEST_CHECKSUM_CALCULATION", "AWS_RESPONSE_CHECKSUM_VALIDATION")) {
             assertThat(System.getenv(name)).as("baselineを変える環境変数: %s", name).isNull();
@@ -269,7 +269,14 @@ class R2StorageServiceSdkWireTest {
             if (!captures.offer(capture)) throw new IOException("捕捉queue上限超過");
             byte[] response = responseFor(capture).getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/xml");
-            exchange.getResponseHeaders().set("ETag", "dummy-response-etag");
+            if ("PUT".equals(capture.method()) && !capture.query().containsKey("uploadId")) {
+                // 単一PUTのETagはSDKのMD5応答検証対象。aws-chunkedを除いた実payloadで応答する。
+                String etag = HexFormat.of().formatHex(MessageDigest.getInstance("MD5")
+                        .digest(decode(capture).payload()));
+                exchange.getResponseHeaders().set("ETag", "\"" + etag + "\"");
+            } else {
+                exchange.getResponseHeaders().set("ETag", "dummy-response-etag");
+            }
             exchange.sendResponseHeaders(200, response.length == 0 ? -1 : response.length);
             if (response.length > 0) exchange.getResponseBody().write(response);
         } catch (Throwable failure) {
@@ -297,12 +304,12 @@ class R2StorageServiceSdkWireTest {
     private Capture take(TestReporter reporter, String name) throws Exception {
         Capture capture = captures.poll(5, TimeUnit.SECONDS);
         assertThat(capture).as("SDK request捕捉: %s", name).isNotNull();
-        reporter.publishEntry("cmp1041.wire." + name, "method=" + capture.method() + "; path=" + capture.path()
+        publish(reporter, "cmp1041.wire." + name, "method=" + capture.method() + "; path=" + capture.path()
                 + "; query=" + capture.query() + "; headers=" + capture.headers()
                 + "; bodyBytes=" + capture.body().length + "; rawSHA256=" + sha256(capture.body())
                 + "; HTTP-transfer-trailer=未観測; provider-validation=未実施");
         Decoded decoded = decode(capture);
-        reporter.publishEntry("cmp1041.wire." + name + ".decoded", "payloadBytes=" + decoded.payload().length
+        publish(reporter, "cmp1041.wire." + name + ".decoded", "payloadBytes=" + decoded.payload().length
                 + "; decodedSHA256=" + sha256(decoded.payload()) + "; aws-body-trailers=" + decoded.trailers());
         assertThat(requestCount.get()).as("正常応答を再試行で隠さない").isEqualTo(1);
         assertThat(capture.path()).isEqualTo("/" + BUCKET + "/" + KEY);
@@ -328,7 +335,7 @@ class R2StorageServiceSdkWireTest {
         Map<String, String> parameters = query(uri);
         Map<String, List<String>> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         headers.putAll(signedHeaders);
-        reporter.publishEntry("cmp1041.wire." + name, "query=" + parameters + "; signedHeaders=" + headers
+        publish(reporter, "cmp1041.wire." + name, "query=" + parameters + "; signedHeaders=" + headers
                 + "; isBrowserExecutable=" + browserExecutable + "; actual-browser=未実施");
         assertThat(parameters).containsEntry("X-Amz-Expires", "300");
         assertThat(parameters).containsKey("X-Amz-SignedHeaders");
@@ -407,6 +414,12 @@ class R2StorageServiceSdkWireTest {
         crc.update(PAYLOAD);
         byte[] value = java.nio.ByteBuffer.allocate(4).putInt((int) crc.getValue()).array();
         return Base64.getEncoder().encodeToString(value);
+    }
+
+    /** 既存の秘匿済み観測だけを、TestReporterとGradle XMLのsystem-outへ同じ値で残す。 */
+    private static void publish(TestReporter reporter, String key, String value) {
+        reporter.publishEntry(key, value);
+        System.out.println(key + "=" + value);
     }
 
     /** 実jarのbasenameだけを記録し、例外にも絶対userpathや元URLを載せない。 */
