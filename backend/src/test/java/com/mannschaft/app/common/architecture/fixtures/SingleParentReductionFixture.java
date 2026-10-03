@@ -60,6 +60,14 @@ public class SingleParentReductionFixture {
                 .orElse(null);
     }
 
+    /** 違反: 許可リストに載せても、順序付き取得を parallelStream().findAny() で任意の1件へ縮約する形は通らない。 */
+    public Long representativeParentByFindAny(Long teamId) {
+        return queryService.findActiveOrganizationIdsInPrimaryOrder(teamId)
+                .parallelStream()
+                .findAny()
+                .orElse(null);
+    }
+
     /** 違反: 許可リストに載せても、順序なしの取得（findByTeamIdAndStatus）へ差し替えた代表親取得は通らない。 */
     public Long representativeParentUnordered(Long teamId) {
         return repository.findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE)

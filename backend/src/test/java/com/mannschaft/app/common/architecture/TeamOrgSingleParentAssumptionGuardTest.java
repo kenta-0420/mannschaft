@@ -102,6 +102,7 @@ class TeamOrgSingleParentAssumptionGuardTest {
             "java.util.SequencedCollection#getLast",
             "java.util.List#reversed",
             "java.util.Collections#reverse",
+            "java.util.stream.Stream#findAny",
             "java.util.stream.Stream#reduce",
             "java.util.stream.Stream#skip",
             "java.util.stream.Stream#max",
@@ -253,18 +254,21 @@ class TeamOrgSingleParentAssumptionGuardTest {
                         owner + ".reduceByListGet",
                         owner + ".representativeParent",
                         owner + ".representativeParentUnordered",
-                        owner + ".representativeParentLast");
+                        owner + ".representativeParentLast",
+                        owner + ".representativeParentByFindAny");
         // 代表親組織を採る正当な箇所は、明示した許可＋順序付き取得の組合せだけが通る。
         // 許可があっても順序なし取得へ差し替えた representativeParentUnordered は検出される。
         assertThat(reductionViolations(specimens,
                 Set.of(owner + ".representativeParent", owner + ".representativeParentUnordered",
-                        owner + ".representativeParentLast", owner + ".representativeParentByReduce")))
+                        owner + ".representativeParentLast", owner + ".representativeParentByReduce",
+                        owner + ".representativeParentByFindAny")))
                 .containsExactlyInAnyOrder(
                         owner + ".reduceByFindFirst",
                         owner + ".reduceByListGet",
                         owner + ".representativeParentUnordered",
                         owner + ".representativeParentLast",
-                        owner + ".representativeParentByReduce");
+                        owner + ".representativeParentByReduce",
+                        owner + ".representativeParentByFindAny");
     }
 
     @Test
