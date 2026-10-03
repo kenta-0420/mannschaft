@@ -335,8 +335,8 @@ class SchoolAttendanceRegistrationIntegrityIT extends SchoolAttendanceAuthzFixtu
     }
 
     // AC-17 entries の件数上限（200）と同一生徒の重複拒否。
-    // 200 件が通る側は、在籍生徒 200 人のフィクスチャが重いため省略し、在籍確認より前に落ちる 201 件の 400 と、
-    // 少数の重複の 400 で境界を固定する（Bean Validation の @Size(max = 200) が上限）。
+    // 件数上限は互いに異なる ID で検証し、重複拒否と独立に @Size(max = 200) の有無を判定する。
+    // 200 件ちょうどは「entries のフィールドエラーが無い」ことで DTO 検証通過を判定する（在籍は不要）。
 
     private static final String[] ROUTES = {
             "/api/v1/teams/{t}/attendance/daily/roll-call", "/api/v1/teams/{t}/attendance/periods/3"};
@@ -346,27 +346,58 @@ class SchoolAttendanceRegistrationIntegrityIT extends SchoolAttendanceAuthzFixtu
                 + count("SELECT COUNT(*) FROM period_attendance_records", new Object[0]);
     }
 
-    @ParameterizedTest(name = "AC-17 entries 201 件は 400 route={0}")
-    @ValueSource(ints = {0, 1})
-    @DisplayName("AC-17: entries が 201 件なら両経路とも 400・DB に 1 行も作られない")
-    void entriesが上限超過なら400(int route) throws Exception {
-        long rowsBefore = registrationRows();
-        long eventsBefore = rollCallEvents();
+    /** 互いに異なる studentUserId を n 個並べた entries 本文（在籍していなくてよい。Bean Validation は認可・在籍確認より前）。 */
+    private Map<String, Object> distinctEntriesBody(int n) {
         List<Map<String, Object>> many = new ArrayList<>();
-        for (int i = 0; i < 201; i++) {
-            many.add(entry(studentAId, "ATTENDING"));
+        for (int i = 0; i < n; i++) {
+            many.add(entry(900_000L + i, "ATTENDING"));
         }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("attendanceDate", date.toString());
         body.put("entries", many);
+        return body;
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode errorOf(MvcResult result) throws Exception {
+        return objectMapper.readTree(result.getResponse().getContentAsString()).path("error");
+    }
+
+    private List<String> fieldErrorNames(com.fasterxml.jackson.databind.JsonNode error) {
+        List<String> names = new ArrayList<>();
+        error.path("fieldErrors").forEach(fe -> names.add(fe.path("field").asText()));
+        return names;
+    }
+
+    @ParameterizedTest(name = "AC-17 entries 201 件は 400 route={0}")
+    @ValueSource(ints = {0, 1})
+    @DisplayName("AC-17: 互いに異なる 201 件は Bean Validation（COMMON_001・entries のフィールドエラー）で 400・DB に 1 行も作られない")
+    void entriesが上限超過なら400(int route) throws Exception {
+        long rowsBefore = registrationRows();
+        long eventsBefore = rollCallEvents();
 
         auth(Actor.HOMEROOM);
         MvcResult result = mockMvc.perform(post(ROUTES[route], teamAId)
-                        .contentType(MediaType.APPLICATION_JSON).content(json(body))).andReturn();
+                        .contentType(MediaType.APPLICATION_JSON).content(json(distinctEntriesBody(201)))).andReturn();
 
         assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        com.fasterxml.jackson.databind.JsonNode error = errorOf(result);
+        assertThat(error.path("code").asText()).as("重複由来ではなく DTO 検証由来").isEqualTo("COMMON_001")
+                .isNotEqualTo("SCHOOL_DUPLICATE_STUDENT_ENTRY");
+        assertThat(fieldErrorNames(error)).as("@Size(max=200) の違反は entries に付く").contains("entries");
         assertThat(registrationRows()).as("上限超過は 1 行も作らない").isEqualTo(rowsBefore);
         assertThat(rollCallEvents()).isEqualTo(eventsBefore);
+    }
+
+    @ParameterizedTest(name = "AC-17 entries 200 件は DTO 検証を通る route={0}")
+    @ValueSource(ints = {0, 1})
+    @DisplayName("AC-17: 互いに異なる 200 件ちょうどは entries のフィールドエラーにならない（後段の在籍エラー等は可）")
+    void entriesが200件ちょうどはDTO検証を通る(int route) throws Exception {
+        auth(Actor.HOMEROOM);
+        MvcResult result = mockMvc.perform(post(ROUTES[route], teamAId)
+                        .contentType(MediaType.APPLICATION_JSON).content(json(distinctEntriesBody(200)))).andReturn();
+
+        assertThat(fieldErrorNames(errorOf(result)))
+                .as("200 件は @Size(max=200) に違反しない").noneMatch(f -> f.startsWith("entries"));
     }
 
     @ParameterizedTest(name = "AC-17 同一生徒の重複は 400 route={0}")
