@@ -94347,8 +94347,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 templateId: string;
             };
             cookie?: never;
@@ -94371,8 +94371,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 templateId: string;
             };
             cookie?: never;
@@ -94399,8 +94399,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 templateId: string;
             };
             cookie?: never;
@@ -108981,7 +108981,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -109003,7 +109003,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -109037,8 +109037,8 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -109060,8 +109060,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -123102,8 +123102,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -123125,8 +123125,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -139056,8 +139056,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139084,7 +139084,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139111,7 +139111,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139138,8 +139138,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139166,8 +139166,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139194,7 +139194,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139221,8 +139221,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139245,8 +139245,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139267,8 +139267,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139295,7 +139295,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139318,7 +139318,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139339,7 +139339,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -153222,7 +153222,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -153245,8 +153245,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -153269,7 +153269,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 fixtureId: number;
             };
             cookie?: never;
@@ -153292,8 +153292,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 fixtureId: number;
             };
             cookie?: never;
@@ -161336,9 +161336,9 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                orgId: string;
                 userId: number;
-                teamId: number;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -161367,9 +161367,9 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                orgId: string;
                 userId: number;
-                teamId: number;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -161396,7 +161396,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                orgId: string;
                 userId: number;
             };
             cookie?: never;
@@ -161426,7 +161426,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                orgId: string;
                 userId: number;
             };
             cookie?: never;
@@ -161957,8 +161957,8 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
