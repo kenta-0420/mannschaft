@@ -149,14 +149,14 @@ RanchState.assignment=`{availableMethods:AssignmentMethod[],selectionConfirmed:b
 | PUT | `/api/v1/me/ranch/assignment` | `{method:enum,habitat:enum|null,birthDate:LocalDate|null,selectionName:string|null,diagnosisToken:string|null,version:string}`、Idempotency-Key | 200確認済みassignment。未承認adapter503、確認後別入力409、同key同body元結果 |
 | POST | `/api/v1/me/ranch/hatch` | `{version:string,name:string,nameConfirmed:true}`、Idempotency-Key | ready AND selection confirmed AND命名確認のみ200孵化・命名を同TX保存。未成熟/未選定409、名前境界/確認不備400。同key再送同結果、別名再送/改名409、XP0 |
 
-methodごとに不要inputはnull必須。HABITAT_RANDOMはLAND/SEA/AIRのみ、birthDate/selectionName/tokenはnull。BIRTH_STYLEは厳格YYYY-MM-DD LocalDate/選定用名trim1〜80文字、実算法/利用可能化は別裁可。DIAGNOSISはserver検証済みtokenでprovider/type/mappingを確定する初期必須契約（内容未裁可）、client typeCodeを科学的結果と認定しない。raw出生入力は計算後捨てresultはspecies/variant/method/version/confirmedAtだけ。名前は本名不要、入力説明は占い風の楽しみであり科学的判定と主張しない。未実装方式を「準備中」と表示して入力収集しない。訂正で自動相棒変更なし。
+methodごとに不要inputはnull必須。HABITAT_RANDOMはLAND/SEA/AIRのみ、birthDate/selectionName/tokenはnull。BIRTH_STYLEは厳格YYYY-MM-DD LocalDate/選定用名trim1〜80文字、実算法/利用可能化は別裁可。DIAGNOSISはserver検証済みtokenでprovider/type/mappingを確定する初期必須契約（内容未裁可）、client typeCodeを科学的結果と認定しない。raw出生入力は計算後捨て、選定snapshotと本人向け派生診断結果の保存を分ける（末尾の結果閲覧契約参照）。名前は本名不要、入力説明は占い風の楽しみであり科学的判定と主張しない。未実装方式を「準備中」と表示して入力収集しない。訂正で自動相棒変更なし。
 
 出生入力の境界: birthDateは日付だけを厳格解析し、存在しない日/月、非うるう年の2月29日、日時/TZ付き、null/欠落をBIRTH_STYLEでは400にする。許容年齢/未来日など商品上の範囲は後続モジュール設計で裁可する。選定用名は本名不要。Unicode/空白等の正規化規則とnormalizationVersionを後続で確定し、承認済みruleVersion/normalizationVersion/対応表の同一組と同一正規化入力は同じspecies＋variantを返す。raw inputを永続化せず、冪等比較用HMACには正規化されたcommand/path/versionと出生入力を含め、keyVersionとnormalizationVersionをcommandへ保存する。key rotation後も保存済み版のkey/規則で旧commandのretryを比較できるようowner lifetime中保持し、未知key/規則で再抽選や新規確定しない。plain hashやraw入力をAPI/result/records/outbox/log/auditへ出さない。算法・正規化の具体内容とkey管理手順は未確定で、承認前に入力収集/公開しない。
 
 診断のvalidation境界: server発行本人sessionのquestionnaireVersion/scoringVersionを固定し、完了時の全required回答、question IDの一意性と所属、回答値の型/null/上下限をserverで検証する。空回答、欠落、重複、未知question、範囲外で完了を作らず400。本人COMPLETED resultだけを選定に利用し、他人/不在resultは同形404、client typeCode/scoringVersionの偽装で採点結果を変えない。承認versionの全64 typeCodeに対応species/assetがあることを公開gateで検証し、未対応を別type/別個体へ置換しない。具体API/DTO/値域は後続モジュール設計で補完する。
 ## 初期公開の選定3方式（最新確定範囲・内容は未裁可）
 
-性格診断もPhase 1初期公開から必須。BIRTH_STYLE（出生情報＋選定用名の占い風決定的割当）、HABITAT_RANDOM（海/空/陸random）、DIAGNOSIS（64タイプ）の三入口を卵期間に選択する。初期は16種×各4つの色・体型・模様のバリエーション＝64タイプ、将来64種へ拡張する方針はユーザー確定。恐竜との過ごし方を想像する質問は可、牧場の設備や遊び方を知っている前提の質問は改稿する。質問/採点/64 type→species＋variant対応表、占い方式/入力正規化、初期16種の名簿・4デザインの内容は詳細未確定で、24問案を承認済みとしない。公開gateは三方式の確定済みserver rule/入力validation/全64 mappingと必要素材が揃うこと。ランダムpoolの旧別pool条件との整合はユーザー確認中。診断未実装を利用可能と装わず、暫定公開で診断を後回しにしない。
+性格診断もPhase 1初期公開から必須。BIRTH_STYLE（出生情報＋選定用名の占い風決定的割当）、HABITAT_RANDOM（海/空/陸random）、DIAGNOSIS（64タイプ）の三入口を卵期間に選択する。初期は16種×各4つの色・体型・模様のバリエーション＝64タイプ、将来64種へ拡張する方針はユーザー確定。恐竜との過ごし方を想像する質問は可、牧場の設備や遊び方を知っている前提の質問は改稿する。質問/採点/64 type→species＋variant対応表、占いの具体計算/入力正規化、初期16種の名簿・4デザインの内容は詳細未確定で、24問案を承認済みとしない。公開gateは三方式の確定済みserver rule/入力validation/全64 mappingと必要素材が揃うこと。ランダムpoolの旧別pool条件との整合はユーザー確認中。診断未実装を利用可能と装わず、暫定公開で診断を後回しにしない。
 
 提案構造: 本人診断sessionをserver発行しquestionnaireVersion/scoringVersionをsnapshot、回答は本人sessionへ送信、serverがvalidationと採点をしてCOMPLETED結果（provider/typeCode/mappingVersion）を不変保存する。選定確認時に本人COMPLETED結果と対応表versionを検証してspeciesを固定。clientのtypeCodeを結果として信用しない。診断結果が変わっても確認済みの同恐竜を維持する。質問/回答/診断resultはprivate、報酬outbox/共有プロフィールへ出さず、診断完了回数をpoints/XPにしない。質問/画像/算法の外部サイト利用許諾/APIは未確認で、無断複製を前提にしない。
 
@@ -170,4 +170,20 @@ DinosaurSummaryはEGGでname/namedAt=null、BABY以降で必須。孵化response
 
 ## 2026-10-03の追加裁可
 
-初期16種×各4バリエーション＝64タイプ、将来64種へ拡張。生年月日＋名前は固定の割当方式にし、既存占いと対応できる方式を優先して検討（具体方式/対応表は未採用）。退会取消で同じ相棒を戻し、最終アカウント削除で消去。孵化後の3ボタンと非減衰親密度の仕草・反応表現を採用。相棒との過ごし方の質問は可、牧場機能の知識を前提にした質問は改稿する。素材・動作の大量生成を一度に要求せず、制作時間/品質を1種pilotで確認する計画案を用意する。
+初期16種×各4バリエーション＝64タイプ、将来64種へ拡張。生年月日＋名前は固定の割当方式にし、既存占いと対応できる方式を優先して検討（数秘術を参考にする方向は採用、具体計算/対応表は未確定）。退会取消で同じ相棒を戻し、最終アカウント削除で消去。孵化後の3ボタンと非減衰親密度の仕草・反応表現を採用。相棒との過ごし方の質問は可、牧場機能の知識を前提にした質問は改稿する。素材・動作の大量生成を一度に要求せず、制作時間/品質を1種pilotで確認する計画案を用意する。
+
+## 相棒の位置づけ・自分の診断結果（2026-10-03ユーザー確定）
+
+恐竜は「自分から生まれた相棒の精霊」が恐竜の姿をとった存在として扱う。牧場主は本人の分身、相棒は本人から生まれた別の存在で、別エンティティ・同一個体の継続という技術境界は維持する。診断はユーザー自身の好み・傾向を振り返るための結果であり、相棒の性格や能力の診断に読み替えない。占い・精霊は作品内の表現で、科学的な性格測定や超自然的効果を保証する説明にしない。
+
+64タイプ診断と生年月日・名前の占いは、相棒の「ようす」から本人がいつでも見返せる。未実施の方式は「未診断」と表示し、別方式の結果を捏造しない。結果閲覧の主目的を「相棒を選んだ時の記録」としない。未実施の診断は後から実施でき、再診断も新しい本人の結果を作るだけで、確定済み相棒の個体・種・外見・名前・成長・親密度を変えない。診断実施・閲覧・再診断をポイントや育成条件にしない。誕生に使った結果との内部参照は、同個体維持のための記録としてUIの主題から分ける。
+
+数秘術を参考にした相棒占いの方向と、初期反応を待機・食べる・短い喜びに絞る案を採用する。日本語名の正規化・数の扱い・恐竜対応表、質問案の各設問・採点・同点処理は未確定。一般的な相棒との過ごし方を想像する質問を残し、牧場機能の予備知識を要求しない。16種×4外見の具体名簿/デザイン、ランダムの旧別pool条件との整合も別の未確定事項として維持する。
+
+### 本人の診断結果閲覧API（詳細案・未実装）
+
+GET /api/v1/me/ranch/diagnosis-results?method=DIAGNOSIS|BIRTH_STYLE&cursor=...&limit=20 を本人結果一覧へのranch読取facadeとする。method省略時は両方式、limitは1〜100。認証principalから本人IDを得て診断ドメインの読取Serviceへ渡し、組織ID・userId・result typeをclient入力で指定させない。成功は既存CursorPagedResponse、0件は200 data=[]。completedAt降順・id降順、cursorはopaqueな版付き値で本人とfilterに結び付け、別filter/不正cursorは400。詳細GET /api/v1/me/ranch/diagnosis-results/{resultId} は本人完成resultだけを返し、他人/不在/未完了は同形404、未認証401。
+
+DiagnosisResultSummary案: {id:UUID,method:DIAGNOSIS|BIRTH_STYLE,completedAt:Instant,ruleVersion:string,resultSchemaVersion:string}。詳細はsummaryとresultSnapshotを返す。snapshotのtypeCode/軸結果/占い算出数/6言語独自説明の型とサイズ上限は診断モジュールで固定し、raw生年月日・名前・全回答は返さない。誕生に利用したresultの参照を保持しても、本人向けの最新結果と相棒の確定済み外見を同じ「現在の診断」として上書きしない。
+
+本人PAUSED、widget非表示、動きSTOPPED、care停止、報酬停止、残高0でも既存結果GETは利用可能。退会申請中/最終削除済みはアカウントアクセスガードで拒否する。system admin/チーム管理者/訪問者へ本人APIを転用しない。Cache-Control: private, no-store、共有profile/通知/報酬履歴/outbox/監査へ結果を出さない。GETは採点・割当・育成・残高・診断実施数を変更しない。未実施方式の計算や再診断は専用の本人確認操作から行い、GETの副作用にしない。
