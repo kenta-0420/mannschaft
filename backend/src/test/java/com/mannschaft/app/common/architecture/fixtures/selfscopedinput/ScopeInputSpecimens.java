@@ -224,7 +224,7 @@ class AggregateRequestHeaderMapSpecimenController {
 /** 修繕r2: 具象 Helper → 別 interface → 実装 → Repository。実装は find → delete だけ。緑。 */
 class ChainLedgeredSpecimenController {
 
-    private SpecimenChainService service;
+    private SpecimenChainStepService service;
 
     @SelfScopedEndpoint("検体: 多段委譲で自分のピン行を引いて消すだけ")
     void unpin(@PathVariable UUID villageId) {

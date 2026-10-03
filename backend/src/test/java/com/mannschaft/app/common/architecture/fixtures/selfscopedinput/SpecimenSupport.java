@@ -207,7 +207,7 @@ class SpecimenChainHelper {
 }
 
 /** 修繕r2: 具象 Helper を呼ぶ Service。 */
-class SpecimenChainService {
+class SpecimenChainStepService {
 
     private SpecimenChainHelper helper;
 
