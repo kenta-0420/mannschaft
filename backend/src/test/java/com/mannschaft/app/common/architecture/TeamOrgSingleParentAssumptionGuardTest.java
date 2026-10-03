@@ -90,6 +90,24 @@ class TeamOrgSingleParentAssumptionGuardTest {
             "java.util.SequencedCollection#getFirst");
 
     /**
+     * 許可リストのメソッド内で禁じる呼び出し。許可するのは「順序付き取得の先頭の抽出（get(0)・getFirst・findFirst）」だけで、
+     * 末尾の抽出（{@code get(size - 1)}・{@code getLast}・{@code reversed}）やそれ以外の縮約
+     * （{@code reduce}・{@code skip}・{@code max}・{@code min}・{@code Collections.reverse}）は許可メソッド内でも拒否する。
+     * 定数インデックスの値そのもの（get(1) 等）はバイトコード上の定数で、この静的解析では読めない（検出対象外）。
+     */
+    private static final Set<String> NON_HEAD_EXTRACTION_CALLS = Set.of(
+            "java.util.List#size",
+            "java.util.Collection#size",
+            "java.util.List#getLast",
+            "java.util.SequencedCollection#getLast",
+            "java.util.List#reversed",
+            "java.util.Collections#reverse",
+            "java.util.stream.Stream#reduce",
+            "java.util.stream.Stream#skip",
+            "java.util.stream.Stream#max",
+            "java.util.stream.Stream#min");
+
+    /**
      * 代表親組織の許可に使ってよい、成立時刻 → organization_id で順序を固定した取得（§9.3）。
      * 許可リストのメソッドも、これ以外の reader（順序なし）を呼べば違反になる。
      */
@@ -234,15 +252,19 @@ class TeamOrgSingleParentAssumptionGuardTest {
                         owner + ".reduceByFindFirst",
                         owner + ".reduceByListGet",
                         owner + ".representativeParent",
-                        owner + ".representativeParentUnordered");
+                        owner + ".representativeParentUnordered",
+                        owner + ".representativeParentLast");
         // 代表親組織を採る正当な箇所は、明示した許可＋順序付き取得の組合せだけが通る。
         // 許可があっても順序なし取得へ差し替えた representativeParentUnordered は検出される。
         assertThat(reductionViolations(specimens,
-                Set.of(owner + ".representativeParent", owner + ".representativeParentUnordered")))
+                Set.of(owner + ".representativeParent", owner + ".representativeParentUnordered",
+                        owner + ".representativeParentLast", owner + ".representativeParentByReduce")))
                 .containsExactlyInAnyOrder(
                         owner + ".reduceByFindFirst",
                         owner + ".reduceByListGet",
-                        owner + ".representativeParentUnordered");
+                        owner + ".representativeParentUnordered",
+                        owner + ".representativeParentLast",
+                        owner + ".representativeParentByReduce");
     }
 
     @Test
@@ -369,6 +391,7 @@ class TeamOrgSingleParentAssumptionGuardTest {
                 boolean readsParents = false;
                 boolean readsUnordered = false;
                 boolean reduces = false;
+                boolean nonHead = false;
                 for (JavaMethodCall call : method.getMethodCallsFromSelf()) {
                     String callee = call.getTargetOwner().getName() + "#" + call.getName();
                     if (TEAM_ORG_COLLECTION_READERS.contains(callee)) {
@@ -376,9 +399,12 @@ class TeamOrgSingleParentAssumptionGuardTest {
                         readsUnordered |= !ORDERED_READERS.contains(callee);
                     }
                     reduces |= REDUCTION_CALLS.contains(callee);
+                    nonHead |= NON_HEAD_EXTRACTION_CALLS.contains(callee);
                 }
-                // 許可されたメソッドは、順序付き取得だけを使っている場合に限って縮約を許す。
-                if (readsParents && reduces && (!allowed || readsUnordered)) {
+                // 許可されたメソッドは、順序付き取得の先頭の抽出に限って縮約を許す
+                // （順序なし取得・末尾抽出・その他の縮約は許可メソッド内でも拒否する）。
+                if (readsParents && (reduces || (allowed && nonHead))
+                        && (!allowed || readsUnordered || nonHead)) {
                     violations.add(key);
                 }
             }

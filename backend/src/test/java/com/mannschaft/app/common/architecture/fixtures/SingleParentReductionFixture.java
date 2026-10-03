@@ -46,6 +46,20 @@ public class SingleParentReductionFixture {
         return parents.isEmpty() ? null : parents.get(0);
     }
 
+    /** 違反: 許可リストに載せても、順序付き取得の「末尾」を採る（get(size - 1)）形は通らない。 */
+    public Long representativeParentLast(Long teamId) {
+        List<Long> parents = queryService.findActiveOrganizationIdsInPrimaryOrder(teamId);
+        return parents.isEmpty() ? null : parents.get(parents.size() - 1);
+    }
+
+    /** 違反: 許可リストに載せても、順序付き取得を reduce で末尾へ縮約する形は通らない。 */
+    public Long representativeParentByReduce(Long teamId) {
+        return queryService.findActiveOrganizationIdsInPrimaryOrder(teamId)
+                .stream()
+                .reduce((first, second) -> second)
+                .orElse(null);
+    }
+
     /** 違反: 許可リストに載せても、順序なしの取得（findByTeamIdAndStatus）へ差し替えた代表親取得は通らない。 */
     public Long representativeParentUnordered(Long teamId) {
         return repository.findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE)

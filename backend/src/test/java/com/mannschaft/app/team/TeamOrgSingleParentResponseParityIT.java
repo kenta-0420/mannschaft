@@ -29,10 +29,8 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -131,10 +129,13 @@ class TeamOrgSingleParentResponseParityIT extends AbstractMySqlIntegrationTest {
                         contains(teamPendingOnly.intValue())))
                 .andExpect(jsonPath("$.data[?(@.id == " + teamOrphan + ")].id",
                         contains(teamOrphan.intValue())))
+                // キーが出力され、値が null であること。この API は null のフィールドを省かず出力する
+                // （JacksonConfig は default-property-inclusion を変えておらず、MyTeamResponse・ApiResponse に
+                // @JsonInclude も無い＝Jackson 既定の ALWAYS）。キー欠落は「従来どおり」ではないので許さない。
                 .andExpect(jsonPath("$.data[?(@.id == " + teamPendingOnly + ")].organizationId",
-                        not(hasItem(notNullValue()))))
+                        contains(nullValue())))
                 .andExpect(jsonPath("$.data[?(@.id == " + teamOrphan + ")].organizationId",
-                        not(hasItem(notNullValue()))))
+                        contains(nullValue())))
                 .andExpect(jsonPath("$.data[?(@.id == " + teamInA + ")].organizations[*].id",
                         contains(orgA.intValue())))
                 .andExpect(jsonPath("$.data[?(@.id == " + teamInB + ")].organizations[*].id",
