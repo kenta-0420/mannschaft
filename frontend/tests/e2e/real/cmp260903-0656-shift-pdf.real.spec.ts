@@ -317,7 +317,6 @@ class OwnedFixture {
     expect(response.status.status).toBe(status)
     if (status === 'PUBLISHED')
       expect(response.status.publishedAt).not.toBeNull()
-    if (status === 'ARCHIVED') expect(response.status.publishedAt).toBeNull()
   }
   async cleanup(): Promise<void> {
     if (!this.teamCreated) return
@@ -702,7 +701,7 @@ test('公開PDF: empty/populated×両layoutとMEMBER本人フィルタ、board�
   })
 })
 
-test('PDF境界: 未認証401、非所属404、MEMBER未公開4状態×両layout404', async () => {
+test('PDF境界: 未認証401、非所属404、MEMBER未公開3状態×両layout404', async () => {
   await requireIsolatedRuntime()
   await withFixture(async (owner, member, fixture) => {
     const unauthenticated = await request.newContext({
@@ -717,7 +716,8 @@ test('PDF境界: 未認証401、非所属404、MEMBER未公開4状態×両layout
             `${API}/shifts/schedules/${draft.id}/pdf?layout=${layout}`,
           )
           expect(response.status()).toBe(401)
-          // getScheduleは可視性を先に評価し、越境もSHIFT_001へ畳む。現controller経路の契約は404。
+          // 最新controller→ShiftPdfFacade.authorizeはhidden/越境をSHIFT_001へ畳む。
+          // GlobalExceptionHandlerのSHIFT_001→404が正本（旧e16のgetSchedule依存からFacadeへ移動済み）。
           expect(
             (
               await api(
@@ -729,16 +729,16 @@ test('PDF境界: 未認証401、非所属404、MEMBER未公開4状態×両layout
           ).toBe(404)
         }
         await fixture.joinMember()
-        for (const status of ['DRAFT', 'COLLECTING', 'ADJUSTING', 'ARCHIVED']) {
+        // 未公開ARCHIVEDは許可遷移だけで作れないため実JWT試験に含めない。
+        // legacy ARCHIVED+publishedAt nullはShiftUnpublishedScheduleVisibilityContractIT
+        // のMockMvc契約に残す。CMP0658のDRAFT→ARCHIVED直行200を仕様固定しない。
+        for (const status of ['DRAFT', 'COLLECTING', 'ADJUSTING']) {
           const schedule =
             status === 'DRAFT' ? draft : await fixture.schedule(status)
           if (status === 'COLLECTING' || status === 'ADJUSTING')
             await fixture.transition(schedule, 'COLLECTING')
           if (status === 'ADJUSTING')
             await fixture.transition(schedule, 'ADJUSTING')
-          if (status === 'ARCHIVED')
-            await fixture.transition(schedule, 'ARCHIVED')
-          // ARCHIVEDはDRAFTからの正規API遷移。publishedAt捏造/SQL書込みなし。
           const actual = await data<Schedule>(
             owner,
             'GET',
