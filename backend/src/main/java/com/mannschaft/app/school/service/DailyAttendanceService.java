@@ -1,6 +1,5 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.dto.AttendanceHistoryItem;
@@ -50,8 +49,6 @@ import java.util.stream.Collectors;
 public class DailyAttendanceService {
 
     private final DailyAttendanceRecordRepository dailyAttendanceRecordRepository;
-    private final AccessControlService accessControlService;
-    private final SchoolAttendanceAccessPolicy policy;
     private final FamilyAttendanceNoticeRepository familyAttendanceNoticeRepository;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -72,8 +69,8 @@ public class DailyAttendanceService {
      * @return 点呼登録結果サマリ
      */
     public DailyRollCallSummary submitDailyRollCall(Long teamId, DailyRollCallRequest request, Long operatorUserId) {
-        // 認可は最初に行う（拒否時は行を作らず・通知イベントも発行せず・何も走らせない）。
-        policy.checkCanRecordDaily(operatorUserId, teamId);
+        // 認可（R）と在籍確認は、トランザクションの外の DailyAttendanceFacade が最初に済ませてから呼ばれる
+        // （拒否時は行を作らず・通知イベントも発行せず・何も走らせない）。
         validateEntries(teamId, request);
 
         int presentCount = 0;
@@ -150,8 +147,6 @@ public class DailyAttendanceService {
      */
     private void validateEntries(Long teamId, DailyRollCallRequest request) {
         var entries = request.getEntries();
-        policy.requireEnrolledStudents(teamId,
-                entries.stream().map(e -> e.getStudentUserId()).collect(Collectors.toSet()));
 
         Set<Long> noticeIds = new HashSet<>();
         for (var entry : entries) {
@@ -187,13 +182,11 @@ public class DailyAttendanceService {
      *
      * @param teamId        クラスチームID
      * @param date          対象日
-     * @param currentUserId 現在のユーザーID
      * @return 日次出欠一覧レスポンス
      */
     @Transactional(readOnly = true)
-    public DailyAttendanceListResponse getDailyAttendance(Long teamId, LocalDate date, Long currentUserId) {
-        policy.checkCanView(currentUserId, teamId);
-
+    public DailyAttendanceListResponse getDailyAttendance(Long teamId, LocalDate date) {
+        // 認可（V）は DailyAttendanceFacade が済ませてから呼ばれる。
         List<DailyAttendanceRecordEntity> records =
                 dailyAttendanceRecordRepository.findByTeamIdAndAttendanceDate(teamId, date);
 
@@ -271,8 +264,7 @@ public class DailyAttendanceService {
      */
     public DailyAttendanceResponse updateDailyRecord(
             Long teamId, Long recordId, DailyAttendanceUpdateRequest request, Long operatorUserId) {
-        policy.checkCanRecordDaily(operatorUserId, teamId);
-
+        // 認可（R）は DailyAttendanceFacade が済ませてから呼ばれる。
         DailyAttendanceRecordEntity entity = dailyAttendanceRecordRepository.findById(recordId)
                 .filter(r -> r.getTeamId().equals(teamId))
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.DAILY_RECORD_NOT_FOUND));

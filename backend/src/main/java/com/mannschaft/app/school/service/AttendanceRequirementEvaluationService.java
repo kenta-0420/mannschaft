@@ -1,8 +1,6 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.school.dto.AtRiskStudentResponse;
 import com.mannschaft.app.school.dto.EvaluationResponse;
 import com.mannschaft.app.school.dto.ResolveEvaluationRequest;
@@ -22,7 +20,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,12 +38,12 @@ public class AttendanceRequirementEvaluationService {
     private final AttendanceRequirementEvaluationRepository evaluationRepository;
     private final AttendanceRequirementRuleRepository ruleRepository;
     private final StudentAttendanceSummaryRepository summaryRepository;
-    private final AccessControlService accessControlService;
-    private final SchoolAttendanceAccessPolicy policy;
 
-    // スコープ種別文字列（AttendanceRequirementService の用法に合わせる）。
-    private static final String SCOPE_ORGANIZATION = "ORGANIZATION";
-    private static final String SCOPE_TEAM = "TEAM";
+    /**
+     * 規程 entity 由来のスコープ（認可の前段でトランザクションの外の Facade が読む値）。
+     * 組織スコープ規程は {@code organizationId} あり・{@code teamId} なし、チームスコープ規程はその逆。
+     */
+    public record RuleScope(Long organizationId, Long teamId) { }
 
     // ========================================
     // 一覧取得
@@ -55,22 +52,21 @@ public class AttendanceRequirementEvaluationService {
     /**
      * 生徒の評価一覧を評価日降順で取得する。
      *
-     * <p>認可（AC-4）と返却範囲:</p>
+     * <p>認可（AC-4）は、トランザクションの外の {@code AttendanceRequirementEvaluationFacade} が
+     * {@link SchoolAttendanceAccessPolicy#resolveViewableTeamIds} で行い、返してよいクラスの範囲だけを本メソッドへ渡す。</p>
      * <ol>
-     *   <li>生徒本人、または対象生徒への ACTIVE な careLink を持つ保護者は、全クラス分を返す。</li>
-     *   <li>教職員は、生徒が現在所属するクラスのうち自分が閲覧権（V: {@link SchoolAttendanceAccessPolicy#canView}）を
-     *       持つクラスの規程に属する評価だけを返す（評価が 0 件でも 200 の空配列）。</li>
-     *   <li>いずれでもなければ 403（COMMON_002）。</li>
+     *   <li>生徒本人、または対象生徒への ACTIVE な careLink を持つ保護者は、全クラス分を返す（範囲は {@code null}）。</li>
+     *   <li>教職員は、生徒が現在所属するクラスのうち自分が閲覧権（V）を持つクラスの規程に属する評価だけを返す
+     *       （評価が 0 件でも 200 の空配列）。</li>
      * </ol>
      *
-     * @param studentUserId 生徒ユーザーID
-     * @param currentUserId 閲覧者のユーザーID（認可判定に使用）
+     * @param studentUserId   生徒ユーザーID
+     * @param viewableTeamIds 返してよいクラス ID の集合。{@code null} なら全クラス分
      * @return 評価レスポンスのリスト
      */
-    public List<EvaluationResponse> getStudentEvaluations(Long studentUserId, Long currentUserId) {
+    public List<EvaluationResponse> getStudentEvaluations(Long studentUserId, Set<Long> viewableTeamIds) {
         List<AttendanceRequirementEvaluationEntity> evaluations =
                 evaluationRepository.findByStudentUserIdOrderByEvaluatedAtDesc(studentUserId);
-        Set<Long> viewableTeamIds = resolveViewableTeamIds(studentUserId, currentUserId);
         if (viewableTeamIds != null) {
             Map<Long, AttendanceRequirementRuleEntity> rules = new HashMap<>();
             ruleRepository.findAllById(evaluations.stream()
@@ -93,18 +89,14 @@ public class AttendanceRequirementEvaluationService {
     /**
      * チームのリスクあり生徒一覧を取得する。
      *
-     * <p>認可: クラス全員分を返すため、対象クラスチームのメンバーのみ参照可
-     * （{@link AccessControlService#checkMembership}）。非メンバーは 403（COMMON_002）。</p>
+     * <p>認可: クラス全員分を返すため閲覧権（V）が必要。トランザクションの外の
+     * {@code AttendanceRequirementEvaluationFacade} が済ませてから呼ばれる。</p>
      *
      * @param teamId        チームID
      * @param statusFilters ステータスフィルター（空の場合は RISK, VIOLATION を対象とする）
-     * @param currentUserId 閲覧者のユーザーID（認可判定に使用）
      * @return リスクあり生徒レスポンスのリスト
      */
-    public List<AtRiskStudentResponse> getAtRiskStudents(
-            Long teamId, List<String> statusFilters, Long currentUserId) {
-        policy.checkCanView(currentUserId, teamId);
-
+    public List<AtRiskStudentResponse> getAtRiskStudents(Long teamId, List<String> statusFilters) {
         // フィルターが空の場合はデフォルトで RISK と VIOLATION を対象とする
         List<EvaluationStatus> statuses;
         if (statusFilters == null || statusFilters.isEmpty()) {
@@ -126,29 +118,31 @@ public class AttendanceRequirementEvaluationService {
     // ========================================
 
     /**
-     * 生徒の出席要件評価を実行する（HTTP 公開入口）。
+     * 規程のスコープを返す（評価実行の認可の前段。トランザクションの外の Facade から呼ぶ）。
      *
-     * <p>認可（AC-13/AC-22）: チームスコープ規程は日次登録権（R）を持つ担任・副担任・管理者のみ、
-     * 組織スコープ規程（organizationId あり）は当該組織の ADMIN/DEPUTY_ADMIN のみ実行可。
-     * URL パスにスコープを持たない ruleId 直指定 EP のため、権限が無い場合は 403 ではなく
-     * 404（{@code REQUIREMENT_RULE_NOT_FOUND}）に収束させ、規程の存在有無を非権限者に開示しない（存在秘匿）。
-     * チームスコープ規程では、対象生徒が当該クラスの在籍メンバーでなければ 404（SUMMARY_NOT_FOUND）。</p>
-     *
-     * @param studentUserId     評価対象の生徒ユーザーID
-     * @param requirementRuleId 適用する要件規程ID
-     * @param actorUserId       実行者のユーザーID（認可判定に使用）
-     * @return 評価結果レスポンス
+     * <p>URL パスにスコープを持たない ruleId 直指定 EP のため、規程 entity 由来のスコープで認可する。
+     * 規程が存在しなければ 404（{@code REQUIREMENT_RULE_NOT_FOUND}）。</p>
      */
-    @Transactional
-    public EvaluationResponse evaluate(Long studentUserId, Long requirementRuleId, Long actorUserId) {
+    @Transactional(readOnly = true)
+    public RuleScope findRuleScope(Long requirementRuleId) {
         AttendanceRequirementRuleEntity rule = ruleRepository.findById(requirementRuleId)
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.REQUIREMENT_RULE_NOT_FOUND));
-        requireRuleWriterOrHide(rule, actorUserId, SchoolErrorCode.REQUIREMENT_RULE_NOT_FOUND);
-        if (rule.getOrganizationId() == null && rule.getTeamId() != null
-                && !accessControlService.listActiveMemberIds(rule.getTeamId(), SCOPE_TEAM).contains(studentUserId)) {
-            throw new BusinessException(SchoolErrorCode.SUMMARY_NOT_FOUND);
-        }
-        return evaluateInternal(studentUserId, requirementRuleId);
+        return new RuleScope(rule.getOrganizationId(), rule.getTeamId());
+    }
+
+    /**
+     * 評価 → 規程と辿ったスコープを返す（違反解消の認可の前段。トランザクションの外の Facade から呼ぶ）。
+     *
+     * <p>URL パスにスコープを持たない evaluationId 直指定 EP のため、entity 由来のスコープで認可する。
+     * 評価または規程が存在しなければ 404（{@code EVALUATION_NOT_FOUND}）。</p>
+     */
+    @Transactional(readOnly = true)
+    public RuleScope findRuleScopeByEvaluation(Long evaluationId) {
+        AttendanceRequirementEvaluationEntity entity = evaluationRepository.findById(evaluationId)
+                .orElseThrow(() -> new BusinessException(SchoolErrorCode.EVALUATION_NOT_FOUND));
+        AttendanceRequirementRuleEntity rule = ruleRepository.findById(entity.getRequirementRuleId())
+                .orElseThrow(() -> new BusinessException(SchoolErrorCode.EVALUATION_NOT_FOUND));
+        return new RuleScope(rule.getOrganizationId(), rule.getTeamId());
     }
 
     /**
@@ -158,9 +152,9 @@ public class AttendanceRequirementEvaluationService {
      * 既存評価がある場合は更新、ない場合は新規作成する。</p>
      *
      * <p><b>認可は行わない。</b> HTTP 経由の呼び出しは必ず
-     * {@link #evaluate(Long, Long, Long)} を入口とすること。本メソッドは
-     * {@code AttendanceRequirementBatchService} の日次バッチのように、スコープを
-     * 呼び出し元が確定済みでユーザー主体を持たない経路専用である
+     * {@code AttendanceRequirementEvaluationFacade#evaluate} を入口とすること（認可と在籍確認をトランザクションの外で済ませる）。
+     * 本メソッドは {@code AttendanceRequirementBatchService} の日次バッチのように、スコープを
+     * 呼び出し元が確定済みでユーザー主体を持たない経路にも共有される
      * （共有 Service 内部にガードを置くとバッチが巻き添えで 403 になるため入口側で分離した）。</p>
      *
      * @param studentUserId     評価対象の生徒ユーザーID
@@ -228,12 +222,13 @@ public class AttendanceRequirementEvaluationService {
      * 評価違反を解消済みとして記録する。
      *
      * <p>認可（AC-13/AC-22）: 評価 → 規程と辿った entity 由来スコープで、チームスコープ規程は日次登録権（R）、
-     * 組織スコープ規程は当該組織の ADMIN/DEPUTY_ADMIN のみ実行可。URL パスにスコープを
-     * 持たない evaluationId 直指定 EP のため、権限が無い場合は 404（{@code EVALUATION_NOT_FOUND}）に
-     * 収束させ、評価の存在有無を非権限者に開示しない（存在秘匿）。</p>
+     * 組織スコープ規程は当該組織の ADMIN/DEPUTY_ADMIN のみ実行可。権限が無い場合は 404
+     * （{@code EVALUATION_NOT_FOUND}）に収束させ、評価の存在有無を非権限者に開示しない（存在秘匿）。
+     * 認可は、トランザクションの外の {@code AttendanceRequirementEvaluationFacade} が
+     * {@link #findRuleScopeByEvaluation} で読んだスコープに対して、本メソッドより前に済ませる。</p>
      *
      * @param evaluationId   対象の評価ID
-     * @param resolverUserId 解消を記録した教員のユーザーID（認可判定にも使用）
+     * @param resolverUserId 解消を記録した教員のユーザーID
      * @param request        解消リクエスト（解消理由を含む）
      * @return 更新後の評価レスポンス
      */
@@ -243,11 +238,6 @@ public class AttendanceRequirementEvaluationService {
         // 1. 評価取得
         AttendanceRequirementEvaluationEntity entity = evaluationRepository.findById(evaluationId)
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.EVALUATION_NOT_FOUND));
-
-        // 1-2. 認可（評価 entity 由来スコープ・権限が無ければ存在秘匿の404）
-        AttendanceRequirementRuleEntity rule = ruleRepository.findById(entity.getRequirementRuleId())
-                .orElseThrow(() -> new BusinessException(SchoolErrorCode.EVALUATION_NOT_FOUND));
-        requireRuleWriterOrHide(rule, resolverUserId, SchoolErrorCode.EVALUATION_NOT_FOUND);
 
         // 2. 既に解消済みかチェック
         if (entity.isResolved()) {
@@ -260,72 +250,6 @@ public class AttendanceRequirementEvaluationService {
         // 4. 保存して返す
         AttendanceRequirementEvaluationEntity saved = evaluationRepository.save(entity);
         return EvaluationResponse.from(saved);
-    }
-
-    // ========================================
-    // プライベートヘルパー（認可）
-    // ========================================
-
-    /**
-     * 評価一覧閲覧の認可を判定し、返してよいクラスの範囲を返す。
-     *
-     * @return 本人・保護者なら {@code null}（全クラス分）。教職員なら閲覧権のあるクラス ID 集合
-     * @throws BusinessException 本人でも保護者でも、閲覧権のあるクラスの教職員でもない場合（COMMON_002）
-     */
-    private Set<Long> resolveViewableTeamIds(Long studentUserId, Long currentUserId) {
-        if (currentUserId != null && currentUserId.equals(studentUserId)) {
-            return null;
-        }
-        try {
-            accessControlService.checkCareLink(currentUserId, studentUserId);
-            return null;
-        } catch (BusinessException e) {
-            // 保護者ではない: 教職員経路で判定を続ける（全経路失敗は下で COMMON_002）。
-        }
-        Set<Long> viewable = new HashSet<>();
-        for (Long teamId : accessControlService
-                .findActiveMembershipJoinedAtByScope(studentUserId, SCOPE_TEAM).keySet()) {
-            if (policy.canView(currentUserId, teamId)) {
-                viewable.add(teamId);
-            }
-        }
-        if (viewable.isEmpty()) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
-        return viewable;
-    }
-
-    /**
-     * 規程 entity 由来スコープの書込権限を要求する。
-     *
-     * <p>組織スコープ規程（organizationId あり）は当該組織の ADMIN/DEPUTY_ADMIN のみ（AC-22）。
-     * SYSTEM_ADMIN 単独・組織の一般 MEMBER・チームの担任／管理者は含めない。
-     * チームスコープ規程は日次登録権（R）を持つ担任・副担任・管理者のみ（AC-13）。
-     * チームが解決できない規程には Policy へ null を渡さず、権限なしとして扱う。</p>
-     *
-     * <p>URL にスコープを持たない bare id EP 用。権限が無い場合は 403 ではなく引数の
-     * ErrorCode（404 系）を送出し、リソースの存在有無を非権限者に開示しない。</p>
-     *
-     * @param rule        対象規程エンティティ
-     * @param actorUserId 操作ユーザーID
-     * @param hideAs      権限が無い場合に送出するエラーコード（存在秘匿用）
-     */
-    private void requireRuleWriterOrHide(
-            AttendanceRequirementRuleEntity rule, Long actorUserId, SchoolErrorCode hideAs) {
-        boolean allowed;
-        if (actorUserId == null || rule == null) {
-            allowed = false;
-        } else if (rule.getOrganizationId() != null) {
-            Long orgId = rule.getOrganizationId();
-            allowed = accessControlService.isAdmin(actorUserId, orgId, SCOPE_ORGANIZATION)
-                    || (!accessControlService.isSystemAdmin(actorUserId)
-                    && accessControlService.hasRoleOrAbove(actorUserId, orgId, SCOPE_ORGANIZATION, "DEPUTY_ADMIN"));
-        } else {
-            allowed = rule.getTeamId() != null && policy.canRecordDaily(actorUserId, rule.getTeamId());
-        }
-        if (!allowed) {
-            throw new BusinessException(hideAs);
-        }
     }
 
     // ========================================

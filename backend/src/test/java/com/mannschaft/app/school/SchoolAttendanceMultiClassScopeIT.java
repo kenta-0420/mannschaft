@@ -297,6 +297,29 @@ class SchoolAttendanceMultiClassScopeIT extends SchoolAttendanceAuthzFixture {
         }
     }
 
+    @Test
+    @DisplayName("AC-22: SYSTEM_ADMIN と組織 DEPUTY_ADMIN の兼任者は、組織スコープ規程の評価・解消ができる（スコープ付き資格で許可）")
+    void 組織スコープ規程はSYSTEM_ADMINと組織DEPUTYの兼任者を許可する() throws Exception {
+        Long dual = newUser("sysadmin-org-deputy");
+        MembershipTestHelper.insertMembership(em, dual, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertUserRole(em, dual, "SYSTEM_ADMIN", null, null);
+        MembershipTestHelper.insertUserRole(em, dual, "DEPUTY_ADMIN", null, orgAId);
+        Long orgStudent = newUser("org-student-dual");
+        MembershipTestHelper.insertMembership(em, orgStudent, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
+        Long orgRule = insertRule(null, orgAId);
+        Long summary = insertSummary(teamAId, orgStudent);
+        Long orgEvaluation = insertEvaluation(orgRule, orgStudent, summary);
+        em.flush();
+        em.clear();
+        auth(dual);
+
+        MvcResult resolve = mockMvc.perform(post("/api/v1/attendance/requirements/evaluations/{e}/resolve",
+                        orgEvaluation).contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("resolutionNote", "SAZ兼任者の解消")))).andReturn();
+
+        assertThat(resolve.getResponse().getStatus()).isEqualTo(200);
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // AC-15 本人経路の非回帰・担任の主経路
     // ═════════════════════════════════════════════════════════════════════

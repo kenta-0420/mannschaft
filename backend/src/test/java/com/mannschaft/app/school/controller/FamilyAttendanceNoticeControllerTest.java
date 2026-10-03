@@ -10,6 +10,7 @@ import com.mannschaft.app.school.dto.FamilyAttendanceNoticeResponse;
 import com.mannschaft.app.school.dto.FamilyNoticeListResponse;
 import com.mannschaft.app.school.entity.FamilyNoticeType;
 import com.mannschaft.app.school.error.SchoolErrorCode;
+import com.mannschaft.app.school.service.FamilyAttendanceNoticeFacade;
 import com.mannschaft.app.school.service.FamilyAttendanceNoticeService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,6 +61,9 @@ class FamilyAttendanceNoticeControllerTest {
 
     @MockitoBean
     private FamilyAttendanceNoticeService noticeService;
+
+    @MockitoBean
+    private FamilyAttendanceNoticeFacade noticeFacade;
 
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -170,7 +174,7 @@ class FamilyAttendanceNoticeControllerTest {
                     .totalCount(1)
                     .unacknowledgedCount(1)
                     .build();
-            given(noticeService.getTeamNotices(eq(TEAM_ID), any(), eq(USER_ID))).willReturn(listResponse);
+            given(noticeFacade.getTeamNotices(eq(TEAM_ID), any(), eq(USER_ID))).willReturn(listResponse);
 
             mockMvc.perform(get("/api/v1/teams/{teamId}/attendance/notices", TEAM_ID)
                             .param("date", "2026-05-01"))
@@ -192,7 +196,7 @@ class FamilyAttendanceNoticeControllerTest {
         @Test
         @DisplayName("正常系: 確認済みレスポンスを返す → 200 + data")
         void 正常系_200() throws Exception {
-            given(noticeService.acknowledgeNotice(eq(TEAM_ID), eq(NOTICE_ID), eq(USER_ID)))
+            given(noticeFacade.acknowledgeNotice(eq(TEAM_ID), eq(NOTICE_ID), eq(USER_ID)))
                     .willReturn(buildNoticeResponse("ACKNOWLEDGED"));
 
             mockMvc.perform(post("/api/v1/teams/{teamId}/attendance/notices/{noticeId}/acknowledge",
@@ -205,7 +209,7 @@ class FamilyAttendanceNoticeControllerTest {
         @DisplayName("異常系: 連絡が見つからない → 404")
         void 異常系_404() throws Exception {
             willThrow(new BusinessException(SchoolErrorCode.FAMILY_NOTICE_NOT_FOUND))
-                    .given(noticeService).acknowledgeNotice(eq(TEAM_ID), eq(NOTICE_ID), eq(USER_ID));
+                    .given(noticeFacade).acknowledgeNotice(eq(TEAM_ID), eq(NOTICE_ID), eq(USER_ID));
 
             mockMvc.perform(post("/api/v1/teams/{teamId}/attendance/notices/{noticeId}/acknowledge",
                             TEAM_ID, NOTICE_ID))
@@ -225,7 +229,7 @@ class FamilyAttendanceNoticeControllerTest {
         @Test
         @DisplayName("正常系: 反映済みレスポンスを返す → 200 + data")
         void 正常系_200() throws Exception {
-            given(noticeService.applyToAttendanceRecord(eq(TEAM_ID), eq(NOTICE_ID), eq(USER_ID)))
+            given(noticeFacade.applyToAttendanceRecord(eq(TEAM_ID), eq(NOTICE_ID), eq(USER_ID)))
                     .willReturn(buildNoticeResponse("APPLIED"));
 
             mockMvc.perform(post("/api/v1/teams/{teamId}/attendance/notices/{noticeId}/apply",
@@ -239,7 +243,7 @@ class FamilyAttendanceNoticeControllerTest {
         @DisplayName("異常系: 既反映 → 409 Conflict")
         void 既反映_409() throws Exception {
             willThrow(new BusinessException(SchoolErrorCode.FAMILY_NOTICE_ALREADY_APPLIED))
-                    .given(noticeService).applyToAttendanceRecord(eq(TEAM_ID), eq(NOTICE_ID), eq(USER_ID));
+                    .given(noticeFacade).applyToAttendanceRecord(eq(TEAM_ID), eq(NOTICE_ID), eq(USER_ID));
 
             mockMvc.perform(post("/api/v1/teams/{teamId}/attendance/notices/{noticeId}/apply",
                             TEAM_ID, NOTICE_ID))

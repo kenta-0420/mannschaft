@@ -135,6 +135,77 @@ class SchoolAttendanceAuthzGuardArchTest {
                 .isEmpty();
     }
 
+    @Test
+    @DisplayName("D-3T: 学校の業務 Service（TX）は SchoolAttendanceAccessPolicy を呼ばない（認可は TX の外の Facade）")
+    void 業務servicePolicyを呼ばない() {
+        List<String> violations = new ArrayList<>();
+        for (JavaClass service : schoolClasses()) {
+            if (!service.getPackageName().endsWith(".school.service")
+                    || service.getSimpleName().equals(POLICY)
+                    || service.getSimpleName().endsWith("Facade")) {
+                continue;
+            }
+            for (JavaMethod method : service.getMethods()) {
+                for (JavaMethodCall call : method.getMethodCallsFromSelf()) {
+                    if (call.getTargetOwner().getSimpleName().equals(POLICY)) {
+                        violations.add(service.getSimpleName() + "#" + method.getName()
+                                + " -> " + POLICY + "#" + call.getName());
+                    }
+                }
+            }
+        }
+
+        assertThat(violations)
+                .as("認可は role・membership・family の Repository に到達するため、業務 @Transactional の中に置くと"
+                        + "学校の TX 入口が他ドメインへ越境する（D-3T）。認可は TX の外の *Facade で行い、通過後に業務 Service を呼ぶ")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("D-3T: 認可ファサードと Policy は @Transactional を持たない（TX の外で認可する）")
+    void facadeとpolicyはTXを持たない() {
+        List<String> violations = new ArrayList<>();
+        for (JavaClass clazz : schoolClasses()) {
+            if (!clazz.getPackageName().endsWith(".school.service")
+                    || !(clazz.getSimpleName().endsWith("Facade") || clazz.getSimpleName().equals(POLICY))) {
+                continue;
+            }
+            if (clazz.getAnnotations().stream().anyMatch(a -> a.getRawType().getSimpleName().equals("Transactional"))) {
+                violations.add(clazz.getSimpleName() + "（クラス）");
+            }
+            for (JavaMethod method : clazz.getMethods()) {
+                if (method.getAnnotations().stream().anyMatch(a -> a.getRawType().getSimpleName().equals("Transactional"))) {
+                    violations.add(clazz.getSimpleName() + "#" + method.getName());
+                }
+            }
+        }
+
+        assertThat(violations)
+                .as("認可は業務 TX の外で行う。Facade／Policy に @Transactional を付けると、認可が TX の中に戻り、"
+                        + "例外による拒否が参加中の TX を rollback-only にする")
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("D-3T: 認可ファサードは少なくとも1つ存在し、全て Policy を呼ぶ（空虚な緑の防止）")
+    void facadeはPolicyを呼ぶ() {
+        List<JavaClass> facades = schoolClasses().stream()
+                .filter(c -> c.getPackageName().endsWith(".school.service") && c.getSimpleName().endsWith("Facade"))
+                .toList();
+
+        assertThat(facades).as("認可ファサードが存在すること").isNotEmpty();
+        List<String> withoutPolicy = new ArrayList<>();
+        for (JavaClass facade : facades) {
+            boolean callsPolicy = facade.getMethods().stream()
+                    .flatMap(m -> m.getMethodCallsFromSelf().stream())
+                    .anyMatch(call -> call.getTargetOwner().getSimpleName().equals(POLICY));
+            if (!callsPolicy) {
+                withoutPolicy.add(facade.getSimpleName());
+            }
+        }
+        assertThat(withoutPolicy).as("Policy を呼ばない Facade は認可の穴").isEmpty();
+    }
+
     private static boolean isEndpoint(JavaMethod method) {
         return method.getAnnotations().stream()
                 .map(JavaAnnotation::getRawType)

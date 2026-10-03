@@ -7,6 +7,7 @@ import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.school.dto.AttendanceStatisticsSummary;
 import com.mannschaft.app.school.dto.MonthlyStatisticsResponse;
 import com.mannschaft.app.school.dto.StudentTermStatisticsResponse;
+import com.mannschaft.app.school.service.AttendanceStatisticsFacade;
 import com.mannschaft.app.school.service.AttendanceStatisticsService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +52,9 @@ class AttendanceStatisticsControllerTest {
 
     @MockitoBean
     private AttendanceStatisticsService statisticsService;
+
+    @MockitoBean
+    private AttendanceStatisticsFacade statisticsFacade;
 
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -106,7 +110,7 @@ class AttendanceStatisticsControllerTest {
                     .studentBreakdown(List.of(summary))
                     .build();
 
-            given(statisticsService.getMonthlyStatistics(eq(TEAM_ID), eq(2026), eq(5), eq(USER_ID)))
+            given(statisticsFacade.getMonthlyStatistics(eq(TEAM_ID), eq(2026), eq(5), eq(USER_ID)))
                     .willReturn(response);
 
             mockMvc.perform(get("/api/v1/teams/{teamId}/attendance/statistics/monthly", TEAM_ID)
@@ -173,7 +177,7 @@ class AttendanceStatisticsControllerTest {
         void 正常系_200_CSV() throws Exception {
             String csvContent = "studentUserId,attendanceDate,status,absenceReason,arrivalTime,leaveTime,comment\n"
                     + "1,2026-05-01,ABSENT,,,\n";
-            given(statisticsService.exportAttendanceCsv(
+            given(statisticsFacade.exportAttendanceCsv(
                     eq(TEAM_ID),
                     eq(LocalDate.of(2026, 5, 1)),
                     eq(LocalDate.of(2026, 5, 31)),

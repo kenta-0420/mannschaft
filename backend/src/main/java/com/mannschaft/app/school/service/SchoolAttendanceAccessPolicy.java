@@ -13,7 +13,6 @@ import com.mannschaft.app.school.repository.ClassHomeroomRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -50,17 +49,26 @@ import java.util.Set;
  *       その行の<b>副担任資格だけ</b>を無効にし、主担任は有効のままとする。例外は投げない。</li>
  * </ul>
  *
- * <p>SYSTEM_ADMIN には資格を与えない（{@code isAdminOrAbove} はテナント ADMIN のみを真とする）。</p>
+ * <p>SYSTEM_ADMIN には資格を与えない（{@code isAdminOrAbove} はスコープ付きの ADMIN/DEPUTY_ADMIN のみを真とする。
+ * SYSTEM_ADMIN と当該スコープの副管理者を兼任する利用者は、スコープ付きの資格で許可される）。</p>
+ *
+ * <h2>トランザクションの外で呼ぶこと</h2>
+ * <p>本クラスは {@code @Transactional} を持たない。判定は {@code AccessControlService} 経由で role・membership・family の
+ * Repository に到達するため、学校の業務 {@code @Transactional} の中から呼ぶと、学校の TX 入口が他ドメインの Repository へ
+ * 越境する（D-3T）。さらに例外で拒否する判定が参加中の TX を rollback-only にしてしまう。
+ * 認可は必ず Facade（{@code *AttendanceFacade}、非トランザクション）から行い、通過してから業務 Service（TX）を呼ぶこと
+ * （先例: shift の {@code ShiftRequestFacade}）。業務 Service は本クラスを持たない（番人
+ * {@code SchoolAttendanceAuthzGuardArchTest}）。</p>
  */
 @Slf4j
 @Service
-@Transactional(readOnly = true)
 public class SchoolAttendanceAccessPolicy {
 
     /** 出欠・学級担任情報の閲覧権限名（{@code permissions.name} の値）。権限グループ経由で委任される。 */
     static final String PERMISSION_VIEW_ATTENDANCE = "VIEW_ATTENDANCE";
 
     private static final String SCOPE_TEAM = "TEAM";
+    private static final String SCOPE_ORGANIZATION = "ORGANIZATION";
 
     private final AccessControlService accessControlService;
     private final ClassHomeroomRepository classHomeroomRepository;
@@ -88,8 +96,7 @@ public class SchoolAttendanceAccessPolicy {
             return false;
         }
         return accessControlService.isAdminOrAbove(userId, teamId, SCOPE_TEAM)
-                || isActiveHomeroomTeacher(userId, teamId)
-                || accessControlService.hasPermission(userId, teamId, SCOPE_TEAM, PERMISSION_VIEW_ATTENDANCE);
+                || canViewAsStaff(userId, teamId);
     }
 
     /** R: 日次出欠の登録（および書込系のアラート解決・保護者連絡の確認/反映）ができるか。 */
@@ -109,6 +116,12 @@ public class SchoolAttendanceAccessPolicy {
      */
     public boolean canRecordPeriod(Long userId, Long teamId) {
         return canRecordDaily(userId, teamId);
+    }
+
+    /** 管理者以外の閲覧資格: 現役の担任・副担任、または {@code VIEW_ATTENDANCE} 委任者。 */
+    private boolean canViewAsStaff(Long userId, Long teamId) {
+        return isActiveHomeroomTeacher(userId, teamId)
+                || accessControlService.hasPermission(userId, teamId, SCOPE_TEAM, PERMISSION_VIEW_ATTENDANCE);
     }
 
     /** 現役の担任・副担任か（V/R/P の共通部品。管理者かどうかは見ない）。 */
@@ -153,25 +166,114 @@ public class SchoolAttendanceAccessPolicy {
     // 判定（権限なしなら 403 COMMON_002）
     // ========================================
 
+    // 以下の check* は、既存の認可番人（AuthzControllerGuardArchTest: Controller から 2 ホップ）が
+    // Facade → check* の経路で AccessControlService の呼び出しを検出できるよう、各メソッド本体で
+    // AccessControlService を直接呼ぶ（別メソッドへ委譲しない）。
+
     /** V を要求する。権限なしは 403 COMMON_002。 */
     public void checkCanView(Long userId, Long teamId) {
-        if (!canView(userId, teamId)) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
+        if (userId != null && teamId != null
+                && (accessControlService.isAdminOrAbove(userId, teamId, SCOPE_TEAM)
+                || canViewAsStaff(userId, teamId))) {
+            return;
         }
+        throw new BusinessException(CommonErrorCode.COMMON_002);
     }
 
     /** R を要求する。権限なしは 403 COMMON_002。 */
     public void checkCanRecordDaily(Long userId, Long teamId) {
-        if (!canRecordDaily(userId, teamId)) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
+        if (userId != null && teamId != null
+                && (accessControlService.isAdminOrAbove(userId, teamId, SCOPE_TEAM)
+                || isActiveHomeroomTeacher(userId, teamId))) {
+            return;
         }
+        throw new BusinessException(CommonErrorCode.COMMON_002);
     }
 
-    /** P を要求する。権限なしは 403 COMMON_002。 */
+    /** P を要求する。権限なしは 403 COMMON_002。第1段は R と同じ判定（第2段で教科担当を差し込む）。 */
     public void checkCanRecordPeriod(Long userId, Long teamId) {
-        if (!canRecordPeriod(userId, teamId)) {
+        if (userId != null && teamId != null
+                && (accessControlService.isAdminOrAbove(userId, teamId, SCOPE_TEAM)
+                || isActiveHomeroomTeacher(userId, teamId))) {
+            return;
+        }
+        throw new BusinessException(CommonErrorCode.COMMON_002);
+    }
+
+    // ========================================
+    // 生徒単位の閲覧（本人・保護者・教職員）
+    // ========================================
+
+    /**
+     * 閲覧者が対象生徒本人、または対象生徒への ACTIVE な careLink を持つ保護者かを返す。
+     *
+     * <p>例外を投げない問い合わせ（{@code AccessControlService#hasActiveCareLink}）で判定する。
+     * {@code checkCareLink} の例外を捕まえて「保護者ではない」に畳むと、例外が通過した TX を
+     * rollback-only にして、後で正当な閲覧を許可しても 500 になる。</p>
+     */
+    public boolean isSelfOrGuardian(Long studentUserId, Long viewerUserId) {
+        if (viewerUserId == null || studentUserId == null) {
+            return false;
+        }
+        return viewerUserId.equals(studentUserId)
+                || accessControlService.hasActiveCareLink(viewerUserId, studentUserId);
+    }
+
+    /**
+     * 生徒単位の閲覧（AC-4）の範囲を解決する。
+     *
+     * @return 本人・保護者なら {@code null}（全クラス分を返してよい）。教職員なら、生徒が現在所属するクラスのうち
+     *         閲覧者が閲覧権（V）を持つクラスの ID 集合
+     * @throws BusinessException 本人でも保護者でも、閲覧権のあるクラスの教職員でもない場合（COMMON_002）
+     */
+    public Set<Long> resolveViewableTeamIds(Long studentUserId, Long viewerUserId) {
+        if (isSelfOrGuardian(studentUserId, viewerUserId)) {
+            return null;
+        }
+        Set<Long> viewable = new HashSet<>();
+        if (studentUserId != null) {
+            for (Long teamId : accessControlService
+                    .findActiveMembershipJoinedAtByScope(studentUserId, SCOPE_TEAM).keySet()) {
+                if (canView(viewerUserId, teamId)) {
+                    viewable.add(teamId);
+                }
+            }
+        }
+        if (viewable.isEmpty()) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
+        return viewable;
+    }
+
+    /** 生徒が当該クラスの在籍メンバー（有効な membership）か。 */
+    public boolean isEnrolledStudent(Long teamId, Long studentUserId) {
+        if (teamId == null || studentUserId == null) {
+            return false;
+        }
+        return accessControlService.listActiveMemberIds(teamId, SCOPE_TEAM).contains(studentUserId);
+    }
+
+    // ========================================
+    // 出席要件規程の評価・解消（規程 entity 由来スコープ）
+    // ========================================
+
+    /**
+     * 規程 entity 由来スコープの書込権限があるか。
+     *
+     * <p>組織スコープ規程（organizationId あり）は当該組織の ADMIN/DEPUTY_ADMIN のみ（AC-22）。
+     * スコープ付きの資格だけを見るため、SYSTEM_ADMIN 単独には資格を与えず、SYSTEM_ADMIN と当該組織の
+     * DEPUTY_ADMIN を兼任する利用者は許可する。組織の一般 MEMBER・チームの担任／管理者は含めない。
+     * チームスコープ規程は日次登録権（R）を持つ担任・副担任・管理者のみ（AC-13）。
+     * スコープが解決できない規程は権限なしとして扱う。</p>
+     */
+    public boolean canWriteRequirementRule(Long userId, Long organizationId, Long teamId) {
+        if (userId == null) {
+            return false;
+        }
+        if (organizationId != null) {
+            return accessControlService.isAdminOrAbove(userId, organizationId, SCOPE_ORGANIZATION);
+        }
+        return teamId != null && canRecordDaily(userId, teamId);
     }
 
     // ========================================

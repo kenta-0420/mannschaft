@@ -1,6 +1,5 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.school.dto.TransitionAlertListResponse;
 import com.mannschaft.app.school.dto.TransitionAlertResponse;
@@ -29,8 +28,6 @@ import java.util.List;
 public class TransitionAlertService {
 
     private final AttendanceTransitionAlertRepository alertRepository;
-    private final AccessControlService accessControlService;
-    private final SchoolAttendanceAccessPolicy policy;
 
     // ========================================
     // アラート一覧取得
@@ -39,19 +36,17 @@ public class TransitionAlertService {
     /**
      * 指定クラス・日付のアラート一覧を取得する。
      *
-     * <p>認可（束4）: 閲覧はチーム所属の教職員のみ（{@link AccessControlService#checkMembership}）。</p>
+     * <p>認可: 閲覧権（V）は、トランザクションの外の {@code TransitionAlertFacade} が済ませてから呼ばれる。</p>
      *
      * @param teamId          クラスチームID
      * @param date            対象日
      * @param unresolvedOnly  true の場合は未解決のみ取得
-     * @param currentUserId   閲覧者のユーザーID
      * @return アラート一覧レスポンス
      */
     @Transactional(readOnly = true)
     public TransitionAlertListResponse getAlerts(
-            Long teamId, LocalDate date, boolean unresolvedOnly, Long currentUserId) {
-        policy.checkCanView(currentUserId, teamId);
-
+            Long teamId, LocalDate date, boolean unresolvedOnly) {
+        // 認可（V）は TransitionAlertFacade が済ませてから呼ばれる。
         List<AttendanceTransitionAlertEntity> entities;
         if (unresolvedOnly) {
             entities = alertRepository.findByTeamIdAndAttendanceDateAndResolvedAtIsNullOrderByCreatedAtDesc(teamId, date);
@@ -83,8 +78,8 @@ public class TransitionAlertService {
     /**
      * 指定アラートを解決済みにする。
      *
-     * <p>認可（AC-14）: 解決はチームの日次登録権（R: 管理者・現役の担任／副担任）のみ
-     * （{@link SchoolAttendanceAccessPolicy#checkCanRecordDaily}）。</p>
+     * <p>認可（AC-14）: 解決はチームの日次登録権（R: 管理者・現役の担任／副担任）のみ。
+     * トランザクションの外の {@code TransitionAlertFacade} が本メソッドより前に済ませる。</p>
      *
      * @param teamId          クラスチームID
      * @param alertId         アラートID
@@ -96,21 +91,12 @@ public class TransitionAlertService {
      */
     public TransitionAlertResponse resolveAlert(
             Long teamId, Long alertId, Long resolverUserId, String note) {
-        // BOLA封鎖（アンチパターンE・path値の鵜呑み禁止）:
-        // path の teamId で認可すると、自チーム ADMIN が
-        // /teams/{自team}/…/{他teamのalertId}/resolve で他チームのアラートを握り潰せる。
-        // よって先に alert を fetch し、entity 由来 scope（alert.teamId）で照合・認可する（束1と同型）。
-        AttendanceTransitionAlertEntity entity = alertRepository.findById(alertId)
-                .orElseThrow(() -> new BusinessException(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND));
+        // BOLA封鎖（アンチパターンE・path値の鵜呑み禁止）: alert を fetch し entity 由来 scope（alert.teamId）で
+        // path の teamId と照合する。認可は Facade が requireAlertInTeam（同じ照合）の後に行っている。
+        AttendanceTransitionAlertEntity entity = findAlertInTeamOrHide(teamId, alertId);
 
-        // path の teamId 配下でない alert は存在秘匿のため 404 を返す（他テナントの存在を漏らさない）。
-        if (!entity.getTeamId().equals(teamId)) {
-            throw new BusinessException(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND);
-        }
-
-        // 認可（AC-14）: entity 由来 scope（= path と一致確認済みの teamId）の日次登録権（R）。
-        // 現役の担任・副担任と管理者が可。VIEW_ATTENDANCE の委任者は不可。
-        policy.checkCanRecordDaily(resolverUserId, entity.getTeamId());
+        // 認可（AC-14: entity 由来 scope の日次登録権 R）は TransitionAlertFacade が本メソッドより前に、
+        // トランザクションの外で済ませている。
 
         if (entity.getResolvedAt() != null) {
             throw new BusinessException(SchoolErrorCode.TRANSITION_ALERT_ALREADY_RESOLVED);
@@ -123,5 +109,26 @@ public class TransitionAlertService {
         log.info("移動検知アラート解決: alertId={}, resolverUserId={}", alertId, resolverUserId);
 
         return TransitionAlertResponse.from(entity);
+    }
+
+    /**
+     * アラートが path の teamId 配下にあることを確認する（認可の前段。トランザクションの外の Facade から呼ぶ）。
+     *
+     * <p>存在しないアラート、または path の teamId 配下でないアラートは、存在秘匿のため同じ 404
+     * （{@code TRANSITION_ALERT_NOT_FOUND}）を返す。認可は、この確認を通った teamId（= entity 由来 scope）で行う。</p>
+     */
+    @Transactional(readOnly = true)
+    public void requireAlertInTeam(Long teamId, Long alertId) {
+        findAlertInTeamOrHide(teamId, alertId);
+    }
+
+    private AttendanceTransitionAlertEntity findAlertInTeamOrHide(Long teamId, Long alertId) {
+        AttendanceTransitionAlertEntity entity = alertRepository.findById(alertId)
+                .orElseThrow(() -> new BusinessException(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND));
+        // path の teamId 配下でない alert は存在秘匿のため 404 を返す（他テナントの存在を漏らさない）。
+        if (!entity.getTeamId().equals(teamId)) {
+            throw new BusinessException(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND);
+        }
+        return entity;
     }
 }

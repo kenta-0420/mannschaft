@@ -48,7 +48,6 @@ public class FamilyAttendanceNoticeService {
     private final FamilyAttendanceNoticeRepository noticeRepository;
     private final UserCareLinkRepository userCareLinkRepository;
     private final AccessControlService accessControlService;
-    private final SchoolAttendanceAccessPolicy policy;
     private final StorageService storageService;
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
@@ -120,9 +119,8 @@ public class FamilyAttendanceNoticeService {
      */
     public FamilyAttendanceNoticeResponse acknowledgeNotice(Long teamId, Long noticeId, Long acknowledgerUserId) {
         FamilyAttendanceNoticeEntity entity = findNoticeInTeamOrHide(teamId, noticeId);
-        // 認可（AC-14）: entity 由来 scope（= path と一致確認済みの teamId）の日次登録権（R）。
-        // 現役の担任・副担任と管理者が可。VIEW_ATTENDANCE の委任者は不可。
-        policy.checkCanRecordDaily(acknowledgerUserId, entity.getTeamId());
+        // 認可（AC-14: entity 由来 scope の日次登録権 R）は FamilyAttendanceNoticeFacade が
+        // 本メソッドより前に、トランザクションの外で済ませている。
 
         // toBuilder().build() で作り直すと BaseEntity.id が引き継がれず INSERT 化する（行重複）。
         // managed entity を直接ミューテートし JPA dirty checking で UPDATE する。
@@ -147,8 +145,8 @@ public class FamilyAttendanceNoticeService {
      */
     public FamilyAttendanceNoticeResponse applyToAttendanceRecord(Long teamId, Long noticeId, Long operatorUserId) {
         FamilyAttendanceNoticeEntity entity = findNoticeInTeamOrHide(teamId, noticeId);
-        // 認可（AC-14）: entity 由来 scope（= path と一致確認済みの teamId）の日次登録権（R）。
-        policy.checkCanRecordDaily(operatorUserId, entity.getTeamId());
+        // 認可（AC-14: entity 由来 scope の日次登録権 R）は FamilyAttendanceNoticeFacade が
+        // 本メソッドより前に、トランザクションの外で済ませている。
 
         if (Boolean.TRUE.equals(entity.getAppliedToRecord())) {
             throw new BusinessException(SchoolErrorCode.FAMILY_NOTICE_ALREADY_APPLIED);
@@ -175,13 +173,11 @@ public class FamilyAttendanceNoticeService {
      *
      * @param teamId        クラスチームID
      * @param date          対象日
-     * @param actorUserId   操作者（担任）のユーザーID
      * @return 保護者連絡一覧レスポンス
      */
     @Transactional(readOnly = true)
-    public FamilyNoticeListResponse getTeamNotices(Long teamId, LocalDate date, Long actorUserId) {
-        policy.checkCanView(actorUserId, teamId);
-
+    public FamilyNoticeListResponse getTeamNotices(Long teamId, LocalDate date) {
+        // 認可（V）は FamilyAttendanceNoticeFacade が済ませてから呼ばれる。
         List<FamilyAttendanceNoticeEntity> records =
                 noticeRepository.findByTeamIdAndAttendanceDateOrderByCreatedAtDesc(teamId, date);
 
@@ -226,6 +222,17 @@ public class FamilyAttendanceNoticeService {
     // ========================================
     // プライベートヘルパー
     // ========================================
+
+    /**
+     * 連絡が path の teamId 配下にあることを確認する（認可の前段。トランザクションの外の Facade から呼ぶ）。
+     *
+     * <p>存在しない連絡、または path の teamId 配下でない連絡は、存在秘匿のため同じ 404
+     * （{@code FAMILY_NOTICE_NOT_FOUND}）を返す。認可は、この確認を通った teamId（= entity 由来 scope）で行う。</p>
+     */
+    @Transactional(readOnly = true)
+    public void requireNoticeInTeam(Long teamId, Long noticeId) {
+        findNoticeInTeamOrHide(teamId, noticeId);
+    }
 
     /**
      * 連絡を取得し、path の {@code teamId} 配下であることを検証する（BOLA 封鎖・存在秘匿）。

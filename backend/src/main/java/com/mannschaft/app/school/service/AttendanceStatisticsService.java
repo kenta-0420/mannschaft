@@ -32,27 +32,19 @@ public class AttendanceStatisticsService {
 
     private final DailyAttendanceRecordRepository dailyRepo;
     private final PeriodAttendanceRecordRepository periodRepo;
-    private final SchoolAttendanceAccessPolicy schoolAttendanceAccessPolicy;
-
-    /** 認可スコープ種別（出欠統計は常にクラスチーム単位）。 */
-    private static final String SCOPE_TEAM = "TEAM";
 
     /**
      * 担任向け月次出欠集計を取得する。
      *
-     * <p>認可: クラス全員分を返すため、対象クラスチームのメンバーのみ参照可
-     * （{@link SchoolAttendanceAccessPolicy#checkCanView}）。非メンバーは 403（COMMON_002）。</p>
+     * <p>認可: クラス全員分を返すため閲覧権（V）が必要。トランザクションの外の
+     * {@code AttendanceStatisticsFacade} が済ませてから呼ばれる。</p>
      *
-     * @param teamId        クラスチームID
-     * @param year          対象年
-     * @param month         対象月（1〜12）
-     * @param currentUserId 閲覧者のユーザーID（認可判定に使用）
+     * @param teamId クラスチームID
+     * @param year   対象年
+     * @param month  対象月（1〜12）
      * @return 月次集計レスポンス
      */
-    public MonthlyStatisticsResponse getMonthlyStatistics(
-            Long teamId, int year, int month, Long currentUserId) {
-        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
-
+    public MonthlyStatisticsResponse getMonthlyStatistics(Long teamId, int year, int month) {
         LocalDate from = LocalDate.of(year, month, 1);
         LocalDate to = from.withDayOfMonth(from.lengthOfMonth());
 
@@ -156,18 +148,15 @@ public class AttendanceStatisticsService {
     /**
      * 担任向け出欠 CSV データを生成する。
      *
-     * <p>認可: クラス全員分を書き出すため、対象クラスチームのメンバーのみ実行可
-     * （{@link SchoolAttendanceAccessPolicy#checkCanView}）。非メンバーは 403（COMMON_002）。</p>
+     * <p>認可: クラス全員分を書き出すため閲覧権（V）が必要。トランザクションの外の
+     * {@code AttendanceStatisticsFacade} が済ませてから呼ばれる。</p>
      *
-     * @param teamId        クラスチームID
-     * @param from          開始日
-     * @param to            終了日
-     * @param currentUserId 実行者のユーザーID（認可判定に使用）
+     * @param teamId クラスチームID
+     * @param from   開始日
+     * @param to     終了日
      * @return UTF-8 エンコードされた CSV バイト配列
      */
-    public byte[] exportAttendanceCsv(Long teamId, LocalDate from, LocalDate to, Long currentUserId) {
-        schoolAttendanceAccessPolicy.checkCanView(currentUserId, teamId);
-
+    public byte[] exportAttendanceCsv(Long teamId, LocalDate from, LocalDate to) {
         List<DailyAttendanceRecordEntity> records =
                 dailyRepo.findByTeamIdAndAttendanceDateBetweenOrderByAttendanceDateAsc(teamId, from, to);
 

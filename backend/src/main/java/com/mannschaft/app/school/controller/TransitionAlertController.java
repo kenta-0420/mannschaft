@@ -5,7 +5,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.school.dto.TransitionAlertListResponse;
 import com.mannschaft.app.school.dto.TransitionAlertResolveRequest;
 import com.mannschaft.app.school.dto.TransitionAlertResponse;
-import com.mannschaft.app.school.service.TransitionAlertService;
+import com.mannschaft.app.school.service.TransitionAlertFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -28,7 +28,7 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class TransitionAlertController {
 
-    private final TransitionAlertService transitionAlertService;
+    private final TransitionAlertFacade transitionAlertFacade;
 
     /**
      * 指定クラス・日付の移動検知アラート一覧を取得する。
@@ -48,7 +48,7 @@ public class TransitionAlertController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "false") boolean unresolvedOnly) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(transitionAlertService.getAlerts(teamId, date, unresolvedOnly, currentUserId));
+        return ApiResponse.of(transitionAlertFacade.getAlerts(teamId, date, unresolvedOnly, currentUserId));
     }
 
     /**
@@ -69,6 +69,6 @@ public class TransitionAlertController {
             @PathVariable Long alertId,
             @Valid @RequestBody TransitionAlertResolveRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(transitionAlertService.resolveAlert(teamId, alertId, currentUserId, request.getNote()));
+        return ApiResponse.of(transitionAlertFacade.resolveAlert(teamId, alertId, currentUserId, request.getNote()));
     }
 }

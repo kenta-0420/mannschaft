@@ -1,6 +1,5 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.dto.ClassSummaryListResponse;
@@ -42,11 +41,6 @@ public class AttendanceSummaryService {
     private final StudentAttendanceSummaryRepository summaryRepository;
     private final DailyAttendanceRecordRepository dailyRepository;
     private final PeriodAttendanceRecordRepository periodRepository;
-    private final AccessControlService accessControlService;
-    private final SchoolAttendanceAccessPolicy policy;
-
-    /** 認可スコープ種別（出席集計は常にクラスチーム単位）。 */
-    private static final String SCOPE_TEAM = "TEAM";
 
     // ========================================
     // 集計取得
@@ -55,24 +49,18 @@ public class AttendanceSummaryService {
     /**
      * 生徒の出席集計を取得する。
      *
-     * <p>認可（AC-4）: 生徒本人、対象生徒への ACTIVE な careLink を持つ保護者、または
-     * 対象クラスの閲覧権（V: {@link SchoolAttendanceAccessPolicy#canView}）を持つ教職員のみ。
-     * 同級の一般 MEMBER・別クラスの教員・別テナントは 403（COMMON_002）。</p>
+     * <p>認可（AC-4: 生徒本人・保護者・対象クラスの閲覧権 V を持つ教職員のみ。同級の一般 MEMBER・別クラスの教員・
+     * 別テナントは 403）は、トランザクションの外の {@code AttendanceSummaryFacade} が済ませてから呼ばれる。</p>
      *
      * @param studentUserId 生徒ユーザーID
      * @param teamId        チームID
      * @param academicYear  学年度
      * @param termId        学期ID（null なら年度通算）
-     * @param currentUserId 現在のユーザーID
      * @return 出席集計レスポンス
-     * @throws BusinessException 非メンバーの場合（COMMON_002）／集計が存在しない場合
+     * @throws BusinessException 集計が存在しない場合
      */
     public StudentSummaryResponse getStudentSummary(
-            Long studentUserId, Long teamId, short academicYear, Long termId, Long currentUserId) {
-        if (!isSelfOrGuardian(studentUserId, currentUserId)) {
-            policy.checkCanView(currentUserId, teamId);
-        }
-
+            Long studentUserId, Long teamId, short academicYear, Long termId) {
         StudentAttendanceSummaryEntity entity = summaryRepository
                 .findByStudentUserIdAndTeamIdAndAcademicYearAndTermId(
                         studentUserId, teamId, academicYear, termId)
@@ -83,19 +71,14 @@ public class AttendanceSummaryService {
     /**
      * クラス全員の年度/学期別出席集計一覧を取得する。
      *
-     * <p>クラス全員分の PII を返すため、対象クラスチームのメンバーであることを検証する。</p>
+     * <p>クラス全員分の PII を返すため、閲覧権（V）の検証は {@code AttendanceSummaryFacade} が済ませてから呼ばれる。</p>
      *
      * @param teamId        チームID
      * @param academicYear  学年度
      * @param termId        学期ID（null なら年度通算）
-     * @param currentUserId 現在のユーザーID
      * @return クラス出席集計一覧レスポンス
-     * @throws BusinessException 非メンバーの場合（COMMON_002）
      */
-    public ClassSummaryListResponse getClassSummaries(
-            Long teamId, short academicYear, Long termId, Long currentUserId) {
-        policy.checkCanView(currentUserId, teamId);
-
+    public ClassSummaryListResponse getClassSummaries(Long teamId, short academicYear, Long termId) {
         List<StudentAttendanceSummaryEntity> entities;
         if (termId == null) {
             entities = summaryRepository.findClassSummaries(teamId, academicYear);
@@ -125,24 +108,16 @@ public class AttendanceSummaryService {
      * <p>日次出欠レコードを集計期間で取得し、ステータス・場所別に集計する。
      * 既存レコードがあれば {@code toBuilder()} で更新、なければ新規作成する。</p>
      *
-     * <p>認可（AC-13）: 日次登録権（R: {@link SchoolAttendanceAccessPolicy#canRecordDaily}）を持つ
-     * 担任・副担任・管理者のみ。対象生徒が当該クラスの在籍メンバーでなければ 404（SUMMARY_NOT_FOUND）。
-     * 時限記録の集計は当該クラス（teamId）の記録だけを対象とし、兼籍生徒の他クラスの記録を混ぜない（AC-21）。</p>
+     * <p>認可（AC-13: 日次登録権 R を持つ担任・副担任・管理者のみ）と対象生徒の在籍確認
+     * （非在籍は 404 SUMMARY_NOT_FOUND）は、トランザクションの外の {@code AttendanceSummaryFacade} が
+     * 済ませてから呼ばれる。時限記録の集計は当該クラス（teamId）の記録だけを対象とし、兼籍生徒の他クラスの記録を混ぜない（AC-21）。</p>
      *
      * @param studentUserId 生徒ユーザーID
      * @param req           再計算リクエスト
-     * @param currentUserId 現在のユーザーID
      * @return 再計算結果レスポンス
-     * @throws BusinessException 非メンバーの場合（COMMON_002）
      */
     @Transactional
-    public RecalculateSummaryResponse recalculate(
-            Long studentUserId, RecalculateSummaryRequest req, Long currentUserId) {
-        policy.checkCanRecordDaily(currentUserId, req.getTeamId());
-        if (!accessControlService.listActiveMemberIds(req.getTeamId(), SCOPE_TEAM).contains(studentUserId)) {
-            throw new BusinessException(SchoolErrorCode.SUMMARY_NOT_FOUND);
-        }
-
+    public RecalculateSummaryResponse recalculate(Long studentUserId, RecalculateSummaryRequest req) {
         LocalDate from = LocalDate.parse(req.getPeriodFrom());
         LocalDate to = LocalDate.parse(req.getPeriodTo());
 
@@ -286,21 +261,5 @@ public class AttendanceSummaryService {
                 .recalculatedAt(now)
                 .summary(StudentSummaryResponse.from(saved))
                 .build();
-    }
-
-    /**
-     * 閲覧者が対象生徒本人、または対象生徒への ACTIVE な careLink を持つ保護者かを返す。
-     * careLink が無い場合の {@code checkCareLink} の 403 は「保護者ではない」の意味に畳み、呼び出し側で判定を続ける。
-     */
-    private boolean isSelfOrGuardian(Long studentUserId, Long currentUserId) {
-        if (currentUserId != null && currentUserId.equals(studentUserId)) {
-            return true;
-        }
-        try {
-            accessControlService.checkCareLink(currentUserId, studentUserId);
-            return true;
-        } catch (BusinessException e) {
-            return false;
-        }
     }
 }

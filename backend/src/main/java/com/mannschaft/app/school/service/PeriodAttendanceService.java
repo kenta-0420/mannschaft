@@ -1,6 +1,5 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.dto.PeriodAttendanceEntry;
@@ -55,8 +54,6 @@ public class PeriodAttendanceService {
 
     private final PeriodAttendanceRecordRepository periodAttendanceRecordRepository;
     private final AttendanceTransitionDetectionService attendanceTransitionDetectionService;
-    private final AccessControlService accessControlService;
-    private final SchoolAttendanceAccessPolicy policy;
 
     /**
      * 時限出欠を一括登録（教科担任用）。
@@ -75,13 +72,8 @@ public class PeriodAttendanceService {
     public PeriodAttendanceSummary submitPeriodAttendance(
             Long teamId, Integer periodNumber, PeriodAttendanceRequest request, Long operatorUserId) {
 
-        // 認可は最初に行う（拒否時は行を作らず・移動検知も走らせない）。
-        // 時限 POST は upsert なので、PATCH と同じ条件（P）で既存レコードの書換も拒否される。
-        policy.checkCanRecordPeriod(operatorUserId, teamId);
-        // 生徒は全員このクラスの在籍メンバーであること（集合取得 1 クエリ。1 人でも不正なら全件ロールバック）。
-        policy.requireEnrolledStudents(teamId,
-                request.getEntries().stream().map(PeriodAttendanceEntry::getStudentUserId)
-                        .collect(Collectors.toSet()));
+        // 認可（P）と在籍確認は、トランザクションの外の PeriodAttendanceFacade が最初に済ませてから呼ばれる
+        // （拒否時は行を作らず・移動検知も走らせない。時限 POST は upsert なので PATCH と同じ条件 P で拒否される）。
 
         int presentCount = 0;
         int absentCount = 0;
@@ -129,14 +121,12 @@ public class PeriodAttendanceService {
      * @param teamId        チームID
      * @param date          出欠対象日
      * @param periodNumber  時限番号
-     * @param currentUserId 操作者ユーザーID
      * @return 出欠一覧レスポンス
      */
     public PeriodAttendanceListResponse getPeriodAttendance(
-            Long teamId, LocalDate date, Integer periodNumber, Long currentUserId) {
+            Long teamId, LocalDate date, Integer periodNumber) {
 
-        policy.checkCanView(currentUserId, teamId);
-
+        // 認可（V）は PeriodAttendanceFacade が済ませてから呼ばれる。
         List<PeriodAttendanceRecordEntity> records =
                 periodAttendanceRecordRepository.findByTeamIdAndAttendanceDateAndPeriodNumber(
                         teamId, date, periodNumber);
@@ -172,14 +162,12 @@ public class PeriodAttendanceService {
      * @param teamId        チームID
      * @param date          出欠対象日
      * @param periodNumber  時限番号
-     * @param currentUserId 操作者ユーザーID
      * @return 候補生徒一覧レスポンス
      */
     public PeriodCandidatesResponse getPeriodCandidates(
-            Long teamId, LocalDate date, Integer periodNumber, Long currentUserId) {
+            Long teamId, LocalDate date, Integer periodNumber) {
 
-        policy.checkCanView(currentUserId, teamId);
-
+        // 認可（V）は PeriodAttendanceFacade が済ませてから呼ばれる。
         // 当該時限の既存レコードから生徒一覧を組み立てる（簡易実装）
         // TODO: Phase 3 でチームメンバーリポジトリと正式連携
         List<PeriodAttendanceRecordEntity> currentPeriodRecords =
@@ -234,8 +222,7 @@ public class PeriodAttendanceService {
     public PeriodAttendanceResponse updatePeriodRecord(
             Long teamId, Long recordId, PeriodAttendanceUpdateRequest request, Long operatorUserId) {
 
-        policy.checkCanRecordPeriod(operatorUserId, teamId);
-
+        // 認可（P）は PeriodAttendanceFacade が済ませてから呼ばれる。
         PeriodAttendanceRecordEntity existing = periodAttendanceRecordRepository.findById(recordId)
                 .filter(r -> r.getTeamId().equals(teamId))
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.PERIOD_RECORD_NOT_FOUND));

@@ -1,6 +1,5 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.dto.PeriodAttendanceEntry;
@@ -38,7 +37,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -62,12 +60,6 @@ class PeriodAttendanceServiceTest {
     @Mock
     private AttendanceTransitionDetectionService attendanceTransitionDetectionService;
 
-    @Mock
-    private AccessControlService accessControlService;
-
-    @Mock
-    private SchoolAttendanceAccessPolicy policy;
-
     @InjectMocks
     private PeriodAttendanceService periodAttendanceService;
 
@@ -84,46 +76,6 @@ class PeriodAttendanceServiceTest {
     @Nested
     @DisplayName("submitPeriodAttendance")
     class SubmitPeriodAttendance {
-
-        @Test
-        @DisplayName("異常系: P でない操作者は 403 で、行の作成も移動検知も走らない")
-        void forbidden_noSideEffects() {
-            PeriodAttendanceEntry entry = new PeriodAttendanceEntry();
-            ReflectionTestUtils.setField(entry, "studentUserId", STUDENT_USER_ID);
-            ReflectionTestUtils.setField(entry, "status", AttendanceStatus.ABSENT);
-            PeriodAttendanceRequest request = new PeriodAttendanceRequest();
-            ReflectionTestUtils.setField(request, "attendanceDate", ATTENDANCE_DATE);
-            ReflectionTestUtils.setField(request, "entries", List.of(entry));
-            BusinessException denied = new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
-            doThrow(denied).when(policy).checkCanRecordPeriod(OPERATOR_USER_ID, TEAM_ID);
-
-            assertThatThrownBy(() -> periodAttendanceService.submitPeriodAttendance(
-                    TEAM_ID, PERIOD_NUMBER, request, OPERATOR_USER_ID)).isSameAs(denied);
-
-            verify(periodAttendanceRecordRepository, never()).save(any());
-            verify(attendanceTransitionDetectionService, never())
-                    .detectTransition(any(), any(), any(), anyInt(), any());
-            verify(policy, never()).requireEnrolledStudents(any(), any());
-        }
-
-        @Test
-        @DisplayName("異常系: 在籍でない生徒が混ざると全件拒否され、1 行も保存されない")
-        void notEnrolled_noRowSaved() {
-            PeriodAttendanceEntry entry = new PeriodAttendanceEntry();
-            ReflectionTestUtils.setField(entry, "studentUserId", STUDENT_USER_ID);
-            ReflectionTestUtils.setField(entry, "status", AttendanceStatus.ATTENDING);
-            PeriodAttendanceRequest request = new PeriodAttendanceRequest();
-            ReflectionTestUtils.setField(request, "attendanceDate", ATTENDANCE_DATE);
-            ReflectionTestUtils.setField(request, "entries", List.of(entry));
-            BusinessException notEnrolled = new BusinessException(
-                    com.mannschaft.app.school.error.SchoolErrorCode.STUDENT_NOT_ENROLLED);
-            doThrow(notEnrolled).when(policy).requireEnrolledStudents(any(), any());
-
-            assertThatThrownBy(() -> periodAttendanceService.submitPeriodAttendance(
-                    TEAM_ID, PERIOD_NUMBER, request, OPERATOR_USER_ID)).isSameAs(notEnrolled);
-
-            verify(periodAttendanceRecordRepository, never()).save(any());
-        }
 
         @Test
         @DisplayName("正常系: 新規エントリを登録できる")
@@ -235,7 +187,7 @@ class PeriodAttendanceServiceTest {
                     .willReturn(List.of(r1, r2));
 
             PeriodAttendanceListResponse response =
-                    periodAttendanceService.getPeriodAttendance(TEAM_ID, ATTENDANCE_DATE, PERIOD_NUMBER, OPERATOR_USER_ID);
+                    periodAttendanceService.getPeriodAttendance(TEAM_ID, ATTENDANCE_DATE, PERIOD_NUMBER);
 
             assertThat(response.getRecords()).hasSize(2);
             assertThat(response.getPresentCount()).isEqualTo(1);
@@ -253,7 +205,7 @@ class PeriodAttendanceServiceTest {
                     .willReturn(List.of());
 
             PeriodAttendanceListResponse response =
-                    periodAttendanceService.getPeriodAttendance(TEAM_ID, ATTENDANCE_DATE, PERIOD_NUMBER, OPERATOR_USER_ID);
+                    periodAttendanceService.getPeriodAttendance(TEAM_ID, ATTENDANCE_DATE, PERIOD_NUMBER);
 
             assertThat(response.getRecords()).isEmpty();
             assertThat(response.getPresentCount()).isEqualTo(0);
@@ -540,7 +492,6 @@ class PeriodAttendanceServiceTest {
         @DisplayName("updatePeriodRecord: 取得した同一インスタンスを id 保持のまま UPDATE する（新インスタンス化しない）")
         void updatePeriodRecord_既存行をUPDATE_id保持() {
             // Given
-            Mockito.doNothing().when(policy).checkCanRecordPeriod(OPERATOR_USER_ID, TEAM_ID);
 
             PeriodAttendanceRecordEntity existing = buildRecord(null, AttendanceStatus.UNDECIDED);
             ReflectionTestUtils.setField(existing, "id", EXISTING_ID);
