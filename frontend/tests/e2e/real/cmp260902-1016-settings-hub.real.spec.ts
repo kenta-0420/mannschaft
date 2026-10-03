@@ -251,13 +251,34 @@ test.describe('CMP1016 設定一覧の実ブラウザ（API smokeとは別判定
         const scope = scopes.find(item => item.type === type)!
         await page.setViewportSize({ width: 1280, height: 720 })
         await login(page, actor)
+        const permissionPath = `/api/v1/${type}/${scope.slug}/me/permissions`
+        const expectedRole = actor === SYSTEM ? 'SYSTEM_ADMIN' : 'DEPUTY_ADMIN'
+        const l2Permissions = page.waitForResponse(response => response.request().method() === 'GET'
+          && new URL(response.url()).pathname === permissionPath)
         await page.goto(`${base(scope)}/admin`)
         await waitForHydration(page)
+        const l2Response = await l2Permissions
+        expect(l2Response.status()).toBe(200)
+        expect((await l2Response.json()).data.roleName).toBe(expectedRole)
+        await expect(page).toHaveURL(`${process.env.BASE_URL}${base(scope)}/admin`)
         const legacy = `${base(scope)}/${type === 'teams' ? 'settings/shift' : 'settings/faq-settings'}`
         await expect(page.locator(`a[href="${legacy}"]`).filter({ visible: true })).toHaveCount(1)
+        await expect(page.locator('body > .pointer-events-none.fixed.inset-0')).not.toBeVisible()
         await expect(page.locator(`a[href="${base(scope)}/admin/settings"]`)).toHaveCount(0)
+        const hubPermissions = page.waitForResponse(response => response.request().method() === 'GET'
+          && new URL(response.url()).pathname === permissionPath)
         await page.goto(`${base(scope)}/admin/settings`)
         await waitForHydration(page)
+        const hubResponse = await hubPermissions
+        expect(hubResponse.status()).toBe(200)
+        expect((await hubResponse.json()).data.roleName).toBe(expectedRole)
+        await expect(page).toHaveURL(`${process.env.BASE_URL}${base(scope)}/admin/settings`)
+        // loading中のリンク0を拒否と誤判定せず、新hub自身の終端forbiddenを確認する。
+        const forbidden = page.getByTestId('load-error-state')
+        await expect(forbidden).toBeVisible()
+        await expect(forbidden.locator('.pi-lock')).toBeVisible()
+        await expect(page.getByTestId('load-error-state-retry')).toHaveCount(0)
+        await expect(page.locator('body > .pointer-events-none.fixed.inset-0')).not.toBeVisible()
         await expect(page.getByTestId('setting-line')).toHaveCount(0)
         await expect(page.locator('[data-testid^="setting-"]')).toHaveCount(0)
       })
