@@ -1,6 +1,7 @@
 package com.mannschaft.app.school.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.school.dto.LocationChangeResponse;
 import com.mannschaft.app.school.entity.AttendanceLocation;
 import com.mannschaft.app.school.entity.AttendanceLocationChangeEntity;
 import com.mannschaft.app.school.entity.AttendanceLocationChangeReason;
@@ -45,7 +46,7 @@ public class AttendanceLocationFacade {
     }
 
     /** 個別生徒のタイムラインを取得する。認可（AC-4）: 本人・保護者は全クラス分、教職員は閲覧権のあるクラス分。 */
-    public List<AttendanceLocationChangeEntity> getTimeline(
+    public List<LocationChangeResponse> getTimeline(
             Long studentUserId, LocalDate attendanceDate, Long currentUserId) {
         Set<Long> viewableTeamIds = policy.resolveViewableTeamIds(studentUserId, currentUserId);
         return locationService.getTimeline(studentUserId, attendanceDate, viewableTeamIds);

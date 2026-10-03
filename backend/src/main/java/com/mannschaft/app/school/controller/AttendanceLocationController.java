@@ -125,14 +125,11 @@ public class AttendanceLocationController {
             @PathVariable Long studentUserId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        List<AttendanceLocationChangeEntity> entityList =
+        List<LocationChangeResponse> changes =
                 attendanceLocationFacade.getTimeline(studentUserId, date, currentUserId);
-        List<LocationChangeResponse> changes = entityList.stream()
-                .map(LocationChangeResponse::from)
-                .collect(Collectors.toList());
-        AttendanceLocation currentLocation = entityList.isEmpty()
+        AttendanceLocation currentLocation = changes.isEmpty()
                 ? AttendanceLocation.CLASSROOM
-                : entityList.get(entityList.size() - 1).getToLocation();
+                : changes.get(changes.size() - 1).getToLocation();
         LocationTimelineResponse response = LocationTimelineResponse.builder()
                 .studentUserId(studentUserId)
                 .attendanceDate(date)

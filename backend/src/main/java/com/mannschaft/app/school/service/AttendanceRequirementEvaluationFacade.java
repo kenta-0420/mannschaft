@@ -67,7 +67,11 @@ public class AttendanceRequirementEvaluationFacade {
     public EvaluationResponse resolveViolation(
             Long evaluationId, Long resolverUserId, ResolveEvaluationRequest request) {
         RuleScope scope = evaluationService.findRuleScopeByEvaluation(evaluationId);
-        requireRuleWriterOrHide(scope, resolverUserId, SchoolErrorCode.EVALUATION_NOT_FOUND);
+        // 番人（Controller から 2 ホップ）が AccessControlService 到達を検出できるよう、
+        // 補助メソッドを挟まず Policy を直接呼ぶ（evaluate の isEnrolledStudent と同じ深さ）。
+        if (!policy.canWriteRequirementRule(resolverUserId, scope.organizationId(), scope.teamId())) {
+            throw new BusinessException(SchoolErrorCode.EVALUATION_NOT_FOUND);
+        }
         return evaluationService.resolveViolation(evaluationId, resolverUserId, request);
     }
 

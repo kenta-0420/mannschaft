@@ -1,6 +1,7 @@
 package com.mannschaft.app.school.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.school.dto.LocationChangeResponse;
 import com.mannschaft.app.school.entity.AttendanceLocation;
 import com.mannschaft.app.school.entity.AttendanceLocationChangeEntity;
 import com.mannschaft.app.school.entity.AttendanceLocationChangeReason;
@@ -149,14 +150,14 @@ public class AttendanceLocationService {
      * @return 場所変更履歴一覧（記録日時昇順）
      */
     @Transactional(readOnly = true)
-    public List<AttendanceLocationChangeEntity> getTimeline(
+    public List<LocationChangeResponse> getTimeline(
             Long studentUserId, LocalDate attendanceDate, Set<Long> viewableTeamIds) {
         List<AttendanceLocationChangeEntity> all = attendanceLocationChangeRepository
                 .findByStudentUserIdAndAttendanceDateOrderByRecordedAtAsc(studentUserId, attendanceDate);
-        if (viewableTeamIds == null) {
-            return all;
-        }
-        return all.stream().filter(c -> viewableTeamIds.contains(c.getTeamId())).toList();
+        return all.stream()
+                .filter(c -> viewableTeamIds == null || viewableTeamIds.contains(c.getTeamId()))
+                .map(LocationChangeResponse::from)
+                .toList();
     }
 
     // ========================================

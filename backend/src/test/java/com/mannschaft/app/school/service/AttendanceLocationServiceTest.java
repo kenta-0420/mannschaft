@@ -1,5 +1,6 @@
 package com.mannschaft.app.school.service;
 
+import com.mannschaft.app.school.dto.LocationChangeResponse;
 import com.mannschaft.app.school.entity.AttendanceLocation;
 import com.mannschaft.app.school.entity.AttendanceLocationChangeEntity;
 import com.mannschaft.app.school.entity.AttendanceLocationChangeReason;
@@ -151,7 +152,7 @@ class AttendanceLocationServiceTest {
 
             var result = attendanceLocationService.getTimeline(STUDENT_USER_ID, ATTENDANCE_DATE, Set.of(TEAM_ID));
 
-            assertThat(result).extracting(AttendanceLocationChangeEntity::getTeamId).containsExactly(TEAM_ID);
+            assertThat(result).extracting(LocationChangeResponse::getTeamId).containsExactly(TEAM_ID);
         }
 
         @Test
