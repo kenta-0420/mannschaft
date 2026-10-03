@@ -453,8 +453,14 @@
       "OH": "Outside hitter",
       "L": "Libero"
     },
+    "org_select": {
+      "label": "Organization",
+      "invalid": "The specified organization is invalid (not an organization of this team). Please choose an organization again",
+      "placeholder": "Select an organization"
+    },
     "org_context": {
-      "resolve_failed": "Could not resolve team/organization info. Please check your memberships"
+      "resolve_failed": "Could not resolve team/organization info. Please check your memberships",
+      "not_member_of_org": "This team is not a member of the tournament's organization, so the match cannot be recorded"
     },
     "entry": {
       "record_from_schedule": "Record this match",
