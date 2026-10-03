@@ -317,6 +317,62 @@ class ShiftScheduleSlotFacadeContractIT extends AbstractMySqlIntegrationTest {
         em.clear();
     }
 
+    static Stream<Arguments> localDateRoundtripCases() {
+        return Stream.of(
+                Arguments.of(LocalDate.of(2027, 12, 31), LocalDate.of(2028, 1, 1),
+                        LocalDate.of(2027, 12, 31), LocalDate.of(2028, 1, 1),
+                        LocalDate.of(2028, 1, 2), LocalDate.of(2028, 1, 1)),
+                Arguments.of(LocalDate.of(2028, 2, 28), LocalDate.of(2028, 2, 29),
+                        LocalDate.of(2028, 2, 29), LocalDate.of(2028, 2, 29),
+                        LocalDate.of(2028, 3, 1), LocalDate.of(2028, 3, 1)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("localDateRoundtripCases")
+    @DisplayName("CMP0656: 年末・うるう日の3日付はMySQL保存更新と期間・枠日付検索で保持される")
+    void 日付境界でも3列のJDBC往復と検索引数が一致する(
+            LocalDate start, LocalDate end, LocalDate slotDate,
+            LocalDate updatedStart, LocalDate updatedEnd, LocalDate updatedSlotDate) {
+        Long scheduleId = scheduleRepository.save(ShiftScheduleEntity.builder()
+                .teamId(teamAId).title("CMP0656 LocalDate境界")
+                .startDate(start).endDate(end).createdBy(id(Actor.ADMIN_A)).build()).getId();
+        Long slotId = slotRepository.save(ShiftSlotEntity.builder()
+                .scheduleId(scheduleId).slotDate(slotDate)
+                .startTime(LocalTime.of(8, 30)).endTime(LocalTime.of(10, 0))
+                .requiredCount(1).build()).getId();
+        em.flush();
+        em.clear();
+
+        ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId).orElseThrow();
+        ShiftSlotEntity slot = slotRepository.findById(slotId).orElseThrow();
+        assertThat(schedule.getStartDate()).isEqualTo(start);
+        assertThat(schedule.getEndDate()).isEqualTo(end);
+        assertThat(slot.getSlotDate()).isEqualTo(slotDate);
+        assertThat(scheduleRepository.findByTeamIdAndStartDateBetweenOrderByStartDateDesc(teamAId, start, start))
+                .extracting(ShiftScheduleEntity::getId).containsExactly(scheduleId);
+        assertThat(slotRepository.findByScheduleIdAndSlotDateOrderByStartTimeAsc(scheduleId, slotDate))
+                .extracting(ShiftSlotEntity::getId).containsExactly(slotId);
+
+        // managed実体の正規更新後もflush/clearし、メモリの値だけでgreenにしない。
+        schedule.applyUpdate(null, null, updatedStart, updatedEnd, null, null);
+        slot.applyUpdate(updatedSlotDate, null, null, null, null, null, null, null);
+        em.flush();
+        em.clear();
+        ShiftScheduleEntity updatedSchedule = scheduleRepository.findById(scheduleId).orElseThrow();
+        ShiftSlotEntity updatedSlot = slotRepository.findById(slotId).orElseThrow();
+        assertThat(updatedSchedule.getStartDate()).isEqualTo(updatedStart);
+        assertThat(updatedSchedule.getEndDate()).isEqualTo(updatedEnd);
+        assertThat(updatedSlot.getSlotDate()).isEqualTo(updatedSlotDate);
+        assertThat(scheduleRepository.findByTeamIdAndStartDateBetweenOrderByStartDateDesc(
+                teamAId, updatedStart, updatedStart))
+                .extracting(ShiftScheduleEntity::getId).containsExactly(scheduleId);
+        assertThat(slotRepository.findByScheduleIdAndSlotDateOrderByStartTimeAsc(scheduleId, updatedSlotDate))
+                .extracting(ShiftSlotEntity::getId).containsExactly(slotId);
+        assertThat(scheduleRepository.findByTeamIdAndStartDateBetweenOrderByStartDateDesc(teamAId, start, start))
+                .isEmpty();
+        assertThat(slotRepository.findByScheduleIdAndSlotDateOrderByStartTimeAsc(scheduleId, slotDate)).isEmpty();
+    }
+
     @SuppressWarnings("unchecked")
     private void stubValkey() {
         valkey.clear();

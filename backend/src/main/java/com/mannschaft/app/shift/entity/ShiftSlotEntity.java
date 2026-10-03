@@ -11,7 +11,9 @@ import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.type.descriptor.jdbc.LocalDateJdbcType;
 
 import java.time.LocalDate;
 import java.time.Instant;
@@ -38,6 +40,7 @@ public class ShiftSlotEntity extends BaseEntity {
     private Long scheduleId;
 
     @Column(nullable = false)
+    @JdbcType(LocalDateJdbcType.class)
     private LocalDate slotDate;
 
     @Column(nullable = false)

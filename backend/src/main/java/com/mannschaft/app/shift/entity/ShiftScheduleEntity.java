@@ -14,7 +14,9 @@ import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.type.descriptor.jdbc.LocalDateJdbcType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -70,9 +72,11 @@ public class ShiftScheduleEntity extends BaseEntity {
     private ShiftPeriodType periodType = ShiftPeriodType.WEEKLY;
 
     @Column(nullable = false)
+    @JdbcType(LocalDateJdbcType.class)
     private LocalDate startDate;
 
     @Column(nullable = false)
+    @JdbcType(LocalDateJdbcType.class)
     private LocalDate endDate;
 
     @Enumerated(EnumType.STRING)
