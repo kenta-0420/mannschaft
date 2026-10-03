@@ -771,21 +771,72 @@ test('公開PDF: empty/populated×両layoutとMEMBER本人フィルタ、board�
             })
             await expect(button).toBeVisible()
             await expect(button).toBeEnabled()
-            const downloadPromise = page.waitForEvent('download')
-            await button.click()
-            const download = await downloadPromise
-            expect(download.suggestedFilename()).toBe(
-              `shift-team-${populated.id}.pdf`,
-            )
-            const file = info.outputPath('pdf', 'ui-owner-team.pdf')
-            await download.saveAs(file)
-            expect(
-              (await readFile(file)).subarray(0, 5).toString('ascii'),
-            ).toBe('%PDF-')
-            expect(inspector.text(file)).toContain(populated.content.title)
-            await page.screenshot({
-              path: info.outputPath('pdf', 'ui-download-board.png'),
+            const observations: Array<{
+              method: string
+              path: string
+              status: number | null
+            }> = []
+            const pdfPath = `/api/v1/shifts/schedules/${populated.id}/pdf`
+            const isPdfPath = (url: string) =>
+              new URL(url).pathname.endsWith(`/shifts/schedules/${populated.id}/pdf`)
+            page.on('request', (request) => {
+              if (isPdfPath(request.url()))
+                observations.push({
+                  method: request.method(),
+                  path: new URL(request.url()).pathname,
+                  status: null,
+                })
             })
+            page.on('response', (response) => {
+              if (isPdfPath(response.url()))
+                observations.push({
+                  method: response.request().method(),
+                  path: new URL(response.url()).pathname,
+                  status: response.status(),
+                })
+            })
+            try {
+              const responsePromise = page.waitForResponse(
+                (response) =>
+                  response.request().method() === 'GET' &&
+                  new URL(response.url()).pathname === pdfPath,
+              )
+              const downloadPromise = page.waitForEvent('download')
+              const [response, download] = await Promise.all([
+                responsePromise,
+                downloadPromise,
+                button.click(),
+              ])
+              expect(response.status()).toBe(200)
+              expect(download.suggestedFilename()).toBe(
+                `shift-team-${populated.id}.pdf`,
+              )
+              const file = info.outputPath('pdf', 'ui-owner-team.pdf')
+              await download.saveAs(file)
+              expect(
+                (await readFile(file)).subarray(0, 5).toString('ascii'),
+              ).toBe('%PDF-')
+              const text = inspector.text(file).replace(/\s+/g, ' ')
+              expect(text).toContain(populated.content.title)
+              expect(text).toContain(fixture.day)
+              expect(text).toContain(ownerPosition.name)
+              expect(text).toContain(memberPosition.name)
+              expect(text).toContain('08:30')
+              expect(text).toContain('13:00')
+              expect(text).toBe(
+                inspector
+                  .text(info.outputPath('pdf', 'owner-populated-team.pdf'))
+                  .replace(/\s+/g, ' '),
+              )
+              await page.screenshot({
+                path: info.outputPath('pdf', 'ui-download-board.png'),
+              })
+            } finally {
+              await writeFile(
+                info.outputPath('pdf', 'ui-pdf-network.json'),
+                JSON.stringify(observations, null, 2),
+              )
+            }
           },
           () => context.close(),
         )
