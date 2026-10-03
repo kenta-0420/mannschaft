@@ -67,6 +67,7 @@ import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -376,10 +377,14 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
         var foreignError = mapper.readTree(observed.get(0).getContentAsString()).path("error");
         var missingError = mapper.readTree(observed.get(1).getContentAsString()).path("error");
         System.out.println("PRIVATE_ID_PROOF " + mapper.writeValueAsString(Map.of(
-                "method", method, "foreignStatus", observed.get(0).getStatus(), "foreignError", foreignError,
-                "missingStatus", observed.get(1).getStatus(), "missingError", missingError)));
+                "method", method, "foreignStatus", observed.get(0).getStatus(),
+                "foreignCode", foreignError.path("code").asText(),
+                "foreignMessage", foreignError.path("message").asText(),
+                "missingStatus", observed.get(1).getStatus(),
+                "missingCode", missingError.path("code").asText(),
+                "missingMessage", missingError.path("message").asText())));
         assertThat(snapshot()).isEqualTo(before);
-        org.junit.jupiter.api.Assertions.assertAll(
+        assertAll(
                 () -> assertThat(observed.get(0).getStatus()).isEqualTo(404),
                 () -> assertThat(observed.get(1).getStatus()).isEqualTo(404),
                 () -> assertThat(foreignError.path("code").asText()).isEqualTo(SurveyErrorCode.SURVEY_NOT_FOUND.getCode()),
