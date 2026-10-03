@@ -171,6 +171,81 @@ class VillageSelfScopeContractIT extends AbstractMySqlIntegrationTest {
             assertThat(pinRepository.findByUserIdAndVillageId(OTHER_ID, theirs.getId()))
                     .get().extracting(UserVillagePinEntity::getSortOrder).isEqualTo(0L);
         }
+
+        @Test
+        @DisplayName("並び替えは空の列を受け付けず、自分と他人のピンの並びを変えない")
+        void reorder_rejectsEmptyList() throws Exception {
+            VillageEntity mine = persistVillage();
+            VillageEntity theirs = persistVillage();
+            persistPin(ACTOR_ID, mine.getId(), 3L);
+            persistPin(OTHER_ID, theirs.getId(), 5L);
+
+            authAs(ACTOR_ID);
+            mockMvc.perform(patch("/api/v1/me/village-pins/order")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("orderedVillageIds", List.of()))))
+                    .andExpect(status().isBadRequest());
+
+            assertSortOrder(ACTOR_ID, mine.getId(), 3L);
+            assertSortOrder(OTHER_ID, theirs.getId(), 5L);
+        }
+
+        @Test
+        @DisplayName("並び替えは自分のピンの一部が欠けた列を受け付けない（422）")
+        void reorder_rejectsPartialList() throws Exception {
+            VillageEntity first = persistVillage();
+            VillageEntity second = persistVillage();
+            VillageEntity theirs = persistVillage();
+            persistPin(ACTOR_ID, first.getId(), 0L);
+            persistPin(ACTOR_ID, second.getId(), 1L);
+            persistPin(OTHER_ID, theirs.getId(), 0L);
+
+            authAs(ACTOR_ID);
+            mockMvc.perform(patch("/api/v1/me/village-pins/order")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(json(Map.of("orderedVillageIds", List.of(second.getId().toString())))))
+                    .andExpect(status().isUnprocessableEntity());
+
+            assertSortOrder(ACTOR_ID, first.getId(), 0L);
+            assertSortOrder(ACTOR_ID, second.getId(), 1L);
+            assertSortOrder(OTHER_ID, theirs.getId(), 0L);
+        }
+
+        @Test
+        @DisplayName("同じ URL・本文で認証主体だけ差し替えても、他人のピンの並びは変わらない")
+        void reorder_sameRequestUnderDifferentPrincipalChangesOnlyOwnPins() throws Exception {
+            VillageEntity first = persistVillage();
+            VillageEntity second = persistVillage();
+            VillageEntity theirs = persistVillage();
+            persistPin(ACTOR_ID, first.getId(), 0L);
+            persistPin(ACTOR_ID, second.getId(), 1L);
+            persistPin(OTHER_ID, theirs.getId(), 0L);
+            String body = json(Map.of("orderedVillageIds",
+                    List.of(second.getId().toString(), first.getId().toString())));
+
+            // 本人は自分のピン集合と一致する列で並び替えられる。
+            authAs(ACTOR_ID);
+            mockMvc.perform(patch("/api/v1/me/village-pins/order")
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isOk());
+            assertSortOrder(ACTOR_ID, second.getId(), 0L);
+            assertSortOrder(ACTOR_ID, first.getId(), 1L);
+            assertSortOrder(OTHER_ID, theirs.getId(), 0L);
+
+            // 認証主体だけ差し替えた同一リクエストは、その主体のピン集合と一致しないため拒否される。
+            authAs(OTHER_ID);
+            mockMvc.perform(patch("/api/v1/me/village-pins/order")
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isUnprocessableEntity());
+            assertSortOrder(ACTOR_ID, second.getId(), 0L);
+            assertSortOrder(ACTOR_ID, first.getId(), 1L);
+            assertSortOrder(OTHER_ID, theirs.getId(), 0L);
+        }
+
+        private void assertSortOrder(Long userId, UUID villageId, long expected) {
+            assertThat(pinRepository.findByUserIdAndVillageId(userId, villageId))
+                    .get().extracting(UserVillagePinEntity::getSortOrder).isEqualTo(expected);
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════
