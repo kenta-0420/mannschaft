@@ -3,6 +3,7 @@ package com.mannschaft.app.common.architecture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.common.architecture.fixtures.AuthorizedDirectController;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.common.architecture.fixtures.HelperDepth2Controller;
 import com.mannschaft.app.common.architecture.fixtures.IntentionallyPublicMarkerAnnotatedController;
 import com.mannschaft.app.common.architecture.fixtures.IntentionallyPublicMarkerClassAnnotatedController;
@@ -53,6 +54,7 @@ import org.junit.jupiter.api.TestInstance;
  */
 @DisplayName("認可番人 合格判定ロジックの偽陰性ゼロ証明（メタテスト）")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class AuthzControllerGuardConditionTest {
 
     private static final String FIXTURES_PACKAGE =

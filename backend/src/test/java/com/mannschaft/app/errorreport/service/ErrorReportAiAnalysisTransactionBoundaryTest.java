@@ -1,6 +1,8 @@
 package com.mannschaft.app.errorreport.service;
 
 import com.mannschaft.app.common.architecture.ProductionClasses;
+import com.mannschaft.app.common.architecture.ArchUnitTestTag;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
@@ -56,6 +58,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>これらは単体テストのモックでは現れない（モックが TX の実体を消す）ため、宣言そのものを検体にする。</p>
  */
 @DisplayName("Issue #2990 L4: AI 分析のトランザクション境界")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ErrorReportAiAnalysisTransactionBoundaryTest {
 
     /** 本番用バイトコード（テストクラスは除外）。 */

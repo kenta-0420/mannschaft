@@ -112,6 +112,52 @@ jobs:
           retention-days: 14
 
   # ---------------------------------------------------------------------------
+  # arch-test: ArchUnit を使うテスト（タグ archunit）を別 JVM で実行する（CMP-261002-1606）
+  #
+  # 通常の `test`（上の full-test）はタグ archunit を除外するため、フル実行の名に合わせて
+  # ここで archTest も走らせる。結果 XML の artifact 名は "nightly-test-results-xml-shard-" で
+  # 始めない（regen-shard-weights.sh が shard 重み表の材料として集めるため）。
+  # ---------------------------------------------------------------------------
+  arch-test:
+    name: ArchUnit tests (separate JVM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Set up Gradle（依存＋ビルドキャッシュ）
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+          gradle-home-cache-includes: |
+            caches
+            notifications
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: Run ArchUnit tests（archTest・別 JVM）
+        run: ./gradlew archTest --no-daemon --continue --build-cache
+
+      - name: テスト結果XML（JUnit）をアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-archtest-results-xml
+          path: backend/build/test-results/archTest/
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
   # summary: 全 shard の結果を 1 つに集約して赤/緑を明示する
   #
   # matrix ジョブは shard ごとに結果が分かれるため、Actions 一覧で一目で
@@ -119,7 +165,7 @@ jobs:
   # ---------------------------------------------------------------------------
   summary:
     name: Nightly Full Test Summary
-    needs: full-test
+    needs: [full-test, arch-test]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -128,7 +174,13 @@ jobs:
         run: |
           set -e
           RESULT="${{ needs.full-test.result }}"
+          ARCH_RESULT="${{ needs.arch-test.result }}"
           echo "[INFO] needs.full-test.result = ${RESULT}"
+          echo "[INFO] needs.arch-test.result = ${ARCH_RESULT}"
+          if [ "${ARCH_RESULT}" != "success" ]; then
+            echo "[NG] arch-test=${ARCH_RESULT} — ArchUnit テスト（archTest・別 JVM）が success ではない。"
+            exit 1
+          fi
           if [ "${RESULT}" = "success" ]; then
             echo "[OK] 全 shard が success。マイグレーションテスト込みのフル実行は緑。"
             exit 0

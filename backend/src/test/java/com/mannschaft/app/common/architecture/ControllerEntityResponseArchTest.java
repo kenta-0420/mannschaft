@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.junit.ArchTag;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -66,6 +67,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
     packages = "com.mannschaft.app",
     importOptions = ImportOption.DoNotIncludeTests.class
 )
+@ArchTag(ArchUnitTestTag.ARCHUNIT)
 class ControllerEntityResponseArchTest {
 
     /** JPA Entity マーカーの FQN。命名判定ではなくこのアノテーション有無で Entity を判定する。 */

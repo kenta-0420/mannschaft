@@ -3,6 +3,7 @@ package com.mannschaft.app.common.architecture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.common.architecture.JsonRequestBodyCreatorArchTest.PayloadBoundTypes;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.common.architecture.fixtures.D7ArrayElementBrokenItem;
 import com.mannschaft.app.common.architecture.fixtures.D7ContentDeserializeBrokenRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7CustomDeserializerRequest;
@@ -109,6 +110,7 @@ import org.junit.jupiter.api.TestInstance;
  */
 @DisplayName("D-7 番人 バインダ実体生成可能性 検出ロジックの偽陰性ゼロ・偽陽性ゼロ証明（メタテスト）")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class JsonRequestBodyCreatorConditionTest {
 
     private static final String FIXTURES_PACKAGE =

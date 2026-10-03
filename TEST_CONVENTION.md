@@ -483,6 +483,26 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTest {
 }
 ```
 
+### 7.1 ArchUnit テストの別 JVM 実行（`archTest`・CMP-261002-1606）
+
+ArchUnit を使うテストクラス（ArchUnit または `ProductionClasses` を参照するもの）は必ずタグを付け、
+Spring のテストコンテキストを使わない。通常の `test` はタグ `archunit` を除外し、`archTest` だけが
+1 JVM（heap 3g）で走らせる。`check` に載り、CI では専用ジョブ `arch-test` が 1 回だけ走る。
+
+```java
+@Tag(ArchUnitTestTag.ARCHUNIT)          // JUnit Jupiter のテストクラス
+class ShiftTxFacadeArchTest { ... }
+
+@ArchTag(ArchUnitTestTag.ARCHUNIT)      // @AnalyzeClasses のクラス（ArchUnit エンジンは @Tag を読まない）
+@AnalyzeClasses(packages = "com.mannschaft.app", importOptions = ImportOption.DoNotIncludeTests.class)
+class CrossDomainRepositoryDependencyArchTest { ... }
+```
+
+```bash
+./scripts/gradle-turnstile.sh ./gradlew archTest                        # 全 ArchUnit テスト
+./scripts/gradle-turnstile.sh ./gradlew archTest --tests "<完全修飾名>"  # 絞り込み
+```
+
 ---
 
 ## 8. CI/CD パイプライン
@@ -856,4 +876,5 @@ public void dispatch() { ... }
 | `@Disabled` を理由なく放置する | 一時的な無効化は許容するが、理由をコメントに記載し、1スプリント以内に解決する |
 | 手書きの INSERT SQL でテストデータを作成する | TestFixture 経由で作成する（`backend/BACKEND_CODING_CONVENTION.md` テストデータ作成パターン参照） |
 | **Controller を `@Autowired` して直接メソッド呼び出しでテストする** | HTTP 層を迂回し、URL パス・HTTP メソッド・enum バインド・JSON 形状・`@Valid`・例外→ステータス変換を一切検証できない。村ドメインで契約不一致 17 件を素通しにした実害あり。MockMvc を使うこと（**§3.1.1** に詳細）|
+| **ArchUnit を使うテストに `@Tag(ArchUnitTestTag.ARCHUNIT)`（`@AnalyzeClasses` なら `@ArchTag(ArchUnitTestTag.ARCHUNIT)`）を付けない／タグ付きテストで Spring のテストコンテキストを使う** | ArchUnit の本番取り込み（約 1.1GB）が Spring 系 IT と同じ JVM に乗り、shard 5 が OOM した（CMP-261002-1606）。ArchUnit テストは通常の `test` から除外され、専用タスク `archTest`（別 JVM・shard 分割なし）で走る。番人 `ArchUnitTestTagGuardTest` がタグ漏れ・Spring 混在・shard 重み表への混入を拒否する（詳細: `backend/.claudecode.md` §30）|
 | **ArchUnit で本番全体を `ClassFileImporter` で手動取り込みする／`JavaClasses` を static フィールドで保持する** | 取り込み結果が JVM 内に何コピーも残り、全量 CI の shard が `Java heap space` で落ちた（CMP-261002-1606）。本番全体は共有ホルダ `ProductionClasses.get()` だけを使う。番人 `ProductionClassImportGuardTest` が拒否する（詳細: `backend/.claudecode.md` §30）|

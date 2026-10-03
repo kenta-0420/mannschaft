@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.common.architecture.fixtures.CacheableAuthzFixtureService;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
@@ -46,6 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DisplayName("@Cacheable内認可 番人 判定ロジックの偽陰性ゼロ証明（メタテスト）")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class CacheableAuthzEnforcementGuardConditionTest {
 
     private static final String FIXTURES_PACKAGE =

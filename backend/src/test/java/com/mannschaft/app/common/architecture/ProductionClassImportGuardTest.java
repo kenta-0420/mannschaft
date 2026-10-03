@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 import java.io.IOException;
+import org.junit.jupiter.api.Tag;
 import java.io.UncheckedIOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -54,6 +55,7 @@ import org.springframework.asm.Type;
  * {@value #SELF_FIXTURES_PACKAGE} に置き、本番の走査からは除外する。
  */
 @DisplayName("番人: 本番クラス全体の取り込みは共有ホルダに一本化（CMP-261002-1606）")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ProductionClassImportGuardTest {
 
     /** 自己検証用の違反見本パッケージ（本番の走査から除外する）。 */

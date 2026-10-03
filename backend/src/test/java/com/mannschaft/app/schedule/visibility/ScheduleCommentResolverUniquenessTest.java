@@ -1,6 +1,8 @@
 package com.mannschaft.app.schedule.visibility;
 
 import com.mannschaft.app.circulation.visibility.CirculationCommentVisibilityResolver;
+import com.mannschaft.app.common.architecture.ArchUnitTestTag;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ContentVisibilityResolver;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -43,6 +45,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * これによりクラスパス上の<b>全</b> Resolver を、インスタンス化せずに突合できる。</p>
  */
 @DisplayName("F03.16 AC-37 ContentVisibilityResolver の referenceType 一意性")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ScheduleCommentResolverUniquenessTest {
 
     private static final String RESOLVER_IF = ContentVisibilityResolver.class.getName();

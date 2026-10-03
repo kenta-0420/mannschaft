@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 
@@ -48,6 +49,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * 未マージの 4 メソッドは {@code Service} 層がまだ {@code AccessControlService} を呼んでおらず、
  * 本試練は該当パラメータで <b>意図的に red</b> になる（試練の性質上、これは正しい）。</p>
  */
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class SelfScopedGuardRegressionTest {
 
     private final JavaClasses importedClasses = ProductionClasses.get();

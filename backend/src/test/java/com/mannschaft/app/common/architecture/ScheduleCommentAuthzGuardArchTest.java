@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -34,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 認可を正しく置くこと。</p>
  */
 @DisplayName("F03.16 予定コメント 認可番人適合テスト（試練）")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ScheduleCommentAuthzGuardArchTest {
 
     private static final String CONTROLLER_FQN =

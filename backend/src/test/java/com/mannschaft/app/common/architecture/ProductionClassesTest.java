@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mannschaft.app.MannschaftApplication;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.common.architecture.fixtures.DummyPlainService;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.Test;
  * 本番全体の取り込みを伴うのは AC-2 だけにする（取り込みは {@link ProductionClasses#get()} 経由の1回）。
  */
 @DisplayName("本番クラス共有ホルダ（CMP-261002-1606）")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ProductionClassesTest {
 
     /** 本番に実在する代表的な Service（shift の tx 本体）。 */

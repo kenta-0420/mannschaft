@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaParameter;
@@ -77,6 +78,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 凍結ストアを破壊する事故を持ち込まないためであり、<b>引っかかった箇所は凍結せず是正する</b>。</p>
  */
 @DisplayName("@Cacheable キー引数の値等価 静的番人 (issue #2544)")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class CacheableKeyValueEqualityGuardTest {
 
     private static JavaClasses importedClasses() {

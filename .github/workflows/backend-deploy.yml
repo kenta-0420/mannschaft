@@ -320,6 +320,67 @@ jobs:
           retention-days: 7
 
   # ---------------------------------------------------------------------------
+  # Job 1b — ArchUnit を使うテスト（タグ archunit）を Spring 系とは別の JVM で 1 回だけ実行する
+  #
+  # backend-ci.yml の arch-test ジョブと同じ（CMP-261002-1606）。通常の `test`（上の shard）は
+  # タグ archunit を除外するため、ここで走らせないと main で ArchUnit の番人が一度も走らない。
+  # build-and-deploy の needs に入れ、失敗時はデプロイしない。
+  # ---------------------------------------------------------------------------
+  arch-test:
+    name: ArchUnit tests (separate JVM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: backend-main-archtest-${{ github.ref }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: gradle
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: Run ArchUnit tests（archTest・別 JVM）
+        run: ./gradlew archTest --no-daemon --continue
+
+      - name: ヒープダンプ（OOM調査用）をアップロード
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: heap-dump-main-${{ github.run_id }}-archtest
+          path: backend/build/heap-dumps/*.hprof
+          retention-days: 3
+          if-no-files-found: ignore
+
+      # artifact 名は "test-results-xml-" で始めない（shard 重み表の材料に混ぜないため）。
+      - name: テスト結果XML（JUnit）をアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archtest-results-xml-main-${{ github.run_id }}
+          path: backend/build/test-results/archTest/
+          retention-days: 7
+
+      - name: テスト結果レポートをアップロード
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archtest-reports-main-${{ github.run_id }}
+          path: backend/build/reports/tests/archTest/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
   # Job 2 — Build Docker image, push to ECR, deploy to ECS
   #
   # concurrency group をデプロイ専用に限定。古いコミットのデプロイを新しい
@@ -329,7 +390,8 @@ jobs:
   build-and-deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
-    needs: test  # only runs when all test shards succeed（matrix needs は全 shard の集約結果）
+    # only runs when all test shards and arch-test succeed（matrix needs は全 shard の集約結果）
+    needs: [test, arch-test]
     concurrency:
       group: backend-deploy-${{ github.ref }}
       cancel-in-progress: true

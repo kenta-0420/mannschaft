@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
+import org.junit.jupiter.api.Tag;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
 import com.mannschaft.app.common.architecture.fixtures.D7ContentDeserializeBrokenRequest;
@@ -56,6 +57,7 @@ import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
  */
 @DisplayName("D-7 番人 構造条件と実 ObjectMapper の挙動の一致証明（実デシリアライズ）")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class JsonRequestBodyCreatorRuntimeProofTest {
 
     private static final String FIXTURES_PACKAGE =

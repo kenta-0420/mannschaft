@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.resident.transitivetx.ClassTransactionalFixture;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.resident.transitivetx.InheritedClassTransactionalFixture;
 import com.mannschaft.app.resident.transitivetx.TransitiveTransactionalFixture;
 import com.tngtech.archunit.core.domain.JavaClass;
@@ -14,6 +15,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** D-3T の本番判定ロジックを fixture で固定するメタテスト。 */
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class CrossDomainTransactionalTransitiveGuardConditionTest {
 
     private final JavaClasses fixtureClasses = new ClassFileImporter().importPackages(

@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <b>赤を出せること</b>を実証する（判定ロジックの二重実装を禁ずる）。</p>
  */
 @DisplayName("CMP-017b 番人: min_view_role が死んだ認可軸へ戻らないこと")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ScheduleMinViewRoleGuardArchTest {
 
     /** 閲覧閾値 enum の完全修飾名。参照の有無はこの名前で判定する。 */

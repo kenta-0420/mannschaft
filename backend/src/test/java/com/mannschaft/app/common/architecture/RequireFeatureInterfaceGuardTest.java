@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.common.featuregate.RequireFeature;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
@@ -34,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * メソッド）にのみ許可」に固定</b>し、CI で機械的に拒否する。</p>
  */
 @DisplayName("番人: @RequireFeature はインターフェースへ付与禁止（Gate基盤工事③ 検分指摘①）")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class RequireFeatureInterfaceGuardTest {
 
     private static JavaClasses importedClasses() {

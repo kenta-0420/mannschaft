@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.common.architecture.fixtures.MinViewRoleAwareScheduleResolver;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.common.architecture.fixtures.MinViewRoleBlindScheduleResolver;
 import com.mannschaft.app.common.architecture.fixtures.MinViewRoleFixtureProjection;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -27,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DisplayName("CMP-017b 番人が赤を出せることの実証（メタテスト）")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ScheduleMinViewRoleGuardConditionTest {
 
     private static final String FIXTURES_PACKAGE =

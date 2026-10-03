@@ -3,6 +3,7 @@ package com.mannschaft.app.common.architecture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.common.architecture.fixtures.D6ApiResponseEntityController;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.common.architecture.fixtures.D6DtoController;
 import com.mannschaft.app.common.architecture.fixtures.D6NestedEntityController;
 import com.mannschaft.app.common.architecture.fixtures.D6PageEntityController;
@@ -42,6 +43,7 @@ import org.junit.jupiter.api.TestInstance;
  */
 @DisplayName("D-6 番人 Entity検出ロジックの偽陰性ゼロ・偽陽性ゼロ証明（メタテスト）")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ControllerEntityResponseConditionTest {
 
     private static final String FIXTURES_PACKAGE =

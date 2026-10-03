@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.enumguardfixture.PersistedEnumFixtures;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.enumguardfixture.PersistedEnumFixtures.State;
 import com.mannschaft.enumguardfixture.PersistedEnumFixtures.Other;
 import com.mannschaft.enumguardfixture.PersistedEnumFixtures.FieldEntity;
@@ -23,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** 実バイトコードを使い、定数追加検知と永続化入口の検出範囲を固定する。 */
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class PersistedEnumInventoryTest {
     private static final String PREFIX = PersistedEnumFixtures.class.getName() + "$";
 

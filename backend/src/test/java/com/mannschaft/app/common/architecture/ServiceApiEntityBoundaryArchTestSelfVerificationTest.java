@@ -4,6 +4,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.common.architecture.fixtures.D1ServiceApiChildService;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.common.architecture.fixtures.D1ServiceApiInterface;
 import com.mannschaft.app.common.architecture.fixtures.D1ServiceApiParent;
 import com.mannschaft.app.common.architecture.fixtures.DummyD6ExposedEntity;
@@ -41,6 +42,7 @@ import org.springframework.stereotype.Service;
  */
 @DisplayName("D-1 API境界番人の継承経由Entity露出検出の自己検証（Codex検分P1是正）")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ServiceApiEntityBoundaryArchTestSelfVerificationTest {
 
     private static final String FIXTURES_PACKAGE =
