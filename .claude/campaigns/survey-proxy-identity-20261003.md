@@ -46,8 +46,11 @@ F14.1 の「SUPPORTER が代理者として条件付き実行」と現 RoleServi
 - 2026-10-03: graph-only `5d68bf9d44` は38件/失敗28/エラー0/skipped0。LAZY例外0になり、回答・GET主体、同意機能・組合・実行権限・変身actor・裸Contextの製品REDを殿が原XMLで分類した。
 - 日境界4のtest-only `93068ff596` は4件/失敗2/エラー0/skipped0。startToday=trueがfalse、endedYesterday=falseがtrue。businessDate2026-10-03/DBDate2026-10-02/session-12:00/JVM Asia/Tokyoを実測。専用TCの同じTX connectionだけSESSION zoneを変更しfinally復元、共有DB/設定は未変更。
 - 本体はValidated actor付き6引数activateと操作・対象を束縛したimmutable印、非TX MVC事前認可、狭い同意組合・Survey scope照会、submit/getMeの本人ID使用へ限定。有効同意/Desk activeのqueryは業務LocalDate引数へ移し既存overload互換、helperでisActiveも確認。
-- 現予定はHTTP44（旧38＋日境界4＋不正ID400の2）とpureContext6、既存Survey/Proxy/Filter/必要security/architecture。コンパイル・greenは未測定。本人保存/GETのHTTP userIdとDB所有者・JWT監査actorを併せて確認する。
-- CMP-261003-0122として独立根治を記録予定。SUPPORTER代理者の権限正本矛盾は別0123保留、本人SUPPORTERの母集団包含とは分ける。権限拡張、新API、DDL、他代理機能、global SecurityUtilsは変更しない。
+- 追加privacy2（POST/GET）と可知性保持3（roleのみADMIN/DEPUTY・配下所属GET）によりHTTPは49契約となった。0b9 privacy2はfield `org` がfully-qualified assertAllをshadowしcompile失敗0tests/XML0、1329でstatic importに訂正し安全なstatus/code/message投影へ限定した。原compile失敗を製品REDへ数えない。
+- 1329の実測は49tests/13failures/0errors/0skipped、36pass、LAZY/Context例外0。privacy2はforeign403/COMMON002/権限文言、不在404/SURVEY001/不在文言で存在差を実証した（親が原XMLを直接確認）。環境担当の最初の混合キー投影404/COMMON002は原結果ではなく訂正する。その他11は正常・業務到達の201/200/409/404期待に対する403。
+- 正常系403はtestプロファイルのFlyway無効とfixtureの権限catalog/default未投入に対応する。本番V18.015のADMIN default EXECUTEだけをRepository保存で補い、real hasPermission前提をassertしてからtest cacheをclearする。既存catalog/linkは変更せず自所有で作成したIDだけ片付け、権限無し負例へsetupのcacheを持ち込まない。製品権限判定の緩和はしない。補正後のGREENは未測定。
+- 私有IDの最小修正は非TX Binderで同意組合のEXECUTEをSurvey lookup前に確認し、範囲外のSYS/実体ADMIN・DEPUTY/配下閲覧資格はCOMMON002、非可知はSURVEY001へ揃える。旧同scope診断403を保持、新TX/共通helper/解析隠し/Freeze追加はしない。
+- 現予定はHTTP49とpureContext6、既存Survey/Proxy/Filter/必要security/architecture。本人保存/GETのHTTP userIdとDB所有者・JWT監査actorを併せて確認する。CMP-261003-0122を着手中、0123を仕様矛盾による保留としてtask-list末尾へ起票し1018の依存を0122へ向ける。0122の依存は無く、権限拡張・新API・DDL・他代理機能・global SecurityUtilsは変更しない。統合実機/CI/mergeは未完。
 
 - main 1c36ff40a736df023e9ff060a9315cae9883b269 から専用 worktree 作成済み。
 - 上記以前は製品コード変更なしの先行試練段階だった。初期試練と環境失敗の証跡は原run別で保持する。

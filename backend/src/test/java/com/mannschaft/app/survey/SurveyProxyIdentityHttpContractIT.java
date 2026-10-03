@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
@@ -15,6 +16,11 @@ import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity.FeatureScope;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
+import com.mannschaft.app.role.entity.PermissionEntity;
+import com.mannschaft.app.role.entity.RolePermissionEntity;
+import com.mannschaft.app.role.repository.PermissionRepository;
+import com.mannschaft.app.role.repository.RolePermissionRepository;
+import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.survey.entity.SurveyEntity;
@@ -42,6 +48,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpMethod;
@@ -101,6 +108,11 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private SurveyResponseRepository responses;
     @Autowired private ProxyInputContext proxyContext;
     @Autowired private SurveyResponseService responseService;
+    @Autowired private PermissionRepository permissions;
+    @Autowired private RolePermissionRepository rolePermissions;
+    @Autowired private RoleRepository roles;
+    @Autowired private AccessControlService accessControl;
+    @Autowired private CacheManager cacheManager;
 
     private Long actor;
     private Long subject;
@@ -111,6 +123,8 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
     private SurveyEntity survey;
     private SurveyQuestionEntity question;
     private Long consentId;
+    private Long ownedPermissionId;
+    private Long ownedRolePermissionId;
 
     @BeforeEach
     void 本人と代理者が異なる同意と公開アンケートを保存する() {
@@ -130,6 +144,25 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
             MembershipTestHelper.insertUserRole(em, actor, "ADMIN", null, org.getId());
             MembershipTestHelper.insertUserRole(em, actor, "ADMIN", null, foreignOrg.getId());
             MembershipTestHelper.insertUserRole(em, approver, "ADMIN", null, org.getId());
+            // testプロファイルはFlyway無効。本番V18.015のADMIN既定権限だけを前提として再現する。
+            var existingPermissions = permissions.findByNameIn(List.of("PROXY_INPUT_EXECUTE"));
+            PermissionEntity permission;
+            if (existingPermissions.isEmpty()) {
+                permission = permissions.save(PermissionEntity.builder().name("PROXY_INPUT_EXECUTE")
+                        .displayName("代理入力実行").scope(PermissionEntity.Scope.ORGANIZATION).build());
+                ownedPermissionId = permission.getId();
+            } else {
+                permission = existingPermissions.get(0);
+            }
+            Long adminRoleId = roles.findByName("ADMIN").orElseThrow().getId();
+            var existingDefault = rolePermissions.findByRoleId(adminRoleId).stream()
+                    .filter(link -> link.getPermissionId().equals(permission.getId())).findFirst();
+            if (existingDefault.isEmpty()) {
+                ownedRolePermissionId = rolePermissions.save(RolePermissionEntity.builder()
+                        .roleId(adminRoleId).permissionId(permission.getId()).isDefault(true).build()).getId();
+            } else {
+                assertThat(existingDefault.get().getIsDefault()).isTrue();
+            }
             survey = surveys.save(SurveyEntity.builder().scopeType("ORGANIZATION").scopeId(org.getId())
                     .title("代理回答の本人紐付け試練").status(SurveyStatus.PUBLISHED).createdBy(approver).build());
             question = questions.save(SurveyQuestionEntity.builder().surveyId(survey.getId())
@@ -147,6 +180,12 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
             return null;
         });
         assertThat(actor).isNotEqualTo(subject);
+        boolean executeAllowed = accessControl.hasPermission(actor, org.getId(), "ORGANIZATION", "PROXY_INPUT_EXECUTE");
+        System.out.println("SAFE_EXECUTE_PROOF " + "{\"executeAllowed\":" + executeAllowed + "}");
+        // native fixture変更によるEXECUTE負例へ、前提確認で作ったキャッシュを持ち込まない。
+        var permissionCache = cacheManager.getCache("role-permissions");
+        if (permissionCache != null) permissionCache.clear();
+        assertThat(executeAllowed).isTrue();
     }
 
     @AfterEach
@@ -165,6 +204,8 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
                     .setParameter("cid", consentId).executeUpdate();
             em.createNativeQuery("DELETE FROM proxy_input_consents WHERE id = :cid").setParameter("cid", consentId).executeUpdate();
             em.createNativeQuery("DELETE FROM team_org_memberships WHERE team_id = :tid").setParameter("tid", team.getId()).executeUpdate();
+            if (ownedRolePermissionId != null) rolePermissions.deleteById(ownedRolePermissionId);
+            if (ownedPermissionId != null) permissions.deleteById(ownedPermissionId);
             for (Long id : List.of(actor, subject, approver)) {
                 em.createNativeQuery("DELETE FROM user_roles WHERE user_id = :uid").setParameter("uid", id).executeUpdate();
                 em.createNativeQuery("DELETE FROM memberships WHERE user_id = :uid").setParameter("uid", id).executeUpdate();

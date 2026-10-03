@@ -9,6 +9,7 @@ import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.ProxyInputContext.SurveyResponseOperation;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity.FeatureScope;
 import com.mannschaft.app.proxy.service.ProxyInputConsentService;
+import com.mannschaft.app.survey.SurveyErrorCode;
 import com.mannschaft.app.survey.controller.SurveyResponseController;
 import com.mannschaft.app.survey.service.SurveyService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -79,6 +80,12 @@ public class SurveyProxyResponseAuthorizationInterceptor implements HandlerInter
         }
         Long organizationId = consentServiceProvider.getObject().getValidInputConsentOrganizationId(
                 context.getConsentId(), actorUserId, context.getSubjectUserId(), FeatureScope.SURVEY);
+        AccessControlService accessControl = accessControlProvider.getObject();
+        boolean systemAdmin = accessControl.isSystemAdmin(actorUserId);
+        // 自組合の実行資格を先に確認し、資格のない主体へ実体の実在差を返さない。
+        if (!systemAdmin) {
+            accessControl.checkPermission(actorUserId, organizationId, "ORGANIZATION", "PROXY_INPUT_EXECUTE");
+        }
         SurveyService.ResponseScope scope = surveyServiceProvider.getObject().getResponseScope(surveyId);
         boolean withinConsent = organizationId != null && scope.scopeId() != null
                 && ("ORGANIZATION".equals(scope.scopeType())
@@ -86,11 +93,15 @@ public class SurveyProxyResponseAuthorizationInterceptor implements HandlerInter
                     : "TEAM".equals(scope.scopeType()) && hierarchyProvider.getObject()
                         .getAnchorOrgIdsByTeamIds(List.of(scope.scopeId())).contains(organizationId));
         if (!withinConsent) {
+            // 正本の判定順: SYS → 実体スコープの管理資格 → 配下を含む閲覧資格。
+            // 非TXの入口で判定し、可知な範囲不一致403と私有IDの不在404を区別する。
+            boolean canKnowSurvey = systemAdmin
+                    || accessControl.isAdminOrAbove(actorUserId, scope.scopeId(), scope.scopeType())
+                    || accessControl.isMemberOrDescendant(actorUserId, scope.scopeId(), scope.scopeType(), true);
+            if (!canKnowSurvey) {
+                throw new BusinessException(SurveyErrorCode.SURVEY_NOT_FOUND);
+            }
             throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
-        AccessControlService accessControl = accessControlProvider.getObject();
-        if (!accessControl.isSystemAdmin(actorUserId)) {
-            accessControl.checkPermission(actorUserId, organizationId, "ORGANIZATION", "PROXY_INPUT_EXECUTE");
         }
         context.authorizeSurveyResponse(actorUserId, surveyId, operation);
         return true;
