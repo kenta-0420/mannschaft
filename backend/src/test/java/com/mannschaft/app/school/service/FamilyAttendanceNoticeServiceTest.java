@@ -280,7 +280,6 @@ class FamilyAttendanceNoticeServiceTest {
             assertThat(response.getUnacknowledgedCount()).isEqualTo(1);
         }
     }
-    }
 
     // ────────────────────────────────
     // ヘルパー
