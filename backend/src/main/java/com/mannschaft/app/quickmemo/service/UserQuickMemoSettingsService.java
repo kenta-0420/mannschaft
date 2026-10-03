@@ -125,7 +125,7 @@ public class UserQuickMemoSettingsService {
         LocalDateTime newScheduled2 = calcScheduledAt(baseDate, settings.getDefaultOffset2Days(), settings.getDefaultTime2());
         LocalDateTime newScheduled3 = calcScheduledAt(baseDate, settings.getDefaultOffset3Days(), settings.getDefaultTime3());
 
-        QuickMemoEntity.QuickMemoEntityBuilder builder = memo.toBuilder();
+        var builder = memo.toBuilder();
         boolean changed = false;
 
         // 未送信の枠かつ未来の場合のみ更新

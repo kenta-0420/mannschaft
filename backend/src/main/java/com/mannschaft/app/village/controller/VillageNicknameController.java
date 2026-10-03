@@ -2,6 +2,7 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.village.dto.VillageNicknameResponse;
 import com.mannschaft.app.village.dto.VillageNicknameUpdateRequest;
 import com.mannschaft.app.village.service.VillageNicknameService;
@@ -36,6 +37,9 @@ public class VillageNicknameController {
      * 自分の村ニックネームを取得する。
      * 未設定なら 200 OK + data:null を返す（404 にしない）。
      */
+    @SelfScopedEndpoint("検索条件が SecurityUtils.getCurrentUserId() のみで、"
+            + "リクエストは他ユーザーの識別子を受け取らない"
+            + "（VillageNicknameService#getMyNickname が認証主体の userId でのみ引く）")
     @GetMapping
     @Operation(summary = "自分の村ニックネーム取得（全村共通 1 つ）")
     public ResponseEntity<ApiResponse<VillageNicknameResponse>> getMyNickname() {
@@ -52,6 +56,9 @@ public class VillageNicknameController {
      *   <li>429 NICKNAME_CHANGE_THROTTLED: 月3回超過</li>
      * </ul>
      */
+    @SelfScopedEndpoint("更新対象のニックネーム行は SecurityUtils.getCurrentUserId() で解決され、"
+            + "リクエストボディは他ユーザーの識別子を含まない"
+            + "（VillageNicknameService#updateMyNickname が認証主体の行のみを upsert する）")
     @PutMapping
     @Operation(summary = "自分の村ニックネーム更新（全村共通 1 つ）")
     public ResponseEntity<ApiResponse<VillageNicknameResponse>> updateMyNickname(

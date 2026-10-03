@@ -32,9 +32,16 @@ public class RecruitmentSubcategoryService {
     private final AccessControlService accessControlService;
     private final RecruitmentMapper mapper;
 
-    /** 指定スコープのサブカテゴリを取得する。 */
+    /**
+     * 指定スコープのサブカテゴリを取得する。
+     *
+     * <p>認可根治戦役 Wave7: 兄弟の {@link #create}/{@link #archive} と同一スコープの
+     * {@link AccessControlService#checkMembership} で会員に限定する
+     * （読取＝会員・変更＝ADMINの通例。書込系は checkAdminOrAbove）。</p>
+     */
     public List<RecruitmentSubcategoryResponse> listByScope(
-            RecruitmentScopeType scopeType, Long scopeId, Long categoryId) {
+            RecruitmentScopeType scopeType, Long scopeId, Long categoryId, Long userId) {
+        accessControlService.checkMembership(userId, scopeId, scopeType.name());
         List<RecruitmentSubcategoryEntity> entities;
         if (categoryId != null) {
             entities = subcategoryRepository

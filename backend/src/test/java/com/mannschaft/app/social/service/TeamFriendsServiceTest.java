@@ -3,10 +3,8 @@ package com.mannschaft.app.social.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.FollowerType;
+import com.mannschaft.app.social.event.TeamFriendNotificationEvent;
 import com.mannschaft.app.social.SocialErrorCode;
 import com.mannschaft.app.social.dto.FollowTeamResponse;
 import com.mannschaft.app.social.dto.PastForwardHandling;
@@ -20,13 +18,16 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -74,11 +75,14 @@ class TeamFriendsServiceTest {
     @Mock
     private AuditLogService auditLogService;
 
+    /**
+     * Issue #2834 / CMP-056 第1群ロットB: フレンド成立／解除の通知は業務コミット後に
+     * {@code TeamFriendNotificationListener} が配送するため、本サービスの通知系依存は
+     * イベントパブリッシャーのみになった（NotificationHelper / UserRoleRepository /
+     * MessageSource は配送リスナーへ移動した）。
+     */
     @Mock
-    private NotificationHelper notificationHelper;
-
-    @Mock
-    private UserRoleRepository userRoleRepository;
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @Mock
     private TeamFriendQueryService teamFriendQueryService;
@@ -172,14 +176,12 @@ class TeamFriendsServiceTest {
         @DisplayName("正常系: 相互フォロー成立 → team_friends に INSERT され FRIEND_ESTABLISHED 通知が両チームに送信される")
         void 相互フォロー成立_team_friendsが作成される() {
             // given
-            TeamEntity selfTeam = TeamEntity.builder().name("自チーム").build();
             TeamEntity targetTeam = TeamEntity.builder().name("相手チーム").build();
             FollowEntity savedFollow = buildFollow(TEAM_ID, TARGET_TEAM_ID, 100L);
             FollowEntity reverseFollow = buildFollow(TARGET_TEAM_ID, TEAM_ID, 200L);
             TeamFriendEntity savedFriend = buildTeamFriend(TEAM_ID, TARGET_TEAM_ID, 1L);
 
             given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(targetTeam));
-            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(selfTeam));
             given(followRepository.existsByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(
                     FollowerType.TEAM, TEAM_ID, FollowerType.TEAM, TARGET_TEAM_ID)).willReturn(false);
             given(followRepository.save(any(FollowEntity.class))).willReturn(savedFollow);
@@ -187,10 +189,6 @@ class TeamFriendsServiceTest {
                     FollowerType.TEAM, TARGET_TEAM_ID, FollowerType.TEAM, TEAM_ID))
                     .willReturn(Optional.of(reverseFollow));
             given(teamFriendRepository.save(any(TeamFriendEntity.class))).willReturn(savedFriend);
-            given(userRoleRepository.findUserIdsByTeamIdAndRoleName(TEAM_ID, "ADMIN"))
-                    .willReturn(List.of(USER_ID));
-            given(userRoleRepository.findUserIdsByTeamIdAndRoleName(TARGET_TEAM_ID, "ADMIN"))
-                    .willReturn(List.of(2L));
             doNothing().when(auditLogService).record(anyString(), anyLong(), isNull(),
                     anyLong(), isNull(), isNull(), isNull(), isNull(), anyString());
 
@@ -201,19 +199,18 @@ class TeamFriendsServiceTest {
             assertThat(result.isMutual()).isTrue();
             assertThat(result.getTeamFriendId()).isEqualTo(1L);
             verify(teamFriendRepository).save(any(TeamFriendEntity.class));
-            // 両チームの ADMIN へ FRIEND_ESTABLISHED 通知が 2 回送信される（自チーム + 相手チーム）
-            verify(notificationHelper, times(2)).notifyAll(
-                    anyList(),
-                    eq("FRIEND_ESTABLISHED"),
-                    anyString(),
-                    anyString(),
-                    eq("TEAM_FRIEND"),
-                    eq(1L),
-                    eq(NotificationScopeType.FRIEND_TEAM),
-                    anyLong(),
-                    anyString(),
-                    eq(USER_ID)
-            );
+            // Issue #2834 / CMP-056 ロットB: 通知は業務TX内で作らず、AFTER_COMMIT 配送用の
+            // イベントを publish するだけ。受信者解決・件名/本文の locale 別組み立ての検証は
+            // TeamFriendNotificationListenerTest が担う。
+            ArgumentCaptor<TeamFriendNotificationEvent> eventCaptor =
+                    ArgumentCaptor.forClass(TeamFriendNotificationEvent.class);
+            verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
+            TeamFriendNotificationEvent published = eventCaptor.getValue();
+            assertThat(published.kind()).isEqualTo(TeamFriendNotificationEvent.Kind.ESTABLISHED);
+            assertThat(published.teamId()).isEqualTo(TEAM_ID);
+            assertThat(published.targetTeamId()).isEqualTo(TARGET_TEAM_ID);
+            assertThat(published.teamFriendId()).isEqualTo(1L);
+            assertThat(published.actorId()).isEqualTo(USER_ID);
         }
     }
 
@@ -230,20 +227,12 @@ class TeamFriendsServiceTest {
             // given
             FollowEntity follow = buildFollow(TEAM_ID, TARGET_TEAM_ID, 100L);
             TeamFriendEntity friend = buildTeamFriend(TEAM_ID, TARGET_TEAM_ID, 1L);
-            TeamEntity selfTeam = TeamEntity.builder().name("自チーム").build();
-            TeamEntity targetTeam = TeamEntity.builder().name("相手チーム").build();
 
             given(followRepository.findByFollowerTypeAndFollowerIdAndFollowedTypeAndFollowedId(
                     FollowerType.TEAM, TEAM_ID, FollowerType.TEAM, TARGET_TEAM_ID))
                     .willReturn(Optional.of(follow));
             given(teamFriendRepository.findByTeamAIdAndTeamBId(TEAM_ID, TARGET_TEAM_ID))
                     .willReturn(Optional.of(friend));
-            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(selfTeam));
-            given(teamRepository.findById(TARGET_TEAM_ID)).willReturn(Optional.of(targetTeam));
-            given(userRoleRepository.findUserIdsByTeamIdAndRoleName(TEAM_ID, "ADMIN"))
-                    .willReturn(List.of(USER_ID));
-            given(userRoleRepository.findUserIdsByTeamIdAndRoleName(TARGET_TEAM_ID, "ADMIN"))
-                    .willReturn(List.of(2L));
             doNothing().when(auditLogService).record(anyString(), anyLong(), isNull(),
                     anyLong(), isNull(), isNull(), isNull(), isNull(), anyString());
 
@@ -256,19 +245,16 @@ class TeamFriendsServiceTest {
             // KEEP モードなので転送処理は呼ばれない
             verify(friendContentForwardRepository, never())
                     .findByForwardingTeamIdAndIsRevokedFalseOrderByForwardedAtDesc(anyLong(), any());
-            // 両チームの ADMIN へ FRIEND_DISSOLVED 通知が 2 回送信される（自チーム + 相手チーム）
-            verify(notificationHelper, times(2)).notifyAll(
-                    anyList(),
-                    eq("FRIEND_DISSOLVED"),
-                    anyString(),
-                    anyString(),
-                    eq("TEAM_FRIEND"),
-                    eq(friend.getId()),
-                    eq(NotificationScopeType.FRIEND_TEAM),
-                    anyLong(),
-                    anyString(),
-                    eq(USER_ID)
-            );
+            // Issue #2834 / CMP-056 ロットB: 解除通知も AFTER_COMMIT 配送用イベントの publish だけ。
+            ArgumentCaptor<TeamFriendNotificationEvent> eventCaptor =
+                    ArgumentCaptor.forClass(TeamFriendNotificationEvent.class);
+            verify(applicationEventPublisher).publishEvent(eventCaptor.capture());
+            TeamFriendNotificationEvent published = eventCaptor.getValue();
+            assertThat(published.kind()).isEqualTo(TeamFriendNotificationEvent.Kind.DISSOLVED);
+            assertThat(published.teamId()).isEqualTo(TEAM_ID);
+            assertThat(published.targetTeamId()).isEqualTo(TARGET_TEAM_ID);
+            assertThat(published.teamFriendId()).isEqualTo(friend.getId());
+            assertThat(published.actorId()).isEqualTo(USER_ID);
         }
 
         @Test

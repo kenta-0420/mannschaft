@@ -1,8 +1,10 @@
 package com.mannschaft.app.membership;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.membership.dto.CheckinLocationResponse;
 import com.mannschaft.app.membership.dto.CreateCheckinLocationRequest;
 import com.mannschaft.app.membership.dto.DeleteLocationResponse;
@@ -13,12 +15,16 @@ import com.mannschaft.app.membership.repository.CheckinLocationRepository;
 import com.mannschaft.app.membership.repository.MemberCardCheckinRepository;
 import com.mannschaft.app.membership.service.CheckinLocationService;
 import com.mannschaft.app.membership.service.QrTokenService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
@@ -51,6 +57,9 @@ class CheckinLocationServiceTest {
     @Mock
     private NameResolverService nameResolverService;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private CheckinLocationService checkinLocationService;
 
@@ -64,6 +73,23 @@ class CheckinLocationServiceTest {
     private static final String LOCATION_NAME = "正面入口";
     private static final String LOCATION_CODE = "loc-uuid-001";
     private static final String LOCATION_SECRET = "loc-secret-abc";
+
+    private MockedStatic<SecurityUtils> securityUtilsMock;
+
+    /**
+     * 認可根治戦役 Wave3-B9: getLocations/updateLocation/deleteLocation/getLocationQr が内部で
+     * {@code SecurityUtils.getCurrentUserId()} を呼ぶようになったため、全テストで static mock する。
+     */
+    @BeforeEach
+    void setUpSecurityUtils() {
+        securityUtilsMock = Mockito.mockStatic(SecurityUtils.class);
+        securityUtilsMock.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+    }
+
+    @AfterEach
+    void tearDownSecurityUtils() {
+        securityUtilsMock.close();
+    }
 
     private CheckinLocationEntity createLocation() {
         return CheckinLocationEntity.builder()
@@ -107,6 +133,7 @@ class CheckinLocationServiceTest {
             assertThat(locResponse.getLocationCode()).isEqualTo(LOCATION_CODE);
             assertThat(locResponse.isActive()).isTrue();
             assertThat(locResponse.getCheckinCountToday()).isEqualTo(3L);
+            verify(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
         }
 
         @Test
@@ -153,6 +180,7 @@ class CheckinLocationServiceTest {
             assertThat(response.getData().isActive()).isTrue();
             assertThat(response.getData().isAutoCompleteReservation()).isTrue();
             verify(locationRepository).save(any(CheckinLocationEntity.class));
+            verify(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
         }
 
         @Test
@@ -219,6 +247,7 @@ class CheckinLocationServiceTest {
             // Then
             assertThat(response.getData().getName()).isEqualTo("新名称");
             verify(locationRepository).save(any(CheckinLocationEntity.class));
+            verify(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
         }
 
         @Test
@@ -263,6 +292,7 @@ class CheckinLocationServiceTest {
             // Then
             assertThat(response.getData().getDeletedAt()).isNotNull();
             verify(locationRepository).save(any(CheckinLocationEntity.class));
+            verify(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
         }
 
         @Test
@@ -310,6 +340,7 @@ class CheckinLocationServiceTest {
             assertThat(qrResponse.getQrToken()).isEqualTo("qr-token-value");
             assertThat(qrResponse.getScopeName()).isEqualTo("テストチーム");
             assertThat(qrResponse.getPrintInstructions()).contains("印刷");
+            verify(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
         }
 
         @Test

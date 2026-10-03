@@ -3,7 +3,9 @@ package com.mannschaft.app.advertising.campaign.service;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
+import com.mannschaft.app.advertising.campaign.repository.AdBannerDeliveryRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
+import com.mannschaft.app.auth.service.AuditLogService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +34,9 @@ import static org.mockito.Mockito.verify;
 class AdCampaignStateTransitionSchedulerTest {
 
     @Mock private AdMessagingCampaignRepository campaignRepository;
+    @Mock private AdBannerDeliveryRepository bannerDeliveryRepository;
+    @Mock private AdFrequencyCapService frequencyCapService;
+    @Mock private AuditLogService auditLogService;
     @InjectMocks private AdCampaignStateTransitionScheduler scheduler;
 
     private AdMessagingCampaign buildCampaign(AdCampaignStatus status,
@@ -68,6 +73,11 @@ class AdCampaignStateTransitionSchedulerTest {
         assertThat(count).isEqualTo(1);
         assertThat(target.getStatus()).isEqualTo(AdCampaignStatus.DELIVERING);
         verify(campaignRepository, times(1)).save(target);
+        // F09.19.7 AC-7.5: システムユーザー(id=1) actor で CAMPAIGN_DELIVERING_STARTED 発火
+        String meta = "{\"campaign_id\":\"" + target.getId() + "\"}";
+        verify(auditLogService, times(1)).record(
+                eq("CAMPAIGN_DELIVERING_STARTED"), eq(1L), any(), any(), any(),
+                any(), any(), any(), eq(meta));
     }
 
     @Test
@@ -97,6 +107,10 @@ class AdCampaignStateTransitionSchedulerTest {
         assertThat(count).isEqualTo(1);
         assertThat(target.getStatus()).isEqualTo(AdCampaignStatus.COMPLETED);
         verify(campaignRepository, times(1)).save(target);
+        // F09.19.7 AC-7.5: システムユーザー(id=1) actor で CAMPAIGN_COMPLETED 発火
+        verify(auditLogService, times(1)).record(
+                eq("CAMPAIGN_COMPLETED"), eq(1L), any(), any(), any(),
+                any(), any(), any(), any());
     }
 
     @Test

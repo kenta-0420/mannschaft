@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useShiftBudgetAdminAccess } from '~/composables/shift/useShiftBudgetAdminAccess'
 import type {
   AllocationCreateRequest,
   AllocationResponse,
@@ -29,6 +30,13 @@ const organizationId = computed(() => {
   if (scopeStore.current.type !== 'organization') return null
   return scopeStore.current.id
 })
+
+/**
+ * 予算の管理操作（BUDGET_ADMIN）を出してよいかの判定。
+ * BE は権限が無ければ 403 を返す（その防御は外していない）。ここでは弾かれる操作を
+ * そもそも画面に出さないために使う。CMP-260913-1251。
+ */
+const { canManageBudget, ensureLoaded: ensureBudgetAdminAccess } = useShiftBudgetAdminAccess()
 
 const allocations = ref<AllocationResponse[]>([])
 const total = ref(0)
@@ -130,8 +138,14 @@ function onPage(event: { page: number; rows: number }) {
   load()
 }
 
-watch(organizationId, () => load())
-onMounted(load)
+watch(organizationId, () => {
+  load()
+  ensureBudgetAdminAccess()
+})
+onMounted(() => {
+  load()
+  ensureBudgetAdminAccess()
+})
 </script>
 
 <template>
@@ -139,7 +153,7 @@ onMounted(load)
     <div class="mb-4 flex items-center justify-between">
       <PageHeader :title="t('shiftBudget.allocation.list')" />
       <Button
-        v-if="organizationId"
+        v-if="organizationId && canManageBudget"
         :label="t('shiftBudget.allocation.create')"
         icon="pi pi-plus"
         @click="openCreate"
@@ -200,7 +214,7 @@ onMounted(load)
           <ConsumptionRateBadge :rate="consumptionRate(data)" />
         </template>
       </Column>
-      <Column :header="t('shiftBudget.allocation.actions')" style="width: 180px">
+      <Column v-if="canManageBudget" :header="t('shiftBudget.allocation.actions')" style="width: 180px">
         <template #body="{ data }: { data: AllocationResponse }">
           <div class="flex gap-1">
             <Button

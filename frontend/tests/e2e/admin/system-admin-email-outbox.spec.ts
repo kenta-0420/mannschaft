@@ -64,7 +64,7 @@ const MOCK_OUTBOX_LIST = {
       lastError: null,
     },
   ],
-  meta: { page: 0, size: 20, totalElements: 3, totalPages: 1 },
+  meta: { page: 0, size: 20, total: 3, totalPages: 1 },
 }
 
 const MOCK_OUTBOX_DETAIL = {
@@ -189,7 +189,7 @@ test.describe('MAIL-003: ステータスフィルタの動作', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: MOCK_OUTBOX_LIST.data.filter((r) => r.status === 'DEAD_LETTER'),
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })

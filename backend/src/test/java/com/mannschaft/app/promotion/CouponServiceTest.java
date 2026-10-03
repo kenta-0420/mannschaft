@@ -1,5 +1,6 @@
 package com.mannschaft.app.promotion;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.promotion.dto.CouponResponse;
 import com.mannschaft.app.promotion.dto.CreateCouponRequest;
@@ -38,6 +39,7 @@ class CouponServiceTest {
     @Mock private CouponDistributionRepository distributionRepository;
     @Mock private CouponRedemptionRepository redemptionRepository;
     @Mock private PromotionMapper promotionMapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks private CouponService service;
 
@@ -88,7 +90,7 @@ class CouponServiceTest {
                     .willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.get(SCOPE_TYPE, SCOPE_ID, 1L))
+            assertThatThrownBy(() -> service.get(SCOPE_TYPE, SCOPE_ID, 1L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PROMOTION_005"));
@@ -131,7 +133,7 @@ class CouponServiceTest {
                             BigDecimal.TEN, null, 100, 0, (short) 1, null, null, false, null, null));
 
             // When
-            CouponResponse result = service.toggle(SCOPE_TYPE, SCOPE_ID, 1L);
+            CouponResponse result = service.toggle(SCOPE_TYPE, SCOPE_ID, 1L, USER_ID);
 
             // Then
             assertThat(result).isNotNull();

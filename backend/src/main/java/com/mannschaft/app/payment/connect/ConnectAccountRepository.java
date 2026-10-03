@@ -11,7 +11,7 @@ import java.util.UUID;
  *
  * <p>{@code organization_id} を保持するテナントスコープのため
  * {@link AbstractTenantAwareRepository} を継承する（CLAUDE.md 原則7）。
- * このフェーズでは Entity/Repo 骨格のみ（Service は次陣）。</p>
+ * 受領口座の解決は {@code ConnectChargeService} 等から利用される。</p>
  */
 public interface ConnectAccountRepository
         extends AbstractTenantAwareRepository<ConnectAccountEntity, UUID> {
@@ -25,4 +25,14 @@ public interface ConnectAccountRepository
 
     /** 払出可能な Connect アカウントを取得する（解決時の payouts_enabled 判定用）。 */
     List<ConnectAccountEntity> findByPayoutsEnabledTrueAndDeletedAtIsNull();
+
+    /**
+     * 受領主体（{@code scope_kind} × {@code scope_id} の集合）に対応する口座を一括で取得する。
+     *
+     * <p>「操作者が受取先である取引」を引くための起点。操作者が管理するスコープの集合から
+     * 口座を 1 往復で引き、その口座を payee とする escrow を辿る
+     * （{@link com.mannschaft.app.payment.escrow.ConnectChargeService#findSourceIdsWithPayeeSettlementManaged}）。</p>
+     */
+    List<ConnectAccountEntity> findByScopeKindAndScopeIdInAndDeletedAtIsNull(
+            ScopeKind scopeKind, java.util.Collection<Long> scopeIds);
 }

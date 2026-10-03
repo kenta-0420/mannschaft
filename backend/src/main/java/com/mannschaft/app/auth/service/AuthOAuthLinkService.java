@@ -1,0 +1,276 @@
+package com.mannschaft.app.auth.service;
+
+import com.mannschaft.app.auth.AuthErrorCode;
+import com.mannschaft.app.auth.OAuthProperties;
+import com.mannschaft.app.auth.entity.OAuthAccountEntity;
+import com.mannschaft.app.auth.repository.OAuthAccountRepository;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.schedule.service.GoogleCalendarService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * 設定画面（{@code /settings/linked-accounts}）からの Google OAuth 連携フローを担うサービス。
+ * <p>
+ * ログイン済みユーザーが既存アカウントに Google アカウントを後付けで連携するためのフローを実装する。
+ * <ul>
+ *   <li>{@link #generateAuthUrl(Long, String, boolean)} — 認可 URL を生成して Redis に state を保存する</li>
+ *   <li>{@link #processCallback(String, String, String)} — コールバック後に連携を確定する</li>
+ * </ul>
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class AuthOAuthLinkService {
+
+    private static final String GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
+    private static final String STATE_KEY_PREFIX = "mannschaft:oauth_link_state:";
+    private static final Duration STATE_TTL = Duration.ofMinutes(10);
+    private static final String LINKED_ACCOUNTS_PATH = "/settings/linked-accounts";
+
+    private final OAuthAccountRepository oauthAccountRepository;
+    private final StringRedisTemplate redisTemplate;
+    private final OAuthProperties oAuthProperties;
+    private final AuthOAuthService authOAuthService;
+    private final GoogleCalendarService googleCalendarService;
+
+    @Value("${app.base-url:http://localhost:3000}")
+    private String appBaseUrl;
+
+    /**
+     * Google Calendar のみを接続する OAuth 認可 URL を生成する。
+     * OAuthAccount が既に連携済みでも使用可能。
+     *
+     * @param userId 連携を要求するユーザーID
+     * @return 認可 URL（Google Calendar スコープ付き）
+     */
+    public String generateCalendarOnlyAuthUrl(Long userId) {
+        String state = UUID.randomUUID().toString();
+        String redisKey = STATE_KEY_PREFIX + state;
+        // "calendarOnly:{userId}" 形式で保存（processCallback で OAuthAccount 作成をスキップ）
+        redisTemplate.opsForValue().set(redisKey, "calendarOnly:" + userId, STATE_TTL);
+        return buildGoogleAuthUrl(state, true);
+    }
+
+    /**
+     * 指定プロバイダの OAuth 認可 URL を生成し、state を Redis に保存する。
+     *
+     * @param userId          連携を要求するユーザーID
+     * @param provider        プロバイダ識別子（例: {@code "GOOGLE"}）
+     * @param includeCalendar true の場合 Google Calendar スコープを追加し、コールバックでGCal接続も確立する
+     * @return 認可 URL
+     * @throws BusinessException AUTH_028 — サポート外プロバイダ
+     * @throws BusinessException AUTH_034 — 既に連携済み
+     */
+    public String generateAuthUrl(Long userId, String provider, boolean includeCalendar) {
+        // 1. プロバイダ検証（GOOGLE のみサポート）
+        OAuthAccountEntity.OAuthProvider oauthProvider = validateProvider(provider);
+
+        // 2. 既に連携済みか確認
+        boolean alreadyLinked = oauthAccountRepository.findByUserId(userId)
+                .stream()
+                .anyMatch(oa -> oa.getProvider() == oauthProvider);
+        if (alreadyLinked) {
+            throw new BusinessException(AuthErrorCode.AUTH_034);
+        }
+
+        // 3. state を生成して Redis に保存（TTL 10 分）
+        //    保存形式: "{userId}:{includeCalendar}" — コールバック時に分解する
+        String state = UUID.randomUUID().toString();
+        String redisKey = STATE_KEY_PREFIX + state;
+        String redisValue = userId + ":" + includeCalendar;
+        redisTemplate.opsForValue().set(redisKey, redisValue, STATE_TTL);
+
+        // 4. 認可 URL を構築して返す
+        return buildGoogleAuthUrl(state, includeCalendar);
+    }
+
+    /**
+     * OAuth プロバイダからのコールバックを処理し、連携を確定する。
+     * <p>
+     * {@code includeCalendar=true} で連携を開始した場合、OAuthAccount 保存後に
+     * Google Calendar 接続も同一フローで確立する。GCal 接続が失敗してもOAuth連携はロールバックしない。
+     *
+     * @param provider プロバイダ識別子（例: {@code "GOOGLE"}）
+     * @param state    認可時に発行した state
+     * @param code     認可コード
+     * @return フロントエンドへのリダイレクト先 URL
+     */
+    @Transactional
+    public String processCallback(String provider, String state, String code) {
+        // 1. code が null または空 → oauth_denied
+        if (code == null || code.isBlank()) {
+            return appBaseUrl + LINKED_ACCOUNTS_PATH + "?error=oauth_denied";
+        }
+
+        // 2. Redis から state を検証
+        String redisKey = STATE_KEY_PREFIX + state;
+        String redisValue = redisTemplate.opsForValue().get(redisKey);
+        if (redisValue == null) {
+            return appBaseUrl + LINKED_ACCOUNTS_PATH + "?error=invalid_state";
+        }
+
+        // 3. userId と includeCalendar を解析
+        //    形式A: "{userId}:{includeCalendar}"（通常の OAuth 連携）
+        //    形式B: "calendarOnly:{userId}"（カレンダー専用連携・OAuthAccount 作成スキップ）
+        Long userId;
+        boolean includeCalendar;
+        boolean calendarOnly = redisValue.startsWith("calendarOnly:");
+        try {
+            if (calendarOnly) {
+                userId = Long.parseLong(redisValue.substring("calendarOnly:".length()));
+                includeCalendar = true;
+            } else {
+                String[] parts = redisValue.split(":", 2);
+                userId = Long.parseLong(parts[0]);
+                includeCalendar = parts.length > 1 && Boolean.parseBoolean(parts[1]);
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Redis state のユーザーID形式が不正: key={}, value={}", redisKey, redisValue);
+            return appBaseUrl + LINKED_ACCOUNTS_PATH + "?error=invalid_state";
+        }
+
+        // 4. Google ユーザー情報取得（includeCalendar の場合はtokenも取得）
+        AuthOAuthService.OAuthUserInfo userInfo;
+        String accessToken = null;
+        String refreshToken = null;
+
+        try {
+            if (includeCalendar) {
+                AuthOAuthService.OAuthLinkTokenResult tokenResult =
+                        authOAuthService.fetchGoogleUserInfoForLinkWithTokens(
+                                code, oAuthProperties.getGoogleLinkRedirectUri());
+                userInfo = tokenResult.userInfo();
+                accessToken = tokenResult.accessToken();
+                refreshToken = tokenResult.refreshToken();
+            } else {
+                userInfo = authOAuthService.fetchGoogleUserInfoForLink(
+                        code, oAuthProperties.getGoogleLinkRedirectUri());
+            }
+        } catch (BusinessException e) {
+            log.warn("Google ユーザー情報取得失敗: userId={}, error={}", userId, e.getMessage());
+            return appBaseUrl + LINKED_ACCOUNTS_PATH + "?error=oauth_denied";
+        }
+
+        // 5. 別ユーザーが同一 Google アカウントを連携済みか確認
+        Optional<OAuthAccountEntity> existingAccount =
+                oauthAccountRepository.findByProviderAndProviderUserId(
+                        OAuthAccountEntity.OAuthProvider.GOOGLE, userInfo.providerUserId());
+        if (existingAccount.isPresent() && !existingAccount.get().getUserId().equals(userId)) {
+            return appBaseUrl + LINKED_ACCOUNTS_PATH + "?error=already_taken";
+        }
+
+        // 6. OAuthAccount を保存
+        //    通常フロー: 常に保存。
+        //    calendarOnly フロー: 自分がまだ連携していない場合のみ保存（linked-accounts への反映）。
+        boolean alreadyLinkedBySelf = existingAccount.isPresent()
+                && existingAccount.get().getUserId().equals(userId);
+        if (!calendarOnly || !alreadyLinkedBySelf) {
+            OAuthAccountEntity oauthAccount = OAuthAccountEntity.builder()
+                    .userId(userId)
+                    .provider(OAuthAccountEntity.OAuthProvider.GOOGLE)
+                    .providerUserId(userInfo.providerUserId())
+                    .providerEmail(userInfo.email())
+                    .build();
+            oauthAccountRepository.save(oauthAccount);
+        }
+
+        // 7. state を削除（使用済み）
+        redisTemplate.delete(redisKey);
+
+        // 8. includeCalendar の場合 GCal 接続を確立
+        if (includeCalendar) {
+            try {
+                googleCalendarService.connectWithOAuthTokens(
+                        userId, accessToken, refreshToken, userInfo.email());
+                if (calendarOnly) {
+                    log.info("GCal接続完了(カレンダー専用フロー): userId={}", userId);
+                    return appBaseUrl + "/settings/calendar-sync?connected=true";
+                }
+                log.info("Google連携 + GCal接続完了: userId={}", userId);
+                return appBaseUrl + LINKED_ACCOUNTS_PATH + "?linked=GOOGLE&calendarConnected=true";
+            } catch (Exception e) {
+                if (calendarOnly) {
+                    log.warn("GCal接続失敗(カレンダー専用フロー): userId={}", userId, e);
+                    return appBaseUrl + "/settings/calendar-sync?error=connect_failed";
+                }
+                // GCal接続失敗はOAuth連携自体はロールバックしない（警告のみ）
+                log.warn("GCal接続失敗（OAuth連携は完了）: userId={}", userId, e);
+                return appBaseUrl + LINKED_ACCOUNTS_PATH + "?linked=GOOGLE&calendarConnected=false";
+            }
+        }
+
+        return appBaseUrl + LINKED_ACCOUNTS_PATH + "?linked=GOOGLE";
+    }
+
+    // === ヘルパーメソッド ===
+
+    /**
+     * プロバイダ名を OAuthProvider enum に変換する。GOOGLE のみサポート。
+     *
+     * @param provider プロバイダ文字列（大文字想定）
+     * @return OAuthProvider
+     * @throws BusinessException AUTH_028 — サポート外プロバイダ
+     */
+    private OAuthAccountEntity.OAuthProvider validateProvider(String provider) {
+        try {
+            OAuthAccountEntity.OAuthProvider p = OAuthAccountEntity.OAuthProvider.valueOf(provider);
+            // 設定画面連携は GOOGLE のみサポート
+            if (p != OAuthAccountEntity.OAuthProvider.GOOGLE) {
+                throw new BusinessException(AuthErrorCode.AUTH_028);
+            }
+            return p;
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(AuthErrorCode.AUTH_028);
+        }
+    }
+
+    /**
+     * Google OAuth 認可 URL を構築する。
+     *
+     * @param state           生成済み state 文字列
+     * @param includeCalendar true の場合 Google Calendar スコープを追加する
+     * @return 完全な認可 URL
+     */
+    private String buildGoogleAuthUrl(String state, boolean includeCalendar) {
+        String clientId = oAuthProperties.getGoogleClientId();
+        String redirectUri = oAuthProperties.getGoogleLinkRedirectUri();
+
+        String scope = includeCalendar
+                ? "openid email profile https://www.googleapis.com/auth/calendar"
+                : "openid email profile";
+
+        String url = GOOGLE_AUTH_ENDPOINT
+                + "?client_id=" + encode(clientId)
+                + "&redirect_uri=" + encode(redirectUri)
+                + "&response_type=code"
+                + "&scope=" + encode(scope)
+                + "&state=" + encode(state)
+                + "&access_type=offline";
+
+        // includeCalendar=true の場合は prompt=consent を追加し refresh_token を確実に取得する
+        if (includeCalendar) {
+            url += "&prompt=consent";
+        }
+
+        return url;
+    }
+
+    /**
+     * URL エンコード（UTF-8）。
+     */
+    private static String encode(String value) {
+        if (value == null) return "";
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+}

@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.recovery;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.payment.recovery.FeeReconciliationService.CompletionOutcome;
 import com.mannschaft.app.payment.recovery.FeeReconciliationService.NetProfitOutcome;
@@ -54,8 +56,10 @@ public class FeeReconciliationBatch {
     // コンテキスト起動と同時に 1 回目が走るため、@SpringBootTest の統合テスト中にリコンシリが暴発し
     // ロック未保持の ShedLock ノイズや未ウォームアップ実行を招く。15 分後の初回＝EscrowLifecycleBatch
     // （fixedDelay=1h で起動中に発火しない）と同じく「テスト実行時間内には発火しない」作法へ揃える。
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると手数料の消込と純利益の突合が行われず、決済プロバイダ側の実績と DB 上の残高が合わなくなる")
     @Scheduled(initialDelay = 900_000, fixedDelay = 900_000)
-    @SchedulerLock(name = "paymentFeeReconciliation", lockAtLeastFor = "PT2M", lockAtMostFor = "PT14M")
+    @SchedulerLock(name = "paymentFeeReconciliation", lockAtLeastFor = "PT2M", lockAtMostFor = "PT30M")
     public void reconcileEvery15Min() {
         LocalDateTime now = LocalDateTime.now(clock);
         log.info("リコンシリ（15分）開始: now={}", now);
@@ -72,6 +76,8 @@ public class FeeReconciliationBatch {
      *
      * <p>毎日 03:00（{@code cron}）に前日 00:00〜当日 00:00 の capture 済取引を対象に集計する。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると手数料の消込と純利益の突合が行われず、決済プロバイダ側の実績と DB 上の残高が合わなくなる")
     @BatchEndpoint(name = "payment-net-profit-reconciliation-daily",
             description = "謝礼決済リコンシリ: 前日 capture 分の application_fee−実手数料＝純益を集計し FEE 実額を台帳化")
     @Scheduled(cron = "0 0 3 * * *")

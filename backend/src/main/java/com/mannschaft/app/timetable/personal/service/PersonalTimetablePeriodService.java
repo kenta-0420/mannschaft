@@ -65,7 +65,7 @@ public class PersonalTimetablePeriodService {
         }
 
         List<PersonalTimetablePeriodEntity> entities = data.stream()
-                .map(d -> PersonalTimetablePeriodEntity.builder()
+                .<PersonalTimetablePeriodEntity>map(d -> PersonalTimetablePeriodEntity.builder()
                         .personalTimetableId(personalTimetableId)
                         .periodNumber(d.periodNumber())
                         .label(d.label())

@@ -14,8 +14,8 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -29,8 +29,7 @@ import java.time.LocalDateTime;
 @Table(name = "shift_change_requests")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ShiftChangeRequestEntity {
 
     @Id
@@ -76,8 +75,10 @@ public class ShiftChangeRequestEntity {
     /** 有効期限 */
     private LocalDateTime expiresAt;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     /** 楽観ロック用バージョン */

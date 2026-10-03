@@ -118,8 +118,8 @@ class SealGeneratorTest {
             String svg = generator.generateSvg("鈴木", SealVariant.LAST_NAME);
 
             assertThat(svg).contains("xmlns=\"http://www.w3.org/2000/svg\"");
-            assertThat(svg).contains("width=\"100\"");
-            assertThat(svg).contains("height=\"100\"");
+            assertThat(svg).contains("width=\"100%\"");
+            assertThat(svg).contains("height=\"100%\"");
         }
 
         @Test

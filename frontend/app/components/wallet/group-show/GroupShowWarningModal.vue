@@ -28,13 +28,11 @@ const { t } = useI18n()
       <p class="presentation__modal-body">
         {{ t('wallet.presentation.warning_body') }}
       </p>
-      <button
-        type="button"
-        class="presentation__btn presentation__btn--primary"
+      <Button
+        :label="t('wallet.presentation.warning_ack')"
+        class="w-full"
         @click="emit('dismiss')"
-      >
-        {{ t('wallet.presentation.warning_ack') }}
-      </button>
+      />
     </div>
   </div>
 </template>
@@ -51,8 +49,8 @@ const { t } = useI18n()
   z-index: 10;
 }
 .presentation__modal {
-  background: #fff;
-  color: #111;
+  background: var(--p-content-background, #fff);
+  color: var(--p-text-color, #111);
   border-radius: 0.75rem;
   padding: 1.5rem;
   max-width: 480px;
@@ -71,19 +69,5 @@ const { t } = useI18n()
   margin: 0;
   font-size: 0.9375rem;
   line-height: 1.5;
-}
-.presentation__btn {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  cursor: pointer;
-  font-weight: 600;
-}
-.presentation__btn--primary {
-  background: #fff;
-  color: #111;
-  border-color: transparent;
 }
 </style>

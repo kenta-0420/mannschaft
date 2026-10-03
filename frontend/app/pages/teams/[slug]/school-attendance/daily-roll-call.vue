@@ -4,6 +4,7 @@ import { computed, ref, onMounted } from 'vue'
 import type { DailyRollCallEntry, DailyRollCallSummary } from '~/types/school'
 
 definePageMeta({
+  layout: 'team',
   middleware: 'auth',
 })
 
@@ -127,7 +128,7 @@ onMounted(async () => {
           <Button
             :label="$t('school.attendance.dailyRollCall.submit')"
             :loading="submitting"
-            :disabled="entries.length === 0"
+            :disabled="entries.length === 0 || submitting"
             class="w-full"
             data-testid="daily-roll-call-submit"
             @click="onSubmit"

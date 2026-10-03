@@ -1,0 +1,5 @@
+^backend/src/main/resources/db/migration/
+^backend/src/test/java/.*/migration/
+^backend/build\.gradle\.kts$
+^\.github/workflows/backend-ci\.yml$
+^\.github/workflows/backend-deploy\.yml$

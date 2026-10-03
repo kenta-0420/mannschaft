@@ -45,17 +45,20 @@ export function useShiftBudgetApi() {
     return { 'X-Organization-Id': organizationId }
   }
 
-  // ===== 逆算 API（Phase 9-α、ヘッダ不要） =====
+  // ===== 逆算 API（Phase 9-α。team_id 指定時は組織ヘッダ必須） =====
 
   /**
    * 予算→必要シフト枠数を逆算する。
    * 設計書 §4.1 / §6.2.2。ステートレス計算（DB 書き込みなし）。
+   * チームは複数の組織に加盟しうるため、team_id 指定時は予算の組織を明示する（F01.2.1）。
    */
   async function calculateRequiredSlots(
     request: RequiredSlotsRequest,
+    organizationId?: string,
   ): Promise<RequiredSlotsResponse> {
     const res = await api<{ data: RequiredSlotsResponse }>(`${BASE}/calc/required-slots`, {
       method: 'POST',
+      headers: organizationId ? orgHeaders(organizationId) : undefined,
       body: request,
     })
     return res.data

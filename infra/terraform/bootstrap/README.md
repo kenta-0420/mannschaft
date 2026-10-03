@@ -112,17 +112,19 @@ gh variable set INFRA_CI_ENABLED --body "true"
 > `INFRA_CI_ENABLED` を **最後** に設定するのが重要。これより前に infra/terraform を
 > 触る PR が出ても、CI ジョブは `if:` 条件でスキップされるだけで失敗にはならない。
 
-## 6. 初回 apply の順序について（ACM 証明書検証）
+## 6. 初回 apply の順序について（Cloudflare Tunnel 化・ALB/ACM 撤去済み）
 
-envs/prod の apply は **一発で完了する**。以下の順序が自動的に解決される:
+envs/prod の apply は **一発で完了する**（2026-07-10 のコスト削減で ALB/ACM を撤去したため、
+旧来の ACM DNS 検証待ち（数分ブロック）は無くなった）。apply では以下が自動的に構成される:
 
-1. `module.app` が `aws_acm_certificate` を作成し `domain_validation_options` を出力
-2. `module.edge` が Cloudflare に検証 CNAME（proxied=false）を作成
-3. `aws_acm_certificate_validation.this` が DNS 伝播を確認するまで待機（通常 1〜5 分）
-4. 検証済み証明書 ARN が `module.app` の HTTPS リスナーにアタッチ
+1. `module.edge` が Cloudflare Tunnel 本体（`cloudflare_zero_trust_tunnel_cloudflared`）と
+   ingress（`http://localhost:8080`）・オリジン CNAME（`origin.<domain>` → `<id>.cfargotunnel.com`）を作成
+2. `module.app` が ECS タスク定義（Spring Boot + cloudflared サイドカー）と
+   トークン投入用の Secrets Manager 箱（`<prefix>/cloudflared-tunnel-token`）を作成
+3. Origin Rule が `/api/**`・`/ws` を Tunnel オリジンへルーティング
 
-> Terraform は依存グラフを自動解析するため `-target` による手動分割は不要。
-> ただし初回 apply では ACM 検証の待機により apply が数分間ブロックされる（正常動作）。
+> apply 直後は箱が空のため cloudflared サイドカーはまだトンネルを張れない。
+> 次の §7-5 で run トークンを投入して初めて入口が開通する。ECS はタスク定義更新（CD）で再デプロイされる。
 
 ## 7. Secrets Manager への値投入（apply 後に必須）
 
@@ -186,6 +188,69 @@ aws secretsmanager put-secret-value `
   --secret-id "<prefix>/app-keys" `
   --secret-string $appKeysJson
 ```
+
+### 7-5. Cloudflare Tunnel run トークン（入口の開通に必須）
+
+トンネル本体は Terraform（edge module）が作成済み。cloudflared サイドカーが使う
+run トークンは Terraform の出力から取り出して箱に投入する:
+
+```powershell
+cd infra/terraform/envs/prod
+
+# 1. run トークンを Terraform 出力から取得（sensitive のため -raw 指定が必要）
+$tunnelToken = terraform output -raw cloudflared_tunnel_token
+
+# 2. Secrets Manager の箱（<prefix>/cloudflared-tunnel-token）へ投入
+aws secretsmanager put-secret-value `
+  --secret-id "<prefix>/cloudflared-tunnel-token" `
+  --secret-string $tunnelToken
+
+# 3. ECS サービスを強制再デプロイして cloudflared サイドカーにトークンを読ませる
+aws ecs update-service `
+  --cluster "<prefix>-cluster" `
+  --service "<prefix>-app" `
+  --force-new-deployment
+```
+
+> - 投入するまで cloudflared サイドカーは起動失敗を繰り返し、`/api/**`・`/ws` は不通のまま
+>   （Cloudflare Pages の FE 配信には影響しない）。
+> - トンネルを destroy/recreate した場合はトークンが変わるため、再投入 + 再デプロイが必要。
+
+**疎通確認（3 段階で必ず実施すること）:**
+
+```powershell
+# (1) トンネル自体の健全性:
+#     Cloudflare ダッシュボード → Zero Trust → Networks → Tunnels で HEALTHY であること
+
+# (2) /api が Origin Rule → Tunnel 経由で 200 を返すこと。
+#     必ずドメイン経由で確認する（Origin Rule を通らない経路では検証にならない）
+curl.exe -s -o NUL -w "%{http_code}" https://<domain>/api/actuator/health   # → 200
+
+# (3) /ws の WebSocket 実接続（101 Switching Protocols が返ること）
+#     wscat があれば: wscat -c wss://<domain>/ws
+#     curl の場合は Upgrade ヘッダ付きで確認:
+curl.exe -s -o NUL -w "%{http_code}" `
+  -H "Connection: Upgrade" -H "Upgrade: websocket" `
+  -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" `
+  https://<domain>/ws   # → 101
+```
+
+**予備案（(2)/(3) が通らない場合 — Origin Rule のオリジン上書きで Tunnel に抜けないケース）:**
+
+Origin Rule の origin 上書き（`origin.<domain>` → cfargotunnel への proxied CNAME）は
+apply 前未検証のため、万一トンネルへルーティングされない場合は **Host ベースの振り分け**へ切り替える
+（骨子のみ記録・実装は必要になった時点で行う）:
+
+1. Tunnel に public hostname `api.<domain>` を持たせる
+   — Terraform: `cloudflare_zero_trust_tunnel_cloudflared_config` の `ingress_rule` に
+   `hostname = "api.<domain>"` を追加し、`cloudflare_record` で `api.<domain>` →
+   `<tunnel_id>.cfargotunnel.com` の proxied CNAME を作成
+   （ダッシュボード: Zero Trust → Tunnels → Public Hostname から追加）
+2. Origin Rule の `action_parameters.origin.host` を `api.<domain>` へ変更
+   — リクエスト URL は `https://<domain>/api/**` のまま、オリジンだけ Host ごと差し替える
+   （必要なら Host ヘッダ書換ルールも併用）
+3. 最終手段: FE の `NUXT_PUBLIC_API_BASE` を `https://api.<domain>` に切り替えて直接叩く
+   — 同一オリジン構成が崩れ CORS / Cookie 設定の変更を伴うため、殿へ上申のうえで実施
 
 ## 8. state（terraform.tfstate）の扱い
 

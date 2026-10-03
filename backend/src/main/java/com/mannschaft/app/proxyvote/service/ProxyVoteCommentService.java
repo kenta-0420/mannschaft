@@ -34,20 +34,30 @@ public class ProxyVoteCommentService {
 
     /**
      * 議案コメント一覧を取得する。
+     *
+     * <p>認可根治戦役 Wave7: 兄弟の {@code ProxyVoteCastService#castVote} と同一の
+     * {@link AccessControlService#checkMembership} を敷き、セッションスコープの会員に
+     * 限定する。</p>
      */
-    public Page<CommentResponse> listComments(Long motionId, Pageable pageable) {
-        sessionService.findMotionOrThrow(motionId);
+    public Page<CommentResponse> listComments(Long motionId, Long currentUserId, Pageable pageable) {
+        ProxyVoteMotionEntity motion = sessionService.findMotionOrThrow(motionId);
+        ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(motion.getSessionId());
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
         return commentRepository.findByMotionIdOrderByCreatedAtAsc(motionId, pageable)
                 .map(mapper::toCommentResponse);
     }
 
     /**
      * 議案にコメントを投稿する。
+     *
+     * <p>認可根治戦役 Wave7: {@link #listComments} と同一の理由で
+     * {@link AccessControlService#checkMembership} を敷く。</p>
      */
     @Transactional
     public CommentResponse createComment(Long motionId, CreateCommentRequest request, Long currentUserId) {
         ProxyVoteMotionEntity motion = sessionService.findMotionOrThrow(motionId);
         ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(motion.getSessionId());
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
 
         if (session.getStatus() != SessionStatus.OPEN) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);

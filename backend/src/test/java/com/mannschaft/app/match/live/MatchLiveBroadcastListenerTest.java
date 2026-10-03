@@ -5,28 +5,38 @@ import com.mannschaft.app.match.domain.MatchStatus;
 import com.mannschaft.app.match.domain.TeamSide;
 import com.mannschaft.app.match.entity.MatchEntity;
 import com.mannschaft.app.match.entity.MatchEventEntity;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.QueryTimeoutException;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * F08.10 / 07 §J.2 {@link MatchLiveBroadcastListener} の純 Mockito UT（test-first・07 §J.6）。
@@ -51,10 +61,32 @@ class MatchLiveBroadcastListenerTest {
     @Mock
     private SimpMessagingTemplate messagingTemplate;
 
-    @InjectMocks
+    @Mock
+    private StringRedisTemplate redisTemplate;
+
+    @Mock
+    private ValueOperations<String, String> valueOperations;
+
     private MatchLiveBroadcastListener listener;
 
+    private SimpleMeterRegistry meterRegistry;
+
     private final UUID matchId = UUID.randomUUID();
+
+    /**
+     * serverSeq 採番は Valkey INCR（websocket_external_broker_valkey.md §4.6）に差し替わったため、
+     * INCR セマンティクス（キー単位の原子的インクリメント・初回 = 1）のフェイクを注入する（§7.3 の追随）。
+     * lenient: 機微情報除外テスト等、採番に到達しないテストでも安全に共存させる。
+     */
+    @BeforeEach
+    void setUpSeqCounter() {
+        AtomicLong counter = new AtomicLong();
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        lenient().when(valueOperations.increment(anyString())).thenAnswer(inv -> counter.incrementAndGet());
+        lenient().when(redisTemplate.expire(anyString(), any(Duration.class))).thenReturn(true);
+        meterRegistry = new SimpleMeterRegistry();
+        listener = new MatchLiveBroadcastListener(messagingTemplate, redisTemplate, meterRegistry);
+    }
 
     // ============================================================
     // 配信宛先・ペイロード
@@ -211,6 +243,22 @@ class MatchLiveBroadcastListenerTest {
             assertThatCode(() -> listener.onMatchLiveUpdate(
                     MatchLiveUpdateEvent.statusChanged(matchId, MatchStatus.IN_PROGRESS)))
                     .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("Valkey 断（INCR 失敗）時は MatchLive 配信をスキップし例外を伝播させない（§4.6 フェイルオープン）")
+        void Valkey断_配信スキップ() {
+            when(valueOperations.increment(anyString()))
+                    .thenThrow(new QueryTimeoutException("valkey down"));
+
+            assertThatCode(() -> listener.onMatchLiveUpdate(
+                    MatchLiveUpdateEvent.statusChanged(matchId, MatchStatus.IN_PROGRESS)))
+                    .doesNotThrowAnyException();
+
+            // 採番不能時はローカル独自採番で配り続けず、配信自体をスキップする（seq 汚染防止・HTTP 再取得へ委譲・§4.6）
+            verify(messagingTemplate, never()).convertAndSend(any(String.class), any(Object.class));
+            // スキップは沈黙させず matchlive.serverseq.skipped に計上する（§4.6・症状の可視化）
+            assertThat(meterRegistry.counter("matchlive.serverseq.skipped").count()).isEqualTo(1.0d);
         }
     }
 

@@ -85,7 +85,7 @@ test.describe('F09.17 Phase 11-c-5: 広告主キャンペーンフロー (smoke)
           contentType: 'application/json',
           body: JSON.stringify({
             data: [withStatus(currentStatus)],
-            meta: { totalElements: 1, page: 0, size: 20, totalPages: 1 },
+            meta: { total: 1, page: 0, size: 20, totalPages: 1 },
           }),
         })
         return

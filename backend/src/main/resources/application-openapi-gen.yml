@@ -11,7 +11,11 @@
 spring:
   # DataSource をインメモリ H2 で差し替え（MySQL 不要）
   datasource:
-    url: jdbc:h2:mem:openapi;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    # NON_KEYWORDS: H2 2.x で予約語になった語のうち、本プロジェクトが列名に使っているものを
+    # 識別子として使えるように戻す。指定しないと Hibernate の生成する DDL が
+    # 「create table ... ([*]value TEXT ...)」のような構文エラーで弾かれ、
+    # 該当テーブルが作られず、後続の @PostConstruct 検査が延々と例外を吐いて起動が遅延する。
+    url: jdbc:h2:mem:openapi;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL;NON_KEYWORDS=VALUE,MONTH,YEAR,MINUTE,DAY,HOUR,SECOND,KEY
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -63,6 +67,15 @@ management:
 # Spring Security は起動に必要だが、OpenAPI 生成には認証不要なためデフォルト設定で動作させる
 # JWT 秘密鍵ダミー（256bit = 32 文字以上必要）
 mannschaft:
+  # BatchEndpointRegistry の全 Bean 走査を無効化する。
+  # この走査は全 Bean 定義に getBean() を掛けるため、上の spring.main.lazy-initialization=true を
+  # 事実上打ち消してコンテキスト全体を生成してしまう。
+  # CMP-260912-1526 の実測では、起動 30 分のうち約 22 分がこの走査に費やされ、
+  # generateOpenApiDocs が waitTimeInSeconds(1800秒) を使い切ってタイムアウトしていた。
+  # OpenAPI 生成中はバッチを一度も実行しないため、走査は不要。
+  batch:
+    registry:
+      scan-enabled: false
   jwt:
     secret: openapi-gen-dummy-secret-key-minimum-256bits-long
     access-token-expiration: 900

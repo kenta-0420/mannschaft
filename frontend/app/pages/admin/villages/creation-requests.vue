@@ -34,9 +34,16 @@ type StatusFilter = VillageRequestStatus | 'ALL'
 
 const STATUS_FILTERS: StatusFilter[] = ['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN', 'ALL']
 
+/** サーバーサイドページングの1ページあたり件数（BE Pageable 既定 size=20 に合わせる） */
+const PAGE_SIZE = 20
+
 const statusFilter = ref<StatusFilter>('PENDING')
 const requests = ref<VillageCreationRequestResponse[]>([])
 const loading = ref(false)
+const totalRecords = ref(0)
+const page = ref(0)
+/** 取得失敗は「申請なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 // 詳細 Dialog
 const detailVisible = ref(false)
@@ -62,18 +69,32 @@ const submitting = ref(false)
 async function load() {
   if (!isAllowed.value) return
   loading.value = true
+  loadFailed.value = false
   try {
-    const params = statusFilter.value === 'ALL' ? undefined : { status: statusFilter.value }
+    const params = {
+      ...(statusFilter.value === 'ALL' ? {} : { status: statusFilter.value }),
+      page: page.value,
+      size: PAGE_SIZE,
+    }
     const res = await listAdminCreationRequests(params)
-    requests.value = Array.isArray(res) ? res : []
+    requests.value = res.content
+    totalRecords.value = res.totalElements
   }
   catch {
     requests.value = []
+    totalRecords.value = 0
+    loadFailed.value = true
     showError(t('village.creationRequest.loadFailed'))
   }
   finally {
     loading.value = false
   }
+}
+
+/** ページ送り — BE に page を送って該当ページのみ取得する（サーバーサイドページング） */
+function onPage(event: { page: number }) {
+  page.value = event.page
+  void load()
 }
 
 // =====================================================================
@@ -188,7 +209,10 @@ function truncate(text: string | null | undefined, max = 60): string {
 // ライフサイクル
 // =====================================================================
 
-watch(statusFilter, () => load())
+watch(statusFilter, () => {
+  page.value = 0
+  void load()
+})
 onMounted(() => {
   if (isAllowed.value) load()
 })
@@ -220,14 +244,26 @@ onMounted(() => {
         </TabList>
       </Tabs>
 
+      <!-- 取得失敗: 空状態とは別に描き分ける -->
+      <DashboardErrorState
+        v-if="loadFailed"
+        testid="creation-requests-error-state"
+        @retry="load"
+      />
+
       <DataTable
+        v-else
         :value="requests"
         :loading="loading"
         data-key="id"
         striped-rows
-        paginator
-        :rows="20"
+        :lazy="true"
+        :paginator="true"
+        :rows="PAGE_SIZE"
+        :total-records="totalRecords"
+        :first="page * PAGE_SIZE"
         row-hover
+        @page="onPage"
         @row-click="(e) => openDetail(e.data as VillageCreationRequestResponse)"
       >
         <template #empty>

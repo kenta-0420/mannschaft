@@ -62,17 +62,10 @@ export interface EmailOutboxListParams {
   size?: number
 }
 
-export interface PageMeta {
-  page: number
-  size: number
-  totalElements: number
-  totalPages: number
-}
-
-export interface PagedResponse<T> {
-  data: T[]
-  meta: PageMeta
-}
+// ページングの型は正本（app/types/api.ts）を再輸出する。
+// かつてここに同名の PageMeta / PagedResponse を独自定義しており、
+// BE が送らない totalElements を必須にした影のコピーになっていた（CMP-260912-1823）。
+export type { PageMeta, PagedResponse } from '~/types/api'
 
 export function useEmailOutboxAdminApi() {
   const api = useApi()

@@ -27,7 +27,7 @@ const iconInitial = computed(() => props.item.entityType.charAt(0))
 
 <template>
   <div
-    class="flex items-center gap-3 p-3 border border-surface-200 dark:border-surface-700 rounded-lg mb-2 bg-surface-0 dark:bg-surface-800"
+    class="flex items-center gap-3 p-3 border-2 border-surface-300 dark:border-surface-600 rounded-lg mb-2 bg-surface-0 dark:bg-surface-800"
     :class="{ 'opacity-60': !isAvailable }"
     :data-testid="`favorite-card-${item.favoriteId}`"
   >

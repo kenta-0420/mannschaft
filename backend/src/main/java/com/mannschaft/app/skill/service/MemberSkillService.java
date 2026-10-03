@@ -78,8 +78,9 @@ public class MemberSkillService {
         String categoryName = null;
         if (skillCategoryId != null) {
             SkillCategoryEntity category = skillCategoryService.findCategoryOrThrow(skillCategoryId);
+            // 実在するが受け付けない状態（非アクティブ）は不在（SKILL_001・404）と区別して 409。
             if (!Boolean.TRUE.equals(category.getIsActive())) {
-                throw new BusinessException(SkillErrorCode.SKILL_001);
+                throw new BusinessException(SkillErrorCode.SKILL_010);
             }
             categoryName = category.getName();
         }
@@ -117,15 +118,20 @@ public class MemberSkillService {
 
     /**
      * 資格詳細を取得する。本人または ADMIN のみアクセス可。
+     * BOLA対策: 資格の所属スコープ（scopeType/scopeId）がリクエスト元の teamId と一致することを確認する。
+     * 不一致（越境アクセス）は SKILL_003 で秘匿する（他チームのスキルIDを知られても本文が漏れない）。
      *
      * @param id            資格ID
      * @param requestUserId リクエストユーザーID
      * @param userRole      ユーザーロール文字列
+     * @param scopeType     リクエスト元のスコープ種別（コントローラの path teamId から解決）
+     * @param scopeId       リクエスト元のスコープID
      * @return 資格エンティティ
      */
     public ApiResponse<MemberSkillEntity> getSkill(
-            Long id, Long requestUserId, String userRole) {
+            Long id, Long requestUserId, String userRole, String scopeType, Long scopeId) {
         MemberSkillEntity skill = findSkillOrThrow(id);
+        checkScopeOrThrow(skill, scopeType, scopeId);
 
         if (!skill.getUserId().equals(requestUserId) && !isAdmin(userRole)) {
             throw new BusinessException(SkillErrorCode.SKILL_003);
@@ -139,6 +145,8 @@ public class MemberSkillService {
      * @param id               資格ID
      * @param requestUserId    リクエストユーザーID
      * @param userRole         ユーザーロール文字列
+     * @param scopeType        リクエスト元のスコープ種別（コントローラの path teamId から解決）
+     * @param scopeId          リクエスト元のスコープID
      * @param name             更新後資格名（nullの場合は変更なし）
      * @param issuer           更新後発行機関（nullの場合は変更なし）
      * @param credentialNumber 更新後資格番号（nullの場合は変更なし）
@@ -149,11 +157,12 @@ public class MemberSkillService {
      */
     @Transactional
     public ApiResponse<MemberSkillEntity> updateSkill(
-            Long id, Long requestUserId, String userRole,
+            Long id, Long requestUserId, String userRole, String scopeType, Long scopeId,
             String name, String issuer, String credentialNumber,
             LocalDate acquiredOn, LocalDate expiresAt, Long version) {
 
         MemberSkillEntity skill = findSkillOrThrow(id);
+        checkScopeOrThrow(skill, scopeType, scopeId);
 
         // 権限チェック（本人または ADMIN）
         if (!skill.getUserId().equals(requestUserId) && !isAdmin(userRole)) {
@@ -165,15 +174,17 @@ public class MemberSkillService {
             throw new BusinessException(SkillErrorCode.SKILL_006);
         }
 
-        MemberSkillEntity updated = skill.toBuilder()
-                .name(name != null ? name : skill.getName())
-                .issuer(issuer != null ? issuer : skill.getIssuer())
-                .credentialNumber(credentialNumber != null ? credentialNumber : skill.getCredentialNumber())
-                .acquiredOn(acquiredOn != null ? acquiredOn : skill.getAcquiredOn())
-                .expiresAt(expiresAt != null ? expiresAt : skill.getExpiresAt())
-                .build();
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        skill.applyUpdate(
+                name != null ? name : skill.getName(),
+                issuer != null ? issuer : skill.getIssuer(),
+                credentialNumber != null ? credentialNumber : skill.getCredentialNumber(),
+                acquiredOn != null ? acquiredOn : skill.getAcquiredOn(),
+                expiresAt != null ? expiresAt : skill.getExpiresAt()
+        );
 
-        MemberSkillEntity saved = memberSkillRepository.save(updated);
+        MemberSkillEntity saved = memberSkillRepository.save(skill);
         log.info("資格更新: id={}", id);
         return ApiResponse.of(saved);
     }
@@ -184,10 +195,13 @@ public class MemberSkillService {
      * @param id            資格ID
      * @param requestUserId リクエストユーザーID
      * @param userRole      ユーザーロール文字列
+     * @param scopeType     リクエスト元のスコープ種別（コントローラの path teamId から解決）
+     * @param scopeId       リクエスト元のスコープID
      */
     @Transactional
-    public void deleteSkill(Long id, Long requestUserId, String userRole) {
+    public void deleteSkill(Long id, Long requestUserId, String userRole, String scopeType, Long scopeId) {
         MemberSkillEntity skill = findSkillOrThrow(id);
+        checkScopeOrThrow(skill, scopeType, scopeId);
 
         if (!skill.getUserId().equals(requestUserId) && !isAdmin(userRole)) {
             throw new BusinessException(SkillErrorCode.SKILL_003);
@@ -206,11 +220,14 @@ public class MemberSkillService {
      *
      * @param id          資格ID
      * @param adminUserId 承認者ユーザーID
+     * @param scopeType   リクエスト元のスコープ種別（コントローラの path teamId から解決）
+     * @param scopeId     リクエスト元のスコープID
      * @return 承認後の資格エンティティ
      */
     @Transactional
-    public ApiResponse<MemberSkillEntity> verifySkill(Long id, Long adminUserId) {
+    public ApiResponse<MemberSkillEntity> verifySkill(Long id, Long adminUserId, String scopeType, Long scopeId) {
         MemberSkillEntity skill = findSkillOrThrow(id);
+        checkScopeOrThrow(skill, scopeType, scopeId);
 
         if (skill.getStatus() != SkillStatus.PENDING_REVIEW) {
             throw new BusinessException(SkillErrorCode.SKILL_007);
@@ -234,6 +251,17 @@ public class MemberSkillService {
     private MemberSkillEntity findSkillOrThrow(Long id) {
         return memberSkillRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new BusinessException(SkillErrorCode.SKILL_002));
+    }
+
+    /**
+     * BOLA対策: 資格が属するスコープ（scopeType/scopeId）がリクエスト元の teamId と一致するか検証する。
+     * 不一致の場合は他チームの資格IDであることを秘匿するため SKILL_003 を投げる
+     * （手本: {@link SkillCategoryService#updateCategory} の所有スコープ確認）。
+     */
+    private void checkScopeOrThrow(MemberSkillEntity skill, String scopeType, Long scopeId) {
+        if (!skill.getScopeType().equals(scopeType) || !skill.getScopeId().equals(scopeId)) {
+            throw new BusinessException(SkillErrorCode.SKILL_003);
+        }
     }
 
     private boolean isAdmin(String userRole) {

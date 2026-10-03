@@ -1,21 +1,24 @@
 import type { GamificationConfig, PointRule, Badge, UserBadge, PointSummary, PointHistory, RankingEntry, GamificationPrivacy } from '~/types/gamification'
 
+// CMP-260918-0024: ゲーミフィケーションはチーム固有機能（マスター裁可）。
+// backend/src/main/java/com/mannschaft/app/gamification/ 配下の全コントローラは
+// /api/v1/teams/{teamId}/gamification/... のチームスコープ専用実装で、組織スコープの
+// API は存在しない。以前は `scopeType: 'team' | 'organization'` を受け取り組織向けの
+// パスを組み立てる分岐があったが、対応する BE が無い死んだ分岐だったため撤去しチーム固定にした。
 export function useGamificationApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
-    return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
+  function buildBase(teamId: string) {
+    return `/api/v1/teams/${teamId}`
   }
 
-  async function getConfig(scopeType: 'team' | 'organization', scopeId: string) {
-    const base = buildBase(scopeType, scopeId)
-    const res = await api<{ data: GamificationConfig }>(`${base}/gamification/config`)
+  async function getConfig(teamId: string) {
+    const res = await api<{ data: GamificationConfig }>(`${buildBase(teamId)}/gamification/config`)
     return res.data
   }
 
-  async function updateConfig(scopeType: 'team' | 'organization', scopeId: string, config: GamificationConfig) {
-    const base = buildBase(scopeType, scopeId)
-    await api(`${base}/gamification/config`, { method: 'PUT', body: config })
+  async function updateConfig(teamId: string, config: GamificationConfig) {
+    await api(`${buildBase(teamId)}/gamification/config`, { method: 'PUT', body: config })
   }
 
   async function listPointRules(teamId: string) {

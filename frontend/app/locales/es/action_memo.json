@@ -7,7 +7,41 @@
     "back_to_memo": "Volver a notas de acción",
     "closing_link": "Cerrar el día",
     "weekly_link": "Resumen semanal",
-    "tags_link": "Gestión de etiquetas"
+    "tags_link": "Gestión de etiquetas",
+    "date_picker_label": "Seleccionar fecha",
+    "back_to_today": "Volver a hoy",
+    "selected_date_memos": "Notas de {date}"
+  },
+  "guide": {
+    "title": "Cómo usar Notas de acción",
+    "description": "Registra lo que estás haciendo ahora y revisa tus acciones diarias. Diseñado con fricción mínima para TDAH.",
+    "record": {
+      "title": "Registrar una nota",
+      "body": "Una frase corta es suficiente. Puedes agregar detalles después.",
+      "steps": {
+        "step1": "Escribe qué estabas haciendo en el campo de entrada",
+        "step2": "Presiona Enter o haz clic en 'Registrar' para guardar",
+        "step3": "Usa campos avanzados para tiempo, progreso o compartir con equipo"
+      }
+    },
+    "past": {
+      "title": "Ver notas anteriores",
+      "body": "Usa el selector de fecha para revisar registros pasados. 'Volver a hoy' te lleva de regreso al instante.",
+      "steps": {
+        "step1": "Selecciona una fecha con el selector de fecha",
+        "step2": "Ve todas las notas de ese día",
+        "step3": "Haz clic en 'Volver a hoy' para regresar a las notas de hoy"
+      }
+    },
+    "review": {
+      "title": "Revisar y reflexionar",
+      "body": "Usa resúmenes semanales y la revisión de fin de día para revisar acciones, estado de ánimo y tareas.",
+      "steps": {
+        "step1": "Abre 'Resumen semanal' para ver gráficos de los últimos 7 días",
+        "step2": "Usa 'Cerrar el día' para reflexionar y establecer tareas para mañana",
+        "step3": "Organiza categorías frecuentes con gestión de etiquetas"
+      }
+    }
   },
   "mood": {
     "great": "Excelente",

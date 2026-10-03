@@ -1,6 +1,7 @@
 package com.mannschaft.app.survey.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.survey.dto.SubmitResponseRequest;
 import com.mannschaft.app.survey.dto.SurveyResponseEntry;
 import com.mannschaft.app.survey.dto.UserResponseDetailResponse;
@@ -67,10 +68,22 @@ public class SurveyResponseController {
 
     /**
      * 自分の回答を取得する。
+     *
+     * <p><b>認可（{@link AuthorizedInService} 付与の根拠・認可根治戦役 Wave7 監査済）</b>:
+     * 本 EP は<b>自己スコープ</b>で閉じている。閲覧対象ユーザーはリクエストから受け取らず、
+     * サーバ側で確定した {@link SecurityUtils#getCurrentUserId()} を
+     * {@code SurveyResponseService#getMyResponses(Long, Long)} の検索条件
+     * （{@code findBySurveyIdAndUserId}）に固定して渡すため、他人の回答行は構造上取得できない。
+     * 未ログインは {@code SecurityUtils.getCurrentUserId()} が 401 を投げる。
+     * 他ユーザーの回答を引く経路は別 EP（{@link #getResponseByUser}）として分離されており、
+     * そちらは ADMIN+ / 作成者 / 結果閲覧者のみに限定されている。
+     * データ依存でない構造的な自己スコープ認可のため白名簿クラス呼び出しを持たず、
+     * 本マーカーで監査済であることを明示する。</p>
      */
     @GetMapping("/me")
     @Operation(summary = "自分の回答取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<List<SurveyResponseEntry>>> getMyResponses(
             @PathVariable Long surveyId) {
         List<SurveyResponseEntry> responses = responseService.getMyResponses(

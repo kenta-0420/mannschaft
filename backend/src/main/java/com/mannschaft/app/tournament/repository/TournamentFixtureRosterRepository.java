@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 出場メンバーリポジトリ。
@@ -12,6 +13,11 @@ import java.util.List;
 public interface TournamentFixtureRosterRepository extends JpaRepository<TournamentFixtureRosterEntity, Long> {
 
     List<TournamentFixtureRosterEntity> findByMatchIdOrderByParticipantIdAscJerseyNumberAsc(Long matchId);
+
+    /**
+     * 認可根治戦役 Wave2 トランシェ2C: 出場メンバーが指定試合配下に属するかの束縛検証（BOLA 対策）。
+     */
+    Optional<TournamentFixtureRosterEntity> findByIdAndMatchId(Long id, Long matchId);
 
     List<TournamentFixtureRosterEntity> findByMatchIdAndParticipantId(Long matchId, Long participantId);
 

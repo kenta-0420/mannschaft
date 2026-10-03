@@ -88,4 +88,18 @@ public interface ChatChannelRepository extends JpaRepository<ChatChannelEntity, 
      * 指定チーム群の問い合わせチャンネル（is_inquiry_channel = TRUE）を取得する（F10.7 業務アラート用）。
      */
     List<ChatChannelEntity> findByTeamIdInAndIsInquiryChannelTrue(List<Long> teamIds);
+
+    /**
+     * F10.1.1 / P3b: 指定組織の問い合わせチャンネル（is_inquiry_channel = TRUE）を取得する（組織スコープ業務アラート用）。
+     * 組織スコープのレンズ ⑤ {@code ADMIN_ORG_ALERT} で未読問い合わせを集計するために使う。
+     */
+    List<ChatChannelEntity> findByOrganizationIdAndIsInquiryChannelTrue(Long organizationId);
+
+    /**
+     * アイコンのオブジェクトキーからチャンネルを 1 件取得する。
+     *
+     * <p>署名付きダウンロード URL の発行時に、キーが実在のチャンネルアイコンを指しているかを確認し、
+     * そのチャンネルの閲覧認可へ結び付けるために用いる。</p>
+     */
+    Optional<ChatChannelEntity> findFirstByIconKey(String iconKey);
 }

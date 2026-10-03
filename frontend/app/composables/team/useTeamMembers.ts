@@ -13,7 +13,19 @@ interface InviteTokenResponse {
 
 interface PagedData<T> {
   data: T[]
-  meta: { page: number; size: number; totalElements: number; totalPages: number }
+  meta: {
+    page: number
+    size: number
+    /**
+     * 総件数。BE の `PagedResponse.PageMeta` が実際に送るのはこのフィールド
+     * （`{ total, page, size, totalPages }`）。
+     * 併記されている `totalElements` は BE が送っていないため実行時は undefined になる。
+     */
+    total?: number
+    /** 旧互換の名前。BE の PagedResponse は送らない（型の互換性のために残っている）。 */
+    totalElements?: number
+    totalPages: number
+  }
 }
 
 /**
@@ -31,6 +43,18 @@ export function useTeamMembers() {
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 20))
     return api<PagedData<MemberResponse>>(`/api/v1/teams/${teamSlug}/members?${query}`)
+  }
+
+  /**
+   * チームの全メンバーを 1 リクエストで取得する（CMP-260912-1525）。
+   *
+   * ページング経路（{@link getMembers}）はページ要求ごとに BE が所属情報を全件走査するため、
+   * 全員を必要とする画面が全ページをめくると総処理量がメンバー数の二乗になる。
+   * 全員が要る画面はこちらを使い、走査を 1 回に固定すること。
+   * 画面内でのページ送りが要る場合は、取得済みの配列をクライアント側で切り出す。
+   */
+  async function getAllMembers(teamSlug: string) {
+    return api<{ data: MemberResponse[] }>(`/api/v1/teams/${teamSlug}/members/all`)
   }
 
   async function changeRole(teamSlug: string, userId: number, roleId: number) {
@@ -108,6 +132,7 @@ export function useTeamMembers() {
 
   return {
     getMembers,
+    getAllMembers,
     changeRole,
     removeMember,
     leaveTeam,

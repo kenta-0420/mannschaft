@@ -8,9 +8,13 @@
         "UNDECIDED": "미확인"
       },
       "absenceReason": {
-        "ILLNESS": "질병",
+        "SICK": "몸이 좋지 않음",
         "INJURY": "부상",
-        "FAMILY": "가정 사정",
+        "FAMILY_REASON": "가정 사정",
+        "BEREAVEMENT": "조의",
+        "INFECTIOUS_DISEASE": "출석 정지（감염병）",
+        "MENTAL_HEALTH": "심신 불편",
+        "OFFICIAL_BUSINESS": "공적 활동",
         "OTHER": "기타"
       },
       "dailyRollCall": {

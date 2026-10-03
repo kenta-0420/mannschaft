@@ -21,21 +21,21 @@ const emit = defineEmits<{
 // -----------------------------------------------------------------------
 const channelIcon = computed<string>(() => {
   const ch = props.tab.channel
-  const type = ch.channelType
-  if (type === 'CROSS_TEAM') return '🔗'
-  // Zimmer（グループDM）: DIRECT かつ dmPartner が null（1:1 ではない複数人 DM）
-  if (type === 'DIRECT' && ch.dmPartner === null) return '👥'
-  if (type === 'DIRECT') return '👤'
+  const type = ch.identity.channelType
+  // グループDM（Zimmer）: 複数人 DM
+  if (type === 'GROUP_DM') return '👥'
+  // 1対1 DM
+  if (type === 'DM') return '👤'
   return '#'
 })
 
-/** タブに表示するチャンネル名（DIRECT は相手ユーザー名） */
+/** タブに表示するチャンネル名（DM は相手ユーザー名） */
 const channelLabel = computed<string>(() => {
   const ch = props.tab.channel
-  if (ch.channelType === 'DIRECT' && ch.dmPartner) {
+  if (ch.dmPartner) {
     return ch.dmPartner.displayName
   }
-  return ch.name ?? `#${ch.id}`
+  return ch.meta.name ?? `#${ch.id}`
 })
 
 /** aria-label 用の完全ラベル */
@@ -44,7 +44,7 @@ const ariaLabel = computed<string>(() => `${channelLabel.value} のタブ`)
 // -----------------------------------------------------------------------
 // 未読バッジ
 // -----------------------------------------------------------------------
-const unreadCount = computed<number>(() => props.tab.channel.unreadCount ?? 0)
+const unreadCount = computed<number>(() => props.tab.channel.viewer?.unreadCount ?? 0)
 
 /** バッジ表示文字列（9+ 打ち切り） */
 const badgeLabel = computed<string>(() =>
@@ -54,11 +54,11 @@ const badgeLabel = computed<string>(() =>
 /**
  * @mention 系かどうかの判定。
  * 現時点では ChatChannelResponse に mention フラグがないため、
- * unreadCount > 0 && isPinned をメンション扱いの暫定判定とする（将来拡張可）。
+ * unreadCount > 0 && viewer.isPinned をメンション扱いの暫定判定とする（将来拡張可）。
  * ストアまたは API でメンションフラグが追加された場合はここを差し替えること。
  */
 const isMentionUnread = computed<boolean>(
-  () => unreadCount.value > 0 && props.tab.channel.isPinned,
+  () => unreadCount.value > 0 && (props.tab.channel.viewer?.isPinned ?? false),
 )
 
 // -----------------------------------------------------------------------

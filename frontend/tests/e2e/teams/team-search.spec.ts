@@ -27,7 +27,7 @@ test.describe('TEAMSEARCH-001〜003: チーム検索ページ', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: SEARCH_RESULTS,
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })
@@ -48,7 +48,7 @@ test.describe('TEAMSEARCH-001〜003: チーム検索ページ', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: SEARCH_RESULTS,
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })
@@ -70,7 +70,7 @@ test.describe('TEAMSEARCH-001〜003: チーム検索ページ', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: [],
-          meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 },
+          meta: { page: 0, size: 20, total: 0, totalPages: 0 },
         }),
       })
     })

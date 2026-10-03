@@ -1,13 +1,17 @@
 package com.mannschaft.app.receipt.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
+import com.mannschaft.app.receipt.ReceiptArchiveKind;
 import com.mannschaft.app.receipt.ReceiptErrorCode;
 import com.mannschaft.app.receipt.ReceiptMapper;
 import com.mannschaft.app.receipt.ReceiptPdfGenerator;
+import com.mannschaft.app.receipt.ReceiptPdfStatus;
 import com.mannschaft.app.receipt.ReceiptScopeType;
 import com.mannschaft.app.receipt.ReceiptStatus;
 import com.mannschaft.app.receipt.dto.BulkCreateReceiptRequest;
@@ -60,9 +64,12 @@ public class ReceiptService {
     private final ReceiptPdfGenerator pdfGenerator;
     private final NameResolverService nameResolverService;
     private final MemberPaymentRepository memberPaymentRepository;
+    private final AccessControlService accessControlService;
+    private final ReceiptPdfArchiveService pdfArchiveService;
 
     /**
      * 領収書を発行する。
+     * 認可: 発行先スコープの ADMIN/DEPUTY_ADMIN のみ発行可能。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -73,12 +80,14 @@ public class ReceiptService {
     @Transactional
     public ReceiptResponse createReceipt(ReceiptScopeType scopeType, Long scopeId,
                                          Long userId, CreateReceiptRequest request) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
+
         ReceiptIssuerSettingsEntity settings = issuerSettingsRepository
                 .findByScopeTypeAndScopeIdForUpdate(scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(ReceiptErrorCode.ISSUER_SETTINGS_NOT_CONFIGURED));
 
         ReceiptStatus status = request.getStatus() != null
-                ? ReceiptStatus.valueOf(request.getStatus())
+                ? EnumInputParser.parse(ReceiptStatus.class, request.getStatus(), "status")
                 : ReceiptStatus.ISSUED;
 
         // 税額計算
@@ -167,6 +176,7 @@ public class ReceiptService {
 
     /**
      * 領収書を一括発行する。
+     * 認可: 発行先スコープの ADMIN/DEPUTY_ADMIN のみ発行可能。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -177,6 +187,8 @@ public class ReceiptService {
     @Transactional
     public BulkResultResponse bulkCreateReceipts(ReceiptScopeType scopeType, Long scopeId,
                                                   Long userId, BulkCreateReceiptRequest request) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
+
         if (request.getMemberPaymentIds().size() > 50) {
             throw new BusinessException(ReceiptErrorCode.BULK_LIMIT_EXCEEDED);
         }
@@ -252,6 +264,8 @@ public class ReceiptService {
 
     /**
      * 領収書を無効化する。
+     * 認可: 領収書が実在するスコープ（entity由来。path/requestのscopeIdを鵜呑みにしない）の
+     * ADMIN/DEPUTY_ADMIN のみ無効化可能。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -264,6 +278,7 @@ public class ReceiptService {
     public ReceiptResponse voidReceipt(ReceiptScopeType scopeType, Long scopeId,
                                        Long receiptId, Long userId, VoidReceiptRequest request) {
         ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
+        accessControlService.checkAdminOrAbove(userId, receipt.getScopeId(), receipt.getScopeType().name());
 
         if (receipt.isVoided()) {
             throw new BusinessException(ReceiptErrorCode.ALREADY_VOIDED);
@@ -281,6 +296,9 @@ public class ReceiptService {
 
     /**
      * 領収書を一括無効化する。
+     * 認可: 指定スコープの ADMIN/DEPUTY_ADMIN のみ無効化可能。
+     * 個々の領収書は {@code findByIdAndScopeTypeAndScopeId} でスコープ一致するもののみ対象となるため、
+     * 別スコープの領収書IDを紛れ込ませても無効化されない（BOLA遮断）。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -291,6 +309,8 @@ public class ReceiptService {
     @Transactional
     public BulkVoidResultResponse bulkVoidReceipts(ReceiptScopeType scopeType, Long scopeId,
                                                     Long userId, BulkVoidReceiptRequest request) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
+
         if (request.getReceiptIds().size() > 50) {
             throw new BusinessException(ReceiptErrorCode.BULK_LIMIT_EXCEEDED);
         }
@@ -318,6 +338,7 @@ public class ReceiptService {
 
     /**
      * 下書き領収書を承認する（DRAFT → ISSUED）。
+     * 認可: 領収書が実在するスコープ（entity由来）の ADMIN/DEPUTY_ADMIN のみ承認可能。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
@@ -329,6 +350,7 @@ public class ReceiptService {
     public ReceiptResponse approveReceipt(ReceiptScopeType scopeType, Long scopeId,
                                            Long receiptId, Long userId) {
         ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
+        accessControlService.checkAdminOrAbove(userId, receipt.getScopeId(), receipt.getScopeType().name());
 
         if (receipt.getStatus() != ReceiptStatus.DRAFT) {
             throw new BusinessException(ReceiptErrorCode.NOT_DRAFT);
@@ -355,14 +377,18 @@ public class ReceiptService {
 
     /**
      * 発行前プレビューを取得する。
+     * 認可: 発行先スコープの ADMIN/DEPUTY_ADMIN のみ実行可能（発行フローの一部）。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param request   発行リクエスト（プレビュー用）
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープID
+     * @param actorUserId   操作者ユーザーID
+     * @param request       発行リクエスト（プレビュー用）
      * @return プレビューレスポンス
      */
     public ReceiptPreviewResponse previewReceipt(ReceiptScopeType scopeType, Long scopeId,
-                                                  CreateReceiptRequest request) {
+                                                  Long actorUserId, CreateReceiptRequest request) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
+
         ReceiptIssuerSettingsEntity settings = issuerSettingsRepository
                 .findByScopeTypeAndScopeId(scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(ReceiptErrorCode.ISSUER_SETTINGS_NOT_CONFIGURED));
@@ -402,16 +428,19 @@ public class ReceiptService {
 
     /**
      * 無効化済み領収書のデータを流用して再発行プレビューを取得する。
+     * 認可: 元領収書が実在するスコープ（entity由来）の ADMIN/DEPUTY_ADMIN のみ実行可能。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param receiptId 元の領収書ID
-     * @param request   再発行リクエスト
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープID
+     * @param receiptId     元の領収書ID
+     * @param actorUserId   操作者ユーザーID
+     * @param request       再発行リクエスト
      * @return プレビューレスポンス
      */
     public ReceiptPreviewResponse reissuePreview(ReceiptScopeType scopeType, Long scopeId,
-                                                  Long receiptId, ReissueReceiptRequest request) {
+                                                  Long receiptId, Long actorUserId, ReissueReceiptRequest request) {
         ReceiptEntity original = findReceiptOrThrow(scopeType, scopeId, receiptId);
+        accessControlService.checkAdminOrAbove(actorUserId, original.getScopeId(), original.getScopeType().name());
 
         if (!original.isVoided()) {
             throw new BusinessException(ReceiptErrorCode.NOT_VOIDED);
@@ -458,29 +487,40 @@ public class ReceiptService {
 
     /**
      * 領収書詳細を取得する（ADMIN用）。
+     * 認可: 領収書が実在するスコープ（entity由来）のメンバーのみ閲覧可能。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param receiptId 領収書ID
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープID
+     * @param receiptId     領収書ID
+     * @param actorUserId   操作者ユーザーID
      * @return 領収書レスポンス
      */
-    public ReceiptResponse getReceipt(ReceiptScopeType scopeType, Long scopeId, Long receiptId) {
+    public ReceiptResponse getReceipt(ReceiptScopeType scopeType, Long scopeId, Long receiptId, Long actorUserId) {
         ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
+        accessControlService.checkMembership(actorUserId, receipt.getScopeId(), receipt.getScopeType().name());
         List<ReceiptLineItemEntity> lineItems = lineItemRepository.findByReceiptIdOrderBySortOrderAsc(receiptId);
         return buildReceiptResponse(receipt, lineItems, Collections.emptyList());
     }
 
     /**
-     * 発行済み領収書一覧を取得する（ADMIN用、ページネーション対応）。
+     * 発行済み領収書一覧を取得する（{@code /api/v1/admin/receipts} 用、ページネーション対応）。
+     * 認可: 指定スコープの ADMIN/DEPUTY_ADMIN のみ閲覧可能（認可根治戦役 CMP-260917-1350 Phase 1）。
+     * 組織サイドバーで ADMIN/DEPUTY_ADMIN 限定表示している機能のため、従来の checkMembership
+     * （MEMBER も閲覧可能だった）から checkAdminOrAbove へ引き上げた。メンバー本人用の
+     * {@code /api/v1/my/receipts}（{@link com.mannschaft.app.receipt.service.ReceiptMyService} 等）
+     * は対象外で変更しない。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param page      ページ番号
-     * @param size      取得件数
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープID
+     * @param page          ページ番号
+     * @param size          取得件数
+     * @param actorUserId   操作者ユーザーID
      * @return ページネーション付き領収書一覧
      */
     public PagedResponse<ReceiptSummaryResponse> listReceipts(ReceiptScopeType scopeType, Long scopeId,
-                                                               int page, int size) {
+                                                               int page, int size, Long actorUserId) {
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType.name());
+
         Pageable pageable = PageRequest.of(page, size);
         Page<ReceiptEntity> receiptPage = receiptRepository
                 .findByScopeTypeAndScopeIdOrderByIssuedAtDesc(scopeType, scopeId, pageable);
@@ -494,35 +534,57 @@ public class ReceiptService {
 
     /**
      * 領収書 PDF のバイト配列を取得する。
+     * 認可: 領収書が実在するスコープ（entity由来）のメンバーのみダウンロード可能（受領者PII含む）。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param receiptId 領収書ID
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープID
+     * @param receiptId     領収書ID
+     * @param actorUserId   操作者ユーザーID
      * @return PDF バイト配列
      */
-    public byte[] getReceiptPdf(ReceiptScopeType scopeType, Long scopeId, Long receiptId) {
+    public byte[] getReceiptPdf(ReceiptScopeType scopeType, Long scopeId, Long receiptId, Long actorUserId) {
+        return getReceiptPdf(scopeType, scopeId, receiptId, actorUserId, null);
+    }
+
+    /**
+     * 領収書 PDF のバイト配列を取得する（種別指定つき）。
+     *
+     * <p>F08.12 §9 是正: 初回取得時に生成 PDF をストレージへ保存し
+     * {@code receipt_pdf_archives} に記録する。2 回目以降は再生成せず保存済みの原本を返す
+     * （AC-38 / AC-39）。旧実装は {@code updatePdfStorageKey()} の呼び出し元が 0 件で
+     * 常に再生成していた。</p>
+     *
+     * @param kind 明示指定された種別（{@code ORIGINAL} / {@code VOIDED}）。{@code null} の場合は
+     *             現在の状態（{@code voided_at}）から解決する（設計書 §3.4.1）
+     */
+    @Transactional
+    public byte[] getReceiptPdf(ReceiptScopeType scopeType, Long scopeId, Long receiptId, Long actorUserId,
+                                 ReceiptArchiveKind kind) {
         ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
+        accessControlService.checkMembership(actorUserId, receipt.getScopeId(), receipt.getScopeType().name());
         List<ReceiptLineItemEntity> lineItems = lineItemRepository.findByReceiptIdOrderBySortOrderAsc(receiptId);
 
-        if (receipt.isVoided()) {
-            return pdfGenerator.generateVoided(receipt, lineItems, null, null, null);
-        }
-        return pdfGenerator.generate(receipt, lineItems, null, null, null);
+        byte[] pdf = pdfArchiveService.getOrArchive(receipt, lineItems, kind);
+        receiptRepository.save(receipt);
+        return pdf;
     }
 
     /**
      * 領収書メールを送信する。
+     * 認可: 領収書が実在するスコープ（entity由来）の ADMIN/DEPUTY_ADMIN のみ送信可能。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param receiptId 領収書ID
-     * @param request   メール送信リクエスト
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープID
+     * @param receiptId     領収書ID
+     * @param actorUserId   操作者ユーザーID
+     * @param request       メール送信リクエスト
      * @return メール送信結果レスポンス
      */
     @Transactional
     public SendEmailResponse sendEmail(ReceiptScopeType scopeType, Long scopeId,
-                                        Long receiptId, SendEmailRequest request) {
+                                        Long receiptId, Long actorUserId, SendEmailRequest request) {
         ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
+        accessControlService.checkAdminOrAbove(actorUserId, receipt.getScopeId(), receipt.getScopeType().name());
 
         String email = request.getEmail();
         if ((email == null || email.isBlank()) && receipt.getRecipientUserId() == null) {
@@ -620,7 +682,12 @@ public class ReceiptService {
                         .build())
                 .toList();
 
-        String pdfStatus = receipt.getPdfStorageKey() != null ? "READY" : "GENERATING";
+        // F08.12 §3.1 是正: pdf_storage_key の NULL 判定からの導出をやめ、pdf_status 列を読む。
+        // 旧実装は updatePdfStorageKey() の呼び出し元が 0 件であるため常に GENERATING を返し、
+        // 「失敗したのか、まだ生成中なのか」を区別できなかった。
+        String pdfStatus = receipt.getPdfStatus() == null
+                ? ReceiptPdfStatus.GENERATING.name()
+                : receipt.getPdfStatus().name();
 
         return ReceiptResponse.builder()
                 .id(receipt.getId())

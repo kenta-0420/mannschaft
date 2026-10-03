@@ -3,6 +3,14 @@ export type ScheduleStatus = 'DRAFT' | 'PUBLISHED' | 'CANCELLED'
 export type ScheduleAttendanceStatus = 'YES' | 'NO' | 'MAYBE' | 'PENDING'
 export type RecurrenceType = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY'
 export type EditScope = 'THIS_ONLY' | 'THIS_AND_FOLLOWING' | 'ALL'
+export type ScheduleTargetMode = 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+
+export interface ScheduleTargetMember {
+  userId: number
+  displayName: string
+  avatarUrl: string | null
+  calendarColor: string | null
+}
 
 export interface ScheduleResponse {
   id: number
@@ -21,6 +29,9 @@ export interface ScheduleResponse {
   categoryId: number | null
   categoryName: string | null
   categoryColor: string | null
+  targetMode?: ScheduleTargetMode
+  targetCount?: number
+  targets?: ScheduleTargetMember[]
   responseDeadline: string | null
   createdBy: { id: number; displayName: string }
   attendanceStats: {
@@ -60,6 +71,8 @@ export interface CreateScheduleRequest {
   recurrenceType?: RecurrenceType
   recurrenceRule?: string
   responseDeadline?: string
+  targetMode?: ScheduleTargetMode
+  targetUserIds?: number[]
 }
 
 export interface UpdateScheduleRequest {
@@ -72,6 +85,8 @@ export interface UpdateScheduleRequest {
   categoryId?: number
   responseDeadline?: string
   editScope?: EditScope
+  targetMode?: ScheduleTargetMode
+  targetUserIds?: number[]
 }
 
 export interface CreatePersonalScheduleRequest {

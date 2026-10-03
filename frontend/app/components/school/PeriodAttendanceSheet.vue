@@ -27,20 +27,9 @@ const STATUS_OPTIONS = [
   { value: 'UNDECIDED', label: () => t('school.attendance.status.UNDECIDED') },
 ]
 
-const REASON_OPTIONS = [
-  { value: 'ILLNESS', label: () => t('school.attendance.absenceReason.ILLNESS') },
-  { value: 'INJURY', label: () => t('school.attendance.absenceReason.INJURY') },
-  { value: 'FAMILY', label: () => t('school.attendance.absenceReason.FAMILY') },
-  { value: 'OTHER', label: () => t('school.attendance.absenceReason.OTHER') },
-]
-
 function updateEntry(index: number, patch: Partial<PeriodEntry>): void {
   const updated = props.entries.map((e, i) => (i === index ? { ...e, ...patch } : e))
   emit('change', updated)
-}
-
-function needsReason(entry: PeriodEntry): boolean {
-  return entry.status === 'ABSENT' || entry.status === 'PARTIAL'
 }
 
 function statusLabel(status: string | undefined): string {
@@ -92,18 +81,6 @@ function statusLabel(status: string | undefined): string {
               {{ opt.label() }}
             </button>
           </div>
-        </div>
-
-        <div v-if="needsReason(entry)" class="mt-2">
-          <Select
-            :model-value="entry.absenceReason"
-            :options="REASON_OPTIONS"
-            option-label="label"
-            option-value="value"
-            :placeholder="$t('school.attendance.label.reason')"
-            class="w-full text-sm mb-2"
-            @update:model-value="(v) => updateEntry(index, { absenceReason: v })"
-          />
         </div>
 
         <div class="mt-2">

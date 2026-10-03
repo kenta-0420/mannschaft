@@ -7,8 +7,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -25,8 +25,7 @@ import java.time.LocalDateTime;
 @Table(name = "notification_credit_purchases")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class NotificationCreditPurchaseEntity extends BaseEntity {
 
     /** 購入した組織ID */
@@ -78,12 +77,12 @@ public class NotificationCreditPurchaseEntity extends BaseEntity {
     private LocalDateTime expiresAt;
 
     /** 有効期限30日前アラート送信済みフラグ */
-    @Column(nullable = false)
+    @Column(name = "alert_sent_30d", nullable = false)
     @Builder.Default
     private Boolean alertSent30d = false;
 
     /** 有効期限7日前アラート送信済みフラグ */
-    @Column(nullable = false)
+    @Column(name = "alert_sent_7d", nullable = false)
     @Builder.Default
     private Boolean alertSent7d = false;
 
@@ -107,6 +106,27 @@ public class NotificationCreditPurchaseEntity extends BaseEntity {
         this.paidAt = LocalDateTime.now();
         this.expiresAt = this.paidAt.plusYears(2);
         this.remainingCredits = this.creditsGranted;
+    }
+
+    /**
+     * Stripe Checkout Session ID を割り当てる（Checkout 作成後）。
+     *
+     * <p>{@code createCheckout} 内で save 済み（id 採番済み）の本エンティティに対し、
+     * Stripe Session 作成後に session id を後付けする更新メソッド。managed entity を
+     * その場でミューテートし、続く {@code save} を同一行 UPDATE にする。</p>
+     *
+     * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
+     * 本エンティティは {@code @SuperBuilder(toBuilder = true)}（{@code @SuperBuilder} ではない）で、
+     * 主キー {@code id} は基底クラス {@link BaseEntity} のフィールドである。
+     * {@code toBuilder()} は継承フィールド {@code id} を引き継がず {@code id = null} の
+     * 新インスタンスになり、{@code save} が UPDATE でなく INSERT を実行する。これは
+     * {@code idempotency_key} の UNIQUE 制約違反（同じキーで2行目を INSERT）で 500 になる
+     * 二重 save 構造であった。よって直接ミューテートして UPDATE にする。</p>
+     *
+     * @param checkoutSessionId Stripe Checkout Session ID
+     */
+    public void assignCheckoutSession(String checkoutSessionId) {
+        this.stripeCheckoutSessionId = checkoutSessionId;
     }
 
     /**

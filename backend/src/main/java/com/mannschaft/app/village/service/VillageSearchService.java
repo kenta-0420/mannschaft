@@ -18,7 +18,6 @@ import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -67,6 +66,14 @@ import java.util.UUID;
  *   <li>原則1: 他ドメイン（bulletin/timeline/chat）の Repository は <b>読み取り専用</b> で呼ぶ</li>
  *   <li>原則5: {@code @Transactional(readOnly = true)} で読み取り限定。書き込みなし</li>
  * </ul>
+ *
+ * <h2>既知の制約（打ち切り上限、利用者向けドキュメントは
+ * {@code docs/features/F17.1_village_community.md} §4.12 に記載）</h2>
+ * <p>タイプ（POST / MESSAGE / MEMBER）ごとに {@link #PER_TYPE_FETCH_HARD_CAP} 件までしか
+ * 取得しない。あるタイプのヒット件数がこれを超える場合、超過分は検索結果に一切現れない
+ * （ElasticSearch 等への移行を待つ Phase 1 の簡易実装としての意図的な割り切り）。
+ * {@code total} はこの打ち切り後に実際に取得できた件数を上限とするよう補正しており、
+ * ページ送りが空配列で行き詰まることは無いが、打ち切られたヒットそのものへは到達できない。</p>
  */
 @Slf4j
 @Service
@@ -83,13 +90,13 @@ public class VillageSearchService {
     /** 4 種類のタイプ集合に対する 1 タイプあたりの最大取得件数（簡易プール用）。 */
     private static final int PER_TYPE_FETCH_HARD_CAP = 50;
 
-    private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     private final UserVillageNicknameRepository nicknameRepository;
     private final BulletinThreadRepository bulletinThreadRepository;
     private final TimelinePostRepository timelinePostRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatChannelRepository chatChannelRepository;
+    private final VillageAccessGate accessGate;
 
     // ============================================================
     // 公開メソッド
@@ -110,7 +117,7 @@ public class VillageSearchService {
 
         validateQuery(q);
         SearchType resolvedType = resolveType(type);
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireVillageMember(villageId, actorUserId);
 
         int safePage = Math.max(0, page);
@@ -147,11 +154,22 @@ public class VillageSearchService {
         int to = Math.min(from + safeSize, all.size());
         List<VillageInternalSearchItemResponse> pageItems = all.subList(from, to);
 
+        // total の是正: countXxx() はタイプごとの実件数（キャップ無し）の合算だが、
+        // 実際に取得しているのはタイプごとに PER_TYPE_FETCH_HARD_CAP（50件）で頭打ちにしたプール
+        // （all、最大 150 件）のみ。1タイプが 51 件以上ヒットすると totalEstimate が
+        // 実際にページ送りで到達可能な件数（= all.size()）を超えてしまい、その超過分を
+        // ページ送りすると例外は出ずに空配列が返り続ける「静かな空ページ地獄」になっていた。
+        // total は実際に到達可能な件数（= プールサイズ）を超えないよう補正する。
+        // DTO は変更せず、既存の total フィールドの意味を「実際に取得可能な総件数」に厳密化する形で対応する
+        // （「上限で打ち切られたか」を示す capped 相当のフィールド追加は、OpenAPI/FE 契約型の追随が
+        // 別途必要になる DTO 変更を伴うため、本 PR ではスコープ外とし total の補正のみで根治する）。
+        long total = Math.min(totalEstimate, all.size());
+
         return VillageInternalSearchResponse.builder()
                 .items(pageItems)
                 .page(safePage)
                 .size(safeSize)
-                .total(totalEstimate)
+                .total(total)
                 .build();
     }
 
@@ -293,14 +311,16 @@ public class VillageSearchService {
         }
     }
 
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null || v.getArchivedAt() != null) {
-            // IDOR 対策で 404 統一
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        return v;
+    /**
+     * 閲覧可能かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>従来の実装は不在・削除済み・凍結済みをまとめて 404 に畳んでいたため、
+     * 凍結も 404 とする {@link VillageAccessGate#loadReadableVillage} へ委譲して挙動を揃える。
+     * 加えて、非公開(UNLISTED)村を非村人が叩いた場合も実在しない村 ID と同一の
+     * {@code VILLAGE_NOT_FOUND} となり、村の存在が漏れなくなる。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadReadableVillage(villageId, actorUserId);
     }
 
     /**

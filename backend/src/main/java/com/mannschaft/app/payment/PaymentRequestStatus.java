@@ -27,6 +27,9 @@ public enum PaymentRequestStatus {
     /** チームが請求を閲覧した。 */
     VIEWED,
 
+    /** PaymentIntent は作成済みだが、Stripe webhook による成功確定待ち。 */
+    PROCESSING,
+
     /** チーム ADMIN が支払い済み（money rail へ連結）。 */
     PAID,
 

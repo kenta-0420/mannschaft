@@ -10,7 +10,7 @@ function toggle(i: number) {
 </script>
 
 <template>
-  <section id="faq" aria-labelledby="faq-heading" class="bg-surface-50 py-24 dark:bg-surface-900">
+  <section id="faq" aria-labelledby="faq-heading" class="py-24 dark:bg-surface-900">
     <div class="mx-auto max-w-3xl px-4">
       <div class="mb-14 text-center">
         <h2 id="faq-heading" class="text-3xl font-bold text-surface-900 dark:text-white">

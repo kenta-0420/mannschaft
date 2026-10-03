@@ -410,4 +410,57 @@ class StripePaymentProviderImplTest {
             }
         }
     }
+
+    /**
+     * F20.1 残債1: {@code cancelBillingSubscriptionImmediately} の冪等スキップ検証。
+     *
+     * <p>GDPR purge の管理者手動 retry（{@code GdprPurgeRetryService} → {@code BillingPurgeEventListener
+     * #retryPurge}）は「DB は解約済みだが Stripe 解約が未確認」な契約を毎回再スキャンして
+     * {@code cancelImmediately} を呼び直す設計のため、Stripe 側で既に解約済みの subscription に対しても
+     * 呼ばれ得る。Stripe の {@code subscription.cancel} は「既に canceled」に対して呼ぶと例外になるため、
+     * 事前に状態を見て安全にスキップすることを検証する。</p>
+     */
+    @Nested
+    @DisplayName("cancelBillingSubscriptionImmediately — 冪等スキップ（残債1: GDPR purge retry 対応）")
+    class CancelBillingSubscriptionImmediately {
+
+        @Test
+        @DisplayName("既に canceled 済みなら Stripe へ cancel API を呼ばずスキップする（retry の二重解約防止）")
+        void skipsWhenAlreadyCanceled() throws StripeException {
+            Subscription retrieved = mock(Subscription.class);
+            given(retrieved.getStatus()).willReturn("canceled");
+
+            try (MockedStatic<Subscription> subStatic = mockStatic(Subscription.class)) {
+                subStatic.when(() -> Subscription.retrieve("sub_already_canceled")).thenReturn(retrieved);
+
+                provider.cancelBillingSubscriptionImmediately("sub_already_canceled", "idem-key-1");
+
+                verify(retrieved, never()).cancel(
+                        ArgumentMatchers.any(com.stripe.param.SubscriptionCancelParams.class),
+                        ArgumentMatchers.any(com.stripe.net.RequestOptions.class));
+            }
+        }
+
+        @Test
+        @DisplayName("未解約（active 等）なら Stripe へ cancel API を呼ぶ")
+        void cancelsWhenNotYetCanceled() throws StripeException {
+            Subscription retrieved = mock(Subscription.class);
+            given(retrieved.getStatus()).willReturn("active");
+            Subscription canceled = mock(Subscription.class);
+            given(retrieved.cancel(
+                    ArgumentMatchers.any(com.stripe.param.SubscriptionCancelParams.class),
+                    ArgumentMatchers.any(com.stripe.net.RequestOptions.class)))
+                    .willReturn(canceled);
+
+            try (MockedStatic<Subscription> subStatic = mockStatic(Subscription.class)) {
+                subStatic.when(() -> Subscription.retrieve("sub_active_001")).thenReturn(retrieved);
+
+                provider.cancelBillingSubscriptionImmediately("sub_active_001", "idem-key-2");
+
+                verify(retrieved).cancel(
+                        ArgumentMatchers.any(com.stripe.param.SubscriptionCancelParams.class),
+                        ArgumentMatchers.any(com.stripe.net.RequestOptions.class));
+            }
+        }
+    }
 }

@@ -2,6 +2,7 @@ package com.mannschaft.app.proxy.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.proxy.dto.CreateProxyInputConsentRequest;
 import com.mannschaft.app.proxy.dto.ProxyInputConsentResponse;
 import com.mannschaft.app.proxy.dto.RevokeProxyInputConsentRequest;
@@ -72,6 +73,8 @@ public class ProxyInputConsentController {
      * 権限: DEPUTY_ADMIN以上（自分自身のデータのみ）。
      */
     @Operation(summary = "自分の有効代理入力同意書一覧")
+    @SelfScopedEndpoint("ProxyInputConsentService#getActiveConsentsForProxy は"
+        + "findActiveByProxyUserId(SecurityUtils.getCurrentUserId()) のみを参照する")
     @GetMapping("/api/v1/proxy-input-consents/active")
     public ApiResponse<List<ProxyInputConsentResponse>> getActiveConsents() {
         Long requestUserId = SecurityUtils.getCurrentUserId();

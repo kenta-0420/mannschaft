@@ -38,7 +38,8 @@ public class SnsFeedConfigController {
      */
     @GetMapping("/api/v1/teams/{teamId}/sns/feeds")
     public ApiResponse<List<SnsFeedConfigResponse>> listForTeam(@PathVariable Long teamId) {
-        return ApiResponse.of(snsFeedConfigService.findAll(ScopeType.TEAM, teamId));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(snsFeedConfigService.findAll(ScopeType.TEAM, teamId, userId));
     }
 
     /**
@@ -61,8 +62,9 @@ public class SnsFeedConfigController {
     public ApiResponse<SnsFeedConfigResponse> updateForTeam(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody UpdateSnsFeedConfigRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(
-                snsFeedConfigService.update(id, ScopeType.TEAM, teamId, request));
+                snsFeedConfigService.update(id, ScopeType.TEAM, teamId, userId, request));
     }
 
     /**
@@ -71,7 +73,8 @@ public class SnsFeedConfigController {
     @DeleteMapping("/api/v1/teams/{teamId}/sns/feeds/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteForTeam(@PathVariable Long teamId, @PathVariable Long id) {
-        snsFeedConfigService.delete(id, ScopeType.TEAM, teamId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        snsFeedConfigService.delete(id, ScopeType.TEAM, teamId, userId);
     }
 
     /**
@@ -80,7 +83,8 @@ public class SnsFeedConfigController {
     @GetMapping("/api/v1/teams/{teamId}/sns/feeds/{id}/preview")
     public ApiResponse<SnsFeedPreviewResponse> previewForTeam(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ApiResponse.of(snsFeedConfigService.preview(id, ScopeType.TEAM, teamId));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(snsFeedConfigService.preview(id, ScopeType.TEAM, teamId, userId));
     }
 
     // ─── 組織 ───
@@ -90,7 +94,8 @@ public class SnsFeedConfigController {
      */
     @GetMapping("/api/v1/organizations/{orgId}/sns/feeds")
     public ApiResponse<List<SnsFeedConfigResponse>> listForOrg(@PathVariable Long orgId) {
-        return ApiResponse.of(snsFeedConfigService.findAll(ScopeType.ORGANIZATION, orgId));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(snsFeedConfigService.findAll(ScopeType.ORGANIZATION, orgId, userId));
     }
 
     /**
@@ -113,8 +118,9 @@ public class SnsFeedConfigController {
     public ApiResponse<SnsFeedConfigResponse> updateForOrg(
             @PathVariable Long orgId, @PathVariable Long id,
             @Valid @RequestBody UpdateSnsFeedConfigRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(
-                snsFeedConfigService.update(id, ScopeType.ORGANIZATION, orgId, request));
+                snsFeedConfigService.update(id, ScopeType.ORGANIZATION, orgId, userId, request));
     }
 
     /**
@@ -123,7 +129,8 @@ public class SnsFeedConfigController {
     @DeleteMapping("/api/v1/organizations/{orgId}/sns/feeds/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteForOrg(@PathVariable Long orgId, @PathVariable Long id) {
-        snsFeedConfigService.delete(id, ScopeType.ORGANIZATION, orgId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        snsFeedConfigService.delete(id, ScopeType.ORGANIZATION, orgId, userId);
     }
 
     /**
@@ -132,6 +139,7 @@ public class SnsFeedConfigController {
     @GetMapping("/api/v1/organizations/{orgId}/sns/feeds/{id}/preview")
     public ApiResponse<SnsFeedPreviewResponse> previewForOrg(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ApiResponse.of(snsFeedConfigService.preview(id, ScopeType.ORGANIZATION, orgId));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(snsFeedConfigService.preview(id, ScopeType.ORGANIZATION, orgId, userId));
     }
 }

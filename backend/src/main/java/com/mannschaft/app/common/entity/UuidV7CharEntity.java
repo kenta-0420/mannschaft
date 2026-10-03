@@ -1,10 +1,13 @@
 package com.mannschaft.app.common.entity;
 
-import jakarta.persistence.GeneratedValue;
+import com.mannschaft.app.common.UuidV7;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PrePersist;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
 import java.util.Objects;
@@ -28,14 +31,21 @@ import java.util.UUID;
  * 本クラスは既に {@code CHAR(36)} で main にマージされているテーブル群を救うための
  * 互換層であり、新規での採用は推奨しない。</p>
  */
+@SuperBuilder(toBuilder = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @MappedSuperclass
 public abstract class UuidV7CharEntity {
 
     @Id
-    @GeneratedValue
-    @UuidGenerator(style = UuidGenerator.Style.TIME)
     @JdbcTypeCode(SqlTypes.CHAR)
     private UUID id;
+
+    @PrePersist
+    protected void assignId() {
+        if (id == null) {
+            id = UuidV7.generate();
+        }
+    }
 
     public UUID getId() {
         return id;

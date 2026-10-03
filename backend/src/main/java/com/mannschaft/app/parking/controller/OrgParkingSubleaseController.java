@@ -4,6 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.parking.ParkingScopeType;
 import com.mannschaft.app.parking.dto.*;
+import com.mannschaft.app.parking.service.ParkingAccessGuard;
 import com.mannschaft.app.parking.service.ParkingSpaceService;
 import com.mannschaft.app.parking.service.ParkingSubleaseService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +32,7 @@ public class OrgParkingSubleaseController {
 
     private final ParkingSubleaseService subleaseService;
     private final ParkingSpaceService spaceService;
+    private final ParkingAccessGuard parkingAccessGuard;
 
     private static final String SCOPE_TYPE = ParkingScopeType.ORGANIZATION.name();
 
@@ -41,6 +43,7 @@ public class OrgParkingSubleaseController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
         Page<SubleaseResponse> result = subleaseService.list(spaceIds, status,
                 PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "createdAt")));
@@ -54,6 +57,7 @@ public class OrgParkingSubleaseController {
     public ResponseEntity<ApiResponse<SubleaseResponse>> create(
             @PathVariable Long organizationId,
             @Valid @RequestBody CreateSubleaseRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
         SubleaseResponse result = subleaseService.create(spaceIds, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
@@ -63,6 +67,7 @@ public class OrgParkingSubleaseController {
     @Operation(summary = "組織サブリース詳細")
     public ResponseEntity<ApiResponse<SubleaseDetailResponse>> getDetail(
             @PathVariable Long organizationId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
         SubleaseDetailResponse result = subleaseService.getDetail(spaceIds, id);
         return ResponseEntity.ok(ApiResponse.of(result));
@@ -73,6 +78,7 @@ public class OrgParkingSubleaseController {
     public ResponseEntity<ApiResponse<SubleaseResponse>> update(
             @PathVariable Long organizationId, @PathVariable Long id,
             @Valid @RequestBody UpdateSubleaseRequest request) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
         SubleaseResponse result = subleaseService.update(spaceIds, id, request);
         return ResponseEntity.ok(ApiResponse.of(result));
@@ -81,6 +87,7 @@ public class OrgParkingSubleaseController {
     @DeleteMapping("/{id}")
     @Operation(summary = "組織サブリース削除")
     public ResponseEntity<Void> delete(@PathVariable Long organizationId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
         subleaseService.delete(spaceIds, id);
         return ResponseEntity.noContent().build();
@@ -91,6 +98,7 @@ public class OrgParkingSubleaseController {
     public ResponseEntity<ApiResponse<SubleaseApplicationResponse>> apply(
             @PathVariable Long organizationId, @PathVariable Long id,
             @Valid @RequestBody ApplySubleaseRequest request) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
         SubleaseApplicationResponse result = subleaseService.apply(spaceIds, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(result));
@@ -101,6 +109,7 @@ public class OrgParkingSubleaseController {
     public ResponseEntity<ApiResponse<SubleaseDetailResponse>> approve(
             @PathVariable Long organizationId, @PathVariable Long id,
             @Valid @RequestBody ApproveSubleaseRequest request) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
         SubleaseDetailResponse result = subleaseService.approve(spaceIds, id, request);
         return ResponseEntity.ok(ApiResponse.of(result));
@@ -110,6 +119,7 @@ public class OrgParkingSubleaseController {
     @Operation(summary = "組織サブリース終了")
     public ResponseEntity<ApiResponse<SubleaseDetailResponse>> terminate(
             @PathVariable Long organizationId, @PathVariable Long id) {
+        parkingAccessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
         SubleaseDetailResponse result = subleaseService.terminate(spaceIds, id);
         return ResponseEntity.ok(ApiResponse.of(result));
@@ -121,6 +131,7 @@ public class OrgParkingSubleaseController {
             @PathVariable Long organizationId, @PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        parkingAccessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<Long> spaceIds = spaceService.getSpaceIds(SCOPE_TYPE, organizationId);
         Page<SubleasePaymentResponse> result = subleaseService.getPayments(spaceIds, id,
                 PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "createdAt")));

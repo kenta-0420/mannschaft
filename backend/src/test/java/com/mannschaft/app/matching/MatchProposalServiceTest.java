@@ -1,11 +1,14 @@
 package com.mannschaft.app.matching;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.matching.dto.AcceptProposalRequest;
 import com.mannschaft.app.matching.dto.AcceptProposalResponse;
+import com.mannschaft.app.matching.dto.AgreeCancelResponse;
 import com.mannschaft.app.matching.dto.CancelProposalRequest;
 import com.mannschaft.app.matching.dto.CreateProposalRequest;
 import com.mannschaft.app.matching.dto.ProposalCreateResponse;
+import com.mannschaft.app.matching.dto.ProposalResponse;
 import com.mannschaft.app.matching.dto.ProposalStatusResponse;
 import com.mannschaft.app.matching.entity.MatchProposalEntity;
 import com.mannschaft.app.matching.entity.MatchRequestEntity;
@@ -22,6 +25,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +41,12 @@ import static org.mockito.Mockito.verify;
 
 /**
  * {@link MatchProposalService} の単体テスト。
+ *
+ * <p>認可根治（IDOR/所有権）反映後の契約: 承諾/拒否/取り下げ/キャンセル/合意承認は、Controller から渡される
+ * actor（{@code currentUserId}）に対し {@code accessControlService.isAdminOrAbove(actor, <対象チーム>, "TEAM")}
+ * が true の場合のみ許可する（従来の {@code <対象チーム>.equals(teamId)} という userID≠teamID の誤比較を撤廃）。
+ * 対象チームは、承諾/拒否＝募集チーム、取り下げ＝応募チーム、キャンセル＝募集チーム or 応募チーム、
+ * 合意承認＝キャンセルした側の相手チーム。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("MatchProposalService 単体テスト")
@@ -49,6 +62,8 @@ class MatchProposalServiceTest {
     private NgTeamRepository ngTeamRepository;
     @Mock
     private MatchingMapper matchingMapper;
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private MatchProposalService service;
@@ -57,6 +72,8 @@ class MatchProposalServiceTest {
     private static final Long OTHER_TEAM_ID = 2L;
     private static final Long REQUEST_ID = 10L;
     private static final Long PROPOSAL_ID = 20L;
+    /** 操作ユーザー（＝認証プリンシパル）。teamId とは別物であることを明示するため異なる値にする。 */
+    private static final Long ACTOR_ID = 500L;
 
     private MatchRequestEntity createOpenRequest() {
         return MatchRequestEntity.builder()
@@ -64,6 +81,56 @@ class MatchProposalServiceTest {
                 .title("テスト募集")
                 .status(MatchRequestStatus.OPEN)
                 .build();
+    }
+
+    @Nested
+    @DisplayName("listProposals — 認可（募集チームの所属者のみ・応募者一覧は私的情報）")
+    class ListProposals {
+
+        @Test
+        @DisplayName("異常系: 募集チームに所属しないユーザーは応募一覧を閲覧不可（越境は存在秘匿のため 404 相当）")
+        void 非所属は閲覧不可() {
+            // Given: 募集チーム=TEAM_ID。actor は所属者でも SYSTEM_ADMIN でもない（未スタブ＝false）。
+            MatchRequestEntity request = MatchRequestEntity.builder()
+                    .teamId(TEAM_ID).title("募集").status(MatchRequestStatus.OPEN).build();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+
+            // When / Then
+            assertThatThrownBy(() -> service.listProposals(REQUEST_ID, ACTOR_ID, PageRequest.of(0, 20)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        @Test
+        @DisplayName("正常系: 募集チームの所属者は応募一覧を閲覧できる")
+        void 所属者は閲覧可() {
+            // Given
+            Pageable pageable = PageRequest.of(0, 20);
+            MatchRequestEntity request = MatchRequestEntity.builder()
+                    .teamId(TEAM_ID).title("募集").status(MatchRequestStatus.OPEN).build();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            given(accessControlService.isMember(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(proposalRepository.findByRequestIdOrderByCreatedAtDesc(REQUEST_ID, pageable))
+                    .willReturn(new PageImpl<>(List.<MatchProposalEntity>of()));
+
+            // When
+            Page<ProposalResponse> result = service.listProposals(REQUEST_ID, ACTOR_ID, pageable);
+
+            // Then
+            assertThat(result.getContent()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("異常系: 募集が見つからない場合は 404 相当")
+        void 募集不存在() {
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.listProposals(REQUEST_ID, ACTOR_ID, PageRequest.of(0, 20)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
+        }
     }
 
     @Nested
@@ -186,11 +253,11 @@ class MatchProposalServiceTest {
     }
 
     @Nested
-    @DisplayName("acceptProposal")
+    @DisplayName("acceptProposal — 認可（募集チーム管理者）")
     class AcceptProposal {
 
         @Test
-        @DisplayName("正常系: 応募承諾でマッチング成立")
+        @DisplayName("正常系: 募集チーム管理者の承諾でマッチング成立")
         void 応募承諾成功() {
             // Given
             MatchProposalEntity proposal = MatchProposalEntity.builder()
@@ -203,6 +270,7 @@ class MatchProposalServiceTest {
                     .build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(request));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(proposalRepository.findByRequestIdAndStatus(any(), any())).willReturn(List.of());
             given(proposalRepository.save(any())).willReturn(proposal);
             given(requestRepository.save(any())).willReturn(request);
@@ -210,7 +278,7 @@ class MatchProposalServiceTest {
             AcceptProposalRequest acceptRequest = new AcceptProposalRequest(null, null, null, null, null);
 
             // When
-            AcceptProposalResponse result = service.acceptProposal(PROPOSAL_ID, TEAM_ID, acceptRequest);
+            AcceptProposalResponse result = service.acceptProposal(PROPOSAL_ID, ACTOR_ID, acceptRequest);
 
             // Then
             assertThat(result).isNotNull();
@@ -218,9 +286,9 @@ class MatchProposalServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 権限なし（募集チーム以外）")
+        @DisplayName("異常系: 募集チーム管理者でないユーザーは承諾不可（越境は存在秘匿のため 404 相当）")
         void 権限なし() {
-            // Given
+            // Given: actor は募集チーム(OTHER_TEAM_ID)の管理者ではない（未スタブ＝false）
             MatchProposalEntity proposal = MatchProposalEntity.builder()
                     .requestId(REQUEST_ID)
                     .proposingTeamId(OTHER_TEAM_ID)
@@ -233,7 +301,7 @@ class MatchProposalServiceTest {
             given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(request));
 
             // When & Then
-            assertThatThrownBy(() -> service.acceptProposal(PROPOSAL_ID, TEAM_ID, null))
+            assertThatThrownBy(() -> service.acceptProposal(PROPOSAL_ID, ACTOR_ID, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
@@ -241,29 +309,27 @@ class MatchProposalServiceTest {
     }
 
     @Nested
-    @DisplayName("rejectProposal")
+    @DisplayName("rejectProposal — 認可（募集チーム管理者）")
     class RejectProposal {
 
         @Test
-        @DisplayName("異常系: PENDINGでない応募の拒否はエラー")
-        void PENDING以外拒否エラー() {
+        @DisplayName("正常系: 募集チーム管理者は応募を拒否できる")
+        void 拒否成功() {
             // Given
             MatchProposalEntity proposal = MatchProposalEntity.builder()
                     .requestId(REQUEST_ID)
                     .proposingTeamId(OTHER_TEAM_ID)
                     .build();
-            // simulate ACCEPTED status via reflection or mock
             MatchRequestEntity request = MatchRequestEntity.builder()
                     .teamId(TEAM_ID)
                     .build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
-
-            // proposal defaults to PENDING, so this should work
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(proposalRepository.save(any())).willReturn(proposal);
 
             // When
-            ProposalStatusResponse result = service.rejectProposal(PROPOSAL_ID, TEAM_ID, "不適合");
+            ProposalStatusResponse result = service.rejectProposal(PROPOSAL_ID, ACTOR_ID, "不適合");
 
             // Then
             assertThat(result.getStatus()).isEqualTo("REJECTED");
@@ -271,13 +337,13 @@ class MatchProposalServiceTest {
     }
 
     @Nested
-    @DisplayName("withdrawProposal")
+    @DisplayName("withdrawProposal — 認可（応募チーム管理者）")
     class WithdrawProposal {
 
         @Test
-        @DisplayName("異常系: 応募チーム以外の取り下げはエラー")
+        @DisplayName("異常系: 応募チーム管理者でないユーザーは取り下げ不可（越境は存在秘匿のため 404 相当）")
         void 権限なし取り下げ() {
-            // Given
+            // Given: proposal.proposingTeamId=OTHER_TEAM_ID の応募チーム管理者ではない（未スタブ＝false）
             MatchProposalEntity proposal = MatchProposalEntity.builder()
                     .requestId(REQUEST_ID)
                     .proposingTeamId(OTHER_TEAM_ID)
@@ -285,7 +351,7 @@ class MatchProposalServiceTest {
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
 
             // When & Then
-            assertThatThrownBy(() -> service.withdrawProposal(PROPOSAL_ID, TEAM_ID, null))
+            assertThatThrownBy(() -> service.withdrawProposal(PROPOSAL_ID, ACTOR_ID, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
@@ -293,7 +359,7 @@ class MatchProposalServiceTest {
     }
 
     @Nested
-    @DisplayName("agreeCancellation")
+    @DisplayName("agreeCancellation — 認可（相手チーム管理者）")
     class AgreeCancellation {
 
         @Test
@@ -307,19 +373,68 @@ class MatchProposalServiceTest {
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
 
             // When & Then - status is PENDING so should throw INVALID_PROPOSAL_STATUS
-            assertThatThrownBy(() -> service.agreeCancellation(PROPOSAL_ID, TEAM_ID))
+            assertThatThrownBy(() -> service.agreeCancellation(PROPOSAL_ID, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.INVALID_PROPOSAL_STATUS));
         }
+
+        @Test
+        @DisplayName("正常系: キャンセルした相手チームの管理者は合意承認できる")
+        void 合意承認成功() {
+            // Given: 募集チーム(TEAM_ID)がキャンセル → 応募チーム(OTHER_TEAM_ID)の管理者が承認
+            MatchProposalEntity proposal = MatchProposalEntity.builder()
+                    .requestId(REQUEST_ID).proposingTeamId(OTHER_TEAM_ID).build();
+            proposal.accept();
+            proposal.cancel(TEAM_ID, "解散のため", true); // CANCELLED / MUTUAL_PENDING / cancelledBy=TEAM_ID
+            MatchRequestEntity request = MatchRequestEntity.builder()
+                    .teamId(TEAM_ID).title("募集").activityType(ActivityType.PRACTICE)
+                    .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
+            given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            // 相手チーム＝応募チーム(OTHER_TEAM_ID)の管理者
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(true);
+            given(proposalRepository.save(any())).willReturn(proposal);
+            given(requestRepository.save(any())).willReturn(request);
+
+            // When
+            AgreeCancelResponse result = service.agreeCancellation(PROPOSAL_ID, ACTOR_ID);
+
+            // Then
+            assertThat(result.getCancellationType()).isEqualTo("MUTUAL");
+        }
+
+        @Test
+        @DisplayName("異常系: キャンセルを実行した側の管理者は合意承認できない")
+        void 自分のキャンセルは承認不可() {
+            // Given: 募集チーム(TEAM_ID)がキャンセル → 同じ募集チームの管理者が承認しようとする
+            MatchProposalEntity proposal = MatchProposalEntity.builder()
+                    .requestId(REQUEST_ID).proposingTeamId(OTHER_TEAM_ID).build();
+            proposal.accept();
+            proposal.cancel(TEAM_ID, "解散のため", true);
+            MatchRequestEntity request = MatchRequestEntity.builder()
+                    .teamId(TEAM_ID).title("募集").activityType(ActivityType.PRACTICE)
+                    .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
+            given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            // 相手チーム(OTHER_TEAM_ID)の管理者ではない一方、キャンセルした側(TEAM_ID)の管理者
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(false);
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            // When / Then
+            assertThatThrownBy(() -> service.agreeCancellation(PROPOSAL_ID, ACTOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(MatchingErrorCode.CANNOT_AGREE_OWN_CANCEL));
+        }
     }
 
     @Nested
-    @DisplayName("withdrawProposal")
+    @DisplayName("withdrawProposal — 正常系/ステータス")
     class WithdrawProposalAdditional {
 
         @Test
-        @DisplayName("正常系: 応募取り下げ成功")
+        @DisplayName("正常系: 応募チーム管理者は取り下げできる")
         void 取り下げ成功() {
             // Given
             MatchProposalEntity proposal = MatchProposalEntity.builder()
@@ -332,19 +447,20 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.OPEN).prefectureCode("13")
                     .build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(proposalRepository.save(any())).willReturn(proposal);
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
             given(requestRepository.save(any())).willReturn(request);
 
             // When
-            ProposalStatusResponse result = service.withdrawProposal(PROPOSAL_ID, TEAM_ID, "辞退します");
+            ProposalStatusResponse result = service.withdrawProposal(PROPOSAL_ID, ACTOR_ID, "辞退します");
 
             // Then
             assertThat(result.getStatus()).isEqualTo("WITHDRAWN");
         }
 
         @Test
-        @DisplayName("異常系: PENDING以外の応募は取り下げ不可")
+        @DisplayName("異常系: PENDING以外の応募は取り下げ不可（認可通過後）")
         void PENDING以外取り下げ不可() {
             // Given
             MatchProposalEntity proposal = MatchProposalEntity.builder()
@@ -352,9 +468,10 @@ class MatchProposalServiceTest {
             // Set status to ACCEPTED via accept()
             proposal.accept();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When / Then
-            assertThatThrownBy(() -> service.withdrawProposal(PROPOSAL_ID, TEAM_ID, null))
+            assertThatThrownBy(() -> service.withdrawProposal(PROPOSAL_ID, ACTOR_ID, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.INVALID_PROPOSAL_STATUS));
@@ -362,11 +479,11 @@ class MatchProposalServiceTest {
     }
 
     @Nested
-    @DisplayName("cancelProposal")
+    @DisplayName("cancelProposal — 認可（募集チーム or 応募チーム管理者）")
     class CancelProposal {
 
         @Test
-        @DisplayName("正常系: キャンセル成功（一方的）")
+        @DisplayName("正常系: 募集チーム管理者はキャンセルできる（一方的）")
         void キャンセル成功_一方的() {
             // Given
             MatchProposalEntity proposal = MatchProposalEntity.builder()
@@ -377,11 +494,12 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.MATCHED).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(proposalRepository.save(any())).willReturn(proposal);
             given(requestRepository.save(any())).willReturn(request);
 
             // When
-            ProposalStatusResponse result = service.cancelProposal(PROPOSAL_ID, TEAM_ID,
+            ProposalStatusResponse result = service.cancelProposal(PROPOSAL_ID, ACTOR_ID,
                     new CancelProposalRequest("解散のため", false));
 
             // Then
@@ -397,7 +515,7 @@ class MatchProposalServiceTest {
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
 
             // When / Then
-            assertThatThrownBy(() -> service.cancelProposal(PROPOSAL_ID, TEAM_ID,
+            assertThatThrownBy(() -> service.cancelProposal(PROPOSAL_ID, ACTOR_ID,
                     new CancelProposalRequest("理由", false)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
@@ -405,9 +523,9 @@ class MatchProposalServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 募集・応募チーム以外はキャンセル不可")
+        @DisplayName("異常系: 募集・応募いずれのチーム管理者でもないユーザーはキャンセル不可（越境は存在秘匿のため 404 相当）")
         void 権限なしキャンセル不可() {
-            // Given
+            // Given: 募集チーム=999, 応募チーム=OTHER_TEAM_ID のいずれの管理者でもない（未スタブ＝false）
             MatchProposalEntity proposal = MatchProposalEntity.builder()
                     .requestId(REQUEST_ID).proposingTeamId(OTHER_TEAM_ID).build();
             proposal.accept();
@@ -418,7 +536,7 @@ class MatchProposalServiceTest {
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
 
             // When / Then
-            assertThatThrownBy(() -> service.cancelProposal(PROPOSAL_ID, TEAM_ID,
+            assertThatThrownBy(() -> service.cancelProposal(PROPOSAL_ID, ACTOR_ID,
                     new CancelProposalRequest("理由", false)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
@@ -427,13 +545,13 @@ class MatchProposalServiceTest {
     }
 
     @Nested
-    @DisplayName("rejectProposal")
+    @DisplayName("rejectProposal — 認可/ステータス")
     class RejectProposalAdditional {
 
         @Test
-        @DisplayName("異常系: 権限なしで拒否不可")
+        @DisplayName("異常系: 募集チーム管理者でないユーザーは拒否不可（越境は存在秘匿のため 404 相当）")
         void 権限なし拒否不可() {
-            // Given
+            // Given: 募集チーム=999 の管理者ではない（未スタブ＝false）
             MatchProposalEntity proposal = MatchProposalEntity.builder()
                     .requestId(REQUEST_ID).proposingTeamId(OTHER_TEAM_ID).build();
             MatchRequestEntity request = MatchRequestEntity.builder()
@@ -443,14 +561,14 @@ class MatchProposalServiceTest {
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
 
             // When / Then
-            assertThatThrownBy(() -> service.rejectProposal(PROPOSAL_ID, TEAM_ID, "不適合"))
+            assertThatThrownBy(() -> service.rejectProposal(PROPOSAL_ID, ACTOR_ID, "不適合"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION));
         }
 
         @Test
-        @DisplayName("異常系: PENDING以外の応募は拒否不可")
+        @DisplayName("異常系: PENDING以外の応募は拒否不可（認可通過後）")
         void PENDING以外拒否不可() {
             // Given
             MatchProposalEntity proposal = MatchProposalEntity.builder()
@@ -461,9 +579,10 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When / Then
-            assertThatThrownBy(() -> service.rejectProposal(PROPOSAL_ID, TEAM_ID, "不適合"))
+            assertThatThrownBy(() -> service.rejectProposal(PROPOSAL_ID, ACTOR_ID, "不適合"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.INVALID_PROPOSAL_STATUS));
@@ -527,7 +646,7 @@ class MatchProposalServiceTest {
     class AcceptProposalAdditional {
 
         @Test
-        @DisplayName("異常系: 既にMATCHED状態の募集への承諾はエラー")
+        @DisplayName("異常系: 既にMATCHED状態の募集への承諾はエラー（認可通過後）")
         void MATCHED状態承諾エラー() {
             // Given
             MatchProposalEntity proposal = MatchProposalEntity.builder()
@@ -537,16 +656,17 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.MATCHED).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(request));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
-            assertThatThrownBy(() -> service.acceptProposal(PROPOSAL_ID, TEAM_ID, null))
+            assertThatThrownBy(() -> service.acceptProposal(PROPOSAL_ID, ACTOR_ID, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.REQUEST_ALREADY_MATCHED));
         }
 
         @Test
-        @DisplayName("異常系: PENDING以外の応募は承諾不可")
+        @DisplayName("異常系: PENDING以外の応募は承諾不可（認可通過後）")
         void PENDING以外承諾不可() {
             // Given
             MatchProposalEntity proposal = MatchProposalEntity.builder()
@@ -557,9 +677,10 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(request));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then
-            assertThatThrownBy(() -> service.acceptProposal(PROPOSAL_ID, TEAM_ID, null))
+            assertThatThrownBy(() -> service.acceptProposal(PROPOSAL_ID, ACTOR_ID, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.INVALID_PROPOSAL_STATUS));

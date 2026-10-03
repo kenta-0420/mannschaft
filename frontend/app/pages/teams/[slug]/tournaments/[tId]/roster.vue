@@ -174,9 +174,11 @@ const isLocked = computed(() => {
   return roster.value.locked
 })
 
+const { formatDateTime } = useDatetime()
+
 const deadlineLabel = computed(() => {
   if (!roster.value?.rosterDeadline) return t('tournament.roster.deadline_none')
-  return new Date(roster.value.rosterDeadline).toLocaleString()
+  return formatDateTime(roster.value.rosterDeadline)
 })
 
 // ===== 初期化 =====
@@ -190,8 +192,7 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-3xl">
     <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamSlug}/tournaments`" :label="$t('tournament.roster.title')" />
-      <PageHeader :title="$t('tournament.roster.title')" />
+      <PageHeader :title="$t('tournament.roster.title')" :back-to="`/teams/${teamSlug}/tournaments`" :back-label="$t('tournament.roster.title')" />
     </div>
 
     <!-- 試合未選択の場合 -->

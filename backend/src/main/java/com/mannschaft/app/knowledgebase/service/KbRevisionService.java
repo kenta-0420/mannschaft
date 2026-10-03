@@ -33,10 +33,13 @@ public class KbRevisionService {
     /**
      * ページのリビジョン一覧を取得する。
      * ADMIN またはページ作成者のみ取得可能。
+     *
+     * @param scopeType ページが属するべきスコープ種別（BOLA是正: pageId がこのscope配下か束縛検証する）
+     * @param scopeId   スコープID
      */
-    public ApiResponse<List<KbPageRevisionEntity>> getRevisions(Long pageId, Long userId,
-                                                                 String userRole) {
-        KbPageEntity page = findPage(pageId);
+    public ApiResponse<List<KbPageRevisionEntity>> getRevisions(Long pageId, String scopeType, Long scopeId,
+                                                                 Long userId, String userRole) {
+        KbPageEntity page = findPage(pageId, scopeType, scopeId);
         checkRevisionAccess(page, userId, userRole);
 
         List<KbPageRevisionEntity> revisions =
@@ -48,10 +51,14 @@ public class KbRevisionService {
     /**
      * 指定リビジョンを取得する。
      * ADMIN またはページ作成者のみ取得可能。
+     *
+     * @param scopeType ページが属するべきスコープ種別（BOLA是正: pageId がこのscope配下か束縛検証する）
+     * @param scopeId   スコープID
      */
     public ApiResponse<KbPageRevisionEntity> getRevision(Long pageId, Long revisionId,
+                                                          String scopeType, Long scopeId,
                                                           Long userId, String userRole) {
-        KbPageEntity page = findPage(pageId);
+        KbPageEntity page = findPage(pageId, scopeType, scopeId);
         checkRevisionAccess(page, userId, userRole);
 
         KbPageRevisionEntity revision = revisionRepository.findByIdAndKbPageId(revisionId, pageId)
@@ -63,11 +70,15 @@ public class KbRevisionService {
     /**
      * リビジョンを復元する。
      * 現在の内容を新リビジョンとして保存してから、指定リビジョンのtitle/bodyで更新する。
+     *
+     * @param scopeType ページが属するべきスコープ種別（BOLA是正: pageId がこのscope配下か束縛検証する）
+     * @param scopeId   スコープID
      */
     @Transactional
     public ApiResponse<KbPageEntity> restoreRevision(Long pageId, Long revisionId,
+                                                      String scopeType, Long scopeId,
                                                       Long userId, String userRole) {
-        KbPageEntity page = findPage(pageId);
+        KbPageEntity page = findPage(pageId, scopeType, scopeId);
         checkRevisionAccess(page, userId, userRole);
 
         KbPageRevisionEntity targetRevision = revisionRepository.findByIdAndKbPageId(revisionId, pageId)
@@ -92,12 +103,9 @@ public class KbRevisionService {
         }
 
         // 指定リビジョンのtitle/bodyで現在ページを更新（versionはJPAが自動インクリメント）
-        KbPageEntity restored = page.toBuilder()
-                .title(targetRevision.getTitle())
-                .body(targetRevision.getBody())
-                .lastEditedBy(userId)
-                .build();
-        KbPageEntity saved = pageRepository.save(restored);
+        // managed entity を直接ミューテートして UPDATE する（toBuilder().build() は id を引き継がず INSERT 化するため使用禁止）
+        page.applyUpdate(targetRevision.getTitle(), targetRevision.getBody(), null, null, userId);
+        KbPageEntity saved = pageRepository.save(page);
 
         log.info("KBページをリビジョン {} から復元しました: pageId={}", revisionId, pageId);
         return ApiResponse.of(saved);
@@ -107,9 +115,19 @@ public class KbRevisionService {
     // ヘルパー
     // ========================================
 
-    private KbPageEntity findPage(Long pageId) {
-        return pageRepository.findByIdAndDeletedAtIsNull(pageId)
+    /**
+     * IDとスコープでページを取得する。見つからない、またはscope不一致（BOLA越境）の場合は
+     * 同一コード（KB_001）で例外をスローし存在を秘匿する。
+     * {@link KbPageService#findPageByIdAndScope} と同じ束縛ロジック。
+     */
+    private KbPageEntity findPage(Long pageId, String scopeType, Long scopeId) {
+        KbPageEntity page = pageRepository.findByIdAndDeletedAtIsNull(pageId)
                 .orElseThrow(() -> new BusinessException(KnowledgeBaseErrorCode.KB_001));
+
+        if (!page.getScopeType().equals(scopeType) || !page.getScopeId().equals(scopeId)) {
+            throw new BusinessException(KnowledgeBaseErrorCode.KB_001);
+        }
+        return page;
     }
 
     private void checkRevisionAccess(KbPageEntity page, Long userId, String userRole) {

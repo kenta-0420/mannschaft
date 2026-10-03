@@ -2,6 +2,7 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.MembershipScopeQueryService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.recruitment.RecruitmentDistributionTargetType;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
@@ -16,6 +17,7 @@ import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
 import com.mannschaft.app.recruitment.entity.RecruitmentDistributionTargetEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentDistributionTargetRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
@@ -32,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 
 import java.lang.reflect.Field;
@@ -44,7 +47,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -68,7 +74,11 @@ class RecruitmentListingServicePhase2Test {
     @Mock
     private RecruitmentParticipantHistoryRepository participantHistoryRepository;
     @Mock
+    private ApplicationEventPublisher eventPublisher;
+    @Mock
     private UserRoleRepository userRoleRepository;
+    @Mock
+    private MembershipScopeQueryService membershipScopeQueryService;
     @Mock
     private FollowRepository followRepository;
     @Mock
@@ -90,6 +100,15 @@ class RecruitmentListingServicePhase2Test {
     // F22.1 市 Phase 2 足場C: 札立て地域の team 既定補完
     @Mock
     private com.mannschaft.app.team.service.TeamService teamService;
+
+    // Issue #2715 ロットA: 通知本文の i18n 化で RecruitmentListingService に追加した依存。
+    // confirmApplication / publish(→sendPublishedNotifications) が受信者 locale 解決のため呼び出すので、
+    // スタブしないと Locale.forLanguageTag(null) の NPE になる（行単位 try/catch に飲まれて
+    // 「通知が飛ばない」という一見無関係な失敗に化ける罠があるため、削除せず必ず維持すること）。
+    @Mock
+    private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock
+    private org.springframework.context.MessageSource messageSource;
 
     @InjectMocks
     private RecruitmentListingService service;
@@ -149,10 +168,60 @@ class RecruitmentListingServicePhase2Test {
             given(listingRepository.save(any())).willReturn(savedListing);
             given(userRoleRepository.findUserIdsByScope(anyString(), anyLong())).willReturn(List.of(5L, 6L));
             given(mapper.toListingResponse(any())).willReturn(null);
+            // Issue #2715 / 検分是正: sendPublishedNotifications は notificationHelper.notifyAllLocalized(...)
+            // に委譲するのみで、locale 解決 (userLocaleCache) や本文組み立て (messageSource) は
+            // NotificationHelper 側 or bodyBuilder ラムダ内で行われる。notificationHelper 自体を
+            // @Mock にしているためラムダは呼ばれず、ここでのスタブは不要（UnnecessaryStubbingException）。
 
             service.publish(LISTING_ID, ADMIN_ID);
 
             verify(listingRepository).save(any());
+        }
+
+        /**
+         * PR #2764 検分是正の配線確認テスト。
+         *
+         * <p>訂正（2026-08-14）: 当初は「notify を受信者数分ループ直呼びすると F00 Phase F の
+         * 可視性フィルタを迂回し情報漏洩する退行」だと判断していたが、これは誤りだった。
+         * {@code NotificationService#createNotification} が単発経路でも {@code canView} による
+         * 可視性ガードを担保しているため、notify 直呼びループでも漏洩は発生しない。</p>
+         *
+         * <p>本テストが検証しているのは漏洩の有無ではなく、publish() が
+         * {@code notificationHelper.notify(...)} を直接ループ呼び出しせず、必ず
+         * {@code notifyAllLocalized(...)} を経由して配線されていることである。
+         * {@code notifyAllLocalized} は「受信者別 locale の一括本文組み立て」「locale の一括解決
+         * による N+1 回避」「前段フィルタで閲覧不可ユーザー分の無駄な本文組み立て・
+         * createNotification 呼び出しを省くこと」を目的として導入したものであり、本テストは
+         * その配線が保たれていることを確認する。前段フィルタの単体動作は
+         * {@code NotificationHelperTest#NotifyAllLocalized} で検証する。</p>
+         */
+        @Test
+        @DisplayName("配線確認: publish は notify を直接ループせず notifyAllLocalized を経由する")
+        void publish_通知はnotifyAllLocalized経由でありnotify直呼びしない() throws Exception {
+            RecruitmentListingEntity listing = buildDraftListing();
+            RecruitmentListingEntity savedListing = buildOpenListing();
+
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(distributionTargetRepository.countByListingId(LISTING_ID)).willReturn(1);
+            given(distributionTargetRepository.findByListingId(LISTING_ID))
+                    .willReturn(List.of(buildTarget(RecruitmentDistributionTargetType.MEMBERS)));
+            given(listingRepository.save(any())).willReturn(savedListing);
+            given(userRoleRepository.findUserIdsByScope(anyString(), anyLong())).willReturn(List.of(5L, 6L));
+            given(mapper.toListingResponse(any())).willReturn(null);
+
+            service.publish(LISTING_ID, ADMIN_ID);
+
+            // notifyAllLocalized が sourceType=RECRUITMENT_LISTING で呼ばれること（前段フィルタが
+            // このソース種別で ReferenceType 解決できる前提の配線を検証する）。
+            verify(notificationHelper).notifyAllLocalized(
+                    eq(List.of(5L, 6L)),
+                    eq("RECRUITMENT_PUBLISHED"),
+                    eq("RECRUITMENT_LISTING"), eq(LISTING_ID),
+                    any(), any(), any(), any(),
+                    any());
+            // notify の受信者ループ直呼び（notifyAllLocalized 経由に一本化する前の形）が復活していないこと。
+            verify(notificationHelper, never()).notify(
+                    any(), eq("RECRUITMENT_PUBLISHED"), any(), any(), any(), any(), any(), any(), any(), any());
         }
     }
 
@@ -165,10 +234,13 @@ class RecruitmentListingServicePhase2Test {
     class ConfirmApplication {
 
         @Test
-        @DisplayName("APPLIED → CONFIRMED + リマインダー作成")
+        @DisplayName("有料募集の APPLIED → CONFIRMED + リマインダー作成 + 与信起票")
         void confirm_applied_success() throws Exception {
             RecruitmentParticipantEntity participant = buildParticipant(RecruitmentParticipantStatus.APPLIED);
             RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "paymentEnabled", true);
+            setField(listing, "price", 2000);
+            setField(listing, "payeeKind", "TEAM");
 
             given(participantRepository.findByIdForUpdate(PARTICIPANT_ID)).willReturn(Optional.of(participant));
             given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
@@ -176,11 +248,29 @@ class RecruitmentListingServicePhase2Test {
             given(listingRepository.incrementConfirmedAtomic(LISTING_ID)).willReturn(1);
             given(reminderRepository.save(any())).willReturn(null);
             given(mapper.toParticipantResponse(any())).willReturn(null);
+            // Issue #2715: RECRUITMENT_CONFIRMED 通知の受信者 locale 解決のためのスタブ。
+            given(userLocaleCache.getLocale(any())).willReturn("ja");
+            given(messageSource.getMessage(any(), any(), any(), any()))
+                    .willAnswer(invocation -> invocation.getArgument(2));
 
             service.confirmApplication(PARTICIPANT_ID, ADMIN_ID);
 
             verify(participantRepository).save(any());
             verify(reminderRepository).save(any());
+            verify(eventPublisher).publishEvent(argThat((Object event) -> {
+                if (!(event instanceof RecruitmentParticipantConfirmedEvent confirmedEvent)) {
+                    return false;
+                }
+                return LISTING_ID.equals(confirmedEvent.listingId())
+                        && PARTICIPANT_ID.equals(confirmedEvent.participantId())
+                        && USER_ID.equals(confirmedEvent.payerUserId())
+                        && "TEAM".equals(confirmedEvent.listingScopeType())
+                        && TEAM_ID.equals(confirmedEvent.listingScopeId())
+                        && "TEAM".equals(confirmedEvent.payeeKind())
+                        && confirmedEvent.payeeUserId() == null
+                        && confirmedEvent.faceAmount() == 2000L
+                        && listing.getStartAt().equals(confirmedEvent.serviceDate());
+            }));
         }
 
         @Test
@@ -205,6 +295,95 @@ class RecruitmentListingServicePhase2Test {
 
             assertThatThrownBy(() -> service.confirmApplication(PARTICIPANT_ID, ADMIN_ID))
                     .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("K1: 募集が TEAM/ORGANIZATION でない（PERSONAL）→ MARKET_404 ではなく LISTING_NOT_FOUND で DB 不変")
+        void confirm_personalListing_throwsListingNotFound() throws Exception {
+            RecruitmentParticipantEntity participant = buildParticipant(RecruitmentParticipantStatus.APPLIED);
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(participantRepository.findByIdForUpdate(PARTICIPANT_ID)).willReturn(Optional.of(participant));
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+
+            assertThatThrownBy(() -> service.confirmApplication(PARTICIPANT_ID, ADMIN_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+            verify(participantRepository, org.mockito.Mockito.never()).save(any());
+        }
+
+        @Test
+        @DisplayName("K1: 募集が消えていれば（論理削除・モデレーション非表示）LISTING_NOT_FOUND で DB 不変")
+        void confirm_listingGone_throwsListingNotFound() throws Exception {
+            RecruitmentParticipantEntity participant = buildParticipant(RecruitmentParticipantStatus.APPLIED);
+            given(participantRepository.findByIdForUpdate(PARTICIPANT_ID)).willReturn(Optional.of(participant));
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.confirmApplication(PARTICIPANT_ID, ADMIN_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+            verify(participantRepository, org.mockito.Mockito.never()).save(any());
+        }
+    }
+
+    // ========================================
+    // resolveConfirmScope - W4（認可の前の scope 解決）
+    // ========================================
+
+    @Nested
+    @DisplayName("resolveConfirmScope - W4 認可前の scope 解決")
+    class ResolveConfirmScope {
+
+        @Test
+        @DisplayName("参加者→募集をたどり、募集のスコープを返す（行ロックは取らない）")
+        void resolve_returnsScope() throws Exception {
+            given(participantRepository.findById(PARTICIPANT_ID))
+                    .willReturn(Optional.of(buildParticipant(RecruitmentParticipantStatus.APPLIED)));
+            given(listingRepository.findById(LISTING_ID)).willReturn(Optional.of(buildOpenListing()));
+
+            RecruitmentListingService.ConfirmScope scope = service.resolveConfirmScope(LISTING_ID, PARTICIPANT_ID);
+
+            assertThat(scope.scopeType()).isEqualTo(RecruitmentScopeType.TEAM);
+            assertThat(scope.scopeId()).isEqualTo(TEAM_ID);
+            verify(participantRepository, org.mockito.Mockito.never()).findByIdForUpdate(any());
+            verify(listingRepository, org.mockito.Mockito.never()).findByIdForUpdate(any());
+        }
+
+        @Test
+        @DisplayName("パスの listingId が参加者の募集と違えば LISTING_NOT_FOUND")
+        void resolve_pathListingMismatch_throws() throws Exception {
+            given(participantRepository.findById(PARTICIPANT_ID))
+                    .willReturn(Optional.of(buildParticipant(RecruitmentParticipantStatus.APPLIED)));
+
+            assertThatThrownBy(() -> service.resolveConfirmScope(LISTING_ID + 1, PARTICIPANT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("参加者不在・募集不在・PERSONAL はすべて LISTING_NOT_FOUND")
+        void resolve_missingOrPersonal_throws() throws Exception {
+            given(participantRepository.findById(PARTICIPANT_ID)).willReturn(Optional.empty());
+            assertThatThrownBy(() -> service.resolveConfirmScope(LISTING_ID, PARTICIPANT_ID))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+
+            given(participantRepository.findById(PARTICIPANT_ID))
+                    .willReturn(Optional.of(buildParticipant(RecruitmentParticipantStatus.APPLIED)));
+            given(listingRepository.findById(LISTING_ID)).willReturn(Optional.empty());
+            assertThatThrownBy(() -> service.resolveConfirmScope(LISTING_ID, PARTICIPANT_ID))
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
+
+            RecruitmentListingEntity personal = buildOpenListing();
+            setField(personal, "scopeType", RecruitmentScopeType.PERSONAL);
+            given(listingRepository.findById(LISTING_ID)).willReturn(Optional.of(personal));
+            assertThatThrownBy(() -> service.resolveConfirmScope(LISTING_ID, PARTICIPANT_ID))
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
         }
@@ -244,8 +423,8 @@ class RecruitmentListingServicePhase2Test {
                     FollowerType.USER, USER_ID, FollowerType.TEAM)).willReturn(List.of());
             given(followRepository.findFollowedIdsByFollowerAndType(
                     FollowerType.USER, USER_ID, FollowerType.ORGANIZATION)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
 
             List<RecruitmentFeedItemResponse> result = service.getMyFeed(USER_ID);
             assertThat(result).isEmpty();
@@ -258,8 +437,8 @@ class RecruitmentListingServicePhase2Test {
                     FollowerType.USER, USER_ID, FollowerType.TEAM)).willReturn(List.of(TEAM_ID));
             given(followRepository.findFollowedIdsByFollowerAndType(
                     FollowerType.USER, USER_ID, FollowerType.ORGANIZATION)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveTeamIds(USER_ID)).willReturn(List.of());
+            given(membershipScopeQueryService.findActiveOrganizationIds(USER_ID)).willReturn(List.of());
             given(listingRepository.findOpenByScopeIds(any(), any(Pageable.class)))
                     .willReturn(List.of());
             given(mapper.toFeedItemResponseList(any())).willReturn(List.of());

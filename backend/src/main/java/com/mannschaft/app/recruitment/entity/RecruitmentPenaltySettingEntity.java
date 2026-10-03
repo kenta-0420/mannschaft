@@ -57,7 +57,7 @@ public class RecruitmentPenaltySettingEntity {
 
     /** 異議申立可能期間（日）。 */
     @Column(name = "dispute_allowed_days", nullable = false)
-    private int disputeAllowedDays = 14;
+    private int disputeAllowedDays = 30;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

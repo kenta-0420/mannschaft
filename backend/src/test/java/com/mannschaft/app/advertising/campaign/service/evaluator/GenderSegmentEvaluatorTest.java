@@ -156,6 +156,30 @@ class GenderSegmentEvaluatorTest {
                 .isEqualTo(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
     }
 
+    @Test
+    @DisplayName("countUserIds: 正常値 → COUNT クエリで件数を返す")
+    void countUserIds_validValue_returnsCount() {
+        when(encryptionService.hmac("MALE")).thenReturn("hash_male");
+        when(encryptionService.hmac("FEMALE")).thenReturn("hash_female");
+        when(userRepository.countUserIdsByGenderHashIn(List.of("hash_male", "hash_female")))
+                .thenReturn(3L);
+
+        AdAudienceSegment seg = segment("{\"genders\":[\"MALE\",\"FEMALE\"]}");
+        long count = evaluator.countUserIds(seg);
+
+        assertThat(count).isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("countUserIds: 不正な enum 値 → resolveUserIds と同じ AD_AUDIENCE_INVALID")
+    void countUserIds_invalidValue_sameValidationAsResolve() {
+        AdAudienceSegment seg = segment("{\"genders\":[\"ALIEN\"]}");
+        assertThatThrownBy(() -> evaluator.countUserIds(seg))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
+    }
+
     private static AdAudienceSegment segment(String json) {
         AdAudienceSegment s = AdAudienceSegment.builder()
                 .campaignId(UUID.randomUUID())

@@ -104,11 +104,14 @@ useSeoPublicPage({
 })
 
 /** 投稿詳細リンクを生成する。scopeType に応じて公開チーム/組織の投稿詳細ページへ誘導する。 */
-function postDetailHref(post: PublicUserPostSummary): string {
-  const base = post.scopeType === 'TEAM'
-    ? `/public/teams/${post.scopeId}/posts/${post.postId}`
-    : `/public/organizations/${post.scopeId}/posts/${post.postId}`
-  return base
+function postDetailHref(post: PublicUserPostSummary): string | null {
+  if (post.scopeType === 'TEAM') {
+    return `/public/teams/${post.scopeId}/posts/${post.postId}`
+  }
+  // 組織の公開ページ URL は slug（数値 ID の URL は BE が不在扱いにする）。slug が無い＝公開されていない組織
+  return post.orgSlug
+    ? `/public/organizations/${encodeURIComponent(post.orgSlug)}/posts/${post.postId}`
+    : null
 }
 
 /** "YYYY-MM-DD" 形式の日付を年月表示に変換する（例: "2024年3月"）。 */
@@ -169,7 +172,7 @@ function formatMemberSince(dateStr: string): string {
           :key="post.postId"
           class="rounded-xl border border-surface-200 bg-surface-0 p-4 transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-800"
         >
-          <NuxtLink :to="postDetailHref(post)" class="block space-y-1">
+          <NuxtLink v-if="postDetailHref(post)" :to="postDetailHref(post)!" class="block space-y-1">
             <p class="font-medium text-primary">{{ post.title }}</p>
             <p class="text-xs text-surface-500">
               {{ post.scopeName }}
@@ -177,6 +180,15 @@ function formatMemberSince(dateStr: string): string {
               {{ dayjs.tz(post.createdAt, userTimezone).format('YYYY/MM/DD') }}
             </p>
           </NuxtLink>
+          <!-- 公開ページへ辿れない投稿（非公開組織の投稿など）はリンクを張らない -->
+          <div v-else class="block space-y-1">
+            <p class="font-medium text-primary">{{ post.title }}</p>
+            <p class="text-xs text-surface-500">
+              {{ post.scopeName }}
+              &middot;
+              {{ dayjs.tz(post.createdAt, userTimezone).format('YYYY/MM/DD') }}
+            </p>
+          </div>
         </li>
       </ul>
 

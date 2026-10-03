@@ -4,12 +4,14 @@ import com.mannschaft.app.family.repository.UserCareLinkRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.RoleService;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,10 +22,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 
+import java.util.Set;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link AccessControlService} の単体テスト。
@@ -50,6 +61,9 @@ class AccessControlServiceTest {
     @Mock
     private MembershipRepository membershipRepository;
 
+    @Mock
+    private OrganizationMembershipService organizationMembershipService;
+
     @InjectMocks
     private AccessControlService accessControlService;
 
@@ -60,6 +74,20 @@ class AccessControlServiceTest {
     private static final Long USER_ID = 1L;
     private static final Long SCOPE_ID = 10L;
     private static final Long ROLE_ID = 100L;
+
+    /**
+     * F09.14 で有効ユーザー・直接所属の確認がロール解決へ追加されたため、
+     * 旧来のロール単体テストでは共通して正常な所属を明示する。
+     * 非所属を検証するテストは各テスト内の明示スタブで上書きする。
+     */
+    @BeforeEach
+    void stubDefaultActiveMembership() {
+        lenient().doReturn(true).when(userRoleRepository).isActiveUser(anyLong());
+        lenient().doReturn(true).when(membershipRepository).existsActiveByUserAndScope(
+                anyLong(), any(ScopeType.class), anyLong());
+        lenient().doReturn(List.of()).when(membershipRepository).findActiveRoleKinds(
+                anyLong(), any(ScopeType.class), anyLong());
+    }
 
     private UserRoleEntity createUserRole(Long roleId) {
         return UserRoleEntity.builder()
@@ -198,6 +226,125 @@ class AccessControlServiceTest {
             given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
                     .willReturn(false);
             assertThat(accessControlService.isMember(USER_ID, SCOPE_ID, "ORGANIZATION")).isFalse();
+        }
+    }
+
+    // ========================================
+    // isMemberOrDescendant / checkMembershipOrDescendant（欠陥Z 根治）
+    // ========================================
+
+    @Nested
+    @DisplayName("isMemberOrDescendant / checkMembershipOrDescendant")
+    class IsMemberOrDescendant {
+
+        @Test
+        @DisplayName("ORGANIZATION: 直接所属メンバーはtrue（配下判定を呼ばずに短絡）")
+        void organization_直接所属はtrue() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(true);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION")).isTrue();
+            // 直接所属で短絡するため配下判定は呼ばれない
+            verifyNoInteractions(organizationMembershipService);
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION: 配下チームのみ所属MEMBERはtrue（応答母集団・純SUPPORTER除外版で救済）")
+        void organization_配下チームのみ所属メンバーはtrue() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(false);
+            // 3 引数版は includeSupporters=false 委譲（純 SUPPORTER 除外の配信母集団判定）。
+            given(organizationMembershipService.isInOrgDistributionAudience(SCOPE_ID, USER_ID, false))
+                    .willReturn(true);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION")).isTrue();
+            // checkMembershipOrDescendant も例外なし
+            accessControlService.checkMembershipOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION");
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION: 配下の純SUPPORTER（応答母集団に非該当）はfalse→checkで COMMON_002")
+        void organization_配下純SUPPORTERはfalse() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(false);
+            given(organizationMembershipService.isInOrgDistributionAudience(SCOPE_ID, USER_ID, false))
+                    .willReturn(false);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION")).isFalse();
+            assertThatThrownBy(() ->
+                    accessControlService.checkMembershipOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION: 組織にも配下にも無関係なユーザーはfalse→checkで COMMON_002")
+        void organization_無関係ユーザーはfalse() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(false);
+            given(organizationMembershipService.isInOrgDistributionAudience(SCOPE_ID, USER_ID, false))
+                    .willReturn(false);
+
+            assertThatThrownBy(() ->
+                    accessControlService.checkMembershipOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("TEAM: 挙動不変（配下概念を持ち込まない）— 直接所属はtrue・配下判定は呼ばない")
+        void team_直接所属はtrue配下判定呼ばない() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(true);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "TEAM")).isTrue();
+            verifyNoInteractions(organizationMembershipService);
+        }
+
+        @Test
+        @DisplayName("TEAM: 非メンバーはfalse（配下フォールバックを使わない・回帰ガード）→checkで COMMON_002")
+        void team_非メンバーはfalse配下フォールバックなし() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(false);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "TEAM")).isFalse();
+            assertThatThrownBy(() ->
+                    accessControlService.checkMembershipOrDescendant(USER_ID, SCOPE_ID, "TEAM"))
+                    .isInstanceOf(BusinessException.class);
+            // TEAM では配下判定（organization 越境窓口）を一切呼ばない
+            verifyNoInteractions(organizationMembershipService);
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION includeSupporters=true: 配下純SUPPORTERもトグル準拠で母集団に含まれる→true")
+        void organization_トグルON_配下純SUPPORTERはtrue() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(false);
+            // トグル ON（includeSupporters=true）の配信母集団判定を呼ぶ
+            given(organizationMembershipService.isInOrgDistributionAudience(SCOPE_ID, USER_ID, true))
+                    .willReturn(true);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION", true)).isTrue();
+            // 例外なし
+            accessControlService.checkMembershipOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION", true);
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION includeSupporters=false: トグルOFFなら配下純SUPPORTERは母集団外→false")
+        void organization_トグルOFF_配下純SUPPORTERはfalse() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(false);
+            given(organizationMembershipService.isInOrgDistributionAudience(SCOPE_ID, USER_ID, false))
+                    .willReturn(false);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION", false)).isFalse();
+            assertThatThrownBy(() ->
+                    accessControlService.checkMembershipOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION", false))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
         }
     }
 
@@ -513,6 +660,20 @@ class AccessControlServiceTest {
         }
 
         @Test
+        @DisplayName("正常系: スコープADMIN判定はプラットフォームロール解決に依存しない")
+        void checkAdminOrAbove_スコープADMINを直接評価() {
+            UserRoleEntity userRole = createUserRole(ROLE_ID);
+            RoleEntity role = createRole("ADMIN", 2);
+            given(userRoleRepository.findByUserIdAndTeamId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(userRole));
+            given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(role));
+
+            accessControlService.checkAdminOrAbove(USER_ID, SCOPE_ID, "TEAM");
+
+            verify(userRoleRepository, never()).existsSystemAdminByUserId(USER_ID);
+        }
+
+        @Test
         @DisplayName("異常系: MEMBERロールでCOMMON_002例外")
         void checkAdminOrAbove_MEMBERロール_COMMON002例外() {
             // Given
@@ -741,6 +902,15 @@ class AccessControlServiceTest {
     @DisplayName("F00.5 §8.3 memberships 統合: getRoleName / hasRoleOrAbove / resolveEffectiveRoleName")
     class MembershipRoleResolution {
 
+        @BeforeEach
+        void activeDirectMembershipIsDefaultForRoleResolution() {
+            lenient().when(userRoleRepository.isActiveUser(USER_ID)).thenReturn(true);
+            lenient().when(membershipRepository.existsActiveByUserAndScope(
+                    USER_ID, ScopeType.TEAM, SCOPE_ID)).thenReturn(true);
+            lenient().when(membershipRepository.existsActiveByUserAndScope(
+                    USER_ID, ScopeType.ORGANIZATION, SCOPE_ID)).thenReturn(true);
+        }
+
         private RoleEntity role(String name) {
             int priority = switch (name) {
                 case "SYSTEM_ADMIN" -> 1;
@@ -758,6 +928,25 @@ class AccessControlServiceTest {
                     .priority(priority)
                     .isSystem(true)
                     .build();
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN（プラットフォームロール）→ 組織未所属でもgetRoleName=SYSTEM_ADMIN")
+        void systemAdminは組織未所属でも最優先ロールになる() {
+            // Given: SYSTEM_ADMIN は team_id / organization_id がともに null のため、
+            // スコープ別 user_roles と memberships のどちらにも現れない。
+            given(userRoleRepository.existsSystemAdminByUserId(USER_ID)).willReturn(1L);
+            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(role("ADMIN")));
+
+            // When / Then: サイドバー等のスコープUIでもプラットフォーム権限を認識できる。
+            assertThat(accessControlService.getRoleName(USER_ID, SCOPE_ID, "ORGANIZATION"))
+                    .isEqualTo("SYSTEM_ADMIN");
+            assertThat(accessControlService.hasRoleOrAbove(
+                    USER_ID, SCOPE_ID, "ORGANIZATION", "ADMIN"))
+                    .isTrue();
+            verify(userRoleRepository, never())
+                    .findByUserIdAndOrganizationId(USER_ID, SCOPE_ID);
+            verifyNoInteractions(membershipRepository);
         }
 
         @Test
@@ -856,5 +1045,143 @@ class AccessControlServiceTest {
             assertThat(accessControlService.resolveEffectiveRoleName(USER_ID, SCOPE_ID, "TEAM")).isNull();
             assertThat(accessControlService.hasRoleOrAbove(USER_ID, SCOPE_ID, "TEAM", "SUPPORTER")).isFalse();
         }
+    }
+
+    // ========================================
+    // findAdminOrAboveScopeIds（ダッシュボード司令塔第二弾: 承認待ち横断集約の認可フィルタ）
+    // ========================================
+
+    @Nested
+    @DisplayName("findAdminOrAboveScopeIds")
+    /*
+        @DisplayName("非active userは直接membershipがあっても実効roleを返さない")
+    */
+    class FindAdminOrAboveScopeIds {
+
+        private static final Long ADMIN_ROLE_ID = 2L;
+        private static final Long DEPUTY_ROLE_ID = 3L;
+        private static final Long MEMBER_ROLE_ID = 4L;
+
+        private void stubAdminRoles() {
+            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(
+                    RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者")
+                            .priority(2).isSystem(true).build()));
+            given(roleRepository.findByName("DEPUTY_ADMIN")).willReturn(Optional.of(
+                    RoleEntity.builder().id(DEPUTY_ROLE_ID).name("DEPUTY_ADMIN").displayName("副管理者")
+                            .priority(3).isSystem(true).build()));
+        }
+
+        @Test
+        @DisplayName("AC-B1-2: ADMIN/DEPUTY_ADMINちょうどのスコープのみ含み、MEMBERのスコープは含まない")
+        void 認可境界_ADMINとDEPUTY_ADMINちょうどのみ含む() {
+            // Given
+            Long teamAdmin = 10L;
+            Long teamDeputy = 11L;
+            Long teamMember = 12L;
+            stubAdminRoles();
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of(
+                    UserRoleEntity.builder().id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).teamId(teamAdmin).build(),
+                    UserRoleEntity.builder().id(2L).userId(USER_ID).roleId(DEPUTY_ROLE_ID).teamId(teamDeputy).build(),
+                    UserRoleEntity.builder().id(3L).userId(USER_ID).roleId(MEMBER_ROLE_ID).teamId(teamMember).build()
+            ));
+
+            // When
+            Set<Long> result = accessControlService.findAdminOrAboveScopeIds(USER_ID, "TEAM");
+
+            // Then: ADMIN・DEPUTY_ADMIN ちょうどのスコープのみ含み、MEMBER のスコープは含まない
+            assertThat(result).containsExactlyInAnyOrder(teamAdmin, teamDeputy);
+            assertThat(result).doesNotContain(teamMember);
+        }
+
+        @Test
+        @DisplayName("AC-B1-1: 管理スコープが一つも無いユーザー（MEMBERのみ）は空集合")
+        void 管理スコープなし_空集合() {
+            // Given: 全て MEMBER ロールのみ所属
+            stubAdminRoles();
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of(
+                    UserRoleEntity.builder().id(1L).userId(USER_ID).roleId(MEMBER_ROLE_ID).teamId(SCOPE_ID).build()
+            ));
+
+            // When
+            Set<Long> result = accessControlService.findAdminOrAboveScopeIds(USER_ID, "TEAM");
+
+            // Then
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("正常系: ORGANIZATIONスコープでも同様にADMIN/DEPUTY_ADMINのみ含む")
+        void ORGANIZATIONスコープ_ADMIN系のみ含む() {
+            // Given
+            Long orgAdmin = 20L;
+            Long orgMember = 21L;
+            stubAdminRoles();
+            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of(
+                    UserRoleEntity.builder().id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(orgAdmin).build(),
+                    UserRoleEntity.builder().id(2L).userId(USER_ID).roleId(MEMBER_ROLE_ID).organizationId(orgMember).build()
+            ));
+
+            // When
+            Set<Long> result = accessControlService.findAdminOrAboveScopeIds(USER_ID, "ORGANIZATION");
+
+            // Then
+            assertThat(result).containsExactly(orgAdmin);
+        }
+
+        @Test
+        @DisplayName("AC-B1-5: スコープ数Nに依存せずuser_rolesクエリは1回・ロール名解決は定数回（N+1にならない）")
+        void 性能_N件でもクエリ定数回() {
+            // Given: 50 チームすべて ADMIN 所属
+            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(
+                    RoleEntity.builder().id(ADMIN_ROLE_ID).name("ADMIN").displayName("管理者")
+                            .priority(2).isSystem(true).build()));
+            given(roleRepository.findByName("DEPUTY_ADMIN")).willReturn(Optional.empty());
+
+            List<UserRoleEntity> manyRoles = new java.util.ArrayList<>();
+            for (long i = 1; i <= 50; i++) {
+                manyRoles.add(UserRoleEntity.builder()
+                        .id(i).userId(USER_ID).roleId(ADMIN_ROLE_ID).teamId(100L + i).build());
+            }
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(manyRoles);
+
+            // When
+            Set<Long> result = accessControlService.findAdminOrAboveScopeIds(USER_ID, "TEAM");
+
+            // Then
+            assertThat(result).hasSize(50);
+            // user_roles への問い合わせはスコープ数によらず1回のみ（N+1でない）
+            verify(userRoleRepository, times(1)).findByUserIdAndTeamIdIsNotNull(USER_ID);
+            // ロール名解決（ADMIN/DEPUTY_ADMIN）はスコープ数によらず1回ずつのみ
+            verify(roleRepository, times(1)).findByName("ADMIN");
+            verify(roleRepository, times(1)).findByName("DEPUTY_ADMIN");
+            // per-scope の単発問い合わせ経路は一切呼ばれない
+            verify(userRoleRepository, never()).findByUserIdAndTeamId(anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("異常系: TEAM/ORGANIZATION以外はIllegalArgumentException")
+        void 不正なスコープ種別_IllegalArgumentException() {
+            stubAdminRoles();
+            assertThatThrownBy(() -> accessControlService.findAdminOrAboveScopeIds(USER_ID, "PERSONAL"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Test
+    @DisplayName("F09.14 strict scope ADMIN only: ADMIN成功、DEPUTY/SYSTEM_ADMIN拒否")
+    void checkScopeAdminOnly_enforcesStrictAdmin() {
+        given(userRoleRepository.existsSystemAdminByUserId(USER_ID)).willReturn(0L);
+        given(userRoleRepository.findByUserIdAndTeamId(USER_ID, SCOPE_ID))
+                .willReturn(Optional.of(createUserRole(ROLE_ID)));
+        given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole("ADMIN", 2)));
+        accessControlService.checkScopeAdminOnly(USER_ID, SCOPE_ID, "TEAM");
+
+        given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole("DEPUTY_ADMIN", 3)));
+        assertThatThrownBy(() -> accessControlService.checkScopeAdminOnly(USER_ID, SCOPE_ID, "TEAM"))
+                .isInstanceOf(BusinessException.class);
+
+        given(userRoleRepository.existsSystemAdminByUserId(USER_ID)).willReturn(1L);
+        assertThatThrownBy(() -> accessControlService.checkScopeAdminOnly(USER_ID, SCOPE_ID, "TEAM"))
+                .isInstanceOf(BusinessException.class);
     }
 }

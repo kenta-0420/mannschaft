@@ -1,5 +1,6 @@
 package com.mannschaft.app.workflow;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.workflow.dto.CreateWorkflowTemplateRequest;
 import com.mannschaft.app.workflow.dto.TemplateFieldRequest;
@@ -52,6 +53,9 @@ class WorkflowTemplateServiceTest {
 
     @Mock
     private WorkflowMapper workflowMapper;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private WorkflowTemplateService workflowTemplateService;
@@ -107,7 +111,7 @@ class WorkflowTemplateServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When
-            workflowTemplateService.deleteTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID);
+            workflowTemplateService.deleteTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID, USER_ID);
 
             // Then
             assertThat(entity.getDeletedAt()).isNotNull();
@@ -122,7 +126,7 @@ class WorkflowTemplateServiceTest {
                     .willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> workflowTemplateService.deleteTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID))
+            assertThatThrownBy(() -> workflowTemplateService.deleteTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(WorkflowErrorCode.TEMPLATE_NOT_FOUND));
@@ -150,7 +154,7 @@ class WorkflowTemplateServiceTest {
             given(workflowMapper.toTemplateDetailResponse(entity, List.of(), List.of())).willReturn(response);
 
             // When
-            workflowTemplateService.activateTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID);
+            workflowTemplateService.activateTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID, USER_ID);
 
             // Then
             assertThat(entity.getIsActive()).isTrue();
@@ -177,7 +181,7 @@ class WorkflowTemplateServiceTest {
             given(workflowMapper.toTemplateDetailResponse(entity, List.of(), List.of())).willReturn(response);
 
             // When
-            workflowTemplateService.deactivateTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID);
+            workflowTemplateService.deactivateTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID, USER_ID);
 
             // Then
             assertThat(entity.getIsActive()).isFalse();
@@ -205,7 +209,7 @@ class WorkflowTemplateServiceTest {
             given(workflowMapper.toTemplateDetailResponse(any(), any(), any())).willReturn(response);
 
             // When
-            Page<WorkflowTemplateResponse> result = workflowTemplateService.listTemplates(SCOPE_TYPE, SCOPE_ID, pageable);
+            Page<WorkflowTemplateResponse> result = workflowTemplateService.listTemplates(SCOPE_TYPE, SCOPE_ID, USER_ID, pageable);
 
             // Then
             assertThat(result.getTotalElements()).isEqualTo(1);
@@ -273,7 +277,7 @@ class WorkflowTemplateServiceTest {
             given(workflowMapper.toTemplateDetailResponse(entity, List.of(), List.of())).willReturn(response);
 
             // When
-            WorkflowTemplateResponse result = workflowTemplateService.getTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID);
+            WorkflowTemplateResponse result = workflowTemplateService.getTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID, USER_ID);
 
             // Then
             assertThat(result.getName()).isEqualTo("承認フロー");
@@ -287,7 +291,7 @@ class WorkflowTemplateServiceTest {
                     .willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> workflowTemplateService.getTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID))
+            assertThatThrownBy(() -> workflowTemplateService.getTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(WorkflowErrorCode.TEMPLATE_NOT_FOUND));
@@ -329,7 +333,7 @@ class WorkflowTemplateServiceTest {
 
             // When
             WorkflowTemplateResponse result = workflowTemplateService.updateTemplate(
-                    SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID, request);
+                    SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID, USER_ID, request);
 
             // Then
             assertThat(result.getName()).isEqualTo("更新後フロー");
@@ -355,7 +359,7 @@ class WorkflowTemplateServiceTest {
 
             // When
             WorkflowTemplateResponse result = workflowTemplateService.updateTemplate(
-                    SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID, request);
+                    SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID, USER_ID, request);
 
             // Then
             assertThat(result.getName()).isEqualTo("シンプルフロー");

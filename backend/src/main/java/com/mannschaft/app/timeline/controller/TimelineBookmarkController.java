@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * タイムラインブックマークコントローラー。ブックマークの追加・削除・一覧取得APIを提供する。
@@ -44,7 +45,19 @@ public class TimelineBookmarkController {
 
     /**
      * ブックマークを削除する。
+     *
+     * <p><b>認可方式（{@link SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code bookmarkService.removeBookmark} 内部の
+     * {@code findByUserIdAndTimelinePostId(userId, postId)} が検索条件に
+     * {@code SecurityUtils.getCurrentUserId()} を束縛するため、他人のブックマークを
+     * 削除する経路が構造的に無い（TimelineBookmarkController#removeBookmark）。</p>
+     *
+     * <p>認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "bookmarkService.removeBookmark が findByUserIdAndTimelinePostId(userId, postId) で"
+                    + "SecurityUtils.getCurrentUserId() に束縛する"
+                    + "（TimelineBookmarkController#removeBookmark）")
     @DeleteMapping("/{postId}")
     @Operation(summary = "ブックマーク削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
@@ -55,7 +68,17 @@ public class TimelineBookmarkController {
 
     /**
      * ブックマーク一覧を取得する。
+     *
+     * <p><b>認可方式（{@link SelfScopedEndpoint} メソッド付与）</b>:
+     * {@code bookmarkService.getBookmarks} は {@code SecurityUtils.getCurrentUserId()} のみを
+     * 検索条件に渡すため、他人のブックマークへ到達する経路が構造的に無い
+     * （TimelineBookmarkController#getBookmarks）。</p>
+     *
+     * <p>認可根治戦役 Wave6 監査済。</p>
      */
+    @SelfScopedEndpoint(
+            "bookmarkService.getBookmarks(userId, size) は SecurityUtils.getCurrentUserId() のみを"
+                    + "検索条件に渡す（TimelineBookmarkController#getBookmarks）")
     @GetMapping
     @Operation(summary = "ブックマーク一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

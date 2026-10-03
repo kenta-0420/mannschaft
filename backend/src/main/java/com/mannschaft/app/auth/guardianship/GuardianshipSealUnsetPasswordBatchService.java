@@ -5,6 +5,8 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthPasswordResetService;
 import com.mannschaft.app.auth.service.ParentalConsentService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.family.service.CareLinkService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -73,6 +75,8 @@ public class GuardianshipSealUnsetPasswordBatchService {
      */
     @BatchEndpoint(name = "guardianship-seal-unset-password-batch",
             description = "自立移行 封印時の未設定パスワード自動送付（取り残し防止）バッチ")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "封印日到来後もパスワード未設定の子へ設定案内を送る保護目的の処理であり、止めると子が自分のアカウントにログインできぬまま取り残される。遅延させてよいと後から判断させないため停止モードを選べない域として扱う")
     @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "guardianshipSealUnsetPasswordBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")
     public void execute() {

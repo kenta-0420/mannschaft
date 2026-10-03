@@ -1,5 +1,7 @@
 package com.mannschaft.app.analytics.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.analytics.FunnelStage;
 import com.mannschaft.app.analytics.RevenueSource;
@@ -51,6 +53,9 @@ public class DailyAggregationBatchService {
      * 日次集計バッチを実行する。
      * ShedLock による排他制御あり。最大ロック30分。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_TRANSLATION_SEARCH_ENABLED",
+            reason = "集計元の売上・ユーザー・ファネル各表は消えないため止めても復元でき、BatchEndpoint 経由で対象日を指定した再集計もできる")
     @BatchEndpoint(name = "analytics-daily-aggregation", description = "前日分の売上・ユーザー・ファネル統計を毎日 02:00 に集計する")
     @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "dailyAnalyticsAggregation", lockAtMostFor = "30m", lockAtLeastFor = "5m")

@@ -22,7 +22,9 @@ export default {
       "open": "Offen",
       "full": "Voll",
       "closed": "Geschlossen",
-      "cancelled": "Abgesagt"
+      "cancelled": "Abgesagt",
+      "auto_cancelled": "Automatisch abgesagt",
+      "completed": "Abgeschlossen"
     },
     "participantStatus": {
       "applied": "Beworben",
@@ -78,6 +80,8 @@ export default {
       "joinWaitlist": "Auf Warteliste setzen",
       "viewDetails": "Details anzeigen",
       "confirmApplication": "Bestätigen",
+      "cancelListing": "Ausschreibung zurückziehen",
+      "cancelledListing": "Ausschreibung zurückgezogen",
       "createPolicy": "Bedingungen erstellen"
     },
     "confirmModal": {
@@ -140,7 +144,41 @@ export default {
       "noFeedItems": "Keine neuen Ausschreibungen",
       "listing": "Ausschreibung",
       "waitlistPosition": "Warteliste #{n}",
-      "postedAt": "Veröffentlicht"
+      "postedAt": "Veröffentlicht",
+      "loadError": "Daten konnten nicht geladen werden",
+      "listingLabel": "Ausschreibung #{id}"
+    },
+    "guide": {
+      "feed": {
+        "title": "So nutzt du Neue Ausschreibungen",
+        "what": {
+          "title": "Was ist der Ausschreibungs-Feed?",
+          "body": "Ein schreibgeschützter Feed, der neue Ausschreibungen von Teams zeigt, denen du folgst oder die du unterstützt, sortiert nach Aktualität. Nutze ihn, um interessante Ausschreibungen zu entdecken."
+        },
+        "apply": {
+          "title": "Ansehen und bewerben",
+          "body": "Tippe auf eine Karte, um die Detailseite der Ausschreibung zu öffnen. Die Bewerbung oder Anmeldung zur Warteliste erfolgt auf dieser Detailseite."
+        },
+        "read": {
+          "title": "Die Karten lesen",
+          "body": "Tags wie \"Offen\" oder \"Voll\" zeigen den Status. Zahlen werden als \"bestätigt / Kapazität\" angezeigt, Preise mit \"¥\"."
+        }
+      },
+      "listings": {
+        "title": "So nutzt du Meine Teilnahmen",
+        "what": {
+          "title": "Was sind meine Teilnahmen?",
+          "body": "Ausschreibungen, für die du dich beworben hast oder bestätigt wurdest, erscheinen hier. Es werden nur aktive Teilnahmen angezeigt; abgesagte oder beendete nicht."
+        },
+        "status": {
+          "title": "Den Status lesen",
+          "body": "Tags wie \"Bestätigt\", \"Beworben\" oder \"Warteliste\" zeigen deinen aktuellen Status. Auf der Warteliste zeigt \"#Rang\" deine Position an."
+        },
+        "detail": {
+          "title": "Details und Stornierung",
+          "body": "Öffne die Ausschreibungsseite über \"Details ansehen\". Aktionen wie das Stornieren deiner Bewerbung erfolgen auf dieser Detailseite."
+        }
+      }
     },
     "distribution": {
       "title": "Empfänger",
@@ -176,6 +214,7 @@ export default {
       "resetButton": "Zurücksetzen",
       "allCategories": "Alle Kategorien",
       "noResults": "Keine Ausschreibungen gefunden",
+      "loadError": "Ausschreibungen konnten nicht geladen werden",
       "resultsCount": "{count} Ausschreibungen",
       "capacity": "Kapazität",
       "remaining": "Noch {count} Plätze",
@@ -184,6 +223,12 @@ export default {
       "applying": "Anmeldend",
       "individual": "Einzelperson",
       "team": "Team"
+    },
+    "validation": {
+      "eventTimeRange": "Das Ende muss nach dem Beginn liegen",
+      "applicationDeadline": "Die Bewerbungsfrist muss vor dem Beginn liegen",
+      "autoCancelAt": "Der Zeitpunkt der automatischen Absage muss spätestens zur Bewerbungsfrist liegen",
+      "capacity": "Die Mindestteilnehmerzahl darf die Kapazität nicht überschreiten"
     },
     "payee": {
       "required": "Bitte wählen Sie einen Empfängertyp aus",
@@ -195,7 +240,6 @@ export default {
     "error": {
       "RECRUITMENT_001": "Ausschreibung nicht gefunden",
       "RECRUITMENT_002": "Keine Berechtigung zum Erstellen einer Ausschreibung",
-      "RECRUITMENT_003": "Sichtbarkeit verhindert das Anzeigen dieser Ausschreibung",
       "RECRUITMENT_005": "Kapazität erreicht",
       "RECRUITMENT_007": "Teilnahmeart stimmt nicht überein",
       "RECRUITMENT_008": "Mindestkapazität überschreitet die Kapazität",
@@ -214,6 +258,9 @@ export default {
       "RECRUITMENT_205": "Bild-URL nicht in der Whitelist",
       "RECRUITMENT_206": "Kapazität kann nicht unter die bestätigten Teilnehmer gesenkt werden",
       "RECRUITMENT_207": "Sichtbarkeit und Verteilziele inkonsistent",
+      "RECRUITMENT_216": "Das Veranstaltungsende muss nach dem Beginn liegen",
+      "RECRUITMENT_217": "Die Bewerbungsfrist muss vor Veranstaltungsbeginn liegen",
+      "RECRUITMENT_218": "Der Zeitpunkt der automatischen Absage darf nicht nach der Bewerbungsfrist liegen",
       "RECRUITMENT_301": "Zahlung der Stornierungsgebühr fehlgeschlagen",
       "RECRUITMENT_302": "Stornierungsbedingungen ungültig",
       "RECRUITMENT_303": "Stornierungsbedingungen haben mehr als 4 Stufen",
@@ -232,6 +279,7 @@ export default {
       "status": {
         "pending": "Ausstehend",
         "confirmed": "Bestätigt",
+        "expired": "Einspruchsfrist abgelaufen",
         "disputed": "Einspruch läuft",
         "revoked": "Widerrufen",
         "upheld": "Aufrechterhalten"
@@ -276,6 +324,42 @@ export default {
         "expired": "Abgelaufen",
         "lifted": "Aufgehoben"
       }
+    },
+    "cancellationFeeWaive": {
+      "pageTitle": "Stornogebühr erlassen",
+      "pageDescription": "Erlass der Ihnen zustehenden Stornogebühren",
+      "unknownUser": "Unbekannter Benutzer",
+      "loadMore": "Mehr anzeigen",
+      "reasonTooLong": "Der Grund darf höchstens {max} Zeichen lang sein",
+      "columns": {
+        "listing": "Ausschreibung",
+        "user": "Betroffener Nutzer",
+        "feeAmount": "Stornogebühr",
+        "status": "Status",
+        "cancelledAt": "Storniert am"
+      },
+      "status": {
+        "pending": "Unbezahlt",
+        "failed": "Zahlung fehlgeschlagen",
+        "uncollectible": "Uneinbringlich",
+        "paid": "Bezahlt",
+        "waived": "Erlassen",
+        "notRequired": "Nicht zutreffend"
+      },
+      "waiveButton": "Erlassen",
+      "reasonLabel": "Grund für den Erlass",
+      "reasonPlaceholder": "Bitte geben Sie den Grund für den Erlass ein (erforderlich)",
+      "reasonRequired": "Ein Grund ist erforderlich",
+      "confirmDialog": {
+        "title": "Stornogebühr erlassen",
+        "message": "Die Forderung der Stornogebühr in Höhe von {amount} Yen wird storniert. Diese Aktion kann nicht rückgängig gemacht werden.\nWenn bei diesem Nutzer weitere unbezahlte Stornogebühren offen sind, wird die Anmeldebeschränkung nicht aufgehoben.",
+        "confirmButton": "Erlassen",
+        "cancelButton": "Zurück"
+      },
+      "emptyMessage": "Keine erlassbaren Stornogebühren-Datensätze",
+      "loadError": "Liste konnte nicht geladen werden",
+      "waiveSuccess": "Stornogebühr wurde erlassen",
+      "waiveError": "Erlass fehlgeschlagen"
     }
   }
 }

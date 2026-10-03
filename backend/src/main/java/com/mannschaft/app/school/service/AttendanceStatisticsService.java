@@ -1,5 +1,6 @@
 package com.mannschaft.app.school.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.dto.AttendanceStatisticsSummary;
 import com.mannschaft.app.school.dto.MonthlyStatisticsResponse;
@@ -32,16 +33,27 @@ public class AttendanceStatisticsService {
 
     private final DailyAttendanceRecordRepository dailyRepo;
     private final PeriodAttendanceRecordRepository periodRepo;
+    private final AccessControlService accessControlService;
+
+    /** 認可スコープ種別（出欠統計は常にクラスチーム単位）。 */
+    private static final String SCOPE_TEAM = "TEAM";
 
     /**
      * 担任向け月次出欠集計を取得する。
      *
-     * @param teamId クラスチームID
-     * @param year   対象年
-     * @param month  対象月（1〜12）
+     * <p>認可: クラス全員分を返すため、対象クラスチームのメンバーのみ参照可
+     * （{@link AccessControlService#checkMembership}）。非メンバーは 403（COMMON_002）。</p>
+     *
+     * @param teamId        クラスチームID
+     * @param year          対象年
+     * @param month         対象月（1〜12）
+     * @param currentUserId 閲覧者のユーザーID（認可判定に使用）
      * @return 月次集計レスポンス
      */
-    public MonthlyStatisticsResponse getMonthlyStatistics(Long teamId, int year, int month) {
+    public MonthlyStatisticsResponse getMonthlyStatistics(
+            Long teamId, int year, int month, Long currentUserId) {
+        accessControlService.checkMembership(currentUserId, teamId, SCOPE_TEAM);
+
         LocalDate from = LocalDate.of(year, month, 1);
         LocalDate to = from.withDayOfMonth(from.lengthOfMonth());
 
@@ -96,6 +108,10 @@ public class AttendanceStatisticsService {
     /**
      * 生徒・保護者向け期間別出欠集計を取得する。
      *
+     * <p>認可: 呼び出し元は自分自身の {@code studentUserId} のみを渡す（{@code /me} 系 EP）。
+     * リポジトリ引きが {@code (studentUserId, teamId)} の複合キーで、閲覧者本人の記録しか
+     * 返らないため自己スコープで閉じている。</p>
+     *
      * @param studentUserId 生徒のユーザーID
      * @param teamId        クラスチームID
      * @param from          集計開始日
@@ -141,12 +157,18 @@ public class AttendanceStatisticsService {
     /**
      * 担任向け出欠 CSV データを生成する。
      *
-     * @param teamId クラスチームID
-     * @param from   開始日
-     * @param to     終了日
+     * <p>認可: クラス全員分を書き出すため、対象クラスチームのメンバーのみ実行可
+     * （{@link AccessControlService#checkMembership}）。非メンバーは 403（COMMON_002）。</p>
+     *
+     * @param teamId        クラスチームID
+     * @param from          開始日
+     * @param to            終了日
+     * @param currentUserId 実行者のユーザーID（認可判定に使用）
      * @return UTF-8 エンコードされた CSV バイト配列
      */
-    public byte[] exportAttendanceCsv(Long teamId, LocalDate from, LocalDate to) {
+    public byte[] exportAttendanceCsv(Long teamId, LocalDate from, LocalDate to, Long currentUserId) {
+        accessControlService.checkMembership(currentUserId, teamId, SCOPE_TEAM);
+
         List<DailyAttendanceRecordEntity> records =
                 dailyRepo.findByTeamIdAndAttendanceDateBetweenOrderByAttendanceDateAsc(teamId, from, to);
 

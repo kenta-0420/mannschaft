@@ -26,9 +26,9 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>ベース URL: {@code /api/v1/organizations/{organizationId}/disclosure-templates}。
  * GET 系（{@code /api/v1/disclosure-templates}）とパスが異なる点に注意（設計書 §4 に準拠）。</p>
  *
- * <p><strong>権限制御</strong>: 本フェーズでは {@link SecurityUtils#getCurrentUserId()} による認証ガードのみ。
- * 設計書 §2 で要求される ADMIN 限定の判定は Phase 2-β-5 で permissionGroupService 経由に置き換える予定。
- * FIXME(Phase 2-β-5): role/permission チェックを追加すること。</p>
+ * <p><strong>権限制御</strong>（認可根治戦役 Wave3-B4 で実装）: {@code AccessControlService.checkAdminOrAbove}
+ * を {@link DisclosureFormTemplateEditService} 側で検証する（当該組織の ADMIN/DEPUTY_ADMIN のみ変更可）。
+ * DEPUTY_ADMIN の Permission 単位細分化は引き続き Phase 2-β-5 以降の課題として残す。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{organizationId}/disclosure-templates")
@@ -65,8 +65,8 @@ public class DisclosureFormTemplateEditController {
             @PathVariable("organizationId") Long organizationId,
             @PathVariable("templateId") Long templateId,
             @Valid @RequestBody DisclosureCustomTemplateRequest request) {
-        SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(editService.updateCustomTemplate(organizationId, templateId, request));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(editService.updateCustomTemplate(organizationId, templateId, userId, request));
     }
 
     /**
@@ -81,8 +81,8 @@ public class DisclosureFormTemplateEditController {
     public ResponseEntity<Void> delete(
             @PathVariable("organizationId") Long organizationId,
             @PathVariable("templateId") Long templateId) {
-        SecurityUtils.getCurrentUserId();
-        editService.deleteCustomTemplate(organizationId, templateId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        editService.deleteCustomTemplate(organizationId, userId, templateId);
         return ResponseEntity.noContent().build();
     }
 }

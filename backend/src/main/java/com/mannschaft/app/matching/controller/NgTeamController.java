@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,6 +38,7 @@ public class NgTeamController {
     @GetMapping
     @Operation(summary = "NGリスト取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<List<NgTeamResponse>>> listNgTeams(@PathVariable Long teamId) {
         List<NgTeamResponse> response = ngTeamService.listNgTeams(teamId);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -48,6 +50,7 @@ public class NgTeamController {
     @PostMapping
     @Operation(summary = "NGチーム追加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "追加成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<NgTeamResponse>> addNgTeam(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateNgTeamRequest request) {
@@ -61,6 +64,7 @@ public class NgTeamController {
     @DeleteMapping("/{blockedTeamId}")
     @Operation(summary = "NGチーム解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "解除成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<Void> removeNgTeam(
             @PathVariable Long teamId,
             @PathVariable Long blockedTeamId) {

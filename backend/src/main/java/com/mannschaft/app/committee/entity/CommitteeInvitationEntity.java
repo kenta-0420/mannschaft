@@ -7,10 +7,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -22,8 +22,7 @@ import java.time.LocalDateTime;
 @Table(name = "committee_invitations")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class CommitteeInvitationEntity extends BaseEntity {
 
     /** 委員会ID */
@@ -84,6 +83,12 @@ public class CommitteeInvitationEntity extends BaseEntity {
      */
     public void markCancelled() {
         this.resolvedAt = LocalDateTime.now();
+        this.resolution = CommitteeInvitationResolution.CANCELLED;
+    }
+
+    /** 指定日時で招集状をキャンセル済みとしてマークする。 */
+    public void markCancelledAt(LocalDateTime resolvedAt) {
+        this.resolvedAt = resolvedAt;
         this.resolution = CommitteeInvitationResolution.CANCELLED;
     }
 

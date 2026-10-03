@@ -3,6 +3,7 @@ package com.mannschaft.app.membership.service;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.membership.CardStatus;
 import com.mannschaft.app.membership.CheckinType;
 import com.mannschaft.app.common.AccessControlService;
@@ -418,12 +419,21 @@ public class MemberCardService {
     /**
      * 会員証を一時停止する。
      *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロ（任意の認証ユーザーが任意 cardId を
+     * 一時停止できた）。本 EP は scope を宣言する query パラメータを持たない「ID 直指定」EP
+     * のため、entity 由来 scope に非所属なら越境 cardId の存在を秘匿するため通常の 403 ではなく
+     * 会員証の NOT_FOUND コード（404）を投げ、所属しているが ADMIN でない場合は 403
+     * （incident ドメイン {@code requireMemberOrConceal} と同じ設計判断。会員証の停止/解除は管理操作）。</p>
+     *
      * @param cardId 会員証ID
      * @return ステータス変更結果
      */
     @Transactional
     public ApiResponse<CardStatusResponse> suspend(Long cardId) {
         MemberCardEntity card = findCardOrThrow(cardId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        requireMemberOrConceal(card, currentUserId);
+        accessControlService.checkAdminOrAbove(currentUserId, card.getScopeId(), card.getScopeType().name());
 
         if (card.getStatus() == CardStatus.SUSPENDED) {
             throw new BusinessException(MembershipErrorCode.MEMBERSHIP_016);
@@ -444,12 +454,18 @@ public class MemberCardService {
     /**
      * 会員証の一時停止を解除する。
      *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロだった。suspend と対称の
+     * requireMemberOrConceal（404）+ checkAdminOrAbove（403）パターンを使う。</p>
+     *
      * @param cardId 会員証ID
      * @return ステータス変更結果
      */
     @Transactional
     public ApiResponse<CardStatusResponse> reactivate(Long cardId) {
         MemberCardEntity card = findCardOrThrow(cardId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        requireMemberOrConceal(card, currentUserId);
+        accessControlService.checkAdminOrAbove(currentUserId, card.getScopeId(), card.getScopeType().name());
 
         if (card.getStatus() == CardStatus.REVOKED) {
             throw new BusinessException(MembershipErrorCode.MEMBERSHIP_017);
@@ -519,6 +535,11 @@ public class MemberCardService {
     /**
      * チーム全体のチェックイン履歴を取得する。
      *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロ（任意の認証ユーザーが任意スコープの
+     * チェックイン履歴＝会員氏名を含む機微情報を取得できた）。本 EP はスコープが呼び出し元
+     * から明示的に宣言される（path の scopeId/scopeType）ため、その scope で
+     * checkAdminOrAbove する（getScopeMemberCards と同じ設計判断）。</p>
+     *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param from      開始日時
@@ -527,6 +548,8 @@ public class MemberCardService {
      */
     public ApiResponse<List<CheckinHistoryResponse>> getScopeCheckins(
             ScopeType scopeType, Long scopeId, LocalDateTime from, LocalDateTime to) {
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), scopeId, scopeType.name());
+
         if (from == null) {
             from = LocalDateTime.now().minusDays(30);
         }
@@ -571,6 +594,18 @@ public class MemberCardService {
     private MemberCardEntity findCardOrThrow(Long cardId) {
         return memberCardRepository.findByIdAndDeletedAtIsNull(cardId)
                 .orElseThrow(() -> new BusinessException(MembershipErrorCode.MEMBERSHIP_001));
+    }
+
+    /**
+     * 認可根治戦役 Wave3-B9: suspend/reactivate のように scope を宣言する query パラメータを
+     * 持たない「ID 直指定」EP で使う BOLA ガード。entity 由来 scope の非メンバーは越境 cardId の
+     * 存在を秘匿するため、通常の {@code checkAdminOrAbove}（403）ではなく会員証の NOT_FOUND
+     * コード（404）を投げる（incident ドメイン {@code requireMemberOrConceal} と同じ設計）。
+     */
+    private void requireMemberOrConceal(MemberCardEntity card, Long currentUserId) {
+        if (!accessControlService.isMember(currentUserId, card.getScopeId(), card.getScopeType().name())) {
+            throw new BusinessException(MembershipErrorCode.MEMBERSHIP_001);
+        }
     }
 
     private void checkDuplicateCheckin(Long cardId) {

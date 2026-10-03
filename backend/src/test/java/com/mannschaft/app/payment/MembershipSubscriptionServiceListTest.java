@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment;
 
+import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.payment.PaymentItemType;
 import com.mannschaft.app.payment.connect.ConnectAccountRepository;
@@ -25,8 +26,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -172,5 +175,46 @@ class MembershipSubscriptionServiceListTest {
                 service.findForTeamWithNames(50L, MembershipSubscriptionStatus.ACTIVE);
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getStatus()).isEqualTo("ACTIVE");
+    }
+
+    // ============================================================
+    // 残債2: resolveEmailForStripeCustomer（Stripe Customer email 実メール化）
+    // ============================================================
+
+    @Test
+    @DisplayName("残債2: resolveEmailForStripeCustomer はアクティブユーザーの実メールを返す")
+    void resolveEmailForStripeCustomer_activeUser_returnsEmail() {
+        UserEntity user = UserEntity.builder()
+                .email("real-user@example.co.jp")
+                .build();
+        given(userRepository.findById(PAYER)).willReturn(Optional.of(user));
+
+        Optional<String> email = service.resolveEmailForStripeCustomer(PAYER);
+
+        assertThat(email).contains("real-user@example.co.jp");
+    }
+
+    @Test
+    @DisplayName("残債2: resolveEmailForStripeCustomer は退会済み（deletedAt 非 null）ユーザーには空を返す")
+    void resolveEmailForStripeCustomer_withdrawnUser_returnsEmpty() {
+        UserEntity user = UserEntity.builder()
+                .email("withdrawn-xxx@deleted.mannschaft.internal")
+                .deletedAt(LocalDateTime.now().minusDays(1))
+                .build();
+        given(userRepository.findById(PAYER)).willReturn(Optional.of(user));
+
+        Optional<String> email = service.resolveEmailForStripeCustomer(PAYER);
+
+        assertThat(email).isEmpty();
+    }
+
+    @Test
+    @DisplayName("残債2: resolveEmailForStripeCustomer は対象ユーザー不在なら空を返す")
+    void resolveEmailForStripeCustomer_notFound_returnsEmpty() {
+        given(userRepository.findById(PAYER)).willReturn(Optional.empty());
+
+        Optional<String> email = service.resolveEmailForStripeCustomer(PAYER);
+
+        assertThat(email).isEmpty();
     }
 }

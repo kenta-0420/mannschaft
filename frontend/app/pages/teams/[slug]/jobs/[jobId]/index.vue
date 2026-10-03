@@ -4,6 +4,8 @@ import type {
   JobPagedMeta,
   JobPostingResponse,
 } from '~/types/jobmatching'
+
+definePageMeta({ layout: 'team' })
 // F13.1 Phase 13.1.2: ACCEPTED 応募について「QR を表示」ボタンを出すため、
 // 現在ログイン中ユーザーの契約一覧を引いて応募 ID → 契約 ID のマップを作る。
 
@@ -29,6 +31,8 @@ const jobId = computed(() => Number(route.params.jobId))
 
 const job = ref<JobPostingResponse | null>(null)
 const loading = ref(false)
+/** 取得失敗は「求人が存在しない」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const jobLoadFailed = ref(false)
 const applications = ref<JobApplicationResponse[]>([])
 const applicationsMeta = ref<JobPagedMeta>({ total: 0, page: 0, size: 20, totalPages: 0 })
 const applicationsLoading = ref(false)
@@ -47,6 +51,7 @@ const rejectReason = ref('')
 
 async function loadJob() {
   loading.value = true
+  jobLoadFailed.value = false
   try {
     const res = await postingApi.getJob(jobId.value)
     job.value = res.data
@@ -54,6 +59,7 @@ async function loadJob() {
   catch (e) {
     error(t('jobmatching.error.loadFailed'), String(e))
     job.value = null
+    jobLoadFailed.value = true
   }
   finally {
     loading.value = false
@@ -233,12 +239,20 @@ const canClose = computed(() => job.value?.status === 'OPEN')
 const canCancel = computed(() => job.value?.status === 'DRAFT' || job.value?.status === 'OPEN')
 const canDelete = computed(() => job.value?.status === 'DRAFT')
 
-onMounted(async () => {
+/**
+ * 求人詳細の初回表示・再試行の両方が通る単一の入り口。
+ * 初回表示（onMounted）と DashboardErrorState の再試行（@retry）で処理が分岐すると、
+ * 求人取得に失敗→再試行で復旧したとき応募者一覧だけ未取得のまま残る欠陥になる
+ * （CMP-260922-2045 検分差し戻し）。
+ */
+async function loadPage() {
   await loadJob()
   if (job.value) {
-    loadApplications()
+    await loadApplications()
   }
-})
+}
+
+onMounted(loadPage)
 </script>
 
 <template>
@@ -250,6 +264,12 @@ onMounted(async () => {
       <LoadingBounce />
     </div>
 
+    <DashboardErrorState
+      v-else-if="jobLoadFailed"
+      testid="job-detail-error-state"
+      @retry="loadPage"
+    />
+
     <div
       v-else-if="!job"
       class="rounded border border-dashed border-surface-300 p-8 text-center text-surface-500 dark:border-surface-600"
@@ -258,37 +278,19 @@ onMounted(async () => {
     </div>
 
     <div v-else>
-      <!-- 戻る -->
-      <div class="mb-3">
-        <Button
-          :label="t('jobmatching.detail.back')"
-          icon="pi pi-arrow-left"
-          severity="secondary"
-          text
-          @click="router.push(`/teams/${teamSlug}/jobs`)"
-        />
-      </div>
-
       <!-- ヘッダ -->
-      <header class="mb-4">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0 flex-1">
-            <h1 class="text-2xl font-bold">
-              {{ job.title }}
-            </h1>
-            <p
-              v-if="job.category"
-              class="mt-1 text-sm text-surface-500"
-            >
-              {{ job.category }}
-            </p>
-          </div>
-          <JobStatusBadge
-            kind="posting"
-            :status="job.status"
-          />
-        </div>
-      </header>
+      <PageHeader :title="job.title" :back-to="`/teams/${teamSlug}/jobs`">
+        <JobStatusBadge
+          kind="posting"
+          :status="job.status"
+        />
+      </PageHeader>
+      <p
+        v-if="job.category"
+        class="mb-4 text-sm text-surface-500"
+      >
+        {{ job.category }}
+      </p>
 
       <!-- アクションバー -->
       <div

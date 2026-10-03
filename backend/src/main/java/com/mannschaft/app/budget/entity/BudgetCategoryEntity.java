@@ -9,8 +9,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -25,8 +25,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class BudgetCategoryEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -52,6 +51,18 @@ public class BudgetCategoryEntity extends BaseEntity {
     private Long version;
 
     private LocalDateTime deletedAt;
+
+    /**
+     * カテゴリ内容を更新する。
+     * 管理対象（managed）エンティティを直接ミューテートすることで、
+     * 主キー id を保持したまま UPDATE 文が発行されることを保証する。
+     * （toBuilder().build() による再構築は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyUpdate(String name, Integer sortOrder, String description) {
+        this.name = name;
+        this.sortOrder = sortOrder;
+        this.description = description;
+    }
 
     /**
      * 論理削除を行う。

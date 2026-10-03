@@ -25,6 +25,7 @@ async function save() {
       body: {
         theme: appearanceStore.theme,
         bgColor: appearanceStore.bgColor,
+        darkBgColor: appearanceStore.darkBgColor,
         seasonalThemeId: appearanceStore.seasonalThemeId,
         hideChatPreview: appearanceStore.hideChatPreview,
       },
@@ -39,7 +40,6 @@ async function save() {
 <template>
   <PageLoading v-if="loading" />
   <div v-else class="fade-in mx-auto max-w-2xl">
-    <BackButton to="/settings" />
     <PageHeader title="外観設定" />
 
     <div class="space-y-8">
@@ -70,7 +70,10 @@ async function save() {
       <!-- プレビュー -->
       <SectionCard>
         <h3 class="mb-4 text-sm font-medium">プレビュー</h3>
-        <div class="rounded-lg p-4" :style="{ backgroundColor: appearanceStore.bgColor }">
+        <div
+          class="rounded-lg p-4"
+          :style="{ backgroundColor: appearanceStore.isDark ? appearanceStore.darkBgColor : appearanceStore.bgColor }"
+        >
           <div
             class="rounded-lg border border-surface-300 bg-surface-0 p-4 shadow-sm dark:border-surface-600 dark:bg-surface-800"
           >

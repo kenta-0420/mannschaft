@@ -16,7 +16,9 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * テンプレート管理サービス。テンプレートの参照機能を提供する。
@@ -48,7 +50,11 @@ public class TemplateService {
                             template.getCategory(),
                             moduleCount);
                 })
-                .toList();
+                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -91,7 +97,9 @@ public class TemplateService {
                 .filter(m -> m != null)
                 .map(m -> new ModuleSummaryResponse(
                         m.getId(), m.getName(), m.getSlug(), m.getModuleType().name()))
-                .toList();
+                // issue #2544 B 群: 本ヘルパーの戻り値は templateDetail / templateModules の
+                // 両キャッシュに載る（前者は ApiResponse の内側）。ImmutableCollections$ListN では復元できない。
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private TemplateResponse toResponse(TeamTemplateEntity template, List<ModuleSummaryResponse> modules) {

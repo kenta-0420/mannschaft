@@ -2,6 +2,7 @@ package com.mannschaft.app.school.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.school.dto.PeriodAttendanceListResponse;
 import com.mannschaft.app.school.dto.PeriodAttendanceRequest;
 import com.mannschaft.app.school.dto.PeriodAttendanceResponse;
@@ -105,6 +106,10 @@ public class PeriodAttendanceController {
     /**
      * 生徒の1日タイムラインを取得する。
      */
+    @SelfScopedEndpoint("PeriodAttendanceService#getStudentDailyTimeline に渡す studentUserId は "
+            + "常に SecurityUtils.getCurrentUserId() であり、他人の studentUserId を指定する "
+            + "余地が Controller に無い（Service 側も currentUserId.equals(studentUserId) を "
+            + "二重防御として検証する）")
     @GetMapping("/me/attendance/timeline")
     @Operation(summary = "生徒1日タイムライン取得")
     public ApiResponse<StudentTimelineResponse> getStudentDailyTimeline(

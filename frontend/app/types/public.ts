@@ -265,4 +265,6 @@ export interface PublicUserPostSummary {
   scopeId: string
   /** ISO datetime string — バックエンドの LocalDateTime に対応 */
   createdAt: string
+  /** 組織の公開ページ用 slug（ORGANIZATION かつ組織が公開のときのみ。それ以外は null。組織リンクはこれで作る） */
+  orgSlug: string | null
 }

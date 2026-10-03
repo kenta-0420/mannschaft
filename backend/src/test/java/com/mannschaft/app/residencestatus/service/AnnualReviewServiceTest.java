@@ -9,6 +9,7 @@ import com.mannschaft.app.residencestatus.entity.AnnualReview;
 import com.mannschaft.app.residencestatus.event.AnnualReviewClosedEvent;
 import com.mannschaft.app.residencestatus.event.AnnualReviewStartedEvent;
 import com.mannschaft.app.residencestatus.repository.AnnualReviewRepository;
+import com.mannschaft.app.resident.service.ResidentRegistryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -51,6 +52,8 @@ class AnnualReviewServiceTest {
     private AccessControlService accessControlService;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private ResidentRegistryService residentRegistryService;
 
     @InjectMocks
     private AnnualReviewService service;
@@ -307,10 +310,12 @@ class AnnualReviewServiceTest {
     class ListMyReviews {
 
         @Test
-        @DisplayName("正常系: 未クローズのキャンペーンのみ返される")
+        @DisplayName("正常系: 当該組織の現居住者には未クローズのキャンペーンのみ返される")
         void listMyReviews_only_open() {
             UUID openId = UUID.randomUUID();
             UUID closedId = UUID.randomUUID();
+            when(residentRegistryService.isActiveResidentOfOrganization(MEMBER_USER, ORG_ID))
+                    .thenReturn(true);
             when(annualReviewRepo.findByOrganizationIdAndDeletedAtIsNull(ORG_ID))
                     .thenReturn(List.of(
                             buildReview(openId, ORG_ID, 2026, null),
@@ -320,6 +325,26 @@ class AnnualReviewServiceTest {
 
             assertThat(list).hasSize(1);
             assertThat(list.get(0).getId()).isEqualTo(openId);
+        }
+
+        /**
+         * 認可根治戦役 Wave6 ロットC の根治対象: 旧実装は {@code requestUserId} を検索条件に
+         * 一切使わず、非居住者でも任意の {@code organizationId} を指定してキャンペーン一覧を
+         * 取得できた（死んだ引数・BOLA）。当該組織の居住者台帳が無いユーザーは拒否されることを固定する。
+         */
+        @Test
+        @DisplayName("ANNUAL_REVIEW_NOT_FOUND: 当該組織の居住者台帳を持たないユーザーは拒否される"
+                + "（非居住者による他組織キャンペーン一覧の閲覧を根治）")
+        void listMyReviews_non_resident_denied() {
+            when(residentRegistryService.isActiveResidentOfOrganization(MEMBER_USER, ORG_ID))
+                    .thenReturn(false);
+
+            assertThatThrownBy(() -> service.listMyReviews(ORG_ID, MEMBER_USER))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(ResidenceStatusErrorCode.ANNUAL_REVIEW_NOT_FOUND);
+
+            verify(annualReviewRepo, never()).findByOrganizationIdAndDeletedAtIsNull(anyLong());
         }
     }
 

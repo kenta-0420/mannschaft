@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 
 /**
  * パフォーマンス個人・テンプレートコントローラー。
@@ -35,6 +36,8 @@ public class PerformancePersonalController {
 
     /**
      * 自分のパフォーマンスを全チーム横断で取得する。
+     * teamId 指定時は PerformanceStatsService#getMyPerformance が AccessControlService で所属検証する
+     * （CMP-260826-2127 派生: 非所属 teamId 指定で指標定義名・チーム名が読めていた欠陥の根治）。
      */
     @GetMapping("/me")
     @Operation(summary = "自分のパフォーマンス（全チーム横断）")
@@ -53,6 +56,9 @@ public class PerformancePersonalController {
     /**
      * 指標テンプレート一覧を取得する。
      */
+    // SecurityConfig の anyRequest().authenticated() で認証必須。sportCategory 別の
+    // 共通テンプレート定義を返すのみで、ユーザー固有情報は含まない。
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/metric-templates")
     @Operation(summary = "指標テンプレート一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

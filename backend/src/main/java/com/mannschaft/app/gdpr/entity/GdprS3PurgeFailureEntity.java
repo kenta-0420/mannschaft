@@ -54,7 +54,7 @@ public class GdprS3PurgeFailureEntity extends UuidV7Entity {
      * リトライ累計回数。初期値 0。
      * {@code GdprPurgeAuditBatchService#retryS3PurgeFailures} が実行するたびにインクリメントする。
      */
-    @Column(name = "retry_count", columnDefinition = "TINYINT UNSIGNED NOT NULL DEFAULT 0")
+    @Column(name = "retry_count", nullable = false, columnDefinition = "TINYINT UNSIGNED NOT NULL DEFAULT 0")
     private int retryCount = 0;
 
     /**

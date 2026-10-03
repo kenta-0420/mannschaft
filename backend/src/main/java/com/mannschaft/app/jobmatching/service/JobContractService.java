@@ -242,13 +242,11 @@ public class JobContractService {
             throw new BusinessException(JobmatchingErrorCode.JOB_REJECTION_LIMIT_EXCEEDED);
         }
 
-        // Entity 側ヘルパでカウントアップ・理由記録するが、MVP の遷移は IN_PROGRESS ではなく MATCHED を正とする。
-        contract.rejectCompletion(reason);
-        // toBuilder を使って状態だけ MATCHED に上書き。
-        JobContractEntity adjusted = contract.toBuilder()
-                .status(JobContractStatus.MATCHED)
-                .build();
-        JobContractEntity saved = contractRepository.save(adjusted);
+        // Entity 側ヘルパでカウントアップ・理由記録し、MVP の遷移として IN_PROGRESS ではなく MATCHED を正とする。
+        // managed entity を直接ミューテートして save するため id を保持し、UPDATE として永続化される
+        // （旧実装の toBuilder().build() は BaseEntity 継承の id を引き継がず INSERT 化する不具合があった）。
+        contract.rejectCompletionToMatched(reason);
+        JobContractEntity saved = contractRepository.save(contract);
         log.info("完了差し戻し: contractId={}, requesterId={}, rejectionCount={}, reason={}",
                 contractId, requesterId, saved.getRejectionCount(), reason);
         return saved;

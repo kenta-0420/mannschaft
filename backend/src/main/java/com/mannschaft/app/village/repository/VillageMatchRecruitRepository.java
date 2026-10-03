@@ -6,7 +6,10 @@ import com.mannschaft.app.village.entity.enums.VillageMatchRecruitStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -27,4 +30,52 @@ public interface VillageMatchRecruitRepository extends JpaRepository<VillageMatc
     /** カテゴリ + 状態別の村の募集一覧。 */
     Page<VillageMatchRecruitEntity> findByVillageIdAndCategoryAndStatusAndDeletedAtIsNull(
             UUID villageId, VillageMatchRecruitCategory category, VillageMatchRecruitStatus status, Pageable pageable);
+
+    /**
+     * 指定カテゴリを参照している<strong>生きている</strong>募集の件数（F17.1 P2 §6.2）。
+     *
+     * <p>削除ガード（AC-10・{@code RECRUIT_CATEGORY_IN_USE}）と一覧表示の {@code recruitCount}
+     * は必ず同じ数を使う（設計書 §6.2）。論理削除済みの募集は数えない
+     * （＝論理削除済み募集しか参照しないカテゴリは削除できる。設計書 §4.3 の注）。</p>
+     */
+    long countByVillageIdAndCategoryIdAndDeletedAtIsNull(UUID villageId, UUID categoryId);
+
+    /**
+     * 村内のカテゴリ別・生きている募集件数を一括集計する（N+1 対策・設計書 §6.2）。
+     *
+     * <p>{@code TodoStatusLabelService.findActiveByIds}（一覧 API の N+1 対策）と同じ動機・
+     * 同じ作法。1本の {@code GROUP BY category_id} 集計で {@code Map<UUID, Long>} を作り、
+     * カテゴリ一覧レスポンス組み立て時に引く。</p>
+     *
+     * @return {@code [categoryId, count]} の配列のリスト（{@code categoryId} が NULL の行は除外）
+     */
+    @Query("""
+            SELECT r.categoryId, COUNT(r) FROM VillageMatchRecruitEntity r
+            WHERE r.villageId = :villageId
+              AND r.categoryId IS NOT NULL
+              AND r.deletedAt IS NULL
+            GROUP BY r.categoryId
+            """)
+    List<Object[]> countActiveGroupedByCategory(@Param("villageId") UUID villageId);
+
+    // ====================================================================
+    // F17.1 ②-2 村ニュースレター集計（村ドメイン内 read-only 呼出）
+    // ====================================================================
+
+    /**
+     * 村ニュースレター集計用: 指定期間内に作成された生きている募集件数（F17.1 ②-2・設計書 §5.3）。
+     *
+     * <p>{@code created_at} 基準・半開区間 {@code [fromInclusive, toExclusive)}・論理削除除外。</p>
+     */
+    @Query("""
+            SELECT COUNT(r) FROM VillageMatchRecruitEntity r
+            WHERE r.villageId = :villageId
+              AND r.deletedAt IS NULL
+              AND r.createdAt >= :fromInclusive
+              AND r.createdAt <  :toExclusive
+            """)
+    long countByVillageIdAndCreatedAtBetweenAndDeletedAtIsNull(
+            @Param("villageId") UUID villageId,
+            @Param("fromInclusive") java.time.LocalDateTime fromInclusive,
+            @Param("toExclusive") java.time.LocalDateTime toExclusive);
 }

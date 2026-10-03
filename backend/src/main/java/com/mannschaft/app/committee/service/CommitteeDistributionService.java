@@ -13,9 +13,7 @@ import com.mannschaft.app.committee.error.CommitteeErrorCode;
 import com.mannschaft.app.committee.repository.CommitteeDistributionLogRepository;
 import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.committee.repository.CommitteeRepository;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
@@ -56,7 +54,9 @@ public class CommitteeDistributionService {
     private final CommitteeRepository committeeRepository;
     private final CommitteeMemberRepository committeeMemberRepository;
     private final CommitteeDistributionLogRepository distributionLogRepository;
-    private final AccessControlService accessControlService;
+
+    /** 委員会メンバーシップ・委員会内ロールに基づく認可判定の一元窓口。 */
+    private final CommitteeAccessGuard committeeAccessGuard;
     private final ObjectMapper objectMapper;
     private final AnnouncementFeedService announcementFeedService;
     private final ConfirmableNotificationService confirmableNotificationService;
@@ -95,9 +95,8 @@ public class CommitteeDistributionService {
                 .orElseThrow(() -> new BusinessException(CommitteeErrorCode.NOT_FOUND));
 
         // 2. 認可チェック: CHAIR / VICE_CHAIR / SECRETARY のいずれか
-        if (!hasDistributionRole(committeeId, currentUserId)) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
+        committeeAccessGuard.requireCommitteeRole(committeeId, currentUserId,
+                CommitteeRole.CHAIR, CommitteeRole.VICE_CHAIR, CommitteeRole.SECRETARY);
 
         // 3. DRAFT 状態は配信不可
         if (CommitteeStatus.DRAFT.equals(committee.getStatus())) {
@@ -249,9 +248,7 @@ public class CommitteeDistributionService {
                 .orElseThrow(() -> new BusinessException(CommitteeErrorCode.NOT_FOUND));
 
         // 認可チェック: 委員会メンバーのみ
-        if (!committeeMemberRepository.existsByCommitteeIdAndUserIdAndLeftAtIsNull(committeeId, currentUserId)) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
+        committeeAccessGuard.requireCommitteeMember(committeeId, currentUserId);
 
         return distributionLogRepository.findByCommitteeIdOrderByCreatedAtDesc(committeeId, pageable);
     }
@@ -265,11 +262,13 @@ public class CommitteeDistributionService {
      *
      * <p>認可: 対象委員会のメンバーのみ。</p>
      *
-     * @param distributionId 伝達処理ログ ID
-     * @param currentUserId  閲覧者ユーザー ID
+     * @param pathCommitteeId パスで指定された委員会 ID（実体の委員会と一致することを確認する）
+     * @param distributionId  伝達処理ログ ID
+     * @param currentUserId   閲覧者ユーザー ID
      * @return 伝達処理ログエンティティ
      */
     public CommitteeDistributionLogEntity getDistribution(
+            Long pathCommitteeId,
             Long distributionId,
             Long currentUserId) {
 
@@ -277,31 +276,18 @@ public class CommitteeDistributionService {
         CommitteeDistributionLogEntity distribution = distributionLogRepository.findById(distributionId)
                 .orElseThrow(() -> new BusinessException(CommitteeErrorCode.NOT_FOUND));
 
-        // 委員会の存在確認
+        // 実体が属する委員会とパスの委員会が一致することを確認する（実体由来のスコープで認可するため、
+        // パスの委員会 ID は判定の根拠ではなく照合の対象として扱う）
         Long committeeId = distribution.getCommitteeId();
+        committeeAccessGuard.requireSameCommittee(pathCommitteeId, committeeId);
+
+        // 委員会の存在確認
         committeeRepository.findById(committeeId)
                 .orElseThrow(() -> new BusinessException(CommitteeErrorCode.NOT_FOUND));
 
         // 認可チェック: 対象委員会のメンバーのみ
-        if (!committeeMemberRepository.existsByCommitteeIdAndUserIdAndLeftAtIsNull(committeeId, currentUserId)) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
+        committeeAccessGuard.requireCommitteeMember(committeeId, currentUserId);
 
         return distribution;
-    }
-
-    // ========================================
-    // プライベートヘルパーメソッド
-    // ========================================
-
-    /**
-     * ユーザーが伝達権限ロール（CHAIR / VICE_CHAIR / SECRETARY）を持つかどうかを返す。
-     */
-    private boolean hasDistributionRole(Long committeeId, Long userId) {
-        return committeeMemberRepository.findByCommitteeIdAndUserIdAndLeftAtIsNull(committeeId, userId)
-                .map(m -> CommitteeRole.CHAIR.equals(m.getRole())
-                        || CommitteeRole.VICE_CHAIR.equals(m.getRole())
-                        || CommitteeRole.SECRETARY.equals(m.getRole()))
-                .orElse(false);
     }
 }

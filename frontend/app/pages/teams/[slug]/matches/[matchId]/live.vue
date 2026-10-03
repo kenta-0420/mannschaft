@@ -24,8 +24,11 @@ import type { MatchSetTrackerReturn } from '~/composables/match/sport/useMatchSe
 import type { MatchTurnTrackerReturn } from '~/composables/match/sport/useMatchTurnTracker'
 import type { MatchScoreEntryReturn } from '~/composables/match/useMatchScoreEntry'
 import type { MatchScoredComponentsReturn } from '~/composables/match/useMatchScoredComponents'
+import type { MatchScoreEntriesReturn } from '~/composables/match/useMatchScoreEntries'
 import { buildTurnResultPayload } from '~/composables/match/useMatchTurnApi'
 import type { BoardProgressItem } from '~/components/match/MatchBoardProgress.vue'
+
+import { parseOrgQuery, type MatchOrgOption } from '~/composables/match/useMatchOrgContext'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
@@ -44,6 +47,9 @@ const grid = useMatchPlayerGrid()
 const wakeLock = useWakeLockWithFallback()
 
 const orgId = ref<number | null>(null)
+/** org クエリが無効（不正・親組織に無い）。true の間は試合を読み込まず、セレクタと警告を出す。 */
+const orgInvalid = ref(false)
+const organizations = ref<MatchOrgOption[]>([])
 const teamId = ref<number | null>(null)
 const ownTeamSide = ref<'HOME' | 'AWAY'>('HOME')
 const opponentName = ref<string | null>(null)
@@ -82,6 +88,14 @@ const isScored = computed(() => sportModule.value !== null && isScoredModule(spo
 const scoreEntry = shallowRef<MatchScoreEntryReturn | null>(null)
 /** 採点内訳トラッカー（審判別/種目別・§4B・SCORED 競技時のみ非 null）。 */
 const scoredComponents = shallowRef<MatchScoredComponentsReturn | null>(null)
+/** 多人数順位制トラッカー（出場者 N 人→順位・§5B・SCORED 競技時のみ非 null）。 */
+const scoredRanking = shallowRef<MatchScoreEntriesReturn | null>(null)
+/**
+ * 既存採点（内訳/順位）の読み込みに失敗したか（データ保護フラグ）。
+ * true の間は内訳・順位の確定（全置換 PUT）を禁止する。ロード失敗を「内訳なし」とみなして
+ * 空の全置換 PUT を送るとサーバ既存採点を上書き（破壊）する恐れがあるため、確定操作を止める。
+ */
+const scoreLoadFailed = ref(false)
 
 /**
  * 団体戦の子ボード進捗（6-④c・GET /boards 由来）。
@@ -172,9 +186,9 @@ function onTimelineSelect(ev: MatchEventResponse): void {
 
 // === スタメン設定（前回先発コピー含む・§G.1c / §G.15a）===
 async function copyPreviousStarters(): Promise<void> {
-  if (orgId.value === null) return
   try {
-    grid.copyPreviousStarters(await eventApi.listAppearances(orgId.value, matchId))
+    if (teamId.value === null) return
+    grid.copyPreviousStarters(await eventApi.listAppearances(orgId.value, teamId.value, matchId))
   } catch {
     // 通知済み
   }
@@ -185,10 +199,13 @@ function addManualPlayer(p: { name: string; jerseyNumber: number | null }): void
 
 // === 初期ロード ===
 onMounted(async () => {
-  const ctx = await resolveContext(teamSlug)
+  // 試合は作成時の組織の下に保存されている。遷移元（一覧・作成・大会対戦表）が URL クエリ org で引き継ぐ
+  const ctx = await resolveContext(teamSlug, { orgId: parseOrgQuery(route.query.org) })
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
-  if (orgId.value === null || teamId.value === null) {
+  orgInvalid.value = ctx?.orgInvalid ?? false
+  organizations.value = ctx?.organizations ?? []
+  if (ctx === null || teamId.value === null || ctx.orgInvalid) {
     loading.value = false
     return
   }
@@ -237,8 +254,25 @@ onMounted(async () => {
     // 審判別/種目別採点内訳トラッカー（§4B）。既存内訳を読み込み、あれば内訳が正本になる（stale 整合）。
     const componentsTracker = mod.createComponentEntry(scoredSport)
     scoredComponents.value = componentsTracker
+    // 多人数順位制トラッカー（§5B）。既存エントリを読み込み、あれば多人数が正本になる（stale 整合）。
+    const rankingTracker = mod.createRankingEntry(scoredSport)
+    scoredRanking.value = rankingTracker
     if (orgId.value !== null) {
-      await componentsTracker.load(orgId.value, matchId).catch(() => undefined)
+      // 既存採点（内訳/順位）の読み込み。失敗を握りつぶすと「内訳なし」の空トラッカーのまま
+      // 確定（全置換 PUT）へ進み、サーバ既存採点を上書き（破壊）する恐れがある。
+      // よって失敗時はフラグを立て、確定操作を後段でブロックする（根治原則）。
+      try {
+        await componentsTracker.load(orgId.value, matchId)
+      } catch {
+        scoreLoadFailed.value = true
+        console.error('[live] 採点内訳（scored-components）の読み込みに失敗しました。確定を禁止します。')
+      }
+      try {
+        await rankingTracker.load(orgId.value, matchId)
+      } catch {
+        scoreLoadFailed.value = true
+        console.error('[live] 多人数順位エントリ（score-entries）の読み込みに失敗しました。確定を禁止します。')
+      }
     }
   }
 
@@ -260,13 +294,21 @@ onMounted(async () => {
   session.value = s
 
   try {
-    const res = await eventApi.listEvents(orgId.value, matchId)
+    const res = await eventApi.listEvents(orgId.value, teamId.value, matchId)
     s.recorder.setEvents(res.events ?? [])
     s.applyDerivedScore(res)
   } catch {
     // 通知済み
   }
-  await grid.loadPlayers(teamSlug).catch(() => undefined)
+  // 選手名簿の読み込み。失敗を沈黙させると空名簿になり記録できないため通知する
+  // （データ破壊はないので確定ブロックまでは不要・通知＋ログで表面化させる）。
+  try {
+    await grid.loadPlayers(teamSlug)
+  } catch {
+    notification.error(t('match.live.error.load_players_failed'))
+  }
+  // wakeLock 取得はブラウザに拒否されうる（想定内・データ影響なし）。取得失敗は無視してよい。
+  // eslint-disable-next-line no-restricted-syntax -- wakeLock はブラウザ拒否が想定内（データ影響なし）。取得失敗を無視するのが正しい
   await wakeLock.acquireWakeLock().catch(() => undefined)
   window.addEventListener('online', flushOffline)
   loading.value = false
@@ -317,6 +359,7 @@ async function completeTurnResult(): Promise<void> {
     await turnApi.recordResult(orgId.value, matchId, payload)
   } catch {
     // recordResult 内でトースト済み。結果保存に失敗したら status 遷移はしない（根治原則）。
+    // eslint-disable-next-line no-restricted-syntax -- 保存関数内で通知済み・失敗時は確定へ進めない意図的な早期return
     return
   }
   try {
@@ -347,6 +390,7 @@ async function completeScoredResult(): Promise<void> {
     res = await entry.submit(orgId.value, matchId)
   } catch {
     // submit（recordScore）内でトースト済み。スコア保存に失敗したら status 遷移はしない（根治原則）。
+    // eslint-disable-next-line no-restricted-syntax -- 保存関数内で通知済み・失敗時は確定へ進めない意図的な早期return
     return
   }
   if (res === null) {
@@ -375,10 +419,50 @@ async function completeScoredComponents(): Promise<void> {
   if (!tracker || orgId.value === null || teamId.value === null) return
   if (matchStatus.value === 'COMPLETED') return
   if (!tracker.canSubmit.value) return
+  if (scoreLoadFailed.value) {
+    // 既存採点の読み込みに失敗している。全置換 PUT でサーバ既存採点を上書き（破壊）しないよう確定を止める。
+    notification.error(t('match.live.error.score_load_failed'))
+    return
+  }
   try {
     await tracker.save(orgId.value, matchId)
   } catch {
     // save 内でトースト済み。内訳保存に失敗したら status 遷移はしない（根治原則）。
+    // eslint-disable-next-line no-restricted-syntax -- 保存関数内で通知済み・失敗時は確定へ進めない意図的な早期return
+    return
+  }
+  try {
+    await matchApi.changeStatus(orgId.value, teamId.value, matchId, { status: 'COMPLETED' })
+    matchStatus.value = 'COMPLETED'
+    session.value?.setMatchStatus('COMPLETED')
+  } catch {
+    notification.warn(t('match.live.error.complete_failed'))
+  }
+}
+
+/**
+ * 採点競技（フィギュア/体操）の多人数順位制エントリを確定する（07_scored.md §5B 配線）。
+ *
+ * 直接入力/内訳ではなく、出場者 N 人の全置換 PUT /score-entries を呼ぶ。BE が合計点降順で
+ * 順位（rank_position）を算出し、最上位の合計点を matches.home_score へ補助的に再導出する
+ * （二層正本・§5B.2）。FE は順位を送らず、受信した順位算出済みエントリを順位表に反映する。
+ * その後 changeStatus(COMPLETED) で順位連携（MatchCompletedEvent）を発火させる。
+ */
+async function completeScoredRanking(): Promise<void> {
+  const tracker = scoredRanking.value
+  if (!tracker || orgId.value === null || teamId.value === null) return
+  if (matchStatus.value === 'COMPLETED') return
+  if (!tracker.canSubmit.value) return
+  if (scoreLoadFailed.value) {
+    // 既存採点の読み込みに失敗している。全置換 PUT でサーバ既存採点を上書き（破壊）しないよう確定を止める。
+    notification.error(t('match.live.error.score_load_failed'))
+    return
+  }
+  try {
+    await tracker.save(orgId.value, matchId)
+  } catch {
+    // save 内でトースト済み。エントリ保存に失敗したら status 遷移はしない（根治原則）。
+    // eslint-disable-next-line no-restricted-syntax -- 保存関数内で通知済み・失敗時は確定へ進めない意図的な早期return
     return
   }
   try {
@@ -434,7 +518,11 @@ function onRecordBoard(_boardNumber: number, boardMatchId: string | null): void 
     notification.info(t('match.board.create_pending_notice'))
     return
   }
-  void router.push(`/teams/${teamSlug}/matches/${boardMatchId}/live`)
+  // 子ボードも同じ組織の下にある。org を引き継ぐ
+  void router.push({
+    path: `/teams/${teamSlug}/matches/${boardMatchId}/live`,
+    query: orgId.value !== null ? { org: String(orgId.value) } : {},
+  })
 }
 
 /**
@@ -465,23 +553,28 @@ function goPenalty(): void {
 function goOvertime(): void {
   void session.value?.timer.goOvertime?.()
 }
-
-function back(): void {
-  void router.push(`/teams/${teamSlug}/matches`)
-}
 </script>
 
 <template>
   <div class="mx-auto max-w-2xl pb-28">
     <div class="mb-2 flex items-center gap-2">
-      <BackButton :to="`/teams/${teamSlug}/matches`" @click="back" />
       <PageHeader
         :title="canRecord ? t('match.live.title') : t('match.live.spectator.title')"
         size="sm"
+        :back-to="orgId !== null ? `/teams/${teamSlug}/matches?org=${orgId}` : `/teams/${teamSlug}/matches`"
       />
     </div>
 
     <PageLoading v-if="loading" size="40px" />
+
+    <!-- org クエリが無効: 試合を読み込まず、組織を選び直させる（選択後は再読込して読み直す） -->
+    <MatchOrgSelect
+      v-else-if="orgInvalid"
+      :organizations="organizations"
+      :org-id="orgId"
+      invalid
+      @update:org-id="reloadNuxtApp()"
+    />
 
     <!-- 観戦ビュー（記録権限なし＝read-only・STOMP 購読＋初期スナップショット差分追従・§G.17 / 07 §J） -->
     <MatchSpectatorView
@@ -701,6 +794,15 @@ function back(): void {
         @remove-photo="onRemovePositionPhoto"
       />
 
+      <!-- 既存採点の読み込み失敗警告（確定ブロック中・データ保護）。 -->
+      <p
+        v-if="isScored && scoreLoadFailed"
+        class="mb-3 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-700"
+        role="alert"
+      >
+        {{ t('match.live.error.score_load_failed') }}
+      </p>
+
       <!--
         採点制 採点結果入力シート（SCORED 競技のみ表示・07_scored.md §9）。
         フィギュア/体操は「タイマー・タイムライン・選手グリッド・セット」を使わず、
@@ -711,15 +813,17 @@ function back(): void {
       -->
       <component
         :is="sportModule.eventSheet"
-        v-if="isScored && scoreEntry && scoredComponents && sportModule"
+        v-if="isScored && scoreEntry && scoredComponents && scoredRanking && sportModule"
         :tracker="scoreEntry!"
         :component-tracker="scoredComponents!"
+        :ranking-tracker="scoredRanking!"
         :own-team-side="ownTeamSide"
         :opponent-name="opponentName"
         :can-record="canRecord"
         class="mb-4"
         @complete-match="completeScoredResult()"
         @complete-components="completeScoredComponents()"
+        @complete-ranking="completeScoredRanking()"
       />
 
       <!-- スタメン設定シート（記録権限がある場合のみマウント・ターン制/採点制は不要） -->

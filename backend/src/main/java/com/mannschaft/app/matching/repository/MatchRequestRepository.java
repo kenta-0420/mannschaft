@@ -19,15 +19,26 @@ import java.util.Optional;
  */
 public interface MatchRequestRepository extends JpaRepository<MatchRequestEntity, Long> {
 
-    String SEARCH_BY_KEYWORD = """
-            SELECT mr.* FROM match_requests mr
+    /** キーワード検索の共通 WHERE 句（FULLTEXT ＋ 全フィルタ条件を AND 結合）。 */
+    String SEARCH_BY_KEYWORD_WHERE = """
             WHERE mr.status = :status
               AND mr.deleted_at IS NULL
               AND mr.team_id NOT IN (:excludedTeamIds)
               AND (mr.expires_at IS NULL OR mr.expires_at > :now)
+              AND (:prefectureCode IS NULL OR mr.prefecture_code = :prefectureCode)
+              AND (:cityCode IS NULL OR mr.city_code = :cityCode)
+              AND (:activityType IS NULL OR mr.activity_type = :activityType)
+              AND (:category IS NULL OR mr.category = :category)
+              AND (:level IS NULL OR mr.level = :level)
+              AND (:visibility IS NULL OR mr.visibility = :visibility)
               AND MATCH(mr.title, mr.activity_detail) AGAINST(:keyword IN BOOLEAN MODE)
-            ORDER BY mr.created_at DESC
             """;
+
+    String SEARCH_BY_KEYWORD = "SELECT mr.* FROM match_requests mr "
+            + SEARCH_BY_KEYWORD_WHERE
+            + " ORDER BY mr.created_at DESC";
+
+    String COUNT_BY_KEYWORD = "SELECT COUNT(*) FROM match_requests mr " + SEARCH_BY_KEYWORD_WHERE;
 
     /**
      * チームの募集一覧をページング取得する。
@@ -70,13 +81,21 @@ public interface MatchRequestRepository extends JpaRepository<MatchRequestEntity
             Pageable pageable);
 
     /**
-     * キーワード検索（FULLTEXT）。
+     * キーワード検索（FULLTEXT）＋全フィルタ条件の複合検索。
+     * enum は MySQL の ENUM/VARCHAR に対する文字列比較のため String で受ける。
+     * ネイティブクエリ＋Pageable では件数が正しく求まらないため countQuery を明示する。
      */
-    @Query(value = SEARCH_BY_KEYWORD, nativeQuery = true)
+    @Query(value = SEARCH_BY_KEYWORD, countQuery = COUNT_BY_KEYWORD, nativeQuery = true)
     Page<MatchRequestEntity> searchByKeyword(
             @Param("status") String status,
             @Param("excludedTeamIds") List<Long> excludedTeamIds,
             @Param("keyword") String keyword,
+            @Param("prefectureCode") String prefectureCode,
+            @Param("cityCode") String cityCode,
+            @Param("activityType") String activityType,
+            @Param("category") String category,
+            @Param("level") String level,
+            @Param("visibility") String visibility,
             @Param("now") LocalDateTime now,
             Pageable pageable);
 

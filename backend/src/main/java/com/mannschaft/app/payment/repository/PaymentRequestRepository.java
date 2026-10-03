@@ -6,6 +6,9 @@ import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.entity.PaymentRequestEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -29,6 +32,10 @@ public interface PaymentRequestRepository
      */
     Optional<PaymentRequestEntity> findByIdAndDeletedAtIsNull(UUID id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from PaymentRequestEntity p where p.id = :id and p.deletedAt is null")
+    Optional<PaymentRequestEntity> findByIdAndDeletedAtIsNullForUpdate(UUID id);
+
     /**
      * チーム（請求先）が受信した請求一覧（idx_pr_payer で引く）。チーム視点の受信一覧 API の本体。
      */
@@ -46,6 +53,13 @@ public interface PaymentRequestRepository
      */
     long countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(
             ScopeKind issuerScopeKind, Long issuerScopeId, PaymentRequestStatus status);
+
+    /**
+     * 協会の発行請求のうち指定状態群（複数ステータス）の件数を 1 クエリで集計する。
+     * F10.1.1 管理者向け承認待ち集約で未収（SENT/VIEWED/OVERDUE）件数を 1 COUNT で取るために使う（設計書 03 §4.5）。
+     */
+    long countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+            ScopeKind issuerScopeKind, Long issuerScopeId, Collection<PaymentRequestStatus> statuses);
 
     /**
      * 協会（請求元）が発行した請求一覧（status フィルタ・ページング）。協会視点一覧 API の本体。

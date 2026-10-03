@@ -98,6 +98,9 @@
     "vendor": {
       "title": "Proveedores",
       "subtitle": "Datos maestros de contratistas e inspectores",
+      "notice": {
+        "personalScopeUnsupported": "La gestión de proveedores no está disponible en el ámbito personal. Cambie a un ámbito de equipo u organización."
+      },
       "newVendor": "Añadir proveedor",
       "editVendor": "Editar proveedor",
       "deleteConfirm": "¿Eliminar lógicamente este proveedor?",
@@ -142,6 +145,30 @@
       "close": "Cerrar",
       "back": "Volver al listado",
       "changeStatus": "Cambiar estado"
+    },
+    "residents": {
+      "title": "Registro de residentes",
+      "create": "Añadir vivienda",
+      "createTitle": "Añadir vivienda",
+      "unitNumber": "Número de vivienda",
+      "unitNumberPlaceholder": "Ej.: 101",
+      "floor": "Planta",
+      "unitType": "Tipo de vivienda",
+      "layout": "Distribución",
+      "areaSqm": "Superficie",
+      "notes": "Notas",
+      "residentCount": "{count} residentes",
+      "occupied": "Ocupada",
+      "vacant": "Vacante",
+      "empty": "No hay viviendas",
+      "createSuccess": "Vivienda añadida",
+      "createFailed": "No se pudo añadir la vivienda",
+      "validation": {
+        "unitNumberRequired": "Introduzca el número de vivienda",
+        "unitNumberMax": "El número de vivienda debe tener como máximo 50 caracteres",
+        "unitTypeMax": "El tipo de vivienda debe tener como máximo 20 caracteres",
+        "layoutMax": "La distribución debe tener como máximo 20 caracteres"
+      }
     },
     "errors": {
       "loadFailed": "Error al cargar",

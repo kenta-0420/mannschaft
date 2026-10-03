@@ -1,6 +1,11 @@
 package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
@@ -9,6 +14,7 @@ import com.mannschaft.app.filesharing.dto.FileVersionResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
 import com.mannschaft.app.filesharing.entity.SharedFileVersionEntity;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
+import com.mannschaft.app.filesharing.FileScopeType;
 import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,12 +34,14 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class SharedFileVersionService {
+    private final StorageAclService storageAclService;
 
     private final SharedFileVersionRepository versionRepository;
     private final SharedFileService fileService;
     private final SharedFolderService folderService;
     private final FileSharingMapper fileSharingMapper;
     private final SharedFileQuotaService quotaService;
+    private final AccessControlService accessControlService;
     /** F08.7.1 / 04: 大会フォルダ配下のバージョン操作に対する横断認可ゲート（大会以外は no-op）。 */
     private final FolderScopeAccessGuard folderScopeAccessGuard;
 
@@ -84,6 +92,7 @@ public class SharedFileVersionService {
 
         // F13 Phase 4-ε: クォータ事前チェック（フォルダからスコープを解決）
         SharedFolderEntity folder = folderService.findFolderOrThrow(fileEntity.getFolderId());
+        checkManageFilesPermission(folder, userId);
         long fileSize = request.getFileSize() != null ? request.getFileSize() : 0L;
         quotaService.checkFileQuota(folder, fileSize);
 
@@ -100,6 +109,11 @@ public class SharedFileVersionService {
                 .build();
 
         SharedFileVersionEntity saved = versionRepository.save(version);
+        StorageAclScope aclScope = SharedFileService.aclScope(
+                folder.getScopeType(), SharedFileService.scopeIdOf(folder), userId);
+        storageAclService.claimPending(request.getFileKey(), userId, aclScope,
+                new StorageAclContentReference("SHARED_FOLDER", folder.getId().toString()),
+                new StorageAclAttachmentBinding("SHARED_FILE_VERSION", saved.getId().toString()));
 
         fileEntity.updateToNewVersion(
                 request.getFileKey(), request.getFileSize(), request.getContentType(), nextVersion);
@@ -110,5 +124,24 @@ public class SharedFileVersionService {
 
         log.info("ファイルバージョン作成: fileId={}, version={}", fileId, nextVersion);
         return fileSharingMapper.toVersionResponse(saved);
+    }
+
+    private void checkManageFilesPermission(SharedFolderEntity folder, Long userId) {
+        String scopeType;
+        Long scopeId;
+        if (folder.getScopeType() == FileScopeType.TEAM) {
+            scopeType = "TEAM";
+            scopeId = folder.getTeamId();
+        } else if (folder.getScopeType() == FileScopeType.ORGANIZATION) {
+            scopeType = "ORGANIZATION";
+            scopeId = folder.getOrganizationId();
+        } else {
+            return;
+        }
+        if (!accessControlService.isAdminOrAbove(userId, scopeId, scopeType)
+                && "MEMBER".equals(accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType))
+                && !accessControlService.hasPermission(userId, scopeId, scopeType, "MANAGE_FILES")) {
+            throw new BusinessException(FileSharingErrorCode.INSUFFICIENT_PERMISSION);
+        }
     }
 }

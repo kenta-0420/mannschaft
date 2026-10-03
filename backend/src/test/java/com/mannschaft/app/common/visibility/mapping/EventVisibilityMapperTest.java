@@ -48,4 +48,26 @@ class EventVisibilityMapperTest {
         assertThat(EventVisibilityMapper.toStandard(EventVisibility.SUPPORTERS_AND_ABOVE))
             .isEqualTo(StandardVisibility.SUPPORTERS_AND_ABOVE);
     }
+
+    @Test
+    @DisplayName("MEMBERS_AND_ABOVE → StandardVisibility.MEMBERS_AND_ABOVE（#1341 新ラダー値名・FE送信値）")
+    void members_and_above_maps_to_MEMBERS_AND_ABOVE() {
+        // 可視性ラダー統一(#1341)で FE が送る新ラダー値名。旧 MEMBERS_ONLY と同一の可視範囲へ写像。
+        assertThat(EventVisibilityMapper.toStandard(EventVisibility.MEMBERS_AND_ABOVE))
+            .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
+    }
+
+    @Test
+    @DisplayName("ADMINS_AND_ABOVE → StandardVisibility.ADMINS_AND_ABOVE（#1341 新ラダー値名）")
+    void admins_and_above_maps_to_ADMINS_AND_ABOVE() {
+        assertThat(EventVisibilityMapper.toStandard(EventVisibility.ADMINS_AND_ABOVE))
+            .isEqualTo(StandardVisibility.ADMINS_AND_ABOVE);
+    }
+
+    @Test
+    @DisplayName("SCOPE_AFFILIATED → StandardVisibility.SCOPE_AFFILIATED（直接所属軸・旧MEMBERS_ONLY相当の正準値）")
+    void scope_affiliated_maps_to_SCOPE_AFFILIATED() {
+        assertThat(EventVisibilityMapper.toStandard(EventVisibility.SCOPE_AFFILIATED))
+            .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
+    }
 }

@@ -43,10 +43,11 @@ import org.springframework.web.bind.annotation.RestController;
  * </ul>
  * </p>
  *
- * <p><strong>権限制御</strong>: 本フェーズでは {@link SecurityUtils#getCurrentUserId()} による認証ガードのみ。
- * 設計書 §2 で要求される ADMIN / DEPUTY_ADMIN(DISCLOSURE_EXPORT/DISCLOSURE_VIEW) 判定は
- * Phase 2-β-5 以降で permissionGroupService 経由で実装する。
- * FIXME(Phase 2-β-5): role/permission チェックを追加すること。</p>
+ * <p><strong>権限制御</strong>（認可根治戦役 Wave3-B4 で実装）: 閲覧系（一覧・詳細）は
+ * {@code AccessControlService.checkMembership}、出力実行・ダウンロード・期限延長は
+ * {@code checkAdminOrAbove} を {@link DisclosureExportService} 側で検証する。
+ * DEPUTY_ADMIN の Permission 単位（DISCLOSURE_EXPORT/DISCLOSURE_VIEW）細分化は
+ * 引き続き Phase 2-β-5 以降の課題として残す。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{organizationId}")
@@ -79,9 +80,9 @@ public class DisclosureExportController {
             @PathVariable("organizationId") Long organizationId,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
-        SecurityUtils.getCurrentUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         Pageable pageable = PageRequest.of(page, size);
-        Page<DisclosureExportResponse> result = exportService.listExports(organizationId, pageable);
+        Page<DisclosureExportResponse> result = exportService.listExports(organizationId, userId, pageable);
         return PagedResponse.of(
                 result.getContent(),
                 new PagedResponse.PageMeta(
@@ -95,8 +96,8 @@ public class DisclosureExportController {
     public ApiResponse<DisclosureExportResponse> getExport(
             @PathVariable("organizationId") Long organizationId,
             @PathVariable("exportId") Long exportId) {
-        SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(exportService.getExport(organizationId, exportId));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(exportService.getExport(organizationId, userId, exportId));
     }
 
     /**
@@ -107,8 +108,8 @@ public class DisclosureExportController {
     public ApiResponse<DisclosureExportResponse> downloadExport(
             @PathVariable("organizationId") Long organizationId,
             @PathVariable("exportId") Long exportId) {
-        SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(exportService.generateDownloadUrl(organizationId, exportId));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(exportService.generateDownloadUrl(organizationId, userId, exportId));
     }
 
     /**
@@ -117,19 +118,17 @@ public class DisclosureExportController {
      * <p>本日から最大 7 年まで延長可能。過去日時は {@link DisclosureErrorCode#DISCLOSURE_011}
      * (422) を返す。</p>
      *
-     * <p><strong>権限制御</strong>: ADMIN のみ許可する想定（設計書 §5.7）。
-     * 現状 Phase 2-β-5 以降に持ち越されている role/permission チェック（{@link #exportDraft}
-     * 同様）と整合させ、{@link SecurityUtils#getCurrentUserId()} による認証ガードのみで実装する。
-     * FIXME(Phase 2-β-5/3-E 後続): role=ADMIN チェックを追加すること。</p>
+     * <p><strong>権限制御</strong>: ADMIN のみ許可する（設計書 §5.7、認可根治戦役 Wave3-B4 で
+     * {@code AccessControlService.checkAdminOrAbove} を実装済み）。</p>
      */
     @PatchMapping("/disclosure-exports/{exportId}/extend-expiry")
     public ApiResponse<DisclosureExportResponse> extendExpiry(
             @PathVariable("organizationId") Long organizationId,
             @PathVariable("exportId") Long exportId,
             @Valid @RequestBody ExtendExpiryRequest request) {
-        SecurityUtils.getCurrentUserId();
+        Long userId = SecurityUtils.getCurrentUserId();
         DisclosureExportResponse response = exportService.extendExpiry(
-                organizationId, exportId, request.newExpiresAt());
+                organizationId, userId, exportId, request.newExpiresAt());
         return ApiResponse.of(response);
     }
 

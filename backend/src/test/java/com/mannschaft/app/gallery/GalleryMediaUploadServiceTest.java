@@ -1,5 +1,6 @@
 package com.mannschaft.app.gallery;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -49,6 +50,10 @@ class GalleryMediaUploadServiceTest {
     @Mock private StorageQuotaService storageQuotaService;
     /** F00 Phase E-5: ContentVisibilityChecker モック追加。 */
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
+    /** 認可根治戦役 Wave3-B5: アップロード可否の scope 認可用モック。 */
+    @Mock private AccessControlService accessControlService;
+    /** CMP-028 Phase B: PhotoAlbumService の可視レベル解決に必要なモック。 */
+    @Mock private com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
 
     private PhotoAlbumService albumService;
     private GalleryMediaUploadService service;
@@ -58,8 +63,16 @@ class GalleryMediaUploadServiceTest {
 
     @BeforeEach
     void setUp() {
-        albumService = new PhotoAlbumService(albumRepository, galleryMapper, contentVisibilityChecker);
-        service = new GalleryMediaUploadService(r2StorageService, albumService, storageQuotaService);
+        albumService = new PhotoAlbumService(albumRepository, galleryMapper, contentVisibilityChecker,
+                accessControlService, membershipBatchQueryService);
+        service = new GalleryMediaUploadService(r2StorageService, albumService, storageQuotaService,
+                accessControlService);
+        // 認可根治戦役 Wave3-B5: 本テストは「アップロード可否」以外（R2Key形式/MIME検証/クォータ）に
+        // 主眼があるため、ADMIN 相当として扱い認可チェックを通過させる（lenient: 非対応MIME系テストは
+        // validateContentType が先に例外を投げるため本スタブへ到達しない）。
+        org.mockito.Mockito.lenient()
+                .when(accessControlService.isAdminOrAbove(anyLong(), anyLong(), anyString()))
+                .thenReturn(true);
     }
 
     @Nested

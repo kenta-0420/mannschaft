@@ -24,8 +24,9 @@ import java.util.UUID;
  * @param visibility       可視性
  * @param bulletinVisibility 掲示板公開範囲（PUBLIC / MEMBERS_ONLY）
  * @param category         カテゴリ
- * @param iconR2Key        アイコン R2 キー
- * @param coverR2Key       カバー画像 R2 キー
+ * @param iconUrl          アイコンの表示用 URL（署名付き GET URL。未設定 / 解決失敗時は {@code null}）
+ * @param coverUrl         カバー画像の表示用 URL（署名付き GET URL。未設定 / 解決失敗時は {@code null}）
+ * @param monshoUrl        村紋の表示用 URL（署名付き GET URL。未設定 / 解決失敗時は {@code null}）
  * @param guidelineMd      ガイドライン
  * @param memberCount      現役メンバー数（キャッシュ値）
  * @param isOfficial       OFFICIAL 種別かどうか
@@ -48,8 +49,9 @@ public record VillageResponse(
         VillageVisibility visibility,
         VillageBulletinVisibility bulletinVisibility,
         String category,
-        String iconR2Key,
-        String coverR2Key,
+        String iconUrl,
+        String coverUrl,
+        String monshoUrl,
         String guidelineMd,
         long memberCount,
         boolean isOfficial,

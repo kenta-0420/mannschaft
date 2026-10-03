@@ -1,11 +1,22 @@
 package com.mannschaft.app.workflow.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
 import com.mannschaft.app.workflow.WorkflowMapper;
+import com.mannschaft.app.workflow.WorkflowScopes;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignRequest;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignResponse;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentRegisterRequest;
@@ -20,6 +31,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -42,6 +55,7 @@ import java.util.UUID;
 public class WorkflowRequestAttachmentService {
 
     private static final Duration PRESIGN_TTL = Duration.ofMinutes(15);
+    private static final Duration DOWNLOAD_TTL = Duration.ofMinutes(5);
 
     /**
      * 許可 MIME タイプ（F05.6 §3 workflow_request_attachments 制約に基づく）。
@@ -60,6 +74,46 @@ public class WorkflowRequestAttachmentService {
     private final WorkflowRequestRepository requestRepository;
     private final WorkflowMapper workflowMapper;
     private final R2StorageService r2StorageService;
+    private final AccessControlService accessControlService;
+    private final StorageAclService storageAclService;
+    private final StorageAccessService storageAccessService;
+    private final DomainEventPublisher eventPublisher;
+
+    /**
+     * 申請の添付ファイル一覧を取得する（Wave 2 トランシェ2C で Controller の直リポジトリ参照を移管）。
+     *
+     * <p>認可: 申請者本人、または申請スコープのメンバー/ADMIN のみ（それ以外は 404 秘匿）。</p>
+     *
+     * @param requestId     申請 ID
+     * @param currentUserId 操作者ユーザー ID
+     * @return 添付ファイルレスポンスリスト
+     */
+    public List<WorkflowAttachmentResponse> listAttachments(Long requestId, Long currentUserId) {
+        WorkflowRequestEntity request = findVisibleRequestOrThrow(requestId, currentUserId);
+        List<WorkflowRequestAttachmentEntity> attachments =
+                attachmentRepository.findByRequestIdOrderByCreatedAtAsc(requestId);
+        if (attachments.isEmpty()) {
+            return List.of();
+        }
+        StorageAclScope scope = "TEAM".equals(WorkflowScopes.canonical(request.getScopeType()))
+                ? StorageAclScope.team(request.getScopeId())
+                : StorageAclScope.organization(request.getScopeId());
+        StorageAclContentReference parent =
+                new StorageAclContentReference("WORKFLOW_REQUEST", request.getId().toString());
+        Map<String, String> downloadUrls = storageAccessService.generateDownloadUrlsForList(
+                attachments.stream()
+                        .map(attachment -> new StorageAclDownloadRequest(
+                                attachment.getFileKey(),
+                                scope,
+                                parent,
+                                new StorageAclAttachmentBinding(
+                                        "WORKFLOW_REQUEST_ATTACHMENT", attachment.getId().toString())))
+                        .toList(),
+                DOWNLOAD_TTL);
+        return workflowMapper.toAttachmentResponseList(attachments.stream()
+                .filter(attachment -> downloadUrls.containsKey(attachment.getFileKey()))
+                .toList());
+    }
 
     /**
      * 添付ファイルのアップロード用 Pre-signed URL を発行する。
@@ -69,11 +123,11 @@ public class WorkflowRequestAttachmentService {
      * @param request     Pre-signed リクエスト
      * @return Pre-signed URL レスポンス
      */
+    @Transactional
     public WorkflowAttachmentPresignResponse presignUpload(
             Long requestId, Long currentUserId, WorkflowAttachmentPresignRequest request) {
-        // 1. 申請存在確認
-        WorkflowRequestEntity requestEntity = requestRepository.findById(requestId)
-                .orElseThrow(() -> new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND));
+        // 1. 申請存在確認＋可視性検証（非所属者は 404 秘匿・Wave 2 トランシェ2C）
+        WorkflowRequestEntity requestEntity = findVisibleRequestOrThrow(requestId, currentUserId);
 
         // 2. MIME タイプ検証（ブロックリスト優先 → ホワイトリスト）
         if (FileTypeValidator.isBlocked(request.contentType())) {
@@ -96,6 +150,13 @@ public class WorkflowRequestAttachmentService {
         PresignedUploadResult result = r2StorageService.generateUploadUrl(
                 fileKey, request.contentType(), PRESIGN_TTL);
 
+        // URLで返すキーは必ず、所有者・申請のスコープ・期限を伴うACL台帳へ登録する。
+        StorageAclScope aclScope = "TEAM".equals(WorkflowScopes.canonical(requestEntity.getScopeType()))
+                ? StorageAclScope.team(requestEntity.getScopeId())
+                : StorageAclScope.organization(requestEntity.getScopeId());
+        storageAclService.registerPending(fileKey, currentUserId, aclScope, request.contentType(), PRESIGN_TTL,
+                new StorageAclContentReference("WORKFLOW_REQUEST", requestEntity.getId().toString()));
+
         log.info("ワークフロー添付 presign-upload 発行: requestId={}, userId={}, fileKey={}",
                 requestId, currentUserId, fileKey);
 
@@ -114,9 +175,8 @@ public class WorkflowRequestAttachmentService {
     @Transactional
     public WorkflowAttachmentResponse registerAttachment(
             Long requestId, Long currentUserId, WorkflowAttachmentRegisterRequest request) {
-        // 1. 申請存在確認
-        WorkflowRequestEntity requestEntity = requestRepository.findById(requestId)
-                .orElseThrow(() -> new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND));
+        // 1. 申請存在確認＋可視性検証（非所属者は 404 秘匿・Wave 2 トランシェ2C）
+        WorkflowRequestEntity requestEntity = findVisibleRequestOrThrow(requestId, currentUserId);
 
         // 2. fileKey 整合性チェック（prefix が workflow-attachments/{requestId}/ で始まること）
         String expectedPrefix = "workflow-attachments/" + requestEntity.getId() + "/";
@@ -136,6 +196,12 @@ public class WorkflowRequestAttachmentService {
                 .build();
 
         WorkflowRequestAttachmentEntity saved = attachmentRepository.save(entity);
+        StorageAclScope aclScope = "TEAM".equals(WorkflowScopes.canonical(requestEntity.getScopeType()))
+                ? StorageAclScope.team(requestEntity.getScopeId())
+                : StorageAclScope.organization(requestEntity.getScopeId());
+        storageAclService.claimPending(request.fileKey(), currentUserId, aclScope,
+                new StorageAclContentReference("WORKFLOW_REQUEST", requestEntity.getId().toString()),
+                new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", saved.getId().toString()));
         log.info("ワークフロー添付登録: requestId={}, attachmentId={}, userId={}",
                 requestId, saved.getId(), currentUserId);
 
@@ -154,27 +220,48 @@ public class WorkflowRequestAttachmentService {
      */
     @Transactional
     public void deleteAttachment(Long requestId, Long attachmentId, Long currentUserId) {
-        // 1. 申請存在確認
-        requestRepository.findById(requestId)
-                .orElseThrow(() -> new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND));
+        // 1. 申請存在確認＋可視性検証（非所属者は 404 秘匿・Wave 2 トランシェ2C）
+        WorkflowRequestEntity requestEntity = findVisibleRequestOrThrow(requestId, currentUserId);
 
         // 2. 添付存在確認
         WorkflowRequestAttachmentEntity entity = attachmentRepository
                 .findByIdAndRequestId(attachmentId, requestId)
                 .orElseThrow(() -> new BusinessException(WorkflowErrorCode.ATTACHMENT_NOT_FOUND));
 
-        // 3. R2 オブジェクト削除（失敗してもログのみ。DB との整合性は将来のクリーニングバッチで担保）
-        try {
-            r2StorageService.delete(entity.getFileKey());
-        } catch (Exception e) {
-            log.warn("ワークフロー添付 R2 削除失敗（DB 削除は継続）: fileKey={}, error={}",
-                    entity.getFileKey(), e.getMessage());
+        // 3. 削除権限: アップロード者本人・申請者本人・entity 由来スコープの ADMIN のみ（403）
+        boolean uploader = currentUserId != null && currentUserId.equals(entity.getUploadedBy());
+        boolean requester = currentUserId != null && currentUserId.equals(requestEntity.getRequestedBy());
+        if (!uploader && !requester && !accessControlService.isAdminOrAbove(
+                currentUserId, requestEntity.getScopeId(),
+                WorkflowScopes.canonical(requestEntity.getScopeType()))) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
 
         // 4. DB 物理削除
+        storageAclService.releaseClaimed(entity.getFileKey(),
+                new StorageAclAttachmentBinding("WORKFLOW_REQUEST_ATTACHMENT", entity.getId().toString()));
         attachmentRepository.delete(entity);
+        eventPublisher.publish(new S3ObjectDeleteEvent(entity.getFileKey()));
         log.info("ワークフロー添付削除: requestId={}, attachmentId={}, userId={}",
                 requestId, attachmentId, currentUserId);
+    }
+
+    /**
+     * 親申請を取得し、可視性（申請者本人 or entity 由来スコープのメンバー/ADMIN）を検証する。
+     * いずれでもない場合は 404（REQUEST_NOT_FOUND）で存在秘匿する（★BOLA厳禁★・Wave 2 トランシェ2C）。
+     */
+    private WorkflowRequestEntity findVisibleRequestOrThrow(Long requestId, Long actorUserId) {
+        WorkflowRequestEntity requestEntity = requestRepository.findById(requestId)
+                .orElseThrow(() -> new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND));
+        if (actorUserId != null && actorUserId.equals(requestEntity.getRequestedBy())) {
+            return requestEntity;
+        }
+        String canonicalScope = WorkflowScopes.canonical(requestEntity.getScopeType());
+        if (accessControlService.isMember(actorUserId, requestEntity.getScopeId(), canonicalScope)
+                || accessControlService.isAdminOrAbove(actorUserId, requestEntity.getScopeId(), canonicalScope)) {
+            return requestEntity;
+        }
+        throw new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND);
     }
 
     /**

@@ -276,30 +276,35 @@ public class ContentTranslationService {
     /**
      * 翻訳コンテンツをIDで取得する。
      *
-     * @param id 翻訳コンテンツID
+     * @param scopeType スコープ種別（BOLA是正: idがこのscope配下か束縛検証する）
+     * @param scopeId   スコープID
+     * @param id        翻訳コンテンツID
      * @return 翻訳コンテンツのレスポンス
-     * @throws BusinessException TRANSLATION_002: 対象が見つからない場合
+     * @throws BusinessException TRANSLATION_002: 対象が見つからない、またはscope不一致（越境）の場合
      */
-    public ApiResponse<ContentTranslationResponse> getTranslation(Long id) {
-        ContentTranslationEntity entity = findOrThrow(id);
+    public ApiResponse<ContentTranslationResponse> getTranslation(String scopeType, Long scopeId, Long id) {
+        ContentTranslationEntity entity = findOrThrow(id, scopeType, scopeId);
         return ApiResponse.of(new ContentTranslationResponse(entity));
     }
 
     /**
      * 原文種別・原文ID・言語で翻訳コンテンツを取得する。
      *
+     * @param scopeType   スコープ種別（BOLA是正: 原文IDがこのscope配下か束縛検証する）
+     * @param scopeId     スコープID
      * @param contentType 原文コンテンツ種別
      * @param contentId   原文コンテンツID
      * @param language    言語コード
      * @return 翻訳コンテンツのレスポンス
-     * @throws BusinessException TRANSLATION_002: 対象が見つからない場合
+     * @throws BusinessException TRANSLATION_002: 対象が見つからない、またはscope不一致（越境）の場合
      */
     public ApiResponse<ContentTranslationResponse> getTranslationForContent(
-            String contentType, Long contentId, String language) {
+            String scopeType, Long scopeId, String contentType, Long contentId, String language) {
 
         ContentTranslationEntity entity =
-                contentTranslationRepository.findBySourceTypeAndSourceIdAndLanguageAndDeletedAtIsNull(
-                        contentType, contentId, language)
+                contentTranslationRepository
+                        .findBySourceTypeAndSourceIdAndLanguageAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                                contentType, contentId, language, scopeType, scopeId)
                         .orElseThrow(() -> new BusinessException(TranslationErrorCode.TRANSLATION_002));
 
         return ApiResponse.of(new ContentTranslationResponse(entity));
@@ -308,16 +313,18 @@ public class ContentTranslationService {
     /**
      * 原文コンテンツの全翻訳一覧を取得する。
      *
+     * @param scopeType   スコープ種別（BOLA是正: 原文IDがこのscope配下か束縛検証する）
+     * @param scopeId     スコープID
      * @param contentType 原文コンテンツ種別
      * @param contentId   原文コンテンツID
      * @return 翻訳サマリーレスポンスのリスト
      */
     public ApiResponse<List<TranslationSummaryResponse>> listTranslationsForContent(
-            String contentType, Long contentId) {
+            String scopeType, Long scopeId, String contentType, Long contentId) {
 
         List<ContentTranslationEntity> entities =
-                contentTranslationRepository.findBySourceTypeAndSourceIdAndDeletedAtIsNull(
-                        contentType, contentId);
+                contentTranslationRepository.findBySourceTypeAndSourceIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                        contentType, contentId, scopeType, scopeId);
 
         List<TranslationSummaryResponse> responses = entities.stream()
                 .map(TranslationSummaryResponse::new)
@@ -366,17 +373,19 @@ public class ContentTranslationService {
      * 翻訳コンテンツを更新する。楽観的ロックでバージョン競合を検出する。
      *
      * @param id        翻訳コンテンツID
+     * @param scopeType スコープ種別（BOLA是正: idがこのscope配下か束縛検証する）
+     * @param scopeId   スコープID
      * @param updatedBy 更新者ユーザーID（ログ記録用）
      * @param req       更新リクエスト
      * @return 更新後の翻訳コンテンツのレスポンス
-     * @throws BusinessException TRANSLATION_002: 対象が見つからない場合
+     * @throws BusinessException TRANSLATION_002: 対象が見つからない、またはscope不一致（越境）の場合
      * @throws BusinessException TRANSLATION_007: バージョン不一致の場合
      */
     @Transactional
     public ApiResponse<ContentTranslationResponse> updateTranslation(
-            Long id, Long updatedBy, UpdateTranslationRequest req) {
+            Long id, String scopeType, Long scopeId, Long updatedBy, UpdateTranslationRequest req) {
 
-        ContentTranslationEntity entity = findOrThrow(id);
+        ContentTranslationEntity entity = findOrThrow(id, scopeType, scopeId);
 
         // 楽観的ロック: バージョンチェック
         checkVersion(entity, req.getVersion());
@@ -400,55 +409,65 @@ public class ContentTranslationService {
     /**
      * 翻訳コンテンツのステータスを変更する。遷移ルールをバリデーションする。
      * <p>
-     * 実装は {@link ContentTranslationStatusService#changeStatus(Long, ChangeStatusRequest)} へ委譲する。
+     * 実装は {@link ContentTranslationStatusService#changeStatus(Long, String, Long, ChangeStatusRequest)}
+     * へ委譲する。
      *
-     * @param id  翻訳コンテンツID
-     * @param req ステータス変更リクエスト
+     * @param id        翻訳コンテンツID
+     * @param scopeType スコープ種別（BOLA是正: idがこのscope配下か束縛検証する）
+     * @param scopeId   スコープID
+     * @param req       ステータス変更リクエスト
      * @return 更新後の翻訳コンテンツのレスポンス
-     * @throws BusinessException TRANSLATION_002: 対象が見つからない場合
+     * @throws BusinessException TRANSLATION_002: 対象が見つからない、またはscope不一致（越境）の場合
      * @throws BusinessException TRANSLATION_005: 不正なステータス遷移の場合
      * @throws BusinessException TRANSLATION_007: バージョン不一致の場合
      */
-    public ApiResponse<ContentTranslationResponse> changeStatus(Long id, ChangeStatusRequest req) {
-        return contentTranslationStatusService.changeStatus(id, req);
+    public ApiResponse<ContentTranslationResponse> changeStatus(
+            Long id, String scopeType, Long scopeId, ChangeStatusRequest req) {
+        return contentTranslationStatusService.changeStatus(id, scopeType, scopeId, req);
     }
 
     /**
      * 翻訳コンテンツを公開状態（PUBLISHED）に更新する。
      * <p>
-     * 実装は {@link ContentTranslationStatusService#publishTranslation(Long)} へ委譲する。
+     * 実装は {@link ContentTranslationStatusService#publishTranslation(Long, String, Long)} へ委譲する。
      *
-     * @param id 翻訳コンテンツID
+     * @param id        翻訳コンテンツID
+     * @param scopeType スコープ種別（BOLA是正: idがこのscope配下か束縛検証する）
+     * @param scopeId   スコープID
      * @return 更新後の翻訳コンテンツのレスポンス
-     * @throws BusinessException TRANSLATION_002: 対象が見つからない場合
+     * @throws BusinessException TRANSLATION_002: 対象が見つからない、またはscope不一致（越境）の場合
      */
-    public ApiResponse<ContentTranslationResponse> publishTranslation(Long id) {
-        return contentTranslationStatusService.publishTranslation(id);
+    public ApiResponse<ContentTranslationResponse> publishTranslation(Long id, String scopeType, Long scopeId) {
+        return contentTranslationStatusService.publishTranslation(id, scopeType, scopeId);
     }
 
     /**
      * 指定原文コンテンツのPUBLISHED翻訳を全てNEEDS_UPDATEに更新する。
      * 原文が更新された際に呼び出す（イベントリスナー・バッチからの呼び出し）。
      * <p>
-     * 実装は {@link ContentTranslationStatusService#markAsStale(String, Long)} へ委譲する。
+     * 実装は {@link ContentTranslationStatusService#markAsStale(String, Long, String, Long)} へ委譲する。
      *
+     * @param scopeType   スコープ種別（BOLA是正: 原文IDがこのscope配下か束縛検証する）
+     * @param scopeId     スコープID
      * @param contentType 原文コンテンツ種別
      * @param contentId   原文コンテンツID
      * @return 更新件数
      */
-    public int markAsStale(String contentType, Long contentId) {
-        return contentTranslationStatusService.markAsStale(contentType, contentId);
+    public int markAsStale(String scopeType, Long scopeId, String contentType, Long contentId) {
+        return contentTranslationStatusService.markAsStale(scopeType, scopeId, contentType, contentId);
     }
 
     /**
      * 翻訳コンテンツを論理削除する。
      *
-     * @param id 翻訳コンテンツID
-     * @throws BusinessException TRANSLATION_002: 対象が見つからない場合
+     * @param id        翻訳コンテンツID
+     * @param scopeType スコープ種別（BOLA是正: idがこのscope配下か束縛検証する）
+     * @param scopeId   スコープID
+     * @throws BusinessException TRANSLATION_002: 対象が見つからない、またはscope不一致（越境）の場合
      */
     @Transactional
-    public void deleteTranslation(Long id) {
-        ContentTranslationEntity entity = findOrThrow(id);
+    public void deleteTranslation(Long id, String scopeType, Long scopeId) {
+        ContentTranslationEntity entity = findOrThrow(id, scopeType, scopeId);
         entity.softDelete();
         contentTranslationRepository.save(entity);
         log.info("翻訳コンテンツ論理削除: id={}", id);
@@ -472,13 +491,16 @@ public class ContentTranslationService {
     // ========================================
 
     /**
-     * IDで翻訳コンテンツを取得する。見つからない場合は TRANSLATION_002 例外をスロー。
+     * IDとスコープで翻訳コンテンツを取得する。見つからない、またはscope不一致（BOLA越境）の場合は
+     * 同一コード（TRANSLATION_002）で例外をスローし存在を秘匿する。
      *
-     * @param id 翻訳コンテンツID
+     * @param id        翻訳コンテンツID
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープID
      * @return 翻訳コンテンツエンティティ
      */
-    public ContentTranslationEntity findOrThrow(Long id) {
-        return contentTranslationRepository.findById(id)
+    public ContentTranslationEntity findOrThrow(Long id, String scopeType, Long scopeId) {
+        return contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(id, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(TranslationErrorCode.TRANSLATION_002));
     }
 

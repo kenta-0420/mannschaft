@@ -3,6 +3,7 @@ package com.mannschaft.app.match.service;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
 import com.mannschaft.app.match.MatchCompletedEvent;
 import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.domain.MatchKind;
@@ -12,6 +13,7 @@ import com.mannschaft.app.match.domain.StateModel;
 import com.mannschaft.app.match.dto.MatchSummaryResponse;
 import com.mannschaft.app.match.entity.MatchEntity;
 import com.mannschaft.app.match.repository.MatchRepository;
+import com.mannschaft.app.match.repository.MatchAttachmentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,6 +60,10 @@ class MatchServiceTest {
 
     @Mock
     private MatchRepository matchRepository;
+    @Mock
+    private MatchAttachmentRepository attachmentRepository;
+    @Mock
+    private StorageAclService storageAclService;
     @Mock
     private MatchAccessService matchAccessService;
     @Mock

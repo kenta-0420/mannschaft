@@ -2,6 +2,7 @@ package com.mannschaft.app.workflow.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.workflow.dto.CreateWorkflowTemplateRequest;
 import com.mannschaft.app.workflow.dto.UpdateWorkflowTemplateRequest;
 import com.mannschaft.app.workflow.dto.WorkflowTemplateResponse;
@@ -43,13 +44,14 @@ public class WorkflowTemplateController {
     @GetMapping
     @Operation(summary = "テンプレート一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @RequireFeature("FEATURE_WORKFLOW_FORMS_ENABLED")
     public ResponseEntity<PagedResponse<WorkflowTemplateResponse>> listTemplates(
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<WorkflowTemplateResponse> result = templateService.listTemplates(
-                scopeType, scopeId, PageRequest.of(page, size));
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -65,7 +67,8 @@ public class WorkflowTemplateController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long templateId) {
-        WorkflowTemplateResponse response = templateService.getTemplate(scopeType, scopeId, templateId);
+        WorkflowTemplateResponse response = templateService.getTemplate(
+                scopeType, scopeId, templateId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -95,7 +98,8 @@ public class WorkflowTemplateController {
             @PathVariable Long scopeId,
             @PathVariable Long templateId,
             @Valid @RequestBody UpdateWorkflowTemplateRequest request) {
-        WorkflowTemplateResponse response = templateService.updateTemplate(scopeType, scopeId, templateId, request);
+        WorkflowTemplateResponse response = templateService.updateTemplate(
+                scopeType, scopeId, templateId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -109,7 +113,7 @@ public class WorkflowTemplateController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long templateId) {
-        templateService.deleteTemplate(scopeType, scopeId, templateId);
+        templateService.deleteTemplate(scopeType, scopeId, templateId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

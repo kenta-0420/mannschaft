@@ -44,6 +44,9 @@ class ScheduleCrossRefServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private com.mannschaft.app.common.AccessControlService accessControlService;
+
     @InjectMocks
     private ScheduleCrossRefService crossRefService;
 
@@ -214,7 +217,7 @@ class ScheduleCrossRefServiceTest {
                     .willReturn(List.of(crossRef));
 
             // when
-            List<CrossRefResponse> result = crossRefService.listReceivedInvitations("TEAM", TARGET_ID);
+            List<CrossRefResponse> result = crossRefService.listReceivedInvitations("TEAM", TARGET_ID, USER_ID);
 
             // then
             assertThat(result).hasSize(1);
@@ -238,7 +241,7 @@ class ScheduleCrossRefServiceTest {
             given(crossRefRepository.findById(INVITATION_ID)).willReturn(Optional.of(crossRef));
 
             // when
-            crossRefService.rejectInvitation(INVITATION_ID);
+            crossRefService.rejectInvitation("TEAM", TARGET_ID, INVITATION_ID, USER_ID);
 
             // then
             assertThat(crossRef.getStatus()).isEqualTo(CrossRefStatus.REJECTED);
@@ -260,7 +263,7 @@ class ScheduleCrossRefServiceTest {
             given(crossRefRepository.findById(INVITATION_ID)).willReturn(Optional.of(cancelled));
 
             // when & then
-            assertThatThrownBy(() -> crossRefService.rejectInvitation(INVITATION_ID))
+            assertThatThrownBy(() -> crossRefService.rejectInvitation("TEAM", TARGET_ID, INVITATION_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.CROSS_INVITE_INVALID_STATUS);
@@ -289,7 +292,7 @@ class ScheduleCrossRefServiceTest {
             given(crossRefRepository.findById(INVITATION_ID)).willReturn(Optional.of(awaiting));
 
             // when
-            crossRefService.confirmInvitation(INVITATION_ID);
+            crossRefService.confirmInvitation("TEAM", TARGET_ID, INVITATION_ID, USER_ID);
 
             // then
             assertThat(awaiting.getStatus()).isEqualTo(CrossRefStatus.ACCEPTED);
@@ -304,10 +307,108 @@ class ScheduleCrossRefServiceTest {
             given(crossRefRepository.findById(INVITATION_ID)).willReturn(Optional.of(pending));
 
             // when & then
-            assertThatThrownBy(() -> crossRefService.confirmInvitation(INVITATION_ID))
+            assertThatThrownBy(() -> crossRefService.confirmInvitation("TEAM", TARGET_ID, INVITATION_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.CROSS_INVITE_INVALID_STATUS);
+        }
+    }
+
+    // ========================================
+    // 認可（認可根治 Wave6）
+    // ========================================
+
+    @Nested
+    @DisplayName("認可（認可根治 Wave6）")
+    class Authorization {
+
+        /** 受信側スコープの ADMIN でない利用者は COMMON_002 で弾かれる。 */
+        private void givenNotAdminOfTarget() {
+            org.mockito.BDDMockito.willThrow(
+                            new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkAdminOrAbove(USER_ID, TARGET_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("招待承認_受信側の管理者でない_COMMON_002")
+        void 招待承認_受信側の管理者でない_COMMON_002() {
+            given(crossRefRepository.findById(INVITATION_ID))
+                    .willReturn(Optional.of(createPendingCrossRef()));
+            givenNotAdminOfTarget();
+
+            assertThatThrownBy(() -> crossRefService.acceptInvitation(
+                    "TEAM", TARGET_ID, INVITATION_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("招待拒否_受信側の管理者でない_COMMON_002")
+        void 招待拒否_受信側の管理者でない_COMMON_002() {
+            given(crossRefRepository.findById(INVITATION_ID))
+                    .willReturn(Optional.of(createPendingCrossRef()));
+            givenNotAdminOfTarget();
+
+            assertThatThrownBy(() -> crossRefService.rejectInvitation(
+                    "TEAM", TARGET_ID, INVITATION_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("受信招待一覧_受信側のメンバーでない_COMMON_002")
+        void 受信招待一覧_受信側のメンバーでない_COMMON_002() {
+            org.mockito.BDDMockito.willThrow(
+                            new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkMembership(USER_ID, TARGET_ID, "TEAM");
+
+            assertThatThrownBy(() -> crossRefService.listReceivedInvitations("TEAM", TARGET_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("BOLA_URLのscopeと招待entityのtargetが不一致_COMMON_002")
+        void BOLA_URLのscopeと招待entityのtargetが不一致_COMMON_002() {
+            // 招待 entity の target は TEAM:200。URL は TEAM:999（別チーム）を騙る。
+            given(crossRefRepository.findById(INVITATION_ID))
+                    .willReturn(Optional.of(createPendingCrossRef()));
+
+            assertThatThrownBy(() -> crossRefService.acceptInvitation(
+                    "TEAM", 999L, INVITATION_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("BOLA_URLのscopeTypeが招待entityと不一致_COMMON_002")
+        void BOLA_URLのscopeTypeが招待entityと不一致_COMMON_002() {
+            // 招待 entity の target は TEAM。URL は ORGANIZATION 側の入口を騙る。
+            given(crossRefRepository.findById(INVITATION_ID))
+                    .willReturn(Optional.of(createPendingCrossRef()));
+
+            assertThatThrownBy(() -> crossRefService.rejectInvitation(
+                    "ORGANIZATION", TARGET_ID, INVITATION_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("正常系_受信側の管理者は拒否できる")
+        void 正常系_受信側の管理者は拒否できる() {
+            ScheduleCrossRefEntity crossRef = createPendingCrossRef();
+            given(crossRefRepository.findById(INVITATION_ID)).willReturn(Optional.of(crossRef));
+
+            crossRefService.rejectInvitation("TEAM", TARGET_ID, INVITATION_ID, USER_ID);
+
+            assertThat(crossRef.getStatus()).isEqualTo(CrossRefStatus.REJECTED);
         }
     }
 }

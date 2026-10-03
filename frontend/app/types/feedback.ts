@@ -19,7 +19,7 @@ export interface FeedbackResponse {
 
 export interface CreateFeedbackRequest {
   scopeType: string
-  scopeId: string
+  scopeId?: number | null
   category: string
   title?: string
   body: string

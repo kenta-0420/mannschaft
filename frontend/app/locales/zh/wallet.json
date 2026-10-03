@@ -20,14 +20,19 @@
       "no_provider": "（未匹配）",
       "last4_format": "●●●● {last4}",
       "no_cards": "还没有注册卡片",
-      "no_cards_hint": "请从右下角「＋」按钮添加卡片",
+      "no_cards_hint": "请点击页面上方的「添加卡片」按钮添加卡片",
       "no_matches": "没有与「{query}」匹配的卡片"
     },
     "group": {
       "card_count": "{count} 张",
       "no_emoji": "📋",
       "no_groups": "还没有群组",
-      "no_groups_hint": "将常一起出示的卡片分组，收银台切换会更方便"
+      "no_groups_hint": "将常一起出示的卡片分组，收银台切换会更方便",
+      "edit": "编辑",
+      "edit_group": "编辑 {name}",
+      "start_presentation_for": "开始 {name} 的展示模式",
+      "show_barcode_tooltip": "显示条形码",
+      "edit_tooltip": "编辑群组"
     },
     "settings": {
       "title": "钱包设置",
@@ -95,9 +100,50 @@
       "cancel": "取消",
       "back": "返回",
       "next": "下一步",
+      "manual_confirm": "确定",
+      "next_disabled_hint": "输入卡片名称和条形码后即可进入「下一步」",
       "save_failed": "卡片注册失败",
       "validation_required": "请输入卡片名称",
-      "validation_barcode_required": "请输入条形码值或选择「无条形码」"
+      "validation_barcode_required": "请输入条形码值或选择「无条形码」",
+      "format_labels": {
+        "CODE128": "CODE128（会员卡通用·不确定就选这个）",
+        "CODE39": "CODE39（字母数字会员证）",
+        "EAN13": "EAN13（13位商品条码）",
+        "EAN8": "EAN8（8位商品条码）",
+        "JAN13": "JAN13（日本13位商品条码）",
+        "QR": "QR（方形点阵图案）",
+        "PDF417": "PDF417（驾照等）",
+        "ITF": "ITF（物流・部分会员证）"
+      },
+      "help": {
+        "title": "如何添加卡片",
+        "description": "将店铺积分卡或会员卡的条形码注册到应用中，即可在收银台展示。",
+        "easiest": {
+          "title": "最简单的添加方法",
+          "body": "从预设中选择可自动填入卡片名称和格式。用相机或图片扫描也会自动识别格式。",
+          "steps": {
+            "step1": "如果常用店铺出现在预设中，点击它（卡片名称和格式自动填入）",
+            "step2": "否则，在「卡片名称」中输入店铺名称",
+            "step3": "用相机或图片扫描积分卡上的条形码",
+            "step4": "确认预览后点击「下一步」→「保存」"
+          }
+        },
+        "format_guide": {
+          "title": "不知道条形码格式时",
+          "body": "只有手动输入时才需要选择格式。相机和图片扫描会自动识别。",
+          "steps": {
+            "step1": "不确定时选「CODE128」（适用于大多数会员卡）",
+            "step2": "数字为13位时选「EAN13」",
+            "step3": "数字为8位时选「EAN8」",
+            "step4": "方形点阵图案时选「QR」"
+          }
+        },
+        "verify": {
+          "title": "保存后务必确认",
+          "body": "保存后在详情画面确认条形码是否能在收银台扫描读取。如无法读取，请删除后更换格式重新注册。",
+          "hint": "保存后无法更改条形码格式。如需更改，请删除并重新注册。"
+        }
+      }
     },
     "detail": {
       "edit": "编辑",
@@ -107,7 +153,6 @@
       "delete_confirm_title": "要删除卡片吗？",
       "delete_confirm": "彻底删除此卡片。无法恢复。",
       "delete_confirm_ok": "删除",
-      "record_used": "记录为已使用",
       "favorite_on": "添加到收藏",
       "favorite_off": "从收藏中移除",
       "section_meta": "卡片信息",
@@ -119,8 +164,7 @@
       "barcode_locked_hint": "出于安全原因，条形码值・格式无法编辑。如需更改，请删除后重新注册。",
       "not_found": "找不到卡片",
       "back_to_list": "返回列表",
-      "save_failed": "更新失败",
-      "used_recorded": "已记录为已使用"
+      "save_failed": "更新失败"
     },
     "group_form": {
       "title_new": "新建群组",
@@ -147,6 +191,7 @@
       "start_presentation": "开始展示模式",
       "validation_name_required": "请输入群组名称",
       "validation_max_cards": "一个群组最多包含20张卡片",
+      "saved": "已保存",
       "save_failed": "保存失败",
       "not_found": "找不到群组"
     },
@@ -163,7 +208,8 @@
       "error_no_camera": "找不到相机",
       "error_denied": "相机访问被拒绝",
       "error_decode_failed": "无法读取条形码",
-      "retry": "重试"
+      "retry": "重试",
+      "manual_recommend_scan": "用相机或图片扫描可自动填入格式。手动输入是最后手段。"
     },
     "barcode": {
       "no_barcode_label": "无条形码",
@@ -183,6 +229,8 @@
       "hint_brightness": "将屏幕亮度调至最大会更容易读取",
       "close": "关闭",
       "reload": "重新加载",
+      "prev_card": "上一张卡片",
+      "next_card": "下一张卡片",
       "biometric_required": "开始展示模式需要认证",
       "biometric_failed": "认证失败",
       "no_cards": "此群组没有卡片",
@@ -428,6 +476,45 @@
       "error_delete": "删除失败",
       "error_duplicate": "此同义词已注册（规范化后重复）",
       "error_provider_not_found": "找不到指定的提供商"
+    },
+    "wallet_guide": {
+      "title": "钱包使用方法",
+      "description": "将积分卡汇总到智能手机中随身携带，并在收银台出示条形码的功能。",
+      "overview": {
+        "title": "什么是钱包？",
+        "body": "将您手中的积分卡和会员卡的条形码注册到应用程序中，即可在智能手机屏幕上出示条形码。最多可注册200张卡。",
+        "hint": "首次打开时需要同意使用条款。"
+      },
+      "add_card": {
+        "title": "注册卡片",
+        "body": "您可以通过点击卡片标签上方的「添加卡片」按钮添加新卡片。选择热门店铺的预设可以节省时间。",
+        "steps": {
+          "step1": "点击卡片标签上方的「添加卡片」按钮",
+          "step2": "从预设中选择热门店铺，或直接输入「卡片名称」",
+          "step3": "通过相机、图片或手动输入条形码（会员号）",
+          "step4": "确认预览后点击「保存」"
+        }
+      },
+      "groups": {
+        "title": "使用分组整理",
+        "body": "将多张卡片整合到一个分组中，即可快速切换常去店铺的卡片。",
+        "steps": {
+          "step1": "打开「分组」标签",
+          "step2": "点击「+ 新建分组」",
+          "step3": "输入分组名称和表情符号，并勾选要包含的卡片",
+          "step4": "点击「保存」完成分组"
+        }
+      },
+      "present": {
+        "title": "在收银台出示条形码",
+        "body": "点击卡片列表中的卡片，条形码将全屏显示。使用分组可以通过滑动在卡片间切换。",
+        "steps": {
+          "step1": "从卡片列表或分组中点击卡片",
+          "step2": "条形码将全屏显示",
+          "step3": "将智能手机屏幕对准工作人员进行扫描",
+          "step4": "（如果启用了生物认证）先通过面部/指纹认证解锁后再出示"
+        }
+      }
     }
   }
 }

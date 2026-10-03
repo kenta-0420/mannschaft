@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * F13 Phase 5-b ストレージパス移行エラー記録エンティティ（{@code storage_migration_errors}）。
@@ -38,8 +39,12 @@ public class StorageMigrationErrorEntity {
     private String referenceType;
 
     /** 対象レコードID */
-    @Column(nullable = false)
+    @Column
     private Long referenceId;
+
+    /** UUID 主キーを持つ対象レコードID。移行済み既存行では数値参照との併存を許す。 */
+    @Column(columnDefinition = "BINARY(16)")
+    private UUID referenceUuid;
 
     /** 移行前R2キー */
     @Column(nullable = false, length = 1000)
@@ -68,6 +73,9 @@ public class StorageMigrationErrorEntity {
 
     @PrePersist
     void prePersist() {
+        if (referenceId == null && referenceUuid == null) {
+            throw new IllegalStateException("referenceId または referenceUuid が必要です");
+        }
         this.createdAt = LocalDateTime.now();
     }
 }

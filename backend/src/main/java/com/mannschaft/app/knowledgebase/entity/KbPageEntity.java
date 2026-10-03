@@ -13,10 +13,10 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -29,8 +29,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class KbPageEntity extends BaseEntity {
 
     @Column(nullable = false, length = 50)
@@ -98,5 +97,41 @@ public class KbPageEntity extends BaseEntity {
      */
     public void incrementViewCount() {
         this.viewCount = this.viewCount + 1;
+    }
+
+    /**
+     * ページ内容を更新する（toBuilder → UPDATE 化バグを防ぐドメインメソッド）。
+     * 呼び出し前に旧値をローカル変数へ捕捉し、比較・監査ログに使用すること。
+     */
+    public void applyUpdate(String title, String body, String icon,
+                            PageAccessLevel accessLevel, Long lastEditedBy) {
+        if (title != null) this.title = title;
+        if (body != null) this.body = body;
+        if (icon != null) this.icon = icon;
+        if (accessLevel != null) this.accessLevel = accessLevel;
+        if (lastEditedBy != null) this.lastEditedBy = lastEditedBy;
+    }
+
+    /**
+     * ページのパスと深さを更新する（移動操作用）。
+     */
+    public void applyMove(KbPageEntity newParent, String newPath, int newDepth) {
+        this.parent = newParent;
+        this.path = newPath;
+        this.depth = newDepth;
+    }
+
+    /**
+     * ページのパスを設定する（作成直後のID確定後 path 更新用）。
+     */
+    public void updatePath(String path) {
+        this.path = path;
+    }
+
+    /**
+     * ページのステータスを変更する（公開・アーカイブ用）。
+     */
+    public void applyStatus(PageStatus newStatus) {
+        this.status = newStatus;
     }
 }

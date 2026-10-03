@@ -7,8 +7,10 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -25,8 +27,7 @@ import java.util.UUID;
 @Table(name = "tournament_entry_template_members")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TournamentEntryTemplateMemberEntity extends UuidV7Entity {
 
     /** テンプレートID（tournament_entry_templates.id、UUIDv7） */
@@ -40,8 +41,8 @@ public class TournamentEntryTemplateMemberEntity extends UuidV7Entity {
     /** 背番号（nullable） */
     private Integer jerseyNumber;
 
-    /** ポジション（nullable） */
-    @Column(length = 50)
+    /** ポジション（nullable。DDL は VARCHAR(30)） */
+    @Column(length = 30)
     private String position;
 
     /** 協会選手登録番号（背番号 jerseyNumber とは別・NULL 可／F08.7.1/05 §8.1） */

@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -49,5 +50,14 @@ public class BlogMediaController {
         Long uploaderId = SecurityUtils.getCurrentUserId();
         BlogMediaUploadUrlResponse response = blogMediaService.generateUploadUrl(uploaderId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /** Presigned PUT完了後にR2実体を確認し、画像のACLと使用量を確定する。 */
+    @PostMapping("/{mediaId}/complete")
+    @Operation(summary = "画像アップロード完了確認")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "完了確認成功")
+    public ResponseEntity<Void> confirmImageUpload(@PathVariable Long mediaId) {
+        blogMediaService.confirmImageUpload(mediaId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
     }
 }

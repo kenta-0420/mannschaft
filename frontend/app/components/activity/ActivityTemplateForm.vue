@@ -3,7 +3,7 @@ import type { ActivityTemplate } from '~/types/activity'
 
 interface FieldRow {
   label: string
-  fieldType: 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'CHECKBOX' | 'TEXTAREA'
+  fieldType: 'TEXT' | 'NUMBER' | 'DATE' | 'DATETIME' | 'SELECT' | 'CHECKBOX' | 'TEXTAREA'
   required: boolean
   isAggregatable: boolean
   optionsRaw: string
@@ -33,6 +33,7 @@ const fieldTypeOptions = computed(() => [
   { label: t('activity.template.field_type.TEXT'), value: 'TEXT' },
   { label: t('activity.template.field_type.NUMBER'), value: 'NUMBER' },
   { label: t('activity.template.field_type.DATE'), value: 'DATE' },
+  { label: t('activity.template.field_type.DATETIME'), value: 'DATETIME' },
   { label: t('activity.template.field_type.SELECT'), value: 'SELECT' },
   { label: t('activity.template.field_type.CHECKBOX'), value: 'CHECKBOX' },
   { label: t('activity.template.field_type.TEXTAREA'), value: 'TEXTAREA' },
@@ -43,11 +44,20 @@ function initForm() {
     name.value = props.template.name
     description.value = props.template.description ?? ''
     fields.value = (props.template.fields ?? []).map((f) => ({
-      label: f.fieldName,
+      label: f.fieldLabel,
       fieldType: f.fieldType as FieldRow['fieldType'],
       required: f.isRequired,
-      isAggregatable: false,
-      optionsRaw: '',
+      isAggregatable: f.isAggregatable,
+      optionsRaw: (() => {
+        // SELECT 型の選択肢 JSON 文字列を編集用のカンマ区切りに展開する
+        if (f.fieldType !== 'SELECT' || !f.optionsJson) return ''
+        try {
+          const parsed: unknown = JSON.parse(f.optionsJson)
+          return Array.isArray(parsed) ? parsed.map((o) => String(o)).join(', ') : ''
+        } catch {
+          return ''
+        }
+      })(),
     }))
   } else {
     name.value = ''

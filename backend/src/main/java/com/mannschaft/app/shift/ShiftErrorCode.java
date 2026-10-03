@@ -27,7 +27,7 @@ public enum ShiftErrorCode implements ErrorCode {
     SWAP_REQUEST_NOT_FOUND("SHIFT_005", "交代リクエストが見つかりません", Severity.WARN),
 
     /** 開始日と終了日の整合性エラー */
-    INVALID_DATE_RANGE("SHIFT_010", "開始日は終了日より前である必要があります", Severity.ERROR),
+    INVALID_DATE_RANGE("SHIFT_010", "開始日は終了日より前である必要があります", Severity.WARN),
 
     /** 希望提出期限超過 */
     REQUEST_DEADLINE_PASSED("SHIFT_011", "希望提出期限を過ぎています", Severity.WARN),
@@ -45,10 +45,10 @@ public enum ShiftErrorCode implements ErrorCode {
     REQUEST_ALREADY_EXISTS("SHIFT_015", "既に希望を提出済みです", Severity.WARN),
 
     /** 自分自身への交代リクエスト */
-    SWAP_SELF_REQUEST("SHIFT_016", "自分自身に交代リクエストを送ることはできません", Severity.ERROR),
+    SWAP_SELF_REQUEST("SHIFT_016", "自分自身に交代リクエストを送ることはできません", Severity.WARN),
 
     /** アサイン人数超過 */
-    SLOT_ASSIGNMENT_EXCEEDED("SHIFT_017", "シフト枠の必要人数を超過しています", Severity.ERROR),
+    SLOT_ASSIGNMENT_EXCEEDED("SHIFT_017", "シフト枠の必要人数を超過しています", Severity.WARN),
 
     /** 楽観的ロック競合 */
     OPTIMISTIC_LOCK_CONFLICT("SHIFT_018", "他のユーザーによって更新されています。再度お試しください", Severity.WARN),
@@ -83,17 +83,51 @@ public enum ShiftErrorCode implements ErrorCode {
     /** オープンコールの月次上限超過 */
     OPEN_CALL_MONTHLY_LIMIT_EXCEEDED("SHIFT_032", "オープンコールは月3件までしか申請できません", Severity.WARN),
 
-    /** 交代リクエストがオープンコールではない */
-    NOT_OPEN_CALL("SHIFT_033", "この交代リクエストはオープンコールではありません", Severity.WARN),
-
-    /** 既に手挙げ済みのオープンコール */
-    OPEN_CALL_ALREADY_CLAIMED("SHIFT_034", "このオープンコールは既に手挙げされています", Severity.WARN),
-
-    /** 候補者の選定権限なし */
-    CLAIMER_SELECT_DENIED("SHIFT_035", "候補者選定はオープンコール申請者または管理者のみ実行できます", Severity.WARN),
-
     /** 手動リマインドの連打防止スロットリング（Valkey 同時実行ロック取得失敗） */
-    MANUAL_REMINDER_THROTTLED("SHIFT_036", "リマインドは連続して送信できません。15 秒ほど待ってから再操作してください", Severity.WARN);
+    MANUAL_REMINDER_THROTTLED("SHIFT_036", "リマインドは連続して送信できません。15 秒ほど待ってから再操作してください", Severity.WARN),
+
+    /**
+     * 希望提出の {@code slotId} と {@code slotDate} が食い違う（設計 §11.5.1.1-2）。
+     *
+     * <p>越境ではなく<b>クライアントの自己矛盾</b>なので 400 とする
+     *（{@code Severity.WARN} の既定が 400 のため {@code GlobalExceptionHandler} への登録は不要）。
+     * 越境（他 schedule 配下の枠・存在しない枠）は {@link #ACCESS_DENIED}（403）で畳む。</p>
+     */
+    REQUEST_SLOT_DATE_MISMATCH("SHIFT_037", "指定された枠の日付と希望日が一致しません", Severity.WARN),
+
+    /** 枠時刻の前後関係が不正（F03.5 §11.2.5・400） */
+    INVALID_TIME_RANGE("SHIFT_040", "開始時刻と終了時刻の組み合わせが正しくありません。日をまたぐ枠は「翌日終了」を指定し、またがない枠は開始時刻を終了時刻より前にしてください", Severity.WARN),
+
+    /** 枠時刻の刻み・枠長が不正（F03.5 §11.2.5・400） */
+    INVALID_SLOT_GRANULARITY("SHIFT_041", "シフト枠は15分単位で、最小15分以上24時間未満である必要があります", Severity.WARN),
+
+    /**
+     * 完全一致の重複割当（F03.5 §11.3.5・409）。
+     *
+     * <p>同一日・同一開始・同一終了の枠へ同じ人物を二重に入れる操作だけは拒否する。
+     * これ以外の「時間が重なる」割当は現場判断を潰さないため警告に留め保存を許す
+     *（警告は {@code ShiftAssignmentWarningDto#ASSIGNMENT_OVERLAP}）。</p>
+     *
+     * <p>状態競合なので 409。兄弟の {@code SHIFT_012}（INVALID_SCHEDULE_STATUS）と同様、
+     * {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} への明示登録が要る
+     *（{@code Severity.WARN} の既定は 400 のため）。</p>
+     */
+    DUPLICATE_ASSIGNMENT("SHIFT_042", "同じ時間帯の枠に同じメンバーが既に割り当てられています", Severity.WARN),
+
+    /**
+     * デフォルト勤務可能時間の {@code preference} が {@link com.mannschaft.app.shift.ShiftPreference}
+     * の有効値ではない（CMP-260912-1758・400）。
+     *
+     * <p>根治前は {@code ShiftPreference.valueOf()} が素通しで {@code IllegalArgumentException} を
+     * 未捕捉のまま投げ、{@code COMMON_999}（500）になっていた。</p>
+     */
+    INVALID_AVAILABILITY_PREFERENCE("SHIFT_043", "勤務希望区分の指定が不正です", Severity.WARN),
+
+    /**
+     * デフォルト勤務可能時間の一括設定で、同一 {@code dayOfWeek} の行が重複している
+     *（CMP-260912-1758・400）。
+     */
+    DUPLICATE_AVAILABILITY_DAY_OF_WEEK("SHIFT_044", "同じ曜日の勤務可能時間が複数指定されています", Severity.WARN);
 
     private final String code;
     private final String message;

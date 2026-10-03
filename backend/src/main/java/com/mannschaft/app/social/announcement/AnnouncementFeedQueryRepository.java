@@ -1,12 +1,16 @@
 package com.mannschaft.app.social.announcement;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Set;
+import java.util.ArrayList;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * お知らせフィードのカーソルページングクエリリポジトリ（F02.6）。
@@ -41,7 +45,98 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AnnouncementFeedQueryRepository {
 
+    /** 個人横断フィード取得時のスコープと閲覧可能範囲。 */
+    public record PersonalScopeAccess(
+            AnnouncementScopeType scopeType,
+            Long scopeId,
+            Set<String> allowedVisibilities) {
+    }
+
+    /**
+     * 「そのスコープでその閲覧者に<b>可視な</b>お知らせ」を表す正準 WHERE 句（#2494）。
+     *
+     * <p><b>この定数が可視性判定の単一の真実源である。</b>
+     * 一覧（{@link #findByScope}）と一括既読の対象抽出（{@link #findUnreadIdsByScope}）は
+     * どちらもこの同一文字列を連結して JPQL を組み立てる。
+     * 「一覧に出る集合＝既読にできる集合」という不変条件（裏目付第二陣 C-social / PR #2478）を
+     * <b>規約ではなく構造で</b>担保するための措置であり、片方だけ条件を足す/落とすことが
+     * 物理的にできない形にしてある。条件を変更する場合は必ずこの定数を変更すること
+     * （個々のメソッド側に条件を書き足してはならない）。</p>
+     *
+     * <p>含まれる条件（順序も含めて 4 条件で全部）:</p>
+     * <ul>
+     *   <li>{@code scopeType + scopeId} — スコープ帰属</li>
+     *   <li>{@code expiresAt IS NULL OR expiresAt > CURRENT_TIMESTAMP} — 期限切れ除外（<b>厳密な {@code >}</b>）</li>
+     *   <li>{@code sourceDeletedAt IS NULL} — 元コンテンツ削除済み除外</li>
+     *   <li>{@code visibility IN :allowedVisibilities} — 可視性</li>
+     * </ul>
+     */
+    private static final String VISIBLE_IN_SCOPE_WHERE = """
+            WHERE a.scopeType = :scopeType
+              AND a.scopeId = :scopeId
+              AND (a.expiresAt IS NULL OR a.expiresAt > CURRENT_TIMESTAMP)
+              AND a.sourceDeletedAt IS NULL
+              AND a.visibility IN :allowedVisibilities
+            """;
+
     private final EntityManager em;
+
+    /**
+     * 現役所属スコープを横断してフィードを有界取得する。
+     * スコープ条件は最大20個であり、各条件に可視性集合を結び付けて別テナント露出を防ぐ。
+     */
+    public List<AnnouncementFeedEntity> findPersonalFeed(
+            List<PersonalScopeAccess> scopes,
+            Long userId,
+            boolean includeRead,
+            int offset,
+            int limit) {
+        if (scopes == null || scopes.isEmpty()) {
+            return List.of();
+        }
+
+        StringBuilder jpql = new StringBuilder("SELECT a FROM AnnouncementFeedEntity a WHERE (");
+        List<PersonalScopeAccess> usableScopes = new ArrayList<>();
+        for (PersonalScopeAccess scope : scopes) {
+            if (scope == null || scope.scopeType() == null || scope.scopeId() == null
+                    || scope.allowedVisibilities() == null || scope.allowedVisibilities().isEmpty()) {
+                continue;
+            }
+            int index = usableScopes.size();
+            if (index > 0) {
+                jpql.append(" OR ");
+            }
+            jpql.append("(a.scopeType = :scopeType").append(index)
+                    .append(" AND a.scopeId = :scopeId").append(index)
+                    .append(" AND a.visibility IN :visibilities").append(index).append(")");
+            usableScopes.add(scope);
+        }
+        if (usableScopes.isEmpty()) {
+            return List.of();
+        }
+        jpql.append(") AND (a.expiresAt IS NULL OR a.expiresAt > :now)")
+                .append(" AND a.sourceDeletedAt IS NULL");
+        if (!includeRead) {
+            jpql.append(" AND NOT EXISTS (SELECT r.id FROM AnnouncementReadStatusEntity r")
+                    .append(" WHERE r.announcementFeedId = a.id AND r.userId = :userId)");
+        }
+        jpql.append(" ORDER BY a.isPinned DESC, a.createdAt DESC, a.id DESC");
+
+        TypedQuery<AnnouncementFeedEntity> query = em.createQuery(jpql.toString(), AnnouncementFeedEntity.class);
+        query.setParameter("now", LocalDateTime.now(ZoneOffset.UTC));
+        for (int i = 0; i < usableScopes.size(); i++) {
+            PersonalScopeAccess scope = usableScopes.get(i);
+            query.setParameter("scopeType" + i, scope.scopeType());
+            query.setParameter("scopeId" + i, scope.scopeId());
+            query.setParameter("visibilities" + i, scope.allowedVisibilities());
+        }
+        if (!includeRead) {
+            query.setParameter("userId", userId);
+        }
+        query.setFirstResult(offset);
+        query.setMaxResults(limit);
+        return query.getResultList();
+    }
 
     /**
      * スコープ内のお知らせフィードをカーソルページングで取得する。
@@ -80,14 +175,8 @@ public class AnnouncementFeedQueryRepository {
             return List.of();
         }
 
-        StringBuilder jpql = new StringBuilder("""
-                SELECT a FROM AnnouncementFeedEntity a
-                WHERE a.scopeType = :scopeType
-                  AND a.scopeId = :scopeId
-                  AND (a.expiresAt IS NULL OR a.expiresAt > CURRENT_TIMESTAMP)
-                  AND a.sourceDeletedAt IS NULL
-                  AND a.visibility IN :allowedVisibilities
-                """);
+        StringBuilder jpql = new StringBuilder("SELECT a FROM AnnouncementFeedEntity a\n")
+                .append(VISIBLE_IN_SCOPE_WHERE);
 
         // カーソルページング: 指定 ID 未満のレコードを取得
         if (cursor != null) {
@@ -99,9 +188,7 @@ public class AnnouncementFeedQueryRepository {
 
         TypedQuery<AnnouncementFeedEntity> query =
                 em.createQuery(jpql.toString(), AnnouncementFeedEntity.class);
-        query.setParameter("scopeType", scopeType);
-        query.setParameter("scopeId", scopeId);
-        query.setParameter("allowedVisibilities", allowedVisibilities);
+        bindVisibleInScopeParameters(query, scopeType, scopeId, allowedVisibilities);
 
         if (cursor != null) {
             query.setParameter("cursor", cursor);
@@ -109,6 +196,98 @@ public class AnnouncementFeedQueryRepository {
 
         query.setMaxResults(limit);
         return query.getResultList();
+    }
+
+    /**
+     * スコープ内で「その閲覧者に可視」かつ「そのユーザーが<b>未読</b>」のお知らせ ID を
+     * 件数上限つきで取得する（#2494 一括既読の対象抽出）。
+     *
+     * <p><b>なぜこのメソッドが要るのか</b>: 旧実装の一括既読は
+     * {@code AnnouncementFeedRepository#findByScopeTypeAndScopeIdAndSourceDeletedAtIsNull} で
+     * <b>スコープ内の feed を limit 無しで全件</b>取り、Java 側で可視性を絞ったうえ、
+     * 既読済み ID の引き当てに全件を {@code IN} 句へ渡していた。長く運用されたスコープほど
+     * プレースホルダ数・{@code INSERT} 件数が伸び、{@code max_allowed_packet} や
+     * プリペアドステートメントのパラメータ上限に触れうるうえ、
+     * <b>1 リクエストの実行時間がスコープの歴史の長さに比例</b>していた。
+     * 「未読だけを DB 側で絞る」ことで、<b>クエリ回数と {@code INSERT} 件数がスコープの
+     * feed 総数に依らず未読件数だけで決まる</b>ようになり、feed ID の {@code IN} 句そのものが消える
+     * （残るパラメータは可視性集合の最大 3 個のみ）。</p>
+     *
+     * <p><b>カーソル {@code lastSeenId}（#2530 ②）</b>: 呼び出し元がチャンクを繰り返すとき、
+     * 直前チャンクの最大 ID を渡すことで {@code AND a.id > :lastSeenId} が付き、
+     * <b>既に処理した範囲を再スキャンしない</b>。これが無いと k 周目は既読化済みの
+     * {@code k × チャンクサイズ} 行を {@code NOT EXISTS} で潰しながら進むため、
+     * 総インデックスプローブ数が未読件数に対して<b>二次的</b>になっていた（最悪 20 周で約 10 万回）。
+     * 本メソッドは ID 昇順で最小の {@code limit} 件を返すので、カーソルより小さい未読が
+     * 後から現れることはない（{@code announcement_feeds.id} は単調増加の AUTO_INCREMENT）。
+     * {@code NOT EXISTS} は撤去しない — カーソルは「もう見た範囲」を飛ばすだけで、
+     * <b>カーソルより先にある既読済み行</b>（過去に単件既読した／他リクエストが先に既読化した）は
+     * {@code NOT EXISTS} でしか除外できない。両者は役割が異なり、併用が必須である。</p>
+     *
+     * <p><b>可視性の 1 対 1</b>: WHERE 句は一覧クエリ {@link #findByScope} と<b>同一の定数</b>
+     * {@code VISIBLE_IN_SCOPE_WHERE} を連結して組み立てる。差分は
+     * 「未読のみ（{@code NOT EXISTS}）」「カーソル」「射影が ID のみ」「並び順が ID 昇順」だけであり、
+     * <b>可視性の条件は 1 文字も増減しない</b>（期限切れ境界が厳密な {@code >} であることを含む）。</p>
+     *
+     * @param scopeType           スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId             スコープ ID
+     * @param allowedVisibilities 閲覧者が閲覧できる visibility 値の集合（空集合・null は「該当なし＝空結果」）
+     * @param userId              既読判定の対象ユーザー ID
+     * @param lastSeenId          直前チャンクの最大 ID（この ID より大きいものだけを返す。null で先頭から）
+     * @param limit               1 回で取得する最大件数（チャンクサイズ）
+     * @return 未読かつ可視なお知らせフィード ID のリスト（ID 昇順・最大 {@code limit} 件）
+     */
+    public List<Long> findUnreadIdsByScope(
+            AnnouncementScopeType scopeType,
+            Long scopeId,
+            Set<String> allowedVisibilities,
+            Long userId,
+            Long lastSeenId,
+            int limit) {
+
+        // 許可集合が空（=閲覧可能な visibility が一つもない）なら空結果。findByScope と同じ fail-closed。
+        if (allowedVisibilities == null || allowedVisibilities.isEmpty()) {
+            return List.of();
+        }
+
+        StringBuilder jpql = new StringBuilder("SELECT a.id FROM AnnouncementFeedEntity a\n")
+                .append(VISIBLE_IN_SCOPE_WHERE)
+                .append("""
+                          AND NOT EXISTS (
+                              SELECT r.id FROM AnnouncementReadStatusEntity r
+                              WHERE r.announcementFeedId = a.id
+                                AND r.userId = :userId
+                          )
+                        """);
+
+        // カーソル: 直前チャンクまでの範囲を再スキャンしない（#2530 ②）
+        if (lastSeenId != null) {
+            jpql.append("  AND a.id > :lastSeenId\n");
+        }
+        jpql.append("ORDER BY a.id ASC");
+
+        TypedQuery<Long> query = em.createQuery(jpql.toString(), Long.class);
+        bindVisibleInScopeParameters(query, scopeType, scopeId, allowedVisibilities);
+        query.setParameter("userId", userId);
+        if (lastSeenId != null) {
+            query.setParameter("lastSeenId", lastSeenId);
+        }
+        query.setMaxResults(limit);
+        return query.getResultList();
+    }
+
+    /**
+     * {@code VISIBLE_IN_SCOPE_WHERE} が要求するバインドパラメータをまとめて設定する。
+     * WHERE 句の定数と一体で保守すること（定数に条件を足したらここも足す）。
+     */
+    private void bindVisibleInScopeParameters(
+            Query query,
+            AnnouncementScopeType scopeType,
+            Long scopeId,
+            Set<String> allowedVisibilities) {
+        query.setParameter("scopeType", scopeType);
+        query.setParameter("scopeId", scopeId);
+        query.setParameter("allowedVisibilities", allowedVisibilities);
     }
 
     /**

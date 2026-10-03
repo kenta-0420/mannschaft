@@ -4,8 +4,9 @@ import com.mannschaft.app.school.dto.EvaluationResponse;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity.EvaluationStatus;
 import com.mannschaft.app.school.entity.AttendanceRequirementRuleEntity;
-import com.mannschaft.app.school.entity.ClassHomeroomEntity;
 import com.mannschaft.app.school.entity.StudentAttendanceSummaryEntity;
+import com.mannschaft.app.school.event.AttendanceRequirementStatusChangedEvent;
+import com.mannschaft.app.school.event.AttendanceWeeklyRiskDigestReadyEvent;
 import com.mannschaft.app.school.repository.AttendanceRequirementEvaluationRepository;
 import com.mannschaft.app.school.repository.AttendanceRequirementRuleRepository;
 import com.mannschaft.app.school.repository.ClassHomeroomRepository;
@@ -17,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -31,6 +34,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -63,6 +67,9 @@ class AttendanceRequirementBatchServiceTest {
     @Mock
     private SchoolAttendanceNotificationService notificationService;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     // ========================================
     // runDailyEvaluation
     // ========================================
@@ -86,14 +93,14 @@ class AttendanceRequirementBatchServiceTest {
             given(evaluationRepository.findTopByStudentUserIdAndRequirementRuleIdOrderByEvaluatedAtDesc(
                     eq(200L), anyLong()))
                     .willReturn(Optional.empty());
-            given(evaluationService.evaluate(eq(200L), anyLong()))
+            given(evaluationService.evaluateInternal(eq(200L), anyLong()))
                     .willReturn(evalResp);
 
             // Act
             service.runDailyEvaluation();
 
             // Assert
-            verify(evaluationService).evaluate(eq(200L), anyLong());
+            verify(evaluationService).evaluateInternal(eq(200L), anyLong());
         }
 
         @Test
@@ -106,8 +113,6 @@ class AttendanceRequirementBatchServiceTest {
             AttendanceRequirementEvaluationEntity prevEval = buildEvalEntity(EvaluationStatus.OK);
             // 今回は WARNING
             EvaluationResponse newResp = buildEvaluationResponse(EvaluationStatus.WARNING);
-            ClassHomeroomEntity homeroom = buildHomeroom(10L, 999L);
-
             given(ruleRepository.findAllActive(any(LocalDate.class), any(short.class)))
                     .willReturn(List.of(rule));
             given(summaryRepository.findClassSummaries(eq(10L), any(short.class)))
@@ -115,17 +120,24 @@ class AttendanceRequirementBatchServiceTest {
             given(evaluationRepository.findTopByStudentUserIdAndRequirementRuleIdOrderByEvaluatedAtDesc(
                     eq(200L), anyLong()))
                     .willReturn(Optional.of(prevEval));
-            given(evaluationService.evaluate(eq(200L), anyLong()))
+            given(evaluationService.evaluateInternal(eq(200L), anyLong()))
                     .willReturn(newResp);
-            given(homeroomRepository.findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(
-                    eq(10L), anyInt()))
-                    .willReturn(Optional.of(homeroom));
 
             // Act
             service.runDailyEvaluation();
 
-            // Assert: WARNING 通知が呼ばれること
-            verify(notificationService).notifyRequirementWarning(eq(200L), any(), any());
+            // Assert（Issue #2990 L6）: バッチの単一TX内では通知サービスを一切呼ばず、
+            // ID と新ステータスだけを載せたイベントを publish する。
+            // 実配送は SchoolAttendanceNotificationListener（AFTER_COMMIT）が行う。
+            ArgumentCaptor<AttendanceRequirementStatusChangedEvent> captor =
+                    ArgumentCaptor.forClass(AttendanceRequirementStatusChangedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            AttendanceRequirementStatusChangedEvent published = captor.getValue();
+            assertThat(published.studentUserId()).isEqualTo(200L);
+            assertThat(published.ruleId()).isEqualTo(rule.getId());
+            assertThat(published.newStatus()).isEqualTo(EvaluationStatus.WARNING);
+
+            verify(notificationService, never()).notifyRequirementWarning(anyLong(), any(), any());
         }
 
         @Test
@@ -142,7 +154,7 @@ class AttendanceRequirementBatchServiceTest {
 
             // Assert: サマリー取得も評価も呼ばれない
             verify(summaryRepository, never()).findClassSummaries(anyLong(), any(short.class));
-            verify(evaluationService, never()).evaluate(anyLong(), anyLong());
+            verify(evaluationService, never()).evaluateInternal(anyLong(), anyLong());
         }
 
         @Test
@@ -162,17 +174,17 @@ class AttendanceRequirementBatchServiceTest {
                     anyLong(), anyLong()))
                     .willReturn(Optional.empty());
             // 1人目は例外、2人目は正常
-            given(evaluationService.evaluate(eq(200L), anyLong()))
+            given(evaluationService.evaluateInternal(eq(200L), anyLong()))
                     .willThrow(new RuntimeException("テスト用例外"));
-            given(evaluationService.evaluate(eq(201L), anyLong()))
+            given(evaluationService.evaluateInternal(eq(201L), anyLong()))
                     .willReturn(buildEvaluationResponse(EvaluationStatus.OK));
 
             // Act（例外がスローされないことを確認）
             service.runDailyEvaluation();
 
             // Assert: 2人目の評価も実行される
-            verify(evaluationService).evaluate(eq(200L), anyLong());
-            verify(evaluationService).evaluate(eq(201L), anyLong());
+            verify(evaluationService).evaluateInternal(eq(200L), anyLong());
+            verify(evaluationService).evaluateInternal(eq(201L), anyLong());
         }
     }
 
@@ -185,30 +197,36 @@ class AttendanceRequirementBatchServiceTest {
     class SendWeeklyDigest {
 
         @Test
-        @DisplayName("正常系: RISK生徒ありかつ担任ありのとき sendWeeklyRiskDigest が呼ばれる")
-        void sendsDigestToHomeroomTeacher() {
+        @DisplayName("正常系: リスク生徒がいるチームは配送イベントが publish される（通知は直接呼ばない）")
+        void publishesDigestEventForAtRiskTeam() {
             // Arrange
             AttendanceRequirementRuleEntity rule = buildRule(10L, null);
             AttendanceRequirementEvaluationEntity atRiskEval = buildEvalEntity(EvaluationStatus.RISK);
-            ClassHomeroomEntity homeroom = buildHomeroom(10L, 999L);
 
             given(ruleRepository.findAllActive(any(LocalDate.class), any(short.class)))
                     .willReturn(List.of(rule));
             given(evaluationRepository.findAtRiskByTeamId(eq(10L), any()))
                     .willReturn(List.of(atRiskEval));
-            given(homeroomRepository.findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(
-                    eq(10L), anyInt()))
-                    .willReturn(Optional.of(homeroom));
 
             // Act
             service.sendWeeklyDigest();
 
-            // Assert
-            verify(notificationService).sendWeeklyRiskDigest(eq(10L), eq(1), eq(999L));
+            // Assert: バッチTX内では通知を直接呼ばず、対象チーム／年度を載せたイベントだけを publish する
+            ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue())
+                    .isInstanceOf(AttendanceWeeklyRiskDigestReadyEvent.class);
+            AttendanceWeeklyRiskDigestReadyEvent event =
+                    (AttendanceWeeklyRiskDigestReadyEvent) captor.getValue();
+            assertThat(event.teamId()).isEqualTo(10L);
+            assertThat(event.academicYear()).isEqualTo(LocalDate.now().getYear());
+            verify(notificationService, never()).sendWeeklyRiskDigest(anyLong(), anyInt(), anyLong());
+            verify(homeroomRepository, never())
+                    .findByTeamIdAndAcademicYearAndEffectiveUntilIsNull(anyLong(), anyInt());
         }
 
         @Test
-        @DisplayName("正常系: リスク生徒がいないチームは sendWeeklyRiskDigest が呼ばれない")
+        @DisplayName("正常系: リスク生徒がいないチームはイベントも publish されない")
         void skipsTeamWithNoAtRiskStudents() {
             // Arrange
             AttendanceRequirementRuleEntity rule = buildRule(10L, null);
@@ -218,10 +236,11 @@ class AttendanceRequirementBatchServiceTest {
             given(evaluationRepository.findAtRiskByTeamId(eq(10L), any()))
                     .willReturn(List.of());  // リスク生徒なし
 
-            // Act
+            // Assert
             service.sendWeeklyDigest();
 
             // Assert
+            verify(eventPublisher, never()).publishEvent(any(AttendanceWeeklyRiskDigestReadyEvent.class));
             verify(notificationService, never()).sendWeeklyRiskDigest(anyLong(), anyInt(), anyLong());
         }
     }
@@ -306,21 +325,4 @@ class AttendanceRequirementBatchServiceTest {
                 null, null, null);
     }
 
-    /**
-     * テスト用の学級担任エンティティを構築する。
-     *
-     * @param teamId                チームID
-     * @param homeroomTeacherUserId 担任ユーザーID
-     */
-    private ClassHomeroomEntity buildHomeroom(Long teamId, Long homeroomTeacherUserId) {
-        ClassHomeroomEntity homeroom = ClassHomeroomEntity.builder()
-                .teamId(teamId)
-                .homeroomTeacherUserId(homeroomTeacherUserId)
-                .academicYear(2026)
-                .effectiveFrom(LocalDate.of(2026, 4, 1))
-                .createdBy(1L)
-                .build();
-        ReflectionTestUtils.setField(homeroom, "id", 50L);
-        return homeroom;
-    }
 }

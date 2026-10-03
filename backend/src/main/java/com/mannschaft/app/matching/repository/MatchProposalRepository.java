@@ -80,4 +80,41 @@ public interface MatchProposalRepository extends JpaRepository<MatchProposalEnti
               AND mp.updatedAt < :deadline
             """)
     List<MatchProposalEntity> findExpiredMutualPending(@Param("deadline") LocalDateTime deadline);
+
+    // ─────────────────────────────────────────────
+    // F10.1.1 P1: 管理者向け承認待ち集約（team 単位・read-only）
+    // 募集側（受け手）視点: requestId → MatchRequestEntity.teamId を JOIN し、
+    // 自チームの募集に届いた指定ステータスの応募を WHERE team_id 必須で集約する
+    // （IDOR/テナント越境防止）。既存は応募者視点 proposingTeamId のみのため新設。
+    // ─────────────────────────────────────────────
+
+    /**
+     * 指定チームの募集に届いた指定ステータスの応募件数を返す（受け手視点）。
+     * requestId → MatchRequestEntity.teamId を JOIN して team で絞り込む。
+     */
+    @Query("""
+            SELECT COUNT(mp) FROM MatchProposalEntity mp,
+                   com.mannschaft.app.matching.entity.MatchRequestEntity req
+            WHERE mp.requestId = req.id
+              AND req.teamId = :teamId
+              AND mp.status = :status
+            """)
+    long countPendingReceivedByTeam(@Param("teamId") Long teamId,
+                                    @Param("status") MatchProposalStatus status);
+
+    /**
+     * 指定チームの募集に届いた指定ステータスの応募を作成日時降順でプレビュー取得する（受け手視点）。
+     * requestId → MatchRequestEntity.teamId を JOIN して team で絞り込む。
+     */
+    @Query("""
+            SELECT mp FROM MatchProposalEntity mp,
+                   com.mannschaft.app.matching.entity.MatchRequestEntity req
+            WHERE mp.requestId = req.id
+              AND req.teamId = :teamId
+              AND mp.status = :status
+            ORDER BY mp.createdAt DESC
+            """)
+    List<MatchProposalEntity> findPendingReceivedByTeam(@Param("teamId") Long teamId,
+                                                        @Param("status") MatchProposalStatus status,
+                                                        Pageable pageable);
 }

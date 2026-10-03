@@ -2,6 +2,7 @@ package com.mannschaft.app.webhook.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.webhook.service.WebhookDeliveryService;
 import com.mannschaft.app.webhook.service.WebhookDeliveryService.DeliveryLogResponse;
 import lombok.RequiredArgsConstructor;
@@ -41,8 +42,9 @@ public class WebhookDeliveryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
+        Long userId = SecurityUtils.getCurrentUserId();
         // 配信ログ全件取得
-        List<DeliveryLogResponse> allLogs = webhookDeliveryService.listDeliveryLogs(endpointId);
+        List<DeliveryLogResponse> allLogs = webhookDeliveryService.listDeliveryLogs(userId, endpointId);
 
         // ページネーション計算
         long total = allLogs.size();
@@ -64,7 +66,8 @@ public class WebhookDeliveryController {
     @PostMapping("/deliveries/{id}/retry")
     public ApiResponse<Void> retryDelivery(
             @PathVariable Long id) {
-        webhookDeliveryService.retryDelivery(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        webhookDeliveryService.retryDelivery(userId, id);
         return ApiResponse.of(null);
     }
 }

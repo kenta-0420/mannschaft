@@ -27,11 +27,8 @@ onMounted(() => loadPermissions())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <BackButton />
-        <PageHeader title="TODO" />
-      </div>
-      <Button v-if="isMember" label="TODO作成" icon="pi pi-plus" @click="showCreateDialog = true" />
+      <PageHeader title="TODO" />
+      <Button v-if="isMember" label="TODO作成" icon="pi pi-plus" data-testid="team-todo-create" @click="showCreateDialog = true" />
     </div>
 
     <TodoListTable

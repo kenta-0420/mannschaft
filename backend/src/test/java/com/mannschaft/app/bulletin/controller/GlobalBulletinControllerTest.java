@@ -25,9 +25,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 import java.util.UUID;
@@ -40,6 +43,8 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 掲示板グローバル方式コントローラー（{@link GlobalBulletinCategoryController} /
@@ -55,6 +60,7 @@ class GlobalBulletinControllerTest {
     private static final Long USER_ID = 1L;
     private static final Long SCOPE_ID = 10L;
     private static final String SCOPE_ID_STR = "10";
+    private static final String TEAM_SLUG = "slug-team";
     private static final String VILLAGE_SCOPE_ID_STR = "0";
     private static final Long CATEGORY_ID = 5L;
     private static final Long THREAD_ID = 100L;
@@ -79,8 +85,22 @@ class GlobalBulletinControllerTest {
     private ThreadResponse threadResponse() {
         return ThreadResponse.builder()
                 .id(THREAD_ID)
-                .scope(new ThreadResponse.ThreadScopeDto(CATEGORY_ID, "VILLAGE", 0L))
-                .content(new ThreadResponse.ThreadContentDto("題名", "本文", "INFO", "COUNT_ONLY"))
+                .categoryId(CATEGORY_ID)
+                .scopeType("VILLAGE")
+                .scopeId(0L)
+                .author(new ThreadResponse.AuthorDto(USER_ID, "テストユーザー", null))
+                .title("題名")
+                .body("本文")
+                .priority("INFO")
+                .readTrackingMode("COUNT_ONLY")
+                .isPinned(false)
+                .isLocked(false)
+                .isArchived(false)
+                .replyCount(0)
+                .readCount(0)
+                .isRead(false)
+                .reactionSummary(java.util.Collections.emptyMap())
+                .myReactions(java.util.Collections.emptyList())
                 .build();
     }
 
@@ -248,6 +268,25 @@ class GlobalBulletinControllerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData().getId()).isEqualTo(THREAD_ID);
             verify(threadService).getThreadGlobal(THREAD_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("TEAM slugを含むJSON作成はスコープIDへ解決して201")
+        void teamSlugを含むJson作成_201() throws Exception {
+            String dataJson = """
+                    {"scopeType":"TEAM","scopeId":"slug-team","title":"タイトル","body":"本文"}
+                    """;
+            given(scopeIdResolver.resolve(ScopeType.TEAM, TEAM_SLUG)).willReturn(SCOPE_ID);
+            given(threadService.createThreadGlobal(eq(ScopeType.TEAM), eq(SCOPE_ID), eq(USER_ID), any()))
+                    .willReturn(threadResponse());
+            MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+
+            mockMvc.perform(post("/api/v1/bulletin/threads")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(dataJson))
+                    .andExpect(status().isCreated());
+            verify(scopeIdResolver).resolve(ScopeType.TEAM, TEAM_SLUG);
+            verify(threadService).createThreadGlobal(eq(ScopeType.TEAM), eq(SCOPE_ID), eq(USER_ID), any());
         }
 
         @Test

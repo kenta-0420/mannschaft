@@ -1,4 +1,5 @@
 import type { TodoStatusLabelInfo } from '~/types/todoStatusLabel'
+import type { components } from '~/types/generated'
 import type {
   HandoffApiResponse,
   HandoffHistoryResponse,
@@ -72,7 +73,7 @@ interface TodoBase {
 
 interface PagedTodos {
   data: TodoBase[]
-  meta: { page: number; size: number; totalElements: number; totalPages: number }
+  meta: { page: number; size: number; total: number; totalPages: number }
 }
 
 interface TodoDetail {
@@ -83,14 +84,22 @@ interface CommentList {
   data: Array<{
     id: number
     todoId: number
-    userId: number
-    displayName: string
-    avatarUrl: string | null
+    /** BE の CommentResponse は user フィールドにネストして返す（ProjectResponse.UserInfo 準拠） */
+    user: {
+      id: number
+      displayName: string
+      avatarUrl?: string | null
+    }
     body: string
     createdAt: string
     updatedAt: string
   }>
-  meta: { page: number; size: number; totalElements: number; totalPages: number }
+  meta: { page: number; size: number; total: number; totalPages: number }
+}
+
+interface BulkTodoStatusChangeResponse {
+  data: components['schemas']['TodoStatusChangeResponse'][]
+  skippedLockedIds: number[]
 }
 
 export function useTodoApi() {
@@ -121,6 +130,14 @@ export function useTodoApi() {
 
   async function deletePersonalTodo(todoId: number) {
     return api(`/api/v1/todos/${todoId}`, { method: 'DELETE' })
+  }
+
+  /**
+   * 論理削除済みの個人 TODO を復元する（Undo Toast の「元に戻す」から呼ぶ）。
+   * BE: {@code POST /api/v1/todos/{id}/restore}
+   */
+  async function restorePersonalTodo(todoId: number) {
+    return api(`/api/v1/todos/${todoId}/restore`, { method: 'POST' })
   }
 
   /**
@@ -196,6 +213,14 @@ export function useTodoApi() {
     return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}`, { method: 'DELETE' })
   }
 
+  /**
+   * 論理削除済みのチーム / 組織 TODO を復元する（Undo Toast の「元に戻す」から呼ぶ）。
+   * BE: {@code POST /api/v1/{teams|organizations}/{scopeId}/todos/{id}/restore}
+   */
+  async function restoreTodo(scopeType: 'team' | 'organization', scopeId: string, todoId: number) {
+    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/restore`, { method: 'POST' })
+  }
+
   // === Status ===
   /**
    * チーム / 組織 TODO のステータス変更
@@ -222,8 +247,8 @@ export function useTodoApi() {
     scopeId: string,
     todoIds: number[],
     status: string,
-  ) {
-    return api(`${buildBase(scopeType, scopeId)}/todos/bulk-status`, {
+  ): Promise<BulkTodoStatusChangeResponse> {
+    return api<BulkTodoStatusChangeResponse>(`${buildBase(scopeType, scopeId)}/todos/bulk-status`, {
       method: 'PATCH',
       body: { todoIds, status },
     })
@@ -337,12 +362,14 @@ export function useTodoApi() {
     createPersonalTodo,
     updatePersonalTodo,
     deletePersonalTodo,
+    restorePersonalTodo,
     changeTodoStatusById,
     listTodos,
     getTodo,
     createTodo,
     updateTodo,
     deleteTodo,
+    restoreTodo,
     changeTodoStatus,
     bulkChangeTodoStatus,
     addAssignee,

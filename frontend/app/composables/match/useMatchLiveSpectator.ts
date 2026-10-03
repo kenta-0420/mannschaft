@@ -199,6 +199,7 @@ export function parseLivePayload(body: string): MatchLiveUpdatePayload | null {
     // 境界の載せ替え（生成型再生成で解消・他に散らさない）。
     return raw as MatchLiveUpdatePayload
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- 不正な STOMP フレーム（JSON パース不能）を破棄する防御。null=不正フレームは呼び出し側で無視
     return null
   }
 }
@@ -245,11 +246,11 @@ export function useMatchLiveSpectator(ctx: MatchSpectatorContext) {
    * 成功で hasSnapshot=true。失敗（HTTP 不通）時は最後のスナップショットを保持し OFFLINE を示す。
    */
   async function fetchSnapshot(): Promise<boolean> {
-    if (ctx.orgId.value === null || ctx.teamId.value === null) return false
+    if (ctx.teamId.value === null) return false
     try {
       const [match, events] = await Promise.all([
         matchApi.getMatch(ctx.orgId.value, ctx.teamId.value, ctx.matchId),
-        eventApi.listEvents(ctx.orgId.value, ctx.matchId),
+        eventApi.listEvents(ctx.orgId.value, ctx.teamId.value, ctx.matchId),
       ])
       if (disposed) return false
       snapshot.value = {
@@ -307,8 +308,10 @@ export function useMatchLiveSpectator(ctx: MatchSpectatorContext) {
     if (!ok) connectionState.value = 'OFFLINE'
 
     const auth = useAuthStore()
+    // BE の /ws は SockJS 登録のみのため、生 WebSocket は /ws/websocket でしか接続できない
+    // （bare /ws は 400。共通ヘルパー useWsUrl 経由で apiBase 込みの URL を解決する）。
     const stomp = new StompClient({
-      webSocketFactory: () => new WebSocket('/ws'),
+      webSocketFactory: () => new WebSocket(useWsUrl()),
       connectHeaders: { Authorization: `Bearer ${auth.accessToken ?? ''}` },
       beforeConnect: () => {
         // 再接続時に最新トークンへ差し替える（リフレッシュ対応・chat と同作法）。

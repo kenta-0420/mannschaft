@@ -14,6 +14,7 @@
  * エラーは captureQuiet で通知し、ウィジェットとして致命的クラッシュしないようにする。
  */
 import type { TeamMatchStatsResponse, MatchSummaryResponse } from '~/types/match'
+import type { MatchOrgOption } from '~/composables/match/useMatchOrgContext'
 
 const props = defineProps<{
   teamId: string
@@ -26,6 +27,11 @@ const { captureQuiet } = useErrorReport()
 
 const loading = ref(false)
 const orgId = ref<number | null>(null)
+/** 親組織が複数のとき、集計する組織はウィジェット内のセレクタで選ぶ（URL を持たないため状態に持つ）。 */
+const organizations = ref<MatchOrgOption[]>([])
+const selectedOrgId = ref<number | null>(null)
+/** 遷移先へ選択中の組織を引き継ぐクエリ。 */
+const orgQs = computed(() => (orgId.value !== null ? `?org=${orgId.value}` : ''))
 const stats = ref<TeamMatchStatsResponse | null>(null)
 const inProgressMatch = ref<MatchSummaryResponse | null>(null)
 
@@ -51,16 +57,22 @@ function formResultClass(result: string): string {
 async function load(): Promise<void> {
   loading.value = true
   try {
-    const ctx = await resolveContext(props.teamId)
+    const ctx = await resolveContext(props.teamId, { orgId: selectedOrgId.value })
     orgId.value = ctx?.orgId ?? null
+    organizations.value = ctx?.organizations ?? []
     if (ctx === null) {
       stats.value = null
       inProgressMatch.value = null
       return
     }
+    const statsRequest = ctx.orgId === null
+      ? Promise.resolve(null)
+      : analytics.getTeamStats(ctx.orgId, ctx.teamId)
     const [statsResult, inProgressResult] = await Promise.allSettled([
-      analytics.getTeamStats(ctx.orgId, ctx.teamId),
-      matchApi.listMatches(ctx.orgId, ctx.teamId, { status: 'IN_PROGRESS', size: 1 }),
+      statsRequest,
+      ctx.orgId === null
+        ? Promise.resolve(null)
+        : matchApi.listMatches(ctx.orgId, ctx.teamId, { status: 'IN_PROGRESS', size: 1 }),
     ])
     stats.value = statsResult.status === 'fulfilled' ? statsResult.value : null
     const page = inProgressResult.status === 'fulfilled' ? inProgressResult.value : null
@@ -75,11 +87,27 @@ async function load(): Promise<void> {
 }
 
 onMounted(load)
-watch(() => props.teamId, load)
+watch(() => props.teamId, () => {
+  selectedOrgId.value = null
+  void load()
+})
+
+function onSelectOrg(id: number): void {
+  selectedOrgId.value = id
+  void load()
+}
 </script>
 
 <template>
   <div @click.stop>
+    <!-- 組織選択（親組織が複数のときだけ表示。選んだ組織の試合を集計する） -->
+    <MatchOrgSelect
+      :organizations="organizations"
+      :org-id="orgId"
+      :sync-query="false"
+      @update:org-id="onSelectOrg"
+    />
+
     <!-- Skeleton ローディング -->
     <div v-if="loading" class="space-y-2 py-4">
       <Skeleton height="2rem" />
@@ -93,9 +121,9 @@ watch(() => props.teamId, load)
       class="flex flex-col items-center gap-3 py-8 text-center text-surface-400"
     >
       <i class="pi pi-flag text-3xl text-surface-300" />
-      <p class="text-sm">{{ $t('match.widget.summary.no_matches') }}</p>
+      <p class="text-sm">{{ $t('match.analytics.widget.summary.no_matches') }}</p>
       <NuxtLink
-        :to="`/teams/${teamId}/matches`"
+        :to="`/teams/${teamId}/matches${orgQs}`"
         class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-contrast"
         @click.stop
       >
@@ -113,31 +141,31 @@ watch(() => props.teamId, load)
       >
         <div class="flex items-center gap-2 text-sm font-semibold text-orange-700 dark:text-orange-300">
           <span class="inline-block size-2 animate-pulse rounded-full bg-orange-500" />
-          <span>{{ $t('match.widget.summary.in_progress_label') }}</span>
+          <span>{{ $t('match.analytics.widget.summary.in_progress_label') }}</span>
           <span v-if="inProgressMatch.opponentName" class="text-xs font-normal">
             vs {{ inProgressMatch.opponentName }}
           </span>
         </div>
         <NuxtLink
-          :to="`/teams/${teamId}/matches/${inProgressMatch.id}/live`"
+          :to="`/teams/${teamId}/matches/${inProgressMatch.id}/live${orgQs}`"
           class="inline-flex items-center gap-1 rounded-md bg-orange-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-orange-600"
           @click.stop
         >
           <i class="pi pi-play text-xs" />
-          {{ $t('match.widget.summary.resume_recording') }}
+          {{ $t('match.analytics.widget.summary.resume_recording') }}
         </NuxtLink>
       </div>
 
       <!-- 通算成績サマリ（勝/分/敗・得点/失点・得失点差） -->
       <div class="grid grid-cols-3 gap-2 text-center">
         <div class="rounded-lg bg-surface-50 p-2 dark:bg-surface-800">
-          <div class="text-[10px] text-surface-500">{{ $t('match.widget.summary.wdl_label') }}</div>
+          <div class="text-[10px] text-surface-500">{{ $t('match.analytics.widget.summary.wdl_label') }}</div>
           <div class="text-sm font-semibold">
             {{ stats?.wins ?? 0 }}/{{ stats?.draws ?? 0 }}/{{ stats?.losses ?? 0 }}
           </div>
         </div>
         <div class="rounded-lg bg-surface-50 p-2 dark:bg-surface-800">
-          <div class="text-[10px] text-surface-500">{{ $t('match.widget.summary.goals_label') }}</div>
+          <div class="text-[10px] text-surface-500">{{ $t('match.analytics.widget.summary.goals_label') }}</div>
           <div class="text-sm font-semibold">
             {{ stats?.totalGoalsFor ?? 0 }}/{{ stats?.totalGoalsAgainst ?? 0 }}
           </div>
@@ -158,7 +186,7 @@ watch(() => props.teamId, load)
 
       <!-- 直近フォーム（W/D/L バッジ 5 件） -->
       <div v-if="recentForm.length > 0">
-        <div class="mb-1 text-[10px] text-surface-500">{{ $t('match.widget.summary.recent_form') }}</div>
+        <div class="mb-1 text-[10px] text-surface-500">{{ $t('match.analytics.widget.summary.recent_form') }}</div>
         <div class="flex gap-1">
           <span
             v-for="(r, i) in recentForm"
@@ -174,12 +202,12 @@ watch(() => props.teamId, load)
       <!-- 詳細分析導線 -->
       <div class="pt-1">
         <NuxtLink
-          :to="`/teams/${teamId}/match-analytics`"
+          :to="`/teams/${teamId}/match-analytics${orgQs}`"
           class="flex items-center gap-1 text-xs text-primary hover:underline"
           @click.stop
         >
           <i class="pi pi-chart-bar text-xs" />
-          {{ $t('match.widget.summary.view_analytics') }}
+          {{ $t('match.analytics.widget.summary.view_analytics') }}
         </NuxtLink>
       </div>
     </div>

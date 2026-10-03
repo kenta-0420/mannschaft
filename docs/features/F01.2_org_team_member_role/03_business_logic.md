@@ -87,10 +87,28 @@
 
 > - 当該組織に所属する子組織・チームは削除しない（子組織はそのまま存続。チームも独立して存続し引き続き他の組織に所属可能）
 > - 子チームの `invite_tokens` は本フローでは失効させない（チームが独立して存続するため）。チームを合わせて削除する場合はチーム削除フローを別途実行する
-> - `team_org_memberships` の当該組織エントリは step 5 で明示的に削除する（論理削除では ON DELETE CASCADE が発動しないため）。チームの所属記録は消えるが、チーム自体は独立して存続する
+> - `team_org_memberships` の当該組織エントリは step 5 で明示的に削除する（FK は V62.006〜V62.009 で DROP 済みで、DB 側で消える仕組みは無いため）。チームの所属記録は消えるが、チーム自体は独立して存続する
 > - `user_roles`（`organization_id` スコープ）は組織論理削除後も保持する（削除済み組織はアプリ層でフィルタリング）
 
 ### チーム-組織所属招待フロー
+
+> **2026-09-25 改訂（F01.2.1）**: 加盟は双方向になった。組織→チームの招待（本節①〜④）に加えて、チーム→組織の**加盟申請**（組織が受付を許可している場合のみ）と、組織による承認・拒否、チームによる取下げを追加した。状態遷移・拒否後の冷却期間とブロック・承認時のチームグループ確定・申請受付 off 時の PENDING の扱いの正本は [F01.2.1 §4・§6](../F01.2.1_org_team_groups.md) である。本節①〜⑥は次の点を F01.2.1 に合わせて読み替えること。
+>
+> - パスの識別子はすべて slug（`{orgId}` → `{slug}`、`{teamId}` → `{teamSlug}`）。招待の body は `{"teamSlug": ..., "groupId"?: ..., "message"?: ...}`（JSON は camelCase）
+> - ②③⑤（承諾・拒否・離脱）の「チーム ADMIN か → 403」は「チームの加盟操作者（`MANAGE_ORG_AFFILIATION`）か → 403」に読み替える（F01.2.1 §3.2）
+> - `team_org_memberships` に `direction`（ORG_INVITE / TEAM_APPLY）・`group_id`・`message` を追加。①で INSERT する行は `direction = ORG_INVITE`
+> - ① step 4 で、招待する組織 ADMIN から visibility 上**見えないチーム**は、存在しないチームと同じステータス・同じエラーコード（404）を返す（非公開チームの存在・加盟状況を推測させない）
+> - ① step 5 の前に、制限（ORG_INVITE 方向）を確認し、あれば 403 `TEAM_068`。相手チームから申請（PENDING/TEAM_APPLY）が来ていれば 409 `TEAM_066`
+> - ②③④ の対象行の取得は `(id, team_id または organization_id, status=PENDING, direction=ORG_INVITE)` で行い、見つからなければ（他チーム・他組織の ID を含め）404 `TEAM_070`。状態の更新は条件付き UPDATE／DELETE で、影響行数 0 は 409 `TEAM_071`
+> - ③ 拒否では行の削除に加えて、ORG_INVITE 方向に30日の冷却（body `block=true` なら無期限ブロック）を `team_org_affiliation_restrictions` に記録する。④ 取消でも ORG_INVITE 方向に24時間の冷却を記録する（通知の連打防止）
+> - ② 承諾の前に、組織とチームの状態（削除・アーカイブ）を再確認する
+> - ① 招待の作成は、検証の前にチーム行 → 組織行の固定順で `PESSIMISTIC_WRITE` ロックを取り、状態を再確認してから INSERT までロックを保持する。チーム加盟申請も同じ順でロックする。これにより、アーカイブと並行しても PENDING が残らない（F01.2.1 §6.9）
+> - PENDING は60日応答が無ければ自動で取り消す。組織・チームの削除／アーカイブ時も PENDING を削除する（F01.2.1 §4.5・§6.8）
+> - 物理削除の方針は見直したうえで維持した（理由は F01.2.1 §4.2）
+> - ⑤離脱では組織 ADMIN へ `TEAM_ORG_MEMBERSHIP_LEFT`、⑥除名ではチームの加盟操作者へ `TEAM_ORG_MEMBERSHIP_REMOVED` を通知する（理由欄なし。マスター裁可 2026-09-29。F01.2.1 §6.6）
+> - ① 招待の `groupId` は、グループ機能 off の組織では 400 `TEAM_072`。② 承諾時に招待のグループが削除済みなら未分類で加盟を成立させる（F01.2.1 §6.5）
+> - 加盟の通知は、操作と同じトランザクションで fan-out ジョブを enqueue するだけにし、配信の失敗で操作をロールバックしない（F01.2.1 §6.7）
+> - 2026-09-25 時点で、本節の書き込み API は**すべて未実装**（参照系のみ実装済み）
 
 **① 組織からチームへ招待を送信**
 
@@ -168,8 +186,19 @@
 7. 204 No Content を返す
 ```
 
-> - 再招待（拒否・取消後）は新規 INSERT で再開始する（UNIQUE KEY により (team_id, organization_id) のエントリは常に最大1件）
-> - 1つのチームが複数組織に同時 ACTIVE 所属することは可能
+> - 再招待（取消後、または拒否後の冷却期間明け）は新規 INSERT で再開始する（UNIQUE KEY により (team_id, organization_id) のエントリは常に最大1件）
+> - 1つのチームが複数組織に同時 ACTIVE 所属することは可能（正式に保証する。単一の親組織を前提にした既存の読み手は F01.2.1 §9 で改修する）
+
+**⑦ チームから組織へ加盟申請／⑧ 組織が承認／⑨ 組織が拒否／⑩ チームが取下げ（F01.2.1 で追加）**
+
+手順の正本は [F01.2.1 §6.1〜§6.4](../F01.2.1_org_team_groups.md)。要点:
+
+- ⑦ `POST /api/v1/teams/{teamSlug}/org-applications`（チームの加盟操作者＝ `MANAGE_ORG_AFFILIATION` を持つ人。チーム ADMIN は常に持ち、DEPUTY・MEMBER は権限グループで付与されたときだけ持つ。F01.2.1 §3.2）。組織の `team_application_enabled` が FALSE なら 403 `TEAM_064`。申請時のチームグループ選択は組織設定（OFF / 任意 / 必須）に従う。1チームの同時申請は10件まで
+- ⑧ `POST /api/v1/organizations/{slug}/team-applications/{membershipId}/approve`（組織 ADMIN）。希望グループを確認・上書きして承認し、承認と同時にそのグループへ所属する
+- ⑨ `POST .../reject`（組織 ADMIN）。行を物理削除し、TEAM_APPLY 方向に30日の冷却（任意で無期限ブロック）を記録。チーム ADMIN に理由付きで通知
+- ⑩ `DELETE /api/v1/teams/{teamSlug}/org-applications/{membershipId}`（チームの加盟操作者）。TEAM_APPLY 方向に24時間の冷却を記録する（取下げと再申請の繰り返しによる通知の連打防止）
+- ⑧ 承認の前に、組織とチームの状態（削除・アーカイブ）を再確認する。承認と取下げが競合したときの応答は F01.2.1 §6.4 の判定表に従う
+- 組織が受付を off にしても、届いている PENDING 申請は残り、承認・拒否できる
 
 ---
 
@@ -222,27 +251,115 @@
 
 > - `invite_token_id` をメタデータに含めることで、どの招待トークン経由で参加したかを事後追跡可能にする（トークン発行者の特定・悪用調査に有用）
 
-### ADMIN 権限移譲フロー（1ステップ）
+### オーナー委譲 承諾フロー（2ステップ・承諾型 / 2026-07-18 マスター御裁可）
+
+**方針転換の背景**: 従来のオーナー委譲は「即時型」（操作者が押した瞬間に対象ユーザーを ADMIN 昇格＋自分を降格し、事後通知のみ）だった。しかし **指名相手の承諾がないまま管理責任を押し付けられる** 問題があり、[`account_purge_last_admin_succession.md` §10.11](../../architecture/account_purge_last_admin_succession.md) で未解決事項として残されていた。**2026-07-18 のマスター御裁可により、オーナー委譲も承諾型（オファー→承諾）に統一する。** これは F04.12（チャットからの承諾型招待）・team-invites/org-invites の PENDING→ACTIVE と同一の「承諾型オファー」思想である。
+
+#### 状態機械
 
 ```
-1. POST /api/v1/teams/{id}/transfer-ownership を受付（body: {"target_user_id": X}）
+        打診(POST transfer-ownership-offers)
+              │
+              ▼
+          [PENDING]
+          /   │    \   \
+   accept  decline expire cancel(発行者取消)
+      │       │      │      │
+      ▼       ▼      ▼      ▼
+ [ACCEPTED][DECLINED][EXPIRED][CANCELLED]
+ = 委譲実行   = いずれも現状維持（ロール不変）
+```
+
+**指名相手だけが承諾できる（宛先照合 = IDOR 防止）。** 承諾があって初めて対象ユーザーを ADMIN 昇格＋発行者を降格する。辞退・期限切れ・取消のいずれでもロールは一切変わらない。
+
+#### ステップ1: オファー作成
+
+```
+1. POST /api/v1/teams/{slug}/transfer-ownership-offers を受付（body: {"targetUserId": X}）
 2. 操作者が対象チームの ADMIN か確認 → ADMIN 未満は 403
 3. チームがアーカイブ済みでないか確認 → アーカイブ済みは 422
-4. 対象ユーザーが当該チームのメンバーか確認 → メンバーでなければ 404
+4. 対象ユーザーが当該チームのメンバーか、かつ操作者 ≠ 対象 か確認 → 否なら 404 / 422
 5. 【2FA必須チェック】対象ユーザーが 2FA を設定済みか確認 → 未設定は 422
-6. 1トランザクション内で以下を実行:
-   a. 対象ユーザーの user_roles.role_id を ADMIN に UPDATE
-   b. 操作者（自分）の user_roles.role_id を DEPUTY_ADMIN に UPDATE
-   c. 対象ユーザーの user_permission_groups（当該チームスコープ）を DELETE（ADMIN は権限グループ不要）
-   d. 操作者の user_permission_groups（当該チームスコープ）を DELETE（DEPUTY_ADMIN として再割り当てが必要）
-7. audit_logs に TEAM_ADMIN_TRANSFERRED を記録
+   （承諾時に再チェックもするが、無駄なオファー作成を防ぐため作成時にも確認）
+6. 同一スコープに PENDING オファーが既存なら 409（重複打診防止・古いものを取消してから）
+7. ownership_transfer_offers に INSERT（status=PENDING, target_user_id=X, expires_at=発行から7日）
+8. audit_logs に TEAM_OWNERSHIP_TRANSFER_OFFERED を記録
    metadata: {"from_user_id": 操作者ID, "to_user_id": 対象ユーザーID}
-8. 200 OK を返す
+9. 対象ユーザーへ到達通知（F04.3/F04.9）「管理者への就任を打診されています」
+10. 201 Created を返す（オファー ID・PENDING）
 ```
 
-> - 組織の場合（`POST /organizations/{id}/transfer-ownership`）も同一フロー（`team_id` → `organization_id` に読み替え、イベントは `ORGANIZATION_ADMIN_TRANSFERRED`）
-> - 移譲後、旧 ADMIN は DEPUTY_ADMIN となるが権限グループ未割り当て（実効パーミッション 0）。新 ADMIN が必要に応じて権限グループを割り当てる
-> - 複数 ADMIN が存在する場合でも移譲は可能（操作者のみが DEPUTY_ADMIN に降格し、他の ADMIN はそのまま）
+#### ステップ2: 承諾（委譲実行）／辞退／取消
+
+```
+承諾: POST /api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/accept
+1. オファーを取得。status=PENDING かつ未期限か確認 → 否なら 409/410（EXPIRED/CANCELLED/既処理）
+2. 【宛先照合 = IDOR 防止】offer.target_user_id == 実行ユーザー ID か確認 → 不一致は 403
+3. 【2FA再チェック】実行ユーザーが 2FA 設定済みか確認 → 未設定は 422（FE は 2FA 設定画面へ誘導・U2）
+4. チームが依然アーカイブ済みでないか・発行者が依然 ADMIN か再確認 → 否なら 409
+5. 【薄いラッパで既存 RoleService#transferOwnership を呼ぶ（H-3・下記「実装ノート」参照）】
+   a. transferOwnership(scopeId, scopeType, currentUserId=発行者ID, targetUserId=実行ユーザーID) を呼ぶ
+      → 対象ユーザーを ADMIN 昇格・発行者を MEMBER 降格・MembershipChangedEvent(CHANGED)×2（既存挙動）
+   b. offer.status を ACCEPTED に UPDATE、accepted_at=NOW()
+6. audit_logs に TEAM_ADMIN_TRANSFERRED を記録（metadata に offer_id を含める）
+7. 200 OK を返す
+
+辞退: POST .../transfer-ownership-offers/{offerId}/decline
+- 宛先照合（target_user_id == 実行ユーザー）→ status を DECLINED に。ロール不変。発行者へ通知。
+
+取消: DELETE .../transfer-ownership-offers/{offerId}
+- 発行者（または対象スコープ ADMIN）のみ。status を CANCELLED に。ロール不変。
+```
+
+#### 実装ノート: accept は既存 `transferOwnership` の「薄いラッパ」であり無改修流用ではない（H-3）
+
+現行 `RoleService#transferOwnership(scopeId, scopeType, currentUserId, targetUserId)` は退会・即時委譲を前提に作られており、accept から流用する際は**以下の差分を薄いラッパ層（承諾 Service）で埋める**こと。「既存流用」の一語で無改修と誤読しないための明示:
+
+1. **引数の組み替え**: `currentUserId` には **発行者（オファーの `issued_by`）** を渡す（実行ユーザー=承諾者ではない）。`targetUserId` には実行ユーザー（承諾者）を渡す。現行実装は `currentUserId` が ADMIN であることを前提に降格対象とするため、発行者を渡さないと降格対象を誤る。
+2. **2FA チェックの新規追加**: 現行 `transferOwnership` は **2FA を一切チェックしない**。ADMIN 昇格には 2FA 必須（§6 セキュリティ）のため、**ラッパ層で承諾者の 2FA 設定を検証**してから呼ぶ（未設定は 422）。
+3. **エラーの再マッピング**: 現行 `transferOwnership` は違反（自己譲渡・ADMIN でない・対象未所属・ロール未検出）を**すべて `ROLE_001` で投げる**。承諾 API では文脈に応じて **403（宛先/権限）/ 404（スコープ・メンバー不在）/ 409（状態不整合）/ 422（2FA・アーカイブ）** に再マッピングして返す（`ROLE_001` を素通しにしない）。
+4. **降格先は MEMBER**（現行実装どおり。下記「降格先ロール」参照）。
+
+> - 組織の場合（`.../organizations/{slug}/transfer-ownership-offers`）も同一フロー（`team_id` → `organization_id` に読み替え、イベントは `ORGANIZATION_OWNERSHIP_TRANSFER_OFFERED` / `ORGANIZATION_ADMIN_TRANSFERRED`）
+> - 複数 ADMIN が存在する場合でも委譲は可能（承諾時に発行者のみ降格し、他の ADMIN はそのまま）
+> - 承諾（accept）は `checkLastAdmin` を呼ばない（委譲完了後は新 ADMIN が存在するため正当）
+>
+> **⚠️ 降格先ロールは MEMBER（実装が正・旧 doc 記述が誤り / 実装時に統一）**: 実装 `RoleService#transferOwnership` は発行者を **MEMBER** に降格している（コード確認済み・javadoc「現オーナーは MEMBER にダウングレード」）。旧 F01.2 記述の「DEPUTY_ADMIN 降格」は実装と乖離した誤記であり、マスター御裁可（2026-07-18「発行者 MEMBER 降格」）とも一致する **MEMBER に統一**する。02_api_design のレスポンス例（`previous_admin.role`）も MEMBER に修正済み。
+>
+> **⚠️ FE-BE 不一致は「方式ごとの乖離」で既存バグ（M-4・実装時に刷新）**: 旧 BE `POST /{scope}/{slug}/transfer-ownership` は **`@RequestParam Long targetUserId`（クエリパラメータ）** でボディを読まない（`TeamController.transferOwnership` 実装確認済み）。一方 FE composable [`useTeamCrud.ts`](../../../frontend/app/composables/team/useTeamCrud.ts) は `transferOwnership(slug, newAdminUserId)` で **body `{ newAdminUserId }` のみ**送っており、**クエリ未付与のため現行は 400 になる既存バグ**。承諾型化に伴い FE を 2 ステップ API（オファー作成→承諾/辞退）へ**方式ごと刷新**し、新 API は **JSON body `{ targetUserId }`** に統一する（クエリパラメータ方式は廃止）。
+
+#### 退会 purge 経由の承継は「承諾スキップの強制委譲」（H-2・GDPR 30日タイムリミット順守）
+
+通常のオーナー委譲は上記の承諾型2段だが、**退会（アカウント purge）に伴う最後の ADMIN 承継だけは承諾を待てない**。承諾待ちで退会が詰まる／承継先が 2FA 未設定で承諾不能なら退会不能となり、GDPR Art.17 の 30 日タイムリミットに抵触する（[`account_purge_last_admin_succession.md` §10.11](../../architecture/account_purge_last_admin_succession.md) で決着）。よって:
+
+| 経路 | 委譲方式 | 承諾 | 2FA | 監査 |
+|---|---|---|---|---|
+| 通常のオーナー委譲（本節）| 承諾型2段（オファー→accept）| **必要**（指名相手が accept）| accept 時に必須チェック | `*_ADMIN_TRANSFERRED`（metadata に offer_id）|
+| 退会 purge 経由の最後の ADMIN 承継 | **システム強制の即時委譲**（承諾スキップ）| **不要**（本人不在で完結）| **チェックしない**（退会完遂を優先）| `*_ADMIN_TRANSFERRED`（metadata に `forced=true` / 承継元退会 user_id）|
+
+- purge 経路は既存 `AccountPurgeService` / `RolePurgeEventListener` から `transferOwnership`（または承継バッチ）を**同期即時**で呼ぶ現行設計を維持し、承諾型オファーを介さない。強制委譲であることを **audit に FORCED（`forced=true`）で明示**する。
+- 通常委譲との使い分けを実装・レビューで取り違えないため、**承諾型 accept と強制委譲は別メソッド**（例: 承諾 Service の `acceptOffer` と purge 経路の `forceTransferForPurge`）として分離する。
+
+#### i18n 新規キー（承諾/辞退 UI・打診通知 / U1・U2・6言語 ja 初版同値）
+
+オーナー委譲の承諾型化で必要な UI 文言は直書き禁止。以下を 6 言語（ja/en/zh/ko/es/de）に追加（未翻訳は ja 同値で投入）:
+
+| キー | ja 値（初版）| 用途 |
+|---|---|---|
+| `role.transfer.offer.button` | 管理者を引き継ぐ | 打診ボタン（ADMIN 側）|
+| `role.transfer.offer.notification` | {scope} の管理者への就任を打診されています | 打診到達通知（宛先）|
+| `role.transfer.offer.pending` | 管理者就任の打診が届いています | オファーカード見出し |
+| `role.transfer.offer.accept` | 引き受ける | 承諾ボタン |
+| `role.transfer.offer.decline` | 辞退する | 辞退ボタン |
+| `role.transfer.offer.accepted` | 管理者を引き継ぎました | 承諾完了 |
+| `role.transfer.offer.declined` | 打診を辞退しました | 辞退完了 |
+| `role.transfer.offer.expired` | 打診は期限切れです | EXPIRED |
+| `role.transfer.offer.cancelled` | 打診は取り消されました | CANCELLED |
+| `role.transfer.error.notTarget` | この打診はあなた宛てではありません | 宛先不一致 403 |
+| `role.transfer.error.need2fa` | 管理者になるには2段階認証の設定が必要です | 2FA 未設定 422（U2）|
+| `role.transfer.error.need2fa.cta` | 2段階認証を設定する | 2FA 設定画面への導線（U2）|
+
+> **U2（2FA 未設定で accept 422 の導線）**: 承諾者が 2FA 未設定で accept が 422 になった場合、エラー表示に留めず **2FA 設定画面（`/settings/security` 等）への CTA** を提示し、設定後に再度承諾できる導線を UX 要件とする。上記 `role.transfer.error.need2fa` / `.cta` を用いる。
 
 ---
 
@@ -307,13 +424,17 @@
 6. ロールが MEMBER →
    a. user_permission_groups（当該ユーザー・スコープ）に割り当てグループが存在するか確認
    b. 割り当てグループなし →
-        role_permissions WHERE role_id = MEMBER AND is_default = TRUE（基本3件）を実効パーミッションとして取得
+        role_permissions WHERE role_id = MEMBER AND is_default = TRUE を基準値として取得し、
+        team_role_permissions WHERE scope_type / scope_id / role_id = MEMBER の ON/OFF を上書きする
+        （スコープ上書き行が無い設定対象3件はグローバル既定値を継承。
+         MANAGE_SCHEDULES / MANAGE_FILES / MANAGE_POSTS はすべて初期 OFF）
    c. 割り当てグループあり（1件以上）→
         is_default を完全に無視し、user_permission_groups
           → permission_groups WHERE target_role = 'MEMBER'（AND team_id/organization_id でスコープ絞り込み）
           → permission_group_permissions → permissions
-        の UNION のみを実効パーミッションとする（グループに基本3件が含まれていなければそれらも失われる）
-        ※ ADMIN がお知らせ権限だけ追加したい場合は MANAGE_SCHEDULES/MANAGE_FILES/MANAGE_POSTS も含むグループを作成する必要がある
+        の UNION のみを実効パーミッションとする（グループに既定権限が含まれていなければそれらも失われる）
+        ※ ADMIN がお知らせ権限だけ追加したい場合は MANAGE_FILES/MANAGE_POSTS も含むグループを作成する必要がある。
+           MANAGE_SCHEDULES を付与する場合はグループにも含める
 7. ロールが SUPPORTER / GUEST → パーミッションなし（ロールチェックのみで制御）
 8. パーミッションセットを元に操作可否を判定
 ```
@@ -330,6 +451,9 @@
 | 値 | パーミッション名の Set（JSON 配列）|
 | TTL | 5分（`app.permission-cache.ttl`）|
 | ストア | Valkey（Spring Cache + `@Cacheable`）|
+
+スコープ既定権限を更新したトランザクション内で `role_permission_cache_generations` の世代を進める。
+キャッシュキーに世代を含めるため、更新前の値は TTL を待たず次の認可判定から到達不能になる。
 
 **キャッシュ無効化タイミング**
 
@@ -539,10 +663,10 @@ README 記載の 3 層制御は DEPUTY_ADMIN と MEMBER の両ロールに適用
 1. **SYSTEM_ADMIN が天井を設定**: `role_permissions WHERE role_id = MEMBER`（is_default 問わず全6件）が権限グループに含められる上限
 2. **ADMIN が権限グループを構成**: `permission_groups（target_role = 'MEMBER', team_id/organization_id = スコープID）` + `permission_group_permissions` で天井内のパーミッションを選択してグループを作成
 3. **ADMIN がユーザーへ割り当て**: `user_permission_groups` で対象 MEMBER と権限グループを紐付け
-   - 未割り当て → `is_default = TRUE` の基本3件のみが実効パーミッション
-   - 1件以上割り当て → グループ内権限の UNION のみが実効パーミッション（基本3件を含むかどうかはグループ定義次第）
+   - 未割り当て → `is_default = TRUE` の権限のみが実効パーミッション（V223 以降の MEMBER は管理権限0件）
+   - 1件以上割り当て → グループ内権限の UNION のみが実効パーミッション（管理権限3件を含むかどうかはグループ定義次第）
 
-> **オーバーライドモデル**: グループが1件以上割り当てられると `is_default` は無視され、グループ内権限のみが実効パーミッションとなる。これにより「ADMIN がグループを割り当てるだけでデフォルト権限を含む完全な権限セットを上書き設定できる」設計になっている。権限を絞りたい場合は基本3件を含まないグループを割り当てればよく、マイナス計算のロジックが不要。
+> **オーバーライドモデル**: グループが1件以上割り当てられると `is_default` は無視され、グループ内権限のみが実効パーミッションとなる。これにより「ADMIN がグループを割り当てるだけでデフォルト権限を含む完全な権限セットを上書き設定できる」設計になっている。権限を絞りたい場合は管理権限3件を含まないグループを割り当てればよく、マイナス計算のロジックが不要。
 >
 > **`DELETE_OTHERS_CONTENT` の扱い**: DEPUTY_ADMIN / MEMBER 双方の天井に含める。いかなるデフォルト権限グループにも含めない。ADMIN が意図的に付与した場合のみ有効。
 
@@ -552,7 +676,7 @@ README 記載の 3 層制御は DEPUTY_ADMIN と MEMBER の両ロールに適用
 ```
 1. ADMIN が MEMBER 用権限グループを作成
    POST /api/v1/teams/{id}/permission-groups  body: { "target_role": "MEMBER", "name": "お知らせ編集担当" }
-2. 権限グループにパーミッションを設定（基本3件 + MANAGE_ANNOUNCEMENTS を含める）
+2. 権限グループにパーミッションを設定（必要な管理権限3件 + MANAGE_ANNOUNCEMENTS を含める）
    PATCH /api/v1/teams/{id}/permission-groups/{groupId}
    body: { "permission_ids": [MANAGE_SCHEDULES, MANAGE_FILES, MANAGE_POSTS, MANAGE_ANNOUNCEMENTS の各 id] }
 3. 対象 MEMBER に権限グループを割り当て

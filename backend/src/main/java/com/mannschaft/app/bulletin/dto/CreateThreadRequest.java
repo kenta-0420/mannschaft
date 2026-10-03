@@ -1,5 +1,7 @@
 package com.mannschaft.app.bulletin.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -69,12 +71,29 @@ public class CreateThreadRequest {
 
     /**
      * F17.1 Phase 3: 村スコープと投稿主体を明示指定する完全コンストラクタ。
+     *
+     * <p>{@code @JsonCreator} を付与することで、複数コンストラクタ存在時に Jackson が
+     * デシリアライズ用コンストラクタを一意に特定できるようにしている。
+     * これがないと Jackson がデシリアライザを構築できず（no suitable creator）、
+     * Spring が {@code HttpMessageConversionException} を投げる。同例外は
+     * {@code GlobalExceptionHandler} に個別ハンドラが無いため、
+     * {@code POST /api/v1/{scopeType}/{scopeId}/bulletin/threads} が
+     * <b>body の内容によらず常に 500</b> になる（クライアント入力起因の 500）。</p>
+     *
+     * <p>同じ F17.1 Phase 3 で同型の変更を受けた {@code SendMessageRequest} は
+     * 既に本対応済みであり、本 DTO だけが漏れていた。対処は同 DTO と同一の型に揃える。</p>
      */
-    public CreateThreadRequest(Long categoryId, String title, String body, String priority,
-                               String readTrackingMode, String sourceType, Long sourceId,
-                               UUID scopeVillageId,
-                               VillageSubjectType postedAsSubjectType,
-                               Long postedAsSubjectId) {
+    @JsonCreator
+    public CreateThreadRequest(@JsonProperty("categoryId") Long categoryId,
+                               @JsonProperty("title") String title,
+                               @JsonProperty("body") String body,
+                               @JsonProperty("priority") String priority,
+                               @JsonProperty("readTrackingMode") String readTrackingMode,
+                               @JsonProperty("sourceType") String sourceType,
+                               @JsonProperty("sourceId") Long sourceId,
+                               @JsonProperty("scopeVillageId") UUID scopeVillageId,
+                               @JsonProperty("postedAsSubjectType") VillageSubjectType postedAsSubjectType,
+                               @JsonProperty("postedAsSubjectId") Long postedAsSubjectId) {
         this.categoryId = categoryId;
         this.title = title;
         this.body = body;

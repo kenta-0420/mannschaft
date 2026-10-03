@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -46,6 +47,9 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class SurveyResponseService {
 
+    /** CMP-041: ADMIN+ 委任判定に用いる permission 名。 */
+    private static final String PERMISSION_MANAGE_SURVEYS = "MANAGE_SURVEYS";
+
     private final SurveyRepository surveyRepository;
     private final SurveyQuestionRepository questionRepository;
     private final SurveyOptionRepository optionRepository;
@@ -80,10 +84,32 @@ public class SurveyResponseService {
             throw new BusinessException(SurveyErrorCode.INVALID_SURVEY_STATUS);
         }
 
-        // 配信対象チェック
+        // 配信対象チェック（関所(3)回答・配信＝受信権 統一）
         if (survey.getDistributionMode() == DistributionMode.TARGETED) {
             if (!targetRepository.existsBySurveyIdAndUserId(surveyId, userId)) {
                 throw new BusinessException(SurveyErrorCode.NOT_TARGET_USER);
+            }
+        } else {
+            // DistributionMode.ALL: 旧実装はここで認可が一切なく、組織外の任意ユーザーが
+            // surveyId さえ知れば回答できる漏洩穴だった（TARGETED のみ existsBySurveyIdAndUserId で
+            // 弾いていた）。ALL は「スコープ内全メンバー」が母集団であるから、回答も配信母集団に限定する。
+            //   - ORGANIZATION: includeSupporters トグル準拠の配信母集団（配下チーム展開）。配下は通し、
+            //     母集団外は COMMON_002 で弾く。トグル OFF なら純 SUPPORTER も母集団外＝回答不可。
+            //   - TEAM 等: 当該スコープの直接所属メンバー（配下概念を持ち込まない）。
+            // 不変条件: ALL アンケは必ず scoped（scopeId/scopeType 非 null）である。
+            // 配信母集団は当該スコープから resolve されるため、scope が欠落した ALL アンケは
+            // 配信母集団を確定できず、認可をサイレントスキップすれば surveyId を知る任意ユーザーが
+            // 回答できる漏洩穴になる。よって scope 欠落時は握りつぶさず素直に 403 で弾く（fail-closed）。
+            // accessControlService==null はテストシームのため判定対象外（本番では常に注入される）。
+            if (accessControlService != null) {
+                if (survey.getScopeId() == null || survey.getScopeType() == null) {
+                    log.warn("ALL アンケに scope 欠落（不変条件違反・回答を拒否）: surveyId={}, scopeId={}, scopeType={}",
+                            surveyId, survey.getScopeId(), survey.getScopeType());
+                    throw new BusinessException(CommonErrorCode.COMMON_002);
+                }
+                boolean includeSupporters = Boolean.TRUE.equals(survey.getIncludeSupporters());
+                accessControlService.checkMembershipOrDescendant(
+                        userId, survey.getScopeId(), survey.getScopeType(), includeSupporters);
             }
         }
 
@@ -176,10 +202,10 @@ public class SurveyResponseService {
             throw new BusinessException(SurveyErrorCode.ANONYMOUS_RESPONSE_FORBIDDEN);
         }
 
-        // 認可
+        // 認可（MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任・CMP-041）
         boolean isCreator = survey.getCreatedBy() != null && survey.getCreatedBy().equals(currentUserId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(
-                currentUserId, survey.getScopeId(), survey.getScopeType());
+        boolean isAdmin = accessControlService.hasAdminOrPermissionInScope(
+                currentUserId, survey.getScopeId(), survey.getScopeType(), PERMISSION_MANAGE_SURVEYS);
         boolean isViewer = resultViewerRepository.existsBySurveyIdAndUserId(surveyId, currentUserId);
         if (!isAdmin && !isCreator && !isViewer) {
             throw new BusinessException(SurveyErrorCode.RESPONSE_ACCESS_DENIED);

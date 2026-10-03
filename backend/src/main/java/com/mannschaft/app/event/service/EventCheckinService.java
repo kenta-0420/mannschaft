@@ -1,6 +1,7 @@
 package com.mannschaft.app.event.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.event.CheckinType;
 import com.mannschaft.app.event.EventErrorCode;
 import com.mannschaft.app.event.EventMapper;
@@ -10,17 +11,20 @@ import com.mannschaft.app.event.dto.CheckinResponse;
 import com.mannschaft.app.event.dto.SelfCheckinRequest;
 import com.mannschaft.app.event.entity.EventCheckinEntity;
 import com.mannschaft.app.event.entity.EventTicketEntity;
+import com.mannschaft.app.event.event.EventCareNotificationTriggerEvent;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRegistrationRepository;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.event.repository.EventTicketRepository;
-import com.mannschaft.app.family.service.CareEventNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * イベントチェックインサービス。QRスキャン・セルフチェックインを担当する。
@@ -37,7 +41,8 @@ public class EventCheckinService {
     private final EventRegistrationRepository registrationRepository;
     private final EventTicketService ticketService;
     private final EventMapper eventMapper;
-    private final CareEventNotificationService careEventNotificationService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final EventScopeAccessGuard eventScopeAccessGuard;
 
     /**
      * イベントのチェックイン一覧をページング取得する。
@@ -54,6 +59,11 @@ public class EventCheckinService {
     /**
      * スタッフスキャンによるチェックインを実行する。
      *
+     * <p>認可: URL に eventId を持たない QR スキャン API のため、QR トークンからチケットを解決した
+     * 直後に得られる {@code ticket.getEventId()} を信頼できる帰属源として、当該イベントスコープの
+     * ADMIN/DEPUTY_ADMIN（SYSTEM_ADMIN 含む）であることを検証する（スタッフ操作のなりすまし・
+     * 無関係な認証ユーザーによる不正チェックイン記録を防止）。</p>
+     *
      * @param staffUserId スタッフユーザーID
      * @param request     チェックインリクエスト
      * @return チェックインレスポンス
@@ -61,6 +71,7 @@ public class EventCheckinService {
     @Transactional
     public CheckinResponse staffCheckin(Long staffUserId, CheckinRequest request) {
         EventTicketEntity ticket = ticketService.findTicketByQrTokenOrThrow(request.getQrToken());
+        eventScopeAccessGuard.requireAdminByEventId(staffUserId, ticket.getEventId());
         validateTicketForCheckin(ticket);
 
         ticket.use();
@@ -78,9 +89,14 @@ public class EventCheckinService {
 
         incrementEventCheckinCount(ticket.getEventId());
 
-        // F03.12 ケア対象者見守り通知: 登録ユーザーへのチェックインフック
+        // F03.12 ケア対象者見守り通知: 登録ユーザーへのチェックインフック（Issue #2990 L5）。
+        // 業務TX内では publish だけに留め、実配送は EventCareNotificationTriggerListener が
+        // AFTER_COMMIT で行う。通知失敗でチケット使用済み化・チェックイン記録が巻き戻らないようにする。
         resolveTicketUserId(ticket).ifPresent(userId ->
-                careEventNotificationService.notifyCheckin(userId, ticket.getEventId()));
+                eventPublisher.publishEvent(new EventCareNotificationTriggerEvent(
+                        ticket.getEventId(),
+                        EventCareNotificationTriggerEvent.Kind.CHECKIN,
+                        List.of(userId))));
 
         log.info("スタッフチェックイン: ticketId={}, staffUserId={}", ticket.getId(), staffUserId);
         return eventMapper.toCheckinResponse(saved);
@@ -89,12 +105,18 @@ public class EventCheckinService {
     /**
      * セルフチェックインを実行する。
      *
-     * @param request セルフチェックインリクエスト
+     * <p>認可: 本人（チケットの参加登録に紐付く {@code userId}）のみ実行可能。
+     * ゲスト参加（{@code userId=null}）や他ユーザーのチケットでの自己チェックインは 403 で拒否する
+     * （本人の QR トークンを他人に横流しされた場合の悪用抑止・チェックイン記録の帰属正確性維持）。</p>
+     *
+     * @param currentUserId 操作者（セルフチェックイン実行者）のユーザーID
+     * @param request       セルフチェックインリクエスト
      * @return チェックインレスポンス
      */
     @Transactional
-    public CheckinResponse selfCheckin(SelfCheckinRequest request) {
+    public CheckinResponse selfCheckin(Long currentUserId, SelfCheckinRequest request) {
         EventTicketEntity ticket = ticketService.findTicketByQrTokenOrThrow(request.getQrToken());
+        requireTicketOwner(ticket, currentUserId);
         validateTicketForCheckin(ticket);
 
         ticket.use();
@@ -110,9 +132,14 @@ public class EventCheckinService {
 
         incrementEventCheckinCount(ticket.getEventId());
 
-        // F03.12 ケア対象者見守り通知: 登録ユーザーへのチェックインフック
+        // F03.12 ケア対象者見守り通知: 登録ユーザーへのチェックインフック（Issue #2990 L5）。
+        // 業務TX内では publish だけに留め、実配送は EventCareNotificationTriggerListener が
+        // AFTER_COMMIT で行う。通知失敗でチケット使用済み化・チェックイン記録が巻き戻らないようにする。
         resolveTicketUserId(ticket).ifPresent(userId ->
-                careEventNotificationService.notifyCheckin(userId, ticket.getEventId()));
+                eventPublisher.publishEvent(new EventCareNotificationTriggerEvent(
+                        ticket.getEventId(),
+                        EventCareNotificationTriggerEvent.Kind.CHECKIN,
+                        List.of(userId))));
 
         log.info("セルフチェックイン: ticketId={}", ticket.getId());
         return eventMapper.toCheckinResponse(saved);
@@ -126,6 +153,17 @@ public class EventCheckinService {
      */
     public long getCheckinCount(Long eventId) {
         return checkinRepository.countByEventId(eventId);
+    }
+
+    /**
+     * セルフチェックインの操作者がチケットの本人（参加登録の {@code userId}）であることを検証する。
+     * ゲスト参加（{@code userId=null}）・他ユーザーのチケットは 403 COMMON_002 で拒否する。
+     */
+    private void requireTicketOwner(EventTicketEntity ticket, Long currentUserId) {
+        Long ownerUserId = resolveTicketUserId(ticket).orElse(null);
+        if (currentUserId == null || ownerUserId == null || !ownerUserId.equals(currentUserId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 
     /**

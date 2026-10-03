@@ -3,6 +3,7 @@ package com.mannschaft.app.weather.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.postal.CountryResolver;
 import com.mannschaft.app.weather.entity.PostalCodeEntity;
 import com.mannschaft.app.weather.entity.UserWeatherLocationEntity;
 import com.mannschaft.app.weather.exception.WeatherLocationDeriveException;
@@ -10,6 +11,7 @@ import com.mannschaft.app.weather.exception.WeatherLocationDeriveException.Error
 import com.mannschaft.app.weather.metrics.WeatherMetrics;
 import com.mannschaft.app.weather.repository.PostalCodeRepository;
 import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -47,17 +50,31 @@ class WeatherLocationDeriverTest {
     @Mock private UserWeatherLocationRepository userWeatherLocationRepository;
     @Mock private EncryptionService encryptionService;
     @Mock private WeatherMetrics weatherMetrics;
+    // locale→国 マップは実ロジックを使う（共有 CountryResolver の挙動回帰防止も兼ねる）
+    @Spy private CountryResolver countryResolver = new CountryResolver();
 
     @InjectMocks private WeatherLocationDeriver deriver;
 
     private ListAppender<ILoggingEvent> logAppender;
+    private ch.qos.logback.classic.Level originalLogLevel;
 
     @BeforeEach
     void attachLogAppender() {
         Logger logger = (Logger) LoggerFactory.getLogger(WeatherLocationDeriver.class);
+        originalLogLevel = logger.getLevel();
+        // ログ出力検証テストのため、同一 gradle テストフォーク内で先行する SpringBootTest
+        // （test プロファイル・root=WARN）の影響を受けないよう実効レベルを自明に設定する。
+        logger.setLevel(ch.qos.logback.classic.Level.ALL);
         logAppender = new ListAppender<>();
         logAppender.start();
         logger.addAppender(logAppender);
+    }
+
+    @AfterEach
+    void detachLogAppender() {
+        Logger logger = (Logger) LoggerFactory.getLogger(WeatherLocationDeriver.class);
+        logger.detachAppender(logAppender);
+        logger.setLevel(originalLogLevel);
     }
 
     @Test
@@ -288,6 +305,74 @@ class WeatherLocationDeriverTest {
         assertThat(existing.getPostalCodeHash()).isEqualTo("newhash");
         assertThat(existing.getLatitudeRounded()).isEqualByComparingTo("35.5");
         assertThat(existing.getPlaceNameSnapshot()).isEqualTo("東京都千代田区");
+    }
+
+    @Test
+    @DisplayName("AC-15: マスタ未ヒット失敗時、既存の古い地点キャッシュを削除してから再 throw する")
+    void staleLocationDeletedOnFailure() {
+        Long userId = 107L;
+        UserEntity user = UserEntity.builder()
+                .postalCode("9999999")
+                .countryCode("JP")
+                .locale("ja-JP")
+                .build();
+        UserWeatherLocationEntity stale = UserWeatherLocationEntity.builder()
+                .userId(userId)
+                .label("home")
+                .countryCode("JP")
+                .postalCodeHash("oldhash")
+                .latitudeRounded(new BigDecimal("35.5"))
+                .longitudeRounded(new BigDecimal("139.5"))
+                .placeNameSnapshot("古い地名")
+                .build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(postalCodeRepository.findByCountryCodeAndPostalCode("JP", "9999999"))
+                .thenReturn(Optional.empty());
+        when(postalCodeRepository.existsByCountryCode("JP")).thenReturn(true);
+        when(userWeatherLocationRepository.findByUserIdAndLabel(userId, "home"))
+                .thenReturn(Optional.of(stale));
+
+        assertThatThrownBy(() -> deriver.deriveAndPersist(userId))
+                .isInstanceOf(WeatherLocationDeriveException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.POSTAL_CODE_NOT_FOUND);
+        // 古い地点キャッシュが削除されること
+        verify(userWeatherLocationRepository).delete(stale);
+        // 新規保存はされないこと
+        verify(userWeatherLocationRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("AC-15: 成功時は古い地点キャッシュを delete しない（update のみ）")
+    void staleLocationNotDeletedOnSuccess() {
+        Long userId = 108L;
+        UserEntity user = UserEntity.builder()
+                .postalCode("100-0001")
+                .countryCode("JP")
+                .locale("ja-JP")
+                .build();
+        PostalCodeEntity master = PostalCodeEntity.builder()
+                .countryCode("JP")
+                .postalCode("1000001")
+                .placeName("Chiyoda")
+                .admin1Name("東京都")
+                .admin2Name("千代田区")
+                .latitude(new BigDecimal("35.68190"))
+                .longitude(new BigDecimal("139.69300"))
+                .build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(postalCodeRepository.findByCountryCodeAndPostalCode("JP", "1000001"))
+                .thenReturn(Optional.of(master));
+        when(userWeatherLocationRepository.findByUserIdAndLabel(userId, "home"))
+                .thenReturn(Optional.empty());
+        when(encryptionService.hmac("100-0001")).thenReturn("hash");
+        when(userWeatherLocationRepository.save(any(UserWeatherLocationEntity.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        deriver.deriveAndPersist(userId);
+
+        verify(userWeatherLocationRepository, never()).delete(any());
     }
 
     @Test

@@ -78,7 +78,10 @@ public class WidgetVisibilityResolver {
 
         // キャッシュ層は String キーの Map を保持し、ここで EnumMap に復元する。
         // （Redis JSON シリアライズで EnumMap のキーが String 化される問題の根治。下記 resolveRaw 参照）
-        Map<String, MinRole> raw = self().resolveRaw(scopeType, scopeId);
+        // issue #2544: resolveRaw には ScopeType enum を渡す（生の scopeType 文字列ではない）。
+        // @Cacheable キー式は #scopeType.name() であり、evict 側（DashboardWidgetVisibilityService）の
+        // scope.name() と型で一致を保証するため。
+        Map<String, MinRole> raw = self().resolveRaw(scope, scopeId);
         Map<WidgetKey, MinRole> result = new EnumMap<>(WidgetKey.class);
         for (Map.Entry<String, MinRole> entry : raw.entrySet()) {
             // resolveRaw が書き込むのは必ず既知の WidgetKey 名のみなので valueOf は失敗しない
@@ -104,25 +107,30 @@ public class WidgetVisibilityResolver {
      * <p>値の {@link MinRole}（enum）は具象型としてシリアライズ／デシリアライズされるため
      * ラウンドトリップで型が保たれる（キーと異なり値側は型情報が失われない）。</p>
      *
-     * <p>キャッシュ: {@code dashboard:widget-visibility} に {@code {scopeType}:{scopeId}} 形式の
-     * キーで 300秒保持される。設定更新時は {@link DashboardWidgetVisibilityService} が
-     * {@code @CacheEvict} で無効化する。</p>
+     * <p>キャッシュ: {@code dashboard:widget-visibility} に {@code {scopeType.name()}:{scopeId}} 形式の
+     * キーで 300秒保持される。設定更新時は {@link DashboardWidgetVisibilityService#evictVisibilityCache}
+     * が {@code cache.evict(scope.name() + ":" + scopeId)} で無効化する。</p>
+     *
+     * <p><b>issue #2544（キー契約の脆弱性の是正）:</b> 従来は本メソッドが {@code String scopeType} を
+     * 受け取り、キー式が生の文字列を連結していた。呼び出し元が {@code "TEAM"} / {@code "ORGANIZATION"} という
+     * enum 名そのものを渡す限りは evict 側の {@code scope.name()} とたまたま一致していたが、
+     * 型で保証されていないため契約として脆弱だった（別表記の文字列が渡ると evict が空振りする）。
+     * 引数を {@link ScopeType} enum に変更し、キー式を {@code #scopeType.name()} とすることで
+     * evict 側と同じ正準表現を型システムで強制する。</p>
      */
     @Cacheable(
             value = "dashboard:widget-visibility",
-            key = "#scopeType + ':' + #scopeId"
+            key = "#scopeType.name() + ':' + #scopeId"
     )
-    public Map<String, MinRole> resolveRaw(String scopeType, Long scopeId) {
-        ScopeType scope = ScopeType.fromPathSegment(scopeType);
-
+    public Map<String, MinRole> resolveRaw(ScopeType scopeType, Long scopeId) {
         // 1. アプリ層デフォルトをベースにマップを構築（キーは WidgetKey.name() 文字列）
         Map<String, MinRole> result = new LinkedHashMap<>();
-        WidgetDefaultMinRoleMap.getDefaultsForScope(scope)
+        WidgetDefaultMinRoleMap.getDefaultsForScope(scopeType)
                 .forEach((key, minRole) -> result.put(key.name(), minRole));
 
         // 2. DB の上書き設定を反映
         List<DashboardWidgetRoleVisibilityEntity> entities =
-                repository.findByScopeTypeAndScopeId(scope, scopeId);
+                repository.findByScopeTypeAndScopeId(scopeType, scopeId);
         for (DashboardWidgetRoleVisibilityEntity entity : entities) {
             try {
                 WidgetKey key = WidgetKey.valueOf(entity.getWidgetKey());

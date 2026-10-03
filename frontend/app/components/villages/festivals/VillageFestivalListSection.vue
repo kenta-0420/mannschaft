@@ -18,16 +18,18 @@ type StatusFilter = VillageFestivalStatus | 'ALL'
 defineProps<{
   festivals: VillageFestivalResponse[]
   festivalsLoading: boolean
+  /** 取得失敗（権限エラー・通信断等）。空状態とは別にエラー状態を描画する。 */
+  festivalsLoadFailed: boolean
   statusFilter: StatusFilter
   statusFilterTabs: { value: StatusFilter, i18nKey: string }[]
   canManage: boolean
-  buildBannerUrl: (r2Key: string | null) => string | null
 }>()
 
 const emit = defineEmits<{
   setStatusFilter: [value: StatusFilter]
   openCreateDialog: []
   openDetailDialog: [f: VillageFestivalResponse]
+  retry: []
 }>()
 
 const { t } = useI18n()
@@ -75,6 +77,11 @@ function severityForStatus(status: VillageFestivalStatus): 'success' | 'info' | 
     <div v-if="festivalsLoading" class="text-center py-12 text-surface-500">
       <i class="pi pi-spin pi-spinner text-2xl" />
     </div>
+    <DashboardErrorState
+      v-else-if="festivalsLoadFailed"
+      testid="village-festivals-error-state"
+      @retry="emit('retry')"
+    />
     <DashboardEmptyState
       v-else-if="festivals.length === 0"
       icon="pi pi-star"
@@ -91,8 +98,8 @@ function severityForStatus(status: VillageFestivalStatus): 'success' | 'info' | 
       >
         <div class="h-28 bg-surface-100 dark:bg-surface-800 flex items-center justify-center overflow-hidden">
           <img
-            v-if="buildBannerUrl(f.bannerR2Key)"
-            :src="buildBannerUrl(f.bannerR2Key) ?? undefined"
+            v-if="f.bannerUrl"
+            :src="f.bannerUrl"
             :alt="f.title"
             class="w-full h-full object-cover"
           >

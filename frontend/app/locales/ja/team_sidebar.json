@@ -4,14 +4,18 @@
       "home": "ホーム",
       "schedule": "スケジュール",
       "match": "試合",
+      "market": "市",
       "member": "メンバー",
       "ops": "業務運営",
+      "ops_work": "タスク・進行",
+      "ops_admin": "運営・予算",
       "facility": "施設管理",
       "data": "データ",
       "settings": "設定"
     },
     "item": {
       "dashboard": "ダッシュボード",
+      "member_profiles": "メンバー紹介",
       "announcements": "お知らせ",
       "chat": "チャット",
       "bulletin": "掲示板",
@@ -22,6 +26,7 @@
       "annual_plan": "年間計画",
       "matches": "試合記録",
       "matchAnalytics": "試合分析",
+      "market": "市",
       "members": "メンバー",
       "circulation": "回覧板",
       "safety_check": "安否確認",
@@ -32,6 +37,7 @@
       "budget": "予算管理",
       "advertiser": "広告主管理",
       "repair_plan": "修繕計画",
+      "incidents": "インシデント",
       "equipment": "設備管理",
       "parking": "駐車場",
       "files": "ファイル",
@@ -39,7 +45,20 @@
       "audit_logs": "監査ログ",
       "settings": "設定",
       "faqSettings": "FAQ設定",
-      "leagueTransfers": "リーグ移籍"
+      "confirmableNotifications": "クイック確認",
+      "billing": "課金・プラン管理",
+      "guide": "チームの使い方・料金・上限",
+      "leagueTransfers": "リーグ移籍",
+      "adminConsole": "管理コンソール",
+      "memberPermissions": "MEMBER既定権限",
+      "receipts": "領収書",
+      "receiptSettings": "領収書の発行者設定",
+      "hourlyRate": "時給設定",
+      "vendors": "業者マスタ",
+      "lineSettings": "LINE設定",
+      "snsSettings": "SNS設定",
+      "scheduleSettings": "スケジュール設定",
+      "bulletinCategories": "掲示板カテゴリ管理"
     }
   }
 }

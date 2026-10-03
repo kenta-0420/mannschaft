@@ -1,4 +1,5 @@
-import type { ShiftScheduleStatus } from '~/types/shift'
+import dayjs from 'dayjs'
+import type { ShiftScheduleResponse, ShiftScheduleStatus } from '~/types/shift'
 
 /**
  * F03.5 シフトスケジュールステータスユーティリティ。
@@ -39,4 +40,25 @@ export function statusToStep(status: ShiftScheduleStatus): number {
     ARCHIVED: 4,
   }
   return map[status]
+}
+
+/**
+ * シフト希望をいま提出できるシフト表かを判定する（CMP-260908-2118）。
+ *
+ * BE の 2 つのガードと同じ規則:
+ * - `ShiftRequestService#validateCollectingStatus` … status が COLLECTING でなければ不可
+ * - `ShiftRequestService#validateRequestDeadline`  … requestDeadline を過ぎていれば不可
+ *
+ * チームのシフト表一覧（`ShiftScheduleList`）と一括入力ページ（`/my/shift-request`）の
+ * 双方がこの関数を使う。条件式を各画面に散らすと片方だけ直されて食い違うため、
+ * 判定はここ 1 か所に置く。
+ *
+ * @param schedule シフト表（一覧レスポンスに status / requestDeadline が含まれる）
+ * @returns 希望を提出できるなら true
+ */
+export function isAcceptingShiftRequests(schedule: ShiftScheduleResponse): boolean {
+  if (schedule.status.status !== 'COLLECTING') return false
+  const deadline = schedule.period.requestDeadline
+  if (!deadline) return true
+  return dayjs().isBefore(dayjs(deadline))
 }

@@ -2,6 +2,7 @@ package com.mannschaft.app.succession.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.storage.StorageService;
@@ -63,6 +64,9 @@ class LegalFilingServiceTest {
 
     @Mock
     private AuditLogService auditLogService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private LegalFilingService service;
@@ -379,7 +383,7 @@ class LegalFilingServiceTest {
             when(legalFilingRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(legalFilingId, ORG_ID))
                     .thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.getById(legalFilingId, ORG_ID))
+            assertThatThrownBy(() -> service.getById(legalFilingId, ORG_ID, REQUESTING_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(SuccessionErrorCode.LEGAL_FILING_NOT_FOUND);

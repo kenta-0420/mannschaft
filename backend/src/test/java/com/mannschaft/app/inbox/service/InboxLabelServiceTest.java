@@ -9,12 +9,12 @@ import com.mannschaft.app.inbox.entity.NotificationLabelEntity;
 import com.mannschaft.app.inbox.error.InboxErrorCode;
 import com.mannschaft.app.inbox.repository.InboxLabelLinkRepository;
 import com.mannschaft.app.inbox.repository.NotificationLabelRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -56,8 +56,18 @@ class InboxLabelServiceTest {
     @Mock
     private InboxItemVisibilityChecker visibilityChecker;
 
-    @InjectMocks
+    /**
+     * 認可ゲートは実物を使う（判定対象のリポジトリ・可視性チェッカーは上のモックを流用する）。
+     * ラベル所有判定は {@code labelRepository.findByIdAndUserId}、対象通知の可視性判定は
+     * {@code visibilityChecker.isVisibleTo} のままなので、各テストのスタブはそのまま認可判定に効く。
+     */
     private InboxLabelService service;
+
+    @BeforeEach
+    void wireService() {
+        service = new InboxLabelService(labelRepository, labelLinkRepository,
+                new InboxAccessGuard(labelRepository, visibilityChecker));
+    }
 
     private NotificationLabelEntity label(UUID id, Long userId, String name) {
         NotificationLabelEntity e = new NotificationLabelEntity();
@@ -489,6 +499,8 @@ class InboxLabelServiceTest {
         @Test
         @DisplayName("上限: 新規作成時に 20 件到達 → 既存 INBOX_LABEL_LIMIT_EXCEEDED（付与しない）")
         void limitExceededOnCreate() {
+            // suggestApply 先頭の可視性ゲート（find-or-create より前）を通過させる
+            given(visibilityChecker.isVisibleTo(USER_ID, SOURCE_TYPE, SOURCE_ID)).willReturn(true);
             given(labelRepository.findByUserIdAndName(USER_ID, "要返信")).willReturn(Optional.empty());
             given(labelRepository.countByUserId(USER_ID)).willReturn(20L);
 

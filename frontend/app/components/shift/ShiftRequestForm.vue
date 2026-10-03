@@ -2,7 +2,6 @@
 import dayjs from 'dayjs'
 import type { ShiftPreference } from '~/types/shift'
 const props = defineProps<{
-  teamId: string
   scheduleId: number
   visible: boolean
 }>()

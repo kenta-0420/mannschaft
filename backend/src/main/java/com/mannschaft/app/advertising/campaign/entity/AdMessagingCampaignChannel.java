@@ -11,7 +11,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,7 +30,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder
 @EqualsAndHashCode(callSuper = true)
 public class AdMessagingCampaignChannel extends UuidV7Entity {
 
@@ -62,6 +62,10 @@ public class AdMessagingCampaignChannel extends UuidV7Entity {
     /** F09.7 ads.id (BANNER 時のみ・FK なし) */
     @Column(name = "banner_creative_id")
     private Long bannerCreativeId;
+
+    /** 掲載面（BANNER 時のみ・{@code AdPlacement} 語彙。{@code ads.placement} と一致させる。F09.19.2 サービング用） */
+    @Column(name = "placement", length = 30)
+    private String placement;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

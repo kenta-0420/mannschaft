@@ -2,6 +2,8 @@
 
 あらゆる組織・チーム・個人をシームレスに管理するWebアプリケーション。
 
+ブログ・予定のmultipartメディアは保存済み所有スコープと添付IDへ束縛し、ACL照合後に署名URLを発行する。開始・完了・再試行・旧データの扱いは[ファイル・ストレージセキュリティ](docs/security/07_file_and_storage_security.md#42-cmp-057-multipart-の保存台帳とclaim2026-09)を参照。
+
 ---
 
 ## 目次
@@ -47,6 +49,8 @@
 
 モジュール式テンプレートにより、スポーツチーム、整骨院、学校、会社、飲食店、美容室、ジム、町内会など業種を問わず柔軟に対応する。
 独自のタイムライン（X風UI）やSlack風チャットを備え、メンバー間のコミュニケーションと外部への情報発信を両立する。
+
+チーム・組織にはそれぞれメンバーが閲覧できる「使い方・料金・上限」ページを設ける。選択式機能の種類と有効状態、無料プランの機能数上限は対象スコープの機能カタログから、ストレージ使用量と容量枠は現在の契約データから表示する。管理者には未設定の MEMBER 既定権限を初回案内し、必要な管理操作だけを許可できる。
 
 ---
 
@@ -124,6 +128,12 @@
 - **マルチ所属**: 1つの個人アカウントで複数のチームや組織に同時に所属可能
 - **サポーター枠**: 招待不要で、外部から特定のチームを支援・フォローできる独立した枠組み
 
+### 予定対象者とマイカレンダー
+
+- チーム・組織予定は「全員」またはスコープ内の選択メンバー（1〜500名）を対象にできる。対象指定は公開範囲を拡張せず、閲覧権限を満たす所属者にだけ氏名と色を表示する。
+- メンバーのカレンダー色はチーム・組織ごとに自動決定され、管理者が上書き・リセットできる。色だけでなく氏名・アバターを常に併記する。
+- 個人ダッシュボードとマイカレンダーには、全員予定、自分が対象の予定、および個人・チーム・組織を横断した自分担当の未完了TODOを表示する。予定に連携済みのTODOは予定を正本として重複表示しない。
+
 ### ロール・パーミッション
 
 | ロール | スコープ | アクセス範囲 |
@@ -140,6 +150,7 @@
 ※ グループ単位でもロール設定可能
 ※ DEPUTY_ADMIN・MEMBER の権限は 3 層で管理する: ① SYSTEM_ADMIN がロールごとの権限の上限（天井）を設定 → ② 各チーム/組織の ADMIN がその天井内でパーミッションを個別選択して権限グループを構成 → ③ ユーザーに権限グループを割り当て
 ※ **DEPUTY_ADMIN 権限グループ**: ADMIN は操作権限を個別選択した名前付きグループ（`permission_groups`）を複数作成・テンプレートとして保存できる。「Aさんにはグループ1（受付・安否確認）、B・CさんにはグループA2（スケジュール・ファイル管理）」のような運用が可能
+※ **MEMBER 既定権限**: 対象チーム・組織の ADMIN は `/api/v1/admin/member-permissions` で基本3権限をスコープ単位に設定できる。個別 MEMBER に権限グループが割り当てられた場合は、グループの権限集合が既定値を完全上書きする
 ※ **コンテンツ削除のデフォルト非付与**: 投稿・チャット・掲示板スレッド等の他者コンテンツ削除権限は DEPUTY_ADMIN のデフォルトパーミッションに含めない。コンテンツの責任はその組織・チームに帰属するため、削除は ADMIN が担う。DEPUTY_ADMIN への付与が必要な場合は権限グループで明示的に設定する
 ※ `user_roles` は `team_id` / `organization_id` のスコープカラムを持ち、「チームAでは DEPUTY_ADMIN・チームBでは MEMBER」のようなマルチ所属に対応
 
@@ -164,7 +175,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 ### セキュリティ・認証
 
-> 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
+> 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟡 実装中: 申請受付設定・申請フォーム・申請ボタン判定・公開 API の受付フラグは実装済み） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
 
 - **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
 - **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
@@ -207,12 +218,12 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 | 方式 | 概要 |
 |------|------|
 | フリープラン | デフォルト機能（28個）＋ 選択式モジュール最大10個まで無料 |
-| 個別モジュール課金 | 選択式モジュールを1個単位で有効化。月額または年額サブスクリプション |
+| 個別モジュール課金 | 選択式モジュールを1個単位で有効化する月額サブスクリプション（年額は将来対応） |
 | パッケージ課金 | 複数モジュールをセットにしたパッケージを割引価格で購入 |
 | 組織数課金 | 組織配下のアクティブなチーム数に応じた月額課金。組織種別（非営利/営利）ごとに無料枠と単価を設定 |
 
 - デフォルト機能はいずれの課金方式でも無料。モジュール数カウント対象外
-- 月額・年額の選択制（年額は月額×12に対して割引率を設定可能）
+- 販売の基本は月額の自動更新。年額は価格・内容・解約条件を別途公開した時点で選択可能とし、現時点では販売しない。1か月だけのパスは提供しない
 - **全価格・パッケージ構成・割引はSYSTEM_ADMINが管理画面からリアルタイムに設定変更可能**
 - 価格変更は翌請求サイクルから適用。既存契約中のチームへは移行猶予期間を設ける
 
@@ -232,10 +243,10 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 #### 課金タイミング
 
-- **月のどこで契約しても当月は課金対象（日割りなし）**。月15日にモジュールを有効化した場合も、その月の月額料金が全額発生する
-- 翌月初日を次の請求サイクル開始日とする
-- 解約・無効化した場合も、解約処理を行った月末まで有効。翌月から課金停止
-- 全課金軸（モジュール課金・パッケージ課金・ストレージ課金・組織数課金）で統一ルールを適用
+- **暦月課金（日割りあり）**。初月は契約日から月末までを日割りで請求し、翌月以降は毎月1日から末日までを月額で請求する
+- アップグレードは即時反映し、変更時から月末までの差額を日割りで請求する。ダウングレードは翌月1日から反映する
+- 解約は当月末で効力が生じ、翌月以降は請求しない。解約予定は当月末まで撤回できる。解約処理月の残額返金は行わない
+- 全課金軸（モジュール課金・パッケージ課金・ストレージ課金・組織数課金）で統一ルールを適用する。実装詳細は [F20.1 料金・契約センター設計](docs/features/F20.1_entitlement_billing/05_billing_center.md) を正本とする
 
 #### 割引・クーポン
 
@@ -245,8 +256,8 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 #### 消費税
 
 - SYSTEM_ADMINが税名称・税率を設定（例: 消費税 10%）。複数税率の登録に対応できる設計とする
-- 請求書・支払い画面では**税抜価格・税込価格を両方表示**する
-- `is_included_in_price` フラグで表示価格を税込み統一か税抜き表示かを切り替え可能
+- 請求書・支払い画面では**税込価格を主表示**し、税抜価格・税額も併記する
+- `is_included_in_price` は運用入力した価格が税込か税抜かを示す属性であり、利用者向け画面は常に税込を主表示する
 
 ※ 課金モデルの実装詳細は `.claudecode.md` §9「サブスクリプション設計指針」を参照
 
@@ -398,18 +409,21 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 組織・チーム・個人それぞれにダッシュボードを持ち、全ウィジェットの表示/非表示をトグルスイッチで自由にカスタマイズ可能。
 
+ダッシュボードの切替タブ直下には、個人・選択中チーム・選択中組織のストレージ容量サマリーを表示する（使用量、使用率ゲージ、容量枠未設定・未所属・取得失敗の状態を含む）。容量カードはキーボード操作に対応し、通常は容量設定へ遷移、90%以上では有料プラン案内Dialogを表示する。
+
 **個人ダッシュボード:**
+- 所属チーム/組織のタグは、未選択なら選択し、選択中のタグを再度押すと個別ページへ遷移する。
 - お知らせ欄（重要度付き通知）、直近イベント + 出欠状況、自分の投稿一覧、未読スレッド、最近のアクティビティ
 - 所属するチーム/組織ごとのパフォーマンスサマリー表示
 - 個人カレンダー搭載（**Googleカレンダーとの同期**対応）
 - 個人TODOリスト（期限設定、優先度、完了チェック）
-- **今月の課金サマリー（将来対応）**: 現時点では個人向け課金なし。将来の個人プレミアム機能追加時にウィジェットを有効化する
+- **今月の課金サマリー**: 個人・チーム・組織それぞれの契約を「料金・契約」へ集約して表示する。個人向けの有料プランが未販売なら、個人スコープではフリープランとして表示する
 
 **チームダッシュボード:**
 - チーム全体のお知らせ、直近イベント、メンバー出欠状況一覧
 - チームTODO（担当者の割り振り、期限設定、優先度、進捗ステータス管理）
 - チーム活動サマリー、最新投稿、未読スレッド数
-- **今月の課金サマリー（ADMIN/DEPUTY_ADMINのみ表示）**:
+- **今月の課金サマリー（`BillingAccessGuard.manage=true` の ADMIN または課金権限を明示付与された DEPUTY_ADMIN のみ表示。MEMBER/未許可DEPUTYは非表示）**:
   - 今月の課金合計（税込）をウィジェット上部に表示
   - 内訳: モジュール課金 / パッケージ課金 / ストレージ課金 をそれぞれ明示
   - 次回請求日と請求履歴ページへのリンクを表示
@@ -419,7 +433,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 - 傘下チーム一覧と各チームの活動状況
 - 組織TODO（担当者・担当チームの割り振り、期限設定、優先度、進捗ステータス管理）
 - 組織全体のお知らせ、統計サマリー
-- **今月の課金サマリー（ADMIN/DEPUTY_ADMINのみ表示）**:
+- **今月の課金サマリー（`BillingAccessGuard.manage=true` の ADMIN または課金権限を明示付与された DEPUTY_ADMIN のみ表示。MEMBER/未許可DEPUTYは非表示）**:
   - 今月の課金合計（税込）をウィジェット上部に表示
   - 内訳: モジュール課金 / パッケージ課金 / ストレージ課金 / 組織数課金（現在のチーム数・無料枠・超過チーム数）をそれぞれ明示
   - 次回請求日と請求履歴ページへのリンクを表示
@@ -462,6 +476,9 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 - WebSocketによるリアルタイムポップアップ通知
 - 重要度に応じた通知チャネル自動選択
 - **通知受信設定**: 個人アカウントが所属する組織・チームごとに通知の受け取り ON/OFF を設定可能
+- **募集の無断欠席異議**: 参加者の異議理由を保存して主催者へアプリ内通知し、TEAM/ORGANIZATION の管理者または PERSONAL 募集の作成者が裁定可能
+- **募集ペナルティの発動通知**: 確定した無断欠席が設定回数に達すると本人へ緊急の確認通知を送り、設定に応じて募集スコープ内または全スコープへの応募を制限。拒否応答には解除予定時刻を含む
+- **確認通知の状態**: 通知の既読と本人の確認済みを独立して表示。既読にしても確認待ちは残り、明示確認後に未読へ戻しても確認済みを保持する
 
 #### 7. アンケート・投票
 - カスタム設問作成（単一選択・複数選択・自由記述等）
@@ -693,6 +710,9 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 #### 3. 予約管理
 - **チームアカウント（枠管理）**: 時間枠の作成・編集・削除、スタッフ別の予約枠管理、予約状況の一覧管理
+- **ライン軸の枠と週間テンプレート（F03.4.2）**: 枠を予約対象（席・ベッド・施術台＝ライン、最大20本）に紐づけ可能。曜日別の週間テンプレートから30分セル枠を冪等に一括生成（営業時間突合・日次バッチで28日先まで自動延伸）
+- **メニュー・複数枠グループ予約（F03.4.1/F03.4.3）**: 所要時間つきメニューマスタ（チーム共通＋ライン別提供可否）から連続する複数枠を1グループとして確保。承認・キャンセル・完了・ノーショーはグループ単位で一括操作
+- **マトリックスUI（F03.4.4）**: 縦=日付×予約対象・横=時間（30分）のマトリックス表示が予約タブの既定表示。セルクリック→メニュー選択→必要枠数の自動連続選択→確定の3ステップで予約できる（従来のリスト表示・スタッフ別グリッド表示は選択式で残置）
 - **個人アカウント（予約のみ）**: 予約の申込・キャンセル、予約履歴の閲覧
 - 予約時間が近づいたらプッシュ通知でリマインド
 
@@ -781,10 +801,10 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 - 定型テンプレート・モジュールの作成・編集・管理
 - **モジュールのレベル別適用管理**: 各モジュール（デフォルト・選択式）を組織/チーム/個人のどのレベルで利用可能にするかをON/OFFで制御
 - **ロール権限の上限設定**: DEPUTY_ADMIN・MEMBER がチーム/組織レベルで付与できる権限の上限（天井）を `role_permissions` で管理
-- **モジュール価格管理**: 選択式モジュールごとの月額・年額価格をリアルタイムに設定変更
+- **モジュール価格管理**: 選択式モジュールごとの月額価格をリアルタイムに設定変更（年額は将来対応）
 - **パッケージ管理**: モジュールをまとめたパッケージの作成・編集・公開/非公開・価格設定
 - **割引キャンペーン管理**: 期間限定割引の作成・対象指定（全体/モジュール/パッケージ）・クーポンコード発行・利用状況確認
-- **ストレージプラン管理**: ストレージプランの作成・編集（無料枠・月額/年額・超過従量単価・ハードキャップ）。各チームのストレージ使用状況の一覧確認
+- **ストレージプラン管理**: ストレージプランの作成・編集（無料枠・月額・超過従量単価・ハードキャップ。年額は将来対応）。各チームのストレージ使用状況の一覧確認
 - **シーズナル壁紙管理**: 期間限定壁紙の作成・画像アップロード・公開期間設定（開始/終了日時）。プレビュー確認後に公開。有効期間中は全ユーザーへ自動適用
 - **組織数課金設定**: 組織種別（非営利/営利）ごとの無料枠チーム数・超過課金単価（円/月）を設定。変更は翌月請求サイクルから反映。各組織の現在のチーム数・課金状況の一覧確認
 
@@ -877,9 +897,9 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 | Phase | 機能領域 | 詳細設計 |
 |-------|---------|---------|
-| 1 | 認証・権限・ユーザー基盤、プラットフォーム設定、チーム・組織・グループ階層、テンプレート・モジュール、プラン・サブスクリプション、チーム間相互フォロー・フレンドチーム | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
-| 2 | QR会員証、ダッシュボード、TODO・プロジェクト、アクセス解析、外観設定、オンボーディング | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
-| 3 | スケジュール・出欠、個人スケジュール、Googleカレンダー連携、予約管理、シフト管理、緊急安否確認、順番待ち、イベント管理 | [F03.1](docs/features/F03.1_schedule_shared.md), [F03.2](docs/features/F03.2_schedule_personal.md), [F03.3](docs/features/F03.3_google_calendar.md), [F03.4](docs/features/F03.4_reservation.md), [F03.5](docs/features/F03.5_shift.md), [F03.6](docs/features/F03.6_safety_check.md), [F03.7](docs/features/F03.7_queue.md), [F03.8](docs/features/F03.8_event_management.md) |
+| 1 | 認証・権限・ユーザー基盤、プラットフォーム設定、チーム・組織・グループ階層、テンプレート・モジュール、プラン・サブスクリプション、チーム間相互フォロー・フレンドチーム | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.2.1](docs/features/F01.2.1_org_team_groups.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
+| 2 | QR会員証、ダッシュボード、帰省・滞在予定、TODO・プロジェクト、アクセス解析、外観設定、オンボーディング | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.11](docs/features/F02.11_return_stay_plan.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
+| 3 | スケジュール・出欠、個人スケジュール、Googleカレンダー連携、予約管理、シフト管理、緊急安否確認、順番待ち、イベント管理 | [F03.1](docs/features/F03.1_schedule_shared.md), [F03.2](docs/features/F03.2_schedule_personal.md), [F03.3](docs/features/F03.3_google_calendar.md), [F03.4](docs/features/F03.4_reservation.md)（v2枝番: [F03.4.1 メニュー](docs/features/F03.4.1_reservation_menu.md), [F03.4.2 枠テンプレート](docs/features/F03.4.2_reservation_slot_template.md), [F03.4.3 予約グループ](docs/features/F03.4.3_reservation_group_booking.md), [F03.4.4 マトリックスUI](docs/features/F03.4.4_reservation_matrix_ui.md)）, [F03.5](docs/features/F03.5_shift.md), [F03.6](docs/features/F03.6_safety_check.md), [F03.7](docs/features/F03.7_queue.md), [F03.8](docs/features/F03.8_event_management.md) |
 | 4 | タイムライン、チャット、プッシュ通知、ソーシャルプロフィール・フォロー、通報・モデレーション、グローバル検索、ゲーミフィケーション | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md), [F04.7](docs/features/F04.7_gamification.md) |
 | 5 | 掲示板、回覧板、電子印鑑、アンケート・投票、ファイル共有、ワークフロー・承認、フォームビルダー | [F05.1](docs/features/F05.1_bulletin_board.md), [F05.2](docs/features/F05.2_circular.md), [F05.3](docs/features/F05.3_digital_seal.md), [F05.4](docs/features/F05.4_survey_vote.md), [F05.5](docs/features/F05.5_file_sharing.md), [F05.6](docs/features/F05.6_workflow_approval.md), [F05.7](docs/features/F05.7_form_builder.md) |
 | 6 | CMS・ブログ、メンバー紹介・ギャラリー、タイムラインダイジェスト、活動記録、ナレッジベース | [F06.1](docs/features/F06.1_cms_blog.md), [F06.2](docs/features/F06.2_member_gallery.md), [F06.3](docs/features/F06.3_timeline_digest.md), [F06.4](docs/features/F06.4_activity_records.md), [F06.5](docs/features/F06.5_knowledge_base.md) |
@@ -908,10 +928,10 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 | Phase | 機能領域 | 主要エンドポイント例 | 詳細設計 |
 |-------|---------|-------------------|---------|
-| 1 | 認証・権限、チーム・組織、テンプレート・モジュール、プラン・課金、フレンドチーム | `/auth/**`, `/teams/**`, `/organizations/**`, `/templates/**`, `/system-admin/**`, `/teams/{id}/friends/**`, `/teams/{id}/friend-folders/**`, `/teams/{id}/friend-feed/**` | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
-| 2 | QR会員証、ダッシュボード、TODO、オンボーディング | `/members/card/**`, `/dashboard/**`, `/todos/**`, `/onboarding/**` | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
+| 1 | 認証・権限、チーム・組織、テンプレート・モジュール、プラン・課金、フレンドチーム | `/auth/**`, `/teams/**`, `/organizations/**`, `/templates/**`, `/system-admin/**`, `/teams/{id}/friends/**`, `/teams/{id}/friend-folders/**`, `/teams/{id}/friend-feed/**` | [F01.1](docs/features/F01.1_auth.md), [F01.2](docs/features/F01.2_org_team_member_role.md), [F01.2.1](docs/features/F01.2.1_org_team_groups.md), [F01.3](docs/features/F01.3_template_module.md), [F01.4](docs/features/F01.4_family_team.md), [F01.5](docs/features/F01.5_team_friend_relationships.md) |
+| 2 | QR会員証、ダッシュボード、帰省・滞在予定（本人管理・TEAM公開）、TODO、オンボーディング | `/members/card/**`, `/dashboard/**`, `/me/return-stay-plans/**`, `/teams/{teamId}/members/**/return-stay-plans`, `/todos/**`, `/onboarding/**` | [F02.1](docs/features/F02.1_qr_membership.md), [F02.2](docs/features/F02.2_dashboard.md), [F02.11](docs/features/F02.11_return_stay_plan.md), [F02.3](docs/features/F02.3_todo_project.md), [F02.4](docs/features/F02.4_onboarding.md) |
 | 3 | スケジュール、予約、シフト、安否確認、順番待ち | `/schedules/**`, `/reservations/**`, `/shifts/**`, `/safety-checks/**`, `/queues/**` | [F03.1](docs/features/F03.1_schedule_shared.md), [F03.2](docs/features/F03.2_schedule_personal.md), [F03.3](docs/features/F03.3_google_calendar.md), [F03.4](docs/features/F03.4_reservation.md), [F03.5](docs/features/F03.5_shift.md), [F03.6](docs/features/F03.6_safety_check.md), [F03.7](docs/features/F03.7_queue.md) |
-| 4 | タイムライン、チャット、通知、ソーシャルプロフィール、検索 | `/timeline/**`, `/chat/**`, `/notifications/**`, `/social-profiles/**`, `/search/**` | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md) |
+| 4 | タイムライン、チャット、通知、クイック確認、ソーシャルプロフィール、検索 | `/timeline/**`, `/chat/**`, `/notifications/**`, `/confirmable-notifications/**`, `/social-profiles/**`, `/search/**` | [F04.1](docs/features/F04.1_timeline.md), [F04.2](docs/features/F04.2_chat.md), [F04.3](docs/features/F04.3_push_notification.md), [F04.9](docs/features/F04.9_confirmable_notification.md), [F04.4](docs/features/F04.4_social_profiles.md), [F04.5](docs/features/F04.5_moderation.md), [F04.6](docs/features/F04.6_search.md) |
 | 5 | 掲示板、回覧板、電子印鑑、アンケート、ファイル共有 | `/bulletin/**`, `/circulation/**`, `/seal/**`, `/surveys/**`, `/files/**` | [F05.1](docs/features/F05.1_bulletin_board.md), [F05.2](docs/features/F05.2_circular.md), [F05.3](docs/features/F05.3_digital_seal.md), [F05.4](docs/features/F05.4_survey_vote.md), [F05.5](docs/features/F05.5_file_sharing.md) |
 | 6 | CMS・ブログ、メンバー紹介、ギャラリー、活動記録 | `/blog/**`, `/team/pages/**`, `/gallery/**`, `/activities/**` | [F06.1](docs/features/F06.1_cms_blog.md), [F06.2](docs/features/F06.2_member_gallery.md), [F06.3](docs/features/F06.3_timeline_digest.md), [F06.4](docs/features/F06.4_activity_records.md) |
 | 7 | サービス記録、パフォーマンス、備品管理、カルテ | `/service-records/**`, `/performance/**`, `/equipment/**`, `/charts/**` | [F07.1](docs/features/F07.1_service_records.md), [F07.2](docs/features/F07.2_performance.md), [F07.3](docs/features/F07.3_equipment.md), [F07.4](docs/features/F07.4_chart.md) |
@@ -1014,7 +1034,9 @@ docker ps  # mannschaft-mysql と mannschaft-valkey が Running であれば OK
 cat > /mnt/c/Claude/mannschaft/backend/src/main/resources/application-local.yml << 'EOF'
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/mannschaft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Tokyo
+    # serverTimezone=UTC は docker-compose.yml の MySQL（--default-time-zone=+00:00）と必ず一致させること。
+    # DB 格納時刻の基準は UTC に統一されている（Issue #2486 / backend/.claudecode.md §20）。
+    url: jdbc:mysql://localhost:3306/mannschaft?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: mannschaft
     password: mannschaft
   data:
