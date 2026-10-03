@@ -81526,8 +81526,8 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "既存レポートに集約",
+          "201": {
+            "description": "新規作成",
             "content": {
               "*/*": {
                 "schema": {
@@ -81539,8 +81539,8 @@
               }
             }
           },
-          "201": {
-            "description": "新規作成",
+          "200": {
+            "description": "既存レポートに集約",
             "content": {
               "*/*": {
                 "schema": {
@@ -143897,8 +143897,8 @@
           }
         ],
         "responses": {
-          "202": {
-            "description": "非同期生成ジョブ受付",
+          "302": {
+            "description": "生成済 PDF への Pre-signed URL リダイレクト",
             "content": {
               "*/*": {
                 "schema": {
@@ -143907,8 +143907,8 @@
               }
             }
           },
-          "302": {
-            "description": "生成済 PDF への Pre-signed URL リダイレクト",
+          "202": {
+            "description": "非同期生成ジョブ受付",
             "content": {
               "*/*": {
                 "schema": {
@@ -155066,8 +155066,8 @@
           },
           "progressRate": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "projectId": {
             "type": "integer",
@@ -163073,8 +163073,8 @@
           },
           "percentRate": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0
+            "maximum": 1.0,
+            "minimum": 0.0
           },
           "policyKey": {
             "type": "string",
@@ -164254,7 +164254,7 @@
           "maxMonthlyHours": {
             "type": "number",
             "maximum": 9999.99,
-            "minimum": 0
+            "minimum": 0.00
           },
           "maxNightShiftsPerMonth": {
             "type": "integer",
@@ -164265,7 +164265,7 @@
           "minRestHoursBetweenShifts": {
             "type": "number",
             "maximum": 99.99,
-            "minimum": 0
+            "minimum": 0.00
           },
           "note": {
             "type": "string",
@@ -171854,8 +171854,8 @@
           },
           "cpiInflationRate": {
             "type": "number",
-            "maximum": 0.2,
-            "minimum": -0.1
+            "maximum": 0.20,
+            "minimum": -0.10
           },
           "deferralYears": {
             "type": "integer",
@@ -171892,8 +171892,8 @@
           },
           "reserveInflationRate": {
             "type": "number",
-            "maximum": 0.2,
-            "minimum": -0.1
+            "maximum": 0.20,
+            "minimum": -0.10
           },
           "scenarioHorizonYears": {
             "type": "integer",
@@ -176034,8 +176034,8 @@
           },
           "progressRate": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "projectId": {
             "type": "integer",
@@ -176089,8 +176089,8 @@
           },
           "link_percentage": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "project_id": {
             "type": "integer",
@@ -187295,13 +187295,13 @@
           },
           "maxAbsenceRate": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0
+            "maximum": 100.0,
+            "minimum": 0.0
           },
           "minAttendanceRate": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0
+            "maximum": 100.0,
+            "minimum": 0.0
           },
           "name": {
             "type": "string",
@@ -187322,8 +187322,8 @@
           },
           "warningThresholdRate": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0
+            "maximum": 100.0,
+            "minimum": 0.0
           }
         },
         "required": [
@@ -192128,21 +192128,21 @@
         "properties": {
           "consecutivePenaltyWeight": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0
+            "maximum": 1.0,
+            "minimum": 0.0
           },
           "fairnessWeight": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0
+            "maximum": 1.0,
+            "minimum": 0.0
           },
           "overwriteExisting": {
             "type": "boolean"
           },
           "preferenceWeight": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0
+            "maximum": 1.0,
+            "minimum": 0.0
           },
           "respectWorkConstraints": {
             "type": "boolean"
@@ -197332,7 +197332,7 @@
         "properties": {
           "amount": {
             "type": "number",
-            "maximum": 1000000,
+            "maximum": 1000000.00,
             "minimum": 0.01
           },
           "note": {
@@ -200922,19 +200922,19 @@
           "geoAccuracy": {
             "type": "number",
             "format": "double",
-            "minimum": 0
+            "minimum": 0.0
           },
           "geoLat": {
             "type": "number",
             "format": "double",
-            "maximum": 90,
-            "minimum": -90
+            "maximum": 90.0,
+            "minimum": -90.0
           },
           "geoLng": {
             "type": "number",
             "format": "double",
-            "maximum": 180,
-            "minimum": -180
+            "maximum": 180.0,
+            "minimum": -180.0
           },
           "manualCodeFallback": {
             "type": "boolean"
@@ -206604,8 +206604,8 @@
           },
           "progress_rate": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "related_todo_id": {
             "type": "integer",
@@ -207824,8 +207824,8 @@
         "properties": {
           "progressRate": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0
+            "maximum": 100.00,
+            "minimum": 0.00
           }
         },
         "required": [
@@ -213624,13 +213624,13 @@
           },
           "maxAbsenceRate": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0
+            "maximum": 100.0,
+            "minimum": 0.0
           },
           "minAttendanceRate": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0
+            "maximum": 100.0,
+            "minimum": 0.0
           },
           "name": {
             "type": "string",
@@ -213643,8 +213643,8 @@
           },
           "warningThresholdRate": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0
+            "maximum": 100.0,
+            "minimum": 0.0
           }
         }
       },
@@ -213801,8 +213801,8 @@
           },
           "progress_rate": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "related_todo_id": {
             "type": "integer",
@@ -238525,7 +238525,7 @@
           "quantity": {
             "type": "number",
             "description": "数量",
-            "example": 1
+            "example": 1.0
           },
           "taxes": {
             "type": "array",
