@@ -10,6 +10,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -29,10 +31,17 @@ import static org.mockito.Mockito.verify;
 @DisplayName("GdprSettingsPurgeRetryService 単体テスト")
 class GdprSettingsPurgeRetryServiceTest {
 
+    private static final Instant RETRIED_AT = Instant.parse("2026-10-03T23:59:58Z");
+    private static final Instant COMPLETED_AT = Instant.parse("2026-10-04T00:00:00Z");
+    private static final LocalDateTime RETRIED_AT_SERVER = LocalDateTime.of(2026, 10, 4, 8, 59, 58);
+    private static final LocalDateTime COMPLETED_AT_SERVER = LocalDateTime.of(2026, 10, 4, 9, 0);
+
     @Mock
     private AccountPurgeCompletionStatusRepository completionStatusRepository;
     @Mock
     private DashboardSettingsPurgeEventListener dashboardSettingsPurgeEventListener;
+    @Mock
+    private Clock clock;
 
     @InjectMocks
     private GdprSettingsPurgeRetryService service;
@@ -45,7 +54,7 @@ class GdprSettingsPurgeRetryServiceTest {
         entity.setEmailHash("a".repeat(64));
         entity.setDomainName(domainName);
         entity.setStatus("PENDING");
-        entity.setAttemptedAt(LocalDateTime.now().minusHours(3));
+        entity.setAttemptedAt(RETRIED_AT_SERVER.minusHours(3));
         entity.setRetryCount(0);
         return entity;
     }
@@ -56,8 +65,8 @@ class GdprSettingsPurgeRetryServiceTest {
         entity.setEmailHash("a".repeat(64));
         entity.setDomainName(domainName);
         entity.setStatus("SUCCESS");
-        entity.setAttemptedAt(LocalDateTime.now().minusHours(3));
-        entity.setCompletedAt(LocalDateTime.now().minusHours(2));
+        entity.setAttemptedAt(RETRIED_AT_SERVER.minusHours(3));
+        entity.setCompletedAt(RETRIED_AT_SERVER.minusHours(2));
         entity.setRetryCount(1);
         return entity;
     }
@@ -69,6 +78,7 @@ class GdprSettingsPurgeRetryServiceTest {
         var entity = buildPendingEntity(userId, "dashboard");
         given(completionStatusRepository.findByUserIdAndDomainName(userId, "dashboard"))
                 .willReturn(Optional.of(entity));
+        given(clock.instant()).willReturn(RETRIED_AT);
         doThrow(new org.springframework.transaction.TransactionSystemException("owner commit"))
                 .when(dashboardSettingsPurgeEventListener).retryPurge(userId);
 
@@ -77,7 +87,7 @@ class GdprSettingsPurgeRetryServiceTest {
         assertThat(result.succeeded()).isFalse();
         assertThat(entity.getStatus()).isEqualTo("PENDING");
         assertThat(entity.getRetryCount()).isEqualTo(1);
-        assertThat(entity.getLastRetriedAt()).isNotNull();
+        assertThat(entity.getLastRetriedAt()).isEqualTo(RETRIED_AT_SERVER);
         assertThat(entity.getCompletedAt()).isNull();
         verify(completionStatusRepository).save(entity);
     }
@@ -89,9 +99,11 @@ class GdprSettingsPurgeRetryServiceTest {
         var entity = buildPendingEntity(userId, "dashboard");
         given(completionStatusRepository.findByUserIdAndDomainName(userId, "dashboard"))
                 .willReturn(Optional.of(entity));
+        given(clock.instant()).willReturn(RETRIED_AT, COMPLETED_AT);
         given(dashboardSettingsPurgeEventListener.retryPurge(userId)).willAnswer(invocation -> {
             assertThat(entity.getStatus()).isEqualTo("PENDING");
             assertThat(entity.getCompletedAt()).isNull();
+            verify(clock, never()).instant();
             return true;
         });
 
@@ -99,7 +111,8 @@ class GdprSettingsPurgeRetryServiceTest {
 
         assertThat(result.succeeded()).isTrue();
         assertThat(entity.getStatus()).isEqualTo("SUCCESS");
-        assertThat(entity.getCompletedAt()).isNotNull();
+        assertThat(entity.getLastRetriedAt()).isEqualTo(RETRIED_AT_SERVER);
+        assertThat(entity.getCompletedAt()).isEqualTo(COMPLETED_AT_SERVER);
         verify(completionStatusRepository).save(entity);
     }
 
@@ -116,6 +129,7 @@ class GdprSettingsPurgeRetryServiceTest {
         assertThat(result.succeeded()).isTrue();
         assertThat(result.retryCount()).isEqualTo(1);
         verify(dashboardSettingsPurgeEventListener, never()).retryPurge(userId);
+        verify(clock, never()).instant();
         verify(completionStatusRepository, never()).save(entity);
     }
 }

@@ -5,6 +5,7 @@ import com.mannschaft.app.appearance.event.AppearanceSettingsPurgeEventListener;
 import com.mannschaft.app.auth.event.AuthAnonymizationEventListener;
 import com.mannschaft.app.chat.event.ChatBookmarkPurgeEventListener;
 import com.mannschaft.app.cms.event.UserBlogSettingsPurgeEventListener;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.contact.event.ContactRequestBlockPurgeEventListener;
 import com.mannschaft.app.dashboard.event.DashboardSettingsPurgeEventListener;
 import com.mannschaft.app.favorite.event.FavoriteAnonymizationEventListener;
@@ -34,6 +35,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -61,6 +64,7 @@ import java.util.Set;
 public class GdprSettingsPurgeRetryService {
 
     private final AccountPurgeCompletionStatusRepository completionStatusRepository;
+    private final Clock clock;
 
     private final ActionMemoAnonymizationEventListener actionMemoAnonymizationEventListener;
     private final PointCardAnonymizationEventListener pointCardAnonymizationEventListener;
@@ -137,11 +141,14 @@ public class GdprSettingsPurgeRetryService {
 
         // retry_count / last_retried_at を必ず更新（成功・失敗いずれの場合も）
         entity.setRetryCount(entity.getRetryCount() + 1);
-        entity.setLastRetriedAt(LocalDateTime.now());
+        // 発生した瞬間はInstantで取得し、既存JPAのアプリ層JST値へ保存境界で変換する。
+        Instant retriedAt = clock.instant();
+        entity.setLastRetriedAt(LocalDateTime.ofInstant(retriedAt, UserZoneLocalDateTimeParser.SERVER_ZONE));
 
         if (succeeded) {
             entity.setStatus("SUCCESS");
-            entity.setCompletedAt(LocalDateTime.now());
+            Instant completedAt = clock.instant();
+            entity.setCompletedAt(LocalDateTime.ofInstant(completedAt, UserZoneLocalDateTimeParser.SERVER_ZONE));
             log.info("GDPR パージ retry 成功: userId={} domain={} retryCount={}",
                     userId, domainName, entity.getRetryCount());
         } else {
