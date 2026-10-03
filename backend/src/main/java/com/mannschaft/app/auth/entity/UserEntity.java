@@ -213,6 +213,11 @@ public class UserEntity extends BaseEntity {
     @Column(columnDefinition = "VARBINARY(255)")
     private String birthDate;
 
+    /** 出生プロフィールの確認世代。氏名・カナ・生年月日の変更時だけ更新する。 */
+    @Column(name = "birth_profile_version", nullable = false)
+    @Builder.Default
+    private long birthProfileVersion = 0L;
+
     /** ケアカテゴリ。MINOR / ELDERLY / DISABILITY_SUPPORT / GENERAL_FAMILY。 */
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
