@@ -1962,15 +1962,6 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
-        @DisplayName("募集テンプレート: RECRUITMENT_313（不在）と RECRUITMENT_314（越境）がともに 404")
-        void 募集テンプレートの存在オラクルが閉じている() {
-            // RecruitmentListingService#createFromTemplate はテンプレートが不在なら TEMPLATE_NOT_FOUND、
-            // 他スコープのテンプレートなら TEMPLATE_SCOPE_MISMATCH。
-            assertOracleClosed(RecruitmentErrorCode.TEMPLATE_NOT_FOUND,
-                    RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH);
-        }
-
-        @Test
         @DisplayName("非公開村: VILLAGE_001（不在）と VILLAGE_002（非公開）がともに 404")
         void 非公開村の存在オラクルが閉じている() {
             // UNLISTED 村は検索結果から意図的に除外され「存在を隠す」設計であるにもかかわらず、

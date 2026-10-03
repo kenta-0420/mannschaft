@@ -84,7 +84,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 列挙で他スコープのテンプレートの実在が判別できるため、<b>404 として明示登録</b>し存在オラクルを閉じた。
  * {@code CommonErrorCode.COMMON_002} は 403 で明示登録されている。</p>
  *
- * <p><b>観察事項（本 PR では変更しない）</b>: エンティティ由来型の 2 EP は、
+ * <p><b>CMP-260923-0954 W4 で是正</b>: 以下の観察事項のとおり応答が割れていた lift / confirm は、越境を
+ * 不在と同一の 404（{@code RECRUITMENT_310} / {@code RECRUITMENT_001}）に揃えた。本ファイルの該当ケースも
+ * 404 に改めた（EP 別の詳細な契約は {@code RecruitmentMoneyPenaltyScopeContractIT}）。</p>
+ *
+ * <p><b>CMP-260923-0954 W5 で是正</b>: attend の部外者（SCOPE_ONLY の非公開募集）は 403 から不在と同一の 404
+ * （{@code RECRUITMENT_001}）へ、from-template の他スコープ実在テンプレートは {@code TEMPLATE_SCOPE_MISMATCH} から
+ * 不在と同一の {@code TEMPLATE_NOT_FOUND} へ改めた（EP 別の詳細な契約は {@code RecruitmentListingTemplateScopeContractIT}）。</p>
+ *
+ * <p><b>観察事項（是正前の記録）</b>: エンティティ由来型の 2 EP は、
  * 「越境した実在 ID」が 403 / 「不在 ID」が 404 と<b>応答が分かれる</b>ため、ID の実在が
  * 応答差分から漏れる（実在オラクル）。URL スコープ先行型はいずれも 404 に収束しこの問題がない。
  * 統一の要否は別課題の検討対象として最終報告に挙げる。</p>
@@ -288,14 +296,28 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isForbidden());
         }
 
-        /** AC-R7: 部外者は 403。 */
+        /**
+         * AC-R7/W5: 部外者は不在と同一の 404（CMP-260923-0954 W5）。
+         *
+         * <p>listingA は SCOPE_ONLY（非公開物）のため、越境は 403 ではなく不在と同一の 404 {@code RECRUITMENT_001}
+         * に畳む（是正前は 403）。EP 別の詳細な契約は {@code RecruitmentListingTemplateScopeContractIT}。</p>
+         */
         @Test
-        @DisplayName("AC-R7: 部外者は403")
-        void ac_r7_部外者は403() throws Exception {
+        @DisplayName("AC-R7/W5: 部外者は不在と同一の404")
+        void ac_r7_部外者は不在と同一の404() throws Exception {
             setAuth(outsiderId);
-            mockMvc.perform(patch("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/attend",
-                            listingAId, participantAConfirmedId))
-                    .andExpect(status().isForbidden());
+            String real = mockMvc.perform(
+                            patch("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/attend",
+                                    listingAId, participantAConfirmedId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value(RecruitmentErrorCode.LISTING_NOT_FOUND.getCode()))
+                    .andReturn().getResponse().getContentAsString();
+            String absent = mockMvc.perform(
+                            patch("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/attend",
+                                    ABSENT_ID, participantAConfirmedId))
+                    .andExpect(status().isNotFound())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(real).as("越境した実在募集と不在募集の応答は完全一致でなければならない").isEqualTo(absent);
         }
 
         /** AC-R7: 正当 ADMIN の出席チェックは 200（非回帰）。 */
@@ -328,12 +350,14 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
          * テナント越境は成立しない。この性質を回帰として固定する。</p>
          */
         @Test
-        @DisplayName("AC-R7: 正当ADMINが別募集のparticipantIdを差し込むと403（エンティティ由来認可）")
-        void ac_r7_越境participantIdは403() throws Exception {
+        @DisplayName("AC-R7/W4: 正当ADMINが別募集のparticipantIdを差し込むと不在と同一の404（CMP-260923-0954 W4）")
+        void ac_r7_越境participantIdは404() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/confirm",
                             listingAId, participantBAppliedId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(RecruitmentErrorCode.LISTING_NOT_FOUND.getCode()));
         }
 
         /** AC-R7: 遮断時に別募集の参加者が CONFIRMED に書き換わっていない。 */
@@ -343,7 +367,7 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/confirm",
                             listingAId, participantBAppliedId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
 
             em.flush();
             em.clear();
@@ -363,14 +387,16 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isForbidden());
         }
 
-        /** AC-R7: 部外者は 403。 */
+        /** AC-R7/W4: 部外者（応募者本人だが募集スコープに非在籍）は不在と同一の 404。 */
         @Test
-        @DisplayName("AC-R7: 部外者は403")
-        void ac_r7_部外者は403() throws Exception {
+        @DisplayName("AC-R7/W4: 部外者は不在と同一の404")
+        void ac_r7_部外者は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/confirm",
                             listingAId, participantAAppliedId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(RecruitmentErrorCode.LISTING_NOT_FOUND.getCode()));
         }
     }
 
@@ -391,14 +417,16 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
          * する。GLOBAL ペナルティも同じ発動元スコープで認可し、越境は 403 で弾かれる。</p>
          */
         @Test
-        @DisplayName("AC-R7: 正当ADMINが別スコープのpenaltyIdを差し込むと403（エンティティ由来認可）")
-        void ac_r7_越境penaltyIdは403() throws Exception {
+        @DisplayName("AC-R7/W4: 正当ADMINが別スコープのpenaltyIdを差し込むと不在と同一の404（CMP-260923-0954 W4）")
+        void ac_r7_越境penaltyIdは404() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(post("/api/v1/scopes/{scopeType}/{scopeId}/penalties/{penaltyId}/lift",
                             "TEAM", teamAId, penaltyBId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(liftBody())))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(RecruitmentErrorCode.PENALTY_NOT_FOUND.getCode()));
         }
 
         /** AC-R7: 遮断時に別スコープのペナルティが解除されていない。 */
@@ -410,7 +438,7 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                             "TEAM", teamAId, penaltyBId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(liftBody())))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
 
             em.flush();
             em.clear();
@@ -432,16 +460,18 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isForbidden());
         }
 
-        /** AC-R7: 部外者は 403。 */
+        /** AC-R7/W4: 部外者は不在と同一の 404。 */
         @Test
-        @DisplayName("AC-R7: 部外者は403")
-        void ac_r7_部外者は403() throws Exception {
+        @DisplayName("AC-R7/W4: 部外者は不在と同一の404")
+        void ac_r7_部外者は404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/scopes/{scopeType}/{scopeId}/penalties/{penaltyId}/lift",
                             "TEAM", teamAId, penaltyAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(liftBody())))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(RecruitmentErrorCode.PENALTY_NOT_FOUND.getCode()));
         }
 
         /** AC-R7: 正当 ADMIN のペナルティ解除は 200（非回帰）。 */
@@ -477,8 +507,8 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("GLOBAL ペナルティは別スコープADMINのURL差し替えでも解除されない")
-        void global_別スコープADMINは403で不変() throws Exception {
+        @DisplayName("GLOBAL ペナルティは別スコープADMINのURL差し替えでも解除されない（W4: 不在と同一の404）")
+        void global_別スコープADMINは404で不変() throws Exception {
             Long globalPenaltyId = insertPenalty(memberAId, teamAId, true);
             em.flush();
             em.clear();
@@ -488,7 +518,7 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                             "TEAM", teamBId, globalPenaltyId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(liftBody())))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
 
             em.flush();
             em.clear();
@@ -596,21 +626,33 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
     class CreateFromTemplate {
 
         /**
-         * AC-R7: 別チームの templateId を自チーム URL で使おうとすると 404
-         * （{@code TEMPLATE_SCOPE_MISMATCH}）。本ドメインにおける帰属検証の<b>お手本</b>。
+         * AC-R7/W5（C3）: 別チームの templateId を自チーム URL で使おうとすると、不在と完全一致の 404
+         * （{@code TEMPLATE_NOT_FOUND}）。
          *
-         * <p>不在 {@code TEMPLATE_NOT_FOUND} と同一ステータスであることが存在秘匿の要件。</p>
+         * <p>是正前は {@code TEMPLATE_SCOPE_MISMATCH}（404）で、ステータスは揃っていたがコードとメッセージが
+         * 不在 {@code TEMPLATE_NOT_FOUND} と割れており、templateId の列挙で他スコープのテンプレートの実在が
+         * 判別できた（CMP-260923-0954 W5 で是正）。</p>
          */
         @Test
-        @DisplayName("AC-R7: 正当ADMINが別チームのtemplateIdを使うと404（TEMPLATE_SCOPE_MISMATCH）")
-        void ac_r7_越境templateIdは404() throws Exception {
+        @DisplayName("AC-R7/W5: 正当ADMINが別チームのtemplateIdを使うと不在と同一の404（TEMPLATE_NOT_FOUND）")
+        void ac_r7_越境templateIdは不在と同一の404() throws Exception {
             setAuth(adminAId);
-            mockMvc.perform(post("/api/v1/teams/{teamId}/recruitment-listings/from-template", teamAId)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(fromTemplateBody(templateBId))))
+            String crossScope = mockMvc.perform(
+                            post("/api/v1/teams/{teamId}/recruitment-listings/from-template", teamAId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(fromTemplateBody(templateBId))))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH.getCode()));
+                            .value(RecruitmentErrorCode.TEMPLATE_NOT_FOUND.getCode()))
+                    .andReturn().getResponse().getContentAsString();
+            String absent = mockMvc.perform(
+                            post("/api/v1/teams/{teamId}/recruitment-listings/from-template", teamAId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(fromTemplateBody(ABSENT_ID))))
+                    .andExpect(status().isNotFound())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(crossScope).as("他スコープの実在 templateId と不在 templateId の応答は完全一致でなければならない")
+                    .isEqualTo(absent);
         }
 
         /** AC-R7: 非管理者メンバーは 403。 */
