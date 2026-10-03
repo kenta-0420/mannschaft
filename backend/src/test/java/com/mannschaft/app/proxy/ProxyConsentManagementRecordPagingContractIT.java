@@ -66,8 +66,10 @@ class ProxyConsentManagementRecordPagingContractIT extends AbstractMySqlIntegrat
                 .setParameter("subject", subject).executeUpdate();
         em.clear();
         mvc.perform(get("/api/v1/proxy-input-records").with(user(subject.toString()))
-                        .param("page", "0").param("size", "1"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(second));
+                .param("page", "0").param("size", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(second))
+                // 業務ゾーンの12時を同じ瞬間のUTC3時として返し、表示側のTZ変換を曖昧にしない。
+                .andExpect(jsonPath("$.data[0].createdAt").value("2026-01-01T03:00:00Z"));
         mvc.perform(get("/api/v1/proxy-input-records").with(user(subject.toString()))
                         .param("page", "1").param("size", "1"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(first));

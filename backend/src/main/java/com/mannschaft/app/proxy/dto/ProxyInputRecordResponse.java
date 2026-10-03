@@ -3,7 +3,7 @@ package com.mannschaft.app.proxy.dto;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** 保存済みの代理入力操作記録。後見切替のconsentIdはnullを保持する。 */
 @Getter
@@ -19,5 +19,5 @@ public class ProxyInputRecordResponse {
     private String inputSource;
     private String originalStorageLocation;
     private Long auditLogId;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }
