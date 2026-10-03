@@ -93,6 +93,19 @@ class TeamOrgMultiParentAggregateNoDoubleCountIT extends AbstractMySqlIntegratio
     }
 
     @Test
+    @DisplayName("AC-N06 X・Y それぞれの配下でも、配信対象は A・B の2人で、配下人数は2（代表親だけ・片方だけ0にならない）")
+    void 各親組織の配下でも配信対象と人数は2() {
+        for (Long org : List.of(orgX, orgY)) {
+            assertThat(organizationMembershipService.resolveOrgDistributionUserIds(org, false))
+                    .as("組織 %s の配信対象", org)
+                    .containsExactlyInAnyOrder(userA, userB);
+            assertThat(userRoleRepository.countDistributionUserIdsForOrganizationRecursive(org, false, MAX_DEPTH))
+                    .as("組織 %s の配下人数", org)
+                    .isEqualTo(2L);
+        }
+    }
+
+    @Test
     @DisplayName("AC-N06 チームのメンバー数は2")
     void チームのメンバー数は重複しない() {
         assertThat(userRoleRepository.countMembersByScope("TEAM", teamT)).isEqualTo(2);

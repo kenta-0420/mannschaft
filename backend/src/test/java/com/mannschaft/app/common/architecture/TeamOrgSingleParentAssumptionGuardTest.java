@@ -1,9 +1,11 @@
 package com.mannschaft.app.common.architecture;
 
+import com.mannschaft.app.common.architecture.fixtures.SingleParentReductionFixture;
 import com.mannschaft.app.common.architecture.fixtures.SingleParentViolationFixture;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.domain.JavaParameterizedType;
 import com.tngtech.archunit.core.domain.JavaType;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -16,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,8 +33,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       （代表親組織は {@code findPrimaryParentOrganizationId} 1箇所に集約する。§9.3）</li>
  *   <li>チーム→組織を {@code Map<Long, Long>} で返すメソッド（複数親を後勝ちで潰す。
  *       {@code Map<Long, Set<Long>>} / {@code Map<Long, List<Long>>} を使う）</li>
- *   <li>{@code team_org_memberships} を読む {@code @Query} の {@code LIMIT 1}（許可リスト以外）</li>
+ *   <li>{@code team_org_memberships} を読む {@code @Query} の「取得件数が1」の {@code LIMIT}（許可リスト以外）。
+ *       {@code LIMIT 1}・{@code LIMIT 1 OFFSET n}・{@code LIMIT n, 1} が対象で、{@code LIMIT n, 20}
+ *       （offset が n、件数が 20）は対象外</li>
+ *   <li>チーム→親組織の集合を取得したメソッドが、同じメソッド内で {@code Stream.findFirst/findAny}・
+ *       {@code List.get/getFirst}・{@code Iterator.next} により1件へ縮約すること
+ *       （代表親組織を採る正当な箇所は {@link #REDUCTION_ALLOWLIST} に明示する）</li>
  * </ol>
+ *
+ * <p><b>検出対象外（静的解析の限界）</b>: 縮約が別メソッドやラムダ本体（コンパイラが別メソッドに切り出す）にある場合、
+ * {@code collect}・{@code reduce}・ローカル {@code var} を経由して別メソッドへ渡してから縮約する場合、
+ * {@code Map<Long, Long>} を継承した独自クラスを返す場合は検出できない。無理に広げると偽陽性が増えるため、
+ * これらは検分（人の目）と {@code TeamOrgMultiParent*IT} / {@code TeamOrgSingleParentResponseParityIT} で担保する。</p>
  *
  * <p>検出器の自己検証: 違反の検体（{@link SingleParentViolationFixture}）に同じ検出関数を当て、
  * 3種とも検出できる（偽陰性でない）ことを毎回確かめる。検体はテスト側にあり、本番のスキャン対象に入らない。</p>
@@ -49,7 +62,45 @@ class TeamOrgSingleParentAssumptionGuardTest {
     private static final Pattern FIRST_STYLE_NAME =
             Pattern.compile("^(find|get|read|query)(First|Top|One|Any)\\d*By.*");
 
-    private static final Pattern LIMIT_ONE = Pattern.compile("\\bLIMIT\\s+1\\b", Pattern.CASE_INSENSITIVE);
+    /**
+     * {@code LIMIT count} / {@code LIMIT offset, count} / {@code LIMIT count OFFSET offset}。
+     * グループ1が最初の数値、グループ2が {@code ,} の後の数値（あれば件数はこちら）。量指定子の入れ子が無く、バックトラックは線形。
+     */
+    private static final Pattern LIMIT_CLAUSE =
+            Pattern.compile("\\bLIMIT\\s+(\\d+)(?:\\s*,\\s*(\\d+))?", Pattern.CASE_INSENSITIVE);
+
+    /** 縮約の起点になる、チーム→親組織の集合を返すメソッド（所有クラス#メソッド名）。 */
+    private static final Set<String> TEAM_ORG_COLLECTION_READERS = Set.of(
+            MEMBERSHIP_REPOSITORY_FQN + "#findByTeamIdAndStatus",
+            MEMBERSHIP_REPOSITORY_FQN + "#findActiveByTeamIdOrderByRespondedAtAndOrganizationId",
+            MEMBERSHIP_REPOSITORY_FQN + "#findOrganizationIdsByTeamIdIn",
+            MEMBERSHIP_REPOSITORY_FQN + "#findOrganizationIdsInPrimaryOrderByTeamIdIn",
+            MEMBERSHIP_REPOSITORY_FQN + "#findDistinctOrganizationIdsByTeamIdIn",
+            "com.mannschaft.app.team.service.TeamOrgMembershipQueryService#findActiveOrganizationIds",
+            "com.mannschaft.app.team.service.TeamOrgMembershipQueryService#findActiveOrganizationIdsInPrimaryOrder");
+
+    /** 集合を1件へ縮約する呼び出し（所有クラス#メソッド名）。 */
+    private static final Set<String> REDUCTION_CALLS = Set.of(
+            "java.util.stream.Stream#findFirst",
+            "java.util.stream.Stream#findAny",
+            "java.util.List#get",
+            "java.util.List#getFirst",
+            "java.util.SequencedCollection#getFirst",
+            "java.util.Iterator#next");
+
+    /**
+     * 代表親組織（§9.3: 最初に成立した加盟 → organization_id 昇順）を採る正当な縮約。順序を DB で固定した取得結果の
+     * 先頭を採るもの限定。
+     * <ul>
+     *   <li>{@code TeamOrgMembershipQueryService#findPrimaryParentOrganizationId}: 代表親組織の唯一の入口</li>
+     *   <li>{@code ScheduleService#resolveOrganizationIdForTeam}: 予約タスクのテナントキー（§9.2 #8）</li>
+     *   <li>{@code MeController#getMyTeams}: 互換フィールド organizationId（§9.2 #7）</li>
+     * </ul>
+     */
+    private static final Set<String> REDUCTION_ALLOWLIST = Set.of(
+            "com.mannschaft.app.team.service.TeamOrgMembershipQueryService.findPrimaryParentOrganizationId",
+            "com.mannschaft.app.schedule.service.ScheduleService.resolveOrganizationIdForTeam",
+            "com.mannschaft.app.role.controller.MeController.getMyTeams");
 
     /**
      * {@code team_org_memberships} を読んで {@code LIMIT 1} を使ってよいメソッド。
@@ -104,7 +155,25 @@ class TeamOrgSingleParentAssumptionGuardTest {
                     .as("許可リストの %s が見つからないか、@Query に team_org_memberships と LIMIT 1 が無い（許可を外すこと）", allowed)
                     .matches(sql -> sql != null
                             && sql.toLowerCase(Locale.ROOT).contains("team_org_memberships")
-                            && LIMIT_ONE.matcher(sql).find());
+                            && hasLimitCountOne(sql));
+        }
+    }
+
+    @Test
+    @DisplayName("AC-N07 チーム→親組織の集合を、代表親組織の入口以外で1件へ縮約していない")
+    void noReductionOfParentOrganizationsToSingleValue() {
+        JavaClasses production = productionClasses();
+
+        assertThat(reductionViolations(production, REDUCTION_ALLOWLIST))
+                .as("複数親が任意の1件に潰れる。代表親組織が要るなら findPrimaryParentOrganizationId を使う")
+                .isEmpty();
+
+        // 許可リストの実在確認（改名・削除で許可が空振りして検出器が黙るのを防ぐ）。
+        List<String> detectedWithoutAllowlist = reductionViolations(production, Set.of());
+        for (String allowed : REDUCTION_ALLOWLIST) {
+            assertThat(detectedWithoutAllowlist)
+                    .as("許可リストの %s が縮約として検出されない（改名・削除したなら許可を外すこと）", allowed)
+                    .contains(allowed);
         }
     }
 
@@ -135,15 +204,51 @@ class TeamOrgSingleParentAssumptionGuardTest {
     @Test
     @DisplayName("自己検証: Map<Long, Long> のチーム→組織解決メソッドの検体を検出し、集合を返す形は検出しない")
     void detectorCatchesLongMapSpecimen() {
+        String owner = SingleParentViolationFixture.class.getName();
         assertThat(teamToOrganizationLongMapViolations(specimenClasses()))
-                .containsExactly(SingleParentViolationFixture.class.getName() + ".findOrganizationIdByTeamIdIn");
+                .containsExactlyInAnyOrder(
+                        owner + ".findOrganizationIdByTeamIdIn",
+                        owner + ".resolveTeamOrganizationsAsHashMap",
+                        owner + ".resolveTeamOrganizationsAsLinkedHashMap");
+    }
+
+    @Test
+    @DisplayName("自己検証: 集合を findFirst・List.get で1件へ縮約する実装の検体を検出し、contains だけの検体と代表親の許可は検出しない")
+    void detectorCatchesReductionSpecimen() {
+        String owner = SingleParentReductionFixture.class.getName();
+        JavaClasses specimens = new ClassFileImporter().importClasses(SingleParentReductionFixture.class);
+
+        assertThat(reductionViolations(specimens, Set.of()))
+                .containsExactlyInAnyOrder(
+                        owner + ".reduceByFindFirst",
+                        owner + ".reduceByListGet",
+                        owner + ".representativeParent");
+        // 代表親組織を採る正当な箇所は、明示した許可だけが通す。
+        assertThat(reductionViolations(specimens, Set.of(owner + ".representativeParent")))
+                .containsExactlyInAnyOrder(owner + ".reduceByFindFirst", owner + ".reduceByListGet");
     }
 
     @Test
     @DisplayName("自己検証: team_org_memberships への LIMIT 1 の検体を検出し、他テーブルの LIMIT 1 は検出しない")
     void detectorCatchesLimitOneSpecimen() {
+        String owner = SingleParentViolationFixture.class.getName();
         assertThat(limitOneViolations(specimenClasses()))
-                .containsExactly(SingleParentViolationFixture.class.getName() + ".findAnyOrganizationIdByTeamId");
+                .containsExactlyInAnyOrder(
+                        owner + ".findAnyOrganizationIdByTeamId",
+                        owner + ".findAnyOrganizationIdByTeamIdOffsetZero");
+    }
+
+    @Test
+    @DisplayName("自己検証: LIMIT offset, count は件数側で判定する（LIMIT 0, 1 は違反・LIMIT 1, 20 は非違反）")
+    void limitCountIsDistinguishedFromOffset() {
+        String head = "SELECT organization_id FROM team_org_memberships WHERE team_id = :t ";
+        assertThat(isLimitOneViolation("k", head + "LIMIT 0, 1", Set.of())).isTrue();
+        assertThat(isLimitOneViolation("k", head + "LIMIT 0,1", Set.of())).isTrue();
+        assertThat(isLimitOneViolation("k", head + "LIMIT 1 OFFSET 5", Set.of())).isTrue();
+        assertThat(isLimitOneViolation("k", head + "LIMIT 1", Set.of())).isTrue();
+        assertThat(isLimitOneViolation("k", head + "LIMIT 1, 20", Set.of())).isFalse();
+        assertThat(isLimitOneViolation("k", head + "LIMIT 10", Set.of())).isFalse();
+        assertThat(isLimitOneViolation("k", head + "LIMIT 20 OFFSET 1", Set.of())).isFalse();
     }
 
     @Test
@@ -188,7 +293,8 @@ class TeamOrgSingleParentAssumptionGuardTest {
 
     /** 戻り値が Map&lt;Long, Long&gt;（raw 型は Map、型引数は JavaParameterizedType から読む）。 */
     private static boolean isLongToLongMap(JavaMethod method) {
-        if (!method.getRawReturnType().isEquivalentTo(java.util.Map.class)) {
+        // Map インタフェースだけでなく HashMap・LinkedHashMap 等の実装型で返す書き方も対象にする。
+        if (!method.getRawReturnType().isAssignableTo(java.util.Map.class)) {
             return false;
         }
         if (!(method.getReturnType() instanceof JavaParameterizedType parameterized)) {
@@ -215,10 +321,49 @@ class TeamOrgSingleParentAssumptionGuardTest {
     }
 
     static boolean isLimitOneViolation(String key, String sql, Set<String> allowlist) {
-        if (!sql.toLowerCase(Locale.ROOT).contains("team_org_memberships") || !LIMIT_ONE.matcher(sql).find()) {
+        if (!sql.toLowerCase(Locale.ROOT).contains("team_org_memberships") || !hasLimitCountOne(sql)) {
             return false;
         }
         return !(allowlist.contains(key) && ORDER_BY.matcher(sql).find());
+    }
+
+    /** いずれかの LIMIT 句の取得件数が 1（{@code LIMIT n, c} は c、それ以外は最初の数値が件数）。 */
+    static boolean hasLimitCountOne(String sql) {
+        Matcher matcher = LIMIT_CLAUSE.matcher(sql);
+        while (matcher.find()) {
+            String count = matcher.group(2) != null ? matcher.group(2) : matcher.group(1);
+            if (Long.parseLong(count) == 1L) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * チーム→親組織の集合を取得したメソッドが、同じメソッド内で1件へ縮約している箇所（{@code owner.method}）。
+     * ラムダ本体は別メソッドに切り出されるため対象外（クラス Javadoc の「検出対象外」）。
+     */
+    static List<String> reductionViolations(JavaClasses classes, Set<String> allowlist) {
+        List<String> violations = new ArrayList<>();
+        for (JavaClass javaClass : classes) {
+            for (JavaMethod method : javaClass.getMethods()) {
+                String key = javaClass.getName() + "." + method.getName();
+                if (allowlist.contains(key)) {
+                    continue;
+                }
+                boolean readsParents = false;
+                boolean reduces = false;
+                for (JavaMethodCall call : method.getMethodCallsFromSelf()) {
+                    String callee = call.getTargetOwner().getName() + "#" + call.getName();
+                    readsParents |= TEAM_ORG_COLLECTION_READERS.contains(callee);
+                    reduces |= REDUCTION_CALLS.contains(callee);
+                }
+                if (readsParents && reduces) {
+                    violations.add(key);
+                }
+            }
+        }
+        return violations;
     }
 
     private static String querySql(JavaMethod method) {
