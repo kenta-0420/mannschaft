@@ -130,10 +130,17 @@ public class SupporterService {
     public void unfollow(Long userId, String scopeType, Long scopeId) {
         ScopeType scope = ScopeType.valueOf(scopeType);
 
-        // CMP-261001-0835 AC-14: 解除対象は SUPPORTER のアクティブ所属と PENDING 申請のみ
+        // CMP-261001-0835 AC-14 / 検分修繕: 解除対象は SUPPORTER のアクティブ所属と PENDING 申請のみ
         // （MEMBER/ADMIN の所属・user_roles には一切触れない。設計書「組織フォロー解除フロー」手順2）。
-        Optional<MembershipEntity> activeSupporterMembership = membershipRepository.findActiveByUserAndScope(
-                        userId, scope, scopeId)
+        // MEMBER/ADMIN 等の正規所属が既にある場合は、PENDING 申請が併存していても
+        // 所属・user_roles・申請を一切変更せず 404(SUPPORTER_007) とする
+        // （正規メンバーに対してサポーター解除操作は意味を持たないため）。
+        Optional<MembershipEntity> activeMembership = membershipRepository.findActiveByUserAndScope(
+                userId, scope, scopeId);
+        if (activeMembership.isPresent() && activeMembership.get().getRoleKind() != RoleKind.SUPPORTER) {
+            throw new BusinessException(SupporterErrorCode.SUPPORTER_007);
+        }
+        Optional<MembershipEntity> activeSupporterMembership = activeMembership
                 .filter(m -> m.getRoleKind() == RoleKind.SUPPORTER);
         Optional<SupporterApplicationEntity> pendingApplication =
                 applicationRepository.findByScopeTypeAndScopeIdAndUserIdAndStatus(

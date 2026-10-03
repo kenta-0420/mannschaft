@@ -580,7 +580,10 @@
     "group_name": "Group name",
     "targets": "Targets",
     "target_id": "Target ID",
-    "target_type": { "ORGANIZATION": "Organization", "TEAM": "Team" },
+    "target_type": {
+      "ORGANIZATION": "Organization",
+      "TEAM": "Team"
+    },
     "template": "Template",
     "audience": "Audience",
     "current_scope": "This organization or team",
@@ -1763,6 +1766,11 @@
       "supporter_registered": "Registered as a supporter",
       "supporter_applied": "Supporter application sent",
       "supporter_canceled": "Stopped supporting",
+      "follow_approved_badge": "You're supporting",
+      "follow_unfollow_aria": "Stop supporting",
+      "follow_pending_label": "Application pending",
+      "follow_pending_cancel_button": "Cancel",
+      "follow_apply_button": "Become a supporter",
       "leave_action": "Leave",
       "load_error_title": "Could not load information",
       "load_error_body": "Please try again later. It may be hidden if you do not have permission.",

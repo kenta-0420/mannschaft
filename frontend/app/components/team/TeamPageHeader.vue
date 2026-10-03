@@ -146,7 +146,8 @@ const overflowMenuItems = computed(() => {
         <template v-if="followStatus === 'APPROVED'">
           <Button
             icon="pi pi-heart-fill"
-            label="サポーターです"
+            :label="$t('common.scopeShell.follow_approved_badge')"
+            :aria-label="$t('common.scopeShell.follow_unfollow_aria')"
             size="small"
             data-testid="follow-unfollow-button"
             :loading="followLoading"
@@ -155,13 +156,18 @@ const overflowMenuItems = computed(() => {
             @click="emit('showCancelConfirm')"
           />
         </template>
+        <!--
+          検分修繕: PENDING の「取消」は SUPPORTER 以外の正規所属ロールを持つ人には出さない
+          （MEMBER/ADMIN 等の正規所属に PENDING 申請が併存していても、BE はそれを解除対象として
+          扱わないため、取消ボタンを出すと誤操作導線になる）。
+        -->
         <span
-          v-else-if="followStatus === 'PENDING'"
+          v-else-if="followStatus === 'PENDING' && (!roleName || roleName === 'SUPPORTER')"
           class="flex items-center gap-2 text-sm text-orange-500"
         >
-          <i class="pi pi-clock" />申請中（承認待ち）
+          <i class="pi pi-clock" />{{ $t('common.scopeShell.follow_pending_label') }}
           <Button
-            label="取消"
+            :label="$t('common.scopeShell.follow_pending_cancel_button')"
             size="small"
             severity="secondary"
             text
@@ -201,7 +207,7 @@ const overflowMenuItems = computed(() => {
         </span>
         <Button
           v-else-if="followStatus === 'NONE' && team.visibility?.supporterEnabled && !roleName"
-          label="サポーターになる"
+          :label="$t('common.scopeShell.follow_apply_button')"
           icon="pi pi-heart"
           severity="secondary"
           outlined

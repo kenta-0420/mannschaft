@@ -107,6 +107,10 @@ class SupporterLeaveUnfollowContractIT extends AbstractMySqlIntegrationTest {
     private Long memberId;
     /** スコープ A の唯一の ADMIN（memberships MEMBER + user_roles ADMIN）。 */
     private Long adminId;
+    /** スコープ A の MEMBER（正規所属）かつ同スコープへ PENDING 申請も併存する人（検分修繕: 正規所属＋申請併存）。 */
+    private Long memberWithPendingId;
+    /** スコープ A の ADMIN（正規所属）かつ同スコープへ PENDING 申請も併存する人（検分修繕: 正規所属＋申請併存）。 */
+    private Long adminWithPendingId;
     /** スコープ A に PENDING 申請だけを持つ人。 */
     private Long pendingOnlyId;
     /** スコープ A の SUPPORTER を過去に退会した人（left_at 済みの履歴のみ）。 */
@@ -125,6 +129,8 @@ class SupporterLeaveUnfollowContractIT extends AbstractMySqlIntegrationTest {
         supporterVId = insertUser("cmp0835-supporter-v@example.com");
         memberId = insertUser("cmp0835-member@example.com");
         adminId = insertUser("cmp0835-admin@example.com");
+        memberWithPendingId = insertUser("cmp0835-member-pending@example.com");
+        adminWithPendingId = insertUser("cmp0835-admin-pending@example.com");
         pendingOnlyId = insertUser("cmp0835-pending@example.com");
         formerSupporterId = insertUser("cmp0835-former@example.com");
         outsiderId = insertUser("cmp0835-outsider@example.com");
@@ -136,6 +142,13 @@ class SupporterLeaveUnfollowContractIT extends AbstractMySqlIntegrationTest {
             insertAdminRole(adminId, a);
             insertPendingApplication(a, pendingOnlyId);
             insertLeftMembership(formerSupporterId, a, RoleKind.SUPPORTER);
+
+            // 検分修繕: MEMBER/ADMIN 等の正規所属に PENDING 申請が併存するケース
+            MembershipTestHelper.insertMembership(em, memberWithPendingId, a.kind().scopeType(), a.id(), RoleKind.MEMBER);
+            insertPendingApplication(a, memberWithPendingId);
+            MembershipTestHelper.insertMembership(em, adminWithPendingId, a.kind().scopeType(), a.id(), RoleKind.MEMBER);
+            insertAdminRole(adminWithPendingId, a);
+            insertPendingApplication(a, adminWithPendingId);
         }
         for (Scope b : List.of(orgB, teamB)) {
             MembershipTestHelper.insertMembership(em, supporterVId, b.kind().scopeType(), b.id(), RoleKind.SUPPORTER);
@@ -340,6 +353,44 @@ class SupporterLeaveUnfollowContractIT extends AbstractMySqlIntegrationTest {
 
             mockMvc.perform(delete(kind.basePath + "/{slug}/follow", scopeA(kind).slug()))
                     .andExpect(status().isNotFound());
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(Kind.class)
+        @DisplayName("検分修繕: MEMBER の正規所属に PENDING 申請が併存しても /follow は 404 で所属・申請とも不変")
+        void MEMBERにPENDING申請が併存しても404で両方不変(Kind kind) throws Exception {
+            Scope a = scopeA(kind);
+            setAuthentication(memberWithPendingId);
+
+            mockMvc.perform(delete(kind.basePath + "/{slug}/follow", a.slug()))
+                    .andExpect(status().isNotFound());
+
+            reload();
+            assertThat(activeCount(memberWithPendingId, a, RoleKind.MEMBER)).isEqualTo(1);
+            assertThat(leftCount(memberWithPendingId, a)).isZero();
+            assertThat(pendingCount(memberWithPendingId, a)).isEqualTo(1);
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(Kind.class)
+        @DisplayName("検分修繕: ADMIN の正規所属＋権限割当＋PENDING 申請が併存しても /follow は 404 で全て不変")
+        void ADMINにPENDING申請と権限割当が併存しても404で全て不変(Kind kind) throws Exception {
+            Scope a = scopeA(kind);
+            Long groupId = insertPermissionGroup(a);
+            insertUserPermissionGroup(adminWithPendingId, groupId);
+            em.flush();
+            em.clear();
+            setAuthentication(adminWithPendingId);
+
+            mockMvc.perform(delete(kind.basePath + "/{slug}/follow", a.slug()))
+                    .andExpect(status().isNotFound());
+
+            reload();
+            assertThat(activeCount(adminWithPendingId, a, RoleKind.MEMBER)).isEqualTo(1);
+            assertThat(leftCount(adminWithPendingId, a)).isZero();
+            assertThat(pendingCount(adminWithPendingId, a)).isEqualTo(1);
+            assertThat(userRoleCount(adminWithPendingId, a)).isEqualTo(1);
+            assertThat(userPermissionGroupCount(adminWithPendingId, groupId)).isEqualTo(1);
         }
 
         @ParameterizedTest(name = "{0}")
@@ -630,6 +681,38 @@ class SupporterLeaveUnfollowContractIT extends AbstractMySqlIntegrationTest {
                         "SELECT COUNT(*) FROM user_roles WHERE user_id = :uid AND " + col + " = :sid")
                 .setParameter("uid", userId)
                 .setParameter("sid", scope.id())
+                .getSingleResult()).longValue();
+    }
+
+    /** 検分修繕: 権限グループを 1 件作る（組織/チーム双方対応）。 */
+    private Long insertPermissionGroup(Scope scope) {
+        String scopeCol = scope.kind() == Kind.ORGANIZATION ? "organization_id" : "team_id";
+        em.createNativeQuery(
+                        "INSERT INTO permission_groups (" + scopeCol + ", target_role, name, created_at, updated_at) "
+                                + "VALUES (:sid, 'MEMBER', '応援退出試練権限グループ', NOW(), NOW())")
+                .setParameter("sid", scope.id())
+                .executeUpdate();
+        return ((Number) em.createNativeQuery(
+                        "SELECT id FROM permission_groups WHERE " + scopeCol + " = :sid ORDER BY id DESC LIMIT 1")
+                .setParameter("sid", scope.id())
+                .getSingleResult()).longValue();
+    }
+
+    /** 検分修繕: ユーザーへ権限グループを割り当てる。 */
+    private void insertUserPermissionGroup(Long userId, Long groupId) {
+        em.createNativeQuery(
+                        "INSERT INTO user_permission_groups (user_id, group_id, created_at) "
+                                + "VALUES (:uid, :gid, NOW())")
+                .setParameter("uid", userId)
+                .setParameter("gid", groupId)
+                .executeUpdate();
+    }
+
+    private long userPermissionGroupCount(Long userId, Long groupId) {
+        return ((Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM user_permission_groups WHERE user_id = :uid AND group_id = :gid")
+                .setParameter("uid", userId)
+                .setParameter("gid", groupId)
                 .getSingleResult()).longValue();
     }
 

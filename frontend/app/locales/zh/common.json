@@ -580,7 +580,10 @@
     "group_name": "群组名称",
     "targets": "目标",
     "target_id": "目标 ID",
-    "target_type": { "ORGANIZATION": "组织", "TEAM": "团队" },
+    "target_type": {
+      "ORGANIZATION": "组织",
+      "TEAM": "团队"
+    },
     "template": "模板",
     "audience": "收件人",
     "current_scope": "当前组织或团队",
@@ -1763,6 +1766,11 @@
       "supporter_registered": "已注册为支持者",
       "supporter_applied": "已发送支持者申请",
       "supporter_canceled": "已取消支持",
+      "follow_approved_badge": "您是支持者",
+      "follow_unfollow_aria": "取消支持",
+      "follow_pending_label": "申请中（等待批准）",
+      "follow_pending_cancel_button": "取消",
+      "follow_apply_button": "成为支持者",
       "leave_action": "退出",
       "load_error_title": "无法获取信息",
       "load_error_body": "请稍后再试。如果没有权限，可能无法显示。",

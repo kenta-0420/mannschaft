@@ -136,6 +136,44 @@ describe('OrgPageHeader フォロー解除・退出（CMP-261001-0835）', () =>
     expect(wrapper.emitted('cancelSupporter')).toHaveLength(1)
   })
 
+  // 検分修繕: MEMBER/ADMIN 等の正規所属ロールに PENDING 申請が併存しても「取消」は出さない
+  // （BE はこの PENDING を解除対象として扱わないため、取消ボタンを出すと誤操作導線になる）。
+  it('検分修繕: PENDING でも MEMBER の正規所属があれば「取消」導線を出さない', async () => {
+    const wrapper = await mountHeader({ roleName: 'MEMBER', followStatus: 'PENDING', supporterEnabled: true })
+    expect(wrapper.find('[data-testid="follow-pending-cancel-button"]').exists()).toBe(false)
+  })
+
+  it('検分修繕: PENDING でも ADMIN の正規所属があれば「取消」導線を出さない', async () => {
+    const wrapper = await mountHeader({ roleName: 'ADMIN', isAdmin: true, followStatus: 'PENDING', supporterEnabled: true })
+    expect(wrapper.find('[data-testid="follow-pending-cancel-button"]').exists()).toBe(false)
+  })
+
+  it('検分修繕: PENDING で roleName=SUPPORTER のときは「取消」導線が出る', async () => {
+    const wrapper = await mountHeader({ roleName: 'SUPPORTER', followStatus: 'PENDING', supporterEnabled: true })
+    expect(wrapper.find('[data-testid="follow-pending-cancel-button"]').exists()).toBe(true)
+  })
+
+  // AC台帳の不足分: AC-4 で visibility 自体が未設定（null/undefined）でも例外なく「フォローする」を出さない。
+  it('AC-4 不足分: org.visibility が未設定でも「フォローする」は出ない（例外も発生しない）', async () => {
+    const wrapper = await mountSuspended(OrgPageHeader, {
+      props: {
+        org: { id: 'org-a', numericId: 1, basicInfo: { name: '組織A' }, metadata: { memberCount: 3 } } as unknown as OrgDetail,
+        orgId: 'org-a',
+        roleName: null,
+        isAdmin: false,
+        isAdminOrDeputy: false,
+        followStatus: 'NONE',
+        followLoading: false,
+        followPermissionSyncError: false,
+        joinRequestStatus: 'UNKNOWN',
+        joinRequestLoading: false,
+        ancestors: [],
+      },
+      global: { stubs },
+    })
+    expect(wrapper.find('[data-testid="follow-apply-button"]').exists()).toBe(false)
+  })
+
   // AC-6: 未取得・取得失敗の間は「フォローする」を押せない。失敗時はエラーと再試行手段。
   it.each(['UNKNOWN', 'LOADING'] as const)('AC-6: %s の間は「フォローする」もエラー表示も出ない', async (status) => {
     const wrapper = await mountHeader({ roleName: null, followStatus: status, supporterEnabled: true })

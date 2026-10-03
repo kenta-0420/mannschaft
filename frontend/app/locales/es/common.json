@@ -580,7 +580,10 @@
     "group_name": "Nombre del grupo",
     "targets": "Destinos",
     "target_id": "ID de destino",
-    "target_type": { "ORGANIZATION": "Organización", "TEAM": "Equipo" },
+    "target_type": {
+      "ORGANIZATION": "Organización",
+      "TEAM": "Equipo"
+    },
     "template": "Plantilla",
     "audience": "Destinatarios",
     "current_scope": "Esta organización o equipo",
@@ -1763,6 +1766,11 @@
       "supporter_registered": "Registrado como seguidor",
       "supporter_applied": "Solicitud de seguidor enviada",
       "supporter_canceled": "Has dejado de apoyar",
+      "follow_approved_badge": "Eres seguidor/a",
+      "follow_unfollow_aria": "Dejar de apoyar",
+      "follow_pending_label": "Solicitud pendiente",
+      "follow_pending_cancel_button": "Cancelar",
+      "follow_apply_button": "Convertirse en seguidor/a",
       "leave_action": "Salir",
       "load_error_title": "No se pudo cargar la información",
       "load_error_body": "Inténtalo de nuevo más tarde. Puede estar oculto si no tienes permiso.",

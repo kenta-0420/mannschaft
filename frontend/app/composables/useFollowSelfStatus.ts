@@ -54,6 +54,12 @@ export function useFollowSelfStatus(api: FollowStatusApi) {
    * 取得中は `LOADING`、失敗時は `ERROR` を保持し、どちらも `NONE` へは潰さない（AC-6）。
    */
   async function fetchFollowStatus(scopeId: string) {
+    // 永続シェルでのスコープ遷移競合対策: スコープが変わったら世代を進め、
+    // 旧スコープに紐づく同期状態（AC-9 の同期失敗フラグ）を初期化する。
+    // これを怠ると、別スコープへ遷移した後に旧スコープの遅延応答がヘッダを上書きする。
+    if (currentScopeId !== scopeId) {
+      followPermissionSyncError.value = false
+    }
     const seq = ++fetchSeq
     currentScopeId = scopeId
     followStatus.value = 'LOADING'
@@ -70,12 +76,16 @@ export function useFollowSelfStatus(api: FollowStatusApi) {
   }
 
   async function applySupporter(scopeId: string) {
+    // 開始時点のスコープ/世代に束縛し、完了時にスコープが変わっていたら表示へ反映しない
+    // （永続シェルでのスコープ遷移競合対策）。
+    currentScopeId = scopeId
+    const seq = fetchSeq
     followLoading.value = true
     try {
       await api.follow(scopeId)
       const res = await api.getStatus(scopeId)
+      if (seq !== fetchSeq || currentScopeId !== scopeId) return
       followStatus.value = res.data.status
-      currentScopeId = scopeId
       notification.success(
         res.data.status === 'APPROVED'
           ? t('common.scopeShell.supporter_registered')
@@ -103,14 +113,22 @@ export function useFollowSelfStatus(api: FollowStatusApi) {
     scopeId: string,
     reloadPermissions: () => Promise<PermissionReloadResult>,
   ) {
+    // 開始時点のスコープ/世代に束縛する（永続シェルでのスコープ遷移競合対策）。
+    currentScopeId = scopeId
+    const seq = fetchSeq
+    const boundScopeId = scopeId
     followLoading.value = true
     try {
       await api.unfollow(scopeId)
+      if (seq !== fetchSeq || currentScopeId !== boundScopeId) return
       followStatus.value = 'NONE'
       followPermissionSyncError.value = false
       notification.success(t('common.scopeShell.supporter_canceled'))
 
+      // 権限再取得コールバックも開始時スコープ基準で呼ぶ。世代が変わっていたら
+      // 新スコープの表示へ無関係な旧スコープの権限再取得を呼ばない。
       const result = await reloadPermissions()
+      if (seq !== fetchSeq || currentScopeId !== boundScopeId) return
       if (!result.ok) {
         followPermissionSyncError.value = true
         notification.error(
@@ -131,7 +149,11 @@ export function useFollowSelfStatus(api: FollowStatusApi) {
   async function retryFollowPermissionSync(
     reloadPermissions: () => Promise<PermissionReloadResult>,
   ) {
+    // 開始時点のスコープ/世代に束縛する（永続シェルでのスコープ遷移競合対策）。
+    const seq = fetchSeq
+    const boundScopeId = currentScopeId
     const result = await reloadPermissions()
+    if (seq !== fetchSeq || currentScopeId !== boundScopeId) return
     followPermissionSyncError.value = !result.ok
     if (!result.ok) {
       notification.error(

@@ -208,4 +208,62 @@ describe('useFollowSelfStatus', () => {
     expect(followPermissionSyncError.value).toBe(true)
     expect(notificationErrorMock).toHaveBeenCalled()
   })
+
+  // 検分修繕: 永続シェルでのスコープ遷移競合。申請（follow）実行中に別スコープへ遷移すると、
+  // 遅延応答が新スコープの表示を上書きしてはならない。
+  it('検分修繕: applySupporter 実行中にスコープが遷移すると、遅延応答で新スコープの状態を上書きしない', async () => {
+    let resolveFollow: (value: unknown) => void = () => {}
+    const api = makeApi({
+      follow: vi.fn().mockReturnValue(new Promise((resolve) => { resolveFollow = resolve })),
+      getStatus: vi.fn().mockResolvedValue({ data: { status: 'NONE' } }),
+    })
+    const { followStatus, applySupporter, fetchFollowStatus } = useFollowSelfStatus(api)
+
+    const applyPromise = applySupporter('org-a')
+    // 申請中に別スコープへ遷移（永続シェルで起こり得る）。
+    await fetchFollowStatus('org-b')
+    expect(followStatus.value).toBe('NONE')
+
+    resolveFollow({})
+    await applyPromise
+
+    // org-a 側の遅延応答が org-b の表示を上書きしていない。
+    expect(followStatus.value).toBe('NONE')
+  })
+
+  // 検分修繕: 解除（cancelSupporter）実行中にスコープが遷移した場合も同様に上書きしない。
+  it('検分修繕: cancelSupporter 実行中にスコープが遷移すると、遅延応答で新スコープの状態・同期フラグを上書きしない', async () => {
+    let resolveUnfollow: (value: unknown) => void = () => {}
+    const api = makeApi({
+      unfollow: vi.fn().mockReturnValue(new Promise((resolve) => { resolveUnfollow = resolve })),
+    })
+    const reloadPermissions = vi.fn().mockResolvedValue({ ok: false, error: new Error('x') })
+    const { followStatus, followPermissionSyncError, cancelSupporter, fetchFollowStatus } = useFollowSelfStatus(api)
+
+    const cancelPromise = cancelSupporter('org-a', reloadPermissions)
+    await fetchFollowStatus('org-b')
+    expect(followStatus.value).toBe('NONE')
+    expect(followPermissionSyncError.value).toBe(false)
+
+    resolveUnfollow({})
+    await cancelPromise
+
+    // org-a の解除が org-b の表示・同期失敗フラグへ波及していない。
+    expect(followStatus.value).toBe('NONE')
+    expect(followPermissionSyncError.value).toBe(false)
+    expect(reloadPermissions).not.toHaveBeenCalled()
+  })
+
+  // 検分修繕: スコープ遷移時に旧スコープの followPermissionSyncError を引き継がない。
+  it('検分修繕: スコープ変更時に followPermissionSyncError が初期化される', async () => {
+    const api = makeApi()
+    const failReload = vi.fn().mockResolvedValue({ ok: false, error: new Error('x') })
+    const { followPermissionSyncError, cancelSupporter, fetchFollowStatus } = useFollowSelfStatus(api)
+
+    await cancelSupporter('org-a', failReload)
+    expect(followPermissionSyncError.value).toBe(true)
+
+    await fetchFollowStatus('org-b')
+    expect(followPermissionSyncError.value).toBe(false)
+  })
 })
