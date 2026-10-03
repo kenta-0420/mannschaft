@@ -72811,6 +72811,82 @@ export interface components {
         ApiResponseListScheduleResponse: {
             data?: components["schemas"]["ScheduleResponse"][];
         };
+        ApiResponseScheduleDetailResponse: {
+            data?: components["schemas"]["ScheduleDetailResponse"];
+        };
+        AttendanceSummaryResponse: {
+            /** Format: int32 */
+            absent?: number;
+            /** Format: int32 */
+            attending?: number;
+            /** Format: int32 */
+            partial?: number;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            undecided?: number;
+        };
+        EventSurveyResponse: {
+            /** Format: int64 */
+            id?: number;
+            isRequired?: boolean;
+            options?: string[];
+            question?: string;
+            questionType?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
+        ScheduleDetailAttendanceDto: {
+            /** Format: date-time */
+            attendanceDeadline?: string;
+            attendanceSummary?: components["schemas"]["AttendanceSummaryResponse"];
+            myAttendance?: components["schemas"]["AttendanceResponse"];
+        };
+        ScheduleDetailContentDto: {
+            color?: string;
+            commentOption?: string;
+            description?: string;
+            visibility?: string;
+        };
+        ScheduleDetailRecurrenceDto: {
+            isException?: boolean;
+            /** Format: int64 */
+            parentScheduleId?: number;
+            recurrenceRule?: components["schemas"]["RecurrenceRuleDto"];
+        };
+        ScheduleDetailRelationsDto: {
+            crossInvitations?: components["schemas"]["CrossRefResponse"][];
+            reminders?: components["schemas"]["ReminderResponse"][];
+            surveys?: components["schemas"]["EventSurveyResponse"][];
+        };
+        ScheduleDetailResponse: {
+            academic?: components["schemas"]["ScheduleAcademicDto"];
+            attendance?: components["schemas"]["ScheduleDetailAttendanceDto"];
+            audit?: components["schemas"]["ScheduleAuditDto"];
+            content?: components["schemas"]["ScheduleContentDto"];
+            /** Format: int64 */
+            createdBy?: number;
+            detail?: components["schemas"]["ScheduleDetailContentDto"];
+            /** Format: int64 */
+            id?: number;
+            myAttendanceStatus?: string;
+            recurrence?: components["schemas"]["ScheduleDetailRecurrenceDto"];
+            recurrenceInfo?: components["schemas"]["ScheduleRecurrenceDto"];
+            relations?: components["schemas"]["ScheduleDetailRelationsDto"];
+            reminders?: components["schemas"]["ReminderResponse"][];
+            roles?: components["schemas"]["ScheduleDetailRoleDto"];
+            scheduledTasks?: components["schemas"]["ScheduledTaskResponse"][];
+            scope?: components["schemas"]["ScheduleScopeDto"];
+            /** Format: int32 */
+            targetCount?: number;
+            targetMode?: string;
+            targets?: components["schemas"]["TargetMember"][];
+            time?: components["schemas"]["ScheduleTimeDto"];
+        };
+        ScheduleDetailRoleDto: {
+            minResponseRole?: string;
+            minViewRole?: string;
+        };
         ApiResponseListAttendanceResponse: {
             data?: components["schemas"]["AttendanceResponse"][];
         };
@@ -77616,18 +77692,6 @@ export interface components {
         };
         ApiResponseAttendanceSummaryResponse: {
             data?: components["schemas"]["AttendanceSummaryResponse"];
-        };
-        AttendanceSummaryResponse: {
-            /** Format: int32 */
-            absent?: number;
-            /** Format: int32 */
-            attending?: number;
-            /** Format: int32 */
-            partial?: number;
-            /** Format: int32 */
-            total?: number;
-            /** Format: int32 */
-            undecided?: number;
         };
         ApiResponseScheduleMediaListResponse: {
             data?: components["schemas"]["ScheduleMediaListResponse"];
@@ -137321,7 +137385,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseScheduleResponse"];
+                    "*/*": components["schemas"]["ApiResponseScheduleDetailResponse"];
                 };
             };
         };
@@ -144304,7 +144368,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseScheduleResponse"];
+                    "*/*": components["schemas"]["ApiResponseScheduleDetailResponse"];
                 };
             };
         };
