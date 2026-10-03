@@ -191,6 +191,81 @@ async function openList(page: Page, scope: Scope, receipt: Receipt) {
   await waitForReceiptRow(page, receipt)
 }
 
+function scopeResponse(page: Page, scope: Scope, suffix = '') {
+  return page.waitForResponse(response => response.request().method() === 'GET'
+    && response.url() === `${API}/api/v1/${scope.type}/${scope.slug}${suffix}`)
+}
+
+async function waitForDeniedContent(page: Page, receipt: Receipt) {
+  await expect(page.locator('body > div[class~="z-[9998]"]')).toHaveCount(0)
+  await expect(page.locator('.p-skeleton').filter({ visible: true })).toHaveCount(0)
+  await expect(page.locator('.p-datatable-mask')).toHaveCount(0)
+  await expect(page.getByText(receipt.recipientName, { exact: true })).toHaveCount(0)
+  await expect(page.getByText(receipt.receiptNumber, { exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '無効化', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('dialog', { name: '領収書を無効化', exact: true })).toHaveCount(0)
+}
+
+async function assertMemberUiDenied(page: Page, scope: Scope, receipt: Receipt, info: TestInfo) {
+  const profile = scopeResponse(page, scope)
+  const permissions = scopeResponse(page, scope, '/me/permissions')
+  await page.goto(`/${scope.type}/${scope.slug}`)
+  const profileResponse = await profile
+  expect(profileResponse.status()).toBe(200)
+  expect(await profileResponse.finished()).toBeNull()
+  const permissionResponse = await permissions
+  expect(permissionResponse.status()).toBe(200)
+  expect((await permissionResponse.json()).data.roleName).toBe('MEMBER')
+  expect(await permissionResponse.finished()).toBeNull()
+  await waitForHydration(page)
+  await expect(page.getByRole('heading', { name: scope.name, exact: true })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => {
+    const current = JSON.parse(localStorage.getItem('currentScope') ?? '{}') as { type?: string; id?: string }
+    return { type: current.type, id: current.id }
+  })).toEqual({ type: scope.type === 'teams' ? 'team' : 'organization', id: String(scope.id) })
+  // 一覧要求は guard と競合して中断され得るため、存在しない応答を待たない。
+  await page.goto('/admin/receipts')
+  await expect(page).toHaveURL(/\/dashboard$/)
+  await expect(page.getByText('アクセスできません', { exact: true })).toBeVisible()
+  await expect(page.getByText('管理者権限が必要です', { exact: true })).toBeVisible()
+  await waitForHydration(page)
+  await waitForDeniedContent(page, receipt)
+  await screenshot(page, info, `${scope.type}-member-ui-denied`)
+}
+
+async function assertForeignUiDenied(page: Page, scope: Scope, receipt: Receipt, info: TestInfo) {
+  const foreign = scopes.find(item => item.type === scope.type && item.owner === 'foreign')!
+  const ownReceipt = await createReceipt(foreign, 'foreign-own-UI')
+  await openList(page, foreign, ownReceipt)
+  await expect(page.getByText(receipt.recipientName, { exact: true })).toHaveCount(0)
+  await expect(page.getByText(receipt.receiptNumber, { exact: true })).toHaveCount(0)
+  const permissions = scopeResponse(page, scope, '/me/permissions')
+  const profile = scopeResponse(page, scope)
+  await page.goto(`/${scope.type}/${scope.slug}/admin`)
+  const permissionResponse = await permissions
+  expect(permissionResponse.status()).toBe(200)
+  expect((await permissionResponse.json()).data.roleName).toBeNull()
+  expect(await permissionResponse.finished()).toBeNull()
+  const profileResponse = await profile
+  expect([403, 404]).toContain(profileResponse.status())
+  expect(await profileResponse.finished()).toBeNull()
+  await expect(page).toHaveURL(new RegExp(`/${scope.type}/${scope.slug}$`))
+  await waitForHydration(page)
+  await expect(page.getByText('情報を取得できませんでした', { exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: /ダッシュボード/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: scope.name, exact: true })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: '管理コンソール', exact: true })).toHaveCount(0)
+  await expect(page.locator(`a[href^="/${scope.type}/${scope.slug}/settings"]`).filter({ visible: true })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: '領収書管理', exact: true })).toHaveCount(0)
+  await waitForDeniedContent(page, receipt)
+  // 非所属先を currentScope に偽造せず、元の本人 scope を維持する実契約を検証。
+  await expect.poll(() => page.evaluate(() => {
+    const current = JSON.parse(localStorage.getItem('currentScope') ?? '{}') as { type?: string; id?: string }
+    return { type: current.type, id: current.id }
+  })).toEqual({ type: foreign.type === 'teams' ? 'team' : 'organization', id: String(foreign.id) })
+  await screenshot(page, info, `${scope.type}-foreign-ui-denied`)
+}
+
 test.describe('CMP1017 無効化のみの実 API/UI 契約', () => {
   test.describe.configure({ mode: 'serial' })
   test.beforeAll(async ({ browser }) => {
@@ -255,7 +330,7 @@ test.describe('CMP1017 無効化のみの実 API/UI 契約', () => {
       contentType: 'application/json',
     })
     if (info.status !== info.expectedStatus) {
-      for (const key of ['owner', 'deputy', 'system'] as const) {
+      for (const key of ['owner', 'deputy', 'member', 'foreign', 'system'] as const) {
         if (actors[key] && !actors[key].page.isClosed()) await screenshot(actors[key].page, info, `failure-${key}`)
       }
     }
@@ -322,12 +397,16 @@ test.describe('CMP1017 無効化のみの実 API/UI 契約', () => {
           await expect(page.getByRole('button', { name: '無効化', exact: true })).toHaveCount(0)
           await screenshot(page, info, `${type}-deputy-no-void`)
         }
+        if (actorKey === 'member') {
+          await assertMemberUiDenied(page, scope, receipt, info)
+        }
         if (actorKey === 'foreign') {
           const foreign = scopes.find(item => item.type === type && item.owner === 'foreign')!
           const wrongScope = await page.request.post(`${API}/api/v1/admin/receipts/${receipt.id}/void?${query(foreign)}`, { data: { reason: '所属先の ID 束縛を確認' } })
           recordResponse(actorKey, wrongScope)
           expect(wrongScope.status(), '実在 ID でも別 scope は entity-bound 404').toBe(404)
           expect(audit(await getReceipt(scope, receipt.id))).toEqual(before)
+          await assertForeignUiDenied(page, scope, receipt, info)
         }
       }
     })
