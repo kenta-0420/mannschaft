@@ -63,7 +63,7 @@ export interface ProxyInputRecord {
   featureScope: ProxyInputFeatureScope
   targetEntityType: string
   targetEntityId: number
-  inputSource: ProxyInputSource
+  inputSource: ProxyInputSource | 'GUARDIANSHIP_SWITCH'
   originalStorageLocation: string | null
   createdAt: string
 }
