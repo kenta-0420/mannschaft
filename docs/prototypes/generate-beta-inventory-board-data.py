@@ -206,7 +206,8 @@ def parse_campaigns(markdown: str) -> list[dict]:
         status_text = status.strip()
         status_key = normalize_campaign_status(status_text)
         feature_refs = re.findall(r"[A-Za-z][A-Za-z0-9_-]+", title + " " + acceptance)
-        github_refs = sorted({number for value in re.findall(r"(?<![A-Za-z0-9])#(\d+)", line) if (number := int(value)) >= 100})
+        reference_line = re.sub(r"\[[^\]\n]*\]\(https://github\.com/[^/\s)]+/[^/\s)]+/actions/runs/\d+\)", "", line)
+        github_refs = sorted({number for value in re.findall(r"(?<![A-Za-z0-9])#(\d+)", reference_line) if (number := int(value)) >= 100})
         tags = campaign_tags(status_key)
         campaigns.append(
             {
