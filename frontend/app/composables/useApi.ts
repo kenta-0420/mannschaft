@@ -296,17 +296,22 @@ export function useApi() {
     retryStatusCodes: [401],
 
     onRequest({ options }) {
-      if (authStore.accessToken) {
+      // Cookie認証ではin-memory tokenがなくても認証済みの紙代理ヘッダーは必要。
+      if (authStore.accessToken || (proxyDeskStore.isPinned && authStore.isAuthenticated)) {
         const headers = new Headers(options.headers)
-        headers.set('Authorization', `Bearer ${authStore.accessToken}`)
+        if (authStore.accessToken) headers.set('Authorization', `Bearer ${authStore.accessToken}`)
 
-        // 代理入力モードが有効な場合: 4ヘッダを自動付与
+        // 紙代理の4ヘッダーと、非ASCII原本名の転送markerを自動付与
         if (proxyDeskStore.isPinned) {
           headers.set('X-Proxy-For-User-Id', String(proxyDeskStore.pinnedSubjectUserId))
           headers.set('X-Proxy-Consent-Id', String(proxyDeskStore.pinnedConsentId))
           headers.set('X-Proxy-Input-Source', proxyDeskStore.inputSource)
+          headers.delete('X-Proxy-Original-Storage-Encoding')
           if (proxyDeskStore.originalStorageLocation) {
-            headers.set('X-Proxy-Original-Storage', proxyDeskStore.originalStorageLocation)
+            const storage = proxyDeskStore.originalStorageLocation
+            const needsEncoding = /[^\p{ASCII}]/u.test(storage)
+            headers.set('X-Proxy-Original-Storage', needsEncoding ? encodeURIComponent(storage) : storage)
+            if (needsEncoding) headers.set('X-Proxy-Original-Storage-Encoding', 'uri-component')
           }
         }
         // 後見切替モードが有効な場合: X-Proxy-For-User-Id のみ付与（guardianship 経路）

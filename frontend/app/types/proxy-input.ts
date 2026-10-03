@@ -1,4 +1,5 @@
 // F14.1 代理入力・非デジタル住民対応 型定義
+import type { components } from '~/types/generated'
 
 /** 代理入力が適用できる機能スコープ */
 export type ProxyInputFeatureScope =
@@ -26,22 +27,22 @@ export type ProxyInputSource =
 /** 同意撤回の方法 */
 export type ProxyRevokeMethod =
   | 'API_BY_SUBJECT'
-  | 'PAPER'
-  | 'LIFE_EVENT'
-  | 'TENURE_END'
+  | 'PAPER_BY_SUBJECT'
+  | 'AUTO_BY_LIFE_EVENT'
+  | 'AUTO_BY_TENURE_END'
 
 /** 代理入力同意書 */
-export interface ProxyInputConsent {
-  id: number
-  subjectUserId: number
-  proxyUserId: number
-  orgId: number
-  consentMethod: ProxyInputConsentMethod
-  effectiveFrom: string        // ISO date string
-  effectiveUntil: string       // ISO date string
+export type ProxyInputConsent = Required<Omit<components['schemas']['ProxyInputConsentResponse'],
+  'effectiveUntil' | 'approvedAt' | 'revokedAt' | 'approvedByUserId' | 'witnessUserId'
+  | 'revokeMethod' | 'revokeReason' | 'revokeWitnessedByUserId'>> & {
+  effectiveUntil: string | null
   approvedAt: string | null
   revokedAt: string | null
-  scopes: ProxyInputFeatureScope[]
+  approvedByUserId: number | null
+  witnessUserId: number | null
+  revokeMethod: string | null
+  revokeReason: string | null
+  revokeWitnessedByUserId: number | null
 }
 
 /** 代理入力デスクのピン留め状態 */
@@ -53,17 +54,11 @@ export interface ProxyInputDeskState {
 }
 
 /** 代理入力操作履歴レコード */
-export interface ProxyInputRecord {
-  id: number
-  proxyInputConsentId: number
-  subjectUserId: number
-  proxyUserId: number
-  featureScope: ProxyInputFeatureScope
-  targetEntityType: string
-  targetEntityId: number
-  inputSource: ProxyInputSource
+export type ProxyInputRecord = Required<Omit<components['schemas']['ProxyInputRecordResponse'],
+  'consentId' | 'originalStorageLocation' | 'auditLogId'>> & {
+  consentId: number | null
   originalStorageLocation: string | null
-  createdAt: string
+  auditLogId: number | null
 }
 
 /** 同意書登録リクエスト */
@@ -79,8 +74,9 @@ export interface CreateProxyInputConsentRequest {
 
 /** 同意書撤回リクエスト */
 export interface RevokeProxyInputConsentRequest {
-  revokeMethod: ProxyRevokeMethod
+  revokeMethod: 'API_BY_SUBJECT' | 'PAPER_BY_SUBJECT'
   revokeReason?: string
+  revokeWitnessedByUserId?: number
 }
 
 /** スキャン画像アップロード用 presigned URL レスポンス */

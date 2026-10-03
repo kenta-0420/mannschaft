@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import {
   GATE_ROUTE_MAP,
@@ -39,6 +40,8 @@ describe('featureGates 定数と純関数', () => {
     expect(matchGateKey('/shift/')).toBe('FEATURE_SHIFT_ENABLED')
     expect(matchGateKey('/shift/123')).toBe('FEATURE_SHIFT_ENABLED')
     expect(matchGateKey('/shift/123/edit')).toBe('FEATURE_SHIFT_ENABLED')
+    expect(matchGateKey('/admin/proxy/consents')).toBe('FEATURE_SUCCESSION_PROXY_ENABLED')
+    expect(matchGateKey('/admin/proxy/records')).toBe('FEATURE_SUCCESSION_PROXY_ENABLED')
   })
 
   it('(AC-5) 隣接名を巻き込まない（/todo が /todo-memo・/todos を巻き込まない相当）', () => {
@@ -98,9 +101,9 @@ describe('featureGates 定数と純関数', () => {
     const dynamic = all.filter((p) => p.includes('*'))
     const staticOnly = all.filter((p) => !p.includes('*'))
 
-    // CMP-260909-1141: 旧 /admin/equipment ページの削除に伴い、静的プレフィクスが1件減る。
-    expect(all).toHaveLength(93)
-    expect(staticOnly).toHaveLength(46)
+    // CMP-260820-1018: 正本/admin/proxy配下を静的プレフィクスとして追加。
+    expect(all).toHaveLength(94)
+    expect(staticOnly).toHaveLength(47)
     expect(dynamic).toHaveLength(47)
 
     const rules = buildGateRouteRules()

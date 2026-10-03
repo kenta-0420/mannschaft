@@ -40,6 +40,7 @@ public class ProxyInputConsentResponse {
     private LocalDateTime revokedAt;
     private String revokeMethod;
     private String revokeReason;
+    private Long revokeWitnessedByUserId;
 
     private List<String> scopes;
     private LocalDateTime createdAt;
@@ -75,6 +76,7 @@ public class ProxyInputConsentResponse {
                 .revokedAt(entity.getRevokedAt())
                 .revokeMethod(entity.getRevokeMethod() != null ? entity.getRevokeMethod().name() : null)
                 .revokeReason(entity.getRevokeReason())
+                .revokeWitnessedByUserId(entity.getRevokeWitnessedByUserId())
                 .scopes(scopeNames)
                 .createdAt(entity.getCreatedAt())
                 .build();

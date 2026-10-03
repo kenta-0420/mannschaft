@@ -229,6 +229,47 @@
         "not_allowed": "このスケジュール/イベントでは代理出席が許可されていません",
         "rate_limit": "操作が多すぎます。1分後に再試行してください"
       }
+    },
+    "management": {
+      "consentsTitle": "代理入力同意管理",
+      "description": "同意書の承認・紙撤回と保存済みの操作履歴を確認します。",
+      "open": "管理画面を開く",
+      "loading": "読み込み中…",
+      "retry": "再試行",
+      "chooseMember": "メンバーを選択",
+      "noCandidates": "このページに候補はいません。別のページも確認できます。",
+      "previous": "前のページ",
+      "next": "次のページ",
+      "chooseOrganization": "組合を選択",
+      "accessLoadFailed": "組合・権限情報を取得できませんでした。",
+      "accessDenied": "選択した組合の管理資格が必要です。システム管理者は通常の組合業務画面を利用できません。",
+      "saved": "保存しました。",
+      "mutationFailed": "保存できませんでした。同じ操作を再試行できます。",
+      "reloadFailed": "保存は完了しましたが、一覧を再取得できませんでした。再読込してください。",
+      "refresh": "再読込",
+      "loadFailed": "データを取得できませんでした。",
+      "emptyConsents": "同意書はありません。",
+      "emptyRecords": "操作履歴はありません。",
+      "subject": "対象者",
+      "proxy": "代理者",
+      "witness": "紙撤回の立会管理者",
+      "revokeMethod": "撤回方法",
+      "approve": "承認する",
+      "cancel": "キャンセル",
+      "subjectFilter": "対象者で絞り込み（任意）",
+      "page": "{page} / {pages} ページ・全{total}件",
+      "status": {
+        "PENDING_APPROVAL": "承認待ち",
+        "APPROVED": "承認済み",
+        "REVOKED": "撤回済み"
+      },
+      "methods": {
+        "API_BY_SUBJECT": "本人オンライン申請",
+        "PAPER_BY_SUBJECT": "紙面申請",
+        "AUTO_BY_LIFE_EVENT": "ライフイベント（転居等）",
+        "AUTO_BY_TENURE_END": "任期満了"
+      },
+      "approveConfirm": "この同意書を承認しますか？"
     }
   }
 }

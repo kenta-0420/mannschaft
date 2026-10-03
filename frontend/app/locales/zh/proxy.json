@@ -229,6 +229,47 @@
         "not_allowed": "此日程/活动不允许代理出席",
         "rate_limit": "操作太频繁，请1分钟后重试"
       }
+    },
+    "management": {
+      "consentsTitle": "代理输入同意管理",
+      "description": "审批同意书、办理纸质撤回并查看已保存的操作记录。",
+      "open": "打开管理页面",
+      "loading": "加载中…",
+      "retry": "重试",
+      "chooseMember": "选择成员",
+      "noCandidates": "本页没有候选人，可以查看其他页面。",
+      "previous": "上一页",
+      "next": "下一页",
+      "chooseOrganization": "选择组织",
+      "accessLoadFailed": "无法获取组织或权限信息。",
+      "accessDenied": "需要本组织的 ADMIN 或 DEPUTY_ADMIN 资格。系统管理员不能使用普通组织管理页面。",
+      "saved": "已保存。",
+      "mutationFailed": "保存失败，可重试相同操作。",
+      "reloadFailed": "已保存，但列表重新加载失败，请刷新。",
+      "refresh": "刷新",
+      "loadFailed": "无法加载数据。",
+      "emptyConsents": "暂无同意书。",
+      "emptyRecords": "暂无操作记录。",
+      "subject": "被代理人",
+      "proxy": "代理人",
+      "witness": "纸质撤回的见证 ADMIN",
+      "revokeMethod": "撤回方式",
+      "approve": "批准",
+      "cancel": "取消",
+      "subjectFilter": "按被代理人筛选（可选）",
+      "page": "第 {page} / {pages} 页 · 共 {total} 条",
+      "status": {
+        "PENDING_APPROVAL": "待审批",
+        "APPROVED": "已批准",
+        "REVOKED": "已撤回"
+      },
+      "methods": {
+        "API_BY_SUBJECT": "本人在线申请",
+        "PAPER_BY_SUBJECT": "纸质申请",
+        "AUTO_BY_LIFE_EVENT": "生活事件（搬迁等）",
+        "AUTO_BY_TENURE_END": "任期届满"
+      },
+      "approveConfirm": "批准此同意书吗？"
     }
   }
 }

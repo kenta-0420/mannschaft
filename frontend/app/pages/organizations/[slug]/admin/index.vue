@@ -47,6 +47,29 @@ const { t } = useI18n()
 
 const orgSlug = computed(() => String(route.params.slug))
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
+const authStore = useAuthStore()
+const scopeStore = useScopeStore()
+const organizationApi = useOrganizationApi()
+const proxyNavigationFailed = ref(false)
+const proxyNavigationLoading = ref(false)
+
+async function openProxyManagement() {
+  proxyNavigationLoading.value = true
+  proxyNavigationFailed.value = false
+  try {
+    const response = await organizationApi.getOrganization(orgSlug.value)
+    const numericId = response.data.numericId
+    if (!numericId || !Number.isInteger(numericId) || numericId <= 0) throw new Error('組合IDを取得できませんでした')
+    scopeStore.setOrganizationScope(numericId, response.data.basicInfo?.name ?? orgSlug.value)
+    await navigateTo('/admin/proxy/consents')
+  }
+  catch {
+    proxyNavigationFailed.value = true
+  }
+  finally {
+    proxyNavigationLoading.value = false
+  }
+}
 const { getAdminActionRequired } = useScopeTabApi()
 
 // P2b: 横断承認待ち集約のバッジ状態（team ハブと同方針・03 §4.3）。
@@ -155,6 +178,11 @@ function cardTag(card: AdminConsoleCard): Component | string {
       </header>
 
       <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <SectionCard v-if="!authStore.isSystemAdmin" :title="t('proxy.management.consentsTitle')">
+          <p class="mt-2 text-sm">{{ t('proxy.management.description') }}</p>
+          <Button :label="t('proxy.management.open')" class="mt-3 min-h-11" :loading="proxyNavigationLoading" @click="openProxyManagement" />
+          <DashboardErrorState v-if="proxyNavigationFailed" role="alert" :message="t('proxy.management.loadFailed')" show-retry class="[&_button]:min-h-11" @retry="openProxyManagement" />
+        </SectionCard>
         <component
           :is="cardTag(card)"
           v-for="card in cards"

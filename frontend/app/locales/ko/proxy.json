@@ -229,6 +229,47 @@
         "not_allowed": "이 일정/이벤트에서는 대리 출석이 허용되지 않습니다",
         "rate_limit": "요청이 너무 많습니다. 1분 후에 다시 시도해주세요"
       }
+    },
+    "management": {
+      "consentsTitle": "대리 입력 동의 관리",
+      "description": "동의를 승인하고 종이 철회를 처리하며 저장된 작업 이력을 확인합니다.",
+      "open": "관리 화면 열기",
+      "loading": "불러오는 중…",
+      "retry": "다시 시도",
+      "chooseMember": "구성원 선택",
+      "noCandidates": "이 페이지에 후보가 없습니다. 다른 페이지도 확인할 수 있습니다.",
+      "previous": "이전 페이지",
+      "next": "다음 페이지",
+      "chooseOrganization": "조직 선택",
+      "accessLoadFailed": "조직 또는 권한 정보를 가져오지 못했습니다.",
+      "accessDenied": "해당 조직의 ADMIN 또는 DEPUTY_ADMIN 자격이 필요합니다. 시스템 관리자는 일반 조직 관리 화면을 이용할 수 없습니다.",
+      "saved": "저장했습니다.",
+      "mutationFailed": "저장하지 못했습니다. 같은 작업을 다시 시도할 수 있습니다.",
+      "reloadFailed": "저장은 완료했지만 목록을 다시 가져오지 못했습니다. 새로 고침해 주세요.",
+      "refresh": "새로 고침",
+      "loadFailed": "데이터를 가져오지 못했습니다.",
+      "emptyConsents": "동의서가 없습니다.",
+      "emptyRecords": "작업 이력이 없습니다.",
+      "subject": "대상자",
+      "proxy": "대리인",
+      "witness": "종이 철회 입회 ADMIN",
+      "revokeMethod": "철회 방법",
+      "approve": "승인",
+      "cancel": "취소",
+      "subjectFilter": "대상자로 필터링 (선택)",
+      "page": "{page} / {pages} 페이지 · 전체 {total}건",
+      "status": {
+        "PENDING_APPROVAL": "승인 대기",
+        "APPROVED": "승인됨",
+        "REVOKED": "철회됨"
+      },
+      "methods": {
+        "API_BY_SUBJECT": "본인 온라인 신청",
+        "PAPER_BY_SUBJECT": "서류 신청",
+        "AUTO_BY_LIFE_EVENT": "생활 이벤트 (이사 등)",
+        "AUTO_BY_TENURE_END": "임기 만료"
+      },
+      "approveConfirm": "이 동의서를 승인할까요?"
     }
   }
 }
