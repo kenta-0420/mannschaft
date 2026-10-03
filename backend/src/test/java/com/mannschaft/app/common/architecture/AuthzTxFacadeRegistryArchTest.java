@@ -472,13 +472,8 @@ class AuthzTxFacadeRegistryArchTest {
                 continue;
             }
             JavaClass facade = classes.get(name);
-            // 継承した public メソッドも含める（Object 由来・抽象・合成は除く）
-            List<JavaMethod> publicMethods = new ArrayList<>(facade.getAllMethods().stream()
-                    .filter(m -> m.getModifiers().contains(JavaModifier.PUBLIC))
-                    .filter(m -> !m.getModifiers().contains(JavaModifier.SYNTHETIC))
-                    .filter(m -> !m.getModifiers().contains(JavaModifier.ABSTRACT))
-                    .filter(m -> !m.getOwner().isEquivalentTo(Object.class))
-                    .toList());
+            // 継承した public メソッドも含める（子がオーバーライド済みの親宣言・Object 由来・抽象・合成は除く）
+            List<JavaMethod> publicMethods = new ArrayList<>(effectivePublicMethods(facade));
             // 登録 Controller が実際に呼ぶ Facade のメソッド（解決先の宣言所有型で検査する）
             for (Entry e : rules.entries()) {
                 if (!e.facade().equals(name) || !classes.contain(e.controller())) {
@@ -687,28 +682,87 @@ class AuthzTxFacadeRegistryArchTest {
     }
 
     /**
+     * Facade が外へ公開する public メソッドのうち、シグネチャ（名前＋引数型）ごとに継承階層で最も子側の
+     * 有効な実装だけを返す。子がオーバーライド済みの親クラス・interface の宣言は呼ばれないので除外する。
+     * Object 由来・合成は除き、選んだ結果が抽象のものも除く。
+     */
+    static List<JavaMethod> effectivePublicMethods(JavaClass facade) {
+        Map<String, List<JavaMethod>> bySignature = new LinkedHashMap<>();
+        for (JavaMethod m : facade.getAllMethods()) {
+            if (!m.getModifiers().contains(JavaModifier.PUBLIC)
+                    || m.getModifiers().contains(JavaModifier.SYNTHETIC)
+                    || m.getOwner().isEquivalentTo(Object.class)) {
+                continue;
+            }
+            String signature = m.getName() + m.getRawParameterTypes().stream()
+                    .map(JavaClass::getName).toList();
+            bySignature.computeIfAbsent(signature, k -> new ArrayList<>()).add(m);
+        }
+        List<JavaMethod> result = new ArrayList<>();
+        for (List<JavaMethod> candidates : bySignature.values()) {
+            List<JavaMethod> pool = candidates;
+            // クラス上の実装は interface の default より優先する
+            if (pool.stream().anyMatch(m -> !m.getOwner().isInterface())) {
+                pool = pool.stream().filter(m -> !m.getOwner().isInterface()).toList();
+            }
+            // より子側の型が同じシグネチャを宣言していれば、その親宣言は隠される
+            for (JavaMethod m : pool) {
+                boolean hidden = pool.stream().anyMatch(o -> o != m
+                        && !o.getOwner().equals(m.getOwner())
+                        && o.getOwner().isAssignableTo(m.getOwner().getName()));
+                if (!hidden && !m.getModifiers().contains(JavaModifier.ABSTRACT)) {
+                    result.add(m);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
      * method から認可クラスへ届くか。幅優先で探索し、メソッドごとに最初（= 最小深さ）の到達だけを展開するため、
      * 長い経路を先に辿って短い経路を捨てることがない。同クラス内の呼び出し（継承メソッドは宣言所有型を辿る）だけを追う。
      */
     private static boolean reachesAuthorization(JavaClass root, JavaMethod method, int maxDepth,
             Set<String> authzClasses) {
-        Set<JavaMethod> visited = new LinkedHashSet<>();
-        List<JavaMethod> frontier = new ArrayList<>(List.of(method));
-        visited.add(method);
+        return bfsReaches(method, maxDepth,
+                current -> callsWithLambdas(current.getOwner(), current).stream()
+                        .anyMatch(call -> authzClasses.contains(call.getTargetOwner().getName())),
+                current -> {
+                    List<JavaMethod> callees = new ArrayList<>();
+                    for (JavaMethodCall call : callsWithLambdas(current.getOwner(), current)) {
+                        Optional<JavaMethod> resolved = call.getTarget().resolveMember();
+                        if (resolved.isPresent() && isSameClassCall(root, current, call, resolved.get())) {
+                            callees.add(resolved.get());
+                        }
+                    }
+                    return callees;
+                });
+    }
+
+    /**
+     * 探索ロジック本体（グラフ走査のみ）。ノードごとに最初（= 最小深さ）の到達だけを展開する幅優先探索。
+     * 呼び先の列挙順（{@code callees} の返す順）に結果が依存しないことを、順序を明示した入力で検証できるよう切り出している。
+     *
+     * @param directlyAuthz そのノード自身が認可クラスを呼ぶか
+     * @param callees       そのノードの呼び先（同クラス内）
+     */
+    static <N> boolean bfsReaches(N start, int maxDepth, java.util.function.Predicate<N> directlyAuthz,
+            java.util.function.Function<N, List<N>> callees) {
+        Set<N> visited = new LinkedHashSet<>();
+        List<N> frontier = new ArrayList<>(List.of(start));
+        visited.add(start);
         for (int depth = 0; depth <= maxDepth && !frontier.isEmpty(); depth++) {
-            List<JavaMethod> next = new ArrayList<>();
-            for (JavaMethod current : frontier) {
-                for (JavaMethodCall call : callsWithLambdas(current.getOwner(), current)) {
-                    if (authzClasses.contains(call.getTargetOwner().getName())) {
-                        return true;
-                    }
-                    if (depth == maxDepth) {
-                        continue;
-                    }
-                    Optional<JavaMethod> resolved = call.getTarget().resolveMember();
-                    if (resolved.isPresent() && isSameClassCall(root, current, call, resolved.get())
-                            && visited.add(resolved.get())) {
-                        next.add(resolved.get());
+            List<N> next = new ArrayList<>();
+            for (N current : frontier) {
+                if (directlyAuthz.test(current)) {
+                    return true;
+                }
+                if (depth == maxDepth) {
+                    continue;
+                }
+                for (N callee : callees.apply(current)) {
+                    if (visited.add(callee)) {
+                        next.add(callee);
                     }
                 }
             }

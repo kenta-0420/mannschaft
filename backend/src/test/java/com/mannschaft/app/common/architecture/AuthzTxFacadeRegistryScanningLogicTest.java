@@ -436,11 +436,59 @@ class AuthzTxFacadeRegistryScanningLogicTest {
     static class InheritGoodFacade extends GoodParent {
     }
 
+    /** 認可なしの default を持つ interface（オーバーライド済みなら R3 は見ない）。 */
+    interface HollowDefault {
+        default String inherited(Long userId) {
+            return "d" + userId;
+        }
+    }
+
+    /** 認可なしの親 inherited() を、認可付きでオーバーライドする（R3 の陰性）。 */
+    static class OverrideGoodFacade extends HollowParent {
+        private final FakeGate gate = new FakeGate();
+
+        @Override
+        public String inherited(Long userId) {
+            gate.requireAdminOrConceal(userId);
+            return "o";
+        }
+    }
+
+    /** 認可なしの interface default を、認可付きでオーバーライドする（R3 の陰性）。 */
+    static class InterfaceOverrideFacade implements HollowDefault {
+        private final FakeGate gate = new FakeGate();
+
+        @Override
+        public String inherited(Long userId) {
+            gate.requireAdminOrConceal(userId);
+            return "i";
+        }
+    }
+
+    /** interface default をオーバーライドしない（R3 の陽性: 認可へ届かない default が残る）。 */
+    static class InterfaceHollowFacade implements HollowDefault {
+    }
+
     static class InheritEntryController {
+        private final OverrideGoodFacade overrideGood = new OverrideGoodFacade();
+        private final InterfaceOverrideFacade ifaceOverride = new InterfaceOverrideFacade();
+        private final InterfaceHollowFacade ifaceHollow = new InterfaceHollowFacade();
         private final InheritHollowFacade hollow = new InheritHollowFacade();
         private final InheritGoodFacade good = new InheritGoodFacade();
         private final MergeAuthzFacade mergeAuthz = new MergeAuthzFacade();
         private final MergePlainFacade mergePlain = new MergePlainFacade();
+
+        public String overrideInherited(Long u) {
+            return overrideGood.inherited(u);
+        }
+
+        public String ifaceOverrideInherited(Long u) {
+            return ifaceOverride.inherited(u);
+        }
+
+        public String ifaceHollowInherited(Long u) {
+            return ifaceHollow.inherited(u);
+        }
 
         public String hollowInherited(Long u) {
             return hollow.inherited(u);
@@ -468,7 +516,8 @@ class AuthzTxFacadeRegistryScanningLogicTest {
             SelfScopedController.class, TwoMethodController.class, FacadeEntryController.class,
             MergeAuthzTxService.class, MergePlainTxService.class, MergeAuthzFacade.class, MergePlainFacade.class,
             HollowParent.class, InheritHollowFacade.class, GoodParent.class, InheritGoodFacade.class,
-            InheritEntryController.class);
+            HollowDefault.class, OverrideGoodFacade.class, InterfaceOverrideFacade.class,
+            InterfaceHollowFacade.class, InheritEntryController.class);
 
     private static String n(Class<?> c) {
         return c.getName();
@@ -621,6 +670,70 @@ class AuthzTxFacadeRegistryScanningLogicTest {
         Rules good = single(InheritEntryController.class, "goodInherited", InheritGoodFacade.class,
                 cls(GoodTxService.class));
         assertThat(AuthzTxFacadeRegistryArchTest.r3FacadePublicMethodsReachAuthz(CLASSES, good)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("R3 陰性: 認可なしの親 inherited() / interface default を子が認可付きでオーバーライドしていれば緑（隠された親宣言は見ない）")
+    void R3_オーバーライド済みの親宣言は見ない() {
+        Rules overrideGood = single(InheritEntryController.class, "overrideInherited", OverrideGoodFacade.class,
+                cls(GoodTxService.class));
+        assertThat(AuthzTxFacadeRegistryArchTest.r3FacadePublicMethodsReachAuthz(CLASSES, overrideGood)).isEmpty();
+        Rules ifaceOverride = single(InheritEntryController.class, "ifaceOverrideInherited",
+                InterfaceOverrideFacade.class, cls(GoodTxService.class));
+        assertThat(AuthzTxFacadeRegistryArchTest.r3FacadePublicMethodsReachAuthz(CLASSES, ifaceOverride)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("R3 陽性: interface default を子がオーバーライドしていなければ、認可へ届かない default を赤にする")
+    void R3_interfaceのdefaultが残れば赤() {
+        Rules ifaceHollow = single(InheritEntryController.class, "ifaceHollowInherited",
+                InterfaceHollowFacade.class, cls(GoodTxService.class));
+        assertThat(AuthzTxFacadeRegistryArchTest.r3FacadePublicMethodsReachAuthz(CLASSES, ifaceHollow))
+                .singleElement().asString().contains("HollowDefault.inherited(").contains("認可クラスへ届かない");
+    }
+
+    // 探索ロジック本体を、呼び先の列挙順を明示して検証する（ArchUnit の呼び出し集合の順序に依存しない）。
+    // グラフ: doWork -> [a, shared] / a -> b -> shared -> s1 -> s2（s2 が認可を呼ぶ）。
+    // 長経路 doWork→a→b→shared は深さ 3、短経路 doWork→shared は深さ 1。maxDepth=3 なら s2 は短経路でのみ届く。
+    private static final Map<String, List<String>> LONG_FIRST = Map.of(
+            "doWork", List.of("a", "shared"), "a", List.of("b"), "b", List.of("shared"),
+            "shared", List.of("s1"), "s1", List.of("s2"), "s2", List.of());
+    private static final Map<String, List<String>> SHORT_FIRST = Map.of(
+            "doWork", List.of("shared", "a"), "a", List.of("b"), "b", List.of("shared"),
+            "shared", List.of("s1"), "s1", List.of("s2"), "s2", List.of());
+
+    /** 旧アルゴリズム（visited 共有の深さ優先）の再現。 */
+    private static boolean legacyDfsReaches(String node, int depth, int maxDepth, java.util.Set<String> visited,
+            Map<String, List<String>> graph) {
+        if (node.equals("s2")) {
+            return true;
+        }
+        if (depth == maxDepth) {
+            return false;
+        }
+        for (String callee : graph.get(node)) {
+            if (visited.add(callee) && legacyDfsReaches(callee, depth + 1, maxDepth, visited, graph)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Test
+    @DisplayName("探索 対照: 長経路先行でも短経路先行でも、短い経路が認可へ届けば到達あり。旧アルゴリズム（visited 共有 DFS）は長経路先行で誤って未到達を返す")
+    void 探索は呼び先の列挙順に依存しない() {
+        for (Map<String, List<String>> graph : List.of(LONG_FIRST, SHORT_FIRST)) {
+            assertThat(AuthzTxFacadeRegistryArchTest.<String>bfsReaches("doWork", 3, n -> n.equals("s2"), graph::get))
+                    .isTrue();
+            // 深さが足りなければ（maxDepth=2）どちらの順序でも未到達
+            assertThat(AuthzTxFacadeRegistryArchTest.<String>bfsReaches("doWork", 2, n -> n.equals("s2"), graph::get))
+                    .isFalse();
+        }
+        // 対照の実効性: 旧アルゴリズムは長経路先行で shared を深さ 3 で消費し、短経路を捨てて未到達と誤判定する
+        assertThat(legacyDfsReaches("doWork", 0, 3, new java.util.HashSet<>(java.util.Set.of("doWork")), LONG_FIRST))
+                .isFalse();
+        assertThat(legacyDfsReaches("doWork", 0, 3, new java.util.HashSet<>(java.util.Set.of("doWork")), SHORT_FIRST))
+                .isTrue();
     }
 
     @Test
