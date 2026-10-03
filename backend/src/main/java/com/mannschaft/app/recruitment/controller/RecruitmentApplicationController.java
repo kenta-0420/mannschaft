@@ -7,6 +7,7 @@ import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.recruitment.dto.ApplyToRecruitmentRequest;
 import com.mannschaft.app.recruitment.dto.CancelMyApplicationRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
+import com.mannschaft.app.recruitment.service.RecruitmentListingFacade;
 import com.mannschaft.app.recruitment.service.RecruitmentParticipantService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,13 +37,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class RecruitmentApplicationController {
 
     private final RecruitmentParticipantService participantService;
+    private final RecruitmentListingFacade listingFacade;
 
     @PostMapping("/applications")
     @Operation(summary = "参加申込 (個人 or チーム)")
     public ResponseEntity<ApiResponse<RecruitmentParticipantResponse>> apply(
             @PathVariable Long listingId,
             @Valid @RequestBody ApplyToRecruitmentRequest request) {
-        RecruitmentParticipantResponse response = participantService.apply(
+        RecruitmentParticipantResponse response = listingFacade.apply(
                 listingId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -66,7 +68,7 @@ public class RecruitmentApplicationController {
             @PathVariable Long listingId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<RecruitmentParticipantResponse> result = participantService.listParticipants(
+        Page<RecruitmentParticipantResponse> result = listingFacade.listParticipants(
                 listingId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -78,7 +80,7 @@ public class RecruitmentApplicationController {
     public ResponseEntity<ApiResponse<RecruitmentParticipantResponse>> markAttended(
             @PathVariable Long listingId,
             @PathVariable Long participantId) {
-        RecruitmentParticipantResponse response = participantService.markAttended(
+        RecruitmentParticipantResponse response = listingFacade.markAttended(
                 listingId, participantId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
