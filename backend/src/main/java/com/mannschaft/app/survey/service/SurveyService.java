@@ -781,13 +781,16 @@ public class SurveyService {
                 .orElseThrow(() -> new BusinessException(SurveyErrorCode.SURVEY_NOT_FOUND));
     }
 
-    /** 代理回答の事前認可へ、実体のスコープ値だけを返す。 */
+    /** 代理回答の事前認可へ、実体のスコープと配信条件の値だけを返す。 */
     public ResponseScope getResponseScope(Long surveyId) {
         SurveyEntity survey = findSurveyEntityOrThrow(surveyId);
-        return new ResponseScope(survey.getScopeType(), survey.getScopeId());
+        return new ResponseScope(survey.getScopeType(), survey.getScopeId(),
+                survey.getDistributionMode() == DistributionMode.ALL,
+                Boolean.TRUE.equals(survey.getIncludeSupporters()));
     }
 
-    public record ResponseScope(String scopeType, Long scopeId) { }
+    public record ResponseScope(String scopeType, Long scopeId, boolean allDistribution,
+                                boolean includeSupporters) { }
 
     /** アンケートを取得する。存在しない場合は例外をスローする。 */
     private SurveyEntity findSurveyOrThrow(String scopeType, Long scopeId, Long surveyId) {

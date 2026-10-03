@@ -336,6 +336,45 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
         else assertThat(inTx(() -> responses.findBySurveyIdAndUserId(survey.getId(), subject))).hasSize(1);
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void SYSTEM_ADMIN代理者も本人サポーターの配信包含設定を迂回しない(boolean includeSupporters) throws Exception {
+        inTx(() -> {
+            MembershipTestHelper.insertUserRole(em, actor, "SYSTEM_ADMIN", null, null);
+            em.createNativeQuery("DELETE FROM memberships WHERE user_id = :uid AND scope_type = 'ORGANIZATION' AND scope_id = :oid")
+                    .setParameter("uid", subject).setParameter("oid", org.getId()).executeUpdate();
+            MembershipTestHelper.insertMembership(em, subject, ScopeType.ORGANIZATION, org.getId(), RoleKind.SUPPORTER);
+            surveys.save(survey.toBuilder().includeSupporters(includeSupporters).build());
+            return null;
+        });
+        var before = snapshot();
+        post(true).andExpect(status().is(includeSupporters ? 201 : 403));
+        if (!includeSupporters) assertThat(snapshot()).isEqualTo(before);
+        else {
+            var saved = inTx(() -> responses.findBySurveyIdAndUserId(survey.getId(), subject).getFirst());
+            var record = inTx(() -> records.findById(saved.getProxyInputRecordId()).orElseThrow());
+            assertThat(record.getSubjectUserId()).isEqualTo(subject);
+            assertThat(record.getProxyUserId()).isEqualTo(actor);
+        }
+        assertThat(inTx(() -> responses.findBySurveyIdAndUserId(survey.getId(), actor))).isEmpty();
+    }
+
+    @Test
+    void サポーター包含設定が無効でも代理GETmeで本人の既回答を取得できる() throws Exception {
+        seedAnswer(subject, "本人の既回答");
+        inTx(() -> {
+            em.createNativeQuery("DELETE FROM memberships WHERE user_id = :uid AND scope_type = 'ORGANIZATION' AND scope_id = :oid")
+                    .setParameter("uid", subject).setParameter("oid", org.getId()).executeUpdate();
+            MembershipTestHelper.insertMembership(em, subject, ScopeType.ORGANIZATION, org.getId(), RoleKind.SUPPORTER);
+            surveys.save(survey.toBuilder().includeSupporters(false).build());
+            return null;
+        });
+        var before = snapshot();
+        get(true).andExpect(status().isOk()).andExpect(jsonPath("$.data[0].userId").value(subject))
+                .andExpect(jsonPath("$.data[0].textResponse").value("本人の既回答"));
+        assertThat(snapshot()).isEqualTo(before);
+    }
+
     @Test
     void 本人の再回答だけを置換し代理者の既回答を維持する() throws Exception {
         seedAnswer(actor, "代理者自身の回答");

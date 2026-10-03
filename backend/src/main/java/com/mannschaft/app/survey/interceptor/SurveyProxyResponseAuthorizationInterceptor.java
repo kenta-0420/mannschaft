@@ -5,9 +5,9 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.organization.service.OrganizationHierarchyService;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.ProxyInputContext.SurveyResponseOperation;
-import com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity.FeatureScope;
 import com.mannschaft.app.proxy.service.ProxyInputConsentService;
 import com.mannschaft.app.survey.SurveyErrorCode;
 import com.mannschaft.app.survey.controller.SurveyResponseController;
@@ -31,17 +31,20 @@ public class SurveyProxyResponseAuthorizationInterceptor implements HandlerInter
     private final ObjectProvider<SurveyService> surveyServiceProvider;
     private final ObjectProvider<AccessControlService> accessControlProvider;
     private final ObjectProvider<OrganizationHierarchyService> hierarchyProvider;
+    private final ObjectProvider<OrganizationMembershipService> membershipProvider;
 
     public SurveyProxyResponseAuthorizationInterceptor(ObjectProvider<ProxyInputContext> contextProvider,
             ObjectProvider<ProxyInputConsentService> consentServiceProvider,
             ObjectProvider<SurveyService> surveyServiceProvider,
             ObjectProvider<AccessControlService> accessControlProvider,
-            ObjectProvider<OrganizationHierarchyService> hierarchyProvider) {
+            ObjectProvider<OrganizationHierarchyService> hierarchyProvider,
+            ObjectProvider<OrganizationMembershipService> membershipProvider) {
         this.contextProvider = contextProvider;
         this.consentServiceProvider = consentServiceProvider;
         this.surveyServiceProvider = surveyServiceProvider;
         this.accessControlProvider = accessControlProvider;
         this.hierarchyProvider = hierarchyProvider;
+        this.membershipProvider = membershipProvider;
     }
 
     @Override
@@ -74,12 +77,12 @@ public class SurveyProxyResponseAuthorizationInterceptor implements HandlerInter
 
         ProxyInputContext context = contextProvider.getObject();
         Long actorUserId = SecurityUtils.getCurrentUserId();
-        if (!context.isProxy() || context.getConsentId() == null || !context.hasScope(FeatureScope.SURVEY)
+        if (!context.isProxy() || context.getConsentId() == null || !context.hasSurveyScope()
                 || !Objects.equals(context.getValidatedActorUserId(), actorUserId)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
-        Long organizationId = consentServiceProvider.getObject().getValidInputConsentOrganizationId(
-                context.getConsentId(), actorUserId, context.getSubjectUserId(), FeatureScope.SURVEY);
+        Long organizationId = consentServiceProvider.getObject().getValidSurveyInputConsentOrganizationId(
+                context.getConsentId(), actorUserId, context.getSubjectUserId());
         AccessControlService accessControl = accessControlProvider.getObject();
         boolean systemAdmin = accessControl.isSystemAdmin(actorUserId);
         // 自組合の実行資格を先に確認し、資格のない主体へ実体の実在差を返さない。
@@ -101,6 +104,13 @@ public class SurveyProxyResponseAuthorizationInterceptor implements HandlerInter
             if (!canKnowSurvey) {
                 throw new BusinessException(SurveyErrorCode.SURVEY_NOT_FOUND);
             }
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        // 代理者の実行資格とは別に、本人の回答資格を配信母集団の正本で確認する。
+        // GET_MEは終了後・非対象となった既回答の取得を維持し、通常本人経路には影響させない。
+        if (operation == SurveyResponseOperation.SUBMIT && "ORGANIZATION".equals(scope.scopeType())
+                && scope.allDistribution() && !membershipProvider.getObject().isInOrgDistributionAudience(
+                        scope.scopeId(), context.getSubjectUserId(), scope.includeSupporters())) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         context.authorizeSurveyResponse(actorUserId, surveyId, operation);

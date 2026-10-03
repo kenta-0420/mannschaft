@@ -41,14 +41,13 @@ public class ProxyInputConsentService {
 
     /** 代理回答の事前認可用に、有効同意書の組合IDだけを返す。 */
     @Transactional(readOnly = true)
-    public Long getValidInputConsentOrganizationId(Long consentId, Long actorUserId,
-                                                   Long subjectUserId,
-                                                   ProxyInputConsentScopeEntity.FeatureScope requiredScope) {
+    public Long getValidSurveyInputConsentOrganizationId(Long consentId, Long actorUserId,
+                                                         Long subjectUserId) {
         ProxyInputConsentEntity consent = consentRepository.findValidConsent(consentId, actorUserId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
         if (!consent.isActive() || !consent.getSubjectUserId().equals(subjectUserId)
-                || requiredScope == null || consent.getScopes().stream()
-                .noneMatch(scope -> scope.getFeatureScope() == requiredScope)) {
+                || consent.getScopes().stream()
+                .noneMatch(scope -> scope.getFeatureScope() == ProxyInputConsentScopeEntity.FeatureScope.SURVEY)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return consent.getOrganizationId();

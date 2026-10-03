@@ -2,6 +2,7 @@ package com.mannschaft.app.config;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.organization.service.OrganizationHierarchyService;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.service.ProxyInputConsentService;
 import com.mannschaft.app.survey.interceptor.SurveyProxyResponseAuthorizationInterceptor;
@@ -20,9 +21,10 @@ public class SurveyProxyResponseWebMvcConfig implements WebMvcConfigurer {
             ObjectProvider<ProxyInputConsentService> consentServiceProvider,
             ObjectProvider<SurveyService> surveyServiceProvider,
             ObjectProvider<AccessControlService> accessControlProvider,
-            ObjectProvider<OrganizationHierarchyService> hierarchyProvider) {
+            ObjectProvider<OrganizationHierarchyService> hierarchyProvider,
+            ObjectProvider<OrganizationMembershipService> membershipProvider) {
         interceptor = new SurveyProxyResponseAuthorizationInterceptor(contextProvider, consentServiceProvider,
-                surveyServiceProvider, accessControlProvider, hierarchyProvider);
+                surveyServiceProvider, accessControlProvider, hierarchyProvider, membershipProvider);
     }
 
     @Override

@@ -92,6 +92,11 @@ public class ProxyInputContext {
         return proxyMode && scope != null && scopes.contains(scope);
     }
 
+    /** アンケート領域にはEntity内の機能enumを渡さず、同意範囲の判定結果だけを返す。 */
+    public boolean hasSurveyScope() {
+        return hasScope(FeatureScope.SURVEY);
+    }
+
     /** MVCの事前認可結果を対象アンケートと操作へ束縛する。 */
     public void authorizeSurveyResponse(Long actorUserId, Long surveyId, SurveyResponseOperation operation) {
         if (!proxyMode || actorUserId == null || surveyId == null || operation == null
