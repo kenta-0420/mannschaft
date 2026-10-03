@@ -60,6 +60,15 @@ public interface TeamAffiliationOrganizationPort {
     Map<UUID, GroupRef> findAliveGroupRefs(Collection<UUID> groupIds);
 
     /**
+     * 組織の現在の状態を<b>ロックせずに</b>読む（F01.2.1 2-C）。組織ドメインの読み取りトランザクションで完結し、
+     * 呼び出し側のトランザクションには参加させない（チームの書き込みトランザクションの外で呼ぶ）。
+     *
+     * <p>不在・論理削除済み・承諾前（PROVISIONED）は空を返す。アーカイブ済みかどうかは
+     * {@link OrganizationAffiliationState#archived()} で返し、応答の選択は呼び出し側が行う。</p>
+     */
+    Optional<OrganizationAffiliationState> findAffiliationState(Long organizationId);
+
+    /**
      * ロック時点の組織の状態。
      *
      * @param id                 組織 ID
