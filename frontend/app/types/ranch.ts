@@ -22,7 +22,7 @@ export interface RanchState {
  roomSlots: RanchSlot[]; serverTime: string; policyVersion: Decimal | null;
  careBudget: { remainingXp: Decimal; weeklyCapXp: Decimal; awardedXp: Decimal; amountXp: Decimal; weekEndsAt: string; ruleVersion: Decimal } | null;
  weekBudget: { remaining: Decimal; personalRequiredCount: Decimal; personalCompletedCount: number } | null;
- assignment: { availableMethods: ('HABITAT_RANDOM' | 'DIAGNOSIS' | 'BIRTH_STYLE')[]; selectionConfirmed: boolean; confirmedMethod: string | null }
+ assignment: { availableMethods: ('HABITAT_RANDOM' | 'DIAGNOSIS' | 'BIRTH_STYLE')[]; selectionConfirmed: boolean; confirmedMethod: string | null } | null
 }
 export interface FeedingResult { commandId: string; dinosaurId: string; gainedXp: Decimal; isGrowthCapped: boolean; stageAfter: RanchStage; costPoints: Decimal; completedAt: string }
 export interface InteractionResult { commandId: string; dinosaurId: string; reactionKey: string; affinityBand: string; affinityChanged: boolean; completedAt: string }

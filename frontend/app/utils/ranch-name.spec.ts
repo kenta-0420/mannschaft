@@ -58,7 +58,7 @@ describe('AC61 製品名の正規化と保存上限', () => {
   })
 
   it('native Intlが異版でも命名に使わない', () => {
-    const nativeSegmenter = vi.spyOn(Intl, 'Segmenter').mockImplementation(() => {
+    const nativeSegmenter = vi.spyOn(Intl, 'Segmenter').mockImplementation(function () {
       throw new Error('native Unicode version must not determine the name boundary')
     })
     expect(ranchNameLength('क्ष')).toBe(1)
