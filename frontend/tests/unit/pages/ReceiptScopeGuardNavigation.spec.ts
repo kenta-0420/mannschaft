@@ -75,6 +75,45 @@ describe('CMP1017: 非同期の所属拒否は実ルーターで終端画面へ�
     const wrapper = await mountSuspended(ReceiptsPage, { route: '/admin/receipts' })
     const nuxtApp = useNuxtApp()
     const router = useRouter()
+    const routeTrace: Array<Record<string, string | number | boolean>> = []
+    const safePath = (value: string) => ['/admin/receipts', '/dashboard', '/login'].includes(value) ? value : '<other>'
+    const componentNuxt = Reflect.get(wrapper.vm.$.appContext.app, '$nuxt') as typeof nuxtApp | undefined
+    const componentRouter = componentNuxt?.$router
+    routeTrace.push({
+      kind: 'identity',
+      componentNuxtMatches: componentNuxt === nuxtApp,
+      componentRouterMatches: componentRouter === router,
+      pageRouterMatches: wrapper.vm.$router === router,
+      nuxtRouterMatches: nuxtApp.$router === router,
+      client: import.meta.client, server: import.meta.server,
+      mounted: wrapper.vm.$.isMounted,
+    })
+    const observerCleanup: Array<() => void> = []
+    const actualRouters = new Set([router, wrapper.vm.$router, componentRouter].filter((value): value is typeof router => !!value))
+    for (const actualRouter of actualRouters) {
+      const measured = actualRouter === router
+      const originalPush = actualRouter.push.bind(actualRouter)
+      vi.spyOn(actualRouter, 'push').mockImplementation((to) => {
+        routeTrace.push({ kind: 'push', measured, to: safePath(actualRouter.resolve(to).path), before: safePath(actualRouter.currentRoute.value.path), middleware: !!nuxtApp._processingMiddleware, client: import.meta.client, server: import.meta.server })
+        const result = originalPush(to)
+        // 同じ実Promiseを返す。観測側のreject分類は元Promise/awaitの例外を変更しない。
+        void result.then((failure) => {
+          routeTrace.push({ kind: 'push-resolved', measured, failureType: failure?.type ?? 0, after: safePath(actualRouter.currentRoute.value.path) })
+        }, () => {
+          routeTrace.push({ kind: 'push-rejected', measured, after: safePath(actualRouter.currentRoute.value.path) })
+        })
+        return result
+      })
+      observerCleanup.push(actualRouter.beforeEach((to, from) => {
+        routeTrace.push({ kind: 'before', measured, to: safePath(to.path), from: safePath(from.path) })
+      }))
+      observerCleanup.push(actualRouter.afterEach((to, from, failure) => {
+        routeTrace.push({ kind: 'after', measured, to: safePath(to.path), from: safePath(from.path), failureType: failure?.type ?? 0 })
+      }))
+      observerCleanup.push(actualRouter.onError(() => {
+        routeTrace.push({ kind: 'router-error', measured, after: safePath(actualRouter.currentRoute.value.path) })
+      }))
+    }
     const toast = nuxtApp.$toast as { add: (options: Record<string, unknown>) => void }
     const originalAdd = toast.add.bind(toast)
     const observations: Array<{ contextMatches: boolean; middlewareActive: boolean }> = []
@@ -117,7 +156,13 @@ describe('CMP1017: 非同期の所属拒否は実ルーターで終端画面へ�
         await navigation
       }
       finally {
-        wrapper.unmount()
+        try {
+          console.info('receipt-router-observation', routeTrace)
+          for (const cleanup of observerCleanup) cleanup()
+        }
+        finally {
+          wrapper.unmount()
+        }
       }
     }
   })
