@@ -2,6 +2,7 @@ package com.mannschaft.app.gdpr.service;
 
 import com.mannschaft.app.billing.BillingPurgeEventListener;
 import com.mannschaft.app.chart.event.ChartPurgeEventListener;
+import com.mannschaft.app.dashboard.event.DashboardSettingsPurgeEventListener;
 import com.mannschaft.app.errorreport.event.ErrorReportPurgeEventListener;
 import com.mannschaft.app.gdpr.dto.RetryResultResponse;
 import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
@@ -26,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -55,6 +57,9 @@ class GdprPurgeRetryServiceTest {
     private ErrorReportPurgeEventListener errorReportPurgeEventListener;
     @Mock
     private BillingPurgeEventListener billingPurgeEventListener;
+
+    @Mock
+    private DashboardSettingsPurgeEventListener dashboardSettingsPurgeEventListener;
 
     @InjectMocks
     private GdprPurgeRetryService service;
@@ -295,5 +300,62 @@ class GdprPurgeRetryServiceTest {
 
             verify(billingPurgeEventListener).retryPurge(userId);
         }
+    }
+
+    @Test
+    @DisplayName("設定owner proxyの完了失敗もPENDINGのまま試行回数へ記録する")
+    void settingsOwnerCommitFailureRemainsPending() {
+        Long userId = 909L;
+        var entity = buildPendingEntity(userId, "dashboard");
+        given(completionStatusRepository.findByUserIdAndDomainName(userId, "dashboard"))
+                .willReturn(Optional.of(entity));
+        doThrow(new org.springframework.transaction.TransactionSystemException("owner commit"))
+                .when(dashboardSettingsPurgeEventListener).retryPurge(userId);
+
+        var result = service.retryDomainPurge(userId, "dashboard");
+
+        assertThat(result.succeeded()).isFalse();
+        assertThat(entity.getStatus()).isEqualTo("PENDING");
+        assertThat(entity.getRetryCount()).isEqualTo(1);
+        assertThat(entity.getLastRetriedAt()).isNotNull();
+        assertThat(entity.getCompletedAt()).isNull();
+        verify(completionStatusRepository).save(entity);
+    }
+
+    @Test
+    @DisplayName("設定owner proxyがcommit成立して返った後だけSUCCESSへ進む")
+    void settingsSuccessFollowsOwnerProxyReturn() {
+        Long userId = 910L;
+        var entity = buildPendingEntity(userId, "dashboard");
+        given(completionStatusRepository.findByUserIdAndDomainName(userId, "dashboard"))
+                .willReturn(Optional.of(entity));
+        given(dashboardSettingsPurgeEventListener.retryPurge(userId)).willAnswer(invocation -> {
+            assertThat(entity.getStatus()).isEqualTo("PENDING");
+            assertThat(entity.getCompletedAt()).isNull();
+            return true;
+        });
+
+        var result = service.retryDomainPurge(userId, "dashboard");
+
+        assertThat(result.succeeded()).isTrue();
+        assertThat(entity.getStatus()).isEqualTo("SUCCESS");
+        assertThat(entity.getCompletedAt()).isNotNull();
+        verify(completionStatusRepository).save(entity);
+    }
+
+    @Test
+    @DisplayName("既SUCCESSの設定domainではownerへ再度入らず試行数も維持する")
+    void settingsAlreadySuccessfulDoesNotRetry() {
+        Long userId = 911L;
+        var entity = buildSuccessEntity(userId, "dashboard");
+        given(completionStatusRepository.findByUserIdAndDomainName(userId, "dashboard"))
+                .willReturn(Optional.of(entity));
+
+        var result = service.retryDomainPurge(userId, "dashboard");
+
+        assertThat(result.succeeded()).isTrue();
+        assertThat(result.retryCount()).isEqualTo(1);
+        verify(dashboardSettingsPurgeEventListener, never()).retryPurge(userId);
+        verify(completionStatusRepository, never()).save(entity);
     }
 }

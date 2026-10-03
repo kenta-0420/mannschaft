@@ -1,7 +1,5 @@
 package com.mannschaft.app.gdpr.service;
 
-import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
-import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.entity.UserEntity;
@@ -10,13 +8,15 @@ import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
 import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.OAuthLinkTokenRepository;
-import com.mannschaft.app.auth.repository.PasswordResetTokenRepository;
 import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
+import com.mannschaft.app.auth.repository.PasswordResetTokenRepository;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.common.util.SessionHashUtil;
 import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
@@ -231,7 +231,13 @@ public class AccountPurgeService {
         // 完了トラッキング/リトライ対象に登録する（従来 gdpr の completion_status に未登録だったため
         // リスナー失敗時の再試行が配線されていなかった・GdprPurgeRetryService 側にも合わせて登録）。
         List<String> purgeTargetDomains = List.of(
-                "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing");
+                "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing",
+                "actionmemo", "pointcard", "timeline", "search", "dashboard",
+                "scopefolder", "quickmemo", "auth", "notification", "filesharing",
+                "contact", "user", "appearance", "navsettings", "gamification",
+                "reflection", "timetable.personal", "cms", "chat", "knowledgebase",
+                "favorite", "membership", "weather", "inbox", "timetable.notes",
+                "seal", "schedule");
         LocalDateTime purgeAttemptedAt = LocalDateTime.now();
         purgeTargetDomains.forEach(domain -> {
             AccountPurgeCompletionStatusEntity pending = new AccountPurgeCompletionStatusEntity();

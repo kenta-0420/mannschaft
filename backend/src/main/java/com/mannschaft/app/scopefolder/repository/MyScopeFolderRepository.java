@@ -3,6 +3,9 @@ package com.mannschaft.app.scopefolder.repository;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
 import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -46,4 +49,9 @@ public interface MyScopeFolderRepository extends JpaRepository<MyScopeFolderEnti
      */
     Optional<MyScopeFolderEntity> findByUserIdAndScopeTypeAndIsDefaultTrueAndDeletedAtIsNull(
             Long userId, ScopeType scopeType);
+
+    /** 強匿名化専用。対象利用者の行を論理削除済みも含めて物理削除する。 */
+    @Modifying
+    @Query(value = "DELETE FROM my_scope_folders WHERE user_id = :userId", nativeQuery = true)
+    int deleteAllByUserIdIncludingDeleted(@Param("userId") Long userId);
 }

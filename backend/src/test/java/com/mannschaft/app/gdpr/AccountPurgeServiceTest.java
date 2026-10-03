@@ -6,11 +6,11 @@ import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
 import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.OAuthLinkTokenRepository;
+import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
 import com.mannschaft.app.auth.repository.PasswordResetTokenRepository;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.storage.StorageService;
@@ -220,7 +220,7 @@ class AccountPurgeServiceTest {
         }
 
         @Test
-        @DisplayName("Phase D-8/残債1: AccountPurgedEvent 発火前に 8 ドメイン分の PENDING レコードが INSERT される")
+        @DisplayName("CMP1243: AccountPurgedEvent 発火前に旧8＋設定27domainのPENDINGが登録される")
         void PhaseD8_PENDING_レコードがINSERTされる() {
             UserEntity user = buildUser(USER_ID);
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
@@ -229,12 +229,18 @@ class AccountPurgeServiceTest {
 
             service.purgeExpiredAccounts();
 
-            // 8 ドメイン（role/team/payment/chart/proxy/errorreport/resume/billing）分の save が呼ばれること
-            verify(completionStatusRepository, atLeast(8)).save(any(AccountPurgeCompletionStatusEntity.class));
+            // 旧8domainと本人設定27domainが重複なくPENDING登録されること
+            verify(completionStatusRepository, org.mockito.Mockito.times(35)).save(any(AccountPurgeCompletionStatusEntity.class));
 
             // 各ドメイン名の PENDING レコードが INSERT されること（残債1: billing を追加登録）
             for (String domain : List.of(
-                    "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing")) {
+                    "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing",
+                    "actionmemo", "pointcard", "timeline", "search", "dashboard",
+                    "scopefolder", "schedule", "quickmemo", "auth", "notification",
+                    "filesharing", "contact", "user", "appearance", "navsettings",
+                    "gamification", "reflection", "timetable.personal", "cms", "chat",
+                    "knowledgebase", "favorite", "membership", "weather", "inbox",
+                    "timetable.notes", "seal")) {
                 verify(completionStatusRepository).save(argThat(entity ->
                         entity.getUserId().equals(USER_ID)
                                 && entity.getDomainName().equals(domain)
