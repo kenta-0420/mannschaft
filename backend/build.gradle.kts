@@ -1,4 +1,5 @@
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 plugins {
     java
@@ -458,7 +459,7 @@ tasks.withType<Test> {
     // （OOM で落ちた回こそ、この数字が要る）。CI ログを "[test-jvm]" で grep せよ。
     // beforeSuite は複数ワーカーのイベントを受けるため、スレッド安全な集合を使う。
     val testJvmNames: MutableSet<String> = ConcurrentHashMap.newKeySet()
-    val executedTestCount = java.util.concurrent.atomic.AtomicLong(-1L)
+    val executedTestCount = AtomicLong(-1L)
     val testTaskName = name
     addTestListener(object : org.gradle.api.tasks.testing.TestListener {
         override fun beforeSuite(suite: org.gradle.api.tasks.testing.TestDescriptor) {
