@@ -13,7 +13,9 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationTemplateEntity;
 import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationRecipientPageFacade;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableScopeAuthorizer;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableRecipientPreviewService;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationSettingsService;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationTemplateService;
@@ -80,6 +82,8 @@ class ConfirmableNotificationSendPermissionAuthzTest {
     private ConfirmableNotificationTemplateService templateService;
     private ConfirmableNotificationRecipientRepository recipientRepository;
     private ConfirmableNotificationMapper mapper;
+    private ConfirmableNotificationRecipientPageFacade recipientPageFacade;
+    private ConfirmableScopeAuthorizer scopeAuthorizer;
     private MockedStatic<SecurityUtils> securityUtils;
 
     @BeforeEach
@@ -91,6 +95,8 @@ class ConfirmableNotificationSendPermissionAuthzTest {
         templateService = mock(ConfirmableNotificationTemplateService.class);
         recipientRepository = mock(ConfirmableNotificationRecipientRepository.class);
         mapper = mock(ConfirmableNotificationMapper.class);
+        recipientPageFacade = mock(ConfirmableNotificationRecipientPageFacade.class);
+        scopeAuthorizer = new ConfirmableScopeAuthorizer(accessControlService);
         securityUtils = mockStatic(SecurityUtils.class);
         securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
     }
@@ -112,6 +118,11 @@ class ConfirmableNotificationSendPermissionAuthzTest {
                 .given(accessControlService)
                 .checkAdminOrHasPermissionInScope(
                         eq(USER_ID), eq(scopeId), eq(scopeType.name()), eq(SEND_NOTIFICATION));
+        // W3b: 判定役 ConfirmableScopeAuthorizer 経由の EP は hasAdminOrPermissionInScope（false）で拒否し、
+        // 在籍者（権限不足の関係者）として 403 になる。在籍を立てないと越境の 404 に化けて 403 の検証にならない。
+        given(accessControlService.hasAdminOrPermissionInScope(
+                USER_ID, scopeId, scopeType.name(), SEND_NOTIFICATION)).willReturn(false);
+        given(accessControlService.isMember(USER_ID, scopeId, scopeType.name())).willReturn(true);
     }
 
     private void assertForbidden(ThrowingCall call) {
@@ -147,12 +158,14 @@ class ConfirmableNotificationSendPermissionAuthzTest {
 
     private TeamConfirmableNotificationController teamController() {
         return new TeamConfirmableNotificationController(
-                notificationService, recipientPreviewService, recipientRepository, mapper, accessControlService);
+                notificationService, recipientPreviewService, recipientRepository, mapper, accessControlService,
+                scopeAuthorizer, recipientPageFacade);
     }
 
     private OrgConfirmableNotificationController orgController() {
         return new OrgConfirmableNotificationController(
-                notificationService, recipientPreviewService, recipientRepository, mapper, accessControlService);
+                notificationService, recipientPreviewService, recipientRepository, mapper, accessControlService,
+                scopeAuthorizer, recipientPageFacade);
     }
 
     // =====================================================================
@@ -293,12 +306,12 @@ class ConfirmableNotificationSendPermissionAuthzTest {
 
         private TeamConfirmableNotificationTemplateController teamTemplateController() {
             return new TeamConfirmableNotificationTemplateController(
-                    templateService, mapper, accessControlService);
+                    templateService, mapper, accessControlService, scopeAuthorizer);
         }
 
         private OrgConfirmableNotificationTemplateController orgTemplateController() {
             return new OrgConfirmableNotificationTemplateController(
-                    templateService, mapper, accessControlService);
+                    templateService, mapper, accessControlService, scopeAuthorizer);
         }
 
         @Test

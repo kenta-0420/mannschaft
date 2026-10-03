@@ -378,24 +378,34 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
     class SelfDispute {
 
         /**
-         * VISIBILITY_DENIED（RECRUITMENT_003）: {@code RecruitmentNoShowService#dispute} は
-         * record.getUserId().equals(userId) で本人所有を検証し、他人の記録は不在と同一の 404 に畳む
-         * （記録の実在をレスポンス差分から漏らさないための存在秘匿）。
+         * NO_SHOW_RECORD_NOT_FOUND（RECRUITMENT_309）: {@code RecruitmentNoShowService#dispute} は本人所有を検証し、
+         * 他人の記録は不在と<b>完全一致</b>の 404 に畳む（記録の実在をレスポンス差分から漏らさないための存在秘匿）。
+         *
+         * <p>是正前は {@code VISIBILITY_DENIED}（RECRUITMENT_003・404）で、ステータスは揃っていたがコードとメッセージが
+         * 不在（RECRUITMENT_309）と割れていた（CMP-260923-0954 W5 で是正。詳細は
+         * {@code RecruitmentListingTemplateScopeContractIT}）。</p>
          */
         @Test
-        @DisplayName("本人以外の異議申立は404（存在秘匿）")
-        void 本人以外の異議申立は404() throws Exception {
+        @DisplayName("W5: 本人以外の異議申立は不在と同一の404（NO_SHOW_RECORD_NOT_FOUND）")
+        void 本人以外の異議申立は不在と同一の404() throws Exception {
             Long undisputed = insertUndisputedNoShow(listingAId, memberAId);
             em.flush();
             em.clear();
 
             setAuth(adminAId);
-            mockMvc.perform(post("/api/v1/recruitment/no-shows/{noShowId}/dispute", undisputed)
+            String real = mockMvc.perform(post("/api/v1/recruitment/no-shows/{noShowId}/dispute", undisputed)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("reason", "裏目付テスト"))))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(RecruitmentErrorCode.VISIBILITY_DENIED.getCode()));
+                            .value(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND.getCode()))
+                    .andReturn().getResponse().getContentAsString();
+            String absent = mockMvc.perform(post("/api/v1/recruitment/no-shows/{noShowId}/dispute", 999_999_999L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("reason", "裏目付テスト"))))
+                    .andExpect(status().isNotFound())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(real).as("他人の実在記録と不在記録の応答は完全一致でなければならない").isEqualTo(absent);
         }
     }
 
