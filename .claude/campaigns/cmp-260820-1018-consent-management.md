@@ -11,6 +11,8 @@
 - Deskから紙同意2をピン留めしてSurvey199をUI回答し、代理状態の再表示・fresh本人90245のGETme/回答済みUI・回答所有者90245と監査actor90156を別々に確認する。
 - 管理履歴で保存済みSURVEY操作の実表示と組合/対象者ANDを確認し、DPの紙撤回はADMIN23立会/255文字理由をUI保存、同意撤回後の履歴保持と代理拒否を確認する。
 - CMP-261003-0122の実DBGREEN・統合実機jarを待つ。Survey199は未回答、紙同意2は未撤回、3住民と最終出荷は未達のまま保全する。
+- origin/main bf77bd23deへ通常merge（dbec6b4f16、競合0）済み。CMP042表示4ファイルはmainとの差分0、重複を解消した。追従前BE225 GREENの証跡はそのsourceに限定し、追従後BE検証/統合標準生成は未実施。
+- 追従後API composableの既存5契約をfe-api-mainfollow1で測定しexit0、5tests/0failures/0errors/0skipped。XML SHA256 `026951412bf4833c0065f14e610e2b43cf6c6f52bea2d6a11bd5fa355c301699`、stdio SHA256 `6277594062f46c21880d21a7a9839c5f310bd7ef043c9f169301d9d450d2fcd5`。原5 GREENとは別保存し、型チェック/実機の追加合格には数えない。
 
 ## 方針
 
