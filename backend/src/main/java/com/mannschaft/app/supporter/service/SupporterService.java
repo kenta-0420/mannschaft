@@ -130,19 +130,28 @@ public class SupporterService {
     public void unfollow(Long userId, String scopeType, Long scopeId) {
         ScopeType scope = ScopeType.valueOf(scopeType);
 
-        // APPROVED: SUPPORTER メンバーシップを退会
-        Optional<MembershipEntity> activeMembership = membershipRepository.findActiveByUserAndScope(
-                userId, scope, scopeId);
-        if (activeMembership.isPresent()) {
-            MembershipLeaveRequest leaveReq = new MembershipLeaveRequest();
-            leaveReq.setLeaveReason(LeaveReason.SELF);
-            membershipService.leave(activeMembership.get().getId(), leaveReq);
+        // CMP-261001-0835 AC-14: 解除対象は SUPPORTER のアクティブ所属と PENDING 申請のみ
+        // （MEMBER/ADMIN の所属・user_roles には一切触れない。設計書「組織フォロー解除フロー」手順2）。
+        Optional<MembershipEntity> activeSupporterMembership = membershipRepository.findActiveByUserAndScope(
+                        userId, scope, scopeId)
+                .filter(m -> m.getRoleKind() == RoleKind.SUPPORTER);
+        Optional<SupporterApplicationEntity> pendingApplication =
+                applicationRepository.findByScopeTypeAndScopeIdAndUserIdAndStatus(
+                        scopeType, scopeId, userId, SupporterApplicationStatus.PENDING);
+
+        if (activeSupporterMembership.isEmpty() && pendingApplication.isEmpty()) {
+            throw new BusinessException(SupporterErrorCode.SUPPORTER_007);
         }
 
+        // APPROVED: SUPPORTER メンバーシップを退会
+        activeSupporterMembership.ifPresent(m -> {
+            MembershipLeaveRequest leaveReq = new MembershipLeaveRequest();
+            leaveReq.setLeaveReason(LeaveReason.SELF);
+            membershipService.leave(m.getId(), leaveReq);
+        });
+
         // PENDING: 申請レコードを削除
-        applicationRepository.findByScopeTypeAndScopeIdAndUserIdAndStatus(
-                        scopeType, scopeId, userId, SupporterApplicationStatus.PENDING)
-                .ifPresent(applicationRepository::delete);
+        pendingApplication.ifPresent(applicationRepository::delete);
 
         log.info("サポーター解除: scopeType={}, scopeId={}, userId={}", scopeType, scopeId, userId);
     }
