@@ -79,8 +79,6 @@ class PaymentMoneyScopeContractIT extends AbstractMySqlIntegrationTest {
     private static final String ONBOARDING_NOT_READY = "PAYMENT_C030";
     /** 会費支払い記録が見つからない（404・存在秘匿）。 */
     private static final String MEMBER_PAYMENT_NOT_FOUND = "PAYMENT_029";
-    /** 払い手でも受益者でもない第三者の領収書アクセス（403）。 */
-    private static final String PAYMENT_ACCESS_DENIED = "PAYMENT_030";
     /** 課金ゲート対象コンテンツが存在しない（404・存在秘匿）。 */
     private static final String CONTENT_NOT_FOUND = "PAYMENT_015";
 
@@ -146,7 +144,7 @@ class PaymentMoneyScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/member-payments/{id}/receipt", paymentId))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.error.code").value(PAYMENT_ACCESS_DENIED));
+                    .andExpect(jsonPath("$.error.code").value(MEMBER_PAYMENT_NOT_FOUND));
 
             setAuthentication(payerId);
             mockMvc.perform(get("/api/v1/member-payments/{id}/receipt", paymentId))
