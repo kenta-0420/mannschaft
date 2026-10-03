@@ -57,6 +57,9 @@ class ChartMyScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long othersSharedA;
     private Long othersSharedB;
     private Long othersUnsharedA;
+    private Long othersSharedUnrelated;
+    @SuppressWarnings("unused")
+    private Long othersUnsharedUnrelated;
 
     @BeforeEach
     void setUp() {
@@ -66,6 +69,9 @@ class ChartMyScopeContractIT extends AbstractMySqlIntegrationTest {
         othersSharedA = persistChart(OTHER, TEAM_A, true);
         othersSharedB = persistChart(OTHER, TEAM_B, true);
         othersUnsharedA = persistChart(OTHER, TEAM_A, false);
+        // 本人に縁のないチームにも、他人の共有済み・未共有カルテが実在する。
+        othersSharedUnrelated = persistChart(OTHER, TEAM_UNRELATED, true);
+        othersUnsharedUnrelated = persistChart(OTHER, TEAM_UNRELATED, false);
     }
 
     @AfterEach
@@ -98,6 +104,13 @@ class ChartMyScopeContractIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("自分に縁のないチームの ID を指定しても、他人のカルテは一覧に現れない")
     void list_withUnrelatedTeamId_returnsNothing() throws Exception {
+        // 対象データが実在することの確認: 所有者本人には共有済みの 1 件だけ取得できる。
+        setAuth(OTHER);
+        mockMvc.perform(get("/api/v1/charts/me").param("teamId", TEAM_UNRELATED.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].id", containsInAnyOrder(othersSharedUnrelated.intValue())));
+
+        // 同じ URL で認証主体を本人に差し替えると、そのチームの他人のカルテは返らない。
         setAuth(ME);
         mockMvc.perform(get("/api/v1/charts/me").param("teamId", TEAM_UNRELATED.toString()))
                 .andExpect(status().isOk())
@@ -114,7 +127,8 @@ class ChartMyScopeContractIT extends AbstractMySqlIntegrationTest {
         mockMvc.perform(get("/api/v1/charts/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[*].id",
-                        containsInAnyOrder(othersSharedA.intValue(), othersSharedB.intValue())));
+                        containsInAnyOrder(othersSharedA.intValue(), othersSharedB.intValue(),
+                                othersSharedUnrelated.intValue())));
 
         setAuth(ME);
         mockMvc.perform(get("/api/v1/charts/me").param("teamId", TEAM_A.toString()))
