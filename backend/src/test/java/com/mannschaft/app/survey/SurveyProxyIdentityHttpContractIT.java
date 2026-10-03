@@ -243,6 +243,43 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
                 .andExpect(jsonPath("$.data[0].textResponse").value("代理者自身の回答"));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"POST", "GET"})
+    void SYSTEM_ADMINはEXECUTE無付与でも有効な同意範囲の本人回答を扱い別組合へ拡大しない(String method) throws Exception {
+        inTx(() -> {
+            em.createNativeQuery("DELETE FROM user_roles WHERE user_id = :uid AND organization_id = :oid")
+                    .setParameter("uid", actor).setParameter("oid", org.getId()).executeUpdate();
+            MembershipTestHelper.insertUserRole(em, actor, "SYSTEM_ADMIN", null, null);
+            return null;
+        });
+        assertThat(accessControl.isSystemAdmin(actor)).isTrue();
+        assertThat(accessControl.hasPermission(actor, org.getId(), "ORGANIZATION", "PROXY_INPUT_EXECUTE")).isFalse();
+        if ("POST".equals(method)) {
+            post(true).andExpect(status().isCreated()).andExpect(jsonPath("$.data[0].userId").value(subject));
+            var saved = inTx(() -> responses.findBySurveyIdAndUserId(survey.getId(), subject).getFirst());
+            assertThat(saved.getIsProxyInput()).isTrue();
+            var record = inTx(() -> records.findById(saved.getProxyInputRecordId()).orElseThrow());
+            assertThat(record.getProxyUserId()).isEqualTo(actor);
+            assertThat(record.getSubjectUserId()).isEqualTo(subject);
+            assertThat(record.getProxyInputConsentId()).isEqualTo(consentId);
+        } else {
+            seedAnswer(subject, "本人の回答");
+            get(true).andExpect(status().isOk()).andExpect(jsonPath("$.data[0].userId").value(subject))
+                    .andExpect(jsonPath("$.data[0].textResponse").value("本人の回答"));
+            assertThat(inTx(() -> records.findByProxyInputConsentIdOrderByCreatedAtDesc(consentId))).isEmpty();
+        }
+        assertThat(inTx(() -> responses.findBySurveyIdAndUserId(survey.getId(), actor))).isEmpty();
+        inTx(() -> {
+            em.createNativeQuery("UPDATE surveys SET scope_id = :oid WHERE id = :sid")
+                    .setParameter("oid", foreignOrg.getId()).setParameter("sid", survey.getId()).executeUpdate();
+            return null;
+        });
+        var before = snapshot();
+        if ("POST".equals(method)) post(true).andExpect(status().isForbidden());
+        else get(true).andExpect(status().isForbidden());
+        assertThat(snapshot()).isEqualTo(before);
+    }
+
     @Test
     void 代理者自身の既回答は本人の初回回答を妨げず変更しない() throws Exception {
         seedAnswer(actor, "代理者自身の回答");
