@@ -465,7 +465,7 @@ test('ADMINは取消後に他代理者の同意を承認し、本人オンライ
   }
 })
 
-// 依存CMP-261003-0122を統合した実機jarでのみ実行する。回答・撤回をAPIで代替しない。
+// 依存CMP-261003-1020を統合した実機jarでのみ実行する。回答・撤回をAPIで代替しない。
 test('実履歴: DEPUTYがDeskで本人のアンケートを回答し本人の再表示へ保存する', async ({ browser }, info) => {
   if (!fixture.survey) throw new Error('専用の未回答アンケートfixtureが必要です')
   const page = await openAs(browser, 'deputy')

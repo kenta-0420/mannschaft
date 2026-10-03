@@ -10,7 +10,8 @@
 - 既存の専用fixtureを再利用する実機specへ3契約を準備した。対象specのeslint exit0、diffcheck0。実行は未実施であり合格数へ含めない。
 - Deskから紙同意2をピン留めしてSurvey199をUI回答し、代理状態の再表示・fresh本人90245のGETme/回答済みUI・回答所有者90245と監査actor90156を別々に確認する。
 - 管理履歴で保存済みSURVEY操作の実表示と組合/対象者ANDを確認し、DPの紙撤回はADMIN23立会/255文字理由をUI保存、同意撤回後の履歴保持と代理拒否を確認する。
-- CMP-261003-0122の実DBGREEN・統合実機jarを待つ。Survey199は未回答、紙同意2は未撤回、3住民と最終出荷は未達のまま保全する。
+- CMP-261003-1020の実DBGREEN・統合実機jarを待つ。Survey199は未回答、紙同意2は未撤回、3住民と最終出荷は未達のまま保全する。
+- 旧CI shard1の日時番人違反に対応し、操作履歴DTOのcreatedAtをInstant＋SERVER_ZONE明示変換に修正（03fd79cdc8）。再生成・日時番人・HTTP日時の最終検証は未実施。Nuxtテストsetupの4.1→4.2自動更新だけをown frontend/.nuxtrcでHEAD原文へ戻し、本陣の設定は変更していない。
 - origin/main bf77bd23deへ通常merge（dbec6b4f16、競合0）済み。CMP042表示4ファイルはmainとの差分0、重複を解消した。追従前BE225 GREENの証跡はそのsourceに限定し、追従後BE検証/統合標準生成は未実施。
 - 追従後API composableの既存5契約をfe-api-mainfollow1で測定しexit0、5tests/0failures/0errors/0skipped。XML SHA256 `026951412bf4833c0065f14e610e2b43cf6c6f52bea2d6a11bd5fa355c301699`、stdio SHA256 `6277594062f46c21880d21a7a9839c5f310bd7ef043c9f169301d9d450d2fcd5`。原5 GREENとは別保存し、型チェック/実機の追加合格には数えない。
 
@@ -187,7 +188,7 @@ application.yml:54のopen-in-view=falseを実確認。同意のscopesはLAZYで�
 - `legacy-desk1e` は exit0、raw XML 3件/失敗0/エラー0/skipped0。稼働・解除・再読込復元を検証。XML SHA256 `27bf8827e6be7435d2c74535a16bae8db8bd63c461d2fe65a8526d61b91b021c`、stdio SHA256 `3e4bef092d9f1e99cd47ffc0ecd376cb6282a4a867a3312fffed1072c536794a`。既存一覧・空は1cの実観測、headingは1dのraw成功として区別し、全6件の単一green XMLとは表記しない。
 - `real-ui16` は1件/失敗1/エラー0/skipped0。両管理画面拒否まで到達したが、権限照会・follow状態200を業務漏洩と数えた過剰assertが失敗。原XMLを保持し、対象を組合の同意一覧と代理入力履歴の2APIへ限定。foreign.id/slug/queryで収集するためown復帰200は越境に数えない。
 - `real-ui17` は exit0、1件/失敗0/エラー0/skipped0、suite191.962146秒。DP own498の4同意→未所属499のhub導線無し→同意/履歴直URLの拒否alert、カード無し、空表示との区別、foreign候補無し、own候補選択で復帰を実UIで確認。foreign業務API成功0（権限照会200のみ）をsafe proofに保存。XML SHA256 `8745df7869eabe4e1135b9d61730d4b549bec72bd05f1d5876c6b6278e3b395d`、stdio SHA256 `028ae9875283655777853c882e9e39331c3d7fe3b89a75a164d15231581dab9a`。拒否画像2枚を実閲覧、両cleanup段完了。
-- 対象test2ファイルlint exit0。画面本体a830固定。依存CMP-261003-0122のSurvey主体修正、本人の業務行が正しい実操作・保存済履歴表示、紙同意2の撤回と撤回後履歴保持、3独立住民、最新main追従、最終検分/CIは未達。Survey199は未回答、紙同意2は未撤回のまま。
+- 対象test2ファイルlint exit0。画面本体a830固定。依存CMP-261003-1020のSurvey主体修正、本人の業務行が正しい実操作・保存済履歴表示、紙同意2の撤回と撤回後履歴保持、3独立住民、最新main追従、最終検分/CIは未達。Survey199は未回答、紙同意2は未撤回のまま。
 
 # 2026-10-03 Desk回帰・他テナント試練の保全checkpoint
 
