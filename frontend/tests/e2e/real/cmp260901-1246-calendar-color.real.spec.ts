@@ -270,16 +270,24 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
         const denied = page.waitForResponse(response => response.request().method() === 'GET' && new URL(response.url()).pathname === teamPath)
         const childDenied = index === 1
           ? page.waitForResponse(response => response.request().method() === 'GET' && new URL(response.url()).pathname === todoPath) : undefined
+        const permissions = index === 1
+          ? page.waitForResponse(response => response.request().method() === 'GET' && new URL(response.url()).pathname === `${teamPath}/me/permissions`) : undefined
         await page.goto(`/teams/${known.slug}/todos/${known.todoId}`)
         await waitForHydration(page)
         const parentResponse = await denied
         let childUiStatus: number | null = null
         if (childDenied) {
           expect(parentResponse.status(), 'SYSTEM_ADMINは親チームvisibilityを閲覧できる').toBe(200)
-          childUiStatus = (await childDenied).status()
+          const childResponse = await childDenied
+          childUiStatus = childResponse.status()
           expect(childUiStatus, 'SYSでも画面のTODO GETは直接membership必須').toBe(403)
           await expect(page.getByText('TODOの取得に失敗しました', { exact: true })).toBeVisible()
           expect(childRequests.length, '親閲覧許可後に子TODO GETが実発行される').toBeGreaterThan(0)
+          expect(await childResponse.finished()).toBeNull()
+          const permissionResponse = await permissions!
+          expect(permissionResponse.status(), 'SYSの既存権限取得は成功する').toBe(200)
+          expect(await permissionResponse.finished()).toBeNull()
+          await expect(page.locator('.p-skeleton').filter({ visible: true })).toHaveCount(0)
         }
         else {
           expect([403, 404], '通常非所属者は親チーム取得が拒否される').toContain(parentResponse.status())
@@ -288,6 +296,7 @@ test.describe('CMP-260901-1246 スコープ自動色の実機', () => {
           await expect(page.locator('body')).not.toContainText(run)
           expect(childRequests, '親取得拒否により子TODO GETは発行されない').toHaveLength(0)
         }
+        await expect(page.locator('body > div[class~="z-[9998]"]')).toHaveCount(0)
         await expect(page.getByText(known.todoTitle!, { exact: true })).toHaveCount(0)
         await expect(page.getByText('担当者', { exact: true })).toHaveCount(0)
         await evidence(page, info, `${actor}-直接URLの拒否境界`)
