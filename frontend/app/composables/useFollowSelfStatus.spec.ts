@@ -1,0 +1,211 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { FollowStatusApi } from './useFollowSelfStatus'
+
+const handleApiErrorMock = vi.fn()
+const notificationSuccessMock = vi.fn()
+const notificationErrorMock = vi.fn()
+
+vi.mock('~/composables/useErrorHandler', () => ({
+  useErrorHandler: () => ({ handleApiError: handleApiErrorMock, getFieldErrors: () => ({}) }),
+}))
+vi.mock('~/composables/useNotification', () => ({
+  useNotification: () => ({ success: notificationSuccessMock, error: notificationErrorMock }),
+}))
+vi.mock('#app', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>()
+  return { ...actual, useNuxtApp: () => ({ $i18n: { t: (key: string) => key } }) }
+})
+
+const { useFollowSelfStatus } = await import('./useFollowSelfStatus')
+
+function makeApi(overrides: Partial<FollowStatusApi> = {}): FollowStatusApi {
+  return {
+    follow: vi.fn().mockResolvedValue({}),
+    unfollow: vi.fn().mockResolvedValue({}),
+    getStatus: vi.fn().mockResolvedValue({ data: { status: 'NONE' } }),
+    ...overrides,
+  } as FollowStatusApi
+}
+
+/**
+ * `useFollowSelfStatus` の fail-close 検証（CMP-261001-0835）。
+ *
+ * 是正前の旧実装（useOrgDetail.ts / pages/teams/[slug].vue）は
+ * - `if (roleName.value) return` で SUPPORTER ロール自身の状態取得をスキップしていた
+ *   （AC-1/AC-5）
+ * - 取得失敗を `NONE` に潰していた（AC-6）
+ * という2つの fail-open を抱えていた。本 composable はそれを `useJoinRequestSelfStatus`
+ * と同型の fail-close パターンで是正する。
+ */
+describe('useFollowSelfStatus', () => {
+  beforeEach(() => {
+    handleApiErrorMock.mockReset()
+    notificationSuccessMock.mockReset()
+    notificationErrorMock.mockReset()
+  })
+
+  it('初期値は UNKNOWN', () => {
+    const { followStatus } = useFollowSelfStatus(makeApi())
+    expect(followStatus.value).toBe('UNKNOWN')
+  })
+
+  // AC-5: ロールの有無に関係なく常に呼ばれる（呼び出し元は roleName でガードしない）。
+  it('取得中は LOADING を経由し、成功すると BE の状態になる', async () => {
+    let resolveFn: (value: unknown) => void = () => {}
+    const api = makeApi({
+      getStatus: vi.fn().mockReturnValue(new Promise((resolve) => { resolveFn = resolve })),
+    })
+    const { followStatus, fetchFollowStatus } = useFollowSelfStatus(api)
+
+    const promise = fetchFollowStatus('org-a')
+    expect(followStatus.value).toBe('LOADING')
+    resolveFn({ data: { status: 'APPROVED' } })
+    await promise
+
+    expect(followStatus.value).toBe('APPROVED')
+  })
+
+  // AC-6: 取得失敗時は既知の NONE に潰さず ERROR にする（fail-close）。
+  it('取得失敗時は NONE に潰さず ERROR にする', async () => {
+    const api = makeApi({ getStatus: vi.fn().mockRejectedValue(new Error('boom')) })
+    const { followStatus, fetchFollowStatus } = useFollowSelfStatus(api)
+
+    await fetchFollowStatus('org-a')
+
+    expect(followStatus.value).toBe('ERROR')
+    expect(followStatus.value).not.toBe('NONE')
+    expect(handleApiErrorMock).toHaveBeenCalled()
+  })
+
+  // AC-6: 既知の APPROVED/PENDING を失敗で NONE に変えない（同一スコープの再取得失敗）。
+  it('既知の APPROVED を再取得失敗で NONE に変えない', async () => {
+    const api = makeApi({
+      getStatus: vi.fn()
+        .mockResolvedValueOnce({ data: { status: 'APPROVED' } })
+        .mockRejectedValueOnce(new Error('boom')),
+    })
+    const { followStatus, fetchFollowStatus } = useFollowSelfStatus(api)
+
+    await fetchFollowStatus('org-a')
+    expect(followStatus.value).toBe('APPROVED')
+
+    await fetchFollowStatus('org-a')
+    expect(followStatus.value).toBe('ERROR')
+    expect(followStatus.value).not.toBe('NONE')
+  })
+
+  it('旧スコープの遅い応答が新スコープの状態を上書きしない', async () => {
+    let resolveOld: (value: unknown) => void = () => {}
+    const api = makeApi({
+      getStatus: vi.fn()
+        .mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve }))
+        .mockResolvedValueOnce({ data: { status: 'NONE' } }),
+    })
+    const { followStatus, fetchFollowStatus } = useFollowSelfStatus(api)
+
+    const oldPromise = fetchFollowStatus('org-a')
+    await fetchFollowStatus('org-b')
+    expect(followStatus.value).toBe('NONE')
+
+    resolveOld({ data: { status: 'APPROVED' } })
+    await oldPromise
+
+    expect(followStatus.value).toBe('NONE')
+  })
+
+  it('サポーター申請に成功すると BE の状態が反映され、成功通知が出る', async () => {
+    const api = makeApi({ getStatus: vi.fn().mockResolvedValue({ data: { status: 'APPROVED' } }) })
+    const { followStatus, applySupporter } = useFollowSelfStatus(api)
+
+    await applySupporter('org-a')
+
+    expect(followStatus.value).toBe('APPROVED')
+    expect(api.follow).toHaveBeenCalledWith('org-a')
+    expect(notificationSuccessMock).toHaveBeenCalled()
+  })
+
+  it('サポーター申請に失敗してもエラー通知のみで状態は変わらない', async () => {
+    const api = makeApi({ follow: vi.fn().mockRejectedValue(new Error('boom')) })
+    const { followStatus, applySupporter } = useFollowSelfStatus(api)
+
+    await applySupporter('org-a')
+
+    expect(followStatus.value).toBe('UNKNOWN')
+    expect(handleApiErrorMock).toHaveBeenCalled()
+  })
+
+  // AC-7: 解除成功後は followStatus=NONE にしてから reloadPermissions を呼ぶ。
+  it('AC-7: 解除成功時は followStatus=NONE になり、権限再取得コールバックが呼ばれる', async () => {
+    const api = makeApi()
+    const reloadPermissions = vi.fn().mockResolvedValue({ ok: true })
+    const { followStatus, followPermissionSyncError, cancelSupporter } = useFollowSelfStatus(api)
+
+    await cancelSupporter('org-a', reloadPermissions)
+
+    expect(api.unfollow).toHaveBeenCalledWith('org-a')
+    expect(followStatus.value).toBe('NONE')
+    expect(followPermissionSyncError.value).toBe(false)
+    expect(reloadPermissions).toHaveBeenCalledTimes(1)
+    expect(notificationSuccessMock).toHaveBeenCalled()
+  })
+
+  // AC-8: 解除 API 自体の失敗はエラー通知のみで、followStatus は変更しない。
+  it('AC-8: 解除 API 失敗時はエラー通知のみで followStatus を変えない', async () => {
+    const api = makeApi({
+      getStatus: vi.fn().mockResolvedValue({ data: { status: 'APPROVED' } }),
+      unfollow: vi.fn().mockRejectedValue(new Error('boom')),
+    })
+    const reloadPermissions = vi.fn().mockResolvedValue({ ok: true })
+    const { followStatus, fetchFollowStatus, cancelSupporter } = useFollowSelfStatus(api)
+    await fetchFollowStatus('org-a')
+    expect(followStatus.value).toBe('APPROVED')
+
+    await cancelSupporter('org-a', reloadPermissions)
+
+    expect(followStatus.value).toBe('APPROVED')
+    expect(handleApiErrorMock).toHaveBeenCalled()
+    expect(reloadPermissions).not.toHaveBeenCalled()
+  })
+
+  // AC-9: 解除成功・権限再取得失敗時は、解除成功の通知とは別に同期失敗を通知し、
+  // followPermissionSyncError を立てる（未所属確定として扱わない）。
+  it('AC-9: 解除成功・権限再取得失敗時は同期失敗フラグを立て、別通知を出す', async () => {
+    const api = makeApi()
+    const reloadPermissions = vi.fn().mockResolvedValue({ ok: false, error: new Error('reload failed') })
+    const { followStatus, followPermissionSyncError, cancelSupporter } = useFollowSelfStatus(api)
+
+    await cancelSupporter('org-a', reloadPermissions)
+
+    expect(followStatus.value).toBe('NONE')
+    expect(followPermissionSyncError.value).toBe(true)
+    expect(notificationSuccessMock).toHaveBeenCalled() // 解除成功通知
+    expect(notificationErrorMock).toHaveBeenCalled() // 同期失敗通知（別通知）
+  })
+
+  // AC-9: 権限再取得のみの再試行導線。
+  it('AC-9: retryFollowPermissionSync が成功すればフラグが下りる', async () => {
+    const api = makeApi()
+    const failOnce = vi.fn().mockResolvedValue({ ok: false, error: new Error('x') })
+    const { followPermissionSyncError, cancelSupporter, retryFollowPermissionSync } = useFollowSelfStatus(api)
+    await cancelSupporter('org-a', failOnce)
+    expect(followPermissionSyncError.value).toBe(true)
+
+    const succeed = vi.fn().mockResolvedValue({ ok: true })
+    await retryFollowPermissionSync(succeed)
+
+    expect(followPermissionSyncError.value).toBe(false)
+  })
+
+  it('AC-9: retryFollowPermissionSync が失敗すればフラグが立ったまま再度通知する', async () => {
+    const api = makeApi()
+    const failOnce = vi.fn().mockResolvedValue({ ok: false, error: new Error('x') })
+    const { followPermissionSyncError, cancelSupporter, retryFollowPermissionSync } = useFollowSelfStatus(api)
+    await cancelSupporter('org-a', failOnce)
+    notificationErrorMock.mockReset()
+
+    await retryFollowPermissionSync(failOnce)
+
+    expect(followPermissionSyncError.value).toBe(true)
+    expect(notificationErrorMock).toHaveBeenCalled()
+  })
+})

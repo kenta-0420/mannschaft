@@ -1769,7 +1769,10 @@
       "back_to_dashboard": "Back to dashboard",
       "retry": "Retry",
       "slow_loading": "Loading is taking longer than expected",
-      "join_request_applied": "参加申請を送信しました"
+      "join_request_applied": "参加申請を送信しました",
+      "follow_fetch_error": "Could not get follow status",
+      "follow_permission_sync_error_title": "Failed to refresh permissions",
+      "follow_permission_sync_error_body": "You stopped following, but refreshing your permissions failed. Please retry."
     },
     "unsavedChanges": {
       "title": "Unsaved changes",
@@ -2371,7 +2374,8 @@
     "action": {
       "leave_confirm_title": "Leave team",
       "leave_confirm_body": "Are you sure you want to leave this team? This cannot be undone.",
-      "left": "Left the team"
+      "left": "Left the team",
+      "leave_button": "Leave team"
     }
   },
   "orgShell": {
@@ -2389,7 +2393,8 @@
     "action": {
       "leave_confirm_title": "Leave organization",
       "leave_confirm_body": "Are you sure you want to leave this organization? This cannot be undone.",
-      "left": "Left the organization"
+      "left": "Left the organization",
+      "leave_button": "Leave organization"
     }
   },
   "blog_guide": {
