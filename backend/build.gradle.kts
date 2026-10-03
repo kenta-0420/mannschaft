@@ -321,6 +321,9 @@ object ShardAssignment {
 class ShardCoverageClassFile(val path: String, val topLevelFqcn: String)
 
 tasks.withType<Test> {
+    // Spring TestContext の既定キャッシュ上限 32 を 8 に抑え、長時間テストで保持する context 数を制限する。
+    systemProperty("spring.test.context.cache.maxSize", "8")
+
     // 通常スイートは従来どおり JST 固定。CMP-023 の非JST CIだけが
     // -Ptest.timezone=America/Los_Angeles で明示的に上書きする。
     // System.getProperty("user.timezone") では Gradle JVM 側の値を拾ってしまうため、
