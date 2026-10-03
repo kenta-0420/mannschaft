@@ -46,6 +46,7 @@ type Schedule = {
   id: number
   teamId: number
   content: { title: string }
+  period: { startDate: string; endDate: string }
   audit: { createdBy: number }
   status: { status: string; publishedAt: string | null }
 }
@@ -56,12 +57,105 @@ type Team = {
   visibility: { visibility: string }
 }
 type Position = { id: number; teamId: number; name: string }
+type DateSlot = { id: number; scheduleId: number; time: { slotDate: string } }
 
 test.use({
   storageState: undefined,
   trace: 'off',
   screenshot: 'off',
   video: 'off',
+})
+
+test('LocalDate往復診断: 作成・独立GET・割当・正規公開遷移の日付を保存する', async ({ browserName }, info) => {
+  expect(browserName).toBe('chromium')
+  await requireIsolatedRuntime()
+  await withFixture(async (owner, member, fixture) => {
+    const observations: { stage: string; dates: string[] }[] = []
+    const scheduleDates = (stage: string, value: Schedule): void => {
+      observations.push({
+        stage,
+        dates: [value.period.startDate, value.period.endDate],
+      })
+    }
+    const slotDate = (stage: string, value: DateSlot): void => {
+      observations.push({ stage, dates: [value.time.slotDate] })
+    }
+    await withCleanup(
+      async () => {
+        await fixture.createTeam()
+        await fixture.joinMember()
+        const position = await fixture.position('date-member-only')
+        const schedule = await fixture.schedule('date-roundtrip')
+        scheduleDates('schedule-create-return', schedule)
+        const getSchedule = async (): Promise<Schedule> =>
+          data<Schedule>(owner, 'GET', `/shifts/schedules/${schedule.id}`)
+        scheduleDates('schedule-create-get', await getSchedule())
+        const slot = await data<DateSlot>(
+          owner,
+          'POST',
+          `/shifts/schedules/${schedule.id}/slots`,
+          201,
+          {
+            slotDate: fixture.day,
+            startTime: '08:30:00',
+            endTime: '10:00:00',
+            positionId: position.id,
+            requiredCount: 1,
+            note: null,
+          },
+        )
+        expect(slot.scheduleId).toBe(schedule.id)
+        slotDate('slot-create-return', slot)
+        const getSlot = async (): Promise<DateSlot> => {
+          const slots = await data<DateSlot[]>(
+            owner,
+            'GET',
+            `/shifts/schedules/${schedule.id}/slots`,
+          )
+          const ownSlot = slots.find((value) => value.id === slot.id)
+          if (!ownSlot || ownSlot.scheduleId !== schedule.id)
+            throw new Error('専用slot照合失敗（本文非出力）')
+          return ownSlot
+        }
+        slotDate('slot-create-get', await getSlot())
+        expect(
+          (
+            await api(owner, 'PATCH', `/shifts/slots/${slot.id}/assignments`, {
+              addUserIds: [member.me.id],
+              removeUserIds: [],
+              slotVersion: 0,
+            })
+          ).status(),
+        ).toBe(200)
+        slotDate('slot-assign-get', await getSlot())
+        for (const status of ['COLLECTING', 'ADJUSTING', 'PUBLISHED']) {
+          const actual = await data<Schedule>(
+            owner,
+            'POST',
+            `/shifts/schedules/${schedule.id}/transition?status=${status}`,
+          )
+          expect(actual.status.status).toBe(status)
+          if (status === 'PUBLISHED')
+            expect(actual.status.publishedAt).not.toBeNull()
+          scheduleDates(`schedule-${status}-return`, actual)
+          scheduleDates(`schedule-${status}-get`, await getSchedule())
+        }
+        // 全段の日付だけを採取してから本来の不変条件を判定する。
+        // 差があっても期待値を実出力に合わせず、この診断はREDにする。
+        for (const observation of observations)
+          for (const date of observation.dates)
+            expect(date, observation.stage).toBe(fixture.day)
+      },
+      async () => {
+        const folder = info.outputPath('date-only')
+        await mkdir(folder, { recursive: true })
+        await writeFile(
+          path.join(folder, 'roundtrip.json'),
+          JSON.stringify({ expectedDay: fixture.day, observations }, null, 2),
+        )
+      },
+    )
+  })
 })
 
 /** リクエスト例外にAuthorization/認証本文を含めない。アサートはstatusだけを出す。 */

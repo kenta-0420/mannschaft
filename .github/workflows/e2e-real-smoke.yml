@@ -270,7 +270,7 @@ jobs:
         run: >-
           npx playwright test
           'cmp260903-0656-shift-pdf.real.spec.ts'
-          --project=chromium-real --workers=1 --retries=0 --trace=off
+          --project=chromium-real --workers=1 --retries=0 --trace=off --grep='LocalDate往復診断'
 
       # storageState・Cookie・トークンを含む .auth は成果物へ含めない。
       - name: Upload browser evidence
