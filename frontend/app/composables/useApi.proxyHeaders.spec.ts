@@ -1,20 +1,34 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const captured = vi.hoisted(() => ({ onRequest: undefined as undefined | ((context: { options: { headers?: Headers } }) => void) }))
+const fixture = vi.hoisted(() => ({
+  auth: { accessToken: null as string | null, isAuthenticated: true },
+  desk: { isPinned: false, pinnedSubjectUserId: 90245, pinnedConsentId: 2,
+    inputSource: 'PAPER_FORM', originalStorageLocation: '' },
+  guardian: { isActingAs: false, activeChild: { childUserId: 17 } },
+  impersonation: { isImpersonating: false, targetUserId: 19 },
+  onRequest: undefined as undefined | ((context: { options: { headers?: Headers } }) => void),
+}))
 vi.mock('ofetch', () => ({ ofetch: { create: vi.fn((options) => {
-  captured.onRequest = options.onRequest
+  fixture.onRequest = options.onRequest
   return vi.fn()
 }) } }))
 vi.mock('~/composables/useApiBaseUrl', () => ({ resolveApiBaseUrl: () => 'http://localhost:8081' }))
+// 標準Nuxt変換のauto-importも、同じ境界fixtureへ束縛する。無関係なChat/DOM依存は読み込まない。
+vi.mock('~/stores/useAuthStore', () => ({ useAuthStore: () => fixture.auth }))
+vi.mock('~/stores/useProxyDeskStore', () => ({ useProxyDeskStore: () => fixture.desk }))
+vi.mock('~/stores/useGuardianshipSwitchStore', () => ({ useGuardianshipSwitchStore: () => fixture.guardian }))
+vi.mock('~/stores/useAdminImpersonationStore', () => ({ useAdminImpersonationStore: () => fixture.impersonation }))
+vi.mock('~/stores/usePaywallStore', () => ({ usePaywallStore: () => ({ open: vi.fn() }) }))
+vi.mock('~/composables/useErrorReport', () => ({ useErrorReport: () => ({}) }))
+vi.mock('#app/nuxt', () => ({
+  useRuntimeConfig: () => ({ public: {} }),
+  useNuxtApp: () => ({ $i18n: { t: (key: string) => key } }),
+}))
 const { useApi } = await import('./useApi')
 
 describe('Cookie認証と代理入力ヘッダーの実生成境界', () => {
-  const auth = { accessToken: null as string | null, isAuthenticated: true }
-  const desk = { isPinned: false, pinnedSubjectUserId: 90245, pinnedConsentId: 2,
-    inputSource: 'PAPER_FORM', originalStorageLocation: '' }
-  const guardian = { isActingAs: false, activeChild: { childUserId: 17 } }
-  const impersonation = { isImpersonating: false, targetUserId: 19 }
+  const { auth, desk, guardian, impersonation } = fixture
 
   beforeEach(() => {
     auth.accessToken = null
@@ -29,14 +43,14 @@ describe('Cookie認証と代理入力ヘッダーの実生成境界', () => {
     vi.stubGlobal('useAdminImpersonationStore', () => impersonation)
     vi.stubGlobal('useNuxtApp', () => ({ $i18n: { t: (key: string) => key } }))
     vi.stubGlobal('useErrorReport', () => ({}))
-    captured.onRequest = undefined
+    fixture.onRequest = undefined
   })
   afterEach(() => vi.unstubAllGlobals())
 
   function generate(initialHeaders?: Headers) {
     useApi()
     const options: { headers?: Headers } = { headers: initialHeaders }
-    captured.onRequest!({ options })
+    fixture.onRequest!({ options })
     return new Headers(options.headers)
   }
 
