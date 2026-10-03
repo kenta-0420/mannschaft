@@ -388,16 +388,25 @@ class SchoolAttendanceRegistrationIntegrityIT extends SchoolAttendanceAuthzFixtu
         assertThat(rollCallEvents()).isEqualTo(eventsBefore);
     }
 
-    @ParameterizedTest(name = "AC-17 entries 200 件は DTO 検証を通る route={0}")
+    @ParameterizedTest(name = "AC-17 entries 200 件は DTO 検証と認可を通り在籍確認で落ちる route={0}")
     @ValueSource(ints = {0, 1})
-    @DisplayName("AC-17: 互いに異なる 200 件ちょうどは entries のフィールドエラーにならない（後段の在籍エラー等は可）")
+    @DisplayName("AC-17: 互いに異なる 200 件ちょうどは DTO 検証・認可を通り、在籍確認（SCHOOL_STUDENT_NOT_ENROLLED・400）で落ちる")
     void entriesが200件ちょうどはDTO検証を通る(int route) throws Exception {
+        long rowsBefore = registrationRows();
+        long eventsBefore = rollCallEvents();
+
         auth(Actor.HOMEROOM);
         MvcResult result = mockMvc.perform(post(ROUTES[route], teamAId)
                         .contentType(MediaType.APPLICATION_JSON).content(json(distinctEntriesBody(200)))).andReturn();
 
-        assertThat(fieldErrorNames(errorOf(result)))
-                .as("200 件は @Size(max=200) に違反しない").noneMatch(f -> f.startsWith("entries"));
+        assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        com.fasterxml.jackson.databind.JsonNode error = errorOf(result);
+        assertThat(error.path("code").asText()).as("DTO 検証・認可は通過し、在籍確認で落ちた")
+                .isEqualTo("SCHOOL_STUDENT_NOT_ENROLLED");
+        assertThat(fieldErrorNames(error)).as("200 件は @Size(max=200) に違反しない")
+                .noneMatch(f -> f.startsWith("entries"));
+        assertThat(registrationRows()).as("在籍エラーでは 1 行も作らない").isEqualTo(rowsBefore);
+        assertThat(rollCallEvents()).isEqualTo(eventsBefore);
     }
 
     @ParameterizedTest(name = "AC-17 同一生徒の重複は 400 route={0}")
