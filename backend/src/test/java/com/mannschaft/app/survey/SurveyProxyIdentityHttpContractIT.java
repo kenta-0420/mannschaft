@@ -389,6 +389,30 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"ADMIN", "DEPUTY_ADMIN", "descendant"})
+    void 実体組合を閲覧できる管理資格のみ又は配下所属は同意範囲不一致の403を保持する(String qualification) throws Exception {
+        inTx(() -> {
+            em.createNativeQuery("DELETE FROM user_roles WHERE user_id = :uid AND organization_id = :oid")
+                    .setParameter("uid", actor).setParameter("oid", foreignOrg.getId()).executeUpdate();
+            em.createNativeQuery("DELETE FROM memberships WHERE user_id = :uid AND scope_type = 'ORGANIZATION' AND scope_id = :oid")
+                    .setParameter("uid", actor).setParameter("oid", foreignOrg.getId()).executeUpdate();
+            if ("descendant".equals(qualification)) {
+                affiliations.save(TeamOrgMembershipEntity.builder().teamId(team.getId()).organizationId(foreignOrg.getId())
+                        .status(TeamOrgMembershipEntity.Status.ACTIVE).invitedAt(LocalDateTime.now()).build());
+            } else {
+                MembershipTestHelper.insertUserRole(em, actor, qualification, null, foreignOrg.getId());
+            }
+            em.createNativeQuery("UPDATE surveys SET scope_id = :oid WHERE id = :sid")
+                    .setParameter("oid", foreignOrg.getId()).setParameter("sid", survey.getId()).executeUpdate();
+            return null;
+        });
+        seedAnswer(subject, "同意範囲外の本人の回答");
+        var before = snapshot();
+        get(true).andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value(CommonErrorCode.COMMON_002.getCode()));
+        assertThat(snapshot()).isEqualTo(before);
+    }
+
+    @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void チームは同意組合へ有効加盟している場合だけ代理回答できる(boolean active) throws Exception {
         inTx(() -> {
