@@ -59,7 +59,6 @@ class ArchUnitFreezeStoreIntegrityTest {
     private static final Path STORE_DIR =
         Paths.get("src", "test", "resources", "archunit_store");
 
-    private static final Path STORED_RULES_FILE = STORE_DIR.resolve("stored.rules");
 
     /**
      * 認可番人ストア（Wave4）の期待行数。
@@ -876,7 +875,7 @@ class ArchUnitFreezeStoreIntegrityTest {
     private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1938;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
-    private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
+    static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
         new FrozenStoreExpectation(
             "public controller endpoints must have an authorization signal (Wave4)",
             "9ed4737d-c74f-4374-923e-4663d3c9e256",
@@ -906,17 +905,22 @@ class ArchUnitFreezeStoreIntegrityTest {
     @Test
     @DisplayName("stored.rulesのルール説明→ストアファイルUUID対応がずれていない（UUID取り違え検知）")
     void ストアUUID対応の裏取り() throws IOException {
-        assertTrue(Files.isRegularFile(STORED_RULES_FILE),
-            "stored.rules が見つからない: " + STORED_RULES_FILE.toAbsolutePath()
+        verifyStoreMapping(STORE_DIR, EXPECTATIONS);
+    }
+
+    static void verifyStoreMapping(Path storeDir, List<FrozenStoreExpectation> expectations) throws IOException {
+        Path storedRulesFile = storeDir.resolve("stored.rules");
+        assertTrue(Files.isRegularFile(storedRulesFile),
+            "stored.rules が見つからない: " + storedRulesFile.toAbsolutePath()
                 + "（CWD=" + Paths.get("").toAbsolutePath() + "）");
 
         Properties storedRules = new Properties();
-        try (InputStream in = Files.newInputStream(STORED_RULES_FILE)) {
+        try (InputStream in = Files.newInputStream(storedRulesFile)) {
             storedRules.load(in);
         }
 
         List<String> mismatches = new ArrayList<>();
-        for (FrozenStoreExpectation expectation : EXPECTATIONS) {
+        for (FrozenStoreExpectation expectation : expectations) {
             String actualStoreFile = storedRules.getProperty(expectation.ruleDescription());
             if (actualStoreFile == null) {
                 mismatches.add(String.format(
@@ -943,13 +947,17 @@ class ArchUnitFreezeStoreIntegrityTest {
     @DisplayName("5つの凍結ストアの行数(=凍結された違反件数)が想定から不自然に増減していない"
         + "（--tests絞り込み実行によるストア破壊事故の検知）")
     void 凍結ストアの行数が期待値と一致する() throws IOException {
-        assertTrue(Files.isDirectory(STORE_DIR),
-            "ArchUnit 凍結ストアディレクトリが見つからない: " + STORE_DIR.toAbsolutePath()
+        verifyStoreCounts(STORE_DIR, EXPECTATIONS);
+    }
+
+    static void verifyStoreCounts(Path storeDir, List<FrozenStoreExpectation> expectations) throws IOException {
+        assertTrue(Files.isDirectory(storeDir),
+            "ArchUnit 凍結ストアディレクトリが見つからない: " + storeDir.toAbsolutePath()
                 + "（CWD=" + Paths.get("").toAbsolutePath() + "）");
 
         List<String> failures = new ArrayList<>();
-        for (FrozenStoreExpectation expectation : EXPECTATIONS) {
-            Path storeFile = STORE_DIR.resolve(expectation.storeFileName());
+        for (FrozenStoreExpectation expectation : expectations) {
+            Path storeFile = storeDir.resolve(expectation.storeFileName());
             assertTrue(Files.isRegularFile(storeFile),
                 "凍結ストアファイルが見つからない: " + storeFile.toAbsolutePath()
                     + "（ルール: " + expectation.ruleDescription() + "）");
@@ -1010,7 +1018,7 @@ class ArchUnitFreezeStoreIntegrityTest {
     }
 
     /** ルール説明・凍結ストアファイル名・期待行数の1組。 */
-    private record FrozenStoreExpectation(
+    record FrozenStoreExpectation(
         String ruleDescription, String storeFileName, int expectedLineCount) {
     }
 }
