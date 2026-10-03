@@ -66,21 +66,27 @@ jobs:
             org.eclipse.mat.api:overview \
             org.eclipse.mat.api:top_components
 
-      - name: Collect reports
+      - name: Collect reports (zips only, unpack, drop huge indexes)
         run: |
           set -eux
           mkdir -p report
-          HPROF_BASE=$(basename $(find . -maxdepth 1 -name '*.hprof' | head -1) .hprof)
-          find . -maxdepth 1 -iname "${HPROF_BASE}*" ! -iname '*.hprof' -exec cp -r {} report/ \;
+          # Only the 3 result zips -- do NOT sweep in *.index / .threads (multi-GB MAT working files)
+          for z in java_pid2912_Leak_Suspects.zip java_pid2912_System_Overview.zip java_pid2912_Top_Components.zip; do
+            if [ -f "$z" ]; then
+              mkdir -p "report/${z%.zip}"
+              unzip -q "$z" -d "report/${z%.zip}"
+            fi
+          done
+          du -sh report
           find report -type f | sort
 
       - name: Extract text summaries from report HTML
         run: |
           set -eux
           python3 - <<'PYEOF'
-          import glob, os, re, html
+          import glob, re, html
 
-          def extract_text(path, limit=8000):
+          def extract_text(path, limit=12000):
               with open(path, encoding='utf-8', errors='ignore') as f:
                   data = f.read()
               text = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', data, flags=re.S | re.I)
@@ -90,18 +96,18 @@ jobs:
               text = re.sub(r'\n\s*\n+', '\n', text)
               return text.strip()[:limit]
 
-          for pattern, label in [
-              ('report/**/*dominator*.html', 'DOMINATOR TREE'),
-              ('report/**/*Leak*Suspect*.html', 'LEAK SUSPECTS'),
-              ('report/**/*top_components*.html', 'TOP COMPONENTS'),
-              ('report/**/*overview*.html', 'OVERVIEW'),
-              ('report/**/*histogram*.html', 'HISTOGRAM'),
-          ]:
-              files = glob.glob(pattern, recursive=True)
-              for fp in files:
-                  print(f"\n===== {label}: {fp} =====")
-                  print(extract_text(fp))
+          files = sorted(glob.glob('report/**/*.html', recursive=True))
+          print(f"Found {len(files)} html files")
+          for fp in files:
+              print(f"\n===== {fp} =====")
+              print(extract_text(fp))
           PYEOF
+
+      - name: Remove huge MAT working files before upload (safety net)
+        run: |
+          set -eux
+          rm -f ./*.hprof ./*.index ./*.threads
+          du -sh report || true
 
       - name: Show disk/mem after
         if: always()
