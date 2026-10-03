@@ -10,7 +10,7 @@ vi.mock('~/composables/useApiBaseUrl', () => ({ resolveApiBaseUrl: () => 'http:/
 const { useApi } = await import('./useApi')
 
 describe('Cookie認証と代理入力ヘッダーの実生成境界', () => {
-  const auth = { accessToken: null as string | null }
+  const auth = { accessToken: null as string | null, isAuthenticated: true }
   const desk = { isPinned: false, pinnedSubjectUserId: 90245, pinnedConsentId: 2,
     inputSource: 'PAPER_FORM', originalStorageLocation: '' }
   const guardian = { isActingAs: false, activeChild: { childUserId: 17 } }
@@ -18,6 +18,7 @@ describe('Cookie認証と代理入力ヘッダーの実生成境界', () => {
 
   beforeEach(() => {
     auth.accessToken = null
+    auth.isAuthenticated = true
     Object.assign(desk, { isPinned: false, originalStorageLocation: '' })
     guardian.isActingAs = false
     impersonation.isImpersonating = false
@@ -58,6 +59,18 @@ describe('Cookie認証と代理入力ヘッダーの実生成境界', () => {
     const headers = generate()
     expect(headers.get('X-Proxy-Original-Storage')).toBe(encodeURIComponent(desk.originalStorageLocation))
     expect(headers.get('X-Proxy-Original-Storage-Encoding')).toBe('uri-component')
+  })
+
+  it('ログアウト後は残った紙ピン留めをログインリクエストへ付けない', () => {
+    auth.isAuthenticated = false
+    desk.isPinned = true
+    desk.originalStorageLocation = '紙原本/控え.pdf'
+    const headers = generate()
+    for (const name of ['Authorization', 'X-Proxy-For-User-Id', 'X-Proxy-Consent-Id',
+      'X-Proxy-Input-Source', 'X-Proxy-Original-Storage', 'X-Proxy-Original-Storage-Encoding',
+      'X-Admin-Impersonate-User-Id']) {
+      expect(headers.has(name)).toBe(false)
+    }
   })
 
   it('通常本人のCookieリクエストへ代理・変身ヘッダーを付けない', () => {

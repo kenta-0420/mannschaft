@@ -296,12 +296,12 @@ export function useApi() {
     retryStatusCodes: [401],
 
     onRequest({ options }) {
-      // Cookie認証ではin-memory tokenがなくても、紙代理のピン留めヘッダーは必要。
-      if (authStore.accessToken || proxyDeskStore.isPinned) {
+      // Cookie認証ではin-memory tokenがなくても認証済みの紙代理ヘッダーは必要。
+      if (authStore.accessToken || (proxyDeskStore.isPinned && authStore.isAuthenticated)) {
         const headers = new Headers(options.headers)
         if (authStore.accessToken) headers.set('Authorization', `Bearer ${authStore.accessToken}`)
 
-        // 代理入力モードが有効な場合: 4ヘッダを自動付与
+        // 紙代理の4ヘッダーと、非ASCII原本名の転送markerを自動付与
         if (proxyDeskStore.isPinned) {
           headers.set('X-Proxy-For-User-Id', String(proxyDeskStore.pinnedSubjectUserId))
           headers.set('X-Proxy-Consent-Id', String(proxyDeskStore.pinnedConsentId))
