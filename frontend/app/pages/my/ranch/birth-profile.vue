@@ -8,6 +8,7 @@ const { t } = useI18n(); useHead({ title: t('ranch.diagnosisResults.birthStyle')
 const profileApi = useBirthProfile(); const diagnosis = useDiagnosisApi(); const ranch = useRanchState(); const result = ref<DiagnosisResult | null>(null); const { handleApiError } = useErrorHandler()
 const profile = ref<BirthProfile | null>(null); const confirmation = ref<BirthConfirmation | null>(null)
 const loading = ref(false); const failed = ref(false); const confirmed = ref(false)
+const assignmentAvailable = computed(() => ranch.state.value?.assignment?.availableMethods.includes('BIRTH_STYLE') ?? false)
 const { defineField, handleSubmit, resetForm, errors } = useForm({ validationSchema: toTypedSchema(z.object({ lastName: z.string().trim().min(1, t('ranch.birth.required')), firstName: z.string().trim().min(1, t('ranch.birth.required')), lastNameKana: z.string().trim().min(1, t('ranch.birth.required')), firstNameKana: z.string().trim().min(1, t('ranch.birth.required')), birthDate: z.date({ required_error: t('ranch.birth.required'), invalid_type_error: t('ranch.birth.required') }) })) })
 const [lastName] = defineField('lastName'); const [firstName] = defineField('firstName'); const [lastNameKana] = defineField('lastNameKana'); const [firstNameKana] = defineField('firstNameKana'); const [birthDate] = defineField('birthDate')
 function apply(value: BirthProfile) { profile.value = value; result.value = null; resetForm({ values: { lastName: value.lastName ?? '', firstName: value.firstName ?? '', lastNameKana: value.lastNameKana ?? '', firstNameKana: value.firstNameKana ?? '', birthDate: value.birthDate ? new Date(`${value.birthDate}T12:00:00`) : undefined } }); confirmation.value = null; confirmed.value = false }
@@ -67,8 +68,8 @@ onMounted(load)
   </SectionCard>
   <SectionCard v-if="result" :title="t('ranch.diagnosisResults.title')">
    <NuxtLink :to="`/my/ranch/results/${result.id}`" class="flex min-h-11 items-center text-primary">{{ t('ranch.diagnosisResults.title') }}</NuxtLink>
-   <p v-if="!result.mappingVersion">{{ t('ranch.assignment.mappingPending') }}</p>
-   <Button v-if="result.mappingVersion && ranch.state.value?.dinosaur?.stage === 'EGG'" class="min-h-11" :label="t('ranch.assignment.useResult')" @click="assign" />
+   <p v-if="!assignmentAvailable">{{ t('ranch.assignment.mappingPending') }}</p>
+   <Button v-if="assignmentAvailable && ranch.state.value?.dinosaur?.stage === 'EGG'" class="min-h-11" :label="t('ranch.assignment.useResult')" @click="assign" />
   </SectionCard>
  </div>
 </template>

@@ -9,6 +9,7 @@ async function assign() {
  const value = result.value; const version = ranch.state.value?.owner?.version; if (!value || !version || value.method !== 'DIAGNOSIS') return
  try { await ranch.act(() => ranch.api.assignment({ method: 'DIAGNOSIS', resultId: value.id, version })); await navigateTo('/my/ranch') } catch { message.value = t('ranch.command.failed') }
 }
+const assignmentAvailable = computed(() => !!result.value && !!ranch.state.value?.assignment?.availableMethods.includes(result.value.method))
 onMounted(load)
 </script>
 <template>
@@ -23,9 +24,9 @@ onMounted(load)
    <p v-if="result.numberSummary">{{ t('ranch.birth.numbers', { life: result.numberSummary.lifePathNumber, name: result.numberSummary.nameNumber }) }}</p>
    <ul v-if="result.axisDescriptions" class="space-y-2 my-3"><li v-for="(description,axis) in result.axisDescriptions" :key="axis">{{ description[locale] ?? description.ja }}</li></ul>
    <p>{{ t('ranch.diagnosisResults.avatarUnchanged') }}</p>
-   <p v-if="!result.mappingVersion" class="mt-3" role="status">{{ t('ranch.assignment.mappingPending') }}</p>
-   <Button v-if="result.method === 'DIAGNOSIS' && result.mappingVersion && ranch.state.value?.dinosaur?.stage === 'EGG'" class="mt-3 min-h-11" :label="t('ranch.assignment.useResult')" @click="assign" />
-   <NuxtLink v-if="result.method === 'BIRTH_STYLE' && result.mappingVersion && ranch.state.value?.dinosaur?.stage === 'EGG'" to="/my/ranch/birth-profile" class="flex min-h-11 items-center text-primary">{{ t('ranch.birth.reconfirm') }}</NuxtLink>
+   <p v-if="!assignmentAvailable" class="mt-3" role="status">{{ t('ranch.assignment.mappingPending') }}</p>
+   <Button v-if="result.method === 'DIAGNOSIS' && assignmentAvailable && ranch.state.value?.dinosaur?.stage === 'EGG'" class="mt-3 min-h-11" :label="t('ranch.assignment.useResult')" @click="assign" />
+   <NuxtLink v-if="result.method === 'BIRTH_STYLE' && assignmentAvailable && ranch.state.value?.dinosaur?.stage === 'EGG'" to="/my/ranch/birth-profile" class="flex min-h-11 items-center text-primary">{{ t('ranch.birth.reconfirm') }}</NuxtLink>
    <p role="status">{{ message }}</p>
   </SectionCard>
  </div>
