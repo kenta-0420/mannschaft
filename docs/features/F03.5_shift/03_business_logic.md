@@ -6,6 +6,20 @@
 
 ### シフトスケジュール作成・運用フロー
 
+手動ステータス遷移 API は、次の5遷移だけを許可する（CMP-260903-0658）。
+
+| 遷移元 | 許可される遷移先 |
+|---|---|
+| DRAFT | COLLECTING |
+| COLLECTING | ADJUSTING |
+| ADJUSTING | COLLECTING / PUBLISHED |
+| PUBLISHED | ARCHIVED |
+| ARCHIVED | なし |
+
+同じ状態への再遷移を含む他の20組は `SHIFT_012`（HTTP 409）で拒否する。
+拒否時は状態・バージョン・公開日時・公開者・関連変更依頼を更新せず、保存やイベント発行も行わない。
+既存の管理者認可と公開前の目視確認は維持する。
+
 ```
 1. 管理者がシフトスケジュールを作成（DRAFT）
    a. 期間（start_date / end_date）、期間種別（WEEKLY / MONTHLY / CUSTOM）を設定
