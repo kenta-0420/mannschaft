@@ -1769,7 +1769,10 @@
       "back_to_dashboard": "Zurück zum Dashboard",
       "retry": "Erneut versuchen",
       "slow_loading": "Das Laden dauert länger als erwartet",
-      "join_request_applied": "参加申請を送信しました"
+      "join_request_applied": "参加申請を送信しました",
+      "follow_fetch_error": "Follow-Status konnte nicht abgerufen werden",
+      "follow_permission_sync_error_title": "Aktualisierung der Berechtigungen fehlgeschlagen",
+      "follow_permission_sync_error_body": "Du folgst nicht mehr, aber die Aktualisierung deiner Berechtigungen ist fehlgeschlagen. Bitte versuche es erneut."
     },
     "unsavedChanges": {
       "title": "Ungespeicherte Änderungen",
@@ -2371,7 +2374,8 @@
     "action": {
       "leave_confirm_title": "Team verlassen",
       "leave_confirm_body": "Möchtest du dieses Team wirklich verlassen? Dies kann nicht rückgängig gemacht werden.",
-      "left": "Team verlassen"
+      "left": "Team verlassen",
+      "leave_button": "Team verlassen"
     }
   },
   "orgShell": {
@@ -2389,7 +2393,8 @@
     "action": {
       "leave_confirm_title": "Organisation verlassen",
       "leave_confirm_body": "Möchtest du diese Organisation wirklich verlassen? Dies kann nicht rückgängig gemacht werden.",
-      "left": "Organisation verlassen"
+      "left": "Organisation verlassen",
+      "leave_button": "Organisation verlassen"
     }
   },
   "blog_guide": {

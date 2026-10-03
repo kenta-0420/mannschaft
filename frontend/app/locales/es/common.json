@@ -1769,7 +1769,10 @@
       "back_to_dashboard": "Volver al panel",
       "retry": "Reintentar",
       "slow_loading": "La carga está tardando más de lo esperado",
-      "join_request_applied": "参加申請を送信しました"
+      "join_request_applied": "参加申請を送信しました",
+      "follow_fetch_error": "No se pudo obtener el estado de seguimiento",
+      "follow_permission_sync_error_title": "Error al actualizar los permisos",
+      "follow_permission_sync_error_body": "Dejaste de seguir, pero no se pudieron actualizar tus permisos. Inténtalo de nuevo."
     },
     "unsavedChanges": {
       "title": "Cambios sin guardar",
@@ -2371,7 +2374,8 @@
     "action": {
       "leave_confirm_title": "Salir del equipo",
       "leave_confirm_body": "¿Seguro que quieres salir de este equipo? No se puede deshacer.",
-      "left": "Has salido del equipo"
+      "left": "Has salido del equipo",
+      "leave_button": "Salir del equipo"
     }
   },
   "orgShell": {
@@ -2389,7 +2393,8 @@
     "action": {
       "leave_confirm_title": "Salir de la organización",
       "leave_confirm_body": "¿Seguro que quieres salir de esta organización? No se puede deshacer.",
-      "left": "Has salido de la organización"
+      "left": "Has salido de la organización",
+      "leave_button": "Salir de la organización"
     }
   },
   "blog_guide": {

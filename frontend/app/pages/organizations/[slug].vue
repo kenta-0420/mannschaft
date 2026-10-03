@@ -56,6 +56,7 @@ const {
   loading,
   followStatus,
   followLoading,
+  followPermissionSyncError,
   joinRequestStatus,
   joinRequestLoading,
   showCancelSupporterConfirm,
@@ -66,6 +67,7 @@ const {
   fetchFollowStatus,
   applySupporter,
   cancelSupporter,
+  retryFollowPermissionSync,
   fetchJoinRequestStatus,
   applyJoinRequest,
   leaveOrganization,
@@ -131,13 +133,28 @@ async function tryRedirectMovedSlug(): Promise<boolean> {
 /** 状態同期用の再取得（follow/leave 後など）。 */
 async function refresh() {
   await Promise.all([fetchOrg(), loadPermissions()])
-  await fetchFollowStatus(roleName)
+  await fetchFollowStatus()
   await fetchJoinRequestStatus(roleName)
 }
 
 /** 参加申請状態の再取得（ヘッダのエラー表示からの再試行導線）。 */
 async function retryJoinRequestStatus() {
   await fetchJoinRequestStatus(roleName)
+}
+
+/** フォロー状態取得エラー時の再試行導線（AC-6）。 */
+async function retryFollowStatus() {
+  await fetchFollowStatus()
+}
+
+/** フォロー解除（AC-7/AC-9: 成功後の権限再取得は loadPermissions を渡す）。 */
+async function handleCancelSupporter() {
+  await cancelSupporter(loadPermissions)
+}
+
+/** AC-9 の再試行導線: 権限再取得のみをやり直す。 */
+async function handleRetryFollowPermissionSync() {
+  await retryFollowPermissionSync(loadPermissions)
 }
 
 // =============================================================================
@@ -249,7 +266,7 @@ async function loadShellData() {
   await Promise.all([
     fetchOrgTeams(),
     isAdmin.value ? fetchPermissionGroups() : Promise.resolve(),
-    fetchFollowStatus(roleName),
+    fetchFollowStatus(),
     fetchJoinRequestStatus(roleName),
     fetchAncestors(),
     fetchChildren(true),
@@ -282,7 +299,7 @@ watch(isShellRoute, (shell) => {
 watch(orgSlug, () => {
   orgLoaded.value = false
   org.value = null
-  followStatus.value = 'NONE'
+  followStatus.value = 'UNKNOWN'
   joinRequestStatus.value = 'UNKNOWN'
   if (isShellRoute.value) void loadShellData()
 })
@@ -446,12 +463,15 @@ provideOrgShellContext({
             :is-admin-or-deputy="isAdminOrDeputy"
             :follow-status="followStatus"
             :follow-loading="followLoading"
+            :follow-permission-sync-error="followPermissionSyncError"
             :join-request-status="joinRequestStatus"
             :join-request-loading="joinRequestLoading"
             :ancestors="ancestors"
             @back="navigateTo('/dashboard')"
             @apply-supporter="applySupporter"
-            @cancel-supporter="cancelSupporter"
+            @cancel-supporter="handleCancelSupporter"
+            @retry-follow-status="retryFollowStatus"
+            @retry-follow-permission-sync="handleRetryFollowPermissionSync"
             @apply-join-request="applyJoinRequest"
             @retry-join-request-status="retryJoinRequestStatus"
             @show-cancel-confirm="showCancelSupporterConfirm = true"
@@ -497,7 +517,7 @@ provideOrgShellContext({
             :label="t('common.scopeShell.supporter_cancel_action')"
             severity="danger"
             :loading="followLoading"
-            @click="cancelSupporter"
+            @click="handleCancelSupporter"
           />
         </template>
       </Dialog>
