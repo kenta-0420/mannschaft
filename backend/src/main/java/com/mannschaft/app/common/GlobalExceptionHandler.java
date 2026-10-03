@@ -1895,19 +1895,8 @@ public class GlobalExceptionHandler {
             // PENALTY_SETTING_NOT_FOUND（RECRUITMENT_312）は throw 元が存在しない未使用定数のため対象外。
             Map.entry("RECRUITMENT_001", HttpStatus.NOT_FOUND),          // LISTING_NOT_FOUND
             Map.entry("RECRUITMENT_313", HttpStatus.NOT_FOUND),          // TEMPLATE_NOT_FOUND
-            // TEMPLATE_SCOPE_MISMATCH: createFromTemplate で他スコープのテンプレート ID を指した越境。
-            // 従来は本マップ未登録で Severity.WARN 既定の 400 に落ちていた（設計判断ではなく登録漏れ）。
-            // 不在（RECRUITMENT_313）が 404 なので、400 のままだと templateId の列挙で他チーム・
-            // 他組織のテンプレートの実在が判別できる（存在オラクル）。越境の存在秘匿で 404 固定。
-            Map.entry("RECRUITMENT_314", HttpStatus.NOT_FOUND),          // TEMPLATE_SCOPE_MISMATCH（越境の存在秘匿で 404）
             Map.entry("RECRUITMENT_309", HttpStatus.NOT_FOUND),          // NO_SHOW_RECORD_NOT_FOUND
             Map.entry("RECRUITMENT_310", HttpStatus.NOT_FOUND),          // PENALTY_NOT_FOUND
-            // RecruitmentNoShowService.dispute(): NO_SHOW 記録は findById で取得済み（存在確認後）で、
-            // 本人以外のレコードを操作しようとした場合に VISIBILITY_DENIED を throw する。
-            // 既定 400 のままだと「レコードは実在するが本人でない」ことが 404（不在）と区別できてしまい、
-            // recordId の列挙で他人の NO_SHOW 記録の存在を判別できる IDOR となるため、
-            // NOT_FOUND 系と同一の 404 に畳んで存在秘匿する。
-            Map.entry("RECRUITMENT_003", HttpStatus.NOT_FOUND),          // VISIBILITY_DENIED（本人以外の NO_SHOW 記録操作を存在秘匿）
             // RecruitmentListingService.getListing(): DRAFT 募集は作成者/スコープ ADMIN のみ閲覧可。
             // 対象は findOrThrow 済み（存在は前提）で、権限不足のみを理由に拒否するため 403（F00 の
             // 「NOT_FOUND→404, deny→403」規約と同型）。

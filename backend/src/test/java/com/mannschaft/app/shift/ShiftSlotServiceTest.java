@@ -1,6 +1,5 @@
 package com.mannschaft.app.shift;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.dto.BulkCreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
@@ -8,6 +7,7 @@ import com.mannschaft.app.shift.dto.ShiftSlotResponse;
 import com.mannschaft.app.shift.dto.SlotAssignmentPatchRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
+import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -27,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Clock;
 import java.time.Instant;
@@ -46,8 +47,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
- * {@link ShiftSlotService} の単体テスト。
+ * {@link ShiftSlotService}（tx 本体）の単体テスト。
  * シフト枠のCRUD・一括作成・シリアライズを検証する。
+ *
+ * <p>認可（per-scope・越境の 404 隠蔽・SYSTEM_ADMIN）は tx の外の {@code ShiftSlotFacade} へ移した
+ * （CMP-260923-0954 W6a）。その単体検証は {@code ShiftSlotFacadeTest}、応答契約は
+ * {@code ShiftScheduleSlotFacadeContractIT} が持つ。本クラスは tx 本体が認可に依存しないこと（Mock に認可クラスが無い）、
+ * 認可の後の tx の中の親スケジュールの読み直し（FOR UPDATE）と、対象リソースの不在コード（K5）を固定する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ShiftSlotService 単体テスト")
@@ -61,9 +67,6 @@ class ShiftSlotServiceTest {
 
     @Mock
     private ShiftScheduleRepository scheduleRepository;
-
-    @Mock
-    private AccessControlService accessControlService;
 
     @Mock
     private com.mannschaft.app.shift.repository.ShiftAssignmentRepository assignmentRepository;
@@ -84,27 +87,19 @@ class ShiftSlotServiceTest {
     private static final Long SCHEDULE_ID = 100L;
     private static final Long SLOT_ID = 200L;
     private static final Long POSITION_ID = 50L;
-    /** 操作者。本テストは認可の可否でなく CRUD 挙動の検証が目的のため SYSTEM_ADMIN で短絡させる */
+    /** 操作者（割当履歴の assigned_by に使う）。認可は Facade の責務で、本テストでは判定しない。 */
     private static final Long ACTOR = 999L;
 
     /**
-     * 認可を短絡させる（本テストの主眼は CRUD 挙動であり、per-scope 認可そのものは
-     * {@code ShiftSlotScopeContractIT} で実 DB 越しに検証する）。
+     * 親スケジュールが実在する体で応答する。
      *
-     * <p>{@code lenient()} なのは、存在しない ID のケースでは {@code findSlotOrThrow} が
-     * 認可判定より先に例外を投げ、本スタブが未使用になるため。</p>
-     *
-     * <p>{@code scheduleRepository} のスタブ（CMP-260917-1136）: {@code checkScheduleAdminAccess} /
-     * {@code checkScheduleReadAccess} は親スケジュールの生存確認（{@code resolveTeamId}）を
-     * SYSTEM_ADMIN 短絡より必ず先に行うようになったため、SYSTEM_ADMIN で短絡させる本テストでも
-     * スケジュールが実在する体で応答する必要がある（さもないと全ケースが
-     * SHIFT_SCHEDULE_NOT_FOUND で落ちる）。</p>
+     * <p>{@code lenient()} なのは、存在しない ID のケースでは親の読み直しより先に例外を投げ、本スタブが
+     * 未使用になるため。書き込みは tx の中で親を {@code findByIdForUpdate} で読み直す（認可の後・K6）。</p>
      */
     @BeforeEach
-    void setUpAuthz() {
+    void setUpParentSchedule() {
         lenient().when(wallClock.instant()).thenReturn(Instant.parse("2026-09-29T12:00:00Z"));
         lenient().when(wallClock.getZone()).thenReturn(ZoneId.of("Asia/Tokyo"));
-        lenient().when(accessControlService.isSystemAdmin(ACTOR)).thenReturn(true);
         lenient().when(scheduleRepository.findById(SCHEDULE_ID)).thenReturn(Optional.of(
                 com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder()
                         .teamId(1L)
@@ -150,7 +145,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            List<ShiftSlotResponse> result = shiftSlotService.listSlots(SCHEDULE_ID, ACTOR);
+            List<ShiftSlotResponse> result = shiftSlotService.listSlots(SCHEDULE_ID, true);
 
             // Then
             assertThat(result).hasSize(1);
@@ -173,7 +168,7 @@ class ShiftSlotServiceTest {
                     .willReturn(List.of(entity));
 
             // When
-            List<ShiftSlotResponse> result = shiftSlotService.listSlots(SCHEDULE_ID, ACTOR);
+            List<ShiftSlotResponse> result = shiftSlotService.listSlots(SCHEDULE_ID, true);
 
             // Then
             assertThat(result).hasSize(1);
@@ -182,40 +177,116 @@ class ShiftSlotServiceTest {
     }
 
     // ========================================
-    // getSlot
+    // scope 解決・不在コード（K5）・可視性の再判定
     // ========================================
 
     @Nested
-    @DisplayName("getSlot")
-    class GetSlot {
+    @DisplayName("scope 解決・不在コード・可視性")
+    class ScopeAndNotFoundCodes {
 
-        @Test
-        @DisplayName("シフト枠単体取得_正常_レスポンス返却")
-        void シフト枠単体取得_正常_レスポンス返却() {
-            // Given
-            ShiftSlotEntity entity = createSlotEntity();
-            given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(entity));
-            given(positionRepository.findById(POSITION_ID))
-                    .willReturn(Optional.of(createPositionEntity()));
+        private ShiftScheduleEntity schedule(ShiftScheduleStatus status, LocalDateTime publishedAt) {
+            ShiftScheduleEntity entity = ShiftScheduleEntity.builder()
+                    .teamId(1L).title("t").periodType(ShiftPeriodType.WEEKLY)
+                    .startDate(LocalDate.of(2026, 3, 1)).endDate(LocalDate.of(2026, 3, 7))
+                    .status(status).publishedAt(publishedAt).createdBy(ACTOR).build();
+            ReflectionTestUtils.setField(entity, "id", SCHEDULE_ID);
+            return entity;
+        }
 
-            // When
-            ShiftSlotResponse result = shiftSlotService.getSlot(SLOT_ID, ACTOR);
-
-            // Then
-            assertThat(result.getScheduleId()).isEqualTo(SCHEDULE_ID);
+        private void assertCode(Runnable action, ShiftErrorCode expected) {
+            assertThatThrownBy(action::run)
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode()).isEqualTo(expected));
         }
 
         @Test
-        @DisplayName("シフト枠単体取得_存在しない_BusinessException")
-        void シフト枠単体取得_存在しない_BusinessException() {
-            // Given
-            given(slotRepository.findById(SLOT_ID)).willReturn(Optional.empty());
+        @DisplayName("resolveScheduleScope_チームIDと公開状態を返す・不在は SHIFT_001")
+        void resolveScheduleScope() {
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(
+                    schedule(ShiftScheduleStatus.PUBLISHED, LocalDateTime.of(2026, 2, 20, 10, 0))));
+            var scope = shiftSlotService.resolveScheduleScope(SCHEDULE_ID);
+            assertThat(scope.teamId()).isEqualTo(1L);
+            assertThat(scope.isHidden()).isFalse();
 
-            // When & Then
-            assertThatThrownBy(() -> shiftSlotService.getSlot(SLOT_ID, ACTOR))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
+            assertCode(() -> shiftSlotService.resolveScheduleScope(SCHEDULE_ID),
+                    ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("resolveSlotTeamId_枠の不在も親スケジュールの不在も SHIFT_002（K5）")
+        void resolveSlotTeamIdは枠起点の不在コード() {
+            given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(createSlotEntity()));
+            assertThat(shiftSlotService.resolveSlotTeamId(SLOT_ID)).isEqualTo(1L);
+
+            // 親だけ不在
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.empty());
+            assertCode(() -> shiftSlotService.resolveSlotTeamId(SLOT_ID), ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+
+            // 枠が不在
+            given(slotRepository.findById(SLOT_ID)).willReturn(Optional.empty());
+            assertCode(() -> shiftSlotService.resolveSlotTeamId(SLOT_ID), ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("枠の更新・割当・削除は、親だけ不在でも SHIFT_002 で DB を変えない（K5）")
+        void 枠起点の書き込みは親不在でSHIFT_002() {
+            given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(createSlotEntity()));
+            given(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).willReturn(Optional.empty());
+
+            assertCode(() -> shiftSlotService.updateSlot(SLOT_ID,
+                    new UpdateShiftSlotRequest(null, null, null, null, null, null, "メモ"), ACTOR),
+                    ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+            assertCode(() -> shiftSlotService.patchSlotAssignments(SLOT_ID,
+                    new SlotAssignmentPatchRequest(List.of(1L), List.of(), 0), ACTOR),
+                    ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+            assertCode(() -> shiftSlotService.deleteSlot(SLOT_ID), ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+
+            verify(slotRepository, never()).save(any(ShiftSlotEntity.class));
+            verify(slotRepository, never()).softDeleteById(any());
+            verifyNoInteractions(assignmentRepository, requestRepository);
+        }
+
+        @Test
+        @DisplayName("枠の作成・一括作成は、親スケジュールの不在で SHIFT_001 で DB を変えない")
+        void スケジュール起点の作成は親不在でSHIFT_001() {
+            given(scheduleRepository.findByIdForUpdate(SCHEDULE_ID)).willReturn(Optional.empty());
+            CreateShiftSlotRequest slot = new CreateShiftSlotRequest(
+                    LocalDate.of(2026, 3, 2), LocalTime.of(9, 0), LocalTime.of(17, 0), POSITION_ID, 1, null);
+
+            assertCode(() -> shiftSlotService.createSlot(SCHEDULE_ID, slot),
+                    ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+            assertCode(() -> shiftSlotService.bulkCreateSlots(SCHEDULE_ID,
+                    new BulkCreateShiftSlotRequest(List.of(slot))), ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+
+            verify(slotRepository, never()).save(any(ShiftSlotEntity.class));
+            verify(slotRepository, never()).saveAll(anyList());
+        }
+
+        @Test
+        @DisplayName("listSlots_未公開は管理者側でなければ SHIFT_001、COLLECTING は割当を伏せ、管理者側は伏せない")
+        void listSlotsは可視性を再判定する() {
+            ShiftSlotEntity slot = createSlotEntity();
+            ReflectionTestUtils.setField(slot, "assignedUserIds", "[7]");
+            given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+                    .willReturn(List.of(slot));
+            given(positionRepository.findById(POSITION_ID)).willReturn(Optional.of(createPositionEntity()));
+
+            // 未公開
+            given(scheduleRepository.findById(SCHEDULE_ID))
+                    .willReturn(Optional.of(schedule(ShiftScheduleStatus.DRAFT, null)));
+            assertCode(() -> shiftSlotService.listSlots(SCHEDULE_ID, false), ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+            assertThat(shiftSlotService.listSlots(SCHEDULE_ID, true).get(0).getAssignedUserIds())
+                    .containsExactly(7L);
+
+            // 希望収集中: 割当だけ伏せる
+            given(scheduleRepository.findById(SCHEDULE_ID))
+                    .willReturn(Optional.of(schedule(ShiftScheduleStatus.COLLECTING, null)));
+            ShiftSlotResponse masked = shiftSlotService.listSlots(SCHEDULE_ID, false).get(0);
+            assertThat(masked.getAssignedUserIds()).isEmpty();
+            assertThat(masked.isAssignmentMasked()).isTrue();
+            assertThat(shiftSlotService.listSlots(SCHEDULE_ID, true).get(0).getAssignedUserIds())
+                    .containsExactly(7L);
         }
     }
 
@@ -240,7 +311,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            ShiftSlotResponse result = shiftSlotService.createSlot(SCHEDULE_ID, req, ACTOR);
+            ShiftSlotResponse result = shiftSlotService.createSlot(SCHEDULE_ID, req);
 
             // Then
             assertThat(result).isNotNull();
@@ -266,7 +337,7 @@ class ShiftSlotServiceTest {
             given(slotRepository.save(any(ShiftSlotEntity.class))).willReturn(savedEntity);
 
             // When
-            ShiftSlotResponse result = shiftSlotService.createSlot(SCHEDULE_ID, req, ACTOR);
+            ShiftSlotResponse result = shiftSlotService.createSlot(SCHEDULE_ID, req);
 
             // Then
             assertThat(result).isNotNull();
@@ -299,7 +370,7 @@ class ShiftSlotServiceTest {
                     .willReturn(Optional.of(createPositionEntity()));
 
             // When
-            List<ShiftSlotResponse> result = shiftSlotService.bulkCreateSlots(SCHEDULE_ID, req, ACTOR);
+            List<ShiftSlotResponse> result = shiftSlotService.bulkCreateSlots(SCHEDULE_ID, req);
 
             // Then
             assertThat(result).hasSize(2);
@@ -579,7 +650,7 @@ class ShiftSlotServiceTest {
                     .willReturn(1);
 
             // When
-            shiftSlotService.deleteSlot(SLOT_ID, ACTOR);
+            shiftSlotService.deleteSlot(SLOT_ID);
 
             // Then
             verify(slotRepository).softDeleteById(SLOT_ID);
@@ -595,7 +666,7 @@ class ShiftSlotServiceTest {
             given(slotRepository.findById(SLOT_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> shiftSlotService.deleteSlot(SLOT_ID, ACTOR))
+            assertThatThrownBy(() -> shiftSlotService.deleteSlot(SLOT_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }
