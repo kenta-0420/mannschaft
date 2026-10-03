@@ -80,46 +80,21 @@ const {
   followStatus,
   followLoading,
   followPermissionSyncError,
-  fetchFollowStatus: fetchFollowStatusRaw,
-  applySupporter: applySupporterRaw,
-  cancelSupporter: cancelSupporterRaw,
-  retryFollowPermissionSync: retryFollowPermissionSyncRaw,
-} = useFollowSelfStatus({
-  follow: teamApi.followTeam,
-  unfollow: teamApi.unfollowTeam,
-  getStatus: teamApi.getFollowStatus,
+  showCancelSupporterConfirm,
+  fetchFollowStatus,
+  applySupporter,
+  cancelSupporter,
+  retryFollowStatus,
+  retryFollowPermissionSync,
+} = useScopeFollowWiring({
+  scopeSlug: teamSlug,
+  api: {
+    follow: teamApi.followTeam,
+    unfollow: teamApi.unfollowTeam,
+    getStatus: teamApi.getFollowStatus,
+  },
+  roleAccess: { roleName, loadPermissions },
 })
-const showCancelSupporterConfirm = ref(false)
-
-/** AC-5: ロールの有無に関係なく常に取得する（SUPPORTER ロール自身の状態も含む）。 */
-async function fetchFollowStatus() {
-  await fetchFollowStatusRaw(teamSlug.value)
-}
-
-async function applySupporter() {
-  await applySupporterRaw(teamSlug.value)
-}
-
-/**
- * フォロー解除。成功後は権限（loadPermissions）を再取得する（AC-7/AC-9）。
- * ダイアログは解除 API 自体が成功した場合のみ閉じる（AC-8）。
- */
-async function cancelSupporter() {
-  await cancelSupporterRaw(teamSlug.value, loadPermissions)
-  if (followStatus.value === 'NONE') {
-    showCancelSupporterConfirm.value = false
-  }
-}
-
-/** AC-6: フォロー状態取得エラー時の再試行導線。 */
-async function retryFollowStatus() {
-  await fetchFollowStatus()
-}
-
-/** AC-9 の再試行導線: 権限再取得のみをやり直す。 */
-async function retryFollowPermissionSync() {
-  await retryFollowPermissionSyncRaw(loadPermissions)
-}
 
 // =============================================================================
 // MEMBER 参加申請（柱③-A・CMP-260901-1538）
@@ -407,7 +382,7 @@ watch(isShellRoute, (shell) => {
 watch(teamSlug, () => {
   teamLoaded.value = false
   team.value = null
-  followStatus.value = 'UNKNOWN'
+  // followStatus の初期化は useScopeFollowWiring が slug 変更時に同期的に行う。
   joinRequestStatus.value = 'UNKNOWN'
   reservationEnabled.value = false
   if (isShellRoute.value) void loadShellData()

@@ -43,26 +43,8 @@ export function useOrgDetail(orgId: Ref<string>) {
   const permissionGroups = ref<OrgPermissionGroup[]>([])
   const loading = ref(false)
 
-  /**
-   * フォロー（サポーター）状態の取得・申請・解除は共通 composable に一本化（CMP-261001-0835）。
-   * 詳細は `useFollowSelfStatus.ts` のコメントを参照（SUPPORTER ロール自身の状態が
-   * 永遠に NONE に固まる fail-open と、取得失敗を NONE に潰す fail-open の是正）。
-   */
-  const {
-    followStatus,
-    followLoading,
-    followPermissionSyncError,
-    fetchFollowStatus: fetchFollowStatusRaw,
-    applySupporter: applySupporterRaw,
-    cancelSupporter: cancelSupporterRaw,
-    retryFollowPermissionSync: retryFollowPermissionSyncRaw,
-  } = useFollowSelfStatus({
-    follow: orgApi.followOrganization,
-    unfollow: orgApi.unfollowOrganization,
-    getStatus: orgApi.getFollowStatus,
-  })
-
-  const showCancelSupporterConfirm = ref(false)
+  // フォロー（サポーター）状態の取得・申請・解除はページ側の `useScopeFollowWiring` に一本化
+  // （CMP-261001-0835。権限再取得 loadPermissions との結線をページ単位で持つため）。
   const showLeaveConfirm = ref(false)
 
   /**
@@ -109,32 +91,6 @@ export function useOrgDetail(orgId: Ref<string>) {
     }
   }
 
-  /** AC-5: ロールの有無に関係なく常に取得する（SUPPORTER ロール自身の状態も含む）。 */
-  async function fetchFollowStatus() {
-    await fetchFollowStatusRaw(orgId.value)
-  }
-
-  async function applySupporter() {
-    await applySupporterRaw(orgId.value)
-  }
-
-  /**
-   * フォロー解除。成功後は呼び出し元が渡す権限再取得コールバック（`loadPermissions`）を
-   * 実行する（AC-7/AC-9）。ダイアログは解除 API 自体が成功した場合のみ閉じる
-   * （AC-8: 解除失敗時は表示を変えず、ダイアログも開いたままにして再試行させる）。
-   */
-  async function cancelSupporter(reloadPermissions: () => Promise<{ ok: true } | { ok: false, error: unknown }>) {
-    await cancelSupporterRaw(orgId.value, reloadPermissions)
-    if (followStatus.value === 'NONE') {
-      showCancelSupporterConfirm.value = false
-    }
-  }
-
-  /** AC-9 の再試行導線: 権限再取得のみをやり直す。 */
-  async function retryFollowPermissionSync(reloadPermissions: () => Promise<{ ok: true } | { ok: false, error: unknown }>) {
-    await retryFollowPermissionSyncRaw(reloadPermissions)
-  }
-
   async function fetchJoinRequestStatus(roleName: Ref<string | null>) {
     if (roleName.value) return
     if (org.value?.visibility?.visibility !== 'PUBLIC') return
@@ -164,20 +120,12 @@ export function useOrgDetail(orgId: Ref<string>) {
     orgTeams,
     permissionGroups,
     loading,
-    followStatus,
-    followLoading,
-    followPermissionSyncError,
     joinRequestStatus,
     joinRequestLoading,
-    showCancelSupporterConfirm,
     showLeaveConfirm,
     fetchOrg,
     fetchOrgTeams,
     fetchPermissionGroups,
-    fetchFollowStatus,
-    applySupporter,
-    cancelSupporter,
-    retryFollowPermissionSync,
     fetchJoinRequestStatus,
     applyJoinRequest,
     leaveOrganization,

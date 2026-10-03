@@ -54,24 +54,39 @@ const {
   orgTeams,
   permissionGroups,
   loading,
-  followStatus,
-  followLoading,
-  followPermissionSyncError,
   joinRequestStatus,
   joinRequestLoading,
-  showCancelSupporterConfirm,
   showLeaveConfirm,
   fetchOrg,
   fetchOrgTeams,
   fetchPermissionGroups,
-  fetchFollowStatus,
-  applySupporter,
-  cancelSupporter,
-  retryFollowPermissionSync,
   fetchJoinRequestStatus,
   applyJoinRequest,
   leaveOrganization,
 } = useOrgDetail(orgSlug)
+
+// フォロー（サポーター）結線（CMP-261001-0835）。ラッパー群は useScopeFollowWiring に集約し、
+// 単体テストで検証する（SUPPORTER でも状態取得・解除後の権限再取得・権限のみの再試行）。
+const organizationApi = useOrganizationApi()
+const {
+  followStatus,
+  followLoading,
+  followPermissionSyncError,
+  showCancelSupporterConfirm,
+  fetchFollowStatus,
+  applySupporter,
+  cancelSupporter,
+  retryFollowStatus,
+  retryFollowPermissionSync,
+} = useScopeFollowWiring({
+  scopeSlug: orgSlug,
+  api: {
+    follow: organizationApi.followOrganization,
+    unfollow: organizationApi.unfollowOrganization,
+    getStatus: organizationApi.getFollowStatus,
+  },
+  roleAccess: { roleName, loadPermissions },
+})
 
 const {
   ancestors,
@@ -140,21 +155,6 @@ async function refresh() {
 /** 参加申請状態の再取得（ヘッダのエラー表示からの再試行導線）。 */
 async function retryJoinRequestStatus() {
   await fetchJoinRequestStatus(roleName)
-}
-
-/** フォロー状態取得エラー時の再試行導線（AC-6）。 */
-async function retryFollowStatus() {
-  await fetchFollowStatus()
-}
-
-/** フォロー解除（AC-7/AC-9: 成功後の権限再取得は loadPermissions を渡す）。 */
-async function handleCancelSupporter() {
-  await cancelSupporter(loadPermissions)
-}
-
-/** AC-9 の再試行導線: 権限再取得のみをやり直す。 */
-async function handleRetryFollowPermissionSync() {
-  await retryFollowPermissionSync(loadPermissions)
 }
 
 // =============================================================================
@@ -299,7 +299,7 @@ watch(isShellRoute, (shell) => {
 watch(orgSlug, () => {
   orgLoaded.value = false
   org.value = null
-  followStatus.value = 'UNKNOWN'
+  // followStatus の初期化は useScopeFollowWiring が slug 変更時に同期的に行う。
   joinRequestStatus.value = 'UNKNOWN'
   if (isShellRoute.value) void loadShellData()
 })
@@ -469,9 +469,9 @@ provideOrgShellContext({
             :ancestors="ancestors"
             @back="navigateTo('/dashboard')"
             @apply-supporter="applySupporter"
-            @cancel-supporter="handleCancelSupporter"
+            @cancel-supporter="cancelSupporter"
             @retry-follow-status="retryFollowStatus"
-            @retry-follow-permission-sync="handleRetryFollowPermissionSync"
+            @retry-follow-permission-sync="retryFollowPermissionSync"
             @apply-join-request="applyJoinRequest"
             @retry-join-request-status="retryJoinRequestStatus"
             @show-cancel-confirm="showCancelSupporterConfirm = true"
@@ -517,7 +517,7 @@ provideOrgShellContext({
             :label="t('common.scopeShell.supporter_cancel_action')"
             severity="danger"
             :loading="followLoading"
-            @click="handleCancelSupporter"
+            @click="cancelSupporter"
           />
         </template>
       </Dialog>

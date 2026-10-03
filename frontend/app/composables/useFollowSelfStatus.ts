@@ -44,48 +44,75 @@ export function useFollowSelfStatus(api: FollowStatusApi) {
    */
   const followPermissionSyncError = ref(false)
 
-  // 旧スコープの遅い応答が新スコープの状態を上書きしないための世代番号 + 対象 scopeId 検証
-  // （useJoinRequestSelfStatus と同型）。
-  let fetchSeq = 0
+  /**
+   * 世代管理は2本立て（CMP-261001-0835 検分修繕2）。
+   *
+   * - scopeGen: スコープ（slug）が変わった瞬間に進める世代。申請/解除/権限再試行は開始時の
+   *   scopeGen を捕捉し、await 後に一致すれば「同一スコープ」なので後処理（通知・状態更新・
+   *   権限再取得）を必ず完了する。不一致なら何も反映せず通知も出さず、権限再取得も呼ばない。
+   * - getSeq: follow/status GET の要求番号。GET 結果は scopeGen と getSeq の双方が一致する
+   *   ときだけ反映する。解除/申請の成功時は getSeq を進めて、操作前に飛ばした古い GET
+   *   （例: 解除前の APPROVED）が後から返っても表示を巻き戻さないようにする。
+   *
+   * 1本の番号で両方を兼ねると、同一スコープの再取得が成功した操作の後処理まで捨ててしまう
+   * （解除成功通知・NONE 反映・権限再取得の欠落）。
+   */
+  let scopeGen = 0
+  let getSeq = 0
   let currentScopeId: string | null = null
+
+  /**
+   * スコープ切替を同期的に確定する。ページの slug 変更を検知した瞬間（詳細取得を await する
+   * 前）に呼ぶこと。旧スコープの操作・GET の遅延応答はこれ以降すべて無視される。
+   */
+  function resetForScope(scopeId: string) {
+    scopeGen++
+    getSeq++
+    currentScopeId = scopeId
+    followStatus.value = 'UNKNOWN'
+    followLoading.value = false
+    followPermissionSyncError.value = false
+  }
+
+  /** 呼び出し側が resetForScope を経ずに別スコープを渡した場合の安全網。 */
+  function ensureScope(scopeId: string) {
+    if (currentScopeId !== scopeId) resetForScope(scopeId)
+  }
 
   /**
    * 自分のフォロー状態を取得する（AC-5: ロールの有無に関係なく常に呼ぶ）。
    * 取得中は `LOADING`、失敗時は `ERROR` を保持し、どちらも `NONE` へは潰さない（AC-6）。
    */
   async function fetchFollowStatus(scopeId: string) {
-    // 永続シェルでのスコープ遷移競合対策: スコープが変わったら世代を進め、
-    // 旧スコープに紐づく同期状態（AC-9 の同期失敗フラグ）を初期化する。
-    // これを怠ると、別スコープへ遷移した後に旧スコープの遅延応答がヘッダを上書きする。
-    if (currentScopeId !== scopeId) {
-      followPermissionSyncError.value = false
-    }
-    const seq = ++fetchSeq
-    currentScopeId = scopeId
+    ensureScope(scopeId)
+    const gen = scopeGen
+    const seq = ++getSeq
     followStatus.value = 'LOADING'
     try {
       const res = await api.getStatus(scopeId)
-      if (seq !== fetchSeq || currentScopeId !== scopeId) return
+      if (gen !== scopeGen || seq !== getSeq) return
       followStatus.value = res.data.status
     }
     catch (error) {
-      if (seq !== fetchSeq || currentScopeId !== scopeId) return
+      if (gen !== scopeGen || seq !== getSeq) return
       handleApiError(error, 'フォロー状態取得')
       followStatus.value = 'ERROR'
     }
   }
 
   async function applySupporter(scopeId: string) {
-    // 開始時点のスコープ/世代に束縛し、完了時にスコープが変わっていたら表示へ反映しない
-    // （永続シェルでのスコープ遷移競合対策）。
-    currentScopeId = scopeId
-    const seq = fetchSeq
+    ensureScope(scopeId)
+    const gen = scopeGen
     followLoading.value = true
     try {
       await api.follow(scopeId)
+      if (gen !== scopeGen) return
+      // 申請前に飛ばした古い GET の結果で申請後の状態を巻き戻さない。
+      const seq = ++getSeq
       const res = await api.getStatus(scopeId)
-      if (seq !== fetchSeq || currentScopeId !== scopeId) return
-      followStatus.value = res.data.status
+      if (gen !== scopeGen) return
+      // 申請後にさらに新しい GET が始まっていればそちらが新しい状態を反映する。
+      if (seq === getSeq) followStatus.value = res.data.status
       notification.success(
         res.data.status === 'APPROVED'
           ? t('common.scopeShell.supporter_registered')
@@ -93,15 +120,16 @@ export function useFollowSelfStatus(api: FollowStatusApi) {
       )
     }
     catch (error) {
+      if (gen !== scopeGen) return
       handleApiError(error, 'サポーター申請')
     }
     finally {
-      followLoading.value = false
+      if (gen === scopeGen) followLoading.value = false
     }
   }
 
   /**
-   * フォロー解除。
+   * フォロー解除。戻り値は「同一スコープのまま解除 API が成功したか」。
    *
    * - AC-7: 成功後は followStatus を NONE にしてから、呼び出し元が渡す権限再取得
    *   コールバック（`useRoleAccess().loadPermissions`）を呼ぶ。
@@ -112,23 +140,21 @@ export function useFollowSelfStatus(api: FollowStatusApi) {
   async function cancelSupporter(
     scopeId: string,
     reloadPermissions: () => Promise<PermissionReloadResult>,
-  ) {
-    // 開始時点のスコープ/世代に束縛する（永続シェルでのスコープ遷移競合対策）。
-    currentScopeId = scopeId
-    const seq = fetchSeq
-    const boundScopeId = scopeId
+  ): Promise<boolean> {
+    ensureScope(scopeId)
+    const gen = scopeGen
     followLoading.value = true
     try {
       await api.unfollow(scopeId)
-      if (seq !== fetchSeq || currentScopeId !== boundScopeId) return
+      if (gen !== scopeGen) return false
+      // 解除前に飛ばした GET（APPROVED）が後から返っても NONE を巻き戻させない。
+      getSeq++
       followStatus.value = 'NONE'
       followPermissionSyncError.value = false
       notification.success(t('common.scopeShell.supporter_canceled'))
 
-      // 権限再取得コールバックも開始時スコープ基準で呼ぶ。世代が変わっていたら
-      // 新スコープの表示へ無関係な旧スコープの権限再取得を呼ばない。
       const result = await reloadPermissions()
-      if (seq !== fetchSeq || currentScopeId !== boundScopeId) return
+      if (gen !== scopeGen) return true
       if (!result.ok) {
         followPermissionSyncError.value = true
         notification.error(
@@ -136,12 +162,14 @@ export function useFollowSelfStatus(api: FollowStatusApi) {
           t('common.scopeShell.follow_permission_sync_error_body'),
         )
       }
+      return true
     }
     catch (error) {
-      handleApiError(error, 'サポーター解除')
+      if (gen === scopeGen) handleApiError(error, 'サポーター解除')
+      return false
     }
     finally {
-      followLoading.value = false
+      if (gen === scopeGen) followLoading.value = false
     }
   }
 
@@ -149,11 +177,9 @@ export function useFollowSelfStatus(api: FollowStatusApi) {
   async function retryFollowPermissionSync(
     reloadPermissions: () => Promise<PermissionReloadResult>,
   ) {
-    // 開始時点のスコープ/世代に束縛する（永続シェルでのスコープ遷移競合対策）。
-    const seq = fetchSeq
-    const boundScopeId = currentScopeId
+    const gen = scopeGen
     const result = await reloadPermissions()
-    if (seq !== fetchSeq || currentScopeId !== boundScopeId) return
+    if (gen !== scopeGen) return
     followPermissionSyncError.value = !result.ok
     if (!result.ok) {
       notification.error(
@@ -167,6 +193,7 @@ export function useFollowSelfStatus(api: FollowStatusApi) {
     followStatus,
     followLoading,
     followPermissionSyncError,
+    resetForScope,
     fetchFollowStatus,
     applySupporter,
     cancelSupporter,

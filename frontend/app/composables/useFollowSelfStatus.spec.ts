@@ -266,4 +266,152 @@ describe('useFollowSelfStatus', () => {
     await fetchFollowStatus('org-b')
     expect(followPermissionSyncError.value).toBe(false)
   })
+
+  // ---------------------------------------------------------------------------
+  // 検分修繕2: スコープ世代（scopeGen）と GET 要求番号（getSeq）の分離
+  // ---------------------------------------------------------------------------
+
+  function deferred<T = unknown>() {
+    let resolve: (value: T) => void = () => {}
+    let reject: (reason?: unknown) => void = () => {}
+    const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej })
+    return { promise, resolve, reject }
+  }
+
+  it('検分修繕2: 申請中に遷移すると、A の申請後状態（APPROVED）で B の状態（NONE）を上書きせず通知も出さない', async () => {
+    const followA = deferred()
+    const api = makeApi({
+      follow: vi.fn().mockReturnValue(followA.promise),
+      getStatus: vi.fn().mockImplementation(async (scopeId: string) =>
+        ({ data: { status: scopeId === 'org-a' ? 'APPROVED' : 'NONE' } })),
+    })
+    const { followStatus, followLoading, applySupporter, resetForScope, fetchFollowStatus } = useFollowSelfStatus(api)
+
+    const applyPromise = applySupporter('org-a')
+    resetForScope('org-b')
+    expect(followStatus.value).toBe('UNKNOWN')
+    expect(followLoading.value).toBe(false)
+    await fetchFollowStatus('org-b')
+    expect(followStatus.value).toBe('NONE')
+
+    followA.resolve({})
+    await applyPromise
+
+    expect(followStatus.value).toBe('NONE')
+    expect(notificationSuccessMock).not.toHaveBeenCalled()
+  })
+
+  it('検分修繕2: 申請成功後の状態再取得中に遷移すると、A の再取得結果（APPROVED）で B の状態（NONE）を上書きせず通知も出さない', async () => {
+    const getA = deferred<{ data: { status: 'APPROVED' } }>()
+    const api = makeApi({
+      getStatus: vi.fn().mockImplementation((scopeId: string) =>
+        scopeId === 'org-a' ? getA.promise : Promise.resolve({ data: { status: 'NONE' } })),
+    })
+    const { followStatus, applySupporter, resetForScope, fetchFollowStatus } = useFollowSelfStatus(api)
+
+    const applyPromise = applySupporter('org-a')
+    await vi.waitFor(() => expect(api.getStatus).toHaveBeenCalledWith('org-a'))
+    resetForScope('org-b')
+    await fetchFollowStatus('org-b')
+    getA.resolve({ data: { status: 'APPROVED' } })
+    await applyPromise
+
+    expect(followStatus.value).toBe('NONE')
+    expect(notificationSuccessMock).not.toHaveBeenCalled()
+  })
+
+  it('検分修繕2: 同一スコープで解除中に始まった再取得が解除前の APPROVED を先に返しても、解除成功で NONE・通知・権限再取得まで完了する', async () => {
+    const unfollow = deferred()
+    const staleGet = deferred<{ data: { status: 'APPROVED' } }>()
+    const api = makeApi({
+      unfollow: vi.fn().mockReturnValue(unfollow.promise),
+      getStatus: vi.fn()
+        .mockResolvedValueOnce({ data: { status: 'APPROVED' } })
+        .mockReturnValueOnce(staleGet.promise),
+    })
+    const reloadPermissions = vi.fn().mockResolvedValue({ ok: true })
+    const { followStatus, cancelSupporter, fetchFollowStatus } = useFollowSelfStatus(api)
+    await fetchFollowStatus('org-a')
+
+    const cancelPromise = cancelSupporter('org-a', reloadPermissions)
+    const refetch = fetchFollowStatus('org-a')
+    staleGet.resolve({ data: { status: 'APPROVED' } })
+    await refetch
+    expect(followStatus.value).toBe('APPROVED')
+
+    unfollow.resolve({})
+    await expect(cancelPromise).resolves.toBe(true)
+
+    expect(followStatus.value).toBe('NONE')
+    expect(notificationSuccessMock).toHaveBeenCalledTimes(1)
+    expect(reloadPermissions).toHaveBeenCalledTimes(1)
+  })
+
+  it('検分修繕2: 解除前に飛ばした GET（APPROVED）が解除成功の後に返っても NONE を巻き戻さない', async () => {
+    const staleGet = deferred<{ data: { status: 'APPROVED' } }>()
+    const api = makeApi({ getStatus: vi.fn().mockReturnValue(staleGet.promise) })
+    const reloadPermissions = vi.fn().mockResolvedValue({ ok: true })
+    const { followStatus, cancelSupporter, fetchFollowStatus } = useFollowSelfStatus(api)
+
+    const fetching = fetchFollowStatus('org-a')
+    await cancelSupporter('org-a', reloadPermissions)
+    expect(followStatus.value).toBe('NONE')
+
+    staleGet.resolve({ data: { status: 'APPROVED' } })
+    await fetching
+
+    expect(followStatus.value).toBe('NONE')
+  })
+
+  it('検分修繕2: 権限再試行中に同一スコープの再取得が走っても、再試行の成功は捨てられない', async () => {
+    const api = makeApi({ getStatus: vi.fn().mockResolvedValue({ data: { status: 'NONE' } }) })
+    const { followPermissionSyncError, cancelSupporter, retryFollowPermissionSync, fetchFollowStatus }
+      = useFollowSelfStatus(api)
+    await cancelSupporter('org-a', vi.fn().mockResolvedValue({ ok: false, error: new Error('x') }))
+    expect(followPermissionSyncError.value).toBe(true)
+
+    const reload = deferred<{ ok: true }>()
+    const retrying = retryFollowPermissionSync(() => reload.promise)
+    await fetchFollowStatus('org-a')
+    reload.resolve({ ok: true })
+    await retrying
+
+    expect(followPermissionSyncError.value).toBe(false)
+  })
+
+  it('検分修繕2: resetForScope 直後に A の解除応答が来ても B には何も反映せず、通知も権限再取得も行わない', async () => {
+    const unfollow = deferred()
+    const api = makeApi({ unfollow: vi.fn().mockReturnValue(unfollow.promise) })
+    const reloadPermissions = vi.fn().mockResolvedValue({ ok: false, error: new Error('x') })
+    const { followStatus, followLoading, followPermissionSyncError, cancelSupporter, resetForScope }
+      = useFollowSelfStatus(api)
+
+    const cancelPromise = cancelSupporter('org-a', reloadPermissions)
+    resetForScope('org-b')
+    unfollow.resolve({})
+    await expect(cancelPromise).resolves.toBe(false)
+
+    expect(followStatus.value).toBe('UNKNOWN')
+    expect(followLoading.value).toBe(false)
+    expect(followPermissionSyncError.value).toBe(false)
+    expect(reloadPermissions).not.toHaveBeenCalled()
+    expect(notificationSuccessMock).not.toHaveBeenCalled()
+    expect(notificationErrorMock).not.toHaveBeenCalled()
+  })
+
+  it('検分修繕2: 権限再取得の開始後に遷移すると、A の権限再取得失敗で B に同期失敗を立てない', async () => {
+    const reload = deferred<{ ok: false, error: unknown }>()
+    const api = makeApi()
+    const { followPermissionSyncError, cancelSupporter, resetForScope } = useFollowSelfStatus(api)
+
+    const reloadFn = vi.fn().mockReturnValue(reload.promise)
+    const cancelPromise = cancelSupporter('org-a', reloadFn)
+    await vi.waitFor(() => expect(reloadFn).toHaveBeenCalledTimes(1))
+    resetForScope('org-b')
+    reload.resolve({ ok: false, error: new Error('x') })
+    await cancelPromise
+
+    expect(followPermissionSyncError.value).toBe(false)
+    expect(notificationErrorMock).not.toHaveBeenCalled()
+  })
 })
