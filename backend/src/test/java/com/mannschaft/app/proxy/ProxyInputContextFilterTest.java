@@ -422,6 +422,7 @@ class ProxyInputContextFilterTest {
                     Arguments.of("decoded C0 NUL", "uri-component", "paper%00copy.pdf"),
                     Arguments.of("decoded C0 LF", "uri-component", "paper%0Acopy.pdf"),
                     Arguments.of("decoded CRLF", "uri-component", "paper%0D%0Acopy.pdf"),
+                    Arguments.of("decoded前後CRLFはtrim前に拒否", "uri-component", "%0Dpaper.pdf%0A"),
                     Arguments.of("decoded256文字", "uri-component", "%61".repeat(256)),
                     Arguments.of("既存形式256文字", null, "a".repeat(256)),
                     Arguments.of("既存形式内部C0", null, "paper\u0000copy.pdf"));
