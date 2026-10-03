@@ -1,12 +1,10 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * ここには、Facade のクラス名に依らず「W5 の Facade と W4（金銭・制裁）の Facade が交わらない」ことだけを残す。</p>
  */
 @DisplayName("recruitment 募集・テンプレートの認可ファサード型（W5）の固有項目の ArchUnit 固定")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class RecruitmentListingTxFacadeArchTest {
 
     private static final String PKG = "com.mannschaft.app.recruitment";
@@ -53,14 +52,7 @@ class RecruitmentListingTxFacadeArchTest {
             new String[]{PKG + ".controller.CancellationPolicyController", "update"},
             new String[]{PKG + ".controller.CancellationPolicyController", "archive"});
 
-    private static JavaClasses classes;
-
-    @BeforeAll
-    static void importClasses() {
-        classes = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses classes = ProductionClasses.get();
 
     @Test
     @DisplayName("W5 の Facade は W4（金銭・制裁）の Facade と別のクラス（金銭の Facade に相乗りしない）")
@@ -72,7 +64,7 @@ class RecruitmentListingTxFacadeArchTest {
         assertThat(w5).as("W5 の Facade と W4 の Facade は交わらない").doesNotContainAnyElementsOf(w4);
     }
 
-    private static List<JavaMethod> controllerMethods(String[] target) {
+    private List<JavaMethod> controllerMethods(String[] target) {
         if (!classes.contain(target[0])) {
             return List.of();
         }
@@ -85,7 +77,7 @@ class RecruitmentListingTxFacadeArchTest {
         return owner.getName().startsWith(PKG + ".") && owner.getSimpleName().endsWith("Facade");
     }
 
-    private static Set<JavaClass> calledFacades(List<String[]> targets) {
+    private Set<JavaClass> calledFacades(List<String[]> targets) {
         Set<JavaClass> result = new LinkedHashSet<>();
         for (String[] t : targets) {
             for (JavaMethod m : controllerMethods(t)) {

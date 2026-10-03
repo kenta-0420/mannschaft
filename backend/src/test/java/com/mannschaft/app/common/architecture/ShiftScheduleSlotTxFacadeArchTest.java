@@ -1,12 +1,10 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaModifier;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -47,6 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ol>
  */
 @DisplayName("shift の認可ファサード型（W6a: schedules・slots・remind・PDF）の ArchUnit 固定")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ShiftScheduleSlotTxFacadeArchTest {
 
     private static final String PKG = "com.mannschaft.app.shift";
@@ -111,21 +110,14 @@ class ShiftScheduleSlotTxFacadeArchTest {
             "findScheduleForUpdateOrThrow", "java.lang.Long->" + PKG + ".entity.ShiftScheduleEntity",
             "findExistingScheduleIds", Collection.class.getName() + "->" + Set.class.getName());
 
-    private static JavaClasses classesUnderTest;
-
-    @BeforeAll
-    static void importClasses() {
-        classesUnderTest = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses classesUnderTest = ProductionClasses.get();
 
     private static String facadeOf(String serviceFqn) {
         assertThat(serviceFqn).endsWith("Service");
         return serviceFqn.substring(0, serviceFqn.length() - "Service".length()) + "Facade";
     }
 
-    private static Optional<JavaClass> find(String fqn) {
+    private Optional<JavaClass> find(String fqn) {
         return classesUnderTest.contain(fqn) ? Optional.of(classesUnderTest.get(fqn)) : Optional.empty();
     }
 

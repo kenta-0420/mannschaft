@@ -1,6 +1,8 @@
 package com.mannschaft.app.common.entity;
 
 import com.mannschaft.app.common.UuidV7;
+import com.mannschaft.app.common.architecture.ArchUnitTestTag;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import org.junit.jupiter.api.DisplayName;
@@ -22,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /** CMP-008 共通 UUIDv7 採番契約の試練。 */
 @DisplayName("CMP-008 共通 UUIDv7 採番契約")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class UuidV7GenerationContractTest {
 
     private static final Instant FIXED_INSTANT = Instant.parse("2026-09-17T03:04:05.678Z");

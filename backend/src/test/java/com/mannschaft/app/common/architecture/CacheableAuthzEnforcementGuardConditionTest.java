@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.common.architecture.fixtures.CacheableAuthzFixtureService;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
@@ -8,6 +9,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 
 import java.util.List;
 
@@ -44,15 +46,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul>
  */
 @DisplayName("@Cacheable内認可 番人 判定ロジックの偽陰性ゼロ証明（メタテスト）")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class CacheableAuthzEnforcementGuardConditionTest {
 
     private static final String FIXTURES_PACKAGE =
         "com.mannschaft.app.common.architecture.fixtures";
 
-    private static JavaClasses fixtureClasses;
+    private JavaClasses fixtureClasses;
 
     @BeforeAll
-    static void importFixtures() {
+    void importFixtures() {
         // fixture パッケージだけを読み込む（本番番人とは独立の import）。
         // 同パッケージに委譲先（DummyCacheableAccessGuard）も居るため呼び出し辺を解決できる。
         fixtureClasses = new ClassFileImporter().importPackages(FIXTURES_PACKAGE);
@@ -157,7 +161,7 @@ class CacheableAuthzEnforcementGuardConditionTest {
     // ------------------------------------------------------------------
 
     /** fixture の指定メソッドに対して番人の判定ロジックを評価する。 */
-    private static List<String> detect(String methodName) {
+    private List<String> detect(String methodName) {
         JavaClass fixture = fixtureClasses.get(CacheableAuthzFixtureService.class);
         JavaMethod method = fixture.getMethods().stream()
             .filter(m -> m.getName().equals(methodName))

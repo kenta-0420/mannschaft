@@ -1,11 +1,10 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaParameter;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.cache.annotation.CachePut;
@@ -79,12 +78,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 凍結ストアを破壊する事故を持ち込まないためであり、<b>引っかかった箇所は凍結せず是正する</b>。</p>
  */
 @DisplayName("@Cacheable キー引数の値等価 静的番人 (issue #2544)")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class CacheableKeyValueEqualityGuardTest {
 
     private static JavaClasses importedClasses() {
-        return new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
+        return ProductionClasses.get();
     }
 
     private static boolean isCacheWriting(JavaMethod method) {

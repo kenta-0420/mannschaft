@@ -1,10 +1,8 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -40,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <b>赤を出せること</b>を実証する（判定ロジックの二重実装を禁ずる）。</p>
  */
 @DisplayName("CMP-017b 番人: min_view_role が死んだ認可軸へ戻らないこと")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ScheduleMinViewRoleGuardArchTest {
 
     /** 閲覧閾値 enum の完全修飾名。参照の有無はこの名前で判定する。 */
@@ -60,16 +59,7 @@ class ScheduleMinViewRoleGuardArchTest {
             Path.of("src/main/java/com/mannschaft/app/timetable/personal/listener/"
                     + "PersonalTimetableLinkSyncListener.java"));
 
-    private static JavaClasses productionClasses;
-
-    @BeforeAll
-    static void importProduction() {
-        // DoNotIncludeTests: メタテストの fixture を本番判定へ混入させない
-        //（VisibilityArchitectureTest と同じ作法）。
-        productionClasses = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages("com.mannschaft.app.schedule");
-    }
+    private final JavaClasses productionClasses = ProductionClasses.get();
 
     // ═════════════════════════════════════════════════════════════════════
     // 判定ロジック（単一正準・メタテストから直接呼ばれる）

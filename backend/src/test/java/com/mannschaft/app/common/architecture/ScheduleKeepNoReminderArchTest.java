@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.tngtech.archunit.junit.ArchTag;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.schedule.entity.ScheduleKeepEntity;
 import com.mannschaft.app.schedule.repository.ScheduleKeepRepository;
@@ -51,6 +52,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
     packages = "com.mannschaft.app",
     importOptions = ImportOption.DoNotIncludeTests.class
 )
+@ArchTag(ArchUnitTestTag.ARCHUNIT)
 class ScheduleKeepNoReminderArchTest {
 
     /**

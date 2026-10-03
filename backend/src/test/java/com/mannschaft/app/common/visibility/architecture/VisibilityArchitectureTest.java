@@ -1,6 +1,8 @@
 package com.mannschaft.app.common.visibility.architecture;
 
 import com.mannschaft.app.common.visibility.AbstractContentVisibilityResolver;
+import com.mannschaft.app.common.architecture.ArchUnitTestTag;
+import com.tngtech.archunit.junit.ArchTag;
 import com.mannschaft.app.common.visibility.ContentVisibilityResolver;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
@@ -63,6 +65,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
     packages = "com.mannschaft.app",
     importOptions = ImportOption.DoNotIncludeTests.class
 )
+@ArchTag(ArchUnitTestTag.ARCHUNIT)
 class VisibilityArchitectureTest {
 
     /**

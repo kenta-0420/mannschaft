@@ -1,9 +1,8 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.common.migration.SqlTextScanningUtils;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -102,6 +101,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * とし参照整合性をアプリ層で保証するか、参照先を共有ドメイン(common)へ寄せる / {@code DomainPackages} の
  * ドメイン定義を見直すことで対応する。検出を骨抜きにして緑化する（ルールを甘くする）のは禁止。
  */
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class CrossDomainForeignKeyArchTest {
 
     /** マイグレーション SQL のルート（worktree からの相対パス）。 */
@@ -497,9 +497,7 @@ class CrossDomainForeignKeyArchTest {
     // ------------------------------------------------------------------
 
     private static JavaClasses importMainClasses() {
-        return new ClassFileImporter()
-            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-            .importPackages("com.mannschaft.app");
+        return ProductionClasses.get();
     }
 
     // ------------------------------------------------------------------

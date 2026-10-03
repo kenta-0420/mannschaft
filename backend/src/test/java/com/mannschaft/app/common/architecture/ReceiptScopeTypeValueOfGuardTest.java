@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.receipt.ReceiptScopeType;
+import com.tngtech.archunit.junit.ArchTag;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
@@ -36,6 +37,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
     packages = "com.mannschaft.app",
     importOptions = ImportOption.DoNotIncludeTests.class
 )
+@ArchTag(ArchUnitTestTag.ARCHUNIT)
 class ReceiptScopeTypeValueOfGuardTest {
 
     /** 唯一 {@code valueOf} を呼んでよいクラス（安全なファクトリの実装そのもの）。 */

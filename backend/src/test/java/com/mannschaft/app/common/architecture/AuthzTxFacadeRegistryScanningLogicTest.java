@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.common.architecture.AuthzTxFacadeRegistryArchTest.Entry;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.common.architecture.AuthzTxFacadeRegistryArchTest.Rules;
 import com.mannschaft.app.common.architecture.AuthzTxFacadeRegistryArchTest.TxBody;
 import com.mannschaft.app.common.architecture.AuthzTxFacadeRegistryArchTest.TxMode;
@@ -27,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 対で置く（先例: {@code VillageExistenceCheckCentralizationGuardScanningLogicTest}）。</p>
  */
 @DisplayName("AuthzTxFacadeRegistryArchTest の規則（検出力＋誤検出耐性）")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class AuthzTxFacadeRegistryScanningLogicTest {
 
     // ────────────────────────────────────────────────────────────
@@ -507,7 +509,7 @@ class AuthzTxFacadeRegistryScanningLogicTest {
         }
     }
 
-    private static final JavaClasses CLASSES = new ClassFileImporter().importClasses(
+    private final JavaClasses CLASSES = new ClassFileImporter().importClasses(
             FakeAccessControl.class, FakeGate.class, GoodTxService.class, AuthzTxService.class,
             GoodFacade.class, PrivateAuthzFacade.class, LambdaAuthzFacade.class, HollowFacade.class,
             ClassTxFacade.class, MethodTxFacade.class, AuthzTxCallingFacade.class, UnlistedServiceFacade.class,
