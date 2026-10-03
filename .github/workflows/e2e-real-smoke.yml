@@ -34,19 +34,70 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Install fixed dependencies
+        id: dependencies
         working-directory: frontend
         run: npm ci
-      - name: Run actual Nuxt regression and existing receipt contracts
+      - name: Run old guard negative control
+        working-directory: frontend
+        run: |
+          git fetch --no-tags --depth=1 origin af0bee20eacb374ff7f91db065d22aaac0a3e92b aa01495abe481ea971b4524b38a1228f5d2d6fa2
+          git show af0bee20eacb374ff7f91db065d22aaac0a3e92b:frontend/app/composables/useAdminScopeGuard.ts > app/composables/useAdminScopeGuard.ts
+          set +e
+          npm run test:unit -- tests/unit/pages/ReceiptScopeGuardNavigation.spec.ts --reporter=default --reporter=junit --outputFile.junit=receipt-guard-old-junit.xml
+          result=$?
+          set -e
+          test "$result" = 1
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse('receipt-guard-old-junit.xml').getroot()
+          suites = list(root.iter('testsuite'))
+          assert sum(int(s.get('tests', 0)) for s in suites) == 2
+          assert sum(int(s.get('failures', 0)) for s in suites) == 1
+          assert sum(int(s.get('errors', 0)) for s in suites) == 0
+          assert sum(int(s.get('skipped', 0)) for s in suites) == 0
+          held = [c for c in root.iter('testcase') if 'middleware 待機=true' in c.get('name', '')]
+          assert len(held) == 1
+          failures = held[0].findall('failure')
+          assert len(failures) == 1
+          text = (failures[0].get('message', '') + (failures[0].text or ''))
+          assert 'AssertionError' in text and '/dashboard' in text and '/admin/receipts' in text
+          cold = [c for c in root.iter('testcase') if 'middleware 待機=false' in c.get('name', '')]
+          assert len(cold) == 1 and cold[0].find('failure') is None
+          print('旧cold PASS / held実Dashboardルートassertion RED、2件error0/skip0。')
+          PY
+      - name: Restore exact AA guard
+        if: always() && steps.dependencies.outcome == 'success'
+        working-directory: frontend
+        run: |
+          git show aa01495abe481ea971b4524b38a1228f5d2d6fa2:frontend/app/composables/useAdminScopeGuard.ts > app/composables/useAdminScopeGuard.ts
+          git diff --exit-code -- app/composables/useAdminScopeGuard.ts
+      - name: Run AA regression and existing receipt contracts
+        if: always() && steps.dependencies.outcome == 'success'
         working-directory: frontend
         run: >-
           npm run test:unit -- tests/unit/pages/ReceiptScopeGuardNavigation.spec.ts
           tests/unit/pages/ReceiptVoidAccess.spec.ts
-          --reporter=default --reporter=junit --outputFile.junit=receipt-guard-junit.xml
-      - name: Preserve JUnit
+          --reporter=default --reporter=junit --outputFile.junit=receipt-guard-aa-junit.xml
+      - name: Verify AA JUnit totals
+        if: always() && steps.dependencies.outcome == 'success'
+        working-directory: frontend
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse('receipt-guard-aa-junit.xml').getroot()
+          suites = list(root.iter('testsuite'))
+          assert sum(int(s.get('tests', 0)) for s in suites) == 16
+          for key in ('failures', 'errors', 'skipped'):
+              assert sum(int(s.get(key, 0)) for s in suites) == 0
+          print('AA: 実2＋既存14＝16PASS/error0/skip0。')
+          PY
+      - name: Preserve separate JUnit
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: receipt-guard-junit
-          path: frontend/receipt-guard-junit.xml
+          name: receipt-guard-old-aa-junit
+          path: |
+            frontend/receipt-guard-old-junit.xml
+            frontend/receipt-guard-aa-junit.xml
           if-no-files-found: warn
           retention-days: 7

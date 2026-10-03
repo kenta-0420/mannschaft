@@ -88,7 +88,27 @@ describe('CMP1017: 非同期の所属拒否は実ルーターで終端画面へ�
       client: import.meta.client, server: import.meta.server,
       mounted: wrapper.vm.$.isMounted,
     })
+    let dashboardNavigation: ReturnType<typeof router.push> | undefined
+    const observationStartedAt = Date.now()
     const observerCleanup: Array<() => void> = []
+    for (const record of router.resolve('/dashboard').matched) {
+      if (!record.components) continue
+      const loaders = record.components as Record<string, () => Promise<unknown>>
+      for (const name of Object.keys(loaders)) {
+        const originalLoader = loaders[name]
+        if (typeof originalLoader !== 'function' || 'displayName' in originalLoader || 'props' in originalLoader || '__vccOpts' in originalLoader) continue
+        vi.spyOn(loaders, name).mockImplementation(() => {
+          routeTrace.push({ kind: 'loader-start', elapsedMs: Date.now() - observationStartedAt })
+          const result = originalLoader()
+          void result.then(() => {
+            routeTrace.push({ kind: 'loader-resolved', elapsedMs: Date.now() - observationStartedAt })
+          }, () => {
+            routeTrace.push({ kind: 'loader-rejected', elapsedMs: Date.now() - observationStartedAt })
+          })
+          return result
+        })
+      }
+    }
     const actualRouters = new Set([router, wrapper.vm.$router, componentRouter].filter((value): value is typeof router => !!value))
     for (const actualRouter of actualRouters) {
       const measured = actualRouter === router
@@ -96,6 +116,7 @@ describe('CMP1017: 非同期の所属拒否は実ルーターで終端画面へ�
       vi.spyOn(actualRouter, 'push').mockImplementation((to) => {
         routeTrace.push({ kind: 'push', measured, to: safePath(actualRouter.resolve(to).path), before: safePath(actualRouter.currentRoute.value.path), middleware: !!nuxtApp._processingMiddleware, client: import.meta.client, server: import.meta.server })
         const result = originalPush(to)
+        if (measured && actualRouter.resolve(to).path === '/dashboard') dashboardNavigation = result
         // 同じ実Promiseを返す。観測側のreject分類は元Promise/awaitの例外を変更しない。
         void result.then((failure) => {
           routeTrace.push({ kind: 'push-resolved', measured, failureType: failure?.type ?? 0, after: safePath(actualRouter.currentRoute.value.path) })
@@ -106,6 +127,9 @@ describe('CMP1017: 非同期の所属拒否は実ルーターで終端画面へ�
       })
       observerCleanup.push(actualRouter.beforeEach((to, from) => {
         routeTrace.push({ kind: 'before', measured, to: safePath(to.path), from: safePath(from.path) })
+      }))
+      observerCleanup.push(actualRouter.beforeResolve((to, from) => {
+        routeTrace.push({ kind: 'before-resolve', measured, to: safePath(to.path), from: safePath(from.path), elapsedMs: Date.now() - observationStartedAt })
       }))
       observerCleanup.push(actualRouter.afterEach((to, from, failure) => {
         routeTrace.push({ kind: 'after', measured, to: safePath(to.path), from: safePath(from.path), failureType: failure?.type ?? 0 })
@@ -146,6 +170,7 @@ describe('CMP1017: 非同期の所属拒否は実ルーターで終端画面へ�
       console.info('receipt-guard-deny', observations[0])
       middlewareGate?.resolve()
       await navigation
+      await dashboardNavigation
       await flushPromises()
       await expect.poll(() => router.currentRoute.value.path).toBe('/dashboard')
     }
