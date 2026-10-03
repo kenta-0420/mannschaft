@@ -350,6 +350,45 @@ class SurveyProxyIdentityHttpContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"POST", "GET"})
+    void 未所属の非公開アンケートと不在IDは同じ404で存在を秘匿する(String method) throws Exception {
+        inTx(() -> {
+            em.createNativeQuery("DELETE FROM user_roles WHERE user_id = :uid AND organization_id = :oid")
+                    .setParameter("uid", actor).setParameter("oid", foreignOrg.getId()).executeUpdate();
+            em.createNativeQuery("DELETE FROM memberships WHERE user_id = :uid AND scope_type = 'ORGANIZATION' AND scope_id = :oid")
+                    .setParameter("uid", actor).setParameter("oid", foreignOrg.getId()).executeUpdate();
+            em.createNativeQuery("UPDATE surveys SET scope_id = :oid WHERE id = :sid")
+                    .setParameter("oid", foreignOrg.getId()).setParameter("sid", survey.getId()).executeUpdate();
+            return null;
+        });
+        seedAnswer(subject, "閲覧できない本人の回答");
+        var before = snapshot();
+        var observed = new java.util.ArrayList<org.springframework.mock.web.MockHttpServletResponse>();
+        for (Long id : List.of(survey.getId(), 999_999_999L)) {
+            String suffix = "GET".equals(method) ? "/me" : "";
+            var req = request(HttpMethod.valueOf(method), "/api/v1/surveys/" + id + "/responses" + suffix)
+                    .header("Authorization", "Bearer " + tokens.issueAccessToken(actor, List.of("USER")))
+                    .header("Accept-Language", "ja");
+            proxyHeaders(req, subject);
+            if ("POST".equals(method)) req.contentType(MediaType.APPLICATION_JSON).content(body());
+            observed.add(mvc.perform(req).andReturn().getResponse());
+        }
+        var foreignError = mapper.readTree(observed.get(0).getContentAsString()).path("error");
+        var missingError = mapper.readTree(observed.get(1).getContentAsString()).path("error");
+        System.out.println("PRIVATE_ID_PROOF " + mapper.writeValueAsString(Map.of(
+                "method", method, "foreignStatus", observed.get(0).getStatus(), "foreignError", foreignError,
+                "missingStatus", observed.get(1).getStatus(), "missingError", missingError)));
+        assertThat(snapshot()).isEqualTo(before);
+        org.junit.jupiter.api.Assertions.assertAll(
+                () -> assertThat(observed.get(0).getStatus()).isEqualTo(404),
+                () -> assertThat(observed.get(1).getStatus()).isEqualTo(404),
+                () -> assertThat(foreignError.path("code").asText()).isEqualTo(SurveyErrorCode.SURVEY_NOT_FOUND.getCode()),
+                () -> assertThat(missingError.path("code").asText()).isEqualTo(SurveyErrorCode.SURVEY_NOT_FOUND.getCode()),
+                () -> assertThat(foreignError.path("message").asText()).isEqualTo(SurveyErrorCode.SURVEY_NOT_FOUND.getMessage()),
+                () -> assertThat(missingError.path("message").asText()).isEqualTo(SurveyErrorCode.SURVEY_NOT_FOUND.getMessage()));
+    }
+
+    @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void チームは同意組合へ有効加盟している場合だけ代理回答できる(boolean active) throws Exception {
         inTx(() -> {
