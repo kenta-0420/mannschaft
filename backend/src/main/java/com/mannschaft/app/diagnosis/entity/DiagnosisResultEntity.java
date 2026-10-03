@@ -25,6 +25,8 @@ public class DiagnosisResultEntity extends UuidV7Entity {
 
     @Column(nullable = false, updatable = false) private Long userId;
     @Enumerated(EnumType.STRING) @Column(nullable = false, updatable = false, length = 30) private DiagnosisMethod method;
+    /** 出生結果の計算元プロフィール版。通常診断はnull、出生結果は非負の内部版を保持する。 */
+    @Column(updatable = false) private Long sourceProfileRevision;
     @Column(nullable = false, updatable = false, columnDefinition = "LONGTEXT") private String summarySnapshot;
     @Column(nullable = false, updatable = false) private Instant completedAt;
     @Column(nullable = false, updatable = false) private Instant createdAt;

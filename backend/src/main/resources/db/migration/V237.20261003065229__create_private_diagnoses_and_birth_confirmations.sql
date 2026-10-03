@@ -24,6 +24,7 @@ CREATE TABLE diagnosis_results (
     id BINARY(16) NOT NULL,
     user_id BIGINT NOT NULL,
     method VARCHAR(30) NOT NULL,
+    source_profile_revision BIGINT NULL,
     summary_snapshot LONGTEXT NOT NULL,
     completed_at DATETIME(6) NOT NULL,
     created_at DATETIME(6) NOT NULL,
@@ -31,7 +32,11 @@ CREATE TABLE diagnosis_results (
     PRIMARY KEY (id),
     INDEX idx_diagnosis_results_user_id_completed_at_id (user_id, completed_at DESC, id DESC),
     INDEX idx_diagnosis_results_user_id_method_completed_at_id (user_id, method, completed_at DESC, id DESC),
-    CONSTRAINT chk_diagnosis_results_method CHECK (method IN ('DIAGNOSIS','BIRTH_STYLE'))
+    CONSTRAINT chk_diagnosis_results_method CHECK (method IN ('DIAGNOSIS','BIRTH_STYLE')),
+    CONSTRAINT chk_diagnosis_results_source_profile_revision CHECK (
+        (method = 'DIAGNOSIS' AND source_profile_revision IS NULL)
+        OR (method = 'BIRTH_STYLE' AND source_profile_revision IS NOT NULL AND source_profile_revision >= 0)
+    )
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='出生原情報と回答を含まない不変本人結果';
 
 CREATE TABLE diagnosis_commands (
