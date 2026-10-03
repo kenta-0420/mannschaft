@@ -5,6 +5,13 @@
 - 担当: 足軽B（Sol / medium、Terra代替）。軍議・成果検分・出荷判断は殿。
 - 状態: source e6da1749abのBE225件/54XML、標準H2 OpenAPI/生成FE型、API単体5件・ナビ16件・機能ゲート17件・共通UI補正後全体型チェックはgreen。実機UI7のADMIN導線/一覧/空履歴1件とUI8のDEPUTY承認権限なし・MEMBER/SYSTEM拒否・取消/承認/本人255文字オンライン撤回4件は別JUnit計5件green、終了処理も全完了。UI9/10の紙承認/権限ありDEPUTY、UI11の専用空組合/候補取得、UI12の故障注入も各1件green。390pxは6言語の同意/履歴ページと候補ready/overflow0/44pxがgreen。紙撤回/実操作履歴・3住民・最新main追従・最終検分は未達。
 
+## 2026-10-03 依存根治後の実機3契約準備
+
+- 既存の専用fixtureを再利用する実機specへ3契約を準備した。対象specのeslint exit0、diffcheck0。実行は未実施であり合格数へ含めない。
+- Deskから紙同意2をピン留めしてSurvey199をUI回答し、代理状態の再表示・fresh本人90245のGETme/回答済みUI・回答所有者90245と監査actor90156を別々に確認する。
+- 管理履歴で保存済みSURVEY操作の実表示と組合/対象者ANDを確認し、DPの紙撤回はADMIN23立会/255文字理由をUI保存、同意撤回後の履歴保持と代理拒否を確認する。
+- CMP-261003-0122の実DBGREEN・統合実機jarを待つ。Survey199は未回答、紙同意2は未撤回、3住民と最終出荷は未達のまま保全する。
+
 ## 方針
 
 前任引継（引継-cmp-260820-1018-proxy-input-admin-20261002-0825.md）のユーザー裁可を正本として、`/admin/proxy/consents` と `/admin/proxy/records` を追加する。組合選択/currentScopeは既存金型を使い、組合管理ハブ配下の新pathは作らない。組合管理資格は既存ADMIN/DEPUTY_ADMIN、承認はPROXY_CONSENT_APPROVEで判定し自己承認を禁止する。SYSTEM_ADMINはBE APIで組合横断を許可し、通常組合業務UIの導線は表示しない。一般isAdminOrAbove helperの意味は変えずproxy入口で明示例外を適用する。新テーブル・DDL・権限追加は行わない。

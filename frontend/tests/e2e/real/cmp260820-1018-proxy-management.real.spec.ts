@@ -16,6 +16,24 @@ const fixture = (manifestPath ? JSON.parse(readFileSync(manifestPath, 'utf8')) :
 const base = 'http://localhost:3001'
 const apiBase = 'http://localhost:8081'
 
+async function memberName(page: Page, userId: number) {
+  const response = await page.context().request.get(`${apiBase}/api/v1/organizations/${fixture.organization.slug}/members?page=0&size=20`)
+  expect(response.status()).toBe(200)
+  const rows = (await response.json()).data as Array<{ userId: number, displayName: string }>
+  const member = rows.find(row => row.userId === userId)
+  expect(member, '専用fixtureの候補が最初の20人に存在する').toBeDefined()
+  return member!.displayName
+}
+
+async function surveyRecords(page: Page, subjectUserId?: number) {
+  const query = new URLSearchParams({ organizationId: String(fixture.organization.id), page: '0', size: '20' })
+  if (subjectUserId != null) query.set('subjectUserId', String(subjectUserId))
+  const response = await page.context().request.get(`${apiBase}/api/v1/proxy-input-records?${query}`)
+  expect(response.status()).toBe(200)
+  const rows = (await response.json()).data as Array<{ id: number, consentId: number, subjectUserId: number, proxyUserId: number, targetEntityType: string, targetEntityId: number }>
+  return rows.filter(row => row.consentId === fixture.consents.paper.id && row.targetEntityType === 'SURVEY' && row.targetEntityId === fixture.survey!.id)
+}
+
 async function openAs(browser: Browser, actor: keyof typeof fixture.users, organization = fixture.organization, locale = 'ja'): Promise<Page> {
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] }, viewport: { width: 1440, height: 900 }, locale: locale === 'ja' ? 'ja-JP' : locale })
   const page = await context.newPage()
@@ -445,4 +463,107 @@ test('ADMINは取消後に他代理者の同意を承認し、本人オンライ
     writeFileSync(info.outputPath('safe-mutation-proof.json'), JSON.stringify({ mutations }, null, 2))
     await closeOwned(page, info)
   }
+})
+
+// 依存CMP-261003-0122を統合した実機jarでのみ実行する。回答・撤回をAPIで代替しない。
+test('実履歴: DEPUTYがDeskで本人のアンケートを回答し本人の再表示へ保存する', async ({ browser }, info) => {
+  if (!fixture.survey) throw new Error('専用の未回答アンケートfixtureが必要です')
+  const page = await openAs(browser, 'deputy')
+  try {
+    await open(page, '/admin/proxy-desk')
+    await page.getByPlaceholder('例: proxy-records/2026/scan_001.pdf', { exact: true }).fill('cmp1018-fixture/paper-original')
+    await page.getByText(`代理入力同意書 #${fixture.consents.paper.id}`, { exact: true }).click()
+    await page.getByRole('button', { name: '住民をピン留め', exact: true }).click()
+    await expect(page.getByText(`(対象住民ID: ${fixture.users.member.id} / 代理入力同意書 #${fixture.consents.paper.id})`, { exact: true })).toBeVisible()
+    await open(page, `/surveys/${fixture.survey.id}?scope=organization&scopeId=${fixture.organization.slug}`)
+    await expect(page.getByTestId('survey-response-form')).toBeVisible({ timeout: 120_000 })
+    await page.getByTestId(`response-text-${fixture.survey.questionId}`).fill('専用実機で本人から預かった回答')
+    const submitted = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === `/api/v1/surveys/${fixture.survey!.id}/responses`)
+    await page.getByTestId('survey-response-submit').click()
+    expect((await submitted).status()).toBe(201)
+    await expect(page.getByTestId('survey-already-responded')).toBeVisible({ timeout: 120_000 })
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await waitForHydration(page)
+    await expect(page.getByTestId('survey-already-responded')).toBeVisible({ timeout: 120_000 })
+    const records = await surveyRecords(page, fixture.users.member.id)
+    expect(records).toHaveLength(1)
+    expect(records[0]).toMatchObject({ subjectUserId: fixture.users.member.id, proxyUserId: fixture.users.deputy.id })
+    writeFileSync(info.outputPath('safe-saved-record-proof.json'), JSON.stringify(records, null, 2))
+    await page.screenshot({ path: info.outputPath('desk-subject-answered.png'), fullPage: true })
+  }
+  finally { await closeOwned(page, info) }
+  const member = await openAs(browser, 'member')
+  try {
+    const response = await member.context().request.get(`${apiBase}/api/v1/surveys/${fixture.survey.id}/responses/me`)
+    expect(response.status()).toBe(200)
+    const answers = (await response.json()).data as Array<{ userId: number, questionId: number }>
+    expect(answers).toHaveLength(1)
+    expect(answers[0]).toMatchObject({ userId: fixture.users.member.id, questionId: fixture.survey.questionId })
+    await open(member, `/surveys/${fixture.survey.id}?scope=organization&scopeId=${fixture.organization.slug}`)
+    await expect(member.getByTestId('survey-already-responded')).toBeVisible({ timeout: 120_000 })
+    writeFileSync(info.outputPath('safe-answer-owner-proof.json'), JSON.stringify(answers.map(row => ({ userId: row.userId, questionId: row.questionId })), null, 2))
+    await member.screenshot({ path: info.outputPath('subject-own-answered.png'), fullPage: true })
+  }
+  finally { await closeOwned(member, info) }
+})
+
+test('実履歴: ADMINは保存済操作を表示し組合と対象者の交差で絞り込む', async ({ browser }, info) => {
+  if (!fixture.survey) throw new Error('専用の回答済みアンケートfixtureが必要です')
+  const page = await openAs(browser, 'admin')
+  try {
+    const name = await memberName(page, fixture.users.member.id)
+    await open(page, `/organizations/${fixture.organization.slug}/admin`)
+    await page.getByRole('button', { name: '管理画面を開く', exact: true }).click()
+    await page.getByRole('link', { name: '代理入力履歴', exact: true }).click()
+    const record = page.locator('article').filter({ hasText: `SURVEY #${fixture.survey.id}` })
+    await expect(record).toHaveCount(1, { timeout: 120_000 })
+    await expect(record.getByText(`#${fixture.users.deputy.id}`, { exact: true })).toBeVisible()
+    const picker = page.getByRole('combobox', { name: '対象者で絞り込み（任意）', exact: true })
+    await picker.click()
+    await page.getByRole('option', { name, exact: true }).click()
+    await expect(record.getByText(name, { exact: true })).toBeVisible({ timeout: 120_000 })
+    expect(await surveyRecords(page, fixture.users.member.id)).toHaveLength(1)
+    expect(await surveyRecords(page, fixture.users.deputy.id)).toHaveLength(0)
+    await page.screenshot({ path: info.outputPath('records-subject-intersection.png'), fullPage: true })
+  }
+  finally { await closeOwned(page, info) }
+})
+
+test('実履歴: DEPUTYの紙撤回はADMIN立会と255文字理由を保存し履歴を残す', async ({ browser }, info) => {
+  if (!fixture.survey) throw new Error('専用の回答済みアンケートfixtureが必要です')
+  const page = await openAs(browser, 'deputy')
+  try {
+    const adminName = await memberName(page, fixture.users.admin.id)
+    const before = await surveyRecords(page, fixture.users.member.id)
+    expect(before).toHaveLength(1)
+    await open(page, `/organizations/${fixture.organization.slug}/admin`)
+    await page.getByRole('button', { name: '管理画面を開く', exact: true }).click()
+    const consent = page.locator('article').filter({ has: page.getByRole('heading', { name: `代理入力同意書 #${fixture.consents.paper.id}`, exact: true }) })
+    await consent.getByRole('button', { name: '同意書撤回', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('checkbox')).toBeChecked()
+    await dialog.getByRole('combobox', { name: '紙撤回の立会管理者', exact: true }).click()
+    await page.getByRole('option', { name: adminName, exact: true }).click()
+    await dialog.locator('textarea').fill('紙'.repeat(255))
+    const revoked = page.waitForResponse(response => response.request().method() === 'PATCH' && new URL(response.url()).pathname.endsWith(`/${fixture.consents.paper.id}/revoke`))
+    await dialog.getByRole('button', { name: '同意書撤回', exact: true }).click()
+    expect((await revoked).status()).toBe(200)
+    await expect(consent.getByText('撤回済み', { exact: true })).toBeVisible({ timeout: 120_000 })
+    await expect(consent.getByText('紙'.repeat(255), { exact: true })).toBeVisible()
+    const response = await page.context().request.get(`${apiBase}/api/v1/organizations/${fixture.organization.id}/proxy-input-consents?page=0&size=20`)
+    expect(response.status()).toBe(200)
+    const rows = (await response.json()).data as Array<{ id: number, status: string, revokeMethod: string, revokeWitnessedByUserId: number, revokeReason: string }>
+    const saved = rows.find(row => row.id === fixture.consents.paper.id)!
+    expect(saved).toMatchObject({ status: 'REVOKED', revokeMethod: 'PAPER_BY_SUBJECT', revokeWitnessedByUserId: fixture.users.admin.id, revokeReason: '紙'.repeat(255) })
+    expect(await surveyRecords(page, fixture.users.member.id)).toEqual(before)
+    writeFileSync(info.outputPath('safe-paper-revocation-proof.json'), JSON.stringify({ consentId: saved.id, status: saved.status, method: saved.revokeMethod, witness: saved.revokeWitnessedByUserId, reasonLength: saved.revokeReason.length, retainedRecordIds: before.map(row => row.id) }, null, 2))
+    await page.getByRole('link', { name: '代理入力履歴', exact: true }).click()
+    await expect(page.locator('article').filter({ hasText: `SURVEY #${fixture.survey.id}` })).toHaveCount(1, { timeout: 120_000 })
+    await page.screenshot({ path: info.outputPath('revoked-consent-history-retained.png'), fullPage: true })
+    await open(page, '/admin/proxy-desk')
+    await expect(page.getByText(`代理入力同意書 #${fixture.consents.paper.id}`, { exact: true })).toHaveCount(0)
+    const denied = await page.context().request.get(`${apiBase}/api/v1/surveys/${fixture.survey.id}/responses/me`, { headers: { 'X-Proxy-For-User-Id': String(fixture.users.member.id), 'X-Proxy-Consent-Id': String(fixture.consents.paper.id), 'X-Proxy-Input-Source': 'PAPER_FORM', 'X-Proxy-Original-Storage': 'cmp1018-fixture/paper-original' } })
+    expect(denied.status()).toBe(403)
+  }
+  finally { await closeOwned(page, info) }
 })
