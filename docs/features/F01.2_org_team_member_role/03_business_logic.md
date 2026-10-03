@@ -512,7 +512,7 @@
 
 ```
 1. DELETE /api/v1/teams/{id}/follow を受付
-2. memberships に SUPPORTER ロールのアクティブエントリが存在するか確認（scope_type='TEAM' AND scope_id=X AND role_kind='SUPPORTER' AND left_at IS NULL） → なければ 404
+2. memberships に SUPPORTER ロールのアクティブエントリが存在するか確認（scope_type='TEAM' AND scope_id=X AND role_kind='SUPPORTER' AND left_at IS NULL） → なければ PENDING の申請（supporter_applications）を確認し、それも無ければ 404（SUPPORTER_007）。MEMBER・ADMIN 等の所属と user_roles には触れない（CMP-261001-0835）
 3. memberships を UPDATE SET left_at=NOW()（F00.5 Phase 2 以降）
 4. audit_logs に TEAM_MEMBER_REMOVED を記録（metadata: {"reason": "UNFOLLOW"}）
 5. 204 No Content を返す
@@ -570,7 +570,7 @@
 
 ```
 1. DELETE /api/v1/organizations/{id}/follow を受付
-2. memberships に当該組織の SUPPORTER アクティブエントリが存在するか確認（scope_type='ORGANIZATION' AND role_kind='SUPPORTER' AND left_at IS NULL） → なければ 404
+2. memberships に当該組織の SUPPORTER アクティブエントリが存在するか確認（scope_type='ORGANIZATION' AND role_kind='SUPPORTER' AND left_at IS NULL） → なければ PENDING の申請（supporter_applications）を確認し、それも無ければ 404（SUPPORTER_007）。MEMBER・ADMIN 等の所属と user_roles には触れない（CMP-261001-0835）
 3. memberships を UPDATE SET left_at=NOW()（F00.5 Phase 2 以降）
 4. audit_logs に ORGANIZATION_MEMBER_REMOVED を記録（metadata: {"reason": "UNFOLLOW"}）
 5. 204 No Content を返す
@@ -643,7 +643,7 @@
 |-----------|------|
 | 401 | 未認証 |
 | 404 | 対象チーム/組織に所属していない |
-| 422 | SUPPORTER が `/me` を呼んだ（`/follow` を案内）|
+| 422 | SUPPORTER が `/me` を呼んだ（`/follow` を案内。エラーコード ROLE_015。所属・user_roles は変更しない）|
 | 422 | 唯一の ADMIN が退会しようとした（先に昇格または削除を促す）|
 
 ---
