@@ -64,13 +64,33 @@ public class RecruitmentTemplateService {
     }
 
     /**
-     * テンプレート単件取得（論理削除除外）。
-     * 閲覧権限: メンバー以上。
+     * テンプレートの認可入力（認可ファサードが 403 / 404 を分けるための最小情報）。
+     *
+     * @param scopeType テンプレートのスコープ種別
+     * @param scopeId   テンプレートのスコープ ID
      */
-    public RecruitmentTemplateResponse getTemplate(Long templateId, Long userId) {
+    public record TemplateAccessScope(RecruitmentScopeType scopeType, Long scopeId) {
+    }
+
+    /**
+     * 認可の前に、テンプレートのスコープを素の読み取りで解決する（readOnly。アーカイブ済み・不在は {@code TEMPLATE_NOT_FOUND}(404)）。
+     *
+     * @param templateId テンプレート ID
+     * @return テンプレートの認可入力
+     */
+    public TemplateAccessScope resolveTemplateScope(Long templateId) {
         RecruitmentTemplateEntity template = findOrThrow(templateId);
-        accessControlService.checkMembership(userId, template.getScopeId(), template.getScopeType().name());
-        return RecruitmentTemplateResponse.from(template);
+        return new TemplateAccessScope(template.getScopeType(), template.getScopeId());
+    }
+
+    /**
+     * テンプレート単件取得（論理削除除外。<b>tx 本体</b>）。
+     *
+     * <p>認可（メンバー以上）は {@link RecruitmentListingFacade#getTemplate} が tx の外で済ませる。
+     * 本メソッドは認可の後にテンプレートを読み直し、アーカイブ済みなら {@code TEMPLATE_NOT_FOUND}(404)。</p>
+     */
+    public RecruitmentTemplateResponse getTemplate(Long templateId) {
+        return RecruitmentTemplateResponse.from(findOrThrow(templateId));
     }
 
     // ===========================================
@@ -131,14 +151,15 @@ public class RecruitmentTemplateService {
     }
 
     /**
-     * テンプレート更新。null のフィールドは変更しない（部分更新）。
-     * 操作権限: 管理者以上。
+     * テンプレート更新。null のフィールドは変更しない（部分更新。<b>tx 本体</b>）。
+     *
+     * <p>認可（管理者以上）は {@link RecruitmentListingFacade#updateTemplate} が tx の外で済ませる。
+     * 本メソッドは認可の後にテンプレートを読み直し、アーカイブ済みなら {@code TEMPLATE_NOT_FOUND}(404)・DB 不変。
+     * テンプレートのスコープ列は不変という前提。</p>
      */
     @Transactional
-    public RecruitmentTemplateResponse update(Long templateId, Long userId,
-            RecruitmentTemplateUpdateRequest request) {
+    public RecruitmentTemplateResponse update(Long templateId, RecruitmentTemplateUpdateRequest request) {
         RecruitmentTemplateEntity template = findOrThrow(templateId);
-        accessControlService.checkAdminOrAbove(userId, template.getScopeId(), template.getScopeType().name());
 
         // 更新後の値で再検証
         int effectiveCapacity = request.getDefaultCapacity() != null
@@ -187,13 +208,14 @@ public class RecruitmentTemplateService {
     }
 
     /**
-     * テンプレート論理削除（アーカイブ）。
-     * 操作権限: 管理者以上。
+     * テンプレート論理削除（アーカイブ。<b>tx 本体</b>）。
+     *
+     * <p>認可（管理者以上）は {@link RecruitmentListingFacade#archiveTemplate} が tx の外で済ませる。
+     * 本メソッドは認可の後にテンプレートを読み直し、アーカイブ済みなら {@code TEMPLATE_NOT_FOUND}(404)・DB 不変。</p>
      */
     @Transactional
-    public void archive(Long templateId, Long userId) {
+    public void archive(Long templateId) {
         RecruitmentTemplateEntity template = findOrThrow(templateId);
-        accessControlService.checkAdminOrAbove(userId, template.getScopeId(), template.getScopeType().name());
 
         template.archive();
         templateRepository.save(template);
