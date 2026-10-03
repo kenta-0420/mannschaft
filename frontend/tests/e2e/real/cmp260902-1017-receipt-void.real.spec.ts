@@ -163,7 +163,16 @@ async function createReceipt(scope: Scope, label: string) {
   return actual
 }
 
-async function openList(page: Page, scope: Scope) {
+async function waitForReceiptRow(page: Page, receipt: Receipt) {
+  await expect(page.locator('body > div[class~="z-[9998]"]')).toHaveCount(0)
+  await expect(page.locator('.p-datatable-mask')).toHaveCount(0)
+  const row = page.getByRole('row').filter({ hasText: receipt.recipientName }).filter({ visible: true })
+  await expect(row).toHaveCount(1)
+  await expect(row.getByText(receipt.receiptNumber, { exact: true })).toBeVisible()
+  await expect(row.getByText(receipt.recipientName, { exact: true })).toBeVisible()
+}
+
+async function openList(page: Page, scope: Scope, receipt: Receipt) {
   await page.goto(`/${scope.type}/${scope.slug}/admin`)
   await waitForHydration(page)
   await expect.poll(() => page.evaluate(() => {
@@ -179,6 +188,7 @@ async function openList(page: Page, scope: Scope) {
   expect((await list).status()).toBe(200)
   await waitForHydration(page)
   await expect(page.getByRole('heading', { name: '領収書管理', exact: true })).toBeVisible()
+  await waitForReceiptRow(page, receipt)
 }
 
 test.describe('CMP1017 無効化のみの実 API/UI 契約', () => {
@@ -261,7 +271,7 @@ test.describe('CMP1017 無効化のみの実 API/UI 契約', () => {
       const scope = scopes.find(item => item.type === type && item.owner === 'owner')!
       const receipt = await createReceipt(scope, 'UI')
       const page = actors.owner.page
-      await openList(page, scope)
+      await openList(page, scope, receipt)
       const row = page.getByRole('row').filter({ hasText: receipt.recipientName }).filter({ visible: true })
       await expect(row).toHaveCount(1)
       await row.getByRole('button', { name: '無効化', exact: true }).click()
@@ -271,8 +281,17 @@ test.describe('CMP1017 無効化のみの実 API/UI 契約', () => {
       await dialog.locator('textarea').fill(reason)
       const submitted = page.waitForResponse(response => response.request().method() === 'POST'
         && response.url() === `${API}/api/v1/admin/receipts/${receipt.id}/void?${query(scope)}`)
+      const reloaded = page.waitForResponse((response) => {
+        const url = new URL(response.url())
+        return response.request().method() === 'GET' && url.pathname === '/api/v1/admin/receipts'
+          && url.searchParams.get('scopeType') === typeName(scope) && url.searchParams.get('scopeId') === String(scope.id)
+      })
       await dialog.getByRole('button', { name: '無効化する', exact: true }).click()
       expect((await submitted).status()).toBe(200)
+      const refreshed = await reloaded
+      expect(refreshed.status()).toBe(200)
+      const refreshedReceipts = (await refreshed.json()).data as Receipt[]
+      expect(refreshedReceipts.find(item => item.id === receipt.id)).toMatchObject({ id: receipt.id, isVoided: true })
       await expect(dialog).not.toBeVisible()
       await expect(page.getByText('無効化しました', { exact: true })).toBeVisible()
       const actual = await getReceipt(scope, receipt.id)
@@ -280,6 +299,7 @@ test.describe('CMP1017 無効化のみの実 API/UI 契約', () => {
       expect(actual.voidedAt).not.toBeNull()
       expect(actual.voidedBy).toBe(actors.owner.id)
       expect(actual.voidedReason).toBe(reason)
+      await waitForReceiptRow(page, actual)
       await screenshot(page, info, `${type}-admin-void`)
     })
 
@@ -297,7 +317,7 @@ test.describe('CMP1017 無効化のみの実 API/UI 契約', () => {
         expect(bulk.status(), `${actorKey} bulk`).toBe(403)
         expect(audit(await getReceipt(scope, receipt.id))).toEqual(before)
         if (actorKey === 'deputy') {
-          await openList(page, scope)
+          await openList(page, scope, receipt)
           await expect(page.getByRole('row').filter({ hasText: receipt.recipientName }).filter({ visible: true })).toHaveCount(1)
           await expect(page.getByRole('button', { name: '無効化', exact: true })).toHaveCount(0)
           await screenshot(page, info, `${type}-deputy-no-void`)
@@ -334,7 +354,7 @@ test.describe('CMP1017 無効化のみの実 API/UI 契約', () => {
       const singleReceipt = await createReceipt(dual, 'SYS-dual-single')
       const bulkReceipt = await createReceipt(dual, 'SYS-dual-bulk')
       const page = actors.system.page
-      await openList(page, dual)
+      await openList(page, dual, singleReceipt)
       await expect(page.getByRole('row').filter({ hasText: singleReceipt.recipientName }).filter({ visible: true })).toHaveCount(1)
       await expect(page.getByRole('button', { name: '無効化', exact: true })).toHaveCount(0)
       await screenshot(page, info, `${type}-sys-dual-no-void`)
