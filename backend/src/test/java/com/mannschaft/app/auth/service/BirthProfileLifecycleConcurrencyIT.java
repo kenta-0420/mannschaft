@@ -9,6 +9,13 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.data.redis.core.ValueOperations;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -35,6 +42,16 @@ class BirthProfileLifecycleConcurrencyIT extends AbstractMySqlIntegrationTest {
     @Autowired private GuardianshipHandoverService handover;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private DataSource dataSource;
+
+    @BeforeEach
+    @SuppressWarnings("unchecked")
+    void externalRedisFixture() {
+        // 共通基底の外部Redis mockのみ設定する。Auth Bean/Repositoryは実体を使う。
+        ValueOperations<String, String> values = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(values);
+        when(values.increment(anyString())).thenReturn(1L);
+        when(redisTemplate.expire(anyString(), anyLong(), eq(TimeUnit.SECONDS))).thenReturn(true);
+    }
 
     private Long user(UserEntity.UserStatus status) {
         return users.saveAndFlush(UserEntity.builder().email(UUID.randomUUID()+"@child.mannschaft.internal")

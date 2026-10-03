@@ -1,6 +1,9 @@
 package com.mannschaft.app.auth.service;
 
 import org.testcontainers.containers.MySQLContainer;
+import com.mannschaft.app.common.BusinessException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CancellationException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.concurrent.Future;
@@ -9,6 +12,25 @@ import java.util.concurrent.TimeUnit;
 /** 専用テストコンテナの対象users行待ちだけを観測する。DB設定変更・値出力はしない。 */
 final class BirthProfileLockWaitObserver {
     private BirthProfileLockWaitObserver() {}
+
+    private static AssertionError completedBeforeWait(Future<?> worker) {
+        try {
+            worker.get();
+        } catch (ExecutionException failure) {
+            Throwable cause = failure.getCause();
+            String type = cause == null ? "NONE" : cause.getClass().getName();
+            String code = cause instanceof BusinessException business
+                    ? business.getErrorCode().getCode() : "NONE";
+            // 例外message/causeは入力値を含み得るため保持せず、classと業務codeのみ残す。
+            return new AssertionError("users待機前にworkerが失敗 class=" + type + " code=" + code);
+        } catch (CancellationException failure) {
+            return new AssertionError("users待機前にworkerが取消されました");
+        } catch (InterruptedException failure) {
+            Thread.currentThread().interrupt();
+            return new AssertionError("users待機前worker原因の回収が中断されました");
+        }
+        return new AssertionError("対象users行の待機へ到達する前にworkerが正常終了しました");
+    }
 
     static void awaitUserWait(MySQLContainer<?> mysql, Long userId, Future<?> worker) {
         String url = mysql.getJdbcUrl();
@@ -34,7 +56,7 @@ final class BirthProfileLockWaitObserver {
                 try (var rows = query.executeQuery()) {
                     if (rows.next() && rows.getLong(1) > 0) return;
                 }
-                if (worker.isDone()) throw new AssertionError("対象users行の待機へ到達する前にworkerが終了しました");
+                if (worker.isDone()) throw completedBeforeWait(worker);
                 Thread.sleep(25);
             }
             throw new AssertionError("5秒以内に対象users行の実ロック待機を観測できませんでした");
