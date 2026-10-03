@@ -300,13 +300,22 @@ class ShiftManualArchiveConsumptionCancelIT extends AbstractMySqlIntegrationTest
     // ═══════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("AC-05 既に ARCHIVED のシフトを再度 ARCHIVED にしても二重減算しない")
-    void 再アーカイブは冪等() {
+    @DisplayName("AC-05 再ARCHIVEDは409で拒否され消化・公開履歴・関連依頼を変えない")
+    void 再アーカイブは拒否され二重減算しない() {
         archive();
         awaitConsumptionStatus("CANCELLED");
+        await().atMost(20, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(todoStatus()).isEqualTo("CANCELLED"));
+        var before = scheduleSnapshot();
+        var requestBefore = changeRequestSnapshot();
+        String todoBefore = todoStatus();
 
-        archive();
-
+        // CMP-260903-0658: 同状態への遷移は許可しない。二重減算防止の契約は維持する。
+        assertThatThrownBy(this::archive).isInstanceOfSatisfying(BusinessException.class, ex ->
+                assertThat(ex.getErrorCode().getCode()).isEqualTo("SHIFT_012"));
+        assertThat(scheduleSnapshot()).isEqualTo(before);
+        assertThat(changeRequestSnapshot()).isEqualTo(requestBefore);
+        assertThat(todoStatus()).isEqualTo(todoBefore);
         assertStableConsumedAmount();
     }
 
@@ -358,18 +367,22 @@ class ShiftManualArchiveConsumptionCancelIT extends AbstractMySqlIntegrationTest
     // ═══════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("AC-13 PUBLISHED から ADJUSTING への後戻り（公開取消）でも消化が残らない")
-    void 公開取消でも消化が残らない() {
-        // ShiftScheduleEntity#startAdjusting には遷移ガードが無く、PUBLISHED からの後戻りは
-        // 実際に成立する（entity のメソッドは status を無条件に上書きするだけ）。
-        // 成立する以上、公開時に積んだ消化を置き去りにしてはならない。
-        transition("ADJUSTING");
-
-        assertThat(scheduleStatus())
-                .as("後戻り遷移が実際に成立していること（この前提が崩れたら本検体の意味が変わる）")
-                .isEqualTo("ADJUSTING");
-        awaitConsumptionStatus("CANCELLED");
-        assertThat(consumedAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+    @DisplayName("AC-13 公開済みからの巻戻しは409で拒否されPLANNED消化・Todo・依頼を変えない")
+    void 公開取消は拒否され予算と関連データを変えない() {
+        var before = scheduleSnapshot();
+        var requestBefore = changeRequestSnapshot();
+        // #3219 は無ガードの旧実装を補償したもの。F03.5の許可遷移としては扱わない。
+        assertThatThrownBy(() -> transition("ADJUSTING"))
+                .isInstanceOfSatisfying(BusinessException.class, ex ->
+                        assertThat(ex.getErrorCode().getCode()).isEqualTo("SHIFT_012"));
+        assertThat(scheduleSnapshot()).isEqualTo(before);
+        assertThat(changeRequestSnapshot()).isEqualTo(requestBefore);
+        await().during(Duration.ofSeconds(2)).atMost(8, TimeUnit.SECONDS).untilAsserted(() -> {
+            assertThat(consumptionStatus()).isEqualTo("PLANNED");
+            assertThat(consumedAmount()).isEqualByComparingTo(CONSUMED);
+            assertThat(todoStatus()).isEqualTo("OPEN");
+            assertThat(changeRequestStatus()).isEqualTo("OPEN");
+        });
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -455,6 +468,15 @@ class ShiftManualArchiveConsumptionCancelIT extends AbstractMySqlIntegrationTest
     private String scheduleStatus() {
         return jdbcTemplate.queryForObject(
                 "SELECT status FROM shift_schedules WHERE id = ?", String.class, scheduleId);
+    }
+
+    private java.util.Map<String, Object> scheduleSnapshot() {
+        return jdbcTemplate.queryForMap("SELECT status, version, published_at, published_by, updated_at "
+                + "FROM shift_schedules WHERE id = ?", scheduleId);
+    }
+
+    private java.util.Map<String, Object> changeRequestSnapshot() {
+        return jdbcTemplate.queryForMap("SELECT status, version, updated_at FROM shift_change_requests WHERE id = ?", changeRequestId);
     }
 
     private String todoStatus() {

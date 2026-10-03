@@ -300,6 +300,11 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("正当ADMINはPUBLISH遷移200")
         void 正当ADMINは200() throws Exception {
+            // CMP-260903-0658: 公開の認可を調べる前提は許可された ADJUSTING → PUBLISHED。
+            // 参照系の公開済み共通fixtureは変更しない。
+            em.createNativeQuery("UPDATE shift_schedules SET status = 'ADJUSTING', published_at = NULL, published_by = NULL WHERE id = :id")
+                    .setParameter("id", scheduleAId).executeUpdate();
+            em.clear();
             setAuth(adminTeamAId);
             mockMvc.perform(post("/api/v1/shifts/schedules/{id}/transition", scheduleAId)
                             .param("status", "PUBLISHED"))
@@ -527,6 +532,11 @@ class ShiftScheduleScopeContractIT extends AbstractMySqlIntegrationTest {
         @Test
         @DisplayName("POST /schedules/{id}/transition（PUBLISH遷移）は200")
         void 遷移は200() throws Exception {
+            // 所属行なしADMINの認可を、許可された ADJUSTING → PUBLISHED で確認する。
+            // 参照系の公開済み共通fixtureと、user_roles のみの資格は維持する。
+            em.createNativeQuery("UPDATE shift_schedules SET status = 'ADJUSTING', published_at = NULL, published_by = NULL WHERE id = :id")
+                    .setParameter("id", scheduleAId).executeUpdate();
+            em.clear();
             setAuth(userRolesOnlyAdminTeamAId);
             mockMvc.perform(post("/api/v1/shifts/schedules/{id}/transition", scheduleAId)
                             .param("status", "PUBLISHED"))
