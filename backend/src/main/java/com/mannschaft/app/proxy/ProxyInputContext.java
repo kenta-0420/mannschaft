@@ -7,6 +7,9 @@ import org.springframework.web.context.annotation.RequestScope;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Objects;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 
 /**
  * リクエストスコープで代理入力状態を保持するBean（F14.1）。
@@ -24,6 +27,9 @@ public class ProxyInputContext {
     private boolean proxyMode = false;
     private Long subjectUserId;
     private Long consentId;
+    private Long validatedActorUserId;
+    @Getter(lombok.AccessLevel.NONE)
+    private SurveyResponseAuthorization surveyResponseAuthorization;
     private String inputSource;
     private String originalStorageLocation;
 
@@ -45,6 +51,14 @@ public class ProxyInputContext {
     public void activate(Long subjectUserId, Long consentId,
                          String inputSource, String originalStorageLocation,
                          Set<FeatureScope> scopes) {
+        activate(subjectUserId, consentId, inputSource, originalStorageLocation, scopes, null);
+    }
+
+    /** フィルターで同意書を検証した認証主体を保持する。 */
+    public void activate(Long subjectUserId, Long consentId,
+                         String inputSource, String originalStorageLocation,
+                         Set<FeatureScope> scopes, Long validatedActorUserId) {
+        this.surveyResponseAuthorization = null;
         // 防御的バリデーション（検分 P3c 🔵）。subjectUserId / inputSource は
         // proxy_input_records の NOT NULL 列・enum 解決の前提となるため必須。
         // consentId / originalStorageLocation は後見切替（GUARDIANSHIP_SWITCH）で
@@ -58,6 +72,7 @@ public class ProxyInputContext {
         this.proxyMode = true;
         this.subjectUserId = subjectUserId;
         this.consentId = consentId;
+        this.validatedActorUserId = validatedActorUserId;
         this.inputSource = inputSource;
         this.originalStorageLocation = originalStorageLocation;
         this.scopes.clear();
@@ -77,10 +92,44 @@ public class ProxyInputContext {
         return proxyMode && scope != null && scopes.contains(scope);
     }
 
+    /** アンケート領域にはEntity内の機能enumを渡さず、同意範囲の判定結果だけを返す。 */
+    public boolean hasSurveyScope() {
+        return hasScope(FeatureScope.SURVEY);
+    }
+
+    /** MVCの事前認可結果を対象アンケートと操作へ束縛する。 */
+    public void authorizeSurveyResponse(Long actorUserId, Long surveyId, SurveyResponseOperation operation) {
+        if (!proxyMode || actorUserId == null || surveyId == null || operation == null
+                || consentId == null || !Objects.equals(validatedActorUserId, actorUserId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        surveyResponseAuthorization = new SurveyResponseAuthorization(
+                actorUserId, subjectUserId, consentId, surveyId, operation);
+    }
+
+    /** 事前認可済みの同一主体・同意・対象・操作に限って本人IDを返す。 */
+    public Long requireSurveyResponseSubject(Long actorUserId, Long surveyId, SurveyResponseOperation operation) {
+        SurveyResponseAuthorization expected = new SurveyResponseAuthorization(
+                actorUserId, subjectUserId, consentId, surveyId, operation);
+        if (!proxyMode || actorUserId == null || !Objects.equals(validatedActorUserId, actorUserId)
+                || !expected.equals(surveyResponseAuthorization)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        return subjectUserId;
+    }
+
+    public enum SurveyResponseOperation { SUBMIT, GET_ME }
+
+    private record SurveyResponseAuthorization(Long actorUserId, Long subjectUserId,
+                                               Long consentId, Long surveyId,
+                                               SurveyResponseOperation operation) { }
+
     public void clear() {
         this.proxyMode = false;
         this.subjectUserId = null;
         this.consentId = null;
+        this.validatedActorUserId = null;
+        this.surveyResponseAuthorization = null;
         this.inputSource = null;
         this.originalStorageLocation = null;
         this.scopes.clear();
