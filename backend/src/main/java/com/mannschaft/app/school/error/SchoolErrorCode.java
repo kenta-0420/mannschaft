@@ -33,6 +33,9 @@ public enum SchoolErrorCode implements ErrorCode {
     /** 登録対象の生徒がクラスの在籍メンバーでない（400。部分登録せず全件ロールバック） */
     STUDENT_NOT_ENROLLED("SCHOOL_STUDENT_NOT_ENROLLED", "登録対象の生徒がこのクラスの在籍メンバーではありません", Severity.WARN),
 
+    /** entries に同じ生徒が重複している（400。認可後・在籍確認前に拒否し、副作用を起こさない） */
+    DUPLICATE_STUDENT_ENTRY("SCHOOL_DUPLICATE_STUDENT_ENTRY", "登録対象の生徒が重複しています", Severity.WARN),
+
     /** 保護者連絡がクラス・生徒・対象日のいずれかと一致しない（400。存在しない連絡も同じ応答にして存在を秘匿） */
     FAMILY_NOTICE_MISMATCH("SCHOOL_FAMILY_NOTICE_MISMATCH", "保護者連絡がこのクラス・生徒・対象日と一致しません", Severity.WARN),
 

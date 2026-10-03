@@ -146,6 +146,16 @@ public class SchoolAttendanceAccessPolicy {
     // 登録入力の整合（認可の一部として Policy に集約）
     // ========================================
 
+    /** 登録 entries に同じ生徒が重複していれば {@link SchoolErrorCode#DUPLICATE_STUDENT_ENTRY}（400）。DB に触れない。 */
+    public void requireNoDuplicateStudents(List<Long> studentUserIds) {
+        Set<Long> seen = new HashSet<>();
+        for (Long studentUserId : studentUserIds) {
+            if (!seen.add(studentUserId)) {
+                throw new BusinessException(SchoolErrorCode.DUPLICATE_STUDENT_ENTRY);
+            }
+        }
+    }
+
     /**
      * 登録 entries の生徒が全員、そのクラスの在籍メンバー（有効な membership）であることを要求する。
      *

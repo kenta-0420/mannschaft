@@ -34,6 +34,8 @@ public class PeriodAttendanceFacade {
     public PeriodAttendanceSummary submitPeriodAttendance(
             Long teamId, Integer periodNumber, PeriodAttendanceRequest request, Long operatorUserId) {
         policy.checkCanRecordPeriod(operatorUserId, teamId);
+        policy.requireNoDuplicateStudents(
+                request.getEntries().stream().map(PeriodAttendanceEntry::getStudentUserId).toList());
         policy.requireEnrolledStudents(teamId,
                 request.getEntries().stream().map(PeriodAttendanceEntry::getStudentUserId)
                         .collect(Collectors.toSet()));

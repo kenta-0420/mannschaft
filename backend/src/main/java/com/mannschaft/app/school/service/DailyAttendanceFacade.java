@@ -31,6 +31,8 @@ public class DailyAttendanceFacade {
      */
     public DailyRollCallSummary submitDailyRollCall(Long teamId, DailyRollCallRequest request, Long operatorUserId) {
         policy.checkCanRecordDaily(operatorUserId, teamId);
+        policy.requireNoDuplicateStudents(
+                request.getEntries().stream().map(e -> e.getStudentUserId()).toList());
         policy.requireEnrolledStudents(teamId,
                 request.getEntries().stream().map(e -> e.getStudentUserId()).collect(Collectors.toSet()));
         return dailyAttendanceService.submitDailyRollCall(teamId, request, operatorUserId);

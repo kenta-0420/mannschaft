@@ -334,6 +334,60 @@ class SchoolAttendanceRegistrationIntegrityIT extends SchoolAttendanceAuthzFixtu
         assertThat(candidates.getResponse().getStatus()).isEqualTo(400);
     }
 
+    // AC-17 entries の件数上限（200）と同一生徒の重複拒否。
+    // 200 件が通る側は、在籍生徒 200 人のフィクスチャが重いため省略し、在籍確認より前に落ちる 201 件の 400 と、
+    // 少数の重複の 400 で境界を固定する（Bean Validation の @Size(max = 200) が上限）。
+
+    private static final String[] ROUTES = {
+            "/api/v1/teams/{t}/attendance/daily/roll-call", "/api/v1/teams/{t}/attendance/periods/3"};
+
+    private long registrationRows() {
+        return count("SELECT COUNT(*) FROM daily_attendance_records", new Object[0])
+                + count("SELECT COUNT(*) FROM period_attendance_records", new Object[0]);
+    }
+
+    @ParameterizedTest(name = "AC-17 entries 201 件は 400 route={0}")
+    @ValueSource(ints = {0, 1})
+    @DisplayName("AC-17: entries が 201 件なら両経路とも 400・DB に 1 行も作られない")
+    void entriesが上限超過なら400(int route) throws Exception {
+        long rowsBefore = registrationRows();
+        long eventsBefore = rollCallEvents();
+        List<Map<String, Object>> many = new ArrayList<>();
+        for (int i = 0; i < 201; i++) {
+            many.add(entry(studentAId, "ATTENDING"));
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("attendanceDate", date.toString());
+        body.put("entries", many);
+
+        auth(Actor.HOMEROOM);
+        MvcResult result = mockMvc.perform(post(ROUTES[route], teamAId)
+                        .contentType(MediaType.APPLICATION_JSON).content(json(body))).andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        assertThat(registrationRows()).as("上限超過は 1 行も作らない").isEqualTo(rowsBefore);
+        assertThat(rollCallEvents()).isEqualTo(eventsBefore);
+    }
+
+    @ParameterizedTest(name = "AC-17 同一生徒の重複は 400 route={0}")
+    @ValueSource(ints = {0, 1})
+    @DisplayName("AC-17: entries に同じ studentUserId が重複していれば両経路とも 400・DB に 1 行も作られない")
+    void entriesの重複は400(int route) throws Exception {
+        long rowsBefore = registrationRows();
+        long eventsBefore = rollCallEvents();
+
+        auth(Actor.HOMEROOM);
+        MvcResult result = mockMvc.perform(post(ROUTES[route], teamAId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(entriesBody(date.plusDays(5),
+                                entry(studentAId, "ABSENT"), entry(studentAId, "ATTENDING")))))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        assertThat(registrationRows()).as("重複は 1 行も作らない").isEqualTo(rowsBefore);
+        assertThat(rollCallEvents()).isEqualTo(eventsBefore);
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // AC-24 認可・所属判定のクエリ数は entries 件数に依存しない
     // ═════════════════════════════════════════════════════════════════════
