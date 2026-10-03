@@ -168,13 +168,16 @@ public class RecruitmentNoShowService {
      */
     @Transactional
     public RecruitmentNoShowRecordResponse dispute(Long recordId, Long userId, String disputeReason) {
+        // 本人判定は FOR UPDATE より前に素の読み取りで行う。本人以外・不在は同じ NO_SHOW_RECORD_NOT_FOUND(404) で、
+        // 他人の記録の行ロックを取らない（存在オラクルと、ロック待ちによる存在の推測の両方を閉じる）。
+        // 本人以外は SYSTEM_ADMIN・同スコープ ADMIN も含めて不在扱い（Gate は使わない。本人専用の操作のため）。
+        if (userId == null || !noShowRepository.existsByIdAndUserId(recordId, userId)) {
+            throw new BusinessException(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND);
+        }
+        // 同時の二重申立を防ぐため、本人と確認できた後にだけ行ロックを取り、読み直す
+        // （判定の素の読み取りはエンティティを読み込まない exists なので、ロック後の状態は常に最新）。
         RecruitmentNoShowRecordEntity record = noShowRepository.findByIdForDisputeUpdate(recordId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND));
-
-        // 本人チェック
-        if (!record.getUserId().equals(userId)) {
-            throw new BusinessException(RecruitmentErrorCode.VISIBILITY_DENIED);
-        }
 
         if (record.isDisputed()) {
             throw new BusinessException(RecruitmentErrorCode.ALREADY_DISPUTED);
