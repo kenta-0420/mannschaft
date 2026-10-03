@@ -35,6 +35,7 @@ const actors = {} as Record<ActorKey, Actor>
 const scopes: Scope[] = []
 const createdReceipts: Array<{ scopeId: number; scopeType: string; ownerId: number; id: number; recipientName: string }> = []
 const observations: string[] = []
+const failedRequests: string[] = []
 let db: Db | undefined
 let receiptSequence = 0
 const typeName = (scope: Scope) => scope.type === 'teams' ? 'TEAM' : 'ORGANIZATION'
@@ -54,6 +55,52 @@ async function screenshot(page: Page, info: TestInfo, name: string) {
   const path = info.outputPath(`${name}.png`)
   await page.screenshot({ path, fullPage: true })
   await info.attach(name, { path, contentType: 'image/png' })
+}
+
+async function recordFailureRuntime(page: Page, info: TestInfo, actor: ActorKey) {
+  let state: Record<string, unknown>
+  try {
+    state = await page.evaluate((allowedScopes) => {
+      interface NuxtState {
+        isHydrating?: boolean
+        _processingMiddleware?: boolean | string
+        $router?: { currentRoute?: { value?: { path?: string } } }
+      }
+      interface AppGlobals { $nuxt?: NuxtState; $router?: NuxtState['$router'] }
+      const root = document.querySelector('#__nuxt') as (Element & {
+        __vue_app__?: { config?: { globalProperties?: AppGlobals } }
+      }) | null
+      const globals = root?.__vue_app__?.config?.globalProperties
+      const nuxt = (window as Window & { $nuxt?: NuxtState }).$nuxt ?? globals?.$nuxt
+      const router = nuxt?.$router ?? globals?.$router
+      const scope = JSON.parse(localStorage.getItem('currentScope') ?? '{}') as { type?: unknown; id?: unknown }
+      const scopeId = typeof scope.id === 'string' && /^\d+$/.test(scope.id) ? Number(scope.id)
+        : typeof scope.id === 'number' ? scope.id : null
+      const ownedScope = Number.isSafeInteger(scopeId) && Number(scopeId) > 0
+        && allowedScopes.some(item => item.type === scope.type && item.id === scopeId)
+      const middleware = nuxt?._processingMiddleware
+      return {
+        available: true,
+        pathname: location.pathname,
+        nuxtAvailable: !!nuxt,
+        routerPath: router?.currentRoute?.value?.path ?? null,
+        isHydrating: typeof nuxt?.isHydrating === 'boolean' ? nuxt.isHydrating : null,
+        processingMiddleware: typeof middleware === 'boolean' ? middleware
+          : typeof middleware === 'string' && /^[\w./:-]{1,200}$/.test(middleware) ? middleware : null,
+        currentScope: {
+          type: scope.type === 'team' || scope.type === 'organization' || scope.type === 'personal' ? scope.type : null,
+          id: ownedScope ? scope.id : null,
+        },
+      }
+    }, scopes.map(scope => ({ type: scope.type === 'teams' ? 'team' : 'organization', id: scope.id })))
+  } catch {
+    // 診断の採取失敗は安全な印だけ残し、元の失敗とスクショ採取を隠さない。
+    state = { available: false, marker: 'runtime-unavailable' }
+  }
+  await info.attach(`failure-runtime-${actor}-whitelist`, {
+    body: JSON.stringify({ atUtc: new Date().toISOString(), actor, ...state }),
+    contentType: 'application/json',
+  })
 }
 
 async function ownsScope(scope: Scope) {
@@ -294,6 +341,21 @@ test.describe('CMP1017 無効化のみの実 API/UI 契約', () => {
         const url = new URL(response.url())
         if (url.pathname.startsWith('/api/v1/') && !/auth|invite/.test(url.pathname)) observations.push(`${key} HTTP ${response.status()} ${url.pathname}`)
       })
+      page.on('requestfailed', request => {
+        const pathname = new URL(request.url()).pathname
+        const safeApi = /^\/api\/v1\/admin\/receipts(?:\/(?:\d+(?:\/void)?|bulk-void))?$/.test(pathname)
+          || ['/api/v1/me/teams', '/api/v1/me/organizations', '/api/v1/feature-flags'].includes(pathname)
+          || scopes.some(scope => ['', '/me/permissions', '/modules'].some(suffix =>
+            pathname === `/api/v1/${scope.type}/${scope.slug}${suffix}`,
+          ))
+        const safeAsset = /^\/(?:_nuxt|@vite|@id|node_modules\/\.vite)\/[\w./@:-]+$/.test(pathname)
+        if (/auth|invite|token|password|reset|callback/i.test(pathname) || (!safeApi && !safeAsset)) return
+        const error = request.failure()?.errorText ?? ''
+        const classification = /ABORTED/i.test(error) ? 'aborted'
+          : /TIMED_OUT|TIMEOUT/i.test(error) ? 'timeout'
+            : /CONNECTION|NAME_NOT_RESOLVED|INTERNET_DISCONNECTED/i.test(error) ? 'network' : 'other'
+        failedRequests.push(`${new Date().toISOString()} ${key} requestfailed ${pathname} ${classification}`)
+      })
       try {
         await loginViaApi(page, { email: emails[key], password: PASSWORD }, { apiBaseUrl: API })
       }
@@ -330,7 +392,11 @@ test.describe('CMP1017 無効化のみの実 API/UI 契約', () => {
       contentType: 'application/json',
     })
     if (info.status !== info.expectedStatus) {
-      for (const key of ['owner', 'deputy', 'member', 'foreign', 'system'] as const) {
+      await info.attach('failure-request-path-classification', {
+        body: failedRequests.join('\n'), contentType: 'text/plain',
+      })
+      for (const key of ['member', 'foreign', 'owner', 'deputy', 'system'] as const) {
+        if (actors[key] && !actors[key].page.isClosed()) await recordFailureRuntime(actors[key].page, info, key)
         if (actors[key] && !actors[key].page.isClosed()) await screenshot(actors[key].page, info, `failure-${key}`)
       }
     }
