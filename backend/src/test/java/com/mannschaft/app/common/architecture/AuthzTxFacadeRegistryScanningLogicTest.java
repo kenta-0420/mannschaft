@@ -509,7 +509,7 @@ class AuthzTxFacadeRegistryScanningLogicTest {
         }
     }
 
-    private static final JavaClasses CLASSES = new ClassFileImporter().importClasses(
+    private final JavaClasses CLASSES = new ClassFileImporter().importClasses(
             FakeAccessControl.class, FakeGate.class, GoodTxService.class, AuthzTxService.class,
             GoodFacade.class, PrivateAuthzFacade.class, LambdaAuthzFacade.class, HollowFacade.class,
             ClassTxFacade.class, MethodTxFacade.class, AuthzTxCallingFacade.class, UnlistedServiceFacade.class,
