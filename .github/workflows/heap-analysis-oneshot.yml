@@ -66,6 +66,72 @@ jobs:
             org.eclipse.mat.api:overview \
             org.eclipse.mat.api:top_components
 
+      - name: Mockito InterceptedInvocation / WeakConcurrentMap OQL diagnostics
+        run: |
+          set -eux
+          HPROF=$(find . -maxdepth 1 -name '*.hprof' | head -1)
+          cd "$MAT_DIR"
+          mkdir -p "$GITHUB_WORKSPACE/oql"
+          OUT="$GITHUB_WORKSPACE/oql"
+
+          run_oql () {
+            local label="$1" query="$2"
+            echo "### $label" >> "$OUT/_log.txt"
+            set +e
+            ./ParseHeapDump.sh "$GITHUB_WORKSPACE/$HPROF" \
+              "-command=oql \"$query\"" \
+              org.eclipse.mat.api:query -format=txt -unzip \
+              > "$OUT/${label}.txt" 2>> "$OUT/_log.txt"
+            rc=$?
+            set -e
+            echo "  rc=$rc" >> "$OUT/_log.txt"
+            # ParseHeapDump names the txt report after the java proc; normalize if a differently-named file appeared
+            find "$GITHUB_WORKSPACE" -maxdepth 1 -newer "$OUT/_log.txt" -name '*Query*.txt' -exec cp {} "$OUT/${label}_alt.txt" \; 2>/dev/null || true
+          }
+
+          # 0) Field discovery: dump raw structure of one instance of each class we care about.
+          run_oql "00_sample_invocation" \
+            "SELECT * FROM org.mockito.internal.invocation.InterceptedInvocation LIMIT 1"
+          run_oql "00_sample_weakmap" \
+            "SELECT * FROM org.mockito.internal.util.concurrent.WeakConcurrentMap LIMIT 1"
+
+          # 1) Distinct (mock type, method name) pairs -- try two plausible field layouts.
+          run_oql "01_distinct_pairs_v1" \
+            "SELECT DISTINCT toString(classof(invocation.mockRef.referent)) AS mockType, toString(invocation.mockitoMethod.name) AS methodName FROM OBJECTS org.mockito.internal.invocation.InterceptedInvocation invocation"
+          run_oql "01_distinct_pairs_v2" \
+            "SELECT DISTINCT toString(classof(invocation.mockRef.reference.referent)) AS mockType, toString(invocation.mockitoMethod.method.name) AS methodName FROM OBJECTS org.mockito.internal.invocation.InterceptedInvocation invocation"
+
+          # 2) Fallback: raw per-object dump of mock class + method (capped) in case GROUP BY-by-hand above fails;
+          #    this still lets us aggregate counts locally with awk/sort on the runner before upload.
+          run_oql "02_raw_pairs_v1" \
+            "SELECT toString(classof(invocation.mockRef.referent)) AS mockType, toString(invocation.mockitoMethod.name) AS methodName FROM OBJECTS org.mockito.internal.invocation.InterceptedInvocation invocation"
+          run_oql "02_raw_pairs_v2" \
+            "SELECT toString(classof(invocation.mockRef.reference.referent)) AS mockType, toString(invocation.mockitoMethod.method.name) AS methodName FROM OBJECTS org.mockito.internal.invocation.InterceptedInvocation invocation"
+
+          # 3) Per-mock invocation counts: list every WeakConcurrentMap/InlineByteBuddyMockMaker-registered mock
+          #    together with how many InterceptedInvocation history entries exist for it (raw rows, aggregated later).
+          run_oql "03_mock_per_invocation_v1" \
+            "SELECT toHex(objectid(invocation.mockRef.referent)) AS mockAddr, toString(classof(invocation.mockRef.referent)) AS mockType FROM OBJECTS org.mockito.internal.invocation.InterceptedInvocation invocation"
+
+          # 4) Who holds the WeakConcurrentMap -- immediate inbound references (owner chain, 1 hop) for the single
+          #    WeakConcurrentMap instance, and 1-hop inbound of its backing ConcurrentHashMap.
+          run_oql "04_weakmap_inbound" \
+            "SELECT toHex(objectid(x)) AS addr, toString(classof(x)) AS ownerType FROM INBOUNDS org.mockito.internal.util.concurrent.WeakConcurrentMap x"
+
+          echo "---- oql dir ----"
+          ls -la "$OUT"
+
+          # Local aggregation (best-effort): turn raw pair dumps into top-30 counts without relying on OQL GROUP BY.
+          for f in "$OUT"/02_raw_pairs_v1.txt "$OUT"/02_raw_pairs_v2.txt "$OUT"/03_mock_per_invocation_v1.txt; do
+            if [ -s "$f" ]; then
+              base=$(basename "$f" .txt)
+              echo "Aggregating $f -> ${base}_top30.txt"
+              # Each data row is typically tab/pipe/space separated "col1 col2"; count identical full lines after the header.
+              tail -n +2 "$f" | sort | uniq -c | sort -rn | head -40 > "$OUT/${base}_top30.txt" || true
+            fi
+          done
+          ls -la "$OUT"
+
       - name: Collect reports (zips only, unpack, drop huge indexes)
         run: |
           set -eux
@@ -108,6 +174,7 @@ jobs:
           set -eux
           rm -f ./*.hprof ./*.index ./*.threads
           du -sh report || true
+          du -sh oql || true
 
       - name: Show disk/mem after
         if: always()
@@ -121,5 +188,14 @@ jobs:
         with:
           name: mat-report-3620-shard-5
           path: report/
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload Mockito OQL diagnostics (text/csv only)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mat-mockito-3620
+          path: oql/
           retention-days: 7
           if-no-files-found: warn
