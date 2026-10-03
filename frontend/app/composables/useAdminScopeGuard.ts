@@ -70,6 +70,7 @@ export function useAdminScopeGuard(
   const organizationStore = useOrganizationStore()
   const teamStore = useTeamStore()
   const nuxtApp = useNuxtApp()
+  const router = useRouter()
   const { t } = useI18n()
 
   function deny() {
@@ -84,7 +85,7 @@ export function useAdminScopeGuard(
         life: 5000,
       })
     }
-    navigateTo('/dashboard')
+    return router.push('/dashboard')
   }
 
   async function check() {
@@ -98,14 +99,14 @@ export function useAdminScopeGuard(
         await organizationStore.fetchMyOrganizations()
       }
       const found = organizationStore.myOrganizations.find(o => String(o.id) === id)
-      if (!meetsMinRole(found?.role, minRole)) deny()
+      if (!meetsMinRole(found?.role, minRole)) await deny()
     }
     else {
       if (teamStore.myTeams.length === 0) {
         await teamStore.fetchMyTeams()
       }
       const found = teamStore.myTeams.find(team => String(team.id) === id)
-      if (!meetsMinRole(found?.role, minRole)) deny()
+      if (!meetsMinRole(found?.role, minRole)) await deny()
     }
   }
 
