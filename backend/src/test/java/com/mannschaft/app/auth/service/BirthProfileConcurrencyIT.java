@@ -79,7 +79,7 @@ class BirthProfileConcurrencyIT extends AbstractMySqlIntegrationTest {
                         null,null,null,null,null,null,null,null));
             });
             await(profileStarted);
-            assertThat(profile.isDone()).isFalse();
+            BirthProfileLockWaitObserver.awaitUserWait(MYSQL,id,profile);
             releaseBirth.countDown();birth.get(10,TimeUnit.SECONDS);profile.get(10,TimeUnit.SECONDS);
             UserEntity actual=users.findById(id).orElseThrow();
             assertThat(actual.getFirstName()).isEqualTo("太郎");

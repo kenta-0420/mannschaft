@@ -22,11 +22,9 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import javax.sql.DataSource;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** 実auth Bean・MySQLで非ACTIVE cleanupとusers→同意linkの順序を検証する。 */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
@@ -87,7 +85,7 @@ class BirthProfileLifecycleConcurrencyIT extends AbstractMySqlIntegrationTest {
                 users.findByIdForUpdateIncludingDeleted(child).orElseThrow();
                 var cleanupFuture=worker.submit(()->{started.countDown();cleanup.execute();});
                 pending.set(cleanupFuture);await(started);
-                assertThatThrownBy(()->cleanupFuture.get(300,TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+                BirthProfileLockWaitObserver.awaitUserWait(MYSQL,child,cleanupFuture);
                 JdbcTemplate sql=new JdbcTemplate(dataSource);sql.setQueryTimeout(2);
                 assertThatCode(()->sql.queryForList("select id from parental_consent_links where id=unhex(replace(?,'-','')) for update",id.toString()))
                         .doesNotThrowAnyException();
@@ -116,7 +114,7 @@ class BirthProfileLifecycleConcurrencyIT extends AbstractMySqlIntegrationTest {
                 finally {RequestContextHolder.resetRequestAttributes();}
             });
             await(handoverStarted);
-            assertThatThrownBy(()->handoverFuture.get(300,TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+            BirthProfileLockWaitObserver.awaitUserWait(MYSQL,child,handoverFuture);
             releaseBirth.countDown();birth.get(10,TimeUnit.SECONDS);handoverFuture.get(10,TimeUnit.SECONDS);
             UserEntity actual=users.findById(child).orElseThrow();
             assertThat(actual.getFirstName()).isEqualTo("花子");

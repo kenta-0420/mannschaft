@@ -73,7 +73,7 @@ class UserOperationGuardIT extends AbstractMySqlIntegrationTest {
                 tx.executeWithoutResult(s->{users.findByIdForUpdate(id).orElseThrow();updateLocked.countDown();});
             });
             assertThat(updaterAttempted.await(10,TimeUnit.SECONDS)).isTrue();
-            assertThat(updateLocked.await(300,TimeUnit.MILLISECONDS)).isFalse();
+            BirthProfileLockWaitObserver.awaitUserWait(MYSQL,id,updater);
             releaseCallback.countDown();
             assertThat(guarded.get(10,TimeUnit.SECONDS)).isEqualTo("完了");
             updater.get(10,TimeUnit.SECONDS);
