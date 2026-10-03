@@ -46,6 +46,24 @@ public class SingleParentReductionFixture {
         return parents.isEmpty() ? null : parents.get(0);
     }
 
+    /** 違反: 許可リストに載せても、順序なしの取得（findByTeamIdAndStatus）へ差し替えた代表親取得は通らない。 */
+    public Long representativeParentUnordered(Long teamId) {
+        return repository.findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE)
+                .stream()
+                .findFirst()
+                .map(TeamOrgMembershipEntity::getOrganizationId)
+                .orElse(null);
+    }
+
+    /** 正常: 親組織を取得して全件を走査する（拡張 for。縮約ではない）。 */
+    public long scanAllParents(Long teamId) {
+        long sum = 0;
+        for (Long organizationId : queryService.findActiveOrganizationIds(teamId)) {
+            sum += organizationId;
+        }
+        return sum;
+    }
+
     /** 正常: 集合のまま包含判定するだけ。 */
     public boolean isParent(Long teamId, Long organizationId) {
         return queryService.findActiveOrganizationIds(teamId).contains(organizationId);

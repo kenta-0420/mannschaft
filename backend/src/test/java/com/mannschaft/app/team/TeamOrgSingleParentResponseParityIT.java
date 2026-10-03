@@ -126,6 +126,11 @@ class TeamOrgSingleParentResponseParityIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[?(@.id == " + teamInA + ")].organizationId", contains(orgA.intValue())))
                 .andExpect(jsonPath("$.data[?(@.id == " + teamInB + ")].organizationId", contains(orgB.intValue())))
+                // 応答から丸ごと落ちていないこと（空配列で偽 green にならない）を確かめたうえで、null であること。
+                .andExpect(jsonPath("$.data[?(@.id == " + teamPendingOnly + ")].id",
+                        contains(teamPendingOnly.intValue())))
+                .andExpect(jsonPath("$.data[?(@.id == " + teamOrphan + ")].id",
+                        contains(teamOrphan.intValue())))
                 .andExpect(jsonPath("$.data[?(@.id == " + teamPendingOnly + ")].organizationId",
                         not(hasItem(notNullValue()))))
                 .andExpect(jsonPath("$.data[?(@.id == " + teamOrphan + ")].organizationId",
@@ -144,7 +149,7 @@ class TeamOrgSingleParentResponseParityIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[*].id", contains(catOrgA.intValue(), catTeamInA.intValue())))
                 .andExpect(jsonPath("$.data[?(@.id == " + catOrgA + ")].scope", contains("ORGANIZATION")))
-                .andExpect(jsonPath("$.data[?(@.id == " + catOrgA + ")].organizationId", contains(orgA.intValue())))
+                .andExpect(jsonPath("$.data[?(@.id == " + catOrgA + ")].sourceOrganizationId", contains(orgA.intValue())))
                 .andExpect(jsonPath("$.data[?(@.id == " + catTeamInA + ")].scope", contains("TEAM")));
         mockMvc.perform(get("/api/v1/teams/" + teamInB + "/event-categories"))
                 .andExpect(status().isOk())

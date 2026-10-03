@@ -37,13 +37,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       {@code LIMIT 1}・{@code LIMIT 1 OFFSET n}・{@code LIMIT n, 1} が対象で、{@code LIMIT n, 20}
  *       （offset が n、件数が 20）は対象外</li>
  *   <li>チーム→親組織の集合を取得したメソッドが、同じメソッド内で {@code Stream.findFirst/findAny}・
- *       {@code List.get/getFirst}・{@code Iterator.next} により1件へ縮約すること
- *       （代表親組織を採る正当な箇所は {@link #REDUCTION_ALLOWLIST} に明示する）</li>
+ *       {@code List.get/getFirst} により1件へ縮約すること
+ *       （代表親組織を採る正当な箇所は {@link #REDUCTION_ALLOWLIST} に明示する。許可は
+ *       順序付き取得（{@link #ORDERED_READERS}）との組合せに限り、順序なしの取得へ差し替えると違反になる）</li>
  * </ol>
  *
  * <p><b>検出対象外（静的解析の限界）</b>: 縮約が別メソッドやラムダ本体（コンパイラが別メソッドに切り出す）にある場合、
  * {@code collect}・{@code reduce}・ローカル {@code var} を経由して別メソッドへ渡してから縮約する場合、
- * {@code Map<Long, Long>} を継承した独自クラスを返す場合は検出できない。無理に広げると偽陽性が増えるため、
+ * {@code Map<Long, Long>} を継承した独自クラスを返す場合、{@code Iterator.next} で先頭だけ採る形
+ * （拡張 for の全件走査と区別できないため {@code Iterator.next} は縮約として数えない）は検出できない。無理に広げると偽陽性が増えるため、
  * これらは検分（人の目）と {@code TeamOrgMultiParent*IT} / {@code TeamOrgSingleParentResponseParityIT} で担保する。</p>
  *
  * <p>検出器の自己検証: 違反の検体（{@link SingleParentViolationFixture}）に同じ検出関数を当て、
@@ -85,8 +87,16 @@ class TeamOrgSingleParentAssumptionGuardTest {
             "java.util.stream.Stream#findAny",
             "java.util.List#get",
             "java.util.List#getFirst",
-            "java.util.SequencedCollection#getFirst",
-            "java.util.Iterator#next");
+            "java.util.SequencedCollection#getFirst");
+
+    /**
+     * 代表親組織の許可に使ってよい、成立時刻 → organization_id で順序を固定した取得（§9.3）。
+     * 許可リストのメソッドも、これ以外の reader（順序なし）を呼べば違反になる。
+     */
+    private static final Set<String> ORDERED_READERS = Set.of(
+            MEMBERSHIP_REPOSITORY_FQN + "#findActiveByTeamIdOrderByRespondedAtAndOrganizationId",
+            MEMBERSHIP_REPOSITORY_FQN + "#findOrganizationIdsInPrimaryOrderByTeamIdIn",
+            "com.mannschaft.app.team.service.TeamOrgMembershipQueryService#findActiveOrganizationIdsInPrimaryOrder");
 
     /**
      * 代表親組織（§9.3: 最初に成立した加盟 → organization_id 昇順）を採る正当な縮約。順序を DB で固定した取得結果の
@@ -218,14 +228,21 @@ class TeamOrgSingleParentAssumptionGuardTest {
         String owner = SingleParentReductionFixture.class.getName();
         JavaClasses specimens = new ClassFileImporter().importClasses(SingleParentReductionFixture.class);
 
+        // 全件走査（拡張 for）・包含判定・無関係な List.get は縮約ではないので、どの場合も出ない。
         assertThat(reductionViolations(specimens, Set.of()))
                 .containsExactlyInAnyOrder(
                         owner + ".reduceByFindFirst",
                         owner + ".reduceByListGet",
-                        owner + ".representativeParent");
-        // 代表親組織を採る正当な箇所は、明示した許可だけが通す。
-        assertThat(reductionViolations(specimens, Set.of(owner + ".representativeParent")))
-                .containsExactlyInAnyOrder(owner + ".reduceByFindFirst", owner + ".reduceByListGet");
+                        owner + ".representativeParent",
+                        owner + ".representativeParentUnordered");
+        // 代表親組織を採る正当な箇所は、明示した許可＋順序付き取得の組合せだけが通る。
+        // 許可があっても順序なし取得へ差し替えた representativeParentUnordered は検出される。
+        assertThat(reductionViolations(specimens,
+                Set.of(owner + ".representativeParent", owner + ".representativeParentUnordered")))
+                .containsExactlyInAnyOrder(
+                        owner + ".reduceByFindFirst",
+                        owner + ".reduceByListGet",
+                        owner + ".representativeParentUnordered");
     }
 
     @Test
@@ -348,17 +365,20 @@ class TeamOrgSingleParentAssumptionGuardTest {
         for (JavaClass javaClass : classes) {
             for (JavaMethod method : javaClass.getMethods()) {
                 String key = javaClass.getName() + "." + method.getName();
-                if (allowlist.contains(key)) {
-                    continue;
-                }
+                boolean allowed = allowlist.contains(key);
                 boolean readsParents = false;
+                boolean readsUnordered = false;
                 boolean reduces = false;
                 for (JavaMethodCall call : method.getMethodCallsFromSelf()) {
                     String callee = call.getTargetOwner().getName() + "#" + call.getName();
-                    readsParents |= TEAM_ORG_COLLECTION_READERS.contains(callee);
+                    if (TEAM_ORG_COLLECTION_READERS.contains(callee)) {
+                        readsParents = true;
+                        readsUnordered |= !ORDERED_READERS.contains(callee);
+                    }
                     reduces |= REDUCTION_CALLS.contains(callee);
                 }
-                if (readsParents && reduces) {
+                // 許可されたメソッドは、順序付き取得だけを使っている場合に限って縮約を許す。
+                if (readsParents && reduces && (!allowed || readsUnordered)) {
                     violations.add(key);
                 }
             }
