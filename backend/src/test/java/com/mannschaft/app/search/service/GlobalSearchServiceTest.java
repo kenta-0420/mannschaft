@@ -113,21 +113,21 @@ class GlobalSearchServiceTest {
         given(membershipService.getActiveUserIdsInScopes(anyCollection(), anyCollection()))
                 .willReturn(List.of(USER_ID, CO_MEMBER_ID));
 
-        given(scheduleRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class)))
+        given(scheduleRepository.searchIdsByKeyword(any(), anyCollection(), anyCollection(), any(), anyLong(), any(Pageable.class)))
                 .willReturn(List.of());
         given(eventRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class)))
-                .willReturn(List.of());
+                .willReturn(new PageImpl<>(List.of()));
         given(facilityBookingRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class)))
-                .willReturn(List.of());
+                .willReturn(new PageImpl<>(List.of()));
         given(shiftScheduleRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(Pageable.class)))
-                .willReturn(List.of());
+                .willReturn(new PageImpl<>(List.of()));
         given(safetyCheckRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(Pageable.class)))
-                .willReturn(List.of());
+                .willReturn(new PageImpl<>(List.of()));
         given(queueTicketRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class)))
-                .willReturn(List.of());
+                .willReturn(new PageImpl<>(List.of()));
         given(teamRepository.searchByKeyword(any(), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
         given(organizationRepository.searchByKeyword(any(), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
-        given(userRepository.searchByKeyword(any(), anyCollection(), any(Pageable.class))).willReturn(List.of());
+        given(userRepository.searchByKeyword(any(), anyCollection(), any(Pageable.class))).willReturn(new PageImpl<>(List.of()));
 
         // CMP-017b 第五隊: filterAccessible は既定で「渡された ID を全て可視」として通す
         // （min_view_role 判定そのものを検証するテストは個別に上書きする）。
@@ -164,7 +164,7 @@ class GlobalSearchServiceTest {
         void 全リポジトリが呼び出される() {
             globalSearchService.search("検索", USER_ID);
 
-            verify(scheduleRepository).searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class));
+            verify(scheduleRepository).searchIdsByKeyword(any(), anyCollection(), anyCollection(), any(), anyLong(), any(Pageable.class));
             verify(eventRepository).searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class));
             verify(facilityBookingRepository).searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class));
             verify(shiftScheduleRepository).searchByKeyword(any(), anyCollection(), anyCollection(), any(Pageable.class));
@@ -197,7 +197,7 @@ class GlobalSearchServiceTest {
         void 全種別に所属チームIDが渡る() {
             globalSearchService.search("検索", USER_ID);
 
-            verify(scheduleRepository).searchByKeyword(any(), teamIdsCaptor.capture(), anyCollection(), any(), any(Pageable.class));
+            verify(scheduleRepository).searchIdsByKeyword(any(), teamIdsCaptor.capture(), anyCollection(), any(), anyLong(), any(Pageable.class));
             assertThat(teamIdsCaptor.getValue()).containsExactly(TEAM_ID);
 
             verify(eventRepository).searchByKeyword(any(), teamIdsCaptor.capture(), anyCollection(), any(), any(Pageable.class));
@@ -225,7 +225,7 @@ class GlobalSearchServiceTest {
         void 全種別に所属組織IDが渡る() {
             globalSearchService.search("検索", USER_ID);
 
-            verify(scheduleRepository).searchByKeyword(any(), anyCollection(), orgIdsCaptor.capture(), any(), any(Pageable.class));
+            verify(scheduleRepository).searchIdsByKeyword(any(), anyCollection(), orgIdsCaptor.capture(), any(), anyLong(), any(Pageable.class));
             assertThat(orgIdsCaptor.getValue()).containsExactly(ORG_ID);
 
             verify(eventRepository).searchByKeyword(any(), anyCollection(), orgIdsCaptor.capture(), any(), any(Pageable.class));
@@ -248,7 +248,7 @@ class GlobalSearchServiceTest {
 
             globalSearchService.search("検索", USER_ID);
 
-            verify(scheduleRepository).searchByKeyword(any(), anyCollection(), anyCollection(), userIdCaptor.capture(), any(Pageable.class));
+            verify(scheduleRepository).searchIdsByKeyword(any(), anyCollection(), anyCollection(), userIdCaptor.capture(), anyLong(), any(Pageable.class));
             assertThat(userIdCaptor.getValue()).isEqualTo(USER_ID);
 
             verify(facilityBookingRepository).searchByKeyword(any(), anyCollection(), anyCollection(), userIdCaptor.capture(), any(Pageable.class));
@@ -279,7 +279,7 @@ class GlobalSearchServiceTest {
 
             globalSearchService.search("検索", USER_ID);
 
-            verify(scheduleRepository).searchByKeyword(any(), teamIdsCaptor.capture(), orgIdsCaptor.capture(), any(), any(Pageable.class));
+            verify(scheduleRepository).searchIdsByKeyword(any(), teamIdsCaptor.capture(), orgIdsCaptor.capture(), any(), anyLong(), any(Pageable.class));
             assertThat(teamIdsCaptor.getValue()).containsExactly(NO_MATCH_ID);
             assertThat(orgIdsCaptor.getValue()).containsExactly(NO_MATCH_ID);
 
@@ -316,8 +316,9 @@ class GlobalSearchServiceTest {
                 + "filterAccessible で不可視なら検索結果から除外される（応援者にタイトルを漏らさない）")
         void 不可視な予定はヒットから除外される() {
             var hidden = scheduleWithId(1L, "MEMBER_PLUS限定の作戦会議");
-            given(scheduleRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class)))
-                    .willReturn(List.of(hidden));
+            given(scheduleRepository.searchIdsByKeyword(any(), anyCollection(), anyCollection(), any(), anyLong(), any(Pageable.class)))
+                    .willReturn(List.of(hidden.getId()));
+            given(scheduleRepository.findAllById(anyCollection())).willReturn(List.of(hidden));
             given(contentVisibilityChecker.filterAccessible(any(), anyCollection(), any()))
                     .willReturn(Set.of());
 
@@ -334,8 +335,9 @@ class GlobalSearchServiceTest {
         @DisplayName("塞ぎすぎていない: SUPPORTER_PLUS 予定は可視なら通常どおりヒットする")
         void 可視な予定はヒットする() {
             var visible = scheduleWithId(2L, "SUPPORTER_PLUS予定");
-            given(scheduleRepository.searchByKeyword(any(), anyCollection(), anyCollection(), any(), any(Pageable.class)))
-                    .willReturn(List.of(visible));
+            given(scheduleRepository.searchIdsByKeyword(any(), anyCollection(), anyCollection(), any(), anyLong(), any(Pageable.class)))
+                    .willReturn(List.of(visible.getId()));
+            given(scheduleRepository.findAllById(anyCollection())).willReturn(List.of(visible));
             given(contentVisibilityChecker.filterAccessible(any(), anyCollection(), any()))
                     .willReturn(Set.of(2L));
 

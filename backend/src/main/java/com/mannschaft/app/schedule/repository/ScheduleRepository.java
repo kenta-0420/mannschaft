@@ -129,13 +129,13 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
     List<ScheduleEntity> findUnsyncedPersonalSchedules(@Param("userId") Long userId);
 
     /**
-     * 横断検索（グローバル検索）用のキーワード検索。閲覧者の可視スコープに限定する。
+     * 横断検索の候補 ID を昇順の固定件数バッチで取得する。
      *
      * <p>本メソッドが SQL 述語で絞り込むのは「所属チームのスケジュール」「所属組織のスケジュール」
      * 「自分の個人スケジュール」の和集合という<strong>所属軸</strong>のみである。閲覧閾値軸
      * （{@code min_view_role}）はスコープごとに閲覧者の実効ロールを見る必要があり SQL 1 行の
      * predicate に落とせないため、ここでは評価しない。呼び出し側（{@code GlobalSearchService}）が
-     * 取得結果を {@code ContentVisibilityChecker#filterAccessible} に通し、閾値を満たさない
+     * 候補 ID を {@code ContentVisibilityChecker#filterAccessible} に通し、閾値を満たさない
      * スケジュール（例: SUPPORTER に対する {@code min_view_role=MEMBER_PLUS}）を除外して初めて
      * 横断検索の可視性判定が完成する（CMP-017b 第五隊）。</p>
      *
@@ -150,23 +150,27 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
      * @param teamIds  閲覧者が所属するチーム ID 集合（非空・空ならダミー値）
      * @param orgIds   閲覧者が所属する組織 ID 集合（非空・空ならダミー値）
      * @param userId   閲覧者ユーザー ID（個人スケジュール一致判定用）
-     * @param pageable 取得件数
-     * @return 可視スコープ内の検索結果
+     * @param afterId 前バッチの末尾 ID（初回は Long.MIN_VALUE）
+     * @param pageable 固定バッチの取得件数
+     * @return 所属軸の検索候補 ID（Entity の取得・全件 ID の保持は行わない）
      */
     @Query("""
-            SELECT s FROM ScheduleEntity s
+            SELECT s.id FROM ScheduleEntity s
             WHERE (s.title LIKE %:keyword% OR s.description LIKE %:keyword% OR s.location LIKE %:keyword%)
               AND s.deletedAt IS NULL
               AND s.visibility <> com.mannschaft.app.schedule.ScheduleVisibility.CUSTOM_TEMPLATE
               AND (s.teamId IN :teamIds
                 OR s.organizationId IN :orgIds
                 OR s.userId = :userId)
+              AND s.id > :afterId
+            ORDER BY s.id ASC
             """)
-    List<ScheduleEntity> searchByKeyword(@Param("keyword") String keyword,
-                                         @Param("teamIds") Collection<Long> teamIds,
-                                         @Param("orgIds") Collection<Long> orgIds,
-                                         @Param("userId") Long userId,
-                                         org.springframework.data.domain.Pageable pageable);
+    List<Long> searchIdsByKeyword(@Param("keyword") String keyword,
+                                  @Param("teamIds") Collection<Long> teamIds,
+                                  @Param("orgIds") Collection<Long> orgIds,
+                                  @Param("userId") Long userId,
+                                  @Param("afterId") Long afterId,
+                                  org.springframework.data.domain.Pageable pageable);
 
     /**
      * チームの最頻利用施設（venue_id）を取得する（広告セグメント用）。

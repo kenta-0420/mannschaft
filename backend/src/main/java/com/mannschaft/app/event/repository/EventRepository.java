@@ -73,7 +73,7 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
                 OR e.createdBy = :userId
                 OR (e.visibility = com.mannschaft.app.event.entity.EventVisibility.PUBLIC AND e.publicVisible = true))
             """)
-    List<EventEntity> searchByKeyword(@Param("keyword") String keyword,
+    Page<EventEntity> searchByKeyword(@Param("keyword") String keyword,
                                       @Param("teamIds") Collection<Long> teamIds,
                                       @Param("orgIds") Collection<Long> orgIds,
                                       @Param("userId") Long userId,

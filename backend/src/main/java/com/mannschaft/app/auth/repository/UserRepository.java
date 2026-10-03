@@ -186,7 +186,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
               AND u.isSearchable = true
               AND u.status = com.mannschaft.app.auth.entity.UserEntity.UserStatus.ACTIVE
             """)
-    java.util.List<UserEntity> searchByKeyword(
+    Page<UserEntity> searchByKeyword(
             @org.springframework.data.repository.query.Param("keyword") String keyword,
             @org.springframework.data.repository.query.Param("visibleUserIds") java.util.Collection<Long> visibleUserIds,
             org.springframework.data.domain.Pageable pageable);

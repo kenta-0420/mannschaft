@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.repository;
 import com.mannschaft.app.shift.ShiftScheduleStatus;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -78,7 +79,7 @@ public interface ShiftScheduleRepository extends JpaRepository<ShiftScheduleEnti
             + "AND s.deletedAt IS NULL "
             + "AND (s.teamId IN :adminTeamIds "
             + "     OR (s.teamId IN :memberTeamIds AND " + ShiftScheduleEntity.NOT_HIDDEN_JPQL + "))")
-    List<ShiftScheduleEntity> searchByKeyword(
+    Page<ShiftScheduleEntity> searchByKeyword(
             @org.springframework.data.repository.query.Param("keyword") String keyword,
             @org.springframework.data.repository.query.Param("adminTeamIds") java.util.Collection<Long> adminTeamIds,
             @org.springframework.data.repository.query.Param("memberTeamIds") java.util.Collection<Long> memberTeamIds,
