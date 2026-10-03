@@ -1,8 +1,16 @@
 # ⚔️足軽FE 復旧checkpoint
 
-Windows保全generatorから新隔離worktreeへ復元。base38全文と既存7file anchorを照合して適用。
+Windows保全generatorから新隔離worktreeへ復元。base38全文と既存6ファイルのanchorを照合して適用。READMEはbaseに存在しない新規ファイル。
 旧/tmp最終source/ログは現存未確認のため、byte完全一致を保証しない。旧Prettier整形差と一部fixの空白anchorをassert付き等価補完した。
-現時点build/lint/typecheck/UT未実行。旧17greenは当時の報告であって復旧版の証拠ではない。
-命名512byte/160codepoint、owner.aggregateversion、HatchResponseunion、出生情報ACK/opaque confirmationを維持。一般profile DTO変更なし。
-残件: 正式runner復旧後の差分format/lint/17UT再実行/型確認、命名serverexactfixture、診断/auth pending操作再送UI、確認/focus/六言語、64素材manifestgate、root実機とアリシゼーション。
-nuxt.config六langranch.json登録、SettingsRanchSectionのroot組込、OpenAPI生成は統合隊所有。locale翻訳は日本語placeholder、素材は文字fallback、公開可能ではない。
+
+命名512byte/160codepoint、owner aggregate version、HatchResponse union、出生情報ACK/opaque confirmationを維持。一般profile DTO変更なし。
+diagnosis/private birth profile/birth resultのpending操作は元key・body・versionを保持し再送。診断中断前の保存、PIXEL卵の96座標、未参加assignment=nullガードを補修。
+方式UIは現在のstate.assignment.availableMethodsを参照し、保存結果のmappingVersionだけでは永久準備中としない。個々の結果の適合はserver検証と409処理が正本。
+
+UI ranch.jsonは日本語・英語・中国語・韓国語・スペイン語・ドイツ語を整備。全119 leaf keyと補間変数は一致、非日本語の日本語placeholderは0。診断質問・説明masterの承認は独立した公開gate。
+
+復旧版のfresh UT/lint/typecheckはまだ開始していない。正式bridgeのnpm ciは共有枠待機中。旧17greenは当時の報告であって復旧版の証拠ではない。
+命名のIntl.SegmenterはNode22でUnicode17を実測したが、Java21との同版保証を満たさない。固定FE/Javaライブラリと共有境界fixtureの比較案をWindows保全し、依存変更・pair parity試験は未実施。
+
+残件: npm ci後の差分lint/owned 4 selector UT再実行/4GB上限の型確認、命名server exact fixtureと固定segmentation契約、64素材manifest gate、root実機とアリシゼーション。
+nuxt.configの六言語ranch.json登録、SettingsRanchSectionのroot組込、OpenAPI生成は統合隊所有。素材は文字fallback、公開可能ではない。
