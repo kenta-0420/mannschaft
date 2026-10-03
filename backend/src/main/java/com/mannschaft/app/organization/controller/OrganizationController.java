@@ -1,6 +1,7 @@
 package com.mannschaft.app.organization.controller;
 
 import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
+import com.mannschaft.app.organization.service.OrgTeamListService;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
@@ -62,6 +63,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
+import com.mannschaft.app.common.ErrorResponse;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
@@ -81,6 +86,7 @@ public class OrganizationController {
     private final OrganizationService organizationService;
     private final RoleService roleService;
     private final AccessControlService accessControlService;
+    private final OrgTeamListService orgTeamListService;
     private final InviteService inviteService;
     private final PermissionGroupService permissionGroupService;
     private final BlockService blockService;
@@ -660,19 +666,40 @@ public class OrganizationController {
     // ========================================
 
     @GetMapping("/{slug}/teams")
-    @Operation(summary = "組織所属チーム一覧")
+    @Operation(summary = "組織所属チーム一覧",
+            description = "各チームに所属チームグループ（teamGroup）を付ける。グループ機能が off・未分類・削除済みグループ・"
+                    + "閲覧者が組織の MEMBER 以上でない場合は null。teamGroupId（UUID）または unassigned=true で絞り込める（併用は 400。"
+                    + "絞り込みは組織の MEMBER 以上と SYSTEM_ADMIN のみ）。他組織・削除済み・不在の teamGroupId は空の一覧を返す。")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400",
+            description = "teamGroupId と unassigned の併用 / teamGroupId が UUID でない")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
-            description = "可視性レベル未満（非メンバー等）でアクセス不可")
+            description = "可視性レベル未満（非メンバー等）でアクセス不可 / 非メンバーによるグループ絞り込み")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
             description = "組織が存在しない / 論理削除済み")
-    public ResponseEntity<ApiResponse<List<OrgTeamSummaryResponse>>> getTeams(@PathVariable String slug) {
+    public ResponseEntity<ApiResponse<List<OrgTeamSummaryResponse>>> getTeams(
+            @PathVariable String slug,
+            @RequestParam(required = false) UUID teamGroupId,
+            @RequestParam(defaultValue = "false") boolean unassigned) {
         Long id = organizationService.resolveOrgId(slug);
         // F00 正準: 組織の配下構成（所属チーム）は組織本体・メンバー一覧と同じ visibility ラダーで保護する
         //（兄弟 EP getOrganization / getMembers と同じ流儀）。
-        contentVisibilityChecker.assertCanView(
-                ReferenceType.ORGANIZATION, id, SecurityUtils.getCurrentUserIdOrNull());
-        return ResponseEntity.ok(ApiResponse.of(organizationService.getTeams(id)));
+        Long requesterId = SecurityUtils.getCurrentUserIdOrNull();
+        contentVisibilityChecker.assertCanView(ReferenceType.ORGANIZATION, id, requesterId);
+        // F01.2.1 §3.1: チームグループ名の閲覧は組織の MEMBER 以上と SYSTEM_ADMIN のみ（他組織・非メンバーには出さない）
+        boolean viewerSeesGroups = requesterId != null
+                && (accessControlService.isSystemAdmin(requesterId)
+                        || accessControlService.hasRoleOrAbove(requesterId, id, SCOPE_TYPE, "MEMBER"));
+        if (teamGroupId != null && unassigned) {
+            throw new BusinessException(CommonErrorCode.COMMON_001, List.of(new ErrorResponse.FieldError(
+                    "unassigned", "teamGroupId と unassigned は同時に指定できません")));
+        }
+        if ((teamGroupId != null || unassigned) && !viewerSeesGroups) {
+            // グループによる絞り込みは、結果の差からグループ名・所属を推測できてしまうため、グループを見られる人に限る
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        return ResponseEntity.ok(ApiResponse.of(
+                orgTeamListService.list(id, viewerSeesGroups, teamGroupId, unassigned)));
     }
 
     // ========================================

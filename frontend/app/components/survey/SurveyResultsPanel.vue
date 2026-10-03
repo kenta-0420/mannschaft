@@ -82,6 +82,7 @@ onMounted(() => {
         outlined
         :loading="loading"
         data-testid="survey-results-refresh"
+        class="min-h-11 min-w-11 shrink-0 whitespace-nowrap"
         @click="loadResults"
       />
     </div>
@@ -110,7 +111,7 @@ onMounted(() => {
     >
       <i class="pi pi-exclamation-triangle text-2xl text-red-500" />
       <p class="text-sm text-red-700 dark:text-red-200">{{ t('surveys.detail.results.fetchFailed') }}</p>
-      <Button :label="t('surveys.detail.results.retry')" icon="pi pi-refresh" size="small" @click="loadResults" />
+      <Button :label="t('surveys.detail.results.retry')" icon="pi pi-refresh" size="small" class="min-h-11 min-w-11" @click="loadResults" />
     </div>
 
     <!-- 空状態 -->
