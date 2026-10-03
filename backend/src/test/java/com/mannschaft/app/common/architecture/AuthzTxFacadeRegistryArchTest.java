@@ -155,9 +155,8 @@ class AuthzTxFacadeRegistryArchTest {
                 "listParticipants", "markAttended");
         add(list, "W5", REC + "controller.RecruitmentTemplateController", REC + "service.RecruitmentListingFacade",
                 "getTemplate", "updateTemplate", "archiveTemplate");
-        // W5 周辺: W5 の 11 本には含めなかったが、W5 で Facade 経由になった（募集詳細 GET・参加申込）。同じ規則に通す
-        add(list, "W5周辺", REC + "controller.RecruitmentListingController", REC + "service.RecruitmentListingFacade",
-                "get");
+        // W5 周辺: W5 の 11 本には含めなかったが Facade 経由になった参加申込。同じ規則に通す
+        // （募集詳細 GET は tx 本体に可視性判定が残るため除外表）
         add(list, "W5周辺", REC + "controller.RecruitmentApplicationController", REC + "service.RecruitmentListingFacade",
                 "apply");
         // W6a: schedules・slots・remind・PDF
@@ -237,6 +236,10 @@ class AuthzTxFacadeRegistryArchTest {
      * 登録 Facade を呼ぶが登録表に載せない Controller メソッド（「Controller FQN#メソッド名」→ 理由）。理由必須。
      */
     static final Map<String, String> UNREGISTERED_FACADE_CALLERS = Map.of(
+            REC + "controller.RecruitmentListingController#get",
+            "募集詳細 GET。Facade は DRAFT の閲覧者判定と個人札の隠蔽だけを持ち、非 DRAFT の可視性（F00）と管理者判定は"
+                    + "tx 本体 RecruitmentListingService#getListing に残る（W5 の対象外＝認可の型を変えない EP）。"
+                    + "R4 の「tx 本体は認可へ届かない」を満たさないため登録しない",
             REC + "controller.RecruitmentListingController#estimateCancellationFee",
             "キャンセル料試算。認可は GET 詳細と同じ RecruitmentListingFacade#getListing を先に呼んで済ませ、その後の"
                     + "findOrThrow・estimateFee は認可を持たない参照。W5 の対象外（試算の作り替えは別課題）で、"
@@ -264,9 +267,9 @@ class AuthzTxFacadeRegistryArchTest {
         Map<String, Long> byWave = ENTRIES.stream()
                 .collect(Collectors.groupingBy(Entry::wave, TreeMap::new, Collectors.counting()));
         assertThat(byWave).containsExactlyInAnyOrderEntriesOf(Map.of(
-                "W1", 9L, "W2", 16L, "W3a", 1L, "W3b", 2L, "W4", 6L, "W5", 11L, "W5周辺", 2L, "W6a", 16L));
-        assertThat(ENTRIES).hasSize(63);
-        assertThat(ENTRIES.stream().map(Entry::key).distinct().count()).as("登録表に重複が無い").isEqualTo(63);
+                "W1", 9L, "W2", 16L, "W3a", 1L, "W3b", 2L, "W4", 6L, "W5", 11L, "W5周辺", 1L, "W6a", 16L));
+        assertThat(ENTRIES).hasSize(62);
+        assertThat(ENTRIES.stream().map(Entry::key).distinct().count()).as("登録表に重複が無い").isEqualTo(62);
         assertThat(ENTRIES.stream().map(Entry::facade).collect(Collectors.toSet()))
                 .as("登録表の Facade と tx 本体の表の Facade が一致する").isEqualTo(TX_BODIES.keySet());
     }
