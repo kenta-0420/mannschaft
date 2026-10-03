@@ -4,28 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.asm.ClassReader;
-import org.springframework.asm.ClassVisitor;
-import org.springframework.asm.FieldVisitor;
-import org.springframework.asm.Label;
-import org.springframework.asm.MethodVisitor;
 import org.springframework.asm.Opcodes;
-import org.springframework.asm.SpringAsmInfo;
 import org.springframework.asm.Type;
 
 /**
@@ -53,9 +45,10 @@ import org.springframework.asm.Type;
  *
  * <p><b>検出方式</b>: テスト出力ディレクトリ（{@code build/classes/java/test}）の .class を
  * Spring 同梱の ASM で1つずつ流し読みする。ArchUnit でテストツリー全体を取り込むと番人自身が
- * メモリを食うため使わない。{@code importPackages} の引数は、呼び出し直前までに同じメソッド内で
- * 積まれた文字列定数（LDC）と、GETSTATIC で読んだ static フィールドの {@code <clinit>} 初期化定数
- * （{@code String[]} 定数配列を含む）から判定する。文字列連結などで動的に組み立てた引数は判定できない。
+ * メモリを食うため使わない。{@code importPackages}/{@code importPackagesOf} は、呼び出し地点の
+ * <b>実引数</b>を {@link ConstantFlowInterpreter}（スタック・ローカル変数・配列を追うデータフロー解析）で
+ * 定数まで遡って判定する。メソッドの戻り値・文字列連結など<b>定数に解決できない引数は違反</b>とする
+ * （fail closed。本番全体でないことを示せないため）。
  *
  * <p>この番人は凍結ストアを使わない（違反は出陣で全返済する）。自己検証用の違反見本は
  * {@value #SELF_FIXTURES_PACKAGE} に置き、本番の走査からは除外する。
@@ -175,6 +168,28 @@ class ProductionClassImportGuardTest {
     }
 
     @Test
+    @DisplayName("AC-6: 取り込みと無関係な空文字定数の後に fixture だけを取り込む見本は検出しない（実引数で判定）")
+    void AC6_無関係な空文字定数の後のfixture取り込みは検出しない() {
+        assertThat(analyzeFixture("UnrelatedEmptyStringThenFixtureImportSample")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC-6: 本番ルートをローカル変数経由・別の取り込みを挟んで importPackages する見本を (b) として検出する")
+    void AC6_ローカル変数経由で別取り込みを挟んだ本番ルート取り込みを検出する() {
+        assertDetectedAsWholeImport("WholeProductionImportViaLocalAfterOtherImportSample");
+    }
+
+    @Test
+    @DisplayName("AC-6: 定数に解決できない引数（メソッドの戻り値）で importPackages する見本を (b) として検出する")
+    void AC6_解決できない引数の取り込みを検出する() {
+        List<Violation> violations = analyzeFixture("UnresolvableImportArgumentSample");
+        assertThat(violations)
+                .extracting(Violation::kind, Violation::detail)
+                .containsExactly(tuple(Kind.WHOLE_PRODUCTION_IMPORT,
+                        "ClassFileImporter.importPackages の引数を定数に解決できない（本番全体でないことを示せない）"));
+    }
+
+    @Test
     @DisplayName("AC-6: 共有ホルダ ProductionClasses 自身は検出しない")
     void AC6_共有ホルダ自身は検出しない() {
         List<Violation> violations = new ArrayList<>(analyze(readClass(HOLDER)));
@@ -197,7 +212,9 @@ class ProductionClassImportGuardTest {
                 "WholeProductionImportSample",
                 "WholeProductionImportViaArrayConstantSample",
                 "WholeProductionImportPackagesOfSample",
-                "WholeProductionImportPathSample");
+                "WholeProductionImportPathSample",
+                "WholeProductionImportViaLocalAfterOtherImportSample",
+                "UnresolvableImportArgumentSample");
     }
 
     private static void assertDetectedAsWholeImport(String simpleName) {
@@ -218,94 +235,61 @@ class ProductionClassImportGuardTest {
 
     /** 1クラス分のバイトコードを判定し、違反を返す。ホルダ（とその入れ子クラス）は常に違反なし。 */
     static List<Violation> analyze(byte[] classBytes) {
-        ClassReader reader = new ClassReader(classBytes);
-        String className = reader.getClassName().replace('/', '.');
+        ConstantFlowInterpreter.ClassModel model = ConstantFlowInterpreter.parse(classBytes);
+        String className = model.className();
         if (className.equals(HOLDER) || className.startsWith(HOLDER + "$")) {
             return List.of();
         }
         List<Violation> violations = new ArrayList<>();
-        reader.accept(new ClassVisitor(SpringAsmInfo.ASM_VERSION) {
-            @Override
-            public FieldVisitor visitField(int access, String name, String descriptor, String signature,
-                    Object value) {
-                if ((access & Opcodes.ACC_STATIC) != 0 && JAVA_CLASSES_DESC.equals(descriptor)) {
-                    violations.add(new Violation(Kind.STATIC_JAVA_CLASSES_FIELD, className, name, 0,
-                            "JavaClasses をテストクラスの static で保持している"));
+        for (ConstantFlowInterpreter.FieldDecl field : model.fields) {
+            if ((field.access() & Opcodes.ACC_STATIC) != 0 && JAVA_CLASSES_DESC.equals(field.descriptor())) {
+                violations.add(new Violation(Kind.STATIC_JAVA_CLASSES_FIELD, className, field.name(), 0,
+                        "JavaClasses をテストクラスの static で保持している"));
+            }
+        }
+        for (ConstantFlowInterpreter.MethodCode method : model.methods()) {
+            for (ConstantFlowInterpreter.ResolvedCall call : ConstantFlowInterpreter.calls(model, method)) {
+                if (IMPORTER_OWNER.equals(call.owner())) {
+                    judgeImportCall(className, method.name(), call).ifPresent(violations::add);
                 }
-                return null;
             }
-
-            @Override
-            public MethodVisitor visitMethod(int access, String methodName, String descriptor,
-                    String signature, String[] exceptions) {
-                return new ImportCallVisitor(className, methodName, violations);
-            }
-        }, ClassReader.SKIP_FRAMES);
+        }
         return violations;
     }
 
-    /** メソッド内の ClassFileImporter 呼び出しを、直前に積まれた定数とともに判定する。 */
-    private static final class ImportCallVisitor extends MethodVisitor {
-
-        private final String className;
-        private final String methodName;
-        private final List<Violation> violations;
-        /** 直前の取り込み呼び出し以降に積まれた定数（String / Type）。 */
-        private final List<Object> pending = new ArrayList<>();
-        private int line;
-
-        ImportCallVisitor(String className, String methodName, List<Violation> violations) {
-            super(SpringAsmInfo.ASM_VERSION);
-            this.className = className;
-            this.methodName = methodName;
-            this.violations = violations;
+    /** ClassFileImporter の呼び出し1件を、解決済みの実引数で判定する。 */
+    private static Optional<Violation> judgeImportCall(String className, String methodName,
+            ConstantFlowInterpreter.ResolvedCall call) {
+        String name = call.name();
+        if (LOCATION_IMPORTS.contains(name)) {
+            return Optional.of(new Violation(Kind.WHOLE_PRODUCTION_IMPORT, className, methodName, call.line(),
+                    "ClassFileImporter." + name + " による場所単位の一括取り込み"));
         }
-
-        @Override
-        public void visitLineNumber(int lineNumber, Label start) {
-            this.line = lineNumber;
+        if (!PACKAGE_IMPORTS.contains(name)) {
+            return Optional.empty();
         }
-
-        @Override
-        public void visitLdcInsn(Object value) {
-            if (value instanceof String || value instanceof Type) {
-                pending.add(value);
+        for (List<Object> constants : call.args()) {
+            // 実引数を定数に解決できなければ、本番全体でないことを示せないので違反（fail closed）
+            if (constants == null
+                    || constants.stream().anyMatch(c -> !(c instanceof String) && !(c instanceof Type))) {
+                return Optional.of(new Violation(Kind.WHOLE_PRODUCTION_IMPORT, className, methodName,
+                        call.line(), "ClassFileImporter." + name
+                                + " の引数を定数に解決できない（本番全体でないことを示せない）"));
+            }
+            Optional<String> covering = constants.stream()
+                    .map(ProductionClassImportGuardTest::packageOf)
+                    .filter(ProductionClassImportGuardTest::coversProductionRoot)
+                    .findFirst();
+            if (covering.isPresent()) {
+                return Optional.of(new Violation(Kind.WHOLE_PRODUCTION_IMPORT, className, methodName,
+                        call.line(), "ClassFileImporter." + name + "(\"" + covering.get()
+                                + "\") で本番全体を取り込んでいる"));
             }
         }
-
-        @Override
-        public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-            // 自前のクラスの定数だけを解決する（ArchUnit の enum 等の定数を誤って拾わない）
-            if (opcode == Opcodes.GETSTATIC && owner.startsWith("com/mannschaft/")) {
-                pending.addAll(StaticConstants.of(owner).getOrDefault(name, List.of()));
-            }
-        }
-
-        @Override
-        public void visitMethodInsn(int opcode, String owner, String name, String descriptor,
-                boolean isInterface) {
-            if (!IMPORTER_OWNER.equals(owner)) {
-                return;
-            }
-            if (LOCATION_IMPORTS.contains(name)) {
-                violations.add(new Violation(Kind.WHOLE_PRODUCTION_IMPORT, className, methodName, line,
-                        "ClassFileImporter." + name + " による場所単位の一括取り込み"));
-            } else if (PACKAGE_IMPORTS.contains(name)) {
-                pending.stream()
-                        .map(ProductionClassImportGuardTest::packageOf)
-                        .filter(ProductionClassImportGuardTest::coversProductionRoot)
-                        .findFirst()
-                        .ifPresent(pkg -> violations.add(new Violation(Kind.WHOLE_PRODUCTION_IMPORT,
-                                className, methodName, line,
-                                "ClassFileImporter." + name + "(\"" + pkg + "\") で本番全体を取り込んでいる")));
-            }
-            if (name.startsWith("import")) {
-                pending.clear();
-            }
-        }
+        return Optional.empty();
     }
 
-    /** LDC 定数を「取り込み対象のパッケージ名」に読み替える（Type はそのクラスのパッケージ）。 */
+    /** 定数を「取り込み対象のパッケージ名」に読み替える（Type はそのクラスのパッケージ）。 */
     private static String packageOf(Object constant) {
         if (constant instanceof Type type) {
             String name = type.getClassName();
@@ -318,52 +302,6 @@ class ProductionClassImportGuardTest {
     /** そのパッケージを取り込むと本番ルート全体を含むか（本番ルート自身かその祖先）。 */
     private static boolean coversProductionRoot(String pkg) {
         return pkg.isEmpty() || PRODUCTION_ROOT.equals(pkg) || PRODUCTION_ROOT.startsWith(pkg + ".");
-    }
-
-    /** static フィールドの {@code <clinit>} 初期化定数（定数配列を含む）を、クラス単位でキャッシュする。 */
-    private static final class StaticConstants {
-
-        private static final Map<String, Map<String, List<Object>>> CACHE = new HashMap<>();
-
-        static synchronized Map<String, List<Object>> of(String ownerInternalName) {
-            return CACHE.computeIfAbsent(ownerInternalName, StaticConstants::parse);
-        }
-
-        private static Map<String, List<Object>> parse(String ownerInternalName) {
-            byte[] bytes = readResource(ownerInternalName + ".class");
-            if (bytes == null) {
-                return Map.of();
-            }
-            Map<String, List<Object>> constants = new HashMap<>();
-            new ClassReader(bytes).accept(new ClassVisitor(SpringAsmInfo.ASM_VERSION) {
-                @Override
-                public MethodVisitor visitMethod(int access, String name, String descriptor,
-                        String signature, String[] exceptions) {
-                    if (!"<clinit>".equals(name)) {
-                        return null;
-                    }
-                    return new MethodVisitor(SpringAsmInfo.ASM_VERSION) {
-                        private final List<Object> buffer = new ArrayList<>();
-
-                        @Override
-                        public void visitLdcInsn(Object value) {
-                            if (value instanceof String || value instanceof Type) {
-                                buffer.add(value);
-                            }
-                        }
-
-                        @Override
-                        public void visitFieldInsn(int opcode, String owner, String field, String desc) {
-                            if (opcode == Opcodes.PUTSTATIC && owner.equals(ownerInternalName)) {
-                                constants.put(field, List.copyOf(buffer));
-                                buffer.clear();
-                            }
-                        }
-                    };
-                }
-            }, ClassReader.SKIP_FRAMES);
-            return constants;
-        }
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -405,11 +343,6 @@ class ProductionClassImportGuardTest {
     }
 
     private static byte[] readResource(String resourceName) {
-        try (InputStream in = ProductionClassImportGuardTest.class.getClassLoader()
-                .getResourceAsStream(resourceName)) {
-            return in == null ? null : in.readAllBytes();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return ConstantFlowInterpreter.readResource(resourceName);
     }
 }

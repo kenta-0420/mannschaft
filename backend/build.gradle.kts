@@ -467,6 +467,25 @@ tasks.withType<Test> {
         ) {}
     })
 
+    // 【テスト JVM の実効最大ヒープの転送（CMP-261002-1606）】
+    // TestJvmHeapLoggingLauncherSessionListener（src/test/.../common/testing）がワーカー JVM 内で
+    // "[test-jvm-heap] pid=... maxMemory=...MB" を標準出力に出す。しかし下の testLogging は
+    // showStandardStreams=false のため、Gradle が捕捉した標準出力は CI ログに出ない。
+    // 全出力を出すとログが溢れるので、この接頭辞の行だけを lifecycle へ転送する。
+    // （ランチャーセッション開始時の出力はテストクラスに属さないが、Gradle はワーカーの
+    //   "Gradle Test Executor N" スイートに帰属させて本リスナーへ渡すことを実測で確認済み）
+    // CI ログを "[test-jvm-heap]" で grep せよ。
+    addTestOutputListener(object : org.gradle.api.tasks.testing.TestOutputListener {
+        override fun onOutput(
+            testDescriptor: org.gradle.api.tasks.testing.TestDescriptor,
+            outputEvent: org.gradle.api.tasks.testing.TestOutputEvent
+        ) {
+            outputEvent.message.lineSequence()
+                .filter { it.startsWith("[test-jvm-heap]") }
+                .forEach { logger.lifecycle(it) }
+        }
+    })
+
     // 【ヒープダンプはワーカーごとに分ける（実測 2026-08-26）】
     // 以前は -XX:HeapDumpPath=build/heap-dump.hprof という【固定ファイル名】だったため、
     // maxParallelForks=2 の 2 ワーカーが OOM 時に同一ファイルへ同時に書き込み、
