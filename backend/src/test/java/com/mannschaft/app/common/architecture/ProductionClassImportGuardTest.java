@@ -180,6 +180,18 @@ class ProductionClassImportGuardTest {
     }
 
     @Test
+    @DisplayName("AC-6: static final 配列をメソッド内で本番ルートへ書き換えてから importPackages する見本を (b) として検出する")
+    void AC6_書き換えたstatic配列経由の本番ルート取り込みを検出する() {
+        assertDetectedAsWholeImport("WholeProductionImportViaRewrittenArrayConstantSample");
+    }
+
+    @Test
+    @DisplayName("AC-6: 合流した配列の別名へ本番ルートを書き込み、元の配列を importPackages する見本を (b) として検出する")
+    void AC6_合流した別名経由で書き換えた配列の取り込みを検出する() {
+        assertDetectedAsWholeImport("WholeProductionImportViaMergedArrayAliasSample");
+    }
+
+    @Test
     @DisplayName("AC-6: 定数に解決できない引数（メソッドの戻り値）で importPackages する見本を (b) として検出する")
     void AC6_解決できない引数の取り込みを検出する() {
         List<Violation> violations = analyzeFixture("UnresolvableImportArgumentSample");
@@ -214,6 +226,8 @@ class ProductionClassImportGuardTest {
                 "WholeProductionImportPackagesOfSample",
                 "WholeProductionImportPathSample",
                 "WholeProductionImportViaLocalAfterOtherImportSample",
+                "WholeProductionImportViaRewrittenArrayConstantSample",
+                "WholeProductionImportViaMergedArrayAliasSample",
                 "UnresolvableImportArgumentSample");
     }
 

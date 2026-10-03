@@ -35,6 +35,7 @@ import org.springframework.asm.Type;
  * （varargs）、自プロジェクトの {@code static final} フィールドの {@code <clinit>} 初期値（配列を含む）、
  * {@code Class.forName}/{@code Class.getPackageName}/{@code Class.getName}、同一クラスの static メソッドの
  * 戻り値（定数引数で深さ {@value #MAX_CALL_DEPTH} まで展開）。分岐の合流で値が食い違えば「不明」にする。
+ * 配列の別名は追わず、自メソッドで生成した配列以外への書き込みがあればそのメソッドの引数を全て「不明」にする。
  * それ以外（メソッドの戻り値・フィールド・文字列連結など）はすべて「不明」であり、利用側は不明を
  * 違反として扱う（fail closed）。
  */
@@ -128,9 +129,16 @@ final class ConstantFlowInterpreter {
         return model;
     }
 
-    /** メソッド内の到達可能な全呼び出しを、実引数を解決したうえで返す（引数は全て不明から始める）。 */
+    /**
+     * メソッド内の到達可能な全呼び出しを、実引数を解決したうえで返す（引数は全て不明から始める）。
+     *
+     * <p>別名解析はしない代わりに保守化する: このメソッドで生成した配列（{@code ANEWARRAY}）以外への
+     * {@code AASTORE}（static 配列・合流で不明になった参照・引数や戻り値の配列への書き込み）が1つでもあれば、
+     * そのメソッドの呼び出しの引数はすべて不明とする（fail closed）。
+     */
     static List<ResolvedCall> calls(ClassModel cls, MethodCode method) {
         Frame[] frames = run(cls, method, null, 0).frames;
+        boolean opaque = writesForeignArray(method, frames);
         List<ResolvedCall> calls = new ArrayList<>();
         for (int i = 0; i < method.insns.size(); i++) {
             Insn insn = method.insns.get(i);
@@ -142,11 +150,25 @@ final class ConstantFlowInterpreter {
             List<Val> argVals = frame.peekArgs(argTypes);
             List<List<Object>> args = new ArrayList<>();
             for (Val v : argVals) {
-                args.add(frame.constantsOf(v));
+                args.add(opaque ? null : frame.constantsOf(v));
             }
             calls.add(new ResolvedCall((String) insn.a, (String) insn.b, (String) insn.c, insn.line, args));
         }
         return calls;
+    }
+
+    private static boolean writesForeignArray(MethodCode method, Frame[] frames) {
+        for (int i = 0; i < method.insns.size(); i++) {
+            Frame frame = frames[i];
+            if (frame == null || method.insns.get(i).opcode != Opcodes.AASTORE) {
+                continue;
+            }
+            Val array = frame.stack.get(frame.stack.size() - 3);
+            if (!(array instanceof ArrRef ref && method.insns.get(ref.site()).opcode == Opcodes.ANEWARRAY)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ══════════════════════════════════════════════════════════════
