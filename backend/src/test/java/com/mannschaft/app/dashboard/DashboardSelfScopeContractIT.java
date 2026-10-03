@@ -209,6 +209,38 @@ class DashboardSelfScopeContractIT extends AbstractMySqlIntegrationTest {
                     .findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(OTHER, ScopeType.PERSONAL, 0L))
                     .hasSize(1);
         }
+
+        @Test
+        @WithMockUser(username = "916501")
+        @DisplayName("resetWidgetSettings はチーム宛でも自分の行のみ削除し、同じスコープ ID の他人の行を変えない")
+        void resetWidgetSettings_チーム宛でも他人の行は不変() throws Exception {
+            long teamScopeId = 916_900_001L;
+            widgetSettingRepository.save(DashboardWidgetSettingEntity.builder()
+                    .userId(ME).scopeType(ScopeType.TEAM).scopeId(teamScopeId)
+                    .widgetKey("NOTICES").isVisible(false).sortOrder(0).build());
+            widgetSettingRepository.save(DashboardWidgetSettingEntity.builder()
+                    .userId(OTHER).scopeType(ScopeType.TEAM).scopeId(teamScopeId)
+                    .widgetKey("NOTICES").isVisible(false).sortOrder(0).build());
+
+            mockMvc.perform(delete("/api/v1/dashboard/widgets")
+                            .param("scopeType", "TEAM").param("scopeId", String.valueOf(teamScopeId)))
+                    .andExpect(status().isNoContent());
+
+            assertThat(widgetSettingRepository
+                    .findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(ME, ScopeType.TEAM, teamScopeId))
+                    .isEmpty();
+            assertThat(widgetSettingRepository
+                    .findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(OTHER, ScopeType.TEAM, teamScopeId))
+                    .hasSize(1);
+
+            // 自分の行が無い状態で同じ要求を重ねても、他人の行は残る。
+            mockMvc.perform(delete("/api/v1/dashboard/widgets")
+                            .param("scopeType", "TEAM").param("scopeId", String.valueOf(teamScopeId)))
+                    .andExpect(status().isNoContent());
+            assertThat(widgetSettingRepository
+                    .findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(OTHER, ScopeType.TEAM, teamScopeId))
+                    .hasSize(1);
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
