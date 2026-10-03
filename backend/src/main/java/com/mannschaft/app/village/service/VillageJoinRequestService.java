@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -187,6 +188,24 @@ public class VillageJoinRequestService {
                 .stream()
                 .map(JoinRequestResponse::from)
                 .toList();
+    }
+
+    /**
+     * 申請時のrequesterが認証本人である履歴だけを返す。
+     * 現在の村人・チーム代表者・組織管理者であるかを照会せず、村の追加情報も読まない。
+     * ページ境界は既存の村一覧と同じ丸めとし、同時刻もID降順で安定させる。
+     *
+     * @param actorUserId Controllerが認証情報から解決した本人ID
+     */
+    @Transactional(readOnly = true)
+    public Page<JoinRequestResponse> listMyHistory(Long actorUserId, int page, int size) {
+        if (actorUserId == null) {
+            throw new BusinessException(CommonErrorCode.COMMON_000);
+        }
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size)),
+                Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        return joinRequestRepository.findByRequesterUserId(actorUserId, pageable)
+                .map(JoinRequestResponse::from);
     }
 
     // ========================================================================

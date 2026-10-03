@@ -194,6 +194,13 @@
       "rejectSuccess": "申请已拒绝",
       "reviewFailed": "审核处理失败"
     },
+    "myJoinRequests": {
+      "title": "我的村庄加入申请",
+      "description": "查看您提交的加入申请及其审核状态。",
+      "submittedAt": "申请时间",
+      "empty": "您尚未提交加入申请",
+      "fetchError": "无法加载您的申请记录"
+    },
     "joinRequest": {
       "title": "加入申请",
       "message": "申请消息（可选）",
