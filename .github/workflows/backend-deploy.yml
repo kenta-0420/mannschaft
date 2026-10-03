@@ -285,12 +285,38 @@ jobs:
           # Testcontainers host resolution inside GitHub Actions
           TESTCONTAINERS_RYUK_DISABLED: "false"
 
-      - name: Upload test reports on failure
+      # OOM (OutOfMemoryError) 発生時のみ、-XX:HeapDumpOnOutOfMemoryError で
+      # backend/build/heap-dumps/java_pid<PID>.hprof に書き出されるヒープダンプを
+      # アーティファクトとしてアップロードする（backend-ci.yml と同じ方式に揃える。
+      # 詳細な経緯・設計判断は backend-ci.yml の同名ステップのコメントを参照）。
+      - name: ヒープダンプ（OOM調査用）をアップロード
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: heap-dump-main-${{ github.run_id }}-shard-${{ matrix.shard }}
+          path: backend/build/heap-dumps/*.hprof
+          retention-days: 3
+          if-no-files-found: ignore
+
+      # test-results の XML（JUnit 形式）。backend-ci.yml と同じ方式に揃える。
+      - name: テスト結果XML（JUnit）をアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-xml-main-${{ github.run_id }}-shard-${{ matrix.shard }}
+          path: backend/build/test-results/test/
+          retention-days: 7
+
+      # path は defaults.run.working-directory（./backend）の影響を受けず、
+      # リポジトリ直下基準で解釈されるため backend/ を明記する
+      # （旧来は working-directory 基準と誤認し build/reports/tests/ のままになっており、
+      #  "No files were found" で何もアップロードされていなかった）。
+      - name: テスト結果レポートをアップロード
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-reports-shard-${{ matrix.shard }}
-          path: build/reports/tests/
+          path: backend/build/reports/tests/
           retention-days: 7
 
   # ---------------------------------------------------------------------------
