@@ -116,6 +116,16 @@ updates:
 
 有効期限は **2026-10-16 UTC 当日まで（2026-10-17T00:00:00Z 以降は当該例外を拒否）**。解除管理は `docs/task-list.md` の CMP-261002-1135。公式修正版を導入するか listhen から依存が撤去されたら、例外を削除して通常の `npm audit --audit-level=high` に戻す。期限以前でも、RSA 署名検証の利用追加・新しい消費者・依存の直接化があれば例外を削除し、到達可能性を再評価する。期限延長を自動では行わない。
 
+### 4.4. braces の期限付き個別例外（2026-10-03）
+
+[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) は `braces` の問題。影響範囲は `<=3.0.3`（全公開版）で、2026-10-03 時点で修正版は未公開（`npm audit` の `fixAvailable` も false）。既存 lock の `braces` は 3.0.3。`chokidar` / `micromatch` / `fast-glob` を経由し、`nuxt` / `@nuxtjs/i18n` / `@nuxtjs/tailwindcss` / `@primevue/nuxt-module` などビルド時ツールへ波及して FE CI の Install ジョブが赤になった。
+
+§4.3 と同じ仕組みで、`frontend/scripts/audit-with-exemption.mjs` の `EXEMPTIONS` 表に **GHSA 単位で名指し**して一時除外する（パッケージ名での包括除外や `--audit-level` の緩和はしない）。**当該 URL・パッケージ・high・影響範囲 `<=3.0.3`・間接依存・lock の 3.0.3** が一致するものだけを通し、波及先は実監査で確認した経路（`braces` / `micromatch` / `chokidar` / `fast-glob` / `globby` / `tailwindcss` / `unplugin-vue-components` / `unplugin-vue-router` / `@intlify/unplugin-vue-i18n` / `@nuxtjs/i18n` / `@nuxtjs/tailwindcss` / `@primevue/nuxt-module` / `nitropack` / `@nuxt/nitro-server` / `@nuxt/vite-builder` / `nuxt`）に限定する。除外ごとに許可パッケージ集合を持つため、node-forge の消費者が braces を、またはその逆を流用することはできない。fail closed の検証（取得失敗・不正レポート・深刻度の過小報告・未知の high 消費者の拒否）は §4.3 と共通。
+
+到達経路の根拠: `braces` は glob の波括弧展開で、ビルド時のファイル探索・ファイル監視にのみ使われる。本番で利用者入力を受ける経路ではない。ただし Nuxt は `dependencies` にあるため「devOnly」とは扱わず、本番 `.output` からの除外は未実測。脆弱性そのものが直ったという判断ではない。
+
+有効期限は **2026-10-16 UTC 当日まで（2026-10-17T00:00:00Z 以降は当該例外を拒否）**。解除条件: `braces` の修正版が公開されたら lock を引き上げ、除外を削除して通常の `npm audit --audit-level=high` に戻す。期限延長を自動では行わない。
+
 ## 5. 脆弱性対応フロー
 
 1. **検知**: Dependabot / Dependency-Check / npm audit / GitHub Security Advisory
