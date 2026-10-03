@@ -154,7 +154,10 @@ export function useFollowSelfStatus(api: FollowStatusApi) {
       notification.success(t('common.scopeShell.supporter_canceled'))
 
       const result = await reloadPermissions()
-      if (gen !== scopeGen) return true
+      // 権限再取得の待機中に別スコープへ遷移していたら、戻り値は呼び出し元（旧スコープの
+      // 確認ダイアログ）を操作させないよう false にする。解除 API 自体は成功済みのため
+      // followStatus は巻き戻さないが、新スコープの UI（ダイアログ）には触れない。
+      if (gen !== scopeGen) return false
       if (!result.ok) {
         followPermissionSyncError.value = true
         notification.error(

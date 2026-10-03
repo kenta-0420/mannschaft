@@ -196,6 +196,28 @@ describe('useScopeFollowWiring（シェルページのフォロー結線）', ()
     expect(wiring.followPermissionSyncError.value).toBe(false)
     expect(notificationErrorMock).not.toHaveBeenCalled()
   })
+
+  it('検分修繕3: A の解除成功→権限再取得待機中に B へ遷移→B の解除確認を開いても、A の権限応答到着で B のダイアログを閉じない', async () => {
+    const permsA = deferred<ReturnType<typeof perms>>()
+    apiMock.mockImplementation((url: string) =>
+      url.includes('/team-a/') ? permsA.promise : Promise.resolve(perms('MEMBER')))
+    const followApi = makeFollowApi()
+    const { slug, wiring } = setup(followApi)
+    await wiring.fetchFollowStatus()
+
+    // A の解除は成功し、権限再取得（A 向け）が未解決のまま B へ遷移する。
+    const cancelling = wiring.cancelSupporter()
+    await vi.waitFor(() => expect(followApi.unfollow).toHaveBeenCalledTimes(1))
+    slug.value = 'team-b'
+    // B で解除確認ダイアログを開く（A の権限応答とは無関係に B の UI 操作として開く）。
+    wiring.showCancelSupporterConfirm.value = true
+
+    // A の権限応答が遅れて到着しても、B のダイアログは閉じたままにしてはならない。
+    permsA.resolve(perms(null))
+    await cancelling
+
+    expect(wiring.showCancelSupporterConfirm.value).toBe(true)
+  })
 })
 
 /**
