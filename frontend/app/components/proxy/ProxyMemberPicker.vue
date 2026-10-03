@@ -43,7 +43,7 @@ onMounted(() => { void load() })
     <PageLoading v-if="loading" role="status" :aria-label="t('proxy.management.loading')" class="!min-h-0 !pb-0 py-4" />
     <DashboardErrorState v-else-if="failed" role="alert" :message="t('proxy.management.loadFailed')" show-retry class="[&_button]:min-h-11" @retry="load" />
     <template v-else>
-      <Select v-model="model" :options="candidates" option-label="displayName" :placeholder="t('proxy.management.chooseMember')" :aria-label="label" class="min-h-11 w-full" show-clear />
+      <Select v-model="model" :options="candidates" option-label="displayName" :placeholder="t('proxy.management.chooseMember')" :aria-label="label" class="min-h-11 w-full" :pt="{ label: { class: 'min-h-11 flex items-center' } }" show-clear />
       <DashboardEmptyState v-if="!candidates.length" :message="t('proxy.management.noCandidates')" />
       <div class="flex flex-wrap items-center gap-2">
         <Button :label="t('proxy.management.previous')" class="min-h-11" outlined :disabled="page === 0" @click="page--" />
