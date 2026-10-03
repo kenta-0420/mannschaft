@@ -77,7 +77,7 @@ class RecruitmentParticipantServiceCancellationFeeChargeTest {
         return new RecruitmentParticipantService(
                 participantRepository, listingRepository, historyRepository, cancellationRecordRepository,
                 penaltyRepository,
-                policyService, listingService, accessControlService, mapper,
+                policyService, listingService, mapper,
                 visibilityChecker, eventPublisher);
     }
 
