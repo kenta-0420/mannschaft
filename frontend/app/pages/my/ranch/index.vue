@@ -30,7 +30,7 @@ onMounted(ranch.load)
    <WidgetRanch v-if="ranch.state.value.dinosaur" :key="ranch.state.value.owner?.version" :active="true" />
    <p v-if="ranch.state.value.dinosaur?.egg" role="status">{{ t(`ranch.egg.${ranch.state.value.dinosaur.egg.crackStage}`) }}</p>
    <NuxtLink v-if="ranch.state.value.dinosaur?.stage === 'EGG'" to="/my/ranch/assignment" class="inline-flex min-h-11 items-center text-primary">{{ t('ranch.care.choose') }}</NuxtLink>
-   <RanchNaming v-if="ranch.state.value.dinosaur?.egg?.hatchReady && ranch.state.value.assignment.selectionConfirmed" :busy="busy" :retry-required="!!ranch.api.command.pending.value" @confirm="hatch" />
+   <RanchNaming v-if="ranch.state.value.dinosaur?.egg?.hatchReady && ranch.state.value.assignment?.selectionConfirmed" :busy="busy" :retry-required="!!ranch.api.command.pending.value" @confirm="hatch" />
    <RanchSettingsPanel :state="ranch.state.value" :busy="busy || !!ranch.api.command.pending.value" @start="start" @settings="saveSettings" @participation="participation" @visibility="changeVisibility" />
    <NuxtLink v-if="ranch.state.value.owner" to="/my/ranch/decorations" class="inline-flex min-h-11 items-center text-primary">{{ t('ranch.decorations.title') }}</NuxtLink>
    <NuxtLink v-if="ranch.state.value.owner" to="/my/ranch/records" class="inline-flex min-h-11 items-center ml-4 text-primary">{{ t('ranch.records.title') }}</NuxtLink>
