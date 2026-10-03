@@ -17,7 +17,7 @@
 
 出欠の `firstRespondedAt` はproxy/UNDECIDEDでも付きうるので資格の証明にしない。当時request contextと信頼できるnative初回履歴証拠で資格をcaptureする。commit後のtransport witness UNIQUE(schedule ID,subject ID)は記録済みfactの配送dedupだけで、witness不在から初回を推定しない。証拠不明は0。過去proxyフラグの残留を今回代理の判定へ流用しない。本人の複数予定を本人一括操作で処理する導線がある場合は一件ごとに同じactor/subject/今回proxy判定を通す。管理者がメンバーへ一括登録するケースは対象外。
 
-Timeline originはクライアント任意入力を信用せず、通常投稿/内部共有それぞれのサーバー入口で確定する。原文本文の文字数や内容の質を報酬条件にしない。空/無効投稿は本体の既存validationで拒否する。記事共有がTimelineに生まれてもBlog一源だけが対象で二重付与しない。
+Timeline originはクライアント任意入力を信用せず、通常投稿/内部共有それぞれのサーバー入口で確定する。原文本文の文字数や内容の質を報酬条件にしない。同ID再付与に加え、新IDでも一定範囲の同内容完全一致を対象外とする（意味AI判定なし）。完全一致の正規化/期間/証跡保存と初回判定は後続設計、源件数/個人上限は併用する。空/無効投稿は本体の既存validationで拒否する。記事共有がTimelineに生まれてもBlog一源だけが対象で二重付与しない。
 
 Blogの手動公開、一括公開、自己承認、承認者による公開、予約公開の**全経路**を共通の初公開witness/fact生成へ収束させる。予約公開ではactor=`SYSTEM`、recipient=author、subject=author。公開失敗/権限拒否ではwitness/outboxを確定しない。公開後削除では授与済みポイントを取り消さず、資料リンクだけ権限を再判定する。
 
@@ -137,7 +137,7 @@ stateDiagram-v2
  ADULT --> ADULT : 無料お世話 / 記念品 / 記録
 ```
 
-新規ownerはEGGで作成。species抽選は卵期間の選定確認時serverで一度だけ、catalog version/species/habitatを同TX保存。HABITAT_RANDOMのhabitatはLAND/SEA/AIR、同modeだけ診断64poolを含めず、種別で成長量を変えない。同command/既存ownerのretryで乱数を引き直さない。
+新規ownerはEGGで作成。species抽選は卵期間の選定確認時serverで一度だけ、catalog version/species/habitatを同TX保存。HABITAT_RANDOMのhabitatはLAND/SEA/AIR、同じ初期16種×4外見をhabitatで絞って候補組均等抽選し、種別で成長量を変えない。同command/既存ownerのretryで乱数を引き直さない。
 
 ### 4.2 pointsの装飾交換
 
@@ -170,7 +170,7 @@ stateDiagram-v2
 |---|---|---|
 | `ranch_care_rules` | version_number BIGINT、effective_at DATETIME(6)、amount_xp BIGINT、weekly_cap_xp BIGINT、juvenile_xp BIGINT、adult_xp BIGINT、content_hash BINARY(32)、published_by BIGINT | UNIQUE(version_number)、UNIQUE(effective_at)、全量正/juvenile<adult CHECK、不変。管理shard、user側物理FKなし |
 | `ranch_care_week_budgets` | owner_id BINARY(16)、user_id BIGINT、week_starts_on DATE、rule_id BINARY(16)、rule_snapshot JSON、weekly_cap_xp BIGINT、awarded_xp BIGINT、version BIGINT | UNIQUE(user_id,week_starts_on)、CHECK(0<=awarded_xp<=weekly_cap_xp)、owner同domainFK、rule opaque参照 |
-| `ranch_species_catalog` | species_key VARCHAR(60)、catalog_version BIGINT、habitat VARCHAR(8)、asset_key VARCHAR(160)、is_active BOOLEAN、is_diagnosis_pool BOOLEAN | UNIQUE(catalog_version,species_key)、index(catalog_version,habitat,is_active)、habitat CHECK。HABITAT_RANDOMはis_diagnosis_pool=falseのみ。DIAGNOSISの64対応も初期catalog対象（素材未裁可） |
+| `ranch_species_catalog` | species_key VARCHAR(60)、catalog_version BIGINT、habitat VARCHAR(8)、asset_key VARCHAR(160)、is_active BOOLEAN | UNIQUE(catalog_version,species_key)、index(catalog_version,habitat,is_active)、habitat CHECK。旧is_diagnosis_poolによるrandom除外は撤去する。DIAGNOSIS/HABITAT_RANDOM共通の初期16種×4外見catalogとvariant資格を使う（名簿/素材未裁可） |
 | `ranch_shop_items` | sku_key VARCHAR(80)、price_version BIGINT、collectible_key VARCHAR(80)、price_points BIGINT、is_active BOOLEAN | UNIQUE(sku_key,price_version)、CHECK(price_points>0)、catalog同domain参照。不変price行、現行版は運営catalog公開snapshotで指定 |
 | `ranch_admin_commands` | actor_user_id BIGINT、command_id BINARY(16)、command_type VARCHAR(30)、body_hash BINARY(32)、result_json JSON、completed_at DATETIME(6) | UNIQUE(actor_user_id,command_id)、owner不要。policy/care rule/controlの管理shardTX内成功保存 |
 
@@ -208,14 +208,14 @@ egg_started_atはserver初期化時刻、egg_ready_at=started_at+凍結egg durat
 
 次回部屋アクセスでFEがhatchReadyを確認して命名導線を出し、確認後だけPOST hatchへnameを送る。owner/dino lock下でEGG→BABY/hatched_at/name/named_at/commandを同TX保存する。hatched_at=named_atはserverの同一Instant、名前と孵化の片方だけ保存しない。二tab/retryでも孵化・命名一回、points/care XP増分0。本人PAUSEDでも孵化は可（成長加算なし）、care control OFFなら安全待機/503。孵化後のみ無料care XP対象。EGGのXPは0、BABY起点0、成長閾値とcare量は正。CHECK:未選定はspecies/catalog/method/confirmed NULL、選定済みはspecies/catalog/method/confirmed必須、EGGはhatched_at/name/named_at NULL、BABY以降はhatched_at/name/named_at/confirmed必須。
 
-恐竜名はUnicode前後空白除去→NFC正規化後に、Unicode拡張書記素クラスタ（見た目の一文字）で1〜10文字。FE/serverで同じUnicode segmentation versionと境界fixtureを固定し、Java String.length、SQL CHAR_LENGTH、HTML maxlength=10だけを10文字の判定に使わない。結合文字・絵文字は表示の一文字で数える。空白/不可視文字だけ、改行・制御文字、UTF-8 512byte超または160 code point超を拒否する（異常に長い結合列への保存上限）。通常名の10文字制限と保存上限は別で、上限超を切り捨て保存しない。確定したnameは同個体で不変、名前変更用command/APIなし。診断・出生入力用の選定用名とは別フィールドで、名前を報酬outbox/log/auditへ複製しない。
+恐竜名はUnicode前後空白除去→NFC正規化後に、Unicode拡張書記素クラスタ（見た目の一文字）で1〜10文字。FE/serverで同じUnicode segmentation versionと境界fixtureを固定し、Java String.length、SQL CHAR_LENGTH、HTML maxlength=10だけを10文字の判定に使わない。結合文字・絵文字は表示の一文字で数える。空白/不可視文字だけ、改行・制御文字、UTF-8 512byte超または160 code point超を拒否する（異常に長い結合列への保存上限）。通常名の10文字制限と保存上限は別で、上限超を切り捨て保存しない。確定したnameは同個体で不変、名前変更用command/APIなし。診断・出生割当に使う本人氏名とは別フィールドで、名前を報酬outbox/log/auditへ複製しない。
 
-選定adapter method=HABITAT_RANDOM/BIRTH_STYLE/DIAGNOSIS。初期許可方式は運営catalog/承認ruleで制限、未承認birth算法/diagnosis本体を有効化しない。HABITAT_RANDOMの乱数結果は一度保存。BIRTH_STYLEは同じ正規化入力とrule versionなら同じspecies＋variantとなる決定的対応表version（方針はユーザー承認、既存占いとの対応を優先検討）、DIAGNOSISはprovider/typeCode/mappingVersionをprivateに保存する初期必須案（provider API/許諾未確認）。birthDate/選定用名は計算入力だけとしrawをDB/event/ログ/監査へ複製しない。再送比較にはkey-version付きHMAC body hashを使う提案で、入力を結果/平文hash辞書へ公開しない。ranch_commandsにbody_hash_key_version VARCHAR(80)を追加、owner lifetime中の検証keyを維持する。対応表そのものは未裁可であり、動作実装を完了した扱いにしない。
+選定adapter method=HABITAT_RANDOM/BIRTH_STYLE/DIAGNOSIS。未承認算法/診断本体は有効化しない。HABITAT_RANDOMは同catalogのhabitat該当species＋variant組を均等抽選し一度保存。BIRTH_STYLEはauth読取facadeから本人氏名/生年月日を取得し承認版の決定的対応表で算出した本人resultを利用する。DIAGNOSISは本人COMPLETED resultのprovider/typeCode/mappingVersionを検証する。ranchには元PIIや回答を複製せずopaque result ID/種/variant/対応表版のみ保存。旧client出生body向けHMAC設計をprofile-derivedの確認版/再送へ読み替える詳細は未確定で、特定列追加やkey保持期間を確定しない。
 
-出生入力を扱うcommandにはinput_normalization_version VARCHAR(80)を追加し、body_hash_key_versionと組にして保存する。具体正規化規則・HMAC key運用は後続裁可事項。rotation後も旧commandの保存版で比較し、raw入力の保存やkey不明時の再抽選を回避する（03出生入力契約）。表示styleはowner.render_styleだけを更新し、species/assignment/growth snapshotを変更しない。
+出生commandはサーバー取得した本人プロフィールの確認版/指紋とresultの対応を照合する設計案とし、profile変更時は再確認、保存済みcommand/resultのretryは現在profileで再計算しない。version/key/正規化/保存列/rotationと障害回復の詳細は後続裁可事項（03）。表示styleはowner.render_styleだけを更新し、species/assignment/growth snapshotを変更しない。
 ## 初期公開の選定3方式（最新確定範囲・内容は未裁可）
 
-性格診断もPhase 1初期公開から必須。BIRTH_STYLE（出生情報＋選定用名の占い風決定的割当）、HABITAT_RANDOM（海/空/陸random）、DIAGNOSIS（64タイプ）の三入口を卵期間に選択する。初期は16種×各4つの色・体型・模様のバリエーション＝64タイプ、将来64種へ拡張する方針はユーザー確定。恐竜との過ごし方を想像する質問は可、牧場の設備や遊び方を知っている前提の質問は改稿する。質問/採点/64 type→species＋variant対応表、占いの具体計算/入力正規化、初期16種の名簿・4デザインの内容は詳細未確定で、24問案を承認済みとしない。公開gateは三方式の確定済みserver rule/入力validation/全64 mappingと必要素材が揃うこと。ランダムpoolの旧別pool条件との整合はユーザー確認中。診断未実装を利用可能と装わず、暫定公開で診断を後回しにしない。
+性格診断もPhase 1初期公開から必須。BIRTH_STYLE（プロフィールの本人氏名・生年月日を使う占い風の決定的割当）、HABITAT_RANDOM（海/空/陸random）、DIAGNOSIS（64タイプ）の三入口を卵期間に選択する。初期16種×各4外見＝64タイプ、将来64種への拡張方針は確定。診断は6軸各4問の24問・5段階回答を採用し、相棒との過ごし方や身近な本人の傾向を中心に、色・形だけに偏らず牧場機能の予備知識を求めない。同点になった軸だけ本人に二択を追加し最大6問、保留または別方式の選択を許す。ランダムも同じ初期16種×4外見からLAND/SEA/AIRで候補組を絞り、species＋variantの組を均等抽選する。旧診断pool除外条件は撤去する。個別設問・採点式・全64 mapping・占い計算/名前正規化・種名簿/4デザインは未確定。公開gateは三方式の承認済みserver rule/本人プロフィール取得・確認/validation/全64 mappingと必要素材が揃うこと。未実装を利用可能と装わず、暫定公開で診断を後回しにしない。
 
 提案構造: 本人診断sessionをserver発行しquestionnaireVersion/scoringVersionをsnapshot、回答は本人sessionへ送信、serverがvalidationと採点をしてCOMPLETED結果（provider/typeCode/mappingVersion）を不変保存する。選定確認時に本人COMPLETED結果と対応表versionを検証してspeciesを固定。clientのtypeCodeを結果として信用しない。診断結果が変わっても確認済みの同恐竜を維持する。質問/回答/診断resultはprivate、報酬outbox/共有プロフィールへ出さず、診断完了回数をpoints/XPにしない。質問/画像/算法の外部サイト利用許諾/APIは未確認で、無断複製を前提にしない。
 
@@ -225,7 +225,7 @@ egg_started_atはserver初期化時刻、egg_ready_at=started_at+凍結egg durat
 
 初期診断は16 species×各4 variant。speciesKeyとvariantKeyは別の不変IDで、diagnosisの全64 typeCodeをcatalog/mapping version付きの組へ対応付ける。バリエーションに能力/成長/報酬差はなく、成長/style切替でも同じ組を保持する。将来species数を64へ増やしても、旧個体や旧mappingを勝手に置換しない。EGG未選定のvariant_keyはNULL、選定確認後はspeciesとvariantの両方を必須にする。catalogは初期16種の確定名簿と4デザイン登録後に有効化し、存在しない組を拒否する。
 
-追加catalog契約案: ranch_species_variants（UUIDv7 id、species_key VARCHAR(60)、catalog_version BIGINT、variant_key VARCHAR(32)、appearance_definition JSON、asset_manifest_key VARCHAR(160)、is_active BOOLEAN、created_at/updated_at DATETIME(6)）、UNIQUE(catalog_version,species_key,variant_key)。appearance_definitionは運営承認の色/体型/模様参照だけで、ユーザーuploadや自由URLなし。部位anchor/接地が合わない体型へ単純拡縮だけで流用しない。ranch内のmaster参照、クロスdomainFKなし。ランダムpoolの選択対象は確認回答後にcatalog/variant資格と併せて確定する。
+追加catalog契約案: ranch_species_variants（UUIDv7 id、species_key VARCHAR(60)、catalog_version BIGINT、variant_key VARCHAR(32)、appearance_definition JSON、asset_manifest_key VARCHAR(160)、is_active BOOLEAN、created_at/updated_at DATETIME(6)）、UNIQUE(catalog_version,species_key,variant_key)。appearance_definitionは運営承認の色/体型/模様参照だけで、ユーザーuploadや自由URLなし。部位anchor/接地が合わない体型へ単純拡縮だけで流用しない。ranch内のmaster参照、クロスdomainFKなし。ランダムは同じ初期16種×4外見からLAND/SEA/AIRの該当する有効species＋variant組を均等抽選し、catalog/variant資格を版固定する。
 
 ## 2026-10-03の追加裁可
 
@@ -237,14 +237,30 @@ egg_started_atはserver初期化時刻、egg_ready_at=started_at+凍結egg durat
 
 64タイプ診断と生年月日・名前の占いは、相棒の「ようす」から本人がいつでも見返せる。未実施の方式は「未診断」と表示し、別方式の結果を捏造しない。結果閲覧の主目的を「相棒を選んだ時の記録」としない。未実施の診断は後から実施でき、再診断も新しい本人の結果を作るだけで、確定済み相棒の個体・種・外見・名前・成長・親密度を変えない。診断実施・閲覧・再診断をポイントや育成条件にしない。誕生に使った結果との内部参照は、同個体維持のための記録としてUIの主題から分ける。
 
-数秘術を参考にした相棒占いの方向と、初期反応を待機・食べる・短い喜びに絞る案を採用する。日本語名の正規化・数の扱い・恐竜対応表、質問案の各設問・採点・同点処理は未確定。一般的な相棒との過ごし方を想像する質問を残し、牧場機能の予備知識を要求しない。16種×4外見の具体名簿/デザイン、ランダムの旧別pool条件との整合も別の未確定事項として維持する。
+数秘術を参考にした相棒占いの方向と、初期反応を待機・食べる・短い喜びに絞る案は採用済み。今回採用した24問/5段階・同点軸の追加二択と、個別設問/採点式の未確定範囲を分ける。日本語氏名の正規化、11/22/33を含む数の扱い、ローマ字変換、恐竜対応表は今回の承認に含めない。初期16種×4外見の具体名簿/デザインと親密度閾値も未確定。ランダムは同catalogのhabitat該当組を均等抽選する採用方針へ更新する。
 
 ### 本人結果を保存する境界（詳細案）
 
-診断ドメインを結果の正本とする。ranchに回答・生年月日・選定用名を複製しない。完成した結果は不変snapshotとして保存し、新たな診断は新result IDを作る。占いも恐竜の割当だけを残す従前案から、本人が見返せる算出結果と独自説明を残す案へ更新する。生年月日・名前そのものは引き続き計算時のみ利用し、snapshot・API・共有・ログ・監査へ出さない。
+診断ドメインを結果の正本とする。ranchに回答・生年月日・本人氏名を複製しない。完成した結果は不変snapshotとして保存し、新たな診断は新result IDを作る。占いも恐竜の割当だけを残す従前案から、本人が見返せる算出結果と独自説明を残す案へ更新する。生年月日・名前そのものは引き続き計算時のみ利用し、snapshot・本人結果/履歴API・共有・ログ・監査へ出さない。本人専用の入力確認表示は後続の最小項目設計に従う。
 
 結果保存案: diagnosis_resultsにid(UUIDv7)、user_id(BIGINT)、method(DIAGNOSIS/BIRTH_STYLE)、result_schema_version、rule_version、normalization_version(nullable)、questionnaire_version(nullable)、scoring_version(nullable)、mapping_version、completed_at(UTC)、result_snapshot(JSON)を持つ。snapshotには64 typeCodeと軸結果、または数秘術で得た数、および各6言語の独自説明を置き、入力値/全回答/自由入力を含めない。完成時にschemaで許可fieldとサイズ上限を検証する。PK以外に(user_id,method,completed_at,id) indexを持ち、users/ranchへのクロスドメインFKを作らない。計算結果もprivateとして扱う。結果の作成API・session/command・snapshotの具体JSON schemaは診断モジュール設計で補完し、この記述だけを完成DDLとして実装しない。
 
 ranchの出生選定snapshotには利用したresultのopaque IDと固定した種/variant/対応表版だけを保存する。ranch TXから診断Repositoryを直接触らず、本人result読取facadeで照合する。診断の保存とranchの選定確定は別操作・別TX。選定が失敗しても本人resultを失わず、result取得GETから再採点・再抽選・個体作成しない。
 
 再読込/別端末/採点や説明master変更後も過去resultは当時のsnapshotで見られる。原入力なしでも閲覧できるよう、結果表示を再計算に依存させない。本人休止・非表示では保持し、退会申請中はアクセス停止、取消は同じ結果を復帰、最終アカウント削除時には診断自身のcleanupで本人result/session/commandを削除する。workerが削除済みuserへ再作成しない境界も既存cleanup契約に従う。
+
+## 今回採用した詳細方針と本人プロフィール利用
+
+恐竜は本人から生まれた相棒の精霊であるため、出生占いには本人氏名と本人の生年月日を使う。nickname、恐竜の名前、牧場主名、任意の選定用名を代用しない。恐竜と牧場主の別エンティティ・孵化時命名・確定後の名前不変は維持する。
+
+認証された本人のプロフィールをサーバー側のauth読取facadeで取得する方針。既存auth/UserEntityにはlastName/firstName/lastNameKana/firstNameKana/birthDateがあり、出生情報はauthの既存暗号化保存を利用する。`/api/v1/users/me` はprincipal-onlyのgetMyProfile→UserService.getUserProfileを使い、UserProfileResponseは姓名/カナを返すがbirthDateは返さず、UpdateProfileRequestにもbirthDateはない。登録時にはRegisterRequest/register.vueでbirthDate入力があるが、既存汎用プロフィール更新で訂正できる前提にしない。育成との取得連携は未実装で、auth専用読取facadeを追加する設計案が必要。既存設定画面で氏名・生年月日を補完できるとは未確認なので、欠損時のプロフィール補完導線も設計対象にする。
+
+出生選定前にプロフィールを使うことを本人へ明示し確認する。欠損を任意名で埋めず補完へ戻す。確認から確定の間にプロフィールが変わった場合は再確認する。本人プロフィールの版/指紋の取得・照合、confirmationの期限、同時更新、結果保存と選定確定のTX境界、再送の詳細API/DTO/DDLは後続設計で確定する。成功した同command/resultの再送は保存済み結果を返し、現在プロフィールで再計算しない。プロフィール変更や新しい結果作成後も確定済み相棒を維持する。
+
+元の姓名・カナ・生年月日はauthの既存保存を正本とし、計算時に取得する。診断には派生結果だけを保存し、ranch側の元PII複製は0。本人結果/履歴API・共有/報酬payload/records/log/auditにも元PIIを出さない。本人専用の入力確認responseでの最小項目表示は別途設計する。clientからbirthDate/selectionNameを送る旧契約は撤去し、本人session/resultと確認状態を参照するrequestへ変更する案とする。利用説明に本人氏名・生年月日の利用目的を明示する案を用意するが、今回privacy policy本文は変更しない。
+
+無料給餌とふれあいで非減衰親密度を育て、連打による加算はしない。内部値を反応・言葉の段階へ対応させ、放置/休止/未ログインで下げない。加算単位、連打判定、閾値、保存/冪等commandの詳細は未確定。追加通貨や本体権利/成長/報酬差は設けない。
+
+同じ投稿/記事の再編集・再公開・再送は再付与しない。新IDでも一定範囲の同内容完全一致は報酬対象外とし、源件数/個人全体上限を併用する。意味をAIで判定しない。完全一致の正規化、比較範囲/期間、本文を複製しない証跡の保存場所・保持/消去、同時投稿の競合と配送での判定は後続設計で確定する。本体投稿の保存成功と報酬対象外の判定を分け、報酬都合で本体保存を妨げない。想起entryの意味類似判定へ対象を広げない。
+
+上記は商品方針の更新と後続設計境界であり、実装・テスト成功・公開完了を意味しない。
