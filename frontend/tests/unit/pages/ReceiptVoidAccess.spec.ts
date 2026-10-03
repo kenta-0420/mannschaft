@@ -41,8 +41,9 @@ mockNuxtImport('useApi', () => () => api)
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 
 async function mountPage() {
-  const wrapper = await mountSuspended(ReceiptsPage, { global: { stubs: { teleport: true } } })
+  const wrapper = await mountSuspended(ReceiptsPage, { route: '/admin/receipts', global: { stubs: { teleport: true } } })
   await flushPromises()
+  expect(wrapper.vm.$router.currentRoute.value.path).toBe('/admin/receipts')
   return wrapper
 }
 
@@ -67,6 +68,7 @@ function selectScope(type: 'team' | 'organization', role: string) {
 }
 
 beforeAll(async () => {
+  useAuthStore().user = { id: 1, email: 'test@example.invalid', fullName: '利用者', profileImageUrl: null }
   const warmup = await mountPage()
   warmup.unmount()
 })
