@@ -1,14 +1,14 @@
 # F04.7-03 API・運営設定・認可
 
-> **ステータス**: 🟡 草案（設計レビュー・裁可待ち）
+> **ステータス**: 🟡 Phase 1製造中（仕様採択済み、73AC・実機・公開は未完了）
 > **正本入口**: [F04.7](../F04.7_gamification.md)
-> **区分**: 新API/DTOは提案。現行APIとして案内しない。
+> **区分**: 新API/DTOの採択済み製造契約。HTTP接続・実Security・全体greenは未確認。
 
 ## 1. 型・JSON共通契約
 
-新ranchは `/api/v1/me/ranch`。全APIが認証必須、user IDは認証principalだけから取得。ownerId/userId/recipient/points/xp/occurredAtをbodyから受けて状態を書き換えない。JSONフィールドはcamelCase、EnumはUPPER_SNAKE、成功は `{data:T}`、一覧はCursorPagedResponse（`data:[]`,`meta:{nextCursor:string|null,hasNext:boolean,limit:int}`）。空一覧は200。Entityを直接返さず、不変DTOと生成OpenAPI型を使う。
+新ranchは `/api/v1/me/ranch`。全APIが認証必須、user IDは認証principalだけから取得。mutation.versionはowner aggregate counter、slot.versionは独立counter。ownerId/userId/recipient/points/xp/occurredAtをbodyから受けて状態を書き換えない。JSONフィールドはcamelCase、EnumはUPPER_SNAKE、成功は `{data:T}`、一覧はCursorPagedResponse（`data:[]`,`meta:{nextCursor:string|null,hasNext:boolean,limit:int}`）。空一覧は200。Entityを直接返さず、不変DTOと生成OpenAPI型を使う。
 
-UUIDはcanonical小文字ハイフン形式のstring、Java UUID/MySQL BINARY(16)。既存user IDはJava Long/MySQL BIGINT、APIに露出するときはdecimal string。新ranchのLong残高/XP/versionもdecimal stringで返し、JS Numberへ無制限変換しない（既存APIの全体設定変更なし、ranch DTOだけで明示）。slot数/件数など安全上限内intはJSON number。新日時はInstant/UTC ISO8601 `Z`、null許容欄以外は必須・null不可。既存source APIのIDは現行契約の型を維持し、envelope/sourceRefではfacadeがtypeを検証・正規化したstringを返す。
+UUIDはcanonical小文字ハイフン形式のstring、Java UUID/MySQL BINARY(16)。既存user IDはJava Long/MySQL BIGINT、APIに露出するときはdecimal string。新ranchのLong残高/XP/versionもdecimal stringで返し、JS Numberへ無制限変換しない（既存APIの全体設定変更なし、ranch DTOだけで明示）。slot数/件数など安全上限内intはJSON number。新日時はInstant/UTC ISO8601 `Z`。診断completedAtと確認expiresAtはInstant.truncatedTo(MICROS)をDB/immutable JSON/HMAC/cursor共通に使い、精度差によるcursor重複・署名不一致を防ぐ。null許容欄以外は必須・null不可。既存source APIのIDは現行契約の型を維持し、envelope/sourceRefではfacadeがtypeを検証・正規化したstringを返す。
 
 内部canonical_key/acquisition_key/canonical_source_id/canonical_scope_idはASCII形式とbyte上限を厳格検証してVARBINARYへ保存する（02）。API/envelope/sourceRefでのstring契約は維持する。sourceTypeを含む正準キー全体をASCIIに限定し、raw source本文/PIIをキーへ含めない。DB binaryのbase64化やtext列collation overrideをJSON契約として持ち込まない。
 
@@ -92,7 +92,6 @@ PolicyRequest=`{effectiveAt:Instant,enabled:boolean,globalWeeklyCap:string,sourc
 
 初期policyはenabled=false。数値は運営登録/裁可で決める。金銭購入によるポイント/速度/上限増加、team管理者の任意個人加算/減算APIを設けない。停止/retry/新policyを監査し、event ID、rule ID、reasonCode、時刻、操作主体を残す。本文や学習回答は監査payloadへ複製しない。
 
-
 運営care rule API: GET `/api/v1/system-admin/ranch/care-rules`、POST同パス。Request=`{effectiveAt:Instant,amountXp:string,weeklyCapXp:string,juvenileXp:string,adultXp:string,reasonCode:string}`、次UTC週以降、不変version/hash、量正・juvenile<adultを検証。care ruleがpoints policyなしでも成体到達を保証する。同日週careを使える回数/通常rate limit設定を公開gateで確認する。species/少数SKUは初期運営承認catalog seedで十分で、巨大catalog管理UIを作らない。SKU価格更新は新priceVersionのcatalog公開、過去purchaseの価格snapshotを変更しない。
 
 adminの冪等scopeは管理shardまたは各source facadeごと（分散共通scopeではない）。clientは操作別新key、同retryだけ同key。別facadeへ同keyを使うことはこの409保証外。reflection commandもreflection内scope。管理mutationはranch_admin_commands（owner不要）でuser+key/hashを保存し、policy/control/care ruleの管理shard TXと一括。source retryのみsource facade内のsource admin commandとoutbox更新を同TX、SYSTEM_ADMIN監査。同じretry key別event/type/bodyも409。未参加adminへ個人ownerを作らない。
@@ -111,7 +110,7 @@ adminの冪等scopeは管理shardまたは各source facadeごと（分散共通s
 | shop control OFF | care状態による | 503 | 可 | 可 | 可、shopAvailable=false |
 
 独立global mutation stopは初期に設けない。featureStatusはcare control/ruleの利用可否、rewardsStatusはpoints policy enabled/運営報酬pause、deliveryPausedは配送だけ。三つを混ぜない。care control ONの初期公開gateは有効care rule、占い風の承認済み決定的rule、LAND/SEA/AIR random各pool、server検証の診断question/scoring version、全64 type×species mappingと承認assetが全て揃うこと。共通catalogのrandomだけでは公開を許可しない。shop ONは承認SKU/不変価格存在を検証。初期care/shop=false、points enabled=false、運営明示登録後に独立有効化する。
-既存useApi/認証refresh/Cookie方針を再利用し新トークン保管を作らない。認証Cookieは既存SameSite=Strict/HttpOnly、production Secure、cross-site mutation拒否を回帰試験する。CSPを広げない。assetsは運営固定の同origin/既存配信許可先だけ、user URL/HTML/SVGアップロードを初期に受けない。恐竜名は孵化時に必須で確定後変更不可。名前はtext bindingでescapeして表示し、HTMLとして描画しない。ログに本文/回答/secretなし。APIはowner単位rate limit、retryの429にRetry-After。rate limitは複数device合算でcapとは独立、二重付与防止はDB。
+既存useApi/認証refresh/Cookie方針を再利用し新トークン保管を作らない。認証Cookieは既存SameSite=Strict/HttpOnly、production Secure方針を回帰試験する。現行SecurityはSTATELESS/CSRF無効のため、CSRF token欠落403を実装済みとみなさない。実browser Cookie/refresh/CORS/入力境界でcross-site mutationの拒否を観測し、実401/403/IDORを含む公開gateにする。CSPを広げない。assetsは運営固定の同origin/既存配信許可先だけ、user URL/HTML/SVGアップロードを初期に受けない。恐竜名は孵化時に必須で確定後変更不可。名前はtext bindingでescapeして表示し、HTMLとして描画しない。ログに本文/回答/secretなし。APIはowner単位rate limit、retryの429にRetry-After。rate limitは複数device合算でcapとは独立、二重付与防止はDB。
 
 新ranchはorganization_idを持たずuser IDでシャード。user-owned repositoryは全クエリでuser ID絞込み。organization-scoped後続PhaseはAbstractTenantAwareRepositoryへ分離し、Phase 1のuser rowへorg権限を混ぜない。user退会時のtombstone/DomainCleanupService/源outboxも含む削除順序は02 §5の契約。金銭交換無しなので会計保存義務として誤分類しない。owner有効中は貯蓄/dedupを失効させず、アカウント削除後の同一活動再発行/孤児再作成を禁止する。
 
@@ -140,70 +139,82 @@ PromptDTO=`{id:UUID,kind:FREE_TEXT|QA,direction:QUESTION_TO_ANSWER|ANSWER_TO_QUE
 
 既知不足: `frontend/app/types/api.ts` の手書き共通型はBE wrapper/errorの実体と差がある。新ranchはBE正本OpenAPI生成型だけを使用し、グローバル手書き型をこの設計で変更した扱いにしない。
 
-### 卵/選定API追補（方式詳細は未裁可）
+### 卵/選定API
 
 RanchState.assignment=`{availableMethods:AssignmentMethod[],selectionConfirmed:boolean,confirmedMethod:AssignmentMethod|null}`（未参加null）。DinosaurSummary.egg=`{startedAt:Instant,readyAt:Instant,crackStage:INTACT|SMALL_CRACK|WIDE_CRACK|READY,hatchReady:boolean,hatchedAt:Instant|null}`、EGG以外egg=null。serverTimeによるelapsedだけ、client timestampで進めない。
 
 | メソッド | パス | Request | Response / status |
 |---|---|---|---|
-| PUT | `/api/v1/me/ranch/assignment` | 暫定案: `{method:enum,habitat:enum|null,resultId:UUID|null,confirmationRef:string|null,version:string}`、Idempotency-Key。birthDate/selectionNameは受け取らない。確認参照/DTOは詳細未確定 | 200確認済みassignment。本人COMPLETED result/profile確認版照合、未承認adapter503、確認後別入力409、保存済み同command再送は元結果 |
+| PUT | `/api/v1/me/ranch/assignment` | discriminated request: RANDOM=`{method:HABITAT_RANDOM,habitat,version}`、診断=`{method:DIAGNOSIS,resultId,version}`、出生=`{method:BIRTH_STYLE,resultId,confirmationRef,version}`、Idempotency-Key。birthDate/selectionNameは受け取らない。方式に不要field/null placeholder拒否 | 200確認済みassignment。本人COMPLETED result/profile確認版照合、未承認adapter503、確認後別入力409、保存済み同command再送は元結果 |
 | POST | `/api/v1/me/ranch/hatch` | `{version:string,name:string,nameConfirmed:true}`、Idempotency-Key | ready AND selection confirmed AND命名確認のみ200孵化・命名を同TX保存。未成熟/未選定409、名前境界/確認不備400。同key再送同結果、別名再送/改名409、XP0 |
 
-methodごとに不要inputを拒否するvalidationの詳細は後続設計。HABITAT_RANDOMはLAND/SEA/AIRのみで同catalogの該当species＋variant組を均等抽選。BIRTH_STYLEは認証本人のauth読取facadeから氏名/生年月日を取得し本人確認を経る。nickname/恐竜名/任意選定用名の代用やclientのbirthDate/selectionName入力は認めない。DIAGNOSISはserver検証済み本人COMPLETED resultでprovider/type/mappingを確定しclient typeCodeを信用しない。未実装方式は準備中で入力収集しない。プロフィール変更/訂正でも確定済み恐竜アバターを維持する。占いの利用説明は科学的判定と主張しない。
+methodごとに不要inputを拒否する。mutation.versionはowner aggregate counter、slot.versionは独立。HABITAT_RANDOMはLAND/SEA/AIRのみで同catalogの該当species＋variant組を均等抽選。BIRTH_STYLEは認証本人のauth読取facadeから氏名/生年月日を取得し本人確認を経る。nickname/恐竜名/任意選定用名の代用やclientのbirthDate/selectionName入力は認めない。DIAGNOSISはserver検証済み本人COMPLETED resultでprovider/type/mappingを確定しclient typeCodeを信用しない。未実装方式は準備中で入力収集しない。プロフィール変更/訂正でも確定済み恐竜アバターを維持する。占いの利用説明は科学的判定と主張しない。
 
-出生プロフィールの境界: principal由来の本人IDだけをauth専用読取facadeへ渡し、他userのプロフィール指定を受けない。氏名/生年月日欠損では補完導線へ戻す。実在日付/許容年齢や未来日の商品範囲、名前正規化、normalizationVersion/ruleVersion/対応表を後続設計で確定する。同承認版/同正規化プロフィールで同species＋variantとなる。確認時と確定時のプロフィール版/指紋が異なれば再確認し、成功command/resultのretryは保存済み結果を返して現在profileで再計算しない。旧client出生body HMAC/key保存契約は撤去し、確認参照/版照合/rotation/競合/障害回復の詳細を再設計する。ranch DB/event/log/auditと本人結果/履歴APIへ元PIIを複製しない。本人専用の入力確認表示に必要なresponseの可否/最小項目/保持は別途設計し、既存汎用profile APIがbirthDateを返すとは見なさない。
+出生プロフィールと確認のAPI/TX境界は§7を正本とする。本人氏名・カナ・DOBはauthだけに暗号化保存し、汎用profileへDOB返却を追加した扱いにしない。成功同keyはliveプロフィール検査前に保存resultを返す。
 
-診断のvalidation境界: server発行本人sessionのquestionnaireVersion/scoringVersionを固定し、完了時の全required回答、question IDの一意性と所属、回答値の型/null/上下限をserverで検証する。空回答、欠落、重複、未知question、範囲外で完了を作らず400。本人COMPLETED resultだけを選定に利用し、他人/不在resultは同形404、client typeCode/scoringVersionの偽装で採点結果を変えない。承認versionの全64 typeCodeに対応species/assetがあることを公開gateで検証し、未対応を別type/別個体へ置換しない。具体API/DTO/値域は後続モジュール設計で補完する。
-## 初期公開の選定3方式（最新確定範囲・内容は未裁可）
-
-性格診断もPhase 1初期公開から必須。BIRTH_STYLE（プロフィールの本人氏名・生年月日を使う占い風の決定的割当）、HABITAT_RANDOM（海/空/陸random）、DIAGNOSIS（64タイプ）の三入口を卵期間に選択する。初期16種×各4外見＝64タイプ、将来64種への拡張方針は確定。診断は6軸各4問の24問・5段階回答を採用し、恐竜の姿での過ごし方や身近な本人の傾向を中心に、色・形だけに偏らず牧場機能の予備知識を求めない。同点になった軸だけ本人に二択を追加し最大6問、保留または別方式の選択を許す。ランダムも同じ初期16種×4外見からLAND/SEA/AIRで候補組を絞り、species＋variantの組を均等抽選する。旧診断pool除外条件は撤去する。個別設問・採点式・全64 mapping・占い計算/名前正規化・種名簿/4デザインは未確定。公開gateは三方式の承認済みserver rule/本人プロフィール取得・確認/validation/全64 mappingと必要素材が揃うこと。未実装を利用可能と装わず、暫定公開で診断を後回しにしない。
-
-提案構造: 本人診断sessionをserver発行しquestionnaireVersion/scoringVersionをsnapshot、回答は本人sessionへ送信、serverがvalidationと採点をしてCOMPLETED結果（provider/typeCode/mappingVersion）を不変保存する。選定確認時に本人COMPLETED結果と対応表versionを検証してspeciesを固定。clientのtypeCodeを結果として信用しない。診断結果が変わっても確認済みの同恐竜を維持する。質問/回答/診断resultはprivate、報酬outbox/共有プロフィールへ出さず、診断完了回数をpoints/XPにしない。質問/画像/算法の外部サイト利用許諾/APIは未確認で、無断複製を前提にしない。
-
-診断session API/DTO/質問master/採点rule/結果tableの完全な契約と素材仕様は、未裁可内容を決めてから本草案へ補完する。現在の草案は選定adapterと保存/認可/同恐竜維持の境界までを示すレビュー資料で、診断本体をこのまま実装可能と主張しない。Phase 1の4〜8週は診断/64素材追加前の旧概算であり再見積が必要。全体3〜6か月も既存基盤/準備済みアートの旧前提の候補で、診断と素材次第で超える。
-
+診断のvalidation境界: server発行本人sessionのquestionnaireVersion/scoringVersionを固定し、完了時の全required回答、question IDの一意性と所属、回答値の型/null/上下限をserverで検証する。空回答、欠落、重複、未知question、範囲外で完了を作らず400。本人COMPLETED resultだけを選定に利用し、他人/不在resultは同形404、client typeCode/scoringVersionの偽装で採点結果を変えない。承認versionの全64 typeCodeに対応species/assetがあることを公開gateで検証し、未対応を別type/別個体へ置換しない。具体API/DTO/値域は§7の製造契約を使う。
 ### 孵化・命名の追加契約（2026-10-03）
 
 nameは02の正規化・1〜10書記素・保存上限をserverで検証する。nameConfirmedは明示確認の要求で、client trueだけで長さや所有検証を省略しない。欠落/null/空名/11文字/nameConfirmed欠落・falseは400、状態はEGGのまま。command hashには正規化名と確認値を含める。同key同bodyは既存不変result、同key別名は409。別keyの既孵化要求は既存名と同名の場合のみ200同個体、異なる名は409で元名不変。二tabの異なる名前はlock下で先に成功した一件だけを確定する。競合した画面は再取得して確定名を表示する。
 
-DinosaurSummaryはEGGでname/namedAt=null、BABY以降で必須。孵化responseはdinosaur ID/stage/name/namedAt/hatchedAt/versionを含む不変HatchResultとし、同key再送で成長後のstateへ置換しない。現在stateはGETで別取得する。孵化後のnew key同名再要求は最新stateを返し、この成功commandも保存する。Settingsや選定APIにnameを渡すと400、rename endpointなし。表示OFF/style変更/成長/休止再開でも名前は変わらない。GETには書込を追加せず、出生割当用名を恐竜名として自動保存しない。
+DinosaurSummaryはEGGでname/namedAt=null、BABY以降で必須。孵化responseはHatchResponse=`{kind:HATCH_RESULT|CURRENT_STATE,result:HatchResult|null,state:RanchState|null}`。初回/同keyはkind=HATCH_RESULT/result非null/state=null、別key同名はkind=CURRENT_STATE/result=null/state非null。不変HatchResultはcommandId/dinosaur ID/stage/name/namedAt/hatchedAt/versionを含み、同key再送で成長後のstateへ置換しない。現在stateはGETで別取得する。孵化後のnew key同名再要求は最新stateを返し、この成功commandも保存する。Settingsや選定APIにnameを渡すと400、rename endpointなし。表示OFF/style変更/成長/休止再開でも名前は変わらない。GETには書込を追加せず、出生割当用名を恐竜名として自動保存しない。
 
-## 2026-10-03の追加裁可
-
-初期16種×各4バリエーション＝64タイプ、将来64種へ拡張。生年月日＋名前は固定の割当方式にし、既存占いと対応できる方式を優先して検討（数秘術を参考にする方向は採用、具体計算/対応表は未確定）。退会取消で同じ恐竜アバターを戻し、最終アカウント削除で消去。孵化後の3ボタンと非減衰親密度の仕草・反応表現を採用。恐竜の姿での過ごし方の質問は可、牧場機能の知識を前提にした質問は改稿する。素材・動作の大量生成を一度に要求せず、制作時間/品質を1種pilotで確認する計画案を用意する。
-
-## 恐竜アバターの位置づけ・自分の診断結果（2026-10-03ユーザー確定）
-
-恐竜は、本人の好みや個性を映した「自分自身の恐竜の分身」として扱う。牧場主は牧場の操作・農作業・建築を担当するプレイヤーキャラクター。恐竜アバターと牧場主は表示・操作上の役割を分け、既存の別エンティティ・同一恐竜個体の継続という技術境界は維持する。64タイプ診断と生年月日・名前占いは本人自身の結果として見返せる。診断で能力や優劣を決めず、科学的な性格測定として案内しない。
-
-64タイプ診断と生年月日・名前の占いは、恐竜アバターの「ようす」から本人がいつでも見返せる。未実施の方式は「未診断」と表示し、別方式の結果を捏造しない。結果閲覧の主目的を「恐竜アバターを選んだ時の記録」としない。未実施の診断は後から実施でき、再診断も新しい本人の結果を作るだけで、確定済み恐竜アバターの個体・種・外見・名前・成長・親密度を変えない。診断実施・閲覧・再診断をポイントや育成条件にしない。誕生に使った結果との内部参照は、同個体維持のための記録としてUIの主題から分ける。
-
-数秘術を参考にした自分の占いの方向と、初期反応を待機・食べる・短い喜びに絞る案は採用済み。今回採用した24問/5段階・同点軸の追加二択と、個別設問/採点式の未確定範囲を分ける。日本語氏名の正規化、11/22/33を含む数の扱い、ローマ字変換、恐竜対応表は今回の承認に含めない。初期16種×4外見の具体名簿/デザインと親密度閾値も未確定。ランダムは同catalogのhabitat該当組を均等抽選する採用方針へ更新する。
-
-### 本人の診断結果閲覧API（詳細案・未実装）
+### 本人の診断結果閲覧API（採択契約・未実装）
 
 GET /api/v1/me/ranch/diagnosis-results?method=DIAGNOSIS|BIRTH_STYLE&cursor=...&limit=20 を本人結果一覧へのranch読取facadeとする。method省略時は両方式、limitは1〜100。認証principalから本人IDを得て診断ドメインの読取Serviceへ渡し、組織ID・userId・result typeをclient入力で指定させない。成功は既存CursorPagedResponse、0件は200 data=[]。completedAt降順・id降順、cursorはopaqueな版付き値で本人とfilterに結び付け、別filter/不正cursorは400。詳細GET /api/v1/me/ranch/diagnosis-results/{resultId} は本人完成resultだけを返し、他人/不在/未完了は同形404、未認証401。
 
-DiagnosisResultSummary案: {id:UUID,method:DIAGNOSIS|BIRTH_STYLE,completedAt:Instant,ruleVersion:string,resultSchemaVersion:string}。詳細はsummaryとresultSnapshotを返す。snapshotのtypeCode/軸結果/占い算出数/6言語独自説明の型とサイズ上限は診断モジュールで固定し、raw生年月日・名前・全回答は返さない。誕生に利用したresultの参照を保持しても、本人向けの最新結果と恐竜アバターの確定済み外見を同じ「現在の診断」として上書きしない。
+一覧Summaryと詳細resultSnapshotは§7の採択済み単一契約を参照する。raw生年月日・名前・全回答を返さず、内部metadataを公開Summaryへ追加しない。誕生に利用したresultの参照を保持しても、本人向けの最新結果と恐竜アバターの確定済み外見を同じ「現在の診断」として上書きしない。
 
-本人PAUSED、widget非表示、動きSTOPPED、care停止、報酬停止、残高0でも既存結果GETは利用可能。退会申請中/最終削除済みはアカウントアクセスガードで拒否する。system admin/チーム管理者/訪問者へ本人APIを転用しない。Cache-Control: private, no-store、共有profile/通知/報酬履歴/outbox/監査へ結果を出さない。GETは採点・割当・育成・残高・診断実施数を変更しない。未実施方式の計算や再診断は専用の本人確認操作から行い、GETの副作用にしない。
+本人PAUSED、widget非表示、動きSTOPPED、care停止、報酬停止、残高0でも既存結果GETは利用可能。退会申請中/最終削除済みはアカウントアクセスガードで拒否する。SYSTEM_ADMIN/チーム管理者/訪問者の他人閲覧用途へ本人APIを転用しない。通常SYSTEM_ADMIN本人の利用は可能。Cache-Control: private, no-store、共有profile/通知/報酬履歴/outbox/監査へ結果を出さない。GETは採点・割当・育成・残高・診断実施数を変更しない。未実施方式の計算や再診断は専用の本人確認操作から行い、GETの副作用にしない。
 
-## 今回採用した詳細方針と本人プロフィール利用
+## 採択済み商品仕様の参照
 
-恐竜は本人の分身として扱うため、出生占いには本人氏名と本人の生年月日を使う。nickname、恐竜の名前、牧場主名、任意の選定用名を代用しない。恐竜と牧場主の別エンティティ・孵化時命名・確定後の名前不変は維持する。
+三方式・独自数秘・本人の分身・同個体維持・96論理ドット/2D・無料成体の正本は[01 商品契約](01_product_phases.md)。
 
-認証された本人のプロフィールをサーバー側のauth読取facadeで取得する方針。既存auth/UserEntityにはlastName/firstName/lastNameKana/firstNameKana/birthDateがあり、出生情報はauthの既存暗号化保存を利用する。`/api/v1/users/me` はprincipal-onlyのgetMyProfile→UserService.getUserProfileを使い、UserProfileResponseは姓名/カナを返すがbirthDateは返さず、UpdateProfileRequestにもbirthDateはない。登録時にはRegisterRequest/register.vueでbirthDate入力があるが、既存汎用プロフィール更新で訂正できる前提にしない。育成との取得連携は未実装で、auth専用読取facadeを追加する設計案が必要。既存設定画面で氏名・生年月日を補完できるとは未確認なので、欠損時のプロフィール補完導線も設計対象にする。
+## 7. 本人プロフィール・診断・auth所有の操作境界
 
-出生選定前にプロフィールを使うことを本人へ明示し確認する。欠損を任意名で埋めず補完へ戻す。確認から確定の間にプロフィールが変わった場合は再確認する。本人プロフィールの版/指紋の取得・照合、confirmationの期限、同時更新、結果保存と選定確定のTX境界、再送の詳細API/DTO/DDLは後続設計で確定する。成功した同command/resultの再送は保存済み結果を返し、現在プロフィールで再計算しない。プロフィール変更や新しい結果作成後も確定済み恐竜アバターを維持する。
+新private HTTP APIはtrusted request属性originalAdminIdが存在すれば403。通常SYSTEM_ADMIN本人は可。生client headerだけで本人/変身を判定しない。HTTP変身制約はController/既存HTTP guard、consumer用auth guardに混ぜない。実Security401/403/他人IDテストは未実行。
 
-元の姓名・カナ・生年月日はauthの既存保存を正本とし、計算時に取得する。診断には派生結果だけを保存し、ranch側の元PII複製は0。本人結果/履歴API・共有/報酬payload/records/log/auditにも元PIIを出さない。本人専用の入力確認responseでの最小項目表示は別途設計する。clientからbirthDate/selectionNameを送る旧契約は撤去し、本人session/resultと確認状態を参照するrequestへ変更する案とする。利用説明に本人氏名・生年月日の利用目的を明示する案を用意するが、今回privacy policy本文は変更しない。
+| domain | 方法/パス | 契約 |
+|---|---|---|
+| auth | GET/PUT `/api/v1/me/birth-profile` | GET本人限定{lastName,firstName,lastNameKana,firstNameKana,birthDate,revision}。PUT全項目＋revision、競合409、応答は{revision} ACKのみ。command履歴へraw profileを保存しない |
+| auth | POST `/api/v1/me/birth-profile/confirmations` | {revision,useConfirmed:true}→{confirmationRef,expiresAt,profileRevision}。opaque UUID、auth行参照、TTL10分。本人/用途/revision/nonce/withdrawalAttemptId/期限を既存HMACで検査 |
+| diagnosis | POST `/api/v1/me/diagnoses/birth-style-results` | {confirmationRef}→派生数と説明snapshotを持つ本人resultId。未知/他人ref同形404、期限切れ/版変更409、成功同keyは旧result |
+| diagnosis | POST `/api/v1/me/diagnoses/sessions` | {}→201{id,status:STARTED,version,answerRevision,questionnaireVersion,scoringVersion,questions[24],answers:[],tieQuestions:[]}。回答3を自動投入しない |
+| diagnosis | GET `/api/v1/me/diagnoses/sessions/{id}` | 本人session snapshotと途中回答、no-store、出生rawなし |
+| diagnosis | PUT `/api/v1/me/diagnoses/sessions/{id}/answers` | {version,answers:[{questionId,value:1..5}]}。途中部分回答可、questionId/valueの欠落・未知/重複/null/小数/booleanは不正。answerRevision++で旧tie無効 |
+| diagnosis | POST `/api/v1/me/diagnoses/sessions/{id}/complete` | {version,answerRevision,tieAnswers:[{axisId,value:0..1}]}。24required不足400、必要tie不足はTIE_BREAK_REQUIRED/result=null/tieQuestions。全tie後COMPLETED/resultId、非tie/未知/重複400、古いanswerRevision409 |
+| diagnosis | POST `/api/v1/me/diagnoses/sessions/{id}/cancel` | {version}→CANCELLED/resultなし/獲得0。保留は別でSTARTED/TIE_BREAK_REQUIRED保持、期限なし |
+| ranch | POST `/api/v1/me/ranch/interactions` | {kind:TOUCH,version}→InteractionResult={commandId,dinosaurId,reactionKey,affinityBand,affinityChanged,completedAt}。EGG可、cost/XP/points0。PAUSED/care OFFは反応のみ/愛着加算0 |
 
-無料給餌とふれあいで非減衰親密度を育て、連打による加算はしない。内部値を反応・言葉の段階へ対応させ、放置/休止/未ログインで下げない。加算単位、連打判定、閾値、保存/冪等commandの詳細は未確定。追加通貨や本体権利/成長/報酬差は設けない。
+result summaryは{id,method,completedAt,resultSchemaVersion,ruleVersion,questionnaireVersion?,scoringVersion?,normalizationVersion?,mappingVersion?,typeCode?,axes?,numberSummary?,descriptionSnapshot}。raw回答/姓名/カナ/DOB/profile fingerprintなし。6言語説明と質問/採点/正規化版を不変snapshot、mapping未登録NULLでも本人resultを保存可、恐竜割当/公開有効化不可。完成typeCodeはserverの6bit文字列。本人診断開始・result作成・閲覧はranch参加不要。
 
-同じ投稿/記事の再編集・再公開・再送は再付与しない。新IDでも一定範囲の同内容完全一致は報酬対象外とし、源件数/個人全体上限を併用する。意味をAIで判定しない。完全一致の正規化、比較範囲/期間、本文を複製しない証跡の保存場所・保持/消去、同時投稿の競合と配送での判定は後続設計で確定する。本体投稿の保存成功と報酬対象外の判定を分け、報酬都合で本体保存を妨げない。想起entryの意味類似判定へ対象を広げない。
+mapping未登録時の割当不可は、その時点で互換な承認mappingが存在しないことを指す。後日mappingを承認しても保存済みResultSummaryを改変しない。画面は方式全体の可否を現在のRanchState.assignment.availableMethodsで判断し、saved mappingVersionの有無だけで旧結果を永久に準備中にしない。初回選定時、serverは保存結果のrule/scoring/normalization版に互換な承認mappingを検証し、利用したmapping版を個体へ凍結する。互換mappingがなければ503。同方式が利用可能でも、すべての過去結果の適合を保証するものではない。確定済み個体のmapping/外見は変更しない。
 
-上記は商品方針の更新と後続設計境界であり、実装・テスト成功・公開完了を意味しない。
+mapping未登録時の割当不可は、その時点で互換な承認mappingが存在しないことを指す。後日mappingを承認しても保存済みResultSummaryを改変しない。画面は方式全体の可否を現在のRanchState.assignment.availableMethodsで判断し、saved mappingVersionの有無だけで旧結果を永久に準備中にしない。初回選定時、serverは保存結果のrule/scoring/normalization版に互換な承認mappingを検証し、利用したmapping版を個体へ凍結する。互換mappingがなければ503。同方式が利用可能でも、すべての過去結果の適合を保証するものではない。確定済み個体のmapping/外見は変更しない。
 
-## 恐竜を本人の分身として扱う（2026-10-03ユーザー確定）
+RanchCommand.idはUUIDv7の公開commandId、idempotencyKeyは別UNIQUE(user,idempotency_key)。二重command_uuid列を追加しない。応答喪失は元key/body/versionで同mutationを再送し、成功resultの後GET現在state。commandIdとkeyを同値と仮定しない。各domain/admin/sourceのkey scopeは独立。全mutationの成功lookupを現在version/profile検査より先に置き、別hash409。
 
-恐竜アバターは自分自身の分身。本人の氏名・生年月日と診断を本人の情報として扱う。プロフィール参照、結果閲覧、再診断後の同個体維持、孵化時の命名・名前不変、無料のお世話は維持する。従前の親密度は、自分のアバターへの愛着・なじみが仕草や反応へ表れる育成指標として扱い、放置による減少や連打加算はない。具体表示名や閾値は詳細設計で補完する。牧場主との役割分担とデータ構造を、用語変更だけで再設計しない。
+auth所有UserOperationGuard.withActiveUser(Long,Supplier<T>)は非TX公開入口とし、TX開始前にauth所有single admissionを取得して別Bean AuthUserOperationRunnerのREQUIRES_NEW proxyを呼ぶ。Runnerは既存users行を先にlockしACTIVE確認、domain commitまで保持する。domain facadeも非TX。callback内でdiagnosis PRIMARYのSELECT-only独立TX（routingのためreadOnly=false）/純粋派生計算を完了し、固定DTOだけを自domain REQUIRES_NEW writerへ渡す。writerは自Repoのみでauth/diagnosis呼出なし。出生は同auth lock下でrevisionを確認し、内部ConfirmedBirthNumbersの派生数とprofileRevisionだけを渡す。PRIMARY readとwriterは順次で同時2接続以内、有限DB/純粋計算のみ、network0。auth→domain順序を固定し、D3T例外/凍結arch baseline変更なし。実MySQLの退会UPDATE待機・競合証明は未実行。
+
+採択済み接続admission: JDK Semaphoreをauth所有singleton一個にし、出生wrapperも共用する。実主Hikari最大容量Pが不明/P<2なら503、P≥2でG=min(serverMax（既定4）,max(1,floor((P−2)/2)))。2G≤P、P2/3はG1で余裕予約なし。tryAcquireのみ、待機queueなし、超過503。ambient TX/再帰呼出は拒否し、Runner proxyのcommit/rollback完了後finallyでpermitを解放する。全domain別semaphore/新DataSourceを先行追加しない。共有pool他経路の完全予約保証ではなく既存3秒connection timeoutが必要。設計採用済みだが製造・試験未実行、P2/3/4/5/50、permit復帰、上限即拒否、TX開始順を復旧後検証する。
+
+```mermaid
+sequenceDiagram
+  participant F as 非TX domain facade
+  participant A as auth Runner REQUIRES_NEW
+  participant R as diagnosis PRIMARY read専用TX
+  participant W as 自domain writer REQUIRES_NEW
+  Note over F,A: 非TX GuardでtryAcquire → Runner proxy
+  F->>A: users先lock / ACTIVE確認
+  A->>R: 本人result照合 / 読取完了
+  R-->>A: 固定DTO（raw PIIなし）
+  A->>W: 有限DB処理 / 自Repoのみ
+  W-->>A: domain commit
+  A-->>F: auth commit/rollback / lock解放
+  Note over F,A: proxy終了後 finally permit解放
+```
+
+全姓名/カナ/DOB更新経路（登録・本人補完・admin訂正等）でrevision++。確認参照はraw PIIをtoken/HMAC/history/logへ含めない。既存HMAC鍵rotation後の旧refは10分内でもfail closedで本人再確認、旧verify-key受理機構を追加しない。constant-time比較、用途/nonce/revision/本人binding。malformed JSONの例外ログにも入力断片/ref/fingerprintを複製しない。出生結果のreplay順序はACTIVEユーザー先lock→PRIMARY独立TXで成功履歴lookup→既successならliveプロフィール検査前に当時result返却→初回だけref/revision検証・派生計算。replayと直後のresult採用はREQUIRES_NEW/readOnly=falseのSELECT-only処理でPRIMARYへ送り、readOnly=trueによるreplica遅延を避ける。既存ReplicaRoutingAspectは変更しない。出生選定はACTIVE auth lock→Ranch成功commandのPRIMARY replay lookupを最優先とし、既successはliveプロフィール検査前に当時resultを返す。初回のみlive確認refのrevision Rを検証し、PRIMARYで本人COMPLETED BIRTH_STYLE resultの内部sourceProfileRevision=Rを照合して固定DTOを独立Ranch writerへ渡す。新refでも旧プロフィール由来resultの採用は409。診断のOwnedResult内部metadataにsourceProfileRevisionを持たせ、DIAGNOSISはnull、BIRTH_STYLEは0以上とする。公開Summaryには追加しない。本人履歴閲覧は維持し、既存guard内でguardを再帰呼出ししない。
+
+退会照合は既存withdrawalAttemptIdと現在auth状態が正本。汎用authgeneration表を先行追加しない。申請は保持・停止、同ID取消で元ACTIVE/PAUSED復帰、再申請後の古通知は無効。最終purge前にPURGING拒否barrierを永続化し、ranch/diagnosis/source/reflection cleanupを既存purge固定list/retry dispatchへ統合する。UserAnonymizedEventを取消可能申請の即削除入口にしない。cleanupは冪等、late配送後再作成0、全control OFFでもALWAYS実行。最終markerの配置/cleanup/consumer競合は後続統合と実MySQL race検証が未完了。

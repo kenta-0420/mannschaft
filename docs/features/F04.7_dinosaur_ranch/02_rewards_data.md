@@ -1,8 +1,8 @@
 # F04.7-02 報酬・永続配送・データ契約
 
-> **ステータス**: 🟡 草案（設計レビュー・裁可待ち）
+> **ステータス**: 🟡 Phase 1製造中（仕様採択済み、73AC・実機・公開は未完了）
 > **正本入口**: [F04.7](../F04.7_gamification.md)
-> **区分**: 以下は新機構の設計提案。現行実装の存在保証ではない。
+> **区分**: 採択済み製造契約と未承認商品値を区別する。部分骨格の存在は全体合格を意味しない。
 
 ## 1. 四つの報酬源
 
@@ -76,7 +76,7 @@ factは実行時のsource ID/actor/originalAdminId/subject/author/origin/occurre
 
 元業務commitからoutbox確定までのcrash/queue喪失はlost factとして許容し、すべての取りこぼしの観測/復元を保証しない。outboxが確定したfactだけを耐久retryし、ranch unique/lockで二重付与を防ぐ。本体成功全factにExactlyOnce/必ず後追い保証を主張しない。reconcileは当時のimmutable資格/時刻/recipientを信頼できる源のみ。現在state/status/author/proxyから初回を推測して再発行しない。証拠UNKNOWNは0、失った報酬を手動捏造しない。
 
-source本体の一回のrow保存へ不変の本来の初回履歴metadataを含める案は下記の**未裁可提案**で、ゲーム専用追加table書込と区別する。native row自体の通常DB保存失敗は従来同様の業務障害だが、ゲームtransport別TX失敗は業務成功のまま。
+source本体の一回のrow保存へ不変の本来の初回履歴metadataを含める案は下記の**製造契約**で、ゲーム専用追加table書込と区別する。native row自体の通常DB保存失敗は従来同様の業務障害だが、ゲームtransport別TX失敗は業務成功のまま。
 
 ### 3.1 状態/lease/retry
 
@@ -94,10 +94,9 @@ stateDiagram-v2
 
 複数workerはsourceごとに短い `FOR UPDATE SKIP LOCKED` TXで一batchをlease。lease tokenとexpiresAtでACK/retryを比較更新し、古いworkerが新leaseを消さない。処理中はsourceのロックを保持しない。次pageは `(nextAttemptAt,id)` keyset、失敗一件が他件を止めない。lease時間/batch数/backoff最大/retry上限は運営必須設定で検証後有効化。指数backoffにjitter、schema/対象不整合はpoisonとしてdead-letter。再送は元event ID/occurredAt/canonical keyのまま。過去週policyが保存されているため長期遅延も元週へ反映可能。
 
-Ranch TXはuser単位にowner行をロックし、当該週budgetをUNIQUEで作成/ロック、同canonical decision存在を検査、参加期間/源enabled/容量を判定、台帳/残高/予算を一括commit。複数source同時配送・複数tabでもglobalCapを超えない。claim済みを示すDB uniqueとrow lockが正本でValkeyだけに依存しない。consumer commit直後・ACK前に停止しても再配送は元decisionを返す。
+auth所有guardで既存users先lock/ACTIVE確認後、Ranch REQUIRES_NEW writerはuser単位にowner行をロックし、当該週budgetをUNIQUEで作成/ロック、同canonical decision存在を検査、参加期間/源enabled/容量を判定、台帳/残高/予算を一括commit。複数source同時配送・複数tabでもglobalCapを超えない。claim済みを示すDB uniqueとrow lockが正本でValkeyだけに依存しない。consumer commit直後・ACK前に停止しても再配送は元decisionを返す。
 
 未参加userにはowner/個体/decisionを自動作成しない。source ACKのterminal_outcome=NOT_ENROLLEDを保存して完了し、源にevent ID/時刻/recipientの最小metadataだけ残す。遅延配送時にownerが作成済みでも、最初の参加時刻より前なら同結果。参加開始/休止/再開はowner participation periodに有効時刻を保存し、`occurredAt >= startsAt && occurredAt < endsAt` の期間で判定。表示OFFとは独立。休止中factはNOT_PARTICIPATINGのterminal0、再開後replayでも変えない。逆にactive期間に発生して配送時だけPAUSEDなら元週へ付与する（現在PAUSEDの給餌は不可）。源OFF/rollout前/historicalもterminal0。運営の配送一時停止は未処理を保留するだけ、報酬停止の有効期間はfact時刻で0判断する。運営停止と本人休止を区別する。
-
 
 ### 3.2 immutable envelope / 源初回の証明
 
@@ -114,9 +113,9 @@ LONGは正の十進数・先頭0なし、UUIDは小文字ハイフン形式。ca
 
 canonical_key/acquisition_key/canonical_source_id/canonical_scope_idは完全一致の識別に使うためVARBINARYで保存する。ASCII validation後にASCII（UTF-8と同じbyte列）へ明示encodeし、JPAではbyte[]で扱う。復元も厳格ASCII decode・形式/長さ再検証とし、代替文字へ置換しない。APIの正準値は従来どおりstring（03）で、binaryのbase64表現を返さない。text列は全てutf8mb4_0900_ai_ciの表既定に従い、列単位charset/collation overrideを設けない（domain_db_design_principles原則8/SchemaCollationConsistencyIT）。
 
-**少数native metadata案（未裁可）**: BlogPostEntityへfirstPublishedAt Instant NULL、firstPublishedAuthorUserId Long NULL、isPublicationHistoryKnown boolean。既存publishの一回の本体row UPDATEで最初だけ固定しunpublishで消さない。資格を確定した当時actor/originalAdminIdが復元できなければreconcileしない。b3efd BlogPostEntity:221–224のunpublishはpublishedAt=NULL、:250–252 publishは毎回上書きなので現在publishedAt/statusは初回証拠にならない。既存履歴不明rowはUNKNOWN/HISTORICALで0、新rowのみ既知の履歴開始を宣言する。
+**source-owned native metadata契約（製造未完了）**: BlogPostEntityへfirstPublishedAt Instant NULL、firstPublishedAuthorUserId Long NULL、isPublicationHistoryKnown boolean。既存publishの一回の本体row UPDATEで最初だけ固定しunpublishで消さない。資格を確定した当時actor/originalAdminIdが復元できなければreconcileしない。b3efd BlogPostEntity:221–224のunpublishはpublishedAt=NULL、:250–252 publishは毎回上書きなので現在publishedAt/statusは初回証拠にならない。既存履歴不明rowはUNKNOWN/HISTORICALで0、新rowのみ既知の履歴開始を宣言する。
 
-attendance本体rowへfirstQualifiedSelfResponseAt Instant NULL、firstQualifiedSelfResponseStatus enum NULL、isSelfResponseHistoryKnown booleanを提案。新known rowの今回actor=subject/proxy=false/originalAdminId=NULL/ATTENDING・PARTIAL・ABSENTの初回だけ固定。既存履歴不明rowやfirstRespondedAtだけから初回を推定しない。markerが無いupdateは資格UNKNOWNで0。source native metadataを採用するまで全初回を保証できないことを既知不足とする。
+attendance本体rowへfirstQualifiedSelfResponseAt Instant NULL、firstQualifiedSelfResponseStatus enum NULL、isSelfResponseHistoryKnown booleanを提案。新known rowの今回actor=subject/proxy=false/originalAdminId=NULL/ATTENDING・PARTIAL・ABSENTの初回だけ固定。既存履歴不明rowやfirstRespondedAtだけから初回を推定しない。markerが無いupdateは資格UNKNOWNで0。全保存経路のnative metadata統合とITが未完了のため、全初回を保証しない。
 
 ゲーム専用witnessは元業務commit後にtransport TXでINSERT、outboxと一括rollbackしても本体は成功。初回proofの代わりにwitness不在を使わない。witness/outbox喪失後の現在stateからの再公開を初回にしない。AR completionは本体session completedAt/rewardWeekでnative proofを保持し、source outboxはその後の別TX。
 ## 4. 無料のお世話・永久装飾交換
@@ -131,7 +130,7 @@ care ruleはUTC週境界から有効な不変version。amountXp>0、weeklyCapXp>
 stateDiagram-v2
  [*] --> EGG : 任意開始
  EGG --> EGG : elapsedひび / 選定未確認は安全待機
- EGG --> BABY : elapsed>=snapshot duration AND selectionConfirmed / 次回アクセス
+ EGG --> BABY : elapsed>=snapshot duration AND selectionConfirmed / 本人命名確認POST
  BABY --> JUVENILE : 無料care XP >= frozen threshold1
  JUVENILE --> ADULT : 無料care XP >= frozen threshold2
  ADULT --> ADULT : 無料お世話 / 記念品 / 記録
@@ -147,7 +146,7 @@ stateDiagram-v2
 
 ## 5. DDL契約（Phase 1のみ）
 
-以下はmigrationへ落とす完全な列/制約一覧。全表に明示 `ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`。新増加表は `UuidV7Entity` と `id BINARY(16) PK`。この基底はtimestampを持たないためcreated_at/updated_atを各表で明示。user_idは既存usersのBIGINT、クロスドメインFKなし。Instant列はUTC `DATETIME(6)`、EnumはVARCHAR、booleanはis_ prefix。列のnull記載以外はNOT NULL。BIGINT残高・XPは非負CHECK、外部JSONではdecimal string。
+以下はPhase 1骨格の列/制約契約。診断/確認参照/愛着とcleanup統合も含む実migration照合は未完了で、この一覧だけを完成実装としない。全表に明示 `ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`。新増加表は `UuidV7Entity` と `id BINARY(16) PK`。この基底はtimestampを持たないためcreated_at/updated_atを各表で明示。user_idは既存usersのBIGINT、クロスドメインFKなし。Instant列はUTC `DATETIME(6)`、EnumはVARCHAR、booleanはis_ prefix。列のnull記載以外はNOT NULL。BIGINT残高・XPは非負CHECK、外部JSONではdecimal string。
 
 | 表 | 列（共通id/created_at/updated_at以外） | 制約/index |
 |---|---|---|
@@ -158,13 +157,12 @@ stateDiagram-v2
 | `ranch_week_budgets` | owner_id BINARY(16)、user_id BIGINT、week_starts_on DATE、policy_id BINARY(16)、rule_snapshot JSON、global_cap BIGINT、awarded_total BIGINT、source_counts JSON、version BIGINT | UNIQUE(user_id,week_starts_on)、CHECK(0<=awarded_total<=global_cap)、index(owner_id,week_starts_on)、owner同domainFK可。global policy IDはopaque参照、物理FKなし |
 | `ranch_reward_decisions` | owner_id BINARY(16)、user_id BIGINT、event_id BINARY(16)、source_type VARCHAR(40)、canonical_key_hash BINARY(32)、canonical_key VARBINARY(240)、reward_week DATE、policy_id BINARY(16)、status VARCHAR(40)、requested_points BIGINT、awarded_points BIGINT、occurred_at DATETIME(6)、decided_at DATETIME(6) | UNIQUE(user_id,source_type,canonical_key_hash)、UNIQUE(event_id)、index(user_id,decided_at,id)。status AWARDED/CAPPED/SOURCE_COUNT_CAPPED/SOURCE_DISABLED/NOT_PARTICIPATING/REWARDS_PAUSED/INELIGIBLE、point非負CHECK。policy物理FKなし |
 | `ranch_point_ledger` | owner_id BINARY(16)、user_id BIGINT、decision_id BINARY(16) NULL、command_id BINARY(16) NULL、entry_kind VARCHAR(20) REWARD/CARE/PURCHASE、delta_points BIGINT、balance_after BIGINT、delta_xp BIGINT、dinosaur_id BINARY(16) NULL、rule_snapshot JSON、occurred_at DATETIME(6) | UNIQUE(decision_id)、UNIQUE(user_id,command_id)、index(user_id,occurred_at,id)、CHECK(balance_after>=0)。REWARDはdecision/points>0/XP0、CAREはcommand/dino/points0/XP>=0、PURCHASEはcommand/points<0/XP0 |
-| `ranch_commands` | owner_id BINARY(16)、user_id BIGINT、command_id BINARY(16)、command_type VARCHAR(30)、body_hash BINARY(32)、result_json JSON、completed_at DATETIME(6) | UNIQUE(user_id,command_id)、index(owner_id,completed_at)、成功のみ同TX保存、失敗では操作IDを消費しない |
+| `ranch_commands` | owner_id BINARY(16)、user_id BIGINT、idempotency_key BINARY(16)、command_type VARCHAR(30)、body_hash BINARY(32)、result_json JSON、completed_at DATETIME(6) | UNIQUE(user_id,idempotency_key)、index(owner_id,completed_at)、成功のみ同TX保存、失敗では操作IDを消費しない |
 | `ranch_collectible_catalog` | collectible_key VARCHAR(80) PK（master自然キー例外）、label_key VARCHAR(120)、asset_key VARCHAR(160)、source_kind VARCHAR(30)、is_active BOOLEAN、created_at/updated_at DATETIME(6) | catalogは運営承認assetのみ。UuidV7Entity対象外理由を番人へ登録 |
 | `ranch_collectible_inventory` | owner_id BINARY(16)、user_id BIGINT、collectible_key VARCHAR(80)、acquisition_kind VARCHAR(20) SHOP/LEGACY_BADGE、acquisition_key VARBINARY(160)、legacy_badge_id VARCHAR(80) NULL、legacy_award_period VARCHAR(40) NULL、sku_key VARCHAR(80) NULL、price_version BIGINT NULL、awarded_at DATETIME(6)、is_revoked BOOLEAN | UNIQUE(user_id,acquisition_kind,acquisition_key)、index(owner_id,is_revoked)。SHOPはsku/price必須・legacy両NULL、LEGACY_BADGEはlegacy両必須・sku/price NULLのCHECK。legacy_badge_idは元identityの実値を保持するnullable文字列で、完全一致uniqueはbinary acquisition_keyが保証する。period欠損は空文字 |
 | `ranch_room_placements` | owner_id BINARY(16)、user_id BIGINT、slot_key VARCHAR(30)、inventory_id BINARY(16) NULL、version BIGINT | UNIQUE(owner_id,slot_key)、UNIQUE(owner_id,inventory_id)、owner/inventory同domainFK可、index(user_id)。SHELF_1/2/3の三行を開始時NULL/version0で作成。取り外しはNULL化/version+1、行削除禁止 |
 | `ranch_operational_controls` | id TINYINT PK CHECK(id=1)、is_care_enabled BOOLEAN、is_shop_enabled BOOLEAN、is_delivery_paused BOOLEAN、version BIGINT、updated_by BIGINT、created_at/updated_at DATETIME(6) | singleton例外、初期care/shop=false。care/shop/活動rewardは独立。変更監査必須 |
 | `ranch_reward_pause_periods` | starts_at DATETIME(6)、ends_at DATETIME(6) NULL、reason_code VARCHAR(40)、changed_by BIGINT | index(starts_at)、重複不可をsingleton lockで保証。停止中fact0、配送pauseとは別 |
-
 
 | 追加表 | 列（共通UUIDv7 id/created_at/updated_at以外） | 制約/index |
 |---|---|---|
@@ -172,7 +170,7 @@ stateDiagram-v2
 | `ranch_care_week_budgets` | owner_id BINARY(16)、user_id BIGINT、week_starts_on DATE、rule_id BINARY(16)、rule_snapshot JSON、weekly_cap_xp BIGINT、awarded_xp BIGINT、version BIGINT | UNIQUE(user_id,week_starts_on)、CHECK(0<=awarded_xp<=weekly_cap_xp)、owner同domainFK、rule opaque参照 |
 | `ranch_species_catalog` | species_key VARCHAR(60)、catalog_version BIGINT、habitat VARCHAR(8)、asset_key VARCHAR(160)、is_active BOOLEAN | UNIQUE(catalog_version,species_key)、index(catalog_version,habitat,is_active)、habitat CHECK。旧is_diagnosis_poolによるrandom除外は撤去する。DIAGNOSIS/HABITAT_RANDOM共通の初期16種×4外見catalogとvariant資格を使う（名簿/素材未裁可） |
 | `ranch_shop_items` | sku_key VARCHAR(80)、price_version BIGINT、collectible_key VARCHAR(80)、price_points BIGINT、is_active BOOLEAN | UNIQUE(sku_key,price_version)、CHECK(price_points>0)、catalog同domain参照。不変price行、現行版は運営catalog公開snapshotで指定 |
-| `ranch_admin_commands` | actor_user_id BIGINT、command_id BINARY(16)、command_type VARCHAR(30)、body_hash BINARY(32)、result_json JSON、completed_at DATETIME(6) | UNIQUE(actor_user_id,command_id)、owner不要。policy/care rule/controlの管理shardTX内成功保存 |
+| `ranch_admin_commands` | actor_user_id BIGINT、idempotency_key BINARY(16)、command_type VARCHAR(30)、body_hash BINARY(32)、result_json JSON、completed_at DATETIME(6) | UNIQUE(actor_user_id,idempotency_key)、owner不要。policy/care rule/controlの管理shardTX内成功保存 |
 
 source retryは各source所有の `{source}_ranch_admin_commands`（同列/unique、ranch owner FKなし）へ保存しoutbox状態変更と同source TX。権限はSYSTEM_ADMINをsource facadeへ伝達・検証、同key/bodyは元結果、別body409。retryをglobal管理TXへ跨がせない。
 source側は四ドメインそれぞれ `{source}_ranch_outboxes` と資格witnessを所有する。outbox列: id BINARY(16) PK、schema_version INT、event_type VARCHAR(40)、scope_type VARCHAR(20)、scope_id_type VARCHAR(8) NULL、canonical_scope_id VARBINARY(80) NULL、recipient_user_id BIGINT、canonical_key VARBINARY(240)、payload_json JSON、occurred_at DATETIME(6)、status VARCHAR(20)、terminal_outcome VARCHAR(40) NULL、attempt_count INT、next_attempt_at DATETIME(6)、lease_token BINARY(16) NULL、lease_expires_at DATETIME(6) NULL、last_error_code VARCHAR(80) NULL、acked_at DATETIME(6) NULL、created_at/updated_at DATETIME(6)。UNIQUE(event_type,canonical_key)、index(status,next_attempt_at,id)、index(scope_type,canonical_scope_id,status,next_attempt_at,id)、CHECK(attempt_count>=0)。ACKED時terminal_outcome/acked_at必須、LEASED時token/expiry必須。源所有の物理shardへ置き、他domain FKなし。
@@ -190,81 +188,55 @@ source outbox keyはARのみentry+user+completionWeek、他源は一生一回。
 
 reflection側 `reflection_recall_sessions`: id BINARY(16) PK、user_id BIGINT、entry_id_type VARCHAR(8)、entry_source_id VARCHAR(80)、reward_week DATE NULL、status VARCHAR(20)、prompt_snapshot JSON、original_snapshot JSON、answers_json JSON、self_rating VARCHAR(20) NULL、started_at DATETIME(6)、completed_at DATETIME(6) NULL、cancelled_at DATETIME(6) NULL、version BIGINT、created_at/updated_at DATETIME(6)。index(user_id,status,started_at,id)、CHECK(COMPLETEDならcompleted_at/reward_week/self_rating必須、それ以外completed_at/reward_week NULL)。完了時required全件検証。新表からusersへFKなし。entry同domainFKは既存物理ID型と一致する場合のみ追加。
 
-`reflection_recall_commands`: id BINARY(16)、user_id BIGINT、command_id BINARY(16)、session_id BINARY(16)、command_type VARCHAR(20) START/ANSWERS/COMPLETE/CANCEL、body_hash BINARY(32)、result_json JSON、completed_at DATETIME(6)、created_at/updated_at DATETIME(6)。UNIQUE(user_id,command_id)、index(user_id,session_id)、session同reflection内FK。reflection TX内で成功時保存、同key同bodyは元結果/違うbody409。ranch_commandsへ跨ぐTXは行わない。両command表ともuser+commandIdがuniqueなのでtypeもbody正準hashへ含める。
+`reflection_recall_commands`: id BINARY(16)、user_id BIGINT、idempotency_key BINARY(16)、session_id BINARY(16)、command_type VARCHAR(20) START/ANSWERS/COMPLETE/CANCEL、body_hash BINARY(32)、result_json JSON、completed_at DATETIME(6)、created_at/updated_at DATETIME(6)。UNIQUE(user_id,idempotency_key)、index(user_id,session_id)、session同reflection内FK。reflection TX内で成功時保存、同key同bodyは元結果/違うbody409。ranch_commandsへ跨ぐTXは行わない。冪等scopeは各ドメイン内user+idempotencyKeyで、type/path/resource/versionもbody正準hashへ含める。ranchの公開commandIdはRanchCommand.id(UUIDv7)で別の入力keyとは同値と仮定しない。
 
 policy masterは管理shard、user shardのbudget/decisionへ物理FKを張らず署名/hash検証済み不変snapshotとopaque UUIDを保持する。配信されていないpolicy週は処理をretryし、最新別policyへfallbackしない。ownerが有効な間、貯蓄/台帳/dedup/commandは失効しない。
 
 最終アカウント削除はsource/ranchの各DomainCleanupServiceがuser ID通知を冪等処理する。まずuser tombstoneで新操作/配送を拒否、ranchはplacements→inventory→ledger/decisions/commands/point budgets/care budgets/periods→dino→ownerを同user shardで削除、reflectionはsession/command/witness/outboxの本人行を削除。他源の本人transport行もそれぞれ削除し、クロスFKなしで孤児を残さない。未処理outboxはACCOUNT_DELETED ACKまたは同source cleanup削除し、workerとの競合はuser tombstone照合で再作成を禁止する。共有記事等の本体存続は各sourceの既存退会契約に従う。既存セキュリティ監査だけは既存保全期間へ従い、本文・学習回答を含む新学習snapshotを監査へ退避しない。削除完了の技術ID件数のみ監査する。ranch休止/非表示をアカウント削除と扱わない。
 
-上記DomainCleanupServiceは最終アカウント削除に追加する契約名であり、既存共通部品の存在を意味しない。ユーザー承認済み: 退会申請中は本人ranchアクセス・操作・新報酬の獲得を停止して恐竜アバター/確定名/XP/残高/置物を保持し、取消で同一userの同じ個体を戻す。申請前の参加状態ACTIVE/PAUSEDを保持し、取消だけで元の休止を勝手に解除しない。WithdrawalRequestedEventを不可逆削除の入口にしない。既存authの取消復帰通知/状態から同じ申請試行IDの復帰を反映し、AccountPurgedEventで最終削除を行う。UserAnonymizedEventは本体で取消不能の最終削除状態と確認できる経路だけを確定cleanupへ接続し、取消可能な退会申請と混同しない。運営の育成/報酬/配送/backgroundがOFFでも停止・復帰・最終cleanupのライフサイクル処理は継続する。申請中の活動を取消後に遡及付与せず、既得の記録と重複防止を保持する。申請取消後に遅れて届く旧request/purge処理、worker/本人mutationとのrace、停止と永久tombstoneの区別、世代・保持/再送回復の技術契約は後続詳細設計とITで補完する。保持期間は本体の退会取消期間に従い、ranch独自の永久保存を追加しない。
+上記DomainCleanupServiceは最終アカウント削除に追加する契約名であり、既存共通部品の存在を意味しない。ユーザー承認済み: 退会申請中は本人ranchアクセス・操作・新報酬の獲得を停止して恐竜アバター/確定名/XP/残高/置物を保持し、取消で同一userの同じ個体を戻す。申請前の参加状態ACTIVE/PAUSEDを保持し、取消だけで元の休止を勝手に解除しない。WithdrawalRequestedEventを不可逆削除の入口にしない。既存authの取消復帰通知/状態から同じ申請試行IDの復帰を反映し、AccountPurgedEventで最終削除を行う。UserAnonymizedEventは本体で取消不能の最終削除状態と確認できる経路だけを確定cleanupへ接続し、取消可能な退会申請と混同しない。運営の育成/報酬/配送/backgroundがOFFでも停止・復帰・最終cleanupのライフサイクル処理は継続する。申請中の活動を取消後に遡及付与せず、既得の記録と重複防止を保持する。申請取消後の古い通知は既存withdrawalAttemptIdと現在auth状態で拒否する。auth所有guard・PURGING barrier・遅配拒否・再送回復を03の順序で統合し、実MySQL race証明までは未検証。汎用世代表を先行追加しない。保持期間は本体の退会取消期間に従い、ranch独自の永久保存を追加しない。
+
+診断completedAt/確認expiresAtはMICROSへ切り揃えDB/immutable JSON/HMAC/cursorの同じ値を使う。
 
 新日時には裁可済 [UTC瞬間方針](../../architecture/datetime_policy_utc_instant_vs_wallclock.md) §1/4を適用し `Instant`。旧 `.claudecode.md` §20のLocalDateTime/Instant禁止は旧実装保持説明として参照し、新ranchへ採らない。既存entity/serializer/JVM TZは変更しない。Jpaと生SQLとAPIの往復をUTC/JST/非JSTで検証する。生SQLの現在時刻はUTC_TIMESTAMP(6)、migrationもUTC関数。UuidV7Entity実体が要求するBINARY(16)とDDLを一致させる。
 
 Flywayは必須だがこの設計PRではSQLを追加しない。実装時 `V{origin/main全体最大major+1}.{UTCyyyyMMddHHmmss}`、merge直前に再採番。既存migration改変禁止。DDL実schema・UUID物理型・collation・UTC・旧badge/entitlement保全はFlywayFromScratchMigrationTestの既存MySQLに相乗りし検証する。
 
-### 卵・選定adapterの追加契約（提案）
+### 卵・選定adapterの契約
 
 egg_started_atはserver初期化時刻、egg_ready_at=started_at+凍結egg duration、egg_rule_snapshotはdurationSecondsとcrack thresholds/asset keys/version。約7日604800秒と[0,259200,432000,604800]は提案値で、本番既定値ではない。ひび段階/hatchReadyはGETでserverTimeから算出、GET自体でstageを更新しない。hatchReady=`now>=egg_ready_at && selection_confirmed_at!=null`。未確認/未成熟はstage EGGのまま安全待機。
 
 次回部屋アクセスでFEがhatchReadyを確認して命名導線を出し、確認後だけPOST hatchへnameを送る。owner/dino lock下でEGG→BABY/hatched_at/name/named_at/commandを同TX保存する。hatched_at=named_atはserverの同一Instant、名前と孵化の片方だけ保存しない。二tab/retryでも孵化・命名一回、points/care XP増分0。本人PAUSEDでも孵化は可（成長加算なし）、care control OFFなら安全待機/503。孵化後のみ無料care XP対象。EGGのXPは0、BABY起点0、成長閾値とcare量は正。CHECK:未選定はspecies/catalog/method/confirmed NULL、選定済みはspecies/catalog/method/confirmed必須、EGGはhatched_at/name/named_at NULL、BABY以降はhatched_at/name/named_at/confirmed必須。
 
-恐竜名はUnicode前後空白除去→NFC正規化後に、Unicode拡張書記素クラスタ（見た目の一文字）で1〜10文字。FE/serverで同じUnicode segmentation versionと境界fixtureを固定し、Java String.length、SQL CHAR_LENGTH、HTML maxlength=10だけを10文字の判定に使わない。結合文字・絵文字は表示の一文字で数える。空白/不可視文字だけ、改行・制御文字、UTF-8 512byte超または160 code point超を拒否する（異常に長い結合列への保存上限）。通常名の10文字制限と保存上限は別で、上限超を切り捨て保存しない。確定したnameは同個体で不変、名前変更用command/APIなし。診断・出生割当に使う本人氏名とは別フィールドで、名前を報酬outbox/log/auditへ複製しない。
+恐竜名はUnicode前後空白除去→NFC正規化後に、Unicode拡張書記素クラスタ（見た目の一文字）で1〜10文字。FE/serverで同じUnicode segmentation versionと境界fixtureを固定し、Java String.length、SQL CHAR_LENGTH、HTML maxlength=10だけを10文字の判定に使わない。結合文字・ZWJ絵文字は表示の一文字で数える。許可された絵文字連結用ZWJを不可視文字の一括拒否へ巻き込まない。空白/不可視文字だけ/不正不可視文字、改行・制御文字、UTF-8 512byte超または160 code point超を拒否する（異常に長い結合列への保存上限）。通常名の10文字制限と保存上限は別で、上限超を切り捨て保存しない。確定したnameは同個体で不変、名前変更用command/APIなし。診断・出生割当に使う本人氏名とは別フィールドで、名前を報酬outbox/log/auditへ複製しない。
 
-選定adapter method=HABITAT_RANDOM/BIRTH_STYLE/DIAGNOSIS。未承認算法/診断本体は有効化しない。HABITAT_RANDOMは同catalogのhabitat該当species＋variant組を均等抽選し一度保存。BIRTH_STYLEはauth読取facadeから本人氏名/生年月日を取得し承認版の決定的対応表で算出した本人resultを利用する。DIAGNOSISは本人COMPLETED resultのprovider/typeCode/mappingVersionを検証する。ranchには元PIIや回答を複製せずopaque result ID/種/variant/対応表版のみ保存。旧client出生body向けHMAC設計をprofile-derivedの確認版/再送へ読み替える詳細は未確定で、特定列追加やkey保持期間を確定しない。
+選定adapter method=HABITAT_RANDOM/BIRTH_STYLE/DIAGNOSIS。未承認算法/診断本体は有効化しない。HABITAT_RANDOMは同catalogのhabitat該当species＋variant組を均等抽選し一度保存。BIRTH_STYLEはauth読取facadeから本人氏名/生年月日を取得し承認版の決定的対応表で算出した本人resultを利用する。DIAGNOSISは本人COMPLETED resultのprovider/typeCode/mappingVersionを検証する。ranchには元PIIや回答を複製せずopaque result ID/種/variant/対応表版のみ保存。出生確認は03のauth所有opaque UUID参照・revision・用途・nonce・10分期限・既存HMAC契約を使う。
 
-出生commandはサーバー取得した本人プロフィールの確認版/指紋とresultの対応を照合する設計案とし、profile変更時は再確認、保存済みcommand/resultのretryは現在profileで再計算しない。version/key/正規化/保存列/rotationと障害回復の詳細は後続裁可事項（03）。表示styleはowner.render_styleだけを更新し、species/assignment/growth snapshotを変更しない。
-## 初期公開の選定3方式（最新確定範囲・内容は未裁可）
-
-性格診断もPhase 1初期公開から必須。BIRTH_STYLE（プロフィールの本人氏名・生年月日を使う占い風の決定的割当）、HABITAT_RANDOM（海/空/陸random）、DIAGNOSIS（64タイプ）の三入口を卵期間に選択する。初期16種×各4外見＝64タイプ、将来64種への拡張方針は確定。診断は6軸各4問の24問・5段階回答を採用し、恐竜の姿での過ごし方や身近な本人の傾向を中心に、色・形だけに偏らず牧場機能の予備知識を求めない。同点になった軸だけ本人に二択を追加し最大6問、保留または別方式の選択を許す。ランダムも同じ初期16種×4外見からLAND/SEA/AIRで候補組を絞り、species＋variantの組を均等抽選する。旧診断pool除外条件は撤去する。個別設問・採点式・全64 mapping・占い計算/名前正規化・種名簿/4デザインは未確定。公開gateは三方式の承認済みserver rule/本人プロフィール取得・確認/validation/全64 mappingと必要素材が揃うこと。未実装を利用可能と装わず、暫定公開で診断を後回しにしない。
-
-提案構造: 本人診断sessionをserver発行しquestionnaireVersion/scoringVersionをsnapshot、回答は本人sessionへ送信、serverがvalidationと採点をしてCOMPLETED結果（provider/typeCode/mappingVersion）を不変保存する。選定確認時に本人COMPLETED結果と対応表versionを検証してspeciesを固定。clientのtypeCodeを結果として信用しない。診断結果が変わっても確認済みの同恐竜を維持する。質問/回答/診断resultはprivate、報酬outbox/共有プロフィールへ出さず、診断完了回数をpoints/XPにしない。質問/画像/算法の外部サイト利用許諾/APIは未確認で、無断複製を前提にしない。
-
-診断session API/DTO/質問master/採点rule/結果tableの完全な契約と素材仕様は、未裁可内容を決めてから本草案へ補完する。現在の草案は選定adapterと保存/認可/同恐竜維持の境界までを示すレビュー資料で、診断本体をこのまま実装可能と主張しない。Phase 1の4〜8週は診断/64素材追加前の旧概算であり再見積が必要。全体3〜6か月も既存基盤/準備済みアートの旧前提の候補で、診断と素材次第で超える。
-
+出生commandは03のauth guard下で本人revisionを照合・派生数計算し、raw PIIをwriterへ渡さない。profile変更時は再確認、成功済み同keyはlive profile検査前に当時のresultを返す。鍵rotation後旧参照はfail closed。表示styleはowner.render_styleだけを更新し、species/assignment/growth snapshotを変更しない。
 ### 種とバリエーションの保存境界（2026-10-03）
 
 初期診断は16 species×各4 variant。speciesKeyとvariantKeyは別の不変IDで、diagnosisの全64 typeCodeをcatalog/mapping version付きの組へ対応付ける。バリエーションに能力/成長/報酬差はなく、成長/style切替でも同じ組を保持する。将来species数を64へ増やしても、旧個体や旧mappingを勝手に置換しない。EGG未選定のvariant_keyはNULL、選定確認後はspeciesとvariantの両方を必須にする。catalogは初期16種の確定名簿と4デザイン登録後に有効化し、存在しない組を拒否する。
 
 追加catalog契約案: ranch_species_variants（UUIDv7 id、species_key VARCHAR(60)、catalog_version BIGINT、variant_key VARCHAR(32)、appearance_definition JSON、asset_manifest_key VARCHAR(160)、is_active BOOLEAN、created_at/updated_at DATETIME(6)）、UNIQUE(catalog_version,species_key,variant_key)。appearance_definitionは運営承認の色/体型/模様参照だけで、ユーザーuploadや自由URLなし。部位anchor/接地が合わない体型へ単純拡縮だけで流用しない。ranch内のmaster参照、クロスdomainFKなし。ランダムは同じ初期16種×4外見からLAND/SEA/AIRの該当する有効species＋variant組を均等抽選し、catalog/variant資格を版固定する。
 
-## 2026-10-03の追加裁可
-
-初期16種×各4バリエーション＝64タイプ、将来64種へ拡張。生年月日＋名前は固定の割当方式にし、既存占いと対応できる方式を優先して検討（数秘術を参考にする方向は採用、具体計算/対応表は未確定）。退会取消で同じ恐竜アバターを戻し、最終アカウント削除で消去。孵化後の3ボタンと非減衰親密度の仕草・反応表現を採用。恐竜の姿での過ごし方の質問は可、牧場機能の知識を前提にした質問は改稿する。素材・動作の大量生成を一度に要求せず、制作時間/品質を1種pilotで確認する計画案を用意する。
-
-## 恐竜アバターの位置づけ・自分の診断結果（2026-10-03ユーザー確定）
-
-恐竜は、本人の好みや個性を映した「自分自身の恐竜の分身」として扱う。牧場主は牧場の操作・農作業・建築を担当するプレイヤーキャラクター。恐竜アバターと牧場主は表示・操作上の役割を分け、既存の別エンティティ・同一恐竜個体の継続という技術境界は維持する。64タイプ診断と生年月日・名前占いは本人自身の結果として見返せる。診断で能力や優劣を決めず、科学的な性格測定として案内しない。
-
-64タイプ診断と生年月日・名前の占いは、恐竜アバターの「ようす」から本人がいつでも見返せる。未実施の方式は「未診断」と表示し、別方式の結果を捏造しない。結果閲覧の主目的を「恐竜アバターを選んだ時の記録」としない。未実施の診断は後から実施でき、再診断も新しい本人の結果を作るだけで、確定済み恐竜アバターの個体・種・外見・名前・成長・親密度を変えない。診断実施・閲覧・再診断をポイントや育成条件にしない。誕生に使った結果との内部参照は、同個体維持のための記録としてUIの主題から分ける。
-
-数秘術を参考にした自分の占いの方向と、初期反応を待機・食べる・短い喜びに絞る案は採用済み。今回採用した24問/5段階・同点軸の追加二択と、個別設問/採点式の未確定範囲を分ける。日本語氏名の正規化、11/22/33を含む数の扱い、ローマ字変換、恐竜対応表は今回の承認に含めない。初期16種×4外見の具体名簿/デザインと親密度閾値も未確定。ランダムは同catalogのhabitat該当組を均等抽選する採用方針へ更新する。
-
 ### 本人結果を保存する境界（詳細案）
 
-診断ドメインを結果の正本とする。ranchに回答・生年月日・本人氏名を複製しない。完成した結果は不変snapshotとして保存し、新たな診断は新result IDを作る。占いも恐竜の割当だけを残す従前案から、本人が見返せる算出結果と独自説明を残す案へ更新する。生年月日・名前そのものは引き続き計算時のみ利用し、snapshot・本人結果/履歴API・共有・ログ・監査へ出さない。本人専用の入力確認表示は後続の最小項目設計に従う。
+診断ドメインを結果の正本とする。ranchに回答・生年月日・本人氏名を複製しない。完成した結果は不変snapshotとして保存し、新たな診断は新result IDを作る。占いも恐竜の割当だけを残す従前案から、本人が見返せる算出結果と独自説明を残す案へ更新する。生年月日・名前そのものは引き続き計算時のみ利用し、snapshot・本人結果/履歴API・共有・ログ・監査へ出さない。本人入力確認表示は03のauth birth-profile GETに限定する。
 
-結果保存案: diagnosis_resultsにid(UUIDv7)、user_id(BIGINT)、method(DIAGNOSIS/BIRTH_STYLE)、result_schema_version、rule_version、normalization_version(nullable)、questionnaire_version(nullable)、scoring_version(nullable)、mapping_version、completed_at(UTC)、result_snapshot(JSON)を持つ。snapshotには64 typeCodeと軸結果、または数秘術で得た数、および各6言語の独自説明を置き、入力値/全回答/自由入力を含めない。完成時にschemaで許可fieldとサイズ上限を検証する。PK以外に(user_id,method,completed_at,id) indexを持ち、users/ranchへのクロスドメインFKを作らない。計算結果もprivateとして扱う。結果の作成API・session/command・snapshotの具体JSON schemaは診断モジュール設計で補完し、この記述だけを完成DDLとして実装しない。
+結果保存案: diagnosis_resultsにid(UUIDv7)、user_id(BIGINT)、method(DIAGNOSIS/BIRTH_STYLE)、result_schema_version、rule_version、normalization_version(nullable)、questionnaire_version(nullable)、scoring_version(nullable)、mapping_version(NULL可)、source_profile_revision(nullable BIGINT、内部metadata)、completed_at(UTC)、result_snapshot(JSON)を持つ。source_profile_revisionはDIAGNOSIS=null、BIRTH_STYLE>=0。authのConfirmedBirthNumbersは内部の派生数とprofileRevisionを持ち、保存結果のOwnedResult内部metadataへそのrevisionを渡す。公開Summaryに追加しない。snapshotには64 typeCodeと軸結果、または数秘術で得た数、および各6言語の独自説明を置き、入力値/全回答/自由入力を含めない。完成時にschemaで許可fieldとサイズ上限を検証する。PK以外に(user_id,method,completed_at,id) indexを持ち、users/ranchへのクロスドメインFKを作らない。計算結果もprivateとして扱う。結果の作成API・session/command・snapshotの具体JSON schemaは診断モジュール設計で補完し、この記述だけを完成DDLとして実装しない。
 
-ranchの出生選定snapshotには利用したresultのopaque IDと固定した種/variant/対応表版だけを保存する。ranch TXから診断Repositoryを直接触らず、本人result読取facadeで照合する。診断の保存とranchの選定確定は別操作・別TX。選定が失敗しても本人resultを失わず、result取得GETから再採点・再抽選・個体作成しない。
+ranchの出生選定snapshotには利用したresultのopaque IDと固定した種/variant/対応表版だけを保存する。auth guard callback内の非TX domain facadeは03の単一契約に従い、Ranch成功commandをPRIMARYで先にlookupして、既success再送をlive検査前に返す。初回の出生選定はlive確認ref revision Rを検証した後、診断のPRIMARY SELECT-only独立TX（routingのためreadOnly=false）で本人COMPLETED BIRTH_STYLE resultのsourceProfileRevision=Rを照合し、固定DTOをranch REQUIRES_NEW writerへ渡す。新refで旧プロフィール由来resultを採用すると409。writerからauth/diagnosisを呼ばない。診断の保存とranchの選定確定は別操作・別TX。選定が失敗しても本人resultを失わず、result取得GETから再採点・再抽選・個体作成しない。
 
 再読込/別端末/採点や説明master変更後も過去resultは当時のsnapshotで見られる。原入力なしでも閲覧できるよう、結果表示を再計算に依存させない。本人休止・非表示では保持し、退会申請中はアクセス停止、取消は同じ結果を復帰、最終アカウント削除時には診断自身のcleanupで本人result/session/commandを削除する。workerが削除済みuserへ再作成しない境界も既存cleanup契約に従う。
 
-## 今回採用した詳細方針と本人プロフィール利用
+## 採択済み商品仕様の参照
 
-恐竜は本人の分身として扱うため、出生占いには本人氏名と本人の生年月日を使う。nickname、恐竜の名前、牧場主名、任意の選定用名を代用しない。恐竜と牧場主の別エンティティ・孵化時命名・確定後の名前不変は維持する。
+三方式・独自数秘・本人の分身・同個体維持・96論理ドット/2D・無料成体の正本は[01 商品契約](01_product_phases.md)。
 
-認証された本人のプロフィールをサーバー側のauth読取facadeで取得する方針。既存auth/UserEntityにはlastName/firstName/lastNameKana/firstNameKana/birthDateがあり、出生情報はauthの既存暗号化保存を利用する。`/api/v1/users/me` はprincipal-onlyのgetMyProfile→UserService.getUserProfileを使い、UserProfileResponseは姓名/カナを返すがbirthDateは返さず、UpdateProfileRequestにもbirthDateはない。登録時にはRegisterRequest/register.vueでbirthDate入力があるが、既存汎用プロフィール更新で訂正できる前提にしない。育成との取得連携は未実装で、auth専用読取facadeを追加する設計案が必要。既存設定画面で氏名・生年月日を補完できるとは未確認なので、欠損時のプロフィール補完導線も設計対象にする。
+## 6. 愛着・完全一致証跡・配送の製造境界
 
-出生選定前にプロフィールを使うことを本人へ明示し確認する。欠損を任意名で埋めず補完へ戻す。確認から確定の間にプロフィールが変わった場合は再確認する。本人プロフィールの版/指紋の取得・照合、confirmationの期限、同時更新、結果保存と選定確定のTX境界、再送の詳細API/DTO/DDLは後続設計で確定する。成功した同command/resultの再送は保存済み結果を返し、現在プロフィールで再計算しない。プロフィール変更や新しい結果作成後も確定済み恐竜アバターを維持する。
+愛着は非減衰で成長/権利/pointsとは独立。versioned unitはkind(FEED/TOUCH)＋UTC日、初回gain1、band0/1/5は開発fixture。同unitは別key/二tab/連打でも一加算、週care XP枠後も反応可、卵touch XP0、PAUSED/care OFFは反応のみ加算0。公開数値ゲージなし。
 
-元の姓名・カナ・生年月日はauthの既存保存を正本とし、計算時に取得する。診断には派生結果だけを保存し、ranch側の元PII複製は0。本人結果/履歴API・共有/報酬payload/records/log/auditにも元PIIを出さない。本人専用の入力確認responseでの最小項目表示は別途設計する。clientからbirthDate/selectionNameを送る旧契約は撤去し、本人session/resultと確認状態を参照するrequestへ変更する案とする。利用説明に本人氏名・生年月日の利用目的を明示する案を用意するが、今回privacy policy本文は変更しない。
+TL/Blog完全一致はそれぞれsource-owned、同user・同feature・同UTC週の新ID同内容を最初一件だけとする案。比較期間/正規化はユーザー回答待ち。NFC/改行/前後空白/title/添付/length-prefix/HMAC/key rotation/保持は承認fixture後に検証し、本文複製0、cross-source/想起意味比較なし。源の公開gateで未決を管理する。
 
-無料給餌とふれあいで非減衰親密度を育て、連打による加算はしない。内部値を反応・言葉の段階へ対応させ、放置/休止/未ログインで下げない。加算単位、連打判定、閾値、保存/冪等commandの詳細は未確定。追加通貨や本体権利/成長/報酬差は設けない。
-
-同じ投稿/記事の再編集・再公開・再送は再付与しない。新IDでも一定範囲の同内容完全一致は報酬対象外とし、源件数/個人全体上限を併用する。意味をAIで判定しない。完全一致の正規化、比較範囲/期間、本文を複製しない証跡の保存場所・保持/消去、同時投稿の競合と配送での判定は後続設計で確定する。本体投稿の保存成功と報酬対象外の判定を分け、報酬都合で本体保存を妨げない。想起entryの意味類似判定へ対象を広げない。
-
-上記は商品方針の更新と後続設計境界であり、実装・テスト成功・公開完了を意味しない。
-
-## 恐竜を本人の分身として扱う（2026-10-03ユーザー確定）
-
-恐竜アバターは自分自身の分身。本人の氏名・生年月日と診断を本人の情報として扱う。プロフィール参照、結果閲覧、再診断後の同個体維持、孵化時の命名・名前不変、無料のお世話は維持する。従前の親密度は、自分のアバターへの愛着・なじみが仕草や反応へ表れる育成指標として扱い、放置による減少や連打加算はない。具体表示名や閾値は詳細設計で補完する。牧場主との役割分担とデータ構造を、用語変更だけで再設計しない。
+本体COMMIT→AFTER_COMMIT非blocking bounded queue→source-owned REQUIRES_NEW(witness+outbox原子)→短lease→ranch decision TX→token比較ACK。受付前lossはユーザー採択済み、durable受付後のみretry保証。CallerRuns/同期DB fallbackなし。queue満杯/transport失敗を本体HTTP失敗へ戻さない。queue1000/batch50/lease30s/attempt8/backoff1〜300s+jitterは開発fixture、本番自動採用しない。初回資格はnative履歴とtrusted actorを使い、現在状態/witness不在から捏造しない。

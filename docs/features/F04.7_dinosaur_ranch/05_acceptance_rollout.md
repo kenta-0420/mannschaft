@@ -1,6 +1,6 @@
 # F04.7-05 受け入れ条件・検証・置換手順
 
-> **ステータス**: 🟡 草案（設計レビュー・裁可待ち）
+> **ステータス**: 🟡 Phase 1製造中（仕様採択済み、73AC・実機・公開は未完了）
 > **正本入口**: [F04.7](../F04.7_gamification.md)
 > **区分**: 以下は実装戦役の検証計画。今回の実機/UT実行結果ではない。
 
@@ -49,7 +49,7 @@
 | 37 slot ABA | slot初期version0、配置→除去でversion2の空slot。古いversion0 PUTは409、同DELETE key再送は増分なし、空slot新DELETEはversion+1 | IT/E2E |
 | 38 表示保存 | 開始成功後widget表示API失敗でも個体一頭保持、表示だけretry。ranch settingsでvisibilityを独立保存しない | IT/E2E |
 | 39 停止境界 | activity points policyなし/停止でもfree care可、care rule自体なしまたはcare control OFFはcreate/care503。shop catalog/price正常かつshop ONなら既得pointsで購入可。本人PAUSEDはcare409、settings/readは既存owner正常 | IT/E2E |
-| 40 CSRF | 認証Cookie SameSiteStrict/HttpOnly/prodSecureを保持、cross-site mutation拒否、refresh後の正規本人操作成功 | IT/E2E |
+| 40 CSRF | 認証Cookie SameSiteStrict/HttpOnly/prodSecureを保持、現行STATELESS/CSRF無効を前提に実browser Cookie/CORS/入力境界でcross-site mutation拒否を観測し、refresh後の正規本人操作成功。CSRF token403を既実装/greenと仮定しない | IT/E2E |
 
 | 41 無料成体 | activity0/残高0/チーム未所属で同日に週care枠を使い、次UTC週も任意の日に使い同個体が成体へ到達。ログイン/課金/毎日/AR不要 | IT/E2E |
 | 42 交換競合 | 一商品分残高で異なるSKU二購入の同時要求、負残高なし。同SKU競合は一inventory/一消費。同key retry同result・priceVersion違い409 | IT/E2E |
@@ -94,7 +94,7 @@ ACK済みoutboxの短期archive/削除はcanonical witness/dedupを残したま�
 
 実装DoDは `/軍議→試練red→出陣green→検分→実機→アリシゼーション` と全AC証拠。設計PRだけで本番ready、実機成功、報酬配送稼働と主張しない。
 
-### 卵と選定の追加AC（算法本体は未裁可）
+### 卵と選定のAC（構成/独自数秘採択済み、公開内容未承認）
 
 | AC | 結果 | 主検証 |
 |---|---|---|
@@ -108,38 +108,16 @@ ACK済みoutboxの短期archive/削除はcanonical witness/dedupを残したま�
 | 53 診断所有/再診断 | anonymous401、他人/不在result/tokenは同形404。未完了resultで選定不可。再診断/訂正/二tab/retryでも確認済みdinosaur ID/species/XPを維持し、points/XP増分0 | IT/E2E |
 | 54 診断privacy | 質問/回答/resultと出生PIIは共有profile、訪問response、報酬outbox/records/log/auditへ出ない。素材表示のためにprivate typeCodeを公開しない。後続訪問の推測可能性は別公開裁可事項 | IT/E2E |
 | 55 本人プロフィール | principal由来の本人氏名/生年月日のみauth読取facade取得、他user指定拒否、nickname/恐竜名/任意名代用0。欠損時補完→確認→出生結果の導線、確認中profile変更で再確認。6言語の利用説明。既存profile DTOにbirthDateが無い状態から連携完成と見なさない | UT/IT/E2E（詳細契約確定後） |
-| 56 決定性/正規化 | 同承認normalizationVersion/rule/mappingと同じサーバー取得本人プロフィールで同species＋variant。Unicode/空白/日付fixtureは承認規則へ照合、元姓名/カナ/DOBはauth既存保存のみで診断/ranch/result/履歴/event/log/audit複製0。11/22/33/ローマ字規則を承認済みとしない | UT/IT（詳細契約確定後） |
-| 57 版照合/再送 | 確認profile版/指紋と確定時の照合、二tab/競合/応答喪失を検証。成功後profile変更→同key retryでも保存済みresultと同恐竜アバター、現在profileで再計算0。未知確認版/参照は安全失敗。key/版更新/保持/rotation/比較方法は後続設計でfixture補完、旧client出生body HMAC前提を使わない | UT/IT（詳細契約確定後） |
+| 56 決定性/正規化 | 同承認normalizationVersion/rule/mappingと同じサーバー取得本人プロフィールで同species＋variant。Unicode/空白/日付fixtureは承認規則へ照合、元姓名/カナ/DOBはauth既存保存のみで診断/ranch/result/履歴/event/log/audit複製0。両数1〜9反復還元/11・22・33特別保持なし/本人カナ版付きヘボン式を採択契約に照合する | UT/IT（詳細契約確定後） |
+| 57 版照合/再送 | 確認profile版/指紋と確定時の照合、二tab/競合/応答喪失を検証。成功後profile変更→同key retryでも保存済みresultと同恐竜アバター、現在profileで再計算0。未知確認版/参照は安全失敗。03の全profile更新revision++/opaque UUID参照/TTL10分/既存HMAC rotation fail closedをfixture化、旧client出生body HMAC前提を使わない | UT/IT（詳細契約確定後） |
 | 58 style保存 | PIXEL既定、PIXEL↔PAINT_2D保存後reload/別端末で保持。null/欠落/未知enum400、version競合409、応答喪失同key再送同結果。同dinosaur ID/species/stage/XP/残高で、旧renderer timer/RAF/audio残留0 | IT/FE UT/E2E |
 | 59 素材/背景抑制 | 同個体同段階の片style素材欠落/取得失敗で静止fallbackまたは段階文字/給餌を維持、別個体化0/保存style自動変更0。海の泡/雲を含めOS reduce動的切替/REDUCED/STOPPED/非表示/背景tabで移動停止、背景tab timer/RAF/audio0、復帰の高速追いつきなし | FE UT/E2E |
 | 60 必要件数BIGINT | remaining=0/amount未満/丁度倍数/余り1/signed BIGINT最大かつamount=1と2をfixture化。personalRequiredCountが正確なdecimal string（最大は"9223372036854775807"）、加算overflow/JS Number精度損失0。countLimit残枠不足では満額保証と表示しない | UT/IT/FE UT |
 
-卵の7日/ひび境界・占い対応表・診断実装範囲・初期16種×4バリエーション素材は追加裁可事項。未裁可算法をテスト済み/実装確定と表現しない。出欠の実EnumはATTENDING/PARTIAL/ABSENTを基準ソースと照合し、旧略記ATを仕様に残さない。
-## 初期公開の選定3方式（最新確定範囲・内容は未裁可）
+卵の約7日elapsed/三方式/独自数秘/24問構成は採択済み。ひび具体境界は開発snapshot値、質問内容/全対応表/初期16種×4外見素材は承認待ち。未裁可算法をテスト済み/実装確定と表現しない。出欠の実EnumはATTENDING/PARTIAL/ABSENTを基準ソースと照合し、旧略記ATを仕様に残さない。
+## 採択済み契約と未完了gate
 
-性格診断もPhase 1初期公開から必須。BIRTH_STYLE（プロフィールの本人氏名・生年月日を使う占い風の決定的割当）、HABITAT_RANDOM（海/空/陸random）、DIAGNOSIS（64タイプ）の三入口を卵期間に選択する。初期16種×各4外見＝64タイプ、将来64種への拡張方針は確定。診断は6軸各4問の24問・5段階回答を採用し、恐竜の姿での過ごし方や身近な本人の傾向を中心に、色・形だけに偏らず牧場機能の予備知識を求めない。同点になった軸だけ本人に二択を追加し最大6問、保留または別方式の選択を許す。ランダムも同じ初期16種×4外見からLAND/SEA/AIRで候補組を絞り、species＋variantの組を均等抽選する。旧診断pool除外条件は撤去する。個別設問・採点式・全64 mapping・占い計算/名前正規化・種名簿/4デザインは未確定。公開gateは三方式の承認済みserver rule/本人プロフィール取得・確認/validation/全64 mappingと必要素材が揃うこと。未実装を利用可能と装わず、暫定公開で診断を後回しにしない。
-
-提案構造: 本人診断sessionをserver発行しquestionnaireVersion/scoringVersionをsnapshot、回答は本人sessionへ送信、serverがvalidationと採点をしてCOMPLETED結果（provider/typeCode/mappingVersion）を不変保存する。選定確認時に本人COMPLETED結果と対応表versionを検証してspeciesを固定。clientのtypeCodeを結果として信用しない。診断結果が変わっても確認済みの同恐竜を維持する。質問/回答/診断resultはprivate、報酬outbox/共有プロフィールへ出さず、診断完了回数をpoints/XPにしない。質問/画像/算法の外部サイト利用許諾/APIは未確認で、無断複製を前提にしない。
-
-診断session API/DTO/質問master/採点rule/結果tableの完全な契約と素材仕様は、未裁可内容を決めてから本草案へ補完する。現在の草案は選定adapterと保存/認可/同恐竜維持の境界までを示すレビュー資料で、診断本体をこのまま実装可能と主張しない。Phase 1の4〜8週は診断/64素材追加前の旧概算であり再見積が必要。全体3〜6か月も既存基盤/準備済みアートの旧前提の候補で、診断と素材次第で超える。
-
-## 基本設計と後続モジュール設計の境界
-
-追加AC51〜60は実装時の検証契約で、現在のgreen結果ではない。未裁可の入力/採点/素材内容に依存するACは承認fixtureを作ってから実行する。
-
-| 領域 | 基本設計で定める境界 | 後続モジュール設計で確定する内容/公開gate |
-|---|---|---|
-| 診断 | Phase 1三入口必須、本人session/server採点/version固定、全64 mapping、結果private、再診断同個体 | 24問/5段階・同点軸のみ追加二択最大6（保留/別方式可）は採用済み。個別質問文/採点式/同点回答完了契約、完全API/DTO/DDL、provider利用権。ユーザー回答を得て補完し、承認前公開なし |
-| 出生割当 | 本人profile-derived氏名/DOB、決定性、auth外raw非保存、確認版照合と保存済みresult retry | auth読取facade/欠損補完導線、日付の商品範囲、算法/対応表/正規化規則、確認版/指紋とversion/key管理手順。具体内容は勝手に選ばない |
-| 二style素材 | 96×96 PIXEL/PAINT_2D保存切替、同個体維持、欠落fallback、motion抑制 | 初期16種×4バリエーション、成長段階と必要反応/静止素材、共通anchor/素材schema、両style制作検証。比較試作だけで公開完成としない |
-| 歩行/広い牧場 | Phase 1 idle歩行なし、個体ID維持 | 後続Phaseの移動/方向/歩行素材と相互作用。現行歩行試作をPhase 1完成証拠にしない |
-| 退会cleanup | 申請で停止・取消で同じ恐竜アバター復帰・最終purgeで削除は確定、機能OFFでもライフサイクル処理継続 | worker/本人mutationとのrace、tombstoneの永続場所・照合/保持、冪等再送と障害回復。具体契約とIT証拠を補完するまでgreenにしない |
-| 操作/親密度 | 3ボタンとmenu、非減衰親密度を仕草・反応で表現は承認済み。卵は触る/選び方/ようす、追加通貨なし | 操作の具体導線、無料給餌・ふれあい加算/連打加算なしは採用済み。加算単位/内部値と反応・言葉の閾値/保存方法、初期基本反応の種類。数値公開ゲージは未承認。1種pilotで制作量を計測して追加反応を段階化 |
-
-基本設計の検分/CIと、上表の詳細裁可・実装UT/IT/実機・公開gateは別である。🟡草案を維持し、診断本体や64素材、Phase 1実装が完成したとは表現しない。
-初回証拠AC: Blog撤回でpublishedAt=NULLになっても再公開を初回と推定しない。native firstPublishedAt/known-history未採用または証拠不明は0。attendance proxy/UNDECIDED/impersonation履歴不明のupdateもUNKNOWN0。admin commandの管理shard/各source facade scope境界をAC45で検証し、分散共通key保証を主張しない。source別TX前の取りこぼしは運営にも完全観測できない場合を含む。
-
-Loss窓の連続AC: 本体初回commit成功→別TX witness/outbox前crash→復旧→編集/再公開/出欠update。元HTTP成功を維持し、信頼できる不変初回marker/当時actor/originが無ければ0。現在author/proxy/publishedAt=NULLから再生成禁止。sourceの本来の業務validation/row保存失敗は通常の失敗応答を維持。
+三方式/独自数秘/24問構成/本人結果独立/命名は01、source配送とDDLは02、API/auth guard/確認参照は03、画面/両styleは04を正本とする。質問の公開内容、全恐竜デザイン/対応表、親密度と運営値の本番調整、TL/Blog完全一致期間案は未承認。実装は部分製造で全体合格ではない。初回証拠とtransport loss窓はAC07/09/11/21/22/31/72で現在状態からの資格捏造なしを検証する。
 
 ### AC61 孵化時の不可逆命名（ユーザー確定）
 
@@ -149,19 +127,7 @@ Loss窓の連続AC: 本体初回commit成功→別TX witness/outbox前crash→�
 
 ### 今回の裁可に伴う検証補完
 
-AC51/53/58で16 species×4 variantの全64組・type対応・版固定・成長/再診断/style切替後の同外見維持を検証する。AC32は申請時削除の旧文言を撤去し、取消復帰と最終削除を別fixtureへ分ける。親密度は放置/休止/未ログインで下がらず、反応差だけで本体権利/成長/報酬差が発生しない条件を詳細化する。追加の親密度command/保存契約・テストIDは詳細設計後に登録する。未実装/未検証をgreenとしない。
-
-## 2026-10-03の追加裁可
-
-初期16種×各4バリエーション＝64タイプ、将来64種へ拡張。生年月日＋名前は固定の割当方式にし、既存占いと対応できる方式を優先して検討（数秘術を参考にする方向は採用、具体計算/対応表は未確定）。退会取消で同じ恐竜アバターを戻し、最終アカウント削除で消去。孵化後の3ボタンと非減衰親密度の仕草・反応表現を採用。恐竜の姿での過ごし方の質問は可、牧場機能の知識を前提にした質問は改稿する。素材・動作の大量生成を一度に要求せず、制作時間/品質を1種pilotで確認する計画案を用意する。
-
-## 恐竜アバターの位置づけ・自分の診断結果（2026-10-03ユーザー確定）
-
-恐竜は、本人の好みや個性を映した「自分自身の恐竜の分身」として扱う。牧場主は牧場の操作・農作業・建築を担当するプレイヤーキャラクター。恐竜アバターと牧場主は表示・操作上の役割を分け、既存の別エンティティ・同一恐竜個体の継続という技術境界は維持する。64タイプ診断と生年月日・名前占いは本人自身の結果として見返せる。診断で能力や優劣を決めず、科学的な性格測定として案内しない。
-
-64タイプ診断と生年月日・名前の占いは、恐竜アバターの「ようす」から本人がいつでも見返せる。未実施の方式は「未診断」と表示し、別方式の結果を捏造しない。結果閲覧の主目的を「恐竜アバターを選んだ時の記録」としない。未実施の診断は後から実施でき、再診断も新しい本人の結果を作るだけで、確定済み恐竜アバターの個体・種・外見・名前・成長・親密度を変えない。診断実施・閲覧・再診断をポイントや育成条件にしない。誕生に使った結果との内部参照は、同個体維持のための記録としてUIの主題から分ける。
-
-数秘術を参考にした自分の占いの方向と、初期反応を待機・食べる・短い喜びに絞る案は採用済み。今回採用した24問/5段階・同点軸の追加二択と、個別設問/採点式の未確定範囲を分ける。日本語氏名の正規化、11/22/33を含む数の扱い、ローマ字変換、恐竜対応表は今回の承認に含めない。初期16種×4外見の具体名簿/デザインと親密度閾値も未確定。ランダムは同catalogのhabitat該当組を均等抽選する採用方針へ更新する。
+AC51/53/58で16 species×4 variantの全64組・type対応・版固定・成長/再診断/style切替後の同外見維持を検証する。AC32は申請時削除の旧文言を撤去し、取消復帰と最終削除を別fixtureへ分ける。親密度は放置/休止/未ログインで下がらず、反応差だけで本体権利/成長/報酬差が発生しない条件を詳細化する。追加の愛着command/保存unitは02/03、追加試験はAC64で追跡する。未実装/未検証をgreenとしない。
 
 ### 追加AC62: 自分の結果を恐竜アバターから見返す
 
@@ -169,26 +135,51 @@ AC51/53/58で16 species×4 variantの全64組・type対応・版固定・成長/
 |---|---|---|
 | 62 本人結果閲覧 | 64診断/占い各0件・一方式のみ完成・両完成・履歴ありの導線。卵/孵化後、再読込/別端末、PAUSED/非表示/STOPPED/care・報酬停止/残高0でも読取可。退会申請で拒否・取消で同result復帰・最終削除でcleanup。anonymous401、他人/不在/未完了同形404、不正cursor400。raw DOB/name/回答の返却・共有・ログ0。版変更でも過去snapshot維持、再診断で恐竜アバターID/名前/species/variant/XP/親密度/points不変。6言語・keyboard・画面到達を検証 | UT/IT/FE UT/E2E |
 
-ACは合計62件。追加結果閲覧はユーザー確定したPhase 1要件、API/保存案は未実装で検証未実行。基本の物語・商品方針は合意が進んだが、診断の個別設問/採点式/同点回答完了契約、本人プロフィール読取・補完/確認版照合、占い入力正規化、親密度の保存・加算契約、報酬源の初回/再投稿と退会raceの詳細補完・検分が残る。報酬量・成長量の数値調整は運営設定へ遅らせられるが、未定の技術契約や正式検分を完了扱いにしない。
+ACは追補込み73件。追加結果閲覧はユーザー確定したPhase 1要件。全ACの主検証欄は計画で、実装class/methodとgreen実テスト名の照合は未完了。技術契約は02/03に統合し、質問内容/対応表/素材とsource完全一致期間案を未決として残す。
 
 対応表を決める時期はユーザー確定: 診断/占いと具体的な恐竜との対応表は恐竜のデザイン完成後に作成する。基本設計の完了に実際の割り当てデータは要求しない。版付きmappingの入出力・未登録時は有効化不可・旧個体を置換しない境界は設計で維持する。16種名簿/4外見/素材制作と対応表作成を後続タスクに分け、公開前にはAC51の全64対応を検証する。基本設計の完了と素材完成・初期公開可能の判定を混同しない。
 
-## 今回採用した詳細方針と本人プロフィール利用
+## 採択済み商品仕様の参照
 
-恐竜は本人の分身として扱うため、出生占いには本人氏名と本人の生年月日を使う。nickname、恐竜の名前、牧場主名、任意の選定用名を代用しない。恐竜と牧場主の別エンティティ・孵化時命名・確定後の名前不変は維持する。
+三方式・独自数秘・本人の分身・同個体維持・96論理ドット/2D・無料成体の正本は[01 商品契約](01_product_phases.md)。
 
-認証された本人のプロフィールをサーバー側のauth読取facadeで取得する方針。既存auth/UserEntityにはlastName/firstName/lastNameKana/firstNameKana/birthDateがあり、出生情報はauthの既存暗号化保存を利用する。`/api/v1/users/me` はprincipal-onlyのgetMyProfile→UserService.getUserProfileを使い、UserProfileResponseは姓名/カナを返すがbirthDateは返さず、UpdateProfileRequestにもbirthDateはない。登録時にはRegisterRequest/register.vueでbirthDate入力があるが、既存汎用プロフィール更新で訂正できる前提にしない。育成との取得連携は未実装で、auth専用読取facadeを追加する設計案が必要。既存設定画面で氏名・生年月日を補完できるとは未確認なので、欠損時のプロフィール補完導線も設計対象にする。
+## 追補AC63〜73（軍議採択、全体green未証明）
 
-出生選定前にプロフィールを使うことを本人へ明示し確認する。欠損を任意名で埋めず補完へ戻す。確認から確定の間にプロフィールが変わった場合は再確認する。本人プロフィールの版/指紋の取得・照合、confirmationの期限、同時更新、結果保存と選定確定のTX境界、再送の詳細API/DTO/DDLは後続設計で確定する。成功した同command/resultの再送は保存済み結果を返し、現在プロフィールで再計算しない。プロフィール変更や新しい結果作成後も確定済み恐竜アバターを維持する。
+| 追補AC | 観測する結果 | 実装責務 | UT / IT / UI / E2E追跡 |
+|---|---|---|---|
+| 63 結果導線の独立 | ranch未参加でも本人診断を開始/結果読取。非表示時も設定から一覧/詳細/未診断/再診断へ到達、ranch開始を強制しない。既存resultは0件200、他人/未完了404 | DIAGNOSIS+FE-QUIZ | UT63-snapshot / IT63-unenrolledResult / UI63-settingsResults / REAL63-hiddenEntry |
+| 64 非減衰指標の保存 | versioned affinity unit(kind+UTC日dev値)でfeeding/touch各初回だけ加算、別key/二tab/連打0。週XP枠後も反応可、egg touchはXP0、pause/放置で減少0、権利/成長倍率/points差0 | CORE Care/Affinity | UT64-unit±1 / IT64-concurrentUnit / UI64-reactionNoGauge / REAL64-cappedTouch |
+| 65 出生確認能力の境界 | ACTIVE先lock→PRIMARY成功lookup→live profile検証の順、MICROSのDB/JSON/HMAC一致。本人revision/HMAC用途/nonce/withdrawalAttemptId/expiryを検査。TTL直前/丁度/後、未知/他人ref、鍵rotationで旧ref拒否、全profile変更経路後の旧ref拒否。診断作成・Ranch出生選定それぞれの成功PRIMARY replayをlive検査より優先し、成功同key再送はprofile変更後も元result。初回出生選定はlive確認ref revision R=OwnedResult内部sourceProfileRevision、DIAGNOSIS=null/BIRTH_STYLE>=0を照合。新refで旧profile由来resultは409、内部metadataは公開Summaryに追加せず、本人履歴閲覧は維持。name/DOB/kana/refのlog複製0 | AUTH+DIAGNOSIS | UT65-signatureExpiry / IT65-profileWritePathsRace / UI65-reconfirm / REAL65-twoTabProfile |
+| 66 退会状態の新旧照合 | request→cancel→re-requestを逆順配送しても古い通知は無効。既存attemptIdと最新auth状態で照合し、PURGING barrierとconsumer/command/latequeue競合後再作成0。partial cleanup失敗→retryは同じ削除結果、OFF下も実行、取消は元PAUSED保持。出生結果保存/初回選定とprofile更新/申請を競合させても、ACTIVE lock・同revision照合・成功replay優先を維持しguard再帰0 | AUTH+全cleanup | UT66-withdrawalAttemptOrder / IT66-purgeBarrierRace / UI66-cancelRestores / REAL66-lifecycle |
+| 67 完全一致証跡（比較期間/正規化はユーザー回答待ち） | 承認normalization/version/window内で新ID同文一件だけ、NFC/改行/前後空白/添付/記事title比較fixtureと同時winnerを照合。窓±1/keyrotation/loss/retentionを明示、本文複製0、源外/想起意味比較0 | TL/CMS | UT67-normalizationMatrix / IT67-duplicateRaceLoss / UI=—source内 / REAL67-newIdDuplicate |
+| 68 私的一覧keyset | records/inventory/results 0/1/100/101件、limit0/1/100/101、同timestamp cursor、別user/filter/tamper cursor400。completedAt MICROSのDB/JSON/cursor一致で重複0、data量でquery数が増えずbounded keyset、raw source/name/回答なし | CORE/DIAGNOSIS | UT68-cursorBinding / IT68-queryCount / UI68-emptyNextPage / REAL68-pagination |
+| 69 診断回答とtie版 | 全3→tie6、正負同点、tie0/1/6、23/24/25問、未知/重複/boolean/0/6拒否。tie表示後回答改版→古tie409。保留再開同snapshot、cancel後complete不可、二tab/retry一result/無報酬 | DIAGNOSIS | UT69-sixAxisMatrix / IT69-answerRevisionRace / UI69-holdResume / REAL69-tieResume |
+| 70 公開coverage | 全64type×16種4外見、3habitat候補、EGG/BABY/JUVENILE/ADULT×両style×基本反応/静止fallbackをmanifest照合。type欠落/重複/非approved/未登録rule/pool空で有効化拒否、fixture catalogはprod登録不可 | OPS/FE manifest | UT70-coverage / IT70-enableRejected / UI70-preparing / REAL70-unavailable |
+| 71 scene資源停止 | carousel非active/accordion閉/card collapsed/viewport外/context非active/document hiddenを個別判定し保持DOM中timer/RAF/audio0。初回有効表示前asset/audio fetch0、OS reduceは背景停止/短い色表情許可、STOPPED全静止、復帰catchupなし | FE-RENDER+FE-WIDGET | UT71-eachVisibilityCause / IT=—scene内 / UI71-resourceCounts / REAL71-browserMotion |
+| 72 transport容量と終端 | bounded queue満杯でも本体HTTP成功/非blocking、CallerRunsなし。lease満了±1/古tokenACK拒否、poison隔離、shutdown loss、transport後restart重複0。源ごとhealth/retry本文なし、source identity偽装拒否 | SOURCE+OPS | UT72-backoffJitter / IT72-queueAndLeaseFailureMatrix / UI72-health / REAL72-sourceSavePriority |
+| 73 start後表示失敗とsave衝突 | start成功→widgetPUT失敗は同個体維持、表示のみretry。settings409は再取得しuser再操作、応答喪失元key維持、null/errorを空成功へ握り潰さない。slot/命名dialog focus復帰 | CORE/FE-WIDGET/QUIZ | UT73-stateTransitions / IT73-widgetSeparateTX / UI73-conflictRecovery / REAL73-startResponseLoss |
 
-元の姓名・カナ・生年月日はauthの既存保存を正本とし、計算時に取得する。診断には派生結果だけを保存し、ranch側の元PII複製は0。本人結果/履歴API・共有/報酬payload/records/log/auditにも元PIIを出さない。本人専用の入力確認responseでの最小項目表示は別途設計する。clientからbirthDate/selectionNameを送る旧契約は撤去し、本人session/resultと確認状態を参照するrequestへ変更する案とする。利用説明に本人氏名・生年月日の利用目的を明示する案を用意するが、今回privacy policy本文は変更しない。
+## 完全性消込み表
 
-無料給餌とふれあいで非減衰親密度を育て、連打による加算はしない。内部値を反応・言葉の段階へ対応させ、放置/休止/未ログインで下げない。加算単位、連打判定、閾値、保存/冪等commandの詳細は未確定。追加通貨や本体権利/成長/報酬差は設けない。
+| 攻め口 | 試練対象 | 該当/消込み根拠 |
+|---|---|---|
+| 正常 | 01/02/04/07/11/13/16/17/24/41/44/47/51/55/58/61/62、63/69/73 | 無料未所属で全導線、三方式、4source、本人結果と同個体 |
+| 空/0/null | 14/29/39/44/47/52/55/60/61/62、63/68/70 | null未参加、0prompt/empty lists/欠損PII/空catalog・必要件数0 |
+| 境界 | 04/05/18/19/30/36/37/46/52/56/60/61、64/65/66/67/68/70/72 | cap N±1、UTC瞬間、grapheme/byte、tie0..6、TTL/rotation/世代/ページ上限 |
+| 途中失敗 | 06/13/21/22/23/31/38/42/48/57、65/66/67/69/72/73 | rollback/aftercommit reject/crash/古ACK/応答喪失/部分cleanup/公開gate |
+| 認可 | 08/26/40/49/50/53/54/55/57/62、63/65/66/68/71 | 本人guard、全role/別tenant、source identity、private cursor、PII leakage |
+| 性能 | 23/27/28/30/59/60、67/68/70/71/72 | source bounded queue/lease、query一定数/keyset、非active timer0・asset lazy、BIGINT |
 
-同じ投稿/記事の再編集・再公開・再送は再付与しない。新IDでも一定範囲の同内容完全一致は報酬対象外とし、源件数/個人全体上限を併用する。意味をAIで判定しない。完全一致の正規化、比較範囲/期間、本文を複製しない証跡の保存場所・保持/消去、同時投稿の競合と配送での判定は後続設計で確定する。本体投稿の保存成功と報酬対象外の判定を分け、報酬都合で本体保存を妨げない。想起entryの意味類似判定へ対象を広げない。
+全類型が該当するため「該当なし」で省いた類型はない。既存ACの広い文をこの表だけで充足扱いにせず、分割fixtureごとのred/green実名を台帳へ残す。source別failure matrixとrole別実機証拠を併せる。
 
-上記は商品方針の更新と後続設計境界であり、実装・テスト成功・公開完了を意味しない。
+## 製造・検証の現在地（2026-10-03）
 
-## 恐竜を本人の分身として扱う（2026-10-03ユーザー確定）
+全Phase 1製造・検分・実機・アリシゼーションと最終commit/push/mergeの作業方針はユーザー裁可済み。これは公開内容や検証合格の裁可ではない。設計の歴史調査基準b3efd80は旧実装の説明用、軍議基準mainは38f8264212c2a3730ce645cebf40502d2d16338e。
 
-恐竜アバターは自分自身の分身。本人の氏名・生年月日と診断を本人の情報として扱う。プロフィール参照、結果閲覧、再診断後の同個体維持、孵化時の命名・名前不変、無料のお世話は維持する。従前の親密度は、自分のアバターへの愛着・なじみが仕草や反応へ表れる育成指標として扱い、放置による減少や連打加算はない。具体表示名や閾値は詳細設計で補完する。牧場主との役割分担とデータ構造を、用語変更だけで再設計しない。
+当時の担当報告ではRANCH-CORE骨格61ファイルのcommitは2a6a1810、AUTH/DIAGNOSISの41pathは未commitでstubを含み、FEの17UTはローカルcomponent/純粋計算のみgreen、型チェック未完了だった。BEも:compileJava通過後、compileTestJava時のWSL EIOでtest未到達との報告だった。WSL疎通回復後は旧/tmpがすべて不存在で原因未確認（親担当からのWSL再起動・削除は実施していない）、旧native commitと試験logの実体を現在確認できない。これらは歴史報告であり、現在の保全・合格証拠ではない。親担当はbase38（38f8264212c2a3730ce645cebf40502d2d16338e）のcleanな新/var/tmp/mannschaft-ranch-20261003-koko配下4worktreeを作成し、Windows保存scriptsから再構成・再試験中。17FE試験も再実行必須。全checks/73AC照合/実Security401・403・IDOR/実MySQL race/実機E2E/住民探索/mergeの合格は未証明。draft PR #3617（当時記録head ddaf52）は未mergeの記録で、現在headの証拠とは分ける。資料・静的HTML検査をアプリや実機の合格として扱わない。
+
+活動consumer・運営/商品/slot/旧badge統合・四源transport・AR実画面・最終purge・全素材manifest/対応表が残る。TL/Blogの新ID同内容完全一致は、同user・同feature・同UTC週で最初一件だけとする比較案がユーザー回答待ち。正規化/比較期間を確定と書かず、そのsource仕様と公開gateに未決を限定する。他の製造を停止する理由にしない。
+
+### 採択済みauth admissionの検証追跡
+
+AC65/66/72の並行/途中失敗fixtureに、非TX Guard→single Semaphore.tryAcquire→別REQUIRES_NEW Runner proxy→PRIMARY read/writer順次→commit/rollback後finally permit復帰を含める。P不明/P<2は503、P2/3/4/5/50のG式と2G≤P、上限即503/callback0、ambient TX/再帰拒否、成功/認可失敗/callback例外/commit失敗のpermit復帰を検証する。既存共有pool他経路の完全予約を保証せず、3秒connection timeoutも観測する。設計採用済み、製造/実MySQL試験未実行。
