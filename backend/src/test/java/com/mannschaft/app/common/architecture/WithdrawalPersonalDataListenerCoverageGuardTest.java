@@ -38,7 +38,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 class WithdrawalPersonalDataListenerCoverageGuardTest {
 
     private static final Path REPOSITORY_ROOT = findRepositoryRoot();
-    private static final Path MAIN_CLASSES = REPOSITORY_ROOT.resolve("backend/build/classes/java/main");
     private static final Path LEDGER = REPOSITORY_ROOT.resolve(
             "docs/architecture/withdrawal_flow_immediate_anonymization_fix.md");
     private static final String LEDGER_START = "<!-- GDPR_EVENT_LISTENER_LEDGER_START -->";
@@ -105,11 +104,7 @@ class WithdrawalPersonalDataListenerCoverageGuardTest {
     }
 
     private static Set<Subscription> productionSubscriptions() {
-        assertThat(MAIN_CLASSES)
-                .as("mainクラスがコンパイル済みであること")
-                .isDirectory();
-
-        return subscriptionsFrom(new ClassFileImporter().importPath(MAIN_CLASSES));
+        return subscriptionsFrom(ProductionClasses.get());
     }
 
     private static Set<Subscription> subscriptionsFrom(JavaClasses classes) {

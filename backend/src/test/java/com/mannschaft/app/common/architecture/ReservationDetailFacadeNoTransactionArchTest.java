@@ -2,8 +2,6 @@ package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.reservation.service.ReservationDetailFacade;
 import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -17,9 +15,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 @DisplayName("ReservationDetailFacade は @Transactional を持たない")
 class ReservationDetailFacadeNoTransactionArchTest {
 
-    private static final JavaClasses CLASSES = new ClassFileImporter()
-            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-            .importPackages("com.mannschaft.app.reservation.service");
+    private final JavaClasses productionClasses = ProductionClasses.get();
 
     @Test
     @DisplayName("クラスに @Transactional が無い")
@@ -28,7 +24,7 @@ class ReservationDetailFacadeNoTransactionArchTest {
                 .should().notBeAnnotatedWith(org.springframework.transaction.annotation.Transactional.class)
                 .andShould().notBeAnnotatedWith(jakarta.transaction.Transactional.class)
                 .allowEmptyShould(false)
-                .check(CLASSES);
+                .check(productionClasses);
     }
 
     @Test
@@ -38,6 +34,6 @@ class ReservationDetailFacadeNoTransactionArchTest {
                 .should().notBeAnnotatedWith(org.springframework.transaction.annotation.Transactional.class)
                 .andShould().notBeAnnotatedWith(jakarta.transaction.Transactional.class)
                 .allowEmptyShould(false)
-                .check(CLASSES);
+                .check(productionClasses);
     }
 }

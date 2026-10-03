@@ -8,6 +8,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.annotation.Schedules;
 
@@ -41,15 +42,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <b>コンテナ形式でも番人が拾うこと</b>を実証する。</p>
  */
 @DisplayName("バッチ規約 番人 判定ロジックの偽陰性ゼロ証明（メタテスト）")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ScheduledBatchGuardConditionTest {
 
     private static final String FIXTURES_PACKAGE =
         "com.mannschaft.app.common.architecture.fixtures";
 
-    private static JavaClasses fixtureClasses;
+    private JavaClasses fixtureClasses;
 
     @BeforeAll
-    static void importFixtures() {
+    void importFixtures() {
         fixtureClasses = new ClassFileImporter().importPackages(FIXTURES_PACKAGE);
     }
 
@@ -392,7 +394,7 @@ class ScheduledBatchGuardConditionTest {
     // ── ヘルパー ──────────────────────────────────────────────────────
 
     /** fixture の指定メソッドを取得する。 */
-    private static JavaMethod method(String methodName) {
+    private JavaMethod method(String methodName) {
         return fixtureClasses.get(ScheduledBatchFixtureBatch.class).getMethods().stream()
             .filter(m -> m.getName().equals(methodName))
             .findFirst()

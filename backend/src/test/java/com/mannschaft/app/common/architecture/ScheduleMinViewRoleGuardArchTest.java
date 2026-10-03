@@ -2,9 +2,6 @@ package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -60,16 +57,7 @@ class ScheduleMinViewRoleGuardArchTest {
             Path.of("src/main/java/com/mannschaft/app/timetable/personal/listener/"
                     + "PersonalTimetableLinkSyncListener.java"));
 
-    private static JavaClasses productionClasses;
-
-    @BeforeAll
-    static void importProduction() {
-        // DoNotIncludeTests: メタテストの fixture を本番判定へ混入させない
-        //（VisibilityArchitectureTest と同じ作法）。
-        productionClasses = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages("com.mannschaft.app.schedule");
-    }
+    private final JavaClasses productionClasses = ProductionClasses.get();
 
     // ═════════════════════════════════════════════════════════════════════
     // 判定ロジック（単一正準・メタテストから直接呼ばれる）

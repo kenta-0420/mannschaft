@@ -5,12 +5,11 @@ import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ContentVisibilityResolver;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
+import com.mannschaft.app.common.architecture.ProductionClasses;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaFieldAccess;
 import com.tngtech.archunit.core.domain.JavaMethod;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -51,9 +50,7 @@ class ScheduleCommentResolverUniquenessTest {
 
     /** クラスパス上の全 Resolver 実装から「クラス名 → 宣言している referenceType 定数名」を静的に読む。 */
     private static Map<String, String> declaredReferenceTypes() {
-        JavaClasses imported = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
+        JavaClasses imported = ProductionClasses.get();
 
         Map<String, String> byClass = new LinkedHashMap<>();
         for (JavaClass clazz : imported) {

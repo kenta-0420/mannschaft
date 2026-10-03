@@ -19,6 +19,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 
 /**
  * 認可番人（{@link AuthzControllerGuardArchTest}）の合格判定ロジックが
@@ -51,15 +52,16 @@ import org.junit.jupiter.api.Test;
  * </ul>
  */
 @DisplayName("認可番人 合格判定ロジックの偽陰性ゼロ証明（メタテスト）")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class AuthzControllerGuardConditionTest {
 
     private static final String FIXTURES_PACKAGE =
         "com.mannschaft.app.common.architecture.fixtures";
 
-    private static JavaClasses fixtureClasses;
+    private JavaClasses fixtureClasses;
 
     @BeforeAll
-    static void importFixtures() {
+    void importFixtures() {
         // fixture パッケージだけを読み込む（本番番人とは独立の import）。
         // BFS の委譲先（DummyDelegateService/DummyAccessGuard）も同パッケージのため
         // resolveMembers() で実装体に解決できる。
@@ -194,7 +196,7 @@ class AuthzControllerGuardConditionTest {
     // ------------------------------------------------------------------
 
     /** fixture Controller から指定名の Mapping メソッド（引数1つ・Long or それ以外の単一引数）を取得する。 */
-    private static JavaMethod mappingMethod(Class<?> controller, String methodName) {
+    private JavaMethod mappingMethod(Class<?> controller, String methodName) {
         JavaClass javaClass = fixtureClasses.get(controller);
         return javaClass.getMethods().stream()
             .filter(m -> m.getName().equals(methodName))

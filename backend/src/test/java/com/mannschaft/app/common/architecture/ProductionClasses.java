@@ -61,6 +61,12 @@ public final class ProductionClasses {
 
         private final Supplier<JavaClasses> importer;
 
+        /** 取り込み成功後の結果。成功するまで null。volatile で二重検査ロックの公開を安全にする。 */
+        private volatile JavaClasses value;
+
+        /** 初回の失敗。以後の呼び出しはこれを cause に持つ ISE を投げる（synchronized 内でのみ読み書き）。 */
+        private Throwable failure;
+
         Memoizer(Supplier<JavaClasses> importer) {
             this.importer = importer;
         }
@@ -71,8 +77,34 @@ public final class ProductionClasses {
          * @return 取り込み結果（非空）
          */
         JavaClasses get() {
-            // TODO(CMP-261002-1606 出陣): 1回だけ取り込み・失敗の再送・空結果の拒否を実装する
-            throw new UnsupportedOperationException("未実装: CMP-261002-1606");
+            JavaClasses current = value;
+            if (current != null) {
+                return current;
+            }
+            synchronized (this) {
+                if (value != null) {
+                    return value;
+                }
+                if (failure != null) {
+                    throw new IllegalStateException(
+                            "本番クラスの取り込みは既に失敗している（再試行しない）", failure);
+                }
+                JavaClasses imported;
+                try {
+                    imported = importer.get();
+                } catch (RuntimeException | Error e) {
+                    failure = e;
+                    throw e;
+                }
+                if (imported == null || imported.isEmpty()) {
+                    IllegalStateException empty = new IllegalStateException(
+                            "本番クラスの取り込み結果が" + (imported == null ? " null" : "空") + "だった");
+                    failure = empty;
+                    throw empty;
+                }
+                value = imported;
+                return imported;
+            }
         }
     }
 }

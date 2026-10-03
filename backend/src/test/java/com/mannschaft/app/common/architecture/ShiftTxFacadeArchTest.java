@@ -4,12 +4,9 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,14 +60,7 @@ class ShiftTxFacadeArchTest {
     private static final String SELF_SCOPED_CONTROLLER = PKG + ".controller.ShiftRequestController";
     private static final String SELF_SCOPED_METHOD = "listMyRequests";
 
-    private static JavaClasses classesUnderTest;
-
-    @BeforeAll
-    static void importClasses() {
-        classesUnderTest = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses classesUnderTest = ProductionClasses.get();
 
     private static String[] txBodies() {
         return TRIPLES.stream().map(t -> t[0]).toArray(String[]::new);

@@ -5,9 +5,6 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,14 +68,7 @@ class RecruitmentListingTxFacadeArchTest {
             new String[]{PKG + ".controller.CancellationPolicyController", "update"},
             new String[]{PKG + ".controller.CancellationPolicyController", "archive"});
 
-    private static JavaClasses classes;
-
-    @BeforeAll
-    static void importClasses() {
-        classes = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses classes = ProductionClasses.get();
 
     @Test
     @DisplayName("対象の Controller メソッドが実在する（リネームで番人が空振りしない）")
@@ -218,7 +208,7 @@ class RecruitmentListingTxFacadeArchTest {
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
-    private static List<JavaMethod> controllerMethods(String[] target) {
+    private List<JavaMethod> controllerMethods(String[] target) {
         if (!classes.contain(target[0])) {
             return List.of();
         }
@@ -231,7 +221,7 @@ class RecruitmentListingTxFacadeArchTest {
         return owner.getName().startsWith(PKG + ".") && owner.getSimpleName().endsWith("Facade");
     }
 
-    private static List<JavaMethod> calledFacadeMethods(List<String[]> targets) {
+    private List<JavaMethod> calledFacadeMethods(List<String[]> targets) {
         Set<JavaMethod> result = new LinkedHashSet<>();
         for (String[] t : targets) {
             for (JavaMethod m : controllerMethods(t)) {
@@ -245,7 +235,7 @@ class RecruitmentListingTxFacadeArchTest {
         return new ArrayList<>(result);
     }
 
-    private static Set<JavaClass> calledFacades(List<String[]> targets) {
+    private Set<JavaClass> calledFacades(List<String[]> targets) {
         Set<JavaClass> result = new LinkedHashSet<>();
         calledFacadeMethods(targets).forEach(m -> result.add(m.getOwner()));
         return result;

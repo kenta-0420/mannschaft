@@ -856,3 +856,4 @@ public void dispatch() { ... }
 | `@Disabled` を理由なく放置する | 一時的な無効化は許容するが、理由をコメントに記載し、1スプリント以内に解決する |
 | 手書きの INSERT SQL でテストデータを作成する | TestFixture 経由で作成する（`backend/BACKEND_CODING_CONVENTION.md` テストデータ作成パターン参照） |
 | **Controller を `@Autowired` して直接メソッド呼び出しでテストする** | HTTP 層を迂回し、URL パス・HTTP メソッド・enum バインド・JSON 形状・`@Valid`・例外→ステータス変換を一切検証できない。村ドメインで契約不一致 17 件を素通しにした実害あり。MockMvc を使うこと（**§3.1.1** に詳細）|
+| **ArchUnit で本番全体を `ClassFileImporter` で手動取り込みする／`JavaClasses` を static フィールドで保持する** | 取り込み結果が JVM 内に何コピーも残り、全量 CI の shard が `Java heap space` で落ちた（CMP-261002-1606）。本番全体は共有ホルダ `ProductionClasses.get()` だけを使う。番人 `ProductionClassImportGuardTest` が拒否する（詳細: `backend/.claudecode.md` §30）|

@@ -8,6 +8,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,15 +26,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * fixture は番人本体が {@code DO_NOT_INCLUDE_TESTS} で読み飛ばすため本番判定には混入しない。</p>
  */
 @DisplayName("CMP-017b 番人が赤を出せることの実証（メタテスト）")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ScheduleMinViewRoleGuardConditionTest {
 
     private static final String FIXTURES_PACKAGE =
             "com.mannschaft.app.common.architecture.fixtures";
 
-    private static JavaClasses fixtureClasses;
+    private JavaClasses fixtureClasses;
 
     @BeforeAll
-    static void importFixtures() {
+    void importFixtures() {
         fixtureClasses = new ClassFileImporter().importPackages(FIXTURES_PACKAGE);
     }
 

@@ -27,6 +27,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 /**
@@ -54,6 +55,7 @@ import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
  * {@code new ObjectMapper()} は使わない）。
  */
 @DisplayName("D-7 番人 構造条件と実 ObjectMapper の挙動の一致証明（実デシリアライズ）")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JsonRequestBodyCreatorRuntimeProofTest {
 
     private static final String FIXTURES_PACKAGE =
@@ -63,10 +65,10 @@ class JsonRequestBodyCreatorRuntimeProofTest {
     private static final ObjectMapper OBJECT_MAPPER =
         new JacksonConfig().objectMapper(Jackson2ObjectMapperBuilder.json());
 
-    private static JavaClasses fixtureClasses;
+    private JavaClasses fixtureClasses;
 
     @BeforeAll
-    static void importFixtures() {
+    void importFixtures() {
         fixtureClasses = new ClassFileImporter().importPackages(FIXTURES_PACKAGE);
     }
 
@@ -218,7 +220,7 @@ class JsonRequestBodyCreatorRuntimeProofTest {
     // ------------------------------------------------------------------
 
     /** 実 ObjectMapper が壊れると判定し、かつ番人も違反と判定することを固定する。 */
-    private static void assertBothRejected(Class<?> type, String json) {
+    private void assertBothRejected(Class<?> type, String json) {
         assertThatThrownBy(() -> OBJECT_MAPPER.readValue(json, type))
             .as("実 ObjectMapper はこの形のデシリアライザを構築できないはず"
                 + "（Spring では HttpMessageConversionException になり常時 500）")
@@ -231,7 +233,7 @@ class JsonRequestBodyCreatorRuntimeProofTest {
     }
 
     /** 実 ObjectMapper が往復でき、かつ番人も合格と判定することを固定する。 */
-    private static void assertBothAccepted(Class<?> type, String json) {
+    private void assertBothAccepted(Class<?> type, String json) {
         assertThatCode(() -> {
             Object value = OBJECT_MAPPER.readValue(json, type);
             assertThat(value).isNotNull();
