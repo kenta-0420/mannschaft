@@ -279,7 +279,9 @@ public class ReceiptService {
     public ReceiptResponse voidReceipt(ReceiptScopeType scopeType, Long scopeId,
                                        Long receiptId, Long userId, VoidReceiptRequest request) {
         ReceiptEntity receipt = findReceiptOrThrow(scopeType, scopeId, receiptId);
-        checkVoidAdmin(userId, receipt.getScopeId(), receipt.getScopeType());
+        if (!accessControlService.isAdmin(userId, receipt.getScopeId(), receipt.getScopeType().name())) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
 
         if (receipt.isVoided()) {
             throw new BusinessException(ReceiptErrorCode.ALREADY_VOIDED);
@@ -310,7 +312,9 @@ public class ReceiptService {
     @Transactional
     public BulkVoidResultResponse bulkVoidReceipts(ReceiptScopeType scopeType, Long scopeId,
                                                     Long userId, BulkVoidReceiptRequest request) {
-        checkVoidAdmin(userId, scopeId, scopeType);
+        if (!accessControlService.isAdmin(userId, scopeId, scopeType.name())) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
 
         if (request.getReceiptIds().size() > 50) {
             throw new BusinessException(ReceiptErrorCode.BULK_LIMIT_EXCEEDED);
@@ -335,12 +339,6 @@ public class ReceiptService {
                 scopeType, scopeId, voidedCount, skippedCount);
 
         return new BulkVoidResultResponse(voidedCount, skippedCount);
-    }
-
-    private void checkVoidAdmin(Long userId, Long scopeId, ReceiptScopeType scopeType) {
-        if (!accessControlService.isAdmin(userId, scopeId, scopeType.name())) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
     }
 
     /**
