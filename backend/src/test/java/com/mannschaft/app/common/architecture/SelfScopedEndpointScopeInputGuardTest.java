@@ -335,13 +335,22 @@ class SelfScopedEndpointScopeInputGuardTest {
     @DisplayName("AC-6: 台帳の各行が担う契約テストは src/test/java に実在する")
     void 台帳の契約テストが実在する() throws IOException {
         List<String> missing = new ArrayList<>();
+        // 台帳が参照するクラスの単純名を先に集め、そのファイルだけ本文を読む（全テストの本文は読まない）
+        Set<String> needed = new HashSet<>();
+        for (LedgerRow r : LEDGER) {
+            for (String test : r.contractTests()) {
+                needed.add(test.split("#", 2)[0]);
+            }
+        }
         Map<String, String> testSourcesBySimpleName = new LinkedHashMap<>();
         try (Stream<Path> walk = Files.walk(TEST_SOURCE_ROOT)) {
             for (Path p : walk.filter(p -> p.toString().endsWith("IT.java") || p.toString().endsWith("Test.java"))
                     .toList()) {
                 String file = p.getFileName().toString();
-                testSourcesBySimpleName.put(file.substring(0, file.length() - ".java".length()),
-                        Files.readString(p, StandardCharsets.UTF_8));
+                String simple = file.substring(0, file.length() - ".java".length());
+                if (needed.contains(simple)) {
+                    testSourcesBySimpleName.put(simple, Files.readString(p, StandardCharsets.UTF_8));
+                }
             }
         }
         for (LedgerRow r : LEDGER) {
@@ -473,6 +482,41 @@ class SelfScopedEndpointScopeInputGuardTest {
             assertThat(evaluateSpecimen("DriftedPinSpecimenController", List.of(pinRow("DriftedPinSpecimenController"))))
                     .singleElement().asString().contains("allowedRepositoryCalls")
                     .contains("SpecimenPinRepository#save");
+        }
+
+        @Test
+        @DisplayName("修繕r1: interface 経由で呼ばれる実装に save を足すと赤（interface 経由の到達）")
+        void interface経由の実装にsaveを足すと赤() {
+            String repo = "common.architecture.fixtures.selfscopedinput.SpecimenPinRepository#";
+            LedgerRow row = new LedgerRow(S + "PortDriftedSpecimenController#unpin", Set.of("PathVariable:villageId"),
+                    Set.of(repo + "findByUserIdAndVillageId", repo + "delete"),
+                    "検体: interface 経由で自分のピン行を (userId, villageId) で引いて消すだけの行",
+                    APPROVED_0925, List.of("X#y"));
+            assertThat(evaluateSpecimen("PortDriftedSpecimenController", List.of(row)))
+                    .singleElement().asString().contains("allowedRepositoryCalls")
+                    .contains("増えた: [" + repo + "save]");
+        }
+
+        @Test
+        @DisplayName("修繕r1: interface 経由でも save が無ければ台帳どおりで緑")
+        void interface経由でsaveが無ければ緑() {
+            String repo = "common.architecture.fixtures.selfscopedinput.SpecimenPinRepository#";
+            LedgerRow row = new LedgerRow(S + "PortLedgeredSpecimenController#unpin", Set.of("PathVariable:villageId"),
+                    Set.of(repo + "findByUserIdAndVillageId", repo + "delete"),
+                    "検体: interface 経由で自分のピン行を (userId, villageId) で引いて消すだけの行",
+                    APPROVED_0925, List.of("X#y"));
+            assertThat(evaluateSpecimen("PortLedgeredSpecimenController", List.of(row))).isEmpty();
+        }
+
+        @Test
+        @DisplayName("修繕r1: 名前なしの集約 Map / MultiValueMap（RequestParam・PathVariable・RequestHeader）は判定不能で赤")
+        void 名前なしの集約Mapは赤() {
+            for (String name : List.of("AggregateRequestParamMapSpecimenController",
+                    "AggregateRequestParamMultiMapSpecimenController", "AggregatePathVariableMapSpecimenController",
+                    "AggregateRequestHeaderMapSpecimenController")) {
+                assertThat(evaluateSpecimen(name, List.of()))
+                        .as(name).singleElement().asString().contains("名前なしの集約 Map").contains("入力を判定できない");
+            }
         }
 
         @Test
@@ -730,6 +774,11 @@ class SelfScopedEndpointScopeInputGuardTest {
             }
             name = p.getName();
         }
+        if (explicitName.isBlank() && Map.class.isAssignableFrom(p.getType())) {
+            // 名前なしの集約形式（@RequestParam Map / MultiValueMap 等）は任意のキーを受け取れる。引数名では判定できない
+            out.errors.add(kind + " は名前なしの集約 Map（任意のキーを受け取れるため判定不能）: " + p);
+            return;
+        }
         if (isScopeIdName(name)) {
             out.scopeInputs.add(kind + ":" + name);
         }
@@ -894,11 +943,20 @@ class SelfScopedEndpointScopeInputGuardTest {
                         out.repositoryCalls.add(owner.getName().substring(APP.length()) + "#" + access.getName());
                         continue;
                     }
-                    if (!canReach.contains(owner)) {
-                        continue; // Repository に届かない型（DTO・Entity・Mapper 等）
+                    boolean dispatchable = owner.isInterface() || owner.getModifiers().contains(JavaModifier.ABSTRACT);
+                    if (!canReach.contains(owner) && !dispatchable) {
+                        continue; // Repository に届かない具象型（DTO・Entity・Mapper 等）。実装解決も要らない
                     }
                     String label = owner.getName().substring(APP.length()) + "#" + access.getName();
                     List<JavaCodeUnit> targets = implementations(access);
+                    if (!canReach.contains(owner)) {
+                        // 呼び先の型自身が Repository に届かなくても、interface・抽象型の実装が届くことがある。
+                        // 実装の解決後に判定し、届く実装だけを探索に残す（DTO・Entity・Mapper 等は空になって捨てる）。
+                        targets = targets.stream().filter(t -> canReach.contains(t.getOwner())).toList();
+                        if (targets.isEmpty()) {
+                            continue;
+                        }
+                    }
                     if (targets.isEmpty()) {
                         out.unexplored.add(label + "（呼び先を解決できない）");
                         continue;

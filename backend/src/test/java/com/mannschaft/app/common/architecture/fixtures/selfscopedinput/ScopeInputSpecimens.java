@@ -4,9 +4,12 @@ import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.membership.domain.ScopeType;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -157,5 +160,63 @@ class MessageIdSpecimenController {
     @SelfScopedEndpoint("検体: リソースIDの messageId だけを受け取る")
     Object get(@PathVariable Long messageId) {
         return messageId;
+    }
+}
+
+/** 修繕r1: interface 経由で呼ぶ。実装は find → delete だけ（台帳どおり）。緑。 */
+class PortLedgeredSpecimenController {
+
+    private SpecimenPortService service;
+
+    @SelfScopedEndpoint("検体: interface 経由で自分のピン行を引いて消すだけ")
+    void unpin(@PathVariable UUID villageId) {
+        service.unpin(1L, villageId);
+    }
+}
+
+/** 修繕r1: interface 経由で呼ぶ。実装に save が足されている。赤。 */
+class PortDriftedSpecimenController {
+
+    private SpecimenDriftedPortService service;
+
+    @SelfScopedEndpoint("検体: interface 経由の実装に save が足された")
+    void unpin(@PathVariable UUID villageId) {
+        service.unpin(1L, villageId);
+    }
+}
+
+/** 修繕r1: 名前なしの {@code @RequestParam Map}（?teamId= を受け取れる）。赤。 */
+class AggregateRequestParamMapSpecimenController {
+
+    @SelfScopedEndpoint("検体: 名前なしの RequestParam Map を受け取る")
+    Object list(@RequestParam Map<String, String> query) {
+        return query;
+    }
+}
+
+/** 修繕r1: 名前なしの {@code @RequestParam MultiValueMap}。赤。 */
+class AggregateRequestParamMultiMapSpecimenController {
+
+    @SelfScopedEndpoint("検体: 名前なしの RequestParam MultiValueMap を受け取る")
+    Object list(@RequestParam MultiValueMap<String, String> query) {
+        return query;
+    }
+}
+
+/** 修繕r1: 名前なしの {@code @PathVariable Map}。赤。 */
+class AggregatePathVariableMapSpecimenController {
+
+    @SelfScopedEndpoint("検体: 名前なしの PathVariable Map を受け取る")
+    Object get(@PathVariable Map<String, String> vars) {
+        return vars;
+    }
+}
+
+/** 修繕r1: 名前なしの {@code @RequestHeader Map}。赤。 */
+class AggregateRequestHeaderMapSpecimenController {
+
+    @SelfScopedEndpoint("検体: 名前なしの RequestHeader Map を受け取る")
+    Object get(@RequestHeader Map<String, String> headers) {
+        return headers;
     }
 }

@@ -144,3 +144,37 @@ class SpecimenGenericBody<T> {
 
     private T payload;
 }
+
+/** interface 経由で呼ばれる Service（実装は Repository に依存する）。台帳どおり find → delete だけの版。 */
+interface SpecimenPortService {
+
+    void unpin(Long userId, UUID villageId);
+}
+
+class SpecimenPortServiceImpl implements SpecimenPortService {
+
+    private SpecimenPinRepository repository;
+
+    @Override
+    public void unpin(Long userId, UUID villageId) {
+        repository.findByUserIdAndVillageId(userId, villageId).ifPresent(repository::delete);
+    }
+}
+
+/** interface 経由で呼ばれる Service。実装に save を足した版。 */
+interface SpecimenDriftedPortService {
+
+    void unpin(Long userId, UUID villageId);
+}
+
+class SpecimenDriftedPortServiceImpl implements SpecimenDriftedPortService {
+
+    private SpecimenPinRepository repository;
+
+    @Override
+    public void unpin(Long userId, UUID villageId) {
+        Object pin = repository.findByUserIdAndVillageId(userId, villageId).orElseThrow();
+        repository.save(pin);
+        repository.delete(pin);
+    }
+}

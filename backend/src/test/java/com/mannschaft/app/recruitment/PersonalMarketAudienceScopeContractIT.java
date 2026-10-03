@@ -109,7 +109,7 @@ class PersonalMarketAudienceScopeContractIT extends AbstractMySqlIntegrationTest
         mockMvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated());
         assertThat(countPersonalListings(memberId)).isEqualTo(1L);
-        assertThat(countAudienceRows(memberId, teamId)).isEqualTo(1L);
+        assertThat(countAudienceRows(memberId, "TEAM", teamId)).isEqualTo(1L);
     }
 
     @Test
@@ -124,15 +124,68 @@ class PersonalMarketAudienceScopeContractIT extends AbstractMySqlIntegrationTest
         mockMvc.perform(patch(BASE + "/" + draftId).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateBody(otherTeamId))))
                 .andExpect(status().isBadRequest());
-        assertThat(countAudienceRows(memberId, otherTeamId)).isZero();
+        assertThat(countAudienceRows(memberId, "TEAM", otherTeamId)).isZero();
 
         mockMvc.perform(patch(BASE + "/" + draftId).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateBody(teamId))))
                 .andExpect(status().isOk());
-        assertThat(countAudienceRows(memberId, teamId)).isEqualTo(1L);
+        assertThat(countAudienceRows(memberId, "TEAM", teamId)).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("所属の根拠は user_roles だけでも有効（validatePersonalAudienceScopes は findActiveTeamIds の role ∪ membership を使う）: "
+            + "チーム ADMIN ロールのみ（memberships なし）のユーザーは同チームを公開先にできる")
+    void create_user_rolesのみの所属でも公開先にできる() throws Exception {
+        Long roleOnlyId = insertUser("pmaud-roleonly@example.com");
+        MembershipTestHelper.insertUserRole(em, roleOnlyId, "ADMIN", teamId, null);
+        em.flush();
+
+        setAuth(roleOnlyId);
+        mockMvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createBody(teamId))))
+                .andExpect(status().isCreated());
+        assertThat(countAudienceRows(roleOnlyId, "TEAM", teamId)).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("組織の公開先は findActiveOrganizationIds で照合する: 組織 membership があれば ORGANIZATION を公開先にでき、無い非メンバーは 400")
+    void create_組織所属は組織を公開先にできる() throws Exception {
+        // 公開先の行はクロスドメインFKを持たないため、組織 ID は他と衝突しない固定値で足りる（照合は所属表だけを見る）
+        long organizationId = 987_654_321L;
+        MembershipTestHelper.insertMembership(em, memberId, ScopeType.ORGANIZATION, organizationId, RoleKind.MEMBER);
+        em.flush();
+        String body = objectMapper.writeValueAsString(createBody("ORGANIZATION", organizationId));
+
+        setAuth(outsiderId);
+        mockMvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
+        assertThat(countAudienceRows(outsiderId, "ORGANIZATION", organizationId)).isZero();
+
+        setAuth(memberId);
+        mockMvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+        assertThat(countAudienceRows(memberId, "ORGANIZATION", organizationId)).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("SYSTEM_ADMIN でも非メンバーなら公開先にできない（照合は所属表のみで、プラットフォーム権限は所属の根拠にならない）")
+    void create_SYSTEM_ADMINの非メンバーは公開先にできない() throws Exception {
+        Long sysAdminId = insertUser("pmaud-sysadmin@example.com");
+        MembershipTestHelper.insertUserRole(em, sysAdminId, "SYSTEM_ADMIN", null, null);
+        em.flush();
+
+        setAuth(sysAdminId);
+        mockMvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createBody(teamId))))
+                .andExpect(status().isBadRequest());
+        assertThat(countPersonalListings(sysAdminId)).isZero();
     }
 
     private Map<String, Object> createBody(Long audienceTeamId) {
+        return createBody("TEAM", audienceTeamId);
+    }
+
+    private Map<String, Object> createBody(String audienceScopeType, Long audienceScopeId) {
         LocalDateTime start = LocalDateTime.now().plusDays(30).withNano(0);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("categoryId", categoryId);
@@ -147,7 +200,7 @@ class PersonalMarketAudienceScopeContractIT extends AbstractMySqlIntegrationTest
         body.put("paymentEnabled", false);
         body.put("visibility", "SELECTED_SCOPES");
         body.put("location", "PMAUD 会場");
-        body.put("audienceScopes", List.of(Map.of("scopeType", "TEAM", "scopeId", audienceTeamId)));
+        body.put("audienceScopes", List.of(Map.of("scopeType", audienceScopeType, "scopeId", audienceScopeId)));
         return body;
     }
 
@@ -186,14 +239,14 @@ class PersonalMarketAudienceScopeContractIT extends AbstractMySqlIntegrationTest
                 .setParameter("uid", ownerId).getSingleResult()).longValue();
     }
 
-    private long countAudienceRows(Long ownerId, Long audienceTeamId) {
+    private long countAudienceRows(Long ownerId, String audienceScopeType, Long audienceScopeId) {
         em.flush();
         return ((Number) em.createNativeQuery(
                         "SELECT COUNT(*) FROM recruitment_listing_audience_scopes a "
                                 + "JOIN recruitment_listings l ON l.id = a.listing_id "
                                 + "WHERE l.scope_type = 'PERSONAL' AND l.scope_id = :uid "
-                                + "AND a.scope_type = 'TEAM' AND a.scope_id = :tid")
-                .setParameter("uid", ownerId).setParameter("tid", audienceTeamId)
+                                + "AND a.scope_type = :st AND a.scope_id = :tid")
+                .setParameter("uid", ownerId).setParameter("st", audienceScopeType).setParameter("tid", audienceScopeId)
                 .getSingleResult()).longValue();
     }
 
