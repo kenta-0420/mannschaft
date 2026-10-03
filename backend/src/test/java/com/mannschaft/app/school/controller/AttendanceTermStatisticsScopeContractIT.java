@@ -76,6 +76,10 @@ class AttendanceTermStatisticsScopeContractIT extends AbstractMySqlIntegrationTe
         persistDaily(OTHER, TEAM_A, today.minusDays(3), AttendanceStatus.ABSENT);
         persistDaily(OTHER, TEAM_B, today.minusDays(4), AttendanceStatus.ABSENT);
 
+        // 本人に記録のないクラスにも、他人の出欠が実在する。
+        persistDaily(OTHER, TEAM_UNRELATED, today.minusDays(1), AttendanceStatus.ABSENT);
+        persistPeriod(OTHER, TEAM_UNRELATED, today.minusDays(1), 1, "数学", AttendanceStatus.ABSENT);
+
         persistPeriod(ME, TEAM_A, today.minusDays(1), 1, "国語", AttendanceStatus.ATTENDING);
         persistPeriod(OTHER, TEAM_A, today.minusDays(1), 1, "国語", AttendanceStatus.ABSENT);
         persistPeriod(OTHER, TEAM_A, today.minusDays(1), 2, "数学", AttendanceStatus.ABSENT);
@@ -118,6 +122,16 @@ class AttendanceTermStatisticsScopeContractIT extends AbstractMySqlIntegrationTe
     @Test
     @DisplayName("自分に出欠記録のないクラスの ID を指定すると、他人の出欠ではなく空の集計が返る")
     void term_withUnrelatedTeamId_returnsEmptyTotals() throws Exception {
+        // 対象データが実在することの確認: 記録の持ち主には集計が返る。
+        setAuth(OTHER);
+        mockMvc.perform(get(TERM_URL).param("teamId", TEAM_UNRELATED.toString()).param("from", from).param("to", to))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.studentUserId").value(OTHER))
+                .andExpect(jsonPath("$.data.totalSchoolDays").value(1))
+                .andExpect(jsonPath("$.data.absentDays").value(1))
+                .andExpect(jsonPath("$.data.subjectBreakdown[?(@.subjectName=='数学')]").isNotEmpty());
+
+        // 同じ URL で認証主体を本人に差し替えると、他人の出欠は集計に入らない。
         setAuth(ME);
         mockMvc.perform(get(TERM_URL).param("teamId", TEAM_UNRELATED.toString()).param("from", from).param("to", to))
                 .andExpect(status().isOk())

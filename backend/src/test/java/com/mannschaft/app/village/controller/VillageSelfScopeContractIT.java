@@ -153,6 +153,28 @@ class VillageSelfScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
+        @DisplayName("同じ村を本人と他人がピン留めしているとき、同一 URL の解除は要求した主体のピンだけを消す")
+        void unpin_sameUrlUnderDifferentPrincipalRemovesOnlyOwnPin() throws Exception {
+            VillageEntity village = persistVillage();
+            persistPin(ACTOR_ID, village.getId(), 0L);
+            persistPin(OTHER_ID, village.getId(), 0L);
+
+            authAs(ACTOR_ID);
+            mockMvc.perform(delete("/api/v1/me/village-pins/{villageId}", village.getId()))
+                    .andExpect(status().isNoContent());
+            assertThat(pinRepository.findByUserIdAndVillageId(ACTOR_ID, village.getId())).isEmpty();
+            assertThat(pinRepository.findByUserIdAndVillageId(OTHER_ID, village.getId())).isPresent();
+
+            // 認証主体だけ差し替えた同一リクエスト。本人のピンは既に無いので、他人のピンだけが消える。
+            persistPin(ACTOR_ID, village.getId(), 0L);
+            authAs(OTHER_ID);
+            mockMvc.perform(delete("/api/v1/me/village-pins/{villageId}", village.getId()))
+                    .andExpect(status().isNoContent());
+            assertThat(pinRepository.findByUserIdAndVillageId(OTHER_ID, village.getId())).isEmpty();
+            assertThat(pinRepository.findByUserIdAndVillageId(ACTOR_ID, village.getId())).isPresent();
+        }
+
+        @Test
         @DisplayName("並び替えは他人のピンを含む列を受け付けない（自分のピン集合と不一致は 422）")
         void reorder_rejectsOtherUsersVillageIds() throws Exception {
             VillageEntity mine = persistVillage();
@@ -216,10 +238,11 @@ class VillageSelfScopeContractIT extends AbstractMySqlIntegrationTest {
         void reorder_sameRequestUnderDifferentPrincipalChangesOnlyOwnPins() throws Exception {
             VillageEntity first = persistVillage();
             VillageEntity second = persistVillage();
-            VillageEntity theirs = persistVillage();
-            persistPin(ACTOR_ID, first.getId(), 0L);
-            persistPin(ACTOR_ID, second.getId(), 1L);
-            persistPin(OTHER_ID, theirs.getId(), 0L);
+            persistPin(ACTOR_ID, first.getId(), 4L);
+            persistPin(ACTOR_ID, second.getId(), 9L);
+            // 他人も同じ 2 つの村を、本人とは異なる並び順でピン留めしている。
+            persistPin(OTHER_ID, first.getId(), 7L);
+            persistPin(OTHER_ID, second.getId(), 5L);
             String body = json(Map.of("orderedVillageIds",
                     List.of(second.getId().toString(), first.getId().toString())));
 
@@ -230,16 +253,19 @@ class VillageSelfScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk());
             assertSortOrder(ACTOR_ID, second.getId(), 0L);
             assertSortOrder(ACTOR_ID, first.getId(), 1L);
-            assertSortOrder(OTHER_ID, theirs.getId(), 0L);
+            // 同じ村を持つ他人の並び順は維持される。
+            assertSortOrder(OTHER_ID, first.getId(), 7L);
+            assertSortOrder(OTHER_ID, second.getId(), 5L);
 
-            // 認証主体だけ差し替えた同一リクエストは、その主体のピン集合と一致しないため拒否される。
+            // 認証主体だけ差し替えた同一リクエストは、他人自身のピンだけを並び替える。
             authAs(OTHER_ID);
             mockMvc.perform(patch("/api/v1/me/village-pins/order")
                             .contentType(MediaType.APPLICATION_JSON).content(body))
-                    .andExpect(status().isUnprocessableEntity());
+                    .andExpect(status().isOk());
+            assertSortOrder(OTHER_ID, second.getId(), 0L);
+            assertSortOrder(OTHER_ID, first.getId(), 1L);
             assertSortOrder(ACTOR_ID, second.getId(), 0L);
             assertSortOrder(ACTOR_ID, first.getId(), 1L);
-            assertSortOrder(OTHER_ID, theirs.getId(), 0L);
         }
 
         private void assertSortOrder(Long userId, UUID villageId, long expected) {

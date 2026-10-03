@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -233,12 +234,20 @@ class DashboardSelfScopeContractIT extends AbstractMySqlIntegrationTest {
                     .findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(OTHER, ScopeType.TEAM, teamScopeId))
                     .hasSize(1);
 
-            // 自分の行が無い状態で同じ要求を重ねても、他人の行は残る。
+            // 同じ URL・同じパラメータで認証主体だけを OTHER に差し替える。
+            // 本人（ME）の行を改めて用意し、OTHER の要求で ME の行が変わらないことも確認する。
+            widgetSettingRepository.save(DashboardWidgetSettingEntity.builder()
+                    .userId(ME).scopeType(ScopeType.TEAM).scopeId(teamScopeId)
+                    .widgetKey("NOTICES").isVisible(false).sortOrder(0).build());
             mockMvc.perform(delete("/api/v1/dashboard/widgets")
-                            .param("scopeType", "TEAM").param("scopeId", String.valueOf(teamScopeId)))
+                            .param("scopeType", "TEAM").param("scopeId", String.valueOf(teamScopeId))
+                            .with(user("916502")))
                     .andExpect(status().isNoContent());
             assertThat(widgetSettingRepository
                     .findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(OTHER, ScopeType.TEAM, teamScopeId))
+                    .isEmpty();
+            assertThat(widgetSettingRepository
+                    .findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(ME, ScopeType.TEAM, teamScopeId))
                     .hasSize(1);
         }
     }
