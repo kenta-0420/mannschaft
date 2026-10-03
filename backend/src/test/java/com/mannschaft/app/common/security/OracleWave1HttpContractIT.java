@@ -275,7 +275,7 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
 
         @Test
         void S5_非法payloadは入力400を保持する() throws Exception {
-            http(admin, "PUT", categoryPath(MISSING_ID), Map.of("name", ""))
+            http(admin, "POST", "/api/v1/teams/" + ownTeam.getId() + "/skill-categories", Map.of("name", ""))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("COMMON_001"));
         }
     }

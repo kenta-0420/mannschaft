@@ -119,7 +119,7 @@ public class MemberSkillService {
     /**
      * 資格詳細を取得する。本人または ADMIN のみアクセス可。
      * BOLA対策: 資格の所属スコープ（scopeType/scopeId）がリクエスト元の teamId と一致することを確認する。
-     * 不一致（越境アクセス）は SKILL_003 で秘匿する（他チームのスキルIDを知られても本文が漏れない）。
+     * 不一致（越境アクセス）は SKILL_002 で不在と同一に秘匿し、同一スコープ内の権限拒否は SKILL_003 とする。
      *
      * @param id            資格ID
      * @param requestUserId リクエストユーザーID
@@ -255,12 +255,12 @@ public class MemberSkillService {
 
     /**
      * BOLA対策: 資格が属するスコープ（scopeType/scopeId）がリクエスト元の teamId と一致するか検証する。
-     * 不一致の場合は他チームの資格IDであることを秘匿するため SKILL_003 を投げる
+     * 不一致の場合は資格不在と同じ SKILL_002 を投げ、他チームの資格IDであることを秘匿する。
      * （手本: {@link SkillCategoryService#updateCategory} の所有スコープ確認）。
      */
     private void checkScopeOrThrow(MemberSkillEntity skill, String scopeType, Long scopeId) {
         if (!skill.getScopeType().equals(scopeType) || !skill.getScopeId().equals(scopeId)) {
-            throw new BusinessException(SkillErrorCode.SKILL_003);
+            throw new BusinessException(SkillErrorCode.SKILL_002);
         }
     }
 

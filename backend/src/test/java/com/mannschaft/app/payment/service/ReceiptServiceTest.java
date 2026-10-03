@@ -32,7 +32,7 @@ import static org.mockito.BDDMockito.given;
  * <ul>
  *   <li>T-RS-01: 払い手本人がアクセス → 正常返却</li>
  *   <li>T-RS-02: 受益者本人がアクセス → 正常返却</li>
- *   <li>T-RS-03: 第三者がアクセス → PAYMENT_ACCESS_DENIED 例外</li>
+ *   <li>T-RS-03: 第三者がアクセス → MEMBER_PAYMENT_NOT_FOUND 例外</li>
  *   <li>T-RS-04: 存在しない ID → MEMBER_PAYMENT_NOT_FOUND 例外</li>
  * </ul>
  */
@@ -115,12 +115,12 @@ class ReceiptServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // T-RS-03: 第三者がアクセス → PAYMENT_ACCESS_DENIED 例外
+    // T-RS-03: 第三者がアクセス → MEMBER_PAYMENT_NOT_FOUND 例外
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("T-RS-03: 第三者がアクセス → BusinessException(PAYMENT_ACCESS_DENIED) がスローされる")
-    void getReceipt_otherUser_throwsAccessDenied() {
+    @DisplayName("T-RS-03: 第三者がアクセス → BusinessException(MEMBER_PAYMENT_NOT_FOUND) がスローされる")
+    void getReceipt_otherUser_throwsNotFound() {
         MemberPaymentEntity payment = buildPayment();
         given(memberPaymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
 
@@ -128,7 +128,7 @@ class ReceiptServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> {
                     BusinessException be = (BusinessException) ex;
-                    assertThat(be.getErrorCode()).isEqualTo(PaymentErrorCode.PAYMENT_ACCESS_DENIED);
+                    assertThat(be.getErrorCode()).isEqualTo(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND);
                 });
     }
 

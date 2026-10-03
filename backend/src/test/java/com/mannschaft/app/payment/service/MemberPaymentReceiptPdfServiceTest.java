@@ -90,7 +90,7 @@ class MemberPaymentReceiptPdfServiceTest {
 
         assertThatThrownBy(() -> service.generate(1L, 99L)).isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                        .isEqualTo(PaymentErrorCode.PAYMENT_ACCESS_DENIED));
+                        .isEqualTo(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND));
         verify(paymentItemRepository, never()).findReceiptContextById(any());
         verify(receiptDocumentService, never()).generate(any());
     }
