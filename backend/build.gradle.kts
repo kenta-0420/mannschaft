@@ -326,7 +326,6 @@ object ShardAssignment {
 class ShardCoverageClassFile(val path: String, val topLevelFqcn: String)
 
 tasks.withType<Test> {
-    val testTaskName = name
     // 通常スイートは従来どおり JST 固定。CMP-023 の非JST CIだけが
     // -Ptest.timezone=America/Los_Angeles で明示的に上書きする。
     // System.getProperty("user.timezone") では Gradle JVM 側の値を拾ってしまうため、
