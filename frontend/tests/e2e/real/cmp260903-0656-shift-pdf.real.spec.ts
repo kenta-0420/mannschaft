@@ -230,6 +230,41 @@ async function login(email: string): Promise<Actor> {
   }
 }
 
+async function loginSystemAdmin(): Promise<Actor> {
+  const email = 'e2e-admin@test.mannschaft.local'
+  const ctx = await request.newContext({ storageState: undefined })
+  try {
+    // 既存specのcanonical seed credentialをRAMで読む。新しい資格情報を作らない。
+    const source = await readFile(
+      path.resolve('tests/e2e/real/shift-unpublished-visibility.spec.ts'),
+      'utf8',
+    )
+    const password =
+      process.env.TEST_ADMIN_PASSWORD ??
+      /const ADMIN_PASSWORD = [^\n]*\?\? '([^']+)'/.exec(source)?.[1]
+    if (!password) throw new Error('canonical credentialを解決できない')
+    const response = await ctx.post(`${API}/auth/login`, {
+      data: { email, password },
+    })
+    if (response.status() !== 200) throw new Error('canonical login status不一致')
+    const token: string = (await response.json()).data.accessToken
+    if (typeof token !== 'string' || !token) throw new Error('JWT未発行')
+    const actor = { ctx, token, me: {} as Me }
+    actor.me = await data<Me>(actor, 'GET', '/users/me')
+    if (
+      actor.me.email !== email ||
+      !Number.isSafeInteger(actor.me.id) ||
+      actor.me.systemRole !== 'SYSTEM_ADMIN'
+    ) {
+      throw new Error('予約したSYSTEM_ADMIN役者との一致失敗')
+    }
+    return actor
+  } catch {
+    await ctx.dispose()
+    throw new Error('canonical役者の実JWT/me照合失敗（認証本文非出力）')
+  }
+}
+
 /** Actionsの実Java起動envと既存ログで外部pushが未初期化であることを公開前に確認。 */
 async function requireIsolatedRuntime(): Promise<void> {
   expect(process.env.GITHUB_ACTIONS).toBe('true')
@@ -823,10 +858,11 @@ test('公開PDF: empty/populated×両layoutとMEMBER本人フィルタ、board�
               expect(text).toContain(memberPosition.name)
               expect(text).toContain('08:30')
               expect(text).toContain('13:00')
-              expect(text).toBe(
-                inspector
-                  .text(info.outputPath('pdf', 'owner-populated-team.pdf'))
-                  .replace(/\s+/g, ' '),
+              const apiText = inspector
+                .text(info.outputPath('pdf', 'owner-populated-team.pdf'))
+                .replace(/\s+/g, ' ')
+              expect(text.split('出力日:')[0]?.trim()).toBe(
+                apiText.split('出力日:')[0]?.trim(),
               )
               await page.screenshot({
                 path: info.outputPath('pdf', 'ui-download-board.png'),
@@ -901,6 +937,76 @@ test('PDF境界: 未認証401、非所属404、MEMBER未公開3状態×両layout
         }
       },
       () => unauthenticated.dispose(),
+    )
+  })
+})
+
+test('SYSTEM_ADMIN: 非所属DRAFTの両layout PDF200', async ({ browserName }, info) => {
+  expect(browserName).toBe('chromium')
+  await requireIsolatedRuntime()
+  await withFixture(async (owner, member, fixture) => {
+    const systemAdmin = await loginSystemAdmin()
+    await withCleanup(
+      async () => {
+        const inspector = await pdfInspector()
+        await withCleanup(
+          async () => {
+            await fixture.createTeam()
+            await fixture.joinMember()
+            const members = await data<Array<{ userId: number }>>(
+              owner,
+              'GET',
+              `/teams/${fixture.tag}/members/all`,
+            )
+            expect(members.map((value) => value.userId).sort((a, b) => a - b)).toEqual(
+              [owner.me.id, member.me.id].sort((a, b) => a - b),
+            )
+            expect(members.some((value) => value.userId === systemAdmin.me.id)).toBe(false)
+            await writeFile(
+              info.outputPath('sys-identity.json'),
+              JSON.stringify(
+                {
+                  systemAdminId: systemAdmin.me.id,
+                  systemRole: systemAdmin.me.systemRole,
+                  teamId: fixture.team!.numericId,
+                  memberIds: members.map((value) => value.userId),
+                },
+                null,
+                2,
+              ),
+            )
+            const ownerPosition = await fixture.position('sys-owner-only')
+            const memberPosition = await fixture.position('sys-member-only')
+            const schedule = await fixture.schedule('sys-draft-populated')
+            await fixture.slot(schedule, ownerPosition, owner.me.id, '08:30:00')
+            await fixture.slot(schedule, memberPosition, member.me.id, '13:00:00')
+            const actual = await data<Schedule>(owner, 'GET', `/shifts/schedules/${schedule.id}`)
+            expect(actual.status.status).toBe('DRAFT')
+            expect(actual.status.publishedAt).toBeNull()
+            expect(actual.period.startDate).toBe(fixture.day)
+            expect(actual.period.endDate).toBe(fixture.day)
+            for (const layout of layouts) {
+              const file = await pdf(systemAdmin, schedule, layout, 'sys-draft-populated', info)
+              const text = inspector.text(file).replace(/\s+/g, ' ')
+              expect(text).toContain(schedule.content.title)
+              expect(text).toContain(fixture.day)
+              if (layout === 'team') {
+                expect(text).toContain(ownerPosition.name)
+                expect(text).toContain(memberPosition.name)
+                expect(text).toContain('08:30')
+                expect(text).toContain('13:00')
+              } else {
+                expect(text).not.toContain(ownerPosition.name)
+                expect(text).not.toContain(memberPosition.name)
+                expect(text).toContain('割り当てられたシフトはありません')
+                expect(text).toContain('合計シフト数: 0 件')
+              }
+            }
+          },
+          () => inspector.close(),
+        )
+      },
+      () => systemAdmin.ctx.dispose(),
     )
   })
 })
