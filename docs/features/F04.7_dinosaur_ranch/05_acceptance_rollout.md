@@ -62,7 +62,7 @@
 
 人工fixture A=無料・チーム未所属、B=一チーム、C=複数チーム/組織、D=他user/他tenant、E=system admin。実ユーザーの名前・メール・投稿・学習回答を使わない。Aは必要な本人entryを同日作成/完了、B/Cは同じ全体capへ到達。代理出欠、historical公開記事、他author editor公開、予約公開SYSTEMを人工sourceで準備。
 
-E2Eは実画面でログイン→任意開始→卵の選定確認→elapsed進行/孵化→無料care→成長→無料想起→ポイント反映→永久装飾交換→置物配置→設定非表示/再表示→pause/resumeを追う。実API・DB、fixtureのみ、通常成功ケースをモックで置換しない。権限なし/他tenantはURL直打ち/API直接要求も検証する。post-save reward遅延は本体成功と別表示。ネットワーク応答喪失、二tab同時care/装飾購入、背景tab、390px、OS動き抑制を含む。実装E2Eの後にアリシゼーションで導線漏れを探す。
+E2Eは実画面でログイン→任意開始→卵の選定確認→elapsed進行→命名注意書き/入力/確認/孵化確定→無料care→成長→無料想起→ポイント反映→永久装飾交換→置物配置→設定非表示/再表示→pause/resumeを追う。実API・DB、fixtureのみ、通常成功ケースをモックで置換しない。権限なし/他tenantはURL直打ち/API直接要求も検証する。post-save reward遅延は本体成功と別表示。ネットワーク応答喪失、二tab同時care/装飾購入、背景tab、390px、OS動き抑制を含む。実装E2Eの後にアリシゼーションで導線漏れを探す。
 
 設計レビュー直前クリティックでは「この仕様だけで実装して何が画面到達/JSON/null/認可/型/回復で壊れるか」を確認する。APIの未来宣言と現在API、legacybadge/entitlement依存、週policy、ARcomplete無実装を混同しない。
 
@@ -99,8 +99,8 @@ ACK済みoutboxの短期archive/削除はcanonical witness/dedupを残したま�
 | AC | 結果 | 主検証 |
 |---|---|---|
 | 46 卵時計 | ログイン/活動/正答0でelapsedだけひび進行、境界直前/ちょうど/直後とserver/client TZ差を確認。rule変更でも既存snapshotは巻き戻らない | UT/IT |
-| 47 安全待機 | 約7日後未選定はEGG安全待機、損失0。選定済みでも時間未達ならEGG。両方満たして次回open POSTで一度BABY、XP/points0 | IT/E2E |
-| 48 孵化retry | 二tab/応答喪失/背景/STOPPEDで孵化一回。GETは書込0、POSTはowner lock/command保存。EGG care拒否、孵化後無料care | IT/E2E |
+| 47 安全待機 | 約7日後未選定はEGG安全待機、損失0。選定済みでも時間未達ならEGG。両方満たすと次回openで命名導線、命名確認POSTで一度BABY、未命名はEGG安全待機、XP/points0 | IT/E2E |
+| 48 孵化retry | 二tab/応答喪失/背景/STOPPEDで孵化・命名一回。GETは書込0、POSTはowner lock下でstage/name/namedAt/command同時保存。EGG care拒否、孵化後無料care | IT/E2E |
 | 49 選定privacy | 未実装adapterは準備中/入力収集0、DOB/nameをpayload/log/audit/recordsへ複製0。決定的割当とrandomラベル区別、確認後訂正で自動交代0 | IT/E2E |
 | 50 actor | 実actor/originalAdminIdはauth context、代理/impersonation全源0。通常editor/SYSTEM blog公開はauthorへ、client actor偽装で資格変化0 | IT |
 | 51 診断公開gate | 承認済みquestionnaire/scoring/mapping versionと全64 typeCodeのspecies/承認素材をfixture照合。一type欠落/重複、不明version、未承認素材で公開gate不成立。全64をserver採点結果→mappingへ対応付ける | UT/IT |
@@ -140,3 +140,9 @@ ACK済みoutboxの短期archive/削除はcanonical witness/dedupを残したま�
 初回証拠AC: Blog撤回でpublishedAt=NULLになっても再公開を初回と推定しない。native firstPublishedAt/known-history未採用または証拠不明は0。attendance proxy/UNDECIDED/impersonation履歴不明のupdateもUNKNOWN0。admin commandの管理shard/各source facade scope境界をAC45で検証し、分散共通key保証を主張しない。source別TX前の取りこぼしは運営にも完全観測できない場合を含む。
 
 Loss窓の連続AC: 本体初回commit成功→別TX witness/outbox前crash→復旧→編集/再公開/出欠update。元HTTP成功を維持し、信頼できる不変初回marker/当時actor/originが無ければ0。現在author/proxy/publishedAt=NULLから再生成禁止。sourceの本来の業務validation/row保存失敗は通常の失敗応答を維持。
+
+### AC61 孵化時の不可逆命名（ユーザー確定）
+
+| AC | 結果 | 主検証 |
+|---|---|---|
+| 61 命名 | 孵化時のみ1〜10文字、注意書き・入力・確認・戻る・保存の順。空/null/欠落/空白のみ/不可視のみ/改行/制御文字/11文字/保存上限超/確認falseは400でEGG維持。1/10文字、日本語・結合文字・絵文字の書記素fixtureをFE/server照合。二tab別名で一件だけ確定、同key同名retryで同不変結果、別名/新key改名409、他人操作不可、GET更新0。同名を別userに付けることは可。reload/成長/style切替/休止再開で元名保持。命名途中離脱・応答喪失・IME・keyboard・STOPPED・6言語の注意書きと10文字表示・HTML文字のescape・選定用名非流用を実機確認 | UT/IT/FE UT/E2E |

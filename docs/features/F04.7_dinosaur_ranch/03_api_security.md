@@ -53,7 +53,7 @@ UUIDはcanonical小文字ハイフン形式のstring、Java UUID/MySQL BINARY(16
 | policyVersion | decimal string|null | 有効policyが無いとnull |
 | serverTime | Instant string、必須 | 表示確認用。FEの時計で報酬を決めない |
 
-OwnerSummary=`{id:UUID,status:ACTIVE|PAUSED,balance:string,version:string}`。DinosaurSummary=`{id:UUID,speciesKey:string|null,habitat:LAND|SEA|AIR|null,speciesCatalogVersion:string|null,stage:EGG|BABY|JUVENILE|ADULT,xp:string,nextStageXp:string|null,version:string}`、EGG/ADULTでnextStageXp=null、未選定EGGのspecies/habitat/catalogVersion=null。Settings=`{isVisible:boolean,viewMode:ROOM,renderStyle:PIXEL|PAINT_2D,motionMode:NORMAL|REDUCED|STOPPED,isSoundEnabled:boolean,soundVolume:int,version:string}`。isVisibleは既存dashboard widget visibility正本の投影。RanchSettingsRequest=`{renderStyle:PIXEL|PAINT_2D,motionMode:NORMAL|REDUCED|STOPPED,isSoundEnabled:boolean,soundVolume:int,version:string}` だけを受け、volume0〜100、null/欠落拒否。renderStyleはownerに永続保存し初期PIXEL。切替はowner version競合/冪等契約に従い、dinosaur ID/選定/成長/残高を変えない。viewModeはROOM固定。ranch TX内で別domain表示Repositoryを更新しない。開始後widget表示を別APIで設定し、失敗時も作成個体を維持して表示更新だけretryする。
+OwnerSummary=`{id:UUID,status:ACTIVE|PAUSED,balance:string,version:string}`。DinosaurSummary=`{id:UUID,speciesKey:string|null,habitat:LAND|SEA|AIR|null,speciesCatalogVersion:string|null,stage:EGG|BABY|JUVENILE|ADULT,name:string|null,namedAt:Instant|null,xp:string,nextStageXp:string|null,version:string}`、EGG/ADULTでnextStageXp=null、未選定EGGのspecies/habitat/catalogVersion=null。Settings=`{isVisible:boolean,viewMode:ROOM,renderStyle:PIXEL|PAINT_2D,motionMode:NORMAL|REDUCED|STOPPED,isSoundEnabled:boolean,soundVolume:int,version:string}`。isVisibleは既存dashboard widget visibility正本の投影。RanchSettingsRequest=`{renderStyle:PIXEL|PAINT_2D,motionMode:NORMAL|REDUCED|STOPPED,isSoundEnabled:boolean,soundVolume:int,version:string}` だけを受け、volume0〜100、null/欠落拒否。renderStyleはownerに永続保存し初期PIXEL。切替はowner version競合/冪等契約に従い、dinosaur ID/選定/成長/残高を変えない。viewModeはROOM固定。ranch TX内で別domain表示Repositoryを更新しない。開始後widget表示を別APIで設定し、失敗時も作成個体を維持して表示更新だけretryする。
 
 WeekBudget=`{weekStartsOn:YYYY-MM-DD,weekEndsAt:Instant,globalCap:string,awardedTotal:string,remaining:string,policyVersion:string,personalRequiredCount:decimal string,personalCompletedCount:int}`。全源/所属数でcapは同じ。personalRequiredCountは非負remainingと正personalAmountから、整数除算のquotient + (remainderが0なら0、他は1)で求めdecimal stringで返す。remaining+amount-1や浮動小数点ceilを使わず、signed BIGINT最大でもoverflow/精度損失を起こさない。remaining=0は"0"。必要件数は残量の理論値で、countLimit残枠/quota不足なら個人想起だけの満額到達を保証しない。UIに毎日やらないと減るような表現を置かない。
 
@@ -111,7 +111,7 @@ adminの冪等scopeは管理shardまたは各source facadeごと（分散共通s
 | shop control OFF | care状態による | 503 | 可 | 可 | 可、shopAvailable=false |
 
 独立global mutation stopは初期に設けない。featureStatusはcare control/ruleの利用可否、rewardsStatusはpoints policy enabled/運営報酬pause、deliveryPausedは配送だけ。三つを混ぜない。care control ONの初期公開gateは有効care rule、占い風の承認済み決定的rule、LAND/SEA/AIR random各pool、server検証の診断question/scoring version、全64 type×species mappingと承認assetが全て揃うこと。小random poolだけでは公開を許可しない。shop ONは承認SKU/不変価格存在を検証。初期care/shop=false、points enabled=false、運営明示登録後に独立有効化する。
-既存useApi/認証refresh/Cookie方針を再利用し新トークン保管を作らない。認証Cookieは既存SameSite=Strict/HttpOnly、production Secure、cross-site mutation拒否を回帰試験する。CSPを広げない。assetsは運営固定の同origin/既存配信許可先だけ、user URL/HTML/SVGアップロードを初期に受けない。恐竜名の入力を設ける場合は別裁可/validationを必要とし、初期は名前入力不要。ログに本文/回答/secretなし。APIはowner単位rate limit、retryの429にRetry-After。rate limitは複数device合算でcapとは独立、二重付与防止はDB。
+既存useApi/認証refresh/Cookie方針を再利用し新トークン保管を作らない。認証Cookieは既存SameSite=Strict/HttpOnly、production Secure、cross-site mutation拒否を回帰試験する。CSPを広げない。assetsは運営固定の同origin/既存配信許可先だけ、user URL/HTML/SVGアップロードを初期に受けない。恐竜名は孵化時に必須で確定後変更不可。名前はtext bindingでescapeして表示し、HTMLとして描画しない。ログに本文/回答/secretなし。APIはowner単位rate limit、retryの429にRetry-After。rate limitは複数device合算でcapとは独立、二重付与防止はDB。
 
 新ranchはorganization_idを持たずuser IDでシャード。user-owned repositoryは全クエリでuser ID絞込み。organization-scoped後続PhaseはAbstractTenantAwareRepositoryへ分離し、Phase 1のuser rowへorg権限を混ぜない。user退会時のtombstone/DomainCleanupService/源outboxも含む削除順序は02 §5の契約。金銭交換無しなので会計保存義務として誤分類しない。owner有効中は貯蓄/dedupを失効させず、アカウント削除後の同一活動再発行/孤児再作成を禁止する。
 
@@ -147,7 +147,7 @@ RanchState.assignment=`{availableMethods:AssignmentMethod[],selectionConfirmed:b
 | メソッド | パス | Request | Response / status |
 |---|---|---|---|
 | PUT | `/api/v1/me/ranch/assignment` | `{method:enum,habitat:enum|null,birthDate:LocalDate|null,selectionName:string|null,diagnosisToken:string|null,version:string}`、Idempotency-Key | 200確認済みassignment。未承認adapter503、確認後別入力409、同key同body元結果 |
-| POST | `/api/v1/me/ranch/hatch` | `{version:string}`、Idempotency-Key | ready AND confirmedのみ200孵化、未成熟/未確認409。同key再送同結果、既孵化新keyも200現state、XP0 |
+| POST | `/api/v1/me/ranch/hatch` | `{version:string,name:string,nameConfirmed:true}`、Idempotency-Key | ready AND selection confirmed AND命名確認のみ200孵化・命名を同TX保存。未成熟/未選定409、名前境界/確認不備400。同key再送同結果、別名再送/改名409、XP0 |
 
 methodごとに不要inputはnull必須。HABITAT_RANDOMはLAND/SEA/AIRのみ、birthDate/selectionName/tokenはnull。BIRTH_STYLEは厳格YYYY-MM-DD LocalDate/選定用名trim1〜80文字、実算法/利用可能化は別裁可。DIAGNOSISはserver検証済みtokenでprovider/type/mappingを確定する初期必須契約（内容未裁可）、client typeCodeを科学的結果と認定しない。raw出生入力は計算後捨てresultはspecies/method/version/confirmedAtだけ。名前は本名不要、入力説明は占い風の楽しみであり科学的判定と主張しない。未実装方式を「準備中」と表示して入力収集しない。訂正で自動相棒変更なし。
 
@@ -161,3 +161,9 @@ methodごとに不要inputはnull必須。HABITAT_RANDOMはLAND/SEA/AIRのみ、
 提案構造: 本人診断sessionをserver発行しquestionnaireVersion/scoringVersionをsnapshot、回答は本人sessionへ送信、serverがvalidationと採点をしてCOMPLETED結果（provider/typeCode/mappingVersion）を不変保存する。選定確認時に本人COMPLETED結果と対応表versionを検証してspeciesを固定。clientのtypeCodeを結果として信用しない。診断結果が変わっても確認済みの同恐竜を維持する。質問/回答/診断resultはprivate、報酬outbox/共有プロフィールへ出さず、診断完了回数をpoints/XPにしない。質問/画像/算法の外部サイト利用許諾/APIは未確認で、無断複製を前提にしない。
 
 診断session API/DTO/質問master/採点rule/結果tableの完全な契約と素材仕様は、未裁可内容を決めてから本草案へ補完する。現在の草案は選定adapterと保存/認可/同恐竜維持の境界までを示すレビュー資料で、診断本体をこのまま実装可能と主張しない。Phase 1の4〜8週は診断/64素材追加前の旧概算であり再見積が必要。全体3〜6か月も既存基盤/準備済みアートの旧前提の候補で、診断と素材次第で超える。
+
+### 孵化・命名の追加契約（2026-10-03）
+
+nameは02の正規化・1〜10書記素・保存上限をserverで検証する。nameConfirmedは明示確認の要求で、client trueだけで長さや所有検証を省略しない。欠落/null/空名/11文字/nameConfirmed欠落・falseは400、状態はEGGのまま。command hashには正規化名と確認値を含める。同key同bodyは既存不変result、同key別名は409。別keyの既孵化要求は既存名と同名の場合のみ200同個体、異なる名は409で元名不変。二tabの異なる名前はlock下で先に成功した一件だけを確定する。競合した画面は再取得して確定名を表示する。
+
+DinosaurSummaryはEGGでname/namedAt=null、BABY以降で必須。孵化responseはdinosaur ID/stage/name/namedAt/hatchedAt/versionを含む不変HatchResultとし、同key再送で成長後のstateへ置換しない。現在stateはGETで別取得する。孵化後のnew key同名再要求は最新stateを返し、この成功commandも保存する。Settingsや選定APIにnameを渡すと400、rename endpointなし。表示OFF/style変更/成長/休止再開でも名前は変わらない。GETには書込を追加せず、出生割当用名を恐竜名として自動保存しない。
