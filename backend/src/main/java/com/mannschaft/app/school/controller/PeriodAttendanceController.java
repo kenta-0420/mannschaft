@@ -10,10 +10,13 @@ import com.mannschaft.app.school.dto.PeriodAttendanceSummary;
 import com.mannschaft.app.school.dto.PeriodAttendanceUpdateRequest;
 import com.mannschaft.app.school.dto.PeriodCandidatesResponse;
 import com.mannschaft.app.school.dto.StudentTimelineResponse;
+import com.mannschaft.app.school.service.PeriodAttendanceFacade;
 import com.mannschaft.app.school.service.PeriodAttendanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -48,6 +51,7 @@ import java.time.LocalDate;
 public class PeriodAttendanceController {
 
     private final PeriodAttendanceService periodAttendanceService;
+    private final PeriodAttendanceFacade periodAttendanceFacade;
 
     /**
      * 特定日の時限別出欠一覧を取得する。
@@ -57,9 +61,9 @@ public class PeriodAttendanceController {
     public ApiResponse<PeriodAttendanceListResponse> getPeriodAttendance(
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam Integer periodNumber) {
+            @RequestParam @Min(1) @Max(15) Integer periodNumber) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(periodAttendanceService.getPeriodAttendance(teamId, date, periodNumber, currentUserId));
+        return ApiResponse.of(periodAttendanceFacade.getPeriodAttendance(teamId, date, periodNumber, currentUserId));
     }
 
     /**
@@ -69,10 +73,10 @@ public class PeriodAttendanceController {
     @Operation(summary = "時限対象生徒一覧取得")
     public ApiResponse<PeriodCandidatesResponse> getPeriodCandidates(
             @PathVariable Long teamId,
-            @PathVariable Integer periodNumber,
+            @PathVariable @Min(1) @Max(15) Integer periodNumber,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(periodAttendanceService.getPeriodCandidates(teamId, date, periodNumber, currentUserId));
+        return ApiResponse.of(periodAttendanceFacade.getPeriodCandidates(teamId, date, periodNumber, currentUserId));
     }
 
     /**
@@ -82,11 +86,11 @@ public class PeriodAttendanceController {
     @Operation(summary = "時限出欠一括登録")
     public ResponseEntity<ApiResponse<PeriodAttendanceSummary>> submitPeriodAttendance(
             @PathVariable Long teamId,
-            @PathVariable Integer periodNumber,
+            @PathVariable @Min(1) @Max(15) Integer periodNumber,
             @Valid @RequestBody PeriodAttendanceRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         PeriodAttendanceSummary summary =
-                periodAttendanceService.submitPeriodAttendance(teamId, periodNumber, request, currentUserId);
+                periodAttendanceFacade.submitPeriodAttendance(teamId, periodNumber, request, currentUserId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(summary));
     }
 
@@ -100,7 +104,7 @@ public class PeriodAttendanceController {
             @PathVariable Long recordId,
             @Valid @RequestBody PeriodAttendanceUpdateRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(periodAttendanceService.updatePeriodRecord(teamId, recordId, request, currentUserId));
+        return ApiResponse.of(periodAttendanceFacade.updatePeriodRecord(teamId, recordId, request, currentUserId));
     }
 
     /**

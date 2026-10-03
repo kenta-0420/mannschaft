@@ -11,6 +11,7 @@ import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.dto.DailyRollCallEntry;
 import com.mannschaft.app.school.dto.DailyRollCallRequest;
 import com.mannschaft.app.school.dto.FamilyAttendanceNoticeRequest;
+import com.mannschaft.app.school.entity.ClassHomeroomEntity;
 import com.mannschaft.app.school.entity.FamilyNoticeType;
 import com.mannschaft.app.school.repository.DailyAttendanceRecordRepository;
 import com.mannschaft.app.school.repository.FamilyAttendanceNoticeRepository;
@@ -22,6 +23,7 @@ import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
@@ -62,6 +64,14 @@ import static org.mockito.Mockito.verify;
  *
  * <p>本 IT は {@code school.event} / {@code school.listener} の新規クラスを一切参照しない。
  * 是正前のコードに対してもそのままコンパイル・実行できるので、赤→緑を実測で比較できる。</p>
+ *
+ * <h2>学校出欠の認可是正 第1段での修正（AC-9'）</h2>
+ * <p>日次点呼の認可が「所属しているだけで通る」から「現役の担任・副担任または ADMIN/DEPUTY_ADMIN のみ」に変わり、
+ * entries の生徒もクラスの在籍メンバーであることを検証するようになる（AC-8・AC-12）。旧フィクスチャは操作者の
+ * MEMBER 所属しか作らず、生徒の在籍も作らなかったため、新認可・所属検証の下では 403/4xx で失敗する。
+ * よって本 IT は、操作者を class_homerooms の現役担任（memberships にも所属）として張り、点呼対象の生徒 3 名を
+ * クラスの在籍メンバー（ACTIVE なユーザー）として張る。検証する契約（通知が失敗しても出欠はコミットされる）は
+ * 変えない。</p>
  *
  * <h2>クラスに {@code @Transactional} を付けない理由</h2>
  * <p>是正後の通知は {@code AFTER_COMMIT} で発火する。テストをトランザクションで包むと
@@ -106,7 +116,7 @@ class SchoolAttendanceNotificationTransactionIT extends AbstractMySqlIntegration
         long student3 = teamId + 13L;
         LocalDate date = LocalDate.of(2026, 5, 11);
 
-        insertTeamMembership(operatorId, teamId);
+        insertHomeroomOperatorAndStudents(teamId, operatorId, student1, student2, student3);
 
         // 生徒 1 人目の保護者通知から失敗させる。是正前はここで業務TXごと落ちる。
         willThrow(new RuntimeException("模擬通知失敗（#2990 L6 検証用）"))
@@ -169,10 +179,26 @@ class SchoolAttendanceNotificationTransactionIT extends AbstractMySqlIntegration
 
     // ---- フィクスチャ / ヘルパ ----
 
-    /** {@code checkMembership} を通すための memberships 行を張る。 */
-    private void insertTeamMembership(long userId, long teamId) {
-        transactionTemplate.executeWithoutResult(tx ->
-                MembershipTestHelper.insertMembership(em, userId, ScopeType.TEAM, teamId, RoleKind.MEMBER));
+    /**
+     * 点呼の認可（現役の担任）と所属検証（生徒がクラスの在籍メンバー）を通すフィクスチャを張る。
+     *
+     * <p>操作者は担任名簿（class_homerooms）の現役行＋ memberships に所属、生徒は memberships に所属。
+     * 認可は実効ロール解決が users の ACTIVE 行を要求するため、固定 ID のユーザーも ACTIVE で用意する。</p>
+     */
+    private void insertHomeroomOperatorAndStudents(long teamId, long operatorId, long... studentIds) {
+        transactionTemplate.executeWithoutResult(tx -> {
+            MembershipTestHelper.insertActiveUser(em, operatorId);
+            MembershipTestHelper.insertMembership(em, operatorId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+            LocalDate today = LocalDate.now(ZoneId.of("Asia/Tokyo"));
+            em.persist(ClassHomeroomEntity.builder()
+                    .teamId(teamId).homeroomTeacherUserId(operatorId)
+                    .academicYear(today.getYear()).effectiveFrom(today.minusDays(30)).createdBy(operatorId)
+                    .build());
+            for (long studentId : studentIds) {
+                MembershipTestHelper.insertActiveUser(em, studentId);
+                MembershipTestHelper.insertMembership(em, studentId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+            }
+        });
     }
 
     /** {@code checkCareLink} を通すための ACTIVE なケアリンクを張る。 */

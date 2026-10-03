@@ -8,7 +8,7 @@ import com.mannschaft.app.school.dto.LocationListResponse;
 import com.mannschaft.app.school.dto.LocationTimelineResponse;
 import com.mannschaft.app.school.entity.AttendanceLocation;
 import com.mannschaft.app.school.entity.AttendanceLocationChangeEntity;
-import com.mannschaft.app.school.service.AttendanceLocationService;
+import com.mannschaft.app.school.service.AttendanceLocationFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AttendanceLocationController {
 
-    private final AttendanceLocationService attendanceLocationService;
+    private final AttendanceLocationFacade attendanceLocationFacade;
 
     /**
      * 生徒の学習場所変化を記録する。
@@ -58,7 +58,7 @@ public class AttendanceLocationController {
         LocalDate attendanceDate = request.getAttendanceDate() != null
                 ? request.getAttendanceDate()
                 : LocalDate.now();
-        AttendanceLocationChangeEntity entity = attendanceLocationService.recordLocationChange(
+        AttendanceLocationChangeEntity entity = attendanceLocationFacade.recordLocationChange(
                 teamId,
                 request.getStudentUserId(),
                 attendanceDate,
@@ -90,7 +90,7 @@ public class AttendanceLocationController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         Map<Long, AttendanceLocation> locationMap =
-                attendanceLocationService.getTeamLocationMap(teamId, date, currentUserId);
+                attendanceLocationFacade.getTeamLocationMap(teamId, date, currentUserId);
         // locationChangedDuringDay: 当日に変化レコードが存在する生徒は CLASSROOM 以外の場所または
         // CLASSROOM へ戻った場合も含む。正確な判定は Service 層が提供する Map の実装に依存する。
         // 現時点では「現在地が CLASSROOM 以外」を変化ありとみなす（教室に戻った場合は別途対応予定）。
@@ -125,14 +125,11 @@ public class AttendanceLocationController {
             @PathVariable Long studentUserId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        List<AttendanceLocationChangeEntity> entityList =
-                attendanceLocationService.getTimeline(studentUserId, date, currentUserId);
-        List<LocationChangeResponse> changes = entityList.stream()
-                .map(LocationChangeResponse::from)
-                .collect(Collectors.toList());
-        AttendanceLocation currentLocation = entityList.isEmpty()
+        List<LocationChangeResponse> changes =
+                attendanceLocationFacade.getTimeline(studentUserId, date, currentUserId);
+        AttendanceLocation currentLocation = changes.isEmpty()
                 ? AttendanceLocation.CLASSROOM
-                : entityList.get(entityList.size() - 1).getToLocation();
+                : changes.get(changes.size() - 1).getToLocation();
         LocationTimelineResponse response = LocationTimelineResponse.builder()
                 .studentUserId(studentUserId)
                 .attendanceDate(date)

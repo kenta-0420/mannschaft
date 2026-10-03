@@ -1,6 +1,5 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.dto.PeriodAttendanceEntry;
@@ -38,6 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -59,9 +59,6 @@ class PeriodAttendanceServiceTest {
 
     @Mock
     private AttendanceTransitionDetectionService attendanceTransitionDetectionService;
-
-    @Mock
-    private AccessControlService accessControlService;
 
     @InjectMocks
     private PeriodAttendanceService periodAttendanceService;
@@ -190,7 +187,7 @@ class PeriodAttendanceServiceTest {
                     .willReturn(List.of(r1, r2));
 
             PeriodAttendanceListResponse response =
-                    periodAttendanceService.getPeriodAttendance(TEAM_ID, ATTENDANCE_DATE, PERIOD_NUMBER, OPERATOR_USER_ID);
+                    periodAttendanceService.getPeriodAttendance(TEAM_ID, ATTENDANCE_DATE, PERIOD_NUMBER);
 
             assertThat(response.getRecords()).hasSize(2);
             assertThat(response.getPresentCount()).isEqualTo(1);
@@ -208,7 +205,7 @@ class PeriodAttendanceServiceTest {
                     .willReturn(List.of());
 
             PeriodAttendanceListResponse response =
-                    periodAttendanceService.getPeriodAttendance(TEAM_ID, ATTENDANCE_DATE, PERIOD_NUMBER, OPERATOR_USER_ID);
+                    periodAttendanceService.getPeriodAttendance(TEAM_ID, ATTENDANCE_DATE, PERIOD_NUMBER);
 
             assertThat(response.getRecords()).isEmpty();
             assertThat(response.getPresentCount()).isEqualTo(0);
@@ -495,7 +492,6 @@ class PeriodAttendanceServiceTest {
         @DisplayName("updatePeriodRecord: 取得した同一インスタンスを id 保持のまま UPDATE する（新インスタンス化しない）")
         void updatePeriodRecord_既存行をUPDATE_id保持() {
             // Given
-            Mockito.doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
 
             PeriodAttendanceRecordEntity existing = buildRecord(null, AttendanceStatus.UNDECIDED);
             ReflectionTestUtils.setField(existing, "id", EXISTING_ID);

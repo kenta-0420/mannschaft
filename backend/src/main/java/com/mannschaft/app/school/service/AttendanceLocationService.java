@@ -1,7 +1,7 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.school.dto.LocationChangeResponse;
 import com.mannschaft.app.school.entity.AttendanceLocation;
 import com.mannschaft.app.school.entity.AttendanceLocationChangeEntity;
 import com.mannschaft.app.school.entity.AttendanceLocationChangeReason;
@@ -20,6 +20,7 @@ import java.time.LocalTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 登校場所管理サービス。
@@ -35,7 +36,6 @@ public class AttendanceLocationService {
     private final DailyAttendanceRecordRepository dailyAttendanceRecordRepository;
     private final PeriodAttendanceRecordRepository periodAttendanceRecordRepository;
     private final AttendanceLocationChangeRepository attendanceLocationChangeRepository;
-    private final AccessControlService accessControlService;
 
     // ========================================
     // 場所変更記録
@@ -43,6 +43,8 @@ public class AttendanceLocationService {
 
     /**
      * 登校場所変更を記録し、daily/period レコードの attendance_location を更新する。
+     *
+     * <p>兼籍生徒の他クラスの時限記録は更新しない（AC-21: 時限記録の取得に teamId を条件に加える）。</p>
      *
      * <p>処理手順:
      * <ol>
@@ -72,8 +74,8 @@ public class AttendanceLocationService {
             Integer changedAtPeriod, LocalTime changedAtTime,
             AttendanceLocationChangeReason reason, String note, Long operatorUserId) {
 
-        // 認可: 記録は対象チーム所属の教職員のみ（手本 DailyAttendanceService#submitDailyRollCall）。
-        accessControlService.checkMembership(operatorUserId, teamId, "TEAM");
+        // 認可（AC-13: 日次登録権 R）と対象生徒の在籍確認は、トランザクションの外の
+        // AttendanceLocationFacade で済ませてから呼ばれる（本メソッドは認可を持たない）。
 
         // 1. 場所変更履歴をINSERT
         AttendanceLocationChangeEntity changeEntity = AttendanceLocationChangeEntity.builder()
@@ -104,7 +106,8 @@ public class AttendanceLocationService {
         // 4. changedAtPeriod が非 null の場合、その時限以降の時限別出欠レコードを更新
         if (changedAtPeriod != null) {
             var periodRecords = periodAttendanceRecordRepository
-                    .findByStudentUserIdAndAttendanceDateOrderByPeriodNumberAsc(studentUserId, attendanceDate)
+                    .findByTeamIdAndStudentUserIdAndAttendanceDateOrderByPeriodNumberAsc(
+                            teamId, studentUserId, attendanceDate)
                     .stream()
                     .filter(p -> p.getPeriodNumber() >= changedAtPeriod)
                     .toList();
@@ -133,47 +136,28 @@ public class AttendanceLocationService {
     /**
      * 指定日の個別生徒の場所変更履歴を取得する。
      *
-     * <p>認可（マスター御裁可済み方針・教職員＋保護者の二経路）:</p>
+     * <p>認可（AC-4・マスター御裁可済み方針）は、トランザクションの外の {@code AttendanceLocationFacade} が
+     * {@link SchoolAttendanceAccessPolicy#resolveViewableTeamIds} で行い、返してよいクラスの範囲だけを本メソッドへ渡す
+     * （閲覧許可と返却範囲を分ける）。</p>
      * <ol>
-     *   <li>生徒が当日在籍するチームを {@code daily_attendance_records} から逆引きし、
-     *       閲覧者がそのチームに所属する教職員（{@link AccessControlService#checkMembership}）なら許可。</li>
-     *   <li>チーム所属でなければ、閲覧者が対象生徒への ACTIVE な careLink を持つ保護者
-     *       （{@link AccessControlService#checkCareLink}）なら許可。</li>
-     *   <li>いずれでもなければ 403（COMMON_002）。</li>
+     *   <li>生徒本人、または対象生徒への ACTIVE な careLink を持つ保護者は、全クラス分を返す（範囲は {@code null}）。</li>
+     *   <li>教職員は、生徒が現在所属するクラスのうち自分が閲覧権（V）を持つクラス分だけを返す。</li>
      * </ol>
      *
-     * <p>当日の日次出欠記録が存在せずチームを解決できない場合は、教職員経路を判定できないため
-     * 保護者経路（careLink）のみで認可する。</p>
-     *
-     * @param studentUserId  生徒のユーザーID
-     * @param attendanceDate 対象日
-     * @param currentUserId  閲覧者のユーザーID
+     * @param studentUserId     生徒のユーザーID
+     * @param attendanceDate    対象日
+     * @param viewableTeamIds   返してよいクラス ID の集合。{@code null} なら全クラス分
      * @return 場所変更履歴一覧（記録日時昇順）
      */
     @Transactional(readOnly = true)
-    public List<AttendanceLocationChangeEntity> getTimeline(
-            Long studentUserId, LocalDate attendanceDate, Long currentUserId) {
-        authorizeTimelineView(studentUserId, attendanceDate, currentUserId);
-        return attendanceLocationChangeRepository
+    public List<LocationChangeResponse> getTimeline(
+            Long studentUserId, LocalDate attendanceDate, Set<Long> viewableTeamIds) {
+        List<AttendanceLocationChangeEntity> all = attendanceLocationChangeRepository
                 .findByStudentUserIdAndAttendanceDateOrderByRecordedAtAsc(studentUserId, attendanceDate);
-    }
-
-    /**
-     * タイムライン閲覧の二経路認可（教職員＝checkMembership／保護者＝checkCareLink）を判定する。
-     * 両経路とも失敗した場合のみ 403（COMMON_002）を送出する。
-     */
-    private void authorizeTimelineView(Long studentUserId, LocalDate attendanceDate, Long currentUserId) {
-        // 1. 教職員経路: 生徒が当日在籍するチームを逆引きし、閲覧者がそのチーム所属なら許可。
-        var studentTeam = dailyAttendanceRecordRepository
-                .findFirstByStudentUserIdAndAttendanceDate(studentUserId, attendanceDate)
-                .map(DailyAttendanceRecordEntity::getTeamId);
-        if (studentTeam.isPresent()
-                && accessControlService.isMember(currentUserId, studentTeam.get(), "TEAM")) {
-            return;
-        }
-        // 2. 保護者経路: 対象生徒への ACTIVE な careLink を持つ保護者なら許可。
-        //    careLink も無ければ checkCareLink が COMMON_002 を送出する（両経路失敗＝403）。
-        accessControlService.checkCareLink(currentUserId, studentUserId);
+        return all.stream()
+                .filter(c -> viewableTeamIds == null || viewableTeamIds.contains(c.getTeamId()))
+                .map(LocationChangeResponse::from)
+                .toList();
     }
 
     // ========================================
@@ -188,14 +172,11 @@ public class AttendanceLocationService {
      *
      * @param teamId         クラスチームID
      * @param attendanceDate 対象日
-     * @param currentUserId  閲覧者のユーザーID
      * @return 生徒ユーザーID → 最新ロケーション のマップ
      */
     @Transactional(readOnly = true)
-    public Map<Long, AttendanceLocation> getTeamLocationMap(
-            Long teamId, LocalDate attendanceDate, Long currentUserId) {
-        // 認可: クラス全体の位置一覧はチーム所属の教職員のみ（手本 DailyAttendanceService#getDailyAttendance）。
-        accessControlService.checkMembership(currentUserId, teamId, "TEAM");
+    public Map<Long, AttendanceLocation> getTeamLocationMap(Long teamId, LocalDate attendanceDate) {
+        // 認可（V）は AttendanceLocationFacade が済ませてから呼ばれる。
 
         // 当日のチーム全日次出欠レコードをベースにマップを構築
         Map<Long, AttendanceLocation> locationMap = new LinkedHashMap<>();

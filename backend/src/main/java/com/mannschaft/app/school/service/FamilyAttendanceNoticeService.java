@@ -119,8 +119,8 @@ public class FamilyAttendanceNoticeService {
      */
     public FamilyAttendanceNoticeResponse acknowledgeNotice(Long teamId, Long noticeId, Long acknowledgerUserId) {
         FamilyAttendanceNoticeEntity entity = findNoticeInTeamOrHide(teamId, noticeId);
-        // 認可: entity 由来 scope（= path と一致確認済みの teamId）の ADMIN／DEPUTY_ADMIN のみ。
-        accessControlService.checkAdminOrAbove(acknowledgerUserId, entity.getTeamId(), "TEAM");
+        // 認可（AC-14: entity 由来 scope の日次登録権 R）は FamilyAttendanceNoticeFacade が
+        // 本メソッドより前に、トランザクションの外で済ませている。
 
         // toBuilder().build() で作り直すと BaseEntity.id が引き継がれず INSERT 化する（行重複）。
         // managed entity を直接ミューテートし JPA dirty checking で UPDATE する。
@@ -136,7 +136,7 @@ public class FamilyAttendanceNoticeService {
      * 担任が保護者連絡を出欠レコードに反映する。
      *
      * <p>認可は {@link #acknowledgeNotice} と同一（entity 由来 teamId 突合 → 404 秘匿 →
-     * 当該チームの ADMIN/DEPUTY_ADMIN＝教員相当のみ許可）。</p>
+     * 当該チームの日次登録権 R のみ許可）。</p>
      *
      * @param teamId          path のクラスチームID（entity 由来 teamId との突合に使用）
      * @param noticeId        連絡 ID
@@ -145,8 +145,8 @@ public class FamilyAttendanceNoticeService {
      */
     public FamilyAttendanceNoticeResponse applyToAttendanceRecord(Long teamId, Long noticeId, Long operatorUserId) {
         FamilyAttendanceNoticeEntity entity = findNoticeInTeamOrHide(teamId, noticeId);
-        // 認可: entity 由来 scope（= path と一致確認済みの teamId）の ADMIN／DEPUTY_ADMIN のみ。
-        accessControlService.checkAdminOrAbove(operatorUserId, entity.getTeamId(), "TEAM");
+        // 認可（AC-14: entity 由来 scope の日次登録権 R）は FamilyAttendanceNoticeFacade が
+        // 本メソッドより前に、トランザクションの外で済ませている。
 
         if (Boolean.TRUE.equals(entity.getAppliedToRecord())) {
             throw new BusinessException(SchoolErrorCode.FAMILY_NOTICE_ALREADY_APPLIED);
@@ -166,21 +166,18 @@ public class FamilyAttendanceNoticeService {
     /**
      * 担任が当日の保護者連絡一覧を取得する。
      *
-     * <p><b>認可</b>: クラス全児童の連絡（欠席理由・体調・添付）を横断で返す大量 PII 参照のため、
-     * 対象チームの ADMIN/DEPUTY_ADMIN（＝教員相当。マスター裁可 A-1・
-     * {@code docs/security/03_role_authority_model.md} §7.1）のみに限定する。
+     * <p><b>認可（AC-14）</b>: クラス全児童の連絡（欠席理由・体調・添付）を横断で返す大量 PII 参照のため、
+     * 閲覧権（V: 管理者・現役の担任／副担任・VIEW_ATTENDANCE 委任者）のみに限定する。
      * スコープは URL パスで明示宣言されており entity 側に別スコープは存在しないため、
      * 宣言スコープをそのまま認可対象とする（越境は当該チームの権限が無い＝403 に収束する）。</p>
      *
      * @param teamId        クラスチームID
      * @param date          対象日
-     * @param actorUserId   操作者（担任）のユーザーID
      * @return 保護者連絡一覧レスポンス
      */
     @Transactional(readOnly = true)
-    public FamilyNoticeListResponse getTeamNotices(Long teamId, LocalDate date, Long actorUserId) {
-        accessControlService.checkAdminOrAbove(actorUserId, teamId, "TEAM");
-
+    public FamilyNoticeListResponse getTeamNotices(Long teamId, LocalDate date) {
+        // 認可（V）は FamilyAttendanceNoticeFacade が済ませてから呼ばれる。
         List<FamilyAttendanceNoticeEntity> records =
                 noticeRepository.findByTeamIdAndAttendanceDateOrderByCreatedAtDesc(teamId, date);
 
@@ -225,6 +222,17 @@ public class FamilyAttendanceNoticeService {
     // ========================================
     // プライベートヘルパー
     // ========================================
+
+    /**
+     * 連絡が path の teamId 配下にあることを確認する（認可の前段。トランザクションの外の Facade から呼ぶ）。
+     *
+     * <p>存在しない連絡、または path の teamId 配下でない連絡は、存在秘匿のため同じ 404
+     * （{@code FAMILY_NOTICE_NOT_FOUND}）を返す。認可は、この確認を通った teamId（= entity 由来 scope）で行う。</p>
+     */
+    @Transactional(readOnly = true)
+    public void requireNoticeInTeam(Long teamId, Long noticeId) {
+        findNoticeInTeamOrHide(teamId, noticeId);
+    }
 
     /**
      * 連絡を取得し、path の {@code teamId} 配下であることを検証する（BOLA 封鎖・存在秘匿）。
