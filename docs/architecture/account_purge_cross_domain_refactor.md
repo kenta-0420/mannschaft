@@ -740,7 +740,11 @@ weather、inbox、timetable.notes、sealである。設定38親表と同domain�
 各ownerの新規TXで所有設定を全削除し、コミット成立後のafterCommitから既存CompletionService新規TXへ
 SUCCESSを記録する。途中SQL失敗はowner全体をrollbackし、完了更新失敗・queue拒否はPENDINGを保持する。
 設定27domainの手動retryはowner proxyのコミット成立後だけSUCCESSを保存し、失敗はPENDINGと試行数に残す。
-旧7domainの手動retryとresume未対応は変更しない。空・重複は冪等に処理する。
+旧7domainの手動retryとresume未対応は変更しない。
+非TXの `GdprPurgeRetryFacade` が入口を振り分け、旧7domainは既存
+`GdprPurgeRetryService` の外側TXと処理を維持する。新27domainは非TXの
+`GdprSettingsPurgeRetryService` からownerのREQUIRES_NEWを呼び、ownerコミット後に
+GDPRリポジトリ自身のTXで結果を保存する。旧7のTX入口から新27へ到達させない。空・重複は冪等に処理する。
 
 弱イベントは引き続き休眠中であり、この強側安全網は即時匿名化の有効化を意味しない。
 共有本文・membership・visibility_templates・村pin/nicknameは今回対象外。時間割メモの定義のみ削除し本文JSONを残し、

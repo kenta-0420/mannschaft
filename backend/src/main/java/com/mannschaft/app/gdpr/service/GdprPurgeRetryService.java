@@ -1,42 +1,15 @@
 package com.mannschaft.app.gdpr.service;
 
-import com.mannschaft.app.actionmemo.event.ActionMemoAnonymizationEventListener;
-import com.mannschaft.app.appearance.event.AppearanceSettingsPurgeEventListener;
-import com.mannschaft.app.auth.event.AuthAnonymizationEventListener;
 import com.mannschaft.app.billing.BillingPurgeEventListener;
 import com.mannschaft.app.chart.event.ChartPurgeEventListener;
-import com.mannschaft.app.chat.event.ChatBookmarkPurgeEventListener;
-import com.mannschaft.app.cms.event.UserBlogSettingsPurgeEventListener;
-import com.mannschaft.app.contact.event.ContactRequestBlockPurgeEventListener;
-import com.mannschaft.app.dashboard.event.DashboardSettingsPurgeEventListener;
 import com.mannschaft.app.errorreport.event.ErrorReportPurgeEventListener;
-import com.mannschaft.app.favorite.event.FavoriteAnonymizationEventListener;
-import com.mannschaft.app.filesharing.event.SharedFileStarPurgeEventListener;
-import com.mannschaft.app.gamification.event.GamificationSettingsPurgeEventListener;
 import com.mannschaft.app.gdpr.dto.RetryResultResponse;
 import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
 import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
-import com.mannschaft.app.inbox.event.InboxAnonymizationEventListener;
-import com.mannschaft.app.knowledgebase.event.KbPageFavoritePurgeEventListener;
-import com.mannschaft.app.membership.event.ScopeMemberCalendarSettingAnonymizationEventListener;
-import com.mannschaft.app.navsettings.event.NavSettingsPurgeEventListener;
-import com.mannschaft.app.notification.event.NotificationAnonymizationEventListener;
 import com.mannschaft.app.payment.event.PaymentPurgeEventListener;
-import com.mannschaft.app.pointcard.event.PointCardAnonymizationEventListener;
 import com.mannschaft.app.proxy.event.ProxyPurgeEventListener;
-import com.mannschaft.app.quickmemo.event.QuickMemoSettingsPurgeEventListener;
-import com.mannschaft.app.reflection.event.ReflectionSettingsPurgeEventListener;
 import com.mannschaft.app.role.event.RolePurgeEventListener;
-import com.mannschaft.app.schedule.listener.CalendarLayerCleanupExecutor;
-import com.mannschaft.app.scopefolder.event.MyScopeFolderPurgeEventListener;
-import com.mannschaft.app.seal.event.SealScopeDefaultsPurgeEventListener;
-import com.mannschaft.app.search.event.SearchAnonymizationEventListener;
 import com.mannschaft.app.team.event.TeamPurgeEventListener;
-import com.mannschaft.app.timeline.event.TimelineBookmarkAnonymizationEventListener;
-import com.mannschaft.app.timetable.notes.event.TimetableNoteFieldsPurgeEventListener;
-import com.mannschaft.app.timetable.personal.event.PersonalTimetableSettingsPurgeEventListener;
-import com.mannschaft.app.user.event.UserBlockPurgeEventListener;
-import com.mannschaft.app.weather.event.WeatherLocationCleanupListener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -74,43 +47,9 @@ public class GdprPurgeRetryService {
     private final ErrorReportPurgeEventListener errorReportPurgeEventListener;
     private final BillingPurgeEventListener billingPurgeEventListener;
 
-    private final ActionMemoAnonymizationEventListener actionMemoAnonymizationEventListener;
-    private final PointCardAnonymizationEventListener pointCardAnonymizationEventListener;
-    private final TimelineBookmarkAnonymizationEventListener timelineBookmarkAnonymizationEventListener;
-    private final SearchAnonymizationEventListener searchAnonymizationEventListener;
-    private final DashboardSettingsPurgeEventListener dashboardSettingsPurgeEventListener;
-    private final MyScopeFolderPurgeEventListener myScopeFolderPurgeEventListener;
-    private final QuickMemoSettingsPurgeEventListener quickMemoSettingsPurgeEventListener;
-    private final AuthAnonymizationEventListener authAnonymizationEventListener;
-    private final NotificationAnonymizationEventListener notificationAnonymizationEventListener;
-    private final SharedFileStarPurgeEventListener sharedFileStarPurgeEventListener;
-    private final ContactRequestBlockPurgeEventListener contactRequestBlockPurgeEventListener;
-    private final UserBlockPurgeEventListener userBlockPurgeEventListener;
-    private final AppearanceSettingsPurgeEventListener appearanceSettingsPurgeEventListener;
-    private final NavSettingsPurgeEventListener navSettingsPurgeEventListener;
-    private final GamificationSettingsPurgeEventListener gamificationSettingsPurgeEventListener;
-    private final ReflectionSettingsPurgeEventListener reflectionSettingsPurgeEventListener;
-    private final PersonalTimetableSettingsPurgeEventListener personalTimetableSettingsPurgeEventListener;
-    private final UserBlogSettingsPurgeEventListener userBlogSettingsPurgeEventListener;
-    private final ChatBookmarkPurgeEventListener chatBookmarkPurgeEventListener;
-    private final KbPageFavoritePurgeEventListener kbPageFavoritePurgeEventListener;
-    private final FavoriteAnonymizationEventListener favoriteAnonymizationEventListener;
-    private final ScopeMemberCalendarSettingAnonymizationEventListener scopeMemberCalendarSettingAnonymizationEventListener;
-    private final WeatherLocationCleanupListener weatherLocationCleanupListener;
-    private final InboxAnonymizationEventListener inboxAnonymizationEventListener;
-    private final TimetableNoteFieldsPurgeEventListener timetableNoteFieldsPurgeEventListener;
-    private final SealScopeDefaultsPurgeEventListener sealScopeDefaultsPurgeEventListener;
-    private final CalendarLayerCleanupExecutor calendarLayerCleanupExecutor;
-
     /** 受け付けるドメイン名の集合。不明なドメイン名は即時 IllegalArgumentException。 */
     private static final Set<String> VALID_DOMAINS =
-            Set.of("role", "team", "payment", "chart", "proxy", "errorreport", "billing",
-                    "actionmemo", "pointcard", "timeline", "search", "dashboard",
-                    "scopefolder", "quickmemo", "auth", "notification", "filesharing",
-                    "contact", "user", "appearance", "navsettings", "gamification",
-                    "reflection", "timetable.personal", "cms", "chat", "knowledgebase",
-                    "favorite", "membership", "weather", "inbox", "timetable.notes",
-                    "seal", "schedule");
+            Set.of("role", "team", "payment", "chart", "proxy", "errorreport", "billing");
 
     /**
      * 指定ユーザー × ドメインの GDPR パージを手動で retry する。
@@ -184,46 +123,7 @@ public class GdprPurgeRetryService {
             case "proxy"       -> proxyPurgeEventListener.retryPurge(userId);
             case "errorreport" -> errorReportPurgeEventListener.retryPurge(userId);
             case "billing"     -> billingPurgeEventListener.retryPurge(userId);
-            default -> executeSettingsRetry(userId, domainName);
+            default -> throw new IllegalStateException("到達不能: " + domainName);
         };
-    }
-
-    /** 新しい設定domainだけ、owner proxyのコミット失敗を外側で捕捉する。旧7domainは変更しない。 */
-    private boolean executeSettingsRetry(Long userId, String domainName) {
-        try {
-            return switch (domainName) {
-                case "actionmemo" -> actionMemoAnonymizationEventListener.retryPurge(userId);
-                case "pointcard" -> pointCardAnonymizationEventListener.retryPurge(userId);
-                case "timeline" -> timelineBookmarkAnonymizationEventListener.retryPurge(userId);
-                case "search" -> searchAnonymizationEventListener.retryPurge(userId);
-                case "dashboard" -> dashboardSettingsPurgeEventListener.retryPurge(userId);
-                case "scopefolder" -> myScopeFolderPurgeEventListener.retryPurge(userId);
-                case "quickmemo" -> quickMemoSettingsPurgeEventListener.retryPurge(userId);
-                case "auth" -> authAnonymizationEventListener.retryPurge(userId);
-                case "notification" -> notificationAnonymizationEventListener.retryPurge(userId);
-                case "filesharing" -> sharedFileStarPurgeEventListener.retryPurge(userId);
-                case "contact" -> contactRequestBlockPurgeEventListener.retryPurge(userId);
-                case "user" -> userBlockPurgeEventListener.retryPurge(userId);
-                case "appearance" -> appearanceSettingsPurgeEventListener.retryPurge(userId);
-                case "navsettings" -> navSettingsPurgeEventListener.retryPurge(userId);
-                case "gamification" -> gamificationSettingsPurgeEventListener.retryPurge(userId);
-                case "reflection" -> reflectionSettingsPurgeEventListener.retryPurge(userId);
-                case "timetable.personal" -> personalTimetableSettingsPurgeEventListener.retryPurge(userId);
-                case "cms" -> userBlogSettingsPurgeEventListener.retryPurge(userId);
-                case "chat" -> chatBookmarkPurgeEventListener.retryPurge(userId);
-                case "knowledgebase" -> kbPageFavoritePurgeEventListener.retryPurge(userId);
-                case "favorite" -> favoriteAnonymizationEventListener.retryPurge(userId);
-                case "membership" -> scopeMemberCalendarSettingAnonymizationEventListener.retryPurge(userId);
-                case "weather" -> weatherLocationCleanupListener.retryPurge(userId);
-                case "inbox" -> inboxAnonymizationEventListener.retryPurge(userId);
-                case "timetable.notes" -> timetableNoteFieldsPurgeEventListener.retryPurge(userId);
-                case "seal" -> sealScopeDefaultsPurgeEventListener.retryPurge(userId);
-                case "schedule" -> calendarLayerCleanupExecutor.retryPurge(userId);
-                default -> throw new IllegalStateException("到達不能: " + domainName);
-            };
-        } catch (Exception ex) {
-            log.warn("個人設定の強消去retry失敗: userId={} domain={}", userId, domainName, ex);
-            return false;
-        }
     }
 }

@@ -98,7 +98,7 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserService userService;
     @Autowired private UserRepository userRepository;
     @Autowired private AccountPurgeService accountPurgeService;
-    @Autowired private GdprPurgeRetryService retryService;
+    @Autowired private GdprPurgeRetryFacade retryService;
     @Autowired private ApplicationEventPublisher eventPublisher;
     @Autowired @Qualifier("purge-pool") private Executor purgeExecutor;
     @PersistenceContext private EntityManager entityManager;
