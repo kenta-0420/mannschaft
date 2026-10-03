@@ -77,16 +77,37 @@ jobs:
           run_oql () {
             local label="$1" query="$2"
             echo "### $label" >> "$OUT/_log.txt"
+            # Snapshot existing files (workspace root + MAT_DIR) so we can diff out whatever
+            # ParseHeapDump.sh actually writes for this query -- it does NOT print results to
+            # stdout, it drops a new file (zip or unzipped txt) next to the hprof or cwd.
+            before=$(mktemp)
+            find "$GITHUB_WORKSPACE" "$MAT_DIR" -maxdepth 1 -type f 2>/dev/null | sort > "$before"
             set +e
             ./ParseHeapDump.sh "$GITHUB_WORKSPACE/$HPROF" \
               "-command=oql \"$query\"" \
               org.eclipse.mat.api:query -format=txt -unzip \
-              > "$OUT/${label}.txt" 2>> "$OUT/_log.txt"
+              > "$OUT/${label}_stdout.txt" 2>> "$OUT/_log.txt"
             rc=$?
             set -e
             echo "  rc=$rc" >> "$OUT/_log.txt"
-            # ParseHeapDump names the txt report after the java proc; normalize if a differently-named file appeared
-            find "$GITHUB_WORKSPACE" -maxdepth 1 -newer "$OUT/_log.txt" -name '*Query*.txt' -exec cp {} "$OUT/${label}_alt.txt" \; 2>/dev/null || true
+            after=$(mktemp)
+            find "$GITHUB_WORKSPACE" "$MAT_DIR" -maxdepth 1 -type f 2>/dev/null | sort > "$after"
+            new_files=$(comm -13 "$before" "$after")
+            echo "  new_files: $new_files" >> "$OUT/_log.txt"
+            n=0
+            for nf in $new_files; do
+              n=$((n+1))
+              ext="${nf##*.}"
+              if [ "$ext" = "zip" ]; then
+                mkdir -p "$OUT/${label}_unzipped_$n"
+                unzip -q -o "$nf" -d "$OUT/${label}_unzipped_$n" || true
+                rm -f "$nf"
+              else
+                cp "$nf" "$OUT/${label}_result_$n.$ext" 2>/dev/null || true
+                rm -f "$nf"
+              fi
+            done
+            rm -f "$before" "$after"
           }
 
           # 0) Field discovery: dump raw structure of one instance of each class we care about.
@@ -118,19 +139,24 @@ jobs:
           run_oql "04_weakmap_inbound" \
             "SELECT toHex(objectid(x)) AS addr, toString(classof(x)) AS ownerType FROM INBOUNDS org.mockito.internal.util.concurrent.WeakConcurrentMap x"
 
-          echo "---- oql dir ----"
-          ls -la "$OUT"
+          echo "---- oql dir (recursive) ----"
+          find "$OUT" -type f | sort
+          echo "---- sizes ----"
+          find "$OUT" -type f -name '*.txt' -exec sh -c 'echo "{}: $(wc -l < "{}") lines"' \;
 
-          # Local aggregation (best-effort): turn raw pair dumps into top-30 counts without relying on OQL GROUP BY.
-          for f in "$OUT"/02_raw_pairs_v1.txt "$OUT"/02_raw_pairs_v2.txt "$OUT"/03_mock_per_invocation_v1.txt; do
-            if [ -s "$f" ]; then
-              base=$(basename "$f" .txt)
-              echo "Aggregating $f -> ${base}_top30.txt"
-              # Each data row is typically tab/pipe/space separated "col1 col2"; count identical full lines after the header.
-              tail -n +2 "$f" | sort | uniq -c | sort -rn | head -40 > "$OUT/${base}_top30.txt" || true
+          # Local aggregation (best-effort): turn raw pair dumps into top-40 counts without relying on OQL GROUP BY.
+          # Any *_result_*.txt or *_unzipped_*/*.txt from the 02_/03_ raw queries is a candidate.
+          for f in "$OUT"/02_raw_pairs_v1_result_*.* "$OUT"/02_raw_pairs_v1_unzipped_*/*.txt \
+                   "$OUT"/02_raw_pairs_v2_result_*.* "$OUT"/02_raw_pairs_v2_unzipped_*/*.txt \
+                   "$OUT"/03_mock_per_invocation_v1_result_*.* "$OUT"/03_mock_per_invocation_v1_unzipped_*/*.txt; do
+            if [ -f "$f" ] && [ -s "$f" ]; then
+              base=$(basename "$f")
+              echo "Aggregating $f -> ${base}_top40.txt"
+              tail -n +2 "$f" | sort | uniq -c | sort -rn | head -40 > "$OUT/${base}_top40.txt" || true
             fi
           done
-          ls -la "$OUT"
+          echo "---- oql dir final ----"
+          find "$OUT" -type f | sort
 
       - name: Collect reports (zips only, unpack, drop huge indexes)
         run: |
