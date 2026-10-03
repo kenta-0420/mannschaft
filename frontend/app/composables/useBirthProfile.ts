@@ -10,5 +10,11 @@ export function useBirthProfile() {
  async function confirm(revision: string) {
   return command.execute({ path: `${base}/confirmations`, method: 'POST', body: { revision, useConfirmed: true } }, async snapshot => (await api<ApiResponse<BirthConfirmation>>(snapshot.path, { method: 'POST', body: snapshot.body as Record<string,unknown>, retry: 0, headers: { 'Idempotency-Key': snapshot.key } })).data)
  }
- return { command, get, save, confirm }
+ async function retryPending(): Promise<BirthProfile | BirthConfirmation> {
+  const snapshot = command.pending.value
+  if (!snapshot) throw new Error('COMMAND_NOT_PENDING')
+  const response = await command.execute(snapshot, async original => (await api<ApiResponse<BirthConfirmation | { revision: string }>>(original.path, { method: original.method, body: original.body as Record<string, unknown>, retry: 0, headers: { 'Idempotency-Key': original.key } })).data)
+  return snapshot.method === 'PUT' ? get() : response as BirthConfirmation
+ }
+ return { command, get, save, confirm, retryPending }
 }

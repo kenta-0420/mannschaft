@@ -13,6 +13,11 @@ export function useDiagnosisApi() {
   }
  }
  return { command,
+  retryPending: async <T>() => {
+   const snapshot = command.pending.value
+   if (!snapshot) throw new Error('COMMAND_NOT_PENDING')
+   return mutate<T>(snapshot.path, snapshot.body, snapshot.method as 'POST' | 'PUT')
+  },
   start: () => mutate<DiagnosisSession>(`${base}/sessions`, {}),
   session: async (id: string) => (await api<ApiResponse<DiagnosisSession>>(`${base}/sessions/${id}`, { cache: 'no-store' })).data,
   save: (session: DiagnosisSession, answers: DiagnosisSession['answers']) => mutate<DiagnosisSession>(`${base}/sessions/${session.id}/answers`, { version: session.version, answers }, 'PUT'),

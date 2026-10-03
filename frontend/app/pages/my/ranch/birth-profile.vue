@@ -30,12 +30,24 @@ async function assign() {
  if (!version || !result.value || !confirmation.value) return
  try { await ranch.act(() => ranch.api.assignment({ method: 'BIRTH_STYLE', resultId: result.value!.id, confirmationRef: confirmation.value!.confirmationRef, version })); await navigateTo('/my/ranch') } catch { failed.value = true }
 }
+async function retryPending() {
+ loading.value = true; failed.value = false
+ try {
+  if (profileApi.command.pending.value) {
+   const response = await profileApi.retryPending()
+   if ('confirmationRef' in response) confirmation.value = response
+   else apply(response)
+  }
+  if (diagnosis.command.pending.value) { result.value = await diagnosis.retryPending<DiagnosisResult>(); await ranch.load() }
+ } catch (error) { failed.value = true; handleApiError(error, 'BirthProfileRetry') } finally { loading.value = false }
+}
 onMounted(load)
 </script>
 <template>
  <div class="space-y-5">
   <PageHeader :title="t('ranch.diagnosisResults.birthStyle')" back-to="/my/ranch/results" />
   <p>{{ t('ranch.birth.purpose') }}</p><p>{{ t('ranch.birth.rule') }}</p><p>{{ t('ranch.diagnosisResults.avatarUnchanged') }}</p>
+  <Button v-if="(profileApi.command.pending.value || diagnosis.command.pending.value) && !loading" class="min-h-11" :label="t('ranch.retry')" @click="retryPending" />
   <PageLoading v-if="loading" />
   <DashboardErrorState v-if="failed" @retry="load" />
   <SectionCard v-if="profile && !loading" :title="t('ranch.birth.profile')">
@@ -45,12 +57,12 @@ onMounted(load)
     <label>{{ t('ranch.birth.lastNameKana') }}<InputText v-model="lastNameKana" class="w-full text-base" :disabled="!!profileApi.command.pending.value" /><span role="alert">{{ errors.lastNameKana }}</span></label>
     <label>{{ t('ranch.birth.firstNameKana') }}<InputText v-model="firstNameKana" class="w-full text-base" :disabled="!!profileApi.command.pending.value" /><span role="alert">{{ errors.firstNameKana }}</span></label>
     <label>{{ t('ranch.birth.birthDate') }}<DatePicker v-model="birthDate" date-format="yy/mm/dd" class="w-full" :disabled="!!profileApi.command.pending.value" /><span role="alert">{{ errors.birthDate }}</span></label>
-    <Button type="submit" class="min-h-11" :label="t('ranch.birth.save')" />
+    <Button type="submit" class="min-h-11" :label="t('ranch.birth.save')" :disabled="!!profileApi.command.pending.value || !!diagnosis.command.pending.value" />
    </form>
    <div class="mt-5 space-y-3">
     <p>{{ t('ranch.birth.savedProfile') }}: {{ profile.lastName }} {{ profile.firstName }} · {{ profile.lastNameKana }} {{ profile.firstNameKana }} · {{ profile.birthDate }}</p>
-    <label class="flex min-h-11 items-center gap-2"><Checkbox v-model="confirmed" binary />{{ t('ranch.birth.confirmUse') }}</label>
-    <Button class="min-h-11" :label="t('ranch.birth.create')" :disabled="!confirmed || !profile.lastName || !profile.firstName || !profile.lastNameKana || !profile.firstNameKana || !profile.birthDate" @click="create" />
+    <label class="flex min-h-11 items-center gap-2"><Checkbox v-model="confirmed" binary :disabled="!!profileApi.command.pending.value || !!diagnosis.command.pending.value" />{{ t('ranch.birth.confirmUse') }}</label>
+    <Button class="min-h-11" :label="t('ranch.birth.create')" :disabled="!!profileApi.command.pending.value || !!diagnosis.command.pending.value || !confirmed || !profile.lastName || !profile.firstName || !profile.lastNameKana || !profile.firstNameKana || !profile.birthDate" @click="create" />
    </div>
   </SectionCard>
   <SectionCard v-if="result" :title="t('ranch.diagnosisResults.title')">
