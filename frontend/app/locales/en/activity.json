@@ -44,6 +44,7 @@
       "TEXT": "Text",
       "NUMBER": "Number",
       "DATE": "Date",
+      "DATETIME": "Date & Time",
       "SELECT": "Select",
       "CHECKBOX": "Checkbox",
       "TEXTAREA": "Textarea"

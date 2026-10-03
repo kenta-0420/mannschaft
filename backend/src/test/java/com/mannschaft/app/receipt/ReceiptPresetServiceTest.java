@@ -1,5 +1,6 @@
 package com.mannschaft.app.receipt;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.receipt.dto.CreatePresetRequest;
 import com.mannschaft.app.receipt.entity.ReceiptPresetEntity;
@@ -30,6 +31,7 @@ class ReceiptPresetServiceTest {
 
     @Mock private ReceiptPresetRepository presetRepository;
     @Mock private ReceiptMapper receiptMapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ReceiptPresetService service;
@@ -83,7 +85,7 @@ class ReceiptPresetServiceTest {
             given(presetRepository.findByIdAndScopeTypeAndScopeId(PRESET_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.deletePreset(SCOPE_TYPE, SCOPE_ID, PRESET_ID))
+            assertThatThrownBy(() -> service.deletePreset(SCOPE_TYPE, SCOPE_ID, PRESET_ID, 100L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReceiptErrorCode.PRESET_NOT_FOUND);

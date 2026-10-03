@@ -1,5 +1,6 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
@@ -34,13 +35,17 @@ public class CoinTossService {
     private static final int MIN_CUSTOM_OPTIONS = 2;
     private static final int MAX_CUSTOM_OPTIONS = 6;
     private static final int MAX_OPTION_LENGTH = 50;
+    private static final String SCOPE_TYPE_TEAM = "TEAM";
 
     private final CoinTossResultRepository coinTossResultRepository;
+    private final AccessControlService accessControlService;
     private final ObjectMapper objectMapper;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional
     public ApiResponse<CoinTossResponse> toss(Long teamId, Long userId, CoinTossRequest request) {
+        // 認可根治 Wave2-2C: 非メンバーの実行を 403 で拒否する
+        accessControlService.checkMembership(userId, teamId, SCOPE_TYPE_TEAM);
         long recentCount = coinTossResultRepository.countByTeamIdAndUserIdAndCreatedAtAfter(
                 teamId, userId, LocalDateTime.now().minusMinutes(RATE_LIMIT_WINDOW_MINUTES));
         if (recentCount >= RATE_LIMIT_MAX) { throw new BusinessException(FamilyErrorCode.FAMILY_007); }
@@ -65,13 +70,18 @@ public class CoinTossService {
     public ApiResponse<CoinTossResponse> share(Long teamId, Long id, Long userId) {
         CoinTossResultEntity entity = coinTossResultRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(FamilyErrorCode.FAMILY_008));
+        // 認可根治 Wave2-2C: entity 由来の teamId とパス teamId の不一致（BOLA）は存在秘匿のため 404
+        if (!entity.getTeamId().equals(teamId)) { throw new BusinessException(FamilyErrorCode.FAMILY_008); }
+        accessControlService.checkMembership(userId, entity.getTeamId(), SCOPE_TYPE_TEAM);
         if (!entity.getUserId().equals(userId)) { throw new BusinessException(FamilyErrorCode.FAMILY_010); }
         if (Boolean.TRUE.equals(entity.getSharedToChat())) { throw new BusinessException(FamilyErrorCode.FAMILY_009); }
         entity.markShared();
         return ApiResponse.of(toResponse(entity, fromJson(entity.getOptions())));
     }
 
-    public CursorPagedResponse<CoinTossResponse> getHistory(Long teamId, Long cursor, int limit) {
+    public CursorPagedResponse<CoinTossResponse> getHistory(Long teamId, Long actorUserId, Long cursor, int limit) {
+        // 認可根治 Wave2-2C: 非メンバーの履歴閲覧を 403 で拒否する
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TYPE_TEAM);
         List<CoinTossResultEntity> results = coinTossResultRepository.findHistory(teamId, cursor, PageRequest.of(0, limit + 1));
         boolean hasNext = results.size() > limit;
         List<CoinTossResultEntity> page = hasNext ? results.subList(0, limit) : results;

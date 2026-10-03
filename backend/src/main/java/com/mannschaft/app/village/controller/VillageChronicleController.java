@@ -1,6 +1,7 @@
 package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.village.dto.ChronicleResponse;
 import com.mannschaft.app.village.service.VillageChronicleService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +28,14 @@ import java.util.UUID;
  *   <li>{@code GET /api/v1/villages/{villageId}/chronicles/{yearMonth}} — 月別詳細
  *       （yearMonth は ISO 形式 {@code YYYY-MM-01} を受け付ける）</li>
  * </ul>
+ *
+ * <h2>認可</h2>
+ * <p>村史は村掲示板スレッドのタイトルを集計して公開するため、参照系はいずれも
+ * <b>村掲示板と同一の閲覧認可</b>（村の {@code bulletin_visibility}）に従う。
+ * 本 Controller は {@link SecurityUtils} によるユーザー ID 取得のみを担い、
+ * 認可判定そのものは {@link VillageChronicleService} 経由で
+ * {@link com.mannschaft.app.village.service.VillageBulletinAccessService} に委譲する
+ * （認可ガードは public 入口である Service メソッドに置く）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/villages/{villageId}/chronicles")
@@ -44,7 +53,8 @@ public class VillageChronicleController {
     @Operation(summary = "村の村史一覧（月次ダイジェスト）を取得する")
     public ApiResponse<List<ChronicleResponse>> list(
             @PathVariable("villageId") UUID villageId) {
-        return ApiResponse.of(chronicleService.listChronicles(villageId));
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(chronicleService.listChronicles(villageId, actorUserId));
     }
 
     /**
@@ -58,6 +68,7 @@ public class VillageChronicleController {
             @PathVariable("villageId") UUID villageId,
             @PathVariable("yearMonth")
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate yearMonth) {
-        return ApiResponse.of(chronicleService.getChronicle(villageId, yearMonth));
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(chronicleService.getChronicle(villageId, yearMonth, actorUserId));
     }
 }

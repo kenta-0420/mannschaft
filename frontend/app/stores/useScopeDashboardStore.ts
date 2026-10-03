@@ -25,9 +25,17 @@ interface PersistedState {
   selectedTeamId: string | null
   selectedOrgId: string | null
   tabOrders: Record<ScopeTabType, TabOrderEntry[]>
+  /**
+   * F10.1.1 L1 管理者レンズの ON/OFF（スコープ単位）。
+   * key = `${ScopeTabType}:${slug}`（例 `TEAM:dev-team`）, value = 管理者レンズ ON。
+   * 設計書 02 §1.2。PII でも DB データでもないため localStorage 同梱のみ（DB 保存しない）。
+   */
+  adminLens: Record<string, boolean>
 }
 
 const STORAGE_KEY = 'scope-dashboard'
+const inFlightTabsByStore = new WeakMap<object, Map<string, Promise<void>>>()
+const latestTabRequestByStore = new WeakMap<object, Map<ScopeTabType, number>>()
 
 /** デフォルト表示順（空配列 = サーバー順に従う） */
 const defaultTabOrders = (): Record<ScopeTabType, TabOrderEntry[]> => ({
@@ -53,6 +61,11 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
     tabOrders: defaultTabOrders() as Record<ScopeTabType, TabOrderEntry[]>,
     /** タグページデータキャッシュ（scopeType → ScopeTabPage）*/
     tabPages: {} as Partial<Record<ScopeTabType, ScopeTabPage>>,
+    /**
+     * F10.1.1 L1 管理者レンズの ON/OFF（スコープ単位・設計書 02 §1.2）。
+     * key = `${ScopeTabType}:${slug}`, value = 管理者レンズ ON。既定は空（=メンバーレンズ）。
+     */
+    adminLens: {} as Record<string, boolean>,
     /** 初期ロード完了フラグ */
     loaded: false,
     /**
@@ -81,6 +94,7 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
           if (parsed.selectedTeamId !== undefined) this.selectedTeamId = parsed.selectedTeamId
           if (parsed.selectedOrgId !== undefined) this.selectedOrgId = parsed.selectedOrgId
           if (parsed.tabOrders) this.tabOrders = parsed.tabOrders
+          if (parsed.adminLens) this.adminLens = parsed.adminLens
         }
       } catch {
         // localStorage 読み取り失敗は無視（デフォルト値で継続）
@@ -101,6 +115,7 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         selectedTeamId: this.selectedTeamId,
         selectedOrgId: this.selectedOrgId,
         tabOrders: this.tabOrders,
+        adminLens: this.adminLens,
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave))
     },
@@ -112,10 +127,24 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
      * @param scopeType - TEAM / ORGANIZATION
      * @param page - 0 始まりのページ番号
      */
-    async loadTabs(scopeType: ScopeTabType, page = 0) {
-      try {
+    async loadTabs(scopeType: ScopeTabType, page = 0, folderId?: number) {
+      const inFlightTabs = inFlightTabsByStore.get(this) ?? new Map<string, Promise<void>>()
+      const latestTabRequest = latestTabRequestByStore.get(this) ?? new Map<ScopeTabType, number>()
+      inFlightTabsByStore.set(this, inFlightTabs)
+      latestTabRequestByStore.set(this, latestTabRequest)
+      const resolvedFolderId = folderId ?? this.activeFolderId ?? undefined
+      const key = `${scopeType}:${page}:${resolvedFolderId ?? ''}`
+      const existing = inFlightTabs.get(key)
+      if (existing) return existing
+
+      const requestId = (latestTabRequest.get(scopeType) ?? 0) + 1
+      latestTabRequest.set(scopeType, requestId)
+      const selectedAtRequestStart = scopeType === 'TEAM' ? this.selectedTeamId : this.selectedOrgId
+      const request = (async () => {
+       try {
         const { getScopeTabs } = useScopeTabApi()
-        const result = await getScopeTabs(scopeType, page, this.activeFolderId ?? undefined)
+        const result = await getScopeTabs(scopeType, page, resolvedFolderId)
+        if (latestTabRequest.get(scopeType) !== requestId) return
         this.tabPages[scopeType] = result
         this.lastError = null
 
@@ -125,7 +154,7 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         // 選択中スコープの BIGINT→slug マイグレーション + フォールバック処理。
         // scopeId（BIGINT 文字列）と slug（スラッグ）の両方でマッチングを行い、
         // UUID が取得できた場合は localStorage も含めてアップグレードする。
-        if (scopeType === 'TEAM') {
+        if (scopeType === 'TEAM' && this.selectedTeamId === selectedAtRequestStart) {
           if (this.selectedTeamId === null) {
             // 未選択 → 先頭を選択
             if (first) {
@@ -150,7 +179,7 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
               this.persistToStorage()
             }
           }
-        } else if (scopeType === 'ORGANIZATION') {
+        } else if (scopeType === 'ORGANIZATION' && this.selectedOrgId === selectedAtRequestStart) {
           if (this.selectedOrgId === null) {
             if (first) {
               this.selectedOrgId = first.slug ?? first.scopeId
@@ -175,12 +204,19 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
 
         this.loaded = true
       } catch (e) {
+        if (latestTabRequest.get(scopeType) !== requestId) return
         // エラーは握りつぶさない。ログを残し、i18n キーをエラー状態に保持して
         // （UI 層が $t で表示）localStorage の最後の状態で継続する。
         console.error('[scopeDashboard] loadTabs failed', e)
         this.lastError = 'scopeDashboard.tagBar.loadError'
         this.loaded = true
       }
+    })()
+      inFlightTabs.set(key, request)
+      void request.finally(() => {
+        if (inFlightTabs.get(key) === request) inFlightTabs.delete(key)
+      })
+      return request
     },
 
     /**
@@ -207,6 +243,40 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         console.error('[scopeDashboard] reorder failed', e)
         this.lastError = 'scopeDashboard.orderDialog.saveError'
       }
+    },
+
+    /**
+     * 管理者レンズの scopeKey を生成する（設計書 02 §1.2）。
+     * `${scopeType}:${slug}`（例 `TEAM:dev-team` / `ORGANIZATION:acme`）。
+     * slug はスコープ内一意かつ URL 識別子の正準のため、数値 ID を持ち出さない。
+     *
+     * @param scopeType - TEAM / ORGANIZATION
+     * @param slug - スコープの slug
+     */
+    adminLensKey(scopeType: ScopeTabType, slug: string): string {
+      return `${scopeType}:${slug}`
+    },
+
+    /**
+     * 管理者レンズの ON/OFF を設定して localStorage に保存する。
+     *
+     * @param scopeType - TEAM / ORGANIZATION
+     * @param slug - スコープの slug
+     * @param on - 管理者レンズ ON（true）/ メンバーレンズ（false）
+     */
+    setAdminLens(scopeType: ScopeTabType, slug: string, on: boolean) {
+      this.adminLens[this.adminLensKey(scopeType, slug)] = on
+      this.persistToStorage()
+    },
+
+    /**
+     * 管理者レンズが ON かどうかを返す（既定 false = メンバーレンズ）。
+     *
+     * @param scopeType - TEAM / ORGANIZATION
+     * @param slug - スコープの slug
+     */
+    isAdminLensOn(scopeType: ScopeTabType, slug: string): boolean {
+      return this.adminLens[this.adminLensKey(scopeType, slug)] ?? false
     },
 
     /**

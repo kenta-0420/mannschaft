@@ -1,5 +1,6 @@
 package com.mannschaft.app.incident.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.incident.IncidentErrorCode;
 import com.mannschaft.app.incident.entity.IncidentCategoryEntity;
@@ -27,6 +28,9 @@ public class IncidentCategoryService {
     private static final int MAX_CATEGORIES_PER_SCOPE = 20;
 
     private final IncidentCategoryRepository categoryRepository;
+
+    /** 認可根治戦役 Wave3-B3: incident カテゴリ管理への認可敷設で使用する。 */
+    private final AccessControlService accessControlService;
 
     // ========================================
     // DTOクラス定義
@@ -100,6 +104,9 @@ public class IncidentCategoryService {
      */
     @Transactional
     public IncidentCategoryResponse createCategory(Long userId, CreateIncidentCategoryRequest req) {
+        // 認可: ADMIN相当（scopeId/scopeTypeはリクエスト由来）
+        accessControlService.checkAdminOrAbove(userId, req.scopeId(), req.scopeType());
+
         // スコープ内のカテゴリ数チェック（論理削除済み除く）
         List<IncidentCategoryEntity> existing =
                 categoryRepository.findByScopeTypeAndScopeIdAndIsActiveTrueAndDeletedAtIsNull(
@@ -126,11 +133,16 @@ public class IncidentCategoryService {
     /**
      * スコープに紐づくアクティブカテゴリ一覧を取得する（sort_order昇順）。
      *
+     * <p>認可: MEMBER以上（scopeId/scopeTypeはクエリパラメータ由来）。</p>
+     *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
+     * @param userId    呼び出しユーザーID
      * @return カテゴリレスポンス一覧
      */
-    public List<IncidentCategoryResponse> listCategories(String scopeType, Long scopeId) {
+    public List<IncidentCategoryResponse> listCategories(String scopeType, Long scopeId, Long userId) {
+        accessControlService.checkMembership(userId, scopeId, scopeType);
+
         return categoryRepository
                 .findByScopeTypeAndScopeIdAndIsActiveTrueAndDeletedAtIsNull(scopeType, scopeId)
                 .stream()
@@ -143,13 +155,19 @@ public class IncidentCategoryService {
     /**
      * カテゴリを更新する。
      *
-     * @param id  カテゴリID
-     * @param req 更新リクエスト
+     * <p>認可: ADMIN相当。entity 由来 scope に非所属なら存在秘匿のため 404、
+     * 所属しているが ADMIN でない場合は 403。</p>
+     *
+     * @param id     カテゴリID
+     * @param req    更新リクエスト
+     * @param userId 呼び出しユーザーID
      * @return 更新後カテゴリレスポンス
      */
     @Transactional
-    public IncidentCategoryResponse updateCategory(Long id, UpdateIncidentCategoryRequest req) {
+    public IncidentCategoryResponse updateCategory(Long id, UpdateIncidentCategoryRequest req, Long userId) {
         IncidentCategoryEntity category = findCategoryOrThrow(id);
+        requireMemberOrConceal(category, userId);
+        accessControlService.checkAdminOrAbove(userId, category.getScopeId(), category.getScopeType());
 
         // slaHoursを更新（指定がある場合）
         if (req.slaHours() != null) {
@@ -173,11 +191,18 @@ public class IncidentCategoryService {
     /**
      * カテゴリを論理削除する。
      *
-     * @param id カテゴリID
+     * <p>認可: ADMIN相当。entity 由来 scope に非所属なら存在秘匿のため 404、
+     * 所属しているが ADMIN でない場合は 403。</p>
+     *
+     * @param id     カテゴリID
+     * @param userId 呼び出しユーザーID
      */
     @Transactional
-    public void deleteCategory(Long id) {
+    public void deleteCategory(Long id, Long userId) {
         IncidentCategoryEntity category = findCategoryOrThrow(id);
+        requireMemberOrConceal(category, userId);
+        accessControlService.checkAdminOrAbove(userId, category.getScopeId(), category.getScopeType());
+
         category.softDelete();
         categoryRepository.save(category);
         log.info("インシデントカテゴリ論理削除: id={}", id);
@@ -193,5 +218,17 @@ public class IncidentCategoryService {
     public IncidentCategoryEntity findCategoryOrThrow(Long id) {
         return categoryRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(IncidentErrorCode.INCIDENT_001));
+    }
+
+    /**
+     * 認可根治戦役 Wave3-B3 BOLA是正: ID 直指定 EP で使う共通ガード。
+     * URL に scope が現れないため、entity を先に fetch した上で呼び出しユーザーが
+     * entity 由来 scope のメンバーであることを検証する。非メンバーは越境 ID の存在を秘匿するため、
+     * 通常の {@code checkMembership}（403）ではなく entity の NOT_FOUND コード（404）を投げる。
+     */
+    private void requireMemberOrConceal(IncidentCategoryEntity category, Long userId) {
+        if (!accessControlService.isMember(userId, category.getScopeId(), category.getScopeType())) {
+            throw new BusinessException(IncidentErrorCode.INCIDENT_001);
+        }
     }
 }

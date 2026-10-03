@@ -80,6 +80,8 @@ class DisclosureFormDraftControllerIntegrationTest extends AbstractDisclosureInt
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
         MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, ORG_ID, RoleKind.MEMBER);
+        // 認可根治戦役 Wave3-B4: ドラフト作成/更新/削除は checkAdminOrAbove の対象になったため ADMIN を付与
+        MembershipTestHelper.insertUserRole(em, userId, "ADMIN", null, ORG_ID);
 
         templateId = saveSystemTemplate(
                 "DFD_TPL_" + System.nanoTime(),

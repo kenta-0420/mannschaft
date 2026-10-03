@@ -54,6 +54,21 @@ public class GenderSegmentEvaluator implements AdSegmentEvaluator {
 
     @Override
     public Set<Long> resolveUserIds(AdAudienceSegment segment) {
+        List<String> hashes = validateAndResolveHashes(segment);
+        return new HashSet<>(userRepository.findUserIdsByGenderHashIn(hashes));
+    }
+
+    @Override
+    public long countUserIds(AdAudienceSegment segment) {
+        List<String> hashes = validateAndResolveHashes(segment);
+        return userRepository.countUserIdsByGenderHashIn(hashes);
+    }
+
+    /**
+     * segment_value をバリデーションし、HMAC ブラインドインデックスのハッシュリストへ変換する。
+     * {@link #resolveUserIds} / {@link #countUserIds} 共通のバリデーション・変換ロジック。
+     */
+    private List<String> validateAndResolveHashes(AdAudienceSegment segment) {
         Map<String, Object> value = deserialize(segment.getSegmentValue());
         Object gendersObj = value.get("genders");
         if (!(gendersObj instanceof List<?> rawList) || rawList.isEmpty()) {
@@ -80,10 +95,9 @@ public class GenderSegmentEvaluator implements AdSegmentEvaluator {
 
         // segment_value: {"genders":["MALE","FEMALE"]}
         // gender は AES-256-GCM 暗号化済みのため HMAC ブラインドインデックス (gender_hash) で検索する
-        List<String> hashes = genders.stream()
+        return genders.stream()
                 .map(encryptionService::hmac)
                 .toList();
-        return new HashSet<>(userRepository.findUserIdsByGenderHashIn(hashes));
     }
 
     private Map<String, Object> deserialize(String json) {

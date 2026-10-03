@@ -100,6 +100,9 @@ class AuthServiceTest {
     @Mock
     private com.mannschaft.app.auth.service.RoleClaimResolver roleClaimResolver;
 
+    @Mock
+    private com.mannschaft.app.auth.service.StatusClaimResolver statusClaimResolver;
+
     @InjectMocks
     private AuthService authService;
 
@@ -186,7 +189,7 @@ class AuthServiceTest {
             given(userRepository.findByEmail(TEST_EMAIL)).willReturn(Optional.of(user));
             given(passwordEncoder.matches(TEST_PASSWORD, ENCODED_PASSWORD)).willReturn(true);
             given(twoFactorAuthRepository.findByUserId(any())).willReturn(Optional.empty());
-            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
             given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
             given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
@@ -206,8 +209,8 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: パスワード不一致でAUTH_009例外")
-        void login_パスワード不一致_AUTH009例外() {
+        @DisplayName("異常系: パスワード不一致でAUTH_001例外")
+        void login_パスワード不一致_AUTH001例外() {
             // Given
             LoginRequest req = createLoginRequest();
             UserEntity user = createActiveUser();
@@ -221,7 +224,7 @@ class AuthServiceTest {
             assertThatThrownBy(() -> authService.login(req, TEST_IP, TEST_USER_AGENT))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_009"));
+                            .isEqualTo("AUTH_001"));
         }
 
         @Test
@@ -284,8 +287,8 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: ユーザー不在でAUTH_009例外（タイミング攻撃対策あり）")
-        void login_ユーザー不在_AUTH009例外() {
+        @DisplayName("異常系: ユーザー不在でAUTH_001例外（タイミング攻撃対策あり）")
+        void login_ユーザー不在_AUTH001例外() {
             // Given
             LoginRequest req = createLoginRequest();
             given(userRepository.findByEmail(TEST_EMAIL)).willReturn(Optional.empty());
@@ -296,7 +299,7 @@ class AuthServiceTest {
             assertThatThrownBy(() -> authService.login(req, TEST_IP, TEST_USER_AGENT))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_009"));
+                            .isEqualTo("AUTH_001"));
             verify(eventPublisher).publish(any());
         }
 
@@ -326,7 +329,7 @@ class AuthServiceTest {
             given(userRepository.findByEmail(TEST_EMAIL)).willReturn(Optional.of(archivedUser));
             given(passwordEncoder.matches(TEST_PASSWORD, ENCODED_PASSWORD)).willReturn(true);
             given(twoFactorAuthRepository.findByUserId(any())).willReturn(Optional.empty());
-            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
             given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
             given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
@@ -359,7 +362,7 @@ class AuthServiceTest {
             assertThatThrownBy(() -> authService.login(req, TEST_IP, TEST_USER_AGENT))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_009"));
+                            .isEqualTo("AUTH_001"));
 
             // アカウントロックキーが設定されることを確認
             verify(valueOperations).set(contains("account_lock"), eq("1"), anyLong(), any());
@@ -376,7 +379,7 @@ class AuthServiceTest {
             given(passwordEncoder.upgradeEncoding(ENCODED_PASSWORD)).willReturn(true);
             given(passwordEncoder.encode(TEST_PASSWORD)).willReturn("{argon2}$argon2id$v=19$rehashed");
             given(twoFactorAuthRepository.findByUserId(any())).willReturn(Optional.empty());
-            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
             given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
             given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
@@ -404,7 +407,7 @@ class AuthServiceTest {
             given(passwordEncoder.matches(TEST_PASSWORD, ENCODED_PASSWORD)).willReturn(true);
             given(passwordEncoder.upgradeEncoding(ENCODED_PASSWORD)).willReturn(false);
             given(twoFactorAuthRepository.findByUserId(any())).willReturn(Optional.empty());
-            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
             given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
             given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);

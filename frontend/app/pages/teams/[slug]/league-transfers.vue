@@ -7,6 +7,7 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 type LeagueTransferResponse = components['schemas']['LeagueTransferResponse']
 
 const { t } = useI18n()
+const { formatDate } = useDatetime()
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 const notification = useNotification()
@@ -105,7 +106,7 @@ onMounted(load)
             </div>
             <div v-if="tr.message" class="text-sm text-surface-500 italic">{{ tr.message }}</div>
             <div v-if="tr.createdAt" class="text-xs text-surface-400">
-              {{ $t('transfer.created_at') }}: {{ new Date(tr.createdAt).toLocaleDateString() }}
+              {{ $t('transfer.created_at') }}: {{ formatDate(tr.createdAt) }}
             </div>
           </div>
         </div>

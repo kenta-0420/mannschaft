@@ -248,6 +248,8 @@ class GlobalBulletinServiceTest {
         private VillageBulletinAccessService villageBulletinAccessService;
         @Mock
         private PostingIdentityService postingIdentityService;
+        @Mock
+        private BulletinAttachmentService attachmentService;
 
         @InjectMocks
         private BulletinReplyService service;

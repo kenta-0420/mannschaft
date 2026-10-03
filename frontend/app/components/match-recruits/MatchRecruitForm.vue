@@ -77,17 +77,27 @@ watch(
   },
 )
 
+/**
+ * BE の必須項目（`MatchRecruitCreateRequest`）:
+ *   category @NotNull / title @NotBlank / matchDate @NotNull
+ * matchDate を空のまま送ると 400 になるため、送信前に FE でも塞ぐ。
+ */
+const canSubmit = computed(
+  () => form.value.title.trim() !== '' && form.value.matchDate !== '',
+)
+
 function onSubmit() {
-  if (!form.value.title) return
+  if (!canSubmit.value) return
   const postedByTeamId
     = postingIdentity.value?.subjectType === 'TEAM'
       ? postingIdentity.value.subjectId
       : null
   const body: VillageMatchRecruitCreateRequest = {
     category: form.value.category,
-    title: form.value.title,
+    title: form.value.title.trim(),
     description: form.value.description || null,
-    matchDate: form.value.matchDate || null,
+    // BE は @NotNull。canSubmit で空を弾いているため必ず値が入る
+    matchDate: form.value.matchDate,
     matchTimeStart: form.value.matchTimeStart || null,
     matchTimeEnd: form.value.matchTimeEnd || null,
     venue: form.value.venue || null,
@@ -134,8 +144,9 @@ function onSubmit() {
       <div>
         <label class="block text-sm font-medium mb-1">
           {{ t('village.matchRecruit.recruitTitle') }}
+          <span class="text-red-600">*</span>
         </label>
-        <InputText v-model="form.title" class="w-full" />
+        <InputText v-model="form.title" :maxlength="100" class="w-full" />
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">
@@ -147,6 +158,7 @@ function onSubmit() {
         <div>
           <label class="block text-sm font-medium mb-1">
             {{ t('village.matchRecruit.matchDate') }}
+            <span class="text-red-600">*</span>
           </label>
           <InputText v-model="form.matchDate" type="date" class="w-full" />
         </div>
@@ -210,6 +222,7 @@ function onSubmit() {
         :label="t('village.action.save')"
         icon="pi pi-check"
         severity="primary"
+        :disabled="!canSubmit"
         @click="onSubmit"
       />
     </template>

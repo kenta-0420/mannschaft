@@ -1,5 +1,6 @@
 package com.mannschaft.app.safetycheck;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.safetycheck.dto.CreateTemplateRequest;
 import com.mannschaft.app.safetycheck.dto.SafetyTemplateResponse;
@@ -38,6 +39,9 @@ class SafetyTemplateServiceTest {
 
     @Mock
     private SafetyCheckMapper mapper;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private SafetyTemplateService safetyTemplateService;

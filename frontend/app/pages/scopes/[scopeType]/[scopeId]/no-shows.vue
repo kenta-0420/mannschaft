@@ -33,7 +33,7 @@ async function load() {
       pageSize.value,
     )
     noShows.value = result.data
-    totalElements.value = result.meta.totalElements
+    totalElements.value = result.meta.total
   }
   catch (e) {
     error(String(e))
@@ -142,6 +142,9 @@ onMounted(() => load())
             <div v-if="record.reason" class="text-sm text-gray-700">
               {{ record.reason }}
             </div>
+            <div v-if="record.disputeReason" class="text-sm text-gray-700">
+              {{ t('recruitment.noShow.disputeDialog.reasonLabel') }}: {{ record.disputeReason }}
+            </div>
             <div class="text-xs text-gray-400">
               {{ record.createdAt }}
             </div>
@@ -173,6 +176,10 @@ onMounted(() => load())
       :style="{ width: '420px' }"
     >
       <div class="flex flex-col gap-4">
+        <div v-if="resolvingNoShow?.disputeReason" class="text-sm text-gray-700">
+          <div class="font-medium">{{ t('recruitment.noShow.disputeDialog.reasonLabel') }}</div>
+          <div class="whitespace-pre-wrap break-words">{{ resolvingNoShow.disputeReason }}</div>
+        </div>
         <div class="flex flex-col gap-2">
           <label class="text-sm font-medium">{{ t('recruitment.noShow.resolveDialog.title') }}</label>
           <div class="flex gap-3">

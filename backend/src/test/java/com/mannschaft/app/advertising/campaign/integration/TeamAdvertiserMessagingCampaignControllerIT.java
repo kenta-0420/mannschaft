@@ -5,8 +5,10 @@ import com.mannschaft.app.advertising.campaign.controller.TeamAdvertiserMessagin
 import com.mannschaft.app.advertising.campaign.dto.CampaignDetailResponse;
 import com.mannschaft.app.advertising.campaign.dto.CampaignListItemResponse;
 import com.mannschaft.app.advertising.campaign.dto.CreateCampaignRequest;
+import com.mannschaft.app.advertising.campaign.dto.EstimatedReachRangeResponse;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
+import com.mannschaft.app.advertising.campaign.enums.EstimatedReachRange;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
 import com.mannschaft.app.advertising.campaign.service.AdMessagingCampaignService;
 import com.mannschaft.app.advertising.dto.AdvertiserAccountResponse;
@@ -263,6 +265,41 @@ class TeamAdvertiserMessagingCampaignControllerIT {
                             otherTeamId, CAMPAIGN_ID))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("AD_CAMPAIGN_NOT_FOUND"));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/teams/{teamId}/advertiser/campaigns/messaging/{id}/preview")
+    class PreviewReach {
+
+        @Test
+        @DisplayName("F09.19.7 AC-7.2: 推定リーチのレンジ/ラベルを返す → 200")
+        void 正常系_range_label() throws Exception {
+            willDoNothing().given(accessControlService)
+                    .checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            given(campaignService.preview(CAMPAIGN_ID, ScopeType.TEAM, TEAM_ID))
+                    .willReturn(EstimatedReachRangeResponse.of(EstimatedReachRange.RANGE_1K_5K));
+
+            mockMvc.perform(post(
+                            "/api/v1/teams/{teamId}/advertiser/campaigns/messaging/{id}/preview",
+                            TEAM_ID, CAMPAIGN_ID))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.range").value("RANGE_1K_5K"))
+                    .andExpect(jsonPath("$.data.label").value(EstimatedReachRange.RANGE_1K_5K.getLabel()));
+        }
+
+        @Test
+        @DisplayName("F09.19.7 AC-7.2: 権限のない scope への preview は 403（checkAdminOrAbove 拒否）")
+        void 他scope_403() throws Exception {
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            mockMvc.perform(post(
+                            "/api/v1/teams/{teamId}/advertiser/campaigns/messaging/{id}/preview",
+                            TEAM_ID, CAMPAIGN_ID))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
         }
     }
 

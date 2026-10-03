@@ -6,10 +6,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * ゲーミフィケーション設定エンティティ。
@@ -18,8 +18,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "gamification_configs")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class GamificationConfigEntity extends BaseEntity {
 
     @Column(nullable = false, length = 50)

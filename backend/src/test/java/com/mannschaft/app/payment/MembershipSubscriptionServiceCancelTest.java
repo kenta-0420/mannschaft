@@ -52,6 +52,12 @@ class MembershipSubscriptionServiceCancelTest {
     @Mock private StripeCustomerRepository stripeCustomerRepository;
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private MemberPaymentService memberPaymentService;
+    /**
+     * 柱③-B PR-3: 本人が明示的に解約を決めた瞬間、「この期末解約は退会処理由来」という記録を
+     * 無効化する協働者（{@code cancel} から呼ばれる）。{@code @InjectMocks} は宣言の無い
+     * 引数へ null を渡すため、宣言しないと解約の正常系が NPE で落ちる。
+     */
+    @Mock private com.mannschaft.app.payment.service.MembershipPayerWithdrawalRunner payerWithdrawalRunner;
 
     @InjectMocks
     private MembershipSubscriptionService service;

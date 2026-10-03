@@ -63,7 +63,21 @@ public enum SocialErrorCode implements ErrorCode {
     /** フレンド関係が見つからない（404） */
     FRIEND_RELATION_NOT_FOUND("SOCIAL_106", "フレンド関係が見つかりません", Severity.WARN),
 
-    /** 公開設定変更は ADMIN のみ（403） */
+    /**
+     * 公開設定変更は ADMIN のみ（404）。
+     *
+     * <p><b>これは「意味が割れている」のではなく意図的な集約である。分割してはならない。</b>
+     * 本コードは (1) 自チームがフレンドペアの片方ではない teamFriendId への越境アクセス と (2) 自チームの ADMIN でない者による権限拒否 の両方に使われる。この2つを別コード・別ステータスに分けると、応答の差から
+     * 「そのIDのリソースは実在する」ことを外部から判定できる存在オラクルになる。</p>
+     *
+     * <p><b>ステータスは404固定。</b>不在（{@link #FRIEND_RELATION_NOT_FOUND}）と同一の404に畳むことで秘匿を達成する。
+     * このコードベースには PARKING_020 を起点とする「越境は存在秘匿で404」の流儀が確立しており
+     * （equipment/membership/todo/corkboard/pointcard/skill で実装済み）、それに揃えた。
+     * かつては 403 を返しており、不在（404）と越境（403）でステータスが割れて存在オラクルになっていた。
+     * 「403に戻すべきでは」と迷った場合は、この理由を思い出すこと。
+     * （{@code GlobalExceptionHandlerTest.ExistenceOracleParity} が
+     * 「不在と越境の応答が一致すること」を契約として固定している）。</p>
+     */
     FRIEND_VISIBILITY_ADMIN_ONLY("SOCIAL_107", "公開設定の変更には ADMIN 権限が必要です", Severity.WARN),
 
     /** フレンド関係の競合状態（NOWAIT タイムアウト） — 再試行要求（202） */

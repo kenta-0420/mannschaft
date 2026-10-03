@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.security.AuthorizedInService;
 
 import java.util.List;
 
@@ -45,6 +46,10 @@ public class SignageDisplayController {
      * @param token サイネージアクセストークン文字列
      * @return 画面情報+スロット一覧
      */
+    // capability トークン方式: SignageAccessTokenService#validateToken(token) がトークンの有効性・
+    // 有効期限を検証し、無効・期限切れは BusinessException で拒否する。トークン自体が認可を代替する
+    // ため、SecurityConfig の permitAll 登録は不要（AuthorizedInService javadoc の capability トークン区分）。
+    @AuthorizedInService
     @GetMapping("/signage/{token}")
     public ApiResponse<SignageDisplayResponse> getDisplayConfig(@PathVariable String token) {
         // トークンを検証する（無効・期限切れの場合は BusinessException をスロー）

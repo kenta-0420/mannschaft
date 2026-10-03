@@ -36,6 +36,18 @@ public final class SurveyResultsVisibilityMapper {
             // §5.1.4 CUSTOM 運用規約参照、Resolver 内で個別実装
             // (限定リスト — survey_result_viewers のみ閲覧可)
             case VIEWERS_ONLY -> StandardVisibility.CUSTOM;
+            // §5.1.4 CUSTOM 運用規約参照、Resolver 内で個別実装
+            // （配信母集団条件 — 公開後は「配信された者」が中間集計を閲覧可）。
+            //
+            // ALWAYS の可視範囲は「配信母集団と同一」であり、これは StandardVisibility の
+            // どのラダー段・所属軸でも表現できない:
+            //   - TARGETED は survey_targets 名簿そのものが母集団
+            //   - ORGANIZATION × ALL は「組織直属 ∪ 配下 ACTIVE チーム」の再帰母集団かつ
+            //     include_supporters トグルで応援者の要否が変わる
+            // 所属軸（SCOPE_AFFILIATED / ORGANIZATION_AND_DESCENDANTS）で近似すると、
+            // 配信されていない者に見えたり（漏洩）、配信された者が 403 になったり（機能不全）する。
+            // よって配信母集団の述語そのものを Resolver で評価する。
+            case ALWAYS -> StandardVisibility.CUSTOM;
         };
     }
 }

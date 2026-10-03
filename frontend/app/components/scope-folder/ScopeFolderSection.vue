@@ -225,8 +225,6 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <ConfirmDialog />
-
     <!-- フォルダ一覧 -->
     <div v-if="loading" class="flex justify-center py-8">
       <i class="pi pi-spin pi-spinner text-2xl text-surface-400" />

@@ -5,6 +5,8 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.template.dto.CreateTemplateRequest;
 import com.mannschaft.app.template.dto.TemplateResponse;
 import com.mannschaft.app.template.dto.UpdateLevelAvailabilityRequest;
+import com.mannschaft.app.template.dto.UpdateModuleActiveRequest;
+import com.mannschaft.app.template.dto.UpdateModulePaidPlanRequest;
 import com.mannschaft.app.template.dto.UpdateTemplateRequest;
 import com.mannschaft.app.template.entity.ModuleDefinitionEntity;
 import com.mannschaft.app.template.entity.ModuleLevelAvailabilityEntity;
@@ -31,6 +33,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+
+import org.mockito.ArgumentCaptor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
+
+import java.lang.reflect.Method;
+import java.util.Arrays;
 
 /**
  * {@link SystemAdminTemplateService} の単体テスト。
@@ -185,13 +194,17 @@ class SystemAdminTemplateServiceTest {
             // When
             ApiResponse<TemplateResponse> response = systemAdminTemplateService.updateTemplate(TEMPLATE_ID, request);
 
-            // Then
+            // Then: toBuilder()→id=null→INSERT化バグの回帰防止。
+            // save に渡るのが findById の同一インスタンス（管理対象）であることを確認。
+            ArgumentCaptor<TeamTemplateEntity> captor = ArgumentCaptor.forClass(TeamTemplateEntity.class);
+            verify(teamTemplateRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(template);
+
             TemplateResponse data = response.getData();
             assertThat(data.getName()).isEqualTo("更新後名称");
             assertThat(data.getDescription()).isEqualTo("更新後説明");
             assertThat(data.getCategory()).isEqualTo("education");
             assertThat(data.getIsActive()).isFalse();
-            verify(teamTemplateRepository).save(any(TeamTemplateEntity.class));
             verify(templateModuleRepository).deleteAll(any());
         }
 
@@ -302,8 +315,13 @@ class SystemAdminTemplateServiceTest {
             // When
             systemAdminTemplateService.updateLevelAvailability(MODULE_ID, request);
 
-            // Then
-            verify(moduleLevelAvailabilityRepository).save(any(ModuleLevelAvailabilityEntity.class));
+            // Then: toBuilder()→id=null→INSERT化バグの回帰防止。
+            // save に渡るのが findById の同一インスタンス（管理対象）であることを確認。
+            ArgumentCaptor<ModuleLevelAvailabilityEntity> captor =
+                    ArgumentCaptor.forClass(ModuleLevelAvailabilityEntity.class);
+            verify(moduleLevelAvailabilityRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(availability);
+            assertThat(captor.getValue().getIsAvailable()).isTrue();
         }
 
         @Test
@@ -338,5 +356,133 @@ class SystemAdminTemplateServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TMPL_002"));
         }
+    }
+
+    // ========================================
+    // updateModulePaidPlan（AC-1・AC-3・AC-4）
+    // ========================================
+
+    @Nested
+    @DisplayName("updateModulePaidPlan")
+    class UpdateModulePaidPlan {
+
+        @Test
+        @DisplayName("AC-1: 更新_有料要否をtrueへ反転_同一インスタンスで保存")
+        void 更新_有料要否をtrueへ反転() {
+            // Given: requiresPaidPlan=false のモジュール
+            ModuleDefinitionEntity module = createModule();
+            assertThat(module.getRequiresPaidPlan()).isFalse();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleDefinitionRepository.save(any(ModuleDefinitionEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateModulePaidPlanRequest request = new UpdateModulePaidPlanRequest(true);
+
+            // When
+            systemAdminTemplateService.updateModulePaidPlan(MODULE_ID, request);
+
+            // Then: toBuilder()→id=null→INSERT化バグの回帰防止。findById の同一インスタンスを保存。
+            ArgumentCaptor<ModuleDefinitionEntity> captor =
+                    ArgumentCaptor.forClass(ModuleDefinitionEntity.class);
+            verify(moduleDefinitionRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(module);
+            assertThat(captor.getValue().getRequiresPaidPlan()).isTrue();
+        }
+
+        @Test
+        @DisplayName("AC-3: 更新_モジュール不在_TMPL002例外")
+        void 更新_モジュール不在_TMPL002例外() {
+            // Given
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.empty());
+            UpdateModulePaidPlanRequest request = new UpdateModulePaidPlanRequest(true);
+
+            // When / Then
+            assertThatThrownBy(() -> systemAdminTemplateService.updateModulePaidPlan(MODULE_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TMPL_002"));
+        }
+
+        @Test
+        @DisplayName("AC-4: moduleCatalog(allEntries) と moduleDetail(key=#moduleId) を evict する")
+        void キャッシュevict注釈が付与されている() throws Exception {
+            Method method = SystemAdminTemplateService.class.getMethod(
+                    "updateModulePaidPlan", Long.class, UpdateModulePaidPlanRequest.class);
+            assertCacheEvicts(method);
+        }
+    }
+
+    // ========================================
+    // updateModuleActive（AC-2・AC-3・AC-4）
+    // ========================================
+
+    @Nested
+    @DisplayName("updateModuleActive")
+    class UpdateModuleActive {
+
+        @Test
+        @DisplayName("AC-2: 更新_有効状態をfalseへ反転_同一インスタンスで保存")
+        void 更新_有効状態をfalseへ反転() {
+            // Given: isActive=true のモジュール
+            ModuleDefinitionEntity module = createModule();
+            assertThat(module.getIsActive()).isTrue();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleDefinitionRepository.save(any(ModuleDefinitionEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateModuleActiveRequest request = new UpdateModuleActiveRequest(false);
+
+            // When
+            systemAdminTemplateService.updateModuleActive(MODULE_ID, request);
+
+            // Then
+            ArgumentCaptor<ModuleDefinitionEntity> captor =
+                    ArgumentCaptor.forClass(ModuleDefinitionEntity.class);
+            verify(moduleDefinitionRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(module);
+            assertThat(captor.getValue().getIsActive()).isFalse();
+        }
+
+        @Test
+        @DisplayName("AC-3: 更新_モジュール不在_TMPL002例外")
+        void 更新_モジュール不在_TMPL002例外() {
+            // Given
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.empty());
+            UpdateModuleActiveRequest request = new UpdateModuleActiveRequest(false);
+
+            // When / Then
+            assertThatThrownBy(() -> systemAdminTemplateService.updateModuleActive(MODULE_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TMPL_002"));
+        }
+
+        @Test
+        @DisplayName("AC-4: moduleCatalog(allEntries) と moduleDetail(key=#moduleId) を evict する")
+        void キャッシュevict注釈が付与されている() throws Exception {
+            Method method = SystemAdminTemplateService.class.getMethod(
+                    "updateModuleActive", Long.class, UpdateModuleActiveRequest.class);
+            assertCacheEvicts(method);
+        }
+    }
+
+    /**
+     * AC-4: 対象メソッドが {@code updateLevelAvailability} と同じキャッシュ evict 契約
+     * （{@code moduleCatalog} allEntries + {@code moduleDetail} key=#moduleId）を持つことを検証する。
+     * テストプロファイルは {@code cache.type=none} のため振る舞いでは検証できず、注釈の存在で担保する。
+     */
+    private void assertCacheEvicts(Method method) {
+        Caching caching = method.getAnnotation(Caching.class);
+        assertThat(caching).as("@Caching が付与されていること").isNotNull();
+
+        CacheEvict[] evicts = caching.evict();
+        boolean catalogEvict = Arrays.stream(evicts)
+                .anyMatch(e -> Arrays.asList(e.value()).contains("moduleCatalog") && e.allEntries());
+        boolean detailEvict = Arrays.stream(evicts)
+                .anyMatch(e -> Arrays.asList(e.value()).contains("moduleDetail")
+                        && "#moduleId".equals(e.key()));
+
+        assertThat(catalogEvict).as("moduleCatalog を allEntries で evict すること").isTrue();
+        assertThat(detailEvict).as("moduleDetail を key=#moduleId で evict すること").isTrue();
     }
 }

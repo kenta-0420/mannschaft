@@ -1,6 +1,21 @@
 // バックエンドのネスト化された予約 Response DTO に対応した手動型。
 // 真実のソースは frontend/app/types/generated/index.ts（openapi-typescript 自動生成）。
 // 当ファイルは生成型のスキーマと厳密一致させること（フィールドは BE 同様すべて optional）。
+import type { components } from '~/types/generated'
+
+/** F03.4.3 §5.6#10: 一覧応答へ additive 追加されたグループ要約（単枠予約は null）。生成型を単一ソースにする。 */
+export type GroupSummaryDto = components['schemas']['GroupSummaryDto']
+
+/**
+ * F03.4.5 §6.2 W2-5-FE: 定期予約（毎週繰り返し）関連の型。真実のソースは生成型（再エクスポートのみ・手書きしない）。
+ * `RecurringWeekOutcomeDto.reason` は9値enum（`RecurringWeekSkipReason`）。丸めると会員に嘘の理由を
+ * 伝えることになるため、FE は9値すべてに i18n 文言を用意すること（症状を隠さない原則）。
+ */
+export type RecurringWeekOutcomeDto = components['schemas']['RecurringWeekOutcomeDto']
+export type RecurringWeekSkipReason = NonNullable<RecurringWeekOutcomeDto['reason']>
+export type RecurringSeriesDto = components['schemas']['RecurringSeriesDto']
+export type RecurringCancelDto = components['schemas']['RecurringCancelDto']
+export type RecurringConfirmDto = components['schemas']['RecurringConfirmDto']
 
 export type ReservationStatus =
   | 'PENDING'
@@ -27,6 +42,8 @@ export interface SlotSummaryDto {
   title?: string
   /** Format: date (YYYY-MM-DD) */
   slotDate?: string
+  /** Format: date (YYYY-MM-DD), 日跨ぎ枠の終了業務日。 */
+  endDate?: string
   /** Format: time (HH:mm:ss) */
   startTime?: string
   /** Format: time (HH:mm:ss) */
@@ -64,6 +81,20 @@ export interface ReservationResponse {
   cancellation?: CancellationDto
   notes?: NotesDto
   audit?: ReservationAuditDto
+  /** グループ予約（F03.4.3）の要約。単枠予約は null（additive・既存契約不変）。 */
+  group?: GroupSummaryDto
+  /**
+   * 定期予約(series)所属のID（UUID・nullable・トップレベル・F03.4.5 §6.2 W2-5）。
+   * 一覧・詳細GETでも常に返る唯一の判定材料——「この予約が定期予約の一部か」はこのフィールドで判定する
+   * （`recurring`/`recurringCancel`/`recurringConfirm` は各操作の結果明細でありGETでは常にnull）。
+   */
+  recurringSeriesId?: string
+  /** 定期予約 作成の結果明細（createReservation の repeatWeeks>=2 応答でのみ非null）。 */
+  recurring?: RecurringSeriesDto
+  /** 定期予約 キャンセルの結果明細（scope=THIS_AND_FOLLOWING キャンセル応答でのみ非null）。 */
+  recurringCancel?: RecurringCancelDto
+  /** 定期予約 承認の結果明細（scope=SERIES 承認応答でのみ非null）。 */
+  recurringConfirm?: RecurringConfirmDto
 }
 
 // === ReservationSlotResponse（予約枠。ReservationResponse とは別物）===
@@ -71,6 +102,8 @@ export interface SlotBasicDto {
   title?: string
   /** Format: date (YYYY-MM-DD) */
   slotDate?: string
+  /** Format: date (YYYY-MM-DD), 日跨ぎ枠の終了業務日。 */
+  endDate?: string
   /** Format: time (HH:mm:ss) */
   startTime?: string
   /** Format: time (HH:mm:ss) */
@@ -80,14 +113,10 @@ export interface SlotBasicDto {
 export interface SlotStatusDto {
   slotStatus?: string
   bookedCount?: number
-  isException?: boolean
+  /** 予約枠の定員（同時にこの枠を予約できる人数の上限。既定 1） */
+  capacity?: number
   closedReason?: string
   note?: string
-}
-
-export interface SlotRecurrenceDto {
-  recurrenceRule?: string
-  parentSlotId?: number
 }
 
 export interface SlotPricingDto {
@@ -100,14 +129,20 @@ export interface SlotAuditDto {
   updatedAt?: string
 }
 
+/** 枠単位の承認ポリシー（null=チーム設定に従う） */
+export interface SlotPolicyDto {
+  /** AUTO=自動確定 / MANUAL=承認制 / undefined=チーム設定に従う */
+  approvalMode?: 'AUTO' | 'MANUAL'
+}
+
 export interface ReservationSlotResponse {
   id?: number
   teamId?: number
   staffUserId?: number
   basic?: SlotBasicDto
   status?: SlotStatusDto
-  recurrence?: SlotRecurrenceDto
   pricing?: SlotPricingDto
+  policy?: SlotPolicyDto
   audit?: SlotAuditDto
 }
 
@@ -140,6 +175,7 @@ export interface TimeSlotDto {
   startTime?: string
   /** Format: time (HH:mm:ss) */
   endTime?: string
+  endsNextDay?: boolean
 }
 
 export interface BlockedAuditDto {
@@ -164,6 +200,7 @@ export interface BusinessStatusDto {
   openTime?: string
   /** Format: time (HH:mm:ss) */
   closeTime?: string
+  endsNextDay?: boolean
 }
 
 export interface BusinessHourResponse {
@@ -172,7 +209,62 @@ export interface BusinessHourResponse {
   businessStatus?: BusinessStatusDto
 }
 
+/**
+ * 予約対象の呼称プリセット（F03.4.5 §5.1・BE enum `ReservationResourceNameType`）。
+ * DEFAULT=未設定チームの従来表示「予約対象」への後方互換フォールバック。CUSTOM は
+ * `resourceNameCustom` の自由入力文字列を全ロケール共通でそのまま表示する（翻訳しない）。
+ */
+export type ReservationResourceNameTypeCode = 'DEFAULT' | 'STAFF' | 'SEAT' | 'COURT' | 'BED' | 'LANE' | 'CUSTOM'
+
+// === ReservationSettingsResponse（予約設定）===
+// 真実のソースは generated/index.ts の ReservationSettingsResponse。
+// こちらは composable の import 先として残し、生成型と整合を保つ。
+export interface ReservationSettingsResponse {
+  /** 非所属ユーザーの予約を許可するか（既定 false）。BE: reservation_team_settings.allow_public_reservation */
+  allowPublicReservation?: boolean
+  maxAdvanceBookingDays?: number
+  minAdvanceBookingHours?: number
+  requireConfirmation?: boolean
+  allowCancellation?: boolean
+  cancellationDeadlineHours?: number
+  /** 承認モード。AUTO=自動確定 / MANUAL=承認制（#1640 追加）*/
+  approvalMode?: 'AUTO' | 'MANUAL'
+  /** キャンセル受付の締切（予約開始の何時間前まで。0〜8760）*/
+  cancelDeadlineHours?: number
+  /** リマインド送信タイミングの CSV 文字列（例: "24,1"）*/
+  remindBeforeHours?: string
+  /** 営業時間が設定済みか（F03.4.5 §3.2・実測フィールド）。false=週間スケジュール画面に初回体験ガイドを表示 */
+  hasBusinessHours?: boolean
+  /** 予約対象の呼称プリセット（F03.4.5 §5.1）。DEFAULT=未設定（従来の『予約対象』表示） */
+  resourceNameType?: ReservationResourceNameTypeCode
+  /** 自由入力の呼称（resourceNameType=CUSTOM のときのみ非 null） */
+  resourceNameCustom?: string
+  /**
+   * 仮押さえ(PENDING)を自動キャンセルするまでの時間数（1〜168・W2-6 で追加）。
+   * null/undefined = 自動失効しない（BE Javadoc: clearPendingExpireHours=true で明示的に無効化された状態）。
+   */
+  pendingExpireHours?: number
+}
+
 // === リクエスト DTO ===
+export interface UpdateReservationSettingRequest {
+  allowPublicReservation?: boolean
+  /** 承認モード変更時に指定（AUTO/MANUAL）*/
+  approvalMode?: 'AUTO' | 'MANUAL'
+  /** キャンセル受付の締切（時間）変更時に指定 */
+  cancelDeadlineHours?: number
+  /** リマインドタイミングの CSV 文字列変更時に指定（例: "24,1"）*/
+  remindBeforeHours?: string
+  /** 予約対象の呼称プリセット変更時に指定（null=据え置き） */
+  resourceNameType?: ReservationResourceNameTypeCode
+  /** 自由入力の呼称変更時に指定（CUSTOM 選択時のみ有効・30文字以内・null=据え置き） */
+  resourceNameCustom?: string
+  /** 仮押さえ(PENDING)を自動キャンセルするまでの時間数変更時に指定（1〜168・null=据え置き・W2-6） */
+  pendingExpireHours?: number
+  /** 仮押さえ自動失効を無効化するか（true=自動失効しない。pendingExpireHours より優先・W2-6） */
+  clearPendingExpireHours?: boolean
+}
+
 export interface CreateReservationRequest {
   slotId: number
   serviceNotes?: string
@@ -194,7 +286,32 @@ export interface CreateSlotRequest {
   startTime: string
   /** Format: time (HH:mm:ss) */
   endTime: string
+  endsNextDay?: boolean
   recurrenceRule?: string
   price?: number
   note?: string
+  /** 枠単位の承認モード上書き（省略=チーム設定に従う） */
+  approvalMode?: 'AUTO' | 'MANUAL'
+  /** 予約枠の定員（同時にこの枠を予約できる人数の上限。省略=既定 1・1 以上） */
+  capacity?: number
+}
+
+export interface UpdateSlotRequest {
+  staffUserId?: number
+  title?: string
+  /** Format: date (YYYY-MM-DD) */
+  slotDate?: string
+  /** Format: time (HH:mm:ss) */
+  startTime?: string
+  /** Format: time (HH:mm:ss) */
+  endTime?: string
+  endsNextDay?: boolean
+  price?: number
+  note?: string
+  /** 枠単位の承認モード上書き（clearApprovalMode=true と同時指定不可） */
+  approvalMode?: 'AUTO' | 'MANUAL'
+  /** true にすると承認モード上書きを解除（チーム設定に従う状態に戻す） */
+  clearApprovalMode?: boolean
+  /** 予約枠の定員（省略=据え置き・1 以上） */
+  capacity?: number
 }

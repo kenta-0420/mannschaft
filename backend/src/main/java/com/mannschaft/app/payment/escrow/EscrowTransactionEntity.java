@@ -9,8 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,7 +29,7 @@ import java.util.UUID;
  * このため本リポジトリは {@code AbstractTenantAwareRepository}（deleted_at 前提）を継承できず、
  * テナント絞り込みは {@code organization_id} ベースの derived finder で個別実装する。</p>
  *
- * <p>このフェーズでは Entity/Repo 骨格のみ（Service は次陣）。</p>
+ * <p>状態遷移・照会は {@code ConnectChargeService} が担う。</p>
  *
  * <p>設計書: docs/features/F22.1_market/payment/01_data_model.md §3.2</p>
  */
@@ -39,8 +38,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class EscrowTransactionEntity extends UuidV7Entity {
 

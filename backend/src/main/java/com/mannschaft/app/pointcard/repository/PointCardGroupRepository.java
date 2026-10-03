@@ -26,4 +26,13 @@ public interface PointCardGroupRepository
      * インデックス {@code idx_pcg_user (user_id, display_order)} を活用する。
      */
     List<PointCardGroupEntity> findAllByUserIdOrderByDisplayOrderAscCreatedAtAsc(Long userId);
+
+    /**
+     * 指定ユーザーのカード整理グループを全削除する（退会30日後の物理削除時の安全弁）。
+     *
+     * <p>クロスドメインFK撤廃キャンペーン 第二陣C。{@code fk_pcg_user}（user CASCADE）撤廃に伴い、
+     * {@code PointCardAnonymizationEventListener#onAccountPurged} が退会30日後にグループ（個人設定）を
+     * 先行削除するために使用する。</p>
+     */
+    void deleteByUserId(Long userId);
 }

@@ -239,26 +239,14 @@ function cancel() {
 
 <template>
   <div class="qr-add">
-    <header class="qr-add__header">
-      <button
-        type="button"
-        class="qr-add__back"
-        :aria-label="t('wallet.actions.cancel')"
-        @click="cancel"
-      >
-        ←
-      </button>
-      <h1 class="qr-add__title">{{ titleText }}</h1>
-    </header>
+    <PageHeader :title="titleText" />
 
     <p v-if="orgSubtitle" class="qr-add__org">{{ orgSubtitle }}</p>
 
     <!-- パラメータ不正 -->
     <div v-if="!paramsValid" class="qr-add__error" role="alert">
       <p>{{ t('wallet.add_from_qr.missing_params') }}</p>
-      <button type="button" class="qr-add__btn" @click="cancel">
-        {{ t('wallet.detail.back_to_list') }}
-      </button>
+      <Button :label="t('wallet.detail.back_to_list')" severity="secondary" @click="cancel" />
     </div>
 
     <template v-else>
@@ -280,36 +268,34 @@ function cancel() {
           <label for="qr-displayname" class="qr-add__label">
             {{ t('wallet.add.display_name') }}
           </label>
-          <input
+          <InputText
             id="qr-displayname"
             v-model="displayName"
-            type="text"
-            class="qr-add__input"
+            class="w-full"
             :placeholder="t('wallet.add.display_name_placeholder')"
-            maxlength="100"
-          >
+            :maxlength="100"
+          />
         </section>
 
         <section class="qr-add__section">
           <label for="qr-barcode" class="qr-add__label">
             {{ t('wallet.add_from_qr.barcode_input') }}
           </label>
-          <input
+          <InputText
             id="qr-barcode"
             v-model="barcodeValue"
-            type="text"
-            class="qr-add__input"
+            class="w-full"
             :placeholder="t('wallet.add.manual_input_placeholder')"
             :disabled="noBarcode"
             inputmode="numeric"
             autocomplete="off"
-          >
+          />
           <p class="qr-add__hint">{{ t('wallet.add_from_qr.barcode_hint') }}</p>
 
-          <label class="qr-add__checkbox">
-            <input v-model="noBarcode" type="checkbox">
-            <span>{{ t('wallet.add_from_qr.no_barcode') }}</span>
-          </label>
+          <div class="flex items-center gap-2 mt-1">
+            <Checkbox v-model="noBarcode" binary input-id="qr-no-barcode" />
+            <label for="qr-no-barcode">{{ t('wallet.add_from_qr.no_barcode') }}</label>
+          </div>
         </section>
 
         <!-- 入力した番号のミニプレビュー -->
@@ -322,22 +308,20 @@ function cancel() {
         </p>
 
         <div class="qr-add__footer">
-          <button
-            type="button"
-            class="qr-add__btn"
+          <Button
+            :label="t('wallet.actions.cancel')"
+            severity="secondary"
+            class="flex-1"
             :disabled="saving"
             @click="cancel"
-          >
-            {{ t('wallet.actions.cancel') }}
-          </button>
-          <button
-            type="button"
-            class="qr-add__btn qr-add__btn--primary"
+          />
+          <Button
+            :label="t('wallet.add_from_qr.add')"
+            class="flex-1"
             :disabled="!canSave || saving"
+            :loading="saving"
             @click="save"
-          >
-            {{ saving ? t('wallet.add_from_qr.adding') : t('wallet.add_from_qr.add') }}
-          </button>
+          />
         </div>
       </template>
     </template>
@@ -371,31 +355,6 @@ function cancel() {
   gap: 1rem;
   position: relative;
 }
-.qr-add__header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.qr-add__back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--p-surface-100, #f3f4f6);
-  border: none;
-  cursor: pointer;
-  font-size: 1.25rem;
-}
-.qr-add__title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .qr-add__org {
   margin: 0;
   font-size: 0.875rem;
@@ -421,29 +380,10 @@ function cancel() {
   font-weight: 600;
   color: var(--p-text-color, #111827);
 }
-.qr-add__input {
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  border-radius: 0.5rem;
-  background: var(--p-surface-0, #fff);
-  font-size: 0.9375rem;
-}
-.qr-add__input:disabled {
-  background: var(--p-surface-100, #f3f4f6);
-  color: var(--p-text-muted-color, #6b7280);
-}
 .qr-add__hint {
   margin: 0;
   font-size: 0.8125rem;
   color: var(--p-text-muted-color, #6b7280);
-}
-.qr-add__checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9375rem;
-  cursor: pointer;
-  margin-top: 0.25rem;
 }
 .qr-add__error {
   background: #fef2f2;
@@ -465,25 +405,6 @@ function cancel() {
   margin-top: 0.5rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--p-surface-200, #e5e7eb);
-}
-.qr-add__btn {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
-  color: var(--p-text-color, #111827);
-  font-weight: 600;
-  cursor: pointer;
-}
-.qr-add__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.qr-add__btn--primary {
-  background: var(--p-primary-color, #3b82f6);
-  color: #fff;
-  border-color: transparent;
 }
 .qr-add__toast {
   position: fixed;

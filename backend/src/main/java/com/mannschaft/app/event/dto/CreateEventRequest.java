@@ -1,7 +1,6 @@
 package com.mannschaft.app.event.dto;
 
 import com.mannschaft.app.event.entity.EventAttendanceMode;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +17,12 @@ public class CreateEventRequest {
 
     private final Long scheduleId;
 
-    @NotBlank
+    /**
+     * イベントスラッグ（任意）。
+     *
+     * <p>指定された場合は一意性を検証して採用する。
+     * 未指定（null / 空文字）の場合は {@code subtitle} からSlugGeneratorで自動生成する（EventService内）。</p>
+     */
     @Size(max = 100)
     private final String slug;
 

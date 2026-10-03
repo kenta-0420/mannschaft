@@ -1,8 +1,12 @@
 package com.mannschaft.app.recruitment.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.DisputeNoShowRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentNoShowRecordResponse;
@@ -25,6 +29,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Locale;
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 /**
  * F03.11 Phase 5b: NO_SHOW マーク・異議申立 Controller (§9.5)。
@@ -48,10 +56,11 @@ public class RecruitmentNoShowController {
             @PathVariable Long scopeId,
             @PathVariable Long listingId,
             @PathVariable Long participantId) {
-        RecruitmentNoShowRecordEntity record = noShowService.markNoShow(
-                participantId, SecurityUtils.getCurrentUserId());
+        RecruitmentNoShowRecordResponse record = noShowService.markNoShow(
+                parseScopeType(scopeType), scopeId,
+                listingId, participantId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(toResponse(record)));
+                .body(ApiResponse.of(record));
     }
 
     /**
@@ -64,7 +73,7 @@ public class RecruitmentNoShowController {
             @PathVariable Long scopeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        RecruitmentScopeType scope = RecruitmentScopeType.valueOf(scopeType.toUpperCase());
+        RecruitmentScopeType scope = parseScopeType(scopeType);
         List<RecruitmentNoShowRecordEntity> records =
                 noShowService.getNoShowsByScope(scope, scopeId, SecurityUtils.getCurrentUserId());
 
@@ -73,8 +82,7 @@ public class RecruitmentNoShowController {
         int totalPages = (total + size - 1) / size;
         int fromIndex = Math.min(page * size, total);
         int toIndex = Math.min(fromIndex + size, total);
-        List<RecruitmentNoShowRecordResponse> content = records.subList(fromIndex, toIndex)
-                .stream().map(this::toResponse).toList();
+        List<RecruitmentNoShowRecordResponse> content = toResponses(records.subList(fromIndex, toIndex));
 
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(total, page, size, totalPages);
         return ResponseEntity.ok(PagedResponse.of(content, meta));
@@ -83,27 +91,31 @@ public class RecruitmentNoShowController {
     /**
      * 自分の NO_SHOW 履歴取得（ユーザー本人）。
      */
+    @SelfScopedEndpoint("RecruitmentNoShowService#getMyHistory が "
+            + "SecurityUtils.getCurrentUserId() のみを検索条件に束縛する")
     @GetMapping("/recruitment/no-shows/me")
     @Operation(summary = "自分のNO_SHOW履歴 (本人, §9.5)")
     public ResponseEntity<ApiResponse<List<RecruitmentNoShowRecordResponse>>> getMyNoShows() {
         List<RecruitmentNoShowRecordEntity> records =
                 noShowService.getMyHistory(SecurityUtils.getCurrentUserId());
-        List<RecruitmentNoShowRecordResponse> responses = records.stream()
-                .map(this::toResponse).toList();
+        List<RecruitmentNoShowRecordResponse> responses = toResponses(records);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
     /**
      * 異議申立（本人）。
      */
+    // 認可根治済み: RecruitmentNoShowService#dispute が record.getUserId().equals(userId) で
+    // 本人所有を検証する（本人以外は NO_SHOW_RECORD_NOT_FOUND で存在秘匿）。
+    @AuthorizedInService
     @PostMapping("/recruitment/no-shows/{noShowId}/dispute")
     @Operation(summary = "NO_SHOW 異議申立 (本人, §9.5)")
     public ResponseEntity<ApiResponse<RecruitmentNoShowRecordResponse>> dispute(
             @PathVariable Long noShowId,
             @Valid @RequestBody DisputeNoShowRequest request) {
-        RecruitmentNoShowRecordEntity record =
-                noShowService.dispute(noShowId, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.of(toResponse(record)));
+        RecruitmentNoShowRecordResponse response =
+                noShowService.dispute(noShowId, SecurityUtils.getCurrentUserId(), request.getReason());
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
@@ -118,7 +130,7 @@ public class RecruitmentNoShowController {
             @Valid @RequestBody ResolveDisputeRequest request) {
         RecruitmentNoShowRecordEntity record = noShowService.resolveDispute(
                 noShowId, SecurityUtils.getCurrentUserId(),
-                RecruitmentScopeType.valueOf(scopeType), scopeId,
+                parseScopeType(scopeType), scopeId,
                 request.getResolution());
         return ResponseEntity.ok(ApiResponse.of(toResponse(record)));
     }
@@ -127,7 +139,25 @@ public class RecruitmentNoShowController {
     // プライベートマッパー
     // ===========================================
 
+    private RecruitmentScopeType parseScopeType(String scopeType) {
+        return EnumInputParser.parse(
+                RecruitmentScopeType.class, scopeType.toUpperCase(Locale.ROOT), "scopeType");
+    }
+
     private RecruitmentNoShowRecordResponse toResponse(RecruitmentNoShowRecordEntity entity) {
+        return toResponse(entity, noShowService.getDisputeDeadlineAt(
+                entity.getId(), entity.getRecordedAt()));
+    }
+
+    private List<RecruitmentNoShowRecordResponse> toResponses(List<RecruitmentNoShowRecordEntity> records) {
+        Map<Long, LocalDateTime> deadlines = noShowService.getDisputeDeadlines(records.stream()
+                .collect(Collectors.toMap(RecruitmentNoShowRecordEntity::getId,
+                        RecruitmentNoShowRecordEntity::getRecordedAt)));
+        return records.stream().map(record -> toResponse(record, deadlines.get(record.getId()))).toList();
+    }
+
+    private RecruitmentNoShowRecordResponse toResponse(
+            RecruitmentNoShowRecordEntity entity, LocalDateTime disputeDeadlineAt) {
         return new RecruitmentNoShowRecordResponse(
                 entity.getId(),
                 entity.getParticipantId(),
@@ -138,8 +168,11 @@ public class RecruitmentNoShowController {
                 entity.getRecordedAt() != null ? entity.getRecordedAt().toString() : null,
                 entity.getRecordedBy(),
                 entity.isDisputed(),
+                entity.getDisputeReason(),
                 entity.getDisputeResolution() != null ? entity.getDisputeResolution().name() : null,
-                entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : null
+                entity.getCreatedAt() != null ? entity.getCreatedAt().toString() : null,
+                disputeDeadlineAt
+                        .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toOffsetDateTime().toString()
         );
     }
 }

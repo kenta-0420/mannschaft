@@ -12,6 +12,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * デジタルサイネージ スロットエンティティ。
@@ -22,7 +23,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class SignageSlotEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -47,6 +48,36 @@ public class SignageSlotEntity extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Boolean isActive = true;
+
+    /**
+     * スロットの更新可能フィールドを部分更新する（null=現値維持セマンティクス）。
+     *
+     * <p>本メソッドは managed entity をその場でミューテートする更新メソッドである。
+     * {@code @Transactional} 内で managed な本エンティティに対して呼ぶことで JPA の
+     * dirty checking により UPDATE が発行される。
+     *
+     * <p><strong>なぜ toBuilder().build() で作り直さないか:</strong>
+     * {@link SignageSlotEntity} は {@code @SuperBuilder(toBuilder = true)} を使用しており、
+     * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
+     * {@code toBuilder()} は {@code id} を引き継ぐが、managed entity の直接ミューテートが
+     * より安全かつ明示的なため、その場でフィールドを更新する。
+     * よって更新は必ず managed entity の直接ミューテートで行う。
+     *
+     * @param slideDuration  新スライド秒数（null なら現値維持）
+     * @param contentConfig  新コンテンツ設定 JSON（null なら現値維持）
+     * @param isActive       新有効フラグ（null なら現値維持）
+     */
+    public void applyUpdate(Integer slideDuration, String contentConfig, Boolean isActive) {
+        if (slideDuration != null) {
+            this.slideDuration = slideDuration;
+        }
+        if (contentConfig != null) {
+            this.contentConfig = contentConfig;
+        }
+        if (isActive != null) {
+            this.isActive = isActive;
+        }
+    }
 
     /**
      * スロットを無効化する。

@@ -5,6 +5,8 @@ const api = useApi()
 const scopeStore = useScopeStore()
 const scopeType = computed(() => scopeStore.current.type as 'team' | 'organization')
 const scopeId = computed(() => scopeStore.current.id ?? '')
+// checkAdminOrAbove（DEPUTY_ADMIN 以上）要求。直リンク防御（CMP-260917-1351 課題B）。
+useAdminScopeGuard('DEPUTY_ADMIN')
 const { success, error: showError } = useNotification()
 const { getCategories, createCategory } = useScheduleApi()
 

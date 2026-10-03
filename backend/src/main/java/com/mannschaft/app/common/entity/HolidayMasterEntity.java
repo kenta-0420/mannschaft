@@ -53,6 +53,7 @@ public class HolidayMasterEntity {
     @Builder.Default
     private Boolean isRecurring = false;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

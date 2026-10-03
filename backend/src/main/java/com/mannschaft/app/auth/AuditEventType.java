@@ -18,6 +18,12 @@ public enum AuditEventType {
     LOGOUT_SESSION(AuditEventCategory.AUTH),
     LOGOUT_ALL_SESSIONS(AuditEventCategory.AUTH),
     TOKEN_REUSE_DETECTED(AuditEventCategory.AUTH),
+    /**
+     * CMP-260917-1352 Phase 3: grace window 超過の後継有りトークン再提示を、同一端末（deviceFingerprint
+     * 一致）からの再試行と判定して救済（全デバイス無効化を回避）した。{@link #TOKEN_REUSE_DETECTED}
+     * （真リプレイ検出）とは意図的に別種別。混ぜると監視側で本物の盗難検知と区別が付かなくなる。
+     */
+    TOKEN_REPLAY_RESCUED_SAME_DEVICE(AuditEventCategory.AUTH),
     DEVICE_FINGERPRINT_MISMATCH(AuditEventCategory.AUTH),
     NEW_DEVICE_LOGIN(AuditEventCategory.AUTH),
 
@@ -80,6 +86,29 @@ public enum AuditEventType {
     TEAM_MEMBER_BLOCKED(AuditEventCategory.TEAM),
     TEAM_MEMBER_UNBLOCKED(AuditEventCategory.TEAM),
     TEAM_INVITE_TOKEN_CREATED(AuditEventCategory.TEAM),
+    TEAM_OWNERSHIP_TRANSFER_OFFERED(AuditEventCategory.TEAM),
+    TEAM_OWNERSHIP_TRANSFER_DECLINED(AuditEventCategory.TEAM),
+    TEAM_OWNERSHIP_TRANSFER_CANCELLED(AuditEventCategory.TEAM),
+    TEAM_ADMIN_TRANSFERRED(AuditEventCategory.TEAM),
+    /** 柱①ADMINゼロ根治: 退会purge経路の承諾スキップ強制委譲（forced=true）。 */
+    TEAM_ADMIN_SUCCESSION_FORCED(AuditEventCategory.TEAM),
+    TEAM_MEMBERSHIP_INVITE_DECLINED(AuditEventCategory.TEAM),
+    TEAM_MEMBERSHIP_INVITE_CANCELLED(AuditEventCategory.TEAM),
+    TEAM_MEMBERSHIP_INVITE_COMPENSATED(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: チームの加盟操作者が組織へ加盟を申請した（metadata: 組織・加盟 ID・希望グループ）。 */
+    TEAM_ORG_APPLICATION_SUBMITTED(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: チームの加盟操作者が加盟申請を取り下げた（metadata: 組織・加盟 ID）。 */
+    TEAM_ORG_APPLICATION_WITHDRAWN(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: 組織 ADMIN がチームを加盟に招待した（metadata: チーム・加盟 ID・指定グループ）。 */
+    TEAM_ORG_INVITE_SENT(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: チームの加盟操作者が組織からの招待を辞退した（metadata: 組織・加盟 ID・block）。 */
+    TEAM_ORG_INVITE_REJECTED(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: 組織 ADMIN が送った招待を取り消した（metadata: チーム・加盟 ID）。 */
+    TEAM_ORG_INVITE_CANCELLED(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: 加盟が成立した（metadata.via: ORG_INVITE＝招待の承諾 / TEAM_APPLY＝申請の承認・group_id）。 */
+    TEAM_ORG_MEMBERSHIP_CREATED(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: 組織 ADMIN が加盟チームのグループ割当を変更した（単体・一括。1チームにつき1行。metadata: from・to のグループ ID）。 */
+    TEAM_ORG_GROUP_CHANGED(AuditEventCategory.TEAM),
 
     // ─── ORGANIZATION (Phase 2+) ──────────────────────────────
     ORGANIZATION_CREATED(AuditEventCategory.ORGANIZATION),
@@ -90,12 +119,30 @@ public enum AuditEventType {
     ORGANIZATION_MEMBER_BLOCKED(AuditEventCategory.ORGANIZATION),
     ORGANIZATION_MEMBER_UNBLOCKED(AuditEventCategory.ORGANIZATION),
     ORGANIZATION_INVITE_TOKEN_CREATED(AuditEventCategory.ORGANIZATION),
+    ORGANIZATION_OWNERSHIP_TRANSFER_OFFERED(AuditEventCategory.ORGANIZATION),
+    ORGANIZATION_OWNERSHIP_TRANSFER_DECLINED(AuditEventCategory.ORGANIZATION),
+    ORGANIZATION_OWNERSHIP_TRANSFER_CANCELLED(AuditEventCategory.ORGANIZATION),
+    ORGANIZATION_ADMIN_TRANSFERRED(AuditEventCategory.ORGANIZATION),
+    /** 柱①ADMINゼロ根治: 退会purge経路の承諾スキップ強制委譲（forced=true）。 */
+    ORGANIZATION_ADMIN_SUCCESSION_FORCED(AuditEventCategory.ORGANIZATION),
+    ORGANIZATION_MEMBERSHIP_INVITE_DECLINED(AuditEventCategory.ORGANIZATION),
+    ORGANIZATION_MEMBERSHIP_INVITE_CANCELLED(AuditEventCategory.ORGANIZATION),
+    ORGANIZATION_MEMBERSHIP_INVITE_COMPENSATED(AuditEventCategory.ORGANIZATION),
 
     // ─── PAYMENT (Phase 3+) ───────────────────────────────────
     PAYMENT_COMPLETED(AuditEventCategory.PAYMENT),
     PAYMENT_REFUNDED(AuditEventCategory.PAYMENT),
     /** F08.9 P8: 支払い明細 CSV をエクスポートした（チーム ADMIN 操作）。 */
     PAYMENT_CSV_EXPORTED(AuditEventCategory.PAYMENT),
+    CONTENT_GATE_UPDATED(AuditEventCategory.PAYMENT),
+    BILLING_PERMISSION_GROUP_CREATE(AuditEventCategory.PAYMENT),
+    BILLING_PERMISSION_GROUP_UPDATE(AuditEventCategory.PAYMENT),
+    BILLING_PERMISSION_GROUP_DELETE(AuditEventCategory.PAYMENT),
+    BILLING_PERMISSION_GROUP_DUPLICATE(AuditEventCategory.PAYMENT),
+    BILLING_PERMISSION_GROUP_ASSIGN(AuditEventCategory.PAYMENT),
+    BILLING_PERMISSION_GROUP_DENIED(AuditEventCategory.PAYMENT),
+    /** F20.1 Billing Center: 請求書明細を閲覧した（AC-60）。URL・住所全文・payload は metadata に載せない。 */
+    BILLING_INVOICE_VIEWED(AuditEventCategory.PAYMENT),
 
     // ─── SCHEDULE (Phase 3+) ──────────────────────────────────
     SCHEDULE_CREATED(AuditEventCategory.SCHEDULE),
@@ -261,6 +308,24 @@ public enum AuditEventType {
     VILLAGE_MEETUP_CANCELLED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — 寄合への投票（新規/変更）。 */
     VILLAGE_MEETUP_VOTED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 出欠の登録/変更（upsert・設計書 §16.2）。 */
+    VILLAGE_MEETUP_ATTENDANCE_SET(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 宿題 TODO の手挙げ（claim・設計書 §16.2）。 */
+    VILLAGE_MEETUP_TODO_CLAIMED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 宿題 TODO の完了（complete・設計書 §16.2）。 */
+    VILLAGE_MEETUP_TODO_COMPLETED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 宿題 TODO の手放し（release・設計書 §16.2）。 */
+    VILLAGE_MEETUP_TODO_RELEASED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave2 ③祭の参加レイヤー — 参加表明（RSVP）の登録/変更（upsert・設計書 §16.2）。 */
+    VILLAGE_FESTIVAL_RSVP_SET(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave2 ③祭の参加レイヤー — 参加表明（RSVP）の取消（設計書 §16.2）。 */
+    VILLAGE_FESTIVAL_RSVP_CANCELLED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave2 ③祭の参加レイヤー — 実況投稿の紐付け（live-post タグ・設計書 §16.2）。 */
+    VILLAGE_FESTIVAL_LIVE_POST_TAGGED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave2 ③祭の参加レイヤー — 祭 ENDED 時の村史（行事アーカイブ）自動編纂（設計書 §16.2）。 */
+    VILLAGE_FESTIVAL_ARCHIVED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave2 ①行事→村フィード還流 — 行事のシステム名義自動投稿を作成（設計書 §16.2）。 */
+    VILLAGE_EVENT_SYSTEM_POSTED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — 村史（月次ダイジェスト）を生成（バッチ）。 */
     VILLAGE_CHRONICLE_GENERATED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — ご縁スコア更新（日次バッチによる加算反映）。 */
@@ -271,6 +336,28 @@ public enum AuditEventType {
     VILLAGE_NEWSLETTER_SENT(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β-E — 村ニュースレター opt-out（ユーザー自身の操作）。 */
     VILLAGE_NEWSLETTER_OPT_OUT(AuditEventCategory.VILLAGE),
+    /** F17.1 ②-2 — 村ニュースレター号を集計・凍結（集計バッチによる snapshot 確定）。 */
+    VILLAGE_NEWSLETTER_ISSUE_FROZEN(AuditEventCategory.VILLAGE),
+    /** F17.2 ⑤ — 加入前相性クエリ（差分攻撃の事後検知用・§8.4 緩和3）。 */
+    VILLAGE_AFFINITY_QUERIED(AuditEventCategory.VILLAGE),
+    /** F17.2 ⑥ — 所属村一覧の公開トグルを切替（本人操作・§9.3）。 */
+    VILLAGE_MEMBERSHIP_PROFILE_VISIBILITY_CHANGED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 初回制定（最初の条追加で charter 自動生成・§4.5/§16.2）。 */
+    VILLAGE_CHARTER_ENACTED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 条を追加（§16.2）。 */
+    VILLAGE_CHARTER_ARTICLE_ADDED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 条の本文/付則を更新（§16.2）。 */
+    VILLAGE_CHARTER_ARTICLE_UPDATED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 条を論理削除（§16.2）。 */
+    VILLAGE_CHARTER_ARTICLE_DELETED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 条の並び替え（PATCH order・§16.2）。 */
+    VILLAGE_CHARTER_REORDERED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 策定者を追加（§16.2）。 */
+    VILLAGE_CHARTER_DRAFTER_ADDED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 策定者を削除（§16.2）。 */
+    VILLAGE_CHARTER_DRAFTER_REMOVED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 「改正を確定」（last_revised_at 更新＋履歴追記・§8.2/§16.2）。 */
+    VILLAGE_CHARTER_REVISED(AuditEventCategory.VILLAGE),
 
     // ─── FORM (F05.7 書類テンプレート・フォームビルダー) ──────────
     /** F05.7 Phase 11 第四陣 4-B — フォーム提出 PDF を生成（Thymeleaf + Flying Saucer + R2 アップロード）。 */
@@ -373,6 +460,13 @@ public enum AuditEventType {
     /** SYSTEM_ADMIN が手数料パターン割当を解除した。 */
     FEE_POLICY_ASSIGNMENT_DELETED(AuditEventCategory.ADMIN_ACTION),
 
+    // ─── RECRUITMENT_CANCELLATION_FEE (F03.11.1 募集キャンセル料の徴収) ─────────────
+    /**
+     * F03.11.1 募集キャンセル料が免除された（受取先側の管理者または SYSTEM_ADMIN による）。
+     * 免除は金銭債権を消す操作であり、誰がいつ何円を消したかを後から追える記録が唯一の手がかりになる。
+     */
+    RECRUITMENT_CANCELLATION_FEE_WAIVED(AuditEventCategory.ADMIN_ACTION),
+
     // ─── GUARDIANSHIP_SWITCH (F08.9 P3c 後見切替セッション) ─────────────
     /**
      * 保護者が子として後見切替セッションを開始した（acting-as 開始・03_security §3.2 二重記録）。
@@ -436,7 +530,132 @@ public enum AuditEventType {
     /**
      * 記録係（scorekeeper_user_id）を変更した（03 §C.7）。
      */
-    MATCH_SCOREKEEPER_CHANGED(AuditEventCategory.MATCH);
+    MATCH_SCOREKEEPER_CHANGED(AuditEventCategory.MATCH),
+
+    // ─── PROVISIONING (柱②-2 販促プロビジョニング) ──────────────────
+    /** SYSTEM_ADMIN が組織/チームを PROVISIONED 状態で事前作成した。 */
+    PROVISIONING_SCOPE_CREATED(AuditEventCategory.PROVISIONING),
+    /** 管理予定者へ ADMIN 招待を発行した（作成直後の初回発行を含む）。 */
+    PROVISIONING_INVITATION_SENT(AuditEventCategory.PROVISIONING),
+    /** 招待を再送した（旧トークンは CANCELLED、新トークンを発行）。 */
+    PROVISIONING_INVITATION_RESENT(AuditEventCategory.PROVISIONING),
+    /** 招待を取消した。 */
+    PROVISIONING_INVITATION_CANCELLED(AuditEventCategory.PROVISIONING),
+    /** 招待が承諾され、ADMIN 付与・スコープ ACTIVE 化が完了した。 */
+    PROVISIONING_INVITATION_ACCEPTED(AuditEventCategory.PROVISIONING),
+
+    // ─── RECEIPT (F08.4 領収書) ──────────────────────────────
+    /**
+     * 領収書の発行者設定を変更した（F08.4 §9.5・AC-33）。
+     * userId=操作者 / teamId または organizationId=対象スコープ /
+     * metadata に isQualifiedInvoicer・invoiceRegistrationNumber の旧値→新値を含める。
+     * 登録番号は国税庁が公表する公開情報のため平文で記録してよい。
+     */
+    RECEIPT_SETTINGS_UPDATED(AuditEventCategory.RECEIPT),
+
+    // ─── BILLING (F20.1 課金センター) ──────────────────────────────
+    /**
+     * Stripe Customer Portal のセッションを発行した（PR5 AC-72・05 §370）。
+     * userId=操作者 / teamId または organizationId=対象スコープ /
+     * metadata に scopeKind・scopeId・billingCustomerId を含める。
+     * <b>Portal URL は含めない</b>（正本 §370: URL・payload は監査から除外）。
+     */
+    BILLING_PORTAL_OPENED(AuditEventCategory.BILLING),
+
+    /**
+     * 期末解約の予約を受け付けた（PR6a AC-66・05 §369）。operation の<b>作成</b>に対応する。
+     * userId=操作者 / teamId または organizationId=対象スコープ /
+     * metadata に scopeKind・scopeId・contractId（object ref）を含める。
+     * <b>Stripe の raw payload・URL・client secret は含めない</b>（AC-67・正本 §370）。
+     */
+    BILLING_CANCEL_REQUESTED(AuditEventCategory.BILLING),
+
+    /**
+     * 期末解約が Stripe 反映まで<b>確定</b>した（PR6a AC-66）。
+     * metadata は {@link #BILLING_CANCEL_REQUESTED} と同じ項目に endAt（期末日時）を加える。
+     */
+    BILLING_CANCEL_APPLIED(AuditEventCategory.BILLING),
+
+    /**
+     * 期末解約が<b>失敗</b>した（PR6a AC-66。Stripe 障害・競合・前提不成立を含む）。
+     * 成功だけを監査すると「利用者が解約を試みたが通らなかった」事実が残らないため、
+     * 失敗も同じ接頭辞で記録する。metadata に errorCode（アプリのエラーコード）を含める。
+     * <b>例外メッセージ本文は含めない</b>（Stripe の応答文言に ID・URL が混じりうるため・AC-67）。
+     */
+    BILLING_CANCEL_FAILED(AuditEventCategory.BILLING),
+
+    /** 解約撤回を受け付けた（PR6a AC-66）。metadata は解約と同じ。 */
+    BILLING_CANCEL_RESUME_REQUESTED(AuditEventCategory.BILLING),
+
+    /** 解約撤回が確定した（PR6a AC-66）。 */
+    BILLING_CANCEL_RESUME_APPLIED(AuditEventCategory.BILLING),
+
+    /** 解約撤回が失敗した（PR6a AC-66）。metadata に errorCode を含める。 */
+    BILLING_CANCEL_RESUME_FAILED(AuditEventCategory.BILLING),
+
+    /**
+     * 上位プラン変更（upgrade）の実行要求を受け付けた（PR6b-1 AC-136）。change 行の<b>作成</b>に対応する。
+     * userId=操作者 / teamId または organizationId=対象スコープ /
+     * metadata に scopeKind・scopeId・contractId・changeId・fromPlanKey・toPlanKey を含める。
+     * <b>clientSecret・Stripe raw payload・URL・カード情報は含めない</b>（AC-139・正本 §370）。
+     */
+    BILLING_PLAN_CHANGE_REQUESTED(AuditEventCategory.BILLING),
+
+    /**
+     * 上位プラン変更が {@code invoice.paid} で<b>確定</b>した（PR6b-1 AC-137）。
+     * metadata は {@link #BILLING_PLAN_CHANGE_REQUESTED} と同じ項目。
+     */
+    BILLING_PLAN_CHANGE_APPLIED(AuditEventCategory.BILLING),
+
+    /**
+     * 上位プラン変更が<b>失敗</b>した（PR6b-1 AC-138。3DS 失敗・カード拒否・invoice 失効・
+     * Stripe 呼び出し失敗を含む）。成功だけを監査すると「利用者が upgrade を試みたが
+     * 通らなかった」事実が残らないため、失敗も同じ接頭辞で記録する。
+     * metadata に errorCode（アプリのエラーコード）を含める。
+     * <b>例外メッセージ本文は含めない</b>（AC-139）。
+     */
+    BILLING_PLAN_CHANGE_FAILED(AuditEventCategory.BILLING),
+
+    // ─── BILLING (価格改定 price-revisions・L群) ──────────────────────────────
+    /**
+     * 価格改定 revision を新規作成した（決定4・L群 AC-171）。SYSTEM_ADMIN 専用操作のため
+     * teamId/organizationId は持たない（userId=操作者のみ）。
+     * metadata に revisionId・productKind・productKey・scopeKind・effectiveFrom を含める。
+     * <b>Stripe Price ref・税額計算の途中値は含めない</b>（AC-168。秘密ではないが載せない側に倒す）。
+     */
+    PRICE_REVISION_CREATED(AuditEventCategory.BILLING),
+
+    /**
+     * 価格改定の Provision を実行した（決定2・L群 AC-171）。fail-forward のため
+     * band ごとの成否は分からないが、revision 全体の結果（READY/PROVISION_FAILED）を記録する。
+     * metadata に revisionId・status を含める。
+     * <b>Stripe Price/Product ID・clientSecret・raw payload は含めない</b>（AC-168）。
+     */
+    PRICE_REVISION_PROVISIONED(AuditEventCategory.BILLING),
+
+    /**
+     * 価格改定の Provision 再試行を実行した（決定3・L群 AC-171）。metadata は
+     * {@link #PRICE_REVISION_PROVISIONED} と同じ。
+     */
+    PRICE_REVISION_RETRY_PROVISIONED(AuditEventCategory.BILLING),
+
+    /**
+     * 価格改定の Provision 回収（reconcile）を実行した（決定3・L群 AC-171）。metadata は
+     * {@link #PRICE_REVISION_PROVISIONED} と同じ。
+     */
+    PRICE_REVISION_RECONCILED(AuditEventCategory.BILLING),
+
+    /**
+     * 価格改定を Activate した（決定4・L群 AC-171）。即時なら ACTIVE・未来予約なら SCHEDULED。
+     * metadata に revisionId・status（ACTIVE/SCHEDULED）を含める。
+     */
+    PRICE_REVISION_ACTIVATED(AuditEventCategory.BILLING),
+
+    /**
+     * 価格改定を取り消した（DRAFT/READY/PROVISION_FAILED → CANCELLED。2026-09-24 御裁可）。
+     * metadata に revisionId・status を含める。Stripe Price/Product ID は含めない（AC-168）。
+     */
+    PRICE_REVISION_CANCELLED(AuditEventCategory.BILLING);
 
     private final AuditEventCategory category;
 }

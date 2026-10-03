@@ -14,7 +14,7 @@ import java.time.Instant;
 public class NavFeatureEntity {
 
     @Id
-    @Column(name = "`key`", length = 50)
+    @Column(name = "`key`", nullable = false, length = 50)
     private String key;
 
     @Column(name = "label_key", nullable = false, length = 100)

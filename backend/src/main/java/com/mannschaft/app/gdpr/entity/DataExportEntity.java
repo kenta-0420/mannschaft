@@ -5,10 +5,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -19,8 +19,7 @@ import java.time.LocalDateTime;
 @Table(name = "data_exports")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class DataExportEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -44,7 +43,7 @@ public class DataExportEntity extends BaseEntity {
     private String progressStep;
 
     /** S3オブジェクトキー（COMPLETED後に設定） */
-    @Column(length = 500)
+    @Column(name = "s3_key", length = 500)
     private String s3Key;
 
     /** ZIPファイルサイズ（バイト）（DBカラム名: file_size_bytes） */

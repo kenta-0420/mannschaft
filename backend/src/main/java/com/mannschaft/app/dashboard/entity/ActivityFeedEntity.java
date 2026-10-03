@@ -13,10 +13,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -29,8 +28,7 @@ import java.time.LocalDateTime;
 @Table(name = "activity_feed")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ActivityFeedEntity {
 
     @Id
@@ -60,6 +58,13 @@ public class ActivityFeedEntity {
 
     @Column(nullable = false, length = 200)
     private String summary;
+
+    /**
+     * F03.18: 変更差分（JSON文字列）。SCHEDULE系活動のみ非NULL、既存種別は常にNULL。
+     * DB列はJSON型だが、JPAマッピングは素の文字列として保持する（既存方針を踏襲）。
+     */
+    @Column(columnDefinition = "JSON")
+    private String detail;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -16,7 +16,7 @@ const isMultipleTyping = computed(() => props.typingUsers.size > 1)
 <template>
   <div
     v-if="typingUsers.size > 0"
-    class="px-4 py-1 text-sm italic text-surface-400"
+    class="px-4 py-1 text-sm italic text-surface-400 dark:text-surface-500"
   >
     {{
       isMultipleTyping

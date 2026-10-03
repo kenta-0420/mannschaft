@@ -8,6 +8,7 @@
  */
 import type {
   VillageMatchApplicationResponse,
+  VillageMatchApplicationReviewRequest,
   VillageMatchRecruitResponse,
   VillageMatchRecruitStatus,
 } from '~/types/village'
@@ -26,7 +27,13 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:visible', value: boolean): void
   (e: 'apply' | 'close-recruit'): void
-  (e: 'review-app', app: VillageMatchApplicationResponse, action: 'accept' | 'reject'): void
+  // 審査結果は BE の契約値（ACCEPTED / REJECTED）をそのまま流す。
+  // FE 独自の accept / reject という語彙を持ち込まない。
+  (
+    e: 'review-app',
+    app: VillageMatchApplicationResponse,
+    status: VillageMatchApplicationReviewRequest['status'],
+  ): void
   (e: 'withdraw-app', app: VillageMatchApplicationResponse): void
 }>()
 
@@ -153,14 +160,14 @@ function severityForAppStatus(
                 :label="t('village.matchApplication.accept')"
                 size="small"
                 severity="success"
-                @click="emit('review-app', app, 'accept')"
+                @click="emit('review-app', app, 'ACCEPTED')"
               />
               <Button
                 :label="t('village.matchApplication.reject')"
                 size="small"
                 severity="danger"
                 outlined
-                @click="emit('review-app', app, 'reject')"
+                @click="emit('review-app', app, 'REJECTED')"
               />
               <Button
                 v-if="currentUserId === app.applicantUserId"

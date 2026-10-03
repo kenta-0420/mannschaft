@@ -23,9 +23,18 @@ public class TimelineReactionService {
 
     private final TimelinePostReactionRepository reactionRepository;
     private final TimelinePostRepository postRepository;
+    /**
+     * 認可根治 Wave7: 対象投稿が呼び出し元から可視であることを検証する（投稿本体と同一の正準判定）。
+     * リアクションの追加・削除は共有カウンタ（{@code reaction_count}）を書き換える操作であるため、
+     * 呼び出し元が可視な投稿に対してのみ実行できるよう先に検証する。
+     */
+    private final TimelinePostVisibilityAccessGuard postVisibilityGuard;
 
     /**
      * 投稿に「みたよ！」リアクションを追加する。
+     *
+     * <p><b>認可根治 Wave7</b>: {@link TimelinePostVisibilityAccessGuard} で対象投稿の可視性を
+     * 検証してから処理する（不可視・不存在は {@link TimelineErrorCode#POST_NOT_FOUND}）。</p>
      *
      * @param postId 投稿ID
      * @param userId ユーザーID
@@ -33,7 +42,7 @@ public class TimelineReactionService {
      */
     @Transactional
     public ReactionResponse addReaction(Long postId, Long userId) {
-        TimelinePostEntity post = findPostOrThrow(postId);
+        TimelinePostEntity post = postVisibilityGuard.requireVisiblePost(postId, userId);
 
         if (reactionRepository.existsByTimelinePostIdAndUserId(postId, userId)) {
             throw new BusinessException(TimelineErrorCode.REACTION_ALREADY_EXISTS);
@@ -56,13 +65,16 @@ public class TimelineReactionService {
     /**
      * 投稿の「みたよ！」リアクションを削除する。
      *
+     * <p><b>認可根治 Wave7</b>: {@link #addReaction} と対称に対象投稿の可視性を検証する
+     * （不可視・不存在は {@link TimelineErrorCode#POST_NOT_FOUND}）。</p>
+     *
      * @param postId 投稿ID
      * @param userId ユーザーID
      * @return レスポンスDTO（みたよ！状態・件数）
      */
     @Transactional
     public ReactionResponse removeReaction(Long postId, Long userId) {
-        TimelinePostEntity post = findPostOrThrow(postId);
+        TimelinePostEntity post = postVisibilityGuard.requireVisiblePost(postId, userId);
 
         TimelinePostReactionEntity reaction = reactionRepository
                 .findByTimelinePostIdAndUserId(postId, userId)
@@ -76,13 +88,5 @@ public class TimelineReactionService {
         long mitayoCount = reactionRepository.countByTimelinePostId(postId);
         log.info("みたよ！削除: postId={}, userId={}", postId, userId);
         return new ReactionResponse(postId, false, (int) mitayoCount);
-    }
-
-    /**
-     * 投稿を取得する。存在しない場合は例外をスローする。
-     */
-    private TimelinePostEntity findPostOrThrow(Long postId) {
-        return postRepository.findById(postId)
-                .orElseThrow(() -> new BusinessException(TimelineErrorCode.POST_NOT_FOUND));
     }
 }

@@ -5,6 +5,8 @@ import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.enums.VillageRole;
@@ -58,6 +60,8 @@ public class VillageHeadmanSuccessionBatchService {
     /**
      * 毎日 UTC 03:00 にバッチ実行する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。村長の自動引き継ぎであり、再開後の実行で現在の条件に応じて引き継がれる。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "village-headman-succession-daily", description = "村長 HEADMAN の自動引き継ぎを毎日 UTC 03:00 に処理する")
     @Scheduled(cron = "0 0 3 * * *", zone = "UTC")
     @SchedulerLock(

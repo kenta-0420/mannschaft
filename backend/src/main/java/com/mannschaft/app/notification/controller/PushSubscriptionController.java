@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * プッシュ購読コントローラー。Web Push購読の登録・解除APIを提供する。
@@ -33,6 +35,9 @@ public class PushSubscriptionController {
     /**
      * プッシュ購読を登録する。
      */
+    @SelfScopedEndpoint("pushSubscriptionService.subscribe が作成する購読の userId は常に"
+            + "SecurityUtils.getCurrentUserId() で固定され、リクエストで所有者を指定する余地が無い"
+            + "（PushSubscriptionService.java:39）")
     @PostMapping
     @Operation(summary = "プッシュ購読登録")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "登録成功")
@@ -45,6 +50,12 @@ public class PushSubscriptionController {
     /**
      * プッシュ購読を解除する。
      */
+    // 認可根治戦役 Wave4 ロットD: pushSubscriptionService.unsubscribe は endpoint で検索した
+    // エンティティの userId を SecurityUtils.getCurrentUserId() と直接比較し、不一致なら
+    // SUBSCRIPTION_NOT_FOUND として拒否してから削除する（PushSubscriptionService.java:63-65）。
+    // 到達可能性そのものは存在する（判定を外せば他人へ届く）比較実装のため SelfScopedEndpoint の
+    // 対象外とし、AuthorizedInService で認可済みの所在を明示する。
+    @AuthorizedInService
     @DeleteMapping
     @Operation(summary = "プッシュ購読解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "解除成功")

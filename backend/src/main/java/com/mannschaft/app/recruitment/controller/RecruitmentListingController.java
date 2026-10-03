@@ -3,6 +3,8 @@ package com.mannschaft.app.recruitment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CancellationFeeEstimateResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentDistributionTargetResponse;
@@ -14,7 +16,9 @@ import com.mannschaft.app.recruitment.dto.SetDistributionTargetsRequest;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.service.RecruitmentCancellationPolicyService;
+import com.mannschaft.app.recruitment.service.RecruitmentListingFacade;
 import com.mannschaft.app.recruitment.service.RecruitmentListingService;
+import com.mannschaft.app.recruitment.service.RecruitmentMoneyFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -48,6 +52,8 @@ import java.util.List;
 public class RecruitmentListingController {
 
     private final RecruitmentListingService listingService;
+    private final RecruitmentListingFacade listingFacade;
+    private final RecruitmentMoneyFacade moneyFacade;
     private final RecruitmentCancellationPolicyService cancellationPolicyService;
 
     /**
@@ -57,9 +63,15 @@ public class RecruitmentListingController {
      * visibility が SCOPE_ONLY / SUPPORTERS_ONLY の募集も検索結果に含める。
      * 詳細閲覧時に権限チェックを行うため、一覧では visibility による除外は行わない。
      * keyword / location は空文字列の場合 null 扱いとして LIKE 検索を省略する。
+     *
+     * <p>本文中の「認証不要」は将来設計を示す旧コメント。実際は {@code /api/v1/recruitment-listings/**}
+     * が permitAll 未登録のため SecurityConfig の {@code anyRequest().authenticated()}
+     * で認証必須が現に強制されている（結果として OPEN の公開募集のみを返す参照系）。</p>
      */
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/search")
     @Operation(summary = "募集枠 全体検索 (§Phase4)")
+    @RequireFeature("FEATURE_RECRUITMENT_ENABLED")
     public ResponseEntity<PagedResponse<RecruitmentListingSummaryResponse>> searchListings(
             @Valid @ModelAttribute RecruitmentListingSearchRequest req) {
         // XSS 対策: keyword・location をトリムし、空文字列は null に正規化
@@ -89,7 +101,7 @@ public class RecruitmentListingController {
     @GetMapping("/{id}")
     @Operation(summary = "募集枠詳細取得")
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> get(@PathVariable Long id) {
-        RecruitmentListingResponse response = listingService.getListing(id, SecurityUtils.getCurrentUserId());
+        RecruitmentListingResponse response = listingFacade.getListing(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -99,14 +111,14 @@ public class RecruitmentListingController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateRecruitmentListingRequest request) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.update(id, SecurityUtils.getCurrentUserId(), request)));
+                listingFacade.update(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @PostMapping("/{id}/publish")
     @Operation(summary = "募集枠公開 (DRAFT → OPEN)")
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> publish(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.publish(id, SecurityUtils.getCurrentUserId())));
+                listingFacade.publish(id, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/{id}/cancel")
@@ -115,13 +127,13 @@ public class RecruitmentListingController {
             @PathVariable Long id,
             @RequestBody(required = false) CancelRecruitmentListingRequest request) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.cancelByAdmin(id, SecurityUtils.getCurrentUserId(), request)));
+                listingFacade.cancel(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @PostMapping("/{id}/archive")
     @Operation(summary = "募集枠 論理削除")
     public ResponseEntity<Void> archive(@PathVariable Long id) {
-        listingService.archive(id, SecurityUtils.getCurrentUserId());
+        listingFacade.archive(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -130,8 +142,8 @@ public class RecruitmentListingController {
     public ResponseEntity<ApiResponse<CancellationFeeEstimateResponse>> estimateCancellationFee(
             @PathVariable Long id,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime at) {
-        // 認可は getListing 内のチェックを再利用 (本人/管理者のみ閲覧可)
-        listingService.getListing(id, SecurityUtils.getCurrentUserId());
+        // 認可は GET 詳細と同じ（認可ファサードの getListing を再利用。本人/管理者のみ閲覧可）
+        listingFacade.getListing(id, SecurityUtils.getCurrentUserId());
         RecruitmentListingEntity listing = listingService.findOrThrow(id);
         CancellationFeeEstimateResponse estimate = cancellationPolicyService.estimateFee(listing, at);
         return ResponseEntity.ok(ApiResponse.of(estimate));
@@ -146,7 +158,7 @@ public class RecruitmentListingController {
     public ResponseEntity<ApiResponse<List<RecruitmentDistributionTargetResponse>>> getDistributionTargets(
             @PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.getDistributionTargets(id, SecurityUtils.getCurrentUserId())));
+                listingFacade.getDistributionTargets(id, SecurityUtils.getCurrentUserId())));
     }
 
     @PutMapping("/{id}/distribution-targets")
@@ -155,7 +167,7 @@ public class RecruitmentListingController {
             @PathVariable Long id,
             @Valid @RequestBody SetDistributionTargetsRequest request) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.setDistributionTargets(id, SecurityUtils.getCurrentUserId(), request.getTargetTypes())));
+                listingFacade.setDistributionTargets(id, SecurityUtils.getCurrentUserId(), request.getTargetTypes())));
     }
 
     // ===========================================
@@ -168,6 +180,6 @@ public class RecruitmentListingController {
             @PathVariable Long listingId,
             @PathVariable Long participantId) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.confirmApplication(participantId, SecurityUtils.getCurrentUserId())));
+                moneyFacade.confirmApplication(listingId, participantId, SecurityUtils.getCurrentUserId())));
     }
 }

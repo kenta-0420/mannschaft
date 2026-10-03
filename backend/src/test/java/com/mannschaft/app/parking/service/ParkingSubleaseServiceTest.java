@@ -530,6 +530,26 @@ class ParkingSubleaseServiceTest {
         }
 
         @Test
+        @DisplayName("異常系: applicationIdが別サブリースの申請の場合PARKING_026例外（紐付け検証・BOLA防止）")
+        void approve_他サブリースの申請_PARKING026例外() {
+            // Given: applicationId は自スコープ内で見つかるが、subleaseId が対象と異なる（別サブリースの申請）
+            List<Long> spaceIds = List.of(SPACE_ID);
+            ParkingSubleaseEntity sublease = createOpenSublease();
+            ParkingSubleaseApplicationEntity foreignApp = ParkingSubleaseApplicationEntity.builder()
+                    .subleaseId(SUBLEASE_ID + 999L) // 対象subleaseIdと不一致
+                    .userId(101L).vehicleId(VEHICLE_ID).build();
+            given(subleaseRepository.findByIdAndSpaceIdIn(SUBLEASE_ID, spaceIds)).willReturn(Optional.of(sublease));
+            given(subleaseApplicationRepository.findById(APPLICATION_ID)).willReturn(Optional.of(foreignApp));
+
+            // When / Then
+            assertThatThrownBy(() -> parkingSubleaseService.approve(spaceIds, SUBLEASE_ID,
+                    new ApproveSubleaseRequest(APPLICATION_ID)))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("PARKING_026"));
+        }
+
+        @Test
         @DisplayName("異常系: 申請がPENDING以外でPARKING_028例外")
         void approve_申請APPROVED状態_PARKING028例外() {
             // Given

@@ -12,7 +12,9 @@ import com.mannschaft.app.school.dto.DailyRollCallRequest;
 import com.mannschaft.app.school.dto.DailyRollCallSummary;
 import com.mannschaft.app.school.entity.DailyAttendanceRecordEntity;
 import com.mannschaft.app.school.error.SchoolErrorCode;
+import com.mannschaft.app.school.event.DailyRollCallRecordedEvent;
 import com.mannschaft.app.school.repository.DailyAttendanceRecordRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import org.mockito.ArgumentCaptor;
 
 /**
  * {@link DailyAttendanceService} 単体テスト。
@@ -56,7 +59,7 @@ class DailyAttendanceServiceTest {
     private AccessControlService accessControlService;
 
     @Mock
-    private SchoolAttendanceNotificationService notificationService;
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private DailyAttendanceService dailyAttendanceService;
@@ -120,9 +123,10 @@ class DailyAttendanceServiceTest {
             given(dailyAttendanceRecordRepository.findByTeamIdAndStudentUserIdAndAttendanceDate(
                     any(), any(), any())).willReturn(Optional.empty());
 
+            java.util.concurrent.atomic.AtomicLong seq = new java.util.concurrent.atomic.AtomicLong(1000L);
             given(dailyAttendanceRecordRepository.save(any())).willAnswer(inv -> {
                 DailyAttendanceRecordEntity e = inv.getArgument(0);
-                ReflectionTestUtils.setField(e, "id", 1L);
+                ReflectionTestUtils.setField(e, "id", seq.incrementAndGet());
                 return e;
             });
 
@@ -140,7 +144,16 @@ class DailyAttendanceServiceTest {
             assertThat(summary.getRecordedAt()).isNotNull();
 
             verify(dailyAttendanceRecordRepository, times(3)).save(any());
-            verify(notificationService, times(3)).notifyDailyAttendance(any(), any(), any());
+
+            // Issue #2990 L6: 業務TX内では通知を直接呼ばず、登録した行の ID を載せたイベントを
+            // 1 回だけ publish する。UNDECIDED を含む全件を載せ、送るか否かの判定は
+            // SchoolAttendanceNotificationService（＝リスナー側）に残す。
+            ArgumentCaptor<DailyRollCallRecordedEvent> eventCaptor =
+                    ArgumentCaptor.forClass(DailyRollCallRecordedEvent.class);
+            verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+            DailyRollCallRecordedEvent published = eventCaptor.getValue();
+            assertThat(published.teamId()).isEqualTo(TEAM_ID);
+            assertThat(published.recordIds()).containsExactly(1001L, 1002L, 1003L);
         }
 
         @Test
@@ -173,6 +186,12 @@ class DailyAttendanceServiceTest {
 
             // save が呼ばれたこと（更新パスを通過）を確認
             verify(dailyAttendanceRecordRepository, times(1)).save(any());
+
+            // Issue #2990 L6: 更新パスでも既存行の ID を載せたイベントを publish する。
+            ArgumentCaptor<DailyRollCallRecordedEvent> eventCaptor =
+                    ArgumentCaptor.forClass(DailyRollCallRecordedEvent.class);
+            verify(eventPublisher, times(1)).publishEvent(eventCaptor.capture());
+            assertThat(eventCaptor.getValue().recordIds()).containsExactly(10L);
         }
 
         @Test
@@ -188,7 +207,13 @@ class DailyAttendanceServiceTest {
             doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
             given(dailyAttendanceRecordRepository.findByTeamIdAndStudentUserIdAndAttendanceDate(
                     any(), any(), any())).willReturn(Optional.empty());
-            given(dailyAttendanceRecordRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            // 新規行は save で採番される。Issue #2990 L6 のイベントは採番後の ID を載せるため、
+            // 実装と同じく save 後に ID が入る振る舞いを再現する。
+            given(dailyAttendanceRecordRepository.save(any())).willAnswer(inv -> {
+                DailyAttendanceRecordEntity e = inv.getArgument(0);
+                ReflectionTestUtils.setField(e, "id", 2001L);
+                return e;
+            });
 
             // Act
             DailyRollCallSummary summary = dailyAttendanceService.submitDailyRollCall(
@@ -310,6 +335,81 @@ class DailyAttendanceServiceTest {
                         BusinessException be = (BusinessException) ex;
                         assertThat(be.getErrorCode()).isEqualTo(SchoolErrorCode.DAILY_RECORD_NOT_FOUND);
                     });
+        }
+    }
+
+    // ========================================
+    // toBuilder 更新破壊 回帰テスト
+    // ========================================
+
+    /**
+     * toBuilder().build() で作り直すと BaseEntity.id が引き継がれず id=null の新インスタンスになり
+     * INSERT 化して行が重複するバグの回帰テスト。
+     * ArgumentCaptor で save に渡るインスタンスが findById で取得した same instance（isSameAs）
+     * かつ id を保持していること（=UPDATE 経路）を固定する。
+     */
+    @Nested
+    @DisplayName("toBuilder更新破壊回帰")
+    class ToBuilderUpdateRegression {
+
+        private static final Long EXISTING_ID = 42L;
+
+        @Test
+        @DisplayName("updateDailyRecord: 取得した同一インスタンスを id 保持のまま UPDATE する（新インスタンス化しない）")
+        void updateDailyRecord_既存行をUPDATE_id保持() {
+            // Given
+            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
+
+            DailyAttendanceRecordEntity existing = buildEntity(null, STUDENT_USER_ID_1, AttendanceStatus.UNDECIDED);
+            ReflectionTestUtils.setField(existing, "id", EXISTING_ID);
+            given(dailyAttendanceRecordRepository.findById(EXISTING_ID)).willReturn(Optional.of(existing));
+
+            ArgumentCaptor<DailyAttendanceRecordEntity> captor =
+                    ArgumentCaptor.forClass(DailyAttendanceRecordEntity.class);
+            given(dailyAttendanceRecordRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+            DailyAttendanceUpdateRequest request = new DailyAttendanceUpdateRequest();
+            ReflectionTestUtils.setField(request, "status", AttendanceStatus.ABSENT);
+
+            // When
+            dailyAttendanceService.updateDailyRecord(TEAM_ID, EXISTING_ID, request, OPERATOR_USER_ID);
+
+            // Then: save に渡るのは取得した同一インスタンスで、id が保持されている（=UPDATE 経路）
+            DailyAttendanceRecordEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(existing);
+            assertThat(saved.getId()).isEqualTo(EXISTING_ID);
+            assertThat(saved.getStatus()).isEqualTo(AttendanceStatus.ABSENT);
+        }
+
+        @Test
+        @DisplayName("submitDailyRollCall upsert: 既存行を id 保持のまま UPDATE する（toBuilder ではなく applyRollCallUpdate）")
+        void submitDailyRollCall_upsert_既存行をUPDATE_id保持() {
+            // Given
+            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
+
+            DailyAttendanceRecordEntity existing = buildEntity(null, STUDENT_USER_ID_1, AttendanceStatus.UNDECIDED);
+            ReflectionTestUtils.setField(existing, "id", EXISTING_ID);
+
+            given(dailyAttendanceRecordRepository.findByTeamIdAndStudentUserIdAndAttendanceDate(
+                    TEAM_ID, STUDENT_USER_ID_1, ATTENDANCE_DATE)).willReturn(Optional.of(existing));
+
+            ArgumentCaptor<DailyAttendanceRecordEntity> captor =
+                    ArgumentCaptor.forClass(DailyAttendanceRecordEntity.class);
+            given(dailyAttendanceRecordRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+            DailyRollCallEntry entry = buildEntry(STUDENT_USER_ID_1, AttendanceStatus.ABSENT);
+            DailyRollCallRequest request = new DailyRollCallRequest();
+            ReflectionTestUtils.setField(request, "attendanceDate", ATTENDANCE_DATE);
+            ReflectionTestUtils.setField(request, "entries", List.of(entry));
+
+            // When
+            dailyAttendanceService.submitDailyRollCall(TEAM_ID, request, OPERATOR_USER_ID);
+
+            // Then: 同一インスタンス・id 保持・新ステータス反映
+            DailyAttendanceRecordEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(existing);
+            assertThat(saved.getId()).isEqualTo(EXISTING_ID);
+            assertThat(saved.getStatus()).isEqualTo(AttendanceStatus.ABSENT);
         }
     }
 }

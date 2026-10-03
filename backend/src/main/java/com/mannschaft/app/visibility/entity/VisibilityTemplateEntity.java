@@ -9,10 +9,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -29,8 +29,7 @@ import java.util.List;
 @Table(name = "visibility_templates")
 @Getter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@SuperBuilder(toBuilder = true)
 public class VisibilityTemplateEntity {
 
     /** プライマリキー */

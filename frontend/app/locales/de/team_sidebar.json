@@ -4,14 +4,18 @@
       "home": "Startseite",
       "schedule": "Zeitplan",
       "match": "Spiele",
+      "market": "Markt",
       "member": "Mitglieder",
       "ops": "Betrieb",
+      "ops_work": "Aufgaben und Fortschritt",
+      "ops_admin": "Verwaltung und Budget",
       "facility": "Einrichtungsverwaltung",
       "data": "Daten",
       "settings": "Einstellungen"
     },
     "item": {
       "dashboard": "Dashboard",
+      "member_profiles": "メンバー紹介",
       "announcements": "Ankündigungen",
       "chat": "Chat",
       "bulletin": "Schwarzes Brett",
@@ -22,6 +26,7 @@
       "annual_plan": "Jahresplan",
       "matches": "Spielaufzeichnungen",
       "matchAnalytics": "Spielanalyse",
+      "market": "Markt",
       "members": "Mitglieder",
       "circulation": "Umlauf",
       "safety_check": "Sicherheitscheck",
@@ -32,6 +37,7 @@
       "budget": "Budgetverwaltung",
       "advertiser": "Werbetreibendenverwaltung",
       "repair_plan": "Reparaturplan",
+      "incidents": "Vorfälle",
       "equipment": "Geräteverwaltung",
       "parking": "Parkplatz",
       "files": "Dateien",
@@ -39,7 +45,20 @@
       "audit_logs": "Audit-Protokolle",
       "settings": "Einstellungen",
       "faqSettings": "FAQ-Einstellungen",
-      "leagueTransfers": "Liga-Transfers"
+      "confirmableNotifications": "Schnellbestätigung",
+      "billing": "Abrechnung & Planverwaltung",
+      "guide": "Teamleitfaden, Preise und Limits",
+      "leagueTransfers": "Liga-Transfers",
+      "adminConsole": "Administrationskonsole",
+      "memberPermissions": "Standardberechtigungen für MEMBER",
+      "receipts": "Belege",
+      "receiptSettings": "Aussteller-Einstellungen für Belege",
+      "hourlyRate": "時給設定",
+      "vendors": "Anbieterverzeichnis",
+      "lineSettings": "LINE-Einstellungen",
+      "snsSettings": "SNS-Einstellungen",
+      "scheduleSettings": "Terminplan-Einstellungen",
+      "bulletinCategories": "Pinnwand-Kategorien"
     }
   }
 }

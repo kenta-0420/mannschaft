@@ -33,6 +33,15 @@ public class DigestProperties {
     /** 月次 AI コストアラート閾値（円） */
     private int costAlertThresholdJpy = 1000;
 
+    /** Claude API 呼び出しのタイムアウト（ミリ秒、既定 5 秒）。 */
+    private int timeoutMs = 5000;
+
+    /** Claude API 呼び出しのリトライ最大試行回数（既定 3）。 */
+    private int retryMaxAttempts = 3;
+
+    /** リトライ初回バックオフ遅延（ミリ秒、指数バックオフの基点。既定 200ms）。 */
+    private int retryBackoffDelayMs = 200;
+
     /** config 未作成スコープでのフォールバック設定 */
     private Defaults defaults = new Defaults();
 

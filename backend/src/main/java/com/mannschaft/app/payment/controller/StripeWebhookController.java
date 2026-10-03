@@ -1,6 +1,10 @@
 package com.mannschaft.app.payment.controller;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.ConnectWebhookService;
 import com.mannschaft.app.payment.service.StripeWebhookRetryableException;
@@ -25,8 +29,22 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>POST {@code /api/v1/webhooks/stripe/connect} — F22.1 Connect Webhook（別署名シークレット）</li>
  * </ul>
  * 両エンドポイントとも {@code /api/v1/webhooks/stripe/*} の permitAll で被覆済み（SecurityConfig・03 §2.1）。
+ *
+ * <p><b>認可根拠（{@link AuthorizedInService} クラス付与・全 2 EP が該当）</b>: 両 EP とも
+ * {@code Stripe-Signature} ヘッダの HMAC 署名検証で正当性を担保する（認可根治戦役 Wave5 監査済）。</p>
+ * <ul>
+ *   <li>{@link #handleWebhook} → {@code StripeWebhookService.java:54}
+ *       {@code stripePaymentProvider.constructEvent(payload, sigHeader)}
+ *       → {@code StripePaymentProviderImpl.java:455}
+ *       {@code Webhook.constructEvent(payload, sigHeader, webhookSecret)}（platform シークレット）</li>
+ *   <li>{@link #handleConnectWebhook} → {@code ConnectWebhookService.java:47}
+ *       {@code stripePaymentProvider.constructConnectEvent(payload, sigHeader)}
+ *       → {@code StripePaymentProviderImpl.java:590}
+ *       {@code Webhook.constructEvent(payload, sigHeader, connectWebhookSecret)}（Connect 専用シークレット）</li>
+ * </ul>
  */
 @Slf4j
+@AuthorizedInService
 @RestController
 @RequestMapping("/api/v1/webhooks")
 @Tag(name = "Stripe Webhook", description = "F08.2 / F22.1 Stripe Webhook 受信")
@@ -46,6 +64,8 @@ public class StripeWebhookController {
      * {@code MissingRequestHeaderException → 500(COMMON_999)} となるため {@code required = false} に設定し、
      * メソッド冒頭で明示的に検証する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "Stripe決済結果をGate状態にかかわらず反映して整合性を保つため")
     @PostMapping("/stripe")
     @Operation(summary = "Stripe Webhook 受信（platform）")
     public ResponseEntity<Void> handleWebhook(
@@ -64,6 +84,17 @@ public class StripeWebhookController {
             // 従来どおり 200 で握る（再送ストーム回避）ため、他処理への影響はない。
             log.error("Webhook 処理を再送に委ねます（retryable）。5xx を返します: {}", e.getMessage());
             throw e;
+        } catch (BusinessException e) {
+            // F20.1 PR5 AC-11: 署名不正は 400 を返さなければならない（設計書 05 §4）。
+            // 包括 catch がこれを握って 200 を返していたため、偽の署名でも受理したように見えていた。
+            // 「握り潰す」のは業務的な後処理の失敗（再送ストーム回避）であって、
+            // 「そもそも Stripe からの通知だと確認できていない」場合ではない。
+            if (isSignatureFailure(e)) {
+                log.warn("Webhook 署名検証に失敗しました。400 を返します: code={}", e.getErrorCode().getCode());
+                throw e;
+            }
+            log.error("Webhook 処理中に業務エラー。200 を返して再送を防止します: {}", e.getMessage());
+            return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("Webhook 処理中にエラー。200 を返して再送を防止します: {}", e.getMessage());
             // Webhook ハンドラ内では 5xx を返さない設計（F08.2 既存イベント）
@@ -82,6 +113,8 @@ public class StripeWebhookController {
      * {@code Stripe-Signature} ヘッダが存在しない場合は 400（{@code PAYMENT_C040}）を返す。
      * platform Webhook と同様、{@code required = false} で受け取りメソッド冒頭で明示検証する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.PLATFORM_INFRA,
+            reason = "Stripe Connect決済結果をGate状態にかかわらず反映するため")
     @PostMapping("/stripe/connect")
     @Operation(summary = "Stripe Connect Webhook 受信")
     public ResponseEntity<Void> handleConnectWebhook(
@@ -92,5 +125,11 @@ public class StripeWebhookController {
         }
         connectWebhookService.handleWebhook(payload, sigHeader);
         return ResponseEntity.ok().build();
+    }
+
+    /** 署名検証の失敗（platform / Connect いずれのコードでも）か。 */
+    private boolean isSignatureFailure(BusinessException e) {
+        return e.getErrorCode() == PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID
+                || e.getErrorCode() == ConnectPaymentErrorCode.WEBHOOK_SIGNATURE_INVALID;
     }
 }

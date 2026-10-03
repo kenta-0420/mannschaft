@@ -33,18 +33,14 @@ const { t } = useI18n()
 
 function severityForStatus(
   status: VillageMeetupStatus,
-): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+): 'success' | 'info' | 'danger' {
   switch (status) {
-    case 'DRAFT':
-      return 'secondary'
-    case 'OPEN':
+    case 'PLANNING':
       return 'success'
     case 'CONFIRMED':
       return 'info'
     case 'CANCELLED':
       return 'danger'
-    case 'CLOSED':
-      return 'secondary'
   }
 }
 </script>
@@ -101,18 +97,19 @@ function severityForStatus(
               :severity="severityForStatus(m.status)"
             />
           </div>
-          <span class="text-xs text-surface-500">
-            <i class="pi pi-users mr-1" />{{ m.participantCount }}
-          </span>
         </div>
         <span class="font-semibold truncate">{{ m.title }}</span>
+        <!--
+          一覧 API は候補日を省略する（BE: listMeetups は candidateDates=null を返す）ため、
+          候補日件数はここでは表示できない。確定日は MeetupResponse.confirmedDate から表示する。
+        -->
         <div class="text-xs text-surface-500 flex items-center gap-3 flex-wrap">
-          <span v-if="m.venue">
-            <i class="pi pi-map-marker mr-1" />{{ m.venue }}
+          <span v-if="m.location">
+            <i class="pi pi-map-marker mr-1" />{{ m.location }}
           </span>
-          <span>
+          <span v-if="m.confirmedDate">
             <i class="pi pi-calendar mr-1" />
-            {{ m.candidateDates.length }} {{ t('village.meetup.candidateDates') }}
+            {{ t('village.meetup.confirmedDate') }}: {{ m.confirmedDate }}
           </span>
         </div>
       </button>

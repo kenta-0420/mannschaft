@@ -82,6 +82,8 @@ export function useTodoList() {
   const teamStore = useTeamStore()
   const orgStore = useOrganizationStore()
   const notification = useNotification()
+  const { showUndoToast } = useUndoToast()
+  const { t } = useI18n()
   const { formatDate } = useDatetime()
 
   const todos = ref<MyTodo[]>([])
@@ -343,19 +345,37 @@ export function useTodoList() {
     return !!todo.dueDate && (todo.daysRemaining ?? 0) < 0 && todo.status !== 'COMPLETED'
   }
 
+  // ADHD 配慮 AC-16: 確認ダイアログを廃止し、即時削除 + Undo Toast に置換する。
+  // 個人 TODO は論理削除なので、Undo で restore EP を叩けば一覧に復活する。
   async function deleteTodo(todo: MyTodo) {
+    if (todo.scopeType !== 'PERSONAL' && todo.scopeId) {
+      // チーム・組織TODOの削除はスコープ別APIを使用（現状は個人のみ対応）
+      notification.error('チーム・組織TODOの削除はTODO詳細画面から行ってください')
+      return
+    }
+    const snapshot = todos.value
     try {
-      if (todo.scopeType === 'PERSONAL' || !todo.scopeId) {
-        await todoApi.deletePersonalTodo(todo.id)
-      } else {
-        // チーム・組織TODOの削除はスコープ別APIを使用（現状は個人のみ対応）
-        notification.error('チーム・組織TODOの削除はTODO詳細画面から行ってください')
-        return
-      }
+      await todoApi.deletePersonalTodo(todo.id)
       // 楽観更新: ローカルから即時除去
       todos.value = todos.value.filter((t) => t.id !== todo.id)
+      showUndoToast({
+        summary: t('todo.list.deletedToast'),
+        undoLabel: t('button.undo'),
+        severity: 'info',
+        onUndo: async () => {
+          try {
+            await todoApi.restorePersonalTodo(todo.id)
+            notification.success(t('todo.list.restoredToast'))
+            await load({ silent: true })
+          } catch {
+            notification.error(t('todo.list.restoreFailed'))
+          }
+        },
+      })
     } catch {
-      notification.error('TODOの削除に失敗しました')
+      // 失敗時は楽観更新を巻き戻す（対処療法でなく状態整合を保つ）
+      todos.value = snapshot
+      notification.error(t('todo.list.deleteFailed'))
     }
   }
 

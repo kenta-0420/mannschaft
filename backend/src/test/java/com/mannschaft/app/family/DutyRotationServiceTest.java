@@ -1,5 +1,6 @@
 package com.mannschaft.app.family;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.family.dto.DutyRotationRequest;
@@ -31,6 +32,7 @@ import static org.mockito.BDDMockito.given;
 class DutyRotationServiceTest {
 
     @Mock private DutyRotationRepository dutyRotationRepository;
+    @Mock private AccessControlService accessControlService;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
     @InjectMocks private DutyRotationService service;
 
@@ -85,7 +87,7 @@ class DutyRotationServiceTest {
             given(dutyRotationRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.deleteDuty(1L, 1L))
+            assertThatThrownBy(() -> service.deleteDuty(1L, 1L, 100L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("FAMILY_016"));

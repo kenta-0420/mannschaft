@@ -3,6 +3,7 @@ package com.mannschaft.app.weather.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.postal.CountryResolver;
 import com.mannschaft.app.weather.entity.PostalCodeEntity;
 import com.mannschaft.app.weather.entity.UserWeatherLocationEntity;
 import com.mannschaft.app.weather.exception.WeatherLocationDeriveException;
@@ -57,6 +58,7 @@ public class WeatherLocationDeriver {
     private final UserWeatherLocationRepository userWeatherLocationRepository;
     private final EncryptionService encryptionService;
     private final WeatherMetrics weatherMetrics;
+    private final CountryResolver countryResolver;
 
     /**
      * 指定ユーザーの郵便番号から地点を導出し永続化する。
@@ -65,7 +67,11 @@ public class WeatherLocationDeriver {
      * @return 保存された地点エンティティ。ユーザーが存在しない場合は空
      * @throws WeatherLocationDeriveException 郵便番号未登録 / マスタ未ヒット / 国未対応の各ケース
      */
-    @Transactional
+    // noRollbackFor: WeatherLocationDeriveException は「マスタ未ヒット等の業務上想定される結果」であり
+    // ロールバック不要。非同期リスナー（@TransactionalEventListener(AFTER_COMMIT) + REQUIRES_NEW）が
+    // 例外を catch しても、これを付けないと共有トランザクションが rollback-only にマークされ、
+    // 最終 commit で UnexpectedRollbackException が発生する。本例外は DB 書き込み前に投げるため安全。
+    @Transactional(noRollbackFor = WeatherLocationDeriveException.class)
     public Optional<UserWeatherLocationEntity> deriveAndPersist(Long userId) {
         Optional<UserEntity> userOpt = userRepository.findById(userId);
         if (userOpt.isEmpty()) {
@@ -74,6 +80,36 @@ public class WeatherLocationDeriver {
         }
         UserEntity user = userOpt.get();
 
+        // AC-15: 郵便番号起因の決定的な失敗（未登録 / マスタ未ヒット / 国未対応）では、
+        // 以前の有効な郵便番号で導出済みの古い地点キャッシュ（label="home"）を無効化（削除）してから
+        // 再 throw する。これを残すとダッシュボード GET（行が存在すれば再導出しない実装）が
+        // 旧郵便番号の天気を出し続けてしまう（設計 §458 違反）。WeatherProviderException（503/一時障害）は
+        // この catch の対象外なので影響しない。noRollbackFor 指定によりこの削除は例外を再 throw してもコミットされる。
+        try {
+            return Optional.of(doDerive(userId, user));
+        } catch (WeatherLocationDeriveException e) {
+            userWeatherLocationRepository.findByUserIdAndLabel(userId, DEFAULT_LABEL)
+                    .ifPresent(stale -> {
+                        userWeatherLocationRepository.delete(stale);
+                        log.info("地点導出失敗のため古い地点キャッシュを無効化: userId={}, errorCode={}",
+                                userId, e.getErrorCode().name());
+                    });
+            throw e;
+        }
+    }
+
+    /**
+     * 郵便番号から地点を導出して永続化する本体処理。
+     *
+     * <p>郵便番号未登録 / マスタ未ヒット / 国未対応の場合は
+     * {@link WeatherLocationDeriveException} を投げる。例外時の古い地点キャッシュ無効化（AC-15）は
+     * 呼び出し元 {@link #deriveAndPersist(Long)} が担う。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @param user   対象ユーザー（取得済み）
+     * @return 保存された地点エンティティ
+     */
+    private UserWeatherLocationEntity doDerive(Long userId, UserEntity user) {
         // 1) 平文郵便番号を取得（EncryptedStringConverter で自動復号済み）
         String plainPostalCode = user.getPostalCode();
         if (plainPostalCode == null || plainPostalCode.isBlank()) {
@@ -144,31 +180,20 @@ public class WeatherLocationDeriver {
                 userId, countryCode, placeNameSnapshot);
         weatherMetrics.recordLocationDerive("success");
 
-        return Optional.of(saved);
+        return saved;
     }
 
     /**
      * 国コードを解決する。{@code users.country_code} が NULL の場合は
      * locale 文字列のプレフィックス（例: {@code "ja"} → {@code "JP"}）から推定する。
+     *
+     * <p>locale→国 マップは共有 {@link CountryResolver} に集約済み（auth ドメインの郵便番号検証と
+     * 同じマップを使うため二重持ちを解消した）。解決不能時は従来どおり
+     * {@link WeatherLocationDeriveException}（{@link ErrorCode#COUNTRY_NOT_SUPPORTED}）を投げる。</p>
      */
     private String resolveCountryCode(UserEntity user) {
-        if (user.getCountryCode() != null && !user.getCountryCode().isBlank()) {
-            return user.getCountryCode().toUpperCase();
-        }
-        String locale = user.getLocale();
-        if (locale == null || locale.isBlank()) {
-            throw new WeatherLocationDeriveException(ErrorCode.COUNTRY_NOT_SUPPORTED);
-        }
-        String langCode = locale.split("[-_]")[0].toLowerCase();
-        return switch (langCode) {
-            case "ja" -> "JP";
-            case "en" -> "US";
-            case "zh" -> "CN";
-            case "ko" -> "KR";
-            case "es" -> "ES";
-            case "de" -> "DE";
-            default -> throw new WeatherLocationDeriveException(ErrorCode.COUNTRY_NOT_SUPPORTED);
-        };
+        return countryResolver.resolve(user.getCountryCode(), user.getLocale())
+                .orElseThrow(() -> new WeatherLocationDeriveException(ErrorCode.COUNTRY_NOT_SUPPORTED));
     }
 
     /**

@@ -77,6 +77,7 @@ export function useFamilyAttendanceNotice(teamId: Ref<string>) {
 export function useFamilyAttendanceNoticeForm() {
   const api = useFamilyAttendanceNoticeApi()
   const { error: notifyError, success: notifySuccess } = useNotification()
+  const { handleApiError } = useErrorHandler()
   const { t } = useI18n()
 
   const submitting = ref(false)
@@ -84,13 +85,15 @@ export function useFamilyAttendanceNoticeForm() {
   const historyLoading = ref(false)
 
   async function submitNotice(body: FamilyAttendanceNoticeRequest): Promise<boolean> {
+    // 二重送信防止: 提出中の再呼び出しは API を叩かない
+    if (submitting.value) return false
     submitting.value = true
     try {
       await api.submitNotice(body)
       notifySuccess(t('school.familyNotice.submitSuccess'))
       return true
-    } catch {
-      notifyError(t('school.familyNotice.title'))
+    } catch (e) {
+      handleApiError(e, 'school.familyNotice.submit')
       return false
     } finally {
       submitting.value = false

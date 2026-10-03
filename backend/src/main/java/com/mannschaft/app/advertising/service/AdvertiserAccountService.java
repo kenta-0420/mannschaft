@@ -3,6 +3,7 @@ package com.mannschaft.app.advertising.service;
 import com.mannschaft.app.advertising.AdvertiserAccountStatus;
 import com.mannschaft.app.advertising.AdvertisingErrorCode;
 import com.mannschaft.app.advertising.AdvertisingMapper;
+import com.mannschaft.app.advertising.BillingMethod;
 import com.mannschaft.app.advertising.dto.AdvertiserAccountDetailResponse;
 import com.mannschaft.app.advertising.dto.AdvertiserAccountResponse;
 import com.mannschaft.app.advertising.dto.RegisterAdvertiserRequest;
@@ -50,6 +51,11 @@ public class AdvertiserAccountService {
      *
      * <p>{@code scopeType=ORGANIZATION} の場合は組織単位、{@code scopeType=TEAM} の場合は
      * チーム単位の広告主アカウントを作成する。各 scope につき同時に 1 つまで。</p>
+     *
+     * <p>{@code billingMethod} は F08.12 §5.0 により後払い（{@code INVOICE}）を新規に選ばせない。
+     * 省略時（{@code null}）は既定値 {@code STRIPE} で作成し、明示的に {@code INVOICE} を
+     * 指定した場合は拒否する（{@code AD_036}）。既存の {@code INVOICE} 行は本メソッドを通らないため
+     * 影響しない。</p>
      */
     @Transactional
     public AdvertiserAccountResponse register(
@@ -58,16 +64,20 @@ public class AdvertiserAccountService {
                 .existsByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)) {
             throw new BusinessException(AdvertisingErrorCode.AD_006);
         }
+        if (request.billingMethod() == BillingMethod.INVOICE) {
+            throw new BusinessException(AdvertisingErrorCode.AD_036);
+        }
 
-        AdvertiserAccountEntity entity = AdvertiserAccountEntity.builder()
+        var builder = AdvertiserAccountEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
                 .companyName(request.companyName())
-                .contactEmail(request.contactEmail())
-                .billingMethod(request.billingMethod())
-                .build();
+                .contactEmail(request.contactEmail());
+        if (request.billingMethod() != null) {
+            builder.billingMethod(request.billingMethod());
+        }
 
-        AdvertiserAccountEntity saved = advertiserAccountRepository.save(entity);
+        AdvertiserAccountEntity saved = advertiserAccountRepository.save(builder.build());
         return advertisingMapper.toAccountResponse(saved);
     }
 

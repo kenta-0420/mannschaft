@@ -42,8 +42,11 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  *         に依存しなければならない (Phase F で本格化、現在は freeze 戦略のプレースホルダ)
  *   </li>
  *   <li>{@link #phase2_reserved_reference_types_unused}
- *       — Phase 2 予約 ReferenceType ({@code PERSONAL_TIMETABLE} / {@code FOLLOW_LIST})
- *         は Phase 1 のコードから参照禁止 (§16.2 / §15 D-12)
+ *       — Resolver 未実装の予約 ReferenceType ({@code PERSONAL_TIMETABLE} /
+ *         {@code FOLLOW_LIST} / {@code TIMELINE_POST} / {@code RESIDENT_ACTIVITY_SNAPSHOT})
+ *         は Resolver 未登録のコードから参照禁止 (§16.2 / §15 D-12。認可根治戦役 Wave4
+ *         監査で {@code TIMELINE_POST} / {@code RESIDENT_ACTIVITY_SNAPSHOT} も
+ *         Resolver 未実装と判明したため追加)
  *   </li>
  *   <li>{@link #resolvers_dont_inject_other_resolvers}
  *       — Resolver は他 Resolver を直接 inject せず {@code ContentVisibilityChecker}
@@ -161,15 +164,26 @@ class VisibilityArchitectureTest {
             .allowEmptyShould(true);
 
     /**
-     * Phase 2 予約 ReferenceType ({@code PERSONAL_TIMETABLE} / {@code FOLLOW_LIST})
-     * を Phase 1 のコードから参照禁止。
+     * Resolver 未実装の予約 ReferenceType ({@code PERSONAL_TIMETABLE} /
+     * {@code FOLLOW_LIST} / {@code TIMELINE_POST} / {@code RESIDENT_ACTIVITY_SNAPSHOT})
+     * を Resolver 未登録のコードから参照禁止。
      *
-     * <p>設計書 §16.2 / §15 D-12: Phase 2 予約は enum 値として先行定義済みだが
-     * Resolver 未実装のため fail-closed。Phase 1 で参照すると常に false 返却となり
-     * 利用者に意図しないアクセス拒否が発生する。
+     * <p>設計書 §16.2 / §15 D-12: Phase 2 予約 ({@code PERSONAL_TIMETABLE} /
+     * {@code FOLLOW_LIST}) は enum 値として先行定義済みだが Resolver 未実装のため
+     * fail-closed。参照すると常に false 返却となり利用者に意図しないアクセス拒否が
+     * 発生する。
+     *
+     * <p><b>認可根治戦役 Wave4 監査で追加</b>: {@code TIMELINE_POST}
+     * （タイムライン投稿。{@code TimelinePostService} コメントに「VisibilityResolver
+     * 未実装」と明記）と {@code RESIDENT_ACTIVITY_SNAPSHOT}（居住実態スナップショット。
+     * F09.16 S3〜S4 で実装予定）も、{@code common.visibility} 配下に対応する
+     * {@code ContentVisibilityResolver} 実装クラスが存在せず同様に Resolver 未登録
+     * であることを確認済み。Phase 2 予約と同型の「常に fail-closed になる誤用」を
+     * 静的に防ぐため禁止リストへ追加する。
      *
      * <p>カスタム {@link ArchCondition} で enum 値の参照（メソッド呼び出し
-     * {@code ReferenceType.PERSONAL_TIMETABLE} / {@code ReferenceType.FOLLOW_LIST}
+     * {@code ReferenceType.PERSONAL_TIMETABLE} / {@code ReferenceType.FOLLOW_LIST} /
+     * {@code ReferenceType.TIMELINE_POST} / {@code ReferenceType.RESIDENT_ACTIVITY_SNAPSHOT}
      * を含む field access）を検出する。
      *
      * <p>ただしテスト・本基盤自身 (ReferenceType enum 定義そのもの) は対象外。
@@ -179,7 +193,8 @@ class VisibilityArchitectureTest {
         noClasses().that().resideInAPackage("com.mannschaft.app..")
             .and().resideOutsideOfPackage("..common.visibility..")
             .should(referencePhase2ReservedReferenceTypes())
-            .because("§16.2 / §15 D-12 — Phase 2 予約 ReferenceType は Phase 1 で "
+            .because("§16.2 / §15 D-12 — 予約 ReferenceType (PERSONAL_TIMETABLE / "
+                + "FOLLOW_LIST / TIMELINE_POST / RESIDENT_ACTIVITY_SNAPSHOT) は "
                 + "Resolver 未実装のため fail-closed。参照すると常にアクセス拒否となる");
 
     /**
@@ -278,24 +293,31 @@ class VisibilityArchitectureTest {
     }
 
     /**
-     * クラスが Phase 2 予約 ReferenceType ({@code PERSONAL_TIMETABLE} /
-     * {@code FOLLOW_LIST}) を参照しているかを検査する {@link ArchCondition}。
+     * クラスが Resolver 未実装の予約 ReferenceType ({@code PERSONAL_TIMETABLE} /
+     * {@code FOLLOW_LIST} / {@code TIMELINE_POST} / {@code RESIDENT_ACTIVITY_SNAPSHOT})
+     * を参照しているかを検査する {@link ArchCondition}。
      *
      * <p>field access の {@code target.name} を見て、
      * 対象 enum 値名と一致するクラスを違反として報告する。
      */
+    private static final java.util.Set<String> RESERVED_UNIMPLEMENTED_REFERENCE_TYPES =
+        java.util.Set.of(
+            "PERSONAL_TIMETABLE",
+            "FOLLOW_LIST",
+            "TIMELINE_POST",
+            "RESIDENT_ACTIVITY_SNAPSHOT");
+
     private static ArchCondition<JavaClass> referencePhase2ReservedReferenceTypes() {
-        return new ArchCondition<>("reference Phase 2 reserved ReferenceType values") {
+        return new ArchCondition<>("reference reserved ReferenceType values with no Resolver implementation") {
             @Override
             public void check(JavaClass clazz, ConditionEvents events) {
                 clazz.getFieldAccessesFromSelf().forEach(access -> {
                     String targetOwner = access.getTarget().getOwner().getFullName();
                     String targetName = access.getTarget().getName();
                     if ("com.mannschaft.app.common.visibility.ReferenceType".equals(targetOwner)
-                        && ("PERSONAL_TIMETABLE".equals(targetName)
-                         || "FOLLOW_LIST".equals(targetName))) {
+                        && RESERVED_UNIMPLEMENTED_REFERENCE_TYPES.contains(targetName)) {
                         String message = String.format(
-                            "%s references Phase 2 reserved ReferenceType.%s in %s",
+                            "%s references reserved (Resolver-unimplemented) ReferenceType.%s in %s",
                             clazz.getName(), targetName, access.getSourceCodeLocation());
                         events.add(SimpleConditionEvent.violated(access, message));
                     }

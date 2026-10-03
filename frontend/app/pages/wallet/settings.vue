@@ -81,12 +81,9 @@ onMounted(() => {
 
 <template>
   <div class="settings-page">
-    <header class="settings-page__header">
-      <NuxtLink to="/wallet" class="settings-page__back" aria-label="戻る">‹</NuxtLink>
-      <h1 class="settings-page__title">{{ t('wallet.settings.title') }}</h1>
-    </header>
+    <PageHeader :title="t('wallet.settings.title')" back-to="/wallet" />
 
-    <div v-if="loading" class="settings-page__loading">…</div>
+    <PageLoading v-if="loading" />
 
     <template v-else-if="settings">
       <!-- 全般セクション -->
@@ -98,15 +95,11 @@ onMounted(() => {
             <span class="settings-page__row-title">{{ t('wallet.settings.is_enabled') }}</span>
             <span class="settings-page__row-hint">{{ t('wallet.settings.is_enabled_hint') }}</span>
           </div>
-          <label class="settings-page__switch">
-            <input
-              type="checkbox"
-              :checked="settings.isEnabled"
-              :disabled="saving"
-              @change="onToggleEnabled(($event.target as HTMLInputElement).checked)"
-            >
-            <span class="settings-page__switch-slider" />
-          </label>
+          <ToggleSwitch
+            :model-value="settings.isEnabled"
+            :disabled="saving"
+            @update:model-value="onToggleEnabled"
+          />
         </div>
       </section>
 
@@ -123,15 +116,11 @@ onMounted(() => {
               {{ t('wallet.settings.require_biometric_hint') }}
             </span>
           </div>
-          <label class="settings-page__switch">
-            <input
-              type="checkbox"
-              :checked="settings.requireBiometricOnShow"
-              :disabled="saving || !settings.isEnabled"
-              @change="onToggleBiometric(($event.target as HTMLInputElement).checked)"
-            >
-            <span class="settings-page__switch-slider" />
-          </label>
+          <ToggleSwitch
+            :model-value="settings.requireBiometricOnShow"
+            :disabled="saving || !settings.isEnabled"
+            @update:model-value="onToggleBiometric"
+          />
         </div>
       </section>
 
@@ -158,16 +147,16 @@ onMounted(() => {
         </h3>
         <p class="settings-page__modal-body">{{ t('wallet.settings.disable_confirm_body') }}</p>
         <div class="settings-page__modal-actions">
-          <button type="button" class="settings-page__btn" @click="cancelDisable">
-            {{ t('wallet.actions.cancel') }}
-          </button>
-          <button
-            type="button"
-            class="settings-page__btn settings-page__btn--danger"
+          <Button
+            :label="t('wallet.actions.cancel')"
+            severity="secondary"
+            @click="cancelDisable"
+          />
+          <Button
+            :label="t('wallet.settings.disable_confirm_ok')"
+            severity="danger"
             @click="confirmDisable"
-          >
-            {{ t('wallet.settings.disable_confirm_ok') }}
-          </button>
+          />
         </div>
       </div>
     </div>
@@ -181,36 +170,6 @@ onMounted(() => {
   max-width: 720px;
   margin: 0 auto;
   padding: 1rem;
-}
-.settings-page__header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-.settings-page__back {
-  font-size: 1.5rem;
-  text-decoration: none;
-  color: inherit;
-  width: 40px;
-  height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-.settings-page__back:hover {
-  background: var(--p-surface-100, #f3f4f6);
-}
-.settings-page__title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0;
-}
-.settings-page__loading {
-  text-align: center;
-  padding: 3rem;
-  color: var(--p-text-muted-color, #6b7280);
 }
 .settings-page__section {
   margin-bottom: 2rem;
@@ -229,7 +188,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem;
-  background: var(--p-surface-0, #fff);
+  background: var(--p-content-background, #fff);
   border-radius: 0.75rem;
   border: 1px solid var(--p-surface-200, #e5e7eb);
   margin-bottom: 0.5rem;
@@ -248,52 +207,11 @@ onMounted(() => {
   font-size: 0.8125rem;
   color: var(--p-text-muted-color, #6b7280);
 }
-.settings-page__switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  flex-shrink: 0;
-}
-.settings-page__switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.settings-page__switch-slider {
-  position: absolute;
-  inset: 0;
-  background: var(--p-surface-300, #d1d5db);
-  border-radius: 24px;
-  transition: background 0.2s;
-  cursor: pointer;
-}
-.settings-page__switch-slider::before {
-  content: '';
-  position: absolute;
-  height: 20px;
-  width: 20px;
-  left: 2px;
-  bottom: 2px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform 0.2s;
-}
-.settings-page__switch input:checked + .settings-page__switch-slider {
-  background: var(--p-primary-color, #3b82f6);
-}
-.settings-page__switch input:checked + .settings-page__switch-slider::before {
-  transform: translateX(20px);
-}
-.settings-page__switch input:disabled + .settings-page__switch-slider {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 .settings-page__action-btn {
   display: block;
   width: 100%;
   padding: 0.875rem 1rem;
-  background: var(--p-surface-0, #fff);
+  background: var(--p-content-background, #fff);
   border: 1px solid var(--p-surface-200, #e5e7eb);
   border-radius: 0.75rem;
   text-align: left;
@@ -322,7 +240,7 @@ onMounted(() => {
   padding: 1rem;
 }
 .settings-page__modal {
-  background: var(--p-surface-0, #fff);
+  background: var(--p-content-background, #fff);
   border-radius: 1rem;
   max-width: 420px;
   width: 100%;
@@ -343,19 +261,5 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
-}
-.settings-page__btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
-  color: var(--p-text-color, #111827);
-}
-.settings-page__btn--danger {
-  background: #dc2626;
-  border-color: #dc2626;
-  color: #fff;
 }
 </style>

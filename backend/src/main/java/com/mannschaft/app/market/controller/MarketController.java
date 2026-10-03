@@ -2,11 +2,16 @@ package com.mannschaft.app.market.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.RequireFeature;
+import com.mannschaft.app.common.security.IntentionallyPublic;
+import com.mannschaft.app.market.MarketListingSort;
 import com.mannschaft.app.market.dto.MarketListingResponse;
 import com.mannschaft.app.market.dto.MarketRegionNodeResponse;
 import com.mannschaft.app.market.dto.MarketSummaryResponse;
 import com.mannschaft.app.market.service.MarketQueryService;
 import com.mannschaft.app.matching.service.RegionTranslationService;
+import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.RecruitmentCategoryResponse;
 import com.mannschaft.app.recruitment.service.RecruitmentCategoryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,13 +33,38 @@ import java.util.List;
 /**
  * F22.1 市（Market）公開閲覧 Controller（02_api_design §2 / §3）。
  *
- * <p>本コントローラは<strong>すべて認証不要</strong>（permitAll・PII 抑制 DTO）。
+ * <p>本コントローラは<strong>すべて認証不要</strong>（permitAll・PII 抑制 DTO）。有効な認証主体が
+ * ある場合だけ、その閲覧者が現在も公開先に属する {@code SELECTED_SCOPES} の個人札を追加する。
  * {@code SecurityConfig} で {@code /api/v1/public/market/**} の GET 5 本（listings/listings*&#47;regions/summary/categories）を permitAll 登録済み。
  * レート制限は {@code PublicApiRateLimitFilter} が担う（market パスを追加済み）。</p>
  *
  * <p>市の札立て・応募・取下げは既存 recruitment API が担う。本コントローラは
  * <strong>読み取り集約のみ</strong>（README §1）。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 5 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/market/listings"
+ * / "listings/*" / "regions" / "summary" / "categories").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F22.1 市（Market）の公開閲覧 API。<b>PII 抑制済みの公開出品情報・地域/カテゴリのマスタ・集計値のみ</b>
+ * を返す（設計書 04_security.md §1.6）。未ログインでの検索・閲覧が機能要件。レート制限あり。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/api/v1/public/market/listings",
+        "/api/v1/public/market/listings/*",
+        "/api/v1/public/market/regions",
+        "/api/v1/public/market/summary",
+        "/api/v1/public/market/categories"
+})
 @RestController
 @RequestMapping("/api/v1/public/market")
 @Tag(name = "F22.1 市（Market）公開閲覧", description = "地域×ジャンルで束ねた募集の公開ビュー（未ログイン可・PII抑制）")
@@ -60,35 +90,41 @@ public class MarketController {
      * @param categoryId        ジャンル（任意）
      * @param keyword           タイトル部分一致（任意）
      * @param includeRegionNone 地域未指定の札も含めるか（既定 true）
+     * @param sort              並び順（既定は開催日時が近い順）
      * @param page              ページ番号（既定 0）
      * @param size              ページサイズ（既定 20）
-     * @return PII 抑制済みの公開札ページ
+     * @return PII 抑制済みの公開札ページ（認証時は認可済み所属限定札を含む）
      */
     @GetMapping("/listings")
     @Operation(summary = "市の札一覧",
-            description = "未ログインで実行可能。visibility=PUBLIC かつ status IN (OPEN,FULL) の札を返す。"
+            description = "未ログインではPUBLIC、認証時は認可済みSELECTED_SCOPESも含むOPEN/FULL札を返す。"
                     + "city 指定でその市区町村、prefecture のみで配下市区町村をロールアップ。")
+    @RequireFeature("FEATURE_MARKET_ENABLED")
     public ResponseEntity<PagedResponse<MarketListingResponse>> listListings(
             @RequestParam(required = false) String prefecture,
             @RequestParam(required = false) String city,
             @RequestParam(name = "category_id", required = false) Long categoryId,
+            @RequestParam(name = "owner_type", required = false) RecruitmentScopeType ownerType,
             @RequestParam(required = false) String keyword,
             @RequestParam(name = "include_region_none", defaultValue = "true") boolean includeRegionNone,
+            @RequestParam(defaultValue = "START_AT_ASC") MarketListingSort sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String lang,
             @RequestHeader(name = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
         String resolvedLang = resolveLang(lang, acceptLanguage);
         Page<MarketListingResponse> result = marketQueryService.searchListings(
-                prefecture, city, categoryId, keyword, includeRegionNone,
-                PageRequest.of(page, size), resolvedLang);
+                prefecture, city, categoryId, ownerType, keyword, includeRegionNone,
+                PageRequest.of(page, size), resolvedLang, SecurityUtils.getCurrentUserIdOrNull(), sort);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
-        return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .body(PagedResponse.of(result.getContent(), meta));
     }
 
     /**
-     * 市の公開札詳細（§3.2）。非公開・不在は 404（存在秘匿）。
+     * 市の札詳細（§3.2）。PUBLICまたは認証済み閲覧者のSELECTED_SCOPES以外は 404（存在秘匿）。
      *
      * @param id 札ID
      * @return PII 抑制済みの公開札詳細
@@ -101,7 +137,10 @@ public class MarketController {
             @RequestParam(required = false) String lang,
             @RequestHeader(name = HttpHeaders.ACCEPT_LANGUAGE, required = false) String acceptLanguage) {
         String resolvedLang = resolveLang(lang, acceptLanguage);
-        return ResponseEntity.ok(ApiResponse.of(marketQueryService.getListing(id, resolvedLang)));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .body(ApiResponse.of(marketQueryService.getListing(
+                        id, resolvedLang, SecurityUtils.getCurrentUserIdOrNull())));
     }
 
     /**

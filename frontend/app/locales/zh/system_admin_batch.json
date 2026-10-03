@@ -33,6 +33,7 @@
         "failed": "失败",
         "running": "执行中",
         "skipped": "跳过",
+        "resumed": "已恢复",
         "locked": "锁定中",
         "accepted": "已受理",
         "completed": "完成",

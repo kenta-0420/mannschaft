@@ -12,7 +12,7 @@ const MOCK_ANNOUNCEMENTS = {
       publishedAt: '2026-03-01T10:00:00Z',
     },
   ],
-  meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+  meta: { page: 0, size: 20, total: 1, totalPages: 1 },
 }
 
 test.describe('ADMIN-005〜006: お知らせ管理', () => {

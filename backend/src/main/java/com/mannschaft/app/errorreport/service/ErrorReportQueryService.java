@@ -4,13 +4,11 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.errorreport.ErrorReportErrorCode;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
-import com.mannschaft.app.errorreport.dto.ActiveIncidentResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportStatsResponse;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -68,30 +66,49 @@ public class ErrorReportQueryService {
     }
 
     /**
-     * アクティブなインシデント（CRITICAL/HIGH かつ NEW/INVESTIGATING/REOPENED）を取得する。
+     * 障害告知バナーの検知候補を取得する（F12.5 シスアド用）。
      *
-     * @return アクティブインシデントレスポンスのリスト
+     * <p>エラーテレメトリ（CRITICAL/HIGH × NEW/INVESTIGATING/REOPENED）から
+     * バナー化候補を機械的に抽出する。これは「気づき」であり、実際にバナーを公開するかは
+     * 管理者が判断する（ハイブリッド方式）。本メソッドはキャッシュしない
+     * （管理者向けかつ即時性が重要なため）。</p>
+     *
+     * @return 検知候補（pagePattern / severity / occurrenceCount / affectedUserCount / since）
      */
-    @Cacheable("active-incidents")
-    public ActiveIncidentResponse getActiveIncidents() {
+    public List<IncidentSuggestion> getIncidentSuggestions() {
         List<ErrorReportEntity> reports = errorReportRepository
                 .findBySeverityInAndStatusIn(
                         List.of(ErrorReportSeverity.CRITICAL, ErrorReportSeverity.HIGH),
                         List.of(ErrorReportStatus.NEW, ErrorReportStatus.INVESTIGATING, ErrorReportStatus.REOPENED));
 
-        List<ActiveIncidentResponse.Incident> incidents = reports.stream()
-                .map(report -> ActiveIncidentResponse.Incident.builder()
-                        .pagePattern(toWildcardPattern(extractPath(report.getPageUrl())))
-                        .message("一部の画面で不具合が発生しています。現在対応中です。")
-                        .severity(report.getSeverity().name())
-                        .since(report.getFirstOccurredAt())
-                        .build())
+        return reports.stream()
+                .map(report -> new IncidentSuggestion(
+                        toWildcardPattern(extractPath(report.getPageUrl())),
+                        report.getSeverity().name(),
+                        report.getOccurrenceCount() != null ? report.getOccurrenceCount() : 0L,
+                        report.getAffectedUserCount() != null ? report.getAffectedUserCount() : 0L,
+                        report.getFirstOccurredAt()))
                 .toList();
-
-        return ActiveIncidentResponse.builder()
-                .incidents(incidents)
-                .build();
     }
+
+    /**
+     * 障害告知バナーの検知候補（内部 DTO）。
+     *
+     * <p>Controller/外部 DTO 変換は incidentbanner ドメイン側が担う。</p>
+     *
+     * @param pagePattern       検知元ページパターン（ワイルドカード化済み）
+     * @param severity          重要度（CRITICAL / HIGH）
+     * @param occurrenceCount   発生回数
+     * @param affectedUserCount 影響ユーザー数
+     * @param since             初回発生日時
+     */
+    public record IncidentSuggestion(
+            String pagePattern,
+            String severity,
+            long occurrenceCount,
+            long affectedUserCount,
+            LocalDateTime since
+    ) {}
 
     /**
      * エラーレポートをIDで取得する。

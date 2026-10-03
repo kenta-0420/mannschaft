@@ -50,7 +50,7 @@ public class FormTemplateController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<FormTemplateResponse> result = templateService.listTemplates(
-                scopeType, scopeId, status, PageRequest.of(page, size));
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), status, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -66,7 +66,8 @@ public class FormTemplateController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long templateId) {
-        FormTemplateResponse response = templateService.getTemplate(scopeType, scopeId, templateId);
+        FormTemplateResponse response = templateService.getTemplate(
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), templateId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -97,7 +98,7 @@ public class FormTemplateController {
             @PathVariable Long templateId,
             @Valid @RequestBody UpdateFormTemplateRequest request) {
         FormTemplateResponse response = templateService.updateTemplate(
-                scopeType, scopeId, templateId, request);
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), templateId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -111,7 +112,8 @@ public class FormTemplateController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long templateId) {
-        FormTemplateResponse response = templateService.publishTemplate(scopeType, scopeId, templateId);
+        FormTemplateResponse response = templateService.publishTemplate(
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), templateId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -125,7 +127,8 @@ public class FormTemplateController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long templateId) {
-        FormTemplateResponse response = templateService.closeTemplate(scopeType, scopeId, templateId);
+        FormTemplateResponse response = templateService.closeTemplate(
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), templateId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -139,7 +142,7 @@ public class FormTemplateController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long templateId) {
-        templateService.deleteTemplate(scopeType, scopeId, templateId);
+        templateService.deleteTemplate(scopeType, scopeId, SecurityUtils.getCurrentUserId(), templateId);
         return ResponseEntity.noContent().build();
     }
 

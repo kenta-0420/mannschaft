@@ -12,7 +12,7 @@ test.describe('ORG-FEAT-026〜029: 組織ファイル共有', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: [{ id: 1, name: 'テストファイル.pdf', size: 1024, mimeType: 'application/pdf', uploadedBy: 'テストユーザー', createdAt: '2026-04-01T00:00:00Z' }],
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })

@@ -7,8 +7,10 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -24,8 +26,7 @@ import java.time.LocalDateTime;
 @Table(name = "tournament_entry_members")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TournamentEntryMemberEntity extends UuidV7Entity {
 
     /** 参加チームID（tournament_participants.id） */
@@ -40,15 +41,15 @@ public class TournamentEntryMemberEntity extends UuidV7Entity {
     @Column(length = 50)
     private String memberNumber;
 
-    /** ポジション（nullable） */
-    @Column(length = 50)
+    /** ポジション（nullable。DDL は VARCHAR(30)） */
+    @Column(length = 30)
     private String position;
 
     /** 背番号（nullable） */
     private Integer jerseyNumber;
 
-    /** 備考（nullable） */
-    @Column(columnDefinition = "TEXT")
+    /** 備考（nullable。DDL は VARCHAR(200)） */
+    @Column(length = 200)
     private String notes;
 
     /** 並び順 */
@@ -56,7 +57,9 @@ public class TournamentEntryMemberEntity extends UuidV7Entity {
     @Builder.Default
     private Short sortOrder = 0;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

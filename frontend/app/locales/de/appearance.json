@@ -1,6 +1,7 @@
 {
   "appearance": {
     "bgColorLabel": "Hintergrundfarbe",
+    "darkBgColorLabel": "Dunkle Hintergrundfarbe",
     "color": {
       "cream": "Creme",
       "white": "Weiß",
@@ -12,6 +13,16 @@
       "sand": "Sand",
       "sage": "Salbei",
       "slate": "Schiefer"
+    },
+    "darkColor": {
+      "charcoal": "Anthrazit",
+      "black": "Schwarz",
+      "graphite": "Graphit",
+      "slate": "Schiefer",
+      "navy": "Marineblau",
+      "forest": "Waldgrün",
+      "coffee": "Kaffee",
+      "wine": "Weinrot"
     }
   }
 }

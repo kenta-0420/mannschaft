@@ -2,6 +2,7 @@ package com.mannschaft.app.matching.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.matching.dto.ActivitySuggestionResponse;
 import com.mannschaft.app.matching.dto.CreateMatchRequestRequest;
 import com.mannschaft.app.matching.dto.MatchRequestCreateResponse;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -55,13 +57,16 @@ public class MatchRequestController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        Long currentTeamId = SecurityUtils.getCurrentUserId();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
 
         Page<MatchRequestResponse> result;
         if (keyword != null && !keyword.isBlank()) {
-            result = requestService.searchByKeyword(currentTeamId, keyword, PageRequest.of(page, Math.min(size, 50)));
+            // keyword 指定時も全フィルタ条件を Service 経由で渡し、条件を落とさない（複合 AND 検索）。
+            result = requestService.searchByKeyword(currentUserId, keyword,
+                    prefectureCode, cityCode, activityType, category, level, visibility,
+                    PageRequest.of(page, Math.min(size, 50)));
         } else {
-            result = requestService.searchRequests(currentTeamId,
+            result = requestService.searchRequests(currentUserId,
                     prefectureCode, cityCode, activityType, category, level, visibility,
                     PageRequest.of(page, Math.min(size, 50)));
         }
@@ -77,8 +82,8 @@ public class MatchRequestController {
     @Operation(summary = "募集詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<MatchRequestResponse>> getRequest(@PathVariable Long id) {
-        Long currentTeamId = SecurityUtils.getCurrentUserId();
-        MatchRequestResponse response = requestService.getRequest(id, currentTeamId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        MatchRequestResponse response = requestService.getRequest(id, currentUserId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -91,8 +96,8 @@ public class MatchRequestController {
     public ResponseEntity<ApiResponse<MatchRequestResponse>> updateRequest(
             @PathVariable Long id,
             @Valid @RequestBody CreateMatchRequestRequest request) {
-        Long currentTeamId = SecurityUtils.getCurrentUserId();
-        MatchRequestResponse response = requestService.updateRequest(id, currentTeamId, request);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        MatchRequestResponse response = requestService.updateRequest(id, currentUserId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -103,8 +108,8 @@ public class MatchRequestController {
     @Operation(summary = "募集の取り下げ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteRequest(@PathVariable Long id) {
-        Long currentTeamId = SecurityUtils.getCurrentUserId();
-        requestService.deleteRequest(id, currentTeamId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        requestService.deleteRequest(id, currentUserId);
         return ResponseEntity.noContent().build();
     }
 
@@ -114,6 +119,7 @@ public class MatchRequestController {
     @PostMapping("/api/v1/teams/{teamId}/matching/requests")
     @Operation(summary = "募集投稿の作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<MatchRequestCreateResponse>> createRequest(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateMatchRequestRequest request) {
@@ -127,6 +133,7 @@ public class MatchRequestController {
     @GetMapping("/api/v1/teams/{teamId}/matching/requests")
     @Operation(summary = "自チームの募集一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')")
     public ResponseEntity<PagedResponse<MatchRequestResponse>> listTeamRequests(
             @PathVariable Long teamId,
             @RequestParam(defaultValue = "0") int page,
@@ -139,7 +146,12 @@ public class MatchRequestController {
 
     /**
      * activity_detail のサジェスト。
+     *
+     * <p>全ユーザーに同一内容を返すマスタ的なサジェストAPI。{@code /api/v1/matching/**} は
+     * permitAll 未登録のため SecurityConfig の {@code anyRequest().authenticated()}
+     * で認証必須が強制される。</p>
      */
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/api/v1/matching/activity-suggestions")
     @Operation(summary = "activity_detail サジェスト")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

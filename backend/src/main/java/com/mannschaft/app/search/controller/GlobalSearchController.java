@@ -6,6 +6,7 @@ import com.mannschaft.app.search.dto.SearchSuggestionResponse;
 import com.mannschaft.app.search.service.GlobalSearchService;
 import com.mannschaft.app.search.service.SearchHistoryService;
 import com.mannschaft.app.search.service.SearchSuggestionService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,8 @@ public class GlobalSearchController {
     /**
      * 検索サジェストを取得する。入力中のキーワードから候補を返す。
      */
+    @SelfScopedEndpoint("SearchSuggestionService#suggest は SecurityUtils.getCurrentUserId() で"
+        + "取得した自分の検索履歴（findByUserIdOrderBySearchedAtDesc）のみを候補源にする")
     @GetMapping("/suggestions")
     @Operation(summary = "検索サジェスト")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

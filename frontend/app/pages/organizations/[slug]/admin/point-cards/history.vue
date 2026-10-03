@@ -36,6 +36,8 @@ const selectedProviderId = ref<string | ''>('')
 // ─── スタンプ履歴 ────────────────────────────────────────────
 const stamps = ref<StampEventResponse[]>([])
 const stampLoading = ref(false)
+/** 取得失敗は「履歴なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const stampLoadFailed = ref(false)
 const stampPage = ref(0)
 const stampSize = ref(20)
 const stampTotalElements = ref(0)
@@ -44,6 +46,8 @@ const stampTotalPages = ref(0)
 // ─── 残高履歴 ────────────────────────────────────────────────
 const balanceEvents = ref<BalanceEventResponse[]>([])
 const balanceLoading = ref(false)
+/** 取得失敗は「履歴なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const balanceLoadFailed = ref(false)
 const balancePage = ref(0)
 const balanceSize = ref(20)
 const balanceTotalElements = ref(0)
@@ -59,6 +63,7 @@ async function fetchProviders() {
 
 async function fetchStamps() {
   stampLoading.value = true
+  stampLoadFailed.value = false
   try {
     const res = await api.listOrgStamps({
       providerId: selectedProviderId.value || undefined,
@@ -71,6 +76,7 @@ async function fetchStamps() {
   } catch (e) {
     console.error('[history] listOrgStamps failed', e)
     stamps.value = []
+    stampLoadFailed.value = true
   } finally {
     stampLoading.value = false
   }
@@ -78,6 +84,7 @@ async function fetchStamps() {
 
 async function fetchBalanceEvents() {
   balanceLoading.value = true
+  balanceLoadFailed.value = false
   try {
     const res = await api.listOrgBalanceEvents({
       providerId: selectedProviderId.value || undefined,
@@ -90,6 +97,7 @@ async function fetchBalanceEvents() {
   } catch (e) {
     console.error('[history] listOrgBalanceEvents failed', e)
     balanceEvents.value = []
+    balanceLoadFailed.value = true
   } finally {
     balanceLoading.value = false
   }
@@ -222,7 +230,12 @@ function goNextBalance() {
 
       <!-- スタンプ履歴 -->
       <template v-if="historyTab === 'stamp'">
-        <StampHistoryTable :stamps="stamps" :loading="stampLoading" />
+        <DashboardErrorState
+          v-if="stampLoadFailed"
+          testid="point-cards-stamp-history-error-state"
+          @retry="fetchStamps"
+        />
+        <StampHistoryTable v-else :stamps="stamps" :loading="stampLoading" />
 
         <div v-if="stampTotalPages > 1" class="flex items-center justify-center gap-2">
           <button
@@ -249,7 +262,12 @@ function goNextBalance() {
 
       <!-- 残高履歴 -->
       <template v-else>
-        <BalanceHistoryTable :events="balanceEvents" :loading="balanceLoading" />
+        <DashboardErrorState
+          v-if="balanceLoadFailed"
+          testid="point-cards-balance-history-error-state"
+          @retry="fetchBalanceEvents"
+        />
+        <BalanceHistoryTable v-else :events="balanceEvents" :loading="balanceLoading" />
 
         <div v-if="balanceTotalPages > 1" class="flex items-center justify-center gap-2">
           <button

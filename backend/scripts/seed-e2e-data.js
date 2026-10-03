@@ -2,6 +2,9 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+// 隔離 worktree の実機 E2E は E2E_DB_NAME/USER/PASSWORD で専用 DB を指定する。
+// 未指定なら従来どおり本陣ローカル DB を使用する。
+
 /** チーム/組織名から URL スラッグを生成する（BE SlugGenerator と同ロジック）。
  * 日本語名など ASCII 英数字が 3 文字未満の場合は MD5 ハッシュのプレフィックスを使い
  * 一意性を担保する（seed の重複実行でも同じ名前から同じスラッグを生成）。 */
@@ -46,8 +49,11 @@ function encryptForTest(plain) {
 
 (async () => {
   const conn = await mysql.createConnection({
-    host: '127.0.0.1', port: 3306,
-    user: 'mannschaft', password: 'mannschaft', database: 'mannschaft'
+    host: '127.0.0.1', port: Number(process.env.E2E_DB_PORT ?? 3306),
+    user: process.env.E2E_DB_USER ?? 'mannschaft',
+    password: process.env.E2E_DB_PASSWORD ?? 'mannschaft',
+    database: process.env.E2E_DB_NAME ?? 'mannschaft',
+    charset: 'utf8mb4', // 二重エンコード再発防止のため接続文字コードを明示
   });
 
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -94,7 +100,47 @@ function encryptForTest(plain) {
   );
   const E2E_ADMIN = Number(e2eAdminRow.id);
 
-  console.log(`E2E users: E2E_USER id=${E2E_USER}, E2E_ADMIN id=${E2E_ADMIN}`);
+  // F03.4 予約E2E: SUPPORTER ロールのテストアカウント。
+  // 「SUPPORTER でも予約できるか」を実機検証するために fc-u-18 の SUPPORTER として用意する。
+  const e2eSupporterHash = hashStrength8('TestPass2026!');
+  await conn.execute(
+    `INSERT IGNORE INTO users
+      (email, password_hash, last_name, first_name, display_name,
+       is_searchable, encryption_key_version, locale, timezone,
+       status, reporting_restricted, created_at, updated_at)
+     VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)`,
+    ['e2e-supporter@test.mannschaft.local', e2eSupporterHash,
+     encryptForTest('E2Eサポーター'), encryptForTest('応援'), 'E2Eサポーター 応援',
+     'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
+  );
+  const [[e2eSupporterRow]] = await conn.execute(
+    'SELECT id FROM users WHERE email = ?',
+    ['e2e-supporter@test.mannschaft.local']
+  );
+  const E2E_SUPPORTER = Number(e2eSupporterRow.id);
+
+  // 認可根治戦役 Wave4: e2e-real-smoke の認可スモーク用「非メンバー」テストアカウント。
+  // どのチーム/組織にも user_roles/memberships を一切割り当てない（assignRole を意図的に呼ばない）。
+  // smoke-check.sh はこのユーザーでログインし、保護EPを叩いて 403/404 になることを確認する
+  // （200 が返ったら認可漏れとして smoke を fail させる）。
+  const e2eOutsiderHash = hashStrength8('TestPass2026!');
+  await conn.execute(
+    `INSERT IGNORE INTO users
+      (email, password_hash, last_name, first_name, display_name,
+       is_searchable, encryption_key_version, locale, timezone,
+       status, reporting_restricted, created_at, updated_at)
+     VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)`,
+    ['e2e-outsider@test.mannschaft.local', e2eOutsiderHash,
+     encryptForTest('E2E部外者'), encryptForTest('非会員'), 'E2E部外者（非会員）',
+     'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
+  );
+  const [[e2eOutsiderRow]] = await conn.execute(
+    'SELECT id FROM users WHERE email = ?',
+    ['e2e-outsider@test.mannschaft.local']
+  );
+  const E2E_OUTSIDER = Number(e2eOutsiderRow.id);
+
+  console.log(`E2E users: E2E_USER id=${E2E_USER}, E2E_ADMIN id=${E2E_ADMIN}, E2E_SUPPORTER id=${E2E_SUPPORTER}, E2E_OUTSIDER id=${E2E_OUTSIDER}（どのteam/orgにも非所属）`);
 
   // ============================================================
   // 1. ダミーユーザー 20人
@@ -126,6 +172,27 @@ function encryptForTest(plain) {
     userIds.push(Number(r.id));
   }
   console.log(`Users created/found: ${userIds.length} (id ${userIds[0]}-${userIds[userIds.length - 1]})`);
+
+  // F08.9 後見まとめ払い E2E: e2e-user を保護者、dummy-2 を12歳未満の受益者として固定する。
+  // 実機テストで「後見対象が無ければ skip」を許さず、権原と未払い項目を必ず検証できるようにする。
+  const E2E_GUARDIAN_CHILD = userIds[1];
+  await conn.execute(
+    `UPDATE users
+        SET birth_date = ?, birth_year = ?, updated_at = ?
+      WHERE id = ?`,
+    [encryptForTest('2020-04-02'), 2020, now, E2E_GUARDIAN_CHILD]
+  );
+  await conn.execute(
+    `INSERT INTO user_care_links
+      (care_recipient_user_id, watcher_user_id, care_category, relationship,
+       is_primary, status, invited_by, confirmed_at, created_by, created_at, updated_at)
+     VALUES (?,?,?,?,1,'ACTIVE','SYSTEM',?,?,?,?)
+     ON DUPLICATE KEY UPDATE
+       care_category = VALUES(care_category), relationship = VALUES(relationship),
+       is_primary = 1, status = 'ACTIVE', confirmed_at = VALUES(confirmed_at),
+       revoked_at = NULL, revoked_by = NULL, updated_at = VALUES(updated_at)`,
+    [E2E_GUARDIAN_CHILD, E2E_USER, 'MINOR', 'PARENT', now, E2E_USER, now, now]
+  );
 
   // ============================================================
   // 2. 組織（JFA階層構造）
@@ -223,12 +290,18 @@ function encryptForTest(plain) {
   // 4. ロール配置
   // ============================================================
   async function assignRole(userId, roleId, teamId, orgId) {
-    await conn.execute(
-      `INSERT IGNORE INTO user_roles
-        (user_id, role_id, team_id, organization_id, granted_by, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?)`,
-      [userId, roleId, teamId || null, orgId || null, SYS, now, now]
-    );
+    // CMP-027: 所属ロール MEMBER(role_id=4) / SUPPORTER(role_id=5) は V60.010 で user_roles から
+    // 除去され memberships へ完全移行済み。本番で成立しえないため user_roles へは書かず、
+    // 下の memberships 同期のみに委ねる。権限ロール（SYSTEM_ADMIN/ADMIN/DEPUTY_ADMIN/GUEST）は
+    // 従来どおり user_roles が正統なので INSERT する。
+    if (!(roleId === 4 || roleId === 5)) {
+      await conn.execute(
+        `INSERT IGNORE INTO user_roles
+          (user_id, role_id, team_id, organization_id, granted_by, created_at, updated_at)
+         VALUES (?,?,?,?,?,?,?)`,
+        [userId, roleId, teamId || null, orgId || null, SYS, now, now]
+      );
+    }
 
     // F00.5 Phase 3: memberships 基盤への同期。
     // isMember() は user_roles ではなく memberships.left_at IS NULL を参照するため、
@@ -270,6 +343,9 @@ function encryptForTest(plain) {
   // E2E user: FC東京U-18 MEMBER
   await assignRole(E2E_USER, 4, teams.fcTokyoU18, null);
 
+  // E2E supporter: FC東京U-18 SUPPORTER（role_id=5。assignRole が memberships role_kind=SUPPORTER も同期投入）
+  await assignRole(E2E_SUPPORTER, 5, teams.fcTokyoU18, null);
+
   // FC東京U-18: 監督 + 選手4人
   await assignRole(userIds[0], 2, teams.fcTokyoU18, null);
   for (let i = 1; i <= 4; i++) await assignRole(userIds[i], 4, teams.fcTokyoU18, null);
@@ -307,10 +383,77 @@ function encryptForTest(plain) {
 
   console.log('Roles assigned');
 
+  // F08.9 CMP-011 実機 E2E: Stripe API を呼ばずに画面・認可・集計を検証する固定年会費。
+  // API から ANNUAL_FEE を作ると Stripe Product/Price の自動作成が走るため、
+  // ローカルの Stripe 鍵未設定環境でも再現可能な seed fixture として直接投入する。
+  const CMP011_PAYMENT_ITEM_NAME = 'CMP-011 E2E 年会費';
+  let [[cmp011PaymentItem]] = await conn.execute(
+    `SELECT id FROM payment_items
+      WHERE team_id = ? AND name = ? AND deleted_at IS NULL
+      ORDER BY id LIMIT 1`,
+    [teams.fcTokyoU18, CMP011_PAYMENT_ITEM_NAME]
+  );
+  if (!cmp011PaymentItem) {
+    await conn.execute(
+      `INSERT INTO payment_items
+        (team_id, organization_id, name, description, type, amount, currency,
+         stripe_product_id, stripe_price_id, is_active, display_order,
+         grace_period_days, created_by, created_at, updated_at,
+         is_recurring, billing_interval)
+       VALUES (?,NULL,?,?, 'ANNUAL_FEE',3000,'JPY',?,?,1,0,0,?,?,?,1,'YEARLY')`,
+      [teams.fcTokyoU18, CMP011_PAYMENT_ITEM_NAME, 'CMP-011 実機E2E固定項目',
+       'prod_cmp011_e2e', 'price_cmp011_e2e', E2E_ADMIN, now, now]
+    );
+    [[cmp011PaymentItem]] = await conn.execute(
+      `SELECT id FROM payment_items
+        WHERE team_id = ? AND name = ? AND deleted_at IS NULL
+        ORDER BY id LIMIT 1`,
+      [teams.fcTokyoU18, CMP011_PAYMENT_ITEM_NAME]
+    );
+  }
+
+  // 後見対象の未払いとして列挙されるには、所属だけでなくチーム参加要件への紐付けが必要。
+  await conn.execute(
+    `INSERT IGNORE INTO team_access_requirements
+      (team_id, payment_item_id, created_at)
+     VALUES (?,?,?)`,
+    [teams.fcTokyoU18, cmp011PaymentItem.id, now]
+  );
+
+  // 月次手数料明細は受領側 Connect 口座を集計起点にする。取引が0件でも
+  // 0円明細を返す契約を実機で検証できるよう、対象チームのREADY口座を固定する。
+  const [[cmp011ConnectAccount]] = await conn.execute(
+    `SELECT BIN_TO_UUID(id) AS id FROM connect_accounts
+      WHERE scope_kind = 'TEAM' AND scope_id = ? AND deleted_at IS NULL
+      ORDER BY created_at LIMIT 1`,
+    [teams.fcTokyoU18]
+  );
+  if (cmp011ConnectAccount) {
+    await conn.execute(
+      `UPDATE connect_accounts
+          SET onboarding_status = 'READY', charges_enabled = 1, payouts_enabled = 1, updated_at = ?
+        WHERE id = UUID_TO_BIN(?)`,
+      [now, cmp011ConnectAccount.id]
+    );
+  } else {
+    await conn.execute(
+      `INSERT INTO connect_accounts
+        (id, scope_kind, scope_id, organization_id, stripe_account_id,
+         onboarding_status, charges_enabled, payouts_enabled, country,
+         default_currency, created_at, updated_at)
+       VALUES (UUID_TO_BIN(UUID()),'TEAM',?,NULL,?,'READY',1,1,'JP','JPY',?,?)`,
+      [teams.fcTokyoU18, `acct_cmp011_e2e_${teams.fcTokyoU18}`, now, now]
+    );
+  }
+
   // ============================================================
   // 5. スケジュール
   // ============================================================
-  async function createSchedule(teamId, orgId, title, eventType, startAt, endAt, location, createdBy) {
+  // CMP-017b: min_view_role（閲覧できる最低ロール）が閲覧認可に組み込まれたため、
+  // 全予定を MEMBER_PLUS 固定で投入すると応援者から共有予定が一切見えなくなる。
+  // minViewRole を呼び出し側で指定できるようにし、応援者可視性の両側
+  // （見えるべき予定／見えてはならない予定）を踏めるデータを投入する（AC-25）。
+  async function createSchedule(teamId, orgId, title, eventType, startAt, endAt, location, createdBy, minViewRole = 'MEMBER_PLUS') {
     await conn.execute(
       `INSERT IGNORE INTO schedules
         (team_id, organization_id, title, event_type, start_at, end_at, location,
@@ -318,7 +461,7 @@ function encryptForTest(plain) {
          attendance_status, comment_option, is_exception, created_by, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,0,?,?,?,?,?,?,?,0,?,?,?)`,
       [teamId, orgId, title, eventType, startAt, endAt, location,
-       'MEMBERS_ONLY', 'MEMBER_PLUS', 'MEMBER_PLUS', 'SCHEDULED', 1, 'READY', 'OPTIONAL', createdBy, now, now]
+       'MEMBERS_ONLY', minViewRole, 'MEMBER_PLUS', 'SCHEDULED', 1, 'READY', 'OPTIONAL', createdBy, now, now]
     );
   }
 
@@ -328,6 +471,8 @@ function encryptForTest(plain) {
   await createSchedule(teams.fcTokyoU18, null, '練習（紅白戦）', 'PRACTICE', '2026-04-08 15:00:00', '2026-04-08 18:00:00', '味の素スタジアム西練習場', userIds[0]);
   await createSchedule(teams.fcTokyoU18, null, 'プリンスリーグ関東 第4節 vs 浦和ユース', 'MATCH', '2026-04-12 13:00:00', '2026-04-12 15:00:00', '浦和駒場スタジアム', userIds[0]);
   await createSchedule(teams.fcTokyoU18, null, 'ミーティング（戦術確認）', 'MEETING', '2026-04-04 18:00:00', '2026-04-04 19:30:00', 'クラブハウス会議室', userIds[0]);
+  // AC-25: 応援者可視性の実機E2Eで「見える」側を踏むため、SUPPORTER_PLUS の予定を最低1件投入する
+  await createSchedule(teams.fcTokyoU18, null, '保護者・応援者向け見学会', 'EVENT', '2026-04-11 10:00:00', '2026-04-11 12:00:00', '味の素スタジアム西練習場', userIds[0], 'SUPPORTER_PLUS');
 
   // 横浜FCジュニアA
   await createSchedule(teams.yokohamaJr, null, '練習（ボール回し）', 'PRACTICE', '2026-04-05 14:00:00', '2026-04-05 16:00:00', 'ニッパツ三ツ沢球技場サブグラウンド', userIds[9]);
@@ -344,7 +489,7 @@ function encryptForTest(plain) {
   await createSchedule(teams.indieFC, null, '練習試合 vs 草サッカー倶楽部', 'MATCH', '2026-04-06 10:00:00', '2026-04-06 12:00:00', '船橋運動公園', userIds[18]);
   await createSchedule(teams.grassroots, null, '週末練習', 'PRACTICE', '2026-04-05 08:00:00', '2026-04-05 10:00:00', '大宮公園サッカー場', userIds[19]);
 
-  console.log('Schedules created: 12');
+  console.log('Schedules created: 13');
 
   // ============================================================
   // 6. チャットチャンネル + メッセージ
@@ -890,6 +1035,7 @@ function encryptForTest(plain) {
   console.log('========================================');
   console.log(`E2E_USER id:    ${E2E_USER}  (e2e-user@test.mannschaft.local)`);
   console.log(`E2E_ADMIN id:   ${E2E_ADMIN}  (e2e-admin@test.mannschaft.local)`);
+  console.log(`E2E_OUTSIDER id: ${E2E_OUTSIDER}  (e2e-outsider@test.mannschaft.local / 非メンバー・認可スモーク専用)`);
   console.log(`Users:         20 dummy (id ${userIds[0]}-${userIds[19]})`);
   console.log(`Organizations: 10`);
   console.log(`  JFA (top) -> 関東FA -> 東京FA, 神奈川FA`);

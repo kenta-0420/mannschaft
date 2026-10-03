@@ -6,6 +6,7 @@ import com.mannschaft.app.timetable.personal.PersonalPeriodTemplate;
 import com.mannschaft.app.timetable.personal.PersonalTimetableErrorCode;
 import com.mannschaft.app.timetable.personal.PersonalTimetableStatus;
 import com.mannschaft.app.timetable.personal.PersonalTimetableVisibility;
+import com.mannschaft.app.timetable.personal.dto.PersonalTimetableSummary;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableEntity;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetablePeriodEntity;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableSlotEntity;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * F03.15 個人時間割サービス（Phase 1）。
@@ -133,23 +135,26 @@ public class PersonalTimetableService {
                 ? data.weekPatternBaseDate() : entity.getWeekPatternBaseDate();
         validateMetadata(newFrom, newUntil, newWpe, newWpb);
 
-        var builder = entity.toBuilder()
-                .effectiveFrom(newFrom)
-                .effectiveUntil(newUntil)
-                .weekPatternEnabled(newWpe)
-                .weekPatternBaseDate(newWpb);
-        if (data.name() != null) builder.name(data.name());
-        if (data.academicYear() != null) builder.academicYear(data.academicYear());
-        if (data.termLabel() != null) builder.termLabel(data.termLabel());
-        if (data.visibility() != null) builder.visibility(data.visibility());
-        if (data.notes() != null) builder.notes(data.notes());
+        // 監査ログの before 値は applyUpdate でミューテートされる前に捕捉する。
+        // ミューテート後に entity.getVisibility() を比較すると常に新値と一致し、
+        // visibility_changed が発火しなくなる（直接ミューテート化に伴う回帰の根治）。
+        PersonalTimetableVisibility previousVisibility = entity.getVisibility();
 
-        PersonalTimetableEntity saved = repository.save(builder.build());
+        // toBuilder().build() で作り直すと id=null の新インスタンスになり INSERT 化するため、
+        // managed entity を直接ミューテートして UPDATE に固定する（#1643 同型バグ根治）。
+        entity.applyUpdate(
+                data.name(), data.academicYear(), data.termLabel(),
+                newFrom, newUntil,
+                data.visibility(),
+                newWpe, newWpb,
+                data.notes());
+        PersonalTimetableEntity saved = repository.save(entity);
 
         // F03.15 Phase 5b: visibility 直接変更時の監査ログ
-        // ShareTargetService 経由の自動切替とは別に、PATCH での直接変更も網羅する
+        // ShareTargetService 経由の自動切替とは別に、PATCH での直接変更も網羅する。
+        // 比較は applyUpdate 前に捕捉した previousVisibility（旧値）と data.visibility()（新値）で行う。
         if (data.visibility() != null && auditLogService != null
-                && entity.getVisibility() != data.visibility()) {
+                && previousVisibility != data.visibility()) {
             auditLogService.record(
                     "personal_timetable.visibility_changed",
                     userId, null, null, null, null, null, null,
@@ -157,7 +162,7 @@ public class PersonalTimetableService {
                             "{\"source\":\"PERSONAL_TIMETABLE\",\"source_id\":%d,"
                                     + "\"before\":\"%s\",\"after\":\"%s\","
                                     + "\"trigger\":\"PATCH\"}",
-                            id, entity.getVisibility().name(), data.visibility().name()));
+                            id, previousVisibility.name(), data.visibility().name()));
         }
 
         return saved;
@@ -269,7 +274,7 @@ public class PersonalTimetableService {
                 periodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(source.getId());
         if (!sourcePeriods.isEmpty()) {
             List<PersonalTimetablePeriodEntity> copies = sourcePeriods.stream()
-                    .map(p -> PersonalTimetablePeriodEntity.builder()
+                    .<PersonalTimetablePeriodEntity>map(p -> PersonalTimetablePeriodEntity.builder()
                             .personalTimetableId(saved.getId())
                             .periodNumber(p.getPeriodNumber())
                             .label(p.getLabel())
@@ -286,7 +291,7 @@ public class PersonalTimetableService {
                 slotRepository.findByPersonalTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(source.getId());
         if (!sourceSlots.isEmpty()) {
             List<PersonalTimetableSlotEntity> copies = sourceSlots.stream()
-                    .map(s -> PersonalTimetableSlotEntity.builder()
+                    .<PersonalTimetableSlotEntity>map(s -> PersonalTimetableSlotEntity.builder()
                             .personalTimetableId(saved.getId())
                             .dayOfWeek(s.getDayOfWeek())
                             .periodNumber(s.getPeriodNumber())
@@ -370,6 +375,27 @@ public class PersonalTimetableService {
             Boolean weekPatternEnabled,
             LocalDate weekPatternBaseDate,
             String notes) {
+    }
+
+    /**
+     * F06.5 Phase 3 term-suggestion 用: 指定日時点で有効な個人時間割（status = ACTIVE のみ）の
+     * 学年・学期サマリーを返す（§12.1・D-1 越境依存禁止のため reflection ドメイン側が Service 経由で呼ぶ）。
+     *
+     * <p>条件: status = ACTIVE かつ effectiveFrom &lt;= date かつ (effectiveUntil IS NULL OR effectiveUntil &gt;= date)。
+     * 複数該当時は effectiveFrom が最新（最遅）のものを採用。該当なしは {@link Optional#empty()}。
+     * DRAFT・ARCHIVED の時間割は除外する（提案に混入しないよう）。</p>
+     *
+     * @param userId   対象ユーザーID
+     * @param date     基準日
+     * @return 有効な時間割の学年・学期サマリー（該当なしは empty）
+     */
+    public Optional<PersonalTimetableSummary> findEffectiveAt(Long userId, LocalDate date) {
+        return repository.findByUserIdAndStatusAndDeletedAtIsNull(userId, PersonalTimetableStatus.ACTIVE)
+                .stream()
+                .filter(pt -> !pt.getEffectiveFrom().isAfter(date)
+                        && (pt.getEffectiveUntil() == null || !pt.getEffectiveUntil().isBefore(date)))
+                .max(java.util.Comparator.comparing(PersonalTimetableEntity::getEffectiveFrom))
+                .map(pt -> new PersonalTimetableSummary(pt.getAcademicYear(), pt.getTermLabel()));
     }
 
     /**

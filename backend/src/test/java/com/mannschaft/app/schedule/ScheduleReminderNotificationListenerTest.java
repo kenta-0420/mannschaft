@@ -21,7 +21,8 @@ import static org.mockito.Mockito.verify;
 
 /**
  * {@link ScheduleReminderNotificationListener} の単体テスト（機能55 第二陣）。
- * リマインダー通知イベントを受けて NotificationHelper.notifyAll（IN_APP + PUSH）が呼ばれることを検証する。
+ * リマインダー通知イベントを受けて NotificationHelper.notifyAllPreAuthorized（IN_APP + PUSH）が
+ * 呼ばれることを検証する（配信＝受信権 統一・(B) レグ取りこぼし番人）。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ScheduleReminderNotificationListener 単体テスト")
@@ -34,9 +35,9 @@ class ScheduleReminderNotificationListenerTest {
     private ScheduleReminderNotificationListener listener;
 
     @Test
-    @DisplayName("対象者あり_notifyAllでIN_APP+PUSH配信される")
-    void 対象者あり_notifyAllで配信される() {
-        // given
+    @DisplayName("対象者あり_notifyAllPreAuthorizedでIN_APP+PUSH配信される（(B)レグ番人）")
+    void 対象者あり_notifyAllPreAuthorizedで配信される() {
+        // given: 受信者は schedule_attendances 行（配信母集団 materialize）由来で事前認可済み
         ReminderNotificationEvent event = new ReminderNotificationEvent(
                 1L, NotificationScopeType.TEAM, 50L, List.of(100L, 200L),
                 "まもなく予定の時刻です", "まもなく予定が始まります: テスト予定", "/schedules/1");
@@ -44,8 +45,8 @@ class ScheduleReminderNotificationListenerTest {
         // when
         listener.onReminderNotification(event);
 
-        // then
-        verify(notificationHelper).notifyAll(
+        // then: canView 二重判定を通さない notifyAllPreAuthorized 経由で配信される
+        verify(notificationHelper).notifyAllPreAuthorized(
                 eq(List.of(100L, 200L)),
                 eq("SCHEDULE_REMINDER"),
                 eq(NotificationPriority.NORMAL),
@@ -57,11 +58,24 @@ class ScheduleReminderNotificationListenerTest {
                 eq(50L),
                 eq("/schedules/1"),
                 isNull());
+        // 取りこぼし非回帰: canView ゲート付き notifyAll は使わない
+        verify(notificationHelper, never()).notifyAll(
+                org.mockito.ArgumentMatchers.anyList(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(NotificationPriority.class),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.any(NotificationScopeType.class),
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any());
     }
 
     @Test
-    @DisplayName("対象者なし_notifyAll呼ばれない")
-    void 対象者なし_notifyAll呼ばれない() {
+    @DisplayName("対象者なし_notifyAllPreAuthorized呼ばれない")
+    void 対象者なし_notifyAllPreAuthorized呼ばれない() {
         // given
         ReminderNotificationEvent event = new ReminderNotificationEvent(
                 1L, NotificationScopeType.TEAM, 50L, List.of(),
@@ -71,7 +85,7 @@ class ScheduleReminderNotificationListenerTest {
         listener.onReminderNotification(event);
 
         // then
-        verify(notificationHelper, never()).notifyAll(
+        verify(notificationHelper, never()).notifyAllPreAuthorized(
                 org.mockito.ArgumentMatchers.anyList(),
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.any(NotificationPriority.class),

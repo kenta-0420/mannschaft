@@ -2,6 +2,7 @@ package com.mannschaft.app.tournament.entry.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -41,10 +42,12 @@ public class UpsertEntryMembersRequest {
         /** 背番号（nullable） */
         Integer jerseyNumber;
 
-        /** ポジション（nullable） */
+        /** ポジション（nullable、最大30文字。DDL の VARCHAR(30) と一致） */
+        @Size(max = 30)
         String position;
 
-        /** 備考（nullable） */
+        /** 備考（nullable、最大200文字。DDL の VARCHAR(200) と一致） */
+        @Size(max = 200)
         String notes;
 
         /** 並び順（デフォルト: 0） */

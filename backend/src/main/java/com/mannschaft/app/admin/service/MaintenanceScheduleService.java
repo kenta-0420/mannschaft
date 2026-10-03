@@ -28,6 +28,15 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class MaintenanceScheduleService {
 
+    /**
+     * 一覧に含めるステータス（issue #2544）。
+     * <p>{@code List.of(...)} は復元不能な {@code ImmutableCollections} を返すため、
+     * {@code @Cacheable} メソッドの内部では生成しない（戻り値に流れないクエリ引数であっても、
+     * 静的番人は流れ先を判別できないので定数へ退避する）。</p>
+     */
+    private static final List<MaintenanceStatus> LISTED_STATUSES =
+            List.of(MaintenanceStatus.SCHEDULED, MaintenanceStatus.ACTIVE, MaintenanceStatus.COMPLETED);
+
     private final AdminMaintenanceScheduleRepository repository;
     private final AdminMapper adminMapper;
 
@@ -38,8 +47,8 @@ public class MaintenanceScheduleService {
      */
     @Cacheable(value = "maintenanceSchedules")
     public List<MaintenanceScheduleResponse> getAllSchedules() {
-        List<MaintenanceScheduleEntity> entities = repository.findByStatusInOrderByStartsAtDesc(
-                List.of(MaintenanceStatus.SCHEDULED, MaintenanceStatus.ACTIVE, MaintenanceStatus.COMPLETED));
+        List<MaintenanceScheduleEntity> entities =
+                repository.findByStatusInOrderByStartsAtDesc(LISTED_STATUSES);
         return adminMapper.toMaintenanceScheduleResponseList(entities);
     }
 

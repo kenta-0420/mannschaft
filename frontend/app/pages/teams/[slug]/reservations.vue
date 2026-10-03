@@ -1,60 +1,21 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' })
+/**
+ * チーム詳細「予約」タブ（永続シェル配下の子ルート）。
+ *
+ * ヘッダ・タブ・サイドバーは親 `pages/teams/[slug].vue`（ScopePageShell）が常駐描画する。
+ * 旧実装は layout:'team' + 独自 PageHeader を持っていたが、永続シェル化に伴い撤去し、
+ * TeamReservationsPanel 本体のみを描画する（二重ヘッダ回避）。
+ * WidgetMyTeams / admin ページからの `/teams/{slug}/reservations` 直リンクにも対応する。
+ */
+definePageMeta({ layout: 'default', middleware: 'auth' })
 
-const { t } = useI18n()
 const route = useRoute()
-const teamSlug = String(route.params.slug)
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
-
-const activeTab = ref(0)
-const showBookDialog = ref(false)
-const selectedSlot = ref({ slotId: 0, lineName: '', date: '', startTime: '', endTime: '' })
-
-function onSlotSelected(
-  slotId: number,
-  lineName: string,
-  date: string,
-  startTime: string,
-  endTime: string,
-) {
-  selectedSlot.value = { slotId, lineName, date, startTime, endTime }
-  showBookDialog.value = true
-}
-
-onMounted(() => loadPermissions())
+const teamSlug = computed(() => String(route.params.slug))
+const { adminLens } = useTeamShellContext()
 </script>
 
 <template>
-  <div>
-    <PageHeader :title="t('reservation.page.team_title')" class="mb-4" />
-
-    <Tabs v-model:value="activeTab">
-      <TabList>
-        <Tab :value="0">{{ t('reservation.tab.book') }}</Tab>
-        <Tab :value="1">{{ t('reservation.tab.list') }}</Tab>
-        <Tab :value="2">{{ t('reservation.tab.line_manage') }}</Tab>
-      </TabList>
-      <TabPanels>
-        <TabPanel :value="0">
-          <SlotPicker :team-id="teamSlug" @slot-selected="onSlotSelected" />
-        </TabPanel>
-        <TabPanel :value="1">
-          <ReservationList :team-id="teamSlug" :can-manage="isAdminOrDeputy" />
-        </TabPanel>
-        <TabPanel v-if="isAdmin" :value="2">
-          <LineManager :team-id="teamSlug" />
-        </TabPanel>
-      </TabPanels>
-    </Tabs>
-
-    <ReservationForm
-      v-model:visible="showBookDialog"
-      :team-id="teamSlug"
-      :slot-id="selectedSlot.slotId"
-      :line-name="selectedSlot.lineName"
-      :date="selectedSlot.date"
-      :start-time="selectedSlot.startTime"
-      :end-time="selectedSlot.endTime"
-    />
+  <div class="mt-4">
+    <TeamReservationsPanel :team-id="teamSlug" :management-view="adminLens" />
   </div>
 </template>

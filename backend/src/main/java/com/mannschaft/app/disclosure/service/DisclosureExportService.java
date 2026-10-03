@@ -3,6 +3,7 @@ package com.mannschaft.app.disclosure.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.disclosure.DisclosureErrorCode;
 import com.mannschaft.app.disclosure.DisclosureOutputFormat;
@@ -79,6 +80,7 @@ public class DisclosureExportService {
     private final OrganizationRepository organizationRepository;
     private final DwellingUnitRepository dwellingUnitRepository;
     private final ObjectMapper objectMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * F05.3 押印検証サービス（Phase 4-A 改ざん検出多層化）。
@@ -123,6 +125,8 @@ public class DisclosureExportService {
         // 1. ドラフトとテンプレート取得
         DisclosureFormDraftEntity draft = draftService.findDraftOrThrow(draftId);
         validationService.ensureScope(draft.getScopeType(), draft.getScopeId(), scopeId);
+        // 認可根治戦役 Wave3-B4: Export は ADMIN/DEPUTY_ADMIN 以上のみ許可する
+        accessControlService.checkAdminOrAbove(userId, scopeId, SCOPE_ORGANIZATION);
 
         DisclosureFormTemplateEntity template = templateService.getEntityOrThrow(draft.getTemplateId());
 
@@ -243,7 +247,8 @@ public class DisclosureExportService {
     /**
      * スコープ別の出力履歴一覧を取得する。
      */
-    public Page<DisclosureExportResponse> listExports(Long scopeId, Pageable pageable) {
+    public Page<DisclosureExportResponse> listExports(Long scopeId, Long userId, Pageable pageable) {
+        accessControlService.checkMembership(userId, scopeId, SCOPE_ORGANIZATION);
         Pageable safePageable = pageable != null ? pageable : PageRequest.of(0, 20);
         return exportRepository
                 .findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByCreatedAtDesc(
@@ -254,9 +259,10 @@ public class DisclosureExportService {
     /**
      * 出力履歴詳細を取得する。
      */
-    public DisclosureExportResponse getExport(Long scopeId, Long exportId) {
+    public DisclosureExportResponse getExport(Long scopeId, Long userId, Long exportId) {
         DisclosureExportEntity entity = findExportOrThrow(exportId);
         validationService.ensureScope(entity.getScopeType(), entity.getScopeId(), scopeId);
+        accessControlService.checkMembership(userId, scopeId, SCOPE_ORGANIZATION);
         return DisclosureExportResponse.fromHistory(entity, deserializeIds(entity.getReferencedPackageIds()));
     }
 
@@ -277,9 +283,11 @@ public class DisclosureExportService {
      * {@link DisclosureErrorCode#DISCLOSURE_010}（HTTP 503 相当）を投げる。
      * {@code circulation_document_id} が NULL の場合（電子印鑑なし出力）は SHA-256 のみ検証。</p>
      */
-    public DisclosureExportResponse generateDownloadUrl(Long scopeId, Long exportId) {
+    public DisclosureExportResponse generateDownloadUrl(Long scopeId, Long userId, Long exportId) {
         DisclosureExportEntity entity = findExportOrThrow(exportId);
         validationService.ensureScope(entity.getScopeType(), entity.getScopeId(), scopeId);
+        // 認可根治戦役 Wave3-B4: 実ファイルダウンロードは Export と同格の ADMIN/DEPUTY_ADMIN 以上のみ許可する
+        accessControlService.checkAdminOrAbove(userId, scopeId, SCOPE_ORGANIZATION);
 
         SharedFileEntity sharedFile = storageService.findSharedFileOrThrow(entity.getSharedFileId());
 
@@ -403,7 +411,7 @@ public class DisclosureExportService {
      *           {@code LocalDate.now().plusYears(7).atStartOfDay()}（境界値は含む）。
      */
     @Transactional
-    public DisclosureExportResponse extendExpiry(Long scopeId, Long exportId,
+    public DisclosureExportResponse extendExpiry(Long scopeId, Long userId, Long exportId,
                                                  LocalDateTime newExpiresAt) {
         if (newExpiresAt == null) {
             throw new BusinessException(DisclosureErrorCode.DISCLOSURE_011);
@@ -421,6 +429,8 @@ public class DisclosureExportService {
 
         DisclosureExportEntity entity = findExportOrThrow(exportId);
         validationService.ensureScope(entity.getScopeType(), entity.getScopeId(), scopeId);
+        // 認可根治戦役 Wave3-B4: 期限延長は ADMIN のみ許可する（設計書 §5.7）
+        accessControlService.checkAdminOrAbove(userId, scopeId, SCOPE_ORGANIZATION);
 
         entity.extendExpiresAt(newExpiresAt);
         DisclosureExportEntity saved = exportRepository.save(entity);

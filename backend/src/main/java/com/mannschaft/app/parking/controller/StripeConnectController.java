@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * Stripe Connect コントローラー（2 EP）。
@@ -26,6 +27,8 @@ public class StripeConnectController {
 
     private final StripeConnectService stripeConnectService;
 
+    @SelfScopedEndpoint("StripeConnectService#startOnboarding が userId=SecurityUtils.getCurrentUserId() で"
+            + "常に自身の Stripe アカウントを解決する")
     @PostMapping("/onboarding")
     @Operation(summary = "Stripe Connect オンボーディング開始")
     public ResponseEntity<ApiResponse<Map<String, String>>> startOnboarding() {
@@ -33,6 +36,8 @@ public class StripeConnectController {
         return ResponseEntity.ok(ApiResponse.of(Map.of("onboardingUrl", url)));
     }
 
+    @SelfScopedEndpoint("StripeConnectService#getStatus が userId=SecurityUtils.getCurrentUserId() で"
+            + "常に自身の Stripe アカウントを解決する")
     @GetMapping("/status")
     @Operation(summary = "Stripe Connect ステータス取得")
     public ResponseEntity<ApiResponse<StripeConnectStatusResponse>> getStatus() {

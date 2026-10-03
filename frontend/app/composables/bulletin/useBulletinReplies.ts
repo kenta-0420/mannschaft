@@ -14,7 +14,7 @@ export function useBulletinReplies() {
   /**
    * スレッドの返信一覧を取得する（グローバル方式）。
    * BE: GET /api/v1/bulletin/threads/{threadId}/replies
-   * レスポンス: { data: BulletinReplyResponse[], meta: { totalElements, page, size, totalPages } }
+   * レスポンス: { data: BulletinReplyResponse[], meta: { total, page, size, totalPages } }
    */
   async function getReplies(
     threadId: number,
@@ -26,7 +26,7 @@ export function useBulletinReplies() {
     const qs = query.toString()
     return api<{
       data: BulletinReplyResponse[]
-      meta: { totalElements: number; page: number; size: number; totalPages: number }
+      meta: { total: number; page: number; size: number; totalPages: number }
     }>(`/api/v1/bulletin/threads/${threadId}/replies${qs ? `?${qs}` : ''}`)
   }
 

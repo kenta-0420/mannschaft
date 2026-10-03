@@ -25,7 +25,7 @@ export function useChartApi() {
     if (params?.dateFrom) query.set('dateFrom', params.dateFrom)
     if (params?.dateTo) query.set('dateTo', params.dateTo)
     const qs = query.toString()
-    return api<{ data: Chart[]; meta: { totalElements: number } }>(
+    return api<{ data: Chart[]; meta: { total: number } }>(
       `/api/v1/teams/${teamId}/charts${qs ? `?${qs}` : ''}`,
     )
   }
@@ -59,7 +59,7 @@ export function useChartApi() {
     if (params?.page != null) query.set('page', String(params.page))
     if (params?.size != null) query.set('size', String(params.size))
     const qs = query.toString()
-    return api<{ data: Chart[]; meta: { totalElements: number } }>(
+    return api<{ data: Chart[]; meta: { total: number } }>(
       `/api/v1/charts/me${qs ? `?${qs}` : ''}`,
     )
   }
@@ -74,7 +74,7 @@ export function useChartApi() {
     if (params?.page != null) query.set('page', String(params.page))
     if (params?.size != null) query.set('size', String(params.size))
     const qs = query.toString()
-    return api<{ data: Chart[]; meta: { totalElements: number } }>(
+    return api<{ data: Chart[]; meta: { total: number } }>(
       `/api/v1/teams/${teamId}/charts/customer/${userId}${qs ? `?${qs}` : ''}`,
     )
   }

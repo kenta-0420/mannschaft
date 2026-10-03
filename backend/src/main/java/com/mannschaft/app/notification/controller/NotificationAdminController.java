@@ -1,6 +1,8 @@
 package com.mannschaft.app.notification.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.notification.dto.NotificationStatsResponse;
 import com.mannschaft.app.notification.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class NotificationAdminController {
 
     private final NotificationService notificationService;
+    private final AccessControlService accessControlService;
 
     /**
      * 通知統計を取得する。
@@ -29,6 +32,9 @@ public class NotificationAdminController {
     @Operation(summary = "通知統計")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<NotificationStatsResponse>> getStats() {
+        // 認可根治 Wave5: 全ユーザー横断の通知件数を集計するため SYSTEM_ADMIN 限定
+        // （SecurityConfig のパス単位 hasRole と二重防御）。
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         NotificationStatsResponse response = notificationService.getStats();
         return ResponseEntity.ok(ApiResponse.of(response));
     }

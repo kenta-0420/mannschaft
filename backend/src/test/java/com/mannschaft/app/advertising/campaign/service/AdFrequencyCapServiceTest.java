@@ -1,6 +1,7 @@
 package com.mannschaft.app.advertising.campaign.service;
 
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,6 +15,10 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -54,13 +59,15 @@ class AdFrequencyCapServiceTest {
     private static final Long USER_ID = 1001L;
     private static final Long ADVERTISER_ID = 9001L;
     private static final UUID CAMPAIGN_ID = UUID.randomUUID();
+    private static final Clock FIXED_CLOCK = Clock.fixed(
+            Instant.parse("2026-05-13T03:00:00Z"), ZoneOffset.UTC);
 
     @BeforeEach
     void setUp() {
         config = new AdFrequencyCapConfig();
         config.setWeeklyTotal(3);
         config.setWeeklyPerAdvertiser(1);
-        service = new AdFrequencyCapService(redisTemplate, userRepository, config);
+        service = new AdFrequencyCapService(redisTemplate, userRepository, config, FIXED_CLOCK);
         // デフォルト: ユーザー TZ を Asia/Tokyo として返す
         given(userRepository.findTimezoneById(anyLong())).willReturn(Optional.of("Asia/Tokyo"));
     }
@@ -225,24 +232,94 @@ class AdFrequencyCapServiceTest {
     }
 
     @Nested
+    @DisplayName("releaseSlot（F09.19.3 §10.4 / AC-3.8 予約 EXPIRED 返却）")
+    class ReleaseSlot {
+
+        private final java.time.LocalDate weekStart = java.time.LocalDate.of(2026, 5, 11); // 月曜
+
+        @Test
+        @DisplayName("正常系: 消費週の total / per-advertiser キーが両方デクリメントされる")
+        void releaseSlot_両キーをデクリメント() {
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            // GET は正の値を返す（消費済みで > 0）
+            given(valueOperations.get(anyString())).willReturn("2");
+
+            service.releaseSlot(USER_ID, ADVERTISER_ID, weekStart);
+
+            // total・per-advertiser の 2 キーで DECR
+            verify(valueOperations, times(1)).decrement(argStartsWith(AdFrequencyCapService.KEY_PREFIX_TOTAL));
+            verify(valueOperations, times(1)).decrement(argStartsWith(AdFrequencyCapService.KEY_PREFIX_PER_ADV));
+        }
+
+        @Test
+        @DisplayName("0 未満禁止: キー不在（TTL 失効）なら no-op でデクリメントしない")
+        void releaseSlot_キー不在_noop() {
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(anyString())).willReturn(null);
+
+            service.releaseSlot(USER_ID, ADVERTISER_ID, weekStart);
+
+            verify(valueOperations, never()).decrement(anyString());
+        }
+
+        @Test
+        @DisplayName("0 未満禁止: 値が 0 ならデクリメントしない（負値に落とさない）")
+        void releaseSlot_値ゼロ_デクリメントしない() {
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(anyString())).willReturn("0");
+
+            service.releaseSlot(USER_ID, ADVERTISER_ID, weekStart);
+
+            verify(valueOperations, never()).decrement(anyString());
+        }
+
+        @Test
+        @DisplayName("異常系: weekStart が null なら IllegalArgumentException")
+        void releaseSlot_weekStart_null_例外() {
+            assertThatThrownBy(() -> service.releaseSlot(USER_ID, ADVERTISER_ID, null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("weekStartOf: 週内の任意日から月曜を返す")
+        void weekStartOf_月曜を返す() {
+            // 2026-05-13(水) → 2026-05-11(月)
+            assertThat(AdFrequencyCapService.weekStartOf(java.time.LocalDate.of(2026, 5, 13)))
+                    .isEqualTo(java.time.LocalDate.of(2026, 5, 11));
+            // 月曜はそのまま
+            assertThat(AdFrequencyCapService.weekStartOf(java.time.LocalDate.of(2026, 5, 11)))
+                    .isEqualTo(java.time.LocalDate.of(2026, 5, 11));
+        }
+    }
+
+    @Nested
     @DisplayName("週境界計算（ユーザー TZ）")
     class WeekBoundary {
 
         @Test
-        @DisplayName("月曜日なら当日が週開始")
-        void 月曜日_当日が週開始() {
-            // 2026-05-11 は月曜
-            java.time.ZoneId zone = java.time.ZoneId.of("UTC");
-            // モック時計が使えないため、メソッドの静的契約のみ検証する（DayOfWeek.MONDAY で today を返すこと）。
-            // ここでは現在日付に依存しない検証として、ヘルパーメソッドの存在を確認するに留める。
-            assertThat(AdFrequencyCapService.currentWeekStart(zone)).isNotNull();
+        @DisplayName("週の途中なら同週の月曜日が週開始")
+        void 週の途中_同週の月曜日が週開始() {
+            assertThat(service.currentWeekStart(ZoneOffset.UTC))
+                    .isEqualTo(java.time.LocalDate.of(2026, 5, 11));
         }
 
         @Test
-        @DisplayName("次週月曜までの残秒数は正の値を返す")
-        void 次週月曜までの残秒_正値() {
-            long seconds = AdFrequencyCapService.secondsUntilNextWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
-            assertThat(seconds).isPositive();
+        @DisplayName("次週月曜までの残秒数をユーザーTZで返す")
+        void 次週月曜までの残秒_ユーザーTZ基準() {
+            ZoneId tokyo = ZoneId.of("Asia/Tokyo");
+
+            long seconds = service.secondsUntilNextWeekStart(tokyo);
+
+            assertThat(seconds).isEqualTo(4L * 24 * 3600 + 12L * 3600);
+        }
+
+        @Test
+        @DisplayName("ユーザーTZ未設定時はアプリ共通の基準ゾーンへフォールバックする")
+        void ユーザーTZ未設定_共通基準ゾーンへフォールバック() {
+            given(userRepository.findTimezoneById(USER_ID)).willReturn(Optional.empty());
+
+            assertThat(service.resolveUserZone(USER_ID))
+                    .isEqualTo(UserZoneLocalDateTimeParser.SERVER_ZONE);
         }
     }
 

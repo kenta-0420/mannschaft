@@ -23,6 +23,8 @@ const { formatDateTime } = useDatetime()
 
 const batches = ref<BatchEndpointSummary[]>([])
 const loading = ref(false)
+/** 取得失敗は「バッチなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadError = ref<unknown>(null)
 const triggeringName = ref<string | null>(null)
 
 const searchKeyword = ref('')
@@ -44,6 +46,7 @@ const statusOptions = computed<StatusOption[]>(() => [
   { label: t('systemAdmin.batches.status.failed'), value: 'FAILED' },
   { label: t('systemAdmin.batches.status.running'), value: 'RUNNING' },
   { label: t('systemAdmin.batches.status.skipped'), value: 'SKIPPED' },
+  { label: t('systemAdmin.batches.status.resumed'), value: 'RESUMED' },
 ])
 
 const filteredBatches = computed(() => {
@@ -62,6 +65,7 @@ const filteredBatches = computed(() => {
 
 async function load() {
   loading.value = true
+  loadError.value = null
   try {
     const res = await batchApi.listBatches()
     batches.value = res.data
@@ -69,6 +73,7 @@ async function load() {
     console.error('batches.vue: failed to load batches', e)
     notification.error(t('systemAdmin.batches.toast.loadFailed'))
     batches.value = []
+    loadError.value = e
   } finally {
     loading.value = false
   }
@@ -155,6 +160,9 @@ function statusSeverity(status: string | null): 'success' | 'danger' | 'info' | 
       return 'info'
     case 'SKIPPED':
       return 'warn'
+    case 'RESUMED':
+      // 実行そのものではなく「停止から復帰した」境界の目印なので、成功とは色を分ける。
+      return 'info'
     default:
       return 'secondary'
   }
@@ -218,6 +226,14 @@ onMounted(load)
     <div v-if="loading" class="flex items-center justify-center py-12">
       <i class="pi pi-spin pi-spinner mr-2 text-2xl text-surface-400" aria-hidden="true" />
     </div>
+
+    <!-- 取得失敗: 空状態とは別に描き分ける -->
+    <DashboardErrorState
+      v-else-if="loadError"
+      :error="loadError"
+      testid="batches-error-state"
+      @retry="load"
+    />
 
     <template v-else-if="filteredBatches.length > 0">
       <DataTable :value="filteredBatches" striped-rows class="text-sm" data-test="batch-table">

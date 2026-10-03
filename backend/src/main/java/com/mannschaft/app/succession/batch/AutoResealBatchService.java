@@ -1,11 +1,14 @@
 package com.mannschaft.app.succession.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.succession.entity.UnsealRequestEntity;
 import com.mannschaft.app.succession.repository.SuccessionPreRegistrationRepository;
 import com.mannschaft.app.succession.repository.UnsealRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,8 +33,12 @@ public class AutoResealBatchService {
     private final UnsealRequestRepository unsealRequestRepo;
     private final SuccessionPreRegistrationRepository preRegRepo;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると封緘解除された事業承継の機微情報が 72h の TTL を過ぎても再封緘されず開示されたまま残るため、復旧不能な情報露出が続く")
     @BatchEndpoint(name = "succession-auto-reseal", description = "封緘解除 72h TTL を 5 分毎にチェックし RE_SEALED へ自動遷移する")
     @Scheduled(cron = "0 */5 * * * *")
+    // 起動間隔は 5 分。72h TTL 超過の封緘解除を RE_SEALED に戻すだけで対象は少数。間隔の 3 倍を上限とする。
+    @SchedulerLock(name = "successionAutoReseal", lockAtLeastFor = "PT30S", lockAtMostFor = "PT15M")
     @Transactional
     public void autoReseal() {
         LocalDateTime now = LocalDateTime.now();

@@ -8,10 +8,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -23,8 +22,7 @@ import java.time.LocalDateTime;
 @Table(name = "kb_image_uploads")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class KbImageUploadEntity {
 
     @Id
@@ -37,7 +35,7 @@ public class KbImageUploadEntity {
     @Column(nullable = false)
     private Long uploaderId;
 
-    @Column(nullable = false, length = 500, unique = true)
+    @Column(name = "s3_key", nullable = false, length = 500, unique = true)
     private String s3Key;
 
     @Column(nullable = false)
@@ -46,6 +44,7 @@ public class KbImageUploadEntity {
     @Column(nullable = false, length = 50)
     private String contentType;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

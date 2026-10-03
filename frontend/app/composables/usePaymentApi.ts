@@ -2,10 +2,14 @@ import type {
   PaymentItemResponse,
   MemberPaymentResponse,
   CheckoutSessionResponse,
+  ConnectCheckoutResponse,
+  ConnectCheckoutStatusResponse,
   PaymentSummaryResponse,
   MyPaymentResponse,
   MemberPaymentReceiptResponse,
   FeeStatementResponse,
+  BulkPaymentResponse,
+  BeneficiarySettingResponse,
 } from '~/types/payment'
 
 export function usePaymentApi() {
@@ -72,10 +76,13 @@ export function usePaymentApi() {
     itemId: number,
     payments: Array<Record<string, unknown>>,
   ) {
-    return api(`${base(scopeType, scopeId)}/payment-items/${itemId}/payments/bulk`, {
-      method: 'POST',
-      body: { payments },
-    })
+    return api<{ data: BulkPaymentResponse }>(
+      `${base(scopeType, scopeId)}/payment-items/${itemId}/payments/bulk`,
+      {
+        method: 'POST',
+        body: { payments },
+      },
+    )
   }
   async function cancelPayment(
     scopeType: 'team' | 'organization',
@@ -103,9 +110,27 @@ export function usePaymentApi() {
     })
   }
 
+  async function createConnectCheckout(
+    itemId: number,
+    beneficiaryUserId: number,
+    idempotencyKey: string,
+  ) {
+    return api<{ data: ConnectCheckoutResponse }>(`/api/v1/payment-items/${itemId}/checkout`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: { beneficiaryUserId },
+    })
+  }
+
+  async function getConnectCheckoutStatus(itemId: number, memberPaymentId: number) {
+    return api<{ data: ConnectCheckoutStatusResponse }>(
+      `/api/v1/payment-items/${itemId}/checkout/${memberPaymentId}`,
+    )
+  }
+
   /**
-   * F08.9 P6: 支払い項目を ID で取得する（TERM 型の有効期間表示等に使用）。
-   * BE エンドポイント: GET /api/v1/payment-items/{itemId}（P6 実装待ち）
+   * F08.9 P6 / Issue #2657: 支払い項目を ID で取得する（TERM 型の有効期間表示等に使用）。
+   * BE エンドポイント: GET /api/v1/payment-items/{itemId}（PaymentCheckoutController#getPaymentItem）
    */
   async function getPaymentItemById(itemId: number) {
     return api<{ data: PaymentItemResponse }>(`/api/v1/payment-items/${itemId}`)
@@ -144,7 +169,12 @@ export function usePaymentApi() {
     scopeId: string,
     itemId: number,
   ) {
-    return api<Blob>(`${base(scopeType, scopeId)}/payment-items/${itemId}/payments/export`)
+    return api(
+      `${base(scopeType, scopeId)}/payment-items/${itemId}/payments/export`,
+      {
+        responseType: 'blob' as const,
+      },
+    ) as Promise<Blob>
   }
 
   // === Refund ===
@@ -174,10 +204,16 @@ export function usePaymentApi() {
    * F08.9 P8: チーム月次手数料明細を取得する。
    * BE: GET /api/v1/teams/{teamId}/fee-statements?period=YYYY-MM
    */
-  async function getFeeStatement(teamId: string, period: string) {
+  async function getFeeStatement(teamId: number, period: string) {
     return api<{ data: FeeStatementResponse }>(`/api/v1/teams/${teamId}/fee-statements`, {
       query: { period },
     })
+  }
+
+  async function exportFeeStatementPdf(teamId: number, period: string) {
+    return api(`/api/v1/teams/${teamId}/fee-statements/pdf`, {
+      query: { period }, responseType: 'blob' as const,
+    }) as Promise<Blob>
   }
 
   // === Subscriptions ===
@@ -193,6 +229,33 @@ export function usePaymentApi() {
     })
   }
 
+  // === Beneficiary Setting (AC-S8) ===
+  /**
+   * F08.9 AC-S8: 受益者を会員のみに限定する設定を取得する。
+   * BE: GET /api/v1/teams/{id}/payment-beneficiary-setting
+   *     GET /api/v1/organizations/{id}/payment-beneficiary-setting
+   */
+  async function getBeneficiarySetting(scopeType: 'team' | 'organization', scopeId: string) {
+    return api<{ data: BeneficiarySettingResponse }>(`${base(scopeType, scopeId)}/payment-beneficiary-setting`)
+  }
+
+  /**
+   * F08.9 AC-S8: 受益者を会員のみに限定する設定を更新する。
+   * BE: PUT /api/v1/teams/{id}/payment-beneficiary-setting
+   *     PUT /api/v1/organizations/{id}/payment-beneficiary-setting
+   * @param beneficiaryMemberOnly true=会員のみ（応援者除外）/ false=応援者も含める
+   */
+  async function updateBeneficiarySetting(
+    scopeType: 'team' | 'organization',
+    scopeId: string,
+    beneficiaryMemberOnly: boolean,
+  ) {
+    return api(`${base(scopeType, scopeId)}/payment-beneficiary-setting`, {
+      method: 'PUT',
+      body: { beneficiaryMemberOnly },
+    })
+  }
+
   return {
     getPaymentItems,
     createPaymentItem,
@@ -205,6 +268,8 @@ export function usePaymentApi() {
     sendReminder,
     getPaymentSummary,
     createCheckoutSession,
+    createConnectCheckout,
+    getConnectCheckoutStatus,
     getPaymentItemById,
     getMyPayments,
     getMySubscriptions,
@@ -216,5 +281,8 @@ export function usePaymentApi() {
     resumeSubscription,
     getReceipt,
     getFeeStatement,
+    exportFeeStatementPdf,
+    getBeneficiarySetting,
+    updateBeneficiarySetting,
   }
 }

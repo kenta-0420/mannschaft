@@ -6,10 +6,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -22,8 +22,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class KbTemplateEntity extends BaseEntity {
 
     @Column(nullable = false, length = 50)
@@ -57,5 +56,14 @@ public class KbTemplateEntity extends BaseEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * テンプレート内容を更新する（toBuilder → UPDATE 化バグを防ぐドメインメソッド）。
+     */
+    public void applyUpdate(String name, String body, String icon) {
+        if (name != null) this.name = name;
+        if (body != null) this.body = body;
+        if (icon != null) this.icon = icon;
     }
 }

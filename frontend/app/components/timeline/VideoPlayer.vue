@@ -2,7 +2,8 @@
 import type { VideoProcessingStatus } from '~/types/timeline'
 
 interface Props {
-  fileKey: string
+  sourceUrl?: string
+  fileKey?: string
   thumbnailUrl?: string
   processingStatus?: VideoProcessingStatus
   mimeType?: string
@@ -19,7 +20,8 @@ const isFailed = computed(() => props.processingStatus === 'FAILED')
 
 const videoSrc = computed(() => {
   if (isProcessing.value || isFailed.value) return ''
-  return resolveUrl(props.fileKey)
+  if (props.sourceUrl) return props.sourceUrl
+  return props.fileKey ? resolveUrl(props.fileKey) : ''
 })
 </script>
 

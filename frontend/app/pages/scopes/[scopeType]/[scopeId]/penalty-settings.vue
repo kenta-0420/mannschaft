@@ -97,7 +97,7 @@ async function loadPenalties() {
       penaltiesPageSize.value,
     )
     penalties.value = result.data
-    penaltiesTotalElements.value = result.meta.totalElements
+    penaltiesTotalElements.value = result.meta.total
   }
   catch (e) {
     error(String(e))

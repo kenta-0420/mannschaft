@@ -2,6 +2,8 @@ package com.mannschaft.app.todo.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.todo.entity.ProjectEntity;
 import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
 import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
@@ -11,6 +13,7 @@ import com.mannschaft.app.todo.service.MilestoneGateService;
 import com.mannschaft.app.todo.TodoStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,8 +69,12 @@ public class MilestoneReconciliationBatch {
      * <p>JST 03:15 実行。F02.3 の projects.progress_rate 補正バッチ（現状未実装）と
      * 同時間帯に配置して将来的に統合可能。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。マイルストーン進捗率とロック連鎖の再集計であり、再開後の実行で現在値へ収束する。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "todo-milestone-reconciliation-daily", description = "マイルストーンの進捗率とロック連鎖を毎日 03:15 に再集計・補正する")
     @Scheduled(cron = "0 15 3 * * *", zone = "Asia/Tokyo")
+    // 起動間隔は日次 03:15。全マイルストーンの進捗再集計とロック連鎖補正でマイルストーン数に比例する。余裕を取り 1 時間を上限とする。
+    @SchedulerLock(name = "todoMilestoneReconciliationDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional
     public void reconcile() {
         log.info("マイルストーン整合性バッチ開始");

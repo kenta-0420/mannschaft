@@ -5,12 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.budget.entity.BudgetConfigEntity;
 import com.mannschaft.app.budget.repository.BudgetConfigRepository;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.shiftbudget.ShiftBudgetFailedEventType;
 import com.mannschaft.app.shiftbudget.entity.BudgetThresholdAlertEntity;
 import com.mannschaft.app.shiftbudget.entity.ShiftBudgetAllocationEntity;
+import com.mannschaft.app.shiftbudget.event.BudgetThresholdAlertTriggeredEvent;
 import com.mannschaft.app.shiftbudget.repository.BudgetThresholdAlertRepository;
 import com.mannschaft.app.shiftbudget.repository.ShiftBudgetAllocationRepository;
 import com.mannschaft.app.workflow.dto.CreateWorkflowRequestRequest;
@@ -18,6 +17,7 @@ import com.mannschaft.app.workflow.dto.WorkflowRequestResponse;
 import com.mannschaft.app.workflow.service.WorkflowRequestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,12 +72,13 @@ public class ThresholdAlertEvaluationService {
     private final BudgetThresholdAlertRepository alertRepository;
     private final BudgetConfigRepository budgetConfigRepository;
     private final UserRoleRepository userRoleRepository;
-    private final NotificationHelper notificationHelper;
     private final AuditLogService auditLogService;
     private final WorkflowRequestService workflowRequestService;
     private final ObjectMapper objectMapper;
     /** Phase 10-β で追加: 失敗イベントの永続化 */
     private final ShiftBudgetFailedEventService failedEventService;
+    /** Issue #2990 L13: 通知を業務コミット後（AFTER_COMMIT）へ逃がすためのイベント publish。 */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 指定 allocation について現在消化率を計算し、80/100/120% 閾値の発火判定を行う。
@@ -169,8 +170,8 @@ public class ThresholdAlertEvaluationService {
             return;
         }
 
-        // 通知発火
-        sendNotifications(allocation, thresholdPercent, recipientUserIds);
+        // 通知発火（業務コミット後に配送させるためイベント publish のみ行う）
+        publishThresholdAlertEvent(allocation, savedAlert.getId(), thresholdPercent, recipientUserIds);
 
         // F05.6 ワークフロー起動（100% 到達時のみ）
         if (thresholdPercent >= WORKFLOW_TRIGGER_THRESHOLD) {
@@ -209,76 +210,30 @@ public class ThresholdAlertEvaluationService {
         return sorted;
     }
 
-    private void sendNotifications(ShiftBudgetAllocationEntity allocation,
-                                   int thresholdPercent,
-                                   List<Long> recipientUserIds) {
-        if (recipientUserIds.isEmpty()) {
-            log.warn("F08.7 閾値超過警告: 受信ロール 0 名のため通知発火スキップ: allocId={}, threshold={}%",
-                    allocation.getId(), thresholdPercent);
-            return;
-        }
-        String title = "シフト予算 警告 (" + thresholdPercent + "%)";
-        String body = bodyForThreshold(thresholdPercent);
-        String actionUrl = "/shift-budget/allocations/" + allocation.getId();
-
-        try {
-            notificationHelper.notifyAll(
-                    recipientUserIds,
-                    "SHIFT_BUDGET_THRESHOLD_ALERT",
-                    title, body,
-                    "SHIFT_BUDGET_ALLOCATION",
-                    allocation.getId(),
-                    NotificationScopeType.ORGANIZATION,
-                    allocation.getOrganizationId(),
-                    actionUrl,
-                    null  // システム自動発火、actor なし
-            );
-        } catch (Exception e) {
-            // notifyAll の外側で総崩れする例外（DB 接続喪失など）— Phase 10-β failed_events に記録
-            log.error("F08.7: 通知一括送信失敗（握りつぶし）: allocId={}, threshold={}%, recipients={}",
-                    allocation.getId(), thresholdPercent, recipientUserIds.size(), e);
-            try {
-                failedEventService.recordFailure(
-                        allocation.getOrganizationId(),
-                        ShiftBudgetFailedEventType.NOTIFICATION_SEND,
-                        allocation.getId(),
-                        Map.of(
-                                "user_ids", recipientUserIds,
-                                "type", "SHIFT_BUDGET_THRESHOLD_ALERT",
-                                "title", title,
-                                "body", body,
-                                "source_type", "SHIFT_BUDGET_ALLOCATION",
-                                "source_id", allocation.getId(),
-                                "scope_id", allocation.getOrganizationId(),
-                                "action_url", actionUrl,
-                                "threshold_percent", thresholdPercent
-                        ),
-                        e.getClass().getSimpleName() + ": " + e.getMessage()
-                );
-            } catch (Exception recEx) {
-                log.error("F08.7: NOTIFICATION_SEND failed_events 記録自体も失敗（諦め）: allocId={}",
-                        allocation.getId(), recEx);
-            }
-        }
-    }
-
     /**
-     * 閾値ごとの通知本文を返す（i18n キーを意図して固定文言で返す）。
+     * 閾値超過警告の発火イベントを publish する（Issue #2990 L13）。
      *
-     * <p>i18n キー対応:</p>
-     * <ul>
-     *   <li>80% → {@code shiftBudget.threshold.warn80}（フロント側で翻訳）</li>
-     *   <li>100% → {@code shiftBudget.threshold.exceeded}</li>
-     *   <li>120% → {@code shiftBudget.threshold.severeExceeded120}</li>
-     * </ul>
+     * <p>是正前はここで {@code notificationHelper.notifyAllLocalized(...)} を直接呼んでいたが、
+     * その下流 {@code NotificationService#createNotification} は既定の {@code REQUIRED} 伝播で
+     * 本メソッドのトランザクションに参加するため、通知の DB 例外が
+     * <b>try/catch で握られていてもトランザクションを rollback-only にし</b>、
+     * 直前に INSERT した {@code budget_threshold_alerts} 行・ワークフロー起動の書戻し・
+     * 監査ログをまとめて巻き戻していた（commit 時の {@code UnexpectedRollbackException}）。</p>
+     *
+     * <p>配送は {@code ShiftBudgetThresholdAlertNotificationListener} が
+     * {@code AFTER_COMMIT} + {@code @Async("event-pool")} で行う。
+     * イベントには ID と閾値だけを載せる（描画済み文字列も JPA 管理エンティティも載せない）。</p>
      */
-    private String bodyForThreshold(int thresholdPercent) {
-        return switch (thresholdPercent) {
-            case 80 -> "予算 80% に到達しました";
-            case 100 -> "予算を超過しました";
-            case 120 -> "予算 120% を超過しました（重大）";
-            default -> "シフト予算が閾値 " + thresholdPercent + "% に到達しました";
-        };
+    private void publishThresholdAlertEvent(ShiftBudgetAllocationEntity allocation,
+                                            Long alertId,
+                                            int thresholdPercent,
+                                            List<Long> recipientUserIds) {
+        eventPublisher.publishEvent(new BudgetThresholdAlertTriggeredEvent(
+                alertId,
+                allocation.getId(),
+                allocation.getOrganizationId(),
+                thresholdPercent,
+                List.copyOf(recipientUserIds)));
     }
 
     /**
@@ -321,6 +276,10 @@ public class ThresholdAlertEvaluationService {
         }
 
         // F05.6 起動 — 例外は握りつぶす（main トランザクションを保護）
+        // Issue #2715 CMP-055 ロットC-4 スコープ確認: この title は notify()/createNotification() へは渡らず、
+        // WorkflowRequestService が保持する workflow_requests.title（承認者複数名が閲覧する管理レコードの
+        // タイトル）である。単一の「受信者 locale」が存在しないため本ロットの i18n パターン（受信者ごとの
+        // messageSource 解決）をそのまま適用できず、意図的に対象外とした。
         try {
             String title = String.format("シフト予算 超過承認 (allocation #%d, %d%%)",
                     allocation.getId(), alert.getThresholdPercent());

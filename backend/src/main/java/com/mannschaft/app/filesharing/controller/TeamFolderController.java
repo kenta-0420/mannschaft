@@ -43,7 +43,8 @@ public class TeamFolderController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<FolderResponse>>> listRootFolders(
             @PathVariable Long teamId) {
-        List<FolderResponse> response = folderService.listTeamRootFolders(teamId);
+        List<FolderResponse> response =
+                folderService.listTeamRootFolders(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -56,7 +57,8 @@ public class TeamFolderController {
     public ResponseEntity<ApiResponse<List<FolderResponse>>> listChildFolders(
             @PathVariable Long teamId,
             @PathVariable Long folderId) {
-        List<FolderResponse> response = folderService.listChildFolders(folderId);
+        List<FolderResponse> response =
+                folderService.listChildFolders(folderId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -69,7 +71,7 @@ public class TeamFolderController {
     public ResponseEntity<ApiResponse<FolderResponse>> getFolder(
             @PathVariable Long teamId,
             @PathVariable Long folderId) {
-        FolderResponse response = folderService.getFolder(folderId);
+        FolderResponse response = folderService.getFolder(folderId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -96,7 +98,8 @@ public class TeamFolderController {
             @PathVariable Long teamId,
             @PathVariable Long folderId,
             @Valid @RequestBody UpdateFolderRequest request) {
-        FolderResponse response = folderService.updateFolder(folderId, request);
+        FolderResponse response =
+                folderService.updateFolder(folderId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -109,7 +112,7 @@ public class TeamFolderController {
     public ResponseEntity<Void> deleteFolder(
             @PathVariable Long teamId,
             @PathVariable Long folderId) {
-        folderService.deleteFolder(folderId);
+        folderService.deleteFolder(folderId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

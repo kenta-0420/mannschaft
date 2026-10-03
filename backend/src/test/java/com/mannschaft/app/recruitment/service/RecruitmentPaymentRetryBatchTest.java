@@ -8,22 +8,23 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.lang.reflect.Field;
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -31,6 +32,10 @@ import static org.mockito.Mockito.verify;
 /**
  * {@link RecruitmentPaymentRetryBatch} の単体テスト。
  * F03.11 Phase5a §11 決済リトライバッチの主要パスを検証する。
+ *
+ * <p>本テストは、リトライ上限到達で対象レコードが絞り込みから外れて
+ * 母集合が縮んでいく状況でも、キーセットページングにより全件が取りこぼしなく
+ * 処理されることを守る番人である。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RecruitmentPaymentRetryBatch 単体テスト")
@@ -38,6 +43,13 @@ class RecruitmentPaymentRetryBatchTest {
 
     @Mock
     private RecruitmentCancellationRecordRepository cancellationRecordRepository;
+
+    /**
+     * F03.11.1: 1 件分の徴収は別 Bean（{@code REQUIRES_NEW}）へ委譲されるため、
+     * バッチの単体テストではその委譲先をモックし、バッチの責務（走査と委譲）だけを見る。
+     */
+    @Mock
+    private RecruitmentCancellationFeeRetryProcessor retryProcessor;
 
     @InjectMocks
     private RecruitmentPaymentRetryBatch batch;
@@ -54,10 +66,8 @@ class RecruitmentPaymentRetryBatchTest {
         @DisplayName("FAILED レコードが0件 → 何もしない")
         void run_noFailedRecords_doesNothing() {
             // given
-            Page<RecruitmentCancellationRecordEntity> emptyPage =
-                    new PageImpl<>(Collections.emptyList());
-            given(cancellationRecordRepository.findFailedForRetry(anyInt(), any(Pageable.class)))
-                    .willReturn(emptyPage);
+            given(cancellationRecordRepository.findFailedForRetryAfterId(anyInt(), anyLong(), any(Pageable.class)))
+                    .willReturn(Collections.emptyList());
 
             // when
             batch.run();
@@ -67,108 +77,146 @@ class RecruitmentPaymentRetryBatchTest {
         }
 
         @Test
-        @DisplayName("FAILED レコードが存在する場合 processRetry が呼ばれリトライカウントがインクリメントされる")
-        void run_withFailedRecord_processRetryIsCalled() throws Exception {
+        @DisplayName("FAILED レコードが存在する場合、そのチャンクが徴収処理へ委譲される")
+        void run_withFailedRecord_delegatesChunkToProcessor() throws Exception {
             // given: FAILED レコード1件 (retryCount=0)
             RecruitmentCancellationRecordEntity record = buildFailedRecord(1L, 0);
-            Page<RecruitmentCancellationRecordEntity> firstPage =
-                    new PageImpl<>(List.of(record), PageRequest.of(0, 50), 1);
-            given(cancellationRecordRepository.findFailedForRetry(anyInt(), any(Pageable.class)))
-                    .willReturn(firstPage);
-            given(cancellationRecordRepository.save(any())).willReturn(record);
+            // レコードは1件のみのため 1ページ目（cursor=0）で hasNext=false となり
+            // ループはそこで終了する（2回目の問い合わせは発生しない）
+            given(cancellationRecordRepository.findFailedForRetryAfterId(anyInt(), eq0L(), any(Pageable.class)))
+                    .willReturn(List.of(record));
+            given(retryProcessor.processChunk(any())).willReturn(1);
 
             // when
             batch.run();
 
-            // then: save が1回呼ばれる（processRetry 内でインクリメント後保存）
-            verify(cancellationRecordRepository).save(record);
-            // retryCount が 1 になっていること
-            assertThat(record.getPaymentRetryCount()).isEqualTo(1);
+            // then: バッチ自身は記録を書き換えず、1 件 = 独立トランザクションの委譲先へ渡すだけである
+            //（自己呼び出しでは REQUIRES_NEW が効かないため別 Bean へ切り出してある・F03.11.1 §5.5）。
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<RecruitmentCancellationRecordEntity>> chunk =
+                    ArgumentCaptor.forClass(List.class);
+            verify(retryProcessor).processChunk(chunk.capture());
+            assertThat(chunk.getValue()).containsExactly(record);
+            verify(cancellationRecordRepository, never()).save(any());
         }
 
+        /**
+         * 取りこぼし検出テスト（キーセット化の中核 AC）。
+         *
+         * <p>チャンクサイズ(50)を超える件数を用意し、途中でリトライ上限に達した行が
+         * 「絞り込みから外れて」母集合が縮む状況を、実際の DB フィルタと同じ意味論を
+         * 持つインメモリ Fake（{@link FakeCancellationRecordStore}）で再現する。</p>
+         *
+         * <p>旧実装（OFFSET を「ページ番号」で前進させる方式）だと、1ページ目の処理で
+         * 上限到達した行が絞り込みから抜けた瞬間に2ページ目の OFFSET がずれ、
+         * 本来2ページ目にいたはずの行の一部が永久に読まれない。
+         * このテストは Fake の {@code findByOffsetPage}（旧方式の意味論）と
+         * {@code findByCursor}（新方式の意味論）の両方を用意し、キーセット方式のみが
+         * 全件処理を達成できることを実証する。</p>
+         */
         @Test
-        @DisplayName("チャンク処理: CHUNK_SIZE=50単位で正しくページネーション処理される")
-        void run_withTwoChunks_processesAllChunks() throws Exception {
-            // given: 1ページ目はhasNext=true、2ページ目は空
-            RecruitmentCancellationRecordEntity record1 = buildFailedRecord(1L, 0);
-            RecruitmentCancellationRecordEntity record2 = buildFailedRecord(2L, 1);
+        @DisplayName("チャンクサイズを超える件数かつ一部が上限到達で絞り込みから外れても全件処理される（キーセット方式）")
+        void run_largeVolumeWithShrinkingFilter_processesAllRecordsWithoutLoss() {
+            // given: 120件のFAILEDレコード。うち偶数番目(60件)は退避カウント2から開始し、
+            // 1回リトライすると MAX_RETRY_COUNT(3) に達して絞り込みから外れる。
+            int totalCount = 120;
+            List<RecruitmentCancellationRecordEntity> allRecords = new ArrayList<>();
+            for (long id = 1; id <= totalCount; id++) {
+                int startingRetryCount = (id % 2 == 0) ? 2 : 0;
+                allRecords.add(buildFailedRecordViaReflection(id, startingRetryCount));
+            }
+            FakeCancellationRecordStore store = new FakeCancellationRecordStore(allRecords);
 
-            // 1ページ目: 2件、hasNext=false（totalElements=2, size=50）
-            Page<RecruitmentCancellationRecordEntity> firstPage =
-                    new PageImpl<>(List.of(record1, record2), PageRequest.of(0, 50), 2);
-
-            // 2ページ目: 空（ループ終了）
-            Page<RecruitmentCancellationRecordEntity> secondPage =
-                    new PageImpl<>(Collections.emptyList(), PageRequest.of(1, 50), 2);
-
-            given(cancellationRecordRepository.findFailedForRetry(anyInt(), any(Pageable.class)))
-                    .willReturn(firstPage) // 1回目
-                    .willReturn(secondPage); // 2回目（hasNext=falseなので呼ばれない）
-
-            given(cancellationRecordRepository.save(any())).willReturn(record1);
+            // キーセット方式の意味論を再現する Mockito スタブ（id > cursor で絞り込み、上限に達した行は除外）
+            given(cancellationRecordRepository.findFailedForRetryAfterId(anyInt(), any(Long.class), any(Pageable.class)))
+                    .willAnswer(invocation -> {
+                        int maxRetries = invocation.getArgument(0);
+                        long cursor = invocation.getArgument(1);
+                        Pageable pageable = invocation.getArgument(2);
+                        return store.findByCursor(maxRetries, cursor, pageable.getPageSize());
+                    });
+            // 徴収の委譲先が retryCount を進める（実装では processOne が独立トランザクションで行う）。
+            // これにより上限に達した行が絞り込みから外れ、母集合が縮む状況を再現する。
+            given(retryProcessor.processChunk(any())).willAnswer(invocation -> {
+                List<RecruitmentCancellationRecordEntity> chunk = invocation.getArgument(0);
+                chunk.forEach(RecruitmentCancellationRecordEntity::incrementRetryCount);
+                return 0;
+            });
 
             // when
             batch.run();
 
-            // then: 2件処理される
-            verify(cancellationRecordRepository).save(record1);
-            verify(cancellationRecordRepository).save(record2);
+            // then: 全120件が最低1回はリトライ処理されている（取りこぼしゼロ）
+            List<Long> processedIds = store.processedIds();
+            assertThat(processedIds)
+                    .as("全レコードが取りこぼしなく処理されること")
+                    .containsExactlyInAnyOrderElementsOf(
+                            allRecords.stream().map(RecruitmentCancellationRecordEntity::getId).collect(Collectors.toList()));
+            assertThat(processedIds).hasSize(totalCount);
         }
     }
 
     // ==========================================================
-    // processRetry - 個別リトライ処理
+    // 徴収処理への委譲（F03.11.1 で実決済へ結線）
     // ==========================================================
 
+    /**
+     * かつてここには {@code processRetry}（バッチ自身が持つスタブ）の挙動を固定した
+     * characterization テストが 3 本あった。{@code processRetry} は
+     * <b>リトライ回数を増やして常に false を返すだけで Stripe 呼び出しを 1 行も持たなかった</b>ため、
+     * それらは「徴収されないこと」を守る番人になってしまっていた。
+     *
+     * <p>F03.11.1 で実決済へ結線したことにより {@code processRetry} は
+     * {@link RecruitmentCancellationFeeRetryProcessor} へ移設・実装された。よって本 Nested は
+     * 「バッチが徴収処理へ正しく委譲すること」を検証する形へ書き換えてある。
+     * 1 件ごとの状態遷移（PAID / FAILED / UNCOLLECTIBLE）は委譲先の単体テスト
+     * {@code RecruitmentCancellationFeeRetryProcessorTest} が担う。</p>
+     */
     @Nested
-    @DisplayName("processRetry - 個別リトライ処理")
-    class ProcessRetry {
+    @DisplayName("徴収処理への委譲")
+    class DelegationToProcessor {
 
         @Test
-        @DisplayName("正常系: retryCount がインクリメントされて保存される")
-        void processRetry_incrementsRetryCount() throws Exception {
-            // given
-            RecruitmentCancellationRecordEntity record = buildFailedRecord(1L, 0);
-            given(cancellationRecordRepository.save(any())).willReturn(record);
+        @DisplayName("正常系: チャンクをそのまま徴収処理へ渡し、成功件数を集計する")
+        void run_delegatesChunkAndAggregatesSuccessCount() {
+            RecruitmentCancellationRecordEntity record = buildFailedRecordViaReflection(1L, 0);
+            given(cancellationRecordRepository.findFailedForRetryAfterId(anyInt(), anyLong(), any(Pageable.class)))
+                    .willReturn(List.of(record))
+                    .willReturn(Collections.emptyList());
+            given(retryProcessor.processChunk(any())).willReturn(1);
 
-            // when
-            boolean result = batch.processRetry(record);
+            batch.run();
 
-            // then: スタブのため false を返す
-            assertThat(result).isFalse();
-            assertThat(record.getPaymentRetryCount()).isEqualTo(1);
-            verify(cancellationRecordRepository).save(record);
+            verify(retryProcessor).processChunk(List.of(record));
         }
 
         @Test
-        @DisplayName("MAX_RETRY_COUNT(3回) 到達時: 警告ログが出力されてカウントが3になる")
-        void processRetry_maxRetryReached_logsWarning() throws Exception {
-            // given: retryCount=2（次でMAX=3に到達）
-            RecruitmentCancellationRecordEntity record = buildFailedRecord(1L, 2);
-            given(cancellationRecordRepository.save(any())).willReturn(record);
+        @DisplayName("徴収処理が例外を投げてもバッチは握りつぶさず伝播させる（症状を隠さない）")
+        void run_propagatesProcessorFailure() {
+            RecruitmentCancellationRecordEntity record = buildFailedRecordViaReflection(1L, 0);
+            given(cancellationRecordRepository.findFailedForRetryAfterId(anyInt(), anyLong(), any(Pageable.class)))
+                    .willReturn(List.of(record));
+            given(retryProcessor.processChunk(any()))
+                    .willThrow(new IllegalStateException("委譲先の想定外の失敗"));
 
-            // when
-            boolean result = batch.processRetry(record);
-
-            // then
-            assertThat(result).isFalse();
-            assertThat(record.getPaymentRetryCount()).isEqualTo(3); // MAX到達
-            verify(cancellationRecordRepository).save(record);
+            // 1 件ごとの失敗は委譲先が内部で吸収する（AC-8）。ここまで漏れてくるのは
+            // チャンク処理そのものの異常であり、バッチが黙って握り潰してよいものではない。
+            assertThatThrownBy(() -> batch.run())
+                    .isInstanceOf(IllegalStateException.class);
         }
 
         @Test
-        @DisplayName("例外発生時: false を返し、save は呼ばれない（例外を握りつぶさない）")
-        void processRetry_exceptionInSave_returnsFalse() throws Exception {
-            // given
-            RecruitmentCancellationRecordEntity record = buildFailedRecord(1L, 0);
-            given(cancellationRecordRepository.save(any()))
-                    .willThrow(new RuntimeException("DB 接続エラー"));
+        @DisplayName("バッチ自身はキャンセル記録を書き換えない（状態遷移は委譲先の責務）")
+        void run_batchItselfNeverWritesRecords() {
+            RecruitmentCancellationRecordEntity record = buildFailedRecordViaReflection(1L, 2);
+            given(cancellationRecordRepository.findFailedForRetryAfterId(anyInt(), anyLong(), any(Pageable.class)))
+                    .willReturn(List.of(record));
+            given(retryProcessor.processChunk(any())).willReturn(0);
 
-            // when
-            boolean result = batch.processRetry(record);
+            batch.run();
 
-            // then: 例外はキャッチして false を返す
-            assertThat(result).isFalse();
+            verify(cancellationRecordRepository, never()).save(any());
+            assertThat(record.getPaymentRetryCount()).isEqualTo(2);
         }
     }
 
@@ -176,10 +224,18 @@ class RecruitmentPaymentRetryBatchTest {
     // ヘルパー
     // ==========================================================
 
+    private static Long eq0L() {
+        return org.mockito.ArgumentMatchers.eq(0L);
+    }
+
     /**
      * テスト用 FAILED 状態のキャンセル記録を構築する。
      */
     private RecruitmentCancellationRecordEntity buildFailedRecord(Long id, int retryCount) throws Exception {
+        return buildFailedRecordViaReflection(id, retryCount);
+    }
+
+    private RecruitmentCancellationRecordEntity buildFailedRecordViaReflection(Long id, int retryCount) {
         RecruitmentCancellationRecordEntity record = RecruitmentCancellationRecordEntity.builder()
                 .participantId(100L)
                 .listingId(200L)
@@ -190,8 +246,12 @@ class RecruitmentPaymentRetryBatchTest {
                 .feeAmount(5000)
                 .paymentStatus(CancellationPaymentStatus.FAILED)
                 .build();
-        setField(record, "id", id);
-        setField(record, "paymentRetryCount", retryCount);
+        try {
+            setField(record, "id", id);
+            setField(record, "paymentRetryCount", retryCount);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         return record;
     }
 
@@ -208,5 +268,37 @@ class RecruitmentPaymentRetryBatchTest {
             }
         }
         throw new NoSuchFieldException(name);
+    }
+
+    /**
+     * DB のキーセットフィルタ（{@code id > cursor AND paymentRetryCount < maxRetries}）と
+     * 同じ意味論をインメモリで再現する Fake ストア。
+     *
+     * <p>{@code save} が呼ばれるたびに実データの {@code paymentRetryCount} が更新されるため、
+     * 次回の {@code findByCursor} 呼び出しでは最新の状態を反映した絞り込み結果を返す
+     * （実 DB のトランザクション内クエリと同じ挙動）。</p>
+     */
+    private static class FakeCancellationRecordStore {
+        private final List<RecruitmentCancellationRecordEntity> records;
+        private final List<Long> processedIds = new ArrayList<>();
+
+        FakeCancellationRecordStore(List<RecruitmentCancellationRecordEntity> records) {
+            this.records = records;
+        }
+
+        List<RecruitmentCancellationRecordEntity> findByCursor(int maxRetries, long cursor, int pageSize) {
+            List<RecruitmentCancellationRecordEntity> result = records.stream()
+                    .filter(r -> r.getId() > cursor)
+                    .filter(r -> r.getPaymentRetryCount() < maxRetries)
+                    .sorted((a, b) -> Long.compare(a.getId(), b.getId()))
+                    .limit(pageSize)
+                    .peek(r -> processedIds.add(r.getId()))
+                    .collect(Collectors.toList());
+            return result;
+        }
+
+        List<Long> processedIds() {
+            return processedIds;
+        }
     }
 }

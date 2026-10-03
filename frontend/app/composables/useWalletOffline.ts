@@ -51,15 +51,14 @@ export function useWalletOffline() {
     const userId = requireUserId()
     try {
       const group = await api.startPresentation(groupId)
-      // 成功時はキャッシュを更新（失敗してもオンライン経路の戻り値は返す）
-      try {
-        await store.saveGroup(userId, group)
-      } catch (cacheErr) {
-        // キャッシュ保存失敗はユーザー体験に致命的でないため握りつぶさずログだけ残す
+      // キャッシュ更新は fire-and-forget。IndexedDB の open/暗号化がハングしても
+      // 提示モード本線（loading 完了）を塞がないよう await しない。
+      // 失敗時は握りつぶさず .catch() でログを残す（根治治療の原則）。
+      store.saveGroup(userId, group).catch((cacheErr) => {
         if (import.meta.dev) {
           console.warn('[useWalletOffline] saveGroup failed:', cacheErr)
         }
-      }
+      })
       return { group, cachedFromOffline: false }
     } catch (onlineErr) {
       // ネットワーク失敗 or サーバーエラー時は IndexedDB から復元を試みる

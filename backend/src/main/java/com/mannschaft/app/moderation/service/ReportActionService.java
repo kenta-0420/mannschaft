@@ -1,6 +1,8 @@
 package com.mannschaft.app.moderation.service;
 
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.moderation.ModerationErrorCode;
 import com.mannschaft.app.moderation.ReportActionType;
 import com.mannschaft.app.moderation.ReportStatus;
@@ -13,6 +15,7 @@ import com.mannschaft.app.moderation.entity.ContentReportEntity;
 import com.mannschaft.app.moderation.entity.ReportActionEntity;
 import com.mannschaft.app.moderation.repository.ContentReportRepository;
 import com.mannschaft.app.moderation.repository.ReportActionRepository;
+import com.mannschaft.app.recruitment.service.RecruitmentListingModerationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -33,6 +36,8 @@ public class ReportActionService {
 
     private final ContentReportRepository reportRepository;
     private final ReportActionRepository actionRepository;
+    private final RecruitmentListingModerationService recruitmentListingModerationService;
+    private final UserService userService;
 
     /**
      * 通報をレビュー中に変更する。
@@ -66,9 +71,11 @@ public class ReportActionService {
         ContentReportEntity report = findReportOrThrow(reportId);
         validateReportActionable(report);
 
-        ReportActionType actionType = ReportActionType.valueOf(req.getActionType());
+        ReportActionType actionType = EnumInputParser.parse(ReportActionType.class, req.getActionType(), "actionType");
         ReportActionEntity action = createAction(reportId, actionType, userId, req.getNote(),
                 req.getFreezeUntil(), req.getGuidelineSection());
+
+        applyRecruitmentListingAction(report, actionType);
 
         report.resolve(userId);
         reportRepository.save(report);
@@ -156,7 +163,7 @@ public class ReportActionService {
      */
     @Transactional
     public int bulkResolve(BulkResolveRequest req, Long userId) {
-        ReportActionType actionType = ReportActionType.valueOf(req.getActionType());
+        ReportActionType actionType = EnumInputParser.parse(ReportActionType.class, req.getActionType(), "actionType");
         int count = 0;
 
         for (Long reportId : req.getReportIds()) {
@@ -167,6 +174,7 @@ public class ReportActionService {
             }
 
             createAction(reportId, actionType, userId, req.getNote(), null, req.getGuidelineSection());
+            applyRecruitmentListingAction(report, actionType);
             report.resolve(userId);
             reportRepository.save(report);
             count++;
@@ -195,6 +203,9 @@ public class ReportActionService {
         ReportActionEntity action = createAction(reportId, ReportActionType.REOPEN, userId,
                 "コンテンツ復元: " + (note != null ? note : ""), null, null);
 
+        if (report.getTargetType() == com.mannschaft.app.moderation.ReportTargetType.RECRUITMENT_LISTING) {
+            recruitmentListingModerationService.restore(report.getTargetId());
+        }
         report.reopen(userId);
         reportRepository.save(report);
 
@@ -279,5 +290,19 @@ public class ReportActionService {
                 entity.getFreezeUntil(),
                 entity.getGuidelineSection(),
                 entity.getCreatedAt());
+    }
+
+    private void applyRecruitmentListingAction(ContentReportEntity report, ReportActionType actionType) {
+        if (report.getTargetType() != com.mannschaft.app.moderation.ReportTargetType.RECRUITMENT_LISTING) {
+            return;
+        }
+        if (actionType == ReportActionType.CONTENT_DELETE || actionType == ReportActionType.USER_FREEZE) {
+            recruitmentListingModerationService.hide(report.getTargetId());
+        }
+        if (actionType == ReportActionType.USER_FREEZE && report.getTargetUserId() != null) {
+            if (!userService.freezeUserIfPresent(report.getTargetUserId())) {
+                throw new BusinessException(ModerationErrorCode.REPORT_TARGET_NOT_FOUND);
+            }
+        }
     }
 }

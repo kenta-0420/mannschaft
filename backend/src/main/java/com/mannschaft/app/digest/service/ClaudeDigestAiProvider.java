@@ -6,14 +6,23 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mannschaft.app.digest.DigestProperties;
 import com.mannschaft.app.digest.DigestStyle;
+import io.netty.channel.ChannelOption;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.netty.http.client.HttpClient;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -53,20 +62,38 @@ public class ClaudeDigestAiProvider implements DigestAiProvider {
     @PostConstruct
     void init() {
         if (apiKey != null && !apiKey.isBlank()) {
+            int timeoutMs = digestProperties.getTimeoutMs();
+            HttpClient httpClient = HttpClient.create()
+                    .responseTimeout(Duration.ofMillis(timeoutMs))
+                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, timeoutMs);
             webClient = WebClient.builder()
                     .baseUrl(CLAUDE_API_URL)
+                    .clientConnector(new ReactorClientHttpConnector(httpClient))
                     .defaultHeader("x-api-key", apiKey)
                     .defaultHeader("anthropic-version", ANTHROPIC_VERSION)
                     .defaultHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                     .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(2 * 1024 * 1024))
                     .build();
-            log.info("Claude API クライアント初期化完了");
+            log.info("Claude API クライアント初期化完了 (timeoutMs={})", timeoutMs);
         } else {
             log.warn("Claude API キーが未設定です。ダイジェスト AI 生成は動作しません。");
         }
     }
 
     @Override
+    @Retryable(
+            retryFor = {WebClientException.class},
+            noRetryFor = {WebClientResponseException.BadRequest.class,
+                    WebClientResponseException.Unauthorized.class,
+                    WebClientResponseException.Forbidden.class,
+                    WebClientResponseException.NotFound.class,
+                    WebClientResponseException.MethodNotAllowed.class,
+                    WebClientResponseException.NotAcceptable.class,
+                    WebClientResponseException.UnsupportedMediaType.class,
+                    WebClientResponseException.UnprocessableEntity.class,
+                    WebClientResponseException.TooManyRequests.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 200, multiplier = 3))
     public AiDigestResult generate(
             List<Map<String, Object>> posts,
             DigestStyle style,
@@ -105,10 +132,30 @@ public class ClaudeDigestAiProvider implements DigestAiProvider {
 
             return parseResponse(responseJson);
 
+        } catch (WebClientException e) {
+            // 4xx/5xx/timeout は @Retryable / @Recover に委ねる（4xx は即時非リトライ）。
+            throw e;
         } catch (Exception e) {
             log.error("Claude API 呼び出しエラー", e);
             throw new RuntimeException("Claude API ダイジェスト生成に失敗しました: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * リトライ上限到達後の {@link WebClientException}（5xx／タイムアウト）を
+     * {@link RuntimeException} にラップする Spring Retry の {@code @Recover} ハンドラ。
+     */
+    @Recover
+    AiDigestResult recover(WebClientException e,
+                           List<Map<String, Object>> posts,
+                           DigestStyle style,
+                           String language,
+                           String customPrompt,
+                           String previousBody,
+                           boolean includeReactions,
+                           boolean includePolls) {
+        log.error("Claude API ダイジェスト生成が 5xx/timeout でリトライ尽き", e);
+        throw new RuntimeException("Claude API ダイジェスト生成に失敗しました（リトライ尽き）: " + e.getMessage(), e);
     }
 
     /**

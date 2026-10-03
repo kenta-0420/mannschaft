@@ -27,9 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
  * 各メソッドの {@code @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")}
  *（org 系は {@code #orgId, 'ORGANIZATION'}）は、scope がパス変数に直接現れるため SpEL からパス変数を
  * 参照して per-scope 認可を宣言できる（{@code @AccessGuard} が SYSTEM_ADMIN を内部短絡）。
- * 旧 {@code hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')} は {@code @EnableMethodSecurity} 点火時に
- * JWT へ ROLE_ADMIN が乗らないため一斉 403 となるので、点火前に正しい SpEL ガードへ是正した（認可根治 Phase 3-b）。
- * なお {@code @EnableMethodSecurity} 未有効の現状でも、**真の per-scope 認可は {@link FaqAdminService} 内で
+ * 旧 {@code hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')} は JWT へ ROLE_ADMIN が乗らないため
+ * 一斉 403 となるため、正しい SpEL ガードへ是正した（認可根治 Phase 3-b）。
+ * 加えて、**真の per-scope 認可は {@link FaqAdminService} 内で
  * {@code AccessControlService.checkAdminOrAbove(userId, scopeId, scopeType)}（SYSTEM_ADMIN は短絡許可）
  * として強制**されており、宣言（SpEL ガード）と Service 層明示呼出の多重防御で他団体 FAQ の編集・閲覧を遮断する。
  * 操作ユーザー ID は {@link SecurityUtils#getCurrentUserId()} で取得する。</p>

@@ -1,6 +1,7 @@
 package com.mannschaft.app.tournament.entry;
 
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -18,6 +19,7 @@ import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,8 +38,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -68,6 +72,8 @@ class TournamentEntryMemberServiceTest {
     private UserRepository userRepository;
     @Mock
     private PdfGeneratorService pdfGeneratorService;
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private TournamentEntryMemberService service;
@@ -78,6 +84,13 @@ class TournamentEntryMemberServiceTest {
     private static final Long PARTICIPANT_ID = 300L;
     private static final Long TEAM_ID = 400L;
     private static final Long USER_ID = 10L;
+
+    @BeforeEach
+    void bypassAuthorization() {
+        // 認可（scope 権限）は API 契約テスト TournamentEntryScopeContractIT で担保する。
+        // 本 UT は業務ロジックの検証が目的のため SYSTEM_ADMIN 相当で素通りさせる。
+        lenient().when(accessControlService.isSystemAdmin(anyLong())).thenReturn(true);
+    }
 
     // =========================================================
     // テストフィクスチャ生成ヘルパー

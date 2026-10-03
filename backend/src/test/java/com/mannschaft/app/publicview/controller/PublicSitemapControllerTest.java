@@ -78,11 +78,14 @@ class PublicSitemapControllerTest {
         given(sitemapQueryService.findPublicTeamEntries())
                 .willReturn(List.of(new SitemapEntry(1L, NOW)));
         given(sitemapQueryService.findPublicOrganizationEntries())
-                .willReturn(List.of(new SitemapEntry(10L, NOW)));
+                .willReturn(List.of(new SitemapEntry(10L, "org-ten", NOW)));
         given(sitemapQueryService.findPublicTeamPostEntries())
                 .willReturn(List.of(new SitemapPostEntry(1L, 100L, NOW)));
         given(sitemapQueryService.findPublicOrganizationPostEntries())
-                .willReturn(List.of(new SitemapPostEntry(10L, 200L, NOW)));
+                .willReturn(List.of(new SitemapPostEntry(10L, "org-ten", 200L, NOW)));
+        // F06.4: 公開活動記録も sitemap に収録される
+        given(sitemapQueryService.findPublicActivityEntries())
+                .willReturn(List.of(new SitemapEntry(42L, NOW)));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -117,9 +120,11 @@ class PublicSitemapControllerTest {
         org.assertj.core.api.Assertions.assertThat(responseBody)
                 .contains("<urlset")
                 .contains("https://mannschaft.example/public/teams/1")
-                .contains("https://mannschaft.example/public/organizations/10")
+                .contains("https://mannschaft.example/public/organizations/org-ten")
                 .contains("https://mannschaft.example/public/teams/1/posts/100")
-                .contains("https://mannschaft.example/public/organizations/10/posts/200");
+                .contains("https://mannschaft.example/public/organizations/org-ten/posts/200")
+                // F06.4: 公開活動記録は /activity/{id}（スコープを含まない ID 直引き URL）
+                .contains("https://mannschaft.example/activity/42");
     }
 
     @Test

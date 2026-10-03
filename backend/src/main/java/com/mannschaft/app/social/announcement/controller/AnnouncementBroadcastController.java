@@ -82,7 +82,7 @@ public class AnnouncementBroadcastController {
      * 組織への告知ウィザードを実行する。
      *
      * <p>指定チャネルでコンテンツを作成し、組織のお知らせフィードに登録する。
-     * target_team_ids を指定した場合、組織配下チームであることを検証する（IDOR 対策）。</p>
+     * targetTeamIds を指定した場合、組織配下チームであることを検証する（IDOR 対策）。</p>
      *
      * @param orgId 組織 ID
      * @param req   告知ウィザードリクエスト
@@ -92,7 +92,7 @@ public class AnnouncementBroadcastController {
     @Operation(
             summary = "組織への告知ウィザード実行",
             description = "F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。"
-                    + "target_team_ids を指定した場合は組織配下チームであることを検証する。")
+                    + "targetTeamIds を指定した場合は組織配下チームであることを検証する。")
     public ResponseEntity<ApiResponse<BroadcastResponseDto>> broadcastToOrg(
             @PathVariable Long orgId,
             @Valid @RequestBody BroadcastRequestDto req) {

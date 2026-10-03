@@ -42,7 +42,9 @@ public class AttendanceRequirementEvaluationController {
     @Operation(summary = "生徒の出席要件評価一覧取得")
     public ResponseEntity<ApiResponse<List<EvaluationResponse>>> getStudentEvaluations(
             @PathVariable Long studentId) {
-        return ResponseEntity.ok(ApiResponse.of(evaluationService.getStudentEvaluations(studentId)));
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.of(
+                evaluationService.getStudentEvaluations(studentId, currentUserId)));
     }
 
     /**
@@ -57,7 +59,9 @@ public class AttendanceRequirementEvaluationController {
     public ResponseEntity<ApiResponse<List<AtRiskStudentResponse>>> getAtRiskStudents(
             @PathVariable Long teamId,
             @RequestParam(required = false) List<String> status) {
-        return ResponseEntity.ok(ApiResponse.of(evaluationService.getAtRiskStudents(teamId, status)));
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.of(
+                evaluationService.getAtRiskStudents(teamId, status, currentUserId)));
     }
 
     /**
@@ -73,8 +77,9 @@ public class AttendanceRequirementEvaluationController {
     public ResponseEntity<ApiResponse<EvaluationResponse>> evaluate(
             @PathVariable Long studentId,
             @PathVariable Long ruleId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(evaluationService.evaluate(studentId, ruleId)));
+                .body(ApiResponse.of(evaluationService.evaluate(studentId, ruleId, currentUserId)));
     }
 
     /**

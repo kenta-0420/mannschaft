@@ -167,6 +167,7 @@ function close() {
         :label="isEdit ? '更新' : '作成'"
         icon="pi pi-check"
         :loading="submitting"
+        data-testid="team-todo-form-submit"
         @click="submit"
       />
     </template>

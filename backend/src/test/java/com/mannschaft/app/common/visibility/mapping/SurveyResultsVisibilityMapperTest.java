@@ -52,4 +52,34 @@ class SurveyResultsVisibilityMapperTest {
         assertThat(SurveyResultsVisibilityMapper.toStandard(ResultsVisibility.VIEWERS_ONLY))
             .isEqualTo(StandardVisibility.CUSTOM);
     }
+
+    /**
+     * AC-15 — 全値について写像が漏れなく返ること（新値追加時の取りこぼし検出）。
+     *
+     * <p>{@code switch} 式は網羅していなければコンパイルエラーになるが、
+     * 「新値を追加したが写像を CUSTOM で握りつぶした」等の抜けは検出できないため、
+     * 実際に全値を通して例外を投げないことを実行時に確認する。
+     * {@code ALWAYS} 追加前は次の {@link #ac15_alwaysIsMapped()} が red となる。</p>
+     */
+    @ParameterizedTest
+    @EnumSource(ResultsVisibility.class)
+    @DisplayName("AC-15: 全値が例外なく写像される（新値追加時の取りこぼし検出）")
+    void ac15_everyValueIsMappedWithoutThrowing(ResultsVisibility v) {
+        assertThat(SurveyResultsVisibilityMapper.toStandard(v))
+            .as("AC-15: %s の写像が未定義（新値の写像漏れ）", v)
+            .isNotNull();
+    }
+
+    /**
+     * AC-15 / AC-7 — {@code ALWAYS} も写像対象に含まれること。
+     *
+     * <p>実装前は {@code valueOf} が {@link IllegalArgumentException} を投げて red。</p>
+     */
+    @Test
+    @DisplayName("AC-15: ALWAYS も写像される（未定義なら red）")
+    void ac15_alwaysIsMapped() {
+        assertThat(SurveyResultsVisibilityMapper.toStandard(ResultsVisibility.valueOf("ALWAYS")))
+            .as("AC-15: ALWAYS の写像が未定義")
+            .isNotNull();
+    }
 }

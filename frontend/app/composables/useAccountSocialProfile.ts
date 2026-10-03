@@ -2,6 +2,7 @@ import type { SocialProfile, CreateSocialProfileRequest } from '~/types/social-p
 
 export function useAccountSocialProfile() {
   const notification = useNotification()
+  const { t } = useI18n()
   const socialApi = useSocialProfileApi()
 
   const socialProfiles = ref<SocialProfile[]>([])
@@ -34,25 +35,25 @@ export function useAccountSocialProfile() {
     try {
       if (editingSocialProfile.value) {
         await socialApi.updateMyProfile(socialForm.value)
-        notification.success('プロフィールを更新しました')
+        notification.success(t('settings.social_profile.toast.update_success'))
       } else {
         await socialApi.create(socialForm.value)
-        notification.success('プロフィールを作成しました')
+        notification.success(t('settings.social_profile.toast.create_success'))
       }
       showSocialDialog.value = false
       await loadSocialProfiles()
     } catch {
-      notification.error('保存に失敗しました')
+      notification.error(t('settings.social_profile.toast.save_error'))
     }
   }
 
   async function handleDeleteSocial(_id: number) {
     try {
       await socialApi.deleteMyProfile()
-      notification.success('プロフィールを削除しました')
+      notification.success(t('settings.social_profile.toast.delete_success'))
       await loadSocialProfiles()
     } catch {
-      notification.error('削除に失敗しました')
+      notification.error(t('settings.social_profile.toast.delete_error'))
     }
   }
 

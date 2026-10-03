@@ -21,6 +21,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.spi.ContentGateTarget;
 
 /**
  * BlogPost 用 {@link com.mannschaft.app.common.visibility.ContentVisibilityResolver}。
@@ -103,8 +106,80 @@ public class BlogPostVisibilityResolver
             // 未認証またはデータ不整合 → fail-closed（漏洩より過剰遮断・03_security §4）
             return false;
         }
-        return paymentGateService.checkAccess(CONTENT_TYPE_BLOG_POST, row.id(), viewerUserId)
+        return paymentGateService.checkAccess(CONTENT_TYPE_BLOG_POST, row.id(), viewerUserId,
+                targetOf(row))
                 .isAccessible();
+    }
+
+    /** F08.9 Phase 1: visibilityとは独立した課金軸をAND合成する。 */
+    @Override
+    protected boolean visibleByAdditionalAxis(
+            BlogPostVisibilityProjection row, Long viewerUserId, UserScopeRoleSnapshot snapshot,
+            StandardVisibility level, Object additionalAxisContext) {
+        if (level == StandardVisibility.CUSTOM) {
+            return true; // 既存CUSTOM経路の判定を重複させない
+        }
+        if (isScopeAdmin(row, snapshot)) {
+            return true;
+        }
+        if (!(additionalAxisContext instanceof Map<?, ?> gates) || row == null || row.id() == null) {
+            // バッチ評価コンテキストを構築できない場合も、対象スコープ付きの単票判定で fail-closed を保つ。
+            GateCheckResponse fallback = paymentGateService.checkAccess(
+                    CONTENT_TYPE_BLOG_POST, row.id(), viewerUserId, targetOf(row));
+            return fallback != null && fallback.isAccessible();
+        }
+        // バッチ結果に ID が無い場合は評価不能として fail-closed にする。
+        if (!gates.containsKey(row.id())) {
+            return false;
+        }
+        Object value = gates.get(row.id());
+        return value instanceof GateCheckResponse response
+                && (response.isAccessible() || !response.isTitleHidden());
+    }
+
+    @Override
+    protected Object prepareAdditionalAxisContext(
+            List<BlogPostVisibilityProjection> rows, Long viewerUserId) {
+        return paymentGateService.checkAccessBatch(CONTENT_TYPE_BLOG_POST,
+                rows.stream().map(BlogPostVisibilityProjection::id).toList(), viewerUserId,
+                rows.stream().filter(row -> targetOf(row) != null)
+                        .collect(java.util.stream.Collectors.toMap(
+                                BlogPostVisibilityProjection::id,
+                                BlogPostVisibilityResolver::targetOf)));
+    }
+
+    private static ContentGateTarget targetOf(BlogPostVisibilityProjection row) {
+        if (row == null || row.id() == null) {
+            return null;
+        }
+        if (row.scopeType() == null && row.scopeId() == null) {
+            return new ContentGateTarget(row.id(), null, null);
+        }
+        if (row.scopeType() == null || row.scopeId() == null) {
+            return null;
+        }
+        return "TEAM".equals(row.scopeType())
+                ? new ContentGateTarget(row.id(), row.scopeId(), null)
+                : "ORGANIZATION".equals(row.scopeType())
+                    ? new ContentGateTarget(row.id(), null, row.scopeId()) : null;
+    }
+
+    private static boolean isScopeAdmin(BlogPostVisibilityProjection row, UserScopeRoleSnapshot snapshot) {
+        if (snapshot == null || snapshot.isSystemAdmin() || row == null
+                || row.scopeType() == null || row.scopeId() == null) {
+            return snapshot != null && snapshot.isSystemAdmin();
+        }
+        String role = snapshot.roleByScope().get(
+                new com.mannschaft.app.common.visibility.ScopeKey(row.scopeType(), row.scopeId()));
+        if ("ADMIN".equals(role)) {
+            return true;
+        }
+        if ("ORGANIZATION".equals(row.scopeType())) {
+            role = snapshot.orgRoleByScope().get(
+                    new com.mannschaft.app.common.visibility.ScopeKey(row.scopeType(), row.scopeId()));
+            return "ADMIN".equals(role);
+        }
+        return false;
     }
 
     /**

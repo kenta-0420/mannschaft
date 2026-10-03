@@ -12,10 +12,12 @@ import com.mannschaft.app.timetable.personal.repository.PersonalTimetableReposit
 import com.mannschaft.app.timetable.personal.repository.PersonalTimetableSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -48,6 +50,8 @@ public class PersonalTimetableSlotService {
     private final PersonalTimetableRepository timetableRepository;
     private final PersonalTimetableSlotRepository slotRepository;
     private final PersonalTimetablePeriodRepository periodRepository;
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * 自分の個人時間割のコマを取得する。所有者検証込み（404 統一）。
@@ -70,7 +74,7 @@ public class PersonalTimetableSlotService {
      */
     public List<PersonalTimetableSlotEntity> listToday(Long personalTimetableId, Long userId) {
         PersonalTimetableEntity timetable = ensureOwned(personalTimetableId, userId);
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(wallClock);
         String todayDow = today.getDayOfWeek().name().substring(0, 3);
 
         List<PersonalTimetableSlotEntity> slots =
@@ -136,7 +140,7 @@ public class PersonalTimetableSlotService {
         }
 
         List<PersonalTimetableSlotEntity> entities = data.stream()
-                .map(d -> PersonalTimetableSlotEntity.builder()
+                .<PersonalTimetableSlotEntity>map(d -> PersonalTimetableSlotEntity.builder()
                         .personalTimetableId(personalTimetableId)
                         .dayOfWeek(d.dayOfWeek())
                         .periodNumber(d.periodNumber())

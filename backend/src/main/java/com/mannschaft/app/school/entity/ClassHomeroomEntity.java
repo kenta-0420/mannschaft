@@ -5,8 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -17,8 +16,7 @@ import java.time.LocalDate;
 @Table(name = "class_homerooms")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ClassHomeroomEntity extends BaseEntity {
 
     /** FK → teams.id（クラスチーム） */
@@ -47,4 +45,25 @@ public class ClassHomeroomEntity extends BaseEntity {
     /** 作成者 */
     @Column(nullable = false)
     private Long createdBy;
+
+    /**
+     * 学級担任設定を更新する（直接ミューテート）。
+     *
+     * <p>{@code toBuilder().build()} で作り直すと {@link com.mannschaft.app.common.BaseEntity}
+     * の {@code id} が引き継がれず id=null の新インスタンスとなり、INSERT 化して行が重複する。
+     * managed entity を直接書き換えることで JPA dirty checking が UPDATE を発行し id を保持する。
+     * null フィールドは既存値を維持する（部分更新）。</p>
+     *
+     * @param homeroomTeacherUserId      新しい学級担任ユーザーID（null = 変更なし）
+     * @param assistantTeacherUserIds    新しい副担任リスト JSON（null = 変更なし）
+     * @param effectiveUntil             新しい有効終了日（null = 変更なし）
+     */
+    public void applyUpdate(
+            Long homeroomTeacherUserId,
+            String assistantTeacherUserIds,
+            java.time.LocalDate effectiveUntil) {
+        if (homeroomTeacherUserId != null) this.homeroomTeacherUserId = homeroomTeacherUserId;
+        if (assistantTeacherUserIds != null) this.assistantTeacherUserIds = assistantTeacherUserIds;
+        if (effectiveUntil != null) this.effectiveUntil = effectiveUntil;
+    }
 }

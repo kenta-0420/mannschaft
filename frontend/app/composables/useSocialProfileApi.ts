@@ -7,6 +7,9 @@ import type {
   FollowListVisibility,
   FollowListVisibilityResponse,
 } from '~/types/social-profile'
+import type { components } from '~/types/generated'
+
+type ProfileResponse = components['schemas']['ProfileResponse']
 
 export function useSocialProfileApi() {
   const api = useApi()
@@ -14,9 +17,22 @@ export function useSocialProfileApi() {
   const PROFILES = '/api/v1/social/profiles'
   const FOLLOWS = '/api/v1/social/follows'
 
-  async function getMyProfile() {
-    const res = await api<{ data: SocialProfile }>(`${PROFILES}/me`)
-    return res.data
+  async function getMyProfile(): Promise<SocialProfile | null> {
+    const res = await api<{ data: ProfileResponse | null }>(`${PROFILES}/me`)
+    if (!res.data) return null
+    // 生成型 ProfileResponse を手動型 SocialProfile に薄くマップ
+    const d = res.data
+    return {
+      id: d.id ?? 0,
+      handle: d.handle ?? '',
+      displayName: d.displayName ?? '',
+      avatarUrl: d.avatarUrl ?? null,
+      bio: d.bio ?? null,
+      isActive: d.isActive ?? true,
+      followerCount: d.followerCount ?? 0,
+      followingCount: d.followingCount ?? 0,
+      createdAt: d.createdAt ?? '',
+    }
   }
 
   async function getByHandle(handle: string) {

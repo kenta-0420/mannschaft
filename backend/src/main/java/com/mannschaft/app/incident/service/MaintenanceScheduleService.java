@@ -1,5 +1,6 @@
 package com.mannschaft.app.incident.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.incident.IncidentErrorCode;
@@ -34,6 +35,9 @@ public class MaintenanceScheduleService {
     private final MaintenanceScheduleRepository scheduleRepository;
     private final IncidentRepository incidentRepository;
     private final DomainEventPublisher eventPublisher;
+
+    /** 認可根治戦役 Wave3-B3: メンテナンススケジュール管理への認可敷設で使用する。 */
+    private final AccessControlService accessControlService;
 
     // ========================================
     // DTOクラス定義
@@ -99,6 +103,9 @@ public class MaintenanceScheduleService {
      */
     @Transactional
     public MaintenanceScheduleResponse createSchedule(Long createdBy, CreateMaintenanceScheduleRequest req) {
+        // 認可: ADMIN相当（scopeId/scopeTypeはリクエスト由来）
+        accessControlService.checkAdminOrAbove(createdBy, req.scopeId(), req.scopeType());
+
         // CRON式のバリデーション
         validateCronExpression(req.cronExpression());
 
@@ -126,11 +133,16 @@ public class MaintenanceScheduleService {
     /**
      * スコープに紐づく有効スケジュール一覧を取得する。
      *
+     * <p>認可: ADMIN相当（scopeId/scopeTypeはクエリパラメータ由来）。</p>
+     *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
+     * @param userId    呼び出しユーザーID
      * @return スケジュールレスポンス一覧
      */
-    public List<MaintenanceScheduleResponse> listSchedules(String scopeType, Long scopeId) {
+    public List<MaintenanceScheduleResponse> listSchedules(String scopeType, Long scopeId, Long userId) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
+
         return scheduleRepository
                 .findByScopeTypeAndScopeIdAndIsActiveTrueAndDeletedAtIsNull(scopeType, scopeId)
                 .stream()
@@ -141,13 +153,19 @@ public class MaintenanceScheduleService {
     /**
      * メンテナンススケジュールを更新する。
      *
-     * @param id  スケジュールID
-     * @param req 更新リクエスト
+     * <p>認可: ADMIN相当。entity 由来 scope に非所属なら存在秘匿のため 404、
+     * 所属しているが ADMIN でない場合は 403。</p>
+     *
+     * @param id     スケジュールID
+     * @param req    更新リクエスト
+     * @param userId 呼び出しユーザーID
      * @return 更新後スケジュールレスポンス
      */
     @Transactional
-    public MaintenanceScheduleResponse updateSchedule(Long id, UpdateMaintenanceScheduleRequest req) {
+    public MaintenanceScheduleResponse updateSchedule(Long id, UpdateMaintenanceScheduleRequest req, Long userId) {
         MaintenanceScheduleEntity schedule = findScheduleOrThrow(id);
+        requireMemberOrConceal(schedule, userId);
+        accessControlService.checkAdminOrAbove(userId, schedule.getScopeId(), schedule.getScopeType());
 
         // CRON式が変更される場合はバリデーション
         if (req.cronExpression() != null) {
@@ -174,11 +192,18 @@ public class MaintenanceScheduleService {
     /**
      * メンテナンススケジュールを論理削除する。
      *
-     * @param id スケジュールID
+     * <p>認可: ADMIN相当。entity 由来 scope に非所属なら存在秘匿のため 404、
+     * 所属しているが ADMIN でない場合は 403。</p>
+     *
+     * @param id     スケジュールID
+     * @param userId 呼び出しユーザーID
      */
     @Transactional
-    public void deleteSchedule(Long id) {
+    public void deleteSchedule(Long id, Long userId) {
         MaintenanceScheduleEntity schedule = findScheduleOrThrow(id);
+        requireMemberOrConceal(schedule, userId);
+        accessControlService.checkAdminOrAbove(userId, schedule.getScopeId(), schedule.getScopeType());
+
         schedule.softDelete();
         scheduleRepository.save(schedule);
         log.info("メンテナンススケジュール論理削除: id={}", id);
@@ -188,12 +213,18 @@ public class MaintenanceScheduleService {
      * メンテナンススケジュールを手動トリガーする。
      * lastTriggeredAtを更新し、IncidentEntityを1件生成する。
      *
-     * @param id スケジュールID
+     * <p>認可: ADMIN相当。entity 由来 scope に非所属なら存在秘匿のため 404、
+     * 所属しているが ADMIN でない場合は 403。</p>
+     *
+     * @param id     スケジュールID
+     * @param userId 呼び出しユーザーID
      * @return 作成されたインシデントのレスポンス
      */
     @Transactional
-    public IncidentService.IncidentResponse triggerManually(Long id) {
+    public IncidentService.IncidentResponse triggerManually(Long id, Long userId) {
         MaintenanceScheduleEntity schedule = findScheduleOrThrow(id);
+        requireMemberOrConceal(schedule, userId);
+        accessControlService.checkAdminOrAbove(userId, schedule.getScopeId(), schedule.getScopeType());
 
         // 次回実行日を更新（次のCRON実行日）
         LocalDate nextDate = calcNextExecutionDate(schedule.getCronExpression());
@@ -239,6 +270,18 @@ public class MaintenanceScheduleService {
     public MaintenanceScheduleEntity findScheduleOrThrow(Long id) {
         return scheduleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(IncidentErrorCode.INCIDENT_009));
+    }
+
+    /**
+     * 認可根治戦役 Wave3-B3 BOLA是正: ID 直指定 EP で使う共通ガード。
+     * URL に scope が現れないため、entity を先に fetch した上で呼び出しユーザーが
+     * entity 由来 scope のメンバーであることを検証する。非メンバーは越境 ID の存在を秘匿するため、
+     * 通常の {@code checkMembership}（403）ではなく entity の NOT_FOUND コード（404）を投げる。
+     */
+    private void requireMemberOrConceal(MaintenanceScheduleEntity schedule, Long userId) {
+        if (!accessControlService.isMember(userId, schedule.getScopeId(), schedule.getScopeType())) {
+            throw new BusinessException(IncidentErrorCode.INCIDENT_009);
+        }
     }
 
     /**

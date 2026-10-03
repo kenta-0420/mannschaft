@@ -12,8 +12,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -31,8 +31,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class JobPostingEntity extends BaseEntity {
 
     @Column(name = "team_id", nullable = false)
@@ -94,6 +93,64 @@ public class JobPostingEntity extends BaseEntity {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    /**
+     * 求人の編集可能フィールドを部分更新する。引数が {@code null} のフィールドは「未指定＝変更なし」として現状を維持する。
+     *
+     * <p>managed entity を直接ミューテートするため主キー（id）・楽観ロック version を保持し、{@code save()} が
+     * UPDATE になる。旧実装は {@code toBuilder()...build()} で別インスタンスを作り直していたが、
+     * {@code @SuperBuilder(toBuilder = true)} は {@link BaseEntity} 継承の id を引き継がず id=null となり save が
+     * INSERT 化する不具合があったため、本メソッドへ集約した。</p>
+     *
+     * <p>引数の値検証（報酬範囲・公開範囲・日時整合性・応募者ありの場合の不変フィールドチェック）は
+     * 呼び出し側 Service の責務であり、本メソッドは値の差し替えのみを行う。</p>
+     */
+    public void applyUpdate(String title, String description, String category,
+                            WorkLocationType workLocationType, String workAddress,
+                            LocalDateTime workStartAt, LocalDateTime workEndAt,
+                            RewardType rewardType, Integer baseRewardJpy, Integer capacity,
+                            LocalDateTime applicationDeadlineAt, VisibilityScope visibilityScope,
+                            LocalDateTime publishAt) {
+        if (title != null) {
+            this.title = title;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        if (category != null) {
+            this.category = category;
+        }
+        if (workLocationType != null) {
+            this.workLocationType = workLocationType;
+        }
+        if (workAddress != null) {
+            this.workAddress = workAddress;
+        }
+        if (workStartAt != null) {
+            this.workStartAt = workStartAt;
+        }
+        if (workEndAt != null) {
+            this.workEndAt = workEndAt;
+        }
+        if (rewardType != null) {
+            this.rewardType = rewardType;
+        }
+        if (baseRewardJpy != null) {
+            this.baseRewardJpy = baseRewardJpy;
+        }
+        if (capacity != null) {
+            this.capacity = capacity;
+        }
+        if (applicationDeadlineAt != null) {
+            this.applicationDeadlineAt = applicationDeadlineAt;
+        }
+        if (visibilityScope != null) {
+            this.visibilityScope = visibilityScope;
+        }
+        if (publishAt != null) {
+            this.publishAt = publishAt;
+        }
+    }
 
     /**
      * 求人を公開（DRAFT → OPEN）する。

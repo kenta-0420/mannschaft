@@ -9,8 +9,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -27,8 +29,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class PaymentItemEntity extends BaseEntity {
 
     private Long teamId;
@@ -153,6 +154,18 @@ public class PaymentItemEntity extends BaseEntity {
      */
     public void updateStripePriceId(String stripePriceId) {
         this.stripePriceId = stripePriceId;
+    }
+
+    /**
+     * Stripe Product ID のみ更新する（Product 再利用のための焼き付け用）。
+     *
+     * <p>継続課金（F08.9 P5）は Product を項目と共有しつつ、Price は<b>会費分と支払側手数料分の 2 本</b>を
+     * 契約側（{@code membership_subscriptions}）に保持する。{@code stripePriceId} は一回払い（額面のみ）の
+     * Price を指すカラムであり、金額の異なる recurring Price を書き込むと誤課金の源になるため、
+     * 継続課金からは本メソッドで Product だけを焼き付ける。</p>
+     */
+    public void updateStripeProductId(String stripeProductId) {
+        this.stripeProductId = stripeProductId;
     }
 
     /**

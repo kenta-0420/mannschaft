@@ -31,10 +31,17 @@ public class AdReportScheduleService {
     private final ObjectMapper objectMapper;
 
     /**
-     * レポートスケジュール一覧を取得する。
+     * レポートスケジュール一覧を取得する（組織スコープ）。
      */
     public List<ReportScheduleResponse> findByOrganizationId(Long organizationId) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
+        return findByScope(ScopeType.ORGANIZATION, organizationId);
+    }
+
+    /**
+     * レポートスケジュール一覧を取得する（scope 化。F09.19.5: org/team 両対応）。
+     */
+    public List<ReportScheduleResponse> findByScope(ScopeType scopeType, Long scopeId) {
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
         return adReportScheduleRepository.findByAdvertiserAccountId(account.getId()).stream()
                 .map(this::toResponse)
@@ -46,7 +53,15 @@ public class AdReportScheduleService {
      */
     @Transactional
     public ReportScheduleResponse create(Long organizationId, Long userId, CreateReportScheduleRequest request) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
+        return create(ScopeType.ORGANIZATION, organizationId, userId, request);
+    }
+
+    /**
+     * レポートスケジュールを作成する（scope 化。F09.19.5b: org/team 両対応）。
+     */
+    @Transactional
+    public ReportScheduleResponse create(ScopeType scopeType, Long scopeId, Long userId, CreateReportScheduleRequest request) {
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
 
         if (adReportScheduleRepository.countByAdvertiserAccountId(account.getId()) >= 3) {
@@ -74,7 +89,15 @@ public class AdReportScheduleService {
      */
     @Transactional
     public void delete(Long scheduleId, Long organizationId) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
+        delete(scheduleId, ScopeType.ORGANIZATION, organizationId);
+    }
+
+    /**
+     * レポートスケジュールを削除する（scope 化。F09.19.5b: org/team 両対応）。
+     */
+    @Transactional
+    public void delete(Long scheduleId, ScopeType scopeType, Long scopeId) {
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
 
         AdReportScheduleEntity schedule = adReportScheduleRepository.findById(scheduleId)

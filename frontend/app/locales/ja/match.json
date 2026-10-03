@@ -237,7 +237,10 @@
           "title": "ピリオド境界の記録に失敗しました",
           "detail": "前後半の切替（記録）がサーバーに保存されませんでした。スコアや出場時間の集計がずれる可能性があります。タイマーを操作し直して再記録してください。"
         },
-        "complete_failed": "試合終了の保存に失敗しました"
+        "complete_failed": "試合終了の保存に失敗しました",
+        "score_load_failed": "既存の採点を取得できませんでした。ページを再読み込みしてください",
+        "load_players_failed": "選手名簿の取得に失敗しました",
+        "substitution_rollback_failed": "交代の取り消しに失敗しました。選手交代の記録を確認してください"
       },
       "read_only_notice": "閲覧専用です。記録できるのは管理者・副管理者・記録係のみです",
       "spectator": {
@@ -450,13 +453,20 @@
       "S": "セッター",
       "L": "リベロ"
     },
+    "org_select": {
+      "label": "組織",
+      "invalid": "指定された組織は無効です（このチームの組織ではありません）。組織を選び直してください",
+      "placeholder": "組織を選択"
+    },
     "org_context": {
-      "resolve_failed": "チーム・組織の情報を解決できませんでした。所属を確認してください"
+      "resolve_failed": "チーム・組織の情報を解決できませんでした。所属を確認してください",
+      "not_member_of_org": "このチームはこの大会の組織に加盟していないため、試合を記録できません"
     },
     "entry": {
       "record_from_schedule": "この試合を記録",
       "record_from_schedule_hint": "この予定の試合記録を開始します",
-      "resolving": "試合記録を準備中…"
+      "resolving": "試合記録を準備中…",
+      "no_org_for_record": "試合記録はチームが組織に所属している場合のみ利用できます"
     },
     "fixtures": {
       "title": "対戦表",
@@ -641,6 +651,28 @@
         "error": {
           "load_failed": "採点内訳の読み込みに失敗しました",
           "save_failed": "採点内訳の保存に失敗しました"
+        }
+      },
+      "ranking": {
+        "switch_to_ranking": "多人数順位制で入力",
+        "intro": "出場者を追加して各自の合計点を入力すると、順位はサーバーが合計点の高い順に自動算出します。",
+        "mode_label": "多人数順位制",
+        "switch_to_direct": "合計点の直接入力へ",
+        "canonical_notice": "出場者エントリが入力されているため、多人数順位制が記録の正本です。",
+        "clear_to_direct": "エントリをクリアして直接入力へ戻す",
+        "standings": "順位（サーバー算出）",
+        "competitor_label": "出場者名",
+        "competitor_placeholder": "例：山田 花子",
+        "total_label": "合計点",
+        "add_entry": "出場者を追加",
+        "remove_entry": "この出場者を削除",
+        "complete": "順位を確定",
+        "complete_hint": "出場者を2人以上追加し、各自の名前と合計点を入力してください",
+        "user_fallback": "選手#{id}",
+        "team_fallback": "チーム#{id}",
+        "error": {
+          "load_failed": "出場者エントリの読み込みに失敗しました",
+          "save_failed": "出場者エントリの保存に失敗しました"
         }
       }
     }

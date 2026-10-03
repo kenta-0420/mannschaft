@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 /**
  * F04.9 確認通知テンプレート作成リクエストDTO。
  */
@@ -25,4 +27,7 @@ public class ConfirmableNotificationTemplateCreateRequest {
 
     /** デフォルト優先度（省略時は NORMAL） */
     private ConfirmableNotificationPriority defaultPriority;
+
+    /** 既定の宛先グループ（省略時は配下すべて） */
+    private UUID defaultRecipientGroupId;
 }

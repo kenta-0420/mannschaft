@@ -57,6 +57,8 @@ export interface UseMatchLiveRecorderOptions {
   isConflict?: (err: unknown) => boolean
   /** 409 検知時の通知（「他の記録者が更新しました」）。 */
   onConflict?: () => void
+  /** 交代の補償削除（SUB_IN 失敗時の SUB_OUT 巻き戻し）が失敗したときの通知。 */
+  onCompensationFailed?: () => void
 }
 
 function defaultIsConflict(err: unknown): boolean {
@@ -247,8 +249,17 @@ export function useMatchLiveRecorder(options: UseMatchLiveRecorderOptions) {
       } catch (err) {
         // SUB_IN が失敗したら SUB_OUT を巻き戻して中途半端な OUT を残さない（§各ステップ UI 仕様）。
         if (subOut.id) {
-          await options.deleter(subOut.id).catch(() => undefined)
-          events.value = events.value.filter((e) => e.id !== subOut.id)
+          try {
+            await options.deleter(subOut.id)
+            // 巻き戻し削除が成功したときだけ局所からも除去する（サーバと一致）。
+            events.value = events.value.filter((e) => e.id !== subOut.id)
+          } catch (delErr) {
+            // 補償削除が失敗＝サーバに SUB_OUT が残る。ここで局所を楽観除去するとサーバと乖離し、
+            // 「消えたはずの OUT がリロードで復活」する事故になる。局所にも残したまま（再試行余地を保つ）、
+            // 失敗を通知＋ログで表面化する（症状を隠さない・根治原則）。
+            console.error('[match] 交代の巻き戻し削除（SUB_OUT）に失敗。サーバと局所を一致させ残置します', delErr)
+            options.onCompensationFailed?.()
+          }
         }
         throw err
       }

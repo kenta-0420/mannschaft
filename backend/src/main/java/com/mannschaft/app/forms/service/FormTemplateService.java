@@ -1,7 +1,9 @@
 package com.mannschaft.app.forms.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.forms.FormErrorCode;
+import com.mannschaft.app.forms.FormScopes;
 import com.mannschaft.app.forms.FormFieldType;
 import com.mannschaft.app.forms.FormMapper;
 import com.mannschaft.app.forms.FormStatus;
@@ -36,18 +38,21 @@ public class FormTemplateService {
     private final FormTemplateRepository templateRepository;
     private final FormTemplateFieldRepository fieldRepository;
     private final FormMapper formMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * テンプレート一覧をページング取得する。
      *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
+     * @param userId    操作ユーザーID（認可根治戦役 Wave3-B4: 閲覧はスコープメンバーのみ）
      * @param status    ステータスフィルタ（null の場合は全件）
      * @param pageable  ページング情報
      * @return テンプレートレスポンスのページ
      */
     public Page<FormTemplateResponse> listTemplates(
-            String scopeType, Long scopeId, String status, Pageable pageable) {
+            String scopeType, Long scopeId, Long userId, String status, Pageable pageable) {
+        accessControlService.checkMembership(userId, scopeId, FormScopes.canonical(scopeType));
         Page<FormTemplateEntity> page;
         if (status != null) {
             FormStatus formStatus = FormStatus.valueOf(status);
@@ -69,10 +74,12 @@ public class FormTemplateService {
      *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
+     * @param userId     操作ユーザーID（認可根治戦役 Wave3-B4: 閲覧はスコープメンバーのみ）
      * @param templateId テンプレートID
      * @return テンプレートレスポンス
      */
-    public FormTemplateResponse getTemplate(String scopeType, Long scopeId, Long templateId) {
+    public FormTemplateResponse getTemplate(String scopeType, Long scopeId, Long userId, Long templateId) {
+        accessControlService.checkMembership(userId, scopeId, FormScopes.canonical(scopeType));
         FormTemplateEntity entity = findTemplateOrThrow(scopeType, scopeId, templateId);
         List<FormTemplateFieldEntity> fields =
                 fieldRepository.findByTemplateIdOrderBySortOrderAsc(templateId);
@@ -91,6 +98,7 @@ public class FormTemplateService {
     @Transactional
     public FormTemplateResponse createTemplate(
             String scopeType, Long scopeId, Long userId, CreateFormTemplateRequest request) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
         FormTemplateEntity entity = FormTemplateEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
@@ -128,32 +136,34 @@ public class FormTemplateService {
      *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
+     * @param userId     操作ユーザーID（認可根治戦役 Wave3-B4: 更新は ADMIN 以上のみ）
      * @param templateId テンプレートID
      * @param request    更新リクエスト
      * @return 更新されたテンプレートレスポンス
      */
     @Transactional
     public FormTemplateResponse updateTemplate(
-            String scopeType, Long scopeId, Long templateId, UpdateFormTemplateRequest request) {
+            String scopeType, Long scopeId, Long userId, Long templateId, UpdateFormTemplateRequest request) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
         FormTemplateEntity entity = findTemplateOrThrow(scopeType, scopeId, templateId);
 
-        FormTemplateEntity updated = entity.toBuilder()
-                .name(request.getName() != null ? request.getName() : entity.getName())
-                .description(request.getDescription() != null ? request.getDescription() : entity.getDescription())
-                .icon(request.getIcon() != null ? request.getIcon() : entity.getIcon())
-                .color(request.getColor() != null ? request.getColor() : entity.getColor())
-                .requiresApproval(request.getRequiresApproval() != null ? request.getRequiresApproval() : entity.getRequiresApproval())
-                .workflowTemplateId(request.getWorkflowTemplateId() != null ? request.getWorkflowTemplateId() : entity.getWorkflowTemplateId())
-                .isSealOnPdf(request.getIsSealOnPdf() != null ? request.getIsSealOnPdf() : entity.getIsSealOnPdf())
-                .deadline(request.getDeadline() != null ? request.getDeadline() : entity.getDeadline())
-                .allowEditAfterSubmit(request.getAllowEditAfterSubmit() != null ? request.getAllowEditAfterSubmit() : entity.getAllowEditAfterSubmit())
-                .autoFillEnabled(request.getAutoFillEnabled() != null ? request.getAutoFillEnabled() : entity.getAutoFillEnabled())
-                .maxSubmissionsPerUser(request.getMaxSubmissionsPerUser() != null ? request.getMaxSubmissionsPerUser() : entity.getMaxSubmissionsPerUser())
-                .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder())
-                .targetCount(request.getTargetCount() != null ? request.getTargetCount() : entity.getTargetCount())
-                .build();
+        // managed entity を直接ミューテートして主キー・@Version を保持する（toBuilder().build() は id 欠落で INSERT 化＝行重複を招くため使用しない）
+        entity.applyUpdate(
+                request.getName(),
+                request.getDescription(),
+                request.getIcon(),
+                request.getColor(),
+                request.getRequiresApproval(),
+                request.getWorkflowTemplateId(),
+                request.getIsSealOnPdf(),
+                request.getDeadline(),
+                request.getAllowEditAfterSubmit(),
+                request.getAutoFillEnabled(),
+                request.getMaxSubmissionsPerUser(),
+                request.getSortOrder(),
+                request.getTargetCount());
 
-        FormTemplateEntity saved = templateRepository.save(updated);
+        FormTemplateEntity saved = templateRepository.save(entity);
 
         List<FormTemplateFieldEntity> fields;
         if (request.getFields() != null) {
@@ -173,11 +183,13 @@ public class FormTemplateService {
      *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
+     * @param userId     操作ユーザーID（認可根治戦役 Wave3-B4: 公開は ADMIN 以上のみ）
      * @param templateId テンプレートID
      * @return 更新されたテンプレートレスポンス
      */
     @Transactional
-    public FormTemplateResponse publishTemplate(String scopeType, Long scopeId, Long templateId) {
+    public FormTemplateResponse publishTemplate(String scopeType, Long scopeId, Long userId, Long templateId) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
         FormTemplateEntity entity = findTemplateOrThrow(scopeType, scopeId, templateId);
 
         if (!entity.isPublishable()) {
@@ -203,11 +215,13 @@ public class FormTemplateService {
      *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
+     * @param userId     操作ユーザーID（認可根治戦役 Wave3-B4: 閉鎖は ADMIN 以上のみ）
      * @param templateId テンプレートID
      * @return 更新されたテンプレートレスポンス
      */
     @Transactional
-    public FormTemplateResponse closeTemplate(String scopeType, Long scopeId, Long templateId) {
+    public FormTemplateResponse closeTemplate(String scopeType, Long scopeId, Long userId, Long templateId) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
         FormTemplateEntity entity = findTemplateOrThrow(scopeType, scopeId, templateId);
 
         if (!entity.isClosable()) {
@@ -246,6 +260,7 @@ public class FormTemplateService {
     @Transactional
     public FormTemplateResponse duplicateTemplate(
             String scopeType, Long scopeId, Long templateId, Long userId) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
         FormTemplateEntity original = findTemplateOrThrow(scopeType, scopeId, templateId);
         List<FormTemplateFieldEntity> originalFields =
                 fieldRepository.findByTemplateIdOrderBySortOrderAsc(templateId);
@@ -273,7 +288,7 @@ public class FormTemplateService {
         FormTemplateEntity savedTemplate = templateRepository.save(copy);
 
         List<FormTemplateFieldEntity> copiedFields = originalFields.stream()
-                .map(f -> FormTemplateFieldEntity.builder()
+                .map(f -> (FormTemplateFieldEntity) FormTemplateFieldEntity.builder()
                         .templateId(savedTemplate.getId())
                         .fieldKey(f.getFieldKey())
                         .fieldLabel(f.getFieldLabel())
@@ -297,10 +312,12 @@ public class FormTemplateService {
      *
      * @param scopeType  スコープ種別
      * @param scopeId    スコープID
+     * @param userId     操作ユーザーID（認可根治戦役 Wave3-B4: 削除は ADMIN 以上のみ）
      * @param templateId テンプレートID
      */
     @Transactional
-    public void deleteTemplate(String scopeType, Long scopeId, Long templateId) {
+    public void deleteTemplate(String scopeType, Long scopeId, Long userId, Long templateId) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, FormScopes.canonical(scopeType));
         FormTemplateEntity entity = findTemplateOrThrow(scopeType, scopeId, templateId);
         entity.softDelete();
         templateRepository.save(entity);
@@ -316,6 +333,17 @@ public class FormTemplateService {
     public FormTemplateEntity getTemplateEntity(Long templateId) {
         return templateRepository.findById(templateId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.TEMPLATE_NOT_FOUND));
+    }
+
+    /**
+     * テンプレートエンティティを scope 一致検証込みで取得する（他 Service からの BOLA ガード用）。
+     *
+     * <p>認可根治戦役 Wave3-B4: {@code templateId} 単体では他スコープの ID を推測して
+     * 越境できてしまうため、{@code scopeType}/{@code scopeId} との一致を必ず検証する。
+     * 不一致・不在はいずれも {@link FormErrorCode#TEMPLATE_NOT_FOUND}（404）として存在秘匿する。</p>
+     */
+    public FormTemplateEntity getTemplateEntityInScope(String scopeType, Long scopeId, Long templateId) {
+        return findTemplateOrThrow(scopeType, scopeId, templateId);
     }
 
     /**
@@ -343,7 +371,7 @@ public class FormTemplateService {
      */
     private List<FormTemplateFieldEntity> saveFields(Long templateId, List<FormFieldRequest> fields) {
         List<FormTemplateFieldEntity> entities = fields.stream()
-                .map(f -> FormTemplateFieldEntity.builder()
+                .map(f -> (FormTemplateFieldEntity) FormTemplateFieldEntity.builder()
                         .templateId(templateId)
                         .fieldKey(f.getFieldKey())
                         .fieldLabel(f.getFieldLabel())

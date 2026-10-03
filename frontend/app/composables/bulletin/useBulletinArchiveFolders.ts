@@ -99,7 +99,7 @@ export function useBulletinArchiveFolders() {
     params?: { folderId?: string | null; page?: number; size?: number },
   ): Promise<{
     data: BulletinThreadResponse[]
-    meta: { page: number; size: number; totalElements: number; totalPages: number }
+    meta: { page: number; size: number; total: number; totalPages: number }
   }> {
     const query = new URLSearchParams()
     if (params?.folderId) query.set('folder_id', params.folderId)

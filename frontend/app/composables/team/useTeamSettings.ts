@@ -44,7 +44,7 @@ export function useTeamSettings() {
   async function getContentPaymentGates(teamSlug: string) {
     return api<{
       data: Record<string, unknown>[]
-      meta: { page: number; size: number; totalElements: number; totalPages: number }
+      meta: { page: number; size: number; total: number; totalPages: number }
     }>(`/api/v1/teams/${teamSlug}/content-payment-gates`)
   }
 

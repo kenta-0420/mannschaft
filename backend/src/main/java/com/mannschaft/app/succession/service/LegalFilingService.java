@@ -2,6 +2,7 @@ package com.mannschaft.app.succession.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.storage.StorageService;
@@ -41,6 +42,13 @@ import java.util.zip.ZipOutputStream;
  * <p>テナント分離: {@link LegalFilingRepository} は {@code AbstractTenantAwareRepository}
  * を継承しており、{@code organization_id} 必須でフィルタする。
  *
+ * <p>認可（認可根治戦役 Wave 2 トランシェ2A #3）: 立退き証拠・弁護士介入情報を扱う
+ * 最機密ドメインのため、全メソッドで {@code organizationId} に対する
+ * {@link AccessControlService#checkAdminOrAbove} を要求する（ADMIN/DEPUTY_ADMIN 以上のみ）。
+ * 手本は同パッケージの {@link SuccessionCovenantService} / {@link UnsealRequestService}。
+ * エンティティ取得は常に {@code (id, organizationId)} 複合キーで行うため、path の
+ * organizationId で認可すればエンティティ由来 scope と必ず一致する（BOLA 対策）。
+ *
  * <p>証拠 ZIP 構成:
  * <ol>
  *   <li>01_template.pdf — 申立書テンプレート（{@link #createLegalFiling} で生成済み）</li>
@@ -62,9 +70,13 @@ public class LegalFilingService {
     private final PdfGeneratorService pdfGeneratorService;
     private final StorageService storageService;
     private final AuditLogService auditLogService;
+    private final AccessControlService accessControlService;
 
     /** 証拠 ZIP ダウンロード URL の有効期間。 */
     private static final Duration EVIDENCE_URL_TTL = Duration.ofHours(1);
+
+    /** 認可スコープ種別。succession は組織単位（管理組合）で完結するドメインのため固定。 */
+    private static final String SCOPE_TYPE = "ORGANIZATION";
 
     // ─────────────────────────────────────────────
     // UC-C1: 法的手続きレコード起票
@@ -97,6 +109,9 @@ public class LegalFilingService {
     public LegalFilingEntity createLegalFiling(
             Long organizationId, Long residentRegistryId, Long dwellingUnitId,
             String filingType, String note, Long requestingUserId) {
+
+        // 0. 認可: 起票先組織の ADMIN/DEPUTY_ADMIN 以上のみ（作成は request scope で判定）
+        accessControlService.checkAdminOrAbove(requestingUserId, organizationId, SCOPE_TYPE);
 
         // 1. filingType バリデーション
         if (!"ABSENTEE_PROPERTY_MANAGER".equals(filingType)
@@ -173,8 +188,8 @@ public class LegalFilingService {
      */
     @Transactional
     public LegalFilingEntity buildEvidencePackage(UUID legalFilingId, Long organizationId, Long requestingUserId) {
-
-        LegalFilingEntity entity = getById(legalFilingId, organizationId);
+        // 認可は getById 内で organizationId に対して行う（entity は (id, organizationId) 複合キーで取得するため BOLA 安全）
+        LegalFilingEntity entity = getById(legalFilingId, organizationId, requestingUserId);
 
         // テンプレート PDF を S3 から取得
         byte[] templatePdfBytes = storageService.download(entity.getTemplatePdfS3Key());
@@ -237,7 +252,8 @@ public class LegalFilingService {
      * @throws BusinessException EVIDENCE_NOT_READY: 証拠パッケージが未生成
      */
     public String generateEvidenceDownloadUrl(UUID legalFilingId, Long organizationId, Long requestingUserId) {
-        LegalFilingEntity entity = getById(legalFilingId, organizationId);
+        // 認可は getById 内で organizationId に対して行う（entity は (id, organizationId) 複合キーで取得するため BOLA 安全）
+        LegalFilingEntity entity = getById(legalFilingId, organizationId, requestingUserId);
         if (entity.getEvidencePackageS3Key() == null) {
             throw new BusinessException(SuccessionErrorCode.EVIDENCE_NOT_READY);
         }
@@ -255,35 +271,49 @@ public class LegalFilingService {
     // ─────────────────────────────────────────────
 
     /**
-     * 組織配下の申立一覧（理事長ダッシュボード用）。
+     * 組織配下の申立一覧（理事長ダッシュボード用・ADMIN 以上）。
      *
-     * @param organizationId テナント ID
+     * @param organizationId   テナント ID
+     * @param requestingUserId 閲覧ユーザー ID
      * @return 申立一覧（作成日降順）
      */
-    public List<LegalFilingEntity> listByOrganization(Long organizationId) {
+    public List<LegalFilingEntity> listByOrganization(Long organizationId, Long requestingUserId) {
+        accessControlService.checkAdminOrAbove(requestingUserId, organizationId, SCOPE_TYPE);
         return legalFilingRepository.findByOrganizationIdAndDeletedAtIsNullOrderByCreatedAtDesc(organizationId);
     }
 
     /**
-     * 居住者別の申立履歴一覧。
+     * 居住者別の申立履歴一覧（ADMIN 以上）。
+     *
+     * <p>BOLA 対策: {@code residentRegistryId} は他組織にも存在しうるクロスドメイン ID のため、
+     * 必ず {@code organizationId} も条件に含めて絞り込む（旧実装は organizationId 無視で越境漏洩していた）。
      *
      * @param residentRegistryId 居住者台帳 ID
-     * @param organizationId     テナント ID（現在は未使用だが、将来のシャーディング対応のために保持）
-     * @return 申立履歴（作成日降順）
+     * @param organizationId     テナント ID
+     * @param requestingUserId   閲覧ユーザー ID
+     * @return 申立履歴（作成日降順・自組織分のみ）
      */
-    public List<LegalFilingEntity> listByResident(Long residentRegistryId, Long organizationId) {
-        return legalFilingRepository.findByResidentRegistryIdAndDeletedAtIsNullOrderByCreatedAtDesc(residentRegistryId);
+    public List<LegalFilingEntity> listByResident(Long residentRegistryId, Long organizationId, Long requestingUserId) {
+        accessControlService.checkAdminOrAbove(requestingUserId, organizationId, SCOPE_TYPE);
+        return legalFilingRepository.findByResidentRegistryIdAndOrganizationIdAndDeletedAtIsNullOrderByCreatedAtDesc(
+                residentRegistryId, organizationId);
     }
 
     /**
-     * テナント分離済みの単件取得。
+     * テナント分離済みの単件取得（ADMIN 以上）。
      *
-     * @param legalFilingId  法的手続きレコード ID
-     * @param organizationId テナント ID
+     * <p>{@code (legalFilingId, organizationId)} の複合キーで取得するため、path の
+     * organizationId に対する認可はエンティティ由来 scope の認可と必ず一致する（BOLA 安全）。
+     * 別テナントの ID を指定した場合は認可の成否に関わらず {@code LEGAL_FILING_NOT_FOUND}（存在秘匿）。
+     *
+     * @param legalFilingId    法的手続きレコード ID
+     * @param organizationId   テナント ID
+     * @param requestingUserId 閲覧ユーザー ID
      * @return 法的手続きエンティティ
      * @throws BusinessException LEGAL_FILING_NOT_FOUND: レコードが存在しないか別テナント
      */
-    public LegalFilingEntity getById(UUID legalFilingId, Long organizationId) {
+    public LegalFilingEntity getById(UUID legalFilingId, Long organizationId, Long requestingUserId) {
+        accessControlService.checkAdminOrAbove(requestingUserId, organizationId, SCOPE_TYPE);
         return legalFilingRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(legalFilingId, organizationId)
                 .orElseThrow(() -> new BusinessException(SuccessionErrorCode.LEGAL_FILING_NOT_FOUND));
     }

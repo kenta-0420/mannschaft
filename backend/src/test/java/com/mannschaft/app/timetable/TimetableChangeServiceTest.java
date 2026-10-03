@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.timetable.entity.TimetableChangeEntity;
 import com.mannschaft.app.timetable.entity.TimetableEntity;
@@ -7,10 +8,12 @@ import com.mannschaft.app.timetable.repository.TimetableChangeRepository;
 import com.mannschaft.app.timetable.repository.TimetableRepository;
 import com.mannschaft.app.timetable.service.TimetableChangeService;
 import com.mannschaft.app.timetable.service.TimetableChangeService.CreateChangeData;
+import com.mannschaft.app.timetable.service.TimetableChangeService.UpdateChangeData;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -32,7 +35,10 @@ class TimetableChangeServiceTest {
     @Mock private TimetableChangeRepository changeRepository;
     @Mock private TimetableRepository timetableRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private TimetableChangeService service;
+
+    private static final Long ACTOR_USER_ID = 100L;
 
     @Nested
     @DisplayName("createChange")
@@ -56,7 +62,7 @@ class TimetableChangeServiceTest {
                     "体育", "佐藤先生", "体育館", "雨天のため", false, false, 100L);
 
             // When
-            TimetableChangeEntity result = service.createChange(1L, data);
+            TimetableChangeEntity result = service.createChange(1L, data, ACTOR_USER_ID);
 
             // Then
             assertThat(result.getChangeType()).isEqualTo(TimetableChangeType.REPLACE);
@@ -78,7 +84,7 @@ class TimetableChangeServiceTest {
                     null, null, null, "祝日", false, false, 100L);
 
             // When / Then
-            assertThatThrownBy(() -> service.createChange(1L, data))
+            assertThatThrownBy(() -> service.createChange(1L, data, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_031"));
@@ -99,10 +105,59 @@ class TimetableChangeServiceTest {
                     null, null, null, "理由", false, false, 100L);
 
             // When / Then
-            assertThatThrownBy(() -> service.createChange(1L, data))
+            assertThatThrownBy(() -> service.createChange(1L, data, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_033"));
+        }
+    }
+
+    @Nested
+    @DisplayName("updateChange")
+    class UpdateChange {
+
+        @Test
+        @DisplayName("回帰: updateChangeはfindByIdAndTimetableIdで取得した同一インスタンスをsaveする（toBuilderで新規行を作らない）")
+        void 更新_同一インスタンスUPDATE() throws Exception {
+            // Given
+            TimetableChangeEntity entity = TimetableChangeEntity.builder()
+                    .timetableId(1L)
+                    .targetDate(LocalDate.of(2025, 5, 1))
+                    .periodNumber(1)
+                    .changeType(TimetableChangeType.REPLACE)
+                    .subjectName("数学")
+                    .teacherName("鈴木先生")
+                    .notifyMembers(false).build();
+            // id を反射でセット
+            var idField = entity.getClass().getSuperclass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(entity, 30L);
+
+            UpdateChangeData data = new UpdateChangeData(
+                    "体育", null, null, null, null);
+
+            TimetableEntity timetable = TimetableEntity.builder()
+                    .teamId(1L).termId(1L).name("テスト")
+                    .status(TimetableStatus.ACTIVE)
+                    .visibility(TimetableVisibility.MEMBERS_ONLY)
+                    .weekPatternEnabled(false).build();
+            given(timetableRepository.findById(1L)).willReturn(Optional.of(timetable));
+            given(changeRepository.findByIdAndTimetableId(30L, 1L)).willReturn(Optional.of(entity));
+            given(changeRepository.save(any(TimetableChangeEntity.class))).willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            service.updateChange(30L, 1L, data, ACTOR_USER_ID);
+
+            // Then
+            // toBuilder().build() で別インスタンスを save していたら id=null の新規行 INSERT になる。
+            // 同一インスタンスを save することで UPDATE になっていることを検証する。
+            ArgumentCaptor<TimetableChangeEntity> captor = ArgumentCaptor.forClass(TimetableChangeEntity.class);
+            verify(changeRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(entity);
+            // id が保持されている（= INSERT でなく UPDATE）
+            assertThat(captor.getValue().getId()).isEqualTo(30L);
+            // subjectName が更新されている
+            assertThat(captor.getValue().getSubjectName()).isEqualTo("体育");
         }
     }
 
@@ -114,10 +169,16 @@ class TimetableChangeServiceTest {
         @DisplayName("異常系: 臨時変更不在でTIMETABLE_004例外")
         void 削除_不在_例外() {
             // Given
+            TimetableEntity timetable = TimetableEntity.builder()
+                    .teamId(1L).termId(1L).name("テスト")
+                    .status(TimetableStatus.ACTIVE)
+                    .visibility(TimetableVisibility.MEMBERS_ONLY)
+                    .weekPatternEnabled(false).build();
+            given(timetableRepository.findById(1L)).willReturn(Optional.of(timetable));
             given(changeRepository.findByIdAndTimetableId(1L, 1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.deleteChange(1L, 1L))
+            assertThatThrownBy(() -> service.deleteChange(1L, 1L, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_004"));

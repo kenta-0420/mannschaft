@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { useDebounceFn, useEventBus } from '@vueuse/core'
 import type { ChatChannelResponse, ChatMessageResponse } from '~/types/chat'
+import {
+  mapBeMessage,
+  aggregateReactions,
+  type BeMessageResponse,
+  type BeReaction,
+} from '~/composables/chat/chatMessageMapper'
+import { useChatMembershipInvite } from '~/composables/chat/useChatMembershipInvite'
 import type { ActiveThreadItem } from './message-panel/ChatActiveThreadsDrawer.vue'
 
 const props = defineProps<{
@@ -16,6 +23,10 @@ const emit = defineEmits<{
 }>()
 
 const showInviteDialog = ref(false)
+const showMembershipInviteDialog = ref(false)
+
+const { joinInvite, declineInvite } = useChatMembershipInvite()
+const { t } = useI18n()
 
 const {
   getMessages,
@@ -205,6 +216,55 @@ function onSent() {
 }
 
 // ============================================================
+// 承諾型招待カード（F04.12）— 承諾 / 辞退
+// ============================================================
+
+/** 承諾/辞退 API 実行中の招待トークン（招待カードのボタンローディング用・多重送信防止）。 */
+const pendingInviteToken = ref<string | null>(null)
+
+/**
+ * 招待カードの状態をローカルで差し替える（設計書 A-2）。
+ *
+ * 既存 WS は MESSAGE_CREATED のみで MESSAGE_UPDATED を招待カードに使わないため、
+ * ユーザーが操作した当該カード（messageId 既知）を直接 JOINED/REVOKED へ差し替える。
+ * 発行者側 DM は次回フェッチ時に BE が inviteData.status を再導出して最終整合する。
+ */
+function updateInviteStatus(messageId: number, status: 'JOINED' | 'REVOKED') {
+  const msg = messages.value.find((m) => m.id === messageId)
+  if (msg && msg.inviteData) {
+    msg.inviteData = { ...msg.inviteData, status }
+  }
+}
+
+async function onInviteJoin(messageId: number, token: string) {
+  if (pendingInviteToken.value) return
+  pendingInviteToken.value = token
+  try {
+    await joinInvite(token)
+    updateInviteStatus(messageId, 'JOINED')
+    showSuccess(t('chat.invite.joinedSuccess'))
+  } catch {
+    showError(t('chat.invite.error.joinFailed'))
+  } finally {
+    pendingInviteToken.value = null
+  }
+}
+
+async function onInviteDecline(messageId: number, token: string) {
+  if (pendingInviteToken.value) return
+  pendingInviteToken.value = token
+  try {
+    await declineInvite(token)
+    updateInviteStatus(messageId, 'REVOKED')
+    showSuccess(t('chat.invite.declinedSuccess'))
+  } catch {
+    showError(t('chat.invite.error.declineFailed'))
+  } finally {
+    pendingInviteToken.value = null
+  }
+}
+
+// ============================================================
 // タイピングインジケーター
 // ============================================================
 
@@ -227,15 +287,17 @@ const debouncedSendTyping = useDebounceFn(() => {
 const wsEventBus = useEventBus<{ type: string; data: unknown }>('chat:ws:event')
 
 const offWsEvent = wsEventBus.on((event) => {
+  const currentUserId = authStore.user?.id
   if (event.type === 'MESSAGE_CREATED') {
-    const newMsg = event.data as ChatMessageResponse
+    // WS の data は BE ネスト生形状のため、マッパーで FE フラット型へ変換する
+    const newMsg = mapBeMessage(event.data as BeMessageResponse, currentUserId)
     // 重複チェック: REST API で送信した直後にバックエンドが WS でも同一メッセージを返すことがあるため
     if (!messages.value.some((m) => m.id === newMsg.id)) {
       messages.value.push(newMsg)
       nextTick(() => scrollToBottom())
     }
   } else if (event.type === 'MESSAGE_UPDATED') {
-    const updated = event.data as ChatMessageResponse
+    const updated = mapBeMessage(event.data as BeMessageResponse, currentUserId)
     const idx = messages.value.findIndex((m) => m.id === updated.id)
     if (idx !== -1) {
       messages.value[idx] = updated
@@ -247,17 +309,19 @@ const offWsEvent = wsEventBus.on((event) => {
       messages.value[idx] = { ...messages.value[idx]!, isDeleted: true, body: null, sender: null }
     }
   } else if (event.type === 'REACTION_UPDATED') {
-    const reaction = event.data as {
-      messageId: number
-      reactionSummary: Record<string, number>
-      myReactions: string[]
-    }
+    // BE は { messageId, reactions[] }（生）を送るため、ここで集計形へ変換する
+    const reaction = event.data as { messageId: number; reactions: BeReaction[] }
     const idx = messages.value.findIndex((m) => m.id === reaction.messageId)
     if (idx !== -1) {
+      const { reactionSummary, myReactions } = aggregateReactions(
+        reaction.reactions ?? [],
+        currentUserId,
+      )
       messages.value[idx] = {
         ...messages.value[idx]!,
-        reactionSummary: reaction.reactionSummary,
-        myReactions: reaction.myReactions,
+        reactionSummary,
+        myReactions,
+        reactionCount: (reaction.reactions ?? []).length,
       }
     }
   } else if (event.type === 'TYPING') {
@@ -312,7 +376,11 @@ onUnmounted(() => {
     </div>
 
     <!-- チャンネルヘッダー -->
-    <ChatChannelHeader :channel="channel" @invite="showInviteDialog = true" />
+    <ChatChannelHeader
+      :channel="channel"
+      @invite="showInviteDialog = true"
+      @membership-invite="showMembershipInviteDialog = true"
+    />
 
     <!-- アクティブスレッドバッジ -->
     <ChatActiveThreadsBar
@@ -336,12 +404,15 @@ onUnmounted(() => {
           :next-cursor="nextCursor"
           :can-pin="canPin"
           :can-delete="canDelete"
+          :pending-invite-token="pendingInviteToken"
           @load-more="(cursor: string) => loadMessages(cursor)"
           @reaction="onReaction"
           @pin="onPin"
           @delete="onDelete"
           @bookmark="onBookmark"
           @reply="openThread"
+          @invite-join="onInviteJoin"
+          @invite-decline="onInviteDecline"
         />
 
         <!-- タイピングインジケーター -->
@@ -350,7 +421,7 @@ onUnmounted(() => {
         <!-- 入力 -->
         <ChatMessageInput
           :channel-id="channel.id"
-          :disabled="channel.isArchived"
+          :disabled="channel.settings.isArchived"
           @sent="onSent"
           @typing="debouncedSendTyping"
         />
@@ -387,10 +458,17 @@ onUnmounted(() => {
   <ChatInviteToZimmerDialog
     v-model:visible="showInviteDialog"
     :channel-id="channel.id"
-    :dm-partner-user-id="channel.dmPartner?.id"
+    :dm-partner-user-id="channel.dmPartner?.userId"
     :team-id="teamId"
     :organization-id="organizationId"
     @created="(ch) => emit('channelCreated', ch)"
+  />
+
+  <!-- チーム/組織への承諾型招待モーダル（F04.12）。発行後にメッセージを再取得してカードを反映する -->
+  <ChatMembershipInviteDialog
+    v-model:visible="showMembershipInviteDialog"
+    :channel-id="channel.id"
+    @invited="loadMessages()"
   />
 </template>
 
@@ -402,6 +480,12 @@ onUnmounted(() => {
   font-size: 0.875rem;
   padding: 8px 16px;
   text-align: center;
+}
+
+:global(.dark) .reconnect-warning {
+  background-color: #451a03;
+  border-bottom-color: #92400e;
+  color: #fef3c7;
 }
 
 .slide-right-enter-active,

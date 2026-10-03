@@ -7,7 +7,7 @@
  *
  * 設計書: docs/features/F21.1_geo_optimization.md §5.5.6
  */
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = String(route.params.slug)

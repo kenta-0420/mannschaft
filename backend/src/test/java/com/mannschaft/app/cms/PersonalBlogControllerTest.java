@@ -82,7 +82,7 @@ class PersonalBlogControllerTest {
                 .id(POST_ID)
                 .scope(new BlogPostResponse.BlogPostScopeDto(null, null, USER_ID, USER_ID))
                 .content(new BlogPostResponse.BlogPostContentDto("個人記事", "my-post", "本文", null, null))
-                .meta(new BlogPostResponse.BlogPostMetaDto("BLOG", "PUBLIC", "NORMAL", "PUBLISHED", false, false))
+                .meta(new BlogPostResponse.BlogPostMetaDto("BLOG", "PUBLIC", "NORMAL", "PUBLISHED", false, false, true))
                 .stats(new BlogPostResponse.BlogPostStatisticsDto(0, (short) 1, false, 0))
                 .audit(new BlogPostResponse.BlogPostAuditDto(null, 1, null, null))
                 .tags(List.of())
@@ -191,7 +191,7 @@ class PersonalBlogControllerTest {
             ResponseEntity<Void> result = controller.deletePost(POST_ID);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(postService).deletePost(POST_ID);
+            verify(postService).deletePost(POST_ID, USER_ID);
         }
     }
 
@@ -207,7 +207,7 @@ class PersonalBlogControllerTest {
         @DisplayName("正常系: ステータス変更される")
         void ステータス変更_正常() {
             PublishRequest request = new PublishRequest("PUBLISHED", null, null);
-            given(postService.changeStatus(eq(POST_ID), any())).willReturn(mockResponse());
+            given(postService.changeStatus(eq(POST_ID), eq(USER_ID), any())).willReturn(mockResponse());
 
             ResponseEntity<ApiResponse<BlogPostResponse>> result = controller.changeStatus(POST_ID, request);
 
@@ -251,7 +251,7 @@ class PersonalBlogControllerTest {
             ResponseEntity<Void> result = controller.revokeShare(POST_ID, SHARE_ID);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(postService).revokeShare(POST_ID, SHARE_ID);
+            verify(postService).revokeShare(POST_ID, SHARE_ID, USER_ID);
         }
     }
 

@@ -93,7 +93,9 @@ public class BudgetFiscalYearService {
     public FiscalYearResponse getById(Long id) {
         BudgetFiscalYearEntity entity = findById(id);
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(currentUserId, entity.getScopeId(), entity.getScopeType());
+        // 認可根治戦役 CMP-260917-2102 Phase 1 の追撃: checkMembership止まりでMEMBERも会計年度詳細を
+        // 閲覧できていた実機バグを根治する。予算はスコープ問わずDEPUTY_ADMIN限定のためスコープ分岐は不要。
+        accessControlService.checkAdminOrAbove(currentUserId, entity.getScopeId(), entity.getScopeType());
         return budgetMapper.toFiscalYearResponse(entity);
     }
 
@@ -102,7 +104,9 @@ public class BudgetFiscalYearService {
      */
     public List<FiscalYearResponse> listByScope(String scopeType, Long scopeId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(currentUserId, scopeId, scopeType);
+        // 認可根治戦役 CMP-260917-2102 Phase 1 の追撃: checkMembership止まりでMEMBERも会計年度一覧を
+        // 閲覧できていた実機バグを根治する。予算はスコープ問わずDEPUTY_ADMIN限定のためスコープ分岐は不要。
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
 
         return fiscalYearRepository.findByScopeTypeAndScopeId(scopeType, scopeId)
                 .stream()
@@ -121,13 +125,15 @@ public class BudgetFiscalYearService {
 
         checkOpen(entity);
 
-        BudgetFiscalYearEntity updated = entity.toBuilder()
-                .name(request.name())
-                .startDate(request.startDate())
-                .endDate(request.endDate())
-                .build();
+        // 管理対象エンティティを直接ミューテートして id 保持＝UPDATE を保証する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        entity.applyUpdate(
+                request.name(),
+                request.startDate(),
+                request.endDate()
+        );
 
-        BudgetFiscalYearEntity saved = fiscalYearRepository.save(updated);
+        BudgetFiscalYearEntity saved = fiscalYearRepository.save(entity);
         log.info("会計年度を更新しました: id={}", saved.getId());
         return budgetMapper.toFiscalYearResponse(saved);
     }

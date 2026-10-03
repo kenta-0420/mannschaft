@@ -20,6 +20,11 @@ public interface UserScheduleGoogleEventRepository extends JpaRepository<UserSch
     Optional<UserScheduleGoogleEventEntity> findByUserIdAndScheduleId(Long userId, Long scheduleId);
 
     /**
+     * Google イベントIDでマッピングを取得する（双方向同期のインポート冪等チェック用）。
+     */
+    Optional<UserScheduleGoogleEventEntity> findByGoogleEventId(String googleEventId);
+
+    /**
      * ユーザーIDでマッピング一覧を取得する。
      */
     List<UserScheduleGoogleEventEntity> findByUserId(Long userId);
@@ -45,6 +50,25 @@ public interface UserScheduleGoogleEventRepository extends JpaRepository<UserSch
     @Modifying
     @Query("DELETE FROM UserScheduleGoogleEventEntity e WHERE e.userId = :userId")
     void deleteAllByUserId(@Param("userId") Long userId);
+
+    /**
+     * 指定ユーザー×スコープ（TEAM/ORGANIZATION）に属する同期済みマッピングを取得する
+     * （堅牢化フェーズ AC-6/AC-7: トグルOFF・退会連動での Google イベント削除用）。
+     *
+     * <p>{@code user_schedule_google_events} は scope 列を持たないため、{@code schedules} と
+     * 結合してスコープで絞り込む。論理削除済みスケジュールに紐づくマッピングも掃除対象に含める
+     * ため、{@code @SQLRestriction} を回避する native query を用いる。</p>
+     */
+    @Query(value = "SELECT e.* FROM user_schedule_google_events e "
+            + "JOIN schedules s ON e.schedule_id = s.id "
+            + "WHERE e.user_id = :userId "
+            + "AND ((:scopeType = 'TEAM' AND s.team_id = :scopeId) "
+            + "  OR (:scopeType = 'ORGANIZATION' AND s.organization_id = :scopeId))",
+            nativeQuery = true)
+    List<UserScheduleGoogleEventEntity> findByUserIdAndScope(
+            @Param("userId") Long userId,
+            @Param("scopeType") String scopeType,
+            @Param("scopeId") Long scopeId);
 
     /**
      * スコープ指定で未同期スケジュール件数を取得する。

@@ -1,6 +1,7 @@
 package com.mannschaft.app.queue.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.queue.AcceptMode;
 import com.mannschaft.app.queue.QueueErrorCode;
 import com.mannschaft.app.queue.QueueMapper;
@@ -65,7 +66,7 @@ public class QueueCounterService {
         categoryService.findEntityOrThrow(request.getCategoryId());
 
         AcceptMode acceptMode = request.getAcceptMode() != null
-                ? AcceptMode.valueOf(request.getAcceptMode()) : AcceptMode.BOTH;
+                ? EnumInputParser.parse(AcceptMode.class, request.getAcceptMode(), "acceptMode") : AcceptMode.BOTH;
 
         QueueCounterEntity entity = QueueCounterEntity.builder()
                 .categoryId(request.getCategoryId())
@@ -102,7 +103,7 @@ public class QueueCounterService {
         QueueCounterEntity entity = findCounterOrThrow(id);
 
         AcceptMode acceptMode = request.getAcceptMode() != null
-                ? AcceptMode.valueOf(request.getAcceptMode()) : entity.getAcceptMode();
+                ? EnumInputParser.parse(AcceptMode.class, request.getAcceptMode(), "acceptMode") : entity.getAcceptMode();
 
         entity.update(
                 request.getName(),

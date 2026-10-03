@@ -118,6 +118,139 @@ class AnnouncementBroadcastServiceTest {
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // MEMBER の target_role 制限（BROADCAST_005）
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("MEMBER が MEMBERS_AND_ABOVE 以外の target_role を指定した場合")
+    class MemberTargetRoleRestriction {
+
+        @Test
+        @DisplayName("組織スコープで一般 MEMBER が target_role=PUBLIC を指定すると BROADCAST_005 で拒否されること")
+        void throwsBroadcast005WhenMemberBroadcastsPublicToOrganization() {
+            // given: 一般 MEMBER（ADMIN 以上ではない）が組織全体へ PUBLIC 告知を試みる
+            BroadcastRequest req = buildBroadcastRequestWithTargetRole(
+                    "ORGANIZATION", "PUBLIC", "NORMAL", AnnouncementChannel.BULLETIN_THREAD);
+
+            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, "ORGANIZATION")).willReturn(false);
+
+            // when / then
+            assertThatThrownBy(() -> broadcastService.broadcast(req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> {
+                        BusinessException be = (BusinessException) ex;
+                        assertThat(be.getErrorCode().getCode()).isEqualTo("BROADCAST_005");
+                    });
+
+            // コンテンツは一切作成されないこと（アダプター未呼び出し）
+            verify(adapterRegistry, never()).getAdapter(any());
+            verify(announcementFeedService, never()).createFromBroadcast(
+                    any(), anyLong(), any(), anyLong(), anyLong(),
+                    anyString(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("チームスコープで一般 MEMBER が target_role=PUBLIC を指定すると BROADCAST_005 で拒否されること")
+        void throwsBroadcast005WhenMemberBroadcastsPublicToTeam() {
+            // given: 一般 MEMBER がチーム全体へ PUBLIC 告知を試みる
+            BroadcastRequest req = buildBroadcastRequestWithTargetRole(
+                    "TEAM", "PUBLIC", "NORMAL", AnnouncementChannel.BULLETIN_THREAD);
+
+            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, "TEAM")).willReturn(false);
+
+            // when / then
+            assertThatThrownBy(() -> broadcastService.broadcast(req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> {
+                        BusinessException be = (BusinessException) ex;
+                        assertThat(be.getErrorCode().getCode()).isEqualTo("BROADCAST_005");
+                    });
+
+            verify(adapterRegistry, never()).getAdapter(any());
+        }
+
+        @Test
+        @DisplayName("一般 MEMBER が target_role=SUPPORTERS_AND_ABOVE を指定しても BROADCAST_005 で拒否されること")
+        void throwsBroadcast005WhenMemberBroadcastsSupportersAndAbove() {
+            BroadcastRequest req = buildBroadcastRequestWithTargetRole(
+                    "ORGANIZATION", "SUPPORTERS_AND_ABOVE", "NORMAL", AnnouncementChannel.BULLETIN_THREAD);
+
+            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, "ORGANIZATION")).willReturn(false);
+
+            assertThatThrownBy(() -> broadcastService.broadcast(req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> {
+                        BusinessException be = (BusinessException) ex;
+                        assertThat(be.getErrorCode().getCode()).isEqualTo("BROADCAST_005");
+                    });
+        }
+
+        @Test
+        @DisplayName("ADMIN は target_role=PUBLIC を指定しても従来どおり成功すること（回帰防止）")
+        void doesNotThrowWhenAdminBroadcastsPublic() {
+            // given
+            BroadcastRequest req = buildBroadcastRequestWithTargetRole(
+                    "ORGANIZATION", "PUBLIC", "NORMAL", AnnouncementChannel.BULLETIN_THREAD);
+
+            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, "ORGANIZATION")).willReturn(true);
+
+            AnnouncementChannelAdapter mockAdapter = buildMockAdapter(AnnouncementSourceType.BULLETIN_THREAD, CONTENT_ID);
+            given(adapterRegistry.getAdapter(AnnouncementChannel.BULLETIN_THREAD)).willReturn(mockAdapter);
+
+            AnnouncementFeedEntity mockFeed = buildMockFeed(FEED_ID);
+            given(announcementFeedService.createFromBroadcast(
+                    any(), anyLong(), any(), anyLong(), anyLong(),
+                    anyString(), any(), any(), any(), any()))
+                    .willReturn(mockFeed);
+
+            // when
+            BroadcastResult result = broadcastService.broadcast(req);
+
+            // then: 例外なく完了すること
+            assertThat(result).isNotNull();
+            assertThat(result.getContentId()).isEqualTo(CONTENT_ID);
+        }
+
+        @Test
+        @DisplayName("一般 MEMBER でも target_role=MEMBERS_AND_ABOVE（内輪）なら従来どおり成功すること（回帰防止）")
+        void doesNotThrowWhenMemberBroadcastsMembersAndAbove() {
+            // given: target_role のデフォルト値 MEMBERS_AND_ABOVE
+            BroadcastRequest req = buildBroadcastRequest("ORGANIZATION", null, "NORMAL", AnnouncementChannel.BULLETIN_THREAD);
+
+            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, "ORGANIZATION")).willReturn(false);
+
+            AnnouncementChannelAdapter mockAdapter = buildMockAdapter(AnnouncementSourceType.BULLETIN_THREAD, CONTENT_ID);
+            given(adapterRegistry.getAdapter(AnnouncementChannel.BULLETIN_THREAD)).willReturn(mockAdapter);
+
+            AnnouncementFeedEntity mockFeed = buildMockFeed(FEED_ID);
+            given(announcementFeedService.createFromBroadcast(
+                    any(), anyLong(), any(), anyLong(), anyLong(),
+                    anyString(), any(), any(), any(), any()))
+                    .willReturn(mockFeed);
+
+            // when / then
+            assertThat(broadcastService.broadcast(req)).isNotNull();
+        }
+
+        @Test
+        @DisplayName("非所属者は target_role に関わらずメンバーシップ検証で拒否されること（既存挙動の維持）")
+        void nonMemberIsRejectedByMembershipCheckRegardlessOfTargetRole() {
+            // given: checkMembership が例外を投げる（スコープ外ユーザー）
+            BroadcastRequest req = buildBroadcastRequestWithTargetRole(
+                    "ORGANIZATION", "MEMBERS_AND_ABOVE", "NORMAL", AnnouncementChannel.BULLETIN_THREAD);
+
+            org.mockito.Mockito.doThrow(new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkMembership(USER_ID, SCOPE_ID, "ORGANIZATION");
+
+            // when / then
+            assertThatThrownBy(() -> broadcastService.broadcast(req))
+                    .isInstanceOf(BusinessException.class);
+
+            verify(adapterRegistry, never()).getAdapter(any());
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // target_team_ids バリデーション
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -256,6 +389,26 @@ class AnnouncementBroadcastServiceTest {
                 .channel(channel)
                 .targetRole("MEMBERS_AND_ABOVE")
                 .targetTeamIds(targetTeamIds)
+                .priority(priority)
+                .content(AnnouncementContentRequest.builder()
+                        .title("テスト告知タイトル")
+                        .body("テスト告知本文")
+                        .build())
+                .callerUserId(USER_ID)
+                .scopeType(scopeType)
+                .scopeId(SCOPE_ID)
+                .build();
+    }
+
+    private BroadcastRequest buildBroadcastRequestWithTargetRole(
+            String scopeType,
+            String targetRole,
+            String priority,
+            AnnouncementChannel channel) {
+
+        return BroadcastRequest.builder()
+                .channel(channel)
+                .targetRole(targetRole)
                 .priority(priority)
                 .content(AnnouncementContentRequest.builder()
                         .title("テスト告知タイトル")

@@ -2,6 +2,7 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.village.dto.VillageInternalSearchResponse;
 import com.mannschaft.app.village.service.VillageSearchService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,8 +44,14 @@ public class VillageSearchController {
 
     private final VillageSearchService searchService;
 
+    /**
+     * 認可は {@link VillageSearchService#search} 内で実施する。村の存在確認ののち
+     * {@code requireVillageMember} が在籍かつ BAN 済みでないことを検証し、
+     * 満たさない場合は {@code NOT_MEMBER}（404）で村の存在ごと秘匿する。
+     */
+    @AuthorizedInService
     @GetMapping
-    @Operation(summary = "村内横断検索（投稿・メッセージ・メンバー）")
+    @Operation(summary = "村内横断検索（投稿・メッセージ・メンバー／村人のみ）")
     public ApiResponse<VillageInternalSearchResponse> search(
             @PathVariable("villageId") UUID villageId,
             @RequestParam(name = "q") String q,

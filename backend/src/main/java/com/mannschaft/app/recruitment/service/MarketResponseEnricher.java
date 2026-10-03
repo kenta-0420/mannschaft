@@ -1,9 +1,6 @@
 package com.mannschaft.app.recruitment.service;
 
-import com.mannschaft.app.matching.entity.CityEntity;
-import com.mannschaft.app.matching.entity.PrefectureEntity;
-import com.mannschaft.app.matching.repository.CityRepository;
-import com.mannschaft.app.matching.repository.PrefectureRepository;
+import com.mannschaft.app.matching.service.RegionMasterLookupService;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.dto.FriendTargetView;
 import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
@@ -28,8 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MarketResponseEnricher {
 
-    private final PrefectureRepository prefectureRepository;
-    private final CityRepository cityRepository;
+    private final RegionMasterLookupService regionMasterLookupService;
     private final MarketFriendTargetService marketFriendTargetService;
     // F22.1 市 Phase2 D: 複数地域募集（N:N）の中間表（既存メソッド再利用・新規 @Query なし）
     private final RecruitmentListingRegionRepository listingRegionRepository;
@@ -115,11 +111,11 @@ public class MarketResponseEnricher {
             return null;
         }
         String prefectureName = prefectureCode == null ? null
-                : prefectureRepository.findById(prefectureCode)
-                        .map(PrefectureEntity::getName).orElse(null);
+                : regionMasterLookupService.findPrefectureByCode(prefectureCode)
+                        .map(RegionMasterLookupService.Prefecture::name).orElse(null);
         String cityName = cityCode == null ? null
-                : cityRepository.findById(cityCode)
-                        .map(CityEntity::getName).orElse(null);
+                : regionMasterLookupService.findCityByCode(cityCode)
+                        .map(RegionMasterLookupService.City::name).orElse(null);
         return new RecruitmentRegionView(prefectureCode, prefectureName, cityCode, cityName);
     }
 }

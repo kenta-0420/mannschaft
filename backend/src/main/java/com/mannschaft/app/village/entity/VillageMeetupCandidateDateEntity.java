@@ -6,8 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,6 +14,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 /**
@@ -28,8 +28,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PUBLIC)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class VillageMeetupCandidateDateEntity extends UuidV7Entity {
 
@@ -40,6 +39,10 @@ public class VillageMeetupCandidateDateEntity extends UuidV7Entity {
     /** 候補日 */
     @Column(name = "candidate_date", nullable = false)
     private LocalDate candidateDate;
+
+    /** 候補の時刻（任意・NULL は終日）。#2357 */
+    @Column(name = "candidate_time")
+    private LocalTime candidateTime;
 
     /** 表示順 */
     @Column(name = "sort_order", nullable = false)

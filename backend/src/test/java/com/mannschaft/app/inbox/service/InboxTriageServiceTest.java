@@ -5,11 +5,12 @@ import com.mannschaft.app.inbox.InboxSourceType;
 import com.mannschaft.app.inbox.entity.InboxItemStateEntity;
 import com.mannschaft.app.inbox.error.InboxErrorCode;
 import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
+import com.mannschaft.app.inbox.repository.NotificationLabelRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -33,8 +34,8 @@ import static org.mockito.Mockito.verify;
  * <p>設計書 02_api_design.md §3.3 / 03_business_logic.md §5 / 01_data_model.md §2.1 から、
  * snooze/unsnooze/archive/unarchive の upsert・遅延物理削除・過去時刻拒否を受け入れ条件化する。</p>
  *
- * <p><b>test-first（red 想定）</b>: 本体は三陣で実装する。現段階は
- * {@link UnsupportedOperationException} で失敗するのが正しい。</p>
+ * <p>認可（対象通知が本人に可視か）の判定は {@link InboxAccessGuard} に集約されており、
+ * 本テストは実物のゲートに {@link InboxItemVisibilityChecker} のモックを与えて検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -51,8 +52,21 @@ class InboxTriageServiceTest {
     @Mock
     private InboxItemVisibilityChecker visibilityChecker;
 
-    @InjectMocks
+    @Mock
+    private NotificationLabelRepository labelRepository;
+
+    /**
+     * 認可ゲートは実物を使う（可視性チェッカーは上のモックを流用する）。
+     * 対象通知の可視性判定は {@code visibilityChecker.isVisibleTo} のままなので、
+     * 各テストのスタブはそのまま認可判定に効く。
+     */
     private InboxTriageService triageService;
+
+    @BeforeEach
+    void wireService() {
+        triageService = new InboxTriageService(itemStateRepository,
+                new InboxAccessGuard(labelRepository, visibilityChecker));
+    }
 
     /** JST(+09:00) オフセット。アプリは JVM 既定 TZ を Asia/Tokyo に固定しているため、これが壁時計の基準。 */
     private static final ZoneOffset JST = ZoneOffset.ofHours(9);

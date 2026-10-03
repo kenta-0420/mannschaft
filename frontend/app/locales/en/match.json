@@ -237,7 +237,10 @@
           "title": "Failed to record period boundary",
           "detail": "The period transition could not be saved to the server. Scores and playing-time totals may be inaccurate. Please re-trigger the timer to record it again."
         },
-        "complete_failed": "Failed to save match completion"
+        "complete_failed": "Failed to save match completion",
+        "score_load_failed": "Could not load the existing scores. Please reload the page",
+        "load_players_failed": "Failed to load the player roster",
+        "substitution_rollback_failed": "Failed to undo the substitution. Please check the substitution record"
       },
       "read_only_notice": "View only. Only admins, deputies and scorekeepers can record",
       "spectator": {
@@ -450,13 +453,20 @@
       "OH": "Outside hitter",
       "L": "Libero"
     },
+    "org_select": {
+      "label": "Organization",
+      "invalid": "The specified organization is invalid (not an organization of this team). Please choose an organization again",
+      "placeholder": "Select an organization"
+    },
     "org_context": {
-      "resolve_failed": "Could not resolve team/organization info. Please check your memberships"
+      "resolve_failed": "Could not resolve team/organization info. Please check your memberships",
+      "not_member_of_org": "This team is not a member of the tournament's organization, so the match cannot be recorded"
     },
     "entry": {
       "record_from_schedule": "Record this match",
       "record_from_schedule_hint": "Start recording the match for this event",
-      "resolving": "Preparing match record…"
+      "resolving": "Preparing match record…",
+      "no_org_for_record": "Match recording is only available when the team belongs to an organization"
     },
     "fixtures": {
       "title": "Fixtures",
@@ -641,6 +651,28 @@
         "error": {
           "load_failed": "Failed to load the score breakdown",
           "save_failed": "Failed to save the score breakdown"
+        }
+      },
+      "ranking": {
+        "switch_to_ranking": "Enter multi-competitor ranking",
+        "intro": "Add competitors and enter each total score; the server automatically ranks them by descending total.",
+        "mode_label": "Multi-competitor ranking",
+        "switch_to_direct": "Switch to direct total entry",
+        "canonical_notice": "Competitor entries exist, so multi-competitor ranking is the source of record.",
+        "clear_to_direct": "Clear entries and return to direct entry",
+        "standings": "Ranking (computed by server)",
+        "competitor_label": "Competitor name",
+        "competitor_placeholder": "e.g. Hanako Yamada",
+        "total_label": "Total score",
+        "add_entry": "Add competitor",
+        "remove_entry": "Remove this competitor",
+        "complete": "Confirm ranking",
+        "complete_hint": "Add at least two competitors and enter each name and total score",
+        "user_fallback": "Player #{id}",
+        "team_fallback": "Team #{id}",
+        "error": {
+          "load_failed": "Failed to load competitor entries",
+          "save_failed": "Failed to save competitor entries"
         }
       }
     }

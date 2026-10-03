@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment.service;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.payment.FeeBreakdown;
 import com.mannschaft.app.payment.FeePolicy;
 import com.mannschaft.app.payment.FeePolicyEntity;
@@ -35,7 +36,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -89,6 +89,27 @@ public class MembershipSubscriptionWebhookService {
     /** 継続課金 platform Webhook で本サービスが受けるイベント種別（接頭辞 invoice. ＋ subscription.deleted）。 */
     static final String INVOICE_EVENT_PREFIX = "invoice.";
     static final String SUBSCRIPTION_DELETED_EVENT = "customer.subscription.deleted";
+    /**
+     * PR6a AC-83: billing の停止窓の回収の入口となる種別。
+     *
+     * <p>会費側（F08.9）はこの種別を処理しない。{@link #isSubscriptionEvent} に含めるのは、
+     * dispatcher の subscription 分岐を通さないと billing の受け口へ届かないためである。</p>
+     */
+    static final String SUBSCRIPTION_UPDATED_EVENT = "customer.subscription.updated";
+    /**
+     * PR6b-1 AC-40: {@code customer.subscription.pending_update_expired} も billing の受け口
+     * （upgrade の失敗確定の入口）へ届ける必要があるため、この分岐に含める。会費側（F08.9）は
+     * この種別を処理しない（{@link #SUBSCRIPTION_UPDATED_EVENT} と同型）。
+     */
+    static final String SUBSCRIPTION_PENDING_UPDATE_EXPIRED_EVENT =
+            "customer.subscription.pending_update_expired";
+    /**
+     * PR6b-1 第9隊 AC-75: {@code customer.subscription.pending_update_applied} も billing の受け口
+     * （upgrade の適用確定の入口）へ届ける必要があるため、この分岐に含める。会費側（F08.9）は
+     * この種別を処理しない（{@link #SUBSCRIPTION_PENDING_UPDATE_EXPIRED_EVENT} と同型）。
+     */
+    static final String SUBSCRIPTION_PENDING_UPDATE_APPLIED_EVENT =
+            "customer.subscription.pending_update_applied";
 
     /** 固定手数料上書きの対象とする課金理由（更新サイクルのみ・初回 subscription_create は案b で発生しない＝防御）。 */
     private static final String BILLING_REASON_SUBSCRIPTION_CYCLE = "subscription_cycle";
@@ -110,7 +131,16 @@ public class MembershipSubscriptionWebhookService {
      * 本サービスが対象とするイベントか（{@link StripeWebhookService} の委譲判定で用いる）。
      */
     public static boolean isSubscriptionEvent(String type) {
-        return type != null && (type.startsWith(INVOICE_EVENT_PREFIX) || SUBSCRIPTION_DELETED_EVENT.equals(type));
+        // PR6a AC-83: customer.subscription.updated を「subscription イベント」の委譲分岐に含める。
+        // 会費側（F08.9）はこの種別を処理しないが、この分岐に入らないと billing の受け口
+        // （停止窓の回収の入口）へ届かない。所有判定は billing 側が psp_subscription_ref で行い、
+        // 所有しなければ dispatcher が従来どおり保留記録へ落とす。
+        return type != null
+                && (type.startsWith(INVOICE_EVENT_PREFIX)
+                    || SUBSCRIPTION_DELETED_EVENT.equals(type)
+                    || SUBSCRIPTION_UPDATED_EVENT.equals(type)
+                    || SUBSCRIPTION_PENDING_UPDATE_EXPIRED_EVENT.equals(type)
+                    || SUBSCRIPTION_PENDING_UPDATE_APPLIED_EVENT.equals(type));
     }
 
     /**
@@ -241,6 +271,16 @@ public class MembershipSubscriptionWebhookService {
      * 既定（率5%＋固定0）へフォールバックし {@code NullPointerException}（症状を隠した連鎖故障）を起こさない。</p>
      */
     private long computeFixedApplicationFee(MembershipSubscriptionEntity subscription) {
+        return computeFeeBreakdown(subscription).applicationFeeAmount();
+    }
+
+    /**
+     * 焼き付けた {@code fee_policy_key} と {@code face_amount} から手数料内訳一式を復元する。
+     *
+     * <p>{@code application_fee_amount} の上書き（{@code invoice.created}）と記帳（{@code invoice.paid}）の
+     * 双方が本メソッドの単一の内訳を使うことで、上書き額と記帳額が構造的に食い違わないようにする。</p>
+     */
+    private FeeBreakdown computeFeeBreakdown(MembershipSubscriptionEntity subscription) {
         FeePolicy policy = feePolicyRepository
                 .findByPolicyKeyAndEnabledTrue(subscription.getFeePolicyKey())
                 .map(FeePolicyEntity::toFeePolicy)
@@ -249,8 +289,7 @@ public class MembershipSubscriptionWebhookService {
                             + "feePolicyKey={}, subscriptionId={}", subscription.getFeePolicyKey(), subscription.getId());
                     return FeePolicy.defaultPolicy();
                 });
-        FeeBreakdown fee = paymentFeeCalculator.calculate((long) subscription.getFaceAmount(), policy);
-        return fee.applicationFeeAmount();
+        return paymentFeeCalculator.calculate((long) subscription.getFaceAmount(), policy);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -346,9 +385,16 @@ public class MembershipSubscriptionWebhookService {
             return;
         }
 
-        long faceAmount = subscription.getFaceAmount();
-        long appFee = computeFixedApplicationFee(subscription);
-        long transferOut = faceAmount - appFee;
+        // 記帳は「額面」ではなく「実請求額（chargeAmount）」基準で行う（案C・手数料折半の根治）。
+        // 案C の Subscription は「会費 Price（額面）＋支払側手数料 Price（payerFee）」の 2 明細で構成され、
+        // invoice 合計＝chargeAmount（例 10,250）となるため、初回サイクルの PaymentIntent と同額が実際に動く。
+        // ここを faceAmount のままにすると TRANSFER_OUT が 9,500 となり、受取側が毎月「額面の折半分」を
+        // 余分に負担しているように記帳されて実残高と乖離する（正しくは 9,750）。
+        FeeBreakdown fee = computeFeeBreakdown(subscription);
+        long faceAmount = fee.faceAmount();
+        long chargeAmount = fee.chargeAmount();
+        long appFee = fee.applicationFeeAmount();
+        long transferOut = fee.transferAmount();
 
         EscrowTransactionEntity escrow = EscrowTransactionEntity.builder()
                 .sourceKind(EscrowSourceKind.MEMBERSHIP)
@@ -362,7 +408,7 @@ public class MembershipSubscriptionWebhookService {
                 .payeeConnectAccountId(subscription.getPayeeConnectAccountId())
                 .organizationId(subscription.getOrganizationId())
                 .faceAmount(faceAmount)
-                .amount(faceAmount)
+                .amount(chargeAmount)
                 .currency(subscription.getCurrency())
                 .applicationFeeAmount(appFee)
                 .feePolicyKey(subscription.getFeePolicyKey())
@@ -374,10 +420,12 @@ public class MembershipSubscriptionWebhookService {
                 .build();
         escrow = escrowTransactionRepository.save(escrow);
 
-        // 複式記帳（CAPTURE 借方＝額面、TRANSFER_OUT 貸方＝額面−fee、FEE 貸方＝fee。送金は額面全額・fee は受取側残高から
-        // 別途回収＝純着金 額面−fee の 2 段を表現・README §4.2 / 01 §3.3。借方合計＝貸方合計）。
+        // 複式記帳（CAPTURE 借方＝実請求額 chargeAmount、TRANSFER_OUT 貸方＝chargeAmount−fee、FEE 貸方＝fee。
+        // 送金は請求額全額・fee は受取側残高から別途回収＝純着金 chargeAmount−fee の 2 段を表現・
+        // README §4.2 / 01 §3.3。借方合計＝貸方合計）。
+        // 例（額面 10,000・DEFAULT 5%）: 借方 10,250 ＝ 貸方 9,750（受取側）＋ 500（プラットフォーム）。
         List<LedgerEntryEntity> entries = LedgerEntryBuilder.forTransaction(escrow.getId(), escrow.getCurrency())
-                .debit(LedgerEntryType.CAPTURE, LedgerAccount.ESCROW, faceAmount, stripeObjectId)
+                .debit(LedgerEntryType.CAPTURE, LedgerAccount.ESCROW, chargeAmount, stripeObjectId)
                 .credit(LedgerEntryType.TRANSFER_OUT, LedgerAccount.PAYEE, transferOut, stripeObjectId)
                 .credit(LedgerEntryType.FEE, LedgerAccount.PLATFORM_FEE, appFee, stripeObjectId)
                 .build();
@@ -402,9 +450,10 @@ public class MembershipSubscriptionWebhookService {
                 .build();
         memberPaymentRepository.save(payment);
 
-        log.info("invoice.paid 記帳完了: subscriptionId={}, escrowId={}, memberPaymentId={}, face={}, transfer={}, fee={}, "
-                        + "validUntil={}",
-                subscription.getId(), escrow.getId(), payment.getId(), faceAmount, transferOut, appFee, periodEnd);
+        log.info("invoice.paid 記帳完了: subscriptionId={}, escrowId={}, memberPaymentId={}, face={}, charge={}, "
+                        + "transfer={}, fee={}, validUntil={}",
+                subscription.getId(), escrow.getId(), payment.getId(), faceAmount, chargeAmount, transferOut, appFee,
+                periodEnd);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -473,7 +522,7 @@ public class MembershipSubscriptionWebhookService {
 
     private LocalDate toLocalDateOrNull(Long epochSec) {
         return epochSec == null ? null
-                : Instant.ofEpochSecond(epochSec).atZone(ZoneId.systemDefault()).toLocalDate();
+                : Instant.ofEpochSecond(epochSec).atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toLocalDate();
     }
 
     private LocalDate addOneCycle(LocalDate from, MembershipSubscriptionEntity subscription) {

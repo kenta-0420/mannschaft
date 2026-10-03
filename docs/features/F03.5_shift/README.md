@@ -9,6 +9,8 @@
 
 ## 変更履歴
 
+- **v2.5 (2026-09-09)**: **方針転換** — 自動割当をいったん停止し、シフトは手動作成を前提とする作成支援へ舵を切る（マスター裁可）。`06_manual_authoring.md`（§11 手動シフト作成支援）と `07_authoring_cost.md`（§12 人件費（概算））を追補。あわせて CMP-260909-1142 の「シフト希望への時刻カラム追加」は破棄し、CMP-260909-1143（同日 2 枠目の希望が出せない）の是正を §11 の射程へ取り込んだ。実装は未着手
+- **v2.4 (2026-09-03)**: 未公開シフト表（DRAFT/COLLECTING/ADJUSTING/未公開 ARCHIVED）の API 遮断方針を `05_unpublished_visibility.md` として追補（CMP-260826-2127）。実装は未着手
 - **v2.3.2 (2026-05-17)**: API 乖離スキャナ Stage 3 第二陣 2-α triage 反映。§4 API 仕様表のメソッド/パスを実装に整合（PUT→PATCH 4 件、PATCH→POST 統合 5 件、`/shifts/my` → `/shifts/my/requests`、work-constraints をチームスコープに階層化、`POST /shifts/schedules/{id}/duplicate` `GET /shifts/requests/summary` `DELETE /shifts/availability` を追記、未実装の `summary`/`remind`/`hourly-rates 複数形` に注記）。詳細は `docs/internal/triage_log/shifts.md` 参照
 - **v2.3.1 (2026-04-28)**: Phase 2 自動割当本体（PR #139）と Phase 3 シフトボード FE 修正 + E2E 18 ケース（PR #153）の実装完了をステータス・ヘッダーへ反映。仕様変更なし、状態追従のみ
 - **v2.3 (2026-04-24)**: Phase 1 MVP 実装完了（PR #128）に伴い、自動割当スコアの既定値を実装と整合（PREFERRED: +50 → +100, WEAK_REST: -20 → -30）。Phase 2 自動割当本体の実機テスト結果を踏まえ、重みは将来 `application.yml` から動的に調整する余地を残す
@@ -81,3 +83,6 @@ v2.2 では以下を追補する:
 | [02_api_design.md](02_api_design.md) | §4 API設計 |
 | [03_business_logic.md](03_business_logic.md) | §5 ビジネスロジック |
 | [04_security_operations.md](04_security_operations.md) | §6 セキュリティ / §7 Flyway / §8 未解決事項 / §8.5 運用 / §9 変更履歴 |
+| [05_unpublished_visibility.md](05_unpublished_visibility.md) | §10 未公開シフト表の遮断方針（CMP-260826-2127・情報の層 × ステータスによる可視性設計・未決事項あり） |
+| [06_manual_authoring.md](06_manual_authoring.md) | §11 手動シフト作成支援（自動割当の停止・枠作成・割当支援・コピー作成・受け入れ条件） |
+| [07_authoring_cost.md](07_authoring_cost.md) | §12 人件費（概算）・目安（`shift_labor_cost_targets`）・過去実績 |

@@ -1,6 +1,8 @@
 package com.mannschaft.app.line;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.line.dto.CreateLineBotConfigRequest;
 import com.mannschaft.app.line.dto.LineBotConfigResponse;
@@ -25,7 +27,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -45,6 +49,8 @@ class LineBotConfigServiceTest {
     private EncryptionService encryptionService;
     @Mock
     private LineMessagingApiClient lineMessagingApiClient;
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private LineBotConfigService service;
@@ -83,10 +89,25 @@ class LineBotConfigServiceTest {
             given(lineMapper.toLineBotConfigResponse(entity)).willReturn(response);
 
             // When
-            LineBotConfigResponse result = service.getConfig(SCOPE_TYPE, SCOPE_ID);
+            LineBotConfigResponse result = service.getConfig(SCOPE_TYPE, SCOPE_ID, USER_ID);
 
             // Then
             assertThat(result.getChannelId()).isEqualTo("ch123");
+            verify(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE.name());
+        }
+
+        @Test
+        @DisplayName("異常系: 非ADMINはCOMMON_002（403）が伝播しrepositoryへ到達しない")
+        void 取得_非ADMIN_403伝播() {
+            // Given
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(anyLong(), anyLong(), anyString());
+
+            // When / Then
+            assertThatThrownBy(() -> service.getConfig(SCOPE_TYPE, SCOPE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
         }
 
         @Test
@@ -97,7 +118,7 @@ class LineBotConfigServiceTest {
                     .willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.getConfig(SCOPE_TYPE, SCOPE_ID))
+            assertThatThrownBy(() -> service.getConfig(SCOPE_TYPE, SCOPE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("LINE_001"));
@@ -159,7 +180,7 @@ class LineBotConfigServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When
-            service.delete(SCOPE_TYPE, SCOPE_ID);
+            service.delete(SCOPE_TYPE, SCOPE_ID, USER_ID);
 
             // Then — softDeleteが呼ばれたことを間接確認
             assertThat(entity).isNotNull();
@@ -184,7 +205,7 @@ class LineBotConfigServiceTest {
             TestMessageRequest req = new TestMessageRequest("user123", "テスト");
 
             // When
-            service.sendTestMessage(SCOPE_TYPE, SCOPE_ID, req);
+            service.sendTestMessage(SCOPE_TYPE, SCOPE_ID, USER_ID, req);
 
             // Then
             verify(lineMessageLogRepository).save(any(LineMessageLogEntity.class));

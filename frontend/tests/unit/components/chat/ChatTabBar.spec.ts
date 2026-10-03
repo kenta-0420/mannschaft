@@ -29,23 +29,15 @@ vi.mock('~/composables/useNotification', () => ({
 function makeChannel(id: number, name: string): ChatChannelResponse {
   return {
     id,
-    channelType: 'TEAM',
-    team: { id: 10, name: 'テストチーム' },
-    organization: null,
-    name,
-    iconUrl: null,
-    description: null,
-    isPrivate: false,
-    isArchived: false,
-    lastMessageAt: null,
-    lastMessagePreview: null,
-    unreadCount: 0,
-    isMuted: false,
-    isPinned: false,
+    identity: { channelType: 'TEAM_PUBLIC', teamId: 10, organizationId: null },
+    meta: { name, iconKey: null, description: null },
+    settings: { isPrivate: false, isInquiryChannel: false, isArchived: false, version: 1 },
+    lastMessage: { lastMessageAt: null, lastMessagePreview: null },
+    source: { sourceType: null, sourceId: null },
+    audit: { createdBy: null, createdAt: null, updatedAt: null },
     memberCount: 5,
     dmPartner: null,
-    sourceType: null,
-    sourceId: null,
+    viewer: { unreadCount: 0, isMuted: false, isPinned: false, category: null, role: null },
   }
 }
 
