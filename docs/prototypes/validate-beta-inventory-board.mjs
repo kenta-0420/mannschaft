@@ -31,7 +31,8 @@ const sourceRefs = new Map();
 for (const line of taskList.split(/\r?\n/)) {
   const match = line.match(/^\|\s*(CMP(?:-|$).*?)\s*\|/);
   if (!match) continue;
-  sourceRefs.set(match[1], [...new Set([...line.matchAll(/(?<![A-Za-z0-9])#(\d+)/g)].map((item) => Number(item[1])).filter((number) => number >= 100))].sort((a, b) => a - b));
+  const referenceLine = line.replace(/\[[^\]\n]*\]\(https:\/\/github\.com\/[^/\s)]+\/[^/\s)]+\/actions\/runs\/\d+\)/g, '');
+  sourceRefs.set(match[1], [...new Set([...referenceLine.matchAll(/(?<![A-Za-z0-9])#(\d+)/g)].map((item) => Number(item[1])).filter((number) => number >= 100))].sort((a, b) => a - b));
 }
 if (sourceRefs.size !== data.campaigns.length) throw new Error('CMP正本行数と参照抽出数が一致しません');
 for (const campaign of data.campaigns) {
