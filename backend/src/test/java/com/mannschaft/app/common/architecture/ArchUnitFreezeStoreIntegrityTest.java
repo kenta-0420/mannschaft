@@ -767,8 +767,20 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 残す 2 行は認可と無関係な越境: {@code ConfirmableNotificationService.cancel} /
      * {@code ConfirmableNotificationConfirmService.cancel} → UserRepository（K3: 名前・引数・{@code @Transactional} を維持）。
      * main のストアとの差分は「追加 0・削除 4（上記のキーのみ）」。{@code 7564（W4 取込み後の main） → 7560}。</p>
+     *
+     * <p>CMP-260923-0954 W5（recruitment 募集・テンプレート。{@code RecruitmentListingFacade}）: 認可を tx の外へ出したことで
+     * 22 行を削除。追加 0。{@code 7560（W3b 取込み後の main） → 7538}。内訳: RecruitmentListingService の archive・cancelByAdmin・cancelInternal・
+     * getDistributionTargets（旧シグネチャ）・setDistributionTargets（旧シグネチャ）が各 role の 2 行（計 10）、
+     * publish・update・updateInternal が RoleRepository の各 1 行（計 3。UserRoleRepository は通知対象の列挙・個人札の
+     * 対象スコープ検証が直接読むため残す）、RecruitmentParticipantService の listParticipants（旧シグネチャ）・markAttended が
+     * 各 role の 2 行（計 4）、RecruitmentTemplateService の getTemplate（旧シグネチャ）が MembershipRepository の 1 行・
+     * archive（旧シグネチャ）・update（旧シグネチャ）が各 role の 2 行（計 5）。
+     * 残した行: updatePersonalDraft・cancelPersonalListing・publishPersonal（個人札の専用経路は本人判定を tx 内に持つ）、
+     * create・createFromTemplate・checkListingManagementAccess、validateAndNormalizePayee → MembershipRepository
+     * （受領者の所属検証は {@code AccessControlService} ではなく {@code MembershipScopeQueryService} 経由に替えたが、
+     * 到達先の Repository は同じ）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7560;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7538;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。

@@ -110,6 +110,7 @@ defineExpose({ refresh: loadRespondents })
         :disabled="loading"
         :aria-label="t('surveys.respondents.reload')"
         data-testid="respondents-refresh"
+        class="min-h-11 min-w-11 shrink-0"
         @click="loadRespondents"
       />
     </div>
@@ -122,6 +123,7 @@ defineExpose({ refresh: loadRespondents })
       option-value="value"
       :allow-empty="false"
       class="self-start"
+      :pt="{ pcToggleButton: { root: { class: 'min-h-11 min-w-11' } } }"
       data-testid="respondents-filter"
     />
 
@@ -131,7 +133,7 @@ defineExpose({ refresh: loadRespondents })
         v-if="canRemind"
         class="flex items-center justify-between gap-2 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 dark:border-surface-700 dark:bg-surface-800"
       >
-        <span class="text-xs text-surface-600">
+        <span class="min-w-0 text-xs text-surface-600">
           {{ t('surveys.respondents.remindHint', { count: unresponded.length }) }}
         </span>
         <Button
@@ -141,6 +143,7 @@ defineExpose({ refresh: loadRespondents })
           :loading="reminding"
           :disabled="unresponded.length === 0 || loading"
           data-testid="respondents-remind-button"
+          class="min-h-11 min-w-11 shrink-0 whitespace-nowrap"
           @click="sendReminder"
         />
       </div>
@@ -165,7 +168,7 @@ defineExpose({ refresh: loadRespondents })
     >
       <i class="pi pi-exclamation-triangle text-3xl text-red-500" />
       <p class="text-sm text-surface-500">{{ t('surveys.respondents.loadErrorTitle') }}</p>
-      <Button :label="t('surveys.respondents.retry')" icon="pi pi-refresh" size="small" @click="loadRespondents" />
+      <Button :label="t('surveys.respondents.retry')" icon="pi pi-refresh" size="small" class="min-h-11 min-w-11" @click="loadRespondents" />
     </div>
 
     <!-- リスト本体 -->
