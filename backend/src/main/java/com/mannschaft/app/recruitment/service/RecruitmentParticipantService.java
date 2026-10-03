@@ -1,6 +1,5 @@
 package com.mannschaft.app.recruitment.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -69,7 +68,6 @@ public class RecruitmentParticipantService {
     private final RecruitmentUserPenaltyRepository penaltyRepository;
     private final RecruitmentCancellationPolicyService policyService;
     private final RecruitmentListingService listingService;
-    private final AccessControlService accessControlService;
     private final RecruitmentMapper mapper;
     /** F22.1 市: 充足（FULL）到達時の最終認証連携。 */
     /**
@@ -347,20 +345,39 @@ public class RecruitmentParticipantService {
     // 参加者一覧・出席管理 (管理者)
     // ===========================================
 
-    public Page<RecruitmentParticipantResponse> listParticipants(Long listingId, Long userId, Pageable pageable) {
+    /**
+     * 参加者一覧を返す（<b>tx 本体</b>）。
+     *
+     * <p>認可は {@link RecruitmentListingFacade#listParticipants} が tx の外で済ませる。本メソッドは認可の後に
+     * 募集を読み直し（論理削除済みなら {@code LISTING_NOT_FOUND}(404)）、参加者を 1 クエリで取得する。</p>
+     *
+     * @param listingId 募集 ID
+     * @param pageable  ページ指定
+     * @return 参加者のページ
+     */
+    public Page<RecruitmentParticipantResponse> listParticipants(Long listingId, Pageable pageable) {
         RecruitmentListingEntity listing = listingService.findOrThrow(listingId);
-        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
-        accessControlService.checkAdminOrAbove(userId, listing.getScopeId(), listing.getScopeType().name());
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganizationOrNotFound(listing);
 
         return participantRepository.findByListingIdOrderByAppliedAtAsc(listingId, pageable)
                 .map(mapper::toParticipantResponse);
     }
 
+    /**
+     * 出席を記録する（<b>tx 本体</b>）。
+     *
+     * <p>認可は {@link RecruitmentListingFacade#markAttended} が tx の外で済ませる。本メソッドは認可の後に
+     * 募集→参加者をたどり直し（どれかが不在なら {@code LISTING_NOT_FOUND}(404)・DB 不変）、状態の判定もここで行う。</p>
+     *
+     * @param listingId     募集 ID
+     * @param participantId 参加者 ID
+     * @param userId        操作者（認可済み。履歴の変更者）
+     * @return 更新後の参加者
+     */
     @Transactional
     public RecruitmentParticipantResponse markAttended(Long listingId, Long participantId, Long userId) {
         RecruitmentListingEntity listing = listingService.findOrThrow(listingId);
-        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
-        accessControlService.checkAdminOrAbove(userId, listing.getScopeId(), listing.getScopeType().name());
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganizationOrNotFound(listing);
 
         RecruitmentParticipantEntity participant = participantRepository.findByIdAndListingId(participantId, listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));

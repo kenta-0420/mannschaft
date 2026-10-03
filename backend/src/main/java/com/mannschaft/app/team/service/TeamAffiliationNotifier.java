@@ -17,4 +17,13 @@ public interface TeamAffiliationNotifier {
      * 同じ {@code (通知種別, membershipId)} の二重 enqueue は1件に収束する（冪等キー）。
      */
     void enqueue(TeamAffiliationNotice notice);
+
+    /**
+     * 通知ジョブを、加盟の書き込みトランザクションの<b>コミット後</b>に、通知ドメインのトランザクションで enqueue する
+     * （F01.2.1 2-C。4-A の監査と同じく「コミットの後に記録する」形。チームのトランザクションから通知ドメインの
+     * Repository に届かせない）。呼び出し側にトランザクションが無いときに呼ぶ。冪等キーは {@link #enqueue} と同じ。
+     *
+     * <p>業務と通知の登録は原子的ではない。登録が失敗しても業務は巻き戻らず、例外として呼び出し側へ伝わる。</p>
+     */
+    void enqueueAfterCommit(TeamAffiliationNotice notice);
 }

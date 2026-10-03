@@ -73,7 +73,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 行・ID・業務値を保持し、通常 ORM と native の現在状態読取からは除外する。
  * 本人の提出履歴だけは削除済みも認可済みの経路で表示する。</p>
  *
- * <p><b>不具合(a)</b>: {@code ShiftSlotService#checkScheduleAdminAccess} / {@code checkScheduleReadAccess} は
+ * <p><b>不具合(a)</b>: 旧 {@code ShiftSlotService} の認可（現 {@code ShiftSlotFacade}。CMP-260923-0954 W6a でトランザクションの外へ移した）は
  * SYSTEM_ADMIN を親の生存確認より先に短絡させていたため、<b>SYSTEM_ADMIN だけが親削除済みの枠を
  * 編集・削除できてしまい</b>、一般 ADMIN（{@code resolveTeamId} で404）と挙動が食い違っていた。
  * {@code ShiftRequestService.deleteRequest} も同型（本人一致なら親を一度も引かずに削除が通っていた）。</p>
@@ -522,7 +522,7 @@ class ShiftSoftDeletedScheduleChildAccessContractIT extends AbstractMySqlIntegra
                     return new TransactionTemplate(transactionManager).execute(tx ->
                             slotService.createSlot(liveScheduleId,
                                     new CreateShiftSlotRequest(LocalDate.of(2026, 4, 3),
-                                            LocalTime.of(10, 0), LocalTime.of(12, 0), null, 1, "競合作成"), adminId));
+                                            LocalTime.of(10, 0), LocalTime.of(12, 0), null, 1, "競合作成")));
                 } catch (BusinessException | org.springframework.transaction.UnexpectedRollbackException expected) {
                     return null;
                 }
