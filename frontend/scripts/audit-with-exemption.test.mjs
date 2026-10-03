@@ -95,7 +95,9 @@ for (const severity of ['high', 'critical']) {
 }
 
 const BRACES_URL = 'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm'
-const BRACES_LOCK = { packages: { 'node_modules/braces': { version: '3.0.3' } } }
+const BRACES_LOCK = {
+  packages: { 'node_modules/braces': { version: '3.0.3' } },
+}
 const bracesAdvisory = () => ({
   name: 'braces',
   dependency: 'braces',
@@ -106,13 +108,23 @@ const bracesAdvisory = () => ({
 const bracesGraph = () => ({
   braces: entry('braces', [bracesAdvisory()]),
   micromatch: entry('micromatch', ['braces']),
-  chokidar: entry('chokidar', ['braces']),
+  chokidar: {
+    ...entry('chokidar', ['braces']),
+    nodes: [
+      'node_modules/@primevue/nuxt-module/node_modules/chokidar',
+      'node_modules/tailwindcss/node_modules/chokidar',
+    ],
+  },
 })
 test('braces GHSA は名指しで通り、期限・lock版・範囲・消費者を検証する', () => {
   assert.equal(check(report(bracesGraph()), NOW, BRACES_LOCK), true)
   assert.throws(
     () =>
-      check(report(bracesGraph()), Date.parse('2026-10-17T00:00:00Z'), BRACES_LOCK),
+      check(
+        report(bracesGraph()),
+        Date.parse('2026-10-17T00:00:00Z'),
+        BRACES_LOCK,
+      ),
     /GHSA-vfj7-8cjw-p6xm の除外期限切れ/,
   )
   assert.throws(
@@ -124,7 +136,10 @@ test('braces GHSA は名指しで通り、期限・lock版・範囲・消費者�
   )
   const ranged = bracesGraph()
   ranged.braces.via[0].range = '<=9.0.0'
-  assert.throws(() => check(report(ranged), NOW, BRACES_LOCK), /許可されない advisory/)
+  assert.throws(
+    () => check(report(ranged), NOW, BRACES_LOCK),
+    /許可されない advisory/,
+  )
   const unknown = bracesGraph()
   unknown.other = entry('other', ['braces'])
   assert.throws(
@@ -143,6 +158,97 @@ test('braces 除外は node-forge の消費者名を流用できず、逆も拒�
     micromatch: entry('micromatch', ['node-forge']),
   }
   assert.throws(() => check(report(forge)), /許可されない脆弱性/)
+})
+
+// 実監査の19 highエントリを、秘密・環境情報を含まず再現する。
+const mixedGraph = () => {
+  const graph = {
+    ...bracesGraph(),
+    'fast-glob': entry('fast-glob', ['micromatch']),
+    globby: entry('globby', ['fast-glob']),
+    tailwindcss: entry('tailwindcss', ['chokidar', 'fast-glob', 'micromatch']),
+    'unplugin-vue-components': {
+      ...entry('unplugin-vue-components', ['chokidar']),
+      nodes: [
+        'node_modules/@primevue/nuxt-module/node_modules/unplugin-vue-components',
+      ],
+    },
+    'unplugin-vue-router': entry('unplugin-vue-router', [
+      'fast-glob',
+      'micromatch',
+    ]),
+    '@intlify/unplugin-vue-i18n': entry('@intlify/unplugin-vue-i18n', [
+      'fast-glob',
+    ]),
+    '@nuxtjs/i18n': entry('@nuxtjs/i18n', [
+      '@intlify/unplugin-vue-i18n',
+      'unplugin-vue-router',
+    ]),
+    '@nuxtjs/tailwindcss': entry('@nuxtjs/tailwindcss', ['tailwindcss']),
+    '@primevue/nuxt-module': entry('@primevue/nuxt-module', [
+      'unplugin-vue-components',
+    ]),
+    'node-forge': entry('node-forge', [advisory()]),
+    listhen: entry('listhen', ['node-forge']),
+    '@nuxt/cli': entry('@nuxt/cli', ['listhen']),
+    nitropack: entry('nitropack', ['globby', 'listhen']),
+    '@nuxt/nitro-server': entry('@nuxt/nitro-server', ['nitropack', 'nuxt']),
+    '@nuxt/vite-builder': entry('@nuxt/vite-builder', ['nuxt']),
+    nuxt: entry('nuxt', [
+      '@nuxt/cli',
+      '@nuxt/nitro-server',
+      '@nuxt/vite-builder',
+    ]),
+  }
+  for (const name of [
+    '@nuxtjs/i18n',
+    '@nuxtjs/tailwindcss',
+    '@primevue/nuxt-module',
+    'nuxt',
+  ]) {
+    graph[name].isDirect = true
+  }
+  return graph
+}
+const MIXED_LOCK = { packages: { ...LOCK.packages, ...BRACES_LOCK.packages } }
+test('実監査の2advisory混在19件は循環とforge専用辺を含めて通る', () => {
+  const value = report(mixedGraph())
+  assert.equal(value.metadata.vulnerabilities.high, 19)
+  assert.equal(check(value, NOW, MIXED_LOCK), true)
+  assert.equal(
+    check(value, Date.parse('2026-10-16T23:59:59.999Z'), MIXED_LOCK),
+    true,
+  )
+  assert.throws(
+    () => check(value, Date.parse('2026-10-17T00:00:00Z'), MIXED_LOCK),
+    /期限切れ/,
+  )
+})
+test('braces既知消費者名でも未知node・末端の別nodeは拒否する', () => {
+  for (const name of ['braces', 'micromatch', 'chokidar', 'nuxt']) {
+    const graph = mixedGraph()
+    const node = `node_modules/unknown/node_modules/${name}`
+    graph[name].nodes.push(node)
+    const lock = {
+      packages: { ...MIXED_LOCK.packages, [node]: { version: '3.0.3' } },
+    }
+    assert.throws(() => check(report(graph), NOW, lock), /許可されない依存経路/)
+  }
+})
+test('既知名間のbraces経路付替え・未知の循環辺は拒否する', () => {
+  for (const [name, via] of [
+    ['micromatch', 'chokidar'],
+    ['@intlify/unplugin-vue-i18n', 'braces'],
+    ['nuxt', 'micromatch'],
+    ['micromatch', 'fast-glob'],
+  ]) {
+    const graph = mixedGraph()
+    graph[name].via.push(via)
+    assert.throws(
+      () => check(report(graph), NOW, MIXED_LOCK),
+      /許可されない依存経路/,
+    )
+  }
 })
 test('同じGHSAでもcritical・別package・別range・直接依存・別versionは拒否する', () => {
   const mutations = [
