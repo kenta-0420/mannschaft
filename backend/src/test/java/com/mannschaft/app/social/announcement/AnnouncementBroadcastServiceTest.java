@@ -2,7 +2,6 @@ package com.mannschaft.app.social.announcement;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.announcement.adapter.AnnouncementChannelAdapter;
 import com.mannschaft.app.social.announcement.adapter.AnnouncementChannelAdapterRegistry;
 import org.junit.jupiter.api.DisplayName;
@@ -44,9 +43,6 @@ class AnnouncementBroadcastServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
-
-    @Mock
-    private UserRoleRepository userRoleRepository;
 
     @InjectMocks
     private AnnouncementBroadcastService broadcastService;
@@ -259,24 +255,18 @@ class AnnouncementBroadcastServiceTest {
     class TargetTeamIdsValidation {
 
         @Test
-        @DisplayName("ORGANIZATION スコープで無効なチームIDが含まれると BROADCAST_002 エラーが発生すること")
-        void throwsBroadcast002WhenTargetTeamIdsContainInvalidTeamId() {
-            // given
-            List<Long> targetTeamIds = List.of(11L, 12L, 999L); // 999L は組織配下に存在しない
+        @DisplayName("ORGANIZATION スコープで解決済みの宛先なしに targetTeamIds を渡すと拒否し、コンテンツを作らないこと")
+        void rejectsUnresolvedTargetTeamIdsForOrganization() {
+            // given: 宛先の検証（BROADCAST_002 など）は BroadcastAudienceResolver の責務。
+            // 解決を経ずに絞り込みを渡す呼び出しは、検証の迂回として拒否する（F01.2.1 6-A）。
+            List<Long> targetTeamIds = List.of(11L, 12L, 999L);
             BroadcastRequest req = buildBroadcastRequest("ORGANIZATION", targetTeamIds, "NORMAL", AnnouncementChannel.BULLETIN_THREAD);
 
             given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, "ORGANIZATION")).willReturn(true);
-            // 組織配下のチームは 11L と 12L のみ
-            given(userRoleRepository.findTeamIdsByOrganizationId(SCOPE_ID))
-                    .willReturn(List.of(11L, 12L));
 
             // when / then
             assertThatThrownBy(() -> broadcastService.broadcast(req))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> {
-                        BusinessException be = (BusinessException) ex;
-                        assertThat(be.getErrorCode().getCode()).isEqualTo("BROADCAST_002");
-                    });
+                    .isInstanceOf(IllegalStateException.class);
 
             // チャネルアダプターは呼ばれないこと
             verify(adapterRegistry, never()).getAdapter(any());
@@ -303,9 +293,9 @@ class AnnouncementBroadcastServiceTest {
             // when
             BroadcastResult result = broadcastService.broadcast(req);
 
-            // then: BROADCAST_002 は発生せず、処理が続くこと
+            // then: BROADCAST_002 は発生せず、処理が続くこと（TEAM スコープは従来どおりリクエストの値を保存する）
             assertThat(result).isNotNull();
-            verify(userRoleRepository, never()).findTeamIdsByOrganizationId(anyLong());
+            assertThat(result.getTargetTeamIds()).containsExactly(999L);
         }
     }
 
