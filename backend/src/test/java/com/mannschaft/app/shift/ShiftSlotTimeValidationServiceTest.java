@@ -1,6 +1,5 @@
 package com.mannschaft.app.shift;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
@@ -60,24 +59,18 @@ class ShiftSlotTimeValidationServiceTest {
     @Mock
     private ShiftAssignmentRepository assignmentRepository;
 
-    @Mock
-    private AccessControlService accessControlService;
-
     @InjectMocks
     private ShiftSlotService shiftSlotService;
 
     private static final Long SCHEDULE_ID = 100L;
     private static final Long SLOT_ID = 200L;
-    /** 操作者。本テストの主眼は時刻検証であり認可ではないため SYSTEM_ADMIN で短絡させる。 */
+    /** 操作者（割当履歴用）。本テストの主眼は時刻検証であり、認可は tx の外の Facade の責務。 */
     private static final Long ACTOR = 999L;
 
     @BeforeEach
-    void setUpAuthz() {
-        lenient().when(accessControlService.isSystemAdmin(ACTOR)).thenReturn(true);
-        // CMP-260917-1136: checkScheduleAdminAccess は親スケジュールの生存確認
-        // （resolveTeamId）を SYSTEM_ADMIN 短絡より必ず先に行うようになったため、
-        // 本テストのように SYSTEM_ADMIN で短絡させる場合でもスケジュールが実在する体で
-        // 応答する必要がある（さもないと本題の時刻検証に辿り着く前に404で落ちる）。
+    void setUpParentSchedule() {
+        // 書き込みは tx の中で親スケジュールを FOR UPDATE で読み直す（認可の後・W6a）ため、
+        // スケジュールが実在する体で応答する必要がある（さもないと本題の時刻検証に辿り着く前に404で落ちる）。
         lenient().when(scheduleRepository.findById(SCHEDULE_ID)).thenReturn(Optional.of(
                 com.mannschaft.app.shift.entity.ShiftScheduleEntity.builder()
                         .teamId(1L)
@@ -109,7 +102,7 @@ class ShiftSlotTimeValidationServiceTest {
                     null, null, null);
 
             // When & Then
-            assertThatThrownBy(() -> shiftSlotService.createSlot(SCHEDULE_ID, req, ACTOR))
+            assertThatThrownBy(() -> shiftSlotService.createSlot(SCHEDULE_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ShiftErrorCode.INVALID_TIME_RANGE);
