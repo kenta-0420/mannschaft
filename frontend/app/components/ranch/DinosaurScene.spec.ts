@@ -8,7 +8,7 @@ import DinosaurScene from './DinosaurScene.vue'
 import type { DinosaurSummary } from '~/types/ranch'
 const dinosaur: DinosaurSummary={id:'test-id',speciesKey:'S01',variantKey:'V1',habitat:'SEA',speciesCatalogVersion:'dev',stage:'BABY',name:'テスト',namedAt:null,xp:'9223372036854775807',nextStageXp:null,version:'1',egg:null}
 let observerCallback: IntersectionObserverCallback; let reduced = false; let changeMotion: (() => void) | undefined
-let pending = new Map<number,FrameRequestCallback>(); let sequence=0
+const pending = new Map<number,FrameRequestCallback>(); let sequence=0
 beforeEach(() => {
  vi.stubGlobal('IntersectionObserver', class { constructor(callback: IntersectionObserverCallback){observerCallback=callback} observe(){} unobserve(){} disconnect(){} })
  vi.stubGlobal('requestAnimationFrame', (callback:FrameRequestCallback) => {const id=++sequence; pending.set(id,callback);return id})
