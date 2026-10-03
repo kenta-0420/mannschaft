@@ -326,6 +326,7 @@ object ShardAssignment {
 class ShardCoverageClassFile(val path: String, val topLevelFqcn: String)
 
 tasks.withType<Test> {
+    val testTaskName = name
     // 通常スイートは従来どおり JST 固定。CMP-023 の非JST CIだけが
     // -Ptest.timezone=America/Los_Angeles で明示的に上書きする。
     // System.getProperty("user.timezone") では Gradle JVM 側の値を拾ってしまうため、
@@ -472,6 +473,7 @@ tasks.withType<Test> {
             result: org.gradle.api.tasks.testing.TestResult
         ) {
             if (suite.parent == null) {
+                logger.lifecycle("[test-jvm] タスク = $testTaskName")
                 logger.lifecycle(
                     "[test-jvm] 起動したテスト JVM 数 = ${testJvmNames.size}" +
                         "（forkEvery=${forkEvery} / maxParallelForks=${maxParallelForks}）" +
@@ -935,6 +937,8 @@ tasks.register("verifyShardCoverage") {
 }
 
 tasks.jacocoTestReport {
+    // archTest は isArchTask 分岐で Jacoco を無効化しているため実行データを生成しない。
+    // 合算対象は `test`（通常の shard 実行）のみでよい。
     reports {
         csv.required = true
     }

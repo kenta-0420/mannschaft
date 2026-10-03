@@ -500,7 +500,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results-xml-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
-          path: backend/build/test-results/test/
+          path: backend/build/test-results/**/*.xml
           retention-days: 7
 
       - name: テスト結果レポートをアップロード
