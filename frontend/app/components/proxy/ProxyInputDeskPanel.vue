@@ -119,6 +119,7 @@ onMounted(async () => {
         v-model="originalStorageLocation"
         :placeholder="t('proxy.desk.originalStorage.placeholder')"
         :disabled="isPinned"
+        :maxlength="255"
         class="w-full"
       />
     </div>
