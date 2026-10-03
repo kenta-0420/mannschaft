@@ -3,10 +3,12 @@ package com.mannschaft.app.schedule.listener;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -152,5 +154,14 @@ public class CalendarLayerLifecycleListener {
             log.warn("スコープ削除に伴うカレンダーレイヤー設定の削除に失敗: scopeType={}, scopeId={}, error={}",
                     scopeType, scopeId, ex.getMessage(), ex);
         }
+    }
+
+    /** 強側の設定消去も既存の別Bean新規TXへ委譲する。弱側の時期・失敗隔離は変えない。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "完全削除済み利用者の同期・レイヤー設定を消去する。停止すると設定が残留し、消去イベントは再生されない")
+    @Async("purge-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAccountPurged(AccountPurgedEvent event) {
+        cleanupExecutor.purgeAccountSettings(event.getUserId());
     }
 }
