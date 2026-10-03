@@ -42,7 +42,6 @@ import com.mannschaft.app.common.util.SlugValidator;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
-import com.mannschaft.app.team.dto.TeamOrgSummaryResponse;
 import com.mannschaft.app.team.dto.TeamPublicDetailResponse;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.TeamSummaryResponse;
@@ -51,8 +50,10 @@ import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -985,21 +986,42 @@ public class TeamService {
 
     /**
      * チームが所属する組織一覧を取得する。
+     *
+     * <p>F01.2.1 4-B: 各組織の {@code group_id} とグループ機能の有効/無効も返す（応答への変換・グループ名の解決は
+     * {@link TeamOrgSummaryService} が行う）。SQL は加盟・組織・人数の各 1 本で、加盟している組織の数に比例して
+     * 増えない（AC-G129。従来は組織ごとに 2 本ずつ発行していた）。</p>
      */
-    public List<TeamOrgSummaryResponse> getOrganizations(Long teamId) {
+    public List<TeamOrgMembershipSummary> getOrganizations(Long teamId) {
         findTeamOrThrow(teamId);
-        return teamOrgMembershipRepository.findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE)
-                .stream()
-                .map(m -> organizationRepository.findById(m.getOrganizationId()).orElse(null))
-                .filter(org -> org != null)
-                .map(org -> new TeamOrgSummaryResponse(
-                        org.getSlug(),
-                        org.getSlug(),
-                        org.getName(),
-                        null,
-                        org.getVisibility().name(),
-                        (int) userRoleRepository.countByOrganizationId(org.getId())))
-                .toList();
+        List<TeamOrgMembershipEntity> memberships =
+                teamOrgMembershipRepository.findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE);
+        if (memberships.isEmpty()) {
+            return List.of();
+        }
+        List<Long> organizationIds = memberships.stream().map(TeamOrgMembershipEntity::getOrganizationId).toList();
+        Map<Long, OrganizationEntity> organizations = new HashMap<>();
+        organizationRepository.findAllById(organizationIds).forEach(o -> organizations.put(o.getId(), o));
+        Map<Long, Long> memberCounts = new HashMap<>();
+        for (Object[] row : userRoleRepository.countGroupByOrganizationIdIn(organizationIds)) {
+            memberCounts.put((Long) row[0], (Long) row[1]);
+        }
+
+        List<TeamOrgMembershipSummary> result = new ArrayList<>(memberships.size());
+        for (TeamOrgMembershipEntity m : memberships) {
+            OrganizationEntity org = organizations.get(m.getOrganizationId());
+            if (org == null) {
+                continue;
+            }
+            result.add(new TeamOrgMembershipSummary(
+                    org.getId(),
+                    org.getSlug(),
+                    org.getName(),
+                    org.getVisibility().name(),
+                    memberCounts.getOrDefault(org.getId(), 0L).intValue(),
+                    Boolean.TRUE.equals(org.getTeamGroupsEnabled()),
+                    m.getGroupId()));
+        }
+        return result;
     }
 
     /**
