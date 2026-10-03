@@ -1,157 +1,157 @@
 {
   "ranch": {
-    "title": "恐竜の部屋",
-    "optional": "任意で始められます。無料のお世話だけで成体まで育ち、放置しても失いません。",
-    "start": "卵から始める",
-    "save": "保存する",
-    "retry": "再試行",
-    "next": "次のページ",
-    "pause": "休止する",
-    "resume": "再開する",
-    "paused": "休止中です。結果や置物は引き続き見られます。",
-    "unavailable": "準備中です。本人の診断結果は引き続き見られます。",
-    "recall": "想起をする",
+    "title": "恐龙房间",
+    "optional": "是否开始由你决定。仅靠免费照料就能养到成年，放着不管也不会失去它，亲密度不会随时间降低。",
+    "start": "从蛋开始",
+    "save": "保存",
+    "retry": "重试",
+    "next": "下一页",
+    "pause": "暂停",
+    "resume": "恢复",
+    "paused": "已暂停。仍可查看自己的结果和装饰品。",
+    "unavailable": "正在准备中。仍可查看自己的测试结果。",
+    "recall": "回想",
     "avatar": {
-      "label": "自分の恐竜の分身",
-      "description": "恐竜は自分自身の分身です。自分の好みや個性を映した姿を、ゆっくり育てます。"
+      "label": "自己的恐龙分身",
+      "description": "恐龙是你自己的分身。慢慢培育体现自己喜好和个性的形象。"
     },
     "stage": {
-      "EGG": "卵",
+      "EGG": "蛋",
       "BABY": "幼体",
-      "JUVENILE": "若い恐竜",
-      "ADULT": "成体"
+      "JUVENILE": "年轻恐龙",
+      "ADULT": "成年体"
     },
     "egg": {
-      "INTACT": "卵が育っています。",
-      "SMALL_CRACK": "小さなひびが入りました。",
-      "WIDE_CRACK": "ひびが広がっています。",
-      "READY": "名前と選び方を決めるまで、卵は安全に待ちます。"
+      "INTACT": "蛋正在成长。",
+      "SMALL_CRACK": "出现了一道小裂纹。",
+      "WIDE_CRACK": "裂纹正在扩大。",
+      "READY": "在你确定名字和选择方式之前，蛋会安全地等待。"
     },
     "care": {
-      "eggTouch": "触る",
-      "food": "ごはん",
-      "touch": "ふれあい",
-      "choose": "選び方",
-      "status": "ようす",
-      "fed": "ごはんをあげました。成長 {xp} XP。",
-      "touched": "自分の分身に触れました。"
+      "eggTouch": "触摸",
+      "food": "喂食",
+      "touch": "互动",
+      "choose": "选择方式",
+      "status": "状态",
+      "fed": "已喂食。成长 {xp} XP。",
+      "touched": "你触摸了自己的分身。"
     },
     "scene": {
-      "assetPreparing": "この姿の素材は準備中です。文字と操作で引き続き利用できます。"
+      "assetPreparing": "这个形象的素材正在准备中。仍可通过文字和操作使用。"
     },
     "style": {
-      "PIXEL": "96ドット",
-      "PAINT_2D": "通常2D"
+      "PIXEL": "96点像素",
+      "PAINT_2D": "普通2D"
     },
     "motion": {
-      "NORMAL": "通常",
-      "REDUCED": "動きを控える",
-      "STOPPED": "動きを止める"
+      "NORMAL": "正常",
+      "REDUCED": "减少动作",
+      "STOPPED": "停止动作"
     },
     "settings": {
-      "title": "恐竜の部屋の設定",
-      "style": "描画スタイル",
-      "motion": "動き",
-      "sound": "音を使う",
+      "title": "恐龙房间设置",
+      "style": "绘制风格",
+      "motion": "动作",
+      "sound": "启用声音",
       "volume": "音量",
-      "freewalkLater": "今は部屋表示です。自由歩行は後のPhaseで利用できます。",
-      "hide": "非表示にする",
-      "show": "表示する",
-      "visibilityFailed": "卵は作成済みですが表示設定の保存に失敗しました。表示だけ再試行してください。"
+      "freewalkLater": "目前使用房间显示。自由漫步将在后续阶段开放。",
+      "hide": "隐藏",
+      "show": "显示",
+      "visibilityFailed": "蛋已创建，但显示设置保存失败。请只重试显示设置。"
     },
     "command": {
-      "failed": "保存できませんでした。応答が届かなかった場合は同じ操作を再試行してください。",
-      "retryRequired": "保存結果を確認できていません。同じ名前で再試行してください。"
+      "failed": "无法保存。如果没有收到响应，请重试同一操作。",
+      "retryRequired": "保存结果尚未确认。请使用同一名字重试。"
     },
     "naming": {
-      "title": "名前を付けよう",
-      "nameLabel": "恐竜の名前",
+      "title": "起个名字",
+      "nameLabel": "恐龙名字",
       "characterCount": "{count} / 10",
-      "irreversibleWarning": "この名前は確定後に変更できません。10文字以内で入力してください。",
-      "checkName": "名前を確認する",
-      "confirmPrompt": "「{name}」で決めますか？ この名前はあとから変更できません。",
-      "confirm": "この名前で決める",
-      "back": "入力に戻る",
-      "invalid": "1〜10文字で入力してください。不可視文字・改行・制御文字は使えません。"
+      "irreversibleWarning": "名字一经确认便无法更改。请输入10个字符以内的名字。",
+      "checkName": "确认名字",
+      "confirmPrompt": "确定使用“{name}”吗？此名字以后无法更改。",
+      "confirm": "确定这个名字",
+      "back": "返回输入",
+      "invalid": "请输入1至10个字符。不能使用不可见字符、换行或控制字符。"
     },
     "habitat": {
-      "LAND": "陸からランダム",
-      "SEA": "海からランダム",
-      "AIR": "空からランダム"
+      "LAND": "随机陆地形象",
+      "SEA": "随机海洋形象",
+      "AIR": "随机天空形象"
     },
     "assignment": {
-      "title": "自分の恐竜の姿を選ぶ",
-      "description": "生年月日・名前の占い、64タイプ診断、陸・海・空のランダムから選べます。",
-      "fromResult": "自分の結果から選ぶ",
-      "mappingPending": "診断結果は保存されました。恐竜の姿への対応付けは準備中です。",
-      "useResult": "この結果で姿を選ぶ"
+      "title": "选择自己的恐龙形象",
+      "description": "可通过生日与姓名占卜、64类型测试，或随机陆地、海洋、天空形象来选择。",
+      "fromResult": "从自己的结果选择",
+      "mappingPending": "结果已保存。对应恐龙形象的映射正在准备中。",
+      "useResult": "用此结果选择形象"
     },
     "diagnosisResults": {
-      "title": "自分の診断結果",
-      "type64": "64タイプ診断",
-      "birthStyle": "生年月日・名前占い",
-      "notCompleted": "未診断",
-      "completedAt": "実施日: {date}",
-      "retake": "診断する・再診断する",
-      "avatarUnchanged": "結果が変わっても、生まれた恐竜アバターの名前・姿・育成状態は変わりません。",
-      "typeCode": "タイプ: {code}"
+      "title": "自己的测试结果",
+      "type64": "64类型测试",
+      "birthStyle": "生日与姓名占卜",
+      "notCompleted": "尚未完成",
+      "completedAt": "完成日期：{date}",
+      "retake": "测试或重新测试",
+      "avatarUnchanged": "即使结果发生变化，已孵化的恐龙分身的名字、形象和成长状态也不会改变。",
+      "typeCode": "类型：{code}"
     },
     "diagnosis": {
-      "description": "自分が恐竜の姿になったところを想像して、今の自分に近い過ごし方を選んでください。正解や優劣はなく、科学的な性格や能力の測定ではありません。",
-      "start": "診断を始める",
-      "save": "途中の回答を保存",
-      "complete": "結果を見る",
-      "hold": "保留して戻る",
-      "cancel": "診断を取り消す",
-      "resume": "保留した診断を再開",
-      "tie": "同じくらいだった軸を選んでください",
-      "scale1": "左に近い",
-      "scale2": "やや左",
-      "scale3": "同じくらい",
-      "scale4": "やや右",
-      "scale5": "右に近い"
+      "description": "想象自己变成恐龙，选择最符合现在自己的生活方式。没有正确答案，也不分优劣。这不是对性格或能力的科学测量。",
+      "start": "开始测试",
+      "save": "保存当前回答",
+      "complete": "查看结果",
+      "hold": "保存并稍后继续",
+      "cancel": "取消测试",
+      "resume": "继续已保存的测试",
+      "tie": "在同分偏好之间选择",
+      "scale1": "更接近左侧",
+      "scale2": "稍偏左侧",
+      "scale3": "两边差不多",
+      "scale4": "稍偏右侧",
+      "scale5": "更接近右侧"
     },
     "birth": {
-      "purpose": "本人のプロフィールに保存した氏名・読み（カナ）・生年月日を、本人の占い結果の計算に使います。下の保存済み情報を確認してください。",
-      "rule": "独自の占いルールです。生年月日と氏名の読みを数値にし、どちらも1〜9へまとめます。科学的な測定ではありません。",
-      "profile": "本人のプロフィール",
+      "purpose": "将使用本人资料中保存的姓名、假名读音和出生日期计算你自己的占卜结果。请确认下方已保存的信息。",
+      "rule": "这是自定义的占卜规则。将出生日期和姓名读音分别转换为数字，并归并为1至9。这不是科学测量。",
+      "profile": "本人资料",
       "lastName": "姓",
       "firstName": "名",
-      "lastNameKana": "姓の読み（カナ）",
-      "firstNameKana": "名の読み（カナ）",
-      "birthDate": "生年月日",
-      "save": "本人情報を保存して確認",
-      "savedProfile": "計算に使う保存済み情報",
-      "confirmUse": "保存済みの本人情報を確認し、計算に使うことに同意します。",
-      "create": "本人の占い結果を作る",
-      "numbers": "生年月日の数: {life} / 名前の数: {name}",
-      "reconfirm": "本人情報を再確認して選ぶ",
-      "required": "本人情報を入力してください。"
+      "lastNameKana": "姓的读音（假名）",
+      "firstNameKana": "名的读音（假名）",
+      "birthDate": "出生日期",
+      "save": "保存并确认本人信息",
+      "savedProfile": "计算所用的已保存信息",
+      "confirmUse": "我已确认保存的本人信息，并同意将其用于此次计算。",
+      "create": "生成自己的占卜结果",
+      "numbers": "生日数：{life} / 姓名数：{name}",
+      "reconfirm": "重新确认本人信息后选择",
+      "required": "请输入本人信息。"
     },
     "decorations": {
-      "title": "置物と交換",
-      "permanent": "ポイントは永久の装飾品だけに使えます。育成の速度や権利には影響しません。",
-      "slots": "3つの置物枠",
-      "choose": "置物を選ぶ",
-      "slot": "枠 {n}",
-      "placed": "配置済み",
-      "empty": "空き",
-      "place": "配置する",
-      "remove": "取り外す",
-      "shop": "永久装飾の交換",
-      "balance": "残高: {balance}",
-      "noItems": "登録された装飾品はありません。",
-      "owned": "持っています",
-      "purchase": "交換する"
+      "title": "装饰与兑换",
+      "permanent": "积分只能用于永久装饰品，不会影响成长速度或使用权限。",
+      "slots": "3个装饰槽位",
+      "choose": "选择装饰品",
+      "slot": "槽位 {n}",
+      "placed": "已放置",
+      "empty": "空",
+      "place": "放置",
+      "remove": "移除",
+      "shop": "兑换永久装饰品",
+      "balance": "余额：{balance}",
+      "noItems": "尚无已登记的装饰品。",
+      "owned": "已拥有",
+      "purchase": "兑换"
     },
     "records": {
-      "title": "育成と交換の記録",
-      "empty": "記録はまだありません。",
-      "REWARD": "装飾ポイント",
-      "CARE": "無料のお世話",
-      "PURCHASE": "装飾の交換",
-      "amounts": "ポイント {points} / 成長 {xp} XP",
-      "source": "元の活動を見る"
+      "title": "成长与兑换记录",
+      "empty": "暂无记录。",
+      "REWARD": "装饰积分",
+      "CARE": "免费照料",
+      "PURCHASE": "装饰兑换",
+      "amounts": "积分 {points} / 成长 {xp} XP",
+      "source": "查看原活动"
     }
   }
 }

@@ -1,157 +1,157 @@
 {
   "ranch": {
-    "title": "恐竜の部屋",
-    "optional": "任意で始められます。無料のお世話だけで成体まで育ち、放置しても失いません。",
-    "start": "卵から始める",
-    "save": "保存する",
-    "retry": "再試行",
-    "next": "次のページ",
-    "pause": "休止する",
-    "resume": "再開する",
-    "paused": "休止中です。結果や置物は引き続き見られます。",
-    "unavailable": "準備中です。本人の診断結果は引き続き見られます。",
-    "recall": "想起をする",
+    "title": "Dinosaurierzimmer",
+    "optional": "Der Einstieg ist freiwillig. Kostenlose Pflege genügt, um deinen Dinosaurier erwachsen werden zu lassen. Auch ohne Pflege geht er nicht verloren; die Verbundenheit nimmt mit der Zeit nicht ab.",
+    "start": "Mit einem Ei beginnen",
+    "save": "Speichern",
+    "retry": "Erneut versuchen",
+    "next": "Nächste Seite",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "paused": "Pausiert. Deine Ergebnisse und Dekorationen bleiben sichtbar.",
+    "unavailable": "Wird vorbereitet. Deine eigenen Ergebnisse bleiben zugänglich.",
+    "recall": "Erinnern",
     "avatar": {
-      "label": "自分の恐竜の分身",
-      "description": "恐竜は自分自身の分身です。自分の好みや個性を映した姿を、ゆっくり育てます。"
+      "label": "Mein Dinosaurier-Avatar",
+      "description": "Der Dinosaurier ist dein eigenes Abbild. Lass eine Gestalt langsam wachsen, die deine Vorlieben und Persönlichkeit widerspiegelt."
     },
     "stage": {
-      "EGG": "卵",
-      "BABY": "幼体",
-      "JUVENILE": "若い恐竜",
-      "ADULT": "成体"
+      "EGG": "Ei",
+      "BABY": "Jungtier",
+      "JUVENILE": "Junger Dinosaurier",
+      "ADULT": "Ausgewachsen"
     },
     "egg": {
-      "INTACT": "卵が育っています。",
-      "SMALL_CRACK": "小さなひびが入りました。",
-      "WIDE_CRACK": "ひびが広がっています。",
-      "READY": "名前と選び方を決めるまで、卵は安全に待ちます。"
+      "INTACT": "Das Ei entwickelt sich.",
+      "SMALL_CRACK": "Ein kleiner Riss ist entstanden.",
+      "WIDE_CRACK": "Die Risse werden größer.",
+      "READY": "Das Ei wartet sicher, bis du einen Namen und eine Auswahlmethode festlegst."
     },
     "care": {
-      "eggTouch": "触る",
-      "food": "ごはん",
-      "touch": "ふれあい",
-      "choose": "選び方",
-      "status": "ようす",
-      "fed": "ごはんをあげました。成長 {xp} XP。",
-      "touched": "自分の分身に触れました。"
+      "eggTouch": "Berühren",
+      "food": "Futter",
+      "touch": "Interagieren",
+      "choose": "Gestalt wählen",
+      "status": "Status",
+      "fed": "Du hast Futter gegeben. Wachstum: {xp} XP.",
+      "touched": "Du hast dein eigenes Abbild berührt."
     },
     "scene": {
-      "assetPreparing": "この姿の素材は準備中です。文字と操作で引き続き利用できます。"
+      "assetPreparing": "Die Grafik für diese Gestalt wird vorbereitet. Text und Bedienung bleiben verfügbar."
     },
     "style": {
-      "PIXEL": "96ドット",
-      "PAINT_2D": "通常2D"
+      "PIXEL": "96-Pixel-Stil",
+      "PAINT_2D": "Normales 2D"
     },
     "motion": {
-      "NORMAL": "通常",
-      "REDUCED": "動きを控える",
-      "STOPPED": "動きを止める"
+      "NORMAL": "Normal",
+      "REDUCED": "Weniger Bewegung",
+      "STOPPED": "Bewegung anhalten"
     },
     "settings": {
-      "title": "恐竜の部屋の設定",
-      "style": "描画スタイル",
-      "motion": "動き",
-      "sound": "音を使う",
-      "volume": "音量",
-      "freewalkLater": "今は部屋表示です。自由歩行は後のPhaseで利用できます。",
-      "hide": "非表示にする",
-      "show": "表示する",
-      "visibilityFailed": "卵は作成済みですが表示設定の保存に失敗しました。表示だけ再試行してください。"
+      "title": "Einstellungen des Dinosaurierzimmers",
+      "style": "Darstellungsstil",
+      "motion": "Bewegung",
+      "sound": "Ton aktivieren",
+      "volume": "Lautstärke",
+      "freewalkLater": "Derzeit ist die Zimmeransicht verfügbar. Freies Umherlaufen folgt in einer späteren Phase.",
+      "hide": "Ausblenden",
+      "show": "Einblenden",
+      "visibilityFailed": "Das Ei wurde erstellt, aber die Sichtbarkeit konnte nicht gespeichert werden. Wiederhole nur die Sichtbarkeitseinstellung."
     },
     "command": {
-      "failed": "保存できませんでした。応答が届かなかった場合は同じ操作を再試行してください。",
-      "retryRequired": "保存結果を確認できていません。同じ名前で再試行してください。"
+      "failed": "Speichern fehlgeschlagen. Falls keine Antwort angekommen ist, wiederhole dieselbe Aktion.",
+      "retryRequired": "Das Speicherergebnis ist noch unklar. Versuche es mit demselben Namen erneut."
     },
     "naming": {
-      "title": "名前を付けよう",
-      "nameLabel": "恐竜の名前",
+      "title": "Namen wählen",
+      "nameLabel": "Name des Dinosauriers",
       "characterCount": "{count} / 10",
-      "irreversibleWarning": "この名前は確定後に変更できません。10文字以内で入力してください。",
-      "checkName": "名前を確認する",
-      "confirmPrompt": "「{name}」で決めますか？ この名前はあとから変更できません。",
-      "confirm": "この名前で決める",
-      "back": "入力に戻る",
-      "invalid": "1〜10文字で入力してください。不可視文字・改行・制御文字は使えません。"
+      "irreversibleWarning": "Nach der Bestätigung lässt sich dieser Name nicht ändern. Gib höchstens 10 Zeichen ein.",
+      "checkName": "Namen prüfen",
+      "confirmPrompt": "„{name}“ bestätigen? Dieser Name lässt sich später nicht ändern.",
+      "confirm": "Diesen Namen bestätigen",
+      "back": "Zur Eingabe zurück",
+      "invalid": "Gib 1–10 Zeichen ein. Unsichtbare Zeichen, Zeilenumbrüche und Steuerzeichen sind nicht erlaubt."
     },
     "habitat": {
-      "LAND": "陸からランダム",
-      "SEA": "海からランダム",
-      "AIR": "空からランダム"
+      "LAND": "Zufällige Landgestalt",
+      "SEA": "Zufällige Meeresgestalt",
+      "AIR": "Zufällige Luftgestalt"
     },
     "assignment": {
-      "title": "自分の恐竜の姿を選ぶ",
-      "description": "生年月日・名前の占い、64タイプ診断、陸・海・空のランダムから選べます。",
-      "fromResult": "自分の結果から選ぶ",
-      "mappingPending": "診断結果は保存されました。恐竜の姿への対応付けは準備中です。",
-      "useResult": "この結果で姿を選ぶ"
+      "title": "Deine Dinosauriergestalt wählen",
+      "description": "Wähle anhand von Geburtsdatum- und Namensnumerologie, einem Quiz mit 64 Typen oder einer zufälligen Land-, Meeres- oder Luftgestalt.",
+      "fromResult": "Aus meinen Ergebnissen wählen",
+      "mappingPending": "Dein Ergebnis wurde gespeichert. Die Zuordnung zu einer Dinosauriergestalt wird vorbereitet.",
+      "useResult": "Mit diesem Ergebnis die Gestalt wählen"
     },
     "diagnosisResults": {
-      "title": "自分の診断結果",
-      "type64": "64タイプ診断",
-      "birthStyle": "生年月日・名前占い",
-      "notCompleted": "未診断",
-      "completedAt": "実施日: {date}",
-      "retake": "診断する・再診断する",
-      "avatarUnchanged": "結果が変わっても、生まれた恐竜アバターの名前・姿・育成状態は変わりません。",
-      "typeCode": "タイプ: {code}"
+      "title": "Meine Ergebnisse",
+      "type64": "Quiz mit 64 Typen",
+      "birthStyle": "Geburtsdatum- und Namensnumerologie",
+      "notCompleted": "Noch nicht abgeschlossen",
+      "completedAt": "Abgeschlossen: {date}",
+      "retake": "Quiz starten oder wiederholen",
+      "avatarUnchanged": "Auch wenn sich deine Ergebnisse ändern, bleiben Name, Gestalt und Entwicklungsstand deines geschlüpften Dinosaurier-Avatars erhalten.",
+      "typeCode": "Typ: {code}"
     },
     "diagnosis": {
-      "description": "自分が恐竜の姿になったところを想像して、今の自分に近い過ごし方を選んでください。正解や優劣はなく、科学的な性格や能力の測定ではありません。",
-      "start": "診断を始める",
-      "save": "途中の回答を保存",
-      "complete": "結果を見る",
-      "hold": "保留して戻る",
-      "cancel": "診断を取り消す",
-      "resume": "保留した診断を再開",
-      "tie": "同じくらいだった軸を選んでください",
-      "scale1": "左に近い",
-      "scale2": "やや左",
-      "scale3": "同じくらい",
-      "scale4": "やや右",
-      "scale5": "右に近い"
+      "description": "Stell dir vor, du wärst ein Dinosaurier, und wähle die Lebensweise, die jetzt zu dir passt. Es gibt keine richtigen oder besseren Antworten. Dies ist keine wissenschaftliche Messung von Persönlichkeit oder Fähigkeiten.",
+      "start": "Quiz starten",
+      "save": "Bisherige Antworten speichern",
+      "complete": "Ergebnis ansehen",
+      "hold": "Speichern und später fortsetzen",
+      "cancel": "Quiz abbrechen",
+      "resume": "Gespeichertes Quiz fortsetzen",
+      "tie": "Wähle zwischen den gleich ausgeprägten Vorlieben",
+      "scale1": "Eher links",
+      "scale2": "Etwas links",
+      "scale3": "Etwa gleich",
+      "scale4": "Etwas rechts",
+      "scale5": "Eher rechts"
     },
     "birth": {
-      "purpose": "本人のプロフィールに保存した氏名・読み（カナ）・生年月日を、本人の占い結果の計算に使います。下の保存済み情報を確認してください。",
-      "rule": "独自の占いルールです。生年月日と氏名の読みを数値にし、どちらも1〜9へまとめます。科学的な測定ではありません。",
-      "profile": "本人のプロフィール",
-      "lastName": "姓",
-      "firstName": "名",
-      "lastNameKana": "姓の読み（カナ）",
-      "firstNameKana": "名の読み（カナ）",
-      "birthDate": "生年月日",
-      "save": "本人情報を保存して確認",
-      "savedProfile": "計算に使う保存済み情報",
-      "confirmUse": "保存済みの本人情報を確認し、計算に使うことに同意します。",
-      "create": "本人の占い結果を作る",
-      "numbers": "生年月日の数: {life} / 名前の数: {name}",
-      "reconfirm": "本人情報を再確認して選ぶ",
-      "required": "本人情報を入力してください。"
+      "purpose": "Dein gespeicherter Name, seine Kana-Lesung und dein Geburtsdatum werden für dein eigenes Numerologie-Ergebnis verwendet. Prüfe die gespeicherten Angaben unten.",
+      "rule": "Dies ist eine eigene Numerologieregel. Geburtsdatum und Namenslesung werden jeweils in Zahlen umgewandelt und auf 1–9 reduziert. Es handelt sich nicht um eine wissenschaftliche Messung.",
+      "profile": "Mein Profil",
+      "lastName": "Nachname",
+      "firstName": "Vorname",
+      "lastNameKana": "Nachname in Kana",
+      "firstNameKana": "Vorname in Kana",
+      "birthDate": "Geburtsdatum",
+      "save": "Meine Angaben speichern und prüfen",
+      "savedProfile": "Gespeicherte Angaben für die Berechnung",
+      "confirmUse": "Ich habe meine gespeicherten persönlichen Angaben geprüft und stimme ihrer Verwendung für diese Berechnung zu.",
+      "create": "Mein Numerologie-Ergebnis erstellen",
+      "numbers": "Geburtsdatumzahl: {life} / Namenszahl: {name}",
+      "reconfirm": "Meine Angaben vor der Auswahl erneut prüfen",
+      "required": "Gib deine persönlichen Angaben ein."
     },
     "decorations": {
-      "title": "置物と交換",
-      "permanent": "ポイントは永久の装飾品だけに使えます。育成の速度や権利には影響しません。",
-      "slots": "3つの置物枠",
-      "choose": "置物を選ぶ",
-      "slot": "枠 {n}",
-      "placed": "配置済み",
-      "empty": "空き",
-      "place": "配置する",
-      "remove": "取り外す",
-      "shop": "永久装飾の交換",
-      "balance": "残高: {balance}",
-      "noItems": "登録された装飾品はありません。",
-      "owned": "持っています",
-      "purchase": "交換する"
+      "title": "Dekorationen und Tausch",
+      "permanent": "Punkte sind nur für dauerhafte Dekorationen nutzbar. Sie beeinflussen weder Wachstumsgeschwindigkeit noch Zugangsrechte.",
+      "slots": "Drei Dekorationsplätze",
+      "choose": "Dekoration wählen",
+      "slot": "Platz {n}",
+      "placed": "Platziert",
+      "empty": "Leer",
+      "place": "Platzieren",
+      "remove": "Entfernen",
+      "shop": "Dauerhafte Dekorationen eintauschen",
+      "balance": "Guthaben: {balance}",
+      "noItems": "Es sind keine Dekorationen eingetragen.",
+      "owned": "Im Besitz",
+      "purchase": "Eintauschen"
     },
     "records": {
-      "title": "育成と交換の記録",
-      "empty": "記録はまだありません。",
-      "REWARD": "装飾ポイント",
-      "CARE": "無料のお世話",
-      "PURCHASE": "装飾の交換",
-      "amounts": "ポイント {points} / 成長 {xp} XP",
-      "source": "元の活動を見る"
+      "title": "Wachstums- und Tauschverlauf",
+      "empty": "Noch keine Einträge.",
+      "REWARD": "Dekorationspunkte",
+      "CARE": "Kostenlose Pflege",
+      "PURCHASE": "Dekorationstausch",
+      "amounts": "Punkte {points} / Wachstum {xp} XP",
+      "source": "Ursprüngliche Aktivität ansehen"
     }
   }
 }
