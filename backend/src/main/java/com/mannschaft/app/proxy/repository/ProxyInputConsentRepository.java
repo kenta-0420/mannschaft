@@ -1,6 +1,8 @@
 package com.mannschaft.app.proxy.repository;
 
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -21,20 +23,31 @@ public interface ProxyInputConsentRepository extends JpaRepository<ProxyInputCon
      */
     @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.proxyUserId = :proxyUserId " +
            "AND c.approvedAt IS NOT NULL AND c.revokedAt IS NULL " +
-           "AND c.effectiveFrom <= CURRENT_DATE AND c.effectiveUntil >= CURRENT_DATE")
-    List<ProxyInputConsentEntity> findActiveByProxyUserId(@Param("proxyUserId") Long proxyUserId);
+           "AND c.effectiveFrom <= :today AND c.effectiveUntil >= :today")
+    List<ProxyInputConsentEntity> findActiveByProxyUserId(
+            @Param("proxyUserId") Long proxyUserId, @Param("today") LocalDate today);
+
+    default List<ProxyInputConsentEntity> findActiveByProxyUserId(Long proxyUserId) {
+        return findActiveByProxyUserId(proxyUserId, LocalDate.now(UserZoneLocalDateTimeParser.SERVER_ZONE));
+    }
 
     /**
      * ProxyInputContextFilterで同意書の有効性を検証する。
      * consentIdとproxyUserIdの両方が一致する有効な同意書のみ返す。
      */
+    @EntityGraph(attributePaths = "scopes")
     @Query("SELECT c FROM ProxyInputConsentEntity c WHERE c.id = :consentId " +
            "AND c.proxyUserId = :proxyUserId " +
            "AND c.approvedAt IS NOT NULL AND c.revokedAt IS NULL " +
-           "AND c.effectiveFrom <= CURRENT_DATE AND c.effectiveUntil >= CURRENT_DATE")
+           "AND c.effectiveFrom <= :today AND c.effectiveUntil >= :today")
     Optional<ProxyInputConsentEntity> findValidConsent(
             @Param("consentId") Long consentId,
-            @Param("proxyUserId") Long proxyUserId);
+            @Param("proxyUserId") Long proxyUserId,
+            @Param("today") LocalDate today);
+
+    default Optional<ProxyInputConsentEntity> findValidConsent(Long consentId, Long proxyUserId) {
+        return findValidConsent(consentId, proxyUserId, LocalDate.now(UserZoneLocalDateTimeParser.SERVER_ZONE));
+    }
 
     /**
      * 同一組み合わせの有効同意書が存在するかチェックする（二重登録防止）。

@@ -39,6 +39,20 @@ public class ProxyInputConsentService {
     private final StorageService storageService;
     private final AccessControlService accessControlService;
 
+    /** 代理回答の事前認可用に、有効同意書の組合IDだけを返す。 */
+    @Transactional(readOnly = true)
+    public Long getValidSurveyInputConsentOrganizationId(Long consentId, Long actorUserId,
+                                                         Long subjectUserId) {
+        ProxyInputConsentEntity consent = consentRepository.findValidConsent(consentId, actorUserId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
+        if (!consent.isActive() || !consent.getSubjectUserId().equals(subjectUserId)
+                || consent.getScopes().stream()
+                .noneMatch(scope -> scope.getFeatureScope() == ProxyInputConsentScopeEntity.FeatureScope.SURVEY)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        return consent.getOrganizationId();
+    }
+
     /**
      * 同意書を登録する。
      * <ul>

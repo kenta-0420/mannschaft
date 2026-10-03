@@ -24,6 +24,11 @@ import com.mannschaft.app.survey.service.SurveyService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -278,6 +283,25 @@ class SurveyResponseServiceTest {
     @Nested
     @DisplayName("submitResponse — 代理入力フロー")
     class SubmitResponseProxyFlow {
+        private SecurityContext previousSecurityContext;
+
+        @BeforeEach
+        void 認証主体を設定する() {
+            previousSecurityContext = SecurityContextHolder.getContext();
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
+            SecurityContextHolder.setContext(context);
+        }
+
+        @AfterEach
+        void 認証状態を復元する() {
+            SecurityContextHolder.setContext(previousSecurityContext);
+        }
+
+        private void 既存代理試験の事前認可を設定する() {
+            given(proxyInputContext.requireSurveyResponseSubject(
+                    USER_ID, SURVEY_ID, ProxyInputContext.SurveyResponseOperation.SUBMIT)).willReturn(USER_ID);
+        }
 
         private static final Long PROXY_RECORD_ID = 999L;
         private static final Long CONSENT_ID = 50L;
@@ -360,6 +384,7 @@ class SurveyResponseServiceTest {
                     .willReturn(List.of(question));
             given(responseRepository.save(any(SurveyResponseEntity.class))).willReturn(savedResponse);
             given(proxyInputContext.isProxy()).willReturn(true);
+            既存代理試験の事前認可を設定する();
             given(proxyInputContext.getConsentId()).willReturn(CONSENT_ID);
             given(proxyInputContext.getSubjectUserId()).willReturn(USER_ID);
             given(proxyInputContext.getInputSource()).willReturn("PAPER_FORM");
@@ -408,6 +433,7 @@ class SurveyResponseServiceTest {
                     .willReturn(List.of(question));
             given(responseRepository.save(any(SurveyResponseEntity.class))).willReturn(savedResponse);
             given(proxyInputContext.isProxy()).willReturn(true);
+            既存代理試験の事前認可を設定する();
             given(proxyInputContext.getConsentId()).willReturn(CONSENT_ID);
             given(proxyInputContext.getSubjectUserId()).willReturn(USER_ID);
             given(proxyInputContext.getInputSource()).willReturn("PAPER_FORM");
@@ -463,6 +489,7 @@ class SurveyResponseServiceTest {
                     .willReturn(List.of(question));
             given(responseRepository.save(any(SurveyResponseEntity.class))).willReturn(savedResponse);
             given(proxyInputContext.isProxy()).willReturn(true);
+            既存代理試験の事前認可を設定する();
             given(proxyInputContext.getConsentId()).willReturn(CONSENT_ID);
             given(proxyInputContext.getSubjectUserId()).willReturn(USER_ID);
             given(proxyInputContext.getInputSource()).willReturn("PAPER_FORM");

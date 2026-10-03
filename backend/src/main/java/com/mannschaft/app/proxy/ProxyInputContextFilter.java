@@ -159,7 +159,7 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
 
         // 検証OK: ProxyInputContext をアクティブ化
         proxyInputContext.activate(subjectUserId, consentId, inputSourceHeader.trim(), storageHeader.trim(),
-                grantedScopes);
+                grantedScopes, proxyUserId);
         log.debug("代理入力モード有効化: proxyUserId={}, subjectUserId={}, consentId={}",
                 proxyUserId, subjectUserId, consentId);
 
@@ -223,7 +223,7 @@ public class ProxyInputContextFilter extends OncePerRequestFilter {
                 proxyInputContext.activate(childUserId, null,
                         ProxyInputRecordEntity.InputSource.GUARDIANSHIP_SWITCH.name(),
                         SWITCH_STORAGE_LOCATION_NA,
-                        java.util.Set.of(FeatureScope.PAYMENT));
+                        java.util.Set.of(FeatureScope.PAYMENT), guardianUserId);
                 log.debug("後見切替モード有効化: guardianUserId={}, childUserId={}", guardianUserId, childUserId);
                 chain.doFilter(request, response);
             }
