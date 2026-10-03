@@ -51,6 +51,7 @@ function requestAction(consent: ProxyInputConsent, action: 'approve' | 'revoke')
   if (disposed || busy.value || loading.value || error.value !== undefined) return
   if (action === 'approve' ? !mayApprove(consent) : !mayRevoke(consent)) return
   confirm.require({
+    group: 'proxy-admin-confirm',
     header: t(action === 'approve' ? 'proxy.admin.approve' : 'proxy.revoke.title'),
     message: t(action === 'approve' ? 'proxy.admin.approveConfirm' : 'proxy.revoke.confirm', {
       id: consent.id,
@@ -100,6 +101,14 @@ async function executeAction(consent: ProxyInputConsent, action: 'approve' | 're
 
 <template>
   <div class="min-w-0 space-y-4" :data-testid="`proxy-admin-${mode}`">
+    <ConfirmDialog
+      group="proxy-admin-confirm"
+      :pt="{
+        pcCloseButton: { root: { class: 'min-h-11 min-w-11' } },
+        pcAcceptButton: { root: { class: 'min-h-11 min-w-11' } },
+        pcRejectButton: { root: { class: 'min-h-11 min-w-11' } },
+      }"
+    />
     <PageHeader :title="title" />
     <p class="text-surface-600 dark:text-surface-300">{{ t('proxy.admin.description') }}</p>
     <div class="flex flex-wrap gap-3">
