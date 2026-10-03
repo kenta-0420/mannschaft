@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link RecruitmentTemplateService} の単体テスト。
@@ -115,7 +116,7 @@ class RecruitmentTemplateServiceTest {
     class GetTemplate {
 
         @Test
-        @DisplayName("findActiveById で取得後、checkMembership を通過し DTO を返す")
+        @DisplayName("findActiveById で取得し DTO を返す（認可は Facade が tx の外で済ませる。service は認可クラスを呼ばない）")
         void getTemplate_success() throws Exception {
             // given
             RecruitmentTemplateEntity template = buildTemplate();
@@ -123,11 +124,11 @@ class RecruitmentTemplateServiceTest {
             given(templateRepository.findActiveById(TEMPLATE_ID)).willReturn(Optional.of(template));
 
             // when
-            RecruitmentTemplateResponse result = service.getTemplate(TEMPLATE_ID, USER_ID);
+            RecruitmentTemplateResponse result = service.getTemplate(TEMPLATE_ID);
 
             // then
             assertThat(result.getScope().scopeType()).isEqualTo(SCOPE_TYPE.name());
-            verify(accessControlService).checkMembership(USER_ID, SCOPE_ID, SCOPE_TYPE.name());
+            verifyNoInteractions(accessControlService);
         }
 
         @Test
@@ -137,7 +138,7 @@ class RecruitmentTemplateServiceTest {
             given(templateRepository.findActiveById(TEMPLATE_ID)).willReturn(Optional.empty());
 
             // when / then
-            assertThatThrownBy(() -> service.getTemplate(TEMPLATE_ID, USER_ID))
+            assertThatThrownBy(() -> service.getTemplate(TEMPLATE_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.TEMPLATE_NOT_FOUND);
@@ -205,7 +206,7 @@ class RecruitmentTemplateServiceTest {
     class Update {
 
         @Test
-        @DisplayName("findActiveById + checkAdminOrAbove 通過後、entity.update() が呼ばれ DTO を返す")
+        @DisplayName("findActiveById で読み直し、entity.update() が呼ばれ DTO を返す（認可は Facade が tx の外で済ませる）")
         void update_success() throws Exception {
             // given
             RecruitmentTemplateEntity template = buildTemplate();
@@ -219,11 +220,11 @@ class RecruitmentTemplateServiceTest {
                     null, null, null, null, null, null, null, null, null, null, null, null);
 
             // when
-            RecruitmentTemplateResponse result = service.update(TEMPLATE_ID, USER_ID, request);
+            RecruitmentTemplateResponse result = service.update(TEMPLATE_ID, request);
 
             // then
             assertThat(result).isNotNull();
-            verify(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE.name());
+            verifyNoInteractions(accessControlService);
             verify(templateRepository).save(template);
         }
 
@@ -238,7 +239,7 @@ class RecruitmentTemplateServiceTest {
                     null, null, null, null, null, null, null, null, null, null, null, null);
 
             // when / then
-            assertThatThrownBy(() -> service.update(TEMPLATE_ID, USER_ID, request))
+            assertThatThrownBy(() -> service.update(TEMPLATE_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.TEMPLATE_NOT_FOUND);
@@ -254,7 +255,7 @@ class RecruitmentTemplateServiceTest {
     class Archive {
 
         @Test
-        @DisplayName("findActiveById + checkAdminOrAbove 通過後、entity.archive() が呼ばれ保存")
+        @DisplayName("findActiveById で読み直し、entity.archive() が呼ばれ保存（認可は Facade が tx の外で済ませる）")
         void archive_success() throws Exception {
             // given
             RecruitmentTemplateEntity template = buildTemplate();
@@ -263,12 +264,12 @@ class RecruitmentTemplateServiceTest {
             given(templateRepository.save(any())).willReturn(template);
 
             // when
-            service.archive(TEMPLATE_ID, USER_ID);
+            service.archive(TEMPLATE_ID);
 
             // then
             // archive() が呼ばれると deletedAt が設定される
             assertThat(template.getDeletedAt()).isNotNull();
-            verify(accessControlService).checkAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE.name());
+            verifyNoInteractions(accessControlService);
             verify(templateRepository).save(template);
         }
     }
