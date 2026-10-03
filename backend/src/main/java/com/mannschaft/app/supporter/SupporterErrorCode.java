@@ -27,7 +27,13 @@ public enum SupporterErrorCode implements ErrorCode {
     SUPPORTER_005("SUPPORTER_005", "ブロックされているため申請できません", Severity.WARN),
 
     /** サポーター機能が無効なチーム・組織です */
-    SUPPORTER_006("SUPPORTER_006", "サポーター機能が有効ではありません", Severity.WARN);
+    SUPPORTER_006("SUPPORTER_006", "サポーター機能が有効ではありません", Severity.WARN),
+
+    /**
+     * CMP-261001-0835 AC-14: フォロー解除対象（SUPPORTER 所属 or PENDING 申請）が存在しない。
+     * MEMBER/ADMIN 所属者が /follow を叩いた場合もここに含む（解除対象が無いため）。
+     */
+    SUPPORTER_007("SUPPORTER_007", "フォロー中ではありません", Severity.WARN);
 
     private final String code;
     private final String message;

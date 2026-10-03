@@ -54,22 +54,39 @@ const {
   orgTeams,
   permissionGroups,
   loading,
-  followStatus,
-  followLoading,
   joinRequestStatus,
   joinRequestLoading,
-  showCancelSupporterConfirm,
   showLeaveConfirm,
   fetchOrg,
   fetchOrgTeams,
   fetchPermissionGroups,
-  fetchFollowStatus,
-  applySupporter,
-  cancelSupporter,
   fetchJoinRequestStatus,
   applyJoinRequest,
   leaveOrganization,
 } = useOrgDetail(orgSlug)
+
+// フォロー（サポーター）結線（CMP-261001-0835）。ラッパー群は useScopeFollowWiring に集約し、
+// 単体テストで検証する（SUPPORTER でも状態取得・解除後の権限再取得・権限のみの再試行）。
+const organizationApi = useOrganizationApi()
+const {
+  followStatus,
+  followLoading,
+  followPermissionSyncError,
+  showCancelSupporterConfirm,
+  fetchFollowStatus,
+  applySupporter,
+  cancelSupporter,
+  retryFollowStatus,
+  retryFollowPermissionSync,
+} = useScopeFollowWiring({
+  scopeSlug: orgSlug,
+  api: {
+    follow: organizationApi.followOrganization,
+    unfollow: organizationApi.unfollowOrganization,
+    getStatus: organizationApi.getFollowStatus,
+  },
+  roleAccess: { roleName, loadPermissions },
+})
 
 const {
   ancestors,
@@ -131,7 +148,7 @@ async function tryRedirectMovedSlug(): Promise<boolean> {
 /** 状態同期用の再取得（follow/leave 後など）。 */
 async function refresh() {
   await Promise.all([fetchOrg(), loadPermissions()])
-  await fetchFollowStatus(roleName)
+  await fetchFollowStatus()
   await fetchJoinRequestStatus(roleName)
 }
 
@@ -249,7 +266,7 @@ async function loadShellData() {
   await Promise.all([
     fetchOrgTeams(),
     isAdmin.value ? fetchPermissionGroups() : Promise.resolve(),
-    fetchFollowStatus(roleName),
+    fetchFollowStatus(),
     fetchJoinRequestStatus(roleName),
     fetchAncestors(),
     fetchChildren(true),
@@ -282,7 +299,7 @@ watch(isShellRoute, (shell) => {
 watch(orgSlug, () => {
   orgLoaded.value = false
   org.value = null
-  followStatus.value = 'NONE'
+  // followStatus の初期化は useScopeFollowWiring が slug 変更時に同期的に行う。
   joinRequestStatus.value = 'UNKNOWN'
   if (isShellRoute.value) void loadShellData()
 })
@@ -446,12 +463,15 @@ provideOrgShellContext({
             :is-admin-or-deputy="isAdminOrDeputy"
             :follow-status="followStatus"
             :follow-loading="followLoading"
+            :follow-permission-sync-error="followPermissionSyncError"
             :join-request-status="joinRequestStatus"
             :join-request-loading="joinRequestLoading"
             :ancestors="ancestors"
             @back="navigateTo('/dashboard')"
             @apply-supporter="applySupporter"
             @cancel-supporter="cancelSupporter"
+            @retry-follow-status="retryFollowStatus"
+            @retry-follow-permission-sync="retryFollowPermissionSync"
             @apply-join-request="applyJoinRequest"
             @retry-join-request-status="retryJoinRequestStatus"
             @show-cancel-confirm="showCancelSupporterConfirm = true"

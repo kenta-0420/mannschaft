@@ -1763,13 +1763,21 @@
       "supporter_registered": "サポーターとして登録しました",
       "supporter_applied": "サポーター申請を送信しました",
       "supporter_canceled": "サポーターをやめました",
+      "follow_approved_badge": "サポーターです",
+      "follow_unfollow_aria": "フォロー解除",
+      "follow_pending_label": "申請中（承認待ち）",
+      "follow_pending_cancel_button": "取消",
+      "follow_apply_button": "サポーターになる",
       "leave_action": "退出する",
       "load_error_title": "情報を取得できませんでした",
       "load_error_body": "時間をおいて再度お試しください。権限がない場合は表示できないことがあります。",
       "back_to_dashboard": "ダッシュボードへ戻る",
       "retry": "再試行",
       "slow_loading": "読み込みに時間がかかっています",
-      "join_request_applied": "参加申請を送信しました"
+      "join_request_applied": "参加申請を送信しました",
+      "follow_fetch_error": "フォロー状態を取得できませんでした",
+      "follow_permission_sync_error_title": "権限情報の更新に失敗しました",
+      "follow_permission_sync_error_body": "フォロー解除は完了しましたが、権限情報の再取得に失敗しました。再試行してください。"
     },
     "unsavedChanges": {
       "title": "未保存の変更",
@@ -2371,7 +2379,8 @@
     "action": {
       "leave_confirm_title": "チームから退出",
       "leave_confirm_body": "本当にこのチームから退出しますか？この操作は取り消せません。",
-      "left": "チームから退出しました"
+      "left": "チームから退出しました",
+      "leave_button": "チームから退出"
     }
   },
   "orgShell": {
@@ -2389,7 +2398,8 @@
     "action": {
       "leave_confirm_title": "組織から退出",
       "leave_confirm_body": "本当にこの組織から退出しますか？この操作は取り消せません。",
-      "left": "組織から退出しました"
+      "left": "組織から退出しました",
+      "leave_button": "組織から退出"
     }
   },
   "blog_guide": {

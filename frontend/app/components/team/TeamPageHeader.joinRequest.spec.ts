@@ -46,6 +46,7 @@ async function mountHeader(joinRequestStatus: JoinRequestUiStatus) {
       isAdminOrDeputy: false,
       followStatus: 'NONE',
       followLoading: false,
+      followPermissionSyncError: false,
       joinRequestStatus,
       joinRequestLoading: false,
       templateLabel: {},
