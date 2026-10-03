@@ -6,13 +6,16 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
@@ -22,13 +25,30 @@ import java.time.LocalDateTime;
  * チームマスターエンティティ。チームの基本情報・公開設定を管理する。
  */
 @Entity
-@Table(name = "teams")
+@Table(name = "teams", indexes = {
+        // CMP-260901-1538 柱③-A 検分第4巡是正(P1-2): FOR UPDATE候補検索が全表走査/全表ロックに
+        // ならないよう、生成列 name_trimmed に索引を張る。test profile（ddl-auto=create）では
+        // ここが唯一の索引定義源のため、Flyway側（V202）と定義を一致させること。
+        @Index(name = "idx_teams_name_trimmed", columnList = "name_trimmed")
+})
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TeamEntity extends BaseEntity {
+
+    @PrePersist
+    protected void normalizeTimezone() {
+        if (timezone != null) {
+            timezone = timezone.trim();
+        }
+    }
+
+    /** 予約等の業務ローカル時刻を解釈する IANA タイムゾーン。既存データは移行で Asia/Tokyo に補完する。 */
+    @Column(nullable = false, length = 64, columnDefinition = "VARCHAR(64) NOT NULL DEFAULT 'Asia/Tokyo'")
+    @Builder.Default
+    private String timezone = "Asia/Tokyo";
 
     /**
      * URL 公開用カスタムスラッグ（人間可読な識別子）。
@@ -41,13 +61,25 @@ public class TeamEntity extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
+    /**
+     * CMP-260901-1538 柱③-A 検分第4巡是正: 同名確認フローの候補検索が索引を使えるようにする
+     * ための生成列（{@code GENERATED ALWAYS AS (TRIM(name)) STORED}）。DB 側が自動算出するため
+     * JPA からは書き込まない（{@code insertable/updatable=false}）。
+     * {@code columnDefinition} で明示することで、test profile（{@code ddl-auto=create}）でも
+     * 本番と同じ生成列としてスキーマが作られる（本番/開発は Flyway
+     * {@code V202.*__add_teams_name_trimmed.sql} が担う）。
+     */
+    @Column(name = "name_trimmed", insertable = false, updatable = false,
+            columnDefinition = "VARCHAR(100) GENERATED ALWAYS AS (TRIM(name)) STORED")
+    private String nameTrimmed;
+
     @Column(length = 100)
     private String nameKana;
 
-    @Column(length = 50)
+    @Column(name = "nickname1", length = 50)
     private String nickname1;
 
-    @Column(length = 50)
+    @Column(name = "nickname2", length = 50)
     private String nickname2;
 
     @Column(length = 30)
@@ -90,6 +122,16 @@ public class TeamEntity extends BaseEntity {
     private LocalDateTime archivedAt;
 
     private LocalDateTime deletedAt;
+
+    /**
+     * 柱②-1: 販促プロビジョニング。PROVISIONED（承諾前の事前作成状態）/ ACTIVE（通常）。
+     * <p>本 PR では ACTIVE 以外を生成するコードは存在しない（DDL とエンティティ骨格のみ）。
+     * 作成 API とゲート（PROVISIONED を通常導線から隠す等）は後続 PR で実装する。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lifecycle_status", nullable = false, length = 20)
+    @Builder.Default
+    private LifecycleStatus lifecycleStatus = LifecycleStatus.ACTIVE;
 
     // --- F01.2 拡張プロフィールフィールド ---
 
@@ -193,6 +235,31 @@ public class TeamEntity extends BaseEntity {
     }
 
     /**
+     * 柱②-1: 販促プロビジョニングのライフサイクル状態。
+     */
+    public enum LifecycleStatus {
+        /** 承諾前の事前作成状態。招待未承諾のため通常導線には出さない想定(ゲートは後続 PR)。 */
+        PROVISIONED,
+        /** 通常のチーム(既定値)。 */
+        ACTIVE
+    }
+
+    /**
+     * PROVISIONED（承諾前の事前作成状態）かどうかを判定する。
+     */
+    public boolean isProvisioned() {
+        return this.lifecycleStatus == LifecycleStatus.PROVISIONED;
+    }
+
+    /**
+     * 招待承諾により PROVISIONED から ACTIVE へ引き上げる。
+     * <p>本 PR では呼び出し元が存在しない（承諾 API は後続 PR）。</p>
+     */
+    public void activate() {
+        this.lifecycleStatus = LifecycleStatus.ACTIVE;
+    }
+
+    /**
      * チームをアーカイブする。
      */
     public void archive() {
@@ -268,5 +335,124 @@ public class TeamEntity extends BaseEntity {
      */
     public void renameSlug(String newSlug) {
         this.slug = newSlug;
+    }
+
+    /**
+     * チームの基本情報を部分更新する（{@code TeamService#updateTeam} 用）。
+     *
+     * <p>本メソッドは managed entity をその場でミューテートする更新メソッドである。
+     * {@code @Transactional} 内で managed な本エンティティに対して呼ぶことで JPA の
+     * dirty checking により UPDATE が発行される。</p>
+     *
+     * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
+     * {@link TeamEntity} は {@code @SuperBuilder(toBuilder = true)} を使用しており、
+     * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
+     * {@code toBuilder()} は {@code id} を引き継ぐが、managed entity の直接ミューテートが
+     * より安全かつ明示的なため、その場でフィールドを更新する（PR #1643 と同型）。</p>
+     *
+     * <p>各引数は「リクエスト値が非 null なら採用、null なら現値を維持」の部分更新セマンティクス。
+     * slug の一意性検証・visibility 文字列の enum 解決は呼び出し側（{@code TeamService}）の責務とし、
+     * 本メソッドは解決済みの値を受け取る。</p>
+     *
+     * @param name             新チーム名
+     * @param nameKana         新カナ
+     * @param nickname1        新ニックネーム1
+     * @param nickname2        新ニックネーム2
+     * @param template         新テンプレート
+     * @param prefecture       新都道府県（自由入力）
+     * @param city             新市区町村（自由入力）
+     * @param prefectureCode   新都道府県コード
+     * @param cityCode         新市区町村コード
+     * @param visibility       新公開範囲（解決済み enum・null なら現値維持）
+     * @param supporterEnabled 新サポーター有効フラグ
+     * @param mapEmbedUrl      新地図埋め込み URL
+     */
+    public void applyUpdate(String name, String nameKana, String nickname1, String nickname2,
+                            String template, String prefecture, String city,
+                            String prefectureCode, String cityCode, Visibility visibility,
+                            Boolean supporterEnabled, String mapEmbedUrl) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (nameKana != null) {
+            this.nameKana = nameKana;
+        }
+        if (nickname1 != null) {
+            this.nickname1 = nickname1;
+        }
+        if (nickname2 != null) {
+            this.nickname2 = nickname2;
+        }
+        if (template != null) {
+            this.template = template;
+        }
+        if (prefecture != null) {
+            this.prefecture = prefecture;
+        }
+        if (city != null) {
+            this.city = city;
+        }
+        if (prefectureCode != null) {
+            this.prefectureCode = prefectureCode;
+        }
+        if (cityCode != null) {
+            this.cityCode = cityCode;
+        }
+        if (visibility != null) {
+            this.visibility = visibility;
+        }
+        if (supporterEnabled != null) {
+            this.supporterEnabled = supporterEnabled;
+        }
+        if (mapEmbedUrl != null) {
+            this.mapEmbedUrl = mapEmbedUrl;
+        }
+    }
+
+    /** チームの業務タイムゾーンを更新する。入力の IANA 検証は API 層で行う。 */
+    public void updateTimezone(String timezone) {
+        if (timezone != null) {
+            this.timezone = timezone.trim();
+        }
+    }
+
+    /**
+     * チームの拡張プロフィールを更新する（{@code TeamExtendedProfileService#updateProfile} 用）。
+     *
+     * <p>{@link #applyUpdate} と同じく managed entity の直接ミューテートで UPDATE を発行する。
+     * builder 作り直しによる id 欠落 INSERT を避けるために設けた更新メソッドである。</p>
+     *
+     * <p>本メソッドは「指定された値で上書きする」セマンティクス（null も含めて上書き可）。
+     * 呼び出し側（{@code TeamExtendedProfileService}）が現値維持／null 化のロジックを解決済みの
+     * 値として渡す前提とする。</p>
+     *
+     * @param homepageUrl              新ホームページ URL（正規化済み・null 化可）
+     * @param establishedDate         新設立日（null 化可）
+     * @param establishedDatePrecision 新設立日精度（null 化可）
+     * @param philosophy              新理念（trim・null 化済み）
+     * @param profileVisibility       新プロフィール公開設定
+     */
+    public void applyProfileUpdate(String homepageUrl, LocalDate establishedDate,
+                                   com.mannschaft.app.organization.EstablishedDatePrecision establishedDatePrecision,
+                                   String philosophy,
+                                   com.mannschaft.app.organization.ProfileVisibility profileVisibility) {
+        this.homepageUrl = homepageUrl;
+        this.establishedDate = establishedDate;
+        this.establishedDatePrecision = establishedDatePrecision;
+        this.philosophy = philosophy;
+        this.profileVisibility = profileVisibility;
+    }
+
+    /**
+     * F19.1 Phase 2: サポーター向け氏名表示モードを更新する
+     * （{@code SupporterNameDisclosureService#patchTeamDisclosure} 用）。
+     *
+     * <p>managed entity の直接ミューテートで UPDATE を発行する。builder 作り直しによる
+     * id 欠落 INSERT を避けるために設けた更新メソッドである。</p>
+     *
+     * @param mode 新しい氏名表示モード
+     */
+    public void updateSupporterNameDisclosure(com.mannschaft.app.publicview.enums.NameDisclosureMode mode) {
+        this.supporterNameDisclosure = mode;
     }
 }

@@ -1,5 +1,6 @@
 package com.mannschaft.app.gallery;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -53,15 +54,20 @@ class PhotoServiceTest {
     @Mock private StorageQuotaService storageQuotaService;
     /** F00 Phase E-5: ContentVisibilityChecker モック追加。 */
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
+    /** 認可根治戦役 Wave3-B5: 書込CRUD/DL の scope 認可用モック。 */
+    @Mock private AccessControlService accessControlService;
+    /** CMP-028 Phase B: PhotoAlbumService の可視レベル解決に必要なモック。 */
+    @Mock private com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
 
     private PhotoAlbumService albumService;
     private PhotoService service;
 
     @BeforeEach
     void setUp() {
-        albumService = new PhotoAlbumService(albumRepository, galleryMapper, contentVisibilityChecker);
+        albumService = new PhotoAlbumService(albumRepository, galleryMapper, contentVisibilityChecker,
+                accessControlService, membershipBatchQueryService);
         service = new PhotoService(photoRepository, albumRepository, albumService,
-                galleryMapper, r2StorageService, eventPublisher, storageQuotaService);
+                galleryMapper, r2StorageService, eventPublisher, storageQuotaService, accessControlService);
     }
 
     private static final Long ALBUM_ID = 1L;
@@ -91,7 +97,8 @@ class PhotoServiceTest {
         @Test
         @DisplayName("異常系: ファイルサイズ超過でGALLERY_005例外")
         void アップロード_サイズ超過_例外() {
-            PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a").build();
+            PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a")
+                    .allowMemberUpload(true).build();
             given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
 
             UploadPhotosRequest.PhotoItem item = new UploadPhotosRequest.PhotoItem(
@@ -107,7 +114,8 @@ class PhotoServiceTest {
         @Test
         @DisplayName("正常系: PHOTO タイプでエンティティ保存される")
         void アップロード_写真_正常() {
-            PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(0).build();
+            PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(0)
+                    .allowMemberUpload(true).build();
             given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
             given(albumRepository.sumPhotoCountByTeamId(1L)).willReturn(0);
 
@@ -130,7 +138,8 @@ class PhotoServiceTest {
         @Test
         @DisplayName("正常系: VIDEO タイプでストレージ確認後保存される")
         void アップロード_動画_正常() {
-            PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(0).build();
+            PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(0)
+                    .allowMemberUpload(true).build();
             given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
             given(albumRepository.sumPhotoCountByTeamId(1L)).willReturn(0);
             given(r2StorageService.objectExists("gallery/TEAM/1/album-1/video-uuid.mp4")).willReturn(true);
@@ -165,7 +174,7 @@ class PhotoServiceTest {
             given(albumRepository.findById(ALBUM_ID)).willReturn(
                     Optional.of(PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(1).build()));
 
-            service.deletePhoto(PHOTO_ID);
+            service.deletePhoto(PHOTO_ID, USER_ID);
 
             verify(photoRepository).delete(entity);
             verify(eventPublisher).publish(any(com.mannschaft.app.common.event.DomainEvent.class));
@@ -175,7 +184,7 @@ class PhotoServiceTest {
         @DisplayName("異常系: 写真不在でGALLERY_002例外")
         void 削除_不在_例外() {
             given(photoRepository.findById(PHOTO_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.deletePhoto(PHOTO_ID))
+            assertThatThrownBy(() -> service.deletePhoto(PHOTO_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("GALLERY_002"));
@@ -195,7 +204,7 @@ class PhotoServiceTest {
             PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a").allowDownload(false).build();
             given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
 
-            assertThatThrownBy(() -> service.getPhotoDownloadUrl(PHOTO_ID))
+            assertThatThrownBy(() -> service.getPhotoDownloadUrl(PHOTO_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("GALLERY_004"));
@@ -211,7 +220,8 @@ class PhotoServiceTest {
         @Test
         @DisplayName("正常系: uploadPhotos でrecordUploadが呼ばれる（TEAMスコープ）")
         void uploadPhotos_recordUpload_呼び出し確認_TEAMスコープ() {
-            PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(0).build();
+            PhotoAlbumEntity album = PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(0)
+                    .allowMemberUpload(true).build();
             given(albumRepository.findById(ALBUM_ID)).willReturn(Optional.of(album));
             given(albumRepository.sumPhotoCountByTeamId(1L)).willReturn(0);
 
@@ -245,7 +255,7 @@ class PhotoServiceTest {
             given(albumRepository.findById(ALBUM_ID)).willReturn(
                     Optional.of(PhotoAlbumEntity.builder().teamId(1L).title("a").photoCount(1).build()));
 
-            service.deletePhoto(PHOTO_ID);
+            service.deletePhoto(PHOTO_ID, USER_ID);
 
             then(storageQuotaService).should().recordDeletion(
                     eq(StorageScopeType.TEAM), eq(1L), eq(1024L * 1024),
@@ -263,7 +273,7 @@ class PhotoServiceTest {
             given(albumRepository.findById(ALBUM_ID)).willReturn(
                     Optional.of(PhotoAlbumEntity.builder().organizationId(2L).title("a").photoCount(1).build()));
 
-            service.deletePhoto(PHOTO_ID);
+            service.deletePhoto(PHOTO_ID, USER_ID);
 
             then(storageQuotaService).should().recordDeletion(
                     eq(StorageScopeType.ORGANIZATION), eq(2L), eq(2048L * 1024),

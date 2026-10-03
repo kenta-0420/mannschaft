@@ -14,7 +14,7 @@ test.describe('ORG-FEAT-006〜009: 組織掲示板', () => {
           data: [
             { id: 1, title: 'テスト掲示', body: 'テスト本文', pinned: false, authorName: 'テストユーザー', createdAt: '2026-04-01T00:00:00Z' },
           ],
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })

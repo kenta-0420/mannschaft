@@ -74,7 +74,7 @@ function makePagedResponse(data: TeamSearchItem[]): PagedResponse<TeamSearchItem
     meta: {
       page: 0,
       size: 20,
-      totalElements: data.length,
+      total: data.length,
       totalPages: 1,
     },
   }
@@ -206,7 +206,7 @@ describe('useTeamApi.searchOrganizationTeams', () => {
 
     expect(result.data).toHaveLength(2)
     expect(result.data[0]!.id).toBe(1)
-    expect(result.meta.totalElements).toBe(2)
+    expect(result.meta.total).toBe(2)
   })
 
   it('isTeamSearchResult タイプガードが詳細版と抑制版を判別すること', () => {

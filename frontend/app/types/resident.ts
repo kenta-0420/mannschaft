@@ -2,14 +2,18 @@ export type ResidentStatus = 'ACTIVE' | 'MOVED_OUT' | 'PENDING_VERIFICATION'
 
 export interface DwellingUnit {
   id: number
-  teamId: number
+  teamId: number | null
+  organizationId: number | null
+  scopeType: string | null
   unitNumber: string
   floor: number | null
-  roomType: string | null
-  area: number | null
-  residents: ResidentResponse[]
-  isVacant: boolean
+  unitType: string | null
+  layout: string | null
+  areaSqm: number | null
+  notes: string | null
+  residentCount: number
   createdAt: string
+  updatedAt: string | null
 }
 
 export interface ResidentResponse {

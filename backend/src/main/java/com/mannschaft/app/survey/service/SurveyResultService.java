@@ -4,9 +4,8 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
-import com.mannschaft.app.common.visibility.ReferenceType;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.QuestionType;
 import com.mannschaft.app.survey.SurveyErrorCode;
@@ -15,16 +14,15 @@ import com.mannschaft.app.survey.dto.RespondentResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse.OptionResultResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse.QuestionResultResponse;
+import com.mannschaft.app.survey.dto.SurveyTeamBreakdownResponse;
 import com.mannschaft.app.survey.entity.SurveyEntity;
 import com.mannschaft.app.survey.entity.SurveyOptionEntity;
 import com.mannschaft.app.survey.entity.SurveyQuestionEntity;
 import com.mannschaft.app.survey.entity.SurveyResponseEntity;
-import com.mannschaft.app.survey.entity.SurveyTargetEntity;
 import com.mannschaft.app.survey.repository.SurveyOptionRepository;
 import com.mannschaft.app.survey.repository.SurveyQuestionRepository;
 import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
-import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import com.mannschaft.app.survey.repository.SurveyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,17 +52,24 @@ public class SurveyResultService {
     /** CSV エクスポート時の匿名性保証のための最小回答者数（5名未満は集計マスク）。 */
     private static final int MIN_RESPONDENTS_FOR_DETAIL_EXPORT = 5;
 
+    /** CMP-041: ADMIN+ 委任判定に用いる permission 名。 */
+    private static final String PERMISSION_MANAGE_SURVEYS = "MANAGE_SURVEYS";
+
     private final SurveyRepository surveyRepository;
     private final SurveyQuestionRepository questionRepository;
     private final SurveyOptionRepository optionRepository;
     private final SurveyResponseRepository responseRepository;
     private final SurveyResultViewerRepository resultViewerRepository;
-    private final SurveyTargetRepository targetRepository;
     private final SurveyService surveyService;
     private final AccessControlService accessControlService;
     private final UserRepository userRepository;
-    private final UserRoleRepository userRoleRepository;
-    private final ContentVisibilityChecker contentVisibilityChecker;
+    /** 結果閲覧可否の唯一の判定点（詳細応答の viewerCanViewResults と共用）。 */
+    private final SurveyResultAccessGuard resultAccessGuard;
+    private final OrganizationMembershipService organizationMembershipService;
+
+    /** 母集団解決の唯一の窓口（公開時の target_count スナップショットと同一定義）。 */
+    private final SurveyUniverseResolver universeResolver;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * アンケート結果を取得する。閲覧権限チェックを行う。
@@ -83,28 +89,22 @@ public class SurveyResultService {
     /**
      * 結果閲覧権限を検証する。
      *
-     * <p>F00 Phase C (2026-05-04): {@link ContentVisibilityChecker} 経由の判定に切り替えた。
+     * <p>F00 Phase C (2026-05-04): {@code ContentVisibilityChecker} 経由の判定に切り替えた。
      * Resolver ({@link com.mannschaft.app.survey.visibility.SurveyVisibilityResolver}) が
      * status × {@code ResultsVisibility} 合成を一元処理する。</p>
      *
-     * <p>ただし「作成者本人は常に結果を閲覧可能」という既存挙動を維持するため、Resolver の
-     * 判定 (CUSTOM 経路では純粋に AFTER_RESPONSE / AFTER_CLOSE / VIEWERS_ONLY のみ評価) より
-     * 前段で「作成者高速パス」を Service 側に残す。これにより:</p>
-     * <ul>
-     *   <li>Resolver は §5.1.4「CUSTOM の意味論を厳密に」の規約を保てる</li>
-     *   <li>Service は既存挙動（作成者は常に可視）を担保できる</li>
-     * </ul>
+     * <p>Issue #2779: その 2 段（作成者高速パス → 可視性基盤への委譲）を
+     * {@link SurveyResultAccessGuard} へ抽出した。アンケート詳細応答の
+     * {@code viewerCanViewResults} も同じメソッドを呼ぶため、
+     * <b>「見られる」と応答したのに 403</b>（またはその逆）が構造的に起こらない。</p>
      */
     private void validateResultAccess(SurveyEntity survey, Long userId) {
-        // 作成者本人の高速パス（Resolver には含めない既存挙動の維持）。
-        if (userId != null && survey.getCreatedBy() != null
-                && survey.getCreatedBy().equals(userId)) {
-            return;
-        }
-        // それ以外は ContentVisibilityChecker に委譲。
+        // Issue #2779: 「作成者高速パス → ContentVisibilityChecker 委譲」の 2 段は
+        // SurveyResultAccessGuard に抽出済み。詳細応答の viewerCanViewResults も
+        // 同じメソッドを呼ぶため、応答と実際の 403 が構造的に食い違わない。
         // canView=false の場合は既存と同じ SurveyErrorCode.RESULT_ACCESS_DENIED で返す
         // （根治治療: 既存挙動と同じ ErrorCode を投げ、上位 API 契約を保つ）。
-        if (!contentVisibilityChecker.canView(ReferenceType.SURVEY, survey.getId(), userId)) {
+        if (!resultAccessGuard.canViewResults(survey, userId)) {
             throw new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED);
         }
     }
@@ -122,7 +122,7 @@ public class SurveyResultService {
      *
      * <p>母集団の決定（設計書 §1035-1036 に準拠）:
      * <ul>
-     *   <li>{@link DistributionMode#ALL} → スコープ内全メンバー（user_roles 経由）</li>
+     *   <li>{@link DistributionMode#ALL} → スコープ内全メンバー（組織は配下 ACTIVE チームまで再帰展開）</li>
      *   <li>{@link DistributionMode#TARGETED} → {@code survey_targets} 登録ユーザー</li>
      * </ul>
      *
@@ -134,7 +134,9 @@ public class SurveyResultService {
         SurveyEntity survey = surveyService.findSurveyEntityOrThrow(surveyId);
 
         boolean isCreator = survey.getCreatedBy() != null && survey.getCreatedBy().equals(userId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(userId, survey.getScopeId(), survey.getScopeType());
+        // MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任（CMP-041）
+        boolean isAdmin = accessControlService.hasAdminOrPermissionInScope(
+                userId, survey.getScopeId(), survey.getScopeType(), PERMISSION_MANAGE_SURVEYS);
         boolean isViewer = resultViewerRepository.existsBySurveyIdAndUserId(survey.getId(), userId);
 
         boolean fullAccess = isAdmin || isCreator || isViewer;
@@ -175,12 +177,12 @@ public class SurveyResultService {
                 if (hasResponded) {
                     continue;
                 }
-                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), u.getAvatarUrl(), false, null));
+                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), mediaUrlResolver.resolve(u.getAvatarUrl()), false, null));
             } else {
                 java.time.LocalDateTime respondedAt = hasResponded
                         ? firstResponseByUser.get(uid).getCreatedAt()
                         : null;
-                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), u.getAvatarUrl(),
+                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), mediaUrlResolver.resolve(u.getAvatarUrl()),
                         hasResponded, respondedAt));
             }
         }
@@ -206,10 +208,10 @@ public class SurveyResultService {
         SurveyEntity survey = surveyRepository.findByIdAndScopeTypeAndScopeId(surveyId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(SurveyErrorCode.SURVEY_NOT_FOUND));
 
-        // 認可
+        // 認可（MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任・CMP-041）
         boolean isCreator = survey.getCreatedBy() != null && survey.getCreatedBy().equals(currentUserId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(
-                currentUserId, survey.getScopeId(), survey.getScopeType());
+        boolean isAdmin = accessControlService.hasAdminOrPermissionInScope(
+                currentUserId, survey.getScopeId(), survey.getScopeType(), PERMISSION_MANAGE_SURVEYS);
         boolean isViewer = resultViewerRepository.existsBySurveyIdAndUserId(surveyId, currentUserId);
         if (!isAdmin && !isCreator && !isViewer) {
             throw new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED);
@@ -384,40 +386,207 @@ public class SurveyResultService {
         );
     }
 
+    // ===================================================================================
+    // (B) 組織→参加チーム配信 案C フェーズB（アンケートのチーム別内訳 by_team）
+    // ===================================================================================
+
+    /**
+     * アンケート結果をチーム別内訳（by_team）で集計取得する
+     * （(B) 組織→参加チーム配信 案C フェーズB・御裁可A/B）。
+     *
+     * <p>全体集計（{@code total}・実人数 DISTINCT）＋チームごとの内訳（{@code byTeam}・重複計上あり）を返す。
+     * 個別回答者（user_id・氏名）は含まない。</p>
+     *
+     * <p><b>byTeam を返す条件</b>: {@code team_breakdown_enabled = TRUE} かつ組織スコープ
+     * （{@code scope_type = ORGANIZATION}）かつ<b>非匿名</b>のときのみ。トグル OFF（既定）・
+     * 非組織スコープ・匿名アンケートは {@code byTeam = null}（従来挙動・後方互換）。匿名 ×
+     * トグル ON はそもそも作成時バリデーション（{@link SurveyService#createSurvey}）で禁止されるが、
+     * 既存データ・将来の経路を考慮し集計側でも二重防御で byTeam を出さない（御裁可B）。</p>
+     *
+     * <p><b>御裁可A（全チーム計上）</b>: 配下の複数チームに所属する回答者は所属全チームへ 1 票ずつ計上する
+     * （{@link OrganizationMembershipService#resolveMemberTeams(Long, boolean)} の重複計上前提）。
+     * したがって byTeam 各チームの回答者数の合計は total の実回答者数以上になりうる。</p>
+     *
+     * <p><b>御裁可B（5名未満マスク）</b>: 非匿名でも回答者 {@value #MIN_RESPONDENTS_FOR_DETAIL_EXPORT}
+     * 名未満のチームは {@code masked = true} とし、設問ごとの内訳（optionResults）を出さない。</p>
+     *
+     * <p><b>チーム別回答率の分母</b>: 当該チームの実回答者数（チーム内 DISTINCT user_id）。
+     * 全体回答率の分母は全体の実回答者数。</p>
+     *
+     * <p><b>認可</b>: チーム別内訳は組織の管理ビューであり、当該組織（{@code scopeType}/{@code scopeId}）の
+     * ADMIN / DEPUTY_ADMIN のみ取得できる。これは結果閲覧可否（{@code ResultsVisibility}）よりも厳格な
+     * 管理ビュー専用ゲートであり、ResultsVisibility と独立して常に ADMIN を要求する（権限がない場合 403）。
+     * survey ドメインの既存 EP（{@code exportResultsCsv} / {@code getRespondents}）と同じく Service 層で認可する。</p>
+     *
+     * @param surveyId アンケートID
+     * @param userId   閲覧者ユーザーID（当該組織の ADMIN/DEPUTY_ADMIN でなければ 403）
+     * @return チーム別内訳レスポンス
+     */
+    public SurveyTeamBreakdownResponse getTeamBreakdown(Long surveyId, Long userId) {
+        SurveyEntity survey = surveyService.findSurveyEntityOrThrow(surveyId);
+
+        // 認可: 組織の管理ビューゆえ ADMIN/DEPUTY_ADMIN を強制（ResultsVisibility より厳格）。
+        // MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任（CMP-041）。COMMON_002 は従来どおり維持。
+        accessControlService.checkAdminOrHasPermissionInScope(
+                userId, survey.getScopeId(), survey.getScopeType(), PERMISSION_MANAGE_SURVEYS);
+
+        List<SurveyQuestionEntity> questions =
+                questionRepository.findBySurveyIdOrderByDisplayOrderAsc(survey.getId());
+        // 設問ID → 選択肢一覧（出現順）。全体・チーム両方の集計で使い回す（N+1 回避）。
+        Map<Long, List<SurveyOptionEntity>> optionsByQuestion = new LinkedHashMap<>();
+        for (SurveyQuestionEntity q : questions) {
+            optionsByQuestion.put(q.getId(),
+                    optionRepository.findByQuestionIdOrderByDisplayOrderAsc(q.getId()));
+        }
+
+        // 全回答行（全体・チーム両方で使う）。
+        List<SurveyResponseEntity> allResponses =
+                responseRepository.findBySurveyIdOrderByCreatedAtAsc(surveyId);
+
+        // 全体の実回答者数（DISTINCT user_id）。御裁可A の total 別建て。
+        Set<Long> allRespondentUserIds = new HashSet<>();
+        for (SurveyResponseEntity r : allResponses) {
+            allRespondentUserIds.add(r.getUserId());
+        }
+        int totalRespondentCount = allRespondentUserIds.size();
+
+        // 全体集計（全回答行を 1 バケットに集約）。
+        SurveyTeamBreakdownResponse.TeamQuestionResults total = new SurveyTeamBreakdownResponse.TeamQuestionResults(
+                totalRespondentCount,
+                aggregateQuestionResults(questions, optionsByQuestion, allResponses, totalRespondentCount));
+
+        // byTeam を返さない条件（トグル OFF / 非組織 / 匿名）。
+        boolean teamBreakdownEnabled = Boolean.TRUE.equals(survey.getTeamBreakdownEnabled());
+        boolean isOrganizationScope = "ORGANIZATION".equals(survey.getScopeType());
+        boolean isAnonymous = Boolean.TRUE.equals(survey.getIsAnonymous());
+        if (!teamBreakdownEnabled || !isOrganizationScope || isAnonymous) {
+            return new SurveyTeamBreakdownResponse(survey.getId(), survey.getTitle(), total, null);
+        }
+
+        // userId → 所属配下チーム（複数・組織直属は teamId=null 枠）。SUPPORTER 包含は配信トグルに従う。
+        boolean includeSupporters = Boolean.TRUE.equals(survey.getIncludeSupporters());
+        Map<Long, List<OrganizationMembershipService.TeamRef>> memberTeams =
+                organizationMembershipService.resolveMemberTeams(survey.getScopeId(), includeSupporters);
+
+        // teamKey（null=組織直接枠）→ 当該チームに帰属する回答行のバケット（御裁可A: 全チームへ計上）。
+        Map<Long, List<SurveyResponseEntity>> responsesByTeam = new LinkedHashMap<>();
+        Map<Long, Set<Long>> respondentsByTeam = new LinkedHashMap<>();
+        Map<Long, String> teamNameById = new HashMap<>();
+        // 回答行を userId でまとめ、各回答者の所属全チームへ複製計上する。
+        Map<Long, List<SurveyResponseEntity>> responsesByUser = allResponses.stream()
+                .collect(Collectors.groupingBy(SurveyResponseEntity::getUserId));
+        for (Map.Entry<Long, List<SurveyResponseEntity>> entry : responsesByUser.entrySet()) {
+            Long respondentUserId = entry.getKey();
+            List<OrganizationMembershipService.TeamRef> teams = memberTeams.get(respondentUserId);
+            if (teams == null || teams.isEmpty()) {
+                // 配信母集団に属さない回答者（母集団変更・退会等）。byTeam では計上しない。
+                continue;
+            }
+            for (OrganizationMembershipService.TeamRef ref : teams) {
+                Long teamKey = ref.teamId(); // null = 組織直接メンバー枠
+                responsesByTeam.computeIfAbsent(teamKey, k -> new ArrayList<>()).addAll(entry.getValue());
+                respondentsByTeam.computeIfAbsent(teamKey, k -> new HashSet<>()).add(respondentUserId);
+                if (teamKey != null && ref.teamName() != null) {
+                    teamNameById.putIfAbsent(teamKey, ref.teamName());
+                }
+            }
+        }
+
+        List<SurveyTeamBreakdownResponse.TeamBreakdownItem> byTeam = new ArrayList<>();
+        for (Map.Entry<Long, List<SurveyResponseEntity>> e : responsesByTeam.entrySet()) {
+            Long teamKey = e.getKey();
+            int teamRespondentCount = respondentsByTeam.getOrDefault(teamKey, Set.of()).size();
+            // 御裁可B: 5名未満のチームは内訳をマスク（設問内訳を出さない）。
+            boolean masked = teamRespondentCount < MIN_RESPONDENTS_FOR_DETAIL_EXPORT;
+            List<SurveyTeamBreakdownResponse.TeamQuestionResult> teamQuestionResults = masked
+                    ? List.of()
+                    : aggregateQuestionResults(questions, optionsByQuestion, e.getValue(), teamRespondentCount);
+            byTeam.add(new SurveyTeamBreakdownResponse.TeamBreakdownItem(
+                    teamKey,
+                    teamKey == null ? null : teamNameById.get(teamKey),
+                    teamRespondentCount,
+                    masked,
+                    teamQuestionResults));
+        }
+
+        return new SurveyTeamBreakdownResponse(survey.getId(), survey.getTitle(), total, byTeam);
+    }
+
+    /**
+     * 与えられた回答行集合（全体 or 1 チーム分）から、設問ごとの選択肢集計を構築する。
+     *
+     * <p>選択式設問（SINGLE_CHOICE / MULTIPLE_CHOICE）のみ optionResults を算出する。
+     * 自由記述（FREE_TEXT / SCALE）はチーム別内訳・匿名性の観点から対象外とし optionResults は空。
+     * 回答率の分母は引数 {@code respondentCount}（全体 or 当該チームの実回答者数）。</p>
+     */
+    private List<SurveyTeamBreakdownResponse.TeamQuestionResult> aggregateQuestionResults(
+            List<SurveyQuestionEntity> questions,
+            Map<Long, List<SurveyOptionEntity>> optionsByQuestion,
+            List<SurveyResponseEntity> responses,
+            int respondentCount) {
+        // (questionId, optionId) → 選択数。
+        Map<Long, Map<Long, Long>> optionCounts = new HashMap<>();
+        for (SurveyResponseEntity r : responses) {
+            if (r.getOptionId() == null) {
+                continue;
+            }
+            optionCounts.computeIfAbsent(r.getQuestionId(), k -> new HashMap<>())
+                    .merge(r.getOptionId(), 1L, Long::sum);
+        }
+
+        List<SurveyTeamBreakdownResponse.TeamQuestionResult> results = new ArrayList<>();
+        for (SurveyQuestionEntity q : questions) {
+            List<SurveyTeamBreakdownResponse.TeamOptionResult> optionResults = new ArrayList<>();
+            if (q.getQuestionType() == QuestionType.SINGLE_CHOICE
+                    || q.getQuestionType() == QuestionType.MULTIPLE_CHOICE) {
+                Map<Long, Long> countsForQuestion =
+                        optionCounts.getOrDefault(q.getId(), Map.of());
+                for (SurveyOptionEntity option : optionsByQuestion.getOrDefault(q.getId(), List.of())) {
+                    long count = countsForQuestion.getOrDefault(option.getId(), 0L);
+                    double percentage = respondentCount > 0
+                            ? (double) count / respondentCount * 100.0 : 0.0;
+                    optionResults.add(new SurveyTeamBreakdownResponse.TeamOptionResult(
+                            option.getId(), option.getOptionText(), count, percentage));
+                }
+            }
+            results.add(new SurveyTeamBreakdownResponse.TeamQuestionResult(
+                    q.getId(),
+                    q.getQuestionText(),
+                    q.getQuestionType().name(),
+                    optionResults));
+        }
+        return results;
+    }
+
     /**
      * distribution_mode に応じて母集団ユーザーIDリストを取得する。
      *
-     * <p>F05.4 §1035-1036 準拠:
-     * <ul>
-     *   <li>{@link DistributionMode#ALL} → user_roles 経由でスコープ内全メンバー</li>
-     *   <li>{@link DistributionMode#TARGETED} → survey_targets 登録ユーザー</li>
-     * </ul>
+     * <p>母集団の定義は {@link SurveyUniverseResolver} に一元化されている
+     * （Issue #2787 / CMP-042）。公開時に {@code target_count} へスナップショットする分母と
+     * ここで数える母集団は<b>同一定義</b>でなければならない。ここに自前の分岐を書き戻すと、
+     * 「分母と未回答者リストが別々の母集団を見る」食い違いが再発する。</p>
+     *
+     * @param survey 対象アンケート
+     * @return 母集団ユーザーIDリスト
      */
     private List<Long> resolveUniverseUserIds(SurveyEntity survey) {
-        if (survey.getDistributionMode() == DistributionMode.ALL) {
-            return userRoleRepository.findUserIdsByScope(survey.getScopeType(), survey.getScopeId());
-        }
-        List<SurveyTargetEntity> targets = targetRepository.findBySurveyId(survey.getId());
-        return targets.stream()
-                .map(SurveyTargetEntity::getUserId)
-                .distinct()
-                .collect(Collectors.toList());
+        return universeResolver.resolveUniverseUserIds(survey);
     }
 
     /**
      * 指定ユーザーが当該アンケートの母集団に属するか判定する。
      *
      * <p>MEMBER 経路の認可（{@code unresponded_visibility = ALL_MEMBERS}）で
-     * 「自分が母集団内のメンバーかどうか」をチェックする際に使用する。</p>
+     * 「自分が母集団内のメンバーかどうか」をチェックする際に使用する。
+     * 判定の定義は {@link SurveyUniverseResolver#isUserInUniverse} に一元化されており、
+     * {@link #resolveUniverseUserIds(SurveyEntity)} が返す集合と整合する
+     * （分母・未回答者リスト・回答可否が同じ母集団を見る）。</p>
+     *
+     * @param survey 対象アンケート
+     * @param userId 判定対象ユーザー ID
+     * @return 母集団に属するなら true
      */
     private boolean isUserInUniverse(SurveyEntity survey, Long userId) {
-        if (userId == null) {
-            return false;
-        }
-        if (survey.getDistributionMode() == DistributionMode.ALL) {
-            return userRoleRepository.findUserIdsByScope(survey.getScopeType(), survey.getScopeId())
-                    .contains(userId);
-        }
-        return targetRepository.existsBySurveyIdAndUserId(survey.getId(), userId);
+        return universeResolver.isUserInUniverse(survey, userId);
     }
 }

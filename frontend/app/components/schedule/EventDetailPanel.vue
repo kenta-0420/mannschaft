@@ -1,7 +1,13 @@
 <script setup lang="ts">
+import type { MatchOrgOption } from '~/composables/match/useMatchOrgContext'
+
 const props = defineProps<{
   event: {
     id: number
+    /** 親 schedules 行の ID（BE CalendarEntryResponse.scheduleId・設計書 §1.5 / AC-07(b)）。null ならコメント欄非表示。 */
+    scheduleId?: number | null
+    /** 予定が属する組織の数値 ID（あれば試合はその組織の下に作る。無ければ組織セレクタ／代表親組織）。 */
+    organizationId?: number | null
     title: string
     description: string | null
     location: string | null
@@ -15,19 +21,33 @@ const props = defineProps<{
     attendanceRequired: boolean
     myAttendance: string | null
     attendanceStats: { yes: number; no: number; maybe: number; pending: number; total: number } | null
+    targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+    targetCount?: number
+    targets?: Array<{
+      userId: number
+      displayName: string
+      avatarUrl: string | null
+      calendarColor: string | null
+    }>
   }
   scopeType: 'team' | 'organization'
   scopeId: string
   canEdit: boolean
+  canManageSchedule?: boolean
   skipDelegations?: boolean
   scopeName?: string | null
   scopeIconUrl?: string | null
+  showAudience?: boolean
+  /** 通知リンク（?commentId=）から遷移してきた場合のハイライト対象コメント ID（設計書 §6.4）。 */
+  highlightCommentId?: string | null
 }>()
 
 const emit = defineEmits<{
   edit: []
   delete: []
   responded: []
+  /** ハイライト処理（発見/未発見いずれも）が完了し、呼び出し元が commentId クエリを除去してよいタイミング。 */
+  'comment-highlighted': []
 }>()
 
 const { formatDate, formatDateTime: isoFormatDateTime } = useDatetime()
@@ -41,20 +61,94 @@ const notification = useNotification()
 const { resolveContext } = useMatchOrgContext()
 const { resolveMatchBySchedule, createMatch } = useMatchApi()
 // TEAM スコープ予定のみ記録ボタンを出す（teamId 文脈が要るため・organization/personal では非表示）。
-const canRecordMatch = computed(() => props.scopeType === 'team')
+// Bug B 修正: scopeId が空の場合（個人予定）はボタンを非表示にする。
+const canRecordMatch = computed(() => props.scopeType === 'team' && !!props.scopeId)
 const recordingMatch = ref(false)
 
+// 試合を作る組織: 予定が組織に属していればその組織。属していなければ、チームの親組織が複数のとき
+// 既定の組織を置かずセレクタで必ず選ばせる（選ぶまで作成できない。黙って代表親組織を使わない）。
+// ※ 現行の呼び出し元（calendar.vue 等）は event.organizationId を渡さないため、通常はこの経路になる。
+const matchOrganizations = ref<MatchOrgOption[]>([])
+const selectedOrgId = ref<number | null>(null)
+const matchOrgId = ref<number | null>(null)
+const showOrgSelect = computed(
+  () => canRecordMatch.value && props.event.organizationId == null && matchOrganizations.value.length > 1,
+)
+
+/** 親組織が複数・予定に組織が無い・まだ選んでいない: 選ぶまで作成できない。 */
+const needsOrgChoice = computed(() => showOrgSelect.value && selectedOrgId.value === null)
+
+/**
+ * 親組織の解決が終わるまでは、親組織が複数かどうか分からない。その間に押されると
+ * 代表親組織で作られてしまうため、予定に組織が無い場合は解決完了まで作成できない。
+ */
+const matchOrgsLoaded = ref(false)
+const orgResolving = computed(
+  () => canRecordMatch.value && props.event.organizationId == null && !matchOrgsLoaded.value,
+)
+/** 記録ボタンを押せない（組織の解決中、または選択待ち）。 */
+const recordBlocked = computed(() => orgResolving.value || needsOrgChoice.value)
+
+async function loadMatchOrganizations(): Promise<void> {
+  if (!canRecordMatch.value) return
+  try {
+    const ctx = await resolveContext(props.scopeId, { orgId: selectedOrgId.value })
+    matchOrganizations.value = ctx?.organizations ?? []
+    // 選択が必要なうちは既定（代表親組織）を見せない（セレクタは未選択の表示になる）
+    matchOrgId.value = needsOrgChoice.value ? null : (ctx?.orgId ?? null)
+  } finally {
+    matchOrgsLoaded.value = true
+  }
+}
+
+function onSelectMatchOrg(id: number): void {
+  selectedOrgId.value = id
+  void loadMatchOrganizations()
+}
+
+onMounted(loadMatchOrganizations)
+watch(() => props.scopeId, () => {
+  selectedOrgId.value = null
+  matchOrgsLoaded.value = false
+  void loadMatchOrganizations()
+})
+
 async function recordMatch(): Promise<void> {
-  if (!canRecordMatch.value || recordingMatch.value) return
+  if (!canRecordMatch.value || recordingMatch.value || recordBlocked.value) return
   recordingMatch.value = true
   try {
-    const ctx = await resolveContext(props.scopeId)
-    if (!ctx) return // 解決失敗時は composable 内で通知済み
+    // 予定の組織があればそれ、無ければセレクタの選択（未選択は代表親組織）
+    const ctx = await resolveContext(props.scopeId, {
+      orgId: props.event.organizationId ?? selectedOrgId.value,
+    })
+    if (!ctx) {
+      // Bug C 修正: ctx が null の場合（チームが組織に所属していない等）はユーザーへ通知する。
+      // 以前のコメント「composable 内で通知済み」は誤記で、実際には通知されていなかった。
+      notification.warn(t('match.entry.no_org_for_record'))
+      return
+    }
+    // 予定の組織がこのチームの親組織でない場合は、代表親組織へ落とさず止める
+    if (ctx.orgInvalid || ctx.orgId === null) {
+      notification.warn(t('match.org_select.invalid'))
+      return
+    }
+    // 初回の組織取得が失敗していた（ctx が null で組織が空のまま）場合でも、ここで取り直した結果が
+    // 複数の親組織なら選択を飛ばさない。代表親組織で作らず、セレクタを出して選ばせる。
+    if (
+      props.event.organizationId == null &&
+      selectedOrgId.value === null &&
+      ctx.organizations.length > 1
+    ) {
+      matchOrganizations.value = ctx.organizations
+      matchOrgId.value = null
+      return
+    }
+    const orgQuery = { org: String(ctx.orgId) }
 
     // 1) この予定に紐づく既存 match があれば live を開く
     const existing = await resolveMatchBySchedule(ctx.orgId, ctx.teamId, props.event.id)
     if (existing?.id) {
-      await navigateTo(`/teams/${props.scopeId}/matches/${existing.id}/live`)
+      await navigateTo({ path: `/teams/${props.scopeId}/matches/${existing.id}/live`, query: orgQuery })
       return
     }
 
@@ -70,7 +164,7 @@ async function recordMatch(): Promise<void> {
       venue: props.event.location ?? undefined,
     })
     if (created.id) {
-      await navigateTo(`/teams/${props.scopeId}/matches/${created.id}/live`)
+      await navigateTo({ path: `/teams/${props.scopeId}/matches/${created.id}/live`, query: orgQuery })
     }
   } catch {
     // エラーは composable 内で通知済み（症状は隠さない）
@@ -151,8 +245,9 @@ onMounted(async () => {
       delegationCount.value = 0
     }
   }
-  // 機能55: 予約タスクは編集権限者にのみ表示・取消可能
-  if (props.canEdit) {
+  // 機能55: 予約タスクは編集権限者かつチーム/組織スコープにのみ表示・取消可能
+  // 個人予定（scopeId が空）の場合は GET /teams//schedules/{id} の二重スラッシュを避けるためスキップ
+  if (props.canEdit && props.scopeId) {
     await loadScheduledTasks()
   }
 })
@@ -179,7 +274,7 @@ onMounted(async () => {
           rounded
         />
       </div>
-      <div v-if="canEdit" class="flex gap-1">
+      <div v-if="canEdit || canManageSchedule" class="flex gap-1">
         <Button icon="pi pi-pencil" text rounded size="small" @click="emit('edit')" />
         <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="emit('delete')" />
       </div>
@@ -206,10 +301,29 @@ onMounted(async () => {
         <i class="pi pi-user text-surface-400" />
         <span>作成: {{ event.createdBy.displayName }}</span>
       </div>
+      <div v-if="showAudience !== false" class="flex items-start gap-2">
+        <i class="pi pi-users mt-0.5 text-surface-400" aria-hidden="true" />
+        <div class="min-w-0">
+          <div class="text-xs text-surface-500">{{ $t('schedule.targetAudience.label') }}</div>
+          <ScheduleTargetAudience
+            :target-mode="event.targetMode"
+            :target-count="event.targetCount"
+            :targets="event.targets"
+            class="mt-1 text-surface-700 dark:text-surface-200"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- F08.10 入口④: TEAM スコープ予定のみ「この試合を記録」ボタンを出す -->
     <div v-if="canRecordMatch">
+      <MatchOrgSelect
+        v-if="showOrgSelect"
+        :organizations="matchOrganizations"
+        :org-id="matchOrgId"
+        :sync-query="false"
+        @update:org-id="onSelectMatchOrg"
+      />
       <Button
         :label="$t('match.entry.record_from_schedule')"
         icon="pi pi-play"
@@ -217,6 +331,7 @@ onMounted(async () => {
         size="small"
         class="w-full"
         :loading="recordingMatch"
+        :disabled="recordBlocked"
         @click="recordMatch"
       />
       <p class="mt-1 text-xs text-surface-400">{{ $t('match.entry.record_from_schedule_hint') }}</p>
@@ -236,6 +351,15 @@ onMounted(async () => {
       :my-attendance="event.myAttendance"
       :stats="event.attendanceStats"
       @responded="emit('responded')"
+    />
+
+    <!-- F03.1 (B) 組織出欠のチーム別内訳（組織スコープ + 管理者のみ）。
+         認可は BE 側 org-ADMIN 限定 EP。ここでは出し分けの一次フィルタとして
+         組織スコープ + canEdit(管理者) + 出欠あり を要求する（403 時はパネル内で明示表示）。 -->
+    <AttendanceTeamBreakdownPanel
+      v-if="event.attendanceRequired && scopeType === 'organization' && canEdit"
+      :org-public-id="scopeId"
+      :schedule-id="event.id"
     />
 
     <!-- 機能55: 予約タスク一覧（管理者 + 1件以上の場合のみ表示） -->
@@ -280,6 +404,18 @@ onMounted(async () => {
     >
       <span class="font-medium text-yellow-800 dark:text-yellow-200">{{ $t('proxy.delegation.admin.tab') }}: </span>
       <span class="text-yellow-700 dark:text-yellow-300">{{ delegationCount }}{{ $t('proxy.delegation.admin.count_suffix') }}</span>
+    </div>
+
+    <!-- F03.16 予定コメントスレッド。
+         親 schedules 行が存在するときのみ表示する（events.schedule_id が NULL のイベントには
+         コメントスレッドが成立しない・設計書 §1.5・AC-07(b)）。 -->
+    <div v-if="event.scheduleId !== null && event.scheduleId !== undefined" class="border-t border-surface-200 pt-4 dark:border-surface-700">
+      <ScheduleCommentSection
+        :schedule-id="event.scheduleId"
+        :can-manage-settings="canEdit"
+        :highlight-comment-id="highlightCommentId"
+        @highlighted="emit('comment-highlighted')"
+      />
     </div>
   </div>
 </template>

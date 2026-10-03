@@ -16,6 +16,7 @@ const { captureQuiet } = useErrorReport()
 interface ThreadWithScope extends BulletinThreadResponse {
   scopeName: string
   scopeId: string
+  scopeSlug: string
 }
 
 const threads = ref<ThreadWithScope[]>([])
@@ -34,13 +35,14 @@ async function load() {
   loading.value = true
   try {
     const results = await Promise.all(
-      orgStore.myOrganizations.slice(0, 5).map((org) =>
-        getScopedThreads('organizations', String(org.id), { page: 0, size: 3 })
+      orgStore.myOrganizations.slice(0, 8).map((org) =>
+        getScopedThreads('organizations', String(org.id), { page: 0, size: 4 })
           .then((res) =>
             res.data.map((t) => ({
               ...t,
               scopeName: org.nickname1 || org.name,
               scopeId: String(org.id),
+              scopeSlug: org.slug,
             })),
           )
           .catch((error) => {
@@ -52,7 +54,7 @@ async function load() {
     threads.value = results
       .flat()
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 8)
+      .slice(0, 20)
   } finally {
     loading.value = false
   }
@@ -77,11 +79,11 @@ onMounted(load)
     <div v-else-if="threads.length === 0">
       <DashboardEmptyState icon="pi pi-clipboard" message="組織からのお知らせはありません" />
     </div>
-    <div v-else class="divide-y divide-surface-100 dark:divide-surface-700">
+    <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">
       <NuxtLink
         v-for="thread in threads"
         :key="`${thread.scopeType}-${thread.id}`"
-        :to="`/organizations/${thread.scopeId}/bulletin`"
+        :to="`/organizations/${thread.scopeSlug}/bulletin`"
         class="flex items-start gap-2 py-2.5 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/50"
       >
         <i v-if="thread.isPinned" class="pi pi-thumbtack mt-0.5 shrink-0 text-xs text-orange-500" />
@@ -107,6 +109,11 @@ onMounted(load)
           </div>
         </div>
       </NuxtLink>
+      <div class="flex justify-end pt-2">
+        <NuxtLink to="/timeline" class="text-sm text-primary hover:underline">
+          {{ $t('button.view_all') }}
+        </NuxtLink>
+      </div>
     </div>
   </DashboardWidgetCard>
 
@@ -118,11 +125,11 @@ onMounted(load)
     <div v-else-if="threads.length === 0">
       <DashboardEmptyState icon="pi pi-clipboard" message="組織からのお知らせはありません" />
     </div>
-    <div v-else class="divide-y divide-surface-100 dark:divide-surface-700">
+    <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">
       <NuxtLink
         v-for="thread in threads"
         :key="`${thread.scopeType}-${thread.id}`"
-        :to="`/organizations/${thread.scopeId}/bulletin`"
+        :to="`/organizations/${thread.scopeSlug}/bulletin`"
         class="flex items-start gap-2 py-2.5 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/50"
       >
         <i v-if="thread.isPinned" class="pi pi-thumbtack mt-0.5 shrink-0 text-xs text-orange-500" />

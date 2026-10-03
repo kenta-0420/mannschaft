@@ -3,6 +3,7 @@ package com.mannschaft.app.shift.repository;
 import com.mannschaft.app.shift.ChangeRequestStatus;
 import com.mannschaft.app.shift.ChangeRequestType;
 import com.mannschaft.app.shift.entity.ShiftChangeRequestEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -60,4 +61,40 @@ public interface ShiftChangeRequestRepository extends JpaRepository<ShiftChangeR
     int withdrawOpenRequestsByScheduleId(
             @Param("scheduleId") Long scheduleId,
             @Param("now") LocalDateTime now);
+
+    // ─────────────────────────────────────────────
+    // F10.1.1 P1: 管理者向け承認待ち集約（team 単位・read-only）
+    // scheduleId 経由で ShiftScheduleEntity.teamId に JOIN し、WHERE に team_id を必須で含める
+    // （IDOR/テナント越境防止）。既存は scheduleId 単位のみのため新設。
+    // ─────────────────────────────────────────────
+
+    /**
+     * 指定チームの指定ステータスのシフト変更依頼の件数を返す。
+     * scheduleId → ShiftScheduleEntity.teamId を JOIN して team で絞り込む。
+     */
+    @Query("""
+            SELECT COUNT(r) FROM ShiftChangeRequestEntity r,
+                   com.mannschaft.app.shift.entity.ShiftScheduleEntity s
+            WHERE r.scheduleId = s.id
+              AND s.teamId = :teamId
+              AND r.status = :status
+            """)
+    long countPendingByTeam(@Param("teamId") Long teamId,
+                            @Param("status") ChangeRequestStatus status);
+
+    /**
+     * 指定チームの指定ステータスのシフト変更依頼を作成日時降順でプレビュー取得する。
+     * scheduleId → ShiftScheduleEntity.teamId を JOIN して team で絞り込む。
+     */
+    @Query("""
+            SELECT r FROM ShiftChangeRequestEntity r,
+                   com.mannschaft.app.shift.entity.ShiftScheduleEntity s
+            WHERE r.scheduleId = s.id
+              AND s.teamId = :teamId
+              AND r.status = :status
+            ORDER BY r.createdAt DESC
+            """)
+    List<ShiftChangeRequestEntity> findPendingByTeam(@Param("teamId") Long teamId,
+                                                     @Param("status") ChangeRequestStatus status,
+                                                     Pageable pageable);
 }

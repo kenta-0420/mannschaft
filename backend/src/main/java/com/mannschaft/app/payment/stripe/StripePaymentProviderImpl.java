@@ -3,9 +3,11 @@ package com.mannschaft.app.payment.stripe;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.ScopeKind;
+import com.stripe.exception.InvalidRequestException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Account;
@@ -38,13 +40,18 @@ import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.PaymentIntentRetrieveParams;
 import com.stripe.param.PaymentMethodAttachParams;
 import com.stripe.param.PriceCreateParams;
+import com.stripe.param.PriceSearchParams;
 import com.stripe.param.PriceUpdateParams;
 import com.stripe.param.ProductCreateParams;
 import com.stripe.param.ProductUpdateParams;
+import com.stripe.model.PriceSearchResult;
 import com.stripe.param.RefundCreateParams;
 import com.stripe.param.SetupIntentCreateParams;
+import com.stripe.param.InvoiceCreatePreviewParams;
+import com.stripe.param.InvoiceRetrieveParams;
 import com.stripe.param.InvoiceUpdateParams;
 import com.stripe.param.SubscriptionCreateParams;
+import com.stripe.param.SubscriptionListParams;
 import com.stripe.param.SubscriptionUpdateParams;
 import com.stripe.param.TransferReversalCollectionCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
@@ -55,7 +62,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -204,6 +210,122 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         }
     }
 
+    /**
+     * 価格改定戦役（price-revisions）決定9改訂・決定10。
+     *
+     * <p>{@code deterministicProductId} を Stripe Product の {@code id} に指定して create する。
+     * 同時作成競合（{@code resource_already_exists}）のときのみ retrieve へ収束する
+     * （AC-88c）。既存 Product の {@code tax_code} を上書きすることはない（AC-75。既存に対しては
+     * create 自体を試みないため、上書き経路が存在しない）。</p>
+     */
+    @Override
+    public ProductResolutionInfo resolveOrCreateProduct(String deterministicProductId, String productName,
+                                                          Map<String, String> metadata, String taxCode,
+                                                          String idempotencyKey) {
+        try {
+            ProductCreateParams.Builder builder = ProductCreateParams.builder()
+                    .setId(deterministicProductId)
+                    .setName(productName)
+                    .putAllMetadata(metadata == null ? Map.of() : metadata);
+            if (taxCode != null && !taxCode.isBlank()) {
+                builder.setTaxCode(taxCode);
+            }
+            RequestOptions options = RequestOptions.builder().setIdempotencyKey(idempotencyKey).build();
+            Product product = Product.create(builder.build(), options);
+            log.info("価格改定 Stripe Product 新規作成: id={}, name={}", product.getId(), productName);
+            return new ProductResolutionInfo(product.getId(), true);
+        } catch (InvalidRequestException e) {
+            if (isResourceAlreadyExists(e)) {
+                try {
+                    Product existing = Product.retrieve(deterministicProductId);
+                    log.info("価格改定 Stripe Product 解決（競合によりretrieveへ収束）: id={}", existing.getId());
+                    return new ProductResolutionInfo(existing.getId(), false);
+                } catch (StripeException retrieveError) {
+                    log.error("価格改定 Stripe Product retrieve失敗（競合後）: id={}", deterministicProductId,
+                            retrieveError);
+                    throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+                }
+            }
+            log.error("価格改定 Stripe Product 解決失敗: id={}", deterministicProductId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        } catch (StripeException e) {
+            log.error("価格改定 Stripe Product 解決失敗: id={}", deterministicProductId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    /** {@code resource_already_exists} は決定的 ID の同時作成競合を示す唯一の合図である。 */
+    private boolean isResourceAlreadyExists(InvalidRequestException e) {
+        return e.getStripeError() != null && "resource_already_exists".equals(e.getStripeError().getCode());
+    }
+
+    /** 価格改定戦役 E群・F群: band snapshot から Stripe Price を作成する（決定10）。 */
+    @Override
+    public String createPriceForRevision(String stripeProductId, long unitAmount, String currency,
+                                          String recurringInterval, int recurringIntervalCount,
+                                          String taxBehavior, Map<String, String> metadata,
+                                          String idempotencyKey) {
+        try {
+            PriceCreateParams.Recurring.Interval interval = "year".equalsIgnoreCase(recurringInterval)
+                    ? PriceCreateParams.Recurring.Interval.YEAR
+                    : PriceCreateParams.Recurring.Interval.MONTH;
+            PriceCreateParams.TaxBehavior behavior = "INCLUSIVE".equalsIgnoreCase(taxBehavior)
+                    ? PriceCreateParams.TaxBehavior.INCLUSIVE
+                    : PriceCreateParams.TaxBehavior.EXCLUSIVE;
+            PriceCreateParams params = PriceCreateParams.builder()
+                    .setProduct(stripeProductId)
+                    .setUnitAmount(unitAmount)
+                    .setCurrency(currency.toLowerCase())
+                    .setTaxBehavior(behavior)
+                    .setRecurring(PriceCreateParams.Recurring.builder()
+                            .setInterval(interval)
+                            .setIntervalCount((long) recurringIntervalCount)
+                            .build())
+                    .putAllMetadata(metadata == null ? Map.of() : metadata)
+                    .build();
+            RequestOptions options = RequestOptions.builder().setIdempotencyKey(idempotencyKey).build();
+            Price price = Price.create(params, options);
+            log.info("価格改定 Stripe Price 作成: id={}, productId={}, unitAmount={}",
+                    price.getId(), stripeProductId, unitAmount);
+            return price.getId();
+        } catch (StripeException e) {
+            log.error("価格改定 Stripe Price 作成失敗: productId={}, unitAmount={}", stripeProductId, unitAmount, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    /**
+     * 価格改定戦役 F群（決定3改訂）: metadata（revisionId/bandId）で既存 Price を検索し、
+     * Product の tax_code まで含めて snapshot へ写す。
+     */
+    @Override
+    public java.util.Optional<PriceMetadataSnapshot> findPriceByRevisionAndBandMetadata(
+            String revisionId, String bandId) {
+        try {
+            String query = "metadata['revisionId']:'" + revisionId + "' AND metadata['bandId']:'" + bandId + "'";
+            PriceSearchParams params = PriceSearchParams.builder().setQuery(query).setLimit(1L).build();
+            PriceSearchResult result = Price.search(params);
+            if (result.getData().isEmpty()) {
+                return java.util.Optional.empty();
+            }
+            Price price = result.getData().get(0);
+            Product product = Product.retrieve(price.getProduct());
+            Price.Recurring recurring = price.getRecurring();
+            long unitAmount = price.getUnitAmount() == null ? 0L : price.getUnitAmount();
+            int intervalCount = recurring == null || recurring.getIntervalCount() == null
+                    ? 1 : recurring.getIntervalCount().intValue();
+            Map<String, String> productMetadata = product.getMetadata() == null ? Map.of() : product.getMetadata();
+            Map<String, String> priceMetadata = price.getMetadata() == null ? Map.of() : price.getMetadata();
+            return java.util.Optional.of(new PriceMetadataSnapshot(
+                    price.getId(), unitAmount, price.getCurrency(),
+                    recurring == null ? null : recurring.getInterval(), intervalCount,
+                    product.getTaxCode(), price.getTaxBehavior(), productMetadata, priceMetadata));
+        } catch (StripeException e) {
+            log.error("価格改定 Stripe Price metadata検索失敗: revisionId={}, bandId={}", revisionId, bandId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
     @Override
     public String createCustomer(String email, Long userId) {
         try {
@@ -239,7 +361,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(session.getExpiresAt()),
-                    ZoneId.systemDefault());
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
 
             log.info("Stripe Checkout Session 作成: sessionId={}, memberPaymentId={}",
                     session.getId(), memberPaymentId);
@@ -273,7 +395,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
 
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(session.getExpiresAt()),
-                    ZoneId.systemDefault());
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
 
             log.info("通知クレジット Checkout Session 作成: sessionId={}, notificationCreditPurchaseId={}",
                     session.getId(), notificationCreditPurchaseId);
@@ -283,6 +405,139 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                     stripePriceId, notificationCreditPurchaseId, e);
             throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
         }
+    }
+
+    @Override
+    public CheckoutSessionInfo createBillingSubscriptionCheckoutSession(
+            String stripeCustomerId, long priceJpy, String productName, String billingContractId,
+            String successUrl, String cancelUrl) {
+        try {
+            // F20.1 実決済: 自社受取×月額サブスク（Mode.SUBSCRIPTION）。Connect 項目
+            // （transfer_data/on_behalf_of/application_fee）は一切含めない（D-2）。Price はインライン price_data
+            // （月次 recurring・JPY はゼロ decimal 通貨で乗算不要）で遅延生成する。
+            SessionCreateParams params = SessionCreateParams.builder()
+                    .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+                    .setCustomer(stripeCustomerId)
+                    .setSuccessUrl(successUrl)
+                    .setCancelUrl(cancelUrl)
+                    .addLineItem(SessionCreateParams.LineItem.builder()
+                            .setQuantity(1L)
+                            .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                    .setCurrency("jpy")
+                                    .setUnitAmount(priceJpy)
+                                    .setRecurring(SessionCreateParams.LineItem.PriceData.Recurring.builder()
+                                            .setInterval(SessionCreateParams.LineItem.PriceData.Recurring.Interval.MONTH)
+                                            .build())
+                                    .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                            .setName(productName)
+                                            .build())
+                                    .build())
+                            .build())
+                    .putMetadata("billingContractId", billingContractId)
+                    .build();
+            Session session = Session.create(params);
+
+            LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                    Instant.ofEpochSecond(session.getExpiresAt()),
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
+
+            log.info("F20.1 サブスク Checkout Session 作成: sessionId={}, billingContractId={}, priceJpy={}",
+                    session.getId(), billingContractId, priceJpy);
+            return new CheckoutSessionInfo(session.getId(), session.getUrl(), expiresAt);
+        } catch (StripeException e) {
+            log.error("F20.1 サブスク Checkout Session 作成失敗: customerId={}, billingContractId={}, priceJpy={}",
+                    stripeCustomerId, billingContractId, priceJpy, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public void cancelBillingSubscriptionImmediately(String subscriptionId, String idempotencyKey) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            // 【残債1 冪等対応】既に canceled 済み（前回 purge retry 等で成功済み）なら再送しない。
+            // GDPR purge の管理者手動 retry（GdprPurgeRetryService）は「DB は解約済みだが Stripe 解約が
+            // 未確認」な契約を毎回再スキャンして cancelImmediately を呼び直す設計のため、Stripe 側で
+            // 既に解約済みの subscription に対して重ねて cancel を呼ぶケースが起こり得る。Stripe の
+            // subscription.cancel は「既に canceled」に対して呼ぶと StripeException（invalid_request_error）
+            // になるため、事前に状態を見て安全にスキップする（二重解約にはならないが、無駄なエラーログ・
+            // retry 失敗誤検知を防ぐ）。
+            if ("canceled".equals(subscription.getStatus())) {
+                log.info("F20.1 サブスク即時解約（purge 連動）: 既に解約済みのためスキップ id={}", subscriptionId);
+                return;
+            }
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            // 退会 purge 連動（AC-45）: 期末解約ではなくその場で cancel（課金継続の即時停止）。
+            Subscription canceled = subscription.cancel(
+                    com.stripe.param.SubscriptionCancelParams.builder().build(), options);
+            log.info("F20.1 サブスク即時解約（purge 連動）: id={}, status={}", canceled.getId(), canceled.getStatus());
+        } catch (StripeException e) {
+            log.error("F20.1 サブスク即時解約失敗: id={}", subscriptionId, e);
+            // ★cause を保持する（柱③-B PR-4 Codex検分2巡目 P1-3）。ここで握り潰すと、呼び出し側は
+            //   「Stripe の 4xx（恒久・人手が要る）」と「5xx/接続断（一時・再試行で回復する）」を
+            //   区別できず、経過時間のような代理指標で推測するしかなくなる。
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    @Override
+    public BillingSubscriptionWebhookEventInfo constructBillingSubscriptionEvent(String payload, String sigHeader) {
+        Event event;
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
+        } catch (SignatureVerificationException e) {
+            log.error("F20.1 サブスク Webhook 署名検証失敗", e);
+            throw new BusinessException(PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID);
+        }
+
+        String eventType = event.getType();
+        boolean livemode = Boolean.TRUE.equals(event.getLivemode());
+        EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+        StripeObject stripeObject = resolveStripeObject(deserializer);
+
+        String sessionId = null;
+        String billingContractId = null;
+        String subscriptionId = null;
+        String customerId = null;
+        Long currentPeriodEndEpochSec = null;
+        String billingOperationId = null;
+
+        if (stripeObject instanceof Session session) {
+            sessionId = session.getId();
+            subscriptionId = session.getSubscription();
+            customerId = session.getCustomer();
+            if (session.getMetadata() != null) {
+                billingContractId = session.getMetadata().get("billingContractId");
+            }
+            // checkout.session.completed: 現サイクル終了を焼き付けるため subscription を retrieve する。
+            if (subscriptionId != null) {
+                try {
+                    Subscription sub = Subscription.retrieve(subscriptionId);
+                    currentPeriodEndEpochSec = sub.getCurrentPeriodEnd();
+                } catch (StripeException e) {
+                    log.warn("F20.1 サブスク retrieve 失敗（current_period_end 省略）: subscriptionId={}", subscriptionId);
+                }
+            }
+        } else if (stripeObject instanceof Invoice invoice) {
+            subscriptionId = invoice.getSubscription();
+            currentPeriodEndEpochSec = invoice.getPeriodEnd();
+        } else if (stripeObject instanceof Subscription subscription) {
+            subscriptionId = subscription.getId();
+            currentPeriodEndEpochSec = subscription.getCurrentPeriodEnd();
+            // PR6b-1 AC-40: pending_update_expired 等は invoice を経由せずに change を解決する必要が
+            // あるため、subscription 側の metadata.billingOperationId をここで直接読む。
+            if (subscription.getMetadata() != null) {
+                billingOperationId = subscription.getMetadata().get("billingOperationId");
+            }
+        }
+
+        log.info("F20.1 サブスク Webhook 受信: id={}, type={}, sessionId={}, billingContractId={}, subscriptionId={}",
+                event.getId(), eventType, sessionId, billingContractId, subscriptionId);
+        return new BillingSubscriptionWebhookEventInfo(event.getId(), eventType, livemode,
+                sessionId, billingContractId, subscriptionId, customerId, currentPeriodEndEpochSec,
+                billingOperationId);
     }
 
     @Override
@@ -440,7 +695,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                     .build();
             AccountLink link = AccountLink.create(params);
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
-                    Instant.ofEpochSecond(link.getExpiresAt()), ZoneId.systemDefault());
+                    Instant.ofEpochSecond(link.getExpiresAt()), UserZoneLocalDateTimeParser.SERVER_ZONE);
             log.info("Stripe AccountLink 作成: account={}", stripeAccountId);
             return new AccountLinkInfo(link.getUrl(), expiresAt);
         } catch (StripeException e) {
@@ -534,6 +789,40 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             return new PaymentIntentInfo(intent.getId(), intent.getClientSecret(), intent.getStatus());
         } catch (StripeException e) {
             log.error("Stripe Destination PaymentIntent 作成失敗: destination={}, amount={}",
+                    destinationAccountId, chargeAmountMinor, e);
+            throw new BusinessException(ConnectPaymentErrorCode.AUTHORIZATION_FAILED, e);
+        }
+    }
+
+    @Override
+    public PaymentIntentInfo createDestinationPaymentIntent(long chargeAmountMinor, String currency,
+                                                            String payerCustomerId, long applicationFeeMinor,
+                                                            String destinationAccountId, CaptureMethod captureMethod,
+                                                            String idempotencyKey, Map<String, String> metadata) {
+        try {
+            PaymentIntentCreateParams.CaptureMethod stripeCaptureMethod =
+                    captureMethod == CaptureMethod.AUTOMATIC
+                            ? PaymentIntentCreateParams.CaptureMethod.AUTOMATIC
+                            : PaymentIntentCreateParams.CaptureMethod.MANUAL;
+            PaymentIntentCreateParams.Builder params = PaymentIntentCreateParams.builder()
+                    .setAmount(chargeAmountMinor)
+                    .setCurrency(currency.toLowerCase())
+                    .setCustomer(payerCustomerId)
+                    .setCaptureMethod(stripeCaptureMethod)
+                    .setApplicationFeeAmount(applicationFeeMinor)
+                    .setOnBehalfOf(destinationAccountId)
+                    .setTransferData(PaymentIntentCreateParams.TransferData.builder()
+                            .setDestination(destinationAccountId)
+                            .build());
+            if (metadata != null && !metadata.isEmpty()) {
+                params.putAllMetadata(metadata);
+            }
+            PaymentIntent intent = PaymentIntent.create(params.build(), RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build());
+            return new PaymentIntentInfo(intent.getId(), intent.getClientSecret(), intent.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe Destination PaymentIntent の作成に失敗しました: destination={}, amount={}",
                     destinationAccountId, chargeAmountMinor, e);
             throw new BusinessException(ConnectPaymentErrorCode.AUTHORIZATION_FAILED, e);
         }
@@ -634,6 +923,36 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             return new PaymentIntentInfo(captured.getId(), captured.getClientSecret(), captured.getStatus());
         } catch (StripeException e) {
             log.error("Stripe PaymentIntent capture 失敗: id={}", paymentIntentId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.CAPTURE_FAILED, e);
+        }
+    }
+
+    @Override
+    public PaymentIntentInfo captureManualPaymentIntent(
+            String paymentIntentId, long amountToCaptureMinor,
+            Long applicationFeeAmountMinor, String idempotencyKey) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+
+            // amount_to_capture は与信額以下でなければならない（overcapture は使わない・設計書 F03.11.1 §4.1-3）。
+            // final_capture は既定の true のままとし、残額は Stripe に自動解放させる（§4.1-1・取消 API を別途呼ばない）。
+            PaymentIntentCaptureParams.Builder params = PaymentIntentCaptureParams.builder()
+                    .setAmountToCapture(amountToCaptureMinor);
+            if (applicationFeeAmountMinor != null) {
+                // 運営手数料はキャプチャ額に対して上書きする（A_eff = min(A, F)・§3.5.3）。
+                // Stripe 側もキャプチャ額を上限に丸めるため二重に安全である。
+                params.setApplicationFeeAmount(applicationFeeAmountMinor);
+            }
+
+            PaymentIntent captured = intent.capture(params.build(), options);
+            log.info("Stripe PaymentIntent 部分 capture 確定: id={}, status={}, amount={}, applicationFee={}",
+                    captured.getId(), captured.getStatus(), amountToCaptureMinor, applicationFeeAmountMinor);
+            return new PaymentIntentInfo(captured.getId(), captured.getClientSecret(), captured.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe PaymentIntent 部分 capture 失敗: id={}, amount={}", paymentIntentId, amountToCaptureMinor, e);
             throw new BusinessException(ConnectPaymentErrorCode.CAPTURE_FAILED, e);
         }
     }
@@ -833,20 +1152,32 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     }
 
     @Override
-    public SubscriptionInfo createSubscription(String customerId, String priceId, String defaultPaymentMethodId,
+    public SubscriptionInfo createSubscription(String customerId, java.util.List<String> priceIds,
+                                               String defaultPaymentMethodId,
                                                String destinationAccountId, BigDecimal applicationFeePercent,
                                                long billingCycleAnchorEpochSec, String idempotencyKey) {
+        if (priceIds == null || priceIds.isEmpty()) {
+            // 呼び出し側の契約違反（症状を隠さず即座に拒否する）。
+            throw new IllegalArgumentException("priceIds must contain at least one price (会費 Price)");
+        }
         try {
             // 案b: 初回会費は外側で単発 destination charge 済み。Subscription は billing_cycle_anchor=次サイクル開始で
             // 起動し proration_behavior=NONE で「初回 invoice を発生させない」（PoC 実証 2026-06-05・02 §4.1）。
             // billing_cycle_anchor は「将来時刻」かつ proration_behavior=NONE のとき初回課金を当該時刻まで遅延でき、
             // trial_end 方式よりも「次サイクルから通常課金（subscription_cycle invoice）」を確実に表現できる。
-            SubscriptionCreateParams params = SubscriptionCreateParams.builder()
-                    .setCustomer(customerId)
-                    .addItem(SubscriptionCreateParams.Item.builder()
-                            .setPrice(priceId)
-                            .setQuantity(1L)
-                            .build())
+            //
+            // 案C（手数料折半の根治）: 明細は「会費 Price（額面）」＋「支払側手数料 Price（payerFee）」の 2 本。
+            // SubscriptionCreateParams.Builder#addItem は複数回呼べるため、素直に明細を積む
+            //（stripe-java 28.2.0 で確認・putExtraParam による回避は不要）。
+            SubscriptionCreateParams.Builder builder = SubscriptionCreateParams.builder()
+                    .setCustomer(customerId);
+            for (String priceId : priceIds) {
+                builder.addItem(SubscriptionCreateParams.Item.builder()
+                        .setPrice(priceId)
+                        .setQuantity(1L)
+                        .build());
+            }
+            SubscriptionCreateParams params = builder
                     .setDefaultPaymentMethod(defaultPaymentMethodId)
                     .setOffSession(true)
                     .setOnBehalfOf(destinationAccountId)
@@ -863,14 +1194,15 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                     .setIdempotencyKey(idempotencyKey)
                     .build();
             Subscription subscription = Subscription.create(params, options);
-            log.info("Stripe Subscription 作成（案b・次サイクル開始）: id={}, status={}, anchor={}, destination={}, feePct={}",
+            log.info("Stripe Subscription 作成（案b・次サイクル開始・案C 2明細）: id={}, status={}, anchor={}, "
+                            + "destination={}, feePct={}, prices={}",
                     subscription.getId(), subscription.getStatus(), billingCycleAnchorEpochSec,
-                    destinationAccountId, applicationFeePercent);
+                    destinationAccountId, applicationFeePercent, priceIds);
             return new SubscriptionInfo(subscription.getId(), subscription.getStatus(),
                     subscription.getCurrentPeriodEnd());
         } catch (StripeException e) {
-            log.error("Stripe Subscription 作成失敗: customer={}, price={}, destination={}",
-                    customerId, priceId, destinationAccountId, e);
+            log.error("Stripe Subscription 作成失敗: customer={}, prices={}, destination={}",
+                    customerId, priceIds, destinationAccountId, e);
             throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
         }
     }
@@ -936,7 +1268,41 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             return new SubscriptionInfo(updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
         } catch (StripeException e) {
             log.error("Stripe Subscription 期末解約予約失敗: id={}", subscriptionId, e);
-            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+            // ★cause を保持する（柱③-B PR-4 Codex検分2巡目 P1-3）。ここで握り潰すと、呼び出し側は
+            //   「Stripe の 4xx（恒久・人手が要る）」と「5xx/接続断（一時・再試行で回復する）」を
+            //   区別できず、経過時間のような代理指標で推測するしかなくなる。
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    /**
+     * Billing Center PR6a（AC-77）: 期末解約予約と同時に metadata を<b>差分マージ</b>で焼き付ける。
+     *
+     * <p>{@code putAllMetadata} を使うのは、既存 metadata（引継の {@code handoverRequestId} 等）を
+     * 消さないためである。{@code setMetadata} は Stripe 側で metadata 全体を置き換えるため、
+     * 引継の突合キーを巻き添えで消して回復経路を壊す。</p>
+     */
+    @Override
+    public SubscriptionInfo cancelSubscriptionAtPeriodEnd(
+            String subscriptionId, String idempotencyKey, Map<String, String> metadata) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            SubscriptionUpdateParams.Builder params = SubscriptionUpdateParams.builder()
+                    .setCancelAtPeriodEnd(true);
+            if (metadata != null && !metadata.isEmpty()) {
+                params.putAllMetadata(metadata);
+            }
+            Subscription updated = subscription.update(params.build(), options);
+            log.info("Stripe Subscription 期末解約予約（metadata 焼き付け）: id={}, status={}, periodEnd={}, metadataKeys={}",
+                    updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd(),
+                    metadata == null ? 0 : metadata.size());
+            return new SubscriptionInfo(updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+        } catch (StripeException e) {
+            log.error("Stripe Subscription 期末解約予約（metadata 焼き付け）失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
         }
     }
 
@@ -1031,9 +1397,13 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         String refundId = null;
         Long refundedAmountMinor = null;
         Long chargeAmountMinor = null;
+        Map<String, String> metadata = Map.of();
         if (stripeObject instanceof PaymentIntent pi) {
             paymentIntentId = pi.getId();
             paymentIntentStatus = pi.getStatus();
+            if (pi.getMetadata() != null) {
+                metadata = Map.copyOf(pi.getMetadata());
+            }
         } else if (stripeObject instanceof Charge charge) {
             // charge.refunded（設計書 02 §6.1）: PI で対象 escrow を特定し、最新 Refund・返金累計・Charge 総額を渡す。
             paymentIntentId = charge.getPaymentIntent();
@@ -1049,7 +1419,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         log.info("Stripe Escrow Webhook 受信: id={}, type={}, piStatus={}, refundId={}",
                 event.getId(), eventType, paymentIntentStatus, refundId);
         return new EscrowWebhookEventInfo(event.getId(), eventType, livemode, paymentIntentId, paymentIntentStatus,
-                refundId, refundedAmountMinor, chargeAmountMinor);
+                refundId, refundedAmountMinor, chargeAmountMinor, metadata);
     }
 
     // ========================================
@@ -1137,6 +1507,526 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             log.error("Stripe Webhook data.object のフォールバック retrieve 失敗: object={}, id={}", objectType, id, e);
             throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
         }
+    }
+
+    // ========================================
+    // 柱③-B PR-2 請求支払者の引継（設計書 billing_payer_handover_design.md §2.3・§3.2・§3.4）
+    // ========================================
+
+    @Override
+    public CheckoutSessionInfo createBillingHandoverSubscriptionCheckoutSession(
+            String stripeCustomerId, long priceJpy, String productName,
+            String billingContractId, String handoverRequestId, String oldContractId,
+            long trialEndEpochSec, String successUrl, String cancelUrl, String idempotencyKey) {
+        try {
+            // 引継用サブスク: trial_end＝旧契約の current_period_end に揃えることで、旧期末までは
+            // 一切請求が発生しない（新旧併存期間の二重課金がゼロ・設計書 §2.3・AC-4/AC-5）。
+            // proration_behavior=none で trial 終了時の日割りを発生させない。
+            // Connect 項目（transfer_data/on_behalf_of/application_fee）は自社受取のため一切含めない（D-2）。
+            SessionCreateParams params = SessionCreateParams.builder()
+                    .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
+                    .setCustomer(stripeCustomerId)
+                    .setSuccessUrl(successUrl)
+                    .setCancelUrl(cancelUrl)
+                    .addLineItem(SessionCreateParams.LineItem.builder()
+                            .setQuantity(1L)
+                            .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                    .setCurrency("jpy")
+                                    .setUnitAmount(priceJpy)
+                                    .setRecurring(SessionCreateParams.LineItem.PriceData.Recurring.builder()
+                                            .setInterval(SessionCreateParams.LineItem.PriceData.Recurring.Interval.MONTH)
+                                            .build())
+                                    .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                            .setName(productName)
+                                            .build())
+                                    .build())
+                            .build())
+                    .setSubscriptionData(SessionCreateParams.SubscriptionData.builder()
+                            .setTrialEnd(trialEndEpochSec)
+                            .setProrationBehavior(SessionCreateParams.SubscriptionData.ProrationBehavior.NONE)
+                            // 回復経路（§3.2・AC-7/AC-25/AC-33）の突合キー。DB へ psp_new_subscription_ref を
+                            // 書き戻す前に落ちても、List 全ページ走査＋本 metadata で実物を回収できる。
+                            .putMetadata("handoverRequestId", handoverRequestId)
+                            .putMetadata("oldContractId", oldContractId)
+                            .build())
+                    .putMetadata("billingContractId", billingContractId)
+                    .putMetadata("handoverRequestId", handoverRequestId)
+                    .build();
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            Session session = Session.create(params, options);
+
+            LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                    Instant.ofEpochSecond(session.getExpiresAt()),
+                    UserZoneLocalDateTimeParser.SERVER_ZONE);
+
+            log.info("引継サブスク Checkout Session 作成: sessionId={}, billingContractId={}, handoverRequestId={}, trialEnd={}",
+                    session.getId(), billingContractId, handoverRequestId, trialEndEpochSec);
+            return new CheckoutSessionInfo(session.getId(), session.getUrl(), expiresAt);
+        } catch (StripeException e) {
+            log.error("引継サブスク Checkout Session 作成失敗: customerId={}, billingContractId={}, handoverRequestId={}",
+                    stripeCustomerId, billingContractId, handoverRequestId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public SubscriptionDetail retrieveSubscriptionDetail(String subscriptionId) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            return toSubscriptionDetail(subscription);
+        } catch (StripeException e) {
+            log.error("引継: Stripe Subscription 取得失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    @Override
+    public List<SubscriptionDetail> listSubscriptionsByCustomer(String stripeCustomerId) {
+        try {
+            SubscriptionListParams params = SubscriptionListParams.builder()
+                    .setCustomer(stripeCustomerId)
+                    .setStatus(SubscriptionListParams.Status.ALL)
+                    .setLimit(100L)
+                    .build();
+            // has_more を追い切る（autoPagingIterable）。1ページ目だけを見て「未作成」と判定すると
+            // 二重サブスク＝二重課金に直結するため禁止（設計書 §3.2 R4-P1-1・AC-33）。
+            List<SubscriptionDetail> details = new java.util.ArrayList<>();
+            for (Subscription subscription : Subscription.list(params).autoPagingIterable()) {
+                details.add(toSubscriptionDetail(subscription));
+            }
+            log.info("引継: Customer のサブスク列挙（全ページ）: customerId={}, count={}", stripeCustomerId, details.size());
+            return details;
+        } catch (StripeException e) {
+            log.error("引継: Customer のサブスク列挙失敗: customerId={}", stripeCustomerId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+    }
+
+    /**
+     * Billing Center PR6a（AC-77 / Codex 検分 P1-1）: 期末解約予約の差し戻しと同時に
+     * metadata を<b>差分マージ</b>で焼き付ける。
+     *
+     * <p>{@code putAllMetadata} を使うのは、引継の {@code handoverRequestId} 等の既存 metadata を
+     * 消さないためである（{@code setMetadata} は Stripe 側で metadata 全体を置き換える）。</p>
+     */
+    @Override
+    public SubscriptionInfo revertSubscriptionCancelAtPeriodEnd(
+            String subscriptionId, String idempotencyKey, Map<String, String> metadata) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            SubscriptionUpdateParams.Builder params = SubscriptionUpdateParams.builder()
+                    .setCancelAtPeriodEnd(false);
+            if (metadata != null && !metadata.isEmpty()) {
+                params.putAllMetadata(metadata);
+            }
+            Subscription updated = subscription.update(params.build(), options);
+            log.info("Stripe Subscription 期末解約予約の差し戻し（metadata 焼き付け）: id={}, status={}, periodEnd={}",
+                    updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+            return new SubscriptionInfo(updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+        } catch (StripeException e) {
+            log.error("Stripe Subscription 期末解約予約の差し戻し（metadata 焼き付け）失敗: id={}", subscriptionId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    @Override
+    public SubscriptionInfo revertSubscriptionCancelAtPeriodEnd(String subscriptionId, String idempotencyKey) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            Subscription updated = subscription.update(
+                    SubscriptionUpdateParams.builder().setCancelAtPeriodEnd(false).build(), options);
+            log.info("引継: Stripe Subscription 期末解約予約の差し戻し: id={}, status={}, periodEnd={}",
+                    updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+            return new SubscriptionInfo(updated.getId(), updated.getStatus(), updated.getCurrentPeriodEnd());
+        } catch (StripeException e) {
+            log.error("引継: Stripe Subscription 期末解約予約の差し戻し失敗: id={}", subscriptionId, e);
+            // ★cause を保持する（柱③-B PR-4 Codex検分2巡目 P1-3）。ここで握り潰すと、呼び出し側は
+            //   「Stripe の 4xx（恒久・人手が要る）」と「5xx/接続断（一時・再試行で回復する）」を
+            //   区別できず、経過時間のような代理指標で推測するしかなくなる。
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    // ========================================
+    // Billing Center PR6b-1: プラン変更（upgrade）＋ 3DS
+    // ========================================
+
+    /** 追加認証の種別（PaymentIntent 由来であることを示す）。 */
+    private static final String PAYMENT_ACTION_TYPE_PAYMENT_INTENT = "payment_intent";
+
+    /**
+     * 追加認証の余地がある PaymentIntent のステータス。
+     *
+     * <p>{@code succeeded}/{@code canceled}/{@code processing} は利用者が確認しても意味が無い
+     * （既に決着しているか、確認を挟む余地が無い）。それらでは空を返し、呼び出し側に 409 を返させる。</p>
+     */
+    private static final java.util.Set<String> ACTIONABLE_PAYMENT_INTENT_STATUSES = java.util.Set.of(
+            "requires_action", "requires_confirmation", "requires_payment_method", "requires_source",
+            "requires_source_action");
+
+    @Override
+    public InvoicePreviewInfo previewSubscriptionPlanChange(
+            String subscriptionId, String targetPriceRef, Long quantity, String prorationBehavior,
+            Long prorationDateEpochSec) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            String itemId = soleSubscriptionItemId(subscription);
+
+            InvoiceCreatePreviewParams.SubscriptionDetails.Item.Builder item =
+                    InvoiceCreatePreviewParams.SubscriptionDetails.Item.builder()
+                            .setId(itemId)
+                            .setPrice(targetPriceRef);
+            if (quantity != null) {
+                item.setQuantity(quantity);
+            }
+            InvoiceCreatePreviewParams.SubscriptionDetails.Builder details =
+                    InvoiceCreatePreviewParams.SubscriptionDetails.builder()
+                            .addItem(item.build())
+                            .setProrationBehavior(toPreviewProrationBehavior(prorationBehavior));
+            if (prorationDateEpochSec != null) {
+                // 実適用でも同じ proration_date を渡すため、見積り側でも基準日時を固定する。
+                details.setProrationDate(prorationDateEpochSec);
+            }
+            InvoiceCreatePreviewParams params = InvoiceCreatePreviewParams.builder()
+                    .setSubscription(subscriptionId)
+                    .setSubscriptionDetails(details.build())
+                    // 税の表示名・税率も「Stripe が返した値」として運ぶために展開する（AC-2）。
+                    .addExpand("total_tax_amounts.tax_rate")
+                    .build();
+
+            Invoice preview = Invoice.createPreview(params);
+            InvoicePreviewInfo info = new InvoicePreviewInfo(
+                    preview.getCurrency(),
+                    preview.getAmountDue() != null ? preview.getAmountDue() : preview.getTotal(),
+                    preview.getTotalExcludingTax() != null
+                            ? preview.getTotalExcludingTax() : preview.getSubtotalExcludingTax(),
+                    previewTaxAmount(preview),
+                    previewTaxDisplayName(preview),
+                    previewTaxPercentage(preview),
+                    preview.getPeriodStart(),
+                    preview.getPeriodEnd());
+            log.info("PR6b-1: プラン変更の見積り取得: subscriptionId={}, targetPrice={}, amountDue={}, currency={}",
+                    subscriptionId, targetPriceRef, info.amountDue(), info.currency());
+            return info;
+        } catch (StripeException e) {
+            log.error("PR6b-1: プラン変更の見積り取得失敗: subscriptionId={}, targetPrice={}",
+                    subscriptionId, targetPriceRef, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    @Override
+    public SubscriptionPlanChangeInfo changeSubscriptionPlan(
+            String subscriptionId, String targetPriceRef, Long quantity,
+            String prorationBehavior, String paymentBehavior,
+            Map<String, String> metadata, String idempotencyKey,
+            Long prorationDateEpochSec) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            String itemId = soleSubscriptionItemId(subscription);
+
+            SubscriptionUpdateParams.Item.Builder item = SubscriptionUpdateParams.Item.builder()
+                    .setId(itemId)
+                    .setPrice(targetPriceRef);
+            if (quantity != null) {
+                item.setQuantity(quantity);
+            }
+            SubscriptionUpdateParams.Builder params = SubscriptionUpdateParams.builder()
+                    .addItem(item.build())
+                    .setProrationBehavior(toUpdateProrationBehavior(prorationBehavior))
+                    .setPaymentBehavior(toPaymentBehavior(paymentBehavior))
+                    // latest_invoice を展開し、差額請求の ref/status を追加の往復なしに読む。
+                    .addExpand("latest_invoice");
+            if (prorationDateEpochSec != null) {
+                // 見積り時と同じ基準日時で按分させる（渡さないと Stripe は「今」で按分し、
+                // 利用者が承認した額と実際の請求額がずれる）。
+                params.setProrationDate(prorationDateEpochSec);
+            }
+            if (metadata != null && !metadata.isEmpty()) {
+                // 差分マージ（setMetadata は Stripe 側で metadata 全体を置き換えるため使わない）。
+                params.putAllMetadata(metadata);
+            }
+
+            RequestOptions options = RequestOptions.builder()
+                    .setIdempotencyKey(idempotencyKey)
+                    .build();
+            Subscription updated = subscription.update(params.build(), options);
+
+            Subscription.PendingUpdate pendingUpdate = updated.getPendingUpdate();
+            Invoice latestInvoice = updated.getLatestInvoiceObject();
+            String latestInvoiceRef = latestInvoice != null
+                    ? latestInvoice.getId() : updated.getLatestInvoice();
+
+            SubscriptionPlanChangeInfo info = new SubscriptionPlanChangeInfo(
+                    updated.getId(),
+                    updated.getStatus(),
+                    latestInvoiceRef,
+                    latestInvoice == null ? null : latestInvoice.getStatus(),
+                    pendingUpdate != null,
+                    pendingUpdate == null ? null : pendingUpdate.getExpiresAt(),
+                    toPendingUpdateItems(pendingUpdate),
+                    updated.getCurrentPeriodStart());
+            log.info("PR6b-1: プラン変更適用: subscriptionId={}, targetPrice={}, prorationBehavior={}, "
+                            + "paymentBehavior={}, prorationDate={}, pendingUpdate={}, invoice={}, invoiceStatus={}",
+                    subscriptionId, targetPriceRef, prorationBehavior, paymentBehavior, prorationDateEpochSec,
+                    info.pendingUpdatePresent(), info.latestInvoiceRef(), info.latestInvoiceStatus());
+            return info;
+        } catch (StripeException e) {
+            log.error("PR6b-1: プラン変更適用失敗: subscriptionId={}, targetPrice={}",
+                    subscriptionId, targetPriceRef, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    @Override
+    public java.util.Optional<SubscriptionPaymentActionInfo> retrieveSubscriptionPaymentAction(
+            String subscriptionId, String invoiceId) {
+        try {
+            Subscription subscription = Subscription.retrieve(subscriptionId);
+            String targetInvoiceId = (invoiceId == null || invoiceId.isBlank())
+                    ? subscription.getLatestInvoice() : invoiceId;
+            if (targetInvoiceId == null || targetInvoiceId.isBlank()) {
+                log.info("PR6b-1: 追加認証の対象 Invoice が無い: subscriptionId={}", subscriptionId);
+                return java.util.Optional.empty();
+            }
+
+            Invoice invoice = Invoice.retrieve(
+                    targetInvoiceId,
+                    InvoiceRetrieveParams.builder().addExpand("payment_intent").build(),
+                    null);
+            PaymentIntent intent = invoice.getPaymentIntentObject();
+            if (intent == null) {
+                // AC-34: 差額 0 円等で PaymentIntent が存在しない場合。追加認証は不要。
+                log.info("PR6b-1: Invoice に PaymentIntent が無い（追加認証不要）: invoiceId={}", targetInvoiceId);
+                return java.util.Optional.empty();
+            }
+            if (!ACTIONABLE_PAYMENT_INTENT_STATUSES.contains(intent.getStatus())) {
+                log.info("PR6b-1: PaymentIntent は追加認証の段階にない: invoiceId={}, status={}",
+                        targetInvoiceId, intent.getStatus());
+                return java.util.Optional.empty();
+            }
+            String clientSecret = intent.getClientSecret();
+            if (clientSecret == null || clientSecret.isBlank()) {
+                log.warn("PR6b-1: PaymentIntent に client_secret が無い: invoiceId={}, status={}",
+                        targetInvoiceId, intent.getStatus());
+                return java.util.Optional.empty();
+            }
+
+            Subscription.PendingUpdate pendingUpdate = subscription.getPendingUpdate();
+            // clientSecret は決してログに出さない（AC-58・PCI）。status と期限だけ記録する。
+            log.info("PR6b-1: 追加認証情報を都度取得（clientSecret 非ログ）: subscriptionId={}, invoiceId={}, "
+                            + "status={}, expiresAt={}",
+                    subscriptionId, targetInvoiceId, intent.getStatus(),
+                    pendingUpdate == null ? null : pendingUpdate.getExpiresAt());
+            return java.util.Optional.of(new SubscriptionPaymentActionInfo(
+                    PAYMENT_ACTION_TYPE_PAYMENT_INTENT,
+                    clientSecret,
+                    pendingUpdate == null ? null : pendingUpdate.getExpiresAt()));
+        } catch (StripeException e) {
+            log.error("PR6b-1: 追加認証情報の取得失敗: subscriptionId={}, invoiceId={}",
+                    subscriptionId, invoiceId, e);
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    /**
+     * 契約サブスクの<b>唯一の</b> Subscription Item ID を解決する。
+     *
+     * <p>{@code items[0][id]} を指定せず price だけを送ると、Stripe は「項目の追加」と解釈し、
+     * 旧プランと新プランが<b>同時に課金</b>される。項目が1件でない Subscription は本経路の前提外であり、
+     * 推測で1件目を選ぶと誤課金に直結するため、握り潰さず例外にする。</p>
+     *
+     * @param subscription Stripe から取得した Subscription 実物
+     * @return 唯一の Subscription Item ID
+     */
+    private String soleSubscriptionItemId(Subscription subscription) {
+        List<SubscriptionItemDetail> items = toSubscriptionItemDetails(subscription);
+        if (items.size() != 1) {
+            log.error("PR6b-1: プラン変更の対象 Subscription Item を一意に決められない: id={}, itemCount={}",
+                    subscription.getId(), items.size());
+            throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+        }
+        return items.get(0).itemId();
+    }
+
+    /**
+     * {@code pending_update.subscription_items} を Price ref つきで写す（AC-79 の照合材料）。
+     *
+     * @param pendingUpdate Stripe の {@code pending_update}（null 可）
+     * @return 適用予定の items（Price ref を持たないものは落とす）
+     */
+    private List<SubscriptionItemDetail> toPendingUpdateItems(Subscription.PendingUpdate pendingUpdate) {
+        if (pendingUpdate == null || pendingUpdate.getSubscriptionItems() == null) {
+            return List.of();
+        }
+        List<SubscriptionItemDetail> items = new java.util.ArrayList<>();
+        for (com.stripe.model.SubscriptionItem item : pendingUpdate.getSubscriptionItems()) {
+            String priceRef = item.getPrice() == null ? null : item.getPrice().getId();
+            if (priceRef == null) {
+                continue;
+            }
+            items.add(new SubscriptionItemDetail(item.getId(), priceRef, item.getQuantity()));
+        }
+        return List.copyOf(items);
+    }
+
+    /**
+     * 見積り請求書の税額（{@code tax} を返さない応答では税明細の合算で補う）。
+     *
+     * @param preview 見積り請求書
+     * @return 税額（判らなければ null）
+     */
+    private Long previewTaxAmount(Invoice preview) {
+        if (preview.getTax() != null) {
+            return preview.getTax();
+        }
+        if (preview.getTotalTaxAmounts() == null || preview.getTotalTaxAmounts().isEmpty()) {
+            return null;
+        }
+        long sum = 0L;
+        for (Invoice.TotalTaxAmount amount : preview.getTotalTaxAmounts()) {
+            sum += amount.getAmount() == null ? 0L : amount.getAmount();
+        }
+        return sum;
+    }
+
+    /**
+     * 税の表示名（{@code tax_rate} を展開できたときだけ得られる）。
+     *
+     * @param preview 見積り請求書
+     * @return 税の表示名（無ければ null）
+     */
+    private String previewTaxDisplayName(Invoice preview) {
+        com.stripe.model.TaxRate rate = firstTaxRate(preview);
+        return rate == null ? null : rate.getDisplayName();
+    }
+
+    /**
+     * 税率（パーセント。{@code tax_rate} を展開できたときだけ得られる）。
+     *
+     * @param preview 見積り請求書
+     * @return 税率（無ければ null）
+     */
+    private BigDecimal previewTaxPercentage(Invoice preview) {
+        com.stripe.model.TaxRate rate = firstTaxRate(preview);
+        return rate == null ? null : rate.getPercentage();
+    }
+
+    /**
+     * 見積り請求書の先頭の税明細に紐づく TaxRate。
+     *
+     * @param preview 見積り請求書
+     * @return TaxRate（展開されていなければ null）
+     */
+    private com.stripe.model.TaxRate firstTaxRate(Invoice preview) {
+        if (preview.getTotalTaxAmounts() == null || preview.getTotalTaxAmounts().isEmpty()) {
+            return null;
+        }
+        return preview.getTotalTaxAmounts().get(0).getTaxRateObject();
+    }
+
+    /**
+     * {@code proration_behavior} の生値を見積り API の enum へ写す（未知の値は推測せず弾く）。
+     *
+     * @param prorationBehavior Stripe の生値
+     * @return enum
+     */
+    private InvoiceCreatePreviewParams.SubscriptionDetails.ProrationBehavior toPreviewProrationBehavior(
+            String prorationBehavior) {
+        for (InvoiceCreatePreviewParams.SubscriptionDetails.ProrationBehavior value
+                : InvoiceCreatePreviewParams.SubscriptionDetails.ProrationBehavior.values()) {
+            if (value.getValue().equals(prorationBehavior)) {
+                return value;
+            }
+        }
+        log.error("PR6b-1: 未知の proration_behavior: {}", prorationBehavior);
+        throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+    }
+
+    /**
+     * {@code proration_behavior} の生値を更新 API の enum へ写す。
+     *
+     * @param prorationBehavior Stripe の生値
+     * @return enum
+     */
+    private SubscriptionUpdateParams.ProrationBehavior toUpdateProrationBehavior(String prorationBehavior) {
+        for (SubscriptionUpdateParams.ProrationBehavior value
+                : SubscriptionUpdateParams.ProrationBehavior.values()) {
+            if (value.getValue().equals(prorationBehavior)) {
+                return value;
+            }
+        }
+        log.error("PR6b-1: 未知の proration_behavior: {}", prorationBehavior);
+        throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+    }
+
+    /**
+     * {@code payment_behavior} の生値を更新 API の enum へ写す。
+     *
+     * @param paymentBehavior Stripe の生値
+     * @return enum
+     */
+    private SubscriptionUpdateParams.PaymentBehavior toPaymentBehavior(String paymentBehavior) {
+        for (SubscriptionUpdateParams.PaymentBehavior value
+                : SubscriptionUpdateParams.PaymentBehavior.values()) {
+            if (value.getValue().equals(paymentBehavior)) {
+                return value;
+            }
+        }
+        log.error("PR6b-1: 未知の payment_behavior: {}", paymentBehavior);
+        throw new BusinessException(PaymentErrorCode.STRIPE_API_ERROR);
+    }
+    /**
+     * Stripe {@link Subscription} を {@link SubscriptionDetail} へ写す（柱③-B PR-2）。
+     *
+     * <p>{@code cancel_at_period_end} は Stripe が {@code null} を返しうるため false 扱いにし、
+     * {@code metadata} は {@code null} を返さず空 Map に正規化する（呼び出し側の NPE を作らない）。</p>
+     */
+    private SubscriptionDetail toSubscriptionDetail(Subscription subscription) {
+        Map<String, String> metadata = subscription.getMetadata() == null
+                ? Collections.emptyMap()
+                : Map.copyOf(subscription.getMetadata());
+        return new SubscriptionDetail(
+                subscription.getId(),
+                subscription.getStatus(),
+                Boolean.TRUE.equals(subscription.getCancelAtPeriodEnd()),
+                subscription.getCurrentPeriodStart(),
+                subscription.getCurrentPeriodEnd(),
+                subscription.getPendingSetupIntent(),
+                metadata,
+                toSubscriptionItemDetails(subscription),
+                subscription.getPendingUpdate() == null
+                        ? null : subscription.getPendingUpdate().getExpiresAt());
+    }
+
+    /**
+     * Billing Center PR6b-1（AC-99）: Subscription の items を Price ref つきで写し取る。
+     *
+     * <p>upgrade の回収が「現在の items が target の Price へ切り替わっているか」を測るための
+     * 判定材料である。price が展開されていない items は Price ref を持てないため落とす
+     * （null の Price ref を運ぶと「切り替わっていない」と誤判定するため）。</p>
+     */
+    private List<SubscriptionItemDetail> toSubscriptionItemDetails(Subscription subscription) {
+        if (subscription.getItems() == null || subscription.getItems().getData() == null) {
+            return List.of();
+        }
+        List<SubscriptionItemDetail> items = new java.util.ArrayList<>();
+        for (com.stripe.model.SubscriptionItem item : subscription.getItems().getData()) {
+            String priceRef = item.getPrice() == null ? null : item.getPrice().getId();
+            if (priceRef == null) {
+                continue;
+            }
+            items.add(new SubscriptionItemDetail(item.getId(), priceRef, item.getQuantity()));
+        }
+        return List.copyOf(items);
     }
 
     /**

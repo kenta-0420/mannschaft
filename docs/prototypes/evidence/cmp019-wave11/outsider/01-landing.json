@@ -1,0 +1,666 @@
+{
+  "url": "http://localhost:3003/",
+  "title": "Mannschaft - チーム管理オールインワンプラットフォーム",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "bodyText": "メインコンテンツへスキップ\nMannschaft\n個人・チーム・組織、ぜんぶこれ1つ\nLINE・表計算・専用アプリに散らばった運営を、ひとつに。\n\n個人・チーム・組織——どの立場からでも使える、オールインワンの運営プラットフォーム。\n\n無料で始める\n\nアカウントをお持ちの方は ログイン\n\nアプリのダウンロードは不要。ブラウザでそのまま始められます\n\n公開チームを探す \n公開組織を探す \n個人\nチーム\n組織\n運営する側\n\n「場を運営する側」のあなたに。\n\nシフト表の作成・希望収集・確定通知\nイベントの出欠集計とリマインド\n会費の徴収・支払い状況の見える化\nチーム運営ダッシュボード\n\nいま、これだけの仲間が使っています\n\n—\n登録ユーザー\n—\nチーム\n—\n組織\n機能は、必要になったときに。\n\n気になる機能をタップすると、かんたんな説明が開きます。\n\nチーム・組織管理\nスケジュール・出欠\n予約管理\nシフト管理\nチャット\nタイムライン\n回覧板・電子印鑑\nアンケート・投票\nファイル共有\n会費・決済\nマッチング・大会\n緊急安否確認\nQR会員証\nポイントカードウォレット\nカルテ\n村（コミュニティ）\n\n基本機能は無料。追加機能は必要なものだけ選んで使えます（たくさん選ぶと一部有料）。\n\nMannschaftは、まだ成長中です。\n\n使う人の声で、機能はこれからも増えていきます。\n\n使い方は、無限大。\n\n同じ道具でも、使う人によって役割が変わります。\n\nスポーツチーム\n整骨院\n学校\n同窓会\n美容室\nマンション管理組合\n町内会\nジム\n飲食店\nサークル\n\nアプリストアは不要。このままアプリとして使えます。\n\nMannschaftはPWA対応。ホーム画面に追加すれば、ダウンロードなしでアプリのように開けます。\n\n追加方法を見る\n安心・安全への取り組み\n18歳未満は保護者連携必須\n2段階認証・パスキー対応\n6言語対応\n通信・データの暗号化\nGDPR対応\n子ども・高齢の家族の見守り\n緊急時の一斉安否確認\nまずは、無料で。\n\n個人アカウントは無料。チームはあとから作れます。\n\n無料で始める\n\n料金が気になる方は 料金プランを見る\n\nよくある質問\n無料で使えますか？\nスマートフォンからも使えますか？\n複数のチームを掛け持ちできますか？\nデータを持ち出せますか？\nセキュリティは大丈夫ですか？\n退会したらデータはどうなりますか？\n日本語以外でも使えますか？\n欲しい機能がないときは？\n18歳未満でも使えますか？\n高齢の家族を見守ることはできますか？\n\n🎮 ときどき画面がレトロになる…かも？\n\nMannschaft\n\nチームをひとつにする、オールインワンプラットフォーム\n\nプロダクト\n無料で始める\nログイン\n機能一覧\nよくある質問\n利用シーン\nスポーツチーム\n地域コミュニティ\n企業・職場\n教育機関\n法的情報\n利用規約\nプライバシーポリシー\n特定商取引法に基づく表記\nお問い合わせ\n© 2026 Mannschaft. All rights reserved.",
+  "dimensions": {
+    "clientWidth": 390,
+    "scrollWidth": 390,
+    "clientHeight": 844,
+    "scrollHeight": 4986
+  },
+  "controls": [
+    {
+      "tag": "A",
+      "text": "メインコンテンツへスキップ",
+      "type": null,
+      "href": "#main-content",
+      "box": {
+        "x": -1,
+        "y": -1,
+        "width": 1,
+        "height": 1
+      }
+    },
+    {
+      "tag": "A",
+      "text": "Mannschaft",
+      "type": null,
+      "href": "/",
+      "box": {
+        "x": 16,
+        "y": 16,
+        "width": 138.53125,
+        "height": 32
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "メニューを開く",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 334,
+        "y": 12,
+        "width": 40,
+        "height": 40
+      }
+    },
+    {
+      "tag": "A",
+      "text": "無料で始める",
+      "type": null,
+      "href": "/register",
+      "box": {
+        "x": 87,
+        "y": 488.75,
+        "width": 216,
+        "height": 49
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "無料で始める",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 87,
+        "y": 488.75,
+        "width": 216,
+        "height": 49
+      }
+    },
+    {
+      "tag": "A",
+      "text": "ログイン",
+      "type": null,
+      "href": "/login",
+      "box": {
+        "x": 252.5625,
+        "y": 545.75,
+        "width": 56,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "公開チームを探す",
+      "type": null,
+      "href": "/discover/teams",
+      "box": {
+        "x": 64.640625,
+        "y": 625.75,
+        "width": 129.140625,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "公開組織を探す",
+      "type": null,
+      "href": "/discover/organizations",
+      "box": {
+        "x": 209.78125,
+        "y": 625.75,
+        "width": 115.5625,
+        "height": 20
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "個人",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 21,
+        "y": 698.75,
+        "width": 116,
+        "height": 36
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "チーム",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 137,
+        "y": 698.75,
+        "width": 116,
+        "height": 36
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "組織",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 253,
+        "y": 698.75,
+        "width": 116,
+        "height": 36
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "チーム・組織管理",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 110.203125,
+        "y": 1568.15625,
+        "width": 169.59375,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "スケジュール・出欠",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 41.484375,
+        "y": 1616.15625,
+        "width": 183.03125,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "予約管理",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 234.515625,
+        "y": 1616.15625,
+        "width": 114,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "シフト管理",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 69.0625,
+        "y": 1664.15625,
+        "width": 128,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "チャット",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 207.0625,
+        "y": 1664.15625,
+        "width": 113.875,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "タイムライン",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 34.484375,
+        "y": 1712.15625,
+        "width": 141.03125,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "回覧板・電子印鑑",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 185.515625,
+        "y": 1712.15625,
+        "width": 170,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "アンケート・投票",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 34.265625,
+        "y": 1760.15625,
+        "width": 169.453125,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "ファイル共有",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 213.71875,
+        "y": 1760.15625,
+        "width": 142,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "会費・決済",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 41,
+        "y": 1808.15625,
+        "width": 128,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "マッチング・大会",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 179,
+        "y": 1808.15625,
+        "width": 170,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "緊急安否確認",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 59.125,
+        "y": 1856.15625,
+        "width": 142,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "QR会員証",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 211.125,
+        "y": 1856.15625,
+        "width": 119.75,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "ポイントカードウォレット",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 27,
+        "y": 1904.15625,
+        "width": 226,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "カルテ",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 263,
+        "y": 1904.15625,
+        "width": 100,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "村（コミュニティ）",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 103.40625,
+        "y": 1952.15625,
+        "width": 183.171875,
+        "height": 38
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "スポーツチーム",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 16,
+        "y": 2480.65625,
+        "width": 144,
+        "height": 142
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "整骨院",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 172,
+        "y": 2480.65625,
+        "width": 144,
+        "height": 142
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "学校",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 328,
+        "y": 2480.65625,
+        "width": 144,
+        "height": 142
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "同窓会",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 484,
+        "y": 2480.65625,
+        "width": 144,
+        "height": 142
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "美容室",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 640,
+        "y": 2480.65625,
+        "width": 144,
+        "height": 142
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "マンション管理組合",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 796,
+        "y": 2480.65625,
+        "width": 144,
+        "height": 142
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "町内会",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 952,
+        "y": 2480.65625,
+        "width": 144,
+        "height": 142
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "ジム",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 1108,
+        "y": 2480.65625,
+        "width": 144,
+        "height": 142
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "飲食店",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 1264,
+        "y": 2480.65625,
+        "width": 144,
+        "height": 142
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "サークル",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 1420,
+        "y": 2480.65625,
+        "width": 144,
+        "height": 142
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "追加方法を見る",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 124,
+        "y": 2920.90625,
+        "width": 142,
+        "height": 35
+      }
+    },
+    {
+      "tag": "A",
+      "text": "無料で始める",
+      "type": null,
+      "href": "/register",
+      "box": {
+        "x": 87,
+        "y": 3646.90625,
+        "width": 216,
+        "height": 49
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "text": "無料で始める",
+      "type": "button",
+      "href": null,
+      "box": {
+        "x": 87,
+        "y": 3646.90625,
+        "width": 216,
+        "height": 49
+      }
+    },
+    {
+      "tag": "A",
+      "text": "料金プランを見る",
+      "type": null,
+      "href": "/product",
+      "box": {
+        "x": 203.5625,
+        "y": 3703.90625,
+        "width": 112,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "",
+      "type": null,
+      "href": "/terms#terms-sec-4",
+      "box": {
+        "x": 33,
+        "y": 4459.15625,
+        "width": 312.125,
+        "height": 42.75
+      }
+    },
+    {
+      "tag": "A",
+      "text": "無料で始める",
+      "type": null,
+      "href": "/register",
+      "box": {
+        "x": 211,
+        "y": 4576.90625,
+        "width": 84,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "ログイン",
+      "type": null,
+      "href": "/login",
+      "box": {
+        "x": 211,
+        "y": 4604.90625,
+        "width": 56,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "機能一覧",
+      "type": null,
+      "href": "#features",
+      "box": {
+        "x": 211,
+        "y": 4632.90625,
+        "width": 56,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "よくある質問",
+      "type": null,
+      "href": "#faq",
+      "box": {
+        "x": 211,
+        "y": 4660.90625,
+        "width": 84,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "スポーツチーム",
+      "type": null,
+      "href": "/use-cases/sports",
+      "box": {
+        "x": 16,
+        "y": 4744.90625,
+        "width": 97.3125,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "地域コミュニティ",
+      "type": null,
+      "href": "/use-cases/community",
+      "box": {
+        "x": 16,
+        "y": 4772.90625,
+        "width": 111.171875,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "企業・職場",
+      "type": null,
+      "href": "/use-cases/business",
+      "box": {
+        "x": 16,
+        "y": 4800.90625,
+        "width": 70,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "教育機関",
+      "type": null,
+      "href": "/use-cases/education",
+      "box": {
+        "x": 16,
+        "y": 4828.90625,
+        "width": 56,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "利用規約",
+      "type": null,
+      "href": "/terms",
+      "box": {
+        "x": 211,
+        "y": 4744.90625,
+        "width": 56,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "プライバシーポリシー",
+      "type": null,
+      "href": "/privacy",
+      "box": {
+        "x": 211,
+        "y": 4772.90625,
+        "width": 139.734375,
+        "height": 20
+      }
+    },
+    {
+      "tag": "A",
+      "text": "特定商取引法に基づく表記",
+      "type": null,
+      "href": "/commerce-disclosure",
+      "box": {
+        "x": 211,
+        "y": 4800.90625,
+        "width": 154,
+        "height": 40
+      }
+    },
+    {
+      "tag": "A",
+      "text": "お問い合わせ",
+      "type": null,
+      "href": "/commerce-disclosure#contact",
+      "box": {
+        "x": 211,
+        "y": 4848.90625,
+        "width": 84,
+        "height": 20
+      }
+    }
+  ],
+  "errors": []
+}

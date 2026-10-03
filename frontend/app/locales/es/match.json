@@ -237,7 +237,10 @@
           "title": "Error al registrar el límite del período",
           "detail": "La transición de período no se pudo guardar en el servidor. Los marcadores y los totales de tiempo de juego pueden ser inexactos. Vuelve a accionar el cronómetro para registrarlo de nuevo."
         },
-        "complete_failed": "No se pudo guardar la finalización del partido"
+        "complete_failed": "No se pudo guardar la finalización del partido",
+        "score_load_failed": "No se pudieron cargar las puntuaciones existentes. Recarga la página",
+        "load_players_failed": "No se pudo cargar la lista de jugadores",
+        "substitution_rollback_failed": "No se pudo deshacer el cambio. Revisa el registro de la sustitución"
       },
       "read_only_notice": "Solo lectura. Solo administradores, suplentes y anotadores pueden registrar",
       "spectator": {
@@ -450,13 +453,20 @@
       "OH": "Receptor",
       "L": "Libero"
     },
+    "org_select": {
+      "label": "Organización",
+      "invalid": "指定された組織は無効です（このチームの組織ではありません）。組織を選び直してください",
+      "placeholder": "組織を選択"
+    },
     "org_context": {
-      "resolve_failed": "No se pudo resolver la información del equipo/organización. Verifica tus membresías"
+      "resolve_failed": "No se pudo resolver la información del equipo/organización. Verifica tus membresías",
+      "not_member_of_org": "このチームはこの大会の組織に加盟していないため、試合を記録できません"
     },
     "entry": {
       "record_from_schedule": "Registrar este partido",
       "record_from_schedule_hint": "Comienza a registrar el partido de este evento",
-      "resolving": "Preparando el registro del partido…"
+      "resolving": "Preparando el registro del partido…",
+      "no_org_for_record": "El registro de partidos solo está disponible cuando el equipo pertenece a una organización"
     },
     "fixtures": {
       "title": "Calendario de partidos",
@@ -641,6 +651,28 @@
         "error": {
           "load_failed": "No se pudo cargar el desglose de puntuación",
           "save_failed": "No se pudo guardar el desglose de puntuación"
+        }
+      },
+      "ranking": {
+        "switch_to_ranking": "Introducir clasificacion de varios competidores",
+        "intro": "Anade competidores e introduce la puntuacion total de cada uno; el servidor los clasifica automaticamente de mayor a menor total.",
+        "mode_label": "Clasificacion de varios competidores",
+        "switch_to_direct": "Cambiar a entrada directa del total",
+        "canonical_notice": "Existen entradas de competidores, por lo que la clasificacion de varios competidores es la fuente de registro.",
+        "clear_to_direct": "Borrar entradas y volver a la entrada directa",
+        "standings": "Clasificacion (calculada por el servidor)",
+        "competitor_label": "Nombre del competidor",
+        "competitor_placeholder": "p. ej., Hanako Yamada",
+        "total_label": "Puntuacion total",
+        "add_entry": "Anadir competidor",
+        "remove_entry": "Eliminar este competidor",
+        "complete": "Confirmar clasificacion",
+        "complete_hint": "Anade al menos dos competidores e introduce el nombre y la puntuacion total de cada uno",
+        "user_fallback": "Jugador n.o {id}",
+        "team_fallback": "Equipo n.o {id}",
+        "error": {
+          "load_failed": "No se pudieron cargar las entradas de competidores",
+          "save_failed": "No se pudieron guardar las entradas de competidores"
         }
       }
     }

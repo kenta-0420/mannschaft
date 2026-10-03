@@ -133,8 +133,18 @@ test.describe('ORG-DISP-001〜039: 組織各ページ表示確認', () => {
   })
 
   test('ORG-DISP-019: インシデント管理ページが表示される', async ({ page }) => {
+    let incidentScopeId: string | null = null
+    await page.route('**/api/v1/incidents?**', async (route) => {
+      incidentScopeId = new URL(route.request().url()).searchParams.get('scopeId')
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } }),
+      })
+    })
     await page.goto(`/organizations/${ORG_ID}/incidents`)
     await waitForHydration(page)
+    await expect.poll(() => incidentScopeId).toBe(String(ORG_ID))
     await expect(page.getByRole('heading', { name: 'インシデント管理', level: 1 })).toBeVisible({
       timeout: 10_000,
     })

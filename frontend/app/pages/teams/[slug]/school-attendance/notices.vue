@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import { computed, ref, onMounted } from 'vue'
 
 definePageMeta({
+  layout: 'team',
   middleware: 'auth',
 })
 

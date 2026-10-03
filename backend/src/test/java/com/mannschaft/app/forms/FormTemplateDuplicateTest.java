@@ -1,5 +1,6 @@
 package com.mannschaft.app.forms;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.forms.dto.FormTemplateResponse;
 import com.mannschaft.app.forms.entity.FormTemplateEntity;
 import com.mannschaft.app.forms.entity.FormTemplateFieldEntity;
@@ -34,6 +35,7 @@ class FormTemplateDuplicateTest {
     @Mock private FormTemplateRepository templateRepository;
     @Mock private FormTemplateFieldRepository fieldRepository;
     @Mock private FormMapper formMapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private FormTemplateService templateService;

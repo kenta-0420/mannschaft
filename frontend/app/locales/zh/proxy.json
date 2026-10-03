@@ -31,7 +31,9 @@
       "shift_request": "班次申请",
       "announcement_read": "公告已读",
       "parking_application": "停车申请",
-      "circular": "传阅通知"
+      "circular": "传阅通知",
+      "supporter_view": "守护浏览",
+      "payment": "代理支付"
     },
     "desk": {
       "pinSubject": "锁定居民",
@@ -42,7 +44,8 @@
         "label": "输入来源",
         "paper_form": "纸质表格",
         "phone_interview": "电话问询",
-        "in_person": "现场面谈"
+        "in_person": "现场面谈",
+        "guardianship_switch": "监护切换"
       },
       "originalStorage": {
         "label": "原件存放位置",
@@ -106,6 +109,75 @@
         "junior_high": "初中生",
         "high_school": "高中生",
         "adult": "成人"
+      },
+      "watch": {
+        "title": "守护",
+        "linkLabel": "守护",
+        "linkTooltip": "打开守护画面（仅供浏览）",
+        "readonlyNotice": "本画面仅供浏览，无法进行操作或回复。",
+        "loadError": "获取守护数据失败",
+        "retryButton": "重试",
+        "sections": {
+          "schedules": {
+            "title": "近期日程",
+            "empty": "暂无近期日程"
+          },
+          "attendance": {
+            "title": "出勤情况",
+            "attended": "出席",
+            "partial": "部分参加",
+            "absent": "缺席",
+            "total": "总件数",
+            "rate": "出勤率",
+            "empty": "暂无出勤数据"
+          },
+          "memberships": {
+            "title": "所属团队/组织",
+            "teams": "团队",
+            "organizations": "组织",
+            "empty": "未加入任何团队或组织"
+          },
+          "announcements": {
+            "title": "公告",
+            "empty": "暂无公告"
+          }
+        },
+        "attendanceStatus": {
+          "ATTENDING": "出席",
+          "PARTIAL": "部分参加",
+          "ABSENT": "缺席",
+          "UNDECIDED": "未定"
+        },
+        "proxyActions": {
+          "title": "代理操作记录",
+          "badge": "代理(监护人)",
+          "empty": "没有代理操作记录"
+        },
+        "forbidden": {
+          "ageLocked": {
+            "title": "该孩子不在守护范围内",
+            "body": "12岁及以上的孩子已进入独立阶段，不在浏览守护的对象范围内。"
+          },
+          "linkNotFound": {
+            "title": "无法守护该孩子",
+            "body": "未能确认您的监护关系，请检查关联设置。"
+          }
+        },
+        "guide": {
+          "title": "守护功能使用说明",
+          "readonly": {
+            "title": "仅供浏览",
+            "body": "本画面仅可查看孩子的日程、出勤情况、所属团队/组织和公告，无法进行操作或回复。如需代为操作，请使用「监护切换」。"
+          },
+          "ageLimit": {
+            "title": "仅适用于12岁以下的孩子",
+            "body": "12岁及以上的孩子已进入独立阶段，出于隐私保护将不再是守护对象。"
+          },
+          "proxyBadge": {
+            "title": "「代理」标记的含义",
+            "body": "监护人通过监护切换等方式代替孩子进行的操作会标记为「代理(监护人)」。可在代理操作记录区块中查看操作发生的时间及功能。"
+          }
+        }
       }
     },
     "delegation": {

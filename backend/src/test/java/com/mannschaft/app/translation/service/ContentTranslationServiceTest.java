@@ -218,7 +218,8 @@ class ContentTranslationServiceTest {
         void 正常系_翻訳内容を更新() {
             // given
             ContentTranslationEntity entity = createEntity("DRAFT");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
             given(contentTranslationRepository.save(any(ContentTranslationEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -229,7 +230,8 @@ class ContentTranslationServiceTest {
             req.setVersion(0L);
 
             // when
-            ApiResponse<ContentTranslationResponse> result = sut.updateTranslation(1L, USER_ID, req);
+            ApiResponse<ContentTranslationResponse> result =
+                    sut.updateTranslation(1L, SCOPE_TYPE, SCOPE_ID, USER_ID, req);
 
             // then
             assertThat(result.getData().getTitle()).isEqualTo("New Title");
@@ -242,7 +244,8 @@ class ContentTranslationServiceTest {
         void 正常系_nullフィールドは既存値を維持() {
             // given
             ContentTranslationEntity entity = createEntity("DRAFT");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
             given(contentTranslationRepository.save(any(ContentTranslationEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -253,7 +256,8 @@ class ContentTranslationServiceTest {
             req.setVersion(0L);
 
             // when
-            ApiResponse<ContentTranslationResponse> result = sut.updateTranslation(1L, USER_ID, req);
+            ApiResponse<ContentTranslationResponse> result =
+                    sut.updateTranslation(1L, SCOPE_TYPE, SCOPE_ID, USER_ID, req);
 
             // then
             assertThat(result.getData().getTitle()).isEqualTo("Title");
@@ -266,17 +270,37 @@ class ContentTranslationServiceTest {
         void 異常系_バージョン不一致_TRANSLATION_007() {
             // given
             ContentTranslationEntity entity = createEntity("DRAFT");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
 
             UpdateTranslationRequest req = new UpdateTranslationRequest();
             req.setTitle("New Title");
             req.setVersion(999L); // version mismatch
 
             // when & then
-            assertThatThrownBy(() -> sut.updateTranslation(1L, USER_ID, req))
+            assertThatThrownBy(() -> sut.updateTranslation(1L, SCOPE_TYPE, SCOPE_ID, USER_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TranslationErrorCode.TRANSLATION_007);
+        }
+
+        @Test
+        @DisplayName("BOLA: idが指定scope配下でない場合 → TRANSLATION_002（存在秘匿）")
+        void 越境id_TRANSLATION_002() {
+            // given: 越境scopeでは repository が空を返す（scope束縛クエリで404秘匿）
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    1L, SCOPE_TYPE, 999L))
+                    .willReturn(Optional.empty());
+
+            UpdateTranslationRequest req = new UpdateTranslationRequest();
+            req.setTitle("乗っ取り");
+            req.setVersion(0L);
+
+            // when & then
+            assertThatThrownBy(() -> sut.updateTranslation(1L, SCOPE_TYPE, 999L, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(TranslationErrorCode.TRANSLATION_002);
         }
     }
 
@@ -361,12 +385,13 @@ class ContentTranslationServiceTest {
         void 正常系_論理削除() {
             // given
             ContentTranslationEntity entity = createEntity("DRAFT");
-            given(contentTranslationRepository.findById(1L)).willReturn(Optional.of(entity));
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(1L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
             given(contentTranslationRepository.save(any(ContentTranslationEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
             // when
-            sut.deleteTranslation(1L);
+            sut.deleteTranslation(1L, SCOPE_TYPE, SCOPE_ID);
 
             // then
             verify(contentTranslationRepository).save(any(ContentTranslationEntity.class));
@@ -378,10 +403,25 @@ class ContentTranslationServiceTest {
         @DisplayName("異常系_対象が見つからない_TRANSLATION_002")
         void 異常系_対象が見つからない_TRANSLATION_002() {
             // given
-            given(contentTranslationRepository.findById(999L)).willReturn(Optional.empty());
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(999L, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> sut.deleteTranslation(999L))
+            assertThatThrownBy(() -> sut.deleteTranslation(999L, SCOPE_TYPE, SCOPE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(TranslationErrorCode.TRANSLATION_002);
+        }
+
+        @Test
+        @DisplayName("BOLA: idが指定scope配下でない場合 → TRANSLATION_002（存在秘匿）")
+        void 越境id_TRANSLATION_002() {
+            // given
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(1L, SCOPE_TYPE, 999L))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> sut.deleteTranslation(1L, SCOPE_TYPE, 999L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TranslationErrorCode.TRANSLATION_002);

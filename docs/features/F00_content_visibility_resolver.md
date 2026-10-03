@@ -170,6 +170,10 @@ F09.8.1 §4.3 の 11 種を起点に、本基盤としては以下 17 種を Pha
 | 16 | `TEAM` | `TeamEntity.Visibility` | 既存enum | D（**F19.1 で Phase D から繰り上げ実装**）|
 | 17 | `ORGANIZATION` | `OrganizationEntity.Visibility` | 既存enum | D（**F19.1 で Phase D から繰り上げ実装**）|
 
+> **F03.17 連携追記（2026-08-06）**: `SCHEDULE_KEEP`（キープ＝日付未定の予定）を追加した。`schedule_keeps` は UUIDv7 主キーのため `idKind()` は `UUID_V7` であり、`ScheduleKeepVisibilityResolver`（`com.mannschaft.app.schedule.visibility`）が UUID 経路（`canViewUuid` / `filterAccessibleUuid`）を実装する。**visibility 戦略は「スコープ固定」**: キープは可視性設定列を持たず、チーム／組織スコープでは常に `MEMBERS_AND_ABOVE`（応援者・ゲストを除外。`EventVisibilityMapper` の締め直しと同じ判断）、個人スコープでは `PRIVATE`（所有者本人のみ）で評価する。**本 referenceType はコルクボード（引用・埋め込み）の対象外**であり、`corkboard_cards.reference_id_uuid` を使う用途を持たない。詳細: `F03.17_schedule_keep.md` §4.6。
+
+> **F03.16 連携追記（2026-08-11）**: `SCHEDULE_COMMENT`（予定コメントスレッド）を追加した。`schedule_comments` は UUIDv7 主キーのため `idKind()` は `UUID_V7` であり、`ScheduleCommentVisibilityResolver`（`com.mannschaft.app.schedule.visibility`）が UUID 経路（`canViewUuid` / `filterAccessibleUuid`）を実装する。**visibility 戦略は「親従属」**: コメントは可視性列を一切持たず、判定は `contentVisibilityChecker.canView(ReferenceType.SCHEDULE, scheduleId, viewerUserId)` **単体**へ完全委譲する（CMP-017b 着地により `canView` が `min_view_role` 閾値まで内部で評価するため、コメント側で閾値の写像を書くと二重化して漏洩源になる。F03.16 §4.5.0 マスター御裁可）。**既存の `COMMENT`（No.13）を流用しない**のは、同値を `CirculationCommentVisibilityResolver` が専有しており、同じ値を 2 つの Resolver が返すとディスパッチ表の解決が一意に定まらないためである（加えて `COMMENT` は BIGINT 主キーで型も異なる）。バッチ判定は「コメント射影 1 SQL → 重複排除した親 `scheduleId` へ `filterAccessible` 1 回」の 2 段で行い、コメント 1 件ずつ `canView` を呼ばない。**本 referenceType はコルクボード（引用・埋め込み）の対象外**であり、`corkboard_cards.reference_id_uuid` を使う用途を持たない。詳細: `F03.16_schedule_comment_thread.md` §4.5。
+
 > **F19.1 連携追記（2026-05-18）**: `TEAM` / `ORGANIZATION` Resolver は F19.1 公開チーム・組織ページ機能で本基盤の Phase D を待たず繰り上げ実装される。`PublicTeamVisibilityResolver` / `PublicOrganizationVisibilityResolver` として `com.mannschaft.app.publicview` に配置される。詳細: `F19.1_public_pages_identity_disclosure.md` §7.2。
 
 **visibility 戦略の凡例**:
@@ -513,6 +517,8 @@ public class BlogPostVisibilityResolver
             case SUPPORTERS_AND_ABOVE ->
                 snapshot.hasRoleOrAbove(scope, "SUPPORTER");
             case MEMBERS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "MEMBER");
+            case DEPUTY_ADMINS_AND_ABOVE ->
+                snapshot.hasRoleOrAbove(scope, "DEPUTY_ADMIN");
             case ADMINS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "ADMIN");
             case ORGANIZATION_WIDE -> snapshot.isMemberOfParentOrg(scope);
             case PRIVATE -> Objects.equals(viewerUserId, row.authorUserId());
@@ -635,6 +641,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             case SCOPE_AFFILIATED -> snapshot.isMemberOf(scope);
             case SUPPORTERS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "SUPPORTER");
             case MEMBERS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "MEMBER");
+            case DEPUTY_ADMINS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "DEPUTY_ADMIN");
             case ADMINS_AND_ABOVE -> snapshot.hasRoleOrAbove(scope, "ADMIN");
             case ORGANIZATION_WIDE -> snapshot.isMemberOfParentOrg(scope);
             case PRIVATE -> Objects.equals(viewerUserId, row.authorUserId());
@@ -749,9 +756,15 @@ public enum StandardVisibility {
      *  応援者(SUPPORTER)は含まない（F00.5 課題#5 の可視性軸での回答・§5.1.5）。 */
     MEMBERS_AND_ABOVE,
 
-    /** ADMIN ロールのみ（閾値レベル）
+    /** DEPUTY_ADMIN 以上（閾値レベル）
      *  包含: ADMIN/DEPUTY_ADMIN
-     *  AccessControlService.isAdminOrAbove(...) と同等。
+     *  hasRoleOrAbove("DEPUTY_ADMIN") と同等。
+     *  ※CMP-017b 追加。F03.1 の min_view_role=ADMIN_ONLY（副管理者も閲覧可）の写像先。 */
+    DEPUTY_ADMINS_AND_ABOVE,
+
+    /** ADMIN ロールのみ（閾値レベル）
+     *  包含: ADMIN のみ（DEPUTY_ADMIN は priority=3 のため実際には除外される）
+     *  hasRoleOrAbove("ADMIN") と同等。
      *  ※旧名 ADMINS_ONLY。挙動不変、_AND_ABOVE 命名規約に揃えるため改名（§5.1.5）。 */
     ADMINS_AND_ABOVE,
 
@@ -765,11 +778,22 @@ public enum StandardVisibility {
     CUSTOM_TEMPLATE,
 
     /**
-     * スコープ全体の組織メンバーへ公開
+     * スコープ全体の組織メンバーへ公開（**上向き 1 段**・所属拡大軸）
      * TEAM スコープのコンテンツでも親 ORG の所属メンバーまで広げる。
+     * 判定 = isMemberOfParentOrg(scope)（TEAM → 親 ORG 1 段を上向きに辿る）。
      * 親スコープ解決規約は §5.1.1 を参照。
+     * 方向の対比は ORGANIZATION_AND_DESCENDANTS（下向き再帰）を参照。
      */
     ORGANIZATION_WIDE,
+
+    /**
+     * 組織スコープのコンテンツを **組織 + 全子孫組織 + 配下 ACTIVE チームのメンバー（再帰）** へ公開
+     * （**下向き再帰**・所属拡大軸 / フェーズ M2・§5.1.7）。
+     * ORGANIZATION_WIDE（上向き 1 段）の鏡像。判定 = isDescendantMemberOf(scope)。
+     * SUPPORTER を含む（G7・所属軸）。組織メンバー定義は不変（G3・別フィールドで保持）。
+     * 当該 ORG 自身が非アクティブなら fail-closed（isOrgInactive・§11.6 鏡像）。
+     */
+    ORGANIZATION_AND_DESCENDANTS,
 
     /**
      * 上記いずれにも該当しない機能独自のセマンティクス。
@@ -797,20 +821,28 @@ public enum StandardVisibility {
 **広→狭** の序列は以下のとおり:
 
 ```
-PUBLIC  >  SUPPORTERS_AND_ABOVE  >  MEMBERS_AND_ABOVE  >  ADMINS_AND_ABOVE
+PUBLIC  >  SUPPORTERS_AND_ABOVE  >  MEMBERS_AND_ABOVE  >  DEPUTY_ADMINS_AND_ABOVE  >  ADMINS_AND_ABOVE
 ```
 
 - `PUBLIC` … 全員（未認証含む）
 - `SUPPORTERS_AND_ABOVE` … `hasRoleOrAbove("SUPPORTER")`。ADMIN/DEPUTY_ADMIN/MEMBER/SUPPORTER（GUEST 除外）。**不変**
 - `MEMBERS_AND_ABOVE` … `hasRoleOrAbove("MEMBER")`。ADMIN/DEPUTY_ADMIN/MEMBER（**SUPPORTER/GUEST 除外**）。**新設**
-- `ADMINS_AND_ABOVE` … `hasRoleOrAbove("ADMIN")`。ADMIN/DEPUTY_ADMIN。旧 `ADMINS_ONLY` を改名（挙動不変）
+- `DEPUTY_ADMINS_AND_ABOVE` … `hasRoleOrAbove("DEPUTY_ADMIN")`。ADMIN/DEPUTY_ADMIN。**CMP-017b で追加**
+- `ADMINS_AND_ABOVE` … `hasRoleOrAbove("ADMIN")`。**ADMIN のみ**。旧 `ADMINS_ONLY` を改名（挙動不変）
+
+> ⚠️ **本節の過去の記述の訂正（CMP-017b）**: `ADMINS_AND_ABOVE` の包含を長らく
+> 「ADMIN/DEPUTY_ADMIN」と記していたが誤りであった。`RolePriority` は ADMIN=2・DEPUTY_ADMIN=3 であり、
+> 「以上」判定は `priority(actual) <= priority(required)` ゆえ `hasRoleOrAbove("ADMIN")` は
+> DEPUTY_ADMIN を弾く。**実装は一貫して DEPUTY_ADMIN を除外していた**（挙動は変えていない）。
+> 「ADMIN と副管理者の両方に見せたい」意図には新設の `DEPUTY_ADMINS_AND_ABOVE` を用いること。
+> F03.1 の `min_view_role = ADMIN_ONLY`（DEPUTY_ADMIN・ADMIN のみ閲覧可）がこの新段の写像先である。
 
 **`SCOPE_AFFILIATED` は閾値ではなく「直接所属」という別軸** であり、上記序列に乗らない。
 そのスコープに直接所属していれば誰でも可視（`isMemberOf(scope)`）＝ ADMIN/DEPUTY_ADMIN/MEMBER/**SUPPORTER/GUEST**
 のロール保有者すべて（JOBBER 等の並行ロールは「直接所属」に含めず除外）。旧 `MEMBERS_ONLY` を改名・温存したもの。
 
 **GUEST の扱い**:
-- すべての**閾値レベル**（`SUPPORTERS_AND_ABOVE` / `MEMBERS_AND_ABOVE` / `ADMINS_AND_ABOVE`）で GUEST は不可視
+- すべての**閾値レベル**（`SUPPORTERS_AND_ABOVE` / `MEMBERS_AND_ABOVE` / `DEPUTY_ADMINS_AND_ABOVE` / `ADMINS_AND_ABOVE`）で GUEST は不可視
 - `SCOPE_AFFILIATED` のみ、GUEST ロールの直接所属者を可視とする（「直接所属」の定義に GUEST を含むため）
 - 未認証 (userId=null) は `PUBLIC` のみ可視（§17.Q1）。`SCOPE_AFFILIATED` も含め全レベルで fail-closed
 
@@ -955,6 +987,98 @@ Survey の `ResultsVisibility.AFTER_RESPONSE` / `AFTER_CLOSE` を Resolver の `
 
 これは §11.2 fail-closed 原則の Resolver 個別適用例として明文化する。`SurveyVisibilityResolver` の単体テストでは上記 3 ケースを必ず網羅すること。
 
+### 5.1.7 `ORGANIZATION_AND_DESCENDANTS` — 下向き再帰の所属拡大軸（フェーズ M2・2026-06-18 御裁可）
+
+`StandardVisibility` に新値 `ORGANIZATION_AND_DESCENDANTS` を追加した。これは
+`ORGANIZATION_WIDE`（上向き 1 段）の**鏡像**であり、**組織スコープのコンテンツを
+「組織 + 全子孫組織 + 配下 ACTIVE チームのメンバー（再帰）」へ下向きに開く**ための所属拡大軸である。
+
+#### 背景（欠陥 Z）
+
+組織はネスト（`organizations.parent_organization_id` 隣接リスト）するが、F00 Resolver の
+`SCOPE_AFFILIATED`（当該 ORG への直接所属のみ）/ `ORGANIZATION_WIDE`（TEAM → 親 ORG 1 段上向き）は、
+**root 組織が配信したコンテンツを、孫組織配下の参加チームのみに所属するメンバーへ届けられない**
+（実機 E2E で組織スケジュール詳細の 403 を捕捉）。配信 universe は M1 で再帰化済み（通知・回答は届く）だが、
+**F00 Resolver 経由の閲覧には下向き再帰段が無かった**。これが欠陥 Z。
+
+#### 方向性の対比（上向き ⇔ 下向き）
+
+| 値 | 方向 | 判定 | 対象コンテンツ | スナップショット |
+|---|---|---|---|---|
+| `ORGANIZATION_WIDE` | **上向き 1 段** | `isMemberOfParentOrg(scope)` | 主に TEAM スコープ（子 → 親 ORG メンバーへ） | `orgMemberOf` / `parentOrgByScope` |
+| `ORGANIZATION_AND_DESCENDANTS` | **下向き再帰** | `isDescendantMemberOf(scope)` | ORGANIZATION スコープ（親 ORG → 全子孫組織 + 配下チームメンバーへ） | `descendantMemberOfOrgIds`（別フィールド） |
+
+両者は閾値ラダー（`PUBLIC > SUPPORTERS_AND_ABOVE > MEMBERS_AND_ABOVE > ADMINS_AND_ABOVE`）ではなく、
+`SCOPE_AFFILIATED` と並ぶ**所属拡大軸**に属する。
+
+#### 御裁可された意味論
+
+- **再帰の範囲**: 当該 ORG を根とした全子孫組織ツリー（`WITH RECURSIVE`・depth 上限 32・サイクル防止）の
+  「直属（全子孫組織の `user_roles`）∪ 配下 ACTIVE 参加チーム（`team_org_memberships.status='ACTIVE'`）のメンバー」。
+  配信 universe（M1 の `findDistributionUserIdsForOrganizationRecursive` / `existsUserInOrganizationDescendants`）と
+  評価範囲を一致させる。
+- **SUPPORTER を含む（G7）**: 所属軸であり、配信トグル（`includeSupporters`）とは別軸。SUPPORTER 除外は行わない。
+- **組織メンバー定義は不変（G3）**: 配下チーム所属を ORG 直接所属に「昇格」させない。スナップショット上も
+  `orgMemberOf`（直接所属）とは**別フィールド** `descendantMemberOfOrgIds` で保持し、
+  `ORGANIZATION_WIDE` / `SCOPE_AFFILIATED` の判定には一切影響しない。
+- **非アクティブ連鎖（§11.6 鏡像）**: 当該 ORG **自身**が DELETED/SUSPENDED なら fail-closed
+  （`isOrgInactive(scope)`。`isParentOrgInactive` が TEAM の「親 ORG」を見るのに対し、本値は ORG 自身を見る）。
+
+#### 配信 vs 可視性 vs 認可（3 軸の分離・欠陥Z 根治の位置づけ）
+
+組織発コンテンツの「配下チームへの到達」は **3 つの独立した軸**で評価される。混同すると漏洩・過小権限のいずれかを招くため明示する。
+
+| 軸 | 問い | 主体 | SUPPORTER 扱い | 実装 |
+|---|---|---|---|---|
+| **配信（distribution）** | 誰に通知/宛先を配るか | `OrganizationMembershipService.resolveOrgDistributionUserIds(orgId, includeSupporters)` | トグル（既定除外） | `UserRoleRepository.findDistributionUserIdsForOrganizationRecursive` |
+| **可視性（visibility）** | 誰が閲覧してよいか | F00 `ORGANIZATION_AND_DESCENDANTS`（本節 M2） | **含む**（所属軸・G7） | `existsUserInOrganizationDescendants` / `findOrgRootsWhereUserIsDescendantMember` |
+| **認可（authorization）** | 誰が**回答/要対応集計**してよいか | `AccessControlService.isMemberOrDescendant` / `checkMembershipOrDescendant` | **除外**（純 SUPPORTER は回答不可・御裁可②） | `OrganizationMembershipService.isActiveMemberInOrgDistributionUniverse` → `UserRoleRepository.existsActiveMemberInOrganizationDescendants` |
+
+**欠陥Z（2026-06-18 根治）**: M2 は**可視性**を配下へ開いたが、出欠/アンケートの**応答・要対応集計の認可**は別層（`AccessControlService` の直接所属判定）にあり未修正だったため、配下チームのみ所属メンバーが
+`GET /api/v1/dashboard/organization/{orgPublicId}/action-required`・組織発出欠回答で 403（`COMMON_002`）になっていた。
+根治として認可軸に「配下チーム MEMBER を組織応答母集団に含める（純 SUPPORTER 除外）」判定を新設し、以下 4 箇所に適用した:
+
+1. `ScopeActionRequiredFacade.getActionRequired` の入口（`checkMembership` → `checkMembershipOrDescendant`）
+2. `SurveyService.getUnansweredForUserInScope`（同上）
+3. `ScheduleAttendanceService.getUnansweredForUserInScope`（同上）
+4. `ScheduleAttendanceService.validateMinResponseRole`: 組織スケジュールで要求段が `MEMBER_PLUS` のときのみ
+   配下 MEMBER を「組織 MEMBER 相当」とみなして救済（`isMemberOrDescendant`）。`SUPPORTER_PLUS`（純 SUPPORTER は御裁可②で回答不可）・
+   `ADMIN_ONLY`（配下メンバーは組織 ADMIN でない）は救済しない。
+
+認可軸の純 SUPPORTER 除外規約は配信軸 `includeSupporters=false` と 1 対 1 同一（`memberships.role_kind` 軸・MEMBER 優先）。
+回覧（circulation）は組織→配下チーム配信の対象外であり、従来どおり直接所属の `checkMembership` のまま（配下メンバーの回覧は per-recipient ACL 登録が無ければ 0 件＝正しい結果）。
+
+#### 判定基盤（Expand 方式・非永続のため安全）
+
+`StandardVisibility` は実行時導出のみ（`@Enumerated` 永続化・`valueOf`・API 露出いずれも無し）であるため、
+値追加は Expand/Contract 安全。判定基盤は以下:
+
+- `UserScopeRoleSnapshot` に `descendantMemberOfOrgIds: Set<Long>` を追加（後方互換のため
+  5 引数コンストラクタを温存）。`isDescendantMemberOf(scope)` / `isOrgInactive(scope)` を追加。
+- `MembershipBatchQueryService.snapshotForUser(...)` に 4 引数版（`descendantScopes` 追加）を新設。
+  新段スコープが空なら従来 3 引数版に委譲し SQL・挙動を完全保存。非空のときのみ
+  `UserRoleRepository.findOrgRootsWhereUserIsDescendantMember(rootOrgIds, userId, maxDepth)` を
+  **1 バルク SQL** だけ追加発行（複数 ORG 根 × 単一 viewer を `root_id` 伝播 CTE で 1 クエリ判定）。
+  `ORGANIZATION_WIDE` と排他的に集計し、新段 row が無ければ SQL 0（SQL 数番人予算 ≤ 7 内）。
+- `AbstractContentVisibilityResolver` の `visibleByVisibility` に
+  `case ORGANIZATION_AND_DESCENDANTS -> scope != null && !snapshot.isOrgInactive(scope) && snapshot.isDescendantMemberOf(scope)`
+  を追加。`classifyDenyReason` でも `ORGANIZATION_WIDE` / `SCOPE_AFFILIATED` と同列の所属拡大軸として分類。
+  scope 依存の昇格は `adjustLevel(row, level)` フック（既定恒等）で表現する。
+
+#### MVP 適用範囲（G2）
+
+フェーズ M2 では **survey / schedule のみ**新段に対応する（他 ~18 Resolver は不変）。
+
+- **schedule**: `ScheduleVisibility.ORGANIZATION`（組織全体）の **ORGANIZATION スコープ**コンテンツに限り、
+  `adjustLevel` で `ORGANIZATION_WIDE` → `ORGANIZATION_AND_DESCENDANTS` へ昇格（欠陥 Z の根治）。
+  TEAM スコープのスケジュールは従来どおり `ORGANIZATION_WIDE`（上向き 1 段）のまま不変。
+- **survey**: schedule と同一作法の `adjustLevel` を備える。ただし現行 `ResultsVisibility` は org-wide 値を
+  持たず `SurveyResultsVisibilityMapper` は `ORGANIZATION_WIDE` を生成しないため、本昇格は現時点で発火しない。
+  組織配信アンケートの「閲覧・回答してよい所属圏か」は M1 の `SurveyResultService.isUserInUniverse`
+  （再帰 universe）が司る。survey の `adjustLevel` は schedule と作法を揃えた前向き整合である。
+
+後続（M3）で他 Resolver への展開可否を別途軍議する。
+
 ### 5.2 既存 enum → StandardVisibility 対応表
 
 > **✅ 移行ステータス注記（2026-06-05・W6 Contract 完了・実コードに一致済）**: 右列は **各 Mapper/Resolver の実際の Std 出力先**であり、W6 でコード実装と完全に突き合わせた。
@@ -973,8 +1097,11 @@ Survey の `ResultsVisibility.AFTER_RESPONSE` / `AFTER_CLOSE` を Resolver の `
 | | PRIVATE | PRIVATE | |
 | | CUSTOM_TEMPLATE | CUSTOM_TEMPLATE | |
 | `event.entity.EventVisibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | MEMBERS_AND_ABOVE | メンバー以上（応援者除外）。`EventVisibilityMapper` 実装に一致 |
+| | MEMBERS_ONLY | MEMBERS_AND_ABOVE | 互換残置。メンバー以上（応援者除外）。`EventVisibilityMapper` 実装に一致 |
 | | SUPPORTERS_AND_ABOVE | SUPPORTERS_AND_ABOVE | |
+| | MEMBERS_AND_ABOVE | MEMBERS_AND_ABOVE | #1341 新ラダー値名。FE 可視性 UI が送る正準値。旧 MEMBERS_ONLY と同一範囲。`EventVisibilityMapper` 実装に一致 |
+| | ADMINS_AND_ABOVE | ADMINS_AND_ABOVE | #1341 新ラダー値名（管理者以上）。`EventVisibilityMapper` 実装に一致 |
+| | SCOPE_AFFILIATED | SCOPE_AFFILIATED | #1341 直接所属軸（応援者・ゲスト含む）。旧 MEMBERS_ONLY 相当の正準値。`EventVisibilityMapper` 実装に一致 |
 | `activity.ActivityVisibility` | PUBLIC | PUBLIC | |
 | | MEMBERS_ONLY | MEMBERS_AND_ABOVE | メンバー以上（応援者除外）。`ActivityVisibilityMapper` 実装に一致 |
 | `tournament.TournamentVisibility` | PUBLIC | PUBLIC | |
@@ -987,7 +1114,8 @@ Survey の `ResultsVisibility.AFTER_RESPONSE` / `AFTER_CLOSE` を Resolver の `
 | | MEMBERS_ONLY | MEMBERS_AND_ABOVE | メンバー以上（応援者除外）。`ProjectVisibilityMapper` 実装に一致 |
 | | PUBLIC | PUBLIC | |
 | `schedule.ScheduleVisibility` | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
-| | ORGANIZATION | ORGANIZATION_WIDE | |
+| | ORGANIZATION（TEAM スコープ） | ORGANIZATION_WIDE | 上向き 1 段（親 ORG メンバーへ）。不変 |
+| | ORGANIZATION（ORGANIZATION スコープ） | ORGANIZATION_AND_DESCENDANTS | **M2**: 下向き再帰（全子孫組織 + 配下チームメンバーへ）。`adjustLevel` で昇格・§5.1.7 |
 | | CUSTOM_TEMPLATE | CUSTOM_TEMPLATE | |
 | `recruitment.RecruitmentVisibility` | PUBLIC | PUBLIC | |
 | | SCOPE_ONLY | SCOPE_AFFILIATED | 直接所属者全員。挙動不変 |
@@ -1496,7 +1624,8 @@ public record UserScopeRoleSnapshot(
     boolean systemAdmin,
     Map<ScopeKey, String> roleByScope,        // direct メンバーシップ + ロール名
     Map<ScopeKey, Long> parentOrgByScope,     // TEAM → 親 ORG
-    Set<ScopeKey> orgMemberOf                 // 親 ORG での所属
+    Set<ScopeKey> orgMemberOf,                // 親 ORG での所属（真偽）
+    Map<ScopeKey, String> orgRoleByScope      // 親 ORG での直接所属ロール名（CMP-017b 追加）
 ) {
     public boolean isSystemAdmin() { return systemAdmin; }
     public boolean isMemberOf(ScopeKey s) {
@@ -1514,10 +1643,25 @@ public record UserScopeRoleSnapshot(
         return parentOrg != null
             && orgMemberOf.contains(new ScopeKey("ORGANIZATION", parentOrg));
     }
+    // CMP-017b: 親 ORG での「役職の高さ」を閾値評価する。isMemberOfParentOrg が
+    // 所属の真偽しか答えられず、F03.1「visibility=ORGANIZATION は親組織への
+    // 直接所属ロールで min_view_role を評価する」を満たせなかったため追加。
+    public boolean hasParentOrgRoleOrAbove(ScopeKey s, String required) {
+        if (systemAdmin) return true;
+        Long parentOrg = parentOrgByScope.get(s);
+        if (parentOrg == null) return false;
+        String role = orgRoleByScope.get(new ScopeKey("ORGANIZATION", parentOrg));
+        return role != null && RolePriority.isAtLeast(role, required);
+    }
     public static UserScopeRoleSnapshot empty() { /* ... */ }
     public static UserScopeRoleSnapshot systemAdmin() { /* ... */ }
 }
 ```
+
+> `orgRoleByScope` は `orgMemberOf` と**まったく同じ 2 つの取得結果**
+> （親 ORG の `user_roles` 行 ＋ `memberships.role_kind` 行）からロール名を取り出すだけであり、
+> **SQL を 1 本も追加しない**。role_id → role_name の解決も direct スコープ側と同じ IN 句へ
+> 合流させてあるため、`roles` マスタ照会は snapshot あたり 1 回のままである。
 
 #### UserRoleRepository への追加
 
@@ -1579,6 +1723,78 @@ Phase B〜D で各 Service の判定ロジックを Resolver 経由に切り替�
 - 同じ enum 値を持つ複数 Service の重複コードを削減
 - Repository 側の固定値フィルタ（`findByVisibility(PUBLIC)` 等）を必要に応じて動的に書き直し
 
+### 10.5 `resolveVisibleLevels` — SQL 述語化のための可視レベル解決 API（CMP-028 Phase A / 2026-08-12 追記）
+
+`filterAccessible` は「ID 群 → 可視 ID 群」の**事後フィルタ**であり、DB から 1 ページだけ取得してからメモリ上で絞ると、非公開行が混ざった際にページ内に歯抜けが生じる（要求件数より少ない件数しか返らない）。この歯抜けを SQL の `WHERE visibility IN (...)` で根治するため、`MembershipBatchQueryService` に**行に依存しない**（ID を引かない）「閲覧者 × スコープが到達できる `StandardVisibility` 集合」を返す API を追加した。
+
+```java
+package com.mannschaft.app.common.visibility;
+
+public class MembershipBatchQueryService {
+
+    /**
+     * 閲覧者 × スコープから、行を見ずに判定できる StandardVisibility 集合を返す。
+     * PUBLIC / SCOPE_AFFILIATED / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE /
+     * DEPUTY_ADMINS_AND_ABOVE / ADMINS_AND_ABOVE / ORGANIZATION_WIDE が対象。
+     * 行依存値（PRIVATE / FOLLOWERS_ONLY / CUSTOM_TEMPLATE / CUSTOM）は含めない。
+     */
+    public Set<StandardVisibility> resolveVisibleLevels(
+            ReferenceType refType, String scopeType, Long scopeId, Long viewerUserId);
+
+    /** snapshot 既知の場合の SQL 再発行なし版。 */
+    public Set<StandardVisibility> resolveVisibleLevels(ScopeKey scope, UserScopeRoleSnapshot snapshot);
+}
+```
+
+**同一意味論の担保**: 新しい判定器を作らないため、判定は `UserScopeRoleSnapshot.isMemberOf` / `hasRoleOrAbove` / `isMemberOfParentOrg` を呼ぶだけで構成する。これらは `AbstractContentVisibilityResolver.visibleByLevel` が同じ段を評価する際に呼ぶのと**全く同じ**メソッド呼び出しである。
+
+**除外**: `ORGANIZATION_AND_DESCENDANTS`（下向き再帰）は Phase B 時点の対象 6 経路のいずれにも使われないため、対応する `descendantScopes` は集計しない。
+
+**利用側（Phase B）**: 呼び出し元は返ってきた `Set<StandardVisibility>` を、機能固有 visibility enum への Mapper の**逆写像**（例: `ActivityVisibilityMapper.toFunctional` / `AlbumVisibilityMapper.toFunctional`）で変換し、Repository の `visibility IN (...)` 述語に渡す。逆写像が安全なのは、既存の `toStandard` 写像が単射（機能固有 enum の値ごとに異なる `StandardVisibility` へ写像される）であるため。機能固有 enum に `PUBLIC` 相当が存在しない場合（例: `AlbumVisibility`）、逆写像結果が空集合になり得る点に注意（呼び出し元は SQL を発行せず空ページを返すこと）。
+
+### 10.6 `CUSTOM_TEMPLATE` の SQL 述語化 — 未解決だが解法の見通しはある（CMP-028 Phase C / 2026-08-13 追記）
+
+**現状（fail-closed）**: `VisibilityScope.CUSTOM_TEMPLATE`（求人 `F13.1` に限らず、機能固有 enum が
+`StandardVisibility.CUSTOM_TEMPLATE` に写像する値全般）は、`resolveVisibleLevels` が返す可視ラダー集合に
+含まれない（§10.5 の行依存値リスト参照）。求人 (`JobPostingRepository#findVisibleByTeamId`) は現状
+`CUSTOM_TEMPLATE` を SQL から**意図的に除外**している。書き込み側 (`JobPostingService.MVP_ALLOWED_SCOPES`)
+がこの値の作成を禁止しているため今は到達しないが、将来この制限を解いた瞬間、`CUSTOM_TEMPLATE` の求人は
+一覧 API から**誰にも見えなくなる**（fail-closed の静かな破綻）。再発防止の番人:
+`JobPostingVisibilityScopeSqlSupportGuardTest`（`backend/src/test/java/com/mannschaft/app/jobmatching/`）。
+
+**解法の見通し（着手時はこれを起点にすること）**:
+
+> ⚠️ **訂正（2026-08-13・Codex による検分で判明）**: 本節は当初「テンプレート評価は
+> 『閲覧者 × テンプレート』の関数であり行に依存しない」と記していたが、**これは誤りである**。
+> `AbstractContentVisibilityResolver` の `CUSTOM_TEMPLATE` 分岐は
+> `templateEvaluator.canView(viewerUserId, row.visibilityTemplateId(), row.authorUserId())` と
+> **行の作者 `row.authorUserId()` を渡している**。`evaluateRule` の `ownerUserId` はテンプレートの
+> 属性ではなく**この行の作者**であり、`@USER_PRIMARY_TEAM` プレースホルダはこの値から所属チームを
+> 解決する。したがって評価は **「閲覧者 × テンプレート ID × 行の作者」の3項関数**である。
+> 同一テンプレートを複数の作者が使い得る以上、`visibility_template_id IN (:ids)` だけで絞ると
+> **過剰許可または誤拒否**になる。以下は訂正後の見通しである。
+
+`resolveVisibleLevels`（§10.5, Phase A）と同じ「行ごとの判定を集合へ持ち上げる」構図自体は使えるが、
+**持ち上げる単位が `templateId` ではなく `(templateId, authorUserId)` の組**になる:
+
+1. 対象ページの候補行から `(visibility_template_id, author_user_id)` の組を集め、
+   閲覧者に対して可視な組の集合を求める。
+2. SQL 側は `(visibility_template_id, author_user_id) IN (:visiblePairs)` 相当で絞る。
+3. ただしこれは**候補行を先に引く必要がある**ため、他スコープのような「一発の WHERE」にはならない。
+   歯抜けを完全に消すには、可視判定の結果を事前計算して列／表に持たせる方向も併せて検討すること。
+
+**着手前に必要な前提作業**:
+
+- **求人テーブルには `visibility_template_id` 列がそもそも存在しない**（Entity にもフィールドが無い）。
+  この値を書き込めるようにするには migration・Entity・作成/更新経路の追加が先に要る。
+- 作者依存を消せる不変条件（例: テンプレートをスコープ単位で持たせ作者非依存にする）を設計として
+  導入できるなら、上記の3項関数が2項に縮退し `templateId IN (:ids)` で済むようになる。
+  **この選択肢を軍議で先に検討する価値がある。**
+
+**未解決の論点（正直に記録する）**: テンプレートの母集合をどう限定するか。閲覧者に紐づく全テンプレートを
+毎回評価するのは重い。対象スコープ（例: 求人ならその TEAM/ORG 配下）に属するテンプレートに絞る等の
+設計が要るが、これは解放時の要件次第であり**未決**。着手する際は軍議で母集団の絞り込み方針を先に固めること。
+
 ---
 
 ## 11. セキュリティ考慮事項
@@ -1627,6 +1843,26 @@ public void notifyMentions(Long messageId, List<Long> mentionedUserIds) {
     //   §17 Q11 として API 拡張を検討。
 }
 ```
+
+### 11.1.1 配信＝受信権（組織配信の通知・閲覧・回答を母集団へ統一）
+
+**マスター御裁可（よきにはからえ）**。組織発の出欠/アンケート（`schedule` / `survey`）は、配信母集団
+（`OrganizationMembershipService.resolveOrgDistributionUserIds` がコンテンツの `includeSupporters` トグル準拠で
+「直属 ∪ 配下参加チーム(ACTIVE)」を展開した集合）に属する者に対して、**通知・閲覧・回答の 3 関所すべてを開く**。
+出欠もアンケもトグル準拠（ON=配下 SUPPORTER 含む / OFF=配下 MEMBER のみ）。可視性 level の書換・新段昇格は不採用。
+結果閲覧（`ResultsVisibility`）軸は本統一の対象外（温存）。
+
+| 関所 | 入口 | 統一方法 |
+|---|---|---|
+| (1) 通知 | `ScheduleAttendanceService.openAttendanceSolicitation` / `SurveyPublishNotificationListener` / `SurveyRemindService` / `SurveyService.extendDeadline` / `ScheduleReminderNotificationListener`（出欠リマインド） | `NotificationService.createNotificationPreAuthorized` / `NotificationHelper.notifyAllPreAuthorized` で `canView`（`isAccessible`/`filterAccessible`）をスキップ。受信者は配信母集団で事前認可済み（締切延長＝publish と同一母集団解決／出欠リマインド＝`schedule_attendances` 行＝配信母集団 materialize 由来 or 予定所有者本人）。**既存 `createNotification`/`notifyAll` の Phase F ガードは他通知のため不変**。 |
+| (2) 閲覧 | `ScheduleService.getScheduleWithAccessCheck` | `canView=false` でも組織スケジュールで `isInOrgDistributionAudience(orgId, userId, includeSupporters)` が true なら閲覧許可する OR寄せ。母集団外は従来どおり `assertCanView` 委譲で deny 監査＋例外。 |
+| (3) 回答 | `AccessControlService.isMemberOrDescendant`/`checkMembershipOrDescendant`（トグル版）/ `ScheduleAttendanceService.validateMinResponseRole` / `SurveyResponseService.submitResponse` | 出欠は `schedule.includeSupporters` 駆動で救済段を切替（SUPPORTER_PLUS×ON は配下 SUPPORTER 救済）。アンケは `DistributionMode.ALL` 時に認可がゼロだった組織外漏洩穴を `checkMembershipOrDescendant`（トグル準拠）で塞ぐ。 |
+
+**`createNotificationPreAuthorized` の ArchUnit 整合**: 専用経路は `NotificationService`（`ContentVisibilityChecker` 依存済み）に置くため、§13.5 の「`NotificationRepository.save*` 呼出元は `ContentVisibilityChecker` に依存」ルールを満たす（クラス単位依存・メソッド単位ではない）。
+
+**(B) 通知レグレッションの根治**: SURVEY 通知が `ResultsVisibility` 軸を含む `canView` で誤 deny され、配信母集団に属する直属一般メンバー・配下チームメンバーへ届かなかった問題を、関所(1)の専用経路化で根治（番人テスト `SurveyPublishNotificationListenerTest` が `notifyAllPreAuthorized` 経由を担保）。同種の配信母集団向け通知の**取りこぼし経路**（締切延長 `SurveyService.extendDeadline`・出欠リマインド `ScheduleReminderNotificationListener`）も `notifyAllPreAuthorized` へ統一して同根治を波及（番人 `SurveyServiceTest#ExtendDeadline` / `ScheduleReminderNotificationListenerTest`）。出欠リマインドの受信者は `schedule_attendances` 行（出欠募集時に配信母集団から materialize 済み）由来、または個人予定の所有者本人であり、いずれも事前認可済み。
+
+**`submitResponse` ALL 認可穴**: 旧実装は `DistributionMode.TARGETED` のみ `existsBySurveyIdAndUserId` で弾き、`ALL` は認可ゼロ＝組織外の任意ユーザーが `surveyId` を知れば回答できた。`ALL` 時にスコープ準拠の `checkMembershipOrDescendant`（ORG=トグル準拠母集団 / TEAM=直接所属）を追加して塞いだ。さらに **ALL アンケは必ず scoped（`scopeId`/`scopeType` 非 null）である不変条件**を明示ガードで固定し、scope 欠落時は認可をサイレントスキップせず `COMMON_002`（403）で fail-closed に弾く（番人 `SurveyResponseServiceTest#SubmitResponse`）。
 
 ### 11.2 fail-closed 原則
 
@@ -1778,7 +2014,7 @@ if (!snapshot.isSystemAdmin() && snapshot.isParentOrgInactive(scope)) {
 | Phase | 状態 | 完了/着手日 | 備考 |
 |---|---|---|---|
 | **A** | ✅ 完了 | 2026-05-04 | 基盤クラス・Mapper・MembershipBatchQueryService・ArchUnit 等 |
-| **B** | ✅ 完了 | 2026-05-04〜05 | priority 1 全 6 機能 (BLOG_POST/EVENT/ACTIVITY_RESULT/SCHEDULE/TIMELINE_POST/CHAT_MESSAGE) |
+| **B** | ✅ 完了 | 2026-05-04〜05 / CHAT_MESSAGE は 2026-07-11 | priority 1 機能 (BLOG_POST/EVENT/ACTIVITY_RESULT/SCHEDULE)。**⚠️ 是正**: CHAT_MESSAGE / TIMELINE_POST は当時「完了」と記載されたが実際は Resolver 未実装だった。**CHAT_MESSAGE は実機 E2E で「問い合わせ通知が全 deny」障害を捕捉し本 PR で実装（§12.3.1 最小実装。粒度: 公開チャンネル=SCOPE_AFFILIATED / 問い合わせチャンネル(is_inquiry_channel)=当該スコープの ADMIN・DEPUTY_ADMIN 限定(CUSTOM) / PRIVATE チャンネル(is_private・非inquiry)=scope=NULL で fail-closed。canView をチャット本文可視の単独ゲートに使用禁止＝チャンネルメンバーシップ判定は含まない）**。**TIMELINE_POST は依然未実装**（`NotificationSourceTypeMapper` に登録済のため通知経路では fail-closed になる地雷。ただし現状 `createNotification` の直接呼び出し元に TIMELINE_POST を渡す箇所は無い） |
 | **C** | 🔵 着手中 | 2026-05-05〜 | priority 2 全 7 機能 (§12.4) |
 | **D** | 🟡 未着手 | — | priority 3 機能 (PHOTO_ALBUM/FILE_ATTACHMENT/TEAM/ORGANIZATION) |
 | **E** | 🟡 未着手 | — | 重複コード削除・既存 Service の Resolver 経由化 |

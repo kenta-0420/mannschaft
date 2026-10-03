@@ -48,7 +48,8 @@ public class ServiceRecordTemplateController {
             @PathVariable Long teamId,
             @RequestParam(required = false) Long organizationId) {
         // organizationId が指定された場合、組織スコープのテンプレートも含めて返却する
-        List<TemplateResponse> response = templateService.listTeamTemplates(teamId, organizationId);
+        List<TemplateResponse> response = templateService.listTeamTemplates(
+                teamId, organizationId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -78,7 +79,7 @@ public class ServiceRecordTemplateController {
     public ResponseEntity<ApiResponse<TemplateResponse>> getTeamTemplate(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        TemplateResponse response = templateService.getTeamTemplate(teamId, id);
+        TemplateResponse response = templateService.getTeamTemplate(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -94,7 +95,8 @@ public class ServiceRecordTemplateController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateTemplateRequest request) {
-        TemplateResponse response = templateService.updateTeamTemplate(teamId, id, request);
+        TemplateResponse response = templateService.updateTeamTemplate(
+                teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -109,7 +111,7 @@ public class ServiceRecordTemplateController {
     public ResponseEntity<Void> deleteTeamTemplate(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        templateService.deleteTeamTemplate(teamId, id);
+        templateService.deleteTeamTemplate(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -123,7 +125,7 @@ public class ServiceRecordTemplateController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TemplateResponse>>> listOrgTemplates(
             @PathVariable Long orgId) {
-        List<TemplateResponse> response = templateService.listOrgTemplates(orgId);
+        List<TemplateResponse> response = templateService.listOrgTemplates(orgId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -154,7 +156,8 @@ public class ServiceRecordTemplateController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateTemplateRequest request) {
-        TemplateResponse response = templateService.updateOrgTemplate(orgId, id, request);
+        TemplateResponse response = templateService.updateOrgTemplate(
+                orgId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -169,7 +172,7 @@ public class ServiceRecordTemplateController {
     public ResponseEntity<Void> deleteOrgTemplate(
             @PathVariable Long orgId,
             @PathVariable Long id) {
-        templateService.deleteOrgTemplate(orgId, id);
+        templateService.deleteOrgTemplate(orgId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

@@ -39,6 +39,8 @@ const isAllowed = computed(() => authStore.isSystemAdmin)
 
 const rawCategories = ref<VillageCategoryResponse[]>([])
 const loading = ref(false)
+/** 取得失敗は「カテゴリなし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 /** ツリー構造をフラットリストに変換（level付き） */
 interface FlatCategory extends VillageCategoryResponse {
@@ -77,12 +79,14 @@ const parentOptions = computed<Array<{ id: string | null; name: string }>>(() =>
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
     rawCategories.value = await categoryApi.fetchAdminCategories()
   } catch (err) {
     console.error('village-categories.vue: load failed', err)
     notification.error(t('village.categoryManagement.title') + ' — 取得に失敗しました')
     rawCategories.value = []
+    loadFailed.value = true
   } finally {
     loading.value = false
   }
@@ -263,6 +267,13 @@ function levelSeverity(level: number): 'success' | 'info' | 'secondary' {
       <div v-if="loading" class="flex items-center justify-center py-12">
         <i class="pi pi-spin pi-spinner mr-2 text-2xl text-surface-400" aria-hidden="true" />
       </div>
+
+      <!-- 取得失敗: 空状態とは別に描き分ける -->
+      <DashboardErrorState
+        v-else-if="loadFailed"
+        testid="village-categories-error-state"
+        @retry="load"
+      />
 
       <!-- カテゴリテーブル -->
       <DataTable

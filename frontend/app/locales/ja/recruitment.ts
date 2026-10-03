@@ -22,7 +22,9 @@ export default {
       "open": "募集中",
       "full": "満員",
       "closed": "締切後",
-      "cancelled": "キャンセル"
+      "cancelled": "キャンセル",
+      "auto_cancelled": "自動キャンセル",
+      "completed": "募集成立"
     },
     "participantStatus": {
       "applied": "申込済み",
@@ -78,6 +80,8 @@ export default {
       "joinWaitlist": "キャンセル待ちに登録",
       "viewDetails": "詳細を見る",
       "confirmApplication": "成立させる",
+      "cancelListing": "募集を取り下げる",
+      "cancelledListing": "募集を取り下げました",
       "createPolicy": "ポリシー作成"
     },
     "confirmModal": {
@@ -131,7 +135,41 @@ export default {
       "noFeedItems": "新着募集はありません",
       "listing": "募集",
       "waitlistPosition": "キャンセル待ち #{n}位",
-      "postedAt": "投稿日"
+      "postedAt": "投稿日",
+      "loadError": "データの取得に失敗しました",
+      "listingLabel": "募集 #{id}"
+    },
+    "guide": {
+      "feed": {
+        "title": "新着募集の使い方",
+        "what": {
+          "title": "新着募集とは",
+          "body": "フォロー中・サポーター先のチームが公開した新着募集が、新しい順に並ぶ閲覧専用のフィードです。気になる募集をここから見つけられます。"
+        },
+        "apply": {
+          "title": "募集を見る・申し込む",
+          "body": "カードをタップすると募集の詳細ページが開きます。申込やキャンセル待ちの登録は、その詳細ページから行います。"
+        },
+        "read": {
+          "title": "表示の見方",
+          "body": "「募集中」「満員」などのタグで受付状況がわかります。人数は「確定人数 / 定員」、料金は「¥」で表示されます。"
+        }
+      },
+      "listings": {
+        "title": "参加予定の使い方",
+        "what": {
+          "title": "参加予定とは",
+          "body": "あなたが申込中・確定している募集がここに並びます。キャンセル済みなど終了した参加は表示されず、アクティブな参加だけが対象です。"
+        },
+        "status": {
+          "title": "ステータスの見方",
+          "body": "「確定」「申込済み」「キャンセル待ち」などのタグで現在の状態がわかります。キャンセル待ちのときは「#順位」であなたの待ち位置が表示されます。"
+        },
+        "detail": {
+          "title": "詳細・キャンセル",
+          "body": "「詳細を見る」から募集ページを開けます。申込のキャンセルなどの操作は、その詳細ページから行います。"
+        }
+      }
     },
     "page": {
       "myRecruitmentListings": "自分の参加予定",
@@ -176,6 +214,7 @@ export default {
       "resetButton": "リセット",
       "allCategories": "すべてのカテゴリ",
       "noResults": "条件に合う募集が見つかりませんでした",
+      "loadError": "募集の取得に失敗しました",
       "resultsCount": "{count}件の募集",
       "capacity": "定員",
       "remaining": "残り{count}枠",
@@ -184,6 +223,12 @@ export default {
       "applying": "申込中",
       "individual": "個人",
       "team": "チーム"
+    },
+    "validation": {
+      "eventTimeRange": "開催終了は開催開始より後に指定してください",
+      "applicationDeadline": "応募締切は開催開始より前に指定してください",
+      "autoCancelAt": "自動キャンセル判定は応募締切以前に指定してください",
+      "capacity": "最小定員は定員以下に指定してください"
     },
     "payee": {
       "required": "受領者種別を選択してください",
@@ -195,7 +240,6 @@ export default {
     "error": {
       "RECRUITMENT_001": "募集が見つかりません",
       "RECRUITMENT_002": "募集の作成権限がありません",
-      "RECRUITMENT_003": "公開範囲によりこの募集を閲覧できません",
       "RECRUITMENT_005": "定員に達しています",
       "RECRUITMENT_007": "参加形式が一致しません",
       "RECRUITMENT_008": "最小定員が定員を超えています",
@@ -214,6 +258,9 @@ export default {
       "RECRUITMENT_205": "画像URLが許可リストに含まれていません",
       "RECRUITMENT_206": "定員を確定参加者数より少なく変更できません",
       "RECRUITMENT_207": "公開範囲と配信対象の組合せが不正です",
+      "RECRUITMENT_216": "開催終了は開催開始より後に指定してください",
+      "RECRUITMENT_217": "応募締切は開催開始より前に指定してください",
+      "RECRUITMENT_218": "自動キャンセル判定は応募締切以前に指定してください",
       "RECRUITMENT_301": "キャンセル料の決済に失敗しました",
       "RECRUITMENT_302": "キャンセルポリシーの設定が不正です",
       "RECRUITMENT_303": "キャンセルポリシーの段階が4を超えています",
@@ -232,6 +279,7 @@ export default {
       "status": {
         "pending": "確認待ち",
         "confirmed": "確定",
+        "expired": "異議申立期限切れ",
         "disputed": "異議申立中",
         "revoked": "取消",
         "upheld": "確定維持"
@@ -276,6 +324,42 @@ export default {
         "expired": "期限切れ",
         "lifted": "解除済み"
       }
+    },
+    "cancellationFeeWaive": {
+      "pageTitle": "キャンセル料の免除",
+      "pageDescription": "受け取るべきキャンセル料の免除",
+      "unknownUser": "不明なユーザー",
+      "loadMore": "もっと見る",
+      "reasonTooLong": "免除理由は{max}文字以内で入力してください",
+      "columns": {
+        "listing": "募集",
+        "user": "対象ユーザー",
+        "feeAmount": "キャンセル料",
+        "status": "状態",
+        "cancelledAt": "キャンセル日時"
+      },
+      "status": {
+        "pending": "未払い",
+        "failed": "決済失敗",
+        "uncollectible": "回収不能",
+        "paid": "支払済み",
+        "waived": "免除済み",
+        "notRequired": "対象外"
+      },
+      "waiveButton": "免除する",
+      "reasonLabel": "免除理由",
+      "reasonPlaceholder": "免除する理由を入力してください（必須）",
+      "reasonRequired": "免除理由は必須です",
+      "confirmDialog": {
+        "title": "キャンセル料の免除",
+        "message": "キャンセル料 {amount} 円の請求を取り消します。この操作は取り消せません。\nこのユーザーに他の未払いのキャンセル料が残っている場合、募集への申込制限は解除されません。",
+        "confirmButton": "免除する",
+        "cancelButton": "戻る"
+      },
+      "emptyMessage": "免除可能なキャンセル料の記録はありません",
+      "loadError": "一覧の取得に失敗しました",
+      "waiveSuccess": "キャンセル料を免除しました",
+      "waiveError": "免除に失敗しました"
     }
   }
 }

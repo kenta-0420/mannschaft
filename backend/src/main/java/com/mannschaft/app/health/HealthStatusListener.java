@@ -1,5 +1,9 @@
 package com.mannschaft.app.health;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.batch.BatchEndpointExempt;
+import com.mannschaft.app.common.batch.PodLocalScheduled;
 import com.mannschaft.app.errorreport.ErrorReportActivityType;
 import com.mannschaft.app.errorreport.service.ErrorReportActivityService;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
@@ -88,7 +92,26 @@ public class HealthStatusListener {
      *
      * <p>{@code fixedDelay} を採用しているため、前回呼び出しが遅延しても呼び出しが重ならない。
      * Health の取得自体が遅い場合（DB 接続タイムアウト等）でも safe。</p>
+     *
+     * <p><b>分散排他（{@code @SchedulerLock}）を敢えて付けない理由</b>:
+     * 本ポーリングが見るのは {@link HealthEndpoint} が返す<b>その Pod 自身の</b>健全性であり、
+     * 遷移判定に使う {@code previousStatus} も Pod ローカルのメモリ上にある。
+     * ロックを掛けると<b>1 Pod しか死活監視されなくなり</b>、他 Pod が DB 接続を失っても
+     * 誰も気づけない（死活監視としての意味が消える）。Pod ごとに走ることが設計そのものである。</p>
+     *
+     * <p><b>バッチ実行履歴基盤（{@code @BatchEndpoint}）へ登録しない理由</b>:
+     * 30 秒間隔＝1 Pod あたり日次 2,880 回の起動であり、履歴を書くと
+     * 「異常なし」の記録で履歴テーブルが埋まって日次・月次バッチの記録が埋没する。
+     * 本監視の可観測性は、異常検知時の {@code error_reports} 生成
+     * （{@link ErrorReportService#findOrCreateHealthDownReport(String)}）と
+     * {@code error_report_activities} で担保されており、実行履歴は不要である。</p>
      */
+    @PodLocalScheduled("各 Pod 自身の健全性を各 Pod が監視するのが設計意図であり、"
+        + "ロックを掛けると 1 Pod しか死活監視されず他 Pod の障害を検知できなくなるため")
+    @BatchEndpointExempt("30 秒間隔（日次 2,880 回/Pod）の高頻度ポーリングであり、"
+        + "実行履歴を書くと日次・月次バッチの記録が埋没する。可観測性は error_reports 生成側で担保")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。ヘルスステータスの定期ポーリングであり、運用基盤に属し機能フラグを持たない。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Scheduled(fixedDelayString = "${mannschaft.error-monitoring.health-polling.interval-ms:30000}",
                initialDelayString = "${mannschaft.error-monitoring.health-polling.interval-ms:30000}")
     public void pollHealthStatus() {

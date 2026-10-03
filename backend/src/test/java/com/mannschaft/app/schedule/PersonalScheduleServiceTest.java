@@ -10,27 +10,40 @@ import com.mannschaft.app.schedule.dto.UpdatePersonalScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.PersonalScheduleReminderRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity;
 import com.mannschaft.app.schedule.service.PersonalScheduleService;
+import com.mannschaft.app.schedule.service.ScheduleAccessGuard;
+import com.mannschaft.app.schedule.service.ScheduleRecurrenceService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
+import org.mockito.ArgumentCaptor;
+
+import java.util.ArrayList;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -55,6 +68,23 @@ class PersonalScheduleServiceTest {
 
     @Mock
     private NameResolverService nameResolverService;
+
+    @Mock
+    private ScheduleRecurrenceService recurrenceService;
+
+    @Mock
+    private Clock wallClock;
+
+    // F03.19 W1-c: 個人予定一覧の色解決でレイヤー設定を読む（既定 mock は空 Map を返す＝設定なし）。
+    @Mock
+    private com.mannschaft.app.schedule.service.CalendarLayerService calendarLayerService;
+
+    /**
+     * 認可ガードは状態を持たない純粋な判定のため、モックではなく実体を注入して
+     * 本物の所有者判定を通す（@Spy により @InjectMocks の注入対象になる）。
+     */
+    @Spy
+    private ScheduleAccessGuard scheduleAccessGuard = new ScheduleAccessGuard();
 
     @InjectMocks
     private PersonalScheduleService personalScheduleService;
@@ -162,8 +192,32 @@ class PersonalScheduleServiceTest {
         }
 
         @Test
-        @DisplayName("個人スケジュール作成_上限超過_例外スロー")
-        void 個人スケジュール作成_上限超過_例外スロー() {
+        @DisplayName("CMP-114: 個人予定999件では1000件目を作成できる")
+        void 個人スケジュール作成_999件では1000件目を作成できる() {
+            // given
+            List<ScheduleEntity> nineHundredNinetyNineSchedules =
+                    java.util.stream.IntStream.range(0, 999)
+                            .mapToObj(i -> createPersonalScheduleEntity())
+                            .toList();
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(nineHundredNinetyNineSchedules);
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null, null, null, null);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then
+            verify(scheduleRepository).save(any(ScheduleEntity.class));
+        }
+
+        @Test
+        @DisplayName("CMP-114: 個人予定1000件では1001件目を拒否する")
+        void 個人スケジュール作成_1000件では1001件目を拒否する() {
             // given
             List<ScheduleEntity> thousandSchedules =
                     java.util.stream.IntStream.range(0, 1000)
@@ -181,6 +235,49 @@ class PersonalScheduleServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ScheduleErrorCode.PERSONAL_SCHEDULE_LIMIT_EXCEEDED);
+        }
+
+        @Test
+        @DisplayName("CMP-114: 相対・絶対リマインダー合計5件は作成できる")
+        void 個人スケジュール作成_リマインダー合計5件は作成できる() {
+            // given
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null,
+                    List.of(10, 30, 60), List.of(START_ODT.minusHours(1), START_ODT.minusMinutes(5)), null);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then
+            verify(reminderRepository).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("CMP-114: 相対・絶対リマインダー合計6件は拒否する")
+        void 個人スケジュール作成_リマインダー合計6件は拒否する() {
+            // given
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null,
+                    List.of(10, 30, 60), List.of(START_ODT.minusHours(1), START_ODT.minusMinutes(5), START_ODT), null);
+
+            // when & then
+            assertThatThrownBy(() -> personalScheduleService.createPersonalSchedule(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ScheduleErrorCode.PERSONAL_REMINDER_LIMIT_EXCEEDED);
+            verify(reminderRepository, never()).saveAll(any());
         }
 
         @Test
@@ -203,6 +300,107 @@ class PersonalScheduleServiceTest {
             // then
             verify(reminderRepository).deleteByScheduleId(any());
             verify(reminderRepository).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("繰り返し+相対リマインダー_各子スケジュールへ複製される")
+        void 繰り返し_相対リマインダー_各子スケジュールへ複製される() {
+            // given
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // 子スケジュール 2 件（DAILY count=2 に相当）
+            ScheduleEntity child1 = ScheduleEntity.builder()
+                    .userId(USER_ID)
+                    .title("個人予定")
+                    .startAt(START.plusDays(1))
+                    .endAt(END.plusDays(1))
+                    .allDay(false)
+                    .eventType(EventType.OTHER)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.ADMIN_ONLY)
+                    .minResponseRole(MinResponseRole.ADMIN_ONLY)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(false)
+                    .attendanceStatus(AttendanceGenerationStatus.READY)
+                    .commentOption(CommentOption.HIDDEN)
+                    .isException(false)
+                    .createdBy(USER_ID)
+                    .build();
+            ScheduleEntity child2 = ScheduleEntity.builder()
+                    .userId(USER_ID)
+                    .title("個人予定")
+                    .startAt(START.plusDays(2))
+                    .endAt(END.plusDays(2))
+                    .allDay(false)
+                    .eventType(EventType.OTHER)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.ADMIN_ONLY)
+                    .minResponseRole(MinResponseRole.ADMIN_ONLY)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(false)
+                    .attendanceStatus(AttendanceGenerationStatus.READY)
+                    .commentOption(CommentOption.HIDDEN)
+                    .isException(false)
+                    .createdBy(USER_ID)
+                    .build();
+
+            given(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(org.mockito.ArgumentMatchers.nullable(Long.class)))
+                    .willReturn(List.of(child1, child2));
+
+            // 繰り返しルール付きリクエスト（DAILY, count=2, 相対リマインダー [15]）
+            com.mannschaft.app.schedule.dto.RecurrenceRuleDto rule =
+                    new com.mannschaft.app.schedule.dto.RecurrenceRuleDto(
+                            "DAILY", 1, null, "COUNT", null, 2);
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null,
+                    List.of(15), null, rule);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then: 子2件 × リマインダー1件 = saveAll に 2 エンティティが渡される
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<PersonalScheduleReminderEntity>> captor =
+                    ArgumentCaptor.forClass((Class) List.class);
+            // saveAll は 親リマインダー保存 + 子複製保存 の 2 回呼ばれる
+            verify(reminderRepository, org.mockito.Mockito.times(2)).saveAll(captor.capture());
+            List<PersonalScheduleReminderEntity> childReminders = captor.getAllValues().get(1);
+            assertThat(childReminders).hasSize(2);
+            assertThat(childReminders).allSatisfy(r -> {
+                assertThat(r.getReminderKind()).isEqualTo(ReminderKind.RELATIVE);
+                assertThat(r.getRemindBeforeMinutes()).isEqualTo(15);
+            });
+        }
+
+        @Test
+        @DisplayName("繰り返し+絶対リマインダーのみ_子へは複製されない")
+        void 繰り返し_絶対リマインダーのみ_子へは複製されない() {
+            // given
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            com.mannschaft.app.schedule.dto.RecurrenceRuleDto rule =
+                    new com.mannschaft.app.schedule.dto.RecurrenceRuleDto(
+                            "DAILY", 1, null, "COUNT", null, 2);
+
+            // 相対リマインダーは null、絶対リマインダーのみ指定
+            OffsetDateTime absReminder = OffsetDateTime.of(2026, 4, 1, 9, 0, 0, 0, ZoneOffset.ofHours(9));
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null,
+                    null, List.of(absReminder), rule);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then: findByParentScheduleIdOrderByStartAtAsc は呼ばれない（子への複製をスキップ）
+            verify(scheduleRepository, never()).findByParentScheduleIdOrderByStartAtAsc(org.mockito.ArgumentMatchers.nullable(Long.class));
         }
     }
 
@@ -543,6 +741,56 @@ class PersonalScheduleServiceTest {
     }
 
     // ========================================
+    // CMP-107: 過去の繰り返し回を起点にした「この日以降」は、選択回と未終了の後続だけを更新する。
+    @Test
+    @DisplayName("この日以降_過去の選択回と未終了の後続だけを日時差分で更新する")
+    void この日以降_過去の選択回と未終了の後続だけを日時差分で更新する() {
+        Long parentId = 99L;
+        ScheduleEntity selected = createPersonalScheduleEntity().toBuilder()
+                .id(10L).parentScheduleId(parentId)
+                .startAt(LocalDateTime.of(2026, 9, 10, 10, 0))
+                .endAt(LocalDateTime.of(2026, 9, 10, 12, 0)).build();
+        ScheduleEntity completed = createPersonalScheduleEntity().toBuilder()
+                .id(11L).parentScheduleId(parentId).title("完了済み")
+                .startAt(LocalDateTime.of(2026, 9, 17, 10, 0))
+                .endAt(LocalDateTime.of(2026, 9, 17, 12, 0)).build();
+        ScheduleEntity future = createPersonalScheduleEntity().toBuilder()
+                .id(12L).parentScheduleId(parentId).title("未変更")
+                .startAt(LocalDateTime.of(2026, 9, 24, 10, 0))
+                .endAt(LocalDateTime.of(2026, 9, 24, 12, 0)).build();
+        ScheduleEntity exception = createPersonalScheduleEntity().toBuilder()
+                .id(13L).parentScheduleId(parentId).title("例外")
+                .startAt(LocalDateTime.of(2026, 10, 1, 10, 0))
+                .endAt(LocalDateTime.of(2026, 10, 1, 12, 0)).isException(true).build();
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(selected));
+        given(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(parentId))
+                .willReturn(List.of(selected, completed, future, exception));
+        given(scheduleRepository.save(any(ScheduleEntity.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        given(reminderRepository.findByScheduleIdOrderByRemindBeforeMinutesAsc(any()))
+                .willReturn(List.of());
+        given(wallClock.getZone()).willReturn(ZoneId.of("Asia/Tokyo"));
+        given(wallClock.instant()).willReturn(Instant.parse("2026-09-20T00:00:00Z"));
+
+        UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
+                "変更後", null, null,
+                OffsetDateTime.of(2026, 9, 10, 11, 0, 0, 0, ZoneOffset.ofHours(9)),
+                OffsetDateTime.of(2026, 9, 10, 13, 0, 0, 0, ZoneOffset.ofHours(9)),
+                null, null, null, null, null, "THIS_AND_FOLLOWING", null);
+
+        personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
+
+        assertThat(selected.getTitle()).isEqualTo("変更後");
+        assertThat(selected.getStartAt()).isEqualTo(LocalDateTime.of(2026, 9, 10, 11, 0));
+        assertThat(future.getTitle()).isEqualTo("変更後");
+        assertThat(future.getStartAt()).isEqualTo(LocalDateTime.of(2026, 9, 24, 11, 0));
+        assertThat(completed.getTitle()).isEqualTo("完了済み");
+        assertThat(completed.getStartAt()).isEqualTo(LocalDateTime.of(2026, 9, 17, 10, 0));
+        assertThat(exception.getTitle()).isEqualTo("例外");
+        verify(scheduleRepository, never()).save(completed);
+        verify(scheduleRepository, never()).save(exception);
+    }
+
     // deletePersonalSchedule
     // ========================================
 

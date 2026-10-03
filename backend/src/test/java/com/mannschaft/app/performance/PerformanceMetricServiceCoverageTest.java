@@ -3,6 +3,7 @@ package com.mannschaft.app.performance;
 import com.mannschaft.app.activity.FieldType;
 import com.mannschaft.app.activity.entity.ActivityTemplateFieldEntity;
 import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.performance.dto.CreateMetricRequest;
 import com.mannschaft.app.performance.dto.FromTemplateRequest;
@@ -53,11 +54,15 @@ class PerformanceMetricServiceCoverageTest {
     @Mock
     private PerformanceMapper performanceMapper;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private PerformanceMetricService service;
 
     private static final Long TEAM_ID = 1L;
     private static final Long METRIC_ID = 100L;
+    private static final Long ADMIN_USER_ID = 100L;
 
     private PerformanceMetricEntity createMetricEntity(Long id) {
         PerformanceMetricEntity entity = PerformanceMetricEntity.builder()
@@ -112,7 +117,7 @@ class PerformanceMetricServiceCoverageTest {
             given(performanceMapper.toMetricResponseList(any())).willReturn(List.of());
 
             // When
-            FromTemplateResponse result = service.createFromTemplate(TEAM_ID, request);
+            FromTemplateResponse result = service.createFromTemplate(TEAM_ID, ADMIN_USER_ID, request);
 
             // Then
             assertThat(result.getCreatedCount()).isEqualTo(2);
@@ -136,7 +141,7 @@ class PerformanceMetricServiceCoverageTest {
             given(performanceMapper.toMetricResponseList(any())).willReturn(List.of());
 
             // When
-            FromTemplateResponse result = service.createFromTemplate(TEAM_ID, request);
+            FromTemplateResponse result = service.createFromTemplate(TEAM_ID, ADMIN_USER_ID, request);
 
             // Then
             assertThat(result.getCreatedCount()).isEqualTo(1);
@@ -160,7 +165,7 @@ class PerformanceMetricServiceCoverageTest {
             given(performanceMapper.toMetricResponseList(any())).willReturn(List.of());
 
             // When
-            FromTemplateResponse result = service.createFromTemplate(TEAM_ID, request);
+            FromTemplateResponse result = service.createFromTemplate(TEAM_ID, ADMIN_USER_ID, request);
 
             // Then
             assertThat(result.getCreatedCount()).isEqualTo(1);
@@ -181,7 +186,7 @@ class PerformanceMetricServiceCoverageTest {
             given(metricRepository.countByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(29L);
 
             // When & Then
-            assertThatThrownBy(() -> service.createFromTemplate(TEAM_ID, request))
+            assertThatThrownBy(() -> service.createFromTemplate(TEAM_ID, ADMIN_USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PERF_003"));
@@ -206,7 +211,7 @@ class PerformanceMetricServiceCoverageTest {
             given(metricRepository.save(any(PerformanceMetricEntity.class))).willReturn(entity);
 
             // When
-            service.deactivateMetric(TEAM_ID, METRIC_ID);
+            service.deactivateMetric(TEAM_ID, METRIC_ID, ADMIN_USER_ID);
 
             // Then
             assertThat(entity.getIsActive()).isFalse();
@@ -248,7 +253,7 @@ class PerformanceMetricServiceCoverageTest {
                             .build());
 
             // When
-            MetricResponse result = service.createMetric(TEAM_ID, request);
+            MetricResponse result = service.createMetric(TEAM_ID, ADMIN_USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
@@ -280,7 +285,7 @@ class PerformanceMetricServiceCoverageTest {
                             .build());
 
             // When
-            MetricResponse result = service.createMetric(TEAM_ID, request);
+            MetricResponse result = service.createMetric(TEAM_ID, ADMIN_USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
@@ -311,7 +316,7 @@ class PerformanceMetricServiceCoverageTest {
                             .build());
 
             // When
-            MetricResponse result = service.createMetric(TEAM_ID, request);
+            MetricResponse result = service.createMetric(TEAM_ID, ADMIN_USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
@@ -342,7 +347,7 @@ class PerformanceMetricServiceCoverageTest {
                             .build());
 
             // When
-            MetricResponse result = service.createMetric(TEAM_ID, request);
+            MetricResponse result = service.createMetric(TEAM_ID, ADMIN_USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
@@ -375,7 +380,7 @@ class PerformanceMetricServiceCoverageTest {
                             .build());
 
             // When
-            MetricResponse result = service.createMetric(TEAM_ID, request);
+            MetricResponse result = service.createMetric(TEAM_ID, ADMIN_USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
@@ -473,7 +478,7 @@ class PerformanceMetricServiceCoverageTest {
                     .willReturn(List.of(nullLinkedMetric));
 
             // When
-            var result = service.listLinkableFields(TEAM_ID);
+            var result = service.listLinkableFields(TEAM_ID, ADMIN_USER_ID);
 
             // Then
             assertThat(result).hasSize(1); // null のフィールドはスキップされ、フィールド50Lは返却される

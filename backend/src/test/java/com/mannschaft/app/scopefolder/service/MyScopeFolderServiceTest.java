@@ -13,7 +13,7 @@ import com.mannschaft.app.scopefolder.dto.UpdateFolderRequest;
 import com.mannschaft.app.scopefolder.entity.AssignedVia;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderItemEntity;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.repository.MyScopeFolderItemRepository;
 import com.mannschaft.app.scopefolder.repository.MyScopeFolderRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -54,6 +55,13 @@ class MyScopeFolderServiceTest {
 
     @Mock
     private MembershipRepository membershipRepository;
+
+    /**
+     * 認可ガードは状態を持たない純粋な判定のため、モックではなく実体を注入して
+     * 本物の所有者判定を通す（@Spy により @InjectMocks の注入対象になる）。
+     */
+    @Spy
+    private ScopeFolderAccessGuard folderAccessGuard = new ScopeFolderAccessGuard();
 
     @InjectMocks
     private MyScopeFolderService folderService;
@@ -377,7 +385,8 @@ class MyScopeFolderServiceTest {
                     .willReturn(List.of(savedItem));
 
             // When
-            ScopeFolderResponse result = folderService.addItem(USER_ID, FOLDER_ID, req);
+            ScopeFolderResponse result = folderService.addItemWithAssignedVia(
+                    USER_ID, FOLDER_ID, req.scopeId(), AssignedVia.MANUAL);
 
             // Then
             assertThat(result.itemScopeIds()).containsExactly(SCOPE_ID);
@@ -400,7 +409,8 @@ class MyScopeFolderServiceTest {
                     .willReturn(false);
 
             // When / Then
-            assertThatThrownBy(() -> folderService.addItem(USER_ID, FOLDER_ID, req))
+            assertThatThrownBy(() -> folderService.addItemWithAssignedVia(
+                    USER_ID, FOLDER_ID, req.scopeId(), AssignedVia.MANUAL))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo(ScopeFolderErrorCode.SCOPE_FOLDER_NOT_MEMBER.getCode()));
@@ -429,7 +439,8 @@ class MyScopeFolderServiceTest {
                     .willReturn(List.of(savedItem));
 
             // When
-            ScopeFolderResponse result = folderService.addItem(USER_ID, FOLDER_ID, req);
+            ScopeFolderResponse result = folderService.addItemWithAssignedVia(
+                    USER_ID, FOLDER_ID, req.scopeId(), AssignedVia.MANUAL);
 
             // Then
             verify(itemRepository).delete(existingItem);

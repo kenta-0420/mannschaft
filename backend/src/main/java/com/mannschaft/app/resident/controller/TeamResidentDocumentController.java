@@ -43,14 +43,15 @@ public class TeamResidentDocumentController {
     @Operation(summary = "書類一覧")
     public ResponseEntity<ApiResponse<List<ResidentDocumentResponse>>> list(
             @PathVariable Long teamId, @PathVariable Long residentId) {
-        return ResponseEntity.ok(ApiResponse.of(documentService.listByResident(residentId)));
+        return ResponseEntity.ok(
+                ApiResponse.of(documentService.listByResident(SecurityUtils.getCurrentUserId(), residentId)));
     }
 
     @DeleteMapping("/api/v1/teams/{teamId}/residents/{residentId}/documents/{docId}")
     @Operation(summary = "書類削除")
     public ResponseEntity<Void> delete(
             @PathVariable Long teamId, @PathVariable Long residentId, @PathVariable Long docId) {
-        documentService.delete(residentId, docId);
+        documentService.delete(SecurityUtils.getCurrentUserId(), residentId, docId);
         return ResponseEntity.noContent().build();
     }
 }

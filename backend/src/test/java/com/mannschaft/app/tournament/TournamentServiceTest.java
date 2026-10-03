@@ -49,6 +49,8 @@ class TournamentServiceTest {
     @Mock private TournamentParticipantRepository participantRepository;
     @Mock private TournamentMapper mapper;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
+    /** 認可根治戦役 Wave7: getTournament/listTournaments の主催組織 ADMIN 判定用モック。 */
+    @Mock private com.mannschaft.app.common.AccessControlService accessControlService;
     @Mock private com.mannschaft.app.tournament.service.TournamentContactSpaceProvisioningService contactSpaceProvisioningService;
     /** F08.7.1 / 04: シーズン継続時のデフォルトフォルダ払い出し検証用。 */
     @Mock private com.mannschaft.app.filesharing.service.SharedFolderService sharedFolderService;
@@ -69,7 +71,7 @@ class TournamentServiceTest {
         void 大会不存在() {
             given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.getTournament(TOURNAMENT_ID))
+            assertThatThrownBy(() -> service.getTournament(ORG_ID, TOURNAMENT_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);

@@ -12,8 +12,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -36,8 +35,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class MatchEventEntity extends UuidV7Entity {
 
@@ -53,8 +51,12 @@ public class MatchEventEntity extends UuidV7Entity {
     @Column(name = "stoppage_minute")
     private Integer stoppageMinute;
 
+    /**
+     * ターン制（将棋/囲碁）は period を使わないため DB は NULL 許容（V85.001）。
+     * 連続時間制/セット制での必須化は Service 層が担う（01 §B.2 / §D.6）。
+     */
     @Enumerated(EnumType.STRING)
-    @Column(name = "period", nullable = false, length = 24)
+    @Column(name = "period", length = 24)
     private PeriodType period;
 
     @Enumerated(EnumType.STRING)

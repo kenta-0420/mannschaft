@@ -6,6 +6,7 @@ import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.event.dto.DismissalReminderTargetResponse;
 import com.mannschaft.app.event.service.EventDismissalService;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +47,11 @@ class EventDismissalControllerTest {
 
     @MockitoBean
     private EventDismissalService eventDismissalService;
+
+    // Wave3-B12event: EventDismissalController に EventScopeAccessGuard 依存を新規注入したため
+    // @WebMvcTest コンテキストの Bean 解決用に必要。
+    @MockitoBean
+    private EventScopeAccessGuard eventScopeAccessGuard;
 
     // JwtAuthenticationFilter の依存解決用
     @MockitoBean

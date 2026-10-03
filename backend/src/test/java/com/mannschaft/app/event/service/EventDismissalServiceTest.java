@@ -7,25 +7,21 @@ import com.mannschaft.app.event.dto.DismissalRequest;
 import com.mannschaft.app.event.dto.DismissalStatusResponse;
 import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
+import com.mannschaft.app.event.event.EventDismissalNotificationEvent;
 import com.mannschaft.app.event.entity.EventVisibility;
 import com.mannschaft.app.event.repository.EventCheckinRepository;
 import com.mannschaft.app.event.repository.EventRepository;
 import com.mannschaft.app.event.repository.EventRepository.DismissalReminderTargetProjection;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
-import com.mannschaft.app.family.service.CareEventNotificationService;
-import com.mannschaft.app.family.service.CareLinkService;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
-import com.mannschaft.app.notification.service.NotificationDispatchService;
-import com.mannschaft.app.notification.service.NotificationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,10 +32,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -57,17 +51,14 @@ class EventDismissalServiceTest {
     @Mock
     private EventCheckinRepository checkinRepository;
 
+    /**
+     * Issue #2834 / CMP-056 第1群ロットB: 通知は業務コミット後に
+     * {@code EventDismissalNotificationListener} が配送するため、本サービスの依存は
+     * イベントパブリッシャーのみになった（NotificationService / CareEventNotificationService /
+     * UserLocaleCache / MessageSource への依存は配送リスナーへ移動した）。
+     */
     @Mock
-    private NotificationService notificationService;
-
-    @Mock
-    private NotificationDispatchService dispatchService;
-
-    @Mock
-    private CareEventNotificationService careEventNotificationService;
-
-    @Mock
-    private CareLinkService careLinkService;
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private EventDismissalService eventDismissalService;
@@ -88,10 +79,22 @@ class EventDismissalServiceTest {
     @DisplayName("sendDismissalNotification")
     class SendDismissalNotification {
 
+        /**
+         * Issue #2834 / CMP-056 第1群ロットB: 本サービスは通知を組み立てず、
+         * 業務コミット後に配送されるイベントを publish するだけになった。
+         * 通知の組み立て・受信者ごとの隔離・locale 別文面の検証は
+         * {@code EventDismissalNotificationListenerTest} が担う。
+         */
+        private EventDismissalNotificationEvent capturePublishedEvent() {
+            ArgumentCaptor<EventDismissalNotificationEvent> captor =
+                    ArgumentCaptor.forClass(EventDismissalNotificationEvent.class);
+            verify(applicationEventPublisher).publishEvent(captor.capture());
+            return captor.getValue();
+        }
+
         @Test
-        @DisplayName("正常_ATTENDINGメンバー全員に通知: ATTENDING2名+ケア対象1名 → 通知3件 + notifyDismissal呼び出し")
+        @DisplayName("正常_ATTENDINGメンバー全員が配送イベントに載る: ATTENDING2名+ケア対象1名 → 受信者3名")
         void 正常_ATTENDINGメンバー全員に通知() {
-            // Arrange
             EventEntity event = buildEventWithoutDismissal();
             DismissalRequest req = new DismissalRequest("解散しました", null, true);
 
@@ -99,35 +102,26 @@ class EventDismissalServiceTest {
             given(rsvpResponseRepository.findUserIdsByEventIdAndResponse(EVENT_ID, "ATTENDING"))
                     .willReturn(List.of(ATTENDING_USER_ID_1, ATTENDING_USER_ID_2, CARE_RECIPIENT_USER_ID));
             given(checkinRepository.findCheckedInUserIdsByEventId(EVENT_ID)).willReturn(List.of());
-            given(notificationService.createNotification(
-                    anyLong(), any(), any(NotificationPriority.class),
-                    any(), any(), any(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), any(), isNull()))
-                    .willReturn(buildNotification());
-            // ケア対象者は1名のみ
-            given(careLinkService.isUnderCare(ATTENDING_USER_ID_1)).willReturn(false);
-            given(careLinkService.isUnderCare(ATTENDING_USER_ID_2)).willReturn(false);
-            given(careLinkService.isUnderCare(CARE_RECIPIENT_USER_ID)).willReturn(true);
 
-            // Act
             eventDismissalService.sendDismissalNotification(EVENT_ID, TEAM_ID, OPERATOR_USER_ID, req);
 
-            // Assert: 参加者3名に通知送信。F03.12 Phase11: actionUrl は /teams/{teamId}/events/{eventId} 形式。
-            String expectedActionUrl = "/teams/" + TEAM_ID + "/events/" + EVENT_ID;
-            verify(notificationService, times(3)).createNotification(
-                    anyLong(), eq("EVENT_DISMISSAL"), any(NotificationPriority.class),
-                    any(), any(), eq("EVENT"), eq(EVENT_ID),
-                    any(NotificationScopeType.class), anyLong(), eq(expectedActionUrl), isNull());
-            verify(dispatchService, times(3)).dispatch(any(NotificationEntity.class));
+            EventDismissalNotificationEvent published = capturePublishedEvent();
+            assertThat(published.eventId()).isEqualTo(EVENT_ID);
+            assertThat(published.teamId()).isEqualTo(TEAM_ID);
+            assertThat(published.operatorUserId()).isEqualTo(OPERATOR_USER_ID);
+            assertThat(published.customMessage()).isEqualTo("解散しました");
+            assertThat(published.notifyGuardians()).isTrue();
+            assertThat(published.targetUserIds()).containsExactlyInAnyOrder(
+                    ATTENDING_USER_ID_1, ATTENDING_USER_ID_2, CARE_RECIPIENT_USER_ID);
 
-            // ケア対象者の見守り者にも通知
-            verify(careEventNotificationService).notifyDismissal(CARE_RECIPIENT_USER_ID, EVENT_ID);
+            // 解散通知済みの記録は業務トランザクション内で確定する（AC-1）。
+            assertThat(event.getDismissalNotificationSentAt()).isNotNull();
+            verify(eventRepository).save(event);
         }
 
         @Test
-        @DisplayName("正常_notifyGuardians=false: 見守り者への通知を行わない")
+        @DisplayName("正常_notifyGuardians=false: 配送イベントの notifyGuardians が false になる")
         void 正常_notifyGuardians_false() {
-            // Arrange
             EventEntity event = buildEventWithoutDismissal();
             DismissalRequest req = new DismissalRequest(null, null, false);
 
@@ -135,30 +129,20 @@ class EventDismissalServiceTest {
             given(rsvpResponseRepository.findUserIdsByEventIdAndResponse(EVENT_ID, "ATTENDING"))
                     .willReturn(List.of(ATTENDING_USER_ID_1));
             given(checkinRepository.findCheckedInUserIdsByEventId(EVENT_ID)).willReturn(List.of());
-            given(notificationService.createNotification(
-                    anyLong(), any(), any(NotificationPriority.class),
-                    any(), any(), any(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), any(), isNull()))
-                    .willReturn(buildNotification());
 
-            // Act
             eventDismissalService.sendDismissalNotification(EVENT_ID, TEAM_ID, OPERATOR_USER_ID, req);
 
-            // Assert: 見守り者への通知は呼ばれない
-            verify(careEventNotificationService, never()).notifyDismissal(anyLong(), anyLong());
-            verify(careLinkService, never()).isUnderCare(anyLong());
+            assertThat(capturePublishedEvent().notifyGuardians()).isFalse();
         }
 
         @Test
-        @DisplayName("重複送信エラー: 既送信イベントに再送 → BusinessException(ALREADY_DISMISSED)")
+        @DisplayName("重複送信エラー: 既送信イベントに再送 → BusinessException(ALREADY_DISMISSED)・配送イベントも出ない")
         void 重複送信エラー() {
-            // Arrange: 既に dismissalNotificationSentAt が設定済み
             EventEntity event = buildEventWithDismissal();
             given(eventRepository.findByIdAndTeamScopeId(EVENT_ID, TEAM_ID)).willReturn(Optional.of(event));
 
             DismissalRequest req = new DismissalRequest(null, null, true);
 
-            // Act & Assert
             assertThatThrownBy(() ->
                     eventDismissalService.sendDismissalNotification(EVENT_ID, TEAM_ID, OPERATOR_USER_ID, req))
                     .isInstanceOf(BusinessException.class)
@@ -167,20 +151,18 @@ class EventDismissalServiceTest {
                         assertThat(be.getErrorCode()).isEqualTo(EventErrorCode.ALREADY_DISMISSED);
                     });
 
-            // 通知は一切送信しない
-            verify(notificationService, never()).createNotification(
-                    anyLong(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            // AC-2: 業務が失敗した場合は通知の配送要求も作られない。
+            verify(applicationEventPublisher, never())
+                    .publishEvent(any(EventDismissalNotificationEvent.class));
         }
 
         @Test
-        @DisplayName("イベント未存在: EVENT_NOT_FOUND をスロー")
+        @DisplayName("イベント未存在: EVENT_NOT_FOUND をスロー・配送イベントも出ない")
         void イベント未存在() {
-            // Arrange
             given(eventRepository.findByIdAndTeamScopeId(EVENT_ID, TEAM_ID)).willReturn(Optional.empty());
 
             DismissalRequest req = new DismissalRequest(null, null, true);
 
-            // Act & Assert
             assertThatThrownBy(() ->
                     eventDismissalService.sendDismissalNotification(EVENT_ID, TEAM_ID, OPERATOR_USER_ID, req))
                     .isInstanceOf(BusinessException.class)
@@ -188,36 +170,44 @@ class EventDismissalServiceTest {
                         BusinessException be = (BusinessException) ex;
                         assertThat(be.getErrorCode()).isEqualTo(EventErrorCode.EVENT_NOT_FOUND);
                     });
+
+            verify(applicationEventPublisher, never())
+                    .publishEvent(any(EventDismissalNotificationEvent.class));
         }
 
         @Test
-        @DisplayName("チェックインのみ参加者も通知: RSVP未登録・チェックイン済みユーザーにも送信")
+        @DisplayName("チェックインのみ参加者も配送対象: RSVP未登録・チェックイン済みユーザーも受信者に入る")
         void チェックインのみ参加者も通知() {
-            // Arrange
             EventEntity event = buildEventWithoutDismissal();
-            // ATTENDING_USER_ID_1 は RSVP のみ、ATTENDING_USER_ID_2 はチェックインのみ
             DismissalRequest req = new DismissalRequest(null, null, false);
 
             given(eventRepository.findByIdAndTeamScopeId(EVENT_ID, TEAM_ID)).willReturn(Optional.of(event));
             given(rsvpResponseRepository.findUserIdsByEventIdAndResponse(EVENT_ID, "ATTENDING"))
                     .willReturn(List.of(ATTENDING_USER_ID_1));
-            // チェックインのみのユーザー（RSVP 未登録）
             given(checkinRepository.findCheckedInUserIdsByEventId(EVENT_ID))
                     .willReturn(List.of(ATTENDING_USER_ID_2));
-            given(notificationService.createNotification(
-                    anyLong(), any(), any(NotificationPriority.class),
-                    any(), any(), any(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), any(), isNull()))
-                    .willReturn(buildNotification());
 
-            // Act
             eventDismissalService.sendDismissalNotification(EVENT_ID, TEAM_ID, OPERATOR_USER_ID, req);
 
-            // Assert: 両名（RSVP + チェックイン）に通知
-            verify(notificationService, times(2)).createNotification(
-                    anyLong(), eq("EVENT_DISMISSAL"), any(NotificationPriority.class),
-                    any(), any(), eq("EVENT"), eq(EVENT_ID),
-                    any(NotificationScopeType.class), anyLong(), any(), isNull());
+            assertThat(capturePublishedEvent().targetUserIds())
+                    .containsExactlyInAnyOrder(ATTENDING_USER_ID_1, ATTENDING_USER_ID_2);
+        }
+
+        @Test
+        @DisplayName("参加者ゼロなら配送イベントを publish しない")
+        void 参加者ゼロなら配送イベントを出さない() {
+            EventEntity event = buildEventWithoutDismissal();
+            DismissalRequest req = new DismissalRequest(null, null, false);
+
+            given(eventRepository.findByIdAndTeamScopeId(EVENT_ID, TEAM_ID)).willReturn(Optional.of(event));
+            given(rsvpResponseRepository.findUserIdsByEventIdAndResponse(EVENT_ID, "ATTENDING"))
+                    .willReturn(List.of());
+            given(checkinRepository.findCheckedInUserIdsByEventId(EVENT_ID)).willReturn(List.of());
+
+            eventDismissalService.sendDismissalNotification(EVENT_ID, TEAM_ID, OPERATOR_USER_ID, req);
+
+            verify(applicationEventPublisher, never())
+                    .publishEvent(any(EventDismissalNotificationEvent.class));
         }
     }
 
@@ -384,21 +374,5 @@ class EventDismissalServiceTest {
         EventEntity event = buildEventWithoutDismissal();
         event.recordDismissal(OPERATOR_USER_ID);
         return event;
-    }
-
-    /**
-     * テスト用の通知エンティティを構築する。
-     */
-    private NotificationEntity buildNotification() {
-        return NotificationEntity.builder()
-                .userId(ATTENDING_USER_ID_1)
-                .notificationType("EVENT_DISMISSAL")
-                .title("解散通知")
-                .body("解散しました")
-                .sourceType("EVENT")
-                .sourceId(EVENT_ID)
-                .scopeType(NotificationScopeType.PERSONAL)
-                .scopeId(ATTENDING_USER_ID_1)
-                .build();
     }
 }

@@ -1,4 +1,72 @@
 {
+  "security_help": {
+    "title": "セキュリティの使い方ガイド",
+    "description": "二要素認証・アクティブセッション・セキュリティキーの使い方と、不審なログインを見つけたときの対処方法をまとめました。",
+    "link_label": "❔ 使い方ガイド",
+    "twofa": {
+      "title": "二要素認証（2FA）",
+      "intro": "パスワードに加えて、もう一段階の本人確認を追加してアカウントを守るしくみです。万が一パスワードが漏れても、第三者だけではログインできなくなります。",
+      "setup_title": "有効化のしかた",
+      "setup_steps": {
+        "step1": "認証アプリ（Google Authenticator など）をスマートフォンに用意します。",
+        "step2": "「2FAをセットアップ」を押すと、QRコードとシークレットキーが表示されます。",
+        "step3": "認証アプリでそのQRコードを読み取ります（読み取れない場合はシークレットキーを手入力します）。",
+        "step4": "認証アプリに表示された6桁のコードを入力して有効化を完了します。"
+      },
+      "backup_title": "バックアップコードについて",
+      "backup_desc": "バックアップコードは、スマートフォンを紛失するなどして認証アプリが使えなくなったときの予備の入り口です。安全な場所に保管してください。各コードは一度だけ使えます。「バックアップコード再生成」を押すと新しいコードが発行され、古いコードはすべて無効になります。"
+    },
+    "sessions": {
+      "title": "アクティブセッション",
+      "intro": "いま自分のアカウントにログインしている端末の一覧です。心当たりのない端末がないか、ここで確認できます。",
+      "row_desc": "各行は1つの端末を表し、ブラウザ／OSの情報・IPアドレス・ログインした日時が並びます。先頭の英字の羅列は、使われたブラウザとOSの情報です。",
+      "current_tag_desc": "「現在」タグが付いている行は、いま見ているこの端末です。",
+      "revoke_desc": "怪しい行は「×」ボタンで個別に無効化（ログアウト）できます。",
+      "revoke_all_desc": "「全てログアウト」を押すと、ほかの端末をまとめて締め出せます。",
+      "current_note": "いま使っているこのセッションは、誤操作で自分を締め出さないように個別では削除できません（その操作はサーバー側で拒否されます）。すべて締め出したいときは「全てログアウト」を使ってください。"
+    },
+    "webauthn": {
+      "title": "セキュリティキー（WebAuthn）",
+      "intro": "指紋認証・顔認証や、物理的なセキュリティキー（FIDO2）を使ってログインできるしくみです。パスワードを入力せず、すばやく安全にログインできます。",
+      "manage_desc": "登録した鍵には分かりやすい名前を付けられます（リネーム）。使わなくなった鍵は削除できます。"
+    },
+    "suspicious": {
+      "title": "身に覚えのないログインを見つけたら",
+      "intro": "アクティブセッションに知らない端末があるなど、不審な点に気づいたら、上から順に対処してください。",
+      "steps": {
+        "step1": "心当たりのないセッションを「×」で無効化する",
+        "step2": "不安なら「全てログアウト」で全端末から締め出す",
+        "step3": "パスワードを変更する",
+        "step4": "二要素認証（2FA）を有効化する",
+        "step5": "バックアップコードを安全な場所に保管する"
+      }
+    }
+  },
+  "contact_request_blocks_help": {
+    "title": "How to Use the Contact Request Block List",
+    "description": "This setting lets you automatically ignore contact-add requests from specific people before they reach you.",
+    "what": {
+      "title": "What is the Contact Request Block List?",
+      "body": "If someone on this list tries to add you as a contact, their request is automatically ignored. You won't receive any notification and won't even know they tried.",
+      "note": "The other person is never told they were blocked. You can quietly stop requests from specific people without any awkwardness."
+    },
+    "list": {
+      "title": "Reading the List",
+      "body": "All blocked users are shown in a list. Each row contains the following information.",
+      "item_name": "Icon and name — who you are blocking",
+      "item_handle": "Contact handle starting with {'@'} — the person's unique ID",
+      "item_date": "\"Set on\" — the date the block was registered"
+    },
+    "unblock": {
+      "title": "How to Remove a Block",
+      "body": "You can remove a block at any time. Once removed, that person can send you a contact-add request again.",
+      "steps": {
+        "step1": "Find the row of the person you want to unblock.",
+        "step2": "Press the \"Unblock\" button on the right side of the row.",
+        "step3": "When the person disappears from the list, the block has been successfully removed."
+      }
+    }
+  },
   "qa": {
     "title": "Frequently Asked Questions (Q&A)",
     "description": "Answers to common questions about using Mannschaft, installing the PWA, and more.",
@@ -82,6 +150,29 @@
           "answer": "First, clear your browser cache. If the issue persists, try uninstalling and reinstalling the PWA. If it still doesn't work, please contact support."
         }
       }
+    }
+  },
+  "calendar_sync_help": {
+    "title": "How to use Google Calendar Integration",
+    "description": "Automatically sync your schedules with Google Calendar so you can check them from your phone or other apps.",
+    "what": {
+      "title": "What is Google Calendar Integration?",
+      "body": "Mannschaft schedules (personal, team, and organization) are automatically reflected in Google Calendar. Once connected, you can always check your schedules from any device or app that supports Google Calendar."
+    },
+    "connect": {
+      "title": "Connecting your account",
+      "body": "Click \"Connect Google Account\" to go to Google's sign-in screen. Granting calendar access completes the connection. You can disconnect at any time using the \"Disconnect\" button."
+    },
+    "toggles": {
+      "title": "Turning sync on/off individually",
+      "body": "You can toggle sync on or off separately for \"Personal Calendar\", \"Team Calendars\", and \"Organization Calendars\". Changes apply immediately — there is no save button.",
+      "item_personal": "Personal Calendar: syncs your own personal schedules",
+      "item_team": "Team Calendars: syncs schedules of teams you belong to",
+      "item_org": "Organization Calendars: syncs schedules of organizations you belong to"
+    },
+    "sync_behavior": {
+      "title": "When sync happens",
+      "body": "Turning sync on backfills all previously unsynced schedules at once. This may take a few minutes if there are many. Use the \"Manual Sync\" button whenever you want to reflect the latest state immediately."
     }
   }
 }

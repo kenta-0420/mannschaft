@@ -3,6 +3,7 @@ package com.mannschaft.app.circulation.controller;
 import com.mannschaft.app.circulation.dto.AddRecipientsRequest;
 import com.mannschaft.app.circulation.dto.AdminSkipRecipientRequest;
 import com.mannschaft.app.circulation.dto.RecipientResponse;
+import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.circulation.service.CirculationStampService;
 import com.mannschaft.app.common.ApiResponse;
@@ -33,8 +34,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CirculationRecipientController {
 
-    private static final String SCOPE_TYPE = "TEAM";
-
     private final CirculationService circulationService;
     private final CirculationStampService stampService;
 
@@ -59,9 +58,13 @@ public class CirculationRecipientController {
     public ResponseEntity<ApiResponse<List<RecipientResponse>>> addRecipients(
             @PathVariable Long documentId,
             @Valid @RequestBody AddRecipientsRequest request) {
-        // ドキュメントからscopeType/scopeIdを解決（現時点ではデフォルト値を使用）
+        // 受信者追加 scopeId=0L バグ修正: ドキュメントから動的に scopeType/scopeId を解決する
+        // （添付ファイル F13 Phase 5-a と同じ手本）。0L 直書きでは findDocumentOrThrow が
+        // 実 teamId≠0 でヒットせず必ず DOCUMENT_NOT_FOUND になっていた。
+        // per-scope の ADMIN/DEPUTY 認可は Service 側で実施する。
+        CirculationDocumentEntity doc = circulationService.findDocumentById(documentId);
         List<RecipientResponse> recipients = circulationService.addRecipients(
-                SCOPE_TYPE, 0L, documentId, request);
+                doc.getScopeType(), doc.getScopeId(), documentId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(recipients));
     }
 
@@ -74,8 +77,10 @@ public class CirculationRecipientController {
     public ResponseEntity<Void> removeRecipient(
             @PathVariable Long documentId,
             @PathVariable Long recipientId) {
-        // ドキュメントからscopeType/scopeIdを解決（現時点ではデフォルト値を使用）
-        circulationService.removeRecipient(SCOPE_TYPE, 0L, documentId, recipientId);
+        // 受信者削除 scopeId=0L バグ修正: ドキュメントから動的に scopeType/scopeId を解決する。
+        // per-scope の ADMIN/DEPUTY 認可は Service 側で実施する。
+        CirculationDocumentEntity doc = circulationService.findDocumentById(documentId);
+        circulationService.removeRecipient(doc.getScopeType(), doc.getScopeId(), documentId, recipientId);
         return ResponseEntity.noContent().build();
     }
 

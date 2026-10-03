@@ -1,6 +1,7 @@
 package com.mannschaft.app.queue.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.queue.QueueErrorCode;
 import com.mannschaft.app.queue.QueueMapper;
 import com.mannschaft.app.queue.QueueScopeType;
@@ -86,7 +87,7 @@ public class QueueTicketService {
         String ticketNumber = generateTicketNumber(counter, ticketSequence);
 
         TicketSource source = request.getSource() != null
-                ? TicketSource.valueOf(request.getSource()) : TicketSource.ONLINE;
+                ? EnumInputParser.parse(TicketSource.class, request.getSource(), "source") : TicketSource.ONLINE;
 
         // 推定待ち時間の算出
         Short estimatedWait = calculateEstimatedWait(counter, (int) waitingCount);

@@ -42,6 +42,7 @@ import type { CorkboardDetail } from '~/types/corkboard'
  *  CORK-DETAIL-022: load — boardId が 0 のときエラーメッセージを設定
  *  CORK-DETAIL-023: load — TEAM scope で scopeId なしのときエラーメッセージを設定
  *  CORK-DETAIL-024: load — 正常系（scope クエリなし）scope-agnostic API を使用
+ *  CORK-DETAIL-025: 認証失効経路 — handleAuthFailureLogout が authStore.logout を呼べる
  */
 
 // ============================================================
@@ -53,6 +54,15 @@ const mockGetBoardDetailByBoardId = vi.fn()
 const mockCaptureQuiet = vi.fn()
 const mockRouterBack = vi.fn()
 const mockRouterPush = vi.fn()
+/**
+ * useAuthStore.logout のスタブ。
+ *
+ * `useApi.handleAuthFailureLogout`（refresh_token 失効時の集約ログアウト）が
+ * `authStore.logout({ reason: 'session_expired' })` を await するため、
+ * スタブに logout が無いと未処理の TypeError（Unhandled Rejection）が発生し、
+ * 同一ランの他テストを偽陽性にしてしまう。実装の契約に合わせて必ず用意すること。
+ */
+const mockLogout = vi.fn(async (_options?: { reason?: string }) => {})
 
 let currentUserId: number | null = 99
 
@@ -78,8 +88,13 @@ vi.mock('~/composables/useErrorReport', () => ({
   useErrorReport: () => ({ captureQuiet: mockCaptureQuiet }),
 }))
 
-vi.mock('~/stores/useAuthStore', () => ({
-  useAuthStore: () => ({
+/**
+ * useAuthStore スタブの生成。実装（app/stores/useAuthStore.ts）が公開し、
+ * かつテスト実行中に到達し得るメンバーを揃える。
+ */
+function makeAuthStoreStub() {
+  return {
+    accessToken: null as string | null,
     get isAuthenticated() {
       return true
     },
@@ -87,7 +102,12 @@ vi.mock('~/stores/useAuthStore', () => ({
       return currentUserId != null ? { id: currentUserId } : null
     },
     loadFromStorage: vi.fn(),
-  }),
+    logout: mockLogout,
+  }
+}
+
+vi.mock('~/stores/useAuthStore', () => ({
+  useAuthStore: () => makeAuthStoreStub(),
 }))
 
 // useRouter は globalThis に差し込む
@@ -99,13 +119,7 @@ g.useRouter = () => ({
 })
 
 // Nuxt auto-import（ミドルウェア等）が globalThis の useAuthStore を使う場合のフォールバック
-g.useAuthStore = () => ({
-  isAuthenticated: true,
-  get currentUser() {
-    return currentUserId != null ? { id: currentUserId } : null
-  },
-  loadFromStorage: vi.fn(),
-})
+g.useAuthStore = () => makeAuthStoreStub()
 
 // ============================================================
 // ラッパーコンポーネント
@@ -176,11 +190,8 @@ describe('useCorkboardDetail', () => {
     mockRouterBack.mockReset()
     mockRouterPush.mockReset()
 
-    g.useAuthStore = () => ({
-      get currentUser() {
-        return currentUserId != null ? { id: currentUserId } : null
-      },
-    })
+    mockLogout.mockClear()
+    g.useAuthStore = () => makeAuthStoreStub()
 
     composableResult = null
     // デフォルト: /corkboard/42 （boardId = 42、scope クエリなし）
@@ -415,6 +426,28 @@ describe('useCorkboardDetail', () => {
       expect(mockGetBoardDetailByBoardId).toHaveBeenCalledWith(55)
       expect(mockGetBoardDetail).not.toHaveBeenCalled()
       expect(composable.board.value).toEqual(fakeBoard)
+    })
+  })
+
+  // ============================================================
+  // 認証失効経路（スタブと実装の契約整合）
+  // ============================================================
+
+  describe('認証失効時のログアウト経路', () => {
+    it('CORK-DETAIL-025: handleAuthFailureLogout が authStore.logout({ reason: "session_expired" }) を呼べる', async () => {
+      // 本 spec のマウント中は Nuxt の auth プラグイン経由で先回りリフレッシュが発火し得る。
+      // その失敗時に useApi.handleAuthFailureLogout が logout を呼ぶため、
+      // スタブが実装のシグネチャに追随していることをここで明示的に担保する
+      //（追随漏れは Unhandled Rejection となり、他テストを偽陽性にする）。
+      const { handleAuthFailureLogout } = await import('~/composables/useApi')
+      const authStore = makeAuthStoreStub() as unknown as Parameters<
+        typeof handleAuthFailureLogout
+      >[0]
+
+      await handleAuthFailureLogout(authStore)
+
+      expect(mockLogout).toHaveBeenCalledTimes(1)
+      expect(mockLogout).toHaveBeenCalledWith({ reason: 'session_expired' })
     })
   })
 })

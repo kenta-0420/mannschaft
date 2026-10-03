@@ -46,13 +46,6 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>status: 回覧先メンバー / 作成者 / ADMIN / SYSTEM_ADMIN → 当面 ADMIN で安全側、緩和は将来軍議</li>
  * </ul>
  *
- * <p><b>本番認可有効化の前提条件:</b>
- * 本クラスの {@code @PreAuthorize} は {@code SecurityConfig} に
- * {@code @EnableMethodSecurity} が付与されたフェーズで初めて実機に効く。
- * 現状は宣言だけ済ませた状態であり、{@code .anyRequest().permitAll()} の暫定フォールバック下では
- * フィルターチェーン認可が走らない。F09.18 Phase 18-d で {@code @EnableMethodSecurity} を
- * 付与し、本クラスを含むメソッドレベル認可が一斉発火する設計とする（#829 と同じパターン）。</p>
- *
  * <p><b>真の認可強制点（認可根治 Phase 3-b / 2026-05-30）:</b>
  * 旧 {@code @PreAuthorize("hasRole('ADMIN')")} は {@code @EnableMethodSecurity} 点火時に JWT へ
  * ROLE_ADMIN が乗らず一斉 403 となるため、宣言を {@code isAuthenticated()} に是正した。

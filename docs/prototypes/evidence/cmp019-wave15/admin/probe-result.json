@@ -1,0 +1,187 @@
+{
+  "loginStatus": 200,
+  "meStatus": 200,
+  "url": "http://localhost:3003/notifications",
+  "body": "Mannschaft\nチーム\n組織\n99+\nホーム\nダッシュボード\nカレンダー\nインボックス\nつながり\n村\nタイムライン\nブログ\nチャット\nくらし\n市\n求人\nマッチング\n予約確認\nポイントカード\nしごと\nTODO\nシフト管理\nマイファイル\nマイシフト\nアカウント\nマイページ\nQ&A\n設定\n管理\nSYSTEM\n戻る\n通知\n使い方\nすべて\n未読\nすべて既読にする\n\nバッチ完了: actionmemo-reminder\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: quickmemo-pending-upload-cleanup\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: village-festival-state-transition\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: actionmemo-reminder\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: ad-campaign-state-transition\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: succession-auto-reseal\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: inbox-snooze-revival\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: billing-contract-operation-recovery\n\n処理件数: 0 件\n\nたった今\n\nバッチ失敗: ad-campaign-delivery\n\nQuery requires transaction be in progress, but no transaction is known to be in progress\n\nたった今\n\nバッチ完了: reservation-reminder-dispatch\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: family-care-absent-alert\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: family-care-no-contact-check\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: systemlog-ssr-error-flush\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: blog-scheduled-publish\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: reservation-emergency-closure-reminder\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: email-outbox-alert-check\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: chat-scheduled-message-dispatch\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: notification-confirmable-reminder\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: payment-fee-reconciliation\n\n処理件数: 0 件\n\nたった今\n\nバッチ完了: recruitment-reminder\n\n処理件数: 0 件\n\nたった今\nもっと読む",
+  "events": [
+    {
+      "type": "console",
+      "level": "warning",
+      "text": "Error with Permissions-Policy header: Unrecognized feature: 'web-share'."
+    },
+    {
+      "type": "console",
+      "level": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "console",
+      "level": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/@primevue/core/api/index.mjs?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-router/node_modules/@vue/devtools-api/lib/esm/api/index.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-i18n/node_modules/@vue/devtools-api/lib/esm/api/index.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-router/node_modules/@vue/devtools-api/lib/esm/api/api.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-router/node_modules/@vue/devtools-api/lib/esm/api/component.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-router/node_modules/@vue/devtools-api/lib/esm/api/app.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-router/node_modules/@vue/devtools-api/lib/esm/api/util.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-i18n/node_modules/@vue/devtools-api/lib/esm/api/api.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-router/node_modules/@vue/devtools-api/lib/esm/api/context.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-router/node_modules/@vue/devtools-api/lib/esm/api/hooks.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-i18n/node_modules/@vue/devtools-api/lib/esm/api/app.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-i18n/node_modules/@vue/devtools-api/lib/esm/api/component.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-i18n/node_modules/@vue/devtools-api/lib/esm/api/context.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-i18n/node_modules/@vue/devtools-api/lib/esm/api/util.js?v=56b8a423"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:3003/_nuxt/@fs/C:/Claude/mannschaft/.claude/worktrees/cmp019-wave11/frontend/node_modules/vue-i18n/node_modules/@vue/devtools-api/lib/esm/api/hooks.js?v=56b8a423"
+    },
+    {
+      "type": "console",
+      "level": "warning",
+      "text": "%cssr:warn%c [nuxt] Your project has pages but `<NuxtPage />` has not been detected. Make sure you are using `<NuxtPage />` instead of `<RouterView />`, as `<RouterView />` will not work correctly in Nuxt. If `<NuxtPage />` is rendered conditionally, this warning can be triggered before it is mounted. You can set `pages: false` in `nuxt.config` if you do not wish to use the Nuxt `vue-router` integration. \n      background: #f39c12;\n      border-radius: 0.5em;\n      color: white;\n      font-weight: bold;\n      padding: 2px 0.5em;\n      \n  at checkIfPageUnused (C:\\Claude\\mannschaft\\.claude\\worktrees\\cmp019-wave11\\frontend\\node_modules\\nuxt\\dist\\pages\\runtime\\plugins\\check-if-page-unused.js)\n  at process.processTicksAndRejections (node:internal/process/task_queues)\n"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:8081/api/v1/settings/nav"
+    },
+    {
+      "type": "console",
+      "level": "info",
+      "text": "<Suspense> is an experimental feature and its API will likely change."
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:8081/api/v1/feature-flags"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:8081/api/v1/dashboard/scope-tabs?scopeType=TEAM&page=0"
+    },
+    {
+      "type": "console",
+      "level": "log",
+      "text": "✨ %cNuxt DevTools %c Press Shift + Alt + D to open DevTools color: black; border-radius: 3px 0 0 3px; padding: 2px 2px 1px 10px; background: #00DC82 border-radius: 0 3px 3px 0; padding: 2px 10px 1px 2px; background: #00DC8220 "
+    },
+    {
+      "type": "console",
+      "level": "log",
+      "text": "🍍 \"inbox\" store installed 🆕"
+    },
+    {
+      "type": "console",
+      "level": "log",
+      "text": "🍍 \"notification\" store installed 🆕"
+    },
+    {
+      "type": "console",
+      "level": "log",
+      "text": "🍍 \"appShell\" store installed 🆕"
+    },
+    {
+      "type": "console",
+      "level": "log",
+      "text": "🍍 \"sync\" store installed 🆕"
+    },
+    {
+      "type": "console",
+      "level": "log",
+      "text": "🍍 \"scopeFolders\" store installed 🆕"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:8081/api/v1/active-incidents?lang=ja"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:8081/api/v1/notifications?page=0&size=20"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:8081/api/v1/mentions"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:8081/api/v1/notifications/unread-count"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:8081/api/v1/chat/channels?"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://localhost:8081/api/v1/inbox/summary"
+    }
+  ],
+  "geometry": {
+    "scrollWidth": 1440,
+    "clientWidth": 1440
+  }
+}

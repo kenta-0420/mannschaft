@@ -23,10 +23,9 @@ import java.util.List;
  * 当該ユーザーの所属組織コンテキストは {@code organizationId} クエリで明示する（必須）。
  * 認証だけ通れば呼べるが、Service 層で当該組織のメンバーシップが検証される。</p>
  *
- * <p><strong>権限制御</strong>: 本フェーズでは {@link SecurityUtils#getCurrentUserId()} による認証ガードのみ。
- * 設計書 §2 で要求される ADMIN / DEPUTY_ADMIN(DISCLOSURE_VIEW) 判定は Phase 2-β-5 以降で
- * permissionGroupService 経由で実装する。
- * FIXME(Phase 2-β-5): role/permission チェックを追加すること。</p>
+ * <p><strong>権限制御</strong>（認可根治戦役 Wave3-B4 で実装）: {@code AccessControlService.checkMembership}
+ * を {@link DisclosureFormTemplateService} 側で検証する（当該組織のメンバーのみ閲覧可）。
+ * DEPUTY_ADMIN の Permission 単位（DISCLOSURE_VIEW）細分化は引き続き Phase 2-β-5 以降の課題として残す。</p>
  */
 @RestController
 @RequestMapping("/api/v1/disclosure-templates")
@@ -45,9 +44,9 @@ public class DisclosureFormTemplateController {
     public ApiResponse<List<DisclosureFormTemplateResponse>> listAvailable(
             @RequestParam(value = "prefectureCode", required = false) String prefectureCode,
             @RequestParam(value = "organizationId") Long organizationId) {
-        // 認証ガード（未認証は SecurityUtils が COMMON_000 を投げる）
-        SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(templateService.listAvailable("ORGANIZATION", organizationId, prefectureCode));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(
+                templateService.listAvailable("ORGANIZATION", organizationId, userId, prefectureCode));
     }
 
     /**
@@ -59,7 +58,7 @@ public class DisclosureFormTemplateController {
     public ApiResponse<DisclosureFormTemplateResponse> get(
             @PathVariable("templateId") Long templateId,
             @RequestParam(value = "organizationId") Long organizationId) {
-        SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(templateService.get("ORGANIZATION", organizationId, templateId));
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(templateService.get("ORGANIZATION", organizationId, userId, templateId));
     }
 }

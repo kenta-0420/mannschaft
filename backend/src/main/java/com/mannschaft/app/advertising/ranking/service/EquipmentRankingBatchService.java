@@ -1,5 +1,7 @@
 package com.mannschaft.app.advertising.ranking.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.admin.service.FeatureFlagService;
 import com.mannschaft.app.advertising.entity.AffiliateConfigEntity;
@@ -67,6 +69,9 @@ public class EquipmentRankingBatchService {
      * 日次ランキング集計バッチ。毎日 AM 3:00 (JST) に実行。
      * ShedLock による排他制御あり（複数インスタンス環境でも1回のみ実行保証）。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "ランキングは元データから何度でも再集計できる派生値であり、止めても前回値が残るだけで元データは壊れない")
     @BatchEndpoint(name = "advertising-equipment-ranking-daily", description = "同類チーム備品ランキングを毎日 03:00 に集計する")
     @Scheduled(cron = "${equipment.ranking.cron:0 0 3 * * *}", zone = "Asia/Tokyo")
     @SchedulerLock(name = "equipmentRankingBatch", lockAtMostFor = "15m", lockAtLeastFor = "1m")
@@ -93,9 +98,10 @@ public class EquipmentRankingBatchService {
         List<Long> optOutTeamIds = exclusionRepository.findOptOutTeamIds();
         List<String> excludedNames = exclusionRepository.findExcludedNormalizedNames();
 
-        // 2. Amazon アフィリエイトタグを取得（存在しない場合は null）
+        // 2. Amazon アフィリエイトタグを取得（存在しない、またはプレースホルダの場合は null。CMP-260918-0025）
         String amazonTag = affiliateConfigRepository
                 .findActiveAmazonConfig(startedAt)
+                .filter(config -> !config.isPlaceholderTagId())
                 .map(AffiliateConfigEntity::getTagId)
                 .orElse(null);
 

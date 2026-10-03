@@ -212,7 +212,7 @@ onMounted(loadData)
         </div>
         <template #footer>
           <Button
-            :label="$t('common.button.cancel')"
+            :label="$t('button.cancel')"
             severity="secondary"
             @click="showTermDialog = false"
           />

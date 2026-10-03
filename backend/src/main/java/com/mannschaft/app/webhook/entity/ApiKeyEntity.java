@@ -9,10 +9,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -26,8 +26,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ApiKeyEntity extends BaseEntity {
 
     @Column(nullable = false, length = 50)
@@ -42,7 +41,11 @@ public class ApiKeyEntity extends BaseEntity {
     @Column(nullable = false, length = 8)
     private String keyPrefix;
 
-    @Column(nullable = false, length = 60)
+    // 共有 passwordEncoder（AuthConfig）は DelegatingPasswordEncoder（既定 argon2）であり、
+    // encode() は "{argon2}$argon2id$v=19$m=...$..." 形式（約100文字）を返す。旧 bcrypt 前提の
+    // 60 文字では収まらず INSERT 時に "Data too long" で失効するため 255 文字に拡張する
+    // （V152 で本番カラムも VARCHAR(255) に拡張済み）。
+    @Column(nullable = false, length = 255)
     private String keyHash;
 
     @Enumerated(EnumType.STRING)

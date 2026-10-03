@@ -144,8 +144,7 @@ onMounted(() => {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
-    <PageHeader :title="t('village.nickname.title')" />
+    <PageHeader :title="t('village.nickname.title')" back-to="/settings" />
 
     <PageLoading v-if="loading" />
 

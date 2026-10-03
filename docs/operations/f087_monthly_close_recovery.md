@@ -137,7 +137,64 @@ cron バッチは SecurityContext 不在で動くため発生しないが、API 
 
 F08.6 側のスキーマ変更や FK 違反が原因のことが多い。Spring Boot ログで該当例外を特定 → DDL 修正後 §4.1 で再起動。
 
-### 5.5 `shift_budget_consumptions` のロック競合
+### 5.5 `confirmed_amount` が 0 円のまま固着し、月次仕訳も作られていない（CMP-260910-1556・是正済）
+
+**症状**: 月次締めが初回必ず 500 (`COMMON_999`)。2 回目以降は 200 が返るが
+`shift_budget_allocations.confirmed_amount` は永久に 0 のまま、
+`shift_budget_consumptions` だけが `CONFIRMED` になっている。
+さらに `budget_transactions` に当該 allocation の月次仕訳が**存在しない**。
+
+**原因**: `MonthlyShiftBudgetCloseService#doCloseForOrg` が同一 Bean 内の
+`closeOneAllocation`（`@Transactional(propagation = REQUIRES_NEW)`）を自己呼び出ししており、
+Spring の AOP プロキシを経由しないため `REQUIRES_NEW` が効いていなかった。
+呼び出し元が `Propagation.NEVER` であることと相まって**トランザクション不在**で実行され、
+`@Modifying` クエリ `incrementConfirmedAmount` が
+`InvalidDataAccessApiUsageException: Executing an update/delete query` で必ず落ちた。
+その時点で直前の `consumptionRepository.save` は Spring Data 既定の `@Transactional` で
+単独コミット済みだったため、巻き戻らない部分適用が残った。
+**その先にある月次仕訳の INSERT は一度も実行されていない**点が重要である。
+
+**恒久対策**: `ObjectProvider` 経由で自己プロキシを取得して呼ぶよう是正済み
+（回帰検知は `MonthlyShiftBudgetCloseTransactionIT`）。
+
+#### 既存データの回復（2 段階。migration だけでは終わらない）
+
+会計の本体は `budget_transactions` の月次仕訳であり、`confirmed_amount` はその写しに過ぎない。
+
+とくに注意すべきなのは、**500 を食らった運用者が再実行して 200 を得た状態**である。
+再実行時は PLANNED が 0 件なので、同じ source に対して**金額 0 の月次仕訳が正常に保存される**。
+その結果「消化は CONFIRMED・確定額 0・仕訳 0 円」という金額の食い違いが固定され、
+以後は締め直しても `MONTHLY_ALREADY_CLOSED` で弾かれて永久に直らない。
+現場で最も普通に起きているのはこの姿なので、回復は「仕訳の有無」ではなく
+**「CONFIRMED 合計と仕訳金額の食い違い」**で対象を拾う。
+
+1. **Flyway `V209.20260911213923__repair_shift_budget_monthly_close_partial_apply.sql`**（デプロイ時に自動適用）
+   - 検出条件は `生存 CONFIRMED 消化の合計 > 生存する月次仕訳の金額合計（無ければ 0）`
+   - 対象を `shift_budget_failed_events` へ `payload.operation = 'MONTHLY_CLOSE_RECOVERY'` として記録
+   - 食い違っている自動記帳の月次仕訳を**論理削除**（物理削除しない＝監査証跡を残す。
+     `BudgetTransactionEntity` は `@SQLRestriction("deleted_at IS NULL")` を持つので、
+     論理削除すれば締めの重複チェックからは外れて再締めが通る）
+   - 対象 allocation の `CONFIRMED` 消化を `PLANNED` へ差し戻し、`confirmed_amount` を再計算
+   - 金額が一致している allocation（正常に締め済み）は対象外なので巻き戻さない
+2. **運用者による月次締めの再実行**（§4.1 の API #11）
+   - §6.6 の SQL または管理 API (`GET /failed-events?status=EXHAUSTED`) で対象を一覧する
+   - 差し戻された allocation について、正しい金額の月次仕訳・監査ログ・`confirmed_amount` が
+     アプリケーションの正規の経路で作り直される
+   - 済んだ行は §4.3 の手動補正済マーク (`MANUAL_RESOLVED`) でキューから落とす
+
+> **なぜ復旧対象をキューに記録するのか**: 手順 1 を適用すると対象は
+> 「PLANNED・確定額 0・仕訳なし」という**未締めと見分けのつかない姿**になる。
+> §6.4 の差額検出にも §6.5 の仕訳欠損検出にも現れなくなるため、記録しておかないと
+> 「どの組織のどの月を締め直すべきか」を見つける手段が消え、仕訳欠損がそのまま残る。
+> 専用テーブルを新設せず既存の `shift_budget_failed_events` を使うのは、
+> このテーブルが「運用者が後から再実行するための失敗キュー」そのものであり、
+> 一覧・手動補正済マークの管理 API と運用手順が既に存在するため。
+
+> SQL で仕訳を直接再構成する案も検討したが、scope 判定・title 生成・`recorded_by` の
+> フォールバック・監査ログといった業務ロジックを SQL に二重実装することになり、
+> 監査証跡も残らないため採らなかった。
+
+### 5.6 `shift_budget_consumptions` のロック競合
 
 並行する CRUD と衝突した可能性。リトライで解消する場合が多いが、頻発する場合は `closeOneAllocation` の `REQUIRES_NEW` トランザクション境界を見直す。
 
@@ -183,6 +240,72 @@ SELECT id, organization_id, event_type, source_id,
  ORDER BY updated_at DESC
  LIMIT 50;
 ```
+
+### 6.4 `confirmed_amount` のズレ検出（CMP-260910-1556）
+
+```sql
+SELECT a.id AS allocation_id,
+       a.organization_id,
+       a.confirmed_amount AS stored,
+       COALESCE(c.confirmed_total, 0) AS expected
+  FROM shift_budget_allocations a
+  LEFT JOIN (SELECT allocation_id, SUM(amount) AS confirmed_total
+               FROM shift_budget_consumptions
+              WHERE status = 'CONFIRMED' AND deleted_at IS NULL
+              GROUP BY allocation_id) c
+         ON c.allocation_id = a.id
+ WHERE a.deleted_at IS NULL
+   AND a.confirmed_amount <> COALESCE(c.confirmed_total, 0);
+```
+
+0 件であれば健全。1 件でも返る場合は §5.5 の是正 migration が未適用か、
+別経路のバグを疑う（migration は適用済みでも将来のバグでズレは再発しうるため、
+本 SQL は定点観測に使える）。
+### 6.5 月次仕訳の欠損検出（CMP-260910-1556）
+
+```sql
+SELECT a.id AS allocation_id,
+       a.organization_id,
+       a.period_start,
+       a.confirmed_amount,
+       COUNT(c.id) AS confirmed_consumptions
+  FROM shift_budget_allocations a
+  JOIN shift_budget_consumptions c
+    ON c.allocation_id = a.id
+   AND c.status = 'CONFIRMED'
+   AND c.deleted_at IS NULL
+ WHERE a.deleted_at IS NULL
+   AND NOT EXISTS (SELECT 1 FROM budget_transactions t
+                    WHERE t.source_type = 'SHIFT_BUDGET_MONTHLY'
+                      AND t.source_id = a.id
+                      AND t.deleted_at IS NULL)
+ GROUP BY a.id, a.organization_id, a.period_start, a.confirmed_amount;
+```
+
+「消化は確定しているのに会計へ仕訳が立っていない」allocation を返す。
+0 件であれば健全。1 件でも返る場合は §5.5 の 2 段階の回復（migration 適用 + 締めの再実行）が
+未完了である。
+
+### 6.6 復旧キューに残っている締め直し対象（CMP-260910-1556）
+
+```sql
+SELECT e.id,
+       e.organization_id,
+       e.source_id AS allocation_id,
+       JSON_UNQUOTE(JSON_EXTRACT(e.payload, '$.year_month')) AS year_month,
+       JSON_UNQUOTE(JSON_EXTRACT(e.payload, '$.confirmed_total')) AS confirmed_total,
+       e.status,
+       e.created_at
+  FROM shift_budget_failed_events e
+ WHERE JSON_UNQUOTE(JSON_EXTRACT(e.payload, '$.operation')) = 'MONTHLY_CLOSE_RECOVERY'
+   AND e.status <> 'MANUAL_RESOLVED'
+ ORDER BY e.organization_id, e.created_at;
+```
+
+回復 migration が差し戻した allocation の一覧。**この行が残っている限り、
+その組織・その月の月次仕訳はまだ作り直されていない。**
+§4.1 で締めを再実行し、成功したら §4.3 で `MANUAL_RESOLVED` にしてキューから落とす。
+`year_month` をそのまま API #11 の `year_month` に渡せる。
 
 ---
 

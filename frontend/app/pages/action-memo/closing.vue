@@ -58,6 +58,8 @@ interface TodoItem {
 
 const todos = ref<TodoItem[]>([])
 const todosLoading = ref(false)
+/** 取得失敗は「TODOなし」ではない。空状態文言へフォールバックせずエラー状態を出す。 */
+const todosLoadFailed = ref(false)
 
 const completedTodos = computed(() =>
   todos.value.filter((t2) => t2.status === 'DONE' || t2.status === 'COMPLETED'),
@@ -68,6 +70,7 @@ const pendingTodos = computed(() =>
 
 async function loadTodos() {
   todosLoading.value = true
+  todosLoadFailed.value = false
   try {
     const res = await todoApi.getMyTodos()
     // Wave 1 DTO刷新: ネスト構造から必要フィールドを正規化
@@ -95,6 +98,7 @@ async function loadTodos() {
       .filter((item) => item.scopeType === 'PERSONAL' && item.dueDate === today.value)
   } catch {
     todos.value = []
+    todosLoadFailed.value = true
   } finally {
     todosLoading.value = false
   }
@@ -234,8 +238,16 @@ onMounted(async () => {
       <ActionMemoList :memos="todaysMemos" :loading="store.loading" />
     </section>
 
+    <!-- 中部: TODO 取得失敗（完了/未完 共通データ源。空状態文言へフォールバックさせない） -->
+    <section v-if="todosLoadFailed" class="flex flex-col gap-2">
+      <DashboardErrorState
+        testid="action-memo-closing-todos-error-state"
+        @retry="loadTodos"
+      />
+    </section>
+
     <!-- 中部: 完了 TODO -->
-    <section class="flex flex-col gap-2">
+    <section v-else class="flex flex-col gap-2">
       <h2 class="px-1 text-sm font-semibold text-surface-700 dark:text-surface-200">
         {{ t('action_memo.closing.todos_completed') }}
       </h2>
@@ -263,8 +275,8 @@ onMounted(async () => {
       </p>
     </section>
 
-    <!-- 中部: 未完 TODO -->
-    <section class="flex flex-col gap-2">
+    <!-- 中部: 未完 TODO（取得失敗時は上のエラー状態にまとめて表示するため非表示） -->
+    <section v-if="!todosLoadFailed" class="flex flex-col gap-2">
       <h2 class="px-1 text-sm font-semibold text-surface-700 dark:text-surface-200">
         {{ t('action_memo.closing.todos_pending') }}
       </h2>

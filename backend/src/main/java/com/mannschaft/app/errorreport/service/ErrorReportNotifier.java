@@ -3,6 +3,7 @@ package com.mannschaft.app.errorreport.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.entity.ErrorReportAiAnalysisEntity;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
@@ -13,6 +14,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -20,6 +22,7 @@ import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -34,6 +37,9 @@ public class ErrorReportNotifier {
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
     private final UserRoleRepository userRoleRepository;
+    /** Issue #2715 CMP-055 ロットC-1: 通知本文の受信者 locale 解決（D-5: auth の UserRepository を直接呼ばない）。 */
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
 
     private final RestClient restClient = RestClient.create();
 
@@ -66,9 +72,12 @@ public class ErrorReportNotifier {
      * Slack Webhook でエラーレポートを通知する。
      * slackWebhookUrl が空の場合は何もしない。
      *
+     * <p>Issue #2990 L11: 呼び出しは {@link ErrorReportNotificationListener} の
+     * {@code AFTER_COMMIT} 入口からのみ行われるため {@code @Async} を外した
+     * （非同期化はリスナー側が {@code @Async("event-pool")} で担う）。</p>
+     *
      * @param report エラーレポートエンティティ
      */
-    @Async("event-pool")
     public void notifySlack(ErrorReportEntity report) {
         if (slackWebhookUrl == null || slackWebhookUrl.isBlank()) return;
         try {
@@ -88,26 +97,48 @@ public class ErrorReportNotifier {
     /**
      * 全 SYSTEM_ADMIN にプッシュ通知を送信する。
      *
+     * <p>Issue #2990 L11: 受信者リストの解決は全体で1回（外側 try）、配送は受信者ごとに
+     * try/catch する。是正前はループ全体が1つの try に入っており、
+     * <b>1人目の管理者への INSERT が落ちると残りの管理者全員が通知を受け取れなかった</b>。</p>
+     *
      * @param report エラーレポートエンティティ
      */
-    @Async("event-pool")
     public void notifySystemAdmins(ErrorReportEntity report) {
+        List<Long> adminIds;
+        Map<Long, String> locales;
+        String truncatedMessage;
         try {
-            List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
-            for (Long adminUserId : adminIds) {
+            adminIds = userRoleRepository.findSystemAdminUserIds();
+            // Issue #2715 ロットC-1: 受信者ごとの locale を一括解決（N+1 防止）。
+            locales = userLocaleCache.getLocales(adminIds);
+            truncatedMessage = ErrorReportService.truncate(report.getErrorMessage(), 50);
+        } catch (Exception e) {
+            log.error("SYSTEM_ADMINプッシュ通知の受信者解決に失敗: errorReportId={}", report.getId(), e);
+            return;
+        }
+        for (Long adminUserId : adminIds) {
+            try {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(adminUserId, "ja"));
+                String title = messageSource.getMessage(
+                        "notification.errorreport.critical.title",
+                        new Object[]{report.getSeverity()},
+                        "フロントエンドエラー（" + report.getSeverity() + "）", locale);
+                String body = messageSource.getMessage(
+                        "notification.errorreport.critical.body",
+                        new Object[]{truncatedMessage, report.getOccurrenceCount()},
+                        String.format("エラー「%s」が %d 回発生しています", truncatedMessage, report.getOccurrenceCount()),
+                        locale);
                 notificationService.createNotification(
                         adminUserId, "ERROR_REPORT_CRITICAL", NotificationPriority.HIGH,
-                        "フロントエンドエラー（" + report.getSeverity() + "）",
-                        String.format("エラー「%s」が %d 回発生しています",
-                                ErrorReportService.truncate(report.getErrorMessage(), 50),
-                                report.getOccurrenceCount()),
+                        title, body,
                         "ERROR_REPORT", report.getId(),
                         NotificationScopeType.SYSTEM, null,
                         "/system-admin/error-reports/" + report.getId(), null
                 );
+            } catch (Exception e) {
+                log.error("SYSTEM_ADMINプッシュ通知送信失敗: errorReportId={}, adminUserId={}",
+                        report.getId(), adminUserId, e);
             }
-        } catch (Exception e) {
-            log.warn("SYSTEM_ADMINプッシュ通知送信失敗: errorReportId={}", report.getId(), e);
         }
     }
 
@@ -118,8 +149,10 @@ public class ErrorReportNotifier {
      * @param oldSeverity 昇格前の severity
      * @param newSeverity 昇格後の severity
      */
-    @Async("event-pool")
     public void notifyEscalation(ErrorReportEntity report, ErrorReportSeverity oldSeverity, ErrorReportSeverity newSeverity) {
+        List<Long> adminIds;
+        Map<Long, String> locales;
+        String truncatedMessage;
         try {
             // Slack 通知
             if (slackWebhookUrl != null && !slackWebhookUrl.isBlank()) {
@@ -132,23 +165,43 @@ public class ErrorReportNotifier {
                         .body(payload)
                         .retrieve().toBodilessEntity();
             }
-
-            // SYSTEM_ADMIN プッシュ通知
-            List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
-            for (Long adminUserId : adminIds) {
+        } catch (Exception e) {
+            // Slack は独立した配送先。落ちても SYSTEM_ADMIN プッシュへ波及させない。
+            log.error("エスカレーション通知の Slack 送信に失敗: errorReportId={}", report.getId(), e);
+        }
+        try {
+            // SYSTEM_ADMIN プッシュ通知の受信者解決（全体で1回）
+            adminIds = userRoleRepository.findSystemAdminUserIds();
+            // Issue #2715 ロットC-1: 受信者ごとの locale を一括解決（N+1 防止）。
+            locales = userLocaleCache.getLocales(adminIds);
+            truncatedMessage = ErrorReportService.truncate(report.getErrorMessage(), 50);
+        } catch (Exception e) {
+            log.error("エスカレーション通知の受信者解決に失敗: errorReportId={}", report.getId(), e);
+            return;
+        }
+        for (Long adminUserId : adminIds) {
+            try {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(adminUserId, "ja"));
+                String title = messageSource.getMessage(
+                        "notification.errorreport.escalation.title",
+                        new Object[]{oldSeverity, newSeverity},
+                        String.format("エラー重要度が %s → %s に昇格しました", oldSeverity, newSeverity), locale);
+                String body = messageSource.getMessage(
+                        "notification.errorreport.escalation.body",
+                        new Object[]{truncatedMessage, report.getOccurrenceCount()},
+                        String.format("エラー「%s」が %d 回発生しています", truncatedMessage, report.getOccurrenceCount()),
+                        locale);
                 notificationService.createNotification(
                         adminUserId, "ERROR_REPORT_ESCALATION", NotificationPriority.HIGH,
-                        String.format("エラー重要度が %s → %s に昇格しました", oldSeverity, newSeverity),
-                        String.format("エラー「%s」が %d 回発生しています",
-                                ErrorReportService.truncate(report.getErrorMessage(), 50),
-                                report.getOccurrenceCount()),
+                        title, body,
                         "ERROR_REPORT", report.getId(),
                         NotificationScopeType.SYSTEM, null,
                         "/system-admin/error-reports/" + report.getId(), null
                 );
+            } catch (Exception e) {
+                log.error("エスカレーション通知送信失敗: errorReportId={}, adminUserId={}",
+                        report.getId(), adminUserId, e);
             }
-        } catch (Exception e) {
-            log.warn("エスカレーション通知送信失敗: errorReportId={}", report.getId(), e);
         }
     }
 
@@ -157,8 +210,10 @@ public class ErrorReportNotifier {
      *
      * @param report エラーレポートエンティティ
      */
-    @Async("event-pool")
     public void notifyRegression(ErrorReportEntity report) {
+        List<Long> adminIds;
+        Map<Long, String> locales;
+        String truncatedMessage;
         try {
             // Slack 通知（閾値無視で必ず送信）
             if (slackWebhookUrl != null && !slackWebhookUrl.isBlank()) {
@@ -170,22 +225,42 @@ public class ErrorReportNotifier {
                         .body(payload)
                         .retrieve().toBodilessEntity();
             }
-
-            // SYSTEM_ADMIN プッシュ通知
-            List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
-            for (Long adminUserId : adminIds) {
+        } catch (Exception e) {
+            // Slack は独立した配送先。落ちても SYSTEM_ADMIN プッシュへ波及させない。
+            log.error("リグレッション通知の Slack 送信に失敗: errorReportId={}", report.getId(), e);
+        }
+        try {
+            // SYSTEM_ADMIN プッシュ通知の受信者解決（全体で1回）
+            adminIds = userRoleRepository.findSystemAdminUserIds();
+            // Issue #2715 ロットC-1: 受信者ごとの locale を一括解決（N+1 防止）。
+            locales = userLocaleCache.getLocales(adminIds);
+            truncatedMessage = ErrorReportService.truncate(report.getErrorMessage(), 50);
+        } catch (Exception e) {
+            log.error("リグレッション通知の受信者解決に失敗: errorReportId={}", report.getId(), e);
+            return;
+        }
+        for (Long adminUserId : adminIds) {
+            try {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(adminUserId, "ja"));
+                String title = messageSource.getMessage(
+                        "notification.errorreport.regression.title", null,
+                        "解決済みエラーが再発しました", locale);
+                String body = messageSource.getMessage(
+                        "notification.errorreport.regression.body",
+                        new Object[]{truncatedMessage},
+                        String.format("エラー「%s」が再発しました。前回の admin_note を確認してください。", truncatedMessage),
+                        locale);
                 notificationService.createNotification(
                         adminUserId, "ERROR_REPORT_REGRESSION", NotificationPriority.HIGH,
-                        "解決済みエラーが再発しました",
-                        String.format("エラー「%s」が再発しました。前回の admin_note を確認してください。",
-                                ErrorReportService.truncate(report.getErrorMessage(), 50)),
+                        title, body,
                         "ERROR_REPORT", report.getId(),
                         NotificationScopeType.SYSTEM, null,
                         "/system-admin/error-reports/" + report.getId(), null
                 );
+            } catch (Exception e) {
+                log.error("リグレッション通知送信失敗: errorReportId={}, adminUserId={}",
+                        report.getId(), adminUserId, e);
             }
-        } catch (Exception e) {
-            log.warn("リグレッション通知送信失敗: errorReportId={}", report.getId(), e);
         }
     }
 
@@ -193,16 +268,22 @@ public class ErrorReportNotifier {
      * F12.5 Phase 2 — エラーレポート担当者割り当て通知。
      * 割り当てられた管理者にプッシュ通知を送信する（解除時は呼ばない）。
      *
+     * <p>Issue #2990 L11: 呼び出しは {@link ErrorReportNotificationListener} の
+     * {@code AFTER_COMMIT} 入口からのみ行われるため {@code @Async} を外した。</p>
+     *
      * @param report         エラーレポートエンティティ
      * @param newAssigneeId  新しい担当者ユーザーID（NULL の場合は何もしない）
      */
-    @Async("event-pool")
     public void notifyAssignment(ErrorReportEntity report, Long newAssigneeId) {
         if (newAssigneeId == null) return;
         try {
+            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(newAssigneeId));
+            String title = messageSource.getMessage(
+                    "notification.errorreport.assigned.title", null,
+                    "エラーレポートが割り当てられました", locale);
             notificationService.createNotification(
                     newAssigneeId, "ERROR_REPORT_ASSIGNED", NotificationPriority.NORMAL,
-                    "エラーレポートが割り当てられました",
+                    title,
                     ErrorReportService.truncate(report.getErrorMessage(), 50),
                     "ERROR_REPORT", report.getId(),
                     NotificationScopeType.PERSONAL, null,
@@ -242,10 +323,16 @@ public class ErrorReportNotifier {
 
             // SYSTEM_ADMIN プッシュ通知
             List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
+            // Issue #2715 ロットC-1: 受信者ごとの locale を一括解決（N+1 防止）。
+            Map<Long, String> locales = userLocaleCache.getLocales(adminIds);
             for (Long adminUserId : adminIds) {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(adminUserId, "ja"));
+                String title = messageSource.getMessage(
+                        "notification.errorreport.aiAnalyzed.title", null,
+                        "エラーレポートの AI 分析が完了しました", locale);
                 notificationService.createNotification(
                         adminUserId, "ERROR_REPORT_AI_ANALYZED", NotificationPriority.NORMAL,
-                        "エラーレポートの AI 分析が完了しました",
+                        title,
                         ErrorReportService.truncate(report.getErrorMessage(), 50),
                         "ERROR_REPORT", report.getId(),
                         NotificationScopeType.SYSTEM, null,
@@ -265,7 +352,7 @@ public class ErrorReportNotifier {
      */
     @Async("event-pool")
     public void notifyBudgetWarning(int budgetJpy, long currentJpy) {
-        sendBudgetSlack(":warning:", "AI 月次予算 80% 到達",
+        sendBudgetSlack(":warning:", "notification.errorreport.aiBudgetWarning.title", "AI 月次予算 80% 到達",
                 budgetJpy, currentJpy);
     }
 
@@ -277,18 +364,21 @@ public class ErrorReportNotifier {
      */
     @Async("event-pool")
     public void notifyBudgetExceeded(int budgetJpy, long currentJpy) {
-        sendBudgetSlack(":no_entry:", "AI 月次予算上限到達（以降の AI 分析は停止）",
-                budgetJpy, currentJpy);
+        sendBudgetSlack(":no_entry:", "notification.errorreport.aiBudgetExceeded.title",
+                "AI 月次予算上限到達（以降の AI 分析は停止）", budgetJpy, currentJpy);
     }
 
     /**
      * 予算アラート用 Slack + SYSTEM_ADMIN 通知の共通処理。
+     *
+     * @param titleKey     受信者 locale で解決するタイトルの i18n キー
+     * @param defaultTitle {@code titleKey} 未登録時のフォールバック（日本語・Slack 本文にも使用）
      */
-    private void sendBudgetSlack(String emoji, String title, int budgetJpy, long currentJpy) {
+    private void sendBudgetSlack(String emoji, String titleKey, String defaultTitle, int budgetJpy, long currentJpy) {
         try {
             if (slackWebhookUrl != null && !slackWebhookUrl.isBlank()) {
                 String text = String.format("%s *%s*\n月次予算: ¥%d / 累計: ¥%d",
-                        emoji, title, budgetJpy, currentJpy);
+                        emoji, defaultTitle, budgetJpy, currentJpy);
                 String payload = objectMapper.writeValueAsString(Map.of("text", text));
                 restClient.post().uri(slackWebhookUrl)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -296,11 +386,19 @@ public class ErrorReportNotifier {
                         .retrieve().toBodilessEntity();
             }
             List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
+            // Issue #2715 ロットC-1: 受信者ごとの locale を一括解決（N+1 防止）。
+            Map<Long, String> locales = userLocaleCache.getLocales(adminIds);
             for (Long adminUserId : adminIds) {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(adminUserId, "ja"));
+                String title = messageSource.getMessage(titleKey, null, defaultTitle, locale);
+                String body = messageSource.getMessage(
+                        "notification.errorreport.aiBudget.body",
+                        new Object[]{budgetJpy, currentJpy},
+                        String.format("月次予算 ¥%d / 累計 ¥%d", budgetJpy, currentJpy),
+                        locale);
                 notificationService.createNotification(
                         adminUserId, "ERROR_REPORT_AI_BUDGET", NotificationPriority.HIGH,
-                        title,
-                        String.format("月次予算 ¥%d / 累計 ¥%d", budgetJpy, currentJpy),
+                        title, body,
                         "ERROR_REPORT", null,
                         NotificationScopeType.SYSTEM, null,
                         "/system-admin/error-reports", null
@@ -332,11 +430,21 @@ public class ErrorReportNotifier {
                         .retrieve().toBodilessEntity();
             }
             List<Long> adminIds = userRoleRepository.findSystemAdminUserIds();
+            // Issue #2715 ロットC-1: 受信者ごとの locale を一括解決（N+1 防止）。
+            Map<Long, String> locales = userLocaleCache.getLocales(adminIds);
             for (Long adminUserId : adminIds) {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(adminUserId, "ja"));
+                String title = messageSource.getMessage(
+                        "notification.errorreport.aiHealthDegraded.title", null,
+                        "AI 分析サービスの異常を検知しました", locale);
+                String body = messageSource.getMessage(
+                        "notification.errorreport.aiHealthDegraded.body",
+                        new Object[]{failureCount},
+                        String.format("直近 24 時間で AI 分析が %d 件失敗しています", failureCount),
+                        locale);
                 notificationService.createNotification(
                         adminUserId, "ERROR_REPORT_AI_HEALTH", NotificationPriority.HIGH,
-                        "AI 分析サービスの異常を検知しました",
-                        String.format("直近 24 時間で AI 分析が %d 件失敗しています", failureCount),
+                        title, body,
                         "ERROR_REPORT", null,
                         NotificationScopeType.SYSTEM, null,
                         "/system-admin/error-reports", null
@@ -421,6 +529,15 @@ public class ErrorReportNotifier {
      * 「直近 5 分で N 件発生」と 1 通の Slack メッセージにまとめて送信する。
      * 本メソッドはクールダウンチェックをしない（バッチ自身が 5 分間隔のため重複は発生しない）。</p>
      *
+     * <p><b>複数 Pod で同一時間窓に複数通が届くことについて</b>:
+     * 呼び出し元は Pod ローカルのメモリバッファをドレインするため分散排他を掛けられず
+     * （掛けると敗者 Pod のエラーが取りこぼされる）、Pod 数だけ本通知が飛ぶ。
+     * ただし各通の内容は<b>互いに素なスライス</b>であり同じエラーを二重に数えてはいない。
+     * 「重複通知に見える」ことこそが運用上の害であるため、
+     * 送信元インスタンスを本文に明記して<b>スライスであることを読み取れる形</b>にする。
+     * 送信そのものを 1 通へ束ねるには全 Pod のドレインを待ち合わせる共有ストアが必要になり、
+     * 待ち合わせ中に Pod が落ちるとそのスライスを失う（＝取りこぼしの再導入）ため採用しない。</p>
+     *
      * <p>渡された Map が空の場合は何もしない（バッチ側でフィルタ済み想定だが二重防衛）。
      * Slack Webhook URL が空の場合も送信しない。</p>
      *
@@ -436,8 +553,8 @@ public class ErrorReportNotifier {
                     .mapToLong(com.mannschaft.app.errorreport.service.ErrorReportAggregator.AggregatedEntry::occurrenceCount)
                     .sum();
             StringBuilder sb = new StringBuilder();
-            sb.append(String.format(":bar_chart: *直近5分のエラー集約: %d種のエラーが計%d回発生*%n",
-                    errorTypeCount, totalOccurrences));
+            sb.append(String.format(":bar_chart: *直近5分のエラー集約: %d種のエラーが計%d回発生* (instance: %s)%n",
+                    errorTypeCount, totalOccurrences, resolveInstanceLabel()));
             // 詳細は最大 10 件まで（Slack メッセージ過大化防止）
             int shown = 0;
             for (Map.Entry<String, com.mannschaft.app.errorreport.service.ErrorReportAggregator.AggregatedEntry> e : entries.entrySet()) {
@@ -466,19 +583,53 @@ public class ErrorReportNotifier {
     }
 
     /**
+     * 集約サマリの送信元インスタンスを表すラベルを返す。
+     *
+     * <p>複数 Pod から同一時間窓のサマリが届いたとき、それが「同じ内容の重複」ではなく
+     * 「別インスタンスのスライス」であることを受け手が判別できるようにするための識別子。
+     * Kubernetes では Pod 名が {@code HOSTNAME} に入る。取得できない環境では
+     * ホスト名にフォールバックし、それも失敗したら {@code unknown} とする
+     * （ラベル取得の失敗でサマリ送信そのものを落としてはならない）。</p>
+     *
+     * @return インスタンス識別ラベル
+     */
+    private String resolveInstanceLabel() {
+        String podName = System.getenv("HOSTNAME");
+        if (podName != null && !podName.isBlank()) {
+            return podName;
+        }
+        try {
+            return java.net.InetAddress.getLocalHost().getHostName();
+        } catch (Exception e) {
+            log.debug("インスタンス識別ラベルの解決に失敗したため unknown を用いる", e);
+            return "unknown";
+        }
+    }
+
+    /**
      * エラーレポート解決時の報告者通知。user_id が非NULLのレポートに対してプッシュ通知を送信する。
+     *
+     * <p>Issue #2990 L11: 呼び出しは {@link ErrorReportNotificationListener} の
+     * {@code AFTER_COMMIT} 入口からのみ行われるため {@code @Async} を外した。</p>
      *
      * @param report エラーレポートエンティティ
      */
-    @Async("event-pool")
     public void notifyResolution(ErrorReportEntity report) {
         try {
             if (report.getUserId() == null) return;
+            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(report.getUserId()));
+            String truncatedMessage = ErrorReportService.truncate(report.getErrorMessage(), 50);
+            String title = messageSource.getMessage(
+                    "notification.errorreport.resolved.title", null,
+                    "ご報告いただいた不具合が解決しました", locale);
+            String body = messageSource.getMessage(
+                    "notification.errorreport.resolved.body",
+                    new Object[]{truncatedMessage},
+                    String.format("エラー「%s」への対応が完了しました。ご報告ありがとうございました。", truncatedMessage),
+                    locale);
             notificationService.createNotification(
                     report.getUserId(), "ERROR_REPORT_RESOLVED", NotificationPriority.NORMAL,
-                    "ご報告いただいた不具合が解決しました",
-                    String.format("エラー「%s」への対応が完了しました。ご報告ありがとうございました。",
-                            ErrorReportService.truncate(report.getErrorMessage(), 50)),
+                    title, body,
                     "ERROR_REPORT", report.getId(),
                     NotificationScopeType.PERSONAL, null,
                     null, null

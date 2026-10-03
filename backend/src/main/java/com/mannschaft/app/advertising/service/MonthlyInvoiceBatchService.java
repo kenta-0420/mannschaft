@@ -1,5 +1,7 @@
 package com.mannschaft.app.advertising.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.AdvertiserAccountStatus;
 import com.mannschaft.app.advertising.BillingMethod;
@@ -45,19 +47,38 @@ public class MonthlyInvoiceBatchService {
     private BigDecimal taxRate;
 
     /**
-     * 月次請求バッチ。毎月1日 AM 5:00 (JST) に実行。
+     * 月次請求バッチ。毎月1日 AM 5:00 (JST) に実行（前月固定）。
+     *
+     * <p>cron / {@code @BatchEndpoint}（パラメータ無し実行）は本 no-arg 側に維持し、
+     * 対象月を指定するリラン（F09.19.3 {@code POST /spotlight/invoices/run}）は
+     * {@link #generateMonthlyInvoices(YearMonth)} を直接呼ぶ。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "対象月を指定するリラン API が別途あり、止めた月の請求書は再開後に手動で生成し直せる。元の課金明細は削除されず残る")
     @BatchEndpoint(name = "advertising-invoice-monthly-generate", description = "前月分の広告主月次請求書を毎月 1 日 05:00 に生成する")
     @Scheduled(cron = "0 0 5 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "monthlyInvoiceGenerate", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Transactional
     public void generateMonthlyInvoices() {
-        YearMonth lastMonth = YearMonth.now().minusMonths(1);
-        LocalDate monthStart = lastMonth.atDay(1);
-        LocalDate monthEnd = lastMonth.atEndOfMonth();
+        generateMonthlyInvoices(YearMonth.now().minusMonths(1));
+    }
+
+    /**
+     * 指定月を対象に月次請求書を生成する（F09.19.3 §16 AC-3.7。当日中の E2E クローズを可能にする）。
+     *
+     * <p>冪等性は既存の「DRAFT のみ再生成・ISSUED/PAID/OVERDUE 不変」規則に従う。cost の再丸めは行わず、
+     * {@code ad_daily_stats.cost} の単純合算で明細金額を確定する（正本 §7.3・§16 AC-3.2）。</p>
+     *
+     * @param targetMonth 集計対象月
+     */
+    @Transactional
+    public void generateMonthlyInvoices(YearMonth targetMonth) {
+        LocalDate monthStart = targetMonth.atDay(1);
+        LocalDate monthEnd = targetMonth.atEndOfMonth();
         LocalDate invoiceMonth = monthStart;
 
-        log.info("月次請求バッチ開始: 対象月={}", lastMonth);
+        log.info("月次請求バッチ開始: 対象月={}", targetMonth);
 
         List<AdvertiserAccountEntity> activeAccounts =
                 advertiserAccountRepository.findByStatus(AdvertiserAccountStatus.ACTIVE, org.springframework.data.domain.Pageable.unpaged()).getContent();
@@ -86,8 +107,9 @@ public class MonthlyInvoiceBatchService {
             return;
         }
 
-        // キャンペーン取得 (scope_id = organization_id または team_id)
-        List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserOrganizationId(account.getScopeId());
+        // キャンペーン取得（F09.19.5: advertiser_account_id 直結。従来は account.getScopeId() を
+        // advertiser_organization_id に流用しており TEAM 広告主のキャンペーンが 1 件も載らないバグがあった）
+        List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserAccountId(account.getId());
         if (campaigns.isEmpty()) return;
 
         List<Long> campaignIds = campaigns.stream().map(AdCampaignEntity::getId).toList();
@@ -156,23 +178,23 @@ public class MonthlyInvoiceBatchService {
         }
 
         // 合計更新
-        BigDecimal taxAmount = totalAmount.multiply(taxRate).divide(BigDecimal.valueOf(100), 0, RoundingMode.FLOOR);
+        // 丸めは Stripe へ送る金額（HALF_UP・:217 相当）と揃える（§5.3。FLOOR のままだと自社DBの
+        // taxAmount と Stripe からの実入金額が1円ズレうる）
+        BigDecimal taxAmount = totalAmount.multiply(taxRate).divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
         BigDecimal totalWithTax = totalAmount.add(taxAmount);
 
         savedInvoice.updateTotals(totalAmount, taxAmount, totalWithTax);
 
         // billing_method に応じた処理
-        if (account.getBillingMethod() == BillingMethod.INVOICE) {
-            LocalDate dueDate = YearMonth.now().plusMonths(1).atEndOfMonth();
-            savedInvoice.issue();
-            savedInvoice.setDueDate(dueDate);
-        }
+        // 後払い（INVOICE）は F08.12 §5.0 で廃止済み。既存 INVOICE 行は本バッチの対象から
+        // 単に外れるだけで（新規に issue/dueDate されない）、データ自体は破壊しない。
         if (account.getBillingMethod() == BillingMethod.STRIPE && account.getStripeCustomerId() != null) {
             try {
                 createStripeInvoice(account, savedInvoice, byCampaign);
             } catch (Exception e) {
                 log.error("Stripe Invoice 作成エラー: accountId={}, error={}", account.getId(), e.getMessage(), e);
-                // status = DRAFT のまま保持、次回手動リトライで対応
+                // status = DRAFT のまま保持、次回手動リトライで対応（issue() は呼ばれていないため
+                // markPaid() の前提（ISSUED/OVERDUE）を満たさず、誤って入金確定扱いにならない）
             }
         }
     }
@@ -209,6 +231,12 @@ public class MonthlyInvoiceBatchService {
 
             // stripe_invoice_id を保存
             invoice.setStripeInvoiceId(stripeInvoice.getId());
+
+            // F08.12 §5.0: finalize 成功をもって自社請求書も DRAFT → ISSUED に進める。
+            // ここで issue() しないと、後続の invoice.paid webhook 由来 markPaid()（ISSUED/OVERDUE
+            // 前提）が IllegalStateException になり、運営領収書が1通も発行されない実バグがあった。
+            // finalize 失敗時（この行に到達しない）は DRAFT のまま残り、次回バッチのリトライに委ねる。
+            invoice.issue();
             log.info("Stripe Invoice 作成成功: stripeInvoiceId={}, invoiceId={}", stripeInvoice.getId(), invoice.getId());
         } catch (com.stripe.exception.StripeException e) {
             throw new RuntimeException("Stripe Invoice creation failed", e);

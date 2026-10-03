@@ -1,5 +1,7 @@
 package com.mannschaft.app.gamification.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.gamification.PeriodType;
 import com.mannschaft.app.gamification.entity.GamificationConfigEntity;
@@ -54,6 +56,8 @@ public class GamificationRankingBatchService {
      *   <li>処理件数をログ出力</li>
      * </ol>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "第三陣の全数洗い出しで発見: 公開入口は no-arg の runRankingSnapshot のみで期間は today から導出されるため、停止期間の periodLabel のスナップショットは二度と生成できず恒久的な欠測が残る。内部処理のみで外部送信を伴わない")
     @BatchEndpoint(name = "gamification-ranking-snapshot-daily", description = "ランキングスナップショットを毎日 03:30 に生成する")
     @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "gamification_ranking_snapshot", lockAtMostFor = "PT30M")

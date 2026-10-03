@@ -1,8 +1,13 @@
 package com.mannschaft.app.proxy.service;
 
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,8 +34,10 @@ import java.util.stream.Collectors;
 public class ProxyMonthlySummaryService {
 
     private final ProxyInputRecordRepository recordRepository;
+    private final ProxyInputConsentRepository consentRepository;
     private final PdfGeneratorService pdfGeneratorService;
     private final StorageService storageService;
+    private final AccessControlService accessControlService;
 
     /** S3キーのプレフィックス。 */
     static final String S3_KEY_PREFIX = "proxy-monthly-summaries";
@@ -117,14 +124,55 @@ public class ProxyMonthlySummaryService {
     }
 
     /**
-     * 月次サマリPDFのダウンロードURLを生成する（ADMIN向け）。
+     * 月次サマリPDFのダウンロードURLを生成する（本人 or 管理者向け）。
      *
+     * <p><b>認可</b>: 同一ドメインの {@code ProxyInputConsentService#generateScanDownloadUrl} と
+     * 同じ「本人 or ADMIN」の作法に揃える。{@code proxy_input_records} は
+     * {@code organizationId} を持たないため、対象住民（{@code subjectUserId}）の
+     * <b>同意書 entity 由来の {@code organizationId}</b> を管理権原の判定軸とする
+     * （path の値をそのまま権限スコープとして扱わない＝BOLA 封鎖）。</p>
+     *
+     * <ul>
+     *   <li>本人（{@code requestUserId == subjectUserId}）: 許可</li>
+     *   <li>SYSTEM_ADMIN: 許可</li>
+     *   <li>対象住民の未失効同意書が属するいずれかの組合で ADMIN/DEPUTY_ADMIN: 許可</li>
+     *   <li>いずれにも該当しない: 403（{@code COMMON_002}）</li>
+     * </ul>
+     *
+     * @param requestUserId 操作者ID
      * @param subjectUserId 本人ユーザーID
      * @param targetMonth   対象年月
      * @return presigned GET URL（5分TTL）
      */
-    public String getDownloadUrl(Long subjectUserId, YearMonth targetMonth) {
+    public String getDownloadUrl(Long requestUserId, Long subjectUserId, YearMonth targetMonth) {
+        authorizeSummaryAccess(requestUserId, subjectUserId);
         String s3Key = buildS3Key(subjectUserId, targetMonth);
         return storageService.generateDownloadUrl(s3Key, Duration.ofMinutes(5));
+    }
+
+    /**
+     * 月次サマリ参照の認可（本人 / SYSTEM_ADMIN / 対象住民の同意書組合の ADMIN）。
+     *
+     * <p>番人テスト {@code AuthzControllerGuardArchTest} は Controller 起点で 2 ホップまでしか
+     * 委譲を辿らないため、{@code accessControlService} は本メソッドから<b>直接</b>呼ぶこと。</p>
+     */
+    private void authorizeSummaryAccess(Long requestUserId, Long subjectUserId) {
+        if (requestUserId == null || subjectUserId == null) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        if (requestUserId.equals(subjectUserId)) {
+            return;
+        }
+        if (accessControlService.isSystemAdmin(requestUserId)) {
+            return;
+        }
+        for (ProxyInputConsentEntity consent : consentRepository.findActiveBySubjectUserId(subjectUserId)) {
+            if (consent.getOrganizationId() != null
+                    && accessControlService.isAdminOrAbove(
+                            requestUserId, consent.getOrganizationId(), "ORGANIZATION")) {
+                return;
+            }
+        }
+        throw new BusinessException(CommonErrorCode.COMMON_002);
     }
 }

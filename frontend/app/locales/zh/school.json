@@ -8,9 +8,13 @@
         "UNDECIDED": "未确认"
       },
       "absenceReason": {
-        "ILLNESS": "生病",
+        "SICK": "身体不适",
         "INJURY": "受伤",
-        "FAMILY": "家庭原因",
+        "FAMILY_REASON": "家庭原因",
+        "BEREAVEMENT": "丧假",
+        "INFECTIOUS_DISEASE": "停课（传染病）",
+        "MENTAL_HEALTH": "身心不适",
+        "OFFICIAL_BUSINESS": "公务活动",
         "OTHER": "其他"
       },
       "dailyRollCall": {

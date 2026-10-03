@@ -9,6 +9,7 @@ import com.mannschaft.app.payment.escrow.EscrowTransactionRepository;
 import com.mannschaft.app.payment.escrow.LedgerDirection;
 import com.mannschaft.app.payment.escrow.LedgerEntryEntity;
 import com.mannschaft.app.payment.escrow.LedgerEntryRepository;
+import com.mannschaft.app.payment.escrow.LedgerEntryType;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.MembershipSubscriptionRepository;
 import com.mannschaft.app.payment.service.MembershipSubscriptionService;
@@ -155,6 +156,52 @@ class MembershipSubscriptionWebhookServiceTest {
         }
 
         @Test
+        @DisplayName("AC-8: fee_policy_key が null（不在/disabled 相当）でも既定 policy へフォールバックし NPE を起こさない")
+        void nullFeePolicyKey_fallsBackWithoutNpe() {
+            MembershipSubscriptionEntity sub = subscription(MembershipSubscriptionStatus.ACTIVE);
+            sub = sub.toBuilder().feePolicyKey(null).build();
+            sub.setId(SUB_ID);
+            given(stripePaymentProvider.constructInvoiceEvent(any(), any())).willReturn(
+                    invoiceEvent("evt_c8", "invoice.created", "sub_x", "in_8", "draft", "subscription_cycle"));
+            given(idempotencyService.tryBegin(eq("evt_c8"), any(), anyBoolean())).willReturn(true);
+            given(membershipSubscriptionRepository.findByStripeSubscriptionIdAndDeletedAtIsNull("sub_x"))
+                    .willReturn(Optional.of(sub));
+            given(feePolicyRepository.findByPolicyKeyAndEnabledTrue(null)).willReturn(Optional.empty());
+
+            service.handleWebhook("payload", "sig");
+
+            // 組み込み既定（率5%＋固定0）で 10,000 → 500。
+            ArgumentCaptor<Long> feeCaptor = ArgumentCaptor.forClass(Long.class);
+            verify(stripePaymentProvider).updateInvoiceApplicationFee(eq("in_8"), feeCaptor.capture(), anyString());
+            assertThat(feeCaptor.getValue()).isEqualTo(500L);
+        }
+
+        @Test
+        @DisplayName("AC-7 ★: 焼き付け key の policy が現行 DEFAULT と異なっても、上書き額は焼付 key 基準のまま（遡及しない）")
+        void bakedPolicyIsNotOverriddenByCurrentDefault() {
+            // 既存契約は RANK_A（3%）で焼付済み。運営が DEFAULT を 8% へ上げても本契約の上書き額は 300 のまま。
+            MembershipSubscriptionEntity sub = subscription(MembershipSubscriptionStatus.ACTIVE);
+            sub = sub.toBuilder().feePolicyKey("MEMBERSHIP_RANK_A").build();
+            sub.setId(SUB_ID);
+            given(stripePaymentProvider.constructInvoiceEvent(any(), any())).willReturn(
+                    invoiceEvent("evt_c7", "invoice.created", "sub_x", "in_7", "draft", "subscription_cycle"));
+            given(idempotencyService.tryBegin(eq("evt_c7"), any(), anyBoolean())).willReturn(true);
+            given(membershipSubscriptionRepository.findByStripeSubscriptionIdAndDeletedAtIsNull("sub_x"))
+                    .willReturn(Optional.of(sub));
+            given(feePolicyRepository.findByPolicyKeyAndEnabledTrue("MEMBERSHIP_RANK_A")).willReturn(Optional.of(
+                    FeePolicyEntity.builder().policyKey("MEMBERSHIP_RANK_A").displayName("会費ランクA")
+                            .percentRate(new BigDecimal("0.0300")).flatFeeMinor(0L).enabled(true).build()));
+
+            service.handleWebhook("payload", "sig");
+
+            ArgumentCaptor<Long> feeCaptor = ArgumentCaptor.forClass(Long.class);
+            verify(stripePaymentProvider).updateInvoiceApplicationFee(eq("in_7"), feeCaptor.capture(), anyString());
+            assertThat(feeCaptor.getValue())
+                    .as("焼き付けた policy_key（3%）で算出＝300。現行 DEFAULT の料率へ引きずられてはならない")
+                    .isEqualTo(300L);
+        }
+
+        @Test
         @DisplayName("billing_reason=subscription_create（初回・案bでは発生しない）は上書きしない（防御・IGNORED）")
         void subscriptionCreate_noOverride() {
             given(stripePaymentProvider.constructInvoiceEvent(any(), any())).willReturn(
@@ -220,7 +267,7 @@ class MembershipSubscriptionWebhookServiceTest {
     class InvoicePaid {
 
         @Test
-        @DisplayName("ACTIVE: escrow(CAPTURED)＋ledger 借貸一致(10000=9500+500)＋member_payments(PAID)＋current_period 更新")
+        @DisplayName("AC-5: ACTIVE: escrow(CAPTURED)＋ledger 借貸一致(10250=9750+500)＋member_payments(PAID)＋current_period 更新")
         void active_recordsAndExtends() {
             given(stripePaymentProvider.constructInvoiceEvent(any(), any())).willReturn(
                     invoiceEvent("evt_p1", "invoice.paid", "sub_x", "in_p1", "paid", "subscription_cycle"));
@@ -241,12 +288,16 @@ class MembershipSubscriptionWebhookServiceTest {
 
             service.handleWebhook("payload", "sig");
 
-            // escrow CAPTURED・額面 10,000・appFee 500・transfer 9,500。
+            // AC-5: escrow CAPTURED・額面 10,000・実請求 10,250（＝初回サイクルの PI 金額と一致）・appFee 500。
+            // 記帳は faceAmount ではなく chargeAmount/transferAmount 基準でなければ受取側が 2.5% を余分に負担する。
             ArgumentCaptor<EscrowTransactionEntity> escrowCaptor = ArgumentCaptor.forClass(EscrowTransactionEntity.class);
             verify(escrowTransactionRepository).save(escrowCaptor.capture());
             assertThat(escrowCaptor.getValue().getStatus()).isEqualTo(EscrowStatus.CAPTURED);
             assertThat(escrowCaptor.getValue().getApplicationFeeAmount()).isEqualTo(500L);
             assertThat(escrowCaptor.getValue().getFaceAmount()).isEqualTo(10_000L);
+            assertThat(escrowCaptor.getValue().getAmount())
+                    .as("実請求額は初回サイクル（ConnectChargeService の PI amount）と同一の chargeAmount")
+                    .isEqualTo(10_250L);
 
             @SuppressWarnings("unchecked")
             ArgumentCaptor<List<LedgerEntryEntity>> ledgerCaptor = ArgumentCaptor.forClass(List.class);
@@ -255,7 +306,19 @@ class MembershipSubscriptionWebhookServiceTest {
                     .mapToLong(LedgerEntryEntity::getAmount).sum();
             long credit = ledgerCaptor.getValue().stream().filter(e -> e.getDirection() == LedgerDirection.C)
                     .mapToLong(LedgerEntryEntity::getAmount).sum();
-            assertThat(debit).isEqualTo(credit).isEqualTo(10_000L);
+            assertThat(debit).isEqualTo(credit).isEqualTo(10_250L);
+
+            // 内訳: TRANSFER_OUT=9,750（受取側の純着金＝額面−2.5%）/ FEE=500（総手数料）。
+            long transferOut = ledgerCaptor.getValue().stream()
+                    .filter(e -> e.getEntryType() == LedgerEntryType.TRANSFER_OUT)
+                    .mapToLong(LedgerEntryEntity::getAmount).sum();
+            long feeEntry = ledgerCaptor.getValue().stream()
+                    .filter(e -> e.getEntryType() == LedgerEntryType.FEE)
+                    .mapToLong(LedgerEntryEntity::getAmount).sum();
+            assertThat(transferOut)
+                    .as("受取側の着金は額面 10,000 から折半分 250 を引いた 9,750（9,500 なら受取側が 2.5% 余分に負担）")
+                    .isEqualTo(9_750L);
+            assertThat(feeEntry).isEqualTo(500L);
 
             // member_payments(PAID)・valid_until=period_end（2024-07-01 相当の epoch）。
             ArgumentCaptor<MemberPaymentEntity> mpCaptor = ArgumentCaptor.forClass(MemberPaymentEntity.class);

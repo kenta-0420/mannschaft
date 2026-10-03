@@ -146,12 +146,12 @@ function submit() {
     </div>
     <template #footer>
       <Button
-        :label="$t('common.button.cancel')"
+        :label="$t('button.cancel')"
         severity="secondary"
         @click="visibleModel = false"
       />
       <Button
-        :label="$t('common.button.create')"
+        :label="$t('button.create')"
         icon="pi pi-check"
         :loading="submitting"
         :disabled="!form.name || !form.termId || !form.effectiveFrom"

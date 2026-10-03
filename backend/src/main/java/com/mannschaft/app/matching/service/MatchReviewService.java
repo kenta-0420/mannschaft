@@ -1,5 +1,6 @@
 package com.mannschaft.app.matching.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.matching.MatchProposalStatus;
 import com.mannschaft.app.matching.MatchingErrorCode;
@@ -41,12 +42,27 @@ public class MatchReviewService {
     private final MatchProposalRepository proposalRepository;
     private final MatchRequestRepository requestRepository;
     private final MatchingMapper matchingMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * レビューを作成する。
+     *
+     * <p><strong>認可根治（第2弾 (C)）:</strong> 従来は認証プリンシパル（userID）を teamId として
+     * そのままレビュアーチーム扱いしていた（userID≠teamID の誤り。実質ほぼ常に
+     * {@code REVIEW_NOT_PARTICIPANT} で弾かれるか、稀に userID==teamID の偶然一致で不正レビューが成立し得た）。</p>
+     *
+     * <p>正しくは「実際に対戦した 2 チーム（募集チーム / 応募チーム）のうち、
+     * 現在ユーザーが管理者/副管理者であるチーム」をレビュアーチームとして解決する。
+     * これにより (1) 対戦への参加 と (2) 管理者/副管理者権限 の両方を一度に検証し、
+     * 他人の対戦への相乗り評価・一般メンバーによる投稿を封鎖する。
+     * 募集チームと応募チームは必ず異なる（自チームの募集には応募不可）ため、
+     * reviewer≠reviewee は構造的に保証される。</p>
+     *
+     * @param currentUserId 認証ユーザー ID（teamId ではない）
+     * @param request       レビュー投稿内容
      */
     @Transactional
-    public ReviewCreateResponse createReview(Long teamId, CreateReviewRequest request) {
+    public ReviewCreateResponse createReview(Long currentUserId, CreateReviewRequest request) {
         MatchProposalEntity proposal = proposalRepository.findById(request.getProposalId())
                 .orElseThrow(() -> new BusinessException(MatchingErrorCode.PROPOSAL_NOT_FOUND));
 
@@ -58,18 +74,24 @@ public class MatchReviewService {
         MatchRequestEntity matchRequest = requestRepository.findById(proposal.getRequestId())
                 .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
 
-        // 関与チームチェック
+        // 対戦した 2 チーム
         Long requestingTeamId = matchRequest.getTeamId();
         Long proposingTeamId = proposal.getProposingTeamId();
-        if (!teamId.equals(requestingTeamId) && !teamId.equals(proposingTeamId)) {
+
+        // 認可: 現ユーザーが管理者/副管理者である「参加チーム」をレビュアーチームとして解決する。
+        // どちらの参加チームの管理者/副管理者でもなければ、対戦非参加または権限不足としてレビュー不可。
+        boolean adminOfRequesting = accessControlService.isAdminOrAbove(currentUserId, requestingTeamId, "TEAM");
+        boolean adminOfProposing = accessControlService.isAdminOrAbove(currentUserId, proposingTeamId, "TEAM");
+        if (!adminOfRequesting && !adminOfProposing) {
             throw new BusinessException(MatchingErrorCode.REVIEW_NOT_PARTICIPANT);
         }
 
-        // レビュー対象チーム（相手チーム）を決定
-        Long revieweeTeamId = teamId.equals(requestingTeamId) ? proposingTeamId : requestingTeamId;
+        // レビュアーチームと、その相手（レビュー対象）チームを確定。
+        Long reviewerTeamId = adminOfRequesting ? requestingTeamId : proposingTeamId;
+        Long revieweeTeamId = adminOfRequesting ? proposingTeamId : requestingTeamId;
 
-        // 重複チェック
-        if (reviewRepository.existsByProposalIdAndReviewerTeamId(request.getProposalId(), teamId)) {
+        // 重複チェック（同一 proposal・同一レビュアーチームで1件のみ）
+        if (reviewRepository.existsByProposalIdAndReviewerTeamId(request.getProposalId(), reviewerTeamId)) {
             throw new BusinessException(MatchingErrorCode.DUPLICATE_REVIEW);
         }
 
@@ -82,7 +104,7 @@ public class MatchReviewService {
 
         MatchReviewEntity entity = MatchReviewEntity.builder()
                 .proposalId(request.getProposalId())
-                .reviewerTeamId(teamId)
+                .reviewerTeamId(reviewerTeamId)
                 .revieweeTeamId(revieweeTeamId)
                 .rating(request.getRating())
                 .comment(request.getComment())
@@ -90,7 +112,8 @@ public class MatchReviewService {
                 .build();
 
         MatchReviewEntity saved = reviewRepository.save(entity);
-        log.info("レビュー作成: reviewId={}, proposalId={}, reviewerTeamId={}", saved.getId(), request.getProposalId(), teamId);
+        log.info("レビュー作成: reviewId={}, proposalId={}, reviewerTeamId={}, byUserId={}",
+                saved.getId(), request.getProposalId(), reviewerTeamId, currentUserId);
         return new ReviewCreateResponse(saved.getId(), revieweeTeamId, saved.getRating());
     }
 

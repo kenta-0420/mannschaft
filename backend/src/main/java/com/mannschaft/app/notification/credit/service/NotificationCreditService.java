@@ -1,7 +1,6 @@
 package com.mannschaft.app.notification.credit.service;
 
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.credit.dto.NotificationCreditBalanceResponse;
 import com.mannschaft.app.notification.credit.dto.NotificationCreditPackageResponse;
 import com.mannschaft.app.notification.credit.dto.NotificationCreditPurchaseResponse;
@@ -12,20 +11,19 @@ import com.mannschaft.app.notification.credit.entity.NotificationMonthlyUsageEnt
 import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
 import com.mannschaft.app.notification.credit.entity.OrganizationNotificationBalanceEntity;
 import com.mannschaft.app.notification.credit.error.NotificationCreditErrorCode;
+import com.mannschaft.app.notification.credit.event.NotificationCreditFreeQuotaAlertEvent;
 import com.mannschaft.app.notification.credit.repository.NotificationCreditPackageRepository;
 import com.mannschaft.app.notification.credit.repository.NotificationCreditPurchaseRepository;
 import com.mannschaft.app.notification.credit.repository.NotificationMonthlyUsageRepository;
 import com.mannschaft.app.notification.credit.repository.OrganizationNotificationBalanceRepository;
-import com.mannschaft.app.notification.service.NotificationHelper;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -63,12 +61,19 @@ public class NotificationCreditService {
     private final NotificationCreditPurchaseRepository purchaseRepository;
     private final NotificationCreditPackageRepository packageRepository;
     private final NotificationMonthlyUsageRepository monthlyUsageRepository;
-    private final UserRoleRepository userRoleRepository;
-    // NotificationHelper → NotificationCreditService → NotificationHelper の循環を断つ。
-    // sendFreeQuotaAlertAsync（@Async）でのみ使用するため @Lazy プロキシで遅延解決する。
-    @Lazy
-    @Autowired
-    private NotificationHelper notificationHelper;
+    /**
+     * Issue #2990 L2: 無料枠アラートは業務トランザクション内で送らず、AFTER_COMMIT 後に
+     * {@code NotificationCreditFreeQuotaAlertListener} が配送する（原則5）。
+     */
+    private final ApplicationEventPublisher eventPublisher;
+    /**
+     * CMP-260920-1040是正: 新規追加メソッド（{@link #isSendBlocked}）は引数なし
+     * {@code LocalDateTime.now()} を使わず、注入した {@link Clock} を明示的に渡す
+     * （docs/architecture/datetime_policy_utc_instant_vs_wallclock.md）。既存メソッドの
+     * 引数なし {@code now()} は凍結台帳の対象のため、本是正では触れない。
+     */
+    @Qualifier("wallClock")
+    private final Clock clock;
 
 
     // ─────────────────────────────────────────────────────────
@@ -115,12 +120,10 @@ public class NotificationCreditService {
         if (!firstOfMonth.equals(balance.getFreeQuotaMonth())) {
             log.info("無料枠リセット（バッチ未実行補完）: organizationId={}, oldMonth={}, newMonth={}",
                     organizationId, balance.getFreeQuotaMonth(), firstOfMonth);
-            balance = balance.toBuilder()
-                    .freeUsedThisMonth(0L)
-                    .freeQuotaMonth(firstOfMonth)
-                    .alertSentThisMonth(false)
-                    .gracePeriodDebt(0L)
-                    .build();
+            // managed entity を直接ミューテート。toBuilder().build() は継承フィールド id を
+            // 引き継がず id=null の新インスタンスになり、save が INSERT になって
+            // organization_id 一意制約違反で 500 になるため使わない。
+            balance.resetFreeQuotaForMonth(firstOfMonth);
             balance = balanceRepository.save(balance);
         }
 
@@ -177,7 +180,7 @@ public class NotificationCreditService {
         if (balance.getFreeUsedThisMonth() >= FREE_ALERT_THRESHOLD
                 && !Boolean.TRUE.equals(balance.getAlertSentThisMonth())) {
             balance.markAlertSentThisMonth();
-            sendFreeQuotaAlertAsync(organizationId);
+            eventPublisher.publishEvent(new NotificationCreditFreeQuotaAlertEvent(organizationId));
         }
 
         balanceRepository.save(balance);
@@ -237,6 +240,26 @@ public class NotificationCreditService {
      * @param organizationId 組織ID
      * @return 残高レスポンス
      */
+    /**
+     * CMP-260920-1040: 受付の時点で猶予期間を既に超過しているかを、消費を伴わずに判定する
+     * （軍議第8版確定稿 §3.3・AC-26。確認通知の送信APIが受付時の事前チェックに使う）。
+     *
+     * <p>{@link #consume} と同じ猶予期間の判定基準（{@link #GRACE_PERIOD_HOURS}）を用いるが、
+     * 残高の取得・更新は一切行わない読み取り専用の判定である。</p>
+     *
+     * @param organizationId 組織ID
+     * @return 猶予期間を超過していて送信をブロックすべきなら true
+     */
+    public boolean isSendBlocked(Long organizationId) {
+        return balanceRepository.findByOrganizationId(organizationId)
+                .map(balance -> {
+                    LocalDateTime graceStart = balance.getGracePeriodStartAt();
+                    return graceStart != null
+                            && LocalDateTime.now(clock).isAfter(graceStart.plusHours(GRACE_PERIOD_HOURS));
+                })
+                .orElse(false);
+    }
+
     public NotificationCreditBalanceResponse getBalance(Long organizationId) {
         Optional<OrganizationNotificationBalanceEntity> balanceOpt =
                 balanceRepository.findByOrganizationId(organizationId);
@@ -321,33 +344,4 @@ public class NotificationCreditService {
         monthlyUsageRepository.save(usage);
     }
 
-    /**
-     * 無料枠9000通超過アラートをADMINへ非同期送信する。
-     *
-     * @param organizationId 組織ID
-     */
-    @Async
-    protected void sendFreeQuotaAlertAsync(Long organizationId) {
-        try {
-            List<Long> adminUserIds = userRoleRepository.findAdminUserIdsByOrganizationId(organizationId);
-            if (adminUserIds.isEmpty()) {
-                return;
-            }
-            notificationHelper.notifyAll(
-                    adminUserIds,
-                    "NOTIFICATION_CREDIT_ALERT",
-                    "無料通知枠が残りわずかです",
-                    "今月の無料通知枠（10,000通）の90%を使用しました。超過分はクレジットから消費されます。",
-                    "NOTIFICATION_CREDIT",
-                    organizationId,
-                    NotificationScopeType.ORGANIZATION,
-                    organizationId,
-                    "/organizations/" + organizationId + "/settings/notification-credits",
-                    null
-            );
-            log.info("無料枠アラート送信: organizationId={}", organizationId);
-        } catch (Exception e) {
-            log.error("無料枠アラート送信失敗: organizationId={}", organizationId, e);
-        }
-    }
 }

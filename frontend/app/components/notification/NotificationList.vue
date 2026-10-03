@@ -4,7 +4,9 @@ import type { SnoozePreset } from '~/utils/snoozePreset'
 import { computeSnoozeUntil } from '~/utils/snoozePreset'
 
 const { getNotifications, markAsRead, markAsUnread, markAllAsRead, snooze } = useNotificationApi()
-const { confirmNotification, getNotificationDetail } = useConfirmableNotificationApi()
+const { confirmNotification, confirmPersonalNotification, getNotificationDetail } =
+  useConfirmableNotificationApi()
+const { confirmClosure } = useEmergencyClosureApi()
 const { showError } = useNotification()
 const { t } = useI18n()
 const router = useRouter()
@@ -15,7 +17,7 @@ const toast = useToast()
 const notifications = ref<NotificationResponse[]>([])
 const notifBadgeCount = useState<number>('badge:notifCount', () => 0)
 const loading = ref(false)
-const nextCursor = ref<number | null>(null)
+const nextPage = ref(0)
 const hasNext = ref(false)
 const filter = ref<'all' | 'unread'>('all')
 
@@ -30,7 +32,9 @@ const confirmableSummaries = ref<Record<number, UnconfirmedSummary>>({})
 
 // ─── スヌーズ ─────────────────────────────────
 /** スヌーズメニューの PrimeVue Menu ref（notif.id をキーとして管理）*/
-const snoozeMenuRefs = ref<Record<number, InstanceType<typeof import('primevue/menu').default> | null>>({})
+const snoozeMenuRefs = ref<
+  Record<number, InstanceType<typeof import('primevue/menu').default> | null>
+>({})
 
 /** スヌーズプリセット定義（表示ラベルは i18n）*/
 const SNOOZE_PRESETS: SnoozePreset[] = ['in3h', 'tonight', 'tomorrowMorning', 'nextWeek']
@@ -68,8 +72,7 @@ async function onSnooze(notif: NotificationResponse, preset: SnoozePreset) {
       summary: t('inbox.action.snoozed'),
       life: 3000,
     })
-  }
-  catch {
+  } catch {
     // ロールバック: 除去した通知を元の位置に戻す
     if (idx >= 0) {
       notifications.value.splice(idx, 0, notif)
@@ -80,28 +83,26 @@ async function onSnooze(notif: NotificationResponse, preset: SnoozePreset) {
 
 // ─── 通知読み込み ──────────────────────────────
 
-async function loadNotifications(cursor?: number) {
+async function loadNotifications(page = 0) {
   loading.value = true
   try {
     const res = await getNotifications({
-      cursor,
+      page,
+      size: 20,
       isRead: filter.value === 'unread' ? false : undefined,
     })
-    if (!cursor) {
+    if (page === 0) {
       notifications.value = res.data
-    }
-    else {
+    } else {
       notifications.value.push(...res.data)
     }
-    nextCursor.value = res.meta.nextCursor
-    hasNext.value = res.meta.hasNext
+    nextPage.value = res.meta.page + 1
+    hasNext.value = nextPage.value < res.meta.totalPages
     // 確認通知のサマリ（未確認件数等）を並列取得（権限が無いものは静かにスキップ）
     await loadConfirmableSummariesForList()
-  }
-  catch {
-    showError('通知の取得に失敗しました')
-  }
-  finally {
+  } catch {
+    showError(t('notification.list.loadError'))
+  } finally {
     loading.value = false
   }
 }
@@ -111,14 +112,12 @@ async function onToggleRead(notif: NotificationResponse) {
     if (notif.isRead) {
       await markAsUnread(notif.id)
       notif.isRead = false
-    }
-    else {
+    } else {
       await markAsRead(notif.id)
       notif.isRead = true
     }
-  }
-  catch {
-    showError('操作に失敗しました')
+  } catch {
+    showError(t('notification.list.actionError'))
   }
 }
 
@@ -127,9 +126,8 @@ async function onMarkAllRead() {
     await markAllAsRead()
     notifications.value.forEach((n) => (n.isRead = true))
     notifBadgeCount.value = 0 // ベルバッジを即時リセット
-  }
-  catch {
-    showError('一括既読に失敗しました')
+  } catch {
+    showError(t('notification.list.markAllReadError'))
   }
 }
 
@@ -145,27 +143,70 @@ function onClickNotification(notif: NotificationResponse) {
 
 function getPriorityColor(priority: string): string {
   switch (priority) {
-    case 'URGENT': return 'text-red-600'
-    case 'HIGH': return 'text-orange-500'
-    default: return 'text-surface-500'
+    case 'URGENT':
+      return 'text-red-600'
+    case 'HIGH':
+      return 'text-orange-500'
+    default:
+      return 'text-surface-500'
   }
 }
 
 function getIcon(sourceType: string): string {
   switch (sourceType) {
-    case 'SCHEDULE': return 'pi pi-calendar'
-    case 'CHAT_MESSAGE': return 'pi pi-comment'
-    case 'TIMELINE_POST': return 'pi pi-comments'
-    case 'BLOG_POST': return 'pi pi-book'
-    case 'SYSTEM': return 'pi pi-info-circle'
-    case 'CONFIRMABLE_NOTIFICATION': return 'pi pi-check-circle'
-    default: return 'pi pi-bell'
+    case 'SCHEDULE':
+      return 'pi pi-calendar'
+    case 'CHAT_MESSAGE':
+      return 'pi pi-comment'
+    case 'TIMELINE_POST':
+      return 'pi pi-comments'
+    case 'BLOG_POST':
+      return 'pi pi-book'
+    case 'SYSTEM':
+      return 'pi pi-info-circle'
+    case 'CONFIRMABLE_NOTIFICATION':
+      return 'pi pi-check-circle'
+    case 'EMERGENCY_CLOSURE':
+      return 'pi pi-exclamation-triangle'
+    default:
+      return 'pi pi-bell'
   }
 }
 
 /** 確認通知かどうか判定する */
 function isConfirmableNotification(notif: NotificationResponse): boolean {
   return notif.sourceType === 'CONFIRMABLE_NOTIFICATION'
+}
+
+/** 緊急休業通知かどうか判定する */
+function isEmergencyClosureNotification(notif: NotificationResponse): boolean {
+  return notif.sourceType === 'EMERGENCY_CLOSURE'
+}
+
+/**
+ * 緊急休業通知の「確認する」ボタンをクリックした時の処理。
+ * scopeId（チームslug: string）と sourceId（closureId: number）を使って
+ * useEmergencyClosureApi().confirmClosure(teamId, closureId) を呼ぶ。
+ */
+async function onConfirmEmergencyClosure(notif: NotificationResponse) {
+  if (!notif.scopeId || !notif.sourceId) {
+    showError(t('emergency_closure.error.info_missing'))
+    return
+  }
+  try {
+    await confirmClosure(notif.scopeId, notif.sourceId)
+    await markAsRead(notif.id)
+    notif.isRead = true
+    toast.add({
+      severity: 'success',
+      summary: t('emergency_closure.confirm_success'),
+      life: 3000,
+    })
+    // 一覧を再取得して確認状態を反映
+    await loadNotifications()
+  } catch {
+    showError(t('emergency_closure.confirm_failed'))
+  }
 }
 
 /** 確認通知の期限日を取得する（sourceIdを使って別途取得する場合のプレースホルダ。現状はbodyから判断） */
@@ -193,8 +234,7 @@ async function loadConfirmableSummary(notif: NotificationResponse) {
       totalRecipientCount: detail.totalRecipientCount,
       visibility: detail.unconfirmedVisibility,
     }
-  }
-  catch {
+  } catch {
     // 認可エラー等は無視（メンバーが閲覧権限を持たないケース）
   }
 }
@@ -213,26 +253,44 @@ function getConfirmableSummary(notif: NotificationResponse): UnconfirmedSummary 
 
 /** 確認通知の「確認する」ボタンをクリックした時の処理 */
 async function onConfirmNotification(notif: NotificationResponse) {
-  if (!notif.scopeType || !notif.scopeId || !notif.sourceId) {
-    showError('確認通知の情報が不足しています')
+  if (!notif.scopeType || !notif.sourceId) {
+    showError(t('notification.list.confirmInfoMissing'))
     return
   }
-  // scopeTypeをTEAM/ORGANIZATIONに変換（PersonalやSystemには来ない想定）
-  const scopeType = notif.scopeType as 'TEAM' | 'ORGANIZATION'
-  if (scopeType !== 'TEAM' && scopeType !== 'ORGANIZATION') {
-    showError('スコープが不正です')
+  const scopeType = notif.scopeType
+  if (scopeType !== 'TEAM' && scopeType !== 'ORGANIZATION' && scopeType !== 'SYSTEM') {
+    showError(t('notification.list.invalidScope'))
     return
   }
   try {
-    await confirmNotification(scopeType, notif.scopeId, notif.sourceId)
-    await markAsRead(notif.id)
-    notif.isRead = true
-    toast.add({ severity: 'success', summary: '確認しました', life: 3000 })
-    // 一覧を再取得
-    await loadNotifications()
-  }
-  catch {
-    showError('確認処理に失敗しました')
+    if (scopeType === 'SYSTEM') {
+      await confirmPersonalNotification(notif.sourceId)
+    } else {
+      if (!notif.scopeId) {
+        showError(t('notification.list.confirmInfoMissing'))
+        return
+      }
+      await confirmNotification(scopeType, notif.scopeId, notif.sourceId)
+    }
+    notif.isConfirmed = true
+    if (!notif.isRead) {
+      try {
+        await markAsRead(notif.id)
+        notif.isRead = true
+      } catch {
+        showError(t('inbox.action.readFailed'))
+      }
+    }
+    toast.add({ severity: 'success', summary: t('notification.list.confirmed'), life: 3000 })
+    // 追加読み込み済みの通知を保持したまま、対象通知のサマリだけを更新する。
+    confirmableSummaries.value = Object.fromEntries(
+      Object.entries(confirmableSummaries.value).filter(
+        ([sourceId]) => sourceId !== String(notif.sourceId),
+      ),
+    )
+    await loadConfirmableSummary(notif)
+  } catch {
+    showError(t('notification.list.confirmError'))
   }
 }
 
@@ -245,19 +303,26 @@ defineExpose({ refresh: () => loadNotifications() })
 <template>
   <div>
     <!-- ヘッダー -->
-    <div class="mb-4 flex items-center justify-between">
+    <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <div class="flex items-center gap-2">
         <SelectButton
           v-model="filter"
+          class="notification-filter"
           :options="[
-            { label: 'すべて', value: 'all' },
-            { label: '未読', value: 'unread' },
+            { label: $t('notification.list.all'), value: 'all' },
+            { label: $t('notification.list.unread'), value: 'unread' },
           ]"
           option-label="label"
           option-value="value"
         />
       </div>
-      <Button label="すべて既読にする" text size="small" @click="onMarkAllRead" />
+      <Button
+        :label="$t('notification.list.markAllRead')"
+        class="min-h-11 w-full sm:w-auto"
+        text
+        size="small"
+        @click="onMarkAllRead"
+      />
     </div>
 
     <!-- 通知一覧 -->
@@ -271,12 +336,14 @@ defineExpose({ refresh: () => loadNotifications() })
       <div
         v-for="notif in notifications"
         :key="notif.id"
+        :data-notification-id="notif.id"
         role="button"
         tabindex="0"
-        class="flex items-start gap-3 border-b border-surface-100 px-4 py-3 text-left transition-colors hover:bg-surface-50"
+        class="grid grid-cols-[8px_32px_minmax(0,1fr)] items-start gap-x-3 border-b border-surface-100 px-4 py-3 text-left transition-colors hover:bg-surface-50 sm:flex sm:gap-3"
         :class="[
           notif.isRead ? 'opacity-60' : '',
           isConfirmableNotification(notif) ? 'bg-amber-50 hover:bg-amber-100' : '',
+          isEmergencyClosureNotification(notif) ? 'bg-red-50 hover:bg-red-100' : '',
         ]"
         @click="onClickNotification(notif)"
         @keydown.enter="onClickNotification(notif)"
@@ -284,32 +351,47 @@ defineExpose({ refresh: () => loadNotifications() })
       >
         <!-- 未読ドット -->
         <div class="mt-2 flex shrink-0 items-center">
-          <div
-            v-if="!notif.isRead"
-            class="h-2 w-2 rounded-full bg-primary"
-          />
+          <div v-if="!notif.isRead" class="h-2 w-2 rounded-full bg-primary" />
           <div v-else class="h-2 w-2" />
         </div>
 
         <!-- アイコン -->
         <div
           class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-          :class="isConfirmableNotification(notif) ? 'bg-amber-200' : 'bg-surface-100'"
+          :class="[
+            isConfirmableNotification(notif) ? 'bg-amber-200' : '',
+            isEmergencyClosureNotification(notif) ? 'bg-red-100' : '',
+            !isConfirmableNotification(notif) && !isEmergencyClosureNotification(notif)
+              ? 'bg-surface-100'
+              : '',
+          ]"
         >
           <i
             :class="getIcon(notif.sourceType)"
             class="text-sm"
-            :style="isConfirmableNotification(notif) ? 'color: #d97706' : ''"
+            :style="{
+              color: isConfirmableNotification(notif)
+                ? '#d97706'
+                : isEmergencyClosureNotification(notif)
+                  ? '#dc2626'
+                  : undefined,
+            }"
           />
         </div>
 
         <!-- 内容 -->
         <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-2">
-            <p class="text-sm font-medium" :class="getPriorityColor(notif.priority)">
+          <div class="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+            <p
+              class="min-w-0 break-words text-sm font-medium"
+              :class="getPriorityColor(notif.priority)"
+            >
               {{ notif.title }}
             </p>
-            <span v-if="notif.scopeName" class="rounded bg-surface-100 px-1.5 py-0.5 text-xs text-surface-500">
+            <span
+              v-if="notif.scopeName"
+              class="rounded bg-surface-100 px-1.5 py-0.5 text-xs text-surface-500"
+            >
               {{ notif.scopeName }}
             </span>
             <!-- 確認通知バッジ -->
@@ -319,11 +401,21 @@ defineExpose({ refresh: () => loadNotifications() })
             >
               {{ $t('confirmable.title') }}
             </span>
+            <!-- 緊急休業通知バッジ -->
+            <span
+              v-if="isEmergencyClosureNotification(notif)"
+              class="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700"
+            >
+              {{ $t('emergency_closure.badge') }}
+            </span>
           </div>
-          <p v-if="notif.body" class="mt-0.5 truncate text-xs text-surface-400">
+          <p
+            v-if="notif.body"
+            class="mt-0.5 break-words whitespace-normal text-xs text-surface-400 sm:truncate"
+          >
             {{ notif.body }}
           </p>
-          <div class="mt-1 flex items-center gap-2 text-xs text-surface-400">
+          <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-surface-400">
             <span v-if="notif.actor">{{ notif.actor.displayName }}</span>
             <span>{{ relativeTime(notif.createdAt) }}</span>
             <!-- 期限カウントダウン（将来的にAPIにdeadlineAtが追加された場合に対応） -->
@@ -340,17 +432,19 @@ defineExpose({ refresh: () => loadNotifications() })
               class="font-medium text-amber-700"
             >
               <i class="pi pi-users mr-0.5" />
-              {{ $t('confirmable.unconfirmed_count', { count: getConfirmableSummary(notif)?.unconfirmedCount ?? 0 }) }}
+              {{
+                $t('confirmable.unconfirmed_count', {
+                  count: getConfirmableSummary(notif)?.unconfirmedCount ?? 0,
+                })
+              }}
             </span>
           </div>
 
           <!-- 「確認する」ボタン（CONFIRMABLE_NOTIFICATION かつ未確認の場合） -->
-          <div
-            v-if="isConfirmableNotification(notif) && !notif.isRead"
-            class="mt-2"
-          >
+          <div v-if="isConfirmableNotification(notif) && notif.isConfirmed === false" class="mt-2">
             <Button
               :label="$t('confirmable.confirm_button')"
+              class="min-h-11"
               size="small"
               severity="warn"
               icon="pi pi-check"
@@ -358,9 +452,9 @@ defineExpose({ refresh: () => loadNotifications() })
             />
           </div>
 
-          <!-- 確認済みラベル -->
+          <!-- 確認済みラベル（CONFIRMABLE_NOTIFICATION） -->
           <div
-            v-else-if="isConfirmableNotification(notif) && notif.isRead"
+            v-else-if="isConfirmableNotification(notif) && notif.isConfirmed === true"
             class="mt-1"
           >
             <span class="text-xs text-surface-400">
@@ -368,13 +462,33 @@ defineExpose({ refresh: () => loadNotifications() })
               {{ $t('confirmable.already_confirmed') }}
             </span>
           </div>
+
+          <!-- 「確認する」ボタン（EMERGENCY_CLOSURE かつ未確認の場合） -->
+          <div v-if="isEmergencyClosureNotification(notif) && !notif.isRead" class="mt-2">
+            <Button
+              :label="$t('emergency_closure.confirm_button')"
+              class="min-h-11"
+              size="small"
+              severity="danger"
+              icon="pi pi-check"
+              @click.stop="onConfirmEmergencyClosure(notif)"
+            />
+          </div>
+
+          <!-- 確認済みラベル（EMERGENCY_CLOSURE） -->
+          <div v-else-if="isEmergencyClosureNotification(notif) && notif.isRead" class="mt-1">
+            <span class="text-xs text-surface-400">
+              <i class="pi pi-check mr-1 text-green-500" />
+              {{ $t('emergency_closure.already_confirmed') }}
+            </span>
+          </div>
         </div>
 
         <!-- アクションボタン群（スヌーズ + 既読トグル）-->
-        <div class="mt-1 flex shrink-0 items-center gap-1">
-          <!-- スヌーズボタン -->
+        <div class="col-start-3 mt-2 flex shrink-0 items-center gap-1 sm:col-auto sm:mt-1">
+          <!-- スヌーズボタン（ヒット領域44x44。アイコン視覚サイズはtext-xsのまま維持） -->
           <button
-            class="p-1 text-surface-300 hover:text-primary"
+            class="inline-flex min-h-11 min-w-11 items-center justify-center p-1 text-surface-300 hover:text-primary"
             :aria-label="$t('inbox.action.snooze')"
             :title="$t('inbox.action.snooze')"
             @click.stop="toggleSnoozeMenu($event, notif)"
@@ -383,15 +497,26 @@ defineExpose({ refresh: () => loadNotifications() })
           </button>
           <!-- スヌーズプリセットメニュー（PrimeVue Menu popup） -->
           <Menu
-            :ref="(el) => { snoozeMenuRefs[notif.id] = el as InstanceType<typeof import('primevue/menu').default> | null }"
+            :ref="
+              (el) => {
+                snoozeMenuRefs[notif.id] = el as InstanceType<
+                  typeof import('primevue/menu').default
+                > | null
+              }
+            "
             :model="getSnoozeMenuItems(notif)"
             :popup="true"
           />
 
-          <!-- 既読/未読トグル -->
+          <!-- 既読/未読トグル（ヒット領域44x44。アイコン視覚サイズはtext-xsのまま維持） -->
           <button
-            class="p-1 text-surface-300 hover:text-surface-600"
-            :title="notif.isRead ? '未読にする' : '既読にする'"
+            class="inline-flex min-h-11 min-w-11 items-center justify-center p-1 text-surface-300 hover:text-surface-600"
+            :aria-label="
+              notif.isRead ? $t('notification.list.markUnread') : $t('notification.list.markRead')
+            "
+            :title="
+              notif.isRead ? $t('notification.list.markUnread') : $t('notification.list.markRead')
+            "
             @click.stop="onToggleRead(notif)"
           >
             <i :class="notif.isRead ? 'pi pi-envelope' : 'pi pi-check'" class="text-xs" />
@@ -403,12 +528,18 @@ defineExpose({ refresh: () => loadNotifications() })
     <!-- 空状態 -->
     <div v-if="!loading && notifications.length === 0" class="py-12 text-center">
       <i class="pi pi-bell-slash mb-3 text-4xl text-surface-300" />
-      <p class="text-surface-400">通知はありません</p>
+      <p class="text-surface-400">{{ $t('notification.list.empty') }}</p>
     </div>
 
     <!-- もっと読む -->
     <div v-if="hasNext" class="flex justify-center py-4">
-      <Button label="もっと読む" text :loading="loading" @click="loadNotifications(nextCursor!)" />
+      <Button
+        :label="$t('notification.list.loadMore')"
+        class="min-h-11"
+        text
+        :loading="loading"
+        @click="loadNotifications(nextPage)"
+      />
     </div>
 
     <div v-if="loading && notifications.length === 0" class="flex justify-center py-8">
@@ -416,3 +547,10 @@ defineExpose({ refresh: () => loadNotifications() })
     </div>
   </div>
 </template>
+
+<style scoped>
+:deep(.notification-filter .p-togglebutton) {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+</style>

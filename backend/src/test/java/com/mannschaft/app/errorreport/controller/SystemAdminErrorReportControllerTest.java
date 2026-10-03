@@ -2,6 +2,7 @@ package com.mannschaft.app.errorreport.controller;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.errorreport.ErrorReportMapper;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
@@ -65,6 +66,8 @@ class SystemAdminErrorReportControllerTest {
     private com.mannschaft.app.errorreport.service.GitHubIssueService gitHubIssueService;
     @Mock
     private com.mannschaft.app.errorreport.ErrorReportProperties errorReportProperties;
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks
     private SystemAdminErrorReportController controller;

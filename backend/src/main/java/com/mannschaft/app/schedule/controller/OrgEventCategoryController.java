@@ -35,13 +35,15 @@ public class OrgEventCategoryController {
     private final AccessControlService accessControlService;
 
     /**
-     * 組織行事カテゴリ一覧を取得する。
+     * 組織行事カテゴリ一覧を取得する。当該組織（配下チームを含む）のメンバーのみ取得可能。
      */
     @GetMapping
     @Operation(summary = "組織行事カテゴリ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<EventCategoryResponse>>> listCategories(
             @PathVariable Long orgId) {
+        accessControlService.checkMembershipOrDescendant(
+                SecurityUtils.getCurrentUserId(), orgId, "ORGANIZATION");
         List<ScheduleEventCategoryEntity> entities =
                 categoryService.getCategoriesForOrganization(orgId);
         List<EventCategoryResponse> responses = entities.stream()

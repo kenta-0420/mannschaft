@@ -1,15 +1,21 @@
 <script setup lang="ts">
 import type { ClosureHistoryItem, ClosureConfirmationItem } from '~/composables/useEmergencyClosureApi'
+import type { EmergencyClosureConnectionState } from '~/composables/useEmergencyClosureLive'
 
 defineProps<{
   loading: boolean
   items: ClosureHistoryItem[]
   expandedClosureId: number | null
-  confirmationsMap: Record<number, ClosureConfirmationItem[]>
+  /** 展開中の臨時休業 1 件の確認状況（リアルタイム購読の結果）。 */
+  confirmations: ClosureConfirmationItem[]
+  /** 展開中の臨時休業の確認済み件数（配信の最新確定値）。 */
+  confirmedCount: number
+  /** 展開中の臨時休業の総件数（配信の最新確定値）。 */
+  totalCount: number
   confirmationsLoading: boolean
+  /** 確認状況パネルの接続状態（LIVE/再接続中/オフライン/拒否）。 */
+  connectionState: EmergencyClosureConnectionState
   formatDate: (iso: string) => string
-  confirmedCount: (closureId: number) => number
-  totalCount: (closureId: number) => number
 }>()
 
 const emit = defineEmits<{
@@ -76,8 +82,8 @@ const { formatDateTime } = useDatetime()
                 >
                   <i v-if="confirmationsLoading && expandedClosureId === item.id" class="pi pi-spin pi-spinner text-xs" />
                   <template v-else>
-                    <span v-if="confirmationsMap[item.id]">
-                      {{ $t('emergency_closure.message.confirmed_count', { confirmed: confirmedCount(item.id), total: totalCount(item.id) }) }}
+                    <span v-if="expandedClosureId === item.id">
+                      {{ $t('emergency_closure.message.confirmed_count', { confirmed: confirmedCount, total: totalCount }) }}
                     </span>
                     <span v-else>{{ $t('emergency_closure.button.view_confirmations') }}</span>
                     <i :class="expandedClosureId === item.id ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-xs" />
@@ -87,8 +93,25 @@ const { formatDateTime } = useDatetime()
             </tr>
             <tr v-if="expandedClosureId === item.id">
               <td colspan="5" class="px-4 pb-3 pt-1">
-                <div v-if="confirmationsMap[item.id]" class="rounded-md border border-surface-200 bg-surface-50 p-3 dark:border-surface-600 dark:bg-surface-800">
-                  <p class="mb-2 text-xs font-semibold text-surface-500">{{ $t('emergency_closure.section.confirmations') }}</p>
+                <div v-if="!confirmationsLoading" class="rounded-md border border-surface-200 bg-surface-50 p-3 dark:border-surface-600 dark:bg-surface-800">
+                  <div class="mb-2 flex flex-wrap items-center gap-2">
+                    <p class="text-xs font-semibold text-surface-500">{{ $t('emergency_closure.section.confirmations') }}</p>
+                    <!-- リアルタイム接続状態インジケーター（患者の確認に応じて自動更新する旨を可視化） -->
+                    <span
+                      class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.65rem] font-medium"
+                      :class="connectionState === 'LIVE'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : connectionState === 'DENIED'
+                          ? 'bg-surface-200 text-surface-500 dark:bg-surface-700'
+                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'"
+                    >
+                      <i
+                        class="text-[0.6rem]"
+                        :class="connectionState === 'LIVE' ? 'pi pi-circle-fill' : 'pi pi-circle'"
+                      />
+                      {{ $t(`emergency_closure.connection.${connectionState.toLowerCase()}`) }}
+                    </span>
+                  </div>
                   <table class="w-full text-xs">
                     <thead>
                       <tr class="border-b border-surface-200 dark:border-surface-600">
@@ -100,7 +123,7 @@ const { formatDateTime } = useDatetime()
                     </thead>
                     <tbody>
                       <tr
-                        v-for="conf in confirmationsMap[item.id]"
+                        v-for="conf in confirmations"
                         :key="conf.userId"
                         class="border-b border-surface-100 last:border-0 dark:border-surface-700"
                       >

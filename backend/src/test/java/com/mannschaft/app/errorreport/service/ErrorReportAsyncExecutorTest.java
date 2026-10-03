@@ -3,6 +3,8 @@ package com.mannschaft.app.errorreport.service;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
+import com.mannschaft.app.errorreport.event.ErrorReportRaisedEvent;
+import com.mannschaft.app.errorreport.event.ErrorReportRegressionDetectedEvent;
 import com.mannschaft.app.errorreport.repository.ErrorReportRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -10,7 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -38,8 +42,12 @@ class ErrorReportAsyncExecutorTest {
 
     @Mock
     private ErrorReportRepository errorReportRepository;
+    /**
+     * Issue #2990 L11 — 業務TX内で発火するのは通知ではなく業務イベントである。
+     * 是正前はここが {@code ErrorReportNotifier} のモックだった。
+     */
     @Mock
-    private ErrorReportNotifier errorReportNotifier;
+    private ApplicationEventPublisher eventPublisher;
     /** F10.6 §5.6-③ — 集約バッファ。テストでは Mock を注入し、addOccurrence の呼び出し回数を検証する。 */
     @Mock
     private ErrorReportAggregator aggregator;
@@ -76,9 +84,11 @@ class ErrorReportAsyncExecutorTest {
             assertThat(result.getErrorHash()).hasSize(64); // SHA-256 hex
             assertThat(result.getOccurrenceCount()).isEqualTo(1);
             assertThat(result.getAffectedUserCount()).isZero();
-            // HIGH 以上は Slack + SYSTEM_ADMIN 通知（FIRST_OCCURRENCE のとき Slack も走る）
-            verify(errorReportNotifier).notifySlack(any(ErrorReportEntity.class));
-            verify(errorReportNotifier).notifySystemAdmins(any(ErrorReportEntity.class));
+            // HIGH 以上は ErrorReportRaisedEvent を publish（FIRST_OCCURRENCE のとき slackEnabled=true）
+            ArgumentCaptor<ErrorReportRaisedEvent> captor =
+                    ArgumentCaptor.forClass(ErrorReportRaisedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().slackEnabled()).isTrue();
         }
 
         @Test
@@ -96,9 +106,12 @@ class ErrorReportAsyncExecutorTest {
             executor.doRecordBackendException(
                     new RuntimeException("boom"), null, null, null, null, ErrorReportSeverity.HIGH);
 
-            // Slack 抑制（5分毎の集約サマリで送信される）、SYSTEM_ADMIN プッシュは埋没防止のため維持
-            verify(errorReportNotifier, never()).notifySlack(any());
-            verify(errorReportNotifier).notifySystemAdmins(any(ErrorReportEntity.class));
+            // Slack 抑制（5分毎の集約サマリで送信される）、SYSTEM_ADMIN プッシュは埋没防止のため維持。
+            // 抑制の表現はイベントの slackEnabled=false であり、イベント自体は必ず publish される。
+            ArgumentCaptor<ErrorReportRaisedEvent> captor =
+                    ArgumentCaptor.forClass(ErrorReportRaisedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().slackEnabled()).isFalse();
         }
 
         @Test
@@ -112,8 +125,7 @@ class ErrorReportAsyncExecutorTest {
             executor.doRecordBackendException(new IllegalArgumentException("bad"),
                     null, null, null, null, ErrorReportSeverity.MEDIUM);
 
-            verify(errorReportNotifier, never()).notifySlack(any());
-            verify(errorReportNotifier, never()).notifySystemAdmins(any());
+            verify(eventPublisher, never()).publishEvent(any(ErrorReportRaisedEvent.class));
         }
 
         @Test
@@ -263,7 +275,7 @@ class ErrorReportAsyncExecutorTest {
                     new RuntimeException("re"), null, null, null, null, ErrorReportSeverity.HIGH);
 
             assertThat(result.getStatus()).isEqualTo(ErrorReportStatus.REOPENED);
-            verify(errorReportNotifier).notifyRegression(any(ErrorReportEntity.class));
+            verify(eventPublisher).publishEvent(any(ErrorReportRegressionDetectedEvent.class));
         }
     }
 

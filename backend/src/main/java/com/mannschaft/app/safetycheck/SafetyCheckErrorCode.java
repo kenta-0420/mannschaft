@@ -21,10 +21,10 @@ public enum SafetyCheckErrorCode implements ErrorCode {
     ALREADY_RESPONDED("SAFETY_003", "既に安否確認に回答済みです", Severity.WARN),
 
     /** 回答ステータスが不正 */
-    INVALID_RESPONSE_STATUS("SAFETY_004", "回答ステータスが不正です", Severity.ERROR),
+    INVALID_RESPONSE_STATUS("SAFETY_004", "回答ステータスが不正です", Severity.WARN),
 
     /** スコープ種別が不正 */
-    INVALID_SCOPE_TYPE("SAFETY_005", "スコープ種別が不正です", Severity.ERROR),
+    INVALID_SCOPE_TYPE("SAFETY_005", "スコープ種別が不正です", Severity.WARN),
 
     /** テンプレートが見つからない */
     TEMPLATE_NOT_FOUND("SAFETY_006", "テンプレートが見つかりません", Severity.WARN),
@@ -45,7 +45,7 @@ public enum SafetyCheckErrorCode implements ErrorCode {
     REMIND_TOO_FREQUENT("SAFETY_011", "リマインド送信間隔が短すぎます", Severity.WARN),
 
     /** 一括回答数上限超過 */
-    BULK_RESPOND_LIMIT_EXCEEDED("SAFETY_012", "一括回答は最大100件までです", Severity.ERROR);
+    BULK_RESPOND_LIMIT_EXCEEDED("SAFETY_012", "一括回答は最大100件までです", Severity.WARN);
 
     private final String code;
     private final String message;

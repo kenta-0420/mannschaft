@@ -61,13 +61,41 @@ public enum StandardVisibility {
     /**
      * ADMIN ロール以上の保有者のみ閲覧可能（新ラダー・閾値方式 / 旧 ADMINS_ONLY 改名）。
      *
-     * <p>包含: ADMIN / DEPUTY_ADMIN（= 優先度 ADMIN 以上）。MEMBER 以下は不可視。
+     * <p>包含: <strong>ADMIN のみ</strong>（= 優先度 ADMIN 以上）。DEPUTY_ADMIN 以下は不可視。
      *
-     * <p>判定は {@code UserScopeRoleSnapshot.hasRoleOrAbove(scope, "ADMIN")} と同等。
-     * 新ラダーの最上位閾値であり、機微度も最高位として扱う。
+     * <p><strong>注意（CMP-017b で是正）</strong>: 本 javadoc は長らく「包含: ADMIN / DEPUTY_ADMIN」と
+     * 記していたが<strong>誤り</strong>であった。判定は
+     * {@code UserScopeRoleSnapshot.hasRoleOrAbove(scope, "ADMIN")} =
+     * {@code priority(actual) <= priority("ADMIN") = 2} であり、
+     * DEPUTY_ADMIN は {@code priority = 3} のため実際には弾かれる。
+     * 「ADMIN と副管理者の両方」を意図する場合は
+     * {@link #DEPUTY_ADMINS_AND_ABOVE} を用いること。
+     *
+     * <p>新ラダーの最上位閾値であり、機微度も最高位として扱う。
      * 設計書 §5.1 / §5.1.5 を参照。
      */
     ADMINS_AND_ABOVE,
+
+    /**
+     * DEPUTY_ADMIN ロール以上の保有者のみ閲覧可能（新ラダー・閾値方式）。
+     *
+     * <p>包含: ADMIN / DEPUTY_ADMIN（= 優先度 DEPUTY_ADMIN 以上）。MEMBER 以下は不可視。
+     *
+     * <p>判定は {@code UserScopeRoleSnapshot.hasRoleOrAbove(scope, "DEPUTY_ADMIN")} と同等。
+     * {@link #ADMINS_AND_ABOVE}（{@code priority <= 2}）との差は
+     * <strong>DEPUTY_ADMIN（priority=3）を含むか否か</strong>のみである。
+     *
+     * <p><strong>導入の経緯（CMP-017b）</strong>: F03.1 の {@code schedules.min_view_role} は
+     * {@code ADMIN_ONLY} を「DEPUTY_ADMIN・ADMIN のみ閲覧可」と定義する
+     * （設計書 {@code docs/features/F03.1_schedule_shared.md} の {@code min_view_role} の挙動）。
+     * これを {@link #ADMINS_AND_ABOVE} に写像すると DEPUTY_ADMIN を誤って弾いてしまうため、
+     * 「副管理者以上」を表す段を閾値ラダーに 1 段追加した。
+     *
+     * <p>閾値ラダー上の位置:
+     * {@code PUBLIC > SUPPORTERS_AND_ABOVE > MEMBERS_AND_ABOVE > DEPUTY_ADMINS_AND_ABOVE
+     * > ADMINS_AND_ABOVE}（右へ行くほど狭い）。機微度は {@link #ADMINS_AND_ABOVE} に準ずる。
+     */
+    DEPUTY_ADMINS_AND_ABOVE,
 
     /**
      * 作成者本人のみ閲覧可能。
@@ -88,14 +116,50 @@ public enum StandardVisibility {
     CUSTOM_TEMPLATE,
 
     /**
-     * スコープ全体の組織メンバーへ公開。
+     * スコープ全体の組織メンバーへ公開（<strong>上向き 1 段</strong>・所属拡大軸）。
      *
      * <p>TEAM スコープのコンテンツでも、親 ORG の所属メンバーまで可視範囲を広げる。
-     * 親スコープ解決規約は設計書 §5.1.1 を参照。
+     * 親スコープ解決規約は設計書 §5.1.1 を参照。判定は
+     * {@code UserScopeRoleSnapshot.isMemberOfParentOrg(scope)}
+     * （= TEAM → 親 ORG 1 段を上向きに辿り、その ORG の直接所属を確認）。
+     *
+     * <p>方向性の対比: 本値は「子コンテンツ → 親 ORG メンバー」の<strong>上向き</strong>展開であり、
+     * {@link #ORGANIZATION_AND_DESCENDANTS}（親 ORG コンテンツ → 全子孫組織 + 配下チームの
+     * メンバーへの<strong>下向き</strong>再帰展開）とは展開方向が真逆である。両者は閾値ラダー
+     * （{@code PUBLIC > SUPPORTERS_AND_ABOVE > MEMBERS_AND_ABOVE > ADMINS_AND_ABOVE}）ではなく、
+     * {@link #SCOPE_AFFILIATED} と並ぶ「所属拡大軸」に属する。
      *
      * <p>親 ORG が DELETED/SUSPENDED 等で非アクティブな場合の連鎖ルールは §11.6 を参照。
      */
     ORGANIZATION_WIDE,
+
+    /**
+     * 組織スコープのコンテンツを、<strong>組織 + 全子孫組織 + 配下 ACTIVE チームのメンバー</strong>
+     * （再帰）へ公開する（<strong>下向き再帰</strong>・所属拡大軸 / フェーズ M2）。
+     *
+     * <p>{@link #ORGANIZATION_WIDE}（上向き 1 段）の<strong>鏡像</strong>として導入された値である。
+     * 組織はネスト（{@code organizations.parent_organization_id} 隣接リスト）するため、
+     * root 組織が配信したコンテンツを末端の参加チームのみに所属するユーザーまで届ける必要がある。
+     * 従来の {@link #SCOPE_AFFILIATED}（当該 ORG への直接所属のみ）や {@link #ORGANIZATION_WIDE}
+     * （親 ORG 1 段上向き）では、孫組織配下チームのみ所属者を deny してしまう（欠陥 Z）。</p>
+     *
+     * <p>判定は {@code UserScopeRoleSnapshot.isDescendantMemberOf(scope)}。当該 ORG を根とした
+     * 再帰的配下ツリー（全子孫組織の直属 ∪ それら組織の ACTIVE 参加チームメンバー）に
+     * viewer が含まれるかを下向きに評価する。配信 universe（M1 で再帰化済）と評価範囲が一致する。</p>
+     *
+     * <p><strong>所属軸であり SUPPORTER を含む</strong>（G7）。閾値ラダーとは独立した
+     * 「所属拡大軸」であり、閲覧可否は「当該組織コンテンツを見てよい所属圏にいるか」で決まる。
+     * SUPPORTER 除外は行わない。</p>
+     *
+     * <p><strong>組織メンバー定義は不変</strong>（G3）。本値は可視範囲の拡大に用いるだけで、
+     * 配下チーム所属を ORG 直接所属に「昇格」させるものではない。snapshot 上も
+     * {@code orgMemberOf}（直接所属）とは別フィールド {@code descendantMemberOfOrgIds} で保持し、
+     * 既存の {@link #ORGANIZATION_WIDE} / {@link #SCOPE_AFFILIATED} の判定には一切影響しない。</p>
+     *
+     * <p>当該 ORG 自身が DELETED/SUSPENDED 等で非アクティブな場合は fail-closed
+     * （{@code UserScopeRoleSnapshot.isOrgInactive(scope)}・§11.6 の鏡像）。</p>
+     */
+    ORGANIZATION_AND_DESCENDANTS,
 
     /**
      * 上記いずれにも該当しない、機能独自のセマンティクス。

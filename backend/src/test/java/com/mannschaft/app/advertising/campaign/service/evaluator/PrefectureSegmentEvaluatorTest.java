@@ -152,6 +152,30 @@ class PrefectureSegmentEvaluatorTest {
                 .isEqualTo(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
     }
 
+    @Test
+    @DisplayName("countUserIds: 正常な 2 桁コード → COUNT クエリで件数を返す")
+    void countUserIds_validCodes_returnsCount() {
+        when(encryptionService.hmac("13")).thenReturn("hash_tokyo");
+        when(encryptionService.hmac("14")).thenReturn("hash_kanagawa");
+        when(userRepository.countUserIdsByPrefectureCodeHashIn(List.of("hash_tokyo", "hash_kanagawa")))
+                .thenReturn(2L);
+
+        AdAudienceSegment seg = segment("{\"codes\":[\"13\",\"14\"]}");
+        long count = evaluator.countUserIds(seg);
+
+        assertThat(count).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("countUserIds: 48以上の存在しないコード → resolveUserIds と同じ AD_AUDIENCE_INVALID")
+    void countUserIds_nonExistentCode_sameValidationAsResolve() {
+        AdAudienceSegment seg = segment("{\"codes\":[\"48\"]}");
+        assertThatThrownBy(() -> evaluator.countUserIds(seg))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
+    }
+
     private static AdAudienceSegment segment(String json) {
         AdAudienceSegment s = AdAudienceSegment.builder()
                 .campaignId(UUID.randomUUID())

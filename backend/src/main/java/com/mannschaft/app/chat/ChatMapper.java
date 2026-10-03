@@ -67,6 +67,9 @@ public interface ChatMapper {
                 .id(entity.getId())
                 .channelId(entity.getChannelId())
                 .senderId(entity.getSenderId())
+                // F04.12: メッセージ種別を全メッセージにトップレベル付与（既定 TEXT）。
+                // inviteData は role ドメインの解決が必要なため Service 層（ChatMessageService）で付与する。
+                .messageType(entity.getMessageType() != null ? entity.getMessageType() : "TEXT")
                 .thread(new MessageResponse.MessageThreadDto(
                         entity.getParentId(), entity.getRootId(),
                         depth, depth >= BOARD_MIGRATION_SUGGEST_DEPTH))
@@ -102,14 +105,33 @@ public interface ChatMapper {
 
     /**
      * メッセージエンティティに添付ファイルとリアクションを付与してレスポンスを構築する。
+     * sender は付与しない（後方互換オーバーロード）。
      */
     default MessageResponse toMessageResponseWithDetails(
             ChatMessageEntity entity,
             List<AttachmentResponse> attachments,
             List<ReactionResponse> reactions) {
+        return toMessageResponseWithDetails(entity, attachments, reactions, null);
+    }
+
+    /**
+     * メッセージエンティティに添付ファイル・リアクション・送信者情報を付与してレスポンスを構築する。
+     *
+     * @param entity      メッセージエンティティ
+     * @param attachments 添付ファイル一覧
+     * @param reactions   リアクション一覧
+     * @param sender      送信者の表示情報（表示名・アバター）。null 可
+     * @return 送信者情報まで付与した MessageResponse
+     */
+    default MessageResponse toMessageResponseWithDetails(
+            ChatMessageEntity entity,
+            List<AttachmentResponse> attachments,
+            List<ReactionResponse> reactions,
+            MessageResponse.SenderDto sender) {
         MessageResponse base = toMessageResponse(entity);
         if (base == null) return null;
         return base.toBuilder()
+                .sender(sender)
                 .engagement(new MessageResponse.MessageEngagementDto(
                         base.getEngagement().replyCount(),
                         base.getEngagement().reactionCount(),

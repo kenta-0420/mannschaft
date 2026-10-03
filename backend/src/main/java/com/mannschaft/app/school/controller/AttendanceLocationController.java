@@ -88,7 +88,9 @@ public class AttendanceLocationController {
     public ApiResponse<LocationListResponse> getTeamLocations(
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        Map<Long, AttendanceLocation> locationMap = attendanceLocationService.getTeamLocationMap(teamId, date);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        Map<Long, AttendanceLocation> locationMap =
+                attendanceLocationService.getTeamLocationMap(teamId, date, currentUserId);
         // locationChangedDuringDay: 当日に変化レコードが存在する生徒は CLASSROOM 以外の場所または
         // CLASSROOM へ戻った場合も含む。正確な判定は Service 層が提供する Map の実装に依存する。
         // 現時点では「現在地が CLASSROOM 以外」を変化ありとみなす（教室に戻った場合は別途対応予定）。
@@ -122,8 +124,9 @@ public class AttendanceLocationController {
     public ApiResponse<LocationTimelineResponse> getTimeline(
             @PathVariable Long studentUserId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         List<AttendanceLocationChangeEntity> entityList =
-                attendanceLocationService.getTimeline(studentUserId, date);
+                attendanceLocationService.getTimeline(studentUserId, date, currentUserId);
         List<LocationChangeResponse> changes = entityList.stream()
                 .map(LocationChangeResponse::from)
                 .collect(Collectors.toList());

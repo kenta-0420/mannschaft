@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { GanttTodo } from '~/types/todo'
+import { toLocalDateString } from '~/utils/localDate'
 
 const { t } = useI18n()
 const { getHoliday } = useHolidays()
@@ -80,7 +81,7 @@ const dateHeaders = computed<Array<{ date: string; label: string; colorClass: st
     const m = cur.getMonth() + 1
     const d = cur.getDate()
     const dow = cur.getDay() // 0=日, 6=土
-    const dateStr = cur.toISOString().slice(0, 10)
+    const dateStr = toLocalDateString(cur)
     const label = isSingleMonth.value ? `${d}` : (d === 1 ? `${m}/${d}` : `${d}`)
     const isHoliday = !!getHoliday(dateStr)
     const colorClass = (dow === 0 || isHoliday)

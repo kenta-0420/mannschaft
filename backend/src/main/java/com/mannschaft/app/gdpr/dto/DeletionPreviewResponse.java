@@ -1,8 +1,10 @@
 package com.mannschaft.app.gdpr.dto;
 
+import com.mannschaft.app.role.dto.LastAdminScope;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +27,16 @@ public class DeletionPreviewResponse {
 
     /** 退会時の警告メッセージ一覧 */
     private final List<String> warnings;
+
+    /**
+     * 柱①「ADMINゼロ根治」AC1 — 退会予定ユーザーが唯一のADMINであるスコープ一覧。
+     *
+     * <p>TODO 出陣で実装: {@code GdprController#buildDeletionPreview} で
+     * {@code UserRoleRepository#findLastAdminScopes} から充填する（§14）。
+     * 骨格の既定値は空リスト（未配線）。</p>
+     */
+    @Builder.Default
+    private final List<LastAdminScope> lastAdminScopes = Collections.emptyList();
 
     /**
      * 匿名化されるデータの説明アイテム。

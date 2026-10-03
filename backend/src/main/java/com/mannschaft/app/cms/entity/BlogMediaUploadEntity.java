@@ -2,6 +2,7 @@ package com.mannschaft.app.cms.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import java.time.LocalDateTime;
 
 /**
@@ -12,8 +13,7 @@ import java.time.LocalDateTime;
 @Table(name = "blog_media_uploads")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class BlogMediaUploadEntity {
 
     @Id
@@ -23,6 +23,13 @@ public class BlogMediaUploadEntity {
     private Long blogPostId;
 
     private Long uploaderId;
+
+    /** 認可済み所有スコープ。旧データの未検証行はNULLのまま読み取りを拒否する。 */
+    @Column(name = "scope_type", length = 20)
+    private String scopeType;
+
+    @Column(name = "scope_id")
+    private Long scopeId;
 
     /** メディア種別（DB: ENUM('IMAGE','VIDEO')、デフォルト 'IMAGE'）。 */
     @Column(nullable = false, length = 10)

@@ -21,4 +21,8 @@ public class LinkResponse {
     private final LocalDateTime lastAccessedAt;
     private final Long createdBy;
     private final LocalDateTime createdAt;
+    /** PR-D: リンクが有効（手動失効していない）か。 */
+    private final boolean active;
+    /** PR-D: このリンクでダウンロードを許可するか（既定 false=閲覧のみ）。 */
+    private final boolean downloadAllowed;
 }

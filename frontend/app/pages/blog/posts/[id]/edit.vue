@@ -10,21 +10,21 @@ const { getMyPost, updateMyPost, publishMyPost, selfReviewPost, autoSave } = use
 const { success, info, error: showError } = useNotification()
 const authStore = useAuthStore()
 const api = useApi()
+const { buildOffsetDateTimeStr } = useDatetime()
 
 const title = ref(route.query.title ? String(route.query.title) : '')
 const body = ref('')
 const status = ref('DRAFT')
+const publicVisible = ref(true)
 const scopeType = ref<string | null>(route.query.scopeType ? String(route.query.scopeType) : null)
 const scopeId = ref<string | null>(route.query.scopeId ? String(route.query.scopeId) : null)
 const rejectionReason = ref<string | null>(null)
 const loading = ref(true)
+const loadError = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
 const selfReviewing = ref(false)
 const adminReviewing = ref(false)
-
-// 予約公開
-const scheduledAt = ref<Date | null>(null)
 
 // 管理者承認却下
 const showRejectionInput = ref(false)
@@ -36,6 +36,7 @@ const AUTO_SAVE_INTERVAL_MS = 30_000
 const autoSaveEnabled = ref(true)
 const lastAutoSavedAt = ref<Date | null>(null)
 let autoSaveTimer: ReturnType<typeof setInterval> | null = null
+let disposed = false
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -53,7 +54,7 @@ function onAutoSaveToggle() {
 }
 
 async function runAutoSave() {
-  if (!autoSaveEnabled.value || saving.value || !postId) return
+  if (loadError.value || !autoSaveEnabled.value || saving.value || !postId) return
   if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
   try {
     await autoSave(postId, { title: title.value, body: body.value || '.', excerpt: null, version: null })
@@ -82,6 +83,7 @@ function publishRedirectPath(): string {
 
 async function load() {
   loading.value = true
+  loadError.value = false
   try {
     const res = await getMyPost(postId)
     const post = res.data
@@ -89,12 +91,14 @@ async function load() {
     const rawBody = post.content?.body ?? ''
     body.value = rawBody === '.' ? '' : rawBody
     status.value = post.meta?.status ?? 'DRAFT'
+    publicVisible.value = resolveBlogPublicVisible(post.meta)
     scopeType.value = post.scope?.organizationId ? 'ORGANIZATION' : post.scope?.teamId ? 'TEAM' : null
     const rawScopeId = post.scope?.organizationId ?? post.scope?.teamId ?? null
     scopeId.value = rawScopeId != null ? String(rawScopeId) : null
     rejectionReason.value = (post as unknown as Record<string, unknown>).rejectionReason as string | null ?? null
   } catch (err) {
     console.error('[blog] 記事読み込みに失敗しました:', err)
+    loadError.value = true
     showError($t('blog.post.loadFailed'))
   } finally {
     loading.value = false
@@ -102,6 +106,7 @@ async function load() {
 }
 
 async function save() {
+  if (loading.value || loadError.value) return
   if (!title.value.trim()) return
   saving.value = true
   try {
@@ -122,29 +127,26 @@ async function publish() {
   await save()
   publishing.value = true
   try {
-    if (scheduledAt.value) {
-      await publishMyPost(postId, { published_at: scheduledAt.value.toISOString() })
-      status.value = 'SCHEDULED'
-      success('記事を予約公開しました')
-    } else {
-      await publishMyPost(postId)
-      status.value = 'PUBLISHED'
-      // お知らせウィジェットに表示する場合、公開後に登録
-      if (displayInAnnouncement.value && isTeamOrOrgScope.value && scopeId.value) {
-        const { createAnnouncement } = useAnnouncementFeed(
-          scopeType.value as 'TEAM' | 'ORGANIZATION',
-          scopeId.value,
-        )
-        await createAnnouncement({
-          sourceType: 'BLOG_POST',
-          sourceId: postId,
-        }).catch(() => {
-          showError('お知らせへの登録に失敗しました。後から手動で登録してください。')
-        })
-      }
-      success('記事を公開しました')
-      await navigateTo(publishRedirectPath())
+    // status は BE 側 @NotBlank。ボディ無しで呼ぶと 400 になる。
+    // 予約公開は BE 未実装のため即時公開のみ（UI からも導線を外している）。
+    await publishMyPost(postId, buildBlogPublishBody(null, (d) => buildOffsetDateTimeStr(d)))
+    status.value = 'PUBLISHED'
+
+    // お知らせウィジェットに表示する場合、公開後に登録
+    if (displayInAnnouncement.value && isTeamOrOrgScope.value && scopeId.value) {
+      const { createAnnouncement } = useAnnouncementFeed(
+        scopeType.value as 'TEAM' | 'ORGANIZATION',
+        scopeId.value,
+      )
+      await createAnnouncement({
+        sourceType: 'BLOG_POST',
+        sourceId: postId,
+      }).catch(() => {
+        showError('お知らせへの登録に失敗しました。後から手動で登録してください。')
+      })
     }
+    success('記事を公開しました')
+    await navigateTo(publishRedirectPath())
   } catch {
     showError('公開に失敗しました')
   } finally {
@@ -274,8 +276,9 @@ const statusSeverity = computed(() => {
 
 const isAdmin = computed(() => authStore.isSystemAdmin)
 
-onMounted(() => {
-  load()
+onMounted(async () => {
+  await load()
+  if (disposed || loadError.value) return
   if (typeof localStorage !== 'undefined') {
     const stored = localStorage.getItem(AUTO_SAVE_STORAGE_KEY)
     if (stored !== null) autoSaveEnabled.value = stored !== 'false'
@@ -284,6 +287,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  disposed = true
   if (autoSaveTimer !== null) clearInterval(autoSaveTimer)
 })
 </script>
@@ -296,13 +300,13 @@ onUnmounted(() => {
         <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
         <span class="text-base font-semibold text-surface-600">ブログ編集</span>
         <Tag
-          v-if="!loading"
+          v-if="!loading && !loadError"
           :value="statusLabel"
           :severity="statusSeverity"
           rounded
         />
       </div>
-      <div class="flex items-center gap-2">
+      <div v-if="!loading && !loadError" class="flex items-center gap-2">
         <span class="hidden text-xs text-surface-400 lg:block">Ctrl+S で保存</span>
         <Button
           label="保存"
@@ -318,23 +322,22 @@ onUnmounted(() => {
           label="今すぐ公開"
           icon="pi pi-send"
           size="small"
-          :loading="publishing && !scheduledAt"
-          @click="publish"
-        />
-        <Button
-          v-if="status === 'DRAFT' || status === 'REJECTED'"
-          label="予約公開"
-          icon="pi pi-clock"
-          size="small"
-          severity="secondary"
-          :disabled="!scheduledAt"
-          :loading="publishing && !!scheduledAt"
+          :loading="publishing"
           @click="publish"
         />
       </div>
     </div>
 
     <PageLoading v-if="loading" />
+
+    <Message
+      v-else-if="loadError"
+      data-testid="blog-load-error"
+      severity="error"
+      :closable="false"
+    >
+      {{ $t('blog.post.loadFailed') }}
+    </Message>
 
     <div v-else class="flex flex-col gap-4">
       <!-- 却下理由表示 (REJECTED ステータス時) -->
@@ -343,18 +346,20 @@ onUnmounted(() => {
         <p class="text-sm text-red-600">{{ rejectionReason }}</p>
       </div>
 
-      <!-- 予約公開日時 (DRAFT または REJECTED 時に表示) -->
-      <div v-if="status === 'DRAFT' || status === 'REJECTED'" class="flex items-center gap-3">
-        <span class="text-sm text-surface-600">予約公開日時</span>
-        <DatePicker
-          v-model="scheduledAt"
-          show-time
-          hour-format="24"
-          date-format="yy/mm/dd"
-          placeholder="日時を選択すると予約公開"
-          show-button-bar
-        />
-      </div>
+      <!--
+        予約公開の導線は撤去している。
+        BE に予約公開を実現する仕組み（publishedAt での公開判定・時刻到来を拾うバッチ）が無く、
+        publish() は呼んだ瞬間に status を PUBLISHED にする。公開一覧のクエリも
+        status = PUBLISHED のみで publishedAt を見ないため、未来日時を指定しても即時公開になる。
+        「予約したのに即座に全体公開された」という事故を防ぐため、BE 実装が入るまで出さない。
+      -->
+      <Message
+        v-if="status === 'DRAFT' || status === 'REJECTED'"
+        severity="info"
+        :closable="false"
+      >
+        {{ $t('blog.post.scheduledPublishUnavailable') }}
+      </Message>
 
       <!-- セルフレビューセクション (PENDING_SELF_REVIEW 時) -->
       <div v-if="status === 'PENDING_SELF_REVIEW'" class="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
@@ -478,9 +483,20 @@ onUnmounted(() => {
       <!-- Markdownエディタ（ツールバー + 編集/プレビュー） -->
       <MarkdownEditor v-model="body" />
 
+      <div class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+        <p class="mb-2 text-sm font-medium">
+          {{ $t('public.admin.publicVisible.toggleAriaLabel') }}
+        </p>
+        <PublicVisibleToggle
+          :post-id="postId"
+          v-model:public-visible="publicVisible"
+          @error="showError"
+        />
+      </div>
+
       <!-- お知らせウィジェット表示フラグ（チーム/組織スコープのみ） -->
       <div v-if="isTeamOrOrgScope" class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
-        <AnnouncementAnnouncementToggle v-model="displayInAnnouncement" />
+        <AnnouncementToggle v-model="displayInAnnouncement" />
         <p class="ml-6 mt-1 text-xs text-surface-400">
           ※「公開する」ボタン押下時に登録されます
         </p>

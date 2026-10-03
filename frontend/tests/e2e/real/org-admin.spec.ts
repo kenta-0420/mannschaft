@@ -31,9 +31,12 @@ async function loginIfNeeded(page: Page): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// 組織IDの取得ヘルパー
+// 組織slugの取得ヘルパー
 // ---------------------------------------------------------------------------
-async function getOrgId(page: Page): Promise<string> {
+async function getOrgSlug(page: Page): Promise<string> {
+  const configuredOrgSlug = process.env.E2E_SHARED_ORG_SLUG
+  if (configuredOrgSlug?.match(/^[a-z0-9-]+$/)) return configuredOrgSlug
+
   await page.goto('/organizations')
   await waitForHydration(page)
   await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
@@ -42,30 +45,33 @@ async function getOrgId(page: Page): Promise<string> {
   const count = await orgLinks.count()
   for (let i = 0; i < count; i++) {
     const href = await orgLinks.nth(i).getAttribute('href')
-    if (href?.match(/\/organizations\/\d+/)) {
-      const match = href.match(/\/organizations\/(\d+)/)
-      if (match?.[1]) return match[1]
-    }
+    const match = href?.match(/\/organizations\/([a-z0-9-]+)\/?(?:[?#].*)?$/)
+    if (match?.[1] && !['search', 'new', 'create'].includes(match[1])) return match[1]
   }
-  return '1'
+  throw new Error('所属組織へのリンクが見つかりません')
 }
 
 // ---------------------------------------------------------------------------
 // ORG-ADMIN-001〜005: MEMBER ロールでの管理機能アクセス制限
 // ---------------------------------------------------------------------------
 test.describe('ORG-ADMIN-001〜005: MEMBER ロールでの管理機能アクセス制限', () => {
-  let orgId: string
+  let orgSlug: string
 
   test.beforeAll(async ({ browser }) => {
+    const configuredOrgSlug = process.env.E2E_SHARED_ORG_SLUG
+    if (configuredOrgSlug?.match(/^[a-z0-9-]+$/)) {
+      orgSlug = configuredOrgSlug
+      return
+    }
     const page = await browser.newPage()
     await loginIfNeeded(page)
-    orgId = await getOrgId(page)
+    orgSlug = await getOrgSlug(page)
     await page.close()
   })
 
   test('ORG-ADMIN-001: MEMBER ロールでは組織設定の管理タブが表示されない', async ({ page }) => {
     // 組織設定ページに遷移
-    await page.goto(`/organizations/${orgId}/settings`)
+    await page.goto(`/organizations/${orgSlug}/settings`)
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     // MEMBER にはアクセス制限がある（リダイレクト or 管理タブ非表示）
@@ -107,7 +113,7 @@ test.describe('ORG-ADMIN-001〜005: MEMBER ロールでの管理機能アクセ�
 
   test('ORG-ADMIN-003: MEMBER ロールでは招待ページへのアクセスが制限される', async ({ page }) => {
     // 組織の招待ページにアクセス
-    await page.goto(`/organizations/${orgId}/invite`)
+    await page.goto(`/organizations/${orgSlug}/invite`)
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 15_000 }).catch(() => {})
     const url = page.url()
@@ -125,20 +131,22 @@ test.describe('ORG-ADMIN-001〜005: MEMBER ロールでの管理機能アクセ�
 
   test('ORG-ADMIN-004: MEMBER ロールではメンバーの権限変更ができない', async ({ page }) => {
     // 組織メンバー管理ページにアクセス
-    await page.goto(`/organizations/${orgId}/members`)
+    await page.goto(`/organizations/${orgSlug}/members`)
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     const url = page.url()
     if (url.includes('/members')) {
-      // メンバー一覧が表示された場合: 権限変更ドロップダウンまたはボタンが MEMBER には表示されない
+      const memberTable = page.locator('[role="table"], table').first()
+      await expect(memberTable).toBeVisible({ timeout: 15_000 })
       const roleChangeBtn = page.locator(
         'button[aria-label*="権限"], [class*="role-change"], select[name*="role"]',
-      ).first()
-      const hasRoleChange = await roleChangeBtn.isVisible().catch(() => false)
-      // MEMBER には権限変更UIが表示されない想定
-      void hasRoleChange
+      )
+      await expect(roleChangeBtn).toHaveCount(0)
+      await expect(page.getByRole('columnheader', { name: '操作' })).toHaveCount(0)
+    } else {
+      // 画面単位で拒否する実装の場合も、許可済みの遷移先だけを受け入れる。
+      expect(url).toMatch(/organizations|my\/dashboard|403|forbidden|login/)
     }
-    expect(url).toBeTruthy()
   })
 
   test('ORG-ADMIN-005: チームの ADMIN 機能ページは適切にアクセス制御されている', async ({ page }) => {
@@ -168,17 +176,17 @@ test.describe('ORG-ADMIN-001〜005: MEMBER ロールでの管理機能アクセ�
 // ORG-ADMIN-006: 読み取り専用アクセスの確認
 // ---------------------------------------------------------------------------
 test.describe('ORG-ADMIN-006: 読み取り専用アクセスの確認', () => {
-  let orgId: string
+  let orgSlug: string
 
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage()
     await loginIfNeeded(page)
-    orgId = await getOrgId(page)
+    orgSlug = await getOrgSlug(page)
     await page.close()
   })
 
   test('ORG-ADMIN-006: 組織設定の「一般」タブが MEMBER でも閲覧可能（読み取り専用）', async ({ page }) => {
-    await page.goto(`/organizations/${orgId}`)
+    await page.goto(`/organizations/${orgSlug}`)
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     // 組織ページにアクセスできること（MEMBER でも閲覧可能）

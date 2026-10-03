@@ -1,6 +1,7 @@
 package com.mannschaft.app.tournament.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.tournament.StatAggregationType;
 import com.mannschaft.app.tournament.StatDataType;
 import com.mannschaft.app.tournament.TiebreakerCriteria;
@@ -151,9 +152,9 @@ public class SystemPresetService {
                 SystemTournamentPresetTiebreakerEntity.builder()
                         .presetId(presetId)
                         .priority(req.getPriority())
-                        .criteria(TiebreakerCriteria.valueOf(req.getCriteria()))
+                        .criteria(EnumInputParser.parse(TiebreakerCriteria.class, req.getCriteria(), "criteria"))
                         .direction(req.getDirection() != null
-                                ? TiebreakerDirection.valueOf(req.getDirection())
+                                ? EnumInputParser.parse(TiebreakerDirection.class, req.getDirection(), "direction")
                                 : TiebreakerDirection.DESC)
                         .build()));
     }
@@ -168,10 +169,10 @@ public class SystemPresetService {
                         .statKey(req.getStatKey())
                         .unit(req.getUnit())
                         .dataType(req.getDataType() != null
-                                ? StatDataType.valueOf(req.getDataType())
+                                ? EnumInputParser.parse(StatDataType.class, req.getDataType(), "dataType")
                                 : StatDataType.INTEGER)
                         .aggregationType(req.getAggregationType() != null
-                                ? StatAggregationType.valueOf(req.getAggregationType())
+                                ? EnumInputParser.parse(StatAggregationType.class, req.getAggregationType(), "aggregationType")
                                 : StatAggregationType.SUM)
                         .isRankingTarget(req.getIsRankingTarget() != null ? req.getIsRankingTarget() : true)
                         .rankingLabel(req.getRankingLabel())

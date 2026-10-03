@@ -9,6 +9,7 @@ import com.mannschaft.app.village.dto.FestivalUpdateRequest;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageFestivalEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
+import com.mannschaft.app.village.entity.enums.VillageBulletinVisibility;
 import com.mannschaft.app.village.entity.enums.VillageFestivalStatus;
 import com.mannschaft.app.village.entity.enums.VillageJoinPolicy;
 import com.mannschaft.app.village.entity.enums.VillageRole;
@@ -138,6 +139,7 @@ class VillageFestivalControllerIntegrationTest extends AbstractVillageIntegratio
     void list_allStatuses() {
         authenticateAs(REGULAR_USER_ID);
         VillageEntity v = persistVillage();
+        persistVillager(v.getId(), REGULAR_USER_ID); // 閲覧には村メンバーであることが必要
         VillageFestivalEntity sched = persistFestival(v.getId(), "予定祭", VillageFestivalStatus.SCHEDULED);
         VillageFestivalEntity ended = persistFestival(v.getId(), "終了祭", VillageFestivalStatus.ENDED);
 
@@ -153,6 +155,7 @@ class VillageFestivalControllerIntegrationTest extends AbstractVillageIntegratio
     void list_filterByActive() {
         authenticateAs(REGULAR_USER_ID);
         VillageEntity v = persistVillage();
+        persistVillager(v.getId(), REGULAR_USER_ID); // 閲覧には村メンバーであることが必要
         VillageFestivalEntity active = persistFestival(v.getId(), "開催中", VillageFestivalStatus.ACTIVE);
         persistFestival(v.getId(), "終了祭", VillageFestivalStatus.ENDED);
 
@@ -173,6 +176,7 @@ class VillageFestivalControllerIntegrationTest extends AbstractVillageIntegratio
     void get_ok() {
         authenticateAs(REGULAR_USER_ID);
         VillageEntity v = persistVillage();
+        persistVillager(v.getId(), REGULAR_USER_ID); // 閲覧には村メンバーであることが必要
         VillageFestivalEntity f = persistFestival(v.getId(), "詳細対象", VillageFestivalStatus.SCHEDULED);
 
         ApiResponse<FestivalResponse> res = controller.get(v.getId(), f.getId());
@@ -186,6 +190,9 @@ class VillageFestivalControllerIntegrationTest extends AbstractVillageIntegratio
     void get_idor() {
         authenticateAs(REGULAR_USER_ID);
         VillageEntity v1 = persistVillage();
+        // v1 の閲覧権限は持たせたうえで、別村 v2 の祭り ID を指定する。
+        // こうしないと 403 で弾かれてしまい「村跨ぎは 404」という IDOR 観点を検証できない。
+        persistVillager(v1.getId(), REGULAR_USER_ID);
         VillageEntity v2 = persistVillage();
         VillageFestivalEntity f = persistFestival(v2.getId(), "別村祭",
                 VillageFestivalStatus.SCHEDULED);
@@ -194,6 +201,160 @@ class VillageFestivalControllerIntegrationTest extends AbstractVillageIntegratio
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(VillageErrorCode.FESTIVAL_NOT_FOUND);
+    }
+
+    // ─────────────────────────────────────────────
+    // 読取の閲覧認可（契約テスト）
+    //
+    // 一覧・詳細は村掲示板と同一の閲覧認可に従う:
+    //   bulletin_visibility = MEMBERS_ONLY（既定） → 村メンバー or SYSTEM_ADMIN のみ
+    //   bulletin_visibility = PUBLIC              → ログイン済なら誰でも可
+    // 祭りはバナー画像の署名 URL を含むため、非メンバーに漏れないことを機械的に固定する。
+    // ─────────────────────────────────────────────
+
+    @Test
+    @DisplayName("GET 一覧 — MEMBERS_ONLY 村の非メンバーは VILLAGE_BULLETIN_VIEW_FORBIDDEN")
+    void list_nonMemberForbidden() {
+        authenticateAs(REGULAR_USER_ID);
+        VillageEntity v = persistVillage(); // 既定 MEMBERS_ONLY・REGULAR_USER_ID は未加入
+        persistFestival(v.getId(), "秘密の祭", VillageFestivalStatus.ACTIVE);
+
+        assertThatThrownBy(() -> controller.list(v.getId(), null, 0, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("GET 詳細 — MEMBERS_ONLY 村の非メンバーは VILLAGE_BULLETIN_VIEW_FORBIDDEN（バナー署名URLを渡さない）")
+    void get_nonMemberForbidden() {
+        authenticateAs(REGULAR_USER_ID);
+        VillageEntity v = persistVillage(); // 既定 MEMBERS_ONLY・REGULAR_USER_ID は未加入
+        VillageFestivalEntity f = persistFestival(v.getId(), "秘密の祭", VillageFestivalStatus.ACTIVE);
+
+        assertThatThrownBy(() -> controller.get(v.getId(), f.getId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("GET 詳細 — 認可はお祭りの存在確認より先（非メンバーには存在有無も秘匿する）")
+    void get_nonMemberForbiddenBeforeExistenceCheck() {
+        authenticateAs(REGULAR_USER_ID);
+        VillageEntity v = persistVillage(); // 既定 MEMBERS_ONLY・REGULAR_USER_ID は未加入
+
+        // 実在しない祭り ID でも 404 ではなく 403 を返すこと。
+        // ここで 404 が返ると「その ID の祭りが無い」ことが非メンバーに漏れる。
+        assertThatThrownBy(() -> controller.get(v.getId(), UUID.randomUUID()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("GET 一覧 — bulletin_visibility=PUBLIC の村なら非メンバーでも閲覧可")
+    void list_publicVillageAllowsNonMember() {
+        authenticateAs(REGULAR_USER_ID);
+        VillageEntity v = persistVillage(VillageBulletinVisibility.PUBLIC);
+        VillageFestivalEntity f = persistFestival(v.getId(), "公開祭", VillageFestivalStatus.ACTIVE);
+
+        ApiResponse<List<FestivalResponse>> res = controller.list(v.getId(), null, 0, 20);
+
+        assertThat(res.getData())
+                .extracting(FestivalResponse::id)
+                .contains(f.getId());
+    }
+
+    @Test
+    @DisplayName("GET 詳細 — SYSTEM_ADMIN は非メンバーでも MEMBERS_ONLY 村を閲覧可")
+    void get_systemAdminAllowed() {
+        authenticateAs(ADMIN_USER_ID); // setUp で isSystemAdmin=true にしてある
+        VillageEntity v = persistVillage(); // 既定 MEMBERS_ONLY・ADMIN は未加入
+        VillageFestivalEntity f = persistFestival(v.getId(), "運営確認対象", VillageFestivalStatus.ACTIVE);
+
+        ApiResponse<FestivalResponse> res = controller.get(v.getId(), f.getId());
+
+        assertThat(res.getData().id()).isEqualTo(f.getId());
+    }
+
+    @Test
+    @DisplayName("GET 一覧 — 凍結済みの村は村メンバーでも VILLAGE_NOT_FOUND（村の状態を秘匿する）")
+    void list_archivedVillageNotFound() {
+        authenticateAs(REGULAR_USER_ID);
+        VillageEntity v = persistVillage();
+        persistVillager(v.getId(), REGULAR_USER_ID);
+        persistFestival(v.getId(), "凍結村の祭", VillageFestivalStatus.ACTIVE);
+        v.setArchivedAt(LocalDateTime.now());
+        villageRepository.saveAndFlush(v);
+
+        // 読取経路では村を個別ロードせず checkVillageBulletinViewAccess の統一クエリに委ねるため、
+        // 削除・凍結とも 404 に畳まれる。VILLAGE_ALREADY_ARCHIVED を返すと
+        // 「凍結済みの村が実在する」ことが識別できてしまう。
+        assertThatThrownBy(() -> controller.list(v.getId(), null, 0, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("GET 詳細 — 凍結済みの村は村メンバーでも VILLAGE_NOT_FOUND（村の状態を秘匿する）")
+    void get_archivedVillageNotFound() {
+        authenticateAs(REGULAR_USER_ID);
+        VillageEntity v = persistVillage();
+        persistVillager(v.getId(), REGULAR_USER_ID);
+        VillageFestivalEntity f = persistFestival(v.getId(), "凍結村の祭", VillageFestivalStatus.ACTIVE);
+        v.setArchivedAt(LocalDateTime.now());
+        villageRepository.saveAndFlush(v);
+
+        assertThatThrownBy(() -> controller.get(v.getId(), f.getId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("GET 一覧 — 存在しない村IDも VILLAGE_NOT_FOUND（凍結済みと同じ応答に畳む）")
+    void list_unknownVillageNotFound() {
+        authenticateAs(REGULAR_USER_ID);
+
+        assertThatThrownBy(() -> controller.list(UUID.randomUUID(), null, 0, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("PATCH — MEMBERS_ONLY 村の非メンバーによる更新は MODERATION_FORBIDDEN")
+    void update_nonMemberForbidden() {
+        authenticateAs(REGULAR_USER_ID);
+        VillageEntity v = persistVillage();
+        VillageFestivalEntity f = persistFestival(v.getId(), "防御対象", VillageFestivalStatus.SCHEDULED);
+
+        FestivalUpdateRequest req = new FestivalUpdateRequest(
+                "乗っ取り", null, null, null, null, null);
+
+        assertThatThrownBy(() -> controller.update(v.getId(), f.getId(), req))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("POST — 一般村人（VILLAGER）による作成は MODERATION_FORBIDDEN")
+    void create_villagerForbidden() {
+        authenticateAs(REGULAR_USER_ID);
+        VillageEntity v = persistVillage();
+        persistVillager(v.getId(), REGULAR_USER_ID); // メンバーではあるが HEADMAN/ELDER ではない
+
+        LocalDateTime starts = LocalDateTime.now().plusDays(7);
+        FestivalCreateRequest req = new FestivalCreateRequest(
+                "勝手に祭り", null, starts, starts.plusDays(1), null, null);
+
+        assertThatThrownBy(() -> controller.create(v.getId(), req))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
     }
 
     // ─────────────────────────────────────────────
@@ -272,7 +433,16 @@ class VillageFestivalControllerIntegrationTest extends AbstractVillageIntegratio
     // ヘルパー
     // ─────────────────────────────────────────────
 
+    /**
+     * 村を作る。{@code bulletinVisibility} は未指定なので {@code @PrePersist} により
+     * 既定の {@code MEMBERS_ONLY}（＝非メンバーは閲覧不可）になる。
+     */
     private VillageEntity persistVillage() {
+        return persistVillage(null);
+    }
+
+    /** 掲示板公開範囲を明示して村を作る（{@code null} なら既定の MEMBERS_ONLY）。 */
+    private VillageEntity persistVillage(VillageBulletinVisibility bulletinVisibility) {
         VillageEntity v = VillageEntity.builder()
                 .slug("vf-" + Long.toHexString(System.nanoTime()))
                 .name("祭り村" + System.nanoTime())
@@ -280,11 +450,24 @@ class VillageFestivalControllerIntegrationTest extends AbstractVillageIntegratio
                 .type(VillageType.COMMUNITY)
                 .joinPolicy(VillageJoinPolicy.FREE)
                 .visibility(VillageVisibility.PUBLIC)
+                .bulletinVisibility(bulletinVisibility)
                 .category("テスト")
                 .memberCountCache(0L)
                 .createdByUserId(ADMIN_USER_ID)
                 .build();
         return villageRepository.saveAndFlush(v);
+    }
+
+    /** 一般村人（VILLAGER）として村に加入させる。閲覧認可の「メンバーである」条件を満たすため。 */
+    private VillageMembershipEntity persistVillager(UUID villageId, Long userId) {
+        VillageMembershipEntity m = VillageMembershipEntity.builder()
+                .villageId(villageId)
+                .subjectType(VillageSubjectType.USER)
+                .subjectId(userId)
+                .role(VillageRole.VILLAGER)
+                .joinedAt(LocalDateTime.now())
+                .build();
+        return membershipRepository.saveAndFlush(m);
     }
 
     private VillageMembershipEntity persistHeadman(UUID villageId, Long userId) {

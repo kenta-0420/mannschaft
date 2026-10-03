@@ -13,8 +13,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -33,8 +33,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class RecruitmentParticipantEntity {
 
     @Id
@@ -75,7 +74,21 @@ public class RecruitmentParticipantEntity {
 
     private LocalDateTime deletedAt;
 
-    /** active_subject_key は DB 生成カラム。Java からは読み取り専用。 */
+    /**
+     * active_subject_key は DB 生成カラム（STORED GENERATED ALWAYS AS）。Java からは読み取り専用。
+     *
+     * <p><b>{@code nullable} 属性を書かない理由（検分 P1 是正）:</b> {@code insertable=false,
+     * updatable=false} の DB 生成カラムに {@code @Column(nullable=...)} を付けても、Hibernate は
+     * INSERT/UPDATE 文自体にこの列を含めないため実質的に意味を持たない。それどころか
+     * {@code ddl-auto=create} のテストスキーマでは生成式が再現されず素の
+     * {@code VARCHAR(100) NOT NULL} として作られるため、{@code nullable=false} を付けると
+     * INSERT からは除外されたまま列だけ NOT NULL 化され、参加者保存が
+     * 「Field 'active_subject_key' doesn't have a default value」で全滅する
+     * （{@code RecruitmentScopeContractIT} 実測: 29件中29件失敗で確認済み）。
+     * このため本列は {@code nullable} を明示せず、
+     * {@code MigrationEntityNullableConsistencyReportTest} の突き合わせ対象からも
+     * {@code insertable=false && updatable=false} の機械的条件で除外している。</p>
+     */
     @Column(name = "active_subject_key", insertable = false, updatable = false, length = 100)
     private String activeSubjectKey;
 

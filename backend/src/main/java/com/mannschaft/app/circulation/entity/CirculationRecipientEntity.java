@@ -8,10 +8,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -22,8 +22,7 @@ import java.time.LocalDateTime;
 @Table(name = "circulation_recipients")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class CirculationRecipientEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -141,5 +140,15 @@ public class CirculationRecipientEntity extends BaseEntity {
      */
     public boolean isStampable() {
         return this.status == RecipientStatus.PENDING;
+    }
+
+    /**
+     * 代理確認フラグと代理入力レコードIDを設定する。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     * （toBuilder().build() は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyProxyConfirmed(Long proxyInputRecordId) {
+        this.isProxyConfirmed = true;
+        this.proxyInputRecordId = proxyInputRecordId;
     }
 }

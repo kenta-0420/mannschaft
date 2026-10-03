@@ -103,7 +103,7 @@ async function mockEventDetailSurroundings(
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: [], meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 } }),
+        body: JSON.stringify({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } }),
       })
     },
   )
@@ -113,7 +113,7 @@ async function mockEventDetailSurroundings(
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ data: [], meta: { page: 0, size: 20, totalElements: 0, totalPages: 0 } }),
+        body: JSON.stringify({ data: [], meta: { page: 0, size: 20, total: 0, totalPages: 0 } }),
       })
     },
   )

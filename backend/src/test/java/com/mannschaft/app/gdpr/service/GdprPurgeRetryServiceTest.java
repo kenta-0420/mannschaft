@@ -1,5 +1,6 @@
 package com.mannschaft.app.gdpr.service;
 
+import com.mannschaft.app.billing.BillingPurgeEventListener;
 import com.mannschaft.app.chart.event.ChartPurgeEventListener;
 import com.mannschaft.app.errorreport.event.ErrorReportPurgeEventListener;
 import com.mannschaft.app.gdpr.dto.RetryResultResponse;
@@ -52,6 +53,8 @@ class GdprPurgeRetryServiceTest {
     private ProxyPurgeEventListener proxyPurgeEventListener;
     @Mock
     private ErrorReportPurgeEventListener errorReportPurgeEventListener;
+    @Mock
+    private BillingPurgeEventListener billingPurgeEventListener;
 
     @InjectMocks
     private GdprPurgeRetryService service;
@@ -279,6 +282,18 @@ class GdprPurgeRetryServiceTest {
             service.retryDomainPurge(userId, "errorreport");
 
             verify(errorReportPurgeEventListener).retryPurge(userId);
+        }
+
+        @Test
+        @DisplayName("残債1: billing ドメインが正しくルーティングされる")
+        void billing_ルーティング() {
+            Long userId = 900L;
+            setupSuccessRetry(userId, "billing", null);
+            given(billingPurgeEventListener.retryPurge(userId)).willReturn(true);
+
+            service.retryDomainPurge(userId, "billing");
+
+            verify(billingPurgeEventListener).retryPurge(userId);
         }
     }
 }

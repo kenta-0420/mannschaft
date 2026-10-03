@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟢 設計確定
 > **実装フェーズ**: Security Hardening Phase 1
-> **最終更新**: 2026-05-26
+> **最終更新**: 2026-10-02
 > **関連ドキュメント**: [README](README.md)
 
 ---
@@ -58,7 +58,7 @@ updates:
 ## 4. フロント `npm audit`
 
 - フロントエンド CI（`frontend-ci.yml`）に `npm audit --audit-level=high` ステップを追加済み（依存インストール `npm ci` の直後に実行）
-- **現状の CI 扱いは「ブロッキング（門番）」**: `continue-on-error` を付けずに実行し、high/critical の脆弱性が 1 件でも検出されると CI を落とす
+- **現状の CI 扱いは「ブロッキング（門番）」**: `continue-on-error` を付けずに実行し、§4.3 の個別例外以外の high/critical が 1 件でも検出されると CI を落とす
   - **経緯**: 2026-05-26 の初回スキャンでは high 11 件（moderate 14・low 1・total 26）が存在したため、段階導入方針に従い当初は警告のみ（`continue-on-error: true`）で導入した。その後 Nuxt 系の更新で high が全て解消され、2026-06-02 に `continue-on-error` を削除してブロッキング化した
   - **現状（2026-06-13）**: high/critical のみならず moderate も含め `npm audit` は **0 件**。`--audit-level` を `critical` 等へ安易に緩めて症状を隠すことは引き続き禁止
 - 既知の誤検知・修正不可能な transitive 依存は `package.json` の `overrides` または audit の除外設定で管理し、理由をコメントで残す
@@ -106,6 +106,26 @@ updates:
 
 ---
 
+### 4.3. node-forge の期限付き個別例外（2026-10-02）
+
+[GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv)（CVE-2026-85393）は RSA PKCS#1 v1.5 の署名検証の問題。2026-10-02 時点で影響範囲は `<=1.4.0`、公式 advisory の修正版は None。既存 lock の `node-forge` は 1.4.0、`listhen` は 1.10.0。`npm audit` の `fixAvailable` は Nuxt 3.15.1 への降格を提示するが、node-forge の公式修正版を意味しない。強制降格・未公開暗号パッチの取り込みは行わない。2026-06-13 の0件という記載は当時の記録であり、この新しい advisory の解消を意味しない。
+
+§4 の「修正不可能な transitive 依存」の管理規則に基づき、`frontend/scripts/audit-with-exemption.mjs` で **当該 URL・パッケージ・high・影響範囲・間接依存・lock の 1.4.0** が一致するものだけを一時除外する。実監査の high 7 パッケージ（`node-forge` / `listhen` / `nitropack` / `@nuxt/cli` / `@nuxt/nitro-server` / `@nuxt/vite-builder` / `nuxt`）に限定する。Nuxt の循環を含む `via` の参照先も追い、末端 advisory を全て検証する。別 high/critical、未知の high 消費者、参照欠落、末端のない high 循環、不正 JSON・集計・到達 advisory より低い依存の深刻度、取得失敗は CI を落とす。Node 標準テストを CI の必須ステップとして実行する。
+
+到達経路の根拠: `listhen` 1.10.0 の `dist/shared/listhen.DmCHmEQ1.cjs` は forge を読み、`resolveCertificate` で RSA 鍵生成と証明書署名を行い、HTTPS オプション時に呼ぶ。当該署名検証の `.verify` 呼び出しはこの経路に無く、`frontend/nuxt.config.ts` の `devServer` に HTTPS 設定は無い。アプリ・サーバーに forge/RSA の直接利用も確認されなかった。Nuxt は `dependencies` にあるため「devOnly」とは扱わず、**本番 `.output` からの除外は未実測**。脆弱性そのものが直ったという判断ではない。
+
+有効期限は **2026-10-16 UTC 当日まで（2026-10-17T00:00:00Z 以降は当該例外を拒否）**。解除管理は `docs/task-list.md` の CMP-261002-1135。公式修正版を導入するか listhen から依存が撤去されたら、例外を削除して通常の `npm audit --audit-level=high` に戻す。期限以前でも、RSA 署名検証の利用追加・新しい消費者・依存の直接化があれば例外を削除し、到達可能性を再評価する。期限延長を自動では行わない。
+
+### 4.4. braces の期限付き個別例外（2026-10-03）
+
+[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) は `braces` の問題。影響範囲は `<=3.0.3`（全公開版）で、2026-10-03 時点で修正版は未公開（`npm audit` の `fixAvailable` も false）。既存 lock の `braces` は 3.0.3。`chokidar` / `micromatch` / `fast-glob` を経由し、`nuxt` / `@nuxtjs/i18n` / `@nuxtjs/tailwindcss` / `@primevue/nuxt-module` などビルド時ツールへ波及して FE CI の Install ジョブが赤になった。
+
+§4.3 と同じ仕組みで、`frontend/scripts/audit-with-exemption.mjs` の `EXEMPTIONS` 表に **GHSA 単位で名指し**して一時除外する（パッケージ名での包括除外や `--audit-level` の緩和はしない）。**当該 URL・パッケージ・high・影響範囲 `<=3.0.3`・間接依存・lock の 3.0.3** が一致するものだけを通し、波及先は実監査で確認した経路（`braces` / `micromatch` / `chokidar` / `fast-glob` / `globby` / `tailwindcss` / `unplugin-vue-components` / `unplugin-vue-router` / `@intlify/unplugin-vue-i18n` / `@nuxtjs/i18n` / `@nuxtjs/tailwindcss` / `@primevue/nuxt-module` / `nitropack` / `@nuxt/nitro-server` / `@nuxt/vite-builder` / `nuxt`）に限定する。除外ごとに許可パッケージ集合を持つため、node-forge の消費者が braces を、またはその逆を流用することはできない。fail closed の検証（取得失敗・不正レポート・深刻度の過小報告・未知の high 消費者の拒否）は §4.3 と共通。
+
+到達経路の根拠: `braces` は glob の波括弧展開で、ビルド時のファイル探索・ファイル監視にのみ使われる。本番で利用者入力を受ける経路ではない。ただし Nuxt は `dependencies` にあるため「devOnly」とは扱わず、本番 `.output` からの除外は未実測。脆弱性そのものが直ったという判断ではない。
+
+有効期限は **2026-10-16 UTC 当日まで（2026-10-17T00:00:00Z 以降は当該例外を拒否）**。解除条件: `braces` の修正版が公開されたら lock を引き上げ、除外を削除して通常の `npm audit --audit-level=high` に戻す。期限延長を自動では行わない。
+
 ## 5. 脆弱性対応フロー
 
 1. **検知**: Dependabot / Dependency-Check / npm audit / GitHub Security Advisory
@@ -127,6 +147,7 @@ updates:
 
 | 日付 | 変更 |
 |---|---|
+| 2026-10-02 | §4.3 に未修正版 node-forge の個別例外と利用経路・限界・UTC期限・解除条件を記録。取得失敗・不正レポート・別 high/critical を停止する門番と必須試験を追加 |
 | 2026-06-13 | 残存 moderate 3 件の解消バージョンを `nuxt` 3.21.8 → **3.21.6** に修正。3.21.8 は CI（`ssr: false`）の dev サーバー起動が `No entry found in rollupOptions.input` でクラッシュするリグレッション（[nuxt#35033](https://github.com/nuxt/nuxt/issues/35033)）を含むため。両 GHSA の first patched version である 3.21.6 で `npm audit` 全レベル 0 件かつ dev/CI 起動可能を両立 |
 | 2026-06-13 | high/critical 11 件の全件解消を確認し、残存 moderate 3 件も `nuxt` patch 更新で解消（`npm audit` 全レベル 0 件）。§2/§4/§4.1/§4.2/§6 のステータスを「解消済み・ブロッキング化済み」へ更新 |
 | 2026-06-02 | §4.2「脆弱性解消の優先順位」を追加。セキュリティ精査結果（2026-06-02）に基づき 11 件を優先度別に分類。serialize-javascript/simple-git を最優先として対応方針を明示。high 0 件達成により frontend-ci.yml の `npm audit` を `continue-on-error` 削除でブロッキング化 |

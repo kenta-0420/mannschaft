@@ -169,6 +169,10 @@ Retry-After: 18  （429/423 の場合のみ）
 - 将来的には Gateway 層（Spring Cloud Gateway 等）への集約を検討
 - 現在の `RateLimitFilter` 実装の閾値を本テーブルに揃えるリファクタリングを推奨
 
+> 新しく `permitAll` エンドポイントを追加する際にレート制限が必要かどうかの判断基準・
+> 実装後の確認手順・落とし穴は
+> [公開 API 追加チェックリスト](public_api_addition_checklist.md) を参照すること。
+
 #### 4.3.1 実装状況（Valkey 化 全陣完了 — 2026-06-12 / PR #1470・#1471・#1472）
 
 共通基盤を `com.mannschaft.app.common.ratelimit` パッケージに実装した。
@@ -195,6 +199,12 @@ auth 系の既存 Valkey fail-open（`AuthService` / `AuthTokenService`）と同
 | 第一陣 (#1470) | `ActionMemoRateLimitFilter` / `PublicApiRateLimitFilter` |
 | 第二陣A (#1471) | `SyncRateLimitFilter` / `AuditLogRateLimitFilter` / `FavoriteRateLimitFilter` / `PointCardRateLimitFilter` / `QuickMemoRateLimitFilter` / `AuthWebAuthnReauthRateLimitFilter` / `VisibilityTemplateRateLimitFilter` / `MemberInfoRateLimitFilter` |
 | 第二陣B (#1472) | `DashboardScopeTabRateLimitFilter` / `ErrorReportRateLimitFilter` / `BroadcastRateLimitFilter` / `AdPublicEndpointRateLimitFilter` / `RepairPlanCsvImportRateLimitFilter` / `RepairPlanSimulateRateLimitFilter` / `ScheduleDelegationRateLimitFilter` / `EventDelegationRateLimitFilter` |
+
+以降に新設したフィルタ（いずれも `AbstractRateLimitFilter` 継承・Valkey カウント・§4.3 標準応答）:
+
+| 追加 | フィルタ | 対象 EP と閾値 | 根拠 |
+|---|---|---|---|
+| #2494 | `AnnouncementReadRateLimitFilter` | 単件既読 `POST /api/v1/(teams\|organizations)/{id}/announcements/{id}/read` — **60 req/分・ユーザー**<br>一括既読 `POST .../announcements/read-all` — **5 req/分・ユーザー** | 単件は §4.2「認証済み WRITE 系」の標準値（設計書 F02.6 §6.4 の想定 100 req/分は標準の上限目安を超えるため 60 に丸めた）。一括は設計書 F02.6 §6.4 の想定値そのまま — 1 リクエストで最大 10,000 行の `INSERT` を伴う重い操作なので標準（送信系 10 req/分）より厳しい側を採る。zone を分けているのは単件の連打が一括の枠を食い潰さないため |
 
 注: Bucket4j 依存自体は `ResumeExportService` / 天気 API クライアント等のフィルタ外用途で
 正当に使用が残るため build.gradle からは除去しない。
@@ -319,34 +329,227 @@ void 不正な状態遷移は422を返す(CirculationStatus from, CirculationSta
 
 ---
 
-## 7. JWT Refresh Token ローテーションの競合制御
+## 7. JWT Refresh Token ローテーションの競合制御（2026-07-02 実装済みに更新）
 
 ### 7.1 問題
 
-複数デバイスが同時に refresh エンドポイントを呼ぶと、
-同一の旧トークンで複数の新トークンが発行され得る。
+複数デバイス／タブが同一 Refresh Token でほぼ同時に refresh を叩くと、片方が旧トークンを
+revoke した直後にもう片方が使用済みの旧トークンを再提示し得る（並行更新）。従来ロジックは
+これを一律リプレイ攻撃と誤判定し `AuthSessionService.logoutAllDevices()` で全セッションを
+永久無効化していた。この結果ユーザーが 401 から回復不能に陥る「自爆バグ」が実機で確認された
+（F01.1）。並行更新の正規化とリプレイ攻撃検出は本質的に区別が必要であり、下記 §7.2 の旧方針
+（Valkey 分散ロック）ではこれを解決できないため不採用とし、DB 行ロック + grace window 方式へ
+設計変更した（§7.3〜§7.6 が現行実装）。
 
-### 7.2 設計方針
+### 7.2 不採用: Valkey `SET NX` 分散ロック方式
 
-- Valkey の `SET NX`（SET if Not Exists）で分散ロックを実装
-- ロックキー: `mannschaft:refresh_lock:{userId}:{oldTokenHash}`
-- TTL: 5秒（並行リクエストの検出に充分な時間）
+検討段階では以下を設計していたが、**実装には至らず不採用**とした。
 
-### 7.3 フロー
+- ロックキー `mannschaft:refresh_lock:{userId}:{oldTokenHash}` を Valkey `SET NX` で獲得、TTL 5 秒、獲得失敗時は 409 Conflict
+- 不採用理由:
+  - **(a) fail-open と両立しない** — 本サービスの Valkey 依存箇所は全て可用性優先の fail-open 方針（[02 §4.1](02_cookie_and_session.md#41-valkey-障害時の動作方針fail-open-vs-fail-closed)）。Valkey 障害時にロックが機能しなければ、並行更新の自爆バグはロック未整備時と同じ頻度で再発する。ロック方式は「Valkey が生きている前提」でしか根治にならない
+  - **(b) ロックで負けた側を救えない** — ロック獲得に失敗したリクエストに単に 409 を返すだけでは、そのクライアントは古い（既に revoke された）Refresh Token のまま再試行することになり、次の試行で結局リプレイ判定に落ちて全デバイス無効化を招く。ロックは「同時実行を防ぐ」だけで「負けた側の Refresh Token をどう正規に救済するか」という本質的な問題を解いていない
 
-1. refresh リクエスト受信
-2. Valkey で lock 獲得試行（`SET NX`）
-   - 失敗（ロック中）→ 409 Conflict を返す
-3. 旧トークンを DB で検証・失効
-4. 新トークン生成・DB 保存
-5. ロック解放
-6. 新トークンを返す
+### 7.3 採用方式: DB 行ロック（PESSIMISTIC_WRITE）+ grace window
 
-### 7.4 リプレイ攻撃への対応
+- **DB 行ロックで直列化**: `RefreshTokenRepository#findByTokenHashForUpdate`（`@Lock(LockModeType.PESSIMISTIC_WRITE)`）で取得することで、同一トークンへの並行 refresh リクエストをトランザクション内で直列化する。Valkey のような外部ミドルウェアに依存せず、DB トランザクションの ACID 特性だけで正しさを保証する（fail-open の対象外）
+- **後継ポインタ（`replaced_by_token_hash`）**: `refresh_tokens` テーブルに列を追加（Flyway `V134.001__add_replaced_by_to_refresh_tokens.sql`）。正規ローテーション成功時、旧トークンは `RefreshTokenEntity#markRotated(後継hash)` で `revoked_at` と同時に後継トークンのハッシュを記録する
+- **grace window（既定 60 秒）**: `mannschaft.jwt.refresh-rotation-grace-seconds`（環境変数 `MANNSCHAFT_JWT_REFRESH_ROTATION_GRACE`、`application.yml`）でプロパティ化。旧トークンが `revoked_at` からこの秒数以内に再提示された場合のみ「並行更新の負け側」として扱う
 
-旧トークンが再度 refresh エンドポイントに送られた場合（=旧トークンの再利用）、
-`AuthTokenRotationService.setUserInvalidationTimestamp()` で全デバイスを無効化する。
-これはトークン盗難の強いシグナルであるため。
+### 7.4 判定フロー（`AuthTokenRotationService#rotate` 相当）
+
+行ロック付きで取得したトークンが失効済み（`revoked_at != null`）の場合、以下の 3 パターンに分岐する:
+
+| ケース | 条件 | 挙動 | エラーコード |
+|---|---|---|---|
+| 並行更新の正規化 | 後継ポインタ有り × grace window 内 | `logoutAllDevices` は呼ばない。負け側にも新しい Access Token + Refresh Token を発行して返す（2 タブとも独立した有効トークンへ収束させる。後継の生トークンは復元不能なため新規発行が最も安全） | なし（200 で新トークンを返す） |
+| 真リプレイ攻撃 | 後継ポインタ有り × grace window 超過 | `TokenReuseDetectedEvent` 発行 + `AuthSessionService.logoutAllDevices()` で全デバイス無効化（**別トランザクションで確実にコミット。§7.7 参照**） | `AUTH_026`（401） |
+| 失効済み（後継無し） | 後継ポインタ無し（明示ログアウト等） | grace window の対象外。全無効化はしない | `AUTH_007`（401） |
+
+有効期限切れのトークン再提示も、退会申請不存在の意味を持つ `AUTH_032` の誤用をやめ、
+「無効/失効済み」の意味論に沿う `AUTH_007` へ是正した。
+
+「真リプレイ攻撃」判定は §7.9（Phase 3）でさらに細分化されており、grace 超過であっても
+同一端末からの再試行と確認できる場合は救済される。以下の §7.9 が現行仕様である。
+
+### 7.5 HTTP ステータスマッピング
+
+`GlobalExceptionHandler` の `ERROR_CODE_STATUS_MAP` に以下を追加し、セッション失効系のレスポンスを
+401（クライアントが再ログイン導線へ遷移できる）に統一した（`AuthErrorCode` の `Severity.WARN` 既定は 400 のため明示上書きが必要）。
+
+| エラーコード | HTTP ステータス | 意味 |
+|---|---|---|
+| `AUTH_007` | 401 | リフレッシュトークンが無効／リボーク済み（Cookie 欠落・DB 不在・明示ログアウト済み・期限切れ）|
+| `AUTH_026` | 401 | リプレイ検出・全セッション無効化 |
+| `AUTH_039` | 401 | 全デバイスセッション無効化後のアクセス |
+
+`AUTH_007` は §7.4 の表で当初から 401 と規定していたが、`ERROR_CODE_STATUS_MAP` への登録が漏れており
+実際には Severity.WARN 既定の 400 が返っていた（実機のログイン画面で `POST /api/v1/auth/refresh` が 400 を
+返すことを確認）。監視・アラートで認証失敗として集計できず、フロントエンドも「400 も認証失敗とみなす」
+特例分岐で補償していたため、登録を追加して設計どおり 401 に是正した。
+フロントエンドの 400 受理は旧 BE・旧モバイルクライアント互換のため当面残す。
+
+### 7.7 真リプレイ検出時の全デバイス無効化は別トランザクションで確実にコミットする（REQUIRES_NEW）
+
+`AuthTokenRotationService#refreshAccessToken` は `@Transactional`（`REQUIRED`）で動作し、真リプレイ検出時は
+`AuthSessionService.logoutAllDevices()` で全トークンを revoke した**直後に** `BusinessException(AUTH_026)`
+（`RuntimeException`）を送出してこのトランザクションをロールバックさせる（新トークンは発行しない）。
+
+ここで `logoutAllDevices` が呼び出し元と**同一トランザクション**（`REQUIRED`）で動いていると、この throw による
+ロールバックで全トークンの revoke（JPA のダーティ状態でありコミット時にフラッシュされる）が**巻き戻り**、
+盗難トークン検出時の全デバイス無効化が実際には永続化されない。結果として「`AUTH_026`/401 は返るが、その後も
+生存トークンで refresh が 200 通ってしまう」（＝過小無効化・防御の無力化）という状態に陥る（実機 E2E で確認）。
+
+**根治**: `AuthSessionService.logoutAllDevices()`（両オーバーロード）を `@Transactional(propagation = REQUIRES_NEW)`
+とし、セッションの一斉無効化を**独立したトランザクションで即コミット**する。これにより呼び出し元トランザクションの
+ロールバックでは巻き戻らない。セッション kill はセキュリティ上「呼び出し元トランザクションの結末に関わらず必ず永続化
+されねばならない」操作であり、REQUIRES_NEW は同メソッドの全呼び出し元（真リプレイ検出・パスワードリセット完了・
+セッション画面からの一斉ログアウト）で意味論的に正しい。呼び出し元がロールバックしてもセッション kill は残る
+（fail-closed で安全側）。逆に無効化処理自体が失敗すれば例外が呼び出し元へ伝播し、呼び出し元も含めてロールバックされる。
+
+> 悲観ロックとの共存: 真リプレイ経路の呼び出し元トランザクションは再提示トークン（既に `revoked_at != null`）の行に
+> `PESSIMISTIC_WRITE` ロックを保持するが、REQUIRES_NEW の新トランザクションが無効化対象として読むのは「生存中
+> （`revoked_at IS NULL`）」のトークンのみで、再提示トークン行は対象外・かつ非ロック読み取り（MVCC）のためロック競合は生じない。
+
+### 7.8 テスト戦略（Phase 1 / grace window 導入時点）
+
+`AuthTokenRotationServiceTest` は悲観ロック版ファインダ（`findByTokenHashForUpdate`）をスタブし、
+grace window 内正規化・grace window 超過リプレイ・後継無し失効の 3 分岐と、有効期限切れ時の
+エラーコード是正（`AUTH_032`→`AUTH_007`）を STRICT モードで検証する。
+
+§7.7 のトランザクション巻き戻しは**純 Mockito UT では検知できない**（`logoutAllDevices` を mock で `verify` する
+だけでトランザクション境界＝ロールバックを踏まないため、REQUIRES_NEW を外しても緑のまま = false-green）。そのため
+実 MySQL（Testcontainers）＋実トランザクション境界を踏む結合テスト `AuthTokenReplayLogoutPersistenceIT` を追加し、
+`AUTH_026` 送出**後**に実 DB を（JPA 一次キャッシュを介さず JDBC で）読んで、当該ユーザーの全 `refresh_token` の
+`revoked_at` が確定的に NOT NULL であること（生存トークン 0 件）をアサートする。
+
+### 7.9 Phase 3: 同一端末からの grace 超過再試行の救済（2026-09-17 実装。誤リプレイ判定による全デバイス強制ログアウトの根治）
+
+#### 7.9.1 問題（実機で確認された自爆バグ）
+
+利用者が「初めてページを開いたとき」に突然ログイン画面へ飛ばされる事象が実機で確認された（再ログイン後は
+発生しない）。実測で確定した因果連鎖は以下の通り:
+
+1. FE（`frontend/app/composables/useApi.ts` の `REFRESH_TIMEOUT_MS = 15_000`）により、リフレッシュ要求が
+   15 秒で**クライアント側から abort** される
+2. しかし**サーバー側ではローテーションが既に完了している**（旧トークン T1 は失効・後継 T2 を発行済み）。
+   abort により `Set-Cookie` がブラウザへ届かず、**Cookie ジャーには古い T1 が残る**
+3. クライアントは通信断（transient）と判定し、`PROACTIVE_REFRESH_RETRY_DELAY_MS = 30_000` 後に
+   **古い T1 で自動再試行**する
+4. 失効から grace window（既定 60 秒）を超過していると、§7.4 の「真リプレイ攻撃」分岐が発火し、
+   `logoutAllDevices()` で**正当な後継トークン T2 も巻き添えで全滅**させていた
+
+同一端末からの正当な再試行を、後継チェーンの有無だけで機械的に「別端末からの盗難」と誤判定していたことが
+根本原因である。grace window（60 秒）は「辛うじて」この競合の一部を救済していたに過ぎず、
+ネットワーク遅延やタイムアウト値との組み合わせ次第で恒常的に再発し得る。
+
+#### 7.9.2 根治方針
+
+「**同一端末からの再試行は盗難とみなさない**」。盗難検知の機構自体（grace 超過 × 後継有り再提示への
+警戒）は残す。別端末からの再提示（＝本物の盗難）は従来どおり全デバイス失効させる。
+
+判定は `deviceFingerprint` の一致で行う（`AuthTokenRotationService#isSameDeviceRetry`）:
+
+- 両者が非 null・非空白で一致 → 同一端末とみなし、後継チェーンを解決できれば救済する
+- **片方でも null/空 → fail closed**（従来どおりリプレイ扱い・全デバイス無効化）。「null なら通す」実装は
+  認可を素通しさせる穴になるため、意図的に排除している
+
+一致が確認できた場合、後継ポインタ（`replaced_by_token_hash`）のチェーンを辿り、**まだ失効していない
+現行トークン**（`AuthTokenRotationService#resolveCurrentChainHead`）を解決する。チェーン走査は
+最大 25 ホップで打ち切り（循環参照・不整合への安全弁、AC-5）、解決できない場合は真リプレイへフォールバックする。
+解決できた現行トークンは悲観ロック版ファインダで取り直し、ロック取得後も未失効であることを再確認した上で
+これを基点に新しい Access Token + Refresh Token ペアを発行する（`logoutAllDevices` は呼ばない）。
+
+#### 7.9.3 deviceFingerprint のサーバー側導出（FE 側の死んだコードの是正）
+
+`AuthLoginController#refresh` の `deviceFingerprint` は元々 `@RequestParam(required = false)` だったが、
+FE の `performTokenRefresh`（`useApi.ts`）はこのパラメータを送っておらず、**リフレッシュ時は常に null**
+だった。そのため §7.9.2 のフィンガープリント照合は導入前は一度も実行されない死んだコードだった。
+
+根治として、`AuthLoginController#refresh` がリクエストの `User-Agent` ヘッダから
+`AuthTokenService#hashToken(userAgent)` でサーバー側導出するようにした。これはログイン時
+（`AuthService#createTokens` 相当）の `deviceFingerprint` 導出（クライアント申告値優先・無ければ
+`hashToken(userAgent)`）と**同一の導出方法**である。導出方法が食い違うと全件不一致になり本救済が
+機能しなくなるため、両経路を揃えることが必須である。
+
+**fail closed の中に隠れた fail open への対処**: `User-Agent` が無い（null/空白）場合、
+`AuthLoginController#refresh` は `hashToken("")` を導出せず **`null` を渡す**。もし空文字列を
+ハッシュ化した値を渡すと、それは null でも空白でもない「正規の」文字列になるため
+`AuthTokenRotationService#isSameDeviceRetry` の「非 null かつ非空白なら判定する」チェックを
+すり抜け、「`User-Agent` を持たないリクエスト同士は常に同一端末とみなされる」という
+fail closed の中に隠れた fail open を生んでしまう（AC-3 の趣旨に反する）。`null` を渡せば
+`isSameDeviceRetry` は無条件に false（fail closed = 従来どおりリプレイ扱い）になる。
+
+なお、ログイン時に `User-Agent` が無く `deviceFingerprint = hashToken("")` として保存された
+トークンが、将来 grace 超過で再提示された場合でも、上記の `null` 化により
+`isSameDeviceRetry` はリクエスト側フィンガープリントが `null` であるため無条件に false となり、
+安全側（fail closed・従来どおりリプレイ扱い）に倒れる。ログイン時に保存された `hashToken("")`
+という値そのものは変更していない（保存時の意味論は変えず、判定側だけを安全にしている）。
+
+#### 7.9.4 盗難検知が弱まる範囲についての正直な評価
+
+User-Agent ハッシュによる同一端末判定は **なりすまし可能な弱い identity** である。User-Agent ヘッダは
+攻撃者が任意に偽装できるため、攻撃者が被害者の User-Agent 文字列を知っている（または典型的な UA を
+推測できる）場合、本救済ロジックが盗難トークンの再提示を「同一端末の再試行」と誤って救済してしまう
+可能性はゼロではない。ただし影響範囲は限定的である:
+
+- 影響するのは **grace window（既定 60 秒）を超過した「後継有り」の失効済みトークン再提示のみ**。
+  真に生存中のトークン、後継無しの失効トークン（明示ログアウト等）、期限切れトークンの扱いは変わらない
+- 攻撃者は「盗んだ Refresh Token の平文」に加えて「被害者の User-Agent 文字列」も入手済みである必要がある。
+  Cookie 窃取（XSS 等）の文脈では User-Agent は同一リクエスト元から容易に観測できるため、
+  **追加の秘匿性はほぼ無い**と評価すべきである（IP アドレスのような追加シグナルとの併用は今回未実施）
+- 一方で、この救済が無ければ実際に発生していた「正当な利用者が数十秒おきに強制ログアウトされ続ける」
+  自爆は、可用性を著しく損なうだけでなく、利用者がその都度再ログインする学習をしてしまい
+  「頻繁な強制ログアウトは異常ではない」という認識を植え付けかねず、**本物の盗難検知アラートへの
+  感度を鈍らせる副作用**もあった
+
+結論として、本変更は「盗難検知の確度」をわずかに下げる代わりに「可用性の自爆」を根治するトレードオフである。
+User-Agent 由来の identity は補助的なシグナルに過ぎず、より強い判定（IP アドレスの一致・地理的整合性等）を
+追加のシグナルとして組み合わせる余地は今後の検討課題として残る。
+
+#### 7.9.5 救済経路の監査痕跡（検分指摘により追加。2026-09-17）
+
+**指摘**: 救済経路は `log.info(...)` を出すだけで、`TokenReuseDetectedEvent` のような監査イベントを一切
+発行していなかった。§7.9.4 の評価どおり User-Agent はなりすませるため、「攻撃者が被害者の User-Agent を
+模倣して盗難トークンを再提示した」ケースは、この救済経路を通って有効なセッションを得たうえ、**監査上は
+何も起きなかったことになる**。従来は（誤検知もろとも）少なくとも `TokenReuseDetectedEvent` が上がっていたため、
+これは純粋な後退にあたる。
+
+**対処**: 救済時も新設のイベント `TokenReplaySameDeviceRescuedEvent`（`userId` / `staleTokenId`
+/ `rescuedFromTokenId` を保持）を発行し、`AuditLogEventListener#handleTokenReplaySameDeviceRescued`
+経由で `AuditEventType.TOKEN_REPLAY_RESCUED_SAME_DEVICE` として監査ログへ記録する。**全デバイス無効化は
+しない**（救済は維持する）が、「grace 超過の再提示が起き、同一端末と判定して救済した」事実は必ず記録に残す。
+救済は「検知を消したのではなく、全デバイス無効化をやめて記録に変えた」という位置づけである。
+
+**`TokenReuseDetectedEvent` を流用しなかった理由**: 同一イベント型に混ぜると「本物の盗難検知」と
+「同一端末と判定した救済」が監視側で区別できなくなり、誤報が増えて本物のアラートへの感度が下がる
+（§7.9.4 で懸念した「頻繁な強制ログアウトは異常ではないという誤学習」と対称の問題を、今度は
+監視ダッシュボード側で起こしてしまう）。既存の `TokenReuseDetectedEvent` /
+`DeviceFingerprintMismatchEvent` と同じ「イベントクラス 1 個 + `AuditEventType` 1 値 + 専用リスナーメソッド」
+という本リポジトリ既存の流儀にそのまま揃え、新しい流儀は持ち込んでいない。
+
+**警告レベルの考え方**: 救済は「クライアント側タイムアウトからの正当な自動リトライ」で日常的に起こり得る
+（稼働中 BE のログに 2-a 経路の「grace window 内で正規化」が既に複数回記録されている程度の頻度）。
+そのため救済経路のログは呼び出し元で既に `log.info`（`log.warn` ではない）とし、監査イベント・リスナー側も
+「事実の保存」に徹してアラート的な扱いはしない。真リプレイ検出（`TokenReuseDetectedEvent`、`log.warn` +
+全デバイス無効化）とは明確に温度差を残すことで、警告レベルを上げすぎて本物のアラートへの感度が下がる
+（§7.9.4 で自ら指摘した懸念を自分で作り出す）事態を避けている。
+
+#### 7.9.6 テスト戦略（Phase 3）
+
+`AuthTokenRotationServiceTest`（`SameDeviceRetryRescue` ネストクラス）でテスト先行（red→green）実装した:
+
+- AC-1: grace 超過 + フィンガープリント一致 + 後継チェーンの現行トークンが有効 → 200・`logoutAllDevices` 未呼出。
+  併せて `TokenReplaySameDeviceRescuedEvent` が発行され `TokenReuseDetectedEvent` は発行されないことも検証（§7.9.5）
+- AC-2: フィンガープリント不一致（別端末） → 従来どおり `AUTH_026`・全デバイス無効化
+- AC-3a/3b: リクエスト側/トークン側いずれかのフィンガープリントが null → fail closed（従来どおりリプレイ扱い）
+- AC-5: 後継チェーンが自己参照で循環していても `MAX_CHAIN_RESOLUTION_HOPS`（25）で打ち切り、
+  無限ループせず有限時間で真リプレイとして処理される
+- AC-6: grace window 内（2-a 経路）の並行 refresh は本改修の影響を受けず従来どおり 200
+
+`AuditLogEventListenerTest` にも `handleTokenReplaySameDeviceRescued` の専用テストを追加し、
+`TOKEN_REPLAY_RESCUED_SAME_DEVICE` として記録され `staleTokenId` / `rescuedFromTokenId` が
+metadata に含まれることを検証した。
 
 ---
 
@@ -358,3 +561,7 @@ void 不正な状態遷移は422を返す(CirculationStatus from, CirculationSta
 | 2026-06-02 | §7 JWT Refresh Token 競合制御を追加（Valkey SET NX 分散ロック・リプレイ攻撃対応） |
 | 2026-06-12 | §4.3.1 追加: レートリミット共通基盤の Valkey 化 第一陣完了。`com.mannschaft.app.common.ratelimit`（`ValkeyRateLimiter` + `AbstractRateLimitFilter`）新設、Lua で INCR+EXPIRE 原子化、fail-open（`mannschaft.ratelimit.failopen` メトリクス）。18 フィルタ中 `ActionMemoRateLimitFilter` / `PublicApiRateLimitFilter` の 2 つを移行（残 16 は第二陣） |
 | 2026-06-12 | §4.3.1 更新: 第二陣A (#1471)・第二陣B (#1472) マージで**全 18 フィルタの Valkey 移行完了**（Bucket4j+Caffeine プロセス内カウント全廃・ECS 複数タスクで実効上限が正確に）。§4.3 の「スライディングウィンドウ」文言を実態（固定ウィンドウ）に訂正。意図的挙動変更（429 標準形統一 / Sync per-user 化 / RepairPlanSimulate 短絡評価 / XFF 統一）を互換性注記として明文化 |
+| 2026-07-02 | §7 JWT Refresh Token 競合制御を実装に同期。並行更新を一律リプレイ誤判定して全デバイス無効化する自爆バグ（F01.1）を根治。旧設計（Valkey `SET NX` 分散ロック・409 Conflict）は fail-open と両立しない／負け側を救済できないため不採用と明記し、DB `PESSIMISTIC_WRITE` 行ロック + grace window（`replaced_by_token_hash` 後継ポインタ・既定 60 秒）方式に更新。`AUTH_026`/`AUTH_039` の 401 マッピングを追記 |
+| 2026-07-02 | §7.7 追加: 真リプレイ検出時の全デバイス無効化が呼び出し元トランザクションのロールバックで巻き戻り永続化されない過小無効化バグ（実機 E2E で発見）を根治。`AuthSessionService.logoutAllDevices()` を `@Transactional(REQUIRES_NEW)` 化し独立トランザクションで即コミット。純 Mockito UT では検知不能なため実 tx 境界を踏む結合テスト `AuthTokenReplayLogoutPersistenceIT` を追加（§7.8） |
+| 2026-09-17 | §7.9 追加（CMP-260917-1352 Phase 3）: FE の 15 秒 abort によりサーバー側ローテーションは完了しているのに Cookie ジャーに旧トークンが残り、30 秒後の自動リトライが grace window を超過して真リプレイと誤判定 → 正当な後継トークンまで巻き添えで全デバイス強制ログアウトする自爆バグを実機確認・根治。`deviceFingerprint`（User-Agent からサーバー側導出、ログイン時と同一方法）が一致し後継チェーンの現行トークンが有効な場合のみリプレイ扱いを回避。フィンガープリント欠落時は fail closed。盗難検知が弱まる範囲を正直に評価（§7.9.4） |
+| 2026-09-17 | §7.9.3 是正 + §7.9.5 追加（検分指摘）: User-Agent 無し時に `hashToken("")` を渡すと「fail closed の中に隠れた fail open」（User-Agent 無し同士が常に同一端末とみなされる）になる不備を修正し `null` を渡すよう是正。加えて救済経路が監査イベントを一切発行しておらず、User-Agent を模倣した攻撃者の再提示が「監査上は何も起きなかったことになる」退行を検分で指摘され、`TokenReplaySameDeviceRescuedEvent` を新設して `TOKEN_REPLAY_RESCUED_SAME_DEVICE` として記録するよう追加（`TokenReuseDetectedEvent` とは意図的に別種別。警告レベルは上げず日常的な救済として記録に徹する） |

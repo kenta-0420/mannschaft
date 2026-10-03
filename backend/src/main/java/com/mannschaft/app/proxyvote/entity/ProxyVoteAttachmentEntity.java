@@ -9,10 +9,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * 添付ファイルエンティティ。セッション・議案共通のポリモーフィック参照。
@@ -21,8 +21,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "proxy_vote_attachments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ProxyVoteAttachmentEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)

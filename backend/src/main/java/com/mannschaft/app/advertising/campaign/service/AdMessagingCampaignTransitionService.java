@@ -12,6 +12,7 @@ import com.mannschaft.app.advertising.campaign.repository.AdAudienceSegmentRepos
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignChannelRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
 import com.mannschaft.app.advertising.service.AdvertiserAccountService;
+import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
 import lombok.RequiredArgsConstructor;
@@ -65,6 +66,17 @@ public class AdMessagingCampaignTransitionService {
     private final AdMessagingCampaignMapper mapper;
     private final AdCampaignModerationService moderationService;
     private final AdvertiserAccountService advertiserAccountService;
+    private final AuditLogService auditLogService;
+
+    // ─────────────────────────────────────────────
+    // F09.19.7 §10.5 / AC-7.5: メッセージ型状態遷移の監査ログイベント名（F10.3）
+    // ─────────────────────────────────────────────
+    static final String AUDIT_CAMPAIGN_SUBMITTED = "CAMPAIGN_SUBMITTED";
+    static final String AUDIT_CAMPAIGN_AUTO_BLOCKED = "CAMPAIGN_AUTO_BLOCKED";
+    static final String AUDIT_CAMPAIGN_CANCELLED = "CAMPAIGN_CANCELLED";
+    static final String AUDIT_CAMPAIGN_LAUNCHED = "CAMPAIGN_LAUNCHED";
+    static final String AUDIT_CAMPAIGN_PAUSED = "CAMPAIGN_PAUSED";
+    static final String AUDIT_CAMPAIGN_RESUMED = "CAMPAIGN_RESUMED";
 
     // ─────────────────────────────────────────────
     // 所有者向け遷移 (scope ベース)
@@ -93,7 +105,13 @@ public class AdMessagingCampaignTransitionService {
         log.info("CAMPAIGN_SUBMITTED campaignId={} userId={} resultStatus={} moderationStatus={}",
                 campaignId, requesterUserId, refreshed.getStatus(), refreshed.getModerationStatus());
 
-        // TODO(F09.17 ε-C): F10.3 監査ログイベント CAMPAIGN_SUBMITTED / CAMPAIGN_AUTO_BLOCKED を発火する
+        // F09.19.7 §10.5: 提出イベント。submit 時点の自動 NG 検知（autoFlagOnSubmit）で BLOCKED に
+        // なった場合は CAMPAIGN_AUTO_BLOCKED も発火する。
+        // ※ 通報 3 件による自動ブロック（F09.19.9・AdReportService）は別トリガのため二重発火しない。
+        fireAudit(AUDIT_CAMPAIGN_SUBMITTED, campaignId, requesterUserId, refreshed);
+        if (refreshed.getStatus() == AdCampaignStatus.BLOCKED) {
+            fireAudit(AUDIT_CAMPAIGN_AUTO_BLOCKED, campaignId, requesterUserId, refreshed);
+        }
         return buildDetail(refreshed);
     }
 
@@ -111,7 +129,7 @@ public class AdMessagingCampaignTransitionService {
         campaignRepository.save(campaign);
 
         log.info("CAMPAIGN_CANCELLED campaignId={} userId={}", campaignId, requesterUserId);
-        // TODO(F09.17 ε-C): F10.3 監査ログイベント CAMPAIGN_CANCELLED を発火する
+        fireAudit(AUDIT_CAMPAIGN_CANCELLED, campaignId, requesterUserId, campaign);
         return buildDetail(campaign);
     }
 
@@ -134,7 +152,7 @@ public class AdMessagingCampaignTransitionService {
 
         log.info("CAMPAIGN_LAUNCHED campaignId={} userId={} nextStatus={}",
                 campaignId, requesterUserId, next);
-        // TODO(F09.17 ε-C): F10.3 監査ログイベント CAMPAIGN_LAUNCHED を発火する
+        fireAudit(AUDIT_CAMPAIGN_LAUNCHED, campaignId, requesterUserId, campaign);
         return buildDetail(campaign);
     }
 
@@ -150,7 +168,7 @@ public class AdMessagingCampaignTransitionService {
         campaignRepository.save(campaign);
 
         log.info("CAMPAIGN_PAUSED campaignId={} userId={} reason=MANUAL", campaignId, requesterUserId);
-        // TODO(F09.17 ε-C): F10.3 監査ログイベント CAMPAIGN_PAUSED を発火する
+        fireAudit(AUDIT_CAMPAIGN_PAUSED, campaignId, requesterUserId, campaign);
         return buildDetail(campaign);
     }
 
@@ -167,7 +185,7 @@ public class AdMessagingCampaignTransitionService {
         campaignRepository.save(campaign);
 
         log.info("CAMPAIGN_RESUMED campaignId={} userId={}", campaignId, requesterUserId);
-        // TODO(F09.17 ε-C): F10.3 監査ログイベント CAMPAIGN_RESUMED を発火する
+        fireAudit(AUDIT_CAMPAIGN_RESUMED, campaignId, requesterUserId, campaign);
         return buildDetail(campaign);
     }
 
@@ -280,5 +298,24 @@ public class AdMessagingCampaignTransitionService {
         List<AdMessagingCampaignChannel> channels = channelRepository.findByCampaignId(campaign.getId());
         List<AdAudienceSegment> segments = segmentRepository.findByCampaignId(campaign.getId());
         return mapper.toDetail(campaign, channels, segments);
+    }
+
+    /**
+     * F09.19.7 §10.5 / AC-7.5: メッセージ型状態遷移の監査ログを fire-and-forget で記録する。
+     *
+     * <p>metadata は {@code {"campaign_id":"<uuid>"}} の最小構成。scope に応じて team_id /
+     * organization_id を文脈として付与する。{@link AuditLogService#record} は {@code @Async} で
+     * 失敗してもメイン処理を止めない。</p>
+     *
+     * @param eventType  監査イベント名
+     * @param campaignId 対象キャンペーン
+     * @param actorUserId 操作ユーザー（スケジューラ起因はシステムユーザーだが本サービスは常にユーザー操作）
+     * @param campaign   scope 文脈解決用
+     */
+    private void fireAudit(String eventType, UUID campaignId, Long actorUserId, AdMessagingCampaign campaign) {
+        Long teamId = campaign.getScopeType() == ScopeType.TEAM ? campaign.getScopeId() : null;
+        Long orgId = campaign.getScopeType() == ScopeType.ORGANIZATION ? campaign.getScopeId() : null;
+        String metadata = "{\"campaign_id\":\"" + campaignId + "\"}";
+        auditLogService.record(eventType, actorUserId, null, teamId, orgId, null, null, null, metadata);
     }
 }

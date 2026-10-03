@@ -12,13 +12,13 @@ import java.util.UUID;
  *
  * @param id          村 ID
  * @param name        村名
- * @param iconR2Key   村アイコン R2 キー（null 可）
+ * @param iconUrl     村アイコンの表示用 URL（署名付き GET URL。未設定 / 解決失敗時は {@code null}。#2355）
  * @param unreadCount 未読件数（Phase 1 は 0 固定）
  */
 @Builder
 public record VillagePinnedSummaryResponse(
         UUID id,
         String name,
-        String iconR2Key,
+        String iconUrl,
         long unreadCount
 ) {}

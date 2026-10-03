@@ -11,8 +11,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -29,8 +31,7 @@ import java.util.UUID;
 @Table(name = "member_payments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class MemberPaymentEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -47,7 +48,7 @@ public class MemberPaymentEntity extends BaseEntity {
     private String currency = "JPY";
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 16)
     private PaymentMethod paymentMethod;
 
     @Enumerated(EnumType.STRING)
@@ -88,14 +89,6 @@ public class MemberPaymentEntity extends BaseEntity {
      * NULL は手動記録の移行期のみ許容、新規作成時は必須とする。
      */
     private Long payerUserId;
-
-    /**
-     * 第三者代理払いの権原 payment_proxy_grants.id（BINARY(16) = UUID）。
-     * 保護者経由の代理払いは NULL（権原は parental_consent_links 参照）。
-     * PayerRelationship=PROXY_GRANT の場合のみ設定される。
-     */
-    @Column(columnDefinition = "BINARY(16)")
-    private UUID paymentProxyGrantId;
 
     /**
      * 払い手と受益者の関係スナップショット。

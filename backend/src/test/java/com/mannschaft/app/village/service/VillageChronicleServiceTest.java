@@ -35,6 +35,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -57,6 +60,7 @@ class VillageChronicleServiceTest {
 
     private static final UUID VILLAGE_ID = UUID.fromString("01956c00-0000-7000-8000-000000000a01");
     private static final LocalDate TARGET_MONTH = LocalDate.of(2026, 4, 1);
+    private static final Long ACTOR_USER_ID = 9_810_100L;
 
     @Mock
     private VillageChronicleRepository chronicleRepository;
@@ -70,6 +74,8 @@ class VillageChronicleServiceTest {
     private TimelinePostRepository timelinePostRepository;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private VillageBulletinAccessService bulletinAccessService;
 
     @InjectMocks
     private VillageChronicleService service;
@@ -219,11 +225,10 @@ class VillageChronicleServiceTest {
     @Test
     @DisplayName("getChronicle: 該当無し → 404 CHRONICLE_NOT_FOUND")
     void get_not_found() {
-        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village()));
         given(chronicleRepository.findByVillageIdAndYearMonth(VILLAGE_ID, TARGET_MONTH))
                 .willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getChronicle(VILLAGE_ID, TARGET_MONTH))
+        assertThatThrownBy(() -> service.getChronicle(VILLAGE_ID, TARGET_MONTH, ACTOR_USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(VillageErrorCode.CHRONICLE_NOT_FOUND);
@@ -232,17 +237,49 @@ class VillageChronicleServiceTest {
     @Test
     @DisplayName("listChronicles: Repository から年月降順で返ったものをそのまま DTO 化")
     void list_ordering() {
-        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(village()));
         VillageChronicleEntity a = chronicle(LocalDate.of(2026, 4, 1), 10, 2);
         VillageChronicleEntity b = chronicle(LocalDate.of(2026, 3, 1), 5, 1);
         given(chronicleRepository.findByVillageIdOrderByYearMonthDesc(VILLAGE_ID))
                 .willReturn(List.of(a, b));
 
-        List<ChronicleResponse> res = service.listChronicles(VILLAGE_ID);
+        List<ChronicleResponse> res = service.listChronicles(VILLAGE_ID, ACTOR_USER_ID);
 
         assertThat(res).hasSize(2);
         assertThat(res.get(0).yearMonth()).isEqualTo(LocalDate.of(2026, 4, 1));
         assertThat(res.get(1).yearMonth()).isEqualTo(LocalDate.of(2026, 3, 1));
+    }
+
+    @Test
+    @DisplayName("listChronicles: 掲示板の閲覧認可に委譲し、403 はそのまま伝播する")
+    void list_delegatesViewAccessCheck() {
+        willThrow(new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN))
+                .given(bulletinAccessService)
+                .checkVillageBulletinViewAccess(VILLAGE_ID, ACTOR_USER_ID);
+
+        assertThatThrownBy(() -> service.listChronicles(VILLAGE_ID, ACTOR_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN);
+
+        // 認可 NG なら村史そのものを読みに行かない（漏洩経路を塞ぐ）
+        then(chronicleRepository).should(never()).findByVillageIdOrderByYearMonthDesc(VILLAGE_ID);
+    }
+
+    @Test
+    @DisplayName("getChronicle: 認可は村史の存在確認より先に効く（存在有無も秘匿する）")
+    void get_authorizationPrecedesExistenceCheck() {
+        willThrow(new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN))
+                .given(bulletinAccessService)
+                .checkVillageBulletinViewAccess(VILLAGE_ID, ACTOR_USER_ID);
+
+        assertThatThrownBy(() -> service.getChronicle(VILLAGE_ID, TARGET_MONTH, ACTOR_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN);
+
+        // CHRONICLE_NOT_FOUND を先に返すと「その月の村史の有無」が非メンバーに漏れる
+        then(chronicleRepository).should(never())
+                .findByVillageIdAndYearMonth(VILLAGE_ID, TARGET_MONTH);
     }
 
     // ========================================================================

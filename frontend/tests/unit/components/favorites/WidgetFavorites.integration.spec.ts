@@ -73,14 +73,22 @@ vi.mock('~/composables/useNotification', () => ({
 }))
 
 // ============================================================
-// useConfirmDialog のモック（onAccept を即時実行する）
+// useUndoToast のモック
 // ============================================================
+// ADHD 配慮 AC-15（#2167）で、お気に入り削除は「確認ダイアログ → 削除 → 成功トースト」から
+// 「即時削除 → Undo Toast」へ置き換わった。削除成功のフィードバックは useNotification.success
+// ではなく showUndoToast で出るため、こちらを検証対象にする。
 
-vi.mock('~/composables/useConfirmDialog', () => ({
-  useConfirmDialog: () => ({
-    confirmAction: (opts: { onAccept: () => void | Promise<void> }) => {
-      void opts.onAccept()
-    },
+interface UndoToastCall {
+  summary: string
+  undoLabel: string
+  onUndo: () => void | Promise<void>
+}
+const mockShowUndoToast = vi.fn<(opts: UndoToastCall) => void>()
+
+vi.mock('~/composables/useUndoToast', () => ({
+  useUndoToast: () => ({
+    showUndoToast: mockShowUndoToast,
   }),
 }))
 
@@ -89,7 +97,8 @@ vi.mock('~/composables/useConfirmDialog', () => ({
 // （FavoriteQuickEditDialog 用）
 // ============================================================
 
-const mockUpdateTeam = vi.fn(async (_id: number, _payload: { name?: string }) => ({ data: {} }))
+// teamId は slug（string）。useTeamCrud.updateTeam(teamSlug: string, ...) と一致させる。
+const mockUpdateTeam = vi.fn(async (_id: string, _payload: { name?: string }) => ({ data: {} }))
 const mockUpdateOrganization = vi.fn(async () => ({ data: {} }))
 const mockUpdateMyProfile = vi.fn(async () => ({ data: {} }))
 
@@ -156,6 +165,7 @@ beforeEach(() => {
   mockReorderFavorites.mockClear()
   mockNotifSuccess.mockReset()
   mockNotifError.mockReset()
+  mockShowUndoToast.mockReset()
   mockUpdateTeam.mockClear()
   mockUpdateOrganization.mockClear()
   mockUpdateMyProfile.mockClear()
@@ -204,7 +214,7 @@ describe('F02.9-1: お気に入り追加 → ウィジェットに表示され�
 // ============================================================
 
 describe('F02.9-2: お気に入り削除 → カードが一覧から消える', () => {
-  it('削除ボタン → confirmAction.onAccept → removeFavorite が呼ばれて消える', async () => {
+  it('削除ボタン → removeFavorite が呼ばれて消え、Undo Toast が出る', async () => {
     itemsRef.value = [
       makeItem({
         favoriteId: 'fav-del-1',
@@ -253,7 +263,14 @@ describe('F02.9-2: お気に入り削除 → カードが一覧から消える',
     void targetCard
 
     expect(mockRemoveFavorite).toHaveBeenCalledWith('fav-del-1')
-    expect(mockNotifSuccess).toHaveBeenCalled()
+    // 削除成功のフィードバックは Undo Toast（AC-15）。summary / undoLabel は i18n 済み文字列で
+    // 環境ロケールに依存するため、空でないことと Undo が実際に復元を呼ぶことを検証する。
+    expect(mockShowUndoToast).toHaveBeenCalledTimes(1)
+    const undoCall = mockShowUndoToast.mock.calls[0]![0]
+    expect(undoCall.summary).toBeTruthy()
+    expect(undoCall.undoLabel).toBeTruthy()
+    await undoCall.onUndo()
+    expect(mockAddFavorite).toHaveBeenCalledWith('TEAM', '100')
     // 残った方は表示継続
     expect(wrapper.find('[data-testid="favorite-card-fav-keep-1"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="favorite-card-fav-del-1"]').exists()).toBe(false)
@@ -331,7 +348,7 @@ describe('F02.9-4: クイック編集 → カードの表示名が更新され�
       }),
     ]
     // updateTeam が呼ばれたら items を更新する想定
-    mockUpdateTeam.mockImplementation(async (_id: number, payload: { name?: string }) => {
+    mockUpdateTeam.mockImplementation(async (_id: string, payload: { name?: string }) => {
       if (payload.name) {
         itemsRef.value = itemsRef.value.map((it) =>
           it.favoriteId === 'fav-edit-1'
@@ -378,7 +395,8 @@ describe('F02.9-4: クイック編集 → カードの表示名が更新され�
     await new Promise((r) => setTimeout(r, 0))
     await nextTick()
 
-    expect(mockUpdateTeam).toHaveBeenCalledWith(555, expect.objectContaining({ name: '編集後の名前' }))
+    // チーム識別子は URL 用 slug（string）に一本化されている（#1345）。数値ではなく文字列で渡る。
+    expect(mockUpdateTeam).toHaveBeenCalledWith('555', expect.objectContaining({ name: '編集後の名前' }))
     expect(mockFetchFavorites).toHaveBeenCalled() // saved → onFavoriteSaved → refresh
     // items も更新されている
     expect(itemsRef.value[0]!.entity.name).toBe('編集後の名前')

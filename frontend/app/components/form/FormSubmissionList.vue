@@ -62,7 +62,7 @@ async function loadSubmissions() {
         size: rows.value,
       })
       submissions.value = res.data
-      totalRecords.value = res.meta.totalElements
+      totalRecords.value = res.meta.total
     } else if (props.templateId) {
       const res = await formApi.listTemplateSubmissions(
         props.scopeType,
@@ -71,7 +71,7 @@ async function loadSubmissions() {
         { page: page.value, size: rows.value },
       )
       submissions.value = res.data
-      totalRecords.value = res.meta.totalElements
+      totalRecords.value = res.meta.total
     }
   } catch {
     submissions.value = []

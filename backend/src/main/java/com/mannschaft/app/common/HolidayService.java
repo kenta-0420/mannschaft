@@ -45,12 +45,4 @@ public class HolidayService {
                                                          String scopeType, Long scopeId) {
         return holidayMasterRepository.findHolidaysInRange(from, to, scopeType, scopeId);
     }
-
-    /**
-     * システム共通の年間祝日一覧を取得する。
-     */
-    @Cacheable(value = "holidays", key = "'system-year:' + #year")
-    public List<HolidayMasterEntity> getSystemHolidaysByYear(int year) {
-        return holidayMasterRepository.findSystemHolidaysByYear(year);
-    }
 }

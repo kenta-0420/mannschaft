@@ -13,6 +13,7 @@ import com.mannschaft.app.todo.dto.GatesSummaryResponse;
 import com.mannschaft.app.todo.dto.MilestoneResponse;
 import com.mannschaft.app.todo.entity.ProjectEntity;
 import com.mannschaft.app.todo.repository.ProjectRepository;
+import com.mannschaft.app.todo.security.ProjectAccessGuard;
 import com.mannschaft.app.todo.service.MilestoneGateService;
 import com.mannschaft.app.todo.service.ProjectService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -76,6 +77,15 @@ class MilestoneGateControllerTest {
 
     @Mock
     private MessageSource messageSource;
+
+    /**
+     * 個人スコープ EP の所有権検証は {@link ProjectAccessGuard} へ一元化されているため注入する。
+     * 本テストが検証するのはチームスコープ EP のみで、そちらは
+     * {@code validateTeamProjectAccess}（projectRepository + accessControlService）を通るため、
+     * 本モックは呼ばれない。
+     */
+    @Mock
+    private ProjectAccessGuard projectAccessGuard;
 
     @InjectMocks
     private MilestoneGateController controller;

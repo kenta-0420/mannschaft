@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.confirmable.service;
 
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -20,9 +21,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.context.MessageSource;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -55,8 +58,23 @@ class ConfirmableNotificationReminderBatchServiceTest {
     @Mock
     private NotificationHelper notificationHelper;
 
+    @Mock
+    private UserLocaleCache userLocaleCache;
+
+    @Mock
+    private MessageSource messageSource;
+
     @InjectMocks
     private ConfirmableNotificationReminderBatchService batchService;
+
+    // Issue #2715 ロットB: 依存追加に伴う mock 漏れ対策（本クラスは @MockitoSettings LENIENT のため
+    // 未使用でも失敗しない。processAlertIfNeeded が userLocaleCache/messageSource を使うため NPE を防ぐ）。
+    @org.junit.jupiter.api.BeforeEach
+    void setUpLocaleStubs() {
+        given(userLocaleCache.getLocale(any())).willReturn("ja");
+        given(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
+                .willAnswer(inv -> inv.getArgument(2));
+    }
 
     // ========================================
     // テスト用ヘルパー
@@ -185,6 +203,54 @@ class ConfirmableNotificationReminderBatchServiceTest {
             assertThat(sentCount).isEqualTo(0);
             verify(notificationHelper, never()).notify(
                     any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+    }
+
+    // ========================================
+    // processAlertIfNeeded（送信者アラート）
+    // ========================================
+
+    @Nested
+    @DisplayName("processAlertIfNeeded")
+    class ProcessAlertIfNeeded {
+
+        @Test
+        @DisplayName("Issue #2715 ロットB: 送信者 locale が en の場合、アラート件名・本文が英語で組み立てられプレースホルダが残らない")
+        void 送信者ロケールがenなら英語件名本文になる() {
+            var realMessageSource = new org.springframework.context.support.ResourceBundleMessageSource();
+            realMessageSource.setBasename("messages");
+            realMessageSource.setDefaultEncoding("UTF-8");
+            org.springframework.test.util.ReflectionTestUtils.setField(
+                    batchService, "messageSource", realMessageSource);
+
+            UserEntity creator = mock(UserEntity.class);
+            given(creator.getId()).willReturn(7L);
+            given(userLocaleCache.getLocale(7L)).willReturn("en");
+
+            ConfirmableNotificationEntity notification = mock(ConfirmableNotificationEntity.class);
+            given(notification.getId()).willReturn(100L);
+            given(notification.getCreatedBy()).willReturn(creator);
+            given(notification.getScopeType()).willReturn(ScopeType.TEAM);
+            given(notification.getScopeId()).willReturn(10L);
+            given(notification.getTitle()).willReturn("テスト確認通知");
+            given(notification.getActionUrl()).willReturn(null);
+
+            given(settingsRepository.findByScopeTypeAndScopeId(any(), any())).willReturn(java.util.Optional.empty());
+            given(recipientRepository.countByConfirmableNotificationIdAndIsConfirmedTrue(100L)).willReturn(1L);
+            given(recipientRepository.countByConfirmableNotificationIdAndExcludedAtIsNull(100L)).willReturn(2L);
+
+            boolean alerted = batchService.processAlertIfNeeded(notification);
+
+            assertThat(alerted).isTrue();
+            org.mockito.ArgumentCaptor<String> titleCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+            org.mockito.ArgumentCaptor<String> bodyCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+            verify(notificationHelper).notify(
+                    eq(7L), eq("CONFIRMABLE_NOTIFICATION_SENDER_ALERT"), any(NotificationPriority.class),
+                    titleCaptor.capture(), bodyCaptor.capture(), anyString(), eq(100L),
+                    any(NotificationScopeType.class), eq(10L), any(), any());
+            assertThat(titleCaptor.getValue()).isEqualTo("Confirmation notification alert");
+            assertThat(bodyCaptor.getValue()).doesNotContain("{0}").doesNotContain("{1}").doesNotContain("{2}")
+                    .contains("50").contains("テスト確認通知");
         }
     }
 }

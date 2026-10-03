@@ -20,11 +20,15 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 // @stripe/stripe-js の loadStripe をモック
 // ============================================================
 const confirmSetupMock = vi.fn()
+const confirmPaymentMock = vi.fn()
 const retrieveSetupIntentMock = vi.fn()
+const retrievePaymentIntentMock = vi.fn()
 const elementsMock = vi.fn()
 const stripeInstance = {
   confirmSetup: confirmSetupMock,
+  confirmPayment: confirmPaymentMock,
   retrieveSetupIntent: retrieveSetupIntentMock,
+  retrievePaymentIntent: retrievePaymentIntentMock,
   elements: elementsMock,
 }
 const loadStripeMock = vi.fn()
@@ -62,7 +66,9 @@ describe('useStripeSetup', () => {
     publishableKey = 'pk_test_dummy'
     loadStripeMock.mockReset()
     confirmSetupMock.mockReset()
+    confirmPaymentMock.mockReset()
     retrieveSetupIntentMock.mockReset()
+    retrievePaymentIntentMock.mockReset()
     elementsMock.mockReset()
     loadStripeMock.mockResolvedValue(stripeInstance)
   })
@@ -165,5 +171,39 @@ describe('useStripeSetup', () => {
     const { retrieveSetupIntent } = useStripeSetup()
     const result = await retrieveSetupIntent('seti_secret')
     expect(result).toEqual({ status: 'error', message: 'No such setup intent' })
+  })
+
+  it('STRIPE-010: confirmPayment 成功で PaymentIntent status を返す', async () => {
+    confirmPaymentMock.mockResolvedValue({ paymentIntent: { status: 'succeeded' } })
+    const { confirmPayment } = useStripeSetup()
+    const elements = {} as never
+    const result = await confirmPayment({
+      stripe: stripeInstance as never,
+      elements,
+      returnUrl: 'https://example.com/return',
+    })
+    expect(result).toEqual({ status: 'succeeded', paymentIntentStatus: 'succeeded' })
+    expect(confirmPaymentMock).toHaveBeenCalledWith({
+      elements,
+      confirmParams: { return_url: 'https://example.com/return' },
+      redirect: 'if_required',
+    })
+  })
+
+  it('STRIPE-011: retrievePaymentIntent 成功で PaymentIntent を返す', async () => {
+    const paymentIntent = { id: 'pi_1', status: 'processing' }
+    retrievePaymentIntentMock.mockResolvedValue({ paymentIntent })
+    const { retrievePaymentIntent } = useStripeSetup()
+    await expect(retrievePaymentIntent('pi_secret')).resolves.toEqual({ status: 'ok', paymentIntent })
+    expect(retrievePaymentIntentMock).toHaveBeenCalledWith('pi_secret')
+  })
+
+  it('STRIPE-012: retrievePaymentIntent エラーは型付き結果で返す', async () => {
+    retrievePaymentIntentMock.mockResolvedValue({ error: { message: 'PaymentIntent not found' } })
+    const { retrievePaymentIntent } = useStripeSetup()
+    await expect(retrievePaymentIntent('pi_secret')).resolves.toEqual({
+      status: 'error',
+      message: 'PaymentIntent not found',
+    })
   })
 })

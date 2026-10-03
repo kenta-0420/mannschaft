@@ -15,17 +15,14 @@ const teamSlug = String(route.params.slug)
 const advertiserApi = useAdvertiserApi()
 const toast = useNotification()
 
+// F08.12 §5.0: 後払い（請求書方式）は廃止済み。決済方式はクレジットカード（Stripe）一本のため
+// 選択肢は無く、固定表示にする。
 const form = ref({
   companyName: '',
   contactEmail: '',
   billingMethod: 'STRIPE' as BillingMethod,
 })
 const submitting = ref(false)
-
-const billingOptions = [
-  { label: t('advertising.teams_page.register.billing_stripe'), value: 'STRIPE' },
-  { label: t('advertising.teams_page.register.billing_invoice'), value: 'INVOICE' },
-]
 
 async function submit() {
   if (!form.value.companyName || !form.value.contactEmail) return
@@ -54,7 +51,7 @@ async function submit() {
       </div>
       <div class="mb-6">
         <label class="mb-1 block text-sm font-medium">{{ t('advertising.teams_page.register.billing_method_label') }}</label>
-        <Select v-model="form.billingMethod" :options="billingOptions" option-label="label" option-value="value" class="w-full" />
+        <p class="text-sm text-gray-500">{{ t('advertising.teams_page.register.billing_fixed_notice') }}</p>
       </div>
       <Button :label="t('advertising.teams_page.register.submit')" icon="pi pi-check" :loading="submitting" class="w-full" @click="submit" />
     </SectionCard>

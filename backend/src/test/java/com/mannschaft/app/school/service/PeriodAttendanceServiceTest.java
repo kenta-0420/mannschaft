@@ -29,6 +29,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -472,5 +475,49 @@ class PeriodAttendanceServiceTest {
                 .build();
         ReflectionTestUtils.setField(alert, "id", 1L);
         return alert;
+    }
+
+    // ========================================
+    // toBuilder 更新破壊 回帰テスト
+    // ========================================
+
+    /**
+     * toBuilder().build() で作り直すと BaseEntity.id が引き継がれず id=null の新インスタンスになり
+     * INSERT 化して行が重複するバグの回帰テスト。
+     */
+    @Nested
+    @DisplayName("toBuilder更新破壊回帰")
+    class ToBuilderUpdateRegression {
+
+        private static final Long EXISTING_ID = 99L;
+
+        @Test
+        @DisplayName("updatePeriodRecord: 取得した同一インスタンスを id 保持のまま UPDATE する（新インスタンス化しない）")
+        void updatePeriodRecord_既存行をUPDATE_id保持() {
+            // Given
+            Mockito.doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
+
+            PeriodAttendanceRecordEntity existing = buildRecord(null, AttendanceStatus.UNDECIDED);
+            ReflectionTestUtils.setField(existing, "id", EXISTING_ID);
+            given(periodAttendanceRecordRepository.findById(EXISTING_ID)).willReturn(Optional.of(existing));
+
+            ArgumentCaptor<PeriodAttendanceRecordEntity> captor =
+                    ArgumentCaptor.forClass(PeriodAttendanceRecordEntity.class);
+            given(periodAttendanceRecordRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+            PeriodAttendanceUpdateRequest request = new PeriodAttendanceUpdateRequest();
+            ReflectionTestUtils.setField(request, "status", AttendanceStatus.ABSENT);
+            ReflectionTestUtils.setField(request, "lateMinutes", 15);
+
+            // When
+            periodAttendanceService.updatePeriodRecord(TEAM_ID, EXISTING_ID, request, OPERATOR_USER_ID);
+
+            // Then: save に渡るのは取得した同一インスタンスで、id が保持されている（=UPDATE 経路）
+            PeriodAttendanceRecordEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(existing);
+            assertThat(saved.getId()).isEqualTo(EXISTING_ID);
+            assertThat(saved.getStatus()).isEqualTo(AttendanceStatus.ABSENT);
+            assertThat(saved.getLateMinutes()).isEqualTo(15);
+        }
     }
 }

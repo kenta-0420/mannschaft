@@ -2,17 +2,17 @@ package com.mannschaft.app.cspreport.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.UUID;
 
 /**
  * CSP 違反レポートエンティティ。
@@ -23,13 +23,12 @@ import java.time.LocalDateTime;
 @Table(name = "csp_reports")
 @Getter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
-@AllArgsConstructor(access = lombok.AccessLevel.PRIVATE)
-@Builder
+@SuperBuilder(toBuilder = true)
 public class CspReportEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @CspUuidV7Generated
+    private UUID id;
 
     @Column(length = 1000)
     private String documentUri;
@@ -94,5 +93,21 @@ public class CspReportEntity {
     public void incrementOccurrence() {
         this.occurrenceCount = this.occurrenceCount + 1;
         this.lastSeenAt = LocalDateTime.now();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof CspReportEntity that)) {
+            return false;
+        }
+        return id != null && that.id != null && Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
     }
 }

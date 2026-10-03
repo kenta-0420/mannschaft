@@ -1,5 +1,6 @@
 package com.mannschaft.app.school.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.school.dto.CreateRequirementRuleRequest;
 import com.mannschaft.app.school.dto.RequirementRuleListResponse;
@@ -27,6 +28,11 @@ import java.util.stream.Stream;
 public class AttendanceRequirementService {
 
     private final AttendanceRequirementRuleRepository ruleRepository;
+    private final AccessControlService accessControlService;
+
+    // スコープ種別文字列（AccessControlService の用法に合わせる）。
+    private static final String SCOPE_ORGANIZATION = "ORGANIZATION";
+    private static final String SCOPE_TEAM = "TEAM";
 
     // ========================================
     // 一覧取得
@@ -35,12 +41,16 @@ public class AttendanceRequirementService {
     /**
      * 組織スコープの規程一覧を取得する。
      *
+     * <p>認可: 組織メンバーのみ参照可（{@link AccessControlService#checkMembership}）。</p>
+     *
      * @param orgId        組織ID
      * @param academicYear 学年度
+     * @param actorUserId  操作ユーザーID（認可判定に使用）
      * @return 規程一覧レスポンス
      */
     @Transactional(readOnly = true)
-    public RequirementRuleListResponse listOrganizationRules(Long orgId, short academicYear) {
+    public RequirementRuleListResponse listOrganizationRules(Long orgId, short academicYear, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, orgId, SCOPE_ORGANIZATION);
         List<RequirementRuleResponse> rules = ruleRepository
                 .findByOrganizationIdAndAcademicYear(orgId, academicYear, LocalDate.now())
                 .stream()
@@ -55,12 +65,16 @@ public class AttendanceRequirementService {
     /**
      * チームスコープの規程一覧を取得する。
      *
+     * <p>認可: チームメンバーのみ参照可（{@link AccessControlService#checkMembership}）。</p>
+     *
      * @param teamId       チームID
      * @param academicYear 学年度
+     * @param actorUserId  操作ユーザーID（認可判定に使用）
      * @return 規程一覧レスポンス
      */
     @Transactional(readOnly = true)
-    public RequirementRuleListResponse listTeamRules(Long teamId, short academicYear) {
+    public RequirementRuleListResponse listTeamRules(Long teamId, short academicYear, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         List<RequirementRuleResponse> rules = ruleRepository
                 .findByTeamIdAndAcademicYear(teamId, academicYear, LocalDate.now())
                 .stream()
@@ -79,12 +93,17 @@ public class AttendanceRequirementService {
     /**
      * 組織スコープの規程を作成する。
      *
-     * @param orgId   組織ID（パスから取得）
-     * @param req     作成リクエスト
+     * <p>認可: 組織 ADMIN/DEPUTY_ADMIN のみ作成可（{@link AccessControlService#checkAdminOrAbove}）。</p>
+     *
+     * @param orgId       組織ID（パスから取得）
+     * @param req         作成リクエスト
+     * @param actorUserId 操作ユーザーID（認可判定に使用）
      * @return 作成された規程レスポンス
      */
     @Transactional
-    public RequirementRuleResponse createOrganizationRule(Long orgId, CreateRequirementRuleRequest req) {
+    public RequirementRuleResponse createOrganizationRule(
+            Long orgId, CreateRequirementRuleRequest req, Long actorUserId) {
+        accessControlService.checkAdminOrAbove(actorUserId, orgId, SCOPE_ORGANIZATION);
         // 有効期間の整合性チェック
         validateEffectiveDates(req.getEffectiveFrom(), req.getEffectiveUntil());
         AttendanceRequirementRuleEntity entity = buildEntity(req, orgId, null);
@@ -94,12 +113,17 @@ public class AttendanceRequirementService {
     /**
      * チームスコープの規程を作成する。
      *
-     * @param teamId  チームID（パスから取得）
-     * @param req     作成リクエスト
+     * <p>認可: チーム ADMIN/DEPUTY_ADMIN のみ作成可（{@link AccessControlService#checkAdminOrAbove}）。</p>
+     *
+     * @param teamId      チームID（パスから取得）
+     * @param req         作成リクエスト
+     * @param actorUserId 操作ユーザーID（認可判定に使用）
      * @return 作成された規程レスポンス
      */
     @Transactional
-    public RequirementRuleResponse createTeamRule(Long teamId, CreateRequirementRuleRequest req) {
+    public RequirementRuleResponse createTeamRule(
+            Long teamId, CreateRequirementRuleRequest req, Long actorUserId) {
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
         // 有効期間の整合性チェック
         validateEffectiveDates(req.getEffectiveFrom(), req.getEffectiveUntil());
         AttendanceRequirementRuleEntity entity = buildEntity(req, null, teamId);
@@ -113,14 +137,20 @@ public class AttendanceRequirementService {
     /**
      * 規程を更新する。
      *
-     * @param ruleId 規程ID
-     * @param req    更新リクエスト
+     * <p>認可: 規程 entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ更新可。権限が無い場合は
+     * 存在秘匿のため 404（{@link #requireScopeAdminOrHide}）。</p>
+     *
+     * @param ruleId      規程ID
+     * @param req         更新リクエスト
+     * @param actorUserId 操作ユーザーID（認可判定に使用）
      * @return 更新後の規程レスポンス
      */
     @Transactional
-    public RequirementRuleResponse updateRule(Long ruleId, UpdateRequirementRuleRequest req) {
+    public RequirementRuleResponse updateRule(
+            Long ruleId, UpdateRequirementRuleRequest req, Long actorUserId) {
         AttendanceRequirementRuleEntity entity = ruleRepository.findById(ruleId)
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.REQUIREMENT_RULE_NOT_FOUND));
+        requireScopeAdminOrHide(entity, actorUserId);
 
         // 有効期間の整合性チェック（null の場合は既存値を維持）
         LocalDate from = req.getEffectiveFrom() != null ? req.getEffectiveFrom() : entity.getEffectiveFrom();
@@ -155,12 +185,17 @@ public class AttendanceRequirementService {
     /**
      * 規程を削除する。
      *
-     * @param ruleId 規程ID
+     * <p>認可: 規程 entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ削除可。権限が無い場合は
+     * 存在秘匿のため 404（{@link #requireScopeAdminOrHide}）。</p>
+     *
+     * @param ruleId      規程ID
+     * @param actorUserId 操作ユーザーID（認可判定に使用）
      */
     @Transactional
-    public void deleteRule(Long ruleId) {
+    public void deleteRule(Long ruleId, Long actorUserId) {
         AttendanceRequirementRuleEntity entity = ruleRepository.findById(ruleId)
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.REQUIREMENT_RULE_NOT_FOUND));
+        requireScopeAdminOrHide(entity, actorUserId);
         ruleRepository.delete(entity);
     }
 
@@ -193,6 +228,26 @@ public class AttendanceRequirementService {
     // ========================================
     // プライベートヘルパー
     // ========================================
+
+    /**
+     * ruleId 直指定 EP（更新/削除）の書き込み認可。
+     *
+     * <p>規程 entity 由来のスコープ（{@code organizationId} が非 null なら ORGANIZATION、
+     * そうでなければ TEAM）で ADMIN/DEPUTY_ADMIN を要求する。URL パスにスコープを持たない
+     * bare id EP のため、権限が無い場合は 403 ではなく 404（{@code REQUIREMENT_RULE_NOT_FOUND}）に
+     * 収束させ、規程の存在有無を非権限者に開示しない（存在秘匿）。</p>
+     *
+     * @param entity      対象規程エンティティ
+     * @param actorUserId 操作ユーザーID
+     */
+    private void requireScopeAdminOrHide(AttendanceRequirementRuleEntity entity, Long actorUserId) {
+        boolean orgScope = entity.getOrganizationId() != null;
+        Long scopeId = orgScope ? entity.getOrganizationId() : entity.getTeamId();
+        String scopeType = orgScope ? SCOPE_ORGANIZATION : SCOPE_TEAM;
+        if (!accessControlService.isAdminOrAbove(actorUserId, scopeId, scopeType)) {
+            throw new BusinessException(SchoolErrorCode.REQUIREMENT_RULE_NOT_FOUND);
+        }
+    }
 
     /**
      * 有効期間の整合性を検証する。

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const showGuide = ref(false)
+const showCreateForm = ref(false)
 definePageMeta({
   middleware: 'auth',
   layout: 'default',
@@ -7,10 +9,19 @@ definePageMeta({
 
 <template>
   <div class="mx-auto max-w-2xl p-6">
-    <PageHeader title="招待URL管理" />
+    <PageHeader :title="$t('contact_invite.page_title')" help @help="showGuide = true">
+      <template #actions>
+        <Button
+          :label="$t('contact_invite.create_button')"
+          icon="pi pi-plus"
+          @click="showCreateForm = !showCreateForm"
+        />
+      </template>
+    </PageHeader>
     <p class="mb-6 mt-1 text-sm text-gray-500">
-      連絡先追加用の招待URLを発行・管理します。URLを共有した相手があなたを連絡先に追加できます。
+      {{ $t('contact_invite.page_description') }}
     </p>
-    <ContactInvitePanel />
+    <ContactInvitePanel v-model:show-create-form="showCreateForm" />
+    <ContactInviteGuideModal v-model:visible="showGuide" />
   </div>
 </template>

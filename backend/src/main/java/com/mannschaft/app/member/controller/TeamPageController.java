@@ -51,7 +51,8 @@ public class TeamPageController {
             @RequestParam(required = false) Long organizationId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<TeamPageResponse> result = pageService.listPages(teamId, organizationId, PageRequest.of(page, size));
+        Long userId = SecurityUtils.getCurrentUserId();
+        Page<TeamPageResponse> result = pageService.listPages(userId, teamId, organizationId, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -64,7 +65,8 @@ public class TeamPageController {
     @Operation(summary = "ページ詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<TeamPageResponse>> getPage(@PathVariable Long id) {
-        TeamPageResponse response = pageService.getPage(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        TeamPageResponse response = pageService.getPage(userId, id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -89,7 +91,8 @@ public class TeamPageController {
     public ResponseEntity<ApiResponse<TeamPageResponse>> updatePage(
             @PathVariable Long id,
             @Valid @RequestBody UpdateTeamPageRequest request) {
-        TeamPageResponse response = pageService.updatePage(id, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        TeamPageResponse response = pageService.updatePage(userId, id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -100,7 +103,8 @@ public class TeamPageController {
     @Operation(summary = "ページ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePage(@PathVariable Long id) {
-        pageService.deletePage(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        pageService.deletePage(userId, id);
         return ResponseEntity.noContent().build();
     }
 
@@ -113,7 +117,8 @@ public class TeamPageController {
     public ResponseEntity<ApiResponse<TeamPageResponse>> changeStatus(
             @PathVariable Long id,
             @Valid @RequestBody PublishRequest request) {
-        TeamPageResponse response = pageService.changeStatus(id, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        TeamPageResponse response = pageService.changeStatus(userId, id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -124,7 +129,8 @@ public class TeamPageController {
     @Operation(summary = "プレビュートークン発行")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "発行成功")
     public ResponseEntity<ApiResponse<PreviewTokenResponse>> issuePreviewToken(@PathVariable Long id) {
-        PreviewTokenResponse response = pageService.issuePreviewToken(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        PreviewTokenResponse response = pageService.issuePreviewToken(userId, id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -135,7 +141,8 @@ public class TeamPageController {
     @Operation(summary = "プレビュートークン無効化")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "無効化成功")
     public ResponseEntity<Void> revokePreviewToken(@PathVariable Long id) {
-        pageService.revokePreviewToken(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        pageService.revokePreviewToken(userId, id);
         return ResponseEntity.noContent().build();
     }
 }

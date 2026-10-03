@@ -1,9 +1,17 @@
 package com.mannschaft.app.match.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
+import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.storage.acl.StorageAclAttachmentBinding;
+import com.mannschaft.app.common.storage.acl.StorageAclContentReference;
+import com.mannschaft.app.common.storage.acl.StorageAclDownloadRequest;
+import com.mannschaft.app.common.storage.acl.StorageAclScope;
+import com.mannschaft.app.common.storage.acl.StorageAclService;
+import com.mannschaft.app.common.storage.acl.StorageAccessService;
 import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.entity.MatchAttachmentEntity;
 import com.mannschaft.app.match.entity.MatchEntity;
@@ -17,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -67,6 +76,9 @@ public class MatchAttachmentService {
     private final MatchService matchService;
     private final MatchAccessService matchAccessService;
     private final StorageService storageService;
+    private final StorageAclService storageAclService;
+    private final StorageAccessService storageAccessService;
+    private final DomainEventPublisher eventPublisher;
 
     // ─────────────────────────────────────────────
     // 1. presign（アップロード URL 発行・記録権限必須）
@@ -85,6 +97,7 @@ public class MatchAttachmentService {
      * @param fileSize       バイト数
      * @return uploadUrl / fileKey / 有効期限
      */
+    @Transactional
     public PresignResult generateUploadUrl(UUID matchId, Long organizationId, Long actorUserId,
                                            String contentType, Long fileSize) {
         MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId);
@@ -96,6 +109,8 @@ public class MatchAttachmentService {
 
         String fileKey = buildFileKey(match, matchId);
         PresignedUploadResult result = storageService.generateUploadUrl(fileKey, contentType, PRESIGN_TTL);
+        storageAclService.registerPending(fileKey, actorUserId, StorageAclScope.organization(organizationId),
+                contentType, PRESIGN_TTL, new StorageAclContentReference("MATCH", matchId.toString()));
 
         log.info("局面写真 presign 発行: matchId={}, fileKey={}, actor={}", matchId, fileKey, actorUserId);
         return PresignResult.builder()
@@ -136,6 +151,9 @@ public class MatchAttachmentService {
                 .build();
 
         MatchAttachmentEntity saved = attachmentRepository.save(attachment);
+        storageAclService.claimPending(command.getFileKey(), actorUserId, StorageAclScope.organization(organizationId),
+                new StorageAclContentReference("MATCH", matchId.toString()),
+                new StorageAclAttachmentBinding("MATCH_ATTACHMENT", saved.getId().toString()));
         log.info("局面写真 確定: matchId={}, attachmentId={}, actor={}", matchId, saved.getId(), actorUserId);
         return saved;
     }
@@ -152,8 +170,15 @@ public class MatchAttachmentService {
      * @return 添付一覧（作成日時昇順）
      */
     public List<MatchAttachmentEntity> listAttachments(UUID matchId, Long organizationId) {
-        matchService.getMatchOrThrow(matchId, organizationId);
-        return attachmentRepository.findByMatchIdOrderByCreatedAtAsc(matchId);
+        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId);
+        List<MatchAttachmentEntity> attachments =
+                attachmentRepository.findByMatchIdOrderByCreatedAtAsc(matchId);
+        Map<String, String> downloadUrls = storageAccessService.generateDownloadUrlsForList(
+                attachments.stream().map(attachment -> downloadRequest(match, attachment)).toList(),
+                DOWNLOAD_TTL);
+        return attachments.stream()
+                .filter(attachment -> downloadUrls.containsKey(attachment.getFileKey()))
+                .toList();
     }
 
     // ─────────────────────────────────────────────
@@ -169,9 +194,14 @@ public class MatchAttachmentService {
      * @return 短命ダウンロード URL（秒）
      */
     public DownloadUrl generateDownloadUrl(UUID matchId, UUID attachmentId, Long organizationId) {
-        matchService.getMatchOrThrow(matchId, organizationId);
+        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId);
         MatchAttachmentEntity attachment = getAttachmentInMatchOrThrow(matchId, attachmentId);
-        String downloadUrl = storageService.generateDownloadUrl(attachment.getFileKey(), DOWNLOAD_TTL);
+        String downloadUrl = storageAccessService.generateDownloadUrl(
+                attachment.getFileKey(),
+                StorageAclScope.organization(match.getOrganizationId()),
+                new StorageAclContentReference("MATCH", match.getId().toString()),
+                new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attachment.getId().toString()),
+                DOWNLOAD_TTL);
         return DownloadUrl.builder()
                 .downloadUrl(downloadUrl)
                 .expiresInSeconds(DOWNLOAD_TTL.toSeconds())
@@ -197,13 +227,11 @@ public class MatchAttachmentService {
         MatchAttachmentEntity attachment = getAttachmentInMatchOrThrow(matchId, attachmentId);
 
         String fileKey = attachment.getFileKey();
+        storageAclService.releaseClaimed(fileKey,
+                new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attachment.getId().toString()));
         attachmentRepository.delete(attachment);
-        if (fileKey != null) {
-            try {
-                storageService.delete(fileKey);
-            } catch (Exception e) {
-                log.warn("R2 オブジェクト削除失敗（ベストエフォート）: fileKey={}, error={}", fileKey, e.getMessage());
-            }
+        if (fileKey != null && !fileKey.isBlank()) {
+            eventPublisher.publish(new S3ObjectDeleteEvent(fileKey));
         }
         log.info("局面写真 削除: matchId={}, attachmentId={}, actor={}", matchId, attachmentId, actorUserId);
     }
@@ -225,6 +253,15 @@ public class MatchAttachmentService {
             throw new BusinessException(MatchErrorCode.MATCH_031);
         }
         return attachment;
+    }
+
+    private StorageAclDownloadRequest downloadRequest(
+            MatchEntity match, MatchAttachmentEntity attachment) {
+        return new StorageAclDownloadRequest(
+                attachment.getFileKey(),
+                StorageAclScope.organization(match.getOrganizationId()),
+                new StorageAclContentReference("MATCH", match.getId().toString()),
+                new StorageAclAttachmentBinding("MATCH_ATTACHMENT", attachment.getId().toString()));
     }
 
     // ─────────────────────────────────────────────

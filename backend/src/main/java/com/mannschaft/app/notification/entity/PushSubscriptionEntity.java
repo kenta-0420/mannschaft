@@ -8,8 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -22,8 +21,7 @@ import java.time.LocalDateTime;
 @Table(name = "push_subscriptions")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class PushSubscriptionEntity {
 
     @Id
@@ -36,7 +34,7 @@ public class PushSubscriptionEntity {
     @Column(nullable = false, length = 2000)
     private String endpoint;
 
-    @Column(nullable = false, length = 500)
+    @Column(name = "p256dh_key", nullable = false, length = 500)
     private String p256dhKey;
 
     @Column(nullable = false, length = 500)
@@ -45,6 +43,7 @@ public class PushSubscriptionEntity {
     @Column(length = 500)
     private String userAgent;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     private LocalDateTime lastUsedAt;

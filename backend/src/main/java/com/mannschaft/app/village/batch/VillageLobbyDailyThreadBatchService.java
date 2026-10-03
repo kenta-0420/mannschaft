@@ -3,6 +3,8 @@ package com.mannschaft.app.village.batch;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageLobbyDailyThreadEntity;
 import com.mannschaft.app.village.repository.VillageRepository;
@@ -56,6 +58,8 @@ public class VillageLobbyDailyThreadBatchService {
      * <p>UTC 0 時を採用しているのは「村は組織横断」ゆえ地域タイムゾーンに合わせると
      * 不公平が生じるため。Phase 2 で村ごとのタイムゾーン設定が入れば切替予定。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。村ロビーの日次スレッド生成であり、冪等に生成される。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @BatchEndpoint(name = "village-lobby-daily-thread", description = "全村のロビー日次スレッドを毎日 UTC 00:00 に冪等生成する")
     @Scheduled(cron = "0 0 0 * * *", zone = "UTC")
     @SchedulerLock(

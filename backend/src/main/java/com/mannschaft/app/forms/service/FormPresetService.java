@@ -89,16 +89,16 @@ public class FormPresetService {
     public FormPresetResponse updatePreset(Long presetId, UpdateFormPresetRequest request) {
         SystemFormPresetEntity entity = findPresetOrThrow(presetId);
 
-        SystemFormPresetEntity updated = entity.toBuilder()
-                .name(request.getName() != null ? request.getName() : entity.getName())
-                .description(request.getDescription() != null ? request.getDescription() : entity.getDescription())
-                .category(request.getCategory() != null ? request.getCategory() : entity.getCategory())
-                .fieldsJson(request.getFieldsJson() != null ? request.getFieldsJson() : entity.getFieldsJson())
-                .icon(request.getIcon() != null ? request.getIcon() : entity.getIcon())
-                .color(request.getColor() != null ? request.getColor() : entity.getColor())
-                .build();
+        // managed entity を直接ミューテートして主キーを保持する（toBuilder().build() は id 欠落で INSERT 化するため使用しない）
+        entity.applyUpdate(
+                request.getName(),
+                request.getDescription(),
+                request.getCategory(),
+                request.getFieldsJson(),
+                request.getIcon(),
+                request.getColor());
 
-        SystemFormPresetEntity saved = presetRepository.save(updated);
+        SystemFormPresetEntity saved = presetRepository.save(entity);
         log.info("プリセット更新: presetId={}", presetId);
         return formMapper.toPresetResponse(saved);
     }

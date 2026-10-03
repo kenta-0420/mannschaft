@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -31,6 +32,9 @@ import java.util.UUID;
  */
 @Repository
 public interface MatchRepository extends AbstractTenantAwareRepository<MatchEntity, UUID> {
+
+    Optional<MatchEntity> findByIdAndTeamIdAndOrganizationIdIsNullAndDeletedAtIsNull(
+            UUID id, Long teamId);
 
     /**
      * チーム統計用: 当該テナント・当該チームが主体（team_id）または相手（opponent_team_id）の試合を取得する。
@@ -196,6 +200,26 @@ public interface MatchRepository extends AbstractTenantAwareRepository<MatchEnti
             """)
     Page<MatchEntity> findTeamMatches(
             @Param("orgId") Long orgId,
+            @Param("teamId") Long teamId,
+            @Param("status") MatchStatus status,
+            @Param("kind") MatchKind kind,
+            @Param("sport") Sport sport,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            Pageable pageable);
+
+    @Query("""
+            SELECT m FROM MatchEntity m
+            WHERE m.organizationId IS NULL
+              AND m.teamId = :teamId
+              AND (:status IS NULL OR m.status = :status)
+              AND (:kind IS NULL OR m.kind = :kind)
+              AND (:sport IS NULL OR m.sport = :sport)
+              AND (:from IS NULL OR m.kickoffAt >= :from)
+              AND (:to IS NULL OR m.kickoffAt <= :to)
+            ORDER BY m.kickoffAt DESC, m.id DESC
+            """)
+    Page<MatchEntity> findStandaloneTeamMatches(
             @Param("teamId") Long teamId,
             @Param("status") MatchStatus status,
             @Param("kind") MatchKind kind,

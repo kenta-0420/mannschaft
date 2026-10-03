@@ -15,7 +15,7 @@ test.describe('ORG-FEAT-001〜005: 組織スケジュール', () => {
             data: [
               { id: 1, title: 'テスト予定', startAt: '2026-04-10T10:00:00Z', endAt: '2026-04-10T12:00:00Z', allDay: false },
             ],
-            meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+            meta: { page: 0, size: 20, total: 1, totalPages: 1 },
           }),
         })
       } else {

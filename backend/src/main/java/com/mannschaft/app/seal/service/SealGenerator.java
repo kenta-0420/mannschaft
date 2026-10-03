@@ -33,8 +33,8 @@ public class SealGenerator {
 
         StringBuilder svg = new StringBuilder();
         svg.append(String.format(
-                "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\">",
-                SEAL_SIZE, SEAL_SIZE, SEAL_SIZE, SEAL_SIZE));
+                "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100%%\" height=\"100%%\" viewBox=\"0 0 %d %d\">",
+                SEAL_SIZE, SEAL_SIZE));
 
         // 背景透過
         svg.append(String.format(
@@ -46,7 +46,7 @@ public class SealGenerator {
             // 1-2文字: 横書き
             int fontSize = displayText.length() == 1 ? 40 : 28;
             svg.append(String.format(
-                    "<text x=\"%d\" y=\"%d\" text-anchor=\"middle\" dominant-baseline=\"central\" "
+                    "<text x=\"%d\" y=\"%d\" text-anchor=\"middle\" dy=\"0.35em\" "
                             + "fill=\"%s\" font-size=\"%d\" font-family=\"serif\" font-weight=\"bold\">%s</text>",
                     cx, cy, SEAL_COLOR, fontSize, escapeXml(displayText)));
         } else if (displayText.length() <= 4) {
@@ -55,7 +55,7 @@ public class SealGenerator {
             int startY = cy - (displayText.length() - 1) * fontSize / 2;
             for (int i = 0; i < displayText.length(); i++) {
                 svg.append(String.format(
-                        "<text x=\"%d\" y=\"%d\" text-anchor=\"middle\" dominant-baseline=\"central\" "
+                        "<text x=\"%d\" y=\"%d\" text-anchor=\"middle\" dy=\"0.35em\" "
                                 + "fill=\"%s\" font-size=\"%d\" font-family=\"serif\" font-weight=\"bold\">%s</text>",
                         cx, startY + i * fontSize, SEAL_COLOR, fontSize,
                         escapeXml(String.valueOf(displayText.charAt(i)))));
@@ -69,7 +69,7 @@ public class SealGenerator {
             int startY1 = cy - (half - 1) * fontSize / 2;
             for (int i = 0; i < half; i++) {
                 svg.append(String.format(
-                        "<text x=\"%d\" y=\"%d\" text-anchor=\"middle\" dominant-baseline=\"central\" "
+                        "<text x=\"%d\" y=\"%d\" text-anchor=\"middle\" dy=\"0.35em\" "
                                 + "fill=\"%s\" font-size=\"%d\" font-family=\"serif\" font-weight=\"bold\">%s</text>",
                         rightX, startY1 + i * fontSize, SEAL_COLOR, fontSize,
                         escapeXml(String.valueOf(displayText.charAt(i)))));
@@ -80,7 +80,7 @@ public class SealGenerator {
             int startY2 = cy - (remaining - 1) * fontSize / 2;
             for (int i = half; i < displayText.length(); i++) {
                 svg.append(String.format(
-                        "<text x=\"%d\" y=\"%d\" text-anchor=\"middle\" dominant-baseline=\"central\" "
+                        "<text x=\"%d\" y=\"%d\" text-anchor=\"middle\" dy=\"0.35em\" "
                                 + "fill=\"%s\" font-size=\"%d\" font-family=\"serif\" font-weight=\"bold\">%s</text>",
                         leftX, startY2 + (i - half) * fontSize, SEAL_COLOR, fontSize,
                         escapeXml(String.valueOf(displayText.charAt(i)))));

@@ -98,6 +98,9 @@
     "vendor": {
       "title": "業者マスタ",
       "subtitle": "工事業者・点検業者などのマスタ管理",
+      "notice": {
+        "personalScopeUnsupported": "業者マスタは個人スコープでは利用できません。チームまたは組織スコープに切り替えてください。"
+      },
       "newVendor": "新規業者を追加",
       "editVendor": "業者を編集",
       "deleteConfirm": "業者を論理削除します。よろしいですか？",
@@ -142,6 +145,30 @@
       "close": "閉じる",
       "back": "一覧に戻る",
       "changeStatus": "ステータスを変更"
+    },
+    "residents": {
+      "title": "住民台帳",
+      "create": "住戸を追加",
+      "createTitle": "住戸を追加",
+      "unitNumber": "住戸番号",
+      "unitNumberPlaceholder": "例: 101",
+      "floor": "階",
+      "unitType": "住戸種別",
+      "layout": "間取り",
+      "areaSqm": "面積",
+      "notes": "メモ",
+      "residentCount": "{count}人入居中",
+      "occupied": "入居中",
+      "vacant": "空室",
+      "empty": "住戸情報がありません",
+      "createSuccess": "住戸を追加しました",
+      "createFailed": "住戸の追加に失敗しました",
+      "validation": {
+        "unitNumberRequired": "住戸番号を入力してください",
+        "unitNumberMax": "住戸番号は50文字以内で入力してください",
+        "unitTypeMax": "住戸種別は20文字以内で入力してください",
+        "layoutMax": "間取りは20文字以内で入力してください"
+      }
     },
     "errors": {
       "loadFailed": "読み込みに失敗しました",

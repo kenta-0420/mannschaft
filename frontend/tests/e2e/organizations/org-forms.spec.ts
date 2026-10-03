@@ -12,7 +12,7 @@ test.describe('ORG-FEAT-022〜025: 組織フォーム', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: [{ id: 1, title: 'テストフォーム', status: 'PUBLISHED', responseCount: 3 }],
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })

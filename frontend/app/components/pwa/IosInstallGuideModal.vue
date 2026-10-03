@@ -7,6 +7,11 @@
  */
 const visible = defineModel<boolean>('visible', { default: false })
 
+// LP など未認証文脈では「ポイっとメモ」ショートカット節が無意味なため opt-out 可能にする（既定は従来どおり表示）
+const props = withDefaults(defineProps<{ showMemoShortcut?: boolean }>(), {
+  showMemoShortcut: true,
+})
+
 const { t } = useI18n()
 
 // ステップ配列は i18n キーとアイコンをセットで保持。Safari ロゴは番号バッジで代替する。
@@ -61,8 +66,8 @@ function close() {
     </ol>
 
     <!-- ポイっとメモ専用ショートカットのヒント -->
-    <Divider />
-    <div class="rounded-lg bg-surface-50 p-4 dark:bg-surface-800">
+    <Divider v-if="props.showMemoShortcut" />
+    <div v-if="props.showMemoShortcut" class="rounded-lg bg-surface-50 p-4 dark:bg-surface-800">
       <p class="mb-3 flex items-center gap-2 text-sm font-semibold text-orange-600 dark:text-orange-400">
         <i class="pi pi-bolt" />
         {{ t('pwa.ios.memo_shortcut_title') }}

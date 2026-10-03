@@ -8,10 +8,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -27,8 +26,7 @@ import java.time.LocalDateTime;
 @Table(name = "team_name_disclosure_change_logs")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder
+@SuperBuilder
 public class TeamNameDisclosureChangeLogEntity extends UuidV7Entity {
 
     /** 変更対象のチーム ID。FK 制約なし（クロスドメイン FK 禁止原則に従う）。 */

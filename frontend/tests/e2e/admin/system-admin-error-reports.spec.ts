@@ -61,7 +61,7 @@ const MOCK_ERROR_REPORT_LIST = {
       updatedAt: '2026-05-08T08:00:00',
     },
   ],
-  meta: { page: 0, size: 20, totalElements: 3, totalPages: 1 },
+  meta: { page: 0, size: 20, total: 3, totalPages: 1 },
 }
 
 const MOCK_ERROR_REPORT_DETAIL = {
@@ -162,7 +162,7 @@ const MOCK_AI_ANALYSES = {
       createdAt: '2026-05-08T09:00:00',
     },
   ],
-  meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+  meta: { page: 0, size: 20, total: 1, totalPages: 1 },
 }
 
 const MOCK_KANBAN_COLUMNS = {
@@ -301,7 +301,7 @@ test.describe('ERR-ADMIN-004〜006: エラー種別フィルタ', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           data: MOCK_ERROR_REPORT_LIST.data.filter((r) => r.status === 'NEW'),
-          meta: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+          meta: { page: 0, size: 20, total: 1, totalPages: 1 },
         }),
       })
     })

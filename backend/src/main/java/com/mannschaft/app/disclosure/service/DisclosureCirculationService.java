@@ -6,6 +6,7 @@ import com.mannschaft.app.circulation.dto.CreateDocumentRequest;
 import com.mannschaft.app.circulation.dto.DocumentResponse;
 import com.mannschaft.app.circulation.dto.RecipientEntry;
 import com.mannschaft.app.circulation.service.CirculationService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.disclosure.DisclosureErrorCode;
 import com.mannschaft.app.disclosure.dto.DisclosureCirculationStartRequest;
@@ -58,6 +59,9 @@ public class DisclosureCirculationService {
      */
     private final CirculationService circulationService;
 
+    /** 認可根治戦役 Wave3-B4: 回覧開始は ADMIN/DEPUTY_ADMIN 以上のみ許可する。 */
+    private final AccessControlService accessControlService;
+
     /**
      * 出力履歴に対して電子印鑑承認回覧を開始する。
      *
@@ -92,6 +96,7 @@ public class DisclosureCirculationService {
                 .findByIdAndDeletedAtIsNull(exportId)
                 .orElseThrow(() -> new BusinessException(DisclosureErrorCode.DISCLOSURE_001));
         ensureScope(exportEntity.getScopeType(), exportEntity.getScopeId(), scopeId);
+        accessControlService.checkAdminOrAbove(userId, scopeId, SCOPE_ORGANIZATION);
 
         // 2. 二重起動防止
         if (exportEntity.getCirculationDocumentId() != null) {
@@ -194,6 +199,7 @@ public class DisclosureCirculationService {
                 null,           // reminderEnabled: デフォルト false
                 null,           // reminderIntervalHours: デフォルト 24
                 null,           // stampDisplayStyle: デフォルト STANDARD
-                recipients);
+                recipients,
+                null);          // sequentialCount: HYBRID 未使用（重説回覧は SEQUENTIAL/SIMULTANEOUS のみ）
     }
 }

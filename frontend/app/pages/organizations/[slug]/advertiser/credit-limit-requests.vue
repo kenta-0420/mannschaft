@@ -12,14 +12,20 @@ const loading = ref(true)
 const showCreate = ref(false)
 const creating = ref(false)
 const form = ref({ requestedLimit: 0, reason: '' })
+/** 取得失敗は「申請なし」ではない。空状態へフォールバックせずエラー状態を出す。 */
+const loadFailed = ref(false)
 
 async function load() {
   loading.value = true
+  loadFailed.value = false
   try {
-    const res = await advertiserApi.getCreditLimitRequests(orgSlug)
+    const res = await advertiserApi.getCreditLimitRequests('ORGANIZATION', orgSlug)
     requests.value = res.data
   }
-  catch { requests.value = [] }
+  catch {
+    requests.value = []
+    loadFailed.value = true
+  }
   finally { loading.value = false }
 }
 
@@ -27,7 +33,7 @@ async function create() {
   if (!form.value.requestedLimit || !form.value.reason) return
   creating.value = true
   try {
-    await advertiserApi.createCreditLimitRequest(orgSlug, form.value)
+    await advertiserApi.createCreditLimitRequest('ORGANIZATION', orgSlug, form.value)
     success('増額申請を送信しました')
     showCreate.value = false
     form.value = { requestedLimit: 0, reason: '' }
@@ -52,6 +58,12 @@ onMounted(load)
     </div>
 
     <div v-if="loading" class="flex justify-center py-10"><LoadingBounce /></div>
+
+    <DashboardErrorState
+      v-else-if="loadFailed"
+      testid="credit-limit-requests-error-state"
+      @retry="load"
+    />
 
     <DataTable v-else :value="requests" striped-rows>
       <Column field="requestedLimit" header="希望額">

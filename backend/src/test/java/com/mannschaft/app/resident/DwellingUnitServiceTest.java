@@ -1,5 +1,6 @@
 package com.mannschaft.app.resident;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.resident.dto.CreateDwellingUnitRequest;
 import com.mannschaft.app.resident.dto.DwellingUnitResponse;
@@ -29,9 +30,11 @@ class DwellingUnitServiceTest {
 
     @Mock private DwellingUnitRepository dwellingUnitRepository;
     @Mock private ResidentMapper residentMapper;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private DwellingUnitService service;
 
     private static final Long TEAM_ID = 1L;
+    private static final Long ACTOR_ID = 100L;
 
     @Nested
     @DisplayName("createForTeam")
@@ -49,7 +52,7 @@ class DwellingUnitServiceTest {
                     .willReturn(new DwellingUnitResponse(1L, "TEAM", TEAM_ID, null, "101", (short) 1, null, null, "STANDARD", null, (short) 0, null, null));
 
             // When
-            DwellingUnitResponse result = service.createForTeam(TEAM_ID, req);
+            DwellingUnitResponse result = service.createForTeam(ACTOR_ID, TEAM_ID, req);
 
             // Then
             assertThat(result.getUnitNumber()).isEqualTo("101");
@@ -65,7 +68,7 @@ class DwellingUnitServiceTest {
             given(dwellingUnitRepository.existsByTeamIdAndUnitNumber(TEAM_ID, "101")).willReturn(true);
 
             // When / Then
-            assertThatThrownBy(() -> service.createForTeam(TEAM_ID, req))
+            assertThatThrownBy(() -> service.createForTeam(ACTOR_ID, TEAM_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("RESIDENT_002"));
@@ -83,7 +86,7 @@ class DwellingUnitServiceTest {
             given(dwellingUnitRepository.findByIdAndTeamId(1L, TEAM_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.getByTeam(TEAM_ID, 1L))
+            assertThatThrownBy(() -> service.getByTeam(ACTOR_ID, TEAM_ID, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("RESIDENT_001"));
@@ -104,7 +107,7 @@ class DwellingUnitServiceTest {
             given(dwellingUnitRepository.save(any(DwellingUnitEntity.class))).willReturn(entity);
 
             // When
-            service.deleteForTeam(TEAM_ID, 1L);
+            service.deleteForTeam(ACTOR_ID, TEAM_ID, 1L);
 
             // Then
             verify(dwellingUnitRepository).save(any(DwellingUnitEntity.class));

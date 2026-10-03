@@ -1,5 +1,6 @@
 import type {
   CreateShiftScheduleRequest,
+  ManualRemindResponse,
   ShiftScheduleResponse,
   UpdateShiftScheduleRequest,
 } from '~/types/shift'
@@ -15,7 +16,7 @@ export function useShiftApi() {
    * @param to    期間終了日（YYYY-MM-DD）省略可
    */
   async function listSchedules(
-    teamId: string,
+    teamId: number | string,
     from?: string,
     to?: string,
   ): Promise<ShiftScheduleResponse[]> {
@@ -50,7 +51,7 @@ export function useShiftApi() {
    * @param payload 作成リクエスト
    */
   async function createSchedule(
-    teamId: string,
+    teamId: number | string,
     payload: CreateShiftScheduleRequest,
   ): Promise<ShiftScheduleResponse> {
     const query = new URLSearchParams()
@@ -115,6 +116,14 @@ export function useShiftApi() {
     return res.data
   }
 
+  /** 希望未提出者へ手動リマインドを送信する。 */
+  async function remindUnsubmitted(scheduleId: number): Promise<ManualRemindResponse> {
+    const res = await api<{ data: ManualRemindResponse }>(`${BASE}/${scheduleId}/remind`, {
+      method: 'POST',
+    })
+    return res.data
+  }
+
   return {
     listSchedules,
     getSchedule,
@@ -124,5 +133,6 @@ export function useShiftApi() {
     deleteSchedule,
     transitionStatus,
     duplicateSchedule,
+    remindUnsubmitted,
   }
 }

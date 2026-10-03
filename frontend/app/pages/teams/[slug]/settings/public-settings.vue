@@ -7,7 +7,7 @@ import type { UpdatePublicSettingsRequest } from '~/types/public'
  * - timelinePostsPublic: タイムライン投稿の公開設定
  * - 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §8.2 / Phase 7
  */
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()

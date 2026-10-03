@@ -1,6 +1,9 @@
 package com.mannschaft.app.membership.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.MembershipScopeQueryService;
+import com.mannschaft.app.auth.service.UserRowLockService;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
@@ -21,6 +24,9 @@ import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.event.MembershipChangedEvent;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.RolePermissionCleanupService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,6 +49,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.inOrder;
 
 /**
  * {@link MembershipService} 単体テスト。
@@ -61,8 +69,13 @@ import static org.mockito.Mockito.verify;
 @DisplayName("MembershipService 単体テスト")
 class MembershipServiceTest {
 
+    @Mock private RolePermissionCleanupService rolePermissionCleanupService;
+
     @Mock
     private MembershipRepository membershipRepository;
+
+    @Mock
+    private MembershipScopeQueryService membershipScopeQueryService;
 
     @Mock
     private MemberPositionRepository memberPositionRepository;
@@ -79,8 +92,44 @@ class MembershipServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private UserRowLockService userRowLockService;
+
+    @Mock
+    private AdminRoleMutationLockService adminRoleMutationLockService;
+
+    @Mock
+    private EntityManager entityManager;
+
     @InjectMocks
     private MembershipService service;
+
+    @Nested
+    @DisplayName("所属スコープ列挙の互換窓口")
+    class ScopeEnumerationCompatibilityTest {
+
+        @Test
+        @DisplayName("従来のteam getterはmembership直結の正本メソッドへ委譲する")
+        void teamGetterDelegatesToCurrentMembershipQuery() {
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(99L))
+                    .willReturn(List.of(10L, 20L));
+
+            assertThat(service.getActiveTeamIdsByUser(99L)).containsExactly(10L, 20L);
+            verify(membershipScopeQueryService).findCurrentMembershipTeamIds(99L);
+        }
+
+        @Test
+        @DisplayName("IncludingRoleAssignmentsは従来どおりACTIVE UNIONとmembership直結を合成する")
+        void includingRoleAssignmentsPreservesMixedPopulation() {
+            given(membershipScopeQueryService.findActiveTeamIds(99L))
+                    .willReturn(List.of(10L, 20L));
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(99L))
+                    .willReturn(List.of(20L, 30L));
+
+            assertThat(service.getActiveTeamIdsIncludingRoleAssignments(99L))
+                    .containsExactly(10L, 20L, 30L);
+        }
+    }
 
     @Nested
     @DisplayName("join() — 入会")
@@ -175,26 +224,80 @@ class MembershipServiceTest {
         }
 
         @Test
-        @DisplayName("validateScope: scopeId NULL で MEMBERSHIP_INVALID_SCOPE")
-        void invalidScope() {
+        @DisplayName("リクエストNULLは副作用前に拒否する")
+        void nullRequestRejectedBeforeWork() {
+            assertThatThrownBy(() -> service.join(null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("req");
+            verifyNoInteractions(userRowLockService, membershipRepository, eventPublisher);
+        }
+
+        @Test
+        @DisplayName("userId NULLは副作用前に拒否する")
+        void nullUserIdRejectedBeforeWork() {
+            MembershipCreateRequest req = req(null, ScopeType.TEAM, 100L, RoleKind.MEMBER, null);
+            assertThatThrownBy(() -> service.join(req))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("userId");
+            verifyNoInteractions(userRowLockService, membershipRepository, eventPublisher);
+        }
+
+        @Test
+        @DisplayName("scopeType NULLは副作用前に拒否する")
+        void nullScopeTypeRejectedBeforeWork() {
+            MembershipCreateRequest req = req(99L, null, 100L, RoleKind.MEMBER, null);
+            assertThatThrownBy(() -> service.join(req))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("scopeType");
+            verifyNoInteractions(userRowLockService, membershipRepository, eventPublisher);
+        }
+
+        @Test
+        @DisplayName("scopeId NULLは副作用前に拒否する")
+        void nullScopeIdRejectedBeforeWork() {
             MembershipCreateRequest req = req(99L, ScopeType.TEAM, null, RoleKind.MEMBER, null);
             assertThatThrownBy(() -> service.join(req))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", MembershipBasisErrorCode.MEMBERSHIP_INVALID_SCOPE);
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("scopeId");
+            verifyNoInteractions(userRowLockService, membershipRepository, eventPublisher);
         }
     }
 
     @Nested
     @DisplayName("leave() — 退会")
     class LeaveTest {
+        @Test
+        @DisplayName("リクエストNULLは副作用前に拒否する")
+        void nullRequestRejectedBeforeWork() {
+            assertThatThrownBy(() -> service.leave(11L, null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("req");
+            verifyNoInteractions(membershipRepository, userRowLockService, entityManager,
+                    adminRoleMutationLockService, memberPositionRepository,
+                    rolePermissionCleanupService, eventPublisher);
+        }
+
+        @Test
+        @DisplayName("leaveReason NULLは副作用前に拒否する")
+        void nullLeaveReasonRejectedBeforeWork() {
+            MembershipLeaveRequest req = new MembershipLeaveRequest();
+            assertThatThrownBy(() -> service.leave(11L, req))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("leaveReason");
+            verifyNoInteractions(membershipRepository, userRowLockService, entityManager,
+                    adminRoleMutationLockService, memberPositionRepository,
+                    rolePermissionCleanupService, eventPublisher);
+        }
 
         @Test
         @DisplayName("正常系: left_at と leave_reason がセットされる")
         void normalLeave() {
             MembershipEntity entity = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
-            given(membershipRepository.findById(11L)).willReturn(Optional.of(entity));
+            given(membershipRepository.findUserIdById(11L)).willReturn(Optional.of(99L));
+            given(membershipRepository.findByIdForUpdate(11L)).willReturn(Optional.of(entity));
             given(memberPositionRepository.findCurrentByMembership(11L)).willReturn(List.of());
-            given(roleRepository.findByName("ADMIN")).willReturn(Optional.empty());
+            given(adminRoleMutationLockService.lockScopeAdminRows(100L, "TEAM", 99L))
+                    .willReturn(List.of(101L));
 
             MembershipLeaveRequest req = new MembershipLeaveRequest();
             req.setLeaveReason(LeaveReason.SELF);
@@ -204,6 +307,7 @@ class MembershipServiceTest {
             assertThat(entity.getLeftAt()).isNotNull();
             assertThat(entity.getLeaveReason()).isEqualTo(LeaveReason.SELF);
             assertThat(dto.leaveReason()).isEqualTo(LeaveReason.SELF);
+            verify(adminRoleMutationLockService).lockScopeAdminRows(100L, "TEAM", 99L);
         }
 
         @Test
@@ -212,7 +316,8 @@ class MembershipServiceTest {
             MembershipEntity entity = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
             entity.setLeftAt(LocalDateTime.now().minusDays(1));
             entity.setLeaveReason(LeaveReason.SELF);
-            given(membershipRepository.findById(11L)).willReturn(Optional.of(entity));
+            given(membershipRepository.findUserIdById(11L)).willReturn(Optional.of(99L));
+            given(membershipRepository.findByIdForUpdate(11L)).willReturn(Optional.of(entity));
 
             MembershipLeaveRequest req = new MembershipLeaveRequest();
             req.setLeaveReason(LeaveReason.SELF);
@@ -226,12 +331,11 @@ class MembershipServiceTest {
         @DisplayName("最後の ADMIN 兼任で 409 LAST_ADMIN_BLOCKED")
         void lastAdminBlocked() {
             MembershipEntity entity = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
-            given(membershipRepository.findById(11L)).willReturn(Optional.of(entity));
+            given(membershipRepository.findUserIdById(11L)).willReturn(Optional.of(99L));
+            given(membershipRepository.findByIdForUpdate(11L)).willReturn(Optional.of(entity));
 
-            RoleEntity adminRole = role(2L, "ADMIN");
-            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(adminRole));
-            given(userRoleRepository.existsByUserIdAndTeamIdAndRoleId(99L, 100L, 2L)).willReturn(true);
-            given(userRoleRepository.countByTeamIdAndRoleId(100L, 2L)).willReturn(1L);
+            given(adminRoleMutationLockService.lockScopeAdminRows(100L, "TEAM", 99L))
+                    .willReturn(List.of(99L));
 
             MembershipLeaveRequest req = new MembershipLeaveRequest();
             req.setLeaveReason(LeaveReason.SELF);
@@ -242,14 +346,34 @@ class MembershipServiceTest {
         }
 
         @Test
+        @DisplayName("ADMINが2人ならロック読取集合を根拠に退会できる")
+        void twoAdminsAllowLeaveFromLockedRows() {
+            MembershipEntity entity = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
+            given(membershipRepository.findUserIdById(11L)).willReturn(Optional.of(99L));
+            given(membershipRepository.findByIdForUpdate(11L)).willReturn(Optional.of(entity));
+            given(memberPositionRepository.findCurrentByMembership(11L)).willReturn(List.of());
+            given(adminRoleMutationLockService.lockScopeAdminRows(100L, "TEAM", 99L))
+                    .willReturn(List.of(99L, 101L));
+
+            MembershipLeaveRequest req = new MembershipLeaveRequest();
+            req.setLeaveReason(LeaveReason.SELF);
+            service.leave(11L, req);
+
+            assertThat(entity.getLeftAt()).isNotNull();
+            verify(userRoleRepository, never()).countByTeamIdAndRoleId(100L, 2L);
+        }
+
+        @Test
         @DisplayName("退会時に紐付く現役 member_positions が自動 ended_at セット")
         void positionsAutoEnded() {
             MembershipEntity entity = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
             MemberPositionEntity mp = MemberPositionEntity.builder()
                     .membershipId(11L).positionId(31L).startedAt(LocalDateTime.now().minusMonths(3)).build();
-            given(membershipRepository.findById(11L)).willReturn(Optional.of(entity));
+            given(membershipRepository.findUserIdById(11L)).willReturn(Optional.of(99L));
+            given(membershipRepository.findByIdForUpdate(11L)).willReturn(Optional.of(entity));
             given(memberPositionRepository.findCurrentByMembership(11L)).willReturn(List.of(mp));
-            given(roleRepository.findByName("ADMIN")).willReturn(Optional.empty());
+            given(adminRoleMutationLockService.lockScopeAdminRows(100L, "TEAM", 99L))
+                    .willReturn(List.of());
 
             MembershipLeaveRequest req = new MembershipLeaveRequest();
             req.setLeaveReason(LeaveReason.SELF);
@@ -258,11 +382,121 @@ class MembershipServiceTest {
             assertThat(mp.getEndedAt()).isNotNull();
             verify(memberPositionRepository, times(1)).save(mp);
         }
+
+        @Test
+        @DisplayName("退会判定は user row lock 後に membership を悲観ロック読取する")
+        void leaveLocksMembershipAfterUserLock() {
+            MembershipEntity afterLock = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
+            given(membershipRepository.findUserIdById(11L)).willReturn(Optional.of(99L));
+            given(membershipRepository.findByIdForUpdate(11L)).willReturn(Optional.of(afterLock));
+            given(memberPositionRepository.findCurrentByMembership(11L)).willReturn(List.of());
+            given(adminRoleMutationLockService.lockScopeAdminRows(100L, "TEAM", 99L))
+                    .willReturn(List.of());
+
+            MembershipLeaveRequest req = new MembershipLeaveRequest();
+            req.setLeaveReason(LeaveReason.SELF);
+            service.leave(11L, req);
+
+            var order = inOrder(membershipRepository, userRowLockService);
+            order.verify(membershipRepository).findUserIdById(11L);
+            order.verify(userRowLockService).lock(99L);
+            order.verify(membershipRepository).findByIdForUpdate(11L);
+            verify(entityManager).refresh(afterLock, LockModeType.PESSIMISTIC_WRITE);
+            verify(membershipRepository).save(afterLock);
+        }
+    }
+
+    @Nested
+    @DisplayName("leaveByUserAndScope() — 内部退会")
+    class LeaveByUserAndScopeTest {
+
+        @Test
+        @DisplayName("leaveReason NULLは自己呼出の副作用前に拒否する")
+        void nullLeaveReasonRejectedBeforeWork() {
+            assertThatThrownBy(() ->
+                    service.leaveByUserAndScope(99L, ScopeType.TEAM, 100L, null, null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("leaveReason");
+            verifyNoInteractions(userRowLockService, membershipRepository, eventPublisher);
+        }
+    }
+    @Nested
+    @DisplayName("leaveMemberByUserAndScope() — user_roles無し会員の自主退会")
+    class LeaveMemberByUserAndScopeTest {
+
+        @Test
+        @DisplayName("MEMBERなら行ロック後にSELF退会する")
+        void memberLeavesWithSelfReasonAfterLock() {
+            MembershipEntity entity = activeMembership(11L, 99L, ScopeType.TEAM, 100L, RoleKind.MEMBER);
+            given(membershipRepository.findActiveByUserAndScopeForUpdate(
+                    99L, ScopeType.TEAM, 100L)).willReturn(Optional.of(entity));
+            given(membershipRepository.findUserIdById(11L)).willReturn(Optional.of(99L));
+            given(membershipRepository.findByIdForUpdate(11L)).willReturn(Optional.of(entity));
+            given(memberPositionRepository.findCurrentByMembership(11L)).willReturn(List.of());
+            given(adminRoleMutationLockService.lockScopeAdminRows(100L, "TEAM", 99L))
+                    .willReturn(List.of());
+
+            boolean left = service.leaveMemberByUserAndScope(99L, ScopeType.TEAM, 100L);
+
+            assertThat(left).isTrue();
+            assertThat(entity.getLeaveReason()).isEqualTo(LeaveReason.SELF);
+            assertThat(entity.getLeftAt()).isNotNull();
+            var order = inOrder(userRowLockService, membershipRepository);
+            order.verify(userRowLockService).lock(99L);
+            order.verify(membershipRepository).findActiveByUserAndScopeForUpdate(
+                    99L, ScopeType.TEAM, 100L);
+        }
+
+        @Test
+        @DisplayName("SUPPORTERなら退会せずfalseを返す")
+        void supporterDoesNotLeave() {
+            MembershipEntity entity = activeMembership(
+                    11L, 99L, ScopeType.ORGANIZATION, 100L, RoleKind.SUPPORTER);
+            given(membershipRepository.findActiveByUserAndScopeForUpdate(
+                    99L, ScopeType.ORGANIZATION, 100L)).willReturn(Optional.of(entity));
+
+            boolean left = service.leaveMemberByUserAndScope(99L, ScopeType.ORGANIZATION, 100L);
+
+            assertThat(left).isFalse();
+            assertThat(entity.getLeftAt()).isNull();
+            verify(membershipRepository, never()).findUserIdById(any());
+            verify(membershipRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("アクティブメンバーシップが無ければfalseを返す")
+        void missingMembershipReturnsFalse() {
+            given(membershipRepository.findActiveByUserAndScopeForUpdate(
+                    99L, ScopeType.TEAM, 100L)).willReturn(Optional.empty());
+
+            boolean left = service.leaveMemberByUserAndScope(99L, ScopeType.TEAM, 100L);
+
+            assertThat(left).isFalse();
+            verify(membershipRepository, never()).findUserIdById(any());
+        }
     }
 
     @Nested
     @DisplayName("assignPosition() — 役職割当")
     class AssignPositionTest {
+        @Test
+        @DisplayName("リクエストNULLは副作用前に拒否する")
+        void nullRequestRejectedBeforeWork() {
+            assertThatThrownBy(() -> service.assignPosition(11L, null))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("req");
+            verifyNoInteractions(membershipRepository, positionRepository, memberPositionRepository);
+        }
+
+        @Test
+        @DisplayName("positionId NULLは副作用前に拒否する")
+        void nullPositionIdRejectedBeforeWork() {
+            AssignPositionRequest req = new AssignPositionRequest();
+            assertThatThrownBy(() -> service.assignPosition(11L, req))
+                    .isInstanceOf(NullPointerException.class)
+                    .hasMessageContaining("positionId");
+            verifyNoInteractions(membershipRepository, positionRepository, memberPositionRepository);
+        }
 
         @Test
         @DisplayName("正常系: 同スコープ内の position を割り当て")
@@ -443,10 +677,11 @@ class MembershipServiceTest {
         @DisplayName("leave() で MembershipChangedEvent(REMOVED) が発火される")
         void leave_fires_membership_changed_event() {
             MembershipEntity entity = activeMembership(200L, 10L, ScopeType.TEAM, 20L, RoleKind.MEMBER);
-            given(membershipRepository.findById(200L)).willReturn(Optional.of(entity));
+            given(membershipRepository.findUserIdById(200L)).willReturn(Optional.of(10L));
+            given(membershipRepository.findByIdForUpdate(200L)).willReturn(Optional.of(entity));
             given(memberPositionRepository.findCurrentByMembership(200L)).willReturn(List.of());
-            // last admin 保護: ADMIN ロールが存在しない → 保護不要（早期 return）
-            given(roleRepository.findByName("ADMIN")).willReturn(Optional.empty());
+            given(adminRoleMutationLockService.lockScopeAdminRows(20L, "TEAM", 10L))
+                    .willReturn(List.of());
             given(membershipRepository.save(any(MembershipEntity.class))).willAnswer(inv -> inv.getArgument(0));
             MembershipLeaveRequest req = new MembershipLeaveRequest();
             req.setLeaveReason(LeaveReason.SELF);

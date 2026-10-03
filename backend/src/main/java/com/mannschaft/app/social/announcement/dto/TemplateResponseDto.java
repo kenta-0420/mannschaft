@@ -1,6 +1,5 @@
 package com.mannschaft.app.social.announcement.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.social.announcement.AnnouncementRangeTemplateEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,38 +27,30 @@ public class TemplateResponseDto {
     private Long id;
 
     /** スコープ種別（TEAM / ORGANIZATION）。 */
-    @JsonProperty("scope_type")
     private String scopeType;
 
     /** スコープ ID（teams.id または organizations.id）。 */
-    @JsonProperty("scope_id")
     private Long scopeId;
 
     /** テンプレート名。 */
     private String name;
 
     /** 告知対象ロール（MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC）。 */
-    @JsonProperty("target_role")
     private String targetRole;
 
     /** 組織告知でのチーム絞り込み対象 ID リスト（null = 全チーム対象）。 */
-    @JsonProperty("target_team_ids")
     private List<Long> targetTeamIds;
 
     /** 優先チャネル（BULLETIN_THREAD / TIMELINE_POST / BLOG_POST / TODO / SCHEDULE / SURVEY）。 */
-    @JsonProperty("preferred_channel")
     private String preferredChannel;
 
     /** デフォルトテンプレートフラグ。 */
-    @JsonProperty("is_default")
     private Boolean isDefault;
 
     /** 作成者ユーザー ID。 */
-    @JsonProperty("created_by")
     private Long createdBy;
 
     /** 作成日時。 */
-    @JsonProperty("created_at")
     private LocalDateTime createdAt;
 
     /**

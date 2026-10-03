@@ -17,6 +17,7 @@ import com.mannschaft.app.repairplan.dto.RepairPlanItemDto;
 import com.mannschaft.app.repairplan.dto.SaveScenarioRequest;
 import com.mannschaft.app.repairplan.dto.ScenarioDto;
 import com.mannschaft.app.repairplan.dto.SimulateRepairPlanRequest;
+import com.mannschaft.app.repairplan.dto.UpdateKanbanRequest;
 import com.mannschaft.app.repairplan.entity.TeamMemberTerm;
 import com.mannschaft.app.repairplan.repository.TeamMemberTermRepository;
 import com.mannschaft.app.support.test.MembershipTestHelper;
@@ -121,7 +122,6 @@ class RepairPlanAuthorizationMatrixTest extends AbstractRepairPlanPhase5Integrat
 
         // MEMBER ユーザー設定
         MembershipTestHelper.insertMembership(em, memberUserId, ScopeType.ORGANIZATION, ORG_ID, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, memberUserId, "MEMBER", null, ORG_ID);
 
         insertOrganization(ORG_ID, "認可マトリクステスト組合");
 
@@ -306,6 +306,39 @@ class RepairPlanAuthorizationMatrixTest extends AbstractRepairPlanPhase5Integrat
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // 6b. GET /repair-plan/scenarios/{id} — 会員: 200, 非会員(ORG_OTHER_ID): 403（認可根治 Wave7）
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("GET /repair-plan/scenarios/{id}: MEMBER → 200")
+    void getScenario_asMember_returns200() {
+        authAs(adminUserId);
+        UUID scenarioId = createScenario("シナリオ詳細取得テスト");
+        em.flush();
+
+        authAs(memberUserId);
+        var resp = scenarioController.getScenario("ORGANIZATION", ORG_ID, scenarioId, ORG_ID);
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("GET /repair-plan/scenarios/{id}: 非会員（ORG_OTHER_ID所属）→ 403（BusinessException・認可根治Wave7）")
+    void getScenario_asNonMember_returns403() {
+        authAs(adminUserId);
+        UUID scenarioId = createScenario("シナリオ詳細非会員テスト");
+        em.flush();
+
+        // memberUserId は ORG_ID のメンバーだが、シナリオ自体は ORG_ID 帰属のまま。
+        // 非会員として振る舞わせるため、ORG_ID に未所属の新規ユーザーで検証する。
+        Long nonMemberUserId = insertUser("authz-nonmember-" + System.nanoTime() + "@example.jp");
+        em.flush();
+        authAs(nonMemberUserId);
+        assertThatThrownBy(() ->
+                scenarioController.getScenario("ORGANIZATION", ORG_ID, scenarioId, ORG_ID))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // 7. POST /scenarios/{id}/publish-as-announcement — ADMIN: 200, DEPUTY_ADMIN: 200, MEMBER: 403
     // ─────────────────────────────────────────────────────────────────────
 
@@ -420,6 +453,62 @@ class RepairPlanAuthorizationMatrixTest extends AbstractRepairPlanPhase5Integrat
         authAs(memberUserId);
         assertThatThrownBy(() ->
                 kanbanController.moveCard("ORGANIZATION", ORG_ID, cardId, ORG_ID, new MoveCardRequest("RECEIVED")))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 9b. POST /quote-kanbans/{id}/cards — ADMIN: 201, MEMBER: 403（認可根治 Wave7）
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("POST /quote-kanbans/{id}/cards: ADMIN → 201")
+    void addCard_asAdmin_returns201() {
+        authAs(adminUserId);
+        UUID kanbanId = createKanban("カード追加ADMINテスト");
+
+        AddCardRequest req = new AddCardRequest(vendorId, "テスト建設株式会社", 10_000_000L, null);
+        var resp = kanbanController.addCard("ORGANIZATION", ORG_ID, kanbanId, ORG_ID, req);
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    @Test
+    @DisplayName("POST /quote-kanbans/{id}/cards: MEMBER → 403（BusinessException・認可根治Wave7）")
+    void addCard_asMember_returns403() {
+        authAs(adminUserId);
+        UUID kanbanId = createKanban("カード追加MEMBER試行テスト");
+
+        authAs(memberUserId);
+        AddCardRequest req = new AddCardRequest(vendorId, "テスト建設株式会社", 10_000_000L, null);
+        assertThatThrownBy(() ->
+                kanbanController.addCard("ORGANIZATION", ORG_ID, kanbanId, ORG_ID, req))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 9c. PATCH /quote-kanbans/{id} — ADMIN: 200, MEMBER: 403（認可根治 Wave7）
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("PATCH /quote-kanbans/{id}: ADMIN → 200")
+    void updateKanban_asAdmin_returns200() {
+        authAs(adminUserId);
+        UUID kanbanId = createKanban("カンバン更新ADMINテスト");
+
+        UpdateKanbanRequest req = new UpdateKanbanRequest("更新後タイトル", null, null, null);
+        var resp = kanbanController.updateKanban("ORGANIZATION", ORG_ID, kanbanId, ORG_ID, req);
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("PATCH /quote-kanbans/{id}: MEMBER → 403（BusinessException・認可根治Wave7）")
+    void updateKanban_asMember_returns403() {
+        authAs(adminUserId);
+        UUID kanbanId = createKanban("カンバン更新MEMBER試行テスト");
+
+        authAs(memberUserId);
+        UpdateKanbanRequest req = new UpdateKanbanRequest("乗っ取りタイトル", null, null, null);
+        assertThatThrownBy(() ->
+                kanbanController.updateKanban("ORGANIZATION", ORG_ID, kanbanId, ORG_ID, req))
                 .isInstanceOf(BusinessException.class);
     }
 

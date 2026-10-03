@@ -3,6 +3,7 @@ package com.mannschaft.app.todo;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.todo.dto.CommentResponse;
@@ -33,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -114,7 +116,8 @@ class TodoCommentServiceTest {
                     .willReturn(Map.of(USER_ID, "テストユーザー"));
 
             // When
-            PagedResponse<CommentResponse> response = todoCommentService.listComments(TODO_ID, 0, 20);
+            PagedResponse<CommentResponse> response = todoCommentService.listComments(
+                    TODO_ID, TodoScopeType.TEAM, SCOPE_ID, USER_ID, 0, 20);
 
             // Then
             assertThat(response.getData()).hasSize(1);
@@ -129,10 +132,44 @@ class TodoCommentServiceTest {
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> todoCommentService.listComments(TODO_ID, 0, 20))
+            assertThatThrownBy(() -> todoCommentService.listComments(
+                    TODO_ID, TodoScopeType.TEAM, SCOPE_ID, USER_ID, 0, 20))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_010"));
+        }
+
+        @Test
+        @DisplayName("異常系(BOLA): path scope 不一致でTODO_010（404秘匿）")
+        void listComments_scope不一致_TODO010() {
+            // Given: TODO は scopeId=SCOPE_ID(TEAM) だが、別 scopeId で叩く越境
+            TodoEntity todo = createTodo();
+            Long otherScopeId = 999L;
+            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
+
+            // When / Then
+            assertThatThrownBy(() -> todoCommentService.listComments(
+                    TODO_ID, TodoScopeType.TEAM, otherScopeId, USER_ID, 0, 20))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TODO_010"));
+        }
+
+        @Test
+        @DisplayName("異常系(BOLA): 非メンバーはCOMMON_002（403）")
+        void listComments_非メンバー_COMMON002() {
+            // Given: scope 束縛は通るが membership 検証で 403
+            TodoEntity todo = createTodo();
+            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+
+            // When / Then
+            assertThatThrownBy(() -> todoCommentService.listComments(
+                    TODO_ID, TodoScopeType.TEAM, SCOPE_ID, USER_ID, 0, 20))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
         }
 
         @Test
@@ -146,7 +183,8 @@ class TodoCommentServiceTest {
                     .willReturn(page);
 
             // When
-            PagedResponse<CommentResponse> response = todoCommentService.listComments(TODO_ID, 0, 20);
+            PagedResponse<CommentResponse> response = todoCommentService.listComments(
+                    TODO_ID, TodoScopeType.TEAM, SCOPE_ID, USER_ID, 0, 20);
 
             // Then
             assertThat(response.getData()).isEmpty();
@@ -174,7 +212,8 @@ class TodoCommentServiceTest {
                     .willReturn(Map.of(USER_ID, "テストユーザー"));
 
             // When
-            ApiResponse<CommentResponse> response = todoCommentService.addComment(TODO_ID, request, USER_ID);
+            ApiResponse<CommentResponse> response = todoCommentService.addComment(
+                    TODO_ID, TodoScopeType.TEAM, SCOPE_ID, request, USER_ID);
 
             // Then
             assertThat(response.getData().getBody()).isEqualTo("新規コメント");
@@ -189,7 +228,8 @@ class TodoCommentServiceTest {
             given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> todoCommentService.addComment(TODO_ID, request, USER_ID))
+            assertThatThrownBy(() -> todoCommentService.addComment(
+                    TODO_ID, TodoScopeType.TEAM, SCOPE_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_010"));
@@ -208,8 +248,10 @@ class TodoCommentServiceTest {
         @DisplayName("正常系: 本人がコメントを更新できる")
         void updateComment_正常_本人更新() {
             // Given
+            TodoEntity todo = createTodo();
             TodoCommentEntity comment = createComment(USER_ID);
             UpdateCommentRequest request = new UpdateCommentRequest("更新コメント");
+            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
             given(commentRepository.findByIdAndTodoId(COMMENT_ID, TODO_ID))
                     .willReturn(Optional.of(comment));
             given(commentRepository.save(any(TodoCommentEntity.class)))
@@ -219,7 +261,7 @@ class TodoCommentServiceTest {
 
             // When
             ApiResponse<CommentResponse> response = todoCommentService.updateComment(
-                    TODO_ID, COMMENT_ID, request, USER_ID);
+                    TODO_ID, TodoScopeType.TEAM, SCOPE_ID, COMMENT_ID, request, USER_ID);
 
             // Then
             assertThat(response.getData().getBody()).isEqualTo("更新コメント");
@@ -231,11 +273,13 @@ class TodoCommentServiceTest {
         void updateComment_不在_TODO016例外() {
             // Given
             UpdateCommentRequest request = new UpdateCommentRequest("更新");
+            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(createTodo()));
             given(commentRepository.findByIdAndTodoId(COMMENT_ID, TODO_ID))
                     .willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> todoCommentService.updateComment(TODO_ID, COMMENT_ID, request, USER_ID))
+            assertThatThrownBy(() -> todoCommentService.updateComment(
+                    TODO_ID, TodoScopeType.TEAM, SCOPE_ID, COMMENT_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_016"));
@@ -247,11 +291,13 @@ class TodoCommentServiceTest {
             // Given
             TodoCommentEntity comment = createComment(OTHER_USER_ID);
             UpdateCommentRequest request = new UpdateCommentRequest("不正更新");
+            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(createTodo()));
             given(commentRepository.findByIdAndTodoId(COMMENT_ID, TODO_ID))
                     .willReturn(Optional.of(comment));
 
             // When / Then
-            assertThatThrownBy(() -> todoCommentService.updateComment(TODO_ID, COMMENT_ID, request, USER_ID))
+            assertThatThrownBy(() -> todoCommentService.updateComment(
+                    TODO_ID, TodoScopeType.TEAM, SCOPE_ID, COMMENT_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_017"));

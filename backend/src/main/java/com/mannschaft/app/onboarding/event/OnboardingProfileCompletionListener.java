@@ -1,5 +1,7 @@
 package com.mannschaft.app.onboarding.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.onboarding.OnboardingCompletionType;
 import com.mannschaft.app.onboarding.OnboardingProgressStatus;
 import com.mannschaft.app.onboarding.OnboardingStepType;
@@ -34,6 +36,8 @@ public class OnboardingProfileCompletionListener {
     private final OnboardingStepCompletionRepository stepCompletionRepository;
     private final OnboardingProgressService progressService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。プロフィール更新によるオンボーディング進捗の反映。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)

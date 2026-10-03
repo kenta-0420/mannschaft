@@ -171,6 +171,33 @@ class DeviceSegmentEvaluatorTest {
                 .isEqualTo(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
     }
 
+    @Test
+    @DisplayName("countUserIds: MOBILE 指定 → resolveUserIds と同じ件数を返す")
+    void countUserIds_mobileOnly_returnsSameCountAsResolve() {
+        AdAudienceSegment seg = segment("{\"devices\":[\"MOBILE\"]}");
+
+        given(entityManager.createNativeQuery(org.mockito.ArgumentMatchers.anyString())).willReturn(query);
+        given(query.getResultList()).willReturn(List.<Object[]>of(
+                new Object[]{1L, UA_IPHONE},
+                new Object[]{2L, UA_WINDOWS_CHROME},
+                new Object[]{3L, UA_IPAD}
+        ));
+
+        long count = evaluator.countUserIds(seg);
+
+        assertThat(count).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("countUserIds: devices 配列欠落 → resolveUserIds と同じ AD_AUDIENCE_INVALID")
+    void countUserIds_missingArray_sameValidationAsResolve() {
+        AdAudienceSegment seg = segment("{}");
+        assertThatThrownBy(() -> evaluator.countUserIds(seg))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
+    }
+
     private static AdAudienceSegment segment(String json) {
         AdAudienceSegment s = AdAudienceSegment.builder()
                 .campaignId(UUID.randomUUID())

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.dto.SlugResolveResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -51,6 +52,7 @@ class TeamSlugRenameResolveServiceTest {
     @Mock private MembershipService membershipService;
     @Mock private MembershipRepository membershipRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private MediaUrlResolver mediaUrlResolver;
     @InjectMocks private TeamService service;
 
     private static final Long TEAM_ID = 10L;

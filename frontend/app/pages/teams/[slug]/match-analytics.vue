@@ -11,8 +11,9 @@
  * route.params.slug を読むことで layout が正しくサイドバーを表示できる。
  */
 import type { TeamMatchStatsResponse } from '~/types/match'
+import { parseOrgQuery, type MatchOrgOption } from '~/composables/match/useMatchOrgContext'
 
-definePageMeta({ layout: 'team', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 // [slug] ルートでは params.slug を使う（params.id は undefined）
@@ -23,6 +24,8 @@ const { resolveContext } = useMatchOrgContext()
 const analytics = useMatchAnalytics()
 
 const orgId = ref<number | null>(null)
+const organizations = ref<MatchOrgOption[]>([])
+const orgInvalid = ref(false)
 const stats = ref<TeamMatchStatsResponse | null>(null)
 const loading = ref(true)
 
@@ -33,9 +36,12 @@ async function load(): Promise<void> {
   loading.value = true
   try {
     // resolveContext は tm.slug === 引数 で照合するため slug を渡す（数値 ID 不可）
-    const ctx = await resolveContext(teamSlug.value)
+    // 分析は URL クエリ org で選んだ組織の試合を集計する（未指定は代表親組織）
+    const ctx = await resolveContext(teamSlug.value, { orgId: parseOrgQuery(route.query.org) })
     orgId.value = ctx?.orgId ?? null
-    if (ctx === null) {
+    organizations.value = ctx?.organizations ?? []
+    orgInvalid.value = ctx?.orgInvalid ?? false
+    if (ctx === null || ctx.orgId === null) {
       stats.value = null
       return
     }
@@ -48,37 +54,38 @@ async function load(): Promise<void> {
   }
 }
 
-watch(teamSlug, () => void load())
+watch([teamSlug, () => route.query.org], () => void load())
 onMounted(load)
 </script>
 
 <template>
   <div class="mx-auto max-w-6xl px-4 py-4">
     <div class="mb-1 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamSlug}`" />
-      <PageHeader :title="t('match.analytics.team_title')" size="sm" />
+      <PageHeader :title="t('match.analytics.team_title')" size="sm" :back-to="`/teams/${teamSlug}`" />
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ t('match.analytics.team_subtitle') }}</p>
+
+    <MatchOrgSelect :organizations="organizations" :org-id="orgId" :invalid="orgInvalid" />
 
     <PageLoading v-if="loading" />
 
     <template v-else>
       <!-- 組織未解決 -->
       <DashboardEmptyState
-        v-if="orgId === null"
+        v-if="orgId === null && !orgInvalid"
         icon="pi pi-building"
         :message="t('match.analytics.empty.no_team')"
       />
 
       <!-- 試合記録が無い（空状態＋作成 CTA・§G.8） -->
       <div
-        v-else-if="isEmpty"
+        v-else-if="!orgInvalid && isEmpty"
         class="flex flex-col items-center gap-4 py-16 text-center text-surface-500"
       >
         <i class="pi pi-chart-bar text-5xl text-surface-300" />
         <p>{{ t('match.analytics.empty.no_matches') }}</p>
         <NuxtLink
-          :to="`/teams/${teamSlug}/matches`"
+          :to="{ path: `/teams/${teamSlug}/matches`, query: { org: String(orgId) } }"
           class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-semibold text-primary-contrast"
         >
           <i class="pi pi-plus" />

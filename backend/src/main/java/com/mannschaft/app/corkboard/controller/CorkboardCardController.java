@@ -1,5 +1,7 @@
 package com.mannschaft.app.corkboard.controller;
 
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.corkboard.dto.BatchPositionRequest;
 import com.mannschaft.app.corkboard.dto.CorkboardCardResponse;
@@ -43,6 +45,8 @@ public class CorkboardCardController {
     /**
      * カードを追加する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @PostMapping
     @Operation(summary = "カード追加")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
@@ -55,6 +59,8 @@ public class CorkboardCardController {
     /**
      * カードを更新する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @PutMapping("/{cardId}")
     @Operation(summary = "カード更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
@@ -69,6 +75,8 @@ public class CorkboardCardController {
     /**
      * カードを削除する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @DeleteMapping("/{cardId}")
     @Operation(summary = "カード削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
@@ -80,6 +88,8 @@ public class CorkboardCardController {
     /**
      * カードをアーカイブ/アンアーカイブする。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @PatchMapping("/{cardId}/archive")
     @Operation(summary = "カードアーカイブ切替")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
@@ -94,6 +104,8 @@ public class CorkboardCardController {
     /**
      * F09.8.1 カードのピン止め状態を切り替える（個人ボード所有者のみ）。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @PatchMapping("/{cardId}/pin")
     @Operation(summary = "カードピン止め切替（個人ボードのみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
@@ -112,6 +124,8 @@ public class CorkboardCardController {
     /**
      * カードの位置を一括更新する。
      */
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "βコア機能として常時提供するため")
     @PatchMapping("/batch-position")
     @Operation(summary = "カード一括位置更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")

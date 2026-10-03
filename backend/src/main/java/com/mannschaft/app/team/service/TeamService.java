@@ -1,5 +1,10 @@
 package com.mannschaft.app.team.service;
 
+import com.mannschaft.app.common.duplicatename.DuplicateNameCandidate;
+import com.mannschaft.app.common.duplicatename.DuplicateNameGuardService;
+import com.mannschaft.app.common.duplicatename.DuplicateNameNormalizer;
+import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.event.TeamCreatedEvent;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
@@ -15,7 +20,9 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.LeaveReason;
+import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
@@ -24,17 +31,17 @@ import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
-import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.common.util.SlugGenerator;
 import com.mannschaft.app.common.util.SlugValidator;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
-import com.mannschaft.app.team.dto.TeamOrgSummaryResponse;
 import com.mannschaft.app.team.dto.TeamPublicDetailResponse;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.TeamSummaryResponse;
@@ -43,8 +50,10 @@ import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -82,8 +91,13 @@ public class TeamService {
     private final TeamShiftSettingsService teamShiftSettingsService;
     private final MeterRegistry meterRegistry;
     private final MemberQueryDispatcher memberQueryDispatcher;
+    private final ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
     private final MembershipService membershipService;
     private final MembershipRepository membershipRepository;
+    /** 画像 URL 根治 Phase 1: 生 R2 キー → 署名付き表示 URL の解決を担う共通部品。 */
+    private final MediaUrlResolver mediaUrlResolver;
+    private final AdminRoleMutationLockService adminRoleMutationLockService;
+    private final DuplicateNameGuardService duplicateNameGuardService;
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。
@@ -92,56 +106,74 @@ public class TeamService {
     // TODO: teamドメインがroleドメイン(RoleRepository/UserRoleRepository)・socialドメイン(TeamFriendRepository)・membershipドメイン(MembershipRepository/MembershipService)・shiftドメイン(TeamShiftSettingsService)をまたいでいる。将来はTeamCreatedEventで分離予定
     @CacheEvict(value = "team-search", allEntries = true)
     public ApiResponse<TeamResponse> createTeam(Long userId, CreateTeamRequest req) {
-        String slug = resolveSlugForCreate(req.getSlug(), req.getName());
-        TeamEntity team = TeamEntity.builder()
-                .name(req.getName())
-                .slug(slug)
-                .template(req.getTemplate())
-                .prefecture(req.getPrefecture())
-                .city(req.getCity())
-                .visibility(req.getVisibility() != null
-                        ? TeamEntity.Visibility.valueOf(req.getVisibility())
-                        : TeamEntity.Visibility.GUESTS_AND_ABOVE)
-                .supporterEnabled(false)
-                .build();
-        // F22.1 市 Phase 2 足場C: 構造化地域コードを反映（どちらも null 許容＝未指定はそのまま NULL）
-        team.updateRegionCodes(req.getPrefectureCode(), req.getCityCode());
-        teamRepository.save(team);
+        // CMP-260901-1538 柱③-A: チーム名の重複も組織と同様、409（候補一覧＋fingerprint）で
+        // 確認を求める二段方式とする（従来チーム側には重複チェック自体が存在しなかった）。
+        // 検分 P1-2 是正: 「候補再計算 → 作成」の全体をアドバイザリロック保持中に実行する
+        // （TOCTOU 対策の設計判断は DuplicateNameGuardService の Javadoc を参照）。候補供給
+        // コールバックはロッキングリード（FOR UPDATE）で最新のコミット済みデータを読む。
+        return duplicateNameGuardService.checkForCreateAndRun(
+                DuplicateNameScopeKind.TEAM,
+                req.getName(),
+                userId,
+                req.isConfirmDuplicate(),
+                req.getDuplicateNameFingerprint(),
+                () -> teamRepository.findActiveByNormalizedNameForUpdate(
+                                DuplicateNameNormalizer.trimSpaces(req.getName()))
+                        .stream()
+                        .map(this::toDuplicateNameCandidate)
+                        .toList(),
+                () -> {
+                    String slug = resolveSlugForCreate(req.getSlug(), req.getName());
+                    TeamEntity team = TeamEntity.builder()
+                            .name(req.getName())
+                            .slug(slug)
+                            .template(req.getTemplate())
+                            .prefecture(req.getPrefecture())
+                            .city(req.getCity())
+                            .visibility(req.getVisibility() != null
+                                    ? EnumInputParser.parse(TeamEntity.Visibility.class, req.getVisibility(), "visibility")
+                                    : TeamEntity.Visibility.GUESTS_AND_ABOVE)
+                            .supporterEnabled(false)
+                            .build();
+                    // F22.1 市 Phase 2 足場C: 構造化地域コードを反映（どちらも null 許容＝未指定はそのまま NULL）
+                    team.updateRegionCodes(req.getPrefectureCode(), req.getCityCode());
+                    Long adminRoleId = adminRoleMutationLockService.lockAdminRoleIdForCreation(userId)
+                            .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_005));
+                    teamRepository.save(team);
 
-        // 作成者をADMINロールで紐付ける
-        RoleEntity adminRole = roleRepository.findByName("ADMIN")
-                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_005));
-        UserRoleEntity userRole = UserRoleEntity.builder()
-                .userId(userId)
-                .roleId(adminRole.getId())
-                .teamId(team.getId())
-                .build();
-        userRoleRepository.save(userRole);
+                    // 作成者をADMINロールで紐付ける
+                    UserRoleEntity userRole = UserRoleEntity.builder()
+                            .userId(userId)
+                            .roleId(adminRoleId)
+                            .teamId(team.getId())
+                            .build();
+                    userRoleRepository.save(userRole);
 
-        // F00.5 認可基盤根治: memberships にも MEMBER として入会させる。
-        // 認可（AccessControlService.isMember）は memberships を真実の源とするため、
-        // user_roles だけでは作成者本人が自チームから 403 で締め出される構造的欠陥を防ぐ。
-        // 権限ロール（ADMIN）は user_roles が担い、membership は在籍有無のみ表す（role_kind=MEMBER）。
-        MembershipCreateRequest membershipReq = new MembershipCreateRequest();
-        membershipReq.setUserId(userId);
-        membershipReq.setScopeType(ScopeType.TEAM);
-        membershipReq.setScopeId(team.getId());
-        membershipReq.setRoleKind(RoleKind.MEMBER);
-        membershipReq.setSource("TEAM_CREATE");
-        membershipService.join(membershipReq);
+                    // F00.5 認可基盤根治: memberships にも MEMBER として入会させる。
+                    // 認可（AccessControlService.isMember）は memberships を真実の源とするため、
+                    // user_roles だけでは作成者本人が自チームから 403 で締め出される構造的欠陥を防ぐ。
+                    // 権限ロール（ADMIN）は user_roles が担い、membership は在籍有無のみ表す（role_kind=MEMBER）。
+                    MembershipCreateRequest membershipReq = new MembershipCreateRequest();
+                    membershipReq.setUserId(userId);
+                    membershipReq.setScopeType(ScopeType.TEAM);
+                    membershipReq.setScopeId(team.getId());
+                    membershipReq.setRoleKind(RoleKind.MEMBER);
+                    membershipReq.setSource("TEAM_CREATE");
+                    membershipService.join(membershipReq);
 
-        // チームシフト設定をデフォルト値で初期化
-        teamShiftSettingsService.initializeDefaultSettings(team.getId());
+                    // チームシフト設定をデフォルト値で初期化
+                    teamShiftSettingsService.initializeDefaultSettings(team.getId());
 
-        // 監査ログ用イベント発行
-        eventPublisher.publishEvent(new TeamCreatedEvent(userId, team.getId(), team.getName()));
+                    // 監査ログ用イベント発行
+                    eventPublisher.publishEvent(new TeamCreatedEvent(userId, team.getId(), team.getName()));
 
-        log.info("チーム作成完了: teamId={}, userId={}", team.getId(), userId);
-        long teamFriendCount = teamFriendRepository.countFriendsByTeamId(team.getId());
-        // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
-        long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
-                ScopeType.TEAM, team.getId(), RoleKind.SUPPORTER);
-        return ApiResponse.of(toResponse(team, 1, teamFriendCount, supporterCount));
+                    log.info("チーム作成完了: teamId={}, userId={}", team.getId(), userId);
+                    long teamFriendCount = teamFriendRepository.countFriendsByTeamId(team.getId());
+                    // F00.5 Phase 5: SUPPORTER カウントを memberships 経由に切替
+                    long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
+                            ScopeType.TEAM, team.getId(), RoleKind.SUPPORTER);
+                    return ApiResponse.of(toResponse(team, 1, teamFriendCount, supporterCount));
+                });
     }
 
     /**
@@ -177,7 +209,40 @@ public class TeamService {
         if (team.getVisibility() != TeamEntity.Visibility.PUBLIC) {
             throw new BusinessException(TeamErrorCode.TEAM_001);
         }
-        return TeamPublicDetailResponse.from(team);
+        // 柱②-3 販促プロビジョニングゲート: PROVISIONED（承諾前の事前作成状態）は
+        // 招待未承諾のため、他の非公開状態と同じく 404 に畳む（エニュメレーション対策）。
+        if (team.isProvisioned()) {
+            throw new BusinessException(TeamErrorCode.TEAM_001);
+        }
+        // 画像 URL 根治 Phase 1: icon/banner を署名付き表示 URL へ解決して渡す。
+        return TeamPublicDetailResponse.from(
+                team,
+                mediaUrlResolver.resolve(team.getIconUrl()),
+                mediaUrlResolver.resolve(team.getBannerUrl()));
+    }
+
+    /**
+     * F06.4 公開活動記録: 他ドメインが「このチームは匿名公開してよいか」を判定するための横断 SPI。
+     *
+     * <p>公開コンテンツ（活動記録など）を匿名公開する経路は、コンテンツ自身が PUBLIC でも
+     * <b>親スコープが非公開・凍結・停止なら 404 にしなければならない</b>
+     * （親を見ないと「非公開チームの中身が PUBLIC 設定のまま漏れる」）。
+     * 判定条件は {@link TeamRepository#findPublicTeamById(Long)} と同一の正準
+     * （{@code visibility=PUBLIC} かつ {@code archivedAt IS NULL}、
+     * {@code @SQLRestriction} により {@code deletedAt IS NULL}）。</p>
+     *
+     * <p>クロスドメイン Entity 参照を持ち込まないため（CLAUDE.md ドメイン境界の原則・番人 D-1）、
+     * {@link TeamEntity} ではなく<b>チーム名のみ</b>を返す。呼び出し側はこれを
+     * {@code PublicScopeRef}（公開用スコープ参照 DTO）に詰め替えて使う。</p>
+     *
+     * @param teamId 対象チーム ID
+     * @return 公開してよいチームの表示名。非公開 / 凍結 / 削除済み / 不在なら空
+     */
+    public Optional<String> findPublicTeamNameById(Long teamId) {
+        if (teamId == null) {
+            return Optional.empty();
+        }
+        return teamRepository.findPublicTeamById(teamId).map(TeamEntity::getName);
     }
 
     /**
@@ -209,6 +274,85 @@ public class TeamService {
     }
 
     /**
+     * チームの存在確認・アーカイブ状態・表示名を軽量サマリとして返す。
+     *
+     * <p>他ドメイン（role の承諾型招待 F04.12 等）が「スコープ存在確認・アーカイブ判定・
+     * スコープ名解決」に使う read-only な横断クエリ。クロスドメインで Entity を直接渡さない方針
+     * （CLAUDE.md 原則 1・原則 5）のため、{@link TeamSummary}（必要フィールドのみの軽量 DTO）
+     * として公開する。</p>
+     *
+     * <p>論理削除済み（{@code @SQLRestriction}）チームは取得対象外（空を返す＝存在しない扱い）。</p>
+     *
+     * @param teamId チーム ID
+     * @return チームサマリ。存在しない／論理削除済みの場合は空。
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<TeamSummary> findTeamSummary(Long teamId) {
+        return teamRepository.findById(teamId)
+                .map(team -> new TeamSummary(
+                        team.getName(), team.getArchivedAt() != null));
+    }
+
+    /**
+     * チームの軽量サマリ（他ドメイン公開用）。
+     *
+     * @param name     チーム表示名
+     * @param archived アーカイブ済みか（{@code archived_at} が非 NULL）
+     */
+    public record TeamSummary(String name, boolean archived) {
+    }
+
+    /**
+     * 柱③-A 参加申請（join request）向けの軽量サマリ。
+     *
+     * <p>他ドメイン（joinrequest）が「PUBLIC な ACTIVE チームか」を判定するための read-only な
+     * 横断クエリ。論理削除済みチームは取得対象外（空を返す＝存在しない扱い＝存在秘匿）。
+     * チームの {@code Visibility} は 4 値（PUBLIC/GUESTS_AND_ABOVE/SUPPORTERS_AND_ABOVE/
+     * MEMBERS_AND_ABOVE）だが、参加申請対象は {@code PUBLIC} のみとする。</p>
+     *
+     * @param teamId チーム ID
+     * @return 参加可否サマリ。存在しない／論理削除済みの場合は空。
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<JoinabilitySummary> findJoinabilitySummary(Long teamId) {
+        return teamRepository.findById(teamId)
+                .map(team -> new JoinabilitySummary(
+                        team.getName(),
+                        team.getArchivedAt() != null,
+                        team.getVisibility() == TeamEntity.Visibility.PUBLIC,
+                        team.getLifecycleStatus() == TeamEntity.LifecycleStatus.PROVISIONED));
+    }
+
+    /**
+     * 参加申請可否サマリ（他ドメイン公開用）。
+     *
+     * @param name        チーム表示名
+     * @param archived    アーカイブ済みか
+     * @param isPublic    可視性が PUBLIC か
+     * @param provisioned PROVISIONED（承諾前の事前作成状態）か
+     */
+    public record JoinabilitySummary(String name, boolean archived, boolean isPublic, boolean provisioned) {
+        public boolean joinable() {
+            return !archived && !provisioned && isPublic;
+        }
+    }
+
+    /**
+     * 数値スコープIDについて、従来のslug解決と同じ未削除かつACTIVEの境界を確認する。
+     * アーカイブ状態や公開範囲は判定しない。
+     *
+     * @param teamId チーム内部ID
+     * @throws BusinessException 不在・論理削除済み・PROVISIONEDの場合（TEAM_001）
+     */
+    @Transactional(readOnly = true)
+    public void assertActiveTeamExists(Long teamId) {
+        TeamEntity team = findTeamOrThrow(teamId);
+        if (team.getLifecycleStatus() != TeamEntity.LifecycleStatus.ACTIVE) {
+            throw new BusinessException(TeamErrorCode.TEAM_001);
+        }
+    }
+
+    /**
      * チームを slug（URL識別子）で取得する。
      *
      * <p>Phase 4-E: Valkey にて 10 分キャッシュ。更新・削除時に自動無効化される。</p>
@@ -236,6 +380,25 @@ public class TeamService {
     }
 
     /**
+     * チームがサポーター受け入れを有効化していることを表明する。
+     *
+     * <p>{@code supporter_enabled} は「このチームがサポーター登録を受け付けるか」を表す
+     * 運営者の意思表示であり、フロントエンドも本フラグでフォローボタンの表示を切り替えている
+     * （{@code TeamPageHeader.vue}）。サーバ側でも同じ契約を強制し、無効化中のチームへの
+     * サポーター自己登録を {@code MEMBERSHIP_SUPPORTER_DISABLED}（403）で拒否する。</p>
+     *
+     * @param teamId チーム内部 ID
+     * @throws BusinessException チームが存在しない（TEAM_001）/ サポーター機能が無効
+     */
+    public void assertSupporterEnabled(Long teamId) {
+        TeamEntity team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+        if (!Boolean.TRUE.equals(team.getSupporterEnabled())) {
+            throw new BusinessException(MembershipBasisErrorCode.MEMBERSHIP_SUPPORTER_DISABLED);
+        }
+    }
+
+    /**
      * チーム名から一意スラッグを生成する。
      *
      * <p>ベーススラッグが既に使用中の場合は数値サフィックス (-1, -2, ...) を付与して一意化する。
@@ -259,6 +422,82 @@ public class TeamService {
     }
 
     /**
+     * 柱②-2 販促プロビジョニング専用: チームを {@code PROVISIONED} 状態で事前作成する。
+     *
+     * <p>D-1/D-5（クロスドメイン Entity/Repository 参照禁止）に従い、{@code provisioning}
+     * ドメインへ {@link TeamEntity}/{@link TeamRepository} を漏らさず、この窓口経由で
+     * 作成する。作成直後は ADMIN/membership を一切持たない（招待承諾で初めて付与される）。</p>
+     *
+     * <p>CMP-260901-1538 柱③-A: 通常作成（{@link #createTeam}）と同じ同名確認フローを通す。
+     * PROVISIONED は常に MEMBERS_AND_ABOVE（非PUBLIC）のため候補は「存在のみ」開示となる。</p>
+     *
+     * @param name                     チーム名
+     * @param slug                     一意 slug（{@link #createUniqueSlug} 等で事前採番済みのもの）
+     * @param actorUserId              作成操作者（SYSTEM_ADMIN）のユーザーID。fingerprint 束縛に使う
+     * @param confirmDuplicate         同名候補の存在を確認済みとして作成を続行するか
+     * @param duplicateNameFingerprint {@code confirmDuplicate=true} 時に返送する fingerprint
+     * @return 作成したチームの ID
+     */
+    @Transactional
+    public Long createProvisionedTeam(String name, String slug, Long actorUserId,
+            boolean confirmDuplicate, String duplicateNameFingerprint) {
+        return duplicateNameGuardService.checkForCreateAndRun(
+                DuplicateNameScopeKind.TEAM,
+                name,
+                actorUserId,
+                confirmDuplicate,
+                duplicateNameFingerprint,
+                () -> teamRepository.findActiveByNormalizedNameForUpdate(
+                                DuplicateNameNormalizer.trimSpaces(name))
+                        .stream()
+                        .map(this::toDuplicateNameCandidate)
+                        .toList(),
+                () -> {
+                    TeamEntity team = TeamEntity.builder()
+                            .name(name)
+                            .slug(slug)
+                            // Team.Visibility に PRIVATE 相当は無いため、既存4値のうち最も制限的な
+                            // MEMBERS_AND_ABOVE を採用する（承諾までメンバーが存在しないため実質非公開）。
+                            .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE)
+                            .supporterEnabled(false)
+                            .lifecycleStatus(TeamEntity.LifecycleStatus.PROVISIONED)
+                            .build();
+                    teamRepository.save(team);
+                    return team.getId();
+                });
+    }
+
+    /**
+     * 柱②-2/②-3 販促プロビジョニング専用: 指定チームが {@code PROVISIONED}（承諾前）かどうかを返す。
+     * 存在しないチームは非プロビジョニング（false）扱いとする（呼び出し元が別途404等を判断する）。
+     */
+    public boolean isProvisioned(Long teamId) {
+        return teamRepository.findById(teamId).map(TeamEntity::isProvisioned).orElse(false);
+    }
+
+    /**
+     * 柱②-2 販促プロビジョニング専用: 指定チームの {@code lifecycle_status} を
+     * {@code PROVISIONED} から {@code ACTIVE} へ遷移させ、チーム名を返す。
+     * 存在しなければ empty。
+     */
+    @Transactional
+    public Optional<String> activateProvisionedTeam(Long teamId) {
+        return teamRepository.findById(teamId).map(team -> {
+            team.activate();
+            teamRepository.save(team);
+            return team.getName();
+        });
+    }
+
+    /**
+     * 柱②-2 販促プロビジョニング専用: チーム ID からチーム名を解決する（存在しなければ empty）。
+     * 招待の表示名解決（下見/一覧/再送/取消）専用の軽量参照。
+     */
+    public Optional<String> findNameById(Long teamId) {
+        return teamRepository.findById(teamId).map(TeamEntity::getName);
+    }
+
+    /**
      * 作成時の slug を解決する（村方式に統一）。
      *
      * <p>ユーザーが slug を指定した場合は形式・予約語・一意性を検証して採用する。
@@ -276,6 +515,20 @@ public class TeamService {
         }
         validateUserSlug(requestedSlug);
         return requestedSlug;
+    }
+
+    /**
+     * CMP-260901-1538 柱③-A: 同名候補（{@link TeamEntity}）を確認要求 DTO へ変換する。
+     * チームの可視性ラダーは PUBLIC/GUESTS_AND_ABOVE/SUPPORTERS_AND_ABOVE/MEMBERS_AND_ABOVE の
+     * 4段階（組織の PUBLIC/PRIVATE 2値とは異なる）。最も安全側の方針として、PUBLIC のみ名称を
+     * 開示し、それ以外は「存在のみ」を示す（金型: {@code OrganizationService#toDuplicateNameCandidate}）。
+     */
+    private DuplicateNameCandidate toDuplicateNameCandidate(TeamEntity candidate) {
+        boolean nameVisible = candidate.getVisibility() == TeamEntity.Visibility.PUBLIC;
+        return new DuplicateNameCandidate(
+                String.valueOf(candidate.getId()),
+                nameVisible,
+                nameVisible ? candidate.getName() : null);
     }
 
     /**
@@ -445,31 +698,39 @@ public class TeamService {
     // TODO: teamドメインがroleドメイン(UserRoleRepository)・socialドメイン(TeamFriendRepository)・membershipドメイン(MembershipRepository)をまたいでいる。将来はTeamUpdatedEventで分離予定
     @Caching(evict = {
             @CacheEvict(value = "team-detail", allEntries = true),
-            @CacheEvict(value = "team-search", allEntries = true)
+            @CacheEvict(value = "team-search", allEntries = true),
+            // issue #2496: フレンド一覧キャッシュ（teamFriendList）は相手チーム名
+            // （TeamFriendView#friendTeamName）を内包するため、チーム名の変更で stale になる。
+            // teamFriendList が実際に発火するようになった今、ここでの失効が必須。
+            @CacheEvict(value = "teamFriendList", allEntries = true)
     })
     public ApiResponse<TeamResponse> updateTeam(Long teamId, UpdateTeamRequest req) {
         TeamEntity team = findTeamOrThrow(teamId);
         checkNotArchived(team);
 
-        TeamEntity updated = team.toBuilder()
-                .name(req.getName() != null ? req.getName() : team.getName())
-                .nameKana(req.getNameKana() != null ? req.getNameKana() : team.getNameKana())
-                .nickname1(req.getNickname1() != null ? req.getNickname1() : team.getNickname1())
-                .nickname2(req.getNickname2() != null ? req.getNickname2() : team.getNickname2())
-                .template(req.getTemplate() != null ? req.getTemplate() : team.getTemplate())
-                .prefecture(req.getPrefecture() != null ? req.getPrefecture() : team.getPrefecture())
-                .city(req.getCity() != null ? req.getCity() : team.getCity())
+        // 直接ミューテートで UPDATE を発行する（PR #1643 と同型）。
+        // toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化し、
+        // slug 一意制約違反で 500 になるため使わない。visibility の enum 解決は本層の責務。
+        TeamEntity.Visibility visibility = req.getVisibility() != null
+                ? EnumInputParser.parse(TeamEntity.Visibility.class, req.getVisibility(), "visibility")
+                : null;
+        team.applyUpdate(
+                req.getName(),
+                req.getNameKana(),
+                req.getNickname1(),
+                req.getNickname2(),
+                req.getTemplate(),
+                req.getPrefecture(),
+                req.getCity(),
                 // F22.1 市 Phase 2 足場C: 地域コードは指定時のみ更新（null は既存値を維持）
-                .prefectureCode(req.getPrefectureCode() != null ? req.getPrefectureCode() : team.getPrefectureCode())
-                .cityCode(req.getCityCode() != null ? req.getCityCode() : team.getCityCode())
-                .visibility(req.getVisibility() != null
-                        ? TeamEntity.Visibility.valueOf(req.getVisibility())
-                        : team.getVisibility())
-                .supporterEnabled(req.getSupporterEnabled() != null ? req.getSupporterEnabled() : team.getSupporterEnabled())
-                // F15.4 Phase 5-β: Google Maps 埋め込み URL。null 許容（地図なしも OK）
-                .mapEmbedUrl(req.getMapEmbedUrl() != null ? req.getMapEmbedUrl() : team.getMapEmbedUrl())
-                .build();
-        teamRepository.save(updated);
+                req.getPrefectureCode(),
+                req.getCityCode(),
+                visibility,
+                req.getSupporterEnabled(),
+                // F15.4 Phase 5-β: Google Maps 埋め込み URL。指定時のみ更新（null は既存値を維持）
+                req.getMapEmbedUrl());
+        team.updateTimezone(req.getTimezone());
+        teamRepository.save(team);
 
         int memberCount = (int) userRoleRepository.countByTeamId(teamId);
         long teamFriendCount = teamFriendRepository.countFriendsByTeamId(teamId);
@@ -477,7 +738,7 @@ public class TeamService {
         long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
                 ScopeType.TEAM, teamId, RoleKind.SUPPORTER);
         log.info("チーム更新完了: teamId={}", teamId);
-        return ApiResponse.of(toResponse(updated, memberCount, teamFriendCount, supporterCount));
+        return ApiResponse.of(toResponse(team, memberCount, teamFriendCount, supporterCount));
     }
 
     /**
@@ -486,7 +747,9 @@ public class TeamService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "team-detail", allEntries = true),
-            @CacheEvict(value = "team-search", allEntries = true)
+            @CacheEvict(value = "team-search", allEntries = true),
+            // issue #2496: 削除されたチームがフレンド一覧のキャッシュに残り続けないよう失効させる。
+            @CacheEvict(value = "teamFriendList", allEntries = true)
     })
     public void deleteTeam(Long teamId, Long userId) {
         TeamEntity team = findTeamOrThrow(teamId);
@@ -531,6 +794,9 @@ public class TeamService {
 
     /**
      * チームをキーワード検索する。
+     *
+     * <p>認可根治 Wave6: {@code TeamRepository#searchByKeyword} が
+     * <b>PUBLIC かつ未アーカイブ</b>に絞り込む。本メソッド側では追加の絞り込みを行わない。</p>
      */
     public PagedResponse<TeamSummaryResponse> searchTeams(String keyword, Pageable pageable) {
         Page<TeamEntity> page = teamRepository.searchByKeyword(
@@ -567,30 +833,88 @@ public class TeamService {
         findTeamOrThrow(teamId);
 
         // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照に完全切替
-        var memberDtos = memberQueryDispatcher.queryMembers(teamId, ScopeType.TEAM, null);
+        //
+        // CMP-260910-1555: 是正前はここで queryMembers（＝常にチーム全員を実体化し、
+        // ユーザー 1 人ごとに users を引く N+1）を呼び、全員ぶんの色解決と
+        // MemberResponse 構築まで済ませてから subList でページを切り出していた。
+        // つまり 1 ページ取るたびにチーム全員ぶんの処理が走り、一覧を最後までめくると
+        // 総処理量が人数 N に対して概ね N^2/ページサイズになる。全ページを取得する
+        // 画面（時給設定など）では大規模チームで DB 負荷とタイムアウトを招いていた。
+        // 軽い行（userId・ロール・joinedAt のみ）を queryMemberIdentities で全件そろえ、
+        // ページ位置で切り出してから hydrate で表示名・アバターを 1 クエリで解決する。
+        // 色解決もページ内のユーザーに限定する。API のレスポンス形状・並び順・総件数は不変。
+        var identities = memberQueryDispatcher.queryMemberIdentities(teamId, ScopeType.TEAM, null);
+        long totalElements = identities.size();
+        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
+        int size = pageable.isPaged() ? pageable.getPageSize() : (int) totalElements;
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, identities.size());
+        var memberDtos = memberQueryDispatcher.hydrate(
+                fromIndex >= identities.size() ? List.of() : identities.subList(fromIndex, toIndex));
+        var colorsByUserId = scopeMemberCalendarSettingService.resolveColors(
+                ScopeType.TEAM, teamId, memberDtos.stream().map(dto -> dto.userId()).toList());
 
-        var data = memberDtos.stream()
+        List<MemberResponse> pagedData = memberDtos.stream()
                 .map(dto -> new MemberResponse(
                         dto.userId(),
                         dto.displayName(),
                         dto.avatarUrl(),
                         dto.roleName(),
-                        dto.joinedAt()))
+                        dto.joinedAt(),
+                        colorsByUserId.get(dto.userId())))
                 .toList();
 
-        // Dispatcher は全件リストを返すため、ページネーションはアプリ側でエミュレート
-        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
-        int size = pageable.isPaged() ? pageable.getPageSize() : data.size();
-        int fromIndex = page * size;
-        int toIndex = Math.min(fromIndex + size, data.size());
-        List<MemberResponse> pagedData = (fromIndex >= data.size())
-                ? List.<MemberResponse>of() : data.subList(fromIndex, toIndex);
-
-        long totalElements = data.size();
         int totalPages = size == 0 ? 1 : (int) Math.ceil((double) totalElements / size);
 
         var meta = new PagedResponse.PageMeta(totalElements, page, size, totalPages);
         return PagedResponse.of(pagedData, meta);
+    }
+
+    /**
+     * チームの全メンバーを 1 回の呼び出しで取得する（CMP-260912-1525）。
+     *
+     * <h2>なぜページング経路と別に要るのか</h2>
+     * <p>{@link #getMembers} は 1 ページ要求ごとに
+     * {@link MemberQueryDispatcher#queryMemberIdentities} を呼ぶ。これは
+     * {@code user_roles} と {@code memberships} を<b>スコープ全件走査</b>して
+     * 重複排除と OQ-2 優先度解決を行う処理であり、1 ページぶんに絞り込めない
+     * （どの行が何位になるかは全件見ないと決まらないため）。したがって
+     * 「全員を見たい画面」が全ページをめくると、総走査量はメンバー数 N に対して
+     * {@code N × ceil(N / ページサイズ)} になる。ページサイズを大きくしても
+     * 並列を直列に変えても、この総量そのものは減らない。</p>
+     *
+     * <p>本メソッドは走査を<b>ちょうど 1 回</b>に固定する。実体化（表示名・アバター）と
+     * カレンダー色の解決も全員ぶんをまとめて 1 クエリずつで行うため、
+     * 総処理量は N に比例する。</p>
+     *
+     * <h2>結果の同一性</h2>
+     * <p>集約規則（OQ-2 優先度）・並び順・総件数は {@link #getMembers} と同一である。
+     * 同じ {@code queryMemberIdentities} → {@code hydrate} の順路を、切り出しを挟まずに
+     * 通しているだけであり、意味論は変えていない。</p>
+     *
+     * <p>認可はページング経路と同じく呼び出し元（コントローラ）の可視性チェックに委ねる。
+     * 返す情報は {@link #getMembers} と同一で、一括化によって新たに露出する項目は無い。</p>
+     *
+     * @param teamId チームID
+     * @return チームの全メンバー（並び順は {@link #getMembers} と同一）
+     */
+    public List<MemberResponse> getAllMembers(Long teamId) {
+        findTeamOrThrow(teamId);
+
+        var identities = memberQueryDispatcher.queryMemberIdentities(teamId, ScopeType.TEAM, null);
+        var memberDtos = memberQueryDispatcher.hydrate(identities);
+        var colorsByUserId = scopeMemberCalendarSettingService.resolveColors(
+                ScopeType.TEAM, teamId, memberDtos.stream().map(dto -> dto.userId()).toList());
+
+        return memberDtos.stream()
+                .map(dto -> new MemberResponse(
+                        dto.userId(),
+                        dto.displayName(),
+                        dto.avatarUrl(),
+                        dto.roleName(),
+                        dto.joinedAt(),
+                        colorsByUserId.get(dto.userId())))
+                .toList();
     }
 
     /**
@@ -662,21 +986,42 @@ public class TeamService {
 
     /**
      * チームが所属する組織一覧を取得する。
+     *
+     * <p>F01.2.1 4-B: 各組織の {@code group_id} とグループ機能の有効/無効も返す（応答への変換・グループ名の解決は
+     * {@link TeamOrgSummaryService} が行う）。SQL は加盟・組織・人数の各 1 本で、加盟している組織の数に比例して
+     * 増えない（AC-G129。従来は組織ごとに 2 本ずつ発行していた）。</p>
      */
-    public List<TeamOrgSummaryResponse> getOrganizations(Long teamId) {
+    public List<TeamOrgMembershipSummary> getOrganizations(Long teamId) {
         findTeamOrThrow(teamId);
-        return teamOrgMembershipRepository.findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE)
-                .stream()
-                .map(m -> organizationRepository.findById(m.getOrganizationId()).orElse(null))
-                .filter(org -> org != null)
-                .map(org -> new TeamOrgSummaryResponse(
-                        org.getSlug(),
-                        org.getSlug(),
-                        org.getName(),
-                        null,
-                        org.getVisibility().name(),
-                        (int) userRoleRepository.countByOrganizationId(org.getId())))
-                .toList();
+        List<TeamOrgMembershipEntity> memberships =
+                teamOrgMembershipRepository.findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE);
+        if (memberships.isEmpty()) {
+            return List.of();
+        }
+        List<Long> organizationIds = memberships.stream().map(TeamOrgMembershipEntity::getOrganizationId).toList();
+        Map<Long, OrganizationEntity> organizations = new HashMap<>();
+        organizationRepository.findAllById(organizationIds).forEach(o -> organizations.put(o.getId(), o));
+        Map<Long, Long> memberCounts = new HashMap<>();
+        for (Object[] row : userRoleRepository.countGroupByOrganizationIdIn(organizationIds)) {
+            memberCounts.put((Long) row[0], (Long) row[1]);
+        }
+
+        List<TeamOrgMembershipSummary> result = new ArrayList<>(memberships.size());
+        for (TeamOrgMembershipEntity m : memberships) {
+            OrganizationEntity org = organizations.get(m.getOrganizationId());
+            if (org == null) {
+                continue;
+            }
+            result.add(new TeamOrgMembershipSummary(
+                    org.getId(),
+                    org.getSlug(),
+                    org.getName(),
+                    org.getVisibility().name(),
+                    memberCounts.getOrDefault(org.getId(), 0L).intValue(),
+                    Boolean.TRUE.equals(org.getTeamGroupsEnabled()),
+                    m.getGroupId()));
+        }
+        return result;
     }
 
     /**
@@ -685,7 +1030,13 @@ public class TeamService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "team-detail", allEntries = true),
-            @CacheEvict(value = "team-search", allEntries = true)
+            @CacheEvict(value = "team-search", allEntries = true),
+            // issue #2496: 論理削除の復元は @SQLRestriction("deleted_at IS NULL") の効き方が反転するため、
+            // teamFriendList も失効させる必要がある。
+            // deleteTeam で全消し → TTL(30分) の間に誰かが一覧を引くと toView の .orElse(null) により
+            // friendTeamName = null がキャッシュされる → restoreTeam しても失効しなければ
+            // 復元後もフレンド名が空欄のまま最大 30 分表示され続ける。
+            @CacheEvict(value = "teamFriendList", allEntries = true)
     })
     public void restoreTeam(Long teamId) {
         if (teamRepository.countByIdIncludingDeleted(teamId) == 0) {
@@ -719,6 +1070,26 @@ public class TeamService {
     }
 
     /**
+     * 指定 ID 集合に対して id → name（チーム名）のマッピングを一括取得する（N+1 回避）。
+     *
+     * <p>マイページ チームプロジェクト集約（{@code GET /api/v1/me/team-projects}）が、
+     * プロジェクトに所属チーム名を付与する際に Entity を直接参照しないよう、プリミティブ
+     * （Map&lt;Long, String&gt;）のみを返す。{@link #getSlugsByIds(Collection)} と対をなす。</p>
+     *
+     * <p>TODO(出陣): 現状は空実装。teamRepository から id → name のマップを論理削除除外で
+     * バルク取得して返す実装を /出陣 で行う（findSlugMapByIdIn と同様の name 版を用意する）。</p>
+     *
+     * @param ids 取得対象のチーム ID 集合
+     * @return id → name の Map（論理削除済みは除外）。ids が空の場合は空 Map を返す
+     */
+    public Map<Long, String> getNamesByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return teamRepository.findNameMapByIdIn(ids);
+    }
+
+    /**
      * 単一チーム ID から slug を取得する。
      *
      * <p>論理削除済み・存在しない場合は {@code null} を返す（例外を投げない）。</p>
@@ -749,7 +1120,11 @@ public class TeamService {
      * @return チームエンティティ
      */
     private TeamEntity findTeamBySlugOrThrow(String slug) {
-        return teamRepository.findBySlugAndDeletedAtIsNull(slug)
+        // 柱②-3 検分 P1-2 根治: PROVISIONED（承諾前の事前作成状態）を除外するため
+        // ACTIVE 限定クエリへ差し替える。getTeam/resolveTeamId は多数の API の入口であり、
+        // 承諾前スコープを認可判定より前に解決できてはならない。
+        return teamRepository.findBySlugAndDeletedAtIsNullAndLifecycleStatus(
+                        slug, TeamEntity.LifecycleStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
     }
 
@@ -764,6 +1139,7 @@ public class TeamService {
         return TeamResponse.builder()
                 .id(team.getSlug())
                 .slug(team.getSlug())
+                .numericId(team.getId())
                 .basicInfo(new TeamResponse.TeamBasicInfoDto(
                         team.getName(), team.getNameKana(),
                         team.getNickname1(), team.getNickname2()))
@@ -773,9 +1149,14 @@ public class TeamService {
                 .visibility(new TeamResponse.TeamVisibilityDto(
                         team.getVisibility() != null ? team.getVisibility().name() : null,
                         team.getSupporterEnabled()))
+                .timezone(team.getTimezone())
                 .metadata(new TeamResponse.TeamMetadataDto(
                         team.getVersion(), memberCount,
-                        team.getIconUrl(), team.getBannerUrl(), team.getMapEmbedUrl()))
+                        // 画像 URL 根治 Phase 1: icon/banner は生 R2 キーを署名付き表示 URL へ解決する。
+                        // mapEmbedUrl は R2 キーではない（Google Maps 埋め込み URL）ため素通し。
+                        mediaUrlResolver.resolve(team.getIconUrl()),
+                        mediaUrlResolver.resolve(team.getBannerUrl()),
+                        team.getMapEmbedUrl()))
                 .social(new TeamResponse.TeamSocialDto(teamFriendCount, supporterCount))
                 .timestamps(new TeamResponse.TeamTimestampsDto(
                         team.getArchivedAt(), team.getCreatedAt()))

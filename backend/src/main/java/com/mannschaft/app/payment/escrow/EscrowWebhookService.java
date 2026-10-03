@@ -3,6 +3,7 @@ package com.mannschaft.app.payment.escrow;
 import com.mannschaft.app.payment.WebhookIdempotencyService;
 import com.mannschaft.app.payment.WebhookProcessStatus;
 import com.mannschaft.app.payment.escrow.event.EscrowCapturedEvent;
+import com.mannschaft.app.payment.service.PaymentRequestPaymentWebhookService;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,6 +58,7 @@ public class EscrowWebhookService {
     private final LedgerEntryRepository ledgerEntryRepository;
     private final RefundRepository refundRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final PaymentRequestPaymentWebhookService paymentRequestPaymentWebhookService;
 
     /**
      * 与信系 platform Webhook を処理する。署名検証 → {@code event_id} 冪等ゲート → ハンドラの順。
@@ -177,9 +179,17 @@ public class EscrowWebhookService {
     }
 
     private WebhookProcessStatus dispatch(StripePaymentProvider.EscrowWebhookEventInfo event) {
+        if (event.paymentIntentId() != null && event.metadata().containsKey("paymentAttemptId")) {
+            paymentRequestPaymentWebhookService.requireEscrowAttachmentForPaymentRequest(
+                    event.paymentIntentId(), event.metadata());
+        }
         return switch (event.type()) {
             case "payment_intent.amount_capturable_updated" -> applyAmountCapturable(event.paymentIntentId());
-            case "payment_intent.canceled", "payment_intent.payment_failed" -> applyCanceled(event.paymentIntentId());
+            case "payment_intent.canceled" ->
+                    applyCanceled(event.paymentIntentId(), event.type());
+            case "payment_intent.payment_failed" -> event.metadata().containsKey("paymentAttemptId")
+                    ? applyPaymentRequestFailure(event.paymentIntentId())
+                    : applyCanceled(event.paymentIntentId(), event.type());
             case "payment_intent.succeeded" -> applySucceeded(event.paymentIntentId());
             default -> {
                 log.info("未対応の Escrow Webhook イベント: type={}", event.type());
@@ -233,7 +243,9 @@ public class EscrowWebhookService {
      * {@link EscrowStatus#AUTHORIZED}＝与信成立後の札下げ/失効、{@link EscrowStatus#HELD}）からのみ取消する。
      * 課金は起きていないため refunds には記録しない（与信取消・02 §6.1）。CAPTURED 等の後段状態は触らない。</p>
      */
-    private WebhookProcessStatus applyCanceled(String paymentIntentId) {
+    private WebhookProcessStatus applyCanceled(
+            String paymentIntentId,
+            String eventType) {
         EscrowTransactionEntity escrow = findEscrowOrNull(paymentIntentId);
         if (escrow == null) {
             return WebhookProcessStatus.IGNORED;
@@ -248,12 +260,24 @@ public class EscrowWebhookService {
             escrow.setStatus(EscrowStatus.CANCELLED);
             escrow.setCancelledAt(LocalDateTime.now());
             escrowTransactionRepository.save(escrow);
+            paymentRequestPaymentWebhookService.fail(paymentIntentId, eventType);
             log.info("与信取消（payment_intent.canceled/payment_failed）: escrowId={}, piId={}",
                     escrow.getId(), paymentIntentId);
         } else {
             log.info("payment_intent.canceled/payment_failed だが対象 escrow は後段状態のため無視: escrowId={}, status={}",
                     escrow.getId(), escrow.getStatus());
         }
+        return WebhookProcessStatus.PROCESSED;
+    }
+
+    /** P7 のカード失敗は同じ PaymentIntent を再確認できるため、終端化せず再試行可能なまま保つ。 */
+    private WebhookProcessStatus applyPaymentRequestFailure(String paymentIntentId) {
+        EscrowTransactionEntity escrow = findEscrowOrNull(paymentIntentId);
+        if (escrow == null) {
+            return WebhookProcessStatus.IGNORED;
+        }
+        paymentRequestPaymentWebhookService.noteRetryableFailure(
+                paymentIntentId, "payment_intent.payment_failed");
         return WebhookProcessStatus.PROCESSED;
     }
 
@@ -306,6 +330,7 @@ public class EscrowWebhookService {
                     .credit(LedgerEntryType.FEE, LedgerAccount.PLATFORM_FEE, feeAmount, paymentIntentId)
                     .build();
             ledgerEntryRepository.saveAll(entries);
+            paymentRequestPaymentWebhookService.succeed(paymentIntentId);
             log.info("payment_intent.succeeded → capture 確定 CAPTURED: escrowId={}, piId={}, capture={}, transfer={}, fee={}",
                     escrow.getId(), paymentIntentId, captureAmount, transferOut, feeAmount);
 

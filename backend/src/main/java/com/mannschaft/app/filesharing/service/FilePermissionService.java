@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
@@ -58,8 +59,8 @@ public class FilePermissionService {
         FilePermissionEntity entity = FilePermissionEntity.builder()
                 .targetType(request.getTargetType())
                 .targetId(request.getTargetId())
-                .permissionType(PermissionType.valueOf(request.getPermissionType()))
-                .permissionTargetType(PermissionTargetType.valueOf(request.getPermissionTargetType()))
+                .permissionType(EnumInputParser.parse(PermissionType.class, request.getPermissionType(), "permissionType"))
+                .permissionTargetType(EnumInputParser.parse(PermissionTargetType.class, request.getPermissionTargetType(), "permissionTargetType"))
                 .permissionTargetId(request.getPermissionTargetId())
                 .build();
 

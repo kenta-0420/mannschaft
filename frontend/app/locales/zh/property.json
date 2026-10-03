@@ -98,6 +98,9 @@
     "vendor": {
       "title": "承包商主数据",
       "subtitle": "施工・检查等承包商管理",
+      "notice": {
+        "personalScopeUnsupported": "个人范围内无法使用承包商主数据管理。请切换到团队或组织范围。"
+      },
       "newVendor": "新增承包商",
       "editVendor": "编辑承包商",
       "deleteConfirm": "确定逻辑删除该承包商？",
@@ -142,6 +145,30 @@
       "close": "关闭",
       "back": "返回列表",
       "changeStatus": "更改状态"
+    },
+    "residents": {
+      "title": "住民名册",
+      "create": "添加住户",
+      "createTitle": "添加住户",
+      "unitNumber": "房号",
+      "unitNumberPlaceholder": "例如：101",
+      "floor": "楼层",
+      "unitType": "户型类别",
+      "layout": "户型",
+      "areaSqm": "面积",
+      "notes": "备注",
+      "residentCount": "{count} 位住户",
+      "occupied": "已入住",
+      "vacant": "空房",
+      "empty": "暂无住户信息",
+      "createSuccess": "已添加住户",
+      "createFailed": "添加住户失败",
+      "validation": {
+        "unitNumberRequired": "请输入房号",
+        "unitNumberMax": "房号不能超过50个字符",
+        "unitTypeMax": "户型类别不能超过20个字符",
+        "layoutMax": "户型不能超过20个字符"
+      }
     },
     "errors": {
       "loadFailed": "载入失败",

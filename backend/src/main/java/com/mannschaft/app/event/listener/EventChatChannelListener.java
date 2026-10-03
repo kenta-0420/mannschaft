@@ -1,6 +1,8 @@
 package com.mannschaft.app.event.listener;
 
 import com.mannschaft.app.chat.service.EventChatChannelService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.event.EventStatus;
 import com.mannschaft.app.event.event.EventCreatedEvent;
 import com.mannschaft.app.event.event.EventStatusChangedEvent;
@@ -37,6 +39,8 @@ public class EventChatChannelListener {
      *
      * @param event イベント作成ドメインイベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。イベントに紐づくチャットチャネルの生成・状態同期。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onEventCreated(EventCreatedEvent event) {
@@ -54,6 +58,8 @@ public class EventChatChannelListener {
      *
      * @param event イベントステータス変更ドメインイベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。イベントに紐づくチャットチャネルの生成・状態同期。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onEventStatusChanged(EventStatusChangedEvent event) {

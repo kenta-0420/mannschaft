@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class SealResponse {
 
-    private final Long id;
+    private final Long sealId;
     private final Long userId;
     private final String variant;
     private final String displayText;

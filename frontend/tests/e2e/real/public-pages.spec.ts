@@ -9,9 +9,15 @@
  *
  * テストデータ（seed-e2e-data.js 投入済み前提）:
  * - ID=1: seed で最初に作成される PUBLIC な活動記録
- *         title: '春季合宿2026', location: '長野県・菅平高原'
+ *         中身（タイトル・活動日・スコープ名・本文）は seed の更新で変わりうるため
+ *         ベタ書きせず、公開 API の実値と画面表示を突き合わせる（PUB-003 参照）
  * - ID=2: MEMBERS_ONLY な活動記録（バックエンドが未認証に 404 を返す）
  * - ID=9999999: 存在しない ID
+ *
+ * NOTE: seed は location='長野県・菅平高原' も投入しているが、公開 API
+ * （PublicActivityDetail）は御裁可済み 8 項目のみを返し location は**禁則フィールド**である。
+ * よって公開ページに開催場所は出ない。ここを assert してはならない
+ * （出てしまったら公開 DTO の漏洩であり、BE 契約テスト側で落ちるべき事象）。
  *
  * 認証状態:
  * - 全テスト: storageState を空にして未認証状態で実行する
@@ -22,6 +28,9 @@ import { waitForHydration } from '../helpers/wait'
 
 // 全テストを未認証状態で実行する
 test.use({ storageState: { cookies: [], origins: [] } })
+
+// 検証用 worktree では本陣（8080）と別ポートに BE を建てるため上書き可能にする
+const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:8080'
 
 // ============================================================
 // PUB-001〜008: /activity/[id] 公開活動記録ページ
@@ -62,17 +71,47 @@ test.describe('PUB-001〜008: /activity/[id] 公開活動記録ページ', () =>
   })
 
   /**
-   * PUB-003: 場所「長野県・菅平高原」が表示される
+   * PUB-003: 記録の中身（スコープ名・活動日・本文）が表示される
+   *
+   * 「公開ページに記録の内容が表示される」ことを守るテスト。
+   * 旧版は開催場所（location）を assert していたが、公開 API の禁則フィールドとなり
+   * 返らなくなったため、公開してよい 8 項目のうち画面に出る要素で守り直す。
+   * - scopeRef.scopeName（所属チーム名）
+   * - activityDate（活動日）
+   * - description（本文）
    */
-  test('PUB-003: 場所「長野県・菅平高原」が表示される', async ({ page }) => {
+  test('PUB-003: 記録の中身（スコープ名・活動日・本文）が表示される', async ({ page, request }) => {
+    // 期待値は seed をベタ書きせず、公開 API が返した実値そのものを使う。
+    // 「画面が BE の返した内容を表示している」ことこそが守りたい性質であり、
+    // seed の文言が変わるたびにテストだけが落ちるのを防ぐ（実際に3項目が陳腐化していた）。
+    const apiRes = await request.get(`${API_BASE}/api/v1/public/activities/1`)
+    expect(apiRes.status(), '公開活動記録 API が 200 を返すこと').toBe(200)
+    const activity = (await apiRes.json()).data as {
+      title: string
+      activityDate: string
+      description: string
+      scopeRef: { scopeName: string }
+    }
+
     await page.goto('/activity/1')
     await waitForHydration(page)
 
     await expect(page.locator('.p-progress-spinner')).not.toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole('heading', { name: '春季合宿2026' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: activity.title })).toBeVisible({
       timeout: 15_000,
     })
-    await expect(page.getByText('長野県・菅平高原')).toBeVisible({ timeout: 5_000 })
+
+    // スコープ名（BE: PublicScopeRef.scopeName）
+    await expect(page.getByText(activity.scopeRef.scopeName)).toBeVisible({ timeout: 5_000 })
+    // 活動日
+    await expect(page.getByText(activity.activityDate)).toBeVisible({ timeout: 5_000 })
+    // 本文
+    await expect(page.getByText(activity.description, { exact: false })).toBeVisible({
+      timeout: 5_000,
+    })
+
+    // 開催場所は公開 DTO の禁則フィールド。表示されていたら漏洩である。
+    await expect(page.getByText('長野県・菅平高原')).toHaveCount(0)
   })
 
   /**
@@ -260,29 +299,33 @@ test.describe('PUB-012〜015: /login ページの基本要素', () => {
     await page.goto('/login')
     await waitForHydration(page)
 
-    await expect(page.getByRole('button', { name: 'ログイン' })).toBeVisible({ timeout: 15_000 })
-  })
-
-  /**
-   * PUB-014: 「パスワードをお忘れですか？」リンクが存在する
-   */
-  test('PUB-014: 「パスワードをお忘れですか？」リンクが存在する', async ({ page }) => {
-    await page.goto('/login')
-    await waitForHydration(page)
-
-    await expect(page.getByRole('link', { name: 'パスワードをお忘れですか？' })).toBeVisible({
+    // exact 指定が要る。画面には「Googleでログイン」ボタンも並んでおり、
+    // 部分一致だと 2 件に解決して strict mode 違反になる。
+    await expect(page.getByRole('button', { name: 'ログイン', exact: true })).toBeVisible({
       timeout: 15_000,
     })
   })
 
   /**
-   * PUB-015: 「新規アカウント作成」リンクが存在する
+   * PUB-014: 「パスワードを忘れた方はこちら」リンクが存在する
    */
-  test('PUB-015: 「新規アカウント作成」リンクが存在する', async ({ page }) => {
+  test('PUB-014: 「パスワードを忘れた方はこちら」リンクが存在する', async ({ page }) => {
     await page.goto('/login')
     await waitForHydration(page)
 
-    await expect(page.getByRole('link', { name: '新規アカウント作成' })).toBeVisible({
+    await expect(page.getByRole('link', { name: 'パスワードを忘れた方はこちら' })).toBeVisible({
+      timeout: 15_000,
+    })
+  })
+
+  /**
+   * PUB-015: 「アカウント登録」リンクが存在する
+   */
+  test('PUB-015: 「アカウント登録」リンクが存在する', async ({ page }) => {
+    await page.goto('/login')
+    await waitForHydration(page)
+
+    await expect(page.getByRole('link', { name: 'アカウント登録' })).toBeVisible({
       timeout: 15_000,
     })
   })
