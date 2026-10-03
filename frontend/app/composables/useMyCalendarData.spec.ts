@@ -378,7 +378,7 @@ describe('フォールバックチップの色（§5.2.1 と §3.3 の板挟み�
     vi.clearAllMocks()
   })
 
-  async function bootWithFallbackEntry(scopeId: number, color: string, colorSource: string) {
+  async function bootWithFallbackEntry(scopeId: number, color: string, colorSource: string, scopeAutoColor?: string | null) {
     localStorage.clear()
     const at = midMonth()
     getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669')] })
@@ -386,7 +386,7 @@ describe('フォールバックチップの色（§5.2.1 と §3.3 の板挟み�
       data: [{
         id: 900 + scopeId,
         scheduleId: 900 + scopeId,
-        content: { title: '外部', eventType: 'PRACTICE', status: 'SCHEDULED', color, colorSource },
+        content: { title: '外部', eventType: 'PRACTICE', status: 'SCHEDULED', color, colorSource, scopeAutoColor },
         time: { startAt: at, endAt: at, allDay: false },
         scope: { scopeType: 'TEAM', scopeId, scopeName: 'レイヤー外', scopeIconUrl: null },
         myAttendanceStatus: 'ATTEND',
@@ -396,6 +396,49 @@ describe('フォールバックチップの色（§5.2.1 と §3.3 の板挟み�
     getMyCalendarTodos.mockResolvedValue({ data: [] })
     return boot()
   }
+
+  it.each(['LAYER_USER', 'SCHEDULE', 'CATEGORY', 'LAYER_AUTO'])('表示色が%sでも独立したBE自動色をチップに使う', async (colorSource) => {
+    const eventColor = colorSource === 'LAYER_AUTO' ? '#C026D3' : OLD_COLOR
+    const cal = await bootWithFallbackEntry(779, eventColor, colorSource, '#C026D3')
+
+    const chip = cal.allScopeOptions.value.find(o => o.value === 'TEAM:779')
+    expect(chip?.isFallback).toBe(true)
+    expect(chip?.color).toBe('#C026D3')
+    expect(chip?.color).not.toBe(OLD_COLOR)
+  })
+
+  it.each([false, true])('TODOのみ/予定との混在でも同じスコープの自動色チップを1件描く（混在=%s）', async (withSchedule) => {
+    localStorage.clear()
+    getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669')] })
+    getCalendarRange.mockResolvedValue({ data: withSchedule ? [sharedEntry(OLD_COLOR, 'CATEGORY')] : [] })
+    listPersonalSchedules.mockResolvedValue({ data: [] })
+    getMyCalendarTodos.mockResolvedValue({ data: [{
+      id: 123,
+      title: 'チップ用TODO',
+      startDate: null,
+      dueDate: midMonth().slice(0, 10),
+      dueTime: null,
+      status: 'OPEN',
+      priority: 'HIGH',
+      linkedScheduleId: null,
+      scopeType: 'TEAM',
+      scopeId: 42,
+      scopeSlug: null,
+      scopeName: null,
+      scopeAutoColor: '#C026D3',
+    }] })
+    const cal = await boot()
+
+    const chips = cal.allScopeOptions.value.filter(o => o.value === 'TEAM:42')
+    expect(chips).toHaveLength(1)
+    expect(chips[0]?.color).toBe('#C026D3')
+    expect(cal.filteredEvents.value.find(e => e.uniqueKey === 'todo:123')?.color).toBe('#f97316')
+  })
+
+  it('独立自動色がnullの旧応答では中立色への互換を維持する', async () => {
+    const cal = await bootWithFallbackEntry(780, OLD_COLOR, 'CATEGORY', null)
+    expect(cal.allScopeOptions.value.find(o => o.value === 'TEAM:780')?.color).toBe(NEUTRAL)
+  })
 
   it('BE が自動色を載せている（colorSource=LAYER_AUTO）予定があればその色を採る', async () => {
     const cal = await bootWithFallbackEntry(777, '#7C3AED', 'LAYER_AUTO')
@@ -411,5 +454,43 @@ describe('フォールバックチップの色（§5.2.1 と §3.3 の板挟み�
     const chip = cal.allScopeOptions.value.find(o => o.value === 'TEAM:778')
     expect(chip?.color).toBe(NEUTRAL)
     expect(chip?.color).not.toBe(OLD_COLOR)
+  })
+
+  it.each([false, true])('後続の明示自動色もイベント順に左右されず旧自動色より優先する（逆順=%s）', async (reverse) => {
+    localStorage.clear()
+    const legacy = sharedEntry('#7C3AED', 'LAYER_AUTO')
+    const explicit = { ...sharedEntry(OLD_COLOR, 'CATEGORY'), id: 999, content: { ...sharedEntry(OLD_COLOR, 'CATEGORY').content, scopeAutoColor: '#C026D3' } }
+    getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669')] })
+    getCalendarRange.mockResolvedValue({ data: reverse ? [explicit, legacy] : [legacy, explicit] })
+    listPersonalSchedules.mockResolvedValue({ data: [] })
+    getMyCalendarTodos.mockResolvedValue({ data: [] })
+    const cal = await boot()
+    expect(cal.allScopeOptions.value.filter(o => o.value === 'TEAM:42')).toHaveLength(1)
+    expect(cal.allScopeOptions.value.find(o => o.value === 'TEAM:42')?.color).toBe('#C026D3')
+  })
+
+  it('既知レイヤーの利用者指定色と予定の最終表示色を独立自動色で上書きしない', async () => {
+    localStorage.clear()
+    const entry = sharedEntry(OLD_COLOR, 'LAYER_USER')
+    getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669'), teamLayer(OLD_COLOR, 'LAYER_USER')] })
+    getCalendarRange.mockResolvedValue({ data: [{ ...entry, content: { ...entry.content, scopeAutoColor: '#C026D3' } }] })
+    listPersonalSchedules.mockResolvedValue({ data: [] })
+    getMyCalendarTodos.mockResolvedValue({ data: [] })
+    const cal = await boot()
+    const option = cal.allScopeOptions.value.find(o => o.value === 'TEAM:42')
+    expect(option?.color).toBe(OLD_COLOR)
+    expect(option?.isFallback).not.toBe(true)
+    expect(cal.filteredEvents.value.find(e => e.scopeType === 'TEAM')?.color).toBe(OLD_COLOR)
+  })
+
+  it('同じ数値IDのTEAMとORGANIZATIONを別スコープとして集約する（パレット色の衝突は許容）', async () => {
+    localStorage.clear()
+    const entry = sharedEntry(OLD_COLOR, 'CATEGORY')
+    getMyCalendarLayers.mockResolvedValue({ data: [personalLayer('#059669')] })
+    getCalendarRange.mockResolvedValue({ data: ['TEAM', 'ORGANIZATION'].map((scopeType, index) => ({ ...entry, id: 990 + index, scope: { ...entry.scope, scopeType }, content: { ...entry.content, scopeAutoColor: '#C026D3' } })) })
+    listPersonalSchedules.mockResolvedValue({ data: [] })
+    getMyCalendarTodos.mockResolvedValue({ data: [] })
+    const cal = await boot()
+    expect(cal.allScopeOptions.value.filter(o => o.value === 'TEAM:42' || o.value === 'ORGANIZATION:42').map(o => [o.value, o.color])).toEqual([['TEAM:42', '#C026D3'], ['ORGANIZATION:42', '#C026D3']])
   })
 })
