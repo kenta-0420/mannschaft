@@ -178,3 +178,116 @@ class SpecimenDriftedPortServiceImpl implements SpecimenDriftedPortService {
         repository.delete(pin);
     }
 }
+
+/** 修繕r2: 多段委譲（具象 Helper → 別 interface → 実装 → Repository）の interface。 */
+interface SpecimenChainWriterPort {
+
+    void write(Long userId, UUID villageId);
+}
+
+/** 修繕r2: 実装は find → delete だけ（台帳どおり）。 */
+class SpecimenChainWriterImpl implements SpecimenChainWriterPort {
+
+    private SpecimenPinRepository repository;
+
+    @Override
+    public void write(Long userId, UUID villageId) {
+        repository.findByUserIdAndVillageId(userId, villageId).ifPresent(repository::delete);
+    }
+}
+
+/** 修繕r2: 具象 Helper（Repository を直接は持たず、interface 越しに委譲する）。 */
+class SpecimenChainHelper {
+
+    private SpecimenChainWriterPort writer;
+
+    void run(Long userId, UUID villageId) {
+        writer.write(userId, villageId);
+    }
+}
+
+/** 修繕r2: 具象 Helper を呼ぶ Service。 */
+class SpecimenChainService {
+
+    private SpecimenChainHelper helper;
+
+    void unpin(Long userId, UUID villageId) {
+        helper.run(userId, villageId);
+    }
+}
+
+/** 修繕r2: 実装に save が足された版の interface。 */
+interface SpecimenChainDriftedWriterPort {
+
+    void write(Long userId, UUID villageId);
+}
+
+class SpecimenChainDriftedWriterImpl implements SpecimenChainDriftedWriterPort {
+
+    private SpecimenPinRepository repository;
+
+    @Override
+    public void write(Long userId, UUID villageId) {
+        Object pin = repository.findByUserIdAndVillageId(userId, villageId).orElseThrow();
+        repository.save(pin);
+        repository.delete(pin);
+    }
+}
+
+class SpecimenChainDriftedHelper {
+
+    private SpecimenChainDriftedWriterPort writer;
+
+    void run(Long userId, UUID villageId) {
+        writer.write(userId, villageId);
+    }
+}
+
+class SpecimenChainDriftedService {
+
+    private SpecimenChainDriftedHelper helper;
+
+    void unpin(Long userId, UUID villageId) {
+        helper.run(userId, villageId);
+    }
+}
+
+/** 修繕r2: interface → 抽象クラス → 具象実装 → Repository。台帳どおり find → delete だけの版。 */
+interface SpecimenAbstractChainPort {
+
+    void unpin(Long userId, UUID villageId);
+}
+
+abstract class SpecimenAbstractChainBase implements SpecimenAbstractChainPort {
+}
+
+class SpecimenAbstractChainImpl extends SpecimenAbstractChainBase {
+
+    private SpecimenPinRepository repository;
+
+    @Override
+    public void unpin(Long userId, UUID villageId) {
+        repository.findByUserIdAndVillageId(userId, villageId).ifPresent(repository::delete);
+    }
+}
+
+/** 修繕r2: interface → 抽象クラス → 具象実装。具象実装に save が足された版。 */
+interface SpecimenAbstractChainDriftedPort {
+
+    void unpin(Long userId, UUID villageId);
+}
+
+abstract class SpecimenAbstractChainDriftedBase implements SpecimenAbstractChainDriftedPort {
+}
+
+class SpecimenAbstractChainDriftedImpl extends SpecimenAbstractChainDriftedBase {
+
+    private SpecimenPinRepository repository;
+
+    @Override
+    public void unpin(Long userId, UUID villageId) {
+        Object pin = repository.findByUserIdAndVillageId(userId, villageId).orElseThrow();
+        repository.save(pin);
+        repository.delete(pin);
+    }
+}

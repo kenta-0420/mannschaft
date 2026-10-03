@@ -509,6 +509,54 @@ class SelfScopedEndpointScopeInputGuardTest {
         }
 
         @Test
+        @DisplayName("修繕r2: 具象 Helper → 別 interface → 実装 → save は赤（多段委譲）")
+        void 具象Helperから別interface経由の実装にsaveを足すと赤() {
+            String repo = "common.architecture.fixtures.selfscopedinput.SpecimenPinRepository#";
+            LedgerRow row = new LedgerRow(S + "ChainDriftedSpecimenController#unpin", Set.of("PathVariable:villageId"),
+                    Set.of(repo + "findByUserIdAndVillageId", repo + "delete"),
+                    "検体: 多段委譲で自分のピン行を (userId, villageId) で引いて消すだけの行",
+                    APPROVED_0925, List.of("X#y"));
+            assertThat(evaluateSpecimen("ChainDriftedSpecimenController", List.of(row)))
+                    .singleElement().asString().contains("allowedRepositoryCalls")
+                    .contains("増えた: [" + repo + "save]");
+        }
+
+        @Test
+        @DisplayName("修繕r2: 具象 Helper → 別 interface → 実装 に save が無ければ緑")
+        void 具象Helperから別interface経由でsaveが無ければ緑() {
+            String repo = "common.architecture.fixtures.selfscopedinput.SpecimenPinRepository#";
+            LedgerRow row = new LedgerRow(S + "ChainLedgeredSpecimenController#unpin", Set.of("PathVariable:villageId"),
+                    Set.of(repo + "findByUserIdAndVillageId", repo + "delete"),
+                    "検体: 多段委譲で自分のピン行を (userId, villageId) で引いて消すだけの行",
+                    APPROVED_0925, List.of("X#y"));
+            assertThat(evaluateSpecimen("ChainLedgeredSpecimenController", List.of(row))).isEmpty();
+        }
+
+        @Test
+        @DisplayName("修繕r2: interface → 抽象クラス → 具象実装 → save は赤")
+        void interfaceから抽象クラス経由の具象実装にsaveを足すと赤() {
+            String repo = "common.architecture.fixtures.selfscopedinput.SpecimenPinRepository#";
+            LedgerRow row = new LedgerRow(S + "AbstractChainDriftedSpecimenController#unpin", Set.of("PathVariable:villageId"),
+                    Set.of(repo + "findByUserIdAndVillageId", repo + "delete"),
+                    "検体: 多段委譲で自分のピン行を (userId, villageId) で引いて消すだけの行",
+                    APPROVED_0925, List.of("X#y"));
+            assertThat(evaluateSpecimen("AbstractChainDriftedSpecimenController", List.of(row)))
+                    .singleElement().asString().contains("allowedRepositoryCalls")
+                    .contains("増えた: [" + repo + "save]");
+        }
+
+        @Test
+        @DisplayName("修繕r2: interface → 抽象クラス → 具象実装 に save が無ければ緑")
+        void interfaceから抽象クラス経由でsaveが無ければ緑() {
+            String repo = "common.architecture.fixtures.selfscopedinput.SpecimenPinRepository#";
+            LedgerRow row = new LedgerRow(S + "AbstractChainLedgeredSpecimenController#unpin", Set.of("PathVariable:villageId"),
+                    Set.of(repo + "findByUserIdAndVillageId", repo + "delete"),
+                    "検体: 多段委譲で自分のピン行を (userId, villageId) で引いて消すだけの行",
+                    APPROVED_0925, List.of("X#y"));
+            assertThat(evaluateSpecimen("AbstractChainLedgeredSpecimenController", List.of(row))).isEmpty();
+        }
+
+        @Test
         @DisplayName("修繕r1: 名前なしの集約 Map / MultiValueMap（RequestParam・PathVariable・RequestHeader）は判定不能で赤")
         void 名前なしの集約Mapは赤() {
             for (String name : List.of("AggregateRequestParamMapSpecimenController",
@@ -909,12 +957,22 @@ class SelfScopedEndpointScopeInputGuardTest {
             }
             while (!queue.isEmpty()) {
                 JavaClass c = queue.poll();
+                // 呼び出し辺（逆向き）: c に依存する型は届く。
                 c.getDirectDependenciesToSelf().forEach(d -> {
                     JavaClass origin = d.getOriginClass();
                     if (origin.getName().startsWith(APP) && reach.add(origin)) {
                         queue.add(origin);
                     }
                 });
+                // 実装辺: 実装が届くなら、その interface・抽象親も届く（呼び出し側は interface 越しに呼ぶ）。
+                // 新たに加わった型も同じ待ち行列に入るので、多段の委譲まで不動点で閉じる。
+                Set<JavaClass> supers = new HashSet<>(c.getAllRawSuperclasses());
+                supers.addAll(c.getAllRawInterfaces());
+                for (JavaClass sup : supers) {
+                    if (sup.getName().startsWith(APP) && reach.add(sup)) {
+                        queue.add(sup);
+                    }
+                }
             }
             return reach;
         });

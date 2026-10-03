@@ -220,3 +220,47 @@ class AggregateRequestHeaderMapSpecimenController {
         return headers;
     }
 }
+
+/** 修繕r2: 具象 Helper → 別 interface → 実装 → Repository。実装は find → delete だけ。緑。 */
+class ChainLedgeredSpecimenController {
+
+    private SpecimenChainService service;
+
+    @SelfScopedEndpoint("検体: 多段委譲で自分のピン行を引いて消すだけ")
+    void unpin(@PathVariable UUID villageId) {
+        service.unpin(1L, villageId);
+    }
+}
+
+/** 修繕r2: 具象 Helper → 別 interface → 実装 → Repository。実装に save が足されている。赤。 */
+class ChainDriftedSpecimenController {
+
+    private SpecimenChainDriftedService service;
+
+    @SelfScopedEndpoint("検体: 多段委譲の先の実装に save が足された")
+    void unpin(@PathVariable UUID villageId) {
+        service.unpin(1L, villageId);
+    }
+}
+
+/** 修繕r2: interface → 抽象クラス → 具象実装。find → delete だけ。緑。 */
+class AbstractChainLedgeredSpecimenController {
+
+    private SpecimenAbstractChainPort port;
+
+    @SelfScopedEndpoint("検体: 抽象クラス経由の実装で自分のピン行を引いて消すだけ")
+    void unpin(@PathVariable UUID villageId) {
+        port.unpin(1L, villageId);
+    }
+}
+
+/** 修繕r2: interface → 抽象クラス → 具象実装。具象実装に save が足されている。赤。 */
+class AbstractChainDriftedSpecimenController {
+
+    private SpecimenAbstractChainDriftedPort port;
+
+    @SelfScopedEndpoint("検体: 抽象クラス経由の具象実装に save が足された")
+    void unpin(@PathVariable UUID villageId) {
+        port.unpin(1L, villageId);
+    }
+}
