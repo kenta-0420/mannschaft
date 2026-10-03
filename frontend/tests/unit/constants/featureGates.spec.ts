@@ -98,9 +98,9 @@ describe('featureGates 定数と純関数', () => {
     const dynamic = all.filter((p) => p.includes('*'))
     const staticOnly = all.filter((p) => !p.includes('*'))
 
-    // CMP-260909-1141: 旧 /admin/equipment ページの削除に伴い、静的プレフィクスが1件減る。
-    expect(all).toHaveLength(93)
-    expect(staticOnly).toHaveLength(46)
+    // CMP-260820-1018: 代理同意・履歴管理の /admin/proxy を静的プレフィクスへ追加。
+    expect(all).toHaveLength(94)
+    expect(staticOnly).toHaveLength(47)
     expect(dynamic).toHaveLength(47)
 
     const rules = buildGateRouteRules()
@@ -200,5 +200,29 @@ describe('featureGates 定数と純関数', () => {
       .toEqual({ action: 'pass' })
     expect(decideGate({ path: '/market', isServer: false, isAuthenticated: true, publicLoaded: true, enabled: () => false }))
       .toEqual({ action: 'deny', gateKey: 'FEATURE_MARKET_ENABLED' })
+  })
+
+  it.each(['/admin/proxy/consents', '/admin/proxy/records'])('%s は既存の代理ゲートの三値判定とSSR抑止に従う', (path) => {
+    const gateKey = 'FEATURE_SUCCESSION_PROXY_ENABLED'
+    expect(matchGateKey(path)).toBe(gateKey)
+    const input = { path, isServer: false, isAuthenticated: true, publicLoaded: true }
+    expect(decideGate({ ...input, enabled: (key) => key === gateKey })).toEqual({ action: 'pass' })
+    expect(decideGate({ ...input, enabled: () => false })).toEqual({ action: 'deny', gateKey })
+    const mustNotEvaluate = () => { throw new Error('未確定・SSR・未認証ではフラグを評価しない') }
+    expect(decideGate({ ...input, publicLoaded: false, enabled: mustNotEvaluate })).toEqual({ action: 'ensure' })
+    expect(decideGate({ ...input, isServer: true, enabled: mustNotEvaluate })).toEqual({ action: 'ssr-defer' })
+    expect(decideGate({ ...input, isAuthenticated: false, enabled: mustNotEvaluate })).toEqual({ action: 'pass' })
+    const rules = buildGateRouteRules()
+    expect(prefixCovers('/admin/proxy', path)).toBe(true)
+    expect(rules['/admin/proxy']).toEqual({ ssr: false })
+    expect(rules['/admin/proxy/**']).toEqual({ ssr: false })
+  })
+
+  it('/admin/proxy は隣接segmentを巻き込まず既存proxy-deskの束縛を保持する', () => {
+    expect(prefixCovers('/admin/proxy', '/admin/proxy-desk')).toBe(false)
+    expect(matchGateKey('/admin/proxy-desk')).toBe('FEATURE_SUCCESSION_PROXY_ENABLED')
+    expect(buildGateRouteRules()['/admin/proxy-desk']).toEqual({ ssr: false })
+    expect(matchGateKey('/admin/proxy-other')).toBeNull()
+    expect(matchGateKey('/admin/proxies')).toBeNull()
   })
 })

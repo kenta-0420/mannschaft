@@ -16,7 +16,8 @@
         "pending": "Pending Approval",
         "active": "Active",
         "expired": "Expired",
-        "revoked": "Revoked"
+        "revoked": "Revoked",
+        "scheduled": "Not yet effective"
       },
       "effectiveFrom": "Effective From",
       "effectiveUntil": "Effective Until",
@@ -229,6 +230,25 @@
         "not_allowed": "Proxy attendance is not allowed for this schedule/event",
         "rate_limit": "Too many requests. Please try again in 1 minute"
       }
+    },
+    "admin": {
+      "consentsTitle": "Proxy input consent management",
+      "description": "Review and approve or revoke proxy input consents and view proxy input history for your organization.",
+      "organization": "Managed organization",
+      "proxyUserId": "Proxy user ID",
+      "status": "Status",
+      "actions": "Actions",
+      "approve": "Approve",
+      "revoke": "Revoke",
+      "approveConfirm": "Approve consent #{id}. Confirm to continue.",
+      "approved": "Consent approved.",
+      "revoked": "Consent revoked.",
+      "selfApprovalDenied": "You cannot approve a consent that names you as the proxy.",
+      "noConsents": "No consents found.",
+      "noRecords": "No proxy input records found.",
+      "none": "None",
+      "recordId": "Record ID",
+      "targetType": "Target type"
     }
   }
 }
