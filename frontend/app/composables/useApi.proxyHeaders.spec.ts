@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const captured = vi.hoisted(() => ({ onRequest: undefined as undefined | ((context: { options: { headers?: Headers } }) => void) }))
 vi.mock('ofetch', () => ({ ofetch: { create: vi.fn((options) => {
@@ -30,10 +30,11 @@ describe('Cookie認証と代理入力ヘッダーの実生成境界', () => {
     vi.stubGlobal('useErrorReport', () => ({}))
     captured.onRequest = undefined
   })
+  afterEach(() => vi.unstubAllGlobals())
 
-  function generate() {
+  function generate(initialHeaders?: Headers) {
     useApi()
-    const options: { headers?: Headers } = {}
+    const options: { headers?: Headers } = { headers: initialHeaders }
     captured.onRequest!({ options })
     return new Headers(options.headers)
   }
@@ -54,6 +55,9 @@ describe('Cookie認証と代理入力ヘッダーの実生成境界', () => {
     desk.isPinned = true
     desk.originalStorageLocation = '紙原本/2026年/控え.pdf'
     expect(() => generate()).not.toThrow()
+    const headers = generate()
+    expect(headers.get('X-Proxy-Original-Storage')).toBe(encodeURIComponent(desk.originalStorageLocation))
+    expect(headers.get('X-Proxy-Original-Storage-Encoding')).toBe('uri-component')
   })
 
   it('通常本人のCookieリクエストへ代理・変身ヘッダーを付けない', () => {
@@ -64,7 +68,7 @@ describe('Cookie認証と代理入力ヘッダーの実生成境界', () => {
     }
   })
 
-  it('紙ピン留めは既存の親見切替・管理者変身より優先する', () => {
+  it('紙ピン留めは既存の後見切替・管理者変身より優先する', () => {
     auth.accessToken = 'unit-test-token'
     desk.isPinned = true
     desk.originalStorageLocation = 'paper.pdf'
@@ -76,7 +80,7 @@ describe('Cookie認証と代理入力ヘッダーの実生成境界', () => {
     expect(headers.has('X-Admin-Impersonate-User-Id')).toBe(false)
   })
 
-  it('親見切替は管理者変身より優先し同意・紙入力ヘッダーを付けない', () => {
+  it('後見切替は管理者変身より優先し同意・紙入力ヘッダーを付けない', () => {
     auth.accessToken = 'unit-test-token'
     guardian.isActingAs = true
     impersonation.isImpersonating = true
@@ -87,11 +91,41 @@ describe('Cookie認証と代理入力ヘッダーの実生成境界', () => {
     }
   })
 
-  it('紙・親見のない管理者変身は既存変身ヘッダーだけを付ける', () => {
+  it('紙・後見のない管理者変身は既存変身ヘッダーだけを付ける', () => {
     auth.accessToken = 'unit-test-token'
     impersonation.isImpersonating = true
     const headers = generate()
     expect(headers.get('X-Admin-Impersonate-User-Id')).toBe('19')
     expect(headers.has('X-Proxy-For-User-Id')).toBe(false)
+  })
+
+  it('ASCIIの既存原本名はpercentとplusを変換せずmarkerを付けない', () => {
+    auth.accessToken = 'unit-test-token'
+    desk.isPinned = true
+    desk.originalStorageLocation = 'paper%2F2026+copy.pdf'
+    const headers = generate()
+    expect(headers.get('X-Proxy-Original-Storage')).toBe('paper%2F2026+copy.pdf')
+    expect(headers.has('X-Proxy-Original-Storage-Encoding')).toBe(false)
+  })
+
+  it('日本語からASCIIへ切り替えたrequestのencoding markerを残さない', () => {
+    auth.accessToken = 'unit-test-token'
+    desk.isPinned = true
+    desk.originalStorageLocation = 'paper+copy.pdf'
+    const previous = new Headers({ 'X-Proxy-Original-Storage': '%E7%B4%99',
+      'X-Proxy-Original-Storage-Encoding': 'uri-component' })
+    const headers = generate(previous)
+    expect(headers.get('X-Proxy-Original-Storage')).toBe('paper+copy.pdf')
+    expect(headers.has('X-Proxy-Original-Storage-Encoding')).toBe(false)
+  })
+
+  it('後見だけのCookie認証へ今回の紙代理対応を拡張しない', () => {
+    guardian.isActingAs = true
+    expect(generate().has('X-Proxy-For-User-Id')).toBe(false)
+  })
+
+  it('管理者変身だけのCookie認証へ今回の紙代理対応を拡張しない', () => {
+    impersonation.isImpersonating = true
+    expect(generate().has('X-Admin-Impersonate-User-Id')).toBe(false)
   })
 })
