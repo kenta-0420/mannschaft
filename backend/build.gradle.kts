@@ -3,7 +3,7 @@ import java.util.concurrent.ConcurrentHashMap
 plugins {
     java
     jacoco
-    id("org.springframework.boot") version "3.5.13"
+    id("org.springframework.boot") version "4.1.0"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.springdoc.openapi-gradle-plugin") version "1.9.0"
     // OWASP Dependency-Check: 依存ライブラリの既知 CVE をスキャンする（週次 CI で使用）
