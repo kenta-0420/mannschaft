@@ -7,7 +7,7 @@ import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.gdpr.dto.PurgeStatusRow;
 import com.mannschaft.app.gdpr.dto.PurgeStatusSummaryData;
 import com.mannschaft.app.gdpr.dto.RetryResultResponse;
-import com.mannschaft.app.gdpr.service.GdprPurgeRetryService;
+import com.mannschaft.app.gdpr.service.GdprPurgeRetryFacade;
 import com.mannschaft.app.gdpr.service.GdprPurgeStatusQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -74,7 +74,7 @@ import java.util.List;
 public class SystemAdminGdprPurgeController {
 
     private final GdprPurgeStatusQueryService queryService;
-    private final GdprPurgeRetryService retryService;
+    private final GdprPurgeRetryFacade retryService;
 
     /**
      * GDPR パージ状況一覧を取得する（ページネーション + 動的フィルタ）。

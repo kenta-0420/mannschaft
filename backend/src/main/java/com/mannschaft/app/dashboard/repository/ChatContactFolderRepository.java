@@ -2,6 +2,9 @@ package com.mannschaft.app.dashboard.repository;
 
 import com.mannschaft.app.dashboard.entity.ChatContactFolderEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,4 +38,9 @@ public interface ChatContactFolderRepository extends JpaRepository<ChatContactFo
      * フォルダIDとユーザーIDで取得する（所有者検証用）。
      */
     Optional<ChatContactFolderEntity> findByIdAndUserId(Long id, Long userId);
+
+    /** 強匿名化専用。対象利用者の行を論理削除済みも含めて物理削除する。 */
+    @Modifying
+    @Query(value = "DELETE FROM chat_contact_folders WHERE user_id = :userId", nativeQuery = true)
+    int deleteByUserId(@Param("userId") Long userId);
 }
