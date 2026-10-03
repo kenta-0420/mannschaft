@@ -28,6 +28,8 @@ import type { MatchScoreEntriesReturn } from '~/composables/match/useMatchScoreE
 import { buildTurnResultPayload } from '~/composables/match/useMatchTurnApi'
 import type { BoardProgressItem } from '~/components/match/MatchBoardProgress.vue'
 
+import { parseOrgQuery, type MatchOrgOption } from '~/composables/match/useMatchOrgContext'
+
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
@@ -45,6 +47,9 @@ const grid = useMatchPlayerGrid()
 const wakeLock = useWakeLockWithFallback()
 
 const orgId = ref<number | null>(null)
+/** org クエリが無効（不正・親組織に無い）。true の間は試合を読み込まず、セレクタと警告を出す。 */
+const orgInvalid = ref(false)
+const organizations = ref<MatchOrgOption[]>([])
 const teamId = ref<number | null>(null)
 const ownTeamSide = ref<'HOME' | 'AWAY'>('HOME')
 const opponentName = ref<string | null>(null)
@@ -194,10 +199,13 @@ function addManualPlayer(p: { name: string; jerseyNumber: number | null }): void
 
 // === 初期ロード ===
 onMounted(async () => {
-  const ctx = await resolveContext(teamSlug)
+  // 試合は作成時の組織の下に保存されている。遷移元（一覧・作成・大会対戦表）が URL クエリ org で引き継ぐ
+  const ctx = await resolveContext(teamSlug, { orgId: parseOrgQuery(route.query.org) })
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
-  if (ctx === null || teamId.value === null) {
+  orgInvalid.value = ctx?.orgInvalid ?? false
+  organizations.value = ctx?.organizations ?? []
+  if (ctx === null || teamId.value === null || ctx.orgInvalid) {
     loading.value = false
     return
   }
@@ -510,7 +518,11 @@ function onRecordBoard(_boardNumber: number, boardMatchId: string | null): void 
     notification.info(t('match.board.create_pending_notice'))
     return
   }
-  void router.push(`/teams/${teamSlug}/matches/${boardMatchId}/live`)
+  // 子ボードも同じ組織の下にある。org を引き継ぐ
+  void router.push({
+    path: `/teams/${teamSlug}/matches/${boardMatchId}/live`,
+    query: orgId.value !== null ? { org: String(orgId.value) } : {},
+  })
 }
 
 /**
@@ -549,11 +561,20 @@ function goOvertime(): void {
       <PageHeader
         :title="canRecord ? t('match.live.title') : t('match.live.spectator.title')"
         size="sm"
-        :back-to="`/teams/${teamSlug}/matches`"
+        :back-to="orgId !== null ? `/teams/${teamSlug}/matches?org=${orgId}` : `/teams/${teamSlug}/matches`"
       />
     </div>
 
     <PageLoading v-if="loading" size="40px" />
+
+    <!-- org クエリが無効: 試合を読み込まず、組織を選び直させる（選択後は再読込して読み直す） -->
+    <MatchOrgSelect
+      v-else-if="orgInvalid"
+      :organizations="organizations"
+      :org-id="orgId"
+      invalid
+      @update:org-id="reloadNuxtApp()"
+    />
 
     <!-- 観戦ビュー（記録権限なし＝read-only・STOMP 購読＋初期スナップショット差分追従・§G.17 / 07 §J） -->
     <MatchSpectatorView
