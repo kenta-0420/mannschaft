@@ -325,13 +325,150 @@ class AuthzTxFacadeRegistryScanningLogicTest {
         }
     }
 
+    /** 長短 2 経路が合流し、合流点の先で認可へ届く tx 本体（R4 の探索順依存の陽性）。長い経路（a→b→shared）を先に辿らせる。 */
+    static class MergeAuthzTxService {
+        private final FakeAccessControl acs = new FakeAccessControl();
+
+        String doWork(Long id) {
+            a(id);
+            shared(id);
+            return "m";
+        }
+
+        private void a(Long id) {
+            b(id);
+        }
+
+        private void b(Long id) {
+            shared(id);
+        }
+
+        private void shared(Long id) {
+            s1(id);
+        }
+
+        private void s1(Long id) {
+            s2(id);
+        }
+
+        private void s2(Long id) {
+            acs.isAdminOrAbove(id);
+        }
+    }
+
+    /** 同じ形で認可へ届かない tx 本体（陰性）。 */
+    static class MergePlainTxService {
+        String doWork(Long id) {
+            a(id);
+            shared(id);
+            return "m";
+        }
+
+        private void a(Long id) {
+            b(id);
+        }
+
+        private void b(Long id) {
+            shared(id);
+        }
+
+        private void shared(Long id) {
+            s1(id);
+        }
+
+        private void s1(Long id) {
+            s2(id);
+        }
+
+        private void s2(Long id) {
+        }
+    }
+
+    static class MergeAuthzFacade {
+        private final FakeGate gate = new FakeGate();
+        private final MergeAuthzTxService tx = new MergeAuthzTxService();
+
+        public String op(Long userId) {
+            gate.requireAdminOrConceal(userId);
+            return tx.doWork(userId);
+        }
+    }
+
+    static class MergePlainFacade {
+        private final FakeGate gate = new FakeGate();
+        private final MergePlainTxService tx = new MergePlainTxService();
+
+        public String op(Long userId) {
+            gate.requireAdminOrConceal(userId);
+            return tx.doWork(userId);
+        }
+    }
+
+    /** 認可へ届かない継承入口を持つ親（R3 の継承陽性）。 */
+    static class HollowParent {
+        private final GoodTxService tx = new GoodTxService();
+
+        public String inherited(Long userId) {
+            return tx.doWork(userId);
+        }
+    }
+
+    static class InheritHollowFacade extends HollowParent {
+        private final FakeGate gate = new FakeGate();
+
+        public String op(Long userId) {
+            gate.requireAdminOrConceal(userId);
+            return "x";
+        }
+    }
+
+    /** 認可へ届く継承入口を持つ親（R3 の継承陰性）。 */
+    static class GoodParent {
+        private final FakeGate gate = new FakeGate();
+        private final GoodTxService tx = new GoodTxService();
+
+        public String inherited(Long userId) {
+            gate.requireAdminOrConceal(userId);
+            return tx.doWork(userId);
+        }
+    }
+
+    static class InheritGoodFacade extends GoodParent {
+    }
+
+    static class InheritEntryController {
+        private final InheritHollowFacade hollow = new InheritHollowFacade();
+        private final InheritGoodFacade good = new InheritGoodFacade();
+        private final MergeAuthzFacade mergeAuthz = new MergeAuthzFacade();
+        private final MergePlainFacade mergePlain = new MergePlainFacade();
+
+        public String hollowInherited(Long u) {
+            return hollow.inherited(u);
+        }
+
+        public String goodInherited(Long u) {
+            return good.inherited(u);
+        }
+
+        public String mergeAuthz(Long u) {
+            return mergeAuthz.op(u);
+        }
+
+        public String mergePlain(Long u) {
+            return mergePlain.op(u);
+        }
+    }
+
     private static final JavaClasses CLASSES = new ClassFileImporter().importClasses(
             FakeAccessControl.class, FakeGate.class, GoodTxService.class, AuthzTxService.class,
             GoodFacade.class, PrivateAuthzFacade.class, LambdaAuthzFacade.class, HollowFacade.class,
             ClassTxFacade.class, MethodTxFacade.class, AuthzTxCallingFacade.class, UnlistedServiceFacade.class,
             ThrowingFacade.class, BooleanFacade.class, BadAccessService.class,
             GoodController.class, BypassController.class, NoFacadeController.class, AnnotatedController.class,
-            SelfScopedController.class, TwoMethodController.class, FacadeEntryController.class);
+            SelfScopedController.class, TwoMethodController.class, FacadeEntryController.class,
+            MergeAuthzTxService.class, MergePlainTxService.class, MergeAuthzFacade.class, MergePlainFacade.class,
+            HollowParent.class, InheritHollowFacade.class, GoodParent.class, InheritGoodFacade.class,
+            InheritEntryController.class);
 
     private static String n(Class<?> c) {
         return c.getName();
@@ -460,6 +597,30 @@ class AuthzTxFacadeRegistryScanningLogicTest {
         Rules plain = single(FacadeEntryController.class, "authzTxPlain", AuthzTxCallingFacade.class,
                 method(AuthzTxService.class));
         assertThat(AuthzTxFacadeRegistryArchTest.r4TxBodiesDoNotReachAuthz(CLASSES, plain)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("R4 陽性/陰性: 長短の経路が合流しても、短い経路が認可へ届けば赤・届かなければ緑（走査順に依存しない）")
+    void R4_長短経路の合流で最小深さを見る() {
+        Rules reaching = single(InheritEntryController.class, "mergeAuthz", MergeAuthzFacade.class,
+                method(MergeAuthzTxService.class));
+        assertThat(AuthzTxFacadeRegistryArchTest.r4TxBodiesDoNotReachAuthz(CLASSES, reaching))
+                .singleElement().asString().contains("MergeAuthzTxService.doWork(").contains("認可クラスへ届く");
+        Rules plain = single(InheritEntryController.class, "mergePlain", MergePlainFacade.class,
+                method(MergePlainTxService.class));
+        assertThat(AuthzTxFacadeRegistryArchTest.r4TxBodiesDoNotReachAuthz(CLASSES, plain)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("R3 陽性/陰性: 親クラスの継承入口が認可へ届かなければ赤、届けば緑（Controller が実際に呼ぶ継承メソッドを見る）")
+    void R3_継承入口を検査する() {
+        Rules hollow = single(InheritEntryController.class, "hollowInherited", InheritHollowFacade.class,
+                cls(GoodTxService.class));
+        assertThat(AuthzTxFacadeRegistryArchTest.r3FacadePublicMethodsReachAuthz(CLASSES, hollow))
+                .singleElement().asString().contains("HollowParent.inherited(").contains("認可クラスへ届かない");
+        Rules good = single(InheritEntryController.class, "goodInherited", InheritGoodFacade.class,
+                cls(GoodTxService.class));
+        assertThat(AuthzTxFacadeRegistryArchTest.r3FacadePublicMethodsReachAuthz(CLASSES, good)).isEmpty();
     }
 
     @Test

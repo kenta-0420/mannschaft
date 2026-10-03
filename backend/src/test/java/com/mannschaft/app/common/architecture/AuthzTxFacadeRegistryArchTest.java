@@ -465,21 +465,43 @@ class AuthzTxFacadeRegistryArchTest {
 
     static List<String> r3FacadePublicMethodsReachAuthz(JavaClasses classes, Rules rules) {
         List<String> violations = new ArrayList<>();
+        Set<JavaMethod> checked = new LinkedHashSet<>();
         for (String name : rules.facades()) {
             if (!classes.contain(name)) {
                 violations.add(name + ": Facade が無い");
                 continue;
             }
             JavaClass facade = classes.get(name);
-            List<JavaMethod> publicMethods = facade.getMethods().stream()
+            // 継承した public メソッドも含める（Object 由来・抽象・合成は除く）
+            List<JavaMethod> publicMethods = new ArrayList<>(facade.getAllMethods().stream()
                     .filter(m -> m.getModifiers().contains(JavaModifier.PUBLIC))
                     .filter(m -> !m.getModifiers().contains(JavaModifier.SYNTHETIC))
-                    .toList();
+                    .filter(m -> !m.getModifiers().contains(JavaModifier.ABSTRACT))
+                    .filter(m -> !m.getOwner().isEquivalentTo(Object.class))
+                    .toList());
+            // 登録 Controller が実際に呼ぶ Facade のメソッド（解決先の宣言所有型で検査する）
+            for (Entry e : rules.entries()) {
+                if (!e.facade().equals(name) || !classes.contain(e.controller())) {
+                    continue;
+                }
+                for (JavaMethodCall call : callsOfLogical(classes.get(e.controller()), e.method())) {
+                    if (!call.getTargetOwner().getName().equals(name)) {
+                        continue;
+                    }
+                    call.getTarget().resolveMember()
+                            .filter(m -> !m.getOwner().isEquivalentTo(Object.class))
+                            .filter(m -> !publicMethods.contains(m))
+                            .ifPresent(publicMethods::add);
+                }
+            }
             if (publicMethods.isEmpty()) {
                 violations.add(name + " に public メソッドが無い");
             }
             for (JavaMethod m : publicMethods) {
-                if (!reachesAuthorization(facade, m, 0, 2, rules.authzClasses(), new LinkedHashSet<>())) {
+                if (!checked.add(m)) {
+                    continue;
+                }
+                if (!reachesAuthorization(facade, m, 2, rules.authzClasses())) {
                     violations.add(m.getFullName() + " は認可クラスへ届かない（認可が空洞化している）");
                 }
             }
@@ -522,8 +544,7 @@ class AuthzTxFacadeRegistryArchTest {
                 if (!call.getTargetOwner().getName().equals(e.facade())) {
                     continue;
                 }
-                call.getTarget().resolveMember().ifPresent(fm -> collectCallsFromFacade(
-                        facade, fm, 0, reached, new LinkedHashSet<>()));
+                call.getTarget().resolveMember().ifPresent(fm -> collectCallsFromFacade(facade, fm, reached));
             }
             boolean anyTxBody = false;
             for (JavaMethod target : reached) {
@@ -538,7 +559,7 @@ class AuthzTxFacadeRegistryArchTest {
                 }
                 anyTxBody = true;
                 if (mode == TxMode.METHOD
-                        && reachesAuthorization(owner, target, 0, 3, rules.authzClasses(), new LinkedHashSet<>())) {
+                        && reachesAuthorization(owner, target, 3, rules.authzClasses())) {
                     violations.add(e.key() + ": tx 本体 " + target.getFullName() + " が認可クラスへ届く");
                 }
             }
@@ -665,42 +686,65 @@ class AuthzTxFacadeRegistryArchTest {
         return calls;
     }
 
-    private static boolean reachesAuthorization(JavaClass owner, JavaMethod method, int depth, int maxDepth,
-            Set<String> authzClasses, Set<JavaMethod> visited) {
-        if (depth > maxDepth || !visited.add(method)) {
-            return false;
-        }
-        for (JavaMethodCall call : callsWithLambdas(owner, method)) {
-            if (authzClasses.contains(call.getTargetOwner().getName())) {
-                return true;
-            }
-            if (call.getTargetOwner().equals(owner)) {
-                Optional<JavaMethod> resolved = call.getTarget().resolveMember();
-                if (resolved.isPresent()
-                        && reachesAuthorization(owner, resolved.get(), depth + 1, maxDepth, authzClasses, visited)) {
-                    return true;
+    /**
+     * method から認可クラスへ届くか。幅優先で探索し、メソッドごとに最初（= 最小深さ）の到達だけを展開するため、
+     * 長い経路を先に辿って短い経路を捨てることがない。同クラス内の呼び出し（継承メソッドは宣言所有型を辿る）だけを追う。
+     */
+    private static boolean reachesAuthorization(JavaClass root, JavaMethod method, int maxDepth,
+            Set<String> authzClasses) {
+        Set<JavaMethod> visited = new LinkedHashSet<>();
+        List<JavaMethod> frontier = new ArrayList<>(List.of(method));
+        visited.add(method);
+        for (int depth = 0; depth <= maxDepth && !frontier.isEmpty(); depth++) {
+            List<JavaMethod> next = new ArrayList<>();
+            for (JavaMethod current : frontier) {
+                for (JavaMethodCall call : callsWithLambdas(current.getOwner(), current)) {
+                    if (authzClasses.contains(call.getTargetOwner().getName())) {
+                        return true;
+                    }
+                    if (depth == maxDepth) {
+                        continue;
+                    }
+                    Optional<JavaMethod> resolved = call.getTarget().resolveMember();
+                    if (resolved.isPresent() && isSameClassCall(root, current, call, resolved.get())
+                            && visited.add(resolved.get())) {
+                        next.add(resolved.get());
+                    }
                 }
             }
+            frontier = next;
         }
         return false;
     }
 
-    /** Facade のメソッド（と同クラスのメソッド・ラムダを深さ 2 まで）から呼ばれる、他クラスのメソッドを集める。 */
-    private static void collectCallsFromFacade(JavaClass facade, JavaMethod method, int depth, Set<JavaMethod> out,
-            Set<JavaMethod> visited) {
-        if (depth > 2 || !visited.add(method)) {
-            return;
-        }
-        for (JavaMethodCall call : callsWithLambdas(facade, method)) {
-            Optional<JavaMethod> resolved = call.getTarget().resolveMember();
-            if (resolved.isEmpty()) {
-                continue;
+    private static boolean isSameClassCall(JavaClass root, JavaMethod current, JavaMethodCall call, JavaMethod resolved) {
+        return call.getTargetOwner().equals(root) || call.getTargetOwner().equals(current.getOwner())
+                || resolved.getOwner().equals(current.getOwner());
+    }
+
+    /** Facade のメソッド（と同クラスのメソッド・ラムダを深さ 2 まで、幅優先）から呼ばれる、他クラスのメソッドを集める。 */
+    private static void collectCallsFromFacade(JavaClass facade, JavaMethod method, Set<JavaMethod> out) {
+        Set<JavaMethod> visited = new LinkedHashSet<>();
+        List<JavaMethod> frontier = new ArrayList<>(List.of(method));
+        visited.add(method);
+        for (int depth = 0; depth <= 2 && !frontier.isEmpty(); depth++) {
+            List<JavaMethod> next = new ArrayList<>();
+            for (JavaMethod current : frontier) {
+                for (JavaMethodCall call : callsWithLambdas(current.getOwner(), current)) {
+                    Optional<JavaMethod> resolved = call.getTarget().resolveMember();
+                    if (resolved.isEmpty()) {
+                        continue;
+                    }
+                    if (isSameClassCall(facade, current, call, resolved.get())) {
+                        if (depth < 2 && visited.add(resolved.get())) {
+                            next.add(resolved.get());
+                        }
+                    } else {
+                        out.add(resolved.get());
+                    }
+                }
             }
-            if (call.getTargetOwner().equals(facade)) {
-                collectCallsFromFacade(facade, resolved.get(), depth + 1, out, visited);
-            } else {
-                out.add(resolved.get());
-            }
+            frontier = next;
         }
     }
 
