@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import type { WidgetDefinition } from '~/composables/useDashboardWidgets'
 
-defineProps<{
+withDefaults(defineProps<{
   widgets: WidgetDefinition[]
   collapsedKeys: Set<string>
-}>()
+  active?: boolean
+}>(), { active: true })
 
 const emit = defineEmits<{ 'toggle-collapse': [key: string] }>()
 const dismissalHasContent = ref(false)
 
 const dataWidgetKeys = new Set([
+  'dinosaur-ranch',
   'my-calendar',
   'timetable-today',
   'quick-memo',
@@ -84,6 +86,7 @@ function linkTo(key: string): string | undefined {
             v-else-if="widget.key === 'event-dismissal-reminder'"
             @has-content="dismissalHasContent = $event"
           />
+          <WidgetRanch v-else-if="widget.key === 'dinosaur-ranch'" :active="active && !collapsedKeys.has(widget.key)" />
           <WidgetNotices v-else-if="widget.key === 'notices'" />
           <WidgetUpcomingEvents v-else-if="widget.key === 'upcoming-events'" />
           <WidgetReturnStayPlan v-else-if="widget.key === 'return-stay-plan'" />

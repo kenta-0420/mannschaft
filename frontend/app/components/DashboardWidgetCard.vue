@@ -41,9 +41,11 @@ withDefaults(
 
 const emit = defineEmits<{
   refresh: []
+  'collapse-change': [collapsed: boolean]
 }>()
 
 const collapsed = ref(false)
+watch(collapsed, value => emit('collapse-change', value), { flush: 'sync' })
 </script>
 
 <template>

@@ -86,6 +86,7 @@ export const WidgetKeyMap: Record<
   // F02.3 プロジェクト進捗
   projects: { team: 'TEAM_PROJECT_PROGRESS', organization: 'ORG_PROJECT_PROGRESS' },
   // --- personal スコープ（対象3-B / #1849 で確定した BE WidgetKey） ---
+  'dinosaur-ranch': { personal: 'PERSONAL_DINOSAUR_RANCH' },
   'event-dismissal-reminder': { personal: 'PERSONAL_EVENT_DISMISSAL_REMINDER' },
   notices: { personal: 'NOTICES' },
   'my-calendar': { personal: 'PERSONAL_CALENDAR' },
@@ -162,6 +163,7 @@ export function backendKeyForWidget(
 }
 
 const ALL_WIDGETS: WidgetDefinition[] = [
+  { key: 'dinosaur-ranch', label: '恐竜の部屋', labelKey: 'ranch.title', icon: 'pi pi-sparkles', description: '自分の恐竜の分身', descriptionKey: 'ranch.avatar.description', scope: ['personal'] },
   {
     key: 'return-stay-plan',
     label: '帰省・滞在予定',

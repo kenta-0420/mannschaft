@@ -1,0 +1,8 @@
+# ⚔️足軽FE 復旧checkpoint
+
+Windows保全generatorから新隔離worktreeへ復元。base38全文と既存7file anchorを照合して適用。
+旧/tmp最終source/ログは現存未確認のため、byte完全一致を保証しない。旧Prettier整形差と一部fixの空白anchorをassert付き等価補完した。
+現時点build/lint/typecheck/UT未実行。旧17greenは当時の報告であって復旧版の証拠ではない。
+命名512byte/160codepoint、owner.aggregateversion、HatchResponseunion、出生情報ACK/opaque confirmationを維持。一般profile DTO変更なし。
+残件: 正式runner復旧後の差分format/lint/17UT再実行/型確認、命名serverexactfixture、診断/auth pending操作再送UI、確認/focus/六言語、64素材manifestgate、root実機とアリシゼーション。
+nuxt.config六langranch.json登録、SettingsRanchSectionのroot組込、OpenAPI生成は統合隊所有。locale翻訳は日本語placeholder、素材は文字fallback、公開可能ではない。
