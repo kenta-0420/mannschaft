@@ -7,7 +7,7 @@ import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.ShiftSlotResponse;
 import com.mannschaft.app.shift.dto.SlotAssignmentPatchRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
-import com.mannschaft.app.shift.service.ShiftSlotService;
+import com.mannschaft.app.shift.service.ShiftSlotFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,7 +33,7 @@ import java.util.List;
  * 認証さえ通れば任意チームのシフト枠を閲覧・改変・割当できる状態だった。
  * scope は<b>パス変数でなくスケジュール実体由来</b>（{@code scheduleId} / {@code slotId} から
  * 解決した teamId）のため {@code @accessGuard} の SpEL では表現できない。よって宣言は
- * {@code isAuthenticated()} に留め、真の per-scope 認可は {@link ShiftSlotService} 内で
+ * {@code isAuthenticated()} に留め、真の per-scope 認可は {@link ShiftSlotFacade} 内で
  * 強制する（参照=メンバー かつ SUPPORTER 不可 / 更新・割当=ADMIN 以上）。</p>
  */
 @RestController
@@ -42,7 +42,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ShiftSlotController {
 
-    private final ShiftSlotService slotService;
+    private final ShiftSlotFacade slotFacade;
 
     /**
      * スケジュールのシフト枠一覧を取得する。
@@ -53,7 +53,7 @@ public class ShiftSlotController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ShiftSlotResponse>>> listSlots(
             @PathVariable Long scheduleId) {
-        List<ShiftSlotResponse> responses = slotService.listSlots(scheduleId, SecurityUtils.getCurrentUserId());
+        List<ShiftSlotResponse> responses = slotFacade.listSlots(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -67,7 +67,7 @@ public class ShiftSlotController {
     public ResponseEntity<ApiResponse<ShiftSlotResponse>> createSlot(
             @PathVariable Long scheduleId,
             @Valid @RequestBody CreateShiftSlotRequest request) {
-        ShiftSlotResponse response = slotService.createSlot(
+        ShiftSlotResponse response = slotFacade.createSlot(
                 scheduleId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -82,7 +82,7 @@ public class ShiftSlotController {
     public ResponseEntity<ApiResponse<List<ShiftSlotResponse>>> bulkCreateSlots(
             @PathVariable Long scheduleId,
             @Valid @RequestBody BulkCreateShiftSlotRequest request) {
-        List<ShiftSlotResponse> responses = slotService.bulkCreateSlots(
+        List<ShiftSlotResponse> responses = slotFacade.bulkCreateSlots(
                 scheduleId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(responses));
     }
@@ -97,7 +97,7 @@ public class ShiftSlotController {
     public ResponseEntity<ApiResponse<ShiftSlotResponse>> updateSlot(
             @PathVariable Long slotId,
             @Valid @RequestBody UpdateShiftSlotRequest request) {
-        ShiftSlotResponse response = slotService.updateSlot(
+        ShiftSlotResponse response = slotFacade.updateSlot(
                 slotId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -111,7 +111,7 @@ public class ShiftSlotController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteSlot(
             @PathVariable Long slotId) {
-        slotService.deleteSlot(slotId, SecurityUtils.getCurrentUserId());
+        slotFacade.deleteSlot(slotId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -127,7 +127,7 @@ public class ShiftSlotController {
     public ResponseEntity<ApiResponse<ShiftSlotResponse>> patchSlotAssignments(
             @PathVariable Long slotId,
             @Valid @RequestBody SlotAssignmentPatchRequest request) {
-        ShiftSlotResponse response = slotService.patchSlotAssignments(
+        ShiftSlotResponse response = slotFacade.patchSlotAssignments(
                 slotId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
