@@ -1,6 +1,7 @@
 package com.mannschaft.app.proxy;
 
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
+import com.mannschaft.app.proxy.entity.ProxyInputConsentScopeEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
@@ -92,6 +93,25 @@ class ProxyInputConsentRepositoryTest extends AbstractMySqlIntegrationTest {
 
             assertThat(result).isPresent();
             assertThat(result.get().getSubjectUserId()).isEqualTo(SUBJECT_USER_ID);
+        }
+
+        @Test
+        @DisplayName("有効同意書の取得後に detach しても許可スコープを読める")
+        void shouldReadScopesAfterConsentIsDetached() {
+            ProxyInputConsentEntity saved = persistActiveConsent(SUBJECT_USER_ID, PROXY_USER_ID);
+            ProxyInputConsentEntity managed = em.find(ProxyInputConsentEntity.class, saved.getId());
+            managed.getScopes().add(ProxyInputConsentScopeEntity.create(
+                    ProxyInputConsentScopeEntity.FeatureScope.SURVEY));
+            em.flush();
+            em.clear();
+
+            ProxyInputConsentEntity result = repository.findValidConsent(
+                    saved.getId(), PROXY_USER_ID).orElseThrow();
+            em.clear();
+
+            assertThat(result.getScopes())
+                    .extracting(ProxyInputConsentScopeEntity::getFeatureScope)
+                    .containsExactly(ProxyInputConsentScopeEntity.FeatureScope.SURVEY);
         }
 
         @Test
