@@ -1,0 +1,119 @@
+name: heap-analysis-oneshot
+
+on:
+  push:
+    branches: [ops/heap-analysis-3620]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Show disk/mem before
+        run: |
+          df -h
+          free -g
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Download heap dump artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eux
+          gh api repos/${{ github.repository }}/actions/artifacts/11266068128/zip > dump.zip
+          unzip -o dump.zip
+          rm dump.zip
+          ls -lh
+          df -h
+
+      - name: Download Eclipse MAT (standalone, Linux x86_64)
+        run: |
+          set -eux
+          curl -L -o mat.zip "https://www.eclipse.org/downloads/download.php?file=/mat/1.17.0/rcp/MemoryAnalyzer-1.17.0.20260601-linux.gtk.x86_64.zip&r=1"
+          mkdir -p mat
+          unzip -q mat.zip -d mat
+          rm mat.zip
+          find mat -maxdepth 2
+          MAT_DIR=$(find mat -maxdepth 2 -name MemoryAnalyzer.ini -printf '%h\n' | head -1)
+          echo "MAT_DIR=$MAT_DIR" >> "$GITHUB_ENV"
+
+      - name: Tune MAT heap size
+        run: |
+          set -eux
+          free -g
+          sed -i '/-Xmx/d' "$MAT_DIR/MemoryAnalyzer.ini"
+          echo "-Xmx12g" >> "$MAT_DIR/MemoryAnalyzer.ini"
+          cat "$MAT_DIR/MemoryAnalyzer.ini"
+          chmod +x "$MAT_DIR/ParseHeapDump.sh" "$MAT_DIR/MemoryAnalyzer"
+
+      - name: Run MAT parse (suspects/overview/top_components)
+        run: |
+          set -eux
+          HPROF=$(find . -maxdepth 1 -name '*.hprof' | head -1)
+          echo "HPROF=$HPROF"
+          cd "$MAT_DIR"
+          ./ParseHeapDump.sh "$GITHUB_WORKSPACE/$HPROF" \
+            org.eclipse.mat.api:suspects \
+            org.eclipse.mat.api:overview \
+            org.eclipse.mat.api:top_components
+
+      - name: Collect reports
+        run: |
+          set -eux
+          mkdir -p report
+          HPROF_BASE=$(basename $(find . -maxdepth 1 -name '*.hprof' | head -1) .hprof)
+          find . -maxdepth 1 -iname "${HPROF_BASE}*" ! -iname '*.hprof' -exec cp -r {} report/ \;
+          find report -type f | sort
+
+      - name: Extract text summaries from report HTML
+        run: |
+          set -eux
+          python3 - <<'PYEOF'
+          import glob, os, re, html
+
+          def extract_text(path, limit=8000):
+              with open(path, encoding='utf-8', errors='ignore') as f:
+                  data = f.read()
+              text = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', data, flags=re.S | re.I)
+              text = re.sub(r'<[^>]+>', ' ', text)
+              text = html.unescape(text)
+              text = re.sub(r'[ \t]+', ' ', text)
+              text = re.sub(r'\n\s*\n+', '\n', text)
+              return text.strip()[:limit]
+
+          for pattern, label in [
+              ('report/**/*dominator*.html', 'DOMINATOR TREE'),
+              ('report/**/*Leak*Suspect*.html', 'LEAK SUSPECTS'),
+              ('report/**/*top_components*.html', 'TOP COMPONENTS'),
+              ('report/**/*overview*.html', 'OVERVIEW'),
+              ('report/**/*histogram*.html', 'HISTOGRAM'),
+          ]:
+              files = glob.glob(pattern, recursive=True)
+              for fp in files:
+                  print(f"\n===== {label}: {fp} =====")
+                  print(extract_text(fp))
+          PYEOF
+
+      - name: Show disk/mem after
+        if: always()
+        run: |
+          df -h
+          free -g
+
+      - name: Upload MAT report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mat-report-3620-shard-5
+          path: report/
+          retention-days: 7
+          if-no-files-found: warn
