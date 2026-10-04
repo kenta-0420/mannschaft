@@ -32,7 +32,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 開発fixture有効化が他のITへ漏れないよう、独立プロパティのcontextを使う。
  */
 @AutoConfigureMockMvc(addFilters = false)
-@TestPropertySource(properties = "mannschaft.ranch.development-fixtures=true")
+@TestPropertySource(properties = {
+        "mannschaft.ranch.development-fixtures=true",
+        "mannschaft.ranch.development-visuals=true"})
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class RanchScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mvc;
@@ -165,6 +167,7 @@ class RanchScopeContractIT extends AbstractMySqlIntegrationTest {
         assertThat(dinosaur.getName()).isNull();
     }
 
+    /** RanchAssignmentController#assign は本人の明示fixture一組だけを保存し再送で個体を変えない。 */
     @Test
     void ランダム出生選定はサーバーが固定しGETで孵化しない() throws Exception {
         enroll();

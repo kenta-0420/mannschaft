@@ -1,9 +1,14 @@
 package com.mannschaft.app.ranch.service;
 
 import com.mannschaft.app.ranch.dto.RanchState;
+import com.mannschaft.app.ranch.dto.RoomSlotSummary;
+import com.mannschaft.app.ranch.entity.RanchCollectibleCatalogEntity;
+import com.mannschaft.app.ranch.entity.RanchInventoryEntity;
 import com.mannschaft.app.ranch.entity.RanchOwnerEntity;
 import com.mannschaft.app.ranch.repository.RanchCareWeekBudgetRepository;
+import com.mannschaft.app.ranch.repository.RanchCollectibleCatalogRepository;
 import com.mannschaft.app.ranch.repository.RanchDinosaurRepository;
+import com.mannschaft.app.ranch.repository.RanchInventoryRepository;
 import com.mannschaft.app.ranch.repository.RanchOwnerRepository;
 import com.mannschaft.app.ranch.repository.RanchRoomPlacementRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +22,11 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /** Auth guard callbackから順次呼ぶPRIMARY SELECT専用の本人state reader。 */
 @Service
@@ -26,6 +35,8 @@ public class RanchStateReader {
     private final RanchOwnerRepository owners;
     private final RanchDinosaurRepository dinosaurs;
     private final RanchRoomPlacementRepository slots;
+    private final RanchInventoryRepository inventory;
+    private final RanchCollectibleCatalogRepository catalog;
     private final RanchCareWeekBudgetRepository careBudgets;
     private final RanchRuleProvider rules;
     private final RanchStateAssembler states;
@@ -44,10 +55,33 @@ public class RanchStateReader {
         }
         LocalDate monday = serverTime.atZone(ZoneOffset.UTC).toLocalDate()
                 .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        var placements = slots.findByUserIdOrderBySlotKey(userId);
         return states.assemble(userId, serverTime, external, owner,
                 dinosaurs.findByUserId(userId).orElse(null),
-                slots.findByUserIdOrderBySlotKey(userId),
+                placements,
                 careBudgets.findByUserIdAndWeekStartsOn(userId, monday).orElse(null),
-                rules.currentCareRule(serverTime));
+                rules.currentCareRule(serverTime), decorations(userId, owner, placements));
+    }
+
+    private Map<UUID, RoomSlotSummary.Decoration> decorations(Long userId,
+            RanchOwnerEntity owner,
+            List<com.mannschaft.app.ranch.entity.RanchRoomPlacementEntity> placements) {
+        List<UUID> ids = placements.stream().map(slot -> slot.getInventoryId())
+                .filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) return Map.of();
+        List<RanchInventoryEntity> owned = inventory.findByUserIdAndIdInAndRevokedFalse(userId, ids)
+                .stream().filter(item -> owner.getId().equals(item.getOwnerId())).toList();
+        if (owned.isEmpty()) return Map.of();
+        Map<String, RanchCollectibleCatalogEntity> approved = catalog
+                .findByCollectibleKeyInAndActiveTrue(owned.stream()
+                        .map(RanchInventoryEntity::getCollectibleKey).distinct().toList())
+                .stream().collect(Collectors.toMap(RanchCollectibleCatalogEntity::getCollectibleKey,
+                        Function.identity()));
+        return owned.stream().filter(item -> approved.containsKey(item.getCollectibleKey()))
+                .collect(Collectors.toMap(RanchInventoryEntity::getId, item -> {
+                    var entry = approved.get(item.getCollectibleKey());
+                    return new RoomSlotSummary.Decoration(entry.getCollectibleKey(),
+                            entry.getLabelKey(), entry.getAssetKey());
+                }));
     }
 }

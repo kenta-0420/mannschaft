@@ -19,6 +19,8 @@ public interface RanchInventoryRepository extends JpaRepository<RanchInventoryEn
     Optional<RanchInventoryEntity> findByUserIdAndAcquisitionKindAndAcquisitionKey(
             Long userId, String acquisitionKind, byte[] acquisitionKey);
     Optional<RanchInventoryEntity> findByUserIdAndIdAndRevokedFalse(Long userId, UUID id);
+    List<RanchInventoryEntity> findByUserIdAndIdInAndRevokedFalse(
+            Long userId, Collection<UUID> ids);
     List<RanchInventoryEntity> findByUserIdOrderByAwardedAtDescIdDesc(Long userId);
 
     @Query("SELECT DISTINCT item.skuKey FROM RanchInventoryEntity item "
