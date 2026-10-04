@@ -1,3 +1,5 @@
+import type { components } from '~/types/generated'
+
 export type ContentType = 'POST' | 'MESSAGE' | 'THREAD' | 'ARTICLE' | 'FILE' | 'USER' | 'TEAM' | 'ORGANIZATION' | 'ACTIVITY'
 export type SearchAction = 'LIKE' | 'BOOKMARK' | 'MARK_READ' | 'DOWNLOAD' | 'SEND_DM'
 export type SearchViewMode = 'OVERVIEW' | 'DETAIL'
@@ -16,23 +18,25 @@ export interface SearchResult {
   actions: SearchAction[]
 }
 
+export type GlobalSearchType = 'schedules' | 'events' | 'reservations' | 'shifts' | 'safetyChecks' | 'queues' | 'teams' | 'organizations' | 'users'
+
+// 現行 DTO は各種別の表示名と ID を返す。Map<String, Object> の値型は生成型で表現できない。
+export interface GlobalSearchResult {
+  id: number
+  title?: string
+  location?: string
+  venueName?: string
+  purpose?: string
+  ticketNumber?: string
+  guestName?: string
+  name?: string
+  fullName?: string
+}
+
 export interface SearchResponse {
-  data: {
-    results: SearchResult[]
-    typeCounts: Record<ContentType, number>
-    query: string
-    timedOutTypes: ContentType[]
-    zeroResultsHelp?: {
-      didYouMean: string | null
-      broaderQuery: string | null
-    }
-  }
-  meta: {
-    total: number
-    page: number
-    perPage: number
-    totalPages?: number
-    viewMode: SearchViewMode
+  data: Required<Pick<components['schemas']['SearchResultResponse'], 'query' | 'executionTimeMs'>> & {
+    results: Record<GlobalSearchType, GlobalSearchResult[]>
+    counts: Record<GlobalSearchType, number>
   }
 }
 
