@@ -8,6 +8,7 @@ import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import { useAuthStore } from '~/stores/useAuthStore'
 import { useRanchAdminApi } from '~/composables/useRanchAdminApi'
+import type { RanchCareRulePublicationRequest, RanchPolicyPublicationRequest } from '~/types/ranch-admin'
 import AdminPage from '~/pages/system-admin/ranch.vue'
 
 const external = vi.hoisted(() => ({ fetch: vi.fn<typeof fetch>(), report: vi.fn() }))
@@ -49,6 +50,11 @@ beforeEach(async () => {
  external.fetch.mockImplementation(async (request, options) => {
   const path = new URL(String(request)).pathname
   const token = new Headers(options?.headers).get('Authorization')
+  if (options?.method === 'POST' && (path.endsWith('/care-rules') || path.endsWith('/policies'))) {
+   posts.push({ key: new Headers(options.headers).get('Idempotency-Key') ?? '', body: String(options.body), token })
+   const body = JSON.parse(String(options.body)) as RanchCareRulePublicationRequest | RanchPolicyPublicationRequest
+   return json({ id: eventId, version: '1', contentHash: 'a'.repeat(64), effectiveAt: body.effectiveAt, settings: body, publishedAt: '2026-10-05T00:00:00Z', publishedBy: '1' })
+  }
   if (options?.method === 'POST' && path.endsWith('/retry')) {
    posts.push({ key: new Headers(options.headers).get('Idempotency-Key') ?? '', body: String(options.body), token })
    if (mode === 'lost' && posts.length === 1) throw new TypeError('SYNTHETIC_ACK_LOST')
@@ -139,5 +145,46 @@ describe('管理命令とhealthの有限・本人境界（未実測）', () => {
   releaseA?.(); await flushPromises()
   expect(wrapper.find('[data-testid="load-error-state"]').exists()).toBe(true)
   expect(wrapper.text()).not.toContain(useNuxtApp().$i18n.t('ranch.admin.pending'))
+ })
+ it('お世話の成長境界を確認しBIGINT入力を文字列のまま明示公開する', async () => {
+  const wrapper = await mountSuspended(AdminPage); wrappers.push(wrapper)
+  await flushPromises()
+  const form = wrapper.get('form[aria-labelledby="ranch-admin-care-publication-heading"]')
+  for (const [name, value] of Object.entries({ effectiveAt: '2031-01-06T00:00:00Z', amountXp: '20', weeklyCapXp: '100', juvenileXp: '9007199254740993', adultXp: '9007199254740993', reasonCode: 'CARE_NEXT_WEEK' })) await form.get(`input[name="${name}"]`).setValue(value)
+  await form.trigger('submit'); await flushPromises()
+  expect(posts).toHaveLength(0)
+  await form.get('input[name="adultXp"]').setValue('9007199254740994')
+  await form.trigger('submit')
+  await vi.waitFor(() => expect(posts).toHaveLength(1))
+  const posted = posts[0]
+  if (!posted) throw new Error('CARE_PUBLICATION_NOT_SENT')
+  const saved = JSON.parse(posted.body) as RanchCareRulePublicationRequest
+  expect(saved.juvenileXp).toBe('9007199254740993')
+  expect(saved.adultXp).toBe('9007199254740994')
+  expect(wrapper.text()).toContain(useNuxtApp().$i18n.t('ranch.admin.publicationSaved', { version: '1', effectiveAt: saved.effectiveAt }))
+ })
+ it('停止policyも正の値を要求しPERSONAL OFFとBIGINT上限を正準送信する', async () => {
+  const wrapper = await mountSuspended(AdminPage); wrappers.push(wrapper)
+  await flushPromises()
+  const form = wrapper.get('form[aria-labelledby="ranch-admin-policy-publication-heading"]')
+  const values = { effectiveAt: '2031-01-06T00:00:00Z', globalWeeklyCap: '0', batchSize: '1', leaseSeconds: '5', maxAttempts: '2', initialBackoffSeconds: '1', maxBackoffSeconds: '3', reasonCode: 'DISABLED_NEXT_WEEK' }
+  for (const [name, value] of Object.entries(values)) await form.get(`input[name="${name}"]`).setValue(value)
+  for (const source of ['ATTENDANCE_RESPONSE', 'TIMELINE_ORIGINAL', 'BLOG_FIRST_PUBLISH', 'PERSONAL_RECALL_COMPLETE']) {
+   await form.get(`input[name="${source}.amountPoints"]`).setValue('4')
+   await form.get(`input[name="${source}.countLimit"]`).setValue('25')
+  }
+  await form.trigger('submit'); await flushPromises()
+  expect(posts).toHaveLength(0)
+  await form.get('input[name="globalWeeklyCap"]').setValue('9223372036854775807')
+  await form.trigger('submit')
+  await vi.waitFor(() => expect(posts).toHaveLength(1))
+  const posted = posts[0]
+  if (!posted) throw new Error('POLICY_PUBLICATION_NOT_SENT')
+  const saved = JSON.parse(posted.body) as RanchPolicyPublicationRequest
+  expect(saved.globalWeeklyCap).toBe('9223372036854775807')
+  expect(saved.enabled).toBe(false)
+  expect(saved.sources).toHaveLength(4)
+  expect(saved.sources.find(source => source.sourceType === 'PERSONAL_RECALL_COMPLETE')).toEqual({ sourceType: 'PERSONAL_RECALL_COMPLETE', enabled: false, amountPoints: '4', countLimit: 25 })
+  expect(saved.delivery).toEqual({ batchSize: 1, leaseSeconds: 5, maxAttempts: 2, initialBackoffSeconds: 1, maxBackoffSeconds: 3 })
  })
 })
