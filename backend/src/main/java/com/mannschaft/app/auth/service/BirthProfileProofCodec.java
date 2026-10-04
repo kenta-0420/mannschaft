@@ -40,7 +40,7 @@ public class BirthProfileProofCodec {
                 fingerprint, purpose, micros(expiresAt).toString()));
     }
 
-    public boolean authentic(BirthProfileConfirmationEntity confirmation) {
+    boolean authentic(BirthProfileConfirmationEntity confirmation) {
         return equal(keyId(), confirmation.getKeyId()) && equal(signature(confirmation.getId(),
                 confirmation.getUserId(), confirmation.getProfileRevision(),
                 confirmation.getWithdrawalAttemptId(), confirmation.getFingerprint(),
