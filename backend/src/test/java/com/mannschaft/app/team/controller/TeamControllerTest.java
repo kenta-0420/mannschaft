@@ -307,6 +307,16 @@ class TeamControllerTest {
     }
 
     @Test
+    @DisplayName("CMP-260902-0059: 復元認可を先行し非SYSTEM_ADMINには削除済みチームの存在も照会しない")
+    void restoreTeam_認可拒否時はチーム照会を行わない() {
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkSystemAdmin(USER_ID);
+        assertThatThrownBy(() -> controller.restoreTeam("deleted-or-absent-team"))
+                .isInstanceOf(BusinessException.class);
+        Mockito.verifyNoInteractions(teamService);
+    }
+
+    @Test
     @DisplayName("getPermissionGroups: 200 OK（checkAdminOrAbove を必ず呼ぶ）")
     void getPermissionGroups_200() {
         given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);

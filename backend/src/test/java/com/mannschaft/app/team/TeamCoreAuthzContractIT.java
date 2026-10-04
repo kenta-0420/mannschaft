@@ -3,6 +3,10 @@ package com.mannschaft.app.team;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
@@ -23,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -71,7 +78,12 @@ class TeamCoreAuthzContractIT extends AbstractMySqlIntegrationTest {
     @PersistenceContext
     private EntityManager em;
 
+    @Autowired private TeamRepository teamRepository;
+    @Autowired private ScheduleRepository scheduleRepository;
+    @Autowired private UserRoleRepository userRoleRepository;
+
     private String teamASlug;
+    private Long teamAId;
     /** 可視性ラダー検証用の MEMBERS_AND_ABOVE チーム。 */
     private String privateTeamSlug;
 
@@ -87,7 +99,7 @@ class TeamCoreAuthzContractIT extends AbstractMySqlIntegrationTest {
         insertRoleIfAbsent("MEMBER", "メンバー", 5);
         insertRoleIfAbsent("SYSTEM_ADMIN", "システム管理者", 1);
 
-        Long teamAId = insertTeam("TEAMCORE認可契約チームA", "PUBLIC");
+        teamAId = insertTeam("TEAMCORE認可契約チームA", "PUBLIC");
         teamASlug = selectSlug(teamAId);
         Long teamBId = insertTeam("TEAMCORE認可契約チームB", "PUBLIC");
         Long privateTeamId = insertTeam("TEAMCORE認可契約チームP", "MEMBERS_AND_ABOVE");
@@ -206,6 +218,89 @@ class TeamCoreAuthzContractIT extends AbstractMySqlIntegrationTest {
     @Nested
     @DisplayName("アーカイブ(archiveTeam)・解除(unarchiveTeam)・復元(restoreTeam)")
     class Lifecycle {
+
+        @Test
+        @DisplayName("CMP-260902-0059: 削除済チームをSYSが復元し既存予定APIで掃除すると元利用者のcalendarから消える")
+        void 削除済チームの復元と既存予定APIによる掃除() throws Exception {
+            LocalDateTime from = LocalDateTime.of(2030, 1, 1, 0, 0);
+            LocalDateTime to = from.plusDays(1);
+            Long scheduleId = scheduleRepository.saveAndFlush(
+                    TeamRestoreTestFixture.schedule(teamAId, adminAId, from.plusHours(9))).getId();
+            long roleCount = userRoleRepository.countByTeamId(teamAId);
+            em.clear();
+            setAuthentication(adminAId);
+            mockMvc.perform(get("/api/v1/my/calendar").param("from", from.toString()).param("to", to.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.scheduleId == " + scheduleId + ")]").isNotEmpty());
+            mockMvc.perform(delete("/api/v1/teams/{slug}", teamASlug)).andExpect(status().isNoContent());
+            em.flush();
+            em.clear();
+            setAuthentication(systemAdminId);
+            mockMvc.perform(patch("/api/v1/teams/{slug}/restore", teamASlug)).andExpect(status().isNoContent());
+            em.clear();
+            assertThat(teamRepository.findById(teamAId).orElseThrow().getVisibility())
+                    .isEqualTo(TeamEntity.Visibility.PUBLIC);
+            assertThat(userRoleRepository.countByTeamId(teamAId)).isEqualTo(roleCount);
+            setAuthentication(outsiderId);
+            mockMvc.perform(delete("/api/v1/teams/{slug}/schedules/{id}", teamASlug, scheduleId))
+                    .andExpect(status().isForbidden());
+            setAuthentication(systemAdminId);
+            mockMvc.perform(delete("/api/v1/teams/{slug}/schedules/{id}", teamASlug, scheduleId)
+                            .param("updateScope", "THIS_ONLY"))
+                    .andExpect(status().isNoContent());
+            em.flush();
+            em.clear();
+            assertThat(scheduleRepository.findById(scheduleId)).isEmpty();
+            // SYS単独にチーム再削除権限を拡張しない。最後の再削除は元スコープADMINが行う。
+            mockMvc.perform(delete("/api/v1/teams/{slug}", teamASlug)).andExpect(status().isForbidden());
+            setAuthentication(adminAId);
+            mockMvc.perform(get("/api/v1/my/calendar").param("from", from.toString()).param("to", to.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.scheduleId == " + scheduleId + ")]").isEmpty());
+            mockMvc.perform(delete("/api/v1/teams/{slug}", teamASlug)).andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("CMP-260902-0059: 復元拒否認可は不在チームの404より先行する")
+        void 復元拒否の認可はチームの存在照会より先行する() throws Exception {
+            for (Long userId : List.of(adminAId, adminBId, memberAId, outsiderId)) {
+                setAuthentication(userId);
+                mockMvc.perform(patch("/api/v1/teams/{slug}/restore", "restore-absent-team"))
+                        .andExpect(status().isForbidden());
+            }
+        }
+
+        @Test
+        @DisplayName("CMP-260902-0059: SYSの復元は不存在404・未削除409の既存契約を保つ")
+        void 復元の不存在と未削除を区別する() throws Exception {
+            setAuthentication(systemAdminId);
+            mockMvc.perform(patch("/api/v1/teams/{slug}/restore", "restore-absent-team"))
+                    .andExpect(status().isNotFound());
+            mockMvc.perform(patch("/api/v1/teams/{slug}/restore", teamASlug))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("TEAM_006"));
+        }
+
+        @Test
+        @DisplayName("CMP-260902-0059: PROVISIONED復元はlifecycleと非公開範囲を保持し通常導線に出さない")
+        void 復元してもPROVISIONEDチームは通常導線から隠す() throws Exception {
+            TeamEntity team = teamRepository.findById(teamAId).orElseThrow();
+            teamRepository.saveAndFlush(team.toBuilder()
+                    .lifecycleStatus(TeamEntity.LifecycleStatus.PROVISIONED)
+                    .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE)
+                    .deletedAt(LocalDateTime.now()).build());
+            em.clear();
+            setAuthentication(systemAdminId);
+            mockMvc.perform(patch("/api/v1/teams/{slug}/restore", teamASlug)).andExpect(status().isNoContent());
+            em.clear();
+            TeamEntity restored = teamRepository.findById(teamAId).orElseThrow();
+            assertThat(restored.getLifecycleStatus()).isEqualTo(TeamEntity.LifecycleStatus.PROVISIONED);
+            assertThat(restored.getVisibility()).isEqualTo(TeamEntity.Visibility.MEMBERS_AND_ABOVE);
+            mockMvc.perform(get("/api/v1/teams/{slug}", teamASlug)).andExpect(status().isNotFound());
+            mockMvc.perform(get("/api/v1/teams/{slug}/schedules", teamASlug)
+                            .param("from", "2030-01-01T00:00:00").param("to", "2030-01-02T00:00:00"))
+                    .andExpect(status().isNotFound());
+        }
 
         @Test
         @DisplayName("一般メンバー(非ADMIN)のアーカイブは403")
