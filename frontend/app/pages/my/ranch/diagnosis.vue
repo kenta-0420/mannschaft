@@ -5,7 +5,13 @@ const { t, locale } = useI18n(); useHead({ title: t('ranch.diagnosisResults.type
 const api = useDiagnosisApi(); const route = useRoute(); const { handleApiError } = useErrorHandler()
 const session = ref<DiagnosisSession | null>(null); const answers = ref<Record<string,number>>({}); const ties = ref<Record<string,number>>({})
 const loading = ref(false); const failed = ref(false); const saved = ref(false)
-const allAnswered = computed(() => session.value?.questions.length === 24 && session.value.questions.every(q => answers.value[q.id] >= 1 && answers.value[q.id] <= 5))
+const allAnswered = computed(() => {
+ const current = session.value
+ return current?.questions.length === 24 && current.questions.every(question => {
+  const answer = answers.value[question.id]
+  return answer !== undefined && answer >= 1 && answer <= 5
+ })
+})
 function apply(value: DiagnosisSession) { session.value = value; answers.value = Object.fromEntries(value.answers.map(a => [a.questionId,a.value])); ties.value = {}; saved.value = true }
 async function load() { loading.value = true; failed.value = false; try { if (typeof route.query.session === 'string') apply(await api.session(route.query.session)) } catch(error) { failed.value = true; handleApiError(error, 'DiagnosisLoad') } finally { loading.value = false } }
 async function run(action: () => Promise<DiagnosisSession>) { loading.value = true; failed.value = false; try { const value = await action(); apply(value); await navigateTo({ path: '/my/ranch/diagnosis', query: { session: value.id } }); if (value.status === 'COMPLETED' && value.resultId) await navigateTo(`/my/ranch/results/${value.resultId}`) } catch(error) { failed.value = true; handleApiError(error, 'DiagnosisCommand'); if ((error as {statusCode?:number;status?:number}).statusCode === 409 || (error as {status?:number}).status === 409) await load() } finally { loading.value = false } }
