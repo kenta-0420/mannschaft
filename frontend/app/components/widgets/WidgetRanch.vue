@@ -1,8 +1,29 @@
 <script setup lang="ts">
-const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true })
+const props = withDefaults(defineProps<{ active?: boolean; collapsed?: boolean }>(), { active: true, collapsed: undefined })
+const emit = defineEmits<{ 'update:collapsed': [collapsed: boolean] }>()
 const { t } = useI18n()
 const ranch = useRanchState()
-const collapsed = ref(false)
+const localCollapsed = ref(false)
+const collapsed = computed({
+ get: () => props.collapsed ?? localCollapsed.value,
+ set: value => {
+  if (props.collapsed === undefined) localCollapsed.value = value
+  emit('update:collapsed', value)
+ },
+})
+const mounted = ref(false)
+const pageVisible = ref(import.meta.client && document.visibilityState !== 'hidden')
+let requestedInitialState = false
+function loadWhenActive() {
+ if (!mounted.value || !props.active || collapsed.value || !pageVisible.value || requestedInitialState) return
+ requestedInitialState = true
+ void ranch.load()
+}
+function updateVisibility() {
+ pageVisible.value = document.visibilityState !== 'hidden'
+ loadWhenActive()
+}
+watch([() => props.active, collapsed], loadWhenActive, { flush: 'sync' })
 const message = ref('')
 const egg = computed(() => ranch.state.value?.dinosaur?.stage === 'EGG')
 const feedingUnavailable = computed(() => ranch.state.value?.featureStatus !== 'AVAILABLE' || ranch.state.value?.owner?.status !== 'ACTIVE')
@@ -12,10 +33,15 @@ async function care(kind: 'feed' | 'touch') {
  const version = ranch.state.value?.owner?.version; if (!version) return
  try { const result = await ranch.act(() => kind === 'feed' ? ranch.api.feed(version) : ranch.api.touch(version)); message.value = kind === 'feed' ? t('ranch.care.fed', { xp: (result as { gainedXp: string }).gainedXp }) : t('ranch.care.touched') } catch { message.value = t('ranch.command.failed') }
 }
-onMounted(ranch.load)
+onMounted(() => {
+ mounted.value = true
+ document.addEventListener('visibilitychange', updateVisibility)
+ updateVisibility()
+})
+onUnmounted(() => document.removeEventListener('visibilitychange', updateVisibility))
 </script>
 <template>
- <DashboardWidgetCard :title="t('ranch.title')" icon="pi pi-sparkles" to="/my/ranch" :scrollable="false" :loading="ranch.loading.value" refreshable @refresh="ranch.load" @collapse-change="collapsed = $event">
+ <DashboardWidgetCard :title="t('ranch.title')" icon="pi pi-sparkles" to="/my/ranch" :scrollable="false" :loading="ranch.loading.value" :collapsed="collapsed" refreshable @refresh="ranch.load" @update:collapsed="collapsed = $event">
   <DashboardErrorState v-if="ranch.failed.value" @retry="ranch.load" />
   <template v-else-if="ranch.state.value?.dinosaur && ranch.state.value.settings">
    <DinosaurScene :dinosaur="ranch.state.value.dinosaur" :render-style="ranch.state.value.settings.renderStyle" :motion-mode="ranch.state.value.owner?.status === 'PAUSED' ? 'STOPPED' : ranch.state.value.settings.motionMode" :active="sceneActive" />

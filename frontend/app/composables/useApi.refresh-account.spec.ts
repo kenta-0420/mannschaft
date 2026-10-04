@@ -10,7 +10,6 @@ vi.mock('ofetch', async importOriginal => {
  return { ...original, ofetch: original.ofetch.create({}, { fetch: external.fetch }) }
 })
 vi.mock('~/composables/useApiBaseUrl', () => ({ resolveApiBaseUrl: () => 'http://synthetic.invalid' }))
-mockNuxtImport('useAuthStore', () => () => actualUseAuthStore())
 mockNuxtImport('navigateTo', () => external.navigate)
 mockNuxtImport('useChatTabsStore', () => () => ({ clearAll: external.chatClear }))
 mockNuxtImport('useErrorReport', () => () => ({ capture: external.report }))
