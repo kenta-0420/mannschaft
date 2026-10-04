@@ -158,6 +158,11 @@
       "PURCHASE": "장식품 교환",
       "amounts": "포인트 {points} / 성장 {xp} XP",
       "source": "원래 활동 보기"
+    },
+    "affinity": {
+      "NEUTRAL": "알아가는 중",
+      "WARM": "친근함",
+      "CLOSE": "가까움"
     }
   }
 }

@@ -158,6 +158,11 @@
       "PURCHASE": "Decoration exchange",
       "amounts": "Points {points} / Growth {xp} XP",
       "source": "View original activity"
+    },
+    "affinity": {
+      "NEUTRAL": "Getting acquainted",
+      "WARM": "Friendly",
+      "CLOSE": "Close"
     }
   }
 }

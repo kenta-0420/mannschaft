@@ -58,7 +58,9 @@ async function care(kind: 'feed' | 'touch') {
   } else {
    const result = await ranch.act(() => ranch.api.touch(version))
    if (!current()) { currentScene?.cancelTouchSound(soundToken); return }
-   message.value = t('ranch.care.touched')
+   const band = result.affinityBand
+   const affinityLabel = band === 'NEUTRAL' || band === 'WARM' || band === 'CLOSE' ? t('ranch.affinity.' + band) : ''
+   message.value = t('ranch.care.touched') + (affinityLabel ? ' · ' + affinityLabel : '')
    if (result.dinosaurId === ranch.state.value?.dinosaur?.id) {
     reaction.value = { key: result.reactionKey, dinosaurId: result.dinosaurId, sequence: ++reactionSequence, soundToken }
    }

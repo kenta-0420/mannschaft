@@ -158,6 +158,11 @@
       "PURCHASE": "装飾の交換",
       "amounts": "ポイント {points} / 成長 {xp} XP",
       "source": "元の活動を見る"
+    },
+    "affinity": {
+      "NEUTRAL": "知り合いはじめ",
+      "WARM": "なかよし",
+      "CLOSE": "親しい"
     }
   }
 }

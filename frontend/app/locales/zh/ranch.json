@@ -158,6 +158,11 @@
       "PURCHASE": "装饰兑换",
       "amounts": "积分 {points} / 成长 {xp} XP",
       "source": "查看原活动"
+    },
+    "affinity": {
+      "NEUTRAL": "初相识",
+      "WARM": "友好",
+      "CLOSE": "亲近"
     }
   }
 }
