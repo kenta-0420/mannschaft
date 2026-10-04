@@ -1,17 +1,17 @@
 -- V242 native追加候補。既存の全記事は過去痕跡によらず保守的にHISTORICAL。
 ALTER TABLE blog_posts
- ADD COLUMN ranch_publication_historical BOOLEAN NOT NULL DEFAULT FALSE,
- ADD COLUMN ranch_publication_observed BOOLEAN NOT NULL DEFAULT FALSE,
+ ADD COLUMN is_ranch_publication_historical BOOLEAN NOT NULL DEFAULT FALSE,
+ ADD COLUMN is_ranch_publication_observed BOOLEAN NOT NULL DEFAULT FALSE,
  ADD COLUMN first_published_at DATETIME(6) NULL,
  ADD COLUMN first_published_author_user_id BIGINT UNSIGNED NULL,
- ADD COLUMN publication_history_known BOOLEAN NOT NULL DEFAULT FALSE;
-UPDATE blog_posts SET ranch_publication_historical=TRUE, ranch_publication_observed=TRUE;
+ ADD COLUMN is_publication_history_known BOOLEAN NOT NULL DEFAULT FALSE;
+UPDATE blog_posts SET is_ranch_publication_historical=TRUE, is_ranch_publication_observed=TRUE;
 ALTER TABLE blog_posts ADD CONSTRAINT ck_blog_native_publication
- CHECK (ranch_publication_historical=FALSE OR ranch_publication_observed=TRUE),
+ CHECK (is_ranch_publication_historical=FALSE OR is_ranch_publication_observed=TRUE),
  ADD CONSTRAINT ck_blog_native_publication_metadata
  CHECK ((first_published_at IS NULL AND first_published_author_user_id IS NULL)
  OR (first_published_at IS NOT NULL AND first_published_author_user_id IS NOT NULL
- AND publication_history_known=TRUE AND ranch_publication_observed=TRUE));
+ AND is_publication_history_known=TRUE AND is_ranch_publication_observed=TRUE));
 
 -- 四源正本02の技術配送表。他domainへのFKと本文payloadは追加しない。
 CREATE TABLE blog_ranch_witnesses (

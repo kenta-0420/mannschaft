@@ -85,12 +85,12 @@ public class BlogPostEntity extends BaseEntity {
     private LocalDateTime publishedAt;
 
     /** rollout以前の既存記事。過去の公開資格を推測して復元しない。 */
-    @Column(name = "ranch_publication_historical", nullable = false)
+    @Column(name = "is_ranch_publication_historical", nullable = false)
     @org.hibernate.annotations.ColumnDefault("0")
     private boolean ranchPublicationHistorical;
 
     /** 全native公開経路の一方向履歴。公開撤回でもfalseへ戻さない。 */
-    @Column(name = "ranch_publication_observed", nullable = false)
+    @Column(name = "is_ranch_publication_observed", nullable = false)
     @org.hibernate.annotations.ColumnDefault("0")
     private boolean ranchPublicationObserved;
 
@@ -101,7 +101,7 @@ public class BlogPostEntity extends BaseEntity {
     @Column(name = "first_published_author_user_id", columnDefinition = "BIGINT UNSIGNED")
     private Long firstPublishedAuthorUserId;
 
-    @Column(name = "publication_history_known", nullable = false)
+    @Column(name = "is_publication_history_known", nullable = false)
     @org.hibernate.annotations.ColumnDefault("0")
     private boolean publicationHistoryKnown;
 

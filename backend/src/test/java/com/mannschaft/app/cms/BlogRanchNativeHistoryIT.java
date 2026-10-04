@@ -5,6 +5,7 @@ import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class BlogRanchNativeHistoryIT extends AbstractMySqlIntegrationTest {
     @Autowired private EntityManagerFactory factory;
+    private final java.util.List<Long> ownIds=new java.util.ArrayList<>();
     private static final LocalDateTime BASE=LocalDateTime.of(2026,10,3,12,0);
 
     @Test void publicationHistorySurvivesPersistenceContextAcrossTransactions() {
@@ -83,6 +85,18 @@ class BlogRanchNativeHistoryIT extends AbstractMySqlIntegrationTest {
         } finally { close(em); }
     }
 
+    /** このfixtureが作った記事IDだけを削除し、共有contextへ残さない。 */
+    @AfterEach void cleanupOwnPosts() {
+        EntityManager em=factory.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            for(Long id:ownIds) {
+                var post=em.find(BlogPostEntity.class,id);
+                if(post!=null) em.remove(post);
+            }
+            em.getTransaction().commit();
+        } finally { close(em); }
+    }
     private void close(EntityManager em) {
         try { if(em.getTransaction().isActive()) em.getTransaction().rollback(); }
         finally { em.close(); }
@@ -92,6 +106,7 @@ class BlogRanchNativeHistoryIT extends AbstractMySqlIntegrationTest {
         var post=BlogPostEntity.builder().authorId(1L).title("native history fixture")
                 .slug("history-"+UUID.randomUUID()).body("synthetic native body").build();
         em.persist(post); em.flush();
+        ownIds.add(post.getId());
         assertThat(post.isPublicationHistoryKnown()).isTrue();
         assertThat(post.isRanchPublicationHistorical()).isFalse();
         assertThat(post.isRanchPublicationObserved()).isFalse();
