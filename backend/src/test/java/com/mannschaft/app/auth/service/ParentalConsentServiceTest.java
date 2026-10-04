@@ -342,7 +342,7 @@ class ParentalConsentServiceTest {
                     .willReturn(Optional.of(pendingLink));
             given(parentalConsentLinkRepository.findByChildUserIdForUpdate(childUserId))
                     .willReturn(List.of(pendingLink, approvedLink));
-            given(emailOutboxService.enqueue(any())).willReturn(UUID.randomUUID());
+
             // 子ユーザーを返す（拒否通知メール用）
             UserEntity childUser = buildChildUser(childUserId, "child@example.com");
             given(userRepository.findByIdForUpdateIncludingDeleted(childUserId)).willReturn(Optional.of(childUser));
@@ -372,7 +372,7 @@ class ParentalConsentServiceTest {
             // 拒否後: pendingLink が REJECTED に変化 → PENDING / APPROVED なし
             given(parentalConsentLinkRepository.findByChildUserIdForUpdate(childUserId))
                     .willReturn(List.of(pendingLink)); // status は reject() 後に REJECTED
-            given(emailOutboxService.enqueue(any())).willReturn(UUID.randomUUID());
+
 
             UserEntity childUser = buildChildUser(childUserId, "child@example.com");
             given(userRepository.findByIdForUpdateIncludingDeleted(childUserId)).willReturn(Optional.of(childUser));
