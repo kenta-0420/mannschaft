@@ -2,6 +2,7 @@
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { defineComponent, h } from 'vue'
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import Page from './index.vue'
 
 const { createSchedule, listSchedules } = vi.hoisted(() => ({
@@ -80,7 +81,7 @@ describe('シフト新規作成のAPI契約', () => {
     expect(body).not.toHaveProperty('requestDeadline')
   })
   it('作成CTAは6言語で解決できる既存キーを使う', () => {
-    const source = readFileSync(new URL('./index.vue', import.meta.url), 'utf8')
+    const source = readFileSync(resolve(process.cwd(), 'app/pages/shift/index.vue'), 'utf8')
     const key = source.match(/:label="t\('([^']+)'\)"\s+icon="pi pi-check"/)?.[1]
     expect(key).toBeDefined()
     for (const locale of ['ja', 'en', 'zh', 'ko', 'es', 'de']) {
@@ -89,10 +90,7 @@ describe('シフト新規作成のAPI契約', () => {
         ...['common', 'shift'].map(
           (file) =>
             JSON.parse(
-              readFileSync(
-                new URL(`../../locales/${locale}/${file}.json`, import.meta.url),
-                'utf8',
-              ),
+              readFileSync(resolve(process.cwd(), 'app/locales', locale, `${file}.json`), 'utf8'),
             ) as Record<string, unknown>,
         ),
       )
