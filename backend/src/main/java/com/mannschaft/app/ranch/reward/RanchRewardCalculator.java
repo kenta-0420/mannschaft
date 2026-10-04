@@ -17,6 +17,7 @@ public final class RanchRewardCalculator {
         var rule = policy.sources().get(sourceType);
         if (rule == null) throw new IllegalArgumentException("報酬源がpolicyにありません");
         long requested = rule.amountPoints();
+        if (!policy.enabled()) return new Allocation(RanchRewardDecisionStatus.SOURCE_DISABLED, 0, 0);
         if (!rule.enabled()) return new Allocation(RanchRewardDecisionStatus.SOURCE_DISABLED, requested, 0);
         if (sourceCount >= rule.countLimit()) {
             return new Allocation(RanchRewardDecisionStatus.SOURCE_COUNT_CAPPED, requested, 0);

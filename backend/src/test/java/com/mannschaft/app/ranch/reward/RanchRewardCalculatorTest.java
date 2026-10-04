@@ -20,7 +20,9 @@ class RanchRewardCalculatorTest {
                     source == RanchRewardSourceType.PERSONAL_RECALL_COMPLETE ? 4 : 10));
         }
         return new RanchRewardPolicySnapshot(UUID.randomUUID(), 1,
-                Instant.parse("2026-10-05T00:00:00Z"), 100, rules);
+                Instant.parse("2026-10-05T00:00:00Z"), true, 100, rules,
+                new RanchRewardPolicySnapshot.DeliverySettings(25, 30, 4, 2, 20),
+                "PHASE1_TEST");
     }
 
     @Test
@@ -60,18 +62,28 @@ class RanchRewardCalculatorTest {
         rules.put(RanchRewardSourceType.BLOG_FIRST_PUBLISH,
                 new RanchRewardPolicySnapshot.SourceRule(false, 10, 10));
         var disabled = new RanchRewardPolicySnapshot(base.policyId(), 1,
-                base.effectiveAt(), 100, rules);
+                base.effectiveAt(), true, 100, rules, base.delivery(), base.reasonCode());
         assertThat(RanchRewardCalculator.allocate(disabled,
                 RanchRewardSourceType.BLOG_FIRST_PUBLISH, 0, 0)
                 .status()).isEqualTo(RanchRewardDecisionStatus.SOURCE_DISABLED);
         assertThatThrownBy(() -> new RanchRewardPolicySnapshot(UUID.randomUUID(), 1,
-                Instant.parse("2026-10-05T00:01:00Z"), 100, base.sources()))
+                Instant.parse("2026-10-05T00:01:00Z"), true, 100, base.sources(),
+                base.delivery(), base.reasonCode()))
                 .isInstanceOf(IllegalArgumentException.class);
         var invalidRules = new EnumMap<>(base.sources());
         invalidRules.put(RanchRewardSourceType.PERSONAL_RECALL_COMPLETE,
                 new RanchRewardPolicySnapshot.SourceRule(false, 25, 4));
         assertThatThrownBy(() -> new RanchRewardPolicySnapshot(UUID.randomUUID(), 1,
-                base.effectiveAt(), 100, invalidRules))
+                base.effectiveAt(), true, 100, invalidRules,
+                base.delivery(), base.reasonCode()))
                 .isInstanceOf(IllegalArgumentException.class);
+        var globallyDisabled = new RanchRewardPolicySnapshot(base.policyId(), 1,
+                base.effectiveAt(), false, 100, invalidRules,
+                base.delivery(), base.reasonCode());
+        assertThat(RanchRewardCalculator.allocate(globallyDisabled,
+                RanchRewardSourceType.PERSONAL_RECALL_COMPLETE, 0, 0))
+                .extracting(RanchRewardCalculator.Allocation::status,
+                        RanchRewardCalculator.Allocation::requestedPoints)
+                .containsExactly(RanchRewardDecisionStatus.SOURCE_DISABLED, 0L);
     }
 }
