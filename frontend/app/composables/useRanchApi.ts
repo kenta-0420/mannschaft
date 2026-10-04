@@ -18,7 +18,7 @@ export function useRanchApi() {
    if (!snapshot) return
    return mutate<unknown>(snapshot.path, snapshot.method, snapshot.body, snapshot.version)
   },
-  state: async () => (await api<ApiResponse<RanchState>>(base, { cache: 'no-store' })).data,
+  state: async (signal?: AbortSignal) => (await api<ApiResponse<RanchState>>(base, { cache: 'no-store', signal })).data,
   start: () => mutate<RanchState>(base, 'POST', {}),
   settings: (body: Omit<RanchSettings,'isVisible' | 'viewMode'>) => mutate<RanchSettings>(`${base}/settings`, 'PUT', body),
   participation: (action: 'pause' | 'resume', version: string) => mutate<RanchState>(`${base}/${action}`, 'POST', { version }),

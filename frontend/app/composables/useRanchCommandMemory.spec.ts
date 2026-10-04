@@ -1,4 +1,4 @@
-// Per-app allocation proof in the Nuxt client test environment; not a real server-transform SSR proof.
+// Nuxt client試験環境で別Appのallocationを検証する。実server-transform SSR全体の証明とは分ける。
 import { afterEach, describe, expect, it } from 'vitest'
 import { createSSRApp } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
@@ -15,7 +15,7 @@ async function requestApp(id: number) {
  const auth = useAuthStore()
  await auth.setUser(user(id))
  const app = { vueApp: createSSRApp({ render: () => null }), payload: { data: {}, state: {} } }
- // Nuxt pluginを別SSR requestの最小app境界で実行する。factoryは実物を使用する。
+ // Nuxt pluginを別NuxtAppの最小境界で実行する。factoryは実物を使用する。
  const provided = await plugin(app as unknown as NuxtApp)
  if (!provided?.provide?.ranchCommandMemory) throw new Error('MISSING_MEMORY_PROVIDER')
  const memory = provided.provide.ranchCommandMemory
@@ -23,7 +23,7 @@ async function requestApp(id: number) {
  return { auth, app, memory }
 }
 describe('AC06 本人commandのNuxtApp内memory', () => {
- it('SSR requestの別appへ本人body・keyを共有しない', async () => {
+ it('別NuxtAppのallocationへ本人body・keyを共有しない', async () => {
   const first = await requestApp(1)
   first.memory.scopes['birth-profile'].pending.value = {
    path: '/api/v1/me/birth-profile', method: 'PUT', key: 'synthetic-key',

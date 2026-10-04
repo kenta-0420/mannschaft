@@ -1,4 +1,4 @@
-// repo外のgreen設計稿。先行account red終端後のみ実sourceへ適用。
+// 同じNuxtAppで再送を共有し、最初の認証済み本人から切り替わった旧画面の命令を拒否する。
 import { useNuxtApp } from '#app'
 import { watch } from 'vue'
 import type { RanchCommandScope } from './useRanchCommandMemory'

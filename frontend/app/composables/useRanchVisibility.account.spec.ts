@@ -28,4 +28,28 @@ describe('表示設定の遅延GETと本人境界', () => {
   expect(external.api).toHaveBeenCalledTimes(1)
   expect(external.refresh).not.toHaveBeenCalled()
  })
+
+ it('refresh待機中の本人切替後は旧操作を成功として返さない', async () => {
+  const auth = useAuthStore()
+  vi.spyOn(auth, 'clearUserCaches').mockResolvedValue()
+  await auth.setUser(user(1))
+  external.api.mockResolvedValue({ data: [] })
+  let startRefresh: (() => void) | undefined
+  let finishRefresh: (() => void) | undefined
+  const started = new Promise<void>(done => { startRefresh = done })
+  const delayed = new Promise<void>(done => { finishRefresh = done })
+  external.refresh.mockImplementationOnce(() => { startRefresh?.(); return delayed })
+  const old = useRanchVisibility().setVisible(true)
+  const rejected = expect(old).rejects.toThrow('COMMAND_ACCOUNT_CHANGED')
+  try {
+   await started
+   await auth.setUser(user(2))
+   finishRefresh?.()
+   await rejected
+   expect(auth.user?.id).toBe(2)
+  } finally {
+   finishRefresh?.()
+   await Promise.allSettled([old, rejected])
+  }
+ })
 })

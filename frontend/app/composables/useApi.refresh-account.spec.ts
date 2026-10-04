@@ -10,11 +10,9 @@ vi.mock('ofetch', async importOriginal => {
  return { ...original, ofetch: original.ofetch.create({}, { fetch: external.fetch }) }
 })
 vi.mock('~/composables/useApiBaseUrl', () => ({ resolveApiBaseUrl: () => 'http://synthetic.invalid' }))
-mockNuxtImport('useRuntimeConfig', () => () => ({ public: { apiBase: 'http://synthetic.invalid' } }))
 mockNuxtImport('useAuthStore', () => () => actualUseAuthStore())
 mockNuxtImport('navigateTo', () => external.navigate)
 mockNuxtImport('useChatTabsStore', () => () => ({ clearAll: external.chatClear }))
-mockNuxtImport('useNuxtApp', () => () => ({ $i18n: { t: (key: string) => key } }))
 mockNuxtImport('useErrorReport', () => () => ({ capture: external.report }))
 mockNuxtImport('useProxyDeskStore', () => () => ({ isPinned: false }))
 mockNuxtImport('useGuardianshipSwitchStore', () => () => ({ isActingAs: false }))

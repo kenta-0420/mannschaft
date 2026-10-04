@@ -34,4 +34,33 @@ describe('維持された牧場画面のprivate GET本人境界', () => {
   expect(ranch.state.value).toBeNull()
   expect(external.report).not.toHaveBeenCalled()
  })
+
+ it('旧A失敗とfinallyは進行中Bのloading/state/errorを変更しない', async () => {
+  const auth = useAuthStore()
+  vi.spyOn(auth, 'clearUserCaches').mockResolvedValue()
+  await auth.setUser(user(1))
+  let rejectA: ((reason: unknown) => void) | undefined
+  let resolveB: ((state: RanchState) => void) | undefined
+  external.state.mockReturnValueOnce(new Promise<RanchState>((_done, reject) => { rejectA = reject }))
+  const ranch = useRanchState()
+  const requestA = ranch.load()
+  await auth.setUser(user(2))
+  external.state.mockReturnValueOnce(new Promise<RanchState>(done => { resolveB = done }))
+  const requestB = ranch.load()
+  try {
+   rejectA?.(new Error('old-A-private-error'))
+   await requestA
+   expect(ranch.loading.value).toBe(true)
+   expect(ranch.failed.value).toBe(false)
+   expect(ranch.state.value).toBeNull()
+   expect(external.report).not.toHaveBeenCalled()
+   const stateB: RanchState = { ...oldState, owner: { id: 'synthetic-owner-B', status: 'ACTIVE', balance: '0', version: '1' } }
+   resolveB?.(stateB)
+   await requestB
+   expect(ranch.state.value?.owner?.id).toBe('synthetic-owner-B')
+  } finally {
+   rejectA?.(new Error('cleanup-A')); resolveB?.(oldState)
+   await Promise.allSettled([requestA, requestB])
+  }
+ })
 })
