@@ -24,6 +24,9 @@ let exit = 125
 let phase = 'SOURCE_IDENTITY'
 let activeUi: ReturnType<typeof spawn> | undefined
 let stopRequested = false
+let setupLoginSuccesses = 0
+let moderationUiLogins: number | null = null
+let moderationUiPassed = false
 process.once('SIGTERM', () => { stopRequested = true; activeUi?.kill('SIGTERM') })
 try {
   if (process.env.GITHUB_ACTIONS !== 'true' || process.env.RUNNER_ENVIRONMENT !== 'github-hosted')
@@ -88,6 +91,7 @@ try {
       const cookies = (await context.storageState()).cookies
       if (!me || Number(me.id) !== userId || me.systemRole === 'SYSTEM_ADMIN'
           || !cookies.some((c) => c.name === 'access_token' && c.httpOnly)) throw new Error('SETUP_REAL_PRINCIPAL_FAILED')
+      setupLoginSuccesses++
       return { userId, api: context, credentialEnvPrefix: `VH_ACTOR_${index}` }
     },
   })
@@ -102,6 +106,7 @@ try {
   })
   phase = 'ACTUAL_UI'
   const child = spawn(process.execPath, ['node_modules/@playwright/test/cli.js', 'test',
+    'village-history-real.spec.ts',
     '--config=playwright-village-history.config.ts', '--project=chromium-village-history', '--workers=1', '--retries=0'],
     { cwd: path.resolve('.'), env: childEnv, stdio: 'ignore' })
   activeUi = child
@@ -133,10 +138,65 @@ try {
     && !stopRequested && code === 0 && results.length === 1 && results[0].status === 'passed'
     && results[0].retry === 0 && (actual.errors ?? []).length === 0
   safeWrite('ui-actual-safe.json', { processExit: code, results, errors: (actual.errors ?? []).length,
-    uiContexts: 3, uiLogins, setupApiContexts: 3, setupLogins: 3,
-    totalLogins: uiLogins === null ? null : 3 + uiLogins, passed })
-  outcome = passed ? 'FIXED_UI_PASS_PENDING_CLEANUP' : 'ACTUAL_UI_FAILURE'
-  exit = passed ? 0 : 1
+    uiContexts: 3, uiLogins, setupApiContexts: contexts.length, setupLogins: setupLoginSuccesses,
+    totalLogins: uiLogins === null ? null : setupLoginSuccesses + uiLogins, passed })
+  if (!passed) throw new Error('HISTORY_UI_NOT_PASSED')
+  phase = 'MODERATION_FIXTURE_SETUP'
+  const extraCredentials = [0, 1, 2].map((index) => ({ email: `vh-${runKey}-moderation-${index}@test.mannschaft.local`,
+    password: randomBytes(24).toString('base64url') })) as typeof credentials
+  const moderation = await prepared.prepareModeration(extraCredentials, async (userId, index) => {
+    const context = await request.newContext({ baseURL: api, storageState: { cookies: [], origins: [] }, timeout: 30_000 })
+    contexts.push(context)
+    const login = await context.post('/api/v1/auth/login', { data: extraCredentials[index] })
+    if (login.status() !== 200) throw new Error('MODERATION_SETUP_LOGIN_FAILED')
+    const response = await context.get('/api/v1/users/me')
+    const me = response.status() === 200 ? (await response.json()).data : undefined
+    const cookies = (await context.storageState()).cookies
+    if (!me || Number(me.id) !== userId || me.systemRole === 'SYSTEM_ADMIN'
+      || !cookies.some((c) => c.name === 'access_token' && c.httpOnly)) throw new Error('MODERATION_SETUP_PRINCIPAL_FAILED')
+    setupLoginSuccesses++
+    return { userId, api: context, credentialEnvPrefix: `VH_MODERATION_${index}` }
+  })
+  safeWrite('moderation-manifest.json', moderation.manifest)
+  const moderationEnv: NodeJS.ProcessEnv = { ...childEnv, VH_UI_PHASE: 'moderation',
+    VILLAGE_MODERATION_FIXTURE_MANIFEST: path.join(output, 'moderation-manifest.json') }
+  extraCredentials.forEach((value, index) => {
+    moderationEnv[`VH_MODERATION_${index}_EMAIL`] = value.email
+    moderationEnv[`VH_MODERATION_${index}_PASSWORD`] = value.password
+  })
+  phase = 'MODERATION_ACTUAL_UI'
+  const moderationChild = spawn(process.execPath, ['node_modules/@playwright/test/cli.js', 'test',
+    'village-moderation-real.spec.ts', '--config=playwright-village-history.config.ts',
+    '--project=chromium-village-history', '--workers=1', '--retries=0'],
+    { cwd: path.resolve('.'), env: moderationEnv, stdio: 'ignore' })
+  activeUi = moderationChild
+  const moderationCode = await new Promise<number>((resolve) => {
+    const timer = setTimeout(() => moderationChild.kill('SIGTERM'), 270_000)
+    moderationChild.once('error', () => { clearTimeout(timer); resolve(125) })
+    moderationChild.once('exit', (value) => { clearTimeout(timer); resolve(value ?? 125) })
+  })
+  const moderationActual = JSON.parse(readFileSync(path.join(output, 'moderation-actual.json'), 'utf8'))
+  results.length = 0
+  for (const suite of moderationActual.suites ?? []) walk(suite)
+  const moderationProgress = JSON.parse(readFileSync(path.join(output, 'moderation-progress-safe.json'), 'utf8'))
+  const moderationCleanup = JSON.parse(readFileSync(path.join(output, 'moderation-session-cleanup.json'), 'utf8'))
+  moderationUiLogins = Number.isInteger(moderationProgress.canonicalLoginSuccesses)
+    && moderationProgress.canonicalLoginSuccesses >= 0 && moderationProgress.canonicalLoginSuccesses <= 3
+    ? moderationProgress.canonicalLoginSuccesses : null
+  phase = 'MODERATION_BUSINESS_WITNESS'
+  safeWrite('moderation-business-proof.json', await moderation.assertFinalBusiness())
+  moderationUiPassed = !stopRequested && moderationCode === 0 && results.length === 1
+    && results[0].status === 'passed' && results[0].retry === 0 && (moderationActual.errors ?? []).length === 0
+    && moderationProgress.phase === 'UI_COMPLETE' && moderationUiLogins === 3
+    && moderationCleanup.uiLogoutSuccesses === 3 && moderationCleanup.uiContextsClosed === 3
+    && moderationCleanup.observations.every((c: { authCookiesAbsent: boolean }) => c.authCookiesAbsent)
+  safeWrite('moderation-actual-safe.json', { processExit: moderationCode, results,
+    errors: (moderationActual.errors ?? []).length, uiLogins: moderationUiLogins,
+    setupLogins: setupLoginSuccesses, historyUiLogins: uiLogins,
+    totalLogins: uiLogins === null || moderationUiLogins === null ? null : setupLoginSuccesses + uiLogins + moderationUiLogins,
+    passed: moderationUiPassed, autonomousExploration: 'HOLD' })
+  outcome = moderationUiPassed ? 'FIXED_UI_PASS_PENDING_CLEANUP' : 'ACTUAL_UI_FAILURE'
+  exit = moderationUiPassed ? 0 : 1
 } catch (error) {
   outcome = 'ENV_OR_FIXTURE_OR_UI_UNPROVEN'
   const reason = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : 'PRIVATE_ERROR_NOT_PUBLISHED'
@@ -165,9 +225,11 @@ try {
   }
   try { if (prepared) { await prepared.closeDatabase(); databaseClosed = true } }
   catch { databaseClosed = false; fixtureCleanup = false }
-  fixtureCleanup = fixtureCleanup && contexts.length === 3 && setupLogoutSuccesses === 3 && setupContextsDisposed === 3
+  fixtureCleanup = fixtureCleanup && contexts.length === 6 && setupLoginSuccesses === 6
+    && setupLogoutSuccesses === 6 && setupContextsDisposed === 6
   if (!fixtureCleanup) exit = 125
   safeWrite('fixture-completion.json', { identity, outcome, exit, setupLogoutSuccesses, setupContextsDisposed,
+    setupLoginSuccesses, moderationUiLogins, moderationUiPassed,
     setupSessionsCleanupConfirmed: fixtureCleanup,
     setupLogoutObservations,
     databaseClosed,

@@ -4,6 +4,7 @@ import { createCipheriv, randomBytes } from 'node:crypto'
 import { seedThreeFakeUsers, setupHistoryFixture, type Actor, type SeedDb } from './village-history-fixture-helper.ts'
 import { captureFreshUserBaseline, createHistoryDbProof } from './village-history-db-proof.ts'
 import { assembleUiManifest } from './village-history-manifest.ts'
+import { captureHistoryBoundary, setupModerationFixture } from './village-moderation-fixture.ts'
 
 export type OwnedCiIdentity = {
   runId: string; runAttempt: string; job: string; headSha: string
@@ -97,6 +98,31 @@ export async function prepareOwnedCiFixture(input: {
     const uiManifest = assembleUiManifest(actors, setup.owned, setup.proof)
     // UI後のwitness/cleanupまで同接続とproofを所有する。秘密値/接続はJSONへ出さない。
     return { actors, owned: setup.owned, uiManifest, assertBusinessUnchanged: () => proof.assertBusinessUnchanged(setup.owned),
+      // 履歴UIの不変確認を呼出側で終えてから追加する。旧22/12集合を別境界で固定する。
+      prepareModeration: async (credentials: typeof input.credentials,
+        authenticate: (id: number, index: number) => Promise<Actor>) => {
+        await proof.assertBusinessUnchanged(setup.owned)
+        const historyBoundary = await captureHistoryBoundary(db)
+        const extraKey = Buffer.from(input.ciEncryptionKeyBase64, 'base64')
+        try {
+          if (extraKey.length !== 32) throw new Error('CI_FAKE_ENCRYPTION_KEY_INVALID')
+          const encrypt = (value: string) => {
+            const iv = randomBytes(12)
+            const cipher = createCipheriv('aes-256-gcm', extraKey, iv)
+            return Buffer.concat([iv, cipher.update(value, 'utf8'), cipher.final(), cipher.getAuthTag()]).toString('base64')
+          }
+          const extraIds = await seedThreeFakeUsers(db, credentials, hashPassword, encrypt)
+          const extraActors: [Actor, Actor, Actor] = [await authenticate(extraIds[0], 0),
+            await authenticate(extraIds[1], 1), await authenticate(extraIds[2], 2)]
+          const fixture = await setupModerationFixture(db, extraActors, input.runKey)
+          return { manifest: fixture.manifest, assertFinalBusiness: async () => {
+            await assertNewCiServices()
+            const history = await historyBoundary(fixture.manifest, extraIds)
+            const mutation = await fixture.assertExpectedMutation()
+            return { history, mutation }
+          } }
+        } finally { extraKey.fill(0) }
+      },
       proof, closeDatabase: () => db.end(), safeIdentity: i,
       baselineReceipt: { ids: baseline.ids, safeProjectionSha256: baseline.safeProjectionSha256,
         rolesSha256: baseline.rolesSha256, sessionSqlMode: baseline.sessionSqlMode, migrations: baseline.migrations } }

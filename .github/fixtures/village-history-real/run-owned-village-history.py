@@ -81,14 +81,20 @@ try:
                 raise RuntimeError('EXISTING_SERVER_BORROW_REFUSED')
     source_paths = ['frontend/app/pages/my/village-join-requests.vue',
                     'frontend/app/composables/village/useVillageJoinRequestHistory.ts',
-                    'backend/src/main/java/com/mannschaft/app/village/controller/VillageJoinRequestController.java']
+                    'backend/src/main/java/com/mannschaft/app/village/controller/VillageJoinRequestController.java',
+                    'backend/src/main/java/com/mannschaft/app/village/service/VillageMembershipService.java',
+                    'backend/src/main/java/com/mannschaft/app/village/service/VillageJoinRequestService.java',
+                    'backend/src/main/java/com/mannschaft/app/village/repository/VillageMembershipRepository.java',
+                    'frontend/app/pages/villages/[id]/members.vue',
+                    'frontend/app/pages/villages/[id]/join-request.vue',
+                    'frontend/app/composables/village/useVillageMembershipApi.ts']
     blobs = []
     for relative in source_paths:
         blob = subprocess.check_output(['git', 'show', head + ':' + relative], cwd=ROOT, timeout=10)
         if (ROOT / relative).read_bytes() != blob:
             raise RuntimeError('SOURCE_BLOB_MISMATCH')
         blobs.append({'path': relative, 'sha256': hashlib.sha256(blob).hexdigest()})
-    if b'/api/v1/village-join-requests/me' not in (ROOT / source_paths[-1]).read_bytes():
+    if b'/api/v1/village-join-requests/me' not in (ROOT / source_paths[2]).read_bytes():
         raise RuntimeError('INTEGRATED_HISTORY_API_ABSENT')
     jars = list((ROOT / 'backend/build/libs').glob('*.jar'))
     jars = [p for p in jars if not p.name.endswith('-plain.jar')]

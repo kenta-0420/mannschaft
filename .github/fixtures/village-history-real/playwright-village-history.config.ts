@@ -14,14 +14,15 @@ for (const value of [base, api]) {
 
 export default defineConfig({
   testDir: './tests/e2e/real',
-  testMatch: 'village-history-real.spec.ts',
+  testMatch: ['village-history-real.spec.ts', 'village-moderation-real.spec.ts'],
   fullyParallel: false,
   workers: 1,
   retries: 0,
   timeout: 180_000,
   globalTimeout: 240_000,
   expect: { timeout: 8_000 },
-  reporter: [['list'], ['json', { outputFile: 'build/village-history-real/actual.json' }]],
+  reporter: [['list'], ['json', { outputFile: process.env.VH_UI_PHASE === 'moderation'
+    ? 'build/village-history-real/moderation-actual.json' : 'build/village-history-real/actual.json' }]],
   use: {
     baseURL: base,
     storageState: { cookies: [], origins: [] },

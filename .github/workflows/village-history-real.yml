@@ -95,7 +95,7 @@ jobs:
           import shutil
           src=Path('.github/fixtures/village-history-real')
           dest=Path('frontend/tests/e2e/real')
-          files=['village-history-fixture-helper.ts','village-history-db-proof.ts','village-history-ci-binding.ts','village-history-manifest.ts','run-village-history.ts','village-history-real.spec.ts']
+          files=['village-history-fixture-helper.ts','village-history-db-proof.ts','village-history-ci-binding.ts','village-history-manifest.ts','run-village-history.ts','village-history-real.spec.ts','village-moderation-fixture.ts','village-moderation-real.spec.ts']
           for name in files:
               target=dest/name
               assert not target.exists(), 'OWNED_SOURCE_OVERWRITE_REFUSED'
@@ -104,7 +104,7 @@ jobs:
           assert not config.exists()
           shutil.copyfile(src/'playwright-village-history.config.ts',config)
           PY
-      - name: 新規servicesでsetup3loginとUI3loginを限定実測
+      - name: 新規servicesで履歴三本人と村三役割を独立認証して実測
         env:
           VH_MYSQL_SERVICE_ID: ${{ job.services.mysql.id }}
           VH_VALKEY_SERVICE_ID: ${{ job.services.valkey.id }}
@@ -132,5 +132,11 @@ jobs:
             frontend/build/village-history-real/fixture-completion.json
             frontend/build/village-history-real/failure-safe.json
             frontend/build/village-history-real/owned-runtime-receipt.json
+            frontend/build/village-history-real/moderation-manifest.json
+            frontend/build/village-history-real/moderation-actual-safe.json
+            frontend/build/village-history-real/moderation-progress-safe.json
+            frontend/build/village-history-real/moderation-session-cleanup.json
+            frontend/build/village-history-real/moderation-observations-safe.json
+            frontend/build/village-history-real/moderation-business-proof.json
             frontend/build/village-history-real/safe-business/
       # job.services破棄はこの後platformが実施。rootが当該IDsの公式cleanup logを照合する。
