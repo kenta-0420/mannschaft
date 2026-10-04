@@ -44,7 +44,8 @@ beforeEach(async () => {
  vi.spyOn(auth, 'clearUserCaches').mockResolvedValue()
  await auth.setUser({ id: 1, email: 'synthetic@example.invalid', fullName: 'Synthetic', profileImageUrl: null })
  auth.setTokens('A-access', 'A-refresh')
- (await profileApi()).command.discardRejected()
+ const currentApi = await profileApi()
+ currentApi.command.discardRejected()
  external.fetch.mockReset(); external.report.mockReset(); writes.length = 0
  errorCode = 'BIRTHPROFILE_008'; failFirstWrite = true; reads = 0
  external.fetch.mockImplementation(async (request, options) => {
