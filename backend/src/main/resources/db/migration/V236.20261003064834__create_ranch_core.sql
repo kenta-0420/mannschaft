@@ -60,7 +60,8 @@ CREATE TABLE ranch_dinosaurs (
     CONSTRAINT chk_ranch_dinosaurs_4 CHECK ((stage = 'EGG' AND hatched_at IS NULL AND name IS NULL AND named_at IS NULL) OR (stage <> 'EGG' AND hatched_at IS NOT NULL AND name IS NOT NULL AND named_at = hatched_at AND selection_confirmed_at IS NOT NULL)),
     CONSTRAINT chk_ranch_dinosaurs_5 CHECK (name IS NULL OR OCTET_LENGTH(name) <= 512),
     CONSTRAINT chk_ranch_dinosaurs_6 CHECK ((selection_confirmed_at IS NULL AND species_key IS NULL AND variant_key IS NULL AND species_catalog_version IS NULL AND assignment_method IS NULL) OR (selection_confirmed_at IS NOT NULL AND species_key IS NOT NULL AND variant_key IS NOT NULL AND habitat IS NOT NULL AND species_catalog_version IS NOT NULL AND assignment_method IS NOT NULL)),
-    CONSTRAINT chk_ranch_dinosaurs_7 CHECK (egg_ready_at >= egg_started_at)
+    CONSTRAINT chk_ranch_dinosaurs_7 CHECK (egg_ready_at >= egg_started_at),
+    CONSTRAINT chk_ranch_dinosaurs_8 CHECK (assignment_method IS NULL OR assignment_method IN ('HABITAT_RANDOM','BIRTH_STYLE','DIAGNOSIS'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE ranch_commands (

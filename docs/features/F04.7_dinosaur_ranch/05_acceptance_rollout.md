@@ -183,3 +183,18 @@ ACは追補込み73件。追加結果閲覧はユーザー確定したPhase 1要
 ### 採択済みauth admissionの検証追跡
 
 AC65/66/72の並行/途中失敗fixtureに、非TX Guard→single Semaphore.tryAcquire→別REQUIRES_NEW Runner proxy→PRIMARY read/writer順次→commit/rollback後finally permit復帰を含める。P不明/P<2は503、P2/3/4/5/50のG式と2G≤P、上限即503/callback0、ambient TX/再帰拒否、成功/認可失敗/callback例外/commit失敗のpermit復帰を検証する。既存共有pool他経路の完全予約を保証せず、3秒connection timeoutも観測する。設計採用済み、製造/実MySQL試験未実行。
+
+## Ranch STRING enum の段階展開
+
+`docs/development/persisted_enum_deployment.md` の二段階手順に従う。今回の17定数は既存テーブルの値の改名ではなく、新設Ranchテーブルの初期集合である。互換性台帳への登録は旧タスク退場の証明ではない。
+
+| enum | DB列 | 列長・CHECK | 定数 |
+|---|---|---|---|
+| `AssignmentMethod` | `ranch_dinosaurs.assignment_method` | VARCHAR(30)、`chk_ranch_dinosaurs_8` | HABITAT_RANDOM / BIRTH_STYLE / DIAGNOSIS |
+| `DinosaurStage` | `ranch_dinosaurs.stage` | VARCHAR(20)、`chk_ranch_dinosaurs_3` | EGG / BABY / JUVENILE / ADULT |
+| `Habitat` | `ranch_dinosaurs.habitat` | VARCHAR(8)、`chk_ranch_dinosaurs_2` | LAND / SEA / AIR |
+| `MotionMode` | `ranch_owners.motion_mode` | VARCHAR(20)、`chk_ranch_owners_5` | NORMAL / REDUCED / STOPPED |
+| `ParticipationStatus` | `ranch_owners.status` | VARCHAR(20)、`chk_ranch_owners_2` | ACTIVE / PAUSED |
+| `RenderStyle` | `ranch_owners.render_style` | VARCHAR(20)、`chk_ranch_owners_4` | PIXEL / PAINT_2D |
+
+第1段階では定数と読取り互換性を全API・worker・batchへ配布する。開発用fixtureは本番OFFのままとし、Ranch開始・選定・孵化・設定など全書込み経路を公開しない。全タスクの旧versionが0になった時刻・環境・image digestをリリース記録へ残す。第2段階で別リリースとして本人書込みを有効化し、新規行の再読込とrollback下限を確認する。機能フラグをOFFにするだけでは、書込み済み新値を読めない旧バイナリへrollbackできない。
