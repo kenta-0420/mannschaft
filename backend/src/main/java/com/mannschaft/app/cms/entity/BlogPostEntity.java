@@ -10,6 +10,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -81,6 +83,28 @@ public class BlogPostEntity extends BaseEntity {
     private PostStatus status = PostStatus.DRAFT;
 
     private LocalDateTime publishedAt;
+
+    /** rollout以前の既存記事。過去の公開資格を推測して復元しない。 */
+    @Column(name = "is_ranch_publication_historical", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    private boolean ranchPublicationHistorical;
+
+    /** 全native公開経路の一方向履歴。公開撤回でもfalseへ戻さない。 */
+    @Column(name = "is_ranch_publication_observed", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    private boolean ranchPublicationObserved;
+
+    /** 正本02のnative初公開証跡。時刻はsource writerのClockから受け取る。 */
+    @Column(name = "first_published_at")
+    private java.time.Instant firstPublishedAt;
+
+    @Column(name = "first_published_author_user_id", columnDefinition = "BIGINT UNSIGNED")
+    private Long firstPublishedAuthorUserId;
+
+    @Column(name = "is_publication_history_known", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    private boolean publicationHistoryKnown;
+
 
     private LocalDateTime selfReviewDeadline;
 
@@ -321,5 +345,28 @@ public class BlogPostEntity extends BaseEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+    /** 新rowだけに既知履歴の開始を宣言する。Entity内の時計・配送・Service呼出はない。 */
+    @PrePersist
+    private void initializeRanchNativePublication() {
+        publicationHistoryKnown = !ranchPublicationHistorical;
+        observeRanchNativePublication();
+    }
+
+    /** 既commitの履歴をPC再利用・撤回・再公開で消さない。資格判定には単独で使わない。 */
+    @PreUpdate
+    private void observeRanchNativePublication() {
+        if (ranchPublicationHistorical || status == PostStatus.PUBLISHED) ranchPublicationObserved = true;
+    }
+
+    /** current-lock前状態と最終状態をsource writerが照合した後に一度だけ固定する。 */
+    public boolean freezeRanchFirstPublicationMetadata(java.time.Instant at, Long protectedAuthorId) {
+        if (at == null || protectedAuthorId == null || !protectedAuthorId.equals(authorId)
+                || ranchPublicationHistorical || !publicationHistoryKnown || !ranchPublicationObserved
+                || status != PostStatus.PUBLISHED || firstPublishedAt != null
+                || firstPublishedAuthorUserId != null) return false;
+        firstPublishedAt = at.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        firstPublishedAuthorUserId = protectedAuthorId;
+        return true;
     }
 }
