@@ -10,8 +10,7 @@ import zh from '../../../app/locales/zh/announcement.json' with { type: 'json' }
 /** 実API＋UI操作の本文プレビュー。route mock・本文APIの直接代替呼び出しは使わない。 */
 const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:8081'
 const TEAM_SLUG = process.env.E2E_PREVIEW_TEAM_SLUG ?? 'fc-u-18'
-const ORG_ID = Number(process.env.E2E_SHARED_ORG_ID ?? '71')
-const ORG_SLUG = process.env.E2E_PREVIEW_ORG_SLUG
+let ORG_ID: number
 const PASSWORD = process.env.TEST_PASSWORD ?? 'TestPass2026!'
 const ADMIN = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
 const MEMBER = process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft.local'
@@ -38,6 +37,9 @@ const normalBlogs: Fixture[] = []
 let attachmentId: number
 let ownOrgMemberUserId: number | undefined
 let ownOrgInviteId: number | undefined
+let ownOrgCreated = false
+let ownAffiliationId: number | undefined
+let previousTeamOrganizationSlugs: string[] = []
 const created: Fixture[] = []
 const PNG_BYTES = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64')
 
@@ -84,7 +86,7 @@ async function createBroadcast(channel: Fixture['channel'], title: string, body:
     data: { channel, targetRole: 'MEMBERS_AND_ABOVE', priority: 'NORMAL', content: { title, body } },
   })
   expect(response.status(), await response.text()).toBe(201)
-  const data = { ...(await response.json()).data, scopeId, scopeType } as Fixture
+  const data = { ...(await response.json()).data, channel, scopeId, scopeType } as Fixture
   expect(data.announcementFeedId).toBeGreaterThan(0)
   created.push(data)
   return data
@@ -141,14 +143,29 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     teamId = (await team.json()).data.numericId
     expect(Number.isSafeInteger(teamId)).toBe(true)
     expect(teamId).toBeGreaterThan(0)
-    // seedの親組織と直属membershipは別。全read preflightをbroadcastより先に済ませる。
-    expect(ORG_SLUG, '専用seedの組織slugを環境変数で指定する').toBeTruthy()
-    const org = await api.get(`/api/v1/organizations/${ORG_SLUG}`, { headers: fixtureHeaders })
-    expect(org.ok(), `organization fixture: ${org.status()}`).toBeTruthy()
+    // seedの直属管理者を仮定せず、正規作成で今回専用ORGのownerADMINを得る。
+    const previousOrganizations = await api.get(`/api/v1/teams/${TEAM_SLUG}/organizations`, { headers: fixtureHeaders })
+    expect(previousOrganizations.ok()).toBeTruthy()
+    previousTeamOrganizationSlugs = (await previousOrganizations.json()).data.map((item: { slug: string }) => item.slug)
+    const org = await api.post('/api/v1/organizations', { headers: fixtureHeaders, data: {
+      name: `PreviewOwnOrg-${stamp}`, slug: `preview-org-${stamp}`, orgType: 'COMMUNITY', visibility: 'PUBLIC',
+    } })
+    expect(org.status(), `organization fixture: ${org.status()}`).toBe(201)
     const organization = (await org.json()).data
-    expect(organization.numericId).toBe(ORG_ID)
-    expect(organization.slug).toBe(ORG_SLUG)
     orgSlug = organization.slug
+    ORG_ID = organization.numericId
+    ownOrgCreated = true
+    expect(Number.isSafeInteger(ORG_ID)).toBe(true)
+    expect(ORG_ID).toBeGreaterThan(0)
+    const affiliation = await api.post(`/api/v1/organizations/${orgSlug}/team-invites`, {
+      headers: fixtureHeaders, data: { teamSlug: TEAM_SLUG },
+    })
+    expect(affiliation.status()).toBe(201)
+    ownAffiliationId = (await affiliation.json()).data.id
+    expect(Number.isSafeInteger(ownAffiliationId)).toBe(true)
+    const accepted = await api.post(`/api/v1/teams/${TEAM_SLUG}/org-invites/${ownAffiliationId}/accept`, { headers: fixtureHeaders })
+    expect(accepted.status()).toBe(200)
+    expect((await accepted.json()).data.status).toBe('ACTIVE')
     const orgTeams = await api.get(`/api/v1/organizations/${orgSlug}/teams`, { headers: fixtureHeaders })
     expect(orgTeams.ok()).toBeTruthy()
     expect((await orgTeams.json()).data.some((item: { slug: string }) => item.slug === TEAM_SLUG)).toBe(true)
@@ -180,7 +197,7 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     expect(join.status()).toBe(200)
     ownOrgMemberUserId = memberId
     await test.info().attach('organization-membership-fixture', {
-      body: JSON.stringify({ scopeId: ORG_ID, userId: memberId, inviteId: ownOrgInviteId, previouslyAffiliated: false }),
+      body: JSON.stringify({ scopeId: ORG_ID, scopeSlug: orgSlug, affiliationId: ownAffiliationId, userId: memberId, inviteId: ownOrgInviteId, previouslyAffiliated: false }),
       contentType: 'application/json',
     })
     expect((await organizationTabs(memberHeaders)).find(item => item.scope_id === ORG_ID)?.public_id).toBe(orgSlug)
@@ -263,6 +280,21 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     if (otherTeamSlug) {
       const team = await api.delete(`/api/v1/teams/${otherTeamSlug}`, { headers: fixtureHeaders })
       expect([200, 204, 404]).toContain(team.status())
+    }
+    if (ownOrgCreated) {
+      // ACTIVE加盟の単独解除EPは未実装。ownORG正規削除で公開加盟から除外する。
+      // raw履歴行は専用試験DBの破棄時まで保持し、seedの既存加盟は変更しない。
+      const organization = await api.delete(`/api/v1/organizations/${orgSlug}`, { headers: fixtureHeaders })
+      expect(organization.status()).toBe(204)
+      const memberships = await api.get(`/api/v1/teams/${TEAM_SLUG}/organizations`, { headers: fixtureHeaders })
+      expect(memberships.ok()).toBeTruthy()
+      const currentSlugs = (await memberships.json()).data.map((item: { slug: string }) => item.slug)
+      expect(currentSlugs).not.toContain(orgSlug)
+      expect(currentSlugs).toEqual(expect.arrayContaining(previousTeamOrganizationSlugs))
+      await test.info().attach('owned-organization-cleanup', {
+        body: JSON.stringify({ scopeId: ORG_ID, affiliationId: ownAffiliationId, ownRemoved: true, existingAffiliationsRetained: true }),
+        contentType: 'application/json',
+      })
     }
     await api.dispose()
   })
@@ -565,7 +597,7 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     finally { await cdp.detach() }
   })
 
-  test('PREVIEW-06/07/13: own年会費のLOCKEDから管理者の現金入金UI後に新しい本文を取得する', async ({ page, browser }) => {
+  test('PREVIEW-06/07/13: own期別会費のLOCKEDから管理者の現金入金UI後に新しい本文を取得する', async ({ page, browser }) => {
     test.setTimeout(120_000)
     const fixture = normalBlogs.find(item => item.scopeType === 'TEAM')!
     const itemName = `PreviewFee-${stamp}`
@@ -581,7 +613,7 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     expect(members.ok()).toBeTruthy()
     const member = (await members.json()).data.find((item: { userId: number }) => item.userId === memberId)
     expect(member?.displayName, '本人を表示名で選択するためのfixture').toBeTruthy()
-    const item = await api.post(`/api/v1/teams/${teamId}/payment-items`, { headers: fixtureHeaders, data: { name: itemName, type: 'ANNUAL_FEE', amount: 5000 } })
+    const item = await api.post(`/api/v1/teams/${teamId}/payment-items`, { headers: fixtureHeaders, data: { name: itemName, type: 'TERM', amount: 5000, termEndsOn: '2027-12-31' } })
     expect(item.status()).toBe(201)
     const itemId = (await item.json()).data.id as number
     const gatePath = `/api/v1/teams/${teamId}/content-payment-gates`
