@@ -69,7 +69,7 @@ class ShiftPdfTemplateContractTest {
                 .scheduleId(SCHEDULE_ID)
                 .time(new ShiftSlotResponse.ShiftSlotTimeDto(
                         LocalDate.of(2026, 10, 3), LocalTime.of(9, 30), LocalTime.of(17, 45), false))
-                .position(new ShiftSlotResponse.ShiftSlotPositionDto(5L, "レジ担当", 3))
+                .position(new ShiftSlotResponse.ShiftSlotPositionDto(5L, "レジ担当", 6))
                 .assignedUserIds(List.of(USER_ID, 8L))
                 .build();
         when(scheduleService.getSchedule(SCHEDULE_ID, true)).thenReturn(schedule);
@@ -84,6 +84,10 @@ class ShiftPdfTemplateContractTest {
         }
     }
 
+    private static String normalize(String text) {
+        return text.replaceAll("\s+", " ");
+    }
+
     @Test
     @DisplayName("チーム全体表: タイトル・期間・枠の日付/時刻/ポジション名/必要人数が PDF に出る")
     void teamPdfContainsNestedDtoValues() throws Exception {
@@ -96,8 +100,9 @@ class ShiftPdfTemplateContractTest {
                 .contains("2026-10-03")
                 .contains("09:30")
                 .contains("17:45")
-                .contains("レジ担当")
-                .contains("3");
+                .contains("レジ担当");
+        // 枠の行は「日付 開始 終了 ポジション名 必要人数 メンバー」の並び。日付・時刻と衝突しない必要人数(6)を行単位で検証する
+        assertThat(normalize(text)).contains("2026-10-03 09:30 17:45 レジ担当 6 7, 8");
     }
 
     @Test
@@ -113,5 +118,7 @@ class ShiftPdfTemplateContractTest {
                 .contains("09:30")
                 .contains("17:45")
                 .contains("レジ担当");
+        // 枠の行は「日付 開始 終了 ポジション名」の並びで出る
+        assertThat(normalize(text)).contains("2026-10-03 09:30 17:45 レジ担当");
     }
 }
