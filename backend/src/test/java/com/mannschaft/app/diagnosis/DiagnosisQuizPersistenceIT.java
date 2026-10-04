@@ -69,7 +69,10 @@ class DiagnosisQuizPersistenceIT extends AbstractMySqlIntegrationTest {
         assertThat(session.path("answers").size()).isEqualTo(24);
         session=mutate(post(BASE+"/sessions/"+id+"/complete"),completeBody(session,List.of(Map.of("axisId","FAMILIAR_NEW","value",0))),UUID.randomUUID(),200);
         assertThat(session.path("status").asText()).isEqualTo("TIE_BREAK_REQUIRED");assertThat(session.path("tieQuestions").size()).isEqualTo(5);
-        assertThat(resume(id)).isEqualTo(session);String oldRevision=session.path("answerRevision").asText();
+        assertThat(resume(id)).isEqualTo(session);
+        mutate(put(BASE+"/sessions/"+id+"/answers"),Map.of("version",session.path("version").asText(),"answers",List.of()),UUID.randomUUID(),400);
+        assertThat(resume(id)).isEqualTo(session); // 空回答で版や保存済み同点回答が変化しない。
+        String oldRevision=session.path("answerRevision").asText();
         String changeId=null;for(JsonNode question:session.path("questions"))if(question.path("axis").asText().equals("FOCUS_VARIETY")){changeId=question.path("id").asText();break;}
         assertThat(changeId).isNotNull();
         session=mutate(put(BASE+"/sessions/"+id+"/answers"),Map.of("version",session.path("version").asText(),"answers",List.of(Map.of("questionId",changeId,"value",4))),UUID.randomUUID(),200);
