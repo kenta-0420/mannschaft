@@ -155,6 +155,7 @@ async function executeAction(consent: ProxyInputConsent, action: 'approve' | 're
             :value="consents"
             data-key="id"
             data-testid="proxy-consents-table"
+            table-class="whitespace-nowrap"
           >
             <Column field="id" :header="t('proxy.consent.title')" />
             <Column field="subjectUserId" :header="t('proxy.consent.subjectUserId')" />
@@ -223,7 +224,13 @@ async function executeAction(consent: ProxyInputConsent, action: 'approve' | 're
               </template>
             </Column>
           </DataTable>
-          <DataTable v-else :value="records" data-key="id" data-testid="proxy-records-table">
+          <DataTable
+            v-else
+            :value="records"
+            data-key="id"
+            data-testid="proxy-records-table"
+            table-class="whitespace-nowrap"
+          >
             <Column field="id" :header="t('proxy.admin.recordId')" />
             <Column field="proxyInputConsentId" :header="t('proxy.consent.title')" />
             <Column field="subjectUserId" :header="t('proxy.consent.subjectUserId')" />
