@@ -7,6 +7,8 @@ import com.mannschaft.app.auth.service.UserRewardDeliveryGuard;
 import com.mannschaft.app.cms.dto.BlogRanchRewardPayload;
 import com.mannschaft.app.cms.dto.PublishRequest;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
+import com.mannschaft.app.cms.entity.BlogMediaUploadEntity;
+import com.mannschaft.app.cms.repository.BlogMediaUploadRepository;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogRanchTransportRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -33,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserRepository users;
     @Autowired private BlogPostRepository posts;
+    @Autowired private BlogMediaUploadRepository media;
     @Autowired private UserOperationGuard active;
     @Autowired private UserRewardDeliveryGuard delivery;
     @Autowired private BlogRanchNativeWriter nativeWriter;
@@ -42,6 +45,7 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     @Autowired private JdbcTemplate jdbc;
     private Long owner;
     private final List<Long> ownPosts=new ArrayList<>();
+    private final List<Long> ownMedia=new ArrayList<>();
 
     @BeforeEach void fixture() {
         owner=users.saveAndFlush(UserEntity.builder().email(UUID.randomUUID()+"@blog-transport.invalid")
@@ -51,6 +55,7 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     @AfterEach void cleanupOwnRows() {
         if(owner==null) return;
         transportRows.deleteForUser(owner);
+        for(Long id:ownMedia) media.deleteById(id);
         for(Long id:ownPosts) posts.deleteById(id);
         users.deleteById(owner);
     }
@@ -120,6 +125,23 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         oldKey[0]=(byte)(oldKey[0]^1);
         jdbc.update("UPDATE blog_ranch_witnesses SET content_key_id=? WHERE recipient_user_id=?",oldKey,owner);
         var second=publish("新しい本文fixture");
+        assertThat(receive(second.capture())).isFalse();
+        assertThat(count("blog_ranch_witnesses")).isEqualTo(1);
+        assertThat(count("blog_ranch_outboxes")).isEqualTo(1);
+        assertThat(publishedCount()).isEqualTo(2);
+    }
+
+    @Test void unusedReadyUploadDoesNotChangePublishedContentWinner() {
+        var first=publish("添付未使用の同じ本文");
+        Long secondId=draft("添付未使用の同じ本文");
+        var unused=media.saveAndFlush(BlogMediaUploadEntity.builder().blogPostId(secondId).uploaderId(owner)
+                .scopeType("PERSONAL").scopeId(owner).s3Key("blog/PERSONAL/"+owner+"/"+UUID.randomUUID()+".png")
+                .fileSize(100L).contentType("image/png").build());
+        ownMedia.add(unused.getId());
+        var second=active.withActiveUser(owner,() -> nativeWriter.changeStatus(secondId,owner,new PublishRequest("PUBLISHED",null,null)));
+        assertThat(second.capture()).isNotNull();
+        assertThat(second.capture().fingerprint().digest()).isEqualTo(first.capture().fingerprint().digest());
+        assertThat(receive(first.capture())).isTrue();
         assertThat(receive(second.capture())).isFalse();
         assertThat(count("blog_ranch_witnesses")).isEqualTo(1);
         assertThat(count("blog_ranch_outboxes")).isEqualTo(1);

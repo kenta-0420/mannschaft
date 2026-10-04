@@ -25,20 +25,25 @@ class BlogRanchCaptureFactory {
             RanchRewardEnvelope.PublicationKind kind) {
         if(post.getTeamId()==null && post.getOrganizationId()==null
                 && !actor.equals(post.getUserId())) throw invalid();
-        // game-only補助読取はJPA repositoryのTX参加を増やさず、同じCMS接続で有限取得する。
-        var uploads=jdbc.query("SELECT id,s3_key,processing_status,scope_type,scope_id FROM blog_media_uploads "
-                +"WHERE blog_post_id=? LIMIT 1001",(rs,index) -> new Media(rs.getLong("id"),rs.getString("s3_key"),
-                rs.getString("processing_status"),rs.getString("scope_type"),rs.getObject("scope_id",Long.class)),post.getId());
-        if (uploads.size()>1000) throw invalid();
-        var keys=bodyMedia.extractR2Keys(post.getBody());
+        // 既存Create/Update DTOと同じ有限上限。旧データ逸脱は報酬だけUNKNOWNにする。
+        if(post.getTitle()==null || post.getTitle().length()>200
+                || post.getBody()==null || post.getBody().length()>50000) throw invalid();
+        var keys=new ArrayList<>(bodyMedia.extractR2Keys(post.getBody()));
+        if(post.getCoverImageUrl()!=null && !post.getCoverImageUrl().isBlank()) keys.add(post.getCoverImageUrl());
         if(keys.size()>1000) throw invalid();
-        for (String key:keys) if (uploads.stream().noneMatch(row -> key.equals(row.key())
-                && "READY".equals(row.status()))) throw invalid();
-        // 表紙が永続メディアIDへ解決できない場合、空添付と推定して報酬を通さない。
-        if (post.getCoverImageUrl()!=null && !post.getCoverImageUrl().isBlank()
-                && uploads.stream().noneMatch(row -> post.getCoverImageUrl().equals(row.key()))) throw invalid();
+        // game-only補助読取はJPA repositoryのTX参加を増やさず、同じCMS接続で有限取得する。
+        var arguments=new ArrayList<Object>();arguments.add(post.getId());arguments.addAll(keys);
+        java.util.List<Media> uploads=keys.isEmpty()?java.util.List.of():jdbc.query(
+                "SELECT id,s3_key,processing_status,scope_type,scope_id FROM blog_media_uploads "
+                +"WHERE blog_post_id=? AND s3_key IN ("+String.join(",",java.util.Collections.nCopies(keys.size(),"?"))
+                +") LIMIT 1001",(rs,index) -> new Media(rs.getLong("id"),rs.getString("s3_key"),
+                rs.getString("processing_status"),rs.getString("scope_type"),rs.getObject("scope_id",Long.class)),arguments.toArray());
         var attachments=new ArrayList<AttachmentRef>();
-        for (var upload:uploads) {
+        for (String key:keys) {
+            var selected=uploads.stream().filter(row -> key.equals(row.key())).toList();
+            // 未使用uploadは集合へ入れない。実キーの欠落/多義は空添付と推定しない。
+            if(selected.size()!=1) throw invalid();
+            var upload=selected.getFirst();
             String expectedScope=post.getTeamId()!=null?"TEAM":post.getOrganizationId()!=null?"ORGANIZATION":"PERSONAL";
             Long expectedId=post.getTeamId()!=null?post.getTeamId():post.getOrganizationId()!=null?post.getOrganizationId():post.getUserId();
             if (!"READY".equals(upload.status()) || upload.id()<=0 || !expectedScope.equals(upload.scopeType())
