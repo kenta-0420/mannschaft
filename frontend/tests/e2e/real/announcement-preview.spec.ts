@@ -11,6 +11,7 @@ import zh from '../../../app/locales/zh/announcement.json' with { type: 'json' }
 const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:8081'
 const TEAM_SLUG = process.env.E2E_PREVIEW_TEAM_SLUG ?? 'fc-u-18'
 const ORG_ID = Number(process.env.E2E_SHARED_ORG_ID ?? '71')
+const ORG_SLUG = process.env.E2E_PREVIEW_ORG_SLUG
 const PASSWORD = process.env.TEST_PASSWORD ?? 'TestPass2026!'
 const ADMIN = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
 const MEMBER = process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft.local'
@@ -35,6 +36,8 @@ let orgBlog: Fixture
 let orgBulletin: Fixture
 const normalBlogs: Fixture[] = []
 let attachmentId: number
+let ownOrgMemberUserId: number | undefined
+let ownOrgInviteId: number | undefined
 const created: Fixture[] = []
 const PNG_BYTES = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64')
 
@@ -43,6 +46,23 @@ async function login(page: Page, email = MEMBER): Promise<void> {
 }
 function card(page: Page, id: number) {
   return page.locator(`[data-announcement-id="${id}"]`)
+}
+async function organizationTabs(headers: Record<string, string>) {
+  const items: Array<{ scope_id: number; public_id: string }> = []
+  let page = 0
+  let hasNext = true
+  while (hasNext) {
+    const response = await api.get(`/api/v1/dashboard/scope-tabs?scopeType=ORGANIZATION&page=${page}`, { headers })
+    expect(response.ok(), `organization fixture tabs: ${response.status()}`).toBeTruthy()
+    const data = (await response.json()).data
+    expect(Array.isArray(data.items)).toBe(true)
+    expect(data.page).toBe(page)
+    expect(typeof data.has_next).toBe('boolean')
+    items.push(...data.items)
+    hasNext = data.has_next
+    page++
+  }
+  return items
 }
 async function openFeed(page: Page): Promise<void> {
   await page.goto(`/teams/${TEAM_SLUG}/announcements`, { waitUntil: 'domcontentloaded' })
@@ -121,6 +141,49 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     teamId = (await team.json()).data.numericId
     expect(Number.isSafeInteger(teamId)).toBe(true)
     expect(teamId).toBeGreaterThan(0)
+    // seedの親組織と直属membershipは別。全read preflightをbroadcastより先に済ませる。
+    expect(ORG_SLUG, '専用seedの組織slugを環境変数で指定する').toBeTruthy()
+    const org = await api.get(`/api/v1/organizations/${ORG_SLUG}`, { headers: fixtureHeaders })
+    expect(org.ok(), `organization fixture: ${org.status()}`).toBeTruthy()
+    const organization = (await org.json()).data
+    expect(organization.numericId).toBe(ORG_ID)
+    expect(organization.slug).toBe(ORG_SLUG)
+    orgSlug = organization.slug
+    const orgTeams = await api.get(`/api/v1/organizations/${orgSlug}/teams`, { headers: fixtureHeaders })
+    expect(orgTeams.ok()).toBeTruthy()
+    expect((await orgTeams.json()).data.some((item: { slug: string }) => item.slug === TEAM_SLUG)).toBe(true)
+    const members = await api.get(`/api/v1/teams/${TEAM_SLUG}/members?size=200`, { headers: fixtureHeaders })
+    expect(members.ok()).toBeTruthy()
+    const teamMembers = (await members.json()).data
+    expect(Array.isArray(teamMembers)).toBe(true)
+    const memberAuth = await api.post('/api/v1/auth/login', { data: { email: MEMBER, password: PASSWORD } })
+    expect(memberAuth.ok()).toBeTruthy()
+    const memberHeaders = { Authorization: `Bearer ${(await memberAuth.json()).data.accessToken}` }
+    const me = await api.get('/api/v1/users/me', { headers: memberHeaders })
+    expect(me.ok()).toBeTruthy()
+    const memberId = (await me.json()).data.id
+    expect(Number.isSafeInteger(memberId)).toBe(true)
+    expect(teamMembers.find((item: { userId: number; displayName: string }) => item.userId === memberId)?.displayName).toBeTruthy()
+    const previousTabs = await organizationTabs(memberHeaders)
+    expect(previousTabs.some(item => item.scope_id === ORG_ID), '既存所属を試験後に削除しないため未所属を確認').toBe(false)
+    const orgMembers = await api.get(`/api/v1/organizations/${orgSlug}/members?size=200`, { headers: fixtureHeaders })
+    expect(orgMembers.ok()).toBeTruthy()
+    expect((await orgMembers.json()).data.some((item: { userId: number }) => item.userId === memberId)).toBe(false)
+    const invite = await api.post(`/api/v1/organizations/${orgSlug}/invite-tokens`, {
+      headers: fixtureHeaders, data: { roleId: 4, maxUses: 1, expiresIn: '1d' },
+    })
+    expect(invite.status()).toBe(201)
+    const invitation = (await invite.json()).data
+    ownOrgInviteId = invitation.id
+    expect(Number.isSafeInteger(ownOrgInviteId)).toBe(true)
+    const join = await api.post(`/api/v1/invite/${invitation.token}/join`, { headers: memberHeaders })
+    expect(join.status()).toBe(200)
+    ownOrgMemberUserId = memberId
+    await test.info().attach('organization-membership-fixture', {
+      body: JSON.stringify({ scopeId: ORG_ID, userId: memberId, inviteId: ownOrgInviteId, previouslyAffiliated: false }),
+      contentType: 'application/json',
+    })
+    expect((await organizationTabs(memberHeaders)).find(item => item.scope_id === ORG_ID)?.public_id).toBe(orgSlug)
     // 本specは5件だけ作成し、broadcastのユーザー別レート制限を超えない。
     blog = await createBroadcast('BLOG_POST', blogTitle,
       `${marker}\n\n<script>window.__previewXss=1</script><a href="javascript:window.__previewXss=2">危険リンク</a><img src="invalid-preview-image" onerror="window.__previewXss=3"><iframe src="javascript:window.__previewXss=4"></iframe>\n\n[正規リンク](https://example.com/)\n\nhttps://example.com/${'long-url-'.repeat(60)}\n\n|列1|列2|\n|---|---|\n|${'長い表'.repeat(50)}|表の内容|\n\n${'長文を内部でスクロールします。\n\n'.repeat(100)}`)
@@ -149,11 +212,6 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     } })
     expect(attached.status()).toBe(201)
     attachmentId = (await attached.json()).data.id
-    const tabs = await api.get('/api/v1/dashboard/scope-tabs?scopeType=ORGANIZATION&page=0', { headers: fixtureHeaders })
-    expect(tabs.ok(), `organization fixture tabs: ${tabs.status()}`).toBeTruthy()
-    const organization = (await tabs.json()).data.items.find((item: { scope_id: number }) => Number(item.scope_id) === ORG_ID)
-    orgSlug = organization?.public_id ?? ''
-    expect(orgSlug, 'seed組織の実slugが必要').not.toBe('')
     orgBlog = await createBroadcast('BLOG_POST', `OrgBlog-${stamp}`, `OrgBlogBody-${stamp}`, ORG_ID, 'ORGANIZATION')
     orgBulletin = await createBroadcast('BULLETIN_THREAD', `OrgThread-${stamp}`, `OrgThreadBody-${stamp}`, ORG_ID, 'ORGANIZATION')
     normalBlogs.push(await createNormalBlog('TEAM', teamId), await createNormalBlog('ORGANIZATION', ORG_ID))
@@ -165,6 +223,30 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     const auth = await api.post('/api/v1/auth/login', { data: { email: ADMIN, password: PASSWORD } })
     expect(auth.ok(), `cleanup login: ${auth.status()}`).toBeTruthy()
     fixtureHeaders = { Authorization: `Bearer ${(await auth.json()).data.accessToken}` }
+    // 自作所属を先に解除し、後続コンテンツのcleanup失敗でも既存会員を変更しない。
+    if (ownOrgMemberUserId) {
+      // SYSTEM_ADMINにも直属ADMIN必須の除名APIを使わず、加入本人が自己退会する。
+      const memberAuth = await api.post('/api/v1/auth/login', { data: { email: MEMBER, password: PASSWORD } })
+      expect(memberAuth.ok()).toBeTruthy()
+      const memberHeaders = { Authorization: `Bearer ${(await memberAuth.json()).data.accessToken}` }
+      const me = await api.get('/api/v1/users/me', { headers: memberHeaders })
+      expect(me.ok()).toBeTruthy()
+      expect((await me.json()).data.id).toBe(ownOrgMemberUserId)
+      const membership = await api.delete(`/api/v1/organizations/${orgSlug}/me`, { headers: memberHeaders })
+      expect(membership.status()).toBe(204)
+      const teamMembers = await api.get(`/api/v1/teams/${TEAM_SLUG}/members?size=200`, { headers: fixtureHeaders })
+      expect(teamMembers.ok()).toBeTruthy()
+      const existingTeamMembershipRetained = (await teamMembers.json()).data.some((item: { userId: number }) => item.userId === ownOrgMemberUserId)
+      expect(existingTeamMembershipRetained).toBe(true)
+      await test.info().attach('organization-membership-cleanup', {
+        body: JSON.stringify({ scopeId: ORG_ID, userId: ownOrgMemberUserId, status: membership.status(), existingTeamMembershipRetained }),
+        contentType: 'application/json',
+      })
+    }
+    if (ownOrgInviteId) {
+      const invite = await api.delete(`/api/v1/organizations/${orgSlug}/invite-tokens/${ownOrgInviteId}`, { headers: fixtureHeaders })
+      expect(invite.status()).toBe(204)
+    }
     if (attachmentId) {
       const attachment = await api.delete(`/api/v1/bulletin/attachments/${attachmentId}`, { headers: fixtureHeaders })
       expect([204, 404]).toContain(attachment.status())
