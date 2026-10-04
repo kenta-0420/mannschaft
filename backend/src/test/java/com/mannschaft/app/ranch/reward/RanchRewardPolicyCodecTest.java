@@ -73,4 +73,11 @@ class RanchRewardPolicyCodecTest {
                 "{\"globalCap\":100,\"sources\":{}}", encoded.sha256(), json))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void countLimitOutsidePublishedIntContractIsRejectedBeforeEncoding() {
+        assertThatThrownBy(() -> new RanchRewardPolicySnapshot.SourceRule(true, 1,
+                (long) Integer.MAX_VALUE + 1))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

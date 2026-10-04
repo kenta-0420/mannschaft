@@ -53,7 +53,7 @@ public record RanchRewardPolicySnapshot(UUID policyId, long versionNumber,
 
     public record SourceRule(boolean enabled, long amountPoints, long countLimit) {
         public SourceRule {
-            if (amountPoints <= 0 || countLimit <= 0) {
+            if (amountPoints <= 0 || countLimit <= 0 || countLimit > Integer.MAX_VALUE) {
                 throw new IllegalArgumentException("報酬量と件数上限は正である必要があります");
             }
         }
