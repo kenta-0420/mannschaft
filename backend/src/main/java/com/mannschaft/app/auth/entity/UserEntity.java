@@ -218,6 +218,7 @@ public class UserEntity extends BaseEntity {
 
     /** 出生プロフィールの確認世代。氏名・カナ・生年月日の変更時だけ更新する。 */
     @Column(name = "birth_profile_version", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
     @Builder.Default
     private long birthProfileVersion = 0L;
 

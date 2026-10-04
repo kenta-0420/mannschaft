@@ -9,6 +9,7 @@ import com.mannschaft.app.ranch.repository.RanchInventoryRepository;
 import com.mannschaft.app.ranch.repository.RanchCollectibleCatalogRepository;
 import com.mannschaft.app.ranch.repository.RanchRoomPlacementRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -39,17 +40,23 @@ public class RanchInventoryQueryReader {
                 ? null : cursors.decodeInventory(userId, cursor);
         List<RanchInventoryEntity> rows = inventory.pageForUser(userId,
                 start == null ? null : start.occurredAt(),
-                start == null ? null : start.id(), limit + 1);
+                start == null ? null : start.id(), PageRequest.of(0, limit + 1));
         boolean hasNext = rows.size() > limit;
         List<RanchInventoryEntity> page = hasNext ? rows.subList(0, limit) : rows;
         Map<UUID, String> placed = placements.findByUserIdOrderBySlotKey(userId).stream()
                 .filter(slot -> slot.getInventoryId() != null)
                 .collect(Collectors.toMap(slot -> slot.getInventoryId(),
                         slot -> slot.getSlotKey(), (first, second) -> first));
+        var keys = page.stream().map(RanchInventoryEntity::getCollectibleKey).distinct().toList();
+        var catalog = collectibles.findAllById(keys).stream()
+                .collect(Collectors.toMap(approved -> approved.getCollectibleKey(),
+                        approved -> approved));
         List<RanchInventoryItem> data = page.stream().map(item -> {
-            var approved = collectibles.findById(item.getCollectibleKey()).orElseThrow(() ->
-                    new BusinessException(RanchErrorCode.RANCH_008,
-                            HttpStatus.INTERNAL_SERVER_ERROR));
+            var approved = catalog.get(item.getCollectibleKey());
+            if (approved == null) {
+                throw new BusinessException(RanchErrorCode.RANCH_008,
+                        HttpStatus.INTERNAL_SERVER_ERROR);
+            }
             return new RanchInventoryItem(item.getId(), item.getCollectibleKey(),
                     approved.getLabelKey(), approved.getAssetKey(), item.getAcquisitionKind(),
                     item.getAwardedAt(), item.isRevoked(), placed.get(item.getId()));

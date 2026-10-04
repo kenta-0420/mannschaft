@@ -7,6 +7,7 @@ import com.mannschaft.app.ranch.dto.RanchRecord;
 import com.mannschaft.app.ranch.entity.RanchPointLedgerEntity;
 import com.mannschaft.app.ranch.repository.RanchPointLedgerRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -32,7 +33,7 @@ public class RanchRecordQueryReader {
                 ? null : cursors.decode(userId, cursor);
         List<RanchPointLedgerEntity> rows = ledger.pageForUser(userId,
                 start == null ? null : start.occurredAt(),
-                start == null ? null : start.id(), limit + 1);
+                start == null ? null : start.id(), PageRequest.of(0, limit + 1));
         boolean hasNext = rows.size() > limit;
         List<RanchPointLedgerEntity> page = hasNext ? rows.subList(0, limit) : rows;
         List<RanchRecord> data = page.stream().map(this::safeRecord).toList();

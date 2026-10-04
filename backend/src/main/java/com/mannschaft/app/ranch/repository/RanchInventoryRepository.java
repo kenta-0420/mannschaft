@@ -1,6 +1,7 @@
 package com.mannschaft.app.ranch.repository;
 
 import com.mannschaft.app.ranch.entity.RanchInventoryEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,12 +27,12 @@ public interface RanchInventoryRepository extends JpaRepository<RanchInventoryEn
     List<String> ownedShopSkuKeys(@Param("userId") Long userId,
                                   @Param("skuKeys") Collection<String> skuKeys);
 
-    @Query(value = "SELECT * FROM ranch_collectible_inventory WHERE user_id = :userId "
-            + "AND (:cursorAt IS NULL OR awarded_at < :cursorAt "
-            + "OR (awarded_at = :cursorAt AND id < :cursorId)) "
-            + "ORDER BY awarded_at DESC, id DESC LIMIT :limitPlusOne", nativeQuery = true)
+    @Query("SELECT item FROM RanchInventoryEntity item WHERE item.userId = :userId "
+            + "AND (:cursorAt IS NULL OR item.awardedAt < :cursorAt "
+            + "OR (item.awardedAt = :cursorAt AND item.id < :cursorId)) "
+            + "ORDER BY item.awardedAt DESC, item.id DESC")
     List<RanchInventoryEntity> pageForUser(@Param("userId") Long userId,
                                             @Param("cursorAt") Instant cursorAt,
                                             @Param("cursorId") UUID cursorId,
-                                            @Param("limitPlusOne") int limitPlusOne);
+                                            Pageable page);
 }

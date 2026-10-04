@@ -16,6 +16,16 @@ public class BirthProfilePurgeService {
 
     @Transactional(readOnly=false,propagation=Propagation.REQUIRES_NEW)
     public void purgeUser(Long userId) {
+        deleteOwnedHistory(userId);
+    }
+
+    /** 既存auth完全削除TXに参加し、auth完了を独立listenerと競争させない。 */
+    @Transactional(readOnly=false,propagation=Propagation.MANDATORY)
+    public void purgeInAuthTransaction(Long userId) {
+        deleteOwnedHistory(userId);
+    }
+
+    private void deleteOwnedHistory(Long userId) {
         if(userId==null || userId<=0)throw new IllegalArgumentException("削除対象の本人IDが不正です");
         commands.deleteByUserId(userId);
         confirmations.deleteByUserId(userId);
