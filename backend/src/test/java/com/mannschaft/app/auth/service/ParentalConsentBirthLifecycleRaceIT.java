@@ -138,7 +138,7 @@ class ParentalConsentBirthLifecycleRaceIT extends AbstractMySqlIntegrationTest {
                 UserEntity child=users.findByIdForUpdateIncludingDeleted(f.child()).orElseThrow();
                 var decision=worker.submit(()->consent.approveParentalConsent(f.token(),f.parent(),"127.0.0.1"));
                 pending.set(decision);BirthProfileLockWaitObserver.awaitUserWait(MYSQL,f.child(),decision);
-                child.requestDeletion(0);users.save(child);
+                child.requestDeletion();users.save(child);
             });
             try {pending.get().get(10,TimeUnit.SECONDS);fail("論理削除後の同意承認が拒否されませんでした");}
             catch(ExecutionException failure) {
