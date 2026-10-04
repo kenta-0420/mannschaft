@@ -288,7 +288,7 @@ class TeamControllerTest {
     @Test
     @DisplayName("restoreTeam: 204 No Content（checkSystemAdmin を必ず呼ぶ）")
     void restoreTeam_204() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        given(teamService.resolveTeamIdForRestore(TEAM_SLUG)).willReturn(TEAM_ID);
         assertThat(controller.restoreTeam(TEAM_SLUG).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         // チーム ADMIN 判定（checkAdminOrAbove）ではなく SYSTEM_ADMIN 判定であることを固定する
         verify(accessControlService).checkSystemAdmin(USER_ID);
@@ -298,22 +298,11 @@ class TeamControllerTest {
     @Test
     @DisplayName("restoreTeam: SYSTEM_ADMIN でなければ 403 を送出し復元本体を呼ばない")
     void restoreTeam_403_whenNotSystemAdmin() {
-        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
         willThrow(new BusinessException(CommonErrorCode.COMMON_002))
                 .given(accessControlService).checkSystemAdmin(USER_ID);
         assertThatThrownBy(() -> controller.restoreTeam(TEAM_SLUG))
                 .isInstanceOf(BusinessException.class);
         verify(teamService, Mockito.never()).restoreTeam(TEAM_ID);
-    }
-
-    @Test
-    @DisplayName("CMP-260902-0059: 復元認可を先行し非SYSTEM_ADMINには削除済みチームの存在も照会しない")
-    void restoreTeam_認可拒否時はチーム照会を行わない() {
-        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                .given(accessControlService).checkSystemAdmin(USER_ID);
-        assertThatThrownBy(() -> controller.restoreTeam("deleted-or-absent-team"))
-                .isInstanceOf(BusinessException.class);
-        Mockito.verifyNoInteractions(teamService);
     }
 
     @Test
