@@ -58,6 +58,7 @@ class TeamFavoriteResolverTest {
     void resolveAll_resolvesIconUrl() {
         TeamEntity team = TeamEntity.builder()
                 .name("東京ベアーズ")
+                .slug("tokyo-bears")
                 .iconUrl("team/1/icon/raw.png")
                 .build();
         ReflectionTestUtils.setField(team, "id", 1L);
@@ -74,6 +75,7 @@ class TeamFavoriteResolverTest {
 
         FavoriteEntityMetaDto meta = result.get("1");
         assertThat(meta).isNotNull();
+        assertThat(meta.pageUrl()).isEqualTo("/teams/tokyo-bears");
         assertThat(meta.entityType()).isEqualTo(FavoriteEntityType.TEAM);
         assertThat(meta.iconUrl()).isEqualTo("https://cdn.example/signed/team-1");
         assertThat(meta.iconUrl()).isNotEqualTo("team/1/icon/raw.png");
