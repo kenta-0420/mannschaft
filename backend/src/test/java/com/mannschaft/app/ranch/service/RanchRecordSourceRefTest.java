@@ -1,0 +1,39 @@
+package com.mannschaft.app.ranch.service;
+
+import com.mannschaft.app.ranch.entity.RanchRewardDecisionEntity;
+import com.mannschaft.app.ranch.reward.RanchRewardSourceType;
+import com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope;
+import org.junit.jupiter.api.Test;
+
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/** 台帳表示に使うIDは保存済み本人決定からのみ復元し、壊れた値ではリンク候補を作らない。 */
+class RanchRecordSourceRefTest {
+    @Test
+    void typedSavedKeyRestoresOnlyItsCanonicalSourceIdentity() {
+        var saved = row(RanchRewardSourceType.BLOG_FIRST_PUBLISH, 21L,
+                "BLOG_FIRST_PUBLISH:LONG:37:USER:21", null);
+        assertThat(RanchRecordSourceRef.from(saved)).contains(new RanchRecordSourceRef(
+                RanchRewardSourceType.BLOG_FIRST_PUBLISH, RanchRewardEnvelope.IdType.LONG, "37"));
+    }
+
+    @Test
+    void mismatchedOwnerWeekAndInjectedDelimiterCannotBecomeSourceRef() {
+        assertThat(RanchRecordSourceRef.from(row(RanchRewardSourceType.BLOG_FIRST_PUBLISH, 21L,
+                "BLOG_FIRST_PUBLISH:LONG:37:USER:22", null))).isEmpty();
+        assertThat(RanchRecordSourceRef.from(row(RanchRewardSourceType.BLOG_FIRST_PUBLISH, 21L,
+                "BLOG_FIRST_PUBLISH:LONG:37:ADMIN:21", null))).isEmpty();
+        assertThat(RanchRecordSourceRef.from(row(RanchRewardSourceType.PERSONAL_RECALL_COMPLETE, 21L,
+                "PERSONAL_RECALL_COMPLETE:UUID:550e8400-e29b-41d4-a716-446655440000:USER:21:WEEK:2026-10-12",
+                LocalDate.parse("2026-10-05")))).isEmpty();
+    }
+
+    private static RanchRewardDecisionEntity row(RanchRewardSourceType source, Long userId,
+                                                  String key, LocalDate week) {
+        return RanchRewardDecisionEntity.builder().sourceType(source).userId(userId)
+                .canonicalKey(key.getBytes(StandardCharsets.US_ASCII)).rewardWeek(week).build();
+    }
+}
