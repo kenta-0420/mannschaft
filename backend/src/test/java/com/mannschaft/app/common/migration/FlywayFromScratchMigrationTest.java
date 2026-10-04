@@ -1,5 +1,6 @@
 package com.mannschaft.app.common.migration;
 
+import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.circulation.RecipientStatus;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
 import com.mannschaft.app.committee.entity.CommitteeDistributionLogEntity;
@@ -875,6 +876,175 @@ class FlywayFromScratchMigrationTest {
 
     private static Connection connect() throws SQLException {
         return DriverManager.getConnection(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+    }
+
+    @Test
+    @Order(23)
+    @DisplayName("CMP1243本人設定38親の最終owner索引とusers FK撤廃、4子の同domain CASCADEを確認する")
+    void personalSettingsOwnershipAndChildForeignKeys() throws SQLException {
+        migrateFromScratch();
+        List<String> userOwnedTables = List.of(
+                "dashboard_widget_settings", "dashboard_scope_tab_order", "chat_contact_folders", "my_scope_folders",
+                "user_calendar_sync_settings", "user_quick_memo_settings", "notification_settings", "user_interest_tags",
+                "shared_file_stars", "contact_request_blocks", "user_action_memo_settings", "action_memo_tags",
+                "point_card_user_settings", "point_card_groups", "timeline_bookmarks", "search_saved_queries",
+                "appearance_settings", "user_nav_settings", "gamification_user_settings", "user_reflection_settings",
+                "personal_timetable_settings", "user_blog_settings", "chat_message_bookmarks", "kb_page_favorites",
+                "user_mutes", "user_favorites", "scope_member_calendar_settings", "notification_preferences",
+                "notification_type_preferences", "push_subscriptions", "user_calendar_layer_settings",
+                "user_weather_locations", "inbox_item_states", "notification_labels", "inbox_label_links",
+                "timetable_slot_user_note_fields", "seal_scope_defaults");
+        try (Connection conn = connect()) {
+            List<String> absentOwnerIndexes = new ArrayList<>();
+            List<String> unexpectedUsersForeignKeys = new ArrayList<>();
+            for (String table : userOwnedTables) {
+                if (!hasLeadingIndex(conn, table, "user_id")) {
+                    absentOwnerIndexes.add(table + ".user_id");
+                }
+                collectUsersForeignKeys(conn, table, unexpectedUsersForeignKeys);
+            }
+            for (String column : List.of("blocker_id", "blocked_id")) {
+                if (!hasLeadingIndex(conn, "user_blocks", column)) {
+                    absentOwnerIndexes.add("user_blocks." + column);
+                }
+            }
+            if (!hasLeadingIndex(conn, "contact_request_blocks", "blocked_id")) {
+                absentOwnerIndexes.add("contact_request_blocks.blocked_id");
+            }
+            collectUsersForeignKeys(conn, "user_blocks", unexpectedUsersForeignKeys);
+            assertThat(absentOwnerIndexes).as("本人または削除対象の関係をowner列から探索できる最終索引").isEmpty();
+            assertThat(unexpectedUsersForeignKeys).as("users実DELETEでアプリ強処理の欠落が隠れない最終schema").isEmpty();
+            assertCascade(conn, "chat_contact_folder_items", "folder_id", "chat_contact_folders");
+            assertCascade(conn, "my_scope_folder_items", "folder_id", "my_scope_folders");
+            assertCascade(conn, "action_memo_tag_links", "tag_id", "action_memo_tags");
+            assertCascade(conn, "point_card_group_items", "group_id", "point_card_groups");
+        }
+    }
+
+    @Test
+    @Order(24)
+    @DisplayName("CMP1243実Flywayでuser実DELETE後の親残存とowner親DELETEによる4子0・別owner保持を実seedで証明する")
+    void personalSettingsOwnerDeleteCascadesOnlyOwnedChildren() throws SQLException {
+        migrateFromScratch();
+        try (Connection conn = connect()) {
+            conn.setAutoCommit(false);
+            try {
+                PersonalSettingCascadeFixture target = seedSettingCascadeFixture(conn);
+                PersonalSettingCascadeFixture other = seedSettingCascadeFixture(conn);
+                try (Statement st = conn.createStatement()) {
+                    st.executeUpdate("DELETE FROM users WHERE id = " + target.userId());
+                }
+                assertThat(readCascadeCounts(conn, target).values()).as("user本体DELETEだけでは4親・4子は消えない")
+                        .containsOnly(1L);
+                try (Statement st = conn.createStatement()) {
+                    // owner-domain DELETEが発行された場合の同domain FK金型だけを証明する。
+                    // 実service/AFTER_COMMITとの接続はPersonalSettingsAccountPurgeITが担う。
+                    for (String table : List.of("chat_contact_folders", "my_scope_folders", "action_memo_tags", "point_card_groups")) {
+                        st.executeUpdate("DELETE FROM " + table + " WHERE user_id = " + target.userId());
+                    }
+                }
+                assertThat(readCascadeCounts(conn, target).values()).as("本人の4親DELETE後、論理親の子も含めて0")
+                        .containsOnly(0L);
+                assertThat(readCascadeCounts(conn, other).values()).as("別ownerの4親・4子は保持").containsOnly(1L);
+            } finally {
+                // 本試練のseed/DELETEだけをrollbackし、同containerの他試練fixtureを変更しない。
+                conn.rollback();
+            }
+        }
+    }
+
+    private static boolean hasLeadingIndex(Connection conn, String table, String column) throws SQLException {
+        try (ResultSet indexes = conn.getMetaData().getIndexInfo(conn.getCatalog(), null, table, false, false)) {
+            while (indexes.next()) {
+                if (indexes.getInt("ORDINAL_POSITION") == 1 && column.equalsIgnoreCase(indexes.getString("COLUMN_NAME"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static void collectUsersForeignKeys(Connection conn, String table, List<String> foreignKeys) throws SQLException {
+        try (ResultSet keys = conn.getMetaData().getImportedKeys(conn.getCatalog(), null, table)) {
+            while (keys.next()) {
+                if ("users".equalsIgnoreCase(keys.getString("PKTABLE_NAME"))) {
+                    foreignKeys.add(table + "." + keys.getString("FKCOLUMN_NAME"));
+                }
+            }
+        }
+    }
+
+    private static void assertCascade(Connection conn, String child, String column, String parent) throws SQLException {
+        List<String> actual = new ArrayList<>();
+        try (ResultSet keys = conn.getMetaData().getImportedKeys(conn.getCatalog(), null, child)) {
+            while (keys.next()) {
+                if (column.equalsIgnoreCase(keys.getString("FKCOLUMN_NAME"))) {
+                    actual.add(keys.getString("PKTABLE_NAME") + "/" + keys.getShort("DELETE_RULE"));
+                }
+            }
+        }
+        assertThat(actual).as("%s.%s の最終FK", child, column)
+                .containsExactly(parent + "/" + DatabaseMetaData.importedKeyCascade);
+        assertThat(hasLeadingIndex(conn, child, column)).as("%s.%s のCASCADE探索索引", child, column).isTrue();
+    }
+
+    private record PersonalSettingCascadeFixture(long userId, long chatFolder, long scopeFolder, long tag, String group) {}
+
+    private static PersonalSettingCascadeFixture seedSettingCascadeFixture(Connection conn) throws SQLException {
+        long owner = insertGeneratedKey(conn, "INSERT INTO users (email,last_name,first_name,display_name,status,created_at,updated_at)"
+                + " VALUES ('cmp1243-" + UuidV7.generate() + "@example.invalid','試練','本人','本人','ACTIVE',NOW(),NOW())");
+        long chat = insertGeneratedKey(conn, "INSERT INTO chat_contact_folders (user_id,name) VALUES (" + owner + ",'私有分類')");
+        long scope = insertGeneratedKey(conn, "INSERT INTO my_scope_folders (user_id,scope_type,name,deleted_at) VALUES ("
+                + owner + ",'TEAM','論理削除済の私有分類',NOW())");
+        long tag = insertGeneratedKey(conn, "INSERT INTO action_memo_tags (user_id,name,deleted_at) VALUES ("
+                + owner + ",'論理削除済の私有タグ',NOW())");
+        long memo = insertGeneratedKey(conn, "INSERT INTO action_memos (user_id,memo_date,content) VALUES ("
+                + owner + ",CURRENT_DATE(),'CASCADE試練の本文')");
+        String group = UuidV7.generate().toString();
+        String card = UuidV7.generate().toString();
+        try (Statement st = conn.createStatement()) {
+            st.executeUpdate("INSERT INTO point_card_groups (id,user_id,name) VALUES ('" + group + "'," + owner + ",'私有分類')");
+            st.executeUpdate("INSERT INTO user_point_cards (id,user_id,display_name,barcode_value) VALUES ('"
+                    + card + "'," + owner + ",X'01',X'02')");
+            st.executeUpdate("INSERT INTO chat_contact_folder_items (folder_id,item_type,item_id) VALUES (" + chat + ",'CONTACT'," + owner + ")");
+            st.executeUpdate("INSERT INTO my_scope_folder_items (folder_id,scope_id) VALUES (" + scope + ",123)");
+            st.executeUpdate("INSERT INTO action_memo_tag_links (memo_id,tag_id) VALUES (" + memo + "," + tag + ")");
+            st.executeUpdate("INSERT INTO point_card_group_items (id,group_id,card_id) VALUES ('"
+                    + UuidV7.generate() + "','" + group + "','" + card + "')");
+        }
+        return new PersonalSettingCascadeFixture(owner, chat, scope, tag, group);
+    }
+
+    private static long insertGeneratedKey(Connection conn, String sql) throws SQLException {
+        try (Statement st = conn.createStatement()) {
+            st.executeUpdate(sql, Statement.RETURN_GENERATED_KEYS);
+            try (ResultSet keys = st.getGeneratedKeys()) {
+                assertThat(keys.next()).as("所有fixtureの採番").isTrue();
+                return keys.getLong(1);
+            }
+        }
+    }
+
+    private static Map<String, Long> readCascadeCounts(Connection conn, PersonalSettingCascadeFixture fixture) throws SQLException {
+        Map<String, String> predicates = Map.of(
+                "chat_contact_folders", "id = " + fixture.chatFolder(),
+                "chat_contact_folder_items", "folder_id = " + fixture.chatFolder(),
+                "my_scope_folders", "id = " + fixture.scopeFolder(),
+                "my_scope_folder_items", "folder_id = " + fixture.scopeFolder(),
+                "action_memo_tags", "id = " + fixture.tag(),
+                "action_memo_tag_links", "tag_id = " + fixture.tag(),
+                "point_card_groups", "id = '" + fixture.group() + "'",
+                "point_card_group_items", "group_id = '" + fixture.group() + "'");
+        Map<String, Long> counts = new HashMap<>();
+        try (Statement st = conn.createStatement()) {
+            for (Map.Entry<String, String> predicate : predicates.entrySet()) {
+                try (ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM " + predicate.getKey() + " WHERE " + predicate.getValue())) {
+                    assertThat(rs.next()).isTrue();
+                    counts.put(predicate.getKey(), rs.getLong(1));
+                }
+            }
+        }
+        return counts;
     }
 
     private static SessionFactory sessionFactory(Class<?> entity) {

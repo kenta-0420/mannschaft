@@ -149,4 +149,9 @@ public interface MyScopeFolderItemRepository extends JpaRepository<MyScopeFolder
     List<Object[]> aggregateFolderUnreadCounts(
             @Param("userId") Long userId,
             @Param("scopeType") String scopeType);
+
+    /** 強匿名化専用。対象利用者の行を論理削除済みも含めて物理削除する。 */
+    @Modifying
+    @Query(value = "DELETE FROM my_scope_folder_items WHERE folder_id IN (SELECT id FROM my_scope_folders WHERE user_id = :userId)", nativeQuery = true)
+    int deleteAllByFolderOwnerIncludingDeleted(@Param("userId") Long userId);
 }
