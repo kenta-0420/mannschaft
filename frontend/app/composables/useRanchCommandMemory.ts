@@ -1,7 +1,7 @@
 // 再送状態はNuxtAppのメモリだけに保持し、本人切替とApp破棄で旧runを無効化する。
 import { ref, shallowRef, watch, type Ref, type ShallowRef } from 'vue'
 import type { RanchCommandSnapshot } from './useRanchCommand'
-export type RanchCommandScope = 'ranch' | 'diagnosis' | 'birth-profile'
+export type RanchCommandScope = 'ranch' | 'diagnosis' | 'birth-profile' | 'reflection-recall'
 export interface RanchCommandRun { snapshot: RanchCommandSnapshot; controller: AbortController }
 export interface RanchCommandState {
  pending: ShallowRef<RanchCommandSnapshot | null>
@@ -21,7 +21,7 @@ function createScope(): RanchCommandState {
 export function createRanchCommandMemory(account: () => number | null): RanchCommandMemory {
  const accountId = ref(account())
  const generation = ref(0)
- const scopes = { ranch: createScope(), diagnosis: createScope(), 'birth-profile': createScope() }
+ const scopes = { ranch: createScope(), diagnosis: createScope(), 'birth-profile': createScope(), 'reflection-recall': createScope() }
  let disposed = false
  function invalidate(value: number | null) {
   const oldRuns = Object.values(scopes).map(state => state.activeRun)

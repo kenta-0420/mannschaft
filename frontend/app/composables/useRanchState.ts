@@ -51,7 +51,7 @@ export function useRanchState() {
    }
   }
  }
- async function act(action: () => Promise<unknown>) {
+ async function act<T>(action: () => Promise<T>) {
   const owner = auth.user?.id
   const runGeneration = generation
   const current = () => owner !== undefined && auth.user?.id === owner && generation === runGeneration

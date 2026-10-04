@@ -424,6 +424,7 @@ export default defineNuxtConfig({
       // 設計書: docs/features/F18_point_card_wallet.md §1.4 / §16 / §17
       // 既定 false（凍結中）。再開時は NUXT_PUBLIC_F18_BALANCE_ENABLED=true で復活可能。
       f18BalanceEnabled: process.env.NUXT_PUBLIC_F18_BALANCE_ENABLED === 'true',
+      ranchDevelopmentVisuals: process.env.NUXT_PUBLIC_RANCH_DEVELOPMENT_VISUALS === 'true',
       // F08.9 P5 継続課金（Stripe.js）公開可能キー。
       // クライアントで `loadStripe(publishableKey)` に渡す。公開鍵は秘匿情報ではない（pk_*）が、
       // 環境（test/live）で切り替えるため値はコミットせず環境変数から注入する。

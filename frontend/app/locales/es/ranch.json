@@ -158,6 +158,11 @@
       "PURCHASE": "Canje de adornos",
       "amounts": "Puntos {points} / Crecimiento {xp} XP",
       "source": "Ver actividad original"
+    },
+    "affinity": {
+      "NEUTRAL": "Conociéndose",
+      "WARM": "Amistad",
+      "CLOSE": "Cercanía"
     }
   }
 }

@@ -158,6 +158,11 @@
       "PURCHASE": "Dekorationstausch",
       "amounts": "Punkte {points} / Wachstum {xp} XP",
       "source": "Ursprüngliche Aktivität ansehen"
+    },
+    "affinity": {
+      "NEUTRAL": "Erstes Kennenlernen",
+      "WARM": "Vertraut",
+      "CLOSE": "Eng verbunden"
     }
   }
 }
