@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { useCookie, useNuxtApp } from '#app'
 import { nextTick } from 'vue'
-import type { Composer } from 'vue-i18n'
+import type { Composer, VueMessageType } from 'vue-i18n'
+import type { LocaleMessage } from '@intlify/core-base'
 import jaCommon from '~/locales/ja/common.json'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
@@ -19,7 +20,7 @@ vi.mock('~/composables/useNotification', () => ({ useNotification: () => notific
 
 const kinds = ['schedules', 'events', 'reservations', 'shifts', 'safetyChecks', 'queues', 'teams', 'organizations', 'users']
 const i18n = () => useNuxtApp().$i18n as unknown as Composer & { setLocale: (locale: string) => Promise<void> }
-const localeCookie = () => useNuxtApp().runWithContext(() => useCookie<string | null>('i18n_locale'))
+const localeCookie = () => useNuxtApp().runWithContext(() => useCookie<string | null | undefined>('i18n_locale'))
 const translated = (key: string, values: Record<string, number> = {}) => i18n().t(key, values)
 function response(count: number) {
   return {
@@ -37,17 +38,17 @@ function response(count: number) {
 
 describe('横断検索の現行件数契約', () => {
   let previousLocale: string
-  let previousMessages: ReturnType<Composer['getLocaleMessage']>
+  let previousMessages: LocaleMessage<VueMessageType>
   let previousLocaleCookie: string | null | undefined
 
   beforeEach(async () => {
     // happy-dom の環境言語に依存せず、正本の日本語を実i18nへ読み込む。スタブは使わない。
     previousLocale = i18n().locale.value
     // 実カタログの非同期mergeが元オブジェクトを更新するため、復元用はJSON正本の値を退避する。
-    previousMessages = JSON.parse(JSON.stringify(i18n().getLocaleMessage('ja')))
-    previousLocaleCookie = localeCookie().value
+    previousMessages = JSON.parse(JSON.stringify(i18n().getLocaleMessage<LocaleMessage<VueMessageType>>('ja')))
+    previousLocaleCookie = (await localeCookie()).value
     await i18n().setLocale('ja')
-    i18n().setLocaleMessage('ja', { ...previousMessages, ...jaCommon })
+    i18n().setLocaleMessage<LocaleMessage<VueMessageType>>('ja', { ...previousMessages, ...jaCommon })
     useAuthStore().user = { id: 700, email: 'unit-search@example.test', fullName: '検索テスト', profileImageUrl: null }
     search.mockReset()
     notification.error.mockClear()
@@ -55,8 +56,9 @@ describe('横断検索の現行件数契約', () => {
 
   afterEach(async () => {
     await i18n().setLocale(previousLocale)
-    i18n().setLocaleMessage('ja', previousMessages)
-    localeCookie().value = previousLocaleCookie
+    i18n().setLocaleMessage<LocaleMessage<VueMessageType>>('ja', previousMessages)
+    const cookie = await localeCookie()
+    cookie.value = previousLocaleCookie
     await nextTick()
   })
 
