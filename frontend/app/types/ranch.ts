@@ -7,13 +7,14 @@ export type Habitat = 'LAND' | 'SEA' | 'AIR'
 export interface DinosaurSummary {
  id: string; speciesKey: string | null; variantKey: string | null; habitat: Habitat | null;
  stage: RanchStage; name: string | null; xp: Decimal; nextStageXp: Decimal | null;
+ affinityBand?: 'NEUTRAL' | 'WARM' | 'CLOSE';
  version: Decimal; namedAt: string | null; speciesCatalogVersion: string | null; egg: { startedAt: string; readyAt: string; crackStage: 'INTACT' | 'SMALL_CRACK' | 'WIDE_CRACK' | 'READY'; hatchReady: boolean; hatchedAt: string | null } | null
 }
 export interface RanchSettings {
  isVisible: boolean; viewMode: 'ROOM'; renderStyle: RenderStyle; motionMode: MotionMode;
  isSoundEnabled: boolean; soundVolume: number; version: Decimal
 }
-export interface RanchSlot { slotKey: 'SHELF_1' | 'SHELF_2' | 'SHELF_3'; inventoryId: string | null; version: Decimal }
+export interface RanchSlot { slotKey: 'SHELF_1' | 'SHELF_2' | 'SHELF_3'; inventoryId: string | null; version: Decimal; decoration?: { collectibleKey: string; labelKey: string; assetKey: string } | null }
 export interface RanchState {
  featureStatus: 'AVAILABLE' | 'UNAVAILABLE'; deliveryPaused: boolean;
  rewardsStatus: 'ENABLED' | 'DISABLED' | 'PAUSED'; shopAvailable: boolean;

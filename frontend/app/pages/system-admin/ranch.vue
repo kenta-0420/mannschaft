@@ -8,4 +8,4 @@ watch(() => auth.user?.id ?? null, id => {
  accountKey.value = id === null ? '' : `${id}:${generation}`
 }, { immediate: true, flush: 'sync' })
 </script>
-<template><RanchPageContent v-if="accountKey" :key="accountKey" /></template>
+<template><RanchAdminContent v-if="accountKey" :key="accountKey" /></template>

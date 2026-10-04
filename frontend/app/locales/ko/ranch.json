@@ -1,5 +1,7 @@
 {
   "ranch": {
+    "status": {"growth":"성장","points":"장식 포인트 잔액","affinity":"친밀함","freeCare":"무료 돌봄 규칙","careAvailable":"공개 중","careStopped":"준비 중 또는 중지 중","careRemaining":"이번 주 무료 돌봄 잔여: {remaining} / {cap} XP","careUsed":"사용: {used} XP / 돌봄 1회 양: {amount} XP","deliveryPaused":"포인트 배송이 일시 중지되었습니다. 무료 돌봄 이용과는 별개입니다.","deliveryActive":"포인트 반영에는 시간이 걸릴 수 있습니다.","pointRemaining":"이번 주 활동 포인트 잔여: {remaining}","personalReference":"개인 회상 참고 횟수: {required} / 완료: {completed}","referenceNotice":"횟수는 참고용입니다. 각 원천의 한도, 중지 및 배송 상태에 따라 전체 금액을 받지 못할 수 있습니다.","reward":{"ENABLED":"활동 포인트가 활성화되었습니다.","DISABLED":"활동 포인트가 미등록 또는 비활성화 상태입니다.","PAUSED":"활동 보상이 중지되었습니다."}},
+    "admin": {"title":"공룡 운영","controls":"이용 제어","care":"무료 돌봄 활성화","shop":"상점 활성화","deliveryPause":"포인트 배송 일시 중지","rewardPause":"발생한 활동의 보상 중지","independent":"무료 돌봄, 교환, 활동 보상, 배송은 각각 독립적입니다.","reason":"사유 코드","saved":"저장했습니다.","health":"활동 원천 배송 상태","pending":"대기 건수","dead":"최종 실패 건수","oldest":"가장 오래된 대기 시간","seconds":"{count}초","refresh":"새로 조회","retrySource":"이 이벤트의 재배송 예약","retryNotice":"재배송 예약이며 포인트 지급 완료를 뜻하지 않습니다. 본문이나 학습 답변을 입력하지 마세요.","sourceLabel":"활동 원천","eventId":"이벤트 ID","RETRY_SCHEDULED":"재배송을 예약했습니다.","ALREADY_TERMINAL":"이 이벤트는 이미 종료 상태입니다.","source":{"ATTENDANCE_RESPONSE":"본인의 출석 응답","TIMELINE_ORIGINAL":"본인의 타임라인 게시물","BLOG_FIRST_PUBLISH":"블로그 최초 공개","PERSONAL_RECALL_COMPLETE":"개인 회상 완료"}},
     "title": "공룡의 방",
     "optional": "시작은 자유입니다. 무료 돌봄만으로도 성체까지 자라며, 돌보지 않아도 잃지 않습니다. 친밀감은 시간이 지나도 줄지 않습니다.",
     "start": "알부터 시작하기",

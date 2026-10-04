@@ -1,6 +1,7 @@
 package com.mannschaft.app.ranch.service;
 
 import com.mannschaft.app.common.BusinessException;
+import org.springframework.http.HttpStatus;
 import com.mannschaft.app.ranch.RanchErrorCode;
 import com.mannschaft.app.ranch.dto.RanchOperationalControlsResponse;
 import com.mannschaft.app.ranch.repository.RanchOperationalControlRepository;
@@ -21,7 +22,7 @@ public class RanchOperationalControlsReader {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public RanchOperationalControlsResponse read(Instant now) {
-        var control = controls.findById(1).orElseThrow(() -> new BusinessException(RanchErrorCode.RANCH_004));
+        var control = controls.findById(1).orElseThrow(() -> new BusinessException(RanchErrorCode.RANCH_004, HttpStatus.SERVICE_UNAVAILABLE));
         return new RanchOperationalControlsResponse(Long.toString(control.getVersion()), control.isCareEnabled(),
                 control.isShopEnabled(), control.isDeliveryPaused(), pauses.includes(now), control.getUpdatedAt());
     }

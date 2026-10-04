@@ -33,6 +33,7 @@ const stateGets: (string | null)[] = []
 const json = (data: unknown) => new Response(JSON.stringify({ data }), { headers: { 'Content-Type': 'application/json' } })
 let responseLost = false
 let delayA = false
+let inventoryFails = false
 let resolveA: (() => void) | null = null
 async function account(id: number) {
  const auth = useAuthStore()
@@ -45,7 +46,7 @@ beforeEach(async () => {
  vi.spyOn(auth, 'clearUserCaches').mockResolvedValue()
  auth.$reset()
  await account(1)
- posts.length = 0; stateGets.length = 0; responseLost = false; delayA = false; resolveA = null
+ posts.length = 0; stateGets.length = 0; responseLost = false; delayA = false; inventoryFails = false; resolveA = null
  external.fetch.mockReset(); external.report.mockReset()
  external.fetch.mockImplementation(async (request, options) => {
   const path = new URL(String(request)).pathname
@@ -55,7 +56,10 @@ beforeEach(async () => {
    stateGets.push(token)
    return json(token === 'Bearer B-access' ? { ...state, owner: { ...state.owner, id: '44444444-4444-4444-8444-444444444444' } } : state)
   }
-  if (method === 'GET' && path === '/api/v1/me/ranch/collectibles') return new Response(JSON.stringify({ data: [], meta: { nextCursor: null, hasNext: false, limit: 20 } }), { headers: { 'Content-Type': 'application/json' } })
+  if (method === 'GET' && path === '/api/v1/me/ranch/collectibles') {
+   if (inventoryFails && posts.length > 0) return new Response(JSON.stringify({ error: { code: 'RANCH_009', message: 'Synthetic read failure' } }), { status: 503, headers: { 'Content-Type': 'application/json' } })
+   return new Response(JSON.stringify({ data: [], meta: { nextCursor: null, hasNext: false, limit: 20 } }), { headers: { 'Content-Type': 'application/json' } })
+  }
   if (method === 'POST' && path === '/api/v1/me/ranch/collectibles/sync') {
    const headers = new Headers(options?.headers)
    const body = JSON.parse(String(options?.body)) as { afterAwardId: string }
@@ -86,6 +90,20 @@ async function click(wrapper: VueWrapper, key: string) {
  await flushPromises()
 }
 describe('本人の明示・有限記念品取込（未実測）', () => {
+ it('保存済み取込ACKを後続GET失敗へ巻き戻さず再読取だけを行う', async () => {
+  inventoryFails = true
+  const wrapper = await mounted()
+  await click(wrapper, 'ranch.decorations.importStart')
+  const result = useNuxtApp().$i18n.t('ranch.decorations.importResult', { processed: 100, imported: 0 })
+  expect(wrapper.text()).toContain(result)
+  expect(wrapper.text()).not.toContain(useNuxtApp().$i18n.t('ranch.command.failed'))
+  expect(posts).toHaveLength(1)
+  inventoryFails = false
+  await wrapper.find('[data-testid="load-error-state"] button').trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).toContain(result)
+  expect(posts).toHaveLength(1)
+ })
  it('初回GETは取込0、続きは本人クリックだけで新keyの100件操作', async () => {
   const wrapper = await mounted()
   expect(posts).toHaveLength(0)
