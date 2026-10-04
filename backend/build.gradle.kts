@@ -138,8 +138,8 @@ dependencies {
 
     // === F09.13 Phase 1-γ Excel生成共通基盤（Apache POI） ===
     // SXSSFWorkbook によるストリーミング生成で大量レコード（〜20,000件）に対応
-    implementation("org.apache.poi:poi:5.2.5")
-    implementation("org.apache.poi:poi-ooxml:5.2.5")
+    implementation("org.apache.poi:poi:5.5.1")
+    implementation("org.apache.poi:poi-ooxml:5.5.1")
 
     // === Markdown → HTML 変換 ===
     implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
@@ -176,7 +176,7 @@ dependencies {
     implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
 
     // === HTML サニタイズ（F02.5 publish-daily extra_comment 用。将来 F04.1 統合検討） ===
-    implementation("org.jsoup:jsoup:1.18.1")
+    implementation("org.jsoup:jsoup:1.22.2")
 
     // === F04.3 PWA Push: VAPID署名 + Web Push HTTP送信 ===
     // web-push-java: VAPID鍵ペア署名・暗号化ペイロード送信の実装ライブラリ
