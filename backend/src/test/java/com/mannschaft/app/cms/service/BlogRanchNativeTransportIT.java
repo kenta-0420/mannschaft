@@ -20,6 +20,7 @@ import com.mannschaft.app.common.ranchsource.api.SourceOutboxAdminRetryRequest;
 import com.mannschaft.app.common.ranchsource.api.SourceOutboxAdminRetryAck;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogRanchTransportRepository;
+import com.mannschaft.app.cms.event.UserBlogSettingsPurgeEventListener;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +49,7 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     @Autowired private BlogRanchOutboxDeliveryService outboxDelivery;
     @Autowired private BlogRanchOutboxAdminService outboxAdmin;
     @Autowired private java.time.Clock clock;
+    @Autowired private UserBlogSettingsPurgeEventListener cmsPurge;
     @Autowired private UserOperationGuard active;
     @Autowired private UserRewardDeliveryGuard delivery;
     @Autowired private BlogRanchNativeWriter nativeWriter;
@@ -58,6 +60,7 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     private Long owner;
     private final List<Long> ownPosts=new ArrayList<>();
     private final List<Long> ownMedia=new ArrayList<>();
+    private final List<Long> ownActors=new ArrayList<>();
 
     @BeforeEach void fixture() {
         owner=users.saveAndFlush(UserEntity.builder().email(UUID.randomUUID()+"@blog-transport.invalid")
@@ -70,6 +73,10 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         for(Long id:ownMedia) media.deleteById(id);
         for(Long id:ownPosts) posts.deleteById(id);
         users.deleteById(owner);
+        for(Long actor:ownActors) {
+            jdbc.update("DELETE FROM blog_ranch_admin_commands WHERE actor_user_id=?",actor);
+            users.deleteById(actor);
+        }
     }
 
     @Test void concurrentSameDigestDifferentPostsKeepsOneWinnerAndBothNativeCommits() throws Exception {
@@ -251,6 +258,30 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         var partial=new SourceOutboxAdminService(List.of(outboxAdmin),clock);
         assertThatThrownBy(partial::health).isInstanceOf(BusinessException.class)
                 .extracting("errorCode.code").isEqualTo("SOURCEOUTBOX_001");
+    }
+    @Test void realCmsPurgeSuppressesLateCaptureAndTokensButKeepsOtherActorTechnicalAck() {
+        var nativeResult=publish("消去対象の本文fixture");assertThat(receive(nativeResult.capture())).isTrue();
+        var event=nativeResult.capture().payload().eventId();var now=deliveryNow();
+        Long actor=users.saveAndFlush(UserEntity.builder().email(UUID.randomUUID()+"@source-admin-fixture.invalid")
+                .lastName("運営").firstName("検証").displayName("運営検証").isSearchable(false)
+                .locale("ja").timezone("UTC").status(UserEntity.UserStatus.ACTIVE).build()).getId();
+        ownActors.add(actor);var key=UUID.randomUUID();var reason=new SourceOutboxAdminRetryRequest("OPERATOR_RETRY");
+        var ack=active.withActiveUser(actor,() -> outboxAdmin.retry(actor,event,key,reason,now));
+        var leased=outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(1),10,30,2)).getFirst();
+        assertThat(cmsPurge.retryPurge(owner)).isTrue();
+        assertThat(count("blog_ranch_outboxes")).isZero();assertThat(count("blog_ranch_witnesses")).isZero();
+        assertThat(receive(nativeResult.capture())).isFalse();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM blog_posts WHERE id=? AND status='PUBLISHED' "
+                +"AND is_ranch_publication_observed=TRUE AND first_published_at IS NULL AND first_published_author_user_id IS NULL",
+                Integer.class,ownPosts.getFirst())).isEqualTo(1);
+        var terminal=new RanchRewardDeliveryOutcome(RanchRewardDeliveryOutcome.Outcome.ACCOUNT_DELETED,null,0);
+        assertThat(outboxDelivery.acknowledge(new SourceOutboxAckRequest(event,leased.leaseToken(),now.plusSeconds(2),terminal))).isFalse();
+        assertThat(outboxDelivery.defer(new SourceOutboxDeferRequest(event,leased.leaseToken(),now.plusSeconds(2),now.plusSeconds(3),10))).isFalse();
+        SourceOutboxAdminRetryAck replay=active.withActiveUser(actor,() -> outboxAdmin.retry(actor,event,key,reason,now.plusSeconds(3)));
+        assertThat(replay).isEqualTo(ack);assertThat(count("blog_ranch_outboxes")).isZero();
+        String saved=jdbc.queryForObject("SELECT result_json FROM blog_ranch_admin_commands WHERE actor_user_id=?",String.class,actor);
+        assertThat(saved).doesNotContain("消去対象の本文fixture","recipientUserId","payload","bodyHash","contentDigest");
+        // 実CMS retryPurgeとtoken/captureを使う源消去証拠。全AccountPurge/管理HTTP認可/並行競合は別途未証明。
     }
     private Long draft(String body) {
         Long id=posts.saveAndFlush(BlogPostEntity.builder().authorId(owner).userId(owner)
