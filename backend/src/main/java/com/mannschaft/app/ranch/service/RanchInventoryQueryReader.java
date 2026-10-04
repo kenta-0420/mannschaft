@@ -47,10 +47,16 @@ public class RanchInventoryQueryReader {
                 .filter(slot -> slot.getInventoryId() != null)
                 .collect(Collectors.toMap(slot -> slot.getInventoryId(),
                         slot -> slot.getSlotKey(), (first, second) -> first));
+        var keys = page.stream().map(RanchInventoryEntity::getCollectibleKey).distinct().toList();
+        var catalog = collectibles.findAllById(keys).stream()
+                .collect(Collectors.toMap(approved -> approved.getCollectibleKey(),
+                        approved -> approved));
         List<RanchInventoryItem> data = page.stream().map(item -> {
-            var approved = collectibles.findById(item.getCollectibleKey()).orElseThrow(() ->
-                    new BusinessException(RanchErrorCode.RANCH_008,
-                            HttpStatus.INTERNAL_SERVER_ERROR));
+            var approved = catalog.get(item.getCollectibleKey());
+            if (approved == null) {
+                throw new BusinessException(RanchErrorCode.RANCH_008,
+                        HttpStatus.INTERNAL_SERVER_ERROR);
+            }
             return new RanchInventoryItem(item.getId(), item.getCollectibleKey(),
                     approved.getLabelKey(), approved.getAssetKey(), item.getAcquisitionKind(),
                     item.getAwardedAt(), item.isRevoked(), placed.get(item.getId()));
