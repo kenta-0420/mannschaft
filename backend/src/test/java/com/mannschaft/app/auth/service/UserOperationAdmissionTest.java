@@ -56,7 +56,15 @@ class UserOperationAdmissionTest {
                     catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new AssertionError("Interrupted holder"); }
                     return "done";
                 })));
-                assertThat(entered.await(5, TimeUnit.SECONDS)).as("Admission holders entered").isTrue();
+                if (!entered.await(5, TimeUnit.SECONDS)) {
+                    for (var holder : holders) if (holder.isDone()) {
+                        try { holder.get(); }
+                        catch (java.util.concurrent.ExecutionException e) {
+                            throw new AssertionError("Admission holder early cause=" + e.getCause().getClass().getName());
+                        }
+                    }
+                    throw new AssertionError("Admission holders did not enter");
+                }
                 AtomicBoolean overflowCalled = new AtomicBoolean();
                 var overflow = workers.submit(() -> {
                     assertThatThrownBy(() -> admission.execute(() -> { overflowCalled.set(true); return null; }))

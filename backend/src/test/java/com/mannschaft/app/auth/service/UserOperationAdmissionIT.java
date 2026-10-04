@@ -122,7 +122,15 @@ class UserOperationAdmissionIT extends AbstractMySqlIntegrationTest {
                     });
                 })));
             }
-            assertThat(entered.await(10, TimeUnit.SECONDS)).as("All real Runner and independent PRIMARY transactions entered").isTrue();
+            if (!entered.await(10, TimeUnit.SECONDS)) {
+                for (var holder : holders) if (holder.isDone()) {
+                    try { holder.get(); }
+                    catch (java.util.concurrent.ExecutionException e) {
+                        throw new AssertionError("Guard holder early cause=" + e.getCause().getClass().getName());
+                    }
+                }
+                throw new AssertionError("Real Runner PRIMARY holders did not enter");
+            }
             assertThat(((HikariDataSource) dataSource).getHikariPoolMXBean().getActiveConnections())
                     .isEqualTo(2 * permitted).isLessThan(poolMaximum);
             AtomicBoolean overflow = new AtomicBoolean();
