@@ -3,7 +3,7 @@ ALTER TABLE users ADD COLUMN birth_profile_version BIGINT NOT NULL DEFAULT 0;
 
 CREATE TABLE diagnosis_sessions (
     id BINARY(16) NOT NULL,
-    user_id BIGINT NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
     status VARCHAR(30) NOT NULL,
     questionnaire_version VARCHAR(80) NOT NULL,
     scoring_version VARCHAR(80) NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE diagnosis_sessions (
 
 CREATE TABLE diagnosis_results (
     id BINARY(16) NOT NULL,
-    user_id BIGINT NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
     method VARCHAR(30) NOT NULL,
     source_profile_revision BIGINT NULL,
     summary_snapshot LONGTEXT NOT NULL,
@@ -41,7 +41,7 @@ CREATE TABLE diagnosis_results (
 
 CREATE TABLE diagnosis_commands (
     id BINARY(16) NOT NULL,
-    user_id BIGINT NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
     command_id BINARY(16) NOT NULL,
     request_hash VARCHAR(64) NOT NULL,
     response_snapshot LONGTEXT NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE diagnosis_commands (
 
 CREATE TABLE birth_profile_confirmations (
     id BINARY(16) NOT NULL,
-    user_id BIGINT NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
     profile_revision BIGINT NOT NULL,
     withdrawal_attempt_id BINARY(16) NULL,
     fingerprint VARCHAR(64) NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE birth_profile_confirmations (
 
 CREATE TABLE birth_profile_commands (
     id BINARY(16) NOT NULL,
-    user_id BIGINT NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
     command_id BINARY(16) NOT NULL,
     request_hash VARCHAR(64) NOT NULL,
     response_snapshot LONGTEXT NOT NULL,
