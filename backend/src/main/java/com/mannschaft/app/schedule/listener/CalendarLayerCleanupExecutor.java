@@ -1,10 +1,14 @@
 package com.mannschaft.app.schedule.listener;
 
+import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import com.mannschaft.app.schedule.repository.UserCalendarLayerSettingRepository;
+import com.mannschaft.app.schedule.repository.UserCalendarSyncSettingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * カレンダーレイヤー設定の後始末を<b>親とは別の新規トランザクションで</b>実行する Bean（F03.19 §10.4）。
@@ -30,6 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CalendarLayerCleanupExecutor {
 
+    private final UserCalendarSyncSettingRepository syncRepository;
+    private final AccountPurgeCompletionService completionService;
+
     private final UserCalendarLayerSettingRepository repository;
 
     /**
@@ -53,5 +60,30 @@ public class CalendarLayerCleanupExecutor {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int deleteByUser(Long userId) {
         return repository.deleteByUserId(userId);
+    }
+
+    /** 30日後の強匿名化。所有データの削除コミット後にのみ完了を記録する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void purgeAccountSettings(Long userId) {
+        purgeSettings(userId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                completionService.markDomainSuccess(userId, "schedule");
+            }
+        });
+    }
+
+    /** 手動再試行。呼出元はこの新規TXのコミット成立後に完了状態を更新する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean retryPurge(Long userId) {
+        purgeSettings(userId);
+        return true;
+    }
+
+    /** 同じ所有domain内の全削除を一つのTXで実行し、途中失敗を伝播させる。 */
+    private void purgeSettings(Long userId) {
+        syncRepository.deleteByUserId(userId);
+        repository.deleteByUserId(userId);
     }
 }
