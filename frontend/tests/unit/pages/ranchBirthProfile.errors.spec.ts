@@ -23,9 +23,9 @@ mockNuxtImport('useGuardianshipSwitchStore', () => () => ({ isActingAs: false })
 mockNuxtImport('useAdminImpersonationStore', () => () => ({ isImpersonating: false }))
 const wrappers: { unmount: () => void }[] = []
 const scopes: ReturnType<typeof effectScope>[] = []
-function profileApi() {
+async function profileApi(): Promise<ReturnType<typeof useBirthProfile>> {
  const scope = effectScope(); scopes.push(scope)
- const api = scope.run(() => useNuxtApp().runWithContext(() => useBirthProfile()))
+ const api = await scope.run(() => useNuxtApp().runWithContext(() => useBirthProfile()))
  if (!api) throw new Error('PROFILE_API_SCOPE_NOT_CREATED')
  return api
 }
@@ -44,7 +44,7 @@ beforeEach(async () => {
  vi.spyOn(auth, 'clearUserCaches').mockResolvedValue()
  await auth.setUser({ id: 1, email: 'synthetic@example.invalid', fullName: 'Synthetic', profileImageUrl: null })
  auth.setTokens('A-access', 'A-refresh')
- profileApi().command.discardRejected()
+ (await profileApi()).command.discardRejected()
  external.fetch.mockReset(); external.report.mockReset(); writes.length = 0
  errorCode = 'BIRTHPROFILE_008'; failFirstWrite = true; reads = 0
  external.fetch.mockImplementation(async (request, options) => {
@@ -58,7 +58,7 @@ beforeEach(async () => {
 })
 afterEach(() => { for (const wrapper of wrappers.splice(0)) wrapper.unmount(); for (const scope of scopes.splice(0)) scope.stop(); vi.restoreAllMocks() })
 async function mountPendingProfile(input: BirthProfile = rawInput) {
- const api = profileApi()
+ const api = await profileApi()
  await expect(api.save(input)).rejects.toThrow()
  expect(api.command.pending.value).not.toBeNull()
  const wrapper = await mountSuspended(BirthProfilePage)
