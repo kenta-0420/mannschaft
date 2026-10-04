@@ -117,17 +117,24 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     fixtureHeaders = { Authorization: `Bearer ${(await auth.json()).data.accessToken}` }
     const team = await api.get(`/api/v1/teams/${TEAM_SLUG}`, { headers: fixtureHeaders })
     expect(team.ok(), `fixture team: ${team.status()}`).toBeTruthy()
-    teamId = (await team.json()).data.id as number
+    // TeamResponse.idはURL slug、Long scope APIにはnumericIdを使う。
+    teamId = (await team.json()).data.numericId
+    expect(Number.isSafeInteger(teamId)).toBe(true)
     expect(teamId).toBeGreaterThan(0)
     // 本specは5件だけ作成し、broadcastのユーザー別レート制限を超えない。
     blog = await createBroadcast('BLOG_POST', blogTitle,
       `${marker}\n\n<script>window.__previewXss=1</script><a href="javascript:window.__previewXss=2">危険リンク</a><img src="invalid-preview-image" onerror="window.__previewXss=3"><iframe src="javascript:window.__previewXss=4"></iframe>\n\n[正規リンク](https://example.com/)\n\nhttps://example.com/${'long-url-'.repeat(60)}\n\n|列1|列2|\n|---|---|\n|${'長い表'.repeat(50)}|表の内容|\n\n${'長文を内部でスクロールします。\n\n'.repeat(100)}`)
     bulletin = await createBroadcast('BULLETIN_THREAD', bulletinTitle,
       `<p>${bulletinMarker}</p><script>window.__bulletinPreviewXss=1</script><img src="invalid-bulletin-image" onerror="window.__bulletinPreviewXss=2"><a href="javascript:window.__bulletinPreviewXss=3">危険リンク</a><iframe src="javascript:window.__bulletinPreviewXss=4"></iframe><a href="https://example.com/">掲示板の正規リンク</a>`)
-    otherTeamSlug = `e2e-preview-other-${stamp}`
+    // CreateTeamRequestのslug制約（3〜30文字）を満たす固有fixture。
+    otherTeamSlug = `preview-other-${stamp}`
     const other = await api.post('/api/v1/teams', { headers: fixtureHeaders, data: { name: `PreviewOther-${stamp}`, slug: otherTeamSlug } })
     expect(other.status(), await other.text()).toBe(201)
-    otherBulletin = await createBroadcast('BULLETIN_THREAD', `PrivateThread-${stamp}`, `PrivateThreadBody-${stamp}`, (await other.json()).data.id)
+    const otherTeam = (await other.json()).data
+    otherTeamSlug = otherTeam.slug
+    expect(Number.isSafeInteger(otherTeam.numericId)).toBe(true)
+    expect(otherTeam.numericId).toBeGreaterThan(0)
+    otherBulletin = await createBroadcast('BULLETIN_THREAD', `PrivateThread-${stamp}`, `PrivateThreadBody-${stamp}`, otherTeam.numericId)
     const attachmentName = `preview-${stamp}.png`
     const presign = await api.post('/api/v1/bulletin/attachments/upload-url', { headers: fixtureHeaders, data: {
       targetType: 'THREAD', targetId: otherBulletin.contentId, fileName: attachmentName, contentType: 'image/png', fileSize: PNG_BYTES.length,
