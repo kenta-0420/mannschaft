@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "frozenV1ManifestSha256": "D63F06EC09A0E10E822950D7A0BAB3B299A95CA0272B1E11CFFD25CA0D0060CE",
+  "v1Retained": true,
+  "cacheRepeat": {
+    "step1": {"businessActualCases": 1, "markerMustExist": true},
+    "step2": {
+      "archActualCases": 1,
+      "guardActualCases": 2,
+      "businessExecuted": "test outcomeがEXECUTEDの場合のみXML1とmarker timestamp更新を新実行として確認",
+      "businessCachedOrUpToDate": "残存/復元XMLは新実行へ数えない。marker前後statとtask outcomeを保存しactualBusinessCasesをnullにする"
+    }
+  },
+  "note": "v1 cache-repeat businessCases1の各回新実行要求は撤回。v1は初回不完全計画原本として保持しv2規範を優先"
+}
