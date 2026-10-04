@@ -4,6 +4,7 @@ import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
 import com.mannschaft.app.gdpr.entity.GdprS3PurgeFailureEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -94,6 +95,13 @@ class GdprRetryCountFlywaySchemaIT {
         registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
         registry.add("spring.datasource.username", MYSQL::getUsername);
         registry.add("spring.datasource.password", MYSQL::getPassword);
+    }
+
+    @AfterAll
+    static void stopOwnedMySql() {
+        if (MYSQL.isRunning()) {
+            MYSQL.stop();
+        }
     }
 
     public static boolean isDockerAvailable() {

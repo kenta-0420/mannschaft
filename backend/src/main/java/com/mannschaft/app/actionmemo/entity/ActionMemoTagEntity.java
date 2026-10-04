@@ -45,7 +45,7 @@ public class ActionMemoTagEntity extends BaseEntity {
     private String color;
 
     @Setter
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer sortOrder = 0;
 
