@@ -256,3 +256,11 @@ V246.20261004191545__create_reflection_ranch_transport.sql は reflection の wi
 新ARは mandatory ACTIVE/users lock→native独立commit→保護中に本文0の有限payload捕捉→auth正常proxy復帰→有界queue→current lifecycle lock→源独立witness/outbox原子受付の順。PURGING/PURGED/ABSENTで新規INSERTしない。CAPTURE/queue/源保存失敗はlossで、本体成功応答を保持する。CURRENT session読取は不変captureとの整合確認に限り、当時資格の再構成をしない。server設定 ranch.source.transport.queue-capacity は0〜1000、既定0は受付停止、元thread同期DBfallbackを行わない。
 
 このcheckpointは耐久受付までの候補製造で、lease/backoff/consumer/ACK、四源health実Bean、実MySQL/HTTP/移行greenはまだ未証明。source transportの原文・私有hashはHTTP/exportに公開しない。reflection本人purgeの同TXでoutbox/witness/admin commandを削除する。耐久受付IT2は原子性/技術payload限定の試験で、fixture資格をHTTP時点資格の証明へ流用しない。
+
+### ブログnative履歴と保守的cutover（製造済み・未検証）
+
+V242.20261004202135__blog_native_history_and_ranch_transport.sql は既存全記事を履歴不明のHISTORICALとして固定する。新記事のpublication_history_knownのみnative作成時にtrueとなり、ranch_publication_observedは公開flush後に単調trueを保つ。撤回、同PersistenceContextの次TX、再公開で履歴を消さない。early flush後同TX撤回は保守的な喪失を許容し、初公開を再分類しない。
+
+初公開metadataはsource own current-lockでbefore-firstと最終PUBLISHEDを照合し、本人ACTIVE保護を実証したnative境界からのみ固定する。Entityメソッド単独、配送時の現在status、witness不在は資格証拠ではない。公開撤回でmetadataを消さない。既存CMS公開/予約/審査の意味と既イベントを保つ。
+
+同migrationのblog_ranch_witnesses/outboxes/admin_commandsは本文を持たないsource own transport表で、BIGINT UNSIGNEDのuser参照、DATETIME(6)、utf8mb4_0900_ai_ci、他domain FKなしとする。このcheckpointではnative履歴のみ接続、資格保護/公開candidate/AC67原子勝者/consumer lease・ACK/管理health・retryの実接続と実MySQL greenは未完成である。
