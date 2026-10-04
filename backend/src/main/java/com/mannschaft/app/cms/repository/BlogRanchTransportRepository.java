@@ -55,6 +55,9 @@ public class BlogRanchTransportRepository {
         jdbc.update("DELETE FROM blog_ranch_outboxes WHERE recipient_user_id=?",userId);
         jdbc.update("DELETE FROM blog_ranch_witnesses WHERE recipient_user_id=?",userId);
         jdbc.update("DELETE FROM blog_ranch_admin_commands WHERE actor_user_id=?",userId);
+        // 共同記事本体と単調observedを残し、消去した本人との私有資格関連だけを除く。
+        jdbc.update("UPDATE blog_posts SET first_published_at=NULL,first_published_author_user_id=NULL "
+                +"WHERE first_published_author_user_id=?",userId);
     }
     private static byte[] bytes(UUID id) { return ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array(); }
 }
