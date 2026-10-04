@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { useNuxtApp } from '#app'
+import type { Composer } from 'vue-i18n'
+import jaCommon from '~/locales/ja/common.json'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import SearchPage from '~/pages/search/index.vue'
@@ -13,7 +16,8 @@ vi.mock('~/composables/useSearchApi', () => ({ useSearchApi: () => ({ search }) 
 vi.mock('~/composables/useNotification', () => ({ useNotification: () => notification }))
 
 const kinds = ['schedules', 'events', 'reservations', 'shifts', 'safetyChecks', 'queues', 'teams', 'organizations', 'users']
-const labels = ['予定', 'イベント', '予約', 'シフト', '安否確認', '順番待ち', 'チーム', '組織', 'ユーザー']
+const i18n = () => useNuxtApp().$i18n as unknown as Composer
+const translated = (key: string, values: Record<string, number> = {}) => i18n().t(key, values)
 function response(count: number) {
   return {
     data: {
@@ -29,18 +33,31 @@ function response(count: number) {
 }
 
 describe('横断検索の現行件数契約', () => {
+  let previousLocale: string
+  let previousMessages: ReturnType<Composer['getLocaleMessage']>
+
   beforeEach(() => {
+    // happy-dom の環境言語に依存せず、正本の日本語を実i18nへ読み込む。スタブは使わない。
+    previousLocale = i18n().locale.value
+    previousMessages = i18n().getLocaleMessage('ja')
+    i18n().setLocaleMessage('ja', { ...previousMessages, ...jaCommon })
+    i18n().locale.value = 'ja'
     useAuthStore().user = { id: 700, email: 'unit-search@example.test', fullName: '検索テスト', profileImageUrl: null }
     search.mockReset()
     notification.error.mockClear()
   })
 
+  afterEach(() => {
+    i18n().setLocaleMessage('ja', previousMessages)
+    i18n().locale.value = previousLocale
+  })
+
   async function submit() {
     const wrapper = await mountSuspended(SearchPage, { route: '/search' })
     await wrapper.find('input').setValue('native0700')
-    const button = wrapper.findAll('button').find(item => item.text() === '検索')
-    expect(button).toBeDefined()
-    await button!.trigger('click')
+    expect(wrapper.find('form').exists()).toBe(true)
+    expect(wrapper.findAll('button').map(button => button.text())).toContain(translated('button.search'))
+    await wrapper.find('form').trigger('submit')
     await flushPromises()
     return wrapper
   }
@@ -49,17 +66,21 @@ describe('横断検索の現行件数契約', () => {
     search.mockResolvedValue(response(11))
     const wrapper = await submit()
     for (let index = 0; index < kinds.length; index++) {
-      expect(wrapper.text()).toContain(`${labels[index]} (11)`)
+      expect(wrapper.text()).toContain(`${translated(`globalSearch.kinds.${kinds[index]}`)} (11)`)
       expect(wrapper.text()).toContain(`${kinds[index]}-native0700-10`)
       expect(wrapper.text()).not.toContain(`${kinds[index]}-native0700-11`)
     }
+    expect(translated('globalSearch.kinds.schedules')).toBe('予定')
+    expect(wrapper.findAll('li')).toHaveLength(90)
+    expect(wrapper.text()).toContain(`${translated('globalSearch.all')} (99)`)
+    expect(wrapper.findAll('p').filter(item => item.text() === translated('globalSearch.showing', { shown: 10, total: 11 }))).toHaveLength(9)
     expect(notification.error).not.toHaveBeenCalled()
   })
 
   it('総数0の成功応答は空状態で表示する', async () => {
     search.mockResolvedValue(response(0))
     const wrapper = await submit()
-    expect(wrapper.text()).toContain('検索結果がありません')
+    expect(wrapper.text()).toContain(translated('globalSearch.empty'))
     expect(wrapper.find('[data-testid="load-error-state"]').exists()).toBe(false)
     expect(notification.error).not.toHaveBeenCalled()
   })
@@ -68,10 +89,14 @@ describe('横断検索の現行件数契約', () => {
     search.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(response(11))
     const wrapper = await submit()
     expect(wrapper.find('[data-testid="load-error-state"]').exists()).toBe(true)
-    expect(wrapper.text()).not.toContain('検索結果がありません')
-    await wrapper.find('[data-testid="load-error-state"] button').trigger('click')
+    expect(wrapper.text()).not.toContain(translated('globalSearch.empty'))
+    const retry = wrapper.find('[data-testid="load-error-state-retry"]')
+    expect(retry.text()).toBe(translated('loadErrorState.retry'))
+    await retry.trigger('click')
     await flushPromises()
-    expect(wrapper.text()).toContain('予定 (11)')
+    expect(wrapper.text()).toContain(`${translated('globalSearch.kinds.schedules')} (11)`)
     expect(search).toHaveBeenCalledTimes(2)
+    expect(search).toHaveBeenNthCalledWith(1, { q: 'native0700' })
+    expect(search).toHaveBeenNthCalledWith(2, { q: 'native0700' })
   })
 })
