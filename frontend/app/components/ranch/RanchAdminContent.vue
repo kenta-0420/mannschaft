@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RanchOperationalControls, RanchRewardSourceType, RanchSourceHealth, RanchSourceRetryAck } from '~/types/ranch-admin'
+import type { RanchCareRulePublicationRequest, RanchOperationalControls, RanchPolicyPublicationRequest, RanchPublicationAck, RanchRewardSourceType, RanchSourceHealth, RanchSourceRetryAck } from '~/types/ranch-admin'
 
 const { t } = useI18n()
 const api = useRanchAdminApi()
@@ -14,6 +14,7 @@ const reason = ref('')
 const eventId = ref('')
 const retryReason = ref('')
 const retryAck = ref<RanchSourceRetryAck | null>(null)
+const publication = ref<RanchPublicationAck<RanchCareRulePublicationRequest | RanchPolicyPublicationRequest> | null>(null)
 const sources: RanchRewardSourceType[] = ['ATTENDANCE_RESPONSE', 'TIMELINE_ORIGINAL', 'BLOG_FIRST_PUBLISH', 'PERSONAL_RECALL_COMPLETE']
 const retrySource = ref<RanchRewardSourceType>('ATTENDANCE_RESPONSE')
 const busy = computed(() => api.command.running.value || !!api.command.pending.value)
@@ -56,6 +57,7 @@ async function retryUnknownCommand() {
   const saved = await api.retryPending()
   if (!api.isCurrent()) return
   if (pending.path.endsWith('/operational-controls')) controls.value = saved as RanchOperationalControls
+  else if (pending.path.endsWith('/care-rules') || pending.path.endsWith('/policies')) publication.value = saved as RanchPublicationAck<RanchCareRulePublicationRequest | RanchPolicyPublicationRequest>
   else if (pending.path.includes('/outboxes/')) {
    retryAck.value = saved as RanchSourceRetryAck
    message.value = t(`ranch.admin.${retryAck.value.disposition}`)
@@ -86,6 +88,8 @@ onMounted(() => { void loadControls(); void loadHealth() })
     </fieldset>
    </form>
   </section>
+  <RanchAdminPublications @saved="publication = $event" />
+  <p v-if="publication" role="status">{{ t('ranch.admin.publicationSaved', { version: publication.version, effectiveAt: publication.effectiveAt }) }}</p>
   <section class="space-y-3 rounded-xl border p-4">
    <h2 class="font-semibold">{{ t('ranch.admin.health') }}</h2>
    <PageLoading v-if="healthLoading" />
