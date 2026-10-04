@@ -120,12 +120,15 @@ export function usePublicApi() {
   async function searchPublicOrganizations(params: {
     keyword?: string
     prefecture?: string
+    /** F01.2.1: true のとき、チームからの加盟申請を受け付けている組織だけに絞る。 */
+    acceptingTeamApplications?: boolean
     page?: number
     size?: number
   }): Promise<SpringPage<PublicOrganizationSearchResult>> {
     const query = new URLSearchParams()
     if (params.keyword) query.set('keyword', params.keyword)
     if (params.prefecture) query.set('prefecture', params.prefecture)
+    if (params.acceptingTeamApplications) query.set('acceptingTeamApplications', 'true')
     if (params.page !== undefined) query.set('page', String(params.page))
     if (params.size !== undefined) query.set('size', String(params.size))
     return api<SpringPage<PublicOrganizationSearchResult>>(

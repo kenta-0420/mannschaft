@@ -62,6 +62,10 @@ const subtitle = computed(() => {
             {{ t('public.organization.homepageLabel') }}
           </a>
         </div>
+        <!-- 操作ボタン置き場（F01.2.1: チームとして加盟を申請） -->
+        <div v-if="$slots.actions" class="mt-3">
+          <slot name="actions" />
+        </div>
       </div>
     </header>
 
