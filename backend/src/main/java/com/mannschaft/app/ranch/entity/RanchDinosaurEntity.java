@@ -72,9 +72,31 @@ public class RanchDinosaurEntity extends RanchEntity {
     private long version;
 
     public void hatch(String permanentName, Instant now) {
-        throw new UnsupportedOperationException("孵化は試練先行");
+        if (permanentName == null || permanentName.isBlank() || now == null) {
+            throw new IllegalArgumentException("永久名と時刻は必須です");
+        }
+        if (stage != DinosaurStage.EGG || eggReadyAt == null || selectionConfirmedAt == null
+                || now.isBefore(eggReadyAt) || now.isBefore(selectionConfirmedAt)) {
+            throw new IllegalStateException("孵化条件を満たしていません");
+        }
+        name = permanentName;
+        namedAt = now;
+        hatchedAt = now;
+        stage = DinosaurStage.BABY;
     }
+
     public void applyCareXp(long gain, long juvenileXp, long adultXp) {
-        throw new UnsupportedOperationException("無料成長は試練先行");
+        if (stage == DinosaurStage.EGG || stage == null) {
+            throw new IllegalStateException("卵にcare XPを付与できません");
+        }
+        if (gain < 0 || juvenileXp <= 0 || adultXp < juvenileXp) {
+            throw new IllegalArgumentException("成長規則またはXPが不正です");
+        }
+        xp = Math.addExact(xp, gain);
+        if (xp >= adultXp) {
+            stage = DinosaurStage.ADULT;
+        } else if (xp >= juvenileXp && stage == DinosaurStage.BABY) {
+            stage = DinosaurStage.JUVENILE;
+        }
     }
 }
