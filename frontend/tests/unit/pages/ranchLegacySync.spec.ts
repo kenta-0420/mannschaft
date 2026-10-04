@@ -37,8 +37,9 @@ let inventoryFails = false
 let resolveA: (() => void) | null = null
 async function account(id: number) {
  const auth = useAuthStore()
- await auth.setUser({ id, email: `synthetic${id}@example.invalid`, fullName: 'Synthetic', profileImageUrl: null })
+ // 実loginと同じ順。setUserはIDを同期更新するため、先に新本人tokenを用意する。
  auth.setTokens(id === 1 ? 'A-access' : 'B-access', 'synthetic-refresh')
+ await auth.setUser({ id, email: `synthetic${id}@example.invalid`, fullName: 'Synthetic', profileImageUrl: null })
 }
 beforeEach(async () => {
  setActivePinia(useNuxtApp().$pinia)

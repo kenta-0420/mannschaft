@@ -34,6 +34,7 @@ const rawInput: BirthProfile = { ...profile, firstName: 'Edited' }
 const json = (data: unknown) => new Response(JSON.stringify({ data }), { headers: { 'Content-Type': 'application/json' } })
 const rejected = (code: string) => new Response(JSON.stringify({ error: { code, message: code } }), { status: 409, headers: { 'Content-Type': 'application/json' } })
 const writes: string[] = []
+const writeBodies: BirthProfile[] = []
 let reads = 0
 let errorCode = 'BIRTHPROFILE_008'
 let failFirstWrite = true
@@ -46,12 +47,13 @@ beforeEach(async () => {
  auth.setTokens('A-access', 'A-refresh')
  const currentApi = await profileApi()
  currentApi.command.discardRejected()
- external.fetch.mockReset(); external.report.mockReset(); writes.length = 0
+ external.fetch.mockReset(); external.report.mockReset(); writes.length = 0; writeBodies.length = 0
  errorCode = 'BIRTHPROFILE_008'; failFirstWrite = true; reads = 0
  external.fetch.mockImplementation(async (request, options) => {
   if (!String(request).endsWith('/api/v1/me/birth-profile')) throw new Error(`UNEXPECTED_TRANSPORT ${String(request)}`)
   if ((options?.method ?? 'GET') === 'GET') { reads += 1; return json(useAuthStore().user?.id === 2 ? { ...profile, firstName: 'SYNTHETIC_B_PROFILE', revision: '2' } : profile) }
   writes.push(new Headers(options?.headers).get('Idempotency-Key') ?? '')
+  writeBodies.push(JSON.parse(String(options?.body)) as BirthProfile)
   if (failFirstWrite) { failFirstWrite = false; throw new TypeError('SYNTHETIC_RESPONSE_LOST') }
   if (writes.length > 2) return json({ revision: '2' })
   return rejected(errorCode)
@@ -108,9 +110,15 @@ describe('出生プロフィールの専用409導線（先行赤候補）', () =
   expect(reads).toBe(2)
   expect(api.command.pending.value).toBeNull()
   expect(writes).toHaveLength(2)
-  await wrapper.get('form').trigger('submit'); await flushPromises()
-  expect(writes).toHaveLength(3)
+  // 再読込で旧編集は破棄。表示された本人情報から本人が再入力して明示的に保存する。
+  const firstNameInput = wrapper.findAll('input').find(input => (input.element as HTMLInputElement).value === profile.firstName)
+  if (!firstNameInput) throw new Error('RELOADED_FIRST_NAME_INPUT_NOT_FOUND')
+  await firstNameInput.setValue('EditedAfterReload')
+  await wrapper.get('form').trigger('submit')
+  // handleSubmitの非同期schema検証を待つ。保存回数/キーの期待は緩めない。
+  await vi.waitFor(() => expect(writes).toHaveLength(3))
   expect(writes[2]).not.toBe(writes[0])
+  expect(writeBodies[2]).toEqual({ ...profile, firstName: 'EditedAfterReload' })
  })
  it('009は既存保護者同意への入口を示し、自動再保存しない', async () => {
   errorCode = 'BIRTHPROFILE_009'
