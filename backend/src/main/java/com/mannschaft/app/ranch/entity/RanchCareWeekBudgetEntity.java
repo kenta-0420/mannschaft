@@ -34,4 +34,12 @@ public class RanchCareWeekBudgetEntity extends RanchEntity {
     private long awardedXp;
     @Column(name = "version", nullable = false)
     private long version;
+
+    public void award(long gainedXp) {
+        if (gainedXp < 0 || gainedXp > weeklyCapXp - awardedXp) {
+            throw new IllegalArgumentException("週の無料care枠を超えています");
+        }
+        awardedXp = Math.addExact(awardedXp, gainedXp);
+        version = Math.addExact(version, 1);
+    }
 }

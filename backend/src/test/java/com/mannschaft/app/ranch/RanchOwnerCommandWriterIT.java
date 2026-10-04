@@ -24,7 +24,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Settings and participation commands use real MySQL transactions, independently of HTTP auth. */
+/** 設定と参加期間のcommandを実MySQL取引で検証する。HTTP認証とは別境界。 */
 @TestPropertySource(properties = "mannschaft.ranch.development-fixtures=true")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class RanchOwnerCommandWriterIT extends AbstractMySqlIntegrationTest {
@@ -108,5 +108,20 @@ class RanchOwnerCommandWriterIT extends AbstractMySqlIntegrationTest {
         assertThat(commands.countByUserId(me)).isEqualTo(before + 1);
         assertThat(owners.findByUserId(me).orElseThrow().getStatus())
                 .isEqualTo(ParticipationStatus.PAUSED);
+    }
+
+    @Test
+    void pauseAtParticipationStartIsConflictWithoutPeriodOrCommandChange() {
+        UUID key = UUID.randomUUID();
+        long before = commands.countByUserId(me);
+        assertThatThrownBy(() -> writer.pause(me, key,
+                new RanchVersionRequest("0"), NOW))
+                .isInstanceOf(BusinessException.class);
+        assertThat(owners.findByUserId(me).orElseThrow().getStatus())
+                .isEqualTo(ParticipationStatus.ACTIVE);
+        assertThat(owners.findByUserId(me).orElseThrow().getVersion()).isZero();
+        assertThat(periods.findByUserIdAndEndsAtIsNull(me)).hasSize(1)
+                .allSatisfy(period -> assertThat(period.getEndsAt()).isNull());
+        assertThat(commands.countByUserId(me)).isEqualTo(before);
     }
 }

@@ -71,4 +71,16 @@ public class RanchOwnerEntity extends RanchEntity {
         status = ParticipationStatus.ACTIVE;
         version = Math.addExact(version, 1);
     }
+
+    public void advanceVersion() {
+        version = Math.addExact(version, 1);
+    }
+
+    public void spend(long points) {
+        if (points <= 0 || balance < points) {
+            throw new IllegalArgumentException("購入ポイントが不足または不正です");
+        }
+        balance = Math.subtractExact(balance, points);
+        advanceVersion();
+    }
 }

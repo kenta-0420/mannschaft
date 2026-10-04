@@ -71,6 +71,27 @@ public class RanchDinosaurEntity extends RanchEntity {
     @Column(name = "version", nullable = false)
     private long version;
 
+    public void confirmAssignment(AssignmentMethod method, Habitat selectedHabitat,
+                                  String selectedSpeciesKey, String selectedVariantKey,
+                                  long catalogVersion, String ruleVersion,
+                                  UUID resultId, String inputHash, Instant now) {
+        if (method == null || selectedHabitat == null || now == null
+                || stage != DinosaurStage.EGG
+                || selectionConfirmedAt != null) {
+            throw new IllegalStateException("選定済みまたは卵以外です");
+        }
+        habitat = selectedHabitat;
+        speciesKey = selectedSpeciesKey;
+        variantKey = selectedVariantKey;
+        speciesCatalogVersion = catalogVersion;
+        assignmentMethod = method;
+        selectionConfirmedAt = now;
+        assignmentRuleVersion = ruleVersion;
+        assignmentResultId = resultId;
+        assignmentInputHash = inputHash;
+        advanceVersion();
+    }
+
     public void hatch(String permanentName, Instant now) {
         if (permanentName == null || permanentName.isBlank() || now == null) {
             throw new IllegalArgumentException("永久名と時刻は必須です");
@@ -89,7 +110,7 @@ public class RanchDinosaurEntity extends RanchEntity {
         if (stage == DinosaurStage.EGG || stage == null) {
             throw new IllegalStateException("卵にcare XPを付与できません");
         }
-        if (gain < 0 || juvenileXp <= 0 || adultXp < juvenileXp) {
+        if (gain < 0 || juvenileXp <= 0 || adultXp <= juvenileXp) {
             throw new IllegalArgumentException("成長規則またはXPが不正です");
         }
         xp = Math.addExact(xp, gain);
@@ -98,5 +119,16 @@ public class RanchDinosaurEntity extends RanchEntity {
         } else if (xp >= juvenileXp && stage == DinosaurStage.BABY) {
             stage = DinosaurStage.JUVENILE;
         }
+    }
+
+    public void addAffinity(long gain) {
+        if (gain <= 0) {
+            throw new IllegalArgumentException("親密度の加算値が不正です");
+        }
+        affinity = Math.addExact(affinity, gain);
+    }
+
+    public void advanceVersion() {
+        version = Math.addExact(version, 1);
     }
 }

@@ -27,7 +27,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
 
-/** The auth guard holds the ACTIVE user lock before this independent ranch transaction. */
+/** 認証側ACTIVE本人ロックの内側で、独立した牧場取引を実行する。 */
 @Service
 @RequiredArgsConstructor
 public class RanchOwnerCommandWriter {
@@ -101,6 +101,7 @@ public class RanchOwnerCommandWriter {
                 throw inconsistent();
             }
             RanchParticipationPeriodEntity period = active.get(0);
+            if (!now.isAfter(period.getStartsAt())) throw conflict();
             period.closeAt(now);
             periods.save(period);
         } else {

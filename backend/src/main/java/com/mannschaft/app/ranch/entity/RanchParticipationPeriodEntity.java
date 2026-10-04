@@ -28,7 +28,7 @@ public class RanchParticipationPeriodEntity extends RanchEntity {
     private Instant endsAt;
 
     public void closeAt(Instant now) {
-        if (now == null || endsAt != null || startsAt == null || now.isBefore(startsAt)) {
+        if (now == null || endsAt != null || startsAt == null || !now.isAfter(startsAt)) {
             throw new IllegalArgumentException("参加期間を終了できません");
         }
         endsAt = now;
