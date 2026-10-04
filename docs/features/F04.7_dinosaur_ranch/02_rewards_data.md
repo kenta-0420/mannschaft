@@ -248,3 +248,5 @@ TL/Blog完全一致はそれぞれsource-owned、同user・同feature・同UTC�
 ### 新ARの保存・公開境界
 
 本人fresh ACTIVEと所有SQLを照合する。設問はTERM_CARD cue専用（200）とFREE_RECALL kind表示（10000）、合計1〜1501で開始時に凍結する。回答はHtmlSanitizer後のUTF16長、圧縮attemptは実JSON UTF8 65536bytes以下。途中保存と全回答完了を分け、完了・attempt・commandはreflection同一TXで一回保存する。保存ACK比較は私有SHA256/BINARY32、配送用AC67 HMACとは分離し、HTTP/outbox/log/exportに本文やhashを追加しない。原文は開始時ReflectionEntryResponseをCOMPLETED本人にだけ開示する。旧Recall単発へ報酬を追加しない。報酬witness/outboxの接続と実機証明は後続であり、このAPI製造だけで報酬完成とは扱わない。
+
+AR私有2表は `V243.20261004182521__create_private_recall_sessions.sql`。commands→sessionsだけの同domain FK、user_id UNSIGNED、MICROS、7保存enumの許容値を明示する。配送witness/outbox/historical bootstrapは別の後続migrationであり、このschemaから報酬稼働を推定しない。展開は既存persisted_enum_deployment規約に従い読取り可能なバイナリとDDLを先配布し、旧taskの退場を確認してから新AR操作の公開を行う。台帳登録は実展開の証明ではない。
