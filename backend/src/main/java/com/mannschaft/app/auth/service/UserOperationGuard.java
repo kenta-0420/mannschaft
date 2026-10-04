@@ -2,8 +2,6 @@ package com.mannschaft.app.auth.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import java.util.function.Supplier;
 
 /**
@@ -14,9 +12,9 @@ import java.util.function.Supplier;
 @Service
 @RequiredArgsConstructor
 public class UserOperationGuard {
-    private final UserRowLockService userRowLockService;
+    private final UserOperationAdmission admission;
+    private final UserOperationRunner runner;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public <T> T withActiveUser(Long userId, Supplier<T> operation) {
         throw new UnsupportedOperationException("本人操作境界は未実装");
     }
