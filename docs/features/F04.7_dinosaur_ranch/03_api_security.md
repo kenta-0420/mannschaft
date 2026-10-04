@@ -87,7 +87,7 @@ SYSTEM_ADMIN限定。新permissionを使う場合は権限catalog/Flyway/正規�
 | GET | `/api/v1/system-admin/ranch/policies` | policy summary一覧、cursor方式 |
 | POST | `/api/v1/system-admin/ranch/policies` | 完全policy+effectiveAt。201不変version。次のUTC週境界以降のみ |
 | GET | `/api/v1/system-admin/ranch/operational-controls` | fresh SYSTEM_ADMIN+ACTIVE。private,no-store。`{version:string,isCareEnabled:boolean,isShopEnabled:boolean,isDeliveryPaused:boolean,isRewardsPaused:boolean,updatedAt:Instant}`。本人owner生成なし |
-| PUT | `/api/v1/system-admin/ranch/operational-controls` | `{version:string,isCareEnabled:boolean,isShopEnabled:boolean,isDeliveryPaused:boolean,isRewardsPaused:boolean,reasonCode:string}`。200状態/有効時刻 |
+| PUT | `/api/v1/system-admin/ranch/operational-controls` | `{version:string,isCareEnabled:boolean,isShopEnabled:boolean,isDeliveryPaused:boolean,isRewardsPaused:boolean,reasonCode:string}`。Idempotency-Key必須、200はGETと同じ6項目の保存ACK。理由1..40文字、trim一致。停止期間は発生時刻の[start,end)で判定 |
 | GET | `/api/v1/system-admin/ranch/outbox-health` | sourceごとのpending/deadCount/oldestAge。本文なし |
 | POST | `/api/v1/system-admin/ranch/outboxes/{sourceType}/{eventId}/retry` | `{reasonCode:string}` + Idempotency-Key。200同event再送予約。scopeType詐称/不在404 |
 
