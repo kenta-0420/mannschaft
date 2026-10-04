@@ -17,8 +17,8 @@ export interface RanchAssetEntry {
  readonly sourceSha256: string
 }
 const productionManifest: readonly RanchAssetEntry[] = []
-// COREの公開API・試験が未完の間は選択不可。本番64種の承認と別に扱う。
-const developmentCatalogVersion = 'PENDING_CORE_DEV_CATALOG_VERSION'
+// COREで静的採択した専用開発catalog。本番64種の承認とは別に扱う。
+const developmentCatalogVersion = '2'
 export const developmentRanchAssets: readonly RanchAssetEntry[] = Object.freeze([
  Object.freeze({ assetKey: 'dev-triceratops-orange-pixel96-walk-v1', speciesKey: 'DEV_TRICERATOPS', variantKey: 'DEV_ORANGE_96_WALK_V1', stage: 'BABY', renderStyle: 'PIXEL', catalogVersion: developmentCatalogVersion, approval: 'DRAFT', origin: 'ISOLATED_DEVELOPMENT', src: '/dev-fixtures/ranch/triceratops-orange-pixel96-walk-v1.png', sourceWidth: 768, sourceHeight: 96, columnBoundaries: Object.freeze([0,96,192,288,384,480,576,672,768]), rowBoundaries: Object.freeze([0,96]), frames: 8, sourceSha256: '8ad7de84f1d0f495f9aeda86175f9c914fd0cbb788079b4f3c7e101f91358117' }),
  Object.freeze({ assetKey: 'dev-triceratops-orange-paint2d-walk-v1', speciesKey: 'DEV_TRICERATOPS', variantKey: 'DEV_ORANGE_96_WALK_V1', stage: 'BABY', renderStyle: 'PAINT_2D', catalogVersion: developmentCatalogVersion, approval: 'DRAFT', origin: 'ISOLATED_DEVELOPMENT', src: '/dev-fixtures/ranch/triceratops-orange-paint2d-walk-v1.png', sourceWidth: 1774, sourceHeight: 887, columnBoundaries: Object.freeze([0,444,887,1331,1774]), rowBoundaries: Object.freeze([0,444,887]), frames: 8, sourceSha256: 'f7d5d8822ee2e41b8b41200bb0547195586c1ea8a558b294d38b445450322c19' }),
@@ -30,7 +30,7 @@ export function resolveRanchAsset(dinosaur: DinosaurSummary, style: RenderStyle,
  if (!UUID.test(dinosaur.id) || !dinosaur.speciesKey || !dinosaur.variantKey || dinosaur.stage === 'EGG') return null
  const entries = context.production ? context.publicationEnabled ? productionManifest : [] : context.isolatedDevelopment ? developmentRanchAssets : context.publicationEnabled ? productionManifest : []
  const entry = entries.find(value => value.speciesKey === dinosaur.speciesKey && value.variantKey === dinosaur.variantKey && value.stage === dinosaur.stage && value.renderStyle === style && value.catalogVersion === dinosaur.speciesCatalogVersion)
- if (!entry || entry.catalogVersion === 'PENDING_CORE_DEV_CATALOG_VERSION') return null
+ if (!entry) return null
  if (entry.origin === 'PRODUCTION' && (entry.approval !== 'APPROVED' || !context.publicationEnabled)) return null
  if (entry.origin === 'ISOLATED_DEVELOPMENT' && (context.production || !context.isolatedDevelopment)) return null
  return { dinosaurId: dinosaur.id, entry }

@@ -2,7 +2,7 @@
 import { effectScope, ref } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useRanchTouchSound } from './useRanchTouchSound'
-import type { DinosaurSummary } from '~/types/ranch'
+import type { DinosaurSummary, RenderStyle } from '~/types/ranch'
 const dinosaur: DinosaurSummary = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', speciesKey: null, variantKey: null, speciesCatalogVersion: null, stage: 'BABY', habitat: 'LAND', name: null, namedAt: null, xp: '0', nextStageXp: null, version: '0', egg: null }
 afterEach(() => vi.unstubAllGlobals())
 describe('操作起点だけの短い音', () => {
@@ -19,9 +19,10 @@ describe('操作起点だけの短い音', () => {
    createGain() { return { gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() } }
   }
   vi.stubGlobal('AudioContext', AudioFixture)
+  const renderStyle = ref<RenderStyle>('PIXEL')
   const soundEnabled = ref(false); const enabled = ref(true); const motion = ref<'NORMAL' | 'STOPPED'>('NORMAL')
   const scope = effectScope()
-  const sound = scope.run(() => useRanchTouchSound({ dinosaur: () => dinosaur, enabled: () => enabled.value, motion: () => motion.value, soundEnabled: () => soundEnabled.value, volume: () => 50 }))
+  const sound = scope.run(() => useRanchTouchSound({ dinosaur: () => dinosaur, enabled: () => enabled.value, motion: () => motion.value, renderStyle: () => renderStyle.value, soundEnabled: () => soundEnabled.value, volume: () => 50 }))
   if (!sound) throw new Error('SOUND_SCOPE_MISSING')
   expect(sound.prepare()).toBeNull(); expect(contexts).toHaveLength(0)
   soundEnabled.value = true; enabled.value = false
@@ -35,7 +36,10 @@ describe('操作起点だけの短い音', () => {
   const b = sound.prepare(); sound.play('DINOSAUR_TOUCH', dinosaur.id, b)
   const second = contexts[1]; if (!second) throw new Error('SECOND_AUDIO_MISSING')
   oldEnded(); expect(second.close).not.toHaveBeenCalled()
-  enabled.value = false; expect(second.close).toHaveBeenCalledOnce()
+  renderStyle.value = 'PAINT_2D'; expect(second.close).toHaveBeenCalledOnce()
+  const c = sound.prepare(); sound.play('DINOSAUR_TOUCH', dinosaur.id, c)
+  const third = contexts[2]; if (!third) throw new Error('THIRD_AUDIO_MISSING')
+  enabled.value = false; expect(third.close).toHaveBeenCalledOnce()
   scope.stop()
  })
  it('resume/oscillator/closeの失敗を外へthrowせず資源終了を試す', () => {
@@ -46,7 +50,7 @@ describe('操作起点だけの短い音', () => {
   }
   vi.stubGlobal('AudioContext', ResumeFailure)
   const scope = effectScope()
-  const sound = scope.run(() => useRanchTouchSound({ dinosaur: () => dinosaur, enabled: () => true, motion: () => 'NORMAL', soundEnabled: () => true, volume: () => 50 }))
+  const sound = scope.run(() => useRanchTouchSound({ dinosaur: () => dinosaur, enabled: () => true, motion: () => 'NORMAL', renderStyle: () => 'PIXEL', soundEnabled: () => true, volume: () => 50 }))
   if (!sound) throw new Error('SOUND_SCOPE_MISSING')
   expect(sound.prepare()).toBeNull(); expect(closed).toHaveBeenCalledOnce()
   class OscillatorFailure {

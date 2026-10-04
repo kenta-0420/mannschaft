@@ -11,7 +11,7 @@ const { t } = useI18n()
 const scene = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
 const activity = useRanchSceneActivity(scene, () => props.active, () => props.motionMode, () => props.backgroundPaused)
-const sound = useRanchTouchSound({ dinosaur: () => props.dinosaur, enabled: () => activity.enabled.value, motion: () => props.motionMode, soundEnabled: () => props.soundEnabled, volume: () => props.soundVolume })
+const sound = useRanchTouchSound({ dinosaur: () => props.dinosaur, enabled: () => activity.enabled.value, motion: () => props.motionMode, renderStyle: () => props.renderStyle, soundEnabled: () => props.soundEnabled, volume: () => props.soundVolume })
 defineExpose({ prepareTouchSound: sound.prepare, cancelTouchSound: sound.cancel })
 const reaction = useRanchFiniteReaction({ dinosaur: () => props.dinosaur, motion: () => props.motionMode, renderStyle: () => props.renderStyle, contextEnabled: () => activity.enabled.value, osReduced: () => activity.osReduced.value })
 let previousAsset: BoundRanchAsset | null = null

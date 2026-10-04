@@ -1,11 +1,12 @@
 import { onScopeDispose, watch } from 'vue'
-import type { DinosaurSummary, MotionMode } from '~/types/ranch'
+import type { DinosaurSummary, MotionMode, RenderStyle } from '~/types/ranch'
 import { resolveRanchReaction } from '~/utils/ranch-assets'
 // 固定の短い音だけを本人操作に結び付ける。素材URLや定期再生は作らない。
 export function useRanchTouchSound(options: {
  dinosaur: () => DinosaurSummary
  enabled: () => boolean
  motion: () => MotionMode
+ renderStyle: () => RenderStyle
  soundEnabled: () => boolean
  volume: () => number
 }) {
@@ -60,7 +61,7 @@ export function useRanchTouchSound(options: {
    oscillator.start(now); oscillator.stop(now + 0.1)
   } catch { cancel(token) }
  }
- watch([options.enabled, options.motion, options.soundEnabled, options.volume, () => options.dinosaur().id, () => options.dinosaur().stage], stop, { flush: 'sync' })
+ watch([options.enabled, options.motion, options.renderStyle, options.soundEnabled, options.volume, () => options.dinosaur().id, () => options.dinosaur().stage], stop, { flush: 'sync' })
  onScopeDispose(stop)
  return { prepare, play, cancel }
 }
