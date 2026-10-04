@@ -56,7 +56,8 @@ class ParentalConsentApproveActivationTest {
         when(link.getStatus()).thenReturn(ParentalConsentLinkStatus.PENDING);
         when(link.getExpiresAt()).thenReturn(LocalDateTime.now().plusDays(1));
         when(link.getChildUserId()).thenReturn(childUserId);
-        when(parentalConsentLinkRepository.findByTokenHash("token-hash"))
+        when(parentalConsentLinkRepository.findChildUserIdByTokenHash("token-hash")).thenReturn(Optional.of(childUserId));
+        when(parentalConsentLinkRepository.findByTokenHashForUpdate("token-hash"))
                 .thenReturn(Optional.of(link));
 
         UserEntity parent = mock(UserEntity.class);
@@ -67,7 +68,7 @@ class ParentalConsentApproveActivationTest {
         when(child.getEmail()).thenReturn("child@example.com");
         when(child.getDisplayName()).thenReturn("子ユーザー");
         when(child.getId()).thenReturn(childUserId);
-        when(userRepository.findById(childUserId)).thenReturn(Optional.of(child));
+        when(userRepository.findByIdForUpdateIncludingDeleted(childUserId)).thenReturn(Optional.of(child));
 
         service.approveParentalConsent(token, parentUserId, "127.0.0.1");
 

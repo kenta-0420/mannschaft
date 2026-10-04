@@ -1,6 +1,7 @@
 # STRING永続化enumの読取り互換性台帳。自動更新禁止。
 # 初期台帳: 公式CI run36959618701 / head24007c89f5 / merge5d3dd93116のfresh本番全量走査で取得。展開済みの証明ではない。
 # 作法: docs/development/persisted_enum_deployment.md
+# 本人診断6定数: 読取り互換性を全taskへ先配布し、旧task0の証跡後に別releaseで書込み開始。実展開済みの証明ではない。
 com.mannschaft.app.actionmemo.ActionMemoMood#BAD
 com.mannschaft.app.actionmemo.ActionMemoMood#GOOD
 com.mannschaft.app.actionmemo.ActionMemoMood#GREAT
@@ -457,6 +458,12 @@ com.mannschaft.app.dashboard.TargetType#POLL
 com.mannschaft.app.dashboard.TargetType#SCHEDULE
 com.mannschaft.app.dashboard.TargetType#TIMELINE_POST
 com.mannschaft.app.dashboard.TargetType#TODO
+com.mannschaft.app.diagnosis.DiagnosisMethod#BIRTH_STYLE
+com.mannschaft.app.diagnosis.DiagnosisMethod#DIAGNOSIS
+com.mannschaft.app.diagnosis.DiagnosisStatus#CANCELLED
+com.mannschaft.app.diagnosis.DiagnosisStatus#COMPLETED
+com.mannschaft.app.diagnosis.DiagnosisStatus#STARTED
+com.mannschaft.app.diagnosis.DiagnosisStatus#TIE_BREAK_REQUIRED
 com.mannschaft.app.digest.DigestScopeType#ORGANIZATION
 com.mannschaft.app.digest.DigestScopeType#TEAM
 com.mannschaft.app.digest.DigestStatus#DISCARDED
