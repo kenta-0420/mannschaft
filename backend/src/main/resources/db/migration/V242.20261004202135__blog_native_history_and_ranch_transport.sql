@@ -18,11 +18,18 @@ CREATE TABLE blog_ranch_witnesses (
  id BINARY(16) PRIMARY KEY, source_id_type VARCHAR(8) NOT NULL,
  canonical_source_id VARBINARY(80) NOT NULL, recipient_user_id BIGINT UNSIGNED NOT NULL,
  kind VARCHAR(20) NOT NULL, qualifying_at DATETIME(6) NULL, event_id BINARY(16) NULL,
+ content_week DATE NULL, content_version VARCHAR(64) NULL,
+ content_key_id BINARY(32) NULL, content_digest BINARY(32) NULL,
  created_at DATETIME(6) NOT NULL, updated_at DATETIME(6) NOT NULL,
  UNIQUE KEY uk_blog_ranch_witness (source_id_type,canonical_source_id),
+ UNIQUE KEY uk_blog_ranch_content_winner (recipient_user_id,content_week,content_version,content_digest),
  KEY idx_blog_ranch_recipient (recipient_user_id,qualifying_at),
  CHECK (kind IN ('HISTORICAL','QUALIFIED')),
- CHECK (kind='HISTORICAL' OR (qualifying_at IS NOT NULL AND event_id IS NOT NULL))
+ CHECK (kind='HISTORICAL' OR (qualifying_at IS NOT NULL AND event_id IS NOT NULL
+ AND content_week IS NOT NULL AND content_version IS NOT NULL
+ AND content_key_id IS NOT NULL AND content_digest IS NOT NULL)),
+ CHECK (kind<>'HISTORICAL' OR (content_week IS NULL AND content_version IS NULL
+ AND content_key_id IS NULL AND content_digest IS NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 CREATE TABLE blog_ranch_outboxes (
  id BINARY(16) PRIMARY KEY, schema_version INT NOT NULL, event_type VARCHAR(40) NOT NULL,
