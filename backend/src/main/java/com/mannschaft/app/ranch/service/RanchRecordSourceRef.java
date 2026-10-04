@@ -1,12 +1,12 @@
 package com.mannschaft.app.ranch.service;
 
 import com.mannschaft.app.ranch.entity.RanchRewardDecisionEntity;
+import com.mannschaft.app.common.ranchsource.api.SourceRewardReference;
 import com.mannschaft.app.ranch.reward.RanchRewardSourceType;
 import com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-import java.util.UUID;
 
 /** 保存済み決定から、源に再認可を依頼するための型付き識別子だけを復元する。 */
 record RanchRecordSourceRef(RanchRewardSourceType sourceType,
@@ -16,6 +16,7 @@ record RanchRecordSourceRef(RanchRewardSourceType sourceType,
             return Optional.empty();
         }
         byte[] stored = decision.getCanonicalKey();
+        if (stored == null) return Optional.empty();
         for (byte value : stored) {
             if (value < 0x20 || value > 0x7e) return Optional.empty();
         }
@@ -34,12 +35,8 @@ record RanchRecordSourceRef(RanchRewardSourceType sourceType,
             RanchRewardEnvelope.IdType type = RanchRewardEnvelope.IdType.valueOf(parts[1]);
             String id = parts[2];
             if (id.isEmpty() || id.length() > 80) return Optional.empty();
-            if (type == RanchRewardEnvelope.IdType.UUID) {
-                if (!UUID.fromString(id).toString().equals(id)) return Optional.empty();
-            } else if (!id.matches("[1-9][0-9]*")
-                    || !Long.toString(Long.parseLong(id)).equals(id)) {
-                return Optional.empty();
-            }
+            // 源の公開境界と同じ対応（AR UUIDv7、他LONG）で壊れた保存値を拒否する。
+            new SourceRewardReference(decision.getSourceType(), type, id);
             return Optional.of(new RanchRecordSourceRef(decision.getSourceType(), type, id));
         } catch (IllegalArgumentException invalid) {
             return Optional.empty();

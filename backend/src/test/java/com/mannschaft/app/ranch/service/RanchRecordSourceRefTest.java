@@ -34,11 +34,11 @@ class RanchRecordSourceRefTest {
     @Test
     void personalRecallRestoresCanonicalEntryUuidAndSavedWeek() {
         var saved = row(RanchRewardSourceType.PERSONAL_RECALL_COMPLETE, 21L,
-                "PERSONAL_RECALL_COMPLETE:UUID:550e8400-e29b-41d4-a716-446655440000:USER:21:WEEK:2026-10-05",
+                "PERSONAL_RECALL_COMPLETE:UUID:550e8400-e29b-71d4-a716-446655440000:USER:21:WEEK:2026-10-05",
                 LocalDate.parse("2026-10-05"));
         assertThat(RanchRecordSourceRef.from(saved)).contains(new RanchRecordSourceRef(
                 RanchRewardSourceType.PERSONAL_RECALL_COMPLETE, RanchRewardEnvelope.IdType.UUID,
-                "550e8400-e29b-41d4-a716-446655440000"));
+                "550e8400-e29b-71d4-a716-446655440000"));
     }
 
     @Test
@@ -55,6 +55,20 @@ class RanchRecordSourceRefTest {
         }
         assertThat(RanchRecordSourceRef.from(row(RanchRewardSourceType.PERSONAL_RECALL_COMPLETE, 21L,
                 "PERSONAL_RECALL_COMPLETE:UUID:550E8400-E29B-41D4-A716-446655440000:USER:21:WEEK:2026-10-05",
+                LocalDate.parse("2026-10-05")))).isEmpty();
+    }
+
+    @Test
+    void nullSavedKeyWrongSourceIdTypeAndNonV7RecallAreRejected() {
+        assertThat(RanchRecordSourceRef.from(RanchRewardDecisionEntity.builder()
+                .sourceType(RanchRewardSourceType.BLOG_FIRST_PUBLISH).userId(21L).build())).isEmpty();
+        assertThat(RanchRecordSourceRef.from(row(RanchRewardSourceType.BLOG_FIRST_PUBLISH, 21L,
+                "BLOG_FIRST_PUBLISH:UUID:550e8400-e29b-71d4-a716-446655440000:USER:21", null))).isEmpty();
+        assertThat(RanchRecordSourceRef.from(row(RanchRewardSourceType.PERSONAL_RECALL_COMPLETE, 21L,
+                "PERSONAL_RECALL_COMPLETE:LONG:37:USER:21:WEEK:2026-10-05",
+                LocalDate.parse("2026-10-05")))).isEmpty();
+        assertThat(RanchRecordSourceRef.from(row(RanchRewardSourceType.PERSONAL_RECALL_COMPLETE, 21L,
+                "PERSONAL_RECALL_COMPLETE:UUID:550e8400-e29b-41d4-a716-446655440000:USER:21:WEEK:2026-10-05",
                 LocalDate.parse("2026-10-05")))).isEmpty();
     }
 

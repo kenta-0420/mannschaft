@@ -53,5 +53,5 @@ public class RanchRewardDecisionEntity extends RanchEntity {
     private Instant decidedAt;
 
     public byte[] getCanonicalKeyHash() { return canonicalKeyHash.clone(); }
-    public byte[] getCanonicalKey() { return canonicalKey.clone(); }
+    public byte[] getCanonicalKey() { return canonicalKey == null ? null : canonicalKey.clone(); }
 }
