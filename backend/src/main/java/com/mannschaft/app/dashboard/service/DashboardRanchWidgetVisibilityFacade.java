@@ -2,6 +2,8 @@ package com.mannschaft.app.dashboard.service;
 
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.WidgetKey;
+import com.mannschaft.app.dashboard.entity.DashboardWidgetSettingEntity;
+import com.mannschaft.app.dashboard.repository.DashboardWidgetSettingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -14,15 +16,17 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class DashboardRanchWidgetVisibilityFacade {
-    private final DashboardWidgetService widgets;
+    private final DashboardWidgetSettingRepository settings;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
     public Optional<Boolean> visible(Long userId) {
         Objects.requireNonNull(userId);
-        return widgets.getWidgetSettings(userId, ScopeType.PERSONAL, 0L, false).stream()
-                .filter(setting -> WidgetKey.PERSONAL_DINOSAUR_RANCH.name()
-                        .equals(setting.getWidgetKey()))
-                .findFirst()
-                .map(setting -> setting.isVisible() && setting.isModuleEnabled());
+        WidgetKey key = WidgetKey.PERSONAL_DINOSAUR_RANCH;
+        // Ranch widgetはモジュール依存なし。保存値がない場合は正規default=falseを返す。
+        boolean value = settings.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
+                        userId, ScopeType.PERSONAL, 0L, key.name())
+                .map(DashboardWidgetSettingEntity::getIsVisible)
+                .orElse(key.isDefaultVisible());
+        return Optional.of(value);
     }
 }
