@@ -153,6 +153,47 @@ class BulletinAttachmentServiceTest {
                 .contentType("application/pdf").createdBy(createdBy).build();
     }
 
+    private BulletinAttachmentEntity dangerousAttachment() {
+        return BulletinAttachmentEntity.builder().id(ATTACHMENT_ID).targetType(TargetType.THREAD).targetId(THREAD_ID)
+                .fileKey("bulletin/unsafe").originalFilename("unsafe.html").fileSize(1024L)
+                .contentType("text/html").createdBy(USER_ID).build();
+    }
+
+    @Test
+    @DisplayName("PREVIEW-15 危険な保存 MIME は添付一覧の署名対象にも含めない")
+    void 危険MIMEを一覧から除外する() {
+        given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(teamThread()));
+        given(attachmentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(TargetType.THREAD, THREAD_ID))
+                .willReturn(List.of(dangerousAttachment()));
+        assertThat(service.listThreadAttachments(THREAD_ID, USER_ID)).isEmpty();
+        verify(storageAccessService).generateDownloadUrlsForList(eq(List.of()), any());
+        verify(accessGuard).checkThreadVisibility(USER_ID, ScopeType.TEAM, TEAM_ID, THREAD_ID);
+    }
+
+    @Test
+    @DisplayName("PREVIEW-16 危険 MIME の download は最新 ACL を確認後に拒否")
+    void 危険MIMEのdownloadを拒否する() {
+        given(attachmentRepository.findById(ATTACHMENT_ID)).willReturn(Optional.of(dangerousAttachment()));
+        given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(teamThread()));
+        given(storageAccessService.generateDownloadUrl(any(), any(), any(), any(), any())).willReturn("signed");
+        assertThatThrownBy(() -> service.generateDownloadUrl(ATTACHMENT_ID, USER_ID))
+                .isInstanceOf(BusinessException.class).extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(BulletinErrorCode.ATTACHMENT_INVALID_CONTENT_TYPE);
+        verify(storageAccessService).generateDownloadUrl(eq("bulletin/unsafe"), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("PREVIEW-16 ACL 拒否は MIME 拒否より先に適用する")
+    void downloadの最新ACL拒否を維持する() {
+        given(attachmentRepository.findById(ATTACHMENT_ID)).willReturn(Optional.of(dangerousAttachment()));
+        given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(teamThread()));
+        given(storageAccessService.generateDownloadUrl(any(), any(), any(), any(), any()))
+                .willThrow(new BusinessException(CommonErrorCode.COMMON_002));
+        assertThatThrownBy(() -> service.generateDownloadUrl(ATTACHMENT_ID, USER_ID))
+                .isInstanceOf(BusinessException.class).extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.COMMON_002);
+    }
+
     // ─────────────────────────────────────────────
     @Nested
     @DisplayName("presign（アップロード URL 発行）")

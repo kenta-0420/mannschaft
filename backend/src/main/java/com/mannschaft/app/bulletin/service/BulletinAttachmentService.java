@@ -278,6 +278,8 @@ public class BulletinAttachmentService {
                 new StorageAclAttachmentBinding("BULLETIN_ATTACHMENT", attachment.getId().toString()),
                 DOWNLOAD_TTL);
 
+        // 最新 ACL の照合後も危険な保存 MIME は返さない。
+        validateContentType(attachment.getContentType());
         log.info("掲示板添付 download-url 発行: attachmentId={}, userId={}", attachmentId, userId);
         return new AttachmentDownloadUrlResponse(downloadUrl, DOWNLOAD_TTL.toSeconds());
     }
@@ -285,6 +287,7 @@ public class BulletinAttachmentService {
     private List<AttachmentResponse> filterDownloadableAttachments(
             List<BulletinAttachmentEntity> attachments, BulletinThreadEntity thread, Long userId) {
         List<StorageAclDownloadRequest> requests = attachments.stream()
+                .filter(attachment -> isReadableContentType(attachment.getContentType()))
                 .map(attachment -> new StorageAclDownloadRequest(
                         attachment.getFileKey(), aclScope(thread, attachment.getCreatedBy()),
                         new StorageAclContentReference("BULLETIN_THREAD", thread.getId().toString()),
@@ -292,6 +295,7 @@ public class BulletinAttachmentService {
                 .toList();
         Map<String, String> readableKeys = storageAccessService.generateDownloadUrlsForList(requests, DOWNLOAD_TTL);
         return attachments.stream()
+                .filter(attachment -> isReadableContentType(attachment.getContentType()))
                 .filter(attachment -> readableKeys.containsKey(attachment.getFileKey()))
                 .map(bulletinMapper::toAttachmentResponse)
                 .toList();
@@ -412,6 +416,7 @@ public class BulletinAttachmentService {
             checkPersonalOwner(thread, userId);
         } else {
             accessGuard.checkMembership(userId, thread.getScopeType(), thread.getScopeId());
+            accessGuard.checkThreadVisibility(userId, thread.getScopeType(), thread.getScopeId(), thread.getId());
         }
     }
 
@@ -495,6 +500,11 @@ public class BulletinAttachmentService {
         if (fileSize == null || fileSize <= 0 || fileSize > MAX_FILE_SIZE_BYTES) {
             throw new BusinessException(BulletinErrorCode.ATTACHMENT_SIZE_EXCEEDED);
         }
+    }
+
+    private boolean isReadableContentType(String contentType) {
+        return !FileTypeValidator.isBlocked(contentType)
+                && FileTypeValidator.isAllowed(contentType, ALLOWED_CONTENT_TYPES);
     }
 
     private void validateAttachmentCount(TargetType targetType, Long targetId) {

@@ -58,6 +58,20 @@ public class BulletinAccessGuard {
 
     private final AccessControlService accessControlService;
     private final RoleService roleService;
+    private final com.mannschaft.app.common.visibility.ContentVisibilityChecker contentVisibilityChecker;
+    private final com.mannschaft.app.team.service.TeamService teamService;
+    private final com.mannschaft.app.organization.service.OrganizationService organizationService;
+
+    /** 関連詳細/添付の公開読取だけに適用する最新 F00。作成・管理・一覧の資格判定は変更しない。 */
+    public void checkThreadVisibility(Long userId, ScopeType scopeType, Long scopeId, Long threadId) {
+        if (!isRoleManagedScope(scopeType)) return;
+        if (scopeType == ScopeType.TEAM && teamService.isProvisioned(scopeId)
+                || scopeType == ScopeType.ORGANIZATION && organizationService.isProvisioned(scopeId)) {
+            throw new BusinessException(com.mannschaft.app.bulletin.BulletinErrorCode.THREAD_NOT_FOUND);
+        }
+        contentVisibilityChecker.assertCanView(
+                com.mannschaft.app.common.visibility.ReferenceType.BULLETIN_THREAD, threadId, userId);
+    }
 
     /**
      * 当該スコープが {@link AccessControlService} のロール/メンバーシップ基盤で

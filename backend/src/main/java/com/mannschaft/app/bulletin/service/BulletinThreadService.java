@@ -155,7 +155,23 @@ public class BulletinThreadService {
     public ThreadResponse getThread(ScopeType scopeType, Long scopeId, Long threadId, Long userId) {
         accessGuard.checkMembership(userId, scopeType, scopeId);
         BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
+        accessGuard.checkThreadVisibility(userId, scopeType, scopeId, threadId);
         return enrichSingle(entity, userId);
+    }
+
+    /** preview は LOCKED でも元の最新状態を確認する。本文/enrichment はここでは取得しない。 */
+    public PreviewMetadata getPreviewMetadata(Long threadId, Long userId) {
+        BulletinThreadEntity entity = threadRepository.findById(threadId)
+                .orElseThrow(() -> new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND));
+        if (entity.getScopeType() != ScopeType.TEAM && entity.getScopeType() != ScopeType.ORGANIZATION) {
+            throw new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND);
+        }
+        accessGuard.checkMembership(userId, entity.getScopeType(), entity.getScopeId());
+        accessGuard.checkThreadVisibility(userId, entity.getScopeType(), entity.getScopeId(), threadId);
+        return new PreviewMetadata(entity.getScopeType().name(), entity.getScopeId());
+    }
+
+    public record PreviewMetadata(String scopeType, Long scopeId) {
     }
 
     /**
@@ -228,6 +244,7 @@ public class BulletinThreadService {
                     toContactScope(entity.getScopeType()), entity.getScopeId(), ContactSpaceKind.BULLETIN, userId);
         } else {
             accessGuard.checkMembership(userId, entity.getScopeType(), entity.getScopeId());
+            accessGuard.checkThreadVisibility(userId, entity.getScopeType(), entity.getScopeId(), threadId);
         }
         return enrichSingle(entity, userId);
     }
