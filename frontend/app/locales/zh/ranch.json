@@ -135,6 +135,12 @@
       "openConsent": "前往监护人同意"
     },
     "decorations": {
+      "importTitle": "导入纪念品",
+      "importDescription": "每次最多检查100枚已获得的徽章，导入已公开的纪念品。是否继续由你决定。",
+      "importStart": "导入纪念品",
+      "importContinue": "检查接下来的100枚徽章",
+      "importAgain": "从头再次检查",
+      "importResult": "已检查徽章：{processed} / 已导入纪念品：{imported}",
       "title": "装饰与兑换",
       "permanent": "积分只能用于永久装饰品，不会影响成长速度或使用权限。",
       "slots": "3个装饰槽位",

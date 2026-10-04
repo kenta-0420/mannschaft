@@ -135,6 +135,12 @@
       "openConsent": "Continue to parental consent"
     },
     "decorations": {
+      "importTitle": "Import keepsakes",
+      "importDescription": "Check up to 100 previously earned badges for published keepsakes per action. Choose whether to continue.",
+      "importStart": "Import keepsakes",
+      "importContinue": "Check the next 100 badges",
+      "importAgain": "Check again from the beginning",
+      "importResult": "Badges checked: {processed} / Keepsakes imported: {imported}",
       "title": "Decorations and exchanges",
       "permanent": "Points can be spent only on permanent decorations. They do not affect growth speed or access rights.",
       "slots": "Three decoration slots",

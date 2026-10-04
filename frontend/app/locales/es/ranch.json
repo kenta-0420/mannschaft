@@ -135,6 +135,12 @@
       "openConsent": "Ir al consentimiento parental"
     },
     "decorations": {
+      "importTitle": "Importar recuerdos",
+      "importDescription": "Cada acción revisa hasta 100 insignias obtenidas para importar recuerdos publicados. Tú decides si continuar.",
+      "importStart": "Importar recuerdos",
+      "importContinue": "Revisar las siguientes 100 insignias",
+      "importAgain": "Revisar otra vez desde el principio",
+      "importResult": "Insignias revisadas: {processed} / Recuerdos importados: {imported}",
       "title": "Adornos e intercambios",
       "permanent": "Los puntos solo sirven para adornos permanentes. No afectan a la velocidad de crecimiento ni a los permisos de acceso.",
       "slots": "Tres espacios de adornos",

@@ -135,6 +135,12 @@
       "openConsent": "保護者同意へ進む"
     },
     "decorations": {
+      "importTitle": "記念品を取り込む",
+      "importDescription": "過去に獲得したバッジから、公開済みの記念品を最大100件ずつ取り込みます。続きは自分で選べます。",
+      "importStart": "記念品を取り込む",
+      "importContinue": "次の100件を取り込む",
+      "importAgain": "最初からもう一度確認",
+      "importResult": "確認したバッジ: {processed}件 / 取り込んだ記念品: {imported}件",
       "title": "置物と交換",
       "permanent": "ポイントは永久の装飾品だけに使えます。育成の速度や権利には影響しません。",
       "slots": "3つの置物枠",

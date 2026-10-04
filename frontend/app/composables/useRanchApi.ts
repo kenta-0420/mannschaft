@@ -1,5 +1,5 @@
 import type { ApiResponse } from '~/types/api'
-import type { AssignmentRequest, CursorPage, FeedingResult, HatchResponse, InteractionResult, RanchInventory, RanchRecord, RanchSettings, RanchSlot, RanchState, ShopItem } from '~/types/ranch'
+import type { AssignmentRequest, CursorPage, FeedingResult, HatchResponse, InteractionResult, RanchInventory, RanchLegacySyncResult, RanchRecord, RanchSettings, RanchSlot, RanchState, ShopItem } from '~/types/ranch'
 import type { RanchCommandSnapshot } from './useRanchCommand'
 export function useRanchApi() {
  const api = useApi()
@@ -29,6 +29,7 @@ export function useRanchApi() {
   shop: async () => (await api<ApiResponse<ShopItem[]>>(`${base}/shop`, { cache: 'no-store' })).data,
   purchase: (skuKey: string, priceVersion: string, version: string) => mutate(`${base}/purchases`, 'POST', { skuKey, priceVersion, version }),
   inventory: (cursor?: string) => api<CursorPage<RanchInventory>>(`${base}/collectibles`, { query: { cursor, limit: 20 }, cache: 'no-store' }),
+  syncLegacy: (afterAwardId: string) => mutate<RanchLegacySyncResult>(`${base}/collectibles/sync`, 'POST', { afterAwardId }),
   records: (cursor?: string) => api<CursorPage<RanchRecord>>(`${base}/records`, { query: { cursor, limit: 20 }, cache: 'no-store' }),
   place: (slot: RanchSlot, inventoryId: string) => mutate<RanchSlot>(`${base}/room/slots/${slot.slotKey}`, 'PUT', { inventoryId, version: slot.version }),
   remove: (slot: RanchSlot) => mutate<undefined>(`${base}/room/slots/${slot.slotKey}`, 'DELETE', undefined, slot.version),

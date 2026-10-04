@@ -135,6 +135,12 @@
       "openConsent": "Zur elterlichen Zustimmung"
     },
     "decorations": {
+      "importTitle": "Erinnerungsstücke importieren",
+      "importDescription": "Pro Aktion werden bis zu 100 früher erworbene Abzeichen auf veröffentlichte Erinnerungsstücke geprüft. Du entscheidest, ob du fortfahren möchtest.",
+      "importStart": "Erinnerungsstücke importieren",
+      "importContinue": "Die nächsten 100 Abzeichen prüfen",
+      "importAgain": "Erneut von Anfang an prüfen",
+      "importResult": "Geprüfte Abzeichen: {processed} / Importierte Erinnerungsstücke: {imported}",
       "title": "Dekorationen und Tausch",
       "permanent": "Punkte sind nur für dauerhafte Dekorationen nutzbar. Sie beeinflussen weder Wachstumsgeschwindigkeit noch Zugangsrechte.",
       "slots": "Drei Dekorationsplätze",

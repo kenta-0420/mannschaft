@@ -135,6 +135,12 @@
       "openConsent": "보호자 동의로 이동"
     },
     "decorations": {
+      "importTitle": "기념품 가져오기",
+      "importDescription": "이전에 획득한 배지에서 공개된 기념품을 한 번에 최대 100개씩 확인합니다. 계속할지는 직접 선택할 수 있습니다.",
+      "importStart": "기념품 가져오기",
+      "importContinue": "다음 배지 100개 확인",
+      "importAgain": "처음부터 다시 확인",
+      "importResult": "확인한 배지: {processed}개 / 가져온 기념품: {imported}개",
       "title": "장식품과 교환",
       "permanent": "포인트는 영구 장식품에만 사용할 수 있습니다. 성장 속도나 이용 권한에 영향을 주지 않습니다.",
       "slots": "장식품 슬롯 3개",

@@ -30,6 +30,7 @@ export interface HatchResult { commandId: string; dinosaurId: string; name: stri
 export type HatchResponse = { kind: 'HATCH_RESULT'; result: HatchResult; state: null } | { kind: 'CURRENT_STATE'; result: null; state: RanchState }
 export type AssignmentRequest = { method: 'HABITAT_RANDOM'; habitat: Habitat; version: Decimal } | { method: 'DIAGNOSIS'; resultId: string; version: Decimal } | { method: 'BIRTH_STYLE'; resultId: string; confirmationRef: string; version: Decimal }
 export interface RanchInventory { id: string; collectibleKey: string; labelKey: string; assetKey: string; isRevoked: boolean; placedSlotKey: string | null }
+export interface RanchLegacySyncResult { commandId: string; nextAfterAwardId: Decimal; processedCount: number; importedCount: number; hasNext: boolean; completedAt: string }
 export interface ShopItem { skuKey: string; collectibleKey: string; labelKey: string; pricePoints: Decimal; priceVersion: Decimal; isOwned: boolean }
 export interface RanchRecord { id: string; kind: string; deltaPoints: Decimal; deltaXp: Decimal; occurredAt: string; sourceLink: { url: string } | null }
 export interface CursorPage<T> { data: T[]; meta: { nextCursor: string | null; hasNext: boolean; limit: number } }
