@@ -159,6 +159,12 @@ test('村の三役割表示とBAN済HEADMANの管理導線拒否を真のセッ�
     expect((await publicResponse.json()).data).toMatchObject({ isMember: false, myRole: null })
     expect(denied.status()).toBe(404)
     expect((await denied.json()).error.code).toBe('VILLAGE_007')
+    // エラー応答後の一覧再描画まで待ち、loading中の空状態では合格にしない。
+    const deniedMembers = target.locator('section').filter({ has: target.getByRole('heading', { name: '村人一覧', exact: true }) })
+    await expect(deniedMembers).toBeVisible()
+    await expect(deniedMembers.locator('[data-pc-section="loadingicon"]')).toHaveCount(0)
+    await expect(deniedMembers.getByText('村人がいません', { exact: true })).toBeVisible()
+    await expect(deniedMembers.locator('[data-pc-section="bodyrow"]')).toHaveCount(0)
     await expect(target.getByRole('button', { name: 'ロール変更', exact: true })).toHaveCount(0)
     await expect(target.getByRole('button', { name: 'BANする', exact: true })).toHaveCount(0)
     await capture(target, 'banned-management-denied')
