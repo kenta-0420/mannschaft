@@ -102,7 +102,7 @@ public class RanchEnrollmentWriter {
         RanchOwnerEntity owner = owners.saveAndFlush(RanchOwnerEntity.builder()
                 .userId(userId).status(ParticipationStatus.ACTIVE).balance(0)
                 .viewMode("ROOM").renderStyle(RenderStyle.PIXEL)
-                .motionMode(MotionMode.NORMAL).soundEnabled(false).soundVolume(100)
+                .motionMode(MotionMode.REDUCED).soundEnabled(false).soundVolume(50)
                 .version(0).createdAt(now).build());
         RanchDinosaurEntity dinosaur = dinosaurs.saveAndFlush(RanchDinosaurEntity.builder()
                 .ownerId(owner.getId()).userId(userId)

@@ -128,6 +128,10 @@ class RanchShopSlotWriterIT extends AbstractMySqlIntegrationTest {
         owners.saveAndFlush(otherOwner);
         var foreign = purchases.purchase(other, UUID.randomUUID(),
                 new RanchPurchaseRequest(sku, "1", "0"), NOW);
+        assertThat(shopReader.current(me, NOW).stream().filter(item -> item.skuKey().equals(sku)))
+                .singleElement().satisfies(item -> assertThat(item.isOwned()).isFalse());
+        assertThat(shopReader.current(other, NOW).stream().filter(item -> item.skuKey().equals(sku)))
+                .singleElement().satisfies(item -> assertThat(item.isOwned()).isTrue());
         long before = commands.countByUserId(me);
         assertThatThrownBy(() -> slots.place(me, UUID.randomUUID(), "SHELF_1",
                 new RanchSlotRequest(foreign.inventoryId(), "0"), NOW.plusSeconds(1)))

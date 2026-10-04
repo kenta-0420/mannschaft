@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,6 +19,12 @@ public interface RanchInventoryRepository extends JpaRepository<RanchInventoryEn
             Long userId, String acquisitionKind, byte[] acquisitionKey);
     Optional<RanchInventoryEntity> findByUserIdAndIdAndRevokedFalse(Long userId, UUID id);
     List<RanchInventoryEntity> findByUserIdOrderByAwardedAtDescIdDesc(Long userId);
+
+    @Query("SELECT DISTINCT item.skuKey FROM RanchInventoryEntity item "
+            + "WHERE item.userId = :userId AND item.acquisitionKind = 'SHOP' "
+            + "AND item.revoked = false AND item.skuKey IN :skuKeys")
+    List<String> ownedShopSkuKeys(@Param("userId") Long userId,
+                                  @Param("skuKeys") Collection<String> skuKeys);
 
     @Query(value = "SELECT * FROM ranch_collectible_inventory WHERE user_id = :userId "
             + "AND (:cursorAt IS NULL OR awarded_at < :cursorAt "

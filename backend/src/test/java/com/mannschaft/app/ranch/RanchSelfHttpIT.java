@@ -1,5 +1,6 @@
 package com.mannschaft.app.ranch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.ranch.repository.RanchDinosaurRepository;
 import com.mannschaft.app.ranch.repository.RanchOwnerRepository;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
@@ -24,13 +26,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** AC02/08/26: 実Security filterとMySQLを通す本人牧場HTTP境界。 */
+/**
+ * AC02/08/26: 実Security filterとMySQLを通す本人牧場HTTP境界。
+ * RanchSelfController#read と RanchSelfController#enroll の自己スコープ契約を固定する。
+ */
 @AutoConfigureMockMvc
 @TestPropertySource(properties = "mannschaft.ranch.development-fixtures=true")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class RanchSelfHttpIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mvc;
     @Autowired private UserRepository users;
+    @Autowired private ObjectMapper json;
     @Autowired private RanchOwnerRepository owners;
     @Autowired private RanchDinosaurRepository dinosaurs;
     @Autowired private RanchRoomPlacementRepository slots;
@@ -79,6 +85,34 @@ class RanchSelfHttpIT extends AbstractMySqlIntegrationTest {
                 .andExpect(jsonPath("$.data.owner").doesNotExist())
                 .andExpect(jsonPath("$.data.dinosaur").doesNotExist());
         assertThat(owners.findByUserId(other)).isEmpty();
+    }
+
+    @Test
+    void savedEnrollmentReplayKeepsInitialSnapshotAfterOwnerSettingChanges() throws Exception {
+        UUID key = UUID.randomUUID();
+        var first = mvc.perform(post("/api/v1/me/ranch").with(user(me.toString()))
+                        .header("Idempotency-Key", key)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        var initial = json.readTree(first.getResponse().getContentAsString()).get("data");
+        var owner = owners.findByUserId(me).orElseThrow();
+        ReflectionTestUtils.setField(owner, "soundVolume", 37);
+        owners.saveAndFlush(owner);
+
+        var replay = mvc.perform(post("/api/v1/me/ranch").with(user(me.toString()))
+                        .header("Idempotency-Key", key)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(json.readTree(replay.getResponse().getContentAsString()).get("data"))
+                .isEqualTo(initial);
+        mvc.perform(get("/api/v1/me/ranch").with(user(me.toString())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.settings.soundVolume").value(37));
+        assertThat(owners.findByUserId(me).orElseThrow().getSoundVolume()).isEqualTo(37);
+        assertThat(dinosaurs.findByUserId(me)).isPresent();
+        assertThat(slots.findByUserIdOrderBySlotKey(me)).hasSize(3);
     }
 
     @Test

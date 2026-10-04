@@ -63,8 +63,12 @@ class RanchEnrollmentWriterIT extends AbstractMySqlIntegrationTest {
         assertThat(first.createdNow()).isTrue();
         var owner = owners.findByUserId(me).orElseThrow();
         assertThat(first.ownerId()).isEqualTo(owner.getId());
+        assertThat(owner.getMotionMode()).isEqualTo(MotionMode.REDUCED);
         assertThat(owner.isSoundEnabled()).isFalse();
+        assertThat(owner.getSoundVolume()).isEqualTo(50);
+        assertThat(first.snapshot().settings().motionMode()).isEqualTo(MotionMode.REDUCED);
         assertThat(first.snapshot().settings().isSoundEnabled()).isFalse();
+        assertThat(first.snapshot().settings().soundVolume()).isEqualTo(50);
         var dinosaur = dinosaurs.findByUserId(me).orElseThrow();
         assertThat(dinosaur.getId()).isEqualTo(first.dinosaurId());
         assertThat(dinosaur.getStage()).isEqualTo(DinosaurStage.EGG);
