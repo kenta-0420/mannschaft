@@ -1,297 +1,185 @@
-# =============================================================================
-# E2E Real Smoke — seed データ投入 + Backend API smoke チェック
-# =============================================================================
-# 概要:
-#   1. MySQL と Valkey のサービスコンテナを起動
-#   2. Spring Boot を ci プロファイルで起動（Flyway マイグレーションを自動適用）
-#   3. seed-e2e-data.js で E2E テスト用データを投入
-#   4. smoke-check.sh で API を叩き、HTTP 200 を確認する
-#
-# なぜこれが必要か:
-#   seed-e2e-data.js は MySQL に直接 INSERT するため、Hibernate の
-#   @Enumerated(EnumType.STRING) 変換をバイパスする。
-#   その結果、不正な enum 値（例: channel_type='TEAM'）があっても
-#   INSERT 時には検出されず、API 呼び出し時に HTTP 500 として顕在化する。
-#   このワークフローはその「API 経由での検出」を自動化する。
-#
-# トリガー:
-#   - seed スクリプト変更時（PR）
-#   - schedule 関連 Java ファイル変更時（PR）
-#   - 毎週日曜 JST 05:00（定期チェック）
-#   - 手動実行
-#
-# 実行時間の見積もり: 約 12〜20 分
-#   - JAR ビルド（キャッシュなし）: 約 8〜12 分
-#   - JAR ビルド（キャッシュあり）: 約 3〜5 分
-#   - バックエンド起動 + Flyway: 約 5〜8 分（migration 増加時）
-#   - seed 実行: 約 30 秒
-#   - smoke チェック: 約 30 秒
-#
-# 制限事項:
-#   - Valkey は ci プロファイルの localhost:6379 に接続する専用サービスとして起動する。
-#     ブラウザの補助 API も実依存で検証し、接続失敗を合格扱いにしない。
-#   - bcrypt ハッシュ（seed スクリプトが投入した $2a$ 形式）は DelegatingPasswordEncoder の
-#     setDefaultPasswordEncoderForMatches(BCrypt) により正常に検証できる。
-#     Argon2id 移行（PR #1094）の影響でログインが失敗することはない。
-# =============================================================================
-
-name: E2E Real Smoke (Seed + API)
-
+# 専用 verify ref の診断のみ。製品・既存 gate・解析 rule は変更しない。
+name: ArchUnit store multiset diagnostic (gold excluded)
 on:
-  pull_request:
-    paths:
-      - 'backend/scripts/seed-e2e-data.js'
-      - 'backend/src/main/java/**/schedule/**/*.java'
-      - '.github/workflows/e2e-real-smoke.yml'
-  schedule:
-    # 毎週日曜 20:00 UTC = 月曜 JST 05:00
-    - cron: '0 20 * * 0'
   workflow_dispatch:
-    inputs:
-      run_calendar_browser:
-        description: '検分後のカレンダー実ブラウザ検証を実行する'
-        type: boolean
-        default: false
-
+permissions:
+  contents: read
+concurrency:
+  group: archunit-store-diagnostic-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  seed-and-api-smoke:
-    name: Seed + API Smoke Check
+  diagnose:
     runs-on: ubuntu-latest
     timeout-minutes: 35
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_DATABASE: mannschaft
-          MYSQL_USER: mannschaft
-          MYSQL_PASSWORD: mannschaft
-          MYSQL_ROOT_PASSWORD: root_password
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd "mysqladmin ping -h localhost -u mannschaft -pmannschaft"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-
-      valkey:
-        image: valkey/valkey:8-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "valkey-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-
+    env:
+      BASE_SOURCE: 72e180af9407109378a4cc7eafe80824a94fccf9
     steps:
-      - name: Checkout source
+      - name: Checkout exact diagnostic head
         uses: actions/checkout@v7
-
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'temurin'
-          # setup-java 組み込みの Gradle キャッシュ（~/.gradle/caches と ~/.gradle/wrapper）
+          distribution: temurin
           cache: gradle
-
-      # プロジェクト内の .gradle ディレクトリ（ビルドキャッシュ本体）を別途キャッシュする。
-      # backend-ci.yml と同じ key を使うことでキャッシュを共有できる。
-      - name: Gradle ビルドキャッシュ（プロジェクト内）
-        uses: actions/cache@v5
-        with:
-          path: backend/.gradle/buildOutputCleanup
-          key: gradle-build-cache-${{ runner.os }}-${{ hashFiles('backend/**/*.gradle*', 'backend/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-build-cache-${{ runner.os }}-
-
-      - name: Grant Gradle wrapper execute permission
-        working-directory: backend
-        run: chmod +x gradlew
-
-      # テストをスキップして JAR のみビルド（bootJar は Spring Boot Gradle プラグインが自動で追加する）
-      - name: Build backend JAR (テストスキップ)
-        working-directory: backend
-        run: ./gradlew bootJar -x test --no-daemon --build-cache
-
-      - name: Set up Node.js 22.23.2
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.23.2'
-
-      # seed スクリプトの依存関係（mysql2 + bcryptjs）をインストール
-      - name: Install seed script dependencies
-        working-directory: backend/scripts
-        run: npm ci
-
-      # GitHub Actions の MySQL 8.0 サービスコンテナはバイナリロギングが有効なため、
-      # CREATE TRIGGER / CREATE FUNCTION を SUPER 権限なしで実行するには
-      # log_bin_trust_function_creators を有効にする必要がある。
-      - name: Configure MySQL for triggers/functions
-        run: |
-          mysql -h 127.0.0.1 -P 3306 -u root -proot_password -e \
-            "SET GLOBAL log_bin_trust_function_creators = 1;"
-
-      # Backend を ci プロファイルで起動する。
-      # Flyway が自動でマイグレーションを適用してからバックエンドが起動する。
-      # JAR ファイルは *-SNAPSHOT.jar（plain は除外）。
-      - name: Start backend (with Flyway migration)
-        env:
-          # 実機FEのOriginだけをCI専用に明示する（security/03 §6、ワイルドカード禁止）。
-          MANNSCHAFT_ALLOWED_ORIGINS: 'http://localhost:8081,http://localhost:8080'
-        run: |
-          JAR=$(ls backend/build/libs/*.jar | grep -v plain | head -1)
-          echo "起動する JAR: $JAR"
-          java -jar "$JAR" \
-            --spring.profiles.active=ci \
-            > /tmp/backend.log 2>&1 &
-          echo "BACKEND_PID=$!" >> "$GITHUB_ENV"
-          echo "バックエンドを起動しました（PID: $!）"
-
-      # Flyway の初回 migration が 4 分以上かかるため、最大 10 分待機する
-      - name: Wait for backend health
-        run: |
-          echo "バックエンドの起動を待機しています..."
-          for i in $(seq 1 60); do
-            if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
-              echo "✅ Backend is UP (試行 ${i}/60)"
-              break
-            fi
-            if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
-              echo "❌ FAIL: バックエンドが起動途中で終了しました"
-              tail -100 /tmp/backend.log || true
-              exit 1
-            fi
-            if [ "$i" -eq 60 ]; then
-              echo "❌ FAIL: バックエンドが 10 分以内に起動しませんでした"
-              echo "=== backend.log の末尾 ==="
-              tail -100 /tmp/backend.log || true
-              exit 1
-            fi
-            echo "待機中... ($i/60)"
-            sleep 10
-          done
-
-      # Flyway マイグレーション完了後に seed データを投入する
-      - name: Run seed script
-        working-directory: backend/scripts
-        run: node seed-e2e-data.js
-
-      # seed データが Hibernate 経由で正常に読み取れるかを API で確認する
-      - name: Run API smoke check
-        id: api_smoke
-        run: |
-          chmod +x backend/scripts/smoke-check.sh
-          bash backend/scripts/smoke-check.sh http://localhost:8080
-
-      # 同runのAPI smokeを通ったJARだけを、ローカル隔離実機用に回収する。本番配備はしない。
-      - name: Prepare verified calendar backend artifact
-        id: calendar_backend_artifact
-        if: success() && github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser && steps.api_smoke.outcome == 'success'
+      - name: 固定 source と解析設定を確認・snapshot helper 準備
+        shell: bash
         run: |
           set -euo pipefail
-          checkout_sha="$(git rev-parse HEAD)"
-          if [[ "$checkout_sha" != "$GITHUB_SHA" ]]; then
-            echo "::error::checkout SHA と GITHUB_SHA が一致しません"
-            exit 1
-          fi
-          mapfile -d '' -t jars < <(find backend/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' -print0)
-          if [[ "${#jars[@]}" -ne 1 ]]; then
-            echo "::error::非plainの検証JARは1個だけ必要です"
-            exit 1
-          fi
-          artifact_dir="$(mktemp -d "$RUNNER_TEMP/calendar-backend-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.XXXXXX")"
-          cp -- "${jars[0]}" "$artifact_dir/backend-verification.jar"
-          checksum="$(sha256sum "$artifact_dir/backend-verification.jar" | cut -d ' ' -f 1)"
-          printf '%s  backend-verification.jar\n' "$checksum" > "$artifact_dir/SHA256SUMS"
-          printf '%s\n' "$checkout_sha" > "$artifact_dir/CHECKOUT_SHA"
-          echo "directory=$artifact_dir" >> "$GITHUB_OUTPUT"
-
-      - name: Upload verified calendar backend artifact
-        if: success() && github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser && steps.calendar_backend_artifact.outcome == 'success'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD^)" = "$BASE_SOURCE"
+          test "$(git diff --name-only "$BASE_SOURCE" HEAD)" = '.github/workflows/e2e-real-smoke.yml'
+          git diff --exit-code "$BASE_SOURCE" HEAD -- backend
+          test ! -e backend/build
+          mkdir -p evidence
+          git rev-parse HEAD > evidence/diagnostic-head.txt
+          git rev-parse "$BASE_SOURCE" > evidence/source-head.txt
+          git ls-tree -r "$BASE_SOURCE" backend > evidence/backend-source-blobs.txt
+          java -version 2> evidence/jdk-version.txt
+          sha256sum backend/gradle/wrapper/gradle-wrapper.jar backend/gradle/wrapper/gradle-wrapper.properties backend/build.gradle.kts backend/src/test/resources/archunit.properties > evidence/execution-config-sha256.txt
+          grep -Fx 'freeze.refreeze=false' backend/src/test/resources/archunit.properties
+          chmod +x backend/gradlew
+          cat > evidence/snapshot.py <<'PY'
+          import collections, hashlib, json, pathlib, shutil, subprocess, sys
+          root = pathlib.Path.cwd()
+          source = root / 'backend/src/test/resources/archunit_store'
+          evidence = root / 'evidence'
+          phase = sys.argv[1]
+          def sha(data): return hashlib.sha256(data).hexdigest()
+          tracked = subprocess.check_output(['git','ls-files','--','backend/src/test/resources/archunit_store'],text=True).splitlines()
+          snapshot = evidence / phase
+          snapshot.mkdir(exist_ok=False)
+          manifest = {}
+          for file in sorted(source.rglob('*')):
+              if file.is_symlink(): raise RuntimeError('Unexpected store symlink')
+              if not file.is_file(): continue
+              name = file.relative_to(source).as_posix()
+              data = file.read_bytes()
+              target = snapshot / name
+              target.parent.mkdir(parents=True,exist_ok=True)
+              target.write_bytes(data)
+              manifest[name] = {'sha256':sha(data),'bytes':len(data),'lines':len(data.decode('utf-8').splitlines())}
+          (evidence / (phase + '-manifest.json')).write_text(json.dumps({'tracked':tracked,'actual':manifest},ensure_ascii=False,indent=2),encoding='utf-8')
+          if phase == 'after':
+              before = json.loads((evidence/'before-manifest.json').read_text(encoding='utf-8'))['actual']
+              report = {}
+              for name in sorted(set(before)|set(manifest)):
+                  a = collections.Counter((evidence/'before'/name).read_text(encoding='utf-8').splitlines()) if name in before else collections.Counter()
+                  b = collections.Counter((evidence/'after'/name).read_text(encoding='utf-8').splitlines()) if name in manifest else collections.Counter()
+                  report[name] = {'before':before.get(name),'after':manifest.get(name),
+                      'removed':[{'line':line,'count':count} for line,count in sorted((a-b).items())],
+                      'added':[{'line':line,'count':count} for line,count in sorted((b-a).items())]}
+              (evidence/'multiset-diff.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+              diff = subprocess.run(['git','diff','--','backend/src/test/resources/archunit_store'],capture_output=True,text=True,check=True)
+              (evidence/'tracked-store.diff').write_text(diff.stdout,encoding='utf-8')
+              classes = root/'backend/build/classes/java/main/com/mannschaft/app'
+              files = sorted(classes.rglob('*.class')) if classes.exists() else []
+              metadata = [{'path':f.relative_to(root).as_posix(),'sha256':sha(f.read_bytes())} for f in files]
+              (evidence/'app-bytecode-metadata.json').write_text(json.dumps({'classCount':len(files),'classes':metadata,'actualImportedClassCount':'not observed; available app bytecode only'},indent=2),encoding='utf-8')
+          PY
+          cat > evidence/classpath.init.gradle <<'GROOVY'
+          import groovy.json.JsonOutput
+          gradle.projectsEvaluated {
+              def p = gradle.rootProject
+              def diagnostic = p.tasks.register('diagnosticClasspath') {
+                  dependsOn(p.tasks.named('testClasses'))
+                  doLast {
+                      def entries = p.tasks.named('archUnitTest').get().classpath.files.collect { f ->
+                          def digest = null
+                          if (f.isFile()) {
+                              def md = java.security.MessageDigest.getInstance('SHA-256')
+                              f.withInputStream { stream -> byte[] buffer = new byte[65536]; int length
+                                  while ((length = stream.read(buffer)) > 0) md.update(buffer,0,length)
+                              }
+                              digest = md.digest().encodeHex().toString()
+                          }
+                          [path:f.absolutePath,name:f.name,sha256:digest,isDirectory:f.isDirectory()]
+                      }
+                      new File(p.rootDir.parentFile,'evidence/resolved-classpath.json').text = JsonOutput.prettyPrint(JsonOutput.toJson(entries))
+                  }
+              }
+              p.tasks.named('archUnitTest').configure { dependsOn(diagnostic) }
+          }
+          GROOVY
+          python3 evidence/snapshot.py before
+      - name: 全 ArchUnit engine を絞り込みなしで解析
+        id: analysis
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd backend
+          set +e
+          ./gradlew archUnitTest --no-daemon --no-build-cache --max-workers=1 -Pmax.parallel.forks=1 -Pfork.every=0 -I ../evidence/classpath.init.gradle
+          code=$?
+          set -e
+          printf '%s\n' "$code" > ../evidence/archunit-exit.txt
+          exit "$code"
+      - name: 失敗時も解析後 store を保全
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f evidence/before-manifest.json
+          python3 evidence/snapshot.py after
+      - name: read-only Integrity guard を確認（全解析を再実行しない）
+        if: always() && steps.analysis.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f evidence/after-manifest.json
+          test -n "$(find backend/build/test-results/archUnitTest -maxdepth 1 -name 'TEST-*.xml' -print -quit)"
+          cd backend
+          set +e
+          ./gradlew test --tests com.mannschaft.app.common.architecture.ArchUnitFreezeStoreIntegrityTest -x archUnitTest --no-daemon --max-workers=1 -Pmax.parallel.forks=1 -Pfork.every=0
+          code=$?
+          set -e
+          printf '%s\n' "$code" > ../evidence/integrity-exit.txt
+          exit "$code"
+      - name: 安全な JUnit 件数と guard 後不変性を保存
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,pathlib,xml.etree.ElementTree as ET
+          root=pathlib.Path.cwd()
+          evidence=root/'evidence'
+          after=json.loads((evidence/'after-manifest.json').read_text(encoding='utf-8'))['actual']
+          store=root/'backend/src/test/resources/archunit_store'
+          assert sorted(f.relative_to(store).as_posix() for f in store.rglob('*') if f.is_file())==sorted(after),'read-only guard changed store file set'
+          for name,meta in after.items():
+              data=(root/'backend/src/test/resources/archunit_store'/name).read_bytes()
+              assert hashlib.sha256(data).hexdigest()==meta['sha256'], 'read-only guard changed store'
+          rows=[]
+          for file in sorted((root/'backend/build/test-results').rglob('*.xml')):
+              if file.parent.name not in ['archUnitTest','test']: continue
+              for event,node in ET.iterparse(file,events=['start']):
+                  if node.tag=='testsuite':
+                      rows.append({'entry':file.relative_to(root).as_posix(),'name':node.attrib.get('name'),
+                          **{key:int(node.attrib.get(key,0)) for key in ['tests','failures','errors','skipped']}})
+                      break
+          (evidence/'junit-headers.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2),encoding='utf-8')
+          arch=[row for row in rows if row['entry'].startswith('backend/build/test-results/archUnitTest/')]
+          guard=[row for row in rows if row['name']=='com.mannschaft.app.common.architecture.ArchUnitFreezeStoreIntegrityTest']
+          assert sum(row['tests'] for row in arch)>0,'ArchUnit unexecuted'
+          for target in ['CrossDomainTransactionalArchTest','CrossDomainRepositoryDependencyArchTest']:
+              selected=[row for row in arch if row['entry']=='backend/build/test-results/archUnitTest/TEST-com.mannschaft.app.common.architecture.'+target+'.xml']
+              assert len(selected)==1 and selected[0]['tests']==1,'D3/D5 missing or unexpected count: '+target
+              assert all(selected[0][key]==0 for key in ['failures','errors','skipped']),'D3/D5 failed or unexecuted: '+target
+          assert len(guard)==1 and guard[0]['tests']==2,'Integrity unexecuted'
+          assert all(row['errors']==0 and row['skipped']==0 for row in arch+guard),'Diagnostic has errors or skips'
+          assert sum(row['failures'] for row in arch)==0,'ArchUnit analysis failed; shrink legitimacy unproven'
+          PY
+      - name: before/after・重複保持差分・実行同一性を保存
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: calendar-verified-backend-${{ github.run_id }}-${{ github.run_attempt }}
+          name: archunit-store-multiset-${{ github.run_id }}
           path: |
-            ${{ steps.calendar_backend_artifact.outputs.directory }}/backend-verification.jar
-            ${{ steps.calendar_backend_artifact.outputs.directory }}/SHA256SUMS
-            ${{ steps.calendar_backend_artifact.outputs.directory }}/CHECKOUT_SHA
+            evidence/
           if-no-files-found: error
           retention-days: 7
-      # PR 自動実行は従来の API smoke のみ。検分後の明示実行で本物の UI を検証する。
-      - name: Install browser test dependencies
-        if: github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
-        working-directory: frontend
-        env:
-          HUSKY: '0'
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
-
-      - name: Verify calendar browser CORS preflight
-        if: github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
-        run: |
-          set -euo pipefail
-          origin='http://localhost:8081'
-          headers="$(mktemp "$RUNNER_TEMP/calendar-cors.XXXXXX")"
-          trap 'rm -f -- "$headers"' EXIT
-          if ! curl --fail --silent --show-error --max-time 15 \
-            --request OPTIONS http://localhost:8080/api/v1/my/calendar \
-            --header "Origin: $origin" \
-            --header 'Access-Control-Request-Method: GET' \
-            --header 'Access-Control-Request-Headers: authorization,content-type' \
-            --dump-header "$headers" --output /dev/null; then
-            echo '::error::カレンダー実機のCORS preflightが失敗しました'
-            exit 1
-          fi
-          allow_origin="$(awk 'tolower($1) == "access-control-allow-origin:" {gsub("\r", "", $2); print $2}' "$headers")"
-          allow_credentials="$(awk 'tolower($1) == "access-control-allow-credentials:" {gsub("\r", "", $2); print $2}' "$headers")"
-          if [[ "$allow_origin" != "$origin" || "$allow_credentials" != 'true' ]]; then
-            echo '::error::CORSのallow-origin/credentialsが実機FEの契約と一致しません'
-            exit 1
-          fi
-          echo 'カレンダー実機のOriginとcredentialsのCORS契約を確認しました'
-
-      - name: Run calendar browser verification (real backend)
-        if: github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
-        working-directory: frontend
-        env:
-          BASE_URL: http://localhost:8081
-          API_BASE_URL: http://localhost:8080
-          E2E_ISOLATED_DB: 'true'
-          E2E_DB_HOST: '127.0.0.1'
-          E2E_DB_PORT: '3306'
-          E2E_DB_NAME: mannschaft
-          E2E_DB_USER: mannschaft
-          E2E_DB_PASSWORD: mannschaft
-          E2E_MYSQL_CONTAINER_ID: ${{ job.services.mysql.id }}
-        run: >-
-          npx playwright test
-          'cmp26090(1-1246|2-0058).*real.spec.ts'
-          --project=chromium-real --workers=1 --retries=0 --trace=off
-
-      # storageState・Cookie・トークンを含む .auth は成果物へ含めない。
-      - name: Upload browser evidence
-        if: always() && github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
-        uses: actions/upload-artifact@v4
-        with:
-          name: calendar-browser-evidence-${{ github.run_id }}
-          path: |
-            frontend/playwright-report/
-            frontend/test-results/
-          retention-days: 7
-
-      # 失敗時のデバッグ用にバックエンドログをアップロードする
-      - name: バックエンドログをアップロード（失敗時）
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-log-${{ github.run_id }}
-          path: /tmp/backend.log
-          retention-days: 3
-
-      - name: Stop backend
-        if: always()
-        run: kill "$BACKEND_PID" 2>/dev/null || true
