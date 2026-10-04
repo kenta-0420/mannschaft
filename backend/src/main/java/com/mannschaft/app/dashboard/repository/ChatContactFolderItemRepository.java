@@ -103,4 +103,9 @@ public interface ChatContactFolderItemRepository extends JpaRepository<ChatConta
             @Param("userId") Long userId,
             @Param("itemType") FolderItemType itemType,
             @Param("itemId") Long itemId);
+
+    /** 強匿名化専用。対象利用者の行を論理削除済みも含めて物理削除する。 */
+    @Modifying
+    @Query(value = "DELETE FROM chat_contact_folder_items WHERE folder_id IN (SELECT id FROM chat_contact_folders WHERE user_id = :userId)", nativeQuery = true)
+    int deleteAllByFolderOwnerIncludingDeleted(@Param("userId") Long userId);
 }
