@@ -90,6 +90,9 @@ public class GlobalExceptionHandler {
      */
     // 型推論限界回避のため明示型指定（エントリ数増加に伴う javac 推論破綻を根治）
     private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.<String, HttpStatus>ofEntries(
+            // 本人操作の受付拒否と非ACTIVE拒否は既存認証エラーへ転用しない。
+            Map.entry("AUTHOPERATION_001", HttpStatus.SERVICE_UNAVAILABLE),
+            Map.entry("AUTHOPERATION_002", HttpStatus.FORBIDDEN),
             // Storage ACL: 不在は存在秘匿、所有境界違反は権限拒否、claim 状態競合は再試行不能として返す。
             // Storage ACL: existence is hidden; permission, and claim conflicts retain their own statuses.
             Map.entry("STORAGE_005", HttpStatus.NOT_FOUND),

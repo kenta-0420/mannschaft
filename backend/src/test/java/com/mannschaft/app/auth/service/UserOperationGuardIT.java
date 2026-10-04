@@ -3,6 +3,8 @@ package com.mannschaft.app.auth.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.GlobalExceptionHandler;
+import org.springframework.http.HttpStatus;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,7 +47,12 @@ class UserOperationGuardIT extends AbstractMySqlIntegrationTest {
         for(Long id : new Long[]{Long.MAX_VALUE,frozen,deleted}) {
             AtomicBoolean invoked=new AtomicBoolean();
             assertThatThrownBy(()->guard.withActiveUser(id,()->{invoked.set(true);return null;}))
-                    .isInstanceOf(BusinessException.class);
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(error -> {
+                        BusinessException business = (BusinessException) error;
+                        assertThat(business.getErrorCode().getCode()).isEqualTo("AUTHOPERATION_002");
+                        assertThat(GlobalExceptionHandler.resolveStatus(business.getErrorCode())).isEqualTo(HttpStatus.FORBIDDEN);
+                    });
             assertThat(invoked).isFalse();
         }
     }

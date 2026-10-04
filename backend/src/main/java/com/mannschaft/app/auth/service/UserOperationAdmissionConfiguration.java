@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import javax.sql.DataSource;
 
-/** Reuses the existing PRIMARY bean; does not create or reconfigure a pool. */
+/** 既存PRIMARY Beanを再利用し、接続プールの新設・再設定を行わない。 */
 @Configuration
 public class UserOperationAdmissionConfiguration {
     @Bean

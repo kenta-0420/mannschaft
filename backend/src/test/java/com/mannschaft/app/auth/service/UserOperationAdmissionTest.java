@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Genuine unconnected providers; this alone is not public Guard/MySQL acceptance. */
+/** 真の未接続providerを使う。単独では公開Guard/MySQLの受入証拠としない。 */
 class UserOperationAdmissionTest {
     private static HikariDataSource pool(int maximum) {
         HikariDataSource pool = new HikariDataSource();
@@ -41,7 +41,7 @@ class UserOperationAdmissionTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"2,4,1", "3,4,1", "4,4,1", "6,4,2", "10,4,4", "10,1,1", "10,2,2"})
+    @CsvSource({"2,4,1", "3,4,1", "4,4,1", "5,4,1", "6,4,2", "10,4,4", "50,4,4", "10,1,1", "10,2,2"})
     void boundedCapacityRejectsWithoutQueueing(int poolMaximum, int serverMaximum, int permitted) throws Exception {
         try (HikariDataSource pool = pool(poolMaximum)) {
             UserOperationAdmission admission = new UserOperationAdmission(pool, serverMaximum);
@@ -113,6 +113,31 @@ class UserOperationAdmissionTest {
                 return "outer";
             })).isEqualTo("outer");
             assertThat(nested).isFalse();
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0", "-1"})
+    @org.junit.jupiter.api.DisplayName("非正の設定上限は受付を拒否する")
+    void nonPositiveServerMaximumRejected(int maximum) {
+        try (HikariDataSource pool = pool(4)) {
+            AtomicBoolean called = new AtomicBoolean();
+            assertThatThrownBy(() -> new UserOperationAdmission(pool, maximum).execute(() -> {
+                called.set(true); return null;
+            })).isInstanceOf(UserOperationAdmission.Rejected.class);
+            assertThat(called).isFalse();
+            assertThat(pool.getHikariPoolMXBean()).isNull();
+        }
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("null処理を拒否した後も受付枠を使える")
+    void nullOperationRejectedWithoutLosingPermit() {
+        try (HikariDataSource pool = pool(4)) {
+            UserOperationAdmission admission = new UserOperationAdmission(pool, 4);
+            assertThatThrownBy(() -> admission.execute(null)).isInstanceOf(IllegalArgumentException.class);
+            assertThat(admission.execute(() -> "next")).isEqualTo("next");
+            assertThat(pool.getHikariPoolMXBean()).isNull();
         }
     }
 }

@@ -1,14 +1,12 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.auth.UserOperationErrorCode;
+import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.util.function.Supplier;
 
-/**
- * usersを最初にロックし、本人操作をACTIVE状態へ束縛する認証境界。
- * コールバックは独立ドメインのREQUIRES_NEW writerだけを呼び、authへの再入・ネットワークI/Oをしない。
- * authロックはコールバックのcommitまで保持する。接続プールは最低二接続を必要とする。
- */
+/** 非TX入口で受付を制限し、別Runnerのauthトランザクションへ委譲する。 */
 @Service
 @RequiredArgsConstructor
 public class UserOperationGuard {
@@ -16,6 +14,13 @@ public class UserOperationGuard {
     private final UserOperationRunner runner;
 
     public <T> T withActiveUser(Long userId, Supplier<T> operation) {
-        throw new UnsupportedOperationException("本人操作境界は未実装");
+        if (userId == null || operation == null) {
+            throw new IllegalArgumentException("本人操作の指定が不正です");
+        }
+        try {
+            return admission.execute(() -> runner.withActiveUser(userId, operation));
+        } catch (UserOperationAdmission.Rejected rejected) {
+            throw new BusinessException(UserOperationErrorCode.UNAVAILABLE);
+        }
     }
 }

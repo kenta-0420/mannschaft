@@ -28,7 +28,7 @@ import java.util.function.Consumer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Real provider, auth Runner, transaction manager and MySQL; same shared IT context. */
+/** 実provider/auth Runner/TM/MySQLを共有IT contextで検証する。 */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class UserOperationAdmissionIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserOperationGuard guard;
@@ -175,5 +175,37 @@ class UserOperationAdmissionIT extends AbstractMySqlIntegrationTest {
             assertThat(callback).isFalse();
             return "outer";
         })).isEqualTo("outer"));
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("公開入口のnull処理は実RunnerのTX開始前に拒否する")
+    void publicNullOperationRejectedBeforeRealRunnerTransaction() {
+        try (HikariDataSource fixture = new HikariDataSource()) {
+            fixture.setMaximumPoolSize(4);
+            UserOperationGuard isolated = new UserOperationGuard(new UserOperationAdmission(fixture, 4), runner);
+            countBegins(count -> {
+                assertThatThrownBy(() -> isolated.withActiveUser(Long.MAX_VALUE, null))
+                        .isInstanceOf(IllegalArgumentException.class);
+                assertThat(count).hasValue(0);
+                assertThat(fixture.getHikariPoolMXBean()).isNull();
+            });
+        }
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("公開入口のnull本人はcallbackと実RunnerのTX開始前に拒否する")
+    void publicNullUserRejectedBeforeRealRunnerTransaction() {
+        try (HikariDataSource fixture = new HikariDataSource()) {
+            fixture.setMaximumPoolSize(4);
+            UserOperationGuard isolated = new UserOperationGuard(new UserOperationAdmission(fixture, 4), runner);
+            countBegins(count -> {
+                AtomicBoolean callback = new AtomicBoolean();
+                assertThatThrownBy(() -> isolated.withActiveUser(null, () -> { callback.set(true); return null; }))
+                        .isInstanceOf(IllegalArgumentException.class);
+                assertThat(callback).isFalse();
+                assertThat(count).hasValue(0);
+                assertThat(fixture.getHikariPoolMXBean()).isNull();
+            });
+        }
     }
 }
