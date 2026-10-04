@@ -38,12 +38,14 @@ class RanchScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mvc;
     @Autowired private UserRepository users;
     @Autowired private RanchOwnerRepository owners;
+    @Autowired private com.mannschaft.app.ranch.repository.RanchOperationalControlRepository controls;
     @Autowired private RanchDinosaurRepository dinosaurs;
     @Autowired private RanchRoomPlacementRepository slots;
     private Long userId;
 
     @BeforeEach
     void 本人無料未所属fixtureを作る() {
+        RanchTestFixture.operationalControl(controls);
         userId = users.saveAndFlush(RanchTestFixture.user()).getId();
         authenticate(userId);
     }
@@ -131,6 +133,7 @@ class RanchScopeContractIT extends AbstractMySqlIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("RANCH_003"));
     }
 
+    /** RanchOwnerActionController#pause と RanchOwnerActionController#resume の本人参加期間を実保存で確認する。 */
     @Test
     void 休止再開は同じ個体を保持しowner版だけを進める() throws Exception {
         enroll();

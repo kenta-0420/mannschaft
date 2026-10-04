@@ -36,6 +36,7 @@ public class RanchSelfController {
                                                        HttpServletResponse response) {
         Long userId = accessGuard.requireSelfAccess(request, response);
         RanchState result = facade.read(userId);
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
         return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "private, no-store")
                 .body(ApiResponse.of(result));
     }
@@ -48,6 +49,7 @@ public class RanchSelfController {
             HttpServletRequest request, HttpServletResponse response) {
         Long userId = accessGuard.requireSelfAccess(request, response);
         var result = facade.enroll(userId, key);
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
         ResponseEntity.BodyBuilder responseBuilder = result.createdNow()
                 ? ResponseEntity.created(URI.create("/api/v1/me/ranch"))
                 : ResponseEntity.ok();

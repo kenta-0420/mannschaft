@@ -99,7 +99,7 @@ public class RanchStateAssembler {
                         : dinosaur.getSpeciesCatalogVersion().toString(),
                 dinosaur.getStage(), dinosaur.getName(), dinosaur.getNamedAt(),
                 Long.toString(dinosaur.getXp()), nextStageXp,
-                Long.toString(dinosaur.getVersion()), egg);
+                Long.toString(dinosaur.getVersion()), egg, affinityBand(dinosaur));
         List<RoomSlotSummary> rooms = placements.stream()
                 .map(slot -> new RoomSlotSummary(slot.getSlotKey(), slot.getInventoryId(),
                         Long.toString(slot.getVersion())))
@@ -149,6 +149,15 @@ public class RanchStateAssembler {
         } catch (Exception exception) {
             throw inconsistent();
         }
+    }
+
+    private String affinityBand(RanchDinosaurEntity dinosaur) {
+        JsonNode frozen = parse(dinosaur.getAffinityRuleSnapshot());
+        long warm = number(frozen, "warmAffinity");
+        long close = number(frozen, "closeAffinity");
+        if (warm <= 0 || close <= warm || dinosaur.getAffinity() < 0) throw inconsistent();
+        return dinosaur.getAffinity() >= close ? "CLOSE"
+                : dinosaur.getAffinity() >= warm ? "WARM" : "NEUTRAL";
     }
 
     private long number(JsonNode snapshot, String field) {

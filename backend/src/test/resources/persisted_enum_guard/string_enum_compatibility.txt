@@ -1358,6 +1358,17 @@ com.mannschaft.app.ranch.ParticipationStatus#ACTIVE
 com.mannschaft.app.ranch.ParticipationStatus#PAUSED
 com.mannschaft.app.ranch.RenderStyle#PAINT_2D
 com.mannschaft.app.ranch.RenderStyle#PIXEL
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#AWARDED
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#CAPPED
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#INELIGIBLE
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#NOT_PARTICIPATING
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#REWARDS_PAUSED
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#SOURCE_COUNT_CAPPED
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#SOURCE_DISABLED
+com.mannschaft.app.ranch.reward.RanchRewardSourceType#ATTENDANCE_RESPONSE
+com.mannschaft.app.ranch.reward.RanchRewardSourceType#BLOG_FIRST_PUBLISH
+com.mannschaft.app.ranch.reward.RanchRewardSourceType#PERSONAL_RECALL_COMPLETE
+com.mannschaft.app.ranch.reward.RanchRewardSourceType#TIMELINE_ORIGINAL
 com.mannschaft.app.receipt.ReceiptArchiveKind#ORIGINAL
 com.mannschaft.app.receipt.ReceiptArchiveKind#VOIDED
 com.mannschaft.app.receipt.ReceiptPdfStatus#FAILED

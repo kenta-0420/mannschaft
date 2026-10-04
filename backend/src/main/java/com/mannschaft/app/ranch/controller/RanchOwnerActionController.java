@@ -40,7 +40,7 @@ public class RanchOwnerActionController {
             @Valid @RequestBody RanchSettingsRequest body,
             HttpServletRequest request, HttpServletResponse response) {
         Long userId = accessGuard.requireSelfAccess(request, response);
-        return ok(facade.settings(userId, key, body));
+        return ok(facade.settings(userId, key, body), response);
     }
 
     @SelfScopedEndpoint("PrivateSelfAccessGuardで本人ID・変身拒否を確定")
@@ -50,7 +50,7 @@ public class RanchOwnerActionController {
             @Valid @RequestBody RanchVersionRequest body,
             HttpServletRequest request, HttpServletResponse response) {
         Long userId = accessGuard.requireSelfAccess(request, response);
-        return ok(facade.pause(userId, key, body));
+        return ok(facade.pause(userId, key, body), response);
     }
 
     @SelfScopedEndpoint("PrivateSelfAccessGuardで本人ID・変身拒否を確定")
@@ -60,7 +60,7 @@ public class RanchOwnerActionController {
             @Valid @RequestBody RanchVersionRequest body,
             HttpServletRequest request, HttpServletResponse response) {
         Long userId = accessGuard.requireSelfAccess(request, response);
-        return ok(facade.resume(userId, key, body));
+        return ok(facade.resume(userId, key, body), response);
     }
 
     @SelfScopedEndpoint("PrivateSelfAccessGuardで本人ID・変身拒否を確定")
@@ -70,10 +70,15 @@ public class RanchOwnerActionController {
             @Valid @RequestBody RanchInteractionRequest body,
             HttpServletRequest request, HttpServletResponse response) {
         Long userId = accessGuard.requireSelfAccess(request, response);
-        return ok(facade.touch(userId, key, body));
+        var outcome = facade.touch(userId, key, body);
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
+        return ResponseEntity.status(outcome.createdNow() ? 201 : 200)
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .body(ApiResponse.of(outcome.result()));
     }
 
-    private <T> ResponseEntity<ApiResponse<T>> ok(T result) {
+    private <T> ResponseEntity<ApiResponse<T>> ok(T result, HttpServletResponse response) {
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
         return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "private, no-store")
                 .body(ApiResponse.of(result));
     }

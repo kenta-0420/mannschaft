@@ -30,11 +30,13 @@ class RanchSlotHttpIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mvc;
     @Autowired private UserRepository users;
     @Autowired private RanchRoomPlacementRepository slots;
+    @Autowired private com.mannschaft.app.ranch.repository.RanchOperationalControlRepository controls;
     private Long me;
     private Long other;
 
     @BeforeEach
     void createSyntheticUsers() {
+        RanchTestFixture.operationalControl(controls);
         me = users.saveAndFlush(RanchTestFixture.user()).getId();
         other = users.saveAndFlush(RanchTestFixture.user()).getId();
     }

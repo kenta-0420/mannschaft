@@ -36,7 +36,7 @@ public class RanchPrivateQueryController {
                                                                 HttpServletRequest request,
                                                                 HttpServletResponse response) {
         Long userId = accessGuard.requireSelfAccess(request, response);
-        return noStore(ApiResponse.of(facade.command(userId, commandId)));
+        return noStore(ApiResponse.of(facade.command(userId, commandId)), response);
     }
 
     @SelfScopedEndpoint("PrivateSelfAccessGuardの本人IDだけで牧場記録を検索")
@@ -46,7 +46,7 @@ public class RanchPrivateQueryController {
             @RequestParam(defaultValue = "20") int limit,
             HttpServletRequest request, HttpServletResponse response) {
         Long userId = accessGuard.requireSelfAccess(request, response);
-        return noStore(facade.records(userId, cursor, limit));
+        return noStore(facade.records(userId, cursor, limit), response);
     }
 
     @SelfScopedEndpoint("PrivateSelfAccessGuardの本人IDだけで所有置物を検索")
@@ -56,7 +56,7 @@ public class RanchPrivateQueryController {
             @RequestParam(defaultValue = "20") int limit,
             HttpServletRequest request, HttpServletResponse response) {
         Long userId = accessGuard.requireSelfAccess(request, response);
-        return noStore(facade.collectibles(userId, cursor, limit));
+        return noStore(facade.collectibles(userId, cursor, limit), response);
     }
 
     @SelfScopedEndpoint("PrivateSelfAccessGuardの本人IDだけで現行商品を投影")
@@ -64,10 +64,11 @@ public class RanchPrivateQueryController {
     public ResponseEntity<ApiResponse<List<RanchShopItem>>> shop(HttpServletRequest request,
                                                                   HttpServletResponse response) {
         Long userId = accessGuard.requireSelfAccess(request, response);
-        return noStore(ApiResponse.of(facade.shop(userId)));
+        return noStore(ApiResponse.of(facade.shop(userId)), response);
     }
 
-    private <T> ResponseEntity<T> noStore(T data) {
+    private <T> ResponseEntity<T> noStore(T data, HttpServletResponse response) {
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
         return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "private, no-store").body(data);
     }
 }

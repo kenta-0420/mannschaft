@@ -26,7 +26,8 @@ public class RanchAccessGuard {
     public void requireOwnedCommand(Long userId, UUID commandId) {
         Objects.requireNonNull(userId);
         Objects.requireNonNull(commandId);
-        commands.findByUserIdAndId(userId, commandId).orElseThrow(this::missing);
+        commands.findByUserIdAndId(userId, commandId).orElseThrow(() ->
+                new BusinessException(RanchErrorCode.RANCH_001, HttpStatus.NOT_FOUND));
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)

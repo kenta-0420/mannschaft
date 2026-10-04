@@ -1,16 +1,26 @@
 package com.mannschaft.app.ranch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.UuidV7;
+import com.mannschaft.app.ranch.reward.RanchRewardPolicyCodec;
+import com.mannschaft.app.ranch.reward.RanchRewardPolicySnapshot;
+import com.mannschaft.app.ranch.reward.RanchRewardSourceType;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.EnumMap;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** 隔離MySQLだけに本人所有の全11表代表行を用意するGDPR試験fixture。 */
 final class RanchGdprFixture {
+    private static final AtomicLong POLICY_WEEK = new AtomicLong();
     private RanchGdprFixture() { }
 
-    static void populate(JdbcTemplate jdbc, Long userId, UUID ownerId, UUID dinosaurId) {
+    static FixtureIds populate(JdbcTemplate jdbc, Long userId, UUID ownerId, UUID dinosaurId) {
         String owner = ownerId.toString();
         String dinosaur = dinosaurId.toString();
         jdbc.update("""
@@ -54,15 +64,28 @@ final class RanchGdprFixture {
                 ("GDPR:" + userId).getBytes(StandardCharsets.US_ASCII), "GDPR_BADGE_" + userId);
 
         UUID policyId = UuidV7.generate();
-        long version = Math.floorMod(UuidV7.generate().getLeastSignificantBits(), 1_000_000_000L) + 1;
+        long sequence = POLICY_WEEK.getAndIncrement();
+        long version = 1_000_000_000L + sequence;
+        Instant effectiveAt = Instant.parse("2020-01-06T00:00:00Z")
+                .plus(sequence * 7, ChronoUnit.DAYS);
+        EnumMap<RanchRewardSourceType, RanchRewardPolicySnapshot.SourceRule> sourceRules =
+                new EnumMap<>(RanchRewardSourceType.class);
+        for (RanchRewardSourceType type : RanchRewardSourceType.values()) {
+            sourceRules.put(type, new RanchRewardPolicySnapshot.SourceRule(false, 1, 1));
+        }
+        var policy = new RanchRewardPolicySnapshot(policyId, version, effectiveAt,
+                false, 100, sourceRules,
+                new RanchRewardPolicySnapshot.DeliverySettings(1, 1, 1, 1, 1),
+                "GDPR_FIXTURE");
+        var encoded = RanchRewardPolicyCodec.encode(policy, new ObjectMapper());
         jdbc.update("""
                 INSERT INTO ranch_reward_policies
                 (id, created_at, updated_at, version_number, effective_at, schema_version,
                  settings_json, content_hash, published_by, published_at)
-                VALUES (UUID_TO_BIN(?), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), ?,
-                        DATE_ADD('2020-01-01 00:00:00', INTERVAL ? SECOND), 1,
-                        JSON_OBJECT('fixture', TRUE), UNHEX(SHA2(?, 256)), ?, UTC_TIMESTAMP(6))
-                """, policyId.toString(), version, version, policyId.toString(), userId);
+                VALUES (UUID_TO_BIN(?), ?, ?, ?, ?, 1, ?, ?, ?, ?)
+                """, policyId.toString(), Timestamp.from(effectiveAt), Timestamp.from(effectiveAt),
+                version, Timestamp.from(effectiveAt), encoded.json(), encoded.sha256(),
+                userId, Timestamp.from(effectiveAt));
         jdbc.update("""
                 INSERT INTO ranch_week_budgets
                 (id, created_at, updated_at, owner_id, user_id, week_starts_on, policy_id,
@@ -78,10 +101,13 @@ final class RanchGdprFixture {
                  canonical_key_hash, canonical_key, reward_week, policy_id, status,
                  requested_points, awarded_points, occurred_at, decided_at)
                 VALUES (UUID_TO_BIN(?), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), UUID_TO_BIN(?), ?,
-                        UUID_TO_BIN(?), 'SCHEDULE', UNHEX(SHA2(?, 256)), ?,
+                        UUID_TO_BIN(?), 'ATTENDANCE_RESPONSE', UNHEX(SHA2(?, 256)), ?,
                         DATE_SUB(UTC_DATE(), INTERVAL WEEKDAY(UTC_DATE()) DAY), NULL,
                         'SOURCE_DISABLED', 0, 0, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
                 """, UuidV7.generate().toString(), owner, userId, UuidV7.generate().toString(),
                 canonical, canonical.getBytes(StandardCharsets.US_ASCII));
+        return new FixtureIds(policyId, collectible);
     }
+
+    record FixtureIds(UUID policyId, String collectibleKey) { }
 }

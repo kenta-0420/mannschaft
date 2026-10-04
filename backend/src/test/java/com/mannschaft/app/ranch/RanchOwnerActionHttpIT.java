@@ -33,12 +33,14 @@ class RanchOwnerActionHttpIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mvc;
     @Autowired private UserRepository users;
     @Autowired private RanchOwnerRepository owners;
+    @Autowired private com.mannschaft.app.ranch.repository.RanchOperationalControlRepository controls;
     @Autowired private ObjectMapper json;
     private Long me;
     private Long other;
 
     @BeforeEach
     void createSyntheticUsers() {
+        RanchTestFixture.operationalControl(controls);
         me = users.saveAndFlush(RanchTestFixture.user()).getId();
         other = users.saveAndFlush(RanchTestFixture.user()).getId();
     }
@@ -50,6 +52,7 @@ class RanchOwnerActionHttpIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isCreated());
     }
 
+    /** RanchOwnerActionController#settings の本人保存と他人owner非作成を実HTTPで確認する。 */
     @Test
     void settingsSavedReplayAndVisibleProjectionRemainSelfScoped() throws Exception {
         enroll();
@@ -72,17 +75,26 @@ class RanchOwnerActionHttpIT extends AbstractMySqlIntegrationTest {
         assertThat(owners.findByUserId(other)).isEmpty();
     }
 
+    /** RanchOwnerActionController#touch の本人結果と管理者変身による他人操作拒否を確認する。 */
     @Test
     void touchEggCanGainAffinityAndPrivateRoutesRejectImpersonation() throws Exception {
         enroll();
         String version = Long.toString(owners.findByUserId(me).orElseThrow().getVersion());
-        mvc.perform(post("/api/v1/me/ranch/interactions").with(user(me.toString()))
-                        .header("Idempotency-Key", UUID.randomUUID())
+        UUID key = UUID.randomUUID();
+        String body = "{\"kind\":\"TOUCH\",\"version\":\"" + version + "\"}";
+        var firstTouch = mvc.perform(post("/api/v1/me/ranch/interactions").with(user(me.toString()))
+                        .header("Idempotency-Key", key)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"kind\":\"TOUCH\",\"version\":\"" + version + "\"}"))
-                .andExpect(status().isOk())
+                        .content(body))
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.reactionKey").value("EGG_TOUCH"))
-                .andExpect(jsonPath("$.data.affinityChanged").value(true));
+                .andExpect(jsonPath("$.data.affinityChanged").value(true)).andReturn();
+        var replayTouch = mvc.perform(post("/api/v1/me/ranch/interactions").with(user(me.toString()))
+                        .header("Idempotency-Key", key)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andReturn();
+        assertThat(json.readTree(replayTouch.getResponse().getContentAsString()).path("data"))
+                .isEqualTo(json.readTree(firstTouch.getResponse().getContentAsString()).path("data"));
         mvc.perform(post("/api/v1/me/ranch/pause")
                         .with(user("999999999").roles("SYSTEM_ADMIN"))
                         .header(AdminImpersonationFilter.HEADER_IMPERSONATE, me.toString())

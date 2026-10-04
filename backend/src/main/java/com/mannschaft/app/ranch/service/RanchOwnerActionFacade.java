@@ -52,9 +52,9 @@ public class RanchOwnerActionFacade {
                 () -> feeding.feed(userId, key, request, now()));
     }
 
-    public InteractionResult touch(Long userId, UUID key, RanchInteractionRequest request) {
+    public RanchTouchWriter.TouchOutcome touch(Long userId, UUID key, RanchInteractionRequest request) {
         return guard.withActiveUser(userId,
-                () -> touch.touch(userId, key, request, now()));
+                () -> touch.touchOutcome(userId, key, request, now()));
     }
 
     private Instant now() {
