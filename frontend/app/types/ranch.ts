@@ -33,7 +33,7 @@ export type AssignmentRequest = { method: 'HABITAT_RANDOM'; habitat: Habitat; ve
 export interface RanchInventory { id: string; collectibleKey: string; labelKey: string; assetKey: string; isRevoked: boolean; placedSlotKey: string | null }
 export interface RanchLegacySyncResult { commandId: string; nextAfterAwardId: Decimal; processedCount: number; importedCount: number; hasNext: boolean; completedAt: string }
 export interface ShopItem { skuKey: string; collectibleKey: string; labelKey: string; pricePoints: Decimal; priceVersion: Decimal; isOwned: boolean }
-export interface RanchRecord { id: string; kind: string; deltaPoints: Decimal; deltaXp: Decimal; occurredAt: string; sourceLink: { url: string } | null }
+export interface RanchRecord { id: string; kind: string; sourceType: string | null; deltaPoints: Decimal; deltaXp: Decimal; occurredAt: string; sourceLink: { kind: string; id: string; url: string } | null }
 export interface CursorPage<T> { data: T[]; meta: { nextCursor: string | null; hasNext: boolean; limit: number } }
 export interface DiagnosisQuestion { id: string; axis: string; polarity: number; text: Record<string,string> }
 export interface TieQuestion { axisId: string; zero: Record<string,string>; one: Record<string,string> }
