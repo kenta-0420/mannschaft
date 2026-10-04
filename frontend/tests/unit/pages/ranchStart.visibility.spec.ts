@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setActivePinia } from 'pinia'
 import { useNuxtApp } from '#app'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
-import { flushPromises } from '@vue/test-utils'
+import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import RanchPage from '~/pages/my/ranch/index.vue'
 import type { RanchState } from '~/types/ranch'
 import { useAuthStore } from '~/stores/useAuthStore'
@@ -64,7 +64,7 @@ beforeEach(async () => {
  })
 })
 afterEach(() => { for (const wrapper of wrappers.splice(0)) wrapper.unmount(); vi.restoreAllMocks() })
-async function click(wrapper: Awaited<ReturnType<typeof mountSuspended>>, key: string) {
+async function click(wrapper: VueWrapper, key: string) {
  const button = wrapper.findAll('button').find(item => item.text() === useNuxtApp().$i18n.t(key) && !item.element.closest('[data-testid="load-error-state"]'))
  if (!button) throw new Error(`BUTTON_NOT_FOUND ${key}`)
  await button.trigger('click'); await flushPromises()
