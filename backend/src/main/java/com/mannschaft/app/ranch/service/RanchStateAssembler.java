@@ -30,8 +30,10 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 /** 自domain行と認可済み外domain投影から完全RanchStateを純粋組立する。 */
 @Component
@@ -45,12 +47,23 @@ public class RanchStateAssembler {
                                List<RanchRoomPlacementEntity> placements,
                                RanchCareWeekBudgetEntity careWeek,
                                Optional<RanchRuleProvider.CareRuleSnapshot> careRule) {
+        return assemble(userId, serverTime, external, owner, dinosaur, placements,
+                careWeek, careRule, Map.of());
+    }
+
+    public RanchState assemble(Long userId, Instant serverTime, ExternalProjection external,
+                               RanchOwnerEntity owner, RanchDinosaurEntity dinosaur,
+                               List<RanchRoomPlacementEntity> placements,
+                               RanchCareWeekBudgetEntity careWeek,
+                               Optional<RanchRuleProvider.CareRuleSnapshot> careRule,
+                               Map<UUID, RoomSlotSummary.Decoration> decorations) {
         Objects.requireNonNull(userId, "本人IDは必須です");
         Instant now = Objects.requireNonNull(serverTime, "時刻は必須です")
                 .truncatedTo(ChronoUnit.MICROS);
         Objects.requireNonNull(external, "認可済み外domain投影は必須です");
         Objects.requireNonNull(placements, "部屋行は必須です");
         Objects.requireNonNull(careRule, "care規則は必須です");
+        Objects.requireNonNull(decorations);
         if (owner == null) {
             if (dinosaur != null || !placements.isEmpty() || careWeek != null) {
                 throw inconsistent();
@@ -102,7 +115,7 @@ public class RanchStateAssembler {
                 Long.toString(dinosaur.getVersion()), egg, affinityBand(dinosaur));
         List<RoomSlotSummary> rooms = placements.stream()
                 .map(slot -> new RoomSlotSummary(slot.getSlotKey(), slot.getInventoryId(),
-                        Long.toString(slot.getVersion())))
+                        Long.toString(slot.getVersion()), decorations.get(slot.getInventoryId())))
                 .toList();
         AssignmentSummary assignment = new AssignmentSummary(external.availableMethods(),
                 dinosaur.getSelectionConfirmedAt() != null, dinosaur.getAssignmentMethod());

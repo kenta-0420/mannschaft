@@ -94,4 +94,35 @@ class RanchAssignmentWriterIT extends AbstractMySqlIntegrationTest {
         assertThat(dinosaurs.findByUserId(me).orElseThrow().getSpeciesKey())
                 .isEqualTo("S01");
     }
+
+    @Test
+    void verifiedDiagnosisAndBirthSelectionsPersistFrozenCatalogAndReplay() {
+        UUID diagnosisId = UUID.randomUUID();
+        UUID diagnosisKey = UUID.randomUUID();
+        var diagnosisRequest = new RanchAssignmentRequest(AssignmentMethod.DIAGNOSIS,
+                null, diagnosisId, null, "0");
+        var diagnosisSelection = new RanchAssignmentResolver.Selection(
+                AssignmentMethod.DIAGNOSIS, Habitat.SEA, "SPECIES_1", "VARIANT_0",
+                7L, "care-synthetic-v1", diagnosisId, "b".repeat(64));
+        var diagnosis = writer.assign(me, diagnosisKey, diagnosisRequest,
+                diagnosisSelection, NOW.plusSeconds(1));
+        assertThat(diagnosis.speciesCatalogVersion()).isEqualTo("7");
+        assertThat(writer.savedReplay(me, diagnosisKey, diagnosisRequest)).contains(diagnosis);
+
+        Long birthOwner = users.saveAndFlush(RanchTestFixture.user()).getId();
+        enrollment.enroll(birthOwner, UUID.randomUUID(), NOW, PROJECTION);
+        UUID birthId = UUID.randomUUID();
+        UUID birthKey = UUID.randomUUID();
+        var birthRequest = new RanchAssignmentRequest(AssignmentMethod.BIRTH_STYLE,
+                null, birthId, UUID.randomUUID().toString(), "0");
+        var birthSelection = new RanchAssignmentResolver.Selection(
+                AssignmentMethod.BIRTH_STYLE, Habitat.AIR, "SPECIES_2", "VARIANT_3",
+                7L, "care-synthetic-v1", birthId, "c".repeat(64));
+        var birth = writer.assign(birthOwner, birthKey, birthRequest,
+                birthSelection, NOW.plusSeconds(1));
+        assertThat(birth.speciesCatalogVersion()).isEqualTo("7");
+        assertThat(writer.savedReplay(birthOwner, birthKey, birthRequest)).contains(birth);
+        assertThat(commands.countByUserId(me)).isEqualTo(2);
+        assertThat(commands.countByUserId(birthOwner)).isEqualTo(2);
+    }
 }
