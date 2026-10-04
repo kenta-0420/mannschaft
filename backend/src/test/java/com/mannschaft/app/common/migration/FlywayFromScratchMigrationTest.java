@@ -732,6 +732,22 @@ class FlywayFromScratchMigrationTest {
         }
     }
 
+    @Test
+    @Order(23)
+    @DisplayName("CMP-1456: 本人申請履歴の索引が正式Flywayでrequester・作成時刻降順・ID降順に作られる")
+    void 本人申請履歴索引の列順と降順を確認する() throws SQLException {
+        List<String> columns = new java.util.ArrayList<>();
+        try (Connection conn = connect(); Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COLUMN_NAME, COLLATION FROM information_schema.STATISTICS "
+                     + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'village_join_requests' "
+                     + "AND INDEX_NAME = 'idx_vjr_requester_created_at_id' ORDER BY SEQ_IN_INDEX")) {
+            while (rs.next()) {
+                columns.add(rs.getString("COLUMN_NAME") + ":" + rs.getString("COLLATION"));
+            }
+        }
+        assertThat(columns).containsExactly("requester_user_id:A", "created_at:D", "id:D");
+    }
+
     /** 上記負のテスト用の検体（本番ソースセットではないため scanMappedClasses の対象外）。 */
     @jakarta.persistence.Entity
     @jakarta.persistence.Table(name = "fake_o2o_parent")

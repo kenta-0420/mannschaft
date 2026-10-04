@@ -42,7 +42,7 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3629);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2（CMP-260919-1140 Phase 1）+ 5（F01.2.1 4-A）+ 3（F01.2.1 2-B1）+ 4（F01.2.1 2-A）+ 1（F01.2.1 3-D）+ 2（F01.2.1 4-B）+ 10（F01.2.1 2-C）= 3629（main 3619 + 10）
+                .isEqualTo(3630);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2（CMP-260919-1140 Phase 1）+ 5（F01.2.1 4-A）+ 3（F01.2.1 2-B1）+ 4（F01.2.1 2-A）+ 1（F01.2.1 3-D）+ 2（F01.2.1 4-B）+ 10（F01.2.1 2-C）+ 1（CMP-260826-1456 本人参加申請履歴）= 3630（main 3629 + 1）
                                     // + F01.2.1 部隊 2-A の4エンドポイント（TeamAffiliationSettingsController の
                                     //   設定 GET/PUT・申請フォーム GET の3本 + OrgAffiliationEligibilityController の1本。
                                     //   いずれも @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（0|3・0|1））
