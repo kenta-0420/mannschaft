@@ -251,6 +251,8 @@ def main():
                 destination = EVIDENCE / (case['id'] + '-' + str(step + 1))
                 before = marker(project)
                 args = [gradle, *case['args'], '--offline', '--no-daemon', '--max-workers=1', '--console=plain', '-Dorg.gradle.jvmargs=-Xmx256m -Dfile.encoding=UTF-8']
+                if case['id'] == 'missing-class':
+                    args.append('--stacktrace')
                 process = execute(args, project, env, destination, min(deadline, time.monotonic() + 60))
                 log = (destination / 'stdout.log').read_text(encoding='utf-8', errors='replace')
                 combined = log + (destination / 'stderr.log').read_text(encoding='utf-8', errors='replace')
