@@ -15,6 +15,7 @@ const loading = ref(true)
 const shopFailed = ref(false)
 const syncResult = ref<RanchLegacySyncResult | null>(null)
 const syncFailed = ref(false)
+const inventoryFailed = ref(false)
 let loadRun = 0
 let inventoryRun = 0
 async function loadInventory(cursor?: string) {
@@ -85,14 +86,27 @@ function pendingSyncCursor(): string | null {
  if (!body || typeof body !== 'object' || !('afterAwardId' in body)) return null
  return typeof body.afterAwardId === 'string' && /^(0|[1-9][0-9]*)$/.test(body.afterAwardId) ? body.afterAwardId : null
 }
+async function refreshInventory() {
+ inventoryFailed.value = false
+ try { await loadInventory() }
+ catch (error) {
+  if (!privateRead.isCurrent()) return
+  inventoryFailed.value = true
+  handleApiError(error, 'RanchInventory')
+ }
+}
 async function syncLegacy(cursor: string) {
  syncFailed.value = false
  try {
   const result = await ranch.act(() => ranch.api.syncLegacy(cursor))
   if (!privateRead.isCurrent()) return
   syncResult.value = result
-  await loadInventory()
- } catch { if (privateRead.isCurrent()) syncFailed.value = true }
+ } catch {
+  if (privateRead.isCurrent()) syncFailed.value = true
+  return
+ }
+ // 保存ACKは保持し、後続GETだけの失敗は命令失敗に戻さない。
+ if (privateRead.isCurrent()) await refreshInventory()
 }
 async function retryCommand() {
  const cursor = pendingSyncCursor()
@@ -113,6 +127,7 @@ onMounted(load)
    <Button class="min-h-11" :label="t(syncResult ? 'ranch.decorations.importAgain' : 'ranch.decorations.importStart')" :disabled="!ranch.state.value?.owner || ranch.api.command.running.value || !!ranch.api.command.pending.value" @click="syncLegacy('0')" />
    <Button v-if="syncResult?.hasNext" class="min-h-11 ml-2" :label="t('ranch.decorations.importContinue')" :disabled="!ranch.state.value?.owner || ranch.api.command.running.value || !!ranch.api.command.pending.value" @click="syncLegacy(syncResult.nextAfterAwardId)" />
   </SectionCard>
+  <DashboardErrorState v-if="inventoryFailed" @retry="refreshInventory" />
   <PageLoading v-if="loading" />
   <DashboardErrorState v-else-if="failed || ranch.failed.value" @retry="load" />
   <Button v-if="ranch.api.command.pending.value" class="min-h-11" :label="t('ranch.retry')" :disabled="ranch.api.command.running.value" @click="retryCommand" />
