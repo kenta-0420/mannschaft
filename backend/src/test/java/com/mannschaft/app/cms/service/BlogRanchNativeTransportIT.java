@@ -14,6 +14,10 @@ import com.mannschaft.app.common.ranchsource.api.SourceOutboxDeferRequest;
 import com.mannschaft.app.common.ranchsource.api.SourceOutboxFailureRequest;
 import com.mannschaft.app.common.ranchsource.api.SourceOutboxLeaseRequest;
 import com.mannschaft.app.ranch.reward.api.RanchRewardDeliveryOutcome;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.ranchsource.SourceOutboxAdminService;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxAdminRetryRequest;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxAdminRetryAck;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogRanchTransportRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -42,6 +46,8 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     @Autowired private BlogPostRepository posts;
     @Autowired private BlogMediaUploadRepository media;
     @Autowired private BlogRanchOutboxDeliveryService outboxDelivery;
+    @Autowired private BlogRanchOutboxAdminService outboxAdmin;
+    @Autowired private java.time.Clock clock;
     @Autowired private UserOperationGuard active;
     @Autowired private UserRewardDeliveryGuard delivery;
     @Autowired private BlogRanchNativeWriter nativeWriter;
@@ -208,6 +214,43 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     private java.time.Instant deliveryNow() { return jdbc.queryForObject("SELECT MAX(next_attempt_at) FROM blog_ranch_outboxes WHERE recipient_user_id=?",java.sql.Timestamp.class,owner).toInstant().plusSeconds(1); }
     private String status(UUID event) { return jdbc.queryForObject("SELECT status FROM blog_ranch_outboxes WHERE id=?",String.class,idBytes(event)); }
     private static byte[] idBytes(UUID event) { return java.nio.ByteBuffer.allocate(16).putLong(event.getMostSignificantBits()).putLong(event.getLeastSignificantBits()).array(); }
+    @Test void adminRetrySavedAckSurvivesRemovedEventAndRejectsChangedBody() {
+        // source-own命令の原子性だけ。HTTP SYSTEM_ADMIN認可は入口側の別試験。
+        var nativeResult=publish("管理再試行fixture本文");assertThat(receive(nativeResult.capture())).isTrue();
+        var event=nativeResult.capture().payload().eventId();var key=UUID.randomUUID();var now=deliveryNow();
+        var reason=new SourceOutboxAdminRetryRequest("OPERATOR_RETRY");
+        var ack=active.withActiveUser(owner,() -> outboxAdmin.retry(owner,event,key,reason,now));
+        assertThat(ack.disposition()).isEqualTo(SourceOutboxAdminRetryAck.Disposition.RETRY_SCHEDULED);
+        assertThat(status(event)).isEqualTo("RETRY");
+        jdbc.update("DELETE FROM blog_ranch_outboxes WHERE id=?",idBytes(event));
+        assertThat(active.withActiveUser(owner,() -> outboxAdmin.retry(owner,event,key,reason,now.plusSeconds(20)))).isEqualTo(ack);
+        assertThatThrownBy(() -> active.withActiveUser(owner,() -> outboxAdmin.retry(owner,event,key,
+                new SourceOutboxAdminRetryRequest("OTHER_REASON"),now.plusSeconds(20))))
+                .isInstanceOf(BusinessException.class).extracting("errorCode.code").isEqualTo("SOURCEOUTBOX_003");
+        assertThat(count("blog_ranch_outboxes")).isZero();
+    }
+
+    @Test void adminRetryDoesNotStealCurrentLeaseAndAckedEventRemainsTerminal() {
+        var nativeResult=publish("管理処理中fixture本文");assertThat(receive(nativeResult.capture())).isTrue();
+        var now=deliveryNow();var leased=outboxDelivery.lease(new SourceOutboxLeaseRequest(now,10,30,2)).getFirst();
+        var reason=new SourceOutboxAdminRetryRequest("OPERATOR_RETRY");var key=UUID.randomUUID();
+        assertThatThrownBy(() -> active.withActiveUser(owner,() -> outboxAdmin.retry(owner,leased.eventId(),key,reason,now.plusSeconds(1))))
+                .isInstanceOf(BusinessException.class).extracting("errorCode.code").isEqualTo("SOURCEOUTBOX_004");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM blog_ranch_admin_commands WHERE actor_user_id=?",Long.class,owner)).isZero();
+        var terminal=new RanchRewardDeliveryOutcome(RanchRewardDeliveryOutcome.Outcome.ACCOUNT_DELETED,null,0);
+        assertThat(outboxDelivery.acknowledge(new SourceOutboxAckRequest(leased.eventId(),leased.leaseToken(),now.plusSeconds(2),terminal))).isTrue();
+        var ack=active.withActiveUser(owner,() -> outboxAdmin.retry(owner,leased.eventId(),key,reason,now.plusSeconds(3)));
+        assertThat(ack.disposition()).isEqualTo(SourceOutboxAdminRetryAck.Disposition.ALREADY_TERMINAL);
+        assertThat(status(leased.eventId())).isEqualTo("ACKED");
+    }
+
+    @Test void partialProviderSetIsUnavailableInsteadOfFourHealthyZeros() {
+        var nativeResult=publish("管理health本文fixture");assertThat(receive(nativeResult.capture())).isTrue();
+        assertThat(Long.parseLong(outboxAdmin.health(deliveryNow()).pendingCount())).isGreaterThanOrEqualTo(1);
+        var partial=new SourceOutboxAdminService(List.of(outboxAdmin),clock);
+        assertThatThrownBy(partial::health).isInstanceOf(BusinessException.class)
+                .extracting("errorCode.code").isEqualTo("SOURCEOUTBOX_001");
+    }
     private Long draft(String body) {
         Long id=posts.saveAndFlush(BlogPostEntity.builder().authorId(owner).userId(owner)
                 .title("同一比較タイトル").slug("transport-"+UUID.randomUUID()).body(body).build()).getId();

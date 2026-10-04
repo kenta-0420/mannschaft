@@ -114,6 +114,10 @@ public class GlobalExceptionHandler {
             Map.entry("RECALLSESSION_003", HttpStatus.SERVICE_UNAVAILABLE),
             Map.entry("AUTHOPERATION_001", HttpStatus.SERVICE_UNAVAILABLE),
             Map.entry("AUTHOPERATION_002", HttpStatus.FORBIDDEN),
+            Map.entry("SOURCEOUTBOX_001", HttpStatus.SERVICE_UNAVAILABLE),
+            Map.entry("SOURCEOUTBOX_002", HttpStatus.NOT_FOUND),
+            Map.entry("SOURCEOUTBOX_003", HttpStatus.CONFLICT),
+            Map.entry("SOURCEOUTBOX_004", HttpStatus.CONFLICT),
             // Storage ACL: 不在は存在秘匿、所有境界違反は権限拒否、claim 状態競合は再試行不能として返す。
             // Storage ACL: existence is hidden; permission, and claim conflicts retain their own statuses.
             Map.entry("STORAGE_005", HttpStatus.NOT_FOUND),
