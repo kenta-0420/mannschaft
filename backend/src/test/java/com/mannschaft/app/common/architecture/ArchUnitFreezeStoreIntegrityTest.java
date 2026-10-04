@@ -721,7 +721,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      */
     // origin/main の CMP-260922-2230（1459→1447、12件解消）は上記1407行版の
     // 削除集合に全件包含されるため、並行ブランチの削除数を二重加算しない。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1407;
+    // ShiftRequestServiceの他ドメインRepository依存3件は#3564の非TX Facade分離で解消。実ルール・固定全classで解除集合を検証し、新規違反は0。
+    // FreezingArchRuleの既知メッセージSetにより増えた同文イベントは追加せず、解除分だけ除去。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1404;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -873,7 +875,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      * のみ触れる形に是正し、Repository への直接依存を撤去したため。
      * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1938;
+    // 上流のscope照会集約・role照会削減で解消した73件だけ同期。実ルール・固定全classで解除集合を検証し、新規違反は0。
+    // FreezingArchRuleの既知メッセージSetにより増えた同文イベントは追加せず、解除分だけ除去。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1865;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
