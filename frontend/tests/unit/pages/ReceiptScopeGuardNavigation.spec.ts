@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
 import { addRouteMiddleware, tryUseNuxtApp, useNuxtApp, useRouter } from '#app'
@@ -76,10 +76,24 @@ describe('CMP1017: 非同期の所属拒否は実ルーターで終端画面へ�
     const nuxtApp = useNuxtApp()
     const router = useRouter()
     const routeTrace: Array<Record<string, string | number | boolean>> = []
+    const caseId = holdMiddleware ? 'held' : 'cold'
+    const sourceId = process.env.RECEIPT_GUARD_SOURCE === 'old' ? 'old' : 'AA'
+    const observationStartedAt = Date.now()
+    let nextNavigationId = 0
+    const pendingNavigationIds = new Set<number>()
+    const navigationIds = new Map<string, number>()
+    const recordMilestone = (entry: Record<string, string | number | boolean>) => {
+      const event = { sourceId, caseId, ...entry, elapsedMs: Date.now() - observationStartedAt }
+      routeTrace.push(event)
+      console.info('receipt-navigation-milestone', event)
+    }
+    onTestFinished(() => {
+      recordMilestone({ kind: 'test-finished', route: safePath(router.currentRoute.value.path), pendingCount: pendingNavigationIds.size, middleware: !!nuxtApp._processingMiddleware, hydrating: !!nuxtApp.isHydrating })
+    })
     const safePath = (value: string) => ['/admin/receipts', '/dashboard', '/login'].includes(value) ? value : '<other>'
     const componentNuxt = Reflect.get(wrapper.vm.$.appContext.app, '$nuxt') as typeof nuxtApp | undefined
     const componentRouter = componentNuxt?.$router
-    routeTrace.push({
+    recordMilestone({
       kind: 'identity',
       componentNuxtMatches: componentNuxt === nuxtApp,
       componentRouterMatches: componentRouter === router,
@@ -89,7 +103,6 @@ describe('CMP1017: 非同期の所属拒否は実ルーターで終端画面へ�
       mounted: wrapper.vm.$.isMounted,
     })
     let dashboardNavigation: ReturnType<typeof router.push> | undefined
-    const observationStartedAt = Date.now()
     const observerCleanup: Array<() => void> = []
     for (const record of router.resolve('/dashboard').matched) {
       if (!record.components) continue
@@ -98,12 +111,13 @@ describe('CMP1017: 非同期の所属拒否は実ルーターで終端画面へ�
         const originalLoader = loaders[name]
         if (typeof originalLoader !== 'function' || 'displayName' in originalLoader || 'props' in originalLoader || '__vccOpts' in originalLoader) continue
         vi.spyOn(loaders, name).mockImplementation(() => {
-          routeTrace.push({ kind: 'loader-start', elapsedMs: Date.now() - observationStartedAt })
+          const navigationId = navigationIds.get('/dashboard') ?? 0
+          recordMilestone({ kind: 'loader-start', navigationId, elapsedMs: Date.now() - observationStartedAt })
           const result = originalLoader()
           void result.then(() => {
-            routeTrace.push({ kind: 'loader-resolved', elapsedMs: Date.now() - observationStartedAt })
+            recordMilestone({ kind: 'loader-resolved', navigationId, elapsedMs: Date.now() - observationStartedAt })
           }, () => {
-            routeTrace.push({ kind: 'loader-rejected', elapsedMs: Date.now() - observationStartedAt })
+            recordMilestone({ kind: 'loader-rejected', navigationId, elapsedMs: Date.now() - observationStartedAt })
           })
           return result
         })
@@ -114,28 +128,33 @@ describe('CMP1017: 非同期の所属拒否は実ルーターで終端画面へ�
       const measured = actualRouter === router
       const originalPush = actualRouter.push.bind(actualRouter)
       vi.spyOn(actualRouter, 'push').mockImplementation((to) => {
-        routeTrace.push({ kind: 'push', measured, to: safePath(actualRouter.resolve(to).path), before: safePath(actualRouter.currentRoute.value.path), middleware: !!nuxtApp._processingMiddleware, client: import.meta.client, server: import.meta.server })
+        const navigationId = ++nextNavigationId
+        navigationIds.set(actualRouter.resolve(to).fullPath, navigationId)
+        pendingNavigationIds.add(navigationId)
+        recordMilestone({ kind: 'push', navigationId, measured, to: safePath(actualRouter.resolve(to).path), before: safePath(actualRouter.currentRoute.value.path), middleware: !!nuxtApp._processingMiddleware, client: import.meta.client, server: import.meta.server })
         const result = originalPush(to)
         if (measured && actualRouter.resolve(to).path === '/dashboard') dashboardNavigation = result
         // 同じ実Promiseを返す。観測側のreject分類は元Promise/awaitの例外を変更しない。
         void result.then((failure) => {
-          routeTrace.push({ kind: 'push-resolved', measured, failureType: failure?.type ?? 0, after: safePath(actualRouter.currentRoute.value.path) })
+          pendingNavigationIds.delete(navigationId)
+          recordMilestone({ kind: 'push-resolved', navigationId, measured, failureType: failure?.type ?? 0, after: safePath(actualRouter.currentRoute.value.path) })
         }, () => {
-          routeTrace.push({ kind: 'push-rejected', measured, after: safePath(actualRouter.currentRoute.value.path) })
+          pendingNavigationIds.delete(navigationId)
+          recordMilestone({ kind: 'push-rejected', navigationId, measured, after: safePath(actualRouter.currentRoute.value.path) })
         })
         return result
       })
       observerCleanup.push(actualRouter.beforeEach((to, from) => {
-        routeTrace.push({ kind: 'before', measured, to: safePath(to.path), from: safePath(from.path) })
+        recordMilestone({ kind: 'before', navigationId: navigationIds.get(to.fullPath) ?? 0, measured, to: safePath(to.path), from: safePath(from.path) })
       }))
       observerCleanup.push(actualRouter.beforeResolve((to, from) => {
-        routeTrace.push({ kind: 'before-resolve', measured, to: safePath(to.path), from: safePath(from.path), elapsedMs: Date.now() - observationStartedAt })
+        recordMilestone({ kind: 'before-resolve', navigationId: navigationIds.get(to.fullPath) ?? 0, measured, to: safePath(to.path), from: safePath(from.path), elapsedMs: Date.now() - observationStartedAt })
       }))
       observerCleanup.push(actualRouter.afterEach((to, from, failure) => {
-        routeTrace.push({ kind: 'after', measured, to: safePath(to.path), from: safePath(from.path), failureType: failure?.type ?? 0 })
+        recordMilestone({ kind: 'after', navigationId: navigationIds.get(to.fullPath) ?? 0, measured, to: safePath(to.path), from: safePath(from.path), failureType: failure?.type ?? 0 })
       }))
       observerCleanup.push(actualRouter.onError(() => {
-        routeTrace.push({ kind: 'router-error', measured, after: safePath(actualRouter.currentRoute.value.path) })
+        recordMilestone({ kind: 'router-error', measured, after: safePath(actualRouter.currentRoute.value.path) })
       }))
     }
     const toast = nuxtApp.$toast as { add: (options: Record<string, unknown>) => void }

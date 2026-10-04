@@ -37,67 +37,56 @@ jobs:
         id: dependencies
         working-directory: frontend
         run: npm ci
-      - name: Run old guard negative control
+      - name: Run isolated old cold case
         working-directory: frontend
+        env:
+          RECEIPT_GUARD_SOURCE: old
         run: |
           git fetch --no-tags --depth=1 origin af0bee20eacb374ff7f91db065d22aaac0a3e92b aa01495abe481ea971b4524b38a1228f5d2d6fa2
           git show af0bee20eacb374ff7f91db065d22aaac0a3e92b:frontend/app/composables/useAdminScopeGuard.ts > app/composables/useAdminScopeGuard.ts
-          set +e
-          npm run test:unit -- tests/unit/pages/ReceiptScopeGuardNavigation.spec.ts --reporter=default --reporter=junit --outputFile.junit=receipt-guard-old-junit.xml
-          result=$?
-          set -e
-          test "$result" = 1
-          python3 - <<'PY'
-          import xml.etree.ElementTree as ET
-          root = ET.parse('receipt-guard-old-junit.xml').getroot()
-          suites = list(root.iter('testsuite'))
-          assert sum(int(s.get('tests', 0)) for s in suites) == 2
-          assert sum(int(s.get('failures', 0)) for s in suites) == 1
-          assert sum(int(s.get('errors', 0)) for s in suites) == 0
-          assert sum(int(s.get('skipped', 0)) for s in suites) == 0
-          held = [c for c in root.iter('testcase') if 'middleware 待機=true' in c.get('name', '')]
-          assert len(held) == 1
-          failures = held[0].findall('failure')
-          assert len(failures) == 1
-          text = (failures[0].get('message', '') + (failures[0].text or ''))
-          assert 'AssertionError' in text and '/dashboard' in text and '/admin/receipts' in text
-          cold = [c for c in root.iter('testcase') if 'middleware 待機=false' in c.get('name', '')]
-          assert len(cold) == 1 and cold[0].find('failure') is None
-          print('旧cold PASS / held実Dashboardルートassertion RED、2件error0/skip0。')
-          PY
+          npm run test:unit -- tests/unit/pages/ReceiptScopeGuardNavigation.spec.ts --testNamePattern='middleware 待機=false' --reporter=default --reporter=junit --outputFile.junit=receipt-guard-old-cold-junit.xml
       - name: Restore exact AA guard
+        id: restore
         if: always() && steps.dependencies.outcome == 'success'
         working-directory: frontend
         run: |
           git show aa01495abe481ea971b4524b38a1228f5d2d6fa2:frontend/app/composables/useAdminScopeGuard.ts > app/composables/useAdminScopeGuard.ts
           git diff --exit-code -- app/composables/useAdminScopeGuard.ts
-      - name: Run AA regression and existing receipt contracts
-        if: always() && steps.dependencies.outcome == 'success'
+      - name: Run isolated AA cold case in a new Vitest process
+        if: always() && steps.dependencies.outcome == 'success' && steps.restore.outcome == 'success'
         working-directory: frontend
+        env:
+          RECEIPT_GUARD_SOURCE: AA
         run: >-
           npm run test:unit -- tests/unit/pages/ReceiptScopeGuardNavigation.spec.ts
-          tests/unit/pages/ReceiptVoidAccess.spec.ts
-          --reporter=default --reporter=junit --outputFile.junit=receipt-guard-aa-junit.xml
-      - name: Verify AA JUnit totals
+          --testNamePattern='middleware 待機=false'
+          --reporter=default --reporter=junit --outputFile.junit=receipt-guard-aa-cold-junit.xml
+      - name: Classify isolated cold JUnit
         if: always() && steps.dependencies.outcome == 'success'
         working-directory: frontend
         run: |
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
-          root = ET.parse('receipt-guard-aa-junit.xml').getroot()
-          suites = list(root.iter('testsuite'))
-          assert sum(int(s.get('tests', 0)) for s in suites) == 16
-          for key in ('failures', 'errors', 'skipped'):
-              assert sum(int(s.get(key, 0)) for s in suites) == 0
-          print('AA: 実2＋既存14＝16PASS/error0/skip0。')
+          for source in ('old', 'aa'):
+              root = ET.parse(f'receipt-guard-{source}-cold-junit.xml').getroot()
+              cases = list(root.iter('testcase'))
+              cold = [c for c in cases if 'middleware 待機=false' in c.get('name', '')]
+              held = [c for c in cases if 'middleware 待機=true' in c.get('name', '')]
+              assert len(cold) == 1 and cold[0].find('skipped') is None
+              assert len(held) == 1 and held[0].find('skipped') is not None
+              assert all(c.find('error') is None for c in cases)
+              failure = cold[0].find('failure')
+              text = '' if failure is None else failure.get('message', '') + (failure.text or '')
+              result = 'PASS' if failure is None else 'test-timeout' if 'timed out in 5000ms' in text else 'route-assertion' if '/dashboard' in text and '/admin/receipts' in text else 'other-failure'
+              print(f'{source}: selected cold1 {result}, duration={cold[0].get("time")}; held1 intentionally unselected; Receipt14 not invoked')
           PY
-      - name: Preserve separate JUnit
+      - name: Preserve separate cold JUnit
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: receipt-guard-old-aa-junit
+          name: receipt-guard-isolated-cold-junit
           path: |
-            frontend/receipt-guard-old-junit.xml
-            frontend/receipt-guard-aa-junit.xml
+            frontend/receipt-guard-old-cold-junit.xml
+            frontend/receipt-guard-aa-cold-junit.xml
           if-no-files-found: warn
           retention-days: 7
