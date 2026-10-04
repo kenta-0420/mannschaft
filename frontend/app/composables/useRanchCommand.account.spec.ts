@@ -103,4 +103,65 @@ describe('本人memoryのaccount境界', () => {
    expect(other.scopes.ranch.pending).not.toBe(memory.scopes.ranch.pending)
   } finally { other.dispose() }
  })
+ it('切替abortの同期listenerで開始したB別scopeを後続clearが壊さない', async () => {
+  const responseA = deferred<string>()
+  const responseB = deferred<string>()
+  let requestB: Promise<string> | undefined
+  let pendingB: typeof memory.scopes.diagnosis.pending.value = null
+  let signalB: AbortSignal | undefined
+  const requestA = useRanchCommand().execute(input, (_snapshot, signal) => {
+   signal.addEventListener('abort', () => {
+    const commandB = useRanchCommand('diagnosis')
+    requestB = commandB.execute(input, (_body, nextSignal) => {
+     signalB = nextSignal
+     return responseB.promise
+    })
+    pendingB = commandB.pending.value
+   }, { once: true })
+   return responseA.promise
+  })
+  const rejectedA = expect(requestA).rejects.toThrow('COMMAND_ACCOUNT_CHANGED')
+  try {
+   account.value = 2
+   expect(requestB).toBeDefined()
+   expect(memory.scopes.diagnosis.pending.value).toBe(pendingB)
+   expect(memory.scopes.diagnosis.running.value).toBe(true)
+   expect(signalB?.aborted).toBe(false)
+   responseA.resolve('old-A')
+   await rejectedA
+   responseB.resolve('current-B')
+   await expect(requestB).resolves.toBe('current-B')
+  } finally {
+   responseA.resolve('cleanup-A'); responseB.resolve('cleanup-B')
+   await Promise.allSettled([requestA, requestB, rejectedA])
+  }
+ })
+ it('App disposeは旧runを無効化してabortし再入と二度目のdisposeは無害', async () => {
+  const response = deferred<string>()
+  let signal: AbortSignal | undefined
+  const command = useRanchCommand()
+  const request = command.execute(input, (_snapshot, currentSignal) => {
+   signal = currentSignal
+   currentSignal.addEventListener('abort', () => memory.dispose(), { once: true })
+   return response.promise
+  })
+  const rejected = expect(request).rejects.toThrow('COMMAND_ACCOUNT_CHANGED')
+  const previousGeneration = memory.generation.value
+  try {
+   memory.dispose()
+   expect(memory.accountId.value).toBeNull()
+   expect(memory.generation.value).toBe(previousGeneration + 1)
+   expect(signal?.aborted).toBe(true)
+   expect(command.pending.value).toBeNull()
+   expect(command.running.value).toBe(false)
+   expect(memory.scopes.ranch.activeRun).toBeNull()
+   memory.dispose()
+   expect(memory.generation.value).toBe(previousGeneration + 1)
+   response.resolve('destroyed-App-private-result')
+   await rejected
+  } finally {
+   response.resolve('cleanup')
+   await Promise.allSettled([request, rejected])
+  }
+ })
 })

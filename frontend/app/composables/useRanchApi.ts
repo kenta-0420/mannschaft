@@ -3,11 +3,11 @@ import type { AssignmentRequest, CursorPage, FeedingResult, HatchResponse, Inter
 import type { RanchCommandSnapshot } from './useRanchCommand'
 export function useRanchApi() {
  const api = useApi()
- const command = useRanchCommand()
+ const command = useRanchCommand('ranch')
  const base = '/api/v1/me/ranch'
  async function mutate<T>(path: string, method: RanchCommandSnapshot['method'], body?: unknown, version?: string): Promise<T> {
-  return command.execute({ path, method, body, version }, async snapshot => {
-   const response = await api<ApiResponse<T>>(snapshot.path, { method: snapshot.method, body: snapshot.body as Record<string, unknown> | undefined, retry: 0, headers: { 'Idempotency-Key': snapshot.key, ...(snapshot.version ? { 'If-Match': snapshot.version } : {}) } })
+  return command.execute({ path, method, body, version }, async (snapshot, signal) => {
+   const response = await api<ApiResponse<T>>(snapshot.path, { method: snapshot.method, body: snapshot.body as Record<string, unknown> | undefined, retry: 0, signal, headers: { 'Idempotency-Key': snapshot.key, ...(snapshot.version ? { 'If-Match': snapshot.version } : {}) } })
    return response?.data
   })
  }

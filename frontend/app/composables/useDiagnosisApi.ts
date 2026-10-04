@@ -1,11 +1,11 @@
 import type { ApiResponse } from '~/types/api'
 import type { BirthConfirmation, CursorPage, DiagnosisResult, DiagnosisSession } from '~/types/ranch'
 export function useDiagnosisApi() {
- const api = useApi(); const command = useRanchCommand()
+ const api = useApi(); const command = useRanchCommand('diagnosis')
  const base = '/api/v1/me/diagnoses'
  async function mutate<T>(path: string, body: unknown, method: 'POST' | 'PUT' = 'POST') {
   try {
-   return await command.execute({ path, method, body }, async snapshot => (await api<ApiResponse<T>>(snapshot.path, { method: snapshot.method, body: snapshot.body as Record<string, unknown>, retry: 0, headers: { 'Idempotency-Key': snapshot.key } })).data)
+   return await command.execute({ path, method, body }, async (snapshot, signal) => (await api<ApiResponse<T>>(snapshot.path, { method: snapshot.method, body: snapshot.body as Record<string, unknown>, retry: 0, signal, headers: { 'Idempotency-Key': snapshot.key } })).data)
   } catch (error) {
    const status = (error as {statusCode?:number;status?:number}).statusCode ?? (error as {status?:number}).status
    if (status && status >= 400 && status < 500 && status !== 429) command.discardRejected()

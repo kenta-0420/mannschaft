@@ -1,6 +1,15 @@
 // @vitest-environment node
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createRanchCommandMemory } from './useRanchCommandMemory'
 import { useRanchCommand, type RanchCommandSnapshot } from './useRanchCommand'
+const app = vi.hoisted(() => ({ current: {} }))
+vi.mock('#app', () => ({ useNuxtApp: () => app.current }))
+let memory: ReturnType<typeof createRanchCommandMemory>
+beforeEach(() => {
+ memory = createRanchCommandMemory(() => 1)
+ app.current = { $ranchCommandMemory: memory }
+})
+afterEach(() => memory.dispose())
 describe('AC06/48/73 応答喪失のcommand再送', () => {
  it('通信失敗後、同key・同body・元versionのsnapshotを再送する', async () => {
   const command = useRanchCommand(); const sent: RanchCommandSnapshot[] = []

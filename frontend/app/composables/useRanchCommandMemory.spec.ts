@@ -1,4 +1,4 @@
-// @vitest-environment node
+// Per-app allocation proof in the Nuxt client test environment; not a real server-transform SSR proof.
 import { afterEach, describe, expect, it } from 'vitest'
 import { createSSRApp } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
