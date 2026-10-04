@@ -94,7 +94,9 @@
       "completedAt": "実施日: {date}",
       "retake": "診断する・再診断する",
       "avatarUnchanged": "結果が変わっても、生まれた恐竜アバターの名前・姿・育成状態は変わりません。",
-      "typeCode": "タイプ: {code}"
+      "typeCode": "タイプ: {code}",
+      "latest": "最新の結果",
+      "history": "過去の結果"
     },
     "diagnosis": {
       "description": "自分が恐竜の姿になったところを想像して、今の自分に近い過ごし方を選んでください。正解や優劣はなく、科学的な性格や能力の測定ではありません。",

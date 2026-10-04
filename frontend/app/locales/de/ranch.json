@@ -94,7 +94,9 @@
       "completedAt": "Abgeschlossen: {date}",
       "retake": "Quiz starten oder wiederholen",
       "avatarUnchanged": "Auch wenn sich deine Ergebnisse ändern, bleiben Name, Gestalt und Entwicklungsstand deines geschlüpften Dinosaurier-Avatars erhalten.",
-      "typeCode": "Typ: {code}"
+      "typeCode": "Typ: {code}",
+      "latest": "Neuestes Ergebnis",
+      "history": "Frühere Ergebnisse"
     },
     "diagnosis": {
       "description": "Stell dir vor, du wärst ein Dinosaurier, und wähle die Lebensweise, die jetzt zu dir passt. Es gibt keine richtigen oder besseren Antworten. Dies ist keine wissenschaftliche Messung von Persönlichkeit oder Fähigkeiten.",

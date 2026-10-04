@@ -15,7 +15,12 @@ async function start() {
 async function saveSettings(settings: Omit<RanchSettings,'isVisible' | 'viewMode'>) { try { await ranch.act(() => ranch.api.settings(settings)) } catch { message.value = t('ranch.command.failed') } }
 async function participation(action: 'pause' | 'resume') { const version = ranch.state.value?.owner?.version; if (version) { try { await ranch.act(() => ranch.api.participation(action, version)) } catch { message.value = t('ranch.command.failed') } } }
 async function retryCommand() {
- try { await ranch.act(ranch.api.retryPending) } catch { message.value = t('ranch.command.failed') }
+ const pending = ranch.api.command.pending.value
+ const retryingStart = pending?.path === '/api/v1/me/ranch' && pending.method === 'POST'
+ try {
+  await ranch.act(ranch.api.retryPending)
+  if (retryingStart) await changeVisibility(true)
+ } catch { message.value = t('ranch.command.failed') }
 }
 async function hatch(name: string) { const version = ranch.state.value?.owner?.version; if (version) { try { await ranch.act(() => ranch.api.hatch(version, name)) } catch { message.value = t('ranch.command.failed') } } }
 onMounted(ranch.load)

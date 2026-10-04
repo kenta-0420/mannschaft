@@ -20,7 +20,7 @@ onMounted(load)
   <PageHeader :title="t('ranch.decorations.title')" back-to="/my/ranch" /><p>{{ t('ranch.decorations.permanent') }}</p>
   <PageLoading v-if="loading" /><DashboardErrorState v-else-if="failed || ranch.failed.value" @retry="load" />
   <Button v-if="ranch.api.command.pending.value" class="min-h-11" :label="t('ranch.retry')" @click="retryCommand" />
-  <template v-else>
+  <template v-else-if="!loading && !failed && !ranch.failed.value">
    <SectionCard :title="t('ranch.decorations.slots')">
     <Select v-model="chosen" :options="items.filter(item => !item.isRevoked)" option-value="id" :option-label="item => t(item.labelKey)" class="w-full mb-3" :aria-label="t('ranch.decorations.choose')" />
     <Button v-if="inventoryCursor" class="min-h-11 mb-3" :label="t('ranch.next')" @click="loadMore" />
