@@ -72,6 +72,13 @@ async function showCurrentOwner(wrapper: Awaited<ReturnType<typeof mountWidget>>
  expect(wrapper.find('[role="status"]').exists()).toBe(true)
 }
 describe('DOM保持した本人恐竜WidgetのGETと操作feedback境界', () => {
+ it('初期nullでは匿名HTTP0、loginBでfresh private scopeのGET1', async () => {
+  actualUseAuthStore().$reset()
+  await mountWidget()
+  expect(external.fetch).not.toHaveBeenCalled()
+  await switchToB()
+  expect(getOwners).toEqual([2])
+ })
  it('activeのA→BでB本人stateを一度取得する', async () => {
   await mountWidget()
   expect(getOwners).toEqual([1])

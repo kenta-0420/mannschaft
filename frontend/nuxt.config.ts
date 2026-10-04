@@ -480,6 +480,7 @@ export default defineNuxtConfig({
         name: '日本語',
         files: [
           'ja/common.json',
+          'ja/ranch.json',
           'ja/auth.json',
           'ja/validation.json',
           'ja/landing.json',
@@ -558,6 +559,7 @@ export default defineNuxtConfig({
         name: 'English',
         files: [
           'en/common.json',
+          'en/ranch.json',
           'en/auth.json',
           'en/validation.json',
           'en/landing.json',
@@ -636,6 +638,7 @@ export default defineNuxtConfig({
         name: '中文（简体）',
         files: [
           'zh/common.json',
+          'zh/ranch.json',
           'zh/auth.json',
           'zh/validation.json',
           'zh/landing.json',
@@ -714,6 +717,7 @@ export default defineNuxtConfig({
         name: '한국어',
         files: [
           'ko/common.json',
+          'ko/ranch.json',
           'ko/auth.json',
           'ko/validation.json',
           'ko/landing.json',
@@ -792,6 +796,7 @@ export default defineNuxtConfig({
         name: 'Español',
         files: [
           'es/common.json',
+          'es/ranch.json',
           'es/auth.json',
           'es/validation.json',
           'es/landing.json',
@@ -870,6 +875,7 @@ export default defineNuxtConfig({
         name: 'Deutsch',
         files: [
           'de/common.json',
+          'de/ranch.json',
           'de/auth.json',
           'de/validation.json',
           'de/landing.json',
