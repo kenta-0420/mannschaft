@@ -69,6 +69,8 @@ class PersonalDataCollectorProxyTest {
     @Mock private com.mannschaft.app.pointcard.repository.PointCardGroupRepository pointCardGroupRepository;
     @Mock private com.mannschaft.app.pointcard.repository.PointCardGroupItemRepository pointCardGroupItemRepository;
 
+    @Mock private com.mannschaft.app.ranch.service.RanchPersonalDataExportService ranchPersonalDataExportService;
+
     @InjectMocks private PersonalDataCollector sut;
 
     @Test
