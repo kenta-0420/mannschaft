@@ -25,7 +25,7 @@ import java.util.UUID;
 public class RanchRewardDecisionEntity extends RanchEntity {
     @Column(name = "owner_id", nullable = false)
     private UUID ownerId;
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
     private Long userId;
     @Column(name = "event_id", nullable = false)
     private UUID eventId;

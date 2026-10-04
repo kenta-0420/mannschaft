@@ -51,6 +51,13 @@ public class RanchTouchWriter {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public InteractionResult touch(Long userId, UUID key, RanchInteractionRequest request,
                                    Instant serverTime) {
+        return touchOutcome(userId, key, request, serverTime).result();
+    }
+
+    /** 保存済みの本文は維持し、HTTPの初回201/再送200だけを区別する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public TouchOutcome touchOutcome(Long userId, UUID key, RanchInteractionRequest request,
+                                     Instant serverTime) {
         Objects.requireNonNull(userId);
         Objects.requireNonNull(key);
         Objects.requireNonNull(request);
@@ -62,7 +69,7 @@ public class RanchTouchWriter {
                     || !Arrays.equals(hash, command.getBodyHash())) {
                 throw new BusinessException(RanchErrorCode.RANCH_003, HttpStatus.CONFLICT);
             }
-            return decode(command.getResultJson());
+            return new TouchOutcome(decode(command.getResultJson()), false);
         }
         if (request.kind() != InteractionKind.TOUCH) {
             throw new BusinessException(RanchErrorCode.RANCH_006, HttpStatus.BAD_REQUEST);
@@ -70,6 +77,15 @@ public class RanchTouchWriter {
         Instant now = Objects.requireNonNull(serverTime).truncatedTo(ChronoUnit.MICROS);
         RanchOwnerEntity owner = owners.lockByUserId(userId).orElseThrow(() ->
                 new BusinessException(RanchErrorCode.RANCH_001, HttpStatus.NOT_FOUND));
+        var afterLock = commands.lockByUserIdAndIdempotencyKey(userId, key);
+        if (afterLock.isPresent()) {
+            RanchCommandEntity command = afterLock.orElseThrow();
+            if (!TYPE.equals(command.getCommandType())
+                    || !Arrays.equals(hash, command.getBodyHash())) {
+                throw new BusinessException(RanchErrorCode.RANCH_003, HttpStatus.CONFLICT);
+            }
+            return new TouchOutcome(decode(command.getResultJson()), false);
+        }
         if (owner.getVersion() != version(request.version())) {
             throw new BusinessException(RanchErrorCode.RANCH_007, HttpStatus.CONFLICT);
         }
@@ -109,8 +125,10 @@ public class RanchTouchWriter {
                 .completedAt(now).createdAt(now).build();
         command.setId(commandId);
         commands.saveAndFlush(command);
-        return result;
+        return new TouchOutcome(result, true);
     }
+
+    public record TouchOutcome(InteractionResult result, boolean createdNow) { }
 
     private InteractionResult decode(String saved) {
         try {

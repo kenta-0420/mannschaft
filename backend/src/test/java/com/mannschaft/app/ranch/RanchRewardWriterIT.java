@@ -17,9 +17,12 @@ import com.mannschaft.app.ranch.reward.RanchRewardWriter;
 import com.mannschaft.app.ranch.reward.api.RanchRewardDeliveryOutcome;
 import com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope;
 import com.mannschaft.app.ranch.service.RanchEnrollmentWriter;
+import com.mannschaft.app.ranch.service.RanchPurgeService;
 import com.mannschaft.app.ranch.service.RanchStateAssembler;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.TestPropertySource;
@@ -53,7 +56,21 @@ class RanchRewardWriterIT extends AbstractMySqlIntegrationTest {
     @Autowired RanchWeekBudgetRepository budgets;
     @Autowired RanchPointLedgerRepository ledger;
     @Autowired RanchOwnerRepository owners;
+    @Autowired RanchPurgeService purge;
     @Autowired ObjectMapper json;
+    private Long enrolledUserId;
+    private UUID publishedPolicyId;
+
+    @BeforeEach
+    void seedOperationalControl() {
+        RanchTestFixture.operationalControl(controls);
+    }
+
+    @AfterEach
+    void removeOnlyThisCasesRows() {
+        if (enrolledUserId != null) purge.purgeUser(enrolledUserId);
+        if (publishedPolicyId != null) policies.deleteById(publishedPolicyId);
+    }
 
     @Test
     void absentPolicySavesZeroDecisionAndLaterPublicationDoesNotRewriteReplay() {
@@ -65,14 +82,14 @@ class RanchRewardWriterIT extends AbstractMySqlIntegrationTest {
         assertThat(first.outcome()).isEqualTo(RanchRewardDeliveryOutcome.Outcome.SOURCE_DISABLED);
         assertThat(first.decisionId()).isNotNull();
         assertThat(first.awardedPoints()).isZero();
-        assertThat(budgets.findAll()).isEmpty();
+        assertThat(budgets.findByUserIdAndWeekStartsOn(userId, LocalDate.parse("2026-10-05"))).isEmpty();
         assertThat(ledger.findByUserIdOrderByOccurredAtDescIdDesc(userId)).isEmpty();
         assertThat(projection.current(userId, OCCURRED).rewardsStatus()).isEqualTo("DISABLED");
 
         publish(userId, 5, 4, 3);
         assertThat(writer.decide(fact)).isEqualTo(first);
-        assertThat(decisions.findAll()).hasSize(1);
-        assertThat(budgets.findAll()).isEmpty();
+        assertThat(decisions.countByUserId(userId)).isEqualTo(1);
+        assertThat(budgets.findByUserIdAndWeekStartsOn(userId, LocalDate.parse("2026-10-05"))).isEmpty();
         assertThat(projection.current(userId, OCCURRED).weekBudget().globalCap()).isEqualTo("5");
     }
 
@@ -90,10 +107,11 @@ class RanchRewardWriterIT extends AbstractMySqlIntegrationTest {
         assertThat(capped.outcome()).isEqualTo(RanchRewardDeliveryOutcome.Outcome.CAPPED);
         assertThat(capped.awardedPoints()).isZero();
         assertThat(writer.decide(first).awardedPoints()).isEqualTo(4);
-        assertThat(decisions.findAll()).hasSize(3);
+        assertThat(decisions.countByUserId(userId)).isEqualTo(3);
         assertThat(ledger.findByUserIdOrderByOccurredAtDescIdDesc(userId)).hasSize(2);
         assertThat(owners.findByUserId(userId).orElseThrow().getBalance()).isEqualTo(5);
-        var budget = budgets.findAll().get(0);
+        var budget = budgets.findByUserIdAndWeekStartsOn(userId,
+                LocalDate.parse("2026-10-05")).orElseThrow();
         assertThat(budget.getAwardedTotal()).isEqualTo(5);
         assertThat(json.readTree(budget.getSourceCounts())
                 .path(RanchRewardSourceType.PERSONAL_RECALL_COMPLETE.name()).longValue()).isEqualTo(3);
@@ -102,7 +120,7 @@ class RanchRewardWriterIT extends AbstractMySqlIntegrationTest {
         assertThat(view.weekBudget().remaining()).isEqualTo("0");
         assertThat(view.weekBudget().personalRequiredCount()).isEqualTo("0");
         assertThat(view.weekBudget().personalCompletedCount()).isEqualTo(3);
-        assertThat(decisions.findAll()).hasSize(3);
+        assertThat(decisions.countByUserId(userId)).isEqualTo(3);
     }
 
     @Test
@@ -115,12 +133,13 @@ class RanchRewardWriterIT extends AbstractMySqlIntegrationTest {
         assertThat(result.outcome()).isEqualTo(RanchRewardDeliveryOutcome.Outcome.SOURCE_DISABLED);
         assertThat(result.awardedPoints()).isZero();
         assertThat(decisions.findById(result.decisionId()).orElseThrow().getPolicyId()).isNotNull();
-        assertThat(budgets.findAll()).isEmpty();
+        assertThat(budgets.findByUserIdAndWeekStartsOn(userId, LocalDate.parse("2026-10-05"))).isEmpty();
         assertThat(ledger.findByUserIdOrderByOccurredAtDescIdDesc(userId)).isEmpty();
     }
 
     private Long enroll() {
         Long userId = users.saveAndFlush(RanchTestFixture.user()).getId();
+        enrolledUserId = userId;
         enrollment.enroll(userId, UUID.randomUUID(), ENROLLED, PROJECTION);
         return userId;
     }
@@ -153,6 +172,7 @@ class RanchRewardWriterIT extends AbstractMySqlIntegrationTest {
                 .publishedBy(actor).publishedAt(snapshot.effectiveAt()).createdAt(snapshot.effectiveAt()).build();
         entity.setId(policyId);
         policies.saveAndFlush(entity);
+        publishedPolicyId = policyId;
     }
 
     private RanchRewardEnvelope recall(Long userId, UUID entryId, UUID sessionId) {

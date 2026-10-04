@@ -149,7 +149,7 @@ PromptDTO=`{id:UUID,kind:TERM_CARD|FREE_RECALL,heading:string,promptSide:TERM|ME
 
 ### 卵/選定API
 
-RanchState.assignment=`{availableMethods:AssignmentMethod[],selectionConfirmed:boolean,confirmedMethod:AssignmentMethod|null}`（未参加null）。DinosaurSummary.egg=`{startedAt:Instant,readyAt:Instant,crackStage:INTACT|SMALL_CRACK|WIDE_CRACK|READY,hatchReady:boolean,hatchedAt:Instant|null}`、EGG以外egg=null。serverTimeによるelapsedだけ、client timestampで進めない。
+RanchState.assignment=`{availableMethods:AssignmentMethod[],selectionConfirmed:boolean,confirmedMethod:AssignmentMethod|null}`（未参加null）。DinosaurSummary.egg=`{startedAt:Instant,readyAt:Instant,crackStage:INTACT|SMALL_CRACK|WIDE_CRACK|READY,hatchReady:boolean,hatchedAt:Instant|null}`、EGG以外egg=null。DinosaurSummary.affinityBand=`NEUTRAL|WARM|CLOSE` は個体保存値と凍結rule閾値からGET時に算出し、EGGでも返す。数値親密度・公開ゲージは返さない。serverTimeによるelapsedだけ、client timestampで進めない。
 
 | メソッド | パス | Request | Response / status |
 |---|---|---|---|
@@ -193,7 +193,7 @@ GET /api/v1/me/ranch/diagnosis-results?method=DIAGNOSIS|BIRTH_STYLE&cursor=...&l
 | diagnosis | PUT `/api/v1/me/diagnoses/sessions/{id}/answers` | {version,answers:[{questionId,value:1..5}]}。途中部分回答可、questionId/valueの欠落・未知/重複/null/小数/booleanは不正。answerRevision++で旧tie無効 |
 | diagnosis | POST `/api/v1/me/diagnoses/sessions/{id}/complete` | {version,answerRevision,tieAnswers:[{axisId,value:0..1}]}。24required不足400、必要tie不足はTIE_BREAK_REQUIRED/result=null/tieQuestions。全tie後COMPLETED/resultId、非tie/未知/重複400、古いanswerRevision409 |
 | diagnosis | POST `/api/v1/me/diagnoses/sessions/{id}/cancel` | {version}→CANCELLED/resultなし/獲得0。保留は別でSTARTED/TIE_BREAK_REQUIRED保持、期限なし |
-| ranch | POST `/api/v1/me/ranch/interactions` | {kind:TOUCH,version}→InteractionResult={commandId,dinosaurId,reactionKey,affinityBand,affinityChanged,completedAt}。EGG可、cost/XP/points0。PAUSED/care OFFは反応のみ/愛着加算0 |
+| ranch | POST `/api/v1/me/ranch/interactions` | {kind:TOUCH,version}→InteractionResult={commandId,dinosaurId,reactionKey,affinityBand,affinityChanged,completedAt}。新command保存201、同key同body成功再送200で保存済み本文不変。EGG可、cost/XP/points0。PAUSED/care OFFは反応のみ/愛着加算0 |
 
 result summaryは{id,method,completedAt,resultSchemaVersion,ruleVersion,questionnaireVersion?,scoringVersion?,normalizationVersion?,mappingVersion?,typeCode?,axes?,numberSummary?,descriptionSnapshot}。raw回答/姓名/カナ/DOB/profile fingerprintなし。6言語説明と質問/採点/正規化版を不変snapshot、mapping未登録NULLでも本人resultを保存可、恐竜割当/公開有効化不可。完成typeCodeはserverの6bit文字列。本人診断開始・result作成・閲覧はranch参加不要。
 

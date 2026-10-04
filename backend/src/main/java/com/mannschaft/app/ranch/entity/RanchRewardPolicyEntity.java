@@ -27,7 +27,7 @@ public class RanchRewardPolicyEntity extends RanchEntity {
     private String settingsJson;
     @Column(name = "content_hash", nullable = false, columnDefinition = "binary(32)")
     private byte[] contentHash;
-    @Column(name = "published_by", nullable = false)
+    @Column(name = "published_by", nullable = false, columnDefinition = "BIGINT UNSIGNED")
     private Long publishedBy;
     @Column(name = "published_at", nullable = false)
     private Instant publishedAt;

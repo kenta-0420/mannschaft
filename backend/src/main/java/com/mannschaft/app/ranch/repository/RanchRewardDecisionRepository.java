@@ -10,6 +10,7 @@ import java.util.UUID;
 /** eventと正準keyの両方で保存済みterminalを照合する。 */
 public interface RanchRewardDecisionRepository extends JpaRepository<RanchRewardDecisionEntity, UUID> {
     Optional<RanchRewardDecisionEntity> findByEventId(UUID eventId);
+    long countByUserId(Long userId);
     Optional<RanchRewardDecisionEntity> findByUserIdAndSourceTypeAndCanonicalKeyHash(
             Long userId, RanchRewardSourceType sourceType, byte[] canonicalKeyHash);
 }

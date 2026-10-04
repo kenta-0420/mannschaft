@@ -39,6 +39,7 @@ class RanchSelfHttpIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserRepository users;
     @Autowired private ObjectMapper json;
     @Autowired private RanchOwnerRepository owners;
+    @Autowired private com.mannschaft.app.ranch.repository.RanchOperationalControlRepository controls;
     @Autowired private RanchDinosaurRepository dinosaurs;
     @Autowired private RanchRoomPlacementRepository slots;
     private Long me;
@@ -46,6 +47,7 @@ class RanchSelfHttpIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void createSyntheticUsers() {
+        RanchTestFixture.operationalControl(controls);
         me = users.saveAndFlush(RanchTestFixture.user()).getId();
         other = users.saveAndFlush(RanchTestFixture.user()).getId();
     }

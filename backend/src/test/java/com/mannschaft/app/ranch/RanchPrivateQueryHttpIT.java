@@ -32,16 +32,19 @@ class RanchPrivateQueryHttpIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mvc;
     @Autowired private UserRepository users;
     @Autowired private RanchCommandRepository commands;
+    @Autowired private com.mannschaft.app.ranch.repository.RanchOperationalControlRepository controls;
     @Autowired private ObjectMapper json;
     private Long me;
     private Long other;
 
     @BeforeEach
     void createSyntheticUsers() {
+        RanchTestFixture.operationalControl(controls);
         me = users.saveAndFlush(RanchTestFixture.user()).getId();
         other = users.saveAndFlush(RanchTestFixture.user()).getId();
     }
 
+    /** RanchPrivateQueryController#records と RanchPrivateQueryController#collectibles の本人ページを実HTTPで確認する。 */
     @Test
     void recordsAndCollectiblesHaveOneTopLevelDataArrayAndMeta() throws Exception {
         for (String path : new String[] {"/api/v1/me/ranch/records", "/api/v1/me/ranch/collectibles"}) {
@@ -57,6 +60,7 @@ class RanchPrivateQueryHttpIT extends AbstractMySqlIntegrationTest {
         }
     }
 
+    /** RanchPrivateQueryController#shop の本人境界を含む私的履歴の匿名・変身拒否を確認する。 */
     @Test
     void privateHistoryRejectsAnonymousAndAdminImpersonation() throws Exception {
         mvc.perform(get("/api/v1/me/ranch/records"))

@@ -6,6 +6,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.ranch.repository.RanchOwnerRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -31,8 +32,15 @@ class RanchLegacySyncHttpIT extends AbstractMySqlIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired UserRepository users;
     @Autowired RanchOwnerRepository owners;
+    @Autowired com.mannschaft.app.ranch.repository.RanchOperationalControlRepository controls;
     @Autowired ObjectMapper json;
 
+    @BeforeEach
+    void seedOperationalControl() {
+        RanchTestFixture.operationalControl(controls);
+    }
+
+    /** RanchLegacySyncController#sync の本人操作と未参加他人owner非作成を実HTTPで確認する。 */
     @Test
     void privateSyncRequiresSelfAndDoesNotEnrollOtherUser() throws Exception {
         Long me = users.saveAndFlush(RanchTestFixture.user()).getId();
