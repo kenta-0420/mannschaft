@@ -51,11 +51,11 @@ onMounted(() => {
     <form class="mb-6 flex gap-2" @submit.prevent="performSearch">
       <InputText
         v-model="query"
-        class="min-w-0 flex-1 text-base"
+        class="min-h-11 min-w-0 flex-1 text-base"
         :placeholder="t('globalSearch.placeholder')"
         :aria-label="t('globalSearch.title')"
       />
-      <Button type="submit" :label="t('button.search')" icon="pi pi-search" :loading="loading" />
+      <Button type="submit" :label="t('button.search')" icon="pi pi-search" :loading="loading" class="min-h-11" />
     </form>
 
     <PageLoading v-if="loading" />
