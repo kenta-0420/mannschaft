@@ -13,6 +13,9 @@ import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,6 +26,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.cache.CacheManager;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -44,6 +48,8 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -576,16 +582,28 @@ class ShiftUnpublishedScheduleVisibilityContractIT extends AbstractMySqlIntegrat
 
         @ParameterizedTest(name = "非メンバーの SYSTEM_ADMIN は {0} のPDFを取得できる")
         @EnumSource(Fixture.class)
-        @DisplayName("AC-11(b): PDF も 403/404 で弾かれない（checkMemberAndNotSupporter の SYSTEM_ADMIN 短絡）")
+        @DisplayName("AC-11(b) / CMP-260903-0656: 非所属 SYSTEM_ADMIN は両 layout の有効 PDF を 200 で取得できる")
         void SYSTEM_ADMINは非メンバーでもPDFを取得できる(Fixture fixture) throws Exception {
-            setAuth(systemAdminId);
-            int pdfStatus = mockMvc.perform(get(SCHEDULES_PATH + "/{id}/pdf", scheduleIds.get(fixture))
-                            .param("layout", "team"))
-                    .andReturn().getResponse().getStatus();
-            // PDF のレンダリング失敗（500）は本テストの関心外。認可・可視性で弾かれないことだけを固定する。
-            assertThat(pdfStatus)
-                    .as("SYSTEM_ADMIN のPDFが認可・可視性で弾かれないこと（%s）", fixture)
-                    .isNotIn(403, 404);
+            for (String layout : List.of("team", "personal")) {
+                setAuth(systemAdminId);
+                byte[] pdf = mockMvc.perform(get(SCHEDULES_PATH + "/{id}/pdf", scheduleIds.get(fixture))
+                                .param("layout", layout))
+                        .andExpect(status().isOk())
+                        .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                        .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                                org.hamcrest.Matchers.containsString(
+                                        "shift-" + layout + "-" + scheduleIds.get(fixture) + ".pdf")))
+                        .andReturn().getResponse().getContentAsByteArray();
+                try (PDDocument document = Loader.loadPDF(pdf)) {
+                    assertThat(document.getNumberOfPages()).isPositive();
+                    String text = new PDFTextStripper().getText(document).replaceAll("\\s+", " ");
+                    assertThat(text).contains(title(fixture));
+                    // 非所属 SYS は閲覧権限を持つが、この fixture の割当は MEMBER のみ。
+                    if ("personal".equals(layout)) {
+                        assertThat(text).contains("割り当てられたシフトはありません", "合計シフト数: 0 件");
+                    }
+                }
+            }
         }
     }
 
