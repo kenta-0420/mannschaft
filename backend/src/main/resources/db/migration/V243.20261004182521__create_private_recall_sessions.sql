@@ -30,7 +30,7 @@ CREATE TABLE reflection_recall_sessions (
         OR (status = 'COMPLETED' AND completed_at IS NOT NULL AND cancelled_at IS NULL AND self_rating IS NOT NULL AND reward_week IS NOT NULL)
         OR (status = 'CANCELLED' AND completed_at IS NULL AND cancelled_at IS NOT NULL AND self_rating IS NULL AND reward_week IS NULL)
     )
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE reflection_recall_commands (
     id BINARY(16) NOT NULL,
@@ -50,4 +50,4 @@ CREATE TABLE reflection_recall_commands (
     CONSTRAINT chk_recall_command_type CHECK (command_type IN ('START', 'ANSWERS', 'COMPLETE', 'CANCEL')),
     CONSTRAINT chk_recall_command_result CHECK (JSON_TYPE(result_json) = 'OBJECT'),
     CONSTRAINT fk_recall_command_session FOREIGN KEY (session_id) REFERENCES reflection_recall_sessions(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
