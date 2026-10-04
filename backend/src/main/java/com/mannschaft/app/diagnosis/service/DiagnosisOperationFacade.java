@@ -7,6 +7,7 @@ import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.diagnosis.DiagnosisErrorCode;
 import com.mannschaft.app.diagnosis.DiagnosisMethod;
 import com.mannschaft.app.diagnosis.dto.DiagnosisResultSummary;
+import com.mannschaft.app.diagnosis.dto.DiagnosisSessionResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
@@ -44,4 +45,23 @@ public class DiagnosisOperationFacade {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(input.getBytes(StandardCharsets.UTF_8))); }
         catch (NoSuchAlgorithmException error) { throw new IllegalStateException("命令比較方式が使用できません"); }
     }
+    // 最終候補ではDTO/Listの明示importと@RequiredArgsConstructorの新fieldを追加する。
+    private final DiagnosisSessionWriter sessionWriter;
+
+    public DiagnosisSessionResponse startSession(Long userId, UUID key) {
+        return users.withActiveUser(userId, () -> sessionWriter.start(userId,key));
+    }
+    public DiagnosisSessionResponse readSession(Long userId, UUID id) {
+        return users.withActiveUser(userId, () -> sessionWriter.read(userId,id));
+    }
+    public DiagnosisSessionResponse answerSession(Long userId, UUID id, UUID key, DiagnosisSessionInputParser.Answers request) {
+        return users.withActiveUser(userId, () -> sessionWriter.answer(userId,id,key,request.version(),request.answers()));
+    }
+    public DiagnosisSessionResponse completeSession(Long userId, UUID id, UUID key, DiagnosisSessionInputParser.Complete request) {
+        return users.withActiveUser(userId, () -> sessionWriter.complete(userId,id,key,request.version(),request.answerRevision(),request.ties()));
+    }
+    public DiagnosisSessionResponse cancelSession(Long userId, UUID id, UUID key, long version) {
+        return users.withActiveUser(userId, () -> sessionWriter.cancel(userId,id,key,version));
+    }
+
 }
