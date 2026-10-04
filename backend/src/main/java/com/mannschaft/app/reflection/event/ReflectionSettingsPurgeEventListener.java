@@ -5,6 +5,8 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import com.mannschaft.app.reflection.repository.UserReflectionSettingsRepository;
+import com.mannschaft.app.reflection.repository.RecallSessionRepository;
+import com.mannschaft.app.reflection.repository.RecallSessionCommandRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -22,6 +24,8 @@ public class ReflectionSettingsPurgeEventListener {
 
     private final UserReflectionSettingsRepository userReflectionSettingsRepository;
     private final AccountPurgeCompletionService completionService;
+    private final RecallSessionCommandRepository recallSessionCommands;
+    private final RecallSessionRepository recallSessions;
 
     /** 30日後の強匿名化。所有データの削除コミット後にのみ完了を記録する。 */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
@@ -49,6 +53,9 @@ public class ReflectionSettingsPurgeEventListener {
 
     /** 同じ所有domain内の全削除を一つのTXで実行し、途中失敗を伝播させる。 */
     private void purgeSettings(Long userId) {
+        // 新想起の原文snapshot・回答・私有比較hashもreflection自身の同じ削除TXに含める。
+        recallSessionCommands.deleteByUserId(userId);
+        recallSessions.deleteByUserId(userId);
         userReflectionSettingsRepository.deleteById(userId);
     }
 }
