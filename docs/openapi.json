@@ -186864,7 +186864,8 @@
             "items": {
               "$ref": "#/components/schemas/PeriodAttendanceEntry"
             },
-            "minItems": 1
+            "maxItems": 200,
+            "minItems": 0
           }
         },
         "required": [
@@ -187231,7 +187232,8 @@
             "items": {
               "$ref": "#/components/schemas/DailyRollCallEntry"
             },
-            "minItems": 1
+            "maxItems": 200,
+            "minItems": 0
           }
         },
         "required": [
