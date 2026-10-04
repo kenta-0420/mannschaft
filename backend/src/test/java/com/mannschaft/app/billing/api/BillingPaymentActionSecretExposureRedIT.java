@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -53,6 +54,7 @@ class BillingPaymentActionSecretExposureRedIT extends AbstractBillingPaymentActi
         originalLevel = root.getLevel();
         root.setLevel(Level.TRACE);
         appender = new ListAppender<>();
+        appender.list = new CopyOnWriteArrayList<>();
         appender.start();
         root.addAppender(appender);
     }
@@ -142,7 +144,7 @@ class BillingPaymentActionSecretExposureRedIT extends AbstractBillingPaymentActi
 
         assertThat(appender.list)
                 .as("秘密の払い出しは何らかのログを伴うはずで、1件も記録が無い状態での緑を疑う")
-                .isNotNull();
+                .isNotEmpty();
         for (ILoggingEvent event : appender.list) {
             assertThat(event.getFormattedMessage())
                     .as("ログ行に clientSecret を出さない").doesNotContain(CLIENT_SECRET);
