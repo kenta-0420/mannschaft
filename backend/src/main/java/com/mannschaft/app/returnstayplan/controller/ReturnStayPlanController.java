@@ -3,6 +3,7 @@ package com.mannschaft.app.returnstayplan.controller;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.returnstayplan.dto.OwnPlan;
 import com.mannschaft.app.returnstayplan.dto.ReturnStayPlanCreateRequest;
@@ -47,8 +48,15 @@ public class ReturnStayPlanController {
                         result.getTotalElements(), page, size, result.getTotalPages())));
     }
 
+    /**
+     * 計画の所有者は認証主体に固定するが、本文の公開先 {@code teamIds} をスコープIDとして受け取るため
+     * 自己スコープ（到達不能）の主張はできない。認可の実体は Service にある:
+     * {@code ReturnStayPlanService#validateTeamIds} が {@code countSaveableTeams}（本人が MEMBER として在籍し、
+     * アーカイブ・削除されていないチーム）の件数と指定件数を比べ、1件でも外れれば {@code TEAM_ACCESS_DENIED} で
+     * 保存前に拒否する。固定する契約テスト: {@code ReturnStayPlanPersistenceIT}（公開先チームの所属検証）。
+     */
     @PostMapping
-    @SelfScopedEndpoint("ReturnStayPlanController#create は ownerUserId を SecurityUtils からのみ取得する")
+    @AuthorizedInService
     @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "201", description = "Created")
     public ResponseEntity<ApiResponse<OwnPlan>> create(
