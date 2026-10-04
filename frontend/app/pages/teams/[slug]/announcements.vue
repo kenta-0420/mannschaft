@@ -18,6 +18,9 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 const { t } = useI18n()
 const route = useRoute()
 const teamSlug = String(route.params.slug)
+const { getTeam } = useTeamApi()
+const { handleApiError } = useErrorHandler()
+const feedScopeId = ref('')
 
 const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
 
@@ -31,7 +34,13 @@ const {
   deleteAnnouncement,
   markAsReadBeforeOpen,
   markAllAsRead,
-} = useAnnouncementFeed('TEAM', teamSlug)
+  setReadLocally,
+  removeFromFeedLocally,
+} = useAnnouncementFeed('TEAM', feedScopeId)
+const preview = useAnnouncementPreview({
+  onRead: item => setReadLocally(item.id),
+  onUnavailable: item => removeFromFeedLocally(item.id),
+})
 
 const { checkAccess } = useContentGateApi()
 
@@ -111,12 +120,25 @@ const paywallGateLoading = ref(false)
 const paywallGateResult = ref<GateCheckResponse | null>(null)
 const paywallPendingUrl = ref<string | null>(null)
 
-onMounted(async () => {
-  await loadPermissions()
-  await fetchFeed({ limit: 20 })
-  // 掲載面はフィード取得後（scopeId 確定後）に非同期取得する（失敗してもフィードは止めない）。
-  void loadSpotlight()
-})
+async function loadPage(): Promise<void> {
+  loading.value = true
+  error.value = null
+  try {
+    await loadPermissions()
+    const team = await getTeam(teamSlug)
+    feedScopeId.value = String(team.data.id)
+    await fetchFeed({ limit: 20 })
+    void loadSpotlight()
+  }
+  catch (reason) {
+    error.value = t('announcement.preview.load_failed')
+    handleApiError(reason)
+  }
+  finally {
+    loading.value = false
+  }
+}
+onMounted(loadPage)
 
 /** 次のページを読み込む */
 async function loadMore() {
@@ -127,8 +149,13 @@ async function loadMore() {
   })
 }
 
-/** アイテムクリック: ペイウォール判定 → 既読マーク → 元コンテンツへ遷移 */
-async function onItemClick(item: (typeof feed.value)[number]) {
+/** 対象2種は本文プレビュー、その他種別は既存の元ページ導線。 */
+async function onItemClick(item: (typeof feed.value)[number], trigger: HTMLElement) {
+  if (item.contentPreviewAvailable) {
+    await preview.open(item, trigger)
+    return
+  }
+  if (!item.sourceUrl) return
   // F08.9 P4b: お知らせコンテンツ（ANNOUNCEMENT）のペイウォール判定
   paywallGateLoading.value = true
   paywallGateResult.value = null
@@ -183,7 +210,8 @@ function onDeleteConfirm(id: number) {
 </script>
 
 <template>
-  <div class="mx-auto max-w-3xl p-4">
+  <div data-announcement-list class="mx-auto max-w-3xl p-4">
+    <span tabindex="-1" data-announcement-heading class="sr-only">{{ t('announcement.widget_title') }}</span>
     <!-- ヘッダー -->
     <div class="mb-4 flex items-center gap-3">
       <PageHeader :title="t('announcement.widget_title')">
@@ -210,9 +238,7 @@ function onDeleteConfirm(id: number) {
     <PageLoading v-if="loading && feed.length === 0" />
 
     <!-- エラー -->
-    <div v-else-if="error" class="py-8 text-center text-sm text-red-500">
-      {{ error }}
-    </div>
+    <DashboardErrorState v-else-if="error" :message="error" @retry="loadPage" />
 
     <!-- 空状態 -->
     <DashboardEmptyState
@@ -281,5 +307,15 @@ function onDeleteConfirm(id: number) {
     >
       <PaywallLock :loading="paywallGateLoading" :gate-result="paywallGateResult" />
     </Dialog>
+    <AnnouncementDetailModal
+      :state="preview.state.value"
+      :preview="preview.preview.value"
+      :item-title="preview.item.value?.title ?? ''"
+      :error="preview.error.value"
+      :trigger="preview.trigger.value"
+      @close="preview.close"
+      @retry="preview.retry"
+      @displayed="preview.markDisplayed"
+    />
   </div>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BulletinThreadResponse } from '~/types/bulletin'
+import { parseAnnouncementRouteId } from '~/utils/announcementRoute'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -11,6 +12,40 @@ const { isAdminOrDeputy, isMember, loadPermissions } = useRoleAccess('team', tea
 const selectedThread = ref<BulletinThreadResponse | null>(null)
 const showCreateDialog = ref(false)
 const listRef = ref<{ refresh: () => void } | null>(null)
+const { getScopedThread } = useBulletinApi()
+const { getTeam } = useTeamApi()
+const { handleApiError } = useErrorHandler()
+const linkLoading = ref(false)
+const linkError = shallowRef<unknown>(null)
+let linkSequence = 0
+
+/** 元リンクのthreadIdはこのscopeの詳細APIで認可してから開く。 */
+async function loadLinkedThread(): Promise<void> {
+  const request = ++linkSequence
+  selectedThread.value = null
+  linkError.value = null
+  linkLoading.value = true
+  try {
+    const threadId = parseAnnouncementRouteId(route.query.threadId)
+    if (threadId === undefined) return
+    const scope = await getTeam(teamSlug)
+    const result = await getScopedThread('teams', String(scope.data.id), threadId)
+    if (result.data.id !== threadId || result.data.scopeType !== 'TEAM' || String(result.data.scopeId) !== String(scope.data.id)) {
+      throw new Error('Bulletin thread does not match its route scope')
+    }
+    if (request === linkSequence) selectedThread.value = result.data
+  }
+  catch (error) {
+    if (request !== linkSequence) return
+    linkError.value = error
+    handleApiError(error)
+  }
+  finally {
+    if (request === linkSequence) linkLoading.value = false
+  }
+}
+watch(() => route.query.threadId, () => { void loadLinkedThread() })
+onScopeDispose(() => { ++linkSequence })
 
 /** タブ: 'threads'=通常一覧 / 'archive'=保管庫ビュー。 */
 const activeTab = ref<'threads' | 'archive'>('threads')
@@ -24,7 +59,7 @@ function onSwitchTab(tab: 'threads' | 'archive') {
   selectedThread.value = null
 }
 
-onMounted(() => loadPermissions())
+onMounted(async () => { await loadPermissions(); await loadLinkedThread() })
 </script>
 
 <template>
@@ -34,7 +69,9 @@ onMounted(() => loadPermissions())
     </div>
 
     <!-- スレッド詳細表示中 -->
-    <div v-if="selectedThread" class="mx-auto max-w-3xl">
+    <PageLoading v-if="linkLoading" />
+    <DashboardErrorState v-else-if="linkError" :error="linkError" @retry="loadLinkedThread" />
+    <div v-else-if="selectedThread" class="mx-auto max-w-3xl">
       <BulletinThreadDetail
         :thread-id="selectedThread.id"
         :can-manage="isAdminOrDeputy"
