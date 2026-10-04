@@ -2,6 +2,9 @@ package com.mannschaft.app.appearance.repository;
 
 import com.mannschaft.app.appearance.entity.AppearanceSettingsEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -28,4 +31,9 @@ public interface AppearanceSettingsRepository extends JpaRepository<AppearanceSe
      * @return 設定エンティティ（未登録の場合は空）
      */
     Optional<AppearanceSettingsEntity> findByUserId(Long userId);
+
+    /** 強匿名化専用。対象利用者の行を論理削除済みも含めて物理削除する。 */
+    @Modifying
+    @Query(value = "DELETE FROM appearance_settings WHERE user_id = :userId", nativeQuery = true)
+    int deleteByUserId(@Param("userId") Long userId);
 }

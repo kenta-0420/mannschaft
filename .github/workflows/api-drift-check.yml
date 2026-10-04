@@ -49,7 +49,7 @@ jobs:
 
     steps:
       - name: Checkout PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # main の baseline と diff を取るため、十分な履歴を取得
           fetch-depth: 0
