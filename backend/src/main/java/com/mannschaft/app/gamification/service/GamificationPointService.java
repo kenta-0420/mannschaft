@@ -158,6 +158,12 @@ public class GamificationPointService {
     public void addPoint(Long userId, String scopeType, Long scopeId,
                          ActionType actionType, String referenceType, Long referenceId) {
 
+        // ログイン報酬は廃止。旧ルールが残っていても付与せず、既存履歴は保持する。
+        // LOGIN_SUCCESS監査とbeta activeDaysの計測は独立した既存処理が継続する。
+        if (actionType == ActionType.DAILY_LOGIN) {
+            return;
+        }
+
         // 1. ゲーミフィケーション設定チェック
         GamificationConfigEntity config = gamificationConfigRepository
                 .findByScopeTypeAndScopeId(scopeType, scopeId)
