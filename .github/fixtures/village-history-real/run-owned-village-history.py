@@ -105,6 +105,7 @@ try:
                   SPRING_DATASOURCE_USERNAME=os.environ['VH_DB_USER'],
                   SPRING_DATASOURCE_PASSWORD=os.environ['VH_DB_PASSWORD'],
                   SPRING_DATA_REDIS_HOST='127.0.0.1', SPRING_DATA_REDIS_PORT=os.environ['VH_VALKEY_PORT'],
+                  MANNSCHAFT_ALLOWED_ORIGINS='http://localhost:13000',
                   MANNSCHAFT_EMAIL_SIMULATE='true', MANNSCHAFT_EMAIL_OUTBOX_WORKER_ENABLED='false')
     be = start('be', ['java', '-Xmx2g', '-jar', str(jars[0]), '--spring.profiles.active=ci',
                      '--server.port=18080', '--server.shutdown=graceful',
