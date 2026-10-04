@@ -1,5 +1,5 @@
 // 専用GitHub jobだけ。Node22 --experimental-strip-typesで呼ぶSOURCE候補。
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { execFileSync, spawn } from 'node:child_process'
 import path from 'node:path'
 import { randomBytes } from 'node:crypto'
@@ -120,14 +120,21 @@ try {
   }
   for (const suite of actual.suites ?? []) walk(suite)
   const uiCleanup = JSON.parse(readFileSync(path.join(output, 'ui-session-cleanup.json'), 'utf8'))
+  const progressPath = path.join(output, 'ui-progress-safe.json')
+  const progress = existsSync(progressPath) ? JSON.parse(readFileSync(progressPath, 'utf8')) : null
+  const uiLogins = Number.isInteger(progress?.canonicalLoginSuccesses)
+    && progress.canonicalLoginSuccesses >= 0 && progress.canonicalLoginSuccesses <= 3
+    ? progress.canonicalLoginSuccesses as number : null
   phase = 'BUSINESS_BEFORE_AFTER'
   await prepared.assertBusinessUnchanged()
   safeWrite('business-after.json', { exactBeforeAfter: true, requests: 22, memberships: 12, villages: 6, creationRequests: 6, users: 3 })
   const passed = uiCleanup.uiLogoutSuccesses === 3 && uiCleanup.uiContextsClosed === 3
+    && uiLogins === 3 && progress?.phase === 'UI_COMPLETE'
     && !stopRequested && code === 0 && results.length === 1 && results[0].status === 'passed'
     && results[0].retry === 0 && (actual.errors ?? []).length === 0
   safeWrite('ui-actual-safe.json', { processExit: code, results, errors: (actual.errors ?? []).length,
-    uiContexts: 3, uiLogins: 3, setupApiContexts: 3, setupLogins: 3, totalLogins: 6, passed })
+    uiContexts: 3, uiLogins, setupApiContexts: 3, setupLogins: 3,
+    totalLogins: uiLogins === null ? null : 3 + uiLogins, passed })
   outcome = passed ? 'FIXED_UI_PASS_PENDING_CLEANUP' : 'ACTUAL_UI_FAILURE'
   exit = passed ? 0 : 1
 } catch (error) {

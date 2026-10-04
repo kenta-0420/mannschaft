@@ -127,6 +127,7 @@ jobs:
             frontend/build/village-history-real/business-before.json
             frontend/build/village-history-real/business-after.json
             frontend/build/village-history-real/ui-actual-safe.json
+            frontend/build/village-history-real/ui-progress-safe.json
             frontend/build/village-history-real/ui-session-cleanup.json
             frontend/build/village-history-real/fixture-completion.json
             frontend/build/village-history-real/failure-safe.json
