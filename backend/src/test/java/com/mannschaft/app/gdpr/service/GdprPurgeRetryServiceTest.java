@@ -58,7 +58,7 @@ class GdprPurgeRetryServiceTest {
     @Mock
     private com.mannschaft.app.ranch.event.RanchPurgeEventListener ranchPurgeEventListener;
     @Mock
-    private com.mannschaft.app.diagnosis.service.DiagnosisPurgeService diagnosisPurgeService;
+    private com.mannschaft.app.common.DomainEventPublisher eventPublisher;
 
     @InjectMocks
     private GdprPurgeRetryService service;
