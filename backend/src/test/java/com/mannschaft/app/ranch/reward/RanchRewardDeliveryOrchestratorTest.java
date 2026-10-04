@@ -1,5 +1,7 @@
 package com.mannschaft.app.ranch.reward;
 
+import com.mannschaft.app.auth.UserOperationErrorCode;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ranchsource.api.SourceOutboxAckRequest;
 import com.mannschaft.app.common.ranchsource.api.SourceOutboxDeferRequest;
 import com.mannschaft.app.common.ranchsource.api.SourceOutboxDeliveryFacade;
@@ -84,6 +86,24 @@ class RanchRewardDeliveryOrchestratorTest {
                 first.leaseToken(), NOW, NOW.plusSeconds(5), 20));
         verify(sources.get(0)).retry(new SourceOutboxFailureRequest(second.eventId(),
                 second.leaseToken(), NOW, 3, 5, 20, "RANCH_DELIVERY_TRANSIENT"));
+        verify(sources.get(0), never()).acknowledge(any());
+    }
+
+    @Test
+    void authAdmissionCapacityDeferDoesNotConsumeFailureAttempts() {
+        available();
+        var event = leased();
+        when(sources.get(0).lease(any(SourceOutboxLeaseRequest.class))).thenReturn(List.of(event));
+        when(consumer.consume(event.envelope()))
+                .thenThrow(new BusinessException(UserOperationErrorCode.UNAVAILABLE));
+        when(sources.get(0).defer(any(SourceOutboxDeferRequest.class))).thenReturn(true);
+
+        var summary = orchestrator.drainOnce();
+        assertThat(summary.deferred()).isEqualTo(1);
+        assertThat(summary.retried()).isZero();
+        verify(sources.get(0)).defer(new SourceOutboxDeferRequest(event.eventId(),
+                event.leaseToken(), NOW, NOW.plusSeconds(5), 20));
+        verify(sources.get(0), never()).retry(any());
         verify(sources.get(0), never()).acknowledge(any());
     }
 

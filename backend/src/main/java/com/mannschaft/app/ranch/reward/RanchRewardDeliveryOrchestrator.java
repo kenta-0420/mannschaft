@@ -1,5 +1,7 @@
 package com.mannschaft.app.ranch.reward;
 
+import com.mannschaft.app.auth.UserOperationErrorCode;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ranchsource.api.SourceOutboxAckRequest;
 import com.mannschaft.app.common.ranchsource.api.SourceOutboxDeferRequest;
 import com.mannschaft.app.common.ranchsource.api.SourceOutboxDeliveryFacade;
@@ -84,6 +86,21 @@ public class RanchRewardDeliveryOrchestrator {
                 try {
                     outcome = Objects.requireNonNull(consumer.consume(event.envelope()));
                 } catch (RuntimeException transientFailure) {
+                    if (transientFailure instanceof BusinessException business
+                            && business.getErrorCode() == UserOperationErrorCode.UNAVAILABLE) {
+                        try {
+                            Instant deferredAt = now();
+                            if (source.defer(new SourceOutboxDeferRequest(event.eventId(),
+                                    event.leaseToken(), deferredAt,
+                                    deferredAt.plusSeconds(settings.initialBackoffSeconds()),
+                                    settings.maxBackoffSeconds()))) {
+                                deferred = Math.addExact(deferred, 1);
+                            }
+                        } catch (RuntimeException ignored) {
+                            failed = Math.addExact(failed, 1);
+                        }
+                        continue;
+                    }
                     try {
                         if (source.retry(new SourceOutboxFailureRequest(event.eventId(),
                                 event.leaseToken(), now(), settings.maxAttempts(),
