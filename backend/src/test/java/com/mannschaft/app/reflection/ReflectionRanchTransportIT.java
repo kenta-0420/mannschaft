@@ -124,7 +124,8 @@ class ReflectionRanchTransportIT extends AbstractMySqlIntegrationTest {
         var ack=active.withActiveUser(owner,() -> outboxAdmin.retry(owner,second.eventId(),key,reason,now.plusSeconds(7)));
         assertThat(ack.disposition()).isEqualTo(SourceOutboxAdminRetryAck.Disposition.ALREADY_TERMINAL);
         jdbc.update("DELETE FROM reflection_ranch_outboxes WHERE id=?",bytes(second.eventId()));
-        assertThat(active.withActiveUser(owner,() -> outboxAdmin.retry(owner,second.eventId(),key,reason,now.plusSeconds(8)))).isEqualTo(ack);
+        SourceOutboxAdminRetryAck replayAck=active.withActiveUser(owner,() -> outboxAdmin.retry(owner,second.eventId(),key,reason,now.plusSeconds(8)));
+        assertThat(replayAck).isEqualTo(ack);
         assertThat(count("reflection_ranch_outboxes")).isZero();
         // actor fixtureは源命令の原子性用。SYSTEM_ADMIN HTTP認可・実purgeの証拠ではない。
     }
