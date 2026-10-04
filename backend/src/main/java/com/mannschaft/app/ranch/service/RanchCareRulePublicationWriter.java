@@ -16,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -38,7 +40,8 @@ public class RanchCareRulePublicationWriter {
     private final ApplicationEventPublisher events;
     private final RanchCommandHasher hasher = new RanchCommandHasher();
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    // ACK先行読取りでRR snapshotを固定せず、singleton lock取得後の再読取りを現行版へ向ける。
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public PublicationOutcome publish(Long actorId, UUID key, RanchCareRulePublicationRequest request, Instant serverTime) {
         Objects.requireNonNull(actorId);
         Objects.requireNonNull(key);
@@ -47,14 +50,14 @@ public class RanchCareRulePublicationWriter {
         byte[] hash = hasher.hash(KIND, RESOURCE, null, json.valueToTree(request));
         var saved = commands.findByActorUserIdAndIdempotencyKey(actorId, key);
         if (saved.isPresent()) return replay(saved.orElseThrow(), hash);
-        controls.lockSingleton().orElseThrow(() -> new BusinessException(RanchErrorCode.RANCH_004));
+        controls.lockSingleton().orElseThrow(() -> new BusinessException(RanchErrorCode.RANCH_004, HttpStatus.SERVICE_UNAVAILABLE));
         // 異なる管理主体も単一行で直列化し、同主体の同key競合を再確認する。
         saved = commands.findByActorUserIdAndIdempotencyKey(actorId, key);
         if (saved.isPresent()) return replay(saved.orElseThrow(), hash);
         // HTTP以外のtrusted呼出しでも保存値を検証し、保存ACKにはlive検証を再適用しない。
         new RanchAdminInputParser().care(json.valueToTree(request));
         RanchAdminPublicationCalendar.requireFutureWeek(request.effectiveAt(), now);
-        if (rules.existsByEffectiveAt(request.effectiveAt())) throw new BusinessException(RanchErrorCode.RANCH_007);
+        if (rules.existsByEffectiveAt(request.effectiveAt())) throw new BusinessException(RanchErrorCode.RANCH_007, HttpStatus.CONFLICT);
         long version;
         try { version = Math.addExact(rules.findTopByOrderByVersionNumberDesc().map(rule -> rule.getVersionNumber()).orElse(0L), 1); }
         catch (ArithmeticException exception) { throw new BusinessException(RanchErrorCode.RANCH_008, exception); }
@@ -79,7 +82,7 @@ public class RanchCareRulePublicationWriter {
 
     private PublicationOutcome replay(RanchAdminCommandEntity command, byte[] hash) {
         if (!KIND.equals(command.getCommandType()) || !Arrays.equals(hash, command.getBodyHash())) {
-            throw new BusinessException(RanchErrorCode.RANCH_003);
+            throw new BusinessException(RanchErrorCode.RANCH_003, HttpStatus.CONFLICT);
         }
         try { return new PublicationOutcome(json.readValue(command.getResultJson(), RanchCareRulePublicationResponse.class), false); }
         catch (JsonProcessingException exception) { throw new BusinessException(RanchErrorCode.RANCH_008, exception); }

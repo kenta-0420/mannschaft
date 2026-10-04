@@ -32,7 +32,8 @@ public class RanchAdminAuditListener {
             String metadata = json.writeValueAsString(Map.of("commandId", event.commandId().toString(),
                     "action", event.action(), "resourceId", event.resourceId(),
                     "reasonCode", event.reasonCode(), "occurredAt", event.occurredAt().toString()));
-            audit.record(AuditEventType.RANCH_ADMIN_ACTION_APPLIED.name(), event.actorUserId(),
+            // 既にevent-pool上なので、同プールへの無指定Async再投入を避けて既存同期facadeを使う。
+            audit.recordSync(AuditEventType.RANCH_ADMIN_ACTION_APPLIED.name(), event.actorUserId(),
                     null, null, null, null, null, null, metadata);
         } catch (JsonProcessingException exception) {
             // 管理者の入力や設定全体をexception経由でログへ出さない。
