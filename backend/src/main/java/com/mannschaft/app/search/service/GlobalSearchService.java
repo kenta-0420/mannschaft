@@ -98,7 +98,36 @@ public class GlobalSearchService {
         // SQL 1行の predicate に落とせないため）。候補 ID を固定件数で F00 に通し、
         // 全可視数を数えながら表示する先頭10件だけを保持する。
         // CUSTOM_TEMPLATE の除外は既存どおり SQL 述語のまま維持。
-        var schedules = searchVisibleSchedules(query, teamIds, orgIds, userId, limit);
+        Pageable batch = PageRequest.of(0, SCHEDULE_BATCH_SIZE);
+        List<Long> firstVisibleIds = new ArrayList<>(SEARCH_LIMIT);
+        long visibleTotal = 0;
+        long afterId = Long.MIN_VALUE;
+        while (true) {
+            List<Long> candidates = scheduleRepository.searchIdsByKeyword(
+                    query, teamIds, orgIds, userId, afterId, batch);
+            if (candidates.isEmpty()) {
+                break;
+            }
+            var visibleIds = contentVisibilityChecker.filterAccessible(ReferenceType.SCHEDULE, candidates, userId);
+            for (Long id : candidates) {
+                if (visibleIds.contains(id)) {
+                    visibleTotal++;
+                    if (firstVisibleIds.size() < SEARCH_LIMIT) {
+                        firstVisibleIds.add(id);
+                    }
+                }
+            }
+            if (candidates.size() < SCHEDULE_BATCH_SIZE) {
+                break;
+            }
+            afterId = candidates.getLast();
+        }
+        List<ScheduleEntity> scheduleContent = firstVisibleIds.isEmpty() ? List.of()
+                : scheduleRepository.findAllById(firstVisibleIds).stream()
+                        .sorted(Comparator.comparing(ScheduleEntity::getId))
+                        .toList();
+        Page<ScheduleEntity> schedules = firstVisibleIds.isEmpty() ? Page.empty(limit)
+                : new PageImpl<>(scheduleContent, limit, visibleTotal);
         results.put("schedules", schedules.getContent().stream()
                 .map(s -> Map.<String, Object>of(
                         "id", s.getId(), "title", s.getTitle(),
@@ -188,47 +217,6 @@ public class GlobalSearchService {
         log.info("グローバル検索実行: query='{}', userId={}, executionTime={}ms", query, userId, executionTimeMs);
 
         return new SearchResultResponse(query, results, counts, executionTimeMs);
-    }
-
-    /**
-     * 既存の検索母集団と F00 判定を維持した予定の Page を組み立てる。
-     *
-     * <p>同じ読み取り Tx 内で候補 ID・可視性射影・最大10件の Entity を取得する。
-     * 全候補の Entity や ID を保持せず、可視性 SQL を検索側へ複製しない。</p>
-     */
-    private Page<ScheduleEntity> searchVisibleSchedules(
-            String query, List<Long> teamIds, List<Long> orgIds, Long userId, Pageable limit) {
-        Pageable batch = PageRequest.of(0, SCHEDULE_BATCH_SIZE);
-        List<Long> firstVisibleIds = new ArrayList<>(SEARCH_LIMIT);
-        long visibleTotal = 0;
-        long afterId = Long.MIN_VALUE;
-        while (true) {
-            List<Long> candidates = scheduleRepository.searchIdsByKeyword(
-                    query, teamIds, orgIds, userId, afterId, batch);
-            if (candidates.isEmpty()) {
-                break;
-            }
-            var visibleIds = contentVisibilityChecker.filterAccessible(ReferenceType.SCHEDULE, candidates, userId);
-            for (Long id : candidates) {
-                if (visibleIds.contains(id)) {
-                    visibleTotal++;
-                    if (firstVisibleIds.size() < SEARCH_LIMIT) {
-                        firstVisibleIds.add(id);
-                    }
-                }
-            }
-            if (candidates.size() < SCHEDULE_BATCH_SIZE) {
-                break;
-            }
-            afterId = candidates.getLast();
-        }
-        if (firstVisibleIds.isEmpty()) {
-            return Page.empty(limit);
-        }
-        List<ScheduleEntity> content = scheduleRepository.findAllById(firstVisibleIds).stream()
-                .sorted(Comparator.comparing(ScheduleEntity::getId))
-                .toList();
-        return new PageImpl<>(content, limit, visibleTotal);
     }
 
     /**
