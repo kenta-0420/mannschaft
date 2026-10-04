@@ -118,6 +118,40 @@ public class OpenApiConfig {
     }
 
     /**
+     * F02.6 の LOCKED は参照・本文を明示 null にする。nullable は OAS 3.0 専用なので、
+     * 3.1 では $ref も含め anyOf[既存スキーマ, {type:null}] で表現する。
+     * 当該 Response だけを補い、全体の dialect と既存 DTO は変更しない。
+     */
+    @Bean
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public OpenApiCustomizer announcementPreviewSchemaCustomizer() {
+        return openApi -> {
+            if (openApi.getComponents() == null || openApi.getComponents().getSchemas() == null) return;
+            Schema response = openApi.getComponents().getSchemas().get("AnnouncementPreviewResponse");
+            if (response == null || response.getProperties() == null) return;
+            Map<String, Schema> properties = response.getProperties();
+            properties.get("scopeType").setEnum(List.of("TEAM", "ORGANIZATION"));
+            Schema sourceType = properties.get("sourceType");
+            if (hasAnnouncementPreviewNullBranch(sourceType)) sourceType = (Schema) sourceType.getAnyOf().get(0);
+            sourceType.setEnum(List.of("BLOG_POST", "BULLETIN_THREAD"));
+            for (String field : List.of("sourceId", "sourceType", "sourceUrl", "blogPost", "bulletinThread")) {
+                Schema value = properties.get(field);
+                if (hasAnnouncementPreviewNullBranch(value)) continue;
+                Schema nullValue = new Schema();
+                nullValue.setTypes(java.util.Set.of("null"));
+                Schema nullable = new Schema();
+                nullable.setAnyOf(List.of(value, nullValue));
+                properties.put(field, nullable);
+            }
+        };
+    }
+
+    private boolean hasAnnouncementPreviewNullBranch(Schema<?> schema) {
+        return schema.getAnyOf() != null && schema.getAnyOf().stream()
+                .anyMatch(branch -> branch.getTypes() != null && branch.getTypes().contains("null"));
+    }
+
+    /**
      * {@link com.mannschaft.app.reflection.RecallDirection} を named component として登録する。
      *
      * <p>springdoc は ネストされた record フィールドの enum を inline 展開するため、

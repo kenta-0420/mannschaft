@@ -25,7 +25,7 @@ public class AnnouncementPreviewAudienceGuard {
     private final AnnouncementFeedGroupSnapshotRepository snapshotRepository;
     private final ObjectMapper objectMapper;
 
-    public void assertIncluded(AnnouncementFeedEntity feed, Long viewerId, String role) {
+    void assertIncluded(AnnouncementFeedEntity feed, Long viewerId, String role) {
         if (feed.getScopeType() != AnnouncementScopeType.ORGANIZATION || "SYSTEM_ADMIN".equals(role)) return;
         List<Long> teams = parse(feed.getTargetTeamIds(), new TypeReference<List<Long>>() {});
         List<String> groups = parse(feed.getTargetGroupIds(), new TypeReference<List<String>>() {});

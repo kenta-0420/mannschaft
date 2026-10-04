@@ -76,8 +76,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BlogPostService {
-
-    private final com.mannschaft.app.cms.visibility.BlogPostVisibilityResolver blogPostVisibilityResolver;
     private final BlogMediaAclService mediaAclService;
     private final BlogMediaCopyService mediaCopyService;
 
@@ -270,48 +268,6 @@ public class BlogPostService {
         BlogPostEntity entity = findPostOrThrow(id);
         // 可視性(F00)通過の「後段」でペイウォール本文ゲートを適用する（可視性 deny が優先）。
         return applyPaywallMask(cmsMapper.toBlogPostResponse(entity), entity, viewerUserId);
-    }
-
-    /** 本文・署名を取得せず、preview の最新実在/実 scope/F00/strict 課金だけを確認する。 */
-    public PreviewMetadata getPreviewMetadata(Long id, Long viewerUserId) {
-        return previewMetadata(findPostOrThrow(id), viewerUserId);
-    }
-
-    /**
-     * scope を再束縛した preview 本文読取。strict F00 と本文を同じドメイン境界で評価し、
-     * FULL のときだけメディアを解決する。通常表示用の lenient mask を再実行しない。
-     */
-    public BlogPostResponse getPreviewById(Long id, Long viewerUserId, String scopeType, Long scopeId) {
-        BlogPostEntity entity = findPostOrThrow(id);
-        if (!("TEAM".equals(scopeType) && scopeId.equals(entity.getTeamId()) && entity.getOrganizationId() == null)
-                && !("ORGANIZATION".equals(scopeType) && scopeId.equals(entity.getOrganizationId())
-                    && entity.getTeamId() == null)) {
-            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
-        }
-        PreviewMetadata metadata = previewMetadata(entity, viewerUserId);
-        BlogPostResponse dto = cmsMapper.toBlogPostResponse(entity);
-        if ("LOCKED".equals(metadata.accessState())) {
-            return maskContent(dto, false).withAccessState(ContentAccessState.LOCKED.name());
-        }
-        return resolveBodyMediaForPreview(dto.withAccessState(ContentAccessState.FULL.name()), entity);
-    }
-
-    private PreviewMetadata previewMetadata(BlogPostEntity entity, Long viewerUserId) {
-        if ((entity.getTeamId() == null) == (entity.getOrganizationId() == null) || entity.getUserId() != null) {
-            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
-        }
-        assertScopeNotProvisioned(entity.getTeamId(), entity.getOrganizationId());
-        GateCheckResponse gate = java.util.Objects.requireNonNull(paymentGateService.checkAccessForPreview(
-                ContentGateType.POST, entity.getId(), viewerUserId, targetOf(entity)), "preview 課金結果が null です");
-        if (gate.isTitleHidden()) throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
-        blogPostVisibilityResolver.assertCanViewForPreview(entity.getId(), viewerUserId, gate);
-        boolean full = gate.isAccessible() || accessControlService.isSystemAdmin(viewerUserId);
-        return new PreviewMetadata(entity.getTeamId() != null ? "TEAM" : "ORGANIZATION",
-                entity.getTeamId() != null ? entity.getTeamId() : entity.getOrganizationId(), entity.getSlug(),
-                full ? "FULL" : "LOCKED");
-    }
-
-    public record PreviewMetadata(String scopeType, Long scopeId, String slug, String accessState) {
     }
 
     /**
@@ -797,21 +753,6 @@ public class BlogPostService {
      * 期限付き URL が永続保存され、数十分後に記事の画像が恒久的に壊れる。</p>
      */
     private BlogPostResponse resolveBodyMedia(BlogPostResponse dto, BlogPostEntity entity) {
-        return resolveBodyMedia(dto, entity,
-                (body, type, scopeId, postId) -> blogBodyMediaResolver.resolveBody(body, type, scopeId, postId));
-    }
-
-    private BlogPostResponse resolveBodyMediaForPreview(BlogPostResponse dto, BlogPostEntity entity) {
-        return resolveBodyMedia(dto, entity,
-                (body, type, scopeId, postId) -> blogBodyMediaResolver.resolveBodyForPreview(body, type, scopeId, postId));
-    }
-
-    @FunctionalInterface
-    private interface BodyMediaReader {
-        String read(String body, com.mannschaft.app.common.storage.quota.StorageScopeType type, Long scopeId, Long postId);
-    }
-
-    private BlogPostResponse resolveBodyMedia(BlogPostResponse dto, BlogPostEntity entity, BodyMediaReader reader) {
         BlogPostResponse.BlogPostContentDto content = dto.getContent();
         if (content == null || content.body() == null) {
             return dto;
@@ -822,7 +763,7 @@ public class BlogPostService {
             log.warn("本文メディア: 記事のスコープを判定できないため解決を見送る: postId={}", entity.getId());
             return dto;
         }
-        String resolvedBody = reader.read(
+        String resolvedBody = blogBodyMediaResolver.resolveBody(
                 content.body(), scope.scopeType(), scope.scopeId(), entity.getId());
         if (resolvedBody == null || resolvedBody.equals(content.body())) {
             return dto;

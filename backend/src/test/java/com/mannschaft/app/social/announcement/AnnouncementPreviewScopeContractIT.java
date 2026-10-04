@@ -276,6 +276,28 @@ class AnnouncementPreviewScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("元 detail/global/添付一覧/download は非所属を全て404に隠蔽する")
+    void 元掲示板の全読取入口にも最新認可を適用する() throws Exception {
+        BulletinThreadEntity thread = saveThread();
+        var reply = com.mannschaft.app.bulletin.entity.BulletinReplyEntity.builder()
+                .threadId(thread.getId()).authorId(authorId).body("返信の試練").build();
+        em.persist(reply);
+        BulletinAttachmentEntity attachment = saveAttachment(thread, "application/pdf", teamId);
+        em.flush();
+        for (String path : java.util.List.of(
+                "/api/v1/teams/" + teamId + "/bulletin/threads/" + thread.getId(),
+                "/api/v1/bulletin/threads/" + thread.getId(),
+                "/api/v1/bulletin/threads/" + thread.getId() + "/attachments",
+                "/api/v1/bulletin/replies/" + reply.getId() + "/attachments",
+                "/api/v1/bulletin/attachments/" + attachment.getId() + "/download-url")) {
+            mockMvc.perform(get(path).servletPath(path).with(user(outsiderId.toString())))
+                    .andExpect(status().isNotFound()).andExpect(jsonPath("$.data").doesNotExist());
+            mockMvc.perform(get(path).servletPath(path).with(user(memberId.toString())))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
     @DisplayName("PREVIEW-07 feed LOCKED でも元 scope 不一致は 404")
     void feedLOCKEDでも所有scopeを検証する() throws Exception {
         BlogPostEntity other = saveBlog(otherTeamId, null, "秘密", Visibility.PUBLIC,

@@ -231,6 +231,19 @@ public class BulletinAttachmentService {
      * @param userId   操作ユーザー ID
      * @return 添付レスポンスリスト
      */
+    /** 添付/返信から最新所属 scope を逆引きする own Repository projection。認可は read Facade が行う。 */
+    public BulletinThreadService.PreviewMetadata getReplyReadMetadata(Long replyId) {
+        BulletinThreadEntity thread = resolveThread(TargetType.REPLY, replyId);
+        return new BulletinThreadService.PreviewMetadata(thread.getId(), thread.getScopeType().name(), thread.getScopeId());
+    }
+
+    public BulletinThreadService.PreviewMetadata getAttachmentReadMetadata(Long attachmentId) {
+        BulletinAttachmentEntity attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new BusinessException(BulletinErrorCode.ATTACHMENT_NOT_FOUND));
+        BulletinThreadEntity thread = resolveThread(attachment.getTargetType(), attachment.getTargetId());
+        return new BulletinThreadService.PreviewMetadata(thread.getId(), thread.getScopeType().name(), thread.getScopeId());
+    }
+
     public List<AttachmentResponse> listThreadAttachments(Long threadId, Long userId) {
         BulletinThreadEntity thread = findThreadOrThrow(threadId);
         checkViewAuthorization(thread, userId);
@@ -416,7 +429,6 @@ public class BulletinAttachmentService {
             checkPersonalOwner(thread, userId);
         } else {
             accessGuard.checkMembership(userId, thread.getScopeType(), thread.getScopeId());
-            accessGuard.checkThreadVisibility(userId, thread.getScopeType(), thread.getScopeId(), thread.getId());
         }
     }
 

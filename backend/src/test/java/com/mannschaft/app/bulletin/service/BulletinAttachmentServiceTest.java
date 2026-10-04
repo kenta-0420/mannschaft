@@ -167,7 +167,7 @@ class BulletinAttachmentServiceTest {
                 .willReturn(List.of(dangerousAttachment()));
         assertThat(service.listThreadAttachments(THREAD_ID, USER_ID)).isEmpty();
         verify(storageAccessService).generateDownloadUrlsForList(eq(List.of()), any());
-        verify(accessGuard).checkThreadVisibility(USER_ID, ScopeType.TEAM, TEAM_ID, THREAD_ID);
+        verify(accessGuard).checkMembership(USER_ID, ScopeType.TEAM, TEAM_ID);
     }
 
     @Test
