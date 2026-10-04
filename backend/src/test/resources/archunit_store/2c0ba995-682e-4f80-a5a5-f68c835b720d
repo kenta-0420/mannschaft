@@ -347,6 +347,7 @@ Class <com.mannschaft.app.quickmemo.entity.UserQuickMemoSettingsEntity> is not a
 Class <com.mannschaft.app.quickmemo.entity.UserVoiceInputConsentEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (UserVoiceInputConsentEntity.java:0)
 Class <com.mannschaft.app.quickmemo.entity.WithdrawJobEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (WithdrawJobEntity.java:0)
 Class <com.mannschaft.app.ranch.entity.RanchCollectibleCatalogEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (RanchCollectibleCatalogEntity.java:0)
+Class <com.mannschaft.app.ranch.entity.RanchOperationalControlEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (RanchOperationalControlEntity.java:0)
 Class <com.mannschaft.app.receipt.entity.ReceiptEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ReceiptEntity.java:0)
 Class <com.mannschaft.app.receipt.entity.ReceiptIssuerSettingsEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ReceiptIssuerSettingsEntity.java:0)
 Class <com.mannschaft.app.receipt.entity.ReceiptLineItemEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ReceiptLineItemEntity.java:0)

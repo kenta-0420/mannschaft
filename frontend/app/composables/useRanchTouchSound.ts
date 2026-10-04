@@ -15,7 +15,12 @@ export function useRanchTouchSound(options: {
  const allowed = () => options.enabled() && options.motion() !== 'STOPPED' && options.soundEnabled() && options.volume() > 0
  // 音の機能不全を保存命令へ伝播させない。終了処理も個々の資源で独立に試す。
  function release(action: () => void | Promise<void>) {
-  try { const result = action(); if (result) void result.catch(() => {}) } catch { /* 音だけを破棄する */ }
+  try {
+   const result = action()
+   // 音の解放失敗は個別資源だけに限定し、成功した本人操作の保存結果へ伝播させない。
+   // eslint-disable-next-line no-restricted-syntax
+   if (result) void result.catch(() => {})
+  } catch { /* 音だけを破棄する */ }
  }
  function stop() {
   generation += 1
