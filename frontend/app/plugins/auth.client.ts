@@ -1,5 +1,6 @@
-export default defineNuxtPlugin(() => {
+export default defineNuxtPlugin((nuxtApp) => {
   const authStore = useAuthStore()
+  getAuthSessionContext(authStore).bindApp(nuxtApp)
   authStore.loadFromStorage()
 
   if (authStore.isAuthenticated) {

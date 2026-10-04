@@ -1,0 +1,161 @@
+{
+  "ranch": {
+    "title": "공룡의 방",
+    "optional": "시작은 자유입니다. 무료 돌봄만으로도 성체까지 자라며, 돌보지 않아도 잃지 않습니다. 친밀감은 시간이 지나도 줄지 않습니다.",
+    "start": "알부터 시작하기",
+    "save": "저장",
+    "retry": "다시 시도",
+    "next": "다음 페이지",
+    "pause": "일시 중지",
+    "resume": "재개",
+    "paused": "일시 중지 중입니다. 결과와 장식품은 계속 볼 수 있습니다.",
+    "unavailable": "준비 중입니다. 자신의 결과는 계속 볼 수 있습니다.",
+    "recall": "회상하기",
+    "avatar": {
+      "label": "나의 공룡 분신",
+      "description": "공룡은 나 자신의 분신입니다. 자신의 취향과 개성을 담은 모습을 천천히 키워 보세요."
+    },
+    "stage": {
+      "EGG": "알",
+      "BABY": "유체",
+      "JUVENILE": "어린 공룡",
+      "ADULT": "성체"
+    },
+    "egg": {
+      "INTACT": "알이 자라고 있습니다.",
+      "SMALL_CRACK": "작은 금이 생겼습니다.",
+      "WIDE_CRACK": "금이 넓어지고 있습니다.",
+      "READY": "이름과 선택 방법을 정할 때까지 알은 안전하게 기다립니다."
+    },
+    "care": {
+      "eggTouch": "만지기",
+      "food": "먹이",
+      "touch": "교감",
+      "choose": "선택 방법",
+      "status": "상태",
+      "fed": "먹이를 주었습니다. 성장 {xp} XP.",
+      "touched": "자신의 분신을 만졌습니다."
+    },
+    "scene": {
+      "assetPreparing": "이 모습의 소재는 준비 중입니다. 텍스트와 조작은 계속 이용할 수 있습니다."
+    },
+    "style": {
+      "PIXEL": "96픽셀",
+      "PAINT_2D": "일반 2D"
+    },
+    "motion": {
+      "NORMAL": "보통",
+      "REDUCED": "움직임 줄이기",
+      "STOPPED": "움직임 멈추기"
+    },
+    "settings": {
+      "title": "공룡의 방 설정",
+      "style": "표현 스타일",
+      "motion": "움직임",
+      "sound": "소리 사용",
+      "volume": "음량",
+      "freewalkLater": "지금은 방에 표시됩니다. 자유롭게 걷기는 이후 단계에서 이용할 수 있습니다.",
+      "hide": "숨기기",
+      "show": "표시하기",
+      "visibilityFailed": "알은 만들어졌지만 표시 설정을 저장하지 못했습니다. 표시 설정만 다시 시도하세요."
+    },
+    "command": {
+      "failed": "저장하지 못했습니다. 응답을 받지 못했다면 같은 작업을 다시 시도하세요.",
+      "retryRequired": "저장 결과를 확인하지 못했습니다. 같은 이름으로 다시 시도하세요."
+    },
+    "naming": {
+      "title": "이름 짓기",
+      "nameLabel": "공룡 이름",
+      "characterCount": "{count} / 10",
+      "irreversibleWarning": "확정한 이름은 변경할 수 없습니다. 10자 이내로 입력하세요.",
+      "checkName": "이름 확인",
+      "confirmPrompt": "“{name}”(으)로 정할까요? 이 이름은 나중에 변경할 수 없습니다.",
+      "confirm": "이 이름으로 확정",
+      "back": "입력으로 돌아가기",
+      "invalid": "1~10자로 입력하세요. 보이지 않는 문자, 줄바꿈, 제어 문자는 사용할 수 없습니다."
+    },
+    "habitat": {
+      "LAND": "육지에서 무작위",
+      "SEA": "바다에서 무작위",
+      "AIR": "하늘에서 무작위"
+    },
+    "assignment": {
+      "title": "나의 공룡 모습 선택",
+      "description": "생년월일·이름 점술, 64유형 검사, 육지·바다·하늘 무작위 중에서 선택할 수 있습니다.",
+      "fromResult": "내 결과에서 선택",
+      "mappingPending": "결과가 저장되었습니다. 공룡 모습과의 연결은 준비 중입니다.",
+      "useResult": "이 결과로 모습 선택"
+    },
+    "diagnosisResults": {
+      "title": "내 검사 결과",
+      "type64": "64유형 검사",
+      "birthStyle": "생년월일·이름 점술",
+      "notCompleted": "미완료",
+      "completedAt": "완료일: {date}",
+      "retake": "검사하기·다시 검사하기",
+      "avatarUnchanged": "결과가 달라져도 태어난 공룡 분신의 이름·모습·성장 상태는 바뀌지 않습니다.",
+      "typeCode": "유형: {code}"
+    },
+    "diagnosis": {
+      "description": "자신이 공룡이 된 모습을 상상하며 지금의 자신에게 가까운 생활 방식을 고르세요. 정답이나 우열은 없으며 성격이나 능력을 과학적으로 측정하는 검사가 아닙니다.",
+      "start": "검사 시작",
+      "save": "현재 답변 저장",
+      "complete": "결과 보기",
+      "hold": "저장하고 나중에 계속",
+      "cancel": "검사 취소",
+      "resume": "저장한 검사 이어서 하기",
+      "tie": "비슷하게 나온 성향 중 선택하세요",
+      "scale1": "왼쪽에 가까움",
+      "scale2": "약간 왼쪽",
+      "scale3": "비슷함",
+      "scale4": "약간 오른쪽",
+      "scale5": "오른쪽에 가까움"
+    },
+    "birth": {
+      "purpose": "본인 프로필에 저장한 성명·가나 읽기·생년월일로 자신의 점술 결과를 계산합니다. 아래 저장된 정보를 확인하세요.",
+      "rule": "독자적인 점술 규칙입니다. 생년월일과 이름의 읽기를 각각 숫자로 바꾸어 1~9로 줄입니다. 과학적인 측정이 아닙니다.",
+      "profile": "본인 프로필",
+      "lastName": "성",
+      "firstName": "이름",
+      "lastNameKana": "성 읽기(가나)",
+      "firstNameKana": "이름 읽기(가나)",
+      "birthDate": "생년월일",
+      "save": "본인 정보 저장·확인",
+      "savedProfile": "계산에 사용하는 저장된 정보",
+      "confirmUse": "저장된 본인 정보를 확인했으며 계산에 사용하는 것에 동의합니다.",
+      "create": "내 점술 결과 만들기",
+      "numbers": "생년월일 수: {life} / 이름 수: {name}",
+      "reconfirm": "본인 정보를 다시 확인하고 선택",
+      "required": "본인 정보를 입력하세요.",
+      "keyRotated": "저장 키가 변경되었습니다. 본인 정보를 다시 불러와 확인한 뒤 다시 저장하세요.",
+      "reloadProfile": "본인 정보 다시 불러오기",
+      "parentalConsentRequired": "이 생년월일을 저장하려면 보호자 승인이 필요합니다. 보호자 동의 화면에서 진행하세요.",
+      "openConsent": "보호자 동의로 이동"
+    },
+    "decorations": {
+      "title": "장식품과 교환",
+      "permanent": "포인트는 영구 장식품에만 사용할 수 있습니다. 성장 속도나 이용 권한에 영향을 주지 않습니다.",
+      "slots": "장식품 슬롯 3개",
+      "choose": "장식품 선택",
+      "slot": "슬롯 {n}",
+      "placed": "배치됨",
+      "empty": "비어 있음",
+      "place": "배치",
+      "remove": "제거",
+      "shop": "영구 장식품 교환",
+      "balance": "잔액: {balance}",
+      "noItems": "등록된 장식품이 없습니다.",
+      "owned": "보유 중",
+      "purchase": "교환"
+    },
+    "records": {
+      "title": "성장·교환 기록",
+      "empty": "아직 기록이 없습니다.",
+      "REWARD": "장식 포인트",
+      "CARE": "무료 돌봄",
+      "PURCHASE": "장식품 교환",
+      "amounts": "포인트 {points} / 성장 {xp} XP",
+      "source": "원래 활동 보기"
+    }
+  }
+}

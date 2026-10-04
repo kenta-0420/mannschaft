@@ -1,0 +1,161 @@
+{
+  "ranch": {
+    "title": "Dinosaurierzimmer",
+    "optional": "Der Einstieg ist freiwillig. Kostenlose Pflege genügt, um deinen Dinosaurier erwachsen werden zu lassen. Auch ohne Pflege geht er nicht verloren; die Verbundenheit nimmt mit der Zeit nicht ab.",
+    "start": "Mit einem Ei beginnen",
+    "save": "Speichern",
+    "retry": "Erneut versuchen",
+    "next": "Nächste Seite",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "paused": "Pausiert. Deine Ergebnisse und Dekorationen bleiben sichtbar.",
+    "unavailable": "Wird vorbereitet. Deine eigenen Ergebnisse bleiben zugänglich.",
+    "recall": "Erinnern",
+    "avatar": {
+      "label": "Mein Dinosaurier-Avatar",
+      "description": "Der Dinosaurier ist dein eigenes Abbild. Lass eine Gestalt langsam wachsen, die deine Vorlieben und Persönlichkeit widerspiegelt."
+    },
+    "stage": {
+      "EGG": "Ei",
+      "BABY": "Jungtier",
+      "JUVENILE": "Junger Dinosaurier",
+      "ADULT": "Ausgewachsen"
+    },
+    "egg": {
+      "INTACT": "Das Ei entwickelt sich.",
+      "SMALL_CRACK": "Ein kleiner Riss ist entstanden.",
+      "WIDE_CRACK": "Die Risse werden größer.",
+      "READY": "Das Ei wartet sicher, bis du einen Namen und eine Auswahlmethode festlegst."
+    },
+    "care": {
+      "eggTouch": "Berühren",
+      "food": "Futter",
+      "touch": "Interagieren",
+      "choose": "Gestalt wählen",
+      "status": "Status",
+      "fed": "Du hast Futter gegeben. Wachstum: {xp} XP.",
+      "touched": "Du hast dein eigenes Abbild berührt."
+    },
+    "scene": {
+      "assetPreparing": "Die Grafik für diese Gestalt wird vorbereitet. Text und Bedienung bleiben verfügbar."
+    },
+    "style": {
+      "PIXEL": "96-Pixel-Stil",
+      "PAINT_2D": "Normales 2D"
+    },
+    "motion": {
+      "NORMAL": "Normal",
+      "REDUCED": "Weniger Bewegung",
+      "STOPPED": "Bewegung anhalten"
+    },
+    "settings": {
+      "title": "Einstellungen des Dinosaurierzimmers",
+      "style": "Darstellungsstil",
+      "motion": "Bewegung",
+      "sound": "Ton aktivieren",
+      "volume": "Lautstärke",
+      "freewalkLater": "Derzeit ist die Zimmeransicht verfügbar. Freies Umherlaufen folgt in einer späteren Phase.",
+      "hide": "Ausblenden",
+      "show": "Einblenden",
+      "visibilityFailed": "Das Ei wurde erstellt, aber die Sichtbarkeit konnte nicht gespeichert werden. Wiederhole nur die Sichtbarkeitseinstellung."
+    },
+    "command": {
+      "failed": "Speichern fehlgeschlagen. Falls keine Antwort angekommen ist, wiederhole dieselbe Aktion.",
+      "retryRequired": "Das Speicherergebnis ist noch unklar. Versuche es mit demselben Namen erneut."
+    },
+    "naming": {
+      "title": "Namen wählen",
+      "nameLabel": "Name des Dinosauriers",
+      "characterCount": "{count} / 10",
+      "irreversibleWarning": "Nach der Bestätigung lässt sich dieser Name nicht ändern. Gib höchstens 10 Zeichen ein.",
+      "checkName": "Namen prüfen",
+      "confirmPrompt": "„{name}“ bestätigen? Dieser Name lässt sich später nicht ändern.",
+      "confirm": "Diesen Namen bestätigen",
+      "back": "Zur Eingabe zurück",
+      "invalid": "Gib 1–10 Zeichen ein. Unsichtbare Zeichen, Zeilenumbrüche und Steuerzeichen sind nicht erlaubt."
+    },
+    "habitat": {
+      "LAND": "Zufällige Landgestalt",
+      "SEA": "Zufällige Meeresgestalt",
+      "AIR": "Zufällige Luftgestalt"
+    },
+    "assignment": {
+      "title": "Deine Dinosauriergestalt wählen",
+      "description": "Wähle anhand von Geburtsdatum- und Namensnumerologie, einem Quiz mit 64 Typen oder einer zufälligen Land-, Meeres- oder Luftgestalt.",
+      "fromResult": "Aus meinen Ergebnissen wählen",
+      "mappingPending": "Dein Ergebnis wurde gespeichert. Die Zuordnung zu einer Dinosauriergestalt wird vorbereitet.",
+      "useResult": "Mit diesem Ergebnis die Gestalt wählen"
+    },
+    "diagnosisResults": {
+      "title": "Meine Ergebnisse",
+      "type64": "Quiz mit 64 Typen",
+      "birthStyle": "Geburtsdatum- und Namensnumerologie",
+      "notCompleted": "Noch nicht abgeschlossen",
+      "completedAt": "Abgeschlossen: {date}",
+      "retake": "Quiz starten oder wiederholen",
+      "avatarUnchanged": "Auch wenn sich deine Ergebnisse ändern, bleiben Name, Gestalt und Entwicklungsstand deines geschlüpften Dinosaurier-Avatars erhalten.",
+      "typeCode": "Typ: {code}"
+    },
+    "diagnosis": {
+      "description": "Stell dir vor, du wärst ein Dinosaurier, und wähle die Lebensweise, die jetzt zu dir passt. Es gibt keine richtigen oder besseren Antworten. Dies ist keine wissenschaftliche Messung von Persönlichkeit oder Fähigkeiten.",
+      "start": "Quiz starten",
+      "save": "Bisherige Antworten speichern",
+      "complete": "Ergebnis ansehen",
+      "hold": "Speichern und später fortsetzen",
+      "cancel": "Quiz abbrechen",
+      "resume": "Gespeichertes Quiz fortsetzen",
+      "tie": "Wähle zwischen den gleich ausgeprägten Vorlieben",
+      "scale1": "Eher links",
+      "scale2": "Etwas links",
+      "scale3": "Etwa gleich",
+      "scale4": "Etwas rechts",
+      "scale5": "Eher rechts"
+    },
+    "birth": {
+      "purpose": "Dein gespeicherter Name, seine Kana-Lesung und dein Geburtsdatum werden für dein eigenes Numerologie-Ergebnis verwendet. Prüfe die gespeicherten Angaben unten.",
+      "rule": "Dies ist eine eigene Numerologieregel. Geburtsdatum und Namenslesung werden jeweils in Zahlen umgewandelt und auf 1–9 reduziert. Es handelt sich nicht um eine wissenschaftliche Messung.",
+      "profile": "Mein Profil",
+      "lastName": "Nachname",
+      "firstName": "Vorname",
+      "lastNameKana": "Nachname in Kana",
+      "firstNameKana": "Vorname in Kana",
+      "birthDate": "Geburtsdatum",
+      "save": "Meine Angaben speichern und prüfen",
+      "savedProfile": "Gespeicherte Angaben für die Berechnung",
+      "confirmUse": "Ich habe meine gespeicherten persönlichen Angaben geprüft und stimme ihrer Verwendung für diese Berechnung zu.",
+      "create": "Mein Numerologie-Ergebnis erstellen",
+      "numbers": "Geburtsdatumzahl: {life} / Namenszahl: {name}",
+      "reconfirm": "Meine Angaben vor der Auswahl erneut prüfen",
+      "required": "Gib deine persönlichen Angaben ein.",
+      "keyRotated": "Der Speicherschlüssel wurde geändert. Lade dein Profil neu, prüfe es und speichere erneut.",
+      "reloadProfile": "Mein Profil neu laden",
+      "parentalConsentRequired": "Zum Speichern dieses Geburtsdatums ist die Zustimmung eines Elternteils erforderlich. Fahre auf der Zustimmungsseite fort.",
+      "openConsent": "Zur elterlichen Zustimmung"
+    },
+    "decorations": {
+      "title": "Dekorationen und Tausch",
+      "permanent": "Punkte sind nur für dauerhafte Dekorationen nutzbar. Sie beeinflussen weder Wachstumsgeschwindigkeit noch Zugangsrechte.",
+      "slots": "Drei Dekorationsplätze",
+      "choose": "Dekoration wählen",
+      "slot": "Platz {n}",
+      "placed": "Platziert",
+      "empty": "Leer",
+      "place": "Platzieren",
+      "remove": "Entfernen",
+      "shop": "Dauerhafte Dekorationen eintauschen",
+      "balance": "Guthaben: {balance}",
+      "noItems": "Es sind keine Dekorationen eingetragen.",
+      "owned": "Im Besitz",
+      "purchase": "Eintauschen"
+    },
+    "records": {
+      "title": "Wachstums- und Tauschverlauf",
+      "empty": "Noch keine Einträge.",
+      "REWARD": "Dekorationspunkte",
+      "CARE": "Kostenlose Pflege",
+      "PURCHASE": "Dekorationstausch",
+      "amounts": "Punkte {points} / Wachstum {xp} XP",
+      "source": "Ursprüngliche Aktivität ansehen"
+    }
+  }
+}

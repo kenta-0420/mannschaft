@@ -1,0 +1,161 @@
+{
+  "ranch": {
+    "title": "Habitación del dinosaurio",
+    "optional": "Empezar es opcional. Los cuidados gratuitos bastan para llegar a la edad adulta. No lo perderás por dejarlo sin atender y la afinidad no disminuye con el tiempo.",
+    "start": "Empezar con un huevo",
+    "save": "Guardar",
+    "retry": "Reintentar",
+    "next": "Página siguiente",
+    "pause": "Pausar",
+    "resume": "Reanudar",
+    "paused": "En pausa. Puedes seguir viendo tus resultados y adornos.",
+    "unavailable": "Se está preparando. Puedes seguir viendo tus propios resultados.",
+    "recall": "Recordar",
+    "avatar": {
+      "label": "Mi avatar de dinosaurio",
+      "description": "El dinosaurio es un avatar de ti. Cría poco a poco una forma que refleje tus gustos y tu personalidad."
+    },
+    "stage": {
+      "EGG": "Huevo",
+      "BABY": "Cría",
+      "JUVENILE": "Dinosaurio joven",
+      "ADULT": "Adulto"
+    },
+    "egg": {
+      "INTACT": "El huevo se está desarrollando.",
+      "SMALL_CRACK": "Ha aparecido una pequeña grieta.",
+      "WIDE_CRACK": "Las grietas se están ampliando.",
+      "READY": "El huevo espera a salvo hasta que elijas un nombre y un método de selección."
+    },
+    "care": {
+      "eggTouch": "Tocar",
+      "food": "Comida",
+      "touch": "Interactuar",
+      "choose": "Elegir forma",
+      "status": "Estado",
+      "fed": "Has dado comida. Crecimiento: {xp} XP.",
+      "touched": "Has tocado tu propio avatar."
+    },
+    "scene": {
+      "assetPreparing": "Las imágenes de esta forma se están preparando. El texto y los controles siguen disponibles."
+    },
+    "style": {
+      "PIXEL": "Estilo de 96 píxeles",
+      "PAINT_2D": "2D normal"
+    },
+    "motion": {
+      "NORMAL": "Normal",
+      "REDUCED": "Movimiento reducido",
+      "STOPPED": "Sin movimiento"
+    },
+    "settings": {
+      "title": "Ajustes de la habitación",
+      "style": "Estilo visual",
+      "motion": "Movimiento",
+      "sound": "Activar sonido",
+      "volume": "Volumen",
+      "freewalkLater": "Ahora está disponible la vista de habitación. El paseo libre llegará en una fase posterior.",
+      "hide": "Ocultar",
+      "show": "Mostrar",
+      "visibilityFailed": "El huevo ya se creó, pero no se pudo guardar su visibilidad. Reintenta solo el ajuste de visibilidad."
+    },
+    "command": {
+      "failed": "No se pudo guardar. Si no llegó la respuesta, reintenta la misma operación.",
+      "retryRequired": "El resultado del guardado sigue sin confirmarse. Reintenta con el mismo nombre."
+    },
+    "naming": {
+      "title": "Elige un nombre",
+      "nameLabel": "Nombre del dinosaurio",
+      "characterCount": "{count} / 10",
+      "irreversibleWarning": "Este nombre no se podrá cambiar después de confirmarlo. Introduce como máximo 10 caracteres.",
+      "checkName": "Revisar nombre",
+      "confirmPrompt": "¿Confirmar «{name}»? Este nombre no se podrá cambiar después.",
+      "confirm": "Confirmar este nombre",
+      "back": "Volver a editar",
+      "invalid": "Introduce entre 1 y 10 caracteres. No se permiten caracteres invisibles, saltos de línea ni caracteres de control."
+    },
+    "habitat": {
+      "LAND": "Forma terrestre al azar",
+      "SEA": "Forma marina al azar",
+      "AIR": "Forma aérea al azar"
+    },
+    "assignment": {
+      "title": "Elige tu forma de dinosaurio",
+      "description": "Elige mediante numerología de fecha de nacimiento y nombre, un cuestionario de 64 tipos o una forma aleatoria de tierra, mar o aire.",
+      "fromResult": "Elegir desde mis resultados",
+      "mappingPending": "Tu resultado se ha guardado. Se está preparando su correspondencia con una forma de dinosaurio.",
+      "useResult": "Usar este resultado para elegir forma"
+    },
+    "diagnosisResults": {
+      "title": "Mis resultados",
+      "type64": "Cuestionario de 64 tipos",
+      "birthStyle": "Numerología de nacimiento y nombre",
+      "notCompleted": "Sin completar",
+      "completedAt": "Realizado: {date}",
+      "retake": "Realizar o repetir el cuestionario",
+      "avatarUnchanged": "Aunque cambien tus resultados, tu avatar de dinosaurio ya nacido mantiene su nombre, forma y crecimiento.",
+      "typeCode": "Tipo: {code}"
+    },
+    "diagnosis": {
+      "description": "Imagínate como un dinosaurio y elige cómo pasarías el tiempo según cómo eres ahora. No hay respuestas correctas ni mejores que otras. No es una medición científica de personalidad o capacidad.",
+      "start": "Empezar cuestionario",
+      "save": "Guardar respuestas actuales",
+      "complete": "Ver resultados",
+      "hold": "Guardar y continuar después",
+      "cancel": "Cancelar cuestionario",
+      "resume": "Reanudar cuestionario guardado",
+      "tie": "Elige entre las preferencias empatadas",
+      "scale1": "Más cerca de la izquierda",
+      "scale2": "Un poco a la izquierda",
+      "scale3": "Por igual",
+      "scale4": "Un poco a la derecha",
+      "scale5": "Más cerca de la derecha"
+    },
+    "birth": {
+      "purpose": "Tu nombre guardado, su lectura en kana y tu fecha de nacimiento se usan para calcular tu propio resultado numerológico. Revisa la información guardada a continuación.",
+      "rule": "Es una regla numerológica propia. Convierte tu fecha de nacimiento y la lectura de tu nombre en números, reducidos por separado a 1–9. No es una medición científica.",
+      "profile": "Mi perfil",
+      "lastName": "Apellido",
+      "firstName": "Nombre",
+      "lastNameKana": "Lectura del apellido (kana)",
+      "firstNameKana": "Lectura del nombre (kana)",
+      "birthDate": "Fecha de nacimiento",
+      "save": "Guardar y revisar mis datos",
+      "savedProfile": "Datos guardados para el cálculo",
+      "confirmUse": "He revisado mis datos personales guardados y acepto usarlos para este cálculo.",
+      "create": "Crear mi resultado numerológico",
+      "numbers": "Número de nacimiento: {life} / Número del nombre: {name}",
+      "reconfirm": "Revisar de nuevo mis datos para elegir",
+      "required": "Introduce tus datos personales.",
+      "keyRotated": "La clave de guardado cambió. Recarga tu perfil, revísalo y vuelve a guardarlo.",
+      "reloadProfile": "Recargar mi perfil",
+      "parentalConsentRequired": "Para guardar esta fecha de nacimiento se necesita la aprobación de un tutor. Continúa en la página de consentimiento.",
+      "openConsent": "Ir al consentimiento parental"
+    },
+    "decorations": {
+      "title": "Adornos e intercambios",
+      "permanent": "Los puntos solo sirven para adornos permanentes. No afectan a la velocidad de crecimiento ni a los permisos de acceso.",
+      "slots": "Tres espacios de adornos",
+      "choose": "Elegir adorno",
+      "slot": "Espacio {n}",
+      "placed": "Colocado",
+      "empty": "Vacío",
+      "place": "Colocar",
+      "remove": "Retirar",
+      "shop": "Canjear adornos permanentes",
+      "balance": "Saldo: {balance}",
+      "noItems": "No hay adornos registrados.",
+      "owned": "Ya lo tienes",
+      "purchase": "Canjear"
+    },
+    "records": {
+      "title": "Registro de crecimiento e intercambios",
+      "empty": "Todavía no hay registros.",
+      "REWARD": "Puntos para adornos",
+      "CARE": "Cuidados gratuitos",
+      "PURCHASE": "Canje de adornos",
+      "amounts": "Puntos {points} / Crecimiento {xp} XP",
+      "source": "Ver actividad original"
+    }
+  }
+}
