@@ -3,7 +3,8 @@ package com.mannschaft.app.gdpr.service;
 import com.mannschaft.app.billing.BillingPurgeEventListener;
 import com.mannschaft.app.chart.event.ChartPurgeEventListener;
 import com.mannschaft.app.errorreport.event.ErrorReportPurgeEventListener;
-import com.mannschaft.app.diagnosis.service.DiagnosisPurgeService;
+import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.gdpr.event.DiagnosisPurgeRetryRequestedEvent;
 import com.mannschaft.app.gdpr.dto.RetryResultResponse;
 import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
 import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
@@ -49,7 +50,7 @@ public class GdprPurgeRetryService {
     private final ErrorReportPurgeEventListener errorReportPurgeEventListener;
     private final BillingPurgeEventListener billingPurgeEventListener;
     private final RanchPurgeEventListener ranchPurgeEventListener;
-    private final DiagnosisPurgeService diagnosisPurgeService;
+    private final DomainEventPublisher eventPublisher;
 
     /** 受け付けるドメイン名の集合。不明なドメイン名は即時 IllegalArgumentException。 */
     private static final Set<String> VALID_DOMAINS =
@@ -85,7 +86,14 @@ public class GdprPurgeRetryService {
         }
 
         // ドメイン操作を実行（completionStatusRepository の更新はここでは行わない）
-        boolean succeeded = executeRetry(userId, domainName);
+        boolean queued = "diagnosis".equals(domainName);
+        boolean succeeded = false;
+        if (queued) {
+            // 同期GDPR TXでは診断のRepositoryを呼ばず、受付コミット後に独立して削除する。
+            eventPublisher.publish(new DiagnosisPurgeRetryRequestedEvent(userId));
+        } else {
+            succeeded = executeRetry(userId, domainName);
+        }
 
         // retry_count / last_retried_at を必ず更新（成功・失敗いずれの場合も）
         entity.setRetryCount(entity.getRetryCount() + 1);
@@ -95,6 +103,9 @@ public class GdprPurgeRetryService {
             entity.setStatus("SUCCESS");
             entity.setCompletedAt(LocalDateTime.now());
             log.info("GDPR パージ retry 成功: userId={} domain={} retryCount={}",
+                    userId, domainName, entity.getRetryCount());
+        } else if (queued) {
+            log.info("GDPR パージ retry 受付（完了待ち）: userId={} domain={} retryCount={}",
                     userId, domainName, entity.getRetryCount());
         } else {
             log.warn("GDPR パージ retry 失敗（PENDING 継続）: userId={} domain={} retryCount={}",
@@ -108,7 +119,9 @@ public class GdprPurgeRetryService {
                 domainName,
                 entity.getStatus(),
                 entity.getRetryCount(),
-                succeeded ? "retry 成功" : "retry 失敗（PENDING 継続）");
+                queued ? "再試行を受け付けました（削除完了待ち）"
+                        : succeeded ? "retry 成功" : "retry 失敗（PENDING 継続）",
+                queued);
     }
 
     /**
@@ -128,7 +141,6 @@ public class GdprPurgeRetryService {
             case "errorreport" -> errorReportPurgeEventListener.retryPurge(userId);
             case "billing"     -> billingPurgeEventListener.retryPurge(userId);
             case "ranch"       -> ranchPurgeEventListener.retryPurge(userId);
-            case "diagnosis"   -> { diagnosisPurgeService.purgeUser(userId); yield true; }
             default -> throw new IllegalStateException("到達不能: " + domainName);
         };
     }
