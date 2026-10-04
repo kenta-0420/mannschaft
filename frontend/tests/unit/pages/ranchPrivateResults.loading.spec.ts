@@ -37,7 +37,7 @@ beforeEach(async () => {
 afterEach(() => { for (const wrapper of wrappers.splice(0)) wrapper.unmount(); vi.restoreAllMocks() })
 describe('独立診断結果と装飾loadingの実ページ先行赤候補', () => {
  it('本人結果が読めたら牧場GET待機中も結果本文を表示する', async () => {
-  const result: DiagnosisResult = { id: 'synthetic-result', method: 'DIAGNOSIS', completedAt: '2026-10-04T00:00:00Z', resultSchemaVersion: '1', descriptionSnapshot: { ja: 'PRIVATE_RESULT_READY', en: 'PRIVATE_RESULT_READY', zh: 'PRIVATE_RESULT_READY', ko: 'PRIVATE_RESULT_READY', es: 'PRIVATE_RESULT_READY', de: 'PRIVATE_RESULT_READY' } }
+  const result: DiagnosisResult = { id: '33333333-3333-4333-8333-333333333333', method: 'DIAGNOSIS', completedAt: '2026-10-04T00:00:00Z', resultSchemaVersion: '1', descriptionSnapshot: { ja: 'PRIVATE_RESULT_READY', en: 'PRIVATE_RESULT_READY', zh: 'PRIVATE_RESULT_READY', ko: 'PRIVATE_RESULT_READY', es: 'PRIVATE_RESULT_READY', de: 'PRIVATE_RESULT_READY' } }
   let resolve: ((response: Response) => void) | undefined
   let startedResolve: (() => void) | undefined
   const started = new Promise<void>(done => { startedResolve = done })
@@ -50,7 +50,7 @@ describe('独立診断結果と装飾loadingの実ページ先行赤候補', () 
    }
    throw new Error(`UNEXPECTED_TRANSPORT ${path}`)
   })
-  const wrapper = await mountSuspended(ResultDetailPage, { route: '/my/ranch/results/synthetic-result' })
+  const wrapper = await mountSuspended(ResultDetailPage, { route: '/my/ranch/results/33333333-3333-4333-8333-333333333333' })
   wrappers.push(wrapper); await started; await flushPromises()
   try {
    expect(wrapper.text()).toContain('PRIVATE_RESULT_READY')
@@ -62,25 +62,35 @@ describe('独立診断結果と装飾loadingの実ページ先行赤候補', () 
   let resolve: ((response: Response) => void) | undefined
   let startedResolve: (() => void) | undefined
   const started = new Promise<void>(done => { startedResolve = done })
-  external.fetch.mockImplementation(async request => {
+  const owners: string[] = []
+  external.fetch.mockImplementation(async (request, options) => {
    const path = new URL(String(request)).pathname
    if (path.startsWith('/api/v1/me/ranch/diagnosis-results/')) {
-    startedResolve?.()
-    return new Promise<Response>(done => { resolve = done })
+    const owner = new Headers(options?.headers).get('Authorization') ?? ''
+    owners.push(owner)
+    if (owner === 'Bearer A-access') {
+     if (resolve) throw new Error('UNEXPECTED_DUPLICATE_A_RESULT_GET')
+     startedResolve?.()
+     return new Promise<Response>(done => { resolve = done })
+    }
+    if (owner === 'Bearer B-access') return new Response(JSON.stringify({ error: { message: 'SYNTHETIC_OTHER_OWNER_NOT_FOUND' } }), { status: 404, headers: { 'Content-Type': 'application/json' } })
+    throw new Error('UNEXPECTED_PRIVATE_RESULT_AUTHORIZATION')
    }
    if (path === '/api/v1/me/ranch') return json({ data: null })
    throw new Error(`UNEXPECTED_TRANSPORT ${path}`)
   })
-  const wrapper = await mountSuspended(ResultDetailPage, { route: '/my/ranch/results/synthetic-result' })
+  const wrapper = await mountSuspended(ResultDetailPage, { route: '/my/ranch/results/33333333-3333-4333-8333-333333333333' })
   wrappers.push(wrapper); await started
   try {
    const auth = useAuthStore()
-   await auth.setUser({ id: 2, email: 'synthetic-b@example.invalid', fullName: 'Synthetic B', profileImageUrl: null })
    auth.setTokens('B-access', 'B-refresh')
+   await auth.setUser({ id: 2, email: 'synthetic-b@example.invalid', fullName: 'Synthetic B', profileImageUrl: null })
    await flushPromises()
-   resolve?.(json({ data: { id: 'synthetic-result', method: 'DIAGNOSIS', completedAt: '2026-10-04T00:00:00Z', resultSchemaVersion: '1', descriptionSnapshot: { ja: 'PRIVATE_A_ONLY', en: 'PRIVATE_A_ONLY', zh: 'PRIVATE_A_ONLY', ko: 'PRIVATE_A_ONLY', es: 'PRIVATE_A_ONLY', de: 'PRIVATE_A_ONLY' } } }))
+   resolve?.(json({ data: { id: '33333333-3333-4333-8333-333333333333', method: 'DIAGNOSIS', completedAt: '2026-10-04T00:00:00Z', resultSchemaVersion: '1', descriptionSnapshot: { ja: 'PRIVATE_A_ONLY', en: 'PRIVATE_A_ONLY', zh: 'PRIVATE_A_ONLY', ko: 'PRIVATE_A_ONLY', es: 'PRIVATE_A_ONLY', de: 'PRIVATE_A_ONLY' } } }))
    await flushPromises()
    expect(wrapper.text()).not.toContain('PRIVATE_A_ONLY')
+   expect(owners).toContain('Bearer B-access')
+   expect(wrapper.findComponent({ name: 'DashboardErrorState' }).exists()).toBe(true)
   } finally {
    resolve?.(json({ data: null })); await flushPromises()
   }

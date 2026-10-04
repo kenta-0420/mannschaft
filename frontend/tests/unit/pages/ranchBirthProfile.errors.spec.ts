@@ -82,8 +82,8 @@ describe('出生プロフィールの専用409導線（先行赤候補）', () =
   await started
   try {
    const auth = useAuthStore()
-   await auth.setUser({ id: 2, email: 'synthetic-b@example.invalid', fullName: 'Synthetic B', profileImageUrl: null })
    auth.setTokens('B-access', 'B-refresh')
+   await auth.setUser({ id: 2, email: 'synthetic-b@example.invalid', fullName: 'Synthetic B', profileImageUrl: null })
    await flushPromises()
    resolve?.(json({ ...profile, firstName: 'PRIVATE_A_ONLY' }))
    await flushPromises()

@@ -173,4 +173,24 @@ describe('本人切替後の旧refresh副作用を遮断', () => {
    timer.mockRestore(); localStorage.removeItem('tokenExpiresAt')
   }
  })
-})
+ it('実loginのtokens→arm→await setUser後にも本人proactive timerを維持する', async () => {
+  const auth = actualUseAuthStore()
+  const previousExpiry = localStorage.getItem('tokenExpiresAt')
+  auth.setTokens('LOGIN-access', 'LOGIN-refresh')
+  localStorage.setItem('tokenExpiresAt', String(Date.now() + 15 * 60 * 1000))
+  const session = getAuthSessionContext(auth)
+  try {
+   // 現login.vue114/116/139の実呼出順。本物store/context/armを通す。
+   armProactiveRefresh(useRuntimeConfig(), auth)
+   expect(session.proactiveTimer).not.toBeNull()
+   await auth.setUser(user(3))
+   expect(session.accountId).toBe(3)
+   expect(session.proactiveTimer).not.toBeNull()
+   expect(external.fetch).not.toHaveBeenCalled()
+  } finally {
+   disarmProactiveRefresh(auth)
+   session.dispose()
+   if (previousExpiry === null) localStorage.removeItem('tokenExpiresAt')
+   else localStorage.setItem('tokenExpiresAt', previousExpiry)
+  }
+ })})
