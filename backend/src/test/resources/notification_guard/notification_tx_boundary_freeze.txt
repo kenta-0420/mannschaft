@@ -228,7 +228,6 @@
 com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService#executeAt -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.admin.batch.BatchEventListener#onCompleted -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTENER
-com.mannschaft.app.billing.beta.BetaGrantService#safeNotify -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.jobmatching.service.JobApplicationService#apply -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
