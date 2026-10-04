@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { useNuxtApp } from '#app'
+import { useCookie, useNuxtApp } from '#app'
+import { nextTick } from 'vue'
 import type { Composer } from 'vue-i18n'
 import jaCommon from '~/locales/ja/common.json'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import SearchPage from '~/pages/search/index.vue'
+import PageLoading from '~/components/PageLoading.vue'
 import { useAuthStore } from '~/stores/useAuthStore'
 
 // DTO/OpenAPI が提供する現行9種別の応答を固定する。設計上の未実装応答をmockしない。
@@ -16,7 +18,8 @@ vi.mock('~/composables/useSearchApi', () => ({ useSearchApi: () => ({ search }) 
 vi.mock('~/composables/useNotification', () => ({ useNotification: () => notification }))
 
 const kinds = ['schedules', 'events', 'reservations', 'shifts', 'safetyChecks', 'queues', 'teams', 'organizations', 'users']
-const i18n = () => useNuxtApp().$i18n as unknown as Composer
+const i18n = () => useNuxtApp().$i18n as unknown as Composer & { setLocale: (locale: string) => Promise<void> }
+const localeCookie = () => useNuxtApp().runWithContext(() => useCookie<string | null>('i18n_locale'))
 const translated = (key: string, values: Record<string, number> = {}) => i18n().t(key, values)
 function response(count: number) {
   return {
@@ -35,22 +38,33 @@ function response(count: number) {
 describe('横断検索の現行件数契約', () => {
   let previousLocale: string
   let previousMessages: ReturnType<Composer['getLocaleMessage']>
+  let previousLocaleCookie: string | null | undefined
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // happy-dom の環境言語に依存せず、正本の日本語を実i18nへ読み込む。スタブは使わない。
     previousLocale = i18n().locale.value
-    previousMessages = i18n().getLocaleMessage('ja')
+    // 実カタログの非同期mergeが元オブジェクトを更新するため、復元用はJSON正本の値を退避する。
+    previousMessages = JSON.parse(JSON.stringify(i18n().getLocaleMessage('ja')))
+    previousLocaleCookie = localeCookie().value
+    await i18n().setLocale('ja')
     i18n().setLocaleMessage('ja', { ...previousMessages, ...jaCommon })
-    i18n().locale.value = 'ja'
     useAuthStore().user = { id: 700, email: 'unit-search@example.test', fullName: '検索テスト', profileImageUrl: null }
     search.mockReset()
     notification.error.mockClear()
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await i18n().setLocale(previousLocale)
     i18n().setLocaleMessage('ja', previousMessages)
-    i18n().locale.value = previousLocale
+    localeCookie().value = previousLocaleCookie
+    await nextTick()
   })
+
+  async function settleSearch(wrapper: Awaited<ReturnType<typeof mountSuspended>>) {
+    await flushPromises()
+    // 検索APIの後に行われる実router.replaceまで待ち、途中のloadingを結果と混同しない。
+    await vi.waitFor(() => expect(wrapper.findComponent(PageLoading).exists()).toBe(false))
+  }
 
   async function submit() {
     const wrapper = await mountSuspended(SearchPage, { route: '/search' })
@@ -58,7 +72,7 @@ describe('横断検索の現行件数契約', () => {
     expect(wrapper.find('form').exists()).toBe(true)
     expect(wrapper.findAll('button').map(button => button.text())).toContain(translated('button.search'))
     await wrapper.find('form').trigger('submit')
-    await flushPromises()
+    await settleSearch(wrapper)
     return wrapper
   }
 
@@ -93,7 +107,7 @@ describe('横断検索の現行件数契約', () => {
     const retry = wrapper.find('[data-testid="load-error-state-retry"]')
     expect(retry.text()).toBe(translated('loadErrorState.retry'))
     await retry.trigger('click')
-    await flushPromises()
+    await settleSearch(wrapper)
     expect(wrapper.text()).toContain(`${translated('globalSearch.kinds.schedules')} (11)`)
     expect(search).toHaveBeenCalledTimes(2)
     expect(search).toHaveBeenNthCalledWith(1, { q: 'native0700' })
