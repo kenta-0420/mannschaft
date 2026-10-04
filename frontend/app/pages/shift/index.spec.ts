@@ -24,6 +24,12 @@ const Dialog = defineComponent({
     () =>
       h('div', [slots.default?.(), slots.footer?.()]),
 })
+const DatePicker = defineComponent({
+  name: 'DatePicker',
+  props: { modelValue: Date, showTime: Boolean, hourFormat: String },
+  emits: ['update:modelValue'],
+  setup: () => () => h('input'),
+})
 beforeEach(() => {
   createSchedule.mockReset().mockResolvedValue({})
   listSchedules.mockReset().mockResolvedValue([])
@@ -42,7 +48,7 @@ async function mountPage() {
         Button: true,
         Select: true,
         InputText: true,
-        DatePicker: true,
+        DatePicker,
         PageLoading: true,
         DashboardEmptyState: true,
         ShiftGuideModal: true,
@@ -62,7 +68,10 @@ describe('シフト新規作成のAPI契約', () => {
     expect(picker.exists()).toBe(true)
     expect(picker.props('showTime')).toBe(true)
     expect(picker.props('hourFormat')).toBe('24')
-    vm.createForm.requestDeadline = new Date(2026, 9, 4, 23, 30)
+    const chosenDate = new Date(2026, 9, 4, 23, 30)
+    picker.vm.$emit('update:modelValue', chosenDate)
+    await wrapper.vm.$nextTick()
+    expect(vm.createForm.requestDeadline).toEqual(chosenDate)
     await vm.handleCreate()
     expect(createSchedule).toHaveBeenCalledWith(
       '12',
