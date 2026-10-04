@@ -223,7 +223,8 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         assertThat(ack.disposition()).isEqualTo(SourceOutboxAdminRetryAck.Disposition.RETRY_SCHEDULED);
         assertThat(status(event)).isEqualTo("RETRY");
         jdbc.update("DELETE FROM blog_ranch_outboxes WHERE id=?",idBytes(event));
-        assertThat(active.withActiveUser(owner,() -> outboxAdmin.retry(owner,event,key,reason,now.plusSeconds(20)))).isEqualTo(ack);
+        SourceOutboxAdminRetryAck replayAck=active.withActiveUser(owner,() -> outboxAdmin.retry(owner,event,key,reason,now.plusSeconds(20)));
+        assertThat(replayAck).isEqualTo(ack);
         assertThatThrownBy(() -> active.withActiveUser(owner,() -> outboxAdmin.retry(owner,event,key,
                 new SourceOutboxAdminRetryRequest("OTHER_REASON"),now.plusSeconds(20))))
                 .isInstanceOf(BusinessException.class).extracting("errorCode.code").isEqualTo("SOURCEOUTBOX_003");

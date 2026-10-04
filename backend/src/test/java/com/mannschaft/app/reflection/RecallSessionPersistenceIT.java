@@ -63,7 +63,9 @@ class RecallSessionPersistenceIT extends AbstractMySqlIntegrationTest {
         var completed=operations.complete(owner,started.id(),key,body);
         assertThat(completed.status()).isEqualTo(RecallSessionStatus.COMPLETED);
         assertThat(completed.original().structuredContent().path("free_note").asText()).isEqualTo("開始時の凍結原文");
-        assertThat(mapper.valueToTree(operations.complete(owner,started.id(),key,body))).isEqualTo(mapper.valueToTree(completed));
+        com.fasterxml.jackson.databind.JsonNode replayJson=mapper.valueToTree(operations.complete(owner,started.id(),key,body));
+        com.fasterxml.jackson.databind.JsonNode completedJson=mapper.valueToTree(completed);
+        assertThat(replayJson).isEqualTo(completedJson);
         assertThat(attempts.findByEntryIdOrderByRecallDateDesc(entryId)).hasSize(1);
         assertThatThrownBy(()->operations.complete(owner,started.id(),key,completeBody(started,"別の回答")))
                 .isInstanceOfSatisfying(BusinessException.class,e->assertThat(e.getErrorCode()).isEqualTo(RecallSessionErrorCode.COMMAND_CONFLICT));

@@ -14,14 +14,15 @@ import static org.mockito.Mockito.when;
 /** 実記録境界を検証する。外部計測の故障fixtureはHTTP/認可/DBの証拠に流用しない。 */
 class ReflectionRanchCaptureTelemetryTest {
     @Test void normalRegistryRetainsFixedClassificationCount() {
-        try(var registry=new SimpleMeterRegistry()) {
+        var registry=new SimpleMeterRegistry();
+        try {
             var telemetry=new ReflectionRanchCaptureTelemetry(registry);
             telemetry.lost(ReflectionRanchCaptureTelemetry.Reason.QUEUE_DISABLED,null);
             assertThat(telemetry.lossCount(ReflectionRanchCaptureTelemetry.Reason.QUEUE_DISABLED)).isEqualTo(1);
             assertThat(registry.get("ranch.source.capture.lost").tags("source","PERSONAL_RECALL_COMPLETE",
                     "classification","QUEUE_DISABLED").counter().count()).isEqualTo(1);
             assertThat(telemetry.telemetryFailureCount()).isZero();
-        }
+        } finally { registry.close(); }
     }
 
     @Test void externalMetricsFailureNeverEscapesAndRetainsLoss() {
@@ -37,10 +38,11 @@ class ReflectionRanchCaptureTelemetryTest {
     }
 
     @Test void unknownReasonUsesFiniteClassification() {
-        try(var registry=new SimpleMeterRegistry()) {
+        var registry=new SimpleMeterRegistry();
+        try {
             var telemetry=new ReflectionRanchCaptureTelemetry(registry);
             assertThatCode(()->telemetry.lost(null,null)).doesNotThrowAnyException();
             assertThat(telemetry.lossCount(ReflectionRanchCaptureTelemetry.Reason.TELEMETRY_INPUT_INVALID)).isEqualTo(1);
-        }
+        } finally { registry.close(); }
     }
 }
