@@ -13,12 +13,17 @@ import com.mannschaft.app.ranch.Habitat;
 import com.mannschaft.app.ranch.dto.RanchAssignmentRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
+import org.springframework.core.io.ClassPathResource;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.time.Clock;
 import java.time.Instant;
+import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -129,6 +134,45 @@ class RanchProductionMasterRegistryTest {
         ((ObjectNode) birthText.path("birthMappings").get(0)).put("lifePathNumber", "1");
         assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(
                 birthText, VERSION, "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void registeredSyntheticPackNeedsManifestAndEveryRealByteAndMatchingTuple() throws Exception {
+        var registered = new RanchProductionMasterRegistry(registered("synthetic-pack-v1", null), json);
+        assertThat(registered.current()).isPresent();
+        var diagnosis = mock(DiagnosisPublicationReadiness.class);
+        assertThat(new RanchPublicationReadiness(registered, diagnosis).current().careReady()).isFalse();
+        when(diagnosis.approvedCatalogAvailable()).thenReturn(true);
+        assertThat(new RanchPublicationReadiness(registered, diagnosis).current().careReady()).isTrue();
+        assertThatThrownBy(() -> new RanchProductionMasterRegistry(
+                registered("synthetic-pack-v1", "0".repeat(64)), json))
+                .isInstanceOf(RuntimeException.class);
+        for (String broken : List.of("synthetic-pack-v1-missing",
+                "synthetic-pack-v1-wrongbytes", "synthetic-pack-v1-tuple")) {
+            assertThatThrownBy(() -> new RanchProductionMasterRegistry(registered(broken, null), json))
+                    .isInstanceOf(RuntimeException.class);
+        }
+    }
+
+    private MockEnvironment registered(String packVersion, String overridePackHash)
+            throws IOException, NoSuchAlgorithmException {
+        return new MockEnvironment()
+                .withProperty("mannschaft.ranch.production-master.resource",
+                        "ranch/approved/synthetic-complete-v1.json")
+                .withProperty("mannschaft.ranch.production-master.version", VERSION)
+                .withProperty("mannschaft.ranch.production-master.sha256",
+                        resourceHash("ranch/approved/synthetic-complete-v1.json"))
+                .withProperty("mannschaft.ranch.production-master.asset-pack-version", packVersion)
+                .withProperty("mannschaft.ranch.production-master.asset-pack-sha256",
+                        overridePackHash == null ? resourceHash("ranch/approved/asset-packs/"
+                                + packVersion + "/manifest.json") : overridePackHash);
+    }
+
+    private static String resourceHash(String path) throws IOException, NoSuchAlgorithmException {
+        try (var stream = new ClassPathResource(path).getInputStream()) {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(stream.readAllBytes()));
+        }
     }
 
     private ObjectNode complete() {

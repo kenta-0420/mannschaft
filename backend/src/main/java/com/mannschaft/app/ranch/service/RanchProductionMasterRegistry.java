@@ -259,7 +259,7 @@ public final class RanchProductionMasterRegistry {
 
     private static boolean positiveFrame(JsonNode value) {
         return value.isIntegralNumber() && value.canConvertToInt()
-                && value.intValue() > 0 && value.intValue() <= 4096;
+                && value.intValue() > 0;
     }
 
     private static String sha256Resource(String root, String path)
