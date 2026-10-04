@@ -242,3 +242,7 @@ ranchの出生選定snapshotには利用したresultのopaque IDと固定した�
 TL/Blog完全一致はそれぞれsource-owned、同user・同feature・同UTC週の新ID同内容を最初一件だけとする（2026-10-04ユーザー裁可）。本文・タイトル・添付の組合せにNFC・改行・前後空白の正規化を適用し、報酬記録へ原文を複製しない。実装のnormalizationVersion、length-prefix/HMAC、key rotation、保持期限、同時投稿winnerをfixtureへ対応付けて検証する。cross-source/想起意味比較はしない。製造・試験が未完了の源は公開gateを閉じる。
 
 本体COMMIT→AFTER_COMMIT非blocking bounded queue→source-owned REQUIRES_NEW(witness+outbox原子)→短lease→ranch decision TX→token比較ACK。受付前lossはユーザー採択済み、durable受付後のみretry保証。CallerRuns/同期DB fallbackなし。queue満杯/transport失敗を本体HTTP失敗へ戻さない。queue1000/batch50/lease30s/attempt8/backoff1〜300s+jitterは開発fixture、本番自動採用しない。初回資格はnative履歴とtrusted actorを使い、現在状態/witness不在から捏造しない。
+
+### 新ARの保存・公開境界
+
+本人fresh ACTIVEと所有SQLを照合する。設問はTERM_CARD cue専用（200）とFREE_RECALL kind表示（10000）、合計1〜1501で開始時に凍結する。回答はHtmlSanitizer後のUTF16長、圧縮attemptは実JSON UTF8 65536bytes以下。途中保存と全回答完了を分け、完了・attempt・commandはreflection同一TXで一回保存する。保存ACK比較は私有SHA256/BINARY32、配送用AC67 HMACとは分離し、HTTP/outbox/log/exportに本文やhashを追加しない。原文は開始時ReflectionEntryResponseをCOMPLETED本人にだけ開示する。旧Recall単発へ報酬を追加しない。報酬witness/outboxの接続と実機証明は後続であり、このAPI製造だけで報酬完成とは扱わない。

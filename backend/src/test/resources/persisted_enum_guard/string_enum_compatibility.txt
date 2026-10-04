@@ -2117,3 +2117,10 @@ com.mannschaft.app.workflow.WorkflowStatus#IN_PROGRESS
 com.mannschaft.app.workflow.WorkflowStatus#PENDING
 com.mannschaft.app.workflow.WorkflowStatus#REJECTED
 com.mannschaft.app.workflow.WorkflowStatus#WITHDRAWN
+com.mannschaft.app.reflection.RecallSessionStatus#STARTED
+com.mannschaft.app.reflection.RecallSessionStatus#COMPLETED
+com.mannschaft.app.reflection.RecallSessionStatus#CANCELLED
+com.mannschaft.app.reflection.RecallSessionCommandType#START
+com.mannschaft.app.reflection.RecallSessionCommandType#ANSWERS
+com.mannschaft.app.reflection.RecallSessionCommandType#COMPLETE
+com.mannschaft.app.reflection.RecallSessionCommandType#CANCEL

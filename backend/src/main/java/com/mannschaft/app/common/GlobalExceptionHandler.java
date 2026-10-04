@@ -109,6 +109,9 @@ public class GlobalExceptionHandler {
             Map.entry("DIAGNOSIS_005", HttpStatus.SERVICE_UNAVAILABLE),
             Map.entry("DIAGNOSIS_006", HttpStatus.BAD_REQUEST),
             // 本人操作の受付拒否と非ACTIVE拒否は既存認証エラーへ転用しない。
+            Map.entry("RECALLSESSION_001", HttpStatus.CONFLICT),
+            Map.entry("RECALLSESSION_002", HttpStatus.CONFLICT),
+            Map.entry("RECALLSESSION_003", HttpStatus.SERVICE_UNAVAILABLE),
             Map.entry("AUTHOPERATION_001", HttpStatus.SERVICE_UNAVAILABLE),
             Map.entry("AUTHOPERATION_002", HttpStatus.FORBIDDEN),
             // Storage ACL: 不在は存在秘匿、所有境界違反は権限拒否、claim 状態競合は再試行不能として返す。
@@ -3239,7 +3242,9 @@ public class GlobalExceptionHandler {
         if (request == null) return false;
         String path = request.getRequestURI();
         if (path == null) return false;
-        for (String prefix : List.of("/api/v1/me/birth-profile", "/api/v1/me/diagnoses", "/api/v1/me/ranch")) {
+        if (path.matches("/api/v1/me/reflections/entries/[^/]+/recall-sessions")) return true;
+        for (String prefix : List.of("/api/v1/me/birth-profile", "/api/v1/me/diagnoses", "/api/v1/me/ranch",
+                "/api/v1/me/reflections/recall-sessions")) {
             if (path.equals(prefix) || path.startsWith(prefix + "/")) return true;
         }
         return false;

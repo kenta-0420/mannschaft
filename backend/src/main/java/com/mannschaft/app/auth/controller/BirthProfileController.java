@@ -8,6 +8,8 @@ import com.mannschaft.app.auth.dto.BirthProfileUpdateRequest;
 import com.mannschaft.app.auth.dto.BirthProfileUpdateResponse;
 import com.mannschaft.app.auth.service.BirthProfileFacade;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.security.PrivateSelfAccessGuard;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,11 +34,13 @@ public class BirthProfileController {
     private final BirthProfileFacade profiles;
     private final PrivateSelfAccessGuard accessGuard;
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "本人の出生情報確認は牧場参加と公開状態から独立する")
     @GetMapping
     public ResponseEntity<ApiResponse<BirthProfileResponse>> get(HttpServletRequest request, HttpServletResponse response) {
         return ResponseEntity.ok(ApiResponse.of(profiles.read(accessGuard.requireSelfAccess(request, response))));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "本人の出生情報補完と訂正は牧場参加と公開状態から独立する")
     @PutMapping
     public ResponseEntity<ApiResponse<BirthProfileUpdateResponse>> update(@RequestBody JsonNode body,
             @RequestHeader("Idempotency-Key") UUID commandId, HttpServletRequest request, HttpServletResponse response) {
@@ -47,6 +51,7 @@ public class BirthProfileController {
         return ResponseEntity.ok(ApiResponse.of(profiles.update(userId, commandId, input)));
     }
 
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "本人の出生情報利用目的確認は牧場参加と公開状態から独立する")
     @PostMapping("/confirmations")
     public ResponseEntity<ApiResponse<BirthProfileConfirmationResponse>> confirm(@RequestBody JsonNode body,
             @RequestHeader("Idempotency-Key") UUID commandId, HttpServletRequest request, HttpServletResponse response) {
