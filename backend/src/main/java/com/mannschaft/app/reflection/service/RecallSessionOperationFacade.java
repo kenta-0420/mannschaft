@@ -6,6 +6,12 @@ import com.mannschaft.app.common.timezone.UserTimezoneCache;
 import com.mannschaft.app.reflection.dto.RecallSessionOperationOutcome;
 import com.mannschaft.app.reflection.dto.RecallSessionResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import io.micrometer.core.instrument.MeterRegistry;
+import com.mannschaft.app.common.UuidV7;
+import com.mannschaft.app.reflection.dto.ReflectionRecallRewardPayload;
+import com.mannschaft.app.ranch.reward.RanchRewardSourceType;
+import com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -16,6 +22,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /** 新ARは現在ACTIVEの本人だけが操作する。報酬用の任意資格取得で本人認可を代用しない。 */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RecallSessionOperationFacade {
@@ -26,6 +33,8 @@ public class RecallSessionOperationFacade {
     private final UserTimezoneCache timezoneCache;
     private final ReflectionSettingsService settings;
     private final Clock clock;
+    private final ReflectionRecallRewardQueue rewardQueue;
+    private final MeterRegistry metrics;
 
     /** 共有timezone読取はauthの行ロックを保持する前に済ませる。 */
     public RecallSessionResponse start(Long userId,UUID entryId,UUID key,JsonNode body) {
@@ -61,19 +70,40 @@ public class RecallSessionOperationFacade {
     /**
      * callback開始前の資格/容量失敗にはfallbackしない。
      * native独立TXが既にcommitした後の外側auth失敗だけは、成功本体を保持して無報酬にする。
-     * 源の配送受付は未接続であり、この時点では初回完了でも報酬を発行しない。
+     * 元native commitと外側auth commitの両成立後だけ、有界キューへ不変事実を渡す。
      */
     private RecallSessionOperationOutcome write(Long userId,Supplier<RecallSessionOperationOutcome> nativeWrite) {
         var committed=new AtomicReference<RecallSessionOperationOutcome>();
         try {
-            return userGuard.withActiveUser(userId,()->{
+            RecallSessionOperationOutcome outcome=userGuard.withActiveUser(userId,()->{
                 RecallSessionOperationOutcome result=nativeWrite.get();
                 committed.set(result);
+                if(result.newCompletion()) {
+                    try {
+                        var response=result.response();
+                        var fact=new ReflectionRecallRewardPayload(UuidV7.generate(),1,
+                                RanchRewardSourceType.PERSONAL_RECALL_COMPLETE,RanchRewardEnvelope.IdType.UUID,
+                                response.entryId().toString(),RanchRewardEnvelope.ScopeType.PERSONAL,null,null,
+                                RanchRewardEnvelope.ActorKind.USER,userId,null,userId,userId,response.completedAt(),
+                                RanchRewardEnvelope.Origin.PERSONAL_COMPLETION,
+                                new RanchRewardEnvelope.PersonalRecall(response.id(),response.prompts().size(),
+                                        response.rewardWeek(),true));
+                        result=new RecallSessionOperationOutcome(response,true,fact);
+                        committed.set(result);
+                    }catch(RuntimeException captureFailure) {
+                        metrics.counter("ranch.source.capture.lost","source","PERSONAL_RECALL_COMPLETE","classification","CAPTURE_FAILED").increment();
+                        log.warn("想起配送事実を喪失: classification=CAPTURE_FAILED");
+                    }
+                }
                 return result;
             });
+            if(outcome.rewardCandidate()!=null) rewardQueue.offer(outcome.rewardCandidate());
+            return outcome;
         }catch(RuntimeException failure) {
             RecallSessionOperationOutcome result=committed.get();
             if(result==null) throw failure;
+            metrics.counter("ranch.source.capture.lost","source","PERSONAL_RECALL_COMPLETE","classification","POST_NATIVE_FAILURE").increment();
+            log.warn("想起配送受付を喪失: classification=POST_NATIVE_FAILURE exceptionClass={}",failure.getClass().getSimpleName());
             return new RecallSessionOperationOutcome(result.response(),false);
         }
     }

@@ -1,4 +1,9 @@
 package com.mannschaft.app.reflection.dto;
 
-/** native commit の新完了だけを源側が識別する。本文や資格を報酬事実へ推測しない。 */
-public record RecallSessionOperationOutcome(RecallSessionResponse response, boolean newCompletion) { }
+/** 原文を外へ渡さず、ACTIVE保護中に凍結した配送候補だけを内部で保持する。 */
+public record RecallSessionOperationOutcome(RecallSessionResponse response, boolean newCompletion,
+        ReflectionRecallRewardPayload rewardCandidate) {
+    public RecallSessionOperationOutcome(RecallSessionResponse response,boolean newCompletion) {
+        this(response,newCompletion,null);
+    }
+}
