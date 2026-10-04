@@ -163,7 +163,7 @@ describe('DOM保持した本人恐竜WidgetのGETと操作feedback境界', () =>
   await button.trigger('click'); await flushPromises()
   expect(touches).toBe(1); expect(closed).toHaveBeenCalledOnce()
   let constructors = 0
-  vi.stubGlobal('AudioContext', class { constructor() { constructors += 1; throw new Error('SYNTHETIC_AUDIO_CONSTRUCTOR_FAILURE') } })
+  vi.stubGlobal('AudioContext', class { constructor() { constructors += 1; throw new Error('SYNTHETIC_AUDIO_CONSTRUCTOR_FAILURE') } close() { return Promise.resolve() } })
   await button.trigger('click'); await flushPromises()
   expect(constructors).toBe(1); expect(touches).toBe(2)
   expect(wrapper.get('[role="status"]').text()).toContain(useNuxtApp().$i18n.t('ranch.care.touched'))
