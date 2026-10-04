@@ -63,6 +63,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.stream.Stream;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.test.web.servlet.MvcResult;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.text.PDFTextStripper;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -111,6 +119,8 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
     private Long member;
     private Long payer;
     private Long vice;
+    private Long foreignAdmin;
+    private Long outsider;
     private TeamEntity ownTeam;
     private TeamEntity foreignTeam;
     private OrganizationEntity ownOrg;
@@ -126,6 +136,10 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
             vice = user("vice");
             ownTeam = team("own");
             foreignTeam = team("foreign");
+            foreignAdmin = user("foreign-admin");
+            outsider = user("outsider");
+            MembershipTestHelper.insertMembership(em, foreignAdmin, ScopeType.TEAM, foreignTeam.getId(), RoleKind.MEMBER);
+            MembershipTestHelper.insertUserRole(em, foreignAdmin, "ADMIN", foreignTeam.getId(), null);
             ownOrg = organizations.save(OrganizationEntity.builder()
                     .slug("oracle-" + UUID.randomUUID().toString().substring(0, 8)).name("試練組織")
                     .orgType(OrganizationEntity.OrgType.OTHER).visibility(OrganizationEntity.Visibility.PUBLIC)
@@ -152,7 +166,7 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
         }
         inTx(() -> {
             List<Long> teamIds = List.of(ownTeam.getId(), foreignTeam.getId());
-            List<Long> actorIds = List.of(admin, member, payer, vice);
+            List<Long> actorIds = List.of(admin, member, payer, vice, foreignAdmin, outsider);
             for (String table : List.of("bulletin_archive_folders", "bulletin_threads", "skill_categories", "member_skills")) {
                 em.createNativeQuery("DELETE FROM " + table + " WHERE scope_type = 'TEAM' AND scope_id IN (:ids)")
                         .setParameter("ids", teamIds).executeUpdate();
@@ -178,24 +192,51 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void A1_非公開操作の未認証は401のまま() throws Exception {
+        MemberPaymentEntity payment = payment(PaymentStatus.PAID, BigDecimal.TEN);
+        Map<String, String> before = receiptSnapshot(payment);
+        for (String suffix : List.of("", "/pdf")) {
+            http(null, "GET", receiptPath(payment.getId(), suffix), null).andExpect(status().isUnauthorized());
+        }
         for (String path : List.of(receiptPath(MISSING_ID, ""), receiptPath(MISSING_ID, "/pdf"),
                 skillPath(MISSING_ID), archivePath() + "/threads")) {
             http(null, "GET", path, null).andExpect(status().isUnauthorized());
         }
         http(null, "PATCH", confirmPath(ownCommittee.getId(), MISSING_ID), null)
                 .andExpect(status().isUnauthorized());
+        assertThat(receiptSnapshot(payment)).isEqualTo(before);
     }
 
     @Nested
     @DisplayName("P: 会費領収書（ReceiptController#getReceipt/downloadReceiptPdf）")
     class PaymentReceipt {
         @ParameterizedTest
-        @ValueSource(strings = {"", "/pdf"})
-        void P1_同actorの他人支払と不在は絶対029(String suffix) throws Exception {
+        @MethodSource("com.mannschaft.app.common.security.OracleWave1HttpContractIT#receiptDenialCases")
+        void P1_第三者と不在_言語別本文同値とDB不変(String suffix, String actorKind, String locale) throws Exception {
+            Long actor = switch (actorKind) {
+                case "sameScopeAdmin" -> admin;
+                case "otherScopeAdmin" -> foreignAdmin;
+                case "outsider" -> outsider;
+                default -> throw new IllegalArgumentException(actorKind);
+            };
+            // 当該fixtureの初回HTTPより前にDB localeを確定する。実locale filterは迂回しない。
+            inTx(() -> { em.createNativeQuery("UPDATE users SET locale = :locale WHERE id = :id")
+                    .setParameter("locale", locale).setParameter("id", actor).executeUpdate(); return null; });
             MemberPaymentEntity payment = payment(PaymentStatus.PAID, BigDecimal.TEN);
-            for (long id : List.of(payment.getId(), MISSING_ID)) {
-                denial(http(admin, "GET", receiptPath(id, suffix), null), "PAYMENT_029", "会費支払い記録が見つかりません");
-            }
+            Map<String, String> before = receiptSnapshot(payment);
+            MvcResult actual = http(actor, "GET", receiptPath(payment.getId(), suffix), null)
+                    .andExpect(status().isNotFound()).andExpect(jsonPath("$.error.code").value("PAYMENT_029")).andReturn();
+            MvcResult missing = http(actor, "GET", receiptPath(MISSING_ID, suffix), null)
+                    .andExpect(status().isNotFound()).andExpect(jsonPath("$.error.code").value("PAYMENT_029")).andReturn();
+            assertThat(actual.getRequest().getAttribute("com.mannschaft.app.common.i18n.UserLocaleFilter.RESOLVED_LOCALE"))
+                    .isEqualTo(Locale.forLanguageTag(locale));
+            assertThat(missing.getRequest().getAttribute("com.mannschaft.app.common.i18n.UserLocaleFilter.RESOLVED_LOCALE"))
+                    .isEqualTo(Locale.forLanguageTag(locale));
+            assertThat(mapper.readTree(actual.getResponse().getContentAsByteArray()).get("error"))
+                    .isEqualTo(mapper.readTree(missing.getResponse().getContentAsByteArray()).get("error"));
+            // ja/enとも現行キー欠如時の日本語fallbackを維持する。英訳を作らない。
+            assertThat(mapper.readTree(actual.getResponse().getContentAsByteArray()).at("/error/message").asText())
+                    .isEqualTo("会費支払い記録が見つかりません");
+            assertThat(receiptSnapshot(payment)).isEqualTo(before);
         }
 
         @ParameterizedTest
@@ -204,22 +245,40 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
             for (PaymentStatus state : PaymentStatus.values()) {
                 if (state != PaymentStatus.PAID) {
                     MemberPaymentEntity payment = payment(state, BigDecimal.TEN);
+                    Map<String, String> before = receiptSnapshot(payment);
                     denial(http(member, "GET", receiptPath(payment.getId(), suffix), null), "PAYMENT_029", "会費支払い記録が見つかりません");
+                    assertThat(receiptSnapshot(payment)).isEqualTo(before);
                 }
             }
             for (BigDecimal amount : List.of(BigDecimal.ZERO, BigDecimal.ONE.negate())) {
                 MemberPaymentEntity payment = payment(PaymentStatus.PAID, amount);
+                Map<String, String> before = receiptSnapshot(payment);
                 denial(http(member, "GET", receiptPath(payment.getId(), suffix), null), "PAYMENT_029", "会費支払い記録が見つかりません");
+                assertThat(receiptSnapshot(payment)).isEqualTo(before);
             }
         }
 
-        @Test
-        void P3_払い手受益者及び削除済み会費項目の領収書履歴は保持する() throws Exception {
+        @ParameterizedTest
+        @ValueSource(strings = {"", "/pdf"})
+        void P3_払い手受益者及び削除済み会費項目の領収書履歴は保持する(String suffix) throws Exception {
             MemberPaymentEntity payment = payment(PaymentStatus.PAID, BigDecimal.TEN);
             inTx(() -> { items.findById(payment.getPaymentItemId()).orElseThrow().softDelete(); return null; });
             for (Long actor : List.of(member, payer)) {
-                http(actor, "GET", receiptPath(payment.getId(), ""), null).andExpect(status().isOk())
-                        .andExpect(jsonPath("$.data.memberPaymentId").value(payment.getId()));
+                MvcResult response = http(actor, "GET", receiptPath(payment.getId(), suffix), null)
+                        .andExpect(status().isOk()).andReturn();
+                if (suffix.isEmpty()) {
+                    assertThat(mapper.readTree(response.getResponse().getContentAsByteArray()).at("/data/memberPaymentId").asLong())
+                            .isEqualTo(payment.getId());
+                } else {
+                    assertThat(response.getResponse().getContentType()).startsWith("application/pdf");
+                    byte[] bytes = response.getResponse().getContentAsByteArray();
+                    assertThat(new String(bytes, 0, 5, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
+                    try (var document = Loader.loadPDF(bytes)) {
+                        assertThat(document.getNumberOfPages()).isGreaterThan(0);
+                        assertThat(new PDFTextStripper().getText(document))
+                                .contains("MP-" + payment.getId(), ownTeam.getName(), "¥10");
+                    }
+                }
             }
         }
     }
@@ -386,6 +445,23 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
             ActivityResultEntity committeeRecord = record(ActivityScopeType.COMMITTEE, ownCommittee.getId());
             http(null, "GET", "/api/v1/public/activities/" + committeeRecord.getId(), null).andExpect(status().isNotFound());
         }
+    }
+
+    static Stream<Arguments> receiptDenialCases() {
+        return Stream.of("", "/pdf").flatMap(suffix -> Stream.of("sameScopeAdmin", "otherScopeAdmin", "outsider")
+                .flatMap(actor -> Stream.of("ja", "en").map(locale -> Arguments.of(suffix, actor, locale))));
+    }
+
+    private Map<String, String> receiptSnapshot(MemberPaymentEntity payment) {
+        return inTx(() -> Map.of(
+                "payment", Arrays.deepToString(em.createNativeQuery("SELECT * FROM member_payments WHERE id = :id")
+                        .setParameter("id", payment.getId()).getResultList().toArray()),
+                "item", Arrays.deepToString(em.createNativeQuery("SELECT * FROM payment_items WHERE id = :id")
+                        .setParameter("id", payment.getPaymentItemId()).getResultList().toArray()),
+                "receiptCount", em.createNativeQuery("SELECT COUNT(*) FROM receipts WHERE member_payment_id = :id")
+                        .setParameter("id", payment.getId()).getSingleResult().toString(),
+                "notificationCount", em.createNativeQuery("SELECT COUNT(*) FROM notifications WHERE user_id IN (:ids)")
+                        .setParameter("ids", List.of(admin, member, payer, vice, foreignAdmin, outsider)).getSingleResult().toString()));
     }
 
     private org.springframework.test.web.servlet.ResultActions http(Long actor, String method, String path, Object body) throws Exception {
