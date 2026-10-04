@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 /**
  * GDPR Art.17 削除完了証跡エンティティ。
  *
- * <p>{@link com.mannschaft.app.gdpr.service.AccountPurgeService#purgeUser(com.mannschaft.app.auth.entity.UserEntity)}
+ * <p>{@link com.mannschaft.app.gdpr.service.AccountPurgeService#purgeExpiredAccounts()}
  * が {@link com.mannschaft.app.gdpr.event.AccountPurgedEvent} 発火前に 6 ドメイン分の PENDING レコードを INSERT し、
  * 各ドメインの {@code *PurgeEventListener} が処理完了時に SUCCESS に更新する。</p>
  *
