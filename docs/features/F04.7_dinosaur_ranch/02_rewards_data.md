@@ -144,6 +144,8 @@ stateDiagram-v2
 
 置物はSHOPまたはLEGACY_BADGE由来。同一user+acquisitionKind+acquisitionKey uniqueで再配送/購入競合を防ぐ。SHOPのkeyはSKU、LEGACY_BADGEは型付きlegacy badge ID+award period。betaのentitlementは装飾とは独立で維持する。
 
+LEGACY_BADGEは本人が記念品取込POSTを明示したときだけ、旧取得行を最大100件ずつ走査して承認済みcatalogへ写す。内部catalog keyは `LEGACY_BADGE:<canonical decimal badgeId>`、元periodは欠損なら空文字、全periodを元UTF-8 bytesの無paddingBase64urlでASCII化した型付きLB1 acquisition keyで一意化する。未承認の行を飛ばしても恒久high-watermarkにはせず、後日承認後のcursor 0再走査を許す。旧名前/説明/icon URLは移さず、元badge可用性と運営承認素材を別に検証する。元earnedOnは日付のみなのでRanchのawardedAtは取込時UTC MICROSとし、元獲得時刻を捏造しない。
+
 ## 5. DDL契約（Phase 1のみ）
 
 以下はPhase 1骨格の列/制約契約。診断/確認参照/愛着とcleanup統合も含む実migration照合は未完了で、この一覧だけを完成実装としない。全表に明示 `ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci`。新増加表は `UuidV7Entity` と `id BINARY(16) PK`。この基底はtimestampを持たないためcreated_at/updated_atを各表で明示。user_idは既存usersのBIGINT、クロスドメインFKなし。Instant列はUTC `DATETIME(6)`、EnumはVARCHAR、booleanはis_ prefix。列のnull記載以外はNOT NULL。BIGINT残高・XPは非負CHECK、外部JSONではdecimal string。

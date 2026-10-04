@@ -48,6 +48,8 @@ public class RanchSlotController {
             HttpServletRequest request, HttpServletResponse response) {
         Long userId = accessGuard.requireSelfAccess(request, response);
         facade.clear(userId, key, slotKey, version);
+        // 204 では本文 writer が走らないため、private 指示を Servlet 応答にも確定する。
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
         return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL, "private, no-store").build();
     }
 }

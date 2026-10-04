@@ -27,6 +27,7 @@ UUIDはcanonical小文字ハイフン形式のstring、Java UUID/MySQL BINARY(16
 | GET | `/api/v1/me/ranch/commands/{commandId}` | UUID path | 200 CommandResult。非所有/不在404 |
 | GET | `/api/v1/me/ranch/records` | cursor:string?、limit:int=20、1〜100 | 200 CursorPagedResponse<Record>。body/回答内容なし |
 | GET | `/api/v1/me/ranch/collectibles` | cursor:string?、limit:int=20、1〜100 | 200 inventory。復元前/0件は[] |
+| POST | `/api/v1/me/ranch/collectibles/sync` | `{afterAwardId:string}`、0以上の正準decimal string、Idempotency-Key | 200 `{commandId,nextAfterAwardId,processedCount,importedCount,hasNext,completedAt}`。旧取得を最大100件明示取込。未参加404 |
 | PUT | `/api/v1/me/ranch/room/slots/{slotKey}` | `{inventoryId:UUID,version:string}`、Idempotency-Key | 200配置結果。所有/未取消/slot許可を検証 |
 | DELETE | `/api/v1/me/ranch/room/slots/{slotKey}` | versionをIf-Matchにdecimal string、Idempotency-Key | 204。置物はinventoryへ戻り消えない。空slotでもversion一致なら204/version+1、同key再送は元204 |
 
@@ -62,6 +63,10 @@ WeekBudget=`{weekStartsOn:YYYY-MM-DD,weekEndsAt:Instant,globalCap:string,awarded
 FeedingResult=`{commandId:UUID,dinosaurId:UUID,careKind:FREE_BASIC,costPoints:string(常に0),gainedXp:string,isGrowthCapped:boolean,stageBefore:enum,stageAfter:enum,balanceAfter:string,ruleVersion:string,completedAt:Instant}`。resultは不変の取引時点で、現在stateとは別。slot response=`{slotKey:SHELF_1|SHELF_2|SHELF_3,inventoryId:UUID|null,version:string}`。開始時に三slot行をinventoryId=NULL/version=0で作成し、PUT/DELETEごとversion+1。DELETEは行を削除せずNULLへ戻しversionを維持、空slotへの再PUTも同counterで競合検査。Record=`{id:UUID,kind:REWARD|CARE|PURCHASE,sourceType:enum|null,deltaPoints:string,deltaXp:string,occurredAt:Instant,sourceLink:SourceLink|null}`。sourceLinkはF00再判定後にのみ `{kind:enum,id:string,url:string}`、本文/名称は返さない。
 
 Inventory=`{id:UUID,collectibleKey:string,labelKey:string,assetKey:string,acquisitionKind:SHOP|LEGACY_BADGE,awardedAt:Instant,isRevoked:boolean,placedSlotKey:string|null}`。旧team名/旧badge自由説明を非メンバーに返さない。既存system badgeを運営承認label/assetへadapterする。Phase 1はuser uploadした置物asset/URLを受けない。
+
+旧バッジ取込は本人の明示操作だけで行い、GETでは同期しない。source所有の本人取得行を `awardRowId` 昇順で最大101件取得し、先頭100件を処理、101件目があるとき `hasNext=true`。`nextAfterAwardId` は最後に処理したID（空ページでは入力値）で、継続ページは新Idempotency-Keyを使う。同key同bodyはsourceの現在値や承認catalogを再読せず保存済み結果を返し、別bodyは409。source read TXを閉じてからRanch writer TXに入り、成功commandとinventoryを同TXで保存する。未参加ownerを取込で作らない。
+
+内部catalog key `LEGACY_BADGE:<canonical decimal badgeId>` は運営承認済み `source_kind=LEGACY_BADGE` の行だけに対応し、source badgeが取得時点で利用可能な場合だけ保存する。元の名前・自由説明・icon URLは転用しない。取得のbinary同一性は型付きIDと元period UTF-8 bytesを無paddingBase64urlで符号化したASCIIのLB1 keyに固定し、period欠損は空文字。catalog未承認の行はその回に0だが、後日承認後に新keyとcursor `"0"` から再走査して回収できる。旧earnedOnはLocalDateなので実時刻へ変換せず、inventory.awardedAtは取込時のUTC MICROSとする。旧badge授与とbeta entitlementは独立に維持する。
 
 CareBudget=`{weekStartsOn:DATE,weekEndsAt:Instant,weeklyCapXp:string,awardedXp:string,remainingXp:string,amountXp:string,ruleVersion:string}`。activity pointsのWeekBudgetとは別。ShopItem=`{skuKey:string,collectibleKey:string,labelKey:string,assetKey:string,pricePoints:string,priceVersion:string,isOwned:boolean}`、価格/ruleはserver確定。PurchaseResult=`{commandId:UUID,inventoryId:UUID,skuKey:string,costPoints:string,priceVersion:string,balanceAfter:string,completedAt:Instant}`、不変結果。
 ## 3. 想起session API（新規reflection内契約）

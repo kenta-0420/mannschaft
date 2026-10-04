@@ -1,6 +1,7 @@
 package com.mannschaft.app.ranch.service;
 
 import lombok.RequiredArgsConstructor;
+import com.mannschaft.app.ranch.reward.RanchRewardProjectionReader;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -13,14 +14,17 @@ import java.util.Objects;
 public class RanchExternalProjectionProvider {
     private final RanchWidgetVisibilityReader visibility;
     private final RanchShopQueryReader shop;
+    private final RanchRewardProjectionReader rewards;
 
     public RanchStateAssembler.ExternalProjection current(Long userId, Instant serverTime) {
         Objects.requireNonNull(userId);
         Objects.requireNonNull(serverTime);
         boolean visible = visibility.visible(userId);
         boolean shopAvailable = !shop.current(userId, serverTime).isEmpty();
-        // source/admin policyと64種素材の公開gate未製造につき報酬と選定は正規にOFF。
-        return new RanchStateAssembler.ExternalProjection(false, "DISABLED",
-                shopAvailable, visible, null, null, List.of());
+        var reward = rewards.current(userId, serverTime);
+        // 選定は実resolverと公開gateの接続後だけ表示する。
+        return new RanchStateAssembler.ExternalProjection(reward.deliveryPaused(),
+                reward.rewardsStatus(), shopAvailable, visible,
+                reward.weekBudget(), reward.policyVersion(), List.of());
     }
 }

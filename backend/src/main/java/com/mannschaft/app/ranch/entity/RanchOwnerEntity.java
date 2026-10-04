@@ -83,4 +83,12 @@ public class RanchOwnerEntity extends RanchEntity {
         balance = Math.subtractExact(balance, points);
         advanceVersion();
     }
+
+    public void credit(long points) {
+        if (points <= 0) {
+            throw new IllegalArgumentException("付与ポイントが不正です");
+        }
+        balance = Math.addExact(balance, points);
+        advanceVersion();
+    }
 }
