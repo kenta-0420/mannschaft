@@ -67,6 +67,9 @@ public class RanchAssignmentWriter {
         validateTrustedSelection(request, selection);
         Instant now = Objects.requireNonNull(serverTime).truncatedTo(ChronoUnit.MICROS);
         RanchOwnerEntity owner = owners.lockByUserId(userId).orElseThrow(this::notFound);
+        // 初回 lookup から owner lock 待ちの間に同keyが成功した場合も元ACKを優先する。
+        var committedDuringWait = lookupAfterOwnerLock(userId, key, bodyHash);
+        if (committedDuringWait.isPresent()) return committedDuringWait.orElseThrow();
         if (owner.getStatus() != ParticipationStatus.ACTIVE
                 || owner.getVersion() != version(request.version())) {
             throw conflict();
@@ -101,7 +104,15 @@ public class RanchAssignmentWriter {
     }
 
     private Optional<AssignmentResult> lookup(Long userId, UUID key, byte[] hash) {
-        var previous = commands.findByUserIdAndIdempotencyKey(userId, key);
+        return decode(commands.findByUserIdAndIdempotencyKey(userId, key), hash);
+    }
+
+    private Optional<AssignmentResult> lookupAfterOwnerLock(Long userId, UUID key, byte[] hash) {
+        // InnoDB REPEATABLE READ の初回snapshotを再利用せず、現在のcommitを確認する。
+        return decode(commands.lockByUserIdAndIdempotencyKey(userId, key), hash);
+    }
+
+    private Optional<AssignmentResult> decode(Optional<RanchCommandEntity> previous, byte[] hash) {
         if (previous.isEmpty()) return Optional.empty();
         RanchCommandEntity command = previous.orElseThrow();
         if (!TYPE.equals(command.getCommandType())
