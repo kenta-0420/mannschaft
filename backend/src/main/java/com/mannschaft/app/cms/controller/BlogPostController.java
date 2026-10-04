@@ -49,6 +49,7 @@ import org.springframework.lang.Nullable;
 public class BlogPostController {
 
     private final BlogPostService postService;
+    private final com.mannschaft.app.cms.service.BlogRanchNativeOperationFacade ranchNative;
     private final BlogFeedService feedService;
     private final BlogReactionService reactionService;
 
@@ -151,8 +152,11 @@ public class BlogPostController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変更成功")
     public ResponseEntity<ApiResponse<BlogPostResponse>> changeStatus(
             @PathVariable Long id,
-            @Valid @RequestBody PublishRequest request) {
-        BlogPostResponse response = postService.changeStatus(id, SecurityUtils.getCurrentUserId(), request);
+            @Valid @RequestBody PublishRequest request, jakarta.servlet.http.HttpServletRequest servletRequest) {
+        Long actor = SecurityUtils.getCurrentUserId();
+        BlogPostResponse response = ranchNative.changeStatus(id, actor, request,
+                servletRequest.getAttribute("originalAdminId") != null)
+                .orElseGet(() -> postService.changeStatus(id, actor, request));
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

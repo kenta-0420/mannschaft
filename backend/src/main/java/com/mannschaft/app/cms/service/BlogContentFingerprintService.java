@@ -23,6 +23,9 @@ public class BlogContentFingerprintService {
     static final String VERSION = "ranch-content-exact-v1";
     private final EncryptionService encryptionService;
 
+    /** 現在鍵の識別子だけを比較し、利用できない旧鍵のdigestから勝者を捏造しない。 */
+    String currentKeyId() { return encryptionService.hmac("ranch-content:key-id:v1"); }
+
     /** 本文を返却せず、現在鍵の比較証跡だけを返す。 */
     public BlogContentFingerprint fingerprint(long recipientUserId, Instant occurredAt,
             String title, String body, List<BlogContentFingerprint.AttachmentRef> attachments) {

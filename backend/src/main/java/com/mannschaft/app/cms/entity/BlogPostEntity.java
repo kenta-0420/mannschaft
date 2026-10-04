@@ -362,11 +362,12 @@ public class BlogPostEntity extends BaseEntity {
     /** current-lock前状態と最終状態をsource writerが照合した後に一度だけ固定する。 */
     public boolean freezeRanchFirstPublicationMetadata(java.time.Instant at, Long protectedAuthorId) {
         if (at == null || protectedAuthorId == null || !protectedAuthorId.equals(authorId)
-                || ranchPublicationHistorical || !publicationHistoryKnown || !ranchPublicationObserved
+                || ranchPublicationHistorical || !publicationHistoryKnown || ranchPublicationObserved
                 || status != PostStatus.PUBLISHED || firstPublishedAt != null
                 || firstPublishedAuthorUserId != null) return false;
         firstPublishedAt = at.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         firstPublishedAuthorUserId = protectedAuthorId;
+        ranchPublicationObserved = true;
         return true;
     }
 }

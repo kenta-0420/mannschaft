@@ -264,3 +264,12 @@ V242.20261004202135__blog_native_history_and_ranch_transport.sql は既存全記
 初公開metadataはsource own current-lockでbefore-firstと最終PUBLISHEDを照合し、本人ACTIVE保護を実証したnative境界からのみ固定する。Entityメソッド単独、配送時の現在status、witness不在は資格証拠ではない。公開撤回でmetadataを消さない。既存CMS公開/予約/審査の意味と既イベントを保つ。
 
 同migrationのblog_ranch_witnesses/outboxes/admin_commandsは本文を持たないsource own transport表で、BIGINT UNSIGNEDのuser参照、DATETIME(6)、utf8mb4_0900_ai_ci、他domain FKなしとする。このcheckpointではnative履歴のみ接続、資格保護/公開candidate/AC67原子勝者/consumer lease・ACK/管理health・retryの実接続と実MySQL greenは未完成である。
+
+### CMS本人公開のnative/transport接続境界
+
+- 本人の `changeStatus` / `selfReview` は、既存の同じ純粋遷移規則を使用する。追加auth受付の開始前失敗、非本人、管理者変身、既存外側TXは従来業務へ戻り、ゲーム資格を理由にeditor/SYSTEMの公開可能範囲を狭めない。
+- users current lockを保持した本人操作では、別CMS TXで記事を最初のEntity取得前にcurrent lockする。変更前のknown/nonhistorical/notObservedを確定し、最終PUBLISHEDの場合だけ初公開metadataとobservedを同じ記事保存で凍結する。本文由来の有限HMAC captureは私有メモリだけに保持し、本体TXへwitness・winner・outboxを書かない。
+- native proxyと外auth proxyの正常commit復帰後だけbounded queueへofferする。callback開始後の業務失敗は再実行せず伝播する。本体commit後に追加auth/記録が失敗した場合は元ACKを保持し、捕捉lossとして報酬受付を行わない。queue容量0は意図的OFF、負値/1000超は固定分類警告を伴う非稼働で、測定済み容量を捏造しない。
+- 別CMS transport TX内で、native不変初公開metadataと保護中captureを照合し、witness/AC67完全一致winner/outboxを原子受付する。V242.20261004202135__blog_native_history_and_ranch_transport.sqlの私有content_week/version/key_id/digestは本文を含まず、HTTP/payload/log/exportへ出さない。recipient/UTC週/version/digestのUNIQUEに最初に耐久受付した一件をwinnerとし、後着occurredAtが早くても置換しない。native captureの取りこぼしがあるため最古投稿の保証はしない。
+- 同週旧content keyが利用できない場合はUNKNOWN/無報酬とし、新規winnerを推定しない。URLから添付IDを捏造せず、CMS所有の実在・紐付け済みREADYメディア永続IDだけを比較に使用する。補助captureの有限性を確定できない場合は元保存を優先する。
+- この閉束の実接続は本人公開二経路に限る。他editor/一括/SYSTEM/予約/作成時即公開、TL/出欠、lease/ACK、四源health/retry Bean、CMS purge接続、HTTP故障注入・追加auth commit失敗の実証は未完了。新MySQL fixture5件はprepared/not-runで、receiverのrollback証拠をHTTP/filterの認可証拠へ流用しない。
