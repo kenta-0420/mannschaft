@@ -117,7 +117,7 @@ ACK済みoutboxの短期archive/削除はcanonical witness/dedupを残したま�
 卵の約7日elapsed/三方式/独自数秘/24問構成は採択済み。ひび具体境界は開発snapshot値、質問内容/全対応表/初期16種×4外見素材は承認待ち。未裁可算法をテスト済み/実装確定と表現しない。出欠の実EnumはATTENDING/PARTIAL/ABSENTを基準ソースと照合し、旧略記ATを仕様に残さない。
 ## 採択済み契約と未完了gate
 
-三方式/独自数秘/24問構成/本人結果独立/命名は01、source配送とDDLは02、API/auth guard/確認参照は03、画面/両styleは04を正本とする。質問の公開内容、全恐竜デザイン/対応表、親密度と運営値の本番調整、TL/Blog完全一致期間案は未承認。実装は部分製造で全体合格ではない。初回証拠とtransport loss窓はAC07/09/11/21/22/31/72で現在状態からの資格捏造なしを検証する。
+三方式/独自数秘/24問構成/本人結果独立/命名は01、source配送とDDLは02、API/auth guard/確認参照は03、画面/両styleは04を正本とする。質問の公開内容、全恐竜デザイン/対応表、親密度と運営値の本番調整は未承認。TL/Blogの同本人・同機能・同UTC週の完全一致初回のみは2026-10-04ユーザー裁可済み。実装は部分製造で全体合格ではない。初回証拠とtransport loss窓はAC07/09/11/21/22/31/72で現在状態からの資格捏造なしを検証する。
 
 ### AC61 孵化時の不可逆命名（ユーザー確定）
 
@@ -135,7 +135,7 @@ AC51/53/58で16 species×4 variantの全64組・type対応・版固定・成長/
 |---|---|---|
 | 62 本人結果閲覧 | 64診断/占い各0件・一方式のみ完成・両完成・履歴ありの導線。卵/孵化後、再読込/別端末、PAUSED/非表示/STOPPED/care・報酬停止/残高0でも読取可。退会申請で拒否・取消で同result復帰・最終削除でcleanup。anonymous401、他人/不在/未完了同形404、不正cursor400。raw DOB/name/回答の返却・共有・ログ0。版変更でも過去snapshot維持、再診断で恐竜アバターID/名前/species/variant/XP/親密度/points不変。6言語・keyboard・画面到達を検証 | UT/IT/FE UT/E2E |
 
-ACは追補込み73件。追加結果閲覧はユーザー確定したPhase 1要件。全ACの主検証欄は計画で、実装class/methodとgreen実テスト名の照合は未完了。技術契約は02/03に統合し、質問内容/対応表/素材とsource完全一致期間案を未決として残す。
+ACは追補込み73件。追加結果閲覧はユーザー確定したPhase 1要件。全ACの主検証欄は計画で、実装class/methodとgreen実テスト名の照合は未完了。技術契約は02/03に統合し、質問内容/対応表/素材を未決として残す。source完全一致の比較範囲は2026-10-04裁可済み、製造と検証は未完了。
 
 対応表を決める時期はユーザー確定: 診断/占いと具体的な恐竜との対応表は恐竜のデザイン完成後に作成する。基本設計の完了に実際の割り当てデータは要求しない。版付きmappingの入出力・未登録時は有効化不可・旧個体を置換しない境界は設計で維持する。16種名簿/4外見/素材制作と対応表作成を後続タスクに分け、公開前にはAC51の全64対応を検証する。基本設計の完了と素材完成・初期公開可能の判定を混同しない。
 
@@ -151,7 +151,7 @@ ACは追補込み73件。追加結果閲覧はユーザー確定したPhase 1要
 | 64 非減衰指標の保存 | versioned affinity unit(kind+UTC日dev値)でfeeding/touch各初回だけ加算、別key/二tab/連打0。週XP枠後も反応可、egg touchはXP0、pause/放置で減少0、権利/成長倍率/points差0 | CORE Care/Affinity | UT64-unit±1 / IT64-concurrentUnit / UI64-reactionNoGauge / REAL64-cappedTouch |
 | 65 出生確認能力の境界 | ACTIVE先lock→PRIMARY成功lookup→live profile検証の順、MICROSのDB/JSON/HMAC一致。本人revision/HMAC用途/nonce/withdrawalAttemptId/expiryを検査。TTL直前/丁度/後、未知/他人ref、鍵rotationで旧ref拒否、全profile変更経路後の旧ref拒否。診断作成・Ranch出生選定それぞれの成功PRIMARY replayをlive検査より優先し、成功同key再送はprofile変更後も元result。初回出生選定はlive確認ref revision R=OwnedResult内部sourceProfileRevision、DIAGNOSIS=null/BIRTH_STYLE>=0を照合。新refで旧profile由来resultは409、内部metadataは公開Summaryに追加せず、本人履歴閲覧は維持。name/DOB/kana/refのlog複製0 | AUTH+DIAGNOSIS | UT65-signatureExpiry / IT65-profileWritePathsRace / UI65-reconfirm / REAL65-twoTabProfile |
 | 66 退会状態の新旧照合 | request→cancel→re-requestを逆順配送しても古い通知は無効。既存attemptIdと最新auth状態で照合し、PURGING barrierとconsumer/command/latequeue競合後再作成0。partial cleanup失敗→retryは同じ削除結果、OFF下も実行、取消は元PAUSED保持。出生結果保存/初回選定とprofile更新/申請を競合させても、ACTIVE lock・同revision照合・成功replay優先を維持しguard再帰0 | AUTH+全cleanup | UT66-withdrawalAttemptOrder / IT66-purgeBarrierRace / UI66-cancelRestores / REAL66-lifecycle |
-| 67 完全一致証跡（比較期間/正規化はユーザー回答待ち） | 承認normalization/version/window内で新ID同文一件だけ、NFC/改行/前後空白/添付/記事title比較fixtureと同時winnerを照合。窓±1/keyrotation/loss/retentionを明示、本文複製0、源外/想起意味比較0 | TL/CMS | UT67-normalizationMatrix / IT67-duplicateRaceLoss / UI=—source内 / REAL67-newIdDuplicate |
+| 67 完全一致証跡 | 同本人・同機能・同UTC週で新ID同内容は最初一件だけ（2026-10-04裁可）。NFC/改行/前後空白/添付/記事title比較fixtureと同時winnerを照合。窓±1/keyrotation/loss/retentionを明示、本文複製0、源外/想起意味比較0 | TL/CMS | UT67-normalizationMatrix / IT67-duplicateRaceLoss / UI=—source内 / REAL67-newIdDuplicate |
 | 68 私的一覧keyset | records/inventory/results 0/1/100/101件、limit0/1/100/101、同timestamp cursor、別user/filter/tamper cursor400。completedAt MICROSのDB/JSON/cursor一致で重複0、data量でquery数が増えずbounded keyset、raw source/name/回答なし | CORE/DIAGNOSIS | UT68-cursorBinding / IT68-queryCount / UI68-emptyNextPage / REAL68-pagination |
 | 69 診断回答とtie版 | 全3→tie6、正負同点、tie0/1/6、23/24/25問、未知/重複/boolean/0/6拒否。tie表示後回答改版→古tie409。保留再開同snapshot、cancel後complete不可、二tab/retry一result/無報酬 | DIAGNOSIS | UT69-sixAxisMatrix / IT69-answerRevisionRace / UI69-holdResume / REAL69-tieResume |
 | 70 公開coverage | 全64type×16種4外見、3habitat候補、EGG/BABY/JUVENILE/ADULT×両style×基本反応/静止fallbackをmanifest照合。type欠落/重複/非approved/未登録rule/pool空で有効化拒否、fixture catalogはprod登録不可 | OPS/FE manifest | UT70-coverage / IT70-enableRejected / UI70-preparing / REAL70-unavailable |
@@ -178,7 +178,7 @@ ACは追補込み73件。追加結果閲覧はユーザー確定したPhase 1要
 
 当時の担当報告ではRANCH-CORE骨格61ファイルのcommitは2a6a1810、AUTH/DIAGNOSISの41pathは未commitでstubを含み、FEの17UTはローカルcomponent/純粋計算のみgreen、型チェック未完了だった。BEも:compileJava通過後、compileTestJava時のWSL EIOでtest未到達との報告だった。WSL疎通回復後は旧/tmpがすべて不存在で原因未確認（親担当からのWSL再起動・削除は実施していない）、旧native commitと試験logの実体を現在確認できない。これらは歴史報告であり、現在の保全・合格証拠ではない。親担当はbase38（38f8264212c2a3730ce645cebf40502d2d16338e）のcleanな新/var/tmp/mannschaft-ranch-20261003-koko配下4worktreeを作成し、Windows保存scriptsから再構成・再試験中。17FE試験も再実行必須。全checks/73AC照合/実Security401・403・IDOR/実MySQL race/実機E2E/住民探索/mergeの合格は未証明。draft PR #3617（当時記録head ddaf52）は未mergeの記録で、現在headの証拠とは分ける。資料・静的HTML検査をアプリや実機の合格として扱わない。
 
-活動consumer・運営/商品/slot/旧badge統合・四源transport・AR実画面・最終purge・全素材manifest/対応表が残る。TL/Blogの新ID同内容完全一致は、同user・同feature・同UTC週で最初一件だけとする比較案がユーザー回答待ち。正規化/比較期間を確定と書かず、そのsource仕様と公開gateに未決を限定する。他の製造を停止する理由にしない。
+活動consumer・運営/商品/slot/旧badge統合・四源transport・AR実画面・最終purge・全素材manifest/対応表が残る。TL/Blogの新ID同内容完全一致は、同user・同feature・同UTC週で最初一件だけとする方針が2026-10-04にユーザー裁可された。本文・タイトル・添付の組合せとNFC・改行・前後空白の正規化を実装fixtureへ対応付ける。未製造・未検証を公開可能と扱わず、他の製造は継続する。
 
 ### 採択済みauth admissionの検証追跡
 

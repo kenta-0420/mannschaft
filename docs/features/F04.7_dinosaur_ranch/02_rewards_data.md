@@ -17,7 +17,7 @@
 
 出欠の `firstRespondedAt` はproxy/UNDECIDEDでも付きうるので資格の証明にしない。当時request contextと信頼できるnative初回履歴証拠で資格をcaptureする。commit後のtransport witness UNIQUE(schedule ID,subject ID)は記録済みfactの配送dedupだけで、witness不在から初回を推定しない。証拠不明は0。過去proxyフラグの残留を今回代理の判定へ流用しない。本人の複数予定を本人一括操作で処理する導線がある場合は一件ごとに同じactor/subject/今回proxy判定を通す。管理者がメンバーへ一括登録するケースは対象外。
 
-Timeline originはクライアント任意入力を信用せず、通常投稿/内部共有それぞれのサーバー入口で確定する。原文本文の文字数や内容の質を報酬条件にしない。同ID再付与に加え、新IDでも一定範囲の同内容完全一致を対象外とする（意味AI判定なし）。完全一致の正規化/期間/証跡保存と初回判定は後続設計、源件数/個人上限は併用する。空/無効投稿は本体の既存validationで拒否する。記事共有がTimelineに生まれてもBlog一源だけが対象で二重付与しない。
+Timeline originはクライアント任意入力を信用せず、通常投稿/内部共有それぞれのサーバー入口で確定する。原文本文の文字数や内容の質を報酬条件にしない。同ID再付与に加え、新IDでも同じ本人・同じ機能・同じUTC週の同内容完全一致は最初の一件だけを対象とする（2026-10-04ユーザー裁可、意味AI判定なし）。本文・タイトル・添付の組合せを比較し、Unicode NFC・改行・前後空白を正規化する。源件数/個人上限は併用する。空/無効投稿は本体の既存validationで拒否する。記事共有がTimelineに生まれてもBlog一源だけが対象で二重付与しない。
 
 Blogの手動公開、一括公開、自己承認、承認者による公開、予約公開の**全経路**を共通の初公開witness/fact生成へ収束させる。予約公開ではactor=`SYSTEM`、recipient=author、subject=author。公開失敗/権限拒否ではwitness/outboxを確定しない。公開後削除では授与済みポイントを取り消さず、資料リンクだけ権限を再判定する。
 
@@ -239,6 +239,6 @@ ranchの出生選定snapshotには利用したresultのopaque IDと固定した�
 
 愛着は非減衰で成長/権利/pointsとは独立。versioned unitはkind(FEED/TOUCH)＋UTC日、初回gain1、band0/1/5は開発fixture。同unitは別key/二tab/連打でも一加算、週care XP枠後も反応可、卵touch XP0、PAUSED/care OFFは反応のみ加算0。公開数値ゲージなし。
 
-TL/Blog完全一致はそれぞれsource-owned、同user・同feature・同UTC週の新ID同内容を最初一件だけとする案。比較期間/正規化はユーザー回答待ち。NFC/改行/前後空白/title/添付/length-prefix/HMAC/key rotation/保持は承認fixture後に検証し、本文複製0、cross-source/想起意味比較なし。源の公開gateで未決を管理する。
+TL/Blog完全一致はそれぞれsource-owned、同user・同feature・同UTC週の新ID同内容を最初一件だけとする（2026-10-04ユーザー裁可）。本文・タイトル・添付の組合せにNFC・改行・前後空白の正規化を適用し、報酬記録へ原文を複製しない。実装のnormalizationVersion、length-prefix/HMAC、key rotation、保持期限、同時投稿winnerをfixtureへ対応付けて検証する。cross-source/想起意味比較はしない。製造・試験が未完了の源は公開gateを閉じる。
 
 本体COMMIT→AFTER_COMMIT非blocking bounded queue→source-owned REQUIRES_NEW(witness+outbox原子)→短lease→ranch decision TX→token比較ACK。受付前lossはユーザー採択済み、durable受付後のみretry保証。CallerRuns/同期DB fallbackなし。queue満杯/transport失敗を本体HTTP失敗へ戻さない。queue1000/batch50/lease30s/attempt8/backoff1〜300s+jitterは開発fixture、本番自動採用しない。初回資格はnative履歴とtrusted actorを使い、現在状態/witness不在から捏造しない。
