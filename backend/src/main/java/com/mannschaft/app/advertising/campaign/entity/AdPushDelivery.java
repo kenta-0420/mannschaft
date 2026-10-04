@@ -12,6 +12,8 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -52,6 +54,7 @@ public class AdPushDelivery extends UuidV7Entity {
 
     /** YYYY-MM 形式 (パーティショニング用) */
     @Column(name = "month_key", nullable = false, length = 7)
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String monthKey;
 
     @Column(name = "created_at", nullable = false, updatable = false)
