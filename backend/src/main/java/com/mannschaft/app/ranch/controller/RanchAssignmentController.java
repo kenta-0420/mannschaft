@@ -3,6 +3,8 @@ package com.mannschaft.app.ranch.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.security.PrivateSelfAccessGuard;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.ranch.dto.AssignmentResult;
 import com.mannschaft.app.ranch.dto.RanchAssignmentRequest;
 import com.mannschaft.app.ranch.service.RanchAssignmentFacade;
@@ -29,6 +31,8 @@ public class RanchAssignmentController {
     private final PrivateSelfAccessGuard accessGuard;
 
     @SelfScopedEndpoint("PrivateSelfAccessGuardが認証本人IDと管理者変身拒否を固定する")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "本人の保存済み選定結果へ常時到達し、承認版の可否は内側で検証する")
     @PutMapping("/assignment")
     public ResponseEntity<ApiResponse<AssignmentResult>> assign(
             @RequestHeader("Idempotency-Key") UUID key,
