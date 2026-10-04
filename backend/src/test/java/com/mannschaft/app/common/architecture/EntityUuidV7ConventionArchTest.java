@@ -37,6 +37,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  * <p>凍結ストアには「移行猶予中の既存 BIGINT Entity」に加え、<b>設計上 UUIDv7 を意図的に
  * 適用しない正当な例外</b>も登録されている:</p>
  * <ul>
+ *   <li>{@code ranch.entity.RanchOperationalControlEntity}（F04.7・V245）— id=1固定の管理singletonをロックし、全運営変更を直列化する。独立発番しない設計是認例外で、一般Entityの規則は緩めない。</li>
  *   <li>{@code ranch.entity.RanchCollectibleCatalogEntity}（F04.7 Phase 1・02 §5）— 承認済み置物の自然キー {@code collectible_key} を主キーとし、代理 UUID を追加して同一性を二重管理しない設計是認例外。</li>
  *   <li>{@code village.entity.VillageFestivalLivePostEntity}（F17.2 Wave2 ③・設計書 §5.4/§13.1）
  *       — お祭りの実況投稿の紐付け表。独立発番の代理キーを必要とせず、参照2本の組
