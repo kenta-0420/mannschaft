@@ -12,13 +12,21 @@ const teamSlug = computed(() => String(route.params.slug))
 const { monthlyStats, termStats, loadingMonthly, loadingTerm, exporting, loadMonthlyStatistics, loadTermStatistics, downloadCsv } =
   useAttendanceStatistics(teamSlug)
 const { userTimezone } = useDatetime()
-const { loaded: permissionsLoaded, forbidden: permissionsForbidden, canView, loadPermissions } =
-  useAttendancePermissions(teamSlug)
+const {
+  loadFailed: permissionsFailed,
+  ready: permissionsReady,
+  forbidden: permissionsForbidden,
+  canView,
+  loadPermissions,
+} = useAttendancePermissions(teamSlug)
 
 // 判定は BE の権限判定 API のみ。403 は握りつぶさず「権限がありません」を明示する（AC-18）
 const denied = computed(
-  () => permissionsForbidden.value || (permissionsLoaded.value && !canView.value),
+  () => permissionsForbidden.value || (permissionsReady.value && !canView.value),
 )
+
+// 取得・操作は「照会完了かつ閲覧権限 true」のときだけ許可する（fail-closed）
+const canQuery = computed(() => permissionsReady.value && !denied.value && canView.value)
 
 const today = dayjs().tz(userTimezone.value)
 const selectedYear = ref(today.year())
@@ -40,28 +48,33 @@ const monthOptions = Array.from({ length: 12 }, (_, i) => ({
 }))
 
 async function loadMonthly(): Promise<void> {
+  if (!canQuery.value) return
   await loadMonthlyStatistics(selectedYear.value, selectedMonth.value)
 }
 
 async function loadTerm(): Promise<void> {
+  if (!canQuery.value) return
   await loadTermStatistics(termFrom.value, termTo.value)
 }
 
 function onExportCsv(): void {
+  if (!canQuery.value) return
   downloadCsv(termFrom.value, termTo.value)
 }
 
 watch([selectedYear, selectedMonth], () => {
-  if (!denied.value && activeTab.value === 'monthly') {
+  if (canQuery.value && activeTab.value === 'monthly') {
     void loadMonthly()
   }
 })
 
-onMounted(async () => {
+async function loadPage(): Promise<void> {
   await loadPermissions()
-  if (denied.value) return
+  if (!canQuery.value) return
   await loadMonthly()
-})
+}
+
+onMounted(loadPage)
 </script>
 
 <template>
@@ -73,7 +86,15 @@ onMounted(async () => {
       </h1>
     </header>
 
-    <SchoolAttendanceForbidden v-if="denied" />
+    <DashboardErrorState
+      v-if="permissionsFailed"
+      :title="$t('school.attendance.permissionError.title')"
+      :message="$t('school.attendance.permissionError.message')"
+      testid="school-attendance-permission-error"
+      @retry="loadPage"
+    />
+
+    <SchoolAttendanceForbidden v-else-if="denied" />
 
     <main v-else class="flex-1 p-4 max-w-4xl mx-auto w-full">
       <!-- タブ切り替え -->
@@ -115,6 +136,7 @@ onMounted(async () => {
               option-label="label"
               option-value="value"
               class="w-28"
+              :disabled="!canQuery"
               data-testid="statistics-year"
             />
           </div>
@@ -128,6 +150,7 @@ onMounted(async () => {
               option-label="label"
               option-value="value"
               class="w-20"
+              :disabled="!canQuery"
               data-testid="statistics-month"
             />
           </div>
@@ -135,6 +158,7 @@ onMounted(async () => {
             <Button
               :label="$t('common.search')"
               :loading="loadingMonthly"
+              :disabled="!canQuery"
               size="small"
               @click="loadMonthly"
             />
@@ -157,23 +181,25 @@ onMounted(async () => {
             <label class="text-xs text-surface-500 mb-1 block">
               {{ $t('school.statistics.from') }}
             </label>
-            <InputText v-model="termFrom" type="date" class="w-full" />
+            <InputText v-model="termFrom" type="date" class="w-full" :disabled="!canQuery" />
           </div>
           <div>
             <label class="text-xs text-surface-500 mb-1 block">
               {{ $t('school.statistics.to') }}
             </label>
-            <InputText v-model="termTo" type="date" class="w-full" />
+            <InputText v-model="termTo" type="date" class="w-full" :disabled="!canQuery" />
           </div>
           <Button
             :label="$t('common.search')"
             :loading="loadingTerm"
+            :disabled="!canQuery"
             size="small"
             @click="loadTerm"
           />
           <Button
             :label="$t('school.statistics.exportCsv')"
             :loading="exporting"
+            :disabled="!canQuery"
             severity="secondary"
             size="small"
             data-testid="statistics-export-csv"

@@ -63,6 +63,8 @@ describe('useAttendancePermissions', () => {
     await p.loadPermissions()
     expect(p.forbidden.value).toBe(true)
     expect(p.loaded.value).toBe(true)
+    expect(p.loadFailed.value).toBe(false)
+    expect(p.ready.value).toBe(true)
     expect(p.canView.value).toBe(false)
     expect(handleApiError).not.toHaveBeenCalled()
   })
@@ -73,10 +75,30 @@ describe('useAttendancePermissions', () => {
     const p = useAttendancePermissions(ref('t1'))
     await p.loadPermissions()
     expect(p.forbidden.value).toBe(false)
+    // 取得失敗は拒否と区別する（loadFailed）。照会は完了扱いにしない（ready=false）
+    expect(p.loadFailed.value).toBe(true)
+    expect(p.ready.value).toBe(false)
     expect(p.canView.value).toBe(false)
     expect(p.canRecordDaily.value).toBe(false)
     expect(handleApiError).toHaveBeenCalledTimes(1)
     expect(handleApiError.mock.calls[0]![0]).toBe(err)
+  })
+
+  it('照会中は ready=false、再試行で成功すると loadFailed が解除される', async () => {
+    mockGetPermissions.mockRejectedValueOnce({ statusCode: 500 })
+    const p = useAttendancePermissions(ref('t1'))
+    await p.loadPermissions()
+    expect(p.loadFailed.value).toBe(true)
+
+    let resolve: (v: unknown) => void = () => {}
+    mockGetPermissions.mockReturnValueOnce(new Promise((r) => (resolve = r)))
+    const pending = p.loadPermissions()
+    expect(p.ready.value).toBe(false)
+    expect(p.loadFailed.value).toBe(false)
+    resolve({ teamId: 1, canView: true, canRecordDaily: false, canRecordPeriod: false })
+    await pending
+    expect(p.ready.value).toBe(true)
+    expect(p.canView.value).toBe(true)
   })
 
   it('isForbiddenError は statusCode / status の 403 のみ true', () => {

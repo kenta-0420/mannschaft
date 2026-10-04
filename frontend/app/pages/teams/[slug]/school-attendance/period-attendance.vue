@@ -29,8 +29,9 @@ const {
   usePeriodAttendance(teamSlug)
 const { userTimezone } = useDatetime()
 const {
-  loaded: permissionsLoaded,
   forbidden: permissionsForbidden,
+  loadFailed: permissionsFailed,
+  ready: permissionsReady,
   canView,
   canRecordPeriod,
   loadPermissions,
@@ -42,7 +43,13 @@ const denied = computed(
   () =>
     permissionsForbidden.value ||
     forbidden.value ||
-    (permissionsLoaded.value && !canView.value && !canRecordPeriod.value),
+    (permissionsReady.value && !canView.value && !canRecordPeriod.value),
+)
+
+// 一覧取得・操作は「照会完了かつ該当権限が true」のときだけ許可する（fail-closed）。
+// 照会中・取得失敗・拒否の間は候補一覧 API を呼ばず、日付・時限の操作も封じる。
+const canQuery = computed(
+  () => permissionsReady.value && !denied.value && (canView.value || canRecordPeriod.value),
 )
 
 const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
@@ -69,7 +76,7 @@ function initEntries(): void {
 }
 
 async function reload(): Promise<void> {
-  if (denied.value) return
+  if (!canQuery.value) return
   await loadCandidates(selectedPeriod.value, selectedDate.value)
   initEntries()
   showSummary.value = false
@@ -90,10 +97,12 @@ watch([selectedDate, selectedPeriod], () => {
   void reload()
 })
 
-onMounted(async () => {
+async function loadPage(): Promise<void> {
   await loadPermissions()
   await reload()
-})
+}
+
+onMounted(loadPage)
 </script>
 
 <template>
@@ -105,7 +114,15 @@ onMounted(async () => {
       </h1>
     </header>
 
-    <SchoolAttendanceForbidden v-if="denied" />
+    <DashboardErrorState
+      v-if="permissionsFailed"
+      :title="$t('school.attendance.permissionError.title')"
+      :message="$t('school.attendance.permissionError.message')"
+      testid="school-attendance-permission-error"
+      @retry="loadPage"
+    />
+
+    <SchoolAttendanceForbidden v-else-if="denied" />
 
     <main v-else class="flex-1 p-4 max-w-2xl mx-auto w-full">
       <div class="grid grid-cols-2 gap-4 mb-4">
@@ -117,6 +134,7 @@ onMounted(async () => {
             v-model="selectedDate"
             type="date"
             class="w-full"
+            :disabled="!canQuery"
             data-testid="period-attendance-date"
           />
         </div>
@@ -130,6 +148,7 @@ onMounted(async () => {
             option-label="label"
             option-value="value"
             class="w-full"
+            :disabled="!canQuery"
             data-testid="period-attendance-period-select"
           />
         </div>
