@@ -325,6 +325,14 @@ public class ShiftScheduleService {
                     entity.getId(), entity.getTeamId(), userId));
         }
 
+        // CMP-260909-1445: 公開取消が成立した場合も、公開時に積んだ PLANNED 消化を置き去りにしない。
+        if (previousStatus == ShiftScheduleStatus.PUBLISHED
+                && (targetStatus == ShiftScheduleStatus.COLLECTING
+                        || targetStatus == ShiftScheduleStatus.ADJUSTING)) {
+            eventPublisher.publish(new ShiftScheduleClosedEvent(
+                    entity.getId(), entity.getTeamId(), userId, ShiftScheduleCloseReason.UNPUBLISHED));
+        }
+
         log.info("シフトスケジュールステータス遷移: id={}, status={}", id, targetStatus);
         return shiftMapper.toScheduleResponse(entity);
     }
