@@ -10,8 +10,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -874,6 +876,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      */
     private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1938;
 
+    /** ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。 */
+    private static final int EXPECTED_LINES_SERVICE_API = 607;
+
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
         new FrozenStoreExpectation(
@@ -899,7 +904,11 @@ class ArchUnitFreezeStoreIntegrityTest {
         new FrozenStoreExpectation(
             "no cross-domain repository dependency (D-5)",
             "427c445d-37ce-4d6e-b095-a1733efe209f",
-            EXPECTED_LINES_CROSS_DOMAIN_REPO_D5)
+            EXPECTED_LINES_CROSS_DOMAIN_REPO_D5),
+        new FrozenStoreExpectation(
+            "service API must not expose entities in signature (D-1 API boundary)",
+            "93124b52-f328-4f09-8c4f-6d022519fae2",
+            EXPECTED_LINES_SERVICE_API)
     );
 
     @Test
@@ -920,6 +929,23 @@ class ArchUnitFreezeStoreIntegrityTest {
         }
 
         List<String> mismatches = new ArrayList<>();
+        Set<String> expectedRules = new HashSet<>();
+        Set<String> expectedStoreFiles = new HashSet<>();
+        for (FrozenStoreExpectation expectation : expectations) {
+            if (!expectedRules.add(expectation.ruleDescription())) {
+                mismatches.add("期待側のルール説明が重複しています: " + expectation.ruleDescription());
+            }
+            if (!expectedStoreFiles.add(expectation.storeFileName())) {
+                mismatches.add("期待側のストアUUIDが重複しています: " + expectation.storeFileName());
+            }
+        }
+        if (!storedRules.stringPropertyNames().equals(expectedRules)) {
+            mismatches.add("stored.rules のルール集合が期待登録と一致しません: actual="
+                + storedRules.stringPropertyNames() + ", expected=" + expectedRules);
+        }
+        if (new HashSet<>(storedRules.values()).size() != storedRules.size()) {
+            mismatches.add("stored.rules のストアUUIDが重複しています");
+        }
         for (FrozenStoreExpectation expectation : expectations) {
             String actualStoreFile = storedRules.getProperty(expectation.ruleDescription());
             if (actualStoreFile == null) {
@@ -944,7 +970,7 @@ class ArchUnitFreezeStoreIntegrityTest {
     }
 
     @Test
-    @DisplayName("5つの凍結ストアの行数(=凍結された違反件数)が想定から不自然に増減していない"
+    @DisplayName("7つの凍結ストアの行数(=凍結された違反件数)が想定から不自然に増減していない"
         + "（--tests絞り込み実行によるストア破壊事故の検知）")
     void 凍結ストアの行数が期待値と一致する() throws IOException {
         verifyStoreCounts(STORE_DIR, EXPECTATIONS);
