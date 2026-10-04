@@ -17,7 +17,7 @@ CREATE TABLE ranch_collectible_inventory (
     created_at DATETIME(6) NOT NULL,
     updated_at DATETIME(6) NOT NULL,
     owner_id BINARY(16) NOT NULL,
-    user_id BIGINT NOT NULL,
+    user_id BIGINT UNSIGNED NOT NULL,
     collectible_key VARCHAR(80) NOT NULL,
     acquisition_kind VARCHAR(20) NOT NULL,
     acquisition_key VARBINARY(160) NOT NULL,

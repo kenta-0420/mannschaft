@@ -9,6 +9,7 @@ import com.mannschaft.app.ranch.repository.RanchInventoryRepository;
 import com.mannschaft.app.ranch.repository.RanchCollectibleCatalogRepository;
 import com.mannschaft.app.ranch.repository.RanchRoomPlacementRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -39,7 +40,7 @@ public class RanchInventoryQueryReader {
                 ? null : cursors.decodeInventory(userId, cursor);
         List<RanchInventoryEntity> rows = inventory.pageForUser(userId,
                 start == null ? null : start.occurredAt(),
-                start == null ? null : start.id(), limit + 1);
+                start == null ? null : start.id(), PageRequest.of(0, limit + 1));
         boolean hasNext = rows.size() > limit;
         List<RanchInventoryEntity> page = hasNext ? rows.subList(0, limit) : rows;
         Map<UUID, String> placed = placements.findByUserIdOrderBySlotKey(userId).stream()
