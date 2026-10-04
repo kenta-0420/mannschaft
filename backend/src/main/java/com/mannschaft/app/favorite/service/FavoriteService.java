@@ -50,10 +50,11 @@ public class FavoriteService {
             return List.of();
         }
 
-        Map<String, FavoriteEntityMetaDto> metaMap = favoriteResolverService.resolveAll(favorites, userId);
+        Map<FavoriteResolverService.EntityKey, FavoriteEntityMetaDto> metaMap =
+                favoriteResolverService.resolveAll(favorites, userId);
 
         return favorites.stream()
-                .map(f -> toDto(f, metaMap.get(f.getEntityId())))
+                .map(f -> toDto(f, metaMap.get(new FavoriteResolverService.EntityKey(f.getEntityType(), f.getEntityId()))))
                 .toList();
     }
 
@@ -170,8 +171,9 @@ public class FavoriteService {
         // 認可は FavoriteAccessGuard に一元化（不存在=FAV_003/404・他者所有=FAV_004/403）
         UserFavoriteEntity entity = favoriteAccessGuard.requireOwnedFavorite(userId, favoriteId);
 
-        Map<String, FavoriteEntityMetaDto> metaMap = favoriteResolverService.resolveAll(List.of(entity), userId);
-        return toDto(entity, metaMap.get(entity.getEntityId()));
+        Map<FavoriteResolverService.EntityKey, FavoriteEntityMetaDto> metaMap =
+                favoriteResolverService.resolveAll(List.of(entity), userId);
+        return toDto(entity, metaMap.get(new FavoriteResolverService.EntityKey(entity.getEntityType(), entity.getEntityId())));
     }
 
     /**

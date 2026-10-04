@@ -137,7 +137,7 @@ class FavoriteServiceTest {
             given(userFavoriteRepository.findByUserIdOrderByDisplayOrderAsc(USER_ID))
                     .willReturn(List.of(entity));
             given(favoriteResolverService.resolveAll(eq(List.of(entity)), eq(USER_ID)))
-                    .willReturn(Map.of("1", meta));
+                    .willReturn(Map.of(new FavoriteResolverService.EntityKey(FavoriteEntityType.TEAM, "1"), meta));
 
             List<FavoriteItemDto> result = favoriteService.getFavorites(USER_ID);
 
@@ -156,7 +156,7 @@ class FavoriteServiceTest {
             given(userFavoriteRepository.findByUserIdOrderByDisplayOrderAsc(USER_ID))
                     .willReturn(List.of(entity));
             given(favoriteResolverService.resolveAll(eq(List.of(entity)), eq(USER_ID)))
-                    .willReturn(Map.of("999", unavailableMeta));
+                    .willReturn(Map.of(new FavoriteResolverService.EntityKey(FavoriteEntityType.TEAM, "999"), unavailableMeta));
 
             List<FavoriteItemDto> result = favoriteService.getFavorites(USER_ID);
 
@@ -483,7 +483,7 @@ class FavoriteServiceTest {
             given(userFavoriteRepository.findById(FAVORITE_ID))
                     .willReturn(Optional.of(entity));
             given(favoriteResolverService.resolveAll(eq(List.of(entity)), eq(USER_ID)))
-                    .willReturn(Map.of("1", meta));
+                    .willReturn(Map.of(new FavoriteResolverService.EntityKey(FavoriteEntityType.TEAM, "1"), meta));
 
             FavoriteItemDto result = favoriteService.getFavoriteById(USER_ID, FAVORITE_ID);
 
