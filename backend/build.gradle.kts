@@ -33,6 +33,7 @@ repositories {
 val mapstructVersion = "1.6.3"
 
 dependencies {
+    implementation("com.ibm.icu:icu4j:78.3")
     // Spring Boot Starters
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
@@ -133,8 +134,8 @@ dependencies {
 
     // === F09.13 Phase 1-γ Excel生成共通基盤（Apache POI） ===
     // SXSSFWorkbook によるストリーミング生成で大量レコード（〜20,000件）に対応
-    implementation("org.apache.poi:poi:5.2.5")
-    implementation("org.apache.poi:poi-ooxml:5.2.5")
+    implementation("org.apache.poi:poi:5.5.1")
+    implementation("org.apache.poi:poi-ooxml:5.5.1")
 
     // === Markdown → HTML 変換 ===
     implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
