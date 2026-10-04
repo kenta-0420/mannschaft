@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { productionRanchAssetsRegistered } from '~/utils/ranch-assets'
 const props = withDefaults(defineProps<{ active?: boolean; collapsed?: boolean }>(), { active: true, collapsed: undefined })
 const emit = defineEmits<{ 'update:collapsed': [collapsed: boolean] }>()
 const { t } = useI18n()
 const config = useRuntimeConfig()
-const assetContext = { production: !import.meta.dev, isolatedDevelopment: config.public.ranchDevelopmentVisuals === true, publicationEnabled: false }
+const assetContext = { production: !import.meta.dev, isolatedDevelopment: config.public.ranchDevelopmentVisuals === true, publicationEnabled: productionRanchAssetsRegistered() }
 const reaction = shallowRef<{ key: string; dinosaurId: string; sequence: number; soundToken: number | null } | null>(null)
 let reactionSequence = 0
 const scene = ref<{ prepareTouchSound: () => number | null; cancelTouchSound: (token: number | null) => void } | null>(null)

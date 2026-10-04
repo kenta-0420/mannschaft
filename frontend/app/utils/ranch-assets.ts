@@ -1,4 +1,5 @@
 import type { DinosaurSummary, RenderStyle } from '~/types/ranch'
+import { productionRanchAssets } from './ranch-production-assets'
 export interface RanchAssetEntry {
  readonly assetKey: string
  readonly speciesKey: string
@@ -9,6 +10,7 @@ export interface RanchAssetEntry {
  readonly approval: 'DRAFT' | 'APPROVED'
  readonly origin: 'PRODUCTION' | 'ISOLATED_DEVELOPMENT'
  readonly src: string
+ readonly fallbackSrc?: string
  readonly sourceWidth: number
  readonly sourceHeight: number
  readonly columnBoundaries: readonly number[]
@@ -16,7 +18,8 @@ export interface RanchAssetEntry {
  readonly frames: number
  readonly sourceSha256: string
 }
-const productionManifest: readonly RanchAssetEntry[] = []
+const productionManifest = productionRanchAssets
+export function productionRanchAssetsRegistered() { return productionManifest.length === 512 }
 // COREで静的採択した専用開発catalog。本番64種の承認とは別に扱う。
 const developmentCatalogVersion = '2'
 export const developmentRanchAssets: readonly RanchAssetEntry[] = Object.freeze([
