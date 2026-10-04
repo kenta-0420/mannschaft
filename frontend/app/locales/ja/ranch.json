@@ -1,5 +1,7 @@
 {
   "ranch": {
+    "status": {"growth":"成長","points":"装飾ポイント残高","affinity":"親密さ","freeCare":"無料ケア規則","careAvailable":"公開中","careStopped":"準備中・停止中","careRemaining":"今週の無料ケア残枠: {remaining} / {cap} XP","careUsed":"使用済み: {used} XP / 一回の量: {amount} XP","deliveryPaused":"ポイント配送は一時停止中です。無料ケアの停止とは別です。","deliveryActive":"ポイントの反映に時間がかかる場合があります。","pointRemaining":"今週の活動ポイント残枠: {remaining}","personalReference":"個人想起の参考件数: {required} / 完了 {completed}","referenceNotice":"件数は目安です。各源の上限・停止・配送状況により、全額の獲得を保証するものではありません。","reward":{"ENABLED":"活動ポイントは有効です。","DISABLED":"活動ポイントは未登録・無効です。","PAUSED":"活動の報酬は停止中です。"}},
+    "admin": {"title":"恐竜の運営","controls":"利用制御","care":"無料ケアを利用可能にする","shop":"ショップを利用可能にする","deliveryPause":"ポイント配送を一時停止する","rewardPause":"発生した活動の報酬を停止する","independent":"無料ケア・交換・活動報酬・配送はそれぞれ独立しています。","reason":"理由コード","saved":"保存しました。","health":"活動源の配送状況","pending":"待機件数","dead":"終端失敗件数","oldest":"最も古い待機の経過","seconds":"{count} 秒","refresh":"再取得","retrySource":"同じイベントの再配送を予約","retryNotice":"再配送の予約であり、ポイント付与の完了ではありません。本文や学習回答は入力しないでください。","sourceLabel":"活動源","eventId":"イベント ID","RETRY_SCHEDULED":"再配送を予約しました。","ALREADY_TERMINAL":"このイベントはすでに終端です。","source":{"ATTENDANCE_RESPONSE":"本人の出欠回答","TIMELINE_ORIGINAL":"本人のタイムライン投稿","BLOG_FIRST_PUBLISH":"ブログの初回公開","PERSONAL_RECALL_COMPLETE":"個人の想起完了"}},
     "title": "恐竜の部屋",
     "optional": "任意で始められます。無料のお世話だけで成体まで育ち、放置しても失いません。親しさは時間で減りません。",
     "start": "卵から始める",

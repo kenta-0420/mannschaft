@@ -85,6 +85,7 @@ onUnmounted(() => document.removeEventListener('visibilitychange', updateVisibil
   <template v-else-if="ranch.state.value?.dinosaur && ranch.state.value.settings">
    <DinosaurScene ref="scene" :sound-enabled="ranch.state.value.settings.isSoundEnabled" :sound-volume="ranch.state.value.settings.soundVolume" :dinosaur="ranch.state.value.dinosaur" :render-style="ranch.state.value.settings.renderStyle" :motion-mode="ranch.state.value.settings.motionMode" :background-paused="ranch.state.value.owner?.status === 'PAUSED'" :active="sceneActive" :asset-context="assetContext" :reaction="reaction" />
    <p v-if="ranch.state.value.owner?.status === 'PAUSED'" class="mt-2">{{ t('ranch.paused') }}</p>
+   <RanchShelves :slots="ranch.state.value.roomSlots" :active="sceneActive" />
    <div class="grid grid-cols-3 gap-2 mt-3">
     <Button class="min-h-11" :label="t(egg ? 'ranch.care.eggTouch' : 'ranch.care.food')" :disabled="ranch.api.command.running.value || (!egg && feedingUnavailable && !ranch.api.command.pending.value)" @click="care(egg ? 'touch' : 'feed')" />
     <Button v-if="egg" class="min-h-11" :label="t('ranch.care.choose')" outlined @click="navigateTo('/my/ranch/assignment')" />

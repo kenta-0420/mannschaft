@@ -2,6 +2,8 @@
 
 あらゆる組織・チーム・個人をシームレスに管理するWebアプリケーション。
 
+[本人の恐竜アバター Phase 1](docs/features/F04.7_dinosaur_ranch/05_acceptance_rollout.md) は製造中で、73受け入れ条件・実機・アリシゼーションの全体合格は未完了です。全64素材と対応表は未承認・未登録で、本番公開 gate は OFF を維持します。明示した非本番の隔離 fixture は実装検証専用で、素材完成や本番公開準備の証拠には数えません。
+
 ブログ・予定のmultipartメディアは保存済み所有スコープと添付IDへ束縛し、ACL照合後に署名URLを発行する。開始・完了・再試行・旧データの扱いは[ファイル・ストレージセキュリティ](docs/security/07_file_and_storage_security.md#42-cmp-057-multipart-の保存台帳とclaim2026-09)を参照。
 
 ---
