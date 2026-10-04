@@ -85,7 +85,7 @@ class PersonalSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             "actionmemo", "pointcard", "timeline", "search", "dashboard", "scopefolder", "schedule", "quickmemo",
             "auth", "notification", "filesharing", "contact", "user", "appearance", "navsettings", "gamification",
             "reflection", "timetable.personal", "cms", "chat", "knowledgebase", "favorite", "membership", "weather",
-            "inbox", "timetable.notes", "seal");
+            "inbox", "timetable.notes", "seal", "village.settings");
     private static final List<String> EXISTING_DOMAINS = List.of(
             "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing");
     private static final List<String> RETAINED_UNTIL_STRONG = Stream.concat(

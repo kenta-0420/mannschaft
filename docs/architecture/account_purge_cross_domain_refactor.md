@@ -747,7 +747,7 @@ SUCCESSを記録する。途中SQL失敗はowner全体をrollbackし、完了更
 GDPRリポジトリ自身のTXで結果を保存する。旧7のTX入口から新27へ到達させない。空・重複は冪等に処理する。
 
 弱イベントは引き続き休眠中であり、この強側安全網は即時匿名化の有効化を意味しない。
-共有本文・membership・visibility_templates・村pin/nicknameは今回対象外。時間割メモの定義のみ削除し本文JSONを残し、
+共有本文・membership・visibility_templatesは対象外。村pin/nicknameは前回の38親表subsetでは対象外で、下記追加2設定の強側安全網として扱う。時間割メモの定義のみ削除し本文JSONを残し、
 seal_scope_defaultsの選択のみ削除し印鑑・押印履歴を残す。新DDL・pool・共通busは追加しない。
 正式GREENと全AC完了は、この実装sourceでのCI/実機証跡取得後に判断する。
 
@@ -800,5 +800,21 @@ seal_scope_defaultsの選択のみ削除し印鑑・押印履歴を残す。新D
 `chat_channel_members`（membership共有契約）、`activity_feed`（既存30日TTLの共有履歴）である。
 本文・認証・同意・参加履歴等を設定と一律に扱わない。
 `visibility_templates` / 子rulesは正本の理由文言に矛盾がありユーザー判断待ちで変更しない。
-村pin/nicknameは既存即時匿名化契約の別残件とし、この設定強消去へ混ぜない。
+村pin/nicknameの既存弱イベント・即時匿名化の時期は変更しない。追加2設定の強側安全網は下記の独立したsubsetで扱う。
 これらの除外・保留を含む棚卸であり、今回の38親表が全システムの個人データ全体の上限であるとはしない。
+
+### 追加2設定: 村ピン・ニックネームの30日後強消去
+
+退会設計§13の村ドメインDay30強消去とF17.1§7.1の本人全行削除を、`village.settings` の安全網として補完する。
+対象は `user_village_pins` と `user_village_nicknames` の `user_id` が本人の行だけ。ニックネームは全村共通・村別とも全行を削除する。
+両表のowner索引を利用したnative DELETEを既存VillageUserCleanerEventListenerの同一REQUIRES_NEWで実行する。
+村本体・所属・憲章・投稿はこの強入口から操作せず、既存UserAnonymizedEventの弱処理は変更しない。
+
+既8＋設定28の計36domainを本体TXでPENDING登録してからAccountPurgedEventを発行する。
+村設定ownerのDELETE commit後だけ、afterCommitからCompletionServiceの別REQUIRES_NEWでSUCCESSを記録する。
+途中DELETE失敗は2表ともrollback、queue拒否は未処理行とPENDINGを保持、完了記録失敗はdata0/PENDINGを保持する。
+非TXの既設定retryからowner proxyを呼び、commit成立後だけ既GDPR保存TXでSUCCESSと試行数を記録する。
+
+`VillageSettingsAccountPurgeIT` の6件は期限前・取消保持、本人複数行消去／別owner全列不変、空・重複、
+両表それぞれの途中失敗rollbackと実retry、完了記録失敗、queue拒否を対象にする。村本体は2行の件数保持を検証する。
+新sourceでのGREENは正式CIで別途確認する。visibility_templatesの保持・消去判断は未回答のまま、このsubsetへ追加しない。
