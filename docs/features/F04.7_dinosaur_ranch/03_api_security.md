@@ -246,3 +246,7 @@ CMS再処理はsource/event/reasonを正準length-prefix SHA256で比較し、�
 
 
 ReflectionRanchOutboxDeliveryService / ReflectionRanchOutboxAdminService は V246 の reflection-own短TXで同じ公開配送・管理契約を実装する。admin保存kindは既CHECKのOUTBOX_RETRY。payloadはReflectionRecallRewardPayloadで厳格復元し、DB技術headerと一致するものだけleaseする。今回までCMS/Reflectionの二源だけ実Bean設置、TL/出欠が未完成なのでaggregate healthは引き続き001/503。各receiver・lease・再処理ITはprepared/not-runで、実HTTP認可・本番availabilityと区別する。
+
+### F00 源所有リンク境界（実ACL Bean未接続）
+
+公開SPIは common.ranchsource.api.SourceRewardLinkProvider#resolve(viewerUserId,SourceRewardReference):Optional<SourceRewardLink>。参照は sourceType/idType/sourceId の正準技術IDのみ。ARはUUIDv7 entry、TL/出欠/CMSは正準正整数LONG。出欠源がresponse IDをschedule IDへ変換し、CMS源が現scope/slugから実画面ルートを決定する。返却kindはTIMELINE/SCHEDULE/BLOG/REFLECTION_ENTRY、本文/名称/recipientを含めない。Ranch TX終了後に呼び、現在のF00認可・削除・実存を通過した時だけリンクを返す。欠落provider、不在、認可拒否、取得不能はnull。現時点は公開型と純粋型試験のみで、四源ACL実Bean/第三接続の閉包/実HTTPは未検証。
