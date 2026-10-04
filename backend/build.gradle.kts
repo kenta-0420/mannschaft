@@ -172,7 +172,7 @@ dependencies {
     implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
 
     // === HTML サニタイズ（F02.5 publish-daily extra_comment 用。将来 F04.1 統合検討） ===
-    implementation("org.jsoup:jsoup:1.18.1")
+    implementation("org.jsoup:jsoup:1.22.2")
 
     // === F04.3 PWA Push: VAPID署名 + Web Push HTTP送信 ===
     // web-push-java: VAPID鍵ペア署名・暗号化ペイロード送信の実装ライブラリ
@@ -322,6 +322,7 @@ object ShardAssignment {
 class ShardCoverageClassFile(val path: String, val topLevelFqcn: String)
 
 tasks.withType<Test> {
+    val testTaskName = name
     // 通常スイートは従来どおり JST 固定。CMP-023 の非JST CIだけが
     // -Ptest.timezone=America/Los_Angeles で明示的に上書きする。
     // System.getProperty("user.timezone") では Gradle JVM 側の値を拾ってしまうため、
@@ -337,7 +338,15 @@ tasks.withType<Test> {
     // 依存しない決定論的な構成にする。
     // =====================================================================
     val isPerfTask = name == "perfTest"
+    val isArchUnitTask = name == "archUnitTest"
     useJUnitPlatform {
+        // 同じ番人を専用 JVM で実行し、Spring の TestContext 累積と同居させない。
+        // 走査範囲・ImportOption・シャード割当は変更せず、engine だけを分離する。
+        if (isArchUnitTask) {
+            includeEngines("archunit")
+        } else {
+            excludeEngines("archunit")
+        }
         if (isPerfTask) {
             includeTags("perf")
         } else {
@@ -406,7 +415,7 @@ tasks.withType<Test> {
     // CI 環境ではデフォルト 2 のまま動作する。
     // perfTask は単一クラスのため並列 fork しない（Testcontainer/測定の相互干渉を避ける）。
     maxParallelForks =
-        if (isPerfTask) 1 else ((project.findProperty("max.parallel.forks") as String?)?.toInt() ?: 2)
+        if (isPerfTask || isArchUnitTask) 1 else ((project.findProperty("max.parallel.forks") as String?)?.toInt() ?: 2)
     // GC を明示し OOM 時にヒープダンプを残す（CI で再発時の調査用）
     //
     // -Dcom.mysql.cj.disableAbandonedConnectionCleanup=true:
@@ -449,6 +458,7 @@ tasks.withType<Test> {
             result: org.gradle.api.tasks.testing.TestResult
         ) {
             if (suite.parent == null) {
+                logger.lifecycle("[test-jvm] タスク = $testTaskName")
                 logger.lifecycle(
                     "[test-jvm] 起動したテスト JVM 数 = ${testJvmNames.size}" +
                         "（forkEvery=${forkEvery} / maxParallelForks=${maxParallelForks}）" +
@@ -617,7 +627,10 @@ tasks.withType<Test> {
         }
     }
 
-    finalizedBy(tasks.jacocoTestReport)
+    // 先行する ArchUnit 実行では確定せず、既存の test/perfTest 等の終端集計を維持する。
+    if (!isArchUnitTask) {
+        finalizedBy(tasks.jacocoTestReport)
+    }
     testLogging {
         // 失敗時に完全スタックトレースを出力する。CI ログのみで NPE 起源を追跡できるようにする。
         showStandardStreams = false
@@ -627,6 +640,25 @@ tasks.withType<Test> {
         showExceptions = true
         showCauses = true
     }
+}
+
+// 全 ArchUnit engine の番人を新しい JVM で実行する。クラス名で選別しない。
+// withType<Test> の同じ heap・タグ・シャード/profile フィルタを継承する。
+// 通常 test の必須依存なので、番人の失敗は既存の CI ゲートを失敗させる。
+val archUnitTest = tasks.register<Test>("archUnitTest") {
+    group = "verification"
+    description = "全 ArchUnit 番人を Spring テストから分離した JVM で実行する"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    doFirst {
+        // 宣言値ではなく、この実行で解決された jar の版を CI の対照証跡に残す。
+        val archUnitJars = classpath.files.filter { it.name.startsWith("archunit-") }
+            .map { it.name }.sorted()
+        logger.lifecycle("[archunit-runtime] " + archUnitJars.joinToString(", "))
+    }
+}
+tasks.named<Test>("test") {
+    dependsOn(archUnitTest)
 }
 
 // =============================================================================
@@ -841,6 +873,8 @@ tasks.register("verifyShardCoverage") {
 }
 
 tasks.jacocoTestReport {
+    // 旧 test.exec に含まれた番人の実行分も合算する。実行依存は追加しない。
+    executionData(archUnitTest.get())
     reports {
         csv.required = true
     }
