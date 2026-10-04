@@ -42,4 +42,33 @@ public class RanchOwnerEntity extends RanchEntity {
     private int soundVolume;
     @Column(name = "version", nullable = false)
     private long version;
+
+    public void updateSettings(RenderStyle nextRenderStyle, MotionMode nextMotionMode,
+                               boolean nextSoundEnabled, int nextSoundVolume) {
+        if (nextRenderStyle == null || nextMotionMode == null
+                || nextSoundVolume < 0 || nextSoundVolume > 100) {
+            throw new IllegalArgumentException("設定値が不正です");
+        }
+        renderStyle = nextRenderStyle;
+        motionMode = nextMotionMode;
+        soundEnabled = nextSoundEnabled;
+        soundVolume = nextSoundVolume;
+        version = Math.addExact(version, 1);
+    }
+
+    public void pause() {
+        if (status != ParticipationStatus.ACTIVE) {
+            throw new IllegalStateException("ACTIVEの牧場だけ休止できます");
+        }
+        status = ParticipationStatus.PAUSED;
+        version = Math.addExact(version, 1);
+    }
+
+    public void resume() {
+        if (status != ParticipationStatus.PAUSED) {
+            throw new IllegalStateException("PAUSEDの牧場だけ再開できます");
+        }
+        status = ParticipationStatus.ACTIVE;
+        version = Math.addExact(version, 1);
+    }
 }
