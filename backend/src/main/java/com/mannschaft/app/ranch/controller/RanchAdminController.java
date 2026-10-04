@@ -11,6 +11,10 @@ import com.mannschaft.app.ranch.dto.RanchCareRulePublicationRequest;
 import com.mannschaft.app.ranch.dto.RanchCareRulePublicationResponse;
 import com.mannschaft.app.ranch.dto.RanchCareRuleSummary;
 import com.mannschaft.app.ranch.dto.RanchOperationalControlsResponse;
+import com.mannschaft.app.ranch.dto.RanchOperationalControlsRequest;
+import com.mannschaft.app.ranch.dto.RanchPolicyPublicationRequest;
+import com.mannschaft.app.ranch.dto.RanchPolicyPublicationResponse;
+import com.mannschaft.app.ranch.dto.RanchPolicySummary;
 import com.mannschaft.app.ranch.service.RanchAdminFacade;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -22,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -77,5 +82,41 @@ public class RanchAdminController {
 
     private <T> ResponseEntity<T> noStore(T data) {
         return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "private, no-store").body(data);
+    }
+
+    @PutMapping("/operational-controls")
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "公開停止中でもfresh SYSTEM_ADMINが運営停止と公開設定を変更する管理入口")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
+            content = @Content(schema = @Schema(implementation = RanchOperationalControlsRequest.class)))
+    public ResponseEntity<ApiResponse<RanchOperationalControlsResponse>> updateControls(
+            @RequestHeader("Idempotency-Key") UUID key, @RequestBody JsonNode body,
+            HttpServletRequest request, HttpServletResponse response) {
+        Long actorId = access.requireSelfAccess(request, response);
+        return noStore(ApiResponse.of(facade.updateControls(actorId, key, body)));
+    }
+
+    @GetMapping("/policies")
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "公開停止中でもfresh SYSTEM_ADMINが不変報酬政策の履歴を照会する管理入口")
+    public ResponseEntity<CursorPagedResponse<RanchPolicySummary>> policies(
+            @RequestParam(required = false) String cursor, @RequestParam(defaultValue = "20") int limit,
+            HttpServletRequest request, HttpServletResponse response) {
+        Long actorId = access.requireSelfAccess(request, response);
+        return noStore(facade.policies(actorId, cursor, limit));
+    }
+
+    @PostMapping("/policies")
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "公開停止中でもfresh SYSTEM_ADMINが将来UTC週の報酬政策を登録する管理入口")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
+            content = @Content(schema = @Schema(implementation = RanchPolicyPublicationRequest.class)))
+    public ResponseEntity<ApiResponse<RanchPolicyPublicationResponse>> publishPolicy(
+            @RequestHeader("Idempotency-Key") UUID key, @RequestBody JsonNode body,
+            HttpServletRequest request, HttpServletResponse response) {
+        Long actorId = access.requireSelfAccess(request, response);
+        var result = facade.publishPolicy(actorId, key, body);
+        return ResponseEntity.status(result.createdNow() ? HttpStatus.CREATED : HttpStatus.OK)
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store").body(ApiResponse.of(result.response()));
     }
 }
