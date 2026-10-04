@@ -161,7 +161,8 @@ describe('管理命令とhealthの有限・本人境界（未実測）', () => {
   const saved = JSON.parse(posted.body) as RanchCareRulePublicationRequest
   expect(saved.juvenileXp).toBe('9007199254740993')
   expect(saved.adultXp).toBe('9007199254740994')
-  expect(wrapper.text()).toContain(useNuxtApp().$i18n.t('ranch.admin.publicationSaved', { version: '1', effectiveAt: saved.effectiveAt }))
+  // POST dispatchより後にofetchの本文読取り・saved emit・親DOM更新が完了する。
+  await vi.waitFor(() => expect(wrapper.text()).toContain(useNuxtApp().$i18n.t('ranch.admin.publicationSaved', { version: '1', effectiveAt: saved.effectiveAt })))
  })
  it('停止policyも正の値を要求しPERSONAL OFFとBIGINT上限を正準送信する', async () => {
   const wrapper = await mountSuspended(AdminPage); wrappers.push(wrapper)
