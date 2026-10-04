@@ -4,6 +4,7 @@ import com.mannschaft.app.common.repository.AbstractUserOwnedRepository;
 import com.mannschaft.app.inbox.entity.NotificationLabelEntity;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -54,4 +55,9 @@ public interface NotificationLabelRepository
     @Modifying
     @Query("DELETE FROM NotificationLabelEntity e WHERE e.userId = :userId")
     void deleteAllByUserId(Long userId);
+
+    /** 強匿名化専用。対象利用者の行を論理削除済みも含めて物理削除する。 */
+    @Modifying
+    @Query(value = "DELETE FROM notification_labels WHERE user_id = :userId", nativeQuery = true)
+    int deleteAllByUserIdIncludingDeleted(@Param("userId") Long userId);
 }
