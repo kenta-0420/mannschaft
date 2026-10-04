@@ -703,8 +703,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      * このブランチの分岐後に main 側で解消された D-1 越境依存 61 行が chip-away
      * （FreezingArchRule の既定挙動・解消済み違反の自動削除）で反映された。フルビルド
      * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値へ追随。</p>
+     * <p>正式1e8の全量解析と原因検分で確認した旧原因17件の削減（2063→2046）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2063;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2046;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -719,10 +720,11 @@ class ArchUnitFreezeStoreIntegrityTest {
      *
      * <p>CMP-260820-1014 で所属スコープ列挙を正本サービスへ集約後、CIフル解析で実測した
      * {@code 1450 → 1407}（43件解消）へ追随。</p>
+     * <p>正式1e8の削減41件は旧原因3件と注釈入口scope38件。scope分は越境解消としない。</p>
      */
     // origin/main の CMP-260922-2230（1459→1447、12件解消）は上記1407行版の
     // 削除集合に全件包含されるため、並行ブランチの削除数を二重加算しない。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1407;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1366;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -790,8 +792,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （認可の {@code checkAdminOrAbove} 経由の到達のみだったため）。同メソッドの UserRoleRepository・通知・監査ログ・
      * UserRepository への行は、未提出者の抽出・通知・監査ログという業務由来の到達なので残す。
      * main のストアとの差分は「追加 0・削除 82（上記のキーのみ）」。{@code 7538（W5 #3600 取込み後の main） → 7456}。</p>
+     * <p>正式1e8の削減47件は旧原因35件と注釈入口scope12件。scope分は越境解消としない。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7456;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7409;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -873,11 +876,15 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code MembershipSubscriptionService} 経由（Service 経由・CLAUDE.md のモジュラーモノリス原則）で
      * のみ触れる形に是正し、Repository への直接依存を撤去したため。
      * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
+     * <p>正式1e8の全量解析と原因検分で確認した旧原因73件の削減（1938→1865）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1938;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1865;
 
-    /** ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。 */
-    private static final int EXPECTED_LINES_SERVICE_API = 607;
+    /**
+     * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。
+     * <p>正式1e8の全量解析と原因検分で旧原因2件の削減を確認（607→605）。</p>
+     */
+    private static final int EXPECTED_LINES_SERVICE_API = 605;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
