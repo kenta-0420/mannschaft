@@ -1853,7 +1853,6 @@ class GlobalExceptionHandlerTest {
             GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
 
             HandlerMethodValidationException ex = mock(HandlerMethodValidationException.class);
-            when(ex.getMessage()).thenReturn("validation failed");
 
             ResponseEntity<ErrorResponse> resp = handler.handleHandlerMethodValidation(ex);
 
