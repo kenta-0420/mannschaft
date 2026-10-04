@@ -25,8 +25,16 @@ class RanchDevelopmentVisualCatalogTest {
                 DinosaurStage.JUVENILE, RenderStyle.PIXEL)).isEmpty();
         assertThat(catalog.find(2L, "DEV_TRICERATOPS", "DEV_ORANGE_96_WALK_V1",
                 DinosaurStage.ADULT, RenderStyle.PIXEL)).isEmpty();
+        var paint = catalog.find(2L, "DEV_TRICERATOPS", "DEV_ORANGE_96_WALK_V1",
+                DinosaurStage.BABY, RenderStyle.PAINT_2D).orElseThrow();
+        assertThat(paint.assetKey()).isEqualTo("dev-triceratops-orange-paint2d-walk-v1");
+        assertThat(paint.sha256()).isEqualTo(
+                "f7d5d8822ee2e41b8b41200bb0547195586c1ea8a558b294d38b445450322c19");
+        assertThat(paint.frames()).isEqualTo(8);
+        assertThat(paint.xBoundaries()).containsExactly(0, 444, 887, 1331, 1774);
+        assertThat(paint.yBoundaries()).containsExactly(0, 444, 887);
         assertThat(catalog.find(2L, "DEV_TRICERATOPS", "DEV_ORANGE_96_WALK_V1",
-                DinosaurStage.BABY, RenderStyle.PAINT_2D)).isEmpty();
+                DinosaurStage.JUVENILE, RenderStyle.PAINT_2D)).isEmpty();
         assertThat(catalog.find(1L, "S01", "V1", DinosaurStage.BABY,
                 RenderStyle.PIXEL)).isEmpty();
     }

@@ -7,6 +7,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -19,6 +20,10 @@ public final class RanchDevelopmentVisualCatalog {
     public static final String ASSET_KEY = "dev-triceratops-orange-pixel96-walk-v1";
     public static final String SHA256 =
             "8ad7de84f1d0f495f9aeda86175f9c914fd0cbb788079b4f3c7e101f91358117";
+
+    public static final String PAINT_ASSET_KEY = "dev-triceratops-orange-paint2d-walk-v1";
+    public static final String PAINT_SHA256 =
+            "f7d5d8822ee2e41b8b41200bb0547195586c1ea8a558b294d38b445450322c19";
 
     private final boolean enabled;
 
@@ -38,11 +43,25 @@ public final class RanchDevelopmentVisualCatalog {
         Objects.requireNonNull(style);
         if (!enabled || catalogVersion != CATALOG_VERSION
                 || !SPECIES_KEY.equals(speciesKey) || !VARIANT_KEY.equals(variantKey)
-                || stage != DinosaurStage.BABY || style != RenderStyle.PIXEL) {
+                || stage != DinosaurStage.BABY) {
             return Optional.empty();
         }
-        return Optional.of(new Visual(ASSET_KEY, SHA256, 96, 8));
+        if (style == RenderStyle.PIXEL) {
+            return Optional.of(new Visual(ASSET_KEY, SHA256, 96, 8,
+                    List.of(0, 96, 192, 288, 384, 480, 576, 672, 768), List.of(0, 96)));
+        }
+        if (style == RenderStyle.PAINT_2D) {
+            return Optional.of(new Visual(PAINT_ASSET_KEY, PAINT_SHA256, 0, 8,
+                    List.of(0, 444, 887, 1331, 1774), List.of(0, 444, 887)));
+        }
+        return Optional.empty();
     }
 
-    public record Visual(String assetKey, String sha256, int cellPixels, int frames) { }
+    public record Visual(String assetKey, String sha256, int cellPixels, int frames,
+                         List<Integer> xBoundaries, List<Integer> yBoundaries) {
+        public Visual {
+            xBoundaries = List.copyOf(xBoundaries);
+            yBoundaries = List.copyOf(yBoundaries);
+        }
+    }
 }
