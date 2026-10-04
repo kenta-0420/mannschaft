@@ -34,6 +34,7 @@ repositories {
 val mapstructVersion = "1.6.3"
 
 dependencies {
+    implementation("com.ibm.icu:icu4j:78.3")
     // Spring Boot Starters
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
