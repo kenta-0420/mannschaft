@@ -12,6 +12,7 @@ import com.mannschaft.app.ranch.AssignmentMethod;
 import com.mannschaft.app.ranch.Habitat;
 import com.mannschaft.app.ranch.dto.RanchAssignmentRequest;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
 
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,7 @@ class RanchProductionMasterRegistryTest {
     @Test
     void 合成64組と512有限素材ならcoverageとして受理する() {
         ObjectNode source = complete();
-        assertThat(RanchProductionMasterRegistry.validate(source, VERSION, "a".repeat(64)).version())
+        assertThat(RanchProductionMasterRegistry.validateStructure(source, VERSION, "a".repeat(64)).version())
                 .isEqualTo(VERSION);
     }
 
@@ -41,23 +42,23 @@ class RanchProductionMasterRegistryTest {
     void 一素材欠落と未承認とdev種を拒否する() {
         ObjectNode missing = complete();
         ((ArrayNode) missing.path("assets")).remove(511);
-        assertThatThrownBy(() -> RanchProductionMasterRegistry.validate(missing, VERSION,
+        assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(missing, VERSION,
                 "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
 
         ObjectNode unapproved = complete();
         unapproved.put("approved", false);
-        assertThatThrownBy(() -> RanchProductionMasterRegistry.validate(unapproved, VERSION,
+        assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(unapproved, VERSION,
                 "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
 
         ObjectNode dev = complete();
         ((ObjectNode) dev.path("catalog").get(0)).put("speciesKey", "DEV_TRICERATOPS");
-        assertThatThrownBy(() -> RanchProductionMasterRegistry.validate(dev, VERSION,
+        assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(dev, VERSION,
                 "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void syntheticApprovedMasterResolvesDiagnosisAndConfirmedBirthWithoutSourceContents() {
-        var master = RanchProductionMasterRegistry.validate(complete(), VERSION, "a".repeat(64));
+        var master = RanchProductionMasterRegistry.validateStructure(complete(), VERSION, "a".repeat(64));
         var rules = mock(RanchRuleProvider.class);
         when(rules.currentCareRule(any())).thenReturn(java.util.Optional.of(
                 new RanchRuleProvider.CareRuleSnapshot(UUID.randomUUID(), "care-synthetic-v1",
@@ -99,6 +100,35 @@ class RanchProductionMasterRegistryTest {
                 "000001", Map.of(), null, Map.of(), Map.of());
         assertThatThrownBy(() -> resolver.resolveApproved(diagnosisRequest, stale, null, master))
                 .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+    }
+
+    @Test
+    void unregisteredAssetPackCannotBecomePublicationReady() {
+        var noRegistration = new RanchProductionMasterRegistry(new MockEnvironment(), json);
+        assertThat(noRegistration.current()).isEmpty();
+        var missingPack = new MockEnvironment()
+                .withProperty("mannschaft.ranch.production-master.resource",
+                        "ranch/approved/synthetic-complete-v1.json")
+                .withProperty("mannschaft.ranch.production-master.version", VERSION)
+                .withProperty("mannschaft.ranch.production-master.sha256", "a".repeat(64));
+        assertThatThrownBy(() -> new RanchProductionMasterRegistry(missingPack, json))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void numericCoercionAndOverflowCannotRegisterMaster() {
+        ObjectNode textVersion = complete();
+        textVersion.put("catalogVersion", "7");
+        assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(
+                textVersion, VERSION, "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
+        ObjectNode overflow = complete();
+        overflow.put("catalogVersion", new java.math.BigInteger("9223372036854775808"));
+        assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(
+                overflow, VERSION, "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
+        ObjectNode birthText = complete();
+        ((ObjectNode) birthText.path("birthMappings").get(0)).put("lifePathNumber", "1");
+        assertThatThrownBy(() -> RanchProductionMasterRegistry.validateStructure(
+                birthText, VERSION, "a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
     }
 
     private ObjectNode complete() {

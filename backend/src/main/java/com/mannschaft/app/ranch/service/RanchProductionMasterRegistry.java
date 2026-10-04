@@ -37,9 +37,12 @@ public final class RanchProductionMasterRegistry {
         }
         String version = environment.getProperty(PREFIX + "version");
         String expectedHash = environment.getProperty(PREFIX + "sha256");
+        String packVersion = environment.getProperty(PREFIX + "asset-pack-version");
+        String packHash = environment.getProperty(PREFIX + "asset-pack-sha256");
         if (!resource.matches("ranch/approved/[A-Za-z0-9._/-]+\\.json")
                 || resource.contains("..") || !token(version)
-                || expectedHash == null || !expectedHash.matches("[0-9a-fA-F]{64}")) {
+                || expectedHash == null || !expectedHash.matches("[0-9a-fA-F]{64}")
+                || !token(packVersion) || !digest(packHash)) {
             throw new IllegalStateException("本番恐竜masterの明示登録が不正です");
         }
         try (var stream = new ClassPathResource(resource).getInputStream()) {
@@ -50,7 +53,8 @@ public final class RanchProductionMasterRegistry {
                 throw new IllegalStateException("本番恐竜masterの内容hashが一致しません");
             }
             JsonNode parsed = json.readTree(new String(source, StandardCharsets.UTF_8));
-            current = Optional.of(validate(parsed, version, actualHash));
+            VerifiedAssetPack pack = verifyAssetPack(json, packVersion, packHash);
+            current = Optional.of(validate(parsed, version, actualHash, pack));
         } catch (IOException | NoSuchAlgorithmException invalid) {
             throw new IllegalStateException("本番恐竜masterを検証できません", invalid);
         }
@@ -68,7 +72,12 @@ public final class RanchProductionMasterRegistry {
         }
     }
 
-    static RegisteredMaster validate(JsonNode root, String registeredVersion, String hash) {
+    static RegisteredMaster validateStructure(JsonNode root, String registeredVersion, String hash) {
+        return validate(root, registeredVersion, hash, null);
+    }
+
+    private static RegisteredMaster validate(JsonNode root, String registeredVersion,
+                                             String hash, VerifiedAssetPack verifiedPack) {
         if (root == null || !root.isObject() || !root.path("approved").isBoolean()
                 || !root.path("approved").booleanValue()
                 || !registeredVersion.equals(root.path("version").asText(null))) {
@@ -86,6 +95,7 @@ public final class RanchProductionMasterRegistry {
                 || !assets.isArray() || assets.size() != 512
                 || !birthMappings.isArray() || birthMappings.size() != 81
                 || !root.path("catalogVersion").isIntegralNumber()
+                || !root.path("catalogVersion").canConvertToLong()
                 || catalogVersion <= 0 || !compatibility.isObject()) {
             throw new IllegalArgumentException("本番恐竜masterの64組・3生息地・素材coverageが不足しています");
         }
@@ -122,8 +132,12 @@ public final class RanchProductionMasterRegistry {
         if (!mapped.equals(pairs)) throw incomplete();
         Map<BirthPair, Pair> byBirthNumbers = new HashMap<>();
         for (JsonNode item : birthMappings) {
-            int life = item.path("lifePathNumber").asInt(0);
-            int name = item.path("nameNumber").asInt(0);
+            JsonNode lifeNode = item.path("lifePathNumber");
+            JsonNode nameNode = item.path("nameNumber");
+            if (!lifeNode.isIntegralNumber() || !lifeNode.canConvertToInt()
+                    || !nameNode.isIntegralNumber() || !nameNode.canConvertToInt()) throw incomplete();
+            int life = lifeNode.intValue();
+            int name = nameNode.intValue();
             Pair target = pair(item);
             if (life < 1 || life > 9 || name < 1 || name > 9 || !pairs.contains(target)
                     || byBirthNumbers.putIfAbsent(new BirthPair(life, name), target) != null) {
@@ -155,12 +169,25 @@ public final class RanchProductionMasterRegistry {
                     || !STAGES.contains(stage) || !STYLES.contains(style)
                     || !requiredReaction(stage).equals(item.path("reactionKey").asText(null))
                     || !token(item.path("assetKey").asText(null))
-                    || !token(item.path("staticFallbackKey").asText(null))
                     || !digest(item.path("sha256").asText(null))
                     || !digest(item.path("staticFallbackSha256").asText(null))
                     || !seen.add(new Visual(pair, stage, style))) throw incomplete();
         }
         if (seen.size() != 512) throw incomplete();
+        if (verifiedPack != null) {
+            if (verifiedPack.catalogVersion() != catalogVersion
+                    || !verifiedPack.assets().keySet().equals(seen)) throw incomplete();
+            for (JsonNode item : assets) {
+                Visual visual = new Visual(pair(item), item.path("stage").asText(),
+                        item.path("style").asText());
+                AssetRow verified = verifiedPack.assets().get(visual);
+                if (verified == null
+                        || !verified.assetKey().equals(item.path("assetKey").asText())
+                        || !verified.sha256().equalsIgnoreCase(item.path("sha256").asText())
+                        || !verified.fallbackSha256().equalsIgnoreCase(
+                                item.path("staticFallbackSha256").asText())) throw incomplete();
+            }
+        }
         return new RegisteredMaster(registeredVersion, hash, catalogVersion,
                 Map.copyOf(byTypeCode), Map.copyOf(byBirthNumbers), Map.copyOf(habitatByPair),
                 resultSchemaVersion, questionnaireVersion, scoringVersion,
@@ -183,6 +210,70 @@ public final class RanchProductionMasterRegistry {
 
     private static boolean digest(String value) {
         return value != null && value.matches("[0-9a-fA-F]{64}");
+    }
+
+    private static VerifiedAssetPack verifyAssetPack(ObjectMapper json,
+            String version, String expectedHash) throws IOException, NoSuchAlgorithmException {
+        String root = "ranch/approved/asset-packs/" + version + "/";
+        byte[] bytes;
+        try (var stream = new ClassPathResource(root + "manifest.json").getInputStream()) {
+            bytes = stream.readAllBytes();
+        }
+        if (!sha256(bytes).equalsIgnoreCase(expectedHash)) throw incomplete();
+        JsonNode manifest = json.readTree(bytes);
+        JsonNode assets = manifest.path("entries");
+        JsonNode catalogVersion = manifest.path("catalogVersion");
+        if (!manifest.path("schemaVersion").isIntegralNumber()
+                || !manifest.path("schemaVersion").canConvertToInt()
+                || manifest.path("schemaVersion").intValue() != 1
+                || !version.equals(manifest.path("packVersion").asText(null))
+                || !"APPROVED".equals(manifest.path("approvalStatus").asText(null))
+                || !"PRODUCTION".equals(manifest.path("environment").asText(null))
+                || !catalogVersion.isIntegralNumber() || !catalogVersion.canConvertToLong()
+                || catalogVersion.longValue() <= 0
+                || !assets.isArray() || assets.size() != 512) throw incomplete();
+        Map<Visual, AssetRow> verified = new HashMap<>();
+        for (JsonNode item : assets) {
+            Visual visual = new Visual(pair(item), item.path("stage").asText(null),
+                    item.path("renderStyle").asText(null));
+            String assetKey = item.path("assetKey").asText(null);
+            String assetHash = item.path("sourceSha256").asText(null);
+            String fallbackHash = item.path("fallbackSha256").asText(null);
+            JsonNode frameWidth = item.path("frameWidth");
+            JsonNode frameHeight = item.path("frameHeight");
+            JsonNode frameCount = item.path("frameCount");
+            if (!STAGES.contains(visual.stage()) || !STYLES.contains(visual.style())
+                    || !token(assetKey) || !positiveFrame(frameWidth)
+                    || !positiveFrame(frameHeight) || !positiveFrame(frameCount)
+                    || !digest(assetHash) || !digest(fallbackHash)
+                    || !assetHash.equalsIgnoreCase(sha256Resource(root,
+                            item.path("filePath").asText(null)))
+                    || !fallbackHash.equalsIgnoreCase(sha256Resource(
+                            root, item.path("fallbackPath").asText(null)))
+                    || verified.putIfAbsent(visual, new AssetRow(assetKey, assetHash,
+                            fallbackHash)) != null) throw incomplete();
+        }
+        return new VerifiedAssetPack(version, expectedHash, catalogVersion.longValue(),
+                Map.copyOf(verified));
+    }
+
+    private static boolean positiveFrame(JsonNode value) {
+        return value.isIntegralNumber() && value.canConvertToInt()
+                && value.intValue() > 0 && value.intValue() <= 4096;
+    }
+
+    private static String sha256Resource(String root, String path)
+            throws IOException, NoSuchAlgorithmException {
+        if (path == null || !path.matches("[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*\\.[A-Za-z0-9]+")
+                || path.contains("..")) throw incomplete();
+        try (var stream = new ClassPathResource(root + path).getInputStream()) {
+            return sha256(stream.readAllBytes());
+        }
+    }
+
+    private static String sha256(byte[] bytes) throws NoSuchAlgorithmException {
+        return java.util.HexFormat.of().formatHex(
+                MessageDigest.getInstance("SHA-256").digest(bytes));
     }
 
     private static String requiredReaction(String stage) {
@@ -230,4 +321,7 @@ public final class RanchProductionMasterRegistry {
     public record Pair(String speciesKey, String variantKey) { }
     public record BirthPair(int lifePathNumber, int nameNumber) { }
     private record Visual(Pair pair, String stage, String style) { }
+    private record AssetRow(String assetKey, String sha256, String fallbackSha256) { }
+    private record VerifiedAssetPack(String version, String sha256, long catalogVersion,
+                                     Map<Visual, AssetRow> assets) { }
 }

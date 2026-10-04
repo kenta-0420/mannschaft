@@ -19,4 +19,9 @@ public interface RanchRewardPolicyRepository extends JpaRepository<RanchRewardPo
     @Query("SELECT p FROM RanchRewardPolicyEntity p WHERE p.effectiveAt <= :occurredAt "
             + "AND p.publishedAt <= :occurredAt ORDER BY p.effectiveAt DESC, p.versionNumber DESC")
     List<RanchRewardPolicyEntity> publishedFor(@Param("occurredAt") Instant occurredAt, Pageable page);
+
+    @Query("SELECT p FROM RanchRewardPolicyEntity p WHERE "
+            + "(:beforeVersion IS NULL OR p.versionNumber < :beforeVersion) "
+            + "ORDER BY p.versionNumber DESC")
+    List<RanchRewardPolicyEntity> history(@Param("beforeVersion") Long beforeVersion, Pageable page);
 }
