@@ -94,7 +94,9 @@
       "completedAt": "완료일: {date}",
       "retake": "검사하기·다시 검사하기",
       "avatarUnchanged": "결과가 달라져도 태어난 공룡 분신의 이름·모습·성장 상태는 바뀌지 않습니다.",
-      "typeCode": "유형: {code}"
+      "typeCode": "유형: {code}",
+      "latest": "최신 결과",
+      "history": "이전 결과"
     },
     "diagnosis": {
       "description": "자신이 공룡이 된 모습을 상상하며 지금의 자신에게 가까운 생활 방식을 고르세요. 정답이나 우열은 없으며 성격이나 능력을 과학적으로 측정하는 검사가 아닙니다.",

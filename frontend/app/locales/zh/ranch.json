@@ -94,7 +94,9 @@
       "completedAt": "完成日期：{date}",
       "retake": "测试或重新测试",
       "avatarUnchanged": "即使结果发生变化，已孵化的恐龙分身的名字、形象和成长状态也不会改变。",
-      "typeCode": "类型：{code}"
+      "typeCode": "类型：{code}",
+      "latest": "最新结果",
+      "history": "以往结果"
     },
     "diagnosis": {
       "description": "想象自己变成恐龙，选择最符合现在自己的生活方式。没有正确答案，也不分优劣。这不是对性格或能力的科学测量。",

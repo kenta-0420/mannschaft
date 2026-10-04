@@ -20,7 +20,7 @@ export interface RanchState {
  owner: { id: string; status: 'ACTIVE' | 'PAUSED'; balance: Decimal; version: Decimal } | null;
  dinosaur: DinosaurSummary | null; settings: RanchSettings | null;
  roomSlots: RanchSlot[]; serverTime: string; policyVersion: Decimal | null;
- careBudget: { remainingXp: Decimal; weeklyCapXp: Decimal; awardedXp: Decimal; amountXp: Decimal; weekEndsAt: string; ruleVersion: Decimal } | null;
+ careBudget: { weekStartsOn: string; remainingXp: Decimal; weeklyCapXp: Decimal; awardedXp: Decimal; amountXp: Decimal; weekEndsAt: string; ruleVersion: string } | null;
  weekBudget: { remaining: Decimal; personalRequiredCount: Decimal; personalCompletedCount: number } | null;
  assignment: { availableMethods: ('HABITAT_RANDOM' | 'DIAGNOSIS' | 'BIRTH_STYLE')[]; selectionConfirmed: boolean; confirmedMethod: string | null } | null
 }
@@ -40,6 +40,21 @@ export interface DiagnosisSession {
  questionnaireVersion: string; scoringVersion: string; questions: DiagnosisQuestion[];
  answers: { questionId: string; value: number }[]; tieQuestions: TieQuestion[]; resultId: string | null
 }
-export interface DiagnosisResult { id: string; method: 'DIAGNOSIS' | 'BIRTH_STYLE'; completedAt: string; resultSchemaVersion: string; descriptionSnapshot: Record<string,string>; axes?: Record<string,number>; axisDescriptions?: Record<string,Record<string,string>>; typeCode?: string | null; numberSummary?: { lifePathNumber: number; nameNumber: number }; mappingVersion?: string | null }
+export interface DiagnosisResult {
+ id: string
+ method: 'DIAGNOSIS' | 'BIRTH_STYLE'
+ completedAt: string
+ resultSchemaVersion: string
+ questionnaireVersion?: string | null
+ scoringVersion?: string | null
+ normalizationVersion?: string | null
+ ruleVersion?: string | null
+ mappingVersion?: string | null
+ typeCode?: string | null
+ axes?: Record<string, number> | null
+ numberSummary?: { lifePathNumber: number; nameNumber: number; dateSum: number; nameSum: number } | null
+ descriptionSnapshot: Record<string, string>
+ axisDescriptions?: Record<string, Record<string, string>> | null
+}
 export interface BirthProfile { lastName: string | null; firstName: string | null; lastNameKana: string | null; firstNameKana: string | null; birthDate: string | null; revision: Decimal }
 export interface BirthConfirmation { confirmationRef: string; expiresAt: string; profileRevision: Decimal }

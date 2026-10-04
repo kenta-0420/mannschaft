@@ -94,7 +94,9 @@
       "completedAt": "Completed: {date}",
       "retake": "Take or retake the quiz",
       "avatarUnchanged": "Even if your results change, your hatched dinosaur avatar keeps its name, form and growth.",
-      "typeCode": "Type: {code}"
+      "typeCode": "Type: {code}",
+      "latest": "Latest result",
+      "history": "Previous results"
     },
     "diagnosis": {
       "description": "Imagine yourself as a dinosaur and choose how you would spend your time in a way that fits you now. There are no correct or superior answers. This is not a scientific measure of personality or ability.",

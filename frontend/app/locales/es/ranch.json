@@ -94,7 +94,9 @@
       "completedAt": "Realizado: {date}",
       "retake": "Realizar o repetir el cuestionario",
       "avatarUnchanged": "Aunque cambien tus resultados, tu avatar de dinosaurio ya nacido mantiene su nombre, forma y crecimiento.",
-      "typeCode": "Tipo: {code}"
+      "typeCode": "Tipo: {code}",
+      "latest": "Resultado más reciente",
+      "history": "Resultados anteriores"
     },
     "diagnosis": {
       "description": "Imagínate como un dinosaurio y elige cómo pasarías el tiempo según cómo eres ahora. No hay respuestas correctas ni mejores que otras. No es una medición científica de personalidad o capacidad.",
