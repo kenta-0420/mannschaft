@@ -382,8 +382,9 @@ class FavoriteScopeContractIT extends AbstractMySqlIntegrationTest {
         UUID teamFavorite = saveFavorite(memberId, FavoriteEntityType.TEAM, privateTeamId.toString());
         UUID orgFavorite = saveFavorite(memberId, FavoriteEntityType.ORGANIZATION, privateTeamId.toString());
         // 登録後の脱退を再現。行は残るがチームのメタデータは秘匿される。
-        em.createNativeQuery("DELETE FROM memberships WHERE user_id = :userId")
-                .setParameter("userId", memberId).executeUpdate();
+        em.createNativeQuery("DELETE FROM memberships WHERE user_id = :userId "
+                        + "AND scope_type = 'TEAM' AND scope_id = :teamId")
+                .setParameter("userId", memberId).setParameter("teamId", privateTeamId).executeUpdate();
         em.flush();
         em.clear();
         setAuth(memberId);
@@ -407,7 +408,8 @@ class FavoriteScopeContractIT extends AbstractMySqlIntegrationTest {
     private String saveOrganizationWithId(Long id, String visibility) {
         String slug = "favorg-" + UUID.randomUUID().toString().substring(0, 8);
         var organization = organizationRepository.saveAndFlush(FavoriteTestFixture.organization(slug, visibility));
-        // 各テーブルの自動採番に依存せず衝突を再現する。作成自体はRepository/Fixture経由。
+        // 自動採番に依存せず衝突を再現する。新規組織には所属/ロール/子の参照がなく、
+        // テストのrollback内だけでIDを合わせる。作成自体はRepository/Fixture経由。
         em.createNativeQuery("UPDATE organizations SET id = :targetId WHERE id = :generatedId")
                 .setParameter("targetId", id).setParameter("generatedId", organization.getId()).executeUpdate();
         em.clear();
