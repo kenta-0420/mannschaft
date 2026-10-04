@@ -63,6 +63,8 @@ async function care(kind: 'feed' | 'touch') {
    message.value = t('ranch.care.touched') + (affinityLabel ? ' · ' + affinityLabel : '')
    if (result.dinosaurId === ranch.state.value?.dinosaur?.id) {
     reaction.value = { key: result.reactionKey, dinosaurId: result.dinosaurId, sequence: ++reactionSequence, soundToken }
+   } else {
+    currentScene?.cancelTouchSound(soundToken)
    }
   }
  } catch {

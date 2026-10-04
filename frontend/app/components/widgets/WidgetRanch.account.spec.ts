@@ -52,7 +52,7 @@ beforeEach(async () => {
   throw new Error(`UNEXPECTED_TRANSPORT ${String(request)}`)
  })
 })
-afterEach(() => { for (const wrapper of wrappers.splice(0)) wrapper.unmount(); vi.restoreAllMocks() })
+afterEach(() => { for (const wrapper of wrappers.splice(0)) wrapper.unmount(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 async function mountWidget() {
  const wrapper = await mountSuspended(WidgetRanch)
  wrappers.push(wrapper)
@@ -126,4 +126,47 @@ describe('DOM保持した本人恐竜WidgetのGETと操作feedback境界', () =>
    await flushPromises()
   }
  })
+ it('異個体TOUCH応答は準備音をcloseし、音constructor失敗でも保存HTTPを止めない', async () => {
+  vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+  vi.stubGlobal('IntersectionObserver', class {
+   constructor(private callback: IntersectionObserverCallback) {}
+   observe() { this.callback([{ isIntersecting: true }] as IntersectionObserverEntry[], {} as IntersectionObserver) }
+   unobserve() {}
+   disconnect() {}
+  })
+  const closed = vi.fn(async () => {})
+  class AudioFixture {
+   close = closed
+   resume = vi.fn(async () => {})
+  }
+  vi.stubGlobal('AudioContext', AudioFixture)
+  const ownId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  let touches = 0
+  external.fetch.mockImplementation(async (request, options) => {
+   if (String(request).endsWith('/api/v1/me/ranch') && (options?.method ?? 'GET') === 'GET') {
+    const value = state(1)
+    if (!value.dinosaur || !value.settings) throw new Error('SOUND_STATE_FIXTURE_MISSING')
+    value.dinosaur.id = ownId
+    value.settings.motionMode = 'REDUCED'; value.settings.isSoundEnabled = true; value.settings.soundVolume = 50
+    return json(value)
+   }
+   if (String(request).endsWith('/interactions') && options?.method === 'POST') {
+    touches += 1
+    return json({ commandId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', dinosaurId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', reactionKey: 'DINOSAUR_TOUCH', affinityBand: 'NEUTRAL', affinityChanged: false, completedAt: '2026-10-04T00:00:00Z' })
+   }
+   throw new Error('UNEXPECTED_SOUND_TRANSPORT')
+  })
+  const wrapper = await mountWidget()
+  const label = useNuxtApp().$i18n.t('ranch.care.touch')
+  const button = wrapper.findAll('button').find(item => item.text() === label)
+  if (!button) throw new Error('TOUCH_BUTTON_MISSING')
+  await button.trigger('click'); await flushPromises()
+  expect(touches).toBe(1); expect(closed).toHaveBeenCalledOnce()
+  let constructors = 0
+  vi.stubGlobal('AudioContext', class { constructor() { constructors += 1; throw new Error('SYNTHETIC_AUDIO_CONSTRUCTOR_FAILURE') } })
+  await button.trigger('click'); await flushPromises()
+  expect(constructors).toBe(1); expect(touches).toBe(2)
+  expect(wrapper.get('[role="status"]').text()).toContain(useNuxtApp().$i18n.t('ranch.care.touched'))
+ })
+
 })

@@ -38,4 +38,27 @@ describe('操作起点だけの短い音', () => {
   enabled.value = false; expect(second.close).toHaveBeenCalledOnce()
   scope.stop()
  })
+ it('resume/oscillator/closeの失敗を外へthrowせず資源終了を試す', () => {
+  const closed = vi.fn(() => { throw new Error('SYNTHETIC_CLOSE_FAILURE') })
+  class ResumeFailure {
+   close = closed
+   resume() { throw new Error('SYNTHETIC_RESUME_FAILURE') }
+  }
+  vi.stubGlobal('AudioContext', ResumeFailure)
+  const scope = effectScope()
+  const sound = scope.run(() => useRanchTouchSound({ dinosaur: () => dinosaur, enabled: () => true, motion: () => 'NORMAL', soundEnabled: () => true, volume: () => 50 }))
+  if (!sound) throw new Error('SOUND_SCOPE_MISSING')
+  expect(sound.prepare()).toBeNull(); expect(closed).toHaveBeenCalledOnce()
+  class OscillatorFailure {
+   close = closed
+   resume = vi.fn(async () => {})
+   createOscillator() { throw new Error('SYNTHETIC_OSCILLATOR_FAILURE') }
+  }
+  vi.stubGlobal('AudioContext', OscillatorFailure)
+  const token = sound.prepare()
+  expect(token).not.toBeNull()
+  expect(() => sound.play('DINOSAUR_TOUCH', dinosaur.id, token)).not.toThrow()
+  expect(closed).toHaveBeenCalledTimes(2); expect(() => scope.stop()).not.toThrow()
+ })
+
 })
