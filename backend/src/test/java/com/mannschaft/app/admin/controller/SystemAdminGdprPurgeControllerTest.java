@@ -5,7 +5,7 @@ import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.gdpr.dto.PurgeStatusRow;
 import com.mannschaft.app.gdpr.dto.PurgeStatusSummaryData;
 import com.mannschaft.app.gdpr.dto.RetryResultResponse;
-import com.mannschaft.app.gdpr.service.GdprPurgeRetryService;
+import com.mannschaft.app.gdpr.service.GdprPurgeRetryFacade;
 import com.mannschaft.app.gdpr.service.GdprPurgeStatusQueryService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
@@ -70,7 +70,7 @@ class SystemAdminGdprPurgeControllerTest {
     private GdprPurgeStatusQueryService queryService;
 
     @MockitoBean
-    private GdprPurgeRetryService retryService;
+    private GdprPurgeRetryFacade retryService;
 
     // @WebMvcTest 共通の慣習: フィルター・コンテキスト依存 Bean を Mock 化
     @MockitoBean
