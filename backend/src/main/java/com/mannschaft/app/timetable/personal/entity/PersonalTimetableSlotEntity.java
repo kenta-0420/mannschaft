@@ -34,7 +34,7 @@ public class PersonalTimetableSlotEntity extends BaseEntity {
     @Column(nullable = false, length = 3)
     private String dayOfWeek;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition="TINYINT UNSIGNED")
     private Integer periodNumber;
 
     @Enumerated(EnumType.STRING)

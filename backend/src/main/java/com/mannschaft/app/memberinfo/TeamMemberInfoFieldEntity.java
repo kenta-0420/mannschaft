@@ -38,7 +38,7 @@ public class TeamMemberInfoFieldEntity extends BaseEntity {
     @Builder.Default
     private Boolean isSensitive = false;
 
-    @Column(nullable = true)
+    @Column(nullable = true, columnDefinition="TINYINT UNSIGNED")
     private Integer refreshIntervalMonths;
 
     @Column(nullable = false)

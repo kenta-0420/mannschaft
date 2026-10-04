@@ -30,7 +30,7 @@ public class RecruitmentCancellationPolicyTierEntity extends BaseEntity {
     @Column(nullable = false)
     private Long policyId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition="TINYINT UNSIGNED")
     private Integer tierOrder;
 
     @Column(nullable = false)

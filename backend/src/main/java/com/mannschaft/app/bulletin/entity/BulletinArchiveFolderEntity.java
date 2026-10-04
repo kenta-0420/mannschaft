@@ -69,7 +69,7 @@ public class BulletinArchiveFolderEntity extends UuidV7Entity {
     private String icon;
 
     /** 階層の深さ。ルート = 0、最大4（= 5 階層）。 */
-    @Column(name = "depth", nullable = false)
+    @Column(name = "depth", nullable = false, columnDefinition="TINYINT UNSIGNED")
     @Builder.Default
     private Integer depth = 0;
 

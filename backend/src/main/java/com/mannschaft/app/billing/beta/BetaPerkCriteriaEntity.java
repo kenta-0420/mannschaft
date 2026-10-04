@@ -43,7 +43,7 @@ public class BetaPerkCriteriaEntity {
 
     /** ベータ段階（1〜4）。 */
     @Id
-    @Column(name = "beta_phase", nullable = false)
+    @Column(name = "beta_phase", nullable = false, columnDefinition="TINYINT UNSIGNED")
     private Integer betaPhase;
 
     /** INDIVIDUAL / TEAM_ORG。 */

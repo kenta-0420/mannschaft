@@ -60,7 +60,7 @@ public class RepairPlanItem extends UuidV7Entity {
     @Column(name = "planned_year", nullable = false)
     private Integer plannedYear;
 
-    @Column(name = "planned_month")
+    @Column(name = "planned_month", columnDefinition="TINYINT UNSIGNED")
     private Integer plannedMonth;
 
     @Column(name = "estimated_amount", nullable = false)
