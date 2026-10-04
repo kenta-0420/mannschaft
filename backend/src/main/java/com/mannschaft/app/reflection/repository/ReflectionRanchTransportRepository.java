@@ -30,7 +30,7 @@ public class ReflectionRanchTransportRepository {
                 +"VALUES (?,'UUID',?,?,'QUALIFIED',?,?,?,?,?)",bytes(UuidV7.generate()),source,
                 fact.recipientUserId(),Timestamp.from(fact.occurredAt()),bytes(fact.eventId()),
                 java.sql.Date.valueOf(fact.facts().completionWeek()),Timestamp.from(now),Timestamp.from(now));
-        byte[] key=("PERSONAL_RECALL_COMPLETE|UUID|"+fact.canonicalSourceId()+"|"+fact.facts().completionWeek())
+        byte[] key=("PERSONAL_RECALL_COMPLETE|UUID|"+fact.canonicalSourceId()+"|"+fact.recipientUserId()+"|"+fact.facts().completionWeek())
                 .getBytes(StandardCharsets.US_ASCII);
         jdbc.update("INSERT INTO reflection_ranch_outboxes "
                 +"(id,schema_version,event_type,scope_type,recipient_user_id,canonical_key,payload_json,occurred_at,"

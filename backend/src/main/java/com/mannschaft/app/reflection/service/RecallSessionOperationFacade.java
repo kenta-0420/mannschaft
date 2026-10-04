@@ -6,8 +6,6 @@ import com.mannschaft.app.common.timezone.UserTimezoneCache;
 import com.mannschaft.app.reflection.dto.RecallSessionOperationOutcome;
 import com.mannschaft.app.reflection.dto.RecallSessionResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import io.micrometer.core.instrument.MeterRegistry;
 import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.reflection.dto.ReflectionRecallRewardPayload;
 import com.mannschaft.app.ranch.reward.RanchRewardSourceType;
@@ -22,7 +20,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /** 新ARは現在ACTIVEの本人だけが操作する。報酬用の任意資格取得で本人認可を代用しない。 */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RecallSessionOperationFacade {
@@ -34,7 +31,7 @@ public class RecallSessionOperationFacade {
     private final ReflectionSettingsService settings;
     private final Clock clock;
     private final ReflectionRecallRewardQueue rewardQueue;
-    private final MeterRegistry metrics;
+    private final ReflectionRanchCaptureTelemetry telemetry;
 
     /** 共有timezone読取はauthの行ロックを保持する前に済ませる。 */
     public RecallSessionResponse start(Long userId,UUID entryId,UUID key,JsonNode body) {
@@ -91,8 +88,7 @@ public class RecallSessionOperationFacade {
                         result=new RecallSessionOperationOutcome(response,true,fact);
                         committed.set(result);
                     }catch(RuntimeException captureFailure) {
-                        metrics.counter("ranch.source.capture.lost","source","PERSONAL_RECALL_COMPLETE","classification","CAPTURE_FAILED").increment();
-                        log.warn("想起配送事実を喪失: classification=CAPTURE_FAILED");
+                        telemetry.lost(ReflectionRanchCaptureTelemetry.Reason.CAPTURE_FAILED,captureFailure.getClass());
                     }
                 }
                 return result;
@@ -102,8 +98,7 @@ public class RecallSessionOperationFacade {
         }catch(RuntimeException failure) {
             RecallSessionOperationOutcome result=committed.get();
             if(result==null) throw failure;
-            metrics.counter("ranch.source.capture.lost","source","PERSONAL_RECALL_COMPLETE","classification","POST_NATIVE_FAILURE").increment();
-            log.warn("想起配送受付を喪失: classification=POST_NATIVE_FAILURE exceptionClass={}",failure.getClass().getSimpleName());
+            telemetry.lost(ReflectionRanchCaptureTelemetry.Reason.POST_NATIVE_FAILURE,failure.getClass());
             return new RecallSessionOperationOutcome(result.response(),false);
         }
     }

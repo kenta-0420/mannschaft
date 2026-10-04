@@ -60,6 +60,10 @@ class ReflectionRanchTransportIT extends AbstractMySqlIntegrationTest {
         assertThat(receive(fact(completed,UuidV7.generate()))).isFalse();
         assertThat(count("reflection_ranch_witnesses")).isEqualTo(1);
         assertThat(count("reflection_ranch_outboxes")).isEqualTo(1);
+        byte[] canonicalKey=jdbc.queryForObject("SELECT canonical_key FROM reflection_ranch_outboxes WHERE id=?",
+                byte[].class,bytes(fact.eventId()));
+        assertThat(new String(canonicalKey,java.nio.charset.StandardCharsets.UTF_8)).isEqualTo(
+                "PERSONAL_RECALL_COMPLETE|UUID|"+completed.entryId()+"|"+owner+"|"+completed.rewardWeek());
         String encoded=jdbc.queryForObject("SELECT payload_json FROM reflection_ranch_outboxes WHERE id=?",
                 String.class,bytes(fact.eventId()));
         assertThat(encoded).doesNotContain("原文fixture","回答fixture","body_hash","originalSnapshot");
