@@ -4,6 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.UserRewardDeliveryGuard;
+import com.mannschaft.app.auth.service.UserOperationGuard;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxLeaseRequest;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxAckRequest;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxDeferRequest;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxAdminRetryRequest;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxAdminRetryAck;
+import com.mannschaft.app.ranch.reward.api.RanchRewardDeliveryOutcome;
+import com.mannschaft.app.reflection.service.ReflectionRanchOutboxDeliveryService;
+import com.mannschaft.app.reflection.service.ReflectionRanchOutboxAdminService;
 import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.ranch.reward.RanchRewardSourceType;
 import com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope;
@@ -17,6 +26,7 @@ import com.mannschaft.app.reflection.service.RecallSessionOperationFacade;
 import com.mannschaft.app.reflection.service.ReflectionRanchTransportWriter;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +51,9 @@ class ReflectionRanchTransportIT extends AbstractMySqlIntegrationTest {
     @Autowired private RecallSessionOperationFacade operations;
     @Autowired private ReflectionRanchTransportWriter transport;
     @Autowired private UserRewardDeliveryGuard deliveryGuard;
+    @Autowired private UserOperationGuard active;
+    @Autowired private ReflectionRanchOutboxDeliveryService outboxDelivery;
+    @Autowired private ReflectionRanchOutboxAdminService outboxAdmin;
     @Autowired private ObjectMapper mapper;
     @Autowired private JdbcTemplate jdbc;
     private Long owner;
@@ -82,6 +95,54 @@ class ReflectionRanchTransportIT extends AbstractMySqlIntegrationTest {
         assertThat(operations.get(owner,second.id()).status()).isEqualTo(RecallSessionStatus.COMPLETED);
     }
 
+    @AfterEach void cleanupOnlyOwnFixtures() {
+        if(owner==null) return;
+        jdbc.update("DELETE FROM reflection_ranch_outboxes WHERE recipient_user_id=?",owner);
+        jdbc.update("DELETE FROM reflection_ranch_witnesses WHERE recipient_user_id=?",owner);
+        jdbc.update("DELETE FROM reflection_ranch_admin_commands WHERE actor_user_id=?",owner);
+        jdbc.update("DELETE FROM reflection_recall_commands WHERE user_id=?",owner);
+        jdbc.update("DELETE FROM recall_attempts WHERE user_id=?",owner);
+        jdbc.update("DELETE FROM reflection_recall_sessions WHERE user_id=?",owner);
+        jdbc.update("DELETE FROM reflection_entries WHERE user_id=?",owner);
+        if(themeId!=null) themes.deleteById(themeId);
+        users.deleteById(owner);
+    }
+
+    @Test void reflectionLeaseDeferralAndAdminReplayKeepSourceOwnedState() {
+        var completed=completed(LocalDate.of(2026,10,3));var fact=fact(completed,UuidV7.generate());
+        assertThat(receive(fact)).isTrue();var now=deliveryNow();
+        var first=outboxDelivery.lease(new SourceOutboxLeaseRequest(now,10,30,2)).getFirst();
+        assertThat(first.envelope()).isEqualTo(fact.toEnvelope());
+        var defer=new SourceOutboxDeferRequest(first.eventId(),first.leaseToken(),now.plusSeconds(1),now.plusSeconds(5),10);
+        assertThat(outboxDelivery.defer(defer)).isTrue();assertThat(outboxDelivery.defer(defer)).isFalse();
+        var second=outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(5),10,30,2)).getFirst();
+        assertThat(second.attemptCount()).isEqualTo(1);
+        var terminal=new RanchRewardDeliveryOutcome(RanchRewardDeliveryOutcome.Outcome.ACCOUNT_DELETED,null,0);
+        assertThat(outboxDelivery.acknowledge(new SourceOutboxAckRequest(first.eventId(),first.leaseToken(),now.plusSeconds(6),terminal))).isFalse();
+        assertThat(outboxDelivery.acknowledge(new SourceOutboxAckRequest(second.eventId(),second.leaseToken(),now.plusSeconds(6),terminal))).isTrue();
+        var key=UUID.randomUUID();var reason=new SourceOutboxAdminRetryRequest("OPERATOR_RETRY");
+        var ack=active.withActiveUser(owner,() -> outboxAdmin.retry(owner,second.eventId(),key,reason,now.plusSeconds(7)));
+        assertThat(ack.disposition()).isEqualTo(SourceOutboxAdminRetryAck.Disposition.ALREADY_TERMINAL);
+        jdbc.update("DELETE FROM reflection_ranch_outboxes WHERE id=?",bytes(second.eventId()));
+        assertThat(active.withActiveUser(owner,() -> outboxAdmin.retry(owner,second.eventId(),key,reason,now.plusSeconds(8)))).isEqualTo(ack);
+        assertThat(count("reflection_ranch_outboxes")).isZero();
+        // actor fixtureは源命令の原子性用。SYSTEM_ADMIN HTTP認可・実purgeの証拠ではない。
+    }
+
+    @Test void reflectionPoisonAndExpiredBudgetDoNotInventNewEvents() {
+        var first=completed(LocalDate.of(2026,10,3));var bad=fact(first,UuidV7.generate());assertThat(receive(bad)).isTrue();
+        var second=completed(LocalDate.of(2026,10,4));var valid=fact(second,UuidV7.generate());assertThat(receive(valid)).isTrue();
+        jdbc.update("UPDATE reflection_ranch_outboxes SET payload_json='{}' WHERE id=?",bytes(bad.eventId()));
+        var now=deliveryNow();var leased=outboxDelivery.lease(new SourceOutboxLeaseRequest(now,10,30,1));
+        assertThat(leased).hasSize(1);assertThat(leased.getFirst().eventId()).isEqualTo(valid.eventId());
+        assertThat(outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(29),10,30,1))).isEmpty();
+        assertThat(outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(30),10,30,1))).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM reflection_ranch_outboxes WHERE recipient_user_id=? AND status='DEAD_LETTER'",Integer.class,owner)).isEqualTo(2);
+        assertThat(count("reflection_ranch_outboxes")).isEqualTo(2);
+        assertThat(operations.get(owner,first.id()).status()).isEqualTo(RecallSessionStatus.COMPLETED);
+        assertThat(operations.get(owner,second.id()).status()).isEqualTo(RecallSessionStatus.COMPLETED);
+    }
+    private java.time.Instant deliveryNow() { return jdbc.queryForObject("SELECT MAX(next_attempt_at) FROM reflection_ranch_outboxes WHERE recipient_user_id=?",java.sql.Timestamp.class,owner).toInstant().plusSeconds(1); }
     private boolean receive(ReflectionRecallRewardPayload fact) {
         return deliveryGuard.withLockedDeliveryUser(owner,state->transport.accept(fact));
     }
