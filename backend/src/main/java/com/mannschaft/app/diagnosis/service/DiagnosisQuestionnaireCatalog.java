@@ -1,0 +1,110 @@
+package com.mannschaft.app.diagnosis.service;
+
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.diagnosis.DiagnosisAxis;
+import com.mannschaft.app.diagnosis.DiagnosisErrorCode;
+import com.mannschaft.app.diagnosis.dto.DiagnosisQuestion;
+import com.mannschaft.app.diagnosis.dto.DiagnosisTieQuestion;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Service;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
+/** 承認前の固定24問を開発・試験だけへ供給し、開始時に全表示を凍結する。 */
+@Service
+@RequiredArgsConstructor
+public class DiagnosisQuestionnaireCatalog {
+    private final ObjectMapper mapper;
+    private final Environment environment;
+    public static final String SNAPSHOT_SCHEMA_VERSION = "diagnosis-session-snapshot-v1";
+    public enum SnapshotApproval { DRAFT, APPROVED }
+    private static final List<String> LOCALES = List.of("ja", "en", "zh", "ko", "es", "de");
+
+    /** Entityを公開せず、設問・同点表示・説明の不変値だけを返す。 */
+    public record Definition(String snapshotSchemaVersion, SnapshotApproval approval, String questionnaireVersion, String scoringVersion,
+            List<DiagnosisQuestion> questions, List<DiagnosisTieQuestion> ties,
+            Map<String,String> descriptionSnapshot, Map<DiagnosisAxis, Map<String,String>> axisDescriptions) {
+        public Definition {
+            questions = List.copyOf(questions);
+            descriptionSnapshot = Map.copyOf(descriptionSnapshot);
+            ties = ties.stream().map(tie -> new DiagnosisTieQuestion(tie.axisId(), Map.copyOf(tie.zero()), Map.copyOf(tie.one()))).toList();
+            var frozen = new EnumMap<DiagnosisAxis,Map<String,String>>(DiagnosisAxis.class);
+            axisDescriptions.forEach((axis, descriptions) -> frozen.put(axis, Map.copyOf(descriptions)));
+            axisDescriptions = Map.copyOf(frozen);
+        }
+    }
+
+    public Definition draft() {
+        requireDraftFixture();
+        try (var stream = new ClassPathResource("diagnosis/questionnaire-draft-20261003.json").getInputStream()) {
+            JsonNode root = mapper.readTree(stream);
+            if (root.path("approved").asBoolean(true) || root.path("translationsApproved").asBoolean(true)) throw unavailable();
+            List<DiagnosisQuestion> questions = new ArrayList<>();
+            var ids = new HashSet<String>(); var counts = new EnumMap<DiagnosisAxis,Integer>(DiagnosisAxis.class);
+            var ties = new ArrayList<DiagnosisTieQuestion>();
+            var descriptions = new EnumMap<DiagnosisAxis, Map<String,String>>(DiagnosisAxis.class);
+            for (JsonNode item : root.path("questions")) {
+                String id = item.path("id").asText(); DiagnosisAxis axis = DiagnosisAxis.valueOf(item.path("axis").asText());
+                int polarity = item.path("polarity").asInt();
+                if (!ids.add(id) || id.isBlank() || Math.abs(polarity) != 1) throw unavailable();
+                Map<String,String> texts = localeText(item.path("text"));
+                questions.add(new DiagnosisQuestion(id, axis, polarity, texts));
+                counts.merge(axis, 1, Integer::sum);
+                if (!descriptions.containsKey(axis)) {
+                    // 初問の固定左右表示を使い、新しい軸や追加原稿を混ぜない。
+                    if (polarity != 1) throw unavailable();
+                    var zero = new java.util.HashMap<String,String>(); var one = new java.util.HashMap<String,String>();
+                    for (String locale : LOCALES) {
+                        String[] sides = texts.get(locale).split(" ↔ ", -1);
+                        if (sides.length != 2) throw unavailable();
+                        zero.put(locale, sides[0].substring(sides[0].lastIndexOf('：') + 1)); one.put(locale, sides[1]);
+                    }
+                    ties.add(new DiagnosisTieQuestion(axis, Map.copyOf(zero), Map.copyOf(one)));
+                    descriptions.put(axis, texts);
+                }
+            }
+            if (questions.size() != 24 || counts.size() != 6 || counts.values().stream().anyMatch(n -> n != 4)) throw unavailable();
+            return new Definition(SNAPSHOT_SCHEMA_VERSION, SnapshotApproval.DRAFT, required(root,"questionnaireVersion"), required(root,"scoringVersion"), questions, ties, explanation(), descriptions);
+        } catch (IOException | IllegalArgumentException error) { throw unavailable(); }
+    }
+    /** 保存snapshotの版と承認状態だけを使い、現在masterで旧設問を再構成しない。 */
+    /** 保存済み定義を現在の採点方式で解釈できる版だけに限定する。現masterからの再構成は行わない。 */
+    public void requireSnapshotReadable(Definition definition) {
+        if (definition == null || !SNAPSHOT_SCHEMA_VERSION.equals(definition.snapshotSchemaVersion())
+                || !"signed-centered-v1".equals(definition.scoringVersion())
+                || !"draft-20261003-v1".equals(definition.questionnaireVersion()) || definition.approval() == null) throw unavailable();
+    }
+    public void requireMutationAllowed(Definition definition) {
+        requireSnapshotReadable(definition);
+        // 承認カタログが未実装の間は保存flagだけを公開許可の根拠にしない。
+        if (definition.approval() != SnapshotApproval.DRAFT) throw unavailable();
+        requireDraftFixture();
+    }
+    private void requireDraftFixture() {
+        if (environment.acceptsProfiles(Profiles.of("prod", "production"))) throw unavailable();
+        boolean isolatedFixture = environment.acceptsProfiles(Profiles.of("ranch-isolated"))
+                && environment.getProperty("ranch.diagnosis.draft-enabled", Boolean.class, false);
+        if (!environment.acceptsProfiles(Profiles.of("dev", "test")) && !isolatedFixture) throw unavailable();
+    }
+    private Map<String,String> localeText(JsonNode node) {
+        var result = new java.util.HashMap<String,String>();
+        for (String locale : LOCALES) result.put(locale, required(node,locale));
+        return Map.copyOf(result);
+    }
+    private String required(JsonNode node, String field) {
+        JsonNode value=node.path(field);
+        if (!value.isTextual() || value.textValue().isBlank()) throw unavailable();
+        return value.textValue();
+    }
+    private static Map<String,String> explanation(){return Map.of("ja","保存した24問の回答と本人の同点選択から、六軸の傾向を表しています。", "en","Six tendencies based on your saved answers and tie choices.", "zh","根据保存的回答和本人同分选择呈现六个倾向。", "ko","저장된 답변과 본인의 동점 선택에 따른 여섯 가지 성향입니다。", "es","Seis tendencias según tus respuestas guardadas y decisiones de empate.", "de","Sechs Tendenzen aus deinen gespeicherten Antworten und Entscheidungen bei Gleichstand.");}
+    private static BusinessException unavailable() { return new BusinessException(DiagnosisErrorCode.UNAVAILABLE); }
+}

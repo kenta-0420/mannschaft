@@ -1,5 +1,8 @@
 package com.mannschaft.app.diagnosis.controller;
 
+import org.springframework.web.bind.annotation.PutMapping;
+import com.mannschaft.app.diagnosis.service.DiagnosisSessionInputParser;
+import com.mannschaft.app.diagnosis.dto.DiagnosisSessionResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -57,4 +60,38 @@ public class DiagnosisController {
         return ResponseEntity.status(201).body(ApiResponse.of(operations.birthResult(userId, commandId, ref)));
     }
     private static BusinessException invalid() { return new BusinessException(DiagnosisErrorCode.INVALID_INPUT); }
+    // 最終候補ではSessionResponseとInputParserの明示importを追加する。
+    private final DiagnosisSessionInputParser sessionInput;
+
+    @PostMapping("/sessions")
+    public ResponseEntity<ApiResponse<DiagnosisSessionResponse>> startSession(@RequestBody JsonNode body,
+            @RequestHeader("Idempotency-Key") UUID key, HttpServletRequest request, HttpServletResponse response) {
+        Long userId=accessGuard.requireSelfAccess(request,response);sessionInput.start(body);
+        return ResponseEntity.status(201).body(ApiResponse.of(operations.startSession(userId,key)));
+    }
+    @GetMapping("/sessions/{id}")
+    public ResponseEntity<ApiResponse<DiagnosisSessionResponse>> readSession(@PathVariable UUID id,
+            HttpServletRequest request,HttpServletResponse response) {
+        Long userId=accessGuard.requireSelfAccess(request,response);
+        return ResponseEntity.ok(ApiResponse.of(operations.readSession(userId,id)));
+    }
+    @PutMapping("/sessions/{id}/answers")
+    public ResponseEntity<ApiResponse<DiagnosisSessionResponse>> answerSession(@PathVariable UUID id,@RequestBody JsonNode body,
+            @RequestHeader("Idempotency-Key") UUID key,HttpServletRequest request,HttpServletResponse response) {
+        Long userId=accessGuard.requireSelfAccess(request,response);
+        return ResponseEntity.ok(ApiResponse.of(operations.answerSession(userId,id,key,sessionInput.answers(body))));
+    }
+    @PostMapping("/sessions/{id}/complete")
+    public ResponseEntity<ApiResponse<DiagnosisSessionResponse>> completeSession(@PathVariable UUID id,@RequestBody JsonNode body,
+            @RequestHeader("Idempotency-Key") UUID key,HttpServletRequest request,HttpServletResponse response) {
+        Long userId=accessGuard.requireSelfAccess(request,response);
+        return ResponseEntity.ok(ApiResponse.of(operations.completeSession(userId,id,key,sessionInput.complete(body))));
+    }
+    @PostMapping("/sessions/{id}/cancel")
+    public ResponseEntity<ApiResponse<DiagnosisSessionResponse>> cancelSession(@PathVariable UUID id,@RequestBody JsonNode body,
+            @RequestHeader("Idempotency-Key") UUID key,HttpServletRequest request,HttpServletResponse response) {
+        Long userId=accessGuard.requireSelfAccess(request,response);
+        return ResponseEntity.ok(ApiResponse.of(operations.cancelSession(userId,id,key,sessionInput.cancel(body))));
+    }
+
 }
