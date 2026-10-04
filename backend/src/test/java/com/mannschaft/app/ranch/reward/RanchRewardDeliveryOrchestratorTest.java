@@ -22,8 +22,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,6 +48,51 @@ class RanchRewardDeliveryOrchestratorTest {
         when(config.current(NOW)).thenReturn(Optional.empty());
         assertThat(orchestrator.drainOnce()).isEqualTo(RanchRewardDeliveryOrchestrator.RunSummary.EMPTY);
         for (SourceOutboxDeliveryFacade source : sources) verify(source, never()).lease(any());
+    }
+
+    @Test
+    void operationalPauseLeasesNoneAndMissingOrDuplicateSourceFailsClosed() {
+        available();
+        when(control.paused()).thenReturn(true);
+        assertThat(orchestrator.drainOnce()).isEqualTo(RanchRewardDeliveryOrchestrator.RunSummary.EMPTY);
+        for (SourceOutboxDeliveryFacade source : sources) verify(source, never()).lease(any());
+
+        when(control.paused()).thenReturn(false);
+        var incomplete = new RanchRewardDeliveryOrchestrator(config, bounds, control,
+                sources.subList(0, sources.size() - 1), consumer, Clock.fixed(NOW, ZoneOffset.UTC));
+        assertThatThrownBy(incomplete::drainOnce).isInstanceOf(IllegalStateException.class);
+        var duplicate = new ArrayList<>(sources);
+        duplicate.add(sources.get(0));
+        var repeated = new RanchRewardDeliveryOrchestrator(config, bounds, control,
+                duplicate, consumer, Clock.fixed(NOW, ZoneOffset.UTC));
+        assertThatThrownBy(repeated::drainOnce).isInstanceOf(IllegalStateException.class);
+        for (SourceOutboxDeliveryFacade source : sources) verify(source, never()).lease(any());
+    }
+
+    @Test
+    void sourceLeaseFailureContinuesAndFalseAckDoesNotCancelSavedDecisionOrNextEvent() {
+        available();
+        when(sources.get(0).lease(any(SourceOutboxLeaseRequest.class)))
+                .thenThrow(new IllegalStateException("fixed source failure"));
+        var first = leased();
+        var second = leased();
+        when(sources.get(1).lease(any(SourceOutboxLeaseRequest.class))).thenReturn(List.of());
+        var firstRun = orchestrator.drainOnce();
+        assertThat(firstRun.failed()).isEqualTo(1);
+        verify(sources.get(1)).lease(any(SourceOutboxLeaseRequest.class));
+
+        doReturn(List.of(first, second)).when(sources.get(0)).lease(any(SourceOutboxLeaseRequest.class));
+        var saved = new RanchRewardDeliveryOutcome(RanchRewardDeliveryOutcome.Outcome.AWARDED,
+                UUID.randomUUID(), 1);
+        when(consumer.consume(any())).thenReturn(saved);
+        when(sources.get(0).acknowledge(any(SourceOutboxAckRequest.class))).thenReturn(false, true);
+        var secondRun = orchestrator.drainOnce();
+        assertThat(secondRun.leased()).isEqualTo(2);
+        assertThat(secondRun.acknowledged()).isEqualTo(1);
+        assertThat(secondRun.failed()).isEqualTo(1);
+        verify(consumer).consume(first.envelope());
+        verify(consumer).consume(second.envelope());
+        verify(sources.get(0), never()).retry(any());
     }
 
     @Test
@@ -104,6 +151,24 @@ class RanchRewardDeliveryOrchestratorTest {
         verify(sources.get(0)).defer(new SourceOutboxDeferRequest(event.eventId(),
                 event.leaseToken(), NOW, NOW.plusSeconds(5), 20));
         verify(sources.get(0), never()).retry(any());
+        verify(sources.get(0), never()).acknowledge(any());
+    }
+
+    @Test
+    void falseDeferAndRetryAreCountedWithoutAcknowledgingEitherEvent() {
+        available();
+        var paused = leased();
+        var broken = leased();
+        when(sources.get(0).lease(any(SourceOutboxLeaseRequest.class)))
+                .thenReturn(List.of(paused, broken));
+        when(consumer.consume(paused.envelope())).thenReturn(new RanchRewardDeliveryOutcome(
+                RanchRewardDeliveryOutcome.Outcome.DEFER, null, 0));
+        when(consumer.consume(broken.envelope())).thenThrow(new IllegalStateException("fixed failure"));
+
+        var summary = orchestrator.drainOnce();
+        assertThat(summary.failed()).isEqualTo(2);
+        assertThat(summary.deferred()).isZero();
+        assertThat(summary.retried()).isZero();
         verify(sources.get(0), never()).acknowledge(any());
     }
 

@@ -95,6 +95,8 @@ public class RanchRewardDeliveryOrchestrator {
                                     deferredAt.plusSeconds(settings.initialBackoffSeconds()),
                                     settings.maxBackoffSeconds()))) {
                                 deferred = Math.addExact(deferred, 1);
+                            } else {
+                                failed = Math.addExact(failed, 1);
                             }
                         } catch (RuntimeException ignored) {
                             failed = Math.addExact(failed, 1);
@@ -107,6 +109,8 @@ public class RanchRewardDeliveryOrchestrator {
                                 settings.initialBackoffSeconds(), settings.maxBackoffSeconds(),
                                 TRANSIENT_ERROR))) {
                             retried = Math.addExact(retried, 1);
+                        } else {
+                            failed = Math.addExact(failed, 1);
                         }
                     } catch (RuntimeException ignored) {
                         failed = Math.addExact(failed, 1);
@@ -120,6 +124,8 @@ public class RanchRewardDeliveryOrchestrator {
                         if (source.acknowledge(new SourceOutboxAckRequest(event.eventId(),
                                 event.leaseToken(), completedAt, outcome))) {
                             acknowledged = Math.addExact(acknowledged, 1);
+                        } else {
+                            failed = Math.addExact(failed, 1);
                         }
                     } catch (RuntimeException ignored) {
                         failed = Math.addExact(failed, 1);
@@ -132,6 +138,8 @@ public class RanchRewardDeliveryOrchestrator {
                                 event.leaseToken(), completedAt, eligibleAt,
                                 settings.maxBackoffSeconds()))) {
                             deferred = Math.addExact(deferred, 1);
+                        } else {
+                            failed = Math.addExact(failed, 1);
                         }
                     } catch (RuntimeException ignored) {
                         failed = Math.addExact(failed, 1);
