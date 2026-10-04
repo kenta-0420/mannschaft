@@ -35,8 +35,6 @@ import java.util.UUID;
  * PrivateSelfAccessGuardは変身を拒否し、bodyから管理主体を受けない。本人ownerは生成しない。
  */
 @AuthorizedByPathConfig("/api/v1/system-admin/**")
-@AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
-        reason = "公開停止中でもfresh SYSTEM_ADMINが運営設定を照会し将来版を登録する管理入口")
 @RestController
 @RequestMapping("/api/v1/system-admin/ranch")
 @RequiredArgsConstructor
@@ -45,6 +43,8 @@ public class RanchAdminController {
     private final PrivateSelfAccessGuard access;
 
     @GetMapping("/operational-controls")
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "公開停止中でもfresh SYSTEM_ADMINが運営設定を照会する管理入口")
     public ResponseEntity<ApiResponse<RanchOperationalControlsResponse>> controls(
             HttpServletRequest request, HttpServletResponse response) {
         Long actorId = access.requireSelfAccess(request, response);
@@ -52,6 +52,8 @@ public class RanchAdminController {
     }
 
     @GetMapping("/care-rules")
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "公開停止中でもfresh SYSTEM_ADMINが公開版の履歴を照会する管理入口")
     public ResponseEntity<CursorPagedResponse<RanchCareRuleSummary>> careRules(
             @RequestParam(required = false) String cursor, @RequestParam(defaultValue = "20") int limit,
             HttpServletRequest request, HttpServletResponse response) {
@@ -60,6 +62,8 @@ public class RanchAdminController {
     }
 
     @PostMapping("/care-rules")
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "公開停止中でもfresh SYSTEM_ADMINが将来のお世話ルール版を登録する管理入口")
     @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
             content = @Content(schema = @Schema(implementation = RanchCareRulePublicationRequest.class)))
     public ResponseEntity<ApiResponse<RanchCareRulePublicationResponse>> publishCare(
