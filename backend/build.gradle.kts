@@ -534,6 +534,18 @@ tasks.withType<Test> {
         // 非JST契約テストが「指定した値が実際のワーカーへ届いた」ことを検証するための期待値。
         "-Dmannschaft.test.expected-jvm-timezone=$testTimezone"
     )
+    // 【Spring テストコンテキストキャッシュの上限（MAT 実測・CMP-261002-1606 run 37196327170）】
+    // shard 0 の OOM 時、ヒープの 59%（2.48GB）を Spring テストコンテキスト 17 個
+    // （平均約146MB・最大177MB）が占めていた。spring.test.context.cache.maxSize は
+    // 未設定で既定 32。テスト構成の種類が多く、1 JVM に十数個が溜まると -Xmx4g を超える。
+    // 10 × 最大177MB ≒ 1.8GB なら 4g に余裕があり、それを超える分は LRU で close される
+    // （根治は独自 @MockitoBean 等を共通構成へ寄せてコンテキスト種類自体を減らすこと。
+    //  CMP-261004-2047 で追跡。本設定はあくまで応急の上限）。
+    // -Pspring.test.context.cache.maxSize=N で上書き可能（archTest は Spring を使わないため無害）。
+    systemProperty(
+        "spring.test.context.cache.maxSize",
+        (project.findProperty("spring.test.context.cache.maxSize") as String?) ?: "10"
+    )
 
     // （旧: D-4 CrossDomainForeignKeyArchTest の baseline 再凍結スイッチ archunit.fk.refreeze を
     //  ここで伝播していたが、クロスドメイン FK 全廃 [158→0 件] 達成に伴い番人を baseline 方式から

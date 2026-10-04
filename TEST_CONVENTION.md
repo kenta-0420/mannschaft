@@ -175,6 +175,9 @@ afterAll(() => {
 
 - **原則として `@SpringBootTest` + `@AutoConfigureMockMvc` を使用する**。Service をモックする `@WebMvcTest` は、Controller 層に固有のロジック（リクエストマッピング、バリデーション等）を個別に検証したい場合のみ使用する
 - **理由**: 本プロジェクトの Controller は薄い設計（§.claudecode.md 原則4）であり、Service をモックしても検証価値が低い。実 DB を含めた一気通貫テストのほうが信頼性が高い
+- 独自の `@MockitoBean` 等でテスト構成の種類を増やすほど、1 JVM に積む Spring テストコンテキストが増えて
+  OOM の火種になる（CMP-261002-1606 の MAT 実測）。`spring.test.context.cache.maxSize` は 10 に制限して
+  いる（`backend/.claudecode.md` 参照）ため、可能な限り既存の共通構成に寄せること
 
 ### 3.1.1 Controller テストは MockMvc 経由必須（Bean 直呼び禁止）**【必須】**
 
