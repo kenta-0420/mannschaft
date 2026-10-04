@@ -55,6 +55,8 @@ class GdprPurgeRetryServiceTest {
     private ErrorReportPurgeEventListener errorReportPurgeEventListener;
     @Mock
     private BillingPurgeEventListener billingPurgeEventListener;
+    @Mock
+    private com.mannschaft.app.ranch.event.RanchPurgeEventListener ranchPurgeEventListener;
 
     @InjectMocks
     private GdprPurgeRetryService service;
