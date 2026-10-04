@@ -1,9 +1,15 @@
 /**
- * CMP-261001-0835 実機E2E（応援者フォロー解除のロール横断）。
+ * CMP-261001-0835 実機E2E（応援者フォロー解除のロール横断）再戦版。
  *
  * このテストはAPIモックを使わない実機テストです（page.route によるAPI横取り禁止）。
  * ログイン・前提データ作成・後始末のみ API を使用し、対象操作（フォロー解除・ボタン有無の確認）は
  * 必ず実画面から行う。
+ *
+ * 【前任からの変更点】既存シード（ORG s-98024ad7）がドリフトしていた
+ *  （archivedAt 設定済み＝アーカイブ済み、e2e-supporter は実際には follow/status=NONE、
+ *   e2e-user の roleName も null で所属ではなかった）ため、既存シードに依存せず、
+ *  本テストの beforeAll で組織・チームを自前で新規作成し、固定テストユーザーを
+ *  招待トークン経由で MEMBER 化、フォロー API で SUPPORTER 化して前提を作る。
  *
  * 対象シナリオ（組織・チームの両方、デスクトップ幅1280・モバイル幅390の両方）:
  *  1. SUPPORTER: 「フォロー解除」が出る／「退出」は出ない → 解除→成功→「サポーターになる」へ切替→リロードでも未フォロー
@@ -15,12 +21,13 @@
  *  7. BE 直叩き（認可境界）
  *  8. URL 直打ち
  *
- * 固定ユーザー（既存シード、共有開発DB）:
- *   MEMBER:    e2e-user@test.mannschaft.local      (id=23)  — ORG s-98024ad7 / TEAM fc-u-18
- *   SUPPORTER: e2e-supporter@test.mannschaft.local  (id=90156) — ORG s-98024ad7 / TEAM fc-u-18 の APPROVED サポーター
- *   OUTSIDER:  e2e-outsider@test.mannschaft.local   (id=90245) — ORG s-98024ad7 / TEAM fc-u-18 には未所属
- *   ADMIN:     e2e-admin@test.mannschaft.local      (id=24)  — ORG s-98024ad7 / TEAM fc-u-18 の ADMIN
- * 他組織（org-000001, id=1）には e2e-supporter / e2e-outsider いずれも無関係（クロスオーグ検証に使用）。
+ * 固定ユーザー（既存シード、共有開発DB。役割は本テストが自前で割り当てる）:
+ *   ADMIN:     e2e-admin@test.mannschaft.local     — 組織・チームの作成者（ADMIN）
+ *   MEMBER:    e2e-user@test.mannschaft.local      — 招待トークンで MEMBER 化
+ *   SUPPORTER: e2e-outsider@test.mannschaft.local   — フォローAPIで APPROVED サポーター化
+ *   OUTSIDER:  e2e-dummy-5@test.mannschaft.local    — 組織・チームいずれにも一切関与させない
+ *   PENDING申請者: e2e-dummy-6@test.mannschaft.local — 手動承認テストでのみ使用
+ * 他組織（組織B、本テストが別途新規作成）には SUPPORTER/OUTSIDER いずれも無関係（クロスオーグ検証に使用）。
  */
 
 import { expect, test, type APIRequestContext, type Browser, type Page } from '@playwright/test'
@@ -29,18 +36,106 @@ import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3005'
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8085'
-const PASSWORD = 'TestPass2026!'
-
-const TEAM_SLUG = 'fc-u-18'
-const ORG_SLUG = 's-98024ad7'
-const OTHER_ORG_SLUG = 'org-000001'
+const PASSWORD = process.env.TEST_USER_PASSWORD ?? 'TestPass2026!'
 
 const MEMBER = { email: 'e2e-user@test.mannschaft.local', password: PASSWORD }
-const SUPPORTER = { email: 'e2e-supporter@test.mannschaft.local', password: PASSWORD }
-const OUTSIDER = { email: 'e2e-outsider@test.mannschaft.local', password: PASSWORD }
+const SUPPORTER = { email: 'e2e-outsider@test.mannschaft.local', password: PASSWORD }
+const OUTSIDER = { email: 'e2e-dummy-5@test.mannschaft.local', password: PASSWORD }
+const PENDING_APPLICANT = { email: 'e2e-dummy-6@test.mannschaft.local', password: PASSWORD }
 const ADMIN = { email: 'e2e-admin@test.mannschaft.local', password: PASSWORD }
 
 test.describe.configure({ mode: 'serial' })
+
+// ============================================================
+// フィクスチャ作成（beforeAll）: 自前の組織・チームを新規作成し、
+// 既存ドリフトシードに依存しない前提を作る。
+// ============================================================
+let ORG_SLUG = ''
+let OTHER_ORG_SLUG = ''
+let TEAM_SLUG = ''
+let adminToken = ''
+
+async function bearerFor(request: APIRequestContext, credentials: { email: string, password: string }): Promise<string> {
+  const res = await request.post(`${API_BASE_URL}/api/v1/auth/login`, {
+    data: { email: credentials.email, password: credentials.password },
+  })
+  expect(res.status(), await res.text()).toBe(200)
+  const body = (await res.json()).data as { accessToken: string }
+  return body.accessToken
+}
+
+test.beforeAll(async ({ request }) => {
+  adminToken = await bearerFor(request, ADMIN)
+  const authed = (method: 'get' | 'post' | 'patch' | 'put', path: string, data?: unknown) =>
+    request[method](`${API_BASE_URL}${path}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+      ...(data !== undefined ? { data } : {}),
+    })
+
+  const suffix = Date.now().toString(36)
+
+  // 組織A（主対象）: PUBLIC + supporterEnabled + autoApprove
+  const orgRes = await authed('post', '/api/v1/organizations', {
+    name: `e2e-0835-org-${suffix}`, orgType: 'OTHER', visibility: 'PUBLIC', slug: `e2e-0835-o-${suffix}`.slice(0, 30),
+  })
+  expect(orgRes.status(), await orgRes.text()).toBe(201)
+  ORG_SLUG = ((await orgRes.json()).data as { slug: string }).slug
+  const orgPatch = await authed('patch', `/api/v1/organizations/${ORG_SLUG}`, { supporterEnabled: true, version: 0 })
+  expect(orgPatch.status(), await orgPatch.text()).toBe(200)
+  const orgSettings = await authed('put', `/api/v1/organizations/${ORG_SLUG}/supporter-settings`, { autoApprove: true })
+  expect(orgSettings.status(), await orgSettings.text()).toBe(200)
+
+  // 組織B（クロスオーグ確認用）: 同じく PUBLIC。SUPPORTER/OUTSIDERはここには関与しない。
+  const orgBRes = await authed('post', '/api/v1/organizations', {
+    name: `e2e-0835-orgB-${suffix}`, orgType: 'OTHER', visibility: 'PUBLIC', slug: `e2e-0835-ob-${suffix}`.slice(0, 30),
+  })
+  expect(orgBRes.status(), await orgBRes.text()).toBe(201)
+  OTHER_ORG_SLUG = ((await orgBRes.json()).data as { slug: string }).slug
+  const orgBPatch = await authed('patch', `/api/v1/organizations/${OTHER_ORG_SLUG}`, { supporterEnabled: true, version: 0 })
+  expect(orgBPatch.status(), await orgBPatch.text()).toBe(200)
+  const orgBSettings = await authed('put', `/api/v1/organizations/${OTHER_ORG_SLUG}/supporter-settings`, { autoApprove: true })
+  expect(orgBSettings.status(), await orgBSettings.text()).toBe(200)
+
+  // チーム（主対象）: PUBLIC + supporterEnabled + autoApprove
+  const teamRes = await authed('post', '/api/v1/teams', {
+    name: `e2e-0835-team-${suffix}`, visibility: 'PUBLIC', slug: `e2e-0835-t-${suffix}`.slice(0, 30),
+  })
+  expect(teamRes.status(), await teamRes.text()).toBe(201)
+  TEAM_SLUG = ((await teamRes.json()).data as { slug: string }).slug
+  const teamPatch = await authed('patch', `/api/v1/teams/${TEAM_SLUG}`, { supporterEnabled: true, version: 0 })
+  expect(teamPatch.status(), await teamPatch.text()).toBe(200)
+  const teamSettings = await authed('put', `/api/v1/teams/${TEAM_SLUG}/supporter-settings`, { autoApprove: true })
+  expect(teamSettings.status(), await teamSettings.text()).toBe(200)
+
+  // MEMBER（e2e-user）を組織A・チームへ招待トークンで参加させる（roleId=4 = MEMBER）
+  const memberToken = await bearerFor(request, MEMBER)
+  const orgInvite = await authed('post', `/api/v1/organizations/${ORG_SLUG}/invite-tokens`, { roleId: 4, expiresIn: '1d', maxUses: 1 })
+  expect(orgInvite.status(), await orgInvite.text()).toBe(201)
+  const orgInviteToken = ((await orgInvite.json()).data as { token: string }).token
+  const orgJoin = await request.post(`${API_BASE_URL}/api/v1/invite/${orgInviteToken}/join`, {
+    headers: { Authorization: `Bearer ${memberToken}` },
+  })
+  expect(orgJoin.status(), await orgJoin.text()).toBe(200)
+
+  const teamInvite = await authed('post', `/api/v1/teams/${TEAM_SLUG}/invite-tokens`, { roleId: 4, expiresIn: '1d', maxUses: 1 })
+  expect(teamInvite.status(), await teamInvite.text()).toBe(201)
+  const teamInviteToken = ((await teamInvite.json()).data as { token: string }).token
+  const teamJoin = await request.post(`${API_BASE_URL}/api/v1/invite/${teamInviteToken}/join`, {
+    headers: { Authorization: `Bearer ${memberToken}` },
+  })
+  expect(teamJoin.status(), await teamJoin.text()).toBe(200)
+
+  // SUPPORTER（e2e-outsider）を組織A・チームへフォローAPIでAPPROVED化（autoApprove=trueなので即時承認）
+  const supporterToken = await bearerFor(request, SUPPORTER)
+  const orgFollow = await request.post(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`, {
+    headers: { Authorization: `Bearer ${supporterToken}` },
+  })
+  expect(orgFollow.status(), await orgFollow.text()).toBe(201)
+  const teamFollow = await request.post(`${API_BASE_URL}/api/v1/teams/${TEAM_SLUG}/follow`, {
+    headers: { Authorization: `Bearer ${supporterToken}` },
+  })
+  expect(teamFollow.status(), await teamFollow.text()).toBe(201)
+})
 
 async function openAs(
   browser: Browser,
@@ -66,15 +161,6 @@ async function openScope(page: Page, path: string): Promise<void> {
   expect(response?.status() ?? 200).toBeLessThan(400)
   await waitForHydration(page)
   await waitForSpinnerGone(page)
-}
-
-async function bearerFor(request: APIRequestContext, credentials: { email: string, password: string }): Promise<string> {
-  const res = await request.post(`${API_BASE_URL}/api/v1/auth/login`, {
-    data: { email: credentials.email, password: credentials.password },
-  })
-  expect(res.status()).toBe(200)
-  const body = (await res.json()).data as { accessToken: string }
-  return body.accessToken
 }
 
 // ============================================================
@@ -113,13 +199,6 @@ test('SUP-ORG-DESK: 応援者はフォロー解除導線を持ち、解除後は
 
   await page.context().close()
 })
-
-// ============================================================
-// 6. 他組織 — クロスオーグ分離（SUPPORTERのまま。上のテストで解除済みなので、
-//     ここでは「組織Aで未所属状態のSUPPORTERアカウント」で組織Bの表示を確認する形になるが、
-//     解除前の状態を汚さないよう、クロスオーグ確認は解除前に行う必要がある。
-//     → 実行順を入れ替え、クロスオーグ確認を解除テストより前に独立した事実として先に記録する。
-// ============================================================
 
 // ============================================================
 // 2. MEMBER — 組織（デスクトップ）／ 3. ADMIN／4. 未所属／モバイル
@@ -165,10 +244,16 @@ test('SUP-ORG-MOBILE: モバイル幅でもフォロー解除はインライン�
   const page = await openAs(browser, SUPPORTER, { width: 390, height: 844 })
   await openScope(page, `/organizations/${ORG_SLUG}`)
 
-  // この時点で前テスト(SUP-ORG-DESK)により解除済み＝未所属なので、サポーター申請を再度行い
-  // APPROVED 状態を作ってからモバイル表示を確認する（autoApprove 既定 true）。
-  const applyRes = await page.request.post(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`)
-  expect(applyRes.status()).toBe(200)
+  // この時点で前テスト(SUP-ORG-DESK)により解除済み＝未所属のはずだが、本テスト単独実行時など
+  // 既に APPROVED のままのケースもあるため、状態を確認してから必要な時だけ申請する
+  // （既に APPROVED の状態で申請すると 409 になるため、他箇所と同様に status を見てから POST する）。
+  const statusRes = await page.request.get(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow/status`)
+  expect(statusRes.status()).toBe(200)
+  const statusBody = (await statusRes.json()).data as { status: string }
+  if (statusBody.status !== 'APPROVED') {
+    const applyRes = await page.request.post(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`)
+    expect(applyRes.status()).toBe(201)
+  }
   await page.reload({ waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
@@ -187,8 +272,8 @@ test('SUP-ORG-MOBILE: モバイル幅でもフォロー解除はインライン�
     response => response.request().method() === 'DELETE'
       && new URL(response.url()).pathname === `/api/v1/organizations/${ORG_SLUG}/follow`,
   )
-  await page.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`)
-  await unfollowCompleted.catch(() => {})
+  await page.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`, { timeout: 20_000 }).catch(err => console.warn('[cleanup] unfollow request failed', err))
+  await unfollowCompleted.catch(err => console.warn('[cleanup] unfollow response wait failed', err))
   await page.context().close()
 })
 
@@ -220,7 +305,7 @@ test('SUP-TEAM-DESK: チームでも応援者はフォロー解除導線のみ�
   const status = (await statusRes.json()).data as { status: string }
   if (status.status !== 'APPROVED') {
     const applyRes = await page.request.post(`${API_BASE_URL}/api/v1/teams/${TEAM_SLUG}/follow`)
-    expect(applyRes.status()).toBe(200)
+    expect(applyRes.status()).toBe(201)
   }
 
   await openScope(page, `/teams/${TEAM_SLUG}`)
@@ -256,51 +341,46 @@ test('MEMBER-TEAM-DESK: チームの会員は退出導線のみ', async ({ brows
 // ============================================================
 test('PENDING-ORG-DESK: 手動承認設定時は「申請中」と「取消」が出て、取消で消える', async ({ browser, request }) => {
   test.setTimeout(240_000)
-  const adminToken = await bearerFor(request, ADMIN)
+  const adminTokenLocal = await bearerFor(request, ADMIN)
 
-  // 1) 一時的に手動承認へ変更
-  const before = await request.get(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/supporter-settings`, {
-    headers: { Authorization: `Bearer ${adminToken}` },
-  })
-  expect(before.status()).toBe(200)
+  // 1) 一時的に手動承認へ変更（フィールド名は autoApprove。isAutoApprove は実際には無視される)
   await request.put(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/supporter-settings`, {
-    headers: { Authorization: `Bearer ${adminToken}` },
-    data: { isAutoApprove: false },
+    headers: { Authorization: `Bearer ${adminTokenLocal}` },
+    data: { autoApprove: false },
   })
 
   try {
-    // 2) OUTSIDER が申請 → PENDING になる
-    const outsiderPage = await openAs(browser, OUTSIDER)
-    const applyRes = await outsiderPage.request.post(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`)
-    expect(applyRes.status()).toBe(200)
+    // 2) PENDING専用の申請者が申請 → PENDING になる
+    const applicantPage = await openAs(browser, PENDING_APPLICANT)
+    const applyRes = await applicantPage.request.post(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`)
+    expect(applyRes.status()).toBe(201)
     const applyBody = (await applyRes.json()).data as { status: string }
     expect(applyBody.status).toBe('PENDING')
 
-    await openScope(outsiderPage, `/organizations/${ORG_SLUG}`)
-    await expect(outsiderPage.getByText('申請中', { exact: false })).toBeVisible({ timeout: 60_000 })
-    const cancelButton = outsiderPage.getByTestId('follow-pending-cancel-button')
+    await openScope(applicantPage, `/organizations/${ORG_SLUG}`)
+    await expect(applicantPage.getByText('申請中', { exact: false })).toBeVisible({ timeout: 60_000 })
+    const cancelButton = applicantPage.getByTestId('follow-pending-cancel-button')
     await expect(cancelButton).toBeVisible()
 
-    const cancelCompleted = outsiderPage.waitForResponse(
+    const cancelCompleted = applicantPage.waitForResponse(
       response => response.request().method() === 'DELETE'
         && new URL(response.url()).pathname === `/api/v1/organizations/${ORG_SLUG}/follow`,
     )
     await cancelButton.click()
     expect((await cancelCompleted).status()).toBe(204)
-    await expect(outsiderPage.getByTestId('follow-apply-button')).toBeVisible({ timeout: 30_000 })
-    await outsiderPage.context().close()
+    await expect(applicantPage.getByTestId('follow-apply-button')).toBeVisible({ timeout: 30_000 })
+    await applicantPage.context().close()
   } finally {
-    // 3) 設定を必ず元に戻す（共有DB・他セッションへの影響を最小化）
-    const beforeBody = (await before.json()).data as { isAutoApprove: boolean }
+    // 3) 設定を必ず元に戻す（自前フィクスチャの既定値 autoApprove=true へ復元）
     await request.put(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/supporter-settings`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
-      data: { isAutoApprove: beforeBody.isAutoApprove },
+      headers: { Authorization: `Bearer ${adminTokenLocal}` },
+      data: { autoApprove: true },
     })
   }
 })
 
 // ============================================================
-// 6. 他組織 — クロスオーグ分離: 組織Aで応援者申請→APPROVEDにし、組織B(org-000001)では未所属表示を確認。
+// 6. 他組織 — クロスオーグ分離: 組織Aで応援者申請→APPROVEDにし、組織B(自前作成)では未所属表示を確認。
 //     続けて A→B へ画面遷移しても表示が正しく切り替わることを見る。最後に組織Aを解除して後始末。
 // ============================================================
 test('CROSS-ORG: 組織Aのフォロー状態が組織Bに混線しない', async ({ browser }) => {
@@ -311,7 +391,7 @@ test('CROSS-ORG: 組織Aのフォロー状態が組織Bに混線しない', asyn
   const statusABody = (await statusA.json()).data as { status: string }
   if (statusABody.status !== 'APPROVED') {
     const applyRes = await page.request.post(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`)
-    expect(applyRes.status()).toBe(200)
+    expect(applyRes.status()).toBe(201)
   }
 
   await openScope(page, `/organizations/${ORG_SLUG}`)
@@ -331,8 +411,8 @@ test('CROSS-ORG: 組織Aのフォロー状態が組織Bに混線しない', asyn
     response => response.request().method() === 'DELETE'
       && new URL(response.url()).pathname === `/api/v1/organizations/${ORG_SLUG}/follow`,
   )
-  await page.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`)
-  await unfollowCompleted.catch(() => {})
+  await page.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`, { timeout: 20_000 }).catch(err => console.warn('[cleanup] unfollow request failed', err))
+  await unfollowCompleted.catch(err => console.warn('[cleanup] unfollow response wait failed', err))
   await page.context().close()
 })
 
@@ -366,17 +446,12 @@ test('API-AUTHZ: 応援者/会員/未認証の認可境界がAPIレベルで正�
     headers: { Authorization: `Bearer ${memberToken}` },
   })
   expect(memberUnfollow.status()).toBe(404)
-  const memberMe = await request.get(`${API_BASE_URL}/api/v1/users/me/organizations`, {
-    headers: { Authorization: `Bearer ${memberToken}` },
-  }).catch(() => null)
-  // users/me/organizations が存在しない場合でも /organizations/{slug}/me/permissions で裏取り
   const memberPerm = await request.get(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/me/permissions`, {
     headers: { Authorization: `Bearer ${memberToken}` },
   })
   expect(memberPerm.status()).toBe(200)
   const memberPermBody = (await memberPerm.json()).data as { roleName: string }
   expect(memberPermBody.roleName).toBe('MEMBER')
-  void memberMe
 
   // 未認証 401
   const anonRes = await request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`)
@@ -404,8 +479,8 @@ test('URL-DIRECT: 応援者・未所属のURL直打ちでも表示が正しい',
     response => response.request().method() === 'DELETE'
       && new URL(response.url()).pathname === `/api/v1/organizations/${ORG_SLUG}/follow`,
   )
-  await supporterPage.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`)
-  await unfollowCompleted.catch(() => {})
+  await supporterPage.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`, { timeout: 20_000 }).catch(err => console.warn('[cleanup] unfollow request failed', err))
+  await unfollowCompleted.catch(err => console.warn('[cleanup] unfollow response wait failed', err))
   await supporterPage.context().close()
 
   const outsiderPage = await openAs(browser, OUTSIDER)
