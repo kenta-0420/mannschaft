@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.diagnosis;
+package com.mannschaft.app.diagnosis;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
