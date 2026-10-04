@@ -15,11 +15,10 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.gamification.service.BetaTesterBadgeAwardService;
-import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.NotificationType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
@@ -48,8 +47,8 @@ import java.util.UUID;
  *
  * <p><b>クロスドメイン境界</b>: 本サービスは {@code @Transactional} だが、直接依存するのは billing ドメイン内の
  * リポジトリ（{@link EntitlementRepository} / {@link PlanFeatureRepository} / {@link BetaGrantRepository}）と、
- * gamification / notification の<b>Service</b>（{@link BetaTesterBadgeAwardService} / {@link NotificationHelper}）
- * のみ。他ドメインの {@code ..repository} / {@code ..entity} を直接参照しないため、クロスドメイン番人
+ * gamification の<b>Service</b>（{@link BetaTesterBadgeAwardService}）と通知イベント発行
+ * のみ。通知配送は業務コミット後に独立した TX へ委譲する。他ドメインの {@code ..repository} / {@code ..entity} を直接参照しないため、クロスドメイン番人
  * D-1 / D-3 に抵触しない（バッジ授与は gamification ドメインの Service へ委譲・在籍/組織解決は非 tx の
  * QueryService/API 層へ委譲）。</p>
  *
@@ -78,7 +77,7 @@ public class BetaGrantService {
     private final ScopeMemberCountService scopeMemberCountService;
     private final BetaPerkEligibilityService eligibilityService;
     private final BetaTesterBadgeAwardService betaTesterBadgeAwardService;
-    private final NotificationHelper notificationHelper;
+    private final ApplicationEventPublisher eventPublisher;
     private final MessageSource messageSource;
     private final ObjectMapper objectMapper;
     private final Clock clock;
@@ -88,8 +87,8 @@ public class BetaGrantService {
     // ============================================================
 
     /**
-     * ベータ特典を付与する（設計書 01 §3・02 §4.1）。付与メタ＋ FULL 構成の権利＋（個人のみ）称号バッジ＋通知を
-     * 単一トランザクションで確定する。
+     * ベータ特典を付与する（設計書 01 §3・02 §4.1）。付与メタ＋ FULL 構成の権利＋（個人のみ）称号バッジを
+     * 単一トランザクションで確定する。本人通知の要求は同TX内で発行し、配送はコミット後に行う。
      *
      * @param grantKind        INDIVIDUAL / TEAM_ORG
      * @param betaPhase        ベータ段階（1〜4・範囲外は {@link BetaPerkErrorCode#BETA_PHASE_INVALID}）
@@ -421,15 +420,13 @@ public class BetaGrantService {
         safeNotify(grant.getScopeId(), type, resolve(titleKey, null), resolve(bodyKey, null), grant);
     }
 
-    /** 通知送信（失敗は非致命・付与本体を殺さない・WARN で可視化）。 */
+    /** 配送要求を発行するだけに留め、通知DBの失敗を業務TXに参加させない。 */
     private void safeNotify(Long userId, NotificationType type, String title, String body, BetaGrantEntity grant) {
         if (userId == null) {
             return;
         }
         try {
-            notificationHelper.notify(userId, type.name(), type.getPriority(), title, body,
-                    type.getSourceType(), null,
-                    NotificationScopeType.PERSONAL, userId, null, null);
+            eventPublisher.publishEvent(new BetaGrantNotificationEvent(userId, type, title, body));
         } catch (RuntimeException ex) {
             log.warn("ベータ特典通知の送信に失敗（本体は継続）type={}, userId={}", type, userId, ex);
         }
