@@ -18,4 +18,6 @@ public interface RanchCareRuleRepository extends JpaRepository<RanchCareRuleEnti
     List<RanchCareRuleEntity> publishedAt(@Param("at") Instant at, Pageable pageable);
     Optional<RanchCareRuleEntity> findTopByOrderByVersionNumberDesc();
     boolean existsByEffectiveAt(Instant effectiveAt);
+    @Query("SELECT rule FROM RanchCareRuleEntity rule WHERE (:before IS NULL OR rule.versionNumber < :before) ORDER BY rule.versionNumber DESC")
+    List<RanchCareRuleEntity> history(@Param("before") Long before, Pageable pageable);
 }

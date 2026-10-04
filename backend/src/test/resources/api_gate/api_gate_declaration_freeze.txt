@@ -471,6 +471,7 @@ HTTP|com.mannschaft.app.quickmemo.controller.QuickMemoController|11|11
 HTTP|com.mannschaft.app.quickmemo.controller.QuickMemoSettingsController|2|2
 HTTP|com.mannschaft.app.quickmemo.controller.TagController|12|12
 HTTP|com.mannschaft.app.quickmemo.controller.UserVoiceInputConsentController|3|3
+HTTP|com.mannschaft.app.ranch.controller.RanchAdminController|0|3
 HTTP|com.mannschaft.app.ranch.controller.RanchOwnerActionController|4|4
 HTTP|com.mannschaft.app.ranch.controller.RanchPrivateQueryController|4|4
 HTTP|com.mannschaft.app.ranch.controller.RanchSelfController|2|2

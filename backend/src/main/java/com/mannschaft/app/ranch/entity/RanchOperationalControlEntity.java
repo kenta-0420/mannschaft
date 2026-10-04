@@ -28,10 +28,21 @@ public class RanchOperationalControlEntity {
     private boolean deliveryPaused;
     @Column(name = "version", nullable = false)
     private long version;
-    @Column(name = "updated_by")
+    @Column(name = "updated_by", columnDefinition = "bigint unsigned")
     private Long updatedBy;
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+    /** singleton lock下でのみ適用する。配送停止は報酬停止期間とは別の状態。 */
+    public void apply(boolean care, boolean shop, boolean deliveryPause, Long actorId, Instant now) {
+        if (id != 1 || actorId == null || now == null) throw new IllegalArgumentException("運営制御の指定が不正です");
+        long nextVersion = Math.addExact(version, 1);
+        careEnabled = care;
+        shopEnabled = shop;
+        deliveryPaused = deliveryPause;
+        version = nextVersion;
+        updatedBy = actorId;
+        updatedAt = now;
+    }
 }

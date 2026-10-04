@@ -7,6 +7,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -29,10 +31,13 @@ public class RanchCareRuleEntity extends RanchEntity {
     private long juvenileXp;
     @Column(name = "adult_xp", nullable = false)
     private long adultXp;
-    @Column(name = "content_hash", nullable = false, length = 32)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = "content_hash", nullable = false, columnDefinition = "binary(32)")
     private byte[] contentHash;
-    @Column(name = "published_by", nullable = false)
+    @Column(name = "published_by", nullable = false, columnDefinition = "bigint unsigned")
     private Long publishedBy;
     @Column(name = "published_at", nullable = false)
     private Instant publishedAt;
+
+    public byte[] getContentHash() { return contentHash.clone(); }
 }

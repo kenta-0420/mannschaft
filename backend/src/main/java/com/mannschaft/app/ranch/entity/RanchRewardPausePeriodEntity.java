@@ -23,7 +23,7 @@ public class RanchRewardPausePeriodEntity extends RanchEntity {
     private Instant endsAt;
     @Column(name = "reason_code", nullable = false, length = 40)
     private String reasonCode;
-    @Column(name = "changed_by", nullable = false)
+    @Column(name = "changed_by", nullable = false, columnDefinition = "bigint unsigned")
     private Long changedBy;
 
     public void closeAt(Instant now) {
