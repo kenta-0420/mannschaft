@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
@@ -54,7 +55,7 @@ class RanchEnrollmentWriterIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    void enrollmentCreatesOneEggPeriodAndThreeSlotsThenReplaysWithoutWrites() {
+    void enrollmentCreatesOneEggPeriodAndThreeSlotsThenReplaysWithoutWrites() throws Exception {
         UUID key = UUID.randomUUID();
         Instant requested = Instant.parse("2026-10-04T02:00:00.123456789Z");
 
@@ -79,14 +80,26 @@ class RanchEnrollmentWriterIT extends AbstractMySqlIntegrationTest {
                 .isEqualTo(Instant.parse("2026-10-04T02:00:00.123456Z"));
         assertThat(first.snapshot().roomSlots()).hasSize(3);
         assertThat(first.snapshot().dinosaur().stage()).isEqualTo(DinosaurStage.EGG);
+        var savedResult = commands.findByUserIdAndIdempotencyKey(me, key).orElseThrow();
+        var savedTree = json.readTree(savedResult.getResultJson());
 
         var replay = writer.enroll(me, key, requested.plusSeconds(100), null);
         assertThat(replay.createdNow()).isFalse();
         assertThat(replay.ownerId()).isEqualTo(first.ownerId());
         assertThat(replay.dinosaurId()).isEqualTo(first.dinosaurId());
         assertThat(replay.commandId()).isEqualTo(first.commandId());
-        assertThat(replay.immutableResultJson()).isEqualTo(first.immutableResultJson());
         assertThat(replay.snapshot()).isEqualTo(first.snapshot());
+        assertThat(json.readTree(commands.findByUserIdAndIdempotencyKey(me, key)
+                .orElseThrow().getResultJson())).isEqualTo(savedTree);
+
+        ReflectionTestUtils.setField(owner, "soundVolume", 37);
+        owners.saveAndFlush(owner);
+        assertThat(reader.read(me, requested.plusSeconds(200), TEST_PROJECTION)
+                .settings().soundVolume()).isEqualTo(37);
+        var replayAfterStateChange = writer.enroll(me, key, requested.plusSeconds(300), null);
+        assertThat(replayAfterStateChange.snapshot()).isEqualTo(first.snapshot());
+        assertThat(json.readTree(commands.findByUserIdAndIdempotencyKey(me, key)
+                .orElseThrow().getResultJson())).isEqualTo(savedTree);
         assertThat(slots.findByUserIdOrderBySlotKey(me)).hasSize(3);
         assertThat(periods.findByUserIdAndEndsAtIsNull(me)).hasSize(1);
     }

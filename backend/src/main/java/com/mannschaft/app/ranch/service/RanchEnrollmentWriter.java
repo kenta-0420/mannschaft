@@ -75,8 +75,7 @@ public class RanchEnrollmentWriter {
             }
             RanchState oldState = decode(command.getResultJson());
             return new EnrollmentOutcome(false, oldState.owner().id(),
-                    oldState.dinosaur().id(), command.getId(),
-                    command.getResultJson(), oldState);
+                    oldState.dinosaur().id(), command.getId(), oldState);
         }
 
         var existing = owners.findByUserId(userId);
@@ -152,7 +151,7 @@ public class RanchEnrollmentWriter {
                 .commandType(COMMAND_TYPE).bodyHash(bodyHash).resultJson(resultJson)
                 .completedAt(now).createdAt(now).build());
         return new EnrollmentOutcome(createdNow, ownerId, dinosaurId,
-                command.getId(), resultJson, state);
+                command.getId(), state);
     }
 
     private String encode(Object value) {
@@ -172,6 +171,5 @@ public class RanchEnrollmentWriter {
     }
 
     public record EnrollmentOutcome(boolean createdNow, UUID ownerId, UUID dinosaurId,
-                                    UUID commandId, String immutableResultJson,
-                                    RanchState snapshot) { }
+                                    UUID commandId, RanchState snapshot) { }
 }
