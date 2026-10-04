@@ -1,6 +1,10 @@
 {
   "school": {
     "attendance": {
+      "forbidden": {
+        "title": "Keine Berechtigung",
+        "description": "Sie haben keine Berechtigung, diese Schulanwesenheits-Seite anzuzeigen oder zu bedienen. Bitte wenden Sie sich an die Klassenleitung oder eine Administration."
+      },
       "status": {
         "ATTENDING": "Anwesend",
         "PARTIAL": "Teilweise anwesend",

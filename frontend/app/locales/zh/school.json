@@ -1,6 +1,10 @@
 {
   "school": {
     "attendance": {
+      "forbidden": {
+        "title": "没有权限",
+        "description": "您没有查看或操作此学校考勤页面的权限。请向班主任或管理员确认。"
+      },
       "status": {
         "ATTENDING": "出席",
         "PARTIAL": "部分出席",

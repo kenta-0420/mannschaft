@@ -1,6 +1,10 @@
 {
   "school": {
     "attendance": {
+      "forbidden": {
+        "title": "No tiene permiso",
+        "description": "No tiene permiso para ver ni operar esta pantalla de asistencia escolar. Consulte con el tutor o un administrador."
+      },
       "status": {
         "ATTENDING": "Presente",
         "PARTIAL": "Parcial",

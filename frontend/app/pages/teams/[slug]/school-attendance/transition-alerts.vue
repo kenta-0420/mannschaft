@@ -13,6 +13,13 @@ const teamSlug = computed(() => String(route.params.slug))
 const { alerts, loading, unresolvedCount, totalCount, loadAlerts } =
   useTransitionAlert(teamSlug)
 const { userTimezone } = useDatetime()
+const { loaded: permissionsLoaded, forbidden: permissionsForbidden, canView, loadPermissions } =
+  useAttendancePermissions(teamSlug)
+
+// 判定は BE の権限判定 API のみ。403 は握りつぶさず「権限がありません」を明示する（AC-18）
+const denied = computed(
+  () => permissionsForbidden.value || (permissionsLoaded.value && !canView.value),
+)
 
 const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 const selectedDate = ref(today)
@@ -32,6 +39,8 @@ async function onResolved(_alertId: number): Promise<void> {
 }
 
 onMounted(async () => {
+  await loadPermissions()
+  if (denied.value) return
   await loadAlerts(selectedDate.value, unresolvedOnly.value)
 })
 </script>
@@ -53,7 +62,9 @@ onMounted(async () => {
       </span>
     </header>
 
-    <main class="flex-1 p-4 max-w-2xl mx-auto w-full">
+    <SchoolAttendanceForbidden v-if="denied" />
+
+    <main v-else class="flex-1 p-4 max-w-2xl mx-auto w-full">
       <!-- フィルター -->
       <div class="flex flex-col sm:flex-row gap-3 mb-6">
         <div class="flex-1">

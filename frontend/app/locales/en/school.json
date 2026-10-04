@@ -1,6 +1,10 @@
 {
   "school": {
     "attendance": {
+      "forbidden": {
+        "title": "You do not have permission",
+        "description": "You do not have permission to view or operate this school attendance screen. Please check with the homeroom teacher or an administrator."
+      },
       "status": {
         "ATTENDING": "Present",
         "PARTIAL": "Partial",

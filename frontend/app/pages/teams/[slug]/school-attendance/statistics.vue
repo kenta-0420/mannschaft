@@ -12,6 +12,13 @@ const teamSlug = computed(() => String(route.params.slug))
 const { monthlyStats, termStats, loadingMonthly, loadingTerm, exporting, loadMonthlyStatistics, loadTermStatistics, downloadCsv } =
   useAttendanceStatistics(teamSlug)
 const { userTimezone } = useDatetime()
+const { loaded: permissionsLoaded, forbidden: permissionsForbidden, canView, loadPermissions } =
+  useAttendancePermissions(teamSlug)
+
+// 判定は BE の権限判定 API のみ。403 は握りつぶさず「権限がありません」を明示する（AC-18）
+const denied = computed(
+  () => permissionsForbidden.value || (permissionsLoaded.value && !canView.value),
+)
 
 const today = dayjs().tz(userTimezone.value)
 const selectedYear = ref(today.year())
@@ -45,13 +52,15 @@ function onExportCsv(): void {
 }
 
 watch([selectedYear, selectedMonth], () => {
-  if (activeTab.value === 'monthly') {
+  if (!denied.value && activeTab.value === 'monthly') {
     void loadMonthly()
   }
 })
 
-onMounted(() => {
-  void loadMonthly()
+onMounted(async () => {
+  await loadPermissions()
+  if (denied.value) return
+  await loadMonthly()
 })
 </script>
 
@@ -64,7 +73,9 @@ onMounted(() => {
       </h1>
     </header>
 
-    <main class="flex-1 p-4 max-w-4xl mx-auto w-full">
+    <SchoolAttendanceForbidden v-if="denied" />
+
+    <main v-else class="flex-1 p-4 max-w-4xl mx-auto w-full">
       <!-- タブ切り替え -->
       <div class="flex gap-2 mb-6 border-b border-surface-200 dark:border-surface-700">
         <button

@@ -17,9 +17,33 @@ interface PeriodEntry extends PeriodAttendanceEntry {
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
 
-const { candidates, loading, submitting, lastSummary, loadCandidates, submitPeriodAttendance } =
+const {
+  candidates,
+  loading,
+  submitting,
+  lastSummary,
+  forbidden,
+  loadCandidates,
+  submitPeriodAttendance,
+} =
   usePeriodAttendance(teamSlug)
 const { userTimezone } = useDatetime()
+const {
+  loaded: permissionsLoaded,
+  forbidden: permissionsForbidden,
+  canView,
+  canRecordPeriod,
+  loadPermissions,
+} = useAttendancePermissions(teamSlug)
+
+// 判定は BE の権限判定 API のみ。教科担任は閲覧権限が無くても時限登録権限で入れる。
+// 403 は握りつぶさず「権限がありません」を明示する（AC-18）
+const denied = computed(
+  () =>
+    permissionsForbidden.value ||
+    forbidden.value ||
+    (permissionsLoaded.value && !canView.value && !canRecordPeriod.value),
+)
 
 const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 const selectedDate = ref(today)
@@ -45,6 +69,7 @@ function initEntries(): void {
 }
 
 async function reload(): Promise<void> {
+  if (denied.value) return
   await loadCandidates(selectedPeriod.value, selectedDate.value)
   initEntries()
   showSummary.value = false
@@ -65,8 +90,9 @@ watch([selectedDate, selectedPeriod], () => {
   void reload()
 })
 
-onMounted(() => {
-  void reload()
+onMounted(async () => {
+  await loadPermissions()
+  await reload()
 })
 </script>
 
@@ -79,7 +105,9 @@ onMounted(() => {
       </h1>
     </header>
 
-    <main class="flex-1 p-4 max-w-2xl mx-auto w-full">
+    <SchoolAttendanceForbidden v-if="denied" />
+
+    <main v-else class="flex-1 p-4 max-w-2xl mx-auto w-full">
       <div class="grid grid-cols-2 gap-4 mb-4">
         <div>
           <label class="text-sm text-surface-500 mb-1 block">
@@ -150,7 +178,7 @@ onMounted(() => {
           <Button
             :label="$t('school.attendance.period.submit')"
             :loading="submitting"
-            :disabled="entries.length === 0 || submitting"
+            :disabled="!canRecordPeriod || entries.length === 0 || submitting"
             class="w-full"
             data-testid="period-attendance-submit"
             @click="onSubmit"

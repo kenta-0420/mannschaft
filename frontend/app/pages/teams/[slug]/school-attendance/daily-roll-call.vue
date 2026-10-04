@@ -15,9 +15,21 @@ interface StudentEntry extends DailyRollCallEntry {
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
 
-const { records, loading, submitting, lastSummary, loadRecords, submitRollCall } =
+const { records, loading, submitting, lastSummary, forbidden, loadRecords, submitRollCall } =
   useDailyRollCall(teamSlug)
 const { userTimezone } = useDatetime()
+const {
+  loaded: permissionsLoaded,
+  forbidden: permissionsForbidden,
+  canView,
+  canRecordDaily,
+  loadPermissions,
+} = useAttendancePermissions(teamSlug)
+
+// 判定は BE の権限判定 API のみ。403 は握りつぶさず「権限がありません」を明示する（AC-18）
+const denied = computed(
+  () => permissionsForbidden.value || forbidden.value || (permissionsLoaded.value && !canView.value),
+)
 
 const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
 const selectedDate = ref(today)
@@ -59,6 +71,8 @@ async function onSubmit(): Promise<void> {
 }
 
 onMounted(async () => {
+  await loadPermissions()
+  if (denied.value) return
   await loadRecords(selectedDate.value)
   initEntries()
 })
@@ -73,7 +87,9 @@ onMounted(async () => {
       </h1>
     </header>
 
-    <main class="flex-1 p-4 max-w-2xl mx-auto w-full">
+    <SchoolAttendanceForbidden v-if="denied" />
+
+    <main v-else class="flex-1 p-4 max-w-2xl mx-auto w-full">
       <div class="mb-4">
         <label class="text-sm text-surface-500 mb-1 block">
           {{ $t('school.attendance.dailyRollCall.date') }}
@@ -128,7 +144,7 @@ onMounted(async () => {
           <Button
             :label="$t('school.attendance.dailyRollCall.submit')"
             :loading="submitting"
-            :disabled="entries.length === 0 || submitting"
+            :disabled="!canRecordDaily || entries.length === 0 || submitting"
             class="w-full"
             data-testid="daily-roll-call-submit"
             @click="onSubmit"

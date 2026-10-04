@@ -1,6 +1,10 @@
 {
   "school": {
     "attendance": {
+      "forbidden": {
+        "title": "권한이 없습니다",
+        "description": "이 학교 출결 화면을 보거나 조작할 권한이 없습니다. 담임 교사 또는 관리자에게 확인해 주세요."
+      },
       "status": {
         "ATTENDING": "출석",
         "PARTIAL": "부분 출석",
