@@ -33,6 +33,7 @@ repositories {
 val mapstructVersion = "1.6.3"
 
 dependencies {
+    implementation("com.ibm.icu:icu4j:78.3")
     // Spring Boot Starters
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
@@ -338,6 +339,7 @@ tasks.withType<Test> {
     // =====================================================================
     val isPerfTask = name == "perfTest"
     val isArchUnitTask = name == "archUnitTest"
+    val isFreezeIntegrityTask = name == "archUnitFreezeStoreIntegrityTest"
     useJUnitPlatform {
         // 同じ番人を専用 JVM で実行し、Spring の TestContext 累積と同居させない。
         // 走査範囲・ImportOption・シャード割当は変更せず、engine だけを分離する。
@@ -551,7 +553,7 @@ tasks.withType<Test> {
     // =====================================================================
     val shardTotal = (project.findProperty("shard.total") as String?)?.toIntOrNull()
     val shardIndex = (project.findProperty("shard.index") as String?)?.toIntOrNull()
-    if (shardTotal != null && shardIndex != null && shardTotal > 1) {
+    if (!isFreezeIntegrityTask && shardTotal != null && shardIndex != null && shardTotal > 1) {
         require(shardIndex in 0 until shardTotal) {
             "shard.index ($shardIndex) は 0..${shardTotal - 1} の範囲でなければならない（shard.total=$shardTotal）"
         }
@@ -627,7 +629,7 @@ tasks.withType<Test> {
     }
 
     // 先行する ArchUnit 実行では確定せず、既存の test/perfTest 等の終端集計を維持する。
-    if (!isArchUnitTask) {
+    if (!isArchUnitTask && !isFreezeIntegrityTask) {
         finalizedBy(tasks.jacocoTestReport)
     }
     testLogging {
@@ -649,6 +651,9 @@ val archUnitTest = tasks.register<Test>("archUnitTest") {
     description = "全 ArchUnit 番人を Spring テストから分離した JVM で実行する"
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["test"].runtimeClasspath
+    inputs.files(fileTree("src/test/resources/archunit_store"))
+    // 解析による縮小はキャッシュ復元で再現できない。毎runnerで実解析する。
+    outputs.upToDateWhen { false }
     doFirst {
         // 宣言値ではなく、この実行で解決された jar の版を CI の対照証跡に残す。
         val archUnitJars = classpath.files.filter { it.name.startsWith("archunit-") }
@@ -656,8 +661,40 @@ val archUnitTest = tasks.register<Test>("archUnitTest") {
         logger.lifecycle("[archunit-runtime] " + archUnitJars.joinToString(", "))
     }
 }
+val freezeIntegrityClass = "com.mannschaft.app.common.architecture.ArchUnitFreezeStoreIntegrityTest"
+val archUnitFreezeStoreIntegrityTest = tasks.register<Test>("archUnitFreezeStoreIntegrityTest") {
+    group = "verification"
+    description = "各runnerのArchUnit解析後に全7凍結ストアの対応と行数を検証する"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform { includeEngines("junit-jupiter") }
+    filter {
+        includeTestsMatching(freezeIntegrityClass)
+        isFailOnNoMatchingTests = true
+    }
+    maxHeapSize = "128m"
+    forkEvery = 0
+    maxParallelForks = 1
+    inputs.files(fileTree("src/test/resources/archunit_store"))
+    outputs.upToDateWhen { false }
+    mustRunAfter(archUnitTest)
+    // onlyIfで必須classを検査する。欠損をfalse(SKIP)に置き換えない。
+    onlyIf("凍結番人classが存在する") {
+        val requiredClass = freezeIntegrityClass.replace('.', '/') + ".class"
+        check(testClassesDirs.files.any { it.resolve(requiredClass).isFile }) {
+            "凍結番人class欠損: $requiredClass（NO-SOURCEを合格にしない）"
+        }
+        true
+    }
+    doFirst {
+        // CLI --testsはこの必須番人だけ解除。通常test/archの指定は変えない。
+        setTestNameIncludePatterns(emptyList())
+    }
+}
+archUnitTest.configure { finalizedBy(archUnitFreezeStoreIntegrityTest) }
 tasks.named<Test>("test") {
-    dependsOn(archUnitTest)
+    dependsOn(archUnitTest, archUnitFreezeStoreIntegrityTest)
+    exclude("com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegrityTest*.class")
 }
 
 // =============================================================================
@@ -727,7 +764,10 @@ tasks.register("verifyShardCoverage") {
                 .forEach { f ->
                     val relPosix = f.relativeTo(dir).path.replace(File.separatorChar, '/')
                     val topLevelFqcn = ShardAssignment.fqcnTopLevelFromClassPath(relPosix)
-                    classFiles.add(ShardCoverageClassFile(relPosix, topLevelFqcn))
+                    // 全runner必須の専用stageは通常1shardモデルからだけ外す。
+                    if (topLevelFqcn != freezeIntegrityClass) {
+                        classFiles.add(ShardCoverageClassFile(relPosix, topLevelFqcn))
+                    }
                 }
         }
         val topLevelCount = classFiles.map { it.topLevelFqcn }.distinct().size
