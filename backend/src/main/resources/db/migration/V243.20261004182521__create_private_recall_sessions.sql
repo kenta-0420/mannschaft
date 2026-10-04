@@ -4,7 +4,7 @@ CREATE TABLE reflection_recall_sessions (
     id BINARY(16) NOT NULL,
     user_id BIGINT UNSIGNED NOT NULL,
     entry_id_type VARCHAR(8) NOT NULL,
-    entry_source_id VARCHAR(80) COLLATE utf8mb4_bin NOT NULL,
+    entry_source_id VARCHAR(80) NOT NULL,
     reward_week DATE NULL,
     status VARCHAR(20) NOT NULL,
     prompt_snapshot JSON NOT NULL,

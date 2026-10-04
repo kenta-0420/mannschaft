@@ -2,7 +2,7 @@ package com.mannschaft.app.common.ranchsource.api;
 
 import com.mannschaft.app.ranch.reward.RanchRewardSourceType;
 
-/** pendingはPENDING/RETRY、deadはDEADの件数。待機0件のoldestAgeSecondsはnull。 */
+/** pendingはPENDING/RETRY、deadはDEAD_LETTERの件数。待機0件のoldestAgeSecondsはnull。 */
 public record SourceOutboxHealthRow(RanchRewardSourceType sourceType, String pendingCount,
         String deadCount, Long oldestAgeSeconds) {
     public SourceOutboxHealthRow {
