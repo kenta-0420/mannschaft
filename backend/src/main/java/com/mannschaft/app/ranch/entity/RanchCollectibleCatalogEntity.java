@@ -21,7 +21,7 @@ import java.time.Instant;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RanchCollectibleCatalogEntity {
     @Id
-    @Column(name = "collectible_key", length = 80)
+    @Column(name = "collectible_key", nullable = false, length = 80)
     private String collectibleKey;
     @Column(name = "label_key", nullable = false, length = 120)
     private String labelKey;

@@ -1,8 +1,9 @@
 package com.mannschaft.app.ranch.service;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
-/** 元identityを厳格ASCIIでVARBINARYへ写し、照合時に文字照合規則へ依存しない。 */
+/** 元identityをASCII正準byte列へ一意に写し、DB文字照合規則へ依存しない。 */
 public final class RanchAcquisitionKey {
     private RanchAcquisitionKey() { }
 
@@ -14,11 +15,22 @@ public final class RanchAcquisitionKey {
         if (!"LONG".equals(idType) && !"UUID".equals(idType)) {
             throw new IllegalArgumentException("legacy badge ID型が不正です");
         }
-        if (badgeId == null || badgeId.isBlank() || awardPeriod == null) {
+        if (badgeId == null || badgeId.isBlank()) {
             throw new IllegalArgumentException("legacy badge identityが不正です");
         }
-        if ("LONG".equals(idType) && !badgeId.matches("[1-9][0-9]*")) {
-            throw new IllegalArgumentException("legacy badge IDが正準decimalではありません");
+        String period = awardPeriod == null ? "" : awardPeriod;
+        if (period.codePointCount(0, period.length()) > 20
+                || !StandardCharsets.UTF_8.newEncoder().canEncode(period)) {
+            throw new IllegalArgumentException("legacy badge periodが不正です");
+        }
+        if ("LONG".equals(idType)) {
+            try {
+                if (!badgeId.matches("[1-9][0-9]*") || Long.parseLong(badgeId) <= 0) {
+                    throw new IllegalArgumentException("legacy badge IDが正準decimalではありません");
+                }
+            } catch (NumberFormatException exception) {
+                throw new IllegalArgumentException("legacy badge IDが不正です", exception);
+            }
         }
         if ("UUID".equals(idType)) {
             try {
@@ -29,10 +41,11 @@ public final class RanchAcquisitionKey {
                 throw new IllegalArgumentException("legacy badge UUIDが不正です", exception);
             }
         }
-        if (awardPeriod.contains("|")) {
-            throw new IllegalArgumentException("legacy badge periodが不正です");
-        }
-        return ascii(idType + ":" + badgeId + "|" + awardPeriod, 160);
+        byte[] periodBytes = period.getBytes(StandardCharsets.UTF_8);
+        String encodedPeriod = Base64.getUrlEncoder().withoutPadding().encodeToString(periodBytes);
+        // 旧VARCHAR(20)の最大UTF-8 80byteもBase64url 107文字に収まり、
+        // UUID36文字を含む全体でも160byte未満。全periodを同じ方式で符号化する。
+        return ascii("LB1:" + idType + ":" + badgeId + ":" + encodedPeriod, 160);
     }
 
     private static byte[] ascii(String value, int maxBytes) {
