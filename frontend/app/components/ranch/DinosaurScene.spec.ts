@@ -25,9 +25,10 @@ afterEach(() => {vi.unstubAllGlobals();pending.clear()})
 async function show(){ observerCallback([{isIntersecting:true}] as IntersectionObserverEntry[], {} as IntersectionObserver); await nextTick() }
 describe('AC59/71 scene資源の停止', () => {
  it('初回inactiveは取得0、有限manifestにない素材は可視後もfallback', async () => {
-  const wrapper=mount(DinosaurScene,{global:{plugins:[createI18n({legacy:false,locale:'ja',messages:{ja:jaMessages,en:enMessages,zh:zhMessages,ko:koMessages,es:esMessages,de:deMessages}})]},props:{dinosaur,renderStyle:'PIXEL',motionMode:'NORMAL',active:false}})
+  const i18n=createI18n({legacy:false,locale:'ja',messages:{ja:jaMessages,en:enMessages,zh:zhMessages,ko:koMessages,es:esMessages,de:deMessages}})
+  const wrapper=mount(DinosaurScene,{global:{plugins:[i18n]},props:{dinosaur,renderStyle:'PIXEL',motionMode:'NORMAL',active:false}})
   await show(); expect(wrapper.find('img').exists()).toBe(false); expect(pending.size).toBe(0)
-  await wrapper.setProps({active:true}); expect(wrapper.find('canvas').exists()).toBe(false); expect(wrapper.text()).toContain(jaMessages.ranch.scene.assetPreparing); expect(wrapper.attributes('data-dinosaur-id')).toBe(dinosaur.id); expect(pending.size).toBe(1)
+  await wrapper.setProps({active:true}); expect(wrapper.find('canvas').exists()).toBe(false); expect(wrapper.text()).toContain(i18n.global.t('ranch.scene.assetPreparing')); expect(wrapper.attributes('data-dinosaur-id')).toBe(dinosaur.id); expect(pending.size).toBe(1)
   await wrapper.setProps({active:false}); expect(pending.size).toBe(0);wrapper.unmount()
  })
  it('REDUCED/STOPPED/OSreduceとhiddenタブは背景RAFを停止し復帰後追いつかない', async () => {
