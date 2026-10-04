@@ -30,6 +30,8 @@ UUIDはcanonical小文字ハイフン形式のstring、Java UUID/MySQL BINARY(16
 | PUT | `/api/v1/me/ranch/room/slots/{slotKey}` | `{inventoryId:UUID,version:string}`、Idempotency-Key | 200配置結果。所有/未取消/slot許可を検証 |
 | DELETE | `/api/v1/me/ranch/room/slots/{slotKey}` | versionをIf-Matchにdecimal string、Idempotency-Key | 204。置物はinventoryへ戻り消えない。空slotでもversion一致なら204/version+1、同key再送は元204 |
 
+参加POSTの成功command.result_jsonには、取引時serverTime（MICROS）を含む完全なRanchStateを不変snapshotとして保存する。初回は201、既ownerへの別keyは現在の自行状態から200の新成功snapshotを保存する。同key再送は現在の成長・表示設定・rule変更を再評価せず、保存済みsnapshotを200で返す。FEは成功後にGETで最新状態を取得する。Writerは自domain Repoと純粋mapperのみを使用し、Auth Runnerの保持中に独立PRIMARY Readerを呼び直して同時3接続へ増やさない。外domain widget visibility/報酬状態/承認mappingの投影は、auth認可後に正規facadeから得た固定DTOだけを使用し、client値や仮のtrueで補完しない。
+
 | メソッド | パス | Request | Response / status |
 |---|---|---|---|
 | GET | `/api/v1/me/ranch/shop` | なし | 200 ShopItem[]、運営登録済み永久置物/現行price version。空は[] |

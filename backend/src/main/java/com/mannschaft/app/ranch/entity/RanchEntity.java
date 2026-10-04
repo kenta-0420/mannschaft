@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.AccessLevel;
 import lombok.experimental.SuperBuilder;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 /** 牧場の新規表はUUIDv7とUTC瞬間を共通に持つ。 */
 @MappedSuperclass
@@ -21,13 +22,12 @@ public abstract class RanchEntity extends UuidV7Entity {
 
     @PrePersist
     protected void stampCreation() {
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
+        createdAt = (createdAt == null ? Instant.now() : createdAt)
+                .truncatedTo(ChronoUnit.MICROS);
         updatedAt = createdAt;
     }
     @PreUpdate
     protected void stampUpdate() {
-        updatedAt = Instant.now();
+        updatedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
     }
 }

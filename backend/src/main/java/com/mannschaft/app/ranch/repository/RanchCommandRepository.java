@@ -15,4 +15,5 @@ import java.util.UUID;
 public interface RanchCommandRepository extends JpaRepository<RanchCommandEntity, UUID> {
     Optional<RanchCommandEntity> findByUserIdAndIdempotencyKey(Long userId, UUID idempotencyKey);
     Optional<RanchCommandEntity> findByUserIdAndId(Long userId, UUID id);
+    long countByUserId(Long userId);
 }

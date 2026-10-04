@@ -204,7 +204,9 @@ Flywayは必須だがこの設計PRではSQLを追加しない。実装時 `V{or
 
 ### 卵・選定adapterの契約
 
-egg_started_atはserver初期化時刻、egg_ready_at=started_at+凍結egg duration、egg_rule_snapshotはdurationSecondsとcrack thresholds/asset keys/version。約7日604800秒と[0,259200,432000,604800]は提案値で、本番既定値ではない。ひび段階/hatchReadyはGETでserverTimeから算出、GET自体でstageを更新しない。hatchReady=`now>=egg_ready_at && selection_confirmed_at!=null`。未確認/未成熟はstage EGGのまま安全待機。
+egg_started_atはserver初期化時刻、egg_ready_at=started_at+凍結egg duration、egg_rule_snapshotはdurationSecondsとcrack thresholds/asset keys/version。約7日604800秒と[0,259200,432000,604800]は提案値で、本番既定値ではない。
+
+`ranch-development-v1` は `mannschaft.ranch.development-fixtures=true` の非本番profileだけで読む暫定開発fixture。卵duration=604800秒、small/wide crack=259200/432000秒、無料care=20XP/回、週care cap=100XP、juvenile/adult=60/100XPとし、同じ週・同じ日でも5回で成体へ到達できる。このversionと数値は旧純粋試験fixture（care 1XP等）とは別で、本番運営公開値として未承認。既存個体のegg/growth snapshotをfixture変更で上書きしない。ひび段階/hatchReadyはGETでserverTimeから算出、GET自体でstageを更新しない。hatchReady=`now>=egg_ready_at && selection_confirmed_at!=null`。未確認/未成熟はstage EGGのまま安全待機。
 
 次回部屋アクセスでFEがhatchReadyを確認して命名導線を出し、確認後だけPOST hatchへnameを送る。owner/dino lock下でEGG→BABY/hatched_at/name/named_at/commandを同TX保存する。hatched_at=named_atはserverの同一Instant、名前と孵化の片方だけ保存しない。二tab/retryでも孵化・命名一回、points/care XP増分0。本人PAUSEDでも孵化は可（成長加算なし）、care control OFFなら安全待機/503。孵化後のみ無料care XP対象。EGGのXPは0、BABY起点0、成長閾値とcare量は正。CHECK:未選定はspecies/catalog/method/confirmed NULL、選定済みはspecies/catalog/method/confirmed必須、EGGはhatched_at/name/named_at NULL、BABY以降はhatched_at/name/named_at/confirmed必須。
 
