@@ -30,7 +30,7 @@
  * 他組織（組織B、本テストが別途新規作成）には SUPPORTER/OUTSIDER いずれも無関係（クロスオーグ検証に使用）。
  */
 
-import { expect, test, type APIRequestContext, type Browser, type Page } from '@playwright/test'
+import { expect, request as rootRequest, test, type APIRequestContext, type Browser, type Page } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 
@@ -44,7 +44,9 @@ const OUTSIDER = { email: 'e2e-dummy-5@test.mannschaft.local', password: PASSWOR
 const PENDING_APPLICANT = { email: 'e2e-dummy-6@test.mannschaft.local', password: PASSWORD }
 const ADMIN = { email: 'e2e-admin@test.mannschaft.local', password: PASSWORD }
 
-test.describe.configure({ mode: 'serial' })
+// 各テストは実行前に自身のフォロー状態を status API で確認し、必要なときだけ POST/DELETE で
+// 前提を整えるため、実行順序には依存しない（--workers=1 で実行するため並列化自体は不要）。
+// serial を外すのは、先頭の1件の失敗が以降全件を skip させてしまうのを避けるため。
 
 // ============================================================
 // フィクスチャ作成（beforeAll）: 自前の組織・チームを新規作成し、
@@ -268,12 +270,10 @@ test('SUP-ORG-MOBILE: モバイル幅でもフォロー解除はインライン�
   }
 
   // 後始末: モバイル確認用に作った APPROVED を解除し、未所属へ戻す
-  const unfollowCompleted = page.waitForResponse(
-    response => response.request().method() === 'DELETE'
-      && new URL(response.url()).pathname === `/api/v1/organizations/${ORG_SLUG}/follow`,
-  )
-  await page.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`, { timeout: 20_000 }).catch(err => console.warn('[cleanup] unfollow request failed', err))
-  await unfollowCompleted.catch(err => console.warn('[cleanup] unfollow response wait failed', err))
+  // page.request（APIRequestContext）はページのネットワークイベントに出ないため
+  // page.waitForResponse では解決しない。レスポンスを直接検証する（404=既に解除済みも許容）。
+  const unfollowRes = await page.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`, { timeout: 20_000 })
+  expect([204, 404]).toContain(unfollowRes.status())
   await page.context().close()
 })
 
@@ -406,13 +406,10 @@ test('CROSS-ORG: 組織Aのフォロー状態が組織Bに混線しない', asyn
   await openScope(page, `/organizations/${ORG_SLUG}`)
   await expect(page.getByTestId('follow-unfollow-button')).toBeVisible({ timeout: 60_000 })
 
-  // 後始末: 組織Aのフォローを解除
-  const unfollowCompleted = page.waitForResponse(
-    response => response.request().method() === 'DELETE'
-      && new URL(response.url()).pathname === `/api/v1/organizations/${ORG_SLUG}/follow`,
-  )
-  await page.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`, { timeout: 20_000 }).catch(err => console.warn('[cleanup] unfollow request failed', err))
-  await unfollowCompleted.catch(err => console.warn('[cleanup] unfollow response wait failed', err))
+  // 後始末: 組織Aのフォローを解除（page.request はページのネットワークイベントに出ないため
+  // page.waitForResponse ではなくレスポンスを直接検証する。404=既に解除済みも許容）
+  const unfollowRes = await page.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`, { timeout: 20_000 })
+  expect([204, 404]).toContain(unfollowRes.status())
   await page.context().close()
 })
 
@@ -454,8 +451,17 @@ test('API-AUTHZ: 応援者/会員/未認証の認可境界がAPIレベルで正�
   expect(memberPermBody.roleName).toBe('MEMBER')
 
   // 未認証 401
-  const anonRes = await request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`)
+  // 注意: Playwright の `request` フィクスチャは chromium-real プロジェクトの
+  // storageState（access_token/refresh_token クッキー）を継承するため「未認証」にならない
+  // （実際は real-user のクッキー付きで到達し、そのユーザーが本テスト用org未所属のため404になっていた）。
+  // 本当の未認証を確認するにはクッキー無しの新規コンテキストを明示的に作る必要がある。
+  // storageState を明示的に空指定し、同一ワーカー内の他リクエスト（ログイン時の Set-Cookie 等）が
+  // 混入しないことを保証する（Playwright の request コンテキストはデフォルトでも分離されるはずだが、
+  // 本テストファイルでは直前の MEMBER ログインの Cookie が紛れ込む事象が実際に観測されたため明示する）。
+  const anonContext = await rootRequest.newContext({ storageState: { cookies: [], origins: [] } })
+  const anonRes = await anonContext.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`)
   expect(anonRes.status()).toBe(401)
+  await anonContext.dispose()
 })
 
 // ============================================================
@@ -474,13 +480,10 @@ test('URL-DIRECT: 応援者・未所属のURL直打ちでも表示が正しい',
   await waitForHydration(supporterPage)
   await waitForSpinnerGone(supporterPage)
   await expect(supporterPage.getByTestId('follow-unfollow-button')).toBeVisible({ timeout: 60_000 })
-  // 後始末
-  const unfollowCompleted = supporterPage.waitForResponse(
-    response => response.request().method() === 'DELETE'
-      && new URL(response.url()).pathname === `/api/v1/organizations/${ORG_SLUG}/follow`,
-  )
-  await supporterPage.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`, { timeout: 20_000 }).catch(err => console.warn('[cleanup] unfollow request failed', err))
-  await unfollowCompleted.catch(err => console.warn('[cleanup] unfollow response wait failed', err))
+  // 後始末（page.request はページのネットワークイベントに出ないため
+  // page.waitForResponse ではなくレスポンスを直接検証する。404=既に解除済みも許容）
+  const unfollowRes = await supporterPage.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`, { timeout: 20_000 })
+  expect([204, 404]).toContain(unfollowRes.status())
   await supporterPage.context().close()
 
   const outsiderPage = await openAs(browser, OUTSIDER)
