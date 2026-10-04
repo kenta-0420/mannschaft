@@ -1,17 +1,41 @@
 package com.mannschaft.app.diagnosis.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.diagnosis.DiagnosisErrorCode;
+import com.mannschaft.app.diagnosis.dto.DiagnosisResultSummary;
 import com.mannschaft.app.diagnosis.dto.OwnedDiagnosisResult;
+import com.mannschaft.app.diagnosis.repository.DiagnosisResultRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 import java.util.UUID;
 
-/** 他ドメインの非TX操作入口から、本人所有の保存済み結果だけを参照する。 */
+/** 本人所有条件をSQLに含め、不変結果だけを独立PRIMARY TXで参照する。 */
 @Service
+@RequiredArgsConstructor
 public class DiagnosisResultReadFacade {
-    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    private final DiagnosisResultRepository results;
+    private final ObjectMapper mapper;
+
+    // SELECTだけだが、ReplicaRoutingAspectの既存規則に従ってPRIMARYを選ぶ。
+    @Transactional(readOnly = false, propagation = Propagation.REQUIRES_NEW)
     public Optional<OwnedDiagnosisResult> findOwnedSummary(Long userId, UUID resultId) {
-        throw new UnsupportedOperationException("本人結果参照は未実装");
+        if (userId == null || resultId == null) return Optional.empty();
+        return results.findByIdAndUserId(resultId, userId).map(result -> {
+            try {
+                DiagnosisResultSummary summary = mapper.readValue(result.getSummarySnapshot(), DiagnosisResultSummary.class);
+                if (!result.getId().equals(summary.id()) || result.getMethod() != summary.method()) {
+                    throw new BusinessException(DiagnosisErrorCode.UNAVAILABLE);
+                }
+                return new OwnedDiagnosisResult(result.getUserId(), summary, result.getSourceProfileRevision());
+            } catch (JsonProcessingException error) {
+                // 保存JSONやパース例外をcauseへ複製しない。
+                throw new BusinessException(DiagnosisErrorCode.UNAVAILABLE);
+            }
+        });
     }
 }

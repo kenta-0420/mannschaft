@@ -610,6 +610,24 @@ public class UserEntity extends BaseEntity {
     }
 
     /** 呼出側はusersを先にロックする。出生の原入力が変わったときだけ確認世代を進める。 */
+    /** users先ロック後に出生専用入力を更新し、原5欄の変更を一つの確認世代へまとめる。 */
+    public void updateBirthProfile(String lastName, String firstName, String lastNameKana,
+                                   String firstNameKana, String birthDate,
+                                   String lastNameHash, String firstNameHash, String birthDateHash,
+                                   int validatedBirthYear) {
+        advanceBirthProfileVersionIfChanged(lastName, firstName, lastNameKana, firstNameKana, birthDate);
+        this.lastName = lastName;
+        this.firstName = firstName;
+        this.lastNameKana = lastNameKana;
+        this.firstNameKana = firstNameKana;
+        this.birthDate = birthDate;
+        this.lastNameHash = lastNameHash;
+        this.firstNameHash = firstNameHash;
+        this.birthDateHash = birthDateHash;
+        // 成人判定とAGE_RANGEの既存列も、検証済みDOBの年へ同時に揃える。
+        updateBirthYear(validatedBirthYear);
+    }
+
     private void advanceBirthProfileVersionIfChanged(String lastName, String firstName,
                                                      String lastNameKana, String firstNameKana,
                                                      String birthDate) {

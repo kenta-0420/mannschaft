@@ -14,6 +14,8 @@ import com.mannschaft.app.recruitment.RecruitmentPenaltyActiveException;
 import com.mannschaft.app.recruitment.dto.RecruitmentPenaltyActiveErrorResponse;
 import com.mannschaft.app.todo.exception.MilestoneLockedException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -90,6 +92,22 @@ public class GlobalExceptionHandler {
      */
     // 型推論限界回避のため明示型指定（エントリ数増加に伴う javac 推論破綻を根治）
     private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.<String, HttpStatus>ofEntries(
+            // 本人出生・診断の専用コード。既存authコードの意味は変更しない。
+            Map.entry("BIRTHPROFILE_001", HttpStatus.BAD_REQUEST),
+            Map.entry("BIRTHPROFILE_002", HttpStatus.CONFLICT),
+            Map.entry("BIRTHPROFILE_003", HttpStatus.NOT_FOUND),
+            Map.entry("BIRTHPROFILE_004", HttpStatus.CONFLICT),
+            Map.entry("BIRTHPROFILE_005", HttpStatus.CONFLICT),
+            Map.entry("BIRTHPROFILE_006", HttpStatus.CONFLICT),
+            Map.entry("BIRTHPROFILE_007", HttpStatus.SERVICE_UNAVAILABLE),
+            Map.entry("BIRTHPROFILE_008", HttpStatus.CONFLICT),
+            Map.entry("BIRTHPROFILE_009", HttpStatus.CONFLICT),
+            Map.entry("DIAGNOSIS_001", HttpStatus.BAD_REQUEST),
+            Map.entry("DIAGNOSIS_002", HttpStatus.NOT_FOUND),
+            Map.entry("DIAGNOSIS_003", HttpStatus.CONFLICT),
+            Map.entry("DIAGNOSIS_004", HttpStatus.CONFLICT),
+            Map.entry("DIAGNOSIS_005", HttpStatus.SERVICE_UNAVAILABLE),
+            Map.entry("DIAGNOSIS_006", HttpStatus.BAD_REQUEST),
             // 本人操作の受付拒否と非ACTIVE拒否は既存認証エラーへ転用しない。
             Map.entry("AUTHOPERATION_001", HttpStatus.SERVICE_UNAVAILABLE),
             Map.entry("AUTHOPERATION_002", HttpStatus.FORBIDDEN),
@@ -2611,9 +2629,9 @@ public class GlobalExceptionHandler {
             body = new ErrorResponse(
                     new ErrorResponse.ErrorDetail(errorCode.getCode(), message, ex.getFieldErrors()));
         }
-        return ResponseEntity
-                .status(status)
-                .body(body);
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(status);
+        if (isPrivateSelfInput(request)) response.header(HttpHeaders.CACHE_CONTROL, "no-store");
+        return response.body(body);
     }
 
     /**
@@ -2713,6 +2731,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(
             MethodArgumentNotValidException ex) {
+        if (isPrivateSelfInput(null)) return privateInputRejected("BINDING");
         List<ErrorResponse.FieldError> fieldErrors = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
@@ -2731,6 +2750,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex) {
+        if (isPrivateSelfInput(null)) return privateInputRejected("JSON_PARSE");
         log.warn("Message not readable: {}", ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
@@ -2747,6 +2767,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
+        if (isPrivateSelfInput(null)) return privateInputRejected("CONSTRAINT");
         List<ErrorResponse.FieldError> fieldErrors = ex.getConstraintViolations()
                 .stream()
                 .map(GlobalExceptionHandler::toFieldError)
@@ -2765,6 +2786,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ErrorResponse> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
+        if (isPrivateSelfInput(null)) return privateInputRejected("METHOD_PARAMETER");
         log.warn("HandlerMethodValidationException: {}", ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
@@ -2777,6 +2799,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(
             MethodArgumentTypeMismatchException ex) {
+        if (isPrivateSelfInput(null)) return privateInputRejected("TYPE_CONVERSION");
         // (1) 変換器が明示的に 404 を投げ、原因連鎖に残っているケースを honor する。
         ResponseStatusException rse = findResponseStatusExceptionCause(ex);
         boolean notFound = rse != null && rse.getStatusCode().value() == HttpStatus.NOT_FOUND.value();
@@ -3205,5 +3228,28 @@ public class GlobalExceptionHandler {
             case WARN -> HttpStatus.BAD_REQUEST;
             case INFO -> HttpStatus.OK;
         };
+    }
+
+    /** 新本人APIだけを判定し、既存他APIの例外応答・ログには触れない。 */
+    private static boolean isPrivateSelfInput(HttpServletRequest explicitRequest) {
+        HttpServletRequest request = explicitRequest;
+        if (request == null && RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
+            request = attributes.getRequest();
+        }
+        if (request == null) return false;
+        String path = request.getRequestURI();
+        if (path == null) return false;
+        for (String prefix : List.of("/api/v1/me/birth-profile", "/api/v1/me/diagnoses", "/api/v1/me/ranch")) {
+            if (path.equals(prefix) || path.startsWith(prefix + "/")) return true;
+        }
+        return false;
+    }
+
+    /** 例外message・cause・入力値・URIをログや応答へコピーしない。 */
+    private ResponseEntity<ErrorResponse> privateInputRejected(String category) {
+        log.warn("本人APIの入力を拒否: classification={}", category);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
     }
 }

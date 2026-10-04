@@ -26,7 +26,13 @@ public enum BirthProfileErrorCode implements ErrorCode {
     COMMAND_CONFLICT("BIRTHPROFILE_006", "同じ命令キーを別の操作に使用できません", Severity.WARN),
 
     /** HTTP 503。 */
-    UNAVAILABLE("BIRTHPROFILE_007", "出生情報の利用は準備中です", Severity.WARN);
+    UNAVAILABLE("BIRTHPROFILE_007", "出生情報の利用は準備中です", Severity.WARN),
+
+    /** HTTP 409。既知RAW_PROFILE_PUTのHMAC鍵交代だけに使用する。 */
+    COMMAND_KEY_ROTATED("BIRTHPROFILE_008", "本人情報を読み直し、新しい命令キーで再送してください", Severity.WARN),
+
+    /** HTTP 409。出生PUTの新しい未成年DOB保存時だけ既存同意を要求する。 */
+    PARENTAL_CONSENT_REQUIRED("BIRTHPROFILE_009", "保護者の同意を確認してから本人情報を更新してください", Severity.WARN);
     private final String code;
     private final String message;
     private final Severity severity;
