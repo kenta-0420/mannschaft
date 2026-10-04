@@ -52,8 +52,6 @@ async function handleVerify() {
       },
     })
     authStore.setTokens(data.data.accessToken, data.data.refreshToken)
-    // 2FA 検証成功直後に先回りリフレッシュタイマーを武装する。
-    armProactiveRefresh(runtimeConfig, authStore)
     await authStore.setUser(data.data.user)
 
     // フルプロフィール（timezone・locale 等）を取得して store を更新
@@ -85,6 +83,9 @@ async function handleVerify() {
     catch {
       // プロフィール取得失敗時は 2FA 認証レスポンスの基本情報で続行
     }
+
+    // 本人の復元による世代更新が終わってからタイマーを武装する。
+    armProactiveRefresh(runtimeConfig, authStore)
 
     // ログイン成立直後にアカウント設定（外観・ナビ）をサーバーから同期する。
     // 新ブラウザ（シークレット等）で localStorage が空でも BEの保存済み設定が反映される。

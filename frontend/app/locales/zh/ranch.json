@@ -126,7 +126,11 @@
       "create": "生成自己的占卜结果",
       "numbers": "生日数：{life} / 姓名数：{name}",
       "reconfirm": "重新确认本人信息后选择",
-      "required": "请输入本人信息。"
+      "required": "请输入本人信息。",
+      "keyRotated": "保存密钥已更新。请重新读取本人资料，确认内容后再次保存。",
+      "reloadProfile": "重新读取本人资料",
+      "parentalConsentRequired": "保存此出生日期需要监护人批准。请前往监护人同意页面办理。",
+      "openConsent": "前往监护人同意"
     },
     "decorations": {
       "title": "装饰与兑换",

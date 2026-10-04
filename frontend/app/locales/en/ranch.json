@@ -126,7 +126,11 @@
       "create": "Create my numerology result",
       "numbers": "Birth-date number: {life} / Name number: {name}",
       "reconfirm": "Review my information again to choose",
-      "required": "Enter your personal information."
+      "required": "Enter your personal information.",
+      "keyRotated": "The save key has changed. Reload your profile, review it and save again.",
+      "reloadProfile": "Reload my profile",
+      "parentalConsentRequired": "Parental approval is required to save this birth date. Continue through the existing consent page.",
+      "openConsent": "Continue to parental consent"
     },
     "decorations": {
       "title": "Decorations and exchanges",

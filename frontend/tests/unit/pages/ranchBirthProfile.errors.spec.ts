@@ -57,9 +57,9 @@ beforeEach(async () => {
  })
 })
 afterEach(() => { for (const wrapper of wrappers.splice(0)) wrapper.unmount(); for (const scope of scopes.splice(0)) scope.stop(); vi.restoreAllMocks() })
-async function mountPendingProfile() {
+async function mountPendingProfile(input: BirthProfile = rawInput) {
  const api = profileApi()
- await expect(api.save(rawInput)).rejects.toThrow()
+ await expect(api.save(input)).rejects.toThrow()
  expect(api.command.pending.value).not.toBeNull()
  const wrapper = await mountSuspended(BirthProfilePage)
  wrappers.push(wrapper); await flushPromises()
@@ -113,7 +113,7 @@ describe('出生プロフィールの専用409導線（先行赤候補）', () =
  })
  it('009は既存保護者同意への入口を示し、自動再保存しない', async () => {
   errorCode = 'BIRTHPROFILE_009'
-  const { wrapper } = await mountPendingProfile()
+  const { wrapper } = await mountPendingProfile({ ...rawInput, birthDate: '2018-01-01' })
   expect(writes).toHaveLength(2)
   expect(wrapper.find('a[href="/parental-consent/pending"]').exists()).toBe(true)
   expect(wrapper.text()).toContain(useNuxtApp().$i18n.t('ranch.birth.parentalConsentRequired'))

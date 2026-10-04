@@ -126,7 +126,11 @@
       "create": "本人の占い結果を作る",
       "numbers": "生年月日の数: {life} / 名前の数: {name}",
       "reconfirm": "本人情報を再確認して選ぶ",
-      "required": "本人情報を入力してください。"
+      "required": "本人情報を入力してください。",
+      "keyRotated": "保存鍵が更新されました。本人情報を再読み込みして内容を確認し、もう一度保存してください。",
+      "reloadProfile": "本人情報を再読み込み",
+      "parentalConsentRequired": "この生年月日を保存するには保護者の承認が必要です。保護者同意の画面で手続きしてください。",
+      "openConsent": "保護者同意へ進む"
     },
     "decorations": {
       "title": "置物と交換",

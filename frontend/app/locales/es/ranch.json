@@ -126,7 +126,11 @@
       "create": "Crear mi resultado numerológico",
       "numbers": "Número de nacimiento: {life} / Número del nombre: {name}",
       "reconfirm": "Revisar de nuevo mis datos para elegir",
-      "required": "Introduce tus datos personales."
+      "required": "Introduce tus datos personales.",
+      "keyRotated": "La clave de guardado cambió. Recarga tu perfil, revísalo y vuelve a guardarlo.",
+      "reloadProfile": "Recargar mi perfil",
+      "parentalConsentRequired": "Para guardar esta fecha de nacimiento se necesita la aprobación de un tutor. Continúa en la página de consentimiento.",
+      "openConsent": "Ir al consentimiento parental"
     },
     "decorations": {
       "title": "Adornos e intercambios",

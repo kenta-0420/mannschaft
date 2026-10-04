@@ -126,7 +126,11 @@
       "create": "내 점술 결과 만들기",
       "numbers": "생년월일 수: {life} / 이름 수: {name}",
       "reconfirm": "본인 정보를 다시 확인하고 선택",
-      "required": "본인 정보를 입력하세요."
+      "required": "본인 정보를 입력하세요.",
+      "keyRotated": "저장 키가 변경되었습니다. 본인 정보를 다시 불러와 확인한 뒤 다시 저장하세요.",
+      "reloadProfile": "본인 정보 다시 불러오기",
+      "parentalConsentRequired": "이 생년월일을 저장하려면 보호자 승인이 필요합니다. 보호자 동의 화면에서 진행하세요.",
+      "openConsent": "보호자 동의로 이동"
     },
     "decorations": {
       "title": "장식품과 교환",

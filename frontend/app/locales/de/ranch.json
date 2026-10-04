@@ -126,7 +126,11 @@
       "create": "Mein Numerologie-Ergebnis erstellen",
       "numbers": "Geburtsdatumzahl: {life} / Namenszahl: {name}",
       "reconfirm": "Meine Angaben vor der Auswahl erneut prüfen",
-      "required": "Gib deine persönlichen Angaben ein."
+      "required": "Gib deine persönlichen Angaben ein.",
+      "keyRotated": "Der Speicherschlüssel wurde geändert. Lade dein Profil neu, prüfe es und speichere erneut.",
+      "reloadProfile": "Mein Profil neu laden",
+      "parentalConsentRequired": "Zum Speichern dieses Geburtsdatums ist die Zustimmung eines Elternteils erforderlich. Fahre auf der Zustimmungsseite fort.",
+      "openConsent": "Zur elterlichen Zustimmung"
     },
     "decorations": {
       "title": "Dekorationen und Tausch",

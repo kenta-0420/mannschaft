@@ -25,7 +25,7 @@ const state: RanchState = {
  featureStatus: 'AVAILABLE', deliveryPaused: false, rewardsStatus: 'DISABLED', shopAvailable: false,
  owner: { id: '11111111-1111-4111-8111-111111111111', status: 'ACTIVE', balance: '0', version: '1' },
  dinosaur: { id: '22222222-2222-4222-8222-222222222222', speciesKey: null, variantKey: null, habitat: null, stage: 'EGG', name: null, xp: '0', nextStageXp: null, version: '1', namedAt: null, speciesCatalogVersion: null, egg: { startedAt: '2026-10-04T00:00:00Z', readyAt: '2026-10-11T00:00:00Z', crackStage: 'INTACT', hatchReady: false, hatchedAt: null } },
- settings: { isVisible: false, viewMode: 'ROOM', renderStyle: 'PIXEL', motionMode: 'NORMAL', isSoundEnabled: false, soundVolume: 100, version: '0' },
+ settings: { isVisible: false, viewMode: 'ROOM', renderStyle: 'PIXEL', motionMode: 'REDUCED', isSoundEnabled: false, soundVolume: 50, version: '0' },
  roomSlots: [{ slotKey: 'SHELF_1', inventoryId: null, version: '0' }, { slotKey: 'SHELF_2', inventoryId: null, version: '0' }, { slotKey: 'SHELF_3', inventoryId: null, version: '0' }], serverTime: '2026-10-04T00:00:00Z', policyVersion: null,
  careBudget: { remainingXp: '100', weeklyCapXp: '100', awardedXp: '0', amountXp: '20', weekEndsAt: '2026-10-04T15:00:00Z', ruleVersion: 'ranch-development-v1' }, weekBudget: null, assignment: { availableMethods: [], selectionConfirmed: false, confirmedMethod: null },
 }
@@ -65,7 +65,7 @@ beforeEach(async () => {
 })
 afterEach(() => { for (const wrapper of wrappers.splice(0)) wrapper.unmount(); vi.restoreAllMocks() })
 async function click(wrapper: Awaited<ReturnType<typeof mountSuspended>>, key: string) {
- const button = wrapper.findAll('button').find(item => item.text() === useNuxtApp().$i18n.t(key))
+ const button = wrapper.findAll('button').find(item => item.text() === useNuxtApp().$i18n.t(key) && !item.element.closest('[data-testid="load-error-state"]'))
  if (!button) throw new Error(`BUTTON_NOT_FOUND ${key}`)
  await button.trigger('click'); await flushPromises()
 }
