@@ -29,3 +29,34 @@ describe('AC06/48/73 応答喪失のcommand再送', () => {
   expect(secondKey).not.toBe(firstKey)
  })
 })
+
+describe('AC06 remount後の本人command共有', () => {
+ it('通信失敗後に再生成しても同key・body・versionを再送する', async () => {
+  const request = { path: '/api/v1/me/ranch/hatch', method: 'POST' as const, body: { version: '7', name: 'é', nameConfirmed: true } }
+  const first = useRanchCommand()
+  await expect(first.execute(request, async () => { throw new Error('lost') })).rejects.toThrow('lost')
+  const snapshot = first.pending.value
+  const remounted = useRanchCommand()
+  expect(remounted.pending.value).toEqual(snapshot)
+  const send = vi.fn(async (value: RanchCommandSnapshot) => value.key)
+  await remounted.execute(request, send)
+  expect(send.mock.calls[0]?.[0]).toEqual(snapshot)
+ })
+
+ it('再生成した画面でも同domainの送信中commandを重ねない', async () => {
+  const request = { path: '/api/v1/me/ranch/touch', method: 'POST' as const, body: { version: '7' } }
+  const first = useRanchCommand()
+  let resolve: ((value: string) => void) | undefined
+  const running = first.execute(request, () => new Promise<string>(done => { resolve = done }))
+  try {
+   const remounted = useRanchCommand()
+   expect(remounted.running.value).toBe(true)
+   const duplicate = vi.fn(async () => 'duplicate')
+   await expect(remounted.execute(request, duplicate)).rejects.toThrow('COMMAND_BUSY')
+   expect(duplicate).not.toHaveBeenCalled()
+  } finally {
+   resolve?.('done')
+   await running
+  }
+ })
+})
