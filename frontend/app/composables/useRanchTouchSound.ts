@@ -34,6 +34,7 @@ export function useRanchTouchSound(options: {
  function play(key: string, dinosaurId: string, token: number | null) {
   const run = prepared
   if (!run || token === null || run.token !== token || !allowed() || dinosaurId !== run.dinosaurId || dinosaurId !== options.dinosaur().id || !resolveRanchReaction(key, options.dinosaur().stage)) { cancel(token); return }
+  if (run.oscillator) return // 同じ操作tokenの再通知では再生しない。
   const oscillator = run.context.createOscillator()
   const gain = run.context.createGain()
   run.oscillator = oscillator; run.gain = gain

@@ -45,7 +45,7 @@ onScopeDispose(stop)
   <div v-else-if="dinosaur.habitat === 'AIR'" aria-hidden="true" class="pointer-events-none absolute inset-0">
    <span v-for="n in 3" :key="n" class="absolute w-16 h-5 rounded-full bg-white/50" :style="{ top: n * 17 + '%', left: n * 21 + offset + '%' }" />
   </div>
-  <div :key="reaction.sequence.value" :data-reaction-sequence="reaction.sequence.value" :data-reaction-key="reaction.reaction.value ?? ''" class="relative" :class="{ 'ranch-reaction-reduced': reaction.reaction.value && reaction.reduced.value }" :style="reaction.reaction.value && !reaction.reduced.value ? { transform: 'translateY(' + (-Math.sin(reaction.progress.value * Math.PI) * 4) + 'px)' } : undefined" @animationend="reaction.finishReduced">
+  <div :key="reaction.sequence.value" :data-reaction-sequence="reaction.sequence.value" :data-reaction-key="reaction.reaction.value ?? ''" class="relative" :class="{ 'ranch-reaction-reduced': reaction.reaction.value && reaction.reduced.value }" :style="reaction.reaction.value && !reaction.reduced.value ? { transform: 'translateY(' + (-Math.sin(reaction.progress.value * Math.PI) * 4) + 'px)' } : undefined" v-on="reaction.reaction.value && reaction.reduced.value ? { animationend: reaction.finishReduced } : {}">
    <svg v-if="dinosaur.stage === 'EGG'" viewBox="0 0 96 96" width="192" height="192" aria-hidden="true" :data-crack-stage="dinosaur.egg?.crackStage ?? 'INTACT'">
     <path :d="renderStyle === 'PIXEL' ? 'M40 16H56V24H64V36H72V60H76V72H68V80H28V72H20V60H24V36H32V24H40Z' : 'M48 16C32 16 24 49 24 62C24 88 72 88 72 62C72 49 64 16 48 16Z'" fill="#f7ebd1" stroke="#665b45" stroke-width="3" />
     <path d="M37 35h8v8h-8zM52 53h9v9h-9zM34 65h7v7h-7z" fill="#b9cb89" />
