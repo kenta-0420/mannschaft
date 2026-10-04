@@ -85,7 +85,7 @@ class ShiftPdfTemplateContractTest {
     }
 
     private static String normalize(String text) {
-        return text.replaceAll("\s+", " ");
+        return text.replaceAll("\\s+", " ");
     }
 
     @Test
