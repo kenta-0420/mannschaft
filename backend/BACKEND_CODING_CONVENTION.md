@@ -135,6 +135,7 @@ Service メソッド内でビジネスルールを検証し、違反時は `Busi
 - Controller で形式が正しいことを保証し、Service は形式チェック済みの値だけを扱う
 - **カスタムバリデーションアノテーション（`@UniqueEmail` 等）は作成しない**。DB アクセスを伴うチェックは Service の責務であり、アノテーション化すると追跡が困難になるため。
 - **グループバリデーション（`groups`）は使わない**。Create / Update で DTO を分離するため不要（`.claudecode.md` §19 参照）。
+- **`GlobalExceptionHandler` は `@RequestBody` の `MethodArgumentNotValidException` に加え、`@RequestParam` / `@PathVariable` の `@Min` / `@Max` 等（Spring 6.1 以降の `HandlerMethodValidationException`）でも 400 `COMMON_001` + `fieldErrors` を返す**。パラメータ検証の違反を 500 や `fieldErrors` 空にしないこと（CMP-261001-0630 で追加。F03.13 の `periodNumber` 1〜15 等）。
 
 ### Request DTO にコンストラクタを 2 本目以降足すときは `@JsonCreator` 必須（番人 D-7）
 
