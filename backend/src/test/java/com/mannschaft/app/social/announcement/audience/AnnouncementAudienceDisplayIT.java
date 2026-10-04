@@ -189,6 +189,30 @@ class AnnouncementAudienceDisplayIT extends AbstractAudienceDisplayIT {
     }
 
     @Test
+    @DisplayName("AC-E01（表示・全チーム宛て）: 組織ロールを持たない T1 のメンバーは、T1 が X から離脱すると X の全チーム宛て告知も見えなくなり、Y の全チーム宛て告知は見え続ける")
+    void e01_leavingOrgHidesAllTeamsFeedsToo() throws Exception {
+        Long teamOnlyViewer = 940603031L;
+        OrganizationEntity orgY = newOrg(true);
+        OrgTeamGroupEntity gy = newGroup(orgY.getId(), "GY", 0);
+        affiliate(t1.getId(), orgY.getId(), com.mannschaft.app.team.entity.TeamOrgMembershipEntity.Status.ACTIVE,
+                gy.getId());
+        seedOrgPerson(YA, orgY.getId(), "ADMIN");
+        MembershipTestHelper.insertActiveUser(em, teamOnlyViewer);
+        MembershipTestHelper.insertMembership(em, teamOnlyViewer, ScopeType.TEAM, t1.getId(), RoleKind.MEMBER);
+        flushAndClear();
+
+        long feedX = send(Map.of());
+        long feedY = sendAs(YA, orgY.getId(), Map.of());
+        assertThat(teamNoticeIds(teamOnlyViewer, t1.getId())).as("対照: 離脱前は両方出る").contains(feedX, feedY);
+
+        leaveOrg(t1.getId(), orgX.getId());
+
+        List<Long> seen = teamNoticeIds(teamOnlyViewer, t1.getId());
+        assertThat(seen).as("X の全チーム宛て告知は出ない").doesNotContain(feedX);
+        assertThat(seen).as("Y の全チーム宛て告知は出続ける").contains(feedY);
+    }
+
+    @Test
     @DisplayName("AC-G111（表示）: グループ機能を off にしても、送信済みのグループ宛て告知は表示を続ける")
     void g111_sentGroupFeedsKeepShowingAfterGroupsDisabled() throws Exception {
         long feed = send(Map.of("targetGroupIds", ids(g1.getId())));
