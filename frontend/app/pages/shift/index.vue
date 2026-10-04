@@ -5,6 +5,7 @@ import type {
   ShiftRequestSummaryResponse,
   CreateShiftScheduleRequest,
 } from '~/types/shift'
+import { toLocalDateTimeString } from '~/utils/localDate'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -107,7 +108,10 @@ async function load() {
     )
     summaryMap.value = new Map(
       summaryEntries
-        .filter((r): r is PromiseFulfilledResult<{ id: number; summary: ShiftRequestSummaryResponse }> => r.status === 'fulfilled')
+        .filter(
+          (r): r is PromiseFulfilledResult<{ id: number; summary: ShiftRequestSummaryResponse }> =>
+            r.status === 'fulfilled',
+        )
         .map((r) => [r.value.id, r.value.summary]),
     )
   } catch (error) {
@@ -136,7 +140,7 @@ interface CreateForm {
   title: string
   startDate: string
   endDate: string
-  requestDeadline: string
+  requestDeadline: Date | null
   note: string
 }
 
@@ -144,12 +148,17 @@ const createForm = ref<CreateForm>({
   title: '',
   startDate: '',
   endDate: '',
-  requestDeadline: '',
+  requestDeadline: null,
   note: '',
 })
 
 async function handleCreate() {
-  if (!selectedTeamId.value || !createForm.value.title || !createForm.value.startDate || !createForm.value.endDate) {
+  if (
+    !selectedTeamId.value ||
+    !createForm.value.title ||
+    !createForm.value.startDate ||
+    !createForm.value.endDate
+  ) {
     return
   }
   creating.value = true
@@ -158,13 +167,15 @@ async function handleCreate() {
       title: createForm.value.title.trim(),
       startDate: createForm.value.startDate,
       endDate: createForm.value.endDate,
-      requestDeadline: createForm.value.requestDeadline || undefined,
+      requestDeadline: createForm.value.requestDeadline
+        ? toLocalDateTimeString(createForm.value.requestDeadline)
+        : undefined,
       note: createForm.value.note.trim() || undefined,
     }
     await createSchedule(String(selectedTeamId.value), payload)
     success(t('shift.index.createSuccess'))
     showCreateDialog.value = false
-    createForm.value = { title: '', startDate: '', endDate: '', requestDeadline: '', note: '' }
+    createForm.value = { title: '', startDate: '', endDate: '', requestDeadline: null, note: '' }
     await load()
   } catch (error) {
     handleApiError(error)
@@ -187,6 +198,7 @@ function openDetail(scheduleId: number) {
           v-if="canManage"
           icon="pi pi-plus"
           :label="t('shift.index.createNew')"
+          class="min-h-11 min-w-11"
           @click="showCreateDialog = true"
         />
       </template>
@@ -267,32 +279,57 @@ function openDetail(scheduleId: number) {
       <div class="flex flex-col gap-4">
         <div>
           <label class="mb-1 block text-sm font-medium">{{ t('shift.index.formTitle') }}</label>
-          <InputText v-model="createForm.title" class="w-full" :placeholder="t('shift.index.formTitlePlaceholder')" />
+          <InputText
+            v-model="createForm.title"
+            class="min-h-11 w-full text-base"
+            :placeholder="t('shift.index.formTitlePlaceholder')"
+          />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="mb-1 block text-sm font-medium">{{ t('shift.index.formStart') }}</label>
-            <InputText v-model="createForm.startDate" type="date" class="w-full" />
+            <InputText
+              v-model="createForm.startDate"
+              type="date"
+              class="min-h-11 w-full text-base"
+            />
           </div>
           <div>
             <label class="mb-1 block text-sm font-medium">{{ t('shift.index.formEnd') }}</label>
-            <InputText v-model="createForm.endDate" type="date" class="w-full" />
+            <InputText v-model="createForm.endDate" type="date" class="min-h-11 w-full text-base" />
           </div>
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">{{ t('shift.index.formDeadline') }}</label>
-          <InputText v-model="createForm.requestDeadline" type="date" class="w-full" />
+          <DatePicker
+            v-model="createForm.requestDeadline"
+            date-format="yy/mm/dd"
+            show-time
+            hour-format="24"
+            class="w-full"
+            input-class="min-h-11 text-base"
+          />
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium">{{ t('shift.index.formNote') }}</label>
-          <InputText v-model="createForm.note" class="w-full" :placeholder="t('shift.index.formNotePlaceholder')" />
+          <InputText
+            v-model="createForm.note"
+            class="min-h-11 w-full text-base"
+            :placeholder="t('shift.index.formNotePlaceholder')"
+          />
         </div>
       </div>
       <template #footer>
-        <Button :label="t('common.cancel')" text @click="showCreateDialog = false" />
         <Button
-          :label="t('common.create')"
+          :label="t('common.cancel')"
+          class="min-h-11 min-w-11"
+          text
+          @click="showCreateDialog = false"
+        />
+        <Button
+          :label="t('shift.action.create')"
           icon="pi pi-check"
+          class="min-h-11 min-w-11"
           :loading="creating"
           :disabled="!createForm.title || !createForm.startDate || !createForm.endDate"
           @click="handleCreate"

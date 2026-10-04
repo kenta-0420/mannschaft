@@ -597,8 +597,16 @@ test.beforeAll(async ({ tokens }) => {
       titles.archivedPublished,
       ['COLLECTING', 'ADJUSTING', 'PUBLISHED', 'ARCHIVED'],
     )
-    // DRAFT から直接 ARCHIVED へ落とす（published_at が NULL のまま＝未公開アーカイブ / AC-7）
-    const archivedUnpublishedId = await seedOne(titles.archived, ['ARCHIVED'])
+    // AC-7: 遷移元ガード導入前に形成しうる未公開アーカイブを、自作した1行だけで再現する。
+    // 現行 API は DRAFT → ARCHIVED を拒否するため、AC-17 と同じ歴史データの fixture 金型を使う。
+    const archivedUnpublishedId = await seedOne(titles.archived, [])
+    runSql(`UPDATE shift_schedules SET status = 'ARCHIVED', published_at = NULL WHERE id = ${archivedUnpublishedId};`)
+    const archivedFixtureRow = runSql(
+      `SELECT CONCAT(status, ':', IFNULL(published_at, 'NULL')) FROM shift_schedules WHERE id = ${archivedUnpublishedId};`,
+    )
+    if (archivedFixtureRow !== 'ARCHIVED:NULL') {
+      throw new Error(`AC-7 のフィクスチャを作れなかった: ${JSON.stringify(archivedFixtureRow)}`)
+    }
     const adminPublishedId = await seedOne(
       titles.adminPublished,
       ['COLLECTING', 'ADJUSTING', 'PUBLISHED'],

@@ -273,6 +273,19 @@ public class ShiftScheduleService {
         ShiftScheduleStatus targetStatus = ShiftScheduleStatus.valueOf(status);
         ShiftScheduleStatus previousStatus = entity.getStatus();
 
+        // 許可された運用フロー以外は、公開確認・状態更新・関連依頼・イベントの前に拒否する。
+        boolean allowed = switch (previousStatus) {
+            case DRAFT -> targetStatus == ShiftScheduleStatus.COLLECTING;
+            case COLLECTING -> targetStatus == ShiftScheduleStatus.ADJUSTING;
+            case ADJUSTING -> targetStatus == ShiftScheduleStatus.COLLECTING
+                    || targetStatus == ShiftScheduleStatus.PUBLISHED;
+            case PUBLISHED -> targetStatus == ShiftScheduleStatus.ARCHIVED;
+            case ARCHIVED -> false;
+        };
+        if (!allowed) {
+            throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
+        }
+
         switch (targetStatus) {
             case COLLECTING -> entity.startCollecting();
             case ADJUSTING -> entity.startAdjusting();
@@ -312,9 +325,7 @@ public class ShiftScheduleService {
                     entity.getId(), entity.getTeamId(), userId));
         }
 
-        // CMP-260909-1445: PUBLISHED からの後戻り遷移（公開取消）も同型の穴だった。
-        // ShiftScheduleEntity の遷移メソッドはガードを持たず status を無条件に上書きするため
-        // この後戻りは実際に成立する。公開時に積んだ PLANNED 消化を置き去りにしない。
+        // CMP-260909-1445: 公開取消が成立した場合も、公開時に積んだ PLANNED 消化を置き去りにしない。
         if (previousStatus == ShiftScheduleStatus.PUBLISHED
                 && (targetStatus == ShiftScheduleStatus.COLLECTING
                         || targetStatus == ShiftScheduleStatus.ADJUSTING)) {
