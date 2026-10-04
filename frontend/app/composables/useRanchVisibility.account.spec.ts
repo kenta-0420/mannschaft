@@ -20,7 +20,7 @@ describe('表示設定の遅延GETと本人境界', () => {
   const delayed = new Promise<{ data: { widgetKey: string; visible: boolean; sortOrder: number }[] }>(done => { resolve = done })
   external.api.mockReturnValueOnce(delayed).mockResolvedValue({ data: {} })
   const old = useRanchVisibility().setVisible(true)
-  const settled = old.catch(() => undefined)
+  const settled = expect(old).rejects.toThrow('COMMAND_ACCOUNT_CHANGED')
   await auth.setUser(user(2))
   resolve?.({ data: [{ widgetKey: 'PERSONAL_WEATHER', visible: false, sortOrder: 0 }] })
   await settled
