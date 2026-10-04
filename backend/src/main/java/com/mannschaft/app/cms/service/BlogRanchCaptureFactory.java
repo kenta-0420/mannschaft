@@ -38,6 +38,7 @@ class BlogRanchCaptureFactory {
                 +"WHERE blog_post_id=? AND s3_key IN ("+String.join(",",java.util.Collections.nCopies(keys.size(),"?"))
                 +") LIMIT 1001",(rs,index) -> new Media(rs.getLong("id"),rs.getString("s3_key"),
                 rs.getString("processing_status"),rs.getString("scope_type"),rs.getObject("scope_id",Long.class)),arguments.toArray());
+        if(uploads.size()>1000) throw invalid();
         var attachments=new ArrayList<AttachmentRef>();
         for (String key:keys) {
             var selected=uploads.stream().filter(row -> key.equals(row.key())).toList();

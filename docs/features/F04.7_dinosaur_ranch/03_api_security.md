@@ -223,3 +223,10 @@ sequenceDiagram
 ### UI72の源所有公開契約
 
 SourceOutboxAdminFacade（common.ranchsource.api）は非TX公開契約。fresh SYSTEM_ADMIN+ACTIVEの管理窓口がhealth()とretry(actorUserId,sourceType,eventId,key,request)を呼ぶ。四源自身の読取/再予約TXを順次実行し、Ranch管理TXやsourceロックを保持してconsumerを呼ばない。HealthSummary={sources:4rows,observedAt}、row={sourceType,pendingCount:string,deadCount:string,oldestAgeSeconds:nullまたは非負整数}、pendingはPENDING/RETRY、deadはDEAD_LETTER。本文、利用者ID、私有hash、lease tokenは含めない。RetryRequest={reasonCode:[A-Z][A-Z0-9_]{0,79}}のみ。RetryAck={commandId,sourceType,eventId,disposition:RETRY_SCHEDULED|ALREADY_TERMINAL,completedAt}は管理命令の保存応答で、報酬完了の証明ではない。source-own command/key/bodyhash比較→成功ACK→live再予約の順序、不在404/別body409/稼働lease競合409、terminalを復活させない。source SPI実装/Controller認可/lease/ACKは後続製造であり、このinterface/DTOだけで稼働を主張しない。
+
+
+### 源配送leaseの内部公開値契約
+
+SourceOutboxLeaseRequest(serverTime, batchSize, leaseSeconds, maxAttempts) の4値はCOREが公開policyから検証して渡す。源は既定設定で補完しない。source own短TXのcurrent lockで未配達/期限切れLEASEDだけを回収し、attempt上限到達行をDEAD_LETTERへ遷移する。現在有効な別workerのleaseを終端化しない。DEFERは当token・LEASED・未期限切れ一致時に増算分を一回だけ戻し、公開maxBackoffSeconds内の有限futureへ延期する。真の障害retryだけを失敗budgetに含める。ACK/延期/障害処理はpurge済み・旧token行を再作成しない。
+
+CMS実BeanはBlogRanchOutboxDeliveryService。現checkpointは製造済み/compile・実MySQL未実行で、残三源の配送Bean・管理health/retryは未完成。壊れたpayloadは固定PAYLOAD_INVALIDでdead-letterへ隔離し、本文・cause・私有hashを返さず同batch正常行を続ける。

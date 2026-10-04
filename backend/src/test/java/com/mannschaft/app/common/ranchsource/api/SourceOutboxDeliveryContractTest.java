@@ -20,8 +20,9 @@ class SourceOutboxDeliveryContractTest {
         assertThatCode(() -> new SourceOutboxAckRequest(EVENT,TOKEN,NOW,deleted)).doesNotThrowAnyException();
     }
     @Test void unknownOrZeroSettingsAreNotReplacedWithDefaults() {
-        assertThatThrownBy(() -> new SourceOutboxLeaseRequest(NOW,0,30)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new SourceOutboxLeaseRequest(null,50,30)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new SourceOutboxLeaseRequest(NOW,0,30,8)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new SourceOutboxLeaseRequest(null,50,30,8)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new SourceOutboxLeaseRequest(NOW,50,30,0)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new SourceOutboxFailureRequest(EVENT,TOKEN,NOW,0,1,300,"SOURCE_FAILED"))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new SourceOutboxFailureRequest(EVENT,TOKEN,NOW,8,300,1,"SOURCE_FAILED"))
