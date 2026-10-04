@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CreateRecruitmentListingRequest;
@@ -35,7 +36,16 @@ public class PersonalMarketListingController {
 
     private final PersonalMarketListingService personalMarketListingService;
 
-    @SelfScopedEndpoint("認証済みユーザーIDをscopeIdとcreatedByへ固定する")
+    /**
+     * 札の所有者（scopeId・createdBy）は認証主体に固定するが、本文の公開先 {@code audienceScopes[].scopeId} は
+     * スコープIDとして受け取るため自己スコープ（到達不能）の主張はできない。認可の実体は Service にある:
+     * {@code RecruitmentListingService#validatePersonalAudienceScopes} が公開先を本人の有効な所属
+     * （{@code MembershipScopeQueryService} の user_roles ∪ memberships）と照合し、所属外・重複・不正値は
+     * {@code PERSONAL_VISIBILITY_NOT_ALLOWED} で保存前に拒否する。{@code friendTargets} は PERSONAL では
+     * 使われない（{@code MarketFriendTargetService#validate} は FRIEND_TEAMS_ONLY のみを扱い、個人札の可視性では受け付けない）。
+     * 固定する契約テスト: {@code PersonalMarketAudienceScopeContractIT}。
+     */
+    @AuthorizedInService
     @PostMapping
     @Operation(summary = "個人市の札を下書きで作成")
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> create(
@@ -78,7 +88,14 @@ public class PersonalMarketListingController {
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
     }
 
-    @SelfScopedEndpoint("個人札の所有者を認証済みユーザーに固定する")
+    /**
+     * 対象札は (id, PERSONAL, scopeId=認証主体) で取得するが、本文の公開先 {@code audienceScopes[].scopeId} を
+     * スコープIDとして受け取るため自己スコープの主張はできない。認可の実体は Service にある:
+     * {@code RecruitmentListingService#validatePersonalUpdate} → {@code validatePersonalAudienceScopes} が
+     * 公開先を本人の有効な所属と照合し、所属外は {@code PERSONAL_VISIBILITY_NOT_ALLOWED} で保存前に拒否する。
+     * 固定する契約テスト: {@code PersonalMarketAudienceScopeContractIT}。
+     */
+    @AuthorizedInService
     @PatchMapping("/{id}")
     @Operation(summary = "個人札のDRAFT編集")
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> update(
