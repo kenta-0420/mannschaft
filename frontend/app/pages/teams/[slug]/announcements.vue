@@ -18,9 +18,7 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 const { t } = useI18n()
 const route = useRoute()
 const teamSlug = String(route.params.slug)
-const { getTeam } = useTeamApi()
 const { handleApiError } = useErrorHandler()
-const feedScopeId = ref('')
 
 const { isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
 
@@ -36,7 +34,7 @@ const {
   markAllAsRead,
   setReadLocally,
   removeFromFeedLocally,
-} = useAnnouncementFeed('TEAM', feedScopeId)
+} = useAnnouncementFeed('TEAM', teamSlug)
 const preview = useAnnouncementPreview({
   onRead: item => setReadLocally(item.id),
   onUnavailable: item => removeFromFeedLocally(item.id),
@@ -125,8 +123,6 @@ async function loadPage(): Promise<void> {
   error.value = null
   try {
     await loadPermissions()
-    const team = await getTeam(teamSlug)
-    feedScopeId.value = String(team.data.id)
     await fetchFeed({ limit: 20 })
     void loadSpotlight()
   }

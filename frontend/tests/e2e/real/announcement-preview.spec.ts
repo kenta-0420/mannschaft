@@ -67,8 +67,16 @@ async function organizationTabs(headers: Record<string, string>) {
   return items
 }
 async function openFeed(page: Page): Promise<void> {
-  await page.goto(`/teams/${TEAM_SLUG}/announcements`, { waitUntil: 'domcontentloaded' })
+  await openApp(page, `/teams/${TEAM_SLUG}/announcements`)
   await expect(card(page, blog.announcementFeedId)).toBeVisible()
+}
+/** 実PWAのcold起動は40秒観察でmountした。本文の8秒assertとは独立してVue起動を待つ。 */
+async function openApp(page: Page, url: string): Promise<void> {
+  await page.goto(url, { waitUntil: 'domcontentloaded' })
+  await page.waitForFunction(() => {
+    const root = document.querySelector('#__nuxt')
+    return root !== null && '__vue_app__' in root && root.childElementCount > 0
+  }, undefined, { timeout: 60_000 })
 }
 /** 実Dialogの前後Tabが全状態で外へ出ないことをDOMの結果で確認する。 */
 async function assertDialogTrap(page: Page): Promise<void> {
@@ -129,7 +137,8 @@ async function createNormalBlog(scopeType: Fixture['scopeType'], scopeId: number
 }
 
 test.describe('お知らせ本文プレビュー 実API', () => {
-  test.describe.configure({ mode: 'serial' })
+  // 本体の既定60秒に、実PWAのcold起動を独立して待つ最大60秒を加える。
+  test.describe.configure({ mode: 'serial', timeout: 120_000 })
   test.use({ storageState: { cookies: [], origins: [] } })
 
   test.beforeAll(async () => {
@@ -402,7 +411,7 @@ test.describe('お知らせ本文プレビュー 実API', () => {
 
   test('PREVIEW-01/02/08: TEAM集約の組織feedは実所有scopeで開き、ORG切替後も同じ本文を表示する', async ({ page }) => {
     await login(page)
-    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    await openApp(page, '/dashboard')
     await page.getByRole('tab', { name: 'チーム', exact: true }).click()
     const teamChip = page.getByTestId(`scope-tab-chip-TEAM-${TEAM_SLUG}`)
     await expect(teamChip).toBeVisible()
@@ -433,7 +442,7 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     for (const fixture of normalBlogs) {
       if (fixture.scopeType === 'TEAM') await openFeed(page)
       else {
-        await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+        await openApp(page, '/dashboard')
         await page.getByRole('tab', { name: '組織', exact: true }).click()
         const chip = page.getByTestId(`scope-tab-chip-ORGANIZATION-${orgSlug}`)
         await expect(chip).toBeVisible()
@@ -484,7 +493,7 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     let removed = false
     try {
       await login(page)
-      await page.goto(`/teams/${otherTeamSlug}/announcements`, { waitUntil: 'domcontentloaded' })
+      await openApp(page, `/teams/${otherTeamSlug}/announcements`)
       await card(page, otherBulletin.announcementFeedId).click()
       const dialog = page.getByRole('dialog')
       const button = dialog.getByText(`preview-${stamp}.png`, { exact: true }).locator('..').getByRole('button')
@@ -551,24 +560,24 @@ test.describe('お知らせ本文プレビュー 実API', () => {
 
   test('PREVIEW-05/15: ブログのSUPPORTER拒否と掲示板の所属許可を元URLで再評価する', async ({ page }) => {
     await login(page, SUPPORTER)
-    await page.goto(blogUrl, { waitUntil: 'domcontentloaded' })
+    await openApp(page, blogUrl)
     await expect(page.locator('main')).not.toContainText(marker)
     await expect(page.getByText('記事がありません', { exact: true })).toBeVisible()
     // 掲示板元内容はSCOPE_AFFILIATED。feedのMEMBERS_AND_ABOVEとは別の既存認可。
-    await page.goto(bulletinUrl, { waitUntil: 'domcontentloaded' })
+    await openApp(page, bulletinUrl)
     await expect(page.locator('main')).toContainText(bulletinMarker)
   })
 
   test('PREVIEW-05/15: 非所属ユーザーの掲示板元URL直打ちで本文を表示しない', async ({ page }) => {
     await login(page)
-    await page.goto(`/teams/${otherTeamSlug}/bulletin?threadId=${otherBulletin.contentId}`, { waitUntil: 'domcontentloaded' })
+    await openApp(page, `/teams/${otherTeamSlug}/bulletin?threadId=${otherBulletin.contentId}`)
     await expect(page.getByTestId('load-error-state')).toBeVisible()
     await expect(page.locator('main')).not.toContainText(`PrivateThreadBody-${stamp}`)
   })
 
   test('PREVIEW-05/15: 別チームのthreadId直打ちは所属管理者でも本文なし', async ({ page }) => {
     await login(page, ADMIN)
-    await page.goto(`/teams/${otherTeamSlug}/bulletin?threadId=${bulletin.contentId}`, { waitUntil: 'domcontentloaded' })
+    await openApp(page, `/teams/${otherTeamSlug}/bulletin?threadId=${bulletin.contentId}`)
     await expect(page.getByTestId('load-error-state')).toBeVisible()
     await expect(page.locator('main')).not.toContainText(bulletinMarker)
   })
@@ -649,7 +658,7 @@ test.describe('お知らせ本文プレビュー 実API', () => {
       expect(feedRelocked.ok()).toBeTruthy()
       const adminPage = await adminContext.newPage()
       await login(adminPage, ADMIN)
-      await adminPage.goto(`/teams/${TEAM_SLUG}/payments`, { waitUntil: 'domcontentloaded' })
+      await openApp(adminPage, `/teams/${TEAM_SLUG}/payments`)
       await adminPage.locator('.w-64 button').filter({ hasText: itemName }).click()
       await adminPage.getByTestId('payment-record-open').click()
       await adminPage.getByTestId('payment-record-member').click()
