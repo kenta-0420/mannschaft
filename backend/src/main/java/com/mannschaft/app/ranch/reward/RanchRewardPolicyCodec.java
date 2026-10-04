@@ -32,7 +32,16 @@ public final class RanchRewardPolicyCodec {
             sources.put(type.name(), fields);
         }
         Map<String, Object> root = new TreeMap<>();
+        Map<String, Object> delivery = new TreeMap<>();
+        delivery.put("batchSize", policy.delivery().batchSize());
+        delivery.put("leaseSeconds", policy.delivery().leaseSeconds());
+        delivery.put("maxAttempts", policy.delivery().maxAttempts());
+        delivery.put("initialBackoffSeconds", policy.delivery().initialBackoffSeconds());
+        delivery.put("maxBackoffSeconds", policy.delivery().maxBackoffSeconds());
+        root.put("delivery", delivery);
+        root.put("enabled", policy.enabled());
         root.put("globalCap", policy.globalCap());
+        root.put("reasonCode", policy.reasonCode());
         root.put("sources", sources);
         try {
             String body = json.writeValueAsString(root);
@@ -49,12 +58,23 @@ public final class RanchRewardPolicyCodec {
         Objects.requireNonNull(expectedHash);
         try {
             JsonNode root = json.readTree(body);
-            if (!root.isObject() || root.size() != 2 || !root.has("globalCap")
+            if (!root.isObject() || root.size() != 5 || !root.path("enabled").isBoolean()
+                    || !root.path("reasonCode").isTextual() || !root.has("globalCap")
                     || !root.has("sources") || !root.path("sources").isObject()
                     || root.path("sources").size() != RanchRewardSourceType.values().length) {
                 throw new IllegalArgumentException("報酬policy schemaが不正です");
             }
             long cap = positiveLong(root.path("globalCap"));
+            JsonNode deliveryNode = root.path("delivery");
+            if (!deliveryNode.isObject() || deliveryNode.size() != 5) {
+                throw new IllegalArgumentException("報酬配送設定schemaが不正です");
+            }
+            var delivery = new RanchRewardPolicySnapshot.DeliverySettings(
+                    positiveInt(deliveryNode.path("batchSize")),
+                    positiveInt(deliveryNode.path("leaseSeconds")),
+                    positiveInt(deliveryNode.path("maxAttempts")),
+                    positiveInt(deliveryNode.path("initialBackoffSeconds")),
+                    positiveInt(deliveryNode.path("maxBackoffSeconds")));
             EnumMap<RanchRewardSourceType, RanchRewardPolicySnapshot.SourceRule> rules =
                     new EnumMap<>(RanchRewardSourceType.class);
             for (RanchRewardSourceType type : RanchRewardSourceType.values()) {
@@ -66,10 +86,11 @@ public final class RanchRewardPolicyCodec {
                 rules.put(type, new RanchRewardPolicySnapshot.SourceRule(
                         value.path("enabled").booleanValue(),
                         positiveLong(value.path("amountPoints")),
-                        positiveLong(value.path("countLimit"))));
+                        positiveInt(value.path("countLimit"))));
             }
             RanchRewardPolicySnapshot policy = new RanchRewardPolicySnapshot(
-                    policyId, version, effectiveAt, cap, rules);
+                    policyId, version, effectiveAt, root.path("enabled").booleanValue(),
+                    cap, rules, delivery, root.path("reasonCode").textValue());
             if (!Arrays.equals(encode(policy, json).sha256(), expectedHash)) {
                 throw new IllegalArgumentException("報酬policy内容hashが一致しません");
             }
@@ -84,6 +105,13 @@ public final class RanchRewardPolicyCodec {
             throw new IllegalArgumentException("報酬policy数値は正のBIGINTが必要です");
         }
         return value.longValue();
+    }
+
+    private static int positiveInt(JsonNode value) {
+        if (!value.isIntegralNumber() || !value.canConvertToInt() || value.intValue() <= 0) {
+            throw new IllegalArgumentException("報酬policy数値は正のintが必要です");
+        }
+        return value.intValue();
     }
 
     private static byte[] digest(byte[] bytes) {

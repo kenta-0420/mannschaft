@@ -23,7 +23,9 @@ class RanchRewardPolicyCodecTest {
                     type == RanchRewardSourceType.PERSONAL_RECALL_COMPLETE ? 4 : 5));
         }
         return new RanchRewardPolicySnapshot(UUID.randomUUID(), 7,
-                Instant.parse("2026-10-05T00:00:00Z"), 100, rules);
+                Instant.parse("2026-10-05T00:00:00Z"), true, 100, rules,
+                new RanchRewardPolicySnapshot.DeliverySettings(25, 30, 4, 2, 20),
+                "PHASE1_TEST");
     }
 
     @Test
@@ -48,6 +50,26 @@ class RanchRewardPolicyCodecTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> RanchRewardPolicyCodec.decode(policy.policyId(),
                 policy.versionNumber(), policy.effectiveAt(),
+                "{\"globalCap\":100,\"sources\":{}}", encoded.sha256(), json))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void disabledPolicyRoundTripsWithoutTurningPersonalSourceOn() {
+        var enabled = policy();
+        var rules = new EnumMap<>(enabled.sources());
+        rules.put(RanchRewardSourceType.PERSONAL_RECALL_COMPLETE,
+                new RanchRewardPolicySnapshot.SourceRule(false, 25, 4));
+        var disabled = new RanchRewardPolicySnapshot(enabled.policyId(), enabled.versionNumber(),
+                enabled.effectiveAt(), false, enabled.globalCap(), rules,
+                enabled.delivery(), enabled.reasonCode());
+        var encoded = RanchRewardPolicyCodec.encode(disabled, json);
+        var decoded = RanchRewardPolicyCodec.decode(disabled.policyId(), disabled.versionNumber(),
+                disabled.effectiveAt(), encoded.json(), encoded.sha256(), json);
+        assertThat(decoded.enabled()).isFalse();
+        assertThat(decoded.sources().get(RanchRewardSourceType.PERSONAL_RECALL_COMPLETE).enabled()).isFalse();
+        assertThatThrownBy(() -> RanchRewardPolicyCodec.decode(disabled.policyId(),
+                disabled.versionNumber(), disabled.effectiveAt(),
                 "{\"globalCap\":100,\"sources\":{}}", encoded.sha256(), json))
                 .isInstanceOf(IllegalArgumentException.class);
     }
