@@ -9,6 +9,11 @@ import com.mannschaft.app.cms.dto.PublishRequest;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.entity.BlogMediaUploadEntity;
 import com.mannschaft.app.cms.repository.BlogMediaUploadRepository;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxAckRequest;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxDeferRequest;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxFailureRequest;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxLeaseRequest;
+import com.mannschaft.app.ranch.reward.api.RanchRewardDeliveryOutcome;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogRanchTransportRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -36,6 +41,7 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserRepository users;
     @Autowired private BlogPostRepository posts;
     @Autowired private BlogMediaUploadRepository media;
+    @Autowired private BlogRanchOutboxDeliveryService outboxDelivery;
     @Autowired private UserOperationGuard active;
     @Autowired private UserRewardDeliveryGuard delivery;
     @Autowired private BlogRanchNativeWriter nativeWriter;
@@ -147,6 +153,61 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         assertThat(count("blog_ranch_outboxes")).isEqualTo(1);
         assertThat(publishedCount()).isEqualTo(2);
     }
+    @Test void deferRestoresOnlyCurrentLeaseAndFailureConsumesFiniteBudget() {
+        var nativeResult=publish("配送保留と障害の本文fixture");
+        assertThat(receive(nativeResult.capture())).isTrue();
+        var now=deliveryNow();
+        var first=outboxDelivery.lease(new SourceOutboxLeaseRequest(now,10,30,2)).getFirst();
+        assertThat(first.attemptCount()).isEqualTo(1);
+        var defer=new SourceOutboxDeferRequest(first.eventId(),first.leaseToken(),now.plusSeconds(1),now.plusSeconds(5),10);
+        assertThat(outboxDelivery.defer(defer)).isTrue();
+        assertThat(outboxDelivery.defer(defer)).isFalse();
+        var terminal=new RanchRewardDeliveryOutcome(RanchRewardDeliveryOutcome.Outcome.ACCOUNT_DELETED,null,0);
+        assertThat(outboxDelivery.acknowledge(new SourceOutboxAckRequest(first.eventId(),first.leaseToken(),now.plusSeconds(2),terminal))).isFalse();
+        var second=outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(5),10,30,2)).getFirst();
+        assertThat(second.attemptCount()).isEqualTo(1);
+        assertThat(second.leaseToken()).isNotEqualTo(first.leaseToken());
+        assertThat(outboxDelivery.retry(new SourceOutboxFailureRequest(second.eventId(),second.leaseToken(),now.plusSeconds(6),2,1,1,"CONSUMER_FAILED"))).isTrue();
+        var third=outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(7),10,30,2)).getFirst();
+        assertThat(third.attemptCount()).isEqualTo(2);
+        assertThat(outboxDelivery.retry(new SourceOutboxFailureRequest(third.eventId(),third.leaseToken(),now.plusSeconds(8),2,1,1,"CONSUMER_FAILED"))).isTrue();
+        assertThat(status(third.eventId())).isEqualTo("DEAD_LETTER");
+        assertThat(outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(100),10,30,2))).isEmpty();
+    }
+
+    @Test void expiredCrashIsBoundedButCurrentLeaseIsNotStolen() {
+        var nativeResult=publish("期限切れcrash本文fixture");
+        assertThat(receive(nativeResult.capture())).isTrue();
+        var now=deliveryNow();
+        var first=outboxDelivery.lease(new SourceOutboxLeaseRequest(now,10,30,1)).getFirst();
+        assertThat(outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(29),10,30,1))).isEmpty();
+        assertThat(status(first.eventId())).isEqualTo("LEASED");
+        assertThat(outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(30),10,30,1))).isEmpty();
+        assertThat(status(first.eventId())).isEqualTo("DEAD_LETTER");
+        assertThat(publishedCount()).isEqualTo(1);
+    }
+
+    @Test void poisonPayloadDoesNotStopOtherLeasesAndAckCannotReviveRemovedRow() {
+        var invalid=publish("壊れた配送fixture本文");
+        var valid=publish("正常配送fixture本文");
+        assertThat(receive(invalid.capture())).isTrue();assertThat(receive(valid.capture())).isTrue();
+        var invalidId=invalid.capture().payload().eventId();
+        jdbc.update("UPDATE blog_ranch_outboxes SET payload_json='null' WHERE id=?",idBytes(invalidId));
+        var now=deliveryNow();
+        var leased=outboxDelivery.lease(new SourceOutboxLeaseRequest(now,10,30,2));
+        assertThat(leased).hasSize(1);assertThat(status(invalidId)).isEqualTo("DEAD_LETTER");
+        var event=leased.getFirst();
+        jdbc.update("DELETE FROM blog_ranch_outboxes WHERE id=?",idBytes(event.eventId()));
+        var terminal=new RanchRewardDeliveryOutcome(RanchRewardDeliveryOutcome.Outcome.ACCOUNT_DELETED,null,0);
+        assertThat(outboxDelivery.acknowledge(new SourceOutboxAckRequest(event.eventId(),event.leaseToken(),now.plusSeconds(1),terminal))).isFalse();
+        assertThat(outboxDelivery.defer(new SourceOutboxDeferRequest(event.eventId(),event.leaseToken(),now.plusSeconds(1),now.plusSeconds(2),10))).isFalse();
+        assertThat(count("blog_ranch_outboxes")).isEqualTo(1);
+        // 手動削除fixtureはlate tokenのno-recreateだけ。実purge接続の証拠には流用しない。
+        assertThat(publishedCount()).isEqualTo(2);
+    }
+    private java.time.Instant deliveryNow() { return jdbc.queryForObject("SELECT MAX(next_attempt_at) FROM blog_ranch_outboxes WHERE recipient_user_id=?",java.sql.Timestamp.class,owner).toInstant().plusSeconds(1); }
+    private String status(UUID event) { return jdbc.queryForObject("SELECT status FROM blog_ranch_outboxes WHERE id=?",String.class,idBytes(event)); }
+    private static byte[] idBytes(UUID event) { return java.nio.ByteBuffer.allocate(16).putLong(event.getMostSignificantBits()).putLong(event.getLeastSignificantBits()).array(); }
     private Long draft(String body) {
         Long id=posts.saveAndFlush(BlogPostEntity.builder().authorId(owner).userId(owner)
                 .title("同一比較タイトル").slug("transport-"+UUID.randomUUID()).body(body).build()).getId();

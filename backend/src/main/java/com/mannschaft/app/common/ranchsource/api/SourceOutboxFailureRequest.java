@@ -11,5 +11,6 @@ public record SourceOutboxFailureRequest(UUID eventId,UUID leaseToken,Instant se
         if(maxAttempts<=0 || initialBackoffSeconds<=0 || maxBackoffSeconds<initialBackoffSeconds
                 || errorCode==null || !errorCode.matches("[A-Z][A-Z0-9_]{0,79}"))
             throw SourceOutboxDeliveryInputs.invalid();
+        SourceOutboxDeliveryInputs.time(serverTime.plusSeconds(maxBackoffSeconds));
     }
 }
