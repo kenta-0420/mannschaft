@@ -35713,6 +35713,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/attendance/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 学校出欠の権限判定結果取得
+         * @description 自分が当該クラスの出欠を閲覧・日次登録・時限登録できるかを返す。権限なしでも 200 で全項目 false。
+         */
+        get: operations["getPermissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/attendance/periods": {
         parameters: {
             query?: never;
@@ -75101,6 +75121,16 @@ export interface components {
             status?: "OK" | "WARNING" | "RISK" | "VIOLATION";
             /** Format: int64 */
             studentUserId?: number;
+        };
+        ApiResponseAttendancePermissionsResponse: {
+            data?: components["schemas"]["AttendancePermissionsResponse"];
+        };
+        AttendancePermissionsResponse: {
+            canRecordDaily?: boolean;
+            canRecordPeriod?: boolean;
+            canView?: boolean;
+            /** Format: int64 */
+            teamId?: number;
         };
         ApiResponsePeriodAttendanceListResponse: {
             data?: components["schemas"]["PeriodAttendanceListResponse"];
@@ -154780,6 +154810,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListAtRiskStudentResponse"];
+                };
+            };
+        };
+    };
+    getPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAttendancePermissionsResponse"];
                 };
             };
         };

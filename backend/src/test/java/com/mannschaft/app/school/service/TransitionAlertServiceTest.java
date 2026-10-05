@@ -1,8 +1,6 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.school.entity.AttendanceTransitionAlertEntity;
 import com.mannschaft.app.school.error.SchoolErrorCode;
 import com.mannschaft.app.school.repository.AttendanceTransitionAlertRepository;
@@ -23,36 +21,29 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link TransitionAlertService} 認可テスト（認可根治戦役 束4・移動検知アラート）。
+ * {@link TransitionAlertService} の業務ロジックテスト。
  *
- * <p>マスター御裁可済み方針: 閲覧（getAlerts）は checkMembership、
- * 確認/解決（resolveAlert）は checkAdminOrAbove。</p>
+ * <p>認可（閲覧 V・解決 R）はトランザクションの外の {@link TransitionAlertFacade} の責務であり、
+ * {@link TransitionAlertFacadeTest} が検証する。本テストは、一覧取得・解決・path の teamId 配下確認（存在秘匿）を検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("TransitionAlertService 認可テスト（束4）")
+@DisplayName("TransitionAlertService 業務ロジックテスト")
 class TransitionAlertServiceTest {
 
     @Mock
     private AttendanceTransitionAlertRepository alertRepository;
 
-    @Mock
-    private AccessControlService accessControlService;
-
     @InjectMocks
     private TransitionAlertService transitionAlertService;
 
     private static final Long TEAM_ID = 1L;
-    /** 攻撃者が ADMIN でない別テナントのチーム（BOLA クロステナント検証用）。 */
+    /** 別テナントのチーム（BOLA クロステナント検証用）。 */
     private static final Long OTHER_TEAM_ID = 777L;
-    private static final Long MEMBER_USER_ID = 100L;
     private static final Long ADMIN_USER_ID = 200L;
-    private static final Long OUTSIDER_USER_ID = 999L;
     private static final Long ALERT_ID = 10L;
     private static final LocalDate ATTENDANCE_DATE = LocalDate.of(2026, 7, 1);
 
@@ -68,122 +59,63 @@ class TransitionAlertServiceTest {
     }
 
     @Nested
-    @DisplayName("getAlerts（閲覧＝所属者のみ）")
+    @DisplayName("getAlerts")
     class GetAlerts {
 
         @Test
-        @DisplayName("red→green: 対象チーム非所属ユーザーが GET 移動検知アラート一覧 → 403 (COMMON_002)")
-        void nonMember_forbidden() {
-            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkMembership(OUTSIDER_USER_ID, TEAM_ID, "TEAM");
-
-            assertThatThrownBy(() -> transitionAlertService
-                    .getAlerts(TEAM_ID, ATTENDANCE_DATE, false, OUTSIDER_USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting(ex -> ((BusinessException) ex).getErrorCode())
-                    .isEqualTo(CommonErrorCode.COMMON_002);
-
-            verify(alertRepository, never())
-                    .findByTeamIdAndAttendanceDateOrderByCreatedAtDesc(any(), any());
-        }
-
-        @Test
-        @DisplayName("非回帰: チーム所属ユーザーは従来どおり一覧取得可能")
-        void member_success() {
-            doNothing().when(accessControlService).checkMembership(MEMBER_USER_ID, TEAM_ID, "TEAM");
+        @DisplayName("アラートが無ければ空の一覧")
+        void empty() {
             given(alertRepository.findByTeamIdAndAttendanceDateOrderByCreatedAtDesc(TEAM_ID, ATTENDANCE_DATE))
                     .willReturn(List.of());
 
-            var response = transitionAlertService.getAlerts(TEAM_ID, ATTENDANCE_DATE, false, MEMBER_USER_ID);
+            var response = transitionAlertService.getAlerts(TEAM_ID, ATTENDANCE_DATE, false);
 
             assertThat(response.getAlerts()).isEmpty();
-            verify(accessControlService).checkMembership(MEMBER_USER_ID, TEAM_ID, "TEAM");
         }
     }
 
     @Nested
-    @DisplayName("resolveAlert（確認/解決＝ADMIN以上のみ）")
+    @DisplayName("requireAlertInTeam / resolveAlert（entity 由来スコープの照合・存在秘匿）")
     class ResolveAlert {
 
         @Test
-        @DisplayName("red→green: 非ADMINが POST 移動検知アラート解決 → 403 (COMMON_002)")
-        void nonAdmin_forbidden() {
-            // entity由来scope認可: alert を先に fetch → path teamId 一致 → checkAdminOrAbove が拒否。
-            given(alertRepository.findById(ALERT_ID)).willReturn(Optional.of(buildAlert(TEAM_ID)));
-            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkAdminOrAbove(MEMBER_USER_ID, TEAM_ID, "TEAM");
-
-            assertThatThrownBy(() -> transitionAlertService
-                    .resolveAlert(TEAM_ID, ALERT_ID, MEMBER_USER_ID, "解決しました"))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting(ex -> ((BusinessException) ex).getErrorCode())
-                    .isEqualTo(CommonErrorCode.COMMON_002);
-
-            verify(alertRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("BOLA red→green: 自チームADMINが path=自team で他チームのalertIdを解決 → 404存在秘匿（認可到達前に遮断）")
+        @DisplayName("BOLA: path=自team で他チームの alertId → 404 存在秘匿（解決処理に到達しない）")
         void crossTenant_pathOwnTeam_notFound() {
-            // 攻撃: /teams/{自team=TEAM_ID}/…/{他teamのalertId}/resolve。
-            // alert の実所属は OTHER_TEAM_ID なので path(TEAM_ID) と不一致 → 404 で存在秘匿。
             given(alertRepository.findById(ALERT_ID)).willReturn(Optional.of(buildAlert(OTHER_TEAM_ID)));
 
+            assertThatThrownBy(() -> transitionAlertService.requireAlertInTeam(TEAM_ID, ALERT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                    .isEqualTo(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND);
             assertThatThrownBy(() -> transitionAlertService
                     .resolveAlert(TEAM_ID, ALERT_ID, ADMIN_USER_ID, "他チームを握り潰す"))
                     .isInstanceOf(BusinessException.class)
                     .extracting(ex -> ((BusinessException) ex).getErrorCode())
                     .isEqualTo(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND);
 
-            // 存在秘匿のため認可判定にも解決処理にも到達しない。
-            verify(accessControlService, never()).checkAdminOrAbove(any(), any(), any());
             verify(alertRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("BOLA red→green: 他チームADMINが path=victim team で他チームのalertを解決 → 403（entity由来scopeで認可）")
-        void crossTenant_pathVictimTeam_forbidden() {
-            // 攻撃: path=victim team(OTHER_TEAM_ID) を正しく指定しても、
-            // 攻撃者は OTHER_TEAM_ID の ADMIN ではないため entity由来scope認可で 403。
-            given(alertRepository.findById(ALERT_ID)).willReturn(Optional.of(buildAlert(OTHER_TEAM_ID)));
-            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, OTHER_TEAM_ID, "TEAM");
-
-            assertThatThrownBy(() -> transitionAlertService
-                    .resolveAlert(OTHER_TEAM_ID, ALERT_ID, ADMIN_USER_ID, "他チームを握り潰す"))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting(ex -> ((BusinessException) ex).getErrorCode())
-                    .isEqualTo(CommonErrorCode.COMMON_002);
-
-            verify(alertRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("red→green: 存在しない alertId → 404")
+        @DisplayName("存在しない alertId → 404")
         void notFound() {
             given(alertRepository.findById(ALERT_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> transitionAlertService
-                    .resolveAlert(TEAM_ID, ALERT_ID, ADMIN_USER_ID, "解決しました"))
+            assertThatThrownBy(() -> transitionAlertService.requireAlertInTeam(TEAM_ID, ALERT_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(ex -> ((BusinessException) ex).getErrorCode())
                     .isEqualTo(SchoolErrorCode.TRANSITION_ALERT_NOT_FOUND);
-
-            verify(accessControlService, never()).checkAdminOrAbove(any(), any(), any());
         }
 
         @Test
-        @DisplayName("非回帰: ADMIN（path=自team・alertも自team）は従来どおりアラートを解決可能")
-        void admin_success() {
+        @DisplayName("path=自team・alertも自team ならアラートを解決できる")
+        void resolves() {
             given(alertRepository.findById(ALERT_ID)).willReturn(Optional.of(buildAlert(TEAM_ID)));
-            doNothing().when(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM");
             given(alertRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
-            var response = transitionAlertService
-                    .resolveAlert(TEAM_ID, ALERT_ID, ADMIN_USER_ID, "解決しました");
+            var response = transitionAlertService.resolveAlert(TEAM_ID, ALERT_ID, ADMIN_USER_ID, "解決しました");
 
             assertThat(response).isNotNull();
-            verify(accessControlService).checkAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM");
         }
     }
 }
