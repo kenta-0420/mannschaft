@@ -2,7 +2,7 @@ package com.mannschaft.app.schedule.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import com.mannschaft.app.common.entity.UuidV7Entity;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -14,8 +14,7 @@ import lombok.NoArgsConstructor;
 @Table(name="schedule_ranch_witnesses")
 @Getter
 @NoArgsConstructor
-public class ScheduleRanchWitnessEntity {
-    @Id @Column(nullable=false,columnDefinition="BINARY(16)") private UUID id;
+public class ScheduleRanchWitnessEntity extends UuidV7Entity {
     @Column(nullable=false,length=8) private String sourceIdType;
     @Column(nullable=false,columnDefinition="VARBINARY(80)") private byte[] canonicalSourceId;
     @Column(nullable=false,columnDefinition="BIGINT UNSIGNED") private Long recipientUserId;
