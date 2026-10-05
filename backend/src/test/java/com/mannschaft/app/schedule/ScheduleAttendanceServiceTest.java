@@ -854,7 +854,7 @@ class ScheduleAttendanceServiceTest {
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
 
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.UNDECIDED);
-            given(attendanceRepository.findForResponseUpdate(SCHEDULE_ID, USER_ID))
+            given(attendanceRepository.findByScheduleIdAndUserId(SCHEDULE_ID, USER_ID))
                     .willReturn(Optional.of(attendance));
             given(attendanceRepository.save(any(ScheduleAttendanceEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
