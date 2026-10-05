@@ -39,6 +39,7 @@
       "touched": "Has tocado tu propio avatar."
     },
     "scene": {
+      "staticFallback": "Se muestra una imagen estática del mismo dinosaurio.",
       "assetPreparing": "Las imágenes de esta forma se están preparando. El texto y los controles siguen disponibles."
     },
     "style": {

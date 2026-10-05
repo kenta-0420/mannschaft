@@ -39,6 +39,7 @@
       "touched": "你触摸了自己的分身。"
     },
     "scene": {
+      "staticFallback": "正在显示同一只恐龙的静态图像。",
       "assetPreparing": "这个形象的素材正在准备中。仍可通过文字和操作使用。"
     },
     "style": {

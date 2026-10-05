@@ -39,6 +39,7 @@
       "touched": "You touched your own avatar."
     },
     "scene": {
+      "staticFallback": "Showing a still image of the same dinosaur.",
       "assetPreparing": "The artwork for this form is being prepared. Text and controls remain available."
     },
     "style": {

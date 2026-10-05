@@ -39,6 +39,7 @@
       "touched": "Du hast dein eigenes Abbild berührt."
     },
     "scene": {
+      "staticFallback": "Ein Standbild desselben Dinosauriers wird angezeigt.",
       "assetPreparing": "Die Grafik für diese Gestalt wird vorbereitet. Text und Bedienung bleiben verfügbar."
     },
     "style": {

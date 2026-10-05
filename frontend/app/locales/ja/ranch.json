@@ -39,6 +39,7 @@
       "touched": "自分の分身に触れました。"
     },
     "scene": {
+      "staticFallback": "同じ個体の静止画で表示しています。",
       "assetPreparing": "この姿の素材は準備中です。文字と操作で引き続き利用できます。"
     },
     "style": {
