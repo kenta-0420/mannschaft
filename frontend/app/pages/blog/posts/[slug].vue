@@ -2,6 +2,7 @@
 import type { BlogPostResponse, BlogSeries, BlogTag } from '~/types/cms'
 import type { GateCheckResponse } from '~/types/payment'
 
+definePageMeta({ key: route => route.fullPath })
 const route = useRoute()
 const slug = route.params.slug as string
 
@@ -18,7 +19,7 @@ const gateResult = ref<GateCheckResponse | null>(null)
 async function loadPost() {
   loading.value = true
   try {
-    const res = await getPost(slug)
+    const res = await getPost(slug, route.query)
     post.value = res.data
     // 記事取得後にペイウォール判定（POST = ブログ記事）
     if (post.value?.id) {
