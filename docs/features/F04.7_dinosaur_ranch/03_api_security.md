@@ -201,6 +201,10 @@ GET /api/v1/me/ranch/diagnosis-results?method=DIAGNOSIS|BIRTH_STYLE&cursor=...&l
 
 result summaryは{id,method,completedAt,resultSchemaVersion,ruleVersion,questionnaireVersion?,scoringVersion?,normalizationVersion?,mappingVersion?,typeCode?,axes?,numberSummary?,descriptionSnapshot}。raw回答/姓名/カナ/DOB/profile fingerprintなし。6言語説明と質問/採点/正規化版を不変snapshot、mapping未登録NULLでも本人resultを保存可、恐竜割当/公開有効化不可。完成typeCodeはserverの6bit文字列。本人診断開始・result作成・閲覧はranch参加不要。
 
+正式質問catalogのsoftware登録境界: `mannschaft.diagnosis.approved-catalog.resource/version/sha256` を一組で明示し、resourceは `diagnosis/approved/*.json` 配下の実バイトを指定する。全設定欠落は未登録、部分設定・不正path・実バイトSHA不一致は起動拒否。resourceの `approved=true` と `translationsApproved=true`、`catalogs` 配列に含まれる各不変Definitionの既知snapshot schema/scoring版、24問（6軸各4問、sign±1、一意ID）、6軸同点表示、全6言語の質問・説明・同点表示を検証する。DRAFT版を正式版へ読み替えない。明示versionに一致する定義から新sessionを開始し、readinessも同じ登録正本を参照する。恐竜全64mapping/素材の公開gateは引き続き別途必要。
+
+開始済みsessionは保存Definitionを変更・再構成しない。正式resourceを更新する場合は既存sessionが参照する旧承認Definitionを `catalogs` に保持し、保存Definitionとの完全一致で旧snapshotの読取・mutationを許可する。保存APPROVED flagやversionだけでは承認せず、改竄・未知版は拒否する。旧版をcatalogから除去するとその版の操作は不可になるため、保持を登録更新の条件とする。DRAFTの保存読取と開発profileでのmutation制限は維持する。現時点では本物質問・翻訳の承認0、正式resource/設定登録0、全64mapping/素材承認0で公開OFF。合成UTのAPPROVED値は登録機構の試験だけで、実原稿の承認証跡ではない。
+
 mapping未登録時の割当不可は、その時点で互換な承認mappingが存在しないことを指す。後日mappingを承認しても保存済みResultSummaryを改変しない。画面は方式全体の可否を現在のRanchState.assignment.availableMethodsで判断し、saved mappingVersionの有無だけで旧結果を永久に準備中にしない。初回選定時、serverは保存結果のrule/scoring/normalization版に互換な承認mappingを検証し、利用したmapping版を個体へ凍結する。互換mappingがなければ503。同方式が利用可能でも、すべての過去結果の適合を保証するものではない。確定済み個体のmapping/外見は変更しない。
 
 
