@@ -563,9 +563,18 @@ tasks.withType<Test> {
     // （根治は独自 @MockitoBean 等を共通構成へ寄せてコンテキスト種類自体を減らすこと。
     //  CMP-261004-2047 で追跡。本設定はあくまで応急の上限）。
     // -Pspring.test.context.cache.maxSize=N で上書き可能（archTest は Spring を使わないため無害）。
+    val contextCacheMaxSizeOverride = project.findProperty("spring.test.context.cache.maxSize") as String?
     systemProperty(
         "spring.test.context.cache.maxSize",
-        (project.findProperty("spring.test.context.cache.maxSize") as String?) ?: "10"
+        contextCacheMaxSizeOverride ?: "10"
+    )
+    // SpringTestContextCacheMaxSizeGuardTest が「既定値 10 が本当に効いているか」と
+    // 「-P で明示的に上書きされたか」を区別するためのフラグ。
+    // これが無いと、ガードは期待値も実測値も同じ system property から読むため、
+    // 既定値が誤って 32 に戻っても常に一致して green になる（偽 green）。
+    systemProperty(
+        "mannschaft.test.contextCacheMaxSize.overridden",
+        (contextCacheMaxSizeOverride != null).toString()
     )
 
     // （旧: D-4 CrossDomainForeignKeyArchTest の baseline 再凍結スイッチ archunit.fk.refreeze を

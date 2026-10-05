@@ -490,7 +490,15 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTest {
 
 ArchUnit を使うテストクラス（ArchUnit または `ProductionClasses` を参照するもの）は必ずタグを付け、
 Spring のテストコンテキストを使わない。通常の `test` はタグ `archunit` を除外する。タグ付きテストは
-**エンジンで2系統に分かれる**（どちらも `check` に載り、CI では専用ジョブが1回だけ走る）。
+**エンジンで2系統に分かれ、実行系統も異なる**:
+
+- `archTest`（junit-jupiter・タグ `archunit`）は CI の専用ジョブ「ArchUnit tests (separate JVM)」
+  （`backend-ci.yml`/`backend-deploy.yml`/`backend-nightly-full.yml` の `arch-test` job）で、shard 分割せず
+  1 回だけ全クラス分を実行する。
+- `archUnitTest`（archunit エンジン・`@AnalyzeClasses`）は専用ジョブではなく、通常の `test` タスクの
+  依存タスク（`tasks.named<Test>("test") { dependsOn(archUnitTest, ...) }`）として、各 shard の
+  `test` 実行の一部として shard の絞り込み（タグ/クラスフィルタ）を継承したまま、Spring とは別の
+  `Test` タスク＝別 JVM で実行される。
 
 - `@Tag(ArchUnitTestTag.ARCHUNIT)` を付けた **junit-jupiter** のテストクラスは `archTest`（heap 3g・
   1 JVM）が走らせる。
