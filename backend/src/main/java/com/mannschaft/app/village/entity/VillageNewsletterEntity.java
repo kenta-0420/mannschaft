@@ -2,6 +2,7 @@ package com.mannschaft.app.village.entity;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency;
+import com.mannschaft.app.common.persistence.TinyIntIntegerJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,6 +18,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcType;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -67,15 +69,18 @@ public class VillageNewsletterEntity extends UuidV7Entity {
      * WEEKLY は曜日（1=月 … 7=日）、MONTHLY は日付（1〜28、{@code 0}=月末の番兵値）。
      * 月末は月ごとに日数が違うため固定日で表せず {@code 0} で表現する（設計書 §4.3）。
      */
-    @Column(name = "aggregate_day", nullable = false, columnDefinition = "tinyint unsigned")
+    @JdbcType(TinyIntIntegerJdbcType.class)
+    @Column(name = "aggregate_day", nullable = false, columnDefinition = "integer")
     private Integer aggregateDay;
 
     /** 配信日（F17.1 ②-1 で追加）。意味は {@link #aggregateDay} と同じ（曜日 or 日付・月末=0）。 */
-    @Column(name = "dispatch_day", nullable = false, columnDefinition = "tinyint unsigned")
+    @JdbcType(TinyIntIntegerJdbcType.class)
+    @Column(name = "dispatch_day", nullable = false, columnDefinition = "integer")
     private Integer dispatchDay;
 
     /** 配信時刻（UTC 時・0〜23。既定 18）。F17.1 ②-1 で追加。 */
-    @Column(name = "dispatch_hour", nullable = false, columnDefinition = "tinyint unsigned")
+    @JdbcType(TinyIntIntegerJdbcType.class)
+    @Column(name = "dispatch_hour", nullable = false, columnDefinition = "integer")
     private Integer dispatchHour;
 
     /** 論理削除。 */

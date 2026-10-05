@@ -19,6 +19,8 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -106,12 +108,15 @@ public class UserEntity extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String postalCode;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(length = 64)
     private String lastNameHash;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(length = 64)
     private String firstNameHash;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(length = 64)
     private String phoneNumberHash;
 
@@ -123,6 +128,7 @@ public class UserEntity extends BaseEntity {
     private String locale;
 
     /** ISO 3166-1 alpha-2 国コード（例: JP・US・DE）。カレンダー祝日表示用。NULLの場合はlocaleから推定する。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "country_code", length = 2)
     private String countryCode;
 

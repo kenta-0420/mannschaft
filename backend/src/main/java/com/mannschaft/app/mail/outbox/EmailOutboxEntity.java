@@ -13,6 +13,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -90,6 +92,7 @@ public class EmailOutboxEntity extends UuidV7Entity {
     private Long organizationId;
 
     @Setter
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "idempotency_key", length = 32, nullable = false, unique = true)
     private String idempotencyKey;
 

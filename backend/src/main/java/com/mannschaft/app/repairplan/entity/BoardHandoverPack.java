@@ -14,6 +14,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -58,6 +60,7 @@ public class BoardHandoverPack extends UuidV7Entity {
     @Column(name = "pdf_size")
     private Long pdfSize;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "pdf_sha256", length = 64)
     private String pdfSha256;
 

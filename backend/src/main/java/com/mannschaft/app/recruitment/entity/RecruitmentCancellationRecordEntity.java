@@ -2,6 +2,7 @@ package com.mannschaft.app.recruitment.entity;
 
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.CancellationSource;
+import com.mannschaft.app.common.persistence.TinyIntIntegerJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,6 +18,7 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcType;
 
 import java.time.LocalDateTime;
 
@@ -75,7 +77,8 @@ public class RecruitmentCancellationRecordEntity {
 
     /** §Phase5a 決済リトライ回数（最大3回）。 */
     @Builder.Default
-    @Column(nullable = false, columnDefinition = "tinyint unsigned")
+    @JdbcType(TinyIntIntegerJdbcType.class)
+    @Column(nullable = false, columnDefinition = "integer")
     private Integer paymentRetryCount = 0;
 
     @Column(length = 500)

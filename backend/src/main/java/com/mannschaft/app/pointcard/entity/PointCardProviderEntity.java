@@ -19,6 +19,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 /**
@@ -72,6 +74,7 @@ public class PointCardProviderEntity extends UuidV7CharEntity {
     private String logoUrl;
 
     /** ブランドカラー（例: #E60012）。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "brand_color", length = 7)
     private String brandColor;
 

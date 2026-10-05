@@ -17,6 +17,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -67,6 +69,7 @@ public class BillingPriceBandVersionEntity extends UuidV7Entity {
     @Column(name = "stripe_price_ref", length = 255)
     private String stripePriceRef;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
     private String currency;
 

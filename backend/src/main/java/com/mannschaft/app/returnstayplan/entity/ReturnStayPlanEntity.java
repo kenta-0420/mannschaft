@@ -9,6 +9,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.time.LocalDate;
 import lombok.AccessLevel;
@@ -40,9 +42,11 @@ public class ReturnStayPlanEntity extends UuidV7Entity {
     @Builder.Default
     private Boolean published = false;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "country_code", nullable = false, length = 2)
     private String countryCode;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "prefecture_code", length = 2)
     private String prefectureCode;
 

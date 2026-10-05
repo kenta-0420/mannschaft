@@ -13,6 +13,8 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -40,6 +42,7 @@ public class ElectronicSealEntity extends BaseEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String svgData;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 64)
     private String sealHash;
 

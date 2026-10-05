@@ -18,6 +18,8 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -70,6 +72,7 @@ public class TeamPaymentAdvanceEntity extends UuidV7Entity {
     private Integer advancedAmount;
 
     /** 通貨。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
     @Builder.Default
     private String currency = "JPY";

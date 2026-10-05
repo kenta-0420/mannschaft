@@ -16,6 +16,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -84,6 +86,7 @@ public class BillingQuoteEntity extends UuidV7Entity {
     @Column(name = "contract_version")
     private Long contractVersion;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "request_hash", nullable = false, length = 64)
     private String requestHash;
 

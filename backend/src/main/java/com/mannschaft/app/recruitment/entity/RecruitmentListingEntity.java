@@ -16,6 +16,8 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -130,6 +132,7 @@ public class RecruitmentListingEntity extends BaseEntity {
      * 都道府県コード（JIS X 0401・CHAR(2)）。F22.1 市の地域フィルタ用。
      * {@code prefectures.code} を参照（FK なし・Service 検証）。地域未指定の札は NULL。
      */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "prefecture_code", length = 2)
     private String prefectureCode;
 
@@ -137,6 +140,7 @@ public class RecruitmentListingEntity extends BaseEntity {
      * 市区町村コード（JIS X 0402・CHAR(5)）。F22.1 市の地域フィルタ用。
      * {@code cities.code} を参照（FK なし・Service 検証）。市区町村未確定の札は NULL。
      */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "city_code", length = 5)
     private String cityCode;
 

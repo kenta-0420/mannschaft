@@ -1,6 +1,7 @@
 package com.mannschaft.app.billing;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.persistence.TinyIntShortJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -16,6 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcType;
 import java.time.LocalDateTime;
 
 /**
@@ -90,7 +92,8 @@ public class BillingContractEntity extends UuidV7Entity {
     private Integer memberCountSnapshot;
 
     /** 契約時に解決した plan_price_bands.band_no（TEAM/ORG の PLAN のみ）。 */
-    @Column(name = "band_no_snapshot", columnDefinition = "tinyint unsigned")
+    @JdbcType(TinyIntShortJdbcType.class)
+    @Column(name = "band_no_snapshot", columnDefinition = "smallint")
     private Short bandNoSnapshot;
 
     /**

@@ -14,6 +14,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -64,6 +66,7 @@ public class VillageCalendarEventEntity extends UuidV7Entity {
     private String iconEmoji;
 
     /** カレンダー表示色 #RRGGBB */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "color_hex", length = 7)
     private String colorHex;
 

@@ -2,6 +2,7 @@ package com.mannschaft.app.resident.entity;
 
 import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.common.EncryptedStringConverter;
+import com.mannschaft.app.common.persistence.TinyIntIntegerJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -13,6 +14,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -66,9 +70,11 @@ public class ResidentRegistryEntity extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String emergencyContact;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(length = 64)
     private String lastNameHash;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(length = 64)
     private String firstNameHash;
 
@@ -138,7 +144,8 @@ public class ResidentRegistryEntity extends BaseEntity {
     private Boolean isSecondaryHome = false;
 
     /** 推定年齢（0〜200、自己申告ベース）。 */
-    @Column(columnDefinition = "tinyint unsigned")
+    @JdbcType(TinyIntIntegerJdbcType.class)
+    @Column(columnDefinition = "integer")
     private Integer ageEstimated;
 
     // ─── F14.3 住民ライフイベント（逝去・転出）アーカイブ（V224 で追加）────────

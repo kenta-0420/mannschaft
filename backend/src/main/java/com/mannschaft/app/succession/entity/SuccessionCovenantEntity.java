@@ -13,6 +13,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -60,6 +62,7 @@ public class SuccessionCovenantEntity extends UuidV7Entity {
     @Column(name = "pdf_s3_key", nullable = false, length = 500)
     private String pdfS3Key;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "pdf_sha256", nullable = false, length = 64)
     private String pdfSha256;
 

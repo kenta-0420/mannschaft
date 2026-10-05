@@ -8,6 +8,8 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 市区町村マスタエンティティ。
@@ -20,9 +22,11 @@ import lombok.NoArgsConstructor;
 public class CityEntity {
 
     @Id
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 5)
     private String code;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 2)
     private String prefectureCode;
 

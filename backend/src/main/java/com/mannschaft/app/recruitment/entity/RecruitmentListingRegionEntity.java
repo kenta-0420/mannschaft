@@ -11,6 +11,8 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 /**
@@ -49,10 +51,12 @@ public class RecruitmentListingRegionEntity extends UuidV7Entity {
     private Long listingId;
 
     /** 都道府県コード（JIS X 0401・CHAR(2)）。県単位でも必須。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "prefecture_code", nullable = false, length = 2)
     private String prefectureCode;
 
     /** 市区町村コード（JIS X 0402・CHAR(5)）。県単位は NULL。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "city_code", length = 5)
     private String cityCode;
 

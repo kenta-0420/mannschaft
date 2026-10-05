@@ -17,6 +17,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -99,6 +101,7 @@ public class TeamEntity extends BaseEntity {
      * 第一陣ではカラム追加のみで、名称→コードのバックフィルは別工程（ドライラン基盤参照）。
      * 設計書: docs/features/F22.1_market / CLAUDE.md 原則 1（FKなし）</p>
      */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "prefecture_code", length = 2)
     private String prefectureCode;
 
@@ -106,6 +109,7 @@ public class TeamEntity extends BaseEntity {
      * 市区町村コード（JIS X 0402・{@code cities.code} 参照）。
      * <p>自由入力の {@link #city} とは別に保持する構造化フィルタ用キー。FKなし。</p>
      */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "city_code", length = 5)
     private String cityCode;
 

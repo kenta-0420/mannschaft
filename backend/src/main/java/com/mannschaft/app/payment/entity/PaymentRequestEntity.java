@@ -17,6 +17,8 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -89,6 +91,7 @@ public class PaymentRequestEntity extends UuidV7Entity {
     private Integer faceAmount;
 
     /** 通貨。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
     @Builder.Default
     private String currency = "JPY";

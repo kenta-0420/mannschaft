@@ -14,6 +14,8 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 /**
@@ -71,6 +73,7 @@ public class PageViewLogEntity extends UuidV7Entity {
     private Long userId;
 
     /** 匿名 cookie の UUID（個人特定不能）。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 36)
     private String visitorId;
 

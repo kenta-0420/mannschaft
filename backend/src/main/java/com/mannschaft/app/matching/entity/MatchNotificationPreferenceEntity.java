@@ -13,6 +13,8 @@ import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * マッチング推薦通知設定エンティティ。
@@ -27,9 +29,11 @@ public class MatchNotificationPreferenceEntity extends BaseEntity {
     @Column(nullable = false)
     private Long teamId;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(length = 2)
     private String prefectureCode;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(length = 5)
     private String cityCode;
 

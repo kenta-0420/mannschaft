@@ -14,6 +14,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -54,11 +56,13 @@ public class UserWeatherLocationEntity extends UuidV7Entity {
 
     /** users.country_code のスナップショット。 */
     @Setter
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "country_code", length = 2, nullable = false)
     private String countryCode;
 
     /** 平文郵便番号の HMAC-SHA256（APP_HMAC_SECRET 使用）。 */
     @Setter
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "postal_code_hash", length = 64, nullable = false)
     private String postalCodeHash;
 

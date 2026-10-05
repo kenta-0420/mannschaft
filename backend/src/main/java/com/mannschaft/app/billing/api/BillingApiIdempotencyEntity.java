@@ -12,6 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 /** V196 billing_api_idempotencies の JPA mapping 骨格。 */
@@ -35,9 +37,11 @@ public class BillingApiIdempotencyEntity extends UuidV7Entity {
     @Column(name = "request_path", nullable = false, length = 255)
     private String requestPath;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "idempotency_key", nullable = false, length = 36)
     private String idempotencyKey;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "request_hash", nullable = false, length = 64)
     private String requestHash;
 

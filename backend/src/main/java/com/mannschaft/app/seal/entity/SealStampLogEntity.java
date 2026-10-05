@@ -16,6 +16,8 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 /**
@@ -40,6 +42,7 @@ public class SealStampLogEntity {
     @Column(nullable = false)
     private Long sealId;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 64)
     private String sealHashAtStamp;
 
@@ -50,6 +53,7 @@ public class SealStampLogEntity {
     @Column(nullable = false)
     private Long targetId;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(length = 64)
     private String stampDocumentHash;
 

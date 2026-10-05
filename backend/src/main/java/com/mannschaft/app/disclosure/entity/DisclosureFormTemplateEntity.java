@@ -11,6 +11,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -40,6 +42,7 @@ public class DisclosureFormTemplateEntity extends BaseEntity {
     private String name;
 
     /** JIS 都道府県コード（例: 13=東京）。NULL=全国共通。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(length = 2)
     private String prefectureCode;
 

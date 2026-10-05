@@ -13,6 +13,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -63,6 +65,7 @@ public class LegalFilingEntity extends UuidV7Entity {
     @Column(name = "evidence_built_at")
     private LocalDateTime evidenceBuiltAt;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "evidence_sha256", length = 64)
     private String evidenceSha256;
 

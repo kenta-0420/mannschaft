@@ -17,6 +17,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -75,6 +77,7 @@ public class FeeRecoveryBalanceEntity extends UuidV7Entity {
     private Long outstandingAmount = 0L;
 
     /** 通貨（minor 単位の母数）。既定 {@code jpy}。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
     @Builder.Default
     private String currency = "jpy";

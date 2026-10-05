@@ -16,6 +16,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -157,10 +159,12 @@ public class BillingContractChangeEntity extends UuidV7Entity {
      * <b>operationId（UUID 36文字）を格納する</b>。任意長の HTTP ヘッダ値をそのまま入れない
      * （DB 列は {@code CHAR(36)} 固定長で、それ以外の長さの値は他の制約・比較を壊す）。
      */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "idempotency_key", nullable = false, length = 36)
     private String idempotencyKey;
 
     /** 冪等キー使い回し時の body 相違検出用ハッシュ（SHA-256 hex, 64桁）。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "request_hash", nullable = false, length = 64)
     private String requestHash;
 

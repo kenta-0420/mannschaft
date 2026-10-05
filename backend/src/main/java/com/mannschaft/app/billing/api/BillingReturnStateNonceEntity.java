@@ -16,6 +16,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -35,6 +37,7 @@ import java.util.UUID;
 @EqualsAndHashCode(callSuper = true)
 public class BillingReturnStateNonceEntity extends UuidV7Entity {
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "nonce_hash", nullable = false, length = 64)
     private String nonceHash;
 

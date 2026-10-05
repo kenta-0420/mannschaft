@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDate;
 import java.time.Instant;
 
@@ -54,6 +56,7 @@ public class ReceiptPdfArchiveEntity extends UuidV7Entity {
     private String storageKey;
 
     /** PDF 原本の SHA-256（改ざん検知）。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "content_sha256", nullable = false, length = 64)
     private String contentSha256;
 

@@ -15,6 +15,8 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -52,6 +54,7 @@ public class ParkingSubleasePaymentEntity extends BaseEntity {
     @Column(nullable = false, precision = 10, scale = 0)
     private BigDecimal netAmount;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 7)
     private String billingMonth;
 

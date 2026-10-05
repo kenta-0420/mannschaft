@@ -1,5 +1,6 @@
 package com.mannschaft.app.advertising.ranking.entity;
 
+import com.mannschaft.app.common.persistence.TinyIntShortJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -12,6 +13,7 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -56,7 +58,8 @@ public class EquipmentRankingEntity {
     private String amazonAsin;
 
     /** ASIN信頼度スコア（0〜100） */
-    @Column(name = "asin_confidence", columnDefinition = "tinyint unsigned")
+    @JdbcType(TinyIntShortJdbcType.class)
+    @Column(name = "asin_confidence", columnDefinition = "smallint")
     private Short asinConfidence;
 
     /** この備品を保有しているチーム数 */

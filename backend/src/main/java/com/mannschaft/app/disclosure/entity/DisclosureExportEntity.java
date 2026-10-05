@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -95,6 +97,7 @@ public class DisclosureExportEntity {
      * F05.3 seal_stamp_logs の証跡ログとの照合により改ざん検出を多層化する設計（§6.3）。
      * F05.3 連携の実装は Phase 4 以降。</p>
      */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "output_sha256", length = 64)
     private String outputSha256;
 

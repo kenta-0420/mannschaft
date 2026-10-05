@@ -11,6 +11,8 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -106,6 +108,7 @@ public class ShiftBudgetAllocationEntity extends BaseEntity {
     private BigDecimal confirmedAmount;
 
     /** ISO 4217 通貨コード。Phase 9 では JPY 固定。多通貨拡張用の事前配置 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
     private String currency;
 
