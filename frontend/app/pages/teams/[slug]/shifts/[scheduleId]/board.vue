@@ -379,6 +379,11 @@ async function onConfirmAutoAssignWithNote(_note: string | undefined): Promise<v
 async function onRevokeAutoAssign(): Promise<void> {
   const run = pendingRun.value
   if (!run) return
-  await revokeAutoAssign(run.id)
+  try {
+    await revokeAutoAssign(run.id)
+  } catch (e) {
+    // 403・404・通信エラーを握りつぶさず、割当操作と同じ作法で利用者に通知する
+    notifyAssignmentError(e, 'shift-board:revoke-auto-assign')
+  }
 }
 </script>

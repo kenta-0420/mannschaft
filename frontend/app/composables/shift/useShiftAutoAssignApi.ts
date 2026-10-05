@@ -22,8 +22,9 @@ export function useShiftAutoAssignApi() {
     })
   }
 
-  // BE は必須の @RequestBody Long runId（JSON の数値）を要求する。
-  // ofetch は数値ボディを JSON 化しないため、文字列化して Content-Type を明示する。
+  // BE は必須の @RequestBody Long runId（オブジェクトではなく素の JSON 数値）を要求する。
+  // ofetch は数値ボディも JSON 化できるが、送信形式（素の数値）と Content-Type を
+  // 呼び出し側で明示して曖昧さを無くすため、JSON.stringify と header を指定している。
   async function revokeAutoAssign(scheduleId: number, runId: number) {
     return api(`${BASE}/${scheduleId}/auto-assign`, {
       method: 'DELETE',
