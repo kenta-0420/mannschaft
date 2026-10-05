@@ -166107,6 +166107,15 @@
           }
         }
       },
+      "OrgSocialDto": {
+        "type": "object",
+        "properties": {
+          "supporterCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "OrgTimestampsDto": {
         "type": "object",
         "properties": {
@@ -166158,6 +166167,9 @@
           },
           "slug": {
             "type": "string"
+          },
+          "social": {
+            "$ref": "#/components/schemas/OrgSocialDto"
           },
           "teamApplication": {
             "$ref": "#/components/schemas/TeamApplicationDto"

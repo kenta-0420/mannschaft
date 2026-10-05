@@ -54,8 +54,10 @@ export function useScopeFollowWiring(options: {
     try {
       await refreshDetail()
     }
-    catch {
-      // 取り直し関数側が失敗時の通知・状態反映を担うため、ここでは何もしない。
+    catch (error) {
+      // 応援/解除の失敗通知や状態巻き戻しは行わない（取り直し関数側の責務ではないため）。
+      // ただし例外を握りつぶさず、根治調査のために表面化させる。
+      console.warn('[useScopeFollowWiring] 詳細の取り直しに失敗', error)
     }
   }
 
