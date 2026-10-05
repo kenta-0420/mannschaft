@@ -170427,8 +170427,15 @@
             "$ref": "#/components/schemas/Decoration"
           },
           "inventoryId": {
-            "type": "string",
-            "format": "uuid"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "slotKey": {
             "type": "string"
@@ -201838,11 +201845,18 @@
             }
           },
           "confirmedMethod": {
-            "type": "string",
-            "enum": [
-              "HABITAT_RANDOM",
-              "BIRTH_STYLE",
-              "DIAGNOSIS"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "HABITAT_RANDOM",
+                  "BIRTH_STYLE",
+                  "DIAGNOSIS"
+                ]
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "selectionConfirmed": {
@@ -201885,14 +201899,28 @@
             "type": "string"
           },
           "egg": {
-            "$ref": "#/components/schemas/EggSummary"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EggSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "habitat": {
-            "type": "string",
-            "enum": [
-              "LAND",
-              "SEA",
-              "AIR"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "LAND",
+                  "SEA",
+                  "AIR"
+                ]
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "id": {
@@ -201900,20 +201928,55 @@
             "format": "uuid"
           },
           "name": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "namedAt": {
-            "type": "string",
-            "format": "date-time"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "nextStageXp": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "speciesCatalogVersion": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "speciesKey": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "stage": {
             "type": "string",
@@ -201925,7 +201988,14 @@
             ]
           },
           "variantKey": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "version": {
             "type": "string"
@@ -201951,8 +202021,15 @@
             "type": "boolean"
           },
           "hatchedAt": {
-            "type": "string",
-            "format": "date-time"
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "readyAt": {
             "type": "string",
@@ -201990,25 +202067,60 @@
         "type": "object",
         "properties": {
           "assignment": {
-            "$ref": "#/components/schemas/AssignmentSummary"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssignmentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "careBudget": {
-            "$ref": "#/components/schemas/CareBudget"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CareBudget"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "deliveryPaused": {
             "type": "boolean"
           },
           "dinosaur": {
-            "$ref": "#/components/schemas/DinosaurSummary"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DinosaurSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "featureStatus": {
             "type": "string"
           },
           "owner": {
-            "$ref": "#/components/schemas/OwnerSummary"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OwnerSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "policyVersion": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "rewardsStatus": {
             "type": "string"
@@ -202024,13 +202136,27 @@
             "format": "date-time"
           },
           "settings": {
-            "$ref": "#/components/schemas/RanchSettings"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RanchSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "shopAvailable": {
             "type": "boolean"
           },
           "weekBudget": {
-            "$ref": "#/components/schemas/WeekBudget"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeekBudget"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -202227,10 +202353,24 @@
             ]
           },
           "result": {
-            "$ref": "#/components/schemas/HatchResult"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HatchResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "state": {
-            "$ref": "#/components/schemas/RanchState"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RanchState"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -240390,10 +240530,24 @@
             "format": "date-time"
           },
           "sourceLink": {
-            "$ref": "#/components/schemas/SourceLink"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceLink"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "sourceType": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
