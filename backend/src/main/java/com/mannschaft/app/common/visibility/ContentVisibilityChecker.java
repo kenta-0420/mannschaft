@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
@@ -110,6 +111,22 @@ public class ContentVisibilityChecker {
             List<ContentVisibilityResolver<?>> resolvers,
             VisibilityMetrics visibilityMetrics) {
         this(resolvers, visibilityMetrics, null);
+    }
+
+    /**
+     * 呼出元ドメインの読取終了後に、独立した PRIMARY トランザクションで閲覧権限を再評価する。
+     * Spring プロキシ経由で呼び出し、源トランザクションを保持したまま、または源のコールバックで使用しない。
+     * readOnly=false で PRIMARY を明示し、既存 Resolver の全判定条件をそのまま適用する。
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public boolean canViewIsolated(ReferenceType type, Long contentId, Long userId) {
+        return canView(type, contentId, userId);
+    }
+
+    /** {@link #canViewIsolated(ReferenceType, Long, Long)} と同じ境界を持つ UUID 主キー用の入口。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public boolean canViewUuidIsolated(ReferenceType type, UUID contentId, Long userId) {
+        return canViewUuid(type, contentId, userId);
     }
 
     /**
