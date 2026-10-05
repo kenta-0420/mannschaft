@@ -3,6 +3,7 @@ package com.mannschaft.app.diagnosis.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mannschaft.app.diagnosis.DiagnosisAxis;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,7 @@ public final class DiagnosisApprovedQuestionnaireRegistry {
     private static final Set<String> LOCALES = Set.of("ja", "en", "zh", "ko", "es", "de");
     private final Registration registration;
 
+    @Autowired
     public DiagnosisApprovedQuestionnaireRegistry(Environment environment, ObjectMapper mapper) {
         String resource = environment.getProperty(PREFIX + "resource");
         String version = environment.getProperty(PREFIX + "version");
