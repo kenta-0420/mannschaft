@@ -516,7 +516,7 @@ test.describe.serial('CMP-261001-0630 / CMP-260930-0230 学校出欠の認可 �
     const admin = (await session('admin')).page
     const list = (await (await api(admin, 'GET', `/teams/${teamSlug}/attendance/daily?date=${TODAY}`)).json()) as { data: { records: { id: number }[] } }
     const recordId = list.data.records[0]?.id
-    expect(recordId, "ADMIN の日次一覧に前提レコードが無い").toBeDefined()
+    expect(recordId, 'ADMIN の日次一覧に前提レコードが無い').toBeDefined()
     for (const role of ['member', 'delegate'] as Role[]) {
       const res = await api((await session(role)).page, 'PATCH', `/teams/${teamSlug}/attendance/daily/${recordId}`, { comment: MARKER })
       expect(res.status(), `${role}: ${await res.text()}`).toBe(403)
