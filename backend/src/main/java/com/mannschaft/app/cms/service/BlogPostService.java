@@ -385,7 +385,7 @@ public class BlogPostService {
     /**
      * 公開ステータスを変更する。
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public BlogPostResponse changeStatus(Long id, Long userId, PublishRequest request) {
         BlogPostEntity entity = request.getRanchCaptureContext()!=null && request.getRanchCaptureContext().qualified()
                 ? postRepository.findForPublicationUpdate(id).orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND))
@@ -510,7 +510,7 @@ public class BlogPostService {
     /**
      * 一括ステータス変更を実行する。
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public BulkActionResponse bulkAction(BulkActionRequest request, Long userId) {
         if (request.getIds().size() > 50) {
             throw new BusinessException(CmsErrorCode.BULK_LIMIT_EXCEEDED);
@@ -625,7 +625,7 @@ public class BlogPostService {
     /**
      * セルフレビュー結果を処理する。
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public BlogPostResponse selfReview(Long postId, Long userId, SelfReviewRequest request) {
         BlogPostEntity entity = request.getRanchCaptureContext()!=null && request.getRanchCaptureContext().qualified()
                 ? postRepository.findForPublicationUpdate(postId).orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND))
