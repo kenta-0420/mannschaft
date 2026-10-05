@@ -44,7 +44,7 @@ public class TimelineRanchNativeOperationFacade {
                 && (request.getPostedAsId()==null || actor.equals(request.getPostedAsId()))
                 && request.getParentId()==null && request.getRepostOfId()==null && request.getScheduledAt()==null
                 && (request.getStatus()==null || request.getStatus()==PostStatus.PUBLISHED)
-                && request.getPoll()==null && (request.getAttachments()==null || request.getAttachments().isEmpty())
+                && request.getPoll()==null && TimelineRanchPostCaptureFactory.supportsAttachments(request)
                 && request.getContent()!=null && request.getContent().length()<=5000;
     }
 }

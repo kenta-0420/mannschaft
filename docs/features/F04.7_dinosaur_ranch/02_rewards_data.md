@@ -282,3 +282,10 @@ V240.20261004235601__timeline_native_origin_and_ranch_transport.sql は旧全pos
 既存 ScheduleAttendanceService.respondAttendance と TimelinePostService.createPost の3引数入口だけを REQUIRES_NEW とする。通常Controllerの非TX facadeから fresh ACTIVE Guard を保持し、既存proxyを一回呼ぶ。回答資格・期限・コメント・調査・委任処理、投稿scope認可・添付保存・イベントの元bodyを複製しない。TLの2引数内部入口は既存REQUIREDとself-callを保持する。元の本体を全体ACTIVE限定へ変更せず、callback開始前の容量/資格取得失敗は従来保存へ一回だけ戻る。arm無し保存も初回observedを消費し、配送時に資格を再生成しない。
 本人captureはserver-onlyの@JsonIgnore/Schema(hidden) request値で、元SOURCE TX内の純粋な有限値に限定する。native証拠は通常保存と同じ行で固定し、報酬用witness/digest/outboxのDB書込は本体TXに参加しない。source proxyと外auth proxy正常復帰後だけ一回消費してbounded offerする。本体commit後auth障害は元ACKを保持して捕捉lossにし、native rollbackや業務validation失敗は伝播し再実行しない。
 TEAM/ORG出欠は既min_response_role/配下救済を通る。初load前の回答更新専用PESSIMISTIC_WRITEでcurrent rowを取得し、TEAM/ORG scope IDは保存Scheduleから固定する。TEAM/ORG TLは元scope membership/create権限を通り、保存postのscopeからpayloadを固定する。通常本文の接続までで、TL添付はuploadの永続identity確認が未完、poll/reply/repost/予約/VILLAGE/非本人主体は未接続のまま。結合添付row IDを同内容upload IDと仮定しない。実HTTP・実MySQL・pool2・既ambient fixtureの追随は未検証であり、本節をAC全greenの証拠にはしない。
+### TL IMAGE 添付の永続 identity 捕捉
+
+通常投稿の IMAGE は既存 DTO の最大10件を維持する。元の添付行保存と StorageAclService.claimPending の所有・scope・parent・binding 認可を変更せず、その成功後に StorageClaimedIdentityReader.currentClaimedIdentity が同じ native TX の current read で CLAIMED / CONTENT_BOUND の永続 upload UUID だけを取得する。新TX・network・reward専用DB書込は追加しない。投稿ごとに採番される添付結合行 ID、URL、推測されたファイル内容 ID は比較に用いない。
+
+捕捉 HMAC は本文と確認済み upload UUID の typed 集合を使用し、集合順は無視し多重度を保持する。本文・file key・upload UUID は outbox の配送 payload に複製しない。補助 identity の取得不能や捕捉失敗は UNKNOWN / loss とし、本来の保存成功を保持する。元 claim の認可・業務保存失敗は通常どおり伝播する。VIDEO_FILE は既存 network 呼出があるためこの保持境界へ未接続、LINK / VIDEO_LINK は永続 identity 未確認のため未接続のまま残す。
+
+実 claim の正負境界・rollbackと IMAGE native capture の試験は準備済みだが未実行。補助 SQL 故障時の native commit 維持、実 HTTP、pool2、全添付機能の完成をこの静的接続だけで主張しない。

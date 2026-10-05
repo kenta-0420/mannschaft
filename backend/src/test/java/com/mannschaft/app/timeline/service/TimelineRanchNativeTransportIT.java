@@ -45,8 +45,13 @@ class TimelineRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     @Autowired private TimelineRanchOutboxDeliveryService outboxes;
     @Autowired private TimelineBookmarkAnonymizationEventListener purge;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private com.fasterxml.jackson.databind.ObjectMapper mapper;
+    @Autowired private com.mannschaft.app.common.storage.acl.StorageAclService storageClaims;
+    @Autowired private com.mannschaft.app.common.storage.acl.StorageAclRepository storageRows;
+    @Autowired private TimelineContentFingerprintService fingerprints;
     private Long owner;
     private final List<Long> ownPosts=new ArrayList<>();
+    private final List<String> ownUploadKeys=new ArrayList<>();
     @BeforeEach void fixture() {
         owner=users.saveAndFlush(UserEntity.builder().email(UUID.randomUUID()+"@timeline-transport.invalid")
                 .lastName("検証").firstName("本人").displayName("検証").isSearchable(false)
@@ -55,7 +60,11 @@ class TimelineRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     @AfterEach void cleanupOwnRows() {
         if(owner==null) return;
         rows.deleteForUser(owner);
-        for(Long id:ownPosts) posts.deleteById(id);
+        for(Long id:ownPosts) {
+            jdbc.update("DELETE FROM timeline_post_attachments WHERE timeline_post_id=?",id);
+            posts.deleteById(id);
+        }
+        for(String key:ownUploadKeys) storageRows.findByFileKey(key).ifPresent(storageRows::delete);
         users.deleteById(owner);
     }
     @Test void sameContentConcurrentReceptionKeepsOneWinnerAndBothNativePosts() throws Exception {
@@ -69,6 +78,30 @@ class TimelineRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         assertThat(count("timeline_ranch_witnesses")).isEqualTo(1);
         assertThat(count("timeline_ranch_outboxes")).isEqualTo(1);
         assertThat(nativeCount()).isEqualTo(2);
+    }
+    @Test void imageCaptureUsesClaimedUploadUuidInsteadOfNewAttachmentRowId() throws Exception {
+        String key="synthetic/"+UUID.randomUUID();ownUploadKeys.add(key);
+        var scope=com.mannschaft.app.common.storage.acl.StorageAclScope.personal(owner);
+        var parent=new com.mannschaft.app.common.storage.acl.StorageAclContentReference("TIMELINE_SCOPE","PERSONAL:"+owner);
+        storageClaims.registerPending(key,owner,scope,"image/png",java.time.Duration.ofMinutes(10),parent);
+        UUID upload=storageRows.findByFileKey(key).orElseThrow().getId();
+        var attachment=mapper.readValue("{\"attachmentType\":\"IMAGE\",\"fileKey\":\""+key+"\"}",
+                com.mannschaft.app.timeline.dto.CreateAttachmentRequest.class);
+        var request=new CreatePostRequest("添付本文","PERSONAL",owner.toString(),"USER",
+                null,null,null,null,null,List.of(attachment),null,null);
+        var saved=active.withActiveUser(owner,() -> nativeWriter.create(request,owner,owner));
+        ownPosts.add(saved.response().getId());
+        assertThat(saved.capture()).isNotNull();
+        var expected=fingerprints.fingerprint(owner,saved.capture().payload().occurredAt(),"添付本文",
+                List.of(new com.mannschaft.app.timeline.dto.TimelineContentFingerprint.AttachmentRef("UUID",upload.toString())));
+        assertThat(expected.equals(saved.capture().fingerprint())).as("私有比較は永続upload UUIDを使う").isTrue();
+        assertThat(storageRows.findByFileKey(key).orElseThrow().getStatus())
+                .isEqualTo(com.mannschaft.app.common.storage.acl.StorageAclStatus.CLAIMED);
+        assertThat(receive(saved.capture())).isTrue();
+        String payload=jdbc.queryForObject("SELECT payload_json FROM timeline_ranch_outboxes WHERE recipient_user_id=?",
+                String.class,owner);
+        assertThat(payload.contains(key)||payload.contains(upload.toString())||payload.contains("添付本文"))
+                .as("原文・upload identityは配送payloadへ複製しない").isFalse();
     }
     @Test void receiverCollisionRollsBackWinnerButKeepsCommittedNativePost() {
         var first=publish("本文一");assertThat(receive(first.capture())).isTrue();var second=publish("本文二");
