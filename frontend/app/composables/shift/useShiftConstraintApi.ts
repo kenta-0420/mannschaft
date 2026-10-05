@@ -1,6 +1,6 @@
 export function useShiftConstraintApi() {
   const api = useApi()
-  const BASE = '/api/v1/shifts/schedules'
+  const BASE = '/api/v1/shifts'
 
   async function getWorkConstraints(teamId: string) {
     return api<{ data: unknown[] }>(`${BASE}/teams/${teamId}/work-constraints`)

@@ -31,11 +31,11 @@ export function useShiftAutoAssignApi() {
   }
 
   async function getAssignmentRunDetail(runId: number) {
-    return api<{ data: unknown }>(`${BASE}/assignment-runs/${runId}`)
+    return api<{ data: unknown }>(`/api/v1/shifts/assignment-runs/${runId}`)
   }
 
   async function confirmVisualReview(runId: number, note?: string) {
-    return api(`${BASE}/assignment-runs/${runId}/confirm-visual-review`, {
+    return api(`/api/v1/shifts/assignment-runs/${runId}/confirm-visual-review`, {
       method: 'POST',
       body: { note },
     })
