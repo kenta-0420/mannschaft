@@ -112942,6 +112942,49 @@
         }
       }
     },
+    "/api/v1/village-join-requests/me": {
+      "get": {
+        "tags": [
+          "F17.1 村機能 - 村参加申請"
+        ],
+        "summary": "認証本人の村参加申請履歴",
+        "operationId": "listMyHistory",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseJoinRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/village-categories": {
       "get": {
         "tags": [
@@ -215840,6 +215883,20 @@
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "PagedResponseJoinRequestResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JoinRequestResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
           }
         }
       },

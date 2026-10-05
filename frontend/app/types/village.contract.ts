@@ -26,7 +26,7 @@
  *   - optional / required の差（上と同根）。
  */
 
-import type { SpringPage } from './api'
+import type { PageMeta, PagedResponse, SpringPage } from './api'
 import type { components } from './generated'
 import type {
   JoinRequestResponse,
@@ -280,6 +280,17 @@ export type VillageEventArchiveSourceTypeEnumExhaustive = AssertTrue<
 
 export type JoinRequestResponseKeysMatch = AssertTrue<
   SameKeys<JoinRequestResponse, Schemas['JoinRequestResponse']>
+>
+
+/** 村から独立した本人履歴は既存のdata/metaページ応答であり、Spring Pageではない。 */
+export type JoinRequestHistoryKeysMatch = AssertTrue<
+  SameKeys<PagedResponse<JoinRequestResponse>, Schemas['PagedResponseJoinRequestResponse']>
+>
+export type JoinRequestHistoryMetaKeysMatch = AssertTrue<
+  SameKeys<PageMeta, NonNullable<Schemas['PagedResponseJoinRequestResponse']['meta']>>
+>
+export type JoinRequestHistoryItemKeysMatch = AssertTrue<
+  SameKeys<JoinRequestResponse, NonNullable<Schemas['PagedResponseJoinRequestResponse']['data']>[number]>
 >
 
 export type VillageCreationRequestResponseKeysMatch = AssertTrue<

@@ -1,0 +1,142 @@
+name: Village — 本人申請履歴 実機限定
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/village-history-real.yml'
+      - '.github/fixtures/village-history-real/**'
+      - 'frontend/app/pages/my/village-join-requests.vue'
+      - 'frontend/app/composables/village/useVillageJoinRequestHistory.ts'
+      - 'backend/src/main/java/com/mannschaft/app/village/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: village-history-real-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  real-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: vh_history_owned
+          MYSQL_USER: vh_fake
+          MYSQL_PASSWORD: vh_ci_fake_database_only
+          MYSQL_ROOT_PASSWORD: vh_ci_fake_root_only
+        ports: ['3306/tcp']
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -u root -pvh_ci_fake_root_only"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports: ['6379/tcp']
+        options: >-
+          --health-cmd "valkey-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      VH_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      VH_DATABASE: vh_history_owned
+      VH_DB_USER: vh_fake
+      VH_DB_PASSWORD: vh_ci_fake_database_only
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: gradle
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.2'
+      - name: 統合済みAPIと画面のsourceを確認
+        run: |
+          test "$(git rev-parse HEAD)" = "$VH_EXPECTED_HEAD"
+          git cat-file -e "$VH_EXPECTED_HEAD:frontend/app/pages/my/village-join-requests.vue"
+          git cat-file -e "$VH_EXPECTED_HEAD:frontend/app/composables/village/useVillageJoinRequestHistory.ts"
+          grep -q '/api/v1/village-join-requests/me' backend/src/main/java/com/mannschaft/app/village/controller/VillageJoinRequestController.java
+          git diff --quiet
+      - name: 既存lockの依存を導入
+        run: |
+          npm ci --prefix backend/scripts
+          npm ci --prefix frontend
+          cd frontend
+          npx playwright install --with-deps chromium
+      - name: 既CIのFlyway準備設定
+        env:
+          VH_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+        run: |
+          MYSQL_PWD=vh_ci_fake_root_only mysql -h 127.0.0.1 -P "$VH_MYSQL_PORT" -u root -e 'SET GLOBAL log_bin_trust_function_creators=1;'
+      - name: このHEADから専用JARを生成し出自を保存
+        working-directory: backend
+        run: |
+          bash ./gradlew bootJar -x test --no-daemon --build-cache
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          files=[f for f in Path('build/libs').glob('*.jar') if not f.name.endswith('-plain.jar')]
+          assert len(files)==1
+          head=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          assert head==os.environ['VH_EXPECTED_HEAD']
+          assert subprocess.run(['git','diff','--quiet']).returncode==0
+          Path('build/village-history-build-identity.json').write_text(json.dumps({'head':head,'jarSha256':hashlib.sha256(files[0].read_bytes()).hexdigest(),'sourceCleanAfterBuild':True})+'\n')
+          PY
+      - name: 固定専用候補をrunner内の実行位置へ配置
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          src=Path('.github/fixtures/village-history-real')
+          dest=Path('frontend/tests/e2e/real')
+          files=['village-history-fixture-helper.ts','village-history-db-proof.ts','village-history-ci-binding.ts','village-history-manifest.ts','run-village-history.ts','village-history-real.spec.ts','village-moderation-fixture.ts','village-moderation-real.spec.ts']
+          for name in files:
+              target=dest/name
+              assert not target.exists(), 'OWNED_SOURCE_OVERWRITE_REFUSED'
+              shutil.copyfile(src/name,target)
+          config=Path('frontend/playwright-village-history.config.ts')
+          assert not config.exists()
+          shutil.copyfile(src/'playwright-village-history.config.ts',config)
+          PY
+      - name: 新規servicesで履歴三本人と村三役割を独立認証して実測
+        env:
+          VH_MYSQL_SERVICE_ID: ${{ job.services.mysql.id }}
+          VH_VALKEY_SERVICE_ID: ${{ job.services.valkey.id }}
+          VH_MYSQL_PORT: ${{ job.services.mysql.ports[3306] }}
+          VH_VALKEY_PORT: ${{ job.services.valkey.ports[6379] }}
+        run: python3 .github/fixtures/village-history-real/run-owned-village-history.py
+      - name: 安全な実測と所有終了証拠だけを保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: village-history-real-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            backend/build/village-history-build-identity.json
+            frontend/build/village-history-real/service-identity.json
+            frontend/build/village-history-real/baseline.json
+            frontend/build/village-history-real/owned-fixture.json
+            frontend/build/village-history-real/ui-manifest.json
+            frontend/build/village-history-real/business-before.json
+            frontend/build/village-history-real/business-after.json
+            frontend/build/village-history-real/ui-actual-safe.json
+            frontend/build/village-history-real/ui-progress-safe.json
+            frontend/build/village-history-real/ui-session-cleanup.json
+            frontend/build/village-history-real/fixture-completion.json
+            frontend/build/village-history-real/failure-safe.json
+            frontend/build/village-history-real/owned-runtime-receipt.json
+            frontend/build/village-history-real/moderation-manifest.json
+            frontend/build/village-history-real/moderation-actual-safe.json
+            frontend/build/village-history-real/moderation-progress-safe.json
+            frontend/build/village-history-real/moderation-session-cleanup.json
+            frontend/build/village-history-real/moderation-observations-safe.json
+            frontend/build/village-history-real/moderation-business-proof.json
+            frontend/build/village-history-real/safe-business/
+      # job.services破棄はこの後platformが実施。rootが当該IDsの公式cleanup logを照合する。

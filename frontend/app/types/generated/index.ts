@@ -32277,6 +32277,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/village-join-requests/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 認証本人の村参加申請履歴 */
+        get: operations["listMyHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/village-categories": {
         parameters: {
             query?: never;
@@ -72139,6 +72156,10 @@ export interface components {
             size?: number;
             /** Format: int64 */
             totalElements?: number;
+        };
+        PagedResponseJoinRequestResponse: {
+            data?: components["schemas"]["JoinRequestResponse"][];
+            meta?: components["schemas"]["PageMeta"];
         };
         ApiResponseListVillageCategoryResponse: {
             data?: components["schemas"]["VillageCategoryResponse"][];
@@ -149905,6 +149926,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["VillageSearchResponse"];
+                };
+            };
+        };
+    };
+    listMyHistory: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseJoinRequestResponse"];
                 };
             };
         };

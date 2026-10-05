@@ -455,7 +455,7 @@ class VillageMembershipServiceTest {
         UUID targetMembershipId = UUID.randomUUID();
         VillageMembershipEntity actor = activeMembership(VillageSubjectType.USER, ACTOR_USER_ID, VillageRole.VILLAGER);
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID)).willReturn(Optional.of(actor));
 
         assertThatThrownBy(() -> service.changeRole(VILLAGE_ID, targetMembershipId, ACTOR_USER_ID,
@@ -473,7 +473,7 @@ class VillageMembershipServiceTest {
         target.setId(targetId);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID)).willReturn(Optional.of(actor));
         given(membershipRepository.findById(targetId)).willReturn(Optional.of(target));
         given(membershipRepository.save(any(VillageMembershipEntity.class)))
@@ -493,12 +493,12 @@ class VillageMembershipServiceTest {
         actor.setId(actorMembershipId);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID)).willReturn(Optional.of(actor));
         given(membershipRepository.findById(actorMembershipId)).willReturn(Optional.of(actor));
-        given(membershipRepository.countByVillageIdAndRoleAndLeftAtIsNull(VILLAGE_ID, VillageRole.HEADMAN))
+        given(membershipRepository.countByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNull(VILLAGE_ID, VillageRole.HEADMAN))
                 .willReturn(1L);
-        given(membershipRepository.countByVillageIdAndRoleAndLeftAtIsNull(VILLAGE_ID, VillageRole.ELDER))
+        given(membershipRepository.countByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNull(VILLAGE_ID, VillageRole.ELDER))
                 .willReturn(0L);
 
         assertThatThrownBy(() -> service.changeRole(VILLAGE_ID, actorMembershipId, ACTOR_USER_ID,
@@ -517,7 +517,7 @@ class VillageMembershipServiceTest {
         UUID targetId = UUID.randomUUID();
         VillageMembershipEntity actor = activeMembership(VillageSubjectType.USER, ACTOR_USER_ID, VillageRole.ELDER);
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID)).willReturn(Optional.of(actor));
 
         assertThatThrownBy(() -> service.ban(VILLAGE_ID, targetId, ACTOR_USER_ID,
@@ -535,7 +535,7 @@ class VillageMembershipServiceTest {
         target.setId(targetId);
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+        given(membershipRepository.findActiveByVillageIdAndSubject(
                 VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID)).willReturn(Optional.of(actor));
         given(membershipRepository.findById(targetId)).willReturn(Optional.of(target));
         given(membershipRepository.save(any(VillageMembershipEntity.class)))
