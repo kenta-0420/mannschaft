@@ -2,6 +2,8 @@ package com.mannschaft.app.config;
 
 import com.mannschaft.app.analytics.controller.OrganizationAnalyticsController;
 import com.mannschaft.app.analytics.controller.TeamAnalyticsController;
+import com.mannschaft.app.match.controller.MatchRecordController;
+import com.mannschaft.app.match.controller.MatchStatsController;
 import com.mannschaft.app.reflection.RecallDirection;
 import com.mannschaft.app.schedule.controller.OrgScheduleController;
 import com.mannschaft.app.schedule.controller.OrgScheduleKeepController;
@@ -12,6 +14,7 @@ import com.mannschaft.app.team.controller.TeamShiftSettingsController;
 import com.mannschaft.app.template.controller.OrganizationModuleController;
 import com.mannschaft.app.template.controller.TeamModuleController;
 import com.mannschaft.app.todo.controller.OrgProjectController;
+import com.mannschaft.app.tournament.entry.TournamentEntryTemplateController;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.media.IntegerSchema;
 import io.swagger.v3.oas.models.media.Schema;
@@ -53,7 +56,10 @@ public class OpenApiConfig {
             TeamShiftSettingsController.class,
             OrganizationModuleController.class,
             TeamModuleController.class,
-            OrgProjectController.class);
+            OrgProjectController.class,
+            MatchRecordController.class,
+            MatchStatsController.class,
+            TournamentEntryTemplateController.class);
 
     /**
      * 型付きパス変数 {@link OrgScopeId} / {@link TeamScopeId}（課題 #12・案A）を、OpenAPI 上では
@@ -81,6 +87,10 @@ public class OpenApiConfig {
      * 既存4コントローラ（{@code EventDismissalController} 等）も同様に slug を受け付けており
      * 同じ嘘を抱えているが、それらの契約修正は本変更の対象外（別課題）。CMP-112で正準型へ
      * 移行したAnalytics・組織チーム検索・Shift設定・Module・OrgProjectも同じ理由で対象外とする。</p>
+     *
+     * <p>CMP-260826-1921の試合記録・統計・エントリーテンプレートも、正準スコープ型の
+     * パス変数は数値IDとslugを受け付けるためstringを維持する。テンプレート適用の
+     * {@code Long orgId}など、正準スコープ型以外の数値専用変数は変更しない。</p>
      */
     @Bean
     public ParameterCustomizer scopeIdParameterCustomizer() {
