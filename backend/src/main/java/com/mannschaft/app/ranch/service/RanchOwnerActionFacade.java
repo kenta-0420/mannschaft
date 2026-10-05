@@ -2,6 +2,9 @@ package com.mannschaft.app.ranch.service;
 
 import com.mannschaft.app.auth.service.UserOperationGuard;
 import com.mannschaft.app.ranch.dto.FeedingResult;
+import com.mannschaft.app.ranch.dto.HatchResponse;
+import com.mannschaft.app.ranch.dto.RanchHatchRequest;
+import com.mannschaft.app.ranch.dto.RanchPurchaseRequest;
 import com.mannschaft.app.ranch.dto.InteractionResult;
 import com.mannschaft.app.ranch.dto.OwnerSummary;
 import com.mannschaft.app.ranch.dto.RanchInteractionRequest;
@@ -25,6 +28,9 @@ public class RanchOwnerActionFacade {
     private final RanchWidgetVisibilityReader visibility;
     private final RanchOwnerCommandWriter ownerCommands;
     private final RanchFeedingWriter feeding;
+    private final RanchHatchWriter hatching;
+    private final RanchPurchaseWriter purchases;
+    private final RanchExternalProjectionProvider projection;
     private final RanchTouchWriter touch;
     private final Clock clock;
 
@@ -55,6 +61,24 @@ public class RanchOwnerActionFacade {
     public RanchTouchWriter.TouchOutcome touch(Long userId, UUID key, RanchInteractionRequest request) {
         return guard.withActiveUser(userId,
                 () -> touch.touchOutcome(userId, key, request, now()));
+    }
+
+    public HatchResponse hatch(Long userId, UUID key, RanchHatchRequest request) {
+        return guard.withActiveUser(userId, () -> {
+            var saved = hatching.savedReplay(userId, key, request);
+            if (saved.isPresent()) return saved.orElseThrow();
+            Instant now = now();
+            var external = projection.current(userId, now);
+            return hatching.hatch(userId, key, request, now, external);
+        });
+    }
+
+    public RanchFeedingWriter.FeedOutcome feedOutcome(Long userId, UUID key, RanchVersionRequest request) {
+        return guard.withActiveUser(userId, () -> feeding.feedOutcome(userId, key, request, now()));
+    }
+
+    public RanchPurchaseWriter.PurchaseOutcome purchase(Long userId, UUID key, RanchPurchaseRequest request) {
+        return guard.withActiveUser(userId, () -> purchases.purchaseOutcome(userId, key, request, now()));
     }
 
     private Instant now() {

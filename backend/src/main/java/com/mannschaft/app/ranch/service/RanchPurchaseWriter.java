@@ -50,6 +50,13 @@ public class RanchPurchaseWriter {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public RanchPurchaseResult purchase(Long userId, UUID key,
                                         RanchPurchaseRequest request, Instant serverTime) {
+        return purchaseOutcome(userId, key, request, serverTime).result();
+    }
+
+    /** 保存済み成功と初回を同じTX内で判別する。公開DTOにはtransport状態を混ぜない。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public PurchaseOutcome purchaseOutcome(Long userId, UUID key,
+                                           RanchPurchaseRequest request, Instant serverTime) {
         Objects.requireNonNull(userId);
         Objects.requireNonNull(key);
         Objects.requireNonNull(request);
@@ -61,7 +68,7 @@ public class RanchPurchaseWriter {
                     || !Arrays.equals(hash, command.getBodyHash())) {
                 throw new BusinessException(RanchErrorCode.RANCH_003, HttpStatus.CONFLICT);
             }
-            return decode(command.getResultJson());
+            return new PurchaseOutcome(decode(command.getResultJson()), false);
         }
         if (request.skuKey() == null || request.skuKey().isBlank()
                 || request.priceVersion() == null || request.priceVersion().isBlank()) {
@@ -126,8 +133,10 @@ public class RanchPurchaseWriter {
                 .completedAt(now).createdAt(now).build();
         command.setId(commandId);
         commands.saveAndFlush(command);
-        return result;
+        return new PurchaseOutcome(result, true);
     }
+
+    public record PurchaseOutcome(RanchPurchaseResult result, boolean createdNow) { }
 
     private RanchPurchaseResult decode(String saved) {
         try {
