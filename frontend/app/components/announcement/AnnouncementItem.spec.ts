@@ -1,23 +1,20 @@
 // @vitest-environment happy-dom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
-import { computed, defineComponent, ref } from 'vue'
+import { defineComponent } from 'vue'
+import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import AnnouncementItem from './AnnouncementItem.vue'
 import type { AnnouncementFeedItem } from '~/types/announcement'
 
+vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
+vi.mock('~/composables/useDatetime', () => ({ useDatetime: () => ({ formatDate: () => '日付', fromNow: () => '現在' }) }))
+mockNuxtImport('useRouter', () => () => ({ push: vi.fn() }))
+
 const Button = defineComponent({ template: '<button type="button"><slot /></button>' })
 let wrapper: VueWrapper | undefined
-beforeEach(() => {
-  vi.stubGlobal('computed', computed)
-  vi.stubGlobal('ref', ref)
-  vi.stubGlobal('useI18n', () => ({ t: (key: string) => key }))
-  vi.stubGlobal('useRouter', () => ({ push: vi.fn() }))
-  vi.stubGlobal('useDatetime', () => ({ formatDate: () => '日付', fromNow: () => '現在' }))
-})
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined
-  vi.unstubAllGlobals()
 })
 
 function render() {
