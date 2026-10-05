@@ -52,7 +52,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional(propagation=Propagation.REQUIRES_NEW,readOnly=false)
 public class RecallSessionWriter {
-    private static final ZoneId STORAGE_ZONE=ZoneId.of("Asia/Tokyo");
+    private static final ZoneId STORAGE_ZONE=ZoneId.of(com.mannschaft.app.common.CommonConstants.DEFAULT_TIMEZONE);
     private final RecallSessionRepository sessions;
     private final RecallSessionCommandRepository commands;
     private final ReflectionEntryRepository entries;

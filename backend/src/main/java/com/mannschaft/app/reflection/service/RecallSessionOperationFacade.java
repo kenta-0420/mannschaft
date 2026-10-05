@@ -23,7 +23,7 @@ import java.util.function.Supplier;
 @Service
 @RequiredArgsConstructor
 public class RecallSessionOperationFacade {
-    private static final ZoneId FALLBACK_ZONE=ZoneId.of("Asia/Tokyo");
+    private static final ZoneId FALLBACK_ZONE=ZoneId.of(com.mannschaft.app.common.CommonConstants.DEFAULT_TIMEZONE);
     private final UserOperationGuard userGuard;
     private final RecallSessionWriter writer;
     private final RecallSessionInputParser input;
