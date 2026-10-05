@@ -23,6 +23,9 @@ public class TimelineContentFingerprintService {
     static final String VERSION = "ranch-content-exact-v1";
     private final EncryptionService encryptionService;
 
+    /** 現在鍵の識別子だけを照合する。旧鍵の原文復元は行わない。 */
+    String currentKeyId() { return encryptionService.hmac("ranch-content:key-id:v1"); }
+
     /** 本文を返却せず、現在鍵の比較証跡だけを返す。 */
     public TimelineContentFingerprint fingerprint(long recipientUserId, Instant occurredAt,
             String body, List<TimelineContentFingerprint.AttachmentRef> attachments) {
