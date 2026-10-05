@@ -48,6 +48,7 @@ public class LedgerEntryEntity extends UuidV7Entity {
     private LedgerAccount account;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "direction", nullable = false, length = 1)
     private LedgerDirection direction;
 
