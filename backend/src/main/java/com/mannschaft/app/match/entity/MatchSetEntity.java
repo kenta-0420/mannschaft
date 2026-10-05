@@ -45,15 +45,15 @@ public class MatchSetEntity extends UuidV7Entity {
     private UUID matchId;
 
     /** セット番号（1〜5・best-of-5）。 */
-    @Column(name = "set_number", nullable = false)
+    @Column(name = "set_number", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer setNumber;
 
     /** 当該セットのホーム得点（ラリーポイント・§4.1）。 */
-    @Column(name = "home_points", nullable = false)
+    @Column(name = "home_points", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer homePoints;
 
     /** 当該セットのアウェイ得点。 */
-    @Column(name = "away_points", nullable = false)
+    @Column(name = "away_points", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer awayPoints;
 
     /** セット勝者（SET_END でデュース条件達成時に確定・未決着は NULL・§4.2）。 */

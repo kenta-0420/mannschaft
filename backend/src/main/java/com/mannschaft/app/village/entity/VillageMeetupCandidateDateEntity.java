@@ -45,7 +45,7 @@ public class VillageMeetupCandidateDateEntity extends UuidV7Entity {
     private LocalTime candidateTime;
 
     /** 表示順 */
-    @Column(name = "sort_order", nullable = false)
+    @Column(name = "sort_order", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer sortOrder;
 
     @Column(name = "created_at", nullable = false, updatable = false)

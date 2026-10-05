@@ -52,7 +52,7 @@ public class TournamentIndividualRankingEntity {
 
     private LocalTime totalValueTime;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer matchesPlayed = 0;
 

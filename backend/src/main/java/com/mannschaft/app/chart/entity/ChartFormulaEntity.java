@@ -31,6 +31,7 @@ public class ChartFormulaEntity extends BaseEntity {
     @Column(length = 100)
     private String ratio;
 
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer processingTimeMinutes;
 
     @Column(length = 50)

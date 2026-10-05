@@ -115,6 +115,7 @@ public class ResidentRegistryEntity extends BaseEntity {
      * 居住実態推定スコア（0〜100）。F09.16 が ResidentActivityUpdatedEvent で更新する。
      * 本人非開示（管理者のみ閲覧可）。
      */
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer presumedDeathScore;
 
     /** 直近アクティビティ日時のキャッシュ。F09.16 ActivitySnapshotAggregator が更新する。 */

@@ -28,15 +28,15 @@ public class ParkingSettingsEntity extends BaseEntity {
     @Column(nullable = false)
     private Long scopeId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer maxSpacesPerUser = 1;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer maxVisitorReservationsPerDay = 2;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer visitorReservationMaxDaysAhead = 30;
 

@@ -34,7 +34,7 @@ public class FacilityBookingEquipmentEntity {
     @Column(nullable = false)
     private Long equipmentId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer quantity = 1;
 

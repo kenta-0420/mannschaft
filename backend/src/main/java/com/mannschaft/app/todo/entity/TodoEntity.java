@@ -55,7 +55,7 @@ public class TodoEntity {
     private Boolean milestoneLocked = false;
 
     /** 同一マイルストーン内での表示順。ドラッグ＆ドロップ並び替え用（F02.7） */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer position = 0;
 

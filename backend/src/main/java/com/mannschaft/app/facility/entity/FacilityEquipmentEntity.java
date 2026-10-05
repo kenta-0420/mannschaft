@@ -34,7 +34,7 @@ public class FacilityEquipmentEntity extends BaseEntity {
     @Column(length = 500)
     private String description;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer totalQuantity = 1;
 
@@ -45,7 +45,7 @@ public class FacilityEquipmentEntity extends BaseEntity {
     @Builder.Default
     private Boolean isAvailable = true;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer displayOrder = 0;
 

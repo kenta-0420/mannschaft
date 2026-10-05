@@ -45,6 +45,7 @@ public class ServiceRecordEntity extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String note;
 
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer durationMinutes;
 
     @Enumerated(EnumType.STRING)

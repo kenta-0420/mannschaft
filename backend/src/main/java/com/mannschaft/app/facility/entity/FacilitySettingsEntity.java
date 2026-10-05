@@ -30,7 +30,7 @@ public class FacilitySettingsEntity extends BaseEntity {
     @Builder.Default
     private Boolean requiresApproval = true;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer maxBookingsPerDayPerUser = 2;
 
@@ -38,7 +38,7 @@ public class FacilitySettingsEntity extends BaseEntity {
     @Builder.Default
     private Boolean allowStripePayment = false;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer cancellationDeadlineHours = 24;
 
@@ -46,11 +46,11 @@ public class FacilitySettingsEntity extends BaseEntity {
     @Builder.Default
     private Boolean noShowPenaltyEnabled = false;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer noShowPenaltyThreshold = 3;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer noShowPenaltyDays = 30;
 

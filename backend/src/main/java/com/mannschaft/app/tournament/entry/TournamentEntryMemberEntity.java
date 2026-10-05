@@ -46,6 +46,7 @@ public class TournamentEntryMemberEntity extends UuidV7Entity {
     private String position;
 
     /** 背番号（nullable） */
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer jerseyNumber;
 
     /** 備考（nullable。DDL は VARCHAR(200)） */

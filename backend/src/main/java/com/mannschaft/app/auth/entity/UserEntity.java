@@ -271,7 +271,7 @@ public class UserEntity extends BaseEntity {
      * 生年のみ平文の SMALLINT として保持し、INDEX を張ることで AGE_RANGE ターゲティングを実現する。
      * F09.17 AdSegmentEvaluator Phase B で追加（V68.004）。</p>
      */
-    @Column(name = "birth_year")
+    @Column(name = "birth_year", columnDefinition = "SMALLINT UNSIGNED")
     private Integer birthYear;
 
     /**

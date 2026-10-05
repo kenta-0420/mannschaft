@@ -50,7 +50,7 @@ public class BudgetThresholdAlertEntity extends BaseEntity {
     private Long allocationId;
 
     /** 閾値 (80 / 100 / 120 の 3 値のみ。CHECK chk_bta_threshold で強制) */
-    @Column(name = "threshold_percent", nullable = false)
+    @Column(name = "threshold_percent", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer thresholdPercent;
 
     /** 検知時刻 */

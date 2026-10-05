@@ -95,7 +95,7 @@ public class MatchEntity extends UuidV7Entity {
     @Column(name = "venue", length = 200)
     private String venue;
 
-    @Column(name = "duration_minutes")
+    @Column(name = "duration_minutes", columnDefinition = "SMALLINT UNSIGNED")
     private Integer durationMinutes;
 
     @Column(name = "period_format", length = 32)
@@ -110,11 +110,11 @@ public class MatchEntity extends UuidV7Entity {
     private Integer awayScore;
 
     /** ホーム PK 戦スコア（本戦と分離） */
-    @Column(name = "home_penalty_score")
+    @Column(name = "home_penalty_score", columnDefinition = "SMALLINT UNSIGNED")
     private Integer homePenaltyScore;
 
     /** アウェイ PK 戦スコア（本戦と分離） */
-    @Column(name = "away_penalty_score")
+    @Column(name = "away_penalty_score", columnDefinition = "SMALLINT UNSIGNED")
     private Integer awayPenaltyScore;
 
     @Enumerated(EnumType.STRING)
@@ -138,7 +138,7 @@ public class MatchEntity extends UuidV7Entity {
      * <p>将棋/囲碁の進行量的指標。{@code MatchEventType.MOVE_COUNT} イベント or 試合詳細での直接入力で記録。
      * 任意（NULL 可）。SMALLINT UNSIGNED 相当。</p>
      */
-    @Column(name = "total_moves")
+    @Column(name = "total_moves", columnDefinition = "SMALLINT UNSIGNED")
     private Integer totalMoves;
 
     /**
@@ -166,7 +166,7 @@ public class MatchEntity extends UuidV7Entity {
      *
      * <p>個人戦・団体戦の親は NULL。SMALLINT UNSIGNED 相当。同一親の中で連番。</p>
      */
-    @Column(name = "board_number")
+    @Column(name = "board_number", columnDefinition = "SMALLINT UNSIGNED")
     private Integer boardNumber;
 
     /** 記録係ユーザー（公式戦・user ドメイン ID 参照・FK なし） */

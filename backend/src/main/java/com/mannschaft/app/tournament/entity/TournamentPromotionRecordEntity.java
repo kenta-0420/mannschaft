@@ -47,7 +47,7 @@ public class TournamentPromotionRecordEntity {
     @Column(nullable = false)
     private PromotionType type;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer finalRank;
 
     @Column(length = 200)

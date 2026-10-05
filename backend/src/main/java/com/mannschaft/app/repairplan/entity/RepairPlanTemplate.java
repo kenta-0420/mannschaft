@@ -47,7 +47,7 @@ public class RepairPlanTemplate extends UuidV7Entity {
     @Column(name = "category", nullable = false, length = 60)
     private String category;
 
-    @Column(name = "cycle_years", nullable = false)
+    @Column(name = "cycle_years", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer cycleYears;
 
     @Column(name = "unit_cost_per_dwelling", nullable = false)

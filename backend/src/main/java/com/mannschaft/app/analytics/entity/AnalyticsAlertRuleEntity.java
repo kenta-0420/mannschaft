@@ -58,7 +58,7 @@ public class AnalyticsAlertRuleEntity extends BaseEntity {
     private int consecutiveTriggers = 1;
 
     @Builder.Default
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private int cooldownHours = 24;
 
     @Column(nullable = false)

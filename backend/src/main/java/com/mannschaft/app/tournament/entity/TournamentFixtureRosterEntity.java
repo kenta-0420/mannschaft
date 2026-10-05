@@ -42,6 +42,7 @@ public class TournamentFixtureRosterEntity {
     @Builder.Default
     private Boolean isStarter = true;
 
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer jerseyNumber;
 
     @Column(length = 30)

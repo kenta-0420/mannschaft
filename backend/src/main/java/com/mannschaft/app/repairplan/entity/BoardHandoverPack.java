@@ -43,7 +43,7 @@ public class BoardHandoverPack extends UuidV7Entity {
     @Column(name = "scope_id", nullable = false)
     private Long scopeId;
 
-    @Column(name = "term_year", nullable = false)
+    @Column(name = "term_year", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer termYear;
 
     @Column(name = "period_start", nullable = false)

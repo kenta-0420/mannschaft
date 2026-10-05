@@ -57,7 +57,7 @@ public class RepairPlanItem extends UuidV7Entity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "planned_year", nullable = false)
+    @Column(name = "planned_year", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer plannedYear;
 
     @Column(name = "planned_month", columnDefinition="TINYINT UNSIGNED")
@@ -66,7 +66,7 @@ public class RepairPlanItem extends UuidV7Entity {
     @Column(name = "estimated_amount", nullable = false)
     private Long estimatedAmount;
 
-    @Column(name = "cpi_inflation_basis_year", nullable = false)
+    @Column(name = "cpi_inflation_basis_year", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer cpiInflationBasisYear;
 
     @Column(name = "status", nullable = false, length = 20)

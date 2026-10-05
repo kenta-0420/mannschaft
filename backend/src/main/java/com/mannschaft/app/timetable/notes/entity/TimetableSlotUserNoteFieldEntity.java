@@ -33,7 +33,7 @@ public class TimetableSlotUserNoteFieldEntity extends BaseEntity {
     @Builder.Default
     private Integer sortOrder = 0;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer maxLength = 2000;
 
