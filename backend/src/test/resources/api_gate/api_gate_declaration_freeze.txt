@@ -472,7 +472,9 @@ HTTP|com.mannschaft.app.quickmemo.controller.QuickMemoSettingsController|2|2
 HTTP|com.mannschaft.app.quickmemo.controller.TagController|12|12
 HTTP|com.mannschaft.app.quickmemo.controller.UserVoiceInputConsentController|3|3
 HTTP|com.mannschaft.app.ranch.controller.RanchAdminController|0|8
-HTTP|com.mannschaft.app.ranch.controller.RanchOwnerActionController|4|4
+HTTP|com.mannschaft.app.ranch.controller.RanchAssignmentController|0|1
+HTTP|com.mannschaft.app.ranch.controller.RanchLegacySyncController|1|1
+HTTP|com.mannschaft.app.ranch.controller.RanchOwnerActionController|4|7
 HTTP|com.mannschaft.app.ranch.controller.RanchPrivateQueryController|4|4
 HTTP|com.mannschaft.app.ranch.controller.RanchSelfController|2|2
 HTTP|com.mannschaft.app.ranch.controller.RanchSlotController|2|2
