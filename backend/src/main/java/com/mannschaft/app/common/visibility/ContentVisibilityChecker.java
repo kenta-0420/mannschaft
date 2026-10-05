@@ -2,7 +2,6 @@ package com.mannschaft.app.common.visibility;
 
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.timeline.TimelineErrorCode;
 import com.mannschaft.app.timeline.service.TimelinePostVisibilityAccessGuard;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
@@ -151,11 +150,7 @@ public class ContentVisibilityChecker {
         Timer.Sample sample = visibilityMetrics.startCheckTimer();
         try {
             if (postId == null || userId == null || timelineAccess == null) return false;
-            timelineAccess.requireVisiblePost(postId, userId);
-            return true;
-        } catch (BusinessException error) {
-            if (error.getErrorCode() == TimelineErrorCode.POST_NOT_FOUND) return false;
-            throw error;
+            return timelineAccess.canViewPost(postId, userId);
         } finally {
             visibilityMetrics.stopCheckTimer(sample, ReferenceType.TIMELINE_POST, OP_CAN_VIEW);
         }
