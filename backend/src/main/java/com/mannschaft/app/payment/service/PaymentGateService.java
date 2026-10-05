@@ -78,6 +78,52 @@ public class PaymentGateService {
     private final PaymentItemRepository paymentItemRepository;
 
     /**
+     * 本文 preview の読取専用入口。明示 HIDDEN と判定障害を区別し、null/例外は呼び出し側へ伝播する。
+     * 既存 checkAccess/checkAccessBatch の HIDDEN fallback 契約は変更しない。
+     */
+    public GateCheckResponse checkAccessForPreview(String contentType, Long contentId, Long viewerUserId,
+                                                  ContentGateTarget target) {
+        if (contentId == null || target == null || (!target.hasExactlyOneScope() && !target.isPersonal())) {
+            return new GateCheckResponse(false, true, List.of());
+        }
+        List<ContentPaymentGateEntity> gates = java.util.Objects.requireNonNull(
+                contentPaymentGateRepository.findByContentTypeAndContentIdIn(contentType, List.of(contentId)),
+                "preview gate query returned null");
+        Set<Long> itemIds = gates.stream().map(ContentPaymentGateEntity::getPaymentItemId)
+                .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, PaymentItemEntity> items = paymentItemRepository.findAllById(itemIds).stream()
+                .collect(Collectors.toMap(PaymentItemEntity::getId, Function.identity()));
+        Set<Long> paid = viewerUserId == null || itemIds.isEmpty() ? Set.of()
+                : new HashSet<>(java.util.Objects.requireNonNull(memberPaymentRepository.findValidPaidPaymentItemIds(
+                        viewerUserId, itemIds.stream().toList()), "preview paid query returned null"));
+        boolean allSatisfied = true;
+        boolean titleHidden = false;
+        List<GateCheckResponse.RequiredItem> required = new ArrayList<>();
+        for (ContentPaymentGateEntity gate : gates) {
+            if (!contentId.equals(gate.getContentId())) {
+                throw new IllegalStateException("preview gate query returned a different content");
+            }
+            PaymentItemEntity item = items.get(gate.getPaymentItemId());
+            boolean invalid = item == null || item.getDeletedAt() != null || item.getType() == PaymentItemType.DONATION;
+            if (item != null) {
+                invalid |= target.teamId() != null
+                        ? !target.teamId().equals(item.getTeamId()) || item.getOrganizationId() != null
+                        : target.organizationId() != null
+                            ? !target.organizationId().equals(item.getOrganizationId()) || item.getTeamId() != null
+                            : item.getTeamId() != null || item.getOrganizationId() != null;
+            }
+            if (invalid) return new GateCheckResponse(false, true, List.of());
+            boolean satisfied = paid.contains(gate.getPaymentItemId());
+            if (!satisfied) {
+                allSatisfied = false;
+                titleHidden |= Boolean.TRUE.equals(gate.getIsTitleHidden());
+                required.add(new GateCheckResponse.RequiredItem(item.getId(), item.getName(), item.getAmount(), false));
+            }
+        }
+        return new GateCheckResponse(allSatisfied, titleHidden, titleHidden ? List.of() : required);
+    }
+
+    /**
      * 指定コンテンツに対する閲覧者本人のペイウォール解錠可否を判定する（設計書 02 §6）。
      *
      * <p>受益者キー＝viewer 自身。viewer の支払い状態のみで判定し、他人の支払いでは解錠しない。</p>

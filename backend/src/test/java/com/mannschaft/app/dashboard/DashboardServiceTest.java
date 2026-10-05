@@ -127,6 +127,8 @@ class DashboardServiceTest {
 
     @Mock
     private PaymentGateService paymentGateService;
+    @Mock
+    private com.mannschaft.app.social.announcement.AnnouncementReadService announcementReadService;
 
     @Mock
     private ContentVisibilityChecker contentVisibilityChecker;

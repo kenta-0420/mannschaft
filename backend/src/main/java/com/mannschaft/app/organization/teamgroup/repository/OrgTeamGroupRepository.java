@@ -19,6 +19,9 @@ public interface OrgTeamGroupRepository
     /** 組織の生存グループを並び順（同値は ID＝作成順）で取得する。 */
     List<OrgTeamGroupEntity> findByOrganizationIdAndDeletedAtIsNullOrderBySortOrderAscIdAsc(Long organizationId);
 
+    /** 保存済み配信宛先の再検証。削除済みも含め、組織と ID を束縛する。 */
+    List<OrgTeamGroupEntity> findByOrganizationIdAndIdIn(Long organizationId, java.util.Collection<UUID> ids);
+
     /** 組織の生存グループの sort_order の最大値（無ければ -1）。 */
     @Query("SELECT COALESCE(MAX(g.sortOrder), -1) FROM OrgTeamGroupEntity g "
             + "WHERE g.organizationId = :organizationId AND g.deletedAt IS NULL")

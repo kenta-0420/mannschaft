@@ -11,6 +11,7 @@ import com.tngtech.archunit.lang.SimpleConditionEvent;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
 import com.tngtech.archunit.library.freeze.TextFileBasedViolationStore;
 import com.tngtech.archunit.library.freeze.ViolationStore;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -26,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 本来のFreezingArchRuleとテキストストアを所有TempDir内だけで試す。 */
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ArchUnitFreezeMechanismSelfTest {
     @TempDir
     Path storeDir;
