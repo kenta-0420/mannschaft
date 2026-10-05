@@ -106,17 +106,18 @@ describe('DatePicker の24時間手入力（CMP-260910-1557）', () => {
 
 describe('DatePicker の既存入力契約を維持する', () => {
   it.each([
-    ['05:30 PM', '2026-10-11T17:30'],
-    ['12:00 AM', '2026-10-11T00:00'],
-  ])('12時間形式の %s は既存の AM/PM 解釈を使う', async (time, expected) => {
+    ['05:30 PM', '2026-10-11T17:30', '2026/10/11 05:30 pm'],
+    ['12:00 AM', '2026-10-11T00:00', '2026/10/11 12:00 am'],
+  ])('12時間形式の %s は既存の AM/PM 解釈を使う', async (time, expected, expectedDisplay) => {
     const { picker, input } = await mountPicker('12')
     const typed = `2026/10/11 ${time}`
 
     await typeInto(input, typed)
 
     expect(toLocalDateTimeString(modelDate(picker.props('modelValue')))).toBe(expected)
-    await blur(input)
     expect(input.value).toBe(typed)
+    await blur(input)
+    expect(input.value).toBe(expectedDisplay)
   })
 
   it('12時間形式で AM/PM が欠落した入力は拒否を維持する', async () => {
@@ -129,7 +130,7 @@ describe('DatePicker の既存入力契約を維持する', () => {
 
     expect(toLocalDateTimeString(modelDate(picker.props('modelValue')))).toBe('2026-10-11T09:15')
     await blur(input)
-    expect(input.value).toBe('2026/10/11 09:15 AM')
+    expect(input.value).toBe('2026/10/11 09:15 am')
   })
 
   it('日付だけの入力は打鍵とキャレットを保持して確定する', async () => {
