@@ -71,7 +71,7 @@ public class PostalCodeEntity {
 
     /** GeoNames の精度コード（1-6）。 */
     @Setter
-    @Column(name = "accuracy")
+    @Column(name = "accuracy", columnDefinition = "tinyint unsigned")
     private Short accuracy;
 
     @Column(name = "updated_at", nullable = false)

@@ -27,10 +27,10 @@ public class ScheduleAnnualCopyLogEntity extends BaseEntity {
 
     private Long organizationId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "smallint")
     private Integer sourceAcademicYear;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "smallint")
     private Integer targetAcademicYear;
 
     @Column(nullable = false)

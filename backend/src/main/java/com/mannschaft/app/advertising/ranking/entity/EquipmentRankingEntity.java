@@ -56,7 +56,7 @@ public class EquipmentRankingEntity {
     private String amazonAsin;
 
     /** ASIN信頼度スコア（0〜100） */
-    @Column(name = "asin_confidence")
+    @Column(name = "asin_confidence", columnDefinition = "tinyint unsigned")
     private Short asinConfidence;
 
     /** この備品を保有しているチーム数 */

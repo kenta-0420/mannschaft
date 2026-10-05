@@ -61,7 +61,7 @@ public class TodoEntity {
 
     private Long parentId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "tinyint unsigned")
     @Builder.Default
     private Integer depth = 0;
 

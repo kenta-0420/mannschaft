@@ -45,7 +45,7 @@ public class BillingApiIdempotencyEntity extends UuidV7Entity {
     @Column(name = "status", nullable = false, length = 16)
     private BillingIdempotencyStatus status;
 
-    @Column(name = "response_status")
+    @Column(name = "response_status", columnDefinition = "smallint")
     private Integer responseStatus;
 
     @Column(name = "response_json", columnDefinition = "JSON")

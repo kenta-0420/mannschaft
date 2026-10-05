@@ -135,7 +135,7 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
     private BillingInterval billingInterval;
 
     /** ユーザ指定決済日（1-28 等）。 */
-    @Column(name = "billing_anchor_day")
+    @Column(name = "billing_anchor_day", columnDefinition = "tinyint unsigned")
     private Short billingAnchorDay;
 
     /** 状態。 */

@@ -72,7 +72,7 @@ public class TournamentStandingEntity {
     @Builder.Default
     private Integer points = 0;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "smallint")
     @Builder.Default
     private Integer bonusPoints = 0;
 

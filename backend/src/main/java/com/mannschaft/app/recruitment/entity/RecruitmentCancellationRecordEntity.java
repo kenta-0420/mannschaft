@@ -75,7 +75,7 @@ public class RecruitmentCancellationRecordEntity {
 
     /** §Phase5a 決済リトライ回数（最大3回）。 */
     @Builder.Default
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "tinyint unsigned")
     private Integer paymentRetryCount = 0;
 
     @Column(length = 500)

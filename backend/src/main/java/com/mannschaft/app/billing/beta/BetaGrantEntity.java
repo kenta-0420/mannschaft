@@ -73,7 +73,7 @@ public class BetaGrantEntity extends UuidV7Entity {
     private GrantKind grantKind;
 
     /** ベータ段階（1〜4。4=1万人規模）。 */
-    @Column(name = "beta_phase", nullable = false)
+    @Column(name = "beta_phase", nullable = false, columnDefinition = "tinyint unsigned")
     private Integer betaPhase;
 
     /** USER / TEAM / ORG（INDIVIDUAL は USER 固定・TEAM_ORG は TEAM/ORG）。 */

@@ -52,7 +52,7 @@ public class PlanPriceBandEntity {
 
     /** バンド番号（1〜・昇順）。 */
     @Id
-    @Column(name = "band_no", nullable = false)
+    @Column(name = "band_no", nullable = false, columnDefinition = "tinyint unsigned")
     private Short bandNo;
 
     /** アクティブ人数下限（この値以上）。 */

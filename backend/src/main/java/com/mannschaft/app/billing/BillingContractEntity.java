@@ -90,7 +90,7 @@ public class BillingContractEntity extends UuidV7Entity {
     private Integer memberCountSnapshot;
 
     /** 契約時に解決した plan_price_bands.band_no（TEAM/ORG の PLAN のみ）。 */
-    @Column(name = "band_no_snapshot")
+    @Column(name = "band_no_snapshot", columnDefinition = "tinyint unsigned")
     private Short bandNoSnapshot;
 
     /**

@@ -138,6 +138,7 @@ public class ResidentRegistryEntity extends BaseEntity {
     private Boolean isSecondaryHome = false;
 
     /** 推定年齢（0〜200、自己申告ベース）。 */
+    @Column(columnDefinition = "tinyint unsigned")
     private Integer ageEstimated;
 
     // ─── F14.3 住民ライフイベント（逝去・転出）アーカイブ（V224 で追加）────────

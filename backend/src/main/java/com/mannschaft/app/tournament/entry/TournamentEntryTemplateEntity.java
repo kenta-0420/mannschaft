@@ -43,7 +43,7 @@ public class TournamentEntryTemplateEntity extends UuidV7Entity {
     private String description;
 
     /** 並び順 */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "tinyint unsigned")
     @Builder.Default
     private Short sortOrder = 0;
 
