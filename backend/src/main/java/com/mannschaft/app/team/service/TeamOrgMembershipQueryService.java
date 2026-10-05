@@ -153,6 +153,33 @@ public class TeamOrgMembershipQueryService {
     }
 
     /**
+     * チームが ACTIVE で加盟している組織と、その所属グループを返す（告知の表示判定。F01.2.1 §8.2）。
+     *
+     * <p>{@code groupId} は未分類なら null。削除済みグループを指す行もそのまま返すため、生存グループかどうかは
+     * 呼び出し側が照合する。SQL は 1 本。</p>
+     *
+     * @param teamId チーム ID
+     * @return ACTIVE な加盟（組織 ID・所属グループ ID）。無ければ空
+     */
+    public List<TeamOrgGroupAssignment> findActiveOrgGroupAssignments(Long teamId) {
+        if (teamId == null) {
+            return List.of();
+        }
+        return teamOrgMembershipRepository.findActiveOrgGroupsByTeamId(teamId).stream()
+                .map(p -> new TeamOrgGroupAssignment(p.getOrganizationId(), p.getGroupId()))
+                .toList();
+    }
+
+    /**
+     * チーム 1 件の ACTIVE な加盟（組織 ID と所属グループ ID）。
+     *
+     * @param organizationId 加盟先の組織 ID
+     * @param groupId        所属チームグループ ID（未分類は null）
+     */
+    public record TeamOrgGroupAssignment(Long organizationId, UUID groupId) {
+    }
+
+    /**
      * ACTIVE な加盟 1 件（チーム ID と所属グループ ID）。
      *
      * @param teamId  チーム ID

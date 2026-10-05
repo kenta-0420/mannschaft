@@ -85,6 +85,8 @@ class DashboardServiceOrgAnnouncementDedupTest {
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private MembershipScopeQueryService membershipScopeQueryService;
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
+    @Mock private com.mannschaft.app.social.announcement.audience.AnnouncementAudienceMatcher announcementAudienceMatcher;
+    @Mock private com.mannschaft.app.team.service.TeamOrgMembershipQueryService teamOrgMembershipQueryService;
     @Mock private ScopeWidgetSummaryService scopeWidgetSummaryService;
     @Mock private ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
@@ -151,6 +153,15 @@ class DashboardServiceOrgAnnouncementDedupTest {
         given(swipeWidgetVisibilityResolver.resolve(any(), any())).willReturn(java.util.Map.of());
         given(swipeWidgetVisibilityResolver.filterIfVisible(any(), any(), any(), any()))
                 .willAnswer(inv -> inv.getArgument(3));
+
+        // 宛先の判定は AnnouncementAudienceMatcher の IT で検証済み。ここでは候補をそのまま通す（重複排除の検証が目的）
+        given(announcementAudienceMatcher.matchingFeedIds(any(), any())).willAnswer(inv -> {
+            java.util.Set<Long> ids = new java.util.LinkedHashSet<>();
+            for (Object o : (java.util.Collection<?>) inv.getArgument(1)) {
+                ids.add(((AnnouncementFeedEntity) o).getId());
+            }
+            return ids;
+        });
 
         // 告知はチームスコープ側 0 件・組織側で検証する
         given(announcementFeedQueryRepository.findByScope(
