@@ -40,7 +40,7 @@ public class TimelineRanchNativeOperationFacade {
     private boolean supports(CreatePostRequest request,Long actor,boolean impersonated) {
         if(request==null || actor==null || impersonated) return false;
         String scope=request.getScopeTypeOrDefault();
-        return ("PUBLIC".equals(scope) || "PERSONAL".equals(scope)) && "USER".equals(request.getPostedAsTypeOrDefault())
+        return ("PUBLIC".equals(scope) || "PERSONAL".equals(scope) || "TEAM".equals(scope) || "ORGANIZATION".equals(scope)) && "USER".equals(request.getPostedAsTypeOrDefault())
                 && (request.getPostedAsId()==null || actor.equals(request.getPostedAsId()))
                 && request.getParentId()==null && request.getRepostOfId()==null && request.getScheduledAt()==null
                 && (request.getStatus()==null || request.getStatus()==PostStatus.PUBLISHED)

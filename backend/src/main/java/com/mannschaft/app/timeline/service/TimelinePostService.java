@@ -102,6 +102,7 @@ public class TimelinePostService {
     private final TimelinePostReactionRepository reactionRepository;
     private final TimelinePollService pollService;
     private final TimelineMapper timelineMapper;
+    private final TimelineRanchPostCaptureFactory ranchCaptureFactory;
     private final DomainEventPublisher domainEventPublisher;
     private final R2StorageService r2StorageService;
     private final StorageAclService storageAclService;
@@ -187,7 +188,7 @@ public class TimelinePostService {
      * @param userId          ユーザーID
      * @return 作成された投稿
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public PostResponse createPost(CreatePostRequest req, Long resolvedScopeId, Long userId) {
         // VILLAGE への投稿権限は doCreatePost の validatePostingIdentity が
         // 投稿主体（USER / TEAM / ORGANIZATION）単位で検証する。ここで呼び出し元 userId 単位の
@@ -606,6 +607,8 @@ public class TimelinePostService {
                 .scheduledAt(req.getScheduledAt())
                 .build();
 
+        com.mannschaft.app.timeline.dto.TimelineContentFingerprint ranchFingerprint =
+                ranchCaptureFactory == null ? null : ranchCaptureFactory.prepare(post, req, userId);
         post = postRepository.save(post);
 
         // リプライの場合、親投稿のリプライ数をインクリメント
@@ -645,6 +648,7 @@ public class TimelinePostService {
             ));
         }
 
+        if (ranchCaptureFactory != null) ranchCaptureFactory.finish(post, req, userId, ranchFingerprint);
         return timelineMapper.toPostResponse(post);
     }
 

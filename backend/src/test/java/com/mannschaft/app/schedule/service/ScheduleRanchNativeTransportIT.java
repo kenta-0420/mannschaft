@@ -87,8 +87,15 @@ class ScheduleRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         request.captureRanchResponseOrigin(false);
         com.fasterxml.jackson.databind.node.ObjectNode json=mapper.valueToTree(request);
         assertThat(json.has("ranchSelfResponse")).isFalse();
+        request.armRanchCapture();
+        com.fasterxml.jackson.databind.JsonNode armed = mapper.valueToTree(request);
+        assertThat(armed.has("ranchCaptureArmed")).isFalse();
+        assertThat(armed.has("ranchCapturedPayload")).isFalse();
+        json.put("ranchCaptureArmed",true);
         json.put("ranchSelfResponse",true);
-        assertThat(mapper.treeToValue(json,AttendanceRequest.class).getRanchSelfResponse()).isNull();
+        var parsed = mapper.treeToValue(json,AttendanceRequest.class);
+        assertThat(parsed.getRanchSelfResponse()).isNull();
+        assertThat(parsed.isRanchCaptureArmed()).isFalse();
     }
     private ScheduleRanchNativeWriter.Outcome respond(String status) {
         return active.withActiveUser(owner,() -> writer.respond(scheduleId,owner,new AttendanceRequest(status,null,null)));

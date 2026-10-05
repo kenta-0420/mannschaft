@@ -14,7 +14,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Service
 @RequiredArgsConstructor
 public class ScheduleRanchNativeOperationFacade {
-    private final ScheduleRanchNativeReader reader;
     private final ScheduleRanchNativeWriter writer;
     private final UserOperationGuard users;
     private final ScheduleRanchCaptureQueue queue;
@@ -22,12 +21,10 @@ public class ScheduleRanchNativeOperationFacade {
     public Optional<AttendanceResponse> respond(Long scheduleId,Long actor,AttendanceRequest request,
             boolean impersonated,boolean proxy) {
         if(actor==null || request==null || impersonated || proxy
-                || (request.getSurveyResponses()!=null && !request.getSurveyResponses().isEmpty())
                 || TransactionSynchronizationManager.isActualTransactionActive()) return Optional.empty();
         var started=new AtomicBoolean();var committed=new AtomicReference<ScheduleRanchNativeWriter.Outcome>();
         ScheduleRanchNativeWriter.Outcome saved;
         try {
-            if(!reader.personal(scheduleId,actor)) return Optional.empty();
             saved=users.withActiveUser(actor,() -> {
                 started.set(true);var outcome=writer.respond(scheduleId,actor,request);committed.set(outcome);return outcome;
             });
