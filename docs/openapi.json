@@ -77936,6 +77936,47 @@
         }
       }
     },
+    "/api/v1/me/ranch/purchases": {
+      "post": {
+        "tags": [
+          "ranch-owner-action-controller"
+        ],
+        "operationId": "purchase",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RanchPurchaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRanchPurchaseResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/ranch/pause": {
       "post": {
         "tags": [
@@ -78011,6 +78052,88 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseInteractionResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/ranch/hatch": {
+      "post": {
+        "tags": [
+          "ranch-owner-action-controller"
+        ],
+        "operationId": "hatch",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RanchHatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseHatchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/ranch/feeding": {
+      "post": {
+        "tags": [
+          "ranch-owner-action-controller"
+        ],
+        "operationId": "feed",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RanchVersionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeedingResult"
                 }
               }
             }
@@ -139502,7 +139625,7 @@
           "ダッシュボード村フィード (F17.1)"
         ],
         "summary": "ピン留め村の最新動きをダッシュボード向けに集約取得（本文は村人である村のみ）",
-        "operationId": "feed",
+        "operationId": "feed_1",
         "parameters": [
           {
             "name": "limit",
@@ -201919,6 +202042,60 @@
           }
         }
       },
+      "RanchPurchaseRequest": {
+        "type": "object",
+        "properties": {
+          "priceVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "skuKey": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ApiResponseRanchPurchaseResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RanchPurchaseResult"
+          }
+        }
+      },
+      "RanchPurchaseResult": {
+        "type": "object",
+        "properties": {
+          "balanceAfter": {
+            "type": "string"
+          },
+          "commandId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "costPoints": {
+            "type": "string"
+          },
+          "inventoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "priceVersion": {
+            "type": "string"
+          },
+          "skuKey": {
+            "type": "string"
+          }
+        }
+      },
       "RanchInteractionRequest": {
         "type": "object",
         "properties": {
@@ -201968,6 +202145,148 @@
           },
           "reactionKey": {
             "type": "string"
+          }
+        }
+      },
+      "RanchHatchRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "nameConfirmed": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "name",
+          "nameConfirmed"
+        ]
+      },
+      "ApiResponseHatchResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/HatchResponse"
+          }
+        }
+      },
+      "HatchResponse": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "HATCH_RESULT",
+              "CURRENT_STATE"
+            ]
+          },
+          "result": {
+            "$ref": "#/components/schemas/HatchResult"
+          },
+          "state": {
+            "$ref": "#/components/schemas/RanchState"
+          }
+        }
+      },
+      "HatchResult": {
+        "type": "object",
+        "properties": {
+          "commandId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dinosaurId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "hatchedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "namedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "EGG",
+              "BABY",
+              "JUVENILE",
+              "ADULT"
+            ]
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseFeedingResult": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FeedingResult"
+          }
+        }
+      },
+      "FeedingResult": {
+        "type": "object",
+        "properties": {
+          "balanceAfter": {
+            "type": "string"
+          },
+          "careKind": {
+            "type": "string"
+          },
+          "commandId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "costPoints": {
+            "type": "string"
+          },
+          "dinosaurId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gainedXp": {
+            "type": "string"
+          },
+          "isGrowthCapped": {
+            "type": "boolean"
+          },
+          "ruleVersion": {
+            "type": "string"
+          },
+          "stageAfter": {
+            "type": "string",
+            "enum": [
+              "EGG",
+              "BABY",
+              "JUVENILE",
+              "ADULT"
+            ]
+          },
+          "stageBefore": {
+            "type": "string",
+            "enum": [
+              "EGG",
+              "BABY",
+              "JUVENILE",
+              "ADULT"
+            ]
           }
         }
       },

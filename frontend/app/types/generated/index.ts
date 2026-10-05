@@ -20703,6 +20703,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/ranch/purchases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["purchase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/ranch/pause": {
         parameters: {
             query?: never;
@@ -20729,6 +20745,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["touch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/hatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["hatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/ranch/feeding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["feed"];
         delete?: never;
         options?: never;
         head?: never;
@@ -42724,7 +42772,7 @@ export interface paths {
             cookie?: never;
         };
         /** ピン留め村の最新動きをダッシュボード向けに集約取得（本文は村人である村のみ） */
-        get: operations["feed"];
+        get: operations["feed_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -67135,6 +67183,26 @@ export interface components {
         ApiResponseOwnerSummary: {
             data?: components["schemas"]["OwnerSummary"];
         };
+        RanchPurchaseRequest: {
+            priceVersion?: string;
+            skuKey?: string;
+            version?: string;
+        };
+        ApiResponseRanchPurchaseResult: {
+            data?: components["schemas"]["RanchPurchaseResult"];
+        };
+        RanchPurchaseResult: {
+            balanceAfter?: string;
+            /** Format: uuid */
+            commandId?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            costPoints?: string;
+            /** Format: uuid */
+            inventoryId?: string;
+            priceVersion?: string;
+            skuKey?: string;
+        };
         RanchInteractionRequest: {
             /** @enum {string} */
             kind: "TOUCH";
@@ -67153,6 +67221,55 @@ export interface components {
             /** Format: uuid */
             dinosaurId?: string;
             reactionKey?: string;
+        };
+        RanchHatchRequest: {
+            name: string;
+            nameConfirmed: boolean;
+            version?: string;
+        };
+        ApiResponseHatchResponse: {
+            data?: components["schemas"]["HatchResponse"];
+        };
+        HatchResponse: {
+            /** @enum {string} */
+            kind?: "HATCH_RESULT" | "CURRENT_STATE";
+            result?: components["schemas"]["HatchResult"];
+            state?: components["schemas"]["RanchState"];
+        };
+        HatchResult: {
+            /** Format: uuid */
+            commandId?: string;
+            /** Format: uuid */
+            dinosaurId?: string;
+            /** Format: date-time */
+            hatchedAt?: string;
+            name?: string;
+            /** Format: date-time */
+            namedAt?: string;
+            /** @enum {string} */
+            stage?: "EGG" | "BABY" | "JUVENILE" | "ADULT";
+            version?: string;
+        };
+        ApiResponseFeedingResult: {
+            data?: components["schemas"]["FeedingResult"];
+        };
+        FeedingResult: {
+            balanceAfter?: string;
+            careKind?: string;
+            /** Format: uuid */
+            commandId?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            costPoints?: string;
+            /** Format: uuid */
+            dinosaurId?: string;
+            gainedXp?: string;
+            isGrowthCapped?: boolean;
+            ruleVersion?: string;
+            /** @enum {string} */
+            stageAfter?: "EGG" | "BABY" | "JUVENILE" | "ADULT";
+            /** @enum {string} */
+            stageBefore?: "EGG" | "BABY" | "JUVENILE" | "ADULT";
         };
         RanchLegacySyncRequest: {
             afterAwardId?: string;
@@ -129396,6 +129513,32 @@ export interface operations {
             };
         };
     };
+    purchase: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchPurchaseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRanchPurchaseResult"];
+                };
+            };
+        };
+    };
     pause_4: {
         parameters: {
             query?: never;
@@ -129444,6 +129587,58 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseInteractionResult"];
+                };
+            };
+        };
+    };
+    hatch: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchHatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseHatchResponse"];
+                };
+            };
+        };
+    };
+    feed: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RanchVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeedingResult"];
                 };
             };
         };
@@ -165752,7 +165947,7 @@ export interface operations {
             };
         };
     };
-    feed: {
+    feed_1: {
         parameters: {
             query?: {
                 limit?: number;
