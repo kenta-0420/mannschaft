@@ -235,9 +235,11 @@ public void withdrawUser(Long userId) {
 | AccountPurgedEvent | `com.mannschaft.app.timetable.personal.event.PersonalTimetableSettingsPurgeEventListener` | timetable.personal | `personal_timetable_settings`を物理削除し、所有TXのcommit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.user.event.UserBlockPurgeEventListener` | user | `user_blocks`を物理削除し、所有TXのcommit後に完了記録（両端の退会者参照を削除、他者間は保持） |
 | AccountPurgedEvent | `com.mannschaft.app.weather.event.WeatherLocationCleanupListener` | weather | `user_weather_locations`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.ranch.event.RanchPurgeEventListener` | ranch | 本人の牧場・恐竜・報酬・所持品・操作記録を独立TXで物理削除し、commit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.diagnosis.event.DiagnosisPurgeEventListener` | diagnosis | 本人の診断回答・診断結果・出生派生結果を独立TXで物理削除し、commit後に完了記録。失敗時は未完了として再試行 |
 <!-- GDPR_EVENT_LISTENER_LEDGER_END -->
 
-実装同期時点の件数は `UserAnonymizedEvent` 18クラス、`AccountPurgedEvent` 37クラス、両方を購読する11クラス、ユニーク44クラスである。件数は説明用であり、番人は固定件数ではなく購読者の集合そのものを照合する。
+実装同期時点の件数は `UserAnonymizedEvent` 18クラス、`AccountPurgedEvent` 39クラス、両方を購読する11クラス、ユニーク46クラスである。件数は説明用であり、番人は固定件数ではなく購読者の集合そのものを照合する。
 
 この番人が保証するのは、**既に実装された2イベントの購読者と本台帳のドリフトが無いこと**である。新しい個人データ表にリスナー自体を実装し忘れた場合、既存リスナー内の対象表だけを変更した場合、または実装と台帳を同時に誤って削除した場合までは検出できない。「全個人データ表の削除経路が存在すること」の保証には、`@PersonalData`・削除方式・CASCADE・外部リソースを含む別の宣言的マニフェストが必要になる。
 
