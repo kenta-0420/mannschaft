@@ -38,7 +38,7 @@ class BlogRanchTransportWriter {
         var nativeRows=jdbc.query("SELECT first_published_at,first_published_author_user_id FROM blog_posts "
                 +"WHERE id=? AND is_publication_history_known=TRUE AND is_ranch_publication_historical=FALSE "
                 +"AND is_ranch_publication_observed=TRUE AND deleted_at IS NULL FOR UPDATE",
-                (rs,index) -> new NativeMetadata(rs.getTimestamp("first_published_at"),
+                (rs,index) -> new NativeMetadata(rs.getTimestamp("first_published_at",com.mannschaft.app.common.jdbc.JdbcUtcCalendar.fresh()),
                         rs.getObject("first_published_author_user_id",Long.class)),Long.parseLong(fact.canonicalSourceId()));
         if(nativeRows.size()!=1) return false;
         var row=nativeRows.getFirst();

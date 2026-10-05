@@ -54,7 +54,9 @@ public class TimelineRanchOutboxDeliveryService implements SourceOutboxDeliveryF
                 outboxes.rejectCandidate(row.eventId(),"PAYLOAD_INVALID",request.serverTime());continue;
             }
             var token=UuidV7.generate();var expires=request.serverTime().plusSeconds(request.leaseSeconds());
-            outboxes.lease(row.eventId(),token,expires,request.serverTime());
+            var savedExpiry=outboxes.lease(row.eventId(),token,expires,request.serverTime());
+            if(savedExpiry.isEmpty()) continue;
+            expires=savedExpiry.get();
             leased.add(new SourceOutboxLeasedEvent(sourceType(),row.eventId(),token,expires,payload.toEnvelope(),row.attempts()+1));
         }
         return List.copyOf(leased);

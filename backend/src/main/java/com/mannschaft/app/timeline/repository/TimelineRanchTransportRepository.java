@@ -6,6 +6,7 @@ import com.mannschaft.app.common.UuidV7;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import com.mannschaft.app.common.jdbc.JdbcUtcCalendar;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.UUID;
@@ -36,19 +37,26 @@ public class TimelineRanchTransportRepository {
                 +"AND content_week=? AND content_version=? AND content_digest=? FOR UPDATE",
                 fact.recipientUserId(),week,fingerprint.version(),digest).isEmpty()) return InsertOutcome.DUPLICATE;
         // 到着先着確定。後着のoccurredAtが早くても既存winnerを置換しない。
-        jdbc.update("INSERT INTO timeline_ranch_witnesses (id,source_id_type,canonical_source_id,recipient_user_id,kind,"
-                +"qualifying_at,event_id,content_week,content_version,content_key_id,content_digest,created_at,updated_at) "
-                +"VALUES (?,'LONG',?,?,'QUALIFIED',?,?,?,?,?,?,?,?)",bytes(UuidV7.generate()),source,
-                fact.recipientUserId(),Timestamp.from(fact.occurredAt()),bytes(fact.eventId()),week,
-                fingerprint.version(),keyId,digest,Timestamp.from(now),Timestamp.from(now));
+        jdbc.update(connection -> {
+            var statement=connection.prepareStatement("INSERT INTO timeline_ranch_witnesses (id,source_id_type,canonical_source_id,recipient_user_id,kind,"
+                    +"qualifying_at,event_id,content_week,content_version,content_key_id,content_digest,created_at,updated_at) "
+                    +"VALUES (?,'LONG',?,?,'QUALIFIED',?,?,?,?,?,?,UTC_TIMESTAMP(6),UTC_TIMESTAMP(6))");
+            statement.setBytes(1,bytes(UuidV7.generate()));statement.setBytes(2,source);statement.setLong(3,fact.recipientUserId());
+            statement.setTimestamp(4,Timestamp.from(fact.occurredAt()),JdbcUtcCalendar.fresh());
+            statement.setBytes(5,bytes(fact.eventId()));statement.setDate(6,week);statement.setString(7,fingerprint.version());
+            statement.setBytes(8,keyId);statement.setBytes(9,digest);return statement;
+        });
         byte[] canonical=("TIMELINE_ORIGINAL|LONG|"+fact.canonicalSourceId()).getBytes(StandardCharsets.US_ASCII);
         byte[] scope=fact.canonicalScopeId()==null?null:fact.canonicalScopeId().getBytes(StandardCharsets.US_ASCII);
-        jdbc.update("INSERT INTO timeline_ranch_outboxes (id,schema_version,event_type,scope_type,scope_id_type,"
-                +"canonical_scope_id,recipient_user_id,canonical_key,payload_json,occurred_at,status,attempt_count,"
-                +"next_attempt_at,created_at,updated_at) VALUES (?,1,'TIMELINE_ORIGINAL',?,?,?,?,?,?,?,'PENDING',0,?,?,?)",
-                bytes(fact.eventId()),fact.scopeType().name(),fact.scopeIdType()==null?null:fact.scopeIdType().name(),
-                scope,fact.recipientUserId(),canonical,json,Timestamp.from(fact.occurredAt()),
-                Timestamp.from(now),Timestamp.from(now),Timestamp.from(now));
+        jdbc.update(connection -> {
+            var statement=connection.prepareStatement("INSERT INTO timeline_ranch_outboxes (id,schema_version,event_type,scope_type,scope_id_type,"
+                    +"canonical_scope_id,recipient_user_id,canonical_key,payload_json,occurred_at,status,attempt_count,"
+                    +"next_attempt_at,created_at,updated_at) VALUES (?,1,'TIMELINE_ORIGINAL',?,?,?,?,?,?,?,'PENDING',0,UTC_TIMESTAMP(6),UTC_TIMESTAMP(6),UTC_TIMESTAMP(6))");
+            statement.setBytes(1,bytes(fact.eventId()));statement.setString(2,fact.scopeType().name());
+            statement.setString(3,fact.scopeIdType()==null?null:fact.scopeIdType().name());statement.setBytes(4,scope);
+            statement.setLong(5,fact.recipientUserId());statement.setBytes(6,canonical);statement.setString(7,json);
+            statement.setTimestamp(8,Timestamp.from(fact.occurredAt()),JdbcUtcCalendar.fresh());return statement;
+        });
         return InsertOutcome.ACCEPTED;
     }
     public void deleteForUser(Long userId) {

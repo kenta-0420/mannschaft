@@ -38,7 +38,7 @@ class TimelineRanchTransportWriter {
         var nativeRows=jdbc.query("SELECT ranch_qualified_at,ranch_qualified_user_id FROM timeline_posts "
                 +"WHERE id=? AND is_ranch_origin_known=TRUE "
                 +"AND parent_id IS NULL AND repost_of_id IS NULL AND posted_as_type='USER' AND system_post_type IS NULL AND deleted_at IS NULL FOR UPDATE",
-                (rs,index) -> new NativeMetadata(rs.getTimestamp("ranch_qualified_at"),
+                (rs,index) -> new NativeMetadata(rs.getTimestamp("ranch_qualified_at",com.mannschaft.app.common.jdbc.JdbcUtcCalendar.fresh()),
                         rs.getObject("ranch_qualified_user_id",Long.class)),Long.parseLong(fact.canonicalSourceId()));
         if(nativeRows.size()!=1) return false;
         var row=nativeRows.getFirst();
