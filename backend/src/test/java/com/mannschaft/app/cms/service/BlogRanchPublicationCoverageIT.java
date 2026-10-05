@@ -101,7 +101,7 @@ class BlogRanchPublicationCoverageIT extends AbstractMySqlIntegrationTest {
     }
     @Test void inactiveAuthorDoesNotNarrowExistingEditorWritePermission() {
         teamAdmin();Long id=draft(team,null);
-        var user=users.findById(author).orElseThrow();user.setStatus(UserEntity.UserStatus.FROZEN);users.saveAndFlush(user);
+        var user=users.findById(author).orElseThrow();user.freeze();users.saveAndFlush(user);
         actor(editor);
         assertThat(controller.changeStatus(id,new PublishRequest("PUBLISHED",null,null),new MockHttpServletRequest())
                 .getStatusCode().value()).isEqualTo(200);
@@ -125,7 +125,7 @@ class BlogRanchPublicationCoverageIT extends AbstractMySqlIntegrationTest {
     }
     @Test void inactiveAuthorStillReceivesOriginalScheduledPublicationWithoutReward() {
         Long id=draft(null,LocalDateTime.now().minusHours(1));
-        var user=users.findById(author).orElseThrow();user.setStatus(UserEntity.UserStatus.FROZEN);users.saveAndFlush(user);
+        var user=users.findById(author).orElseThrow();user.freeze();users.saveAndFlush(user);
         assertThat(scheduled.publishScheduledPosts()).isGreaterThanOrEqualTo(1);published(id);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM blog_posts WHERE id=? AND first_published_at IS NULL "
                 +"AND first_published_author_user_id IS NULL",Integer.class,id)).isEqualTo(1);

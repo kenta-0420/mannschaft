@@ -57,6 +57,7 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     @Autowired private BlogRanchTransportWriter transport;
     @Autowired private BlogRanchTransportRepository transportRows;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private com.fasterxml.jackson.databind.ObjectMapper mapper;
     private Long owner;
     private final List<Long> ownPosts=new ArrayList<>();
     private final List<Long> ownMedia=new ArrayList<>();
