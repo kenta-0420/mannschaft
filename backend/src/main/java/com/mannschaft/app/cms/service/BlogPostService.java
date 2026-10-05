@@ -510,7 +510,7 @@ public class BlogPostService {
     /**
      * 一括ステータス変更を実行する。
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public BulkActionResponse bulkAction(BulkActionRequest request, Long userId) {
         if (request.getIds().size() > 50) {
             throw new BusinessException(CmsErrorCode.BULK_LIMIT_EXCEEDED);
@@ -522,7 +522,7 @@ public class BlogPostService {
         LocalDateTime baseTime = LocalDateTime.now();
 
         for (Long id : request.getIds()) {
-            BlogPostEntity entity = postRepository.findById(id).orElse(null);
+            BlogPostEntity entity = request.getRanchCaptureContext()!=null ? postRepository.findForPublicationUpdate(id).orElse(null) : postRepository.findById(id).orElse(null);
             if (entity == null) {
                 skippedIds.add(id);
                 continue;
@@ -554,6 +554,11 @@ public class BlogPostService {
                         // 予約時刻をそのまま渡すことで BlogPostEntity#publish が DRAFT に据え置く。
                         entity.publish(entity.getPublishedAt(), baseTime);
                         if (entity.getStatus() == PostStatus.PUBLISHED) {
+                            if(request.getRanchCaptureContext()!=null) {
+                                var context=request.getRanchCaptureContext().forAuthor(entity.getAuthorId());
+                                ranchPublicationCapture.capture(entity,userId,context,com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope.PublicationKind.BULK);
+                                request.getRanchCaptureContext().collect(context);
+                            }
                             postRepository.save(entity);
                             processedCount++;
                         } else {

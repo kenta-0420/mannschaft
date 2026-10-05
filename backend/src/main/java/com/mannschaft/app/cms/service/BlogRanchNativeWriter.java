@@ -30,4 +30,10 @@ class BlogRanchNativeWriter {
         try { return new Outcome(posts.selfReview(id,actor,request),context.take()); }
         finally { request.clearRanchCapture(); }
     }
-}
+    record BulkOutcome(com.mannschaft.app.cms.dto.BulkActionResponse response,java.util.List<BlogRanchCapture> captures) { }
+    BulkOutcome bulk(com.mannschaft.app.cms.dto.BulkActionRequest request,Long actor,
+            java.util.Map<Long,com.mannschaft.app.auth.dto.DeliveryUserState> states) {
+        var context=new BlogRanchBulkCaptureContext(actor,states);request.armRanchCapture(context);
+        try { return new BulkOutcome(posts.bulkAction(request,actor),context.take()); }
+        finally { request.clearRanchCapture(); }
+    }}

@@ -22,4 +22,12 @@ class BlogRanchAuthorReader {
         return jdbc.queryForList("SELECT author_id FROM blog_posts WHERE id=? AND deleted_at IS NULL",Long.class,id)
                 .stream().anyMatch(actor::equals);
     }
-}
+    /** 最大50の源IDを先読みし、auth窓口を開く前に短いPRIMARY TXを終える。 */
+    @Transactional(propagation=Propagation.REQUIRES_NEW,readOnly=false)
+    java.util.List<Long> authors(java.util.List<Long> ids) {
+        if(ids==null || ids.isEmpty() || ids.size()>50 || ids.stream().anyMatch(id -> id==null || id<=0))
+            throw new IllegalArgumentException("ブログ資格先読み入力が不正です");
+        return jdbc.queryForList("SELECT DISTINCT author_id FROM blog_posts WHERE id IN ("
+                +String.join(",",java.util.Collections.nCopies(ids.size(),"?"))+") AND deleted_at IS NULL LIMIT 51",
+                Long.class,ids.toArray());
+    }}

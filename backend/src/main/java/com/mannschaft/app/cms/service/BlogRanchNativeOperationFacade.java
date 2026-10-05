@@ -58,4 +58,30 @@ public class BlogRanchNativeOperationFacade {
         queue.offer(outcome.capture());
         return Optional.of(outcome.response());
     }
-}
+    /** 全記事を元の一つのCMS TXで処理し、正常commit後だけ各captureをofferする。 */
+    public Optional<com.mannschaft.app.cms.dto.BulkActionResponse> bulk(
+            com.mannschaft.app.cms.dto.BulkActionRequest request,Long actor,boolean impersonated) {
+        if(impersonated || actor==null || TransactionSynchronizationManager.isActualTransactionActive()
+                || request==null || !"PUBLISH".equalsIgnoreCase(request.getAction())
+                || request.getIds()==null || request.getIds().isEmpty() || request.getIds().size()>50) return Optional.empty();
+        java.util.List<Long> recipients;
+        try { recipients=authors.authors(request.getIds()); }
+        catch(RuntimeException ignored) { telemetry.lost(BlogRanchCaptureTelemetry.Reason.UNSUPPORTED_CAPTURE);return Optional.empty(); }
+        var ids=new java.util.ArrayList<Long>(recipients);ids.add(actor);
+        var started=new AtomicBoolean();var committed=new AtomicReference<BlogRanchNativeWriter.BulkOutcome>();
+        BlogRanchNativeWriter.BulkOutcome outcome;
+        try {
+            outcome=users.withLockedDeliveryUsers(ids,states -> {
+                started.set(true);var saved=writer.bulk(request,actor,states);committed.set(saved);return saved;
+            });
+        } catch(RuntimeException failure) {
+            if(committed.get()!=null) {
+                telemetry.lost(BlogRanchCaptureTelemetry.Reason.POST_NATIVE_FAILURE);
+                return Optional.of(committed.get().response());
+            }
+            if(started.get()) throw failure;
+            telemetry.lost(BlogRanchCaptureTelemetry.Reason.UNSUPPORTED_CAPTURE);return Optional.empty();
+        }
+        outcome.captures().forEach(queue::offer);
+        return Optional.of(outcome.response());
+    }}
