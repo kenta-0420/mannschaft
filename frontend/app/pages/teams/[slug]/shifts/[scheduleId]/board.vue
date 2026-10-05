@@ -377,6 +377,8 @@ async function onConfirmAutoAssignWithNote(_note: string | undefined): Promise<v
 
 // 自動割当破棄
 async function onRevokeAutoAssign(): Promise<void> {
-  await revokeAutoAssign()
+  const run = pendingRun.value
+  if (!run) return
+  await revokeAutoAssign(run.id)
 }
 </script>

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
+import type { CreateChangeRequestPayload, ReviewChangeRequestPayload } from '~/types/shift'
 import { useShiftChangeRequestApi } from './useShiftChangeRequestApi'
 
 const mockApi = vi.fn()
@@ -14,7 +15,12 @@ describe('useShiftChangeRequestApi', () => {
   })
 
   it('createChangeRequest: POST /api/v1/shifts/change-requests', async () => {
-    const payload = { slotId: 1, reason: 'r' } as never
+    const payload: CreateChangeRequestPayload = {
+      scheduleId: 425,
+      slotId: 1,
+      requestType: 'PRE_CONFIRM_EDIT',
+      reason: 'r',
+    }
     await useShiftChangeRequestApi().createChangeRequest(payload)
     expect(mockApi).toHaveBeenCalledWith('/api/v1/shifts/change-requests', {
       method: 'POST',
@@ -33,7 +39,7 @@ describe('useShiftChangeRequestApi', () => {
   })
 
   it('reviewChangeRequest: PATCH /api/v1/shifts/change-requests/{id}/review', async () => {
-    const payload = { decision: 'APPROVED' } as never
+    const payload: ReviewChangeRequestPayload = { decision: 'ACCEPTED', version: 0 }
     await useShiftChangeRequestApi().reviewChangeRequest(7, payload)
     expect(mockApi).toHaveBeenCalledWith('/api/v1/shifts/change-requests/7/review', {
       method: 'PATCH',

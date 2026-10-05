@@ -9,7 +9,7 @@ mockNuxtImport('useApi', () => () => mockApi)
 // （@RequestMapping("/api/v1/shifts/teams/{teamId}/work-constraints")）のマッピングを正とする。
 describe('useShiftConstraintApi', () => {
   const BASE = '/api/v1/shifts/teams/10/work-constraints'
-  const body = { maxDaysPerWeek: 5 }
+  const body = { maxMonthlyDays: 20, maxConsecutiveDays: 5 }
 
   beforeEach(() => {
     mockApi.mockReset()
