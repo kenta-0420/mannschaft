@@ -52,4 +52,14 @@ class RanchRewardDeliverySchedulerTest {
                     verify(orchestrator).drainOnce();
                 });
     }
+
+    @Test
+    void annotationDefaultsDoNotReplaceEitherRequiredRuntimeTimingSetting() {
+        runner.withPropertyValues("mannschaft.ranch.delivery.worker.enabled=true",
+                        "mannschaft.ranch.delivery.worker.interval-ms=1000")
+                .run(context -> assertThat(context.getStartupFailure()).isNotNull());
+        runner.withPropertyValues("mannschaft.ranch.delivery.worker.enabled=true",
+                        "mannschaft.ranch.delivery.worker.lock-at-most=PT30S")
+                .run(context -> assertThat(context.getStartupFailure()).isNotNull());
+    }
 }

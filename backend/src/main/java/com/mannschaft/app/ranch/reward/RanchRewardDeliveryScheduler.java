@@ -39,11 +39,12 @@ public class RanchRewardDeliveryScheduler {
         }
     }
 
-    @Scheduled(fixedDelayString = "${mannschaft.ranch.delivery.worker.interval-ms}")
+    // annotationの既定表記は静的番人用。validateRegistrationが実設定の両キーを必須にする。
+    @Scheduled(fixedDelayString = "${mannschaft.ranch.delivery.worker.interval-ms:1000}")
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "明示有効化した源outboxの既存leaseを回収し、停止期間を跨ぐfactの再配達を維持する")
     @SchedulerLock(name = "ranchRewardDelivery",
-            lockAtMostFor = "${mannschaft.ranch.delivery.worker.lock-at-most}")
+            lockAtMostFor = "${mannschaft.ranch.delivery.worker.lock-at-most:PT30S}")
     @BatchEndpoint(name = "ranch-reward-delivery",
             description = "承認済み四源の報酬配送を有界leaseと独立決定で処理する")
     public void poll() {

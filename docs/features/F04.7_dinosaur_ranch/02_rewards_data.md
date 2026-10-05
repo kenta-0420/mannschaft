@@ -94,6 +94,8 @@ stateDiagram-v2
 
 複数workerはsourceごとに短い `FOR UPDATE SKIP LOCKED` TXで一batchをlease。lease tokenとexpiresAtでACK/retryを比較更新し、古いworkerが新leaseを消さない。処理中はsourceのロックを保持しない。次pageは `(nextAttemptAt,id)` keyset、失敗一件が他件を止めない。lease時間/batch数/backoff最大/retry上限は運営必須設定で検証後有効化。指数backoffにjitter、schema/対象不整合はpoisonとしてdead-letter。再送は元event ID/occurredAt/canonical keyのまま。過去週policyが保存されているため長期遅延も元週へ反映可能。
 
+定期配送workerは `mannschaft.ranch.delivery.worker.enabled=true` の明示環境だけに登録し、未測定の本番ではOFFを維持する。`interval-ms` と `lock-at-most` は `@PostConstruct` の `getRequiredProperty` で両方必須、正の有限intervalと `lock > interval` を検証し、片方でも欠落すれば起動を拒否する。annotationの `interval-ms:1000` / `lock-at-most:PT30S` は既存 `ScheduledBatchGuardTest` が間隔とlockを静的比較するためのmetadataであり、実環境の設定欠落を補う既定値ではない。実測した最大処理時間に合わせた明示設定と四源の実配送確認を、有効化の条件にする。
+
 auth所有guardで既存users先lock/ACTIVE確認後、Ranch REQUIRES_NEW writerはuser単位にowner行をロックし、当該週budgetをUNIQUEで作成/ロック、同canonical decision存在を検査、参加期間/源enabled/容量を判定、台帳/残高/予算を一括commit。複数source同時配送・複数tabでもglobalCapを超えない。claim済みを示すDB uniqueとrow lockが正本でValkeyだけに依存しない。consumer commit直後・ACK前に停止しても再配送は元decisionを返す。
 
 未参加userにはowner/個体/decisionを自動作成しない。source ACKのterminal_outcome=NOT_ENROLLEDを保存して完了し、源にevent ID/時刻/recipientの最小metadataだけ残す。遅延配送時にownerが作成済みでも、最初の参加時刻より前なら同結果。参加開始/休止/再開はowner participation periodに有効時刻を保存し、`occurredAt >= startsAt && occurredAt < endsAt` の期間で判定。表示OFFとは独立。休止中factはNOT_PARTICIPATINGのterminal0、再開後replayでも変えない。逆にactive期間に発生して配送時だけPAUSEDなら元週へ付与する（現在PAUSEDの給餌は不可）。源OFF/rollout前/historicalもterminal0。運営の配送一時停止は未処理を保留するだけ、報酬停止の有効期間はfact時刻で0判断する。運営停止と本人休止を区別する。
