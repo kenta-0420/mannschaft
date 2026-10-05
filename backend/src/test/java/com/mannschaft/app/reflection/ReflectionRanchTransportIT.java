@@ -115,6 +115,7 @@ class ReflectionRanchTransportIT extends AbstractMySqlIntegrationTest {
         assertThat(first.envelope()).isEqualTo(fact.toEnvelope());
         var defer=new SourceOutboxDeferRequest(first.eventId(),first.leaseToken(),now.plusSeconds(1),now.plusSeconds(5),10);
         assertThat(outboxDelivery.defer(defer)).isTrue();assertThat(outboxDelivery.defer(defer)).isFalse();
+        assertThat(jdbc.update("UPDATE reflection_ranch_outboxes SET next_attempt_at=TIMESTAMPADD(SECOND,-1,UTC_TIMESTAMP(6)) WHERE id=? AND status='RETRY'",bytes(first.eventId()))).isEqualTo(1);
         var second=outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(5),10,30,2)).getFirst();
         assertThat(second.attemptCount()).isEqualTo(1);
         var terminal=new RanchRewardDeliveryOutcome(RanchRewardDeliveryOutcome.Outcome.ACCOUNT_DELETED,null,0);
@@ -137,13 +138,16 @@ class ReflectionRanchTransportIT extends AbstractMySqlIntegrationTest {
         var now=deliveryNow();var leased=outboxDelivery.lease(new SourceOutboxLeaseRequest(now,10,30,1));
         assertThat(leased).hasSize(1);assertThat(leased.getFirst().eventId()).isEqualTo(valid.eventId());
         assertThat(outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(29),10,30,1))).isEmpty();
+        // 自己の現leaseだけを期限切れにし、native発生時刻には触れない。
+        var current=leased.getFirst();
+        assertThat(jdbc.update("UPDATE reflection_ranch_outboxes SET lease_expires_at=TIMESTAMPADD(SECOND,-1,UTC_TIMESTAMP(6)) WHERE id=? AND status='LEASED' AND lease_token=?",bytes(current.eventId()),bytes(current.leaseToken()))).isEqualTo(1);
         assertThat(outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(30),10,30,1))).isEmpty();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM reflection_ranch_outboxes WHERE recipient_user_id=? AND status='DEAD_LETTER'",Integer.class,owner)).isEqualTo(2);
         assertThat(count("reflection_ranch_outboxes")).isEqualTo(2);
         assertThat(operations.get(owner,first.id()).status()).isEqualTo(RecallSessionStatus.COMPLETED);
         assertThat(operations.get(owner,second.id()).status()).isEqualTo(RecallSessionStatus.COMPLETED);
     }
-    private java.time.Instant deliveryNow() { return jdbc.queryForObject("SELECT MAX(next_attempt_at) FROM reflection_ranch_outboxes WHERE recipient_user_id=?",java.sql.Timestamp.class,owner).toInstant().plusSeconds(1); }
+    private java.time.Instant deliveryNow() { return jdbc.queryForObject("SELECT UTC_TIMESTAMP(6)",(rs,index) -> rs.getTimestamp(1,com.mannschaft.app.common.jdbc.JdbcUtcCalendar.fresh()).toInstant()); }
     private boolean receive(ReflectionRecallRewardPayload fact) {
         return deliveryGuard.withLockedDeliveryUser(owner,state->transport.accept(fact));
     }
