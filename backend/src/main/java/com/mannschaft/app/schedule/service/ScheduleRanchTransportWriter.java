@@ -31,7 +31,7 @@ class ScheduleRanchTransportWriter {
                 || fact.facts().proxy() || !fact.facts().firstQualified()) return false;
         var rows=jdbc.query("SELECT ranch_first_self_at,ranch_first_self_user_id,schedule_id FROM schedule_attendances "
                 +"WHERE id=? AND user_id=? AND is_ranch_response_history_known=TRUE "
-                +"AND is_ranch_self_response_observed=TRUE AND deleted_at IS NULL FOR UPDATE",
+                +"AND is_ranch_self_response_observed=TRUE FOR UPDATE",
                 (rs,index) -> new NativeProof(rs.getTimestamp(1),rs.getObject(2,Long.class),rs.getObject(3,Long.class)),
                 Long.parseLong(fact.canonicalSourceId()),fact.recipientUserId());
         if(rows.isEmpty() || rows.getFirst().at()==null

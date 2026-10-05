@@ -56,7 +56,7 @@ class ScheduleRanchNativeWriter {
             throw new BusinessException(ScheduleErrorCode.COMMENT_REQUIRED);
         var status=EnumInputParser.parse(AttendanceStatus.class,request.getStatus(),"status");
         // 初loadの前に現在行をlockする。古いPCのentityを資格判定へ再利用しない。
-        var ids=jdbc.queryForList("SELECT id FROM schedule_attendances WHERE schedule_id=? AND user_id=? AND deleted_at IS NULL FOR UPDATE",
+        var ids=jdbc.queryForList("SELECT id FROM schedule_attendances WHERE schedule_id=? AND user_id=? FOR UPDATE",
                 Long.class,scheduleId,actor);
         if(ids.isEmpty()) throw new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND);
         if(ids.size()!=1) throw new org.springframework.dao.IncorrectResultSizeDataAccessException(1,ids.size());
