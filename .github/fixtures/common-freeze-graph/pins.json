@@ -1,0 +1,139 @@
+{
+  "gradleVersion": "8.14.4",
+  "javaMajor": 21,
+  "fixtureSHA256": {
+    "fixture.build.gradle": "602E4E14683FF3EA89CB53F2958532B3BDD44E5690051752930531234163737C",
+    "ArchProbeTest.java": "A7AF9B19C3B3566FFF22F2636478838E1D388AEB6D6A689F25C1B9EA56CE2F5D",
+    "GuardProbeTest.java": "22122861D4B38355D39EA473D32771FE0FD66905B980C6864C294236B09DF1D0",
+    "BusinessProbeTest.java": "3CDA4959DA857A39F310AD3A7AB04EA07A064EA735CC5654F8968C8844538472"
+  },
+  "expectationsSHA256": "B007A1ABD81C3A7A219BF021F2B09DA167B348D8BEE645BA292318FEBA420BDD",
+  "jarPins": [
+    {
+      "coordinate": "org.junit.jupiter:junit-jupiter-api:5.12.2",
+      "bytes": 233372,
+      "sha256": "0B9CA728E4BCD9ADC57F29DEB9556FF9ED5E08B4E8843B875ABA4E4E3E04F092"
+    },
+    {
+      "coordinate": "org.junit.jupiter:junit-jupiter-engine:5.12.2",
+      "bytes": 292002,
+      "sha256": "F576C06B8ACCDE9985063B8BC80526CB980EEC24DEE0B7221FC8DDD7ACE65800"
+    },
+    {
+      "coordinate": "org.junit.platform:junit-platform-launcher:1.12.2",
+      "bytes": 207612,
+      "sha256": "DCCF2C1FA0A977C53AD094AD859BFDDDD524D97594B76307AD787DE71985757F"
+    },
+    {
+      "coordinate": "org.junit.platform:junit-platform-engine:1.12.2",
+      "bytes": 255799,
+      "sha256": "CEF0EFCB5BD2E05E2B808D38BAB5C655089C0C3001527376E74CB606A7911EC8"
+    },
+    {
+      "coordinate": "org.junit.platform:junit-platform-commons:1.12.2",
+      "bytes": 151859,
+      "sha256": "E683A01E85DFABEA520C056AC6015A6162756E602EC653C0DA85E233F0AFBC18"
+    },
+    {
+      "coordinate": "org.opentest4j:opentest4j:1.3.0",
+      "bytes": 14304,
+      "sha256": "48E2DF636CAB6563CED64DCDFF8ABB2355627CB236EF0BF37598682DDF742F1B"
+    },
+    {
+      "coordinate": "org.apiguardian:apiguardian-api:1.1.2",
+      "bytes": 6806,
+      "sha256": "B509448AC506D607319F182537F0B35D71007582EC741832A1F111E5B5B70B38"
+    }
+  ],
+  "cases": [
+    {
+      "id": "normal",
+      "args": [
+        "test"
+      ],
+      "exit": 0,
+      "archCases": 1,
+      "guardCases": 2,
+      "businessCases": 1
+    },
+    {
+      "id": "direct-arch",
+      "args": [
+        "archUnitTest"
+      ],
+      "exit": 0,
+      "archCases": 1,
+      "guardCases": 2,
+      "businessCases": 0
+    },
+    {
+      "id": "cli",
+      "args": [
+        "archUnitFreezeStoreIntegrityTest",
+        "--tests",
+        "fixture.DoesNotExist"
+      ],
+      "exit": 0,
+      "archCases": 0,
+      "guardCases": 2,
+      "businessCases": 0
+    },
+    {
+      "id": "missing-class",
+      "args": [
+        "archUnitFreezeStoreIntegrityTest",
+        "-PmissingGuard=true"
+      ],
+      "exitNonzero": true,
+      "guardCases": 0,
+      "businessCases": 0,
+      "requiredLog": "OWNED_FIXTURE_GUARD_CLASS_MISSING"
+    },
+    {
+      "id": "cache-repeat",
+      "args": [
+        "test",
+        "--build-cache"
+      ],
+      "repeat": 2,
+      "exit": 0,
+      "archCases": 1,
+      "guardCases": 2,
+      "businessCases": 1,
+      "forbidTaskOutcomes": [
+        "archUnitTest UP-TO-DATE",
+        "archUnitTest FROM-CACHE",
+        "archUnitFreezeStoreIntegrityTest UP-TO-DATE",
+        "archUnitFreezeStoreIntegrityTest FROM-CACHE"
+      ]
+    },
+    {
+      "id": "arch-fail",
+      "args": [
+        "test",
+        "-ParchFail=true",
+        "--continue"
+      ],
+      "exitNonzero": true,
+      "archCases": 1,
+      "archFailures": 1,
+      "guardCases": 2,
+      "guardFailures": 0,
+      "businessCases": 0
+    },
+    {
+      "id": "guard-fail",
+      "args": [
+        "test",
+        "-PguardFail=true",
+        "--continue"
+      ],
+      "exitNonzero": true,
+      "archCases": 1,
+      "guardCases": 2,
+      "guardFailures": 1,
+      "businessCases": 0
+    }
+  ],
+  "claim": "実Test task graphのみ。本番Arch rule/Windows Job/共有leaseの代用0。"
+}
