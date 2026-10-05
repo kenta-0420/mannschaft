@@ -29,7 +29,7 @@ class TimelineRanchPostCaptureFactory {
             if (post.getStatus() != PostStatus.PUBLISHED || post.getParentId() != null
                     || post.getRepostOfId() != null || post.getPostedAsType() != PostedAsType.USER
                     || post.getScopeType() == PostScopeType.VILLAGE || request.getPoll() != null
-                    || (request.getAttachments() != null && !request.getAttachments().isEmpty())
+                    || !supportsAttachments(request)
                     || post.getContent() == null || post.getContent().length() > 5000) return null;
             var at = clock.instant().truncatedTo(ChronoUnit.MICROS);
             var fingerprint = fingerprints.fingerprint(actor, at, post.getContent(), List.of());
@@ -40,9 +40,16 @@ class TimelineRanchPostCaptureFactory {
             return null;
         }
     }
-    void finish(TimelinePostEntity post, CreatePostRequest request, Long actor, TimelineContentFingerprint fingerprint) {
+    void finish(TimelinePostEntity post, CreatePostRequest request, Long actor, TimelineContentFingerprint fingerprint,
+            List<TimelineContentFingerprint.AttachmentRef> attachmentIdentities) {
         if (fingerprint == null || !request.isRanchCaptureArmed()) return;
         try {
+            if (attachmentIdentities == null) {
+                telemetry.lost(TimelineRanchCaptureTelemetry.Reason.CAPTURE_FAILED);
+                return;
+            }
+            var finalFingerprint = attachmentIdentities.isEmpty() ? fingerprint
+                    : fingerprints.fingerprint(actor, post.getRanchQualifiedAt(), post.getContent(), attachmentIdentities);
             var scope = post.getScopeType() == PostScopeType.TEAM ? RanchRewardEnvelope.ScopeType.TEAM
                     : post.getScopeType() == PostScopeType.ORGANIZATION ? RanchRewardEnvelope.ScopeType.ORGANIZATION
                     : RanchRewardEnvelope.ScopeType.PERSONAL;
@@ -53,9 +60,16 @@ class TimelineRanchPostCaptureFactory {
                     scopeId == null ? null : scopeId.toString(), RanchRewardEnvelope.ActorKind.USER,
                     actor, null, actor, actor, post.getRanchQualifiedAt(), RanchRewardEnvelope.Origin.ORIGINAL,
                     new RanchRewardEnvelope.Timeline(RanchRewardEnvelope.PostOrigin.ORIGINAL, true));
-            request.recordRanchCapture(payload, fingerprint);
+            request.recordRanchCapture(payload, finalFingerprint);
         } catch (RuntimeException ignored) {
             telemetry.lost(TimelineRanchCaptureTelemetry.Reason.CAPTURE_FAILED);
         }
     }
+    static boolean supportsAttachments(CreatePostRequest request) {
+        return request.getAttachments() == null || (request.getAttachments().size() <= 10
+                && request.getAttachments().stream().allMatch(attachment -> attachment != null
+                        && "IMAGE".equals(attachment.getAttachmentType()) && attachment.getFileKey() != null
+                        && !attachment.getFileKey().isBlank()));
+    }
+    void identityUnavailable() { telemetry.lost(TimelineRanchCaptureTelemetry.Reason.CAPTURE_FAILED); }
 }

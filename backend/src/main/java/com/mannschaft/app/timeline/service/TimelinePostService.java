@@ -106,6 +106,7 @@ public class TimelinePostService {
     private final DomainEventPublisher domainEventPublisher;
     private final R2StorageService r2StorageService;
     private final StorageAclService storageAclService;
+    private final com.mannschaft.app.common.storage.acl.StorageClaimedIdentityReader storageClaimedIdentities;
     /** F13 Phase 4-γ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
     /** F17.1 Phase 3: scope=VILLAGE 投稿の主体検証。 */
@@ -625,11 +626,13 @@ public class TimelinePostService {
             postRepository.save(repostOriginal);
         }
 
+        java.util.List<com.mannschaft.app.timeline.dto.TimelineContentFingerprint.AttachmentRef> ranchAttachmentIdentities = java.util.List.of();
         // 添付ファイルの保存
         // リプライ時は継承済みの scopeTypeEnum/effectiveScopeId を使う（req の値は使わない）
         if (req.getAttachments() != null && !req.getAttachments().isEmpty()) {
             ScopeResolution scope = resolveScope(scopeTypeEnum.name(), effectiveScopeId, userId);
-            saveAttachments(post.getId(), req.getAttachments(), scope, userId);
+            ranchAttachmentIdentities = saveAttachments(post.getId(), req.getAttachments(), scope, userId,
+                    ranchFingerprint != null && req.isRanchCaptureArmed());
         }
 
         // 投票の保存
@@ -648,7 +651,7 @@ public class TimelinePostService {
             ));
         }
 
-        if (ranchCaptureFactory != null) ranchCaptureFactory.finish(post, req, userId, ranchFingerprint);
+        if (ranchCaptureFactory != null) ranchCaptureFactory.finish(post, req, userId, ranchFingerprint, ranchAttachmentIdentities);
         return timelineMapper.toPostResponse(post);
     }
 
@@ -1487,8 +1490,10 @@ public class TimelinePostService {
      * @param scope       解決済みストレージスコープ
      * @param userId      操作者ユーザー ID
      */
-    private void saveAttachments(Long postId, List<CreateAttachmentRequest> attachments,
-                                  ScopeResolution scope, Long userId) {
+    private java.util.List<com.mannschaft.app.timeline.dto.TimelineContentFingerprint.AttachmentRef> saveAttachments(
+            Long postId, List<CreateAttachmentRequest> attachments, ScopeResolution scope, Long userId, boolean captureIdentity) {
+        var capturedIdentities = new java.util.ArrayList<com.mannschaft.app.timeline.dto.TimelineContentFingerprint.AttachmentRef>();
+        boolean identitiesKnown = captureIdentity && attachments.size() <= 10;
         short order = 0;
         for (CreateAttachmentRequest att : attachments) {
             AttachmentType attachmentType = AttachmentType.valueOf(att.getAttachmentType());
@@ -1558,6 +1563,26 @@ public class TimelinePostService {
                         new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", saved.getId().toString()));
             }
 
+            // 元claimの認可・失敗は上段で維持する。成功後の永続upload UUIDだけを補助捕捉する。
+            if (identitiesKnown) {
+                if (attachmentType != AttachmentType.IMAGE || storageClaimedIdentities == null) {
+                    identitiesKnown = false;
+                } else {
+                    try {
+                    var identity = storageClaimedIdentities.currentClaimedIdentity(att.getFileKey(), userId,
+                            toAclScope(scope, userId), new StorageAclContentReference("TIMELINE_SCOPE",
+                                    scope.scopeType().name() + ":" + scope.scopeId()),
+                            new StorageAclAttachmentBinding("TIMELINE_POST_ATTACHMENT", saved.getId().toString()));
+                    if (identity.isEmpty()) identitiesKnown = false;
+                    else capturedIdentities.add(new com.mannschaft.app.timeline.dto.TimelineContentFingerprint.AttachmentRef(
+                            "UUID", identity.get().toString()));
+                    } catch (RuntimeException ignored) {
+                        identitiesKnown = false;
+                        if (ranchCaptureFactory != null) ranchCaptureFactory.identityUnavailable();
+                    }
+                }
+            }
+
             // F13 Phase 4-γ: ファイル系添付のクォータ使用量加算
             if ((attachmentType == AttachmentType.IMAGE || attachmentType == AttachmentType.VIDEO_FILE)
                     && att.getFileSize() != null && att.getFileSize() > 0) {
@@ -1569,6 +1594,7 @@ public class TimelinePostService {
 
             order++;
         }
+        return identitiesKnown ? java.util.List.copyOf(capturedIdentities) : null;
     }
 
     private StorageAclScope toAclScope(ScopeResolution scope, Long userId) {
