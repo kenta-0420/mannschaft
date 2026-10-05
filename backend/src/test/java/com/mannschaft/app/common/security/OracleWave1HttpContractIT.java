@@ -60,6 +60,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -69,6 +70,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import java.util.function.Supplier;
@@ -347,14 +349,19 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
         void B1_4callerの越境と不在は絶対016かつDB変更なし(String operation) throws Exception {
             BulletinArchiveFolderEntity foreign = folder(foreignTeam.getId());
             BulletinThreadEntity thread = thread(operation.equals("MOVE"));
+            List<MvcResult> deniedResponses = new ArrayList<>();
             for (UUID id : List.of(foreign.getId(), MISSING_FOLDER)) {
-                denial(folderHttp(admin, operation, thread.getId(), id), "BULLETIN_016", "保管庫フォルダが見つかりません");
+                ResultActions response = folderHttp(admin, operation, thread.getId(), id);
+                denial(response, "BULLETIN_016", "保管庫フォルダが見つかりません");
+                deniedResponses.add(response.andReturn());
                 BulletinThreadEntity reloaded = inTx(() -> threads.findById(thread.getId()).orElseThrow());
                 assertThat(reloaded.getIsArchived()).isEqualTo(operation.equals("MOVE"));
                 assertThat(reloaded.getArchiveFolderId()).isNull();
                 assertThat(inTx(() -> folders.countByScopeTypeAndScopeId(
                         com.mannschaft.app.bulletin.ScopeType.TEAM, ownTeam.getId()))).isZero();
             }
+            assertThat(mapper.readTree(deniedResponses.get(0).getResponse().getContentAsByteArray()).get("error"))
+                    .isEqualTo(mapper.readTree(deniedResponses.get(1).getResponse().getContentAsByteArray()).get("error"));
         }
 
         @Test
@@ -402,9 +409,16 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
         void C1_別委員会及び非委員会recordと不在は絶対NOT_FOUNDで変更なし() throws Exception {
             ActivityResultEntity foreign = record(ActivityScopeType.COMMITTEE, foreignCommittee.getId());
             ActivityResultEntity otherType = record(ActivityScopeType.TEAM, ownTeam.getId());
+            List<MvcResult> deniedResponses = new ArrayList<>();
             for (long id : List.of(foreign.getId(), otherType.getId(), MISSING_ID)) {
-                denial(http(admin, "PATCH", confirmPath(ownCommittee.getId(), id), null),
+                ResultActions response = http(admin, "PATCH", confirmPath(ownCommittee.getId(), id), null);
+                denial(response,
                         "COMMITTEE_NOT_FOUND", "委員会が見つかりません");
+                deniedResponses.add(response.andReturn());
+            }
+            for (int index : List.of(0, 1)) {
+                assertThat(mapper.readTree(deniedResponses.get(index).getResponse().getContentAsByteArray()).get("error"))
+                        .isEqualTo(mapper.readTree(deniedResponses.get(2).getResponse().getContentAsByteArray()).get("error"));
             }
             assertThat(inTx(() -> records.findById(foreign.getId()).orElseThrow().getFieldValues())).isEqualTo("{}");
             assertThat(inTx(() -> records.findById(otherType.getId()).orElseThrow().getFieldValues())).isEqualTo("{}");
