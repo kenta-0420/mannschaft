@@ -1853,7 +1853,6 @@ class GlobalExceptionHandlerTest {
             GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
 
             HandlerMethodValidationException ex = mock(HandlerMethodValidationException.class);
-            when(ex.getMessage()).thenReturn("validation failed");
 
             ResponseEntity<ErrorResponse> resp = handler.handleHandlerMethodValidation(ex);
 
@@ -1861,6 +1860,46 @@ class GlobalExceptionHandlerTest {
             assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_001");
             verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
             verify(service, never()).recordBackendException(any(), anyString(), anyString(), anyString(), anyString(), any());
+        }
+
+        @Test
+        @DisplayName("メソッド検証: 本文の @Valid 違反はフィールド名つき、パス/クエリ引数の違反は引数名で fieldErrors に入る")
+        void handlerMethodValidation_populatesFieldErrors() {
+            GlobalExceptionHandler handler =
+                    newHandlerWith(mock(ErrorReportService.class), mock(ErrorReportNotifier.class));
+
+            // 本文 (@Valid) の違反: entries フィールド
+            org.springframework.validation.method.ParameterErrors bodyErrors =
+                    mock(org.springframework.validation.method.ParameterErrors.class);
+            org.springframework.core.MethodParameter bodyParam = mock(org.springframework.core.MethodParameter.class);
+            when(bodyParam.getParameterName()).thenReturn("request");
+            when(bodyErrors.getMethodParameter()).thenReturn(bodyParam);
+            when(bodyErrors.getFieldErrors()).thenReturn(List.of(
+                    new org.springframework.validation.FieldError("request", "entries", "最大200件です")));
+            when(bodyErrors.getGlobalErrors()).thenReturn(List.of());
+
+            // クエリ引数 (@Min) の違反: 引数名が field
+            org.springframework.validation.method.ParameterValidationResult periodResult =
+                    mock(org.springframework.validation.method.ParameterValidationResult.class);
+            org.springframework.core.MethodParameter periodParam = mock(org.springframework.core.MethodParameter.class);
+            when(periodParam.getParameterName()).thenReturn("periodNumber");
+            when(periodResult.getMethodParameter()).thenReturn(periodParam);
+            when(periodResult.getResolvableErrors()).thenReturn(List.of(
+                    new org.springframework.context.support.DefaultMessageSourceResolvable(
+                            new String[] {"Min"}, null, "1以上である必要があります")));
+
+            HandlerMethodValidationException ex = mock(HandlerMethodValidationException.class);
+            when(ex.getParameterValidationResults()).thenReturn(List.of(bodyErrors, periodResult));
+
+            ResponseEntity<ErrorResponse> resp = handler.handleHandlerMethodValidation(ex);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_001");
+            assertThat(resp.getBody().getError().getFieldErrors())
+                    .extracting(ErrorResponse.FieldError::getField, ErrorResponse.FieldError::getMessage)
+                    .containsExactly(
+                            org.assertj.core.api.Assertions.tuple("entries", "最大200件です"),
+                            org.assertj.core.api.Assertions.tuple("periodNumber", "1以上である必要があります"));
         }
     }
 
