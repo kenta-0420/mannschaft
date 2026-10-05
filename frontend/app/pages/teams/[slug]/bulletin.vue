@@ -29,8 +29,12 @@ async function loadLinkedThread(): Promise<void> {
     const threadId = parseAnnouncementRouteId(route.query.threadId)
     if (threadId === undefined) return
     const scope = await getTeam(teamSlug)
-    const result = await getScopedThread('teams', String(scope.data.id), threadId)
-    if (result.data.id !== threadId || result.data.scopeType !== 'TEAM' || String(result.data.scopeId) !== String(scope.data.id)) {
+    const numericId = scope.data.numericId
+    if (typeof numericId !== 'number' || !Number.isSafeInteger(numericId) || numericId <= 0) {
+      throw new Error('Invalid team scope identifier')
+    }
+    const result = await getScopedThread('teams', String(numericId), threadId)
+    if (result.data.id !== threadId || result.data.scopeType !== 'TEAM' || String(result.data.scopeId) !== String(numericId)) {
       throw new Error('Bulletin thread does not match its route scope')
     }
     if (request === linkSequence) selectedThread.value = result.data
