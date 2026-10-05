@@ -254,3 +254,5 @@ ReflectionRanchOutboxDeliveryService / ReflectionRanchOutboxAdminService は V24
 ### F00 源所有リンク境界（実ACL Bean未接続）
 
 公開SPIは common.ranchsource.api.SourceRewardLinkProvider#resolve(viewerUserId,SourceRewardReference):Optional<SourceRewardLink>。参照は sourceType/idType/sourceId の正準技術IDのみ。ARはUUIDv7 entry、TL/出欠/CMSは正準正整数LONG。出欠源がresponse IDをschedule IDへ変換し、CMS源が現scope/slugから実画面ルートを決定する。返却kindはTIMELINE/SCHEDULE/BLOG/REFLECTION_ENTRY、本文/名称/recipientを含めない。Ranch TX終了後に呼び、現在のF00認可・削除・実存を通過した時だけリンクを返す。欠落provider、不在、認可拒否、取得不能はnull。現時点は公開型と純粋型試験のみで、四源ACL実Bean/第三接続の閉包/実HTTPは未検証。
+
+TLのSourceOutboxDeliveryFacade/SourceOutboxAdminProvider実BeanはTimelineRanchOutboxDeliveryService/TimelineRanchOutboxAdminService。公開署名変更0。残出欠providerが欠落する間、四源healthはSOURCEOUTBOX_001/503で取得不能を保持し、健康な4件ゼロを捏造しない。TL本人PUBLIC/PERSONAL本文新規以外は従来認可/保存経路を維持し、今回のfallbackに報酬資格を与えない。

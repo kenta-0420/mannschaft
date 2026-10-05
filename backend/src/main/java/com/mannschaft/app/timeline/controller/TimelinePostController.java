@@ -37,6 +37,8 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TimelinePostController {
 
     private final TimelinePostService postService;
+    private final com.mannschaft.app.timeline.service.TimelineRanchNativeOperationFacade ranchNative;
+    private final jakarta.servlet.http.HttpServletRequest servletRequest;
     /** slug/Long 文字列 → 内部 Long ID の共有リゾルバ（フィード取得経路と共通）。 */
     private final TimelineScopeIdResolver scopeIdResolver;
 
@@ -54,8 +56,9 @@ public class TimelinePostController {
     public ResponseEntity<ApiResponse<PostResponse>> createPost(
             @Valid @RequestBody CreatePostRequest request) {
         Long resolvedScopeId = scopeIdResolver.resolve(request.getScopeTypeOrDefault(), request.getScopeId());
-        PostResponse response = postService.createPost(
-                request, resolvedScopeId, SecurityUtils.getCurrentUserId());
+        PostResponse response = ranchNative.create(request, resolvedScopeId, SecurityUtils.getCurrentUserId(),
+                servletRequest.getAttribute("originalAdminId") != null)
+                .orElseGet(() -> postService.createPost(request, resolvedScopeId, SecurityUtils.getCurrentUserId()));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
