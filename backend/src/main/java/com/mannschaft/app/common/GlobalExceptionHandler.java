@@ -187,6 +187,8 @@ public class GlobalExceptionHandler {
             Map.entry("ROLE_012", HttpStatus.CONFLICT),             // オファー状態不整合/期限切れ/発行後状態変化 → 409
             Map.entry("ROLE_013", HttpStatus.NOT_FOUND),            // オファー不在（BOLA）/対象非所属 → 404
             Map.entry("ROLE_014", HttpStatus.UNPROCESSABLE_ENTITY), // 自己委譲など不正対象 → 422
+            // CMP-261001-0835: 応援者（SUPPORTER）の /me 自主退会はフォロー解除 API への案内のため 422
+            Map.entry("ROLE_015", HttpStatus.UNPROCESSABLE_ENTITY),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
             // 組織不在は 404（Severity.WARN 既定の 400 を上書き）。兄弟の TEAM_001 と流儀を揃える。
@@ -2425,6 +2427,7 @@ public class GlobalExceptionHandler {
             Map.entry("SUPPORTER_004", HttpStatus.CONFLICT),             // 申請は既に処理済み
             Map.entry("SUPPORTER_005", HttpStatus.FORBIDDEN),            // ブロックされているため申請不可
             Map.entry("SUPPORTER_006", HttpStatus.FORBIDDEN),            // サポーター機能が無効（兄弟 MEMBERSHIP_SUPPORTER_DISABLED と同流儀）
+            Map.entry("SUPPORTER_007", HttpStatus.NOT_FOUND),            // フォロー解除対象（SUPPORTER所属/PENDING申請）不在 → 404
 
             // F01.3 テンプレート・モジュール管理機能（TemplateErrorCode）の残り未登録分。
             Map.entry("TMPL_001", HttpStatus.NOT_FOUND),                 // テンプレートが見つからない（兄弟 TMPL_002 と同流儀）
