@@ -2,6 +2,7 @@ package com.mannschaft.app.schedule.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.jdbc.JdbcUtcCalendar;
 import com.mannschaft.app.schedule.repository.ScheduleRanchTransportRepository;
 import com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope;
 import java.sql.Timestamp;
@@ -32,7 +33,7 @@ class ScheduleRanchTransportWriter {
         var rows=jdbc.query("SELECT ranch_first_self_at,ranch_first_self_user_id,schedule_id FROM schedule_attendances "
                 +"WHERE id=? AND user_id=? AND is_ranch_response_history_known=TRUE "
                 +"AND is_ranch_self_response_observed=TRUE FOR UPDATE",
-                (rs,index) -> new NativeProof(rs.getTimestamp(1),rs.getObject(2,Long.class),rs.getObject(3,Long.class)),
+                (rs,index) -> new NativeProof(rs.getTimestamp(1,JdbcUtcCalendar.fresh()),rs.getObject(2,Long.class),rs.getObject(3,Long.class)),
                 Long.parseLong(fact.canonicalSourceId()),fact.recipientUserId());
         if(rows.isEmpty() || rows.getFirst().at()==null
                 || !Objects.equals(rows.getFirst().user(),fact.recipientUserId())

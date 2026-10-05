@@ -15,10 +15,12 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRanchTransportRepository;
+import com.mannschaft.app.schedule.repository.ScheduleRanchOutboxRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -86,6 +88,15 @@ class ScheduleRanchTimestampTransportIT extends AbstractMySqlIntegrationTest {
             assertThat(accepted).as("同一native資格InstantをJDBC zone=%sでも拒否しない", zone).isTrue();
             Long count = jdbc.queryForObject("SELECT COUNT(*) FROM schedule_ranch_outboxes WHERE recipient_user_id=?", Long.class, owner);
             assertThat(count).isEqualTo(1L);
+            // nativeのJPA保存瞬間と、異なるzoneでINSERT・再読取した配送候補を照合する。
+            var candidates = tx.execute(status -> new ScheduleRanchOutboxRepository(jdbc)
+                    .candidates(Instant.now().plusSeconds(60), 100));
+            assertThat(candidates).isNotNull();
+            var ownCandidates = candidates.stream()
+                    .filter(candidate -> candidate.eventId().equals(saved.capture().payload().eventId())).toList();
+            assertThat(ownCandidates).hasSize(1);
+            assertThat(ownCandidates.getFirst().recipient()).isEqualTo(owner.longValue());
+            assertThat(ownCandidates.getFirst().occurredAt()).isEqualTo(saved.capture().payload().occurredAt());
         }
     }
 }
