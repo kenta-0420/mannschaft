@@ -319,7 +319,7 @@ public class BroadcastAudienceResolver {
      * push が送られるか（§8.5.1）。push を出すのはアンケートだけで、送信者は組織 ADMIN・MANAGE_CONTENT を持つ
      * DEPUTY_ADMIN・SYSTEM_ADMIN のいずれかに限る。
      */
-    private boolean pushEnabled(Long callerUserId, Long organizationId, AnnouncementChannel channel) {
+    public boolean pushEnabled(Long callerUserId, Long organizationId, AnnouncementChannel channel) {
         if (channel != AnnouncementChannel.SURVEY) {
             return false;
         }

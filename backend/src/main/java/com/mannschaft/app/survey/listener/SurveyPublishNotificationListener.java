@@ -74,6 +74,13 @@ public class SurveyPublishNotificationListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onSurveyPublished(SurveyPublishedEvent event) {
         try {
+            // F01.2.1 §8.5.3: 宛先を絞った告知（チームを選ぶ・チームグループで選ぶ）の push は
+            // 告知ウィザードが同一トランザクションで1件に一本化して enqueue する。リスナーは何もしない
+            // （送信者に push 権限が無い場合も印は載り、push は出ない）。
+            if (event.isAudienceControlledByBroadcast()) {
+                log.debug("アンケート公開通知を告知ウィザードに委ねるためスキップ: surveyId={}", event.getSurveyId());
+                return;
+            }
             if (event.getDistributionMode() == DistributionMode.ALL
                     && "ORGANIZATION".equals(event.getScopeType())) {
                 // 組織スコープ×ALL: 受信者を展開せず耐久 fan-out ジョブを 1 件 enqueue（O(1)）。

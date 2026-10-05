@@ -354,6 +354,21 @@ public class SurveyService {
      */
     @Transactional
     public SurveyResponse publishSurvey(String scopeType, Long scopeId, Long surveyId) {
+        return publishSurvey(scopeType, scopeId, surveyId, false);
+    }
+
+    /**
+     * アンケートを公開する（push の宛先を告知ウィザードが制御する場合の印付き版。F01.2.1 §8.5.3）。
+     *
+     * @param scopeType                     スコープ種別
+     * @param scopeId                       スコープID
+     * @param surveyId                      アンケートID
+     * @param audienceControlledByBroadcast 真なら公開通知リスナーは fan-out を出さない（告知ウィザードが push を一本化する）
+     * @return 更新されたアンケートレスポンス
+     */
+    @Transactional
+    public SurveyResponse publishSurvey(String scopeType, Long scopeId, Long surveyId,
+                                        boolean audienceControlledByBroadcast) {
         SurveyEntity entity = findSurveyOrThrow(scopeType, scopeId, surveyId);
 
         if (!entity.isPublishable()) {
@@ -386,7 +401,8 @@ public class SurveyService {
                 saved.getTitle(),
                 saved.getDistributionMode(),
                 Boolean.TRUE.equals(saved.getIncludeSupporters()),
-                saved.getCreatedBy()));
+                saved.getCreatedBy(),
+                audienceControlledByBroadcast));
 
         return surveyMapper.toSurveyResponse(saved);
     }

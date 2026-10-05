@@ -53,6 +53,17 @@ public class SurveyAnnouncementAdapter implements AnnouncementChannelAdapter {
     @Override
     public Long createContent(AnnouncementContentRequest content, String scopeType,
                               Long scopeId, String targetRole, Long userId) {
+        return createContent(content, scopeType, scopeId, targetRole, userId, false);
+    }
+
+    /**
+     * {@code audienceControlledByBroadcast} が真なら、公開イベントに印を載せてリスナーの push を抑止する
+     * （宛先を絞った告知の push は告知ウィザードが1件に一本化する。F01.2.1 §8.5.3）。
+     */
+    @Override
+    public Long createContent(AnnouncementContentRequest content, String scopeType,
+                              Long scopeId, String targetRole, Long userId,
+                              boolean audienceControlledByBroadcast) {
         // 既定設問（自由記述・任意回答）を 1 問同梱する。これが無いと publishSurvey が
         // NO_QUESTIONS で失敗し、DRAFT のまま「告知したのに回答不可」になる。
         CreateQuestionRequest defaultQuestion = new CreateQuestionRequest(
@@ -96,7 +107,11 @@ public class SurveyAnnouncementAdapter implements AnnouncementChannelAdapter {
         // 作成直後に公開し PUBLISHED 化する（設問 1 問を同梱済みなので NO_QUESTIONS を通過）。
         // これで受信者は告知直後からそのまま回答できる。publish の失敗は握りつぶさず伝播させ、
         // 告知（broadcast）全体をロールバックさせる（設問ゼロ DRAFT の回答不可矛盾を残さない）。
-        surveyService.publishSurvey(scopeType, scopeId, surveyId);
+        if (audienceControlledByBroadcast) {
+            surveyService.publishSurvey(scopeType, scopeId, surveyId, true);
+        } else {
+            surveyService.publishSurvey(scopeType, scopeId, surveyId);
+        }
 
         log.info("アンケート作成・公開完了 surveyId={}, scopeType={}, scopeId={}",
                 surveyId, scopeType, scopeId);

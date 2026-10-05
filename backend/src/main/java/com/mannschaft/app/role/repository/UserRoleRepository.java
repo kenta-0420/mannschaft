@@ -1479,6 +1479,128 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             Pageable pageable);
 
     /**
+     * F01.2.1 §8.5.2: {@code ORGANIZATION_TEAMS} 受信者ソースの<strong>キーセットページング版</strong>（シャード述語つき）。
+     *
+     * <p>母集団は「宛先集合（{@code notification_fanout_audience_teams}）のチームのうち<b>配信時点でも</b>組織に ACTIVE で
+     * 加盟しているものの現役メンバー」∪「組織の<b>直属</b>メンバー（子組織・配下チームは含めない）」。
+     * 候補は {@code user_roles} ∪ {@code memberships}（{@code left_at IS NULL}）の和集合で、生存・ACTIVE のユーザーに限る。
+     * 応援者トグル {@code includeSupporters=false} のときは、この母集団の範囲（組織＋宛先チーム）で純 SUPPORTER
+     * （MEMBER を兼ねない応援者）を除く。形は {@link #findDistributionUserIdsForOrganizationRecursiveKeyset} に揃え、
+     * 各枝を {@code ORDER BY ... LIMIT :chunk} で打ち切る（和集合の先頭 chunk 件は必ずいずれかの枝の先頭 chunk 件に含まれる）。
+     * 単一シャード（{@code shardCount=1}）では {@code MOD(user_id, 1) = 0} が常に真になり、全件が対象になる。</p>
+     *
+     * @param audienceId 宛先集合のキー（UUID 文字列。ハイフン付き）
+     */
+    @Query(value =
+            "WITH scope_teams (team_id) AS ( SELECT DISTINCT nfat.team_id FROM notification_fanout_audience_teams nfat JOIN team_org_memberships tom ON tom.team_id = nfat.team_id AND tom.organization_id = :organizationId AND tom.status = 'ACTIVE' WHERE nfat.audience_snapshot_id = UNHEX(REPLACE(:audienceId, '-', '')) ) " +
+            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid, cand.locale AS locale FROM ( " +
+            "  ( SELECT DISTINCT ur.user_id AS user_id, u.locale AS locale FROM user_roles ur " +
+            "      JOIN users u ON u.id = ur.user_id " +
+            "      WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "        AND ur.user_id > :cursor " +
+            "        AND MOD(ur.user_id, :shardCount) = :shardIndex " +
+            "        AND ( ur.organization_id = :organizationId " +
+            "              OR ur.team_id IN (SELECT team_id FROM scope_teams) ) " +
+            "        AND ( :includeSupporters = TRUE OR NOT ( " +
+            "          EXISTS ( SELECT 1 FROM memberships sr1 WHERE sr1.user_id = ur.user_id " +
+            "            AND sr1.left_at IS NULL AND sr1.role_kind = 'SUPPORTER' AND ( " +
+            "              (sr1.scope_type = 'ORGANIZATION' AND sr1.scope_id = :organizationId) " +
+            "              OR (sr1.scope_type = 'TEAM' AND sr1.scope_id IN (SELECT team_id FROM scope_teams)) ) ) " +
+            "          AND NOT EXISTS ( SELECT 1 FROM memberships sr2 WHERE sr2.user_id = ur.user_id " +
+            "            AND sr2.left_at IS NULL AND sr2.role_kind = 'MEMBER' AND ( " +
+            "              (sr2.scope_type = 'ORGANIZATION' AND sr2.scope_id = :organizationId) " +
+            "              OR (sr2.scope_type = 'TEAM' AND sr2.scope_id IN (SELECT team_id FROM scope_teams)) ) ) " +
+            "        ) ) " +
+            "      ORDER BY user_id ASC LIMIT :chunk ) " +
+            "  UNION " +
+            "  ( SELECT DISTINCT ms0.user_id AS user_id, u2.locale AS locale FROM memberships ms0 " +
+            "      JOIN users u2 ON u2.id = ms0.user_id " +
+            "      WHERE u2.deleted_at IS NULL AND u2.status = 'ACTIVE' AND ms0.left_at IS NULL " +
+            "        AND ms0.user_id > :cursor " +
+            "        AND MOD(ms0.user_id, :shardCount) = :shardIndex " +
+            "        AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id = :organizationId) " +
+            "              OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN (SELECT team_id FROM scope_teams)) ) " +
+            "        AND ( :includeSupporters = TRUE OR NOT ( " +
+            "          EXISTS ( SELECT 1 FROM memberships sm1 WHERE sm1.user_id = ms0.user_id " +
+            "            AND sm1.left_at IS NULL AND sm1.role_kind = 'SUPPORTER' AND ( " +
+            "              (sm1.scope_type = 'ORGANIZATION' AND sm1.scope_id = :organizationId) " +
+            "              OR (sm1.scope_type = 'TEAM' AND sm1.scope_id IN (SELECT team_id FROM scope_teams)) ) ) " +
+            "          AND NOT EXISTS ( SELECT 1 FROM memberships sm2 WHERE sm2.user_id = ms0.user_id " +
+            "            AND sm2.left_at IS NULL AND sm2.role_kind = 'MEMBER' AND ( " +
+            "              (sm2.scope_type = 'ORGANIZATION' AND sm2.scope_id = :organizationId) " +
+            "              OR (sm2.scope_type = 'TEAM' AND sm2.scope_id IN (SELECT team_id FROM scope_teams)) ) ) " +
+            "        ) ) " +
+            "      ORDER BY user_id ASC LIMIT :chunk ) " +
+            ") cand " +
+            "ORDER BY uid ASC",
+            nativeQuery = true)
+    List<Object[]> findDistributionUserIdsForOrgTeamsAudienceKeyset(
+            @Param("organizationId") Long organizationId,
+            @Param("audienceId") String audienceId,
+            @Param("includeSupporters") boolean includeSupporters,
+            @Param("cursor") long cursor,
+            @Param("chunk") int chunk,
+            @Param("shardIndex") int shardIndex,
+            @Param("shardCount") int shardCount);
+
+    /**
+     * F01.2.1 §8.5.2: {@link #findDistributionUserIdsForOrgTeamsAudienceKeyset} と同じ母集団の総数
+     * （enqueue の自動シャード数算出用。配信と母集団の定義を厳密に一致させる）。
+     */
+    @Query(value =
+            "WITH scope_teams (team_id) AS ( SELECT DISTINCT nfat.team_id FROM notification_fanout_audience_teams nfat JOIN team_org_memberships tom ON tom.team_id = nfat.team_id AND tom.organization_id = :organizationId AND tom.status = 'ACTIVE' WHERE nfat.audience_snapshot_id = UNHEX(REPLACE(:audienceId, '-', '')) ) " +
+            "SELECT COUNT(DISTINCT cand.user_id) FROM ( " +
+            "  ( SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "      JOIN users u ON u.id = ur.user_id " +
+            "      WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "        AND ( ur.organization_id = :organizationId " +
+            "              OR ur.team_id IN (SELECT team_id FROM scope_teams) ) " +
+            "        AND ( :includeSupporters = TRUE OR NOT ( " +
+            "          EXISTS ( SELECT 1 FROM memberships sr1 WHERE sr1.user_id = ur.user_id " +
+            "            AND sr1.left_at IS NULL AND sr1.role_kind = 'SUPPORTER' AND ( " +
+            "              (sr1.scope_type = 'ORGANIZATION' AND sr1.scope_id = :organizationId) " +
+            "              OR (sr1.scope_type = 'TEAM' AND sr1.scope_id IN (SELECT team_id FROM scope_teams)) ) ) " +
+            "          AND NOT EXISTS ( SELECT 1 FROM memberships sr2 WHERE sr2.user_id = ur.user_id " +
+            "            AND sr2.left_at IS NULL AND sr2.role_kind = 'MEMBER' AND ( " +
+            "              (sr2.scope_type = 'ORGANIZATION' AND sr2.scope_id = :organizationId) " +
+            "              OR (sr2.scope_type = 'TEAM' AND sr2.scope_id IN (SELECT team_id FROM scope_teams)) ) ) " +
+            "        ) ) " +
+            "      ) " +
+            "  UNION " +
+            "  ( SELECT ms0.user_id AS user_id FROM memberships ms0 " +
+            "      JOIN users u2 ON u2.id = ms0.user_id " +
+            "      WHERE u2.deleted_at IS NULL AND u2.status = 'ACTIVE' AND ms0.left_at IS NULL " +
+            "        AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id = :organizationId) " +
+            "              OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN (SELECT team_id FROM scope_teams)) ) " +
+            "        AND ( :includeSupporters = TRUE OR NOT ( " +
+            "          EXISTS ( SELECT 1 FROM memberships sm1 WHERE sm1.user_id = ms0.user_id " +
+            "            AND sm1.left_at IS NULL AND sm1.role_kind = 'SUPPORTER' AND ( " +
+            "              (sm1.scope_type = 'ORGANIZATION' AND sm1.scope_id = :organizationId) " +
+            "              OR (sm1.scope_type = 'TEAM' AND sm1.scope_id IN (SELECT team_id FROM scope_teams)) ) ) " +
+            "          AND NOT EXISTS ( SELECT 1 FROM memberships sm2 WHERE sm2.user_id = ms0.user_id " +
+            "            AND sm2.left_at IS NULL AND sm2.role_kind = 'MEMBER' AND ( " +
+            "              (sm2.scope_type = 'ORGANIZATION' AND sm2.scope_id = :organizationId) " +
+            "              OR (sm2.scope_type = 'TEAM' AND sm2.scope_id IN (SELECT team_id FROM scope_teams)) ) ) " +
+            "        ) ) " +
+            "      ) " +
+            ") cand",
+            nativeQuery = true)
+    long countDistributionUserIdsForOrgTeamsAudience(
+            @Param("organizationId") Long organizationId,
+            @Param("audienceId") String audienceId,
+            @Param("includeSupporters") boolean includeSupporters);
+
+    /**
+     * F01.2.1 §5.6: 宛先集合の見出しから組織 ID を引く。見出しが無ければ空（呼び出し側は例外にする。空集合で完了させない）。
+     *
+     * @param audienceId 宛先集合のキー（UUID 文字列。ハイフン付き）
+     */
+    @Query(value = "SELECT CAST(a.organization_id AS SIGNED) FROM notification_fanout_audiences a "
+            + "WHERE a.audience_snapshot_id = UNHEX(REPLACE(:audienceId, '-', ''))",
+            nativeQuery = true)
+    Optional<Long> findOrganizationIdOfFanoutAudience(@Param("audienceId") String audienceId);
+
+    /**
      * 組織スコープ配信の<strong>母集団総数</strong>を返す（enqueue の自動シャード数算出用・CMP-001⑤）。
      *
      * <p>{@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} の {@code SELECT} を

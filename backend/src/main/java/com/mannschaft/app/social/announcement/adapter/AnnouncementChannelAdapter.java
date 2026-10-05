@@ -35,6 +35,18 @@ public interface AnnouncementChannelAdapter {
                        String visibility, Long userId);
 
     /**
+     * 宛先を絞った告知かどうかの印付きでコンテンツを作成する（F01.2.1 §8.5.3）。
+     *
+     * <p>{@code audienceControlledByBroadcast} が真のとき、そのチャネル固有の push（例: アンケート公開通知リスナー）は
+     * 抑止され、push は告知ウィザードが一本化して出す。既定は印を無視して5引数版へ委譲する
+     * （push を持たないチャネルは何もしなくてよい）。</p>
+     */
+    default Long createContent(AnnouncementContentRequest content, String scopeType, Long scopeId,
+                               String visibility, Long userId, boolean audienceControlledByBroadcast) {
+        return createContent(content, scopeType, scopeId, visibility, userId);
+    }
+
+    /**
      * コンテンツの URL を生成する。
      *
      * @param scopeType スコープ種別文字列（TEAM / ORGANIZATION）
