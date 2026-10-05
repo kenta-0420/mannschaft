@@ -174,4 +174,25 @@ describe('pages/teams/[slug].vue fetchTeam の応答逆転ガード（CMP-261004
     expect(fn).toMatch(/catch \(error\) \{\s*\n\s*if \(!isCurrent\(\)\) return/)
     expect(fn).not.toMatch(/teamSlug\.value !== requestedSlug\) return/)
   })
+
+  /**
+   * 検分修繕2（CMP-261004-1942 第2巡 P2）: 404 → tryRedirectMovedSlug の await 後、
+   * 遷移・エラー通知の前に isCurrent() を再確認することの固定。
+   * 再確認が無いと、解決待ちの間に後発の要求が成功／別スコープへ移動していても、
+   * 古い 404 由来の通知や移動先への遷移が実行されてしまう。
+   */
+  it('404 解決の await 後、遷移前とエラー通知前に isCurrent() を再確認する', () => {
+    expect(fn).toMatch(
+      /const redirected = await tryRedirectMovedSlug\(isCurrent\)\s*\n\s*if \(!isCurrent\(\)\) return\s*\n\s*if \(redirected\) return/,
+    )
+    // isCurrent 再確認より前に handleApiError が呼ばれる経路が残っていないこと。
+    expect(fn).not.toMatch(/tryRedirectMovedSlug\(\)\s*\n\s*\{\s*\n\s*return\s*\n\s*\}/)
+  })
+
+  it('tryRedirectMovedSlug は isCurrent 再確認後にのみ navigateTo（301）する', () => {
+    const redirectFn = source.match(/async function tryRedirectMovedSlug\([\s\S]*?\n\}\n/)?.[0] ?? ''
+    expect(redirectFn).not.toBe('')
+    expect(redirectFn).toMatch(/if \(isCurrent && !isCurrent\(\)\) return false/)
+    expect(redirectFn).toMatch(/if \(isCurrent && !isCurrent\(\)\) return false\s*\n\s*await navigateTo/)
+  })
 })

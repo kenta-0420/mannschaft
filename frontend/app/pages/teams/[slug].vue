@@ -179,8 +179,13 @@ async function fetchTeam() {
   catch (error) {
     if (!isCurrent()) return
     // 404 のときは「旧 slug → 新 slug の 301 移動」かもしれないので解決を試みる（村方式・BE #1542）。
-    if ((error as FetchError)?.response?.status === 404 && await tryRedirectMovedSlug()) {
-      return
+    // 解決は非同期（await）のため、待機中に後発の要求が成功している／別スコープへ
+    // 移動している可能性がある。解決後は isCurrent() を再確認し、古い 404 由来の
+    // 通知・遷移が後発の結果を踏みつけないようにする（検分修繕2・CMP-261004-1942）。
+    if ((error as FetchError)?.response?.status === 404) {
+      const redirected = await tryRedirectMovedSlug(isCurrent)
+      if (!isCurrent()) return
+      if (redirected) return
     }
     const status = (error as FetchError)?.response?.status
     if (status === 403) team.value = null
@@ -195,11 +200,15 @@ async function fetchTeam() {
 /**
  * 現 slug が旧 slug（MOVED）なら新 slug の同一パスへ 301 遷移する。
  * 遷移した場合は true を返す（呼び出し元はそれ以上のエラー表示を行わない）。
+ *
+ * `isCurrent` が渡された場合、解決待ち（await）の間に後発の要求が成功済み／
+ * 別スコープへ移動済みなら、古い 404 由来の遷移を行わない（検分修繕2・CMP-261004-1942）。
  */
-async function tryRedirectMovedSlug(): Promise<boolean> {
+async function tryRedirectMovedSlug(isCurrent?: () => boolean): Promise<boolean> {
   const { resolveSlug } = useSlugRedirect()
   const target = await resolveSlugRedirectPath(useRoute().path, resolveSlug)
   if (!target) return false
+  if (isCurrent && !isCurrent()) return false
   await navigateTo(
     { path: target, query: useRoute().query, hash: useRoute().hash },
     { redirectCode: 301, replace: true },

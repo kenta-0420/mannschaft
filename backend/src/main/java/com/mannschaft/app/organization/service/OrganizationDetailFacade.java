@@ -32,19 +32,32 @@ public class OrganizationDetailFacade {
         return withSocial(organizationService.getOrganization(slug));
     }
 
-    /** 組織を更新し、更新後の詳細を返す。 */
+    /**
+     * 組織を更新し、更新後の詳細を返す。
+     *
+     * <p>サポーター数は更新コミットより前に数える。組織の更新・slug 変更はサポーター数（membership ドメインの集計）
+     * を変化させないため、順序を入れ替えても結果は変わらない一方、集計の失敗を更新前に検知でき、
+     * 「更新はコミット済みだが集計失敗で 500」という不整合（保存済みなのにエラー）を避けられる。</p>
+     */
     public ApiResponse<OrganizationResponse> updateOrganization(Long orgId, UpdateOrganizationRequest req) {
-        return withSocial(organizationService.updateOrganization(orgId, req));
+        long supporterCount = membershipService.countActiveSupporters(ScopeType.ORGANIZATION, orgId);
+        return withSocial(organizationService.updateOrganization(orgId, req), supporterCount);
     }
 
-    /** 組織 slug をリネームし、リネーム後の詳細を返す。 */
+    /** 組織 slug をリネームし、リネーム後の詳細を返す（サポーター数は更新前に数える。理由は {@link #updateOrganization} 参照）。 */
     public ApiResponse<OrganizationResponse> renameSlug(Long orgId, String newSlug) {
-        return withSocial(organizationService.renameSlug(orgId, newSlug));
+        long supporterCount = membershipService.countActiveSupporters(ScopeType.ORGANIZATION, orgId);
+        return withSocial(organizationService.renameSlug(orgId, newSlug), supporterCount);
     }
 
     private ApiResponse<OrganizationResponse> withSocial(ApiResponse<OrganizationResponse> response) {
         OrganizationResponse org = response.getData();
         long supporterCount = membershipService.countActiveSupporters(ScopeType.ORGANIZATION, org.getNumericId());
+        return withSocial(response, supporterCount);
+    }
+
+    private ApiResponse<OrganizationResponse> withSocial(ApiResponse<OrganizationResponse> response, long supporterCount) {
+        OrganizationResponse org = response.getData();
         return ApiResponse.of(org.toBuilder()
                 .social(new OrganizationResponse.OrgSocialDto(supporterCount))
                 .build());
