@@ -9,10 +9,11 @@ import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -131,6 +132,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 契約テストで固定したメソッドに限る。所属・権限を Service で検証して使う形は台帳に載せず、
  * {@code @SelfScopedEndpoint} を外して {@code @AuthorizedInService} 等の正しい印へ付け替える。</p>
  */
+@Tag(ArchUnitTestTag.ARCHUNIT)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SelfScopedEndpointScopeInputGuardTest {
 
     /** スコープIDの名前規則（照合前に {@code _}・{@code -} を除去）。対象外の線引きはクラス Javadoc を参照。 */
@@ -283,22 +286,21 @@ class SelfScopedEndpointScopeInputGuardTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
-    // import（1回だけ。本番クラス＋検体パッケージ）
+    // import（本番クラス全体は共有ホルダ、検体パッケージは個別に1回だけ取り込む）
     // ═════════════════════════════════════════════════════════════════════
 
-    private static JavaClasses classes;
+    /**
+     * 本番クラス全体（検体パッケージを含まない）。JVM 内で1回だけ取り込む共有ホルダ
+     * {@link ProductionClasses} を使う（CMP-261002-1606。手動の本番全体取り込みは
+     * {@code ProductionClassImportGuardTest} AC-5 が禁止する）。
+     */
+    private final JavaClasses productionClasses = ProductionClasses.get();
+
+    /** 検体パッケージ限定の取り込み（本番全体ではないので手動 import が許される）。 */
+    private final JavaClasses specimenClasses = new ClassFileImporter().importPackages(SPECIMEN_PACKAGE);
 
     /** 本番クラス（検体パッケージ以外）。 */
     static final Predicate<JavaClass> PRODUCTION = c -> !c.getPackageName().startsWith(SPECIMEN_PACKAGE);
-
-    @BeforeAll
-    static void importClasses() {
-        ImportOption doNotIncludeTests = new ImportOption.DoNotIncludeTests();
-        String specimenPath = "/" + SPECIMEN_PACKAGE.replace('.', '/') + "/";
-        classes = new ClassFileImporter()
-                .withImportOption(location -> doNotIncludeTests.includes(location) || location.contains(specimenPath))
-                .importPackages("com.mannschaft.app");
-    }
 
     // ═════════════════════════════════════════════════════════════════════
     // 実ファイル走査
@@ -307,7 +309,7 @@ class SelfScopedEndpointScopeInputGuardTest {
     @Test
     @DisplayName("AC-5〜10: スコープIDを受け取る @SelfScopedEndpoint は監査台帳の行と完全一致する（無ければ赤）")
     void スコープIDを受け取る自己スコープEPは台帳と完全一致する() {
-        List<String> violations = evaluate(classes, PRODUCTION, LEDGER);
+        List<String> violations = evaluate(productionClasses, PRODUCTION, LEDGER);
         assertThat(violations)
                 .as("@SelfScopedEndpoint のスコープID入力の番人（違反 %d 件）:%n%s", violations.size(),
                         String.join(System.lineSeparator(), violations))
@@ -325,10 +327,10 @@ class SelfScopedEndpointScopeInputGuardTest {
     @DisplayName("AC-1/AC-2: 付与箇所はバイトコードで列挙し、ソース走査と一致する（件数の下限つき）")
     void 付与箇所はバイトコードとソース走査で一致する() throws IOException {
         List<SelfScopedEndpointMarkerGuardTest.Src> sources = loadSources(MAIN_SOURCE_ROOT);
-        assertThat(annotatedMethods(classes, PRODUCTION))
+        assertThat(annotatedMethods(productionClasses, PRODUCTION))
                 .as("@SelfScopedEndpoint の付与件数が下限 %d を下回る（走査の空振りを疑う）", MIN_ANNOTATED_METHODS)
                 .hasSizeGreaterThanOrEqualTo(MIN_ANNOTATED_METHODS);
-        assertThat(bytecodeSourceMismatch(classes, PRODUCTION, sources)).isEmpty();
+        assertThat(bytecodeSourceMismatch(productionClasses, PRODUCTION, sources)).isEmpty();
     }
 
     @Test
@@ -368,7 +370,7 @@ class SelfScopedEndpointScopeInputGuardTest {
     @Test
     @DisplayName("AC-14: 台帳を空にしてコア判定を走らせると、unpin と resetWidgetSettings を含む違反が返る（ファイルは書き換えない）")
     void 台帳を空にするとunpinとresetWidgetSettingsが赤になる() {
-        List<String> violations = evaluate(classes, PRODUCTION, List.of());
+        List<String> violations = evaluate(productionClasses, PRODUCTION, List.of());
         assertThat(violations)
                 .anyMatch(v -> v.startsWith("com.mannschaft.app.village.controller.VillagePinController#unpin "))
                 .anyMatch(v -> v.startsWith("com.mannschaft.app.dashboard.controller.DashboardController#resetWidgetSettings "));
@@ -387,8 +389,8 @@ class SelfScopedEndpointScopeInputGuardTest {
 
         private List<String> evaluateSpecimen(String simpleName, List<LedgerRow> ledger) {
             String fqcn = S + simpleName;
-            assertThat(classes.contain(fqcn)).as("検体 %s が import されている", fqcn).isTrue();
-            return evaluate(classes, c -> c.getName().equals(fqcn), ledger);
+            assertThat(specimenClasses.contain(fqcn)).as("検体 %s が import されている", fqcn).isTrue();
+            return evaluate(specimenClasses, c -> c.getName().equals(fqcn), ledger);
         }
 
         @Test
@@ -463,7 +465,7 @@ class SelfScopedEndpointScopeInputGuardTest {
             Path file = TEST_SOURCE_ROOT.resolve(SPECIMEN_PACKAGE.replace('.', '/'))
                     .resolve("FqnAnnotatedSpecimenController.java");
             String fqcn = S + "FqnAnnotatedSpecimenController";
-            List<String> mismatch = bytecodeSourceMismatch(classes, c -> c.getName().equals(fqcn),
+            List<String> mismatch = bytecodeSourceMismatch(specimenClasses, c -> c.getName().equals(fqcn),
                     List.of(new SelfScopedEndpointMarkerGuardTest.Src(file.toString().replace('\\', '/'),
                             Files.readString(file, StandardCharsets.UTF_8))));
             assertThat(mismatch).singleElement().asString().contains("FqnAnnotatedSpecimenController#byFqn");
