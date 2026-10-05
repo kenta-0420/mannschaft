@@ -114,16 +114,16 @@ public class ContentVisibilityChecker {
     }
 
     /**
-     * Independent PRIMARY permission read after the caller's domain read has completed.
-     * Call through the Spring proxy; no source transaction or callback may surround this entry.
-     * readOnly=false pins routing to PRIMARY while all existing resolver rules remain unchanged.
+     * 呼出元ドメインの読取終了後に、独立した PRIMARY トランザクションで閲覧権限を再評価する。
+     * Spring プロキシ経由で呼び出し、源トランザクションを保持したまま、または源のコールバックで使用しない。
+     * readOnly=false で PRIMARY を明示し、既存 Resolver の全判定条件をそのまま適用する。
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
     public boolean canViewIsolated(ReferenceType type, Long contentId, Long userId) {
         return canView(type, contentId, userId);
     }
 
-    /** UUID counterpart of {@link #canViewIsolated(ReferenceType, Long, Long)}. */
+    /** {@link #canViewIsolated(ReferenceType, Long, Long)} と同じ境界を持つ UUID 主キー用の入口。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
     public boolean canViewUuidIsolated(ReferenceType type, UUID contentId, Long userId) {
         return canViewUuid(type, contentId, userId);
