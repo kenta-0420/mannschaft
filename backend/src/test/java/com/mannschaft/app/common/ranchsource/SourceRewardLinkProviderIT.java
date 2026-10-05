@@ -41,7 +41,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** 実Guard・源reader・既CVC/実MySQLの現在ACL。HTTP・pool2測定・TL/TEAM記事は別証明。 */
+/** 実Guard・源reader・既CVC/実MySQLの現在ACL。HTTP・pool2測定・TEAM/ORG記事は別証明。 */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class SourceRewardLinkProviderIT extends AbstractMySqlIntegrationTest {
     @Autowired UserRepository users;
@@ -55,6 +55,8 @@ class SourceRewardLinkProviderIT extends AbstractMySqlIntegrationTest {
     @Autowired ReflectionRanchRewardLinkProvider reflection;
     @Autowired ScheduleRanchRewardLinkProvider attendance;
     @Autowired JdbcTemplate jdbc;
+    @Autowired com.mannschaft.app.timeline.service.TimelineRanchRewardLinkProvider timeline;
+    @Autowired com.mannschaft.app.timeline.repository.TimelinePostRepository timelinePosts;
     private Long owner,other,postId,scheduleId,responseId;
     private UUID themeId,entryId;
     @BeforeEach void fixture() {
@@ -114,6 +116,24 @@ class SourceRewardLinkProviderIT extends AbstractMySqlIntegrationTest {
         var result=guard.withActiveUser(owner,() -> reflection.resolve(owner,unknown));
         assertThat(result).isEmpty();
     }
+    @Test void timelineUsesCanonicalPersonalVisibilityAndDropsDeletedPost() {
+        var post = timelinePosts.saveAndFlush(com.mannschaft.app.timeline.entity.TimelinePostEntity.builder()
+                .scopeType(com.mannschaft.app.timeline.PostScopeType.PERSONAL).scopeId(owner).userId(owner)
+                .postedAsType(com.mannschaft.app.timeline.PostedAsType.USER).postedAsId(owner)
+                .content("本人投稿").status(com.mannschaft.app.timeline.PostStatus.PUBLISHED).build());
+        Long id = post.getId();
+        try {
+            var reference = ref(RanchRewardSourceType.TIMELINE_ORIGINAL, RanchRewardEnvelope.IdType.LONG, id.toString());
+            var own = guard.withActiveUser(owner, () -> timeline.resolve(owner, reference));
+            assertThat(own).contains(new SourceRewardLink(SourceRewardLink.Kind.TIMELINE, id.toString(), "/timeline/" + id));
+            var denied = guard.withActiveUser(other, () -> timeline.resolve(other, reference));
+            assertThat(denied).isEmpty();
+            jdbc.update("UPDATE timeline_posts SET deleted_at='2026-10-05 00:00:00' WHERE id=?", id);
+            var deleted = guard.withActiveUser(owner, () -> timeline.resolve(owner, reference));
+            assertThat(deleted).isEmpty();
+        } finally { jdbc.update("DELETE FROM timeline_posts WHERE id=?", id); }
+    }
+
     private Long user() {
         return users.saveAndFlush(UserEntity.builder().email(UUID.randomUUID()+"@source-link.invalid")
                 .firstName("検証").lastName("本人").displayName("検証").locale("ja").timezone("UTC")

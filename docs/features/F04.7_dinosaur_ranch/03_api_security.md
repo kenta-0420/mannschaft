@@ -253,3 +253,5 @@ TLのSourceOutboxDeliveryFacade/SourceOutboxAdminProvider実BeanはTimelineRanch
 台帳読取TX終了後、非TXの SourceRewardLinkProvider が源所有 metadata の短い PRIMARY REQUIRES_NEW を終了し、ContentVisibilityChecker.canViewIsolated / canViewUuidIsolated を Spring proxy 経由で順次呼ぶ。CVC は readOnly=false の独立 PRIMARY TX で既存 resolver の全閲覧条件を再評価する。源TXを保持してCVCへ入り、第三接続を要求する構成は禁止する。静的最大は外auth1＋内1だが実pool2測定は未検証。
 
 出欠は回答LONGから予定LONGへ、想起はエントリUUIDへ解決する。ブログは現在の永続slugと源scopeの実画面経路を使い、本文・タイトルをリンクDTOへ含めない。欠落/現在ACL拒否は空、既知のDB停止は固定分類を記録して空とし、プログラム誤りを無条件に黙殺しない。現実装はブログGLOBAL/PERSONAL/TEAM/ORG、出欠、想起の3provider。TEAM記事は /blog/posts/{encodedSlug}?teamId={現在の内部Long}、ORG記事は同 organizationId 一つだけを渡し、既controllerのscope解決と現在ACLを維持する。FE閲覧pageのquery接続は別担当・未実証。SOCIALブログとTL未登録正準resolverは未対応として保持する。新provider MySQL4ケースは準備済み・未実行であり、HTTP/台帳cursor保持/pool2証明とは分離する。
+
+TL source linkも非TX providerからnative ID metadata PRIMARY読取終了後、ContentVisibilityChecker.canViewTimelineIsolatedの独立proxyへ渡す。既TimelinePostVisibilityAccessGuard.requireVisiblePostが正準で、POST_NOT_FOUNDだけemptyへ対応する。generic TIMELINE_POST resolver/batch登録の完成を意味せず、実pool2・HTTP・membership変更競合は未検証。本文はmetadata読取に含めない。
