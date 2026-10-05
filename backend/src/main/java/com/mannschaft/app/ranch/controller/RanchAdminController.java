@@ -1,6 +1,9 @@
 package com.mannschaft.app.ranch.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.mannschaft.app.admin.filter.AdminImpersonationFilter;
+import com.mannschaft.app.auth.UserOperationErrorCode;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.featuregate.AlwaysReachable;
@@ -59,7 +62,7 @@ public class RanchAdminController {
             reason = "公開停止中でもfresh SYSTEM_ADMINが運営設定を照会する管理入口")
     public ResponseEntity<ApiResponse<RanchOperationalControlsResponse>> controls(
             HttpServletRequest request, HttpServletResponse response) {
-        Long actorId = access.requireSelfAccess(request, response);
+        Long actorId = requireAdminSelfAccess(request, response);
         return noStore(ApiResponse.of(facade.controls(actorId)));
     }
 
@@ -69,7 +72,7 @@ public class RanchAdminController {
     public ResponseEntity<CursorPagedResponse<RanchCareRuleSummary>> careRules(
             @RequestParam(required = false) String cursor, @RequestParam(defaultValue = "20") int limit,
             HttpServletRequest request, HttpServletResponse response) {
-        Long actorId = access.requireSelfAccess(request, response);
+        Long actorId = requireAdminSelfAccess(request, response);
         return noStore(facade.careRules(actorId, cursor, limit));
     }
 
@@ -81,10 +84,20 @@ public class RanchAdminController {
     public ResponseEntity<ApiResponse<RanchCareRulePublicationResponse>> publishCare(
             @RequestHeader("Idempotency-Key") UUID key, @RequestBody JsonNode body,
             HttpServletRequest request, HttpServletResponse response) {
-        Long actorId = access.requireSelfAccess(request, response);
+        Long actorId = requireAdminSelfAccess(request, response);
         var result = facade.publishCare(actorId, key, body);
         return ResponseEntity.status(result.createdNow() ? HttpStatus.CREATED : HttpStatus.OK)
                 .header(HttpHeaders.CACHE_CONTROL, "private, no-store").body(ApiResponse.of(result.response()));
+    }
+
+    /** system-adminの変身filter省略時も、牧場の私的管理入口では変身指定を拒否する。 */
+    private Long requireAdminSelfAccess(HttpServletRequest request, HttpServletResponse response) {
+        Long actorId = access.requireSelfAccess(request, response);
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
+        if (request.getHeader(AdminImpersonationFilter.HEADER_IMPERSONATE) != null) {
+            throw new BusinessException(UserOperationErrorCode.NOT_ALLOWED);
+        }
+        return actorId;
     }
 
     private <T> ResponseEntity<T> noStore(T data) {
@@ -96,7 +109,7 @@ public class RanchAdminController {
             reason = "公開停止中でもfresh SYSTEM_ADMINが源配送の有限集計を照会する管理入口")
     public ResponseEntity<ApiResponse<SourceOutboxHealthSummary>> sourceHealth(
             HttpServletRequest request, HttpServletResponse response) {
-        Long actorId = access.requireSelfAccess(request, response);
+        Long actorId = requireAdminSelfAccess(request, response);
         return noStore(ApiResponse.of(sourceAdmin.health(actorId)));
     }
 
@@ -109,7 +122,7 @@ public class RanchAdminController {
             @PathVariable RanchRewardSourceType sourceType, @PathVariable UUID eventId,
             @RequestHeader("Idempotency-Key") UUID key, @RequestBody JsonNode body,
             HttpServletRequest request, HttpServletResponse response) {
-        Long actorId = access.requireSelfAccess(request, response);
+        Long actorId = requireAdminSelfAccess(request, response);
         return noStore(ApiResponse.of(sourceAdmin.retry(actorId, sourceType, eventId, key, body)));
     }
 
@@ -121,7 +134,7 @@ public class RanchAdminController {
     public ResponseEntity<ApiResponse<RanchOperationalControlsResponse>> updateControls(
             @RequestHeader("Idempotency-Key") UUID key, @RequestBody JsonNode body,
             HttpServletRequest request, HttpServletResponse response) {
-        Long actorId = access.requireSelfAccess(request, response);
+        Long actorId = requireAdminSelfAccess(request, response);
         return noStore(ApiResponse.of(facade.updateControls(actorId, key, body)));
     }
 
@@ -131,7 +144,7 @@ public class RanchAdminController {
     public ResponseEntity<CursorPagedResponse<RanchPolicySummary>> policies(
             @RequestParam(required = false) String cursor, @RequestParam(defaultValue = "20") int limit,
             HttpServletRequest request, HttpServletResponse response) {
-        Long actorId = access.requireSelfAccess(request, response);
+        Long actorId = requireAdminSelfAccess(request, response);
         return noStore(facade.policies(actorId, cursor, limit));
     }
 
@@ -143,7 +156,7 @@ public class RanchAdminController {
     public ResponseEntity<ApiResponse<RanchPolicyPublicationResponse>> publishPolicy(
             @RequestHeader("Idempotency-Key") UUID key, @RequestBody JsonNode body,
             HttpServletRequest request, HttpServletResponse response) {
-        Long actorId = access.requireSelfAccess(request, response);
+        Long actorId = requireAdminSelfAccess(request, response);
         var result = facade.publishPolicy(actorId, key, body);
         return ResponseEntity.status(result.createdNow() ? HttpStatus.CREATED : HttpStatus.OK)
                 .header(HttpHeaders.CACHE_CONTROL, "private, no-store").body(ApiResponse.of(result.response()));
