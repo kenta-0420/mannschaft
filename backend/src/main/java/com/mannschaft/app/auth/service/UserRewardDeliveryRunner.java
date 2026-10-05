@@ -32,4 +32,17 @@ public class UserRewardDeliveryRunner {
         else lifecycle=DeliveryUserState.Lifecycle.INELIGIBLE;
         return new DeliveryUserState(lifecycle,user.getWithdrawalAttemptId());
     }
+    /** Guardが検証したdistinct昇順IDを、一つのauth TXで現在値lockする。 */
+    @Transactional(readOnly=false,propagation=Propagation.REQUIRES_NEW)
+    public <T> T withLockedDeliveryUsers(java.util.List<Long> ordered,
+            java.util.function.Function<java.util.Map<Long,DeliveryUserState>,T> operation) {
+        var states=new java.util.LinkedHashMap<Long,DeliveryUserState>();
+        for(Long id:ordered) {
+            var user=users.findByIdForUpdateIncludingDeleted(id);
+            states.put(id,user.map(this::state).orElseGet(() ->
+                    new DeliveryUserState(DeliveryUserState.Lifecycle.ABSENT,null)));
+        }
+        return operation.apply(java.util.Map.copyOf(states));
+    }
+
 }

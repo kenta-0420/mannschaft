@@ -78,6 +78,7 @@ import java.util.stream.Collectors;
 public class BlogPostService {
     private final BlogMediaAclService mediaAclService;
     private final BlogMediaCopyService mediaCopyService;
+    private final BlogRanchPublicationCapture ranchPublicationCapture;
 
     private final BlogPostRepository postRepository;
     private final BlogPostTagRepository postTagRepository;
@@ -384,11 +385,16 @@ public class BlogPostService {
     /**
      * 公開ステータスを変更する。
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public BlogPostResponse changeStatus(Long id, Long userId, PublishRequest request) {
-        BlogPostEntity entity = findPostOrThrow(id);
+        BlogPostEntity entity = request.getRanchCaptureContext()!=null && request.getRanchCaptureContext().qualified()
+                ? postRepository.findForPublicationUpdate(id).orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND))
+                : findPostOrThrow(id);
         checkWriteAccess(entity, userId);
         PostStatus newStatus = BlogRanchNativeMutationRules.changeStatus(entity, request, LocalDateTime.now());
+
+        if(request.getRanchCaptureContext()!=null) ranchPublicationCapture.capture(entity,userId,request.getRanchCaptureContext(),
+                java.util.Objects.equals(entity.getAuthorId(),userId) ? com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope.PublicationKind.MANUAL : com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope.PublicationKind.EDITOR_APPROVAL);
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("記事ステータス変更: postId={}, status={}", id, newStatus);
@@ -614,12 +620,17 @@ public class BlogPostService {
     /**
      * セルフレビュー結果を処理する。
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public BlogPostResponse selfReview(Long postId, Long userId, SelfReviewRequest request) {
-        BlogPostEntity entity = findPostOrThrow(postId);
+        BlogPostEntity entity = request.getRanchCaptureContext()!=null && request.getRanchCaptureContext().qualified()
+                ? postRepository.findForPublicationUpdate(postId).orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND))
+                : findPostOrThrow(postId);
         checkWriteAccess(entity, userId);
 
         BlogRanchNativeMutationRules.selfReview(entity, request, LocalDateTime.now());
+
+        if(request.getRanchCaptureContext()!=null) ranchPublicationCapture.capture(entity,userId,request.getRanchCaptureContext(),
+                com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope.PublicationKind.SELF_APPROVAL);
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("セルフレビュー: postId={}, action={}", postId, request.getAction());

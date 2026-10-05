@@ -24,7 +24,7 @@ class BlogRanchCaptureFactory {
     BlogRanchCapture capture(BlogPostEntity post, Long actor, Instant at,
             RanchRewardEnvelope.PublicationKind kind) {
         if(post.getTeamId()==null && post.getOrganizationId()==null
-                && !actor.equals(post.getUserId())) throw invalid();
+                && !post.getAuthorId().equals(post.getUserId())) throw invalid();
         // 既存Create/Update DTOと同じ有限上限。旧データ逸脱は報酬だけUNKNOWNにする。
         if(post.getTitle()==null || post.getTitle().length()>200
                 || post.getBody()==null || post.getBody().length()>50000) throw invalid();
@@ -58,9 +58,9 @@ class BlogRanchCaptureFactory {
         var fact=new BlogRanchRewardPayload(UuidV7.generate(),1,RanchRewardSourceType.BLOG_FIRST_PUBLISH,
                 RanchRewardEnvelope.IdType.LONG,post.getId().toString(),scope,
                 scopeId==null?null:RanchRewardEnvelope.IdType.LONG,scopeId==null?null:scopeId.toString(),
-                RanchRewardEnvelope.ActorKind.USER,actor,null,actor,actor,at,
+                actor==null?RanchRewardEnvelope.ActorKind.SYSTEM:RanchRewardEnvelope.ActorKind.USER,actor,null,post.getAuthorId(),post.getAuthorId(),at,
                 RanchRewardEnvelope.Origin.FIRST_PUBLISH,new RanchRewardEnvelope.Blog(kind,true));
-        return new BlogRanchCapture(fact,fingerprints.fingerprint(actor,at,post.getTitle(),post.getBody(),attachments));
+        return new BlogRanchCapture(fact,fingerprints.fingerprint(post.getAuthorId(),at,post.getTitle(),post.getBody(),attachments));
     }
     private record Media(long id,String key,String status,String scopeType,Long scopeId) { }
     private static IllegalStateException invalid() { return new IllegalStateException("ブログ報酬の添付証跡を確定できません"); }
