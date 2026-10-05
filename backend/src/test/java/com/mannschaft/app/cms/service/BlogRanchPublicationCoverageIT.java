@@ -84,7 +84,7 @@ class BlogRanchPublicationCoverageIT extends AbstractMySqlIntegrationTest {
         assertThat(scheduled.publishScheduledPosts()).isGreaterThanOrEqualTo(1);
         published(id);qualified(id);
     }
-    @Test void existingTeamAdminMayPublishDifferentAuthorAndCapturesRecipientAuthor() {
+    private void teamAdmin() {
         team=teams.saveAndFlush(TeamEntity.builder().slug("coverage-"+UUID.randomUUID().toString().substring(0,20))
                 .name("検証チーム").visibility(TeamEntity.Visibility.PUBLIC).supporterEnabled(false).build()).getId();
         membership=memberships.saveAndFlush(MembershipEntity.builder().userId(editor).scopeType(ScopeType.TEAM)
@@ -92,10 +92,43 @@ class BlogRanchPublicationCoverageIT extends AbstractMySqlIntegrationTest {
         Long admin=roles.findByName("ADMIN").map(RoleEntity::getId).orElseGet(() -> roles.saveAndFlush(
                 RoleEntity.builder().name("ADMIN").displayName("ADMIN").priority(2).isSystem(true).build()).getId());
         assignment=assignments.saveAndFlush(UserRoleEntity.builder().userId(editor).roleId(admin).teamId(team).build()).getId();
-        Long id=draft(team,null);actor(editor);
+    }
+    @Test void existingTeamAdminMayPublishDifferentAuthorAndCapturesRecipientAuthor() {
+        teamAdmin();Long id=draft(team,null);actor(editor);
         assertThat(controller.changeStatus(id,new PublishRequest("PUBLISHED",null,null),new MockHttpServletRequest())
                 .getStatusCode().value()).isEqualTo(200);
         published(id);qualified(id);
+    }
+    @Test void inactiveAuthorDoesNotNarrowExistingEditorWritePermission() {
+        teamAdmin();Long id=draft(team,null);
+        var user=users.findById(author).orElseThrow();user.setStatus(UserEntity.UserStatus.FROZEN);users.saveAndFlush(user);
+        actor(editor);
+        assertThat(controller.changeStatus(id,new PublishRequest("PUBLISHED",null,null),new MockHttpServletRequest())
+                .getStatusCode().value()).isEqualTo(200);
+        published(id);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM blog_posts WHERE id=? AND first_published_at IS NULL "
+                +"AND first_published_author_user_id IS NULL",Integer.class,id)).isEqualTo(1);
+    }
+    @Test void deniedSecondBulkPostRollsBackFirstNativeSaveAndQualification() {
+        Long permitted=draft(null,null),forbidden=draft(null,null);
+        jdbc.update("UPDATE blog_posts SET author_id=?,user_id=? WHERE id=?",editor,editor,forbidden);
+        actor(author);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> controller.bulkAction(new BulkActionRequest(List.of(permitted,forbidden),"PUBLISH")))
+                .isInstanceOfSatisfying(com.mannschaft.app.common.BusinessException.class,error ->
+                        assertThat(error.getErrorCode()).isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_002));
+        for(Long id:List.of(permitted,forbidden)) {
+            assertThat(jdbc.queryForObject("SELECT status FROM blog_posts WHERE id=?",String.class,id)).isEqualTo("DRAFT");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM blog_posts WHERE id=? AND first_published_at IS NULL "
+                    +"AND first_published_author_user_id IS NULL",Integer.class,id)).isEqualTo(1);
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM blog_ranch_outboxes WHERE recipient_user_id IN (?,?)",Integer.class,author,editor)).isZero();
+    }
+    @Test void inactiveAuthorStillReceivesOriginalScheduledPublicationWithoutReward() {
+        Long id=draft(null,LocalDateTime.now().minusHours(1));
+        var user=users.findById(author).orElseThrow();user.setStatus(UserEntity.UserStatus.FROZEN);users.saveAndFlush(user);
+        assertThat(scheduled.publishScheduledPosts()).isGreaterThanOrEqualTo(1);published(id);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM blog_posts WHERE id=? AND first_published_at IS NULL "
+                +"AND first_published_author_user_id IS NULL",Integer.class,id)).isEqualTo(1);
     }
     @AfterEach void cleanupOwnRows() {
         SecurityContextHolder.clearContext();

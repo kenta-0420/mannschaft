@@ -27,8 +27,8 @@ class BlogRanchTransportWriter {
     @Transactional(propagation=Propagation.REQUIRES_NEW,readOnly=false)
     boolean accept(BlogRanchCapture capture) {
         var fact=capture.payload();
-        if(fact.actorKind()!=RanchRewardEnvelope.ActorKind.USER || fact.originalAdminId()!=null
-                || !fact.recipientUserId().equals(fact.actorUserId()) || !fact.recipientUserId().equals(fact.subjectUserId())
+        if((fact.actorKind()!=RanchRewardEnvelope.ActorKind.USER && !(fact.actorKind()==RanchRewardEnvelope.ActorKind.SYSTEM && fact.facts().publicationKind()==RanchRewardEnvelope.PublicationKind.SCHEDULED)) || fact.originalAdminId()!=null
+                || !fact.recipientUserId().equals(fact.subjectUserId())
                 || !fact.facts().firstPublish()
                 || !BlogContentFingerprintService.VERSION.equals(capture.fingerprint().version())
                 || !BlogContentFingerprintService.week(fact.occurredAt()).equals(capture.fingerprint().week())) return false;

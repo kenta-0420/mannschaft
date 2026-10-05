@@ -181,7 +181,12 @@ public class BlogPostController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "処理成功")
     public ResponseEntity<ApiResponse<BulkActionResponse>> bulkAction(
             @Valid @RequestBody BulkActionRequest request) {
-        BulkActionResponse response = postService.bulkAction(request, SecurityUtils.getCurrentUserId());
+        Long actor=SecurityUtils.getCurrentUserId();
+        var attributes=org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        boolean impersonated=attributes instanceof org.springframework.web.context.request.ServletRequestAttributes servlet
+                && servlet.getRequest().getAttribute("originalAdminId")!=null;
+        BulkActionResponse response = ranchNative.bulk(request,actor,impersonated)
+                .orElseGet(() -> postService.bulkAction(request,actor));
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
