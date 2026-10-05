@@ -196,3 +196,40 @@ describe('pages/teams/[slug].vue fetchTeam の応答逆転ガード（CMP-261004
     expect(redirectFn).toMatch(/if \(isCurrent && !isCurrent\(\)\) return false\s*\n\s*await navigateTo/)
   })
 })
+
+/**
+ * 組織（pages/organizations/[slug].vue の loadShellData/tryRedirectMovedSlug）も
+ * チームと同じ再確認を持つことのソース固定（検分修繕3・CMP-261004-1942 第3巡 P2）。
+ *
+ * 是正前は loadShellData が `if (!org.value && await tryRedirectMovedSlug()) return` と
+ * 引数なしで呼んでおり、tryRedirectMovedSlug の await（slug 解決）中に別組織へ移動しても、
+ * 古い 404 由来の遷移が後発のロードを踏みつけてしまっていた。
+ * 組織ページは mountSuspended すると重いため、チーム側の既存 spec と同じくソース上で固定する。
+ */
+describe('pages/organizations/[slug].vue loadShellData の応答逆転ガード（CMP-261004-1942）', () => {
+  const orgSource = readFileSync(resolve(process.cwd(), 'app/pages/organizations/[slug].vue'), 'utf8').replace(/\r\n/g, '\n')
+  const loadShellDataFn = orgSource.match(/async function loadShellData\(\)[\s\S]*?\n\}\n/)?.[0] ?? ''
+  const orgTryRedirectFn = orgSource.match(/async function tryRedirectMovedSlug\([\s\S]*?\n\}\n/)?.[0] ?? ''
+
+  it('loadShellData は要求発行時の slug を捕捉し、fetchOrg の await 後に isCurrent() を再確認する', () => {
+    expect(loadShellDataFn).not.toBe('')
+    expect(loadShellDataFn).toMatch(/const requestedSlug = orgSlug\.value/)
+    expect(loadShellDataFn).toMatch(/const isCurrent = \(\) => orgSlug\.value === requestedSlug/)
+    expect(loadShellDataFn).toMatch(
+      /await Promise\.all\(\[fetchOrg\(\), loadPermissions\(\)\]\)\s*\n\s*if \(!isCurrent\(\)\) return/,
+    )
+  })
+
+  it('404 解決の await 後、遷移前に isCurrent() を再確認する（引数なし呼び出しに戻さない）', () => {
+    expect(loadShellDataFn).toMatch(
+      /const redirected = await tryRedirectMovedSlug\(isCurrent\)\s*\n\s*if \(!isCurrent\(\)\) return\s*\n\s*if \(redirected\) return/,
+    )
+    expect(loadShellDataFn).not.toMatch(/await tryRedirectMovedSlug\(\)\) return/)
+  })
+
+  it('tryRedirectMovedSlug（組織版）も isCurrent 再確認後にのみ navigateTo（301）する', () => {
+    expect(orgTryRedirectFn).not.toBe('')
+    expect(orgTryRedirectFn).toMatch(/if \(isCurrent && !isCurrent\(\)\) return false/)
+    expect(orgTryRedirectFn).toMatch(/if \(isCurrent && !isCurrent\(\)\) return false\s*\n\s*await navigateTo/)
+  })
+})

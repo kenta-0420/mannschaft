@@ -134,11 +134,15 @@ const showTeamSearchLink = computed(() => {
 /**
  * 組織取得が 404（org 未取得）のとき、旧 slug → 新 slug の MOVED かを解決し 301 遷移する
  * （村方式・BE #1542）。遷移した場合は true を返す。
+ *
+ * `isCurrent` が渡された場合、解決待ち（await）の間に後発の要求が成功済み／
+ * 別スコープへ移動済みなら、古い 404 由来の遷移を行わない（検分修繕3・CMP-261004-1942）。
  */
-async function tryRedirectMovedSlug(): Promise<boolean> {
+async function tryRedirectMovedSlug(isCurrent?: () => boolean): Promise<boolean> {
   const { resolveSlug } = useSlugRedirect()
   const target = await resolveSlugRedirectPath(route.path, resolveSlug)
   if (!target) return false
+  if (isCurrent && !isCurrent()) return false
   await navigateTo(
     { path: target, query: route.query, hash: route.hash },
     { redirectCode: 301, replace: true },
@@ -256,14 +260,28 @@ const activeTab = computed<string>(() => {
 // =============================================================================
 // シェルデータのロード（シェル対象ルートに居るときだけ）
 // =============================================================================
-/** シェル描画に必要なデータを一括ロード（重複ロード防止に orgLoaded で番人）。 */
+/**
+ * シェル描画に必要なデータを一括ロード（重複ロード防止に orgLoaded で番人）。
+ *
+ * 世代ガード: slug 解決（tryRedirectMovedSlug）は await を挟むため、待機中に別組織へ
+ * 移動している（orgSlug が変わり watch(orgSlug) が走っている）可能性がある。解決後は
+ * isCurrent() を再確認し、古い 404 由来の遷移が後発のロードを踏みつけないようにする
+ * （検分修繕3・CMP-261004-1942。teams/[slug].vue と同型）。
+ */
 const orgLoaded = ref(false)
 async function loadShellData() {
   if (orgLoaded.value) return
   orgLoaded.value = true
+  const requestedSlug = orgSlug.value
+  const isCurrent = () => orgSlug.value === requestedSlug
   await Promise.all([fetchOrg(), loadPermissions()])
+  if (!isCurrent()) return
   // 組織が取得できなかった（404 等）場合は MOVED slug の可能性を解決し 301 遷移を試みる。
-  if (!org.value && await tryRedirectMovedSlug()) return
+  if (!org.value) {
+    const redirected = await tryRedirectMovedSlug(isCurrent)
+    if (!isCurrent()) return
+    if (redirected) return
+  }
   await Promise.all([
     fetchOrgTeams(),
     isAdmin.value ? fetchPermissionGroups() : Promise.resolve(),
