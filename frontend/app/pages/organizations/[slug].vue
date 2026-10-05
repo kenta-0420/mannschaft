@@ -86,6 +86,7 @@ const {
     getStatus: organizationApi.getFollowStatus,
   },
   roleAccess: { roleName, loadPermissions },
+  refreshDetail: fetchOrg,
 })
 
 const {

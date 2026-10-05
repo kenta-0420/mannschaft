@@ -93,10 +93,18 @@ async function mountTeam(c: Counts) {
     social: 'supporterCount' in c ? { supporterCount: c.supporterCount } : {},
     location: { template: 'default' },
   } as unknown as TeamResponse
-  return mountSuspended(TeamPageHeader, {
+  const wrapper = await mountSuspended(TeamPageHeader, {
     props: { ...commonProps, team, displayName: 'チームA', templateLabel: {} },
     global: { stubs },
   })
+  // 試練修繕: jsdom は cookie 未設定のため detectBrowserLanguage が navigator.language
+  // （既定 en-US）から初期ロケールを決める。かつ i18n は global composer（テストファイル内で
+  // 共有）のため、別テストの AC-14 ロケール切替の残骸が後続テストの既定ロケールへ漏れる。
+  // AC-13 系は「0/—/supporterEnabled のロジック」を見る試験であり言語に依存しないため、
+  // 判定ロジックを緩めずに基準ロケールを nuxt.config の defaultLocale（ja）へ明示的に固定する
+  // （実測の env 既定値に期待値を合わせる対処ではなく、既定ロケールへ確定させる根治）。
+  await switchLocale(wrapper, 'ja')
+  return wrapper
 }
 
 async function mountOrg(c: Counts) {
@@ -108,10 +116,13 @@ async function mountOrg(c: Counts) {
     metadata: 'memberCount' in c ? { memberCount: c.memberCount } : {},
     social: 'supporterCount' in c ? { supporterCount: c.supporterCount } : {},
   } as unknown as OrgDetail
-  return mountSuspended(OrgPageHeader, {
+  const wrapper = await mountSuspended(OrgPageHeader, {
     props: { ...commonProps, org, orgId: 'org-a', ancestors: [] },
     global: { stubs },
   })
+  // mountTeam と同様に基準ロケールを明示的に固定する（上のコメント参照）。
+  await switchLocale(wrapper, 'ja')
+  return wrapper
 }
 
 const HEADERS = [
@@ -150,19 +161,22 @@ describe('ロケール辞書に人数表示のキーがある（AC-14・CMP-2610
 })
 
 describe.each(HEADERS)('%s の人数表示（AC-13・CMP-261004-1943）', (_name, mount) => {
+  // mountTeam/mountOrg が既定ロケールを 'ja'（nuxt.config の defaultLocale）に明示固定している。
+  const DEFAULT_LOCALE: Locale = 'ja'
+
   it('AC-13: サポーター 0 は「0」で表示する', async () => {
     const wrapper = await mount({ memberCount: 3, supporterCount: 0 })
-    expect(normalize(supporterEl(wrapper).text())).toBe(expected('ja', KEY_SUPPORTER, '0'))
+    expect(normalize(supporterEl(wrapper).text())).toBe(expected(DEFAULT_LOCALE, KEY_SUPPORTER, '0'))
   })
 
   it('AC-13: サポーター数が欠落していれば「—」で表示する', async () => {
     const wrapper = await mount({ memberCount: 3 })
-    expect(normalize(supporterEl(wrapper).text())).toBe(expected('ja', KEY_SUPPORTER, MISSING))
+    expect(normalize(supporterEl(wrapper).text())).toBe(expected(DEFAULT_LOCALE, KEY_SUPPORTER, MISSING))
   })
 
   it('AC-13: サポーター数が null なら「—」で表示する', async () => {
     const wrapper = await mount({ memberCount: 3, supporterCount: null })
-    expect(normalize(supporterEl(wrapper).text())).toBe(expected('ja', KEY_SUPPORTER, MISSING))
+    expect(normalize(supporterEl(wrapper).text())).toBe(expected(DEFAULT_LOCALE, KEY_SUPPORTER, MISSING))
   })
 
   it('AC-13: supporterEnabled=false ならサポーター欄を出さない（メンバー欄は出る）', async () => {
@@ -173,14 +187,19 @@ describe.each(HEADERS)('%s の人数表示（AC-13・CMP-261004-1943）', (_name
 
   it('AC-13: メンバー 0 は「0」で表示する', async () => {
     const wrapper = await mount({ memberCount: 0, supporterCount: 0 })
-    expect(normalize(memberEl(wrapper).text())).toBe(expected('ja', KEY_MEMBER, '0'))
+    expect(normalize(memberEl(wrapper).text())).toBe(expected(DEFAULT_LOCALE, KEY_MEMBER, '0'))
   })
 
   it('AC-13: メンバー数が欠落していれば「—」で表示する', async () => {
     const wrapper = await mount({ supporterCount: 0 })
-    expect(normalize(memberEl(wrapper).text())).toBe(expected('ja', KEY_MEMBER, MISSING))
+    expect(normalize(memberEl(wrapper).text())).toBe(expected(DEFAULT_LOCALE, KEY_MEMBER, MISSING))
   })
 
+  // 試練修繕: 6言語分のロケール JSON を初回切替ごとに lazy import するため、この vitest(nuxt
+  // 環境) ではコールド状態で 60000ms を超えうる（実測: 環境負荷により 'zh'/'ko' 付近で変動）。
+  // 60000ms で打ち切られると finally のロケール復帰が間に合わず、後続（OrgPageHeader）の
+  // describe.each へ途中ロケールが漏れて無関係な AC-13 を落とす。これはロジックの緩和ではなく
+  // 同一ロケール切替処理の実測コストに合わせた待ち時間の是正のため、ここで延長する。
   it('AC-14: 6言語それぞれ実際の辞書の文言で人数を描画し、en では日本語が出ない', async () => {
     const wrapper = await mount({ memberCount: 3, supporterCount: 7 })
     try {
@@ -189,7 +208,7 @@ describe.each(HEADERS)('%s の人数表示（AC-13・CMP-261004-1943）', (_name
         await vi.waitFor(() => {
           expect(normalize(memberEl(wrapper).text())).toBe(expected(locale, KEY_MEMBER, '3'))
           expect(normalize(supporterEl(wrapper).text())).toBe(expected(locale, KEY_SUPPORTER, '7'))
-        }, { timeout: 3000 })
+        }, { timeout: 15000 })
         if (locale === 'en') {
           const text = memberEl(wrapper).text() + supporterEl(wrapper).text()
           expect(text).not.toMatch(/メンバー|サポーター|人/)
@@ -199,5 +218,5 @@ describe.each(HEADERS)('%s の人数表示（AC-13・CMP-261004-1943）', (_name
     finally {
       await switchLocale(wrapper, 'ja')
     }
-  }, 60000)
+  }, 300000)
 })

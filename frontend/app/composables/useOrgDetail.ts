@@ -7,6 +7,7 @@ import type {
   OrgVisibilityDto,
   OrgMetadataDto,
   OrgTimestampsDto,
+  OrgSocialDto,
 } from '~/types/organization'
 
 // Wave 3-B: OrganizationResponse ネスト構造に対応
@@ -27,8 +28,11 @@ export interface OrgDetail {
   visibility?: OrgVisibilityDto
   metadata?: OrgMetadataDto
   timestamps?: OrgTimestampsDto
-  // 旧フラット互換（別エンドポイントや内部追加フィールド）
-  supporterCount?: number
+  /**
+   * サポーター人数（CMP-261004-1942/1943）。BE OrganizationResponse.social.supporterCount に
+   * 一本化し、旧フラット supporterCount は廃止した（移行完了）。
+   */
+  social?: OrgSocialDto
   description?: string | null
 }
 
@@ -61,15 +65,34 @@ export function useOrgDetail(orgId: Ref<string>) {
     applyJoinRequest: applyJoinRequestRaw,
   } = useJoinRequestSelfStatus('organization')
 
+  /**
+   * 組織詳細の取得（CMP-261004-1942/1943）。
+   *
+   * - 静かな再取得: 既に org が取得済み（null でない）なら `loading` を立てない。
+   *   応援・解除後の人数取り直しで全画面スピナーを出し、ヘッダ・確認ダイアログを
+   *   一瞬消さないため（AC-1/AC-2）。
+   * - 世代ガード: 呼び出し開始時点の orgId を捕捉し、await 後に orgId が変わっていたら
+   *   （別スコープへ切替済み）結果を反映しない（AC-5。旧スコープの遅延応答が新スコープの
+   *   表示を上書きしない）。
+   * - AC-11: 取得失敗が 403（権限喪失）のときは org を null にして保護された詳細表示を閉じる。
+   */
   async function fetchOrg() {
-    loading.value = true
+    const requestedId = orgId.value
+    const quiet = org.value !== null
+    if (!quiet) loading.value = true
     try {
-      const result = await orgApi.getOrganization(orgId.value)
+      const result = await orgApi.getOrganization(requestedId)
+      if (orgId.value !== requestedId) return
       org.value = result.data as OrgDetail
     } catch (error) {
+      if (orgId.value !== requestedId) return
+      const status = (error as { statusCode?: number, response?: { status?: number }, status?: number })
+        ?.statusCode ?? (error as { response?: { status?: number } })?.response?.status
+        ?? (error as { status?: number })?.status
+      if (status === 403) org.value = null
       handleApiError(error, '組織詳細取得')
     } finally {
-      loading.value = false
+      if (orgId.value === requestedId && !quiet) loading.value = false
     }
   }
 

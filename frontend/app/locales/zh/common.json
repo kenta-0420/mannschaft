@@ -1760,6 +1760,8 @@
     },
     "menu": "菜单",
     "scopeShell": {
+      "memberCount": "成员 {count} 人",
+      "supporterCount": "支持者 {count} 人",
       "supporter_cancel_confirm_title": "要取消支持吗？",
       "supporter_cancel_confirm_body": "将取消对{name}的支持。确定吗？",
       "supporter_cancel_action": "取消支持",

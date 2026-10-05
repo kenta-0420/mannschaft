@@ -94,6 +94,7 @@ const {
     getStatus: teamApi.getFollowStatus,
   },
   roleAccess: { roleName, loadPermissions },
+  refreshDetail: fetchTeam,
 })
 
 // =============================================================================
@@ -151,21 +152,37 @@ const displayName = computed(
   () => team.value?.basicInfo?.nickname1 || team.value?.basicInfo?.name || '',
 )
 
+/**
+ * チーム詳細の取得（CMP-261004-1942/1943）。
+ *
+ * - 静かな再取得: 既に team が取得済み（null でない）なら `loading` を立てない。
+ *   応援・解除後の人数取り直しで全画面スピナーを出し、ヘッダ・確認ダイアログを
+ *   一瞬消さないため（AC-1）。
+ * - 世代ガード: 呼び出し開始時点の teamSlug を捕捉し、await 後に slug が変わっていたら
+ *   （別スコープへ切替済み）結果を反映しない（AC-5）。
+ * - AC-11: 取得失敗が 403（権限喪失）のときは team を null にして保護された詳細表示を閉じる。
+ */
 async function fetchTeam() {
-  loading.value = true
+  const requestedSlug = teamSlug.value
+  const quiet = team.value !== null
+  if (!quiet) loading.value = true
   try {
-    const result = await teamApi.getTeam(teamSlug.value)
+    const result = await teamApi.getTeam(requestedSlug)
+    if (teamSlug.value !== requestedSlug) return
     team.value = result.data
   }
   catch (error) {
+    if (teamSlug.value !== requestedSlug) return
     // 404 のときは「旧 slug → 新 slug の 301 移動」かもしれないので解決を試みる（村方式・BE #1542）。
     if ((error as FetchError)?.response?.status === 404 && await tryRedirectMovedSlug()) {
       return
     }
+    const status = (error as FetchError)?.response?.status
+    if (status === 403) team.value = null
     handleApiError(error, 'チーム詳細取得')
   }
   finally {
-    loading.value = false
+    if (teamSlug.value === requestedSlug && !quiet) loading.value = false
   }
 }
 
