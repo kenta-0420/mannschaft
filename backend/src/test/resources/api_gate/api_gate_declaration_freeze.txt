@@ -81,7 +81,7 @@ HTTP|com.mannschaft.app.auth.controller.AuthLoginController|12|12
 HTTP|com.mannschaft.app.auth.controller.AuthOAuthCallbackController|0|1
 HTTP|com.mannschaft.app.auth.controller.AuthOAuthController|0|3
 HTTP|com.mannschaft.app.auth.controller.AuthWebAuthnController|9|9
-HTTP|com.mannschaft.app.auth.controller.BirthProfileController|3|3
+HTTP|com.mannschaft.app.auth.controller.BirthProfileController|0|3
 HTTP|com.mannschaft.app.auth.controller.GuardianChildViewController|5|5
 HTTP|com.mannschaft.app.auth.controller.GuardianshipSwitchController|5|5
 HTTP|com.mannschaft.app.auth.controller.ParentalConsentController|9|9
@@ -188,7 +188,7 @@ HTTP|com.mannschaft.app.dashboard.controller.DashboardScopeTabController|2|2
 HTTP|com.mannschaft.app.dashboard.controller.DashboardWidgetVisibilityController|4|4
 HTTP|com.mannschaft.app.dashboard.controller.PersonalActionRequiredController|1|1
 HTTP|com.mannschaft.app.dashboard.controller.PersonalAdminActionRequiredController|1|1
-HTTP|com.mannschaft.app.diagnosis.controller.DiagnosisController|8|8
+HTTP|com.mannschaft.app.diagnosis.controller.DiagnosisController|0|8
 HTTP|com.mannschaft.app.digest.controller.DigestAdminController|1|1
 HTTP|com.mannschaft.app.digest.controller.DigestConfigController|3|3
 HTTP|com.mannschaft.app.digest.controller.DigestController|7|7
@@ -471,6 +471,7 @@ HTTP|com.mannschaft.app.quickmemo.controller.QuickMemoController|11|11
 HTTP|com.mannschaft.app.quickmemo.controller.QuickMemoSettingsController|2|2
 HTTP|com.mannschaft.app.quickmemo.controller.TagController|12|12
 HTTP|com.mannschaft.app.quickmemo.controller.UserVoiceInputConsentController|3|3
+HTTP|com.mannschaft.app.ranch.controller.RanchAdminController|0|8
 HTTP|com.mannschaft.app.ranch.controller.RanchAssignmentController|0|1
 HTTP|com.mannschaft.app.ranch.controller.RanchLegacySyncController|1|1
 HTTP|com.mannschaft.app.ranch.controller.RanchOwnerActionController|4|7
@@ -772,3 +773,5 @@ HTTP|com.mannschaft.app.workflow.controller.WorkflowTemplateStatusController|2|2
 STOMP|com.mannschaft.app.chat.controller.ChatTypingController|1|1
 STOMP|com.mannschaft.app.chat.controller.ChatWebSocketController|1|1
 STOMP|com.mannschaft.app.village.controller.VillageLobbyPresenceController|3|3
+
+HTTP|com.mannschaft.app.reflection.controller.RecallSessionController|0|5

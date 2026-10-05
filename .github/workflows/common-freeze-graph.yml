@@ -1,0 +1,53 @@
+name: Common — Finite freeze graph
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/common-freeze-graph.yml'
+      - '.github/fixtures/common-freeze-graph/**'
+      - 'backend/build.gradle.kts'
+      - 'backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegrityTest.java'
+      - 'backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegritySelfTest.java'
+      - 'backend/src/test/java/com/mannschaft/app/common/architecture/ArchUnitFreezeMechanismSelfTest.java'
+      - 'backend/src/test/resources/archunit.properties'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: common-freeze-graph-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  finite-graph:
+    name: Finite graph (7 cases)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/common-freeze-graph/gradle-home
+        with:
+          gradle-version: '8.14.4'
+          cache-disabled: true
+      - name: 固定fixtureの7ケースを順次実行
+        timeout-minutes: 11
+        run: python3 .github/fixtures/common-freeze-graph/run-linux.py
+      - name: 成否を含む原本を保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: common-freeze-graph-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/common-freeze-graph/evidence/
+          retention-days: 14
+          if-no-files-found: error

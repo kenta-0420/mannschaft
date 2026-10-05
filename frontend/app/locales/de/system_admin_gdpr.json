@@ -45,6 +45,7 @@
       },
       "noData": "Keine Daten verfügbar",
       "retry": {
+        "queued": "Der erneute Versuch wurde angenommen. Warte auf den Abschluss und prüfe dann den Status.",
         "button": "Wiederholen",
         "confirm": "DSGVO-Bereinigung für Domäne \"{domain}\" wiederholen?",
         "success": "Wiederholung erfolgreich",

@@ -388,23 +388,7 @@ public class BlogPostService {
     public BlogPostResponse changeStatus(Long id, Long userId, PublishRequest request) {
         BlogPostEntity entity = findPostOrThrow(id);
         checkWriteAccess(entity, userId);
-        PostStatus newStatus = EnumInputParser.parse(PostStatus.class, request.getStatus(), "status");
-
-        if (newStatus == PostStatus.REJECTED && (request.getRejectionReason() == null || request.getRejectionReason().isBlank())) {
-            throw new BusinessException(CmsErrorCode.REJECTION_REASON_REQUIRED);
-        }
-
-        // 基準時刻は 1 回だけ取得し、公開判定と非公開化判定で同一の値を使う
-        // （エンティティ側は現在時刻を取得しない。CMP-023 / DateTimeAndZoneGuardTest）。
-        LocalDateTime baseTime = LocalDateTime.now();
-
-        switch (newStatus) {
-            // 予約公開（issue #2616・AC-1〜3）: publishedAt が未来なら BlogPostEntity#publish が
-            // DRAFT に据え置き、published_at だけを記録する（PostStatus.SCHEDULED は新設しない）。
-            case PUBLISHED -> entity.publish(request.getPublishedAt(), baseTime);
-            case REJECTED -> entity.reject(request.getRejectionReason());
-            default -> entity.changeStatus(newStatus, baseTime);
-        }
+        PostStatus newStatus = BlogRanchNativeMutationRules.changeStatus(entity, request, LocalDateTime.now());
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("記事ステータス変更: postId={}, status={}", id, newStatus);
@@ -635,20 +619,7 @@ public class BlogPostService {
         BlogPostEntity entity = findPostOrThrow(postId);
         checkWriteAccess(entity, userId);
 
-        if (entity.getStatus() != PostStatus.PENDING_SELF_REVIEW) {
-            throw new BusinessException(CmsErrorCode.INVALID_STATUS_TRANSITION);
-        }
-
-        LocalDateTime baseTime = LocalDateTime.now();
-
-        switch (request.getAction().toUpperCase()) {
-            // 予約公開（issue #2616・AC-17）: 予約時刻を持つ記事はその時刻を尊重し、
-            // 未来ならセルフレビュー承認後も DRAFT へ据え置いてバッチの公開を待つ。
-            case "PUBLISH" -> entity.publish(entity.getPublishedAt(), baseTime);
-            case "DRAFT" -> entity.changeStatus(PostStatus.DRAFT, baseTime);
-            case "DELETE" -> entity.softDelete();
-            default -> throw new BusinessException(CmsErrorCode.INVALID_STATUS_TRANSITION);
-        }
+        BlogRanchNativeMutationRules.selfReview(entity, request, LocalDateTime.now());
 
         BlogPostEntity saved = postRepository.save(entity);
         log.info("セルフレビュー: postId={}, action={}", postId, request.getAction());

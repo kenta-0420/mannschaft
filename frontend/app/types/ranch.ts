@@ -7,17 +7,19 @@ export type Habitat = 'LAND' | 'SEA' | 'AIR'
 export interface DinosaurSummary {
  id: string; speciesKey: string | null; variantKey: string | null; habitat: Habitat | null;
  stage: RanchStage; name: string | null; xp: Decimal; nextStageXp: Decimal | null;
+ affinityBand?: 'NEUTRAL' | 'WARM' | 'CLOSE';
  version: Decimal; namedAt: string | null; speciesCatalogVersion: string | null; egg: { startedAt: string; readyAt: string; crackStage: 'INTACT' | 'SMALL_CRACK' | 'WIDE_CRACK' | 'READY'; hatchReady: boolean; hatchedAt: string | null } | null
 }
 export interface RanchSettings {
  isVisible: boolean; viewMode: 'ROOM'; renderStyle: RenderStyle; motionMode: MotionMode;
  isSoundEnabled: boolean; soundVolume: number; version: Decimal
 }
-export interface RanchSlot { slotKey: 'SHELF_1' | 'SHELF_2' | 'SHELF_3'; inventoryId: string | null; version: Decimal }
+export interface RanchSlot { slotKey: 'SHELF_1' | 'SHELF_2' | 'SHELF_3'; inventoryId: string | null; version: Decimal; decoration?: { collectibleKey: string; labelKey: string; assetKey: string } | null }
+export interface OwnerSummary { id: string; status: 'ACTIVE' | 'PAUSED'; balance: Decimal; version: Decimal }
 export interface RanchState {
  featureStatus: 'AVAILABLE' | 'UNAVAILABLE'; deliveryPaused: boolean;
  rewardsStatus: 'ENABLED' | 'DISABLED' | 'PAUSED'; shopAvailable: boolean;
- owner: { id: string; status: 'ACTIVE' | 'PAUSED'; balance: Decimal; version: Decimal } | null;
+ owner: OwnerSummary | null;
  dinosaur: DinosaurSummary | null; settings: RanchSettings | null;
  roomSlots: RanchSlot[]; serverTime: string; policyVersion: Decimal | null;
  careBudget: { weekStartsOn: string; remainingXp: Decimal; weeklyCapXp: Decimal; awardedXp: Decimal; amountXp: Decimal; weekEndsAt: string; ruleVersion: string } | null;
@@ -30,8 +32,9 @@ export interface HatchResult { commandId: string; dinosaurId: string; name: stri
 export type HatchResponse = { kind: 'HATCH_RESULT'; result: HatchResult; state: null } | { kind: 'CURRENT_STATE'; result: null; state: RanchState }
 export type AssignmentRequest = { method: 'HABITAT_RANDOM'; habitat: Habitat; version: Decimal } | { method: 'DIAGNOSIS'; resultId: string; version: Decimal } | { method: 'BIRTH_STYLE'; resultId: string; confirmationRef: string; version: Decimal }
 export interface RanchInventory { id: string; collectibleKey: string; labelKey: string; assetKey: string; isRevoked: boolean; placedSlotKey: string | null }
+export interface RanchLegacySyncResult { commandId: string; nextAfterAwardId: Decimal; processedCount: number; importedCount: number; hasNext: boolean; completedAt: string }
 export interface ShopItem { skuKey: string; collectibleKey: string; labelKey: string; pricePoints: Decimal; priceVersion: Decimal; isOwned: boolean }
-export interface RanchRecord { id: string; kind: string; deltaPoints: Decimal; deltaXp: Decimal; occurredAt: string; sourceLink: { url: string } | null }
+export interface RanchRecord { id: string; kind: string; sourceType: string | null; deltaPoints: Decimal; deltaXp: Decimal; occurredAt: string; sourceLink: { kind: string; id: string; url: string } | null }
 export interface CursorPage<T> { data: T[]; meta: { nextCursor: string | null; hasNext: boolean; limit: number } }
 export interface DiagnosisQuestion { id: string; axis: string; polarity: number; text: Record<string,string> }
 export interface TieQuestion { axisId: string; zero: Record<string,string>; one: Record<string,string> }

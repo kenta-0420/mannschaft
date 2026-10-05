@@ -1,5 +1,6 @@
 import type { BlogPostResponse, BlogReactionResponse, BlogTag, BlogSeries, BlogRevision } from '~/types/cms'
 import type { components } from '~/types/generated'
+import { parseBlogPostReadQuery } from '~/utils/blogPostReadQuery'
 
 /** BE `PublishRequest`（生成型が正準）。 */
 export type BlogPublishRequest = components['schemas']['PublishRequest']
@@ -75,8 +76,10 @@ export function useBlogApi() {
     }>(`/api/v1/blog/posts?${qs}`)
   }
 
-  async function getPost(slug: string) {
-    return api<{ data: BlogPostResponse }>(`/api/v1/blog/posts/${slug}`)
+  async function getPost(slug: string, params: Readonly<Record<string, unknown>> = {}) {
+    const query = parseBlogPostReadQuery(params)
+    const path = `/api/v1/blog/posts/${slug}`
+    return Object.keys(query).length ? api<{ data: BlogPostResponse }>(path, { query }) : api<{ data: BlogPostResponse }>(path)
   }
 
   async function getFeed(params?: Record<string, unknown>) {

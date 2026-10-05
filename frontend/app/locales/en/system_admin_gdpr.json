@@ -45,6 +45,7 @@
       },
       "noData": "No data available",
       "retry": {
+        "queued": "Retry accepted. Wait for completion, then check the status.",
         "button": "Retry",
         "confirm": "Retry GDPR purge for domain \"{domain}\"?",
         "success": "Retry succeeded",

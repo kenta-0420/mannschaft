@@ -23,6 +23,12 @@ public interface ScheduleAttendanceRepository extends JpaRepository<ScheduleAtte
      */
     Optional<ScheduleAttendanceEntity> findByScheduleIdAndUserId(Long scheduleId, Long userId);
 
+    /** 回答更新の初load前に現在行をロックする。読取APIのqueryは変更しない。 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM ScheduleAttendanceEntity a WHERE a.scheduleId=:scheduleId AND a.userId=:userId")
+    Optional<ScheduleAttendanceEntity> findForResponseUpdate(@Param("scheduleId") Long scheduleId,
+            @Param("userId") Long userId);
+
     /**
      * スケジュールIDで出欠一覧を取得する。
      */

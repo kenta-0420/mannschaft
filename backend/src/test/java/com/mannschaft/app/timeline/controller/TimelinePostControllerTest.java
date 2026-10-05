@@ -45,6 +45,8 @@ class TimelinePostControllerTest {
     @Mock
     private TimelineScopeIdResolver scopeIdResolver;
 
+    @Mock private com.mannschaft.app.timeline.service.TimelineRanchNativeOperationFacade ranchNative;
+    private final org.springframework.mock.web.MockHttpServletRequest servletRequest = new org.springframework.mock.web.MockHttpServletRequest();
     private TimelinePostController controller;
     private MockedStatic<SecurityUtils> securityUtils;
 
@@ -54,7 +56,7 @@ class TimelinePostControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new TimelinePostController(postService, scopeIdResolver);
+        controller = new TimelinePostController(postService, ranchNative, servletRequest, scopeIdResolver);
         securityUtils = Mockito.mockStatic(SecurityUtils.class);
         securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
     }

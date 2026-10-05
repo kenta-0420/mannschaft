@@ -1,5 +1,7 @@
 {
   "ranch": {
+    "status": {"growth":"성장","points":"장식 포인트 잔액","affinity":"친밀함","freeCare":"무료 돌봄 규칙","careAvailable":"공개 중","careStopped":"준비 중 또는 중지 중","careRemaining":"이번 주 무료 돌봄 잔여: {remaining} / {cap} XP","careUsed":"사용: {used} XP / 돌봄 1회 양: {amount} XP","deliveryPaused":"포인트 배송이 일시 중지되었습니다. 무료 돌봄 이용과는 별개입니다.","deliveryActive":"포인트 반영에는 시간이 걸릴 수 있습니다.","pointRemaining":"이번 주 활동 포인트 잔여: {remaining}","personalReference":"개인 회상 참고 횟수: {required} / 완료: {completed}","referenceNotice":"횟수는 참고용입니다. 각 원천의 한도, 중지 및 배송 상태에 따라 전체 금액을 받지 못할 수 있습니다.","reward":{"ENABLED":"활동 포인트가 활성화되었습니다.","DISABLED":"활동 포인트가 미등록 또는 비활성화 상태입니다.","PAUSED":"활동 보상이 중지되었습니다."}},
+    "admin": {"title":"공룡 운영","controls":"이용 제어","care":"무료 돌봄 활성화","shop":"상점 활성화","deliveryPause":"포인트 배송 일시 중지","rewardPause":"발생한 활동의 보상 중지","independent":"무료 돌봄, 교환, 활동 보상, 배송은 각각 독립적입니다.","reason":"사유 코드","saved":"저장했습니다.","health":"활동 원천 배송 상태","pending":"대기 건수","dead":"최종 실패 건수","oldest":"가장 오래된 대기 시간","seconds":"{count}초","refresh":"새로 조회","retrySource":"이 이벤트의 재배송 예약","retryNotice":"재배송 예약이며 포인트 지급 완료를 뜻하지 않습니다. 본문이나 학습 답변을 입력하지 마세요.","sourceLabel":"활동 원천","eventId":"이벤트 ID","RETRY_SCHEDULED":"재배송을 예약했습니다.","ALREADY_TERMINAL":"이 이벤트는 이미 종료 상태입니다.","source":{"ATTENDANCE_RESPONSE":"본인의 출석 응답","TIMELINE_ORIGINAL":"본인의 타임라인 게시물","BLOG_FIRST_PUBLISH":"블로그 최초 공개","PERSONAL_RECALL_COMPLETE":"개인 회상 완료"},"publicationNotice":"미래 UTC 월요일 00:00에 적용할 변경 불가 버전을 등록합니다. 비활성 버전도 모든 수치는 양수여야 합니다. 보상을 활성화하려면 개인 회상 활성화, 등록된 공개 소재와 측정된 배송 범위가 필요합니다. 기존 주간 스냅샷과 획득량은 변경하지 않습니다.","publishCare":"돌봄 규칙 등록","publishPolicy":"보상 정책 등록","effectiveAt":"적용 시각 (미래 UTC 월요일 00:00)","amountXp":"돌봄 1회 XP","weeklyCapXp":"주간 돌봄 XP 한도","juvenileXp":"유년 단계 XP 기준","adultXp":"성체 단계 XP 기준","policyEnabled":"활동 포인트 활성화","globalWeeklyCap":"전체 주간 포인트 한도","amountPoints":"활동 1회 포인트","countLimit":"주간 활동 횟수 한도","batchSize":"배송 묶음 크기","leaseSeconds":"배송 임대 시간(초)","maxAttempts":"최대 배송 시도 횟수","initialBackoffSeconds":"첫 재시도 대기(초)","maxBackoffSeconds":"최대 재시도 대기(초)","publicationSaved":"저장된 버전 {version} · 적용 {effectiveAt}"},
     "title": "공룡의 방",
     "optional": "시작은 자유입니다. 무료 돌봄만으로도 성체까지 자라며, 돌보지 않아도 잃지 않습니다. 친밀감은 시간이 지나도 줄지 않습니다.",
     "start": "알부터 시작하기",
@@ -37,6 +39,7 @@
       "touched": "자신의 분신을 만졌습니다."
     },
     "scene": {
+      "staticFallback": "같은 공룡의 정지 이미지로 표시합니다.",
       "assetPreparing": "이 모습의 소재는 준비 중입니다. 텍스트와 조작은 계속 이용할 수 있습니다."
     },
     "style": {
@@ -135,6 +138,12 @@
       "openConsent": "보호자 동의로 이동"
     },
     "decorations": {
+      "importTitle": "기념품 가져오기",
+      "importDescription": "이전에 획득한 배지에서 공개된 기념품을 한 번에 최대 100개씩 확인합니다. 계속할지는 직접 선택할 수 있습니다.",
+      "importStart": "기념품 가져오기",
+      "importContinue": "다음 배지 100개 확인",
+      "importAgain": "처음부터 다시 확인",
+      "importResult": "확인한 배지: {processed}개 / 가져온 기념품: {imported}개",
       "title": "장식품과 교환",
       "permanent": "포인트는 영구 장식품에만 사용할 수 있습니다. 성장 속도나 이용 권한에 영향을 주지 않습니다.",
       "slots": "장식품 슬롯 3개",

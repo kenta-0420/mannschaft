@@ -21,7 +21,7 @@ const asset = computed(() => {
  previousAsset = next
  return next
 })
-const atlas = useRanchAtlas(canvas, () => asset.value, () => activity.enabled.value, () => reaction.pilotFrame.value)
+const atlas = useRanchAtlas(canvas, () => asset.value, () => activity.enabled.value, () => reaction.pilotFrame.value, () => props.motionMode !== 'NORMAL' || activity.osReduced.value)
 const crackPaths = computed(() => eggCrackPaths[props.dinosaur.egg?.crackStage ?? 'INTACT'])
 watch(() => props.reaction, value => { if (value) { if (reaction.respond(value.key, value.dinosaurId)) sound.play(value.key, value.dinosaurId, value.soundToken ?? null); else sound.cancel(value.soundToken ?? null) } }, { flush: 'sync' })
 const offset = ref(0)
@@ -54,6 +54,7 @@ onScopeDispose(stop)
    <template v-else>
     <canvas v-if="asset && !atlas.failed.value" ref="canvas" v-show="atlas.loaded.value" :width="renderStyle === 'PIXEL' ? 96 : 192" :height="renderStyle === 'PIXEL' ? 96 : 192" role="img" :aria-label="dinosaur.name ?? t('ranch.avatar.label')" class="w-48 h-48" :style="{ imageRendering: renderStyle === 'PIXEL' ? 'pixelated' : 'auto' }" />
     <p v-if="!asset || !atlas.loaded.value || atlas.failed.value" class="text-sm p-8">{{ t('ranch.scene.assetPreparing') }}</p>
+    <p v-else-if="atlas.usingFallback.value" class="text-xs">{{ t('ranch.scene.staticFallback') }}</p>
    </template>
   </div>
   <figcaption class="relative text-sm font-medium break-words text-center">{{ dinosaur.name ?? t('ranch.stage.EGG') }} · {{ t('ranch.stage.' + dinosaur.stage) }}</figcaption>
