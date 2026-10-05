@@ -522,12 +522,14 @@
 
 組織・チーム詳細 GET（`social.supporterCount`。仕様は 02_api_design.md）は slug キーで 10 分キャッシュ（`team-detail` / `org-detail`）されるため、所属変更をキャッシュへ反映する仕組みを持つ。
 
+組織のサポーター数は membership ドメインの集計なので、`OrganizationService`（organization のトランザクション）では数えず、トランザクションを持たない `OrganizationDetailFacade` が `OrganizationService` の応答（キャッシュ済みでもよい）を `toBuilder()` で複製し、`MembershipService#countActiveSupporters` の結果を `social` に合成する（D-3T・原則 5。`TeamAffiliationFacade` と同じ形）。このため組織のサポーター数は `org-detail` キャッシュの外にあり、下記の evict を待たずに常に実数を返す。下記の仕組みは組織ではメンバー数など他の所属依存値、チームではサポーター数を含む詳細全体のためにある。
+
 ```
 1. 応援（フォロー）・解除・申請承認／一括承認・入退会で MembershipService#join / leave が MembershipChangedEvent を発火
 2. 呼び出し元トランザクションがコミットされた後（AFTER_COMMIT）にだけ、以下が受信する
    - scope_type = TEAM          → TeamDetailCacheMembershipListener（team ドメイン）
    - scope_type = ORGANIZATION  → OrganizationDetailCacheMembershipListener（organization ドメイン）
-3. 自ドメインの Repository で scope_id → slug を解決（論理削除済みで引けなければ何もしない）
+3. 自ドメインの Repository で scope_id → slug を解決（論理削除済みで引けなければ何もしない。コミット直後の値をレプリカ遅延で古く読まないよう readOnly を付けず primary を読む）
 4. CacheManager 経由で当該 slug の 1 件だけを evict（allEntries は使わない）
 5. 次の詳細 GET が DB の実数を集計し直してキャッシュを温め直す
 ```

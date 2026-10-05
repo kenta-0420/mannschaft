@@ -6,6 +6,7 @@ import type { VueWrapper } from '@vue/test-utils'
 import type { TeamResponse } from '~/types/team'
 import type { OrgDetail } from '~/composables/useOrgDetail'
 import type { FollowStatusApi } from '~/composables/useFollowSelfStatus'
+import type { JoinRequestUiStatus } from '~/composables/useJoinRequestApi'
 import TeamPageHeader from '~/components/team/TeamPageHeader.vue'
 import OrgPageHeader from '~/components/organization/OrgPageHeader.vue'
 
@@ -139,6 +140,8 @@ interface WiringHandle {
 }
 
 function headerCommonProps(wiring: ReturnType<typeof useScopeFollowWiring>, roleName: string | null) {
+  // ヘッダ props のリテラル union のまま渡す（string に広げると props の型に合わない）
+  const joinRequestStatus: JoinRequestUiStatus = 'UNKNOWN'
   return {
     roleName,
     isAdmin: false,
@@ -146,7 +149,7 @@ function headerCommonProps(wiring: ReturnType<typeof useScopeFollowWiring>, role
     followStatus: wiring.followStatus.value,
     followLoading: wiring.followLoading.value,
     followPermissionSyncError: wiring.followPermissionSyncError.value,
-    joinRequestStatus: 'UNKNOWN',
+    joinRequestStatus,
     joinRequestLoading: false,
   }
 }

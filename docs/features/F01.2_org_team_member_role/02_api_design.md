@@ -257,8 +257,8 @@
 
 > - `supporterCount` は `memberships` のうち `role_kind = SUPPORTER` かつ `left_at IS NULL`（退会していない）の行数。MEMBER・退会済み・申請中（`supporter_applications` の PENDING）は数えない。0 人でも `0` を返す（null・欠落にしない）
 > - チームは従来から `social.teamFriendCount` / `social.supporterCount` を返している。組織は CMP-261004-1942 で `social.supporterCount` を追加した（組織に `teamFriendCount` は無い）
-> - 組織側の集計は membership ドメインの `MembershipService#countActiveSupporters` 経由で行う（organization ドメインから `MembershipRepository` を直接注入しない。D-5 越境 Repository 依存の禁止）
-> - 詳細 GET は slug をキーに Valkey へ 10 分キャッシュされる（`org-detail` / `team-detail`）。応援・解除・申請の承認／一括承認・入退会など、`MembershipChangedEvent` を発火する所属変更が**コミットされた後**に、組織は `OrganizationDetailCacheMembershipListener`、チームは `TeamDetailCacheMembershipListener` が当該スコープの slug **1 件だけ**をキャッシュから消す（`allEntries` は使わない）。これにより次の詳細 GET は実数を返す
+> - 組織側の集計は membership ドメインの `MembershipService#countActiveSupporters` で行い、`OrganizationService` のトランザクションの**外**にある `OrganizationDetailFacade`（`@Transactional` なし）が組織の応答へ合成する（organization のトランザクションから membership の Repository へ届かせない。D-3T・原則 5／`MembershipRepository` を直接注入しない。D-5）。`GET` に加え、同じ `OrganizationResponse` を返す `PATCH /api/v1/organizations/{slug}`・`PUT /api/v1/organizations/{slug}/slug` の応答も同じ Facade を通るので `social.supporterCount` が入る。組織作成（`POST`）の応答は作成直後のため集計せず `0`
+> - 詳細 GET は slug をキーに Valkey へ 10 分キャッシュされる（`org-detail` / `team-detail`）。**組織のサポーター数はキャッシュの外**で毎回数えるため、応援・解除は即時に反映される（`org-detail` にはメンバー数など所属に依存する他の値が残る）。チームのサポーター数は `team-detail` に含まれる。応援・解除・申請の承認／一括承認・入退会など、`MembershipChangedEvent` を発火する所属変更が**コミットされた後**に、組織は `OrganizationDetailCacheMembershipListener`、チームは `TeamDetailCacheMembershipListener` が当該スコープの slug **1 件だけ**をキャッシュから消す（`allEntries` は使わない）。slug の解決はレプリカ遅延を避けるため primary を読む（`readOnly` を付けない）。これにより次の詳細 GET は実数を返す
 > - ロールバックされた変更（例: 一括承認の途中で不正な申請 ID があり全件取り消し）では AFTER_COMMIT のため evict は発火せず、温めたキャッシュ（＝DB と同じ旧値）が残る
 > - Valkey 障害で evict が失敗しても、本番の FailOpen キャッシュ層が例外をログに残して握るため、応援・解除の応答とコミット済みデータには影響しない（キャッシュは TTL 10 分で自然収束）
 > - 申請中・申請取消・却下は所属を変えないため人数も変わらない（キャッシュも消さない）

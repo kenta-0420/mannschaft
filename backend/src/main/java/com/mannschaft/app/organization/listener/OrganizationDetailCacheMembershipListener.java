@@ -21,8 +21,10 @@ import java.util.List;
  * 組織詳細キャッシュ {@code org-detail} の当該組織 slug 1 件を追い出すリスナー。
  *
  * <p>組織詳細 GET（{@code OrganizationService#getOrganization}）は slug をキーに 10 分キャッシュされ、
- * レスポンスにサポーター数（{@code social.supporterCount}）を含む。キャッシュを消さないと
- * 応援・解除してもヘッダの人数が最大 10 分古いまま残るため、変更のコミット後に消す。</p>
+ * レスポンスにメンバー数（{@code metadata.memberCount}）等の所属に依存する値を含む。キャッシュを消さないと
+ * 申請承認・入退会してもそれらが最大 10 分古いまま残るため、変更のコミット後に消す。
+ * なおサポーター数（{@code social.supporterCount}）は D-3T のため {@code OrganizationDetailFacade} が
+ * キャッシュの外で毎回数えて合成しており、キャッシュには載らない。</p>
  *
  * <ul>
  *   <li>{@link TransactionPhase#AFTER_COMMIT} で動くため、ロールバックされた変更（一括承認の途中失敗等）では
@@ -51,15 +53,17 @@ public class OrganizationDetailCacheMembershipListener {
     private final CacheManager cacheManager;
 
     /**
-     * TEAM スコープのメンバーシップ変更をコミット後に受け、当該組織の詳細キャッシュを追い出す。
+     * ORGANIZATION スコープのメンバーシップ変更をコミット後に受け、当該組織の詳細キャッシュを追い出す。
      *
      * <p>呼び出し元トランザクションは完了済みのため、slug 解決の読み取りは新規トランザクションで行う
      * （team ドメインの {@code TeamMemberCountListener} と同じ作法）。</p>
      */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。応援・解除・承認などの所属変更をコミット後に受け、組織詳細キャッシュ（org-detail）の当該 slug 1 件を消してヘッダのサポーター数を即時反映させる処理であり、止めると最大10分古い人数が表示され続ける。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
+            reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。応援・解除・承認などの所属変更をコミット後に受け、組織詳細キャッシュ（org-detail）の当該 slug 1 件を消してメンバー数など所属に依存する値を即時反映させる処理であり、止めると最大10分古い値が表示され続ける。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    // readOnly にすると ReplicaRoutingAspect がレプリカへ回し、コミット直後の slug（リネーム直後など）を
+    // レプリカ遅延で古く読んで別キーを消しかねない。メソッドレベルの readOnly=false で確実に primary を読む。
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onMembershipChanged(MembershipChangedEvent event) {
         if (!SCOPE_TYPE_ORGANIZATION.equals(event.scopeType())) {
             return; // TEAM スコープは team ドメインのリスナーが扱う

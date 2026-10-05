@@ -5,6 +5,8 @@ import { mountSuspended } from '@nuxt/test-utils/runtime'
 import type { VueWrapper } from '@vue/test-utils'
 import type { TeamResponse } from '~/types/team'
 import type { OrgDetail } from '~/composables/useOrgDetail'
+import type { FollowUiStatus } from '~/composables/useFollowSelfStatus'
+import type { JoinRequestUiStatus } from '~/composables/useJoinRequestApi'
 import TeamPageHeader from '~/components/team/TeamPageHeader.vue'
 import OrgPageHeader from '~/components/organization/OrgPageHeader.vue'
 
@@ -72,14 +74,17 @@ interface Counts {
   supporterEnabled?: boolean
 }
 
+// 状態はヘッダ props のリテラル union のまま渡す（string に広げると props の型に合わない）
+const followStatus: FollowUiStatus = 'NONE'
+const joinRequestStatus: JoinRequestUiStatus = 'UNKNOWN'
 const commonProps = {
   roleName: null,
   isAdmin: false,
   isAdminOrDeputy: false,
-  followStatus: 'NONE',
+  followStatus,
   followLoading: false,
   followPermissionSyncError: false,
-  joinRequestStatus: 'UNKNOWN',
+  joinRequestStatus,
   joinRequestLoading: false,
 }
 

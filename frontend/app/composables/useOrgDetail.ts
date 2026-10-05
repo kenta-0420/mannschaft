@@ -71,28 +71,34 @@ export function useOrgDetail(orgId: Ref<string>) {
    * - 静かな再取得: 既に org が取得済み（null でない）なら `loading` を立てない。
    *   応援・解除後の人数取り直しで全画面スピナーを出し、ヘッダ・確認ダイアログを
    *   一瞬消さないため（AC-1/AC-2）。
-   * - 世代ガード: 呼び出し開始時点の orgId を捕捉し、await 後に orgId が変わっていたら
-   *   （別スコープへ切替済み）結果を反映しない（AC-5。旧スコープの遅延応答が新スコープの
-   *   表示を上書きしない）。
+   * - 世代ガード: 「最後に発行した要求」かつ「スコープが要求時と同じ」応答だけを反映する（AC-5）。
+   *   スコープ一致だけでは、同一スコープの取り直し①（応援後・1人）が遅延中に取り直し②（解除後・0人）が
+   *   先に反映されると、後着の①で古い人数に戻る。A→B→A の切替でも古い A の応答が新しい A を上書きする。
+   *   403 で詳細を閉じた後に、それより前に発行した要求の遅延 200 が詳細を再表示することも防ぐ。
+   *   （連番は useRoleAccess と同じ作法）
    * - AC-11: 取得失敗が 403（権限喪失）のときは org を null にして保護された詳細表示を閉じる。
    */
+  let fetchOrgSeq = 0
   async function fetchOrg() {
+    const seq = ++fetchOrgSeq
     const requestedId = orgId.value
+    const isCurrent = () => seq === fetchOrgSeq && orgId.value === requestedId
     const quiet = org.value !== null
     if (!quiet) loading.value = true
     try {
       const result = await orgApi.getOrganization(requestedId)
-      if (orgId.value !== requestedId) return
+      if (!isCurrent()) return
       org.value = result.data as OrgDetail
     } catch (error) {
-      if (orgId.value !== requestedId) return
+      if (!isCurrent()) return
       const status = (error as { statusCode?: number, response?: { status?: number }, status?: number })
         ?.statusCode ?? (error as { response?: { status?: number } })?.response?.status
         ?? (error as { status?: number })?.status
       if (status === 403) org.value = null
       handleApiError(error, '組織詳細取得')
     } finally {
-      if (orgId.value === requestedId && !quiet) loading.value = false
+      // 後発の要求が無いときだけ解く（後発がある場合はその要求の完了で解く）
+      if (seq === fetchOrgSeq) loading.value = false
     }
   }
 

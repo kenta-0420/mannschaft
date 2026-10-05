@@ -158,21 +158,26 @@ const displayName = computed(
  * - 静かな再取得: 既に team が取得済み（null でない）なら `loading` を立てない。
  *   応援・解除後の人数取り直しで全画面スピナーを出し、ヘッダ・確認ダイアログを
  *   一瞬消さないため（AC-1）。
- * - 世代ガード: 呼び出し開始時点の teamSlug を捕捉し、await 後に slug が変わっていたら
- *   （別スコープへ切替済み）結果を反映しない（AC-5）。
+ * - 世代ガード: 「最後に発行した要求」かつ「slug が要求時と同じ」応答だけを反映する（AC-5）。
+ *   slug 一致だけでは、同一スコープの取り直しが逆順に返ると古い人数で上書きされ、A→B→A でも
+ *   古い A の応答が新しい A を上書きする。403 で閉じた詳細を、それより前の要求の遅延 200 が
+ *   再表示することも防ぐ（連番は useRoleAccess・useOrgDetail と同じ作法）。
  * - AC-11: 取得失敗が 403（権限喪失）のときは team を null にして保護された詳細表示を閉じる。
  */
+let fetchTeamSeq = 0
 async function fetchTeam() {
+  const seq = ++fetchTeamSeq
   const requestedSlug = teamSlug.value
+  const isCurrent = () => seq === fetchTeamSeq && teamSlug.value === requestedSlug
   const quiet = team.value !== null
   if (!quiet) loading.value = true
   try {
     const result = await teamApi.getTeam(requestedSlug)
-    if (teamSlug.value !== requestedSlug) return
+    if (!isCurrent()) return
     team.value = result.data
   }
   catch (error) {
-    if (teamSlug.value !== requestedSlug) return
+    if (!isCurrent()) return
     // 404 のときは「旧 slug → 新 slug の 301 移動」かもしれないので解決を試みる（村方式・BE #1542）。
     if ((error as FetchError)?.response?.status === 404 && await tryRedirectMovedSlug()) {
       return
@@ -182,7 +187,8 @@ async function fetchTeam() {
     handleApiError(error, 'チーム詳細取得')
   }
   finally {
-    if (teamSlug.value === requestedSlug && !quiet) loading.value = false
+    // 後発の要求が無いときだけ解く（後発がある場合はその要求の完了で解く）
+    if (seq === fetchTeamSeq) loading.value = false
   }
 }
 

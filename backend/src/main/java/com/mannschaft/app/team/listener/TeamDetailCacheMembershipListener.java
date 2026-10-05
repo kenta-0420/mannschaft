@@ -59,7 +59,9 @@ public class TeamDetailCacheMembershipListener {
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "対応する gate_key が無く停止条件を宣言できないため常時実行する。応援・解除・承認などの所属変更をコミット後に受け、チーム詳細キャッシュ（team-detail）の当該 slug 1 件を消してヘッダのサポーター数を即時反映させる処理であり、止めると最大10分古い人数が表示され続ける。機能単位の閉栓が要るようになった時点で gate_key の発行から検討すること")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    // readOnly にすると ReplicaRoutingAspect がレプリカへ回し、コミット直後の slug（リネーム直後など）を
+    // レプリカ遅延で古く読んで別キーを消しかねない。メソッドレベルの readOnly=false で確実に primary を読む。
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onMembershipChanged(MembershipChangedEvent event) {
         if (!SCOPE_TYPE_TEAM.equals(event.scopeType())) {
             return; // ORGANIZATION スコープは organization ドメインのリスナーが扱う
