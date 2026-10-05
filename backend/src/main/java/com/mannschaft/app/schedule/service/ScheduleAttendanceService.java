@@ -118,7 +118,9 @@ public class ScheduleAttendanceService {
                 .findByScheduleIdAndUserId(scheduleId, userId)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
 
-        attendance.respond(newStatus, req.getComment());
+        if (proxyInputContext.isProxy() || Boolean.FALSE.equals(req.getRanchSelfResponse()))
+            attendance.respondProxy(newStatus, req.getComment());
+        else attendance.respond(newStatus, req.getComment());
         attendance = attendanceRepository.save(attendance);
 
         // 代理入力の場合: proxy_input_records を作成し、出欠エンティティにフラグをセット
