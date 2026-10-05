@@ -7,7 +7,7 @@ export function useShiftConstraintApi() {
   }
 
   async function upsertDefaultConstraint(teamId: string, req: Record<string, unknown>) {
-    return api<{ data: unknown }>(`${BASE}/teams/${teamId}/work-constraints`, {
+    return api<{ data: unknown }>(`${BASE}/teams/${teamId}/work-constraints/default`, {
       method: 'PUT',
       body: req,
     })
@@ -18,14 +18,14 @@ export function useShiftConstraintApi() {
     userId: number,
     req: Record<string, unknown>,
   ) {
-    return api<{ data: unknown }>(`${BASE}/teams/${teamId}/work-constraints/${userId}`, {
+    return api<{ data: unknown }>(`${BASE}/teams/${teamId}/work-constraints/members/${userId}`, {
       method: 'PUT',
       body: req,
     })
   }
 
   async function deleteMemberConstraint(teamId: string, userId: number) {
-    return api(`${BASE}/teams/${teamId}/work-constraints/${userId}`, { method: 'DELETE' })
+    return api(`${BASE}/teams/${teamId}/work-constraints/members/${userId}`, { method: 'DELETE' })
   }
 
   return {
