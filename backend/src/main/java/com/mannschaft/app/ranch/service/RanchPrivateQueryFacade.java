@@ -23,6 +23,7 @@ public class RanchPrivateQueryFacade {
     private final RanchAccessGuard access;
     private final RanchCommandQueryReader commands;
     private final RanchRecordQueryReader records;
+    private final RanchRecordSourceLinkResolver sourceLinks;
     private final RanchInventoryQueryReader inventory;
     private final RanchShopQueryReader shop;
     private final Clock clock;
@@ -35,7 +36,11 @@ public class RanchPrivateQueryFacade {
     }
 
     public CursorPagedResponse<RanchRecord> records(Long userId, String cursor, int limit) {
-        return guard.withActiveUser(userId, () -> records.page(userId, cursor, limit));
+        return guard.withActiveUser(userId, () -> {
+            // readerの独立Ranch TXが完了してから源の閲覧認可へ移り、越境TXを作らない。
+            var read = records.readPage(userId, cursor, limit);
+            return sourceLinks.resolve(userId, read);
+        });
     }
 
     public CursorPagedResponse<RanchInventoryItem> collectibles(Long userId, String cursor, int limit) {

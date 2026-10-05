@@ -109,6 +109,8 @@ adminの冪等scopeは管理shardまたは各source facadeごと（分散共通s
 
 他人のdinosaur/inventory/command/session UUIDは404。同じレスポンス形で存在を秘匿する。認証なし401。残高不足409。feature OFFでも予定/出欠/投稿/ブログ/学習へのアクセス制限を追加しない。
 
+記録GETの製造境界は `UserOperationGuard` の本人lock内で `RanchRecordQueryReader.readPage` の独立PRIMARY TXを完了し、その後 `RanchRecordSourceLinkResolver` が源所有の `SourceRewardLinkProvider` へ技術IDだけを渡す。源providerが現在のF00認可と実画面routeを決め、Ranchは本文・名称・slug・所属情報を取得しない。保存済み正準キーの本人/owner/REWARD対応が不一致、ARのUUIDv7または他源のLONG対応が不正、provider欠落/重複、源の不在/拒否/既知の取得不能ではlinkをnullにして元台帳とcursorを維持する。毎回再判定し許可済みリンクをキャッシュしない。源providerの実Bean・実ACL試験が揃うまではリンク機能の完成/合格とは扱わない。
+
 | 状態 | create/free care | shop purchase | settings/置物 | pause/resume | read |
 |---|---|---|---|---|---|
 | care control ON/有効rule/本人ACTIVE | 可、ポイント不要 | shop ON/残高/価格検証 | 可 | 冪等可 | 可 |
