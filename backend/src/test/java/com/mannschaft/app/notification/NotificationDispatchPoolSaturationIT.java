@@ -18,6 +18,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -182,25 +183,45 @@ class NotificationDispatchPoolSaturationIT extends AbstractMySqlIntegrationTest 
      */
     private void saturate(ThreadPoolTaskExecutor executor, int queueCapacity, CountDownLatch release)
             throws InterruptedException {
-        awaitDrained(executor);
-        int capacity = executor.getMaxPoolSize() + queueCapacity;
+        var pool = executor.getThreadPoolExecutor();
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            assertThat(pool.getActiveCount()).isZero();
+            assertThat(pool.getQueue()).isEmpty();
+        });
+
+        int initialWorkers = Math.max(executor.getCorePoolSize(), pool.getPoolSize());
+        CountDownLatch initialStarted = new CountDownLatch(initialWorkers);
         CountDownLatch started = new CountDownLatch(executor.getMaxPoolSize());
-        for (int i = 0; i < capacity; i++) {
-            executor.execute(() -> {
-                started.countDown();
-                try {
-                    release.await();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            });
+        Runnable blocker = () -> {
+            initialStarted.countDown();
+            started.countDown();
+            try {
+                // 飽和状態は呼び出し側の finally が解放するまで維持する。
+                release.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
+        // 既存ワーカーの開始を待たずに一括投入すると、warm pool では
+        // dequeue 前にキューが満杯となり、fixture 自体が拒否される。
+        for (int i = 0; i < initialWorkers; i++) {
+            executor.execute(blocker);
+        }
+        assertThat(initialStarted.await(10, TimeUnit.SECONDS))
+                .as("既存ワーカーが全て塞がってからキューを充填すること")
+                .isTrue();
+        for (int i = 0; i < queueCapacity; i++) {
+            executor.execute(blocker);
+        }
+        // キュー満杯の後の投入で、元の設定のまま maxPoolSize まで拡張する。
+        for (int i = initialWorkers; i < executor.getMaxPoolSize(); i++) {
+            executor.execute(blocker);
         }
         assertThat(started.await(10, TimeUnit.SECONDS))
                 .as("全ワーカーが塞がって飽和状態になっていること（測定の前提）")
                 .isTrue();
-        assertThat(executor.getThreadPoolExecutor().getQueue())
-                .as("全ワーカーが塞がったままキューも満杯であること（測定の前提）")
-                .hasSize(queueCapacity);
+        assertThat(pool.getActiveCount()).isEqualTo(executor.getMaxPoolSize());
+        assertThat(pool.getQueue()).hasSize(queueCapacity);
     }
 
     /** 解放したタスクの終了を確認してからコンテキストを破棄する。 */

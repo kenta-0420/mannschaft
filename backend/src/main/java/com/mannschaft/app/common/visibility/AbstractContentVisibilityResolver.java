@@ -283,6 +283,16 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
      */
     @Override
     public final VisibilityDecision decide(Long contentId, Long viewerUserId) {
+        return decideWithAdditionalAxisLoader(contentId, viewerUserId, this::prepareAdditionalAxisContext);
+    }
+
+    /**
+     * 認可済み読取の追加軸を先読みする専用入口。status/所属/親組織/監査の本体は通常 decide と共有する。
+     * 既存 decide は従来の loader を使い、呼び出し側が通常の障害時挙動を変更しない。
+     */
+    protected final VisibilityDecision decideWithAdditionalAxisLoader(
+            Long contentId, Long viewerUserId,
+            java.util.function.BiFunction<List<P>, Long, Object> additionalAxisLoader) {
         if (contentId == null) {
             return VisibilityDecision.deny(referenceType(), null, DenyReason.NOT_FOUND,
                     "contentId is null");
@@ -353,7 +363,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         //    単票経路でも filterAccessible と同一の追加軸コンテキストを用いる（判定の一貫性）。
         //    rows は 1 件なので一括取得のクエリ本数は従来（行ごと 1 本）と変わらない。
         boolean allowed = visibleByVisibility(
-                row, viewerUserId, snapshot, prepareAdditionalAxisContext(rows, viewerUserId));
+                row, viewerUserId, snapshot, additionalAxisLoader.apply(rows, viewerUserId));
         DenyReason denyReason = allowed ? null : classifyDenyReason(level, row, viewerUserId, snapshot);
         VisibilityDecision decision = decisionWithLevel(allowed, contentId, denyReason, level, null);
         recordAudit(decision, viewerUserId);
