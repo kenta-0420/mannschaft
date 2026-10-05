@@ -16,6 +16,11 @@ import com.mannschaft.app.ranch.dto.RanchPolicyPublicationRequest;
 import com.mannschaft.app.ranch.dto.RanchPolicyPublicationResponse;
 import com.mannschaft.app.ranch.dto.RanchPolicySummary;
 import com.mannschaft.app.ranch.service.RanchAdminFacade;
+import com.mannschaft.app.ranch.service.RanchSourceAdminFacade;
+import com.mannschaft.app.ranch.reward.RanchRewardSourceType;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxHealthSummary;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxAdminRetryAck;
+import com.mannschaft.app.common.ranchsource.api.SourceOutboxAdminRetryRequest;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +31,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -46,6 +52,7 @@ import java.util.UUID;
 public class RanchAdminController {
     private final RanchAdminFacade facade;
     private final PrivateSelfAccessGuard access;
+    private final RanchSourceAdminFacade sourceAdmin;
 
     @GetMapping("/operational-controls")
     @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
@@ -82,6 +89,28 @@ public class RanchAdminController {
 
     private <T> ResponseEntity<T> noStore(T data) {
         return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "private, no-store").body(data);
+    }
+
+    @GetMapping("/outbox-health")
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "公開停止中でもfresh SYSTEM_ADMINが源配送の有限集計を照会する管理入口")
+    public ResponseEntity<ApiResponse<SourceOutboxHealthSummary>> sourceHealth(
+            HttpServletRequest request, HttpServletResponse response) {
+        Long actorId = access.requireSelfAccess(request, response);
+        return noStore(ApiResponse.of(sourceAdmin.health(actorId)));
+    }
+
+    @PostMapping("/outboxes/{sourceType}/{eventId}/retry")
+    @AlwaysReachable(category = AlwaysReachableCategory.GATE_CONTROL_PLANE,
+            reason = "公開停止中でもfresh SYSTEM_ADMINが同じ源配送行の再予約を明示する管理入口")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
+            content = @Content(schema = @Schema(implementation = SourceOutboxAdminRetryRequest.class)))
+    public ResponseEntity<ApiResponse<SourceOutboxAdminRetryAck>> retrySource(
+            @PathVariable RanchRewardSourceType sourceType, @PathVariable UUID eventId,
+            @RequestHeader("Idempotency-Key") UUID key, @RequestBody JsonNode body,
+            HttpServletRequest request, HttpServletResponse response) {
+        Long actorId = access.requireSelfAccess(request, response);
+        return noStore(ApiResponse.of(sourceAdmin.retry(actorId, sourceType, eventId, key, body)));
     }
 
     @PutMapping("/operational-controls")

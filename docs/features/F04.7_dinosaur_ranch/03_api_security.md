@@ -93,8 +93,10 @@ SYSTEM_ADMIN限定。新permissionを使う場合は権限catalog/Flyway/正規�
 | POST | `/api/v1/system-admin/ranch/policies` | 完全policy+effectiveAt。201不変version。次のUTC週境界以降のみ |
 | GET | `/api/v1/system-admin/ranch/operational-controls` | fresh SYSTEM_ADMIN+ACTIVE。private,no-store。`{version:string,isCareEnabled:boolean,isShopEnabled:boolean,isDeliveryPaused:boolean,isRewardsPaused:boolean,updatedAt:Instant}`。本人owner生成なし |
 | PUT | `/api/v1/system-admin/ranch/operational-controls` | `{version:string,isCareEnabled:boolean,isShopEnabled:boolean,isDeliveryPaused:boolean,isRewardsPaused:boolean,reasonCode:string}`。Idempotency-Key必須、200はGETと同じ6項目の保存ACK。理由1..40文字、trim一致。停止期間は発生時刻の[start,end)で判定 |
-| GET | `/api/v1/system-admin/ranch/outbox-health` | sourceごとのpending/deadCount/oldestAge。本文なし |
-| POST | `/api/v1/system-admin/ranch/outboxes/{sourceType}/{eventId}/retry` | `{reasonCode:string}` + Idempotency-Key。200同event再送予約。scopeType詐称/不在404 |
+| GET | `/api/v1/system-admin/ranch/outbox-health` | `{sources:[{sourceType,pendingCount:string,deadCount:string,oldestAgeSeconds:nullable}],observedAt}`。4源の有限集計、本文なし |
+| POST | `/api/v1/system-admin/ranch/outboxes/{sourceType}/{eventId}/retry` | bodyは`{reasonCode:string}`のみ、`[A-Z][A-Z0-9_]{0,79}`。Idempotency-Key UUID。200保存ACKは`{commandId,sourceType,eventId,disposition,completedAt}`。dispositionはRETRY_SCHEDULED/ALREADY_TERMINAL、不在404 |
+
+source管理はfresh SYSTEM_ADMIN+ACTIVEを確認した後、Ranch取引を保持せず源の公開facadeから源自身の独立取引へ渡す。actorは認証主体だけ、未知body項目は400。4源不足/窓口不在/保存ACK照会不能はSOURCEOUTBOX_001/503で、正常ゼロや確定拒否RANCH_004へ変換しない。応答不明のFE再送は同じkey/bodyを保持する。源側が保存済みACKを先に読み、別bodyはSOURCEOUTBOX_003/409、現有効lease中はSOURCEOUTBOX_004/409で命令未保存。報酬配送の完了と再予約ACKの時刻を混同しない。
 
 PolicyRequest=`{effectiveAt:Instant,enabled:boolean,globalWeeklyCap:string,sources:SourceRule[4],delivery:{batchSize:int,leaseSeconds:int,maxAttempts:int,initialBackoffSeconds:int,maxBackoffSeconds:int},reasonCode:string}`。SourceRule=`{sourceType:四enum,enabled:boolean,amountPoints:string,countLimit:int}`。全源を一回ずつ必須、欠落/重複拒否。無効源も量/容量の型を検証。globalCap>0かつenabledならpersonalON。全利用者quotaに対する満額capacity invariantは設けない。care ruleとshop価格はpoint policyから独立。delivery各値は正でinitial<=max、batch<=運営安全上限（実装時負荷測定で値登録）、retry/lease値未登録でenabled拒否。Response=`{id:UUID,version:string,contentHash:string,effectiveAt:Instant,settings:PolicyRequest,publishedAt:Instant,publishedBy:string}`、公開済み変更DELETEなし。
 
