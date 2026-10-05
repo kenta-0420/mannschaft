@@ -92,8 +92,8 @@ function handleClick(event: MouseEvent | KeyboardEvent) {
     data-announcement-item
     :data-announcement-id="item.id"
     @click="handleClick"
-    @keydown.enter.prevent="handleClick"
-    @keydown.space.prevent="handleClick"
+    @keydown.enter.self.prevent="handleClick"
+    @keydown.space.self.prevent="handleClick"
   >
     <!-- ピン留めインジケーター -->
     <div class="mt-0.5 flex-shrink-0">
