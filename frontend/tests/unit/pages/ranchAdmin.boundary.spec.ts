@@ -26,13 +26,14 @@ const posts: { key: string; body: string; token: string | null }[] = []
 const scopes: ReturnType<typeof effectScope>[] = []
 const wrappers: VueWrapper[] = []
 let mode: 'success' | 'lost' | 'reject' | 'preflight-reject' | 'unknown-503' | 'old-error' | 'health-delay' = 'success'
+let unknownCode = 'SERVICE_UNAVAILABLE'
 let releaseA: (() => void) | null = null
 const json = (data: unknown) => new Response(JSON.stringify({ data }), { headers: { 'Content-Type': 'application/json' } })
 const rejected = () => new Response(JSON.stringify({ error: { code: 'RANCH_001', message: 'Synthetic rejection' } }), { status: 404, headers: { 'Content-Type': 'application/json' } })
 async function account(id: number) {
  const auth = useAuthStore()
- await auth.setUser({ id, email: `synthetic${id}@example.invalid`, fullName: 'Synthetic', profileImageUrl: null })
  auth.setTokens(id === 1 ? 'A-access' : 'B-access', 'synthetic-refresh')
+ await auth.setUser({ id, email: `synthetic${id}@example.invalid`, fullName: 'Synthetic', profileImageUrl: null })
 }
 async function currentApi() {
  const scope = effectScope(); scopes.push(scope)
@@ -45,7 +46,7 @@ beforeEach(async () => {
  const auth = useAuthStore()
  vi.spyOn(auth, 'clearUserCaches').mockResolvedValue()
  auth.$reset(); await account(1)
- posts.length = 0; mode = 'success'; releaseA = null
+ posts.length = 0; mode = 'success'; releaseA = null; unknownCode = 'SERVICE_UNAVAILABLE'
  external.fetch.mockReset(); external.report.mockReset()
  external.fetch.mockImplementation(async (request, options) => {
   const path = new URL(String(request)).pathname
@@ -59,7 +60,7 @@ beforeEach(async () => {
    posts.push({ key: new Headers(options.headers).get('Idempotency-Key') ?? '', body: String(options.body), token })
    if (mode === 'lost' && posts.length === 1) throw new TypeError('SYNTHETIC_ACK_LOST')
    if (mode === 'reject') return rejected()
-   if (mode === 'preflight-reject' || mode === 'unknown-503') return new Response(JSON.stringify({ error: { code: mode === 'preflight-reject' ? 'RANCH_004' : 'SERVICE_UNAVAILABLE', message: 'Synthetic unavailable' } }), { status: 503, headers: { 'Content-Type': 'application/json' } })
+   if (mode === 'preflight-reject' || mode === 'unknown-503') return new Response(JSON.stringify({ error: { code: mode === 'preflight-reject' ? 'RANCH_004' : unknownCode, message: 'Synthetic unavailable' } }), { status: 503, headers: { 'Content-Type': 'application/json' } })
    if (mode === 'old-error') {
     if (token === 'Bearer A-access') { await new Promise<void>(resolve => { releaseA = resolve }); return rejected() }
     throw new TypeError('SYNTHETIC_B_ACK_UNKNOWN')
@@ -109,8 +110,9 @@ describe('管理命令とhealthの有限・本人境界（未実測）', () => {
   await api.retrySource('ATTENDANCE_RESPONSE', eventId, 'AFTER_CHECK')
   expect(posts[1]?.key).not.toBe(posts[0]?.key)
  })
- it('一般503は保存結果不明のまま同key/bodyで再送する', async () => {
+ it.each(['SERVICE_UNAVAILABLE', 'SOURCEOUTBOX_001'])('%sの503は保存結果不明のまま同key/bodyで再送する', async code => {
   mode = 'unknown-503'
+  unknownCode = code
   const api = await currentApi()
   await expect(api.retrySource('ATTENDANCE_RESPONSE', eventId, 'MANUAL_RETRY')).rejects.toThrow()
   expect(api.command.pending.value).not.toBeNull()
