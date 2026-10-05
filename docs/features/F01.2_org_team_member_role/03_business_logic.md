@@ -518,6 +518,25 @@
 5. 204 No Content を返す
 ```
 
+### サポーター数の表示とキャッシュ無効化（CMP-261004-1942・チーム / 組織共通）
+
+組織・チーム詳細 GET（`social.supporterCount`。仕様は 02_api_design.md）は slug キーで 10 分キャッシュ（`team-detail` / `org-detail`）されるため、所属変更をキャッシュへ反映する仕組みを持つ。
+
+```
+1. 応援（フォロー）・解除・申請承認／一括承認・入退会で MembershipService#join / leave が MembershipChangedEvent を発火
+2. 呼び出し元トランザクションがコミットされた後（AFTER_COMMIT）にだけ、以下が受信する
+   - scope_type = TEAM          → TeamDetailCacheMembershipListener（team ドメイン）
+   - scope_type = ORGANIZATION  → OrganizationDetailCacheMembershipListener（organization ドメイン）
+3. 自ドメインの Repository で scope_id → slug を解決（論理削除済みで引けなければ何もしない）
+4. CacheManager 経由で当該 slug の 1 件だけを evict（allEntries は使わない）
+5. 次の詳細 GET が DB の実数を集計し直してキャッシュを温め直す
+```
+
+- ロールバック（一括承認の途中失敗など）では手順 2 が起きないため evict しない。温めたキャッシュは DB と同じ旧値のまま
+- Valkey 障害で evict が失敗しても FailOpen キャッシュ層がログに残して握り、応援・解除の結果には影響しない（TTL で自然収束）
+- 申請（PENDING）・申請取消・却下は所属を変えないので人数は不変。サポーター数は SUPPORTER 所属（退会していないもの）だけを数える
+- キャッシュは認可判定より内側にあり、解除後や別テナントの非所属者がキャッシュ経由で人数を取得することはできない（詳細 GET の可視性判定で 403）
+
 ### ブロックフロー
 
 ```
