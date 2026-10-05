@@ -11,6 +11,7 @@ mockNuxtImport('useAuthStore', () => () => ({
   isAuthenticated: false,
   accessToken: null,
   currentUser: null,
+  loadFromStorage: vi.fn(),
 }))
 mockNuxtImport('useInboxStore', () => () => ({ fetchSummary: vi.fn() }))
 mockNuxtImport('useUserNotificationSocket', () => () => ({ start: vi.fn(), stop: vi.fn() }))
