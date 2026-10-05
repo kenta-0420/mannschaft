@@ -1,6 +1,5 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.dto.AttendanceHistoryItem;
@@ -12,7 +11,9 @@ import com.mannschaft.app.school.dto.DailyRollCallSummary;
 import com.mannschaft.app.school.entity.DailyAttendanceRecordEntity;
 import com.mannschaft.app.school.error.SchoolErrorCode;
 import com.mannschaft.app.school.event.DailyRollCallRecordedEvent;
+import com.mannschaft.app.school.entity.FamilyAttendanceNoticeEntity;
 import com.mannschaft.app.school.repository.DailyAttendanceRecordRepository;
+import com.mannschaft.app.school.repository.FamilyAttendanceNoticeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -22,7 +23,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 日次出欠サービス。
@@ -43,7 +49,7 @@ import java.util.List;
 public class DailyAttendanceService {
 
     private final DailyAttendanceRecordRepository dailyAttendanceRecordRepository;
-    private final AccessControlService accessControlService;
+    private final FamilyAttendanceNoticeRepository familyAttendanceNoticeRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     // ========================================
@@ -63,7 +69,9 @@ public class DailyAttendanceService {
      * @return 点呼登録結果サマリ
      */
     public DailyRollCallSummary submitDailyRollCall(Long teamId, DailyRollCallRequest request, Long operatorUserId) {
-        accessControlService.checkMembership(operatorUserId, teamId, "TEAM");
+        // 認可（R）と在籍確認は、トランザクションの外の DailyAttendanceFacade が最初に済ませてから呼ばれる
+        // （拒否時は行を作らず・通知イベントも発行せず・何も走らせない）。
+        validateEntries(teamId, request);
 
         int presentCount = 0;
         int absentCount = 0;
@@ -130,6 +138,41 @@ public class DailyAttendanceService {
                 .build();
     }
 
+    /**
+     * entries の整合を検証する（いずれも集合取得 1 クエリずつ。件数に比例してクエリを増やさない）。
+     * <ul>
+     *   <li>生徒は全員このクラスの在籍メンバー</li>
+     *   <li>familyNoticeId は同じクラス・同じ生徒・同じ対象日の連絡（存在しない ID も同じ拒否）</li>
+     * </ul>
+     */
+    private void validateEntries(Long teamId, DailyRollCallRequest request) {
+        var entries = request.getEntries();
+
+        Set<Long> noticeIds = new HashSet<>();
+        for (var entry : entries) {
+            if (entry.getFamilyNoticeId() != null) {
+                noticeIds.add(entry.getFamilyNoticeId());
+            }
+        }
+        if (noticeIds.isEmpty()) {
+            return;
+        }
+        Map<Long, FamilyAttendanceNoticeEntity> notices = familyAttendanceNoticeRepository.findAllById(noticeIds)
+                .stream().collect(Collectors.toMap(FamilyAttendanceNoticeEntity::getId, Function.identity()));
+        for (var entry : entries) {
+            if (entry.getFamilyNoticeId() == null) {
+                continue;
+            }
+            FamilyAttendanceNoticeEntity notice = notices.get(entry.getFamilyNoticeId());
+            if (notice == null
+                    || !teamId.equals(notice.getTeamId())
+                    || !entry.getStudentUserId().equals(notice.getStudentUserId())
+                    || !request.getAttendanceDate().equals(notice.getAttendanceDate())) {
+                throw new BusinessException(SchoolErrorCode.FAMILY_NOTICE_MISMATCH);
+            }
+        }
+    }
+
     // ========================================
     // 出欠一覧取得
     // ========================================
@@ -139,13 +182,11 @@ public class DailyAttendanceService {
      *
      * @param teamId        クラスチームID
      * @param date          対象日
-     * @param currentUserId 現在のユーザーID
      * @return 日次出欠一覧レスポンス
      */
     @Transactional(readOnly = true)
-    public DailyAttendanceListResponse getDailyAttendance(Long teamId, LocalDate date, Long currentUserId) {
-        accessControlService.checkMembership(currentUserId, teamId, "TEAM");
-
+    public DailyAttendanceListResponse getDailyAttendance(Long teamId, LocalDate date) {
+        // 認可（V）は DailyAttendanceFacade が済ませてから呼ばれる。
         List<DailyAttendanceRecordEntity> records =
                 dailyAttendanceRecordRepository.findByTeamIdAndAttendanceDate(teamId, date);
 
@@ -223,8 +264,7 @@ public class DailyAttendanceService {
      */
     public DailyAttendanceResponse updateDailyRecord(
             Long teamId, Long recordId, DailyAttendanceUpdateRequest request, Long operatorUserId) {
-        accessControlService.checkMembership(operatorUserId, teamId, "TEAM");
-
+        // 認可（R）は DailyAttendanceFacade が済ませてから呼ばれる。
         DailyAttendanceRecordEntity entity = dailyAttendanceRecordRepository.findById(recordId)
                 .filter(r -> r.getTeamId().equals(teamId))
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.DAILY_RECORD_NOT_FOUND));

@@ -576,6 +576,7 @@ HTTP|com.mannschaft.app.schedule.controller.TeamScheduleKeepController|11|11
 HTTP|com.mannschaft.app.school.controller.AttendanceBatchController|2|2
 HTTP|com.mannschaft.app.school.controller.AttendanceDisclosureController|4|4
 HTTP|com.mannschaft.app.school.controller.AttendanceLocationController|3|3
+HTTP|com.mannschaft.app.school.controller.AttendancePermissionController|1|1
 HTTP|com.mannschaft.app.school.controller.AttendanceRequirementController|6|6
 HTTP|com.mannschaft.app.school.controller.AttendanceRequirementEvaluationController|4|4
 HTTP|com.mannschaft.app.school.controller.AttendanceStatisticsController|3|3

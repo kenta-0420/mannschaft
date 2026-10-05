@@ -1853,7 +1853,6 @@ class GlobalExceptionHandlerTest {
             GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
 
             HandlerMethodValidationException ex = mock(HandlerMethodValidationException.class);
-            when(ex.getMessage()).thenReturn("validation failed");
 
             ResponseEntity<ErrorResponse> resp = handler.handleHandlerMethodValidation(ex);
 
@@ -1861,6 +1860,105 @@ class GlobalExceptionHandlerTest {
             assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_001");
             verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
             verify(service, never()).recordBackendException(any(), anyString(), anyString(), anyString(), anyString(), any());
+        }
+
+        @Test
+        @DisplayName("本人APIのメソッド検証は入力由来の詳細を取得せず固定400を返す")
+        void handlerMethodValidation_privateSelfInputDoesNotExposeDetails() throws Exception {
+            ErrorReportService service = mock(ErrorReportService.class);
+            ErrorReportNotifier notifier = mock(ErrorReportNotifier.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, notifier);
+            String marker = "SYNTHETIC_PRIVATE_PARAMETER_MARKER";
+            String privateField = "syntheticPrivateBirthField";
+
+            // 早期拒否では取得されない詳細も用意し、通常経路への漏れを検出する。
+            org.springframework.core.MethodParameter bodyParam = mock(
+                    org.springframework.core.MethodParameter.class, invocation ->
+                            invocation.getMethod().getName().equals("getParameterName")
+                                    ? "request" : org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation));
+            org.springframework.validation.method.ParameterErrors bodyErrors = mock(
+                    org.springframework.validation.method.ParameterErrors.class, invocation -> {
+                        return switch (invocation.getMethod().getName()) {
+                            case "getMethodParameter" -> bodyParam;
+                            case "getFieldErrors" -> List.of(new FieldError("request", privateField, marker));
+                            case "getGlobalErrors" -> List.of();
+                            default -> org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
+                        };
+                    });
+            HandlerMethodValidationException ex = mock(HandlerMethodValidationException.class, invocation -> {
+                return switch (invocation.getMethod().getName()) {
+                    case "getParameterValidationResults" -> List.of(bodyErrors);
+                    case "getMessage" -> marker;
+                    default -> org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
+                };
+            });
+            org.springframework.web.context.request.RequestAttributes original =
+                    org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            org.springframework.mock.web.MockHttpServletRequest request =
+                    new org.springframework.mock.web.MockHttpServletRequest("PUT", "/api/v1/me/birth-profile");
+            try {
+                org.springframework.web.context.request.RequestContextHolder.setRequestAttributes(
+                        new org.springframework.web.context.request.ServletRequestAttributes(request));
+
+                ResponseEntity<ErrorResponse> response = handler.handleHandlerMethodValidation(ex);
+
+                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(response.getHeaders().getFirst(HttpHeaders.CACHE_CONTROL)).isEqualTo("no-store");
+                assertThat(response.getBody()).isNotNull();
+                assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_001");
+                assertThat(response.getBody().getError().getMessage()).isEqualTo(CommonErrorCode.COMMON_001.getMessage());
+                assertThat(response.getBody().getError().getFieldErrors()).isEmpty();
+                assertThat(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(response.getBody()))
+                        .doesNotContain(marker, privateField);
+                verify(ex, never()).getParameterValidationResults();
+                verify(ex, never()).getMessage();
+                org.mockito.Mockito.verifyNoInteractions(service, notifier);
+            } finally {
+                org.springframework.web.context.request.RequestContextHolder.resetRequestAttributes();
+                if (original != null) {
+                    org.springframework.web.context.request.RequestContextHolder.setRequestAttributes(original);
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("メソッド検証: 本文の @Valid 違反はフィールド名つき、パス/クエリ引数の違反は引数名で fieldErrors に入る")
+        void handlerMethodValidation_populatesFieldErrors() {
+            GlobalExceptionHandler handler =
+                    newHandlerWith(mock(ErrorReportService.class), mock(ErrorReportNotifier.class));
+
+            // 本文 (@Valid) の違反: entries フィールド
+            org.springframework.validation.method.ParameterErrors bodyErrors =
+                    mock(org.springframework.validation.method.ParameterErrors.class);
+            org.springframework.core.MethodParameter bodyParam = mock(org.springframework.core.MethodParameter.class);
+            when(bodyParam.getParameterName()).thenReturn("request");
+            when(bodyErrors.getMethodParameter()).thenReturn(bodyParam);
+            when(bodyErrors.getFieldErrors()).thenReturn(List.of(
+                    new org.springframework.validation.FieldError("request", "entries", "最大200件です")));
+            when(bodyErrors.getGlobalErrors()).thenReturn(List.of());
+
+            // クエリ引数 (@Min) の違反: 引数名が field
+            org.springframework.validation.method.ParameterValidationResult periodResult =
+                    mock(org.springframework.validation.method.ParameterValidationResult.class);
+            org.springframework.core.MethodParameter periodParam = mock(org.springframework.core.MethodParameter.class);
+            when(periodParam.getParameterName()).thenReturn("periodNumber");
+            when(periodResult.getMethodParameter()).thenReturn(periodParam);
+            when(periodResult.getResolvableErrors()).thenReturn(List.of(
+                    new org.springframework.context.support.DefaultMessageSourceResolvable(
+                            new String[] {"Min"}, null, "1以上である必要があります")));
+
+            HandlerMethodValidationException ex = mock(HandlerMethodValidationException.class);
+            when(ex.getParameterValidationResults()).thenReturn(List.of(bodyErrors, periodResult));
+
+            ResponseEntity<ErrorResponse> resp = handler.handleHandlerMethodValidation(ex);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_001");
+            assertThat(resp.getBody().getError().getFieldErrors())
+                    .extracting(ErrorResponse.FieldError::getField, ErrorResponse.FieldError::getMessage)
+                    .containsExactly(
+                            org.assertj.core.api.Assertions.tuple("entries", "最大200件です"),
+                            org.assertj.core.api.Assertions.tuple("periodNumber", "1以上である必要があります"));
         }
     }
 

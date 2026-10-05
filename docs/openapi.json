@@ -51465,7 +51465,9 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "maximum": 15,
+              "minimum": 1
             }
           }
         ],
@@ -123136,6 +123138,39 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/attendance/permissions": {
+      "get": {
+        "tags": [
+          "学校出欠管理"
+        ],
+        "summary": "学校出欠の権限判定結果取得",
+        "description": "自分が当該クラスの出欠を閲覧・日次登録・時限登録できるかを返す。権限なしでも 200 で全項目 false。",
+        "operationId": "getPermissions",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttendancePermissionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/attendance/periods": {
       "get": {
         "tags": [
@@ -123168,7 +123203,9 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "maximum": 15,
+              "minimum": 1
             }
           }
         ],
@@ -123209,7 +123246,9 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "maximum": 15,
+              "minimum": 1
             }
           },
           {
@@ -188991,7 +189030,8 @@
             "items": {
               "$ref": "#/components/schemas/PeriodAttendanceEntry"
             },
-            "minItems": 1
+            "maxItems": 200,
+            "minItems": 0
           }
         },
         "required": [
@@ -189358,7 +189398,8 @@
             "items": {
               "$ref": "#/components/schemas/DailyRollCallEntry"
             },
-            "minItems": 1
+            "maxItems": 200,
+            "minItems": 0
           }
         },
         "required": [
@@ -226614,6 +226655,32 @@
             ]
           },
           "studentUserId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseAttendancePermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AttendancePermissionsResponse"
+          }
+        }
+      },
+      "AttendancePermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "canRecordDaily": {
+            "type": "boolean"
+          },
+          "canRecordPeriod": {
+            "type": "boolean"
+          },
+          "canView": {
+            "type": "boolean"
+          },
+          "teamId": {
             "type": "integer",
             "format": "int64"
           }

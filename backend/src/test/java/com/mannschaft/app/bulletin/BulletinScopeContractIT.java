@@ -74,7 +74,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>{@code BULLETIN_002}（THREAD_NOT_FOUND）→ <b>404</b></li>
  *   <li>{@code BULLETIN_003}（REPLY_NOT_FOUND）→ <b>404</b></li>
  *   <li>{@code BULLETIN_016}（ARCHIVE_FOLDER_NOT_FOUND）→ <b>404</b></li>
- *   <li>{@code BULLETIN_020}（ARCHIVE_FOLDER_SCOPE_MISMATCH）→ <b>404</b>（越境の存在秘匿のため不在 BULLETIN_016 と同一ステータス）</li>
+ *   <li>保管庫フォルダ越境 → {@code BULLETIN_016}（不在と同一の404応答）</li>
  *   <li>認可拒否は {@code CommonErrorCode.COMMON_002} が <b>403</b> で明示登録</li>
  * </ul>
  * <p>{@code BULLETIN_012}（PARENT_REPLY_MISMATCH）は {@code Severity.WARN} かつ
@@ -1235,7 +1235,7 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
                                     .param("folder_id", folderBId.toString()))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH.getCode()))
+                            .value(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND.getCode()))
                     .andReturn().getResponse().getContentAsString();
 
             assertThat(body).doesNotContain("BULAUTHZ teamB 保管済");
@@ -1285,7 +1285,7 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
                             .content(objectMapper.writeValueAsString(moveFolderBody(folderBId))))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH.getCode()));
+                            .value(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND.getCode()));
 
             em.flush();
             em.clear();
@@ -1627,7 +1627,7 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
                                     createFolderBody("越境フォルダ", folderBId))))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH.getCode()));
+                            .value(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND.getCode()));
 
             em.flush();
             em.clear();
