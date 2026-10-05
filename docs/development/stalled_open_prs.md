@@ -2,9 +2,9 @@
 
 **実測日**: 2026-08-26 / **対象**: `gh pr list --state open --limit 80` の全42件
 
-**2026-10-03 照合**: 初版が列挙していたのは31件だった。CMP IDの時刻（2026-08-26 10:41 JST）を基準に、作成・閉鎖・再開・マージ履歴から当時OPENだった未掲載11件を補完し、42件を再構成した。元42件の現在状態をGitHub primaryで再照合し、重複0件、**MERGED 19件 / CLOSED 11件 / OPEN 12件**を確認した。元の規模・状態・停滞日数は当時の記録を残し、処遇を現在の状態へ更新している。
+**2026-10-05 照合**: 初版が列挙していたのは31件だった。CMP IDの時刻（2026-08-26 10:41 JST）を基準に、作成・閉鎖・再開・マージ履歴から当時OPENだった未掲載11件を補完し、42件を再構成した。保存済みの公式GitHub状態で重複0件、**MERGED 26件 / CLOSED 11件 / OPEN 5件**を確認した。10月3日の前回記録から新たにMERGEDとなった7件の日付とmerge SHAを反映した。元の規模・状態・停滞日数と既存の人手判断は当時の記録として残す。
 
-**CMP-260826-1041 は未完了**。残る12件は本番インフラ #1502 と下表の依存更新11件で、処遇決定・必要なmain追従とCIが残る。#1073は対象27件が成功しても全体CIがArchUnit OOMで失敗し、未マージである。共通対策の[PR #3607](https://github.com/kenta-0420/mannschaft/pull/3607)は検証未完了の候補であり、根治済みとは扱わない。MERGED/CLOSEDの確認だけで、復活時のCI・実機や本番構築を実施済みとは扱わない。
+**CMP-260826-1041 は未完了**。残る5件は本番インフラ #1502 と依存更新4件（#1316、#1317、#1489、#1490）で、処遇決定・必要なmain追従とCIが残る。MERGED/CLOSEDの確認だけで、復活時のCI・実機や本番構築を実施済みとは扱わない。
 
 放置された PR は静かに腐る。特に `DIRTY`（コンフリクト済み）は **CI が一度も走らない**ため、
 緑にも赤にもならず「動いているように見えて実は死んでいる」状態になる
@@ -46,11 +46,17 @@
 
 | 停滞 | PR | 内容 | 処遇 |
 |---|---|---|---|
-| 56日 | #1079 #1078 #1077 | jjwt-jackson / actions/checkout 4→7 / jsoup | **未処遇（3件OPEN）**。個別差分・互換性・main追従とCI確認が残る |
+| 56日 | [#1079](https://github.com/kenta-0420/mannschaft/pull/1079) | jjwt-jackson | **マージ済**（2026-10-04T23:51:21Z / 108e2c3206e8eca366c4d1ddbcd4c1aadeec6557） |
+| 56日 | [#1078](https://github.com/kenta-0420/mannschaft/pull/1078) | actions/checkout 4→7 | **マージ済**（2026-10-03T22:27:12Z / 81ca6c1520d77b44e914a3e490039740afc9a211） |
+| 56日 | [#1077](https://github.com/kenta-0420/mannschaft/pull/1077) | jsoup | **マージ済**（2026-10-03T20:12:14Z / fe3db9b8aca656baee4a25df86f3d525f02b46e6） |
 | 56日 | [#1076](https://github.com/kenta-0420/mannschaft/pull/1076) | github-script 7→9 | **復活・マージ済**（2026-10-03 JST、`479c60b1dcdf96c8f86071e69a51f0ee47f27cad`）。[実APIコメントrun](https://github.com/kenta-0420/mannschaft/actions/runs/37062378940)のScan & CommentとPost or update PR commentが成功。Terraform Planはskippedで、本番Infra実行済みとは扱わない |
 | 56日 | [#1074](https://github.com/kenta-0420/mannschaft/pull/1074) | cache 4→5 | **復活・マージ済**（2026-10-02 JST、`cdf4a31972f98c250ed57b2ce0bbf724984550ff`）。GitHub primaryのMERGEDとmerge SHAを確認 |
-| 56日 | [#1073](https://github.com/kenta-0420/mannschaft/pull/1073) | poi-ooxml | **復活対応中（OPEN）**。最終head `ffffae5ef5115d3bd00d24024a4d76ed8a014742`の対象27件はfailure/error/skip各0。[全体CI run](https://github.com/kenta-0420/mannschaft/actions/runs/37009214808)はArchUnit importerのJava heap spaceで失敗し、永続化enum番人もskip。未マージであり、共通対策PR #3607の全6シャードと全ArchUnit番人の正式検証を待つ |
-| 48日 | #1319 #1318 #1317 #1316 #1083 | lint-staged 16→17 / vue-virtual-scroller / cheerio / nuxt-security 1.4→2.6 / @nuxtjs/i18n 9→10 | **未処遇（5件OPEN）**。個別差分・互換性・main追従とCI確認が残る |
+| 56日 | [#1073](https://github.com/kenta-0420/mannschaft/pull/1073) | poi-ooxml | **マージ済**（2026-10-04T01:59:10Z / 53f80e2e5238e7cebc56d3dd60876d31236b2ef1）前回照合（2026-10-03）時点の記録: 当時head `ffffae5ef5115d3bd00d24024a4d76ed8a014742`の対象27件はfailure/error/skip各0。[全体CI run](https://github.com/kenta-0420/mannschaft/actions/runs/37009214808)はArchUnit importerのJava heap spaceで失敗し、永続化enum番人もskip。当時は未マージであり、共通対策PR #3607の全6シャードと全ArchUnit番人の正式検証を待っていた |
+| 48日 | [#1319](https://github.com/kenta-0420/mannschaft/pull/1319) | lint-staged 16→17 | **マージ済**（2026-10-03T21:23:23Z / 3fed9dea1b659cf277de0d417768e32283cc97e6） |
+| 48日 | [#1318](https://github.com/kenta-0420/mannschaft/pull/1318) | vue-virtual-scroller | **マージ済**（2026-10-04T00:09:06Z / 64d10f6d7e2bf380031065952710ab0d4d25df15） |
+| 48日 | [#1317](https://github.com/kenta-0420/mannschaft/pull/1317) | cheerio | **未処遇（OPEN）**。個別差分・互換性・main追従とCI確認が残る |
+| 48日 | [#1316](https://github.com/kenta-0420/mannschaft/pull/1316) | nuxt-security 1.4→2.6 | **未処遇（OPEN）**。個別差分・互換性・main追従とCI確認が残る |
+| 48日 | [#1083](https://github.com/kenta-0420/mannschaft/pull/1083) | @nuxtjs/i18n 9→10 | **マージ済**（2026-10-04T21:30:39Z / 16dc01a60605dbb0a9fc9d1cfa366b516a80f1bc） |
 | 35日 | #1490 #1489 | **Spring Boot 3.5.13 → 4.1.0**（メジャー）/ AWS SDK BOM | **未処遇（2件OPEN）**。個別差分・互換性・main追従とCI確認が残る |
 | 14日 | #2728 | cloudflare 4.52→5.23（メジャー） | **クローズ済**（2026-09-01 JST）。[既存PRコメント](https://github.com/kenta-0420/mannschaft/pull/2728) は「Superseded by #3042.」。後続PR #3042はOPENで、依存更新の実施済みを意味しない |
 
