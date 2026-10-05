@@ -793,8 +793,18 @@ class ArchUnitFreezeStoreIntegrityTest {
      * UserRepository への行は、未提出者の抽出・通知・監査ログという業務由来の到達なので残す。
      * main のストアとの差分は「追加 0・削除 82（上記のキーのみ）」。{@code 7538（W5 #3600 取込み後の main） → 7456}。</p>
      * <p>正式1e8の削減47件は旧原因35件と注釈入口scope12件。scope分は越境解消としない。</p>
+     *
+     * <p>学校出欠の認可（{@code SchoolAttendanceAccessPolicy} / 各 {@code *Facade}。PR #3598）: 認可を tx の外へ出し、
+     * tx 本体の AttendanceLocationService（4 行）・AttendanceRequirementEvaluationService（8 行）・
+     * AttendanceStatisticsService（2 行）・AttendanceSummaryService（3 行）・DailyAttendanceService（3 行）・
+     * PeriodAttendanceService（4 行）・TransitionAlertService（3 行）は AccessControlService にクラスごと依存しなくなった
+     * ため計 27 行が解消。FamilyAttendanceNoticeService は acknowledgeNotice・applyToAttendanceRecord・getTeamNotices の
+     * checkAdminOrAbove を除去して role の 6 行が解消（submitNotice の {@code checkCareLink} → UserCareLinkRepository の
+     * 1 行は tx 内に残すので残す）。計 33 行（すべて認可由来の MembershipRepository / RoleRepository / UserRoleRepository /
+     * UserCareLinkRepository 等への到達）。ClassHomeroomService・DisclosureService・AttendanceRequirementService は
+     * 本 PR の対象外で残す。main のストアとの差分は「追加 0・削除 33（上記のキーのみ）」。{@code 7409 → 7376}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7409;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7376;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -883,8 +893,12 @@ class ArchUnitFreezeStoreIntegrityTest {
     /**
      * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。
      * <p>正式1e8の全量解析と原因検分で旧原因2件の削減を確認（607→605）。</p>
+     *
+     * <p>学校出欠の認可（PR #3598）: {@code AttendanceLocationService.getTimeline} の戻り値を Entity から
+     * {@code LocationChangeResponse}（DTO）へ替えたため 1 行が解消（605→604）。{@code recordLocationChange} は
+     * 戻り値が Entity のままなので残す。</p>
      */
-    private static final int EXPECTED_LINES_SERVICE_API = 605;
+    private static final int EXPECTED_LINES_SERVICE_API = 604;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

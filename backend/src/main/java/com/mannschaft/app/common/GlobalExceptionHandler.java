@@ -2765,10 +2765,28 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ErrorResponse> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
-        log.warn("HandlerMethodValidationException: {}", ex.getMessage());
+        List<ErrorResponse.FieldError> fieldErrors = new java.util.ArrayList<>();
+        for (org.springframework.validation.method.ParameterValidationResult result
+                : ex.getParameterValidationResults()) {
+            String paramName = result.getMethodParameter().getParameterName();
+            if (result instanceof org.springframework.validation.method.ParameterErrors errors) {
+                // @Valid 付きリクエストボディ等: MethodArgumentNotValidException と同じくフィールド名で返す
+                errors.getFieldErrors().forEach(fe ->
+                        fieldErrors.add(new ErrorResponse.FieldError(fe.getField(), fe.getDefaultMessage())));
+                errors.getGlobalErrors().forEach(ge ->
+                        fieldErrors.add(new ErrorResponse.FieldError(
+                                paramName != null ? paramName : ge.getObjectName(), ge.getDefaultMessage())));
+            } else {
+                // @Min / @NotBlank 等を付けたパス・クエリ引数: 引数名を field に入れる
+                result.getResolvableErrors().forEach(re ->
+                        fieldErrors.add(new ErrorResponse.FieldError(
+                                paramName != null ? paramName : "parameter", re.getDefaultMessage())));
+            }
+        }
+        log.warn("HandlerMethodValidationException: {} field error(s)", fieldErrors.size());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_001, fieldErrors));
     }
 
     /**
