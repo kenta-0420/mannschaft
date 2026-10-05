@@ -74,9 +74,9 @@ dependencies {
     implementation("net.logstash.logback:logstash-logback-encoder:8.0")
 
     // JWT
-    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
-    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
+    implementation("io.jsonwebtoken:jjwt-api:0.13.0")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
 
     // TOTP (RFC 6238)
     implementation("com.eatthepath:java-otp:0.4.0")
@@ -352,6 +352,10 @@ tasks.withType<Test> {
     // 1 JVM でまとめて走らせる。付け忘れ・Spring との混在は番人 ArchUnitTestTagGuardTest が検出する。
     // =====================================================================
     val isArchTask = name == "archTest"
+    // main 側（CMP-261002-1606 以前からの既存機構）: ArchUnit 専用 JUnit エンジンによる分離と
+    // 凍結ストア整合性セルフテストの単独実行。archTest（タグ方式）とは別経路として両方維持する。
+    val isArchUnitTask = name == "archUnitTest"
+    val isFreezeIntegrityTask = name == "archUnitFreezeStoreIntegrityTest"
     useJUnitPlatform {
         when {
             isPerfTask -> includeTags("perf")
@@ -610,7 +614,7 @@ tasks.withType<Test> {
         // 取り込みが shard 数だけ繰り返されるだけで速くならない）。CI では専用ジョブで 1 回だけ走らせる。
         logger.lifecycle("[archTest] -Pshard.* は archTest には適用しない（全 ArchUnit テストを 1 JVM で実行する）")
     }
-    if (!isArchTask && shardTotal != null && shardIndex != null && shardTotal > 1) {
+    if (!isArchTask && !isFreezeIntegrityTask && shardTotal != null && shardIndex != null && shardTotal > 1) {
         require(shardIndex in 0 until shardTotal) {
             "shard.index ($shardIndex) は 0..${shardTotal - 1} の範囲でなければならない（shard.total=$shardTotal）"
         }
@@ -697,7 +701,9 @@ tasks.withType<Test> {
                 )
             }
         }
-    } else {
+    } else if (!isArchUnitTask && !isFreezeIntegrityTask) {
+        // 先行する ArchUnit 実行（archUnitTest/archUnitFreezeStoreIntegrityTest）では確定せず、
+        // 既存の test/perfTest 等の終端集計を維持する。
         finalizedBy(tasks.jacocoTestReport)
     }
     testLogging {
@@ -709,6 +715,60 @@ tasks.withType<Test> {
         showExceptions = true
         showCauses = true
     }
+}
+
+// 全 ArchUnit engine の番人を新しい JVM で実行する。クラス名で選別しない。
+// withType<Test> の同じ heap・タグ・シャード/profile フィルタを継承する。
+// 通常 test の必須依存なので、番人の失敗は既存の CI ゲートを失敗させる。
+val archUnitTest = tasks.register<Test>("archUnitTest") {
+    group = "verification"
+    description = "全 ArchUnit 番人を Spring テストから分離した JVM で実行する"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    inputs.files(fileTree("src/test/resources/archunit_store"))
+    // 解析による縮小はキャッシュ復元で再現できない。毎runnerで実解析する。
+    outputs.upToDateWhen { false }
+    doFirst {
+        // 宣言値ではなく、この実行で解決された jar の版を CI の対照証跡に残す。
+        val archUnitJars = classpath.files.filter { it.name.startsWith("archunit-") }
+            .map { it.name }.sorted()
+        logger.lifecycle("[archunit-runtime] " + archUnitJars.joinToString(", "))
+    }
+}
+val freezeIntegrityClass = "com.mannschaft.app.common.architecture.ArchUnitFreezeStoreIntegrityTest"
+val archUnitFreezeStoreIntegrityTest = tasks.register<Test>("archUnitFreezeStoreIntegrityTest") {
+    group = "verification"
+    description = "各runnerのArchUnit解析後に全7凍結ストアの対応と行数を検証する"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    useJUnitPlatform { includeEngines("junit-jupiter") }
+    filter {
+        includeTestsMatching(freezeIntegrityClass)
+        isFailOnNoMatchingTests = true
+    }
+    maxHeapSize = "128m"
+    forkEvery = 0
+    maxParallelForks = 1
+    inputs.files(fileTree("src/test/resources/archunit_store"))
+    outputs.upToDateWhen { false }
+    mustRunAfter(archUnitTest)
+    // onlyIfで必須classを検査する。欠損をfalse(SKIP)に置き換えない。
+    onlyIf("凍結番人classが存在する") {
+        val requiredClass = freezeIntegrityClass.replace('.', '/') + ".class"
+        check(testClassesDirs.files.any { it.resolve(requiredClass).isFile }) {
+            "凍結番人class欠損: $requiredClass（NO-SOURCEを合格にしない）"
+        }
+        true
+    }
+    doFirst {
+        // CLI --testsはこの必須番人だけ解除。通常test/archの指定は変えない。
+        setTestNameIncludePatterns(emptyList())
+    }
+}
+archUnitTest.configure { finalizedBy(archUnitFreezeStoreIntegrityTest) }
+tasks.named<Test>("test") {
+    dependsOn(archUnitTest, archUnitFreezeStoreIntegrityTest)
+    exclude("com/mannschaft/app/common/architecture/ArchUnitFreezeStoreIntegrityTest*.class")
 }
 
 // =============================================================================
@@ -804,7 +864,10 @@ tasks.register("verifyShardCoverage") {
                 .forEach { f ->
                     val relPosix = f.relativeTo(dir).path.replace(File.separatorChar, '/')
                     val topLevelFqcn = ShardAssignment.fqcnTopLevelFromClassPath(relPosix)
-                    classFiles.add(ShardCoverageClassFile(relPosix, topLevelFqcn))
+                    // 全runner必須の専用stageは通常1shardモデルからだけ外す。
+                    if (topLevelFqcn != freezeIntegrityClass) {
+                        classFiles.add(ShardCoverageClassFile(relPosix, topLevelFqcn))
+                    }
                 }
         }
         val topLevelCount = classFiles.map { it.topLevelFqcn }.distinct().size
