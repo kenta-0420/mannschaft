@@ -470,14 +470,15 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data.scopeId").value(teamAId));
         }
 
-        /** AC-B11: 部外者は 403（所属ゲート）。 */
+        /** AC-B11: TEAM/ORG の詳細読取は、部外者と不在を同一 404 にする（F02.6）。 */
         @Test
-        @DisplayName("AC-B11 部外者のスレッド詳細取得は403")
-        void ac_b11_部外者は403() throws Exception {
+        @DisplayName("AC-B11 部外者のスレッド詳細取得は不在と同一404")
+        void ac_b11_部外者は不在と同一404() throws Exception {
             setAuth(outsiderId);
-            mockMvc.perform(get("/api/v1/{scopeType}/{scopeId}/bulletin/threads/{threadId}",
-                            "teams", teamAId, threadAId))
-                    .andExpect(status().isForbidden());
+            String denied = getThreadExpectingNotFound(threadAId);
+            String absent = getThreadExpectingNotFound(ABSENT_THREAD_ID);
+            assertThat(denied).isEqualTo(absent);
+            assertThat(denied).doesNotContain("\"data\"");
         }
 
         private String getThreadExpectingNotFound(Long threadId) throws Exception {

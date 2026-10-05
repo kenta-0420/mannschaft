@@ -3290,7 +3290,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -3346,7 +3346,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -25947,7 +25947,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -25987,7 +25987,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -30674,7 +30674,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseThreadResponse"
+                  "$ref": "#/components/schemas/PagedResponseBulletinThreadResponse"
                 }
               }
             }
@@ -30721,7 +30721,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -30988,7 +30988,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -31036,7 +31036,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -31093,7 +31093,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -84072,7 +84072,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseThreadResponse"
+                  "$ref": "#/components/schemas/PagedResponseBulletinThreadResponse"
                 }
               }
             }
@@ -84121,7 +84121,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -84279,7 +84279,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -84568,7 +84568,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseAttachmentResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinAttachmentResponse"
                 }
               }
             }
@@ -90040,7 +90040,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -108582,7 +108582,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -108624,7 +108624,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -108666,7 +108666,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -111831,7 +111831,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseThreadResponse"
+                  "$ref": "#/components/schemas/PagedResponseBulletinThreadResponse"
                 }
               }
             }
@@ -111898,7 +111898,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseThreadResponse"
+                  "$ref": "#/components/schemas/PagedResponseBulletinThreadResponse"
                 }
               }
             }
@@ -123286,6 +123286,47 @@
         }
       }
     },
+    "/api/v1/teams/{scopeId}/announcements/{feedId}/preview": {
+      "get": {
+        "tags": [
+          "お知らせ本文プレビュー"
+        ],
+        "summary": "チームお知らせ本文プレビュー",
+        "operationId": "teamPreview",
+        "parameters": [
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "feedId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAnnouncementPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{id}/payment-summary": {
       "get": {
         "tags": [
@@ -126647,7 +126688,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -126657,7 +126698,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -132238,6 +132279,47 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponsePageViewAnalyticsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{scopeId}/announcements/{feedId}/preview": {
+      "get": {
+        "tags": [
+          "お知らせ本文プレビュー"
+        ],
+        "summary": "組織お知らせ本文プレビュー",
+        "operationId": "organizationPreview",
+        "parameters": [
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "feedId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAnnouncementPreviewResponse"
                 }
               }
             }
@@ -144312,7 +144394,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListAttachmentResponse"
+                  "$ref": "#/components/schemas/ApiResponseListBulletinAttachmentResponse"
                 }
               }
             }
@@ -144344,7 +144426,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListAttachmentResponse"
+                  "$ref": "#/components/schemas/ApiResponseListBulletinAttachmentResponse"
                 }
               }
             }
@@ -152555,11 +152637,11 @@
           }
         }
       },
-      "ApiResponseThreadResponse": {
+      "ApiResponseBulletinThreadResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ThreadResponse"
+            "$ref": "#/components/schemas/BulletinThreadResponse"
           }
         }
       },
@@ -152578,7 +152660,7 @@
           }
         }
       },
-      "ThreadResponse": {
+      "BulletinThreadResponse": {
         "type": "object",
         "properties": {
           "archiveFolderId": {
@@ -187460,6 +187542,9 @@
             "type": "integer",
             "format": "int64"
           },
+          "contentPreviewAvailable": {
+            "type": "boolean"
+          },
           "createdAt": {
             "type": "string"
           },
@@ -187517,7 +187602,18 @@
           "visibility": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "accessState",
+          "contentPreviewAvailable",
+          "excerptCache",
+          "id",
+          "scopeId",
+          "scopeType",
+          "sourceId",
+          "sourceType",
+          "titleCache"
+        ]
       },
       "ApiResponseAnnouncementFeedItemDto": {
         "type": "object",
@@ -204627,6 +204723,51 @@
           }
         }
       },
+      "ApiResponseBulletinAttachmentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BulletinAttachmentResponse"
+          }
+        }
+      },
+      "BulletinAttachmentResponse": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fileKey": {
+            "type": "string"
+          },
+          "fileSize": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "originalFilename": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetType": {
+            "type": "string"
+          }
+        }
+      },
       "ReverseTransactionRequest": {
         "type": "object",
         "properties": {
@@ -214600,13 +214741,13 @@
           }
         }
       },
-      "PagedResponseThreadResponse": {
+      "PagedResponseBulletinThreadResponse": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ThreadResponse"
+              "$ref": "#/components/schemas/BulletinThreadResponse"
             }
           },
           "meta": {
@@ -225058,6 +225199,114 @@
           "uniqueVisitors": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "AnnouncementPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "accessState": {
+            "type": "string",
+            "enum": [
+              "FULL",
+              "LOCKED"
+            ]
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulletinAttachmentResponse"
+            }
+          },
+          "blogPost": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BlogPostResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bulletinThread": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BulletinThreadResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "feedId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string",
+            "enum": [
+              "TEAM",
+              "ORGANIZATION"
+            ]
+          },
+          "sourceId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "BLOG_POST",
+                  "BULLETIN_THREAD"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "accessState",
+          "attachments",
+          "blogPost",
+          "bulletinThread",
+          "feedId",
+          "scopeId",
+          "scopeType",
+          "sourceId",
+          "sourceType",
+          "sourceUrl"
+        ]
+      },
+      "ApiResponseAnnouncementPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AnnouncementPreviewResponse"
           }
         }
       },
@@ -241640,6 +241889,38 @@
           }
         }
       },
+      "ApiResponseThreadResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ThreadResponse"
+          }
+        }
+      },
+      "ThreadResponse": {
+        "type": "object",
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "root": {
+            "$ref": "#/components/schemas/ChatMessageResponse"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "ApiResponseDownloadUrlResponse": {
         "type": "object",
         "properties": {
@@ -241762,6 +242043,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FolderItemResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListBulletinAttachmentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulletinAttachmentResponse"
             }
           }
         }
