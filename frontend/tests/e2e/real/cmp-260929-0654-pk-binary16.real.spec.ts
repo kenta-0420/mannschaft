@@ -73,6 +73,18 @@ async function api(req: APIRequestContext, method: 'get' | 'post' | 'put' | 'pat
   return { status: res.status(), body, text }
 }
 
+/**
+ * 組織 ADMIN の初回に出る「メンバーの権限を初期設定」ダイアログを「あとで決める」で閉じる。
+ * 閉じないと背面の操作が塞がれる。共有組織の権限設定は変更しない（sessionStorage のみ更新）。
+ */
+async function dismissPermissionSetup(page: Page) {
+  const setup = page.getByTestId('member-permission-setup')
+  if (await setup.waitFor({ state: 'visible', timeout: 10_000 }).then(() => true, () => false)) {
+    await setup.getByRole('button', { name: 'あとで決める' }).click()
+    await expect(setup).toBeHidden()
+  }
+}
+
 /** 5xx と console error を集める。 */
 function watchErrors(page: Page) {
   const server: string[] = []
@@ -253,6 +265,10 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
 
     await user.goto(`/organizations/${ORG_A_SLUG}/tournaments/${tIdA}`)
     await waitForHydration(user)
+    await dismissPermissionSetup(user)
+    // 部門タブが描画され（導線の欠落の回帰）、先頭部門の参加チームが出る
+    await expect(user.getByTestId(`tournament-division-tab-${divA}`)).toBeVisible({ timeout: 60_000 })
+    await expect(user.getByText('部門が登録されていません')).toHaveCount(0)
     const manage = user.getByRole('button', { name: 'エントリー管理' }).first()
     await expect(manage).toBeVisible({ timeout: 60_000 })
     await manage.click()
@@ -357,6 +373,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const errs = watchErrors(user)
     await user.goto(`/organizations/${ORG_C_SLUG}/tournaments/${tIdC}`)
     await waitForHydration(user)
+    await dismissPermissionSetup(user)
     await user.waitForTimeout(5000)
     await expect(user.getByRole('button', { name: 'エントリー管理' })).toHaveCount(0)
     expect(errs.server, errs.server.join('\n')).toHaveLength(0)
@@ -416,6 +433,36 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     expect((await api(user.request, 'delete', `${base(ORG_A, tIdA, divA, pA1)}/${emId}`)).status).toBe(204)
     await user.context().close()
     await admin.context().close()
+  })
+
+  // ---------------------------------------------------------------- AC4（他テナントの URL 直打ち）
+  test('AC4 [画面] 他テナント（org 1 の大会・ディビジョン・participant）を org 9 の URL で直打ちしても弾かれ、エントリーが見えない', async ({ browser }) => {
+    const user = await newPage(browser, userCred)
+    const errs = watchErrors(user)
+    // org 9 の ADMIN である USER が、org 1 の大会 ID を org 9 の slug 配下で開く（ID は API で引いた実在のもの）
+    const ids = `tIdC=${tIdC} divC=${divC} pC4=${pC4}`
+    await user.goto(`/organizations/${ORG_A_SLUG}/tournaments/${tIdC}`)
+    await waitForHydration(user)
+    await dismissPermissionSetup(user)
+    await user.waitForTimeout(5000)
+    // 大会取得が 404 で弾かれ、画面にエントリー管理の導線も参加チームも出ない
+    await expect(user.getByRole('button', { name: 'エントリー管理' }), ids).toHaveCount(0)
+    await expect(user.getByTestId('tournament-detail-title'), ids).toHaveCount(0)
+    await expect(user.locator('.p-datatable'), ids).toHaveCount(0)
+    // API でも org 9 のパス配下では実体に到達できない（404）
+    for (const path of [
+      `/organizations/${ORG_A}/tournaments/${tIdC}`,
+      `/organizations/${ORG_A}/tournaments/${tIdC}/divisions`,
+      `/organizations/${ORG_A}/tournaments/${tIdC}/divisions/${divC}/participants`,
+      `/organizations/${ORG_A}/tournaments/${tIdC}/divisions/${divC}/entry-summary`,
+      base(ORG_A, tIdC, divC, pC4),
+    ]) {
+      const r = await api(user.request, 'get', path)
+      expect([403, 404], `${path} ${r.status} ${r.text}`).toContain(r.status)
+    }
+    // 5xx は出ない（4xx は想定どおり）
+    expect(errs.server, errs.server.join('\n')).toHaveLength(0)
+    await user.context().close()
   })
 
   test.afterAll(async ({ browser }) => {

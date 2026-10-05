@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+  TournamentDivision,
   TournamentParticipant,
   EntryMemberSummary,
   TournamentResponse,
@@ -18,11 +19,16 @@ const orgId = String(route.params.slug)
 const tId = Number(route.params.tId)
 
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
-const { getTournament, getParticipants, getEntrySummary, updateTournament } = useTournamentApi()
+const { getTournament, getDivisions, getParticipants, getEntrySummary, updateTournament } =
+  useTournamentApi()
 const notification = useNotification()
 
 const tournament = ref<TournamentResponse | null>(null)
 const loading = ref(true)
+// 部門（ディビジョン）は大会 DTO に含まれず別エンドポイント（GET .../divisions）から取得する。
+// ID は BE の TournamentDivisionEntity.id（Long）に合わせて number。
+const divisions = ref<TournamentDivision[]>([])
+const divisionsLoadFailed = ref(false)
 const activeDivisionId = ref<number | null>(null)
 
 // ディビジョン別の参加チーム・エントリーサマリーをキャッシュ
@@ -172,11 +178,20 @@ onMounted(async () => {
     await loadPermissions()
     const res = await getTournament(orgId, tId)
     tournament.value = res.data
-    if ((res.data.tiebreakers?.length ?? 0) > 0 || (res.data.statDefs?.length ?? 0) > 0) {
-      // tiebreakers/statDefs は将来用。現在は divisions 相当の情報なし
-    }
   } catch {
-    notification.error('大会情報の取得に失敗しました')
+    notification.error(t('tournament.detail.loadError'))
+    loading.value = false
+    return
+  }
+  try {
+    const divRes = await getDivisions(orgId, tId)
+    divisions.value = divRes.data
+    // 先頭の部門を初期選択し、参加チームとエントリーサマリーを取得する
+    const first = divisions.value[0]
+    if (first) onTabChange(first.id)
+  } catch {
+    divisionsLoadFailed.value = true
+    notification.error(t('tournament.detail.divisionsLoadError'))
   } finally {
     loading.value = false
   }
@@ -302,45 +317,58 @@ onMounted(async () => {
         </p>
       </div>
 
-      <!-- ディビジョン情報なし（新DTO では divisions は別エンドポイント管理のためメッセージのみ表示） -->
+      <!-- 部門一覧の取得に失敗した場合は空表示ではなくエラーを出す -->
       <DashboardEmptyState
-        v-if="!activeDivisionId"
-        icon="pi pi-sitemap"
-        message="部門が登録されていません"
+        v-if="divisionsLoadFailed"
+        icon="pi pi-exclamation-triangle"
+        :message="t('tournament.detail.divisionsLoadError')"
+        data-testid="tournament-divisions-error"
       />
 
-      <!-- ディビジョンタブ（部門がある場合のみ表示） -->
+      <!-- 部門が 0 件 -->
+      <DashboardEmptyState
+        v-else-if="divisions.length === 0"
+        icon="pi pi-sitemap"
+        :message="t('tournament.detail.noDivisions')"
+      />
+
+      <!-- ディビジョンタブ（部門ごとに 1 タブ） -->
       <Tabs
         v-else
-        :value="activeDivisionId"
-        @update:value="onTabChange($event as number)"
+        :value="activeDivisionId ?? divisions[0]!.id"
+        @update:value="onTabChange(Number($event))"
       >
         <TabList>
-          <Tab :value="activeDivisionId">
-            部門
+          <Tab
+            v-for="div in divisions"
+            :key="div.id"
+            :value="div.id"
+            :data-testid="`tournament-division-tab-${div.id}`"
+          >
+            {{ div.name }}
           </Tab>
         </TabList>
 
         <TabPanels>
-          <TabPanel :value="activeDivisionId">
+          <TabPanel v-for="div in divisions" :key="div.id" :value="div.id">
             <div class="mt-4">
-              <PageLoading v-if="activeDivisionId && participantsLoading[activeDivisionId]" size="32px" />
+              <PageLoading v-if="participantsLoading[div.id]" size="32px" />
               <template v-else>
                 <DashboardEmptyState
-                  v-if="!activeDivisionId || !participantsMap[activeDivisionId] || participantsMap[activeDivisionId]!.length === 0"
+                  v-if="!participantsMap[div.id] || participantsMap[div.id]!.length === 0"
                   icon="pi pi-users"
                   message="参加チームがいません"
                 />
                 <DataTable
                   v-else
-                  :value="participantsMap[activeDivisionId]"
+                  :value="participantsMap[div.id]"
                   class="text-sm"
                   striped-rows
                 >
                   <Column field="teamName" header="チーム名" />
                   <Column header="エントリー数">
                     <template #body="{ data }">
-                      {{ activeDivisionId ? getEntryCount(activeDivisionId, data.id) : '-' }}
+                      {{ getEntryCount(div.id, data.id) }}
                     </template>
                   </Column>
                   <Column v-if="isAdminOrDeputy" header="操作" style="width: 8rem">
@@ -350,7 +378,7 @@ onMounted(async () => {
                         icon="pi pi-list"
                         size="small"
                         text
-                        @click="activeDivisionId && openEntryModal(data, activeDivisionId)"
+                        @click="openEntryModal(data, div.id)"
                       />
                     </template>
                   </Column>
