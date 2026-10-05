@@ -71,58 +71,30 @@ async function fetchReservationEnabled() {
 }
 
 // =============================================================================
-// サポーターフォロー
+// サポーターフォロー（CMP-261001-0835: 共通 composable に一本化。
+// 詳細は useFollowSelfStatus.ts のコメントを参照。
+// 旧実装は `if (roleName.value) return` で SUPPORTER ロール自身の状態を
+// 一度も取得しない fail-open、取得失敗を NONE に潰す fail-open を抱えていた）。
 // =============================================================================
-const followStatus = ref<'NONE' | 'PENDING' | 'APPROVED'>('NONE')
-const followLoading = ref(false)
-const showCancelSupporterConfirm = ref(false)
-
-async function fetchFollowStatus() {
-  if (roleName.value) return
-  try {
-    const res = await teamApi.getFollowStatus(teamSlug.value)
-    followStatus.value = res.data.status
-  }
-  catch {
-    followStatus.value = 'NONE'
-  }
-}
-
-async function applySupporter() {
-  followLoading.value = true
-  try {
-    await teamApi.followTeam(teamSlug.value)
-    const res = await teamApi.getFollowStatus(teamSlug.value)
-    followStatus.value = res.data.status
-    notification.success(
-      followStatus.value === 'APPROVED'
-        ? t('common.scopeShell.supporter_registered')
-        : t('common.scopeShell.supporter_applied'),
-    )
-  }
-  catch (error) {
-    handleApiError(error, 'サポーター申請')
-  }
-  finally {
-    followLoading.value = false
-  }
-}
-
-async function cancelSupporter() {
-  followLoading.value = true
-  try {
-    await teamApi.unfollowTeam(teamSlug.value)
-    followStatus.value = 'NONE'
-    showCancelSupporterConfirm.value = false
-    notification.success(t('common.scopeShell.supporter_canceled'))
-  }
-  catch (error) {
-    handleApiError(error, 'サポーター解除')
-  }
-  finally {
-    followLoading.value = false
-  }
-}
+const {
+  followStatus,
+  followLoading,
+  followPermissionSyncError,
+  showCancelSupporterConfirm,
+  fetchFollowStatus,
+  applySupporter,
+  cancelSupporter,
+  retryFollowStatus,
+  retryFollowPermissionSync,
+} = useScopeFollowWiring({
+  scopeSlug: teamSlug,
+  api: {
+    follow: teamApi.followTeam,
+    unfollow: teamApi.unfollowTeam,
+    getStatus: teamApi.getFollowStatus,
+  },
+  roleAccess: { roleName, loadPermissions },
+})
 
 // =============================================================================
 // MEMBER 参加申請（柱③-A・CMP-260901-1538）
@@ -410,7 +382,7 @@ watch(isShellRoute, (shell) => {
 watch(teamSlug, () => {
   teamLoaded.value = false
   team.value = null
-  followStatus.value = 'NONE'
+  // followStatus の初期化は useScopeFollowWiring が slug 変更時に同期的に行う。
   joinRequestStatus.value = 'UNKNOWN'
   reservationEnabled.value = false
   if (isShellRoute.value) void loadShellData()
@@ -586,12 +558,15 @@ provideTeamShellContext({
             :is-admin-or-deputy="isAdminOrDeputy"
             :follow-status="followStatus"
             :follow-loading="followLoading"
+            :follow-permission-sync-error="followPermissionSyncError"
             :join-request-status="joinRequestStatus"
             :join-request-loading="joinRequestLoading"
             :template-label="templateLabel"
             @back="navigateTo('/dashboard')"
             @apply-supporter="applySupporter"
             @cancel-supporter="cancelSupporter"
+            @retry-follow-status="retryFollowStatus"
+            @retry-follow-permission-sync="retryFollowPermissionSync"
             @apply-join-request="applyJoinRequest"
             @retry-join-request-status="fetchJoinRequestStatus"
             @show-cancel-confirm="showCancelSupporterConfirm = true"
