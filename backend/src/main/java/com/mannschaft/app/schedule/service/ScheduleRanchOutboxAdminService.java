@@ -15,7 +15,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +34,7 @@ public class ScheduleRanchOutboxAdminService implements SourceOutboxAdminProvide
     public SourceOutboxHealthRow health(Instant now) {
         var row=commands.health();
         return new SourceOutboxHealthRow(sourceType(),Long.toString(row.pending()),Long.toString(row.dead()),
-                row.oldest()==null?null:Math.max(0,Duration.between(row.oldest(),now).getSeconds()));
+                row.oldestAgeSeconds()==null?null:Math.max(0,row.oldestAgeSeconds()));
     }
     @Override
     @Transactional(propagation=Propagation.REQUIRES_NEW,readOnly=false)
@@ -52,7 +51,7 @@ public class ScheduleRanchOutboxAdminService implements SourceOutboxAdminProvide
         }
         var current=commands.current(event);
         if(current==null) throw new BusinessException(SourceOutboxErrorCode.SOURCEOUTBOX_002);
-        if("LEASED".equals(current.status()) && current.expires()!=null && current.expires().isAfter(now))
+        if("LEASED".equals(current.status()) && current.activeLease())
             throw new BusinessException(SourceOutboxErrorCode.SOURCEOUTBOX_004);
         var disposition="ACKED".equals(current.status())?SourceOutboxAdminRetryAck.Disposition.ALREADY_TERMINAL
                 :SourceOutboxAdminRetryAck.Disposition.RETRY_SCHEDULED;
