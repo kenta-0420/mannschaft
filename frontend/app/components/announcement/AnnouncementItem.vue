@@ -92,7 +92,7 @@ function handleClick(event: MouseEvent | KeyboardEvent) {
     data-announcement-item
     :data-announcement-id="item.id"
     @click="handleClick"
-    @keydown.enter="handleClick"
+    @keydown.enter.prevent="handleClick"
     @keydown.space.prevent="handleClick"
   >
     <!-- ピン留めインジケーター -->

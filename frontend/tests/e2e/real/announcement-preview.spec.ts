@@ -97,6 +97,13 @@ async function createBroadcast(channel: Fixture['channel'], title: string, body:
   const data = { ...(await response.json()).data, channel, scopeId, scopeType } as Fixture
   expect(data.announcementFeedId).toBeGreaterThan(0)
   created.push(data)
+  if (channel === 'BLOG_POST') {
+    // broadcastは元記事をDRAFTで作る。MEMBERの本文認可には正規公開が必要。
+    const published = await api.patch(`/api/v1/blog/posts/${data.contentId}/publish`, {
+      headers: fixtureHeaders, data: { status: 'PUBLISHED' },
+    })
+    expect(published.status(), `broadcast fixture publish: ${published.status()}`).toBe(200)
+  }
   return data
 }
 
