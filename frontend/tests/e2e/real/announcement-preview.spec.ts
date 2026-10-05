@@ -1,4 +1,5 @@
-import { test, expect, request as playwrightRequest, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { test as base, expect, request as playwrightRequest, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { createHash } from 'node:crypto'
 import { loginViaApi } from '../fixtures/auth'
 import ja from '../../../app/locales/ja/announcement.json' with { type: 'json' }
 import en from '../../../app/locales/en/announcement.json' with { type: 'json' }
@@ -42,6 +43,15 @@ let ownAffiliationId: number | undefined
 let previousTeamOrganizationSlugs: string[] = []
 const created: Fixture[] = []
 const PNG_BYTES = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64')
+
+const test = base.extend<{ pwaReadyPage: Page }>({
+  // 実precacheの自然完了に62〜90秒を観測。本文試験の前に実PWA環境だけを準備する。
+  pwaReadyPage: [async ({ page }, use) => {
+    await openApp(page, '/')
+    await page.evaluate(async () => { await navigator.serviceWorker.ready })
+    await use(page)
+  }, { timeout: 150_000 }],
+})
 
 async function login(page: Page, email = MEMBER): Promise<void> {
   await loginViaApi(page, { email, password: PASSWORD }, { apiBaseUrl: API_BASE })
@@ -452,7 +462,7 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     await expect(page.locator('main')).toContainText(`OrgThreadBody-${stamp}`)
   })
 
-  test('PREVIEW-01/08/15/16: TEAM/ORGの通常BLOG・署名画像も本文と正しいscope queryで開く', async ({ page }) => {
+  test('PREVIEW-01/08/15/16: TEAM/ORGの通常BLOG・署名画像も本文と正しいscope queryで開く', async ({ pwaReadyPage: page }) => {
     await login(page)
     for (const fixture of normalBlogs) {
       if (fixture.scopeType === 'TEAM') await openFeed(page)
@@ -492,7 +502,10 @@ test.describe('お知らせ本文プレビュー 実API', () => {
       expect(stored).toEqual({ body: false, image: false })
       const source = page.getByTestId('announcement-preview-source')
       await expect(source).toHaveAttribute('href', new RegExp(`^/blog/posts/[^/?]+\\?${fixture.scopeType === 'TEAM' ? 'teamId' : 'organizationId'}=${fixture.scopeId}$`))
+      const sourceUrl = new URL((await source.getAttribute('href'))!, page.url()).href
       await source.click()
+      await expect(page).toHaveURL(sourceUrl)
+      await expect(page.locator('main')).toHaveCount(1)
       await expect(page.locator('main')).toContainText(body)
     }
   })
@@ -589,9 +602,12 @@ test.describe('お知らせ本文プレビュー 実API', () => {
 
   test('PREVIEW-05/15: 非所属ユーザーの掲示板元URL直打ちで本文を表示しない', async ({ page }) => {
     await login(page)
+    const thread = await page.request.get(`${API_BASE}/api/v1/teams/${otherBulletin.scopeId}/bulletin/threads/${otherBulletin.contentId}`)
+    expect(thread.status()).toBe(404)
+    expect(await thread.text()).not.toContain(`PrivateThreadBody-${stamp}`)
     await openApp(page, `/teams/${otherTeamSlug}/bulletin?threadId=${otherBulletin.contentId}`)
-    await expect(page.getByTestId('load-error-state')).toBeVisible()
-    await expect(page.locator('main')).not.toContainText(`PrivateThreadBody-${stamp}`)
+    await expect(page.getByText('情報を取得できませんでした', { exact: true })).toBeVisible()
+    await expect(page.locator('body')).not.toContainText(`PrivateThreadBody-${stamp}`)
   })
 
   test('PREVIEW-05/15: 別チームのthreadId直打ちは所属管理者でも本文なし', async ({ page }) => {
@@ -683,7 +699,7 @@ test.describe('お知らせ本文プレビュー 実API', () => {
       await adminPage.getByTestId('payment-record-member').click()
       await adminPage.getByRole('option', { name: member.displayName, exact: true }).click()
       await expect(adminPage.getByTestId('payment-record-method')).toContainText(/現金|CASH/)
-      const recorded = adminPage.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/teams/${teamId}/payment-items/${itemId}/payments` && response.request().method() === 'POST')
+      const recorded = adminPage.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/teams/${TEAM_SLUG}/payment-items/${itemId}/payments` && response.request().method() === 'POST')
       await adminPage.getByTestId('payment-record-submit').click()
       const payment = await recorded
       expect(payment.ok()).toBeTruthy()
@@ -722,26 +738,57 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     const fixture = normalBlogs.find(item => item.scopeType === 'TEAM')!
     await expect(card(page, fixture.announcementFeedId)).toBeVisible()
     const cdp = await page.context().newCDPSession(page)
-    await cdp.send('Debugger.enable')
     await cdp.send('Network.enable')
     await cdp.send('Network.setCacheDisabled', { cacheDisabled: true })
     const previewPath = `/announcements/${fixture.announcementFeedId}/preview`
     const response = page.waitForResponse(result => new URL(result.url()).pathname.endsWith(previewPath))
-    // 実APIの通信を遅らせてからJSを停止し、本文描画前に署名の自然失効を待つ。
-    // 応答・時計・画像URLを差し替えず、MinIOが実際に拒否することを確認する。
-    await cdp.send('Network.emulateNetworkConditions', {
-      offline: false, latency: 3000, downloadThroughput: -1, uploadThroughput: -1,
+    const heldImages = new Map<string, string>()
+    const urlHash = (url: string) => createHash('sha256').update(url).digest('hex')
+    const expirationProof: Record<string, unknown> = { startedAt: new Date().toISOString() }
+    const browserNetworkEvents: Array<Record<string, unknown>> = []
+    const requestHashes = new Map<string, string>()
+    const networkCode = (error: string | undefined) => error?.match(/net::[A-Z0-9_]+/)?.[0] ?? 'UNCLASSIFIED'
+    expirationProof.browserNetworkEvents = browserNetworkEvents
+    cdp.on('Network.requestWillBeSent', event => {
+      if (event.type === 'Image' && event.request.url.includes('X-Amz-Signature=')) {
+        requestHashes.set(event.requestId, urlHash(event.request.url))
+      }
     })
-    let paused = false
+    cdp.on('Network.responseReceivedExtraInfo', event => {
+      const hash = requestHashes.get(event.requestId)
+      if (hash) browserNetworkEvents.push({ event: 'responseReceivedExtraInfo', urlSHA256: hash,
+        status: event.statusCode, observedAt: new Date().toISOString() })
+    })
+    cdp.on('Network.loadingFailed', event => {
+      const hash = requestHashes.get(event.requestId)
+      if (hash) browserNetworkEvents.push({ event: 'loadingFailed', urlSHA256: hash,
+        code: networkCode(event.errorText), blockedReason: event.blockedReason,
+        corsError: event.corsErrorStatus?.corsError, observedAt: new Date().toISOString() })
+    })
+    page.on('requestfailed', request => {
+      if (request.resourceType() === 'image' && request.url().includes('X-Amz-Signature=')) {
+        browserNetworkEvents.push({ event: 'page.requestfailed', urlSHA256: urlHash(request.url()),
+          code: networkCode(request.failure()?.errorText), observedAt: new Date().toISOString() })
+      }
+    })
+    const retryResponses: Array<{ urlSHA256: string; status: number; observedAt: string }> = []
+    let retryStarted = false
+    page.on('response', result => {
+      if (retryStarted && result.request().resourceType() === 'image' && result.url().includes('X-Amz-Signature=')) {
+        retryResponses.push({ urlSHA256: urlHash(result.url()), status: result.status(), observedAt: new Date().toISOString() })
+      }
+    })
+    // 実署名画像のRequestだけを留置する。JS・preview API・応答本文・時計は変更しない。
+    cdp.on('Fetch.requestPaused', event => {
+      heldImages.set(event.requestId, event.request.url)
+      if (event.networkId) requestHashes.set(event.networkId, urlHash(event.request.url))
+    })
+    await cdp.send('Fetch.enable', {
+      patterns: [{ urlPattern: '*X-Amz-Signature=*', resourceType: 'Image', requestStage: 'Request' }],
+    })
+    let fetchEnabled = true
     try {
       await card(page, fixture.announcementFeedId).click()
-      const stopped = new Promise<void>(resolve => cdp.once('Debugger.paused', () => resolve()))
-      await cdp.send('Debugger.pause')
-      await stopped
-      paused = true
-      await cdp.send('Network.emulateNetworkConditions', {
-        offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
-      })
       const result = await response
       expect(result.status()).toBe(200)
       const payload = (await result.json()).data
@@ -755,30 +802,60 @@ test.describe('お知らせ本文プレビュー 実API', () => {
       expect(ttl).toBe(600)
       const issued = Date.UTC(Number(date.slice(0, 4)), Number(date.slice(4, 6)) - 1,
         Number(date.slice(6, 8)), Number(date.slice(9, 11)), Number(date.slice(11, 13)), Number(date.slice(13, 15)))
+      await expect.poll(() => heldImages.size).toBeGreaterThan(0)
+      expect([...heldImages.values()].every(value => value === signed)).toBe(true)
+      Object.assign(expirationProof, { signedURLSHA256: urlHash(signed!), ttlSeconds: ttl,
+        issuedAt: new Date(issued).toISOString(), expiresAt: new Date(issued + ttl * 1000).toISOString(),
+        heldAt: new Date().toISOString(), heldRequestCount: heldImages.size })
       await new Promise(resolve => setTimeout(resolve, Math.max(0, issued + ttl * 1000 + 2000 - Date.now())))
-      const expiredImage = page.waitForResponse(image => image.url() === signed, { timeout: 30_000 })
-      await cdp.send('Debugger.resume')
-      paused = false
-      const rejected = await expiredImage
-      expect(rejected.status()).toBe(403)
-      expect((await rejected.text()).toLowerCase().includes('expired'), 'ストレージによる署名失効拒否').toBe(true)
+      expirationProof.releasedAt = new Date().toISOString()
+      for (const requestId of heldImages.keys()) await cdp.send('Fetch.continueRequest', { requestId })
+      heldImages.clear()
+      await cdp.send('Fetch.disable')
+      fetchEnabled = false
+      // 画像失敗時はブラウザがResponseを公開しない場合がある。元の実署名画像を独立HTTPで検証する。
+      expect(Date.now()).toBeGreaterThan(issued + ttl * 1000)
+      const imageRequest = await playwrightRequest.newContext()
+      try {
+        const rejected = await imageRequest.get(signed!)
+        const responseText = await rejected.text()
+        const expired = responseText.toLowerCase().includes('expired')
+        expirationProof.expiredStorageResponse = { status: rejected.status(), expired,
+          urlSHA256: urlHash(signed!), bodySHA256: createHash('sha256').update(responseText).digest('hex'),
+          authenticatedContext: false, observedAt: new Date().toISOString() }
+        expect(rejected.status()).toBe(403)
+        expect(expired, 'ストレージによる署名失効拒否').toBe(true)
+      }
+      finally { await imageRequest.dispose() }
       const dialog = page.getByRole('dialog')
       const status = dialog.getByRole('status')
       await expect(status).toContainText(ja.announcement.preview.image_failed)
+      expirationProof.uiImageErrorObservedAt = new Date().toISOString()
+      retryStarted = true
       await status.getByRole('button', { name: ja.announcement.preview.retry, exact: true }).click()
       const images = dialog.getByRole('img', { name: '正規画像', exact: true })
       await expect(images).toHaveCount(3)
       for (const image of await images.all()) {
         await expect.poll(() => image.evaluate(element => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
       }
+      const retryUrls = await images.evaluateAll(elements => elements.map(element => (element as HTMLImageElement).src))
+      expect(retryUrls.every(value => value !== signed)).toBe(true)
+      expect(retryResponses.length).toBeGreaterThan(0)
+      expect(retryResponses.every(value => value.status === 200)).toBe(true)
+      expirationProof.retryResponses = retryResponses
+      expirationProof.recoveredWidths = await images.evaluateAll(elements => elements.map(element => (element as HTMLImageElement).naturalWidth))
+      expirationProof.recoveredAt = new Date().toISOString()
       await expect(status).not.toBeVisible()
     }
     finally {
-      if (paused) await cdp.send('Debugger.resume')
-      await cdp.send('Network.emulateNetworkConditions', {
-        offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
-      })
+      if (fetchEnabled) {
+        for (const requestId of heldImages.keys()) await cdp.send('Fetch.continueRequest', { requestId })
+        await cdp.send('Fetch.disable')
+      }
       await cdp.detach()
+      await test.info().attach('natural-image-expiration-proof', {
+        body: JSON.stringify(expirationProof), contentType: 'application/json',
+      })
     }
   })
 })
