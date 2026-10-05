@@ -614,6 +614,7 @@ HTTP|com.mannschaft.app.skill.controller.SkillSearchController|2|2
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementBroadcastController|2|2
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementFeedController|6|6
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementFeedOrgController|6|6
+HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementPreviewController|0|2
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementRangeTemplateController|8|8
 HTTP|com.mannschaft.app.social.announcement.controller.PersonalAnnouncementController|1|1
 HTTP|com.mannschaft.app.social.controller.FollowController|5|5

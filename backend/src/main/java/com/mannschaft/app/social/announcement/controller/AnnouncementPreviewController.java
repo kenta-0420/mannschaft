@@ -4,6 +4,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.social.announcement.AnnouncementPreviewService;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
@@ -34,6 +36,8 @@ public class AnnouncementPreviewController {
     private final AnnouncementPreviewService previewService;
 
     @GetMapping("/teams/{scopeId}/announcements/{feedId}/preview")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "既存のお知らせ配信内容を横断閲覧する中核入口。元コンテンツの最新可視性・課金認可はサービスで検証する")
     @Operation(summary = "チームお知らせ本文プレビュー")
     public ResponseEntity<ApiResponse<AnnouncementPreviewResponse>> teamPreview(
             @PathVariable Long scopeId, @PathVariable Long feedId) {
@@ -41,6 +45,8 @@ public class AnnouncementPreviewController {
     }
 
     @GetMapping("/organizations/{scopeId}/announcements/{feedId}/preview")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "既存のお知らせ配信内容を横断閲覧する中核入口。元コンテンツの最新可視性・課金認可はサービスで検証する")
     @Operation(summary = "組織お知らせ本文プレビュー")
     public ResponseEntity<ApiResponse<AnnouncementPreviewResponse>> organizationPreview(
             @PathVariable Long scopeId, @PathVariable Long feedId) {
