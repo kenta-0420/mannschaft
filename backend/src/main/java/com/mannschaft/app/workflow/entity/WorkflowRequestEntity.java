@@ -51,6 +51,7 @@ public class WorkflowRequestEntity extends BaseEntity {
 
     private LocalDateTime requestedAt;
 
+    @Column(columnDefinition = "TINYINT")
     private Integer currentStepOrder;
 
     @Column(columnDefinition = "JSON")

@@ -51,7 +51,7 @@ public class PresenceEventEntity {
 
     private LocalDateTime returnedAt;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT")
     private Integer overdueLevel;
 
     @Column(nullable = false, updatable = false)

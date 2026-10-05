@@ -42,6 +42,7 @@ public class AttendanceLocationChangeEntity extends BaseEntity {
     private AttendanceLocation toLocation;
 
     /** 変更が発生した時限番号（任意） */
+    @Column(columnDefinition = "TINYINT")
     private Integer changedAtPeriod;
 
     /** 変更が発生した時刻（任意） */

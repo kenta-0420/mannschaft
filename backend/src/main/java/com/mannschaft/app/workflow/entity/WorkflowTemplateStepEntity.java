@@ -29,7 +29,7 @@ public class WorkflowTemplateStepEntity extends BaseEntity {
     @Column(nullable = false)
     private Long templateId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT")
     private Integer stepOrder;
 
     @Column(nullable = false, length = 100)

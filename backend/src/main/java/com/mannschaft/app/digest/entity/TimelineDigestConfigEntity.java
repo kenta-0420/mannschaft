@@ -43,6 +43,7 @@ public class TimelineDigestConfigEntity extends BaseEntity {
 
     private LocalTime scheduleTime;
 
+    @Column(columnDefinition = "TINYINT")
     private Integer scheduleDayOfWeek;
 
     private LocalDateTime lastExecutedAt;
