@@ -352,11 +352,22 @@ tasks.withType<Test> {
     // 1 JVM でまとめて走らせる。付け忘れ・Spring との混在は番人 ArchUnitTestTagGuardTest が検出する。
     // =====================================================================
     val isArchTask = name == "archTest"
-    // main 側（CMP-261002-1606 以前からの既存機構）: ArchUnit 専用 JUnit エンジンによる分離と
-    // 凍結ストア整合性セルフテストの単独実行。archTest（タグ方式）とは別経路として両方維持する。
+    // main 側（CMP-261002-1606 以前からの既存機構）: archUnitTest は各 runner で
+    // 全 ArchUnit エンジンの番人（@AnalyzeClasses による走査）を Spring テストとは別の JVM で
+    // まとめて実行する（includeEngines("archunit") により junit-jupiter 側のテストは含めない）。
+    // archTest（タグ方式・CMP-261002-1606 新規）とは別経路として両方維持する。
     val isArchUnitTask = name == "archUnitTest"
     val isFreezeIntegrityTask = name == "archUnitFreezeStoreIntegrityTest"
     useJUnitPlatform {
+        // engine 分離（main 既存機構）: archUnitTest だけが ArchUnit 専用 JUnit エンジンを使う。
+        // それ以外（test/perfTest/archTest）は従来どおり junit-jupiter エンジンのみで、
+        // archunit エンジンの @AnalyzeClasses を二重に走らせない。
+        if (isArchUnitTask) {
+            includeEngines("archunit")
+        } else {
+            excludeEngines("archunit")
+        }
+        // タグ分離（CMP-261002-1606 新規）: archTest はタグ "archunit" 付き junit-jupiter テストだけを走らせる。
         when {
             isPerfTask -> includeTags("perf")
             isArchTask -> {
@@ -431,8 +442,11 @@ tasks.withType<Test> {
     // タイミング問題を引き起こすため、-Pmax.parallel.forks=1 で上書きできるようにする。
     // CI 環境ではデフォルト 2 のまま動作する。
     // perfTask は単一クラスのため並列 fork しない（Testcontainer/測定の相互干渉を避ける）。
+    // archUnitTest（main 既存機構・archunit エンジン分離）も main と同様に並列 fork 1 を維持する。
     maxParallelForks =
-        if (isPerfTask || isArchTask) 1 else ((project.findProperty("max.parallel.forks") as String?)?.toInt() ?: 2)
+        if (isPerfTask || isArchTask || isArchUnitTask) 1 else (
+            (project.findProperty("max.parallel.forks") as String?)?.toInt() ?: 2
+            )
     // GC を明示し OOM 時にヒープダンプを残す（CI で再発時の調査用）
     //
     // -Dcom.mysql.cj.disableAbandonedConnectionCleanup=true:
