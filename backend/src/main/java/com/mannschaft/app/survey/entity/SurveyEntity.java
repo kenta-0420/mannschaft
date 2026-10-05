@@ -31,7 +31,8 @@ import java.time.LocalDateTime;
 @SuperBuilder(toBuilder = true)
 public class SurveyEntity extends BaseEntity {
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20,
+            columnDefinition = "ENUM('ORGANIZATION','TEAM')")
     private String scopeType;
 
     @Column(nullable = false)

@@ -44,7 +44,9 @@ public class PromotionEntity extends BaseEntity {
 
     private Long couponId;
 
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 30,
+            columnDefinition = "ENUM('DRAFT','PENDING_APPROVAL','APPROVED','SCHEDULED','PUBLISHING',"
+                    + "'PUBLISHED','CANCELLED','FAILED')")
     @Builder.Default
     private String status = "DRAFT";
 

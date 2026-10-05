@@ -32,7 +32,8 @@ public class TeamCareNotificationOverrideEntity {
     private Long id;
 
     /** スコープ種別。"TEAM" または "ORGANIZATION"。 */
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20,
+            columnDefinition = "ENUM('TEAM','ORGANIZATION')")
     private String scopeType;
 
     @Column(nullable = false)
