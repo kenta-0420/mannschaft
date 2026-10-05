@@ -1,5 +1,7 @@
 package com.mannschaft.app.ranch.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mannschaft.app.ranch.*;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -10,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 /** 03 API正本のRoomSlotSummary。BIGINTはdecimal string、日時はUTC瞬間。 */
-public record RoomSlotSummary(String slotKey, UUID inventoryId, String version,
+public record RoomSlotSummary(String slotKey, @Schema(nullable = true) UUID inventoryId, String version,
                               @JsonInclude(JsonInclude.Include.NON_NULL) Decoration decoration) {
     /** 既存の配置・取外しcommand ACKには表示投影を含めない。 */
     public RoomSlotSummary(String slotKey, UUID inventoryId, String version) {
