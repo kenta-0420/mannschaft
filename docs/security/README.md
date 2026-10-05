@@ -105,9 +105,10 @@ ArchUnit 認可番人（`AuthzControllerGuardArchTest`）は、公開エンド�
 **`@SelfScopedEndpoint` の運用ルール**（2026-07-30 新設・マスター御裁可）:
 
 1. **`@AuthorizedInService` からの分離** — 「到達不能」と「どこかで認可済み」は別の主張である。過去の波では自己スコープ EP に `@AuthorizedInService` を流用した例があるが、**今後その転用は禁止**する。
-2. **契約テストが必須** — 本マーカーの価値は「宣言に見合う検証が実在するか」に依存する。番人 `SelfScopedEndpointMarkerGuardTest` が、付与された全 EP について「その EP を名指しした JUnit テストソースの実在」を CI で機械的に要求する。契約テスト側の Javadoc または `@DisplayName` に `<Controller 単純名>#<メソッド名>` を明記してリンクを成立させる。**免除リストは設けない**。
+2. **契約テストが必須** — 本マーカーの価値は「宣言に見合う検証が実在するか」に依存する。番人 `SelfScopedEndpointMarkerGuardTest` が、付与された全 EP について「その EP を名指しした JUnit テストソースの実在」を CI で機械的に要求する。契約テスト側の Javadoc または `@DisplayName` に `<Controller 単純名>#<メソッド名>` を明記してリンクを成立させる。**免除リストは設けない**（この契約テスト必須の要件に限る。スコープID入力の番人の監査台帳は下記5.）。
 3. **メソッド専用** — 到達不能性はエンドポイント単位の性質であり、自己スコープ EP とリソース ID を受け取る EP は同一 Controller に併存する。クラス単位の付与は許可しない（`@Target(METHOD)`）。
 4. **濫用の禁止** — 自己スコープでない EP への付与は監査の証跡を偽る行為であり禁止する。「操作者 == 所有者」を直接比較して拒否している EP は到達可能性自体は存在するため対象外（実効的な認可を白名簿クラスへ寄せる）。対象の検索条件・DTO が変更された際は束縛が崩れていないか再評価すること。
+5. **スコープIDを受け取ったら赤**（CMP-260917-1135・2026-09-25 マスター裁可） — 番人 `SelfScopedEndpointScopeInputGuardTest` が、付与箇所をバイトコードで列挙し（ソース走査との件数突き合わせで完全修飾名の付与も検出）、`@PathVariable`・`@RequestParam`・`@RequestHeader`・`@CookieValue` と `@RequestBody`・`@ModelAttribute` の DTO フィールド（入れ子・record・コレクション要素まで深さ3）から、名前が `(team|organization|org|village|scope|committee|channel)(Id|Ids)` で終わる入力を検出する。検出したら、**監査台帳**（番人内の定数表）に行が無い限り赤。台帳の行はメソッド単位で、検出した入力・Service の入口から深さ4（ハンドラから数えて5）までに到達する Repository 呼び出しの集合（完全一致。深さの先に未探索の呼び出しが残れば赤）・20字以上の理由・裁可記録（日付＋課題ID）・担う契約テストを必須とし、件数を固定する。台帳に載せるのは「受け取ったスコープIDを検索キーに使っても認証主体の行にしか届かない」ことを契約テストで固定したものに限る。所属・権限を Service で検証してからスコープIDを使う EP は台帳に載せず、`@SelfScopedEndpoint` を外して `@AuthorizedInService` 等へ付け替える。過去の穴はいずれも userId とスコープIDの組で検索していたため、「userId と組なら安全」という判定は採らない。
 
 ### 4.3 権限名（Permission）はカタログ登録を伴わせる **【必須】**
 

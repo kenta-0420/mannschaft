@@ -21,6 +21,12 @@ public interface RecruitmentNoShowRecordRepository extends JpaRepository<Recruit
     @Query("SELECT r FROM RecruitmentNoShowRecordEntity r WHERE r.id = :recordId")
     Optional<RecruitmentNoShowRecordEntity> findByIdForDisputeUpdate(@Param("recordId") Long recordId);
 
+    /**
+     * 記録の本人か（素の読み取り・行ロックなし）。エンティティを読み込まないので、後続の
+     * {@link #findByIdForDisputeUpdate} が同じ永続化コンテキストの古い状態を掴まない。
+     */
+    boolean existsByIdAndUserId(Long id, Long userId);
+
     /** NO_SHOW 期限の設定値を、論理削除済み募集も含めて一括取得する。 */
     @Query(value = """
             SELECT r.id AS recordId, COALESCE(s.dispute_allowed_days, 30) AS allowedDays

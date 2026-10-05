@@ -336,9 +336,14 @@ class ConfirmableNotificationServiceTest {
             assertThat(captor.getValue()).hasSize(2);
         }
 
+        /**
+         * CMP-260930-1932 AC-9: 同期 send は自動・システム通知専用の経路であり、組織スコープでも
+         * 通知クレジットを消費しない（F09.13 カウント対象外）。一意化（AC-28）の検証は維持する。
+         * 手動送信の課金は sendAsync→ConfirmableFanoutChunkSink 経路で別途担保（AC-3）。
+         */
         @Test
-        @DisplayName("AC-28: 一意化後の件数で課金する（組織スコープ）")
-        void send_重複したrecipientUserIds_一意化後の件数で課金される() {
+        @DisplayName("AC-9(CMP-260930-1932)/AC-28: 組織スコープの同期 send は一意化して保存し、課金しない")
+        void send_重複したrecipientUserIds_一意化して保存し課金されない() {
             // given: 組織スコープで USER_ID_1 を2回、USER_ID_2 を1回渡す → 一意化後は2件のはず
             List<Long> recipientIdsWithDuplicate = List.of(USER_ID_1, USER_ID_1, USER_ID_2);
             ConfirmableNotificationSettingsEntity settings = ConfirmableNotificationSettingsEntity.builder()
@@ -368,10 +373,15 @@ class ConfirmableNotificationServiceTest {
                     ConfirmableNotificationPriority.NORMAL, null,
                     null, null, null, null, null, USER_ID_1, recipientIdsWithDuplicate);
 
-            // then: consume は一意化後の件数（2）で呼ばれる。現状は入力の長さ（3）で呼ばれるため red
-            verify(notificationCreditService).consume(
-                    eq(SCOPE_ID), eq(2),
-                    any(com.mannschaft.app.notification.credit.entity.NotificationSourceType.class));
+            // then: 一意化（AC-28）は維持 — 受信者行は2件
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<ConfirmableNotificationRecipientEntity>> captor =
+                    ArgumentCaptor.forClass(List.class);
+            verify(recipientRepository).saveAll(captor.capture());
+            assertThat(captor.getValue()).hasSize(2);
+
+            // then: AC-9 — 同期 send は組織スコープでも課金しない。現状は consume(10, 2, CONFIRMABLE) が呼ばれるため red
+            verify(notificationCreditService, never()).consume(any(), anyInt(), any());
         }
     }
 }

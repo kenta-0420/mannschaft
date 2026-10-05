@@ -144,14 +144,33 @@ public class RecruitmentListingService {
         return page.map(mapper::toListingSummaryResponse);
     }
 
+    /**
+     * 認可ファサードが閲覧を許可済みの下書き（DRAFT）募集を返す。管理者判定は呼び出し側（ファサード）で
+     * 済んでいるので、ここでは行わない（許可経路の認可クエリを是正前と同数に保つ）。
+     *
+     * <p>認可の後に募集が公開されていた（DRAFT でなくなった）場合は空を返す。呼び出し側は通常の
+     * {@link #getListing} へ切り替え、F00 の可視性判定を通す。</p>
+     *
+     * @param listingId 募集 ID
+     * @return 下書きの募集詳細。DRAFT でなければ空
+     */
+    public java.util.Optional<RecruitmentListingResponse> findAuthorizedDraftListing(Long listingId) {
+        RecruitmentListingEntity entity = findOrThrow(listingId);
+        if (entity.getStatus() != RecruitmentListingStatus.DRAFT) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(mapper.toListingResponse(entity));
+    }
+
     public RecruitmentListingResponse getListing(Long listingId, Long userId) {
         RecruitmentListingEntity entity = findOrThrow(listingId);
         // PERSONAL の公開後レスポンスは閲覧者別の表示名・PII 抑制・no-store を担う
         // /api/v1/public/market/** に一本化する。汎用詳細 DTO は scopeId / createdBy 等の
         // 内部 ID を含むため、OPEN/FULL の PERSONAL をここから返してはならない。
+        // 不在（RECRUITMENT_001）と同じコードに揃える（MARKET_404 だと SCOPE_ONLY 等の個人札の実在が判る）。
         if (entity.getScopeType() == RecruitmentScopeType.PERSONAL
                 && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
-            throw new BusinessException(MarketErrorCode.LISTING_NOT_FOUND);
+            throw new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND);
         }
         // DRAFT は作成者・スコープ ADMIN のみ閲覧可（機能側ローカル要件）。
         // F00 共通基盤の DRAFT 規約は「作成者 + SystemAdmin のみ」だが、
@@ -179,6 +198,44 @@ public class RecruitmentListingService {
         // F00 Phase C 試験的置換 (2026-05-04): Phase 2 留保コードを本格実装に昇格。
         visibilityChecker.assertCanView(ReferenceType.RECRUITMENT_LISTING, listingId, userId);
         return mapper.toListingResponse(entity);
+    }
+
+    /**
+     * 募集の認可入力（認可ファサードが 403 / 404 を分けるための最小情報）。
+     *
+     * @param scopeType  募集のスコープ種別
+     * @param scopeId    募集のスコープ ID
+     * @param createdBy  作成者
+     * @param status     状態
+     * @param visibility 公開範囲
+     */
+    public record ListingAccessScope(
+            RecruitmentScopeType scopeType, Long scopeId, Long createdBy,
+            RecruitmentListingStatus status, RecruitmentVisibility visibility) {
+
+        /** F00 が「誰でも閲覧できる」と判定する公開物（PUBLIC かつ公開中）か。DRAFT・中止系は含めない。 */
+        public boolean isPublicObject() {
+            return visibility == RecruitmentVisibility.PUBLIC
+                    && (status == RecruitmentListingStatus.OPEN
+                    || status == RecruitmentListingStatus.FULL
+                    || status == RecruitmentListingStatus.CLOSED
+                    || status == RecruitmentListingStatus.COMPLETED);
+        }
+    }
+
+    /**
+     * 認可の前に、募集のスコープを素の読み取りで解決する（readOnly。行ロックは取らない）。
+     *
+     * <p>不在・論理削除済み・モデレーション非表示は {@code LISTING_NOT_FOUND}(404)。認可ファサードが
+     * この結果で許可・403・404 を決め、許可された後に tx 本体が対象を読み直す（認可より前にロックしない）。</p>
+     *
+     * @param listingId 募集 ID
+     * @return 募集の認可入力
+     */
+    public ListingAccessScope resolveListingScope(Long listingId) {
+        RecruitmentListingEntity entity = findOrThrow(listingId);
+        return new ListingAccessScope(entity.getScopeType(), entity.getScopeId(), entity.getCreatedBy(),
+                entity.getStatus(), entity.getVisibility());
     }
 
     /** Service 内部用: ID で取得 (アプリ側ヘルパー)。 */
@@ -308,11 +365,11 @@ public class RecruitmentListingService {
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.TEMPLATE_NOT_FOUND));
 
         // テンプレートのスコープと一致することを確認。
-        // 越境は TEMPLATE_SCOPE_MISMATCH = 404 で、不在（TEMPLATE_NOT_FOUND = 404）と同一ステータス。
-        // 従来は本コードが ERROR_CODE_STATUS_MAP 未登録で既定 400 に落ちており、templateId の列挙で
-        // 他スコープのテンプレートの実在が判別できた（存在オラクル）。
+        // 他スコープの実在テンプレートは、不在（TEMPLATE_NOT_FOUND）と同じコード・メッセージで 404 にする。
+        // 別コードを返すと、ステータスが揃っていても templateId の列挙で他スコープのテンプレートの実在が
+        // 判別できる（存在オラクル。CMP-260923-0954 W5 C3）。
         if (template.getScopeType() != scopeType || !template.getScopeId().equals(scopeId)) {
-            throw new BusinessException(RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH);
+            throw new BusinessException(RecruitmentErrorCode.TEMPLATE_NOT_FOUND);
         }
         String location = template.getDefaultLocation();
         if (location == null || location.isBlank()) {
@@ -387,6 +444,13 @@ public class RecruitmentListingService {
         return response;
     }
 
+    /**
+     * 募集を編集する（<b>tx 本体</b>）。
+     *
+     * <p>認可は {@link RecruitmentListingFacade#update} が tx の外で済ませる。本メソッドは認可の後に募集を
+     * FOR UPDATE で読み直し（論理削除済みなら {@code LISTING_NOT_FOUND}(404)・DB 不変）、状態の判定もここで行う。
+     * 募集のスコープ列は不変という前提。</p>
+     */
     @Transactional
     public RecruitmentListingResponse update(Long listingId, Long userId, UpdateRecruitmentListingRequest request) {
         return updateInternal(listingId, userId, request, false);
@@ -395,12 +459,18 @@ public class RecruitmentListingService {
     @Transactional
     public RecruitmentListingResponse updatePersonalDraft(Long listingId, Long userId,
             UpdateRecruitmentListingRequest request) {
+        // 個人札の本人判定は updateInternal の外（本メソッド）で行う。updateInternal は認可を持たない tx 本体のため。
+        RecruitmentListingEntity owned = listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                        listingId, RecruitmentScopeType.PERSONAL, userId)
+                .orElseThrow(() -> new BusinessException(
+                        com.mannschaft.app.market.MarketErrorCode.LISTING_NOT_FOUND));
+        checkListingManagementAccess(owned.getScopeType(), owned.getScopeId(), userId, owned.getCreatedBy());
         return updateInternal(listingId, userId, request, true);
     }
 
     private RecruitmentListingResponse updateInternal(Long listingId, Long userId,
             UpdateRecruitmentListingRequest request, boolean personalRoute) {
-        // §5.7 編集時の制約 — PESSIMISTIC_WRITE で行ロック取得
+        // §5.7 編集時の制約 — PESSIMISTIC_WRITE で行ロック取得（認可の後にだけ取る）
         RecruitmentListingEntity entity = personalRoute
                 ? listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
                         listingId, RecruitmentScopeType.PERSONAL, userId)
@@ -409,9 +479,9 @@ public class RecruitmentListingService {
                 : listingRepository.findByIdForUpdate(listingId)
                         .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
         if (!personalRoute && entity.getScopeType() == RecruitmentScopeType.PERSONAL) {
-            throw new BusinessException(com.mannschaft.app.market.MarketErrorCode.LISTING_NOT_FOUND);
+            // 汎用編集 EP は個人札を扱わない。不在と同じコードで隠す（認可ファサードが先に弾くため通常は到達しない）。
+            throw new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND);
         }
-        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
         validatePersonalUpdate(entity, userId, request);
         if (personalRoute && entity.getStatus() != RecruitmentListingStatus.DRAFT) {
             throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
@@ -487,11 +557,16 @@ public class RecruitmentListingService {
         return marketResponseEnricher.enrich(mapper.toListingResponse(saved), saved);
     }
 
+    /**
+     * 募集を公開する（DRAFT → OPEN。<b>tx 本体</b>）。
+     *
+     * <p>認可は {@link RecruitmentListingFacade#publish} が tx の外で済ませる。本メソッドは認可の後に募集を
+     * FOR UPDATE で読み直し（論理削除済みなら 404・DB 不変）、状態・公開範囲の判定もここで行う。</p>
+     */
     @Transactional
     public RecruitmentListingResponse publish(Long listingId, Long userId) {
         RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
         RecruitmentOperationalScopeGuard.requireVisibilityConfigurable(entity);
 
         // F22.1 市: FRIEND_TEAMS_ONLY は distribution_targets を使わず、フレンド宛先で配信する（§3 / §7）。
@@ -569,7 +644,54 @@ public class RecruitmentListingService {
     }
 
     /**
-     * Phase 2: 管理者による申込確定 + リマインダー作成 + RECRUITMENT_CONFIRMED 通知。
+     * 申込確定の認可入力（募集のスコープ）。
+     *
+     * @param scopeType 募集のスコープ種別（TEAM / ORGANIZATION のみ）
+     * @param scopeId   募集のスコープ ID
+     */
+    public record ConfirmScope(RecruitmentScopeType scopeType, Long scopeId) {
+    }
+
+    /**
+     * 申込確定の認可の前に、参加者→募集をたどってスコープを解決する（readOnly・素の読み取り。行ロックは取らない）。
+     *
+     * <p>参加者不在・パスの listingId と参加者の募集の不一致・募集不在（論理削除・モデレーション非表示）・
+     * 募集が TEAM/ORGANIZATION でない（PERSONAL・GLOBAL）は、すべて同じ {@code LISTING_NOT_FOUND}(404)。
+     * 是正前は PERSONAL・GLOBAL だけ {@code MARKET_404} で、コードが割れていた。</p>
+     *
+     * <p>モデレーション非表示の募集は是正前から不在扱いだった（行ロック取得が {@code RecruitmentListingEntity} の
+     * {@code @SQLRestriction} に掛かるため）。その挙動を維持する。</p>
+     *
+     * @param listingId     パスの募集 ID
+     * @param participantId 参加者 ID
+     * @return 募集のスコープ
+     */
+    public ConfirmScope resolveConfirmScope(Long listingId, Long participantId) {
+        RecruitmentParticipantEntity participant = participantRepository.findById(participantId)
+                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        if (!participant.getListingId().equals(listingId)) {
+            throw new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND);
+        }
+        RecruitmentListingEntity listing = listingRepository.findById(participant.getListingId())
+                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
+        requireConfirmableScope(listing);
+        return new ConfirmScope(listing.getScopeType(), listing.getScopeId());
+    }
+
+    private static void requireConfirmableScope(RecruitmentListingEntity listing) {
+        if (listing.getScopeType() != RecruitmentScopeType.TEAM
+                && listing.getScopeType() != RecruitmentScopeType.ORGANIZATION) {
+            throw new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND);
+        }
+    }
+
+    /**
+     * Phase 2: 管理者による申込確定 + リマインダー作成 + RECRUITMENT_CONFIRMED 通知（<b>tx 本体</b>）。
+     *
+     * <p>認可は {@link RecruitmentMoneyFacade#confirmApplication} が tx の外で済ませる。本メソッドは認可の後に
+     * 参加者→募集をたどり直し（どれかが不在なら {@code LISTING_NOT_FOUND}(404)・DB 不変）、
+     * 行ロック（FOR UPDATE）は参加者→募集の順にここで初めて取る（認可より前にロックしない）。
+     * 状態判定（APPLIED 以外は 409）は認可の後。募集のスコープ列は不変という前提。</p>
      *
      * @param participantId 参加者ID
      * @param adminId       実行管理者ID
@@ -582,8 +704,7 @@ public class RecruitmentListingService {
 
         RecruitmentListingEntity listing = listingRepository.findByIdForUpdate(participant.getListingId())
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(listing);
-        accessControlService.checkAdminOrAbove(adminId, listing.getScopeId(), listing.getScopeType().name());
+        requireConfirmableScope(listing);
 
         if (participant.getStatus() != RecruitmentParticipantStatus.APPLIED) {
             throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
@@ -701,6 +822,12 @@ public class RecruitmentListingService {
         return mapper.toFeedItemResponseList(listings);
     }
 
+    /**
+     * 募集を主催者として中止する（<b>tx 本体</b>）。
+     *
+     * <p>認可は {@link RecruitmentListingFacade#cancel} が tx の外で済ませる。本メソッドは認可の後に募集を
+     * FOR UPDATE で読み直し（論理削除済みなら 404・DB 不変）、状態の判定（中止済みは 409）もここで行う。</p>
+     */
     @Transactional
     public RecruitmentListingResponse cancelByAdmin(Long listingId, Long userId, CancelRecruitmentListingRequest request) {
         return cancelInternal(listingId, userId, request, false);
@@ -709,6 +836,12 @@ public class RecruitmentListingService {
     @Transactional
     public RecruitmentListingResponse cancelPersonalListing(Long listingId, Long userId,
             CancelRecruitmentListingRequest request) {
+        // 個人札の本人判定は cancelInternal の外（本メソッド）で行う。cancelInternal は認可を持たない tx 本体のため。
+        RecruitmentListingEntity owned = listingRepository.findByIdAndScopeTypeAndScopeIdForUpdate(
+                        listingId, RecruitmentScopeType.PERSONAL, userId)
+                .orElseThrow(() -> new BusinessException(
+                        com.mannschaft.app.market.MarketErrorCode.LISTING_NOT_FOUND));
+        checkListingManagementAccess(owned.getScopeType(), owned.getScopeId(), userId, owned.getCreatedBy());
         return cancelInternal(listingId, userId, request, true);
     }
 
@@ -722,9 +855,9 @@ public class RecruitmentListingService {
                 : listingRepository.findByIdForUpdate(listingId)
                         .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
         if (!personalRoute) {
-            RecruitmentOperationalScopeGuard.requireTeamOrOrganization(entity);
+            // 汎用の中止 EP は個人札を扱わない。不在と同じコードで隠す（認可ファサードが先に弾くため通常は到達しない）。
+            RecruitmentOperationalScopeGuard.requireTeamOrOrganizationOrNotFound(entity);
         }
-        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
         try {
             entity.cancelByAdmin(userId, request != null ? request.getReason() : null);
         } catch (IllegalStateException e) {
@@ -790,15 +923,17 @@ public class RecruitmentListingService {
      * 論理削除と同一トランザクションで未解決の異議を {@code REVOKED}（認容）として取り下げる。
      * 詳細な根拠は {@link RecruitmentNoShowService#autoRevokeOpenDisputesOnListingArchived} を参照。</p>
      *
+     * <p>本メソッドは <b>tx 本体</b>。認可は {@link RecruitmentListingFacade#archive} が tx の外で済ませる。
+     * 認可の後に募集を FOR UPDATE で読み直し（論理削除済みなら 404・DB 不変）、異議の取下げもここで行う。</p>
+     *
      * @param listingId 募集枠 ID
-     * @param userId    実行ユーザー ID（スコープ管理者以上）
+     * @param userId    実行ユーザー ID（スコープ管理者以上。認可済み）
      */
     @Transactional
     public void archive(Long listingId, Long userId) {
         RecruitmentListingEntity entity = listingRepository.findByIdForUpdate(listingId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        RecruitmentOperationalScopeGuard.requireTeamOrOrganization(entity);
-        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
+        RecruitmentOperationalScopeGuard.requireTeamOrOrganizationOrNotFound(entity);
 
         entity.softDelete();
         listingRepository.save(entity);
@@ -818,17 +953,18 @@ public class RecruitmentListingService {
     /**
      * 募集の配信対象を設定する (再設定は全削除→再INSERT)。
      *
+     * <p><b>tx 本体</b>。認可は {@link RecruitmentListingFacade#setDistributionTargets} が tx の外で済ませる。
+     * 認可の後に募集を読み直し（論理削除済みなら 404・DB 不変）、公開範囲の判定もここで行う。</p>
+     *
      * @param listingId   募集ID
-     * @param userId      実行ユーザーID
      * @param targetTypes 配信対象種別リスト
      * @return 設定後の配信対象レスポンスリスト
      */
     @Transactional
     public List<com.mannschaft.app.recruitment.dto.RecruitmentDistributionTargetResponse> setDistributionTargets(
-            Long listingId, Long userId,
+            Long listingId,
             List<RecruitmentDistributionTargetType> targetTypes) {
         RecruitmentListingEntity entity = findOrThrow(listingId);
-        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
         RecruitmentOperationalScopeGuard.requireVisibilityConfigurable(entity);
 
         // 全削除→再INSERT
@@ -850,12 +986,14 @@ public class RecruitmentListingService {
     }
 
     /**
-     * 募集の配信対象を取得する。
+     * 募集の配信対象を取得する（<b>tx 本体</b>）。
+     *
+     * <p>認可は {@link RecruitmentListingFacade#getDistributionTargets} が tx の外で済ませる。
+     * 認可の後に募集を読み直し（論理削除済みなら 404）、公開範囲の判定もここで行う。</p>
      */
     public List<com.mannschaft.app.recruitment.dto.RecruitmentDistributionTargetResponse> getDistributionTargets(
-            Long listingId, Long userId) {
+            Long listingId) {
         RecruitmentListingEntity entity = findOrThrow(listingId);
-        checkListingManagementAccess(entity.getScopeType(), entity.getScopeId(), userId, entity.getCreatedBy());
         RecruitmentOperationalScopeGuard.requireVisibilityConfigurable(entity);
         return distributionTargetRepository.findByListingId(listingId).stream()
                 .map(t -> new com.mannschaft.app.recruitment.dto.RecruitmentDistributionTargetResponse(
@@ -1309,7 +1447,23 @@ public class RecruitmentListingService {
                     throw new BusinessException(ConnectPaymentErrorCode.PAYEE_USER_REQUIRED);
                 }
                 // IDOR 防止: 個人受領者は札主 scope の所属者に限定する（02 §3 PAYMENT_C013）。
-                if (!accessControlService.isMember(payeeUserId, scopeId, scopeType.name())) {
+                // 操作者の認可ではなく受領者の所属というデータ検証なので、認可層（AccessControlService）ではなく
+                // 所属の照会（MembershipScopeQueryService。判定源は isMember と同じ memberships の left_at IS NULL）で行う。
+                // tx 本体（update 等）から認可クラスへ届く経路を作らないため（CMP-260923-0954 W5 / AC-15）。
+                // TEAM / ORGANIZATION 以外のスコープには所属が無いので不所属扱い。
+                // ※ 別メソッドへ切り出さない: クラスが tx のため、切り出した private メソッドも D-3T の入口になり
+                //   凍結ストアに新しい行（入口×Repository）が増える。
+                boolean payeeInScope;
+                if (scopeType == RecruitmentScopeType.TEAM) {
+                    payeeInScope = membershipScopeQueryService.findCurrentMembershipTeamIds(payeeUserId)
+                            .contains(scopeId);
+                } else if (scopeType == RecruitmentScopeType.ORGANIZATION) {
+                    payeeInScope = membershipScopeQueryService.findCurrentMembershipOrganizationIds(payeeUserId)
+                            .contains(scopeId);
+                } else {
+                    payeeInScope = false;
+                }
+                if (!payeeInScope) {
                     throw new BusinessException(ConnectPaymentErrorCode.PAYEE_NOT_IN_SCOPE);
                 }
                 return payeeUserId;

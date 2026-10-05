@@ -13,6 +13,10 @@ public enum NotificationSourceType {
     /** {@link com.mannschaft.app.directmail.service.DirectMailService#sendMail} 経由のSESメール送信 */
     DIRECT_MAIL,
 
-    /** {@link com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService#send} 経由の確認通知 */
+    /**
+     * {@code ConfirmableFanoutChunkSink}（手動送信 {@code ConfirmableNotificationService#sendAsync} の
+     * fan-out チャンク確定）経由の確認通知。同期 {@code send} / {@code sendFromSource} は自動・システム
+     * 通知専用でカウント対象外のため、この種別では消費しない（CMP-260930-1932）。
+     */
     CONFIRMABLE
 }

@@ -24,7 +24,6 @@ import com.mannschaft.app.notification.confirmable.event.ConfirmableNotification
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationTargetRepository;
-import com.mannschaft.app.notification.credit.entity.NotificationSourceType;
 import com.mannschaft.app.notification.credit.service.NotificationCreditService;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -308,6 +307,14 @@ public class ConfirmableNotificationService {
      * {@code defaultUnconfirmedVisibility} を採用する（2段フォールバック）。
      * 解決された値はエンティティにスナップショットされ、後の設定変更による影響を受けない。</p>
      *
+     * <p><b>通知クレジット（F09.13）</b>: 同期 {@code send} / {@code sendFromSource} は
+     * 自動・システム通知専用の経路であり、F09.13 のカウント対象表に従い<b>課金しない</b>
+     * （組織スコープでも {@code NotificationCreditService#consume} を呼ばない。CMP-260930-1932）。
+     * 手動送信の課金は {@link #sendAsync} → {@code ConfirmableFanoutChunkSink} 経路で行う。
+     * 将来、同期経路で課金が必要な呼び出し元が現れた場合は、{@code NotificationHelper#notifyAll}
+     * の {@code isBillable} オーバーロードと同型の「既定は課金しない・明示で有効化」の
+     * オーバーロードを追加すること（フラグを既定 true にしてはならない）。</p>
+     *
      * @param scopeType          スコープ種別
      * @param scopeId            スコープID
      * @param title              通知タイトル
@@ -513,11 +520,9 @@ public class ConfirmableNotificationService {
         log.info("確認通知送信: notificationId={}, scopeType={}, scopeId={}, recipientCount={}",
                 savedNotification.getId(), scopeType, scopeId, uniqueRecipientUserIds.size());
 
-        // F09.13: 確認通知は課金対象（組織スコープのみ）
-        // チームスコープの場合は組織IDが不明なためスキップ（将来はteam→org解決を追加）
-        if (ScopeType.ORGANIZATION == scopeType) {
-            notificationCreditService.consume(scopeId, uniqueRecipientUserIds.size(), NotificationSourceType.CONFIRMABLE);
-        }
+        // F09.13 カウント対象表: 同期 send/sendFromSource は自動・システム通知（自動キャンセル・
+        // ペナルティ・最終認証・委員会配信・支払督促等）専用の経路であり、通知クレジットを消費しない
+        // （CMP-260930-1932）。手動送信の課金は sendAsync → ConfirmableFanoutChunkSink で行う。
 
         // F04.3 通知基盤へのアプリ内通知（送信者には通知しない）
         NotificationPriority notifPriority = toNotificationPriority(savedNotification.getPriority());
@@ -642,17 +647,6 @@ public class ConfirmableNotificationService {
     public List<com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientResponse>
             getRecipientsForMember(Long notificationId, Long requesterUserId) {
         return queryService.getRecipientsForMember(notificationId, requesterUserId);
-    }
-
-    /**
-     * CMP-260920-1040: 受信者一覧をページングして取得する（軍議第8版確定稿 §9.5・AC-30・AC-59・AC-60）。
-     *
-     * <p>実装は {@link ConfirmableNotificationQueryService#getRecipientsPage} に委譲。</p>
-     */
-    @Transactional(readOnly = true)
-    public com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationRecipientPageResponse
-            getRecipientsPage(Long notificationId, Long requesterUserId, int page, int size, boolean unconfirmedOnly) {
-        return queryService.getRecipientsPage(notificationId, requesterUserId, page, size, unconfirmedOnly);
     }
 
     /**

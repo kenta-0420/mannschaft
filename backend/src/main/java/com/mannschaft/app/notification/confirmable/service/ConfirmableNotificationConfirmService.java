@@ -51,22 +51,47 @@ public class ConfirmableNotificationConfirmService {
     /**
      * 認証済みユーザーがアプリ内から確認通知を確認する。
      *
+     * <p><b>CMP-260923-0954 W3b（存在オラクルの封鎖）</b>: 通知の実在・状態を受信者以外へ漏らさないため、
+     * 次の順序で処理する。</p>
+     * <ol>
+     *   <li>受信者行をロックなしで特定する（呼び出しユーザー自身の、除外されていない行のみ）。
+     *       通知が不在・非受信者・除外済みのいずれも {@code NOT_FOUND} に畳み、この時点で拒否する
+     *       （拒否経路では {@code FOR UPDATE} を1本も発行しない。通知の状態も見ない）。</li>
+     *   <li>親（通知）の行を {@code FOR UPDATE}（§11.1・ロック順序は親 → 受信者）。</li>
+     *   <li>受信者の行を {@code FOR UPDATE} して読み直す（ロック取得前の読み取りは使い回さない）。</li>
+     *   <li>状態判定（ACTIVE 以外は {@code ALREADY_CANCELLED}、確認済みは {@code ALREADY_CONFIRMED}）。
+     *       ここへ到達できるのは受信者本人だけなので、状態を見せてよい。</li>
+     * </ol>
+     *
+     * <p>パスの teamId / orgId は見ない（受信者本人の自己スコープ EP。殿の判断6）。</p>
+     *
      * @param notificationId 確認通知ID
      * @param userId         確認するユーザーID
      */
     @Transactional
     public void confirm(Long notificationId, Long userId) {
-        // §11.1: このトランザクションで最初に親を読む操作を findByIdForUpdate にする。
+        // 手順1: 受信者行をロックなしで特定する（存在確認だけ。エンティティは読み込まない）。
+        if (!recipientRepository.existsByConfirmableNotificationIdAndUserIdAndExcludedAtIsNull(
+                notificationId, userId)) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND);
+        }
+
+        // 手順2: 親の行を FOR UPDATE（ロック順序は 親 → 受信者）。
         ConfirmableNotificationEntity notification = notificationRepository.findByIdForUpdate(notificationId)
                 .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND));
 
+        // 手順3: 受信者の行を FOR UPDATE して読み直す（手順1からロック取得までの間の除外・削除に備える）。
+        ConfirmableNotificationRecipientEntity recipient =
+                recipientRepository.findByNotificationIdAndUserIdForUpdate(notificationId, userId)
+                        .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND));
+        if (recipient.isExcluded()) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND);
+        }
+
+        // 手順4: 状態判定は認可（受信者本人であること）の後。
         if (!notification.isActive()) {
             throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CANCELLED);
         }
-
-        ConfirmableNotificationRecipientEntity recipient =
-                recipientRepository.findByNotificationIdAndUserIdForUpdate(notificationId, userId)
-                        .orElseThrow(() -> new BusinessException(ConfirmableNotificationErrorCode.RECIPIENT_NOT_FOUND));
 
         doConfirm(notification, recipient, ConfirmedVia.APP);
 
@@ -134,7 +159,7 @@ public class ConfirmableNotificationConfirmService {
         if (recipient.isExcluded()) {
             throw new BusinessException(via == ConfirmedVia.TOKEN
                     ? ConfirmableNotificationErrorCode.INVALID_TOKEN
-                    : ConfirmableNotificationErrorCode.RECIPIENT_NOT_FOUND);
+                    : ConfirmableNotificationErrorCode.NOT_FOUND);
         }
         if (Boolean.TRUE.equals(recipient.getIsConfirmed())) {
             throw new BusinessException(ConfirmableNotificationErrorCode.ALREADY_CONFIRMED);

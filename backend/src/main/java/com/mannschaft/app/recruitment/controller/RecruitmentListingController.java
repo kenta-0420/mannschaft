@@ -5,7 +5,6 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.featuregate.RequireFeature;
 import com.mannschaft.app.common.security.AuthorizedByPathConfig;
-import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.recruitment.dto.CancelRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.dto.CancellationFeeEstimateResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentDistributionTargetResponse;
@@ -17,7 +16,9 @@ import com.mannschaft.app.recruitment.dto.SetDistributionTargetsRequest;
 import com.mannschaft.app.recruitment.dto.UpdateRecruitmentListingRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.service.RecruitmentCancellationPolicyService;
+import com.mannschaft.app.recruitment.service.RecruitmentListingFacade;
 import com.mannschaft.app.recruitment.service.RecruitmentListingService;
+import com.mannschaft.app.recruitment.service.RecruitmentMoneyFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -51,6 +52,8 @@ import java.util.List;
 public class RecruitmentListingController {
 
     private final RecruitmentListingService listingService;
+    private final RecruitmentListingFacade listingFacade;
+    private final RecruitmentMoneyFacade moneyFacade;
     private final RecruitmentCancellationPolicyService cancellationPolicyService;
 
     /**
@@ -98,43 +101,39 @@ public class RecruitmentListingController {
     @GetMapping("/{id}")
     @Operation(summary = "募集枠詳細取得")
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> get(@PathVariable Long id) {
-        RecruitmentListingResponse response = listingService.getListing(id, SecurityUtils.getCurrentUserId());
+        RecruitmentListingResponse response = listingFacade.getListing(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     @PatchMapping("/{id}")
     @Operation(summary = "募集枠編集 (§5.7)")
-    // updateInternal が checkListingManagementAccess で札主スコープと認証主体を照合する。
-    @AuthorizedInService
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody UpdateRecruitmentListingRequest request) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.update(id, SecurityUtils.getCurrentUserId(), request)));
+                listingFacade.update(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @PostMapping("/{id}/publish")
     @Operation(summary = "募集枠公開 (DRAFT → OPEN)")
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> publish(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.publish(id, SecurityUtils.getCurrentUserId())));
+                listingFacade.publish(id, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/{id}/cancel")
     @Operation(summary = "募集枠 主催者キャンセル")
-    // cancelInternal が checkListingManagementAccess で札主スコープと認証主体を照合する。
-    @AuthorizedInService
     public ResponseEntity<ApiResponse<RecruitmentListingResponse>> cancel(
             @PathVariable Long id,
             @RequestBody(required = false) CancelRecruitmentListingRequest request) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.cancelByAdmin(id, SecurityUtils.getCurrentUserId(), request)));
+                listingFacade.cancel(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @PostMapping("/{id}/archive")
     @Operation(summary = "募集枠 論理削除")
     public ResponseEntity<Void> archive(@PathVariable Long id) {
-        listingService.archive(id, SecurityUtils.getCurrentUserId());
+        listingFacade.archive(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -143,8 +142,8 @@ public class RecruitmentListingController {
     public ResponseEntity<ApiResponse<CancellationFeeEstimateResponse>> estimateCancellationFee(
             @PathVariable Long id,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime at) {
-        // 認可は getListing 内のチェックを再利用 (本人/管理者のみ閲覧可)
-        listingService.getListing(id, SecurityUtils.getCurrentUserId());
+        // 認可は GET 詳細と同じ（認可ファサードの getListing を再利用。本人/管理者のみ閲覧可）
+        listingFacade.getListing(id, SecurityUtils.getCurrentUserId());
         RecruitmentListingEntity listing = listingService.findOrThrow(id);
         CancellationFeeEstimateResponse estimate = cancellationPolicyService.estimateFee(listing, at);
         return ResponseEntity.ok(ApiResponse.of(estimate));
@@ -159,7 +158,7 @@ public class RecruitmentListingController {
     public ResponseEntity<ApiResponse<List<RecruitmentDistributionTargetResponse>>> getDistributionTargets(
             @PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.getDistributionTargets(id, SecurityUtils.getCurrentUserId())));
+                listingFacade.getDistributionTargets(id, SecurityUtils.getCurrentUserId())));
     }
 
     @PutMapping("/{id}/distribution-targets")
@@ -168,7 +167,7 @@ public class RecruitmentListingController {
             @PathVariable Long id,
             @Valid @RequestBody SetDistributionTargetsRequest request) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.setDistributionTargets(id, SecurityUtils.getCurrentUserId(), request.getTargetTypes())));
+                listingFacade.setDistributionTargets(id, SecurityUtils.getCurrentUserId(), request.getTargetTypes())));
     }
 
     // ===========================================
@@ -181,6 +180,6 @@ public class RecruitmentListingController {
             @PathVariable Long listingId,
             @PathVariable Long participantId) {
         return ResponseEntity.ok(ApiResponse.of(
-                listingService.confirmApplication(participantId, SecurityUtils.getCurrentUserId())));
+                moneyFacade.confirmApplication(listingId, participantId, SecurityUtils.getCurrentUserId())));
     }
 }

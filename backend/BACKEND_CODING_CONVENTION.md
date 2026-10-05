@@ -135,6 +135,7 @@ Service メソッド内でビジネスルールを検証し、違反時は `Busi
 - Controller で形式が正しいことを保証し、Service は形式チェック済みの値だけを扱う
 - **カスタムバリデーションアノテーション（`@UniqueEmail` 等）は作成しない**。DB アクセスを伴うチェックは Service の責務であり、アノテーション化すると追跡が困難になるため。
 - **グループバリデーション（`groups`）は使わない**。Create / Update で DTO を分離するため不要（`.claudecode.md` §19 参照）。
+- **`GlobalExceptionHandler` は `@RequestBody` の `MethodArgumentNotValidException` に加え、`@RequestParam` / `@PathVariable` の `@Min` / `@Max` 等（Spring 6.1 以降の `HandlerMethodValidationException`）でも 400 `COMMON_001` + `fieldErrors` を返す**。パラメータ検証の違反を 500 や `fieldErrors` 空にしないこと（CMP-261001-0630 で追加。F03.13 の `periodNumber` 1〜15 等）。
 
 ### Request DTO にコンストラクタを 2 本目以降足すときは `@JsonCreator` 必須（番人 D-7）
 
@@ -198,6 +199,14 @@ main の実在例は `recruitment/dto/RecruitmentListingSearchRequest`）にす�
 * **テスト容易性**: 現在時刻や外部通信などの「変動要素」はモック化可能な設計にし、ユニットテストの実行を容易にしてください。
 
 ## 5. データアクセスと開発環境
+
+### STRING永続化enumの定数追加
+
+`@Enumerated(EnumType.STRING)` の定数を足すときは、`.claudecode.md` §23 と
+[`二段階展開の作法`](../docs/development/persisted_enum_deployment.md) に従う。
+定数だけを全タスクへ配り、旧タスクの退場を確認してから別リリースで書込みを始める。
+番人 `PersistedEnumCompatibilityArchTest` が検知した追加を互換性台帳へ反映する前に、
+PRで書込み経路・二段階計画・rollback下限をレビューする。
 
 ### データアクセス (Spring Data JPA + QueryDSL)
 * **基本方式**: データアクセスには **Spring Data JPA** を使用する。各機能パッケージ内に `[Feature]Repository` インターフェースを作成し、`JpaRepository<Entity, Long>` を継承すること。

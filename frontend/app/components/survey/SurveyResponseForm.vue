@@ -306,6 +306,7 @@ onMounted(() => {
         :label="alreadyResponded && allowMultiple ? t('surveys.detail.form.submitUpdate') : t('surveys.detail.form.submitNew')"
         icon="pi pi-send"
         data-testid="survey-response-submit"
+        class="min-h-11 min-w-11"
       />
     </div>
   </form>

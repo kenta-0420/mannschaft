@@ -3252,6 +3252,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{slug}/teams/{teamSlug}/team-group": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 加盟チームのグループ割当（単体） */
+        put: operations["assignOne"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{slug}/team-groups/order": {
         parameters: {
             query?: never;
@@ -3262,6 +3279,23 @@ export interface paths {
         get?: never;
         /** チームグループ並び替え */
         put: operations["reorder_1"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/team-group-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 加盟チームのグループ割当（一括） */
+        put: operations["assignBulk"];
         post?: never;
         delete?: never;
         options?: never;
@@ -8201,6 +8235,40 @@ export interface paths {
         put?: never;
         /** チーム作成 */
         post: operations["createTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamSlug}/org-invites/{membershipId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 招待の辞退（チームの加盟操作者。block=true でこの組織からの招待を止める） */
+        post: operations["decline"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamSlug}/org-invites/{membershipId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 招待の承諾（チームの加盟操作者） */
+        post: operations["accept_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15754,7 +15822,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 招待トークンを承諾する（ADMIN役割+membership付与→スコープACTIVE化） */
-        post: operations["accept_1"];
+        post: operations["accept_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16100,6 +16168,24 @@ export interface paths {
         put?: never;
         /** 組織委譲を承諾（＝実行） */
         post: operations["acceptOrgOffer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/team-invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 送信済み招待一覧（組織 ADMIN） */
+        get: operations["listSentInvites"];
+        put?: never;
+        /** チームを加盟に招待（組織 ADMIN） */
+        post: operations["invite"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18825,7 +18911,7 @@ export interface paths {
          * 受け入れ拒否
          * @description 受け入れ側 org ADMIN のみ → DECLINED
          */
-        post: operations["decline"];
+        post: operations["decline_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -28292,7 +28378,7 @@ export interface paths {
          * 代理承認
          * @description F03.10 §4.1: 代理人が代理を承認する
          */
-        patch: operations["accept_2"];
+        patch: operations["accept_3"];
         trace?: never;
     };
     "/api/v1/safety-checks/templates/{templateId}": {
@@ -30310,7 +30396,7 @@ export interface paths {
          * 代理承認
          * @description F03.10 §4.2: 代理人が代理を承認する
          */
-        patch: operations["accept_3"];
+        patch: operations["accept_4"];
         trace?: never;
     };
     "/api/v1/event-categories/{categoryId}": {
@@ -33062,6 +33148,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamSlug}/org-invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 受信した招待の一覧（チームの加盟操作者） */
+        get: operations["listReceivedInvites"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamSlug}/org-affiliation-restrictions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チームが止めている招待の一覧（チームの加盟操作者） */
+        get: operations["list_81"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/attendances": {
         parameters: {
             query?: never;
@@ -34014,7 +34134,7 @@ export interface paths {
             cookie?: never;
         };
         /** 受信した協会請求の一覧 */
-        get: operations["list_81"];
+        get: operations["list_82"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34065,7 +34185,7 @@ export interface paths {
             cookie?: never;
         };
         /** 立替/精算記録の一覧 */
-        get: operations["list_82"];
+        get: operations["list_83"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34201,7 +34321,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_83"];
+        get: operations["list_84"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35453,7 +35573,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_84"];
+        get: operations["list_85"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35585,6 +35705,26 @@ export interface paths {
         };
         /** チームのリスク生徒一覧取得 */
         get: operations["getAtRiskStudents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/attendance/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 学校出欠の権限判定結果取得
+         * @description 自分が当該クラスの出欠を閲覧・日次登録・時限登録できるかを返す。権限なしでも 200 で全項目 false。
+         */
+        get: operations["getPermissions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36162,6 +36302,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{scopeId}/announcements/{feedId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チームお知らせ本文プレビュー */
+        get: operations["teamPreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{id}/payment-summary": {
         parameters: {
             query?: never;
@@ -36474,7 +36631,7 @@ export interface paths {
             cookie?: never;
         };
         /** プロビジョニング招待の一覧を取得する */
-        get: operations["list_85"];
+        get: operations["list_86"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36491,7 +36648,7 @@ export interface paths {
             cookie?: never;
         };
         /** 課金状況一覧 */
-        get: operations["list_86"];
+        get: operations["list_87"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36741,7 +36898,7 @@ export interface paths {
             cookie?: never;
         };
         /** エラーレポート一覧取得 */
-        get: operations["list_87"];
+        get: operations["list_88"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37419,7 +37576,7 @@ export interface paths {
          * 通報一覧
          * @description status / reasonCode で任意に絞り込んだ通報を created_at DESC で取得する。campaignId（メッセージ型）/ operationalCampaignId（運用型）を併記する。
          */
-        get: operations["list_88"];
+        get: operations["list_89"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37467,7 +37624,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_89"];
+        get: operations["list_90"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37503,7 +37660,7 @@ export interface paths {
          * 審査キュー一覧
          * @description 運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。
          */
-        get: operations["list_90"];
+        get: operations["list_91"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38042,7 +38199,7 @@ export interface paths {
             cookie?: never;
         };
         /** 失敗イベント一覧を取得 (status で絞り込み可、新しい順) */
-        get: operations["list_91"];
+        get: operations["list_92"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38569,7 +38726,7 @@ export interface paths {
          * キャンセル料記録の一覧
          * @description 受取先側の管理者・受取先本人・運営管理者が、自分が受け取るべきキャンセル料の記録を一覧する（免除対象を選ぶための一覧）。ページングはカーソル方式で、続きは meta.nextCursor を cursor に渡して取得する。
          */
-        get: operations["list_92"];
+        get: operations["list_93"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39689,7 +39846,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 組織所属チーム一覧 */
+        /**
+         * 組織所属チーム一覧
+         * @description 各チームに所属チームグループ（teamGroup）を付ける。グループ機能が off・未分類・削除済みグループ・閲覧者が組織の MEMBER 以上でない場合は null。teamGroupId（UUID）または unassigned=true で絞り込める（併用は 400。絞り込みは組織の MEMBER 以上と SYSTEM_ADMIN のみ）。他組織・削除済み・不在の teamGroupId は空の一覧を返す。
+         */
         get: operations["getTeams_1"];
         put?: never;
         post?: never;
@@ -39708,6 +39868,23 @@ export interface paths {
         };
         /** チーム加盟の申請フォームの内容（認証済み・組織が見えること） */
         get: operations["getApplicationForm"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/team-affiliation-restrictions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織が止めている申請の一覧（組織 ADMIN） */
+        get: operations["list_94"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39921,6 +40098,23 @@ export interface paths {
          * @description 組織の PV 集計を返す。メンバーのみ閲覧可。
          */
         get: operations["getAnalytics_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{scopeId}/announcements/{feedId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織お知らせ本文プレビュー */
+        get: operations["organizationPreview"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41203,7 +41397,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_93"];
+        get: operations["list_95"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41615,7 +41809,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_94"];
+        get: operations["list_96"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41786,7 +41980,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_95"];
+        get: operations["list_97"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42166,7 +42360,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村でなれる投稿主体一覧を取得する（村人のみ） */
-        get: operations["list_96"];
+        get: operations["list_98"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42234,7 +42428,7 @@ export interface paths {
             cookie?: never;
         };
         /** メモ添付一覧 */
-        get: operations["list_97"];
+        get: operations["list_99"];
         put?: never;
         post?: never;
         delete?: never;
@@ -43294,7 +43488,7 @@ export interface paths {
          * 請求書一覧
          * @description 指定スコープの請求書を period_end 降順で返す。cursor は不透明値。
          */
-        get: operations["list_98"];
+        get: operations["list_100"];
         put?: never;
         post?: never;
         delete?: never;
@@ -43825,7 +44019,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_99"];
+        get: operations["list_101"];
         put?: never;
         post?: never;
         delete?: never;
@@ -46620,6 +46814,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamSlug}/org-affiliation-restrictions/{restrictionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** チームが止めている招待の解除（チームの加盟操作者） */
+        delete: operations["lift"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/scheduled-tasks/{taskId}": {
         parameters: {
             query?: never;
@@ -47326,6 +47537,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{slug}/team-invites/{teamSlug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 招待の取消（組織 ADMIN） */
+        delete: operations["cancel_18"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/team-affiliation-restrictions/{restrictionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 組織が止めている申請の解除（組織 ADMIN） */
+        delete: operations["lift_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{slug}/members/{userId}": {
         parameters: {
             query?: never;
@@ -47422,7 +47667,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 組織申請取消 */
-        delete: operations["cancel_18"];
+        delete: operations["cancel_19"];
         options?: never;
         head?: never;
         patch?: never;
@@ -47634,7 +47879,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 継続課金 期末解約（F08.9 P5） */
-        delete: operations["cancel_19"];
+        delete: operations["cancel_20"];
         options?: never;
         head?: never;
         patch?: never;
@@ -48656,8 +48901,8 @@ export interface components {
             priority?: string;
             title?: string;
         };
-        ApiResponseThreadResponse: {
-            data?: components["schemas"]["ThreadResponse"];
+        ApiResponseBulletinThreadResponse: {
+            data?: components["schemas"]["BulletinThreadResponse"];
         };
         AuthorDto: {
             avatarUrl?: string;
@@ -48665,7 +48910,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
         };
-        ThreadResponse: {
+        BulletinThreadResponse: {
             /** Format: uuid */
             archiveFolderId?: string;
             author?: components["schemas"]["AuthorDto"];
@@ -53716,6 +53961,45 @@ export interface components {
             termsAcceptedAt?: string;
             termsVersion?: string;
         };
+        AssignTeamGroupRequest: {
+            /** Format: uuid */
+            groupId?: string;
+        };
+        AffiliationGroupRef: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+        };
+        AffiliationPartyRef: {
+            iconUrl?: string;
+            name?: string;
+            slug?: string;
+        };
+        AffiliationRequesterRef: {
+            displayName?: string;
+            /** Format: int64 */
+            id?: number;
+        };
+        ApiResponseTeamOrgAffiliationResponse: {
+            data?: components["schemas"]["TeamOrgAffiliationResponse"];
+        };
+        TeamOrgAffiliationResponse: {
+            direction?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+            /** Format: int64 */
+            id?: number;
+            message?: string;
+            organization?: components["schemas"]["AffiliationPartyRef"];
+            /** Format: date-time */
+            requestedAt?: string;
+            requestedBy?: components["schemas"]["AffiliationRequesterRef"];
+            /** Format: date-time */
+            respondedAt?: string;
+            status?: string;
+            team?: components["schemas"]["AffiliationPartyRef"];
+            teamGroup?: components["schemas"]["AffiliationGroupRef"];
+        };
         ReorderOrgTeamGroupsRequest: {
             groupIds: string[];
         };
@@ -53738,6 +54022,18 @@ export interface components {
             sortOrder?: number;
             /** Format: int64 */
             teamCount?: number;
+        };
+        BulkAssignTeamGroupRequest: {
+            /** Format: uuid */
+            groupId?: string;
+            teamSlugs?: string[];
+        };
+        ApiResponseBulkAssignTeamGroupResponse: {
+            data?: components["schemas"]["BulkAssignTeamGroupResponse"];
+        };
+        BulkAssignTeamGroupResponse: {
+            /** Format: int32 */
+            updatedCount?: number;
         };
         UpdateTeamAffiliationSettingsRequest: {
             /** @enum {string} */
@@ -57901,46 +58197,25 @@ export interface components {
             field?: string;
             message?: string;
         };
+        DeclineOrgInviteRequest: {
+            block?: boolean;
+        };
+        ApiResponseTeamOrgRestrictionSummaryResponse: {
+            data?: components["schemas"]["TeamOrgRestrictionSummaryResponse"];
+        };
+        Restriction: {
+            kind?: string;
+            /** Format: date-time */
+            restrictedUntil?: string;
+        };
+        TeamOrgRestrictionSummaryResponse: {
+            restriction?: components["schemas"]["Restriction"];
+        };
         ApplyToOrganizationRequest: {
             /** Format: uuid */
             groupId?: string;
             message?: string;
             organizationSlug?: string;
-        };
-        AffiliationGroupRef: {
-            /** Format: uuid */
-            id?: string;
-            name?: string;
-        };
-        AffiliationPartyRef: {
-            iconUrl?: string;
-            name?: string;
-            slug?: string;
-        };
-        AffiliationRequesterRef: {
-            displayName?: string;
-            /** Format: int64 */
-            id?: number;
-        };
-        ApiResponseTeamOrgAffiliationResponse: {
-            data?: components["schemas"]["TeamOrgAffiliationResponse"];
-        };
-        TeamOrgAffiliationResponse: {
-            direction?: string;
-            /** Format: date-time */
-            expiresAt?: string;
-            /** Format: int64 */
-            id?: number;
-            message?: string;
-            organization?: components["schemas"]["AffiliationPartyRef"];
-            /** Format: date-time */
-            requestedAt?: string;
-            requestedBy?: components["schemas"]["AffiliationRequesterRef"];
-            /** Format: date-time */
-            respondedAt?: string;
-            status?: string;
-            team?: components["schemas"]["AffiliationPartyRef"];
-            teamGroup?: components["schemas"]["AffiliationGroupRef"];
         };
         CreateReminderRequest: {
             /** Format: date-time */
@@ -61657,28 +61932,29 @@ export interface components {
             sourceType?: string;
         };
         AnnouncementFeedItemDto: {
-            accessState?: string;
+            accessState: string;
             /** Format: int64 */
             authorId?: number;
+            contentPreviewAvailable: boolean;
             createdAt?: string;
-            excerptCache?: string;
+            excerptCache: string;
             expiresAt?: string;
             /** Format: int64 */
-            id?: number;
+            id: number;
             isPinned?: boolean;
             isRead?: boolean;
             pinned?: boolean;
             priority?: string;
             read?: boolean;
             /** Format: int64 */
-            scopeId?: number;
+            scopeId: number;
             scopeName?: string;
-            scopeType?: string;
+            scopeType: string;
             /** Format: int64 */
-            sourceId?: number;
-            sourceType?: string;
+            sourceId: number;
+            sourceType: string;
             startsAt?: string;
-            titleCache?: string;
+            titleCache: string;
             updatedAt?: string;
             visibility?: string;
         };
@@ -64442,6 +64718,12 @@ export interface components {
             prefecture?: string;
             slug?: string;
             visibility?: string;
+        };
+        InviteTeamToOrganizationRequest: {
+            /** Format: uuid */
+            groupId?: string;
+            message?: string;
+            teamSlug?: string;
         };
         CreateOrgTeamGroupRequest: {
             description?: string;
@@ -67898,6 +68180,25 @@ export interface components {
             scopeType?: string;
             /** Format: uuid */
             scopeVillageId?: string;
+        };
+        ApiResponseBulletinAttachmentResponse: {
+            data?: components["schemas"]["BulletinAttachmentResponse"];
+        };
+        BulletinAttachmentResponse: {
+            contentType?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int64 */
+            createdBy?: number;
+            fileKey?: string;
+            /** Format: int64 */
+            fileSize?: number;
+            /** Format: int64 */
+            id?: number;
+            originalFilename?: string;
+            /** Format: int64 */
+            targetId?: number;
+            targetType?: string;
         };
         ReverseTransactionRequest: {
             reason?: string;
@@ -71434,8 +71735,8 @@ export interface components {
         ApiResponseListFormPresetResponse: {
             data?: components["schemas"]["FormPresetResponse"][];
         };
-        PagedResponseThreadResponse: {
-            data?: components["schemas"]["ThreadResponse"][];
+        PagedResponseBulletinThreadResponse: {
+            data?: components["schemas"]["BulletinThreadResponse"][];
             meta?: components["schemas"]["PageMeta"];
         };
         PagedResponseReplyResponse: {
@@ -72563,6 +72864,23 @@ export interface components {
         PagedResponseTeamOrgAffiliationResponse: {
             data?: components["schemas"]["TeamOrgAffiliationResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        PagedResponseTeamOrgAffiliationRestrictionResponse: {
+            data?: components["schemas"]["TeamOrgAffiliationRestrictionResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
+        TeamOrgAffiliationRestrictionResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            direction?: string;
+            /** Format: uuid */
+            id?: string;
+            kind?: string;
+            organization?: components["schemas"]["AffiliationPartyRef"];
+            reason?: string;
+            /** Format: date-time */
+            restrictedUntil?: string;
+            team?: components["schemas"]["AffiliationPartyRef"];
         };
         ApiResponseListScheduleResponse: {
             data?: components["schemas"]["ScheduleResponse"][];
@@ -74858,6 +75176,16 @@ export interface components {
             /** Format: int64 */
             studentUserId?: number;
         };
+        ApiResponseAttendancePermissionsResponse: {
+            data?: components["schemas"]["AttendancePermissionsResponse"];
+        };
+        AttendancePermissionsResponse: {
+            canRecordDaily?: boolean;
+            canRecordPeriod?: boolean;
+            canView?: boolean;
+            /** Format: int64 */
+            teamId?: number;
+        };
         ApiResponsePeriodAttendanceListResponse: {
             data?: components["schemas"]["PeriodAttendanceListResponse"];
         };
@@ -75228,6 +75556,11 @@ export interface components {
         ApiResponseListTeamOrgSummaryResponse: {
             data?: components["schemas"]["TeamOrgSummaryResponse"][];
         };
+        TeamOrgSummaryGroupRef: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+        };
         TeamOrgSummaryResponse: {
             iconUrl?: string;
             id?: string;
@@ -75235,6 +75568,7 @@ export interface components {
             memberCount?: number;
             name?: string;
             slug?: string;
+            teamGroup?: components["schemas"]["TeamOrgSummaryGroupRef"];
             visibility?: string;
         };
         ApiResponseListTeamOfficerResponse: {
@@ -75408,6 +75742,25 @@ export interface components {
             totalViews?: number;
             /** Format: int64 */
             uniqueVisitors?: number;
+        };
+        AnnouncementPreviewResponse: {
+            /** @enum {string} */
+            accessState: "FULL" | "LOCKED";
+            attachments: components["schemas"]["BulletinAttachmentResponse"][];
+            blogPost: components["schemas"]["BlogPostResponse"] | null;
+            bulletinThread: components["schemas"]["BulletinThreadResponse"] | null;
+            /** Format: int64 */
+            feedId: number;
+            /** Format: int64 */
+            scopeId: number;
+            /** @enum {string} */
+            scopeType: "TEAM" | "ORGANIZATION";
+            sourceId: number | null;
+            sourceType: ("BLOG_POST" | "BULLETIN_THREAD") | null;
+            sourceUrl: string | null;
+        };
+        ApiResponseAnnouncementPreviewResponse: {
+            data?: components["schemas"]["AnnouncementPreviewResponse"];
         };
         ApiResponsePaymentSummaryResponse: {
             data?: components["schemas"]["PaymentSummaryResponse"];
@@ -78500,6 +78853,13 @@ export interface components {
         ApiResponseListOrgTeamSummaryResponse: {
             data?: components["schemas"]["OrgTeamSummaryResponse"][];
         };
+        OrgTeamSummaryGroupRef: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
         OrgTeamSummaryResponse: {
             iconUrl?: string;
             id?: string;
@@ -78507,6 +78867,7 @@ export interface components {
             memberCount?: number;
             name?: string;
             slug?: string;
+            teamGroup?: components["schemas"]["OrgTeamSummaryGroupRef"];
             visibility?: string;
         };
         ApiResponseTeamApplicationFormResponse: {
@@ -81841,6 +82202,17 @@ export interface components {
             /** Format: int64 */
             userId?: number;
         };
+        ApiResponseThreadResponse: {
+            data?: components["schemas"]["ThreadResponse"];
+        };
+        ThreadResponse: {
+            hasMore?: boolean;
+            messages?: components["schemas"]["ChatMessageResponse"][];
+            nextCursor?: string;
+            root?: components["schemas"]["ChatMessageResponse"];
+            /** Format: int32 */
+            totalCount?: number;
+        };
         ApiResponseDownloadUrlResponse: {
             data?: components["schemas"]["DownloadUrlResponse"];
         };
@@ -81883,6 +82255,9 @@ export interface components {
         };
         ApiResponseListFolderItemResponse: {
             data?: components["schemas"]["FolderItemResponse"][];
+        };
+        ApiResponseListBulletinAttachmentResponse: {
+            data?: components["schemas"]["BulletinAttachmentResponse"][];
         };
         ApiResponseListReactionResponse: {
             data?: components["schemas"]["ReactionResponse"][];
@@ -83321,7 +83696,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -83349,7 +83724,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -92014,6 +92389,60 @@ export interface operations {
             };
         };
     };
+    assignOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                teamSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignTeamGroupRequest"];
+            };
+        };
+        responses: {
+            /** @description 割当成功（更新後の加盟） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description 組織 ADMIN ではない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description ORG_064: グループなし（他組織・削除済みも同じ）/ TEAM_070: その組織の ACTIVE 加盟ではないチーム */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description ORG_067: 機能無効 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+        };
+    };
     reorder_1: {
         parameters: {
             query?: never;
@@ -92054,6 +92483,77 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["OrgTeamGroupListResponse"];
+                };
+            };
+        };
+    };
+    assignBulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkAssignTeamGroupRequest"];
+            };
+        };
+        responses: {
+            /** @description 割当成功（updatedCount） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkAssignTeamGroupResponse"];
+                };
+            };
+            /** @description ORG_069: その組織の ACTIVE 加盟でないチームを含む（何も更新しない）/ teamSlugs が空・欠落・501 件以上 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkAssignTeamGroupResponse"];
+                };
+            };
+            /** @description 組織 ADMIN ではない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkAssignTeamGroupResponse"];
+                };
+            };
+            /** @description ORG_064: グループなし（他組織・削除済みも同じ） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkAssignTeamGroupResponse"];
+                };
+            };
+            /** @description ORG_067: 機能無効 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkAssignTeamGroupResponse"];
+                };
+            };
+            /** @description 一括割当は 20 件/分/ユーザー */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkAssignTeamGroupResponse"];
                 };
             };
         };
@@ -93964,8 +94464,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 templateId: string;
             };
             cookie?: never;
@@ -93988,8 +94488,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 templateId: string;
             };
             cookie?: never;
@@ -94016,8 +94516,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 templateId: string;
             };
             cookie?: never;
@@ -97259,7 +97759,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -97285,7 +97785,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -99770,7 +100270,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseThreadResponse"];
+                    "*/*": components["schemas"]["PagedResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -99797,7 +100297,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -99924,7 +100424,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -99948,7 +100448,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -99976,7 +100476,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -103433,6 +103933,110 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DuplicateNameConfirmationErrorResponse"];
+                };
+            };
+        };
+    };
+    decline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamSlug: number;
+                membershipId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DeclineOrgInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description 辞退成功（記録された制限を返す） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgRestrictionSummaryResponse"];
+                };
+            };
+            /** @description 加盟操作権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgRestrictionSummaryResponse"];
+                };
+            };
+            /** @description TEAM_070（存在しない ID・他チームの ID・処理済みで消えた行は同じ応答） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgRestrictionSummaryResponse"];
+                };
+            };
+            /** @description TEAM_071（既に ACTIVE・申請の行など、辞退の前提と違う状態） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgRestrictionSummaryResponse"];
+                };
+            };
+        };
+    };
+    accept_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamSlug: number;
+                membershipId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 承諾成功（加盟が ACTIVE になる） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description 加盟操作権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description TEAM_070（存在しない ID・他チームの ID・処理済みで消えた行は同じ応答） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description TEAM_071（既に ACTIVE・申請の行など、承諾の前提と違う状態）/ アーカイブ済み */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
                 };
             };
         };
@@ -108494,7 +109098,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -108516,7 +109120,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -108550,8 +109154,8 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -108573,8 +109177,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -118171,7 +118775,7 @@ export interface operations {
             };
         };
     };
-    accept_1: {
+    accept_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -118710,6 +119314,111 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseTransferOwnershipAcceptResponse"];
+                };
+            };
+        };
+    };
+    listSentInvites: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功（招待日時の降順） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description 組織 ADMIN ではない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseTeamOrgAffiliationResponse"];
+                };
+            };
+        };
+    };
+    invite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteTeamToOrganizationRequest"];
+            };
+        };
+        responses: {
+            /** @description 招待成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description TEAM_072（グループが選択できない）/ 入力不備 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description 組織 ADMIN ではない / TEAM_068（現在招待できない） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description 組織・チームが見つからない（見えないチームは存在しない slug と同じ応答） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description TEAM_065（加盟済み）/ TEAM_066（処理中の申請・招待がある）/ アーカイブ済み */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description 招待は30件/時/ユーザー */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamOrgAffiliationResponse"];
                 };
             };
         };
@@ -122510,8 +123219,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -122533,8 +123242,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -124346,7 +125055,7 @@ export interface operations {
             };
         };
     };
-    decline: {
+    decline_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -131845,7 +132554,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseThreadResponse"];
+                    "*/*": components["schemas"]["PagedResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -131873,7 +132582,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -131970,7 +132679,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -132161,7 +132870,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseAttachmentResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinAttachmentResponse"];
                 };
             };
         };
@@ -135587,7 +136296,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -138464,8 +139173,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -138492,7 +139201,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -138519,7 +139228,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -138546,8 +139255,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -138574,8 +139283,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -138602,7 +139311,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -138629,8 +139338,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -138653,8 +139362,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -138675,8 +139384,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -138703,7 +139412,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -138726,7 +139435,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -138747,7 +139456,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -141973,7 +142682,7 @@ export interface operations {
             };
         };
     };
-    accept_2: {
+    accept_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -146185,7 +146894,7 @@ export interface operations {
             };
         };
     };
-    accept_3: {
+    accept_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -146840,7 +147549,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -146866,7 +147575,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -146892,7 +147601,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -148744,7 +149453,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseThreadResponse"];
+                    "*/*": components["schemas"]["PagedResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -148771,7 +149480,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseThreadResponse"];
+                    "*/*": components["schemas"]["PagedResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -150479,6 +151188,74 @@ export interface operations {
             };
         };
     };
+    listReceivedInvites: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                teamSlug: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功（招待日時の降順） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseTeamOrgAffiliationResponse"];
+                };
+            };
+            /** @description 加盟操作権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseTeamOrgAffiliationResponse"];
+                };
+            };
+        };
+    };
+    list_81: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                teamSlug: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功（記録日時の降順） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseTeamOrgAffiliationRestrictionResponse"];
+                };
+            };
+            /** @description 加盟操作権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseTeamOrgAffiliationRestrictionResponse"];
+                };
+            };
+        };
+    };
     getAttendances: {
         parameters: {
             query?: never;
@@ -151859,7 +152636,7 @@ export interface operations {
             };
         };
     };
-    list_81: {
+    list_82: {
         parameters: {
             query?: never;
             header?: never;
@@ -151927,7 +152704,7 @@ export interface operations {
             };
         };
     };
-    list_82: {
+    list_83: {
         parameters: {
             query?: never;
             header?: never;
@@ -152139,7 +152916,7 @@ export interface operations {
             };
         };
     };
-    list_83: {
+    list_84: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -152562,7 +153339,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -152585,8 +153362,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -152609,7 +153386,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 fixtureId: number;
             };
             cookie?: never;
@@ -152632,8 +153409,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 fixtureId: number;
             };
             cookie?: never;
@@ -153888,7 +154665,7 @@ export interface operations {
             };
         };
     };
-    list_84: {
+    list_85: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -154083,6 +154860,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListAtRiskStudentResponse"];
+                };
+            };
+        };
+    };
+    getPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAttendancePermissionsResponse"];
                 };
             };
         };
@@ -154943,6 +155742,29 @@ export interface operations {
             };
         };
     };
+    teamPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeId: number;
+                feedId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAnnouncementPreviewResponse"];
+                };
+            };
+        };
+    };
     getPaymentSummary: {
         parameters: {
             query?: never;
@@ -155330,7 +156152,7 @@ export interface operations {
             };
         };
     };
-    list_85: {
+    list_86: {
         parameters: {
             query?: never;
             header?: never;
@@ -155350,7 +156172,7 @@ export interface operations {
             };
         };
     };
-    list_86: {
+    list_87: {
         parameters: {
             query?: {
                 billingStatus?: string;
@@ -155655,7 +156477,7 @@ export interface operations {
             };
         };
     };
-    list_87: {
+    list_88: {
         parameters: {
             query?: {
                 status?: string;
@@ -156557,7 +157379,7 @@ export interface operations {
             };
         };
     };
-    list_88: {
+    list_89: {
         parameters: {
             query?: {
                 status?: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
@@ -156630,7 +157452,7 @@ export interface operations {
             };
         };
     };
-    list_89: {
+    list_90: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -156675,7 +157497,7 @@ export interface operations {
             };
         };
     };
-    list_90: {
+    list_91: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -156803,7 +157625,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
             /** @description スレッド未存在 */
@@ -156812,7 +157634,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -157416,7 +158238,7 @@ export interface operations {
             };
         };
     };
-    list_91: {
+    list_92: {
         parameters: {
             query?: {
                 status?: "PENDING" | "RETRYING" | "SUCCEEDED" | "EXHAUSTED" | "MANUAL_RESOLVED";
@@ -158146,7 +158968,7 @@ export interface operations {
             };
         };
     };
-    list_92: {
+    list_93: {
         parameters: {
             query?: {
                 status?: ("NOT_REQUIRED" | "PENDING" | "PAID" | "WAIVED" | "FAILED" | "UNCOLLECTIBLE")[];
@@ -159611,7 +160433,10 @@ export interface operations {
     };
     getTeams_1: {
         parameters: {
-            query?: never;
+            query?: {
+                teamGroupId?: string;
+                unassigned?: boolean;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -159629,7 +160454,16 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseListOrgTeamSummaryResponse"];
                 };
             };
-            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            /** @description teamGroupId と unassigned の併用 / teamGroupId が UUID でない */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListOrgTeamSummaryResponse"];
+                };
+            };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 / 非メンバーによるグループ絞り込み */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -159685,6 +160519,40 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseTeamApplicationFormResponse"];
+                };
+            };
+        };
+    };
+    list_94: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功（記録日時の降順） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseTeamOrgAffiliationRestrictionResponse"];
+                };
+            };
+            /** @description 組織 ADMIN ではない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseTeamOrgAffiliationRestrictionResponse"];
                 };
             };
         };
@@ -160046,6 +160914,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePageViewAnalyticsResponse"];
+                };
+            };
+        };
+    };
+    organizationPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeId: number;
+                feedId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAnnouncementPreviewResponse"];
                 };
             };
         };
@@ -160630,9 +161521,9 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                orgId: string;
                 userId: number;
-                teamId: number;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -160661,9 +161552,9 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                orgId: string;
                 userId: number;
-                teamId: number;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -160690,7 +161581,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                orgId: string;
                 userId: number;
             };
             cookie?: never;
@@ -160720,7 +161611,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                orgId: string;
                 userId: number;
             };
             cookie?: never;
@@ -161251,8 +162142,8 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -161830,7 +162721,7 @@ export interface operations {
             };
         };
     };
-    list_93: {
+    list_95: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -162404,7 +163295,7 @@ export interface operations {
             };
         };
     };
-    list_94: {
+    list_96: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -162643,7 +163534,7 @@ export interface operations {
             };
         };
     };
-    list_95: {
+    list_97: {
         parameters: {
             query?: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -163149,7 +164040,7 @@ export interface operations {
             };
         };
     };
-    list_96: {
+    list_98: {
         parameters: {
             query?: never;
             header?: never;
@@ -163233,7 +164124,7 @@ export interface operations {
             };
         };
     };
-    list_97: {
+    list_99: {
         parameters: {
             query?: never;
             header?: never;
@@ -164662,7 +165553,7 @@ export interface operations {
             };
         };
     };
-    list_98: {
+    list_100: {
         parameters: {
             query: {
                 scopeKind: "USER" | "TEAM" | "ORG";
@@ -165365,7 +166256,7 @@ export interface operations {
             };
         };
     };
-    list_99: {
+    list_101: {
         parameters: {
             query?: never;
             header?: never;
@@ -167064,7 +167955,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListAttachmentResponse"];
+                    "*/*": components["schemas"]["ApiResponseListBulletinAttachmentResponse"];
                 };
             };
         };
@@ -167086,7 +167977,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListAttachmentResponse"];
+                    "*/*": components["schemas"]["ApiResponseListBulletinAttachmentResponse"];
                 };
             };
         };
@@ -169173,6 +170064,41 @@ export interface operations {
             };
         };
     };
+    lift: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamSlug: number;
+                restrictionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 解除成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 加盟操作権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description COMMON_005（制限が無い。他チームの ID・解除できない種類の行も同じ応答） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     cancelScheduledTask: {
         parameters: {
             query?: never;
@@ -170029,6 +170955,83 @@ export interface operations {
             };
         };
     };
+    cancel_18: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                teamSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取消成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 組織 ADMIN ではない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TEAM_070（招待が無い。存在しないチームの slug も同じ応答） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TEAM_071（既に ACTIVE・申請の行など、取消の前提と違う状態） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    lift_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                restrictionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 解除成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 組織 ADMIN ではない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description COMMON_005（制限が無い。他組織の ID・解除できない種類の行も同じ応答） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     removeMember_3: {
         parameters: {
             query?: never;
@@ -170133,7 +171136,7 @@ export interface operations {
             };
         };
     };
-    cancel_18: {
+    cancel_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -170398,7 +171401,7 @@ export interface operations {
             };
         };
     };
-    cancel_19: {
+    cancel_20: {
         parameters: {
             query?: never;
             header?: never;

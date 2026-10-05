@@ -2,6 +2,7 @@ package com.mannschaft.app.notification.confirmable.controller;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.membership.ScopeType;
@@ -16,7 +17,9 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationRecipientPageFacade;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableScopeAuthorizer;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableRecipientPreviewService;
 import com.mannschaft.app.common.BusinessException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,6 +55,8 @@ public class TeamConfirmableNotificationController {
     private final ConfirmableNotificationRecipientRepository recipientRepository;
     private final ConfirmableNotificationMapper mapper;
     private final AccessControlService accessControlService;
+    private final ConfirmableScopeAuthorizer scopeAuthorizer;
+    private final ConfirmableNotificationRecipientPageFacade recipientPageFacade;
 
     /**
      * F04.9 §2 が定める確認通知の送信権限（CMP-260909-1141）。
@@ -141,12 +146,10 @@ public class TeamConfirmableNotificationController {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         ConfirmableNotificationEntity entity = notificationService.getDetail(notificationId);
 
-        // スコープ整合チェック（BOLA対策: notificationId が path の teamId 配下かを突合。不一致は404秘匿）
-        if (!ScopeType.TEAM.equals(entity.getScopeType()) || !teamId.equals(entity.getScopeId())) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
-        }
-        // 認可根治 Wave3-B12notif: 閲覧系は checkMembership（非メンバーの詳細窃視を根治）。
-        accessControlService.checkMembership(currentUserId, teamId, ScopeType.TEAM.name());
+        // 存在オラクル封鎖（CMP-260923-0954 W3b）: 他スコープの通知は不在 ID と同一の NOT_FOUND に畳む。
+        requireInScope(entity, teamId);
+        // 閲覧系は在籍が条件。無関係な者は不在 ID と同一の NOT_FOUND、関係者の権限不足は 403。
+        scopeAuthorizer.requireMember(currentUserId, ScopeType.TEAM, teamId, ConfirmableNotificationErrorCode.NOT_FOUND);
 
         ConfirmableNotificationDetailResponse response = mapper.toDetailResponse(entity);
         long confirmedCount = recipientRepository
@@ -169,13 +172,12 @@ public class TeamConfirmableNotificationController {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         ConfirmableNotificationEntity entity = notificationService.getDetail(notificationId);
 
-        // スコープ整合チェック（BOLA対策: notificationId が path の teamId 配下かを突合。不一致は404秘匿）
-        if (!ScopeType.TEAM.equals(entity.getScopeType()) || !teamId.equals(entity.getScopeId())) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
-        }
+        // 存在オラクル封鎖（CMP-260923-0954 W3b）: 他スコープの通知は不在 ID と同一の NOT_FOUND に畳む。
+        requireInScope(entity, teamId);
         // 認可根治 Wave3-B12notif → CMP-260909-1141: キャンセルは管理操作のため SEND_NOTIFICATION で判定。
-        accessControlService.checkAdminOrHasPermissionInScope(
-                currentUserId, teamId, ScopeType.TEAM.name(), SEND_NOTIFICATION);
+        // 状態の判定（409）は認可の後（部外者に通知の状態を漏らさない）。
+        scopeAuthorizer.requireSendPermission(
+                currentUserId, ScopeType.TEAM, teamId, ConfirmableNotificationErrorCode.NOT_FOUND);
 
         notificationService.cancel(notificationId, currentUserId);
         return ResponseEntity.noContent().build();
@@ -195,13 +197,11 @@ public class TeamConfirmableNotificationController {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         ConfirmableNotificationEntity entity = notificationService.getDetail(notificationId);
 
-        // スコープ整合チェック（BOLA対策: notificationId が path の teamId 配下かを突合。不一致は404秘匿）
-        if (!ScopeType.TEAM.equals(entity.getScopeType()) || !teamId.equals(entity.getScopeId())) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
-        }
+        // 存在オラクル封鎖（CMP-260923-0954 W3b）: 他スコープの通知は不在 ID と同一の NOT_FOUND に畳む。
+        requireInScope(entity, teamId);
         // 認可根治 Wave3-B12notif → CMP-260909-1141: リマインド再送は管理操作のため SEND_NOTIFICATION で判定。
-        accessControlService.checkAdminOrHasPermissionInScope(
-                currentUserId, teamId, ScopeType.TEAM.name(), SEND_NOTIFICATION);
+        scopeAuthorizer.requireSendPermission(
+                currentUserId, ScopeType.TEAM, teamId, ConfirmableNotificationErrorCode.NOT_FOUND);
 
         notificationService.resendReminder(notificationId);
         return ResponseEntity.noContent().build();
@@ -231,11 +231,9 @@ public class TeamConfirmableNotificationController {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         ConfirmableNotificationEntity notification = notificationService.getDetail(notificationId);
 
-        // スコープ整合チェック（BOLA対策: notificationId が path の teamId 配下かを突合。不一致は404秘匿）
+        // 存在オラクル封鎖（CMP-260923-0954 W3b）: 他スコープの通知は不在 ID と同一の NOT_FOUND に畳む。
         // ADMIN であっても他 scope の notificationId で受信者一覧を覗ける副次 BOLA を根治（Wave3-B12notif）。
-        if (!ScopeType.TEAM.equals(notification.getScopeType()) || !teamId.equals(notification.getScopeId())) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
-        }
+        requireInScope(notification, teamId);
 
         // ADMIN+ なら全件返す（既存挙動）
         // CMP-260920-1040是正: getRecipients は退会者でも500化しないネイティブ投影から
@@ -246,12 +244,22 @@ public class TeamConfirmableNotificationController {
             return ResponseEntity.ok(ApiResponse.of(responses));
         }
 
-        // 非 ADMIN は ALL_MEMBERS かつ受信者本人のみ閲覧可（Service 層で認可判定 + マスク済みDTO取得）。
+        // 非 ADMIN は ALL_MEMBERS かつ受信者本人のみ閲覧可（Service 層で公開範囲・受信者判定 + マスク済みDTO取得）。
+        // 受信者行を持つ元メンバーも従来どおり見られる（殿の判断4）。
         // CMP-260920-1040是正: getRecipientsForMember はネイティブ投影から直接マスク済みDTOを返すため、
         // mapper を経由しない（家老の検出・殿の確認。退会者を含んでも500化しない）。
-        List<ConfirmableNotificationRecipientResponse> responses =
-                notificationService.getRecipientsForMember(notificationId, currentUserId);
-        return ResponseEntity.ok(ApiResponse.of(responses));
+        try {
+            List<ConfirmableNotificationRecipientResponse> responses =
+                    notificationService.getRecipientsForMember(notificationId, currentUserId);
+            return ResponseEntity.ok(ApiResponse.of(responses));
+        } catch (BusinessException e) {
+            if (e.getErrorCode() != CommonErrorCode.COMMON_002) {
+                throw e;
+            }
+            // 閲覧できない非 ADMIN: 関係者なら 403、無関係な者は不在 ID と同一の NOT_FOUND（存在オラクル封鎖）。
+            throw scopeAuthorizer.denial(
+                    currentUserId, ScopeType.TEAM, teamId, ConfirmableNotificationErrorCode.NOT_FOUND);
+        }
     }
 
     /**
@@ -268,13 +276,9 @@ public class TeamConfirmableNotificationController {
                     @org.springframework.web.bind.annotation.RequestParam(defaultValue = "50") int size,
                     @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean unconfirmedOnly) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        ConfirmableNotificationEntity notification = notificationService.getDetail(notificationId);
-        if (!ScopeType.TEAM.equals(notification.getScopeType()) || !teamId.equals(notification.getScopeId())) {
-            throw new BusinessException(ConfirmableNotificationErrorCode.SCOPE_MISMATCH);
-        }
-        accessControlService.checkMembership(currentUserId, teamId, ScopeType.TEAM.name());
-        return ResponseEntity.ok(ApiResponse.of(
-                notificationService.getRecipientsPage(notificationId, currentUserId, page, size, unconfirmedOnly)));
+        // CMP-260923-0954 W3b: 認可（スコープ解決・所属・ADMIN 判定）は tx の外のファサードが済ませてから tx 本体へ渡す。
+        return ResponseEntity.ok(ApiResponse.of(recipientPageFacade.getRecipientsPage(
+                ScopeType.TEAM, teamId, notificationId, currentUserId, page, size, unconfirmedOnly)));
     }
 
     /**
@@ -285,10 +289,11 @@ public class TeamConfirmableNotificationController {
      * <p><b>認可（{@link AuthorizedInService} 付与の根拠・認可根治戦役 Wave7 監査済）</b>:
      * パス変数 {@code teamId} は自身ではスコープ判定に用いない（本 EP の実処理は
      * notificationId のみで完結する）。認可の実体は
-     * {@code ConfirmableNotificationConfirmService#confirm(Long, Long)} が受信者一覧
-     * （{@code ConfirmableNotificationRecipientRepository#findByConfirmableNotificationId}）から
-     * {@code recipient.getUser().getId().equals(userId)} で<b>呼び出しユーザー自身の受信者行のみ</b>を
-     * 特定し、該当しない場合は {@code RECIPIENT_NOT_FOUND} を投げる構造にある。
+     * {@code ConfirmableNotificationConfirmService#confirm(Long, Long)} が受信者行を
+     * （{@code ConfirmableNotificationRecipientRepository#existsByConfirmableNotificationIdAndUserIdAndExcludedAtIsNull}）
+     * <b>呼び出しユーザー自身の、除外されていない受信者行のみ</b>ロックなしで特定し、
+     * 該当しない場合（通知の不在・非受信者・除外済み）は状態によらず {@code NOT_FOUND} を投げる構造にある
+     * （CMP-260923-0954 W3b: 通知の実在・状態を受信者以外へ漏らさない）。
      * このため他人宛の確認通知を確認済みにすることは構造上できない自己スコープ EP であり、
      * {@code teamId} の実スコープと notificationId の実スコープが仮に食い違っていても、確認できるのは
      * 常に呼び出しユーザー自身の受信者行のみで権限昇格は発生しない。
@@ -305,5 +310,15 @@ public class TeamConfirmableNotificationController {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         notificationService.confirm(notificationId, currentUserId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 通知がパスのスコープ配下でなければ、不在 ID と同一の {@code NOT_FOUND} を投げる
+     * （他スコープの実在 ID を不在と別の応答にすると、応答の差だけで ID の実在が判る）。
+     */
+    private static void requireInScope(ConfirmableNotificationEntity entity, Long teamId) {
+        if (ScopeType.TEAM != entity.getScopeType() || !teamId.equals(entity.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.NOT_FOUND);
+        }
     }
 }

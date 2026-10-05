@@ -1,8 +1,10 @@
 package com.mannschaft.app.notification.event;
 
+import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
-import com.mannschaft.app.auth.event.UserAnonymizedEvent;
+import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import com.mannschaft.app.notification.repository.NotificationPreferenceRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.repository.NotificationSettingsRepository;
@@ -19,6 +21,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * 退会匿名化イベントに応答して notification ドメインの関連データを削除するリスナー。
@@ -44,6 +48,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 @RequiredArgsConstructor
 public class NotificationAnonymizationEventListener {
+
+    private final AccountPurgeCompletionService completionService;
 
     private final PushSubscriptionRepository pushSubscriptionRepository;
     private final NotificationPreferenceRepository notificationPreferenceRepository;
@@ -117,5 +123,37 @@ public class NotificationAnonymizationEventListener {
             log.warn("ユーザー退会: notificationドメイン匿名化失敗: userId={}, error={}",
                     userId, e.getMessage(), e);
         }
+    }
+
+    /** 30日後の強匿名化。所有データの削除コミット後にのみ完了を記録する。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "完全削除済み利用者の個人設定を消去する。停止すると設定が残留し、消去イベントは再生されない")
+    @Async("purge-pool")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAccountPurged(AccountPurgedEvent event) {
+        Long userId = event.getUserId();
+        purgeSettings(userId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                completionService.markDomainSuccess(userId, "notification");
+            }
+        });
+    }
+
+    /** 手動再試行。呼出元はこの新規TXのコミット成立後に完了状態を更新する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean retryPurge(Long userId) {
+        purgeSettings(userId);
+        return true;
+    }
+
+    /** 同じ所有domain内の全削除を一つのTXで実行し、途中失敗を伝播させる。 */
+    private void purgeSettings(Long userId) {
+        notificationSettingsRepository.deleteByUserId(userId);
+        notificationPreferenceRepository.deleteByUserId(userId);
+        notificationTypePreferenceRepository.deleteByUserId(userId);
+        pushSubscriptionRepository.deleteByUserId(userId);
     }
 }

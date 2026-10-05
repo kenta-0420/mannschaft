@@ -56,6 +56,15 @@ public class RoleResolver {
             key = "#userId + ':' + #scopeType + ':' + #scopeId"
     )
     public ViewerRole resolveViewerRole(Long userId, String scopeType, Long scopeId) {
+        return resolveCurrentRole(userId, scopeType, scopeId);
+    }
+
+    /** 本文 preview は最新の役割解除を適用する。dashboard の60秒キャッシュは利用しない。 */
+    public ViewerRole resolveViewerRoleForPreview(Long userId, String scopeType, Long scopeId) {
+        return resolveCurrentRole(userId, scopeType, scopeId);
+    }
+
+    private ViewerRole resolveCurrentRole(Long userId, String scopeType, Long scopeId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
         }

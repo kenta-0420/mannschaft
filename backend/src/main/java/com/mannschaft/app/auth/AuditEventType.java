@@ -99,6 +99,16 @@ public enum AuditEventType {
     TEAM_ORG_APPLICATION_SUBMITTED(AuditEventCategory.TEAM),
     /** F01.2.1 §4.1: チームの加盟操作者が加盟申請を取り下げた（metadata: 組織・加盟 ID）。 */
     TEAM_ORG_APPLICATION_WITHDRAWN(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: 組織 ADMIN がチームを加盟に招待した（metadata: チーム・加盟 ID・指定グループ）。 */
+    TEAM_ORG_INVITE_SENT(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: チームの加盟操作者が組織からの招待を辞退した（metadata: 組織・加盟 ID・block）。 */
+    TEAM_ORG_INVITE_REJECTED(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: 組織 ADMIN が送った招待を取り消した（metadata: チーム・加盟 ID）。 */
+    TEAM_ORG_INVITE_CANCELLED(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: 加盟が成立した（metadata.via: ORG_INVITE＝招待の承諾 / TEAM_APPLY＝申請の承認・group_id）。 */
+    TEAM_ORG_MEMBERSHIP_CREATED(AuditEventCategory.TEAM),
+    /** F01.2.1 §4.1: 組織 ADMIN が加盟チームのグループ割当を変更した（単体・一括。1チームにつき1行。metadata: from・to のグループ ID）。 */
+    TEAM_ORG_GROUP_CHANGED(AuditEventCategory.TEAM),
 
     // ─── ORGANIZATION (Phase 2+) ──────────────────────────────
     ORGANIZATION_CREATED(AuditEventCategory.ORGANIZATION),

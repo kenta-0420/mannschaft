@@ -580,7 +580,10 @@
     "group_name": "Nombre del grupo",
     "targets": "Destinos",
     "target_id": "ID de destino",
-    "target_type": { "ORGANIZATION": "Organización", "TEAM": "Equipo" },
+    "target_type": {
+      "ORGANIZATION": "Organización",
+      "TEAM": "Equipo"
+    },
     "template": "Plantilla",
     "audience": "Destinatarios",
     "current_scope": "Esta organización o equipo",
@@ -1763,13 +1766,21 @@
       "supporter_registered": "Registrado como seguidor",
       "supporter_applied": "Solicitud de seguidor enviada",
       "supporter_canceled": "Has dejado de apoyar",
+      "follow_approved_badge": "Eres seguidor/a",
+      "follow_unfollow_aria": "Dejar de apoyar",
+      "follow_pending_label": "Solicitud pendiente",
+      "follow_pending_cancel_button": "Cancelar",
+      "follow_apply_button": "Convertirse en seguidor/a",
       "leave_action": "Salir",
       "load_error_title": "No se pudo cargar la información",
       "load_error_body": "Inténtalo de nuevo más tarde. Puede estar oculto si no tienes permiso.",
       "back_to_dashboard": "Volver al panel",
       "retry": "Reintentar",
       "slow_loading": "La carga está tardando más de lo esperado",
-      "join_request_applied": "参加申請を送信しました"
+      "join_request_applied": "参加申請を送信しました",
+      "follow_fetch_error": "No se pudo obtener el estado de seguimiento",
+      "follow_permission_sync_error_title": "Error al actualizar los permisos",
+      "follow_permission_sync_error_body": "Dejaste de seguir, pero no se pudieron actualizar tus permisos. Inténtalo de nuevo."
     },
     "unsavedChanges": {
       "title": "Cambios sin guardar",
@@ -2371,7 +2382,8 @@
     "action": {
       "leave_confirm_title": "Salir del equipo",
       "leave_confirm_body": "¿Seguro que quieres salir de este equipo? No se puede deshacer.",
-      "left": "Has salido del equipo"
+      "left": "Has salido del equipo",
+      "leave_button": "Salir del equipo"
     }
   },
   "orgShell": {
@@ -2389,7 +2401,8 @@
     "action": {
       "leave_confirm_title": "Salir de la organización",
       "leave_confirm_body": "¿Seguro que quieres salir de esta organización? No se puede deshacer.",
-      "left": "Has salido de la organización"
+      "left": "Has salido de la organización",
+      "leave_button": "Salir de la organización"
     }
   },
   "blog_guide": {
@@ -2690,7 +2703,9 @@
       "bulkRegisterHelp": "1行に1名、「表示名,番号」の形式で入力してください（番号は省略可）",
       "bulkRegisterSuccess": "{count}件のメンバーを登録しました",
       "bulkRegisterFailed": "一括登録に失敗しました",
-      "deleteConfirm": "このメンバーを削除しますか？",
+      "delete": "メンバーを削除",
+      "deleteConfirm": "{name}さんのプロフィールを削除しますか？この操作は元に戻せません。",
+      "deleteSuccess": "メンバーを削除しました",
       "back": "ページ一覧に戻る",
       "customFieldsError": "カスタム項目の読み込みに失敗しました",
       "optionsInvalidFormat": "選択肢データの形式が不正です",

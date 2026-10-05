@@ -34,6 +34,23 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             """, nativeQuery = true)
     Optional<ModerationListingProjection> findModerationListingById(@Param("listingId") Long listingId);
 
+    /**
+     * 論理削除（{@code deleted_at}）されていない募集札の行ロックを取得する。
+     *
+     * <p>{@link RecruitmentListingEntity} の {@code @SQLRestriction} は {@code moderation_hidden_at IS NULL}
+     * まで含むため、エンティティ経由の問い合わせはモデレーション非表示の募集を「不在」として扱う。
+     * 本メソッドはネイティブ SQL で<b>論理削除だけ</b>を見る。キャンセル料の免除（waive）の tx 本体が
+     * 「記録→募集」をたどり直すのに使う（是正前の免除は募集を読まず、モデレーション非表示の募集の記録も
+     * 免除できていた。その挙動を維持する）。</p>
+     *
+     * <p>{@code FOR UPDATE} にしてあるのは、免除と募集の論理削除（archive）を直列化するため。</p>
+     *
+     * @return 行が生きていれば募集 ID、論理削除済み・不在なら空
+     */
+    @Query(value = "SELECT id FROM recruitment_listings WHERE id = :listingId AND deleted_at IS NULL FOR UPDATE",
+            nativeQuery = true)
+    Optional<Long> lockLiveListingIdIgnoringModeration(@Param("listingId") Long listingId);
+
     /** モデレーションによる募集札の可逆的な非表示。 */
     @Modifying
     @Query(value = """

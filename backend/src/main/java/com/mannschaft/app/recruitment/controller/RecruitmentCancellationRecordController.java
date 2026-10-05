@@ -2,12 +2,11 @@ package com.mannschaft.app.recruitment.controller;
 
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.dto.RecruitmentCancellationRecordSlice;
 import com.mannschaft.app.recruitment.dto.RecruitmentCancellationRecordSummaryResponse;
 import com.mannschaft.app.recruitment.dto.WaiveCancellationFeeRequest;
-import com.mannschaft.app.recruitment.service.RecruitmentCancellationFeeWaiveService;
+import com.mannschaft.app.recruitment.service.RecruitmentMoneyFacade;
 import com.mannschaft.app.recruitment.service.RecruitmentCancellationRecordQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,7 +36,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RecruitmentCancellationRecordController {
 
-    private final RecruitmentCancellationFeeWaiveService waiveService;
+    private final RecruitmentMoneyFacade moneyFacade;
     private final RecruitmentCancellationRecordQueryService queryService;
 
     /** 1 リクエストで取得できる最大件数（過大取得の防止）。 */
@@ -50,7 +49,7 @@ public class RecruitmentCancellationRecordController {
      * <b>escrow 上の</b>受取先側の精算管理者・受取先本人・{@code SYSTEM_ADMIN} のいずれかである
      * 記録のみへ絞り込む。受取先の判定は免除 API と同一の実装を通る
      * （詳細は {@link RecruitmentCancellationRecordQueryService} の Javadoc）。免除の実行時には
-     * {@link RecruitmentCancellationFeeWaiveService#waive} が改めて検証する。</p>
+     * {@link RecruitmentMoneyFacade#waive} が改めて検証する。</p>
      *
      * <p>債務者（キャンセル料を負っている本人）向けの一覧は本 EP のスコープ外。</p>
      *
@@ -88,10 +87,12 @@ public class RecruitmentCancellationRecordController {
     /**
      * キャンセル料を免除する。
      *
-     * <p>認可根治済み: {@link RecruitmentCancellationFeeWaiveService#waive} が
+     * <p>認可は tx の外の {@link RecruitmentMoneyFacade#waive} が行う（CMP-260923-0954 W4）。
      * 「受取先側の精算管理者（escrow の payee に基づく TEAM/ORG/個人の 3 種）」または
-     * {@code SYSTEM_ADMIN} であることを検証し、いずれでもなければ {@code COMMON_002}(403) で拒否する。
-     * キャンセル料を負っている本人はこのいずれにも該当しないため免除できない（§10.2）。</p>
+     * {@code SYSTEM_ADMIN} であることを検証し、いずれでもなければ拒否する。
+     * キャンセル料を負っている本人はこのいずれにも該当しないため免除できない（§10.2）。
+     * 拒否は、記録の存在を知り得る者（債務者・募集スコープの在籍者・ADMIN/DEPUTY_ADMIN）には
+     * {@code COMMON_002}(403)、それ以外には不在と同一の {@code COMMON_005}(404)。</p>
      *
      * <p>{@code PAID} への免除は 409（免除ではなく返金の話であり混同させない）。
      * {@code WAIVED} への再免除は冪等に 200 で返す（終端状態なら何でも 409、にはしない）。</p>
@@ -100,7 +101,6 @@ public class RecruitmentCancellationRecordController {
      * @param request  免除理由（必須）
      * @return 本文なしの 200
      */
-    @AuthorizedInService
     @PostMapping("/{recordId}/waive")
     @Operation(summary = "キャンセル料の免除",
             description = "受取先側の管理者または運営管理者がキャンセル料の請求を取り消す。"
@@ -109,7 +109,7 @@ public class RecruitmentCancellationRecordController {
     public ResponseEntity<Void> waive(
             @PathVariable Long recordId,
             @Valid @RequestBody WaiveCancellationFeeRequest request) {
-        waiveService.waive(recordId, SecurityUtils.getCurrentUserId(), request.getReason());
+        moneyFacade.waive(recordId, SecurityUtils.getCurrentUserId(), request.getReason());
         return ResponseEntity.ok().build();
     }
 }

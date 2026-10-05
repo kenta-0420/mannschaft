@@ -33,11 +33,20 @@ public class FanoutTeamAffiliationNotifier implements TeamAffiliationNotifier {
 
     @Override
     public void enqueue(TeamAffiliationNotice notice) {
+        fanoutJobService.enqueueInCurrentTransaction(toCommand(notice));
+    }
+
+    @Override
+    public void enqueueAfterCommit(TeamAffiliationNotice notice) {
+        fanoutJobService.enqueueInOwnTransaction(toCommand(notice));
+    }
+
+    private static FanoutEnqueueCommand toCommand(TeamAffiliationNotice notice) {
         String scopeType = switch (notice.recipientScope()) {
             case ORGANIZATION_ADMINS -> OrganizationAdminsFanoutRecipientSource.SCOPE_TYPE;
             case TEAM_AFFILIATION_OPERATORS -> TeamAffiliationOperatorsFanoutRecipientSource.SCOPE_TYPE;
         };
-        fanoutJobService.enqueueInCurrentTransaction(new FanoutEnqueueCommand(
+        return new FanoutEnqueueCommand(
                 scopeType,
                 String.valueOf(notice.recipientScopeId()),
                 notice.notificationType().name(),
@@ -51,7 +60,7 @@ public class FanoutTeamAffiliationNotifier implements TeamAffiliationNotifier {
                 false,
                 notice.messageKind(),
                 notice.messageArgs(),
-                FanoutEnqueueCommand.ShardMode.FIXED_SINGLE));
+                FanoutEnqueueCommand.ShardMode.FIXED_SINGLE);
     }
 
     /** 冪等キー（§6.7）。同じ通知種別・同じ加盟 ID の二重 enqueue を1件に収束させる。 */

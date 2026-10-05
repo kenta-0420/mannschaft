@@ -1,9 +1,7 @@
 package com.mannschaft.app.recruitment.service;
 
-import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
-import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentParticipationType;
@@ -13,26 +11,29 @@ import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.event.MarketListingFinalizedEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -46,8 +47,6 @@ class MarketFinalizeServiceTest {
     @Mock
     private RecruitmentListingRepository listingRepository;
     @Mock
-    private ConfirmableNotificationService confirmableNotificationService;
-    @Mock
     private ConfirmableNotificationRepository confirmableNotificationRepository;
     @Mock
     private UserRoleRepository userRoleRepository;
@@ -59,6 +58,42 @@ class MarketFinalizeServiceTest {
 
     private static final Long LISTING_ID = 500L;
     private static final Long TEAM_ID = 88L;
+
+    /** planFinalizeConfirmation は実TXの内側でしか呼べない（札の行ロックを通知作成まで握るため）。 */
+    @BeforeEach
+    void enterTransaction() {
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+    }
+
+    @AfterEach
+    void leaveTransaction() {
+        TransactionSynchronizationManager.setActualTransactionActive(false);
+    }
+
+    @Test
+    @DisplayName("Codex P2: planFinalizeConfirmation を実TXの外から呼ぶと札を読まずに IllegalStateException（行ロックが即座に外れ直列化が成立しないため）")
+    void planFinalizeConfirmation_outsideTransaction_rejected() {
+        TransactionSynchronizationManager.setActualTransactionActive(false);
+
+        assertThatThrownBy(() -> service.planFinalizeConfirmation(LISTING_ID))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(String.valueOf(LISTING_ID));
+        verify(listingRepository, never()).findByIdForUpdate(anyLong());
+    }
+
+    @Test
+    @DisplayName("Codex P2: 札の状態は PESSIMISTIC_WRITE（findByIdForUpdate）で読む。ロック無しの findById は使わない")
+    void planFinalizeConfirmation_readsListingUnderRowLock() throws Exception {
+        given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(fullListing()));
+        given(confirmableNotificationRepository.existsBySourceTypeAndSourceIdAndStatus(
+                MarketFinalizeService.SOURCE_TYPE_MARKET_FINALIZE, LISTING_ID, ConfirmableNotificationStatus.ACTIVE))
+                .willReturn(true);
+
+        service.planFinalizeConfirmation(LISTING_ID);
+
+        verify(listingRepository).findByIdForUpdate(LISTING_ID);
+        verify(listingRepository, never()).findById(anyLong());
+    }
 
     private RecruitmentListingEntity fullListing() throws Exception {
         RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
@@ -82,26 +117,26 @@ class MarketFinalizeServiceTest {
         return listing;
     }
 
+    // CMP-260930-1932: 最終認証通知の送信は申込の業務TXの外（MarketFinalizeConfirmationListener）へ移した。
+    // 本サービスは札の最新状態を読み直して「送るか・誰に何を送るか」を決めるだけで、送信はしない。
+
     @Test
-    @DisplayName("未確認(ACTIVE)の MARKET_FINALIZE 通知が既存なら再送しない（重複発火ガード）")
-    void sendFinalizeConfirmation_alreadyPending_skips() throws Exception {
-        RecruitmentListingEntity listing = fullListing();
+    @DisplayName("未確認(ACTIVE)の MARKET_FINALIZE 通知が既存なら送らない（重複発火ガード）")
+    void planFinalizeConfirmation_alreadyPending_empty() throws Exception {
+        given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(fullListing()));
         given(confirmableNotificationRepository.existsBySourceTypeAndSourceIdAndStatus(
                 eq(MarketFinalizeService.SOURCE_TYPE_MARKET_FINALIZE),
                 eq(LISTING_ID),
                 eq(ConfirmableNotificationStatus.ACTIVE)))
                 .willReturn(true);
 
-        service.sendFinalizeConfirmation(listing);
-
-        verify(confirmableNotificationService, never()).sendFromSource(
-                any(), anyLong(), any(), anyLong(), any(), any(), any(), any(), any(), anyLong(), any());
+        assertThat(service.planFinalizeConfirmation(LISTING_ID)).isEmpty();
     }
 
     @Test
-    @DisplayName("未確認通知が無ければ確認通知を送る")
-    void sendFinalizeConfirmation_noPending_sends() throws Exception {
-        RecruitmentListingEntity listing = fullListing();
+    @DisplayName("未確認通知が無ければ、チーム ADMIN を受信者とする送信内容を返す")
+    void planFinalizeConfirmation_noPending_plansTeamAdmins() throws Exception {
+        given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(fullListing()));
         given(confirmableNotificationRepository.existsBySourceTypeAndSourceIdAndStatus(
                 eq(MarketFinalizeService.SOURCE_TYPE_MARKET_FINALIZE),
                 eq(LISTING_ID),
@@ -110,58 +145,57 @@ class MarketFinalizeServiceTest {
         given(userRoleRepository.findUserIdsByTeamIdAndRoleName(eq(TEAM_ID), eq("ADMIN")))
                 .willReturn(List.of(101L, 102L));
 
-        service.sendFinalizeConfirmation(listing);
+        MarketFinalizeService.FinalizeConfirmationPlan plan =
+                service.planFinalizeConfirmation(LISTING_ID).orElseThrow();
 
-        verify(confirmableNotificationService, times(1)).sendFromSource(
-                eq(MarketFinalizeService.SOURCE_TYPE_MARKET_FINALIZE),
-                eq(LISTING_ID),
-                any(),
-                eq(TEAM_ID),
-                any(), any(),
-                eq(ConfirmableNotificationPriority.HIGH),
-                any(), any(),
-                anyLong(),
-                eq(List.of(101L, 102L)));
+        assertThat(plan.listingId()).isEqualTo(LISTING_ID);
+        assertThat(plan.scopeType()).isEqualTo(ScopeType.TEAM);
+        assertThat(plan.scopeId()).isEqualTo(TEAM_ID);
+        assertThat(plan.createdByUserId()).isEqualTo(7L);
+        assertThat(plan.recipientUserIds()).containsExactly(101L, 102L);
+        assertThat(plan.actionUrl()).isEqualTo("/market/listings/" + LISTING_ID);
     }
 
     @Test
-    @DisplayName("PERSONAL札は札主本人へ最終認証通知を送る")
-    void sendFinalizeConfirmation_personal_sendsToOwner() throws Exception {
+    @DisplayName("PERSONAL札は PLATFORM スコープで札主本人を受信者にする")
+    void planFinalizeConfirmation_personal_plansOwner() throws Exception {
         RecruitmentListingEntity listing = fullListing();
         setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
         setField(listing, "scopeId", 7L);
+        given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
         given(confirmableNotificationRepository.existsBySourceTypeAndSourceIdAndStatus(
                 eq(MarketFinalizeService.SOURCE_TYPE_MARKET_FINALIZE),
                 eq(LISTING_ID),
                 eq(ConfirmableNotificationStatus.ACTIVE)))
                 .willReturn(false);
 
-        service.sendFinalizeConfirmation(listing);
+        MarketFinalizeService.FinalizeConfirmationPlan plan =
+                service.planFinalizeConfirmation(LISTING_ID).orElseThrow();
 
-        verify(confirmableNotificationService).sendFromSource(
-                eq(MarketFinalizeService.SOURCE_TYPE_MARKET_FINALIZE),
-                eq(LISTING_ID),
-                eq(ScopeType.PLATFORM),
-                eq(7L),
-                any(), any(),
-                eq(ConfirmableNotificationPriority.HIGH),
-                any(), any(),
-                eq(7L),
-                eq(List.of(7L)));
+        assertThat(plan.scopeType()).isEqualTo(ScopeType.PLATFORM);
+        assertThat(plan.scopeId()).isEqualTo(7L);
+        assertThat(plan.createdByUserId()).isEqualTo(7L);
+        assertThat(plan.recipientUserIds()).containsExactly(7L);
     }
 
     @Test
-    @DisplayName("FULL 以外の札では何もしない")
-    void sendFinalizeConfirmation_notFull_noop() throws Exception {
+    @DisplayName("最新状態が FULL 以外の札には送らない（コミット時点の状態で判断する）")
+    void planFinalizeConfirmation_notFull_empty() throws Exception {
         RecruitmentListingEntity listing = fullListing();
         setField(listing, "status", RecruitmentListingStatus.OPEN);
-        lenient().when(confirmableNotificationRepository.existsBySourceTypeAndSourceIdAndStatus(
-                any(), anyLong(), any())).thenReturn(false);
+        given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
 
-        service.sendFinalizeConfirmation(listing);
+        assertThat(service.planFinalizeConfirmation(LISTING_ID)).isEmpty();
+        verify(confirmableNotificationRepository, never()).existsBySourceTypeAndSourceIdAndStatus(
+                any(), anyLong(), any());
+    }
 
-        verify(confirmableNotificationService, never()).sendFromSource(
-                any(), anyLong(), any(), anyLong(), any(), any(), any(), any(), any(), anyLong(), any());
+    @Test
+    @DisplayName("札が不在（削除済み等）なら送らない")
+    void planFinalizeConfirmation_missing_empty() {
+        given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.empty());
+
+        assertThat(service.planFinalizeConfirmation(LISTING_ID)).isEmpty();
     }
 
     private RecruitmentListingEntity fullListing(boolean paymentEnabled) throws Exception {

@@ -1,0 +1,55 @@
+plugins { id 'java' }
+
+// 既取得Jupiter closureだけ。repository/依存取得/共有cacheを書かない。
+dependencies { testImplementation files(fileTree('jars') { include '*.jar' }) }
+tasks.withType(Test).configureEach {
+    useJUnitPlatform { includeEngines 'junit-jupiter' }
+    maxHeapSize = '128m'
+    maxParallelForks = 1
+    forkEvery = 0
+    systemProperty 'fixture.dir', projectDir.absolutePath
+    systemProperty 'arch.fail', providers.gradleProperty('archFail').orElse('false').get()
+    systemProperty 'guard.fail', providers.gradleProperty('guardFail').orElse('false').get()
+}
+
+def arch = tasks.register('archUnitTest', Test) {
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter { includeTestsMatching 'fixture.ArchProbeTest' }
+    outputs.upToDateWhen { false }
+}
+def guard = tasks.register('archUnitFreezeStoreIntegrityTest', Test) {
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'fixture.GuardProbeTest'
+        failOnNoMatchingTests = true
+    }
+    inputs.files file('store')
+    outputs.upToDateWhen { false }
+    mustRunAfter arch
+    onlyIf('必須class確認') {
+        if (!testClassesDirs.files.any { new File(it, 'fixture/GuardProbeTest.class').isFile() }) {
+            throw new GradleException('OWNED_FIXTURE_GUARD_CLASS_MISSING')
+        }
+        true
+    }
+    doFirst { setTestNameIncludePatterns([]) }
+}
+arch.configure { finalizedBy guard }
+tasks.named('test', Test) {
+    dependsOn arch, guard
+    exclude 'fixture/ArchProbeTest.class', 'fixture/GuardProbeTest.class'
+}
+if (providers.gradleProperty('missingGuard').orElse('false').get() == 'true') {
+    def missing = tasks.register('removeOwnedGuardClass') {
+        dependsOn tasks.named('testClasses')
+        doLast {
+            sourceSets.test.output.classesDirs.files.each {
+                def target = new File(it, 'fixture/GuardProbeTest.class')
+                if (target.isFile() && !target.delete()) throw new GradleException('owned class除去失敗')
+            }
+        }
+    }
+    guard.configure { dependsOn missing }
+}

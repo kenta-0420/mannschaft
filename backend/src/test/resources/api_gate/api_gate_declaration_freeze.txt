@@ -356,9 +356,12 @@ HTTP|com.mannschaft.app.onboarding.controller.OrgOnboardingTemplateController|2|
 HTTP|com.mannschaft.app.onboarding.controller.TeamOnboardingProgressController|2|2
 HTTP|com.mannschaft.app.onboarding.controller.TeamOnboardingTemplateController|2|2
 HTTP|com.mannschaft.app.organization.controller.OrgAffiliationEligibilityController|0|1
+HTTP|com.mannschaft.app.organization.controller.OrgTeamAffiliationRestrictionController|0|2
+HTTP|com.mannschaft.app.organization.controller.OrgTeamInviteController|0|3
 HTTP|com.mannschaft.app.organization.controller.OrganizationController|40|40
 HTTP|com.mannschaft.app.organization.controller.OrganizationExtendedProfileController|12|12
 HTTP|com.mannschaft.app.organization.controller.TeamAffiliationSettingsController|0|3
+HTTP|com.mannschaft.app.organization.teamgroup.controller.OrgTeamGroupAssignmentController|0|2
 HTTP|com.mannschaft.app.organization.teamgroup.controller.OrgTeamGroupController|5|5
 HTTP|com.mannschaft.app.parking.controller.OrgParkingApplicationController|6|6
 HTTP|com.mannschaft.app.parking.controller.OrgParkingListingController|7|7
@@ -564,6 +567,7 @@ HTTP|com.mannschaft.app.schedule.controller.TeamScheduleKeepController|11|11
 HTTP|com.mannschaft.app.school.controller.AttendanceBatchController|2|2
 HTTP|com.mannschaft.app.school.controller.AttendanceDisclosureController|4|4
 HTTP|com.mannschaft.app.school.controller.AttendanceLocationController|3|3
+HTTP|com.mannschaft.app.school.controller.AttendancePermissionController|1|1
 HTTP|com.mannschaft.app.school.controller.AttendanceRequirementController|6|6
 HTTP|com.mannschaft.app.school.controller.AttendanceRequirementEvaluationController|4|4
 HTTP|com.mannschaft.app.school.controller.AttendanceStatisticsController|3|3
@@ -611,6 +615,7 @@ HTTP|com.mannschaft.app.skill.controller.SkillSearchController|2|2
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementBroadcastController|2|2
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementFeedController|6|6
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementFeedOrgController|6|6
+HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementPreviewController|0|2
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementRangeTemplateController|8|8
 HTTP|com.mannschaft.app.social.announcement.controller.PersonalAnnouncementController|1|1
 HTTP|com.mannschaft.app.social.controller.FollowController|5|5
@@ -636,7 +641,9 @@ HTTP|com.mannschaft.app.team.controller.OrganizationTeamSearchController|1|1
 HTTP|com.mannschaft.app.team.controller.PublicTeamController|1|1
 HTTP|com.mannschaft.app.team.controller.TeamController|39|39
 HTTP|com.mannschaft.app.team.controller.TeamExtendedProfileController|12|12
+HTTP|com.mannschaft.app.team.controller.TeamOrgAffiliationRestrictionController|0|2
 HTTP|com.mannschaft.app.team.controller.TeamOrgApplicationController|3|3
+HTTP|com.mannschaft.app.team.controller.TeamOrgInviteController|0|3
 HTTP|com.mannschaft.app.team.controller.TeamShiftSettingsController|2|2
 HTTP|com.mannschaft.app.template.controller.ModuleController|2|2
 HTTP|com.mannschaft.app.template.controller.OrganizationModuleController|3|3

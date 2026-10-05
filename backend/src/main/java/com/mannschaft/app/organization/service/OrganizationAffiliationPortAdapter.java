@@ -66,6 +66,23 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<OrganizationAffiliationState> findAffiliationState(Long organizationId) {
+        // チームの書き込みトランザクションの外から呼ばれ、組織ドメインの読み取りトランザクションで閉じる。
+        // 論理削除済みは Entity の @SQLRestriction が除外する。承諾前（PROVISIONED）は不在と同じ扱い
+        return organizationRepository.findById(organizationId)
+                .filter(o -> o.getLifecycleStatus() == OrganizationEntity.LifecycleStatus.ACTIVE)
+                .map(org -> new OrganizationAffiliationState(
+                        org.getId(),
+                        org.getSlug(),
+                        org.getName(),
+                        org.getArchivedAt() != null,
+                        Boolean.TRUE.equals(org.getTeamApplicationEnabled()),
+                        Boolean.TRUE.equals(org.getTeamGroupsEnabled()),
+                        org.getTeamApplicationGroupMode()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean isAliveGroupOfOrganization(Long organizationId, UUID groupId) {
         return orgTeamGroupRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(groupId, organizationId)
                 .isPresent();

@@ -7,8 +7,7 @@ import com.mannschaft.app.shift.dto.ManualRemindResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleSummaryResponse;
 import com.mannschaft.app.shift.dto.UpdateShiftScheduleRequest;
-import com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService;
-import com.mannschaft.app.shift.service.ShiftScheduleService;
+import com.mannschaft.app.shift.service.ShiftScheduleFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -40,9 +39,7 @@ import com.mannschaft.app.common.SecurityUtils;
 @RequiredArgsConstructor
 public class ShiftScheduleController {
 
-    private final ShiftScheduleService scheduleService;
-    private final ShiftPreferenceReminderBatchService preferenceReminderBatchService;
-
+    private final ShiftScheduleFacade scheduleFacade;
 
     /**
      * チームのシフトスケジュール一覧を取得する。
@@ -56,12 +53,7 @@ public class ShiftScheduleController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        List<ShiftScheduleResponse> responses;
-        if (from != null && to != null) {
-            responses = scheduleService.listSchedulesByPeriod(teamId, from, to, currentUserId);
-        } else {
-            responses = scheduleService.listSchedules(teamId, currentUserId);
-        }
+        List<ShiftScheduleResponse> responses = scheduleFacade.listSchedules(teamId, from, to, currentUserId);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -73,7 +65,7 @@ public class ShiftScheduleController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> getSchedule(
             @PathVariable Long scheduleId) {
-        ShiftScheduleResponse response = scheduleService.getSchedule(scheduleId, SecurityUtils.getCurrentUserId());
+        ShiftScheduleResponse response = scheduleFacade.getSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -86,7 +78,7 @@ public class ShiftScheduleController {
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> createSchedule(
             @RequestParam Long teamId,
             @Valid @RequestBody CreateShiftScheduleRequest request) {
-        ShiftScheduleResponse response = scheduleService.createSchedule(teamId, request, SecurityUtils.getCurrentUserId());
+        ShiftScheduleResponse response = scheduleFacade.createSchedule(teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -99,7 +91,7 @@ public class ShiftScheduleController {
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> updateSchedule(
             @PathVariable Long scheduleId,
             @Valid @RequestBody UpdateShiftScheduleRequest request) {
-        ShiftScheduleResponse response = scheduleService.updateSchedule(
+        ShiftScheduleResponse response = scheduleFacade.updateSchedule(
                 scheduleId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -112,7 +104,7 @@ public class ShiftScheduleController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteSchedule(
             @PathVariable Long scheduleId) {
-        scheduleService.deleteSchedule(scheduleId, SecurityUtils.getCurrentUserId());
+        scheduleFacade.deleteSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -125,7 +117,7 @@ public class ShiftScheduleController {
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> transitionStatus(
             @PathVariable Long scheduleId,
             @RequestParam String status) {
-        ShiftScheduleResponse response = scheduleService.transitionStatus(scheduleId, status, SecurityUtils.getCurrentUserId());
+        ShiftScheduleResponse response = scheduleFacade.transitionStatus(scheduleId, status, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -139,7 +131,7 @@ public class ShiftScheduleController {
      * {@code @EnableMethodSecurity} 点火時に JWT へ ROLE_ADMIN が乗らず一斉 403 となるため是正した。
      * scope は <b>パス変数でなくスケジュールエンティティ由来</b>（{@code scheduleId} から解決した teamId）で
      * SpEL でパス変数参照できないため、宣言は {@code isAuthenticated()} とし、真の per-scope 認可は
-     * {@code ShiftScheduleService.getScheduleSummary} 内の {@code checkScheduleAdminAccess} で強制する。</p>
+     * {@code ShiftScheduleFacade#getScheduleSummary}（トランザクションの外）で強制する。</p>
      */
     @GetMapping("/{scheduleId}/summary")
     @Operation(summary = "シフト充足状況サマリ")
@@ -148,7 +140,7 @@ public class ShiftScheduleController {
     public ResponseEntity<ApiResponse<ShiftScheduleSummaryResponse>> getScheduleSummary(
             @PathVariable Long scheduleId) {
         ShiftScheduleSummaryResponse response =
-                scheduleService.getScheduleSummary(scheduleId, SecurityUtils.getCurrentUserId());
+                scheduleFacade.getScheduleSummary(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -162,8 +154,7 @@ public class ShiftScheduleController {
      * {@code @EnableMethodSecurity} 点火時に JWT へ ROLE_ADMIN が乗らず一斉 403 となるため是正した。
      * scope は <b>パス変数でなくスケジュールエンティティ由来</b>（{@code scheduleId} から解決した teamId）で
      * SpEL でパス変数参照できないため、宣言は {@code isAuthenticated()} とし、真の per-scope 認可は
-     * {@code ShiftPreferenceReminderBatchService.triggerManualReminder} 内で
-     * {@code AccessControlService} により強制する。</p>
+     * {@code ShiftScheduleFacade#remindUnsubmitted}（トランザクションの外）で強制する。</p>
      */
     @PostMapping("/{scheduleId}/remind")
     @Operation(summary = "シフト希望未提出者への手動リマインド送信")
@@ -171,8 +162,8 @@ public class ShiftScheduleController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ManualRemindResponse>> remindUnsubmitted(
             @PathVariable Long scheduleId) {
-        ManualRemindResponse response = preferenceReminderBatchService
-                .triggerManualReminder(scheduleId, SecurityUtils.getCurrentUserId());
+        ManualRemindResponse response = scheduleFacade
+                .remindUnsubmitted(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -184,7 +175,7 @@ public class ShiftScheduleController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> duplicateSchedule(
             @PathVariable Long scheduleId) {
-        ShiftScheduleResponse response = scheduleService.duplicateSchedule(scheduleId, SecurityUtils.getCurrentUserId());
+        ShiftScheduleResponse response = scheduleFacade.duplicateSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 }

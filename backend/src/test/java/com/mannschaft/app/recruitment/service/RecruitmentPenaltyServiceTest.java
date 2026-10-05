@@ -206,15 +206,55 @@ class RecruitmentPenaltyServiceTest {
                     .userId(USER_ID)
                     .scopeType(SCOPE_TYPE)
                     .scopeId(SCOPE_ID)
+                    .triggeredBySettingId(5L)
                     .startedAt(LocalDateTime.now().minusDays(60))
                     .expiresAt(LocalDateTime.now().minusDays(1)) // 期限切れ
                     .build();
             given(penaltyRepository.findById(PENALTY_ID)).willReturn(Optional.of(penalty));
+            given(settingRepository.findById(5L)).willReturn(Optional.of(
+                    RecruitmentPenaltySettingEntity.builder().scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).build()));
 
             assertThatThrownBy(() -> service.liftPenalty(PENALTY_ID, ADMIN_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
+        }
+
+        @Test
+        @DisplayName("K1/K5: 発動元設定が消えていれば PENALTY_SETTING_NOT_FOUND ではなく PENALTY_NOT_FOUND（404）で解除しない")
+        void liftPenalty_settingGone_throwsPenaltyNotFound() {
+            RecruitmentUserPenaltyEntity penalty = RecruitmentUserPenaltyEntity.builder()
+                    .userId(USER_ID).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).triggeredBySettingId(5L)
+                    .startedAt(LocalDateTime.now().minusDays(1))
+                    .expiresAt(LocalDateTime.now().plusDays(10))
+                    .build();
+            given(penaltyRepository.findById(PENALTY_ID)).willReturn(Optional.of(penalty));
+            given(settingRepository.findById(5L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.liftPenalty(PENALTY_ID, ADMIN_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.PENALTY_NOT_FOUND);
+            verify(penaltyRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("有効なペナルティは解除され保存される（認可は Facade の責務で本体は見ない）")
+        void liftPenalty_active_lifts() {
+            RecruitmentUserPenaltyEntity penalty = RecruitmentUserPenaltyEntity.builder()
+                    .userId(USER_ID).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).triggeredBySettingId(5L)
+                    .startedAt(LocalDateTime.now().minusDays(1))
+                    .expiresAt(LocalDateTime.now().plusDays(10))
+                    .build();
+            given(penaltyRepository.findById(PENALTY_ID)).willReturn(Optional.of(penalty));
+            given(settingRepository.findById(5L)).willReturn(Optional.of(
+                    RecruitmentPenaltySettingEntity.builder().scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).build()));
+            given(penaltyRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            RecruitmentUserPenaltyEntity result = service.liftPenalty(PENALTY_ID, ADMIN_ID);
+
+            assertThat(result.isActive()).isFalse();
+            verify(penaltyRepository).save(penalty);
         }
     }
 }

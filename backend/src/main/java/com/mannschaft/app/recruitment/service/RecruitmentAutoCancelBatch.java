@@ -3,15 +3,13 @@ package com.mannschaft.app.recruitment.service;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
-import com.mannschaft.app.membership.ScopeType;
-import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationPriority;
-import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
 import com.mannschaft.app.recruitment.ParticipantHistoryReason;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
 import com.mannschaft.app.recruitment.RecruitmentParticipantStatus;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantHistoryEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentAutoCancelledNotificationEvent;
 import com.mannschaft.app.recruitment.event.RecruitmentCancelledEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRepository;
@@ -65,7 +63,6 @@ public class RecruitmentAutoCancelBatch {
     private final RecruitmentListingRepository listingRepository;
     private final RecruitmentParticipantRepository participantRepository;
     private final RecruitmentParticipantHistoryRepository historyRepository;
-    private final ConfirmableNotificationService confirmableNotificationService;
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectProvider<RecruitmentAutoCancelBatch> selfProvider;
 
@@ -230,24 +227,13 @@ public class RecruitmentAutoCancelBatch {
 
         log.info("F03.11 自動キャンセル実行: listingId={}, 参加者キャンセル数={}", listingId, totalProcessed);
 
-        // 通知送信（受信者が存在する場合のみ）
+        // 通知（受信者が存在する場合のみ）: 業務TX内では同期送信せず、イベントを publish するだけにする
+        // （CMP-260930-1932 / backend/.claudecode.md 原則5）。AFTER_COMMIT + @Async の
+        // RecruitmentAutoCancelledNotificationListener が別TXで送るため、通知の失敗（クレジット・受信者上限・
+        // 作成者解決など）で自動キャンセル本体が rollback-only に巻き込まれることはない。
         if (!affectedUserIds.isEmpty()) {
-            try {
-                confirmableNotificationService.send(
-                        listing.getScopeType() == com.mannschaft.app.recruitment.RecruitmentScopeType.PERSONAL
-                                ? ScopeType.PLATFORM
-                                : ScopeType.valueOf(listing.getScopeType().name()),
-                        listing.getScopeId(),
-                        "募集が自動キャンセルされました",
-                        "最小定員を達成できなかったため自動キャンセルされました",
-                        ConfirmableNotificationPriority.URGENT,
-                        LocalDateTime.now().plusHours(72),
-                        null, null, null, null,
-                        null,
-                        affectedUserIds);
-            } catch (Exception e) {
-                log.warn("F03.11 自動キャンセル通知送信失敗: listingId={}, error={}", listing.getId(), e.getMessage());
-            }
+            eventPublisher.publishEvent(new RecruitmentAutoCancelledNotificationEvent(
+                    listing.getId(), listing.getScopeType(), listing.getScopeId(), List.copyOf(affectedUserIds)));
         }
 
         return totalProcessed;

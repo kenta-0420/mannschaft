@@ -333,6 +333,64 @@ class RecruitmentAutoCancelBatchTest {
     }
 
     // ========================================
+    // CMP-260930-1932 AC-5: 通知は業務TX内で同期送信せず、イベント publish のみ
+    // ========================================
+
+    @Nested
+    @DisplayName("CMP-260930-1932 AC-5: 自動キャンセル通知はイベント経由（業務TX内で同期送信しない）")
+    class AutoCancelNotificationViaEvent {
+
+        @Test
+        @DisplayName("AC-5: 参加者ありの自動キャンセルは RecruitmentAutoCancelledNotificationEvent を publish し、"
+                + "ConfirmableNotificationService を業務TX内で呼ばない")
+        void AC5_参加者ありはイベントをpublishし同期送信しない() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing(10, 2, 5);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            RecruitmentParticipantEntity p1 = buildParticipant(91L, RecruitmentParticipantStatus.CONFIRMED);
+            RecruitmentParticipantEntity p2 = buildParticipant(92L, RecruitmentParticipantStatus.APPLIED);
+            given(participantRepository.findByListingIdAndStatusIn(eq(LISTING_ID), any(), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(p1, p2), PageRequest.of(0, 100), 2))
+                    .willReturn(Page.empty());
+
+            batch.processSingleListing(LISTING_ID, LocalDateTime.now());
+
+            org.mockito.ArgumentCaptor<Object> events = org.mockito.ArgumentCaptor.forClass(Object.class);
+            verify(eventPublisher, org.mockito.Mockito.atLeastOnce()).publishEvent(events.capture());
+            List<com.mannschaft.app.recruitment.event.RecruitmentAutoCancelledNotificationEvent> notifyEvents =
+                    events.getAllValues().stream()
+                            .filter(com.mannschaft.app.recruitment.event.RecruitmentAutoCancelledNotificationEvent.class::isInstance)
+                            .map(com.mannschaft.app.recruitment.event.RecruitmentAutoCancelledNotificationEvent.class::cast)
+                            .collect(Collectors.toList());
+            assertThat(notifyEvents)
+                    .as("AC-5: 自動キャンセル通知イベントがちょうど1回 publish される")
+                    .hasSize(1);
+            assertThat(notifyEvents.get(0).listingId()).isEqualTo(LISTING_ID);
+            assertThat(notifyEvents.get(0).sourceScopeType()).isEqualTo(RecruitmentScopeType.TEAM);
+            assertThat(notifyEvents.get(0).sourceScopeId()).isEqualTo(1L);
+            assertThat(notifyEvents.get(0).recipientUserIds()).containsExactlyInAnyOrder(91L, 92L);
+
+            org.mockito.Mockito.verifyNoInteractions(confirmableNotificationService);
+        }
+
+        @Test
+        @DisplayName("AC-5(空): 受信者0件の自動キャンセルは通知イベントを publish しない")
+        void AC5_受信者0件なら通知イベントを出さない() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing(10, 0, 5);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(participantRepository.findByListingIdAndStatusIn(eq(LISTING_ID), any(), any(Pageable.class)))
+                    .willReturn(Page.empty());
+
+            batch.processSingleListing(LISTING_ID, LocalDateTime.now());
+
+            org.mockito.ArgumentCaptor<Object> events = org.mockito.ArgumentCaptor.forClass(Object.class);
+            verify(eventPublisher, org.mockito.Mockito.atLeast(0)).publishEvent(events.capture());
+            assertThat(events.getAllValues())
+                    .noneMatch(com.mannschaft.app.recruitment.event.RecruitmentAutoCancelledNotificationEvent.class::isInstance);
+            org.mockito.Mockito.verifyNoInteractions(confirmableNotificationService);
+        }
+    }
+
+    // ========================================
     // ヘルパー
     // ========================================
 

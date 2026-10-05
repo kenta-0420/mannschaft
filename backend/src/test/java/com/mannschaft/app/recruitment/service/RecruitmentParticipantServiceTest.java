@@ -82,8 +82,12 @@ class RecruitmentParticipantServiceTest {
     @Mock
     private RecruitmentMapper mapper;
 
+    /**
+     * CMP-260930-1932: FULL 到達時は最終認証通知を同期送信せず、MarketListingReachedFullEvent を publish する
+     * （旧: MarketFinalizeService#sendFinalizeConfirmation の同期呼び出し）。
+     */
     @Mock
-    private MarketFinalizeService marketFinalizeService;
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Mock
     private com.mannschaft.app.common.visibility.ContentVisibilityChecker visibilityChecker;
@@ -169,6 +173,44 @@ class RecruitmentParticipantServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(RecruitmentErrorCode.DRAFT_NOT_APPLICABLE);
+        }
+
+        @Test
+        @DisplayName("CMP-260930-1932 AC-7: 申込で FULL に到達したら MarketListingReachedFullEvent を publish する（同期送信しない）")
+        void apply_reachesFull_publishesReachedFullEvent() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "visibility", RecruitmentVisibility.PUBLIC);
+            RecruitmentListingEntity afterIncrement = buildOpenListing();
+            setField(afterIncrement, "status", RecruitmentListingStatus.FULL);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(listingRepository.incrementConfirmedAtomic(LISTING_ID)).willReturn(1);
+            given(listingRepository.findById(LISTING_ID)).willReturn(Optional.of(afterIncrement));
+            given(participantRepository.save(any(RecruitmentParticipantEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            service.apply(LISTING_ID, USER_ID + 1,
+                    new ApplyToRecruitmentRequest(RecruitmentParticipantType.USER, null, null));
+
+            verify(eventPublisher).publishEvent(
+                    new com.mannschaft.app.recruitment.event.MarketListingReachedFullEvent(LISTING_ID));
+        }
+
+        @Test
+        @DisplayName("CMP-260930-1932: 申込で FULL に達しなければ MarketListingReachedFullEvent を publish しない")
+        void apply_notFull_doesNotPublishReachedFullEvent() throws Exception {
+            RecruitmentListingEntity listing = buildOpenListing();
+            setField(listing, "visibility", RecruitmentVisibility.PUBLIC);
+            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
+            given(listingRepository.incrementConfirmedAtomic(LISTING_ID)).willReturn(1);
+            given(listingRepository.findById(LISTING_ID)).willReturn(Optional.of(listing));
+            given(participantRepository.save(any(RecruitmentParticipantEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            service.apply(LISTING_ID, USER_ID + 1,
+                    new ApplyToRecruitmentRequest(RecruitmentParticipantType.USER, null, null));
+
+            verify(eventPublisher, org.mockito.Mockito.never()).publishEvent(
+                    any(com.mannschaft.app.recruitment.event.MarketListingReachedFullEvent.class));
         }
 
         @Test
@@ -306,22 +348,22 @@ class RecruitmentParticipantServiceTest {
         }
 
         @Test
-        @DisplayName("参加者一覧はPERSONAL札をMARKET_404で存在秘匿し参加者Repositoryを呼ばない")
+        @DisplayName("参加者一覧はPERSONAL札を不在と同じ RECRUITMENT_001 で存在秘匿し参加者Repositoryを呼ばない")
         void listParticipants_personal_doesNotQueryParticipant() throws Exception {
             RecruitmentListingEntity listing = buildOpenListing();
             setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
             given(listingService.findOrThrow(LISTING_ID)).willReturn(listing);
 
-            assertThatThrownBy(() -> service.listParticipants(LISTING_ID, USER_ID,
+            assertThatThrownBy(() -> service.listParticipants(LISTING_ID,
                     org.springframework.data.domain.PageRequest.of(0, 20)))
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
 
             verify(participantRepository, never()).findByListingIdOrderByAppliedAtAsc(anyLong(), any());
         }
 
         @Test
-        @DisplayName("出席記録はPERSONAL札をMARKET_404で存在秘匿し参加者Repositoryを呼ばない")
+        @DisplayName("出席記録はPERSONAL札を不在と同じ RECRUITMENT_001 で存在秘匿し参加者Repositoryを呼ばない")
         void markAttended_personal_doesNotQueryParticipant() throws Exception {
             RecruitmentListingEntity listing = buildOpenListing();
             setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
@@ -329,7 +371,7 @@ class RecruitmentParticipantServiceTest {
 
             assertThatThrownBy(() -> service.markAttended(LISTING_ID, 999L, USER_ID))
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
 
             verify(participantRepository, never()).findByIdAndListingId(anyLong(), anyLong());
         }

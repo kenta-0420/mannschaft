@@ -15,6 +15,7 @@ import com.mannschaft.app.bulletin.service.BulletinCategoryService;
 import com.mannschaft.app.bulletin.service.BulletinReplyService;
 import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
+import com.mannschaft.app.bulletin.service.BulletinReadFacade;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -197,6 +198,8 @@ class BulletinControllerTest {
 
         @Mock
         private BulletinThreadService threadService;
+        @Mock
+        private BulletinReadFacade readFacade;
 
         @Mock
         private BulletinScopeIdResolver scopeIdResolver;
@@ -267,7 +270,7 @@ class BulletinControllerTest {
         void getThread_正常_200() {
             // Given
             given(scopeIdResolver.resolve(any(), eq(SCOPE_ID_STR))).willReturn(SCOPE_ID);
-            given(threadService.getThread(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID)))
+            given(readFacade.getThread(any(), eq(SCOPE_ID), eq(THREAD_ID), eq(USER_ID)))
                     .willReturn(createThreadResponse());
 
             // When

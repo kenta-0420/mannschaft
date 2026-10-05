@@ -476,4 +476,12 @@ public interface TeamRepository
      */
     @Query("SELECT t.id FROM TeamEntity t WHERE t.archivedAt IS NULL ORDER BY t.id ASC")
     Page<Long> findActiveTeamIdsForBeta(Pageable pageable);
+
+    /**
+     * スラッグの集合でチームをまとめて取得する（ACTIVE 限定。F01.2.1 4-B の一括割当用。SQL は 1 本）。
+     *
+     * <p>存在しない slug・論理削除済み・承諾前（PROVISIONED）のチームは結果に含まれない。</p>
+     */
+    List<TeamEntity> findBySlugInAndDeletedAtIsNullAndLifecycleStatus(
+            java.util.Collection<String> slugs, TeamEntity.LifecycleStatus lifecycleStatus);
 }

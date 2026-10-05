@@ -213,6 +213,33 @@ class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
                         .isEqualTo(ReturnStayPlanErrorCode.TEAM_ACCESS_DENIED));
     }
 
+    /**
+     * ReturnStayPlanController#create の公開先 teamIds は、本人が MEMBER として在籍するチームだけを受け付ける
+     * （@AuthorizedInService の根拠。ReturnStayPlanService#validateTeamIds）。同じ本文でも、認証主体が
+     * 在籍していなければ保存前に拒否され、行は1件も作られない。
+     */
+    @Test
+    @DisplayName("CMP-260917-1135 公開先チームに在籍しない利用者の作成は拒否し、在籍メンバーは同じ本文で作成できる")
+    void create_公開先チームは在籍メンバーだけが指定できる() {
+        long otherTeamId = 923011L;
+        insertTeam(otherTeamId, "f0211-persistence-other-team");
+
+        assertThatThrownBy(() -> service.create(OWNER_ID, request(true, otherTeamId)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(((BusinessException) exception).getErrorCode())
+                        .isEqualTo(ReturnStayPlanErrorCode.TEAM_ACCESS_DENIED));
+        assertThatThrownBy(() -> service.create(SYSTEM_ADMIN_ID, request(true, TEAM_ID)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(((BusinessException) exception).getErrorCode())
+                        .isEqualTo(ReturnStayPlanErrorCode.TEAM_ACCESS_DENIED));
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM return_stay_plans WHERE owner_user_id IN (?, ?)",
+                Long.class, OWNER_ID, SYSTEM_ADMIN_ID)).isZero();
+
+        var created = service.create(VIEWER_ID, request(true, TEAM_ID));
+        assertThat(created.teamIds()).containsExactly(TEAM_ID);
+    }
+
     @Test
     @DisplayName("AC-20 SUPPORTER cannot read TEAM plans")
     void ac20_supporterCannotRead() {

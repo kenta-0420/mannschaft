@@ -240,7 +240,6 @@ export default {
     "error": {
       "RECRUITMENT_001": "Convocatoria no encontrada",
       "RECRUITMENT_002": "Sin permiso para crear convocatorias",
-      "RECRUITMENT_003": "La visibilidad impide ver esta convocatoria",
       "RECRUITMENT_005": "Capacidad alcanzada",
       "RECRUITMENT_007": "Tipo de participación no coincide",
       "RECRUITMENT_008": "La capacidad mínima excede la capacidad",

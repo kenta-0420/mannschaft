@@ -10,6 +10,10 @@ import java.util.Map;
  * <p>遷移ごとに1行、所定の action と metadata が {@code audit_logs} に残る（F01.2.1 §4.1・§6.1 step 13）。
  * 業務ルール（冷却期間など）は監査ログを参照せず、制限テーブルだけで判定する（§4.2）。</p>
  *
+ * <p>招待・承諾・辞退・取消（2-C）は、4-A の監査と同じく書き込みの<b>コミット後</b>に、トランザクションの外から呼ぶ
+ * （チームの書き込みトランザクションから auth ドメインの Repository に届かせないため）。その場合の記録は
+ * {@code AuditLogService} 自身のトランザクションで確定し、記録の失敗は操作を巻き戻さない。</p>
+ *
  * <p>実装は {@link AuditLogTeamAffiliationAuditRecorder}。team ドメインが auth ドメインの Repository へ
  * 推移的に到達しないよう、ポートにしている。</p>
  */

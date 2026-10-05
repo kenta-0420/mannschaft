@@ -307,6 +307,30 @@ public class NotificationFanoutJobService {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public FanoutEnqueueResult enqueueInCurrentTransaction(FanoutEnqueueCommand command) {
+        return enqueueInCurrentTransactionBody(command);
+    }
+
+    /**
+     * F01.2.1 2-C: 業務のコミットの<b>後</b>に、通知ドメインのトランザクションで fan-out ジョブを冪等に enqueue する。
+     *
+     * <p>{@link #enqueueInCurrentTransaction(FanoutEnqueueCommand)} と同じ登録（冪等 SQL・文面の描画・シャードの扱い）を、
+     * 業務のトランザクションに参加させずに行う。業務側（チームの加盟の書き込み）は自分のトランザクションをコミットしてから
+     * 本メソッドを呼ぶ。こうすると業務のトランザクションから通知ドメインの Repository に届かない（ドメイン内に閉じる）。
+     * 業務と通知の登録は原子的ではなくなるため、登録の失敗は業務を巻き戻さず、例外として呼び出し側へ伝える。</p>
+     *
+     * <p>呼び出し側にトランザクションが無いときに使う（ある場合はそのトランザクションに参加してしまうため、
+     * 業務の書き込みトランザクションの中からは呼ばない）。</p>
+     *
+     * @param command enqueue の引数一式
+     * @return 登録済み（新規または既存）の親ジョブ行の ID とシャード状態
+     */
+    @Transactional
+    public FanoutEnqueueResult enqueueInOwnTransaction(FanoutEnqueueCommand command) {
+        return enqueueInCurrentTransactionBody(command);
+    }
+
+    /** {@link #enqueueInCurrentTransaction(FanoutEnqueueCommand)} の本体（トランザクションの扱いは呼び出し元のメソッドが決める）。 */
+    private FanoutEnqueueResult enqueueInCurrentTransactionBody(FanoutEnqueueCommand command) {
         // 文面の描画は INSERT より前に済ませる。キー欠落は握り潰さず伝播させ、文面の無いジョブを作らない。
         Map<String, FanoutMessageRenderer.RenderedMessage> messages = command.messageKind() == null
                 ? Map.of()

@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-02T02:18:26+00:00",
+  "generatedAt": "2026-10-03T19:06:54+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,19 +8,19 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "56bdd1add8565f36a75f337d8b90b112a4e518da",
-    "taskListCommit": "45a642f5df8e5b5537649377dcf77d81c15039a5",
+    "taskListCommit": "546ec648a10fadf4c9bf19f1b8daa556b06d7eb5",
     "inventorySha256": "50fcac2d602060752d611b7babe6f04327fc4b1b6a9ebccbcac383a464fef302",
-    "taskListSha256": "a61e0008d8411a1e646111cae13f44f8f87244d7a16f4ddbb726f9d837acbafe",
+    "taskListSha256": "f3960ed6ae0bf5ec8b4fac802e1b6e81c76098c98ef6beec34a83e2892b22044",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "f15719b3d0fce95266043683de550858f78d39bbea624481a94a03ea00ecc7b4"
+    "githubSnapshotSha256": "beeeef2dd21e5d1e9734378327d777b1760c6671b8c138ecaf393e2b8306c0bf"
   },
   "sourceCounts": {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 340,
+    "campaigns": 365,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 340
+      "campaigns": 365
     },
     "parsed": {
       "features": 44,
-      "campaigns": 340,
+      "campaigns": 365,
       "core": 25,
       "noncore": 19,
       "blockers": 22,
@@ -8381,7 +8381,2123 @@ window.BETA_INVENTORY_DATA = {
       }
     }
   },
-  "b0RunOverlay": null,
+  "b0RunOverlay": {
+    "schemaVersion": 2,
+    "runId": "cmp1455-three-residents-20261003",
+    "recordedAt": "2026-10-02T22:21:35.879151+00:00",
+    "trusted": false,
+    "status": "observed-unverified",
+    "mode": "agent-guided-sequential-real-ui-real-db",
+    "registrationSource": "actual-resident-artifacts",
+    "inventorySourceCommit": "479c60b1dcdf96c8f86071e69a51f0ee47f27cad",
+    "environment": {
+      "sourceHead": "99323f9368d16e27adb285decdcee565314c3fa6",
+      "jarSha256": "A30B1DF08B729EED6336FE90806F42A5D03A1137582ADD8BC30FADE5227A302D",
+      "frontendUrl": "http://localhost:3016",
+      "backendUrl": "http://localhost:8086",
+      "backendRuntime": "既存WSL Ubuntu OpenJDK21.0.12.1既定JIT・同JAR",
+      "networking": "Node ipv4first/Chromium localhost→127.0.0.1 host resolver、URL/Host/Cookie無改変"
+    },
+    "conditions": {
+      "realDb": true,
+      "businessMocks": false,
+      "separateBrowserContexts": "3個の専用実BrowserContext",
+      "distinctUsers": [
+        6,
+        5,
+        3
+      ],
+      "singleLoginPerContext": true,
+      "existingRunnerExecuted": false,
+      "dynamicRunnerExecuted": false
+    },
+    "limitations": [
+      "専用fixture/同source9932の目的探索。正本479cは棚卸の参照版であり実機sourceとは異なる。",
+      "観測4件は実害・仕様不適合未実証、blocker登録と正本状態の自動変更なし。",
+      "Windows JVM native crash未解決。Linux既存JDK反証で実機確認したが原因確定ではない。"
+    ],
+    "personas": [
+      {
+        "id": "b-elder-low-literacy-straight-headman",
+        "personaArchetype": "高齢・低リテラシー×素直／村長",
+        "runId": "cmp1455-b-20261003-01",
+        "sourceHead": "99323f9368d16e27adb285decdcee565314c3fa6",
+        "evidencePath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/b-headman/journal.json"
+      },
+      {
+        "id": "cmp1455-mobile-villager",
+        "personaArchetype": "一般住民ELDER・スマホ片手操作と表示崩れ",
+        "runId": "resident2-mobile-1790977621199",
+        "sourceHead": "99323f9368d16e27adb285decdcee565314c3fa6",
+        "evidencePath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/c-villager/resident2-mobile-1790977621199.json"
+      },
+      {
+        "id": "resident3-general-outsider",
+        "personaArchetype": "一般×隙間狙い",
+        "runId": "cmp1455-20261003-outsider",
+        "sourceHead": "99323f9368d16e27adb285decdcee565314c3fa6",
+        "evidencePath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/a-outsider/observations.json"
+      }
+    ],
+    "journeys": [
+      {
+        "id": "understand-own-village",
+        "personaId": "b-elder-low-literacy-straight-headman",
+        "personaArchetype": "高齢・低リテラシー×素直／村長",
+        "runId": "cmp1455-b-20261003-01",
+        "purpose": "自分の村の参加者と運営状況を画面から把握する",
+        "userId": 6,
+        "villageId": "b1455001-2026-4000-8000-000000000002",
+        "status": "observed-unverified",
+        "browserContextCount": 1,
+        "loginCount": 1,
+        "sourceHead": "99323f9368d16e27adb285decdcee565314c3fa6",
+        "evidencePath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/b-headman/journal.json",
+        "locale": "ja-JP",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        },
+        "selectorBounds": {
+          "main": {
+            "x": 260,
+            "y": 64,
+            "width": 1020,
+            "height": 756
+          },
+          "table": {
+            "x": 300,
+            "y": 530,
+            "width": 940,
+            "height": 122
+          }
+        },
+        "independenceEvidence": "独立TTY Playwright browser/context、login-1の実users/me 200/id6。journalと終了済み所有session16946。"
+      },
+      {
+        "id": "understand-own-village-on-mobile",
+        "personaId": "cmp1455-mobile-villager",
+        "personaArchetype": "一般住民ELDER・スマホ片手操作と表示崩れ",
+        "runId": "resident2-mobile-1790977621199",
+        "purpose": "自分の村を見て参加者との関わり方を画面から把握",
+        "userId": 5,
+        "villageId": "b1455001-2026-4000-8000-000000000001",
+        "status": "observed-unverified",
+        "browserContextCount": 1,
+        "loginCount": 1,
+        "sourceHead": "99323f9368d16e27adb285decdcee565314c3fa6",
+        "evidencePath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/c-villager/resident2-mobile-1790977621199.json",
+        "locale": "ja",
+        "viewports": [
+          {
+            "width": 390,
+            "height": 844
+          },
+          {
+            "width": 360,
+            "height": 800
+          }
+        ],
+        "snapshots": [
+          {
+            "url": "http://localhost:3016/villages/b1455001-2026-4000-8000-000000000001/members",
+            "locale": "ja",
+            "viewport": {
+              "width": 390,
+              "height": 844
+            },
+            "scrollWidth": 390,
+            "image": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/c-villager/resident2-mobile-1790977621199-8.png",
+            "controls": [
+              {
+                "tag": "BUTTON",
+                "text": "メニューを開く",
+                "href": null,
+                "rect": {
+                  "x": 16,
+                  "y": 13.5,
+                  "width": 36,
+                  "height": 36
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "通知",
+                "href": null,
+                "rect": {
+                  "x": 330,
+                  "y": 9.5,
+                  "width": 44,
+                  "height": 44
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "使い方",
+                "href": null,
+                "rect": {
+                  "x": 128,
+                  "y": 340,
+                  "width": 86,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "お気に入りに追加",
+                "href": null,
+                "rect": {
+                  "x": 128,
+                  "y": 383,
+                  "width": 156,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "通報する",
+                "href": null,
+                "rect": {
+                  "x": 292,
+                  "y": 383,
+                  "width": 32,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "A",
+                "text": "村の運営",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/admin",
+                "rect": {
+                  "x": 128,
+                  "y": 426,
+                  "width": 100,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "村の運営",
+                "href": null,
+                "rect": {
+                  "x": 128,
+                  "y": 426,
+                  "width": 100,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "退村する",
+                "href": null,
+                "rect": {
+                  "x": 236,
+                  "y": 426,
+                  "width": 100,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "A",
+                "text": "掲示板",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/bulletin",
+                "rect": {
+                  "x": 34,
+                  "y": 489,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "タイムライン",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/timeline",
+                "rect": {
+                  "x": 142,
+                  "y": 489,
+                  "width": 118.890625,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "ロビー",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/lobby",
+                "rect": {
+                  "x": 296.890625,
+                  "y": 489,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "村人一覧",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/members",
+                "rect": {
+                  "x": 404.890625,
+                  "y": 489,
+                  "width": 88,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "歳時記",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/calendar",
+                "rect": {
+                  "x": 528.890625,
+                  "y": 489,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "お祭り",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/festivals",
+                "rect": {
+                  "x": 636.890625,
+                  "y": 489,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "練習試合・募集",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/match-recruits",
+                "rect": {
+                  "x": 744.890625,
+                  "y": 489,
+                  "width": 136,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "寄合",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/meetups",
+                "rect": {
+                  "x": 916.890625,
+                  "y": 489,
+                  "width": 56,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "村史",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/chronicles",
+                "rect": {
+                  "x": 1008.890625,
+                  "y": 489,
+                  "width": 56,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "村憲章",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/charter",
+                "rect": {
+                  "x": 1100.890625,
+                  "y": 489,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "次へ",
+                "href": null,
+                "rect": {
+                  "x": 334,
+                  "y": 473,
+                  "width": 40,
+                  "height": 57
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "#5",
+                "href": null,
+                "rect": {
+                  "x": 72,
+                  "y": 681,
+                  "width": 18.25,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "#6",
+                "href": null,
+                "rect": {
+                  "x": 72,
+                  "y": 756,
+                  "width": 18.25,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "通報する",
+                "href": null,
+                "rect": {
+                  "x": 333.84375,
+                  "y": 762.5,
+                  "width": 32,
+                  "height": 35
+                }
+              }
+            ]
+          },
+          {
+            "url": "http://localhost:3016/villages/b1455001-2026-4000-8000-000000000001/members",
+            "locale": "ja",
+            "viewport": {
+              "width": 360,
+              "height": 800
+            },
+            "scrollWidth": 360,
+            "image": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/c-villager/resident2-mobile-1790977621199-9.png",
+            "controls": [
+              {
+                "tag": "BUTTON",
+                "text": "メニューを開く",
+                "href": null,
+                "rect": {
+                  "x": 16,
+                  "y": 13.5,
+                  "width": 36,
+                  "height": 36
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "通知",
+                "href": null,
+                "rect": {
+                  "x": 300,
+                  "y": 9.5,
+                  "width": 44,
+                  "height": 44
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "使い方",
+                "href": null,
+                "rect": {
+                  "x": 128,
+                  "y": 368,
+                  "width": 86,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "お気に入りに追加",
+                "href": null,
+                "rect": {
+                  "x": 128,
+                  "y": 411,
+                  "width": 156,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "通報する",
+                "href": null,
+                "rect": {
+                  "x": 292,
+                  "y": 411,
+                  "width": 32,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "A",
+                "text": "村の運営",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/admin",
+                "rect": {
+                  "x": 128,
+                  "y": 454,
+                  "width": 100,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "村の運営",
+                "href": null,
+                "rect": {
+                  "x": 128,
+                  "y": 454,
+                  "width": 100,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "退村する",
+                "href": null,
+                "rect": {
+                  "x": 128,
+                  "y": 497,
+                  "width": 100,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "A",
+                "text": "掲示板",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/bulletin",
+                "rect": {
+                  "x": 34,
+                  "y": 560,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "タイムライン",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/timeline",
+                "rect": {
+                  "x": 142,
+                  "y": 560,
+                  "width": 118.890625,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "ロビー",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/lobby",
+                "rect": {
+                  "x": 296.890625,
+                  "y": 560,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "村人一覧",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/members",
+                "rect": {
+                  "x": 404.890625,
+                  "y": 560,
+                  "width": 88,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "歳時記",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/calendar",
+                "rect": {
+                  "x": 528.890625,
+                  "y": 560,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "お祭り",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/festivals",
+                "rect": {
+                  "x": 636.890625,
+                  "y": 560,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "練習試合・募集",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/match-recruits",
+                "rect": {
+                  "x": 744.890625,
+                  "y": 560,
+                  "width": 136,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "寄合",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/meetups",
+                "rect": {
+                  "x": 916.890625,
+                  "y": 560,
+                  "width": 56,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "村史",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/chronicles",
+                "rect": {
+                  "x": 1008.890625,
+                  "y": 560,
+                  "width": 56,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "村憲章",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/charter",
+                "rect": {
+                  "x": 1100.890625,
+                  "y": 560,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "次へ",
+                "href": null,
+                "rect": {
+                  "x": 304,
+                  "y": 544,
+                  "width": 40,
+                  "height": 57
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "#5",
+                "href": null,
+                "rect": {
+                  "x": 72,
+                  "y": 752,
+                  "width": 18.25,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "#6",
+                "href": null,
+                "rect": {
+                  "x": 72,
+                  "y": 827,
+                  "width": 18.25,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "通報する",
+                "href": null,
+                "rect": {
+                  "x": 333.84375,
+                  "y": 833.5,
+                  "width": 32,
+                  "height": 35
+                }
+              }
+            ]
+          },
+          {
+            "url": "http://localhost:3016/villages/b1455001-2026-4000-8000-000000000001/members",
+            "locale": "ja",
+            "viewport": {
+              "width": 360,
+              "height": 800
+            },
+            "scrollWidth": 360,
+            "image": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/c-villager/resident2-mobile-1790977621199-12.png",
+            "controls": [
+              {
+                "tag": "BUTTON",
+                "text": "メニューを開く",
+                "href": null,
+                "rect": {
+                  "x": 16,
+                  "y": 13.5,
+                  "width": 36,
+                  "height": 36
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "通知",
+                "href": null,
+                "rect": {
+                  "x": 300,
+                  "y": 9.5,
+                  "width": 44,
+                  "height": 44
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "使い方",
+                "href": null,
+                "rect": {
+                  "x": 128,
+                  "y": 306,
+                  "width": 86,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "お気に入りに追加",
+                "href": null,
+                "rect": {
+                  "x": 128,
+                  "y": 349,
+                  "width": 156,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "通報する",
+                "href": null,
+                "rect": {
+                  "x": 292,
+                  "y": 349,
+                  "width": 32,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "A",
+                "text": "村の運営",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/admin",
+                "rect": {
+                  "x": 128,
+                  "y": 392,
+                  "width": 100,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "村の運営",
+                "href": null,
+                "rect": {
+                  "x": 128,
+                  "y": 392,
+                  "width": 100,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "退村する",
+                "href": null,
+                "rect": {
+                  "x": 128,
+                  "y": 435,
+                  "width": 100,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "A",
+                "text": "掲示板",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/bulletin",
+                "rect": {
+                  "x": 34,
+                  "y": 498,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "タイムライン",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/timeline",
+                "rect": {
+                  "x": 142,
+                  "y": 498,
+                  "width": 118.890625,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "ロビー",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/lobby",
+                "rect": {
+                  "x": 296.890625,
+                  "y": 498,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "村人一覧",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/members",
+                "rect": {
+                  "x": 404.890625,
+                  "y": 498,
+                  "width": 88,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "歳時記",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/calendar",
+                "rect": {
+                  "x": 528.890625,
+                  "y": 498,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "お祭り",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/festivals",
+                "rect": {
+                  "x": 636.890625,
+                  "y": 498,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "練習試合・募集",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/match-recruits",
+                "rect": {
+                  "x": 744.890625,
+                  "y": 498,
+                  "width": 136,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "寄合",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/meetups",
+                "rect": {
+                  "x": 916.890625,
+                  "y": 498,
+                  "width": 56,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "村史",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/chronicles",
+                "rect": {
+                  "x": 1008.890625,
+                  "y": 498,
+                  "width": 56,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "A",
+                "text": "村憲章",
+                "href": "/villages/b1455001-2026-4000-8000-000000000001/charter",
+                "rect": {
+                  "x": 1100.890625,
+                  "y": 498,
+                  "width": 72,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "次へ",
+                "href": null,
+                "rect": {
+                  "x": 304,
+                  "y": 482,
+                  "width": 40,
+                  "height": 57
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "#5",
+                "href": null,
+                "rect": {
+                  "x": 72,
+                  "y": 690,
+                  "width": 18.25,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "#6",
+                "href": null,
+                "rect": {
+                  "x": 72,
+                  "y": 765,
+                  "width": 18.25,
+                  "height": 24
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "通報する",
+                "href": null,
+                "rect": {
+                  "x": 333.84375,
+                  "y": 771.5,
+                  "width": 32,
+                  "height": 35
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "閉じる",
+                "href": null,
+                "rect": {
+                  "x": 299,
+                  "y": 61,
+                  "width": 40,
+                  "height": 40
+                }
+              },
+              {
+                "tag": "BUTTON",
+                "text": "閉じる",
+                "href": null,
+                "rect": {
+                  "x": 241,
+                  "y": 697,
+                  "width": 98,
+                  "height": 42
+                }
+              }
+            ]
+          }
+        ],
+        "identifierRegistration": {
+          "personaId": "cmp1455-mobile-villager",
+          "journeyId": "understand-own-village-on-mobile",
+          "origin": "原本のpersonaId/journeyIdは未設定。構造化登録時に付与したcustom IDで、固定P01〜P20への対応付けではない。",
+          "originalRunId": "resident2-mobile-1790977621199",
+          "originalPersona": "一般住民ELDER・スマホ片手操作と表示崩れ",
+          "originalJourney": "自分の村を見て参加者との関わり方を画面から把握"
+        },
+        "independenceEvidence": "専用resident2.cjsでnewContext 1回/loginViaApi 1回、MD実行報告。id5所属ELDER、SYSTEM_ADMINではない。"
+      },
+      {
+        "id": "village-discovery-join-boundary",
+        "personaId": "resident3-general-outsider",
+        "personaArchetype": "一般×隙間狙い",
+        "runId": "cmp1455-20261003-outsider",
+        "purpose": "専用URLから村概要を理解して参加・退村する目的は達成。トップ/村一覧からの自力発見は初期読み込みtimeoutで未確認。",
+        "userId": 3,
+        "villageId": "b1455001-2026-4000-8000-000000000006",
+        "status": "observed-unverified",
+        "browserContextCount": 1,
+        "loginCount": 1,
+        "sourceHead": "99323f9368d16e27adb285decdcee565314c3fa6",
+        "evidencePath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/a-outsider/observations.json",
+        "locale": "ja",
+        "viewport": {
+          "width": 1440,
+          "height": 900,
+          "zoom": "100%"
+        },
+        "independenceEvidence": "専用file IPC explorerの独立BrowserContext/単一ログイン。id3組織ADMIN、SYSTEM_ADMINではない。UI参加後退村204で後始末。"
+      }
+    ],
+    "insights": [
+      {
+        "id": "village-count-list",
+        "featureKey": "village-members",
+        "featureDetail": "村の構成員閲覧",
+        "personaId": "b-elder-low-literacy-straight-headman",
+        "personaArchetype": "高齢・低リテラシー×素直／村長",
+        "journeyId": "understand-own-village",
+        "originalRunId": "cmp1455-b-20261003-01",
+        "priority": "should",
+        "urgency": "normal",
+        "title": "村の人数表示と村人一覧の人数が一致しない",
+        "detail": "観測未実証。元runId=cmp1455-b-20261003-01。v2のヘッダー人数2に対し村人一覧の行数/人数は1。再読込後も同じ表示を観測。村長が参加者と運営状況を把握する際、残り1名の状態を判断できなかった。キャッシュ・BAN除外・集計定義の原因と正本上の期待は未照合。権限不備やblockerとは断定しない。",
+        "status": "observed-unverified",
+        "page": "http://localhost:3016/villages/b1455001-2026-4000-8000-000000000002/members",
+        "evidencePath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/b-headman/journal.json",
+        "screenshotPath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/b-headman/04-members-ready.png",
+        "locale": "ja-JP",
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        },
+        "selectorBounds": {
+          "main": {
+            "x": 260,
+            "y": 64,
+            "width": 1020,
+            "height": 756
+          },
+          "table": {
+            "x": 300,
+            "y": 530,
+            "width": 940,
+            "height": 122
+          }
+        },
+        "evidence": {
+          "page": "http://localhost:3016/villages/b1455001-2026-4000-8000-000000000002/members",
+          "selectorBounds": {
+            "main": {
+              "x": 260,
+              "y": 64,
+              "width": 1020,
+              "height": 756
+            },
+            "table": {
+              "x": 300,
+              "y": 530,
+              "width": 940,
+              "height": 122
+            }
+          },
+          "additionalScreenshot": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/b-headman/09-members-reopened.png"
+        }
+      },
+      {
+        "id": "mobile-members-readability",
+        "featureKey": "village-members",
+        "featureDetail": "村の構成員閲覧",
+        "personaId": "cmp1455-mobile-villager",
+        "personaArchetype": "一般住民ELDER・スマホ片手操作と表示崩れ",
+        "journeyId": "understand-own-village-on-mobile",
+        "originalRunId": "resident2-mobile-1790977621199",
+        "priority": "should",
+        "urgency": "normal",
+        "title": "スマホ村人一覧の文字折返しと小さい操作領域",
+        "detail": "観測未実証。元runId=resident2-mobile-1790977621199。390/360px幅で役割や列名が縦折れし、#6リンクの実boundsは18.25×24px。プロフィール開閉は成功、誤タップ率は未実証。殿が別context/id5/360×800で再現し、GET失敗0・document横overflow0、表containerのscrollLeft0→54で右の送信列へ到達できた。右列到達不能・ページ横overflowの主張は棄却。見出し「村名/種別/作成日/送信」と参加者一覧の用語対応は引き続き未照合。",
+        "status": "observed-unverified",
+        "page": "http://localhost:3016/villages/b1455001-2026-4000-8000-000000000001/members",
+        "evidencePath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/c-villager/resident2-mobile-1790977621199.json",
+        "screenshotPath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/c-villager/resident2-mobile-1790977621199-9.png",
+        "locale": "ja",
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "selectorBounds": [
+          {
+            "tag": "BUTTON",
+            "text": "メニューを開く",
+            "href": null,
+            "rect": {
+              "x": 16,
+              "y": 13.5,
+              "width": 36,
+              "height": 36
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "通知",
+            "href": null,
+            "rect": {
+              "x": 300,
+              "y": 9.5,
+              "width": 44,
+              "height": 44
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "使い方",
+            "href": null,
+            "rect": {
+              "x": 128,
+              "y": 368,
+              "width": 86,
+              "height": 35
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "お気に入りに追加",
+            "href": null,
+            "rect": {
+              "x": 128,
+              "y": 411,
+              "width": 156,
+              "height": 35
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "通報する",
+            "href": null,
+            "rect": {
+              "x": 292,
+              "y": 411,
+              "width": 32,
+              "height": 35
+            }
+          },
+          {
+            "tag": "A",
+            "text": "村の運営",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/admin",
+            "rect": {
+              "x": 128,
+              "y": 454,
+              "width": 100,
+              "height": 35
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "村の運営",
+            "href": null,
+            "rect": {
+              "x": 128,
+              "y": 454,
+              "width": 100,
+              "height": 35
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "退村する",
+            "href": null,
+            "rect": {
+              "x": 128,
+              "y": 497,
+              "width": 100,
+              "height": 35
+            }
+          },
+          {
+            "tag": "A",
+            "text": "掲示板",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/bulletin",
+            "rect": {
+              "x": 34,
+              "y": 560,
+              "width": 72,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "タイムライン",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/timeline",
+            "rect": {
+              "x": 142,
+              "y": 560,
+              "width": 118.890625,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "ロビー",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/lobby",
+            "rect": {
+              "x": 296.890625,
+              "y": 560,
+              "width": 72,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "村人一覧",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/members",
+            "rect": {
+              "x": 404.890625,
+              "y": 560,
+              "width": 88,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "歳時記",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/calendar",
+            "rect": {
+              "x": 528.890625,
+              "y": 560,
+              "width": 72,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "お祭り",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/festivals",
+            "rect": {
+              "x": 636.890625,
+              "y": 560,
+              "width": 72,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "練習試合・募集",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/match-recruits",
+            "rect": {
+              "x": 744.890625,
+              "y": 560,
+              "width": 136,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "寄合",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/meetups",
+            "rect": {
+              "x": 916.890625,
+              "y": 560,
+              "width": 56,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "村史",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/chronicles",
+            "rect": {
+              "x": 1008.890625,
+              "y": 560,
+              "width": 56,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "村憲章",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/charter",
+            "rect": {
+              "x": 1100.890625,
+              "y": 560,
+              "width": 72,
+              "height": 24
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "次へ",
+            "href": null,
+            "rect": {
+              "x": 304,
+              "y": 544,
+              "width": 40,
+              "height": 57
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "#5",
+            "href": null,
+            "rect": {
+              "x": 72,
+              "y": 752,
+              "width": 18.25,
+              "height": 24
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "#6",
+            "href": null,
+            "rect": {
+              "x": 72,
+              "y": 827,
+              "width": 18.25,
+              "height": 24
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "通報する",
+            "href": null,
+            "rect": {
+              "x": 333.84375,
+              "y": 833.5,
+              "width": 32,
+              "height": 35
+            }
+          }
+        ],
+        "evidence": {
+          "page": "http://localhost:3016/villages/b1455001-2026-4000-8000-000000000001/members",
+          "locale": "ja",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "selectorBounds": [
+            {
+              "tag": "BUTTON",
+              "text": "メニューを開く",
+              "href": null,
+              "rect": {
+                "x": 16,
+                "y": 13.5,
+                "width": 36,
+                "height": 36
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "通知",
+              "href": null,
+              "rect": {
+                "x": 300,
+                "y": 9.5,
+                "width": 44,
+                "height": 44
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "使い方",
+              "href": null,
+              "rect": {
+                "x": 128,
+                "y": 368,
+                "width": 86,
+                "height": 35
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "お気に入りに追加",
+              "href": null,
+              "rect": {
+                "x": 128,
+                "y": 411,
+                "width": 156,
+                "height": 35
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "通報する",
+              "href": null,
+              "rect": {
+                "x": 292,
+                "y": 411,
+                "width": 32,
+                "height": 35
+              }
+            },
+            {
+              "tag": "A",
+              "text": "村の運営",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/admin",
+              "rect": {
+                "x": 128,
+                "y": 454,
+                "width": 100,
+                "height": 35
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "村の運営",
+              "href": null,
+              "rect": {
+                "x": 128,
+                "y": 454,
+                "width": 100,
+                "height": 35
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "退村する",
+              "href": null,
+              "rect": {
+                "x": 128,
+                "y": 497,
+                "width": 100,
+                "height": 35
+              }
+            },
+            {
+              "tag": "A",
+              "text": "掲示板",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/bulletin",
+              "rect": {
+                "x": 34,
+                "y": 560,
+                "width": 72,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "タイムライン",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/timeline",
+              "rect": {
+                "x": 142,
+                "y": 560,
+                "width": 118.890625,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "ロビー",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/lobby",
+              "rect": {
+                "x": 296.890625,
+                "y": 560,
+                "width": 72,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "村人一覧",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/members",
+              "rect": {
+                "x": 404.890625,
+                "y": 560,
+                "width": 88,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "歳時記",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/calendar",
+              "rect": {
+                "x": 528.890625,
+                "y": 560,
+                "width": 72,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "お祭り",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/festivals",
+              "rect": {
+                "x": 636.890625,
+                "y": 560,
+                "width": 72,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "練習試合・募集",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/match-recruits",
+              "rect": {
+                "x": 744.890625,
+                "y": 560,
+                "width": 136,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "寄合",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/meetups",
+              "rect": {
+                "x": 916.890625,
+                "y": 560,
+                "width": 56,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "村史",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/chronicles",
+              "rect": {
+                "x": 1008.890625,
+                "y": 560,
+                "width": 56,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "村憲章",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/charter",
+              "rect": {
+                "x": 1100.890625,
+                "y": 560,
+                "width": 72,
+                "height": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "次へ",
+              "href": null,
+              "rect": {
+                "x": 304,
+                "y": 544,
+                "width": 40,
+                "height": 57
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "#5",
+              "href": null,
+              "rect": {
+                "x": 72,
+                "y": 752,
+                "width": 18.25,
+                "height": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "#6",
+              "href": null,
+              "rect": {
+                "x": 72,
+                "y": 827,
+                "width": 18.25,
+                "height": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "通報する",
+              "href": null,
+              "rect": {
+                "x": 333.84375,
+                "y": 833.5,
+                "width": 32,
+                "height": 35
+              }
+            }
+          ],
+          "rootReproduction": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/root-repro/mobile-table.json",
+          "rootImages": [
+            "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/root-repro/mobile-before.png",
+            "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/root-repro/mobile-after.png"
+          ]
+        }
+      },
+      {
+        "id": "village-help-names",
+        "featureKey": "village-members",
+        "featureDetail": "村の構成員閲覧",
+        "personaId": "cmp1455-mobile-villager",
+        "personaArchetype": "一般住民ELDER・スマホ片手操作と表示崩れ",
+        "journeyId": "understand-own-village-on-mobile",
+        "originalRunId": "resident2-mobile-1790977621199",
+        "priority": "should",
+        "urgency": "normal",
+        "title": "ヘルプと画面の村機能名に違いがある",
+        "detail": "観測未実証。元runId=resident2-mobile-1790977621199。ヘルプの「メンバー」「カレンダー」に対して画面のタブは「村人一覧」「歳時記」。一般住民の目的探索で同じ機能か迷う可能性を観測。機能の同一性・正式名称・ユーザー影響は未照合。",
+        "status": "observed-unverified",
+        "page": "http://localhost:3016/villages/b1455001-2026-4000-8000-000000000001/members",
+        "evidencePath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/c-villager/resident2-mobile-1790977621199.json",
+        "screenshotPath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/c-villager/resident2-mobile-1790977621199-12.png",
+        "locale": "ja",
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "selectorBounds": [
+          {
+            "tag": "BUTTON",
+            "text": "メニューを開く",
+            "href": null,
+            "rect": {
+              "x": 16,
+              "y": 13.5,
+              "width": 36,
+              "height": 36
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "通知",
+            "href": null,
+            "rect": {
+              "x": 300,
+              "y": 9.5,
+              "width": 44,
+              "height": 44
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "使い方",
+            "href": null,
+            "rect": {
+              "x": 128,
+              "y": 306,
+              "width": 86,
+              "height": 35
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "お気に入りに追加",
+            "href": null,
+            "rect": {
+              "x": 128,
+              "y": 349,
+              "width": 156,
+              "height": 35
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "通報する",
+            "href": null,
+            "rect": {
+              "x": 292,
+              "y": 349,
+              "width": 32,
+              "height": 35
+            }
+          },
+          {
+            "tag": "A",
+            "text": "村の運営",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/admin",
+            "rect": {
+              "x": 128,
+              "y": 392,
+              "width": 100,
+              "height": 35
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "村の運営",
+            "href": null,
+            "rect": {
+              "x": 128,
+              "y": 392,
+              "width": 100,
+              "height": 35
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "退村する",
+            "href": null,
+            "rect": {
+              "x": 128,
+              "y": 435,
+              "width": 100,
+              "height": 35
+            }
+          },
+          {
+            "tag": "A",
+            "text": "掲示板",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/bulletin",
+            "rect": {
+              "x": 34,
+              "y": 498,
+              "width": 72,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "タイムライン",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/timeline",
+            "rect": {
+              "x": 142,
+              "y": 498,
+              "width": 118.890625,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "ロビー",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/lobby",
+            "rect": {
+              "x": 296.890625,
+              "y": 498,
+              "width": 72,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "村人一覧",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/members",
+            "rect": {
+              "x": 404.890625,
+              "y": 498,
+              "width": 88,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "歳時記",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/calendar",
+            "rect": {
+              "x": 528.890625,
+              "y": 498,
+              "width": 72,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "お祭り",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/festivals",
+            "rect": {
+              "x": 636.890625,
+              "y": 498,
+              "width": 72,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "練習試合・募集",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/match-recruits",
+            "rect": {
+              "x": 744.890625,
+              "y": 498,
+              "width": 136,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "寄合",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/meetups",
+            "rect": {
+              "x": 916.890625,
+              "y": 498,
+              "width": 56,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "村史",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/chronicles",
+            "rect": {
+              "x": 1008.890625,
+              "y": 498,
+              "width": 56,
+              "height": 24
+            }
+          },
+          {
+            "tag": "A",
+            "text": "村憲章",
+            "href": "/villages/b1455001-2026-4000-8000-000000000001/charter",
+            "rect": {
+              "x": 1100.890625,
+              "y": 498,
+              "width": 72,
+              "height": 24
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "次へ",
+            "href": null,
+            "rect": {
+              "x": 304,
+              "y": 482,
+              "width": 40,
+              "height": 57
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "#5",
+            "href": null,
+            "rect": {
+              "x": 72,
+              "y": 690,
+              "width": 18.25,
+              "height": 24
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "#6",
+            "href": null,
+            "rect": {
+              "x": 72,
+              "y": 765,
+              "width": 18.25,
+              "height": 24
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "通報する",
+            "href": null,
+            "rect": {
+              "x": 333.84375,
+              "y": 771.5,
+              "width": 32,
+              "height": 35
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "閉じる",
+            "href": null,
+            "rect": {
+              "x": 299,
+              "y": 61,
+              "width": 40,
+              "height": 40
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "text": "閉じる",
+            "href": null,
+            "rect": {
+              "x": 241,
+              "y": 697,
+              "width": 98,
+              "height": 42
+            }
+          }
+        ],
+        "evidence": {
+          "page": "http://localhost:3016/villages/b1455001-2026-4000-8000-000000000001/members",
+          "locale": "ja",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "selectorBounds": [
+            {
+              "tag": "BUTTON",
+              "text": "メニューを開く",
+              "href": null,
+              "rect": {
+                "x": 16,
+                "y": 13.5,
+                "width": 36,
+                "height": 36
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "通知",
+              "href": null,
+              "rect": {
+                "x": 300,
+                "y": 9.5,
+                "width": 44,
+                "height": 44
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "使い方",
+              "href": null,
+              "rect": {
+                "x": 128,
+                "y": 306,
+                "width": 86,
+                "height": 35
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "お気に入りに追加",
+              "href": null,
+              "rect": {
+                "x": 128,
+                "y": 349,
+                "width": 156,
+                "height": 35
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "通報する",
+              "href": null,
+              "rect": {
+                "x": 292,
+                "y": 349,
+                "width": 32,
+                "height": 35
+              }
+            },
+            {
+              "tag": "A",
+              "text": "村の運営",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/admin",
+              "rect": {
+                "x": 128,
+                "y": 392,
+                "width": 100,
+                "height": 35
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "村の運営",
+              "href": null,
+              "rect": {
+                "x": 128,
+                "y": 392,
+                "width": 100,
+                "height": 35
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "退村する",
+              "href": null,
+              "rect": {
+                "x": 128,
+                "y": 435,
+                "width": 100,
+                "height": 35
+              }
+            },
+            {
+              "tag": "A",
+              "text": "掲示板",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/bulletin",
+              "rect": {
+                "x": 34,
+                "y": 498,
+                "width": 72,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "タイムライン",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/timeline",
+              "rect": {
+                "x": 142,
+                "y": 498,
+                "width": 118.890625,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "ロビー",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/lobby",
+              "rect": {
+                "x": 296.890625,
+                "y": 498,
+                "width": 72,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "村人一覧",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/members",
+              "rect": {
+                "x": 404.890625,
+                "y": 498,
+                "width": 88,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "歳時記",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/calendar",
+              "rect": {
+                "x": 528.890625,
+                "y": 498,
+                "width": 72,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "お祭り",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/festivals",
+              "rect": {
+                "x": 636.890625,
+                "y": 498,
+                "width": 72,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "練習試合・募集",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/match-recruits",
+              "rect": {
+                "x": 744.890625,
+                "y": 498,
+                "width": 136,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "寄合",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/meetups",
+              "rect": {
+                "x": 916.890625,
+                "y": 498,
+                "width": 56,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "村史",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/chronicles",
+              "rect": {
+                "x": 1008.890625,
+                "y": 498,
+                "width": 56,
+                "height": 24
+              }
+            },
+            {
+              "tag": "A",
+              "text": "村憲章",
+              "href": "/villages/b1455001-2026-4000-8000-000000000001/charter",
+              "rect": {
+                "x": 1100.890625,
+                "y": 498,
+                "width": 72,
+                "height": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "次へ",
+              "href": null,
+              "rect": {
+                "x": 304,
+                "y": 482,
+                "width": 40,
+                "height": 57
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "#5",
+              "href": null,
+              "rect": {
+                "x": 72,
+                "y": 690,
+                "width": 18.25,
+                "height": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "#6",
+              "href": null,
+              "rect": {
+                "x": 72,
+                "y": 765,
+                "width": 18.25,
+                "height": 24
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "通報する",
+              "href": null,
+              "rect": {
+                "x": 333.84375,
+                "y": 771.5,
+                "width": 32,
+                "height": 35
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "閉じる",
+              "href": null,
+              "rect": {
+                "x": 299,
+                "y": 61,
+                "width": 40,
+                "height": 40
+              }
+            },
+            {
+              "tag": "BUTTON",
+              "text": "閉じる",
+              "href": null,
+              "rect": {
+                "x": 241,
+                "y": 697,
+                "width": 98,
+                "height": 42
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "outsider-denial-empty",
+        "featureKey": "village-join",
+        "featureDetail": "村閲覧・参加",
+        "personaId": "resident3-general-outsider",
+        "personaArchetype": "一般×隙間狙い",
+        "journeyId": "village-discovery-join-boundary",
+        "originalRunId": "cmp1455-20261003-outsider",
+        "priority": "should",
+        "urgency": "normal",
+        "title": "未加入のアクセス拒否が空の一覧に見える",
+        "detail": "観測未実証。元runId=cmp1455-20261003-outsider。v6未加入時、掲示板API403でも「スレッドがありません」、memberships404で人数0/「村人がいません」、ロビー404で「まだメッセージはありません」を観測。参加後API200、退村後404へ戻る認可境界は正常だった。拒否を空データと区別しにくい表示の観測であり、404秘匿を200へ変える提案ではない。正本UX/期待表示は未照合。",
+        "status": "observed-unverified",
+        "page": "http://localhost:3016/villages/b1455001-2026-4000-8000-000000000006/members",
+        "evidencePath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/a-outsider/observations.json",
+        "screenshotPath": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/a-outsider/05-outsider-members.png",
+        "locale": "ja",
+        "viewport": {
+          "width": 1440,
+          "height": 900,
+          "zoom": "100%"
+        },
+        "selectorBounds": {
+          "recorded": false,
+          "reason": "原本geometryはviewport/scrollWidthのみ。selectorboundsの実測なしを明示し捏造しない。"
+        },
+        "evidence": {
+          "page": "http://localhost:3016/villages/b1455001-2026-4000-8000-000000000006/members",
+          "selectorBounds": {
+            "recorded": false,
+            "reason": "原本geometryはviewport/scrollWidthのみ。selectorboundsの実測なしを明示し捏造しない。"
+          },
+          "additionalEvidence": [
+            "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/a-outsider/03-v6-loading-observation.json",
+            "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/a-outsider/05-outsider-members.json",
+            "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/a-outsider/09-outsider-lobby-settled.json"
+          ]
+        }
+      }
+    ],
+    "evidencePreservationManifest": "C:/Claude/mannschaft/.claude/evidence/cmp1455-alicization-20261003/preservation-manifest.json"
+  },
   "decisions": {
     "schemaVersion": 1,
     "phase": "Phase 2A",
@@ -13950,12 +16066,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-038",
       "issues": [
         {
-          "label": "**根**: `V60.010` で `MEMBER`/`SUPPORTER` 行は `user_roles` から `memberships` へ完全移行済みだが、母集団クエリは `FROM user_roles` のみを候補集合としており `memberships` は応援者除外の副問い合わせにしか現れなかった。`user_roles` に残るのは `SYSTEM_ADMIN`/`ADMIN`/`DEPUTY_ADMIN`/`GUEST`/`JOBBER` のみで、運用・検証する人間は母集団に入るため「一般メンバーにだけ届かない」不作為として長く潜伏していた。**三層すべて完了**: 甲 #2780（PR #2788・squash `15aaee8a1`、認可・可視性4本、AC-1〜10/21）、乙 #2785（PR #2790・squash `c732ed6e6`、配信母集団6本、AC-11〜17）、丙 #2786（PR #2796・squash `66fbc4102`、周辺クエリ群、AC-18/19/22/23/24）。いずれも実DBでred先行→green。**修正の型**: 候補集合を派生表 `cand`（`user_roles` ∪ `memberships`（`left_at IS NULL`）の `UNION`。`UNION ALL` ではない）へ。`memberships` 枝には必ず `scope_type` の等値条件を含める。**特筆すべき成果**: ①`teams.member_count` 再集計バッチが両方向に壊れていた（一般メンバーのみのチームは0に潰れ、同時に `users` 未結合のため論理削除済・非ACTIVEを数え込む過大計上もあった。両方是正）②Codex独立検分が乙層で2度差し戻し——`UNION`派生表のマテリアライズでkeysetページングが`N²/(2×chunk)`に退行する指摘。各枝への`ORDER BY user_id ASC LIMIT :chunk`押し込みで解決しEXPLAINで実証（`Union materialize` 604→0.53・外側一時表 35205→0.53）③出陣中に足軽が潜在バグを自ら発見——母集団条件を枝の外に残すと枝の`LIMIT`が絞る前の行を数え、空ページでfan-outが静かに打ち切られ配信漏れする④三層のテスト（甲12・乙13・丙24）＋回帰64件の合計113件が同時にgreenであることを実測。**残務・申し送り**: Issue #2797（起票済み・未着手・マスター御裁可済み2026-08-14）権限グループの付与を「人に1つ」から「組織ごと」に持たせる方式変更。丙層の試練で`findUserIdsByOrganizationIdAndPermissionName`が実在しない列を参照し呼ばれた瞬間に必ず落ちることが判明したのが発端（唯一の呼び出し元のテストが全てモックのためCIをすり抜けていた）。DDL・付与画面・他の権限利用箇所への波及を伴うため `/軍議` から着手要／Issue #2787（起票済み・未着手）ALLモードで`surveys.target_count`が一度も書かれず永久に0／**AC-20（性能）は未達のまま**——「keysetがfilesortを伴わない」という条件は改修前から成り立っていなかった（`DISTINCT`+`ORDER BY`の時点で既にmaterializeされていた）ことが実測で判明。本戦役で1ページあたりのマテリアライズ量は母集団規模に対して定数的になったが、外側のfilesort自体は残る。解消はCMP-001（fan-out 50万戦役）側の独立課題として申し送る。**関連CMP**: CMP-017（認可漏れ全域監査）・CMP-001（fan-out 50万）・CMP-038とは別戦役。丙層のコンフリクト相手はCMP-027（#2747）だった（並行セッションが独立に同じ周辺クエリを同方向へ是正していた）。**その後 main へ着地した派生4件**: #2770（PR #2800・squash `b1c1fc376`）FE エラー握りつぶしガードの偽陰性を根治。Codex 検分9巡。オブジェクト包み・型アサーション（内側/外側/山括弧）・入れ子の空レスポンスをすべて検出可能にし、既存ルールが #2460 の導入時から `([] as string[])` を素通りさせていたことも判明して併せて是正。自己検証フィクスチャ94検体を新設。実コード上の握りつぶし2件を根治。判定の軸を1箇所に集約した結果、ルール数は8→6に減って守備範囲は拡大／#2774（PR #2801・squash `7d1847b5f`）締切後の結果閲覧に所属確認が無く、非所属者・退会済・未認証まで含め誰でも閲覧できた欠陥を根治。仕様に沿って `ALWAYS`（配信母集団）と `AFTER_CLOSE`（スコープ所属者全員）の述語を分離。上位条件（ADMIN+／結果閲覧者名簿）がどの層にも実装されていなかったことを `origin/main` での実測（FAILED 2件）で証明し、時間軸・所属軸の両方へ貫通させた。組織スコープの N+1 も snapshot 経由で追加クエリ0本に根治／#2782（PR #2805・squash `f09ed4e00`）`ALWAYS` の母集団照会を組織数に比例しないバルク判定へ是正（4本→≤2本、バッチ総SQL 9本→≤7本）。副次的に、SQL本数を数える `SqlIntentCounter` の登録が `src/main/resources/application-test.yml` にしか無く、`src/test/resources` 側に隠蔽されて一度も動いていなかったという偽greenを根治。登録が無いと常に0件と答えて上限ガードを素通りさせていた／#2779（PR #2806・squash `3f578c39b`）結果閲覧可否を詳細応答（`viewerCanViewResults`）で返し、FEの403プローブを撤去。判定を `SurveyResultAccessGuard` に抽出して403を投げる経路と詳細応答が同一メソッドを呼ぶ形にした（別経路が存在しないことが保証）。フラグ欠落時はfail-closed。OpenAPI再生成と生成型更新を同一PRに含めた",
+          "label": "**根**: `V60.010` で `MEMBER`/`SUPPORTER` 行は `user_roles` から `memberships` へ完全移行済みだが、母集団クエリは `FROM user_roles` のみを候補集合としており `memberships` は応援者除外の副問い合わせにしか現れなかった。`user_roles` に残るのは `SYSTEM_ADMIN`/`ADMIN`/`DEPUTY_ADMIN`/`GUEST`/`JOBBER` のみで、運用・検証する人間は母集団に入るため「一般メンバーにだけ届かない」不作為として長く潜伏していた。**三層すべて完了**: 甲 #2780（PR #2788・squash `15aaee8a1`、認可・可視性4本、AC-1〜10/21）、乙 #2785（PR #2790・squash `c732ed6e6`、配信母集団6本、AC-11〜17）、丙 #2786（PR #2796・squash `66fbc4102`、周辺クエリ群、AC-18/19/22/23/24）。いずれも実DBでred先行→green。**修正の型**: 候補集合を派生表 `cand`（`user_roles` ∪ `memberships`（`left_at IS NULL`）の `UNION`。`UNION ALL` ではない）へ。`memberships` 枝には必ず `scope_type` の等値条件を含める。**特筆すべき成果**: ①`teams.member_count` 再集計バッチが両方向に壊れていた（一般メンバーのみのチームは0に潰れ、同時に `users` 未結合のため論理削除済・非ACTIVEを数え込む過大計上もあった。両方是正）②Codex独立検分が乙層で2度差し戻し——`UNION`派生表のマテリアライズでkeysetページングが`N²/(2×chunk)`に退行する指摘。各枝への`ORDER BY user_id ASC LIMIT :chunk`押し込みで解決しEXPLAINで実証（`Union materialize` 604→0.53・外側一時表 35205→0.53）③出陣中に足軽が潜在バグを自ら発見——母集団条件を枝の外に残すと枝の`LIMIT`が絞る前の行を数え、空ページでfan-outが静かに打ち切られ配信漏れする④三層のテスト（甲12・乙13・丙24）＋回帰64件の合計113件が同時にgreenであることを実測。**残務・申し送り**: Issue #2797（起票済み・未着手・マスター御裁可済み2026-08-14）権限グループの付与を「人に1つ」から「組織ごと」に持たせる方式変更。丙層の試練で`findUserIdsByOrganizationIdAndPermissionName`が実在しない列を参照し呼ばれた瞬間に必ず落ちることが判明したのが発端（唯一の呼び出し元のテストが全てモックのためCIをすり抜けていた）。DDL・付与画面・他の権限利用箇所への波及を伴うため `/軍議` から着手要／Issue #2787（CMP-042参照）: 公開時の `target_count` 固定と、現在在籍者から都度算出する未回答者一覧・督促対象を実装済み。PR #2826（2026-08-28 JST merged）の専用IT AC1〜12とsurvey回帰333件は全件green、CI shard 0〜5とCompile & TestもSUCCESS。2026-10-03にCMP-042専用実機E2E・3住民初回観察とcontrolled QA補完を完了（[統合証跡](prototypes/alicization-cmp042-20261002.md)）。本行AC-20の性能未達は維持／**AC-20（性能）は未達のまま**——「keysetがfilesortを伴わない」という条件は改修前から成り立っていなかった（`DISTINCT`+`ORDER BY`の時点で既にmaterializeされていた）ことが実測で判明。本戦役で1ページあたりのマテリアライズ量は母集団規模に対して定数的になったが、外側のfilesort自体は残る。解消はCMP-001（fan-out 50万戦役）側の独立課題として申し送る。**関連CMP**: CMP-017（認可漏れ全域監査）・CMP-001（fan-out 50万）・CMP-038とは別戦役。丙層のコンフリクト相手はCMP-027（#2747）だった（並行セッションが独立に同じ周辺クエリを同方向へ是正していた）。**その後 main へ着地した派生4件**: #2770（PR #2800・squash `b1c1fc376`）FE エラー握りつぶしガードの偽陰性を根治。Codex 検分9巡。オブジェクト包み・型アサーション（内側/外側/山括弧）・入れ子の空レスポンスをすべて検出可能にし、既存ルールが #2460 の導入時から `([] as string[])` を素通りさせていたことも判明して併せて是正。自己検証フィクスチャ94検体を新設。実コード上の握りつぶし2件を根治。判定の軸を1箇所に集約した結果、ルール数は8→6に減って守備範囲は拡大／#2774（PR #2801・squash `7d1847b5f`）締切後の結果閲覧に所属確認が無く、非所属者・退会済・未認証まで含め誰でも閲覧できた欠陥を根治。仕様に沿って `ALWAYS`（配信母集団）と `AFTER_CLOSE`（スコープ所属者全員）の述語を分離。上位条件（ADMIN+／結果閲覧者名簿）がどの層にも実装されていなかったことを `origin/main` での実測（FAILED 2件）で証明し、時間軸・所属軸の両方へ貫通させた。組織スコープの N+1 も snapshot 経由で追加クエリ0本に根治／#2782（PR #2805・squash `f09ed4e00`）`ALWAYS` の母集団照会を組織数に比例しないバルク判定へ是正（4本→≤2本、バッチ総SQL 9本→≤7本）。副次的に、SQL本数を数える `SqlIntentCounter` の登録が `src/main/resources/application-test.yml` にしか無く、`src/test/resources` 側に隠蔽されて一度も動いていなかったという偽greenを根治。登録が無いと常に0件と答えて上限ガードを素通りさせていた／#2779（PR #2806・squash `3f578c39b`）結果閲覧可否を詳細応答（`viewerCanViewResults`）で返し、FEの403プローブを撤去。判定を `SurveyResultAccessGuard` に抽出して403を投げる経路と詳細応答が同一メソッドを呼ぶ形にした（別経路が存在しないことが保証）。フラグ欠落時はfail-closed。OpenAPI再生成と生成型更新を同一PRに含めた",
           "state": "unknown"
         }
       ],
       "prs": [
-        "**根**: `V60.010` で `MEMBER`/`SUPPORTER` 行は `user_roles` から `memberships` へ完全移行済みだが、母集団クエリは `FROM user_roles` のみを候補集合としており `memberships` は応援者除外の副問い合わせにしか現れなかった。`user_roles` に残るのは `SYSTEM_ADMIN`/`ADMIN`/`DEPUTY_ADMIN`/`GUEST`/`JOBBER` のみで、運用・検証する人間は母集団に入るため「一般メンバーにだけ届かない」不作為として長く潜伏していた。**三層すべて完了**: 甲 #2780（PR #2788・squash `15aaee8a1`、認可・可視性4本、AC-1〜10/21）、乙 #2785（PR #2790・squash `c732ed6e6`、配信母集団6本、AC-11〜17）、丙 #2786（PR #2796・squash `66fbc4102`、周辺クエリ群、AC-18/19/22/23/24）。いずれも実DBでred先行→green。**修正の型**: 候補集合を派生表 `cand`（`user_roles` ∪ `memberships`（`left_at IS NULL`）の `UNION`。`UNION ALL` ではない）へ。`memberships` 枝には必ず `scope_type` の等値条件を含める。**特筆すべき成果**: ①`teams.member_count` 再集計バッチが両方向に壊れていた（一般メンバーのみのチームは0に潰れ、同時に `users` 未結合のため論理削除済・非ACTIVEを数え込む過大計上もあった。両方是正）②Codex独立検分が乙層で2度差し戻し——`UNION`派生表のマテリアライズでkeysetページングが`N²/(2×chunk)`に退行する指摘。各枝への`ORDER BY user_id ASC LIMIT :chunk`押し込みで解決しEXPLAINで実証（`Union materialize` 604→0.53・外側一時表 35205→0.53）③出陣中に足軽が潜在バグを自ら発見——母集団条件を枝の外に残すと枝の`LIMIT`が絞る前の行を数え、空ページでfan-outが静かに打ち切られ配信漏れする④三層のテスト（甲12・乙13・丙24）＋回帰64件の合計113件が同時にgreenであることを実測。**残務・申し送り**: Issue #2797（起票済み・未着手・マスター御裁可済み2026-08-14）権限グループの付与を「人に1つ」から「組織ごと」に持たせる方式変更。丙層の試練で`findUserIdsByOrganizationIdAndPermissionName`が実在しない列を参照し呼ばれた瞬間に必ず落ちることが判明したのが発端（唯一の呼び出し元のテストが全てモックのためCIをすり抜けていた）。DDL・付与画面・他の権限利用箇所への波及を伴うため `/軍議` から着手要／Issue #2787（起票済み・未着手）ALLモードで`surveys.target_count`が一度も書かれず永久に0／**AC-20（性能）は未達のまま**——「keysetがfilesortを伴わない」という条件は改修前から成り立っていなかった（`DISTINCT`+`ORDER BY`の時点で既にmaterializeされていた）ことが実測で判明。本戦役で1ページあたりのマテリアライズ量は母集団規模に対して定数的になったが、外側のfilesort自体は残る。解消はCMP-001（fan-out 50万戦役）側の独立課題として申し送る。**関連CMP**: CMP-017（認可漏れ全域監査）・CMP-001（fan-out 50万）・CMP-038とは別戦役。丙層のコンフリクト相手はCMP-027（#2747）だった（並行セッションが独立に同じ周辺クエリを同方向へ是正していた）。**その後 main へ着地した派生4件**: #2770（PR #2800・squash `b1c1fc376`）FE エラー握りつぶしガードの偽陰性を根治。Codex 検分9巡。オブジェクト包み・型アサーション（内側/外側/山括弧）・入れ子の空レスポンスをすべて検出可能にし、既存ルールが #2460 の導入時から `([] as string[])` を素通りさせていたことも判明して併せて是正。自己検証フィクスチャ94検体を新設。実コード上の握りつぶし2件を根治。判定の軸を1箇所に集約した結果、ルール数は8→6に減って守備範囲は拡大／#2774（PR #2801・squash `7d1847b5f`）締切後の結果閲覧に所属確認が無く、非所属者・退会済・未認証まで含め誰でも閲覧できた欠陥を根治。仕様に沿って `ALWAYS`（配信母集団）と `AFTER_CLOSE`（スコープ所属者全員）の述語を分離。上位条件（ADMIN+／結果閲覧者名簿）がどの層にも実装されていなかったことを `origin/main` での実測（FAILED 2件）で証明し、時間軸・所属軸の両方へ貫通させた。組織スコープの N+1 も snapshot 経由で追加クエリ0本に根治／#2782（PR #2805・squash `f09ed4e00`）`ALWAYS` の母集団照会を組織数に比例しないバルク判定へ是正（4本→≤2本、バッチ総SQL 9本→≤7本）。副次的に、SQL本数を数える `SqlIntentCounter` の登録が `src/main/resources/application-test.yml` にしか無く、`src/test/resources` 側に隠蔽されて一度も動いていなかったという偽greenを根治。登録が無いと常に0件と答えて上限ガードを素通りさせていた／#2779（PR #2806・squash `3f578c39b`）結果閲覧可否を詳細応答（`viewerCanViewResults`）で返し、FEの403プローブを撤去。判定を `SurveyResultAccessGuard` に抽出して403を投げる経路と詳細応答が同一メソッドを呼ぶ形にした（別経路が存在しないことが保証）。フラグ欠落時はfail-closed。OpenAPI再生成と生成型更新を同一PRに含めた"
+        "**根**: `V60.010` で `MEMBER`/`SUPPORTER` 行は `user_roles` から `memberships` へ完全移行済みだが、母集団クエリは `FROM user_roles` のみを候補集合としており `memberships` は応援者除外の副問い合わせにしか現れなかった。`user_roles` に残るのは `SYSTEM_ADMIN`/`ADMIN`/`DEPUTY_ADMIN`/`GUEST`/`JOBBER` のみで、運用・検証する人間は母集団に入るため「一般メンバーにだけ届かない」不作為として長く潜伏していた。**三層すべて完了**: 甲 #2780（PR #2788・squash `15aaee8a1`、認可・可視性4本、AC-1〜10/21）、乙 #2785（PR #2790・squash `c732ed6e6`、配信母集団6本、AC-11〜17）、丙 #2786（PR #2796・squash `66fbc4102`、周辺クエリ群、AC-18/19/22/23/24）。いずれも実DBでred先行→green。**修正の型**: 候補集合を派生表 `cand`（`user_roles` ∪ `memberships`（`left_at IS NULL`）の `UNION`。`UNION ALL` ではない）へ。`memberships` 枝には必ず `scope_type` の等値条件を含める。**特筆すべき成果**: ①`teams.member_count` 再集計バッチが両方向に壊れていた（一般メンバーのみのチームは0に潰れ、同時に `users` 未結合のため論理削除済・非ACTIVEを数え込む過大計上もあった。両方是正）②Codex独立検分が乙層で2度差し戻し——`UNION`派生表のマテリアライズでkeysetページングが`N²/(2×chunk)`に退行する指摘。各枝への`ORDER BY user_id ASC LIMIT :chunk`押し込みで解決しEXPLAINで実証（`Union materialize` 604→0.53・外側一時表 35205→0.53）③出陣中に足軽が潜在バグを自ら発見——母集団条件を枝の外に残すと枝の`LIMIT`が絞る前の行を数え、空ページでfan-outが静かに打ち切られ配信漏れする④三層のテスト（甲12・乙13・丙24）＋回帰64件の合計113件が同時にgreenであることを実測。**残務・申し送り**: Issue #2797（起票済み・未着手・マスター御裁可済み2026-08-14）権限グループの付与を「人に1つ」から「組織ごと」に持たせる方式変更。丙層の試練で`findUserIdsByOrganizationIdAndPermissionName`が実在しない列を参照し呼ばれた瞬間に必ず落ちることが判明したのが発端（唯一の呼び出し元のテストが全てモックのためCIをすり抜けていた）。DDL・付与画面・他の権限利用箇所への波及を伴うため `/軍議` から着手要／Issue #2787（CMP-042参照）: 公開時の `target_count` 固定と、現在在籍者から都度算出する未回答者一覧・督促対象を実装済み。PR #2826（2026-08-28 JST merged）の専用IT AC1〜12とsurvey回帰333件は全件green、CI shard 0〜5とCompile & TestもSUCCESS。2026-10-03にCMP-042専用実機E2E・3住民初回観察とcontrolled QA補完を完了（[統合証跡](prototypes/alicization-cmp042-20261002.md)）。本行AC-20の性能未達は維持／**AC-20（性能）は未達のまま**——「keysetがfilesortを伴わない」という条件は改修前から成り立っていなかった（`DISTINCT`+`ORDER BY`の時点で既にmaterializeされていた）ことが実測で判明。本戦役で1ページあたりのマテリアライズ量は母集団規模に対して定数的になったが、外側のfilesort自体は残る。解消はCMP-001（fan-out 50万戦役）側の独立課題として申し送る。**関連CMP**: CMP-017（認可漏れ全域監査）・CMP-001（fan-out 50万）・CMP-038とは別戦役。丙層のコンフリクト相手はCMP-027（#2747）だった（並行セッションが独立に同じ周辺クエリを同方向へ是正していた）。**その後 main へ着地した派生4件**: #2770（PR #2800・squash `b1c1fc376`）FE エラー握りつぶしガードの偽陰性を根治。Codex 検分9巡。オブジェクト包み・型アサーション（内側/外側/山括弧）・入れ子の空レスポンスをすべて検出可能にし、既存ルールが #2460 の導入時から `([] as string[])` を素通りさせていたことも判明して併せて是正。自己検証フィクスチャ94検体を新設。実コード上の握りつぶし2件を根治。判定の軸を1箇所に集約した結果、ルール数は8→6に減って守備範囲は拡大／#2774（PR #2801・squash `7d1847b5f`）締切後の結果閲覧に所属確認が無く、非所属者・退会済・未認証まで含め誰でも閲覧できた欠陥を根治。仕様に沿って `ALWAYS`（配信母集団）と `AFTER_CLOSE`（スコープ所属者全員）の述語を分離。上位条件（ADMIN+／結果閲覧者名簿）がどの層にも実装されていなかったことを `origin/main` での実測（FAILED 2件）で証明し、時間軸・所属軸の両方へ貫通させた。組織スコープの N+1 も snapshot 経由で追加クエリ0本に根治／#2782（PR #2805・squash `f09ed4e00`）`ALWAYS` の母集団照会を組織数に比例しないバルク判定へ是正（4本→≤2本、バッチ総SQL 9本→≤7本）。副次的に、SQL本数を数える `SqlIntentCounter` の登録が `src/main/resources/application-test.yml` にしか無く、`src/test/resources` 側に隠蔽されて一度も動いていなかったという偽greenを根治。登録が無いと常に0件と答えて上限ガードを素通りさせていた／#2779（PR #2806・squash `3f578c39b`）結果閲覧可否を詳細応答（`viewerCanViewResults`）で返し、FEの403プローブを撤去。判定を `SurveyResultAccessGuard` に抽出して403を投げる経路と詳細応答が同一メソッドを呼ぶ形にした（別経路が存在しないことが保証）。フラグ欠落時はfail-closed。OpenAPI再生成と生成型更新を同一PRに含めた"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -13989,7 +16105,8 @@ window.BETA_INVENTORY_DATA = {
         2800,
         2801,
         2805,
-        2806
+        2806,
+        2826
       ],
       "github": [
         {
@@ -14086,10 +16203,10 @@ window.BETA_INVENTORY_DATA = {
         {
           "number": 2787,
           "kind": "issue",
-          "state": "open",
+          "state": "closed",
           "title": "改善(アンケート): ALL モードで target_count が一度も書かれず永久に 0（回答率の分母にスナップショットが無い）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2787",
-          "updatedAt": "2026-08-13T23:38:52Z",
+          "updatedAt": "2026-10-02T20:36:25Z",
           "ci": null
         },
         {
@@ -14192,6 +16309,20 @@ window.BETA_INVENTORY_DATA = {
           "title": "機能追加(#2779): 結果閲覧可否を詳細応答で返し FE の 403 プローブを撤去（試練redを含む）",
           "url": "https://github.com/kenta-0420/mannschaft/pull/2806",
           "updatedAt": "2026-08-14T21:50:06Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 2826,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(#2787): アンケート公開時に対象人数をスナップショットし全員配信の分母0を根治 (CMP-042)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2826",
+          "updatedAt": "2026-08-27T23:58:11Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -14343,28 +16474,28 @@ window.BETA_INVENTORY_DATA = {
     },
     {
       "id": "CMP-042",
-      "title": "ALL モードで `surveys.target_count` が一度も書かれず永久に0（Issue #2787）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "title": "ALL モードのアンケート対象数を公開時に固定し、未回答者一覧・督促対象は現在在籍者から都度算出（Issue #2787）",
+      "status": "done",
+      "statusLabel": "完了（2026-10-03）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "`target_count`（または回答率・未回答者リストの算出方式）についてスナップショットすべきか都度算出のままとすべきかの仕様判断を得て、応答内の値の一貫性を回復すること",
+      "nextAction": "公開時の `target_count` は固定され、未回答者一覧と督促対象は現在在籍者から都度算出されること。実機E2Eとアリシゼーションで利用者の導線・権限を確認すること",
       "acceptance": [
-        "`target_count`（または回答率・未回答者リストの算出方式）についてスナップショットすべきか都度算出のままとすべきかの仕様判断を得て、応答内の値の一貫性を回復すること"
+        "公開時の `target_count` は固定され、未回答者一覧と督促対象は現在在籍者から都度算出されること。実機E2Eとアリシゼーションで利用者の導線・権限を確認すること"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "CMP-039 の過程で発見。`target_count` は TARGETED 専用のカウンタで、`publishSurvey` は ALL モードで一切書かない。一方「回答率の分母」「未回答者リスト」は都度算出のため、同じ応答の中に都度算出の値と永久に0の値が同居している。都度算出ゆえ公開後にメンバーが増減すると過去のアンケートの回答率が遡及的に変動する",
+          "label": "2026-08-15裁可。PR #2826（commit `f4da6884f2`、2026-08-28 JST merged）で実装。`SurveyPublishTargetCountSnapshotIT` AC1〜12はred 12件中8件failからgreen 12件・skip 0件。survey回帰333件もskip 0・fail 0。PR CI shard 0〜5とCompile & TestはいずれもSUCCESS。2026-10-03に専用実機E2E（JUnit 1件・fail/error/skip 0、通知・固定分母永続化・個別削除204）と3住民初回観察＋controlled QA補完を完了。初回runner失敗・未実施範囲、限定CSS修正とafter QA、既存BE CIとの検証境界は[統合証跡](prototypes/alicization-cmp042-20261002.md)参照",
           "state": "unknown"
         }
       ],
       "prs": [
-        "CMP-039 の過程で発見。`target_count` は TARGETED 専用のカウンタで、`publishSurvey` は ALL モードで一切書かない。一方「回答率の分母」「未回答者リスト」は都度算出のため、同じ応答の中に都度算出の値と永久に0の値が同居している。都度算出ゆえ公開後にメンバーが増減すると過去のアンケートの回答率が遡及的に変動する"
+        "2026-08-15裁可。PR #2826（commit `f4da6884f2`、2026-08-28 JST merged）で実装。`SurveyPublishTargetCountSnapshotIT` AC1〜12はred 12件中8件failからgreen 12件・skip 0件。survey回帰333件もskip 0・fail 0。PR CI shard 0〜5とCompile & TestはいずれもSUCCESS。2026-10-03に専用実機E2E（JUnit 1件・fail/error/skip 0、通知・固定分母永続化・個別削除204）と3住民初回観察＋controlled QA補完を完了。初回runner失敗・未実施範囲、限定CSS修正とafter QA、既存BE CIとの検証境界は[統合証跡](prototypes/alicization-cmp042-20261002.md)参照"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -14373,26 +16504,40 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [
         "ALL",
-        "surveys",
-        "target_count",
         "Issue",
-        "target_count"
+        "target_count",
+        "E2E"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
-        2787
+        2787,
+        2826
       ],
       "github": [
         {
           "number": 2787,
           "kind": "issue",
-          "state": "open",
+          "state": "closed",
           "title": "改善(アンケート): ALL モードで target_count が一度も書かれず永久に 0（回答率の分母にスナップショットが無い）",
           "url": "https://github.com/kenta-0420/mannschaft/issues/2787",
-          "updatedAt": "2026-08-13T23:38:52Z",
+          "updatedAt": "2026-10-02T20:36:25Z",
           "ci": null
+        },
+        {
+          "number": 2826,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(#2787): アンケート公開時に対象人数をスナップショットし全員配信の分母0を根治 (CMP-042)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2826",
+          "updatedAt": "2026-08-27T23:58:11Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
@@ -15001,8 +17146,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-049",
       "title": "**Stripe 実徴収の実機検証（CMP-024 キャンセル料決済の未検証部分）**",
-      "status": "not-started",
-      "statusLabel": "未着手（**前提未達につき着手不可**）",
+      "status": "on-hold",
+      "statusLabel": "保留（Stripe実徴収の前提未達）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -15016,12 +17161,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-024",
       "issues": [
         {
-          "label": "**着手の前提（これが揃うまで着手不可）**: Stripeのテストキー、**payoutsが有効なConnect実口座**。これが無いと`ConnectChargeService.authorize`が`HELD`で止まりPaymentIntent自体が作られないため、上記3経路のいずれにも到達できない。CMP-024で徴収方式（与信が残っていれば部分キャプチャ、決済済みなら差額返金。新しい決済経路は作らない）・受取先（主催者）・運営手数料（主催者の取り分から引く／利用者負担はキャンセル料ちょうど）・固定額がキャンセル料超なら`min(設定額, 参加費)`に丸め、が確定済み（マスター御裁可・変更不可）。免除の権限は受取先側の管理者/本人＋運営管理者。判定はescrowのpayeeに依る（**募集の作成者ではない**）。`PAID`は免除不可。ユニット・契約ITは全件緑、実機E2Eも5/5緑だが、**いずれもStripeの実決済を伴わない**。2026-08-15の引き継ぎ時点で前提が揃わず、前任・現任セッションとも着手できていない。**この行が存在する理由**: セッションを跨いで失われぬよう、引き継ぎ書（揮発）から git 追跡される正本へ移した残務である。CMP-024が「完了」であることと、**実際に金が動く経路が未検証であること**は両立する。この区別が失われると「決済は検証済み」と誤認されうる",
+          "label": "**着手の前提（これが揃うまで着手不可）**: Stripeのテストキー、**payoutsが有効なConnect実口座**。これが無いと`ConnectChargeService.authorize`が`HELD`で止まりPaymentIntent自体が作られないため、上記3経路のいずれにも到達できない。CMP-024で徴収方式（与信が残っていれば部分キャプチャ、決済済みなら差額返金。新しい決済経路は作らない）・受取先（主催者）・運営手数料（主催者の取り分から引く／利用者負担はキャンセル料ちょうど）・固定額がキャンセル料超なら`min(設定額, 参加費)`に丸め、が確定済み（マスター御裁可・変更不可）。免除の権限は受取先側の管理者/本人＋運営管理者。判定はescrowのpayeeに依る（**募集の作成者ではない**）。`PAID`は免除不可。ユニット・契約ITは全件緑、実機E2Eも5/5緑だが、**いずれもStripeの実決済を伴わない**。2026-08-15の引き継ぎ時点で前提が揃わず、前任・現任セッションとも着手できていない。**この行が存在する理由**: セッションを跨いで失われぬよう、引き継ぎ書（揮発）から git 追跡される正本へ移した残務である。CMP-024が「完了」であることと、**実際に金が動く経路が未検証であること**は両立する。この区別が失われると「決済は検証済み」と誤認されうる 保留解除条件: Stripeテストキーを利用可能にし、payoutsが有効なConnect実口座を準備する。準備後に実機検証へ着手可能。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "**着手の前提（これが揃うまで着手不可）**: Stripeのテストキー、**payoutsが有効なConnect実口座**。これが無いと`ConnectChargeService.authorize`が`HELD`で止まりPaymentIntent自体が作られないため、上記3経路のいずれにも到達できない。CMP-024で徴収方式（与信が残っていれば部分キャプチャ、決済済みなら差額返金。新しい決済経路は作らない）・受取先（主催者）・運営手数料（主催者の取り分から引く／利用者負担はキャンセル料ちょうど）・固定額がキャンセル料超なら`min(設定額, 参加費)`に丸め、が確定済み（マスター御裁可・変更不可）。免除の権限は受取先側の管理者/本人＋運営管理者。判定はescrowのpayeeに依る（**募集の作成者ではない**）。`PAID`は免除不可。ユニット・契約ITは全件緑、実機E2Eも5/5緑だが、**いずれもStripeの実決済を伴わない**。2026-08-15の引き継ぎ時点で前提が揃わず、前任・現任セッションとも着手できていない。**この行が存在する理由**: セッションを跨いで失われぬよう、引き継ぎ書（揮発）から git 追跡される正本へ移した残務である。CMP-024が「完了」であることと、**実際に金が動く経路が未検証であること**は両立する。この区別が失われると「決済は検証済み」と誤認されうる"
+        "**着手の前提（これが揃うまで着手不可）**: Stripeのテストキー、**payoutsが有効なConnect実口座**。これが無いと`ConnectChargeService.authorize`が`HELD`で止まりPaymentIntent自体が作られないため、上記3経路のいずれにも到達できない。CMP-024で徴収方式（与信が残っていれば部分キャプチャ、決済済みなら差額返金。新しい決済経路は作らない）・受取先（主催者）・運営手数料（主催者の取り分から引く／利用者負担はキャンセル料ちょうど）・固定額がキャンセル料超なら`min(設定額, 参加費)`に丸め、が確定済み（マスター御裁可・変更不可）。免除の権限は受取先側の管理者/本人＋運営管理者。判定はescrowのpayeeに依る（**募集の作成者ではない**）。`PAID`は免除不可。ユニット・契約ITは全件緑、実機E2Eも5/5緑だが、**いずれもStripeの実決済を伴わない**。2026-08-15の引き継ぎ時点で前提が揃わず、前任・現任セッションとも着手できていない。**この行が存在する理由**: セッションを跨いで失われぬよう、引き継ぎ書（揮発）から git 追跡される正本へ移した残務である。CMP-024が「完了」であることと、**実際に金が動く経路が未検証であること**は両立する。この区別が失われると「決済は検証済み」と誤認されうる 保留解除条件: Stripeテストキーを利用可能にし、payoutsが有効なConnect実口座を準備する。準備後に実機検証へ着手可能。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -15043,7 +17188,7 @@ window.BETA_INVENTORY_DATA = {
         "UNCOLLECTIBLE"
       ],
       "tags": [
-        "未着手"
+        "保留"
       ],
       "githubRefs": [],
       "github": []
@@ -17634,7 +19779,7 @@ window.BETA_INVENTORY_DATA = {
       "id": "CMP-260820-1017",
       "title": "`ResidentRegistryEntity`のbuilder公開範囲の縮小",
       "status": "working",
-      "statusLabel": "実装・検分完了（PR #3521、実機UI未完）",
+      "statusLabel": "実装・検分完了（PR #3521、登録UI未提供）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -17648,12 +19793,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "PR #3521で登録時入力16項目だけを受け取るprivate constructor＋`@Builder`へ変更し、builder契約4件・repository結合試験5件・Backend CI全6 shardをgreen確認。2026-10-01の事後検分は指摘なし。実機確認はAPIのlogin／users/me／組織検索と画面配信の200まで確認したが、Playwrightが対象画面到達前に停止し、アリシゼーション3住人もログイン画面またはdashboard初期化で進行不能だったため、実機UIと住人導線は未完として残す。",
+          "label": "PR #3521で登録時入力16項目だけを受け取るprivate constructor＋`@Builder`へ変更し、builder契約4件・repository結合試験5件・Backend CI全6 shardをgreen確認。2026-10-01の事後検分は指摘なし。旧試行の実機確認はAPIのlogin／users/me／組織検索と画面配信の200まで確認したが、Playwrightが対象画面到達前に停止し、アリシゼーション3住人もログイン画面またはdashboard初期化で進行不能だったため、実機UIと住人導線は未完として残していた。2026-10-03はsource `9932`・API同JARの実登録API6確認（入力保持・null/default・導出値注入無効・拒否時DB不変）と、通常MEMBER／DEPUTY_ADMIN／別組織ADMINの追加認可3境界・住戸一覧3role UIを実測。3独立住民探索も完了し、気づきは未実証観測として保全。今回のowned行はcleanup済み・旧ID集合不変、過去のhelper失敗原本も保全（証拠: `.claude/evidence/cmp1017-real-api-20261003/`・`cmp1017-boundary-20261003/`・`cmp1017-alicization-20261003/`）。居住者登録UIは未提供のため、住戸一覧UI／登録APIを登録UI成功やF09.1全体完了とは扱わない。MANAGE_RESIDENTSの仕様差は別範囲観測として残す。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3521で登録時入力16項目だけを受け取るprivate constructor＋`@Builder`へ変更し、builder契約4件・repository結合試験5件・Backend CI全6 shardをgreen確認。2026-10-01の事後検分は指摘なし。実機確認はAPIのlogin／users/me／組織検索と画面配信の200まで確認したが、Playwrightが対象画面到達前に停止し、アリシゼーション3住人もログイン画面またはdashboard初期化で進行不能だったため、実機UIと住人導線は未完として残す。"
+        "PR #3521で登録時入力16項目だけを受け取るprivate constructor＋`@Builder`へ変更し、builder契約4件・repository結合試験5件・Backend CI全6 shardをgreen確認。2026-10-01の事後検分は指摘なし。旧試行の実機確認はAPIのlogin／users/me／組織検索と画面配信の200まで確認したが、Playwrightが対象画面到達前に停止し、アリシゼーション3住人もログイン画面またはdashboard初期化で進行不能だったため、実機UIと住人導線は未完として残していた。2026-10-03はsource `9932`・API同JARの実登録API6確認（入力保持・null/default・導出値注入無効・拒否時DB不変）と、通常MEMBER／DEPUTY_ADMIN／別組織ADMINの追加認可3境界・住戸一覧3role UIを実測。3独立住民探索も完了し、気づきは未実証観測として保全。今回のowned行はcleanup済み・旧ID集合不変、過去のhelper失敗原本も保全（証拠: `.claude/evidence/cmp1017-real-api-20261003/`・`cmp1017-boundary-20261003/`・`cmp1017-alicization-20261003/`）。居住者登録UIは未提供のため、住戸一覧UI／登録APIを登録UI成功やF09.1全体完了とは扱わない。MANAGE_RESIDENTSの仕様差は別範囲観測として残す。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -17697,8 +19842,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260820-1018",
       "title": "組合の代理入力同意書を一覧する管理画面が無い",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "on-hold",
+      "statusLabel": "保留（代理入力修正・依存脆弱性対応待ち）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -17709,15 +19854,15 @@ window.BETA_INVENTORY_DATA = {
       "acceptance": [
         "`getConsentsByOrg`／`approveConsent`／`revokeConsent`／`getRecords`の4本のAPIを実際に呼び出す管理画面が実装されること"
       ],
-      "blocker": "—",
+      "blocker": "CMP-261003-1020、CMP-261003-1229",
       "issues": [
         {
-          "label": "出典: F14.3設計書 §19.4・§20.2 U-6（§17.3.1）。上記4本が呼出元ゼロであり、F14.1の実装が未完である証拠。実機E2Eの観測点がAPI直叩きになる不便はあるが機能自体は成立している",
+          "label": "出典: F14.3設計書 §19.4・§20.2 U-6（§17.3.1）。初回偵察では上記4本の呼出元がゼロで、管理画面が未実装と判明。実機E2Eの観測点がAPI直叩きになる不便はあるが機能自体は成立している。Draft [PR #3609](https://github.com/kenta-0420/mannschaft/pull/3609)。統合HEAD `2230766` のInstall CI run `37090510764` は braces GHSA-vfj7-8cjw-p6xm の伝播による high 脆弱性で失敗。公式修正版未公開につき今回は例外を追加せず出荷を保留。依存Survey単体 `9a445` は149件/失敗0/エラー0/skip0であり、統合全体の合格とは別。最新版OpenAPI run `37090510801` と生成型 run `37090510746` は生成・差分検査とも成功。統合BE回帰・実機3契約・3住民・全CIは未達、独立検証は進行中",
           "state": "unknown"
         }
       ],
       "prs": [
-        "出典: F14.3設計書 §19.4・§20.2 U-6（§17.3.1）。上記4本が呼出元ゼロであり、F14.1の実装が未完である証拠。実機E2Eの観測点がAPI直叩きになる不便はあるが機能自体は成立している"
+        "出典: F14.3設計書 §19.4・§20.2 U-6（§17.3.1）。初回偵察では上記4本の呼出元がゼロで、管理画面が未実装と判明。実機E2Eの観測点がAPI直叩きになる不便はあるが機能自体は成立している。Draft [PR #3609](https://github.com/kenta-0420/mannschaft/pull/3609)。統合HEAD `2230766` のInstall CI run `37090510764` は braces GHSA-vfj7-8cjw-p6xm の伝播による high 脆弱性で失敗。公式修正版未公開につき今回は例外を追加せず出荷を保留。依存Survey単体 `9a445` は149件/失敗0/エラー0/skip0であり、統合全体の合格とは別。最新版OpenAPI run `37090510801` と生成型 run `37090510746` は生成・差分検査とも成功。統合BE回帰・実機3契約・3住民・全CIは未達、独立検証は進行中"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -17732,10 +19877,26 @@ window.BETA_INVENTORY_DATA = {
         "API"
       ],
       "tags": [
-        "未着手"
+        "保留"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3609
+      ],
+      "github": [
+        {
+          "number": 3609,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "組合の代理入力同意書と操作履歴を管理画面から利用する（CMP-260820-1018）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3609",
+          "updatedAt": "2026-10-03T16:54:25Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-260820-1019",
@@ -17964,8 +20125,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260821-1235",
       "title": "frontend-deploy.yml のデプロイ経路が未検証（門番の検査範囲と task definition のパス）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "実機検証待ち（AWS）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -17979,12 +20140,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "前段: PR #2895（マージコミット `fe54a3151`）で`.github/workflows/frontend-deploy.yml`の3件の欠陥を是正した。それまでこのワークフローは一度も成功したことがなかった。直接の原因は、デプロイをスキップするための門番ステップ`Check AWS credentials`が`actions/checkout`より前に走るにもかかわらず、ジョブの`defaults.run.working-directory: ./frontend`が効いて存在しないディレクトリでシェルを起動しようとし、`No such file or directory`で落ちていたこと。門番自身が門に辿り着く前に死んでいた。当該ステップにだけ`working-directory: .`を明示して是正。マージにより当のワークフローが起動し（`paths`フィルタにこのファイル自身が含まれる）、門番が正常に判定して後続を全スキップし緑になることを実測で確認済み（run 32441721380）。残課題A（門番の検査範囲）: 門番は`AWS_ACCESS_KEY_ID`の有無しか検査していない。`AWS_SECRET_ACCESS_KEY`や`ECR_REPOSITORY`・`ECS_CLUSTER`・`ECS_SERVICE`・`ECS_TASK_DEFINITION`・`ECS_CONTAINER_NAME`が欠けていても門番は通し、後続で落ちる。つまり門番が保証しているのは「access key が空なら止める」だけで、「デプロイに必要な設定が揃っている」ことではない。デプロイが走る条件を変える設計判断であるためPR #2895では意図的にスコープ外とした。残課題B（task definition のパスは修正したが未検証）: PR #2895で、`Download current ECS task definition`（`run:`ステップなので`defaults.run.working-directory`が効き`frontend/task-definition.json`を作る）と、それを読む`aws-actions/amazon-ecs-render-task-definition@v1`（`uses:`ステップであり`defaults.run.working-directory`は`run:`にしか適用されないため基準がリポジトリ直下のまま）の食い違いを是正し、入力を`frontend/task-definition.json`へ改めた。ただしデプロイ本体は資格情報が無くスキップされるため、この修正が正しいことは実機で未検証である。この欠陥は独立検分役（Codex）の指摘で発見された。門番が死んでいたおかげで一度も露出しておらず、表面の赤だけを直していたら次で落ちていた。残課題C（デプロイ経路全体が未検証）: 資格情報が初めて設定された際には、これまで一度も通っていない`npm ci`・Docker build/push・ECSへの反映・サービス安定待ちの各ステップが順に初めて実行される。PR #2895が直したのは「門番が正しくスキップできること」までであり、デプロイ経路が検証済みであることを意味しない。この区別が失われると「FEのデプロイは動く」と誤認されうる。OIDCの注意: ファイル冒頭のOIDC移行手順は「`AWS_ACCESS_KEY_ID`を削除せよ」と案内しているが、門番はそのキーが空なら必ずスキップする。手順どおり移行するとデプロイが永久にスキップされる。PR #2895で冒頭コメントに注意書きを追加済み（門番の実装自体は未変更）",
+          "label": "PR #2900で7 secretsの全欠如時skip・全設定時deploy・一部欠如時failを実装し、PR #2895でtask definition pathを是正。ECR/ECS反映とサービス安定確認の受け入れ条件は未実施。AWS本番未構築という既決前提を維持し、資格情報と本番適用の明示承認後に再開する。workflow success runは実デプロイの証拠ではない。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "前段: PR #2895（マージコミット `fe54a3151`）で`.github/workflows/frontend-deploy.yml`の3件の欠陥を是正した。それまでこのワークフローは一度も成功したことがなかった。直接の原因は、デプロイをスキップするための門番ステップ`Check AWS credentials`が`actions/checkout`より前に走るにもかかわらず、ジョブの`defaults.run.working-directory: ./frontend`が効いて存在しないディレクトリでシェルを起動しようとし、`No such file or directory`で落ちていたこと。門番自身が門に辿り着く前に死んでいた。当該ステップにだけ`working-directory: .`を明示して是正。マージにより当のワークフローが起動し（`paths`フィルタにこのファイル自身が含まれる）、門番が正常に判定して後続を全スキップし緑になることを実測で確認済み（run 32441721380）。残課題A（門番の検査範囲）: 門番は`AWS_ACCESS_KEY_ID`の有無しか検査していない。`AWS_SECRET_ACCESS_KEY`や`ECR_REPOSITORY`・`ECS_CLUSTER`・`ECS_SERVICE`・`ECS_TASK_DEFINITION`・`ECS_CONTAINER_NAME`が欠けていても門番は通し、後続で落ちる。つまり門番が保証しているのは「access key が空なら止める」だけで、「デプロイに必要な設定が揃っている」ことではない。デプロイが走る条件を変える設計判断であるためPR #2895では意図的にスコープ外とした。残課題B（task definition のパスは修正したが未検証）: PR #2895で、`Download current ECS task definition`（`run:`ステップなので`defaults.run.working-directory`が効き`frontend/task-definition.json`を作る）と、それを読む`aws-actions/amazon-ecs-render-task-definition@v1`（`uses:`ステップであり`defaults.run.working-directory`は`run:`にしか適用されないため基準がリポジトリ直下のまま）の食い違いを是正し、入力を`frontend/task-definition.json`へ改めた。ただしデプロイ本体は資格情報が無くスキップされるため、この修正が正しいことは実機で未検証である。この欠陥は独立検分役（Codex）の指摘で発見された。門番が死んでいたおかげで一度も露出しておらず、表面の赤だけを直していたら次で落ちていた。残課題C（デプロイ経路全体が未検証）: 資格情報が初めて設定された際には、これまで一度も通っていない`npm ci`・Docker build/push・ECSへの反映・サービス安定待ちの各ステップが順に初めて実行される。PR #2895が直したのは「門番が正しくスキップできること」までであり、デプロイ経路が検証済みであることを意味しない。この区別が失われると「FEのデプロイは動く」と誤認されうる。OIDCの注意: ファイル冒頭のOIDC移行手順は「`AWS_ACCESS_KEY_ID`を削除せよ」と案内しているが、門番はそのキーが空なら必ずスキップする。手順どおり移行するとデプロイが永久にスキップされる。PR #2895で冒頭コメントに注意書きを追加済み（門番の実装自体は未変更）"
+        "PR #2900で7 secretsの全欠如時skip・全設定時deploy・一部欠如時failを実装し、PR #2895でtask definition pathを是正。ECR/ECS反映とサービス安定確認の受け入れ条件は未実施。AWS本番未構築という既決前提を維持し、資格情報と本番適用の明示承認後に再開する。workflow success runは実デプロイの証拠ではない。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -18001,10 +20162,11 @@ window.BETA_INVENTORY_DATA = {
         "main"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
-        2895
+        2895,
+        2900
       ],
       "github": [
         {
@@ -18014,6 +20176,20 @@ window.BETA_INVENTORY_DATA = {
           "title": "修正(CI): frontend-deploy.yml が必ず赤になる3件の欠陥を是正",
           "url": "https://github.com/kenta-0420/mannschaft/pull/2895",
           "updatedAt": "2026-08-21T02:58:44Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 2900,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: frontend-deployのAWS secret門番を是正",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2900",
+          "updatedAt": "2026-08-21T11:53:13Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -18159,8 +20335,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260821-2130",
       "title": "FE 本番ビルド（nuxt build）がメモリ枯渇で完走しない",
-      "status": "working",
-      "statusLabel": "一部完了（2026-08-22・ビルドのOOMは解消。コンテナ500は未解決）",
+      "status": "done",
+      "statusLabel": "完了（2026-10-02・production build／コンテナHTTP応答／main CI確認済み）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -18174,12 +20350,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260821-1235",
       "issues": [
         {
-          "label": "1. 発見の経緯: `nuxt build` は CI のどこでも実行されていなかった（`git grep` で0件）。FE の PR CI は lint / typecheck / vitest のみ。唯一ビルドするのは `frontend-deploy.yml` の Docker ビルドだが、門番の不具合で一度も本体に到達しなかった（PR #2895 で是正）。そのため**本番ビルドが通らない状態が誰にも気づかれずに存在していた**。2. 症状: `nuxt build` 実行中にシステム全体のメモリを使い切り、GitHub Actions のランナーが `shutdown signal`（exit 143）で**VM ごと落ちる**。V8 の `FATAL ERROR: JavaScript heap out of memory` は出ない（つまり JS ヒープではなくネイティブ／外部メモリ側）。単一の node プロセスが RSS を丸ごと抱え、約60秒で 4.6GB → 14.8GB へ急増する。同時に居る `esbuild` は60〜108MB で無関係。3. 実測（6回のビルド）: [無改変・`--max-old-space-size=4096`] SSR `transforming` 中に +321秒で死亡、ピーク 15,814MB / swap 2,901MB。[無改変・`8192`] SSR完了→Nitro段階で709〜743秒かけて死亡、使い切り。[`sourcemap:{server:false,client:false}`・`4096`] SSR完走（88.6秒）→Nitro段階で+404秒で死亡、14.9GB。[**`sourcemap:{server:false,client:false}`・`8192`**] **完走（759秒）、9,482MB / swap 0**。完走時の内訳: クライアント +100秒（94.9秒）／SSR +177秒（77.5秒）／**Nitro +743秒（562秒）**／完了 +759秒。4. 主因はサーバー側ソースマップ。Nuxt 3 の既定は本番で `{server:true, client:false}` であり、Nuxt 3.21.11 はこれを Vite の SSR ビルドへ渡すだけでなく**SSR のマップを Nitro へ再投入するプラグインまで動かす**ため、同じコストを2回払っていた。5. 重要: 本番の起動コマンドは `node .output/server/index.mjs` で**`--enable-source-maps` が付いていない**。Node はこのフラグ無しではソースマップを使わないため、**生成されていたサーバー側ソースマップは本番で一度も使われていなかった**。6. 解決策の候補（未採用）: `nuxt.config.ts` に `$production: { sourcemap: { server: false, client: false } }` を追加し、Dockerfile の builder ステージに `ENV NODE_OPTIONS=--max-old-space-size=8192` を置く。**`$production` の下に置くのは必須**である。素で書くと設定ローダー（c12 が `$` + `NODE_ENV` を環境別上書きとして適用する）を経ず開発時にも効き、`npm run dev` のデバッグでソースマップが失われる。7. 既知の前例: この OOM は以前から知られていた。`nuxt.config.ts` に「Lighthouse CI（nuxt generate）では SSR バンドルロード自体が 4GB OOM を引き起こす」というコメントが既にあり、`lighthouse-ci.yml` は `--max-old-space-size=6144` と `NUXT_GENERATE_SPA=true`（SSR バンドル生成自体の回避）で凌いでいた（PR #902）。8. **再開条件（重要）**: **AWS の secret を設定する、または初回デプロイに着手する前に、必ず解消すること。** 現時点で本番デプロイは一度も行われておらず secret も未設定のため、今日誰かを困らせてはいない。しかし**デプロイしようとした者は確実に困る**。9. 後回しにした関連課題（同梱しない）: `\"vue\": \"latest\"` のバージョン未固定（lockfile は 3.5.35 だがビルドバナーは 3.5.41）／`node:22-alpine` の digest 未固定／Nitro 段階が562秒（全体の74%）を占める性能課題／Lighthouse の SPA 回避策の見直し（`nuxt build` が通っても `nuxt generate` が通る保証はない）。10. 未検証の論点: 759秒・ピーク9.5GB のジョブを PR 必須ゲートにしてよいかは未検討。冷キャッシュや並行負荷を含めて安定して完走するかも1回しか確かめていない。クライアント側ソースマップまで無効にしてよいかはエラー監視の運用次第で未確認。 11. **採用した対策（2026-08-22）**: `$production` 限定のソースマップ無効化（`{server:false, client:false}`）＋ builder ステージの `ENV NODE_OPTIONS=--max-old-space-size=8192`。**`$production` 限定は必須**（素で書くと設定ローダー c12 の環境別上書きを経ず `npm run dev` にも効き、開発時のデバッグでソースマップが失われる。`nuxt.options.sourcemap.{server,client}` は Nuxt 内部の多数のビルドプラグインが開発・本番を区別せず参照する）。12. **実測**: 完走759秒（クライアント100秒／SSR 177秒／**Nitro 562秒**）、ピーク system used 9,482MB、swap 0。失敗時は15,814MB・swap 2,901MB で、6GB以上の余裕がある。13. **未達の受け入れ条件**: 「コンテナが起動し HTTP 応答を返すこと」は**未達**。`CMP-260822-1005` へ引き継ぐ。14. **Docker ビルド検証ジョブは今回追加していない**。コンテナが500を返す状態で main push 時に走らせると main が赤くなり続けるため。500 の解消後に追加する。15. **後回しのまま残っているもの**: `node:22-alpine` の digest 未固定／Nitro 段階562秒（全体の74%）の性能課題／Lighthouse の SPA 回避策の見直し。",
+          "label": "PR #2917でNuxt buildのOOMを解消。PR #2970でVue二重installを根治し、Docker build・起動・HTTP 200を番人化。origin/main Frontend CI run 36940626067の「Docker ビルド検証(main pushのみ)」successを確認。production build安定、コンテナHTTP 200、main CIの受け入れ条件を満たした。https://github.com/kenta-0420/mannschaft/actions/runs/36940626067",
           "state": "unknown"
         }
       ],
       "prs": [
-        "1. 発見の経緯: `nuxt build` は CI のどこでも実行されていなかった（`git grep` で0件）。FE の PR CI は lint / typecheck / vitest のみ。唯一ビルドするのは `frontend-deploy.yml` の Docker ビルドだが、門番の不具合で一度も本体に到達しなかった（PR #2895 で是正）。そのため**本番ビルドが通らない状態が誰にも気づかれずに存在していた**。2. 症状: `nuxt build` 実行中にシステム全体のメモリを使い切り、GitHub Actions のランナーが `shutdown signal`（exit 143）で**VM ごと落ちる**。V8 の `FATAL ERROR: JavaScript heap out of memory` は出ない（つまり JS ヒープではなくネイティブ／外部メモリ側）。単一の node プロセスが RSS を丸ごと抱え、約60秒で 4.6GB → 14.8GB へ急増する。同時に居る `esbuild` は60〜108MB で無関係。3. 実測（6回のビルド）: [無改変・`--max-old-space-size=4096`] SSR `transforming` 中に +321秒で死亡、ピーク 15,814MB / swap 2,901MB。[無改変・`8192`] SSR完了→Nitro段階で709〜743秒かけて死亡、使い切り。[`sourcemap:{server:false,client:false}`・`4096`] SSR完走（88.6秒）→Nitro段階で+404秒で死亡、14.9GB。[**`sourcemap:{server:false,client:false}`・`8192`**] **完走（759秒）、9,482MB / swap 0**。完走時の内訳: クライアント +100秒（94.9秒）／SSR +177秒（77.5秒）／**Nitro +743秒（562秒）**／完了 +759秒。4. 主因はサーバー側ソースマップ。Nuxt 3 の既定は本番で `{server:true, client:false}` であり、Nuxt 3.21.11 はこれを Vite の SSR ビルドへ渡すだけでなく**SSR のマップを Nitro へ再投入するプラグインまで動かす**ため、同じコストを2回払っていた。5. 重要: 本番の起動コマンドは `node .output/server/index.mjs` で**`--enable-source-maps` が付いていない**。Node はこのフラグ無しではソースマップを使わないため、**生成されていたサーバー側ソースマップは本番で一度も使われていなかった**。6. 解決策の候補（未採用）: `nuxt.config.ts` に `$production: { sourcemap: { server: false, client: false } }` を追加し、Dockerfile の builder ステージに `ENV NODE_OPTIONS=--max-old-space-size=8192` を置く。**`$production` の下に置くのは必須**である。素で書くと設定ローダー（c12 が `$` + `NODE_ENV` を環境別上書きとして適用する）を経ず開発時にも効き、`npm run dev` のデバッグでソースマップが失われる。7. 既知の前例: この OOM は以前から知られていた。`nuxt.config.ts` に「Lighthouse CI（nuxt generate）では SSR バンドルロード自体が 4GB OOM を引き起こす」というコメントが既にあり、`lighthouse-ci.yml` は `--max-old-space-size=6144` と `NUXT_GENERATE_SPA=true`（SSR バンドル生成自体の回避）で凌いでいた（PR #902）。8. **再開条件（重要）**: **AWS の secret を設定する、または初回デプロイに着手する前に、必ず解消すること。** 現時点で本番デプロイは一度も行われておらず secret も未設定のため、今日誰かを困らせてはいない。しかし**デプロイしようとした者は確実に困る**。9. 後回しにした関連課題（同梱しない）: `\"vue\": \"latest\"` のバージョン未固定（lockfile は 3.5.35 だがビルドバナーは 3.5.41）／`node:22-alpine` の digest 未固定／Nitro 段階が562秒（全体の74%）を占める性能課題／Lighthouse の SPA 回避策の見直し（`nuxt build` が通っても `nuxt generate` が通る保証はない）。10. 未検証の論点: 759秒・ピーク9.5GB のジョブを PR 必須ゲートにしてよいかは未検討。冷キャッシュや並行負荷を含めて安定して完走するかも1回しか確かめていない。クライアント側ソースマップまで無効にしてよいかはエラー監視の運用次第で未確認。 11. **採用した対策（2026-08-22）**: `$production` 限定のソースマップ無効化（`{server:false, client:false}`）＋ builder ステージの `ENV NODE_OPTIONS=--max-old-space-size=8192`。**`$production` 限定は必須**（素で書くと設定ローダー c12 の環境別上書きを経ず `npm run dev` にも効き、開発時のデバッグでソースマップが失われる。`nuxt.options.sourcemap.{server,client}` は Nuxt 内部の多数のビルドプラグインが開発・本番を区別せず参照する）。12. **実測**: 完走759秒（クライアント100秒／SSR 177秒／**Nitro 562秒**）、ピーク system used 9,482MB、swap 0。失敗時は15,814MB・swap 2,901MB で、6GB以上の余裕がある。13. **未達の受け入れ条件**: 「コンテナが起動し HTTP 応答を返すこと」は**未達**。`CMP-260822-1005` へ引き継ぐ。14. **Docker ビルド検証ジョブは今回追加していない**。コンテナが500を返す状態で main push 時に走らせると main が赤くなり続けるため。500 の解消後に追加する。15. **後回しのまま残っているもの**: `node:22-alpine` の digest 未固定／Nitro 段階562秒（全体の74%）の性能課題／Lighthouse の SPA 回避策の見直し。"
+        "PR #2917でNuxt buildのOOMを解消。PR #2970でVue二重installを根治し、Docker build・起動・HTTP 200を番人化。origin/main Frontend CI run 36940626067の「Docker ビルド検証(main pushのみ)」successを確認。production build安定、コンテナHTTP 200、main CIの受け入れ条件を満たした。https://github.com/kenta-0420/mannschaft/actions/runs/36940626067"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -18200,20 +20376,20 @@ window.BETA_INVENTORY_DATA = {
         "main"
       ],
       "tags": [
-        "進行中"
+        "完了"
       ],
       "githubRefs": [
-        902,
-        2895
+        2917,
+        2970
       ],
       "github": [
         {
-          "number": 902,
+          "number": 2917,
           "kind": "pull_request",
           "state": "merged",
-          "title": "ci: Lighthouse CI によるフロントエンドパフォーマンス監視",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/902",
-          "updatedAt": "2026-05-21T02:15:26Z",
+          "title": "機能追加(FE): 本番ビルドOOM対策 — サーバー側ソースマップ無効化・builderヒープ上限",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2917",
+          "updatedAt": "2026-08-22T02:21:14Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -18222,12 +20398,12 @@ window.BETA_INVENTORY_DATA = {
           }
         },
         {
-          "number": 2895,
+          "number": 2970,
           "kind": "pull_request",
           "state": "merged",
-          "title": "修正(CI): frontend-deploy.yml が必ず赤になる3件の欠陥を是正",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/2895",
-          "updatedAt": "2026-08-21T02:58:44Z",
+          "title": "修正(FE): vueの二重インストールでコンテナが全リクエストへ500を返す不具合を根治",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2970",
+          "updatedAt": "2026-08-26T12:14:32Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -18476,8 +20652,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260822-1026",
       "title": "永続化される enum への定数追加がローリング更新で旧タスクの読み取りを壊す（二段階展開の作法確立）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -18488,7 +20664,7 @@ window.BETA_INVENTORY_DATA = {
       "acceptance": [
         "永続化される enum に定数を足す変更が、①定数を配布するだけのリリース → ②その定数を書き始めるリリース、の二段階に分けて展開されること。この作法が文書化され、`@Enumerated(EnumType.STRING)` で永続化される enum への定数追加を機械的に検出する番人が備わっていること。**初回本番デプロイより前に完了させること**"
       ],
-      "blocker": "—",
+      "blocker": "#3576",
       "issues": [
         {
           "label": "出典: Gate基盤工事④-A（PR #2909）に対する Codex 独立検分4巡目の指摘（P1）。本番はローリング更新（`infra/terraform/modules/app/main.tf:483-489`）であり、更新中は新旧タスクが併存する。新タスクが新定数（例 `BatchJobStatus.RESUMED`）を保存すると、その定数を持たない旧タスクが `@Enumerated(EnumType.STRING)` の読み込みで例外となり、履歴一覧やステータス API が 500 になる。**ロールバックしても、書かれてしまった行が残る限り障害は継続する**。**今回見送った経緯**: マスター裁可により PR #2909 では二段階展開を実装しなかった。理由は、本プロジェクトが**まだ一度も本番デプロイしておらず** `batch_job_logs` に実データも無いため、「旧バイナリ併存」という前提自体が存在せず、存在しない前提のために二段階展開を今組むのは過剰と判断したこと。**初回デプロイ以降は実在するリスク**であるため握りつぶさず本行に起票した。`BatchJobStatus.RESUMED` の javadoc にも同趣旨の警告を明記済み。`RESUMED` に限らず**永続化される enum に定数を足す行為全般**が対象である",
@@ -18500,7 +20676,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "—"
+        "2026-10-02: #3576（72aec882f9）merge済み。二段階展開・旧タスク退役確認・書込み開始後のrollback下限を文書化。STRING永続化enumを全量検出し、522 enum/2092定数の互換性台帳と番人を追加。正式CI 36963084460でfresh compile・guard 1件/fixture 10件（failure/error/skip 0）、最新main追従後36971022081でも全6shard・集約成功。本番展開自体は未実施"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -18512,10 +20688,11 @@ window.BETA_INVENTORY_DATA = {
         "enum"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
-        2909
+        2909,
+        3576
       ],
       "github": [
         {
@@ -18525,6 +20702,20 @@ window.BETA_INVENTORY_DATA = {
           "title": "機能追加: バックグラウンド入口の停止宣言 @BackgroundFeaturePolicy（Gate基盤工事④-A）",
           "url": "https://github.com/kenta-0420/mannschaft/pull/2909",
           "updatedAt": "2026-08-25T06:38:14Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3576,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "CMP-260822-1026 永続化enumの二段階展開作法と定数追加番人",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3576",
+          "updatedAt": "2026-10-02T07:02:53Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -18687,8 +20878,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260826-1921",
       "title": "OpenAPI がパス変数を「整数のみ」と偽っている（既存3コントローラ、CMP-054の残域）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "on-hold",
+      "statusLabel": "保留（既存PR実装済み・依存CI再検証待ち）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -18702,16 +20893,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "発見: F03.19 Wave2 の Codex 検分（2026-08-26）。`backend/src/main/java/com/mannschaft/app/config/OpenApiConfig.java` の `scopeIdParameterCustomizer` が `TeamScopeId`/`OrgScopeId` 型のパス変数を無条件で `integer/int64` に上書きしているが、実装は数値ID・slug の両方を受け付けるため契約が実装より狭く嘘になっている。該当: `MatchRecordController` / `MatchStatsController` / `TournamentEntryTemplateController` の3本（`EventDismissalController` は素の `Long` のため対象外）。CMP-054（PR #2956）では予定系2本のみを Customizer 対象から除外して是正済みで、目的の異なる変更を混ぜぬためこの3本は手を付けていない。根治方針: 3本も Customizer の対象から外し `string` に是正、`docs/openapi.json` と FE 生成型を再生成する",
+          "label": "発見: F03.19 Wave2 の Codex 検分（2026-08-26）。`backend/src/main/java/com/mannschaft/app/config/OpenApiConfig.java` の `scopeIdParameterCustomizer` が `TeamScopeId`/`OrgScopeId` 型のパス変数を無条件で `integer/int64` に上書きしているが、実装は数値ID・slug の両方を受け付けるため契約が実装より狭く嘘になっている。該当: `MatchRecordController` / `MatchStatsController` / `TournamentEntryTemplateController` の3本（`EventDismissalController` は素の `Long` のため対象外）。CMP-054（PR #2956）では予定系2本のみを Customizer 対象から除外して是正済みで、目的の異なる変更を混ぜぬためこの3本は手を付けていない。根治方針: 3本も Customizer の対象から外し `string` に是正、`docs/openapi.json` と FE 生成型を再生成する<br>進捗（2026-10-03）: PR #3573。source `4be` の公式BE 29件と実API schema確認済み、旧FE auditは失敗。最新main追従のlocal HEAD `aea29047` でFE型再生成一致まで確認。旧headの合格をこのlocal HEADの合格とは扱わず、同HEADの新CI・mergeは未達。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "発見: F03.19 Wave2 の Codex 検分（2026-08-26）。`backend/src/main/java/com/mannschaft/app/config/OpenApiConfig.java` の `scopeIdParameterCustomizer` が `TeamScopeId`/`OrgScopeId` 型のパス変数を無条件で `integer/int64` に上書きしているが、実装は数値ID・slug の両方を受け付けるため契約が実装より狭く嘘になっている。該当: `MatchRecordController` / `MatchStatsController` / `TournamentEntryTemplateController` の3本（`EventDismissalController` は素の `Long` のため対象外）。CMP-054（PR #2956）では予定系2本のみを Customizer 対象から除外して是正済みで、目的の異なる変更を混ぜぬためこの3本は手を付けていない。根治方針: 3本も Customizer の対象から外し `string` に是正、`docs/openapi.json` と FE 生成型を再生成する"
+        "発見: F03.19 Wave2 の Codex 検分（2026-08-26）。`backend/src/main/java/com/mannschaft/app/config/OpenApiConfig.java` の `scopeIdParameterCustomizer` が `TeamScopeId`/`OrgScopeId` 型のパス変数を無条件で `integer/int64` に上書きしているが、実装は数値ID・slug の両方を受け付けるため契約が実装より狭く嘘になっている。該当: `MatchRecordController` / `MatchStatsController` / `TournamentEntryTemplateController` の3本（`EventDismissalController` は素の `Long` のため対象外）。CMP-054（PR #2956）では予定系2本のみを Customizer 対象から除外して是正済みで、目的の異なる変更を混ぜぬためこの3本は手を付けていない。根治方針: 3本も Customizer の対象から外し `string` に是正、`docs/openapi.json` と FE 生成型を再生成する<br>進捗（2026-10-03）: PR #3573。source `4be` の公式BE 29件と実API schema確認済み、旧FE auditは失敗。最新main追従のlocal HEAD `aea29047` でFE型再生成一致まで確認。旧headの合格をこのlocal HEADの合格とは扱わず、同HEADの新CI・mergeは未達。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "—"
+        "保留根拠：既存PR #3573は実装済みだが、旧HEADのFrontend Install CIが失敗し、最新main追従後の同一HEAD全CIは未確認。解除条件：最新main追従・依存問題の解消・更新HEADの全CI確認。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -18725,10 +20916,11 @@ window.BETA_INVENTORY_DATA = {
         "FE"
       ],
       "tags": [
-        "未着手"
+        "保留"
       ],
       "githubRefs": [
-        2956
+        2956,
+        3573
       ],
       "github": [
         {
@@ -18741,6 +20933,19 @@ window.BETA_INVENTORY_DATA = {
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3573,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "試練: 試合・テンプレートのOpenAPIスコープ契約を固定 (CMP-260826-1921)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3573",
+          "updatedAt": "2026-10-03T16:25:19Z",
+          "ci": {
+            "status": "failure",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -19142,43 +21347,51 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0652",
       "title": "ダッシュボード直近予定が未公開シフトの割当を返す",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "ダッシュボードの直近予定に、未公開シフト表に紐づく確定割当が現れないこと。`ShiftAssignmentRepository#findUpcomingByUserIdBetween` の JPQL にシフト表ステータスの条件が入っていること",
+      "nextAction": "ダッシュボードの直近予定に未公開シフト表の割当が現れないこと。現行の `ShiftSlotRepository#findUpcomingAssignedByUserIdBetween` の native SQL が `ShiftScheduleEntity.FULLY_VISIBLE_SQL` を適用し、削除済み・DRAFT・COLLECTING・ADJUSTING・未公開 ARCHIVED を除外すること",
       "acceptance": [
-        "ダッシュボードの直近予定に、未公開シフト表に紐づく確定割当が現れないこと。`ShiftAssignmentRepository#findUpcomingByUserIdBetween` の JPQL にシフト表ステータスの条件が入っていること"
+        "ダッシュボードの直近予定に未公開シフト表の割当が現れないこと。現行の `ShiftSlotRepository#findUpcomingAssignedByUserIdBetween` の native SQL が `ShiftScheduleEntity.FULLY_VISIBLE_SQL` を適用し、削除済み・DRAFT・COLLECTING・ADJUSTING・未公開 ARCHIVED を除外すること"
       ],
       "blocker": "CMP-260903-0651",
       "issues": [
         {
-          "label": "PR #3086（設計書 §8 B-2）",
+          "label": "[PR #3175](https://github.com/kenta-0420/mannschaft/pull/3175)（根本実装）・[Backend CI #37062334549](https://github.com/kenta-0420/mannschaft/actions/runs/37062334549)（確認時 main と同一 backend tree）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3086（設計書 §8 B-2）"
+        "[PR #3175](https://github.com/kenta-0420/mannschaft/pull/3175)（根本実装）・[Backend CI #37062334549](https://github.com/kenta-0420/mannschaft/actions/runs/37062334549)（確認時 main と同一 backend tree）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "背景: 同じく CMP-260826-2127 の軍議で発見。`ShiftAssignmentRepository#findUpcomingByUserIdBetween`（:61-71）の JPQL には `a.status = 'CONFIRMED'` はあるが `sc.status` の条件が無く、`DashboardController`（:334, :351-352）がそれをそのまま直近予定に混ぜている。CMP-260903-0651 と原因が同一（シフト表ステータスを見ない）で経路だけが違うため同じ戦役で一緒に直すのが望ましい。殿の判断で CMP-260903-0651 の行に統合してよい"
+        "当時の背景: CMP-260826-2127 の軍議で旧 `ShiftAssignmentRepository#findUpcomingByUserIdBetween` の JPQL がシフト表ステータスを考慮しない経路を発見（設計 PR #3086・設計書 §8 B-2）。PR #3175 で解消済み。現行 `DashboardController` → `ShiftMyService#getUpcomingAssignedSlots` → 上記 native SQL は PUBLISHED と公開履歴のある ARCHIVED のみを返す。検証: CI の Backend 6 shard・集約成功。実 MySQL＋MockMvc の `ShiftManualAssignmentSourceContractIT$UpcomingEvents` 2件（公開表示・DRAFT 非表示）、同 IT 全体12件、`ShiftMyServiceTest` 8件は failures/errors/skipped 各0。CI checkout `e0a2bb3e184d7b81d300dcd9462718d85d2d583c` と確認時 main `d7d211d07546f12e0fc9365fb331ea5386bea87d` の backend tree は `c03e75cea233e2a3fa3283b982e4ed3d17c23390` で同一。MockMvc は `addFilters=false` のため JWT 認証の証明ではない。全6状態の unit 確認は `getMyConfirmedSlots` であり、Dashboard の全6状態 DB 実測ではない。今回の変更は台帳・仕様の同期のみ"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
-        "ShiftAssignmentRepository",
-        "findUpcomingByUserIdBetween",
-        "JPQL"
+        "ShiftSlotRepository",
+        "findUpcomingAssignedByUserIdBetween",
+        "native",
+        "SQL",
+        "ShiftScheduleEntity",
+        "FULLY_VISIBLE_SQL",
+        "DRAFT",
+        "COLLECTING",
+        "ADJUSTING",
+        "ARCHIVED"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
-        3086
+        3086,
+        3175
       ],
       "github": [
         {
@@ -19194,14 +21407,28 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 3175,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 手動割当したシフトがマイシフトに出ない（割当の保存先が二重）— CMP-260908-2117",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3175",
+          "updatedAt": "2026-09-08T19:04:42Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260903-0653",
       "title": "自分の希望・自分の交代申請の一覧にシフト表ステータスの境界が無い",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "on-hold",
+      "statusLabel": "保留（未公開シフトに属する本人履歴の可視性方針待ち）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -19224,7 +21451,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "背景: CMP-260826-2127 の軍議で発見。`ShiftRequestService#listMyRequests`（:84-87）は `findByUserIdOrderBySlotDateDesc(userId)`、`ShiftSwapService#listMySwapRequests`（:91-94）は `findByRequesterIdOrderByCreatedAtDesc(userId)` で、いずれもシフト表のステータスを見ない。ただし自分が出したものしか返らないため深刻度は低い。仕様として「自分が出した希望は、そのシフト表が下書きに戻っても見えてよいか」を決める必要がある"
+        "背景: CMP-260826-2127 の軍議で発見。`ShiftRequestService#listMyRequests`（:84-87）は `findByUserIdOrderBySlotDateDesc(userId)`、`ShiftSwapService#listMySwapRequests`（:91-94）は `findByRequesterIdOrderByCreatedAtDesc(userId)` で、いずれもシフト表のステータスを見ない。ただし自分が出したものしか返らないため深刻度は低い。仕様として「自分が出した希望は、そのシフト表が下書きに戻っても見えてよいか」を決める必要がある。保留理由・解除条件：未公開シフトに属する本人希望・交代履歴を返すかどうかを設計で確定してから実装・試験する。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -19242,7 +21469,7 @@ window.BETA_INVENTORY_DATA = {
         "listMySwapRequests"
       ],
       "tags": [
-        "未着手"
+        "保留"
       ],
       "githubRefs": [
         3086
@@ -19267,8 +21494,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260903-0654",
       "title": "シフト変更依頼の一覧・詳細にシフト表ステータスの境界が無い",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "on-hold",
+      "statusLabel": "保留（未公開シフトに属する変更依頼の可視性方針待ち）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -19291,7 +21518,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "背景: CMP-260826-2127 の軍議で発見。`ShiftChangeRequestService#list`（:110-122）と `#get`（:141-153）は認可（依頼者本人 or 当該チームの scope ADMIN、越境は 404 で存在秘匿）は効いているが、シフト表のステータス境界は無い。認可が効いている分だけ深刻度は低い。なお `#get` の 404 存在秘匿は CMP-260826-2127 の設計が 404 方針の前例として参照している"
+        "背景: CMP-260826-2127 の軍議で発見。`ShiftChangeRequestService#list`（:110-122）と `#get`（:141-153）は認可（依頼者本人 or 当該チームの scope ADMIN、越境は 404 で存在秘匿）は効いているが、シフト表のステータス境界は無い。認可が効いている分だけ深刻度は低い。なお `#get` の 404 存在秘匿は CMP-260826-2127 の設計が 404 方針の前例として参照している。保留理由・解除条件：変更依頼の主体と紐づくシフト表の状態ごとの可視性を設計で確定してから実装・試験する。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -19300,7 +21527,7 @@ window.BETA_INVENTORY_DATA = {
         "get"
       ],
       "tags": [
-        "未着手"
+        "保留"
       ],
       "githubRefs": [
         3086
@@ -19333,23 +21560,23 @@ window.BETA_INVENTORY_DATA = {
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "死んでいた方式②の一式撤退が main へ着地し、方式①「先着承諾」（`createSwapRequest` → `/accept`）が実機で無傷であること。撤退した `/claim`・`/select-claimer` が 404 を返し、認可（非ADMIN 403）と再承諾 409 が固定されること。据え置いた enum 定数・カラム・Runner の扱いが記録されていること",
+      "nextAction": "方式②一式撤退は main へマージ済み。方式①「先着承諾」（`createSwapRequest` → `/accept`）の現行受入条件に対するモックなしUI実機検証は待機中。撤退した `/claim`・`/select-claimer` の404、再承諾409、現行スコープ認可と関連依頼だけの開示を実機で確認する。当初の「非ADMIN一覧403」は旧条件であり、[F03.5 API設計の交代一覧](features/F03.5_shift/02_api_design.md) と PR #3176 の現行契約（当該MEMBERの関連依頼200、SUPPORTER・部外者403）を優先する。据え置いたenum定数・カラム・Runnerの扱いを保持する",
       "acceptance": [
-        "死んでいた方式②の一式撤退が main へ着地し、方式①「先着承諾」（`createSwapRequest` → `/accept`）が実機で無傷であること。撤退した `/claim`・`/select-claimer` が 404 を返し、認可（非ADMIN 403）と再承諾 409 が固定されること。据え置いた enum 定数・カラム・Runner の扱いが記録されていること"
+        "方式②一式撤退は main へマージ済み。方式①「先着承諾」（`createSwapRequest` → `/accept`）の現行受入条件に対するモックなしUI実機検証は待機中。撤退した `/claim`・`/select-claimer` の404、再承諾409、現行スコープ認可と関連依頼だけの開示を実機で確認する。当初の「非ADMIN一覧403」は旧条件であり、[F03.5 API設計の交代一覧](features/F03.5_shift/02_api_design.md) と PR #3176 の現行契約（当該MEMBERの関連依頼200、SUPPORTER・部外者403）を優先する。据え置いたenum定数・カラム・Runnerの扱いを保持する"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "PR #3148（方式②一式撤退。CI実行中・未マージ）。実機: 作成201(PENDING)→ADMIN一覧200→非ADMIN403→承諾200(ACCEPTED)、`/claim`・`/select-claimer` 404、承諾済みへの再承諾409",
+          "label": "[PR #3148](https://github.com/kenta-0420/mannschaft/pull/3148) は2026-09-08マージ済み（`5ed528f875d0fc76591cc1d1a8477a469f859a8d`）。当時の [BE CI](https://github.com/kenta-0420/mannschaft/actions/runs/34198165584) は6 shard・集約成功、[FE CI](https://github.com/kenta-0420/mannschaft/actions/runs/34198165527) も成功。[PR #3176](https://github.com/kenta-0420/mannschaft/pull/3176) の方式①UI・MEMBER一覧修正も既存マージ済み（`2ec7a7fffb4c8a3a9b5d8e89481be9275a9f9f78`）。従来申告のAPI実測（作成201/PENDING→ADMIN一覧200→旧非ADMIN403→承諾200/ACCEPTED、廃止API404、再承諾409）は現行UI実機greenの証拠ではない。現行受入green未確認、本件ではJWT認証を伴うモックなしUI実機を未実施",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3148（方式②一式撤退。CI実行中・未マージ）。実機: 作成201(PENDING)→ADMIN一覧200→非ADMIN403→承諾200(ACCEPTED)、`/claim`・`/select-claimer` 404、承諾済みへの再承諾409"
+        "[PR #3148](https://github.com/kenta-0420/mannschaft/pull/3148) は2026-09-08マージ済み（`5ed528f875d0fc76591cc1d1a8477a469f859a8d`）。当時の [BE CI](https://github.com/kenta-0420/mannschaft/actions/runs/34198165584) は6 shard・集約成功、[FE CI](https://github.com/kenta-0420/mannschaft/actions/runs/34198165527) も成功。[PR #3176](https://github.com/kenta-0420/mannschaft/pull/3176) の方式①UI・MEMBER一覧修正も既存マージ済み（`2ec7a7fffb4c8a3a9b5d8e89481be9275a9f9f78`）。従来申告のAPI実測（作成201/PENDING→ADMIN一覧200→旧非ADMIN403→承諾200/ACCEPTED、廃止API404、再承諾409）は現行UI実機greenの証拠ではない。現行受入green未確認、本件ではJWT認証を伴うモックなしUI実機を未実施"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "**前提が実測で覆った行**。当初「`createOpenCall` に認可が無い」として起票したが、認可欠落自体は事実でも**呼び出し元・Controllerルート・`docs/openapi.json` の入口がいずれも無く、到達可能な脆弱性として成立していなかった**。調査で判明した根本: 手挙げ `claimOpenCall` が要求する `SwapRequestStatus.OPEN_CALL` を立てているのはコード全体で `createOpenCall` の1箇所のみで、現役の `createSwapRequest` は `openCall=true` でも状態を立てず `ShiftSwapRequestEntity` の `@Builder.Default` で `PENDING` のまま。よって本番経路で作られた募集には永久に手を挙げられなかった。FE の `useOpenCall.ts` / `ShiftOpenCallBadge.vue` もどのページからも未参照。契約ITが緑だったのは本番経路では作れない `OPEN_CALL`/`CLAIMED` 行をサービスを通さず直接組み立ててフィクスチャにしていたため、E2E の `CHANGE-005` も実在しないパスをモックし失敗時は `expect(true).toBe(true)` に落ちる構造だった。マスターの御裁可のもと方式②を一式撤退（PR #3148）。方式①は正常動作につき無変更。**据え置き**: `SwapRequestStatus.OPEN_CALL`/`CLAIMED` と DB の ENUM 値（永続化 enum の定数削除はローリング更新で既存行の読み取りを壊すため）、`claimed_by` カラム、`ShiftSwapExpiryRunner`、`OPEN_CALL_MONTHLY_LIMIT_EXCEEDED`(SHIFT_032)。UI層の実機確認は環境問題で未了"
+        "**前提が実測で覆った行**。当初「`createOpenCall` に認可が無い」として起票したが、認可欠落自体は事実でも**呼び出し元・Controllerルート・`docs/openapi.json` の入口がいずれも無く、到達可能な脆弱性として成立していなかった**。調査で判明した根本: 手挙げ `claimOpenCall` が要求する `SwapRequestStatus.OPEN_CALL` を立てているのはコード全体で `createOpenCall` の1箇所のみで、現役の `createSwapRequest` は `openCall=true` でも状態を立てず `ShiftSwapRequestEntity` の `@Builder.Default` で `PENDING` のまま。よって本番経路で作られた募集には永久に手を挙げられなかった。FE の `useOpenCall.ts` / `ShiftOpenCallBadge.vue` もどのページからも未参照。契約ITが緑だったのは本番経路では作れない `OPEN_CALL`/`CLAIMED` 行をサービスを通さず直接組み立ててフィクスチャにしていたため、E2E の `CHANGE-005` も実在しないパスをモックし失敗時は `expect(true).toBe(true)` に落ちる構造だった。マスターの御裁可のもと方式②を一式撤退（PR #3148）。方式①は撤退PRの対象外。後続PR #3176で一覧可視範囲・承諾/承認/却下UIが修正済みだが、現行UI実機完了は未証明。**据え置き**: `SwapRequestStatus.OPEN_CALL`/`CLAIMED` と DB の ENUM 値（永続化 enum の定数削除はローリング更新で既存行の読み取りを壊すため）、`claimed_by` カラム、`ShiftSwapExpiryRunner`、`OPEN_CALL_MONTHLY_LIMIT_EXCEEDED`(SHIFT_032)。方式②撤退はマージ済み・方式①実機検証待ち。`shift-swap-roundtrip.spec.ts`はAPIモックを使うため実機の代替にはならない。状態は実装中を維持し、未検証を合格扱いにしない"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -19359,9 +21586,20 @@ window.BETA_INVENTORY_DATA = {
         "main",
         "createSwapRequest",
         "accept",
+        "UI",
         "claim",
         "select-claimer",
         "ADMIN",
+        "F03",
+        "API",
+        "features",
+        "F03",
+        "shift",
+        "api_design",
+        "md",
+        "PR",
+        "MEMBER",
+        "SUPPORTER",
         "enum",
         "Runner"
       ],
@@ -19369,7 +21607,8 @@ window.BETA_INVENTORY_DATA = {
         "進行中"
       ],
       "githubRefs": [
-        3148
+        3148,
+        3176
       ],
       "github": [
         {
@@ -19385,14 +21624,28 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 3176,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: シフト交代の承諾・却下がUIから永久に押せない問題を根治（CMP-260908-2116）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3176",
+          "updatedAt": "2026-09-08T17:56:22Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260903-0656",
       "title": "シフトPDF の認可が SYSTEM_ADMIN を短絡しない",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了（既存修正の確認）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -19406,16 +21659,16 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260826-2127",
       "issues": [
         {
-          "label": "PR #3086（設計書 §8 B-6・§1.2 X7）",
+          "label": "PR #3086（設計書 §8 B-6・§1.2 X7）・[PR #3099](https://github.com/kenta-0420/mannschaft/pull/3099)・[PR #3603](https://github.com/kenta-0420/mannschaft/pull/3603)・[CI #37105977154](https://github.com/kenta-0420/mannschaft/actions/runs/37105977154)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3086（設計書 §8 B-6・§1.2 X7）"
+        "PR #3086（設計書 §8 B-6・§1.2 X7）・[PR #3099](https://github.com/kenta-0420/mannschaft/pull/3099)・[PR #3603](https://github.com/kenta-0420/mannschaft/pull/3603)・[CI #37105977154](https://github.com/kenta-0420/mannschaft/actions/runs/37105977154)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "背景: CMP-260826-2127 の軍議で発見。`ShiftPdfService#checkMemberAndNotSupporter`（:100-106）は `isSystemAdmin` を短絡しないため、当該チームの非メンバーである SYSTEM_ADMIN は `getSchedule` を通過した直後にこの行で 403 になる。同ドメインの `ShiftScheduleService#checkTeamReadAccess`（:431-433）・`#checkScheduleAdminAccess`（:412-414）は短絡しており PDF だけが非対称。注意: CMP-260826-2127 の AC-11(b) がこの是正を含んでいるため、そちらが着地すれば本行は不要になる可能性がある。着手前に CMP-260826-2127 の実装状況を確認すること"
+        "背景: CMP-260826-2127 の軍議で発見。`ShiftPdfService#checkMemberAndNotSupporter`（:100-106）は `isSystemAdmin` を短絡しないため、当該チームの非メンバーである SYSTEM_ADMIN は `getSchedule` を通過した直後にこの行で 403 になる。同ドメインの `ShiftScheduleService#checkTeamReadAccess`（:431-433）・`#checkScheduleAdminAccess`（:412-414）は短絡しており PDF だけが非対称。注意: CMP-260826-2127 の AC-11(b) がこの是正を含んでいるため、そちらが着地すれば本行は不要になる可能性がある。着手前に CMP-260826-2127 の実装状況を確認すること。2026-10-03確認：#3099でSYSTEM_ADMIN短絡を実装し、#3603で認可をShiftPdfFacade#authorizeへ移動。チーム・個人PDFは共通の短絡を通り、所属判定を呼ばずprivileged=trueで本体へ進む。CI37105977154 shard0のShiftPdfFacadeAuthzTestは11件、failures/errors/skipped各0（SYSTEM_ADMIN短絡ケースを含む）。CI checkout 5ce86483と確認main 5fd65d44のFacade・Service・同試験のblobが一致。Mockito単体の証跡であり実JWT・ブラウザ取得の実測ではない。同CI全体の別試験失敗と親CMP-260826-2127の未完了は別に保持する。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -19428,10 +21681,12 @@ window.BETA_INVENTORY_DATA = {
         "PDF"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
-        3086
+        3086,
+        3099,
+        3603
       ],
       "github": [
         {
@@ -19441,6 +21696,34 @@ window.BETA_INVENTORY_DATA = {
           "title": "設計: シフト表の未公開情報の遮断方針を定める（CMP-260826-2127・軍議やり直し）",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3086",
           "updatedAt": "2026-09-04T06:53:56Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3099,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 未公開シフト表の情報が API から読める欠陥を遮断する（CMP-260826-2127・出陣）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3099",
+          "updatedAt": "2026-09-04T13:29:14Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3603,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: シフトの予定・枠・リマインド・PDF の認可をトランザクションの外のファサードへ（CMP-260923-0954 W6a）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3603",
+          "updatedAt": "2026-10-03T03:43:43Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -21465,8 +23748,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260822-1243",
       "title": "退会時匿名化の個人設定系テーブル取りこぼし全体棚卸し",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "着手中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -21480,12 +23763,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "発端: F02.2.2 設計時に `AccountPurgeService` / `UserService` を実地確認したところ、いずれも `dashboard_widget_settings` に触れておらず、退会ユーザーの画面設定が孤児として残り続けることが判明した（両クラスが扱うのはトークン・OAuth・MFA/2FA・S3 失敗記録等の認証／GDPR 系のみ）。F02.2.2 はC案への変更で `dashboard_widget_folders` を不採用とし、`dashboard_widget_settings` の退会時削除も本戦役では未対処のため、引き続き本棚卸しの対象とする。残域候補: `dashboard_scope_tab_orders` / `chat_contact_folders` / `chat_contact_folder_items` / `activity_feed` ほか個人設定系全般。PII ではないが保持根拠が説明できず GDPR Art.17 の消去範囲としても弁明が立たない",
+          "label": "発端: F02.2.2 設計時に `AccountPurgeService` / `UserService` を実地確認したところ、いずれも `dashboard_widget_settings` に触れておらず、退会ユーザーの画面設定が孤児として残り続けることが判明した（両クラスが扱うのはトークン・OAuth・MFA/2FA・S3 失敗記録等の認証／GDPR 系のみ）。F02.2.2 はC案への変更で `dashboard_widget_folders` を不採用とし、`dashboard_widget_settings` の退会時削除も本戦役では未対処のため、引き続き本棚卸しの対象とする。残域候補: `dashboard_scope_tab_orders` / `chat_contact_folders` / `chat_contact_folder_items` / `activity_feed` ほか個人設定系全般。PII ではないが保持根拠が説明できず GDPR Art.17 の消去範囲としても弁明が立たない<br>進捗（2026-10-03）: PR #3583。source `d908` の競合TX 3件成功、通常strong経路のsettings残留はRED。旧試練source `17a6f0dd`・run `37065120336` はtarget IT 8件＝元競合3 GREEN／追加5 RED（error・skip 0、36親残留／新25domain登録0・queue／retry／完了記録不足）、Flyway 17件GREEN。最新試練source `efe2b194`・run `37074963596` もtarget IT 8件＝3 GREEN／5 RED（error・skip 0）、Flyway 17件GREEN。対象38親テーブル・27domainのproductionは `2c510510` でcommit済み・静的検分指摘0。pushと修正後の正式CIは未実施。visibility仕様判断待ち、完了判定は未達。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "発端: F02.2.2 設計時に `AccountPurgeService` / `UserService` を実地確認したところ、いずれも `dashboard_widget_settings` に触れておらず、退会ユーザーの画面設定が孤児として残り続けることが判明した（両クラスが扱うのはトークン・OAuth・MFA/2FA・S3 失敗記録等の認証／GDPR 系のみ）。F02.2.2 はC案への変更で `dashboard_widget_folders` を不採用とし、`dashboard_widget_settings` の退会時削除も本戦役では未対処のため、引き続き本棚卸しの対象とする。残域候補: `dashboard_scope_tab_orders` / `chat_contact_folders` / `chat_contact_folder_items` / `activity_feed` ほか個人設定系全般。PII ではないが保持根拠が説明できず GDPR Art.17 の消去範囲としても弁明が立たない"
+        "発端: F02.2.2 設計時に `AccountPurgeService` / `UserService` を実地確認したところ、いずれも `dashboard_widget_settings` に触れておらず、退会ユーザーの画面設定が孤児として残り続けることが判明した（両クラスが扱うのはトークン・OAuth・MFA/2FA・S3 失敗記録等の認証／GDPR 系のみ）。F02.2.2 はC案への変更で `dashboard_widget_folders` を不採用とし、`dashboard_widget_settings` の退会時削除も本戦役では未対処のため、引き続き本棚卸しの対象とする。残域候補: `dashboard_scope_tab_orders` / `chat_contact_folders` / `chat_contact_folder_items` / `activity_feed` ほか個人設定系全般。PII ではないが保持根拠が説明できず GDPR Art.17 の消去範囲としても弁明が立たない<br>進捗（2026-10-03）: PR #3583。source `d908` の競合TX 3件成功、通常strong経路のsettings残留はRED。旧試練source `17a6f0dd`・run `37065120336` はtarget IT 8件＝元競合3 GREEN／追加5 RED（error・skip 0、36親残留／新25domain登録0・queue／retry／完了記録不足）、Flyway 17件GREEN。最新試練source `efe2b194`・run `37074963596` もtarget IT 8件＝3 GREEN／5 RED（error・skip 0）、Flyway 17件GREEN。対象38親テーブル・27domainのproductionは `2c510510` でcommit済み・静的検分指摘0。pushと修正後の正式CIは未実施。visibility仕様判断待ち、完了判定は未達。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -21500,10 +23783,11 @@ window.BETA_INVENTORY_DATA = {
         "IT"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
-        2919
+        2919,
+        3583
       ],
       "github": [
         {
@@ -21516,6 +23800,19 @@ window.BETA_INVENTORY_DATA = {
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3583,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "修正: CMP1243退会バッチの実TXと取消境界を修復する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3583",
+          "updatedAt": "2026-10-03T18:05:20Z",
+          "ci": {
+            "status": "failure",
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
@@ -21582,27 +23879,27 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260826-1100",
       "title": "backend CI の shard 5 が OutOfMemoryError で落ちる（重み付けシャード振り分け導入後）",
-      "status": "not-started",
-      "statusLabel": "未着手（**2026-08-26 実測発見**）",
+      "status": "done",
+      "statusLabel": "完了（2026-10-02・PR #2976全6シャード成功）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "PR の backend CI 6シャードが全緑になること。shard 5 の OOM が再現しないこと。シャード間のメモリ消費の偏りが是正され、特定シャードだけが 7GB 級のヒープを要求しない状態になっていること",
+      "nextAction": "PR の backend CI 6シャードが全緑となり、shard 5 の OOM が再発しないこと。fork数と各workerの挙動を計測できること。",
       "acceptance": [
-        "PR の backend CI 6シャードが全緑になること。shard 5 の OOM が再現しないこと。シャード間のメモリ消費の偏りが是正され、特定シャードだけが 7GB 級のヒープを要求しない状態になっていること"
+        "PR の backend CI 6シャードが全緑となり、shard 5 の OOM が再発しないこと。fork数と各workerの挙動を計測できること。"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "**実測**: PR #2920 の shard 5 が `java.lang.OutOfMemoryError: Java heap space` で失敗（再実行しても再現・ヒープダンプ約 6.97GB）。**本PRの差分が原因ではない**: shard 5 には村関連テストが1件も割り当てられておらず、OOM は通知・シフト・継承・開封請求などの**結合テストで Spring ApplicationContext が積み上がった**ところで発生している（`SpringApplicationShutdownHook` 内でも OOM）。**緑だった時点との差分が切り分けの決め手**: 同PRの直前 run（`e04b84239`）では6シャード全緑で、その後に入ったのは村ドメインの2コミットと **main 取込**であり、main 側に `b4197b6d0`（改善(CI): backendテストシャードを実行時間ベースの重み付け振り分けへ・PR #2906）が含まれる。重み付けは**実行時間**のみを見ておりメモリ消費を考慮しないため、重い結合テストが特定シャードへ偏りうる。なお村と無関係の PR #2956 では shard 5 が pass しており、シャード構成は PR ごとに変動する（＝再現は PR 依存で、いずれ他PRでも踏む）。着手時の候補: ①テスト JVM のヒープ上限見直し ②`@DirtiesContext`／コンテキストキャッシュ上限の調整で ApplicationContext の蓄積を抑える ③`regen-shard-weights.sh` の重みにメモリ観点を加える。**①だけで済ませるとランナーの上限に当たって再発するため、②の蓄積抑制が本命**",
+          "label": "PR #2976は2026-08-26T19:26:48Zにcommit 435cdd510bでMERGED、6シャード全success。forkEveryを500から180へ下げ、worker JVMが同一プロセスで連続実行するテストクラス数を抑制。各shardのテストworker/JVM起動数を4から8へ変更。最長実行51.5分。fork計測を常設。約6.97GBのheap dumpは複数workerの固定パス衝突による誤測定で、単体ヒープが7GB必要という意味ではない。最新mainのbuild.gradle.ktsにも修正を確認。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "**実測**: PR #2920 の shard 5 が `java.lang.OutOfMemoryError: Java heap space` で失敗（再実行しても再現・ヒープダンプ約 6.97GB）。**本PRの差分が原因ではない**: shard 5 には村関連テストが1件も割り当てられておらず、OOM は通知・シフト・継承・開封請求などの**結合テストで Spring ApplicationContext が積み上がった**ところで発生している（`SpringApplicationShutdownHook` 内でも OOM）。**緑だった時点との差分が切り分けの決め手**: 同PRの直前 run（`e04b84239`）では6シャード全緑で、その後に入ったのは村ドメインの2コミットと **main 取込**であり、main 側に `b4197b6d0`（改善(CI): backendテストシャードを実行時間ベースの重み付け振り分けへ・PR #2906）が含まれる。重み付けは**実行時間**のみを見ておりメモリ消費を考慮しないため、重い結合テストが特定シャードへ偏りうる。なお村と無関係の PR #2956 では shard 5 が pass しており、シャード構成は PR ごとに変動する（＝再現は PR 依存で、いずれ他PRでも踏む）。着手時の候補: ①テスト JVM のヒープ上限見直し ②`@DirtiesContext`／コンテキストキャッシュ上限の調整で ApplicationContext の蓄積を抑える ③`regen-shard-weights.sh` の重みにメモリ観点を加える。**①だけで済ませるとランナーの上限に当たって再発するため、②の蓄積抑制が本命**"
+        "PR #2976は2026-08-26T19:26:48Zにcommit 435cdd510bでMERGED、6シャード全success。forkEveryを500から180へ下げ、worker JVMが同一プロセスで連続実行するテストクラス数を抑制。各shardのテストworker/JVM起動数を4から8へ変更。最長実行51.5分。fork計測を常設。約6.97GBのheap dumpは複数workerの固定パス衝突による誤測定で、単体ヒープが7GB必要という意味ではない。最新mainのbuild.gradle.ktsにも修正を確認。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -21619,52 +23916,23 @@ window.BETA_INVENTORY_DATA = {
         "CI",
         "shard",
         "OOM",
-        "GB"
+        "fork",
+        "worker"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
-        2906,
-        2920,
-        2956
+        2976
       ],
       "github": [
         {
-          "number": 2906,
+          "number": 2976,
           "kind": "pull_request",
           "state": "merged",
-          "title": "改善(CI): backendテストシャードを実行時間ベースの重み付け振り分けへ",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/2906",
-          "updatedAt": "2026-08-25T10:44:20Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
-        },
-        {
-          "number": 2920,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "テスト追加(村): 村の存在確認のゲート一元化を番人で固定し、残存10箇所とピン一覧の漏洩を是正",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/2920",
-          "updatedAt": "2026-08-26T02:22:35Z",
-          "ci": {
-            "status": "unavailable",
-            "reason": "終了済みPRのCIは同期対象外",
-            "checks": [],
-            "source": "GraphQL statusCheckRollup"
-          }
-        },
-        {
-          "number": 2956,
-          "kind": "pull_request",
-          "state": "merged",
-          "title": "修正: マイカレンダーのチーム/組織予定が数値IDで開けない不具合(CMP-054)",
-          "url": "https://github.com/kenta-0420/mannschaft/pull/2956",
-          "updatedAt": "2026-08-26T11:14:00Z",
+          "title": "修正(CI): forkEvery が一度も発火せず shard の JVM が再生成されない欠陥を是正（+ ヒープダンプの固定パス衝突）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2976",
+          "updatedAt": "2026-08-26T19:50:30Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -21677,8 +23945,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260826-1041",
       "title": "停滞している OPEN PR 42件の棚卸しと処遇決定（復活させるか閉じるか）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "着手中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -21692,12 +23960,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "一覧: `docs/development/stalled_open_prs.md`",
+          "label": "2026-10-03: 元42件をGitHub primaryで再照合（重複0）、MERGED 19件・CLOSED 11件・OPEN 12件。#1074（merge `cdf4a319`）・#1076（merge `479c60b1`）を反映。#1076実APIコメントrun37062378940成功、Infraはskip。#1073最終対象27件は成功したが全体run37009214808はArchUnit OOMで失敗・未マージ。共通PR #3607は検証未完了の候補。残る本番インフラ #1502 の裁可と依存更新11件の処遇・main追従・全体CIは未完了。[処遇台帳](development/stalled_open_prs.md)",
           "state": "unknown"
         }
       ],
       "prs": [
-        "一覧: `docs/development/stalled_open_prs.md`"
+        "2026-10-03: 元42件をGitHub primaryで再照合（重複0）、MERGED 19件・CLOSED 11件・OPEN 12件。#1074（merge `cdf4a319`）・#1076（merge `479c60b1`）を反映。#1076実APIコメントrun37062378940成功、Infraはskip。#1073最終対象27件は成功したが全体run37009214808はArchUnit OOMで失敗・未マージ。共通PR #3607は検証未完了の候補。残る本番インフラ #1502 の裁可と依存更新11件の処遇・main追従・全体CIは未完了。[処遇台帳](development/stalled_open_prs.md)"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -21717,15 +23985,61 @@ window.BETA_INVENTORY_DATA = {
         "PR"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
+        1073,
+        1074,
+        1076,
         1169,
         1209,
         1490,
-        2353
+        1502,
+        2353,
+        3607
       ],
       "github": [
+        {
+          "number": 1073,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "依存更新: POIを5.5.1へ更新（CMP1041）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1073",
+          "updatedAt": "2026-10-03T16:57:44Z",
+          "ci": {
+            "status": "pending",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1074,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "更新: actions/cache v5へ追従 (CMP-260826-1041)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1074",
+          "updatedAt": "2026-10-02T10:47:57Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 1076,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "chore(deps): github-script を v7 から v9 に更新",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1076",
+          "updatedAt": "2026-10-02T21:12:02Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
         {
           "number": 1169,
           "kind": "pull_request",
@@ -21768,6 +24082,19 @@ window.BETA_INVENTORY_DATA = {
           }
         },
         {
+          "number": 1502,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "feat(infra進軍): 本番インフラ初回構築（mannschaft.app — network/data/app/edge 全モジュール）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/1502",
+          "updatedAt": "2026-06-13T00:02:27Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
           "number": 2353,
           "kind": "pull_request",
           "state": "merged",
@@ -21780,14 +24107,28 @@ window.BETA_INVENTORY_DATA = {
             "checks": [],
             "source": "GraphQL statusCheckRollup"
           }
+        },
+        {
+          "number": 3607,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "検証改善: 全ArchUnit番人を専用JVMへ分離してOOMを対照する",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3607",
+          "updatedAt": "2026-10-03T15:38:34Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
         }
       ]
     },
     {
       "id": "CMP-260826-1455",
       "title": "BAN された村長・長老が権限操作を実行できうる（村メンバーシップの認可述語の誤用）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "着手中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -21801,12 +24142,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "進捗（2026-10-03）: PR #3572。source `99323f9368d16e27adb285decdcee565314c3fa6` の公式HTTP 36件・guard 6件・全6 shard green。実UI 6条件は同JARの4＋1＋1別trialで成功（単一run 6件greenではない）。3独立住民探索を完了し気づき4件は観測未実証。保存版 `.claude/evidence/cmp1455-alicization-20261003/`、JAR SHA256 `A30B1DF08B729EED6336FE90806F42A5D03A1137582ADD8BC30FADE5227A302D`。Windows native crash 3件は未解決で既存Linux Javaによる実機確認。最新main追従・再CI／common OOM解消・mergeは未達。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "進捗（2026-10-03）: PR #3572。source `99323f9368d16e27adb285decdcee565314c3fa6` の公式HTTP 36件・guard 6件・全6 shard green。実UI 6条件は同JARの4＋1＋1別trialで成功（単一run 6件greenではない）。3独立住民探索を完了し気づき4件は観測未実証。保存版 `.claude/evidence/cmp1455-alicization-20261003/`、JAR SHA256 `A30B1DF08B729EED6336FE90806F42A5D03A1137582ADD8BC30FADE5227A302D`。Windows native crash 3件は未解決で既存Linux Javaによる実機確認。最新main追従・再CI／common OOM解消・mergeは未達。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -21823,16 +24164,32 @@ window.BETA_INVENTORY_DATA = {
         "red"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3572
+      ],
+      "github": [
+        {
+          "number": 3572,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "修正: 村メンバー操作と自己降格の現役メンバー認可 (CMP-260826-1455)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3572",
+          "updatedAt": "2026-10-03T18:57:54Z",
+          "ci": {
+            "status": "pending",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-260826-1456",
       "title": "UNLISTED 村では申請者本人ですら自分の参加申請一覧を引けない（存在秘匿の副作用）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "着手中",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -21846,12 +24203,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260820-1423",
       "issues": [
         {
-          "label": "—",
+          "label": "進捗（2026-10-03）: PR #3590。source `a0bc` の公式HTTP 15件・guard 7件・Flyway 16件は失敗／skip 0。FE実audit・lint・types・unitはrun `37020854452` SUCCESS、unit 4件成功。全体BE run `37020854403` はArchUnit OOMでFAIL。実UI・全体green・mergeは未達。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "進捗（2026-10-03）: PR #3590。source `a0bc` の公式HTTP 15件・guard 7件・Flyway 16件は失敗／skip 0。FE実audit・lint・types・unitはrun `37020854452` SUCCESS、unit 4件成功。全体BE run `37020854403` はArchUnit OOMでFAIL。実UI・全体green・mergeは未達。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -21862,10 +24219,26 @@ window.BETA_INVENTORY_DATA = {
         "UNLISTED"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3590
+      ],
+      "github": [
+        {
+          "number": 3590,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "feat: 存在秘匿を維持する本人の村参加申請履歴",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3590",
+          "updatedAt": "2026-10-03T17:11:50Z",
+          "ci": {
+            "status": "pending",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-260826-1457",
@@ -21926,53 +24299,62 @@ window.BETA_INVENTORY_DATA = {
     },
     {
       "id": "CMP-260826-2127",
-      "title": "シフト表の未公開ステータスが API では絞られていない（#1170 は FE 表示のみ是正）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "title": "シフト表APIのステータス可視性制御（#1170はFE表示のみ是正）",
+      "status": "working",
+      "statusLabel": "実装済み／実機一部済み（AC残）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "非管理者が `GET /api/v1/shifts/schedules`（およびその期間版）を直接叩いても、`DRAFT`/`COLLECTING`/`ADJUSTING` のシフト表が返らないこと。FE の表示絞り込みに依存せず BE 側で遮断されていること。番人テストで固定すること",
+      "nextAction": "非管理者の一覧と期間一覧から DRAFT および publishedAt=null の ARCHIVED を除外し、DRAFT/未公開ARCHIVEDの単体・枠取得は404にする。COLLECTING/ADJUSTING は一覧・枠を維持し、割当を assignmentMasked=true と assignedUserIds=[] で伏せて枠骨格は返す。PUBLISHED と publishedAt!=null の ARCHIVED は割当を含め全量返す。可視性境界を番人テストで固定する。",
       "acceptance": [
-        "非管理者が `GET /api/v1/shifts/schedules`（およびその期間版）を直接叩いても、`DRAFT`/`COLLECTING`/`ADJUSTING` のシフト表が返らないこと。FE の表示絞り込みに依存せず BE 側で遮断されていること。番人テストで固定すること"
+        "非管理者の一覧と期間一覧から DRAFT および publishedAt=null の ARCHIVED を除外し、DRAFT/未公開ARCHIVEDの単体・枠取得は404にする。COLLECTING/ADJUSTING は一覧・枠を維持し、割当を assignmentMasked=true と assignedUserIds=[] で伏せて枠骨格は返す。PUBLISHED と publishedAt!=null の ARCHIVED は割当を含め全量返す。可視性境界を番人テストで固定する。"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "前段: #1170（FE表示の是正・2026-08-26 マージ済）",
+          "label": "PR #3099で実装。PR #3123/#3132で実機E2Eを実施し、#3132はmerge済み。実機E2Eは12 expected、0 unexpected、0 flaky、0 skipped（setup 1件と11ケース）。PR #3129の探索から2件を派生起票。現行ShiftScheduleServiceではlistSchedules/listSchedulesByPeriodのfilterVisibleと詳細取得guardを確認。PR本文でAC-5 PDF、AC-6検索、AC-10純粋team ADMIN、AC-11非所属SYSTEM_ADMIN、AC-12別scope/非所属、AC-14通知、AC-15 FE filter撤去は射程外と明記されているため、全体ACは未完了。9月の別派生課題と混同しない。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "前段: #1170（FE表示の是正・2026-08-26 マージ済）"
+        "PR #3099で実装。PR #3123/#3132で実機E2Eを実施し、#3132はmerge済み。実機E2Eは12 expected、0 unexpected、0 flaky、0 skipped（setup 1件と11ケース）。PR #3129の探索から2件を派生起票。現行ShiftScheduleServiceではlistSchedules/listSchedulesByPeriodのfilterVisibleと詳細取得guardを確認。PR本文でAC-5 PDF、AC-6検索、AC-10純粋team ADMIN、AC-11非所属SYSTEM_ADMIN、AC-12別scope/非所属、AC-14通知、AC-15 FE filter撤去は射程外と明記されているため、全体ACは未完了。9月の別派生課題と混同しない。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "背景: PR #1170 の復活時に判明。同 PR は `ShiftScheduleList.vue` に `visibleSchedules` を足して非管理者には `PUBLISHED` のみ表示するようにしたが、**これは画面の絞り込みにすぎず API は全ステータスを返し続ける**。`ShiftScheduleService#listSchedules` は `checkTeamReadAccess` の後 `findByTeamIdOrderByStartDateDesc` を無条件で返しており、`listSchedulesByPeriod` も同様。クラス Javadoc も「参照は当該チームのメンバー…管理者に限定しない」とだけ書き、ステータス絞り込みに言及がない。**調整途中のシフト（誰がどの枠に入る予定か）が公開前に API 経由で読める**状態は残っている。#1170 の差分を広げないため分離した"
+        "—"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
         "API",
         "FE",
-        "GET",
-        "api",
-        "v1",
-        "shifts",
-        "schedules",
         "DRAFT",
+        "publishedAt",
+        "null",
+        "ARCHIVED",
+        "DRAFT",
+        "ARCHIVED",
         "COLLECTING",
         "ADJUSTING",
-        "FE",
-        "BE"
+        "assignmentMasked",
+        "true",
+        "assignedUserIds",
+        "PUBLISHED",
+        "publishedAt",
+        "null",
+        "ARCHIVED"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
-        1170
+        1170,
+        3099,
+        3123,
+        3129,
+        3132
       ],
       "github": [
         {
@@ -21982,6 +24364,62 @@ window.BETA_INVENTORY_DATA = {
           "title": "feat(shift): シフト管理画面を権限別表示に対応",
           "url": "https://github.com/kenta-0420/mannschaft/pull/1170",
           "updatedAt": "2026-08-26T11:06:25Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3099,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 未公開シフト表の情報が API から読める欠陥を遮断する（CMP-260826-2127・出陣）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3099",
+          "updatedAt": "2026-09-04T13:29:14Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3123,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト追加: 未公開シフト情報の遮断を実機E2Eで固定する（CMP-260826-2127・実機）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3123",
+          "updatedAt": "2026-09-05T11:30:32Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3129,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "台帳: アリシゼーション（探索的テスト）で発見した欠陥2件を起票",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3129",
+          "updatedAt": "2026-09-05T13:46:41Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3132,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト強化: 未公開シフト遮断の実機E2Eに HTTP 404 検証・AC-17・API 契約検証を足す（CMP-260826-2127・検分反映）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3132",
+          "updatedAt": "2026-09-05T13:58:46Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -22532,62 +24970,64 @@ window.BETA_INVENTORY_DATA = {
     },
     {
       "id": "CMP-260901-0411",
-      "title": "本陣クローンが shallow のため古いブランチのマージが不能・症状がリポジトリ破損に酷似する",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "title": "浅い履歴による古いブランチのマージ不能・リポジトリ破損への誤診を防ぐ",
+      "status": "done",
+      "statusLabel": "完了",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "本陣 `.git` が shallow でないこと（`git rev-parse --is-shallow-repository` が false）を保つ運用が定まっていること。shallow 境界に起因する「親が無い」「祖先でない」という誤診に対し、破壊的操作（`git repack -a -d` / `git fsck --lost-found` 等）へ進む前に shallow を疑う手順が [`docs/development/worktree_operations.md`](development/worktree_operations.md) に明記されていること",
+      "nextAction": "本陣・worktreeの共通Git履歴で shallow=false を保つ運用、症状時の判定とtrue時だけのunshallow、失敗・未解消時の停止報告、浅い取得オプション禁止が手引きに明記されていること",
       "acceptance": [
-        "本陣 `.git` が shallow でないこと（`git rev-parse --is-shallow-repository` が false）を保つ運用が定まっていること。shallow 境界に起因する「親が無い」「祖先でない」という誤診に対し、破壊的操作（`git repack -a -d` / `git fsck --lost-found` 等）へ進む前に shallow を疑う手順が [`docs/development/worktree_operations.md`](development/worktree_operations.md) に明記されていること"
+        "本陣・worktreeの共通Git履歴で shallow=false を保つ運用、症状時の判定とtrue時だけのunshallow、失敗・未解消時の停止報告、浅い取得オプション禁止が手引きに明記されていること"
       ],
       "blocker": "—",
       "issues": [
         {
-          "label": "発見: CMP-260826-1041（停滞PR棚卸し）",
+          "label": "[PR #3577](https://github.com/kenta-0420/mannschaft/pull/3577)。2026-10-02: 本陣・担当worktreeで `git rev-parse --is-shallow-repository` = `false`、共通Gitは本陣 `.git`、`.git/shallow` 不存在を確認。[診断・再発防止手順](development/worktree_operations.md#浅い履歴shallowの診断と再発防止)を追加。文書内容のAC照合・7列確認・2ファイル差分・`git diff --check`。文書のみでアプリ変更なしのためredテスト・実機E2E・アリシゼーションは該当なし",
           "state": "unknown"
         }
       ],
       "prs": [
-        "発見: CMP-260826-1041（停滞PR棚卸し）"
+        "[PR #3577](https://github.com/kenta-0420/mannschaft/pull/3577)。2026-10-02: 本陣・担当worktreeで `git rev-parse --is-shallow-repository` = `false`、共通Gitは本陣 `.git`、`.git/shallow` 不存在を確認。[診断・再発防止手順](development/worktree_operations.md#浅い履歴shallowの診断と再発防止)を追加。文書内容のAC照合・7列確認・2ファイル差分・`git diff --check`。文書のみでアプリ変更なしのためredテスト・実機E2E・アリシゼーションは該当なし"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "背景: 停滞PR棚卸しの最中に**3度再発**した。本陣クローンは shallow（当初289コミット）であり、古いブランチを取り込もうとすると `refusing to merge unrelated histories` で止まる。さらに厄介なのは**症状がリポジトリ破損に酷似する**ことで、shallow 境界コミットに対し `git rev-list --parents` は「親なし」・`git merge-base --is-ancestor` は「祖先でない」と答えるのに、`git cat-file commit` には親 ID が見えるという矛盾を呈する。実際に足軽の一体はこれを「リポジトリ破損」と診断した（**77セッションが共有する `.git` に対し `repack -a -d` を独断で実行しなかったのは正しい判断だった**）。根治は `git fetch --unshallow origin`（289→4,243コミット）だが、**`--unshallow` の後に個別の古いブランチを `git fetch origin <branch>` すると shallow 境界が再生成される**ため、一度直せば終わりではない。運用手順として残す必要がある"
+        "発見: CMP-260826-1041（停滞PR棚卸し）。当時は本陣がshallow（289コミット）で、古いブランチの取り込み時に親不在・非祖先・`refusing to merge unrelated histories`が発生し破損に酷似した。`git fetch --unshallow origin`で4,243コミットまで完全化した記録がある。個別fetch後にも再発した観測はあるが、必ず境界が再生成されるとは一般化せず、取得後の実値を再確認する。共通Gitへの破壊的修復や症状隠しに進まない"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
+        "worktree",
+        "Git",
         "shallow",
-        "git",
-        "shallow",
-        "git",
-        "rev-parse",
-        "is-shallow-repository",
         "false",
-        "shallow",
-        "git",
-        "repack",
-        "git",
-        "fsck",
-        "lost-found",
-        "shallow",
-        "docs",
-        "development",
-        "worktree_operations",
-        "md",
-        "development",
-        "worktree_operations",
-        "md"
+        "true",
+        "unshallow"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3577
+      ],
+      "github": [
+        {
+          "number": 3577,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "文書更新: 浅いGit履歴の診断と再発防止（CMP-260901-0411）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3577",
+          "updatedAt": "2026-10-02T04:46:54Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-260901-1246",
@@ -27374,7 +29814,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "CMP-260910-1555（時給設定画面の新設）の検分過程で発生した積み残し。足軽が BE の一括取得エンドポイントを実装したものの、API 表面を変えると必須 CI チェック「OpenAPI Drift Check」のために `docs/openapi.json` の再生成が要るところ、**`generateOpenApiDocs` が2度とも失敗した**（CMP-260912-1526）ため撤回した。撤回分はコミット履歴に残っていないので再実装が必要。現状は `MemberQueryDispatcher` 側のページング改善で凌いでいる。**先に CMP-260912-1526 を解かないと着手できない**（古い spec のまま出せば必須チェックが確実に赤くなり、`docs/openapi.json` の手編集は既知のエスケープ破壊地雷のため禁止）"
+        "CMP-260910-1555（時給設定画面の新設）の検分過程で発生した積み残し。足軽が BE の一括取得エンドポイントを実装したものの、API 表面を変えると必須 CI チェック「OpenAPI Drift Check」のために `docs/openapi.json` の再生成が要るところ、**`generateOpenApiDocs` が2度とも失敗した**（CMP-260912-1526）ため撤回した。撤回分はコミット履歴に残っていないので再実装が必要。現状は `MemberQueryDispatcher` 側のページング改善で凌いでいる。**先に CMP-260912-1526 を解かないと着手できない**（古い spec のまま出せば必須チェックが確実に赤くなり、`docs/openapi.json` の手編集は既知のエスケープ破壊地雷のため禁止） 依存解消済み: CMP-260912-1526はPR #3282・#3291で解消済み（#3291 merged 2026-09-16 JST）。OpenAPI再生成のブロッカーは解除されており、2026-10-02時点で本件は再実装に着手可能。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -27386,14 +29826,46 @@ window.BETA_INVENTORY_DATA = {
       "tags": [
         "未着手"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3282,
+        3291
+      ],
+      "github": [
+        {
+          "number": 3282,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: generateOpenApiDocs の無音タイムアウトを診断可能にする（CMP-260912-1526）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3282",
+          "updatedAt": "2026-09-15T17:44:04Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3291,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: openapi生成ポートを -PopenApiPort で上書き可能にする（CMP-260912-1526 AC-2/AC-3）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3291",
+          "updatedAt": "2026-09-16T14:27:27Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-260912-1526",
       "title": "`generateOpenApiDocs` が完走せず `docs/openapi.json` を再生成できない（API 表面を変える全作業がブロックされる）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了（PR #3282・#3291、2026-09-16）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -27407,12 +29879,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "診断AC-1/4（失敗原因を診断できるログ）: PR #3282（2026-09-16 JST merged）で、`openapi-gen`を含む列挙外プロファイルにもLogbackのfallback appenderを設定。実行時ログに `mannschaft.jwt.secret` のplaceholder不足やH2 DDL失敗が出ることを確認し、従来の無音を解消。PR #3282のCIは17 checks成功。AC-2/3（生成完走・生成物照合）: PR #3291（2026-09-16 JST merged）で `-PopenApiPort` を追加。PR #3291の生成実測: `./gradlew generateOpenApiDocs -PopenApiPort=8099 --no-daemon --no-build-cache` がBUILD SUCCESSFUL（9分13秒、Tomcat起動214.293秒）。生成した `docs/openapi.json` はmainと5,974,912 bytes・238,984行でバイト単位一致（`git diff --quiet` rc=0）。PR #3291のCI 17 checksも成功。失敗時に診断ログが出ることと、OpenAPI生成・ドリフトなしを両PRで確認済み。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "診断AC-1/4（失敗原因を診断できるログ）: PR #3282（2026-09-16 JST merged）で、`openapi-gen`を含む列挙外プロファイルにもLogbackのfallback appenderを設定。実行時ログに `mannschaft.jwt.secret` のplaceholder不足やH2 DDL失敗が出ることを確認し、従来の無音を解消。PR #3282のCIは17 checks成功。AC-2/3（生成完走・生成物照合）: PR #3291（2026-09-16 JST merged）で `-PopenApiPort` を追加。PR #3291の生成実測: `./gradlew generateOpenApiDocs -PopenApiPort=8099 --no-daemon --no-build-cache` がBUILD SUCCESSFUL（9分13秒、Tomcat起動214.293秒）。生成した `docs/openapi.json` はmainと5,974,912 bytes・238,984行でバイト単位一致（`git diff --quiet` rc=0）。PR #3291のCI 17 checksも成功。失敗時に診断ログが出ることと、OpenAPI生成・ドリフトなしを両PRで確認済み。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -27431,10 +29903,42 @@ window.BETA_INVENTORY_DATA = {
         "json"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3282,
+        3291
+      ],
+      "github": [
+        {
+          "number": 3282,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: generateOpenApiDocs の無音タイムアウトを診断可能にする（CMP-260912-1526）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3282",
+          "updatedAt": "2026-09-15T17:44:04Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3291,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: openapi生成ポートを -PopenApiPort で上書き可能にする（CMP-260912-1526 AC-2/AC-3）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3291",
+          "updatedAt": "2026-09-16T14:27:27Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-260912-1758",
@@ -27757,7 +30261,7 @@ window.BETA_INVENTORY_DATA = {
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
-        "CMP-260912-1823 の作業中に発見。`/admin/reports` のステータス Select は、BE の `GET /api/v1/system-admin/reports` が `page`/`size` しか受け付けないため**何を選んでも結果が変わらなかった**（選べるのに効かない＝症状隠し）。利用者を欺く状態を解消するため PR #3285 で UI・状態・6言語のロケールキーを削除済み。**復活に必要なもの**: `SystemAdminReportController#getAllReports`（`backend/.../moderation/controller/SystemAdminReportController.java:54`）に `@RequestParam(required=false) ReportStatus status` を追加し、`ReportActionService#getAllReports`（同 `service/ReportActionService.java:251`、現在は `reportRepository.findAll(pageable)` のみ）で分岐させる。**絞り込み可能なカラムは既にある** — `ContentReportEntity:61` に `@Enumerated` な `ReportStatus status`（既定 PENDING）が永続化済みで、Repository にも `findByScopeTypeAndScopeIdAndStatus` 等の status 条件クエリが存在する。**不足しているのはスコープ非依存の `Page<ContentReportEntity> findByStatus(ReportStatus, Pageable)` 1本だけで DDL 変更は不要**。API 表面が変わるため `docs/openapi.json` の再生成が要る（CMP-260912-1526 の解決待ち）。再生成後は FE 側で Select と status パラメータを戻すだけで済む"
+        "CMP-260912-1823 の作業中に発見。`/admin/reports` のステータス Select は、BE の `GET /api/v1/system-admin/reports` が `page`/`size` しか受け付けないため**何を選んでも結果が変わらなかった**（選べるのに効かない＝症状隠し）。利用者を欺く状態を解消するため PR #3285 で UI・状態・6言語のロケールキーを削除済み。**復活に必要なもの**: `SystemAdminReportController#getAllReports`（`backend/.../moderation/controller/SystemAdminReportController.java:54`）に `@RequestParam(required=false) ReportStatus status` を追加し、`ReportActionService#getAllReports`（同 `service/ReportActionService.java:251`、現在は `reportRepository.findAll(pageable)` のみ）で分岐させる。**絞り込み可能なカラムは既にある** — `ContentReportEntity:61` に `@Enumerated` な `ReportStatus status`（既定 PENDING）が永続化済みで、Repository にも `findByScopeTypeAndScopeIdAndStatus` 等の status 条件クエリが存在する。**不足しているのはスコープ非依存の `Page<ContentReportEntity> findByStatus(ReportStatus, Pageable)` 1本だけで DDL 変更は不要**。API 表面が変わるため `docs/openapi.json` の再生成が要る（CMP-260912-1526 の解決待ち）。再生成後は FE 側で Select と status パラメータを戻すだけで済む 依存解消済み: CMP-260912-1526はPR #3282・#3291で解消済み（#3291 merged 2026-09-16 JST）。OpenAPI再生成のブロッカーは解除されており、2026-10-02時点でBE/FEの絞り込み再実装に着手可能。"
       ],
       "source": "docs/task-list.md",
       "sourceTokens": [
@@ -27776,9 +30280,25 @@ window.BETA_INVENTORY_DATA = {
         "未着手"
       ],
       "githubRefs": [
-        3285
+        3282,
+        3285,
+        3291
       ],
       "github": [
+        {
+          "number": 3282,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: generateOpenApiDocs の無音タイムアウトを診断可能にする（CMP-260912-1526）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3282",
+          "updatedAt": "2026-09-15T17:44:04Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
         {
           "number": 3285,
           "kind": "pull_request",
@@ -27786,6 +30306,20 @@ window.BETA_INVENTORY_DATA = {
           "title": "修正: PageMeta の幽霊フィールド totalElements を根治（CMP-260912-1823）",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3285",
           "updatedAt": "2026-09-15T16:21:38Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3291,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: openapi生成ポートを -PopenApiPort で上書き可能にする（CMP-260912-1526 AC-2/AC-3）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3291",
+          "updatedAt": "2026-09-16T14:27:27Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -29549,12 +32083,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "—",
+          "label": "Phase 1（BE基盤: メンバー統合画面サブタブのロール別可視性・D-3T番人違反の根治）は PR #3387（`e1dcdd9b37`）でマージ済み。本行が対象とするのは Phase 2（FE統合: ダッシュボードの「メンバー」ウィジェット名／遷移先と上部タブの整合。設計判断＋実装）であり、こちらは未着手",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "Phase 1（BE基盤: メンバー統合画面サブタブのロール別可視性・D-3T番人違反の根治）は PR #3387（`e1dcdd9b37`）でマージ済み。本行が対象とするのは Phase 2（FE統合: ダッシュボードの「メンバー」ウィジェット名／遷移先と上部タブの整合。設計判断＋実装）であり、こちらは未着手"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -29565,8 +32099,25 @@ window.BETA_INVENTORY_DATA = {
       "tags": [
         "未着手"
       ],
-      "githubRefs": [],
-      "github": []
+      "githubRefs": [
+        3387
+      ],
+      "github": [
+        {
+          "number": 3387,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー統合画面(一覧/紹介)サブタブのロール別可視性BE基盤(CMP-260919-1140 Phase 1)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3387",
+          "updatedAt": "2026-10-01T05:29:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     },
     {
       "id": "CMP-260919-1141",
@@ -29898,27 +32449,27 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260919-0214",
       "title": "PR6b-1 実機E2Eのハッピーパス（見積り→確定→3DS→APPLIED）が未検証",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "on-hold",
+      "statusLabel": "保留（CMP-260919-0213の販売マスタ整備待ち）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
       "featureKey": null,
       "updated": "未設定",
       "summary": "task-list.mdの正本表から生成。",
-      "nextAction": "スペックは `frontend/tests/e2e/real/billing-plan-upgrade-3ds.spec.ts` に作成済み（9テスト・ロール横断3視点＋IDOR二重防衛）。ロール横断・導線・no-op非再発は実機で確認済みだが、ハッピーパスは未到達。理由は①CMP-260919-0213 の販売マスタ欠落で upgrade 候補が出ない ②検証機のメモリ逼迫（空き3.3GB／node35本）でNuxt dev serverがOOM反復 ③他セッションが8081を占有。CMP-260919-0213 の解消後に再実行すること",
+      "nextAction": "スペックは `frontend/tests/e2e/real/billing-plan-upgrade-3ds.spec.ts`（9テスト、ロール横断3視点＋IDOR二重防衛）。ロール横断・導線・no-op非再発は実機確認済み。CMP-260919-0213の販売マスタ整備完了後、見積り→確定→3DS→APPLIEDの実機happy pathを確認すること",
       "acceptance": [
-        "スペックは `frontend/tests/e2e/real/billing-plan-upgrade-3ds.spec.ts` に作成済み（9テスト・ロール横断3視点＋IDOR二重防衛）。ロール横断・導線・no-op非再発は実機で確認済みだが、ハッピーパスは未到達。理由は①CMP-260919-0213 の販売マスタ欠落で upgrade 候補が出ない ②検証機のメモリ逼迫（空き3.3GB／node35本）でNuxt dev serverがOOM反復 ③他セッションが8081を占有。CMP-260919-0213 の解消後に再実行すること"
+        "スペックは `frontend/tests/e2e/real/billing-plan-upgrade-3ds.spec.ts`（9テスト、ロール横断3視点＋IDOR二重防衛）。ロール横断・導線・no-op非再発は実機確認済み。CMP-260919-0213の販売マスタ整備完了後、見積り→確定→3DS→APPLIEDの実機happy pathを確認すること"
       ],
       "blocker": "CMP-260919-0213",
       "issues": [
         {
-          "label": "—",
+          "label": "PR6b-1 実機E2E spec は `frontend/tests/e2e/real/billing-plan-upgrade-3ds.spec.ts`（9テスト、ロール横断3視点＋IDOR二重防衛）。ロール横断・導線・no-op非再発は実機確認済みだが、happy path は未到達。最新main（2026-10-02）でも依存先CMP-260919-0213は未着手で、CMP-260919-0213の完了条件はBASIC/FULL × USER/TEAM/ORGの販売マスタ整備。本E2Eのhappy pathはその準備に依存するため保留する。保留解除条件: CMP-260919-0213の販売マスタ整備を完了する。完了後に実機happy pathの検証へ着手可能。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "—"
+        "PR6b-1 実機E2E spec は `frontend/tests/e2e/real/billing-plan-upgrade-3ds.spec.ts`（9テスト、ロール横断3視点＋IDOR二重防衛）。ロール横断・導線・no-op非再発は実機確認済みだが、happy path は未到達。最新main（2026-10-02）でも依存先CMP-260919-0213は未着手で、CMP-260919-0213の完了条件はBASIC/FULL × USER/TEAM/ORGの販売マスタ整備。本E2Eのhappy pathはその準備に依存するため保留する。保留解除条件: CMP-260919-0213の販売マスタ整備を完了する。完了後に実機happy pathの検証へ着手可能。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -29940,17 +32491,13 @@ window.BETA_INVENTORY_DATA = {
         "IDOR",
         "no-op",
         "CMP-260919-0213",
-        "upgrade",
-        "GB",
-        "node35",
-        "Nuxt",
-        "dev",
-        "server",
-        "OOM",
-        "CMP-260919-0213"
+        "DS",
+        "APPLIED",
+        "happy",
+        "path"
       ],
       "tags": [
-        "未着手"
+        "保留"
       ],
       "githubRefs": [],
       "github": []
@@ -32157,12 +34704,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "CMP-260924-0010",
       "issues": [
         {
-          "label": "PR #3555（実機E2E・アリシゼーション未実施）。番人が対象外の違反 `point_card_provider_synonyms.provider_id`（UuidV7CharEntity 系で @JdbcTypeCode 漏れ）を1件検出し、同 PR で是正。 —",
+          "label": "PR #3555（2026-10-02 マージ、squash 45a642f5df、--admin はマスター許可）。V234.20261001060338 は共有DBに out-of-order で適用済み・6列とも binary(16) を確認。実機は API で確認済み（entry-members PUT 200・GET 一致、テンプレ 201/200/204→404、position 31字・notes 201字は 400、他チームID 404）。画面の実機E2E とアリシゼーションは未実施（FE dev 無応答。spec は PR #3579）。番人が対象外の違反 `point_card_provider_synonyms.provider_id`（UuidV7CharEntity 系で @JdbcTypeCode 漏れ）を1件検出し、同 PR で是正。 —",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3555（実機E2E・アリシゼーション未実施）。番人が対象外の違反 `point_card_provider_synonyms.provider_id`（UuidV7CharEntity 系で @JdbcTypeCode 漏れ）を1件検出し、同 PR で是正。 —"
+        "PR #3555（2026-10-02 マージ、squash 45a642f5df、--admin はマスター許可）。V234.20261001060338 は共有DBに out-of-order で適用済み・6列とも binary(16) を確認。実機は API で確認済み（entry-members PUT 200・GET 一致、テンプレ 201/200/204→404、position 31字・notes 201字は 400、他チームID 404）。画面の実機E2E とアリシゼーションは未実施（FE dev 無応答。spec は PR #3579）。番人が対象外の違反 `point_card_provider_synonyms.provider_id`（UuidV7CharEntity 系で @JdbcTypeCode 漏れ）を1件検出し、同 PR で是正。 —"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -32194,7 +34741,8 @@ window.BETA_INVENTORY_DATA = {
       ],
       "githubRefs": [
         3518,
-        3555
+        3555,
+        3579
       ],
       "github": [
         {
@@ -32218,6 +34766,20 @@ window.BETA_INVENTORY_DATA = {
           "title": "修正: 大会エントリー系・興味タグの主キー型ずれ是正（CMP-260929-0654）",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3555",
           "updatedAt": "2026-10-01T23:24:19Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3579,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "テスト追加: CMP-260929-0654 主キー BINARY(16) 実機E2E spec（未実走）と台帳更新",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3579",
+          "updatedAt": "2026-10-02T17:34:28Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -32540,8 +35102,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-0230",
       "title": "出欠（日次・時限）の登録が所属確認のみで、担任かどうかを判定していない（認可の欠陥）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "進行中（第1段: 戦役 2026-10-02-school-attendance-authz）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -32571,7 +35133,7 @@ window.BETA_INVENTORY_DATA = {
         "MEMBER"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3518
@@ -33662,8 +36224,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-260930-1932",
       "title": "募集ペナルティの緊急確認通知が、組織の通知クレジット不足で届かない疑い（要実証）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "done",
+      "statusLabel": "完了（2026-10-02・PR #3556）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -33677,12 +36239,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "PR #3499 のコードに対する Codex 検分の指摘（未実証）。`RecruitmentPenaltyAppliedNotificationListener.java:50-54` が ORGANIZATION スコープで `ConfirmableNotificationService#send` の通常課金経路に入り、猶予72時間超の残高不足で `notificationCreditService.consume` が例外→確認通知がロールバック→外側 catch で握りつぶし、ペナルティだけ確定する可能性。URGENT は強制配信の契約（`docs/features/F04.3_push_notification.md:1490`）。2026-10-01 コード読解で成立を確認（実行は未確認）: `ConfirmableNotificationService.java:518-520` が ORGANIZATION なら無条件に `consume`（優先度の分岐なし）→ 猶予超で `CREDIT_INSUFFICIENT` → send の tx ごとロールバック → リスナー 63-66 行の `catch (Exception)` で log のみ。設計書 F09.13:32『カウント対象外: 自動イベント通知、システム通知』と食い違う。同型: `RecruitmentAutoCancelBatch.java:236`（外側 @Transactional に参加し rollback-only で自動キャンセルごとロールバックする疑い）、`MarketFinalizeService.java:93`（申込 tx ごと失敗する疑い）。マスター裁可（2026-10-01）: 別戦役として軍議から根治。方針案A＝設計書 F09.13:32 に合わせシステム発の自動通知を課金対象外にし、ペナルティ通知・自動キャンセル・最終認証の3箇所をまとめて直す（既存テスト deliveryFailureDoesNotChangeCommittedPenalty の握りつぶし固定も見直す）。再現テスト案は足軽 worktree に未コミットで保存",
+          "label": "PR #3499 のコードに対する Codex 検分の指摘（未実証）。`RecruitmentPenaltyAppliedNotificationListener.java:50-54` が ORGANIZATION スコープで `ConfirmableNotificationService#send` の通常課金経路に入り、猶予72時間超の残高不足で `notificationCreditService.consume` が例外→確認通知がロールバック→外側 catch で握りつぶし、ペナルティだけ確定する可能性。URGENT は強制配信の契約（`docs/features/F04.3_push_notification.md:1490`）。2026-10-01 コード読解で成立を確認（実行は未確認）: `ConfirmableNotificationService.java:518-520` が ORGANIZATION なら無条件に `consume`（優先度の分岐なし）→ 猶予超で `CREDIT_INSUFFICIENT` → send の tx ごとロールバック → リスナー 63-66 行の `catch (Exception)` で log のみ。設計書 F09.13:32『カウント対象外: 自動イベント通知、システム通知』と食い違う。同型: `RecruitmentAutoCancelBatch.java:236`（外側 @Transactional に参加し rollback-only で自動キャンセルごとロールバックする疑い）、`MarketFinalizeService.java:93`（申込 tx ごと失敗する疑い）。マスター裁可（2026-10-01）: 別戦役として軍議から根治。方針案A＝設計書 F09.13:32 に合わせシステム発の自動通知を課金対象外にし、ペナルティ通知・自動キャンセル・最終認証の3箇所をまとめて直す（既存テスト deliveryFailureDoesNotChangeCommittedPenalty の握りつぶし固定も見直す）。再現テスト案は足軽 worktree に未コミットで保存。PR #3556（2026-10-02 マージ）で根治: 同期 send/sendFromSource から consume を除去（F09.13どおりシステム発の自動通知を課金対象外に）／自動キャンセル・最終認証の通知を AFTER\\_COMMIT リスナーへ分離（自動キャンセルは `createdBy=null` で毎回ロールバックしていた問題を解消）／`once_per_source_key` UNIQUE（V235）で冪等性を担保／最終認証は札行ロック下で直列化／番人のクラス単位免除を解除し Committee・Payment の2経路のみ監査済み例外として残置。ALIC-1（自動キャンセル通知の行き先未設定→`/confirmations/{id}` 404）を `/notifications` へ修正。実機E2E（2026-10-02）: 画面からの申込成功・自動キャンセル確定・他テナント404 は PASS。受信者本人の画面確認は検証用 SYSTEM\\_ADMIN の通知一覧が264万件で該当通知を特定できず未達（本表末尾の派生課題を参照）、ペナルティ確定は `RecruitmentAutoCancelBatch` 等の多段バッチ起動が必要なため実機では未実施。実機 spec はブランチ `e2e/cmp-260930-1932-real-spec` に保存（FE npm audit 修繕後に PR 化予定）",
           "state": "unknown"
         }
       ],
       "prs": [
-        "PR #3499 のコードに対する Codex 検分の指摘（未実証）。`RecruitmentPenaltyAppliedNotificationListener.java:50-54` が ORGANIZATION スコープで `ConfirmableNotificationService#send` の通常課金経路に入り、猶予72時間超の残高不足で `notificationCreditService.consume` が例外→確認通知がロールバック→外側 catch で握りつぶし、ペナルティだけ確定する可能性。URGENT は強制配信の契約（`docs/features/F04.3_push_notification.md:1490`）。2026-10-01 コード読解で成立を確認（実行は未確認）: `ConfirmableNotificationService.java:518-520` が ORGANIZATION なら無条件に `consume`（優先度の分岐なし）→ 猶予超で `CREDIT_INSUFFICIENT` → send の tx ごとロールバック → リスナー 63-66 行の `catch (Exception)` で log のみ。設計書 F09.13:32『カウント対象外: 自動イベント通知、システム通知』と食い違う。同型: `RecruitmentAutoCancelBatch.java:236`（外側 @Transactional に参加し rollback-only で自動キャンセルごとロールバックする疑い）、`MarketFinalizeService.java:93`（申込 tx ごと失敗する疑い）。マスター裁可（2026-10-01）: 別戦役として軍議から根治。方針案A＝設計書 F09.13:32 に合わせシステム発の自動通知を課金対象外にし、ペナルティ通知・自動キャンセル・最終認証の3箇所をまとめて直す（既存テスト deliveryFailureDoesNotChangeCommittedPenalty の握りつぶし固定も見直す）。再現テスト案は足軽 worktree に未コミットで保存"
+        "PR #3499 のコードに対する Codex 検分の指摘（未実証）。`RecruitmentPenaltyAppliedNotificationListener.java:50-54` が ORGANIZATION スコープで `ConfirmableNotificationService#send` の通常課金経路に入り、猶予72時間超の残高不足で `notificationCreditService.consume` が例外→確認通知がロールバック→外側 catch で握りつぶし、ペナルティだけ確定する可能性。URGENT は強制配信の契約（`docs/features/F04.3_push_notification.md:1490`）。2026-10-01 コード読解で成立を確認（実行は未確認）: `ConfirmableNotificationService.java:518-520` が ORGANIZATION なら無条件に `consume`（優先度の分岐なし）→ 猶予超で `CREDIT_INSUFFICIENT` → send の tx ごとロールバック → リスナー 63-66 行の `catch (Exception)` で log のみ。設計書 F09.13:32『カウント対象外: 自動イベント通知、システム通知』と食い違う。同型: `RecruitmentAutoCancelBatch.java:236`（外側 @Transactional に参加し rollback-only で自動キャンセルごとロールバックする疑い）、`MarketFinalizeService.java:93`（申込 tx ごと失敗する疑い）。マスター裁可（2026-10-01）: 別戦役として軍議から根治。方針案A＝設計書 F09.13:32 に合わせシステム発の自動通知を課金対象外にし、ペナルティ通知・自動キャンセル・最終認証の3箇所をまとめて直す（既存テスト deliveryFailureDoesNotChangeCommittedPenalty の握りつぶし固定も見直す）。再現テスト案は足軽 worktree に未コミットで保存。PR #3556（2026-10-02 マージ）で根治: 同期 send/sendFromSource から consume を除去（F09.13どおりシステム発の自動通知を課金対象外に）／自動キャンセル・最終認証の通知を AFTER\\_COMMIT リスナーへ分離（自動キャンセルは `createdBy=null` で毎回ロールバックしていた問題を解消）／`once_per_source_key` UNIQUE（V235）で冪等性を担保／最終認証は札行ロック下で直列化／番人のクラス単位免除を解除し Committee・Payment の2経路のみ監査済み例外として残置。ALIC-1（自動キャンセル通知の行き先未設定→`/confirmations/{id}` 404）を `/notifications` へ修正。実機E2E（2026-10-02）: 画面からの申込成功・自動キャンセル確定・他テナント404 は PASS。受信者本人の画面確認は検証用 SYSTEM\\_ADMIN の通知一覧が264万件で該当通知を特定できず未達（本表末尾の派生課題を参照）、ペナルティ確定は `RecruitmentAutoCancelBatch` 等の多段バッチ起動が必要なため実機では未実施。実機 spec はブランチ `e2e/cmp-260930-1932-real-spec` に保存（FE npm audit 修繕後に PR 化予定）"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -33693,10 +36255,11 @@ window.BETA_INVENTORY_DATA = {
         "URGENT"
       ],
       "tags": [
-        "未着手"
+        "完了"
       ],
       "githubRefs": [
-        3499
+        3499,
+        3556
       ],
       "github": [
         {
@@ -33706,6 +36269,20 @@ window.BETA_INVENTORY_DATA = {
           "title": "feat: CMP-019 Wave16 無断キャンセル確定と緊急確認通知",
           "url": "https://github.com/kenta-0420/mannschaft/pull/3499",
           "updatedAt": "2026-09-30T00:46:32Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3556,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "根治: システム発の自動通知を通知クレジット課金対象外にし業務TXから分離 (CMP-260930-1932)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3556",
+          "updatedAt": "2026-10-02T11:41:07Z",
           "ci": {
             "status": "unavailable",
             "reason": "終了済みPRのCIは同期対象外",
@@ -34471,8 +37048,8 @@ window.BETA_INVENTORY_DATA = {
     {
       "id": "CMP-261001-0630",
       "title": "学校出欠のクラス全体の閲覧が、所属確認だけで許されている（設計 F03.13 §8.1 では、クラス全体の閲覧は学級担任・副担任・ADMIN に限る。欠席理由は要配慮個人情報を含む）",
-      "status": "not-started",
-      "statusLabel": "未着手",
+      "status": "working",
+      "statusLabel": "進行中（第1段: 戦役 2026-10-02-school-attendance-authz）",
       "stage": "未設定",
       "priority": "未設定",
       "audiences": [],
@@ -34506,7 +37083,7 @@ window.BETA_INVENTORY_DATA = {
         "API"
       ],
       "tags": [
-        "未着手"
+        "進行中"
       ],
       "githubRefs": [
         3542
@@ -34746,12 +37323,1396 @@ window.BETA_INVENTORY_DATA = {
       ],
       "githubRefs": [],
       "github": []
+    },
+    {
+      "id": "CMP-261001-2325",
+      "title": "`NotificationDispatchPoolSaturationIT` が CI で不定期に `TaskRejectedException` で落ちる（`saturate()` が共有プールの空きを前提に maxPoolSize＋キュー容量ちょうどまで詰めるため、同じ JVM の他テストが残した @Async タスクが1件でもあると溢れる）",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "他テストの非同期タスクが残っていても、このテストが決定的に通ること（専用のプールを使う、または飽和の前にプールの空きを待つ・実測する）を示すこと",
+      "acceptance": [
+        "他テストの非同期タスクが残っていても、このテストが決定的に通ること（専用のプールを使う、または飽和の前にプールの空きを待つ・実測する）を示すこと"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "PR #3560 の CI（2026-10-01、run 36863848096 の shard 0、NotificationDispatchPoolSaturationIT.java:175）で検出・殿裏取り済み。同日 PR #3555 でも別の不安定テスト（ShiftBudgetMultiParentIT、#3563 で根治済み）が出ている"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "NotificationDispatchPoolSaturationIT",
+        "CI",
+        "TaskRejectedException",
+        "saturate",
+        "maxPoolSize",
+        "JVM",
+        "Async"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3555,
+        3560,
+        3563
+      ],
+      "github": [
+        {
+          "number": 3555,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 大会エントリー系・興味タグの主キー型ずれ是正（CMP-260929-0654）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3555",
+          "updatedAt": "2026-10-01T23:24:19Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3560,
+          "kind": "pull_request",
+          "state": "closed",
+          "title": "修正: シフト予算の照合バッチITで非同期の監査ログを待たずに検証していた（不定期失敗）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3560",
+          "updatedAt": "2026-10-01T23:29:59Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3563,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: 3-C IT の監査ログ照合を非同期完了待ちにする（G125 不安定）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3563",
+          "updatedAt": "2026-10-01T20:49:18Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261002-1342",
+      "title": "メンバー紹介のプロフィール削除に確認が無く、元に戻せない",
+      "status": "unknown",
+      "statusLabel": "確認ダイアログは対応済み（本PR）／物理削除のままでよいかは未決",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "プロフィールの削除の前に確認ダイアログが出ること。物理削除のままでよいかを設計書で決めること",
+      "acceptance": [
+        "プロフィールの削除の前に確認ダイアログが出ること。物理削除のままでよいかを設計書で決めること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "PR #3589",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3589"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "PR #3387 マージ後 main（a6efaf2bfc）の実機検証（2026-10-02）で確定。`frontend/app/pages/organizations/[slug]/member-profiles.vue:215-223` の `handleDeleteMember` が確認ダイアログなしで即座に `memberProfileApi.deleteMember(id)` を呼ぶ。BE `MemberProfileService.java:149` の `profileRepository.delete(entity)` は物理削除で論理削除列が無い。同ファイルのページ削除（`confirmDeletePage`、114〜128行目付近）には確認があり扱いが非対称。PR #3589 でページ削除と同じ Dialog 方式の確認ダイアログを追加（ユニットテスト3件）。物理削除の是非は未決のため別途設計判断が必要"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3387,
+        3589
+      ],
+      "github": [
+        {
+          "number": 3387,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー統合画面(一覧/紹介)サブタブのロール別可視性BE基盤(CMP-260919-1140 Phase 1)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3387",
+          "updatedAt": "2026-10-01T05:29:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3589,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正: メンバー紹介のプロフィール削除に確認ダイアログを追加（CMP-261002-1342）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3589",
+          "updatedAt": "2026-10-03T00:23:14Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261002-1343",
+      "title": "実機 spec `cmp260918-4-member-profiles-two-tier.real.spec.ts` の③が、初期設定ダイアログに阻まれて失敗する",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "spec がダイアログを「あとで決める」で閉じてから操作し、全テストが合格すること",
+      "acceptance": [
+        "spec がダイアログを「あとで決める」で閉じてから操作し、全テストが合格すること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "PR #3387 マージ後 main（a6efaf2bfc）の実機検証（2026-10-02）で確定。組織の ADMIN が開くと `MemberPermissionSetupDialog`（PR #3454 で追加、`closable=false`・`close-on-escape=false`）が自動で開く。spec の③（158行目〜）がこれを閉じないため「新規ページ作成」のクリックがダイアログの覆いに阻まれ240秒でタイムアウトする。これまでは CSP のせいで①が先に落ちていたため③まで実行が進んだことがなかった。関連: CMP-261001-0838（同じダイアログの再表示）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "spec",
+        "cmp260918-4-member-profiles-two-tier",
+        "real",
+        "spec",
+        "ts",
+        "spec"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3387,
+        3454
+      ],
+      "github": [
+        {
+          "number": 3387,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー統合画面(一覧/紹介)サブタブのロール別可視性BE基盤(CMP-260919-1140 Phase 1)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3387",
+          "updatedAt": "2026-10-01T05:29:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3454,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "チーム・組織別の案内ページと初回権限設定",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3454",
+          "updatedAt": "2026-09-25T01:12:33Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261002-1344",
+      "title": "デスクトップ幅で `/dashboard` を開くとハイドレーション不一致が出る",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "開発ビルドで不一致の箇所を特定し、SSR と CSR の出力を一致させること",
+      "acceptance": [
+        "開発ビルドで不一致の箇所を特定し、SSR と CSR の出力を一致させること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "PR #3387 マージ後 main（a6efaf2bfc）の実機検証（2026-10-02）で確定。本番ビルド・viewport 1440×900 で MEMBER として `/dashboard` に遷移するとコンソールに `Hydration completed but contains mismatches.` が出た（2/2で再現）。モバイル幅（390×844）では出なかった。本番ビルドでは詳細が出ないため原因箇所は未特定。レイアウト幅で分岐する表示ロジックが疑わしい（推測）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "dashboard",
+        "SSR",
+        "CSR"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3387
+      ],
+      "github": [
+        {
+          "number": 3387,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加: メンバー統合画面(一覧/紹介)サブタブのロール別可視性BE基盤(CMP-260919-1140 Phase 1)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3387",
+          "updatedAt": "2026-10-01T05:29:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261002-0742",
+      "title": "大会エントリー/テンプレ不備（CMP-260929-0654 派生）",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "チームの所属組織 ID で呼ぶ（組織に属さないチーム大会では team スコープ API の要否を設計判断）・エラーを握りつぶさず表示・実機でボタン表示と適用成功",
+      "acceptance": [
+        "チームの所属組織 ID で呼ぶ（組織に属さないチーム大会では team スコープ API の要否を設計判断）・エラーを握りつぶさず表示・実機でボタン表示と適用成功"
+      ],
+      "blocker": "CMP-260929-0654 派生",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "`frontend/app/pages/teams/[slug]/tournaments/[tId]/roster.vue:87` が orgId='0' 固定でエントリーテンプレ一覧 API を叩き、根本原因は API レスポンス変化で TOUR_026(404) を catch で握りつぶすため「テンプレ適用」ボタンが誰にも出ない"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CMP-260929-0654",
+        "ID",
+        "team",
+        "API"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261002-0743",
+      "title": "大会エントリー/テンプレ不備",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "BE コードと文言を1対1に是正、BE enum を読む契約テストで固定、6言語",
+      "acceptance": [
+        "BE コードと文言を1対1に是正、BE enum を読む契約テストで固定、6言語"
+      ],
+      "blocker": "CMP-260929-0654 派生",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "BE TournamentErrorCode と文言キーが1つずれ（ja/en/de の tournament.json entry.error TOUR_019〜025・entry.template.error TOUR_026〜028。例: TOUR_024=テンプレ未検出が「既にエントリー済み」と表示）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "BE",
+        "BE",
+        "enum"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261002-0744",
+      "title": "大会エントリー/テンプレ不備",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "FE を 200 に揃え、上限を BE と突き合わせるテスト",
+      "acceptance": [
+        "FE を 200 に揃え、上限を BE と突き合わせるテスト"
+      ],
+      "blocker": "CMP-260929-0654 派生",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "エントリー管理モーダル notes の maxlength=100（frontend/app/components/TournamentEntryModal.vue:468）が BE 200（DTO @Size/@Entity/DDL V9.122）と不一致"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FE",
+        "BE"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261002-0801",
+      "title": "学校出欠 第2段: 教科担当マスターと代理委任",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "学年（組織）に教科×クラス×先生の担当マスターと期限付きの代理委任を設け、時限出欠の登録権限をそれで判定（第1段の SchoolAttendanceAccessPolicy に差し込む）。時限出欠を成績の出席数判定・授業態度評価の土台にする前提で /絵図 で設計→軍議（DDL）",
+      "acceptance": [
+        "学年（組織）に教科×クラス×先生の担当マスターと期限付きの代理委任を設け、時限出欠の登録権限をそれで判定（第1段の SchoolAttendanceAccessPolicy に差し込む）。時限出欠を成績の出席数判定・授業態度評価の土台にする前提で /絵図 で設計→軍議（DDL）"
+      ],
+      "blocker": "CMP-261001-0630・CMP-260930-0230（第1段）",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "マスター裁可 2026-10-02（Q2 を2段に分割）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "SchoolAttendanceAccessPolicy",
+        "DDL"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261002-0802",
+      "title": "学校出欠 CSV の品質",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "先頭が = + - @ のセルの無害化、改行・引用符のエスケープ、from>to は 400、期間上限超は 400",
+      "acceptance": [
+        "先頭が = + - @ のセルの無害化、改行・引用符のエスケープ、from>to は 400、期間上限超は 400"
+      ],
+      "blocker": "CMP-261001-0630",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "CSV",
+        "from",
+        "to"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261002-0803",
+      "title": "学校出欠の N+1",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "PeriodAttendanceService の getPeriodCandidates（生徒ごとの前時限取得）と DailyAttendanceService の roll-call（生徒ごとの find＋save）をまとめて取得にし、件数を増やしてもクエリ数が不変であることをテストで固定",
+      "acceptance": [
+        "PeriodAttendanceService の getPeriodCandidates（生徒ごとの前時限取得）と DailyAttendanceService の roll-call（生徒ごとの find＋save）をまとめて取得にし、件数を増やしてもクエリ数が不変であることをテストで固定"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "PeriodAttendanceService",
+        "getPeriodCandidates",
+        "DailyAttendanceService",
+        "roll-call",
+        "find",
+        "save"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261002-0804",
+      "title": "日次点呼画面の初回点呼",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "daily-roll-call.vue が既存レコードからしか生徒一覧を作らず初回点呼で生徒が出ない・displayName でなく userId が表示される疑いを実測し、確定なら在籍名簿から一覧を作り表示名を出す",
+      "acceptance": [
+        "daily-roll-call.vue が既存レコードからしか生徒一覧を作らず初回点呼で生徒が出ない・displayName でなく userId が表示される疑いを実測し、確定なら在籍名簿から一覧を作り表示名を出す"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "daily-roll-call",
+        "vue",
+        "displayName",
+        "userId"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261002-0805",
+      "title": "学校出欠への画面導線・未使用 composable",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "school-attendance 系ページへの画面導線の欠落疑いを実測し確定なら入口を設ける（新設位置はマスター確認）。AttendanceSummary composable の未使用を解消または削除",
+      "acceptance": [
+        "school-attendance 系ページへの画面導線の欠落疑いを実測し確定なら入口を設ける（新設位置はマスター確認）。AttendanceSummary composable の未使用を解消または削除"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "composable",
+        "school-attendance",
+        "AttendanceSummary",
+        "composable"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261002-1135",
+      "title": "node-forge 脆弱性 GHSA-86w9-cpqp-85rv の CI audit 期限付き除外を解除する（期限 2026-10-16。node-forge の修正版が出たら override で上げる／listhen が node-forge を使わなくなるまで）",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "`frontend/scripts/audit-with-exemption.mjs` と専用テスト・CI試験ステップを削除し `.github/workflows/frontend-ci.yml` の audit ステップを `npm audit --audit-level=high` へ戻したうえで、main の Frontend CI が緑であること",
+      "acceptance": [
+        "`frontend/scripts/audit-with-exemption.mjs` と専用テスト・CI試験ステップを削除し `.github/workflows/frontend-ci.yml` の audit ステップを `npm audit --audit-level=high` へ戻したうえで、main の Frontend CI が緑であること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "—",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "—"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "期限切れで CI が自動的に落ちる仕掛け付き（除外は 2026-10-16 まで）。listhen の証明書生成経路で当該署名検証の利用なしを確認。本番 .output からの除外は未実測。期限は2026-10-16 UTC当日まで（詳細: docs/security/04_dependency_and_supply_chain.md §4.3）"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "node-forge",
+        "GHSA-86w9-cpqp-85rv",
+        "CI",
+        "audit",
+        "node-forge",
+        "override",
+        "listhen",
+        "node-forge",
+        "frontend",
+        "scripts",
+        "audit-with-exemption",
+        "mjs",
+        "CI",
+        "github",
+        "workflows",
+        "frontend-ci",
+        "yml",
+        "audit",
+        "npm",
+        "audit",
+        "audit-level",
+        "high",
+        "main",
+        "Frontend",
+        "CI"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261002-1559",
+      "title": "同期 `ConfirmableNotificationService#send` が受信者501人以上の募集でシステム確認通知を一切送れない（`SEND_FAILED`）",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "受信者が501人以上の募集でも全受信者に確認通知が届くこと（分割送信、または募集定員の上限設計のいずれかで解決する）",
+      "acceptance": [
+        "受信者が501人以上の募集でも全受信者に確認通知が届くこと（分割送信、または募集定員の上限設計のいずれかで解決する）"
+      ],
+      "blocker": "CMP-260930-1932",
+      "issues": [
+        {
+          "label": "PR #3556 のレビューで判明。募集定員に上限が無く、受信者数が一定件数を超えると同期 send が `SEND_FAILED` となり自動キャンセル等のシステム確認通知が一切届かない",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3556 のレビューで判明。募集定員に上限が無く、受信者数が一定件数を超えると同期 send が `SEND_FAILED` となり自動キャンセル等のシステム確認通知が一切届かない"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ConfirmableNotificationService",
+        "send",
+        "SEND_FAILED"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3556
+      ],
+      "github": [
+        {
+          "number": 3556,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "根治: システム発の自動通知を通知クレジット課金対象外にし業務TXから分離 (CMP-260930-1932)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3556",
+          "updatedAt": "2026-10-02T11:41:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261002-1600",
+      "title": "通知クレジットの猶予72時間ちょうどの判定が `consume`（`isBefore`=ブロック）と `isSendBlocked`（`isAfter`=許可）で食い違い、`consume` が `Clock` 注入でなく `LocalDateTime.now()` を使う",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "猶予72時間ちょうどの扱いが `consume`・`isSendBlocked` で一致し、`Clock` 注入によりテストで固定できること",
+      "acceptance": [
+        "猶予72時間ちょうどの扱いが `consume`・`isSendBlocked` で一致し、`Clock` 注入によりテストで固定できること"
+      ],
+      "blocker": "CMP-260930-1932",
+      "issues": [
+        {
+          "label": "PR #3556 のレビューで判明",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3556 のレビューで判明"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "consume",
+        "isBefore",
+        "isSendBlocked",
+        "isAfter",
+        "consume",
+        "Clock",
+        "LocalDateTime",
+        "now",
+        "consume",
+        "isSendBlocked",
+        "Clock"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3556
+      ],
+      "github": [
+        {
+          "number": 3556,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "根治: システム発の自動通知を通知クレジット課金対象外にし業務TXから分離 (CMP-260930-1932)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3556",
+          "updatedAt": "2026-10-02T11:41:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261002-1601",
+      "title": "市の最終認証通知の ORG 受信者がコメント（ADMIN）と異なり組織全メンバーで、`createdBy`=札主のため `notifyAll` の送信者除外により札主へアプリ内通知が届かない可能性",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "最終認証通知の受信者仕様を確定し、札主へ通知が届くこと",
+      "acceptance": [
+        "最終認証通知の受信者仕様を確定し、札主へ通知が届くこと"
+      ],
+      "blocker": "CMP-260930-1932",
+      "issues": [
+        {
+          "label": "PR #3556 のレビューで判明",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3556 のレビューで判明"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "ORG",
+        "ADMIN",
+        "createdBy",
+        "notifyAll"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3556
+      ],
+      "github": [
+        {
+          "number": 3556,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "根治: システム発の自動通知を通知クレジット課金対象外にし業務TXから分離 (CMP-260930-1932)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3556",
+          "updatedAt": "2026-10-02T11:41:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261002-1602",
+      "title": "確認通知の `actionUrl` 未設定時のフォールバック `/confirmations/{id}`（`ConfirmableInboxAdapter.java:82-84`）に対応する FE ページが無く 404（委員会配信・支払請求等も同穴）",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "行き先未設定の確認通知を受信箱から開いて確認できること",
+      "acceptance": [
+        "行き先未設定の確認通知を受信箱から開いて確認できること"
+      ],
+      "blocker": "CMP-260930-1932",
+      "issues": [
+        {
+          "label": "PR #3556 のレビューで判明。`ConfirmableInboxAdapter.java:82-84`",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3556 のレビューで判明。`ConfirmableInboxAdapter.java:82-84`"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "actionUrl",
+        "confirmations",
+        "id",
+        "ConfirmableInboxAdapter",
+        "java",
+        "FE"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3556
+      ],
+      "github": [
+        {
+          "number": 3556,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "根治: システム発の自動通知を通知クレジット課金対象外にし業務TXから分離 (CMP-260930-1932)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3556",
+          "updatedAt": "2026-10-02T11:41:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261002-1603",
+      "title": "通知トランザクション境界の番人で `FriendNotificationService` 等残り3クラスのクラス単位免除が、呼び出し元の違反を沈黙させている",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "残り3クラスのクラス単位免除を解消すること",
+      "acceptance": [
+        "残り3クラスのクラス単位免除を解消すること"
+      ],
+      "blocker": "CMP-260930-1932",
+      "issues": [
+        {
+          "label": "PR #3556 のレビューで判明",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "PR #3556 のレビューで判明"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FriendNotificationService"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [
+        3556
+      ],
+      "github": [
+        {
+          "number": 3556,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "根治: システム発の自動通知を通知クレジット課金対象外にし業務TXから分離 (CMP-260930-1932)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3556",
+          "updatedAt": "2026-10-02T11:41:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261002-1604",
+      "title": "確認通知 API に存在オラクル（アリシゼーション ALIC-2）: 他組織の確認通知 ID へのアクセスで、実在時は 404 `CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH`、不在時は 404 `CONFIRMABLE_NOTIFICATION_NOT_FOUND` とエラーコードが異なり ID の実在が判別できる",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "越境アクセスと不在アクセスでステータス・エラーコードとも一致すること",
+      "acceptance": [
+        "越境アクセスと不在アクセスでステータス・エラーコードとも一致すること"
+      ],
+      "blocker": "CMP-260930-1932",
+      "issues": [
+        {
+          "label": "2026-10-02 アリシゼーション（run-261002-cmp1932）で検出。`OrgConfirmableNotificationController.java:147` 他",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "2026-10-02 アリシゼーション（run-261002-cmp1932）で検出。`OrgConfirmableNotificationController.java:147` 他"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "API",
+        "ALIC-2",
+        "ID",
+        "CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH",
+        "CONFIRMABLE_NOTIFICATION_NOT_FOUND",
+        "ID"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261002-1605",
+      "title": "SYSTEM\\_ADMIN へのバッチ完了通知が無差別配信され、検証用 e2e-admin の通知一覧が264万件（増加中）となり、確認通知を画面で特定できず実機E2Eが成立しない",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "通知一覧で業務通知が埋もれないこと（配信先の見直し、または種別絞り込みのいずれかで解決する）",
+      "acceptance": [
+        "通知一覧で業務通知が埋もれないこと（配信先の見直し、または種別絞り込みのいずれかで解決する）"
+      ],
+      "blocker": "CMP-260930-1932",
+      "issues": [
+        {
+          "label": "CMP-260930-1932 の実機E2E（2026-10-02）で判明。受信者本人の画面確認が未達となった直接原因",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "CMP-260930-1932 の実機E2E（2026-10-02）で判明。受信者本人の画面確認が未達となった直接原因"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "SYSTEM",
+        "ADMIN",
+        "e2e-admin",
+        "E2E"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261002-1606",
+      "title": "backend CI shard 5 の OutOfMemoryError が再発（CMP-260826-1100 は完了扱いだが 2026-10-01〜02 に main の `45a642f5df`・`fbc25b5a2a`、PR #3556 の run 36946941568・36965186880 で再発）",
+      "status": "working",
+      "statusLabel": "進行中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "本番全体の ArchUnit 取り込みを共有ホルダに一本化し番人で再発防止。全量モード（excludeMigrationTests=false）で6 shard success・OOM 0 を2回連続（test 実走をログで確認）。重み表再生成。",
+      "acceptance": [
+        "本番全体の ArchUnit 取り込みを共有ホルダに一本化し番人で再発防止。全量モード（excludeMigrationTests=false）で6 shard success・OOM 0 を2回連続（test 実走をログで確認）。重み表再生成。"
+      ],
+      "blocker": "CMP-260826-1100（再発）",
+      "issues": [
+        {
+          "label": "2026-10-01〜02 に再発を確認。OOM 時のヒープダンプ artifact あり。全量実行のときだけ毎回 shard 5 OOM（ff05fc28d3・fbc25b5a2a・45a642f5df・b3efd80c58・72aec882f9・PR #3556）。最後の全量緑 523c63bc80、最初の OOM ff05fc28d3（間の 8b62b23228 で ShiftTxFacadeArchTest 新設）。原因は ArchUnit の本番全体取り込みの重複と static 保持。CMP-260826-1100（PR #2976）は当時は全量で成功しており、その後の追加による再発。main push の run は成果物 path 誤りで証跡が残っていなかった。別件: shard 1 が全量で約75分 cancelled。",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "2026-10-01〜02 に再発を確認。OOM 時のヒープダンプ artifact あり。全量実行のときだけ毎回 shard 5 OOM（ff05fc28d3・fbc25b5a2a・45a642f5df・b3efd80c58・72aec882f9・PR #3556）。最後の全量緑 523c63bc80、最初の OOM ff05fc28d3（間の 8b62b23228 で ShiftTxFacadeArchTest 新設）。原因は ArchUnit の本番全体取り込みの重複と static 保持。CMP-260826-1100（PR #2976）は当時は全量で成功しており、その後の追加による再発。main push の run は成果物 path 誤りで証跡が残っていなかった。別件: shard 1 が全量で約75分 cancelled。"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        ".claude/campaigns/2026-10-03-shard5-oom.md"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "backend",
+        "CI",
+        "shard",
+        "OutOfMemoryError",
+        "CMP-260826-1100",
+        "main",
+        "a642f5df",
+        "fbc25b5a2a",
+        "PR",
+        "run",
+        "ArchUnit",
+        "excludeMigrationTests",
+        "false",
+        "shard",
+        "success",
+        "OOM",
+        "test"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [
+        2976,
+        3556
+      ],
+      "github": [
+        {
+          "number": 2976,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "修正(CI): forkEvery が一度も発火せず shard の JVM が再生成されない欠陥を是正（+ ヒープダンプの固定パス衝突）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2976",
+          "updatedAt": "2026-08-26T19:50:30Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3556,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "根治: システム発の自動通知を通知クレジット課金対象外にし業務TXから分離 (CMP-260930-1932)",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3556",
+          "updatedAt": "2026-10-02T11:41:07Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261002-1607",
+      "title": "FE CI の Install（`npm audit --audit-level=high`）が listhen 経由の新規 advisory（nuxt/@nuxt/cli/nitropack 依存）で main 全体が赤",
+      "status": "unknown",
+      "statusLabel": "重複（CMP-261002-1135 へ統合・PR #3585）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "FE CI の audit が緑になること（override 等。Windows で lockfile を更新すると Linux 依存が落ちる罠に注意）",
+      "acceptance": [
+        "FE CI の audit が緑になること（override 等。Windows で lockfile を更新すると Linux 依存が落ちる罠に注意）"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "2026-10-02 時点で main 全体が赤であることを確認。CMP-260930-1932 の実機 spec PR 化もこの赤でブロックされている。同じ原因（node-forge GHSA-86w9-cpqp-85rv → listhen → nitropack/@nuxt/cli）を PR #3585 と CMP-261002-1135 が扱っているため統合",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "2026-10-02 時点で main 全体が赤であることを確認。CMP-260930-1932 の実機 spec PR 化もこの赤でブロックされている。同じ原因（node-forge GHSA-86w9-cpqp-85rv → listhen → nitropack/@nuxt/cli）を PR #3585 と CMP-261002-1135 が扱っているため統合"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "FE",
+        "CI",
+        "Install",
+        "npm",
+        "audit",
+        "audit-level",
+        "high",
+        "listhen",
+        "advisory",
+        "nuxt",
+        "nuxt",
+        "cli",
+        "nitropack",
+        "main",
+        "FE",
+        "CI",
+        "audit",
+        "override",
+        "Windows",
+        "lockfile",
+        "Linux"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        3585
+      ],
+      "github": [
+        {
+          "number": 3585,
+          "kind": "pull_request",
+          "state": "closed",
+          "title": "緊急修正: FE audit の node-forge を期限付き除外し dompurify/moment/fast-uri を引き上げ",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3585",
+          "updatedAt": "2026-10-02T14:46:33Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
+    },
+    {
+      "id": "CMP-261003-0119",
+      "title": "アンケートの狭幅画面で回答済みBadgeが切れ、主要操作が44px未満・督促ラベルが縦折返しになる",
+      "status": "done",
+      "statusLabel": "完了（2026-10-03）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "360/390幅でBadgeが1行・文字切れなし、測定対象（回答送信・回答者再読込・タブ・督促）が44px以上で督促文字が折り返さないこと。7 viewportで横overflowがないこと",
+      "acceptance": [
+        "360/390幅でBadgeが1行・文字切れなし、測定対象（回答送信・回答者再読込・タブ・督促）が44px以上で督促文字が折り返さないこと。7 viewportで横overflowがないこと"
+      ],
+      "blocker": "CMP-042",
+      "issues": [
+        {
+          "label": "P06/P10の実画像・DOM寸法から確定。Survey関連4ファイルのclass/PTのみ修正。after-r2 JUnit 1件・fail/error/skip 0、17実画像視認、対象44px・Badge clientHeight=scrollHeight=24を確認。共通nav・チーム内訳再読込は完了範囲外。[統合証跡](prototypes/alicization-cmp042-20261002.md)参照",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "P06/P10の実画像・DOM寸法から確定。Survey関連4ファイルのclass/PTのみ修正。after-r2 JUnit 1件・fail/error/skip 0、17実画像視認、対象44px・Badge clientHeight=scrollHeight=24を確認。共通nav・チーム内訳再読込は完了範囲外。[統合証跡](prototypes/alicization-cmp042-20261002.md)参照"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Badge",
+        "px",
+        "Badge",
+        "px",
+        "viewport",
+        "overflow"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261003-0121",
+      "title": "アンケート回答者・結果の部分再読込後も上部回答数が古いまま残る",
+      "status": "not-started",
+      "statusLabel": "未着手",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "同じアンケートで回答者一覧・結果の再読込完了時に上部回答数も保存済み回答数へ同期し、公開時target_countは固定すること。0件・再読込失敗・権限境界・公開後の加入退会を確認し、失敗時の表示方針を一貫させること",
+      "acceptance": [
+        "同じアンケートで回答者一覧・結果の再読込完了時に上部回答数も保存済み回答数へ同期し、公開時target_countは固定すること。0件・再読込失敗・権限境界・公開後の加入退会を確認し、失敗時の表示方針を一貫させること"
+      ],
+      "blocker": "CMP-042",
+      "issues": [
+        {
+          "label": "P10住民1の014-finish.pngで上部0/2、子一覧2/全3、結果2を同時観測。詳細ページresponseCountLabelはsurvey.stats参照、回答者refreshは子loadRespondentsのみ更新。今回CSS修正とは分離。全体再読込後の挙動・DB破損は未実証。[統合証跡](prototypes/alicization-cmp042-20261002.md)参照",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "P10住民1の014-finish.pngで上部0/2、子一覧2/全3、結果2を同時観測。詳細ページresponseCountLabelはsurvey.stats参照、回答者refreshは子loadRespondentsのみ更新。今回CSS修正とは分離。全体再読込後の挙動・DB破損は未実証。[統合証跡](prototypes/alicization-cmp042-20261002.md)参照"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "target_count"
+      ],
+      "tags": [
+        "未着手"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-261003-1229",
+      "title": "braces の high 脆弱性で出荷CIが失敗し、公式修正版が未公開",
+      "status": "on-hold",
+      "statusLabel": "保留（公式修正版導入または依存撤去待ち）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "公式修正版の導入または該当経路からの依存撤去で解消し、互換性を確認したうえでnpm audit gate と関連CIが成功すること。再開時に既存対応PRとの重複を確認すること",
+      "acceptance": [
+        "公式修正版の導入または該当経路からの依存撤去で解消し、互換性を確認したうえでnpm audit gate と関連CIが成功すること。再開時に既存対応PRとの重複を確認すること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "[公式 GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) は affected <=3.0.3・Patched None。2026-10-03のnpm registry一次読取でも latest=3.0.3。Draft #3609 統合HEAD `2230766` のInstall run `37090510764`（job `111109651006`）で high @intlify/unplugin-vue-i18n として伝播し失敗。現時点で出荷CIを通せる修正版がなく保留、今回は未評価の例外を追加せずlock/例外変更なし。読取範囲ではユーザー任意globの実アプリ入力経路は未発見だが、本番.outputからの除外は未実証。Survey単体149件greenや統合ローカル検証の成否とは別の出荷ブロッカー",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "[公式 GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) は affected <=3.0.3・Patched None。2026-10-03のnpm registry一次読取でも latest=3.0.3。Draft #3609 統合HEAD `2230766` のInstall run `37090510764`（job `111109651006`）で high @intlify/unplugin-vue-i18n として伝播し失敗。現時点で出荷CIを通せる修正版がなく保留、今回は未評価の例外を追加せずlock/例外変更なし。読取範囲ではユーザー任意globの実アプリ入力経路は未発見だが、本番.outputからの除外は未実証。Survey単体149件greenや統合ローカル検証の成否とは別の出荷ブロッカー"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "braces",
+        "high",
+        "CI",
+        "npm",
+        "audit",
+        "gate",
+        "CI",
+        "PR"
+      ],
+      "tags": [
+        "保留"
+      ],
+      "githubRefs": [
+        3609
+      ],
+      "github": [
+        {
+          "number": 3609,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "組合の代理入力同意書と操作履歴を管理画面から利用する（CMP-260820-1018）",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3609",
+          "updatedAt": "2026-10-03T16:54:25Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     }
   ],
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-10-02T02:15:36+00:00",
+    "synchronizedAt": "2026-10-03T19:00:45+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -34961,7 +38922,8 @@ window.BETA_INVENTORY_DATA = {
         2800,
         2801,
         2805,
-        2806
+        2806,
+        2826
       ],
       "CMP-040": [
         2797,
@@ -34972,7 +38934,8 @@ window.BETA_INVENTORY_DATA = {
         2880
       ],
       "CMP-042": [
-        2787
+        2787,
+        2826
       ],
       "CMP-028": [
         2754,
@@ -35130,7 +39093,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260820-1017": [
         3521
       ],
-      "CMP-260820-1018": [],
+      "CMP-260820-1018": [
+        3609
+      ],
       "CMP-260820-1019": [
         3546
       ],
@@ -35142,7 +39107,8 @@ window.BETA_INVENTORY_DATA = {
         2887
       ],
       "CMP-260821-1235": [
-        2895
+        2895,
+        2900
       ],
       "CMP-260821-1547": [
         2894,
@@ -35152,8 +39118,8 @@ window.BETA_INVENTORY_DATA = {
         2979
       ],
       "CMP-260821-2130": [
-        902,
-        2895
+        2917,
+        2970
       ],
       "CMP-260822-1005": [
         2970
@@ -35166,7 +39132,8 @@ window.BETA_INVENTORY_DATA = {
         2922
       ],
       "CMP-260822-1026": [
-        2909
+        2909,
+        3576
       ],
       "CMP-260826-1919": [
         2952,
@@ -35177,7 +39144,8 @@ window.BETA_INVENTORY_DATA = {
         3163
       ],
       "CMP-260826-1921": [
-        2956
+        2956,
+        3573
       ],
       "CMP-260901-1538": [
         3037,
@@ -35202,7 +39170,8 @@ window.BETA_INVENTORY_DATA = {
         3171
       ],
       "CMP-260903-0652": [
-        3086
+        3086,
+        3175
       ],
       "CMP-260903-0653": [
         3086
@@ -35211,10 +39180,13 @@ window.BETA_INVENTORY_DATA = {
         3086
       ],
       "CMP-260903-0655": [
-        3148
+        3148,
+        3176
       ],
       "CMP-260903-0656": [
-        3086
+        3086,
+        3099,
+        3603
       ],
       "CMP-260903-0657": [
         3086
@@ -35319,29 +39291,41 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-260821-1148": [],
       "CMP-260822-1243": [
-        2919
+        2919,
+        3583
       ],
       "CMP-260825-0639": [
         2909
       ],
       "CMP-260826-1100": [
-        2906,
-        2920,
-        2956
+        2976
       ],
       "CMP-260826-1041": [
+        1073,
+        1074,
+        1076,
         1169,
         1209,
         1490,
-        2353
+        1502,
+        2353,
+        3607
       ],
-      "CMP-260826-1455": [],
-      "CMP-260826-1456": [],
+      "CMP-260826-1455": [
+        3572
+      ],
+      "CMP-260826-1456": [
+        3590
+      ],
       "CMP-260826-1457": [
         2353
       ],
       "CMP-260826-2127": [
-        1170
+        1170,
+        3099,
+        3123,
+        3129,
+        3132
       ],
       "CMP-260826-2128": [
         1209,
@@ -35373,7 +39357,9 @@ window.BETA_INVENTORY_DATA = {
         2976,
         2988
       ],
-      "CMP-260901-0411": [],
+      "CMP-260901-0411": [
+        3577
+      ],
       "CMP-260901-1246": [
         3045
       ],
@@ -35558,8 +39544,14 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260911-0109": [],
       "CMP-260911-0110": [],
       "CMP-260912-1524": [],
-      "CMP-260912-1525": [],
-      "CMP-260912-1526": [],
+      "CMP-260912-1525": [
+        3282,
+        3291
+      ],
+      "CMP-260912-1526": [
+        3282,
+        3291
+      ],
       "CMP-260912-1758": [
         3239,
         3397
@@ -35572,7 +39564,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260913-1416": [],
       "CMP-260913-1251": [],
       "CMP-260916-0053": [
-        3285
+        3282,
+        3285,
+        3291
       ],
       "CMP-260916-0054": [],
       "CMP-260916-0055": [
@@ -35645,7 +39639,9 @@ window.BETA_INVENTORY_DATA = {
       "CMP-260919-1139": [
         3374
       ],
-      "CMP-260919-1140": [],
+      "CMP-260919-1140": [
+        3387
+      ],
       "CMP-260919-1141": [],
       "CMP-260919-1453": [
         3375
@@ -35746,7 +39742,8 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-260929-0654": [
         3518,
-        3555
+        3555,
+        3579
       ],
       "CMP-260928-1233": [
         3502,
@@ -35822,7 +39819,8 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-260930-1931": [],
       "CMP-260930-1932": [
-        3499
+        3499,
+        3556
       ],
       "CMP-260930-1933": [],
       "CMP-260930-1934": [],
@@ -35859,7 +39857,61 @@ window.BETA_INVENTORY_DATA = {
         3542
       ],
       "CMP-260930-2312": [],
-      "CMP-260930-2313": []
+      "CMP-260930-2313": [],
+      "CMP-261001-2325": [
+        3555,
+        3560,
+        3563
+      ],
+      "CMP-261002-1342": [
+        3387,
+        3589
+      ],
+      "CMP-261002-1343": [
+        3387,
+        3454
+      ],
+      "CMP-261002-1344": [
+        3387
+      ],
+      "CMP-261002-0742": [],
+      "CMP-261002-0743": [],
+      "CMP-261002-0744": [],
+      "CMP-261002-0801": [],
+      "CMP-261002-0802": [],
+      "CMP-261002-0803": [],
+      "CMP-261002-0804": [],
+      "CMP-261002-0805": [],
+      "CMP-261002-1135": [],
+      "CMP-261002-1559": [
+        3556
+      ],
+      "CMP-261002-1600": [
+        3556
+      ],
+      "CMP-261002-1601": [
+        3556
+      ],
+      "CMP-261002-1602": [
+        3556
+      ],
+      "CMP-261002-1603": [
+        3556
+      ],
+      "CMP-261002-1604": [],
+      "CMP-261002-1605": [],
+      "CMP-261002-1606": [
+        2976,
+        3556
+      ],
+      "CMP-261002-1607": [
+        3585
+      ],
+      "CMP-261003-0119": [],
+      "CMP-261003-0121": [],
+      "CMP-261003-1229": [
+        3609
+      ]
     },
     "items": {
       "261": {
@@ -35960,13 +40012,40 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
-      "902": {
-        "number": 902,
+      "1073": {
+        "number": 1073,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "依存更新: POIを5.5.1へ更新（CMP1041）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1073",
+        "updatedAt": "2026-10-03T16:57:44Z",
+        "ci": {
+          "status": "pending",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1074": {
+        "number": 1074,
         "kind": "pull_request",
         "state": "merged",
-        "title": "ci: Lighthouse CI によるフロントエンドパフォーマンス監視",
-        "url": "https://github.com/kenta-0420/mannschaft/pull/902",
-        "updatedAt": "2026-05-21T02:15:26Z",
+        "title": "更新: actions/cache v5へ追従 (CMP-260826-1041)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1074",
+        "updatedAt": "2026-10-02T10:47:57Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "1076": {
+        "number": 1076,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "chore(deps): github-script を v7 から v9 に更新",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/1076",
+        "updatedAt": "2026-10-02T21:12:02Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -37737,10 +41816,10 @@ window.BETA_INVENTORY_DATA = {
       "2787": {
         "number": 2787,
         "kind": "issue",
-        "state": "open",
+        "state": "closed",
         "title": "改善(アンケート): ALL モードで target_count が一度も書かれず永久に 0（回答率の分母にスナップショットが無い）",
         "url": "https://github.com/kenta-0420/mannschaft/issues/2787",
-        "updatedAt": "2026-08-13T23:38:52Z",
+        "updatedAt": "2026-10-02T20:36:25Z",
         "ci": null
       },
       "2788": {
@@ -38005,6 +42084,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "修正(CI): テストJVMのfork頻度を100→500へ緩和し固定コストを根治 (CMP-045)",
         "url": "https://github.com/kenta-0420/mannschaft/pull/2821",
         "updatedAt": "2026-08-15T07:06:44Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2826": {
+        "number": 2826,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正(#2787): アンケート公開時に対象人数をスナップショットし全員配信の分母0を根治 (CMP-042)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2826",
+        "updatedAt": "2026-08-27T23:58:11Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -38383,6 +42476,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "2900": {
+        "number": 2900,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: frontend-deployのAWS secret門番を是正",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2900",
+        "updatedAt": "2026-08-21T11:53:13Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "2902": {
         "number": 2902,
         "kind": "pull_request",
@@ -38404,20 +42511,6 @@ window.BETA_INVENTORY_DATA = {
         "title": "機能追加: F02.11 帰省・滞在予定（本人登録・チーム可視化・逝去/転出アーカイブ連動パージ）",
         "url": "https://github.com/kenta-0420/mannschaft/pull/2905",
         "updatedAt": "2026-08-21T09:38:53Z",
-        "ci": {
-          "status": "unavailable",
-          "reason": "終了済みPRのCIは同期対象外",
-          "checks": [],
-          "source": "GraphQL statusCheckRollup"
-        }
-      },
-      "2906": {
-        "number": 2906,
-        "kind": "pull_request",
-        "state": "merged",
-        "title": "改善(CI): backendテストシャードを実行時間ベースの重み付け振り分けへ",
-        "url": "https://github.com/kenta-0420/mannschaft/pull/2906",
-        "updatedAt": "2026-08-25T10:44:20Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -38455,6 +42548,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "機能追加(通知): 通知トランザクション分離パターンの型確立(Issue #2834/CMP-056)",
         "url": "https://github.com/kenta-0420/mannschaft/pull/2910",
         "updatedAt": "2026-08-22T04:55:08Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "2917": {
+        "number": 2917,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加(FE): 本番ビルドOOM対策 — サーバー側ソースマップ無効化・builderヒープ上限",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2917",
+        "updatedAt": "2026-08-22T02:21:14Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -39025,6 +43132,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "3099": {
+        "number": 3099,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 未公開シフト表の情報が API から読める欠陥を遮断する（CMP-260826-2127・出陣）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3099",
+        "updatedAt": "2026-09-04T13:29:14Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "3111": {
         "number": 3111,
         "kind": "pull_request",
@@ -39032,6 +43153,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "是正: 組織・チーム名称の重複許可フロー(柱③-A)実装+検分是正(P1×3/P2×3)",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3111",
         "updatedAt": "2026-09-05T10:04:45Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3123": {
+        "number": 3123,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "テスト追加: 未公開シフト情報の遮断を実機E2Eで固定する（CMP-260826-2127・実機）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3123",
+        "updatedAt": "2026-09-05T11:30:32Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -39053,6 +43188,20 @@ window.BETA_INVENTORY_DATA = {
           "source": "GraphQL statusCheckRollup"
         }
       },
+      "3129": {
+        "number": 3129,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "台帳: アリシゼーション（探索的テスト）で発見した欠陥2件を起票",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3129",
+        "updatedAt": "2026-09-05T13:46:41Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
       "3130": {
         "number": 3130,
         "kind": "pull_request",
@@ -39060,6 +43209,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "柱③-B 請求担当引継の土台（DDL・状態機械・payer列）PR-1",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3130",
         "updatedAt": "2026-09-05T18:25:58Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3132": {
+        "number": 3132,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "テスト強化: 未公開シフト遮断の実機E2Eに HTTP 404 検証・AC-17・API 契約検証を足す（CMP-260826-2127・検分反映）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3132",
+        "updatedAt": "2026-09-05T13:58:46Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -39298,6 +43461,34 @@ window.BETA_INVENTORY_DATA = {
         "title": "fix: 自分の確定シフトから未公開割当を除外",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3171",
         "updatedAt": "2026-09-08T13:03:45Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3175": {
+        "number": 3175,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 手動割当したシフトがマイシフトに出ない（割当の保存先が二重）— CMP-260908-2117",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3175",
+        "updatedAt": "2026-09-08T19:04:42Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3176": {
+        "number": 3176,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: シフト交代の承諾・却下がUIから永久に押せない問題を根治（CMP-260908-2116）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3176",
+        "updatedAt": "2026-09-08T17:56:22Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -39741,6 +43932,20 @@ window.BETA_INVENTORY_DATA = {
         "title": "CMP-008: CSP報告主キーをUUIDv7へ移行",
         "url": "https://github.com/kenta-0420/mannschaft/pull/3280",
         "updatedAt": "2026-09-15T15:37:34Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3282": {
+        "number": 3282,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: generateOpenApiDocs の無音タイムアウトを診断可能にする（CMP-260912-1526）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3282",
+        "updatedAt": "2026-09-15T17:44:04Z",
         "ci": {
           "status": "unavailable",
           "reason": "終了済みPRのCIは同期対象外",
@@ -41308,13 +45513,218 @@ window.BETA_INVENTORY_DATA = {
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
+      },
+      "3556": {
+        "number": 3556,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "根治: システム発の自動通知を通知クレジット課金対象外にし業務TXから分離 (CMP-260930-1932)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3556",
+        "updatedAt": "2026-10-02T11:41:07Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3560": {
+        "number": 3560,
+        "kind": "pull_request",
+        "state": "closed",
+        "title": "修正: シフト予算の照合バッチITで非同期の監査ログを待たずに検証していた（不定期失敗）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3560",
+        "updatedAt": "2026-10-01T23:29:59Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3563": {
+        "number": 3563,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: 3-C IT の監査ログ照合を非同期完了待ちにする（G125 不安定）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3563",
+        "updatedAt": "2026-10-01T20:49:18Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3572": {
+        "number": 3572,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "修正: 村メンバー操作と自己降格の現役メンバー認可 (CMP-260826-1455)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3572",
+        "updatedAt": "2026-10-03T18:57:54Z",
+        "ci": {
+          "status": "pending",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3573": {
+        "number": 3573,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "試練: 試合・テンプレートのOpenAPIスコープ契約を固定 (CMP-260826-1921)",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3573",
+        "updatedAt": "2026-10-03T16:25:19Z",
+        "ci": {
+          "status": "failure",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3576": {
+        "number": 3576,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "CMP-260822-1026 永続化enumの二段階展開作法と定数追加番人",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3576",
+        "updatedAt": "2026-10-02T07:02:53Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3577": {
+        "number": 3577,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "文書更新: 浅いGit履歴の診断と再発防止（CMP-260901-0411）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3577",
+        "updatedAt": "2026-10-02T04:46:54Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3579": {
+        "number": 3579,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "テスト追加: CMP-260929-0654 主キー BINARY(16) 実機E2E spec（未実走）と台帳更新",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3579",
+        "updatedAt": "2026-10-02T17:34:28Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3583": {
+        "number": 3583,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "修正: CMP1243退会バッチの実TXと取消境界を修復する",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3583",
+        "updatedAt": "2026-10-03T18:05:20Z",
+        "ci": {
+          "status": "failure",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3585": {
+        "number": 3585,
+        "kind": "pull_request",
+        "state": "closed",
+        "title": "緊急修正: FE audit の node-forge を期限付き除外し dompurify/moment/fast-uri を引き上げ",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3585",
+        "updatedAt": "2026-10-02T14:46:33Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3589": {
+        "number": 3589,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: メンバー紹介のプロフィール削除に確認ダイアログを追加（CMP-261002-1342）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3589",
+        "updatedAt": "2026-10-03T00:23:14Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3590": {
+        "number": 3590,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "feat: 存在秘匿を維持する本人の村参加申請履歴",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3590",
+        "updatedAt": "2026-10-03T17:11:50Z",
+        "ci": {
+          "status": "pending",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3603": {
+        "number": 3603,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "修正: シフトの予定・枠・リマインド・PDF の認可をトランザクションの外のファサードへ（CMP-260923-0954 W6a）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3603",
+        "updatedAt": "2026-10-03T03:43:43Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3607": {
+        "number": 3607,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "検証改善: 全ArchUnit番人を専用JVMへ分離してOOMを対照する",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3607",
+        "updatedAt": "2026-10-03T15:38:34Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3609": {
+        "number": 3609,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "組合の代理入力同意書と操作履歴を管理画面から利用する（CMP-260820-1018）",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3609",
+        "updatedAt": "2026-10-03T16:54:25Z",
+        "ci": {
+          "status": "success",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
       }
     },
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-10-02T02:15:36+00:00",
-      "referenceCount": 411
+      "synchronizedAt": "2026-10-03T19:00:45+00:00",
+      "referenceCount": 437
     }
   }
 };

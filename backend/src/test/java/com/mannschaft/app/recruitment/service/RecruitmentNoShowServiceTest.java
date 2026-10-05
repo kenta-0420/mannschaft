@@ -37,6 +37,7 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -371,6 +372,7 @@ class RecruitmentNoShowServiceTest {
         @DisplayName("archive 済みなら申立を受け付けたうえで即座に REVOKED を当てる")
         void archive済みなら即時REVOKED() throws Exception {
             RecruitmentNoShowRecordEntity record = buildUndisputedRecord();
+            given(noShowRepository.existsByIdAndUserId(RECORD_ID, PENALIZED_USER_ID)).willReturn(true);
             given(noShowRepository.findByIdForDisputeUpdate(RECORD_ID)).willReturn(Optional.of(record));
             given(listingRepository.findArchivedScopeById(LISTING_ID))
                     .willReturn(Optional.of(archivedScope(RecruitmentScopeType.TEAM, SCOPE_ID)));
@@ -390,6 +392,7 @@ class RecruitmentNoShowServiceTest {
         @DisplayName("archive 済みの取下げは trigger=DISPUTED_AFTER_LISTING_ARCHIVED で監査に残る")
         void archive済みの取下げは監査に残る() throws Exception {
             RecruitmentNoShowRecordEntity record = buildUndisputedRecord();
+            given(noShowRepository.existsByIdAndUserId(RECORD_ID, PENALIZED_USER_ID)).willReturn(true);
             given(noShowRepository.findByIdForDisputeUpdate(RECORD_ID)).willReturn(Optional.of(record));
             given(listingRepository.findArchivedScopeById(LISTING_ID))
                     .willReturn(Optional.of(archivedScope(RecruitmentScopeType.TEAM, SCOPE_ID)));
@@ -415,6 +418,7 @@ class RecruitmentNoShowServiceTest {
         @DisplayName("ORGANIZATION スコープでも監査の organizationId 側に振り分けられる")
         void archive済みORGANIZATIONスコープの振り分け() throws Exception {
             RecruitmentNoShowRecordEntity record = buildUndisputedRecord();
+            given(noShowRepository.existsByIdAndUserId(RECORD_ID, PENALIZED_USER_ID)).willReturn(true);
             given(noShowRepository.findByIdForDisputeUpdate(RECORD_ID)).willReturn(Optional.of(record));
             given(listingRepository.findArchivedScopeById(LISTING_ID))
                     .willReturn(Optional.of(archivedScope(RecruitmentScopeType.ORGANIZATION, SCOPE_ID)));
@@ -433,6 +437,7 @@ class RecruitmentNoShowServiceTest {
         @DisplayName("生存中の募集枠なら従来どおり disputed=true / resolution=null・監査も打たない（非回帰）")
         void 生存中なら従来どおり() throws Exception {
             RecruitmentNoShowRecordEntity record = buildUndisputedRecord();
+            given(noShowRepository.existsByIdAndUserId(RECORD_ID, PENALIZED_USER_ID)).willReturn(true);
             given(noShowRepository.findByIdForDisputeUpdate(RECORD_ID)).willReturn(Optional.of(record));
             given(listingRepository.findArchivedScopeById(LISTING_ID)).willReturn(Optional.empty());
 
@@ -446,6 +451,41 @@ class RecruitmentNoShowServiceTest {
             verify(eventPublisher).publishEvent(new RecruitmentNoShowDisputeNotificationEvent(
                     RECORD_ID, LISTING_ID, PENALIZED_USER_ID));
             verifyNoInteractions(auditLogService);
+        }
+    }
+
+    // ========================================
+    // dispute - 本人判定（存在オラクル是正・CMP-260923-0954 W5）
+    // ========================================
+
+    @Nested
+    @DisplayName("dispute - 本人判定は行ロックより前・本人以外は不在と同じコード")
+    class DisputeOwnerCheck {
+
+        @Test
+        @DisplayName("本人以外・不在は NO_SHOW_RECORD_NOT_FOUND で、行ロック（FOR UPDATE）も監査・通知も発行しない")
+        void 本人以外は不在と同じコードでロックしない() {
+            given(noShowRepository.existsByIdAndUserId(RECORD_ID, ADMIN_ID)).willReturn(false);
+
+            assertThatThrownBy(() -> service.dispute(RECORD_ID, ADMIN_ID, "異議申立の理由"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND);
+
+            verify(noShowRepository, never()).findByIdForDisputeUpdate(anyLong());
+            verifyNoInteractions(eventPublisher, auditLogService);
+        }
+
+        @Test
+        @DisplayName("本人と確認できた後に行ロックを取り、ロック後に不在なら NO_SHOW_RECORD_NOT_FOUND")
+        void 本人確認後のロックで不在なら不在コード() {
+            given(noShowRepository.existsByIdAndUserId(RECORD_ID, PENALIZED_USER_ID)).willReturn(true);
+            given(noShowRepository.findByIdForDisputeUpdate(RECORD_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.dispute(RECORD_ID, PENALIZED_USER_ID, "異議申立の理由"))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND);
         }
     }
 

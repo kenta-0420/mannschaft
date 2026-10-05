@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import type { MatchOrgOption } from '~/composables/match/useMatchOrgContext'
+
 const props = defineProps<{
   event: {
     id: number
     /** 親 schedules 行の ID（BE CalendarEntryResponse.scheduleId・設計書 §1.5 / AC-07(b)）。null ならコメント欄非表示。 */
     scheduleId?: number | null
+    /** 予定が属する組織の数値 ID（あれば試合はその組織の下に作る。無ければ組織セレクタ／代表親組織）。 */
+    organizationId?: number | null
     title: string
     description: string | null
     location: string | null
@@ -61,22 +65,90 @@ const { resolveMatchBySchedule, createMatch } = useMatchApi()
 const canRecordMatch = computed(() => props.scopeType === 'team' && !!props.scopeId)
 const recordingMatch = ref(false)
 
+// 試合を作る組織: 予定が組織に属していればその組織。属していなければ、チームの親組織が複数のとき
+// 既定の組織を置かずセレクタで必ず選ばせる（選ぶまで作成できない。黙って代表親組織を使わない）。
+// ※ 現行の呼び出し元（calendar.vue 等）は event.organizationId を渡さないため、通常はこの経路になる。
+const matchOrganizations = ref<MatchOrgOption[]>([])
+const selectedOrgId = ref<number | null>(null)
+const matchOrgId = ref<number | null>(null)
+const showOrgSelect = computed(
+  () => canRecordMatch.value && props.event.organizationId == null && matchOrganizations.value.length > 1,
+)
+
+/** 親組織が複数・予定に組織が無い・まだ選んでいない: 選ぶまで作成できない。 */
+const needsOrgChoice = computed(() => showOrgSelect.value && selectedOrgId.value === null)
+
+/**
+ * 親組織の解決が終わるまでは、親組織が複数かどうか分からない。その間に押されると
+ * 代表親組織で作られてしまうため、予定に組織が無い場合は解決完了まで作成できない。
+ */
+const matchOrgsLoaded = ref(false)
+const orgResolving = computed(
+  () => canRecordMatch.value && props.event.organizationId == null && !matchOrgsLoaded.value,
+)
+/** 記録ボタンを押せない（組織の解決中、または選択待ち）。 */
+const recordBlocked = computed(() => orgResolving.value || needsOrgChoice.value)
+
+async function loadMatchOrganizations(): Promise<void> {
+  if (!canRecordMatch.value) return
+  try {
+    const ctx = await resolveContext(props.scopeId, { orgId: selectedOrgId.value })
+    matchOrganizations.value = ctx?.organizations ?? []
+    // 選択が必要なうちは既定（代表親組織）を見せない（セレクタは未選択の表示になる）
+    matchOrgId.value = needsOrgChoice.value ? null : (ctx?.orgId ?? null)
+  } finally {
+    matchOrgsLoaded.value = true
+  }
+}
+
+function onSelectMatchOrg(id: number): void {
+  selectedOrgId.value = id
+  void loadMatchOrganizations()
+}
+
+onMounted(loadMatchOrganizations)
+watch(() => props.scopeId, () => {
+  selectedOrgId.value = null
+  matchOrgsLoaded.value = false
+  void loadMatchOrganizations()
+})
+
 async function recordMatch(): Promise<void> {
-  if (!canRecordMatch.value || recordingMatch.value) return
+  if (!canRecordMatch.value || recordingMatch.value || recordBlocked.value) return
   recordingMatch.value = true
   try {
-    const ctx = await resolveContext(props.scopeId)
+    // 予定の組織があればそれ、無ければセレクタの選択（未選択は代表親組織）
+    const ctx = await resolveContext(props.scopeId, {
+      orgId: props.event.organizationId ?? selectedOrgId.value,
+    })
     if (!ctx) {
       // Bug C 修正: ctx が null の場合（チームが組織に所属していない等）はユーザーへ通知する。
       // 以前のコメント「composable 内で通知済み」は誤記で、実際には通知されていなかった。
       notification.warn(t('match.entry.no_org_for_record'))
       return
     }
+    // 予定の組織がこのチームの親組織でない場合は、代表親組織へ落とさず止める
+    if (ctx.orgInvalid || ctx.orgId === null) {
+      notification.warn(t('match.org_select.invalid'))
+      return
+    }
+    // 初回の組織取得が失敗していた（ctx が null で組織が空のまま）場合でも、ここで取り直した結果が
+    // 複数の親組織なら選択を飛ばさない。代表親組織で作らず、セレクタを出して選ばせる。
+    if (
+      props.event.organizationId == null &&
+      selectedOrgId.value === null &&
+      ctx.organizations.length > 1
+    ) {
+      matchOrganizations.value = ctx.organizations
+      matchOrgId.value = null
+      return
+    }
+    const orgQuery = { org: String(ctx.orgId) }
 
     // 1) この予定に紐づく既存 match があれば live を開く
     const existing = await resolveMatchBySchedule(ctx.orgId, ctx.teamId, props.event.id)
     if (existing?.id) {
-      await navigateTo(`/teams/${props.scopeId}/matches/${existing.id}/live`)
+      await navigateTo({ path: `/teams/${props.scopeId}/matches/${existing.id}/live`, query: orgQuery })
       return
     }
 
@@ -92,7 +164,7 @@ async function recordMatch(): Promise<void> {
       venue: props.event.location ?? undefined,
     })
     if (created.id) {
-      await navigateTo(`/teams/${props.scopeId}/matches/${created.id}/live`)
+      await navigateTo({ path: `/teams/${props.scopeId}/matches/${created.id}/live`, query: orgQuery })
     }
   } catch {
     // エラーは composable 内で通知済み（症状は隠さない）
@@ -245,6 +317,13 @@ onMounted(async () => {
 
     <!-- F08.10 入口④: TEAM スコープ予定のみ「この試合を記録」ボタンを出す -->
     <div v-if="canRecordMatch">
+      <MatchOrgSelect
+        v-if="showOrgSelect"
+        :organizations="matchOrganizations"
+        :org-id="matchOrgId"
+        :sync-query="false"
+        @update:org-id="onSelectMatchOrg"
+      />
       <Button
         :label="$t('match.entry.record_from_schedule')"
         icon="pi pi-play"
@@ -252,6 +331,7 @@ onMounted(async () => {
         size="small"
         class="w-full"
         :loading="recordingMatch"
+        :disabled="recordBlocked"
         @click="recordMatch"
       />
       <p class="mt-1 text-xs text-surface-400">{{ $t('match.entry.record_from_schedule_hint') }}</p>

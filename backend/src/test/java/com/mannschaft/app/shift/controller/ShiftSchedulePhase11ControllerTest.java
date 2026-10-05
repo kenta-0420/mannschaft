@@ -8,8 +8,7 @@ import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.dto.ManualRemindResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleSummaryResponse;
-import com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService;
-import com.mannschaft.app.shift.service.ShiftScheduleService;
+import com.mannschaft.app.shift.service.ShiftScheduleFacade;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,11 +62,9 @@ class ShiftSchedulePhase11ControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    /** CMP-260923-0954 W6a: Controller は認可ファサードだけを呼ぶ（tx 本体は直接呼ばない）。 */
     @MockitoBean
-    private ShiftScheduleService scheduleService;
-
-    @MockitoBean
-    private ShiftPreferenceReminderBatchService preferenceReminderBatchService;
+    private ShiftScheduleFacade scheduleFacade;
 
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -103,7 +100,7 @@ class ShiftSchedulePhase11ControllerTest {
                         .totalRequested(3)
                         .build()))
                 .build();
-        given(scheduleService.getScheduleSummary(eq(SCHEDULE_ID), eq(USER_ID))).willReturn(summary);
+        given(scheduleFacade.getScheduleSummary(eq(SCHEDULE_ID), eq(USER_ID))).willReturn(summary);
 
         mockMvc.perform(get("/api/v1/shifts/schedules/{id}/summary", SCHEDULE_ID))
                 .andExpect(status().isOk())
@@ -113,7 +110,7 @@ class ShiftSchedulePhase11ControllerTest {
     }
 
     @Test
-    @DisplayName("GET summary: @PreAuthorize('isAuthenticated()') が付与されている（真の per-scope 認可は Service 層）")
+    @DisplayName("GET summary: @PreAuthorize('isAuthenticated()') が付与されている（真の per-scope 認可は tx の外の Facade）")
     void summary_isAuthorizedByAnnotation() throws NoSuchMethodException {
         Method method = ShiftScheduleController.class
                 .getMethod("getScheduleSummary", Long.class);
@@ -125,7 +122,7 @@ class ShiftSchedulePhase11ControllerTest {
                 .isNotNull();
         // 認可根治 Phase 3-b（2026-05-30）: scope はスケジュールエンティティ由来で SpEL からパス変数参照
         // できないため、宣言は isAuthenticated() とし、真の per-scope 認可は
-        // ShiftScheduleService.getScheduleSummary 内の checkScheduleAdminAccess で強制する。
+        // ShiftScheduleFacade#getScheduleSummary（トランザクションの外。W6a）で強制する。
         // 旧 hasRole('ADMIN') は method-security 点火時に JWT へ ROLE_ADMIN が乗らず一斉403になるため是正済。
         assertThat(annotation.value())
                 .as("@PreAuthorize は isAuthenticated() を要求すること（点火時の一斉403を回避）")
@@ -137,7 +134,7 @@ class ShiftSchedulePhase11ControllerTest {
     @WithMockUser(username = "100", roles = "ADMIN")
     void summary_notFound_404() throws Exception {
         willThrow(new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
-                .given(scheduleService).getScheduleSummary(eq(SCHEDULE_ID), eq(USER_ID));
+                .given(scheduleFacade).getScheduleSummary(eq(SCHEDULE_ID), eq(USER_ID));
 
         mockMvc.perform(get("/api/v1/shifts/schedules/{id}/summary", SCHEDULE_ID))
                 .andExpect(status().isNotFound())
@@ -157,7 +154,7 @@ class ShiftSchedulePhase11ControllerTest {
                 .remindedCount(2)
                 .remindedUserIds(List.of(11L, 12L))
                 .build();
-        given(preferenceReminderBatchService.triggerManualReminder(eq(SCHEDULE_ID), eq(USER_ID)))
+        given(scheduleFacade.remindUnsubmitted(eq(SCHEDULE_ID), eq(USER_ID)))
                 .willReturn(response);
 
         mockMvc.perform(post("/api/v1/shifts/schedules/{id}/remind", SCHEDULE_ID).with(csrf()))
@@ -168,7 +165,7 @@ class ShiftSchedulePhase11ControllerTest {
     }
 
     @Test
-    @DisplayName("POST remind: @PreAuthorize('isAuthenticated()') が付与されている（真の per-scope 認可は Service 層）")
+    @DisplayName("POST remind: @PreAuthorize('isAuthenticated()') が付与されている（真の per-scope 認可は tx の外の Facade）")
     void remind_isAuthorizedByAnnotation() throws NoSuchMethodException {
         Method method = ShiftScheduleController.class
                 .getMethod("remindUnsubmitted", Long.class);
@@ -180,7 +177,7 @@ class ShiftSchedulePhase11ControllerTest {
                 .isNotNull();
         // 認可根治 Phase 3-b（2026-05-30）: scope はスケジュールエンティティ由来で SpEL からパス変数参照
         // できないため、宣言は isAuthenticated() とし、真の per-scope 認可は
-        // ShiftPreferenceReminderBatchService.triggerManualReminder 内で AccessControlService により強制する。
+        // ShiftScheduleFacade#remindUnsubmitted（トランザクションの外。W6a）で強制する。
         assertThat(annotation.value())
                 .as("@PreAuthorize は isAuthenticated() を要求すること（点火時の一斉403を回避）")
                 .isEqualTo("isAuthenticated()");
@@ -191,7 +188,7 @@ class ShiftSchedulePhase11ControllerTest {
     @WithMockUser(username = "100", roles = "ADMIN")
     void remind_wrongStatus_409() throws Exception {
         willThrow(new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS))
-                .given(preferenceReminderBatchService).triggerManualReminder(eq(SCHEDULE_ID), eq(USER_ID));
+                .given(scheduleFacade).remindUnsubmitted(eq(SCHEDULE_ID), eq(USER_ID));
 
         mockMvc.perform(post("/api/v1/shifts/schedules/{id}/remind", SCHEDULE_ID).with(csrf()))
                 .andExpect(status().isConflict())

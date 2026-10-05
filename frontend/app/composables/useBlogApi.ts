@@ -75,8 +75,8 @@ export function useBlogApi() {
     }>(`/api/v1/blog/posts?${qs}`)
   }
 
-  async function getPost(slug: string) {
-    return api<{ data: BlogPostResponse }>(`/api/v1/blog/posts/${slug}`)
+  async function getPost(slug: string, scope?: { teamId?: number; organizationId?: number }) {
+    return api<{ data: BlogPostResponse }>(`/api/v1/blog/posts/${encodeURIComponent(slug)}`, { query: scope })
   }
 
   async function getFeed(params?: Record<string, unknown>) {

@@ -580,7 +580,10 @@
     "group_name": "Group name",
     "targets": "Targets",
     "target_id": "Target ID",
-    "target_type": { "ORGANIZATION": "Organization", "TEAM": "Team" },
+    "target_type": {
+      "ORGANIZATION": "Organization",
+      "TEAM": "Team"
+    },
     "template": "Template",
     "audience": "Audience",
     "current_scope": "This organization or team",
@@ -1763,13 +1766,21 @@
       "supporter_registered": "Registered as a supporter",
       "supporter_applied": "Supporter application sent",
       "supporter_canceled": "Stopped supporting",
+      "follow_approved_badge": "You're supporting",
+      "follow_unfollow_aria": "Stop supporting",
+      "follow_pending_label": "Application pending",
+      "follow_pending_cancel_button": "Cancel",
+      "follow_apply_button": "Become a supporter",
       "leave_action": "Leave",
       "load_error_title": "Could not load information",
       "load_error_body": "Please try again later. It may be hidden if you do not have permission.",
       "back_to_dashboard": "Back to dashboard",
       "retry": "Retry",
       "slow_loading": "Loading is taking longer than expected",
-      "join_request_applied": "参加申請を送信しました"
+      "join_request_applied": "参加申請を送信しました",
+      "follow_fetch_error": "Could not get follow status",
+      "follow_permission_sync_error_title": "Failed to refresh permissions",
+      "follow_permission_sync_error_body": "You stopped following, but refreshing your permissions failed. Please retry."
     },
     "unsavedChanges": {
       "title": "Unsaved changes",
@@ -2371,7 +2382,8 @@
     "action": {
       "leave_confirm_title": "Leave team",
       "leave_confirm_body": "Are you sure you want to leave this team? This cannot be undone.",
-      "left": "Left the team"
+      "left": "Left the team",
+      "leave_button": "Leave team"
     }
   },
   "orgShell": {
@@ -2389,7 +2401,8 @@
     "action": {
       "leave_confirm_title": "Leave organization",
       "leave_confirm_body": "Are you sure you want to leave this organization? This cannot be undone.",
-      "left": "Left the organization"
+      "left": "Left the organization",
+      "leave_button": "Leave organization"
     }
   },
   "blog_guide": {
@@ -2690,7 +2703,9 @@
       "bulkRegisterHelp": "One member per line, formatted as \"Display name,Number\" (number is optional)",
       "bulkRegisterSuccess": "Registered {count} member(s)",
       "bulkRegisterFailed": "Failed to bulk register members",
-      "deleteConfirm": "Delete this member?",
+      "delete": "Delete member",
+      "deleteConfirm": "Delete {name}'s profile? This cannot be undone.",
+      "deleteSuccess": "Member deleted",
       "back": "Back to pages",
       "customFieldsError": "Failed to load custom fields",
       "optionsInvalidFormat": "The options data is in an invalid format",

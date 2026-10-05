@@ -2,18 +2,18 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.payment.escrow.ConnectChargeService;
-import com.mannschaft.app.payment.escrow.EscrowSourceKind;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.CancellationSource;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.entity.RecruitmentCancellationRecordEntity;
 import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -24,7 +24,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -33,21 +32,20 @@ import static org.mockito.Mockito.verify;
 /**
  * F03.11.1 キャンセル料の免除（{@link RecruitmentCancellationFeeWaiveService}）の試練。
  *
- * <p>設計書 §10 の受け入れ条件 AC-9 / AC-10 / AC-18 / AC-19 / AC-20 / AC-27 / AC-28 / AC-29 を担う。</p>
+ * <p>設計書 §10 の受け入れ条件 AC-9 / AC-10 / AC-19 / AC-20 / AC-29 を担う。</p>
  *
- * <p>認可は 3 つの {@code payeeKind} すべてについて肯定側と否定側を対で起こす。判定そのものは payment
- * ドメインの {@link ConnectChargeService#isPayeeSettlementManager} に委ね、recruitment 側は真偽値だけを
- * 受け取る（recruitment から escrow を直接読まない・§10.2）。</p>
- *
- * <p>本クラスは実装より前に書かれた red テストである。</p>
+ * <p>認可（受取先側の精算管理者か・SYSTEM_ADMIN か・存在を知り得る者か）は CMP-260923-0954 W4 で
+ * tx の外の {@link RecruitmentMoneyFacade} へ移った。その検証（AC-18・AC-19・AC-27/28）は
+ * {@code RecruitmentMoneyFacadeTest} が担い、本クラスは <b>tx 本体の振る舞い</b>
+ * （理由の検査・状態遷移・冪等・監査・記録→募集のたどり直し）だけを検証する。
+ * 認可の検証を消したのではなく、検証の置き場を認可の置き場に合わせて移している。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("F03.11.1 RecruitmentCancellationFeeWaiveService 試練")
+@DisplayName("F03.11.1 RecruitmentCancellationFeeWaiveService 試練（tx 本体）")
 class RecruitmentCancellationFeeWaiveServiceTest {
 
     @Mock private RecruitmentCancellationRecordRepository cancellationRecordRepository;
-    @Mock private ConnectChargeService connectChargeService;
-    @Mock private AccessControlService accessControlService;
+    @Mock private RecruitmentListingRepository listingRepository;
     @Mock private AuditLogService auditLogService;
 
     private static final Long RECORD_ID = 77L;
@@ -57,12 +55,12 @@ class RecruitmentCancellationFeeWaiveServiceTest {
     private static final Long DEBTOR_ID = 1L;
     /** 受取先側の管理者。 */
     private static final Long PAYEE_MANAGER_ID = 55L;
-    /** 受取先とも運営とも無関係な一般ユーザー。 */
-    private static final Long OUTSIDER_ID = 66L;
+    /** 運営（SYSTEM_ADMIN）として許可された操作者。 */
+    private static final Long SYSTEM_ADMIN_ID = 66L;
 
     private RecruitmentCancellationFeeWaiveService service() {
         return new RecruitmentCancellationFeeWaiveService(
-                cancellationRecordRepository, connectChargeService, accessControlService, auditLogService);
+                cancellationRecordRepository, listingRepository, auditLogService);
     }
 
     private RecruitmentCancellationRecordEntity record(CancellationPaymentStatus status) {
@@ -85,11 +83,12 @@ class RecruitmentCancellationFeeWaiveServiceTest {
     private void givenRecord(CancellationPaymentStatus status) {
         given(cancellationRecordRepository.findById(RECORD_ID)).willReturn(Optional.of(record(status)));
         given(cancellationRecordRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        givenLiveListing();
     }
 
-    private void givenPayeeManager(Long actorUserId, boolean accepted) {
-        given(connectChargeService.isPayeeSettlementManager(
-                EscrowSourceKind.RECRUITMENT, LISTING_ID, PARTICIPANT_ID, actorUserId)).willReturn(accepted);
+    /** 記録の募集が生きている（論理削除されていない。モデレーション非表示でも通る）。 */
+    private void givenLiveListing() {
+        given(listingRepository.lockLiveListingIdIgnoringModeration(LISTING_ID)).willReturn(Optional.of(LISTING_ID));
     }
 
     // ==========================================================
@@ -101,12 +100,11 @@ class RecruitmentCancellationFeeWaiveServiceTest {
     void ac9_waiveByPayeeManager_movesRecordToWaived() {
         RecruitmentCancellationFeeWaiveService svc = service();
         givenRecord(CancellationPaymentStatus.PENDING);
-        givenPayeeManager(PAYEE_MANAGER_ID, true);
 
-        svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "主催者都合のため免除");
+        svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "主催者都合のため免除", true);
 
-        org.mockito.ArgumentCaptor<RecruitmentCancellationRecordEntity> captor =
-                org.mockito.ArgumentCaptor.forClass(RecruitmentCancellationRecordEntity.class);
+        ArgumentCaptor<RecruitmentCancellationRecordEntity> captor =
+                ArgumentCaptor.forClass(RecruitmentCancellationRecordEntity.class);
         verify(cancellationRecordRepository).save(captor.capture());
         assertThat(captor.getValue().getPaymentStatus()).isEqualTo(CancellationPaymentStatus.WAIVED);
         // 申込ブロックは PENDING/FAILED/UNCOLLECTIBLE の件数で決まるため、WAIVED へ移った時点で
@@ -122,26 +120,27 @@ class RecruitmentCancellationFeeWaiveServiceTest {
     void ac10_reasonIsRequired() {
         RecruitmentCancellationFeeWaiveService svc = service();
 
-        assertThatThrownBy(() -> svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "  "))
+        assertThatThrownBy(() -> svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "  ", true))
                 .isInstanceOf(BusinessException.class);
 
         verify(cancellationRecordRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("AC-10: 免除は監査ログに残る（誰がいつ何円の債権を消したかを後から追えること）")
+    @DisplayName("AC-10: 免除は監査ログに残る（誰がいつ何円の債権を消したかを後から追えること。受取先側なら PAYEE_SIDE）")
     void ac10_waiveIsAudited() {
         RecruitmentCancellationFeeWaiveService svc = service();
         givenRecord(CancellationPaymentStatus.FAILED);
-        givenPayeeManager(PAYEE_MANAGER_ID, true);
 
-        svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "支払い手段を失ったため免除");
+        svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "支払い手段を失ったため免除", true);
 
+        ArgumentCaptor<String> detail = ArgumentCaptor.forClass(String.class);
         verify(auditLogService).record(
                 eq(AuditEventType.RECRUITMENT_CANCELLATION_FEE_WAIVED.name()),
                 eq(PAYEE_MANAGER_ID),
                 eq(DEBTOR_ID),
-                any(), any(), any(), any(), any(), any());
+                any(), any(), any(), any(), any(), detail.capture());
+        assertThat(detail.getValue()).contains("\"operatorRole\":\"PAYEE_SIDE\"");
     }
 
     @Test
@@ -150,15 +149,34 @@ class RecruitmentCancellationFeeWaiveServiceTest {
         RecruitmentCancellationFeeWaiveService svc = service();
         given(cancellationRecordRepository.findById(RECORD_ID))
                 .willReturn(Optional.of(record(CancellationPaymentStatus.WAIVED)));
-        givenPayeeManager(PAYEE_MANAGER_ID, true);
+        givenLiveListing();
 
-        svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "再免除");
+        svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "再免除", true);
 
         verify(cancellationRecordRepository, never()).save(any());
     }
 
+    @Test
+    @DisplayName("AC-19(対): SYSTEM_ADMIN として許可された免除は UNCOLLECTIBLE を WAIVED にし、監査の operatorRole は SYSTEM_ADMIN")
+    void ac19_systemAdminWaive_isAuditedAsSystemAdmin() {
+        RecruitmentCancellationFeeWaiveService svc = service();
+        givenRecord(CancellationPaymentStatus.UNCOLLECTIBLE);
+
+        svc.waive(RECORD_ID, SYSTEM_ADMIN_ID, "運営判断で回収不能を免除", false);
+
+        ArgumentCaptor<RecruitmentCancellationRecordEntity> captor =
+                ArgumentCaptor.forClass(RecruitmentCancellationRecordEntity.class);
+        verify(cancellationRecordRepository).save(captor.capture());
+        // UNCOLLECTIBLE からの唯一の出口が免除である（§5.2）。
+        assertThat(captor.getValue().getPaymentStatus()).isEqualTo(CancellationPaymentStatus.WAIVED);
+        ArgumentCaptor<String> detail = ArgumentCaptor.forClass(String.class);
+        verify(auditLogService).record(any(), eq(SYSTEM_ADMIN_ID), eq(DEBTOR_ID),
+                any(), any(), any(), any(), any(), detail.capture());
+        assertThat(detail.getValue()).contains("\"operatorRole\":\"SYSTEM_ADMIN\"");
+    }
+
     // ==========================================================
-    // 異常系・認可
+    // 異常系
     // ==========================================================
 
     @Test
@@ -167,45 +185,12 @@ class RecruitmentCancellationFeeWaiveServiceTest {
         RecruitmentCancellationFeeWaiveService svc = service();
         given(cancellationRecordRepository.findById(RECORD_ID))
                 .willReturn(Optional.of(record(CancellationPaymentStatus.PAID)));
-        givenPayeeManager(PAYEE_MANAGER_ID, true);
+        givenLiveListing();
 
-        assertThatThrownBy(() -> svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "免除したい"))
+        assertThatThrownBy(() -> svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "免除したい", true))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(RecruitmentErrorCode.CANCELLATION_FEE_ALREADY_PAID);
-    }
-
-    @Test
-    @DisplayName("AC-18: キャンセル料を負っている本人は自分の記録を免除できない（債務者が自分の債務を消せてはならない）")
-    void ac18_debtorCannotWaiveOwnRecord() {
-        RecruitmentCancellationFeeWaiveService svc = service();
-        given(cancellationRecordRepository.findById(RECORD_ID))
-                .willReturn(Optional.of(record(CancellationPaymentStatus.PENDING)));
-        // 本人は受取先でも運営でもない。
-        givenPayeeManager(DEBTOR_ID, false);
-        given(accessControlService.isSystemAdmin(DEBTOR_ID)).willReturn(false);
-
-        assertThatThrownBy(() -> svc.waive(RECORD_ID, DEBTOR_ID, "自分で消したい"))
-                .isInstanceOf(BusinessException.class);
-
-        verify(cancellationRecordRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("AC-19: 何の権限も持たない一般ユーザーの免除は拒否される（IDOR）")
-    void ac19_outsiderCannotWaive() {
-        RecruitmentCancellationFeeWaiveService svc = service();
-        given(cancellationRecordRepository.findById(RECORD_ID))
-                .willReturn(Optional.of(record(CancellationPaymentStatus.PENDING)));
-        givenPayeeManager(OUTSIDER_ID, false);
-        given(accessControlService.isSystemAdmin(OUTSIDER_ID)).willReturn(false);
-
-        assertThatThrownBy(() -> svc.waive(RECORD_ID, OUTSIDER_ID, "他人の債権を消したい"))
-                .isInstanceOf(BusinessException.class);
-
-        verify(cancellationRecordRepository, never()).save(any());
-        verify(auditLogService, never()).record(
-                any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -214,39 +199,42 @@ class RecruitmentCancellationFeeWaiveServiceTest {
         RecruitmentCancellationFeeWaiveService svc = service();
         given(cancellationRecordRepository.findById(RECORD_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "免除したい"))
-                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "免除したい", true))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.COMMON_005);
     }
 
     @Test
-    @DisplayName("AC-19(対): SYSTEM_ADMIN は受取先でなくても免除できる")
-    void ac19_systemAdminCanWaive() {
+    @DisplayName("K1: 認可の後に親の募集が論理削除されていたら COMMON_005（404）で記録は変わらず、監査も残さない")
+    void k1_listingDeletedAfterAuthorization_notFoundAndNothingChanges() {
         RecruitmentCancellationFeeWaiveService svc = service();
-        givenRecord(CancellationPaymentStatus.UNCOLLECTIBLE);
-        givenPayeeManager(OUTSIDER_ID, false);
-        given(accessControlService.isSystemAdmin(OUTSIDER_ID)).willReturn(true);
+        given(cancellationRecordRepository.findById(RECORD_ID))
+                .willReturn(Optional.of(record(CancellationPaymentStatus.PENDING)));
+        given(listingRepository.lockLiveListingIdIgnoringModeration(LISTING_ID)).willReturn(Optional.empty());
 
-        svc.waive(RECORD_ID, OUTSIDER_ID, "運営判断で回収不能を免除");
+        assertThatThrownBy(() -> svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "免除したい", true))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.COMMON_005);
 
-        org.mockito.ArgumentCaptor<RecruitmentCancellationRecordEntity> captor =
-                org.mockito.ArgumentCaptor.forClass(RecruitmentCancellationRecordEntity.class);
-        verify(cancellationRecordRepository).save(captor.capture());
-        // UNCOLLECTIBLE からの唯一の出口が免除である（§5.2）。
-        assertThat(captor.getValue().getPaymentStatus()).isEqualTo(CancellationPaymentStatus.WAIVED);
+        verify(cancellationRecordRepository, never()).save(any());
+        verify(auditLogService, never()).record(
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("AC-27/AC-28: 受取先の判定は payment ドメインへ委ね、recruitment から escrow を読まない")
-    void ac27ac28_payeeJudgementIsDelegatedToPaymentDomain() {
+    @DisplayName("AC-7: 親の募集が消えていれば、PAID の状態判定（409）より先に COMMON_005（404）になる")
+    void ac7_traversalPrecedesStateJudgement() {
         RecruitmentCancellationFeeWaiveService svc = service();
-        givenRecord(CancellationPaymentStatus.PENDING);
-        givenPayeeManager(PAYEE_MANAGER_ID, true);
+        given(cancellationRecordRepository.findById(RECORD_ID))
+                .willReturn(Optional.of(record(CancellationPaymentStatus.PAID)));
+        given(listingRepository.lockLiveListingIdIgnoringModeration(LISTING_ID)).willReturn(Optional.empty());
 
-        svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "受取先として免除");
-
-        // 3 種の payeeKind（TEAM/ORG/USER）の判定はすべてこの 1 本の入口に閉じる（§10.2）。
-        verify(connectChargeService).isPayeeSettlementManager(
-                EscrowSourceKind.RECRUITMENT, LISTING_ID, PARTICIPANT_ID, PAYEE_MANAGER_ID);
+        assertThatThrownBy(() -> svc.waive(RECORD_ID, PAYEE_MANAGER_ID, "免除したい", true))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(CommonErrorCode.COMMON_005);
     }
 
     // ==========================================================

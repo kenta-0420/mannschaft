@@ -72,6 +72,27 @@ node scripts/worktree-cleanup.mjs --days 1 --check --limit 60
 
 詳細経緯: memory `feedback_branch_isolation` / `feedback_merge_gh_only_no_honjin_git`。
 
+## 浅い履歴（shallow）の診断と再発防止
+
+本陣とその worktree は共通の Git 履歴を共有する。通常は `git rev-parse --is-shallow-repository` が **`false`** の状態を維持する。worktree からの fetch も共通履歴へ作用するため、各 worktree を独立した clone と考えない。
+
+古いブランチの取り込みで「親が無い」「祖先でない」や `refusing to merge unrelated histories` が出たときは、リポジトリ破損と断定する前に、症状が出た本陣または worktree で次を確認する。
+
+```bash
+git rev-parse --is-shallow-repository
+```
+
+- **`true` の場合だけ**、履歴の取得元が意図した `origin` であることを `git remote -v` で確認し、次を順に実行する。fetch の成功後、再判定が **`false`** になったことを確認してから元の祖先判定・マージを再確認する。
+  ```bash
+  git fetch --unshallow origin
+  git rev-parse --is-shallow-repository
+  ```
+- **`false` なのに症状が続く場合、判定が取得できない場合、fetch が失敗した場合、再判定が `true` の場合**は、そこで復旧操作を止める。対象コミットの履歴、remote URL / fetch refspec（`git remote -v` / `git config --get-all remote.origin.fetch`）、共通 Git ディレクトリ（`git rev-parse --git-common-dir`）を調査し、判定結果・エラーとともに殿へ報告する。破壊的な修復へ進まない。
+
+shallow 境界では、コミットオブジェクトに親 ID があっても履歴走査が境界で止まり、親不在や非祖先に見える場合がある。`.git/shallow` の手動削除や `--allow-unrelated-histories` で症状を隠さない。`git repack -a -d` や `git fsck --lost-found` は shallow 履歴を完全化する根治手順ではない。
+
+再発防止として、本陣の clone と、本陣・worktree から共通履歴へ行う fetch に **`--depth` / `--shallow-since` / `--shallow-exclude` を付けない**。古いブランチを個別に取得した後も `git rev-parse --is-shallow-repository` を再確認する。個別 fetch が必ず shallow 境界を再生成するとは決めつけず、実値に応じて上記の手順を使う。CI の独立した clone は本陣の共通履歴と区別する。
+
 ## 並列ビルドの交通整理
 
 - **実証事実**: 同一マシン上で Gradle の heavy build（compileJava/test/build 等）を複数 worktree から同時に走らせると遅くなる。原因はファイルロック待ちではなく **CPU/IO リソース競合**（3並列 --info ログでロック待ちゼロ件、単独310秒 → 3並列489〜513秒、約1.6倍悪化）。build cache（`org.gradle.caching=true`）は正常に機能しており、無効化する必要はない。

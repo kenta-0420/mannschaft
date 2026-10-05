@@ -8,6 +8,7 @@
  * 試合記録が無い場合は空状態＋「試合を記録」CTA を出す（§G.8）。
  */
 import type { UserMatchStatsResponse } from '~/types/match'
+import type { MatchOrgOption } from '~/composables/match/useMatchOrgContext'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -28,6 +29,9 @@ const teamOptions = ref<TeamOption[]>([])
 const selectedTeamId = ref<string | null>(null)
 
 const orgId = ref<number | null>(null)
+/** 親組織が複数のとき、集計する組織はセレクタで選ぶ（URL を持たないため状態に持つ）。 */
+const organizations = ref<MatchOrgOption[]>([])
+const selectedOrgId = ref<number | null>(null)
 const stats = ref<UserMatchStatsResponse | null>(null)
 
 const loadingTeams = ref(true)
@@ -51,8 +55,9 @@ async function loadStats(): Promise<void> {
   if (selectedTeamId.value === null || currentUserId.value === 0) return
   loadingStats.value = true
   try {
-    const ctx = await resolveContext(selectedTeamId.value)
+    const ctx = await resolveContext(selectedTeamId.value, { orgId: selectedOrgId.value })
     orgId.value = ctx?.orgId ?? null
+    organizations.value = ctx?.organizations ?? []
     if (ctx === null || ctx.orgId === null) {
       stats.value = null
       return
@@ -66,8 +71,14 @@ async function loadStats(): Promise<void> {
 watch(selectedTeamId, () => {
   // チーム切替時は org キャッシュをリセットして再解決する。
   orgId.value = null
+  selectedOrgId.value = null
   void loadStats()
 })
+
+function onSelectOrg(id: number): void {
+  selectedOrgId.value = id
+  void loadStats()
+}
 
 onMounted(async () => {
   await loadTeams()
@@ -91,6 +102,14 @@ onMounted(async () => {
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ t('match.analytics.my_subtitle') }}</p>
 
+    <!-- 組織選択（親組織が複数のときだけ表示。選んだ組織の試合を集計する） -->
+    <MatchOrgSelect
+      :organizations="organizations"
+      :org-id="orgId"
+      :sync-query="false"
+      @update:org-id="onSelectOrg"
+    />
+
     <PageLoading v-if="loadingTeams || loadingStats" />
 
     <template v-else>
@@ -110,7 +129,7 @@ onMounted(async () => {
         <p>{{ t('match.analytics.empty.no_matches') }}</p>
         <NuxtLink
           v-if="selectedTeamId"
-          :to="`/teams/${selectedTeamId}/matches`"
+          :to="{ path: `/teams/${selectedTeamId}/matches`, query: orgId !== null ? { org: String(orgId) } : {} }"
           class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-semibold text-primary-contrast"
         >
           <i class="pi pi-plus" />

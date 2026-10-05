@@ -42,10 +42,13 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3617);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2（CMP-260919-1140 Phase 1）+ 5（F01.2.1 4-A）+ 3（F01.2.1 2-B1）+ 4（F01.2.1 2-A）+ 1（F01.2.1 3-D）= 3617（main 3616 + 1）
+                .isEqualTo(3632);   // main 3629 + 学校出欠権限判定1 + F02.6 本文プレビュー2
+                                    // 既存内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2（CMP-260919-1140 Phase 1）+ 5（F01.2.1 4-A）+ 3（F01.2.1 2-B1）+ 4（F01.2.1 2-A）+ 1（F01.2.1 3-D）+ 2（F01.2.1 4-B）+ 10（F01.2.1 2-C）= 3629
                                     // + F01.2.1 部隊 2-A の4エンドポイント（TeamAffiliationSettingsController の
                                     //   設定 GET/PUT・申請フォーム GET の3本 + OrgAffiliationEligibilityController の1本。
                                     //   いずれも @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（0|3・0|1））
+                                    // + CMP-261001-0630 学校出欠の認可是正 第1段の AttendancePermissionController（権限判定結果 GET の1本）。
+                                    //   学校出欠の既存流儀に揃えて feature gate は未宣言（1|1）
                                     //   main 3566（ブログ・スケジュール画像の完了確認2本を含む）
                                     // + Billing Center PR6a の解約/撤回2エンドポイント（D6・正本 05:334-335）
                                     // + CMP-260912-1525 のメンバー一括取得・チーム時給一括取得の2エンドポイント
@@ -71,6 +74,14 @@ class ApiGateDeclarationGuardTest {
                                     //   （一覧・作成・変更・削除・並び替え。認可は各 EP 本体の AccessControlService 直接呼び出し）
                                     // + F01.2.1 2-B1 チームの加盟申請（TeamOrgApplicationController: 申請・申請中一覧・取下げの3本）。
                                     //   チーム系コントローラの既存流儀に揃えて feature gate は未宣言（3|3）
+                                    // + F01.2.1 4-B 加盟チームのグループ割当 OrgTeamGroupAssignmentController 2本（単体・一括）。
+                                    //   @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（0|2）
+                                    // + F01.2.1 2-C 招待と制限の解除10本（OrgTeamInviteController 3本・
+                                    //   OrgTeamAffiliationRestrictionController 2本・TeamOrgInviteController 3本・
+                                    //   TeamOrgAffiliationRestrictionController 2本）。全メソッドに
+                                    //   @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（0|N）
+                                    // + CMP-261001-0630 学校出欠の認可是正 第1段の AttendancePermissionController（権限判定結果 GET の1本）。
+                                    //   学校出欠の既存流儀に揃えて feature gate は未宣言（1|1）
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.STOMP).count())
                 .as("STOMP @MessageMapping の走査総数。Chat 2件と VillageLobbyPresence 3件")
                 .isEqualTo(5);

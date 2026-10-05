@@ -11,6 +11,7 @@ import com.mannschaft.app.recruitment.dto.RecruitmentUserPenaltyResponse;
 import com.mannschaft.app.recruitment.dto.UpsertPenaltySettingRequest;
 import com.mannschaft.app.recruitment.entity.RecruitmentPenaltySettingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentUserPenaltyEntity;
+import com.mannschaft.app.recruitment.service.RecruitmentMoneyFacade;
 import com.mannschaft.app.recruitment.service.RecruitmentPenaltyService;
 import com.mannschaft.app.recruitment.service.RecruitmentPenaltySettingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,6 +41,7 @@ public class RecruitmentPenaltyController {
 
     private final RecruitmentPenaltySettingService settingService;
     private final RecruitmentPenaltyService penaltyService;
+    private final RecruitmentMoneyFacade moneyFacade;
 
     /**
      * ペナルティ設定取得。
@@ -113,9 +115,8 @@ public class RecruitmentPenaltyController {
             @PathVariable Long scopeId,
             @PathVariable Long penaltyId,
             @Valid @RequestBody LiftPenaltyRequest request) {
-        RecruitmentUserPenaltyEntity entity =
-                penaltyService.liftPenalty(penaltyId, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.of(toPenaltyResponse(entity)));
+        return ResponseEntity.ok(ApiResponse.of(
+                moneyFacade.liftPenalty(scopeType, scopeId, penaltyId, SecurityUtils.getCurrentUserId())));
     }
 
     /**

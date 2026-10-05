@@ -12,7 +12,15 @@ import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.escrow.EscrowStatus;
 import com.mannschaft.app.payment.escrow.EscrowTransactionEntity;
 import com.mannschaft.app.payment.escrow.EscrowTransactionRepository;
+import com.mannschaft.app.recruitment.RecruitmentListingStatus;
+import com.mannschaft.app.recruitment.RecruitmentParticipationType;
+import com.mannschaft.app.recruitment.RecruitmentScopeType;
+import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.entity.RecruitmentCancellationRecordEntity;
+import com.mannschaft.app.recruitment.entity.RecruitmentCategoryEntity;
+import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
+import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
+import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
@@ -83,6 +91,10 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
 
     @Autowired
     private ConnectAccountRepository connectAccountRepository;
+    @Autowired
+    private RecruitmentListingRepository listingRepository;
+    @Autowired
+    private RecruitmentCategoryRepository categoryRepository;
 
     /**
      * 徴収の非同期リスナは本 IT の対象外（免除の認可だけを見る）。
@@ -139,14 +151,27 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
         UUID userAccountId = insertConnectAccount(ScopeKind.USER, individualPayeeId);
 
         // 記録 ↔ escrow は三つ組（sourceKind, listingId, participantId）で結ばれる。
-        teamPayeeRecordId = insertRecord(1001L, 2001L, debtorId, CancellationPaymentStatus.PENDING);
-        insertEscrow(1001L, 2001L, ScopeKind.TEAM, teamAccountId);
+        // 記録は必ず実在の募集（teamA スコープ）を指す。免除の tx は記録→募集をたどり直すため（是正前は募集を読まなかったが、
+        // 本番で記録が指す募集が行ごと無いことは無い: 募集は論理削除のみで物理削除されず、記録は募集 ID 付きで作られる）。
+        Long categoryId = categoryRepository.save(RecruitmentCategoryEntity.builder()
+                .code("CANFEE_TEST")
+                .nameI18nKey("recruitment.category.canfeeTest")
+                .defaultParticipationType(RecruitmentParticipationType.INDIVIDUAL)
+                .displayOrder(0)
+                .isActive(true)
+                .build()).getId();
+        Long listing1 = insertListing(categoryId);
+        Long listing2 = insertListing(categoryId);
+        Long listing3 = insertListing(categoryId);
 
-        userPayeeRecordId = insertRecord(1002L, 2002L, debtorId, CancellationPaymentStatus.PENDING);
-        insertEscrow(1002L, 2002L, ScopeKind.USER, userAccountId);
+        teamPayeeRecordId = insertRecord(listing1, 2001L, debtorId, CancellationPaymentStatus.PENDING);
+        insertEscrow(listing1, 2001L, ScopeKind.TEAM, teamAccountId);
 
-        paidRecordId = insertRecord(1003L, 2003L, debtorId, CancellationPaymentStatus.PAID);
-        insertEscrow(1003L, 2003L, ScopeKind.TEAM, teamAccountId);
+        userPayeeRecordId = insertRecord(listing2, 2002L, debtorId, CancellationPaymentStatus.PENDING);
+        insertEscrow(listing2, 2002L, ScopeKind.USER, userAccountId);
+
+        paidRecordId = insertRecord(listing3, 2003L, debtorId, CancellationPaymentStatus.PAID);
+        insertEscrow(listing3, 2003L, ScopeKind.TEAM, teamAccountId);
 
         em.flush();
         em.clear();
@@ -176,15 +201,20 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
             assertThat(waived.getNotes()).isEqualTo("主催者都合のため免除");
         }
 
-        /** AC-27(否定)/AC-20: 無関係な TEAM の ADMIN は免除できない（テナント越境の遮断）。 */
+        /**
+         * AC-27(否定)/AC-20: 無関係な TEAM の ADMIN は免除できない（テナント越境の遮断）。
+         *
+         * <p>CMP-260923-0954 W4: 記録の存在を知り得ない越境者には、不在と同一の 404 COMMON_005 を返す
+         * （是正前は 403 COMMON_002 で、実在が判別できた）。</p>
+         */
         @Test
-        @DisplayName("AC-27(否定): 無関係な TEAM の ADMIN は 403 で、記録は書き換わらない")
+        @DisplayName("AC-27(否定)/W4: 無関係な TEAM の ADMIN は不在と同一の 404 で、記録は書き換わらない")
         void ac27_無関係TEAMのADMINは拒否される() throws Exception {
             setAuth(otherAdminBId);
             waive(teamPayeeRecordId, "他団体の債権を消したい")
-                    .andExpect(status().isForbidden())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(com.mannschaft.app.common.CommonErrorCode.COMMON_002.getCode()));
+                            .value(com.mannschaft.app.common.CommonErrorCode.COMMON_005.getCode()));
 
             assertUnchanged(teamPayeeRecordId, CancellationPaymentStatus.PENDING);
         }
@@ -219,10 +249,10 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
 
         /** AC-28(否定): 受取先が個人のとき、他人は免除できない。 */
         @Test
-        @DisplayName("AC-28(否定): 受取先が個人のとき、他人は 403")
+        @DisplayName("AC-28(否定)/W4: 受取先が個人のとき、存在を知り得ない他人は不在と同一の 404")
         void ac28_個人受取の他人は拒否される() throws Exception {
             setAuth(otherAdminBId);
-            waive(userPayeeRecordId, "他人の債権を消したい").andExpect(status().isForbidden());
+            waive(userPayeeRecordId, "他人の債権を消したい").andExpect(status().isNotFound());
 
             assertUnchanged(userPayeeRecordId, CancellationPaymentStatus.PENDING);
         }
@@ -254,10 +284,10 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
 
         /** AC-19: 何の権限も持たない一般ユーザーは免除できない（IDOR）。 */
         @Test
-        @DisplayName("AC-19: 何の権限も持たない一般ユーザーは 403")
+        @DisplayName("AC-19/W4: 何の権限も持たない一般ユーザーは不在と同一の 404")
         void ac19_部外者は拒否される() throws Exception {
             setAuth(outsiderId);
-            waive(teamPayeeRecordId, "無関係だが消したい").andExpect(status().isForbidden());
+            waive(teamPayeeRecordId, "無関係だが消したい").andExpect(status().isNotFound());
 
             assertUnchanged(teamPayeeRecordId, CancellationPaymentStatus.PENDING);
         }
@@ -387,6 +417,26 @@ class RecruitmentCancellationFeeWaiveContractIT extends AbstractMySqlIntegration
     private void setAuth(Long userId) {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
+    }
+
+    private Long insertListing(Long categoryId) {
+        LocalDateTime start = LocalDateTime.now().plusDays(30);
+        return listingRepository.save(RecruitmentListingEntity.builder()
+                .scopeType(RecruitmentScopeType.TEAM)
+                .scopeId(teamAId)
+                .categoryId(categoryId)
+                .title("CANFEE 募集")
+                .participationType(RecruitmentParticipationType.INDIVIDUAL)
+                .startAt(start)
+                .endAt(start.plusHours(2))
+                .applicationDeadline(start.minusDays(1))
+                .autoCancelAt(start.minusDays(2))
+                .capacity(10)
+                .minCapacity(1)
+                .status(RecruitmentListingStatus.OPEN)
+                .visibility(RecruitmentVisibility.SCOPE_ONLY)
+                .createdBy(payeeAdminAId)
+                .build()).getId();
     }
 
     private Long insertRecord(Long listingId, Long participantId, Long userId, CancellationPaymentStatus status) {

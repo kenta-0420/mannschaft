@@ -80,6 +80,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * confirm（org/team）と listPending は呼び出しユーザー自身の受信者行のみを検索条件に固定する
  * 構造的な自己スコープ EP と監査で確認し、{@code @AuthorizedInService} マーカーを付与した
  * （本ファイルでの契約テスト対象外）。</p>
+ *
+ * <p><b>CMP-260923-0954 W3b（存在オラクル是正）で期待値を更新</b>: 通知の詳細・受信者一覧の非メンバー、
+ * cancel・resend・テンプレート更新/削除の別 scope ADMIN は 403 → 404（不在と同一の
+ * {@code CONFIRMABLE_NOTIFICATION_NOT_FOUND} / {@code …_TEMPLATE_NOT_FOUND}）。他スコープ ID の越境は
+ * {@code SCOPE_MISMATCH} を廃して {@code NOT_FOUND} に揃えたため code まで検証する。主体の全量は
+ * {@link ConfirmableNotificationExistenceOracleContractIT} が持つ。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -596,12 +602,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
     class OrgGetDetail {
 
         @Test
-        @DisplayName("非メンバーは403")
-        void 非メンバーは403() throws Exception {
+        @DisplayName("非メンバーは404 NOT_FOUND（不在と同一。W3b で 403 から変更）")
+        void 非メンバーは404() throws Exception {
             setAuth(orgOutsiderId);
             mockMvc.perform(get("/api/v1/organizations/{id}/confirmable-notifications/{nid}",
                             orgAId, orgNotifAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -610,7 +617,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
             setAuth(orgMemberAId);
             mockMvc.perform(get("/api/v1/organizations/{id}/confirmable-notifications/{nid}",
                             orgAId, orgNotifBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -637,12 +645,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（越境）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404 NOT_FOUND（越境・不在と同一。W3b で 403 から変更）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(orgAdminBId);
             mockMvc.perform(patch("/api/v1/organizations/{id}/confirmable-notifications/{nid}/cancel",
                             orgAId, orgNotifAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -651,7 +660,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
             setAuth(orgAdminAId);
             mockMvc.perform(patch("/api/v1/organizations/{id}/confirmable-notifications/{nid}/cancel",
                             orgAId, orgNotifBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -678,12 +688,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（越境）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404 NOT_FOUND（越境・不在と同一。W3b で 403 から変更）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(orgAdminBId);
             mockMvc.perform(post("/api/v1/organizations/{id}/confirmable-notifications/{nid}/resend-reminder",
                             orgAId, orgNotifAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -692,7 +703,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
             setAuth(orgAdminAId);
             mockMvc.perform(post("/api/v1/organizations/{id}/confirmable-notifications/{nid}/resend-reminder",
                             orgAId, orgNotifBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -710,12 +722,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
     class OrgGetRecipients {
 
         @Test
-        @DisplayName("非メンバーは403")
-        void 非メンバーは403() throws Exception {
+        @DisplayName("非メンバーは404 NOT_FOUND（不在と同一。W3b で 403 から変更）")
+        void 非メンバーは404() throws Exception {
             setAuth(orgOutsiderId);
             mockMvc.perform(get("/api/v1/organizations/{id}/confirmable-notifications/{nid}/recipients",
                             orgAId, orgNotifAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -724,7 +737,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
             setAuth(orgAdminAId);
             mockMvc.perform(get("/api/v1/organizations/{id}/confirmable-notifications/{nid}/recipients",
                             orgAId, orgNotifBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -897,14 +911,15 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（越境）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404 TEMPLATE_NOT_FOUND（越境・不在と同一。W3b で 403 から変更）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(orgAdminBId);
             mockMvc.perform(put("/api/v1/organizations/{id}/confirmable-notification-templates/{tid}",
                             orgAId, orgTemplateAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(templateBody())))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_TEMPLATE_NOT_FOUND"));
         }
 
         @Test
@@ -915,7 +930,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
                             orgAId, orgTemplateBId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(templateBody())))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_TEMPLATE_NOT_FOUND"));
         }
 
         @Test
@@ -944,12 +960,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（越境）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404 TEMPLATE_NOT_FOUND（越境・不在と同一。W3b で 403 から変更）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(orgAdminBId);
             mockMvc.perform(delete("/api/v1/organizations/{id}/confirmable-notification-templates/{tid}",
                             orgAId, orgTemplateAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_TEMPLATE_NOT_FOUND"));
         }
 
         @Test
@@ -958,7 +975,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
             setAuth(orgAdminAId);
             mockMvc.perform(delete("/api/v1/organizations/{id}/confirmable-notification-templates/{tid}",
                             orgAId, orgTemplateBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_TEMPLATE_NOT_FOUND"));
         }
 
         @Test
@@ -1069,12 +1087,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
     class TeamGetDetail {
 
         @Test
-        @DisplayName("非メンバーは403")
-        void 非メンバーは403() throws Exception {
+        @DisplayName("非メンバーは404 NOT_FOUND（不在と同一。W3b で 403 から変更）")
+        void 非メンバーは404() throws Exception {
             setAuth(teamOutsiderId);
             mockMvc.perform(get("/api/v1/teams/{id}/confirmable-notifications/{nid}",
                             teamAId, teamNotifAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -1083,7 +1102,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
             setAuth(teamMemberAId);
             mockMvc.perform(get("/api/v1/teams/{id}/confirmable-notifications/{nid}",
                             teamAId, teamNotifBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -1110,12 +1130,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（越境）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404 NOT_FOUND（越境・不在と同一。W3b で 403 から変更）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(teamAdminBId);
             mockMvc.perform(patch("/api/v1/teams/{id}/confirmable-notifications/{nid}/cancel",
                             teamAId, teamNotifAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -1124,7 +1145,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
             setAuth(teamAdminAId);
             mockMvc.perform(patch("/api/v1/teams/{id}/confirmable-notifications/{nid}/cancel",
                             teamAId, teamNotifBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -1151,12 +1173,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（越境）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404 NOT_FOUND（越境・不在と同一。W3b で 403 から変更）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(teamAdminBId);
             mockMvc.perform(post("/api/v1/teams/{id}/confirmable-notifications/{nid}/resend-reminder",
                             teamAId, teamNotifAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -1165,7 +1188,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
             setAuth(teamAdminAId);
             mockMvc.perform(post("/api/v1/teams/{id}/confirmable-notifications/{nid}/resend-reminder",
                             teamAId, teamNotifBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -1183,12 +1207,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
     class TeamGetRecipients {
 
         @Test
-        @DisplayName("非メンバーは403")
-        void 非メンバーは403() throws Exception {
+        @DisplayName("非メンバーは404 NOT_FOUND（不在と同一。W3b で 403 から変更）")
+        void 非メンバーは404() throws Exception {
             setAuth(teamOutsiderId);
             mockMvc.perform(get("/api/v1/teams/{id}/confirmable-notifications/{nid}/recipients",
                             teamAId, teamNotifAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -1197,7 +1222,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
             setAuth(teamAdminAId);
             mockMvc.perform(get("/api/v1/teams/{id}/confirmable-notifications/{nid}/recipients",
                             teamAId, teamNotifBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_NOT_FOUND"));
         }
 
         @Test
@@ -1370,14 +1396,15 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（越境）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404 TEMPLATE_NOT_FOUND（越境・不在と同一。W3b で 403 から変更）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(teamAdminBId);
             mockMvc.perform(put("/api/v1/teams/{id}/confirmable-notification-templates/{tid}",
                             teamAId, teamTemplateAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(templateBody())))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_TEMPLATE_NOT_FOUND"));
         }
 
         @Test
@@ -1388,7 +1415,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
                             teamAId, teamTemplateBId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(templateBody())))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_TEMPLATE_NOT_FOUND"));
         }
 
         @Test
@@ -1417,12 +1445,13 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("別scope ADMINは403（越境）")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMINは404 TEMPLATE_NOT_FOUND（越境・不在と同一。W3b で 403 から変更）")
+        void 別scopeADMINは404() throws Exception {
             setAuth(teamAdminBId);
             mockMvc.perform(delete("/api/v1/teams/{id}/confirmable-notification-templates/{tid}",
                             teamAId, teamTemplateAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_TEMPLATE_NOT_FOUND"));
         }
 
         @Test
@@ -1431,7 +1460,8 @@ class ConfirmableNotificationScopeContractIT extends AbstractMySqlIntegrationTes
             setAuth(teamAdminAId);
             mockMvc.perform(delete("/api/v1/teams/{id}/confirmable-notification-templates/{tid}",
                             teamAId, teamTemplateBId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("CONFIRMABLE_NOTIFICATION_TEMPLATE_NOT_FOUND"));
         }
 
         @Test

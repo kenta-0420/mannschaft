@@ -65,10 +65,36 @@ public class RecruitmentCancellationPolicyService {
                 .collect(Collectors.toList());
     }
 
-    public CancellationPolicyResponse getPolicy(Long policyId, Long userId) {
+    /**
+     * ポリシーの認可入力（スコープ）。
+     *
+     * @param scopeType ポリシーのスコープ種別
+     * @param scopeId   ポリシーのスコープ ID
+     */
+    public record PolicyScope(RecruitmentScopeType scopeType, Long scopeId) {
+    }
+
+    /**
+     * 認可の前にポリシーのスコープを解決する（readOnly・自ドメインのみ）。
+     *
+     * @param policyId ポリシー ID
+     * @return ポリシーのスコープ
+     * @throws BusinessException 不在・論理削除済みは {@code LISTING_NOT_FOUND}(404)
+     */
+    public PolicyScope resolvePolicyScope(Long policyId) {
         RecruitmentCancellationPolicyEntity policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        accessControlService.checkAdminOrAbove(userId, policy.getScopeId(), policy.getScopeType().name());
+        return new PolicyScope(policy.getScopeType(), policy.getScopeId());
+    }
+
+    /**
+     * ポリシー詳細を返す（<b>tx 本体</b>。認可は {@link RecruitmentMoneyFacade#getPolicy} が tx の外で済ませる）。
+     * 認可の後にポリシーを読み直し、不在（認可の後に論理削除された）なら {@code LISTING_NOT_FOUND}(404)。
+     * ポリシーのスコープ列は不変という前提。
+     */
+    public CancellationPolicyResponse getPolicy(Long policyId) {
+        RecruitmentCancellationPolicyEntity policy = policyRepository.findById(policyId)
+                .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
         return buildPolicyResponse(policy);
     }
 
@@ -108,11 +134,15 @@ public class RecruitmentCancellationPolicyService {
         return buildPolicyResponse(savedPolicy);
     }
 
+    /**
+     * ポリシーを編集する（<b>tx 本体</b>。認可は {@link RecruitmentMoneyFacade#updatePolicy} が tx の外で済ませる）。
+     * 認可の後にポリシーを読み直し、不在なら {@code LISTING_NOT_FOUND}(404) で DB 不変。
+     * テンプレートでないポリシーの 400 は認可の後（状態を越境者に見せない）。
+     */
     @Transactional
-    public CancellationPolicyResponse updatePolicy(Long policyId, Long userId, UpdateCancellationPolicyRequest request) {
+    public CancellationPolicyResponse updatePolicy(Long policyId, UpdateCancellationPolicyRequest request) {
         RecruitmentCancellationPolicyEntity policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        accessControlService.checkAdminOrAbove(userId, policy.getScopeId(), policy.getScopeType().name());
 
         // テンプレートポリシーのみ編集可
         if (!Boolean.TRUE.equals(policy.getIsTemplatePolicy())) {
@@ -142,11 +172,14 @@ public class RecruitmentCancellationPolicyService {
         return buildPolicyResponse(policy);
     }
 
+    /**
+     * ポリシーを論理削除する（<b>tx 本体</b>。認可は {@link RecruitmentMoneyFacade#archivePolicy} が tx の外で済ませる）。
+     * 認可の後にポリシーを読み直し、不在（先に論理削除された）なら {@code LISTING_NOT_FOUND}(404)。
+     */
     @Transactional
-    public void archivePolicy(Long policyId, Long userId) {
+    public void archivePolicy(Long policyId) {
         RecruitmentCancellationPolicyEntity policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND));
-        accessControlService.checkAdminOrAbove(userId, policy.getScopeId(), policy.getScopeType().name());
 
         policy.softDelete();
         policyRepository.save(policy);

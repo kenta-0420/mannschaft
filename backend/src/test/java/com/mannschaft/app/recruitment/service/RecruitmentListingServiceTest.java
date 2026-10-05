@@ -344,8 +344,8 @@ class RecruitmentListingServiceTest {
         }
 
         @Test
-        @DisplayName("汎用更新経路はPERSONAL札のPUBLIC更新を存在秘匿404で拒否する")
-        void update_personalToPublicThroughGenericRoute_throwsMarket404() {
+        @DisplayName("汎用更新経路はPERSONAL札のPUBLIC更新を不在と同じ RECRUITMENT_001 の404で拒否する")
+        void update_personalToPublicThroughGenericRoute_throwsNotFound() {
             RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
                     .scopeType(RecruitmentScopeType.PERSONAL)
                     .scopeId(USER_ID)
@@ -358,7 +358,7 @@ class RecruitmentListingServiceTest {
                     LISTING_ID, USER_ID, personalUpdateWithVisibility(RecruitmentVisibility.PUBLIC)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
         }
 
         @Test
@@ -394,8 +394,8 @@ class RecruitmentListingServiceTest {
         }
 
         @Test
-        @DisplayName("公開後のPERSONAL札は内部IDを含む汎用詳細DTOから返さない")
-        void getListing_publishedPersonal_throwsMarket404() {
+        @DisplayName("公開後のPERSONAL札は内部IDを含む汎用詳細DTOから返さない（不在と同じ RECRUITMENT_001）")
+        void getListing_publishedPersonal_throwsNotFound() {
             RecruitmentListingEntity listing = RecruitmentListingEntity.builder()
                     .scopeType(RecruitmentScopeType.PERSONAL)
                     .scopeId(USER_ID)
@@ -407,7 +407,7 @@ class RecruitmentListingServiceTest {
             assertThatThrownBy(() -> service.getListing(LISTING_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
             verifyNoInteractions(mapper);
         }
     }
@@ -448,7 +448,7 @@ class RecruitmentListingServiceTest {
         @DisplayName("③ payeeKind=USER の payeeUserId が札主 scope 非所属 → PAYEE_NOT_IN_SCOPE")
         void create_payeeUserNotInScope_throws() {
             given(categoryRepository.existsById(CATEGORY_ID)).willReturn(true);
-            given(accessControlService.isMember(PAYEE_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(PAYEE_USER_ID)).willReturn(List.of());
 
             CreateRecruitmentListingRequest request = paymentRequest(5000, "USER", PAYEE_USER_ID);
             assertThatThrownBy(() -> service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID, request))
@@ -473,7 +473,7 @@ class RecruitmentListingServiceTest {
         @DisplayName("④' payeeKind=TEAM で payeeUserId 指定 → 非 USER ゆえ payee_user_id は NULL 強制")
         void create_teamPayeeWithUserId_normalizesNull() {
             stubCreateHappyPath();
-            // TEAM 受領は isMember を呼ばない（USER のみ所属検証する）。
+            // TEAM 受領は所属照会を呼ばない（USER のみ所属検証する）。
 
             CreateRecruitmentListingRequest request = paymentRequest(5000, "TEAM", PAYEE_USER_ID);
             service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID, request);
@@ -487,7 +487,7 @@ class RecruitmentListingServiceTest {
         @DisplayName("⑤ 正常: payeeKind=USER + 所属者 + price → payee が永続化される")
         void create_validUserPayee_persists() {
             stubCreateHappyPath();
-            given(accessControlService.isMember(PAYEE_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(membershipScopeQueryService.findCurrentMembershipTeamIds(PAYEE_USER_ID)).willReturn(List.of(TEAM_ID));
 
             CreateRecruitmentListingRequest request = paymentRequest(5000, "USER", PAYEE_USER_ID);
             service.create(RecruitmentScopeType.TEAM, TEAM_ID, USER_ID, request);
@@ -509,7 +509,7 @@ class RecruitmentListingServiceTest {
     class UpdateConstraints {
 
         @Test
-        @DisplayName("汎用更新経路はPERSONAL札を存在秘匿404で拒否する")
+        @DisplayName("汎用更新経路はPERSONAL札を不在と同じ RECRUITMENT_001 の404で拒否する")
         void genericUpdate_personalIsHidden() throws Exception {
             RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.DRAFT);
             given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
@@ -519,7 +519,7 @@ class RecruitmentListingServiceTest {
                             null, null, null, null, null, null, null, null, null, null, null, null, null, null)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
         }
 
         @Test
@@ -656,7 +656,7 @@ class RecruitmentListingServiceTest {
     class PersonalCancelConstraints {
 
         @Test
-        @DisplayName("汎用取消経路はPERSONAL札をMARKET_404で存在秘匿する")
+        @DisplayName("汎用取消経路はPERSONAL札を不在と同じ RECRUITMENT_001 で存在秘匿する")
         void genericCancel_personalIsHidden() {
             given(listingRepository.findByIdForUpdate(LISTING_ID))
                     .willReturn(Optional.of(personalListing(RecruitmentListingStatus.DRAFT)));
@@ -664,7 +664,7 @@ class RecruitmentListingServiceTest {
             assertThatThrownBy(() -> service.cancelByAdmin(LISTING_ID, USER_ID,
                     new CancelRecruitmentListingRequest("test")))
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
         }
 
         @Test
@@ -749,14 +749,14 @@ class RecruitmentListingServiceTest {
     class PersonalOperationalScopeGuard {
 
         @Test
-        @DisplayName("archive はPERSONAL札をMARKET_404で存在秘匿し削除・異議取下げを呼ばない")
+        @DisplayName("archive はPERSONAL札を不在と同じ RECRUITMENT_001 で存在秘匿し削除・異議取下げを呼ばない")
         void archive_personal_doesNotCauseSideEffects() throws Exception {
             RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.DRAFT);
             given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
 
             assertThatThrownBy(() -> service.archive(LISTING_ID, USER_ID))
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
 
             verify(listingRepository, never()).save(any());
             verifyNoInteractions(noShowService);
@@ -768,7 +768,7 @@ class RecruitmentListingServiceTest {
             RecruitmentListingEntity listing = personalListing(RecruitmentListingStatus.DRAFT);
             given(listingRepository.findById(LISTING_ID)).willReturn(Optional.of(listing));
 
-            assertThatThrownBy(() -> service.getDistributionTargets(LISTING_ID, USER_ID))
+            assertThatThrownBy(() -> service.getDistributionTargets(LISTING_ID))
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MarketErrorCode.PERSONAL_VISIBILITY_NOT_ALLOWED);
 
@@ -919,19 +919,8 @@ class RecruitmentListingServiceTest {
                     LISTING_ID, RecruitmentScopeType.TEAM, TEAM_ID, USER_ID);
         }
 
-        @Test
-        @DisplayName("認可で弾かれた場合は自動取下げも行われない")
-        void archive_認可失敗時は自動取下げしない() throws Exception {
-            RecruitmentListingEntity listing = buildListingWithConfirmed(0);
-            given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
-            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, RecruitmentScopeType.TEAM.name());
-
-            assertThatThrownBy(() -> service.archive(LISTING_ID, USER_ID))
-                    .isInstanceOf(BusinessException.class);
-
-            verifyNoInteractions(noShowService);
-        }
+        // 認可（管理者以外の拒否）は tx の外の RecruitmentListingFacade の責務になった。
+        // 「認可で弾かれたら tx 本体 archive（と自動取下げ）が呼ばれない」ことは RecruitmentListingFacadeTest が固定する。
     }
 
     // ========================================
