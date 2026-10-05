@@ -13,17 +13,24 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -40,7 +47,7 @@ class RanchPurgeServiceIT extends AbstractMySqlIntegrationTest {
     @Autowired private RanchOwnerRepository owners;
     @Autowired private RanchDinosaurRepository dinosaurs;
     @Autowired private RanchRoomPlacementRepository slots;
-    @Autowired private JdbcTemplate jdbc;
+    @MockitoSpyBean private JdbcTemplate jdbc;
     private Long me;
     private Long other;
     private final List<RanchGdprFixture.FixtureIds> masterRows = new ArrayList<>();
@@ -115,17 +122,29 @@ class RanchPurgeServiceIT extends AbstractMySqlIntegrationTest {
         masterRows.add(RanchGdprFixture.populate(jdbc, me,
                 owners.findByUserId(me).orElseThrow().getId(),
                 dinosaurs.findByUserId(me).orElseThrow().getId()));
-        String trigger = "ranch_gdpr_abort_" + UUID.randomUUID().toString().substring(0, 8);
-        jdbc.execute("CREATE TRIGGER " + trigger + " BEFORE DELETE ON ranch_reward_decisions "
-                + "FOR EACH ROW SIGNAL SQLSTATE '45000' "
-                + "SET MESSAGE_TEXT = 'synthetic rollback check'");
-        try {
-            assertThatThrownBy(() -> purge.purgeUser(me)).isInstanceOf(Exception.class);
-        } finally {
-            jdbc.execute("DROP TRIGGER " + trigger);
-        }
+        var before = new LinkedHashMap<String, Integer>();
         for (String table : OWNED_TABLES) {
-            assertThat(count(table, me)).as("rollback " + table).isPositive();
+            int rows = count(table, me);
+            assertThat(rows).as("before rollback " + table).isPositive();
+            before.put(table, rows);
+        }
+        var injected = new DataAccessResourceFailureException("自分の後段 DELETE の故障 fixture");
+        // spy は自分の二番目の DELETE だけを差し替え、他の JDBC は実 DB に通す。
+        doAnswer(invocation -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+            assertThat(TransactionSynchronizationManager.isCurrentTransactionReadOnly()).isFalse();
+            assertThat(count("ranch_point_ledger", me)).as("故障直前の実 ledger DELETE").isZero();
+            throw injected;
+        }).when(jdbc).update("DELETE FROM ranch_reward_decisions WHERE user_id = ?", me);
+        try {
+            assertThatThrownBy(() -> purge.purgeUser(me)).isSameAs(injected);
+            verify(jdbc).update("DELETE FROM ranch_point_ledger WHERE user_id = ?", me);
+            for (String table : OWNED_TABLES) {
+                assertThat(count(table, me)).as("rollback " + table).isEqualTo(before.get(table));
+            }
+        } finally {
+            // 自動 reset の時機を待たず、既存 @AfterEach の実 purge より前に故障を外す。
+            reset(jdbc);
         }
     }
 

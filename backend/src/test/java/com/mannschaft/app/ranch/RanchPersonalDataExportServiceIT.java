@@ -68,11 +68,24 @@ class RanchPersonalDataExportServiceIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void exportsOnlySelfAndNoTechnicalProofColumns() throws Exception {
+        int enrollmentIndex = 0;
         for (Long userId : new Long[] {me, other}) {
+            String label = enrollmentIndex++ == 0 ? "first" : "second";
             mvc.perform(post("/api/v1/me/ranch").with(user(userId.toString()))
                             .header("Idempotency-Key", UUID.randomUUID())
                             .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(result -> {
+                        var resolved = result.getResolvedException();
+                        String exceptionType = resolved == null ? "none"
+                                : resolved.getClass().getName();
+                        assertThat(result.getResponse().getStatus())
+                                .as("enroll %s resolvedExceptionType=%s", label, exceptionType)
+                                .isEqualTo(201);
+                    })
                     .andExpect(status().isCreated());
+        }
+        // 2人の参加を完了してからexport用行を用意し、共有policyの影響を分離する。
+        for (Long userId : new Long[] {me, other}) {
             masterRows.add(RanchGdprFixture.populate(jdbc, userId,
                     owners.findByUserId(userId).orElseThrow().getId(),
                     dinosaurs.findByUserId(userId).orElseThrow().getId()));

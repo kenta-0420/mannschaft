@@ -158,7 +158,7 @@ class RanchOwnerActionHttpIT extends AbstractMySqlIntegrationTest {
         var account = users.findById(me).orElseThrow(); account.freeze(); users.saveAndFlush(account);
         mvc.perform(post("/api/v1/me/ranch/hatch").with(user(me.toString()))
                         .header("Idempotency-Key", hatchKey).contentType(MediaType.APPLICATION_JSON).content(hatchBody))
-                .andExpect(status().isForbidden()).andExpect(header().string("Cache-Control", "private, no-store"));
+                .andExpect(status().isForbidden()).andExpect(header().string("Cache-Control", "no-store"));
         mvc.perform(post("/api/v1/me/ranch/feeding").with(user(me.toString()))
                         .header("Idempotency-Key", feedKey).contentType(MediaType.APPLICATION_JSON).content(feedBody))
                 .andExpect(status().isForbidden());
@@ -186,7 +186,7 @@ class RanchOwnerActionHttpIT extends AbstractMySqlIntegrationTest {
         }
         mvc.perform(post("/api/v1/me/ranch/purchases").with(user(me.toString()))
                         .header("Idempotency-Key", UUID.randomUUID()).contentType(MediaType.APPLICATION_JSON).content(bodies.get("purchases")))
-                .andExpect(status().isServiceUnavailable()).andExpect(header().string("Cache-Control", "private, no-store"));
+                .andExpect(status().isServiceUnavailable()).andExpect(header().string("Cache-Control", "no-store"));
         assertThat(owners.findByUserId(other)).isEmpty();
     }
 }

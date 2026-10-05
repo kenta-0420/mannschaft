@@ -1,5 +1,6 @@
 package com.mannschaft.app.ranch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.ranch.dto.RanchOperationalControlsRequest;
@@ -35,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /** 実MySQLの保存ACK・競合・停止期間。fresh管理者HTTP認可の試験とは分ける。 */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class RanchPolicyAndControlsWriterIT extends AbstractMySqlIntegrationTest {
+    @Autowired ObjectMapper json;
     @Autowired RanchPolicyPublicationWriter policiesWriter;
     @Autowired RanchOperationalControlsWriter controlsWriter;
     @Autowired RanchRewardPolicyRepository policies;
@@ -71,7 +73,7 @@ class RanchPolicyAndControlsWriterIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
-    void disabledPolicyReplayKeepsCanonicalVersionAndRejectsChangedBodyAfterEffectiveWeek() {
+    void disabledPolicyReplayKeepsCanonicalVersionAndRejectsChangedBodyAfterEffectiveWeek() throws Exception {
         UUID key = key();
         var request = policy("2032-01-05T00:00:00Z", false, "100");
         var first = publish(key, request);
@@ -79,8 +81,12 @@ class RanchPolicyAndControlsWriterIT extends AbstractMySqlIntegrationTest {
         assertThat(replay.createdNow()).isFalse();
         assertThat(replay.response()).isEqualTo(first.response());
         assertThat(first.response().settings().enabled()).isFalse();
-        assertThat(policies.findById(first.response().id()).orElseThrow().getSettingsJson())
-                .contains("\"enabled\":false", "\"delivery\"", "\"sources\"");
+        // MySQL JSON の保存時空白正規化に依存せず、設定の意味と構造を検証する。
+        var stored = json.readTree(policies.findById(first.response().id()).orElseThrow().getSettingsJson());
+        assertThat(stored.path("enabled").isBoolean()).isTrue();
+        assertThat(stored.path("enabled").booleanValue()).isFalse();
+        assertThat(stored.path("delivery").isObject()).isTrue();
+        assertThat(stored.path("sources").isObject()).isTrue();
         assertThatThrownBy(() -> policiesWriter.publish(actorId, key,
                 policy("2032-01-05T00:00:00Z", false, "101"), null, now))
                 .isInstanceOfSatisfying(BusinessException.class,

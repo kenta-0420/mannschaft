@@ -34,7 +34,9 @@ public class RanchLegacySyncController {
             @RequestBody RanchLegacySyncRequest body,
             HttpServletRequest request, HttpServletResponse response) {
         Long userId = accessGuard.requireSelfAccess(request, response);
+        var result = facade.sync(userId, key, body);
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
         return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "private, no-store")
-                .body(ApiResponse.of(facade.sync(userId, key, body)));
+                .body(ApiResponse.of(result));
     }
 }
