@@ -242,6 +242,30 @@
 
 ---
 
+#### `GET /api/v1/organizations/{slug}` / `GET /api/v1/teams/{slug}` のサポーター数（CMP-261004-1942）
+
+組織・チーム詳細のレスポンスは、ヘッダの「サポーター ◯人」表示用に `social.supporterCount` を返す（組織とチームで同形）。
+
+```json
+{
+  "data": {
+    "slug": "fc-tokyo-association",
+    "social": { "supporterCount": 12 }
+  }
+}
+```
+
+> - `supporterCount` は `memberships` のうち `role_kind = SUPPORTER` かつ `left_at IS NULL`（退会していない）の行数。MEMBER・退会済み・申請中（`supporter_applications` の PENDING）は数えない。0 人でも `0` を返す（null・欠落にしない）
+> - チームは従来から `social.teamFriendCount` / `social.supporterCount` を返している。組織は CMP-261004-1942 で `social.supporterCount` を追加した（組織に `teamFriendCount` は無い）
+> - 組織側の集計は membership ドメインの `MembershipService#countActiveSupporters` 経由で行う（organization ドメインから `MembershipRepository` を直接注入しない。D-5 越境 Repository 依存の禁止）
+> - 詳細 GET は slug をキーに Valkey へ 10 分キャッシュされる（`org-detail` / `team-detail`）。応援・解除・申請の承認／一括承認・入退会など、`MembershipChangedEvent` を発火する所属変更が**コミットされた後**に、組織は `OrganizationDetailCacheMembershipListener`、チームは `TeamDetailCacheMembershipListener` が当該スコープの slug **1 件だけ**をキャッシュから消す（`allEntries` は使わない）。これにより次の詳細 GET は実数を返す
+> - ロールバックされた変更（例: 一括承認の途中で不正な申請 ID があり全件取り消し）では AFTER_COMMIT のため evict は発火せず、温めたキャッシュ（＝DB と同じ旧値）が残る
+> - Valkey 障害で evict が失敗しても、本番の FailOpen キャッシュ層が例外をログに残して握るため、応援・解除の応答とコミット済みデータには影響しない（キャッシュは TTL 10 分で自然収束）
+> - 申請中・申請取消・却下は所属を変えないため人数も変わらない（キャッシュも消さない）
+> - 範囲外: ヘッダの「メンバー ◯人」（`metadata.memberCount`）の数え方は別戦役で扱う（`docs/task-list.md` 参照）
+
+---
+
 #### `GET /api/v1/teams/{slug}/members`
 
 **認可ルール（visibility 依存）**
