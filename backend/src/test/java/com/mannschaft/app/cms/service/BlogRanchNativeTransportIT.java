@@ -80,6 +80,18 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         }
     }
 
+    @Test void cmsCommitSurvivesAuthRollback() {
+        Long id=draft("認証側rollbackから独立する公開");
+        var failure=new IllegalStateException("auth rollback after cms commit");
+        assertThatThrownBy(() -> delivery.withLockedDeliveryUsers(List.of(owner),states -> {
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+            nativeWriter.changeStatus(id,owner,new PublishRequest("PUBLISHED",null,null));
+            throw failure;
+        })).isSameAs(failure);
+        assertThat(posts.findById(id).orElseThrow().getStatus())
+                .isEqualTo(com.mannschaft.app.cms.PostStatus.PUBLISHED);
+    }
+
     @Test void concurrentSameDigestDifferentPostsKeepsOneWinnerAndBothNativeCommits() throws Exception {
         var first=publish("同じ本文");
         var second=publish("同じ本文");

@@ -55594,8 +55594,7 @@ export interface components {
         };
         RoomSlotSummary: {
             decoration?: components["schemas"]["Decoration"];
-            /** Format: uuid */
-            inventoryId?: string;
+            inventoryId?: string | null;
             slotKey?: string;
             version?: string;
         };
@@ -67115,8 +67114,7 @@ export interface components {
         };
         AssignmentSummary: {
             availableMethods?: ("HABITAT_RANDOM" | "BIRTH_STYLE" | "DIAGNOSIS")[];
-            /** @enum {string} */
-            confirmedMethod?: "HABITAT_RANDOM" | "BIRTH_STYLE" | "DIAGNOSIS";
+            confirmedMethod?: ("HABITAT_RANDOM" | "BIRTH_STYLE" | "DIAGNOSIS") | null;
             selectionConfirmed?: boolean;
         };
         CareBudget: {
@@ -67132,20 +67130,18 @@ export interface components {
         };
         DinosaurSummary: {
             affinityBand?: string;
-            egg?: components["schemas"]["EggSummary"];
-            /** @enum {string} */
-            habitat?: "LAND" | "SEA" | "AIR";
+            egg?: components["schemas"]["EggSummary"] | null;
+            habitat?: ("LAND" | "SEA" | "AIR") | null;
             /** Format: uuid */
             id?: string;
-            name?: string;
-            /** Format: date-time */
-            namedAt?: string;
-            nextStageXp?: string;
-            speciesCatalogVersion?: string;
-            speciesKey?: string;
+            name?: string | null;
+            namedAt?: string | null;
+            nextStageXp?: string | null;
+            speciesCatalogVersion?: string | null;
+            speciesKey?: string | null;
             /** @enum {string} */
             stage?: "EGG" | "BABY" | "JUVENILE" | "ADULT";
-            variantKey?: string;
+            variantKey?: string | null;
             version?: string;
             xp?: string;
         };
@@ -67153,8 +67149,7 @@ export interface components {
             /** @enum {string} */
             crackStage?: "INTACT" | "SMALL_CRACK" | "WIDE_CRACK" | "READY";
             hatchReady?: boolean;
-            /** Format: date-time */
-            hatchedAt?: string;
+            hatchedAt?: string | null;
             /** Format: date-time */
             readyAt?: string;
             /** Format: date-time */
@@ -67169,20 +67164,20 @@ export interface components {
             version?: string;
         };
         RanchState: {
-            assignment?: components["schemas"]["AssignmentSummary"];
-            careBudget?: components["schemas"]["CareBudget"];
+            assignment?: components["schemas"]["AssignmentSummary"] | null;
+            careBudget?: components["schemas"]["CareBudget"] | null;
             deliveryPaused?: boolean;
-            dinosaur?: components["schemas"]["DinosaurSummary"];
+            dinosaur?: components["schemas"]["DinosaurSummary"] | null;
             featureStatus?: string;
-            owner?: components["schemas"]["OwnerSummary"];
-            policyVersion?: string;
+            owner?: components["schemas"]["OwnerSummary"] | null;
+            policyVersion?: string | null;
             rewardsStatus?: string;
             roomSlots?: components["schemas"]["RoomSlotSummary"][];
             /** Format: date-time */
             serverTime?: string;
-            settings?: components["schemas"]["RanchSettings"];
+            settings?: components["schemas"]["RanchSettings"] | null;
             shopAvailable?: boolean;
-            weekBudget?: components["schemas"]["WeekBudget"];
+            weekBudget?: components["schemas"]["WeekBudget"] | null;
         };
         WeekBudget: {
             awardedTotal?: string;
@@ -67253,8 +67248,8 @@ export interface components {
         HatchResponse: {
             /** @enum {string} */
             kind?: "HATCH_RESULT" | "CURRENT_STATE";
-            result?: components["schemas"]["HatchResult"];
-            state?: components["schemas"]["RanchState"];
+            result?: components["schemas"]["HatchResult"] | null;
+            state?: components["schemas"]["RanchState"] | null;
         };
         HatchResult: {
             /** Format: uuid */
@@ -81431,8 +81426,8 @@ export interface components {
             kind?: string;
             /** Format: date-time */
             occurredAt?: string;
-            sourceLink?: components["schemas"]["SourceLink"];
-            sourceType?: string;
+            sourceLink?: components["schemas"]["SourceLink"] | null;
+            sourceType?: string | null;
         };
         SourceLink: {
             id?: string;
