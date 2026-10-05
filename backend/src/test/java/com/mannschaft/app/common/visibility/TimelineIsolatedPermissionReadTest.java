@@ -2,8 +2,6 @@ package com.mannschaft.app.common.visibility;
 
 import com.mannschaft.app.auth.UserOperationErrorCode;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.timeline.TimelineErrorCode;
-import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.service.TimelinePostVisibilityAccessGuard;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
@@ -26,18 +24,17 @@ class TimelineIsolatedPermissionReadTest {
         Transactional tx = ContentVisibilityChecker.class.getMethod("canViewTimelineIsolated", Long.class, Long.class)
                 .getAnnotation(Transactional.class);
         assertThat(tx.propagation()).isEqualTo(Propagation.REQUIRES_NEW); assertThat(tx.readOnly()).isFalse();
-        when(guard.requireVisiblePost(7L, 9L)).thenReturn(mock(TimelinePostEntity.class))
-                .thenThrow(new BusinessException(TimelineErrorCode.POST_NOT_FOUND));
+        when(guard.canViewPost(7L, 9L)).thenReturn(true, false);
         assertThat(checker.canViewTimelineIsolated(7L, 9L)).isTrue();
         assertThat(checker.canViewTimelineIsolated(7L, 9L)).isFalse();
-        verify(guard, times(2)).requireVisiblePost(7L, 9L);
+        verify(guard, times(2)).canViewPost(7L, 9L);
         assertThat(checker.canView(ReferenceType.TIMELINE_POST, 7L, 9L)).isFalse();
     }
 
     @Test void otherBusinessOrProgrammingFailureIsNotConvertedToPermissionDenial() {
         var unavailable = new BusinessException(UserOperationErrorCode.UNAVAILABLE);
         var programming = new IllegalStateException("合成programming error");
-        when(guard.requireVisiblePost(7L, 9L)).thenThrow(unavailable).thenThrow(programming);
+        when(guard.canViewPost(7L, 9L)).thenThrow(unavailable).thenThrow(programming);
         assertThatThrownBy(() -> checker.canViewTimelineIsolated(7L, 9L)).isSameAs(unavailable);
         assertThatThrownBy(() -> checker.canViewTimelineIsolated(7L, 9L)).isSameAs(programming);
     }

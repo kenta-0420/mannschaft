@@ -73,6 +73,13 @@ public class TimelinePostVisibilityAccessGuard {
         };
     }
 
+    /** 投稿 ID の不存在・不可視を false で返し、既存の可視性規則を再利用する。 */
+    public boolean canViewPost(Long postId, Long userId) {
+        return postRepository.findById(postId)
+                .map(post -> isVisible(post, userId))
+                .orElse(false);
+    }
+
     /**
      * 投稿 ID から可視性を検証する（投票・みたよ！・ブックマーク等、投稿に付随する
      * 子リソースの書き込み/読取入口向け）。不可視・不存在は区別せず
