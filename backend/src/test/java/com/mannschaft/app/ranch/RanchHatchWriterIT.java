@@ -65,6 +65,9 @@ class RanchHatchWriterIT extends AbstractMySqlIntegrationTest {
         assertThat(first.kind()).isEqualTo(HatchResponse.Kind.HATCH_RESULT);
         assertThat(first.result().stage()).isEqualTo(DinosaurStage.BABY);
         assertThat(first.result().name()).isEqualTo("テスト");
+        assertThat(first.result().commandId()).isNotNull();
+        assertThat(commands.findByUserIdAndIdempotencyKey(me, key).orElseThrow().getId())
+                .isEqualTo(first.result().commandId());
         assertThat(first.result().hatchedAt()).isEqualTo(READY.truncatedTo(
                 java.time.temporal.ChronoUnit.MICROS));
         assertThat(dinosaurs.findByUserId(me).orElseThrow().getName()).isEqualTo("テスト");

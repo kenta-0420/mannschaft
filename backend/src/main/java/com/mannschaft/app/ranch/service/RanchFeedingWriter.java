@@ -60,6 +60,13 @@ public class RanchFeedingWriter {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public FeedingResult feed(Long userId, UUID key, RanchVersionRequest request,
                               Instant serverTime) {
+        return feedOutcome(userId, key, request, serverTime).result();
+    }
+
+    /** 保存済み成功と初回を同じTX内で判別する。公開DTOにはtransport状態を混ぜない。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public FeedOutcome feedOutcome(Long userId, UUID key, RanchVersionRequest request,
+                                   Instant serverTime) {
         Objects.requireNonNull(userId);
         Objects.requireNonNull(key);
         Objects.requireNonNull(request);
@@ -71,7 +78,7 @@ public class RanchFeedingWriter {
                     || !Arrays.equals(hash, command.getBodyHash())) {
                 throw new BusinessException(RanchErrorCode.RANCH_003, HttpStatus.CONFLICT);
             }
-            return decode(command.getResultJson(), FeedingResult.class);
+            return new FeedOutcome(decode(command.getResultJson(), FeedingResult.class), false);
         }
 
         Instant now = Objects.requireNonNull(serverTime).truncatedTo(ChronoUnit.MICROS);
@@ -159,8 +166,10 @@ public class RanchFeedingWriter {
                 .completedAt(now).createdAt(now).build();
         command.setId(commandId);
         commands.saveAndFlush(command);
-        return result;
+        return new FeedOutcome(result, true);
     }
+
+    public record FeedOutcome(FeedingResult result, boolean createdNow) { }
 
     private <T> T decode(String saved, Class<T> type) {
         try {

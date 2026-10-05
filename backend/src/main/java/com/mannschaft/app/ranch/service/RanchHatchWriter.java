@@ -3,6 +3,7 @@ package com.mannschaft.app.ranch.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.ranch.DinosaurStage;
 import com.mannschaft.app.ranch.ParticipationStatus;
 import com.mannschaft.app.ranch.RanchErrorCode;
@@ -48,6 +49,21 @@ public class RanchHatchWriter {
     private final RanchCommandHasher hasher = new RanchCommandHasher();
     private final DinosaurNameValidator names = new DinosaurNameValidator();
     private final RanchCareCalculator weeks = new RanchCareCalculator();
+
+    /** 現在の外部投影を読む前に、保存されたACKをPRIMARYの短い独立TXで確定する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public java.util.Optional<HatchResponse> savedReplay(Long userId, UUID key, RanchHatchRequest request) {
+        Objects.requireNonNull(userId);
+        Objects.requireNonNull(key);
+        Objects.requireNonNull(request);
+        byte[] hash = hasher.hash(TYPE, RESOURCE, null, json.valueToTree(request));
+        return commands.findByUserIdAndIdempotencyKey(userId, key).map(command -> {
+            if (!TYPE.equals(command.getCommandType()) || !Arrays.equals(hash, command.getBodyHash())) {
+                throw new BusinessException(RanchErrorCode.RANCH_003, HttpStatus.CONFLICT);
+            }
+            return decode(command.getResultJson());
+        });
+    }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public HatchResponse hatch(Long userId, UUID key, RanchHatchRequest request,
@@ -110,7 +126,7 @@ public class RanchHatchWriter {
         owner.advanceVersion();
         dinosaurs.save(dinosaur);
         owners.save(owner);
-        HatchResult hatch = new HatchResult(dinosaur.getId(), DinosaurStage.BABY,
+        HatchResult hatch = new HatchResult(UuidV7.generate(), dinosaur.getId(), DinosaurStage.BABY,
                 permanentName, now, now, Long.toString(owner.getVersion()));
         HatchResponse result = new HatchResponse(HatchResponse.Kind.HATCH_RESULT,
                 hatch, null);
@@ -120,10 +136,12 @@ public class RanchHatchWriter {
 
     private void save(RanchOwnerEntity owner, Long userId, UUID key, byte[] hash,
                       HatchResponse result, Instant now) {
-        commands.saveAndFlush(RanchCommandEntity.builder()
+        var command = RanchCommandEntity.builder()
                 .ownerId(owner.getId()).userId(userId).idempotencyKey(key)
                 .commandType(TYPE).bodyHash(hash).resultJson(encode(result))
-                .completedAt(now).createdAt(now).build());
+                .completedAt(now).createdAt(now).build();
+        command.setId(result.result() == null ? UuidV7.generate() : result.result().commandId());
+        commands.saveAndFlush(command);
     }
 
     private HatchResponse decode(String saved) {
