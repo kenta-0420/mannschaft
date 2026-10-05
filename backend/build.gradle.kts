@@ -368,12 +368,15 @@ tasks.withType<Test> {
             excludeEngines("archunit")
         }
         // タグ分離（CMP-261002-1606 新規）: archTest はタグ "archunit" 付き junit-jupiter テストだけを走らせる。
+        // archUnitTest（main 既存機構）は @AnalyzeClasses に @ArchTag("archunit") も付いているため、
+        // タグ "archunit" を除外すると 0 件実行になってしまう。perf のみ除外し archunit は除外しない。
         when {
             isPerfTask -> includeTags("perf")
             isArchTask -> {
                 includeTags("archunit")
                 excludeTags("perf")
             }
+            isArchUnitTask -> excludeTags("perf")
             else -> excludeTags("perf", "archunit")
         }
     }

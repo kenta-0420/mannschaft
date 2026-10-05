@@ -486,24 +486,31 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTest {
 }
 ```
 
-### 7.1 ArchUnit テストの別 JVM 実行（`archTest`・CMP-261002-1606）
+### 7.1 ArchUnit テストの別 JVM 実行（`archTest` / `archUnitTest`・CMP-261002-1606）
 
 ArchUnit を使うテストクラス（ArchUnit または `ProductionClasses` を参照するもの）は必ずタグを付け、
-Spring のテストコンテキストを使わない。通常の `test` はタグ `archunit` を除外し、`archTest` だけが
-1 JVM（heap 3g）で走らせる。`check` に載り、CI では専用ジョブ `arch-test` が 1 回だけ走る。
+Spring のテストコンテキストを使わない。通常の `test` はタグ `archunit` を除外する。タグ付きテストは
+**エンジンで2系統に分かれる**（どちらも `check` に載り、CI では専用ジョブが1回だけ走る）。
+
+- `@Tag(ArchUnitTestTag.ARCHUNIT)` を付けた **junit-jupiter** のテストクラスは `archTest`（heap 3g・
+  1 JVM）が走らせる。
+- `@AnalyzeClasses` のクラス（`@ArchTag(ArchUnitTestTag.ARCHUNIT)` を付与。ArchUnit 専用の **archunit
+  エンジン**で実行され `@Tag` を読まない）は `archTest` では走らない（`archTest` は archunit エンジンを
+  `excludeEngines` で除外する）。**`archUnitTest`**（`includeEngines("archunit")`）だけが走らせる。
 
 ```java
-@Tag(ArchUnitTestTag.ARCHUNIT)          // JUnit Jupiter のテストクラス
+@Tag(ArchUnitTestTag.ARCHUNIT)          // JUnit Jupiter のテストクラス → archTest が走らせる
 class ShiftTxFacadeArchTest { ... }
 
-@ArchTag(ArchUnitTestTag.ARCHUNIT)      // @AnalyzeClasses のクラス（ArchUnit エンジンは @Tag を読まない）
+@ArchTag(ArchUnitTestTag.ARCHUNIT)      // @AnalyzeClasses のクラス → archUnitTest だけが走らせる
 @AnalyzeClasses(packages = "com.mannschaft.app", importOptions = ImportOption.DoNotIncludeTests.class)
 class CrossDomainRepositoryDependencyArchTest { ... }
 ```
 
 ```bash
-./scripts/gradle-turnstile.sh ./gradlew archTest                        # 全 ArchUnit テスト
+./scripts/gradle-turnstile.sh ./gradlew archTest                        # junit-jupiter 側の全 ArchUnit テスト
 ./scripts/gradle-turnstile.sh ./gradlew archTest --tests "<完全修飾名>"  # 絞り込み
+./scripts/gradle-turnstile.sh ./gradlew archUnitTest                    # @AnalyzeClasses 側（archunit エンジン）
 ```
 
 ---
