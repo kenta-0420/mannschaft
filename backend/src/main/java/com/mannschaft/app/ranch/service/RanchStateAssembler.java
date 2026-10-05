@@ -115,7 +115,8 @@ public class RanchStateAssembler {
                 Long.toString(dinosaur.getVersion()), egg, affinityBand(dinosaur));
         List<RoomSlotSummary> rooms = placements.stream()
                 .map(slot -> new RoomSlotSummary(slot.getSlotKey(), slot.getInventoryId(),
-                        Long.toString(slot.getVersion()), decorations.get(slot.getInventoryId())))
+                        Long.toString(slot.getVersion()), slot.getInventoryId() == null
+                                ? null : decorations.get(slot.getInventoryId())))
                 .toList();
         AssignmentSummary assignment = new AssignmentSummary(external.availableMethods(),
                 dinosaur.getSelectionConfirmedAt() != null, dinosaur.getAssignmentMethod());
