@@ -3,8 +3,6 @@ package com.mannschaft.app.tournament.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EnumInputParser;
-import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
-import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.tournament.ParticipantStatus;
 import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.TournamentMapper;
@@ -48,9 +46,9 @@ public class DivisionService {
     private final TournamentDivisionRepository divisionRepository;
     private final TournamentParticipantRepository participantRepository;
     private final TournamentRepository tournamentRepository;
+    private final TournamentService tournamentService;
     private final TournamentMapper mapper;
     private final AccessControlService accessControlService;
-    private final ContentVisibilityChecker contentVisibilityChecker;
     /**
      * F08.7.1 連絡機能: ディビジョン作成時に連絡スペース（掲示板＋チャット）を自動払い出しする。
      * TODO: tournament ドメインから chat/bulletin ドメインを直接呼ぶ越境（原則5）。
@@ -247,10 +245,13 @@ public class DivisionService {
 
     /**
      * 大会 visibility ガード（閲覧系）。認証ユーザー（未認証なら null）が当該 tournament を
-     * 閲覧できるか F00 共通可視性 Resolver で判定し、不可視なら 404 を投げる。
+     * 閲覧できるか {@link TournamentService#isViewableBy} で判定し、不在・不可視なら 404 を投げる。
      */
     private void verifyTournamentVisible(Long tournamentId, Long viewerUserId) {
-        if (!contentVisibilityChecker.canView(ReferenceType.TOURNAMENT, tournamentId, viewerUserId)) {
+        TournamentEntity tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+        // 判定は TournamentService.getTournament と共通（主催組織の管理者は DRAFT も閲覧可）
+        if (!tournamentService.isViewableBy(tournamentId, tournament.getOrganizationId(), viewerUserId)) {
             throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
         }
     }

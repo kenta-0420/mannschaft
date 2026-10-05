@@ -210,17 +210,33 @@ public class TournamentService {
                 .filter(t -> orgId.equals(t.getOrganizationId()))
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
 
-        boolean orgManager = viewerUserId != null
-                && (accessControlService.isSystemAdmin(viewerUserId)
-                    || accessControlService.isAdminOrAbove(
-                            viewerUserId, tournament.getOrganizationId(), "ORGANIZATION"));
-        if (!orgManager
-                && !contentVisibilityChecker.canView(
-                        ReferenceType.TOURNAMENT, tournamentId, viewerUserId)) {
+        if (!isViewableBy(tournamentId, tournament.getOrganizationId(), viewerUserId)) {
             throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
         }
 
         return buildTournamentResponse(tournament, tournamentId);
+    }
+
+    /**
+     * 閲覧者が大会を閲覧できるかを判定する（閲覧系の共通ゲート）。
+     *
+     * <p>主催組織の ADMIN / DEPUTY_ADMIN と SYSTEM_ADMIN は、他ユーザーが作成した DRAFT 大会を含め閲覧できる
+     * （F00 Resolver は作成者・参加者視点のため管理者を通さない）。それ以外は F00 共通可視性 Resolver に委譲する。
+     * {@link #getTournament(Long, Long, Long)} と、大会配下の閲覧系 API（部門・参加チーム一覧）が
+     * 同じ判定を使うよう一元化している。不可視時に 404 を投げるのは呼び出し側の責務。</p>
+     *
+     * @param tournamentId   対象大会 ID
+     * @param organizationId 大会の主催組織 ID（管理者例外の判定に使う）
+     * @param viewerUserId 閲覧者（未認証は null）
+     */
+    public boolean isViewableBy(Long tournamentId, Long organizationId, Long viewerUserId) {
+        boolean orgManager = viewerUserId != null
+                && (accessControlService.isSystemAdmin(viewerUserId)
+                    || accessControlService.isAdminOrAbove(
+                            viewerUserId, organizationId, "ORGANIZATION"));
+        return orgManager
+                || contentVisibilityChecker.canView(
+                        ReferenceType.TOURNAMENT, tournamentId, viewerUserId);
     }
 
     /**

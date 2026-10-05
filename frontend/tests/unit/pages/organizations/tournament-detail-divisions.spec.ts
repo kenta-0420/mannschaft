@@ -13,6 +13,7 @@ import TournamentDetailPage from '~/pages/organizations/[slug]/tournaments/[tId]
  *   DIV-002: 部門が複数ある場合は全部門分のタブを描画し、切り替えで該当部門の参加チームを取得する
  *   DIV-003: 部門が 0 件なら「部門が登録されていません」を出す
  *   DIV-004: 部門一覧の取得に失敗したらエラー通知とエラー表示を出す（空表示に畳まない）
+ *   DIV-005: エラー表示の再試行で部門一覧を取り直し、成功したら先頭部門を初期選択する
  */
 
 const getTournament = vi.fn()
@@ -105,5 +106,21 @@ describe('organizations/[slug]/tournaments/[tId]/index.vue 部門タブ', () => 
     expect(notifyError).toHaveBeenCalledWith('tournament.detail.divisionsLoadError')
     expect(wrapper.find('[data-testid="tournament-divisions-error"]').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('tournament.detail.noDivisions')
+  })
+
+  it('DIV-005: 再試行で部門一覧を取り直し、成功したらタブと参加チームが出る', async () => {
+    getDivisions.mockRejectedValueOnce(new Error('boom'))
+    getDivisions.mockResolvedValueOnce({ data: [{ id: 5, name: 'D1' }] })
+    const wrapper = await mountPage()
+    expect(wrapper.find('[data-testid="tournament-divisions-error"]').exists()).toBe(true)
+    expect(getDivisions).toHaveBeenCalledTimes(1)
+
+    await wrapper.find('[data-testid="tournament-divisions-error-retry"]').trigger('click')
+    await flushPromises()
+
+    expect(getDivisions).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('[data-testid="tournament-divisions-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="tournament-division-tab-5"]').exists()).toBe(true)
+    expect(getParticipants).toHaveBeenCalledWith('org-000009', 12, 5)
   })
 })

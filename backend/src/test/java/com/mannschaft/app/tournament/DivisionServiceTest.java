@@ -22,6 +22,7 @@ import org.mockito.quality.Strictness;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -48,6 +49,7 @@ class DivisionServiceTest {
     @Mock private com.mannschaft.app.filesharing.service.SharedFolderService sharedFolderService;
     @Mock private AccessControlService accessControlService;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
+    @Mock private com.mannschaft.app.tournament.service.TournamentService tournamentService;
 
     @InjectMocks
     private DivisionService service;
@@ -61,6 +63,60 @@ class DivisionServiceTest {
         TournamentEntity tournament = TournamentEntity.builder()
                 .organizationId(ORG_ID).build();
         given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament));
+    }
+
+    @Nested
+    @DisplayName("閲覧系（listDivisions / listParticipants）の大会可視性ゲート")
+    class ViewGate {
+
+        @Test
+        @DisplayName("組織管理者は他ユーザー作成の DRAFT 大会でも部門を取得できる（F00 Resolver は不可視でも共通ゲートが許可）")
+        void 組織管理者はDRAFT大会の部門を取得できる() {
+            stubTournamentInOrg();
+            given(contentVisibilityChecker.canView(any(), any(), any())).willReturn(false);
+            given(tournamentService.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).willReturn(true);
+            given(divisionRepository.findByTournamentIdOrderByLevelAscSortOrderAsc(TOURNAMENT_ID))
+                    .willReturn(java.util.List.of(TournamentDivisionEntity.builder().tournamentId(TOURNAMENT_ID).build()));
+
+            assertThat(service.listDivisions(TOURNAMENT_ID, USER_ID)).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("組織管理者は他ユーザー作成の DRAFT 大会でも参加チームを取得できる")
+        void 組織管理者はDRAFT大会の参加チームを取得できる() {
+            stubTournamentInOrg();
+            given(tournamentService.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).willReturn(true);
+            given(divisionRepository.findByIdAndTournamentId(DIV_ID, TOURNAMENT_ID))
+                    .willReturn(Optional.of(TournamentDivisionEntity.builder().tournamentId(TOURNAMENT_ID).build()));
+            given(participantRepository.findByDivisionIdOrderBySeedAsc(DIV_ID))
+                    .willReturn(java.util.List.of(TournamentParticipantEntity.builder().build()));
+
+            assertThat(service.listParticipants(TOURNAMENT_ID, DIV_ID, USER_ID)).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("権限のない者は不可視の大会の部門を 404（TOURNAMENT_NOT_FOUND）で拒否される")
+        void 権限なしは部門一覧が404() {
+            stubTournamentInOrg();
+            given(tournamentService.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).willReturn(false);
+
+            assertThatThrownBy(() -> service.listDivisions(TOURNAMENT_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("権限のない者は不可視の大会の参加チームを 404（TOURNAMENT_NOT_FOUND）で拒否される")
+        void 権限なしは参加チーム一覧が404() {
+            stubTournamentInOrg();
+            given(tournamentService.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).willReturn(false);
+
+            assertThatThrownBy(() -> service.listParticipants(TOURNAMENT_ID, DIV_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
     }
 
     @Nested

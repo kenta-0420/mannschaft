@@ -68,7 +68,7 @@ async function api(req: APIRequestContext, method: 'get' | 'post' | 'put' | 'pat
   const res = await req[method](`${API}/api/v1${path}`, data === undefined ? undefined : { data })
   const text = await res.text()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 実 BE の多様な応答本文を読む試験用ヘルパ
-  let body: { data?: any; error?: { code?: string; fieldErrors?: { field: string }[] } } = {}
+  let body: { data?: any; error?: { code?: string; message?: string; fieldErrors?: { field: string }[] } } = {}
   try { body = JSON.parse(text) } catch { /* 本文なし */ }
   return { status: res.status(), body, text }
 }
@@ -449,19 +449,55 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     await expect(user.getByRole('button', { name: 'エントリー管理' }), ids).toHaveCount(0)
     await expect(user.getByTestId('tournament-detail-title'), ids).toHaveCount(0)
     await expect(user.locator('.p-datatable'), ids).toHaveCount(0)
-    // API でも org 9 のパス配下では実体に到達できない（404）
-    for (const path of [
-      `/organizations/${ORG_A}/tournaments/${tIdC}`,
-      `/organizations/${ORG_A}/tournaments/${tIdC}/divisions`,
-      `/organizations/${ORG_A}/tournaments/${tIdC}/divisions/${divC}/participants`,
-      `/organizations/${ORG_A}/tournaments/${tIdC}/divisions/${divC}/entry-summary`,
-      base(ORG_A, tIdC, divC, pC4),
-    ]) {
-      const r = await api(user.request, 'get', path)
-      expect([403, 404], `${path} ${r.status} ${r.text}`).toContain(r.status)
-    }
+    // API でも org 9 のパス配下では実体に到達できない。経路ごとに正しいステータスとエラーコードへ固定する
+    // （403 も 404 も通す緩い判定にしない）。
+    const tour = await api(user.request, 'get', `/organizations/${ORG_A}/tournaments/${tIdC}`)
+    expect(tour.status, tour.text).toBe(404)
+    expect(tour.body.error?.code).toBe('TOUR_001')
+    const summary = await api(user.request, 'get', `/organizations/${ORG_A}/tournaments/${tIdC}/divisions/${divC}/entry-summary`)
+    expect(summary.status, summary.text).toBe(404)
+    expect(summary.body.error?.code).toBe('TOUR_001')
+    const em = await api(user.request, 'get', base(ORG_A, tIdC, divC, pC4))
+    expect(em.status, em.text).toBe(404)
+    expect(em.body.error?.code).toBe('TOUR_018')
     // 5xx は出ない（4xx は想定どおり）
     expect(errs.server, errs.server.join('\n')).toHaveLength(0)
+    await user.context().close()
+  })
+
+  // 既知の欠陥（範囲外・台帳起票待ち）: 部門・参加チームの GET は path の orgId を Service へ渡さず、
+  // 越境パス（org 9 の配下で org 1 の大会）でも 200 になる。この spec は現状の挙動を正としない。
+  // 修正されたら fixme を外し、404 + TOUR_001 を期待値とする。
+  test.fixme('AC4 [API] 既知の欠陥: 部門一覧・参加チーム一覧が越境パス（org 9 配下の org 1 の大会）で 404 にならない', async ({ browser }) => {
+    const user = await newPage(browser, userCred)
+    const divs = await api(user.request, 'get', `/organizations/${ORG_A}/tournaments/${tIdC}/divisions`)
+    expect(divs.status, divs.text).toBe(404)
+    expect(divs.body.error?.code).toBe('TOUR_001')
+    const parts = await api(user.request, 'get', `/organizations/${ORG_A}/tournaments/${tIdC}/divisions/${divC}/participants`)
+    expect(parts.status, parts.text).toBe(404)
+    expect(parts.body.error?.code).toBe('TOUR_001')
+    await user.context().close()
+  })
+
+  // apply-template: 他チームのテンプレートは「存在しない」と同じ応答（ステータス・エラーコード・メッセージ）でなければならない
+  test('AC4 [API] apply-template に他チームのテンプレート ID を渡すと、存在しない ID と同じ 404 TOUR_024・同じメッセージ（存在オラクルなし）', async ({ browser }) => {
+    const user = await newPage(browser, userCred)
+    const tplOther = await api(user.request, 'post', `/organizations/${ORG_A}/teams/${TEAM_A2}/entry-templates`, {
+      name: `PKB16-oracle-${SUFFIX}`, members: [{ userId: USER_ID, position: 'Z' }],
+    })
+    expect(tplOther.status, tplOther.text).toBe(201)
+    const otherId = String(tplOther.body.data.id)
+    createdTemplates.push({ org: ORG_A, team: TEAM_A2, id: otherId })
+
+    const url = `${base(ORG_A, tIdA, divA, pA1)}/apply-template`
+    const crossTeam = await api(user.request, 'post', url, { templateId: otherId, overwriteExisting: false })
+    const missing = await api(user.request, 'post', url, { templateId: '00000000-0000-7000-8000-000000000000', overwriteExisting: false })
+
+    expect(missing.status, missing.text).toBe(404)
+    expect(missing.body.error?.code).toBe('TOUR_024')
+    expect(crossTeam.status, crossTeam.text).toBe(404)
+    expect(crossTeam.body.error?.code).toBe('TOUR_024')
+    expect(crossTeam.body.error?.message).toBe(missing.body.error?.message)
     await user.context().close()
   })
 

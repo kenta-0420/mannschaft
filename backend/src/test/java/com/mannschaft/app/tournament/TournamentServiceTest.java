@@ -79,6 +79,50 @@ class TournamentServiceTest {
     }
 
     @Nested
+    @DisplayName("isViewableBy（大会閲覧の共通ゲート。部門・参加チーム一覧も同じ判定を使う）")
+    class IsViewableBy {
+
+        @Test
+        @DisplayName("組織管理者は F00 Resolver が不可視（他ユーザー作成の DRAFT）でも閲覧できる")
+        void 組織管理者はDRAFTでも閲覧可() {
+            given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+            given(contentVisibilityChecker.canView(
+                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, USER_ID))
+                    .willReturn(false);
+
+            assertThat(service.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).isTrue();
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN は閲覧できる")
+        void システム管理者は閲覧可() {
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+
+            assertThat(service.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).isTrue();
+        }
+
+        @Test
+        @DisplayName("権限のない者は Resolver が不可視なら閲覧できない（404 になる）")
+        void 権限なしは不可視なら閲覧不可() {
+            given(contentVisibilityChecker.canView(
+                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, USER_ID))
+                    .willReturn(false);
+
+            assertThat(service.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).isFalse();
+        }
+
+        @Test
+        @DisplayName("未認証は管理者判定を行わず Resolver に委譲する")
+        void 未認証はResolverへ委譲() {
+            given(contentVisibilityChecker.canView(
+                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, null))
+                    .willReturn(true);
+
+            assertThat(service.isViewableBy(TOURNAMENT_ID, ORG_ID, null)).isTrue();
+        }
+    }
+
+    @Nested
     @DisplayName("deleteTournament")
     class DeleteTournament {
 

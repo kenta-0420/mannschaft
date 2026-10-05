@@ -29,6 +29,7 @@ const loading = ref(true)
 // ID は BE の TournamentDivisionEntity.id（Long）に合わせて number。
 const divisions = ref<TournamentDivision[]>([])
 const divisionsLoadFailed = ref(false)
+const divisionsLoadError = ref<unknown>(undefined)
 const activeDivisionId = ref<number | null>(null)
 
 // ディビジョン別の参加チーム・エントリーサマリーをキャッシュ
@@ -173,6 +174,23 @@ async function saveVisibility() {
   }
 }
 
+/** 部門一覧を取得して先頭部門を初期選択する。初回取得と画面内の再試行で共通。 */
+async function loadDivisions() {
+  divisionsLoadFailed.value = false
+  divisionsLoadError.value = undefined
+  try {
+    const divRes = await getDivisions(orgId, tId)
+    divisions.value = divRes.data
+    // 先頭の部門を初期選択し、参加チームとエントリーサマリーを取得する
+    const first = divisions.value[0]
+    if (first) onTabChange(first.id)
+  } catch (e) {
+    divisionsLoadFailed.value = true
+    divisionsLoadError.value = e
+    notification.error(t('tournament.detail.divisionsLoadError'))
+  }
+}
+
 onMounted(async () => {
   try {
     await loadPermissions()
@@ -183,18 +201,8 @@ onMounted(async () => {
     loading.value = false
     return
   }
-  try {
-    const divRes = await getDivisions(orgId, tId)
-    divisions.value = divRes.data
-    // 先頭の部門を初期選択し、参加チームとエントリーサマリーを取得する
-    const first = divisions.value[0]
-    if (first) onTabChange(first.id)
-  } catch {
-    divisionsLoadFailed.value = true
-    notification.error(t('tournament.detail.divisionsLoadError'))
-  } finally {
-    loading.value = false
-  }
+  await loadDivisions()
+  loading.value = false
 })
 </script>
 
@@ -318,11 +326,12 @@ onMounted(async () => {
       </div>
 
       <!-- 部門一覧の取得に失敗した場合は空表示ではなくエラーを出す -->
-      <DashboardEmptyState
+      <DashboardErrorState
         v-if="divisionsLoadFailed"
-        icon="pi pi-exclamation-triangle"
+        :error="divisionsLoadError"
         :message="t('tournament.detail.divisionsLoadError')"
-        data-testid="tournament-divisions-error"
+        testid="tournament-divisions-error"
+        @retry="loadDivisions"
       />
 
       <!-- 部門が 0 件 -->
