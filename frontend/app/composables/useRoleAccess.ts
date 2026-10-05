@@ -13,6 +13,17 @@ export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<s
 
   const resolvedId = computed(() => isRef(scopeId) ? scopeId.value : scopeId)
 
+  type LoadResult = { ok: true } | { ok: false; error: unknown }
+
+  /**
+   * 「最後の要求が勝つ」ための要求番号（CMP-261001-0835 検分修繕2）。
+   * 永続シェルでのスコープ遷移やフォロー解除後の再取得で要求が重なると、古い応答が後から
+   * 返って roleName/権限を上書きしうる。反映前に「最新の要求か・要求時のスコープのままか」を
+   * 判定し、古い応答は反映しない。
+   */
+  let requestSeq = 0
+  let latestRequest: Promise<LoadResult> | null = null
+
   /**
    * 権限取得の成否。
    *
@@ -25,28 +36,45 @@ export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<s
    *
    * 既存呼び出し元は戻り値を無視すれば従来どおり動作する（後方互換）。
    */
-  async function loadPermissions(): Promise<{ ok: true } | { ok: false; error: unknown }> {
+  function loadPermissions(): Promise<LoadResult> {
     // scopeId 未確定時は取得を行わない。判定材料が無いだけで「失敗」ではないため ok: true。
-    if (!resolvedId.value) return { ok: true }
+    if (!resolvedId.value) return Promise.resolve({ ok: true })
+    const seq = ++requestSeq
+    const request = runLoad(seq, resolvedId.value)
+    latestRequest = request
+    return request
+  }
+
+  async function runLoad(seq: number, requestedId: string): Promise<LoadResult> {
+    const isCurrent = () => seq === requestSeq && resolvedId.value === requestedId
     loading.value = true
+    let result: LoadResult
     try {
       const base = scopeType === 'team' ? 'teams' : 'organizations'
       const response = await api<{ data: EffectivePermissions }>(
-        `/api/v1/${base}/${resolvedId.value}/me/permissions`,
+        `/api/v1/${base}/${requestedId}/me/permissions`,
       )
-      permissions.value = response.data.permissions
-      roleName.value = response.data.roleName
-      return { ok: true }
+      if (isCurrent()) {
+        permissions.value = response.data.permissions
+        roleName.value = response.data.roleName
+      }
+      result = { ok: true }
     }
     catch (error) {
       // 取得失敗。権限なしに倒さず、roleName=null かつ ok=false を返す（症状を隠さない）。
-      permissions.value = []
-      roleName.value = null
-      return { ok: false, error }
+      if (isCurrent()) {
+        permissions.value = []
+        roleName.value = null
+      }
+      result = { ok: false, error }
     }
     finally {
-      loading.value = false
+      if (seq === requestSeq) loading.value = false
     }
+    // 後発の要求に追い越された場合は、呼び出し元にも最新要求の成否を返す
+    // （古い要求の成否で同期失敗を判定させない）。
+    if (seq !== requestSeq && latestRequest) return latestRequest
+    return result
   }
 
   const can = (permission: string): boolean => {
