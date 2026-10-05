@@ -214,10 +214,28 @@ describe('pages/organizations/[slug].vue loadShellData の応答逆転ガード�
   it('loadShellData は要求発行時の slug を捕捉し、fetchOrg の await 後に isCurrent() を再確認する', () => {
     expect(loadShellDataFn).not.toBe('')
     expect(loadShellDataFn).toMatch(/const requestedSlug = orgSlug\.value/)
-    expect(loadShellDataFn).toMatch(/const isCurrent = \(\) => orgSlug\.value === requestedSlug/)
     expect(loadShellDataFn).toMatch(
       /await Promise\.all\(\[fetchOrg\(\), loadPermissions\(\)\]\)\s*\n\s*if \(!isCurrent\(\)\) return/,
     )
+  })
+
+  /**
+   * 検分修繕4（CMP-261004-1942 第4巡 P2）: loadShellData 自身にも呼び出し連番を持たせ、
+   * isCurrent を「最新の loadShellData 呼び出しである」かつ「slug 一致」とする。
+   *
+   * 是正前は isCurrent が `orgSlug.value === requestedSlug` のみだったため、
+   * A→B→A と slug が往復する間に発行された古い loadShellData 呼び出し（A の 404 解決待ち）が、
+   * slug が再び A に戻った後発の loadShellData 呼び出しを踏みつけられた
+   * （slug は一致するが呼び出し自体は別世代のため、slug 一致だけの判定では区別できない）。
+   */
+  it('loadShellData は自身の呼び出し連番（loadShellDataSeq）も isCurrent の判定に含める', () => {
+    expect(orgSource).toMatch(/let loadShellDataSeq = 0/)
+    expect(loadShellDataFn).toMatch(/const seq = \+\+loadShellDataSeq/)
+    expect(loadShellDataFn).toMatch(
+      /const isCurrent = \(\) => seq === loadShellDataSeq && orgSlug\.value === requestedSlug/,
+    )
+    // slug 一致だけに戻していないこと（A→B→A の世代踏みつけを防ぐ連番条件が残っていること）。
+    expect(loadShellDataFn).not.toMatch(/const isCurrent = \(\) => orgSlug\.value === requestedSlug/)
   })
 
   it('404 解決の await 後、遷移前に isCurrent() を再確認する（引数なし呼び出しに戻さない）', () => {

@@ -267,13 +267,21 @@ const activeTab = computed<string>(() => {
  * 移動している（orgSlug が変わり watch(orgSlug) が走っている）可能性がある。解決後は
  * isCurrent() を再確認し、古い 404 由来の遷移が後発のロードを踏みつけないようにする
  * （検分修繕3・CMP-261004-1942。teams/[slug].vue と同型）。
+ *
+ * 要求連番ガード（検分修繕4・CMP-261004-1942）: slug 一致だけでは、A→B→A のように
+ * slug が元に戻る遷移を跨ぐと、古い呼び出し（A の 404 解決待ち）が「後発の呼び出し
+ * （2回目の A の loadShellData）」を踏みつけてしまう（slug 一致だが呼び出しは別世代）。
+ * fetchOrg・fetchTeam 等の内部 seq と同じ作法で loadShellData 自身にも呼び出し連番を持たせ、
+ * isCurrent を「この呼び出しが最新の loadShellData 呼び出しである」かつ「slug 一致」とする。
  */
 const orgLoaded = ref(false)
+let loadShellDataSeq = 0
 async function loadShellData() {
   if (orgLoaded.value) return
   orgLoaded.value = true
+  const seq = ++loadShellDataSeq
   const requestedSlug = orgSlug.value
-  const isCurrent = () => orgSlug.value === requestedSlug
+  const isCurrent = () => seq === loadShellDataSeq && orgSlug.value === requestedSlug
   await Promise.all([fetchOrg(), loadPermissions()])
   if (!isCurrent()) return
   // 組織が取得できなかった（404 等）場合は MOVED slug の可能性を解決し 301 遷移を試みる。
