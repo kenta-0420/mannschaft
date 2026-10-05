@@ -236,6 +236,18 @@ class VillageSettingsAccountPurgeIT extends AbstractMySqlIntegrationTest {
             }
             assertThat(rejected).as("既poolの実拒否を観測する").isTrue();
             assertThat(active.await(10, TimeUnit.SECONDS)).isTrue();
+            int remainingCapacity = pool.getThreadPoolExecutor().getQueue().remainingCapacity();
+            for (int submitted = 0; submitted < remainingCapacity; submitted++) {
+                pool.execute(blocker);
+            }
+            assertThat(pool.getThreadPoolExecutor().getQueue().remainingCapacity()).isZero();
+            boolean finalRejected = false;
+            try {
+                pool.execute(blocker);
+            } catch (TaskRejectedException expectedRejection) {
+                finalRejected = true;
+            }
+            assertThat(finalRejected).as("全worker開始・再充填後の実拒否を観測する").isTrue();
             assertThat(pool.getThreadPoolExecutor().getQueue().remainingCapacity()).isZero();
             accountPurgeService.purgeExpiredAccounts();
             // 実拒否後はAsync待ちを挟まず、commit済み登録と未処理行を観測する。
