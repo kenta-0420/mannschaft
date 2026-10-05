@@ -348,7 +348,7 @@ test.describe('お知らせ本文プレビュー 実API', () => {
       const original = dialog.getByTestId('announcement-preview-source')
       await expect(close).toBeInViewport()
       await expect(original).toBeInViewport()
-      expect((await close.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+      await expect.poll(async () => (await close.boundingBox())?.height).toBeGreaterThanOrEqual(44)
       expect(await dialog.locator('script, iframe, [onerror], [onclick], a[href^="javascript:"]').count()).toBe(0)
       expect(await page.evaluate(() => (window as Window & { __previewXss?: number }).__previewXss)).toBeUndefined()
       await expect(dialog.getByRole('link', { name: '正規リンク', exact: true })).toHaveAttribute('href', 'https://example.com/')
