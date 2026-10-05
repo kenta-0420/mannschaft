@@ -53,9 +53,10 @@ public class ScheduleRanchOutboxDeliveryService implements SourceOutboxDeliveryF
                 // 壊れた保存payloadの本文/causeを記録せず、同batchの正常行を継続する。
                 outboxes.rejectCandidate(row.eventId(),"PAYLOAD_INVALID",request.serverTime());continue;
             }
-            var token=UuidV7.generate();var expires=request.serverTime().plusSeconds(request.leaseSeconds());
-            outboxes.lease(row.eventId(),token,expires,request.serverTime());
-            leased.add(new SourceOutboxLeasedEvent(sourceType(),row.eventId(),token,expires,payload.toEnvelope(),row.attempts()+1));
+            var token=UuidV7.generate();var requestedExpires=request.serverTime().plusSeconds(request.leaseSeconds());
+            var expires=outboxes.lease(row.eventId(),token,requestedExpires,request.serverTime());
+            if(expires.isEmpty()) continue;
+            leased.add(new SourceOutboxLeasedEvent(sourceType(),row.eventId(),token,expires.orElseThrow(),payload.toEnvelope(),row.attempts()+1));
         }
         return List.copyOf(leased);
     }
