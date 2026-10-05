@@ -1,4 +1,4 @@
-import { test, expect, request as playwrightRequest, type APIRequestContext, type Page } from '@playwright/test'
+import { test, expect, request as playwrightRequest, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
 import ja from '../../../app/locales/ja/announcement.json' with { type: 'json' }
 import en from '../../../app/locales/en/announcement.json' with { type: 'json' }
@@ -46,8 +46,8 @@ const PNG_BYTES = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC
 async function login(page: Page, email = MEMBER): Promise<void> {
   await loginViaApi(page, { email, password: PASSWORD }, { apiBaseUrl: API_BASE })
 }
-function card(page: Page, id: number) {
-  return page.locator(`[data-announcement-id="${id}"]`)
+function card(root: Page | Locator, id: number) {
+  return root.locator(`[data-announcement-id="${id}"]`)
 }
 async function organizationTabs(headers: Record<string, string>) {
   const items: Array<{ scope_id: number; public_id: string }> = []
@@ -420,23 +420,31 @@ test.describe('お知らせ本文プレビュー 実API', () => {
     await login(page)
     await openApp(page, '/dashboard')
     await page.getByRole('tab', { name: 'チーム', exact: true }).click()
-    const teamChip = page.getByTestId(`scope-tab-chip-TEAM-${TEAM_SLUG}`)
+    const teamPanel = page.locator('#scope-panel-TEAM')
+    await expect(teamPanel).toHaveAttribute('aria-hidden', 'false')
+    const teamChip = teamPanel.getByTestId(`scope-tab-chip-TEAM-${TEAM_SLUG}`)
     await expect(teamChip).toBeVisible()
     if (await teamChip.getAttribute('aria-pressed') !== 'true') await teamChip.click()
-    await expect(card(page, orgBlog.announcementFeedId)).toBeVisible()
+    const teamOrgBlog = card(teamPanel, orgBlog.announcementFeedId)
+    await expect(teamOrgBlog).toHaveCount(1)
+    await expect(teamOrgBlog).toBeVisible()
     const requested: string[] = []
     page.on('request', request => { if (request.url().endsWith('/preview')) requested.push(new URL(request.url()).pathname) })
-    await card(page, orgBlog.announcementFeedId).click()
+    await teamOrgBlog.click()
     await expect(page.getByRole('dialog')).toContainText(`OrgBlogBody-${stamp}`)
     await expect(page.getByTestId('announcement-preview-source')).toHaveAttribute('href', new RegExp(`^/blog/posts/[^/?]+\\?organizationId=${ORG_ID}$`))
     expect(requested).toEqual([`/api/v1/organizations/${ORG_ID}/announcements/${orgBlog.announcementFeedId}/preview`])
     await page.getByTestId('announcement-preview-close').click()
     await page.getByRole('tab', { name: '組織', exact: true }).click()
-    const orgChip = page.getByTestId(`scope-tab-chip-ORGANIZATION-${orgSlug}`)
+    const orgPanel = page.locator('#scope-panel-ORGANIZATION')
+    await expect(orgPanel).toHaveAttribute('aria-hidden', 'false')
+    const orgChip = orgPanel.getByTestId(`scope-tab-chip-ORGANIZATION-${orgSlug}`)
     await expect(orgChip).toBeVisible()
     if (await orgChip.getAttribute('aria-pressed') !== 'true') await orgChip.click()
-    await expect(card(page, orgBulletin.announcementFeedId)).toBeVisible()
-    await card(page, orgBulletin.announcementFeedId).click()
+    const orgBulletinCard = card(orgPanel, orgBulletin.announcementFeedId)
+    await expect(orgBulletinCard).toHaveCount(1)
+    await expect(orgBulletinCard).toBeVisible()
+    await orgBulletinCard.click()
     await expect(page.getByRole('dialog')).toContainText(`OrgThreadBody-${stamp}`)
     const source = page.getByTestId('announcement-preview-source')
     await expect(source).toHaveAttribute('href', `/organizations/${orgSlug}/bulletin?threadId=${orgBulletin.contentId}`)
@@ -451,13 +459,17 @@ test.describe('お知らせ本文プレビュー 実API', () => {
       else {
         await openApp(page, '/dashboard')
         await page.getByRole('tab', { name: '組織', exact: true }).click()
-        const chip = page.getByTestId(`scope-tab-chip-ORGANIZATION-${orgSlug}`)
+        const orgPanel = page.locator('#scope-panel-ORGANIZATION')
+        await expect(orgPanel).toHaveAttribute('aria-hidden', 'false')
+        const chip = orgPanel.getByTestId(`scope-tab-chip-ORGANIZATION-${orgSlug}`)
         await expect(chip).toBeVisible()
         if (await chip.getAttribute('aria-pressed') !== 'true') await chip.click()
       }
       // 本番用ビルドの既存PWAが実際に制御している状態で永続cacheを検証する。
       await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker?.controller)), { timeout: 30_000 }).toBe(true)
-      await card(page, fixture.announcementFeedId).click()
+      const blogCard = card(fixture.scopeType === 'TEAM' ? page : page.locator('#scope-panel-ORGANIZATION'), fixture.announcementFeedId)
+      await expect(blogCard).toHaveCount(1)
+      await blogCard.click()
       const body = `NormalBlogBody-${fixture.scopeType}-${stamp}`
       await expect(page.getByRole('dialog')).toContainText(body)
       const images = page.getByRole('dialog').getByRole('img', { name: '正規画像' })
