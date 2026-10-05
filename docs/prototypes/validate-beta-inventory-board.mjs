@@ -31,7 +31,8 @@ const sourceRefs = new Map();
 for (const line of taskList.split(/\r?\n/)) {
   const match = line.match(/^\|\s*(CMP(?:-|$).*?)\s*\|/);
   if (!match) continue;
-  sourceRefs.set(match[1], [...new Set([...line.matchAll(/(?<![A-Za-z0-9])#(\d+)/g)].map((item) => Number(item[1])).filter((number) => number >= 100))].sort((a, b) => a - b));
+  const referenceLine = line.replace(/\[[^\]\n]*\]\(https:\/\/github\.com\/[^/\s)]+\/[^/\s)]+\/actions\/runs\/\d+\)/g, '');
+  sourceRefs.set(match[1], [...new Set([...referenceLine.matchAll(/(?<![A-Za-z0-9])#(\d+)/g)].map((item) => Number(item[1])).filter((number) => number >= 100))].sort((a, b) => a - b));
 }
 if (sourceRefs.size !== data.campaigns.length) throw new Error('CMP正本行数と参照抽出数が一致しません');
 for (const campaign of data.campaigns) {
@@ -97,11 +98,59 @@ const personaFields = ['age', 'itProficiency', 'adhdTendency', 'useCase', 'role'
 for (const persona of strategy.personas) if (!persona.id || personaFields.some((field) => persona[field] === undefined || persona[field] === '')) throw new Error(`B0 persona項目不足: ${persona.id}`);
 const personaIds = new Set(strategy.personas.map((persona) => persona.id));
 const journeyIds = new Set((b0Plan.journeys || []).map((journey) => journey.id));
-for (const insight of data.b0RunOverlay?.insights || []) {
-  if (!insight.id || !insight.featureKey || !insight.title || !insight.detail) throw new Error('B0気づきの必須項目が不足しています');
-  if (insight.urgency && !['urgent', 'normal', 'when-free'].includes(insight.urgency)) throw new Error(`B0気づきの対応タイミングが不正です: ${insight.id}`);
-  if (insight.personaId && !personaIds.has(insight.personaId)) throw new Error(`B0気づきのpersonaが未定義です: ${insight.personaId}`);
-  if (!journeyIds.has(insight.journeyId)) throw new Error(`B0気づきのjourneyが未定義です: ${insight.journeyId}`);
+function validateRunOverlay(overlay) {
+  const residentRegistration = overlay?.registrationSource === 'actual-resident-artifacts';
+  let overlayPersonas;
+  let overlayJourneys;
+  if (residentRegistration) {
+    if (overlay.trusted !== false || overlay.status !== 'observed-unverified' || !overlay.runId || !overlay.environment?.sourceHead) throw new Error('住民観測の未検証状態・runId・sourceが不足しています');
+    const personas = overlay.personas || [];
+    const journeys = overlay.journeys || [];
+    overlayPersonas = new Map(personas.map((persona) => [persona.id, persona]));
+    overlayJourneys = new Map(journeys.map((journey) => [journey.id, journey]));
+    if (!personas.length || overlayPersonas.size !== personas.length || !journeys.length || overlayJourneys.size !== journeys.length) throw new Error('住民観測のpersona/journey宣言が空または重複しています');
+    for (const persona of personas) {
+      if (!persona.id || !persona.personaArchetype || !persona.runId || !persona.sourceHead || !persona.evidencePath) throw new Error('住民personaの軸・runId・source・証拠が不足しています');
+    }
+    for (const journey of journeys) {
+      const persona = overlayPersonas.get(journey.personaId);
+      if (!journey.id || !persona || !journey.purpose || !journey.runId || !journey.sourceHead || !journey.evidencePath || journey.sourceHead !== overlay.environment.sourceHead || journey.runId !== persona.runId || journey.sourceHead !== persona.sourceHead) throw new Error('住民journeyの宣言・目的・runId・source・証拠が不整合です');
+    }
+  }
+  for (const insight of overlay?.insights || []) {
+    if (!insight.id || !insight.featureKey || !insight.title || !insight.detail) throw new Error('B0気づきの必須項目が不足しています');
+    if (insight.urgency && !['urgent', 'normal', 'when-free'].includes(insight.urgency)) throw new Error(`B0気づきの対応タイミングが不正です: ${insight.id}`);
+    if (residentRegistration) {
+      const persona = overlayPersonas.get(insight.personaId);
+      const journey = overlayJourneys.get(insight.journeyId);
+      if (!persona || !journey || journey.personaId !== persona.id || insight.personaArchetype !== persona.personaArchetype || insight.originalRunId !== journey.runId || !insight.evidencePath || insight.status !== 'observed-unverified') throw new Error(`住民気づきのpersona/journey・軸・runId・証拠が不整合です: ${insight.id}`);
+      continue;
+    }
+    if (insight.personaId && !personaIds.has(insight.personaId)) throw new Error(`B0気づきのpersonaが未定義です: ${insight.personaId}`);
+    if (!journeyIds.has(insight.journeyId)) throw new Error(`B0気づきのjourneyが未定義です: ${insight.journeyId}`);
+  }
+}
+validateRunOverlay(data.b0RunOverlay);
+if (process.argv.includes('--self-test-overlay')) {
+  if (data.b0RunOverlay?.registrationSource !== 'actual-resident-artifacts') throw new Error('自己検証には実住民の宣言overlayが必要です');
+  const mutations = [
+    (overlay) => { overlay.insights[0].personaId = 'undeclared-persona'; },
+    (overlay) => { overlay.insights[0].journeyId = 'undeclared-journey'; },
+    (overlay) => { overlay.personas[0].personaArchetype = ''; },
+    (overlay) => { overlay.journeys[0].runId = ''; },
+    (overlay) => { overlay.environment.sourceHead = ''; },
+    (overlay) => { overlay.insights[0].evidencePath = ''; },
+    (overlay) => { overlay.personas.push({ ...overlay.personas[0] }); },
+    (overlay) => { overlay.trusted = true; },
+  ];
+  for (const mutate of mutations) {
+    const invalid = structuredClone(data.b0RunOverlay);
+    mutate(invalid);
+    let rejected = false;
+    try { validateRunOverlay(invalid); } catch { rejected = true; }
+    if (!rejected) throw new Error('住民overlayの不正な宣言を拒否できませんでした');
+  }
+  console.log(JSON.stringify({ residentOverlayAccepted: true, invalidOverlaysRejected: mutations.length }));
 }
 if (!Array.isArray(strategy.timeline) || strategy.timeline.length < 6 || !Array.isArray(strategy.evidence) || strategy.evidence.length < 4) throw new Error('B0自律テスト戦略の時間軸・証拠定義が不足しています');
 if (strategy.safety?.database !== '開発DB限定' || strategy.safety?.externalSending !== false || strategy.safety?.cookies !== 'personaごとに分離' || !String(strategy.safety?.passCriteria || '').includes('0件・全skip・途中停止は非合格')) throw new Error('B0自律テスト戦略の安全条件が不正です');

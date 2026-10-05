@@ -6,6 +6,7 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity.EvaluationStatus;
 import com.mannschaft.app.school.entity.AttendanceRequirementRuleEntity;
+import com.mannschaft.app.school.entity.ClassHomeroomEntity;
 import com.mannschaft.app.school.entity.RequirementCategory;
 import com.mannschaft.app.school.entity.StudentAttendanceSummaryEntity;
 import com.mannschaft.app.school.repository.AttendanceRequirementEvaluationRepository;
@@ -62,6 +63,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       自己スコープで閉じているため、他人の teamId を指定しても他人の記録は返らない。</li>
  * </ul>
  *
+ * <p><b>学校出欠の認可是正 第1段で書き換え（CMP-261001-0630 / CMP-260930-0230）</b>: 旧版は
+ * 「担任相当」を RoleKind.MEMBER で作り、チーム所属者全員に at-risk・月次統計・CSV の 200、評価実行 201、
+ * 違反解消 200 を期待していた。これは「一般 MEMBER が違反を解消でき、クラス全員の欠席理由入り CSV を取得できる」
+ * 欠陥の追認だったため、(1) 担任を class_homerooms の現役担任として張り、(2) 担任でも管理者でもない
+ * 一般 MEMBER（同級生徒）は 403（bare-id の evaluate/resolve は存在秘匿の 404）を期待する
+ * （AC-3・AC-4・AC-13）。全 EP × 全ロールの行列は {@code SchoolAttendanceAuthzMatrixIT}。</p>
+ *
  * <p>未カバー: 保護者経路の正常系（ACTIVE な careLink 行の seed ヘルパーが未整備のため、
  * 本テストでは careLink 不在＝403 側のみを固定している）。</p>
  */
@@ -92,8 +100,9 @@ class SchoolAttendanceEvaluationScopeContractIT extends AbstractMySqlIntegration
     private Long teamAId;
     private Long teamBId;
 
-    private Long teacherAId;   // teamA の正当メンバー（担任相当）
+    private Long teacherAId;   // teamA の現役担任（class_homerooms。ADMIN ではない）
     private Long studentAId;   // teamA に所属する生徒（評価対象）
+    private Long classmateId;  // teamA に所属する同級生徒（担任でも本人でもない一般 MEMBER）
     private Long memberBId;    // teamB のみに所属する越境者
     private Long outsiderId;   // どこにも所属しない非メンバー
 
@@ -113,8 +122,15 @@ class SchoolAttendanceEvaluationScopeContractIT extends AbstractMySqlIntegration
         studentAId = insertUser("evalauthz-student-a@example.com");
         memberBId = insertUser("evalauthz-member-b@example.com");
         outsiderId = insertUser("evalauthz-outsider@example.com");
+        classmateId = insertUser("evalauthz-classmate@example.com");
 
         MembershipTestHelper.insertMembership(em, teacherAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, classmateId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        LocalDate today = LocalDate.now(java.time.ZoneId.of("Asia/Tokyo"));
+        em.persist(ClassHomeroomEntity.builder()
+                .teamId(teamAId).homeroomTeacherUserId(teacherAId)
+                .academicYear(today.getYear()).effectiveFrom(today.minusDays(30)).createdBy(teacherAId)
+                .build());
         MembershipTestHelper.insertMembership(em, studentAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, memberBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
         // outsiderId はどこにも所属させない。
@@ -205,7 +221,15 @@ class SchoolAttendanceEvaluationScopeContractIT extends AbstractMySqlIntegration
         }
 
         @Test
-        @DisplayName("同一チーム所属の教職員は200")
+        @DisplayName("AC-4: 同級の一般MEMBER（本人でも担任でもない）は他生徒の評価を取得できず403")
+        void 同級の一般MEMBERは403() throws Exception {
+            setAuth(classmateId);
+            mockMvc.perform(get(studentEvaluations(studentAId)))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("AC-4: 現役担任は200")
         void 同一チーム教職員は200() throws Exception {
             setAuth(teacherAId);
             mockMvc.perform(get(studentEvaluations(studentAId)))
@@ -238,7 +262,15 @@ class SchoolAttendanceEvaluationScopeContractIT extends AbstractMySqlIntegration
         }
 
         @Test
-        @DisplayName("正当メンバーは200")
+        @DisplayName("AC-3: 一般MEMBER（同級生徒）は403")
+        void 一般MEMBERは403() throws Exception {
+            setAuth(classmateId);
+            mockMvc.perform(get(atRisk(teamAId)))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("AC-3: 現役担任は200")
         void 正当メンバーは200() throws Exception {
             setAuth(teacherAId);
             mockMvc.perform(get(atRisk(teamAId)))
@@ -280,7 +312,15 @@ class SchoolAttendanceEvaluationScopeContractIT extends AbstractMySqlIntegration
         }
 
         @Test
-        @DisplayName("正当メンバーは201")
+        @DisplayName("AC-13: 一般MEMBER（同級生徒）は評価を実行できず404（bare-id 存在秘匿）")
+        void 一般MEMBERは404() throws Exception {
+            setAuth(classmateId);
+            mockMvc.perform(post(evaluate(studentAId, ruleAId)))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("AC-13: 現役担任は201")
         void 正当メンバーは201() throws Exception {
             setAuth(teacherAId);
             mockMvc.perform(post(evaluate(studentAId, ruleAId)))
@@ -328,7 +368,17 @@ class SchoolAttendanceEvaluationScopeContractIT extends AbstractMySqlIntegration
         }
 
         @Test
-        @DisplayName("正当メンバーは200")
+        @DisplayName("AC-13: 一般MEMBER（同級生徒）は違反を解消できず404（bare-id 存在秘匿）")
+        void 一般MEMBERは404() throws Exception {
+            setAuth(classmateId);
+            mockMvc.perform(post(resolve(evaluationAId))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody())))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("AC-13: 現役担任は200")
         void 正当メンバーは200() throws Exception {
             setAuth(teacherAId);
             mockMvc.perform(post(resolve(evaluationAId))
@@ -363,7 +413,15 @@ class SchoolAttendanceEvaluationScopeContractIT extends AbstractMySqlIntegration
         }
 
         @Test
-        @DisplayName("正当メンバーは200")
+        @DisplayName("AC-3: 一般MEMBER（同級生徒）は403")
+        void 一般MEMBERは403() throws Exception {
+            setAuth(classmateId);
+            mockMvc.perform(get(monthly(teamAId)).param("year", "2025").param("month", "4"))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("AC-3: 現役担任は200")
         void 正当メンバーは200() throws Exception {
             setAuth(teacherAId);
             mockMvc.perform(get(monthly(teamAId)).param("year", "2025").param("month", "4"))
@@ -398,7 +456,16 @@ class SchoolAttendanceEvaluationScopeContractIT extends AbstractMySqlIntegration
         }
 
         @Test
-        @DisplayName("正当メンバーは200")
+        @DisplayName("AC-3: 一般MEMBER（同級生徒）は欠席理由入りCSVを取得できず403")
+        void 一般MEMBERは403() throws Exception {
+            setAuth(classmateId);
+            mockMvc.perform(get(export(teamAId))
+                            .param("from", FROM.toString()).param("to", TO.toString()))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("AC-3: 現役担任は200")
         void 正当メンバーは200() throws Exception {
             setAuth(teacherAId);
             mockMvc.perform(get(export(teamAId))

@@ -43,9 +43,8 @@ export function useOrgDetail(orgId: Ref<string>) {
   const permissionGroups = ref<OrgPermissionGroup[]>([])
   const loading = ref(false)
 
-  const followStatus = ref<'NONE' | 'PENDING' | 'APPROVED'>('NONE')
-  const followLoading = ref(false)
-  const showCancelSupporterConfirm = ref(false)
+  // フォロー（サポーター）状態の取得・申請・解除はページ側の `useScopeFollowWiring` に一本化
+  // （CMP-261001-0835。権限再取得 loadPermissions との結線をページ単位で持つため）。
   const showLeaveConfirm = ref(false)
 
   /**
@@ -92,48 +91,6 @@ export function useOrgDetail(orgId: Ref<string>) {
     }
   }
 
-  async function fetchFollowStatus(roleName: Ref<string | null>) {
-    if (roleName.value) return
-    try {
-      const res = await orgApi.getFollowStatus(orgId.value)
-      followStatus.value = res.data.status
-    } catch {
-      followStatus.value = 'NONE'
-    }
-  }
-
-  async function applySupporter() {
-    followLoading.value = true
-    try {
-      await orgApi.followOrganization(orgId.value)
-      const res = await orgApi.getFollowStatus(orgId.value)
-      followStatus.value = res.data.status
-      notification.success(
-        followStatus.value === 'APPROVED'
-          ? t('common.scopeShell.supporter_registered')
-          : t('common.scopeShell.supporter_applied'),
-      )
-    } catch (error) {
-      handleApiError(error, 'サポーター申請')
-    } finally {
-      followLoading.value = false
-    }
-  }
-
-  async function cancelSupporter() {
-    followLoading.value = true
-    try {
-      await orgApi.unfollowOrganization(orgId.value)
-      followStatus.value = 'NONE'
-      showCancelSupporterConfirm.value = false
-      notification.success(t('common.scopeShell.supporter_canceled'))
-    } catch (error) {
-      handleApiError(error, 'サポーター解除')
-    } finally {
-      followLoading.value = false
-    }
-  }
-
   async function fetchJoinRequestStatus(roleName: Ref<string | null>) {
     if (roleName.value) return
     if (org.value?.visibility?.visibility !== 'PUBLIC') return
@@ -163,18 +120,12 @@ export function useOrgDetail(orgId: Ref<string>) {
     orgTeams,
     permissionGroups,
     loading,
-    followStatus,
-    followLoading,
     joinRequestStatus,
     joinRequestLoading,
-    showCancelSupporterConfirm,
     showLeaveConfirm,
     fetchOrg,
     fetchOrgTeams,
     fetchPermissionGroups,
-    fetchFollowStatus,
-    applySupporter,
-    cancelSupporter,
     fetchJoinRequestStatus,
     applyJoinRequest,
     leaveOrganization,

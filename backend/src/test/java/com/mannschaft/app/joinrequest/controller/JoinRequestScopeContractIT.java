@@ -334,13 +334,20 @@ class JoinRequestScopeContractIT extends AbstractMySqlIntegrationTest {
         void listMineForTeam_自分の申請のみ返る() throws Exception {
             JoinRequestEntity mine = persistPendingRequest(publicTeamAId, applicantId);
             // 他人（adminTeamBId）が同じチームAへ申請した行。自分の一覧に混入してはならない。
-            persistPendingRequest(publicTeamAId, adminTeamBId);
+            JoinRequestEntity theirs = persistPendingRequest(publicTeamAId, adminTeamBId);
 
             setAuth(applicantId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/join-requests/me", publicTeamAId))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.length()").value(1))
                     .andExpect(jsonPath("$.data[0].id").value(mine.getId().toString()));
+
+            // 同一 URL で認証主体だけ差し替えると、その主体自身の申請だけが返る。
+            setAuth(adminTeamBId);
+            mockMvc.perform(get("/api/v1/teams/{teamId}/join-requests/me", publicTeamAId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].id").value(theirs.getId().toString()));
         }
 
         @Test
@@ -353,7 +360,7 @@ class JoinRequestScopeContractIT extends AbstractMySqlIntegrationTest {
                     .status(JoinRequestStatus.PENDING)
                     .build());
             // 他人（adminTeamBId）が同じ組織へ申請した行。自分の一覧に混入してはならない。
-            joinRequestRepository.saveAndFlush(JoinRequestEntity.builder()
+            JoinRequestEntity theirs = joinRequestRepository.saveAndFlush(JoinRequestEntity.builder()
                     .organizationId(orgId)
                     .requesterUserId(adminTeamBId)
                     .status(JoinRequestStatus.PENDING)
@@ -364,6 +371,13 @@ class JoinRequestScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.length()").value(1))
                     .andExpect(jsonPath("$.data[0].id").value(mine.getId().toString()));
+
+            // 同一 URL で認証主体だけ差し替えると、その主体自身の申請だけが返る。
+            setAuth(adminTeamBId);
+            mockMvc.perform(get("/api/v1/organizations/{organizationId}/join-requests/me", orgId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(1))
+                    .andExpect(jsonPath("$.data[0].id").value(theirs.getId().toString()));
         }
     }
 
