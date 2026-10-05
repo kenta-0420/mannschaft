@@ -945,11 +945,8 @@ export default defineNuxtConfig({
     ],
     defaultLocale: 'ja',
     strategy: 'no_prefix',
-    lazy: true,
-    restructureDir: false,
-    bundle: {
-      optimizeTranslationDirective: false,
-    },
+    // v10ではrootDir基準のstring指定。既存app/locales配置を維持する。
+    restructureDir: 'app',
     langDir: 'locales/',
     detectBrowserLanguage: {
       // useCookie:true → SSR が Cookie からロケールを確定し、ハイドレーション mismatch を根治する。
