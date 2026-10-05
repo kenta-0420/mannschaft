@@ -15,10 +15,11 @@ export interface RanchSettings {
  isSoundEnabled: boolean; soundVolume: number; version: Decimal
 }
 export interface RanchSlot { slotKey: 'SHELF_1' | 'SHELF_2' | 'SHELF_3'; inventoryId: string | null; version: Decimal; decoration?: { collectibleKey: string; labelKey: string; assetKey: string } | null }
+export interface OwnerSummary { id: string; status: 'ACTIVE' | 'PAUSED'; balance: Decimal; version: Decimal }
 export interface RanchState {
  featureStatus: 'AVAILABLE' | 'UNAVAILABLE'; deliveryPaused: boolean;
  rewardsStatus: 'ENABLED' | 'DISABLED' | 'PAUSED'; shopAvailable: boolean;
- owner: { id: string; status: 'ACTIVE' | 'PAUSED'; balance: Decimal; version: Decimal } | null;
+ owner: OwnerSummary | null;
  dinosaur: DinosaurSummary | null; settings: RanchSettings | null;
  roomSlots: RanchSlot[]; serverTime: string; policyVersion: Decimal | null;
  careBudget: { weekStartsOn: string; remainingXp: Decimal; weeklyCapXp: Decimal; awardedXp: Decimal; amountXp: Decimal; weekEndsAt: string; ruleVersion: string } | null;
