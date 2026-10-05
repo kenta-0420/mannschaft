@@ -7,7 +7,7 @@ import com.mannschaft.app.diagnosis.dto.DiagnosisQuestion;
 import com.mannschaft.app.diagnosis.dto.DiagnosisTieQuestion;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.core.io.ClassPathResource;
@@ -19,12 +19,30 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
-/** 承認前の固定24問を開発・試験だけへ供給し、開始時に全表示を凍結する。 */
+/** 正式登録版と開発専用draftを分け、開始時の全表示と採点版を不変snapshotに固定する。 */
 @Service
-@RequiredArgsConstructor
 public class DiagnosisQuestionnaireCatalog {
     private final ObjectMapper mapper;
     private final Environment environment;
+    private final DiagnosisApprovedQuestionnaireRegistry approved;
+
+    @Autowired
+    public DiagnosisQuestionnaireCatalog(ObjectMapper mapper, Environment environment,
+            DiagnosisApprovedQuestionnaireRegistry approved) {
+        this.mapper = mapper;
+        this.environment = environment;
+        this.approved = approved;
+    }
+
+    /** 既存合成UT用。環境の明示登録を省略した承認fixtureは作らない。 */
+    public DiagnosisQuestionnaireCatalog(ObjectMapper mapper, Environment environment) {
+        this(mapper, environment, new DiagnosisApprovedQuestionnaireRegistry(environment, mapper));
+    }
+
+    /** 正式登録があればその版を開始し、未登録なら従来の開発専用境界を使用する。 */
+    public Definition forStart() {
+        return approved.current().orElseGet(this::draft);
+    }
     public static final String SNAPSHOT_SCHEMA_VERSION = "diagnosis-session-snapshot-v1";
     public enum SnapshotApproval { DRAFT, APPROVED }
     private static final List<String> LOCALES = List.of("ja", "en", "zh", "ko", "es", "de");
@@ -76,17 +94,19 @@ public class DiagnosisQuestionnaireCatalog {
             return new Definition(SNAPSHOT_SCHEMA_VERSION, SnapshotApproval.DRAFT, required(root,"questionnaireVersion"), required(root,"scoringVersion"), questions, ties, explanation(), descriptions);
         } catch (IOException | IllegalArgumentException error) { throw unavailable(); }
     }
-    /** 保存snapshotの版と承認状態だけを使い、現在masterで旧設問を再構成しない。 */
-    /** 保存済み定義を現在の採点方式で解釈できる版だけに限定する。現masterからの再構成は行わない。 */
+    /** 保存済み定義を既知の採点方式と登録された承認定義で検証し、現在版から旧設問を再構成しない。 */
     public void requireSnapshotReadable(Definition definition) {
+        if (definition != null && definition.approval() == SnapshotApproval.APPROVED
+                && approved.contains(definition)) return;
         if (definition == null || !SNAPSHOT_SCHEMA_VERSION.equals(definition.snapshotSchemaVersion())
                 || !"signed-centered-v1".equals(definition.scoringVersion())
-                || !"draft-20261003-v1".equals(definition.questionnaireVersion()) || definition.approval() == null) throw unavailable();
+                || !"draft-20261003-v1".equals(definition.questionnaireVersion())
+                || definition.approval() != SnapshotApproval.DRAFT) throw unavailable();
     }
     public void requireMutationAllowed(Definition definition) {
         requireSnapshotReadable(definition);
-        // 承認カタログが未実装の間は保存flagだけを公開許可の根拠にしない。
-        if (definition.approval() != SnapshotApproval.DRAFT) throw unavailable();
+        // 正式版は登録された不変定義と完全一致済み。保存flagだけでは到達しない。
+        if (definition.approval() == SnapshotApproval.APPROVED) return;
         requireDraftFixture();
     }
     private void requireDraftFixture() {

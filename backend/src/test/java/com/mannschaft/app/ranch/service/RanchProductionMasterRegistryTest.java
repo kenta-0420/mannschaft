@@ -69,7 +69,7 @@ class RanchProductionMasterRegistryTest {
                 new RanchRuleProvider.CareRuleSnapshot(UUID.randomUUID(), "care-synthetic-v1",
                         20, 100, 60, 100, 1, 3, 6)));
         var diagnosis = mock(DiagnosisPublicationReadiness.class);
-        when(diagnosis.approvedCatalogAvailable()).thenReturn(true);
+        when(diagnosis.approvedVersionAvailable(master.questionnaireVersion(), master.scoringVersion())).thenReturn(true);
         var resolver = new RanchVerifiedAssignmentResolver(null, null, diagnosis, rules,
                 Clock.systemUTC());
         UUID diagnosisId = UUID.randomUUID();
@@ -142,7 +142,8 @@ class RanchProductionMasterRegistryTest {
         assertThat(registered.current()).isPresent();
         var diagnosis = mock(DiagnosisPublicationReadiness.class);
         assertThat(new RanchPublicationReadiness(registered, diagnosis).current().careReady()).isFalse();
-        when(diagnosis.approvedCatalogAvailable()).thenReturn(true);
+        var master = registered.current().orElseThrow();
+        when(diagnosis.approvedVersionAvailable(master.questionnaireVersion(), master.scoringVersion())).thenReturn(true);
         assertThat(new RanchPublicationReadiness(registered, diagnosis).current().careReady()).isTrue();
         assertThatThrownBy(() -> new RanchProductionMasterRegistry(
                 registered("synthetic-pack-v1", "0".repeat(64)), json))

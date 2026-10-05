@@ -65,7 +65,8 @@ public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver 
     public List<AssignmentMethod> availableMethods() {
         if (rules.currentCareRule(Instant.now(clock)).isEmpty()) return List.of();
         if (production.current().isPresent()) {
-            return diagnosisPublication.approvedCatalogAvailable()
+            var master = production.current().orElseThrow();
+            return diagnosisPublication.approvedVersionAvailable(master.questionnaireVersion(), master.scoringVersion())
                     ? List.of(AssignmentMethod.HABITAT_RANDOM,
                             AssignmentMethod.DIAGNOSIS, AssignmentMethod.BIRTH_STYLE)
                     : List.of(AssignmentMethod.HABITAT_RANDOM, AssignmentMethod.BIRTH_STYLE);
@@ -85,7 +86,7 @@ public class RanchVerifiedAssignmentResolver implements RanchAssignmentResolver 
         RanchProductionMasterRegistry.Pair pair;
         String basis;
         if (request.method() == AssignmentMethod.DIAGNOSIS) {
-            if (!diagnosisPublication.approvedCatalogAvailable()
+            if (!diagnosisPublication.approvedVersionAvailable(master.questionnaireVersion(), master.scoringVersion())
                     || savedResult == null || savedResult.method() != DiagnosisMethod.DIAGNOSIS
                     || savedResult.typeCode() == null
                     || !Objects.equals(savedResult.id(), request.resultId())

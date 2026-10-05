@@ -17,7 +17,8 @@ public class RanchPublicationReadiness {
             return new Snapshot(null, false, "MASTER_UNREGISTERED");
         }
         String version = registered.orElseThrow().version();
-        if (!diagnosis.approvedCatalogAvailable()) {
+        if (!diagnosis.approvedVersionAvailable(registered.orElseThrow().questionnaireVersion(),
+                registered.orElseThrow().scoringVersion())) {
             return new Snapshot(version, false, "DIAGNOSIS_UNAPPROVED");
         }
         return new Snapshot(version, true, "READY");

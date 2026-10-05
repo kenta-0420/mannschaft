@@ -59,7 +59,7 @@ public class DiagnosisSessionWriter {
     public DiagnosisSessionResponse start(Long userId, UUID key) {
         String hash = hash(List.of("session:start:v1"));
         var replay = replay(userId,key,hash); if (replay.isPresent()) return replay.get();
-        var definition = catalog.draft(); Instant now=now();
+        var definition = catalog.forStart(); Instant now=now();
         var session = DiagnosisSessionEntity.builder().id(UuidV7.generate()).userId(userId)
                 .status(DiagnosisStatus.STARTED).questionnaireVersion(definition.questionnaireVersion())
                 .scoringVersion(definition.scoringVersion()).questionsSnapshot(codec.encodeDefinition(definition))
