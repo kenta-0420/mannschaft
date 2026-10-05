@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
@@ -110,6 +111,22 @@ public class ContentVisibilityChecker {
             List<ContentVisibilityResolver<?>> resolvers,
             VisibilityMetrics visibilityMetrics) {
         this(resolvers, visibilityMetrics, null);
+    }
+
+    /**
+     * Independent PRIMARY permission read after the caller's domain read has completed.
+     * Call through the Spring proxy; no source transaction or callback may surround this entry.
+     * readOnly=false pins routing to PRIMARY while all existing resolver rules remain unchanged.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public boolean canViewIsolated(ReferenceType type, Long contentId, Long userId) {
+        return canView(type, contentId, userId);
+    }
+
+    /** UUID counterpart of {@link #canViewIsolated(ReferenceType, Long, Long)}. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public boolean canViewUuidIsolated(ReferenceType type, UUID contentId, Long userId) {
+        return canViewUuid(type, contentId, userId);
     }
 
     /**
