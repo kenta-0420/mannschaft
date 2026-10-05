@@ -153,4 +153,38 @@ class TimelineRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         return jdbc.queryForObject("SELECT COUNT(*) FROM "+table+" WHERE recipient_user_id=?",Integer.class,owner);
     }
     private int nativeCount() { return jdbc.queryForObject("SELECT COUNT(*) FROM timeline_posts WHERE user_id=?",Integer.class,owner); }
+    @Autowired private TimelineRanchCaptureTelemetry utcTelemetry;
+    /** native JPAで確定した不変事実を接続別zoneでも保存・読取する。共有pool/設定は変更しない。 */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings={"UTC","Pacific/Honolulu"})
+    void nativeEventAndLeaseRoundTripIgnoreJdbcSessionZone(String zone) throws Exception {
+        var saved=publish("時刻境界本文");assertThat(saved.capture()).isNotNull();var capture=saved.capture();var fact=capture.payload();
+        var config=new com.zaxxer.hikari.HikariConfig();
+        // own Testcontainers資格だけを使い、出力しない。
+        config.setJdbcUrl(MYSQL.getJdbcUrl());config.setUsername(MYSQL.getUsername());config.setPassword(MYSQL.getPassword());
+        config.setMaximumPoolSize(2);config.setMinimumIdle(0);
+        config.addDataSourceProperty("connectionTimeZone",zone);
+        config.addDataSourceProperty("forceConnectionTimeZoneToSession","true");
+        config.addDataSourceProperty("preserveInstants","true");
+        try(var probe=new com.zaxxer.hikari.HikariDataSource(config)) {
+            var probeJdbc=new JdbcTemplate(probe);
+            var tx=new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(probe));
+            var receiver=new TimelineRanchTransportWriter(new TimelineRanchTransportRepository(probeJdbc),probeJdbc,fingerprints,mapper,java.time.Clock.systemUTC(),utcTelemetry);
+            Boolean accepted=tx.execute(status->receiver.accept(capture));
+            assertThat(accepted).as("実native事実の耐久受付 zone=%s",zone).isTrue();
+            var repository=new com.mannschaft.app.timeline.repository.TimelineRanchOutboxRepository(probeJdbc);
+            tx.executeWithoutResult(status -> {
+                java.time.Instant dbNow=probeJdbc.queryForObject("SELECT UTC_TIMESTAMP(6)",(rs,index)->rs.getTimestamp(1,com.mannschaft.app.common.jdbc.JdbcUtcCalendar.fresh()).toInstant());
+                var candidate=repository.candidates(dbNow,100).stream().filter(row->row.eventId().equals(fact.eventId())).findFirst().orElseThrow();
+                assertThat(candidate.occurredAt()).as("保存payloadと実readerの不変Instant").isEqualTo(fact.occurredAt());
+                UUID token=com.mannschaft.app.common.UuidV7.generate();
+                java.util.Optional<java.time.Instant> expiry=repository.lease(fact.eventId(),token,dbNow.plusSeconds(30),dbNow);
+                assertThat(expiry).isPresent();
+                byte[] event=java.nio.ByteBuffer.allocate(16).putLong(fact.eventId().getMostSignificantBits()).putLong(fact.eventId().getLeastSignificantBits()).array();
+                byte[] leaseToken=java.nio.ByteBuffer.allocate(16).putLong(token.getMostSignificantBits()).putLong(token.getLeastSignificantBits()).array();
+                java.time.Instant stored=probeJdbc.queryForObject("SELECT lease_expires_at FROM timeline_ranch_outboxes WHERE id=? AND lease_token=? AND status='LEASED'",(rs,index)->rs.getTimestamp(1,com.mannschaft.app.common.jdbc.JdbcUtcCalendar.fresh()).toInstant(),event,leaseToken);
+                assertThat(expiry.orElseThrow()).as("公表期限は同じ源TXの実DB期限").isEqualTo(stored);
+            });
+        }
+    }
 }
