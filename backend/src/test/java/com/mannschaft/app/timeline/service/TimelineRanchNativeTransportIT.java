@@ -128,8 +128,8 @@ class TimelineRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     }
     @Test void realSourcePurgeRejectsLateCaptureAndLeaseTokenWithoutDeletingPostBody() {
         var saved=publish("消去境界本文");assertThat(receive(saved.capture())).isTrue();
-        var now=jdbc.queryForObject("SELECT MAX(next_attempt_at) FROM timeline_ranch_outboxes WHERE recipient_user_id=?",
-                java.sql.Timestamp.class,owner).toInstant().plusSeconds(1);
+        var now=jdbc.queryForObject("SELECT UTC_TIMESTAMP(6)",
+                (rs,index) -> rs.getTimestamp(1,com.mannschaft.app.common.jdbc.JdbcUtcCalendar.fresh()).toInstant());
         var lease=outboxes.lease(new SourceOutboxLeaseRequest(now,1,30,2)).getFirst();
         assertThat(purge.retryPurge(owner)).isTrue();assertThat(receive(saved.capture())).isFalse();
         var terminal=new RanchRewardDeliveryOutcome(RanchRewardDeliveryOutcome.Outcome.NOT_ENROLLED,null,0);

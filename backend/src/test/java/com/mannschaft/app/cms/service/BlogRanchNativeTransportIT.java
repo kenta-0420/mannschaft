@@ -177,10 +177,12 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         assertThat(outboxDelivery.defer(defer)).isFalse();
         var terminal=new RanchRewardDeliveryOutcome(RanchRewardDeliveryOutcome.Outcome.ACCOUNT_DELETED,null,0);
         assertThat(outboxDelivery.acknowledge(new SourceOutboxAckRequest(first.eventId(),first.leaseToken(),now.plusSeconds(2),terminal))).isFalse();
+        makeRetryDue(first.eventId());
         var second=outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(5),10,30,2)).getFirst();
         assertThat(second.attemptCount()).isEqualTo(1);
         assertThat(second.leaseToken()).isNotEqualTo(first.leaseToken());
         assertThat(outboxDelivery.retry(new SourceOutboxFailureRequest(second.eventId(),second.leaseToken(),now.plusSeconds(6),2,1,1,"CONSUMER_FAILED"))).isTrue();
+        makeRetryDue(second.eventId());
         var third=outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(7),10,30,2)).getFirst();
         assertThat(third.attemptCount()).isEqualTo(2);
         assertThat(outboxDelivery.retry(new SourceOutboxFailureRequest(third.eventId(),third.leaseToken(),now.plusSeconds(8),2,1,1,"CONSUMER_FAILED"))).isTrue();
@@ -195,6 +197,7 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         var first=outboxDelivery.lease(new SourceOutboxLeaseRequest(now,10,30,1)).getFirst();
         assertThat(outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(29),10,30,1))).isEmpty();
         assertThat(status(first.eventId())).isEqualTo("LEASED");
+        expireOwnLease(first.eventId(),first.leaseToken());
         assertThat(outboxDelivery.lease(new SourceOutboxLeaseRequest(now.plusSeconds(30),10,30,1))).isEmpty();
         assertThat(status(first.eventId())).isEqualTo("DEAD_LETTER");
         assertThat(publishedCount()).isEqualTo(1);
@@ -218,7 +221,14 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         // 手動削除fixtureはlate tokenのno-recreateだけ。実purge接続の証拠には流用しない。
         assertThat(publishedCount()).isEqualTo(2);
     }
-    private java.time.Instant deliveryNow() { return jdbc.queryForObject("SELECT MAX(next_attempt_at) FROM blog_ranch_outboxes WHERE recipient_user_id=?",java.sql.Timestamp.class,owner).toInstant().plusSeconds(1); }
+    private java.time.Instant deliveryNow() { return jdbc.queryForObject("SELECT UTC_TIMESTAMP(6)",(rs,index) -> rs.getTimestamp(1,com.mannschaft.app.common.jdbc.JdbcUtcCalendar.fresh()).toInstant()); }
+    /** 自己イベントだけのDB条件を作り、Java時計の仮想前進で期限判定を代用しない。 */
+    private void makeRetryDue(UUID event) {
+        assertThat(jdbc.update("UPDATE blog_ranch_outboxes SET next_attempt_at=TIMESTAMPADD(SECOND,-1,UTC_TIMESTAMP(6)) WHERE id=? AND status='RETRY'",idBytes(event))).isEqualTo(1);
+    }
+    private void expireOwnLease(UUID event,UUID token) {
+        assertThat(jdbc.update("UPDATE blog_ranch_outboxes SET lease_expires_at=TIMESTAMPADD(SECOND,-1,UTC_TIMESTAMP(6)) WHERE id=? AND status='LEASED' AND lease_token=?",idBytes(event),idBytes(token))).isEqualTo(1);
+    }
     private String status(UUID event) { return jdbc.queryForObject("SELECT status FROM blog_ranch_outboxes WHERE id=?",String.class,idBytes(event)); }
     private static byte[] idBytes(UUID event) { return java.nio.ByteBuffer.allocate(16).putLong(event.getMostSignificantBits()).putLong(event.getLeastSignificantBits()).array(); }
     @Test void adminRetrySavedAckSurvivesRemovedEventAndRejectsChangedBody() {
