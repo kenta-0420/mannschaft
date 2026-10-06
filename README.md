@@ -12,6 +12,8 @@ Scene は登録された同個体・同段階の静止 fallback を動き抑制�
 
 お知らせのブログ（通常記事・公告）と掲示板は、[F02.6 本文プレビュー](docs/features/F02.6_announcement_widget.md)で所有スコープ・最新配信対象・元記事の可視性・課金を照合してモーダル表示する。プレビュー GET は既読・閲覧数を変更せず、LOCKED は本文と元参照を秘匿し、HIDDEN は404を返す。課金評価・メディア台帳取得・署名の障害は専用読取入口から500へ伝播させ、正常な本文やHIDDENへ丸めない。通常記事の既存fallback契約は維持する。
 
+組織作成の非公開選択は `PRIVATE` を送信し、タイムラインの通常本人投稿は本文だけを編集して保存後に再取得する（[組織 API 設計](docs/features/F01.2_org_team_member_role/02_api_design.md)、[タイムライン](docs/features/F04.1_timeline.md)）。
+
 ---
 
 ## 目次
