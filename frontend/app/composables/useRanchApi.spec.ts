@@ -9,7 +9,7 @@ import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { useAuthStore } from '~/stores/useAuthStore'
 import type { paths } from '~/types/generated'
 import type { AssignmentResult, RanchState } from '~/types/ranch'
-import { useRanchApi } from './useRanchApi'
+import type { useRanchApi } from './useRanchApi'
 import { useRanchState } from './useRanchState'
 
 const external = vi.hoisted(() => ({ fetch: vi.fn<typeof fetch>(), report: vi.fn() }))
