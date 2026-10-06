@@ -144,6 +144,83 @@ test('braces 除外は node-forge の消費者名を流用できず、逆も拒�
   }
   assert.throws(() => check(report(forge)), /許可されない脆弱性/)
 })
+const SG_X6JW = 'https://github.com/advisories/GHSA-x6jw-m9v5-85vh'
+const SG_V5RQ = 'https://github.com/advisories/GHSA-v5rq-49vh-5v5c'
+const SG_LOCK = {
+  packages: {
+    'node_modules/simple-git': { version: '3.36.0' },
+    'node_modules/@simple-git/argv-parser': { version: '1.1.1' },
+  },
+}
+const sgGraph = () => ({
+  '@simple-git/argv-parser': entry(
+    '@simple-git/argv-parser',
+    [
+      {
+        name: '@simple-git/argv-parser',
+        dependency: '@simple-git/argv-parser',
+        severity: 'critical',
+        url: SG_V5RQ,
+        range: '<2.0.1',
+      },
+    ],
+    'critical',
+  ),
+  'simple-git': entry(
+    'simple-git',
+    [
+      '@simple-git/argv-parser',
+      {
+        name: 'simple-git',
+        dependency: 'simple-git',
+        severity: 'critical',
+        url: SG_X6JW,
+        range: '>=3.15.0 <4.0.1',
+      },
+    ],
+    'critical',
+  ),
+  '@nuxt/devtools': entry('@nuxt/devtools', ['simple-git'], 'critical'),
+})
+test('simple-git 系の critical は名指し・lock版・範囲・消費者を検証して通る', () => {
+  assert.equal(check(report(sgGraph()), NOW, SG_LOCK), true)
+  // simple-git 系は node-forge・braces（10-16）と別に 2026-11-06 UTC 当日まで。
+  assert.equal(
+    check(report(sgGraph()), Date.parse('2026-11-06T23:59:59.999Z'), SG_LOCK),
+    true,
+  )
+  assert.equal(
+    check(report(sgGraph()), Date.parse('2026-10-20T00:00:00Z'), SG_LOCK),
+    true,
+  )
+  assert.throws(
+    () =>
+      check(report(sgGraph()), Date.parse('2026-11-07T00:00:00Z'), SG_LOCK),
+    /GHSA-[a-z0-9-]+ の除外期限切れ（2026-11-06 UTC/,
+  )
+  assert.throws(
+    () =>
+      check(report(sgGraph()), NOW, {
+        packages: {
+          ...SG_LOCK.packages,
+          'node_modules/simple-git': { version: '3.35.0' },
+        },
+      }),
+    /許可されない advisory/,
+  )
+  const unknown = sgGraph()
+  unknown.other = entry('other', ['simple-git'], 'critical')
+  assert.throws(
+    () => check(report(unknown), NOW, SG_LOCK),
+    /許可されない脆弱性/,
+  )
+  const shifted = sgGraph()
+  shifted['simple-git'].via[1].severity = 'high'
+  assert.throws(
+    () => check(report(shifted), NOW, SG_LOCK),
+    /許可されない|不一致/,
+  )
+})
 test('同じGHSAでもcritical・別package・別range・直接依存・別versionは拒否する', () => {
   const mutations = [
     (value) => {
