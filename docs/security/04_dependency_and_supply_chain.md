@@ -126,6 +126,17 @@ updates:
 
 有効期限は **2026-10-16 UTC 当日まで（2026-10-17T00:00:00Z 以降は当該例外を拒否）**。解除条件: `braces` の修正版が公開されたら lock を引き上げ、除外を削除して通常の `npm audit --audit-level=high` に戻す。期限延長を自動では行わない。
 
+
+### 4.5. simple-git の安全版と DevTools 互換対応（2026-10-06）
+
+simple-git は [GHSA-x6jw-m9v5-85vh](https://github.com/advisories/GHSA-x6jw-m9v5-85vh) の修正版 4.0.1、同パッケージ内の @simple-git/argv-parser は [GHSA-v5rq-49vh-5v5c](https://github.com/advisories/GHSA-v5rq-49vh-5v5c) の修正版 2.0.1 に限定して更新する。4.0.1 は argv-parser 2.0.0 を固定依存するため、その子依存だけを override する。合わせて Vue 3.5.42（[GHSA-g2v6-rqmx-r4w6](https://github.com/advisories/GHSA-g2v6-rqmx-r4w6)）、source-map-js 1.2.2（[GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q)）、seroval 1.6.3（[GHSA-jp82-f5mq-hwhp](https://github.com/advisories/GHSA-jp82-f5mq-hwhp)）を最初の安全版に更新する。既存の node-forge / braces の期限付き例外は維持する。
+
+postcss-selector-parser は moderate の [GHSA-rj75-hqrm-r3gf](https://github.com/advisories/GHSA-rj75-hqrm-r3gf) を修正する 7.1.6 に既存 override を更新する。他の新 high/critical 解消後も、7.1.5 の実監査は @nuxtjs/tailwindcss を moderate と報告しながら high の braces に到達する参照を含み、既存の fail closed な監査門番が拒否した。門番や除外条件を緩めず、当該 advisory の修正版を導入して通常監査を検証する。
+
+@nuxt/devtools 3.4.1 と現行安定版 3.4.2 は simple-git の default export を利用するが、v4 で廃止されている。既存 postinstall の nuxt prepare 前に scripts/patch-devtools-simple-git.mjs を呼び、公開 3.4.1 artifact の module-main.mjs の import 1 行だけを named simpleGit export に対応させる。版・元 SHA256・変換後 SHA256 を固定し、未知版・未知 byte・共有 node_modules への junction/symlink は拒否する。再実行は既適用の同 byte だけを認め、固定したローカル node_modules の対象以外を変更しない。新しい audit 例外や閾値緩和は行わない。
+
+upstream の安定版が simple-git v4 の named import に対応するか Git 依存を撤去し、監査と通常 CI が通ることを確認したら、限定 script と postinstall 呼び出しを削除する。過去の解消記録は当時の記録として保持する。
+
 ## 5. 脆弱性対応フロー
 
 1. **検知**: Dependabot / Dependency-Check / npm audit / GitHub Security Advisory
