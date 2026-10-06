@@ -126,6 +126,16 @@ updates:
 
 有効期限は **2026-10-16 UTC 当日まで（2026-10-17T00:00:00Z 以降は当該例外を拒否）**。解除条件: `braces` の修正版が公開されたら lock を引き上げ、除外を削除して通常の `npm audit --audit-level=high` に戻す。期限延長を自動では行わない。
 
+### 4.5. simple-git v4 の限定consumer互換補正（2026-10-06）
+
+新しい監査findingは `simple-git`（GHSA-x6jw-m9v5-85vh / GHSA-g4wm-2vf7-vfgr / GHSA-858h-whjf-mvg5）、`@simple-git/argv-parser`（GHSA-v5rq-49vh-5v5c）、`@vue/server-renderer`（GHSA-g2v6-rqmx-r4w6）、`seroval`（GHSA-jp82-f5mq-hwhp）、`source-map-js`（GHSA-68fv-2mgg-jv7q）。公式修正版をそれぞれ simple-git 4.0.1、argv-parser 2.0.1、Vue/server-renderer 3.5.42、seroval 1.6.3、source-map-js 1.2.2 へ引き上げる。simple-git 4.0.1 自身の argv-parser 依存は exact 2.0.0 のため、その子依存も exact 2.0.1 へ指定する。監査例外の追加・閾値緩和・Nuxtの降格は行わない。
+
+Nuxt DevTools 3.4.1 は配布物 `dist/chunks/module-main.mjs` に default import を一つ持つ。一方、simple-git v4 は default export を削除したため、`scripts/patch-nuxt-devtools-simple-git.mjs` を正規 postinstall の `nuxt prepare` より前に実行し、その唯一の import を `import { simpleGit as Git } from 'simple-git'` へ合わせる。Gitの branch/revparse/status APIや本体の認可・Git unsafe guard は変更しない。対象版3.4.1・元配布SHA256 `13f0dbd2e845848ad98fe644eab152c43a0a8cb88d6ff04a4bd77d12a68ac784`・補正後SHA256 `e42d96ee5d9a85f68785341fcac20b161da70336c5a10a11da5ea703d6c7406e` が一致するものだけを受理し、既に同一補正済みの場合のみ冪等とする。未知版・改変bytes・symlink・任意pathは失敗させる。変更対象は install された node_modules 内の一ファイルだけで、公式配布物をリポジトリへ複製しない。
+
+解除条件は、安定版の公式DevToolsがnamed importへ対応し、適切な修正済みsimple-git/argv-parserへ依存し、正規npm ci→nuxt prepareと実監査ゲート・FE CIが通ること。その時に互換script/test・postinstall挿入を除去し、不要となった限定overrideも見直す。版を更新してSHA検査を単に緩める運用は禁止。既node-forge/bracesの個別例外は変更しない。
+
+本節の版指定だけで検証済みとは扱わない。正規lock生成、実npm ci/nuxt prepare、配布bytesを用いた互換補正テスト、実auditと既監査ゲート、FE unit/lint/type/type-drift の実行結果が別途必要。
+
 ## 5. 脆弱性対応フロー
 
 1. **検知**: Dependabot / Dependency-Check / npm audit / GitHub Security Advisory
