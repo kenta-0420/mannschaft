@@ -19,6 +19,13 @@ import BlogPostList from './BlogPostList.vue'
 // 送信されていなかった）。
 
 const apiMock = vi.fn()
+const { navigateMock, auth } = vi.hoisted(() => ({
+  navigateMock: vi.fn(),
+  auth: {
+    currentUser: { id: 100 } as { id: number } | null,
+    loadFromStorage: vi.fn(),
+  },
+}))
 
 mockNuxtImport('useI18n', () => () => ({
   t: (key: string) => key,
@@ -31,13 +38,17 @@ mockNuxtImport('useNotification', () => () => ({
 mockNuxtImport('useRelativeTime', () => () => ({
   relativeTime: (v: string) => v,
 }))
-mockNuxtImport('useAuthStore', () => () => ({
-  currentUser: { id: 100 },
-}))
+mockNuxtImport('useAuthStore', () => () => auth)
+mockNuxtImport('navigateTo', () => navigateMock)
 
 const stubs = {
   LoadingBounce: true,
   DashboardEmptyState: true,
+  NuxtLink: {
+    name: 'NuxtLink',
+    props: ['to'],
+    template: '<a v-bind="$attrs"><slot /></a>',
+  },
   Button: {
     props: ['label', 'loading', 'disabled', 'icon', 'severity', 'text', 'ariaLabel'],
     emits: ['click'],
@@ -58,10 +69,10 @@ const stubs = {
 function makePost(overrides: Partial<BlogPostResponse> = {}): BlogPostResponse {
   return {
     id: 1,
-    content: { title: '記事1', excerpt: null, coverImageUrl: null, body: '' } as never,
-    meta: { status: 'DRAFT', visibility: null, postType: null } as never,
-    audit: { createdAt: '2026-09-01T00:00:00Z', updatedAt: null, publishedAt: null } as never,
-    author: { id: 100, displayName: 'テスト太郎', avatarUrl: null },
+    content: { title: '記事1', slug: 'post-1', excerpt: null, coverImageUrl: null, body: '' },
+    meta: { status: 'DRAFT', visibility: null, postType: null, publicVisible: true },
+    // CmsMapper の現行レスポンス: author オブジェクトは無く、実際の著者は scope.authorId。
+    scope: { teamId: 42, organizationId: null, userId: null, authorId: 100 },
     tags: [],
     seriesId: null,
     seriesName: null,
@@ -75,9 +86,103 @@ function makeTag(overrides: Partial<BlogTag> = {}): BlogTag {
   return { id: 1, name: 'お知らせ', postCount: 0, ...overrides }
 }
 
+async function mountPosts(posts: unknown[], canManage = false) {
+  apiMock.mockImplementation((url: string) => Promise.resolve({
+    data: url.startsWith('/api/v1/blog/posts') ? posts : [],
+  }))
+  const wrapper = await mountSuspended(BlogPostList, {
+    props: { scopeType: 'TEAM', scopeId: 'public-team-slug', canCreate: true, canManage },
+    global: { stubs },
+  })
+  await flushPromises()
+  return wrapper
+}
+
 describe('BlogPostList タグ管理・記事モデレーション', () => {
   beforeEach(() => {
     apiMock.mockReset()
+    navigateMock.mockReset()
+    auth.currentUser = { id: 100 }
+  })
+
+  it.each([
+    { scope: { teamId: 42, organizationId: null, userId: null, authorId: 999 }, to: { path: '/blog/posts/same-slug', query: { teamId: '42' } } },
+    { scope: { teamId: null, organizationId: 7, userId: null, authorId: 999 }, to: { path: '/blog/posts/same-slug', query: { organizationId: '7' } } },
+    { scope: { teamId: null, organizationId: null, userId: 999, authorId: 999 }, to: { path: '/users/999/blog/posts/same-slug' } },
+  ])('公開記事のタイトルは実際の記事スコープで閲覧に入る（$to.path）', async ({ scope, to }) => {
+    const post = makePost({ scope, content: { title: '読む記事', slug: 'same-slug', body: '本文', excerpt: null, coverImageUrl: null }, meta: { status: 'PUBLISHED', visibility: 'MEMBERS_ONLY', postType: 'BLOG', publicVisible: true } })
+    expect(post).not.toHaveProperty('author')
+    const wrapper = await mountPosts([post])
+    const link = wrapper.getComponent({ name: 'NuxtLink' })
+    expect(link.attributes('data-testid')).toBe('blog-post-read-1')
+    expect(link.props('to')).toEqual(to)
+    await link.trigger('click')
+    expect(wrapper.emitted('select')).toEqual([[post]])
+    expect(navigateMock).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="blog-post-edit-1"]').exists()).toBe(false)
+  })
+
+  it.each(['DRAFT', 'SCHEDULED', 'PENDING_REVIEW', 'PENDING_SELF_REVIEW', 'REJECTED', 'ARCHIVED', 'PUBLISHED'] as const)(
+    '本人の記事は%sでも明示編集から既存エディタへ入り、未公開タイトルはリンクにならない',
+    async (status) => {
+      const post = makePost({ meta: { status, visibility: null, postType: 'BLOG', publicVisible: true } })
+      const wrapper = await mountPosts([post])
+      expect(wrapper.find('[data-testid="blog-post-read-1"]').exists()).toBe(status === 'PUBLISHED')
+      await wrapper.get('[data-testid="blog-post-edit-1"]').trigger('click')
+      expect(navigateMock).toHaveBeenCalledExactlyOnceWith('/blog/posts/1/edit')
+      expect(wrapper.find('button button, a button').exists()).toBe(false)
+    },
+  )
+
+  it.each([null, undefined, 0, -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1])(
+    '著者ID欠損・不正（%s）は本人の編集・公開切替・削除を出さない',
+    async (authorId) => {
+      const wrapper = await mountPosts([makePost({ scope: { teamId: 42, organizationId: null, userId: null, authorId } })])
+      expect(wrapper.find('[data-testid="blog-post-edit-1"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="blog-post-toggle-publish-1"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="blog-post-delete-1"]').exists()).toBe(false)
+    },
+  )
+
+  it('認証ユーザーと著者が両方欠損しても、本人操作を出さない', async () => {
+    auth.currentUser = null
+    const wrapper = await mountPosts([makePost({ scope: undefined })])
+    expect(wrapper.find('[data-testid="blog-post-edit-1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="blog-post-toggle-publish-1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="blog-post-delete-1"]').exists()).toBe(false)
+  })
+
+  it('旧author.idが一致しても正準scope.authorIdが他人なら本人操作を出さない', async () => {
+    const wrapper = await mountPosts([makePost({
+      scope: { teamId: 42, organizationId: null, userId: null, authorId: 999 },
+      author: { id: 100, displayName: '旧データ', avatarUrl: null },
+    })])
+    expect(wrapper.find('[data-testid="blog-post-edit-1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="blog-post-toggle-publish-1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="blog-post-delete-1"]').exists()).toBe(false)
+  })
+
+  it('管理者は他人・著者欠損記事をモデレーションできるが、本人専用編集へは入らない', async () => {
+    const wrapper = await mountPosts([makePost({ scope: { teamId: 42, organizationId: null, userId: null, authorId: null } })], true)
+    expect(wrapper.find('[data-testid="blog-post-toggle-publish-1"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="blog-post-delete-1"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="blog-post-edit-1"]').exists()).toBe(false)
+  })
+
+  it('公開記事でもslug・scope・状態が欠けると壊れた閲覧リンクを出さない', async () => {
+    const published = makePost({ meta: { status: 'PUBLISHED', visibility: 'PUBLIC', postType: 'BLOG', publicVisible: true } })
+    const invalidPosts = [
+      { ...published, id: 1, content: undefined },
+      { ...published, id: 2, content: { ...published.content!, slug: '' } },
+      { ...published, id: 3, scope: undefined },
+      { ...published, id: 4, scope: { teamId: 0, organizationId: null, userId: null, authorId: 100 } },
+      { ...published, id: 5, scope: { teamId: 42, organizationId: 7, userId: null, authorId: 100 } },
+      { ...published, id: 6, meta: undefined },
+      { ...published, id: 7, meta: { ...published.meta, status: 'UNKNOWN' } },
+    ]
+    const wrapper = await mountPosts(invalidPosts)
+    expect(wrapper.findAll('[data-testid^="blog-post-read-"]')).toHaveLength(0)
+    expect(navigateMock).not.toHaveBeenCalled()
   })
 
   it('タグ一覧・作成 UI はメンバー（canCreate）で描画される', async () => {
@@ -134,7 +239,7 @@ describe('BlogPostList タグ管理・記事モデレーション', () => {
     apiMock.mockImplementation((url: string) => {
       if (url.startsWith('/api/v1/blog/posts')) {
         return Promise.resolve({
-          data: [makePost({ id: 1, author: { id: 100, displayName: '本人', avatarUrl: null } }), makePost({ id: 2, author: { id: 999, displayName: '他人', avatarUrl: null } })],
+          data: [makePost({ id: 1 }), makePost({ id: 2, scope: { teamId: 42, organizationId: null, userId: null, authorId: 999 } })],
         })
       }
       return Promise.resolve({ data: [] })
@@ -157,7 +262,7 @@ describe('BlogPostList タグ管理・記事モデレーション', () => {
   it('canManage=true（ADMIN/DEPUTY_ADMIN）なら他人の記事にも公開切替・削除が出る', async () => {
     apiMock.mockImplementation((url: string) => {
       if (url.startsWith('/api/v1/blog/posts')) {
-        return Promise.resolve({ data: [makePost({ id: 2, author: { id: 999, displayName: '他人', avatarUrl: null } })] })
+        return Promise.resolve({ data: [makePost({ id: 2, scope: { teamId: 42, organizationId: null, userId: null, authorId: 999 } })] })
       }
       return Promise.resolve({ data: [] })
     })
@@ -175,7 +280,7 @@ describe('BlogPostList タグ管理・記事モデレーション', () => {
   it('個人ブログ（scopeType 未指定）では投稿者本人でも公開切替・削除は出ない（/blog の専用UIと二重化させない）', async () => {
     apiMock.mockImplementation((url: string) => {
       if (url.startsWith('/api/v1/blog/posts')) {
-        return Promise.resolve({ data: [makePost({ id: 1, author: { id: 100, displayName: '本人', avatarUrl: null } })] })
+        return Promise.resolve({ data: [makePost({ id: 1 })] })
       }
       return Promise.resolve({ data: [] })
     })
