@@ -1,6 +1,14 @@
 {
   "school": {
     "attendance": {
+      "forbidden": {
+        "title": "You do not have permission",
+        "description": "You do not have permission to view or operate this school attendance screen. Please check with the homeroom teacher or an administrator."
+      },
+      "permissionError": {
+        "title": "Failed to check permissions",
+        "message": "Because permissions could not be verified, operations and list loading are disabled. Check your connection and try again."
+      },
       "status": {
         "ATTENDING": "Present",
         "PARTIAL": "Partial",

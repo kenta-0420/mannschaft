@@ -722,12 +722,24 @@ public class AccessControlService {
      * @param careRecipientUserId ケア対象者（生徒）のユーザーID
      */
     public void checkCareLink(Long watcherUserId, Long careRecipientUserId) {
-        boolean linked = userCareLinkRepository
-                .existsByCareRecipientUserIdAndWatcherUserIdAndStatus(
-                        careRecipientUserId, watcherUserId, CareLinkStatus.ACTIVE);
-        if (!linked) {
+        if (!hasActiveCareLink(watcherUserId, careRecipientUserId)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
+    }
+
+    /**
+     * 見守り者（保護者）がケア対象者への ACTIVE なケアリンクを持つかを返す（例外を投げない問い合わせ版）。
+     *
+     * <p>{@link #checkCareLink} は未連携で {@link BusinessException} を投げるため、参加中のトランザクションを
+     * rollback-only にする。「保護者でなければ別の資格で判定を続ける」呼び出し側は、例外を捕まえずに
+     * 本メソッドで判定すること。</p>
+     */
+    public boolean hasActiveCareLink(Long watcherUserId, Long careRecipientUserId) {
+        if (watcherUserId == null || careRecipientUserId == null) {
+            return false;
+        }
+        return userCareLinkRepository.existsByCareRecipientUserIdAndWatcherUserIdAndStatus(
+                careRecipientUserId, watcherUserId, CareLinkStatus.ACTIVE);
     }
 
     /**

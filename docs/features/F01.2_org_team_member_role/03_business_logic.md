@@ -512,11 +512,32 @@
 
 ```
 1. DELETE /api/v1/teams/{id}/follow を受付
-2. memberships に SUPPORTER ロールのアクティブエントリが存在するか確認（scope_type='TEAM' AND scope_id=X AND role_kind='SUPPORTER' AND left_at IS NULL） → なければ 404
+2. memberships に SUPPORTER ロールのアクティブエントリが存在するか確認（scope_type='TEAM' AND scope_id=X AND role_kind='SUPPORTER' AND left_at IS NULL） → なければ PENDING の申請（supporter_applications）を確認し、それも無ければ 404（SUPPORTER_007）。MEMBER・ADMIN 等の所属と user_roles には触れない（CMP-261001-0835）
 3. memberships を UPDATE SET left_at=NOW()（F00.5 Phase 2 以降）
 4. audit_logs に TEAM_MEMBER_REMOVED を記録（metadata: {"reason": "UNFOLLOW"}）
 5. 204 No Content を返す
 ```
+
+### サポーター数の表示とキャッシュ無効化（CMP-261004-1942・チーム / 組織共通）
+
+組織・チーム詳細 GET（`social.supporterCount`。仕様は 02_api_design.md）は slug キーで 10 分キャッシュ（`team-detail` / `org-detail`）されるため、所属変更をキャッシュへ反映する仕組みを持つ。
+
+組織のサポーター数は membership ドメインの集計なので、`OrganizationService`（organization のトランザクション）では数えず、トランザクションを持たない `OrganizationDetailFacade` が `OrganizationService` の応答（キャッシュ済みでもよい）を `toBuilder()` で複製し、`MembershipService#countActiveSupporters` の結果を `social` に合成する（D-3T・原則 5。`TeamAffiliationFacade` と同じ形）。このため組織のサポーター数は `org-detail` キャッシュの外にあり、下記の evict を待たずに常に実数を返す。下記の仕組みは組織ではメンバー数など他の所属依存値、チームではサポーター数を含む詳細全体のためにある。
+
+```
+1. 応援（フォロー）・解除・申請承認／一括承認・入退会で MembershipService#join / leave が MembershipChangedEvent を発火
+2. 呼び出し元トランザクションがコミットされた後（AFTER_COMMIT）にだけ、以下が受信する
+   - scope_type = TEAM          → TeamDetailCacheMembershipListener（team ドメイン）
+   - scope_type = ORGANIZATION  → OrganizationDetailCacheMembershipListener（organization ドメイン）
+3. 自ドメインの Repository で scope_id → slug を解決（論理削除済みで引けなければ何もしない。コミット直後の値をレプリカ遅延で古く読まないよう readOnly を付けず primary を読む）
+4. CacheManager 経由で当該 slug の 1 件だけを evict（allEntries は使わない）
+5. 次の詳細 GET が DB の実数を集計し直してキャッシュを温め直す
+```
+
+- ロールバック（一括承認の途中失敗など）では手順 2 が起きないため evict しない。温めたキャッシュは DB と同じ旧値のまま
+- Valkey 障害で evict が失敗しても FailOpen キャッシュ層がログに残して握り、応援・解除の結果には影響しない（TTL で自然収束）
+- 申請（PENDING）・申請取消・却下は所属を変えないので人数は不変。サポーター数は SUPPORTER 所属（退会していないもの）だけを数える
+- キャッシュは認可判定より内側にあり、解除後や別テナントの非所属者がキャッシュ経由で人数を取得することはできない（詳細 GET の可視性判定で 403）
 
 ### ブロックフロー
 
@@ -570,7 +591,7 @@
 
 ```
 1. DELETE /api/v1/organizations/{id}/follow を受付
-2. memberships に当該組織の SUPPORTER アクティブエントリが存在するか確認（scope_type='ORGANIZATION' AND role_kind='SUPPORTER' AND left_at IS NULL） → なければ 404
+2. memberships に当該組織の SUPPORTER アクティブエントリが存在するか確認（scope_type='ORGANIZATION' AND role_kind='SUPPORTER' AND left_at IS NULL） → なければ PENDING の申請（supporter_applications）を確認し、それも無ければ 404（SUPPORTER_007）。MEMBER・ADMIN 等の所属と user_roles には触れない（CMP-261001-0835）
 3. memberships を UPDATE SET left_at=NOW()（F00.5 Phase 2 以降）
 4. audit_logs に ORGANIZATION_MEMBER_REMOVED を記録（metadata: {"reason": "UNFOLLOW"}）
 5. 204 No Content を返す
@@ -643,7 +664,7 @@
 |-----------|------|
 | 401 | 未認証 |
 | 404 | 対象チーム/組織に所属していない |
-| 422 | SUPPORTER が `/me` を呼んだ（`/follow` を案内）|
+| 422 | SUPPORTER が `/me` を呼んだ（`/follow` を案内。エラーコード ROLE_015。所属・user_roles は変更しない）|
 | 422 | 唯一の ADMIN が退会しようとした（先に昇格または削除を促す）|
 
 ---

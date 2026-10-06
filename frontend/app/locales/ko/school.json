@@ -1,6 +1,14 @@
 {
   "school": {
     "attendance": {
+      "forbidden": {
+        "title": "권한이 없습니다",
+        "description": "이 학교 출결 화면을 보거나 조작할 권한이 없습니다. 담임 교사 또는 관리자에게 확인해 주세요."
+      },
+      "permissionError": {
+        "title": "권한 확인에 실패했습니다",
+        "message": "권한을 확인하지 못해 조작과 목록 조회를 중지했습니다. 통신 상태를 확인한 후 다시 시도해 주세요."
+      },
       "status": {
         "ATTENDING": "출석",
         "PARTIAL": "부분 출석",

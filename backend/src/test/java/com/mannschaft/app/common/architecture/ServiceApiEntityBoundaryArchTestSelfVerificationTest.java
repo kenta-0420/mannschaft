@@ -4,6 +4,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.common.architecture.fixtures.D1ServiceApiChildService;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.common.architecture.fixtures.D1ServiceApiInterface;
 import com.mannschaft.app.common.architecture.fixtures.D1ServiceApiParent;
 import com.mannschaft.app.common.architecture.fixtures.DummyD6ExposedEntity;
@@ -15,6 +16,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.stereotype.Service;
 
 /**
@@ -39,15 +41,17 @@ import org.springframework.stereotype.Service;
  * 除外しており、本メタテストの fixture クラスは本番の D-1 API 境界解析へ混入しない。
  */
 @DisplayName("D-1 API境界番人の継承経由Entity露出検出の自己検証（Codex検分P1是正）")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ServiceApiEntityBoundaryArchTestSelfVerificationTest {
 
     private static final String FIXTURES_PACKAGE =
         "com.mannschaft.app.common.architecture.fixtures";
 
-    private static JavaClasses fixtureClasses;
+    private JavaClasses fixtureClasses;
 
     @BeforeAll
-    static void importFixtures() {
+    void importFixtures() {
         fixtureClasses = new ClassFileImporter().importPackages(FIXTURES_PACKAGE);
     }
 
@@ -124,7 +128,7 @@ class ServiceApiEntityBoundaryArchTestSelfVerificationTest {
      * {@code fixtures} パッケージ内の {@code @Service} クラスだけに限定した非凍結ルールとして評価し、
      * 違反の詳細メッセージ一覧を返す（{@link D1ServiceApiChildService} 1 クラストのみが対象）。
      */
-    private static List<String> evaluateChildServiceOnly() {
+    private List<String> evaluateChildServiceOnly() {
         ArchRule rule = classes().that().areAnnotatedWith(Service.class)
             .should(ServiceApiEntityBoundaryArchTest.notExposeEntitiesInReachableApi());
         EvaluationResult result = rule.evaluate(fixtureClasses);
