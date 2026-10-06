@@ -1760,6 +1760,8 @@
     },
     "menu": "Menü",
     "scopeShell": {
+      "memberCount": "{count} Mitglieder",
+      "supporterCount": "{count} Unterstützer",
       "supporter_cancel_confirm_title": "Unterstützung beenden?",
       "supporter_cancel_confirm_body": "Du beendest die Unterstützung von {name}. Bist du sicher?",
       "supporter_cancel_action": "Beenden",

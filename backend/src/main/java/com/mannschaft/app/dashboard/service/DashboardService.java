@@ -93,6 +93,7 @@ public class DashboardService {
     private final AnnouncementFeedQueryRepository announcementFeedQueryRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final PaymentGateService paymentGateService;
+    private final com.mannschaft.app.social.announcement.AnnouncementReadService announcementReadService;
 
     // F22.1 第二波: 厳選ウィジェットサマリ + 統合「要対応」集計 + SWIPE 可視性
     private final ScopeWidgetSummaryService scopeWidgetSummaryService;
@@ -514,14 +515,14 @@ public class DashboardService {
                 .values());
 
         // 結合して createdAt 降順で上位5件
-        List<Map<String, Object>> teamNoticeItems = java.util.stream.Stream.concat(
+        List<GatedAnnouncement> teamNoticeFeeds = java.util.stream.Stream.concat(
                         filterAnnouncementGated(teamAnnouncementFeeds, userId, viewerRole).stream(),
                         filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream())
                 .sorted(java.util.Comparator.comparing(item -> item.feed().getCreatedAt(),
                         java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
                 .limit(DASHBOARD_ITEM_LIMIT)
-                .map(item -> toAnnouncementFeedMap(item.feed(), item.locked()))
                 .toList();
+        List<Map<String, Object>> teamNoticeItems = toAnnouncementFeedMaps(teamNoticeFeeds, userId);
 
         // F02.2.1: 各ウィジェットを viewerRole.isAtLeast(min_role) で判定し、不可視は null にする
         // 管理者（DEPUTY_ADMIN/ADMIN/SYSTEM_ADMIN）は全ウィジェットをバイパスして閲覧可
@@ -632,10 +633,10 @@ public class DashboardService {
         Set<String> orgAllowedVisibilities = resolveVisibilityParam(viewerRole);
         List<AnnouncementFeedEntity> orgAnnouncementFeeds = announcementFeedQueryRepository
                 .findByScope(AnnouncementScopeType.ORGANIZATION, orgId, orgAllowedVisibilities, null, 10);
-        List<Map<String, Object>> orgNoticeItems = filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream()
+        List<GatedAnnouncement> orgNoticeFeeds = filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream()
                 .limit(DASHBOARD_ITEM_LIMIT)
-                .map(item -> toAnnouncementFeedMap(item.feed(), item.locked()))
                 .toList();
+        List<Map<String, Object>> orgNoticeItems = toAnnouncementFeedMaps(orgNoticeFeeds, userId);
 
         // platform_announcements
         List<PlatformAnnouncementEntity> announcements = platformAnnouncementRepository
@@ -969,6 +970,10 @@ public class DashboardService {
     private Map<String, Object> toAnnouncementFeedMap(AnnouncementFeedEntity feed, boolean locked) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", feed.getId());
+        map.put("scope_type", feed.getScopeType().name());
+        map.put("scope_id", feed.getScopeId());
+        map.put("content_preview_available", feed.getSourceType() == com.mannschaft.app.social.announcement.AnnouncementSourceType.BLOG_POST
+                || feed.getSourceType() == com.mannschaft.app.social.announcement.AnnouncementSourceType.BULLETIN_THREAD);
         map.put("title_cache", feed.getTitleCache());
         map.put("priority", feed.getPriority());
         map.put("is_pinned", feed.getIsPinned());
@@ -977,10 +982,22 @@ public class DashboardService {
         map.put("access_state", locked ? "LOCKED" : "FULL");
         if (!locked) {
             map.put("source_type", feed.getSourceType() != null ? feed.getSourceType().name() : null);
+            map.put("source_id", feed.getSourceId());
             map.put("excerpt_cache", feed.getExcerptCache());
             map.put("target_team_ids", feed.getTargetTeamIds());
         }
         return map;
+    }
+
+    private List<Map<String, Object>> toAnnouncementFeedMaps(List<GatedAnnouncement> feeds, Long userId) {
+        if (feeds.isEmpty()) return List.of();
+        Set<Long> readIds = announcementReadService.fetchReadFeedIds(userId,
+                feeds.stream().map(item -> item.feed().getId()).toList());
+        return feeds.stream().map(item -> {
+            Map<String, Object> map = toAnnouncementFeedMap(item.feed(), item.locked());
+            map.put("is_read", readIds.contains(item.feed().getId()));
+            return map;
+        }).toList();
     }
 
     /** Dashboardの告知にも一覧と同じ課金軸を適用する（ゲート判定は1回のバッチ）。 */

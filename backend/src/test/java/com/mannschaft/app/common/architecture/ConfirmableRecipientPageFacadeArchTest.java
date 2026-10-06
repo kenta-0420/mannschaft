@@ -1,11 +1,9 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ol>
  */
 @DisplayName("確認通知 W3b の固有項目の構造固定（SCOPE_MISMATCH 投げ元0・cancel の凍結キー・D-3T ストア行）")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ConfirmableRecipientPageFacadeArchTest {
 
     private static final String PKG = "com.mannschaft.app.notification.confirmable";
@@ -61,14 +60,7 @@ class ConfirmableRecipientPageFacadeArchTest {
     private static final Path D3T_STORE = Paths.get("src", "test", "resources", "archunit_store",
             "296295dd-06cf-4f7b-bf82-315ba12ff501");
 
-    private static JavaClasses classes;
-
-    @BeforeAll
-    static void importClasses() {
-        classes = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses classes = ProductionClasses.get();
 
     @Test
     @DisplayName("対象クラスが実在する（Facade の新設・リネームで番人が空振りしない）")
@@ -136,7 +128,7 @@ class ConfirmableRecipientPageFacadeArchTest {
         }
     }
 
-    private static JavaClass requireClass(String name) {
+    private JavaClass requireClass(String name) {
         assertThat(classes.contain(name)).as(name + " が実在すること").isTrue();
         return classes.get(name);
     }
