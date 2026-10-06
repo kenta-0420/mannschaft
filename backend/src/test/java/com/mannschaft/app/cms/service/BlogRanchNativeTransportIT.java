@@ -20,6 +20,11 @@ import com.mannschaft.app.common.ranchsource.api.SourceOutboxAdminRetryRequest;
 import com.mannschaft.app.common.ranchsource.api.SourceOutboxAdminRetryAck;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogRanchTransportRepository;
+import com.mannschaft.app.cms.repository.BlogRanchOutboxAdminRepository;
+import com.mannschaft.app.ranch.repository.RanchOwnerRepository;
+import com.mannschaft.app.support.test.MembershipTestHelper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import com.mannschaft.app.cms.event.UserBlogSettingsPurgeEventListener;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import java.util.ArrayList;
@@ -33,13 +38,24 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-/** 実Bean/専用MySQLの本体commitと別transport原子性を検証する。HTTP/filter試験ではない。 */
+/**
+ * 実Bean/専用MySQLの本体commitと別transport原子性を検証する。
+ * AC45の追加だけは実HTTPで未参加管理者の保存とowner非作成を固定する回帰防止柵である。
+ */
+@AutoConfigureMockMvc
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @TestPropertySource(properties="ranch.source.blog.queue-capacity=0")
 class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
@@ -57,6 +73,11 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     @Autowired private BlogRanchTransportWriter transport;
     @Autowired private BlogRanchTransportRepository transportRows;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private MockMvc mvc;
+    @Autowired private RanchOwnerRepository ranchOwners;
+    @Autowired private BlogRanchOutboxAdminRepository adminCommands;
+    @Autowired private PlatformTransactionManager transactionManager;
+    @PersistenceContext private EntityManager em;
     @Autowired private com.fasterxml.jackson.databind.ObjectMapper mapper;
     private Long owner;
     private final List<Long> ownPosts=new ArrayList<>();
@@ -76,6 +97,7 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
         users.deleteById(owner);
         for(Long actor:ownActors) {
             jdbc.update("DELETE FROM blog_ranch_admin_commands WHERE actor_user_id=?",actor);
+            jdbc.update("DELETE FROM user_roles WHERE user_id=?",actor);
             users.deleteById(actor);
         }
     }
@@ -259,6 +281,45 @@ class BlogRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
                 new SourceOutboxAdminRetryRequest("OTHER_REASON"),now.plusSeconds(20))))
                 .isInstanceOf(BusinessException.class).extracting("errorCode.code").isEqualTo("SOURCEOUTBOX_003");
         assertThat(count("blog_ranch_outboxes")).isZero();
+    }
+
+    @Test
+    void 未参加の現役管理者が別本人の配送をHTTP再予約しても個人ownerを作らない() throws Exception {
+        var transaction = new TransactionTemplate(transactionManager);
+        Long administrator = transaction.execute(ignored -> {
+            Long actor = users.saveAndFlush(BlogRanchAdminTestFixture.user()).getId();
+            ownActors.add(actor);
+            MembershipTestHelper.insertUserRole(em, actor, "SYSTEM_ADMIN", null, null);
+            return actor;
+        });
+        assertThat(administrator).isNotNull().isNotEqualTo(owner);
+        assertThat(ranchOwners.findByUserId(administrator)).isEmpty();
+        var nativeResult = publish("未参加管理者の再処理対象fixture本文");
+        assertThat(receive(nativeResult.capture())).isTrue();
+        UUID event = nativeResult.capture().payload().eventId();
+        UUID key = UUID.randomUUID();
+        var reason = new SourceOutboxAdminRetryRequest("OPERATOR_RETRY");
+
+        var result = mvc.perform(post("/api/v1/system-admin/ranch/outboxes/BLOG_FIRST_PUBLISH/{eventId}/retry", event)
+                        .with(user(administrator.toString()).roles("SYSTEM_ADMIN"))
+                        .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsBytes(reason)))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk()).andReturn();
+        var body = mapper.readTree(result.getResponse().getContentAsByteArray()).path("data");
+        SourceOutboxAdminRetryAck ack = mapper.treeToValue(body, SourceOutboxAdminRetryAck.class);
+        assertThat(ack.eventId()).isEqualTo(event);
+        assertThat(ack.sourceType()).isEqualTo(com.mannschaft.app.ranch.reward.RanchRewardSourceType.BLOG_FIRST_PUBLISH);
+        assertThat(ack.disposition()).isEqualTo(SourceOutboxAdminRetryAck.Disposition.RETRY_SCHEDULED);
+        assertThat(ack.completedAt()).isNotNull();
+        var saved = adminCommands.command(administrator, key);
+        assertThat(saved).isNotNull();
+        assertThat(saved.hash()).hasSize(32);
+        SourceOutboxAdminRetryAck storedAck = mapper.readValue(saved.result(), SourceOutboxAdminRetryAck.class);
+        assertThat(storedAck).isEqualTo(ack);
+        assertThat(status(event)).isEqualTo("RETRY");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM blog_ranch_admin_commands WHERE actor_user_id=? AND idempotency_key=? AND id=?",
+                Long.class, administrator, idBytes(key), idBytes(ack.commandId()))).isEqualTo(1L);
+        assertThat(ranchOwners.findByUserId(administrator)).isEmpty();
     }
 
     @Test void adminRetryDoesNotStealCurrentLeaseAndAckedEventRemainsTerminal() {
