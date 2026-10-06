@@ -333,8 +333,11 @@ class RanchPurgeServiceIT extends AbstractMySqlIntegrationTest {
     }
 
     private void populateBoth() throws Exception {
+        // 消去専用の全表fixtureを追加する前に、両本人の通常参加を完了する。
         for (Long userId : new Long[] {me, other}) {
             enroll(userId);
+        }
+        for (Long userId : new Long[] {me, other}) {
             masterRows.add(RanchGdprFixture.populate(jdbc, userId,
                     owners.findByUserId(userId).orElseThrow().getId(),
                     dinosaurs.findByUserId(userId).orElseThrow().getId()));
