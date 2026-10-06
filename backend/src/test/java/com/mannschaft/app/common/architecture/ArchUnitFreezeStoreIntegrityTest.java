@@ -803,8 +803,12 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 1 行は tx 内に残すので残す）。計 33 行（すべて認可由来の MembershipRepository / RoleRepository / UserRoleRepository /
      * UserCareLinkRepository 等への到達）。ClassHomeroomService・DisclosureService・AttendanceRequirementService は
      * 本 PR の対象外で残す。main のストアとの差分は「追加 0・削除 33（上記のキーのみ）」。{@code 7409 → 7376}。</p>
+     *
+     * <p>F01.2.1 6-A（組織グループ宛て告知）: {@code AnnouncementBroadcastService.validateTargetTeamIds} を廃止し、
+     * 宛先の検証・展開を tx の外の {@code BroadcastAudienceResolver} へ出したため、その入口の 1 行
+     * （→ UserRoleRepository）が解消。追加 0・削除 1。{@code 7376 → 7375}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7376;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7375;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
