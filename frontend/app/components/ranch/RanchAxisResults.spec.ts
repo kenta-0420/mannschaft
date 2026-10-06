@@ -4,6 +4,10 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import jaMessages from '~/locales/ja/ranch.json'
 import enMessages from '~/locales/en/ranch.json'
+import zhMessages from '~/locales/zh/ranch.json'
+import koMessages from '~/locales/ko/ranch.json'
+import esMessages from '~/locales/es/ranch.json'
+import deMessages from '~/locales/de/ranch.json'
 import type { DiagnosisResult } from '~/types/ranch'
 import RanchAxisResults from './RanchAxisResults.vue'
 
@@ -20,7 +24,7 @@ function savedResult(): DiagnosisResult {
   }
 }
 function render(result: DiagnosisResult, locale: 'ja' | 'en' = 'ja') {
-  return mount(RanchAxisResults, { props: { result }, global: { plugins: [createI18n({ legacy: false, locale, messages: { ja: jaMessages, en: enMessages } })] } })
+  return mount(RanchAxisResults, { props: { result }, global: { plugins: [createI18n({ legacy: false, locale, messages: { ja: jaMessages, en: enMessages, zh: zhMessages, ko: koMessages, es: esMessages, de: deMessages } })] } })
 }
 describe('診断結果の本人傾向', () => {
   it('逆順のMapとスコア0でも軸キーの選択側を示し、6軸の順を維持する', () => {
