@@ -4,8 +4,8 @@ import { flushPromises } from '@vue/test-utils'
 import { ofetch } from 'ofetch'
 import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
-import { useNuxtApp } from '#app'
-import type { useRoute } from '#app'
+import { useNuxtApp, useRouter } from '#app'
+import { useAuthStore } from '~/stores/useAuthStore'
 import { useTeamStore } from '~/stores/useTeamStore'
 import DashboardErrorState from '~/components/DashboardErrorState.vue'
 import type { ShiftScheduleResponse } from '~/types/shift'
@@ -30,12 +30,16 @@ const teamsPath = '/api/v1/me/teams'
 let failedPath: string | null
 let failure: unknown
 let role: string
+let removeDetailRoute: (() => void) | undefined
 
 beforeEach(() => {
   failedPath = null
   failure = undefined
   role = 'ADMIN'
   useTeamStore(useNuxtApp().$pinia).$reset()
+  const authStore = useAuthStore(useNuxtApp().$pinia)
+  authStore.$reset()
+  authStore.$patch({ user: { id: 1, email: 'fixture@example.test', fullName: '試験利用者', profileImageUrl: null } })
   api.mockReset().mockImplementation(async (path: string) => {
     if (path === failedPath) throw failure
     if (path === teamsPath) {
@@ -48,18 +52,26 @@ beforeEach(() => {
   // エラー報告の外部POSTも外へ送らない。表示ロジックは実useErrorHandlerを通す。
   vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({}))
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  removeDetailRoute?.()
+  removeDetailRoute = undefined
+  useAuthStore(useNuxtApp().$pinia).$reset()
+  useTeamStore(useNuxtApp().$pinia).$reset()
+  vi.unstubAllGlobals()
+})
 
 async function mountPage() {
-  const detailRoute = {
-    path: '/shift/4',
-    params: { id: '4' },
-  } satisfies Pick<ReturnType<typeof useRoute>, 'path' | 'params'>
+  const router = useRouter()
+  const routeName = 'shift-detail-error-fixture'
+  expect(router.hasRoute(routeName)).toBe(false)
+  removeDetailRoute = router.addRoute({ name: routeName, path: '/shift/:id', component: Page })
+  expect(router.resolve({ name: routeName, params: { id: '4' } }).params.id).toBe('4')
   const wrapper = await mountSuspended(Page, {
-    route: detailRoute,
+    route: { name: routeName, params: { id: '4' } },
     global: { plugins: [ToastService, ConfirmationService] },
   })
   await flushPromises()
+  expect(wrapper.vm.$route.params.id).toBe('4')
   return wrapper
 }
 function calls(path: string): number {
