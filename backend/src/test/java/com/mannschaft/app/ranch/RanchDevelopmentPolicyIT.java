@@ -458,8 +458,10 @@ class RanchDevelopmentPolicyIT extends AbstractMySqlIntegrationTest {
         try {
             new TransactionTemplate(transactionManager).executeWithoutResult(ignored -> {
                 owners.lockByUserId(recipient).orElseThrow();
+                Long ownerConnectionId = jdbc.queryForObject("SELECT CONNECTION_ID()", Long.class);
+                assertThat(ownerConnectionId).isNotNull().isPositive();
                 future.set(executor.submit(() -> orchestrator.drainOnce()));
-                awaitOwnOwnerWait();
+                awaitOwnOwnerWait(ownerConnectionId);
                 disableFixture();
             });
             var summary = future.get().get(20, TimeUnit.SECONDS);
@@ -490,17 +492,19 @@ class RanchDevelopmentPolicyIT extends AbstractMySqlIntegrationTest {
         }
     }
 
-    private void awaitOwnOwnerWait() {
+    private void awaitOwnOwnerWait(long ownerConnectionId) {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        // 本人owner一行を保持する親TXの接続へ結び、LOCK_DATAの表示形式に依存しない。
         try (var connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), "root", MYSQL.getPassword());
              var query = connection.prepareStatement("SELECT COUNT(*) FROM performance_schema.data_lock_waits w "
-                     + "JOIN performance_schema.data_locks l ON l.ENGINE_LOCK_ID=w.REQUESTING_ENGINE_LOCK_ID "
-                     + "WHERE l.OBJECT_SCHEMA=? AND l.OBJECT_NAME='ranch_owners' AND (l.LOCK_DATA=? OR l.LOCK_DATA LIKE ?)")) {
+                     + "JOIN performance_schema.data_locks l ON l.ENGINE=w.ENGINE AND l.ENGINE_LOCK_ID=w.REQUESTING_ENGINE_LOCK_ID "
+                     + "JOIN performance_schema.threads blocker ON blocker.THREAD_ID=w.BLOCKING_THREAD_ID "
+                     + "WHERE l.OBJECT_SCHEMA=? AND l.OBJECT_NAME='ranch_owners' AND l.LOCK_TYPE='RECORD' "
+                     + "AND blocker.PROCESSLIST_ID=?")) {
             query.setString(1, MYSQL.getDatabaseName());
-            query.setString(2, recipient.toString());
-            query.setString(3, recipient + ",%");
+            query.setLong(2, ownerConnectionId);
             while (System.nanoTime() < deadline) {
-                try (var rows = query.executeQuery()) { if (rows.next() && rows.getLong(1) == 1) return; }
+                try (var rows = query.executeQuery()) { if (rows.next() && rows.getLong(1) > 0) return; }
                 Thread.sleep(25);
             }
             throw new AssertionError("実consumerの本人owner行待機へ到達しませんでした");
