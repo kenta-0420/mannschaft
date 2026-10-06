@@ -92,7 +92,7 @@ describe('診断結果GETと実バックエンド契約', () => {
     })
     const scope = effectScope()
     scopes.push(scope)
-    const diagnosis = useNuxtApp().runWithContext(() => scope.run(() => useDiagnosisApi()))
+    const diagnosis = await useNuxtApp().runWithContext(() => scope.run(() => useDiagnosisApi()))
     if (!diagnosis) throw new Error('SYNTHETIC_SCOPE_MISSING')
     expect((await diagnosis.results('DIAGNOSIS', 'opaque-cursor')).data[0]?.id).toBe(resultId)
     expect((await diagnosis.result(resultId)).id).toBe(resultId)
