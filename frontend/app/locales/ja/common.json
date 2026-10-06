@@ -1757,6 +1757,8 @@
     },
     "menu": "メニュー",
     "scopeShell": {
+      "memberCount": "メンバー {count}人",
+      "supporterCount": "サポーター {count}人",
       "supporter_cancel_confirm_title": "サポーターをやめますか？",
       "supporter_cancel_confirm_body": "{name}のサポーターをやめます。よろしいですか？",
       "supporter_cancel_action": "やめる",
