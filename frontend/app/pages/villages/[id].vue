@@ -55,6 +55,7 @@ const { t } = useI18n()
 const villageApi = useVillageApi()
 const authStore = useAuthStore()
 const { handleApiError } = useErrorHandler()
+const { warn } = useNotification()
 
 const villageId = computed<string>(() => String(route.params.id))
 
@@ -216,10 +217,13 @@ async function onJoin() {
   const myUserId = currentUserId.value
   if (!myUserId) return
   try {
-    await villageApi.joinVillage(villageId.value, {
+    const joinResponse = await villageApi.joinVillage(villageId.value, {
       subjectType: 'USER',
       subjectId: myUserId,
     })
+    if (joinResponse.participationWarn === true) {
+      warn(t('village.warn.participationLimit'))
+    }
     await refresh()
   }
   catch (error) {
