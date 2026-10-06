@@ -18,12 +18,19 @@ public interface RanchRewardPolicyRepository extends JpaRepository<RanchRewardPo
     Optional<RanchRewardPolicyEntity> findTopByOrderByVersionNumberDesc();
     boolean existsByEffectiveAt(Instant effectiveAt);
 
-    /** 初回DEV公開のcontrol lock下だけで使用する、四表の有無判定。行や本文は返さない。 */
+    /**
+     * 初回DEV公開のcontrol lock下だけで使用する、四表の有無判定。行や本文は返さない。
+     * MySQLのnative論理式は数値scalarを返すため、0/1を明示的にbooleanへ変換する。
+     */
+    default boolean isDevelopmentStoreEmpty() {
+        return developmentStoreEmptyScalar().longValue() == 1L;
+    }
+
     @Query(value = "SELECT NOT EXISTS (SELECT 1 FROM ranch_reward_policies) "
             + "AND NOT EXISTS (SELECT 1 FROM ranch_week_budgets) "
             + "AND NOT EXISTS (SELECT 1 FROM ranch_reward_decisions) "
             + "AND NOT EXISTS (SELECT 1 FROM ranch_point_ledger WHERE entry_kind = 'REWARD')", nativeQuery = true)
-    boolean isDevelopmentStoreEmpty();
+    Number developmentStoreEmptyScalar();
 
     @Query("SELECT p FROM RanchRewardPolicyEntity p WHERE p.effectiveAt <= :occurredAt "
             + "AND p.publishedAt <= :occurredAt ORDER BY p.effectiveAt DESC, p.versionNumber DESC")
