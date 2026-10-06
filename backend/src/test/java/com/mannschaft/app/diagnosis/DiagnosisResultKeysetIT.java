@@ -63,7 +63,7 @@ class DiagnosisResultKeysetIT extends AbstractMySqlIntegrationTest {
     }
 
     private List<UUID> seed(Long userId, int count) throws Exception {
-        // Same positive prefix makes the binary MySQL ID order explicit without signed UUID ambiguity.
+        // 同じ正の上位ビットに揃え、符号付きUUIDの差を避けてMySQLのバイナリID順を明示する。
         long prefix = UUID.randomUUID().getMostSignificantBits() & Long.MAX_VALUE;
         List<UUID> ids = new ArrayList<>();
         for (int index = 0; index < count; index++) {
@@ -113,7 +113,7 @@ class DiagnosisResultKeysetIT extends AbstractMySqlIntegrationTest {
             for (int limit : new int[]{1, 100}) {
                 List<UUID> seen = new ArrayList<>();
                 String cursor = null;
-                // One empty read at cardinality0; finite guard detects a cursor that never terminates.
+                // 0件でも一度読み、終端しないcursorは有限回数の検査で検出する。
                 int pages = Math.max(1, (count + limit - 1) / limit);
                 for (int pageIndex = 0; pageIndex < pages; pageIndex++) {
                     var page = reader.list(owner, null, cursor, limit);

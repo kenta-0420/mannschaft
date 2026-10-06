@@ -65,7 +65,7 @@ public class DiagnosisResultCursorCodec {
     }
 
     private static byte methodTag(DiagnosisMethod method) {
-        if (method == null) return 0; // all is explicitly bound, not inferred from a result row.
+        if (method == null) return 0; // 全方式も明示して束縛し、結果行の方式から推測しない。
         return switch (method) {
             case DIAGNOSIS -> 1;
             case BIRTH_STYLE -> 2;
