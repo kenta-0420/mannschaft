@@ -259,7 +259,7 @@ class BoardHandoverPackPdfSizeFlywaySchemaIT {
                 });
                 assertThat(failure).isNotNull();
                 SQLException sqlFailure = findSqlException(failure);
-                assertThat(sqlFailure).as("実MySQLの範囲外エラー").isNotNull();
+                assertThat((Throwable) sqlFailure).as("実MySQLの範囲外エラー").isNotNull();
                 assertThat(sqlFailure.getErrorCode()).isEqualTo(1264);
                 assertThat(sqlFailure.getMessage()).contains("pdf_size");
             } finally {
