@@ -1,5 +1,5 @@
 import type { ApiResponse } from '~/types/api'
-import type { AssignmentRequest, CursorPage, FeedingResult, HatchResponse, InteractionResult, OwnerSummary, RanchInventory, RanchLegacySyncResult, RanchRecord, RanchSettings, RanchSlot, RanchState, ShopItem } from '~/types/ranch'
+import type { AssignmentRequest, AssignmentResult, CursorPage, FeedingResult, HatchResponse, InteractionResult, OwnerSummary, RanchInventory, RanchLegacySyncResult, RanchRecord, RanchSettings, RanchSlot, RanchState, ShopItem } from '~/types/ranch'
 import type { RanchCommandSnapshot } from './useRanchCommand'
 export function useRanchApi() {
  const api = useApi()
@@ -22,7 +22,7 @@ export function useRanchApi() {
   start: () => mutate<RanchState>(base, 'POST', {}),
   settings: (body: Omit<RanchSettings,'isVisible' | 'viewMode'>) => mutate<RanchSettings>(`${base}/settings`, 'PUT', body),
   participation: (action: 'pause' | 'resume', version: string) => mutate<OwnerSummary>(`${base}/${action}`, 'POST', { version }),
-  assignment: (body: AssignmentRequest) => mutate<RanchState>(`${base}/assignment`, 'PUT', body),
+  assignment: (body: AssignmentRequest) => mutate<AssignmentResult>(`${base}/assignment`, 'PUT', body),
   hatch: (version: string, name: string) => mutate<HatchResponse>(`${base}/hatch`, 'POST', { version, name, nameConfirmed: true }),
   feed: (version: string) => mutate<FeedingResult>(`${base}/feeding`, 'POST', { version }),
   touch: (version: string) => mutate<InteractionResult>(`${base}/interactions`, 'POST', { kind: 'TOUCH', version }),

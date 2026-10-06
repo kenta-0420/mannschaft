@@ -1,4 +1,6 @@
 // 契約追補準拠の暫定手動型。OpenAPI統合時に生成型へ移行する。
+import type { components } from '~/types/generated'
+export type AssignmentResult = components['schemas']['AssignmentResult']
 export type Decimal = string
 export type RanchStage = 'EGG' | 'BABY' | 'JUVENILE' | 'ADULT'
 export type RenderStyle = 'PIXEL' | 'PAINT_2D'
