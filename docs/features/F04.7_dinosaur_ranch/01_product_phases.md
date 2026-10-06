@@ -94,3 +94,8 @@ Blog公開経路/Timeline origin/代理出欠は [02](02_rewards_data.md) の契
 PIXELは96×96論理ドット、PAINT_2Dと同じ個体・段階・状態で切替する。全64外見・孵化後3成長段階・両style・基本反応/静止fallbackの承認coverageは未完成。実デザインと対応表を揃え承認するまで本番公開gateはOFF。開発S01〜S16/V1〜V4や歩行比較試作は完成素材として登録しない。歩行はPhase 2以降。
 
 ログイン付与なし。activity0/points0/チーム未所属でも無料careだけで成体へ到達する。週care枠は同日利用可、UTC月曜起点。全源個人points週capは所属数によらず同じで、永久装飾専用。beta特典は独立保持。無料給餌/ふれあいの非減衰愛着は仕草・言葉で表現し公開数値ゲージにしない。開発加算unitはUTC日＋FEED/TOUCH各初回、別key/二tab/連打追加0。数値・閾値はversioned開発fixtureで本番自動採用しない。
+
+
+### 隔離開発の報酬検証候補
+
+隔離DEV reward QA は正式承認と別経路。専用 ranch-isolated と明示 fixture flag だけで既存四活動源の実 worker/ledger を検証する。正式質問・素材・mapping の approval は変更しない。 実測 bounds と実 UI/worker の検証は未実行。
