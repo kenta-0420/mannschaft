@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.entity;
 
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import com.mannschaft.app.shift.ChangeRequestStatus;
 import com.mannschaft.app.shift.ChangeRequestType;
 import jakarta.persistence.Column;
@@ -19,6 +20,7 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcType;
 import java.time.LocalDateTime;
 
 /**
@@ -83,7 +85,8 @@ public class ShiftChangeRequestEntity {
 
     /** 楽観ロック用バージョン */
     @Version
-    @Column(nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(nullable = false, columnDefinition = "bigint")
     @Builder.Default
     private Long version = 0L;
 

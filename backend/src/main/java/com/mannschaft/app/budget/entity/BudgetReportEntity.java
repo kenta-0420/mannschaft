@@ -3,6 +3,7 @@ package com.mannschaft.app.budget.entity;
 import com.mannschaft.app.budget.BudgetReportStatus;
 import com.mannschaft.app.budget.BudgetReportType;
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,6 +15,7 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -49,6 +51,8 @@ public class BudgetReportEntity extends BaseEntity {
     @Column(length = 500)
     private String fileKey;
 
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(columnDefinition = "bigint")
     private Long fileSize;
 
     @Enumerated(EnumType.STRING)

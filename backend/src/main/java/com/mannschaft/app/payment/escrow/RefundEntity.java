@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment.escrow;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
@@ -42,7 +44,8 @@ public class RefundEntity extends UuidV7Entity {
     @Column(name = "stripe_refund_id", nullable = false, length = 32)
     private String stripeRefundId;
 
-    @Column(name = "amount", nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(name = "amount", nullable = false, columnDefinition = "bigint")
     private Long amount;
 
     @JdbcTypeCode(SqlTypes.CHAR)

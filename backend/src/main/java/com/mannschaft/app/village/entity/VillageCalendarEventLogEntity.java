@@ -1,6 +1,7 @@
 package com.mannschaft.app.village.entity;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.persistence.SmallIntIntegerJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
@@ -14,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcType;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -42,7 +44,8 @@ public class VillageCalendarEventLogEntity extends UuidV7Entity {
     private UUID calendarEventId;
 
     /** 記録対象の西暦年（例 2026）。MySQL 予約語のためバッククォート必須。 */
-    @Column(name = "`year`", nullable = false)
+    @JdbcType(SmallIntIntegerJdbcType.class)
+    @Column(name = "`year`", nullable = false, columnDefinition = "integer")
     private Integer year;
 
     /** 写真（R2キー・MediaUrlResolver で署名URL化） */

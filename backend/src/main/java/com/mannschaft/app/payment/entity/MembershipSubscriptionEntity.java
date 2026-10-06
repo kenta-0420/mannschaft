@@ -125,7 +125,8 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
      * 手数料モデルの世代。1 = 旧（額面のみ請求＝折半が効いていない既存契約・バックフィル対象）、
      * 2 = 新（額面＋支払側折半を 2 明細で請求）。新規 subscribe は必ず 2 で起票する。
      */
-    @Column(name = "fee_model_version", nullable = false)
+    @JdbcType(TinyIntShortJdbcType.class)
+    @Column(name = "fee_model_version", nullable = false, columnDefinition = "smallint")
     @Builder.Default
     private Short feeModelVersion = FEE_MODEL_VERSION_LEGACY;
 

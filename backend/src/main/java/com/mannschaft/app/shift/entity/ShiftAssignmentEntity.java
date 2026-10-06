@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.entity;
 
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import com.mannschaft.app.shift.ShiftAssignmentStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -18,6 +19,7 @@ import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
@@ -76,7 +78,8 @@ public class ShiftAssignmentEntity {
     private LocalDateTime updatedAt;
 
     @Version
-    @Column(nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(nullable = false, columnDefinition = "bigint")
     @Builder.Default
     private Long version = 0L;
 

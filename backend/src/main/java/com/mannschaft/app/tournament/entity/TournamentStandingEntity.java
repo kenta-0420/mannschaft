@@ -1,5 +1,6 @@
 package com.mannschaft.app.tournament.entity;
 
+import com.mannschaft.app.common.persistence.SmallIntIntegerJdbcType;
 import com.mannschaft.app.tournament.PromotionZone;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +16,7 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcType;
 import java.time.LocalDateTime;
 
 /**
@@ -37,7 +39,8 @@ public class TournamentStandingEntity {
     @Column(nullable = false)
     private Long participantId;
 
-    @Column(name = "`rank`", nullable = false)
+    @JdbcType(SmallIntIntegerJdbcType.class)
+    @Column(name = "`rank`", nullable = false, columnDefinition = "integer")
     private Integer rank;
 
     @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")

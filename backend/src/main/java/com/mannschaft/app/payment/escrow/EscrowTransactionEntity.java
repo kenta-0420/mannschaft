@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment.escrow;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import com.mannschaft.app.payment.connect.ScopeKind;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
@@ -93,18 +95,21 @@ public class EscrowTransactionEntity extends UuidV7Entity {
     private String stripeIdempotencyKey;
 
     /** 額面（受取側が設定した謝礼/会費の元値・円整数）。amount = faceAmount + round(faceAmount × 0.025)。 */
-    @Column(name = "face_amount", nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(name = "face_amount", nullable = false, columnDefinition = "bigint")
     private Long faceAmount;
 
     /** 課金額（支払者への実請求額＝額面+2.5%上乗せ・円整数）。Stripe へ渡す金額。 */
-    @Column(name = "amount", nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(name = "amount", nullable = false, columnDefinition = "bigint")
     private Long amount;
 
     @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
     private String currency;
 
-    @Column(name = "application_fee_amount", nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(name = "application_fee_amount", nullable = false, columnDefinition = "bigint")
     private Long applicationFeeAmount;
 
     /**
