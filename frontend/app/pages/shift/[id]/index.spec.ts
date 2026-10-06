@@ -4,7 +4,7 @@ import { flushPromises } from '@vue/test-utils'
 import { ofetch } from 'ofetch'
 import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
-import { useNuxtApp } from '#app'
+import { useNuxtApp, useRoute } from '#app'
 import { useTeamStore } from '~/stores/useTeamStore'
 import DashboardErrorState from '~/components/DashboardErrorState.vue'
 import type { ShiftScheduleResponse } from '~/types/shift'
@@ -50,8 +50,12 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 async function mountPage() {
+  const detailRoute = {
+    path: '/shift/4',
+    params: { id: '4' },
+  } satisfies Pick<ReturnType<typeof useRoute>, 'path' | 'params'>
   const wrapper = await mountSuspended(Page, {
-    route: { path: '/shift/4', params: { id: '4' } },
+    route: detailRoute,
     global: { plugins: [ToastService, ConfirmationService] },
   })
   await flushPromises()
