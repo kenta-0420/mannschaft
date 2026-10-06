@@ -9,8 +9,8 @@ import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.domain.JavaParameterizedType;
 import com.tngtech.archunit.core.domain.JavaType;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.repository.Query;
 
@@ -51,6 +51,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>検出器の自己検証: 違反の検体（{@link SingleParentViolationFixture}）に同じ検出関数を当て、
  * 3種とも検出できる（偽陰性でない）ことを毎回確かめる。検体はテスト側にあり、本番のスキャン対象に入らない。</p>
  */
+@Tag(ArchUnitTestTag.ARCHUNIT)
 @DisplayName("F01.2.1 §9.4 単一親前提の番人（TeamOrgSingleParentAssumptionGuardTest）")
 class TeamOrgSingleParentAssumptionGuardTest {
 
@@ -432,9 +433,7 @@ class TeamOrgSingleParentAssumptionGuardTest {
     }
 
     private static JavaClasses productionClasses() {
-        return new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
+        return ProductionClasses.get();
     }
 
     private static JavaClasses specimenClasses() {
