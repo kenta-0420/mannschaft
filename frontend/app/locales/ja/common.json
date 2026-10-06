@@ -2794,5 +2794,24 @@
       "SUPPORTERS_AND_ABOVE": "サポーター以上",
       "MEMBERS_AND_ABOVE": "メンバー以上"
     }
+  },
+  "globalSearch": {
+    "title": "検索",
+    "placeholder": "キーワードで検索（2文字以上）",
+    "all": "すべて",
+    "empty": "検索結果がありません",
+    "resultId": "ID {id}",
+    "showing": "全{total}件中{shown}件を表示",
+    "kinds": {
+      "schedules": "予定",
+      "events": "イベント",
+      "reservations": "予約",
+      "shifts": "シフト",
+      "safetyChecks": "安否確認",
+      "queues": "順番待ち",
+      "teams": "チーム",
+      "organizations": "組織",
+      "users": "ユーザー"
+    }
   }
 }

@@ -70,7 +70,7 @@ public interface SafetyCheckRepository extends JpaRepository<SafetyCheckEntity, 
                 OR (sc.scopeType = com.mannschaft.app.safetycheck.SafetyCheckScopeType.ORGANIZATION
                     AND sc.scopeId IN :orgIds))
             """)
-    java.util.List<SafetyCheckEntity> searchByKeyword(@Param("keyword") String keyword,
+    Page<SafetyCheckEntity> searchByKeyword(@Param("keyword") String keyword,
                                                       @Param("teamIds") java.util.Collection<Long> teamIds,
                                                       @Param("orgIds") java.util.Collection<Long> orgIds,
                                                       Pageable pageable);

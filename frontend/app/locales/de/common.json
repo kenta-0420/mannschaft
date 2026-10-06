@@ -2797,5 +2797,24 @@
       "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
       "MEMBERS_AND_ABOVE": "Mitglieder und höher"
     }
+  },
+  "globalSearch": {
+    "title": "Suche",
+    "placeholder": "Nach Stichwort suchen (mindestens 2 Zeichen)",
+    "all": "Alle",
+    "empty": "Keine Suchergebnisse",
+    "resultId": "ID {id}",
+    "showing": "{shown} von {total} angezeigt",
+    "kinds": {
+      "schedules": "Termine",
+      "events": "Veranstaltungen",
+      "reservations": "Reservierungen",
+      "shifts": "Schichten",
+      "safetyChecks": "Sicherheitsprüfungen",
+      "queues": "Warteschlangen",
+      "teams": "Teams",
+      "organizations": "Organisationen",
+      "users": "Benutzer"
+    }
   }
 }

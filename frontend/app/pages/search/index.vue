@@ -1,56 +1,43 @@
 <script setup lang="ts">
-import type { SearchResult, ContentType, SearchResponse } from '~/types/search'
+import type { GlobalSearchType, GlobalSearchResult, SearchResponse } from '~/types/search'
 
 definePageMeta({ middleware: 'auth' })
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const searchApi = useSearchApi()
-const notification = useNotification()
-
+const errorHandler = useErrorHandler()
 const query = ref((route.query.q as string) ?? '')
-const results = ref<SearchResult[]>([])
-const typeCounts = ref<Record<string, number>>({})
-const timedOutTypes = ref<ContentType[]>([])
-const activeType = ref<ContentType | 'ALL'>('ALL')
+const response = ref<SearchResponse['data'] | null>(null)
+const activeType = ref<GlobalSearchType | 'ALL'>('ALL')
 const loading = ref(false)
-const totalPages = ref(0)
-const currentPage = ref(0)
-const zeroHelp = ref<{ didYouMean: string | null; broaderQuery: string | null } | null>(null)
+const error = ref<unknown>(null)
 
-async function performSearch(page = 0) {
-  if (!query.value || query.value.length < 2) return
+const kinds: GlobalSearchType[] = ['schedules', 'events', 'reservations', 'shifts', 'safetyChecks', 'queues', 'teams', 'organizations', 'users']
+const groups = computed(() => kinds.filter(kind => activeType.value === 'ALL' || activeType.value === kind))
+const totalCount = computed(() => Object.values(response.value?.counts ?? {}).reduce((sum, count) => sum + count, 0))
+const shownCount = computed(() => groups.value.reduce((sum, kind) => sum + (response.value?.results[kind].length ?? 0), 0))
+
+async function performSearch() {
+  if (query.value.length < 2) return
   loading.value = true
+  error.value = null
   try {
-    const params: Parameters<typeof searchApi.search>[0] = { q: query.value, page, perPage: 20 }
-    if (activeType.value !== 'ALL') params.type = activeType.value
-    const res: SearchResponse = await searchApi.search(params)
-    results.value = res.data.results
-    typeCounts.value = res.data.typeCounts
-    timedOutTypes.value = res.data.timedOutTypes
-    zeroHelp.value = res.data.zeroResultsHelp ?? null
-    totalPages.value = res.meta.totalPages ?? 0
-    currentPage.value = res.meta.page
-    router.replace({ query: { q: query.value } })
-  } catch {
-    notification.error('検索に失敗しました')
+    response.value = (await searchApi.search({ q: query.value })).data
+    await router.replace({ query: { q: query.value } })
+  } catch (failure) {
+    error.value = failure
+    errorHandler.handleApiError(failure, 'global-search')
   } finally {
     loading.value = false
   }
 }
 
-function handleTypeSelect(type: ContentType | 'ALL') {
-  activeType.value = type
-  performSearch()
-}
-
-function handlePageChange(event: { page: number }) {
-  performSearch(event.page)
-}
-
-function useSuggestion(text: string) {
-  query.value = text
-  performSearch()
+function resultLabel(result: GlobalSearchResult): string {
+  return result.title || result.purpose || result.name || result.fullName
+    || [result.ticketNumber, result.guestName].filter(Boolean).join(' ')
+    || t('globalSearch.resultId', { id: result.id })
 }
 
 onMounted(() => {
@@ -60,76 +47,53 @@ onMounted(() => {
 
 <template>
   <div class="mx-auto max-w-4xl">
-    <h1 class="mb-6 text-2xl font-bold">検索</h1>
-
-    <div class="mb-6 flex gap-2">
+    <PageHeader :title="t('globalSearch.title')" />
+    <form class="mb-6 flex gap-2" @submit.prevent="performSearch">
       <InputText
         v-model="query"
-        class="flex-1"
-        placeholder="キーワードで検索（2文字以上）"
-        @keyup.enter="performSearch()"
+        class="min-h-11 min-w-0 flex-1 text-base"
+        :placeholder="t('globalSearch.placeholder')"
+        :aria-label="t('globalSearch.title')"
       />
-      <Button label="検索" icon="pi pi-search" :loading="loading" @click="performSearch()" />
-    </div>
-
-    <div v-if="Object.keys(typeCounts).length > 0" class="mb-4">
-      <SearchFilterTabs
-        :type-counts="typeCounts"
-        :active-type="activeType"
-        @select="handleTypeSelect"
-      />
-    </div>
-
-    <div
-      v-if="timedOutTypes.length > 0"
-      class="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200"
-    >
-      <i class="pi pi-exclamation-triangle mr-1" />
-      一部の検索がタイムアウトしました: {{ timedOutTypes.join(', ') }}
-    </div>
+      <Button type="submit" :label="t('button.search')" icon="pi pi-search" :loading="loading" class="min-h-11" />
+    </form>
 
     <PageLoading v-if="loading" />
-
-    <div v-else-if="results.length === 0 && query.length >= 2" class="py-12 text-center">
-      <i class="pi pi-search mb-2 text-4xl text-surface-400" />
-      <p class="text-surface-500">検索結果がありません</p>
-      <div v-if="zeroHelp" class="mt-4 space-y-2">
-        <p v-if="zeroHelp.didYouMean" class="text-sm">
-          もしかして:
-          <button
-            class="text-primary hover:underline"
-            @click="useSuggestion(zeroHelp!.didYouMean!)"
-          >
-            {{ zeroHelp.didYouMean }}
-          </button>
-        </p>
-        <p v-if="zeroHelp.broaderQuery" class="text-sm">
-          より広い検索:
-          <button
-            class="text-primary hover:underline"
-            @click="useSuggestion(zeroHelp!.broaderQuery!)"
-          >
-            {{ zeroHelp.broaderQuery }}
-          </button>
-        </p>
+    <DashboardErrorState v-else-if="error" :error="error" @retry="performSearch" />
+    <template v-else-if="response">
+      <div class="mb-4 flex flex-wrap gap-2">
+        <Button
+          :label="`${t('globalSearch.all')} (${totalCount})`"
+          :outlined="activeType !== 'ALL'"
+          :aria-pressed="activeType === 'ALL'"
+          class="min-h-11"
+          @click="activeType = 'ALL'"
+        />
+        <Button
+          v-for="kind in kinds"
+          :key="kind"
+          :label="`${t(`globalSearch.kinds.${kind}`)} (${response.counts[kind]})`"
+          :outlined="activeType !== kind"
+          :aria-pressed="activeType === kind"
+          class="min-h-11"
+          @click="activeType = kind"
+        />
       </div>
-    </div>
-
-    <div v-else class="space-y-3">
-      <SearchResultCard
-        v-for="result in results"
-        :key="`${result.type}-${result.id}`"
-        :result="result"
-      />
-    </div>
-
-    <div v-if="totalPages > 1" class="mt-6 flex justify-center">
-      <Paginator
-        :rows="20"
-        :total-records="totalPages * 20"
-        :first="currentPage * 20"
-        @page="handlePageChange"
-      />
-    </div>
+      <DashboardEmptyState v-if="shownCount === 0" icon="pi pi-search" :message="t('globalSearch.empty')" />
+      <div v-else class="space-y-4">
+        <template v-for="kind in groups" :key="kind">
+          <SectionCard v-if="response.results[kind].length" :title="t(`globalSearch.kinds.${kind}`)">
+            <p class="mb-3 text-sm text-surface-500">
+              {{ t('globalSearch.showing', { shown: response.results[kind].length, total: response.counts[kind] }) }}
+            </p>
+            <ul class="divide-y divide-surface-200 dark:divide-surface-700">
+              <li v-for="result in response.results[kind]" :key="result.id" class="break-words py-3">
+                {{ resultLabel(result) }}
+              </li>
+            </ul>
+          </SectionCard>
+        </template>
+      </div>
+    </template>
   </div>
 </template>

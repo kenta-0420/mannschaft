@@ -10,18 +10,23 @@ import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.queue.repository.QueueTicketRepository;
 import com.mannschaft.app.safetycheck.repository.SafetyCheckRepository;
+import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.search.dto.SearchResultResponse;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +56,7 @@ public class GlobalSearchService {
     private final ContentVisibilityChecker contentVisibilityChecker;
 
     private static final int SEARCH_LIMIT = 10;
+    private static final int SCHEDULE_BATCH_SIZE = 256;
 
     /**
      * 空集合を JPQL の {@code IN :param} に渡すと構文エラーになるため、代替に用いるダミー値。
@@ -89,40 +95,62 @@ public class GlobalSearchService {
         // schedules
         // F00 認可基盤連携（CMP-017b 第五隊）: SQL 述語（teamId/orgId の所属絞り）だけでは
         // schedules.min_view_role を評価できない（閲覧者の実効ロールはスコープごとに異なり
-        // SQL 1行の predicate に落とせないため）。取得後に filterAccessible へ通して
-        // 閲覧不可（例: SUPPORTER に対する min_view_role=MEMBER_PLUS）を除外する。
+        // SQL 1行の predicate に落とせないため）。候補 ID を固定件数で F00 に通し、
+        // 全可視数を数えながら表示する先頭10件だけを保持する。
         // CUSTOM_TEMPLATE の除外は既存どおり SQL 述語のまま維持。
-        var scheduleCandidates = scheduleRepository.searchByKeyword(query, teamIds, orgIds, userId, limit);
-        var visibleScheduleIds = contentVisibilityChecker.filterAccessible(
-                ReferenceType.SCHEDULE,
-                scheduleCandidates.stream().map(com.mannschaft.app.schedule.entity.ScheduleEntity::getId).toList(),
-                userId);
-        var schedules = scheduleCandidates.stream()
-                .filter(s -> visibleScheduleIds.contains(s.getId()))
-                .toList();
-        results.put("schedules", schedules.stream()
+        Pageable batch = PageRequest.of(0, SCHEDULE_BATCH_SIZE);
+        List<Long> firstVisibleIds = new ArrayList<>(SEARCH_LIMIT);
+        long visibleTotal = 0;
+        long afterId = Long.MIN_VALUE;
+        while (true) {
+            List<Long> candidates = scheduleRepository.searchIdsByKeyword(
+                    query, teamIds, orgIds, userId, afterId, batch);
+            if (candidates.isEmpty()) {
+                break;
+            }
+            var visibleIds = contentVisibilityChecker.filterAccessible(ReferenceType.SCHEDULE, candidates, userId);
+            for (Long id : candidates) {
+                if (visibleIds.contains(id)) {
+                    visibleTotal++;
+                    if (firstVisibleIds.size() < SEARCH_LIMIT) {
+                        firstVisibleIds.add(id);
+                    }
+                }
+            }
+            if (candidates.size() < SCHEDULE_BATCH_SIZE) {
+                break;
+            }
+            afterId = candidates.getLast();
+        }
+        List<ScheduleEntity> scheduleContent = firstVisibleIds.isEmpty() ? List.of()
+                : scheduleRepository.findAllById(firstVisibleIds).stream()
+                        .sorted(Comparator.comparing(ScheduleEntity::getId))
+                        .toList();
+        Page<ScheduleEntity> schedules = firstVisibleIds.isEmpty() ? Page.empty(limit)
+                : new PageImpl<>(scheduleContent, limit, visibleTotal);
+        results.put("schedules", schedules.getContent().stream()
                 .map(s -> Map.<String, Object>of(
                         "id", s.getId(), "title", s.getTitle(),
                         "location", s.getLocation() != null ? s.getLocation() : ""))
                 .collect(Collectors.toList()));
-        counts.put("schedules", (long) schedules.size());
+        counts.put("schedules", schedules.getTotalElements());
 
         // events
         var events = eventRepository.searchByKeyword(query, teamIds, orgIds, userId, limit);
-        results.put("events", events.stream()
+        results.put("events", events.getContent().stream()
                 .map(e -> Map.<String, Object>of(
                         "id", e.getId(), "title", e.getSubtitle() != null ? e.getSubtitle() : "",
                         "venueName", e.getVenueName() != null ? e.getVenueName() : ""))
                 .collect(Collectors.toList()));
-        counts.put("events", (long) events.size());
+        counts.put("events", events.getTotalElements());
 
         // reservations (facility bookings)
         var reservations = facilityBookingRepository.searchByKeyword(query, teamIds, orgIds, userId, limit);
-        results.put("reservations", reservations.stream()
+        results.put("reservations", reservations.getContent().stream()
                 .map(b -> Map.<String, Object>of(
                         "id", b.getId(), "purpose", b.getPurpose() != null ? b.getPurpose() : ""))
                 .collect(Collectors.toList()));
-        counts.put("reservations", (long) reservations.size());
+        counts.put("reservations", reservations.getTotalElements());
 
         // shifts
         // CMP-260826-2127: 未公開シフト表（DRAFT / ARCHIVED かつ publishedAt が NULL）は
@@ -137,29 +165,29 @@ public class GlobalSearchService {
                 .toList());
         var shifts = shiftScheduleRepository.searchByKeyword(
                 query, shiftAdminTeamIds, shiftMemberTeamIds, limit);
-        results.put("shifts", shifts.stream()
+        results.put("shifts", shifts.getContent().stream()
                 .map(s -> Map.<String, Object>of(
                         "id", s.getId(), "title", s.getTitle()))
                 .collect(Collectors.toList()));
-        counts.put("shifts", (long) shifts.size());
+        counts.put("shifts", shifts.getTotalElements());
 
         // safetyChecks
         var safetyChecks = safetyCheckRepository.searchByKeyword(query, teamIds, orgIds, limit);
-        results.put("safetyChecks", safetyChecks.stream()
+        results.put("safetyChecks", safetyChecks.getContent().stream()
                 .map(sc -> Map.<String, Object>of(
                         "id", sc.getId(), "title", sc.getTitle()))
                 .collect(Collectors.toList()));
-        counts.put("safetyChecks", (long) safetyChecks.size());
+        counts.put("safetyChecks", safetyChecks.getTotalElements());
 
         // queues
         var queues = queueTicketRepository.searchByKeyword(query, teamIds, orgIds, userId, limit);
-        results.put("queues", queues.stream()
+        results.put("queues", queues.getContent().stream()
                 .map(q -> Map.<String, Object>of(
                         "id", q.getId(),
                         "ticketNumber", q.getTicketNumber(),
                         "guestName", q.getGuestName() != null ? q.getGuestName() : ""))
                 .collect(Collectors.toList()));
-        counts.put("queues", (long) queues.size());
+        counts.put("queues", queues.getTotalElements());
 
         // teams
         var teams = teamRepository.searchByKeyword(query, limit);
@@ -179,11 +207,11 @@ public class GlobalSearchService {
 
         // users
         var users = userRepository.searchByKeyword(query, visibleUserIds, limit);
-        results.put("users", users.stream()
+        results.put("users", users.getContent().stream()
                 .map(u -> Map.<String, Object>of(
                         "id", u.getId(), "fullName", u.getLastName() + " " + u.getFirstName()))
                 .collect(Collectors.toList()));
-        counts.put("users", (long) users.size());
+        counts.put("users", users.getTotalElements());
 
         long executionTimeMs = System.currentTimeMillis() - startTime;
         log.info("グローバル検索実行: query='{}', userId={}, executionTime={}ms", query, userId, executionTimeMs);

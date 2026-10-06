@@ -1,29 +1,10 @@
-import type { SearchResponse, Suggestion, SavedSearch, RecentSearch, ContentType } from '~/types/search'
+import type { SearchResponse, Suggestion, SavedSearch, RecentSearch } from '~/types/search'
 
 export function useSearchApi() {
   const api = useApi()
 
-  async function search(params: {
-    q: string
-    type?: ContentType
-    scopeType?: string
-    scopeId?: number
-    dateFrom?: string
-    dateTo?: string
-    page?: number
-    perPage?: number
-  }) {
-    const query = new URLSearchParams()
-    query.set('q', params.q)
-    if (params.type) query.set('type', params.type)
-    if (params.scopeType) query.set('scopeType', params.scopeType)
-    if (params.scopeId != null) query.set('scopeId', String(params.scopeId))
-    if (params.dateFrom) query.set('dateFrom', params.dateFrom)
-    if (params.dateTo) query.set('dateTo', params.dateTo)
-    if (params.page != null) query.set('page', String(params.page))
-    if (params.perPage != null) query.set('perPage', String(params.perPage))
-    const res = await api<SearchResponse>(`/api/v1/search?${query.toString()}`)
-    return res
+  async function search(params: { q: string }) {
+    return api<SearchResponse>(`/api/v1/search?q=${encodeURIComponent(params.q)}`)
   }
 
   async function suggestions(q: string) {

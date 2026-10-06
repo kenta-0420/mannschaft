@@ -101,7 +101,7 @@ public interface FacilityBookingRepository extends JpaRepository<FacilityBooking
                         OR (f.scopeType = 'ORGANIZATION' AND f.scopeId IN :orgIds))
                 ))
             """)
-    List<FacilityBookingEntity> searchByKeyword(@Param("keyword") String keyword,
+    Page<FacilityBookingEntity> searchByKeyword(@Param("keyword") String keyword,
                                                 @Param("teamIds") Collection<Long> teamIds,
                                                 @Param("orgIds") Collection<Long> orgIds,
                                                 @Param("userId") Long userId,

@@ -2797,5 +2797,24 @@
       "SUPPORTERS_AND_ABOVE": "서포터 이상",
       "MEMBERS_AND_ABOVE": "멤버 이상"
     }
+  },
+  "globalSearch": {
+    "title": "검색",
+    "placeholder": "키워드로 검색 (2자 이상)",
+    "all": "전체",
+    "empty": "검색 결과가 없습니다",
+    "resultId": "ID {id}",
+    "showing": "총 {total}건 중 {shown}건 표시",
+    "kinds": {
+      "schedules": "일정",
+      "events": "이벤트",
+      "reservations": "예약",
+      "shifts": "교대",
+      "safetyChecks": "안전 확인",
+      "queues": "대기열",
+      "teams": "팀",
+      "organizations": "조직",
+      "users": "사용자"
+    }
   }
 }

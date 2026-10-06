@@ -2797,5 +2797,24 @@
       "SUPPORTERS_AND_ABOVE": "Supporters and above",
       "MEMBERS_AND_ABOVE": "Members and above"
     }
+  },
+  "globalSearch": {
+    "title": "Search",
+    "placeholder": "Search by keyword (2 or more characters)",
+    "all": "All",
+    "empty": "No search results",
+    "resultId": "ID {id}",
+    "showing": "Showing {shown} of {total}",
+    "kinds": {
+      "schedules": "Schedules",
+      "events": "Events",
+      "reservations": "Reservations",
+      "shifts": "Shifts",
+      "safetyChecks": "Safety checks",
+      "queues": "Queues",
+      "teams": "Teams",
+      "organizations": "Organizations",
+      "users": "Users"
+    }
   }
 }

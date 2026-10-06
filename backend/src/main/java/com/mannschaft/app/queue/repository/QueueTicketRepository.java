@@ -2,6 +2,7 @@ package com.mannschaft.app.queue.repository;
 
 import com.mannschaft.app.queue.TicketStatus;
 import com.mannschaft.app.queue.entity.QueueTicketEntity;
+import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -118,7 +119,7 @@ public interface QueueTicketRepository extends JpaRepository<QueueTicketEntity, 
                             AND c.scopeId IN :orgIds))
                 ))
             """)
-    List<QueueTicketEntity> searchByKeyword(@Param("keyword") String keyword,
+    Page<QueueTicketEntity> searchByKeyword(@Param("keyword") String keyword,
                                             @Param("teamIds") java.util.Collection<Long> teamIds,
                                             @Param("orgIds") java.util.Collection<Long> orgIds,
                                             @Param("userId") Long userId,

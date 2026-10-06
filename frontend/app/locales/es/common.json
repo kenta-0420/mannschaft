@@ -2797,5 +2797,24 @@
       "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
       "MEMBERS_AND_ABOVE": "Miembros y superiores"
     }
+  },
+  "globalSearch": {
+    "title": "Buscar",
+    "placeholder": "Buscar por palabra clave (2 o más caracteres)",
+    "all": "Todo",
+    "empty": "No hay resultados",
+    "resultId": "ID {id}",
+    "showing": "Se muestran {shown} de {total}",
+    "kinds": {
+      "schedules": "Agenda",
+      "events": "Eventos",
+      "reservations": "Reservas",
+      "shifts": "Turnos",
+      "safetyChecks": "Comprobaciones de seguridad",
+      "queues": "Colas",
+      "teams": "Equipos",
+      "organizations": "Organizaciones",
+      "users": "Usuarios"
+    }
   }
 }

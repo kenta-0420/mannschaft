@@ -2797,5 +2797,24 @@
       "SUPPORTERS_AND_ABOVE": "支持者及以上",
       "MEMBERS_AND_ABOVE": "成员及以上"
     }
+  },
+  "globalSearch": {
+    "title": "搜索",
+    "placeholder": "输入关键词（至少2个字符）",
+    "all": "全部",
+    "empty": "没有搜索结果",
+    "resultId": "ID {id}",
+    "showing": "显示{shown}项，共{total}项",
+    "kinds": {
+      "schedules": "日程",
+      "events": "活动",
+      "reservations": "预约",
+      "shifts": "排班",
+      "safetyChecks": "安全确认",
+      "queues": "排队",
+      "teams": "团队",
+      "organizations": "组织",
+      "users": "用户"
+    }
   }
 }

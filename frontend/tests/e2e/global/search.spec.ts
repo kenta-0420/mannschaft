@@ -3,20 +3,10 @@ import { waitForHydration } from '../helpers/wait'
 
 const MOCK_SEARCH_RESULTS = {
   data: {
-    results: [
-      {
-        type: 'TEAM',
-        id: 1,
-        title: 'テストチームA',
-        snippet: 'スポーツチーム',
-        url: '/teams/1',
-      },
-    ],
-    typeCounts: { TEAM: 1 },
-    timedOutTypes: [],
-    zeroResultsHelp: null,
+    query: 'テスト', executionTimeMs: 1,
+    results: { schedules: [], events: [], reservations: [], shifts: [], safetyChecks: [], queues: [], teams: Array.from({ length: 10 }, (_, index) => ({ id: index + 1, name: index === 0 ? 'テストチームA' : 'テストチーム' + (index + 1) })), organizations: [], users: [] },
+    counts: { schedules: 0, events: 0, reservations: 0, shifts: 0, safetyChecks: 0, queues: 0, teams: 11, organizations: 0, users: 0 },
   },
-  meta: { page: 0, totalPages: 1, total: 1 },
 }
 
 test.describe('GLOBAL-001: 検索機能', () => {
@@ -65,5 +55,7 @@ test.describe('GLOBAL-001: 検索機能', () => {
     await waitForHydration(page)
 
     await expect(page.getByText('テストチームA')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('button', { name: 'チーム (11)', exact: true })).toBeVisible()
+    await expect(page.getByText('全11件中10件を表示')).toBeVisible()
   })
 })
