@@ -43,6 +43,12 @@ function trackCleanup(cleanup: Cleanup[], item: Cleanup): void {
 test.afterEach(async ({ browser: _browser }, testInfo) => {
   const contexts = new Map<string, APIRequestContext>()
   const results: { path: string; status?: number; error?: string }[] = []
+  if (testInfo.status !== testInfo.expectedStatus) {
+    await Promise.allSettled(pendingUsers.map(user => user.page.screenshot({
+      path: testInfo.outputPath(`blog-failure-user-${user.id}.png`),
+      timeout: 5000,
+    })))
+  }
   // 本人 editor の自動保存を止めてから前提データを削除する。close 失敗でも削除は続ける。
   const closed = await Promise.allSettled(pendingUsers.map(user => user.page.close()))
   const closeErrors = closed.flatMap((result, index) => result.status === 'rejected'
@@ -160,13 +166,15 @@ async function openList(page: Page, scope: Scope): Promise<WirePost[]> {
     const url = new URL(response.url())
     return response.request().method() === 'GET' && url.pathname === '/api/v1/blog/posts'
       && url.searchParams.get(queryKey) === scope.slug
-  })
+  }).then(async response => ({ response, data: (await response.json()).data as WirePost[] }))
+    .then(result => result, error => ({ error }))
   await page.goto(`/${scope.kind}/${scope.slug}/blog`, { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await expect(page.locator('header')).toBeVisible()
-  const response = await responsePromise
+  const result = await responsePromise
+  if ('error' in result) throw result.error
+  const { response, data: posts } = result
   expect(response.status(), '実際の一覧UIが呼ぶAPI').toBe(200)
-  const posts: WirePost[] = (await response.json()).data
   expect(posts.length).toBeGreaterThan(0)
   for (const post of posts) expect(post, '現行HTTPレスポンスのauthor省略').not.toHaveProperty('author')
   await expect(page.getByTestId('blog-post-card').filter({ has: page.getByRole('heading', { level: 3, name: posts[0]!.content.title, exact: true }) })).toBeVisible()
@@ -201,12 +209,15 @@ async function readPersonalFromList(reader: UserSession, ownerId: number, post: 
   try {
     const listResponse = reader.page.waitForResponse(response => response.request().method() === 'GET'
       && new URL(response.url()).pathname === `/api/v1/users/${ownerId}/blog/posts`)
+      .then(async response => ({ response, data: (await response.json()).data as WirePost[] }))
+      .then(result => result, error => ({ error }))
     await reader.page.goto(`/users/${ownerId}/blog`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(reader.page)
     await expect(reader.page.locator('header')).toBeVisible()
-    const response = await listResponse
+    const listResult = await listResponse
+    if ('error' in listResult) throw listResult.error
+    const { response, data: posts } = listResult
     expect(response.status(), 'userId 限定の個人一覧 API').toBe(200)
-    const posts: WirePost[] = (await response.json()).data
     expect(posts.some(item => item.id === post.id)).toBe(true)
     for (const item of posts) {
       expect(item.scope.userId).toBe(ownerId)
@@ -215,10 +226,13 @@ async function readPersonalFromList(reader: UserSession, ownerId: number, post: 
     const titleLink = reader.page.getByRole('link').filter({ has: reader.page.getByRole('heading', { name: post.content.title, exact: true, level: 3 }) })
     const detailResponse = reader.page.waitForResponse(response => response.request().method() === 'GET'
       && new URL(response.url()).pathname === `/api/v1/users/${ownerId}/blog/posts/${post.content.slug}`)
+      .then(async response => ({ response, data: (await response.json()).data as WirePost }))
+      .then(result => result, error => ({ error }))
     await titleLink.click()
-    const detail = await detailResponse
+    const detailResult = await detailResponse
+    if ('error' in detailResult) throw detailResult.error
+    const { response: detail, data: detailPost } = detailResult
     expect(detail.status(), '個人一覧タイトルから本文取得').toBe(200)
-    const detailPost: WirePost = (await detail.json()).data
     expect(detailPost.id).toBe(post.id)
     expect(detailPost).not.toHaveProperty('author')
     await expect(reader.page).toHaveURL(url => url.pathname === `/users/${ownerId}/blog/posts/${post.content.slug}`)
@@ -251,11 +265,13 @@ async function readFromList(user: UserSession, scope: Scope, post: WirePost, bod
       const url = new URL(response.url())
       return response.request().method() === 'GET' && url.pathname === `/api/v1/blog/posts/${post.content.slug}`
         && url.searchParams.get(scopeQuery) === String(scope.numericId)
-    })
+    }).then(async response => ({ response, data: (await response.json()).data as WirePost }))
+      .then(result => result, error => ({ error }))
     await read.click()
-    const response = await responsePromise
+    const result = await responsePromise
+    if ('error' in result) throw result.error
+    const { response, data: detail } = result
     expect(response.status(), 'タイトルクリックから本文取得').toBe(200)
-    const detail: WirePost = (await response.json()).data
     expect(detail.id).toBe(post.id)
     expect(detail).not.toHaveProperty('author')
     expect(detail.content.body).toContain(body)
@@ -332,12 +348,20 @@ test('BLOG-LIST-REAL: タイトル閲覧・本人編集・他作者と別テナ�
   const newTitle = `UI作成記事-${stamp}`
   await dialog.locator('input').fill(newTitle)
   const createdResponse = owner.page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/v1/blog/posts')
+    .then(async response => {
+      const data: WirePost = (await response.json()).data
+      if (response.status() === 201 && Number.isSafeInteger(data.id) && data.id > 0) {
+        trackCleanup(cleanup, { email: owner.email, path: `/api/v1/blog/posts/${data.id}` })
+      }
+      return { response, data }
+    })
+    .then(result => result, error => ({ error }))
   const newEditLoad = owner.page.waitForResponse(response => response.request().method() === 'GET' && /\/api\/v1\/users\/me\/blog\/posts\/\d+$/.test(new URL(response.url()).pathname))
   await owner.page.getByTestId('blog-post-create-submit').click()
-  const created = await createdResponse
+  const createdResult = await createdResponse
+  if ('error' in createdResult) throw createdResult.error
+  const { response: created, data: newPost } = createdResult
   expect(created.status(), '一覧の新規作成操作').toBe(201)
-  const newPost: WirePost = (await created.json()).data
-  trackCleanup(cleanup, { email: owner.email, path: `/api/v1/blog/posts/${newPost.id}` })
   expect(newPost).not.toHaveProperty('author')
   expect(newPost.scope.authorId).toBe(owner.id)
   const editorResponse = await newEditLoad

@@ -220,6 +220,7 @@ function onPopoverHide() {
 
     <Popover
       ref="popoverRef"
+      :pt="{ content: { style: { padding: '0' } } }"
       @show="onPopoverShow"
       @hide="onPopoverHide"
     >
