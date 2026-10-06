@@ -95,9 +95,18 @@ class RecruitmentPayeeJudgementNoRollbackOnlyIT extends AbstractMySqlIntegration
     private Long listingId;
     private Long categoryId;
     private UUID teamAccountId;
+    /** 本 IT が足した permissions 行（元から在った場合は null＝消さない）。 */
+    private Long createdPermissionId;
+    /** 本 IT が足した role_permissions 行（元から在った場合は null＝消さない）。 */
+    private Long createdRolePermissionId;
+    /** ADMIN の免除を実行した（非同期の監査ログを待ってから消す）。 */
+    private boolean adminWaived;
 
     @BeforeEach
     void setUp() {
+        adminWaived = false;
+        createdPermissionId = null;
+        createdRolePermissionId = null;
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
         transactionTemplate.executeWithoutResult(status -> {
             teamAId = insertTeam("RBONLY チーム " + suffix);
@@ -130,7 +139,28 @@ class RecruitmentPayeeJudgementNoRollbackOnlyIT extends AbstractMySqlIntegration
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
+        if (adminWaived) {
+            // AuditLogService#record は @Async + 独立 tx。書き込み完了を待ってから消さないと、掃除の後に行が残る。
+            org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10)).untilAsserted(() ->
+                    assertThat(transactionTemplate.execute(status -> em.createQuery(
+                                    "SELECT COUNT(a) FROM AuditLogEntity a WHERE a.teamId = :t AND a.eventType = :e",
+                                    Long.class)
+                            .setParameter("t", teamAId)
+                            .setParameter("e", com.mannschaft.app.auth.AuditEventType
+                                    .RECRUITMENT_CANCELLATION_FEE_WAIVED.name())
+                            .getSingleResult())).isPositive());
+        }
         transactionTemplate.executeWithoutResult(status -> {
+            em.createQuery("DELETE FROM AuditLogEntity a WHERE a.teamId = :t")
+                    .setParameter("t", teamAId).executeUpdate();
+            if (createdRolePermissionId != null) {
+                em.createNativeQuery("DELETE FROM role_permissions WHERE id = :i")
+                        .setParameter("i", createdRolePermissionId).executeUpdate();
+            }
+            if (createdPermissionId != null) {
+                em.createNativeQuery("DELETE FROM permissions WHERE id = :i")
+                        .setParameter("i", createdPermissionId).executeUpdate();
+            }
             em.createQuery("DELETE FROM RecruitmentCancellationRecordEntity r WHERE r.teamId = :t")
                     .setParameter("t", teamAId).executeUpdate();
             em.createQuery("DELETE FROM EscrowTransactionEntity e WHERE e.payeeConnectAccountId = :a")
@@ -190,6 +220,7 @@ class RecruitmentPayeeJudgementNoRollbackOnlyIT extends AbstractMySqlIntegration
     @DisplayName("対照: 受取先 ADMIN の免除は 200（判定が常に false になっていない）")
     void 受取先ADMINの免除は200() throws Exception {
         setAuth(payeeAdminAId);
+        adminWaived = true;
         waive(recordId).andExpect(status().isOk());
     }
 
@@ -219,19 +250,36 @@ class RecruitmentPayeeJudgementNoRollbackOnlyIT extends AbstractMySqlIntegration
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
     }
 
+    /**
+     * {@code MANAGE_RECRUITMENTS} を権限カタログへ登録し ADMIN へ自動付与する（Flyway 無効の環境で本番マイグレーションを写す）。
+     * 元から在る行は触らず、本 IT が足した行の ID だけを記録して後始末で消す（共有の権限表を汚さない）。
+     */
     private void grantManageRecruitmentsToAdmin() {
-        em.createNativeQuery(
-                        "INSERT INTO permissions (name, display_name, scope, created_at, updated_at) "
-                                + "SELECT 'MANAGE_RECRUITMENTS', '募集（札）管理', 'TEAM', NOW(), NOW() FROM DUAL "
-                                + "WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE name = 'MANAGE_RECRUITMENTS')")
-                .executeUpdate();
-        em.createNativeQuery(
-                        "INSERT INTO role_permissions (role_id, permission_id, is_default, created_at) "
-                                + "SELECT r.id, p.id, 1, NOW() FROM roles r CROSS JOIN permissions p "
-                                + "WHERE r.name = 'ADMIN' AND p.name = 'MANAGE_RECRUITMENTS' "
-                                + "AND NOT EXISTS (SELECT 1 FROM role_permissions rp "
-                                + "  WHERE rp.role_id = r.id AND rp.permission_id = p.id)")
-                .executeUpdate();
+        Long permissionId = findId("SELECT id FROM permissions WHERE name = 'MANAGE_RECRUITMENTS'");
+        if (permissionId == null) {
+            em.createNativeQuery(
+                            "INSERT INTO permissions (name, display_name, scope, created_at, updated_at) "
+                                    + "VALUES ('MANAGE_RECRUITMENTS', '募集（札）管理', 'TEAM', NOW(), NOW())")
+                    .executeUpdate();
+            permissionId = findId("SELECT id FROM permissions WHERE name = 'MANAGE_RECRUITMENTS'");
+            createdPermissionId = permissionId;
+        }
+        Long adminRoleId = findId("SELECT id FROM roles WHERE name = 'ADMIN'");
+        Long existing = findId("SELECT id FROM role_permissions WHERE role_id = " + adminRoleId
+                + " AND permission_id = " + permissionId);
+        if (existing == null) {
+            em.createNativeQuery(
+                            "INSERT INTO role_permissions (role_id, permission_id, is_default, created_at) "
+                                    + "VALUES (:r, :p, 1, NOW())")
+                    .setParameter("r", adminRoleId).setParameter("p", permissionId).executeUpdate();
+            createdRolePermissionId = findId("SELECT id FROM role_permissions WHERE role_id = " + adminRoleId
+                    + " AND permission_id = " + permissionId);
+        }
+    }
+
+    private Long findId(String sql) {
+        List<?> rows = em.createNativeQuery(sql).getResultList();
+        return rows.isEmpty() ? null : ((Number) rows.get(0)).longValue();
     }
 
     private Long insertListing(Long categoryId) {
