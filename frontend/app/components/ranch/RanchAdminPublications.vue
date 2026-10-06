@@ -48,7 +48,7 @@ async function publishPolicy() {
  }
  try {
   const saved = await api.publishPolicy(body)
-  if (api.isCurrent()) { emit('saved', saved); message.value = t('ranch.admin.saved') }
+  if (api.isCurrent()) { emit('saved', saved); message.value = t(saved.settings.reasonCode.startsWith('DEV_') ? 'ranch.admin.developmentFixtureNotice' : 'ranch.admin.saved') }
  } catch { if (api.isCurrent()) message.value = t('ranch.command.failed') }
 }
 </script>
@@ -67,6 +67,7 @@ async function publishPolicy() {
   </form>
   <form aria-labelledby="ranch-admin-policy-publication-heading" class="space-y-3" @submit.prevent="publishPolicy">
    <h2 id="ranch-admin-policy-publication-heading" class="font-semibold">{{ t('ranch.admin.publishPolicy') }}</h2>
+   <p v-if="policy.reasonCode.startsWith('DEV_')">{{ t('ranch.admin.developmentFixtureNotice') }}</p>
    <fieldset :disabled="busy" class="grid gap-3">
     <label class="flex min-h-11 items-center gap-2"><input v-model="policy.enabled" name="enabled" type="checkbox">{{ t('ranch.admin.policyEnabled') }}</label>
     <label class="grid gap-1">{{ t('ranch.admin.effectiveAt') }}<input v-model="policy.effectiveAt" name="effectiveAt" required placeholder="2031-01-06T00:00:00Z" class="min-h-11 rounded border bg-transparent p-2"></label>

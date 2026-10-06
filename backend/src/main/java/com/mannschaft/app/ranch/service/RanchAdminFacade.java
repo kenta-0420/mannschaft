@@ -34,6 +34,7 @@ public class RanchAdminFacade {
     private final RanchOperationalControlsWriter controlsWriter;
     private final RanchPublicationReadiness readiness;
     private final RanchRewardDeliveryBounds bounds;
+    private final RanchDevelopmentFixturePolicyGate development;
 
     public RanchOperationalControlsResponse controls(Long actorId) {
         return admission.checked(actorId, () -> controls.read(now()));
@@ -57,9 +58,10 @@ public class RanchAdminFacade {
             var saved = replay.read(actorId, key, RanchPolicyPublicationWriter.KIND,
                     policyWriter.commandHash(request), RanchPolicyPublicationResponse.class);
             if (saved.isPresent()) return new RanchPolicyPublicationWriter.PublicationOutcome(saved.orElseThrow(), false);
+            development.requirePublicationAllowed(request.reasonCode());
             RanchPublicationReadiness.Snapshot snapshot = null;
             if (request.enabled()) {
-                snapshot = requireReadiness();
+                if (!development.isDevelopment(request.reasonCode())) snapshot = requireReadiness();
                 try { bounds.validate(RanchPolicyPublicationWriter.delivery(request)); }
                 catch (IllegalStateException missing) { throw unavailable(); }
                 catch (IllegalArgumentException invalid) { throw new BusinessException(RanchErrorCode.RANCH_006); }

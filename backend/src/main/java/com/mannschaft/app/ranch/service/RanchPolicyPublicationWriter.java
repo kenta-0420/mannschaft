@@ -42,6 +42,7 @@ public class RanchPolicyPublicationWriter {
     private final RanchOperationalControlRepository controls;
     private final RanchProductionMasterRegistry master;
     private final RanchRewardDeliveryBounds bounds;
+    private final RanchDevelopmentFixturePolicyGate development;
     private final ObjectMapper json;
     private final ApplicationEventPublisher events;
     private final RanchCommandHasher hasher = new RanchCommandHasher();
@@ -64,12 +65,21 @@ public class RanchPolicyPublicationWriter {
         saved = commands.findByActorUserIdAndIdempotencyKey(actorId, key);
         if (saved.isPresent()) return replay(saved.orElseThrow(), hash);
         new RanchAdminInputParser().policy(json.valueToTree(request));
-        RanchAdminPublicationCalendar.requireFutureWeek(request.effectiveAt(), now);
+        development.requirePublicationAllowed(request.reasonCode());
+        boolean fixture = development.isDevelopment(request.reasonCode());
+        if (fixture && development.isCurrentWeek(request.effectiveAt(), now)) {
+            development.requireInitialCurrentWeek(policies.isDevelopmentStoreEmpty());
+        } else {
+            RanchAdminPublicationCalendar.requireFutureWeek(request.effectiveAt(), now);
+        }
         var delivery = delivery(request);
         // 503はすべて保存前の確定拒否。非TXで取得した承認版をown TXで再照合する。
         if (request.enabled()) {
-            if (readiness == null || !readiness.careReady()) throw unavailable();
-            try { master.requireCurrentVersion(readiness.masterVersion()); bounds.validate(delivery); }
+            if (!fixture && (readiness == null || !readiness.careReady())) throw unavailable();
+            try {
+                if (!fixture) master.requireCurrentVersion(readiness.masterVersion());
+                bounds.validate(delivery);
+            }
             catch (IllegalStateException missing) { throw unavailable(); }
             catch (IllegalArgumentException outOfBounds) { throw new BusinessException(RanchErrorCode.RANCH_006); }
         }

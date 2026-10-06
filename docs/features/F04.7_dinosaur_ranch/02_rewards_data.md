@@ -293,3 +293,8 @@ TEAM/ORG出欠は既min_response_role/配下救済を通る。初load前の回�
 捕捉 HMAC は本文と確認済み upload UUID の typed 集合を使用し、集合順は無視し多重度を保持する。本文・file key・upload UUID は outbox の配送 payload に複製しない。補助 identity の取得不能や捕捉失敗は UNKNOWN / loss とし、本来の保存成功を保持する。元 claim の認可・業務保存失敗は通常どおり伝播する。VIDEO_FILE は既存 network 呼出があるためこの保持境界へ未接続、LINK / VIDEO_LINK は永続 identity 未確認のため未接続のまま残す。
 
 実 claim の正負境界・rollbackと IMAGE native capture の試験は準備済みだが未実行。補助 SQL 故障時の native commit 維持、実 HTTP、pool2、全添付機能の完成をこの静的接続だけで主張しない。
+
+
+### 隔離開発の報酬検証候補
+
+DEV_ reasonCode を保存 provenance として予約する。初回現在 UTC 週の例外は同 control lock 下の policy/budget/decision 空＋REWARD ledger 空だけ。CARE/PURCHASE 履歴は除外。DEV consumer control→owner mutex と policy current read で空判定を直列化し、正式 mode は維持する。 実測 bounds と実 UI/worker の検証は未実行。

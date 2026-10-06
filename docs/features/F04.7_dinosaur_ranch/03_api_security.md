@@ -269,3 +269,8 @@ TLのSourceOutboxDeliveryFacade/SourceOutboxAdminProvider実BeanはTimelineRanch
 出欠は回答LONGから予定LONGへ、想起はエントリUUIDへ解決する。ブログは現在の永続slugと源scopeの実画面経路を使い、本文・タイトルをリンクDTOへ含めない。欠落/現在ACL拒否は空、既知のDB停止は固定分類を記録して空とし、プログラム誤りを無条件に黙殺しない。現実装はブログGLOBAL/PERSONAL/TEAM/ORG、出欠、想起の3provider。TEAM記事は /blog/posts/{encodedSlug}?teamId={現在の内部Long}、ORG記事は同 organizationId 一つだけを渡し、既controllerのscope解決と現在ACLを維持する。FE閲覧pageのquery接続は別担当・未実証。SOCIALブログとTL未登録正準resolverは未対応として保持する。新provider MySQL4ケースは準備済み・未実行であり、HTTP/台帳cursor保持/pool2証明とは分離する。
 
 TL source linkも非TX providerからnative ID metadata PRIMARY読取終了後、ContentVisibilityChecker.canViewTimelineIsolatedの独立proxyへ渡す。既TimelinePostVisibilityAccessGuard.requireVisiblePostが正準で、POST_NOT_FOUNDだけemptyへ対応する。generic TIMELINE_POST resolver/batch登録の完成を意味せず、実pool2・HTTP・membership変更競合は未検証。本文はmetadata読取に含めない。
+
+
+### 隔離開発の報酬検証候補
+
+既公開 API と SYSTEM_ADMIN/ACTIVE admission を維持する。DEV 新規公開は explicit fixture gate、既成功 replay は先行。OFF mode は保存 DEV/frozen policy の新規 credit・配送設定を拒否し、本人履歴は残す。新 endpoint や承認回避用公開 flag は追加しない。 実測 bounds と実 UI/worker の検証は未実行。

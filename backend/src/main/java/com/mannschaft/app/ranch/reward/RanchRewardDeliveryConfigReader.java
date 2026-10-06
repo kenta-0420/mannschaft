@@ -2,6 +2,7 @@ package com.mannschaft.app.ranch.reward;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.ranch.repository.RanchRewardPolicyRepository;
+import com.mannschaft.app.ranch.service.RanchDevelopmentFixturePolicyGate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -18,13 +19,15 @@ import java.util.Optional;
 public class RanchRewardDeliveryConfigReader {
     private final RanchRewardPolicyRepository policies;
     private final ObjectMapper json;
+    private final RanchDevelopmentFixturePolicyGate development;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
     public Optional<RanchRewardPolicySnapshot.DeliverySettings> current(Instant serverTime) {
         Objects.requireNonNull(serverTime);
         return policies.publishedFor(serverTime, PageRequest.of(0, 1)).stream().findFirst()
                 .map(row -> RanchRewardPolicyCodec.decode(row.getId(), row.getVersionNumber(),
-                        row.getEffectiveAt(), row.getSettingsJson(), row.getContentHash(), json)
-                        .delivery());
+                        row.getEffectiveAt(), row.getSettingsJson(), row.getContentHash(), json))
+                .filter(policy -> development.readable(policy.reasonCode()))
+                .map(RanchRewardPolicySnapshot::delivery);
     }
 }

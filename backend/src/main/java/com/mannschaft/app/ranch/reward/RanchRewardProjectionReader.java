@@ -10,6 +10,7 @@ import com.mannschaft.app.ranch.repository.RanchOwnerRepository;
 import com.mannschaft.app.ranch.repository.RanchRewardPausePeriodRepository;
 import com.mannschaft.app.ranch.repository.RanchRewardPolicyRepository;
 import com.mannschaft.app.ranch.repository.RanchWeekBudgetRepository;
+import com.mannschaft.app.ranch.service.RanchDevelopmentFixturePolicyGate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ public class RanchRewardProjectionReader {
     private final RanchWeekBudgetRepository budgets;
     private final RanchOwnerRepository owners;
     private final ObjectMapper json;
+    private final RanchDevelopmentFixturePolicyGate development;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
     public Projection current(Long userId, Instant serverTime) {
@@ -47,6 +49,10 @@ public class RanchRewardProjectionReader {
         RanchRewardPolicyEntity published = latest.isEmpty() ? null : latest.get(0);
         RanchRewardPolicySnapshot currentPolicy = published == null ? null : decode(published,
                 published.getSettingsJson());
+        if (currentPolicy != null && !development.readable(currentPolicy.reasonCode())) {
+            currentPolicy = null;
+            published = null;
+        }
         String status = currentPolicy == null || !currentPolicy.enabled() ? "DISABLED"
                 : pauses.includes(serverTime) ? "PAUSED" : "ENABLED";
         String version = published == null ? null : Long.toString(published.getVersionNumber());
@@ -58,6 +64,9 @@ public class RanchRewardProjectionReader {
                 RanchRewardPolicyEntity frozen = policies.findById(saved.getPolicyId())
                         .orElseThrow(() -> new IllegalStateException("凍結policyがありません"));
                 RanchRewardPolicySnapshot rule = decode(frozen, saved.getRuleSnapshot());
+                if (!development.readable(rule.reasonCode())) {
+                    return new Projection(control.isDeliveryPaused(), "DISABLED", null, null);
+                }
                 if (!rule.enabled() || rule.globalCap() != saved.getGlobalCap()
                         || saved.getAwardedTotal() < 0 || saved.getAwardedTotal() > saved.getGlobalCap()) {
                     throw new IllegalStateException("報酬週枠が不正です");

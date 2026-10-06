@@ -1,5 +1,7 @@
 package com.mannschaft.app.ranch.reward;
 
+import com.mannschaft.app.ranch.service.RanchDevelopmentFixturePolicyGate;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,6 +54,7 @@ public class RanchRewardWriter {
     private final RanchPointLedgerRepository ledger;
     private final ObjectMapper json;
     private final Clock clock;
+    private final RanchDevelopmentFixturePolicyGate development;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public RanchRewardDeliveryOutcome decide(RanchRewardEnvelope event) {
@@ -63,11 +66,15 @@ public class RanchRewardWriter {
                 userId, event.sourceType(), key.sha256());
         if (byKey.isPresent()) return replay(byKey.orElseThrow(), event, key);
 
+    // 隔離DEVだけ同じ制御行ロックを使う。正式経路と保存済み再送の順序は維持する。
+        boolean fixtureMode = development.enabled();
+        var fixtureControl = fixtureMode ? controls.lockSingleton()
+                .orElseThrow(() -> new IllegalStateException("牧場運用制御がありません")) : null;
         RanchOwnerEntity owner = owners.lockByUserId(userId).orElse(null);
         if (owner == null || event.occurredAt().isBefore(owner.getCreatedAt())) {
             return outcome(RanchRewardDeliveryOutcome.Outcome.NOT_ENROLLED);
         }
-        var control = controls.findById(1).orElseThrow(() -> new IllegalStateException("牧場運営制御がありません"));
+        var control = fixtureControl != null ? fixtureControl : controls.findById(1).orElseThrow(() -> new IllegalStateException("牧場運営制御がありません"));
         if (control.isDeliveryPaused()) return outcome(RanchRewardDeliveryOutcome.Outcome.DEFER);
 
         Instant occurredAt = event.occurredAt();
@@ -91,12 +98,22 @@ public class RanchRewardWriter {
                         saved.getEffectiveAt(), budget.getRuleSnapshot(), saved.getContentHash(), json);
                 if (!policy.enabled()) throw new IllegalStateException("無効policyに週枠があります");
                 if (policy.globalCap() != budget.getGlobalCap()) throw new IllegalStateException("週枠の政策値が不一致です");
+                if (development.shouldDeferConsumption(policy.reasonCode())) {
+                    return outcome(RanchRewardDeliveryOutcome.Outcome.DEFER);
+                }
+                development.requireConsumptionAllowed(policy.reasonCode());
             } else {
-                var candidate = policies.publishedFor(occurredAt, PageRequest.of(0, 1));
+                var candidate = fixtureMode
+                        ? policies.publishedForDevelopment(occurredAt, PageRequest.of(0, 1))
+                        : policies.publishedFor(occurredAt, PageRequest.of(0, 1));
                 if (!candidate.isEmpty()) {
                     RanchRewardPolicyEntity selected = candidate.get(0);
                     policy = RanchRewardPolicyCodec.decode(selected.getId(), selected.getVersionNumber(),
                             selected.getEffectiveAt(), selected.getSettingsJson(), selected.getContentHash(), json);
+                    if (development.shouldDeferConsumption(policy.reasonCode())) {
+                        return outcome(RanchRewardDeliveryOutcome.Outcome.DEFER);
+                    }
+                    development.requireConsumptionAllowed(policy.reasonCode());
                     if (policy.enabled()) {
                         String zeroCounts = countsJson(new EnumMap<>(RanchRewardSourceType.class));
                         budget = RanchWeekBudgetEntity.builder().ownerId(owner.getId()).userId(userId)
