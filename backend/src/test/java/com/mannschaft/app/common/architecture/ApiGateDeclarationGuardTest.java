@@ -42,13 +42,14 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3671);   // 内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2（CMP-260919-1140 Phase 1）+ 5（F01.2.1 4-A）+ 3（F01.2.1 2-B1）+ 4（F01.2.1 2-A）+ 1（F01.2.1 3-D）+ 2（F01.2.1 4-B）+ 10（F01.2.1 2-C）= 3629（main 3619 + 10）+ Ranch 12（本人登録2・操作4・私的照会4・配置2） + 私有出生3 + 診断8
-                                    // + 私的想起5（a921251152）、牧場運営8（7d69b2dab3・0a256f4907・75221f6585）
-                                    // + 本人選定1・旧取得同期1・孵化/給餌/購入3 = 3670、学校出欠の権限判定GET1 = 3671。
-                                    // 台帳から導出せず独立走査を固定検証する
+                .isEqualTo(3673);   // 245e の独立走査 3671 + F02.6 本文プレビュー GET 2 本。
+                                    // main 差分の本番 controller mapping 注釈は追加 2・削除 0。
+                                    // Ranch 41 本の追加と学校出欠の権限判定 GET 1 本を維持する。
                                     // + F01.2.1 部隊 2-A の4エンドポイント（TeamAffiliationSettingsController の
                                     //   設定 GET/PUT・申請フォーム GET の3本 + OrgAffiliationEligibilityController の1本。
                                     //   いずれも @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（0|3・0|1））
+                                    // + CMP-261001-0630 学校出欠の認可是正 第1段の AttendancePermissionController（権限判定結果 GET の1本）。
+                                    //   学校出欠の既存流儀に揃えて feature gate は未宣言（1|1）
                                     //   main 3566（ブログ・スケジュール画像の完了確認2本を含む）
                                     // + Billing Center PR6a の解約/撤回2エンドポイント（D6・正本 05:334-335）
                                     // + CMP-260912-1525 のメンバー一括取得・チーム時給一括取得の2エンドポイント

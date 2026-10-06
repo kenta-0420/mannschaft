@@ -4,7 +4,6 @@ import type { GateCheckResponse } from '~/types/payment'
 
 definePageMeta({ key: route => route.fullPath })
 const route = useRoute()
-const slug = route.params.slug as string
 
 const { getPost, addMitayo, removeMitayo } = useBlogApi()
 const { checkAccess } = useContentGateApi()
@@ -15,35 +14,41 @@ const loading = ref(true)
 const mitayoLoading = ref(false)
 const gateLoading = ref(false)
 const gateResult = ref<GateCheckResponse | null>(null)
+let postSequence = 0
 
 async function loadPost() {
+  const request = ++postSequence
   loading.value = true
+  post.value = null
+  gateResult.value = null
   try {
-    const res = await getPost(slug, route.query)
+    const res = await getPost(String(route.params.slug), route.query)
+    if (request !== postSequence) return
     post.value = res.data
     // 記事取得後にペイウォール判定（POST = ブログ記事）
     if (post.value?.id) {
-      await loadGateCheck(post.value.id)
+      await loadGateCheck(post.value.id, request)
     }
   } catch (error) {
-    handleError(error)
+    if (request === postSequence) handleError(error)
   } finally {
-    loading.value = false
+    if (request === postSequence) loading.value = false
   }
 }
 
-async function loadGateCheck(postId: number) {
+async function loadGateCheck(postId: number, request: number) {
   gateLoading.value = true
   try {
     const res = await checkAccess('POST', postId)
-    gateResult.value = res.data
+    if (request === postSequence) gateResult.value = res.data
   } catch {
+    if (request !== postSequence) return
     // gate-check API 失敗時のフォールバック: BE が未課金で body をマスク(null)する仕様のため、
     // 本文の有無をアクセス可否の真実として使う（無条件 fail-open を廃止）。
     const hasBody = !!(post.value?.content?.body)
     gateResult.value = { accessible: hasBody, titleHidden: false, requiredItems: [] }
   } finally {
-    gateLoading.value = false
+    if (request === postSequence) gateLoading.value = false
   }
 }
 
@@ -131,6 +136,7 @@ function onTagClick(tag: BlogTag) {
 }
 
 onMounted(() => loadPost())
+onScopeDispose(() => { ++postSequence })
 </script>
 
 <template>

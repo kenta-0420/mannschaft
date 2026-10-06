@@ -1,4 +1,5 @@
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 plugins {
     java
@@ -115,7 +116,11 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:mysql")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // [test-jvm-heap] 計測用 LauncherSessionListener（TestJvmHeapLoggingLauncherSessionListener）が
+    // org.junit.platform.launcher.LauncherSessionListener を実装するため、testRuntimeOnly から
+    // testImplementation へ変更しコンパイルクラスパスにも乗せる（実行時の挙動は変わらない。
+    // 既に testRuntimeOnly で実行時には存在していたため追加の依存取得は発生しない）。
+    testImplementation("org.junit.platform:junit-platform-launcher")
     testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
 
     // === F12.1 PDF生成共通基盤 ===
@@ -322,7 +327,6 @@ object ShardAssignment {
 class ShardCoverageClassFile(val path: String, val topLevelFqcn: String)
 
 tasks.withType<Test> {
-    val testTaskName = name
     // 通常スイートは従来どおり JST 固定。CMP-023 の非JST CIだけが
     // -Ptest.timezone=America/Los_Angeles で明示的に上書きする。
     // System.getProperty("user.timezone") では Gradle JVM 側の値を拾ってしまうため、
@@ -338,27 +342,51 @@ tasks.withType<Test> {
     // 依存しない決定論的な構成にする。
     // =====================================================================
     val isPerfTask = name == "perfTest"
+    // =====================================================================
+    // @Tag("archunit") / @ArchTag("archunit") 運用（CMP-261002-1606・ArchUnit の別 JVM 化）
+    // ---------------------------------------------------------------------
+    // ArchUnit の本番取り込み（ProductionClasses ホルダと @AnalyzeClasses の ClassCache）は
+    // 1 JVM あたり約 1.1GB を占める（MAT 実測）。Spring テストコンテキストを積む IT と同じ
+    // ワーカー JVM で走ると -Xmx4g を超えて shard 5 が OOM した。ArchUnit は Spring を要しないため、
+    // 通常の `test` からはタグ "archunit" を除外し、専用タスク `archTest`（下で register）だけが
+    // 1 JVM でまとめて走らせる。付け忘れ・Spring との混在は番人 ArchUnitTestTagGuardTest が検出する。
+    // =====================================================================
+    val isArchTask = name == "archTest"
+    // main 側（CMP-261002-1606 以前からの既存機構）: archUnitTest は各 runner で
+    // 全 ArchUnit エンジンの番人（@AnalyzeClasses による走査）を Spring テストとは別の JVM で
+    // まとめて実行する（includeEngines("archunit") により junit-jupiter 側のテストは含めない）。
+    // archTest（タグ方式・CMP-261002-1606 新規）とは別経路として両方維持する。
     val isArchUnitTask = name == "archUnitTest"
     val isFreezeIntegrityTask = name == "archUnitFreezeStoreIntegrityTest"
     useJUnitPlatform {
-        // 同じ番人を専用 JVM で実行し、Spring の TestContext 累積と同居させない。
-        // 走査範囲・ImportOption・シャード割当は変更せず、engine だけを分離する。
+        // engine 分離（main 既存機構）: archUnitTest だけが ArchUnit 専用 JUnit エンジンを使う。
+        // それ以外（test/perfTest/archTest）は従来どおり junit-jupiter エンジンのみで、
+        // archunit エンジンの @AnalyzeClasses を二重に走らせない。
         if (isArchUnitTask) {
             includeEngines("archunit")
         } else {
             excludeEngines("archunit")
         }
-        if (isPerfTask) {
-            includeTags("perf")
-        } else {
-            excludeTags("perf")
+        // タグ分離（CMP-261002-1606 新規）: archTest はタグ "archunit" 付き junit-jupiter テストだけを走らせる。
+        // archUnitTest（main 既存機構）は @AnalyzeClasses に @ArchTag("archunit") も付いているため、
+        // タグ "archunit" を除外すると 0 件実行になってしまう。perf のみ除外し archunit は除外しない。
+        when {
+            isPerfTask -> includeTags("perf")
+            isArchTask -> {
+                includeTags("archunit")
+                excludeTags("perf")
+            }
+            isArchUnitTask -> excludeTags("perf")
+            else -> excludeTags("perf", "archunit")
         }
     }
     // テスト数が 180+ の SpringBootTest を含み、累積でヒープが膨らむ。
     // 2g → 3g（OOM 対策） → 4g（F09.13 Phase 1-γ: Apache POI 5.2.5 導入による Jackson Mixin OOM 対策）。
     // POI は内部で大量の XSD スキーマをロードしてヒープ・メタスペースを圧迫する。
     // ubuntu-latest は 7GB RAM。G1GC と SoftRef 積極解放で長時間テストのヒープ枯渇を防ぐ。
-    maxHeapSize = "4g"
+    // archTest: ArchUnit の本番取り込み 2 系統（ClassCache 約 0.58GB + ProductionClasses 約 0.49GB）を
+    // 1 JVM で共有し、取り込み時の一時オブジェクトと各テストの依存グラフ分の余裕を足して 3g とする。
+    maxHeapSize = if (isArchTask) "3g" else "4g"
     // N テストごとに JVM を fork し直し、累積メモリ（特に MySQL Connector の AbandonedConnectionCleanup が
     // WeakReference 監視している放置 Connection オブジェクトの累積）をリセットする。
     //
@@ -410,13 +438,18 @@ tasks.withType<Test> {
     //
     // ローカル（WSL2 Docker）環境では -Pfork.every=0 で無効化し、1コンテナ共有で高速化できる。
     // perfTask は単一クラスの重量級 IT ゆえ forkEvery=0（1 JVM 共有）で無駄な再 fork を避ける。
-    setForkEvery(if (isPerfTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 180L))
+    // archTest は取り込み結果を JVM 内で共有することが目的のため forkEvery=0・並列 fork なし（1 JVM）。
+    // fork し直すと取り込みが JVM の数だけ繰り返され、並列 fork すると取り込みの複製がワーカー数だけ増える。
+    setForkEvery(if (isPerfTask || isArchTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 180L))
     // ローカル（WSL2 Docker）環境では Testcontainers の並列コンテナ起動が WSL2 ポートミラーリングの
     // タイミング問題を引き起こすため、-Pmax.parallel.forks=1 で上書きできるようにする。
     // CI 環境ではデフォルト 2 のまま動作する。
     // perfTask は単一クラスのため並列 fork しない（Testcontainer/測定の相互干渉を避ける）。
+    // archUnitTest（main 既存機構・archunit エンジン分離）も main と同様に並列 fork 1 を維持する。
     maxParallelForks =
-        if (isPerfTask || isArchUnitTask) 1 else ((project.findProperty("max.parallel.forks") as String?)?.toInt() ?: 2)
+        if (isPerfTask || isArchTask || isArchUnitTask) 1 else (
+            (project.findProperty("max.parallel.forks") as String?)?.toInt() ?: 2
+            )
     // GC を明示し OOM 時にヒープダンプを残す（CI で再発時の調査用）
     //
     // -Dcom.mysql.cj.disableAbandonedConnectionCleanup=true:
@@ -448,6 +481,8 @@ tasks.withType<Test> {
     // （OOM で落ちた回こそ、この数字が要る）。CI ログを "[test-jvm]" で grep せよ。
     // beforeSuite は複数ワーカーのイベントを受けるため、スレッド安全な集合を使う。
     val testJvmNames: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    val executedTestCount = AtomicLong(-1L)
+    val testTaskName = name
     addTestListener(object : org.gradle.api.tasks.testing.TestListener {
         override fun beforeSuite(suite: org.gradle.api.tasks.testing.TestDescriptor) {
             if (suite.name.startsWith("Gradle Test Executor")) {
@@ -466,6 +501,13 @@ tasks.withType<Test> {
                         " ※ forkEvery はワーカー単位で数える"
                 )
                 logger.lifecycle("[test-jvm] 内訳: " + testJvmNames.joinToString(", "))
+                // [test-count] タスクごとの実行テスト数。archTest が「走ったこと」をログで示し、
+                // 0 件なら下の doLast で失敗させる（走らない番人は最悪。CMP-261002-1606）。
+                executedTestCount.set(result.testCount)
+                logger.lifecycle(
+                    "[test-count] ${testTaskName}: 実行 ${result.testCount} 件" +
+                        "（成功 ${result.successfulTestCount} / 失敗 ${result.failedTestCount} / skip ${result.skippedTestCount}）"
+                )
             }
         }
         override fun beforeTest(testDescriptor: org.gradle.api.tasks.testing.TestDescriptor) {}
@@ -473,6 +515,25 @@ tasks.withType<Test> {
             testDescriptor: org.gradle.api.tasks.testing.TestDescriptor,
             result: org.gradle.api.tasks.testing.TestResult
         ) {}
+    })
+
+    // 【テスト JVM の実効最大ヒープの転送（CMP-261002-1606）】
+    // TestJvmHeapLoggingLauncherSessionListener（src/test/.../common/testing）がワーカー JVM 内で
+    // "[test-jvm-heap] pid=... maxMemory=...MB" を標準出力に出す。しかし下の testLogging は
+    // showStandardStreams=false のため、Gradle が捕捉した標準出力は CI ログに出ない。
+    // 全出力を出すとログが溢れるので、この接頭辞の行だけを lifecycle へ転送する。
+    // （ランチャーセッション開始時の出力はテストクラスに属さないが、Gradle はワーカーの
+    //   "Gradle Test Executor N" スイートに帰属させて本リスナーへ渡すことを実測で確認済み）
+    // CI ログを "[test-jvm-heap]" で grep せよ。
+    addTestOutputListener(object : org.gradle.api.tasks.testing.TestOutputListener {
+        override fun onOutput(
+            testDescriptor: org.gradle.api.tasks.testing.TestDescriptor,
+            outputEvent: org.gradle.api.tasks.testing.TestOutputEvent
+        ) {
+            outputEvent.message.lineSequence()
+                .filter { it.startsWith("[test-jvm-heap]") }
+                .forEach { logger.lifecycle(it) }
+        }
     })
 
     // 【ヒープダンプはワーカーごとに分ける（実測 2026-08-26）】
@@ -493,6 +554,27 @@ tasks.withType<Test> {
         "-Duser.timezone=$testTimezone",
         // 非JST契約テストが「指定した値が実際のワーカーへ届いた」ことを検証するための期待値。
         "-Dmannschaft.test.expected-jvm-timezone=$testTimezone"
+    )
+    // 【Spring テストコンテキストキャッシュの上限（MAT 実測・CMP-261002-1606 run 37196327170）】
+    // shard 0 の OOM 時、ヒープの 59%（2.48GB）を Spring テストコンテキスト 17 個
+    // （平均約146MB・最大177MB）が占めていた。spring.test.context.cache.maxSize は
+    // 未設定で既定 32。テスト構成の種類が多く、1 JVM に十数個が溜まると -Xmx4g を超える。
+    // 10 × 最大177MB ≒ 1.8GB なら 4g に余裕があり、それを超える分は LRU で close される
+    // （根治は独自 @MockitoBean 等を共通構成へ寄せてコンテキスト種類自体を減らすこと。
+    //  CMP-261004-2047 で追跡。本設定はあくまで応急の上限）。
+    // -Pspring.test.context.cache.maxSize=N で上書き可能（archTest は Spring を使わないため無害）。
+    val contextCacheMaxSizeOverride = project.findProperty("spring.test.context.cache.maxSize") as String?
+    systemProperty(
+        "spring.test.context.cache.maxSize",
+        contextCacheMaxSizeOverride ?: "10"
+    )
+    // SpringTestContextCacheMaxSizeGuardTest が「既定値 10 が本当に効いているか」と
+    // 「-P で明示的に上書きされたか」を区別するためのフラグ。
+    // これが無いと、ガードは期待値も実測値も同じ system property から読むため、
+    // 既定値が誤って 32 に戻っても常に一致して green になる（偽 green）。
+    systemProperty(
+        "mannschaft.test.contextCacheMaxSize.overridden",
+        (contextCacheMaxSizeOverride != null).toString()
     )
 
     // （旧: D-4 CrossDomainForeignKeyArchTest の baseline 再凍結スイッチ archunit.fk.refreeze を
@@ -553,7 +635,12 @@ tasks.withType<Test> {
     // =====================================================================
     val shardTotal = (project.findProperty("shard.total") as String?)?.toIntOrNull()
     val shardIndex = (project.findProperty("shard.index") as String?)?.toIntOrNull()
-    if (!isFreezeIntegrityTask && shardTotal != null && shardIndex != null && shardTotal > 1) {
+    if (isArchTask && shardTotal != null) {
+        // archTest は shard 分割しない（ArchUnit の取り込みは 1 回で全クラス分を賄うため、分割すると
+        // 取り込みが shard 数だけ繰り返されるだけで速くならない）。CI では専用ジョブで 1 回だけ走らせる。
+        logger.lifecycle("[archTest] -Pshard.* は archTest には適用しない（全 ArchUnit テストを 1 JVM で実行する）")
+    }
+    if (!isArchTask && !isFreezeIntegrityTask && shardTotal != null && shardIndex != null && shardTotal > 1) {
         require(shardIndex in 0 until shardTotal) {
             "shard.index ($shardIndex) は 0..${shardTotal - 1} の範囲でなければならない（shard.total=$shardTotal）"
         }
@@ -628,8 +715,21 @@ tasks.withType<Test> {
         }
     }
 
-    // 先行する ArchUnit 実行では確定せず、既存の test/perfTest 等の終端集計を維持する。
-    if (!isArchUnitTask && !isFreezeIntegrityTask) {
+    if (isArchTask) {
+        // ArchUnit はコードを実行しないためカバレッジを取らない。jacocoTestReport は `test` の実行データを
+        // 前提にしており、archTest から finalizedBy すると archTest 単独実行で `test` 全体を巻き込むおそれがある。
+        extensions.configure<org.gradle.testing.jacoco.plugins.JacocoTaskExtension> { isEnabled = false }
+        doLast {
+            if (executedTestCount.get() <= 0L) {
+                throw GradleException(
+                    "[archTest] ArchUnit テストが 1 件も実行されなかった（タグ \"archunit\" の付与・" +
+                        "useJUnitPlatform のタグ設定を確認せよ。走らない番人は最悪。CMP-261002-1606）"
+                )
+            }
+        }
+    } else if (!isArchUnitTask && !isFreezeIntegrityTask) {
+        // 先行する ArchUnit 実行（archUnitTest/archUnitFreezeStoreIntegrityTest）では確定せず、
+        // 既存の test/perfTest 等の終端集計を維持する。
         finalizedBy(tasks.jacocoTestReport)
     }
     testLogging {
@@ -714,6 +814,32 @@ tasks.register<Test>("perfTest") {
     classpath = sourceSets["test"].runtimeClasspath
     // 通常の check/build には載せない（明示実行のみ）。
     shouldRunAfter(tasks.named("test"))
+}
+
+// =============================================================================
+// archTest: ArchUnit を使うテスト（@Tag/@ArchTag "archunit"）だけを Spring 系とは別の JVM で実行する
+// -----------------------------------------------------------------------------
+// 【なぜ分けるか（CMP-261002-1606・MAT 実測）】CI shard 5 のテスト JVM（-Xmx4g）が OOM した。
+//   ArchUnit の本番取り込み（@AnalyzeClasses の ClassCache 約 0.58GB ＋ ProductionClasses 約 0.49GB）が
+//   Spring テストコンテキスト（15 個 1.44GB）と同じワーカー JVM に乗って上限を押し上げていた。
+//   ArchUnit は Spring を要しないため、別 JVM（このタスク）へ切り出す。
+// 【構成】タグ filter・heap 3g・forkEvery=0・maxParallelForks=1・shard 分割なし・jacoco 無効は
+//   withType<Test> の isArchTask 分岐で設定する。[test-jvm] / [test-jvm-heap] / [test-count] ログと
+//   ヒープダンプ（build/heap-dumps）は `test` と共通。結果 XML は build/test-results/archTest/。
+//   1 件も実行されなければ失敗する（走らない番人は最悪）。
+// 【どこで走るか】`check`（= `build`）に載せる。CI は backend-ci.yml / backend-deploy.yml /
+//   backend-nightly-full.yml の専用ジョブ（arch-test）で 1 回だけ走らせ、集約ゲートの needs に入れる。
+// 使い方: cd backend && ./gradlew archTest
+// =============================================================================
+val archTest = tasks.register<Test>("archTest") {
+    group = "verification"
+    description = "ArchUnit を使うテスト（タグ archunit）だけを Spring 系とは別の 1 JVM で実行する（CMP-261002-1606）"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    shouldRunAfter(tasks.named("test"))
+}
+tasks.named("check") {
+    dependsOn(archTest)
 }
 
 // =============================================================================
@@ -912,8 +1038,8 @@ tasks.register("verifyShardCoverage") {
 }
 
 tasks.jacocoTestReport {
-    // 旧 test.exec に含まれた番人の実行分も合算する。実行依存は追加しない。
-    executionData(archUnitTest.get())
+    // archTest は isArchTask 分岐で Jacoco を無効化しているため実行データを生成しない。
+    // 合算対象は `test`（通常の shard 実行）のみでよい。
     reports {
         csv.required = true
     }

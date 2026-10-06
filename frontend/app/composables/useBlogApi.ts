@@ -78,7 +78,7 @@ export function useBlogApi() {
 
   async function getPost(slug: string, params: Readonly<Record<string, unknown>> = {}) {
     const query = parseBlogPostReadQuery(params)
-    const path = `/api/v1/blog/posts/${slug}`
+    const path = `/api/v1/blog/posts/${encodeURIComponent(slug)}`
     return Object.keys(query).length ? api<{ data: BlogPostResponse }>(path, { query }) : api<{ data: BlogPostResponse }>(path)
   }
 

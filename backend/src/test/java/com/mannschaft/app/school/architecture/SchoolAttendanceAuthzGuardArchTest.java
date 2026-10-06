@@ -1,5 +1,6 @@
 package com.mannschaft.app.school.architecture;
 
+import com.mannschaft.app.common.architecture.ArchUnitTestTag;
 import com.tngtech.archunit.core.domain.JavaAnnotation;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -8,6 +9,7 @@ import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayDeque;
@@ -48,6 +50,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 空虚な緑を防ぐ）。本テストは出陣前は Policy 不在で必ず赤になる。</p>
  */
 @DisplayName("学校出欠 認可番人（AC-19・凍結なし）")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class SchoolAttendanceAuthzGuardArchTest {
 
     private static final String POLICY = "SchoolAttendanceAccessPolicy";

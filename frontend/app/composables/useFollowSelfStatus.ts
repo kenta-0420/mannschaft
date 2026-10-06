@@ -100,28 +100,47 @@ export function useFollowSelfStatus(api: FollowStatusApi) {
     }
   }
 
-  async function applySupporter(scopeId: string) {
+  /**
+   * サポーター申請。戻り値は「同一スコープのまま follow API が成功したか」
+   * （CMP-261004-1942。呼び出し元が人数の取り直し（refreshDetail）を呼ぶ判定材料にする）。
+   *
+   * follow 自体が成功していれば、その後の status GET が失敗してもこの戻り値は真のまま
+   * （変更は成立しているため。status GET 失敗は別エラーとして扱い、「サポーター申請」の
+   * 失敗としては通知しない）。
+   */
+  async function applySupporter(scopeId: string): Promise<boolean> {
     ensureScope(scopeId)
     const gen = scopeGen
     followLoading.value = true
     try {
       await api.follow(scopeId)
-      if (gen !== scopeGen) return
+      if (gen !== scopeGen) return false
       // 申請前に飛ばした古い GET の結果で申請後の状態を巻き戻さない。
       const seq = ++getSeq
-      const res = await api.getStatus(scopeId)
-      if (gen !== scopeGen) return
-      // 申請後にさらに新しい GET が始まっていればそちらが新しい状態を反映する。
-      if (seq === getSeq) followStatus.value = res.data.status
-      notification.success(
-        res.data.status === 'APPROVED'
-          ? t('common.scopeShell.supporter_registered')
-          : t('common.scopeShell.supporter_applied'),
-      )
+      try {
+        const res = await api.getStatus(scopeId)
+        if (gen !== scopeGen) return false
+        // 申請後にさらに新しい GET が始まっていればそちらが新しい状態を反映する。
+        if (seq === getSeq) followStatus.value = res.data.status
+        notification.success(
+          res.data.status === 'APPROVED'
+            ? t('common.scopeShell.supporter_registered')
+            : t('common.scopeShell.supporter_applied'),
+        )
+      }
+      catch (statusError) {
+        // follow 自体は成功済みのため「サポーター申請」の失敗としては扱わない。
+        if (gen === scopeGen) {
+          handleApiError(statusError, 'フォロー状態取得')
+          notification.success(t('common.scopeShell.supporter_applied'))
+        }
+      }
+      return gen === scopeGen
     }
     catch (error) {
-      if (gen !== scopeGen) return
+      if (gen !== scopeGen) return false
       handleApiError(error, 'サポーター申請')
+      return false
     }
     finally {
       if (gen === scopeGen) followLoading.value = false

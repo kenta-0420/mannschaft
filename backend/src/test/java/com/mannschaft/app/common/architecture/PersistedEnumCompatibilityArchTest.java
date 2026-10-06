@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.junit.ArchTag;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -22,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 全本番classの注釈を保守的に収集するため、未使用のマッピング宣言も対象となる。
  */
 @AnalyzeClasses(packages = "com.mannschaft.app", importOptions = ImportOption.DoNotIncludeTests.class)
+@ArchTag(ArchUnitTestTag.ARCHUNIT)
 class PersistedEnumCompatibilityArchTest {
     @ArchTest
     static void 永続化enumの定数は互換性台帳と一致する(JavaClasses classes) throws IOException {

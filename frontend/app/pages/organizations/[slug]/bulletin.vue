@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BulletinThreadResponse } from '~/types/bulletin'
+import { parseAnnouncementRouteId } from '~/utils/announcementRoute'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -11,6 +12,44 @@ const { isAdminOrDeputy, isMember, loadPermissions } = useRoleAccess('organizati
 const selectedThread = ref<BulletinThreadResponse | null>(null)
 const showCreateDialog = ref(false)
 const listRef = ref<{ refresh: () => void } | null>(null)
+const { getScopedThread } = useBulletinApi()
+const { getOrganization } = useOrganizationApi()
+const { handleApiError } = useErrorHandler()
+const linkLoading = ref(false)
+const linkError = shallowRef<unknown>(null)
+let linkSequence = 0
+
+/** 元リンクのthreadIdはこのscopeの詳細APIで認可してから開く。 */
+async function loadLinkedThread(): Promise<void> {
+  const request = ++linkSequence
+  selectedThread.value = null
+  linkError.value = null
+  linkLoading.value = true
+  try {
+    const threadId = parseAnnouncementRouteId(route.query.threadId)
+    if (threadId === undefined) return
+    const scope = await getOrganization(orgSlug)
+    const numericId = scope.data.numericId
+    if (typeof numericId !== 'number' || !Number.isSafeInteger(numericId) || numericId <= 0) {
+      throw new Error('Invalid organization scope identifier')
+    }
+    const result = await getScopedThread('organizations', String(numericId), threadId)
+    if (result.data.id !== threadId || result.data.scopeType !== 'ORGANIZATION' || String(result.data.scopeId) !== String(numericId)) {
+      throw new Error('Bulletin thread does not match its route scope')
+    }
+    if (request === linkSequence) selectedThread.value = result.data
+  }
+  catch (error) {
+    if (request !== linkSequence) return
+    linkError.value = error
+    handleApiError(error)
+  }
+  finally {
+    if (request === linkSequence) linkLoading.value = false
+  }
+}
+watch(() => route.query.threadId, () => { void loadLinkedThread() })
+onScopeDispose(() => { ++linkSequence })
 
 /** タブ: 'threads'=通常一覧 / 'archive'=保管庫ビュー。 */
 const activeTab = ref<'threads' | 'archive'>('threads')
@@ -22,14 +61,16 @@ function onSwitchTab(tab: 'threads' | 'archive') {
   selectedThread.value = null
 }
 
-onMounted(() => loadPermissions())
+onMounted(async () => { await loadPermissions(); await loadLinkedThread() })
 </script>
 
 <template>
   <div>
     <PageHeader :title="t('bulletin.title')" />
 
-    <div v-if="selectedThread" class="mx-auto max-w-3xl">
+    <PageLoading v-if="linkLoading" />
+    <DashboardErrorState v-else-if="linkError" :error="linkError" @retry="loadLinkedThread" />
+    <div v-else-if="selectedThread" class="mx-auto max-w-3xl">
       <BulletinThreadDetail :thread-id="selectedThread.id" :can-manage="isAdminOrDeputy" @back="selectedThread = null" />
     </div>
     <template v-else>

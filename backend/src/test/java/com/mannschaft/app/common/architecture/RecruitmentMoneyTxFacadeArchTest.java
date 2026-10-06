@@ -1,12 +1,10 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * （横断の番人は対象メソッドごとに tx 本体が 1 本以上あることまでしか見ない）。</p>
  */
 @DisplayName("recruitment 金銭・制裁の認可ファサード型（W4）の固有項目の ArchUnit 固定")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class RecruitmentMoneyTxFacadeArchTest {
 
     private static final String PKG = "com.mannschaft.app.recruitment";
@@ -43,14 +42,7 @@ class RecruitmentMoneyTxFacadeArchTest {
             new String[]{PKG + ".controller.CancellationPolicyController", "update"},
             new String[]{PKG + ".controller.CancellationPolicyController", "archive"});
 
-    private static JavaClasses classes;
-
-    @BeforeAll
-    static void importClasses() {
-        classes = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses classes = ProductionClasses.get();
 
     @Test
     @DisplayName("AC-15: 移した 6 本の tx 本体メソッド（waive・liftPenalty・confirmApplication・get/update/archivePolicy）が Facade から呼ばれている")
@@ -71,7 +63,7 @@ class RecruitmentMoneyTxFacadeArchTest {
                 .contains("waive", "liftPenalty", "confirmApplication", "getPolicy", "updatePolicy", "archivePolicy");
     }
 
-    private static List<JavaMethod> controllerMethods(String[] target) {
+    private List<JavaMethod> controllerMethods(String[] target) {
         if (!classes.contain(target[0])) {
             return List.of();
         }
