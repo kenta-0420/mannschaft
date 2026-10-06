@@ -7,6 +7,7 @@ WORKDIR /app
 
 # Install only production + build-time deps via ci for reproducibility
 COPY package.json package-lock.json ./
+COPY scripts/patch-nuxt-devtools-simple-git.mjs ./scripts/patch-nuxt-devtools-simple-git.mjs
 RUN npm ci
 
 # ============================================================
