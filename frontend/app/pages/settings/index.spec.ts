@@ -1,6 +1,8 @@
 // @vitest-environment nuxt
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setActivePinia } from 'pinia'
+import { defineComponent, h } from 'vue'
+import { useRouter as useInjectedRouter } from 'vue-router'
 import { useNuxtApp, useState } from '#app'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import SettingsIndexPage from './index.vue'
@@ -52,8 +54,17 @@ describe('設定ハブの常時表示する本人牧場入口', () => {
   })
 
   it.each(['/my/ranch', '/my/ranch/results'])('%s: 実NuxtLinkのクリックで本人routeへ遷移する', async target => {
-    const wrapper = await mountSuspended(SettingsIndexPage)
-    const router = useNuxtApp().$router
+    let injectedRouter: ReturnType<typeof useInjectedRouter> | undefined
+    const harness = defineComponent({
+      setup() {
+        // 実RouterLinkと同じVue injectionから取得する。NuxtAppの別routerは監視しない。
+        injectedRouter = useInjectedRouter()
+        return () => h(SettingsIndexPage)
+      },
+    })
+    const wrapper = await mountSuspended(harness)
+    const router = injectedRouter
+    if (!router) throw new Error('SETTINGS_LINK_ROUTER_MISSING')
     // 実リンクの遷移要求だけを観測し、遷移先のAPIはこの入口試験で実行しない。
     const push = vi.spyOn(router, 'push').mockResolvedValue(undefined)
     await wrapper.get(`a[href="${target}"]`).trigger('click', { button: 0 })

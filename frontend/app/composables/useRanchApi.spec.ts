@@ -2,10 +2,10 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest'
-import { effectScope } from 'vue'
+import { defineComponent } from 'vue'
 import { setActivePinia } from 'pinia'
 import { useNuxtApp } from '#app'
-import { mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { useAuthStore } from '~/stores/useAuthStore'
 import type { paths } from '~/types/generated'
 import type { AssignmentResult, RanchState } from '~/types/ranch'
@@ -25,7 +25,7 @@ mockNuxtImport('useAdminImpersonationStore', () => () => ({ isImpersonating: fal
 
 const assignmentPath = '/api/v1/me/ranch/assignment' satisfies keyof paths
 const dinosaurId = '33333333-3333-4333-8333-333333333333'
-const scopes: ReturnType<typeof effectScope>[] = []
+const wrappers: { unmount: () => void }[] = []
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8')
 const controller = source('../backend/src/main/java/com/mannschaft/app/ranch/controller/RanchAssignmentController.java')
 const controllerBase = controller.match(/@RequestMapping\("([^"]+)"\)/)?.[1]
@@ -57,7 +57,7 @@ beforeEach(async () => {
   external.report.mockReset()
 })
 afterEach(() => {
-  for (const scope of scopes.splice(0)) scope.stop()
+  for (const wrapper of wrappers.splice(0)) wrapper.unmount()
   useAuthStore().$reset()
   vi.restoreAllMocks()
 })
@@ -101,18 +101,25 @@ describe('牧場選定PUTの実AssignmentResult契約', () => {
       }
       throw new Error('UNEXPECTED_RANCH_CONTRACT_TRANSPORT')
     })
-    const scope = effectScope()
-    scopes.push(scope)
-    const ranch = await useNuxtApp().runWithContext(() => scope.run(() => useRanchState()))
-    if (!ranch) throw new Error('SYNTHETIC_SCOPE_MISSING')
-    const result = await ranch.act(() => ranch.api.assignment({ method: 'HABITAT_RANDOM', habitat: 'LAND', version: '1' }))
+    let ranch: ReturnType<typeof useRanchState> | undefined
+    const harness = defineComponent({
+      setup() {
+        // useErrorHandlerのuseI18nも含め、製品と同じVue setupで初期化する。
+        ranch = useRanchState()
+        return () => null
+      },
+    })
+    wrappers.push(await mountSuspended(harness))
+    const currentRanch = ranch
+    if (!currentRanch) throw new Error('SYNTHETIC_SCOPE_MISSING')
+    const result = await currentRanch.act(() => currentRanch.api.assignment({ method: 'HABITAT_RANDOM', habitat: 'LAND', version: '1' }))
     expect(result).toEqual(selected)
     expect(result).not.toHaveProperty('dinosaur')
-    expect(ranch.state.value?.dinosaur?.id).toBe(result.dinosaurId)
-    expect(ranch.state.value?.dinosaur?.stage).toBe('EGG')
-    expect(ranch.state.value?.assignment?.selectionConfirmed).toBe(true)
-    expect(ranch.state.value?.dinosaur?.speciesKey).toBe(result.speciesKey)
-    expect(ranch.state.value?.dinosaur?.variantKey).toBe(result.variantKey)
+    expect(currentRanch.state.value?.dinosaur?.id).toBe(result.dinosaurId)
+    expect(currentRanch.state.value?.dinosaur?.stage).toBe('EGG')
+    expect(currentRanch.state.value?.assignment?.selectionConfirmed).toBe(true)
+    expect(currentRanch.state.value?.dinosaur?.speciesKey).toBe(result.speciesKey)
+    expect(currentRanch.state.value?.dinosaur?.variantKey).toBe(result.variantKey)
     expect(calls).toEqual([`PUT ${assignmentPath}`, `GET ${controllerBase}`])
   })
 })
