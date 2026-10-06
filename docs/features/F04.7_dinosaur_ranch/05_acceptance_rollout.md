@@ -198,3 +198,45 @@ AC65/66/72の並行/途中失敗fixtureに、非TX Guard→single Semaphore.tryA
 | `RenderStyle` | `ranch_owners.render_style` | VARCHAR(20)、`chk_ranch_owners_4` | PIXEL / PAINT_2D |
 
 第1段階では定数と読取り互換性を全API・worker・batchへ配布する。開発用fixtureは本番OFFのままとし、Ranch開始・選定・孵化・設定など全書込み経路を公開しない。全タスクの旧versionが0になった時刻・環境・image digestをリリース記録へ残す。第2段階で別リリースとして本人書込みを有効化し、新規行の再読込とrollback下限を確認する。機能フラグをOFFにするだけでは、書込み済み新値を読めない旧バイナリへrollbackできない。
+
+## 2026-10-07 検証checkpoint（B845）
+
+以下はB845時点の証跡の限定範囲を記録する。親担当の最終検分・押印とmerge判断は未済。上記2026-10-03の記録と失敗履歴は当時の記録として保持する。73AC本文・完了条件を変更せず、全体green・本番ready・正式公開・戦役完了は宣言しない。PR #3652は入力進捗記録時点でDraft・未merge。
+
+### 入力証跡とCIの確認範囲
+
+作業領域の相対パスとして以下を参照した。これらのローカル証跡は製品リポジトリへの収録済みを意味しない。公開参照は[PR #3652](https://github.com/kenta-0420/mannschaft/pull/3652)、[Backend CI run 37496082771](https://github.com/kenta-0420/mannschaft/actions/runs/37496082771)のJUnit artifacts（6 shardとArchUnit）、[Frontend CI run 37496082739](https://github.com/kenta-0420/mannschaft/actions/runs/37496082739)のjob 112380863445ログ。CIの公開参照とローカルで保存した限定照合を併記する。
+
+- `outputs/mannschaft-ranch-phase1-progress-20261006.md`（v26実機・住民探索完了・四活動事前停止までの時点別記録）
+- `work/ci-resume-20261006/root-ci-evidence-adoption-b845c0.json`（親検分済み、`wholeAcceptanceComplete=false`）
+- `work/ci-resume-20261006/ci-evidence-index-candidate.json`（元候補の照合範囲・workflow HEADとmerge checkoutの区別）
+- `work/recovery-phase1/diagnosis/resume-plan-20261006/merge-publication-boundary-b845c0-candidate-01/`（`classification.md`・`candidate-manifest.json`のA/B/C境界案、分類は親未採択）
+
+PR/workflow HEADは `b845c0152e1d7230af09f5c4783136401d2e86f7`。13 CI workflowは完了し必須ジョブ成功、Backend全6 shard・Non-JST・各ゲート・集約成功。schedule/main-onlyの2ジョブは条件skip。Frontendの監査・lint・型検査・Vitestは成功し、503ファイル／5,008テスト成功を観測した。ただしFrontend jobの実checkoutはPR merge ref `c2d89e28c8937e70a9a0b8c316d0e7b6b6f87cab`であり、B845単独checkoutでの再実行とは表現しない。
+
+親採択されたBackend照合は71直接JUnit一致＋12 source method／表示名／parameterized名の照合で計83候補。PASSは各assertの範囲に限る。Frontendの候補は9 specファイルの成功証跡で、13候補行・14展開例を含むが、ファイル進捗だけからmethod単位PASSを推定しない。元候補indexの未採択表記と、後続の親採択JSONを時点別に区別する。いずれも73AC全条件の合格に昇格しない。extractorがJSON生成後にKeyErrorとなった旧失敗と、v2 exit 0の記録も保持する。
+
+### 実機・住民探索の限定結果
+
+v26/stage17は親がactual BE/FE所有関係とHEAD/JARを採択。新人工本人のSMOKE 2件・選定1件・命名/描画/給餌1件・診断保存1件が成功し、成功直後readinessによる4baselineを登録した。匿名warmupのDCL30秒超過は保持し、login mount観測・private牧場GET0・ログイン/保存0のwarmupをAC成功へ算入しない。旧ownerのbaselineを新ownerで実行したとは扱わない。
+
+- 住民A（1280×900/en）はDashboard→Village（空）→My Page→Settingsで部屋へ到達。Interactの本人分身に触れた反応と、無料枠後のFood「Growth: 0 XP」を確認した。初見の寄り道は導線の観測として保持し、成体画像の準備中表示は正式ADULT素材未制作と区別する。
+- 住民B（1280×900/en）は本人結果閲覧とCalendar離脱後の同じ結果再表示を確認。6軸の判定側が分かりにくいfindingは別担当が最小修正を製造中で、修正・検証完了にはしない。
+- 住民C（390×844）はMotion=Stop motionを選びSave後の表示と、予約の空状態ガイドを確認。reload/再訪保持と実アニメーション停止は未確認。
+
+3住民は別contextで自律探索を完了しbrokerは終了。full-page画像と上記viewportだけの観測で、全端末・tap 44px・全localeを網羅した証拠ではない。画像のマゼンタはinput/textareaを伏せるscreenshot mask、selector構文による操作失敗はtool/runtime errorであり、製品不具合と混同しない。
+
+### 未完了AC・mergeと正式公開の境界
+
+全73ACのclass/method・実green・assert範囲・実UI証跡の最終照合は未完了。次の部分成功・保留を受入条件の削除や完了へ読み替えない。
+
+| 範囲 | 現在の証拠と未完了条件 |
+|---|---|
+| 四活動・報酬・認可（AC07〜17/26/31/40/50/67/72など） | v26 run-activityはUI実行前の`LOCALE_BYTE_BOUND` guard拒否で0 proof groups、選択7認可caseはNOT_STARTED。実Linux/Git LFはcommon.json 134600 bytes・4locale合計163727 bytes、serialized labels 228107 bytes。Windows CRLF観測はcommon.json 137398 bytes・4locale合計166915 bytesで、サイズを混同しない。実Linux commonも旧131072上限を超えるguardfindingであり、v26時点のpayload262144 guardは維持。報酬成功・製品不具合の証拠にせず、TL編集・非公開組織の実機境界も未実証として残す。 |
+| care・無料成体（AC05/41/64など） | care実機1件と住民の枠後反応は限定成功。残1XP calculator assertは原子二tab競合を代用せず、同entityへのXP追加UTだけで次UTC週budget/無料未所属の任意利用を証明しない。 |
+| 運営・認可・退会（AC26/40/45/66など） | ownerを作らないadmin読取200はpublish/control/retry全操作を代用しない。MockMvc/仮principalは実browser Cookie/CORS/他tenant直打ちを代用せず、purge rollback ITだけで全世代/PURGING barrier競合を網羅しない。 |
+| 表示・motion・結果（AC27/28/58/59/62/63/69/71など） | settings到達・結果再表示とCの保存後表示は限定成功。全6言語/keyboard/zoom/dark/二tab、reload/別端末保持、個別非active timer/RAF/audio停止、診断判定側findingの修正確認は未完了。 |
+| 正式公開（AC44/49/51/52/53/56/58/59/70など） | 正式質問文/翻訳/採点、全64type mapping、16種×4外見、全stage×両style×反応/静止素材は未承認・未完成。fixtureのsynthetic64/pack受理と欠落拒否はgate機構の限定証拠で正式coverage完成ではない。公開gateはclosed。 |
+| 性能・運用（§4/AC23/68/72など） | QA配送一点を全range/本番SLO承認へ拡張しない。通常負荷p95/gzip等の公開前実測と、明記された二worker/基本failure matrix/0・1・100・101 keysetは必要証拠として残す。 |
+
+境界候補のAはmerge前の基盤・安全契約と明記基礎fixture、Bは後続の正式素材/原稿/mapping/運営値の制作・裁可、Cは基礎fixture成立後の追加組合せ/長時間soak/将来規模測定を分けた案である。同じACに複数区分があり、親最終判断欄は未採択。B/Cへの分類案だけでAの認可・失敗回復・基本競合・個別visibility等を免除しない。通常負荷の公開前SLOも残し、merge可否と正式公開可否を分ける。台帳close・README完成・受入条件撤回はこのcheckpointの対象外。
