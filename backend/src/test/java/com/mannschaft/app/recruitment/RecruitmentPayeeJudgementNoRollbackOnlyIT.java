@@ -151,16 +151,17 @@ class RecruitmentPayeeJudgementNoRollbackOnlyIT extends AbstractMySqlIntegration
     }
 
     private void awaitWaiveAuditLog() {
-        {
-            org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10)).untilAsserted(() ->
-                    assertThat(transactionTemplate.execute(status -> em.createQuery(
-                                    "SELECT COUNT(a) FROM AuditLogEntity a WHERE a.teamId = :t AND a.eventType = :e",
-                                    Long.class)
-                            .setParameter("t", teamAId)
-                            .setParameter("e", com.mannschaft.app.auth.AuditEventType
-                                    .RECRUITMENT_CANCELLATION_FEE_WAIVED.name())
-                            .getSingleResult())).isPositive());
-        }
+        org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10)).untilAsserted(() -> {
+            // transactionTemplate.execute は総称型 T を返すため assertThat に直接渡すと多重定義が曖昧になる。Long に確定させてから検証する。
+            Long count = transactionTemplate.execute(status -> em.createQuery(
+                            "SELECT COUNT(a) FROM AuditLogEntity a WHERE a.teamId = :t AND a.eventType = :e",
+                            Long.class)
+                    .setParameter("t", teamAId)
+                    .setParameter("e", com.mannschaft.app.auth.AuditEventType
+                            .RECRUITMENT_CANCELLATION_FEE_WAIVED.name())
+                    .getSingleResult());
+            assertThat(count).isPositive();
+        });
     }
 
     private void cleanUp() {
