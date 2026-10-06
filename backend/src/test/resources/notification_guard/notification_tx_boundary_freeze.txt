@@ -55,7 +55,7 @@
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 33
+# CLASSIFIED_FLOOR: 32
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
 # TX_NOTIFY_VIA_DELEGATE / TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY について呼び先の宣言から区分を導出し、
@@ -221,7 +221,7 @@
 #   凍結エントリ 50 + REMOVED 8 + AMBIGUOUS 0 = 58（= 是正前の CENSUS_FLOOR）
 #   凍結エントリ 43 + REMOVED 8 + AMBIGUOUS 0 = 51
 # CLASSIFIED_FLOOR は変更なし（本ロットの7件はいずれも未分類行であり、分類済み2件に触れていない）。
-# CENSUS_FLOOR: 44
+# CENSUS_FLOOR: 43
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
