@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.social.announcement.AnnouncementFeedService;
 import lombok.Builder;
 import lombok.Getter;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -26,30 +27,41 @@ import java.time.format.DateTimeFormatter;
 public class AnnouncementFeedItemDto {
 
     /** お知らせフィード ID */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private final Long id;
 
     /** 表示スコープ種別（TEAM / ORGANIZATION） */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private final String scopeType;
 
     /** 表示スコープ ID */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private final Long scopeId;
+
+    /** 本文 preview 対応種別。LOCKED の場合も対応可否だけを返す。 */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+    private final boolean contentPreviewAvailable;
 
     /** 表示スコープ名。個人横断フィード以外では null。 */
     private final String scopeName;
 
     /** 元コンテンツ種別（BLOG_POST / BULLETIN_THREAD / TIMELINE_POST / CIRCULATION_DOCUMENT / SURVEY） */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
     private final String sourceType;
 
     /** 元コンテンツ ID */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
     private final Long sourceId;
 
     /** お知らせ表示フラグを付けた操作者 ID */
     private final Long authorId;
 
     /** 表示用タイトル（元コンテンツから非正規化） */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private final String titleCache;
 
     /** 本文抜粋（非正規化） */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
     private final String excerptCache;
 
     /** お知らせ優先度（URGENT / IMPORTANT / NORMAL） */
@@ -73,6 +85,7 @@ public class AnnouncementFeedItemDto {
     private final boolean isRead;
 
     /** 可視性×課金の合成状態（FULL / LOCKED）。 */
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
     private final String accessState;
 
     /** レコード作成日時（ISO 8601） */
@@ -97,6 +110,8 @@ public class AnnouncementFeedItemDto {
                 .id(feed.getId())
                 .scopeType(feed.getScopeType() != null ? feed.getScopeType().name() : null)
                 .scopeId(feed.getScopeId())
+                .contentPreviewAvailable(feed.getSourceType() == com.mannschaft.app.social.announcement.AnnouncementSourceType.BLOG_POST
+                        || feed.getSourceType() == com.mannschaft.app.social.announcement.AnnouncementSourceType.BULLETIN_THREAD)
                 .scopeName(item.scopeName())
                 .sourceType(locked ? null : feed.getSourceType() != null ? feed.getSourceType().name() : null)
                 .sourceId(locked ? null : feed.getSourceId())

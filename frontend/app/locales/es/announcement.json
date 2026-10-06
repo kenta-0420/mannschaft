@@ -1,5 +1,17 @@
 {
   "announcement": {
+    "preview": {
+      "title": "Contenido",
+      "open_source": "Abrir página original",
+      "close": "Cerrar",
+      "loading": "Cargando contenido",
+      "empty_body": "Sin contenido",
+      "retry": "Reintentar",
+      "load_failed": "No se pudo cargar el contenido",
+      "locked": "Necesitas acceso para ver este contenido",
+      "image_failed": "No se pudo mostrar la imagen",
+      "read_failed": "No se pudo marcar como leído"
+    },
     "widget_title": "Anuncios",
     "all_announcements": "Todos los anuncios",
     "display_in_announcement": "Mostrar en el widget de anuncios",

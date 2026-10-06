@@ -1,5 +1,17 @@
 {
   "announcement": {
+    "preview": {
+      "title": "Content",
+      "open_source": "Open original page",
+      "close": "Close",
+      "loading": "Loading content",
+      "empty_body": "No content",
+      "retry": "Retry",
+      "load_failed": "Unable to load content",
+      "locked": "You need access to view this content",
+      "image_failed": "Unable to display image",
+      "read_failed": "Unable to mark as read"
+    },
     "widget_title": "Announcements",
     "all_announcements": "All Announcements",
     "display_in_announcement": "Show in Announcement Widget",

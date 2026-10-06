@@ -89,6 +89,7 @@ class DashboardServiceOrgAnnouncementDedupTest {
     @Mock private ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
     @Mock private PaymentGateService paymentGateService;
+    @Mock private com.mannschaft.app.social.announcement.AnnouncementReadService announcementReadService;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -203,6 +204,8 @@ class DashboardServiceOrgAnnouncementDedupTest {
         given(announcementFeedQueryRepository.findByOrgScopeForTeamDashboard(
                 eq(ORG_ID), any(), org.mockito.ArgumentMatchers.anyInt()))
                 .willReturn(List.of(orgFeed(FEED_ID)));
+        given(announcementReadService.fetchReadFeedIds(USER_ID, List.of(FEED_ID)))
+                .willReturn(java.util.Set.of(FEED_ID));
 
         TeamDashboardResponse response =
                 dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK");
@@ -211,5 +214,9 @@ class DashboardServiceOrgAnnouncementDedupTest {
         List<Map<String, Object>> notices = (List<Map<String, Object>>) (List<?>) response.getTeamNotices();
         assertThat(notices).hasSize(1);
         assertThat(notices.get(0).get("id")).isEqualTo(FEED_ID);
+        assertThat(notices.get(0)).containsEntry("scope_type", "ORGANIZATION")
+                .containsEntry("scope_id", ORG_ID).containsEntry("is_read", true)
+                .containsEntry("source_id", orgFeed(FEED_ID).getSourceId());
+        org.mockito.Mockito.verify(announcementReadService).fetchReadFeedIds(USER_ID, List.of(FEED_ID));
     }
 }
