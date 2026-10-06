@@ -40,7 +40,7 @@ function trackCleanup(cleanup: Cleanup[], item: Cleanup): void {
   writeFileSync(cleanupLedgerPath, JSON.stringify({ pending: cleanup }, null, 2))
 }
 
-test.afterEach(async ({}, testInfo) => {
+test.afterEach(async ({ browser: _browser }, testInfo) => {
   const contexts = new Map<string, APIRequestContext>()
   const results: { path: string; status?: number; error?: string }[] = []
   // 本人 editor の自動保存を止めてから前提データを削除する。close 失敗でも削除は続ける。
