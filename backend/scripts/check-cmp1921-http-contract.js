@@ -70,13 +70,17 @@ async function fixture() {
     const one = async (sql, values, label) => {
       const rows = await query(sql, values); invariant(rows.length === 1, label); return rows[0];
     };
-    const team = await one('SELECT id, slug, BIN_TO_UUID(public_id) AS publicId FROM teams WHERE name = ? AND lifecycle_status = ? AND deleted_at IS NULL', ['FC東京U-18（テスト）', 'ACTIVE'], 'team fixture 不一致');
-    const org = await one('SELECT id, slug, BIN_TO_UUID(public_id) AS publicId FROM organizations WHERE name = ? AND lifecycle_status = ? AND deleted_at IS NULL', ['FC東京ユースアカデミー（テスト）', 'ACTIVE'], 'org fixture 不一致');
+    const team = await one('SELECT id, slug FROM teams WHERE name = ? AND lifecycle_status = ? AND deleted_at IS NULL', ['FC東京U-18（テスト）', 'ACTIVE'], 'team fixture 不一致');
+    const org = await one('SELECT id, slug FROM organizations WHERE name = ? AND lifecycle_status = ? AND deleted_at IS NULL', ['FC東京ユースアカデミー（テスト）', 'ACTIVE'], 'org fixture 不一致');
     const jfa = await one('SELECT id, slug FROM organizations WHERE name = ? AND lifecycle_status = ? AND deleted_at IS NULL', ['日本サッカー協会（テスト）', 'ACTIVE'], 'JFA fixture 不一致');
     for (const scope of [team, org, jfa]) {
       invariant(/^\d+$/.test(String(scope.id)) && /^[a-z0-9-]+$/.test(scope.slug), 'scope identifier 不正');
     }
-    for (const scope of [team, org]) invariant(/^[a-f0-9-]{36}$/i.test(scope.publicId || '') && scope.publicId !== scope.slug, 'UUID 負例 precondition 不成立');
+    // 現 scope に public_id はない。UUID形式の未登録slugを負例とする。
+    const uuidNegative = '00000000-0000-4000-8000-000000001921';
+    const teamUuid = await query('SELECT COUNT(*) AS count FROM teams WHERE slug = ?', [uuidNegative]);
+    const orgUuid = await query('SELECT COUNT(*) AS count FROM organizations WHERE slug = ?', [uuidNegative]);
+    invariant(Number(teamUuid[0].count) === 0 && Number(orgUuid[0].count) === 0 && team.slug !== uuidNegative && org.slug !== uuidNegative, 'UUID 未登録slug precondition 不成立');
     await one('SELECT team_id FROM team_org_memberships WHERE team_id = ? AND organization_id = ? AND status = ?', [team.id, org.id, 'ACTIVE'], 'direct org pair 不一致');
     invariant((await query('SELECT team_id FROM team_org_memberships WHERE team_id = ? AND organization_id = ? AND status = ?', [team.id, jfa.id, 'ACTIVE'])).length === 0, 'JFA 負例 precondition 不成立');
     const users = {};
@@ -96,7 +100,7 @@ async function fixture() {
     const matches = await query('SELECT COUNT(*) AS count FROM matches WHERE team_id = ? AND deleted_at IS NULL', [team.id]);
     const templates = await query('SELECT COUNT(*) AS count FROM tournament_entry_templates WHERE team_id = ? AND deleted_at IS NULL', [team.id]);
     invariant(Number(matches[0].count) === 0 && Number(templates[0].count) === 0, '空 fixture precondition 不成立');
-    receipt.fixture = { team, org, jfa, users, adminRoles: roles, memberRoles, matches: 0, templates: 0 };
+    receipt.fixture = { team, org, jfa, users, adminRoles: roles, memberRoles, uuidNegative, matches: 0, templates: 0 };
     return receipt.fixture;
   } finally {
     await db.rollback();
@@ -231,8 +235,8 @@ async function run(base) {
     errorBody(result, 404, 'TOUR_026'); publish(result);
   }
   for (const [label, route, message] of [
-    ['team-uuid', `/api/v1/teams/${f.team.publicId}/matches`, `チームが見つかりません: ${f.team.publicId}`],
-    ['org-uuid', `/api/v1/organizations/${f.org.publicId}/teams/${f.team.slug}/match-stats`, `組織が見つかりません: ${f.org.publicId}`],
+    ['team-uuid', `/api/v1/teams/${f.uuidNegative}/matches`, `チームが見つかりません: ${f.uuidNegative}`],
+    ['org-uuid', `/api/v1/organizations/${f.uuidNegative}/teams/${f.team.slug}/match-stats`, `組織が見つかりません: ${f.uuidNegative}`],
   ]) {
     const result = await get(base, label, route, tokens.member);
     // Converter の直接 RSE と、Spring 型変換包絡を処理する GHE の既存2経路。
