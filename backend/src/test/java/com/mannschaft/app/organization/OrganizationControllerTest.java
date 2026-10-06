@@ -69,6 +69,7 @@ class OrganizationControllerTest {
     private static final String ORG_SLUG = "test-org";
 
     @Mock private OrganizationService organizationService;
+    @Mock private com.mannschaft.app.organization.service.OrganizationDetailFacade organizationDetailFacade;
     @Mock private com.mannschaft.app.organization.service.OrgTeamListService orgTeamListService;
     @Mock private RoleService roleService;
     @Mock private AccessControlService accessControlService;
@@ -171,7 +172,7 @@ class OrganizationControllerTest {
     @DisplayName("getOrganization: 200 OK（可視性チェック通過時）")
     void getOrganization_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
-        given(organizationService.getOrganization(ORG_SLUG)).willReturn(ApiResponse.of(orgResponse()));
+        given(organizationDetailFacade.getOrganization(ORG_SLUG)).willReturn(ApiResponse.of(orgResponse()));
         assertThat(controller.getOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(contentVisibilityChecker).assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
     }
@@ -186,7 +187,7 @@ class OrganizationControllerTest {
         assertThatThrownBy(() -> controller.getOrganization(ORG_SLUG))
                 .isInstanceOf(BusinessException.class);
         // 可視性で弾かれたら Service の取得本体は呼ばれない
-        verify(organizationService, org.mockito.Mockito.never()).getOrganization(ORG_SLUG);
+        verify(organizationDetailFacade, org.mockito.Mockito.never()).getOrganization(ORG_SLUG);
     }
 
     @Test
@@ -195,7 +196,7 @@ class OrganizationControllerTest {
         UpdateOrganizationRequest req = new UpdateOrganizationRequest(
                 "更新", null, null, null, null, null, null, null, null, 0L);
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
-        given(organizationService.updateOrganization(ORG_ID, req)).willReturn(ApiResponse.of(orgResponse()));
+        given(organizationDetailFacade.updateOrganization(ORG_ID, req)).willReturn(ApiResponse.of(orgResponse()));
         assertThat(controller.updateOrganization(ORG_SLUG, req).getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
     }
@@ -210,7 +211,7 @@ class OrganizationControllerTest {
                 .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
         assertThatThrownBy(() -> controller.updateOrganization(ORG_SLUG, req))
                 .isInstanceOf(BusinessException.class);
-        verify(organizationService, org.mockito.Mockito.never()).updateOrganization(ORG_ID, req);
+        verify(organizationDetailFacade, org.mockito.Mockito.never()).updateOrganization(ORG_ID, req);
     }
 
     @Test

@@ -1,5 +1,17 @@
 {
   "announcement": {
+    "preview": {
+      "title": "Inhalt",
+      "open_source": "Originalseite öffnen",
+      "close": "Schließen",
+      "loading": "Inhalt wird geladen",
+      "empty_body": "Kein Inhalt",
+      "retry": "Erneut versuchen",
+      "load_failed": "Inhalt konnte nicht geladen werden",
+      "locked": "Für diesen Inhalt benötigst du eine Zugangsberechtigung",
+      "image_failed": "Bild konnte nicht angezeigt werden",
+      "read_failed": "Lesestatus konnte nicht aktualisiert werden"
+    },
     "widget_title": "Ankündigungen",
     "all_announcements": "Alle Ankündigungen",
     "display_in_announcement": "Im Ankündigungs-Widget anzeigen",
