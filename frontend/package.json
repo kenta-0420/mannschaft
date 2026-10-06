@@ -32,7 +32,7 @@
   },
   "dependencies": {
     "@nuxt/image": "^2.0.0",
-    "@nuxtjs/i18n": "^9.5.3",
+    "@nuxtjs/i18n": "^10.4.0",
     "@nuxtjs/tailwindcss": "^6.14.0",
     "@pinia/nuxt": "^0.11.3",
     "@primeuix/themes": "^2.0.3",
@@ -64,7 +64,7 @@
     "tailwindcss-primeui": "^0.6.1",
     "vee-validate": "^4.15.1",
     "vue": "^3.5.41",
-    "vue-virtual-scroller": "^2.0.0-beta.8",
+    "vue-virtual-scroller": "^3.0.4",
     "vuedraggable": "^4.1.0",
     "zod": "^3.25.76"
   },
@@ -82,7 +82,7 @@
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.8.9",
     "husky": "^9.1.7",
-    "lint-staged": "^16.4.0",
+    "lint-staged": "^17.0.7",
     "nuxt-security": "^1.4.3",
     "openapi-typescript": "^7.13.0",
     "otplib": "^13.4.0",

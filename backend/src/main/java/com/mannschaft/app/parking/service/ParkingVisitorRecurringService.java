@@ -8,7 +8,9 @@ import com.mannschaft.app.parking.RecurrenceType;
 import com.mannschaft.app.parking.dto.CreateVisitorRecurringRequest;
 import com.mannschaft.app.parking.dto.UpdateVisitorRecurringRequest;
 import com.mannschaft.app.parking.dto.VisitorRecurringResponse;
+import com.mannschaft.app.parking.entity.ParkingSpaceEntity;
 import com.mannschaft.app.parking.entity.ParkingVisitorRecurringEntity;
+import com.mannschaft.app.parking.repository.ParkingSpaceRepository;
 import com.mannschaft.app.parking.repository.ParkingVisitorRecurringRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +29,7 @@ import java.util.List;
 public class ParkingVisitorRecurringService {
 
     private final ParkingVisitorRecurringRepository recurringRepository;
+    private final ParkingSpaceRepository spaceRepository;
     private final ParkingMapper parkingMapper;
 
     /**
@@ -44,9 +47,11 @@ public class ParkingVisitorRecurringService {
     @Transactional
     public VisitorRecurringResponse create(Long userId, String scopeType, Long scopeId,
                                             CreateVisitorRecurringRequest request) {
+        ParkingSpaceEntity space = spaceRepository.findByIdAndScopeTypeAndScopeId(request.getSpaceId(), scopeType, scopeId)
+                .orElseThrow(() -> new BusinessException(ParkingErrorCode.SPACE_NOT_FOUND));
         ParkingVisitorRecurringEntity entity = ParkingVisitorRecurringEntity.builder()
                 .userId(userId)
-                .spaceId(request.getSpaceId())
+                .spaceId(space.getId())
                 .scopeType(scopeType)
                 .scopeId(scopeId)
                 .recurrenceType(EnumInputParser.parse(RecurrenceType.class, request.getRecurrenceType(), "recurrenceType"))

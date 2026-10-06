@@ -347,7 +347,7 @@ public class BulletinArchiveFolderService {
     /**
      * フォルダの存在 + scope 一致を検証して返す（スレッド振り分け・archive 拡張から呼ぶ）。
      *
-     * @throws BusinessException 不存在（404）/ scope 越境（404・存在秘匿のため不在と同一ステータス）
+     * @throws BusinessException 不存在または scope 越境（404・error.code/message も不在と同一）
      */
     BulletinArchiveFolderEntity validateFolderInScope(ScopeType scopeType, Long scopeId, UUID folderId) {
         BulletinArchiveFolderEntity folder = folderRepository.findById(folderId)
@@ -366,10 +366,10 @@ public class BulletinArchiveFolderService {
     }
 
     private void verifyScope(BulletinArchiveFolderEntity folder, ScopeType scopeType, Long scopeId) {
-        // 越境は不在と同じ 404 に畳む（ARCHIVE_FOLDER_SCOPE_MISMATCH は 404 でマップ登録済み）。
-        // ステータスを割ると応答差から他テナントのフォルダ UUID の実在が判別できる（存在オラクル）。
+        // 越境は不在と同じ ARCHIVE_FOLDER_NOT_FOUND（status/code/message）に畳む。
+        // 応答差から他テナントのフォルダ UUID の実在が判別できる（存在オラクル）。
         if (folder.getScopeType() != scopeType || !folder.getScopeId().equals(scopeId)) {
-            throw new BusinessException(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH);
+            throw new BusinessException(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND);
         }
     }
 
