@@ -35,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @TestPropertySource(properties="ranch.source.timeline.queue-capacity=0")
 class TimelineRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserRepository users;
+    @Autowired private org.springframework.transaction.PlatformTransactionManager transactionManager;
     @Autowired private TimelinePostRepository posts;
     @Autowired private TimelineRanchTransportRepository rows;
     @Autowired private UserOperationGuard active;
@@ -187,4 +188,55 @@ class TimelineRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
             });
         }
     }
+
+    /** 消去前に捕捉済みのtaskも、後着時のauth markerによりtransportを新規作成しない。 */
+    @Test void PURGING後に解放した実queueはwitnessとoutboxを再作成しない() throws Exception {
+        var saved = publish("後着queueの人工本文");
+        assertThat(saved.capture()).isNotNull();
+        assertThat(receive(saved.capture())).isTrue();
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        // 共有contextの受付停止値は変更せず、専有の本番queueだけを有限capacity1で作る。
+        var queue = new TimelineRanchCaptureQueue(delivery, transport, utcTelemetry, 1);
+        var executor = (java.util.concurrent.ThreadPoolExecutor)
+                org.springframework.test.util.ReflectionTestUtils.getField(queue, "executor");
+        assertThat(executor).isNotNull();
+        try {
+            executor.execute(() -> {
+                entered.countDown();
+                try {
+                    if (!release.await(10, TimeUnit.SECONDS)) throw new AssertionError("専有queueの待機期限切れ");
+                } catch (InterruptedException error) {
+                    Thread.currentThread().interrupt();
+                    throw new AssertionError("専有queueの待機中断", error);
+                }
+            });
+            assertThat(entered.await(10, TimeUnit.SECONDS)).isTrue();
+            queue.offer(saved.capture());
+            assertThat(executor.getQueue()).hasSize(1);
+            var tx = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
+            tx.executeWithoutResult(status -> {
+                var current = users.findByIdForUpdateIncludingDeleted(owner).orElseThrow();
+                current.requestDeletion();
+            });
+            tx.executeWithoutResult(status -> assertThat(users.markPurgeStarted(owner)).isEqualTo(1));
+            assertThat(delivery.withLockedDeliveryUser(owner, state -> state.lifecycle()))
+                    .isEqualTo(com.mannschaft.app.auth.dto.DeliveryUserState.Lifecycle.PURGING);
+            assertThat(purge.retryPurge(owner)).isTrue();
+            assertThat(count("timeline_ranch_witnesses")).isZero();
+            assertThat(count("timeline_ranch_outboxes")).isZero();
+            release.countDown();
+            queue.close();
+            assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+            assertThat(executor.getCompletedTaskCount()).isEqualTo(2);
+            assertThat(count("timeline_ranch_witnesses")).isZero();
+            assertThat(count("timeline_ranch_outboxes")).isZero();
+            assertThat(nativeCount()).isEqualTo(1);
+        } finally {
+            release.countDown();
+            queue.close();
+            assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
 }
