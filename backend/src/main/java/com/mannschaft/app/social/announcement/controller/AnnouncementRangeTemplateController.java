@@ -2,6 +2,7 @@ package com.mannschaft.app.social.announcement.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.social.announcement.AnnouncementRangeTemplateAuthorizer;
 import com.mannschaft.app.social.announcement.AnnouncementRangeTemplateEntity;
 import com.mannschaft.app.social.announcement.AnnouncementRangeTemplateRequest;
 import com.mannschaft.app.social.announcement.AnnouncementRangeTemplateService;
@@ -52,6 +53,7 @@ public class AnnouncementRangeTemplateController {
 
     private final AnnouncementRangeTemplateService templateService;
     private final BroadcastAudienceResolver audienceResolver;
+    private final AnnouncementRangeTemplateAuthorizer authorizer;
 
     // ═════════════════════════════════════════════════════════════
     // チームスコープ
@@ -211,7 +213,7 @@ public class AnnouncementRangeTemplateController {
 
         Long userId = SecurityUtils.getCurrentUserId();
         // グループ項目は、保存できる人の認可 → グループの検証（トランザクションの外。別ドメインを引くため）→ 保存の順
-        templateService.checkWritable("ORGANIZATION", orgId, userId, req.hasGroupItems());
+        authorizer.checkWritable("ORGANIZATION", orgId, userId, req.hasGroupItems());
         audienceResolver.validateTemplateGroupItems(
                 orgId, req.getTargetGroupIds(), req.getTargetGroupRange(), req.getIncludeUnassigned());
         AnnouncementRangeTemplateEntity entity =
@@ -243,7 +245,7 @@ public class AnnouncementRangeTemplateController {
             @Valid @RequestBody AnnouncementRangeTemplateRequest req) {
 
         Long userId = SecurityUtils.getCurrentUserId();
-        templateService.checkWritable("ORGANIZATION", orgId, userId, req.hasGroupItems());
+        authorizer.checkWritable("ORGANIZATION", orgId, userId, req.hasGroupItems());
         audienceResolver.validateTemplateGroupItems(
                 orgId, req.getTargetGroupIds(), req.getTargetGroupRange(), req.getIncludeUnassigned());
         AnnouncementRangeTemplateEntity entity =

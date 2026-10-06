@@ -131,7 +131,7 @@ public class BroadcastAudienceResolver {
     /**
      * 範囲テンプレートに保存するグループ項目を検証する（F01.2.1 §8.6 の保存側。何も書き込まない）。
      *
-     * <p>呼び出す前に、保存できる人かの認可（{@code AnnouncementRangeTemplateService#checkWritable}）を済ませること
+     * <p>呼び出す前に、保存できる人かの認可（{@code AnnouncementRangeTemplateAuthorizer#checkWritable}）を済ませること
      * （他組織のグループ ID の存在を権限のない人に漏らさないため）。個別・範囲の端は、その組織の生存グループで
      * なければ 400 {@code BROADCAST_006}、両端 null や向きの逆転は 400 {@code BROADCAST_008}、
      * グループ機能が無効なら 400 {@code BROADCAST_007}。</p>
