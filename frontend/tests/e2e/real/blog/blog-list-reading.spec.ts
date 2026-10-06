@@ -46,7 +46,7 @@ test.afterEach(async ({ browser: _browser }, testInfo) => {
   // 本人 editor の自動保存を止めてから前提データを削除する。close 失敗でも削除は続ける。
   const closed = await Promise.allSettled(pendingUsers.map(user => user.page.close()))
   const closeErrors = closed.flatMap((result, index) => result.status === 'rejected'
-    ? [{ userId: pendingUsers[index]!.id, error: String(result.reason).split('\n')[0].replace(/eyJ[A-Za-z0-9_.-]+/g, '[token redacted]') }]
+    ? [{ userId: pendingUsers[index]!.id, error: (String(result.reason).split('\n')[0] ?? '').replace(/eyJ[A-Za-z0-9_.-]+/g, '[token redacted]') }]
     : [])
   try {
     // ブラウザーのタイムアウトで破棄された request を再利用せず、後始末専用に認証する。
@@ -63,7 +63,7 @@ test.afterEach(async ({ browser: _browser }, testInfo) => {
         results.push({ path: item.path, status: response.status() })
       } catch (error) {
         // Playwright のエラー全文には Cookie ヘッダーが含まれるため、先頭の理由だけ保存する。
-        results.push({ path: item.path, error: String(error).split('\n')[0].replace(/eyJ[A-Za-z0-9_.-]+/g, '[token redacted]') })
+        results.push({ path: item.path, error: (String(error).split('\n')[0] ?? '').replace(/eyJ[A-Za-z0-9_.-]+/g, '[token redacted]') })
       }
       writeFileSync(cleanupLedgerPath, JSON.stringify({ pending: pendingCleanup, results, closeErrors }, null, 2))
     }
