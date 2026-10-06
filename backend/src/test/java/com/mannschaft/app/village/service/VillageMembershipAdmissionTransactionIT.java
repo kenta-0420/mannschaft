@@ -5,8 +5,10 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.token.SecretTokenVault;
 import com.mannschaft.app.village.VillageErrorCode;
+import com.mannschaft.app.village.dto.JoinRequestReviewRequest;
 import com.mannschaft.app.village.dto.MembershipJoinRequest;
 import com.mannschaft.app.village.dto.VillageCreationRequestCreateRequest;
+import com.mannschaft.app.village.dto.VillageCreationRequestReviewRequest;
 import com.mannschaft.app.village.entity.VillageCreationRequestEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageInvitationEntity;
@@ -22,6 +24,7 @@ import com.mannschaft.app.village.repository.VillageJoinRequestRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -36,7 +39,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
 
@@ -50,6 +56,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.HexFormat;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,8 +72,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * <p>共有ddl-auto=createスキーマではCHECK/生成列一意を証明できないため、
  * BACKEND_CODING_CONVENTIONの専用実スキーマ金型を使う。実DB・認可・サービスは差し替えない。
- * 当該一クラスの20ケースが一つの専用コンテナ/コンテキストを共有し、テスト全体TXは置かない。
- * 並行参加・retry境界・HTTP認可は後続契約であり、この20件をその合格に代用しない。</p>
+ * 初波20件と後続ケースが一つの専用コンテナ/コンテキストを共有し、テスト全体TXは置かない。
+ * 初波20件は五入口の容量と原子性、追加23件は限定した並行参加・外側TX rollback・RR再判定を扱う。
+ * 全並行経路・HTTP認可・TEAM/ORG認可・一般DB競合の解消は、この試練の合格に代用しない。</p>
  */
 @SpringBootTest(properties = {
         "spring.flyway.enabled=true",
@@ -122,6 +135,7 @@ class VillageMembershipAdmissionTransactionIT {
     @Autowired private UserRepository userRepository;
     @Autowired private SecretTokenVault tokenVault;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private PlatformTransactionManager transactionManager;
 
     private enum Writer { FREE, JOIN_APPROVAL, INVITATION, CREATION_AUTO, CREATION_APPROVAL }
 
@@ -191,8 +205,328 @@ class VillageMembershipAdmissionTransactionIT {
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
     }
 
+
+    private enum SlotShape { HOLE, LEFT_HISTORY, BANNED_OCCUPANT }
+    private enum ReviewAction { REJECT, WITHDRAW }
+    private record InvocationOutcome(UUID villageId, RuntimeException failure) { }
+
+    static Stream<Arguments> allWriters() {
+        return Stream.of(Writer.values()).map(Arguments::of);
+    }
+
+    static Stream<Arguments> slotShapes() {
+        return Stream.of(SlotShape.values()).map(Arguments::of);
+    }
+
+    static Stream<Arguments> cachedRequests() {
+        return Stream.of(Writer.JOIN_APPROVAL, Writer.CREATION_APPROVAL)
+                .flatMap(writer -> Stream.of(ReviewAction.values())
+                        .map(action -> Arguments.of(writer, action)));
+    }
+
+    static Stream<Arguments> crossEntryPairs() {
+        return Stream.of(
+                new Writer[]{Writer.FREE, Writer.INVITATION},
+                new Writer[]{Writer.JOIN_APPROVAL, Writer.CREATION_AUTO},
+                new Writer[]{Writer.CREATION_APPROVAL, Writer.FREE})
+                .flatMap(pair -> Stream.of(98, 99)
+                        .map(count -> Arguments.of(pair[0], pair[1], count)));
+    }
+
+    @ParameterizedTest(name = "{0}: 外側TX rollback")
+    @MethodSource("allWriters")
+    void 入村_外側REQUIREDのrollbackで全業務が戻る(Writer writer) {
+        Fixture fixture = prepare(writer);
+        List<Map<String, Object>> membershipsBefore = actorMemberships(fixture.subjectId());
+        List<Map<String, Object>> effectsBefore = sideEffectSnapshot(fixture);
+        TransactionTemplate outer = new TransactionTemplate(transactionManager);
+        outer.setTimeout(20);
+
+        outer.executeWithoutResult(status -> {
+            UUID createdVillage = invoke(fixture);
+            villageRepository.flush();
+            assertCommittedSideEffects(fixture, createdVillage);
+            status.setRollbackOnly();
+        });
+
+        assertThat(actorMemberships(fixture.subjectId())).isEqualTo(membershipsBefore);
+        assertThat(sideEffectSnapshot(fixture)).isEqualTo(effectsBefore);
+    }
+
+    @ParameterizedTest(name = "最小空き: {0}")
+    @MethodSource("slotShapes")
+    void 入村_穴と退村履歴とBANを区別して最小空きを使う(SlotShape shape) {
+        Fixture fixture = prepare(Writer.FREE);
+        UUID firstVillage = newVillage("first-" + UUID.randomUUID(), VillageJoinPolicy.FREE, fixture.subjectId());
+        insertMembership(firstVillage, fixture.subjectId(), 1,
+                shape == SlotShape.BANNED_OCCUPANT, "VILLAGER");
+        UUID thirdVillage = newVillage("third-" + UUID.randomUUID(), VillageJoinPolicy.FREE, fixture.subjectId());
+        insertMembership(thirdVillage, fixture.subjectId(), 3, false, "VILLAGER");
+        if (shape == SlotShape.LEFT_HISTORY) {
+            UUID secondVillage = newVillage("left-" + UUID.randomUUID(), VillageJoinPolicy.FREE, fixture.subjectId());
+            UUID leaving = insertMembership(secondVillage, fixture.subjectId(), 2, false, "VILLAGER");
+            memberships.leave(secondVillage, leaving, fixture.subjectId());
+            assertThat(jdbc.queryForObject("SELECT user_slot FROM village_memberships WHERE id=UUID_TO_BIN(?)",
+                    Integer.class, leaving.toString())).isEqualTo(2);
+        }
+
+        UUID createdVillage = invoke(fixture);
+
+        assertThat(jdbc.queryForObject("SELECT user_slot FROM village_memberships "
+                + "WHERE village_id=UUID_TO_BIN(?) AND subject_type='USER' AND subject_id=? AND left_at IS NULL",
+                Integer.class, createdVillage.toString(), fixture.subjectId())).isEqualTo(2);
+        assertThat(activeCount(fixture.subjectId())).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT COUNT(DISTINCT user_slot) FROM village_memberships "
+                + "WHERE subject_type='USER' AND subject_id=? AND left_at IS NULL",
+                Integer.class, fixture.subjectId())).isEqualTo(3);
+        if (shape == SlotShape.BANNED_OCCUPANT) {
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM village_memberships "
+                    + "WHERE subject_type='USER' AND subject_id=? AND left_at IS NULL AND banned_at IS NOT NULL",
+                    Integer.class, fixture.subjectId())).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void 入村_RRで先にsnapshotを作っても別TXの百枠目を読む() {
+        Fixture fixture = prepare(Writer.FREE);
+        fillSlots(fixture.subjectId(), 99, false);
+        List<Map<String, Object>> effectsBefore = sideEffectSnapshot(fixture);
+
+        assertThatThrownBy(() -> isolated(() -> {
+            assertThat(activeCount(fixture.subjectId())).isEqualTo(99);
+            isolated(() -> {
+                UUID lastVillage = newVillage("last-" + UUID.randomUUID(), VillageJoinPolicy.FREE, fixture.subjectId());
+                insertMembership(lastVillage, fixture.subjectId(), 100, false, "VILLAGER");
+                return null;
+            });
+            return invoke(fixture);
+        })).isInstanceOfSatisfying(BusinessException.class,
+                error -> assertThat(error.getErrorCode()).isEqualTo(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED));
+
+        assertThat(activeCount(fixture.subjectId())).isEqualTo(100);
+        assertThat(sideEffectSnapshot(fixture)).isEqualTo(effectsBefore);
+    }
+
+    @ParameterizedTest(name = "{0}: cached PENDING後 {1}")
+    @MethodSource("cachedRequests")
+    void 承認_外側のcached申請を別TXの最新statusで再判定する(Writer writer, ReviewAction action) {
+        Fixture fixture = prepare(writer);
+        VillageErrorCode expected = writer == Writer.JOIN_APPROVAL
+                ? VillageErrorCode.VILLAGE_JOIN_REQUEST_ALREADY_REVIEWED
+                : action == ReviewAction.REJECT ? VillageErrorCode.CREATION_REQUEST_REJECTED
+                : VillageErrorCode.CREATION_REQUEST_ALREADY_REVIEWED;
+
+        assertThatThrownBy(() -> isolated(() -> {
+            if (writer == Writer.JOIN_APPROVAL) {
+                assertThat(joinRepository.findById(fixture.joinId()).orElseThrow().getStatus())
+                        .isEqualTo(VillageRequestStatus.PENDING);
+            } else {
+                assertThat(creationRepository.findById(fixture.creationId()).orElseThrow().getStatus())
+                        .isEqualTo(VillageRequestStatus.PENDING);
+            }
+            isolated(() -> {
+                if (writer == Writer.JOIN_APPROVAL) {
+                    if (action == ReviewAction.REJECT) {
+                        joins.reject(fixture.villageId(), fixture.joinId(), fixture.reviewerId(),
+                                new JoinRequestReviewRequest("契約試練"));
+                    } else {
+                        joins.withdraw(fixture.villageId(), fixture.joinId(), fixture.subjectId());
+                    }
+                } else if (action == ReviewAction.REJECT) {
+                    creations.reject(fixture.creationId(), fixture.reviewerId(),
+                            new VillageCreationRequestReviewRequest("契約試練"));
+                } else {
+                    creations.withdraw(fixture.creationId(), fixture.subjectId());
+                }
+                return null;
+            });
+            return invoke(fixture);
+        })).isInstanceOfSatisfying(BusinessException.class,
+                error -> assertThat(error.getErrorCode()).isEqualTo(expected));
+
+        VillageRequestStatus status = action == ReviewAction.REJECT
+                ? VillageRequestStatus.REJECTED : VillageRequestStatus.WITHDRAWN;
+        if (writer == Writer.JOIN_APPROVAL) {
+            assertThat(joinRepository.findById(fixture.joinId()).orElseThrow().getStatus()).isEqualTo(status);
+        } else {
+            VillageCreationRequestEntity fresh = creationRepository.findById(fixture.creationId()).orElseThrow();
+            assertThat(fresh.getStatus()).isEqualTo(status);
+            assertThat(fresh.getCreatedVillageId()).isNull();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM villages WHERE slug=?",
+                    Integer.class, fixture.slug())).isZero();
+        }
+        assertThat(activeCount(fixture.subjectId())).isZero();
+    }
+
+    @Test
+    void 招待_外側のcachedtokenを別TXの失効後に受諾しない() {
+        Fixture fixture = prepare(Writer.INVITATION);
+
+        assertThatThrownBy(() -> isolated(() -> {
+            assertThat(invitationRepository.findById(fixture.invitationId()).orElseThrow().getRevokedAt()).isNull();
+            isolated(() -> {
+                invitations.revoke(fixture.villageId(), fixture.invitationId(), fixture.reviewerId());
+                return null;
+            });
+            return invoke(fixture);
+        })).isInstanceOfSatisfying(BusinessException.class,
+                error -> assertThat(error.getErrorCode()).isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND));
+
+        VillageInvitationEntity fresh = invitationRepository.findById(fixture.invitationId()).orElseThrow();
+        assertThat(fresh.getRevokedAt()).isNotNull();
+        assertThat(fresh.getUsedCount()).isZero();
+        assertThat(activeCount(fixture.subjectId())).isZero();
+    }
+
+    @ParameterizedTest(name = "{0} + {1}: 同USER既所在籍{2}")
+    @MethodSource("crossEntryPairs")
+    void 入村_同USERの異なる入口を独立TXで競合させる(Writer firstWriter, Writer secondWriter,
+                                                      int existingCount) throws Exception {
+        long subject = newUser();
+        List<Fixture> fixtures = List.of(prepare(firstWriter, subject), prepare(secondWriter, subject));
+        fillSlots(subject, existingCount, false);
+        List<List<Map<String, Object>>> effectsBefore = fixtures.stream().map(this::sideEffectSnapshot).toList();
+
+        List<InvocationOutcome> results = concurrentInvoke(fixtures, existingCount);
+
+        assertThat(results.stream().filter(result -> result.failure() == null).count())
+                .isEqualTo(existingCount == 98 ? 2 : 1);
+        assertThat(activeCount(subject)).isEqualTo(100);
+        assertThat(jdbc.queryForObject("SELECT COUNT(DISTINCT user_slot) FROM village_memberships "
+                + "WHERE subject_type='USER' AND subject_id=? AND left_at IS NULL",
+                Integer.class, subject)).isEqualTo(100);
+        for (int index = 0; index < results.size(); index++) {
+            InvocationOutcome result = results.get(index);
+            if (result.failure() == null) {
+                assertCommittedSideEffects(fixtures.get(index), result.villageId());
+            } else {
+                assertThat(result.failure()).isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.getErrorCode())
+                                .isEqualTo(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED));
+                assertThat(sideEffectSnapshot(fixtures.get(index))).isEqualTo(effectsBefore.get(index));
+            }
+        }
+    }
+
+    @Test
+    void 入村_異なるUSERの空枠への同時参加は双方確定する() throws Exception {
+        // 二人を先に作り、その間へ他USERの在籍索引を挟まない。
+        long firstSubject = newUser();
+        long secondSubject = newUser();
+        List<Fixture> fixtures = List.of(prepare(Writer.FREE, firstSubject), prepare(Writer.FREE, secondSubject));
+
+        List<InvocationOutcome> results = concurrentInvoke(fixtures, 0);
+
+        for (int index = 0; index < results.size(); index++) {
+            assertThat(results.get(index).failure()).isNull();
+            assertThat(activeCount(fixtures.get(index).subjectId())).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT user_slot FROM village_memberships "
+                    + "WHERE subject_type='USER' AND subject_id=? AND left_at IS NULL",
+                    Integer.class, fixtures.get(index).subjectId())).isEqualTo(1);
+        }
+    }
+
+    /** 独立connectionのRR TX。SQLの待機を5秒、TXを20秒へ有界化しsession値を戻す。 */
+    private <T> T isolated(Supplier<T> work) {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        transaction.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        transaction.setTimeout(20);
+        return transaction.execute(status -> {
+            Integer previous = jdbc.queryForObject("SELECT @@session.innodb_lock_wait_timeout", Integer.class);
+            jdbc.execute("SET SESSION innodb_lock_wait_timeout=5");
+            try {
+                return work.get();
+            } finally {
+                jdbc.execute("SET SESSION innodb_lock_wait_timeout=" + previous);
+            }
+        });
+    }
+
+    /** 両TXのsnapshot成立後に開始する。失敗はrollback完了後に親threadへ返す。 */
+    private List<InvocationOutcome> concurrentInvoke(List<Fixture> fixtures, int existingCount) throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch snapshotsReady = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<InvocationOutcome>> futures = new ArrayList<>();
+        try {
+            for (Fixture fixture : fixtures) {
+                futures.add(executor.submit(() -> {
+                    try {
+                        UUID village = isolated(() -> {
+                            assertThat(activeCount(fixture.subjectId())).isEqualTo(existingCount);
+                            snapshotsReady.countDown();
+                            try {
+                                assertThat(start.await(10, TimeUnit.SECONDS)).as("開始latch").isTrue();
+                            } catch (InterruptedException interrupted) {
+                                Thread.currentThread().interrupt();
+                                throw new IllegalStateException("開始待機を中断", interrupted);
+                            }
+                            return invoke(fixture);
+                        });
+                        return new InvocationOutcome(village, null);
+                    } catch (RuntimeException failure) {
+                        return new InvocationOutcome(null, failure);
+                    }
+                }));
+            }
+            assertThat(snapshotsReady.await(10, TimeUnit.SECONDS)).as("両RR snapshot成立").isTrue();
+            start.countDown();
+            List<InvocationOutcome> results = new ArrayList<>();
+            for (Future<InvocationOutcome> future : futures) {
+                results.add(future.get(30, TimeUnit.SECONDS));
+            }
+            return results;
+        } finally {
+            start.countDown();
+            futures.forEach(future -> future.cancel(true));
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).as("worker終了").isTrue();
+        }
+    }
+
+
+    static Stream<Arguments> sameVillageStates() {
+        return Stream.of(false, true).map(Arguments::of);
+    }
+
+    @ParameterizedTest(name = "同村current-read: BAN={0}")
+    @MethodSource("sameVillageStates")
+    void 入村_RRの同村不存在snapshotより別TXの在籍とBANを優先する(boolean banned) {
+        Fixture fixture = prepare(Writer.FREE);
+        List<Map<String, Object>> effectsBefore = sideEffectSnapshot(fixture);
+
+        assertThatThrownBy(() -> isolated(() -> {
+            assertThat(activeCount(fixture.subjectId())).isZero();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM village_memberships "
+                    + "WHERE village_id=UUID_TO_BIN(?) AND subject_type='USER' AND subject_id=? AND left_at IS NULL",
+                    Integer.class, fixture.villageId().toString(), fixture.subjectId())).isZero();
+            isolated(() -> {
+                insertMembership(fixture.villageId(), fixture.subjectId(), 1, banned, "VILLAGER");
+                return null;
+            });
+            return invoke(fixture);
+        })).isInstanceOfSatisfying(BusinessException.class,
+                error -> assertThat(error.getErrorCode()).isEqualTo(
+                        banned ? VillageErrorCode.MEMBER_BANNED : VillageErrorCode.ALREADY_MEMBER));
+
+        assertThat(activeCount(fixture.subjectId())).isEqualTo(1);
+        assertThat(actorMemberships(fixture.subjectId())).hasSize(1);
+        assertThat(jdbc.queryForObject("SELECT user_slot FROM village_memberships "
+                + "WHERE village_id=UUID_TO_BIN(?) AND subject_type='USER' AND subject_id=? AND left_at IS NULL",
+                Integer.class, fixture.villageId().toString(), fixture.subjectId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM village_memberships "
+                + "WHERE village_id=UUID_TO_BIN(?) AND subject_type='USER' AND subject_id=? "
+                + "AND left_at IS NULL AND banned_at IS NOT NULL", Integer.class,
+                fixture.villageId().toString(), fixture.subjectId())).isEqualTo(banned ? 1 : 0);
+        assertThat(sideEffectSnapshot(fixture)).isEqualTo(effectsBefore);
+    }
+
     private Fixture prepare(Writer writer) {
-        long subjectId = newUser();
+        return prepare(writer, newUser());
+    }
+
+    private Fixture prepare(Writer writer, long subjectId) {
         long reviewerId = newUser();
         String slug = "slot-" + UUID.randomUUID().toString().replace("-", "");
         UUID villageId = null;
