@@ -41,7 +41,7 @@ async function openUser(browser: Browser, baseURL: string, email: string): Promi
     const profile = (await me.json()).data
     expect(Number.isSafeInteger(profile.id)).toBe(true)
     expect(profile.id).toBeGreaterThan(0)
-    expect(profile.systemRole, '実機ロール横断はSYSTEM_ADMINの迂回で成立させない').not.toBe('SYSTEM_ADMIN')
+    expect(profile, '実機ロール横断はSYSTEM_ADMINの迂回で成立させない').toHaveProperty('systemRole', null)
     return { context, page, id: profile.id }
   } catch (error) {
     await context.close()
