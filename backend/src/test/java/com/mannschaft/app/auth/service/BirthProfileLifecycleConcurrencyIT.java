@@ -3,6 +3,8 @@ package com.mannschaft.app.auth.service;
 import com.mannschaft.app.auth.ParentalConsentLinkStatus;
 import com.mannschaft.app.auth.entity.ParentalConsentLinkEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.BirthProfileErrorCode;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.auth.guardianship.GuardianshipHandoverService;
 import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
@@ -25,18 +27,22 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 /** 実auth Bean・MySQLで非ACTIVE cleanupとusers→同意linkの順序を検証する。 */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class BirthProfileLifecycleConcurrencyIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserRepository users;
+    @Autowired private BirthProfileFacade profiles;
     @Autowired private ParentalConsentLinkRepository links;
     @Autowired private ParentalConsentCleanupBatchService cleanup;
     @Autowired private GuardianshipHandoverService handover;
@@ -117,6 +123,7 @@ class BirthProfileLifecycleConcurrencyIT extends AbstractMySqlIntegrationTest {
     void 引き継ぎは新しいプロフィールを保持() throws Exception {
         Long guardian=user(UserEntity.UserStatus.ACTIVE),child=user(UserEntity.UserStatus.ACTIVE);
         link(child,guardian,ParentalConsentLinkStatus.APPROVED);
+        var confirmation = profiles.confirm(child, UUID.randomUUID(), 3, true);
         CountDownLatch birthLocked=new CountDownLatch(1), releaseBirth=new CountDownLatch(1), handoverStarted=new CountDownLatch(1);
         var worker=Executors.newFixedThreadPool(2);
         try {
@@ -138,6 +145,12 @@ class BirthProfileLifecycleConcurrencyIT extends AbstractMySqlIntegrationTest {
             assertThat(actual.getFirstNameKana()).isEqualTo("ハナコ");
             assertThat(actual.getBirthProfileVersion()).isEqualTo(4L);
             assertThat(actual.getEmail()).endsWith("@handover.invalid");
+            var initialWrites = new AtomicInteger();
+            assertThatThrownBy(() -> profiles.withConfirmedBirthProfile(child, confirmation.confirmationRef(),
+                    Optional::empty, numbers -> initialWrites.incrementAndGet()))
+                    .isInstanceOfSatisfying(BusinessException.class, failure ->
+                            assertThat(failure.getErrorCode()).isEqualTo(BirthProfileErrorCode.CONFIRMATION_STALE));
+            assertThat(initialWrites).hasValue(0);
         } finally {releaseBirth.countDown();worker.shutdownNow();}
     }
 }

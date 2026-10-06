@@ -2,6 +2,8 @@ package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.dto.UpdateProfileRequest;
 import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.BirthProfileErrorCode;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
@@ -10,16 +12,20 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** 実MySQL・auth Beanでプロフィール版と非出生更新の並行上書きを検証する。 */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class BirthProfileConcurrencyIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserRepository users;
+    @Autowired private BirthProfileFacade profiles;
     @Autowired private UserService userService;
     @Autowired private PlatformTransactionManager transactionManager;
 
@@ -65,6 +71,7 @@ class BirthProfileConcurrencyIT extends AbstractMySqlIntegrationTest {
     @Test @DisplayName("一般profile更新は先行出生更新のusersロック後に新しい版を読んで加算する")
     void 一般プロフィール更新は版を重複させない() throws Exception {
         Long id=user();
+        var confirmation = profiles.confirm(id, UUID.randomUUID(), 0, true);
         CountDownLatch birthLocked=new CountDownLatch(1), releaseBirth=new CountDownLatch(1), profileStarted=new CountDownLatch(1);
         var workers=Executors.newFixedThreadPool(2);
         try {
@@ -85,6 +92,12 @@ class BirthProfileConcurrencyIT extends AbstractMySqlIntegrationTest {
             assertThat(actual.getFirstName()).isEqualTo("太郎");
             assertThat(actual.getFirstNameKana()).isEqualTo("タロウ");
             assertThat(actual.getBirthProfileVersion()).isEqualTo(2L);
+            var initialWrites = new AtomicInteger();
+            assertThatThrownBy(() -> profiles.withConfirmedBirthProfile(id, confirmation.confirmationRef(),
+                    Optional::empty, numbers -> initialWrites.incrementAndGet()))
+                    .isInstanceOfSatisfying(BusinessException.class, failure ->
+                            assertThat(failure.getErrorCode()).isEqualTo(BirthProfileErrorCode.CONFIRMATION_STALE));
+            assertThat(initialWrites).hasValue(0);
         } finally {releaseBirth.countDown();workers.shutdownNow();}
     }
     @Test @DisplayName("先行出生更新の後の匿名化は世代を進め原入力を消去する")
