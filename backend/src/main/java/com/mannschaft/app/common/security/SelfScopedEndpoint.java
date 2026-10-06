@@ -31,6 +31,13 @@ import java.lang.annotation.Target;
  *       （＝判定を外せば他人へ届く）ため本注釈の対象ではない。認可判定の実体があるので
  *       白名簿クラスへ寄せるか、判定箇所を Javadoc に明記して従来どおり扱う。</li>
  * </ul>
+ * <p><b>スコープIDの受け取りは番人が機械的に赤にする</b>（CMP-260917-1135）: 番人
+ * {@code SelfScopedEndpointScopeInputGuardTest} は、本注釈を付けたメソッドが名前
+ * {@code (team|organization|org|village|scope|committee|channel)(Id|Ids)} のパス変数・クエリ・ヘッダ・
+ * Cookie・本文 DTO のフィールドを受け取ると赤にする。例外は同番人の<b>監査台帳</b>に載せたメソッドだけで、
+ * 台帳の行は検出した入力と到達する Repository 呼び出しの集合を完全一致で固定し、理由・裁可記録・契約テストを
+ * 必須とする（「userId と組で検索しているから安全」という理由だけでは載せない）。所属・権限を Service で
+ * 検証してからスコープIDを使う EP は本注釈の対象ではなく、{@link AuthorizedInService} を使う。</p>
  *
  * <h2>{@link AuthorizedInService} との使い分け</h2>
  * <table border="1">

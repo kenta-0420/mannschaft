@@ -1,11 +1,9 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,20 +20,18 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 確認通知 W3b（CMP-260923-0954）の構造の固定（試練 / red 先行）。
+ * 確認通知 W3b（CMP-260923-0954）の構造のうち、W3b に固有の項目の固定。
  *
  * <p>正本: {@code ep_tables_w3b.md} §8・§9・殿の判断8・補足（ファサード化は recipients/page のみ）、
  * {@code plan4_tx_facade.md} AC-13〜15・K3・K7。挙動（応答）は {@code ConfirmableNotificationExistenceOracleContractIT}
  * と {@code ConfirmableNotificationConfirmOracleIT} が持つ。</p>
  *
+ * <p>共通の規則（recipients/page の Team・Org の Controller メソッドが Facade を呼び tx 本体を直接呼ばない、Facade 非 tx、
+ * Facade が認可へ届く、tx 本体 {@code ConfirmableNotificationQueryService} / {@code ConfirmableNotificationService} がクラスごと
+ * 認可クラスに依存しない、Facade の命名）は W6b で横断の番人 {@link AuthzTxFacadeRegistryArchTest} へ寄せた
+ * （登録表の「W3b」）。ここには W3b に固有の次の項目を残す。</p>
+ *
  * <ol>
- *   <li>AC-15: recipients/page は Facade（{@value #FACADE}。非 tx）で認可（viewerRole の判定）し、tx 本体
- *       （{@code ConfirmableNotificationQueryService} / {@code ConfirmableNotificationService}）は
- *       {@code AccessControlService} / Gate に依存しない。Facade に {@code @Transactional} が無い。</li>
- *   <li>K7: Team/Org の Controller の {@code getRecipientsPage} は Facade を呼び、tx 本体の
- *       {@code getRecipientsPage} を直接呼ばない。Facade は実際に {@code AccessControlService} へ届く。</li>
- *   <li>Facade の名前は {@code *Facade}（{@code *AccessService} 等にすると AuthzControllerGuard が呼んだだけで
- *       認可扱いし、Facade 内の認可漏れを見逃す）。</li>
  *   <li>殿の判断8・K5: {@code SCOPE_MISMATCH} の投げ元は0（enum を消しても、残しても、参照が無ければ緑）。
  *       {@code RECIPIENT_NOT_FOUND} は廃止済み（非受信者・除外済みは NOT_FOUND に畳む）。</li>
  *   <li>K3: cancel の D-3T 凍結キー（{@code UserRepository} 到達・認可と無関係）は残す前提。
@@ -46,11 +42,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       cancel の 2 キーは残る。ストアはテスト実行で自動的に行が消える（refreeze=false）ので、出陣で D-3T を
  *       実行してストアと {@code EXPECTED_LINES_CROSS_DOMAIN_TX_D3T} を一緒にコミットする。</li>
  * </ol>
- *
- * <p>Facade クラスは出陣で新設する。本テストは文字列のクラス名で参照するので、実装前でもコンパイルが通る
- * （実装前は「対象クラスが実在する」等が赤）。</p>
  */
-@DisplayName("確認通知 W3b の構造固定（recipients/page ファサード・SCOPE_MISMATCH 投げ元0・cancel の凍結キー）")
+@DisplayName("確認通知 W3b の固有項目の構造固定（SCOPE_MISMATCH 投げ元0・cancel の凍結キー・D-3T ストア行）")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ConfirmableRecipientPageFacadeArchTest {
 
     private static final String PKG = "com.mannschaft.app.notification.confirmable";
@@ -62,20 +56,11 @@ class ConfirmableRecipientPageFacadeArchTest {
     private static final List<String> CONTROLLERS = List.of(
             PKG + ".controller.TeamConfirmableNotificationController",
             PKG + ".controller.OrgConfirmableNotificationController");
-    private static final String ACCESS_CONTROL = "com.mannschaft.app.common.AccessControlService";
-    private static final String GATE = "com.mannschaft.app.common.ScopeConcealingAccessGate";
 
     private static final Path D3T_STORE = Paths.get("src", "test", "resources", "archunit_store",
             "296295dd-06cf-4f7b-bf82-315ba12ff501");
 
-    private static JavaClasses classes;
-
-    @BeforeAll
-    static void importClasses() {
-        classes = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses classes = ProductionClasses.get();
 
     @Test
     @DisplayName("対象クラスが実在する（Facade の新設・リネームで番人が空振りしない）")
@@ -84,66 +69,6 @@ class ConfirmableRecipientPageFacadeArchTest {
                 CONTROLLERS.get(1))) {
             assertThat(classes.contain(name)).as(name).isTrue();
         }
-    }
-
-    @Test
-    @DisplayName("AC-15: recipients/page の Facade に @Transactional が無い（クラスにもメソッドにも）")
-    void Facadeにtransactionalが無い() {
-        JavaClass facade = requireClass(FACADE);
-        assertThat(facade.isAnnotatedWith(Transactional.class) || facade.isMetaAnnotatedWith(Transactional.class))
-                .as("Facade のクラスに @Transactional がある").isFalse();
-        for (JavaMethod method : facade.getMethods()) {
-            assertThat(method.isAnnotatedWith(Transactional.class) || method.isMetaAnnotatedWith(Transactional.class))
-                    .as(method.getFullName() + " に @Transactional がある").isFalse();
-        }
-    }
-
-    @Test
-    @DisplayName("AC-15/K7: Facade は AccessControlService へ実際に届く（認可が空洞化していない）")
-    void Facadeは認可クラスに届く() {
-        JavaClass facade = requireClass(FACADE);
-        boolean reaches = facade.getMethodCallsFromSelf().stream()
-                .anyMatch(c -> c.getTargetOwner().getName().equals(ACCESS_CONTROL)
-                        || c.getTargetOwner().getName().equals(GATE));
-        assertThat(reaches).as("Facade が AccessControlService / Gate を呼んでいない").isTrue();
-    }
-
-    @Test
-    @DisplayName("AC-15: tx 本体（QueryService / Service）は AccessControlService / ScopeConcealingAccessGate に依存しない")
-    void tx本体は認可クラスに依存しない() {
-        noClasses().that().haveFullyQualifiedName(QUERY_SERVICE).or().haveFullyQualifiedName(SERVICE)
-                .should().dependOnClassesThat().haveFullyQualifiedName(ACCESS_CONTROL)
-                .orShould().dependOnClassesThat().haveFullyQualifiedName(GATE)
-                .because("認可は tx の外の Facade に置く。クラス注釈の tx 内に残すと D-3T が common 経由の越境と数える")
-                .check(classes);
-    }
-
-    @Test
-    @DisplayName("K7: Team/Org の Controller の getRecipientsPage は Facade を呼び、tx 本体の getRecipientsPage を直接呼ばない")
-    void ControllerはFacade経由でrecipientsPageを返す() {
-        for (String controllerName : CONTROLLERS) {
-            JavaClass controller = requireClass(controllerName);
-            List<JavaMethod> methods = controller.getMethods().stream()
-                    .filter(m -> m.getName().equals("getRecipientsPage")).toList();
-            assertThat(methods).as(controllerName + "#getRecipientsPage").hasSize(1);
-            JavaMethod method = methods.get(0);
-            boolean callsFacade = method.getMethodCallsFromSelf().stream()
-                    .anyMatch(c -> c.getTargetOwner().getName().equals(FACADE));
-            boolean callsTxBody = method.getMethodCallsFromSelf().stream()
-                    .anyMatch(c -> (c.getTargetOwner().getName().equals(SERVICE)
-                            || c.getTargetOwner().getName().equals(QUERY_SERVICE))
-                            && c.getName().equals("getRecipientsPage"));
-            assertThat(callsFacade).as(method.getFullName() + " が Facade を呼んでいない").isTrue();
-            assertThat(callsTxBody).as(method.getFullName() + " が認可を飛ばして tx 本体を直接呼んでいる").isFalse();
-        }
-    }
-
-    @Test
-    @DisplayName("Facade の名前は *Facade（*AccessService / *AccessGuard / *AccessGate にしない）")
-    void Facadeの名前() {
-        String simple = FACADE.substring(FACADE.lastIndexOf('.') + 1);
-        assertThat(simple).endsWith("Facade").doesNotEndWith("AccessService").doesNotEndWith("AccessGuard")
-                .doesNotEndWith("AccessGate");
     }
 
     @Test
@@ -203,7 +128,7 @@ class ConfirmableRecipientPageFacadeArchTest {
         }
     }
 
-    private static JavaClass requireClass(String name) {
+    private JavaClass requireClass(String name) {
         assertThat(classes.contain(name)).as(name + " が実在すること").isTrue();
         return classes.get(name);
     }

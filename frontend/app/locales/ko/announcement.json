@@ -1,5 +1,17 @@
 {
   "announcement": {
+    "preview": {
+      "title": "본문",
+      "open_source": "원문 페이지 열기",
+      "close": "닫기",
+      "loading": "본문을 불러오는 중입니다",
+      "empty_body": "본문이 없습니다",
+      "retry": "다시 시도",
+      "load_failed": "본문을 불러올 수 없습니다",
+      "locked": "본문을 보려면 이용 조건을 충족해야 합니다",
+      "image_failed": "이미지를 표시할 수 없습니다",
+      "read_failed": "읽음 상태를 업데이트할 수 없습니다"
+    },
     "widget_title": "공지사항",
     "all_announcements": "모든 공지사항",
     "display_in_announcement": "공지 위젯에 표시",

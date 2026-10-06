@@ -187,6 +187,8 @@ public class GlobalExceptionHandler {
             Map.entry("ROLE_012", HttpStatus.CONFLICT),             // オファー状態不整合/期限切れ/発行後状態変化 → 409
             Map.entry("ROLE_013", HttpStatus.NOT_FOUND),            // オファー不在（BOLA）/対象非所属 → 404
             Map.entry("ROLE_014", HttpStatus.UNPROCESSABLE_ENTITY), // 自己委譲など不正対象 → 422
+            // CMP-261001-0835: 応援者（SUPPORTER）の /me 自主退会はフォロー解除 API への案内のため 422
+            Map.entry("ROLE_015", HttpStatus.UNPROCESSABLE_ENTITY),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
             // 組織不在は 404（Severity.WARN 既定の 400 を上書き）。兄弟の TEAM_001 と流儀を揃える。
@@ -1897,11 +1899,6 @@ public class GlobalExceptionHandler {
             Map.entry("RECRUITMENT_313", HttpStatus.NOT_FOUND),          // TEMPLATE_NOT_FOUND
             Map.entry("RECRUITMENT_309", HttpStatus.NOT_FOUND),          // NO_SHOW_RECORD_NOT_FOUND
             Map.entry("RECRUITMENT_310", HttpStatus.NOT_FOUND),          // PENALTY_NOT_FOUND
-            // RecruitmentNoShowService.dispute(): NO_SHOW 記録は findById で取得済み（存在確認後）で、
-            // 本人以外のレコードを操作しようとした場合に VISIBILITY_DENIED を throw する。
-            // 既定 400 のままだと「レコードは実在するが本人でない」ことが 404（不在）と区別できてしまい、
-            // recordId の列挙で他人の NO_SHOW 記録の存在を判別できる IDOR となるため、
-            // NOT_FOUND 系と同一の 404 に畳んで存在秘匿する。
             // RecruitmentListingService.getListing(): DRAFT 募集は作成者/スコープ ADMIN のみ閲覧可。
             // 対象は findOrThrow 済み（存在は前提）で、権限不足のみを理由に拒否するため 403（F00 の
             // 「NOT_FOUND→404, deny→403」規約と同型）。
@@ -2430,6 +2427,7 @@ public class GlobalExceptionHandler {
             Map.entry("SUPPORTER_004", HttpStatus.CONFLICT),             // 申請は既に処理済み
             Map.entry("SUPPORTER_005", HttpStatus.FORBIDDEN),            // ブロックされているため申請不可
             Map.entry("SUPPORTER_006", HttpStatus.FORBIDDEN),            // サポーター機能が無効（兄弟 MEMBERSHIP_SUPPORTER_DISABLED と同流儀）
+            Map.entry("SUPPORTER_007", HttpStatus.NOT_FOUND),            // フォロー解除対象（SUPPORTER所属/PENDING申請）不在 → 404
 
             // F01.3 テンプレート・モジュール管理機能（TemplateErrorCode）の残り未登録分。
             Map.entry("TMPL_001", HttpStatus.NOT_FOUND),                 // テンプレートが見つからない（兄弟 TMPL_002 と同流儀）
@@ -2767,10 +2765,28 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ErrorResponse> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
-        log.warn("HandlerMethodValidationException: {}", ex.getMessage());
+        List<ErrorResponse.FieldError> fieldErrors = new java.util.ArrayList<>();
+        for (org.springframework.validation.method.ParameterValidationResult result
+                : ex.getParameterValidationResults()) {
+            String paramName = result.getMethodParameter().getParameterName();
+            if (result instanceof org.springframework.validation.method.ParameterErrors errors) {
+                // @Valid 付きリクエストボディ等: MethodArgumentNotValidException と同じくフィールド名で返す
+                errors.getFieldErrors().forEach(fe ->
+                        fieldErrors.add(new ErrorResponse.FieldError(fe.getField(), fe.getDefaultMessage())));
+                errors.getGlobalErrors().forEach(ge ->
+                        fieldErrors.add(new ErrorResponse.FieldError(
+                                paramName != null ? paramName : ge.getObjectName(), ge.getDefaultMessage())));
+            } else {
+                // @Min / @NotBlank 等を付けたパス・クエリ引数: 引数名を field に入れる
+                result.getResolvableErrors().forEach(re ->
+                        fieldErrors.add(new ErrorResponse.FieldError(
+                                paramName != null ? paramName : "parameter", re.getDefaultMessage())));
+            }
+        }
+        log.warn("HandlerMethodValidationException: {} field error(s)", fieldErrors.size());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_001, fieldErrors));
     }
 
     /**

@@ -43,6 +43,15 @@ public class OrgTeamGroupService {
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
 
+    /** 保存済み告知の対象判定用。機能 off 後も宛先を維持し、他組織・不在 ID は返さない。 */
+    public Map<UUID, Boolean> findDeletedStates(Long organizationId, java.util.Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return Map.of();
+        Map<UUID, Boolean> result = new LinkedHashMap<>();
+        groupRepository.findByOrganizationIdAndIdIn(organizationId, ids)
+                .forEach(g -> result.put(g.getId(), g.getDeletedAt() != null));
+        return Map.copyOf(result);
+    }
+
     /**
      * 一覧（並び順どおり。teamCount は ACTIVE のみ、unassignedTeamCount は削除済みグループを指す行を含む）。
      * SQL は一定本数（グループ数・チーム数に比例しない）。

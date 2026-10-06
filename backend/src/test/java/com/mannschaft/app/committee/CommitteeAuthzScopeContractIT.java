@@ -518,9 +518,9 @@ class CommitteeAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         // ─────────────────────────────────────────────────────────────
         // 存在オラクル封じ（越境は不在と同一ステータス 404）
         //
-        // confirmMinutes は活動記録が不在なら COMMITTEE_NOT_FOUND、他委員会スコープの記録なら
-        // MINUTES_NOT_COMMITTEE_SCOPE を投げる。両者のステータスが割れると、正当な CHAIR が
-        // recordId を列挙するだけで「他委員会の議事録が実在するか」を応答差から判別できる。
+        // confirmMinutes は活動記録が不在でも他委員会スコープの記録でも COMMITTEE_NOT_FOUND を投げる。
+        // status/code/message が割れると、正当な CHAIR が recordId を列挙するだけで
+        // 「他委員会の議事録が実在するか」を応答差から判別できる。
         // 下の2ケースは 404 の絶対値を各々固定し、さらに両者の一致も突き合わせる
         // （一致だけを見ると「両方 500」でも通る偽 green になるため絶対値の併存が必須）。
         // ─────────────────────────────────────────────────────────────
@@ -559,7 +559,7 @@ class CommitteeAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                             committeeAId, recordBId))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(CommitteeErrorCode.MINUTES_NOT_COMMITTEE_SCOPE.getCode()));
+                            .value(CommitteeErrorCode.NOT_FOUND.getCode()));
 
             em.flush();
             em.clear();

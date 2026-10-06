@@ -1,10 +1,13 @@
 package com.mannschaft.app.schedule.listener;
 
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
+import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import com.mannschaft.app.membership.event.MembershipEndedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
 import com.mannschaft.app.schedule.entity.UserCalendarLayerSettingEntity;
 import com.mannschaft.app.schedule.repository.UserCalendarLayerSettingRepository;
+import com.mannschaft.app.schedule.repository.UserCalendarSyncSettingRepository;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
 import com.mannschaft.app.team.event.TeamMemberRemovedEvent;
 import org.junit.jupiter.api.BeforeEach;
@@ -88,7 +91,8 @@ class CalendarLayerLifecycleListenerTest {
         }).when(repository).deleteByUserId(anyLong());
 
         // 委譲先 Bean は実物を使う（リスナー→Executor→Repository の経路そのものを踏む）。
-        listener = new CalendarLayerLifecycleListener(new CalendarLayerCleanupExecutor(repository));
+        listener = new CalendarLayerLifecycleListener(new CalendarLayerCleanupExecutor(mock(UserCalendarSyncSettingRepository.class),
+                mock(AccountPurgeCompletionService.class), repository));
     }
 
     // ------------------------------------------------------------------
@@ -169,7 +173,7 @@ class CalendarLayerLifecycleListenerTest {
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("〔陰性・R9の要〕脱退系イベントは購読しない — 購読は削除・退会の3種のみ")
+    @DisplayName("〔陰性・R9の要〕脱退系イベントは購読しない — 購読は削除・退会の弱/強4種のみ")
     void leaveEvents_areNotSubscribed_soRowsSurviveForRejoin() {
         Set<Class<?>> subscribed = subscribedEventTypes();
 
@@ -182,7 +186,8 @@ class CalendarLayerLifecycleListenerTest {
         assertThat(subscribed).containsExactlyInAnyOrder(
                 TeamDeletedEvent.class,
                 OrganizationDeletedEvent.class,
-                UserAnonymizedEvent.class);
+                UserAnonymizedEvent.class,
+                AccountPurgedEvent.class);
     }
 
     // ------------------------------------------------------------------
@@ -255,7 +260,7 @@ class CalendarLayerLifecycleListenerTest {
     void allListenerMethods_useAfterCommit_andDelegateRequiresNewToSeparateBean() {
         List<Method> methods = listenerMethods();
 
-        assertThat(methods).hasSize(3);
+        assertThat(methods).hasSize(4);
         for (Method m : methods) {
             // 親がロールバックしたら走らない（コミット成立後のみ）
             assertThat(m.getAnnotation(TransactionalEventListener.class).phase())

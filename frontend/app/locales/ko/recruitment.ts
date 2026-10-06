@@ -240,7 +240,6 @@ export default {
     "error": {
       "RECRUITMENT_001": "모집을 찾을 수 없습니다",
       "RECRUITMENT_002": "모집 작성 권한이 없습니다",
-      "RECRUITMENT_003": "공개 범위로 인해 이 모집을 볼 수 없습니다",
       "RECRUITMENT_005": "정원에 도달했습니다",
       "RECRUITMENT_007": "참가 형식이 일치하지 않습니다",
       "RECRUITMENT_008": "최소 정원이 정원을 초과합니다",
