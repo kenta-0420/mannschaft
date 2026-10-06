@@ -51,7 +51,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 async function mountPage() {
   const wrapper = await mountSuspended(Page, {
-    route: '/shift/4',
+    route: { path: '/shift/4', params: { id: '4' } },
     global: { plugins: [ToastService, ConfirmationService] },
   })
   await flushPromises()
