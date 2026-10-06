@@ -99,7 +99,19 @@
       "avatarUnchanged": "Auch wenn sich deine Ergebnisse ändern, bleiben Name, Gestalt und Entwicklungsstand deines geschlüpften Dinosaurier-Avatars erhalten.",
       "typeCode": "Typ: {code}",
       "latest": "Neuestes Ergebnis",
-      "history": "Frühere Ergebnisse"
+      "history": "Frühere Ergebnisse",
+      "tendencies": "Deine sechs Tendenzen",
+      "labelsUnavailable": "Dieses gespeicherte Ergebnis enthält keine Tendenzbezeichnungen. Die ursprüngliche Erklärung bleibt verfügbar.",
+      "tieSelection": "Deine Antworten waren ausgeglichen. Angezeigt wird die von dir gewählte Seite.",
+      "draftNotice": "Dieses Ergebnis beruht auf einem ersten Entwurf. Fragen und Übersetzungen sind nicht freigegeben; auch in anderen Sprachen erscheint japanischer Entwurfstext.",
+      "axes": {
+        "FAMILIAR_NEW": "Vertrautes und Neues",
+        "FOCUS_VARIETY": "Interessen erkunden",
+        "SPONTANEOUS_PLAN": "Freizeit gestalten",
+        "SOLO_TOGETHER": "Angenehme Gesellschaft",
+        "EXPRESSION": "Gefühle ausdrücken",
+        "NOTICE": "Landschaften genießen"
+      }
     },
     "diagnosis": {
       "description": "Stell dir vor, du wärst ein Dinosaurier, und wähle die Lebensweise, die jetzt zu dir passt. Es gibt keine richtigen oder besseren Antworten. Dies ist keine wissenschaftliche Messung von Persönlichkeit oder Fähigkeiten.",

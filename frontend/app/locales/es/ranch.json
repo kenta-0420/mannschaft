@@ -99,7 +99,19 @@
       "avatarUnchanged": "Aunque cambien tus resultados, tu avatar de dinosaurio ya nacido mantiene su nombre, forma y crecimiento.",
       "typeCode": "Tipo: {code}",
       "latest": "Resultado más reciente",
-      "history": "Resultados anteriores"
+      "history": "Resultados anteriores",
+      "tendencies": "Tus seis tendencias",
+      "labelsUnavailable": "Este resultado guardado no tiene etiquetas de tendencias. Puedes leer su explicación original.",
+      "tieSelection": "Tus respuestas quedaron empatadas; se muestra el lado que elegiste.",
+      "draftNotice": "Este resultado usa un borrador inicial. Las preguntas y traducciones no están aprobadas; también aparece texto japonés en otros idiomas.",
+      "axes": {
+        "FAMILIAR_NEW": "Lo familiar y lo nuevo",
+        "FOCUS_VARIETY": "Explorar intereses",
+        "SPONTANEOUS_PLAN": "Elegir actividades libres",
+        "SOLO_TOGETHER": "Compañía cómoda",
+        "EXPRESSION": "Expresar sentimientos",
+        "NOTICE": "Disfrutar del paisaje"
+      }
     },
     "diagnosis": {
       "description": "Imagínate como un dinosaurio y elige cómo pasarías el tiempo según cómo eres ahora. No hay respuestas correctas ni mejores que otras. No es una medición científica de personalidad o capacidad.",

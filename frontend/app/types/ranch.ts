@@ -60,6 +60,7 @@ export interface DiagnosisResult {
  numberSummary?: { lifePathNumber: number; nameNumber: number; dateSum: number; nameSum: number } | null
  descriptionSnapshot: Record<string, string>
  axisDescriptions?: Record<string, Record<string, string>> | null
+ axisSelections?: Record<string, { side: 0 | 1; zero: Record<string, string>; one: Record<string, string> }> | null
 }
 export interface BirthProfile { lastName: string | null; firstName: string | null; lastNameKana: string | null; firstNameKana: string | null; birthDate: string | null; revision: Decimal }
 export interface BirthConfirmation { confirmationRef: string; expiresAt: string; profileRevision: Decimal }

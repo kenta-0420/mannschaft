@@ -99,7 +99,19 @@
       "avatarUnchanged": "Even if your results change, your hatched dinosaur avatar keeps its name, form and growth.",
       "typeCode": "Type: {code}",
       "latest": "Latest result",
-      "history": "Previous results"
+      "history": "Previous results",
+      "tendencies": "Your six tendencies",
+      "labelsUnavailable": "This saved result has no tendency labels. You can still read its original explanation.",
+      "tieSelection": "Your answers were tied, so this shows the side you chose.",
+      "draftNotice": "This result uses an initial draft. The questions and translations are not approved; Japanese draft text also appears in other languages.",
+      "axes": {
+        "FAMILIAR_NEW": "Familiarity and novelty",
+        "FOCUS_VARIETY": "Exploring interests",
+        "SPONTANEOUS_PLAN": "Choosing free-time activities",
+        "SOLO_TOGETHER": "Comfortable company",
+        "EXPRESSION": "Expressing feelings",
+        "NOTICE": "Enjoying scenery"
+      }
     },
     "diagnosis": {
       "description": "Imagine yourself as a dinosaur and choose how you would spend your time in a way that fits you now. There are no correct or superior answers. This is not a scientific measure of personality or ability.",

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DiagnosisResult } from '~/types/ranch'
 const { t, locale } = useI18n(); useHead({ title: t('ranch.diagnosisResults.title') })
+const { formatDateTime } = useDatetime()
 const route = useRoute(); const api = useDiagnosisApi(); const ranch = useRanchState(); const { handleApiError } = useErrorHandler()
 const result = ref<DiagnosisResult | null>(null); const loading = ref(false); const failed = ref(false); const message = ref('')
 const ranchLoading = ref(false); const ranchFailed = ref(false)
@@ -37,8 +38,9 @@ onMounted(load)
   <PageLoading v-if="loading" />
   <DashboardErrorState v-else-if="failed" @retry="load" />
   <SectionCard v-else-if="result" :title="t(result.method === 'DIAGNOSIS' ? 'ranch.diagnosisResults.type64' : 'ranch.diagnosisResults.birthStyle')">
-   <p>{{ t('ranch.diagnosisResults.completedAt', { date: result.completedAt }) }}</p>
+   <p>{{ t('ranch.diagnosisResults.completedAt', { date: formatDateTime(result.completedAt) }) }}</p>
    <p class="whitespace-pre-wrap my-3">{{ result.descriptionSnapshot[locale] ?? result.descriptionSnapshot.ja }}</p>
+   <RanchAxisResults v-if="result.method === 'DIAGNOSIS'" :result="result" />
    <p v-if="result.typeCode">{{ t('ranch.diagnosisResults.typeCode', { code: result.typeCode }) }}</p>
    <p v-if="result.numberSummary">{{ t('ranch.birth.numbers', { life: result.numberSummary.lifePathNumber, name: result.numberSummary.nameNumber }) }}</p>
    <ul v-if="result.axisDescriptions" class="space-y-2 my-3"><li v-for="(description,axis) in result.axisDescriptions" :key="axis">{{ description[locale] ?? description.ja }}</li></ul>

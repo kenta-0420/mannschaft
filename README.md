@@ -4,6 +4,8 @@
 
 [本人の恐竜アバター Phase 1](docs/features/F04.7_dinosaur_ranch/05_acceptance_rollout.md) は製造中で、73受け入れ条件・実機・アリシゼーションの全体合格は未完了です。全64素材と対応表は未承認・未登録で、本番公開 gate は OFF を維持します。明示した非本番の隔離 fixture は実装検証専用で、素材完成や本番公開準備の証拠には数えません。
 
+本人の64タイプ診断結果は、保存した六軸の極ラベルから本人の傾向を表示し、同点時は本人の選択を示します。旧結果は元の本人セッションに保存した定義から表示だけを補足し、保存説明を変更しません。初期草案の質問・翻訳は未承認と明示し、恐竜対応付けと公開 gate は引き続き閉じています。
+
 承認素材の登録は `frontend/scripts/verify-ranch-production-assets.mjs` に pack directory・manifest SHA256・master file/SHA256 を明示して行います。全512組の実 bytes・hash・PNG atlas/fallback を照合し、`--repository` に指定した隔離 checkout 内へ同じ artifact の BE classpath/FE public と有限 TS registry を配置します。TS は両配置の後に原子的に置換し、別 bytes の既存 pack は上書きしません。現在の対応形式は静的8bit RGB/RGBA・非 interlace PNG の均等 atlas（PIXEL は96×96）です。care 公開設定とは独立した素材登録であり、検証器の合成試験は素材承認を代行しません。
 Scene は登録された同個体・同段階の静止 fallback を動き抑制時と atlas 取得失敗時に使用し、静止画像も失敗した場合は状態文字を保ちます。初回非表示では画像を取得せず、公開素材 pack 未登録の現在は本番表示 gate が閉じています。canvas の実画素・実ブラウザ資源停止は別の実機確認対象です。
 運営の源配送集計・明示再予約は現在の SYSTEM_ADMIN/ACTIVE 資格で源の専用窓口へ接続します。4源の実 provider が未閉束の間は利用不可として表示し、正常なゼロ件を捏造しません。保存 ACK を照会できない503では同じ再送 key/body を保持します。実 HTTP のロール横断・4源配送と E2E の全体合格は未証明です。

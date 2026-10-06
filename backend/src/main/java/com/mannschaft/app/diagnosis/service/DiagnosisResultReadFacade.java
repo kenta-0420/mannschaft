@@ -4,9 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.diagnosis.DiagnosisErrorCode;
+import com.mannschaft.app.diagnosis.DiagnosisStatus;
 import com.mannschaft.app.diagnosis.dto.DiagnosisResultSummary;
 import com.mannschaft.app.diagnosis.dto.OwnedDiagnosisResult;
 import com.mannschaft.app.diagnosis.repository.DiagnosisResultRepository;
+import com.mannschaft.app.diagnosis.repository.DiagnosisSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -20,6 +22,8 @@ import java.util.UUID;
 public class DiagnosisResultReadFacade {
     private final DiagnosisResultRepository results;
     private final ObjectMapper mapper;
+    private final DiagnosisSessionRepository sessions;
+    private final DiagnosisSessionSnapshotCodec codec;
 
     // SELECTだけだが、ReplicaRoutingAspectの既存規則に従ってPRIMARYを選ぶ。
     @Transactional(readOnly = false, propagation = Propagation.REQUIRES_NEW)
@@ -30,6 +34,15 @@ public class DiagnosisResultReadFacade {
                 DiagnosisResultSummary summary = mapper.readValue(result.getSummarySnapshot(), DiagnosisResultSummary.class);
                 if (!result.getId().equals(summary.id()) || result.getMethod() != summary.method()) {
                     throw new BusinessException(DiagnosisErrorCode.UNAVAILABLE);
+                }
+                if (DiagnosisAxisSelectionSnapshot.needsSupplement(summary)) {
+                    // 本人結果の所有を確認した後、同じ本人・同じ完成結果の凍結定義だけを読む。
+                    var source = sessions.findByResultIdAndUserId(resultId, userId)
+                            .filter(session -> session.getStatus() == DiagnosisStatus.COMPLETED);
+                    if (source.isPresent()) {
+                        summary = DiagnosisAxisSelectionSnapshot.supplement(summary,
+                                codec.definition(source.get().getQuestionsSnapshot()));
+                    }
                 }
                 return new OwnedDiagnosisResult(result.getUserId(), summary, result.getSourceProfileRevision());
             } catch (JsonProcessingException error) {

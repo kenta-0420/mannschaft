@@ -78,19 +78,20 @@ public class DiagnosisQuestionnaireCatalog {
                 questions.add(new DiagnosisQuestion(id, axis, polarity, texts));
                 counts.merge(axis, 1, Integer::sum);
                 if (!descriptions.containsKey(axis)) {
-                    // 初問の固定左右表示を使い、新しい軸や追加原稿を混ぜない。
+                    // 保存当時の説明は残す。極ラベルの選択は文面の区切りから再構成しない。
                     if (polarity != 1) throw unavailable();
-                    var zero = new java.util.HashMap<String,String>(); var one = new java.util.HashMap<String,String>();
-                    for (String locale : LOCALES) {
-                        String[] sides = texts.get(locale).split(" ↔ ", -1);
-                        if (sides.length != 2) throw unavailable();
-                        zero.put(locale, sides[0].substring(sides[0].lastIndexOf('：') + 1)); one.put(locale, sides[1]);
-                    }
-                    ties.add(new DiagnosisTieQuestion(axis, Map.copyOf(zero), Map.copyOf(one)));
                     descriptions.put(axis, texts);
                 }
             }
             if (questions.size() != 24 || counts.size() != 6 || counts.values().stream().anyMatch(n -> n != 4)) throw unavailable();
+            if (!root.path("ties").isArray()) throw unavailable();
+            var tieAxes = new HashSet<DiagnosisAxis>();
+            for (JsonNode item : root.path("ties")) {
+                DiagnosisAxis axis = DiagnosisAxis.valueOf(required(item, "axisId"));
+                if (!tieAxes.add(axis)) throw unavailable();
+                ties.add(new DiagnosisTieQuestion(axis, localeText(item.path("zero")), localeText(item.path("one"))));
+            }
+            if (!tieAxes.equals(java.util.Set.of(DiagnosisAxis.values()))) throw unavailable();
             return new Definition(SNAPSHOT_SCHEMA_VERSION, SnapshotApproval.DRAFT, required(root,"questionnaireVersion"), required(root,"scoringVersion"), questions, ties, explanation(), descriptions);
         } catch (IOException | IllegalArgumentException error) { throw unavailable(); }
     }

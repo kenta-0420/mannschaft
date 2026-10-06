@@ -110,7 +110,8 @@ public class DiagnosisSessionWriter {
             UUID resultId=UuidV7.generate();
             var result=new DiagnosisResultSummary(resultId,DiagnosisMethod.DIAGNOSIS,now,"diagnosis-result-v1",
                     definition.questionnaireVersion(),definition.scoringVersion(),null,null,null,score.typeCode(),score.axes(),null,
-                    definition.descriptionSnapshot(),definition.axisDescriptions());
+                    definition.descriptionSnapshot(),definition.axisDescriptions(),
+                    DiagnosisAxisSelectionSnapshot.create(score.typeCode(),score.axes(),definition.ties()));
             results.saveAndFlush(DiagnosisResultEntity.builder().id(resultId).userId(userId).method(DiagnosisMethod.DIAGNOSIS)
                     .sourceProfileRevision(null).summarySnapshot(encode(result)).completedAt(now).createdAt(now).updatedAt(now).build());
             session.complete(encoded,resultId,now);

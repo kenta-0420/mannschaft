@@ -18,5 +18,6 @@ public interface DiagnosisSessionRepository extends JpaRepository<DiagnosisSessi
     @Query("select s from DiagnosisSessionEntity s where s.id = :id and s.userId = :userId")
     Optional<DiagnosisSessionEntity> findOwnedForUpdate(@Param("id") UUID id, @Param("userId") Long userId);
     Optional<DiagnosisSessionEntity> findByIdAndUserId(UUID id, Long userId);
+    Optional<DiagnosisSessionEntity> findByResultIdAndUserId(UUID resultId, Long userId);
     void deleteByUserId(Long userId);
 }
