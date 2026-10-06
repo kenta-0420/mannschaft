@@ -51,7 +51,8 @@ public class NotificationFanoutAudienceService {
                 audienceTeamRepository.findTeamIdsByAudienceSnapshotId(audienceSnapshotId));
         List<NotificationFanoutAudienceTeamEntity> rows = wanted.stream()
                 .filter(teamId -> !existing.contains(teamId))
-                .map(teamId -> NotificationFanoutAudienceTeamEntity.builder()
+                // @SuperBuilder の build() は捕捉型（CAP）を返すため、map の戻り型を明示して List<Entity> に揃える
+                .<NotificationFanoutAudienceTeamEntity>map(teamId -> NotificationFanoutAudienceTeamEntity.builder()
                         .audienceSnapshotId(audienceSnapshotId)
                         .teamId(teamId)
                         .build())
