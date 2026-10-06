@@ -142,9 +142,17 @@ class RanchDeliveryPoolTwoMeasurementIT extends AbstractMySqlIntegrationTest {
         });
     }
 
-    @BeforeEach void prepareOnlyOwnedSyntheticTransportFixture() {
+    private Map<String, String> databaseVersions;
+
+    @BeforeEach void prepareOnlyOwnedSyntheticTransportFixture() throws java.sql.SQLException {
         assertThat(dataSource).isInstanceOf(HikariDataSource.class);
         assertThat(((HikariDataSource) dataSource).getMaximumPoolSize()).isEqualTo(2);
+        // 観測開始前だけ専用接続を借り、公開版番号を取得して即時閉じる。
+        try (var connection = dataSource.getConnection()) {
+            var metadata = connection.getMetaData();
+            databaseVersions = Map.of("mysql", publicVersion(metadata.getDatabaseProductVersion()),
+                    "jdbcDriver", publicVersion(metadata.getDriverVersion()));
+        }
         assertThat(policies.count()).as("他政策を消去せず空の専用測定条件を要求する").isZero();
         for (var type : RanchRewardSourceType.values())
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table(type), Long.class)).isZero();
@@ -341,8 +349,17 @@ class RanchDeliveryPoolTwoMeasurementIT extends AbstractMySqlIntegrationTest {
         collector.accepted();
     }
 
+    private static String publicVersion(String value) {
+        assertThat(value).isNotNull().hasSizeLessThanOrEqualTo(256);
+        var match = java.util.regex.Pattern.compile("(?:^|mysql-connector-(?:j|java)-)([0-9]+(?:\\.[0-9]+){1,3})(?:[^0-9.]|$)").matcher(value);
+        assertThat(match.find()).as("公開版番号の形式が必要").isTrue();
+        String version = match.group(1);
+        assertThat(version).hasSizeLessThanOrEqualTo(32);
+        return version;
+    }
+
     private void observe(RanchDeliveryMeasurementCollector.Case measurementCase) {
-        collector = new RanchDeliveryMeasurementCollector((HikariDataSource) dataSource, measurementCase);
+        collector = new RanchDeliveryMeasurementCollector((HikariDataSource) dataSource, measurementCase, databaseVersions);
         timing.collector = collector;
     }
 

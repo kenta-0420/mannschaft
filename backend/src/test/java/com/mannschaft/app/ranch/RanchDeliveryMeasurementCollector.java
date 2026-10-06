@@ -29,13 +29,15 @@ final class RanchDeliveryMeasurementCollector implements AutoCloseable {
     private final AtomicInteger waiters = new AtomicInteger();
     private final ScheduledExecutorService sampler = Executors.newSingleThreadScheduledExecutor();
     private final Case measurementCase;
+    private final Map<String, String> databaseVersions;
     private boolean accepted;
     private boolean warmup;
     private int intentionalPoolTimeouts;
 
-    RanchDeliveryMeasurementCollector(HikariDataSource pool, Case measurementCase) {
+    RanchDeliveryMeasurementCollector(HikariDataSource pool, Case measurementCase, Map<String, String> databaseVersions) {
         this.pool = pool;
         this.measurementCase = measurementCase;
+        this.databaseVersions = Map.copyOf(databaseVersions);
         sampler.scheduleAtFixedRate(this::gauge, 0, 1, TimeUnit.MILLISECONDS);
     }
 
@@ -140,6 +142,7 @@ final class RanchDeliveryMeasurementCollector implements AutoCloseable {
         proof.put("connectionIds", "NOT_OBSERVED");
         proof.put("transactionAdvisorOrder", "NOT_OBSERVED");
         proof.put("measurementOverhead", "TEST_ASPECT_AND_1MS_GAUGE");
+        proof.put("databaseVersions", databaseVersions);
         proof.put("jvmVersion", Runtime.version().toString());
         proof.put("processors", Runtime.getRuntime().availableProcessors());
         proof.put("maxHeapBytes", Runtime.getRuntime().maxMemory());
