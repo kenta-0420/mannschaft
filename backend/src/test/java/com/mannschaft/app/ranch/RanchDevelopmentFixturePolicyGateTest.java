@@ -50,6 +50,21 @@ class RanchDevelopmentFixturePolicyGateTest {
     }
 
     @Test
+    void onlyCanonicalDevOffReasonDefersAndMalformedReasonStillFailsValidation() {
+        var environment = new MockEnvironment();
+        var gate = new RanchDevelopmentFixturePolicyGate(environment);
+        assertThat(gate.shouldDeferConsumption("DEV_ACTIVITY_UI")).isTrue();
+        assertThat(gate.shouldDeferConsumption("DEV_invalid")).isFalse();
+        assertThat(gate.shouldDeferConsumption("FORMAL_ACTIVITY")).isFalse();
+        assertThatThrownBy(() -> gate.requireConsumptionAllowed("DEV_invalid")).isInstanceOf(IllegalStateException.class);
+        environment.setProperty(FLAG, "true");
+        environment.setActiveProfiles("ranch-isolated");
+        assertThat(gate.shouldDeferConsumption("DEV_ACTIVITY_UI")).isFalse();
+        environment.setActiveProfiles("ranch-isolated", "production");
+        assertThat(gate.shouldDeferConsumption("DEV_ACTIVITY_UI")).isTrue();
+    }
+
+    @Test
     void currentWeekExceptionRequiresEmptyStoreWithoutExtraControlRestrictions() {
         var environment = new MockEnvironment().withProperty(FLAG, "true");
         environment.setActiveProfiles("ranch-isolated");

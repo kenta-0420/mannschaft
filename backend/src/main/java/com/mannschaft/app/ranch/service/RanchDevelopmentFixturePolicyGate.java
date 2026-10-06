@@ -48,6 +48,11 @@ public class RanchDevelopmentFixturePolicyGate {
         }
     }
 
+    /** 正準DEV理由の環境OFFだけを保留する。壊れた理由やsnapshotは異常として扱う。 */
+    public boolean shouldDeferConsumption(String reasonCode) {
+        return isDevelopment(reasonCode) && reasonCode.matches("DEV_[A-Z0-9_]{1,76}") && !enabled();
+    }
+
     public boolean isCurrentWeek(Instant effectiveAt, Instant now) {
         Instant current = now.atOffset(ZoneOffset.UTC).toLocalDate()
                 .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))

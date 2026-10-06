@@ -96,9 +96,12 @@ public class RanchRewardWriter {
                         .orElseThrow(() -> new IllegalStateException("凍結policyがありません"));
                 policy = RanchRewardPolicyCodec.decode(saved.getId(), saved.getVersionNumber(),
                         saved.getEffectiveAt(), budget.getRuleSnapshot(), saved.getContentHash(), json);
-                development.requireConsumptionAllowed(policy.reasonCode());
                 if (!policy.enabled()) throw new IllegalStateException("無効policyに週枠があります");
                 if (policy.globalCap() != budget.getGlobalCap()) throw new IllegalStateException("週枠の政策値が不一致です");
+                if (development.shouldDeferConsumption(policy.reasonCode())) {
+                    return outcome(RanchRewardDeliveryOutcome.Outcome.DEFER);
+                }
+                development.requireConsumptionAllowed(policy.reasonCode());
             } else {
                 var candidate = fixtureMode
                         ? policies.publishedForDevelopment(occurredAt, PageRequest.of(0, 1))
@@ -107,6 +110,9 @@ public class RanchRewardWriter {
                     RanchRewardPolicyEntity selected = candidate.get(0);
                     policy = RanchRewardPolicyCodec.decode(selected.getId(), selected.getVersionNumber(),
                             selected.getEffectiveAt(), selected.getSettingsJson(), selected.getContentHash(), json);
+                    if (development.shouldDeferConsumption(policy.reasonCode())) {
+                        return outcome(RanchRewardDeliveryOutcome.Outcome.DEFER);
+                    }
                     development.requireConsumptionAllowed(policy.reasonCode());
                     if (policy.enabled()) {
                         String zeroCounts = countsJson(new EnumMap<>(RanchRewardSourceType.class));

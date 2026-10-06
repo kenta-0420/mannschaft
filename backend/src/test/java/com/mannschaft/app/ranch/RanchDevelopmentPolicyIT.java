@@ -87,6 +87,9 @@ class RanchDevelopmentPolicyIT extends AbstractMySqlIntegrationTest {
     @Autowired RanchRewardDecisionRepository decisions;
     @Autowired RanchOwnerRepository owners;
     @Autowired RanchAdminFacade facade;
+    @Autowired com.mannschaft.app.ranch.reward.RanchRewardDeliveryOrchestrator orchestrator;
+    @Autowired com.mannschaft.app.reflection.repository.ReflectionRanchTransportRepository sourceTransport;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @PersistenceContext EntityManager em;
     @Autowired PlatformTransactionManager transactionManager;
     private Long recipient;
@@ -99,6 +102,7 @@ class RanchDevelopmentPolicyIT extends AbstractMySqlIntegrationTest {
     @DynamicPropertySource
     static void syntheticValidatorBounds(DynamicPropertyRegistry properties) {
         properties.add("mannschaft.ranch.development-fixtures", () -> "true");
+        properties.add("mannschaft.ranch.delivery.worker.enabled", () -> "false");
         properties.add("mannschaft.ranch.delivery.bounds.version", () -> "TEST_ONLY_NOT_MEASURED");
         for (String field : List.of("batch-size", "lease-seconds", "max-attempts",
                 "initial-backoff-seconds", "max-backoff-seconds")) {
@@ -121,8 +125,23 @@ class RanchDevelopmentPolicyIT extends AbstractMySqlIntegrationTest {
     void restoreOnlyOwnFixtureRowsAndProperty() {
         environment.getPropertySources().remove(OVERRIDE);
         for (UUID key : ownKeys) commands.findByActorUserIdAndIdempotencyKey(actor, key)
-                .ifPresent(row -> commands.deleteById(row.getId()));
-        if (recipient != null) purge.purgeUser(recipient);
+                .ifPresent(row -> {
+                    // 旧実装が予想外に公開を成功させた赤試験でも、自分のACKから後片付け対象を回収する。
+                    if ("ADMIN_POLICY_PUBLISH".equals(row.getCommandType())) {
+                        try {
+                            UUID policyId = json.readValue(row.getResultJson(),
+                                    com.mannschaft.app.ranch.dto.RanchPolicyPublicationResponse.class).id();
+                            if (!ownPolicies.contains(policyId)) ownPolicies.add(policyId);
+                        } catch (com.fasterxml.jackson.core.JsonProcessingException invalidAck) {
+                            throw new AssertionError("自分の公開ACKから後片付け対象を回収できませんでした");
+                        }
+                    }
+                    commands.deleteById(row.getId());
+                });
+        if (recipient != null) {
+            new TransactionTemplate(transactionManager).executeWithoutResult(ignored -> sourceTransport.deleteForUser(recipient));
+            purge.purgeUser(recipient);
+        }
         ownPolicies.forEach(policies::deleteById);
         if (controlTouched) {
             if (original == null) controls.deleteById(1); else controls.saveAndFlush(original);
@@ -208,7 +227,7 @@ class RanchDevelopmentPolicyIT extends AbstractMySqlIntegrationTest {
         assertThat(first.awardedPoints()).isEqualTo(1);
         disableFixture();
         assertThat(consumer.decide(firstEvent)).isEqualTo(first);
-        assertThatThrownBy(() -> consumer.decide(recall(userId))).isInstanceOf(IllegalStateException.class);
+        assertThat(consumer.decide(recall(userId)).outcome()).isEqualTo(RanchRewardDeliveryOutcome.Outcome.DEFER);
         assertThat(decisions.countByUserId(userId)).isEqualTo(1);
         assertThat(ledger.findByUserIdOrderByOccurredAtDescIdDesc(userId)).hasSize(1);
         assertThat(budgets.findByUserIdAndWeekStartsOn(userId, LocalDate.parse("2032-01-05"))
@@ -406,6 +425,111 @@ class RanchDevelopmentPolicyIT extends AbstractMySqlIntegrationTest {
         var saved = facade.publishPolicy(actor, key, body);
         assertThat(saved.createdNow()).isFalse();
         assertThat(saved.response()).isEqualTo(first.response());
+    }
+
+    /** transport前提だけを合成し、実orchestrator/source TXのDEFERとattempt復元を検証する。native活動の証明ではない。 */
+    @Test
+    void leasedDevEventDefersThroughRealOrchestratorWithoutAttemptOrCredit() throws Exception {
+        Instant at = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        Instant week = at.atOffset(java.time.ZoneOffset.UTC).toLocalDate()
+                .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+                .atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+        recipient = users.saveAndFlush(RanchTestFixture.user()).getId();
+        enrollment.enroll(recipient, UuidV7.generate(), at.minusSeconds(60),
+                new RanchStateAssembler.ExternalProjection(false, "DISABLED", false, false, null, null, List.of()));
+        var publication = writer.publish(actor, key(), request(week, true), null, at);
+        ownPolicies.add(publication.response().id());
+        enableDelivery();
+        var fact = new RanchRewardEnvelope(UuidV7.generate(), 1, RanchRewardSourceType.PERSONAL_RECALL_COMPLETE,
+                RanchRewardEnvelope.IdType.UUID, UuidV7.generate().toString(),
+                RanchRewardEnvelope.ScopeType.PERSONAL, null, null, RanchRewardEnvelope.ActorKind.USER,
+                recipient, null, recipient, recipient, at.plusSeconds(1), RanchRewardEnvelope.Origin.PERSONAL_COMPLETION,
+                new RanchRewardEnvelope.PersonalRecall(UuidV7.generate(), 4, week.atOffset(java.time.ZoneOffset.UTC).toLocalDate(), true));
+        var payload = new com.mannschaft.app.reflection.dto.ReflectionRecallRewardPayload(fact.eventId(),
+                fact.schemaVersion(), fact.sourceType(), fact.sourceIdType(), fact.canonicalSourceId(),
+                fact.scopeType(), fact.scopeIdType(), fact.canonicalScopeId(), fact.actorKind(),
+                fact.actorUserId(), fact.originalAdminId(), fact.subjectUserId(), fact.recipientUserId(),
+                fact.occurredAt(), fact.origin(), (RanchRewardEnvelope.PersonalRecall) fact.facts());
+        String encoded = json.writeValueAsString(payload);
+        new TransactionTemplate(transactionManager).executeWithoutResult(ignored ->
+                assertThat(sourceTransport.insertQualified(payload, encoded, at)).isTrue());
+        var executor = Executors.newSingleThreadExecutor();
+        var future = new AtomicReference<Future<com.mannschaft.app.ranch.reward.RanchRewardDeliveryOrchestrator.RunSummary>>();
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(ignored -> {
+                owners.lockByUserId(recipient).orElseThrow();
+                future.set(executor.submit(() -> orchestrator.drainOnce()));
+                awaitOwnOwnerWait();
+                disableFixture();
+            });
+            var summary = future.get().get(20, TimeUnit.SECONDS);
+            assertThat(summary.leased()).isEqualTo(1);
+            assertThat(summary.deferred()).isEqualTo(1);
+            assertThat(summary.acknowledged()).isZero();
+            assertThat(summary.retried()).isZero();
+            assertThat(summary.failed()).isZero();
+            byte[] eventId = java.nio.ByteBuffer.allocate(16).putLong(fact.eventId().getMostSignificantBits())
+                    .putLong(fact.eventId().getLeastSignificantBits()).array();
+            var rows = jdbc.query("SELECT status,attempt_count,lease_token,terminal_outcome,last_error_code "
+                            + "FROM reflection_ranch_outboxes WHERE id=?",
+                    (rs, index) -> new DeferredSourceState(rs.getString(1), rs.getInt(2),
+                            rs.getBytes(3), rs.getString(4), rs.getString(5)), eventId);
+            assertThat(rows).hasSize(1);
+            assertThat(rows.getFirst().status()).isEqualTo("RETRY");
+            assertThat(rows.getFirst().attempts()).isZero();
+            assertThat(rows.getFirst().leaseToken()).isNull();
+            assertThat(rows.getFirst().terminalOutcome()).isNull();
+            assertThat(rows.getFirst().lastError()).isNull();
+            assertThat(decisions.countByUserId(recipient)).isZero();
+            assertThat(budgets.findByUserIdAndWeekStartsOn(recipient, week.atOffset(java.time.ZoneOffset.UTC).toLocalDate())).isEmpty();
+            assertThat(ledger.findByUserIdOrderByOccurredAtDescIdDesc(recipient)).isEmpty();
+            assertThat(owners.findByUserId(recipient).orElseThrow().getBalance()).isZero();
+        } finally {
+            executor.shutdown();
+            assertThat(executor.awaitTermination(25, TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
+    private void awaitOwnOwnerWait() {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        try (var connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), "root", MYSQL.getPassword());
+             var query = connection.prepareStatement("SELECT COUNT(*) FROM performance_schema.data_lock_waits w "
+                     + "JOIN performance_schema.data_locks l ON l.ENGINE_LOCK_ID=w.REQUESTING_ENGINE_LOCK_ID "
+                     + "WHERE l.OBJECT_SCHEMA=? AND l.OBJECT_NAME='ranch_owners' AND (l.LOCK_DATA=? OR l.LOCK_DATA LIKE ?)")) {
+            query.setString(1, MYSQL.getDatabaseName());
+            query.setString(2, recipient.toString());
+            query.setString(3, recipient + ",%");
+            while (System.nanoTime() < deadline) {
+                try (var rows = query.executeQuery()) { if (rows.next() && rows.getLong(1) == 1) return; }
+                Thread.sleep(25);
+            }
+            throw new AssertionError("実consumerの本人owner行待機へ到達しませんでした");
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("本人owner待機観測が中断されました");
+        } catch (java.sql.SQLException failure) {
+            throw new AssertionError("専用MySQLの本人owner待機観測に失敗しました");
+        }
+    }
+
+    private record DeferredSourceState(String status, int attempts, byte[] leaseToken,
+                                       String terminalOutcome, String lastError) { }
+
+    @Test
+    void offModeDoesNotConvertCorruptDevPolicyHashIntoDefer() {
+        Long userId = enrollRecipient();
+        var publication = publish(key(), request(CURRENT_WEEK, true));
+        var stored = policies.findById(publication.response().id()).orElseThrow();
+        byte[] changed = stored.getContentHash().clone();
+        changed[0] ^= 1;
+        org.springframework.test.util.ReflectionTestUtils.setField(stored, "contentHash", changed);
+        policies.saveAndFlush(stored);
+        enableDelivery();
+        disableFixture();
+        assertThatThrownBy(() -> consumer.decide(recall(userId))).isInstanceOf(IllegalArgumentException.class);
+        assertThat(decisions.countByUserId(userId)).isZero();
+        assertThat(ledger.findByUserIdOrderByOccurredAtDescIdDesc(userId)).isEmpty();
+        assertThat(budgets.findByUserIdAndWeekStartsOn(userId, LocalDate.parse("2032-01-05"))).isEmpty();
     }
 
     private void disableFixture() {
