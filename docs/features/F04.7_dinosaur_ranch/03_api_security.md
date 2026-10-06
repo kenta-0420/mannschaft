@@ -201,6 +201,10 @@ GET /api/v1/me/diagnoses/results?method=DIAGNOSIS|BIRTH_STYLE&cursor=...&limit=2
 
 result summaryは{id,method,completedAt,resultSchemaVersion,ruleVersion,questionnaireVersion?,scoringVersion?,normalizationVersion?,mappingVersion?,typeCode?,axes?,numberSummary?,descriptionSnapshot}。raw回答/姓名/カナ/DOB/profile fingerprintなし。6言語説明と質問/採点/正規化版を不変snapshot、mapping未登録NULLでも本人resultを保存可、恐竜割当/公開有効化不可。完成typeCodeはserverの6bit文字列。本人診断開始・result作成・閲覧はranch参加不要。
 
+六軸の表示契約は optional `axisSelections`（軸ID → `{side: 0|1, zero: localeText, one: localeText}`）を追加する。両方式とも `diagnosis-result-v1` を維持し、開始時の不変definitionの極ラベルと完成typeCodeをDIAGNOSISの結果snapshotへ保存する。算法・typeCode・masterの単一結果版契約は変更しない。bit順は FAMILIAR_NEW / FOCUS_VARIETY / SPONTANEOUS_PLAN / SOLO_TOGETHER / EXPRESSION / NOTICE。Map順序や説明文の区切りは使わない。`axes[axis] == 0` でも `side` は完成時の本人二択を保持する。BIRTH_STYLEと旧JSONはnull/省略を許す。primary ObjectMapperで旧14field record読取形が追加optionalを許容することと、新コードが旧JSONを読むことを試練で検証する。旧readerの配布・読取互換確認を先に行い、新しいsnapshotの書込みはその後に有効化する。
+
+旧 `diagnosis-result-v1` の詳細GETは本人結果の所有条件を満たした後にのみ、同じ `resultId` と `userId` のCOMPLETED sessionから凍結済みdefinitionを読む。保存snapshot版・質問版・採点版が一致し、既知 `signed-centered-v1` の6bit/6軸/極ラベルが揃う場合に表示値だけ補足する。現在masterから再構成せず、保存resultのJSON・版・説明は変更しない。元sessionや版が欠ける場合は補足なしを返し、画面が情報不足を明示する。sessionとresultの最終削除は既存の同一診断purge TXで行う。
+
 正式質問catalogのsoftware登録境界: `mannschaft.diagnosis.approved-catalog.resource/version/sha256` を一組で明示し、resourceは `diagnosis/approved/*.json` 配下の実バイトを指定する。全設定欠落は未登録、部分設定・不正path・実バイトSHA不一致は起動拒否。resourceの `approved=true` と `translationsApproved=true`、`catalogs` 配列に含まれる各不変Definitionの既知snapshot schema/scoring版、24問（6軸各4問、sign±1、一意ID）、6軸同点表示、全6言語の質問・説明・同点表示を検証する。DRAFT版を正式版へ読み替えない。明示versionに一致する定義から新sessionを開始し、readinessも同じ登録正本を参照する。恐竜全64mapping/素材の公開gateは引き続き別途必要。
 
 開始済みsessionは保存Definitionを変更・再構成しない。正式resourceを更新する場合は既存sessionが参照する旧承認Definitionを `catalogs` に保持し、保存Definitionとの完全一致で旧snapshotの読取・mutationを許可する。保存APPROVED flagやversionだけでは承認せず、改竄・未知版は拒否する。旧版をcatalogから除去するとその版の操作は不可になるため、保持を登録更新の条件とする。DRAFTの保存読取と開発profileでのmutation制限は維持する。現時点では本物質問・翻訳の承認0、正式resource/設定登録0、全64mapping/素材承認0で公開OFF。合成UTのAPPROVED値は登録機構の試験だけで、実原稿の承認証跡ではない。

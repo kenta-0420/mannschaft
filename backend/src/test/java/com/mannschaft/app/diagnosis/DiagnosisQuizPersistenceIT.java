@@ -33,6 +33,7 @@ class DiagnosisQuizPersistenceIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mvc;
     @Autowired private ObjectMapper mapper;
     @Autowired private UserRepository users;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
     private static final String BASE="/api/v1/me/diagnoses";
     private Long owner;
     @BeforeEach void setup() {
@@ -53,6 +54,67 @@ class DiagnosisQuizPersistenceIT extends AbstractMySqlIntegrationTest {
     }
     private Map<String,Object> completeBody(JsonNode session,List<Map<String,Object>> ties) {
         return Map.of("version",session.path("version").asText(),"answerRevision",session.path("answerRevision").asText(),"tieAnswers",ties);
+    }
+    private JsonNode completedTieResult() throws Exception {
+        JsonNode session=mutate(post(BASE+"/sessions"),Map.of(),UUID.randomUUID(),201);
+        String id=session.path("id").asText();
+        var answers=new ArrayList<Map<String,Object>>();
+        session.path("questions").forEach(q -> answers.add(Map.of("questionId",q.path("id").asText(),"value",3)));
+        session=mutate(put(BASE+"/sessions/"+id+"/answers"),Map.of("version",session.path("version").asText(),"answers",answers),UUID.randomUUID(),200);
+        var ties=new ArrayList<Map<String,Object>>();
+        int side=0;
+        for(var axis:DiagnosisAxis.values()) { ties.add(Map.of("axisId",axis.name(),"value",side)); side=1-side; }
+        session=mutate(post(BASE+"/sessions/"+id+"/complete"),completeBody(session,ties),UUID.randomUUID(),200);
+        return readResult(session.path("resultId").asText());
+    }
+    private JsonNode readResult(String id) throws Exception {
+        return mapper.readTree(mvc.perform(get(BASE+"/results/"+id)).andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control","no-store")).andReturn().getResponse().getContentAsString()).path("data");
+    }
+    private byte[] resultBytes(JsonNode result) {
+        var id=UUID.fromString(result.path("id").asText());
+        return java.nio.ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();
+    }
+    private JsonNode makeLegacy(JsonNode result) throws Exception {
+        var old=((com.fasterxml.jackson.databind.node.ObjectNode)result).deepCopy();
+        old.remove("axisSelections"); old.put("resultSchemaVersion","diagnosis-result-v1");
+        jdbc.update("UPDATE diagnosis_results SET summary_snapshot = ? WHERE id = ?",mapper.writeValueAsString(old),resultBytes(result));
+        return old;
+    }
+    @Test void 完成結果は同点の本人選択と保存された極ラベルを返す() throws Exception {
+        var result=completedTieResult();
+        assertThat(result.path("typeCode").asText()).isEqualTo("010101");
+        assertThat(result.path("resultSchemaVersion").asText()).isEqualTo("diagnosis-result-v1");
+        assertThat(result.path("axisSelections").size()).isEqualTo(6);
+        assertThat(result.path("axes").path("FOCUS_VARIETY").asInt()).isZero();
+        assertThat(result.path("axisSelections").path("FOCUS_VARIETY").path("side").asInt()).isEqualTo(1);
+        assertThat(result.path("axisSelections").path("FOCUS_VARIETY").path("one").path("ja").asText())
+                .isEqualTo("いくつかの楽しみを少しずつ");
+    }
+    @Test void 旧結果は本人セッションの凍結極ラベルで補足し保存結果を書き換えない() throws Exception {
+        var result=completedTieResult(); var old=makeLegacy(result);
+        var restored=readResult(result.path("id").asText());
+        assertThat(restored.path("axisSelections").path("NOTICE").path("side").asInt()).isEqualTo(1);
+        assertThat(restored.path("axisSelections").path("NOTICE").path("one").path("ja").asText())
+                .isEqualTo("葉や石の小さな違いを味わう");
+        assertThat(restored.path("descriptionSnapshot")).isEqualTo(old.path("descriptionSnapshot"));
+        assertThat(mapper.readTree(jdbc.queryForObject("SELECT summary_snapshot FROM diagnosis_results WHERE id = ?",String.class,resultBytes(result))))
+                .isEqualTo(old);
+    }
+    @Test void 旧結果の採点版欠落は推測せず元説明を返す() throws Exception {
+        var result=completedTieResult(); var old=(com.fasterxml.jackson.databind.node.ObjectNode)makeLegacy(result);
+        old.remove("scoringVersion");
+        jdbc.update("UPDATE diagnosis_results SET summary_snapshot = ? WHERE id = ?",mapper.writeValueAsString(old),resultBytes(result));
+        var restored=readResult(result.path("id").asText());
+        assertThat(restored.path("axisSelections").isNull()).isTrue();
+        assertThat(restored.path("descriptionSnapshot")).isEqualTo(old.path("descriptionSnapshot"));
+    }
+    @Test void 旧結果の本人セッションが無ければ別本人のセッションから補わない() throws Exception {
+        var result=completedTieResult(); var old=makeLegacy(result);
+        jdbc.update("UPDATE diagnosis_sessions SET user_id = ? WHERE result_id = ?",owner+1000000,resultBytes(result));
+        var restored=readResult(result.path("id").asText());
+        assertThat(restored.path("axisSelections").isNull()).isTrue();
+        assertThat(restored.path("descriptionSnapshot")).isEqualTo(old.path("descriptionSnapshot"));
     }
     @Test void partialAnswersResumeAndSavedTieIsInvalidatedByNewAnswerRevision() throws Exception {
         JsonNode session=mutate(post(BASE+"/sessions"),Map.of(),UUID.randomUUID(),201);String id=session.path("id").asText();

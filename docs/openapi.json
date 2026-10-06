@@ -203143,6 +203143,29 @@
           }
         }
       },
+      "DiagnosisAxisSelection": {
+        "type": "object",
+        "properties": {
+          "one": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "side": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 1,
+            "minimum": 0
+          },
+          "zero": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "DiagnosisNumberSummary": {
         "type": "object",
         "properties": {
@@ -203182,6 +203205,16 @@
                 "type": "string"
               }
             }
+          },
+          "axisSelections": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DiagnosisAxisSelection"
+            },
+            "description": "保存時の六軸の極ラベルと本人の選択側。旧結果やBIRTH_STYLEではnullを許す"
           },
           "completedAt": {
             "type": "string",

@@ -99,7 +99,19 @@
       "avatarUnchanged": "即使结果发生变化，已孵化的恐龙分身的名字、形象和成长状态也不会改变。",
       "typeCode": "类型：{code}",
       "latest": "最新结果",
-      "history": "以往结果"
+      "history": "以往结果",
+      "tendencies": "你的六种倾向",
+      "labelsUnavailable": "此保存结果没有倾向标签。你仍可查看保存时的说明。",
+      "tieSelection": "回答得分相同，因此显示你本人选择的一侧。",
+      "draftNotice": "此结果使用初稿。问题内容和翻译尚未批准，外语显示中也包含日语初稿。",
+      "axes": {
+        "FAMILIAR_NEW": "熟悉与新鲜",
+        "FOCUS_VARIETY": "拓展兴趣",
+        "SPONTANEOUS_PLAN": "选择空闲活动",
+        "SOLO_TOGETHER": "舒适的相处方式",
+        "EXPRESSION": "表达感受",
+        "NOTICE": "欣赏景色"
+      }
     },
     "diagnosis": {
       "description": "想象自己变成恐龙，选择最符合现在自己的生活方式。没有正确答案，也不分优劣。这不是对性格或能力的科学测量。",

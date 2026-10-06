@@ -99,7 +99,19 @@
       "avatarUnchanged": "結果が変わっても、生まれた恐竜アバターの名前・姿・育成状態は変わりません。",
       "typeCode": "タイプ: {code}",
       "latest": "最新の結果",
-      "history": "過去の結果"
+      "history": "過去の結果",
+      "tendencies": "あなたの六つの傾向",
+      "labelsUnavailable": "この保存結果には傾向ラベルの情報がありません。保存当時の説明を確認できます。",
+      "tieSelection": "回答が同点だったため、あなたが選んだ側を表示しています。",
+      "draftNotice": "初期草案による結果です。質問内容と翻訳は未承認で、外国語表示にも日本語の草案が含まれます。",
+      "axes": {
+        "FAMILIAR_NEW": "親しみと新しさ",
+        "FOCUS_VARIETY": "楽しみの広げ方",
+        "SPONTANEOUS_PLAN": "自由な時間の選び方",
+        "SOLO_TOGETHER": "心地よい過ごし方",
+        "EXPRESSION": "気持ちの表し方",
+        "NOTICE": "景色の楽しみ方"
+      }
     },
     "diagnosis": {
       "description": "自分が恐竜の姿になったところを想像して、今の自分に近い過ごし方を選んでください。正解や優劣はなく、科学的な性格や能力の測定ではありません。",

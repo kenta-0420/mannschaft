@@ -67552,6 +67552,16 @@ export interface components {
         ApiResponseDiagnosisResultSummary: {
             data?: components["schemas"]["DiagnosisResultSummary"];
         };
+        DiagnosisAxisSelection: {
+            one?: {
+                [key: string]: string;
+            };
+            /** Format: int32 */
+            side?: number;
+            zero?: {
+                [key: string]: string;
+            };
+        };
         DiagnosisNumberSummary: {
             /** Format: int32 */
             dateSum?: number;
@@ -67571,6 +67581,10 @@ export interface components {
                     [key: string]: string;
                 };
             };
+            /** @description 保存時の六軸の極ラベルと本人の選択側。旧結果やBIRTH_STYLEではnullを許す */
+            axisSelections?: {
+                [key: string]: components["schemas"]["DiagnosisAxisSelection"];
+            } | null;
             /** Format: date-time */
             completedAt?: string;
             descriptionSnapshot?: {

@@ -56,7 +56,7 @@ public class DiagnosisBirthResultWriter {
                     "zh", "根据您确认的信息，按照固定的数字求和规则，将结果归约为1到9。",
                     "ko", "본인이 확인한 정보를 고정된 자릿수 합산 규칙으로 1부터 9까지 줄인 결과입니다.",
                     "es", "Estos números se redujeron a valores del 1 al 9 a partir de la información que confirmaste, según la regla fija de suma de dígitos.",
-                    "de", "Diese Zahlen wurden aus deinen bestätigten Angaben nach der festen Quersummenregel auf Werte von 1 bis 9 reduziert."), Map.of());
+                    "de", "Diese Zahlen wurden aus deinen bestätigten Angaben nach der festen Quersummenregel auf Werte von 1 bis 9 reduziert."), Map.of(), null);
         String snapshot;
         try { snapshot = mapper.writeValueAsString(summary); }
         catch (JsonProcessingException error) { throw unavailable(); }

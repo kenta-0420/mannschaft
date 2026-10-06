@@ -99,7 +99,19 @@
       "avatarUnchanged": "결과가 달라져도 태어난 공룡 분신의 이름·모습·성장 상태는 바뀌지 않습니다.",
       "typeCode": "유형: {code}",
       "latest": "최신 결과",
-      "history": "이전 결과"
+      "history": "이전 결과",
+      "tendencies": "당신의 여섯 가지 성향",
+      "labelsUnavailable": "이 저장 결과에는 성향 라벨이 없습니다. 저장 당시의 설명은 확인할 수 있습니다.",
+      "tieSelection": "답변 점수가 같아 본인이 선택한 쪽을 표시합니다.",
+      "draftNotice": "초기 초안에 따른 결과입니다. 질문과 번역은 미승인 상태이며 다른 언어에도 일본어 초안이 포함됩니다.",
+      "axes": {
+        "FAMILIAR_NEW": "익숙함과 새로움",
+        "FOCUS_VARIETY": "관심을 넓히는 방식",
+        "SPONTANEOUS_PLAN": "자유 시간의 선택",
+        "SOLO_TOGETHER": "편안한 동행",
+        "EXPRESSION": "감정 표현",
+        "NOTICE": "풍경 감상"
+      }
     },
     "diagnosis": {
       "description": "자신이 공룡이 된 모습을 상상하며 지금의 자신에게 가까운 생활 방식을 고르세요. 정답이나 우열은 없으며 성격이나 능력을 과학적으로 측정하는 검사가 아닙니다.",
