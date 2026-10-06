@@ -332,7 +332,9 @@ class RanchDeliveryPoolTwoMeasurementIT extends AbstractMySqlIntegrationTest {
             }
             throw probeFailure;
         }))).isSameAs(probeFailure);
-        assertThat(guard.withLockedDeliveryUser(recipient, state -> state.lifecycle()))
+        com.mannschaft.app.auth.dto.DeliveryUserState.Lifecycle lifecycle =
+                guard.withLockedDeliveryUser(recipient, state -> state.lifecycle());
+        assertThat(lifecycle)
                 .isEqualTo(com.mannschaft.app.auth.dto.DeliveryUserState.Lifecycle.ACTIVE);
         for (var type : RanchRewardSourceType.values())
             assertThat(jdbc.update("UPDATE " + table(type)
