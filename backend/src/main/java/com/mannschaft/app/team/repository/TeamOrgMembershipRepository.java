@@ -22,6 +22,10 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
 
     List<TeamOrgMembershipEntity> findByOrganizationIdAndStatus(Long organizationId, TeamOrgMembershipEntity.Status status);
 
+    /** 閲覧者の候補チームだけについて現在の組織加盟を一括確認する。 */
+    List<TeamOrgMembershipEntity> findByOrganizationIdAndTeamIdInAndStatus(
+            Long organizationId, java.util.Collection<Long> teamIds, TeamOrgMembershipEntity.Status status);
+
     /**
      * チームが所属する全組織を取得する。
      */

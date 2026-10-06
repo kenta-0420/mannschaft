@@ -43,7 +43,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class AnnouncementAudienceMatcher {
+public class AnnouncementAudienceMatcher implements TeamDashboardAudience {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -51,7 +51,13 @@ public class AnnouncementAudienceMatcher {
     private final OrgTeamGroupService orgTeamGroupService;
     private final AnnouncementFeedGroupSnapshotRepository snapshotRepository;
 
+    @Override
+    public Set<Long> activeOrganizationIds(Long teamId) {
+        return new LinkedHashSet<>(membershipQueryService.findActiveOrganizationIds(teamId));
+    }
+
     /** 候補フィードのうち、チーム {@code teamId} のダッシュボードに表示するものの ID を返す。 */
+    @Override
     public Set<Long> matchingFeedIds(Long teamId, Collection<AnnouncementFeedEntity> candidates) {
         Set<Long> matched = new LinkedHashSet<>();
         if (teamId == null || candidates == null || candidates.isEmpty()) {

@@ -31,6 +31,18 @@ public class TeamOrgMembershipQueryService {
 
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
 
+    /** 配信対象の最新判定用。Entity を外へ渡さず ACTIVE 加盟の ID とグループだけ返す。 */
+    public List<ActiveGroupMembership> findActiveMembershipsInOrganization(
+            Long organizationId, java.util.Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) return List.of();
+        return teamOrgMembershipRepository.findByOrganizationIdAndTeamIdInAndStatus(
+                        organizationId, teamIds, TeamOrgMembershipEntity.Status.ACTIVE).stream()
+                .map(m -> new ActiveGroupMembership(m.getTeamId(), m.getGroupId())).toList();
+    }
+
+    public record ActiveGroupMembership(Long teamId, UUID groupId) {
+    }
+
     /**
      * チームが所属する ACTIVE な組織の ID 一覧を返す（無所属なら空リスト）。
      *

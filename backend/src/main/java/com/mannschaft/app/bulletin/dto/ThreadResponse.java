@@ -1,5 +1,6 @@
 package com.mannschaft.app.bulletin.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -18,6 +19,7 @@ import java.util.UUID;
  * <p>このクラスは継承を持たない単純 DTO のため {@code @Builder}（{@code @SuperBuilder} ではない）で構築する。
  * 継承 Entity の標準は {@code @SuperBuilder} だが、本 DTO は継承しないため対象外。</p>
  */
+@Schema(name = "BulletinThreadResponse")
 @Builder(toBuilder = true)
 @Getter
 public class ThreadResponse {

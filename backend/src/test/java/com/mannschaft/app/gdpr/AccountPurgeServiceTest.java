@@ -6,11 +6,11 @@ import com.mannschaft.app.auth.repository.EmailVerificationTokenRepository;
 import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.OAuthLinkTokenRepository;
+import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
 import com.mannschaft.app.auth.repository.PasswordResetTokenRepository;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
-import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.storage.StorageService;
@@ -32,6 +32,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,6 +49,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -64,6 +68,8 @@ class AccountPurgeServiceTest {
     private UserRepository userRepository;
     @Mock
     private com.mannschaft.app.gdpr.service.PurgeStartGuard purgeStartGuard;
+    @Mock
+    private PlatformTransactionManager transactionManager;
     @Mock
     private DataExportRepository dataExportRepository;
     @Mock
@@ -101,6 +107,7 @@ class AccountPurgeServiceTest {
     private AccountPurgeService service;
 
     private static final Long USER_ID = 100L;
+    private boolean transactionStubbed;
 
     private UserEntity buildUser(Long id) {
         UserEntity user = UserEntity.builder()
@@ -112,6 +119,7 @@ class AccountPurgeServiceTest {
                 .locale("ja")
                 .timezone("Asia/Tokyo")
                 .status(UserEntity.UserStatus.ACTIVE)
+                .deletedAt(LocalDateTime.now().minusDays(31))
                 .build();
         // idをリフレクションで設定
         try {
@@ -121,6 +129,14 @@ class AccountPurgeServiceTest {
             idField.set(user, id);
         } catch (Exception e) {
             throw new RuntimeException("テスト用エンティティ構築失敗", e);
+        }
+        given(purgeStartGuard.markPurgeStartedIfEligible(eq(id), any(LocalDateTime.class)))
+                .willReturn(true);
+        given(userRepository.findByIdForUpdateIncludingDeleted(id)).willReturn(Optional.of(user));
+        if (!transactionStubbed) {
+            given(transactionManager.getTransaction(any(TransactionDefinition.class)))
+                    .willAnswer(invocation -> new SimpleTransactionStatus());
+            transactionStubbed = true;
         }
         return user;
     }
@@ -204,7 +220,7 @@ class AccountPurgeServiceTest {
         }
 
         @Test
-        @DisplayName("Phase D-8/残債1: AccountPurgedEvent 発火前に 8 ドメイン分の PENDING レコードが INSERT される")
+        @DisplayName("CMP1243: AccountPurgedEvent 発火前に旧8＋設定27domainのPENDINGが登録される")
         void PhaseD8_PENDING_レコードがINSERTされる() {
             UserEntity user = buildUser(USER_ID);
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
@@ -213,12 +229,18 @@ class AccountPurgeServiceTest {
 
             service.purgeExpiredAccounts();
 
-            // 8 ドメイン（role/team/payment/chart/proxy/errorreport/resume/billing）分の save が呼ばれること
-            verify(completionStatusRepository, atLeast(8)).save(any(AccountPurgeCompletionStatusEntity.class));
+            // 旧8domainと本人設定27domainが重複なくPENDING登録されること
+            verify(completionStatusRepository, org.mockito.Mockito.times(35)).save(any(AccountPurgeCompletionStatusEntity.class));
 
             // 各ドメイン名の PENDING レコードが INSERT されること（残債1: billing を追加登録）
             for (String domain : List.of(
-                    "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing")) {
+                    "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing",
+                    "actionmemo", "pointcard", "timeline", "search", "dashboard",
+                    "scopefolder", "schedule", "quickmemo", "auth", "notification",
+                    "filesharing", "contact", "user", "appearance", "navsettings",
+                    "gamification", "reflection", "timetable.personal", "cms", "chat",
+                    "knowledgebase", "favorite", "membership", "weather", "inbox",
+                    "timetable.notes", "seal")) {
                 verify(completionStatusRepository).save(argThat(entity ->
                         entity.getUserId().equals(USER_ID)
                                 && entity.getDomainName().equals(domain)
@@ -251,6 +273,11 @@ class AccountPurgeServiceTest {
 
             // user2は処理される
             verify(userRepository).delete(user2);
+            // 失敗ユーザーの TX は rollback され、次のユーザーは独立して commit される。
+            verify(transactionManager, times(2)).getTransaction(argThat(definition ->
+                    definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW));
+            verify(transactionManager).rollback(any());
+            verify(transactionManager).commit(any());
         }
 
         @Test

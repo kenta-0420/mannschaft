@@ -75,6 +75,7 @@ class DashboardServiceAdditionalTest {
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
     @Mock private com.mannschaft.app.social.announcement.audience.AnnouncementAudienceMatcher announcementAudienceMatcher;
     @Mock private com.mannschaft.app.team.service.TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    @Mock private com.mannschaft.app.social.announcement.AnnouncementReadService announcementReadService;
     @Mock private com.mannschaft.app.dashboard.service.RoleResolver roleResolver;
     @Mock private com.mannschaft.app.dashboard.service.WidgetVisibilityResolver widgetVisibilityResolver;
     @Mock private com.mannschaft.app.dashboard.service.ScopeWidgetSummaryService scopeWidgetSummaryService;

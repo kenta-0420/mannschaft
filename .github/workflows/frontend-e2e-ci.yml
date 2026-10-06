@@ -47,7 +47,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
@@ -89,6 +89,21 @@ jobs:
       # 両 spec とも page.route() で全 API をモックするためバックエンド非依存。
       - name: Run smoke E2E (F15.4 + F22.1)
         run: npx playwright test F15.4-org-team-search f221-swipe-dashboard F15.4-slug-navigation --project=chromium --workers=1 --timeout=120000
+
+      - name: I18N-004 の SSR・Cookie 保持を確認
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: build/i18n004-ci/actual.json
+        run: npx playwright test tests/e2e/i18n/locale-switch.spec.ts --grep I18N-004 --project=chromium --workers=1 --retries=0 --timeout=120000 --reporter=list,json --trace=on --output=test-results/i18n004-ci
+
+      - name: I18N-004 の実結果と出力を保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: i18n004-ci-results
+          path: |
+            frontend/build/i18n004-ci/actual.json
+            frontend/test-results/i18n004-ci/
+          retention-days: 14
 
       - name: Upload Playwright HTML report (on failure)
         if: failure()

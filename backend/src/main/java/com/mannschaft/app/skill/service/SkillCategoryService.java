@@ -106,7 +106,7 @@ public class SkillCategoryService {
 
         // 所有スコープ確認
         if (!category.getScopeType().equals(scopeType) || !category.getScopeId().equals(scopeId)) {
-            throw new BusinessException(SkillErrorCode.SKILL_003);
+            throw new BusinessException(SkillErrorCode.SKILL_001);
         }
 
         // name 重複チェック（自身を除く）
@@ -149,7 +149,7 @@ public class SkillCategoryService {
 
         // 所有スコープ確認
         if (!category.getScopeType().equals(scopeType) || !category.getScopeId().equals(scopeId)) {
-            throw new BusinessException(SkillErrorCode.SKILL_003);
+            throw new BusinessException(SkillErrorCode.SKILL_001);
         }
 
         category.softDelete();
@@ -166,7 +166,7 @@ public class SkillCategoryService {
      *
      * <p>本メソッドはスコープ絞り込みを行わない純粋な不在判定であり、「見つからない」以外の
      * 意味では使わない（名称重複は SKILL_009、非アクティブは SKILL_010）。
-     * スコープ越境の秘匿は呼び出し側の SKILL_003 が担う。</p>
+     * update/delete のスコープ越境も同じ SKILL_001 で秘匿する。</p>
      */
     public SkillCategoryEntity findCategoryOrThrow(Long id) {
         return categoryRepository.findById(id)

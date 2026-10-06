@@ -35,8 +35,7 @@ import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
-import com.mannschaft.app.social.announcement.audience.AnnouncementAudienceMatcher;
-import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
+import com.mannschaft.app.social.announcement.audience.TeamDashboardAudience;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementVisibility;
 import com.mannschaft.app.payment.constant.ContentGateType;
@@ -93,10 +92,11 @@ public class DashboardService {
     private final UserRoleRepository userRoleRepository;
     private final MembershipScopeQueryService membershipScopeQueryService;
     private final AnnouncementFeedQueryRepository announcementFeedQueryRepository;
-    private final AnnouncementAudienceMatcher announcementAudienceMatcher;
-    private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    /** 契約（interface）に依存する。実装へ直接依存すると他ドメイン Repository への推移到達が D-3T に出る。 */
+    private final TeamDashboardAudience announcementAudienceMatcher;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final PaymentGateService paymentGateService;
+    private final com.mannschaft.app.social.announcement.AnnouncementReadService announcementReadService;
 
     // F22.1 第二波: 厳選ウィジェットサマリ + 統合「要対応」集計 + SWIPE 可視性
     private final ScopeWidgetSummaryService scopeWidgetSummaryService;
@@ -504,9 +504,9 @@ public class DashboardService {
         // F02.8: 親組織の告知フィードを取得（target_team_ids フィルタ付き）
         // CMP-027: user_roles ∪ memberships の在籍組織 ID（素メンバー/応援者を取りこぼさない）
         // 加えてチームが ACTIVE で加盟している組織も対象にする（組織ロールを持たないチームメンバーにも出す。F01.2.1 AC-E01）。
-        // 宛先の判定（加盟・グループ・スナップショット）は AnnouncementAudienceMatcher が行う
+        // 宛先の判定（加盟・グループ・スナップショット）は TeamDashboardAudience（実装は AnnouncementAudienceMatcher）が行う
         Set<Long> feedOrgIds = new java.util.LinkedHashSet<>(membershipScopeQueryService.findActiveOrganizationIds(userId));
-        feedOrgIds.addAll(teamOrgMembershipQueryService.findActiveOrganizationIds(teamId));
+        feedOrgIds.addAll(announcementAudienceMatcher.activeOrganizationIds(teamId));
         List<AnnouncementFeedEntity> orgCandidateFeeds = feedOrgIds.stream()
                 .flatMap(orgId -> announcementFeedQueryRepository
                         .findByOrgScopeForTeamDashboard(orgId, allowedVisibilities, 20).stream())
@@ -524,14 +524,14 @@ public class DashboardService {
                 .values());
 
         // 結合して createdAt 降順で上位5件
-        List<Map<String, Object>> teamNoticeItems = java.util.stream.Stream.concat(
+        List<GatedAnnouncement> teamNoticeFeeds = java.util.stream.Stream.concat(
                         filterAnnouncementGated(teamAnnouncementFeeds, userId, viewerRole).stream(),
                         filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream())
                 .sorted(java.util.Comparator.comparing(item -> item.feed().getCreatedAt(),
                         java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
                 .limit(DASHBOARD_ITEM_LIMIT)
-                .map(item -> toAnnouncementFeedMap(item.feed(), item.locked()))
                 .toList();
+        List<Map<String, Object>> teamNoticeItems = toAnnouncementFeedMaps(teamNoticeFeeds, userId);
 
         // F02.2.1: 各ウィジェットを viewerRole.isAtLeast(min_role) で判定し、不可視は null にする
         // 管理者（DEPUTY_ADMIN/ADMIN/SYSTEM_ADMIN）は全ウィジェットをバイパスして閲覧可
@@ -642,10 +642,10 @@ public class DashboardService {
         Set<String> orgAllowedVisibilities = resolveVisibilityParam(viewerRole);
         List<AnnouncementFeedEntity> orgAnnouncementFeeds = announcementFeedQueryRepository
                 .findByScope(AnnouncementScopeType.ORGANIZATION, orgId, orgAllowedVisibilities, null, 10);
-        List<Map<String, Object>> orgNoticeItems = filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream()
+        List<GatedAnnouncement> orgNoticeFeeds = filterAnnouncementGated(orgAnnouncementFeeds, userId, viewerRole).stream()
                 .limit(DASHBOARD_ITEM_LIMIT)
-                .map(item -> toAnnouncementFeedMap(item.feed(), item.locked()))
                 .toList();
+        List<Map<String, Object>> orgNoticeItems = toAnnouncementFeedMaps(orgNoticeFeeds, userId);
 
         // platform_announcements
         List<PlatformAnnouncementEntity> announcements = platformAnnouncementRepository
@@ -962,6 +962,10 @@ public class DashboardService {
     private Map<String, Object> toAnnouncementFeedMap(AnnouncementFeedEntity feed, boolean locked) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", feed.getId());
+        map.put("scope_type", feed.getScopeType().name());
+        map.put("scope_id", feed.getScopeId());
+        map.put("content_preview_available", feed.getSourceType() == com.mannschaft.app.social.announcement.AnnouncementSourceType.BLOG_POST
+                || feed.getSourceType() == com.mannschaft.app.social.announcement.AnnouncementSourceType.BULLETIN_THREAD);
         map.put("title_cache", feed.getTitleCache());
         map.put("priority", feed.getPriority());
         map.put("is_pinned", feed.getIsPinned());
@@ -970,10 +974,22 @@ public class DashboardService {
         map.put("access_state", locked ? "LOCKED" : "FULL");
         if (!locked) {
             map.put("source_type", feed.getSourceType() != null ? feed.getSourceType().name() : null);
+            map.put("source_id", feed.getSourceId());
             map.put("excerpt_cache", feed.getExcerptCache());
             map.put("target_team_ids", feed.getTargetTeamIds());
         }
         return map;
+    }
+
+    private List<Map<String, Object>> toAnnouncementFeedMaps(List<GatedAnnouncement> feeds, Long userId) {
+        if (feeds.isEmpty()) return List.of();
+        Set<Long> readIds = announcementReadService.fetchReadFeedIds(userId,
+                feeds.stream().map(item -> item.feed().getId()).toList());
+        return feeds.stream().map(item -> {
+            Map<String, Object> map = toAnnouncementFeedMap(item.feed(), item.locked());
+            map.put("is_read", readIds.contains(item.feed().getId()));
+            return map;
+        }).toList();
     }
 
     /** Dashboardの告知にも一覧と同じ課金軸を適用する（ゲート判定は1回のバッチ）。 */
