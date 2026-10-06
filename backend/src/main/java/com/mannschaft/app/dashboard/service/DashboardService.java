@@ -35,7 +35,7 @@ import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
-import com.mannschaft.app.social.announcement.audience.TeamDashboardAudience;
+import com.mannschaft.app.social.announcement.audience.AnnouncementAudienceMatcher;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementVisibility;
 import com.mannschaft.app.payment.constant.ContentGateType;
@@ -50,7 +50,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import java.time.LocalDate;
@@ -68,9 +67,18 @@ import java.util.concurrent.CompletableFuture;
  * 個人・チーム・組織ダッシュボードの一括取得を担当する。
  * 各ウィジェットのデータは将来的にCompletableFuture（Virtual Threads）で並行取得するが、
  * 現時点では各リポジトリから実データを取得する。他機能のServiceが実装され次第、段階的に連携する。
+ *
+ * <p><b>トランザクションを持たない</b>（クラス・メソッドとも {@code @Transactional} を付けない）。
+ * 本クラスは多数のドメイン（通知・予定・TODO・タイムライン・掲示板・チャット・告知・課金・チーム・組織）を
+ * 読み集めるだけの集約であり、1 本の読み取り tx にそれらを束ねる理由が無い（原則 #5: tx はドメイン内に閉じる）。
+ * 各読み取りは呼び出し先（各ドメインの Service / Spring Data Repository）が自分の tx で行う。
+ * open-in-view=false のため、ここで受け取る Entity は呼び出しから戻った時点で切り離されている。
+ * 受け取る Entity（Notification / Schedule / Todo / PlatformAnnouncement / TimelinePost / BulletinThread /
+ * ChatChannelMember / AnnouncementFeed）はいずれも関連（{@code @ManyToOne} 等）を持たず、
+ * 本クラスは列の値しか読まないため遅延ロードは起きない。関連を持つ Entity をここで受け取る場合は、
+ * 呼び出し先で DTO / ID に変換してから返すこと。</p>
  */
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 @Slf4j
 public class DashboardService {
@@ -92,8 +100,7 @@ public class DashboardService {
     private final UserRoleRepository userRoleRepository;
     private final MembershipScopeQueryService membershipScopeQueryService;
     private final AnnouncementFeedQueryRepository announcementFeedQueryRepository;
-    /** 契約（interface）に依存する。実装へ直接依存すると他ドメイン Repository への推移到達が D-3T に出る。 */
-    private final TeamDashboardAudience announcementAudienceMatcher;
+    private final AnnouncementAudienceMatcher announcementAudienceMatcher;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final PaymentGateService paymentGateService;
     private final com.mannschaft.app.social.announcement.AnnouncementReadService announcementReadService;
@@ -504,7 +511,7 @@ public class DashboardService {
         // F02.8: 親組織の告知フィードを取得（target_team_ids フィルタ付き）
         // CMP-027: user_roles ∪ memberships の在籍組織 ID（素メンバー/応援者を取りこぼさない）
         // 加えてチームが ACTIVE で加盟している組織も対象にする（組織ロールを持たないチームメンバーにも出す。F01.2.1 AC-E01）。
-        // 宛先の判定（加盟・グループ・スナップショット）は TeamDashboardAudience（実装は AnnouncementAudienceMatcher）が行う
+        // 宛先の判定（加盟・グループ・スナップショット）は AnnouncementAudienceMatcher が行う
         Set<Long> feedOrgIds = new java.util.LinkedHashSet<>(membershipScopeQueryService.findActiveOrganizationIds(userId));
         feedOrgIds.addAll(announcementAudienceMatcher.activeOrganizationIds(teamId));
         List<AnnouncementFeedEntity> orgCandidateFeeds = feedOrgIds.stream()

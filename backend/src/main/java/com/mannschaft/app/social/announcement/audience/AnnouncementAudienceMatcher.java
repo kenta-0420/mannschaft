@@ -38,12 +38,14 @@ import java.util.UUID;
  * </ul>
  *
  * <p>SQL は候補フィード数・グループ数に関係なく定数本（チームの加盟 1・生存グループ 1・スナップショット 1）。
- * 他ドメインへは Service 経由で ID・プリミティブだけを受け渡す（AC-G128）。トランザクションは呼び出し側に従う。</p>
+ * 他ドメインへは Service 経由で ID・プリミティブだけを受け渡す（AC-G128）。トランザクションを持たない
+ * （呼び出し元のダッシュボードも持たない）。各読み取りは呼び出し先の Service / Repository が自分の tx で行う
+ * （tx の外で読むため、関連を持つ Entity の関連には触れない。スナップショットは feedId・groupId の列だけを読む）。</p>
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class AnnouncementAudienceMatcher implements TeamDashboardAudience {
+public class AnnouncementAudienceMatcher {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -51,13 +53,12 @@ public class AnnouncementAudienceMatcher implements TeamDashboardAudience {
     private final OrgTeamGroupService orgTeamGroupService;
     private final AnnouncementFeedGroupSnapshotRepository snapshotRepository;
 
-    @Override
+    /** チーム {@code teamId} が今 ACTIVE で加盟している組織の ID（告知の候補を集める起点）。 */
     public Set<Long> activeOrganizationIds(Long teamId) {
         return new LinkedHashSet<>(membershipQueryService.findActiveOrganizationIds(teamId));
     }
 
     /** 候補フィードのうち、チーム {@code teamId} のダッシュボードに表示するものの ID を返す。 */
-    @Override
     public Set<Long> matchingFeedIds(Long teamId, Collection<AnnouncementFeedEntity> candidates) {
         Set<Long> matched = new LinkedHashSet<>();
         if (teamId == null || candidates == null || candidates.isEmpty()) {

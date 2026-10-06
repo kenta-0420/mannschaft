@@ -724,7 +724,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      */
     // origin/main の CMP-260922-2230（1459→1447、12件解消）は上記1407行版の
     // 削除集合に全件包含されるため、並行ブランチの削除数を二重加算しない。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1366;
+    // F01.2.1 6-C: DashboardService からクラス単位の @Transactional を外したため、
+    // DashboardService の越境依存 46 行が解消（追加 0・削除 46）。1366 → 1320。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1320;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -807,8 +809,15 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>F01.2.1 6-A（組織グループ宛て告知）: {@code AnnouncementBroadcastService.validateTargetTeamIds} を廃止し、
      * 宛先の検証・展開を tx の外の {@code BroadcastAudienceResolver} へ出したため、その入口の 1 行
      * （→ UserRoleRepository）が解消。追加 0・削除 1。{@code 7376 → 7375}。</p>
+     *
+     * <p>F01.2.1 6-C（組織告知のダッシュボード表示判定）: {@code DashboardService} からクラス単位の
+     * {@code @Transactional(readOnly = true)} を外し、各ドメインの部品が自分の tx で読む形にしたため、
+     * {@code DashboardService} を入口とする 93 行がすべて解消（getPersonalDashboard 24・getTeamDashboard 21・
+     * getOrgDashboard 21・loadRecentActivity 14・filterAnnouncementGated 3・loadUnreadThreads 3・buildGreeting 2・
+     * buildScopeCoverage 1・getActivePlatformAnnouncements 1・getPersonalTodos 1・loadMyPosts 1・
+     * loadPersonalCalendarCounts 1）。追加 0・削除 93。{@code 7375 → 7282}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7375;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7282;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
