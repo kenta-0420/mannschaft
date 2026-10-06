@@ -42,6 +42,7 @@ on:
   pull_request:
     paths:
       - 'backend/scripts/seed-e2e-data.js'
+      - 'backend/scripts/check-cmp1921-http-contract.js'
       - 'backend/src/main/java/**/schedule/**/*.java'
       - '.github/workflows/e2e-real-smoke.yml'
   schedule:
@@ -161,6 +162,25 @@ jobs:
       - name: Run seed script
         working-directory: backend/scripts
         run: node seed-e2e-data.js
+
+      # CMP1921 の補助試験。実ブラウザ・住民・pure ADMIN の合格には使わない。
+      - name: CMP1921 read-only HTTP contract (33 GET)
+        id: cmp1921-http
+        working-directory: backend/scripts
+        env:
+          CMP1921_BASE_URL: http://localhost:8080
+          CMP1921_PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node check-cmp1921-http-contract.js
+
+      # 未検証の失敗本文・login/token/cookie は含めない。
+      - name: CMP1921 HTTP evidence
+        if: always() && (steps.cmp1921-http.outcome == 'success' || steps.cmp1921-http.outcome == 'failure')
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmp1921-http-contract-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cmp1921-http-contract
+          if-no-files-found: error
+          retention-days: 3
 
       # seed データが Hibernate 経由で正常に読み取れるかを API で確認する
       - name: Run API smoke check
