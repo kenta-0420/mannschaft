@@ -37,6 +37,7 @@ describe('OrgPageHeader 加盟申請ボタン', () => {
         isAdminOrDeputy: false,
         followStatus: 'NONE',
         followLoading: false,
+        followPermissionSyncError: false,
         joinRequestStatus: 'NONE',
         joinRequestLoading: false,
         ancestors: [],
