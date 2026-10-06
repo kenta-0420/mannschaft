@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
-import DashboardWidgetList from './DashboardWidgetList.vue'
+import DashboardWidgetList from '~/components/DashboardWidgetList.vue'
 import type { components } from '~/types/generated'
 
 type Setting = components['schemas']['WidgetSettingResponse']
@@ -45,7 +45,11 @@ async function settleClient() {
   await flushPromises()
 }
 async function mountList(scopeType: 'personal' | 'team' | 'organization' = 'personal') {
-  return mountSuspended(DashboardWidgetList, { props: { scopeType, ...(scopeType === 'personal' ? {} : { scopeId: '42' }) } })
+  // 永続化の試験では Nuxt の言語検出に依存せず、対象行の公開キーを固定表示する。
+  return mountSuspended(DashboardWidgetList, {
+    props: { scopeType, ...(scopeType === 'personal' ? {} : { scopeId: '42' }) },
+    global: { mocks: { $t: (key: string) => key === 'ranch.title' ? '恐竜の部屋' : key } },
+  })
 }
 
 describe('本人widget設定のfull-page reload', () => {
