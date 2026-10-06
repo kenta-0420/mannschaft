@@ -220,8 +220,9 @@ class TimelineRanchNativeTransportIT extends AbstractMySqlIntegrationTest {
                 current.requestDeletion();
             });
             tx.executeWithoutResult(status -> assertThat(users.markPurgeStarted(owner)).isEqualTo(1));
-            assertThat(delivery.withLockedDeliveryUser(owner, state -> state.lifecycle()))
-                    .isEqualTo(com.mannschaft.app.auth.dto.DeliveryUserState.Lifecycle.PURGING);
+            com.mannschaft.app.auth.dto.DeliveryUserState.Lifecycle currentLifecycle =
+                    delivery.withLockedDeliveryUser(owner, state -> state.lifecycle());
+            assertThat(currentLifecycle).isEqualTo(com.mannschaft.app.auth.dto.DeliveryUserState.Lifecycle.PURGING);
             assertThat(purge.retryPurge(owner)).isTrue();
             assertThat(count("timeline_ranch_witnesses")).isZero();
             assertThat(count("timeline_ranch_outboxes")).isZero();
