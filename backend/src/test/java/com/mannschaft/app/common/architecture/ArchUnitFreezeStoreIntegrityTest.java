@@ -724,7 +724,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      */
     // origin/main の CMP-260922-2230（1459→1447、12件解消）は上記1407行版の
     // 削除集合に全件包含されるため、並行ブランチの削除数を二重加算しない。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1366;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1363;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -892,7 +892,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
      * <p>正式1e8の全量解析と原因検分で確認した旧原因73件の削減（1938→1865）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1865;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1862;
 
     /**
      * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。
