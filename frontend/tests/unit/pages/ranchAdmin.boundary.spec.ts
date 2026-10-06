@@ -33,7 +33,7 @@ const rejected = () => new Response(JSON.stringify({ error: { code: 'RANCH_001',
 async function account(id: number) {
  const auth = useAuthStore()
  auth.setTokens(id === 1 ? 'A-access' : 'B-access', 'synthetic-refresh')
- await auth.setUser({ id, email: `synthetic${id}@example.invalid`, fullName: 'Synthetic', profileImageUrl: null })
+ await auth.setUser({ id, email: `synthetic${id}@example.invalid`, fullName: 'Synthetic', profileImageUrl: null, systemRole: 'SYSTEM_ADMIN' })
 }
 async function currentApi() {
  const scope = effectScope(); scopes.push(scope)

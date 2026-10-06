@@ -24,7 +24,7 @@ export function useDiagnosisApi() {
   complete: (session: DiagnosisSession, tieAnswers: { axisId: string; value: number }[]) => mutate<DiagnosisSession>(`${base}/sessions/${session.id}/complete`, { version: session.version, answerRevision: session.answerRevision, tieAnswers }),
   cancel: (session: DiagnosisSession) => mutate<DiagnosisSession>(`${base}/sessions/${session.id}/cancel`, { version: session.version }),
   birth: (confirmation: BirthConfirmation) => mutate<DiagnosisResult>(`${base}/birth-style-results`, { confirmationRef: confirmation.confirmationRef }),
-  results: (method?: string, cursor?: string) => privateRead.read<CursorPage<DiagnosisResult>>('/api/v1/me/ranch/diagnosis-results', { method, cursor, limit: 20 }),
-  result: async (id: string) => (await privateRead.read<ApiResponse<DiagnosisResult>>(`/api/v1/me/ranch/diagnosis-results/${id}`)).data,
+  results: (method?: string, cursor?: string) => privateRead.read<CursorPage<DiagnosisResult>>(`${base}/results`, { method, cursor, limit: 20 }),
+  result: async (id: string) => (await privateRead.read<ApiResponse<DiagnosisResult>>(`${base}/results/${id}`)).data,
  }
 }
