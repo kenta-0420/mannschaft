@@ -127,7 +127,7 @@ describe('独立診断結果と装飾loadingの実ページ先行赤候補', () 
   const started = new Promise<void>(done => { startedResolve = done })
   external.fetch.mockImplementation(async request => {
    const path = new URL(String(request)).pathname
-   if (path.startsWith('/api/v1/me/ranch/diagnosis-results/')) return json({ data: result })
+   if (path.startsWith('/api/v1/me/diagnoses/results/')) return json({ data: result })
    if (path === '/api/v1/me/ranch') {
     startedResolve?.()
     return new Promise<Response>(done => { resolve = done })
@@ -149,7 +149,7 @@ describe('独立診断結果と装飾loadingの実ページ先行赤候補', () 
   const owners: string[] = []
   external.fetch.mockImplementation(async (request, options) => {
    const path = new URL(String(request)).pathname
-   if (path.startsWith('/api/v1/me/ranch/diagnosis-results/')) {
+   if (path.startsWith('/api/v1/me/diagnoses/results/')) {
     const owner = new Headers(options?.headers).get('Authorization') ?? ''
     owners.push(owner)
     if (owner === 'Bearer A-access') {
@@ -183,7 +183,7 @@ describe('独立診断結果と装飾loadingの実ページ先行赤候補', () 
   const methods: (string | null)[] = []
   external.fetch.mockImplementation(async request => {
    const url = new URL(String(request))
-   expect(url.pathname).toBe('/api/v1/me/ranch/diagnosis-results')
+   expect(url.pathname).toBe('/api/v1/me/diagnoses/results')
    methods.push(url.searchParams.get('method'))
    return json(empty)
   })
@@ -195,7 +195,9 @@ describe('独立診断結果と装飾loadingの実ページ先行赤候補', () 
  }, 60000)
  it('片方式の失敗を未診断に変換せず、成功空の別方式は表示する', async () => {
   external.fetch.mockImplementation(async request => {
-   const method = new URL(String(request)).searchParams.get('method')
+   const url = new URL(String(request))
+   expect(url.pathname).toBe('/api/v1/me/diagnoses/results')
+   const method = url.searchParams.get('method')
    if (method === 'BIRTH_STYLE') return json(empty)
    return new Response(JSON.stringify({ error: { code: 'COMMON_001', message: 'SYNTHETIC_FAILURE' } }), { status: 500, headers: { 'Content-Type': 'application/json' } })
   })

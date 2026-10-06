@@ -171,9 +171,9 @@ nameは02の正規化・1〜10書記素・保存上限をserverで検証する�
 
 DinosaurSummaryはEGGでname/namedAt=null、BABY以降で必須。孵化responseはHatchResponse=`{kind:HATCH_RESULT|CURRENT_STATE,result:HatchResult|null,state:RanchState|null}`。初回/同keyはkind=HATCH_RESULT/result非null/state=null、別key同名はkind=CURRENT_STATE/result=null/state非null。不変HatchResultはcommandId/dinosaur ID/stage/name/namedAt/hatchedAt/versionを含み、同key再送で成長後のstateへ置換しない。現在stateはGETで別取得する。孵化後のnew key同名再要求は最新stateを返し、この成功commandも保存する。Settingsや選定APIにnameを渡すと400、rename endpointなし。表示OFF/style変更/成長/休止再開でも名前は変わらない。GETには書込を追加せず、出生割当用名を恐竜名として自動保存しない。
 
-### 本人の診断結果閲覧API（採択契約・未実装）
+### 本人の診断結果閲覧API（DiagnosisController・OpenAPI契約）
 
-GET /api/v1/me/ranch/diagnosis-results?method=DIAGNOSIS|BIRTH_STYLE&cursor=...&limit=20 を本人結果一覧へのranch読取facadeとする。method省略時は両方式、limitは1〜100。認証principalから本人IDを得て診断ドメインの読取Serviceへ渡し、組織ID・userId・result typeをclient入力で指定させない。成功は既存CursorPagedResponse、0件は200 data=[]。completedAt降順・id降順、cursorはopaqueな版付き値で本人とfilterに結び付け、別filter/不正cursorは400。詳細GET /api/v1/me/ranch/diagnosis-results/{resultId} は本人完成resultだけを返し、他人/不在/未完了は同形404、未認証401。
+GET /api/v1/me/diagnoses/results?method=DIAGNOSIS|BIRTH_STYLE&cursor=...&limit=20 を既存DiagnosisControllerの本人結果一覧APIとする。method省略時は両方式、limitは1〜100。認証principalから本人IDを得て診断ドメインの読取Serviceへ渡し、組織ID・userId・result typeをclient入力で指定させない。成功は既存CursorPagedResponse、0件は200 data=[]。completedAt降順・id降順、cursorはopaqueな版付き値で本人とfilterに結び付け、別filter/不正cursorは400。詳細GET /api/v1/me/diagnoses/results/{resultId} は本人完成resultだけを返し、他人/不在/未完了は同形404、未認証401。
 
 一覧Summaryと詳細resultSnapshotは§7の採択済み単一契約を参照する。raw生年月日・名前・全回答を返さず、内部metadataを公開Summaryへ追加しない。誕生に利用したresultの参照を保持しても、本人向けの最新結果と恐竜アバターの確定済み外見を同じ「現在の診断」として上書きしない。
 
