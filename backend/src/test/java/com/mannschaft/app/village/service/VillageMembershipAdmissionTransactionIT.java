@@ -3,6 +3,7 @@ package com.mannschaft.app.village.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.persistence.probe.UnsignedIdProbeRepository;
 import com.mannschaft.app.common.token.SecretTokenVault;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.JoinRequestReviewRequest;
@@ -22,6 +23,11 @@ import com.mannschaft.app.village.repository.VillageCreationRequestRepository;
 import com.mannschaft.app.village.repository.VillageInvitationRepository;
 import com.mannschaft.app.village.repository.VillageJoinRequestRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
+import jakarta.persistence.Converter;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.MappedSuperclass;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,9 +37,20 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.aop.support.AopUtils;
+import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
+import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.orm.jpa.persistenceunit.PersistenceManagedTypes;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -81,12 +98,57 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "spring.jpa.hibernate.ddl-auto=validate",
         "spring.docker.compose.enabled=false"
 })
+@Import(VillageMembershipAdmissionTransactionIT.ProductionJpaConfiguration.class)
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @EnabledIf("com.mannschaft.app.village.service.VillageMembershipAdmissionTransactionIT#isDockerAvailable")
 @DisplayName("CMP1808 五経路のUSER枠と業務原子性（実Flyway/MySQL）")
 @Timeout(120)
 class VillageMembershipAdmissionTransactionIT {
+
+    /** 実Flywayが持たないtest専用型を、本番source setの検証対象へ混ぜない。 */
+    @TestConfiguration(proxyBeanMethods = false)
+    @EnableJpaRepositories(basePackages = "com.mannschaft.app",
+            excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE,
+                    classes = UnsignedIdProbeRepository.class))
+    static class ProductionJpaConfiguration {
+
+        @Bean
+        PersistenceManagedTypes persistenceManagedTypes() throws ClassNotFoundException {
+            // 既Flyway金型と同じ四種を保持し、abstractな基底型も落とさない。
+            ClassPathScanningCandidateComponentProvider scanner =
+                    new ClassPathScanningCandidateComponentProvider(false) {
+                        @Override
+                        protected boolean isCandidateComponent(AnnotatedBeanDefinition definition) {
+                            return true;
+                        }
+                    };
+            scanner.addIncludeFilter(new AnnotationTypeFilter(Entity.class));
+            scanner.addIncludeFilter(new AnnotationTypeFilter(MappedSuperclass.class));
+            scanner.addIncludeFilter(new AnnotationTypeFilter(Embeddable.class));
+            scanner.addIncludeFilter(new AnnotationTypeFilter(Converter.class));
+
+            List<String> names = new ArrayList<>();
+            for (BeanDefinition definition : scanner.findCandidateComponents("com.mannschaft.app")) {
+                String className = definition.getBeanClassName();
+                if (className != null && !isFromTestSourceSet(Class.forName(className))) {
+                    names.add(className);
+                }
+            }
+            assertThat(names).as("本番source setのJPA管理型").isNotEmpty();
+            return PersistenceManagedTypes.of(names.toArray(String[]::new));
+        }
+
+        /** 出所不明は既Flyway金型と同じくvalidate側へ残す。 */
+        private static boolean isFromTestSourceSet(Class<?> clazz) {
+            java.security.ProtectionDomain domain = clazz.getProtectionDomain();
+            if (domain == null || domain.getCodeSource() == null
+                    || domain.getCodeSource().getLocation() == null) {
+                return false;
+            }
+            return domain.getCodeSource().getLocation().getPath().contains("/classes/java/test");
+        }
+    }
 
     @SuppressWarnings("resource")
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
@@ -136,6 +198,7 @@ class VillageMembershipAdmissionTransactionIT {
     @Autowired private SecretTokenVault tokenVault;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PlatformTransactionManager transactionManager;
+    @Autowired private EntityManagerFactory entityManagerFactory;
 
     private enum Writer { FREE, JOIN_APPROVAL, INVITATION, CREATION_AUTO, CREATION_APPROVAL }
 
@@ -150,6 +213,15 @@ class VillageMembershipAdmissionTransactionIT {
         for (Object service : List.of(memberships, joins, invitations, creations)) {
             assertThat(AopUtils.isAopProxy(service)).as("実Spring TX proxy").isTrue();
         }
+        List<String> managedClasses = entityManagerFactory.getMetamodel().getManagedTypes().stream()
+                .map(type -> type.getJavaType().getName()).toList();
+        assertThat(managedClasses).as("実JPA metamodelの本番管理型とtest専用型の境界")
+                .contains(UserEntity.class.getName(), VillageEntity.class.getName(),
+                        "com.mannschaft.app.village.entity.VillageMembershipEntity",
+                        VillageJoinRequestEntity.class.getName(), VillageInvitationEntity.class.getName(),
+                        VillageCreationRequestEntity.class.getName())
+                .doesNotContain("com.mannschaft.app.common.architecture.fixtures.DummyD6ExposedEntity",
+                        "com.mannschaft.app.common.persistence.probe.UnsignedIdProbeEntity");
         String ddl = jdbc.queryForObject("SHOW CREATE TABLE village_memberships",
                 (rs, row) -> rs.getString(2));
         assertThat(ddl).contains("ck_vm_active_user_slot", "uk_vm_user_active_slot", "uk_vm_active_subject");
