@@ -92,9 +92,10 @@ test.describe('MOBILE-SHELL: グローバルヘッダー/ドロワー 390px受�
 
   test('MSH-05: 共通ヘッダー/ドロワー/スコープメニューの独立操作が44px以上で画面内に収まる', async ({ page }, testInfo) => {
     await gotoAuthed(page, '/my/')
+    await expect(page.locator('header')).toBeVisible()
     for (const width of [360, 390, 568, 767, 768]) {
       await page.setViewportSize({ width, height: 844 })
-      await page.waitForTimeout(100)
+      await expect(page.locator('header')).toBeVisible()
       const headerTargets = await page.evaluate(() => {
         const header = document.querySelector('header')
         if (!header) return ['header要素が見つからない']
@@ -140,7 +141,7 @@ test.describe('MOBILE-SHELL: グローバルヘッダー/ドロワー 390px受�
     await lastDrawerAction.scrollIntoViewIfNeeded()
     await expect(lastDrawerAction).toBeInViewport()
 
-    const teamToggle = page.locator('[data-testid="scope-nav-dropdown-toggle-TEAM"]')
+    const teamToggle = page.getByTestId('mobile-drawer-actions').getByTestId('scope-nav-dropdown-toggle-TEAM')
     await teamToggle.focus()
     await teamToggle.press('Enter')
     await expect(teamToggle).toHaveAttribute('aria-expanded', 'true')
@@ -191,7 +192,7 @@ test.describe('MOBILE-SHELL: グローバルヘッダー/ドロワー 390px受�
     const narrowDrawerToggle = page.locator('button.md\\:hidden').first()
     await expect(narrowDrawerToggle).toBeVisible()
     await narrowDrawerToggle.click()
-    const narrowTeamToggle = page.locator('[data-testid="scope-nav-dropdown-toggle-TEAM"]')
+    const narrowTeamToggle = page.getByTestId('mobile-drawer-actions').getByTestId('scope-nav-dropdown-toggle-TEAM')
     await narrowTeamToggle.focus()
     await narrowTeamToggle.press('Enter')
     const narrowPopover = page.locator('.p-popover:visible').last()
