@@ -3,6 +3,14 @@ import { loginViaApi } from '../../fixtures/auth'
 import { waitForHydration } from '../../helpers/wait'
 
 /** AC-1〜5: 前提と後始末のみAPIを使い、記事閲覧・編集入口は実際の一覧UIから操作する。 */
+/**
+ * 実機の前提: 4アカウントは独立IDかつ全員が非SYSTEM_ADMINであること。
+ * 既定seedはe2e-adminにSYSTEM_ADMINを付けるため、そのまま本specへ流用しない。
+ * 通常環境では非SYSTEM_ADMINのTEST_ADMIN_EMAIL等を指定する。今回の専用DBではseed後に
+ * 4人のuser_roles JOIN rolesのSYSTEM_ADMIN件数0をDBで証明し、実APIのsystemRoleと照合する。
+ * systemRoleはUserProfileResponseのnullable項目で、UserServiceが非管理者にはnullを生成する。
+ * HTTPプロフィールだけをDBのロール不在証明の代用にはしない。
+ */
 test.use({ storageState: { cookies: [], origins: [] } })
 const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:8081'
 const PASSWORD = process.env.TEST_PASSWORD ?? process.env.TEST_USER_PASSWORD ?? 'TestPass2026!'
