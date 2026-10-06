@@ -6,6 +6,7 @@ import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.school.dto.FamilyAttendanceNoticeRequest;
 import com.mannschaft.app.school.dto.FamilyAttendanceNoticeResponse;
 import com.mannschaft.app.school.dto.FamilyNoticeListResponse;
+import com.mannschaft.app.school.service.FamilyAttendanceNoticeFacade;
 import com.mannschaft.app.school.service.FamilyAttendanceNoticeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,6 +34,7 @@ import java.util.List;
 public class FamilyAttendanceNoticeController {
 
     private final FamilyAttendanceNoticeService noticeService;
+    private final FamilyAttendanceNoticeFacade noticeFacade;
 
     /**
      * 保護者が欠席・遅刻連絡を送信する。
@@ -64,7 +66,7 @@ public class FamilyAttendanceNoticeController {
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(noticeService.getTeamNotices(teamId, date, currentUserId));
+        return ApiResponse.of(noticeFacade.getTeamNotices(teamId, date, currentUserId));
     }
 
     /**
@@ -80,7 +82,7 @@ public class FamilyAttendanceNoticeController {
             @PathVariable Long teamId,
             @PathVariable Long noticeId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(noticeService.acknowledgeNotice(teamId, noticeId, currentUserId));
+        return ApiResponse.of(noticeFacade.acknowledgeNotice(teamId, noticeId, currentUserId));
     }
 
     /**
@@ -96,7 +98,7 @@ public class FamilyAttendanceNoticeController {
             @PathVariable Long teamId,
             @PathVariable Long noticeId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(noticeService.applyToAttendanceRecord(teamId, noticeId, currentUserId));
+        return ApiResponse.of(noticeFacade.applyToAttendanceRecord(teamId, noticeId, currentUserId));
     }
 
     /**

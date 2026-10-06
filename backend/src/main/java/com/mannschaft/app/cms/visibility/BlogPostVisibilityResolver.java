@@ -49,6 +49,39 @@ public class BlogPostVisibilityResolver
     private final BlogPostRepository blogPostRepository;
     private final PaymentGateService paymentGateService;
 
+    /** preview だけが事前に評価した strict 課金結果。通常の F00 context と混同しない。 */
+    private record PreviewGateContext(Long contentId, GateCheckResponse gate) {
+        private PreviewGateContext {
+            java.util.Objects.requireNonNull(contentId);
+            java.util.Objects.requireNonNull(gate);
+        }
+    }
+
+    /** 通常 F00 と同じ判定本体に strict 結果を渡し、課金を lenient に再評価しない。 */
+    public void assertCanViewForPreview(Long contentId, Long viewerUserId, GateCheckResponse strictGate) {
+        PreviewGateContext context = new PreviewGateContext(contentId, strictGate);
+        var decision = decideWithAdditionalAxisLoader(contentId, viewerUserId, (rows, viewer) -> context);
+        if (!decision.allowed()) {
+            throw new com.mannschaft.app.common.BusinessException(
+                    decision.denyReason() == com.mannschaft.app.common.visibility.DenyReason.NOT_FOUND
+                            ? com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_004
+                            : com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001);
+        }
+    }
+
+    @Override
+    protected boolean evaluateCustom(BlogPostVisibilityProjection row, Long viewerUserId,
+                                     UserScopeRoleSnapshot snapshot, Object additionalAxisContext) {
+        if (additionalAxisContext instanceof PreviewGateContext context) {
+            if (!context.contentId().equals(row.id())) {
+                throw new IllegalStateException("preview 課金結果の参照が一致しません");
+            }
+            // CUSTOM の購入条件は本文可否。タイトル可視の未払い記事は preview 外側で LOCKED にする。
+            return viewerUserId != null && (context.gate().isAccessible() || !context.gate().isTitleHidden());
+        }
+        return super.evaluateCustom(row, viewerUserId, snapshot, additionalAxisContext);
+    }
+
     public BlogPostVisibilityResolver(
             BlogPostRepository blogPostRepository,
             PaymentGateService paymentGateService,
@@ -116,6 +149,12 @@ public class BlogPostVisibilityResolver
     protected boolean visibleByAdditionalAxis(
             BlogPostVisibilityProjection row, Long viewerUserId, UserScopeRoleSnapshot snapshot,
             StandardVisibility level, Object additionalAxisContext) {
+        if (additionalAxisContext instanceof PreviewGateContext context) {
+            if (row == null || !context.contentId().equals(row.id())) {
+                throw new IllegalStateException("preview 課金結果の参照が一致しません");
+            }
+            additionalAxisContext = Map.of(context.contentId(), context.gate());
+        }
         if (level == StandardVisibility.CUSTOM) {
             return true; // 既存CUSTOM経路の判定を重複させない
         }

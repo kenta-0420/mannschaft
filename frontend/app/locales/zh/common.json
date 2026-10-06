@@ -580,7 +580,10 @@
     "group_name": "群组名称",
     "targets": "目标",
     "target_id": "目标 ID",
-    "target_type": { "ORGANIZATION": "组织", "TEAM": "团队" },
+    "target_type": {
+      "ORGANIZATION": "组织",
+      "TEAM": "团队"
+    },
     "template": "模板",
     "audience": "收件人",
     "current_scope": "当前组织或团队",
@@ -1757,19 +1760,29 @@
     },
     "menu": "菜单",
     "scopeShell": {
+      "memberCount": "成员 {count} 人",
+      "supporterCount": "支持者 {count} 人",
       "supporter_cancel_confirm_title": "要取消支持吗？",
       "supporter_cancel_confirm_body": "将取消对{name}的支持。确定吗？",
       "supporter_cancel_action": "取消支持",
       "supporter_registered": "已注册为支持者",
       "supporter_applied": "已发送支持者申请",
       "supporter_canceled": "已取消支持",
+      "follow_approved_badge": "您是支持者",
+      "follow_unfollow_aria": "取消支持",
+      "follow_pending_label": "申请中（等待批准）",
+      "follow_pending_cancel_button": "取消",
+      "follow_apply_button": "成为支持者",
       "leave_action": "退出",
       "load_error_title": "无法获取信息",
       "load_error_body": "请稍后再试。如果没有权限，可能无法显示。",
       "back_to_dashboard": "返回仪表板",
       "retry": "重试",
       "slow_loading": "加载时间较长，请稍候",
-      "join_request_applied": "参加申請を送信しました"
+      "join_request_applied": "参加申請を送信しました",
+      "follow_fetch_error": "无法获取关注状态",
+      "follow_permission_sync_error_title": "权限信息更新失败",
+      "follow_permission_sync_error_body": "已取消关注，但权限信息刷新失败。请重试。"
     },
     "unsavedChanges": {
       "title": "未保存的更改",
@@ -2371,7 +2384,8 @@
     "action": {
       "leave_confirm_title": "退出团队",
       "leave_confirm_body": "确定要退出该团队吗？此操作无法撤销。",
-      "left": "已退出团队"
+      "left": "已退出团队",
+      "leave_button": "退出团队"
     }
   },
   "orgShell": {
@@ -2389,7 +2403,8 @@
     "action": {
       "leave_confirm_title": "退出组织",
       "leave_confirm_body": "确定要退出该组织吗？此操作无法撤销。",
-      "left": "已退出组织"
+      "left": "已退出组织",
+      "leave_button": "退出组织"
     }
   },
   "blog_guide": {

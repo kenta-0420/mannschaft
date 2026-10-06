@@ -567,6 +567,7 @@ HTTP|com.mannschaft.app.schedule.controller.TeamScheduleKeepController|11|11
 HTTP|com.mannschaft.app.school.controller.AttendanceBatchController|2|2
 HTTP|com.mannschaft.app.school.controller.AttendanceDisclosureController|4|4
 HTTP|com.mannschaft.app.school.controller.AttendanceLocationController|3|3
+HTTP|com.mannschaft.app.school.controller.AttendancePermissionController|1|1
 HTTP|com.mannschaft.app.school.controller.AttendanceRequirementController|6|6
 HTTP|com.mannschaft.app.school.controller.AttendanceRequirementEvaluationController|4|4
 HTTP|com.mannschaft.app.school.controller.AttendanceStatisticsController|3|3
@@ -614,6 +615,7 @@ HTTP|com.mannschaft.app.skill.controller.SkillSearchController|2|2
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementBroadcastController|2|2
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementFeedController|6|6
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementFeedOrgController|6|6
+HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementPreviewController|0|2
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementRangeTemplateController|8|8
 HTTP|com.mannschaft.app.social.announcement.controller.PersonalAnnouncementController|1|1
 HTTP|com.mannschaft.app.social.controller.FollowController|5|5

@@ -175,6 +175,9 @@ afterAll(() => {
 
 - **原則として `@SpringBootTest` + `@AutoConfigureMockMvc` を使用する**。Service をモックする `@WebMvcTest` は、Controller 層に固有のロジック（リクエストマッピング、バリデーション等）を個別に検証したい場合のみ使用する
 - **理由**: 本プロジェクトの Controller は薄い設計（§.claudecode.md 原則4）であり、Service をモックしても検証価値が低い。実 DB を含めた一気通貫テストのほうが信頼性が高い
+- 独自の `@MockitoBean` 等でテスト構成の種類を増やすほど、1 JVM に積む Spring テストコンテキストが増えて
+  OOM の火種になる（CMP-261002-1606 の MAT 実測）。`spring.test.context.cache.maxSize` は 10 に制限して
+  いる（`backend/.claudecode.md` 参照）ため、可能な限り既存の共通構成に寄せること
 
 ### 3.1.1 Controller テストは MockMvc 経由必須（Bean 直呼び禁止）**【必須】**
 
@@ -481,6 +484,41 @@ tasks.register<Test>("allTests") {
 class AuthControllerIntegrationTest extends AbstractIntegrationTest {
     // ...
 }
+```
+
+### 7.1 ArchUnit テストの別 JVM 実行（`archTest` / `archUnitTest`・CMP-261002-1606）
+
+ArchUnit を使うテストクラス（ArchUnit または `ProductionClasses` を参照するもの）は必ずタグを付け、
+Spring のテストコンテキストを使わない。通常の `test` はタグ `archunit` を除外する。タグ付きテストは
+**エンジンで2系統に分かれ、実行系統も異なる**:
+
+- `archTest`（junit-jupiter・タグ `archunit`）は CI の専用ジョブ「ArchUnit tests (separate JVM)」
+  （`backend-ci.yml`/`backend-deploy.yml`/`backend-nightly-full.yml` の `arch-test` job）で、shard 分割せず
+  1 回だけ全クラス分を実行する。
+- `archUnitTest`（archunit エンジン・`@AnalyzeClasses`）は専用ジョブではなく、通常の `test` タスクの
+  依存タスク（`tasks.named<Test>("test") { dependsOn(archUnitTest, ...) }`）として、各 shard の
+  `test` 実行の一部として shard の絞り込み（タグ/クラスフィルタ）を継承したまま、Spring とは別の
+  `Test` タスク＝別 JVM で実行される。
+
+- `@Tag(ArchUnitTestTag.ARCHUNIT)` を付けた **junit-jupiter** のテストクラスは `archTest`（heap 3g・
+  1 JVM）が走らせる。
+- `@AnalyzeClasses` のクラス（`@ArchTag(ArchUnitTestTag.ARCHUNIT)` を付与。ArchUnit 専用の **archunit
+  エンジン**で実行され `@Tag` を読まない）は `archTest` では走らない（`archTest` は archunit エンジンを
+  `excludeEngines` で除外する）。**`archUnitTest`**（`includeEngines("archunit")`）だけが走らせる。
+
+```java
+@Tag(ArchUnitTestTag.ARCHUNIT)          // JUnit Jupiter のテストクラス → archTest が走らせる
+class ShiftTxFacadeArchTest { ... }
+
+@ArchTag(ArchUnitTestTag.ARCHUNIT)      // @AnalyzeClasses のクラス → archUnitTest だけが走らせる
+@AnalyzeClasses(packages = "com.mannschaft.app", importOptions = ImportOption.DoNotIncludeTests.class)
+class CrossDomainRepositoryDependencyArchTest { ... }
+```
+
+```bash
+./scripts/gradle-turnstile.sh ./gradlew archTest                        # junit-jupiter 側の全 ArchUnit テスト
+./scripts/gradle-turnstile.sh ./gradlew archTest --tests "<完全修飾名>"  # 絞り込み
+./scripts/gradle-turnstile.sh ./gradlew archUnitTest                    # @AnalyzeClasses 側（archunit エンジン）
 ```
 
 ---
@@ -856,3 +894,5 @@ public void dispatch() { ... }
 | `@Disabled` を理由なく放置する | 一時的な無効化は許容するが、理由をコメントに記載し、1スプリント以内に解決する |
 | 手書きの INSERT SQL でテストデータを作成する | TestFixture 経由で作成する（`backend/BACKEND_CODING_CONVENTION.md` テストデータ作成パターン参照） |
 | **Controller を `@Autowired` して直接メソッド呼び出しでテストする** | HTTP 層を迂回し、URL パス・HTTP メソッド・enum バインド・JSON 形状・`@Valid`・例外→ステータス変換を一切検証できない。村ドメインで契約不一致 17 件を素通しにした実害あり。MockMvc を使うこと（**§3.1.1** に詳細）|
+| **ArchUnit を使うテストに `@Tag(ArchUnitTestTag.ARCHUNIT)`（`@AnalyzeClasses` なら `@ArchTag(ArchUnitTestTag.ARCHUNIT)`）を付けない／タグ付きテストで Spring のテストコンテキストを使う** | ArchUnit の本番取り込み（約 1.1GB）が Spring 系 IT と同じ JVM に乗り、shard 5 が OOM した（CMP-261002-1606）。ArchUnit テストは通常の `test` から除外され、専用タスク `archTest`（別 JVM・shard 分割なし）で走る。番人 `ArchUnitTestTagGuardTest` がタグ漏れ・Spring 混在・shard 重み表への混入を拒否する（詳細: `backend/.claudecode.md` §30）|
+| **ArchUnit で本番全体を `ClassFileImporter` で手動取り込みする／`JavaClasses` を static フィールドで保持する** | 取り込み結果が JVM 内に何コピーも残り、全量 CI の shard が `Java heap space` で落ちた（CMP-261002-1606）。本番全体は共有ホルダ `ProductionClasses.get()` だけを使う。番人 `ProductionClassImportGuardTest` が拒否する（詳細: `backend/.claudecode.md` §30）|

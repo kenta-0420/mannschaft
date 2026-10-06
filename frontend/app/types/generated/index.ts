@@ -35713,6 +35713,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/attendance/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 学校出欠の権限判定結果取得
+         * @description 自分が当該クラスの出欠を閲覧・日次登録・時限登録できるかを返す。権限なしでも 200 で全項目 false。
+         */
+        get: operations["getPermissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/attendance/periods": {
         parameters: {
             query?: never;
@@ -36274,6 +36294,23 @@ export interface paths {
          * @description チームの PV 集計を返す。メンバーのみ閲覧可。
          */
         get: operations["getAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{scopeId}/announcements/{feedId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チームお知らせ本文プレビュー */
+        get: operations["teamPreview"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40061,6 +40098,23 @@ export interface paths {
          * @description 組織の PV 集計を返す。メンバーのみ閲覧可。
          */
         get: operations["getAnalytics_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{scopeId}/announcements/{feedId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織お知らせ本文プレビュー */
+        get: operations["organizationPreview"];
         put?: never;
         post?: never;
         delete?: never;
@@ -48847,8 +48901,8 @@ export interface components {
             priority?: string;
             title?: string;
         };
-        ApiResponseThreadResponse: {
-            data?: components["schemas"]["ThreadResponse"];
+        ApiResponseBulletinThreadResponse: {
+            data?: components["schemas"]["BulletinThreadResponse"];
         };
         AuthorDto: {
             avatarUrl?: string;
@@ -48856,7 +48910,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
         };
-        ThreadResponse: {
+        BulletinThreadResponse: {
             /** Format: uuid */
             archiveFolderId?: string;
             author?: components["schemas"]["AuthorDto"];
@@ -54028,6 +54082,10 @@ export interface components {
             /** Format: int64 */
             version?: number;
         };
+        OrgSocialDto: {
+            /** Format: int64 */
+            supporterCount?: number;
+        };
         OrgTimestampsDto: {
             /** Format: date-time */
             archivedAt?: string;
@@ -54048,6 +54106,7 @@ export interface components {
             /** Format: int64 */
             numericId?: number;
             slug?: string;
+            social?: components["schemas"]["OrgSocialDto"];
             teamApplication?: components["schemas"]["TeamApplicationDto"];
             timestamps?: components["schemas"]["OrgTimestampsDto"];
             visibility?: components["schemas"]["OrgVisibilityDto"];
@@ -61878,28 +61937,29 @@ export interface components {
             sourceType?: string;
         };
         AnnouncementFeedItemDto: {
-            accessState?: string;
+            accessState: string;
             /** Format: int64 */
             authorId?: number;
+            contentPreviewAvailable: boolean;
             createdAt?: string;
-            excerptCache?: string;
+            excerptCache: string;
             expiresAt?: string;
             /** Format: int64 */
-            id?: number;
+            id: number;
             isPinned?: boolean;
             isRead?: boolean;
             pinned?: boolean;
             priority?: string;
             read?: boolean;
             /** Format: int64 */
-            scopeId?: number;
+            scopeId: number;
             scopeName?: string;
-            scopeType?: string;
+            scopeType: string;
             /** Format: int64 */
-            sourceId?: number;
-            sourceType?: string;
+            sourceId: number;
+            sourceType: string;
             startsAt?: string;
-            titleCache?: string;
+            titleCache: string;
             updatedAt?: string;
             visibility?: string;
         };
@@ -68126,6 +68186,25 @@ export interface components {
             /** Format: uuid */
             scopeVillageId?: string;
         };
+        ApiResponseBulletinAttachmentResponse: {
+            data?: components["schemas"]["BulletinAttachmentResponse"];
+        };
+        BulletinAttachmentResponse: {
+            contentType?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int64 */
+            createdBy?: number;
+            fileKey?: string;
+            /** Format: int64 */
+            fileSize?: number;
+            /** Format: int64 */
+            id?: number;
+            originalFilename?: string;
+            /** Format: int64 */
+            targetId?: number;
+            targetType?: string;
+        };
         ReverseTransactionRequest: {
             reason?: string;
         };
@@ -71661,8 +71740,8 @@ export interface components {
         ApiResponseListFormPresetResponse: {
             data?: components["schemas"]["FormPresetResponse"][];
         };
-        PagedResponseThreadResponse: {
-            data?: components["schemas"]["ThreadResponse"][];
+        PagedResponseBulletinThreadResponse: {
+            data?: components["schemas"]["BulletinThreadResponse"][];
             meta?: components["schemas"]["PageMeta"];
         };
         PagedResponseReplyResponse: {
@@ -75102,6 +75181,16 @@ export interface components {
             /** Format: int64 */
             studentUserId?: number;
         };
+        ApiResponseAttendancePermissionsResponse: {
+            data?: components["schemas"]["AttendancePermissionsResponse"];
+        };
+        AttendancePermissionsResponse: {
+            canRecordDaily?: boolean;
+            canRecordPeriod?: boolean;
+            canView?: boolean;
+            /** Format: int64 */
+            teamId?: number;
+        };
         ApiResponsePeriodAttendanceListResponse: {
             data?: components["schemas"]["PeriodAttendanceListResponse"];
         };
@@ -75658,6 +75747,25 @@ export interface components {
             totalViews?: number;
             /** Format: int64 */
             uniqueVisitors?: number;
+        };
+        AnnouncementPreviewResponse: {
+            /** @enum {string} */
+            accessState: "FULL" | "LOCKED";
+            attachments: components["schemas"]["BulletinAttachmentResponse"][];
+            blogPost: components["schemas"]["BlogPostResponse"] | null;
+            bulletinThread: components["schemas"]["BulletinThreadResponse"] | null;
+            /** Format: int64 */
+            feedId: number;
+            /** Format: int64 */
+            scopeId: number;
+            /** @enum {string} */
+            scopeType: "TEAM" | "ORGANIZATION";
+            sourceId: number | null;
+            sourceType: ("BLOG_POST" | "BULLETIN_THREAD") | null;
+            sourceUrl: string | null;
+        };
+        ApiResponseAnnouncementPreviewResponse: {
+            data?: components["schemas"]["AnnouncementPreviewResponse"];
         };
         ApiResponsePaymentSummaryResponse: {
             data?: components["schemas"]["PaymentSummaryResponse"];
@@ -82099,6 +82207,17 @@ export interface components {
             /** Format: int64 */
             userId?: number;
         };
+        ApiResponseThreadResponse: {
+            data?: components["schemas"]["ThreadResponse"];
+        };
+        ThreadResponse: {
+            hasMore?: boolean;
+            messages?: components["schemas"]["ChatMessageResponse"][];
+            nextCursor?: string;
+            root?: components["schemas"]["ChatMessageResponse"];
+            /** Format: int32 */
+            totalCount?: number;
+        };
         ApiResponseDownloadUrlResponse: {
             data?: components["schemas"]["DownloadUrlResponse"];
         };
@@ -82141,6 +82260,9 @@ export interface components {
         };
         ApiResponseListFolderItemResponse: {
             data?: components["schemas"]["FolderItemResponse"][];
+        };
+        ApiResponseListBulletinAttachmentResponse: {
+            data?: components["schemas"]["BulletinAttachmentResponse"][];
         };
         ApiResponseListReactionResponse: {
             data?: components["schemas"]["ReactionResponse"][];
@@ -83579,7 +83701,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -83607,7 +83729,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -94347,8 +94469,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 templateId: string;
             };
             cookie?: never;
@@ -94371,8 +94493,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 templateId: string;
             };
             cookie?: never;
@@ -94399,8 +94521,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 templateId: string;
             };
             cookie?: never;
@@ -97642,7 +97764,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -97668,7 +97790,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -100153,7 +100275,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseThreadResponse"];
+                    "*/*": components["schemas"]["PagedResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -100180,7 +100302,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -100307,7 +100429,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -100331,7 +100453,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -100359,7 +100481,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -108981,7 +109103,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -109003,7 +109125,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -109037,8 +109159,8 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -109060,8 +109182,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -123102,8 +123224,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -123125,8 +123247,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -132437,7 +132559,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseThreadResponse"];
+                    "*/*": components["schemas"]["PagedResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -132465,7 +132587,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -132562,7 +132684,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -132753,7 +132875,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseAttachmentResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinAttachmentResponse"];
                 };
             };
         };
@@ -136179,7 +136301,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -139056,8 +139178,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139084,7 +139206,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139111,7 +139233,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139138,8 +139260,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139166,8 +139288,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139194,7 +139316,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139221,8 +139343,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139245,8 +139367,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139267,8 +139389,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139295,7 +139417,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139318,7 +139440,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -139339,7 +139461,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 matchId: string;
             };
             cookie?: never;
@@ -147432,7 +147554,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -147458,7 +147580,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -147484,7 +147606,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -149336,7 +149458,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseThreadResponse"];
+                    "*/*": components["schemas"]["PagedResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -149363,7 +149485,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseThreadResponse"];
+                    "*/*": components["schemas"]["PagedResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -153222,7 +153344,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -153245,8 +153367,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -153269,7 +153391,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamId: number;
+                teamId: string;
                 fixtureId: number;
             };
             cookie?: never;
@@ -153292,8 +153414,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
                 fixtureId: number;
             };
             cookie?: never;
@@ -154747,6 +154869,28 @@ export interface operations {
             };
         };
     };
+    getPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAttendancePermissionsResponse"];
+                };
+            };
+        };
+    };
     getPeriodAttendance: {
         parameters: {
             query: {
@@ -155599,6 +155743,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePageViewAnalyticsResponse"];
+                };
+            };
+        };
+    };
+    teamPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeId: number;
+                feedId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAnnouncementPreviewResponse"];
                 };
             };
         };
@@ -157463,7 +157630,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
             /** @description スレッド未存在 */
@@ -157472,7 +157639,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseThreadResponse"];
+                    "*/*": components["schemas"]["ApiResponseBulletinThreadResponse"];
                 };
             };
         };
@@ -160756,6 +160923,29 @@ export interface operations {
             };
         };
     };
+    organizationPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeId: number;
+                feedId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAnnouncementPreviewResponse"];
+                };
+            };
+        };
+    };
     getReservation_2: {
         parameters: {
             query?: never;
@@ -161336,9 +161526,9 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                orgId: string;
                 userId: number;
-                teamId: number;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -161367,9 +161557,9 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                orgId: string;
                 userId: number;
-                teamId: number;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -161396,7 +161586,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                orgId: string;
                 userId: number;
             };
             cookie?: never;
@@ -161426,7 +161616,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
+                orgId: string;
                 userId: number;
             };
             cookie?: never;
@@ -161957,8 +162147,8 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgId: number;
-                teamId: number;
+                orgId: string;
+                teamId: string;
             };
             cookie?: never;
         };
@@ -167770,7 +167960,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListAttachmentResponse"];
+                    "*/*": components["schemas"]["ApiResponseListBulletinAttachmentResponse"];
                 };
             };
         };
@@ -167792,7 +167982,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListAttachmentResponse"];
+                    "*/*": components["schemas"]["ApiResponseListBulletinAttachmentResponse"];
                 };
             };
         };

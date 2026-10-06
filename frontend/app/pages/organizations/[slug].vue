@@ -54,22 +54,40 @@ const {
   orgTeams,
   permissionGroups,
   loading,
-  followStatus,
-  followLoading,
   joinRequestStatus,
   joinRequestLoading,
-  showCancelSupporterConfirm,
   showLeaveConfirm,
   fetchOrg,
   fetchOrgTeams,
   fetchPermissionGroups,
-  fetchFollowStatus,
-  applySupporter,
-  cancelSupporter,
   fetchJoinRequestStatus,
   applyJoinRequest,
   leaveOrganization,
 } = useOrgDetail(orgSlug)
+
+// フォロー（サポーター）結線（CMP-261001-0835）。ラッパー群は useScopeFollowWiring に集約し、
+// 単体テストで検証する（SUPPORTER でも状態取得・解除後の権限再取得・権限のみの再試行）。
+const organizationApi = useOrganizationApi()
+const {
+  followStatus,
+  followLoading,
+  followPermissionSyncError,
+  showCancelSupporterConfirm,
+  fetchFollowStatus,
+  applySupporter,
+  cancelSupporter,
+  retryFollowStatus,
+  retryFollowPermissionSync,
+} = useScopeFollowWiring({
+  scopeSlug: orgSlug,
+  api: {
+    follow: organizationApi.followOrganization,
+    unfollow: organizationApi.unfollowOrganization,
+    getStatus: organizationApi.getFollowStatus,
+  },
+  roleAccess: { roleName, loadPermissions },
+  refreshDetail: fetchOrg,
+})
 
 const {
   ancestors,
@@ -116,11 +134,15 @@ const showTeamSearchLink = computed(() => {
 /**
  * 組織取得が 404（org 未取得）のとき、旧 slug → 新 slug の MOVED かを解決し 301 遷移する
  * （村方式・BE #1542）。遷移した場合は true を返す。
+ *
+ * `isCurrent` が渡された場合、解決待ち（await）の間に後発の要求が成功済み／
+ * 別スコープへ移動済みなら、古い 404 由来の遷移を行わない（検分修繕3・CMP-261004-1942）。
  */
-async function tryRedirectMovedSlug(): Promise<boolean> {
+async function tryRedirectMovedSlug(isCurrent?: () => boolean): Promise<boolean> {
   const { resolveSlug } = useSlugRedirect()
   const target = await resolveSlugRedirectPath(route.path, resolveSlug)
   if (!target) return false
+  if (isCurrent && !isCurrent()) return false
   await navigateTo(
     { path: target, query: route.query, hash: route.hash },
     { redirectCode: 301, replace: true },
@@ -131,7 +153,7 @@ async function tryRedirectMovedSlug(): Promise<boolean> {
 /** 状態同期用の再取得（follow/leave 後など）。 */
 async function refresh() {
   await Promise.all([fetchOrg(), loadPermissions()])
-  await fetchFollowStatus(roleName)
+  await fetchFollowStatus()
   await fetchJoinRequestStatus(roleName)
 }
 
@@ -238,18 +260,40 @@ const activeTab = computed<string>(() => {
 // =============================================================================
 // シェルデータのロード（シェル対象ルートに居るときだけ）
 // =============================================================================
-/** シェル描画に必要なデータを一括ロード（重複ロード防止に orgLoaded で番人）。 */
+/**
+ * シェル描画に必要なデータを一括ロード（重複ロード防止に orgLoaded で番人）。
+ *
+ * 世代ガード: slug 解決（tryRedirectMovedSlug）は await を挟むため、待機中に別組織へ
+ * 移動している（orgSlug が変わり watch(orgSlug) が走っている）可能性がある。解決後は
+ * isCurrent() を再確認し、古い 404 由来の遷移が後発のロードを踏みつけないようにする
+ * （検分修繕3・CMP-261004-1942。teams/[slug].vue と同型）。
+ *
+ * 要求連番ガード（検分修繕4・CMP-261004-1942）: slug 一致だけでは、A→B→A のように
+ * slug が元に戻る遷移を跨ぐと、古い呼び出し（A の 404 解決待ち）が「後発の呼び出し
+ * （2回目の A の loadShellData）」を踏みつけてしまう（slug 一致だが呼び出しは別世代）。
+ * fetchOrg・fetchTeam 等の内部 seq と同じ作法で loadShellData 自身にも呼び出し連番を持たせ、
+ * isCurrent を「この呼び出しが最新の loadShellData 呼び出しである」かつ「slug 一致」とする。
+ */
 const orgLoaded = ref(false)
+let loadShellDataSeq = 0
 async function loadShellData() {
   if (orgLoaded.value) return
   orgLoaded.value = true
+  const seq = ++loadShellDataSeq
+  const requestedSlug = orgSlug.value
+  const isCurrent = () => seq === loadShellDataSeq && orgSlug.value === requestedSlug
   await Promise.all([fetchOrg(), loadPermissions()])
+  if (!isCurrent()) return
   // 組織が取得できなかった（404 等）場合は MOVED slug の可能性を解決し 301 遷移を試みる。
-  if (!org.value && await tryRedirectMovedSlug()) return
+  if (!org.value) {
+    const redirected = await tryRedirectMovedSlug(isCurrent)
+    if (!isCurrent()) return
+    if (redirected) return
+  }
   await Promise.all([
     fetchOrgTeams(),
     isAdmin.value ? fetchPermissionGroups() : Promise.resolve(),
-    fetchFollowStatus(roleName),
+    fetchFollowStatus(),
     fetchJoinRequestStatus(roleName),
     fetchAncestors(),
     fetchChildren(true),
@@ -282,7 +326,7 @@ watch(isShellRoute, (shell) => {
 watch(orgSlug, () => {
   orgLoaded.value = false
   org.value = null
-  followStatus.value = 'NONE'
+  // followStatus の初期化は useScopeFollowWiring が slug 変更時に同期的に行う。
   joinRequestStatus.value = 'UNKNOWN'
   if (isShellRoute.value) void loadShellData()
 })
@@ -446,12 +490,15 @@ provideOrgShellContext({
             :is-admin-or-deputy="isAdminOrDeputy"
             :follow-status="followStatus"
             :follow-loading="followLoading"
+            :follow-permission-sync-error="followPermissionSyncError"
             :join-request-status="joinRequestStatus"
             :join-request-loading="joinRequestLoading"
             :ancestors="ancestors"
             @back="navigateTo('/dashboard')"
             @apply-supporter="applySupporter"
             @cancel-supporter="cancelSupporter"
+            @retry-follow-status="retryFollowStatus"
+            @retry-follow-permission-sync="retryFollowPermissionSync"
             @apply-join-request="applyJoinRequest"
             @retry-join-request-status="retryJoinRequestStatus"
             @show-cancel-confirm="showCancelSupporterConfirm = true"
