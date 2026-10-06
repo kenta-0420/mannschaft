@@ -139,8 +139,19 @@ class RecruitmentPayeeJudgementNoRollbackOnlyIT extends AbstractMySqlIntegration
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
-        if (adminWaived) {
-            // AuditLogService#record は @Async + 独立 tx。書き込み完了を待ってから消さないと、掃除の後に行が残る。
+        try {
+            if (adminWaived) {
+                // AuditLogService#record は @Async + 独立 tx。書き込み完了を待ってから消さないと、掃除の後に行が残る。
+                awaitWaiveAuditLog();
+            }
+        } finally {
+            // 待機がタイムアウトしても後始末は必ず走らせる。待機の失敗は握らず、後始末の後に例外として表に出る。
+            cleanUp();
+        }
+    }
+
+    private void awaitWaiveAuditLog() {
+        {
             org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10)).untilAsserted(() ->
                     assertThat(transactionTemplate.execute(status -> em.createQuery(
                                     "SELECT COUNT(a) FROM AuditLogEntity a WHERE a.teamId = :t AND a.eventType = :e",
@@ -150,6 +161,9 @@ class RecruitmentPayeeJudgementNoRollbackOnlyIT extends AbstractMySqlIntegration
                                     .RECRUITMENT_CANCELLATION_FEE_WAIVED.name())
                             .getSingleResult())).isPositive());
         }
+    }
+
+    private void cleanUp() {
         transactionTemplate.executeWithoutResult(status -> {
             em.createQuery("DELETE FROM AuditLogEntity a WHERE a.teamId = :t")
                     .setParameter("t", teamAId).executeUpdate();
