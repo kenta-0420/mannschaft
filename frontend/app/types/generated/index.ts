@@ -54082,6 +54082,10 @@ export interface components {
             /** Format: int64 */
             version?: number;
         };
+        OrgSocialDto: {
+            /** Format: int64 */
+            supporterCount?: number;
+        };
         OrgTimestampsDto: {
             /** Format: date-time */
             archivedAt?: string;
@@ -54102,6 +54106,7 @@ export interface components {
             /** Format: int64 */
             numericId?: number;
             slug?: string;
+            social?: components["schemas"]["OrgSocialDto"];
             teamApplication?: components["schemas"]["TeamApplicationDto"];
             timestamps?: components["schemas"]["OrgTimestampsDto"];
             visibility?: components["schemas"]["OrgVisibilityDto"];

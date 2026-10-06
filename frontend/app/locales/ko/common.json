@@ -1760,6 +1760,8 @@
     },
     "menu": "메뉴",
     "scopeShell": {
+      "memberCount": "멤버 {count}명",
+      "supporterCount": "서포터 {count}명",
       "supporter_cancel_confirm_title": "서포터를 그만두시겠습니까？",
       "supporter_cancel_confirm_body": "{name}의 서포터를 그만둡니다. 괜찮으신가요？",
       "supporter_cancel_action": "그만두기",
