@@ -153,6 +153,12 @@
 
 ---
 
+#### 組織作成ダイアログの公開範囲（2026-10-07）
+
+組織作成の選択値は BE 契約どおり `PUBLIC` / `PRIVATE`。非公開ラベルは既存6言語の `label.visibilityPrivate` を使用する。
+旧組織下書きの `MEMBERS_AND_ABOVE` は復元／送信境界だけで `PRIVATE` へ移行する。
+チームの4段階は変更せず、作成対象の種類を切り替えたときは公開範囲を初期値 `PUBLIC` に戻し、別種の enum を持ち越さない。
+
 #### `GET /api/v1/teams/search`
 
 `visibility = PUBLIC` のチームを検索する。未認証でも利用可能。

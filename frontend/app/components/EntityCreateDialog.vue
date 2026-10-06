@@ -103,6 +103,11 @@ const form = ref({
 
 const { t } = useI18n()
 
+/** チームの公開範囲を変えず、旧組織下書きの非公開値だけを移行する。 */
+function requestVisibility(value: string): string {
+  return !isTeam.value && value === 'MEMBERS_AND_ABOVE' ? 'PRIVATE' : value
+}
+
 // === useFormDraft（ADHD配慮・チーム/組織作成フォームの自動保存）===
 // entityTypeをキーに含めることでチーム・組織の下書きを分離する
 const entityDraftKey = computed(
@@ -147,7 +152,7 @@ watch(
       form.value.nameKana = saved.nameKana ?? ''
       form.value.nickname1 = saved.nickname1 ?? ''
       form.value.description = saved.description ?? ''
-      form.value.visibility = saved.visibility ?? 'PUBLIC'
+      form.value.visibility = requestVisibility(saved.visibility ?? 'PUBLIC')
       form.value.supporterEnabled = saved.supporterEnabled ?? false
       form.value.template = saved.template ?? 'OTHER'
       form.value.orgType = saved.orgType ?? 'OTHER'
@@ -267,7 +272,7 @@ const visibilityOptions = computed(() => {
   }
   return [
     { label: t('team_visibility.PUBLIC'), value: 'PUBLIC' },
-    { label: t('team_visibility.MEMBERS_AND_ABOVE'), value: 'MEMBERS_AND_ABOVE' },
+    { label: t('label.visibilityPrivate'), value: 'PRIVATE' },
   ]
 })
 
@@ -307,6 +312,16 @@ const duplicateFingerprint = ref<string | null>(null)
 // 確認ダイアログ表示中に再送信するための、直前に組み立てたリクエストボディを保持する。
 let pendingSubmitBody: EntityCreateBody | null = null
 
+watch(() => props.entityType, () => {
+  form.value.visibility = 'PUBLIC'
+  // 同名確認は元の作成対象・送信本文に属するため、種類の切替時に破棄する。
+  duplicateConfirmVisible.value = false
+  duplicateCandidates.value = []
+  duplicateHiddenCount.value = 0
+  duplicateFingerprint.value = null
+  pendingSubmitBody = null
+}, { flush: 'sync' })
+
 function buildRequestBody(): EntityCreateBody {
   const trimmedSlug = slug.value.trim()
   const common = {
@@ -318,7 +333,7 @@ function buildRequestBody(): EntityCreateBody {
     description: form.value.description || undefined,
     prefecture: form.value.prefecture || undefined,
     city: form.value.city || undefined,
-    visibility: form.value.visibility,
+    visibility: requestVisibility(form.value.visibility),
     supporterEnabled: form.value.supporterEnabled,
   }
   if (isTeam.value) {

@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
+import type { PropType } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import EntityCreateDialog from './EntityCreateDialog.vue'
@@ -11,6 +13,7 @@ const apiMock = vi.fn()
 const handleApiErrorMock = vi.fn()
 const getFieldErrorsMock = vi.fn(() => ({}) as Record<string, string>)
 const notificationSuccessMock = vi.fn()
+const restoreDraftMock = vi.fn(() => null as Record<string, unknown> | null)
 
 mockNuxtImport('useI18n', () => () => ({
   t: (key: string, params?: Record<string, unknown>) =>
@@ -40,7 +43,7 @@ mockNuxtImport('useAuthStore', () => () => ({
 }))
 mockNuxtImport('useFormDraft', () => () => ({
   clear: vi.fn(),
-  restore: vi.fn(() => null),
+  restore: restoreDraftMock,
 }))
 
 const stubs = {
@@ -109,6 +112,8 @@ beforeEach(() => {
   getFieldErrorsMock.mockReset()
   getFieldErrorsMock.mockReturnValue({})
   notificationSuccessMock.mockReset()
+  restoreDraftMock.mockReset()
+  restoreDraftMock.mockReturnValue(null)
 })
 
 describe('EntityCreateDialog 同名確認フロー', () => {
@@ -190,5 +195,107 @@ describe('EntityCreateDialog 同名確認フロー', () => {
     expect(wrapper.find('[data-testid="duplicate-name-confirm-dialog"]').exists()).toBe(false)
     expect(handleApiErrorMock).toHaveBeenCalledTimes(1)
     expect(handleApiErrorMock.mock.calls[0]![0]).toEqual(dupname002Error())
+  })
+})
+
+// 実DOMの選択欄でコンポーネントの選択肢を描画し、ユーザー操作を通知する。
+const SelectInput = defineComponent({
+  props: {
+    modelValue: { type: String, default: '' },
+    options: { type: Array as PropType<Array<{ label: string; value: string }>>, default: () => [] },
+  },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    return () => h('select', {
+      value: props.modelValue,
+      onChange: (event: Event) => emit('update:modelValue', (event.target as HTMLSelectElement).value),
+    }, props.options.map(option => h('option', { value: option.value }, option.label)))
+  },
+})
+
+async function visibilityDialog(entityType: 'team' | 'organization', visible = true) {
+  return mountSuspended(EntityCreateDialog, {
+    props: { entityType, visible },
+    global: { stubs: { ...stubs, Select: SelectInput } },
+  })
+}
+
+describe('EntityCreateDialog 公開範囲の API 契約', () => {
+  it('組織の既存非公開ラベルを描画し PRIVATE を送信する', async () => {
+    apiMock.mockResolvedValue({ data: { id: '20', name: 'x', slug: 'x' } })
+    const wrapper = await visibilityDialog('organization')
+    const visibility = wrapper.findAll('select').find(select => select.find('option[value="PRIVATE"]').exists())!
+    expect(visibility.get('option[value="PRIVATE"]').text()).toBe('label.visibilityPrivate')
+    expect(visibility.find('option[value="MEMBERS_AND_ABOVE"]').exists()).toBe(false)
+    await visibility.setValue('PRIVATE')
+    await wrapper.get('[data-testid="entity-create-submit"]').trigger('click')
+    await flushPromises()
+    expect(apiMock).toHaveBeenCalledWith('/api/v1/organizations', expect.objectContaining({
+      method: 'POST', body: expect.objectContaining({ visibility: 'PRIVATE' }),
+    }))
+  })
+
+  it('同名確認の再送本文でも PRIVATE と元の本文を保持する', async () => {
+    apiMock.mockRejectedValueOnce(dupname001Error('private-fp', [], 0))
+    apiMock.mockResolvedValueOnce({ data: { id: '20', name: 'x', slug: 'x' } })
+    const wrapper = await visibilityDialog('organization')
+    const visibility = wrapper.findAll('select').find(select => select.find('option[value="PRIVATE"]').exists())!
+    await visibility.setValue('PRIVATE')
+    await wrapper.get('[data-testid="entity-create-submit"]').trigger('click')
+    await flushPromises()
+    const first = apiMock.mock.calls[0]![1].body
+    expect(first.visibility).toBe('PRIVATE')
+    await wrapper.get('[data-testid="duplicate-name-confirm"]').trigger('click')
+    await flushPromises()
+    expect(apiMock.mock.calls[1]![1].body).toEqual({
+      ...first, confirmDuplicate: true, duplicateNameFingerprint: 'private-fp',
+    })
+  })
+
+  it('復元時に旧組織下書きの非公開値だけを移行する', async () => {
+    restoreDraftMock.mockReturnValue({ visibility: 'MEMBERS_AND_ABOVE', name: 'draft' })
+    apiMock.mockResolvedValue({ data: { id: '20', name: 'x', slug: 'x' } })
+    const wrapper = await visibilityDialog('organization', false)
+    await wrapper.setProps({ visible: true })
+    const visibility = wrapper.findAll('select').find(select => select.find('option[value="PRIVATE"]').exists())!
+    expect((visibility.element as HTMLSelectElement).value).toBe('PRIVATE')
+    await wrapper.get('[data-testid="entity-create-submit"]').trigger('click')
+    await flushPromises()
+    expect(apiMock.mock.calls[0]![1].body).toMatchObject({ name: 'draft', visibility: 'PRIVATE' })
+  })
+
+  it('チームの4段階を保持し、種類の切替時に公開範囲を初期化する', async () => {
+    apiMock.mockResolvedValue({ data: { id: '20', name: 'x', slug: 'x' } })
+    const wrapper = await visibilityDialog('team')
+    const visibility = wrapper.findAll('select').find(select => select.find('option[value="GUESTS_AND_ABOVE"]').exists())!
+    expect(visibility.findAll('option').map(option => (option.element as HTMLOptionElement).value)).toEqual([
+      'PUBLIC', 'GUESTS_AND_ABOVE', 'SUPPORTERS_AND_ABOVE', 'MEMBERS_AND_ABOVE',
+    ])
+    await visibility.setValue('SUPPORTERS_AND_ABOVE')
+    await wrapper.get('[data-testid="entity-create-submit"]').trigger('click')
+    await flushPromises()
+    expect(apiMock.mock.calls[0]![1].body.visibility).toBe('SUPPORTERS_AND_ABOVE')
+    await visibility.setValue('MEMBERS_AND_ABOVE')
+    await wrapper.setProps({ entityType: 'organization' })
+    const orgVisibility = wrapper.findAll('select').find(select => select.find('option[value="PRIVATE"]').exists())!
+    expect((orgVisibility.element as HTMLSelectElement).value).toBe('PUBLIC')
+    await wrapper.get('[data-testid="entity-create-submit"]').trigger('click')
+    await flushPromises()
+    expect(apiMock.mock.calls[1]![0]).toBe('/api/v1/organizations')
+    expect(apiMock.mock.calls[1]![1].body.visibility).toBe('PUBLIC')
+  })
+})
+
+
+describe('EntityCreateDialog 作成対象と同名確認の境界', () => {
+  it('保留中の同名確認本文を別の作成対象へ持ち越さない', async () => {
+    apiMock.mockRejectedValueOnce(dupname001Error('team-fp', [], 0))
+    const wrapper = await visibilityDialog('team')
+    await wrapper.get('[data-testid="entity-create-submit"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="duplicate-name-confirm-dialog"]').exists()).toBe(true)
+    await wrapper.setProps({ entityType: 'organization' })
+    expect(wrapper.find('[data-testid="duplicate-name-confirm-dialog"]').exists()).toBe(false)
+    expect(apiMock).toHaveBeenCalledTimes(1)
   })
 })
