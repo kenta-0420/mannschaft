@@ -72,7 +72,13 @@ public class DivisionService {
      * 親大会（tournamentId）の F00 可視性判定に委譲し、不可視は 404（IDOR 秘匿）。
      */
     public List<DivisionResponse> listDivisions(Long tournamentId, Long viewerUserId) {
-        verifyTournamentVisible(tournamentId, viewerUserId);
+        // 認可ゲート: 公開入口で直接 F00 可視性判定を呼ぶ（AuthzControllerGuardArchTest の探索深さ内に置くため
+        // private helper に包まない。不在・不可視は IDOR 秘匿のため 404）。
+        TournamentEntity tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+        if (!tournamentService.isViewableBy(tournamentId, tournament.getOrganizationId(), viewerUserId)) {
+            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
         return divisionRepository.findByTournamentIdOrderByLevelAscSortOrderAsc(tournamentId)
                 .stream().map(mapper::toDivisionResponse).toList();
     }
@@ -158,7 +164,13 @@ public class DivisionService {
      * （公開大会の tId を踏み台にした非公開大会 divId の閲覧を遮断・台帳指摘の穴）。
      */
     public List<ParticipantResponse> listParticipants(Long tournamentId, Long divisionId, Long viewerUserId) {
-        verifyTournamentVisible(tournamentId, viewerUserId);
+        // 認可ゲート: 公開入口で直接 F00 可視性判定を呼ぶ（AuthzControllerGuardArchTest の探索深さ内に置くため
+        // private helper に包まない。不在・不可視は IDOR 秘匿のため 404）。
+        TournamentEntity tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+        if (!tournamentService.isViewableBy(tournamentId, tournament.getOrganizationId(), viewerUserId)) {
+            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
         findDivisionOrThrow(tournamentId, divisionId);
         return participantRepository.findByDivisionIdOrderBySeedAsc(divisionId)
                 .stream().map(mapper::toParticipantResponse).toList();
@@ -241,19 +253,6 @@ public class DivisionService {
             throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
         }
         return tournament;
-    }
-
-    /**
-     * 大会 visibility ガード（閲覧系）。認証ユーザー（未認証なら null）が当該 tournament を
-     * 閲覧できるか {@link TournamentService#isViewableBy} で判定し、不在・不可視なら 404 を投げる。
-     */
-    private void verifyTournamentVisible(Long tournamentId, Long viewerUserId) {
-        TournamentEntity tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
-        // 判定は TournamentService.getTournament と共通（主催組織の管理者は DRAFT も閲覧可）
-        if (!tournamentService.isViewableBy(tournamentId, tournament.getOrganizationId(), viewerUserId)) {
-            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
-        }
     }
 
     TournamentDivisionEntity findDivisionOrThrow(Long tournamentId, Long divId) {

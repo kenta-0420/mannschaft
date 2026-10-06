@@ -29,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -86,11 +87,10 @@ class TournamentServiceTest {
         @DisplayName("組織管理者は F00 Resolver が不可視（他ユーザー作成の DRAFT）でも閲覧できる")
         void 組織管理者はDRAFTでも閲覧可() {
             given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
-            given(contentVisibilityChecker.canView(
-                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, USER_ID))
-                    .willReturn(false);
 
             assertThat(service.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).isTrue();
+            // 管理者判定で短絡するため F00 Resolver は呼ばれない（Resolver が不可視でも閲覧可の根拠）
+            verify(contentVisibilityChecker, never()).canView(any(), any(), any());
         }
 
         @Test
@@ -99,6 +99,7 @@ class TournamentServiceTest {
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
 
             assertThat(service.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).isTrue();
+            verify(contentVisibilityChecker, never()).canView(any(), any(), any());
         }
 
         @Test
