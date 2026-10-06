@@ -323,6 +323,15 @@ test('BLOG-LIST-REAL: タイトル閲覧・本人編集・他作者と別テナ�
     contentType: 'application/json',
   })
 
+  // 新規スコープのADMIN案内は通常UIで閉じ、後続の一覧操作の前提を整える。
+  for (const scope of [team, org]) {
+    await openList(admin.page, scope)
+    const initialPermissions = admin.page.getByTestId('member-permission-setup')
+    await expect(initialPermissions, '新規スコープの権限初期設定案内').toBeVisible({ timeout: 15_000 })
+    await initialPermissions.getByRole('button', { name: 'あとで決める' }).click()
+    await expect(initialPermissions).toBeHidden()
+  }
+
   // 同slugのTEAM/ORG記事を、本人とは別の正規MEMBERとADMINも実一覧から読む。
   for (const user of [owner, reader, admin]) {
     await readFromList(user, team, teamPost, teamBody)
