@@ -31,6 +31,7 @@
  */
 
 import { test, expect, type Page, type APIRequestContext } from '@playwright/test'
+import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 
 // ---------------------------------------------------------------------------
@@ -205,22 +206,7 @@ function findFeedItem(feed: FeedResponse | null, feedId: number): FeedItem | nul
 // ヘルパー: ログイン（UI 用・page.request 直叩きで確実に認証）
 // ---------------------------------------------------------------------------
 async function loginUi(page: Page, email: string, password: string): Promise<void> {
-  const loginRes = await page.request.post(`${BACKEND_URL}/api/v1/auth/login`, {
-    data: { email, password },
-  })
-  if (!loginRes.ok()) throw new Error(`UI ログイン失敗 (${email}): ${loginRes.status()}`)
-  const meRes = await page.request.get(`${BACKEND_URL}/api/v1/users/me`)
-  const me = (await meRes.json()).data as {
-    id: number; email: string; lastName: string; firstName: string
-    avatarUrl: string | null; systemRole: string | null; timezone: string | null
-  }
-  await page.goto(FRONTEND_URL)
-  await page.evaluate((user) => {
-    localStorage.setItem('currentUser', JSON.stringify(user))
-  }, {
-    id: me.id, email: me.email, fullName: `${me.lastName} ${me.firstName}`,
-    profileImageUrl: me.avatarUrl, systemRole: me.systemRole ?? undefined, timezone: me.timezone ?? undefined,
-  })
+  await loginViaApi(page, { email, password }, { apiBaseUrl: BACKEND_URL })
 }
 
 async function settle(page: Page): Promise<void> {

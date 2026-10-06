@@ -147,6 +147,8 @@ test.describe('MOBILE-SHELL: グローバルヘッダー/ドロワー 390px受�
     await expect(teamToggle).toHaveAttribute('aria-expanded', 'true')
     const popover = page.locator('.p-popover:visible').last()
     await expect(popover).toBeVisible()
+    // 入場アニメーションの縮小状態ではなく、通常表示の操作領域を採寸する。
+    await expect(popover).toHaveCSS('transform', 'none')
     const popoverGeometry = await popover.evaluate((el) => {
       const rect = el.getBoundingClientRect()
       const main = el.querySelector('.flex.gap-0.divide-x')
@@ -197,6 +199,7 @@ test.describe('MOBILE-SHELL: グローバルヘッダー/ドロワー 390px受�
     await narrowTeamToggle.press('Enter')
     const narrowPopover = page.locator('.p-popover:visible').last()
     await expect(narrowPopover).toBeVisible()
+    await expect(narrowPopover).toHaveCSS('transform', 'none')
     const narrowLastAction = narrowPopover.locator('.border-t button').last()
     await narrowLastAction.scrollIntoViewIfNeeded()
     await expect(narrowLastAction).toBeInViewport()
