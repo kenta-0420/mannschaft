@@ -235,8 +235,8 @@ class RanchPurgeServiceIT extends AbstractMySqlIntegrationTest {
         // 再申請後の新factより旧factを後に配送しても、現在の退会状態で双方を保留する。
         assertDeferred(fact(me));
         assertDeferred(oldFact);
-        assertThat(deliveryGuard.withLockedDeliveryUser(me, state -> state.withdrawalAttemptId()))
-                .isEqualTo(renewed.withdrawalAttemptId());
+        UUID currentAttemptId = deliveryGuard.withLockedDeliveryUser(me, state -> state.withdrawalAttemptId());
+        assertThat(currentAttemptId).isEqualTo(renewed.withdrawalAttemptId());
         assertThat(owners.findByUserId(me).orElseThrow().getStatus()).isEqualTo(original);
         assertThat(ownRows(me)).usingRecursiveComparison().isEqualTo(before);
     }
@@ -258,8 +258,9 @@ class RanchPurgeServiceIT extends AbstractMySqlIntegrationTest {
             });
             assertThat(queued.await(10, TimeUnit.SECONDS)).isTrue();
             markPurging();
-            assertThat(deliveryGuard.withLockedDeliveryUser(me, state -> state.lifecycle()))
-                    .isEqualTo(DeliveryUserState.Lifecycle.PURGING);
+            DeliveryUserState.Lifecycle currentLifecycle =
+                    deliveryGuard.withLockedDeliveryUser(me, state -> state.lifecycle());
+            assertThat(currentLifecycle).isEqualTo(DeliveryUserState.Lifecycle.PURGING);
             assertCommandDenied(() -> actions.pause(me, UUID.randomUUID(), new RanchVersionRequest(ownerVersion())));
             assertDeleted(consumer.consume(fact(me)));
             purge.purgeUser(me);
