@@ -7,6 +7,8 @@ import ConfirmationService from 'primevue/confirmationservice'
 import { useNuxtApp, useRouter } from '#app'
 import { useAuthStore } from '~/stores/useAuthStore'
 import { useTeamStore } from '~/stores/useTeamStore'
+import { useFeatureFlagStore } from '~/stores/featureFlags'
+import type { PublicFeatureFlag } from '~/composables/useFeatureFlagsApi'
 import DashboardErrorState from '~/components/DashboardErrorState.vue'
 import type { ShiftScheduleResponse } from '~/types/shift'
 import Page from './index.vue'
@@ -37,11 +39,15 @@ beforeEach(() => {
   failure = undefined
   role = 'ADMIN'
   useTeamStore(useNuxtApp().$pinia).$reset()
+  useFeatureFlagStore(useNuxtApp().$pinia).$patch({ flags: {}, loaded: false, publicLoaded: false })
   const authStore = useAuthStore(useNuxtApp().$pinia)
   authStore.$reset()
   authStore.$patch({ user: { id: 1, email: 'fixture@example.test', fullName: '試験利用者', profileImageUrl: null } })
   api.mockReset().mockImplementation(async (path: string) => {
     if (path === failedPath) throw failure
+    if (path === '/api/v1/feature-flags') {
+      return { data: [{ flagKey: 'FEATURE_SHIFT_ENABLED', enabled: true }] satisfies PublicFeatureFlag[] }
+    }
     if (path === teamsPath) {
       return { data: [{ id: 12, slug: 'owned-team', name: '自分のチーム', role }] }
     }
@@ -57,6 +63,7 @@ afterEach(() => {
   removeDetailRoute = undefined
   useAuthStore(useNuxtApp().$pinia).$reset()
   useTeamStore(useNuxtApp().$pinia).$reset()
+  useFeatureFlagStore(useNuxtApp().$pinia).$patch({ flags: {}, loaded: false, publicLoaded: false })
   vi.unstubAllGlobals()
 })
 
