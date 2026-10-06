@@ -127,28 +127,39 @@ async function login(base, label) {
   return json.data.accessToken;
 }
 
-async function get(base, label, route, token, limit = 32768) {
+async function get(base, label, route, token, limit = 32768, timeoutMs = 15000) {
   const id = `${String(receipt.requests.length + 1).padStart(2, '0')}-${label}`;
   const filename = `${id}.body`;
   const destination = path.join(privateDir, filename);
   const record = { id, route, status: null, bytes: 0, complete: false, artifactRaw: null };
   receipt.requests.push(record);
-  const response = await fetch(new URL(route, base), { redirect: 'error',
-    signal: AbortSignal.timeout(15000), headers: token ? { Authorization: `Bearer ${token}` } : {} });
-  record.status = response.status;
-  const fd = fs.openSync(destination, 'wx', 0o600); const reader = response.body.getReader();
+  const startedAt = performance.now();
   try {
-    for (;;) { const { done, value } = await reader.read(); if (done) { record.complete = true; break; }
-      invariant(record.bytes + value.length <= limit, `${id} body 上限`);
-      fs.writeSync(fd, value); record.bytes += value.length; }
-  } finally {
-    fs.closeSync(fd); await reader.cancel();
-    record.sha256 = sha(fs.readFileSync(destination));
+    const response = await fetch(new URL(route, base), { redirect: 'error',
+      signal: AbortSignal.timeout(timeoutMs), headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    record.status = response.status;
+    const fd = fs.openSync(destination, 'wx', 0o600); const reader = response.body.getReader();
+    try {
+      for (;;) { const { done, value } = await reader.read(); if (done) { record.complete = true; break; }
+        invariant(record.bytes + value.length <= limit, `${id} body 上限`);
+        fs.writeSync(fd, value); record.bytes += value.length; }
+    } finally {
+      fs.closeSync(fd); await reader.cancel();
+      record.sha256 = sha(fs.readFileSync(destination));
+    }
+    const raw = fs.readFileSync(destination);
+    record.sha256 = sha(raw);
+    // 原HTTP bodyの保存と SHA の後にのみ parse する。
+    return { record, raw, filename, json: () => JSON.parse(raw.toString('utf8')) };
+  } catch (error) {
+    // 例外本文を記録せず、取得予算と許可した中断名だけを残す。
+    record.failure = {
+      budgetMs: timeoutMs,
+      elapsedMs: Math.min(2147483647, Math.max(0, Math.round(performance.now() - startedAt))),
+    };
+    if (['TimeoutError', 'AbortError'].includes(error?.name)) record.failure.errorName = error.name;
+    throw error;
   }
-  const raw = fs.readFileSync(destination);
-  record.sha256 = sha(raw);
-  // 原HTTP bodyの保存と SHA の後にのみ parse する。
-  return { record, raw, filename, json: () => JSON.parse(raw.toString('utf8')) };
 }
 
 function publish(result) {
@@ -242,7 +253,7 @@ async function run(base) {
     // Converter の直接 RSE と、Spring 型変換包絡を処理する GHE の既存2経路。
     errorBody(result, 404, 'COMMON_005', [message, 'リソースが見つかりません']); publish(result);
   }
-  const result = await get(base, 'openapi', '/v3/api-docs', null, 10 * 1024 * 1024);
+  const result = await get(base, 'openapi', '/v3/api-docs', null, 10 * 1024 * 1024, 60000);
   invariant(result.record.status === 200, 'OpenAPI status 不一致');
   const document = result.json(); invariant(typeof document.openapi === 'string' && document.paths, 'OpenAPI document 不一致');
   const targets = [
