@@ -206,7 +206,7 @@ function onPopoverHide() {
     />
     <button
       type="button"
-      class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap text-surface-600 dark:text-surface-400 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+      class="flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap text-surface-600 dark:text-surface-400 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
       aria-haspopup="menu"
       :aria-expanded="isPopoverOpen ? 'true' : 'false'"
       :aria-label="label"
@@ -223,9 +223,9 @@ function onPopoverHide() {
       @show="onPopoverShow"
       @hide="onPopoverHide"
     >
-      <div class="flex flex-col" style="min-width: 520px; max-width: 700px">
+      <div class="flex max-h-[calc(100dvh-16px)] flex-col" style="width: min(520px, calc(100vw - 16px)); max-width: calc(100vw - 16px)">
         <!-- メインコンテンツ: 2カラムレイアウト -->
-        <div class="flex gap-0 divide-x divide-surface-200 dark:divide-surface-700">
+        <div class="flex min-h-0 flex-1 gap-0 divide-x divide-surface-200 overflow-y-auto dark:divide-surface-700">
           <!-- 左カラム: フォルダ一覧 -->
           <div class="flex-1 min-w-0 py-2">
             <div class="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-surface-400">
@@ -233,28 +233,32 @@ function onPopoverHide() {
             </div>
 
             <!-- すべて（一覧）→ 展開トグル -->
-            <button
-              role="menuitem"
-              type="button"
-              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
-              @click="goAll"
-            >
-              <i class="pi pi-list text-base text-surface-500" />
-              <span class="flex-1">{{ t('scopeFolder.nav.allList') }}</span>
-              <i
-                class="pi pi-chevron-down text-xs text-surface-400 transition-transform"
-                :class="{ 'rotate-180': showAllExpanded }"
-                aria-hidden="true"
-              />
-              <!-- ハブ画面への遷移アイコン -->
-              <span
-                class="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-surface-200 dark:hover:bg-surface-700"
+            <div class="flex items-stretch">
+              <button
+                role="menuitem"
+                type="button"
+                class="flex min-h-11 flex-1 items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
+                @click="goAll"
+              >
+                <i class="pi pi-list text-base text-surface-500" />
+                <span class="flex-1">{{ t('scopeFolder.nav.allList') }}</span>
+                <i
+                  class="pi pi-chevron-down text-xs text-surface-400 transition-transform"
+                  :class="{ 'rotate-180': showAllExpanded }"
+                  aria-hidden="true"
+                />
+              </button>
+              <button
+                type="button"
+                class="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded hover:bg-surface-200 focus:bg-surface-200 focus:outline-none dark:hover:bg-surface-700 dark:focus:bg-surface-700"
                 :title="t('scopeFolder.nav.showAll')"
-                @click.stop="goAllHub"
+                :aria-label="t('scopeFolder.nav.showAll')"
+                :data-testid="`scope-nav-dropdown-all-hub-${scopeType}`"
+                @click="goAllHub"
               >
                 <i class="pi pi-arrow-up-right text-xs text-surface-400" aria-hidden="true" />
-              </span>
-            </button>
+              </button>
+            </div>
 
             <!-- すべて展開時のサブリスト（メンバー/サポーター区分） -->
             <template v-if="showAllExpanded">
@@ -268,7 +272,7 @@ function onPopoverHide() {
                   :key="`all-member-${scope.id}`"
                   role="menuitem"
                   type="button"
-                  class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
+                  class="flex min-h-11 w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
                   @click="goScope(scope.slug)"
                 >
                   <i class="pi pi-arrow-right text-xs text-surface-400 shrink-0" aria-hidden="true" />
@@ -286,7 +290,7 @@ function onPopoverHide() {
                   :key="`all-supporter-${scope.id}`"
                   role="menuitem"
                   type="button"
-                  class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
+                  class="flex min-h-11 w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
                   @click="goScope(scope.slug)"
                 >
                   <i class="pi pi-arrow-right text-xs text-surface-400 shrink-0" aria-hidden="true" />
@@ -310,39 +314,43 @@ function onPopoverHide() {
               class="flex flex-col"
             >
               <!-- フォルダ行（展開トグル） -->
-              <button
-                role="menuitem"
-                type="button"
-                class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
-                :data-testid="`scope-nav-dropdown-folder-${folder.id}`"
-                @click="toggleFolder(folder.id)"
-              >
-                <span
-                  class="inline-block h-3 w-3 shrink-0 rounded-full"
-                  :style="folder.color ? { backgroundColor: folder.color } : { backgroundColor: '#9CA3AF' }"
-                  aria-hidden="true"
-                />
-                <i
-                  v-if="folder.icon"
-                  :class="['pi', folder.icon, 'text-base text-surface-500']"
-                  aria-hidden="true"
-                />
-                <span class="flex-1 truncate">{{ folder.name }}</span>
-                <span class="shrink-0 text-xs text-surface-400">{{ folderItemCount(folder.id) }}</span>
-                <i
-                  class="pi pi-chevron-down text-xs text-surface-400 transition-transform"
-                  :class="{ 'rotate-180': expandedFolderId === folder.id }"
-                  aria-hidden="true"
-                />
-                <!-- ハブ遷移ボタン（外部リンクアイコン） -->
-                <span
-                  class="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-surface-200 dark:hover:bg-surface-700"
+              <div class="flex items-stretch">
+                <button
+                  role="menuitem"
+                  type="button"
+                  class="flex min-h-11 flex-1 items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
+                  :data-testid="`scope-nav-dropdown-folder-${folder.id}`"
+                  @click="toggleFolder(folder.id)"
+                >
+                  <span
+                    class="inline-block h-3 w-3 shrink-0 rounded-full"
+                    :style="folder.color ? { backgroundColor: folder.color } : { backgroundColor: '#9CA3AF' }"
+                    aria-hidden="true"
+                  />
+                  <i
+                    v-if="folder.icon"
+                    :class="['pi', folder.icon, 'text-base text-surface-500']"
+                    aria-hidden="true"
+                  />
+                  <span class="flex-1 truncate">{{ folder.name }}</span>
+                  <span class="shrink-0 text-xs text-surface-400">{{ folderItemCount(folder.id) }}</span>
+                  <i
+                    class="pi pi-chevron-down text-xs text-surface-400 transition-transform"
+                    :class="{ 'rotate-180': expandedFolderId === folder.id }"
+                    aria-hidden="true"
+                  />
+                </button>
+                <button
+                  type="button"
+                  class="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded hover:bg-surface-200 focus:bg-surface-200 focus:outline-none dark:hover:bg-surface-700 dark:focus:bg-surface-700"
                   :title="t('scopeFolder.nav.manage')"
-                  @click.stop="goFolder(folder.id)"
+                  :aria-label="t('scopeFolder.nav.manage')"
+                  :data-testid="`scope-nav-dropdown-folder-hub-${folder.id}`"
+                  @click="goFolder(folder.id)"
                 >
                   <i class="pi pi-arrow-up-right text-xs text-surface-400" aria-hidden="true" />
-                </span>
-              </button>
+                </button>
+              </div>
 
               <!-- サブリスト（展開時のみ） -->
               <template v-if="expandedFolderId === folder.id">
@@ -351,7 +359,7 @@ function onPopoverHide() {
                   :key="`folder-${folder.id}-scope-${scope.id}`"
                   role="menuitem"
                   type="button"
-                  class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
+                  class="flex min-h-11 w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
                   @click="goScope(scope.slug)"
                 >
                   <i class="pi pi-arrow-right text-xs text-surface-400 shrink-0" aria-hidden="true" />
@@ -372,7 +380,7 @@ function onPopoverHide() {
               v-if="defaultFolder"
               role="menuitem"
               type="button"
-              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
+              class="flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
               @click="goDefault"
             >
               <span
@@ -397,7 +405,7 @@ function onPopoverHide() {
               :key="`scope-${scope.id}`"
               role="menuitem"
               type="button"
-              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
+              class="flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
               :data-testid="`scope-nav-dropdown-scope-${scope.id}`"
               @click="goScope(scope.slug)"
             >
@@ -408,20 +416,20 @@ function onPopoverHide() {
         </div>
 
         <!-- フッター: アクションボタン -->
-        <div class="flex items-center gap-1 border-t border-surface-200 dark:border-surface-700 px-4 py-2">
+        <div class="flex flex-wrap items-center justify-between gap-1 border-t border-surface-200 px-2 py-2 dark:border-surface-700">
           <button
             type="button"
-            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 focus:outline-none"
+            class="flex min-h-11 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 focus:outline-none"
             @click="goAllHub"
           >
             <i class="pi pi-list text-xs" aria-hidden="true" />
             {{ t('scopeFolder.nav.showAll') }}
           </button>
 
-          <div class="flex items-center gap-1">
+          <div class="flex flex-wrap items-center gap-1">
             <button
               type="button"
-              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-primary hover:bg-primary-50 dark:hover:bg-primary-900/30 focus:outline-none"
+              class="flex min-h-11 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-primary hover:bg-primary-50 dark:hover:bg-primary-900/30 focus:outline-none"
               @click="goCreateNew"
             >
               <i class="pi pi-plus text-xs" aria-hidden="true" />
@@ -430,7 +438,7 @@ function onPopoverHide() {
 
             <button
               type="button"
-              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 focus:outline-none"
+              class="flex min-h-11 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 focus:outline-none"
               @click="goManage"
             >
               <i class="pi pi-cog text-xs text-surface-500" aria-hidden="true" />

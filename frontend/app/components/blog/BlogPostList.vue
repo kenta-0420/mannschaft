@@ -97,6 +97,34 @@ async function submitCreate() {
   }
 }
 
+function isValidId(id: number | null | undefined): id is number {
+  return typeof id === 'number' && Number.isSafeInteger(id) && id > 0
+}
+
+/** 現行APIの scope.authorId を正準とし、欠損同士を本人一致としない。 */
+function isOwnPost(post: BlogPostResponse): boolean {
+  const authorId = post.scope?.authorId
+  const currentUserId = authStore.currentUser?.id
+  return isValidId(authorId) && isValidId(currentUserId) && authorId === currentUserId
+}
+
+function canEditPost(post: BlogPostResponse): boolean {
+  return isValidId(post.id) && isOwnPost(post)
+}
+
+/** タイトルは公開記事の閲覧入口。未公開・スコープ不明の記事を編集へ送り込まない。 */
+function postReadRoute(post: BlogPostResponse): { path: string; query?: Record<string, string> } | null {
+  const slug = post.content?.slug
+  if (post.meta?.status !== 'PUBLISHED' || !slug?.trim() || !post.scope) return null
+  const { teamId, organizationId, userId } = post.scope
+  if ([teamId, organizationId, userId].filter(id => id != null).length !== 1) return null
+  const encodedSlug = encodeURIComponent(slug)
+  if (isValidId(teamId)) return { path: `/blog/posts/${encodedSlug}`, query: { teamId: String(teamId) } }
+  if (isValidId(organizationId)) return { path: `/blog/posts/${encodedSlug}`, query: { organizationId: String(organizationId) } }
+  if (isValidId(userId)) return { path: `/users/${userId}/blog/posts/${encodedSlug}` }
+  return null
+}
+
 /**
  * 投稿者本人、または ADMIN/DEPUTY_ADMIN（canManage）のみ公開切替・削除できる（BE checkWriteAccess 相当）。
  * チーム/組織スコープでのみ表示する。個人ブログ（scopeType 未指定）の「みんなの投稿」には元々この操作が無く、
@@ -105,7 +133,8 @@ async function submitCreate() {
  */
 function canModeratePost(post: BlogPostResponse): boolean {
   if (props.scopeType !== 'TEAM' && props.scopeType !== 'ORGANIZATION') return false
-  return props.canManage || post.author?.id === authStore.currentUser?.id
+  if (!isValidId(post.id)) return false
+  return props.canManage || isOwnPost(post)
 }
 
 async function togglePublish(post: BlogPostResponse) {
@@ -241,10 +270,7 @@ defineExpose({ refresh: loadPosts })
         data-testid="blog-post-card"
         class="overflow-hidden rounded-xl border border-surface-300 bg-surface-0 text-left transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-800"
       >
-        <button
-          class="block w-full text-left"
-          @click="emit('select', post); navigateTo(`/blog/posts/${post.id}/edit`)"
-        >
+        <div class="block w-full text-left">
           <img v-if="post.content?.coverImageUrl" :src="post.content.coverImageUrl" class="h-40 w-full object-cover" >
           <div class="p-4">
             <div class="mb-2 flex flex-wrap items-center gap-2">
@@ -260,7 +286,18 @@ defineExpose({ refresh: loadPosts })
                 >{{ tag.name }}</span
               >
             </div>
-            <h3 class="mb-1 text-sm font-semibold line-clamp-2">{{ post.content?.title }}</h3>
+            <h3 class="mb-1 text-sm font-semibold">
+              <NuxtLink
+                v-if="postReadRoute(post)"
+                :to="postReadRoute(post) ?? ''"
+                :data-testid="`blog-post-read-${post.id}`"
+                class="flex min-h-11 items-center hover:underline"
+                @click="emit('select', post)"
+              >
+                <span class="line-clamp-2">{{ post.content?.title }}</span>
+              </NuxtLink>
+              <span v-else class="line-clamp-2">{{ post.content?.title }}</span>
+            </h3>
             <p v-if="post.content?.excerpt" class="mb-2 text-xs text-surface-400 line-clamp-2">
               {{ post.content.excerpt }}
             </p>
@@ -270,13 +307,24 @@ defineExpose({ refresh: loadPosts })
               <span v-if="post.stats?.viewCount"><i class="pi pi-eye" /> {{ post.stats.viewCount }}</span>
             </div>
           </div>
-        </button>
+        </div>
 
         <div
-          v-if="canModeratePost(post)"
-          class="flex justify-end gap-1 border-t border-surface-200 px-2 py-1 dark:border-surface-700"
+          v-if="canEditPost(post) || canModeratePost(post)"
+          class="flex flex-wrap justify-end gap-1 border-t border-surface-200 px-2 py-1 dark:border-surface-700"
         >
           <Button
+            v-if="canEditPost(post)"
+            :label="$t('blog.post.editPost')"
+            icon="pi pi-pencil"
+            size="small"
+            text
+            class="min-h-11 min-w-11"
+            :data-testid="`blog-post-edit-${post.id}`"
+            @click="navigateTo(`/blog/posts/${post.id}/edit`)"
+          />
+          <Button
+            v-if="canModeratePost(post)"
             :label="post.meta?.status === 'PUBLISHED' ? $t('blog.post.unpublishButton') : $t('blog.post.publishButton')"
             size="small"
             :severity="post.meta?.status === 'PUBLISHED' ? 'secondary' : 'success'"
@@ -285,6 +333,7 @@ defineExpose({ refresh: loadPosts })
             @click.stop="togglePublish(post)"
           />
           <Button
+            v-if="canModeratePost(post)"
             icon="pi pi-trash"
             size="small"
             severity="danger"
