@@ -19,7 +19,7 @@ function savedResult(): DiagnosisResult {
     }])),
   }
 }
-function render(result: DiagnosisResult, locale = 'ja') {
+function render(result: DiagnosisResult, locale: 'ja' | 'en' = 'ja') {
   return mount(RanchAxisResults, { props: { result }, global: { plugins: [createI18n({ legacy: false, locale, messages: { ja: jaMessages, en: enMessages } })] } })
 }
 describe('診断結果の本人傾向', () => {
