@@ -11,6 +11,8 @@ import deMessages from '~/locales/de/ranch.json'
 import type { DiagnosisResult } from '~/types/ranch'
 import RanchAxisResults from './RanchAxisResults.vue'
 
+// 独立した表示期待値。locale JSON は Nuxt i18n により AST へ precompile される。
+const DRAFT_NOTICE_EN = 'This result uses an initial draft. The questions and translations are not approved; Japanese draft text also appears in other languages.'
 const AXES = ['FAMILIAR_NEW', 'FOCUS_VARIETY', 'SPONTANEOUS_PLAN', 'SOLO_TOGETHER', 'EXPRESSION', 'NOTICE']
 function savedResult(): DiagnosisResult {
   return {
@@ -33,27 +35,27 @@ describe('診断結果の本人傾向', () => {
     const focus = wrapper.find('[data-axis="FOCUS_VARIETY"]')
     expect(focus.text()).toContain('FOCUS_VARIETYの保存右ラベル')
     expect(focus.text()).not.toContain('FOCUS_VARIETYの保存左ラベル')
-    expect(focus.text()).toContain(jaMessages.ranch.diagnosisResults.tieSelection)
+    expect(focus.text()).toContain('回答が同点だったため、あなたが選んだ側を表示しています。')
   })
   it('旧結果の補足が無いときはtypeCodeや説明を分割して推測しない', () => {
     const result = savedResult(); result.axisSelections = null
     const wrapper = render(result)
     expect(wrapper.findAll('li')).toHaveLength(0)
-    expect(wrapper.text()).toContain(jaMessages.ranch.diagnosisResults.labelsUnavailable)
+    expect(wrapper.text()).toContain('この保存結果には傾向ラベルの情報がありません。保存当時の説明を確認できます。')
   })
   it('保存ラベルの英語が欠落しても日本語を示し、軸名とUI説明は英語になる', () => {
     const wrapper = render(savedResult(), 'en')
-    expect(wrapper.text()).toContain(enMessages.ranch.diagnosisResults.tendencies)
+    expect(wrapper.text()).toContain('Your six tendencies')
     expect(wrapper.text()).toContain('NOTICEの保存右ラベル')
   })
   it('英語画面で日本語草案を表示するときは初期草案と翻訳未承認を明示する', () => {
     const result = savedResult(); result.questionnaireVersion = 'draft-20261003-v1'
     const wrapper = render(result, 'en')
-    expect(wrapper.text()).toContain(enMessages.ranch.diagnosisResults.draftNotice)
+    expect(wrapper.text()).toContain(DRAFT_NOTICE_EN)
     expect(wrapper.text()).toContain('not approved')
   })
   it('草案以外の保存結果へ未承認との断定を付けない', () => {
     const wrapper = render(savedResult(), 'en')
-    expect(wrapper.text()).not.toContain(enMessages.ranch.diagnosisResults.draftNotice)
+    expect(wrapper.text()).not.toContain(DRAFT_NOTICE_EN)
   })
 })
