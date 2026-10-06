@@ -65,6 +65,8 @@ public class TournamentService {
     private final TournamentParticipantRepository participantRepository;
     private final TournamentMapper mapper;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    /** 閲覧可否の共通ゲート（部門・参加チーム一覧と同じ判定。非 @Transactional の独立部品）。 */
+    private final TournamentViewAccessGate viewAccessGate;
     /** 認可根治戦役 Wave7: 大会一覧/詳細で主催組織 ADMIN/DEPUTY_ADMIN を判定するため。 */
     private final com.mannschaft.app.common.AccessControlService accessControlService;
     /** CMP-028 Phase C: 大会一覧の可視レベル解決（SQL 述語化）のため。 */
@@ -210,33 +212,11 @@ public class TournamentService {
                 .filter(t -> orgId.equals(t.getOrganizationId()))
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
 
-        if (!isViewableBy(tournamentId, tournament.getOrganizationId(), viewerUserId)) {
+        if (!viewAccessGate.isViewableBy(tournamentId, tournament.getOrganizationId(), viewerUserId)) {
             throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
         }
 
         return buildTournamentResponse(tournament, tournamentId);
-    }
-
-    /**
-     * 閲覧者が大会を閲覧できるかを判定する（閲覧系の共通ゲート）。
-     *
-     * <p>主催組織の ADMIN / DEPUTY_ADMIN と SYSTEM_ADMIN は、他ユーザーが作成した DRAFT 大会を含め閲覧できる
-     * （F00 Resolver は作成者・参加者視点のため管理者を通さない）。それ以外は F00 共通可視性 Resolver に委譲する。
-     * {@link #getTournament(Long, Long, Long)} と、大会配下の閲覧系 API（部門・参加チーム一覧）が
-     * 同じ判定を使うよう一元化している。不可視時に 404 を投げるのは呼び出し側の責務。</p>
-     *
-     * @param tournamentId   対象大会 ID
-     * @param organizationId 大会の主催組織 ID（管理者例外の判定に使う）
-     * @param viewerUserId 閲覧者（未認証は null）
-     */
-    public boolean isViewableBy(Long tournamentId, Long organizationId, Long viewerUserId) {
-        boolean orgManager = viewerUserId != null
-                && (accessControlService.isSystemAdmin(viewerUserId)
-                    || accessControlService.isAdminOrAbove(
-                            viewerUserId, organizationId, "ORGANIZATION"));
-        return orgManager
-                || contentVisibilityChecker.canView(
-                        ReferenceType.TOURNAMENT, tournamentId, viewerUserId);
     }
 
     /**

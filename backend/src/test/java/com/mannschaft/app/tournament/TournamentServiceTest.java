@@ -29,7 +29,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -52,6 +51,8 @@ class TournamentServiceTest {
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
     /** 認可根治戦役 Wave7: getTournament/listTournaments の主催組織 ADMIN 判定用モック。 */
     @Mock private com.mannschaft.app.common.AccessControlService accessControlService;
+    /** 閲覧可否の共通ゲート（判定自体は TournamentViewAccessGateTest で検証）。 */
+    @Mock private com.mannschaft.app.tournament.service.TournamentViewAccessGate viewAccessGate;
     @Mock private com.mannschaft.app.tournament.service.TournamentContactSpaceProvisioningService contactSpaceProvisioningService;
     /** F08.7.1 / 04: シーズン継続時のデフォルトフォルダ払い出し検証用。 */
     @Mock private com.mannschaft.app.filesharing.service.SharedFolderService sharedFolderService;
@@ -76,50 +77,6 @@ class TournamentServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
-        }
-    }
-
-    @Nested
-    @DisplayName("isViewableBy（大会閲覧の共通ゲート。部門・参加チーム一覧も同じ判定を使う）")
-    class IsViewableBy {
-
-        @Test
-        @DisplayName("組織管理者は F00 Resolver が不可視（他ユーザー作成の DRAFT）でも閲覧できる")
-        void 組織管理者はDRAFTでも閲覧可() {
-            given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
-
-            assertThat(service.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).isTrue();
-            // 管理者判定で短絡するため F00 Resolver は呼ばれない（Resolver が不可視でも閲覧可の根拠）
-            verify(contentVisibilityChecker, never()).canView(any(), any(), any());
-        }
-
-        @Test
-        @DisplayName("SYSTEM_ADMIN は閲覧できる")
-        void システム管理者は閲覧可() {
-            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
-
-            assertThat(service.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).isTrue();
-            verify(contentVisibilityChecker, never()).canView(any(), any(), any());
-        }
-
-        @Test
-        @DisplayName("権限のない者は Resolver が不可視なら閲覧できない（404 になる）")
-        void 権限なしは不可視なら閲覧不可() {
-            given(contentVisibilityChecker.canView(
-                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, USER_ID))
-                    .willReturn(false);
-
-            assertThat(service.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).isFalse();
-        }
-
-        @Test
-        @DisplayName("未認証は管理者判定を行わず Resolver に委譲する")
-        void 未認証はResolverへ委譲() {
-            given(contentVisibilityChecker.canView(
-                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, null))
-                    .willReturn(true);
-
-            assertThat(service.isViewableBy(TOURNAMENT_ID, ORG_ID, null)).isTrue();
         }
     }
 

@@ -30,7 +30,7 @@ import java.util.List;
  *
  * <h2>認可（認可根治戦役 Wave2 トランシェ2C）</h2>
  * <ul>
- *   <li>閲覧（一覧）: 親大会（{@code tId}）の F00 可視性判定に委譲。不可視は 404（IDOR 秘匿）。</li>
+ *   <li>閲覧（一覧）: 親大会（{@code tId}）の可視性判定は Controller が {@link TournamentViewAccessGate} で行う（不可視は 404・IDOR 秘匿）。</li>
  *   <li>変更（作成／更新／削除）: {@code tId} が path {@code orgId} 配下であることを検証した上で、
  *       主催組織 ADMIN/DEPUTY_ADMIN を要求する。他組織の大会 ID を自組織 URL に指定した越境
  *       （BOLA）は 404（存在秘匿）で遮断する。</li>
@@ -46,7 +46,6 @@ public class DivisionService {
     private final TournamentDivisionRepository divisionRepository;
     private final TournamentParticipantRepository participantRepository;
     private final TournamentRepository tournamentRepository;
-    private final TournamentService tournamentService;
     private final TournamentMapper mapper;
     private final AccessControlService accessControlService;
     /**
@@ -69,16 +68,9 @@ public class DivisionService {
 
     /**
      * ディビジョン一覧を取得する（閲覧系）。
-     * 親大会（tournamentId）の F00 可視性判定に委譲し、不可視は 404（IDOR 秘匿）。
+     * 認可（親大会の閲覧可否。不可視は 404）は公開入口の Controller が {@link TournamentViewAccessGate} で行う。
      */
-    public List<DivisionResponse> listDivisions(Long tournamentId, Long viewerUserId) {
-        // 認可ゲート: 公開入口で直接 F00 可視性判定を呼ぶ（AuthzControllerGuardArchTest の探索深さ内に置くため
-        // private helper に包まない。不在・不可視は IDOR 秘匿のため 404）。
-        TournamentEntity tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
-        if (!tournamentService.isViewableBy(tournamentId, tournament.getOrganizationId(), viewerUserId)) {
-            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
-        }
+    public List<DivisionResponse> listDivisions(Long tournamentId) {
         return divisionRepository.findByTournamentIdOrderByLevelAscSortOrderAsc(tournamentId)
                 .stream().map(mapper::toDivisionResponse).toList();
     }
@@ -160,17 +152,10 @@ public class DivisionService {
 
     /**
      * 参加チーム一覧を取得する（閲覧系）。
-     * 親大会（tournamentId）の可視性に加え、divId が tournamentId 配下であることを束縛検証する
+     * 親大会の閲覧可否は Controller が {@link TournamentViewAccessGate} で検証済み。ここでは divId が tournamentId 配下であることを束縛検証する
      * （公開大会の tId を踏み台にした非公開大会 divId の閲覧を遮断・台帳指摘の穴）。
      */
-    public List<ParticipantResponse> listParticipants(Long tournamentId, Long divisionId, Long viewerUserId) {
-        // 認可ゲート: 公開入口で直接 F00 可視性判定を呼ぶ（AuthzControllerGuardArchTest の探索深さ内に置くため
-        // private helper に包まない。不在・不可視は IDOR 秘匿のため 404）。
-        TournamentEntity tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
-        if (!tournamentService.isViewableBy(tournamentId, tournament.getOrganizationId(), viewerUserId)) {
-            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
-        }
+    public List<ParticipantResponse> listParticipants(Long tournamentId, Long divisionId) {
         findDivisionOrThrow(tournamentId, divisionId);
         return participantRepository.findByDivisionIdOrderBySeedAsc(divisionId)
                 .stream().map(mapper::toParticipantResponse).toList();

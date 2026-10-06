@@ -2,7 +2,6 @@ package com.mannschaft.app.tournament;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.tournament.dto.CreateParticipantRequest;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
@@ -48,8 +47,6 @@ class DivisionServiceTest {
     @Mock private com.mannschaft.app.tournament.service.TournamentContactSpaceProvisioningService contactSpaceProvisioningService;
     @Mock private com.mannschaft.app.filesharing.service.SharedFolderService sharedFolderService;
     @Mock private AccessControlService accessControlService;
-    @Mock private ContentVisibilityChecker contentVisibilityChecker;
-    @Mock private com.mannschaft.app.tournament.service.TournamentService tournamentService;
 
     @InjectMocks
     private DivisionService service;
@@ -66,56 +63,41 @@ class DivisionServiceTest {
     }
 
     @Nested
-    @DisplayName("閲覧系（listDivisions / listParticipants）の大会可視性ゲート")
-    class ViewGate {
+    @DisplayName("閲覧系（listDivisions / listParticipants）")
+    class ListViews {
+
+        // 大会の可視性ゲートは公開入口の Controller が TournamentViewAccessGate で行う（判定は同クラスのテストで検証）。
 
         @Test
-        @DisplayName("組織管理者は他ユーザー作成の DRAFT 大会でも部門を取得できる（F00 Resolver は不可視でも共通ゲートが許可）")
-        void 組織管理者はDRAFT大会の部門を取得できる() {
-            stubTournamentInOrg();
-            given(contentVisibilityChecker.canView(any(), any(), any())).willReturn(false);
-            given(tournamentService.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).willReturn(true);
+        @DisplayName("部門一覧を返す")
+        void 部門一覧() {
             given(divisionRepository.findByTournamentIdOrderByLevelAscSortOrderAsc(TOURNAMENT_ID))
                     .willReturn(java.util.List.of(TournamentDivisionEntity.builder().tournamentId(TOURNAMENT_ID).build()));
 
-            assertThat(service.listDivisions(TOURNAMENT_ID, USER_ID)).hasSize(1);
+            assertThat(service.listDivisions(TOURNAMENT_ID)).hasSize(1);
         }
 
         @Test
-        @DisplayName("組織管理者は他ユーザー作成の DRAFT 大会でも参加チームを取得できる")
-        void 組織管理者はDRAFT大会の参加チームを取得できる() {
-            stubTournamentInOrg();
-            given(tournamentService.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).willReturn(true);
+        @DisplayName("参加チーム一覧を返す")
+        void 参加チーム一覧() {
             given(divisionRepository.findByIdAndTournamentId(DIV_ID, TOURNAMENT_ID))
                     .willReturn(Optional.of(TournamentDivisionEntity.builder().tournamentId(TOURNAMENT_ID).build()));
             given(participantRepository.findByDivisionIdOrderBySeedAsc(DIV_ID))
                     .willReturn(java.util.List.of(TournamentParticipantEntity.builder().build()));
 
-            assertThat(service.listParticipants(TOURNAMENT_ID, DIV_ID, USER_ID)).hasSize(1);
+            assertThat(service.listParticipants(TOURNAMENT_ID, DIV_ID)).hasSize(1);
         }
 
         @Test
-        @DisplayName("権限のない者は不可視の大会の部門を 404（TOURNAMENT_NOT_FOUND）で拒否される")
-        void 権限なしは部門一覧が404() {
-            stubTournamentInOrg();
-            given(tournamentService.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).willReturn(false);
+        @DisplayName("divId が tId 配下でなければ DIVISION_NOT_FOUND（公開大会の tId を踏み台にした越境を遮断）")
+        void 部門が大会配下でなければ404() {
+            given(divisionRepository.findByIdAndTournamentId(DIV_ID, TOURNAMENT_ID))
+                    .willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.listDivisions(TOURNAMENT_ID, USER_ID))
+            assertThatThrownBy(() -> service.listParticipants(TOURNAMENT_ID, DIV_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
-        }
-
-        @Test
-        @DisplayName("権限のない者は不可視の大会の参加チームを 404（TOURNAMENT_NOT_FOUND）で拒否される")
-        void 権限なしは参加チーム一覧が404() {
-            stubTournamentInOrg();
-            given(tournamentService.isViewableBy(TOURNAMENT_ID, ORG_ID, USER_ID)).willReturn(false);
-
-            assertThatThrownBy(() -> service.listParticipants(TOURNAMENT_ID, DIV_ID, USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+                    .isEqualTo(TournamentErrorCode.DIVISION_NOT_FOUND);
         }
     }
 
