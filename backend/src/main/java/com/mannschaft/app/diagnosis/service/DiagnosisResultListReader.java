@@ -13,9 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,22 +23,15 @@ import java.util.UUID;
 public class DiagnosisResultListReader {
     private final DiagnosisResultRepository results;
     private final ObjectMapper mapper;
+    private final DiagnosisResultCursorCodec cursors;
 
     @Transactional(readOnly = false, propagation = Propagation.REQUIRES_NEW)
     public CursorPagedResponse<DiagnosisResultSummary> list(Long userId, DiagnosisMethod method, String cursor, int limit) {
-        if (limit < 1 || limit > 50) throw new BusinessException(DiagnosisErrorCode.INVALID_INPUT);
+        if (limit < 1 || limit > 100) throw new BusinessException(DiagnosisErrorCode.INVALID_INPUT);
         Instant before = null; UUID id = null;
         if (cursor != null) {
-            try {
-                if (cursor.length() > 256) throw new IllegalArgumentException();
-                String decoded = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.US_ASCII);
-                String[] fields = decoded.split("\\|", -1);
-                if (fields.length != 2) throw new IllegalArgumentException();
-                before = Instant.parse(fields[0]); id = UUID.fromString(fields[1]);
-                if (before.getNano() % 1000 != 0 || !id.toString().equals(fields[1])) throw new IllegalArgumentException();
-            } catch (IllegalArgumentException | java.time.format.DateTimeParseException error) {
-                throw new BusinessException(DiagnosisErrorCode.INVALID_CURSOR);
-            }
+            var position = cursors.decode(userId, method, cursor);
+            before = position.completedAt(); id = position.id();
         }
         var page = results.findOwnedPage(userId, method, before, id, PageRequest.of(0, limit + 1));
         boolean hasNext = page.size() > limit;
@@ -52,8 +43,7 @@ public class DiagnosisResultListReader {
         String next = null;
         if (hasNext) {
             var last = selected.getLast();
-            next = Base64.getUrlEncoder().withoutPadding().encodeToString(
-                    (last.getCompletedAt() + "|" + last.getId()).getBytes(StandardCharsets.US_ASCII));
+            next = cursors.encode(userId, method, last.getCompletedAt(), last.getId());
         }
         return CursorPagedResponse.of(summaries, new CursorPagedResponse.CursorMeta(next, hasNext, limit));
     }
