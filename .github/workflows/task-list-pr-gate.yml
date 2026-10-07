@@ -97,8 +97,9 @@ jobs:
               pull_number: pull.number,
               per_page: 100,
             });
-            const codeExtensions = /\.(java|kt|kts|gradle|sql|ts|tsx|js|jsx|vue|mjs|cjs|tf|sh|ps1|go|py|rb|php|html|css|scss|sass|less|xml|yml|yaml|json)$/i;
-            const codeFiles = files.map(file => file.filename).filter(path => codeExtensions.test(path));
+            const codeExtensions = /\.(java|kt|kts|gradle|sql|ts|tsx|js|jsx|vue|mjs|cjs|tf|tfvars|hcl|sh|ps1|go|py|rb|php|html|css|scss|sass|less|xml|yml|yaml|json|jsonc|json5|toml|properties|conf|ini|config|env|lock|proto|graphql|bzl|bazel|mk)$/i;
+            const codeBasenames = /(^|\/)(Dockerfile(?:\.[^/]*)?|Containerfile(?:\.[^/]*)?|Makefile|GNUmakefile|Justfile|Procfile|\.env(?:\..*)?|\.npmrc|\.nvmrc|\.editorconfig|\.dockerignore|\.gitignore|\.gitattributes|\.gitmodules)$/i;
+            const codeFiles = files.map(file => file.filename).filter(path => codeExtensions.test(path) || codeBasenames.test(path));
             if (codeFiles.length === 0) {
               core.info("No code or configuration files changed; Task-List registration is not required.");
               return;
