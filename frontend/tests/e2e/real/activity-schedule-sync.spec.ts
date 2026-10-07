@@ -387,7 +387,7 @@ test('通常一覧から下書き保存して同じ記録の詳細へ遷移す�
   try {
     const title = `実機通常下書き-${Date.now()}`
     const templateName = `実機通常テンプレ-${Date.now()}`
-    await fixture.template(templateName)
+    await fixture.template(templateName, true)
     await page.goto(`${scope.path}/activities`)
     await page.getByTestId('activity-add-record').click()
     await expect(page.getByTestId('activity-create-dialog')).toBeVisible()

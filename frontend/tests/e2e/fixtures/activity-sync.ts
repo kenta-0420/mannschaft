@@ -150,11 +150,12 @@ export class ActivitySyncFixture {
     return activity
   }
 
-  async template(title: string): Promise<number> {
+  async template(title: string, isParticipantRequired = false): Promise<number> {
     const template = await data<{ id: number }>(
       await this.page.request.post(`${API}/activity-templates?${this.query}`, {
         data: {
           name: title,
+          isParticipantRequired,
           fields: [
             {
               fieldKey: 'numberZero',
