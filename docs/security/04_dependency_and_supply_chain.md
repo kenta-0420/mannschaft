@@ -144,6 +144,8 @@ simple-git 4 は default export を廃止したが、既存の `@nuxt/devtools` 
 
 利用方針の選択により全環境で `devtools.enabled: false` とする。§4.5 の版・配布物 SHA を照合する互換パッチは保持する。Docker の依存インストール段階では製品 Nuxt 設定をまだコピーしていないため、このパッチが必要である。installed Nuxt の静的条件分岐を確認したが、修正後の実 dev 起動・CI・本番生成は別途検証が必要であり、本記録だけで合格とは扱わない。既存 node-forge / braces の期限付き個別例外と経路制限を維持し、critical の例外追加や audit 閾値緩和は行わない。
 
+2026-10-07 の追加監査では [sharp の GHSA-wq5f-xc86-pv6w](https://github.com/lovell/sharp/security/advisories/GHSA-wq5f-xc86-pv6w) と [shell-quote の GHSA-pqg4-j6r4-53mv](https://github.com/ljharb/shell-quote/security/advisories/GHSA-pqg4-j6r4-53mv) が検出された。sharp 0.35.5（対応する全プラットフォーム配布物を含む）と shell-quote 1.11.0 を通常 npm 解決による修正版候補とする。候補 lock の読み取り監査は critical 0、既存の期限付き例外のみ high 18 で、既存 checkAudit の実終了値は 0。npm ci、実開発起動、Sharp の実ロード、本番生成の検証は別途必要であり、この候補監査だけで合格とは扱わない。新しい例外や閾値緩和は行わない。
+
 ## 5. 脆弱性対応フロー
 
 1. **検知**: Dependabot / Dependency-Check / npm audit / GitHub Security Advisory
