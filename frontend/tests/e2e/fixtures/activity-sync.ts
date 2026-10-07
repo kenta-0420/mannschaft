@@ -11,6 +11,7 @@ export const OTHER_TENANT = 'e2e-dummy-7@test.mannschaft.local'
 
 export interface Scope { type: 'TEAM' | 'ORGANIZATION'; id: number; slug: string; path: string }
 export interface Activity {
+  scopePublicId: string
   id: number; title: string; version: number; status: string; description: string | null
   activityDate: string; activityEndDate: string | null
   activityTimeStart: string | null; activityTimeEnd: string | null

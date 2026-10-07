@@ -1,6 +1,7 @@
 import { test, expect, type Page, type Browser } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 import { loginViaApi } from '../fixtures/auth'
-import { ActivitySyncFixture, ADMIN, API, PASSWORD, READER, SCHEDULE_EDITOR,
+import { ActivitySyncFixture, ADMIN, API, data, PASSWORD, READER, SCHEDULE_EDITOR,
   OUTSIDER, OTHER_TENANT, resolveScope, success, type Activity, type Scope } from '../fixtures/activity-sync'
 
 // fixture/ログイン/後始末のみ API を利用。対象操作は実クリック・入力で通す。
@@ -49,6 +50,7 @@ for (const type of ['TEAM', 'ORGANIZATION'] as const) {
       ])
       expect(created.status()).toBe(200)
       const activity = (await created.json() as { data: Activity }).data
+      expect(activity.scopePublicId).toBe(scope.slug)
       fixture.activityIds.push(activity.id)
       await expect(page).toHaveURL(new RegExp(`/activities/${activity.id}$`))
       await expect(page.getByTestId('activity-datetime')).toContainText('2026-10-15')
@@ -60,7 +62,8 @@ for (const type of ['TEAM', 'ORGANIZATION'] as const) {
       await expect(page).toHaveURL(new RegExp(`eventId=${id}`))
       await page.getByTestId(`schedule-activity-${activity.id}`).click()
       await expect(page).toHaveURL(new RegExp(`/activities/${activity.id}$`))
-      await page.goto(`${scope.path}/activities`)
+      await page.getByRole('button', { name: '活動記録', exact: true }).click()
+      await expect(page).toHaveURL(`${scope.path}/activities`)
       await page.getByTestId(`activity-detail-${activity.id}`).click()
       await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
       const persisted = await fixture.detail(activity.id)
@@ -101,19 +104,27 @@ test('手動編集差分を取消・予定のみ保存・選択適用できる',
   const scope = await resolveScope('TEAM')
   const fixture = new ActivitySyncFixture(page, scope)
   try {
-    const id = await fixture.schedule(`実機差分-${Date.now()}`)
+    const original = `実機差分-${Date.now()}`
+    const id = await fixture.schedule(original)
     const draft = await fixture.linkedDraft(id)
-    const manual = `実機手入力-${Date.now()}`
+    const edited = `実機手入力-${Date.now()}`
+    const manual = draft.title
     await detail(page, draft)
+    await page.getByTestId('activity-edit-draft').click()
+    await page.getByTestId('activity-edit-title').fill(edited)
+    await mutation(page, `/activities/${draft.id}`, () => page.getByTestId('activity-edit-save').click())
+    await detail(page, { id: draft.id, title: edited })
     await page.getByTestId('activity-edit-draft').click()
     await page.getByTestId('activity-edit-title').fill(manual)
     await mutation(page, `/activities/${draft.id}`, () => page.getByTestId('activity-edit-save').click())
+    // 一度手動変更した値を元値に戻しても手動フラグは消えず差分確認を要する。
     await schedule(page, scope, id)
     const scheduled = `実機予定差分-${Date.now()}`
     await editScheduleTitle(page, scheduled)
     await expect(page.getByTestId('activity-sync-apply')).toBeVisible()
     await page.getByTestId('activity-sync-cancel').click()
     expect((await fixture.detail(draft.id)).title).toBe(manual)
+    expect((await data<{ title: string }>(await page.request.get(`${fixture.schedules}/${id}`))).title).toBe(original)
     await page.getByTestId('schedule-submit').click()
     await mutation(page, `/schedules/${id}`, () => page.getByTestId('activity-sync-schedule-only').click())
     await detail(page, { id: draft.id, title: manual })
@@ -309,12 +320,15 @@ test('通常一覧から下書き保存して同じ記録の詳細へ遷移す�
     ])
     expect(response.status()).toBe(201)
     const record = (await response.json() as { data: Activity }).data
+    expect(record.scopePublicId).toBe(scope.slug)
     fixture.activityIds.push(record.id)
     await expect(page).toHaveURL(new RegExp(`/activities/${record.id}$`))
     await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
     await expect(page.getByTestId('activity-description')).toContainText('通常下書きの本文')
     await expect(page.getByTestId('activity-source-schedule')).toHaveCount(0)
     expect((await fixture.detail(record.id)).status).toBe('DRAFT')
+    await page.getByRole('button', { name: '活動記録', exact: true }).click()
+    await expect(page).toHaveURL(`${scope.path}/activities`)
   } finally { await fixture.cleanup() }
 })
 
@@ -354,7 +368,9 @@ test('実 MinIO 添付を詳細画面から開けて他scope・非所属は直�
       await result.page.close()
     } else {
       expect(await result.download.failure()).toBeNull()
-      await result.download.saveAs(testInfo.outputPath(name))
+      const output = testInfo.outputPath(name)
+      await result.download.saveAs(output)
+      expect(await readFile(output, 'utf8')).toBe(content)
     }
     for (const email of [OTHER_TENANT, OUTSIDER]) {
       const denied = await rolePage(browser, email)
