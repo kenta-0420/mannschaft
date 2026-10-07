@@ -1759,6 +1759,8 @@
       "downloadLabel": "下载 {format}（{type}）"
     },
     "menu": "菜单",
+    "moreActions": "更多操作",
+    "openNavigation": "打开导航",
     "scopeShell": {
       "memberCount": "成员 {count} 人",
       "supporterCount": "支持者 {count} 人",
