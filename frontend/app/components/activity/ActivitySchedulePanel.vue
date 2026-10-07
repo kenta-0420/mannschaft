@@ -14,18 +14,25 @@ const records = ref<ActivityRecordResponse[]>([])
 const loading = ref(true)
 const error = shallowRef<unknown>(null)
 const creating = ref(false)
+let loadGeneration = 0
 async function load(): Promise<void> {
+  const generation = ++loadGeneration
+  const { scopeType, scopeId, scheduleId } = props
   loading.value = true
   error.value = null
+  records.value = []
   try {
     await loadPermissions()
-    const path = `/api/v1/${props.scopeType === 'team' ? 'teams' : 'organizations'}/${props.scopeId}/schedules/${props.scheduleId}/activities`
-    records.value = (await api<{ data: ActivityRecordResponse[] }>(path)).data
+    if (generation !== loadGeneration) return
+    const path = `/api/v1/${scopeType === 'team' ? 'teams' : 'organizations'}/${scopeId}/schedules/${scheduleId}/activities`
+    const result = (await api<{ data: ActivityRecordResponse[] }>(path)).data
+    if (generation === loadGeneration) records.value = result
   } catch (loadError) {
+    if (generation !== loadGeneration) return
     error.value = loadError
     handleApiError(loadError, '予定の活動記録一覧')
   } finally {
-    loading.value = false
+    if (generation === loadGeneration) loading.value = false
   }
 }
 async function createDraft(): Promise<void> {
@@ -47,6 +54,9 @@ async function createDraft(): Promise<void> {
   }
 }
 onMounted(load)
+onBeforeUnmount(() => {
+  loadGeneration++
+})
 watch(() => [props.scopeType, props.scopeId, props.scheduleId], load)
 </script>
 
