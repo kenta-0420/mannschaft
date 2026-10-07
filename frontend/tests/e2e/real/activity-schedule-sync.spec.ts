@@ -32,10 +32,12 @@ async function detail(page: Page, activity: Pick<Activity, 'id' | 'title'>): Pro
 }
 async function schedule(page: Page, scope: Scope, id: number): Promise<void> {
   await page.goto(`${scope.path}/schedule?eventId=${id}`)
-  await expect(page.getByTestId('schedule-edit')).toBeVisible()
+  await expect(page.locator('[data-testid="schedule-edit"]:visible')).toBeVisible()
+  const deferPermissions = page.getByRole('button', { name: 'あとで決める', exact: true })
+  if (await deferPermissions.isVisible()) await deferPermissions.click()
 }
 async function editScheduleTitle(page: Page, title: string): Promise<void> {
-  await page.getByTestId('schedule-edit').click()
+  await page.locator('[data-testid="schedule-edit"]:visible').click()
   await page.getByTestId('schedule-title').fill(title)
   await page.getByTestId('schedule-submit').click()
 }
@@ -76,7 +78,7 @@ for (const type of ['TEAM', 'ORGANIZATION'] as const) {
             res.url().includes('/activities/draft-from-schedule') &&
             res.request().method() === 'POST',
         ),
-        page.getByTestId('schedule-create-activity').click(),
+        page.locator('[data-testid="schedule-create-activity"]:visible').click(),
       ])
       expect(created.status()).toBe(200)
       const activity = ((await created.json()) as { data: Activity }).data
@@ -90,7 +92,10 @@ for (const type of ['TEAM', 'ORGANIZATION'] as const) {
       await expect(page.getByTestId('activity-description')).toHaveCount(0)
       await page.getByTestId('activity-source-schedule').click()
       await expect(page).toHaveURL(new RegExp(`eventId=${id}`))
-      await page.getByTestId(`schedule-activity-${activity.id}`).click()
+      await expect(
+        page.locator('.lg\\:col-span-2:visible').getByText(title, { exact: true }),
+      ).toHaveCount(1)
+      await page.locator(`[data-testid="schedule-activity-${activity.id}"]:visible`).click()
       await expect(page).toHaveURL(new RegExp(`/activities/${activity.id}$`))
       await page.getByRole('button', { name: '活動記録', exact: true }).click()
       await expect(page).toHaveURL(`${scope.path}/activities`)
@@ -243,7 +248,7 @@ for (const options of [
             res.url().includes('/activities/draft-from-schedule') &&
             res.request().method() === 'POST',
         ),
-        page.getByTestId('schedule-create-activity').click(),
+        page.locator('[data-testid="schedule-create-activity"]:visible').click(),
       ])
       expect(response.ok()).toBeTruthy()
       const activity = ((await response.json()) as { data: Activity }).data
@@ -328,12 +333,25 @@ test('元予定が中止・削除されても記録本文を保持し参照状�
     await detail(page, activity)
     await page.getByTestId('activity-source-schedule').click()
     await expect(page).toHaveURL(new RegExp(`eventId=${id}`))
-    // 中止/削除済み参照の fixture。検証対象は保持された記録と参照表示。
+    // 中止状態のみ API fixture。中止操作の UI 導線は既存予定画面にない。
     await success(await page.request.post(`${fixture.schedules}/${id}/cancel`))
     await detail(page, activity)
     await expect(page.getByText('元の予定は中止されています', { exact: true })).toBeVisible()
     await expect(page.getByTestId('activity-source-schedule')).toBeVisible()
-    await success(await page.request.delete(`${fixture.schedules}/${id}?updateScope=THIS_ONLY`))
+    await schedule(page, scope, id)
+    page.once('dialog', (dialog) => dialog.accept())
+    const [deleted] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === 'DELETE' &&
+          new URL(response.url()).pathname.endsWith(`/schedules/${id}`),
+      ),
+      page
+        .locator('button:visible')
+        .filter({ has: page.locator('.pi-trash') })
+        .click(),
+    ])
+    expect(deleted.status()).toBe(204)
     fixture.scheduleIds.splice(fixture.scheduleIds.indexOf(id), 1)
     await detail(page, activity)
     await expect(page.getByTestId('activity-source-schedule')).toHaveCount(0)
@@ -364,7 +382,9 @@ test('予定のみ編集権の MEMBER が予定を更新しても他作者の記
     const before = await fixture.detail(activity.id)
     editor = await rolePage(browser, SCHEDULE_EDITOR)
     await schedule(editor, scope, id)
-    await expect(editor.getByTestId(`schedule-activity-${activity.id}`)).toBeVisible()
+    await expect(
+      editor.locator(`[data-testid="schedule-activity-${activity.id}"]:visible`),
+    ).toBeVisible()
     await mutation(editor, `/schedules/${id}`, () =>
       editScheduleTitle(editor!, `実機予定担当-${Date.now()}`),
     )
@@ -380,7 +400,7 @@ test('予定のみ編集権の MEMBER が予定を更新しても他作者の記
   }
 })
 
-test('通常一覧から下書き保存して同じ記録の詳細へ遷移する', async ({ page }) => {
+test('通常一覧の下書き保存から詳細へ進み必須実参加者を選択して公開する', async ({ page }) => {
   await signIn(page, TEAM_ADMIN)
   const scope = await resolveScope('TEAM')
   const fixture = new ActivitySyncFixture(page, scope)
@@ -416,6 +436,21 @@ test('通常一覧から下書き保存して同じ記録の詳細へ遷移す�
     const persisted = await fixture.detail(record.id)
     expect(persisted.status).toBe('DRAFT')
     expect(persisted.scopePublicId).toBe(scope.slug)
+    await page.getByTestId('activity-edit-draft').click()
+    await page.getByTestId('activity-edit-participants').click()
+    await page.getByRole('option', { name: '田中太郎', exact: true }).click()
+    await page.keyboard.press('Escape')
+    await mutation(page, `/activities/${record.id}`, () =>
+      page.getByTestId('activity-edit-save').click(),
+    )
+    await expect(page.getByTestId('activity-participants')).toContainText('田中太郎')
+    await mutation(page, `/activities/${record.id}/publish`, () =>
+      page.getByTestId('activity-publish').click(),
+    )
+    await expect(page.getByTestId('activity-publish')).toHaveCount(0)
+    const published = await fixture.detail(record.id)
+    expect(published.status).toBe('PUBLISHED')
+    expect(published.participants).toHaveLength(1)
     await page.getByRole('button', { name: '活動記録', exact: true }).click()
     await expect(page).toHaveURL(`${scope.path}/activities`)
   } finally {
