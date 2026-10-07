@@ -47,6 +47,18 @@ public class ActivityResultEntity extends BaseEntity {
     @Column(nullable = false)
     private LocalDate activityDate;
 
+    /** NULLは開始日と同日。予定の跨日情報を失わず保持する。 */
+    private LocalDate activityEndDate;
+
+    @jakarta.persistence.Version
+    @Column(nullable = false, columnDefinition = "BIGINT NOT NULL DEFAULT 0")
+    @Builder.Default
+    private Long version = 0L;
+
+    /** 予定由来の基準値。既存記録はNULLのまま確認対象として扱う。 */
+    @Column(columnDefinition = "JSON")
+    private String scheduleSyncState;
+
     private LocalTime activityTimeStart;
 
     private LocalTime activityTimeEnd;
@@ -110,6 +122,22 @@ public class ActivityResultEntity extends BaseEntity {
      */
     public void updateFieldValues(String fieldValues) {
         this.fieldValues = fieldValues;
+    }
+
+    public void assignTemplate(Long templateId) { this.templateId = templateId; }
+
+    public void updateEndDate(LocalDate activityEndDate) { this.activityEndDate = activityEndDate; }
+
+    public void replaceScheduleSyncState(String value) { this.scheduleSyncState = value; }
+
+    /** 同期対象は予定由来の基本項目だけに限定する。 */
+    public void synchronizeBasicFields(String title, LocalDate activityDate, LocalDate activityEndDate,
+                                       LocalTime activityTimeStart, LocalTime activityTimeEnd) {
+        this.title = title;
+        this.activityDate = activityDate;
+        this.activityEndDate = activityEndDate;
+        this.activityTimeStart = activityTimeStart;
+        this.activityTimeEnd = activityTimeEnd;
     }
 
     /**

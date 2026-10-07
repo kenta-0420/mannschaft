@@ -27,7 +27,12 @@ public interface ActivityResultRepository extends JpaRepository<ActivityResultEn
     Page<ActivityResultEntity> findByScopeTypeAndScopeIdAndTemplateIdOrderByActivityDateDescIdDesc(
             ActivityScopeType scopeType, Long scopeId, Long templateId, Pageable pageable);
 
-    Optional<ActivityResultEntity> findByScheduleId(Long scheduleId);
+    List<ActivityResultEntity> findAllByScheduleIdOrderByIdAsc(Long scheduleId);
+
+    /** 予定ロック取得後にRRの古い関連集合を使わずcurrent readする。 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ar FROM ActivityResultEntity ar WHERE ar.scheduleId IN :scheduleIds ORDER BY ar.id ASC")
+    List<ActivityResultEntity> lockScheduleLinksIn(@Param("scheduleIds") Collection<Long> scheduleIds);
 
     /**
      * CMP-028 Phase B — 認証済み一覧の可視性 SQL 述語化。

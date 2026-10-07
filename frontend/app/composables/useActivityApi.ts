@@ -1,11 +1,13 @@
 import type {
   ActivityRecordResponse,
+  ActivityDetailResponse,
   ActivityTemplate,
   ActivityComment,
   ActivityStats,
   CreateActivityRequestBody,
   PublicActivityResponse,
   PublicActivitySummaryResponse,
+  UpdateActivityRequestBody,
 } from '~/types/activity'
 
 /**
@@ -20,7 +22,7 @@ export interface CreateDraftActivityRequestBody {
   activityTimeStart?: string
   activityTimeEnd?: string
   visibility?: string
-  fieldValues?: Record<string, Record<string, never>>
+  fieldValues?: Record<string, string | number | boolean>
 }
 
 export function useActivityApi() {
@@ -51,7 +53,7 @@ export function useActivityApi() {
   }
 
   async function getActivity(id: number) {
-    return api<{ data: ActivityRecordResponse }>(`/api/v1/activities/${id}`)
+    return api<{ data: ActivityDetailResponse }>(`/api/v1/activities/${id}`)
   }
 
   /**
@@ -73,7 +75,7 @@ export function useActivityApi() {
     })
   }
 
-  async function updateActivity(id: number, body: Record<string, unknown>) {
+  async function updateActivity(id: number, body: UpdateActivityRequestBody) {
     return api<{ data: ActivityRecordResponse }>(`/api/v1/activities/${id}`, {
       method: 'PUT',
       body,
@@ -104,9 +106,10 @@ export function useActivityApi() {
    *
    * BE {@code POST /api/v1/activities/{id}/publish} に対応。リクエストボディは不要。
    */
-  async function publishActivity(id: number) {
+  async function publishActivity(id: number, version?: number) {
     return api<{ data: ActivityRecordResponse }>(`/api/v1/activities/${id}/publish`, {
       method: 'POST',
+      body: version === undefined ? undefined : { version },
     })
   }
 
