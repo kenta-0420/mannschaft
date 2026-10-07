@@ -25,8 +25,8 @@
       "restore": "Wiederherstellen",
       "restored": "Wiederhergestellt",
       "restore_error": "Wiederherstellung fehlgeschlagen",
-      "deleted": "Geloscht",
-      "delete_error": "Loschen fehlgeschlagen"
+      "deleted": "Gelöscht",
+      "delete_error": "Löschen fehlgeschlagen"
     },
     "dashboard_widget": {
       "title": "Schnellnotizen",
