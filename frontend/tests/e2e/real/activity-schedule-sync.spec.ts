@@ -585,8 +585,12 @@ test('実 MinIO 添付を詳細画面から開けて他scope・非所属は直�
       const actual = actualAttachmentResponse!
       // 実クリックで開いた同じ navigation 応答の bytes を検証する。別 API GET で代替しない。
       const body = await actual.body()
+      const attachmentLocation = new URL(actual.url())
+      const attachmentHeaders = await actual.allHeaders()
       await testInfo.attach('実物添付の応答と文字コード', {
-        body: JSON.stringify({ url: actual.url(), headers: await actual.allHeaders(),
+        body: JSON.stringify({ url: attachmentLocation.origin + attachmentLocation.pathname,
+          headers: { 'content-type': attachmentHeaders['content-type'],
+            'content-length': attachmentHeaders['content-length'] },
           displayedBody: await result.page.locator('body').innerText(), utf8Body: body.toString('utf8') }),
         contentType: 'application/json',
       })
