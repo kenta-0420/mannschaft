@@ -805,7 +805,8 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 本 PR の対象外で残す。main のストアとの差分は「追加 0・削除 33（上記のキーのみ）」。{@code 7409 → 7376}。</p>
      */
     // CMP-260820-1018: Proxy の一覧・アップロードURL生成を非TX認可入口へ整理したため4行減。Role依存自体は残る。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7372;
+    // main: BetaGrantService の通知RepositoryへのTX到達12行減も統合。独立した削除16行で7376→7360。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7360;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。

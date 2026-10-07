@@ -1089,7 +1089,7 @@ npm install  # 初回のみ
 npm run dev  # http://localhost:3000
 ```
 
-Nuxt DevTools の専用パネルは全環境で無効化しています。通常の開発サーバー・HMR・Chrome の F12・Playwright は利用できます。DevTools 3 と脆弱性修正版の simple-git 4 には import の互換性問題があり、再有効化には対応版または検証済みの互換パッチが必要です。
+Nuxt DevTools の専用パネルは利用方針により全環境で無効化しています。通常の開発サーバー・HMR・Chrome の F12・Playwright は利用できます。DevTools 3 の配布物と simple-git 4 の import を合わせるインストール時の互換パッチは維持しています。再有効化する場合は利用方針を見直し、対応版または互換パッチでの動作を確認してください。
 
 ### よく使うコマンド早見表
 
