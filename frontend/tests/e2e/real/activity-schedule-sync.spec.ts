@@ -31,7 +31,17 @@ async function detail(page: Page, activity: Pick<Activity, 'id' | 'title'>): Pro
   await expect(page.getByRole('heading', { name: activity.title, exact: true })).toBeVisible()
 }
 async function schedule(page: Page, scope: Scope, id: number): Promise<void> {
-  await page.goto(`${scope.path}/schedule?eventId=${id}`)
+  const [selected] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().startsWith(API) &&
+        new URL(response.url()).pathname.endsWith(`/schedules/${id}`) &&
+        response.request().method() === 'GET',
+      { timeout: 15_000 },
+    ),
+    page.goto(`${scope.path}/schedule?eventId=${id}`),
+  ])
+  expect(selected.status(), 'query で選択した予定の実単票応答').toBe(200)
   await expect(page.locator('[data-testid="schedule-edit"]:visible')).toBeVisible()
   const deferPermissions = page.getByRole('button', { name: 'あとで決める', exact: true })
   if (await deferPermissions.isVisible()) await deferPermissions.click()
@@ -39,7 +49,16 @@ async function schedule(page: Page, scope: Scope, id: number): Promise<void> {
 async function editScheduleTitle(page: Page, title: string): Promise<void> {
   await page.locator('[data-testid="schedule-edit"]:visible').click()
   await page.getByTestId('schedule-title').fill(title)
-  await page.getByTestId('schedule-submit').click()
+  const [preview] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.endsWith('/activity-sync-preview') &&
+        response.request().method() === 'POST',
+      { timeout: 15_000 },
+    ),
+    page.getByTestId('schedule-submit').click(),
+  ])
+  expect(preview.status(), '予定保存 UI の実同期プレビュー応答').toBe(200)
 }
 async function mutation(page: Page, path: string, action: () => Promise<void>): Promise<void> {
   const [response] = await Promise.all([
@@ -187,7 +206,8 @@ test('手動編集差分を取消・予定のみ保存・選択適用できる',
     await page.getByTestId('activity-sync-cancel').click()
     expect((await fixture.detail(draft.id)).title).toBe(manual)
     expect(
-      (await data<{ title: string }>(await page.request.get(`${fixture.schedules}/${id}`))).title,
+      (await data<{ content: { title: string } }>(await page.request.get(`${fixture.schedules}/${id}`)))
+        .content.title,
     ).toBe(original)
     await page.getByTestId('schedule-submit').click()
     await mutation(page, `/schedules/${id}`, () =>
@@ -434,6 +454,9 @@ test('通常一覧の下書き保存から詳細へ進み必須実参加者を�
     const templateName = `実機通常テンプレ-${Date.now()}`
     await fixture.template(templateName, true)
     await page.goto(`${scope.path}/activities`)
+    await expect(page.getByTestId('activity-add-record')).toBeVisible()
+    const deferPermissions = page.getByRole('button', { name: 'あとで決める', exact: true })
+    if (await deferPermissions.isVisible()) await deferPermissions.click()
     await page.getByTestId('activity-add-record').click()
     await expect(page.getByTestId('activity-create-dialog')).toBeVisible()
     await page.getByTestId('activity-template-select').click()
