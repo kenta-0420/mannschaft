@@ -285,6 +285,115 @@
         "maybe": "미정",
         "pending": "미응답"
       }
+    },
+    "widgets": {
+      "common": {
+        "viewAll": "모두 보기",
+        "allDay": "종일",
+        "middleDot": "·"
+      },
+      "priority": {
+        "critical": "긴급",
+        "important": "중요",
+        "warning": "주의",
+        "info": "알림",
+        "low": "낮음"
+      },
+      "familyHub": {
+        "title": "가족",
+        "noFamilyTeam": "가족 팀에 참여하고 있지 않습니다",
+        "announcements": "공지",
+        "noAnnouncements": "공지가 없습니다",
+        "noOpenTodos": "미완료 TODO가 없습니다"
+      },
+      "memberInfo": {
+        "fieldsNotConfigured": "{fieldList}의 필드가 아직 설정되지 않았습니다",
+        "countWithLabel": "{label}: {count}건",
+        "totalFields": "총 {count}개 필드"
+      },
+      "myBlog": {
+        "title": "내 블로그",
+        "create": "새로 만들기",
+        "empty": "아직 게시글이 없습니다",
+        "status": {
+          "draft": "임시 저장",
+          "published": "공개",
+          "scheduled": "예약"
+        }
+      },
+      "myCalendar": {
+        "title": "내 캘린더",
+        "openFullScreen": "전체 화면으로 열기",
+        "show": "표시:",
+        "scopePlaceholder": "표시할 범위를 선택",
+        "selectedCount": "{n}개 선택됨",
+        "legendPersonal": "개인",
+        "legendTeamOrg": "팀/조직"
+      },
+      "myOrganizations": {
+        "title": "Links: 조직",
+        "nonprofit": "비영리",
+        "forProfit": "영리",
+        "empty": "아직 참여한 조직이 없습니다"
+      },
+      "myTeams": {
+        "title": "Links: 팀",
+        "empty": "아직 참여한 팀이 없습니다"
+      },
+      "notices": {
+        "title": "공지",
+        "markAllRead": "모두 읽음",
+        "markedAllRead": "모두 읽음 처리했습니다",
+        "empty": "공지가 없습니다"
+      },
+      "orgAnnouncements": {
+        "title": "조직 공지",
+        "noOrg": "참여한 조직이 없습니다",
+        "empty": "조직의 공지가 없습니다"
+      },
+      "teamAnnouncements": {
+        "title": "팀 공지",
+        "noTeam": "참여한 팀이 없습니다",
+        "empty": "팀의 공지가 없습니다"
+      },
+      "personalTodo": {
+        "teamFallback": "팀",
+        "orgFallback": "조직",
+        "completed": "TODO 완료!",
+        "updateFailed": "업데이트에 실패했습니다",
+        "overdue": "기한 초과: {count}건",
+        "withDue": "기한 있음",
+        "noDue": "기한 없음",
+        "allDone": "모든 TODO가 완료되었습니다"
+      },
+      "recentActivity": {
+        "title": "최근 활동",
+        "empty": "아직 활동이 없습니다"
+      },
+      "surveyResults": {
+        "count": "설문 {count}건",
+        "open": "접수 중",
+        "closed": "마감",
+        "responseUnit": "건",
+        "noResponses": "아직 응답이 없습니다",
+        "resultsUnavailable": "결과를 표시할 수 없습니다",
+        "empty": "설문이 없습니다"
+      },
+      "todoCountdown": {
+        "title": "TODO 카운트다운",
+        "empty": "기한이 있는 TODO가 없습니다",
+        "hours": "{h}시간",
+        "overdue": "{hours}{minutes}분 초과",
+        "daysHours": "{days}일 {hours}시간"
+      },
+      "unreadThreads": {
+        "title": "읽지 않음",
+        "boardTitle": "게시판·공지",
+        "boardDesc": "팀·조직의 읽지 않은 스레드",
+        "chatTitle": "채팅",
+        "chatDesc": "읽지 않은 메시지",
+        "empty": "읽지 않은 항목이 없습니다"
+      }
     }
   },
   "swipeWidgets": {

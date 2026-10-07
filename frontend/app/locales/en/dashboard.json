@@ -285,6 +285,115 @@
         "maybe": "Maybe",
         "pending": "No response"
       }
+    },
+    "widgets": {
+      "common": {
+        "viewAll": "View all",
+        "allDay": "All day",
+        "middleDot": "·"
+      },
+      "priority": {
+        "critical": "Urgent",
+        "important": "Important",
+        "warning": "Caution",
+        "info": "Info",
+        "low": "Low"
+      },
+      "familyHub": {
+        "title": "Family",
+        "noFamilyTeam": "You have not joined a family team",
+        "announcements": "Announcements",
+        "noAnnouncements": "No announcements",
+        "noOpenTodos": "No open to-dos"
+      },
+      "memberInfo": {
+        "fieldsNotConfigured": "No fields have been set for {fieldList} yet",
+        "countWithLabel": "{label}: {count}",
+        "totalFields": "{count} field in total | {count} fields in total"
+      },
+      "myBlog": {
+        "title": "My Blog",
+        "create": "New post",
+        "empty": "No posts yet",
+        "status": {
+          "draft": "Draft",
+          "published": "Published",
+          "scheduled": "Scheduled"
+        }
+      },
+      "myCalendar": {
+        "title": "My Calendar",
+        "openFullScreen": "Open full screen",
+        "show": "Show:",
+        "scopePlaceholder": "Select scopes to display",
+        "selectedCount": "{n} selected",
+        "legendPersonal": "Personal",
+        "legendTeamOrg": "Team / Organization"
+      },
+      "myOrganizations": {
+        "title": "Links: Organizations",
+        "nonprofit": "Nonprofit",
+        "forProfit": "For-profit",
+        "empty": "You have not joined any organizations yet"
+      },
+      "myTeams": {
+        "title": "Links: Teams",
+        "empty": "You have not joined any teams yet"
+      },
+      "notices": {
+        "title": "Notices",
+        "markAllRead": "Mark all read",
+        "markedAllRead": "All marked as read",
+        "empty": "No notices"
+      },
+      "orgAnnouncements": {
+        "title": "Organization Announcements",
+        "noOrg": "You have not joined any organizations",
+        "empty": "No announcements from organizations"
+      },
+      "teamAnnouncements": {
+        "title": "Team Announcements",
+        "noTeam": "You have not joined any teams",
+        "empty": "No announcements from teams"
+      },
+      "personalTodo": {
+        "teamFallback": "Team",
+        "orgFallback": "Organization",
+        "completed": "To-do completed!",
+        "updateFailed": "Failed to update",
+        "overdue": "Overdue: {count}",
+        "withDue": "With due date",
+        "noDue": "No due date",
+        "allDone": "All to-dos are done"
+      },
+      "recentActivity": {
+        "title": "Recent Activity",
+        "empty": "No activity yet"
+      },
+      "surveyResults": {
+        "count": "No surveys | {count} survey | {count} surveys",
+        "open": "Open",
+        "closed": "Closed",
+        "responseUnit": "responses",
+        "noResponses": "No responses yet",
+        "resultsUnavailable": "Results cannot be displayed",
+        "empty": "No surveys"
+      },
+      "todoCountdown": {
+        "title": "To-do Countdown",
+        "empty": "No to-dos with due dates",
+        "hours": "{h}h",
+        "overdue": "{hours} {minutes}m overdue",
+        "daysHours": "{days}d {hours}h"
+      },
+      "unreadThreads": {
+        "title": "Unread",
+        "boardTitle": "Bulletin Board / Notices",
+        "boardDesc": "Unread threads in teams and organizations",
+        "chatTitle": "Chat",
+        "chatDesc": "Unread messages",
+        "empty": "Nothing unread"
+      }
     }
   },
   "swipeWidgets": {

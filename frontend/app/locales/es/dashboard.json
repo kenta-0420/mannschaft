@@ -285,6 +285,115 @@
         "maybe": "Quizá",
         "pending": "Sin respuesta"
       }
+    },
+    "widgets": {
+      "common": {
+        "viewAll": "Ver todo",
+        "allDay": "Todo el día",
+        "middleDot": "·"
+      },
+      "priority": {
+        "critical": "Urgente",
+        "important": "Importante",
+        "warning": "Precaución",
+        "info": "Información",
+        "low": "Baja"
+      },
+      "familyHub": {
+        "title": "Familia",
+        "noFamilyTeam": "No te has unido a ningún equipo familiar",
+        "announcements": "Avisos",
+        "noAnnouncements": "No hay avisos",
+        "noOpenTodos": "No hay tareas pendientes"
+      },
+      "memberInfo": {
+        "fieldsNotConfigured": "Aún no se han configurado campos para {fieldList}",
+        "countWithLabel": "{label}: {count}",
+        "totalFields": "{count} campo en total | {count} campos en total"
+      },
+      "myBlog": {
+        "title": "Mi blog",
+        "create": "Crear nueva",
+        "empty": "Aún no hay artículos",
+        "status": {
+          "draft": "Borrador",
+          "published": "Publicado",
+          "scheduled": "Programado"
+        }
+      },
+      "myCalendar": {
+        "title": "Mi calendario",
+        "openFullScreen": "Abrir en pantalla completa",
+        "show": "Mostrar:",
+        "scopePlaceholder": "Selecciona los ámbitos que mostrar",
+        "selectedCount": "{n} seleccionados",
+        "legendPersonal": "Personal",
+        "legendTeamOrg": "Equipo / Organización"
+      },
+      "myOrganizations": {
+        "title": "Links: Organizaciones",
+        "nonprofit": "Sin fines de lucro",
+        "forProfit": "Con fines de lucro",
+        "empty": "Aún no te has unido a ninguna organización"
+      },
+      "myTeams": {
+        "title": "Links: Equipos",
+        "empty": "Aún no te has unido a ningún equipo"
+      },
+      "notices": {
+        "title": "Avisos",
+        "markAllRead": "Marcar todo como leído",
+        "markedAllRead": "Todo marcado como leído",
+        "empty": "No hay avisos"
+      },
+      "orgAnnouncements": {
+        "title": "Avisos de la organización",
+        "noOrg": "No te has unido a ninguna organización",
+        "empty": "No hay avisos de organizaciones"
+      },
+      "teamAnnouncements": {
+        "title": "Avisos del equipo",
+        "noTeam": "No te has unido a ningún equipo",
+        "empty": "No hay avisos de equipos"
+      },
+      "personalTodo": {
+        "teamFallback": "Equipo",
+        "orgFallback": "Organización",
+        "completed": "¡Tarea completada!",
+        "updateFailed": "Error al actualizar",
+        "overdue": "Vencidas: {count}",
+        "withDue": "Con fecha límite",
+        "noDue": "Sin fecha límite",
+        "allDone": "Todas las tareas están completadas"
+      },
+      "recentActivity": {
+        "title": "Actividad reciente",
+        "empty": "Aún no hay actividad"
+      },
+      "surveyResults": {
+        "count": "Sin encuestas | {count} encuesta | {count} encuestas",
+        "open": "Abierta",
+        "closed": "Cerrada",
+        "responseUnit": "respuestas",
+        "noResponses": "Aún no hay respuestas",
+        "resultsUnavailable": "No se pueden mostrar los resultados",
+        "empty": "No hay encuestas"
+      },
+      "todoCountdown": {
+        "title": "Cuenta atrás de tareas",
+        "empty": "No hay tareas con fecha límite",
+        "hours": "{h} h",
+        "overdue": "{hours} {minutes} min de retraso",
+        "daysHours": "{days} d {hours} h"
+      },
+      "unreadThreads": {
+        "title": "No leído",
+        "boardTitle": "Tablón / Avisos",
+        "boardDesc": "Hilos no leídos de equipos y organizaciones",
+        "chatTitle": "Chat",
+        "chatDesc": "Mensajes no leídos",
+        "empty": "Nada sin leer"
+      }
     }
   },
   "swipeWidgets": {
