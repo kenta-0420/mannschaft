@@ -2097,6 +2097,8 @@
       "publish": "公開する",
       "saved": "下書きを保存しました",
       "participants": "参加者",
+      "participantsHint": "実際に参加したメンバーを選択してください",
+      "participantsRequired": "このテンプレートの公開には参加者が必要です",
       "noParticipants": "参加者は登録されていません",
       "attachments": "添付ファイル",
       "attachment": "添付ファイル {id}",

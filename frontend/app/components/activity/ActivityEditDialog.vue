@@ -7,6 +7,7 @@ import {
   activityFieldValues,
   activityRawFieldValues,
   mergeActivityEditedFieldValues,
+  activityParticipantUpdate,
 } from '~/utils/activityDetail'
 import { toYmd, type ActivityFieldValue } from '~/utils/activityFields'
 
@@ -15,6 +16,8 @@ const visible = defineModel<boolean>('visible', { required: true })
 const emit = defineEmits<{ saved: [] }>()
 const { t } = useI18n()
 const { updateActivity, getTemplates } = useActivityApi()
+const teamApi = useTeamApi()
+const orgApi = useOrganizationApi()
 const { handleApiError } = useErrorHandler()
 const notification = useNotification()
 const { defineField, handleSubmit, errors, resetForm } = useForm({
@@ -36,6 +39,40 @@ const templates = ref<ActivityTemplate[]>([])
 const visibility = ref<'PUBLIC' | 'MEMBERS_ONLY'>('MEMBERS_ONLY')
 const inputs = ref<Record<string, ActivityFieldValue>>({})
 const initialInputs = ref<Record<string, ActivityFieldValue>>({})
+const participantUserIds = ref<number[]>([])
+const initialParticipantUserIds = ref<number[]>([])
+const members = ref<Array<{ userId: number; displayName: string }>>([])
+const loadingMembers = ref(false)
+const membersError = shallowRef<unknown>(null)
+let membersGeneration = 0
+const participantOptions = computed(() => [
+  ...new Map(
+    [...props.record.participants, ...members.value].map((member) => [member.userId, member]),
+  ).values(),
+])
+async function loadMembers(): Promise<void> {
+  const generation = ++membersGeneration
+  const record = props.record
+  loadingMembers.value = true
+  membersError.value = null
+  try {
+    if (!record.scopePublicId) throw new Error('活動記録の所属スコープを解決できません')
+    const result =
+      record.scopeType === 'TEAM'
+        ? await teamApi.getAllMembers(record.scopePublicId)
+        : await orgApi.getAllMembers(record.scopePublicId)
+    if (generation === membersGeneration) members.value = result.data
+  } catch (error) {
+    if (generation !== membersGeneration) return
+    membersError.value = error
+    handleApiError(error, '活動記録の参加者候補取得')
+  } finally {
+    if (generation === membersGeneration) loadingMembers.value = false
+  }
+}
+onBeforeUnmount(() => {
+  membersGeneration++
+})
 const saving = ref(false)
 const fields = computed(
   () =>
@@ -55,8 +92,15 @@ function timeString(value: Date | null): string | null {
     : null
 }
 watch(visible, async (open) => {
-  if (!open) return
+  if (!open) {
+    membersGeneration++
+    return
+  }
   const record = props.record
+  participantUserIds.value = record.participants.map((participant) => participant.userId)
+  initialParticipantUserIds.value = [...participantUserIds.value]
+  members.value = []
+  void loadMembers()
   resetForm({ values: { title: record.title, description: record.description ?? '' } })
   activityDate.value = new Date(`${record.activityDate}T00:00:00`)
   endDate.value = record.activityEndDate ? new Date(`${record.activityEndDate}T00:00:00`) : null
@@ -106,6 +150,10 @@ const save = handleSubmit(async (values) => {
         inputs.value,
       ),
       version: props.record.version,
+      ...(activityParticipantUpdate(initialParticipantUserIds.value, participantUserIds.value) !==
+      undefined
+        ? { participantUserIds: [...participantUserIds.value] }
+        : {}),
     })
     notification.success(t('activity.detail.saved'))
     visible.value = false
@@ -218,6 +266,31 @@ const save = handleSubmit(async (values) => {
         <p v-if="errors.description" class="text-red-600">{{ errors.description }}</p>
       </div>
       <ActivityFieldInputs v-model="inputs" :fields="fields" />
+      <div>
+        <label for="activity-edit-participants">{{ t('activity.detail.participants') }}</label>
+        <p class="mb-2 text-sm text-surface-500">{{ t('activity.detail.participantsHint') }}</p>
+        <DashboardErrorState v-if="membersError" :error="membersError" @retry="loadMembers" />
+        <MultiSelect
+          v-else
+          v-model="participantUserIds"
+          input-id="activity-edit-participants"
+          :options="participantOptions"
+          option-label="displayName"
+          option-value="userId"
+          :loading="loadingMembers"
+          :disabled="loadingMembers"
+          filter
+          display="chip"
+          class="min-h-11 w-full"
+          data-testid="activity-edit-participants"
+        />
+        <p
+          v-if="templates.find((item) => item.id === templateId)?.isParticipantRequired"
+          class="mt-1 text-sm text-surface-500"
+        >
+          {{ t('activity.detail.participantsRequired') }}
+        </p>
+      </div>
     </form>
     <template #footer>
       <Button

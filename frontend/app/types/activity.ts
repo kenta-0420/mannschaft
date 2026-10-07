@@ -46,6 +46,7 @@ export interface ActivityDetailResponse extends ActivityRecordResponse {
 }
 
 export interface UpdateActivityRequestBody {
+  participantUserIds?: number[]
   title: string
   activityDate: string
   activityEndDate: string | null

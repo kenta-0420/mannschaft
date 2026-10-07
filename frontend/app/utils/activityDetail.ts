@@ -1,6 +1,16 @@
 import type { ActivityDetailResponse, ActivityTemplateField } from '~/types/activity'
 import { buildActivityFieldValues, type ActivityFieldValue } from '~/utils/activityFields'
 
+/** 未変更なら参加者更新を省略し、既存の役割ラベル等を保持する。 */
+export function activityParticipantUpdate(
+  initial: number[],
+  current: number[],
+): number[] | undefined {
+  return initial.length === current.length && initial.every((id) => current.includes(id))
+    ? undefined
+    : [...current]
+}
+
 /** 実際に変更した入力だけを反映し、定義変更で入力できない旧値は保全する。 */
 export function mergeActivityEditedFieldValues(
   raw: Record<string, unknown>,

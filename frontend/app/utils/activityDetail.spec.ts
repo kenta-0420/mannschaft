@@ -4,6 +4,7 @@ import {
   activityFieldValues,
   activityFileIds,
   mergeActivityEditedFieldValues,
+  activityParticipantUpdate,
 } from './activityDetail'
 import type { ActivityTemplateField } from '~/types/activity'
 
@@ -20,6 +21,11 @@ const field: ActivityTemplateField = {
   sortOrder: 0,
 }
 describe('活動記録の詳細表示', () => {
+  it('参加者未変更は更新を省略し、追加や全解除は明示して送る', () => {
+    expect(activityParticipantUpdate([2, 5], [5, 2])).toBeUndefined()
+    expect(activityParticipantUpdate([2], [2, 5])).toEqual([2, 5])
+    expect(activityParticipantUpdate([2], [])).toEqual([])
+  })
   it('未変更の型不一致値と未知値を保全し、変更・クリアした入力だけを反映する', () => {
     const fields = [
       { ...field, fieldKey: 'legacy', fieldType: 'TEXT' as const },
