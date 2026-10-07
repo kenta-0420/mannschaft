@@ -63,6 +63,11 @@ async function rolePage(browser: Browser, email?: string): Promise<Page> {
   return page
 }
 
+async function closeRolePages(pages: Page[]): Promise<void> {
+  const closed = await Promise.allSettled(pages.map((page) => page.context().close()))
+  for (const result of closed) if (result.status === 'rejected') throw result.reason
+}
+
 for (const type of ['TEAM', 'ORGANIZATION'] as const) {
   test(`${type} 予定詳細から跨日の下書きを作り相互リンクと再利用を確認する`, async ({ page }) => {
     await signIn(page)
@@ -202,6 +207,8 @@ test('手動編集差分を取消・予定のみ保存・選択適用できる',
 })
 
 test('閲覧専用と他tenant・匿名は画面と直 URL で認可される', async ({ page, browser }) => {
+  // 4 ロールの実 navigation と trace 保存を含む。locator の上限は既定の 15 秒を維持する。
+  test.setTimeout(240_000)
   await signIn(page)
   const scope = await resolveScope('TEAM')
   const fixture = new ActivitySyncFixture(page, scope)
@@ -235,8 +242,11 @@ test('閲覧専用と他tenant・匿名は画面と直 URL で認可される', 
       else await expect(denied).toHaveURL(/\/login/)
     }
   } finally {
-    for (const member of contexts) await member.context().close()
-    await fixture.cleanup()
+    try {
+      await closeRolePages(contexts)
+    } finally {
+      await fixture.cleanup()
+    }
   }
 })
 
@@ -407,8 +417,11 @@ test('予定のみ編集権の MEMBER が予定を更新しても他作者の記
     expect(after.version).toBe(before.version)
     expect(after.description).toBe(before.description)
   } finally {
-    await editor?.context().close()
-    await fixture.cleanup()
+    try {
+      await editor?.context().close()
+    } finally {
+      await fixture.cleanup()
+    }
   }
 })
 
@@ -474,6 +487,8 @@ test('実 MinIO 添付を詳細画面から開けて他scope・非所属は直�
   page,
   browser,
 }, testInfo) => {
+  // 実ファイルと 3 ロールの実 navigation・trace 保存を含む。画面期待の上限は変えない。
+  test.setTimeout(240_000)
   await signIn(page, TEAM_ADMIN)
   const scope = await resolveScope('TEAM')
   const fixture = new ActivitySyncFixture(page, scope)
@@ -538,7 +553,10 @@ test('実 MinIO 添付を詳細画面から開けて他scope・非所属は直�
       }
     }
   } finally {
-    for (const member of pages) await member.context().close()
-    await fixture.cleanup()
+    try {
+      await closeRolePages(pages)
+    } finally {
+      await fixture.cleanup()
+    }
   }
 })
