@@ -17,7 +17,7 @@
  */
 import dayjs from 'dayjs'
 
-type Translate = (key: string, params?: Record<string, unknown>) => string
+type Translate = (key: string, params?: Record<string, unknown>, plural?: number) => string
 
 function computeRelativeTime(dateStr: string, t: Translate, locale: string): string {
   if (!dateStr) return ''
@@ -30,9 +30,9 @@ function computeRelativeTime(dateStr: string, t: Translate, locale: string): str
   const diffDay = Math.floor(diffHour / 24)
 
   if (diffSec < 60) return t('relativeTime.justNow')
-  if (diffMin < 60) return t('relativeTime.minutesAgo', { count: diffMin })
-  if (diffHour < 24) return t('relativeTime.hoursAgo', { count: diffHour })
-  if (diffDay < 7) return t('relativeTime.daysAgo', { count: diffDay })
+  if (diffMin < 60) return t('relativeTime.minutesAgo', { count: diffMin }, diffMin)
+  if (diffHour < 24) return t('relativeTime.hoursAgo', { count: diffHour }, diffHour)
+  if (diffDay < 7) return t('relativeTime.daysAgo', { count: diffDay }, diffDay)
   return d.toDate().toLocaleDateString(locale)
 }
 

@@ -2801,8 +2801,8 @@
   },
   "relativeTime": {
     "justNow": "Gerade eben",
-    "minutesAgo": "vor {count} Minuten",
-    "hoursAgo": "vor {count} Stunden",
-    "daysAgo": "vor {count} Tagen"
+    "minutesAgo": "vor {count} Minute | vor {count} Minuten",
+    "hoursAgo": "vor {count} Stunde | vor {count} Stunden",
+    "daysAgo": "vor {count} Tag | vor {count} Tagen"
   }
 }

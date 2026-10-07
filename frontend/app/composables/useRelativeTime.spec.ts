@@ -58,6 +58,29 @@ describe('useRelativeTime i18n', () => {
     expect(relativeTime(ago(5 * MIN))).toBe('vor 5 Minuten')
   })
 
+  it.each([
+    ['en', 1, '1 minute ago', '1 hour ago', '1 day ago'],
+    ['en', 2, '2 minutes ago', '2 hours ago', '2 days ago'],
+    ['de', 1, 'vor 1 Minute', 'vor 1 Stunde', 'vor 1 Tag'],
+    ['de', 2, 'vor 2 Minuten', 'vor 2 Stunden', 'vor 2 Tagen'],
+    ['es', 1, 'hace 1 minuto', 'hace 1 hora', 'hace 1 día'],
+    ['es', 2, 'hace 2 minutos', 'hace 2 horas', 'hace 2 días'],
+  ] as const)('%s: count=%i の単数・複数を正しく出す', async (loc, n, min, hour, day) => {
+    await setLocale(loc)
+    const { relativeTime } = useRelativeTime()
+    expect(relativeTime(ago(n * MIN + 5000))).toBe(min)
+    expect(relativeTime(ago(n * HOUR + 5000))).toBe(hour)
+    expect(relativeTime(ago(n * DAY + 5000))).toBe(day)
+  })
+
+  it('ja: count=1 でも従来どおり（単複の区別なし）', async () => {
+    await setLocale('ja')
+    const { relativeTime } = useRelativeTime()
+    expect(relativeTime(ago(MIN + 5000))).toBe('1分前')
+    expect(relativeTime(ago(HOUR + 5000))).toBe('1時間前')
+    expect(relativeTime(ago(DAY + 5000))).toBe('1日前')
+  })
+
   it('Ref 渡しの computed も現在ロケールで出す', async () => {
     await setLocale('en')
     const r = useRelativeTime(ref(ago(5 * MIN)))
