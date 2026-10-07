@@ -257,13 +257,38 @@ class BlogPostServiceAdditionalTest {
         @Test
         @DisplayName("正常系: ユーザースコープでslug検索_記事が返却される")
         void ユーザースコープ_slug検索_記事返却() {
-            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            // 個人記事は team_id・organization_id とも null で user_id を持つ
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED).toBuilder()
+                    .teamId(null).organizationId(null).userId(USER_ID).build();
             given(postRepository.findByUserIdAndSlug(USER_ID, "my-post")).willReturn(Optional.of(entity));
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
 
             BlogPostResponse result = service.getBySlug(null, null, USER_ID, "my-post");
 
             assertThat(result).isNotNull();
+        }
+
+        @Test
+        @DisplayName("AC-21: 個人経路で取得した記事がチーム・組織の記事なら CMS_001（親スコープの門を迂回させない）")
+        void ユーザースコープ_チーム記事はCMS_001() {
+            BlogPostEntity teamPost = createPostEntity(PostStatus.PUBLISHED); // team_id あり
+            given(postRepository.findByUserIdAndSlug(USER_ID, "team-post")).willReturn(Optional.of(teamPost));
+
+            assertThatThrownBy(() -> service.getBySlug(null, null, USER_ID, "team-post"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CmsErrorCode.POST_NOT_FOUND));
+            verify(contentVisibilityChecker, Mockito.never()).assertCanView(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-20: スコープ指定がすべて未指定なら検索に進まず CMS_001")
+        void スコープ未指定はCMS_001() {
+            assertThatThrownBy(() -> service.getBySlug(null, null, null, "any-slug"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CmsErrorCode.POST_NOT_FOUND));
+            verify(postRepository, Mockito.never()).findByUserIdAndSlug(any(), any());
         }
     }
 

@@ -492,6 +492,94 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
         assertThat(actual.body()).doesNotContain("本文").doesNotContain("AC-9 の記事");
     }
 
+    // ═════════════════════════════════════════════════════════════════════
+    // AC-20 / AC-21: スコープ未指定・個人経路で親スコープの門を迂回させない（Codex 2巡目）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("AC-20: スコープ指定がすべて未指定・空白なら 404 CMS_001（不可視チームの公開記事も 見えるチームの公開記事も 読めない・previewToken 付きも同じ）")
+    void ac20_スコープ未指定と空白は404() throws Exception {
+        String hiddenSlug = "ac20-hidden-" + key;
+        invisibleScopeSlug(true, hiddenSlug);
+        BlogPostEntity visibleArticle = teamPost(Visibility.PUBLIC, PostStatus.PUBLISHED);
+        em.flush();
+
+        Outcome missing = outcome(detail(outsiderId, hiddenSlug, "teamId", MISSING_ID));
+        assertThat(missing).isEqualTo(new Outcome(404, "CMS_001"));
+
+        for (String slug : List.of(hiddenSlug, visibleArticle.getSlug())) {
+            List<MockHttpServletRequestBuilder> requests = List.of(
+                    get(DETAIL, slug),
+                    get(DETAIL, slug).param("teamId", " "),
+                    get(DETAIL, slug).param("teamId", ""),
+                    get(DETAIL, slug).param("organizationId", " "),
+                    get(DETAIL, slug).param("teamId", " ").param("organizationId", " "),
+                    get(DETAIL, slug).param("previewToken", "any-token"),
+                    get(DETAIL, slug).param("teamId", " ").param("previewToken", "any-token"));
+            for (MockHttpServletRequestBuilder request : requests) {
+                Outcome actual = outcome(mockMvc.perform(request.with(user(outsiderId.toString()))).andReturn());
+                assertThat(actual).as(slug + " " + actual.body()).isEqualTo(missing);
+                assertThat(actual.body()).doesNotContain("本文").doesNotContain("AC-9 の記事");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("AC-21: userId 指定の個人経路にチーム記事の slug を渡しても 404 CMS_001（作者本人の userId でも・previewToken 付きでも）")
+    void ac21_個人経路でチーム記事は読めない() throws Exception {
+        String hiddenSlug = "ac21-hidden-" + key;
+        invisibleScopeSlug(true, hiddenSlug);
+        BlogPostEntity visibleArticle = teamPost(Visibility.PUBLIC, PostStatus.PUBLISHED);
+        em.flush();
+
+        for (String slug : List.of(hiddenSlug, visibleArticle.getSlug())) {
+            for (Long viewer : List.of(outsiderId, authorId)) {
+                Outcome byUserId = outcome(mockMvc.perform(get(DETAIL, slug).param("userId", authorId.toString())
+                        .with(user(viewer.toString()))).andReturn());
+                Outcome withPreview = outcome(mockMvc.perform(get(DETAIL, slug).param("userId", authorId.toString())
+                        .param("previewToken", "any-token").with(user(viewer.toString()))).andReturn());
+                Outcome personalPath = outcome(mockMvc.perform(
+                        get("/api/v1/users/{userId}/blog/posts/{slug}", authorId, slug)
+                                .with(user(viewer.toString()))).andReturn());
+                for (Outcome actual : List.of(byUserId, withPreview, personalPath)) {
+                    assertThat(actual).as(slug + " viewer=" + viewer).isEqualTo(new Outcome(404, "CMS_001"));
+                    assertThat(actual.body()).doesNotContain("本文").doesNotContain("AC-9 の記事");
+                }
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("AC-21 対照: 個人記事（team_id・organization_id とも null・user_id 一致）の正常な閲覧は 200（userId 指定・previewToken 付き・個人ブログの経路）")
+    void ac21_個人記事の正常閲覧は200() throws Exception {
+        String slug = "ac21-personal-" + key;
+        em.persist(BlogPostEntity.builder()
+                .userId(authorId).authorId(authorId)
+                .title("個人記事 " + slug).slug(slug).body("個人の本文 " + slug)
+                .postType(PostType.BLOG).visibility(Visibility.PUBLIC).status(PostStatus.PUBLISHED)
+                .readingTimeMinutes((short) 1)
+                .build());
+        em.flush();
+
+        List<MvcResult> results = List.of(
+                mockMvc.perform(get(DETAIL, slug).param("userId", authorId.toString())
+                        .with(user(outsiderId.toString()))).andReturn(),
+                mockMvc.perform(get(DETAIL, slug).param("userId", authorId.toString()).param("previewToken", "any-token")
+                        .with(user(outsiderId.toString()))).andReturn(),
+                mockMvc.perform(get("/api/v1/users/{userId}/blog/posts/{slug}", authorId, slug)
+                        .with(user(outsiderId.toString()))).andReturn());
+        for (MvcResult result : results) {
+            assertThat(result.getResponse().getStatus()).as(result.getRequest().getRequestURI()).isEqualTo(200);
+            JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+            assertThat(data.path("content").path("slug").asText()).isEqualTo(slug);
+        }
+
+        // 別人の userId を指定しても他人の個人記事は引けない（user_id 一致が条件）
+        Outcome otherUser = outcome(mockMvc.perform(get(DETAIL, slug).param("userId", memberId.toString())
+                .with(user(outsiderId.toString()))).andReturn());
+        assertThat(otherUser).isEqualTo(new Outcome(404, "CMS_001"));
+    }
+
     @Test
     @DisplayName("AC-9 対照: 見えるチーム・組織の公開記事は、詳細を slug・数値のどちらで指定しても 200（組織の slug は組織として解決される）")
     void ac9_見えるスコープの公開記事は詳細が200() throws Exception {

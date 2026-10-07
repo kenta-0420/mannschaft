@@ -250,9 +250,20 @@ public class BlogPostService {
         } else if (organizationId != null) {
             entity = postRepository.findByOrganizationIdAndSlug(organizationId, slug)
                     .orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND));
-        } else {
+        } else if (userId != null) {
             entity = postRepository.findByUserIdAndSlug(userId, slug)
                     .orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND));
+            // CMP-261007-2052 AC-21: 個人記事経路は、個人スコープ（team_id・organization_id とも null）で
+            // user_id が一致する記事だけを返す。チーム・組織の記事を個人経路で読ませない（親スコープの門の迂回防止）。
+            if (entity.getTeamId() != null || entity.getOrganizationId() != null
+                    || !userId.equals(entity.getUserId())) {
+                throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
+            }
+        } else {
+            // CMP-261007-2052 AC-20: スコープ指定（teamId・organizationId・userId）がすべて未指定・空白なら 404。
+            // findByUserIdAndSlug(null, slug) は user_id IS NULL ＝チーム・組織の記事に一致し、
+            // 親スコープの門を通さずに不可視チームの記事を読ませてしまうため、検索に進ませない。
+            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
         }
         // 可視性判定を ContentVisibilityChecker に一元化（getById と完全に同じ認可挙動）。
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
