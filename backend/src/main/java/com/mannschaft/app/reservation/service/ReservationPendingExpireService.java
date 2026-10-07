@@ -297,7 +297,7 @@ public class ReservationPendingExpireService {
         }
         String actionUrl = "/teams/" + primary.getTeamId() + "/reservations";
 
-        notificationHelper.notify(
+        notificationHelper.notifyAfterCommit(
                 primary.getUserId(),
                 NOTIFICATION_TYPE,
                 title,

@@ -4,6 +4,8 @@ import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.visibility.perf.SqlIntentCounter;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.notification.confirmable.support.ConfirmableFanoutFixture;
+import com.mannschaft.app.notification.entity.NotificationEntity;
+import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.repository.ReservationPendingExpireScanStateRepository;
@@ -55,9 +57,11 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import javax.sql.DataSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -87,6 +91,8 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
     @Autowired private EntityManager em;
     @Autowired private JdbcTemplate jdbc;
     @Autowired @Qualifier("notification-dispatch-pool") private ThreadPoolTaskExecutor dispatch;
+    @Autowired private NotificationDispatchService notificationDispatch;
+    @Autowired private DataSource dataSource;
 
     private final List<Long> reservationIds = new ArrayList<>();
     private final List<Long> slotIds = new ArrayList<>();
@@ -109,6 +115,10 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
     private DefaultPointcutAdvisor candidateObserver;
     private DefaultPointcutAdvisor unitObserver;
     private DefaultPointcutAdvisor scanObserver;
+    private DefaultPointcutAdvisor dispatchObserver;
+    private final AtomicInteger ownedDispatchCalls = new AtomicInteger();
+    private final AtomicInteger committedDispatchCalls = new AtomicInteger();
+    private final AtomicReference<Throwable> dispatchObservationFailure = new AtomicReference<>();
     private Thread caller;
     private int rawCandidates;
     private int candidateCalls;
@@ -212,6 +222,31 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
         ((Advised) reservations).addAdvisor(candidateObserver);
         ((Advised) expire).addAdvisor(unitObserver);
         ((Advised) expire).addAdvisor(scanObserver);
+        dispatchObserver = observer(List.of("dispatch"), invocation -> {
+            if (invocation.getArguments()[0] instanceof NotificationEntity notification
+                    && userId.equals(notification.getUserId())
+                    && "RESERVATION_PENDING_EXPIRED".equals(notification.getNotificationType())) {
+                ownedDispatchCalls.incrementAndGet();
+                // DataSourceUtilsを使わず、単位TXと独立した接続からcommit済み行だけを見る。
+                try (var connection = dataSource.getConnection();
+                     var statement = connection.prepareStatement("SELECT COUNT(*) FROM notifications n "
+                             + "JOIN reservations r ON r.id = n.source_id "
+                             + "WHERE n.id = ? AND n.user_id = ? AND r.status = 'CANCELLED'")) {
+                    assertThat(connection.getAutoCommit()).isTrue();
+                    statement.setLong(1, notification.getId());
+                    statement.setLong(2, userId);
+                    try (var result = statement.executeQuery()) {
+                        assertThat(result.next()).isTrue();
+                        assertThat(result.getLong(1)).as("外部dispatch時に通知と予約取消が別接続で可視").isEqualTo(1);
+                    }
+                    committedDispatchCalls.incrementAndGet();
+                } catch (Exception | AssertionError failure) {
+                    dispatchObservationFailure.compareAndSet(null, failure);
+                }
+            }
+            return invocation.proceed();
+        });
+        ((Advised) notificationDispatch).addAdvisor(dispatchObserver);
     }
 
     @AfterEach
@@ -254,9 +289,11 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
             if (candidateObserver != null) ((Advised) reservations).removeAdvisor(candidateObserver);
             if (unitObserver != null) ((Advised) expire).removeAdvisor(unitObserver);
             if (scanObserver != null) ((Advised) expire).removeAdvisor(scanObserver);
+            if (dispatchObserver != null) ((Advised) notificationDispatch).removeAdvisor(dispatchObserver);
             if (originalExpireClock != null) ReflectionTestUtils.setField(expireTarget, "clock", originalExpireClock);
             if (originalProgressClock != null) ReflectionTestUtils.setField(progressTarget, "clock", originalProgressClock);
         }
+        assertThat(dispatchObservationFailure.get()).as("独立接続のcommit観測失敗").isNull();
     }
 
     @Test
@@ -431,6 +468,11 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE user_id = ? "
                 + "AND notification_type = 'RESERVATION_PENDING_EXPIRED'", Long.class, userId)).isEqualTo(1);
         assertThat(states.findById(stateId).orElseThrow().getRetryPrimaryIds()).isEmpty();
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
+            assertThat(ownedDispatchCalls.get()).isEqualTo(1);
+            assertThat(committedDispatchCalls.get()).isEqualTo(1);
+            assertThat(dispatchObservationFailure.get()).isNull();
+        });
         assertExtractionBudget(-1);
     }
 
@@ -540,6 +582,33 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
         assertThat(reservations.findById(primary.getId())).isEmpty();
         assertThat(slots.findById(slot.getId()).orElseThrow().getBookedCount()).isEqualTo(1);
         assertThat(states.findById(stateId).orElseThrow().getRetryPrimaryIds()).isEmpty();
+        assertExtractionBudget(-1);
+    }
+
+    @Test
+    void 単位完了の実DB失敗は通知と取消をrollbackし外部配信を投入しない() {
+        var slot = slot(LocalDate.of(2026, 7, 1), LocalTime.NOON, LocalTime.of(13, 0), 1);
+        var primary = save(slot.getId(), WALL.minusHours(48), null, true);
+        stateTrigger = "cmp1730_complete_" + UUID.randomUUID().toString().replace("-", "");
+        // enqueue済みretryを取り除く単位完了だけ拒否。失敗checkpointはretryを保持するため通る。
+        jdbc.execute("CREATE TRIGGER " + stateTrigger
+                + " BEFORE UPDATE ON reservation_pending_expire_scan_state FOR EACH ROW BEGIN "
+                + "IF NEW.singleton_key = 1 AND JSON_LENGTH(OLD.retry_primary_ids) > 0 "
+                + "AND JSON_LENGTH(NEW.retry_primary_ids) = 0 THEN "
+                + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'CMP1730 owned unit completion failure'; END IF; END");
+        long submittedBefore = dispatch.getThreadPoolExecutor().getTaskCount();
+        assertThat(run()).isZero();
+        assertThat(unitAttempts).isEqualTo(1);
+        assertThat(status(primary.getId())).isEqualTo(ReservationStatus.PENDING);
+        assertThat(slots.findById(slot.getId()).orElseThrow().getBookedCount()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE user_id = ? "
+                + "AND notification_type = 'RESERVATION_PENDING_EXPIRED'", Long.class, userId)).isZero();
+        assertThat(states.findById(stateId).orElseThrow().getRetryPrimaryIds()).containsExactly(primary.getId());
+        assertThat(dispatch.getThreadPoolExecutor().getTaskCount()).as("rollback時にpoolへ投入しない")
+                .isEqualTo(submittedBefore);
+        assertThat(ownedDispatchCalls.get()).isZero();
+        assertThat(committedDispatchCalls.get()).isZero();
+        assertThat(dispatchObservationFailure.get()).isNull();
         assertExtractionBudget(-1);
     }
 
