@@ -168523,7 +168523,7 @@ export interface operations {
             query?: {
                 teamId?: string;
                 organizationId?: string;
-                userId?: number;
+                userId?: string;
                 previewToken?: string;
             };
             header?: never;

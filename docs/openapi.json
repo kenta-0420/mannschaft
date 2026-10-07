@@ -145012,8 +145012,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
