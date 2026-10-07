@@ -4,6 +4,7 @@ import mysql, { type RowDataPacket, type Connection } from '../../../../backend/
 export const API = 'http://localhost:8081/api/v1'
 export const PASSWORD = 'TestPass2026!'
 export const ADMIN = 'e2e-admin@test.mannschaft.local'
+export const TEAM_ADMIN = 'e2e-dummy-1@test.mannschaft.local'
 export const READER = 'e2e-dummy-2@test.mannschaft.local'
 export const SCHEDULE_EDITOR = 'e2e-dummy-3@test.mannschaft.local'
 export const OUTSIDER = 'e2e-outsider@test.mannschaft.local'

@@ -1,7 +1,7 @@
 import { test, expect, type Page, type Browser } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { loginViaApi } from '../fixtures/auth'
-import { ActivitySyncFixture, ADMIN, API, data, PASSWORD, READER, SCHEDULE_EDITOR,
+import { ActivitySyncFixture, ADMIN, TEAM_ADMIN, API, data, PASSWORD, READER, SCHEDULE_EDITOR,
   OUTSIDER, OTHER_TENANT, resolveScope, success, type Activity, type Scope } from '../fixtures/activity-sync'
 
 // fixture/ログイン/後始末のみ API を利用。対象操作は実クリック・入力で通す。
@@ -297,7 +297,7 @@ test('予定のみ編集権の MEMBER が予定を更新しても他作者の記
 })
 
 test('通常一覧から下書き保存して同じ記録の詳細へ遷移する', async ({ page }) => {
-  await signIn(page)
+  await signIn(page, TEAM_ADMIN)
   const scope = await resolveScope('TEAM')
   const fixture = new ActivitySyncFixture(page, scope)
   try {
@@ -333,7 +333,7 @@ test('通常一覧から下書き保存して同じ記録の詳細へ遷移す�
 })
 
 test('実 MinIO 添付を詳細画面から開けて他scope・非所属は直接 ID でも拒否される', async ({ page, browser }, testInfo) => {
-  await signIn(page)
+  await signIn(page, TEAM_ADMIN)
   const scope = await resolveScope('TEAM')
   const fixture = new ActivitySyncFixture(page, scope)
   const pages: Page[] = []
