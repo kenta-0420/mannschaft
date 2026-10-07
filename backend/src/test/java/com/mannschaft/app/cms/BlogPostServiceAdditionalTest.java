@@ -174,7 +174,8 @@ class BlogPostServiceAdditionalTest {
             }
 
             assertThat(result).hasSize(1);
-            verify(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
+            // CMP-261007-2052 AC-16: 一覧はメンバー限定を外した（可視性は F00 で判定する）。
+            verify(accessControlService, Mockito.never()).checkMembership(any(), any(), any());
         }
     }
 
