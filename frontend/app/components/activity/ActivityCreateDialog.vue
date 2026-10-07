@@ -110,10 +110,15 @@ const formSnapshot = computed<ActivityDraftShape>(() => ({
   selectedTemplateId: selectedTemplateId.value,
 }))
 
-const { clear: clearDraft, restore: restoreDraft, savedFlash } = useFormDraft<ActivityDraftShape>(
-  draftKey.value,
-  { source: formSnapshot, debounceMs: 1000, flashMs: 2000 },
-)
+const {
+  clear: clearDraft,
+  restore: restoreDraft,
+  savedFlash,
+} = useFormDraft<ActivityDraftShape>(draftKey.value, {
+  source: formSnapshot,
+  debounceMs: 1000,
+  flashMs: 2000,
+})
 
 // 復元済みフラッシュ（ダイアログを開いた直後に1回だけ復元トースト表示）
 const restoredFlash = ref(false)
@@ -191,12 +196,13 @@ async function saveDraft() {
       description: description.value.trim() || undefined,
       visibility: visibility.value,
     }
-    await createDraftActivity(props.scopeType, resolvedScopeId.value, body)
+    const created = await createDraftActivity(props.scopeType, resolvedScopeId.value, body)
     clearDraft()
     showSuccess(t('activity.create.draftSuccess'))
     visible.value = false
     await nextTick()
     emit('created')
+    await navigateTo(`/activities/${created.data.id}`)
   } catch {
     showError(t('activity.create.saveError'))
   } finally {
@@ -206,7 +212,8 @@ async function saveDraft() {
 
 // === 送信（全項目入力後・即PUBLISHED作成）===
 async function submit() {
-  if (!canSubmit.value || resolvedScopeId.value === null || selectedTemplateId.value === null) return
+  if (!canSubmit.value || resolvedScopeId.value === null || selectedTemplateId.value === null)
+    return
   submitting.value = true
   let success = false
   try {
@@ -293,7 +300,9 @@ async function submit() {
         </div>
 
         <!-- ADHD配慮ヒント: タイトル+日付だけで保存できる旨を案内 -->
-        <div class="flex items-start gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-600 dark:bg-blue-900/20 dark:text-blue-300">
+        <div
+          class="flex items-start gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-600 dark:bg-blue-900/20 dark:text-blue-300"
+        >
           <i class="pi pi-lightbulb mt-0.5 shrink-0" />
           <span>{{ t('activity.create.draftHint') }}</span>
         </div>
@@ -345,7 +354,9 @@ async function submit() {
         <template v-if="selectedTemplate">
           <!-- 公開範囲 -->
           <div>
-            <label class="mb-1 block text-sm font-medium">{{ t('activity.create.visibilityLabel') }}</label>
+            <label class="mb-1 block text-sm font-medium">{{
+              t('activity.create.visibilityLabel')
+            }}</label>
             <Select
               v-model="visibility"
               :options="visibilityOptions"
@@ -358,7 +369,9 @@ async function submit() {
 
           <!-- 説明（任意） -->
           <div>
-            <label class="mb-1 block text-sm font-medium">{{ t('activity.create.descriptionLabel') }}</label>
+            <label class="mb-1 block text-sm font-medium">{{
+              t('activity.create.descriptionLabel')
+            }}</label>
             <Textarea
               v-model="description"
               class="w-full"

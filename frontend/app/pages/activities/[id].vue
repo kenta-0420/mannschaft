@@ -95,13 +95,14 @@ watch(() => route.params.id, load)
     <template v-else-if="record">
       <PageHeader :title="record.title" />
       <Button
+        v-if="record.scopePublicId"
         class="min-h-11 min-w-11"
         :label="t('activity.pageTitle')"
         icon="pi pi-arrow-left"
         text
         @click="
           navigateTo(
-            `/${record.scopeType === 'TEAM' ? 'teams' : 'organizations'}/${record.scopeId}/activities`,
+            `/${record.scopeType === 'TEAM' ? 'teams' : 'organizations'}/${record.scopePublicId}/activities`,
           )
         "
       />
@@ -169,7 +170,7 @@ watch(() => route.params.id, load)
           :disabled="file.disabled"
           icon="pi pi-download"
           text
-          class="min-h-11 min-w-11 min-h-11 break-all"
+          class="min-h-11 min-w-11 break-all"
           @click="download(file.id)"
         />
       </SectionCard>

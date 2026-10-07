@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { activityDisplayFields, activityFieldValues, activityFileIds } from './activityDetail'
+import {
+  activityDisplayFields,
+  activityFieldValues,
+  activityFileIds,
+  mergeActivityEditedFieldValues,
+} from './activityDetail'
 import type { ActivityTemplateField } from '~/types/activity'
 
 const field: ActivityTemplateField = {
@@ -15,6 +20,22 @@ const field: ActivityTemplateField = {
   sortOrder: 0,
 }
 describe('活動記録の詳細表示', () => {
+  it('未変更の型不一致値と未知値を保全し、変更・クリアした入力だけを反映する', () => {
+    const fields = [
+      { ...field, fieldKey: 'legacy', fieldType: 'TEXT' as const },
+      { ...field, fieldKey: 'changed' },
+      { ...field, fieldKey: 'cleared', fieldType: 'TEXT' as const },
+    ]
+    const raw = { legacy: 12, changed: 0, cleared: 'before', old: { value: false } }
+    expect(
+      mergeActivityEditedFieldValues(
+        raw,
+        fields,
+        { legacy: 12, changed: 0, cleared: 'before' },
+        { legacy: 12, changed: 3, cleared: '' },
+      ),
+    ).toEqual({ legacy: 12, changed: 3, old: { value: false } })
+  })
   it('0・false・空文字を欠落させず、失われた定義の旧キーも表示する', () => {
     const fields = activityDisplayFields({
       fieldValues: '{"score":0,"oldKey":false,"empty":""}',

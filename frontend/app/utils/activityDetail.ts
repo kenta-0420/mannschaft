@@ -1,5 +1,28 @@
-import type { ActivityDetailResponse } from '~/types/activity'
-import type { ActivityFieldValue } from '~/utils/activityFields'
+import type { ActivityDetailResponse, ActivityTemplateField } from '~/types/activity'
+import { buildActivityFieldValues, type ActivityFieldValue } from '~/utils/activityFields'
+
+/** 実際に変更した入力だけを反映し、定義変更で入力できない旧値は保全する。 */
+export function mergeActivityEditedFieldValues(
+  raw: Record<string, unknown>,
+  fields: ActivityTemplateField[],
+  initial: Record<string, ActivityFieldValue>,
+  current: Record<string, ActivityFieldValue>,
+): Record<string, unknown> {
+  const changedKeys = fields
+    .map((field) => field.fieldKey)
+    .filter((key) => {
+      const before = initial[key]
+      const after = current[key]
+      return before instanceof Date && after instanceof Date
+        ? before.getTime() !== after.getTime()
+        : before !== after
+    })
+  const edited = buildActivityFieldValues(fields, current)
+  return {
+    ...Object.fromEntries(Object.entries(raw).filter(([key]) => !changedKeys.includes(key))),
+    ...Object.fromEntries(Object.entries(edited).filter(([key]) => changedKeys.includes(key))),
+  }
+}
 
 /** APIのJSON文字列を検証してから画面へ渡す。不正なJSONは取得失敗として表示する。 */
 export function activityRawFieldValues(

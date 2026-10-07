@@ -3,8 +3,12 @@ import { z } from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 import type { ActivityDetailResponse, ActivityTemplate } from '~/types/activity'
-import { activityFieldValues, activityRawFieldValues } from '~/utils/activityDetail'
-import { buildActivityFieldValues, toYmd, type ActivityFieldValue } from '~/utils/activityFields'
+import {
+  activityFieldValues,
+  activityRawFieldValues,
+  mergeActivityEditedFieldValues,
+} from '~/utils/activityDetail'
+import { toYmd, type ActivityFieldValue } from '~/utils/activityFields'
 
 const props = defineProps<{ record: ActivityDetailResponse }>()
 const visible = defineModel<boolean>('visible', { required: true })
@@ -31,6 +35,7 @@ const templateId = ref<number | null>(null)
 const templates = ref<ActivityTemplate[]>([])
 const visibility = ref<'PUBLIC' | 'MEMBERS_ONLY'>('MEMBERS_ONLY')
 const inputs = ref<Record<string, ActivityFieldValue>>({})
+const initialInputs = ref<Record<string, ActivityFieldValue>>({})
 const saving = ref(false)
 const fields = computed(
   () =>
@@ -62,11 +67,20 @@ watch(visible, async (open) => {
   inputs.value = activityFieldValues(record)
   for (const field of record.templateFields) {
     const value = inputs.value[field.fieldKey]
-    if ((field.fieldType === 'DATE' || field.fieldType === 'DATETIME') && typeof value === 'string')
-      inputs.value[field.fieldKey] = new Date(
-        field.fieldType === 'DATE' ? `${value}T00:00:00` : value,
-      )
+    if (
+      (field.fieldType === 'DATE' || field.fieldType === 'DATETIME') &&
+      typeof value === 'string'
+    ) {
+      const date = new Date(field.fieldType === 'DATE' ? `${value}T00:00:00` : value)
+      if (Number.isFinite(date.getTime())) inputs.value[field.fieldKey] = date
+    }
   }
+  initialInputs.value = Object.fromEntries(
+    Object.entries(inputs.value).map(([key, value]) => [
+      key,
+      value instanceof Date ? new Date(value.getTime()) : value,
+    ]),
+  )
   try {
     templates.value = (await getTemplates(record.scopeType, String(record.scopeId))).data
   } catch (error) {
@@ -77,13 +91,6 @@ const save = handleSubmit(async (values) => {
   if (!props.record.canEdit || !activityDate.value || saving.value) return
   saving.value = true
   try {
-    const fieldValues = Object.fromEntries(
-      Object.entries(activityRawFieldValues(props.record)).filter(
-        ([key, value]) =>
-          !fields.value.some((field) => field.fieldKey === key) ||
-          (value !== null && typeof value === 'object'),
-      ),
-    )
     await updateActivity(props.record.id, {
       ...values,
       activityDate: toYmd(activityDate.value),
@@ -92,7 +99,12 @@ const save = handleSubmit(async (values) => {
       activityTimeEnd: timeString(endTime.value),
       templateId: templateId.value,
       visibility: visibility.value,
-      fieldValues: { ...fieldValues, ...buildActivityFieldValues(fields.value, inputs.value) },
+      fieldValues: mergeActivityEditedFieldValues(
+        activityRawFieldValues(props.record),
+        fields.value,
+        initialInputs.value,
+        inputs.value,
+      ),
       version: props.record.version,
     })
     notification.success(t('activity.detail.saved'))

@@ -21,6 +21,7 @@ export interface ActivityRecordResponse {
 }
 
 export interface ActivityDetailResponse extends ActivityRecordResponse {
+  scopePublicId: string | null
   activityEndDate: string | null
   version: number
   canEdit: boolean
