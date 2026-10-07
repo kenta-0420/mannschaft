@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** testTXを持たず、独立HTTPトランザクションの競合と途中失敗のcommit後状態を検証する。 */
@@ -148,5 +149,81 @@ class ActivityScheduleSyncConcurrencyIntegrationTest extends AbstractMySqlIntegr
                 .andExpect(status().isConflict());
         Long version = tx.execute(status -> activities.findById(activity.path("id").asLong()).orElseThrow().getVersion());
         assertThat(version).isGreaterThan(activity.path("version").asLong());
+    }
+
+    @Test
+    void 予定専用権限のMEMBERは独立TXでpreviewと予定だけをcommitできる() throws Exception {
+        JsonNode activity = create();
+        long member = 940200102L;
+        tx.executeWithoutResult(status -> {
+            MembershipTestHelper.insertActiveUser(em, member);
+            MembershipTestHelper.insertMembership(em, member, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+            for (String permission : List.of("MANAGE_SCHEDULES", "MANAGE_FILES", "MANAGE_POSTS")) {
+                em.createNativeQuery("INSERT INTO permissions(name,display_name,scope,created_at,updated_at) SELECT :name,:name,'TEAM',NOW(),NOW() FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM permissions WHERE name=:name)")
+                        .setParameter("name", permission).executeUpdate();
+                em.createNativeQuery("INSERT INTO role_permissions(role_id,permission_id,is_default,created_at) SELECT r.id,p.id,0,NOW() FROM roles r CROSS JOIN permissions p WHERE r.name='MEMBER' AND p.name=:name AND NOT EXISTS(SELECT 1 FROM role_permissions rp WHERE rp.role_id=r.id AND rp.permission_id=p.id)")
+                        .setParameter("name", permission).executeUpdate();
+            }
+            activities.findById(activity.path("id").asLong()).orElseThrow().publish();
+        });
+        setMemberSchedulePermission(true);
+        var update = Map.of("title", "予定担当の保存");
+        var preview = mvc.perform(post("/api/v1/teams/{team}/schedules/{schedule}/activity-sync-preview", teamId, scheduleId)
+                .with(user(Long.toString(member))).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("scheduleUpdate", update))))
+                .andExpect(status().isOk()).andReturn();
+        assertThat(json.readTree(preview.getResponse().getContentAsString()).path("data").path("activities").size()).isZero();
+        mvc.perform(patch("/api/v1/teams/{team}/schedules/{schedule}", teamId, scheduleId)
+                .with(user(Long.toString(member))).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(update))).andExpect(status().isOk());
+        String scheduleTitle = tx.execute(status -> schedules.findById(scheduleId).orElseThrow().getTitle());
+        String activityTitle = tx.execute(status -> activities.findById(activity.path("id").asLong()).orElseThrow().getTitle());
+        Long activityVersion = tx.execute(status -> activities.findById(activity.path("id").asLong()).orElseThrow().getVersion());
+        assertThat(scheduleTitle).isEqualTo("予定担当の保存");
+        assertThat(activityTitle).isEqualTo("予定由来");
+        assertThat(activityVersion).isEqualTo(activity.path("version").asLong() + 1);
+        setMemberSchedulePermission(false);
+        mvc.perform(post("/api/v1/teams/{team}/schedules/{schedule}/activity-sync-preview", teamId, scheduleId)
+                .with(user(Long.toString(member))).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("scheduleUpdate", update))))
+                .andExpect(status().isForbidden());
+        mvc.perform(patch("/api/v1/teams/{team}/schedules/{schedule}", teamId, scheduleId)
+                .with(user(Long.toString(member))).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("title", "拒否後保存なし")))).andExpect(status().isForbidden());
+        String afterDenied = tx.execute(status -> schedules.findById(scheduleId).orElseThrow().getTitle());
+        assertThat(afterDenied).isEqualTo("予定担当の保存");
+    }
+
+    private void setMemberSchedulePermission(boolean enabled) throws Exception {
+        mvc.perform(put("/api/v1/admin/member-permissions").with(user(Long.toString(AUTHOR)))
+                .param("scopeType", "TEAM").param("scopeId", teamId.toString()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"permissions\":[{\"name\":\"MANAGE_SCHEDULES\",\"enabled\":" + enabled
+                        + "},{\"name\":\"MANAGE_FILES\",\"enabled\":false},{\"name\":\"MANAGE_POSTS\",\"enabled\":false}]}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void 活動スコープ非所属のSYSTEM_ADMINも独立TXで予定だけcommitする() throws Exception {
+        JsonNode activity = create();
+        long operator = 940200103L;
+        tx.executeWithoutResult(status -> {
+            MembershipTestHelper.insertActiveUser(em, operator);
+            MembershipTestHelper.insertUserRole(em, operator, "SYSTEM_ADMIN", null, null);
+        });
+        var update = Map.of("title", "運営の予定保存");
+        var preview = mvc.perform(post("/api/v1/teams/{team}/schedules/{schedule}/activity-sync-preview", teamId, scheduleId)
+                .with(user(Long.toString(operator))).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("scheduleUpdate", update))))
+                .andExpect(status().isOk()).andReturn();
+        assertThat(json.readTree(preview.getResponse().getContentAsString()).path("data").path("activities").size()).isZero();
+        mvc.perform(patch("/api/v1/teams/{team}/schedules/{schedule}", teamId, scheduleId)
+                .with(user(Long.toString(operator))).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(update))).andExpect(status().isOk());
+        String scheduleTitle = tx.execute(status -> schedules.findById(scheduleId).orElseThrow().getTitle());
+        String activityTitle = tx.execute(status -> activities.findById(activity.path("id").asLong()).orElseThrow().getTitle());
+        Long activityVersion = tx.execute(status -> activities.findById(activity.path("id").asLong()).orElseThrow().getVersion());
+        assertThat(scheduleTitle).isEqualTo("運営の予定保存");
+        assertThat(activityTitle).isEqualTo("予定由来");
+        assertThat(activityVersion).isEqualTo(activity.path("version").asLong());
     }
 }

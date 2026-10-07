@@ -115,8 +115,7 @@ public class ActivityScheduleSyncService {
 
     private ScopePermission permission(ScheduleActivitySource source, Long userId) {
         ActivityScopeType type = ActivityScopeType.valueOf(source.scopeType());
-        try { access.checkMembership(userId, type, source.scopeId()); }
-        catch (BusinessException denied) { return new ScopePermission(false, false); }
+        if (!access.isMember(userId, type, source.scopeId())) return new ScopePermission(false, false);
         return new ScopePermission(true, access.isAdminOrAbove(userId, type, source.scopeId()));
     }
 

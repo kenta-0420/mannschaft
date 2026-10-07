@@ -32,6 +32,7 @@ import com.mannschaft.app.schedule.service.ScheduleService;
 import com.mannschaft.app.schedule.service.ScheduleTargetService;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,9 +54,12 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -112,6 +116,13 @@ class ScheduleServiceTest {
 
     @InjectMocks
     private ScheduleService scheduleService;
+
+    @BeforeEach
+    void 通常操作の利用者はスコープ管理者として明示する() {
+        // 旧void認可mockの暗黙許可を、実際のADMIN判定として明示する。拒否caseは各試験で上書きする。
+        lenient().when(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).thenReturn(true);
+        lenient().when(accessControlService.isAdminOrAbove(eq(USER_ID), anyLong(), eq("ORGANIZATION"))).thenReturn(true);
+    }
 
     // ========================================
     // テスト用定数・ヘルパー
@@ -397,8 +408,7 @@ class ScheduleServiceTest {
                     null, null, null,
                     false, null, null, null, null, null, null, null, null, null, false, false);
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             // when & then
             assertThatThrownBy(() -> scheduleService.createSchedule(req, TEAM_ID, "TEAM", USER_ID))
@@ -465,8 +475,7 @@ class ScheduleServiceTest {
             ScheduleEntity entity = createTeamScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             UpdateScheduleRequest req = new UpdateScheduleRequest(
                     "更新", null, null,
@@ -529,8 +538,7 @@ class ScheduleServiceTest {
             ScheduleEntity entity = createTeamScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             // when & then
             assertThatThrownBy(() -> scheduleService.deleteSchedule(SCHEDULE_ID, "THIS_ONLY", USER_ID))
@@ -703,8 +711,7 @@ class ScheduleServiceTest {
         void scheduleManagement_TEAM_MEMBER_OFF拒否() {
             ScheduleEntity entity = createTeamScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.resolveEffectiveRoleName(USER_ID, TEAM_ID, "TEAM"))
                     .willReturn("MEMBER");
             given(accessControlService.hasPermission(USER_ID, TEAM_ID, "TEAM", "MANAGE_SCHEDULES"))
@@ -721,8 +728,7 @@ class ScheduleServiceTest {
         void scheduleManagement_ORG_MEMBER_ON許可() {
             ScheduleEntity entity = createOrgScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+            given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
             given(accessControlService.resolveEffectiveRoleName(USER_ID, ORG_ID, "ORGANIZATION"))
                     .willReturn("MEMBER");
             given(accessControlService.hasPermission(USER_ID, ORG_ID, "ORGANIZATION", "MANAGE_SCHEDULES"))
@@ -736,8 +742,7 @@ class ScheduleServiceTest {
         void scheduleManagement_非MEMBER拒否() {
             ScheduleEntity entity = createTeamScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
-            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.resolveEffectiveRoleName(USER_ID, TEAM_ID, "TEAM"))
                     .willReturn("GUEST");
 
