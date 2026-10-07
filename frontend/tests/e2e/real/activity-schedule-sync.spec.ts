@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Browser } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
-import { ActivitySyncFixture, ADMIN, PASSWORD, READER, SCHEDULE_EDITOR,
+import { ActivitySyncFixture, ADMIN, API, PASSWORD, READER, SCHEDULE_EDITOR,
   OUTSIDER, OTHER_TENANT, resolveScope, success, type Activity, type Scope } from '../fixtures/activity-sync'
 
 // fixture/ログイン/後始末のみ API を利用。対象操作は実クリック・入力で通す。
@@ -281,6 +281,95 @@ test('予定のみ編集権の MEMBER が予定を更新しても他作者の記
     expect(after.description).toBe(before.description)
   } finally {
     await editor?.context().close()
+    await fixture.cleanup()
+  }
+})
+
+test('通常一覧から下書き保存して同じ記録の詳細へ遷移する', async ({ page }) => {
+  await signIn(page)
+  const scope = await resolveScope('TEAM')
+  const fixture = new ActivitySyncFixture(page, scope)
+  try {
+    const title = `実機通常下書き-${Date.now()}`
+    const templateName = `実機通常テンプレ-${Date.now()}`
+    await fixture.template(templateName)
+    await page.goto(`${scope.path}/activities`)
+    await page.getByTestId('activity-add-record').click()
+    await expect(page.getByTestId('activity-create-dialog')).toBeVisible()
+    await page.getByTestId('activity-template-select').click()
+    await page.getByRole('option', { name: templateName, exact: true }).click()
+    await page.getByTestId('activity-title-input').fill(title)
+    const date = page.getByTestId('activity-date-input').locator('input')
+    await date.fill('2026/10/15')
+    await date.press('Tab')
+    await page.getByTestId('activity-description-input').fill('通常下書きの本文')
+    const [response] = await Promise.all([
+      page.waitForResponse((res) => new URL(res.url()).pathname === '/api/v1/activities/draft' && res.request().method() === 'POST'),
+      page.getByTestId('activity-save-draft').click(),
+    ])
+    expect(response.status()).toBe(201)
+    const record = (await response.json() as { data: Activity }).data
+    fixture.activityIds.push(record.id)
+    await expect(page).toHaveURL(new RegExp(`/activities/${record.id}$`))
+    await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
+    await expect(page.getByTestId('activity-description')).toContainText('通常下書きの本文')
+    await expect(page.getByTestId('activity-source-schedule')).toHaveCount(0)
+    expect((await fixture.detail(record.id)).status).toBe('DRAFT')
+  } finally { await fixture.cleanup() }
+})
+
+test('実 MinIO 添付を詳細画面から開けて他scope・非所属は直接 ID でも拒否される', async ({ page, browser }, testInfo) => {
+  await signIn(page)
+  const scope = await resolveScope('TEAM')
+  const fixture = new ActivitySyncFixture(page, scope)
+  const pages: Page[] = []
+  try {
+    const name = `activity-sync-${Date.now()}.txt`
+    const content = '活動記録 添付の実物を確認'
+    const fileId = await fixture.attachment(name, content)
+    const activity = await fixture.published(`実機添付-${Date.now()}`, undefined, [fileId])
+    const reader = await rolePage(browser, READER)
+    pages.push(reader)
+    await reader.goto(`${scope.path}/activities`)
+    await reader.getByTestId(`activity-detail-${activity.id}`).click()
+    const button = reader.getByRole('button', { name, exact: true })
+    await expect(button).toBeVisible()
+    await expect(button).toBeEnabled()
+    const opened = Promise.race([
+      reader.context().waitForEvent('page').then((openedPage) => ({ kind: 'page' as const, page: openedPage })),
+      reader.waitForEvent('download').then((download) => ({ kind: 'download' as const, download })),
+    ])
+    const [response, result] = await Promise.all([
+      reader.waitForResponse((res) => new URL(res.url()).pathname === `/api/v1/files/${fileId}/download-url`),
+      opened,
+      button.click(),
+    ])
+    expect(response.ok()).toBeTruthy()
+    const downloadUrl = new URL((await response.json() as { data: { downloadUrl: string } }).data.downloadUrl)
+    expect(['http://localhost:19010', 'http://127.0.0.1:19010']).toContain(downloadUrl.origin)
+    expect(downloadUrl.pathname.split('/')[1]).toBe('cmp2610071510-storage')
+    if (result.kind === 'page') {
+      await expect(result.page.locator('body')).toContainText(content)
+      await testInfo.attach('実物添付の表示', { body: await result.page.screenshot(), contentType: 'image/png' })
+      await result.page.close()
+    } else {
+      expect(await result.download.failure()).toBeNull()
+      await result.download.saveAs(testInfo.outputPath(name))
+    }
+    for (const email of [OTHER_TENANT, OUTSIDER]) {
+      const denied = await rolePage(browser, email)
+      pages.push(denied)
+      await denied.goto(`/activities/${activity.id}`)
+      await expect(denied.getByTestId('load-error-state')).toBeVisible()
+      await expect(denied.getByRole('button', { name, exact: true })).toHaveCount(0)
+      // UI拒否に加え、URL直打ち相当の実 HTTP で既存ファイル API の認可を観測する。
+      for (const suffix of ['', '/download-url']) {
+        const blocked = await denied.request.get(`${API}/files/${fileId}${suffix}`)
+        expect([403, 404], `別scope/非所属の直接ファイル ID: ${blocked.status()}`).toContain(blocked.status())
+      }
+    }
+  } finally {
+    for (const member of pages) await member.context().close()
     await fixture.cleanup()
   }
 })
