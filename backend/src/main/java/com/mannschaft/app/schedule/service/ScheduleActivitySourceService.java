@@ -51,6 +51,11 @@ public class ScheduleActivitySourceService {
         return scheduleRepository.findById(id).map(s -> toSource(s, false));
     }
 
+    /** 既存PATCHの実スコープ認可を通過した段取り役へ、同期対象を判定する値だけ返す。 */
+    public ScheduleActivitySource sourceForAuthorizedUpdate(Long id) {
+        return toSource(findSource(id), false);
+    }
+
     /** 既存繰返し更新の対象選択と日時移動をそのまま利用し、保存せず投影する。 */
     public List<ScheduleActivitySource> projectedSources(Long id, UpdateScheduleRequest request, String scope) {
         ScheduleEntity selected = findSource(id);

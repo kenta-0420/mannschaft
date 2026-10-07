@@ -80,8 +80,13 @@ public class ActivityScheduleFacade {
     @Transactional
     public ScheduleResponse update(Long scheduleId, String type, Long scopeId, Long userId,
                                     UpdateScheduleRequest request, String updateScope) {
-        sources.requireSource(scheduleId, type, scopeId, userId, false);
+        // 既存PATCHはURLではなく予定の実スコープで認可する契約を保つ。新しい参照入口の厳格照合とは分ける。
         schedules.checkScheduleManagementAccess(scheduleId, userId);
+        var actualSource = sources.sourceForAuthorizedUpdate(scheduleId);
+        if ("PERSONAL".equals(actualSource.scopeType())) {
+            // 個人予定は活動同期の対象外。従来の所有者認可と更新処理だけを利用する。
+            return schedules.updateSchedule(scheduleId, request, updateScope, userId);
+        }
         sources.lockSeries(scheduleId);
         var projected = sources.projectedSources(scheduleId, request, updateScope);
         var current = sources.currentSources(projected.stream().map(ScheduleActivitySource::id).toList(), true);
