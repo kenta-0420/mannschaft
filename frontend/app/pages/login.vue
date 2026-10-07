@@ -37,7 +37,7 @@ const runtimeConfig = useRuntimeConfig()
 const { getGoogleAuthUrl } = useAuthApi()
 const notification = useNotification()
 const route = useRoute()
-const { applyUserLocale } = useLocale()
+const { applyAccountLocale } = useLocale()
 const { t } = useI18n()
 
 onMounted(async () => {
@@ -143,7 +143,7 @@ async function handleLogin() {
             locale: profile.data.locale || undefined,
           })
           if (profile.data.locale) {
-            await applyUserLocale(profile.data.locale)
+            await applyAccountLocale(profile.data.locale)
           }
         }
       } catch {

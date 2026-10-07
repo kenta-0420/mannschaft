@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 
+const { t } = useI18n()
 const { getPersonalTodos, toggleTodoComplete } = useDashboardApi()
 const { captureQuiet } = useErrorReport()
 const notification = useNotification()
@@ -31,9 +32,9 @@ const orgNameMap = computed(() =>
 
 function scopeLabel(todo: TodoItem): string | null {
   if (todo.scopeType === 'PERSONAL') return null
-  if (todo.scopeType === 'TEAM' && todo.scopeId) return teamNameMap.value[todo.scopeId] ?? 'チーム'
+  if (todo.scopeType === 'TEAM' && todo.scopeId) return teamNameMap.value[todo.scopeId] ?? t('dashboard.widgets.personalTodo.teamFallback')
   if (todo.scopeType === 'ORGANIZATION' && todo.scopeId)
-    return orgNameMap.value[todo.scopeId] ?? '組織'
+    return orgNameMap.value[todo.scopeId] ?? t('dashboard.widgets.personalTodo.orgFallback')
   return null
 }
 
@@ -81,14 +82,14 @@ async function onToggle(todo: TodoItem) {
     if (!todo.completed) {
       // 完了にした → ウィジェットから消す
       todos.value = todos.value.filter((t) => t.id !== todo.id)
-      notification.success('TODO完了！')
+      notification.success(t('dashboard.widgets.personalTodo.completed'))
     } else {
       // 未完了に戻した → completed フラグを下げる
       todo.completed = false
     }
   } catch (error) {
     captureQuiet(error, { context: 'WidgetPersonalTodo: TODO完了切り替え' })
-    notification.error('更新に失敗しました')
+    notification.error(t('dashboard.widgets.personalTodo.updateFailed'))
   }
 }
 
@@ -126,18 +127,18 @@ onMounted(load)
     @refresh="load"
   >
     <template #action>
-      <NuxtLink to="/todos" class="text-xs text-primary hover:underline">すべて表示</NuxtLink>
+      <NuxtLink to="/todos" class="text-xs text-primary hover:underline">{{ t('dashboard.widgets.common.viewAll') }}</NuxtLink>
     </template>
 
     <div v-if="todos.length > 0" class="space-y-3">
       <div v-if="overdueCount > 0">
-        <Tag :value="`期限切れ: ${overdueCount}件`" severity="danger" rounded />
+        <Tag :value="t('dashboard.widgets.personalTodo.overdue', { count: overdueCount }, overdueCount)" severity="danger" rounded />
       </div>
 
       <!-- 期限あり -->
       <div v-if="todosWithDue.length > 0">
         <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-surface-400">
-          期限あり
+          {{ t('dashboard.widgets.personalTodo.withDue') }}
         </p>
         <div class="grid grid-cols-3 gap-1.5 md:grid-cols-4 lg:grid-cols-5">
           <div
@@ -185,7 +186,7 @@ onMounted(load)
       <!-- 期限なし -->
       <div v-if="todosNoDue.length > 0">
         <p class="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-surface-400">
-          期限なし
+          {{ t('dashboard.widgets.personalTodo.noDue') }}
         </p>
         <div class="grid grid-cols-3 gap-1.5 md:grid-cols-4 lg:grid-cols-5">
           <div
@@ -230,6 +231,6 @@ onMounted(load)
         </NuxtLink>
       </div>
     </div>
-    <DashboardEmptyState v-else icon="pi pi-check-circle" message="TODOはすべて完了しています" />
+    <DashboardEmptyState v-else icon="pi pi-check-circle" :message="t('dashboard.widgets.personalTodo.allDone')" />
   </DashboardWidgetCard>
 </template>

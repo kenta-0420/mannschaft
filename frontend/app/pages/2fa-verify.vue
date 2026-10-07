@@ -9,7 +9,7 @@ const authStore = useAuthStore()
 // 先回りリフレッシュ武装用に runtimeConfig を setup コンテキストで capture する（armProactiveRefresh 参照）。
 const runtimeConfig = useRuntimeConfig()
 const notification = useNotification()
-const { applyUserLocale } = useLocale()
+const { applyAccountLocale } = useLocale()
 
 // ハイドレーション前に入力された値（パスワードマネージャによる TOTP 自動入力を含む）を取り込む。
 // InputOtp は桁ごとに id を持たない input を並べて描画するため、セレクタで連結して読む。
@@ -77,7 +77,7 @@ async function handleVerify() {
         timezone: profile.data.timezone ?? undefined,
       })
       if (profile.data.locale) {
-        await applyUserLocale(profile.data.locale)
+        await applyAccountLocale(profile.data.locale)
       }
     }
     catch {

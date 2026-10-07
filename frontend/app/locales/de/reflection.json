@@ -189,10 +189,10 @@
       "back_to_entry": "Zurück zum Rückblick",
       "card_answer_placeholder": "答えを入力...",
       "outline_scaffold": {
-        "panel_heading": "Geruesthinweise",
+        "panel_heading": "Gerüsthinweise",
         "main_theme_label": "Thema",
-        "level_note_partial": "Es werden nur die ersten Zeichen jeder Ueberschrift angezeigt. Versuche, den Rest zu erinnern.",
-        "aria_panel": "OUTLINE Geruesthinweise-Panel"
+        "level_note_partial": "Es werden nur die ersten Zeichen jeder Überschrift angezeigt. Versuche, den Rest zu erinnern.",
+        "aria_panel": "OUTLINE Gerüsthinweise-Panel"
       }
     },
     "export": {
