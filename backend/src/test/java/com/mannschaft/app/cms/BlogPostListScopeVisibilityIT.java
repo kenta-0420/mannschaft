@@ -72,7 +72,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>存在秘匿の期待値（AC-8/AC-9）: 一覧は「不存在 slug の現行応答」＝チーム {@code 404 CMS_024}、
  * 組織 {@code 404 CMS_025} に揃える前提。詳細は数値 ID しか受けない（{@code Long teamId}）ため、
- * 「不存在チームを数値で指定した詳細の応答」との一致（ステータス＋エラーコード）を検査する。</p>
+ * 「不存在チームを数値で指定した詳細の応答」との一致を検査し、殿の裁定により詳細は 404 CMS_001 に統一する。</p>
  */
 @AutoConfigureMockMvc
 @Transactional
@@ -280,8 +280,9 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("AC-7a: 非所属のフォロワーには FOLLOWERS_ONLY が返る（現行 Resolver どおり）")
-    void ac7a_非所属フォロワーにはFOLLOWERS_ONLYが返る() throws Exception {
+    @DisplayName("AC-7a: 非所属のフォロワーにも FOLLOWERS_ONLY は返らない（FollowBatchService の実装 Bean 不在のため現行 Resolver では誰にも不可視）")
+    void ac7a_非所属フォロワーにもFOLLOWERS_ONLYは返らない() throws Exception {
+        String visible = teamPost(Visibility.PUBLIC, PostStatus.PUBLISHED).getSlug();
         String followersOnly = teamPost(Visibility.FOLLOWERS_ONLY, PostStatus.PUBLISHED).getSlug();
         em.persist(FollowEntity.builder()
                 .followerType(FollowerType.USER).followerId(outsiderId)
@@ -292,7 +293,7 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
         JsonNode body = okList(outsiderId, "teamId", teamId.toString(), null, null);
 
         assertThat(body.path("meta").path("total").asLong()).isEqualTo(1);
-        assertThat(slugs(body)).containsExactly(followersOnly);
+        assertThat(slugs(body)).containsExactly(visible).doesNotContain(followersOnly);
     }
 
     @Test
@@ -341,7 +342,7 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
             // 詳細: 不存在チームを数値で指定した詳細と同一応答
             Outcome missingDetail = outcome(detail(outsiderId, slug, "teamId", MISSING_ID));
             Outcome hiddenDetail = outcome(detail(outsiderId, slug, "teamId", teamId));
-            assertThat(hiddenDetail.status()).isEqualTo(404);
+            assertThat(hiddenDetail).isEqualTo(new Outcome(404, "CMS_001"));
             assertThat(hiddenDetail).isEqualTo(missingDetail);
             assertThat(hiddenDetail.body()).doesNotContain("本文");
         }
@@ -365,7 +366,7 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
 
             Outcome missingDetail = outcome(detail(outsiderId, slug, "organizationId", MISSING_ID));
             Outcome hiddenDetail = outcome(detail(outsiderId, slug, "organizationId", orgId));
-            assertThat(hiddenDetail.status()).isEqualTo(404);
+            assertThat(hiddenDetail).isEqualTo(new Outcome(404, "CMS_001"));
             assertThat(hiddenDetail).isEqualTo(missingDetail);
             assertThat(hiddenDetail.body()).doesNotContain("本文");
         }
@@ -405,7 +406,7 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
 
     @ParameterizedTest(name = "{0} {1}")
     @MethodSource("ac9DetailCases")
-    @DisplayName("AC-9: 削除済み／PROVISIONED のチーム・組織を数値で指定した詳細の応答は 不存在スコープの詳細と一致する")
+    @DisplayName("AC-9: 削除済み／PROVISIONED のチーム・組織を数値で指定した詳細の応答は 不存在スコープの詳細と一致する（404 CMS_001）")
     void ac9_詳細の存在秘匿応答は一致する(String scope, ScopeState state) throws Exception {
         boolean team = "TEAM".equals(scope);
         String param = team ? "teamId" : "organizationId";
@@ -415,7 +416,7 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
         Outcome missing = outcome(detail(outsiderId, slug, param, MISSING_ID));
         Outcome actual = outcome(detail(outsiderId, slug, param, scopeId));
 
-        assertThat(actual.status()).isEqualTo(404);
+        assertThat(actual).isEqualTo(new Outcome(404, "CMS_001"));
         assertThat(actual).isEqualTo(missing);
         assertThat(actual.body()).doesNotContain("本文");
     }
