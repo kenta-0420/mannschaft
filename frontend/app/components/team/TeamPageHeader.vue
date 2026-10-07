@@ -112,7 +112,7 @@ const overflowMenuItems = computed(() => {
       <!-- 左: 戻る + 名前 + メタ情報 -->
       <div class="flex flex-col gap-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap tag-on-light-band">
-          <Button icon="pi pi-arrow-left" text rounded size="small" @click="emit('back')" />
+          <Button icon="pi pi-arrow-left" text rounded size="small" :aria-label="$t('button.back')" @click="emit('back')" />
           <h1 class="text-xl sm:text-2xl font-bold truncate text-surface-900">
             {{ displayName }}
           </h1>
@@ -332,7 +332,7 @@ const overflowMenuItems = computed(() => {
             rounded
             severity="secondary"
             size="small"
-            :aria-label="$t('common.menu')"
+            :aria-label="$t('common.moreActions')"
             @click="toggleOverflowMenu"
           />
           <Menu ref="overflowMenu" :model="overflowMenuItems" popup />
