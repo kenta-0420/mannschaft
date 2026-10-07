@@ -104,6 +104,24 @@ public class UpdateScheduleRequest {
     @Valid
     private final ScheduledAttendanceRequest scheduledAttendance;
 
+    /** 予定更新と活動基本項目同期を同じトランザクションで確定する確認内容。 */
+    @Valid
+    private final com.mannschaft.app.activity.dto.ActivitySyncConfirmation syncConfirmation;
+
+    /** 確認同期追加以前のJava呼び出し元との互換性を保つ。 */
+    public UpdateScheduleRequest(String title, String description, String location,
+            OffsetDateTime startAt, OffsetDateTime endAt, Boolean allDay,
+            String eventType, String visibility, String minViewRole, String minResponseRole,
+            String targetMode, List<Long> targetUserIds, Boolean attendanceRequired,
+            OffsetDateTime attendanceDeadline, String commentOption, Long eventCategoryId,
+            Integer academicYear, String updateScope, List<UpdateReminderRequest> reminders,
+            List<ScheduledSurveyRequest> scheduledSurveys, ScheduledAttendanceRequest scheduledAttendance) {
+        this(title, description, location, startAt, endAt, allDay, eventType, visibility, minViewRole,
+                minResponseRole, targetMode, targetUserIds, attendanceRequired, attendanceDeadline,
+                commentOption, eventCategoryId, academicYear, updateScope, reminders, scheduledSurveys,
+                scheduledAttendance, null);
+    }
+
     /** 対象者機能追加以前のJava呼び出し元向け。対象者項目は未変更（null）として扱う。 */
     public UpdateScheduleRequest(
             String title, String description, String location,
@@ -125,6 +143,6 @@ public class UpdateScheduleRequest {
         return new UpdateScheduleRequest(title, description, location, startAt, endAt, allDay,
                 eventType, visibility, minViewRole, minResponseRole, targetMode, targetUserIds,
                 attendanceRequired, attendanceDeadline, commentOption, eventCategoryId,
-                academicYear, updateScope, reminders, scheduledSurveys, scheduledAttendance);
+                academicYear, updateScope, reminders, scheduledSurveys, scheduledAttendance, syncConfirmation);
     }
 }

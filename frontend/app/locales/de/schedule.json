@@ -90,15 +90,15 @@
       "absent": "Abwesend",
       "undecided": "Offen",
       "total": "Gesamt",
-      "totalNote": "Gesamt zaehlt eindeutige Personen; die Team-Werte koennen sich ueberschneiden (Mitglieder in mehreren Teams werden je Team gezaehlt).",
+      "totalNote": "Gesamt zählt eindeutige Personen; die Team-Werte können sich überschneiden (Mitglieder in mehreren Teams werden je Team gezählt).",
       "directMembers": "Direkte Organisationsmitglieder",
       "reload": "Neu laden",
       "retry": "Erneut versuchen",
       "exportCsv": "CSV exportieren",
       "exportFailed": "CSV-Export fehlgeschlagen.",
-      "fetchFailed": "Die Anwesenheitsaufschluesselung nach Team konnte nicht geladen werden.",
-      "forbidden": "Sie haben keine Berechtigung, diese Aufschluesselung anzuzeigen.",
-      "empty": "Keine Daten zur Anwesenheitsaufschluesselung nach Team verfuegbar."
+      "fetchFailed": "Die Anwesenheitsaufschlüsselung nach Team konnte nicht geladen werden.",
+      "forbidden": "Sie haben keine Berechtigung, diese Aufschlüsselung anzuzeigen.",
+      "empty": "Keine Daten zur Anwesenheitsaufschlüsselung nach Team verfügbar."
     },
     "recurrence": {
       "label": "Wiederholen",
@@ -215,7 +215,7 @@
     "memberColor": { "column": "Terminfarbe", "auto": "Automatisch", "reset": "Auf automatische Farbe zurücksetzen", "updated": "Terminfarbe des Mitglieds aktualisiert", "resetDone": "Automatische Terminfarbe wiederhergestellt", "updateFailed": "Terminfarbe des Mitglieds konnte nicht aktualisiert werden", "colorLabel": "Terminfarbe für {name}" },
     "todo_load_error": {
       "summary": "TODOs konnten nicht geladen werden",
-      "detail": "TODOs konnten im Kalender nicht angezeigt werden. Termine werden weiterhin angezeigt. Bitte spaeter neu laden."
+      "detail": "TODOs konnten im Kalender nicht angezeigt werden. Termine werden weiterhin angezeigt. Bitte später neu laden."
     }
   },
   "scheduleKeep": {

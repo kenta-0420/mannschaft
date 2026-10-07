@@ -46,6 +46,9 @@ public class ActivityController {
 
     private final ActivityResultService activityService;
     private final ActivityMapper activityMapper;
+    private final com.mannschaft.app.activity.service.ActivityDetailService activityDetails;
+    private final com.mannschaft.app.common.activityschedule.ActivityScheduleFacade activitySchedules;
+    private final com.mannschaft.app.common.activityschedule.ActivityMutationFacade activityMutations;
 
 
     /**
@@ -99,9 +102,8 @@ public class ActivityController {
     @GetMapping("/{id}")
     @Operation(summary = "活動記録詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<ActivityRecordResponse>> getActivity(@PathVariable Long id) {
-        ActivityResultEntity entity = activityService.getActivity(id, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponse(entity)));
+    public ResponseEntity<ApiResponse<com.mannschaft.app.activity.dto.ActivityDetailResponse>> getActivity(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.of(activityDetails.getDetail(id, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -114,9 +116,19 @@ public class ActivityController {
             @RequestParam("scope_type") String scopeType,
             @RequestParam("scope_id") Long scopeId,
             @Valid @RequestBody CreateActivityRequest request) {
-        ActivityResultEntity response = activityService.createActivity(
-                SecurityUtils.getCurrentUserId(), ActivityScopeType.valueOf(scopeType), scopeId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
+        ActivityRecordResponse response = activitySchedules.create(
+                ActivityScopeType.valueOf(scopeType), scopeId, SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /** 予定の内容と出席者を一度だけ複写して下書きを作成する。 */
+    @PostMapping("/draft-from-schedule")
+    @Operation(summary = "予定から活動記録の下書きを作成")
+    public ResponseEntity<ApiResponse<com.mannschaft.app.activity.dto.ActivityDetailResponse>> draftFromSchedule(
+            @RequestParam("scope_type") String scopeType, @RequestParam("scope_id") Long scopeId,
+            @Valid @RequestBody com.mannschaft.app.activity.dto.CreateDraftFromScheduleRequest request) {
+        return ResponseEntity.ok(ApiResponse.of(activitySchedules.draft(request.scheduleId(), scopeType, scopeId,
+                SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -144,9 +156,15 @@ public class ActivityController {
     @PostMapping("/{id}/publish")
     @Operation(summary = "活動記録 公開")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "公開成功")
-    public ResponseEntity<ApiResponse<ActivityRecordResponse>> publishActivity(@PathVariable Long id) {
-        ActivityResultEntity response = activityService.publishActivity(id, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> publishActivity(@PathVariable Long id,
+            @Valid @RequestBody(required = false) com.mannschaft.app.activity.dto.ActivityVersionRequest request) {
+        return ResponseEntity.ok(ApiResponse.of(activityMutations.publish(id,
+                SecurityUtils.getCurrentUserId(), request == null ? null : request.version())));
+    }
+
+    /** 既存Java呼び出し元との互換性を保つ。 */
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> publishActivity(Long id) {
+        return publishActivity(id, null);
     }
 
     /**
@@ -158,8 +176,7 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<ActivityRecordResponse>> updateActivity(
             @PathVariable Long id,
             @Valid @RequestBody UpdateActivityRequest request) {
-        ActivityResultEntity response = activityService.updateActivity(id, SecurityUtils.getCurrentUserId(), request);
-        return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
+        return ResponseEntity.ok(ApiResponse.of(activityMutations.update(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     /**
@@ -195,7 +212,7 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<List<ActivityParticipantResponse>>> addParticipants(
             @PathVariable Long id,
             @Valid @RequestBody AddParticipantsRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(activityService.addParticipants(id, SecurityUtils.getCurrentUserId(), request)));
+        return ResponseEntity.ok(ApiResponse.of(activityMutations.addParticipants(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     /**
@@ -207,6 +224,6 @@ public class ActivityController {
     public ResponseEntity<ApiResponse<List<ActivityParticipantResponse>>> removeParticipants(
             @PathVariable Long id,
             @Valid @RequestBody RemoveParticipantsRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(activityService.removeParticipants(id, SecurityUtils.getCurrentUserId(), request)));
+        return ResponseEntity.ok(ApiResponse.of(activityMutations.removeParticipants(id, SecurityUtils.getCurrentUserId(), request)));
     }
 }

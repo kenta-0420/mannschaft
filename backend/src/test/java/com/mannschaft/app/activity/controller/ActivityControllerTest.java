@@ -67,7 +67,10 @@ class ActivityControllerTest {
 
     @BeforeEach
     void setUp() {
-        ActivityController controller = new ActivityController(activityService, activityMapper);
+        ActivityController controller = new ActivityController(activityService, activityMapper,
+                Mockito.mock(com.mannschaft.app.activity.service.ActivityDetailService.class),
+                Mockito.mock(com.mannschaft.app.common.activityschedule.ActivityScheduleFacade.class),
+                Mockito.mock(com.mannschaft.app.common.activityschedule.ActivityMutationFacade.class));
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(controller)

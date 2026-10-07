@@ -106,6 +106,7 @@
     "seroval": "^1.6.8",
     "source-map-js": "^1.2.2",
     "sharp": "^0.35.5",
+    "shell-quote": "^1.11.0",
     "@redocly/openapi-core": {
       "js-yaml": "^4.3.2"
     },
