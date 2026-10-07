@@ -81,7 +81,6 @@ async function submitCreate() {
     const res = await createPost({
       title: createForm.value.title,
       body: '.',
-      status: 'DRAFT',
       scopeType: props.scopeType ?? null,
       scopeId: props.scopeId ?? null,
     })

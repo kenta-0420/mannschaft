@@ -5,6 +5,43 @@ import { parseBlogPostReadQuery } from '~/utils/blogPostReadQuery'
 /** BE `PublishRequest`（生成型が正準）。 */
 export type BlogPublishRequest = components['schemas']['PublishRequest']
 
+/** 作成 API の正規 DTO に、画面内の投稿先選択を加えた入力。 */
+export type BlogCreateInput = components['schemas']['CreateBlogPostRequest'] & {
+  scopeType?: string | null
+  scopeId?: string | null
+}
+
+/**
+ * 通常 UI の投稿先を BE の teamId/organizationId へ写像する。
+ * group の指定不足を個人記事に落とさず、slug は BE の正規 resolver へ渡す。
+ * 投稿先未指定では、既存の正規 DTO の teamId/organizationId を保持する。
+ */
+export function buildBlogCreateBody(
+  body: BlogCreateInput,
+): components['schemas']['CreateBlogPostRequest'] {
+  const { scopeType, scopeId, ...request } = body
+  if (scopeType == null) {
+    if (scopeId != null) throw new TypeError('BLOG_CREATE_SCOPE_TYPE_REQUIRED')
+    return request
+  }
+  if (scopeType !== 'TEAM' && scopeType !== 'ORGANIZATION' && scopeType !== 'PERSONAL') {
+    throw new TypeError('BLOG_CREATE_SCOPE_TYPE_INVALID')
+  }
+
+  delete request.teamId
+  delete request.organizationId
+  if (scopeType === 'PERSONAL') {
+    if (scopeId != null) throw new TypeError('BLOG_CREATE_PERSONAL_SCOPE_ID_INVALID')
+    return request
+  }
+  if (typeof scopeId !== 'string' || !scopeId.trim()) {
+    throw new TypeError('BLOG_CREATE_SCOPE_ID_REQUIRED')
+  }
+  return scopeType === 'TEAM'
+    ? { ...request, teamId: scopeId }
+    : { ...request, organizationId: scopeId }
+}
+
 /**
  * 公開／予約公開の送信ボディを組み立てる。
  *
@@ -89,8 +126,11 @@ export function useBlogApi() {
     )
   }
 
-  async function createPost(body: Record<string, unknown>) {
-    return api<{ data: BlogPostResponse }>('/api/v1/blog/posts', { method: 'POST', body })
+  async function createPost(body: BlogCreateInput) {
+    return api<{ data: BlogPostResponse }>('/api/v1/blog/posts', {
+      method: 'POST',
+      body: buildBlogCreateBody(body),
+    })
   }
 
   async function updatePost(postId: number, body: Record<string, unknown>) {
@@ -207,8 +247,11 @@ export function useBlogApi() {
     return api<{ data: BlogPostResponse }>(`/api/v1/users/me/blog/posts/${postId}`)
   }
 
-  async function createMyPost(body: Record<string, unknown>) {
-    return api<{ data: BlogPostResponse }>('/api/v1/users/me/blog/posts', { method: 'POST', body })
+  async function createMyPost(body: BlogCreateInput) {
+    return api<{ data: BlogPostResponse }>('/api/v1/users/me/blog/posts', {
+      method: 'POST',
+      body: buildBlogCreateBody(body),
+    })
   }
 
   async function updateMyPost(postId: number, body: Record<string, unknown>) {
