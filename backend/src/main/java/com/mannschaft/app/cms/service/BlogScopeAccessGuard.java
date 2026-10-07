@@ -73,6 +73,24 @@ public class BlogScopeAccessGuard {
         return new ResolvedScope(null, null);
     }
 
+    /**
+     * 詳細用: 個人記事経路の {@code userId} 文字列を解釈する。null・空白は未指定（null）、数値はその ID。
+     * 数値でない値は記事不存在と同一の {@link CmsErrorCode#POST_NOT_FOUND}（404）。
+     *
+     * <p>{@code Long} で受けるとグローバルの slug 変換器が空白・非数値をチームの slug として解決しようとして
+     * 別のエラーコードの 404 になり、「スコープ未指定は CMS_001」（AC-20）とそろわないため、文字列で受けてここで解く。</p>
+     */
+    public Long parsePersonalUserId(String userIdStr) {
+        if (isBlank(userIdStr)) {
+            return null;
+        }
+        Long id = parseLongOrNull(userIdStr.strip());
+        if (id == null) {
+            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
+        }
+        return id;
+    }
+
     private Long resolveVisible(String idStr, boolean team, Long viewerUserId, CmsErrorCode notFound) {
         if (isBlank(idStr)) {
             throw new BusinessException(notFound);

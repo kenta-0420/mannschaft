@@ -514,6 +514,10 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
                     get(DETAIL, slug).param("teamId", ""),
                     get(DETAIL, slug).param("organizationId", " "),
                     get(DETAIL, slug).param("teamId", " ").param("organizationId", " "),
+                    get(DETAIL, slug).param("userId", " "),
+                    get(DETAIL, slug).param("userId", ""),
+                    get(DETAIL, slug).param("teamId", " ").param("organizationId", " ").param("userId", " "),
+                    get(DETAIL, slug).param("userId", " ").param("previewToken", "any-token"),
                     get(DETAIL, slug).param("previewToken", "any-token"),
                     get(DETAIL, slug).param("teamId", " ").param("previewToken", "any-token"));
             for (MockHttpServletRequestBuilder request : requests) {
@@ -530,9 +534,24 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
         String hiddenSlug = "ac21-hidden-" + key;
         invisibleScopeSlug(true, hiddenSlug);
         BlogPostEntity visibleArticle = teamPost(Visibility.PUBLIC, PostStatus.PUBLISHED);
+        // user_id=作者 を併せ持つチーム記事・組織記事。userId 指定の検索（user_id 一致）には一致するため、
+        // 「個人スコープ（team_id・organization_id とも null）か」の判定だけが拒否の根拠になる。
+        // 本番の DDL には chk_bp_scope（team/org/user の XOR）があり作れない行だが、試験の DB は
+        // ddl-auto=create で CHECK を持たないため作れる。判定を外した実装を落とすための検体として置く。
+        String userAndTeamSlug = "ac21-user-team-" + key;
+        String userAndOrgSlug = "ac21-user-org-" + key;
+        for (String[] fixture : List.of(new String[] {"team", userAndTeamSlug}, new String[] {"org", userAndOrgSlug})) {
+            boolean team = "team".equals(fixture[0]);
+            em.persist(BlogPostEntity.builder()
+                    .teamId(team ? teamId : null).organizationId(team ? null : orgId).userId(authorId)
+                    .authorId(authorId).title("AC-9 の記事 " + fixture[1]).slug(fixture[1]).body("AC-9 の本文")
+                    .postType(PostType.BLOG).visibility(Visibility.PUBLIC).status(PostStatus.PUBLISHED)
+                    .readingTimeMinutes((short) 1)
+                    .build());
+        }
         em.flush();
 
-        for (String slug : List.of(hiddenSlug, visibleArticle.getSlug())) {
+        for (String slug : List.of(hiddenSlug, visibleArticle.getSlug(), userAndTeamSlug, userAndOrgSlug)) {
             for (Long viewer : List.of(outsiderId, authorId)) {
                 Outcome byUserId = outcome(mockMvc.perform(get(DETAIL, slug).param("userId", authorId.toString())
                         .with(user(viewer.toString()))).andReturn());

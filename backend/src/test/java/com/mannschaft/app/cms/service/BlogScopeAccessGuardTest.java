@@ -126,6 +126,20 @@ class BlogScopeAccessGuardTest {
     }
 
     @Test
+    @DisplayName("詳細: 個人記事の userId は 空白=未指定(null)・数値=ID・非数値=POST_NOT_FOUND")
+    void 詳細_個人userId() {
+        assertThat(guard.parsePersonalUserId(null)).isNull();
+        assertThat(guard.parsePersonalUserId("")).isNull();
+        assertThat(guard.parsePersonalUserId(" ")).isNull();
+        assertThat(guard.parsePersonalUserId(" 7 ")).isEqualTo(7L);
+        assertThatThrownBy(() -> guard.parsePersonalUserId("someone"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(CmsErrorCode.POST_NOT_FOUND));
+        verifyNoInteractions(teamService, organizationService, contentVisibilityChecker);
+    }
+
+    @Test
     @DisplayName("詳細: スコープ未指定は個人記事として両方 null（他ドメインを呼ばない）")
     void 詳細_個人記事() {
         assertThat(guard.resolveVisibleScopeForDetail(null, null, VIEWER_ID))

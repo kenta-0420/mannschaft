@@ -269,9 +269,11 @@ class BlogPostServiceAdditionalTest {
         }
 
         @Test
-        @DisplayName("AC-21: 個人経路で取得した記事がチーム・組織の記事なら CMS_001（親スコープの門を迂回させない）")
-        void ユーザースコープ_チーム記事はCMS_001() {
-            BlogPostEntity teamPost = createPostEntity(PostStatus.PUBLISHED); // team_id あり
+        @DisplayName("AC-21: 個人経路で取得した記事が user_id 一致でも team_id 付きなら CMS_001（親スコープの門を迂回させない）")
+        void ユーザースコープ_userId一致のチーム記事はCMS_001() {
+            // user_id が一致するので検索には一致する。個人スコープ判定（team_id）だけが拒否の根拠になる形。
+            BlogPostEntity teamPost = createPostEntity(PostStatus.PUBLISHED).toBuilder()
+                    .teamId(TEAM_ID).organizationId(null).userId(USER_ID).build();
             given(postRepository.findByUserIdAndSlug(USER_ID, "team-post")).willReturn(Optional.of(teamPost));
 
             assertThatThrownBy(() -> service.getBySlug(null, null, USER_ID, "team-post"))
@@ -279,6 +281,35 @@ class BlogPostServiceAdditionalTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CmsErrorCode.POST_NOT_FOUND));
             verify(contentVisibilityChecker, Mockito.never()).assertCanView(any(), any(), any());
+            verify(cmsMapper, Mockito.never()).toBlogPostResponse(any(BlogPostEntity.class));
+        }
+
+        @Test
+        @DisplayName("AC-21: 個人経路で取得した記事が user_id 一致でも organization_id 付きなら CMS_001")
+        void ユーザースコープ_userId一致の組織記事はCMS_001() {
+            BlogPostEntity orgPost = createPostEntity(PostStatus.PUBLISHED).toBuilder()
+                    .teamId(null).organizationId(ORG_ID).userId(USER_ID).build();
+            given(postRepository.findByUserIdAndSlug(USER_ID, "org-post")).willReturn(Optional.of(orgPost));
+
+            assertThatThrownBy(() -> service.getBySlug(null, null, USER_ID, "org-post"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CmsErrorCode.POST_NOT_FOUND));
+            verify(contentVisibilityChecker, Mockito.never()).assertCanView(any(), any(), any());
+            verify(cmsMapper, Mockito.never()).toBlogPostResponse(any(BlogPostEntity.class));
+        }
+
+        @Test
+        @DisplayName("AC-21: previewToken 付きの個人経路も同じ判定（user_id 一致・team_id 付きは CMS_001）")
+        void プレビュー付きユーザースコープ_チーム記事はCMS_001() {
+            BlogPostEntity teamPost = createPostEntity(PostStatus.PUBLISHED).toBuilder()
+                    .teamId(TEAM_ID).organizationId(null).userId(USER_ID).build();
+            given(postRepository.findByUserIdAndSlug(USER_ID, "team-post")).willReturn(Optional.of(teamPost));
+
+            assertThatThrownBy(() -> service.getBySlugWithPreviewToken(null, null, USER_ID, "team-post", "tok"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CmsErrorCode.POST_NOT_FOUND));
         }
 
         @Test

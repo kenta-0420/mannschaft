@@ -99,7 +99,8 @@ public class BlogPostController {
      * {@link BlogScopeAccessGuard} がチーム・組織それぞれとして解決し可視性を確かめる（CMP-261007-2052）。
      * {@code Long} で受けるとグローバルの {@code ScopeSlugIdConverter} が先に働き、不在 slug だけが別の
      * エラーコードになる（存在オラクル）うえ組織の slug がチームとして解決されるため、String で受ける。
-     * 門は BlogPostService の取引の外で先に通し、Service には解決済みの ID だけを渡す（D-3T）。</p>
+     * 門は BlogPostService の取引の外で先に通し、Service には解決済みの ID だけを渡す（D-3T）。
+     * {@code userId} も同じ理由で String で受け、空白は未指定として扱う（AC-20: スコープ未指定は 404 CMS_001）。</p>
      */
     @GetMapping("/posts/{slug}")
     @Operation(summary = "記事詳細（slug）")
@@ -108,17 +109,18 @@ public class BlogPostController {
             @PathVariable String slug,
             @RequestParam(required = false) String teamId,
             @RequestParam(required = false) String organizationId,
-            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String userId,
             @RequestParam(required = false) String previewToken) {
         Long currentUserId = SecurityUtils.getCurrentUserIdOrNull();
         BlogScopeAccessGuard.ResolvedScope scope =
                 scopeAccessGuard.resolveVisibleScopeForDetail(teamId, organizationId, currentUserId);
+        Long personalUserId = scopeAccessGuard.parsePersonalUserId(userId);
         BlogPostResponse response;
         if (previewToken != null) {
             response = postService.getBySlugWithPreviewToken(
-                    scope.teamId(), scope.organizationId(), userId, slug, previewToken);
+                    scope.teamId(), scope.organizationId(), personalUserId, slug, previewToken);
         } else {
-            response = postService.getBySlug(scope.teamId(), scope.organizationId(), userId, slug);
+            response = postService.getBySlug(scope.teamId(), scope.organizationId(), personalUserId, slug);
         }
         // リアクション情報（みたよ！）を付与する
         BlogReactionResponse reactionStatus = reactionService.getReactionStatus(response.getId(), currentUserId);
