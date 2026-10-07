@@ -43,7 +43,9 @@ export function useHolidays() {
     const date = new Date(year, month - 1, day)
     const hd = new Holidays(countryCode.value)
     // date-holidays の祝日名は国により ja/en 等のみ。未提供言語は国既定言語に戻るため [lang, 'en'] で英語へフォールバックさせる
-    if (lang) hd.setLanguages(lang === 'en' ? ['en'] : [lang, 'en'])
+    // date-holidays は日本語を 'jp' で持つ（i18n locale 'ja' と不一致）。他言語は locale と同コード
+    const hdLang = lang === 'ja' ? 'jp' : lang
+    if (hdLang) hd.setLanguages(hdLang === 'en' ? ['en'] : [hdLang, 'en'])
     const results = hd.isHoliday(date)
     if (!results) return null
     // public（法定祝日）を優先し、なければ最初の結果を使用する
