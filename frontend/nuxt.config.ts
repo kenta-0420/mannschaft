@@ -1012,7 +1012,18 @@ export default defineNuxtConfig({
       // chart.js / dompurify / vuedraggable は遅延ロードされる詳細ページで初めて参照される。
       // 未指定だと初回 SPA 遷移中に Vite が依存を発見してページ全体を reload し、
       // URL 確定前の一覧へ戻るため、dev server 起動時に事前最適化しておく。
-      include: ['date-holidays', 'dexie', 'chart.js', 'dompurify', 'vuedraggable'],
+      // 活動詳細のMarkdown・編集フォームも初回アクセス中の再最適化を避ける。
+      include: [
+        'date-holidays',
+        'dexie',
+        'chart.js',
+        'dompurify',
+        'vuedraggable',
+        'marked',
+        'zod',
+        '@vee-validate/zod',
+        'vee-validate',
+      ],
     },
   },
 
