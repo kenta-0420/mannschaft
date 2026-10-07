@@ -141,7 +141,7 @@ async function download(id: number | undefined): Promise<void> {
         <img v-if="cover" :src="cover" :alt="title" class="mb-4 max-h-80 w-full rounded object-contain">
         <!-- 本文は既存 Markdown renderer/DOMPurify を通した client-only の取得結果。 -->
         <!-- eslint-disable-next-line vue/no-v-html -- サニタイズ済み本文のみ -->
-        <div v-if="body" class="announcement-preview-body prose max-w-none break-words dark:prose-invert" v-html="body" />
+        <div v-if="body" class="announcement-preview-body article-body break-words" v-html="body" />
         <p v-else class="py-4 text-surface-500" data-testid="announcement-preview-empty">{{ t('announcement.preview.empty_body') }}</p>
         <div v-if="imageFailed" role="status" class="mt-4">
           <p>{{ t('announcement.preview.image_failed') }}</p>

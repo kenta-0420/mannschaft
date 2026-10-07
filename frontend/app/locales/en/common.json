@@ -1760,6 +1760,8 @@
       "downloadLabel": "Download {format} ({type})"
     },
     "menu": "Menu",
+    "moreActions": "More actions",
+    "openNavigation": "Open navigation",
     "scopeShell": {
       "memberCount": "{count} members",
       "supporterCount": "{count} supporters",

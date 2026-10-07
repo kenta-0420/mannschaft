@@ -1760,6 +1760,8 @@
       "downloadLabel": "{format}ダウンロード（{type}）"
     },
     "menu": "メニュー",
+    "moreActions": "その他の操作",
+    "openNavigation": "ナビゲーションを開く",
     "scopeShell": {
       "memberCount": "メンバー {count}人",
       "supporterCount": "サポーター {count}人",
