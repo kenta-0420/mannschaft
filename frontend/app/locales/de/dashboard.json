@@ -1,5 +1,6 @@
 {
   "dashboard": {
+    "widget_detail_link": "Details",
     "widget_settings": {
       "dialog_header": "Widget-Einstellungen",
       "config_button": "Widget-Einstellungen",

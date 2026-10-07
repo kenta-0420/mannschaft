@@ -1,5 +1,6 @@
 {
   "dashboard": {
+    "widget_detail_link": "详情",
     "widget_settings": {
       "dialog_header": "小部件设置",
       "config_button": "小部件设置",
