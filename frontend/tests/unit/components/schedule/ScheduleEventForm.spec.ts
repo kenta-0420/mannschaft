@@ -2,7 +2,7 @@ import { defineComponent, h, ref } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
-import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import ScheduleEventForm from '~/components/schedule/ScheduleEventForm.vue'
 import { PERSONAL_SCOPE_KEY, scheduleScopeKey } from '~/utils/scheduleScopeKey'
 
@@ -27,6 +27,13 @@ const scheduleApiMock = {
 const notificationMock = { success: vi.fn(), error: vi.fn() }
 const errorHandlerMock = { handleApiError: vi.fn(), getFieldErrors: vi.fn(() => ({})) }
 const googleCalendarMock = { googleSyncEnabled: ref(false), fetchPersonalSyncStatus: vi.fn() }
+const previewApiMock = vi.fn()
+const expectedScheduleState = {
+  updatedAt: '2026-09-22T09:00:00', title: 'Recurring meeting',
+  startAt: '2026-09-22T10:00:00', endAt: '2026-09-22T11:00:00', allDay: false, status: 'SCHEDULED',
+  schedules: [{ id: 42, updatedAt: '2026-09-22T09:00:00', title: 'Recurring meeting', startAt: '2026-09-22T10:00:00', endAt: '2026-09-22T11:00:00', allDay: false, status: 'SCHEDULED' }],
+}
+mockNuxtImport('useApi', () => () => previewApiMock)
 
 vi.mock('~/composables/useScheduleApi', () => ({ useScheduleApi: () => scheduleApiMock }))
 vi.mock('~/composables/useNotification', () => ({ useNotification: () => notificationMock }))
@@ -247,6 +254,7 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     scheduleApiMock.getMyScheduleDetail.mockReset()
     scheduleApiMock.updateSchedule.mockReset()
     scheduleApiMock.updatePersonalSchedule.mockReset()
+    previewApiMock.mockReset().mockResolvedValue({ data: { expectedScheduleState, activities: [] } })
   })
 
   it('offers only this and this-and-following choices before saving a recurring event', async () => {
@@ -270,9 +278,13 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     await flushPromises()
 
     expect(scheduleApiMock.updateSchedule).toHaveBeenCalledTimes(1)
+    expect(previewApiMock).toHaveBeenCalledWith('/api/v1/teams/t1/schedules/42/activity-sync-preview', {
+      method: 'POST', body: { scheduleUpdate: expect.objectContaining({ title: 'Recurring meeting' }), updateScope },
+    })
     expect(scheduleApiMock.updateSchedule).toHaveBeenCalledWith('team', 't1', 42, expect.anything(), updateScope)
     expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toMatchObject({ title: 'Recurring meeting' })
     expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('eventType')
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toHaveProperty('syncConfirmation', { expectedScheduleState, activities: [] })
     expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
   })
 
@@ -282,6 +294,7 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     await wrapper.get('[data-testid="recurrence-update-cancel"]').trigger('click')
 
     expect(scheduleApiMock.updateSchedule).not.toHaveBeenCalled()
+    expect(previewApiMock).not.toHaveBeenCalled()
     expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
   })
 
@@ -317,6 +330,7 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     await flushPromises()
 
     expect(scheduleApiMock.updatePersonalSchedule).toHaveBeenCalledWith(42, expect.objectContaining({ updateScope: 'THIS_AND_FOLLOWING' }))
+    expect(previewApiMock).not.toHaveBeenCalled()
   })
 
   it('updates a non-recurring event directly', async () => {
@@ -333,6 +347,10 @@ describe('ScheduleEventForm: recurrence update scope', () => {
 
     expect(wrapper.find('[data-testid="recurrence-update-scope-dialog"]').exists()).toBe(false)
     expect(scheduleApiMock.updateSchedule).toHaveBeenCalledTimes(1)
+    expect(previewApiMock).toHaveBeenCalledWith('/api/v1/teams/t1/schedules/42/activity-sync-preview', {
+      method: 'POST', body: { scheduleUpdate: expect.objectContaining({ title: 'One-time meeting' }), updateScope: undefined },
+    })
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toHaveProperty('syncConfirmation', { expectedScheduleState, activities: [] })
   })
 
   it('treats a shared child occurrence as recurring when only parentScheduleId is present', async () => {
