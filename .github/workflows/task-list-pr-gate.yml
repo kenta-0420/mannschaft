@@ -1,0 +1,142 @@
+name: Task-List PR Gate
+
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - edited
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: read
+
+jobs:
+  task-list-pr-gate:
+    name: Task-List PR Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check code PR against the main Task-List
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const rolloutAt = Date.parse("2026-10-07T02:51:05Z");
+            if (context.eventName === "workflow_dispatch") {
+              if (context.ref !== "refs/heads/main") {
+                core.setFailed("Legacy check backfill may only run from main.");
+                return;
+              }
+              const openPulls = await github.paginate(github.rest.pulls.list, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: "open",
+                base: "main",
+                per_page: 100,
+              });
+              let backfilled = 0;
+              let failed = 0;
+              for (const legacyPull of openPulls.filter(pr => Date.parse(pr.created_at) < rolloutAt)) {
+                const existingChecks = await github.paginate(github.rest.checks.listForRef, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: legacyPull.head.sha,
+                  per_page: 100,
+                });
+                if (existingChecks.some(check => check.name === "Task-List PR Gate" && check.conclusion === "success")) {
+                  continue;
+                }
+                try {
+                  await github.rest.checks.create({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: "Task-List PR Gate",
+                    head_sha: legacyPull.head.sha,
+                    status: "completed",
+                    conclusion: "success",
+                    output: {
+                      title: "Legacy PR migration grace",
+                      summary: `PR #${legacyPull.number} was opened before ${new Date(rolloutAt).toISOString()} and is grandfathered for this rollout.`,
+                    },
+                  });
+                  backfilled++;
+                } catch (error) {
+                  core.error(`Could not backfill PR #${legacyPull.number}: ${error.message}`);
+                  failed++;
+                }
+              }
+              if (failed > 0) {
+                core.setFailed("One or more legacy PR checks could not be backfilled.");
+                return;
+              }
+              core.info(`Backfilled the legacy success check for ${backfilled} open PR(s).`);
+              return;
+            }
+
+            const pull = context.payload.pull_request;
+            if (!pull) {
+              core.setFailed("pull_request payload is missing");
+              return;
+            }
+
+            // PRs opened before the Task-List registration PR reached main are
+            // grandfathered so this rollout does not block existing work.
+            if (Date.parse(pull.created_at) < rolloutAt) {
+              core.info(`Legacy PR #${pull.number} predates the rollout; passing with migration grace.`);
+              return;
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pull.number,
+              per_page: 100,
+            });
+            const codeExtensions = /\.(java|kt|kts|gradle|sql|ts|tsx|js|jsx|vue|mjs|cjs|tf|sh|ps1|go|py|rb|php|html|css|scss|sass|less|xml|yml|yaml|json)$/i;
+            const codeFiles = files.map(file => file.filename).filter(path => codeExtensions.test(path));
+            if (codeFiles.length === 0) {
+              core.info("No code or configuration files changed; Task-List registration is not required.");
+              return;
+            }
+
+            const references = [...new Set(`${pull.title}\n${pull.body || ""}`.match(/\bCMP-(?:\d{6}-\d{4}|\d{3})\b/g) || [])];
+            if (references.length !== 1) {
+              core.setFailed(`Code PR must contain exactly one CMP-ID in its title or body; found ${references.length}.`);
+              return;
+            }
+            const cmpId = references[0];
+
+            const response = await github.rest.repos.getContent({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              path: "docs/task-list.md",
+              ref: pull.base.ref,
+            });
+            if (Array.isArray(response.data) || response.data.encoding !== "base64") {
+              core.setFailed("Could not read docs/task-list.md from the PR base branch.");
+              return;
+            }
+            const taskList = Buffer.from(response.data.content, "base64").toString("utf8");
+            const rows = taskList.split(/\r?\n/).filter(line => line.startsWith("|") && line.includes(cmpId));
+            const matchingRows = rows.filter(line => {
+              const cells = line.split("|").map(cell => cell.trim());
+              return cells[1] === cmpId;
+            });
+            if (matchingRows.length !== 1) {
+              core.setFailed(`${cmpId} must appear exactly once in docs/task-list.md on ${pull.base.ref}; found ${matchingRows.length}.`);
+              return;
+            }
+
+            const cells = matchingRows[0].split("|").map(cell => cell.trim());
+            const state = cells[3]?.replace(/^\*\*(.*)\*\*$/, "$1");
+            if (state !== "実装中") {
+              core.setFailed(`${cmpId} is not marked 実装中 on ${pull.base.ref} (state: ${state || "missing"}).`);
+              return;
+            }
+
+            core.info(`${cmpId} is registered as 実装中 on ${pull.base.ref}; checked ${codeFiles.length} code/configuration file(s).`);
