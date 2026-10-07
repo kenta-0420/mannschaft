@@ -92,6 +92,8 @@ describe('useProxyAdmin', () => {
     expect(api).toHaveBeenCalledWith('/api/v1/me/organizations')
     expect(proxyApi.getConsentsByOrg).not.toHaveBeenCalled()
     expect(state.error.value).toMatchObject({ statusCode: 403 })
+    expect(handleApiError).not.toHaveBeenCalled()
+    expect(state.loading.value).toBe(false)
     wrapper.unmount()
   })
 
@@ -141,6 +143,26 @@ describe('useProxyAdmin', () => {
 
     expect(state.error.value).toMatchObject({ statusCode: 403 })
     expect(proxyApi.getConsentsByOrg).not.toHaveBeenCalled()
+    expect(handleApiError).not.toHaveBeenCalled()
+    expect(state.loading.value).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('権限APIが返す403はローカル拒否と区別してAPIエラー処理を続ける', async () => {
+    const cause = { statusCode: 403, message: '権限APIの取得に失敗しました' }
+    api.mockImplementation(async (path: string) => {
+      if (path === '/api/v1/me/organizations') {
+        return { data: [{ id: 10, slug: 'my-org', name: '自組合', role: 'ADMIN' }] }
+      }
+      throw cause
+    })
+
+    const { state, wrapper } = await start()
+
+    expect(state.error.value).toBe(cause)
+    expect(proxyApi.getConsentsByOrg).not.toHaveBeenCalled()
+    expect(handleApiError).toHaveBeenCalledExactlyOnceWith(cause, '代理入力管理一覧取得')
+    expect(state.loading.value).toBe(false)
     wrapper.unmount()
   })
 

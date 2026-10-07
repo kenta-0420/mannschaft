@@ -42,7 +42,10 @@ export function useProxyAdmin(mode: 'consents' | 'records') {
       const organization =
         organizations.value.find((org) => org.slug === organizationSlug.value) ??
         organizations.value[0]
-      if (!organization) throw createError({ statusCode: 403 })
+      if (!organization) {
+        error.value = createError({ statusCode: 403 })
+        return
+      }
       organizationSlug.value = organization.slug
       // スコープ取得失敗を権限不足と混同せず、そのまま再試行可能なエラーにする。
       const permissionResponse = await api<
@@ -51,7 +54,8 @@ export function useProxyAdmin(mode: 'consents' | 'records') {
       if (version !== requestVersion) return
       const { roleName, permissions } = permissionResponse.data
       if (roleName !== 'ADMIN' && roleName !== 'DEPUTY_ADMIN') {
-        throw createError({ statusCode: 403 })
+        error.value = createError({ statusCode: 403 })
+        return
       }
       canApprove.value = permissions.includes('PROXY_CONSENT_APPROVE')
       const numericId = String(organization.id)
