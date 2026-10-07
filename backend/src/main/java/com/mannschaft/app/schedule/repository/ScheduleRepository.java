@@ -16,6 +16,11 @@ import java.util.Optional;
  */
 public interface ScheduleRepository extends AbstractTenantAwareRepository<ScheduleEntity, Long> {
 
+    /** 同一予定からの作成と更新を直列化する。取得順を固定して繰返し群のdeadlockを避ける。 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.id IN :ids ORDER BY s.id")
+    List<ScheduleEntity> lockActivitySources(@Param("ids") Collection<Long> ids);
+
     boolean existsByIdAndTeamId(Long id, Long teamId);
 
     boolean existsByIdAndOrganizationId(Long id, Long organizationId);
@@ -82,6 +87,11 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
      * 親スケジュールに紐付く子スケジュールを取得する。
      */
     List<ScheduleEntity> findByParentScheduleIdOrderByStartAtAsc(Long parentId);
+
+    /** 繰返し更新の集合を current read で確定し、新しい子行の割込みも防ぐ。 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM ScheduleEntity s WHERE s.parentScheduleId = :parentId ORDER BY s.id ASC")
+    List<ScheduleEntity> lockActivitySeriesChildren(@Param("parentId") Long parentId);
 
     /**
      * 親スケジュールに紐付く子スケジュール数を取得する。
