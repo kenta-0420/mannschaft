@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { BulletinThreadResponse } from '~/types/bulletin'
 
+const { t } = useI18n()
 const props = withDefaults(
   defineProps<{
     embedded?: boolean
@@ -22,13 +23,13 @@ interface ThreadWithScope extends BulletinThreadResponse {
 const threads = ref<ThreadWithScope[]>([])
 const loading = ref(false)
 
-const priorityConfig: Record<string, { label: string; class: string }> = {
-  CRITICAL: { label: '緊急', class: 'bg-red-100 text-red-700' },
-  IMPORTANT: { label: '重要', class: 'bg-orange-100 text-orange-700' },
-  WARNING: { label: '注意', class: 'bg-yellow-100 text-yellow-700' },
-  INFO: { label: '通知', class: 'bg-blue-100 text-blue-700' },
-  LOW: { label: '低', class: 'bg-surface-100 text-surface-500' },
-}
+const priorityConfig = computed<Record<string, { label: string; class: string }>>(() => ({
+  CRITICAL: { label: t('dashboard.widgets.priority.critical'), class: 'bg-red-100 text-red-700' },
+  IMPORTANT: { label: t('dashboard.widgets.priority.important'), class: 'bg-orange-100 text-orange-700' },
+  WARNING: { label: t('dashboard.widgets.priority.warning'), class: 'bg-yellow-100 text-yellow-700' },
+  INFO: { label: t('dashboard.widgets.priority.info'), class: 'bg-blue-100 text-blue-700' },
+  LOW: { label: t('dashboard.widgets.priority.low'), class: 'bg-surface-100 text-surface-500' },
+}))
 
 async function load() {
   if (orgStore.myOrganizations.length === 0) return
@@ -66,7 +67,7 @@ onMounted(load)
 <template>
   <DashboardWidgetCard
     v-if="!props.embedded"
-    title="組織のお知らせ"
+    :title="t('dashboard.widgets.orgAnnouncements.title')"
     icon="pi pi-building"
     to="/timeline"
     :loading="loading"
@@ -74,10 +75,10 @@ onMounted(load)
     @refresh="load"
   >
     <div v-if="orgStore.myOrganizations.length === 0">
-      <DashboardEmptyState icon="pi pi-building" message="組織に参加していません" />
+      <DashboardEmptyState icon="pi pi-building" :message="t('dashboard.widgets.orgAnnouncements.noOrg')" />
     </div>
     <div v-else-if="threads.length === 0">
-      <DashboardEmptyState icon="pi pi-clipboard" message="組織からのお知らせはありません" />
+      <DashboardEmptyState icon="pi pi-clipboard" :message="t('dashboard.widgets.orgAnnouncements.empty')" />
     </div>
     <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">
       <NuxtLink
@@ -120,10 +121,10 @@ onMounted(load)
   <template v-else>
     <PageLoading v-if="loading" />
     <div v-else-if="orgStore.myOrganizations.length === 0">
-      <DashboardEmptyState icon="pi pi-building" message="組織に参加していません" />
+      <DashboardEmptyState icon="pi pi-building" :message="t('dashboard.widgets.orgAnnouncements.noOrg')" />
     </div>
     <div v-else-if="threads.length === 0">
-      <DashboardEmptyState icon="pi pi-clipboard" message="組織からのお知らせはありません" />
+      <DashboardEmptyState icon="pi pi-clipboard" :message="t('dashboard.widgets.orgAnnouncements.empty')" />
     </div>
     <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">
       <NuxtLink

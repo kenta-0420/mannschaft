@@ -772,7 +772,8 @@
       "createFailed": "Failed to create",
       "deleteSuccess": "Tag deleted",
       "deleteFailed": "Failed to delete"
-    }
+    },
+    "pageTitle": "Blog & Announcements"
   },
   "todo": {
     "backToList": "Back to TODO list",
@@ -1759,6 +1760,8 @@
       "downloadLabel": "Download {format} ({type})"
     },
     "menu": "Menu",
+    "moreActions": "More actions",
+    "openNavigation": "Open navigation",
     "scopeShell": {
       "memberCount": "{count} members",
       "supporterCount": "{count} supporters",
@@ -2797,5 +2800,11 @@
       "SUPPORTERS_AND_ABOVE": "Supporters and above",
       "MEMBERS_AND_ABOVE": "Members and above"
     }
+  },
+  "relativeTime": {
+    "justNow": "Just now",
+    "minutesAgo": "{count} minute ago | {count} minutes ago",
+    "hoursAgo": "{count} hour ago | {count} hours ago",
+    "daysAgo": "{count} day ago | {count} days ago"
   }
 }

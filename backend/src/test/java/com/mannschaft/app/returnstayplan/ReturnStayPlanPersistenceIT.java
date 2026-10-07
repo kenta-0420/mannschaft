@@ -3,6 +3,7 @@ package com.mannschaft.app.returnstayplan;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
@@ -20,6 +21,8 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -35,8 +38,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** MySQL authorization, persistence, race, paging and query-count contracts. */
@@ -51,7 +57,7 @@ class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
     private static final long TEAM_ID = 923010L;
     private static final String TEAM_SLUG = "f0211-persistence-team";
 
-    @Autowired
+    @MockitoSpyBean
     private ReturnStayPlanService service;
 
     @Autowired
@@ -170,17 +176,31 @@ class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
     @Test
     @DisplayName("AC-26 退会イベントの二重処理は予定と公開先を冪等削除する")
     void ac26_lifecycleListenersAreIdempotent() {
+        Queue<Integer> deletionCompletions = new ConcurrentLinkedQueue<>();
+        doAnswer(invocation -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive())
+                    .as("退会リスナーの実TX内で所有者削除を実行する").isTrue();
+            assertThat(TransactionSynchronizationManager.isSynchronizationActive()).isTrue();
+            // 実削除前に登録し、ListenerのREQUIRES_NEWがcommitした後だけ完了を数える。
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    deletionCompletions.add(status);
+                }
+            });
+            return invocation.callRealMethod();
+        }).when(service).deleteAllForOwner(OWNER_ID);
         service.create(OWNER_ID, request(false, TEAM_ID));
         publishAfterCommit(
                 new UserAnonymizedEvent(OWNER_ID, "owner@example.test"),
                 new UserAnonymizedEvent(OWNER_ID, "owner@example.test"));
-        awaitPlansDeleted(OWNER_ID);
+        awaitPlansDeleted(OWNER_ID, deletionCompletions, 2);
 
         service.create(OWNER_ID, request(false, TEAM_ID));
         publishAfterCommit(
                 new AccountPurgedEvent(OWNER_ID, "hash"),
                 new AccountPurgedEvent(OWNER_ID, "hash"));
-        awaitPlansDeleted(OWNER_ID);
+        awaitPlansDeleted(OWNER_ID, deletionCompletions, 4);
     }
 
     private void publishAfterCommit(Object... events) {
@@ -191,10 +211,13 @@ class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
         });
     }
 
-    private void awaitPlansDeleted(long ownerId) {
+    private void awaitPlansDeleted(long ownerId, Queue<Integer> completions, int expectedCompletions) {
         org.awaitility.Awaitility.await()
                 .atMost(java.time.Duration.ofSeconds(10))
                 .untilAsserted(() -> {
+                    assertThat(completions).as("重複イベント両方の実TXがcommitまで完了する")
+                            .hasSize(expectedCompletions)
+                            .containsOnly(TransactionSynchronization.STATUS_COMMITTED);
                     assertThat(plans.countByOwnerUserId(ownerId)).isZero();
                     assertThat(jdbc.queryForObject(
                             "SELECT COUNT(*) FROM return_stay_plan_team_visibilities",

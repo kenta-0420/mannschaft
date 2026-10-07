@@ -2,6 +2,7 @@
 import { useMyCalendarData, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
 import { toCalendarPanelEvent, type NestedScheduleResponse } from '~/utils/scheduleCalendar'
 
+const { t } = useI18n()
 interface EventDetail {
   id: number
   title: string
@@ -166,9 +167,9 @@ onMounted(() => {
   <div>
     <div class="mb-2 flex items-center justify-between">
       <h3 class="font-semibold text-[22px] text-surface-700 dark:text-surface-200">
-        <i class="pi pi-calendar mr-1.5 text-primary" />マイカレンダー
+        <i class="pi pi-calendar mr-1.5 text-primary" />{{ t('dashboard.widgets.myCalendar.title') }}
       </h3>
-      <Button label="全画面で開く" icon="pi pi-external-link" text size="small" @click="navigateTo('/calendar')" />
+      <Button :label="t('dashboard.widgets.myCalendar.openFullScreen')" icon="pi pi-external-link" text size="small" @click="navigateTo('/calendar')" />
     </div>
 
     <div v-if="loading" class="space-y-2">
@@ -189,7 +190,7 @@ onMounted(() => {
 
       <!-- スコープフィルター -->
       <div v-if="allScopeOptions.length > 1" class="mt-3 flex flex-wrap items-center gap-2 text-xs text-surface-500">
-        <span class="text-surface-400">表示:</span>
+        <span class="text-surface-400">{{ t('dashboard.widgets.myCalendar.show') }}</span>
         <template v-if="allScopeOptions.length <= FILTER_OVERFLOW">
           <button
             v-for="sc in allScopeOptions"
@@ -210,9 +211,9 @@ onMounted(() => {
           :options="allScopeOptions"
           option-label="label"
           option-value="value"
-          placeholder="表示するスコープを選択"
+          :placeholder="t('dashboard.widgets.myCalendar.scopePlaceholder')"
           :max-selected-labels="2"
-          selected-items-label="{0}件選択中"
+          :selected-items-label="t('dashboard.widgets.myCalendar.selectedCount', { n: '{0}' })"
           class="text-xs"
           style="min-width: 160px"
         />
@@ -220,9 +221,9 @@ onMounted(() => {
 
       <!-- 凡例 -->
       <div class="mt-2 flex flex-wrap gap-3 text-xs text-surface-400">
-        <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-green-500" />個人</span>
+        <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-green-500" />{{ t('dashboard.widgets.myCalendar.legendPersonal') }}</span>
         <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-orange-500" />TODO</span>
-        <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-indigo-500" />チーム/組織</span>
+        <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-indigo-500" />{{ t('dashboard.widgets.myCalendar.legendTeamOrg') }}</span>
       </div>
     </template>
 

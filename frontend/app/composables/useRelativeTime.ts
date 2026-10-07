@@ -1,14 +1,15 @@
 /**
  * 相対時間表示 composable。
  * dayjs（日時パース・タイムゾーン処理）を土台に、本アプリ独自の表示規約で相対時間文字列を生成する。
+ * 文言は i18n（common.relativeTime.*）で持つ。Intl.RelativeTimeFormat は ja で
+ * 「今」「5 分前」「昨日」と従来表示から変わるため使わない（ja は従来文言を維持する）。
  *
- * 表示規約（#949 でのタイムゾーン対応前から続く UI 仕様。#2623 で dayjs.fromNow() への
- * 置き換えにより意図せず失われていたため、dayjs の相対差分計算はそのまま活かしつつ表示文言のみ復元する）：
+ * 表示規約（段階しきい値は #949 以来の UI 仕様）：
  * - 1分未満: 「たった今」
  * - 1時間未満: 「n分前」
  * - 24時間未満: 「n時間前」
  * - 7日未満: 「n日前」
- * - 7日以上: 日付形式（例: 2026/3/25）
+ * - 7日以上: 現在ロケールの日付形式（ja 例: 2026/3/25）
  *
  * 後方互換性のため以下のオーバーロードを維持する：
  * - useRelativeTime(dateStr) → ComputedRef<string>（リアクティブな相対時間）
@@ -16,7 +17,9 @@
  */
 import dayjs from 'dayjs'
 
-function computeRelativeTime(dateStr: string): string {
+type Translate = (key: string, params?: Record<string, unknown>, plural?: number) => string
+
+function computeRelativeTime(dateStr: string, t: Translate, locale: string): string {
   if (!dateStr) return ''
   const d = dayjs(dateStr)
   if (!d.isValid()) return ''
@@ -26,11 +29,11 @@ function computeRelativeTime(dateStr: string): string {
   const diffHour = Math.floor(diffMin / 60)
   const diffDay = Math.floor(diffHour / 24)
 
-  if (diffSec < 60) return 'たった今'
-  if (diffMin < 60) return `${diffMin}分前`
-  if (diffHour < 24) return `${diffHour}時間前`
-  if (diffDay < 7) return `${diffDay}日前`
-  return d.toDate().toLocaleDateString('ja-JP')
+  if (diffSec < 60) return t('relativeTime.justNow')
+  if (diffMin < 60) return t('relativeTime.minutesAgo', { count: diffMin }, diffMin)
+  if (diffHour < 24) return t('relativeTime.hoursAgo', { count: diffHour }, diffHour)
+  if (diffDay < 7) return t('relativeTime.daysAgo', { count: diffDay }, diffDay)
+  return d.toDate().toLocaleDateString(locale)
 }
 
 // Overload: called with a date ref/string → returns reactive ComputedRef<string>
@@ -45,9 +48,13 @@ export function useRelativeTime(
 ):
   | ComputedRef<string>
   | { relativeTime: (dateStr: string) => string; formatRelative: (dateStr: string) => string } {
+  // 現在ロケールは呼び出しごとに読む（言語切替に追従する）
+  const { $i18n } = useNuxtApp()
+  const compute = (value: string): string =>
+    computeRelativeTime(value, $i18n.t as Translate, $i18n.locale.value)
   if (dateStr !== undefined) {
     const resolved = isRef(dateStr) ? dateStr : ref(dateStr)
-    return computed(() => computeRelativeTime(resolved.value))
+    return computed(() => compute(resolved.value))
   }
-  return { relativeTime: computeRelativeTime, formatRelative: computeRelativeTime }
+  return { relativeTime: compute, formatRelative: compute }
 }
