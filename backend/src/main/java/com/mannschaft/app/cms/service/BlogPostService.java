@@ -105,37 +105,46 @@ public class BlogPostService {
     /**
      * チーム別記事一覧をページング取得する。
      *
-     * <p>認可根治戦役 Wave7: 本一覧は下書き・非公開ステータスを含む全記事を返す
-     * 内部管理用の入口のため、{@link #createPost} と同一の
-     * {@link AccessControlService#checkMembership} でチームメンバーに限定する。</p>
+     * <p>CMP-261007-2052: チーム非所属のログイン済みユーザーにも一覧を開く。メンバー限定
+     * （{@link AccessControlService#checkMembership}）は外した。判定は次の順で行う。</p>
+     * <ol>
+     *   <li>スコープ判定: チームが実在・ACTIVE で、閲覧者がチームを見られること
+     *       （F00 {@link ContentVisibilityChecker}、{@link ReferenceType#TEAM}）。満たさなければ
+     *       「不存在」と同一の {@link CmsErrorCode#TEAM_NOT_FOUND}（404）。slug・数値の別なく同一応答。</li>
+     *   <li>記事判定: 記事ごとの F00 可視性・課金軸（{@link #scanVisiblePage}）。見えない記事は
+     *       一覧にも件数にも入れない（下書きの列挙は作者・管理者のみ Resolver が許す）。</li>
+     * </ol>
+     * <p>未ログイン開放は別戦役（Controller 側で 401 のまま）。</p>
      *
-     * @param teamIdStr チームの公開ID（UUID文字列）または内部Long ID文字列
+     * @param teamIdStr チームの公開ID（slug）または内部Long ID文字列
      */
     public Page<BlogPostResponse> listByTeam(String teamIdStr, Pageable pageable) {
         if (teamIdStr == null) {
             return Page.empty(pageable);
         }
         Long teamId = resolveTeamId(teamIdStr);
-        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
-        return scanVisiblePage(pageable, SecurityUtils.getCurrentUserIdOrNull(),
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        assertScopeVisible(teamId, null, viewerUserId, CmsErrorCode.TEAM_NOT_FOUND);
+        return scanVisiblePage(pageable, viewerUserId,
                 request -> postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(teamId, request));
     }
 
     /**
      * 組織別記事一覧をページング取得する。
      *
-     * <p>認可根治戦役 Wave7: {@link #listByTeam} と同一の理由で
-     * {@link AccessControlService#checkMembership} を敷く。</p>
+     * <p>{@link #listByTeam} と同じ契約（スコープ判定 → 記事判定）。スコープ不可視は
+     * {@link CmsErrorCode#ORG_NOT_FOUND}（404）。</p>
      *
-     * @param organizationIdStr 組織の公開ID（UUID文字列）または内部Long ID文字列。null の場合は空ページを返す。
+     * @param organizationIdStr 組織の公開ID（slug）または内部Long ID文字列。null の場合は空ページを返す。
      */
     public Page<BlogPostResponse> listByOrganization(String organizationIdStr, Pageable pageable) {
         if (organizationIdStr == null) {
             return Page.empty(pageable);
         }
         Long organizationId = resolveOrganizationId(organizationIdStr);
-        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), organizationId, "ORGANIZATION");
-        return scanVisiblePage(pageable, SecurityUtils.getCurrentUserIdOrNull(),
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        assertScopeVisible(null, organizationId, viewerUserId, CmsErrorCode.ORG_NOT_FOUND);
+        return scanVisiblePage(pageable, viewerUserId,
                 request -> postRepository.findByOrganizationIdOrderByPinnedDescCreatedAtDesc(organizationId, request));
     }
 
@@ -164,14 +173,29 @@ public class BlogPostService {
             List<BlogPostEntity> content = page.getContent();
             if (content.isEmpty()) break;
             Set<Long> ids = content.stream().map(BlogPostEntity::getId).collect(Collectors.toSet());
-            Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
-                    ReferenceType.BLOG_POST, ids, viewerUserId);
+            // 課金判定の例外・欠損は fail-closed: 判定できなかった記事は一覧にも件数にも入れない（200 のまま）。
+            Set<Long> accessibleIds;
+            try {
+                accessibleIds = contentVisibilityChecker.filterAccessible(
+                        ReferenceType.BLOG_POST, ids, viewerUserId);
+            } catch (RuntimeException e) {
+                log.warn("ブログ一覧の可視性判定に失敗したため、判定できなかった記事を除外する: scanPage={}, size={}",
+                        scanPage, ids.size(), e);
+                accessibleIds = Set.of();
+            }
             Map<Long, ContentGateTarget> targets = content.stream()
                     .map(BlogPostService::targetEntry)
                     .flatMap(Optional::stream)
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-            Map<Long, GateCheckResponse> gates = paymentGateService.checkAccessBatch(
-                    ContentGateType.POST, content.stream().map(BlogPostEntity::getId).toList(), viewerUserId, targets);
+            Map<Long, GateCheckResponse> gates;
+            try {
+                gates = paymentGateService.checkAccessBatch(
+                        ContentGateType.POST, content.stream().map(BlogPostEntity::getId).toList(), viewerUserId, targets);
+            } catch (RuntimeException e) {
+                log.warn("ブログ一覧の課金判定に失敗したため、判定できなかった記事を除外する: scanPage={}, size={}",
+                        scanPage, ids.size(), e);
+                gates = null;
+            }
             for (BlogPostEntity entity : content) {
                 if (!accessibleIds.contains(entity.getId())) continue;
                 BlogPostResponse response = applyListPaywall(entity, systemAdmin,
@@ -225,6 +249,8 @@ public class BlogPostService {
         // PROVISIONED スコープは作成時点で会員が存在せず記事も作られ得ないため実害は現状無いが、
         // 将来の経路変化に備えた最小差分の防御として追加する（存在秘匿のため POST_NOT_FOUND に畳む）。
         assertScopeNotProvisioned(teamId, organizationId);
+        // CMP-261007-2052: スコープ（チーム/組織）を閲覧者が見られなければ「記事が無い」と同一応答（CMS_001）。
+        assertScopeVisible(teamId, organizationId, SecurityUtils.getCurrentUserIdOrNull(), CmsErrorCode.POST_NOT_FOUND);
 
         BlogPostEntity entity;
         if (teamId != null) {
@@ -958,6 +984,25 @@ public class BlogPostService {
             throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
         } else if (organizationId != null && organizationService.isProvisioned(organizationId)) {
             throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
+        }
+    }
+
+    /**
+     * スコープ（チーム or 組織）が実在・ACTIVE で、閲覧者が見られることを確認する。
+     * 不存在・論理削除済み・PROVISIONED・閲覧不可はすべて同一の {@code notFound} に畳む（存在秘匿）。
+     * 数値 ID 経路も slug 経路と同じ判定を通す。teamId/organizationId が両方 null（個人記事）は対象外。
+     */
+    private void assertScopeVisible(Long teamId, Long organizationId, Long viewerUserId, CmsErrorCode notFound) {
+        try {
+            if (teamId != null) {
+                teamService.assertActiveTeamExists(teamId);
+                contentVisibilityChecker.assertCanView(ReferenceType.TEAM, teamId, viewerUserId);
+            } else if (organizationId != null) {
+                organizationService.assertActiveOrganizationExists(organizationId);
+                contentVisibilityChecker.assertCanView(ReferenceType.ORGANIZATION, organizationId, viewerUserId);
+            }
+        } catch (BusinessException e) {
+            throw new BusinessException(notFound);
         }
     }
 }

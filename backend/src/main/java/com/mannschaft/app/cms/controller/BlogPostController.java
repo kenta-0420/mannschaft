@@ -71,11 +71,13 @@ public class BlogPostController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         // フィルタパラメータは BlogPostRepository のクエリ拡張時に対応予定
+        // 範囲外は丸めて 200（size は 1〜100、page は 0 以上。application.yml の max-page-size=100 に合わせる）。
+        PageRequest pageRequest = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
         Page<BlogPostResponse> result;
         if (teamId != null) {
-            result = postService.listByTeam(teamId, PageRequest.of(page, size));
+            result = postService.listByTeam(teamId, pageRequest);
         } else {
-            result = postService.listByOrganization(organizationId, PageRequest.of(page, size));
+            result = postService.listByOrganization(organizationId, pageRequest);
         }
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
