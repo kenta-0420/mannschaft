@@ -168521,8 +168521,8 @@ export interface operations {
     getPostBySlug: {
         parameters: {
             query?: {
-                teamId?: number;
-                organizationId?: number;
+                teamId?: string;
+                organizationId?: string;
                 userId?: number;
                 previewToken?: string;
             };
