@@ -126,6 +126,16 @@ updates:
 
 有効期限は **2026-10-16 UTC 当日まで（2026-10-17T00:00:00Z 以降は当該例外を拒否）**。解除条件: `braces` の修正版が公開されたら lock を引き上げ、除外を削除して通常の `npm audit --audit-level=high` に戻す。期限延長を自動では行わない。
 
+### 4.5. 修正版 simple-git と DevTools の互換対応（2026-10-06）
+
+[GHSA-x6jw-m9v5-85vh](https://github.com/advisories/GHSA-x6jw-m9v5-85vh) の修正版 `simple-git` 4.0.1 と、[GHSA-v5rq-49vh-5v5c](https://github.com/advisories/GHSA-v5rq-49vh-5v5c) の修正版 `argv-parser` 2.0.1 を固定する。simple-git 4.0.1 自体が要求する argv-parser 2.0.0 も影響範囲内なので、後者にも override が必要である。
+
+simple-git 4 は default export を廃止したが、既存の `@nuxt/devtools` 3.4.1 は default import を使う。安定版 3.4.2 も同じ import を持ち、4 系 beta への更新は Nuxt/Vite の変更を伴う。このため DevTools を 3.4.1 に固定し、`frontend/scripts/prepare-devtools-simple-git.mjs` をインストール時に実行して、公式配布物の import 1 行だけを `simpleGit` の named export へ変更する。追加 npm パッケージは使わない。Docker の依存インストール段階にも同じスクリプトを渡す。
+
+対象版に加え、公式配布物の SHA-256 `13f0dbd2e845848ad98fe644eab152c43a0a8cb88d6ff04a4bd77d12a68ac784` と変更後の `e42d96ee5d9a85f68785341fcac20b161da70336c5a10a11da5ea703d6c7406e` を検証する。版・内容・ファイル不一致では Nuxt prepare の前に停止し、変更済みの同一内容なら再実行しても書き換えない。修正版 simple-git を正しく利用できる安定版 DevTools の導入時に、この対応と DevTools の固定を取り除く。
+
+同時に Vue 関連パッケージを 3.5.42、seroval を 1.6.3、source-map-js を 1.2.2、postcss-selector-parser を 7.1.6 へ更新する。既存の監査閾値、§4.3・§4.4 の例外対象と期限は変更しない。修正版の導入と互換性の検証を行い、当該 advisory の新たな除外は設けない。
+
 ## 5. 脆弱性対応フロー
 
 1. **検知**: Dependabot / Dependency-Check / npm audit / GitHub Security Advisory
@@ -147,6 +157,7 @@ updates:
 
 | 日付 | 変更 |
 |---|---|
+| 2026-10-06 | §4.5 に simple-git / argv-parser の修正版導入と DevTools の版・内容を検証する互換対応、解除条件を記録 |
 | 2026-10-02 | §4.3 に未修正版 node-forge の個別例外と利用経路・限界・UTC期限・解除条件を記録。取得失敗・不正レポート・別 high/critical を停止する門番と必須試験を追加 |
 | 2026-06-13 | 残存 moderate 3 件の解消バージョンを `nuxt` 3.21.8 → **3.21.6** に修正。3.21.8 は CI（`ssr: false`）の dev サーバー起動が `No entry found in rollupOptions.input` でクラッシュするリグレッション（[nuxt#35033](https://github.com/nuxt/nuxt/issues/35033)）を含むため。両 GHSA の first patched version である 3.21.6 で `npm audit` 全レベル 0 件かつ dev/CI 起動可能を両立 |
 | 2026-06-13 | high/critical 11 件の全件解消を確認し、残存 moderate 3 件も `nuxt` patch 更新で解消（`npm audit` 全レベル 0 件）。§2/§4/§4.1/§4.2/§6 のステータスを「解消済み・ブロッキング化済み」へ更新 |

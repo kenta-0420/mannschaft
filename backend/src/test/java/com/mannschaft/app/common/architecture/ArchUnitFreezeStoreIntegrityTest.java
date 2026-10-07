@@ -804,7 +804,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * UserCareLinkRepository 等への到達）。ClassHomeroomService・DisclosureService・AttendanceRequirementService は
      * 本 PR の対象外で残す。main のストアとの差分は「追加 0・削除 33（上記のキーのみ）」。{@code 7409 → 7376}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7376;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7364;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
