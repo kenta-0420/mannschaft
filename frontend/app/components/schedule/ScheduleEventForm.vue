@@ -407,7 +407,9 @@ function savedTimeString(date: Date): string {
 // APIの終日終了は排他的、日付ピッカーの終了日は当日を含む。
 function savedEndDate(date: Date, allDay: boolean): Date {
   const end = new Date(date)
-  if (allDay) end.setDate(end.getDate() - 1)
+  if (allDay && end.getHours() === 0 && end.getMinutes() === 0 && end.getSeconds() === 0 && end.getMilliseconds() === 0) {
+    end.setDate(end.getDate() - 1)
+  }
   return end
 }
 

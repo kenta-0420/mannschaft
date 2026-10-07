@@ -458,6 +458,26 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     else expect(body.endAt).toBeUndefined()
   })
 
+  it('旧終日データの非midnight終了は活動の包含終了日を短縮しない', async () => {
+    scheduleApiMock.getSchedule.mockResolvedValue({ data: {
+      content: { title: '旧終日予定' },
+      time: { startAt: '2026-10-15T00:00:00', endAt: '2026-10-16T01:00:00', allDay: true },
+    } })
+    scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: 'team', scopeId: 't1', scheduleId: 42 },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    const form = wrapper.findComponent(BasicFieldsStub).props('form') as { endDate: Date }
+    expect(form.endDate.getDate()).toBe(16)
+    await wrapper.get('[data-testid="title-input"]').setValue('活動終了日は維持')
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toMatchObject({ endAt: expect.stringContaining('2026-10-17T00:00:00') })
+  })
+
   it('編集GET失敗時は未取得の予定を更新しない', async () => {
     scheduleApiMock.getSchedule.mockRejectedValue(new Error('取得失敗'))
     const wrapper = await mountSuspended(ScheduleEventForm, {
