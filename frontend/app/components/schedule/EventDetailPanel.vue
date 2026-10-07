@@ -275,7 +275,7 @@ onMounted(async () => {
         />
       </div>
       <div v-if="canEdit || canManageSchedule" class="flex gap-1">
-        <Button icon="pi pi-pencil" text rounded size="small" @click="emit('edit')" />
+        <Button icon="pi pi-pencil" text rounded size="small" data-testid="schedule-edit" @click="emit('edit')" />
         <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="emit('delete')" />
       </div>
     </div>
@@ -343,6 +343,8 @@ onMounted(async () => {
     </div>
 
     <!-- 出欠パネル -->
+    <ActivitySchedulePanel v-if="scopeId && event.scheduleId != null" :key="`${scopeType}-${scopeId}-${event.scheduleId}`" :scope-type="scopeType" :scope-id="scopeId" :schedule-id="event.scheduleId" />
+
     <AttendancePanel
       v-if="event.attendanceRequired"
       :scope-type="scopeType"

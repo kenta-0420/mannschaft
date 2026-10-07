@@ -86,6 +86,7 @@ const { userTimezone, buildOffsetDateTimeStr } = useDatetime()
 const { t } = useI18n()
 const { googleSyncEnabled, fetchPersonalSyncStatus } = useGoogleCalendarApi()
 
+const activitySync = useActivityScheduleSync()
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 const isEdit = computed(() => !!props.scheduleId)
@@ -681,7 +682,9 @@ async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
       }
     } else {
       if (isEdit.value && props.scheduleId) {
-        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body, updateScope)
+        const confirmation = await activitySync.confirm(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body, updateScope)
+        if (confirmation === null) return
+        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, { ...body, syncConfirmation: confirmation }, updateScope)
       } else {
         await scheduleApi.createSchedule(savedScope.scopeType, savedScope.scopeId, body)
       }
@@ -762,6 +765,13 @@ function close() {
 </script>
 
 <template>
+  <ActivityScheduleSyncDialog
+    v-model:visible="activitySync.visible.value"
+    :preview="activitySync.preview.value"
+    @apply="activitySync.apply"
+    @schedule-only="activitySync.scheduleOnly"
+    @cancel="activitySync.cancel"
+  />
   <Dialog
     :visible="visible"
     :header="

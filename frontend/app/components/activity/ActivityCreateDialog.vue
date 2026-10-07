@@ -17,7 +17,6 @@ import type { CreateDraftActivityRequestBody } from '~/composables/useActivityAp
 import {
   buildActivityFieldValues,
   canSubmitActivity,
-  parseSelectOptions,
   toYmd,
   type ActivityFieldValue,
 } from '~/utils/activityFields'
@@ -371,67 +370,7 @@ async function submit() {
           </div>
 
           <!-- カスタムフィールド（テンプレ定義） -->
-          <div
-            v-for="field in templateFields"
-            :key="field.id"
-            data-testid="activity-custom-field"
-          >
-            <label class="mb-1 block text-sm font-medium">
-              {{ field.fieldLabel }}
-              <span v-if="field.isRequired" class="text-red-500">*</span>
-              <span v-if="field.unit" class="ml-1 text-xs text-surface-400">({{ field.unit }})</span>
-            </label>
-
-            <InputText
-              v-if="field.fieldType === 'TEXT'"
-              v-model="(fieldInputs[field.fieldKey] as string)"
-              class="w-full"
-              :placeholder="field.placeholder ?? ''"
-            />
-            <Textarea
-              v-else-if="field.fieldType === 'TEXTAREA'"
-              v-model="(fieldInputs[field.fieldKey] as string)"
-              class="w-full"
-              rows="2"
-              auto-resize
-              :placeholder="field.placeholder ?? ''"
-            />
-            <InputNumber
-              v-else-if="field.fieldType === 'NUMBER'"
-              v-model="(fieldInputs[field.fieldKey] as number)"
-              class="w-full"
-              :placeholder="field.placeholder ?? ''"
-            />
-            <DatePicker
-              v-else-if="field.fieldType === 'DATE'"
-              v-model="(fieldInputs[field.fieldKey] as Date)"
-              class="w-full"
-              date-format="yy/mm/dd"
-              show-icon
-            />
-            <DatePicker
-              v-else-if="field.fieldType === 'DATETIME'"
-              v-model="(fieldInputs[field.fieldKey] as Date)"
-              class="w-full"
-              date-format="yy/mm/dd"
-              show-time
-              hour-format="24"
-              show-icon
-            />
-            <Select
-              v-else-if="field.fieldType === 'SELECT'"
-              v-model="(fieldInputs[field.fieldKey] as string)"
-              :options="parseSelectOptions(field.optionsJson)"
-              option-label="label"
-              option-value="value"
-              class="w-full"
-              :placeholder="field.placeholder ?? ''"
-            />
-            <label v-else-if="field.fieldType === 'CHECKBOX'" class="flex items-center gap-2 text-sm">
-              <Checkbox v-model="(fieldInputs[field.fieldKey] as boolean)" binary />
-              <span>{{ field.placeholder ?? field.fieldLabel }}</span>
-            </label>
-          </div>
+          <ActivityFieldInputs v-model="fieldInputs" :fields="templateFields" />
         </template>
       </template>
     </div>

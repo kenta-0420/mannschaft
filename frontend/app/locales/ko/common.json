@@ -2091,6 +2091,44 @@
         "public_desc": "링크를 아는 누구나 볼 수 있습니다. 목록에 공유 버튼이 표시되어 외부 공유가 가능합니다.",
         "note": "공개 범위의 기본값은 템플릿 설정을 따릅니다."
       }
+    },
+    "detail": {
+      "open": "詳細を見る",
+      "publish": "公開する",
+      "saved": "下書きを保存しました",
+      "participants": "参加者",
+      "noParticipants": "参加者は登録されていません",
+      "attachments": "添付ファイル",
+      "attachment": "添付ファイル {id}",
+      "sourceSchedule": "元の予定",
+      "openSchedule": "予定を開く",
+      "scheduleUnavailable": "元の予定は閲覧できません",
+      "scheduleCancelled": "元の予定は中止されています",
+      "endDate": "終了日（複数日の場合）",
+      "startTime": "開始時刻",
+      "endTime": "終了時刻"
+    },
+    "sync": {
+      "title": "予定と活動記録の変更を確認",
+      "description": "予定の変更を活動記録へ反映する項目を選んでください。自動反映の項目も「予定のみ保存」では変更されません。",
+      "record": "活動記録 {id}",
+      "automatic": "自動反映",
+      "current": "現在の記録",
+      "updated": "変更後の予定",
+      "scheduleOnly": "予定のみ保存",
+      "apply": "選択した項目を反映して保存",
+      "fields": {
+        "title": "タイトル",
+        "activityDate": "活動日",
+        "activityEndDate": "終了日",
+        "activityTimeStart": "開始時刻",
+        "activityTimeEnd": "終了時刻"
+      }
+    },
+    "schedule": {
+      "create": "この予定の活動記録を作成",
+      "records": "活動記録",
+      "loadError": "活動記録の取得に失敗しました"
     }
   },
   "dashboard": {

@@ -1,29 +1,74 @@
 export interface ActivityRecordResponse {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: string
+  scopeId: number
   templateId: number | null
-  templateName: string | null
   title: string
   activityDate: string
+  activityTimeStart: string | null
+  activityTimeEnd: string | null
   location: string | null
+  venueId: number | null
   description: string | null
-  participants: Array<{ userId: number; displayName: string; avatarUrl: string | null }>
-  participantCount: number
-  customFields: Array<{ fieldId: number; fieldName: string; fieldType: string; value: string | null }>
-  isPublic: boolean
-  /** 活動記録のステータス。BE 追加（隊乙 #2143）で DRAFT / PUBLISHED の2値 */
-  status?: 'DRAFT' | 'PUBLISHED'
-  createdBy: { id: number; displayName: string } | null
+  fieldValues: string | null
+  attachments: string | null
+  visibility: 'PUBLIC' | 'MEMBERS_ONLY'
+  status: 'DRAFT' | 'PUBLISHED'
+  scheduleId: number | null
+  createdBy: number | null
   createdAt: string
   updatedAt: string
+}
+
+export interface ActivityDetailResponse extends ActivityRecordResponse {
+  activityEndDate: string | null
+  version: number
+  canEdit: boolean
+  canPublish: boolean
+  sourceSchedule: {
+    scopeType: 'TEAM' | 'ORGANIZATION' | null
+    scopeId: number | null
+    scopePublicId: string | null
+    id: number | null
+    state: 'AVAILABLE' | 'CANCELLED' | 'UNAVAILABLE'
+    canView: boolean
+  } | null
+  participants: Array<{
+    id: number
+    userId: number
+    displayName: string
+    memberNumber: string | null
+    roleLabel: string | null
+    createdAt: string
+  }>
+  templateFields: ActivityTemplateField[]
+}
+
+export interface UpdateActivityRequestBody {
+  title: string
+  activityDate: string
+  activityEndDate: string | null
+  activityTimeStart: string | null
+  activityTimeEnd: string | null
+  description: string
+  templateId?: number | null
+  visibility: 'PUBLIC' | 'MEMBERS_ONLY'
+  fieldValues: Record<string, unknown>
+  version: number
 }
 
 /**
  * 活動記録のカスタムフィールド型。
  * バックエンド {@code com.mannschaft.app.activity.FieldType} と一致させる。
  */
-export type ActivityFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'DATETIME' | 'SELECT' | 'CHECKBOX' | 'TEXTAREA'
+export type ActivityFieldType =
+  | 'TEXT'
+  | 'NUMBER'
+  | 'DATE'
+  | 'DATETIME'
+  | 'SELECT'
+  | 'CHECKBOX'
+  | 'TEXTAREA'
 
 /**
  * 活動テンプレートのフィールド定義。

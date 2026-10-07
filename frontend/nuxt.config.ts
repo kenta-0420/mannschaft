@@ -436,6 +436,7 @@ export default defineNuxtConfig({
   // E2E テスト時（NUXT_API_PROXY=true 環境変数）は API を Nuxt サーバー経由でプロキシする。
   // これにより CORS プリフライト問題を回避し、Playwright のルートインターセプトが確実に機能する。
   routeRules: {
+    '/activities/**': { ssr: false },
     // 未公開機能（Gate 基盤工事②）のガード対象パスは SSR 対象外にする。
     // SSR 実行時は公開フラグを取得できない（localStorage のトークンに依存）ため、
     // フラグ未確定のまま未公開ページの HTML がサーバーから出力されるのを防ぐ
