@@ -1759,6 +1759,8 @@
       "downloadLabel": "{format} herunterladen ({type})"
     },
     "menu": "Menü",
+    "moreActions": "Weitere Aktionen",
+    "openNavigation": "Navigation öffnen",
     "scopeShell": {
       "memberCount": "{count} Mitglieder",
       "supporterCount": "{count} Unterstützer",

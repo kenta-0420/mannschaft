@@ -1759,6 +1759,8 @@
       "downloadLabel": "{format} 다운로드（{type}）"
     },
     "menu": "메뉴",
+    "moreActions": "더 많은 작업",
+    "openNavigation": "탐색 열기",
     "scopeShell": {
       "memberCount": "멤버 {count}명",
       "supporterCount": "서포터 {count}명",
