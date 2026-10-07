@@ -181,7 +181,7 @@ afterAll(() => {
 
 ### 3.1.1 Controller テストは MockMvc 経由必須（Bean 直呼び禁止）**【必須】**
 
-**Controller のテストは必ず MockMvc で HTTP リクエストを発行して検証すること。**
+**Controller の結合テストは MockMvc で HTTP リクエストを発行して検証すること。** 実TCPのHTTPクライアントで検証する試験は §9.1 に従う。いずれも Controller Bean の直呼びで代替しない。
 **Controller を `@Autowired` して、そのメソッドを Java から直接呼ぶ流儀を禁止する。**
 
 ```java
@@ -237,6 +237,18 @@ MockMvc は本プロジェクトで既に **196 ファイル・3531 箇所** で
 #### characterization test（現契約の固定）について
 
 既に正しく実装済みの Controller に後追いで MockMvc テストを足す場合、それは **red → green の red テストではなく、現契約を固定する characterization test（回帰防止柵）**である。**初回実行から green になるのが正常**であり、「試練が red にならない」ことは異常ではない。この性質はテストクラスの Javadoc と PR 説明に明記し、検分官が誤判定しないようにすること。
+
+### 3.1.2 試験種別ごとの WebEnvironment と実物の観測
+
+| 検査する契約 | 起動設定・経路 | 観測する実物 |
+|---|---|---|
+| 内部 Service・トランザクション・通知境界 | `AbstractMySqlIntegrationTest` の `MOCK` を継承。Service proxy / `TransactionTemplate` 経由 | 実 Bean・実 MySQL・実 commit / rollback。HTTPサーバーは不要 |
+| API契約・Securityフィルタの認可境界 | 同基底の `MOCK` + `@AutoConfigureMockMvc` | 実 Controller・DTO変換・実 Security フィルタ・実 MySQL。認可を検査するときは `addFilters=false` を使わない |
+| 実HTTPクライアントの往復・WebSocket/STOMP | `RANDOM_PORT`。共通MySQL構成を使う場合は同基底の WebEnvironment だけ上書き | 自動採番した実TCPへ接続し、実HTTP/接続/購読の契約を検査 |
+
+`MOCK` は WebEnvironment の名称であり、業務 Bean・DB・認可をモックへ置き換える指定ではない。TCPリスナーを起動せずに実 Bean と実DBを検査できる。内部試験や MockMvc 試験では `@SpringBootTest` を派生クラスで再宣言せず、基底設定を継承する。実TCP試験は必要な接続契約を Javadoc に記し、`@DirtiesContext(AFTER_CLASS)` で専用 context を閉じる。共通MySQL構成を使う実TCP試験では、WebEnvironment 以外の共通設定・MySQL singleton・外部依存設定を基底から継承する。既存の専用接続・複数ノード試験は必要な独立context・broker等の資源構成を保持する。試験種別の違いだけを理由に別フレームワークや新しい基底を増やさない。
+
+通知配送・AFTER_COMMIT の観測は §9.7 に従い、テスト全体を自動rollbackする `@Transactional` で包まず、fixtureを明示commitして所有行をcleanupする。TCPを起動したことやMockMvcを使ったことだけではcommit観測の代わりにならない。red確認では、起動・依存・fixtureの失敗と、受け入れ条件の実アサーション失敗を結果XML・原因連鎖で区別する。
 
 ### 3.2 結合テスト基底クラス
 
@@ -725,7 +737,7 @@ GitHub のブランチ保護ルールで以下を強制する:
 
 ### 9.1 バックエンド E2E
 
-- `@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)` + `TestRestTemplate` を使用
+- 実TCPを通すシナリオは `@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)` + `TestRestTemplate` 等の実HTTPクライアントを使用する。内部 Service / TX や MockMvc の結合テストは §3.1.2 の `MOCK` を継承する
 - 複数機能を跨ぐシナリオを検証する（例: 会員登録 → ログイン → チーム作成 → メンバー招待）
 - `@Transactional` は使わない（実際のコミットを含めた動作を確認するため）
 - テスト後のクリーンアップは `@AfterEach` で **テーブル TRUNCATE** を実行する:

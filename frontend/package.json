@@ -103,7 +103,8 @@
     "crossws": "^0.4.5",
     "postcss": "^8.5.23",
     "simple-git": "4.0.2",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
+    "shell-quote": "^1.11.0",
     "@redocly/openapi-core": {
       "js-yaml": "^4.3.2"
     },
@@ -112,7 +113,9 @@
     "js-yaml": "^4.3.2",
     "postcss-selector-parser": "7.1.6",
     "seroval": "1.6.3",
-    "source-map-js": "1.2.2"
+    "source-map-js": "1.2.2",
+    "@nuxt/devtools": "3.4.1",
+    "@simple-git/argv-parser": "2.0.1"
   },
   "engines": {
     "node": "22.23.2",
