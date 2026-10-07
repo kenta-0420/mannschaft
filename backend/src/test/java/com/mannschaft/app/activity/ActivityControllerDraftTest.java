@@ -47,6 +47,9 @@ class ActivityControllerDraftTest {
     @Mock
     private ActivityMapper activityMapper;
 
+    @Mock
+    private com.mannschaft.app.common.activityschedule.ActivityMutationFacade activityMutations;
+
     @InjectMocks
     private ActivityController controller;
 
@@ -103,8 +106,7 @@ class ActivityControllerDraftTest {
                 ActivityRecordResponse dto = ActivityRecordResponse.builder()
                         .scopeType(ActivityScopeType.TEAM.name()).scopeId(SCOPE_ID).title("公開")
                         .status(ActivityStatus.PUBLISHED.name()).build();
-                given(activityService.publishActivity(ACTIVITY_ID, USER_ID)).willReturn(published);
-                given(activityMapper.toActivityRecordResponse(published)).willReturn(dto);
+                given(activityMutations.publish(ACTIVITY_ID, USER_ID, null)).willReturn(dto);
 
                 ResponseEntity<ApiResponse<ActivityRecordResponse>> response =
                         controller.publishActivity(ACTIVITY_ID);
@@ -121,7 +123,7 @@ class ActivityControllerDraftTest {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
 
-                given(activityService.publishActivity(ACTIVITY_ID, USER_ID))
+                given(activityMutations.publish(ACTIVITY_ID, USER_ID, null))
                         .willThrow(new BusinessException(ActivityErrorCode.INVALID_ACTIVITY_STATUS));
 
                 assertThatThrownBy(() -> controller.publishActivity(ACTIVITY_ID))

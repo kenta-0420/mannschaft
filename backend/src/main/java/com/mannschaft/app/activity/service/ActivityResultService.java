@@ -63,6 +63,8 @@ public class ActivityResultService {
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final ActivityScopeAccessGuard scopeAccessGuard;
     private final com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
+    private final ActivityScheduleSyncService scheduleSynchronization;
+    private final jakarta.persistence.EntityManager entityManager;
 
     /**
      * 活動記録一覧をページング取得する（認証済み経路）。
@@ -434,13 +436,23 @@ public class ActivityResultService {
     @Transactional
     public ActivityResultEntity publishActivity(Long id, Long userId) {
         ActivityResultEntity entity = findActivityOrThrow(id);
-        // 本人または管理者のみ公開可能（update/delete と同一境界）
-        scopeAccessGuard.checkAuthorOrAdmin(
-                userId, entity.getCreatedBy(), entity.getScopeType(), entity.getScopeId());
+        scopeAccessGuard.checkAuthorOrAdmin(userId, entity.getCreatedBy(), entity.getScopeType(), entity.getScopeId());
+        return publishInternal(id, null);
+    }
+
+    @Transactional
+    public com.mannschaft.app.activity.dto.ActivityRecordResponse publishActivityVersioned(Long id, Long userId, Long version) {
+        return activityMapper.toActivityRecordResponse(publishInternal(id, version));
+    }
+
+    private ActivityResultEntity publishInternal(Long id, Long version) {
+        ActivityResultEntity entity = findActivityOrThrow(id);
+        checkVersion(entity, version);
         if (!entity.isPublishable()) {
             // 既に PUBLISHED（DRAFT 以外）の状態からの publish は不正
             throw new BusinessException(ActivityErrorCode.INVALID_ACTIVITY_STATUS);
         }
+        validatePublish(entity);
         entity.publish();
         ActivityResultEntity saved = resultRepository.save(entity);
         log.info("活動記録公開: activityId={}", id);
@@ -456,24 +468,45 @@ public class ActivityResultService {
         // 本人または管理者のみ更新可能
         scopeAccessGuard.checkAuthorOrAdmin(
                 userId, entity.getCreatedBy(), entity.getScopeType(), entity.getScopeId());
+        checkVersion(entity, request.getVersion());
 
         // 時刻バリデーション
-        if (request.getActivityTimeStart() != null && request.getActivityTimeEnd() != null
-                && request.getActivityTimeEnd().isBefore(request.getActivityTimeStart())) {
-            throw new BusinessException(ActivityErrorCode.INVALID_TIME_RANGE);
+        ActivityScheduleSyncService.validateTime(new ActivityScheduleValues(request.getTitle(), request.getActivityDate(),
+                request.getActivityEndDate(), request.getActivityTimeStart(), request.getActivityTimeEnd()));
+        if (request.getTemplateId() != null && !java.util.Objects.equals(request.getTemplateId(), entity.getTemplateId())) {
+            if (entity.getStatus() != ActivityStatus.DRAFT || entity.getTemplateId() != null) {
+                throw new BusinessException(ActivityErrorCode.TEMPLATE_CHANGE_NOT_ALLOWED);
+            }
+            var template = templateService.findTemplateOrThrow(request.getTemplateId());
+            if (template.getScopeType() != entity.getScopeType() || !java.util.Objects.equals(template.getScopeId(), entity.getScopeId())) {
+                throw new BusinessException(ActivityErrorCode.TEMPLATE_NOT_FOUND);
+            }
+            entity.assignTemplate(request.getTemplateId());
         }
 
         ActivityVisibility visibility = request.getVisibility() != null
                 ? EnumInputParser.parse(ActivityVisibility.class, request.getVisibility(), "visibility") : entity.getVisibility();
 
-        String fieldValuesJson = serializeFieldValues(request.getFieldValues());
-        String attachmentsJson = serializeAttachments(request.getFileIds());
+        String fieldValuesJson = request.getFieldValues() == null ? entity.getFieldValues() : serializeFieldValues(request.getFieldValues());
+        String attachmentsJson = request.getFileIds() == null ? entity.getAttachments() : serializeAttachments(request.getFileIds());
 
+        scheduleSynchronization.markManualEdits(entity, request);
+        entity.updateEndDate(request.getActivityEndDate());
         entity.update(request.getTitle(), request.getActivityDate(),
                 request.getActivityTimeStart(), request.getActivityTimeEnd(),
                 request.getDescription(), fieldValuesJson, attachmentsJson, visibility);
 
-        ActivityResultEntity saved = resultRepository.save(entity);
+        if (request.getParticipantUserIds() != null) {
+            entityManager.lock(entity, jakarta.persistence.LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+            Set<Long> requested = new java.util.HashSet<>(request.getParticipantUserIds());
+            var existing = participantRepository.findByActivityResultIdOrderByCreatedAtAsc(id);
+            Set<Long> existingIds = existing.stream().map(ActivityParticipantEntity::getUserId).collect(Collectors.toSet());
+            List<Long> removed = existingIds.stream().filter(participantId -> !requested.contains(participantId)).toList();
+            if (!removed.isEmpty()) participantRepository.deleteByActivityResultIdAndUserIdIn(id, removed);
+            requested.stream().filter(participantId -> !existingIds.contains(participantId)).forEach(participantId ->
+                    participantRepository.save(ActivityParticipantEntity.builder().activityResultId(id).userId(participantId).build()));
+        }
+        ActivityResultEntity saved = resultRepository.saveAndFlush(entity);
         log.info("活動記録更新: activityId={}", id);
         return saved;
     }
@@ -512,6 +545,8 @@ public class ActivityResultService {
                 .templateId(original.getTemplateId())
                 .title(title)
                 .activityDate(activityDate)
+                .activityEndDate(original.getActivityEndDate() == null ? null : activityDate.plusDays(
+                        java.time.temporal.ChronoUnit.DAYS.between(original.getActivityDate(), original.getActivityEndDate())))
                 .activityTimeStart(original.getActivityTimeStart())
                 .activityTimeEnd(original.getActivityTimeEnd())
                 .description(original.getDescription())
@@ -546,6 +581,7 @@ public class ActivityResultService {
         ActivityResultEntity activity = findActivityOrThrow(activityId);
         // スコープメンバーシップ検証: 非メンバーは403
         scopeAccessGuard.checkMembership(userId, activity.getScopeType(), activity.getScopeId());
+        entityManager.lock(activity, jakarta.persistence.LockModeType.OPTIMISTIC_FORCE_INCREMENT);
 
         for (Long participantUserId : request.getUserIds()) {
             // 重複チェック
@@ -579,6 +615,7 @@ public class ActivityResultService {
         ActivityResultEntity activity = findActivityOrThrow(activityId);
         // スコープメンバーシップ検証: 非メンバーは403
         scopeAccessGuard.checkMembership(userId, activity.getScopeType(), activity.getScopeId());
+        entityManager.lock(activity, jakarta.persistence.LockModeType.OPTIMISTIC_FORCE_INCREMENT);
         participantRepository.deleteByActivityResultIdAndUserIdIn(activityId, request.getUserIds());
         log.info("参加者削除: activityId={}, count={}", activityId, request.getUserIds().size());
 
@@ -593,6 +630,38 @@ public class ActivityResultService {
     ActivityResultEntity findActivityOrThrow(Long id) {
         return resultRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ActivityErrorCode.ACTIVITY_NOT_FOUND));
+    }
+
+    private void checkVersion(ActivityResultEntity entity, Long expected) {
+        if (expected != null && !expected.equals(entity.getVersion())) {
+            throw new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_003);
+        }
+    }
+
+    private void validatePublish(ActivityResultEntity entity) {
+        ActivityScheduleSyncService.validateTime(new ActivityScheduleValues(entity.getTitle(), entity.getActivityDate(),
+                entity.getActivityEndDate(), entity.getActivityTimeStart(), entity.getActivityTimeEnd()));
+        if (entity.getTemplateId() == null) return;
+        var template = templateService.findTemplateOrThrow(entity.getTemplateId());
+        if (template.getScopeType() != entity.getScopeType() || !java.util.Objects.equals(template.getScopeId(), entity.getScopeId())) {
+            throw new BusinessException(ActivityErrorCode.TEMPLATE_NOT_FOUND);
+        }
+        if (Boolean.TRUE.equals(template.getIsParticipantRequired())
+                && participantRepository.findByActivityResultIdOrderByCreatedAtAsc(entity.getId()).isEmpty()) {
+            throw new BusinessException(ActivityErrorCode.MINIMUM_PARTICIPANT_REQUIRED);
+        }
+        try {
+            var values = objectMapper.readTree(entity.getFieldValues());
+            for (var field : templateService.fieldsIfPresent(entity.getTemplateId(), entity.getScopeType(), entity.getScopeId())) {
+                var value = values.get(field.getFieldKey());
+                if (Boolean.TRUE.equals(field.getIsRequired()) && (value == null || value.isNull()
+                        || (value.isTextual() && value.asText().isBlank()))) {
+                    throw new BusinessException(ActivityErrorCode.REQUIRED_FIELD_MISSING);
+                }
+            }
+        } catch (JsonProcessingException malformed) {
+            throw new BusinessException(ActivityErrorCode.FIELD_TYPE_MISMATCH);
+        }
     }
 
     private String serializeFieldValues(Map<String, Object> fieldValues) {
