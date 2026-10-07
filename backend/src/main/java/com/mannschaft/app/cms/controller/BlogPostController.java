@@ -86,14 +86,19 @@ public class BlogPostController {
 
     /**
      * 記事詳細をslugで取得する。
+     *
+     * <p>{@code teamId} / {@code organizationId} は一覧と同じく slug・数値文字列の双方を受け、
+     * Service がチーム・組織それぞれとして解決する（CMP-261007-2052）。{@code Long} で受けると
+     * グローバルの {@code ScopeSlugIdConverter} が先に働き、不在 slug だけが別のエラーコードになる
+     * （存在オラクル）ため、String で受ける。</p>
      */
     @GetMapping("/posts/{slug}")
     @Operation(summary = "記事詳細（slug）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<BlogPostResponse>> getPostBySlug(
             @PathVariable String slug,
-            @RequestParam(required = false) Long teamId,
-            @RequestParam(required = false) Long organizationId,
+            @RequestParam(required = false) String teamId,
+            @RequestParam(required = false) String organizationId,
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String previewToken) {
         BlogPostResponse response;

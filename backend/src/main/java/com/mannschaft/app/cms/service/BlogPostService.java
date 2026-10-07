@@ -173,29 +173,21 @@ public class BlogPostService {
             List<BlogPostEntity> content = page.getContent();
             if (content.isEmpty()) break;
             Set<Long> ids = content.stream().map(BlogPostEntity::getId).collect(Collectors.toSet());
-            // 課金判定の例外・欠損は fail-closed: 判定できなかった記事は一覧にも件数にも入れない（200 のまま）。
-            Set<Long> accessibleIds;
-            try {
-                accessibleIds = contentVisibilityChecker.filterAccessible(
-                        ReferenceType.BLOG_POST, ids, viewerUserId);
-            } catch (RuntimeException e) {
-                log.warn("ブログ一覧の可視性判定に失敗したため、判定できなかった記事を除外する: scanPage={}, size={}",
-                        scanPage, ids.size(), e);
-                accessibleIds = Set.of();
-            }
+            // CMP-261007-2052 AC-11（Codex 検分後の改訂）: ここで例外を捕捉して握りつぶしてはならない。
+            // 呼び先（ContentVisibilityChecker / PaymentGateService）は @Transactional(readOnly=true) で
+            // 本メソッドの取引に参加しており、RuntimeException が抜けた時点で取引は rollback-only になる。
+            // 捕捉して空ページを返しても、外側の終了時に UnexpectedRollbackException の 500 になる。
+            // 課金の照会失敗は PaymentGateService#checkAccessBatch 内で HIDDEN に変換され（記事ごとの欠損も
+            // 同様）、下の applyListPaywall で一覧と件数から除外される。想定外の例外はそのまま伝播させ、
+            // 本文・件数を返さない（500・fail-closed）。
+            Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
+                    ReferenceType.BLOG_POST, ids, viewerUserId);
             Map<Long, ContentGateTarget> targets = content.stream()
                     .map(BlogPostService::targetEntry)
                     .flatMap(Optional::stream)
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-            Map<Long, GateCheckResponse> gates;
-            try {
-                gates = paymentGateService.checkAccessBatch(
-                        ContentGateType.POST, content.stream().map(BlogPostEntity::getId).toList(), viewerUserId, targets);
-            } catch (RuntimeException e) {
-                log.warn("ブログ一覧の課金判定に失敗したため、判定できなかった記事を除外する: scanPage={}, size={}",
-                        scanPage, ids.size(), e);
-                gates = null;
-            }
+            Map<Long, GateCheckResponse> gates = paymentGateService.checkAccessBatch(
+                    ContentGateType.POST, content.stream().map(BlogPostEntity::getId).toList(), viewerUserId, targets);
             for (BlogPostEntity entity : content) {
                 if (!accessibleIds.contains(entity.getId())) continue;
                 BlogPostResponse response = applyListPaywall(entity, systemAdmin,
@@ -241,13 +233,34 @@ public class BlogPostService {
      * MEMBERS_ONLY/DRAFT 記事が漏洩する（実機E2Eで捕捉した認可漏洩バグ）。
      * viewerUserId は認証コンテキストから取得する（リクエスト引数 {@code userId} は
      * スコープ解決用であり閲覧者IDではないため使用しない）。</p>
+     *
+     * <p>CMP-261007-2052（Codex 検分後）: {@code teamIdStr} / {@code organizationIdStr} は一覧と同じく
+     * slug・数値文字列の双方を受け、チームはチーム・組織は組織として本メソッドで解決する
+     * （グローバルの {@code ScopeSlugIdConverter} に任せると、不在 slug が変換段階で COMMON_005 になり、
+     * 実在する不可視スコープの CMS_001 と区別できる存在オラクルになるうえ、URI に {@code /organizations/}
+     * が無いため組織の slug がチームとして解決されてしまう）。不存在・論理削除済み・PROVISIONED・
+     * 閲覧不可は slug・数値の別なくすべて {@link CmsErrorCode#POST_NOT_FOUND}（404）に畳む。
+     * 両方指定された場合は従来どおりチームを優先する。</p>
+     *
+     * @param teamIdStr         チームの slug または内部ID文字列（null/空白なら未指定）
+     * @param organizationIdStr 組織の slug または内部ID文字列（null/空白なら未指定）
      */
-    public BlogPostResponse getBySlug(Long teamId, Long organizationId, Long userId, String slug) {
-        // 検分第2巡 残存経路チェック: teamId/organizationId は Controller が数値IDをそのまま
-        // 受け取る（slug 解決を経由しない）ため、PROVISIONED（承諾前の事前作成状態）スコープの
-        // ID を直接指定された場合の防御多層として、ここで lifecycleStatus=ACTIVE を確認する。
-        // PROVISIONED スコープは作成時点で会員が存在せず記事も作られ得ないため実害は現状無いが、
-        // 将来の経路変化に備えた最小差分の防御として追加する（存在秘匿のため POST_NOT_FOUND に畳む）。
+    public BlogPostResponse getBySlug(String teamIdStr, String organizationIdStr, Long userId, String slug) {
+        Long teamId = null;
+        Long organizationId = null;
+        try {
+            if (teamIdStr != null && !teamIdStr.isBlank()) {
+                teamId = resolveTeamId(teamIdStr.strip());
+            } else if (organizationIdStr != null && !organizationIdStr.isBlank()) {
+                organizationId = resolveOrganizationId(organizationIdStr.strip());
+            }
+        } catch (BusinessException e) {
+            // 解決できない slug（不存在・論理削除済み）は、不可視スコープと同一の応答に畳む（存在秘匿）。
+            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
+        }
+        // 検分第2巡 残存経路チェック: 数値ID直指定では slug 解決（削除済み除外）を経由しないため、
+        // PROVISIONED（承諾前の事前作成状態）スコープの ID を直接指定された場合の防御多層として、
+        // ここで lifecycleStatus=ACTIVE を確認する（存在秘匿のため POST_NOT_FOUND に畳む）。
         assertScopeNotProvisioned(teamId, organizationId);
         // CMP-261007-2052: スコープ（チーム/組織）を閲覧者が見られなければ「記事が無い」と同一応答（CMS_001）。
         assertScopeVisible(teamId, organizationId, SecurityUtils.getCurrentUserIdOrNull(), CmsErrorCode.POST_NOT_FOUND);
@@ -684,9 +697,9 @@ public class BlogPostService {
     /**
      * slug でプレビュートークン付き記事を取得する。
      */
-    public BlogPostResponse getBySlugWithPreviewToken(Long teamId, Long organizationId, Long userId,
+    public BlogPostResponse getBySlugWithPreviewToken(String teamIdStr, String organizationIdStr, Long userId,
                                                        String slug, String previewToken) {
-        BlogPostResponse response = getBySlug(teamId, organizationId, userId, slug);
+        BlogPostResponse response = getBySlug(teamIdStr, organizationIdStr, userId, slug);
         // プレビュートークン検証はgetBySlug内で将来実装
         // 現時点ではパラメータを受け取るのみ
         return response;

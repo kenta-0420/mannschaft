@@ -147,7 +147,7 @@ class BlogPostControllerTest {
         @Test
         @DisplayName("正常系: previewTokenなしでslug取得")
         void slug取得_プレビューなし_正常() {
-            given(postService.getBySlug(TEAM_ID, null, null, "my-post")).willReturn(mockResponse());
+            given(postService.getBySlug(TEAM_ID.toString(), null, null, "my-post")).willReturn(mockResponse());
             given(reactionService.getReactionStatus(eq(POST_ID), any()))
                     .willReturn(new BlogReactionResponse(POST_ID, false, 0));
 
@@ -161,7 +161,7 @@ class BlogPostControllerTest {
         @Test
         @DisplayName("正常系: previewTokenありでslug取得")
         void slug取得_プレビューあり_正常() {
-            given(postService.getBySlugWithPreviewToken(TEAM_ID, null, null, "my-post", "token123"))
+            given(postService.getBySlugWithPreviewToken(TEAM_ID.toString(), null, null, "my-post", "token123"))
                     .willReturn(mockResponse());
             given(reactionService.getReactionStatus(eq(POST_ID), any()))
                     .willReturn(new BlogReactionResponse(POST_ID, false, 0));

@@ -162,7 +162,7 @@ class BlogPostServiceMediaResolutionTest {
         void getBySlugは解決する() {
             stubBySlug();
 
-            BlogPostResponse result = service.getBySlug(TEAM_ID, null, null, SLUG);
+            BlogPostResponse result = service.getBySlug(TEAM_ID.toString(), null, null, SLUG);
 
             verify(blogBodyMediaResolver).resolveBody(
                     eq(RAW_BODY), eq(StorageScopeType.TEAM), eq(TEAM_ID), any());
@@ -177,7 +177,7 @@ class BlogPostServiceMediaResolutionTest {
             stubBySlug();
 
             BlogPostResponse result = service.getBySlugWithPreviewToken(
-                    TEAM_ID, null, null, SLUG, "preview-token-xyz");
+                    TEAM_ID.toString(), null, null, SLUG, "preview-token-xyz");
 
             verify(blogBodyMediaResolver).resolveBody(
                     eq(RAW_BODY), eq(StorageScopeType.TEAM), eq(TEAM_ID), any());
@@ -196,7 +196,7 @@ class BlogPostServiceMediaResolutionTest {
             given(paymentGateService.checkAccess(eq(ContentGateType.POST), eq(POST_ID), any(), any(ContentGateTarget.class)))
                     .willReturn(new GateCheckResponse(false, false, List.of()));
 
-            BlogPostResponse result = service.getBySlug(TEAM_ID, null, null, SLUG);
+            BlogPostResponse result = service.getBySlug(TEAM_ID.toString(), null, null, SLUG);
 
             assertThat(result.getContent().body())
                     .as("未課金のマスクを解決処理で復活させてはならない")

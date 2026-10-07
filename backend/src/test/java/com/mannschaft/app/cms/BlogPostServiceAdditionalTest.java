@@ -176,6 +176,9 @@ class BlogPostServiceAdditionalTest {
             assertThat(result).hasSize(1);
             // CMP-261007-2052 AC-16: 一覧はメンバー限定を外した（可視性は F00 で判定する）。
             verify(accessControlService, Mockito.never()).checkMembership(any(), any(), any());
+            // 代わりに組織スコープの実在・可視性判定が呼ばれている
+            verify(organizationService).assertActiveOrganizationExists(ORG_ID);
+            verify(contentVisibilityChecker).assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
         }
     }
 
@@ -246,9 +249,52 @@ class BlogPostServiceAdditionalTest {
             given(postRepository.findByOrganizationIdAndSlug(ORG_ID, "test-slug")).willReturn(Optional.of(entity));
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
 
-            BlogPostResponse result = service.getBySlug(null, ORG_ID, null, "test-slug");
+            BlogPostResponse result;
+            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> su =
+                    Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
+                su.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+                result = service.getBySlug(null, ORG_ID_STR, null, "test-slug");
+            }
 
             assertThat(result).isNotNull();
+            verify(organizationService).assertActiveOrganizationExists(ORG_ID);
+            verify(contentVisibilityChecker).assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("AC-9: 組織の slug は組織として解決する（チームとして解決しない）")
+        void 組織slugは組織として解決する() {
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            com.mannschaft.app.organization.entity.OrganizationEntity organization =
+                    com.mannschaft.app.organization.entity.OrganizationEntity.builder().build();
+            org.springframework.test.util.ReflectionTestUtils.setField(organization, "id", ORG_ID);
+            given(organizationRepository.findBySlugAndDeletedAtIsNull("org-slug"))
+                    .willReturn(Optional.of(organization));
+            given(postRepository.findByOrganizationIdAndSlug(ORG_ID, "test-slug")).willReturn(Optional.of(entity));
+            given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
+
+            BlogPostResponse result;
+            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> su =
+                    Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
+                su.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+                result = service.getBySlug(null, "org-slug", null, "test-slug");
+            }
+
+            assertThat(result).isNotNull();
+            verify(teamRepository, Mockito.never()).findBySlugAndDeletedAtIsNull(any());
+            verify(contentVisibilityChecker).assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("AC-9: 解決できない組織 slug は CMS_001")
+        void 解決できない組織slugはCMS_001() {
+            given(organizationRepository.findBySlugAndDeletedAtIsNull("no-such-org")).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.getBySlug(null, "no-such-org", null, "test-slug"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CmsErrorCode.POST_NOT_FOUND));
+            verify(postRepository, Mockito.never()).findByOrganizationIdAndSlug(any(), any());
         }
 
         @Test
@@ -790,7 +836,7 @@ class BlogPostServiceAdditionalTest {
             given(postRepository.findByTeamIdAndSlug(TEAM_ID, "preview-post")).willReturn(Optional.of(entity));
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
 
-            BlogPostResponse result = service.getBySlugWithPreviewToken(TEAM_ID, null, null, "preview-post", "token123");
+            BlogPostResponse result = service.getBySlugWithPreviewToken(TEAM_ID_STR, null, null, "preview-post", "token123");
 
             assertThat(result).isNotNull();
         }

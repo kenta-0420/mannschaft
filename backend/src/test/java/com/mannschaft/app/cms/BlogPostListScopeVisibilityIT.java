@@ -71,8 +71,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code GET /api/v1/blog/posts/{slug}?teamId|organizationId=} を対象とする。</p>
  *
  * <p>存在秘匿の期待値（AC-8/AC-9）: 一覧は「不存在 slug の現行応答」＝チーム {@code 404 CMS_024}、
- * 組織 {@code 404 CMS_025} に揃える前提。詳細は数値 ID しか受けない（{@code Long teamId}）ため、
- * 「不存在チームを数値で指定した詳細の応答」との一致を検査し、殿の裁定により詳細は 404 CMS_001 に統一する。</p>
+ * 組織 {@code 404 CMS_025} に揃える前提。詳細は殿の裁定により 404 CMS_001 に統一し、
+ * 「不存在チームを数値で指定した詳細の応答」との一致を検査する。Codex 検分後の裁定（2026-10-08）で、
+ * 詳細の {@code teamId}/{@code organizationId} に slug を渡す経路も同じ応答に揃える
+ * （グローバルの slug 変換器に任せると不在 slug だけ COMMON_005 になる存在オラクルだったため）。</p>
  */
 @AutoConfigureMockMvc
 @Transactional
@@ -275,6 +277,32 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
         assertThat(author).contains(visible, draft);
     }
 
+    @Test
+    @DisplayName("AC-6: organizationId 経路でも メンバー=MEMBERS_ONLY可・他人の下書き不可、作者=自分のDRAFT可 を件数（meta.total）まで検証する")
+    void ac6_組織経路のメンバーと作者も件数まで同じ() throws Exception {
+        String pub = orgPost(Visibility.PUBLIC, PostStatus.PUBLISHED).getSlug();
+        String membersOnly = orgPost(Visibility.MEMBERS_ONLY, PostStatus.PUBLISHED).getSlug();
+        String draft = orgPost(Visibility.PUBLIC, PostStatus.DRAFT).getSlug(); // 作者（authorId）の下書き
+        em.flush();
+
+        for (String orgParam : List.of(orgId.toString(), orgSlug)) {
+            // AC-4a 相当: メンバーには PUBLIC と MEMBERS_ONLY の 2 件。作者の下書きは見えず数えない
+            JsonNode member = okList(memberId, "organizationId", orgParam, null, null);
+            assertThat(member.path("meta").path("total").asLong()).as("member " + orgParam).isEqualTo(2);
+            assertThat(slugs(member)).as("member " + orgParam).containsExactlyInAnyOrder(pub, membersOnly);
+
+            // AC-4b 相当: 作者（メンバーでもある）には自分の下書きを含む 3 件
+            JsonNode author = okList(authorId, "organizationId", orgParam, null, null);
+            assertThat(author.path("meta").path("total").asLong()).as("author " + orgParam).isEqualTo(3);
+            assertThat(slugs(author)).as("author " + orgParam).containsExactlyInAnyOrder(pub, membersOnly, draft);
+
+            // 対照: 非所属者には公開の 1 件のみ
+            JsonNode outsider = okList(outsiderId, "organizationId", orgParam, null, null);
+            assertThat(outsider.path("meta").path("total").asLong()).as("outsider " + orgParam).isEqualTo(1);
+            assertThat(slugs(outsider)).as("outsider " + orgParam).containsExactly(pub);
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     // AC-7: フォロワー・購入者（現行 Resolver どおり）
     // ═════════════════════════════════════════════════════════════════════
@@ -427,6 +455,59 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
                 Arguments.of("TEAM", ScopeState.PROVISIONED),
                 Arguments.of("ORGANIZATION", ScopeState.DELETED),
                 Arguments.of("ORGANIZATION", ScopeState.PROVISIONED));
+    }
+
+    /** 詳細の slug 経路で検査するスコープの状態（AC-9 の3状態＋閲覧不可）。 */
+    enum DetailScopeState { MISSING, DELETED, PROVISIONED, INVISIBLE }
+
+    static Stream<Arguments> ac9DetailSlugCases() {
+        List<Arguments> cases = new ArrayList<>();
+        for (String scope : List.of("TEAM", "ORGANIZATION")) {
+            for (DetailScopeState state : DetailScopeState.values()) {
+                cases.add(Arguments.of(scope, state));
+            }
+        }
+        return cases.stream();
+    }
+
+    @ParameterizedTest(name = "{0} {1}")
+    @MethodSource("ac9DetailSlugCases")
+    @DisplayName("AC-9: 詳細の teamId/organizationId に slug を渡しても 不存在／削除済み／PROVISIONED／閲覧不可は 不存在スコープを数値で指定した詳細と同一応答（404 CMS_001）")
+    void ac9_詳細のslug経路も存在秘匿応答は一致する(String scope, DetailScopeState state) throws Exception {
+        boolean team = "TEAM".equals(scope);
+        String param = team ? "teamId" : "organizationId";
+        String postSlug = "ac9-detail-slug-" + state.name().toLowerCase() + "-" + key;
+        String value = state == DetailScopeState.INVISIBLE
+                ? invisibleScopeSlug(team, postSlug)
+                : scopeValueIn(team, ScopeState.valueOf(state.name()), true, postSlug);
+
+        Outcome missing = outcome(detail(outsiderId, postSlug, param, MISSING_ID));
+        Outcome actual = outcome(detail(outsiderId, postSlug, param, value));
+
+        assertThat(actual).as(param + "=" + value).isEqualTo(new Outcome(404, "CMS_001"));
+        assertThat(actual).as(param + "=" + value).isEqualTo(missing);
+        assertThat(actual.body()).doesNotContain("本文").doesNotContain("AC-9 の記事");
+    }
+
+    @Test
+    @DisplayName("AC-9 対照: 見えるチーム・組織の公開記事は、詳細を slug・数値のどちらで指定しても 200（組織の slug は組織として解決される）")
+    void ac9_見えるスコープの公開記事は詳細が200() throws Exception {
+        BlogPostEntity teamArticle = teamPost(Visibility.PUBLIC, PostStatus.PUBLISHED);
+        BlogPostEntity orgArticle = orgPost(Visibility.PUBLIC, PostStatus.PUBLISHED);
+        em.flush();
+
+        for (String value : List.of(teamId.toString(), teamSlug)) {
+            MvcResult result = detail(outsiderId, teamArticle.getSlug(), "teamId", value);
+            assertThat(result.getResponse().getStatus()).as("teamId=" + value).isEqualTo(200);
+            JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+            assertThat(data.path("content").path("slug").asText()).isEqualTo(teamArticle.getSlug());
+        }
+        for (String value : List.of(orgId.toString(), orgSlug)) {
+            MvcResult result = detail(outsiderId, orgArticle.getSlug(), "organizationId", value);
+            assertThat(result.getResponse().getStatus()).as("organizationId=" + value).isEqualTo(200);
+            JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+            assertThat(data.path("content").path("slug").asText()).isEqualTo(orgArticle.getSlug());
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -703,8 +784,36 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
     }
 
     private MvcResult detail(Long viewer, String slug, String param, Long scopeId) throws Exception {
-        return mockMvc.perform(get(DETAIL, slug).param(param, scopeId.toString())
+        return detail(viewer, slug, param, scopeId.toString());
+    }
+
+    private MvcResult detail(Long viewer, String slug, String param, String scopeValue) throws Exception {
+        return mockMvc.perform(get(DETAIL, slug).param(param, scopeValue)
                 .with(user(viewer.toString()))).andReturn();
+    }
+
+    /**
+     * 非所属者からは見えない（チーム: MEMBERS_AND_ABOVE、組織: PRIVATE）実在スコープに PUBLIC×PUBLISHED 記事を置き、
+     * スコープの slug を返す。
+     */
+    private String invisibleScopeSlug(boolean team, String postSlug) {
+        String scopeSlug = "ac9-scope-invisible-" + key;
+        Long scopeId = team
+                ? TeamOrgFixtureHelper.insertTeam(em, "AC-9 不可視チーム", scopeSlug)
+                : TeamOrgFixtureHelper.insertOrganization(em, "AC-9 不可視組織", scopeSlug);
+        em.persist(BlogPostEntity.builder()
+                .teamId(team ? scopeId : null).organizationId(team ? null : scopeId)
+                .authorId(authorId).title("AC-9 の記事").slug(postSlug).body("AC-9 の本文")
+                .visibility(Visibility.PUBLIC).status(PostStatus.PUBLISHED).postType(PostType.BLOG)
+                .build());
+        em.flush();
+        String update = team
+                ? "UPDATE teams SET visibility = 'MEMBERS_AND_ABOVE' WHERE id = :id"
+                : "UPDATE organizations SET visibility = 'PRIVATE' WHERE id = :id";
+        em.createNativeQuery(update).setParameter("id", scopeId).executeUpdate();
+        em.flush();
+        em.clear();
+        return scopeSlug;
     }
 
     private JsonNode okList(Long viewer, String param, String value, Integer page, Integer size) throws Exception {
