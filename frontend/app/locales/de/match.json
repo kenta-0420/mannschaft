@@ -655,24 +655,24 @@
       },
       "ranking": {
         "switch_to_ranking": "Mehrteilnehmer-Rangliste eingeben",
-        "intro": "Fuege Teilnehmer hinzu und gib jeweils die Gesamtpunktzahl ein; der Server ermittelt die Rangfolge automatisch nach absteigender Gesamtpunktzahl.",
+        "intro": "Füge Teilnehmer hinzu und gib jeweils die Gesamtpunktzahl ein; der Server ermittelt die Rangfolge automatisch nach absteigender Gesamtpunktzahl.",
         "mode_label": "Mehrteilnehmer-Rangliste",
         "switch_to_direct": "Zur direkten Gesamteingabe wechseln",
-        "canonical_notice": "Es liegen Teilnehmereintraege vor, daher ist die Mehrteilnehmer-Rangliste massgeblich.",
-        "clear_to_direct": "Eintraege loeschen und zur direkten Eingabe zurueckkehren",
+        "canonical_notice": "Es liegen Teilnehmereinträge vor, daher ist die Mehrteilnehmer-Rangliste massgeblich.",
+        "clear_to_direct": "Einträge löschen und zur direkten Eingabe zurückkehren",
         "standings": "Rangliste (vom Server berechnet)",
         "competitor_label": "Name des Teilnehmers",
         "competitor_placeholder": "z. B. Hanako Yamada",
         "total_label": "Gesamtpunktzahl",
-        "add_entry": "Teilnehmer hinzufuegen",
+        "add_entry": "Teilnehmer hinzufügen",
         "remove_entry": "Diesen Teilnehmer entfernen",
-        "complete": "Rangliste bestaetigen",
-        "complete_hint": "Fuege mindestens zwei Teilnehmer hinzu und gib jeweils Name und Gesamtpunktzahl ein",
+        "complete": "Rangliste bestätigen",
+        "complete_hint": "Füge mindestens zwei Teilnehmer hinzu und gib jeweils Name und Gesamtpunktzahl ein",
         "user_fallback": "Spieler #{id}",
         "team_fallback": "Team #{id}",
         "error": {
-          "load_failed": "Teilnehmereintraege konnten nicht geladen werden",
-          "save_failed": "Teilnehmereintraege konnten nicht gespeichert werden"
+          "load_failed": "Teilnehmereinträge konnten nicht geladen werden",
+          "save_failed": "Teilnehmereinträge konnten nicht gespeichert werden"
         }
       }
     }
