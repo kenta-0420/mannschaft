@@ -90,6 +90,10 @@ const activitySync = useActivityScheduleSync()
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 const isEdit = computed(() => !!props.scheduleId)
+const editLoading = ref(false)
+const editLoaded = ref(false)
+let editLoadGeneration = 0
+onBeforeUnmount(() => { editLoadGeneration++ })
 const targetMode = ref<ScheduleTargetMode>('ALL_MEMBERS')
 const targetUserIds = ref<number[]>([])
 const targetValidationError = ref<string | null>(null)
@@ -97,11 +101,21 @@ const loadedRecurringEvent = ref(false)
 const recurrenceUpdateScopeDialogVisible = ref(false)
 
 // 15分刻みの時刻オプション生成（00:00〜23:45）
-const timeOptions = Array.from({ length: 96 }, (_, i) => {
+const quarterHourOptions = Array.from({ length: 96 }, (_, i) => {
   const h = Math.floor(i / 4)
   const m = (i % 4) * 15
   const v = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   return { label: v, value: v }
+})
+// 保存済みの端数・秒付き時刻も選択状態で表示し、送信値に保持する。
+const timeOptions = computed(() => {
+  const options = [...quarterHourOptions]
+  for (const value of [form.value.startTime, form.value.endTime]) {
+    if (value && !options.some(option => option.value === value)) {
+      options.push({ label: value, value })
+    }
+  }
+  return options.sort((a, b) => a.value.localeCompare(b.value))
 })
 
 // 入力履歴（localStorage）
@@ -223,12 +237,20 @@ watch(
 watch(
   () => [props.visible, props.scheduleId],
   async ([visible, scheduleId]) => {
+    const generation = ++editLoadGeneration
+    editLoaded.value = false
+    editLoading.value = false
+    suppressEndTimeAutoAdjust = false
     if (visible && scheduleId) {
+      editLoading.value = true
+      let restored = false
       try {
         const res = effectiveScope.value.isPersonal
           ? await scheduleApi.getMyScheduleDetail(scheduleId as number)
           : await scheduleApi.getSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, scheduleId as number)
+        if (generation !== editLoadGeneration) return
         const data = (res as { data: Record<string, unknown> }).data as Record<string, unknown>
+        suppressEndTimeAutoAdjust = true
         if (effectiveScope.value.isPersonal) {
           const content = (data.content as Record<string, unknown>) ?? {}
           const time = (data.time as Record<string, unknown>) ?? {}
@@ -242,12 +264,12 @@ watch(
           if (time.startAt) {
             const start = new Date(time.startAt as string)
             form.value.startDate = start
-            form.value.startTime = start.toTimeString().slice(0, 5)
+            form.value.startTime = savedTimeString(start)
           }
           if (time.endAt) {
             const end = new Date(time.endAt as string)
             form.value.endDate = end
-            form.value.endTime = end.toTimeString().slice(0, 5)
+            form.value.endTime = savedTimeString(end)
           }
           // 個人予定: detailedReminders からリマインダーフォーム状態を復元する
           const detailedReminders = (data.detailedReminders as Array<Record<string, unknown>> | null) ?? []
@@ -301,12 +323,12 @@ watch(
           if (time.startAt) {
             const start = new Date(time.startAt as string)
             form.value.startDate = start
-            form.value.startTime = start.toTimeString().slice(0, 5)
+            form.value.startTime = savedTimeString(start)
           }
           if (time.endAt) {
             const end = new Date(time.endAt as string)
             form.value.endDate = end
-            form.value.endTime = end.toTimeString().slice(0, 5)
+            form.value.endTime = savedTimeString(end)
           }
           // 共有予定: reminders からリマインダーフォーム状態を復元する
           const reminders = (data.reminders as Array<Record<string, unknown>> | null) ?? []
@@ -354,8 +376,16 @@ watch(
             }
           }
         }
+        restored = true
       } catch {
-        notification.error(t('schedule.error_load_event'))
+        if (generation === editLoadGeneration) notification.error(t('schedule.error_load_event'))
+      } finally {
+        await nextTick()
+        if (generation === editLoadGeneration) {
+          suppressEndTimeAutoAdjust = false
+          editLoaded.value = restored
+          editLoading.value = false
+        }
       }
     } else if (visible && !scheduleId) {
       loadedRecurringEvent.value = false
@@ -364,6 +394,18 @@ watch(
     }
   },
 )
+
+function savedTimeString(date: Date): string {
+  return date.toTimeString().slice(0, date.getSeconds() ? 8 : 5)
+}
+
+function buildScheduleDateTime(date: Date | null, time: string): string | null {
+  if (!date || time.split(':').length !== 3) return buildOffsetDateTimeStr(date, time)
+  const [hours = 0, minutes = 0, seconds = 0] = time.split(':').map(Number)
+  const wallClock = new Date(date)
+  wallClock.setHours(hours, minutes, seconds, 0)
+  return buildOffsetDateTimeStr(wallClock)
+}
 
 /**
  * ISO 8601 文字列を「ユーザー設定 TZ における壁時計」として解釈し、
@@ -534,6 +576,7 @@ function validateScheduledInputs(): string | null {
 }
 
 async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
+  if (isEdit.value && !editLoaded.value) return
   if (!form.value.title.trim()) {
     fieldErrors.value = { title: t('schedule.error_title_required') }
     return
@@ -559,14 +602,14 @@ async function submit(updateScope?: 'THIS_ONLY' | 'THIS_AND_FOLLOWING') {
     description: form.value.description.trim() || undefined,
     location: form.value.location.trim() || undefined,
     allDay: form.value.allDay,
-    startAt: buildOffsetDateTimeStr(form.value.startDate, form.value.allDay ? '' : form.value.startTime) ?? undefined,
+    startAt: buildScheduleDateTime(form.value.startDate, form.value.allDay ? '' : form.value.startTime) ?? undefined,
     endAt: (() => {
       if (form.value.allDay && form.value.endDate) {
         const d = new Date(form.value.endDate)
         d.setDate(d.getDate() + 1)
         return buildOffsetDateTimeStr(d, '') ?? undefined
       }
-      return buildOffsetDateTimeStr(form.value.endDate, form.value.allDay ? '' : form.value.endTime) ?? undefined
+      return buildScheduleDateTime(form.value.endDate, form.value.allDay ? '' : form.value.endTime) ?? undefined
     })(),
   }
   if (effectiveScope.value.isPersonal) {
@@ -789,7 +832,8 @@ function close() {
     @update:visible="close"
     @hide="resetForm"
   >
-    <div class="flex flex-col gap-4">
+    <PageLoading v-if="editLoading" data-testid="schedule-edit-loading" />
+    <div v-else-if="!isEdit || editLoaded" class="flex flex-col gap-4">
       <!-- スコープ選択（複数スコープがある場合のみ表示） -->
       <ScheduleEventScopeSelector
         v-if="props.scopeOptions && props.scopeOptions.length > 1"
@@ -896,7 +940,8 @@ function close() {
         :label="isEdit ? '更新' : '作成'"
         icon="pi pi-check"
         class="min-h-11"
-        :loading="submitting"
+        :loading="submitting || editLoading"
+        :disabled="isEdit && !editLoaded"
         data-testid="schedule-submit"
         @click="submit()"
       />
