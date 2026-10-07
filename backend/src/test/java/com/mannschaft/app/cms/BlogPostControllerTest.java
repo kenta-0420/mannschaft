@@ -157,6 +157,8 @@ class BlogPostControllerTest {
         void slug取得_プレビューなし_正常() {
             given(scopeAccessGuard.resolveVisibleScopeForDetail(eq(TEAM_ID_STR), eq(null), any()))
                     .willReturn(new BlogScopeAccessGuard.ResolvedScope(TEAM_ID, null));
+            // userId 未指定は個人記事経路を使わない（null）。Long の既定値 0 を渡させない
+            given(scopeAccessGuard.parsePersonalUserId(null)).willReturn(null);
             given(postService.getBySlug(TEAM_ID, null, null, "my-post")).willReturn(mockResponse());
             given(reactionService.getReactionStatus(eq(POST_ID), any()))
                     .willReturn(new BlogReactionResponse(POST_ID, false, 0));
@@ -173,6 +175,8 @@ class BlogPostControllerTest {
         void slug取得_プレビューあり_正常() {
             given(scopeAccessGuard.resolveVisibleScopeForDetail(eq(TEAM_ID_STR), eq(null), any()))
                     .willReturn(new BlogScopeAccessGuard.ResolvedScope(TEAM_ID, null));
+            // userId 未指定は個人記事経路を使わない（null）。Long の既定値 0 を渡させない
+            given(scopeAccessGuard.parsePersonalUserId(null)).willReturn(null);
             given(postService.getBySlugWithPreviewToken(TEAM_ID, null, null, "my-post", "token123"))
                     .willReturn(mockResponse());
             given(reactionService.getReactionStatus(eq(POST_ID), any()))
