@@ -29,9 +29,9 @@ const errorHandlerMock = { handleApiError: vi.fn(), getFieldErrors: vi.fn(() => 
 const googleCalendarMock = { googleSyncEnabled: ref(false), fetchPersonalSyncStatus: vi.fn() }
 const previewApiMock = vi.fn()
 const expectedScheduleState = {
-  updatedAt: '2026-09-22T09:00:00', title: 'Recurring meeting',
-  startAt: '2026-09-22T10:00:00', endAt: '2026-09-22T11:00:00', allDay: false, status: 'SCHEDULED',
-  schedules: [{ id: 42, updatedAt: '2026-09-22T09:00:00', title: 'Recurring meeting', startAt: '2026-09-22T10:00:00', endAt: '2026-09-22T11:00:00', allDay: false, status: 'SCHEDULED' }],
+  updatedAt: '2026-09-22T09:00:00+09:00', title: 'Recurring meeting',
+  startAt: '2026-09-22T10:00:00+09:00', endAt: '2026-09-22T11:00:00+09:00', allDay: false, status: 'SCHEDULED',
+  schedules: [{ id: 42, updatedAt: '2026-09-22T09:00:00+09:00', title: 'Recurring meeting', startAt: '2026-09-22T10:00:00+09:00', endAt: '2026-09-22T11:00:00+09:00', allDay: false, status: 'SCHEDULED' }],
 }
 mockNuxtImport('useApi', () => () => previewApiMock)
 
