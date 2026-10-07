@@ -88,7 +88,7 @@ function timeDate(value: string | null): Date | null {
 }
 function timeString(value: Date | null): string | null {
   return value
-    ? `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`
+    ? `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}:${String(value.getSeconds()).padStart(2, '0')}`
     : null
 }
 watch(visible, async (open) => {
