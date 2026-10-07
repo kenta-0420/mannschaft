@@ -2798,5 +2798,11 @@
       "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
       "MEMBERS_AND_ABOVE": "Miembros y superiores"
     }
+  },
+  "relativeTime": {
+    "justNow": "Ahora mismo",
+    "minutesAgo": "hace {count} minutos",
+    "hoursAgo": "hace {count} horas",
+    "daysAgo": "hace {count} días"
   }
 }

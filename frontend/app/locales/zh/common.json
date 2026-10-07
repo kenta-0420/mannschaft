@@ -2798,5 +2798,11 @@
       "SUPPORTERS_AND_ABOVE": "支持者及以上",
       "MEMBERS_AND_ABOVE": "成员及以上"
     }
+  },
+  "relativeTime": {
+    "justNow": "刚刚",
+    "minutesAgo": "{count}分钟前",
+    "hoursAgo": "{count}小时前",
+    "daysAgo": "{count}天前"
   }
 }

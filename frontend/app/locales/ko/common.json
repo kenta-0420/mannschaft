@@ -2798,5 +2798,11 @@
       "SUPPORTERS_AND_ABOVE": "서포터 이상",
       "MEMBERS_AND_ABOVE": "멤버 이상"
     }
+  },
+  "relativeTime": {
+    "justNow": "방금",
+    "minutesAgo": "{count}분 전",
+    "hoursAgo": "{count}시간 전",
+    "daysAgo": "{count}일 전"
   }
 }

@@ -2798,5 +2798,11 @@
       "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
       "MEMBERS_AND_ABOVE": "Mitglieder und höher"
     }
+  },
+  "relativeTime": {
+    "justNow": "Gerade eben",
+    "minutesAgo": "vor {count} Minuten",
+    "hoursAgo": "vor {count} Stunden",
+    "daysAgo": "vor {count} Tagen"
   }
 }
