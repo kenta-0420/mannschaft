@@ -1,7 +1,11 @@
 package com.mannschaft.app.reservation.repository;
 
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -13,6 +17,10 @@ import java.util.UUID;
  * {@code AbstractTenantAwareRepository} は使用しない。</p>
  */
 public interface ReservationPolicyRepository extends JpaRepository<ReservationPolicyEntity, UUID> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM ReservationPolicyEntity p WHERE p.teamId = :teamId")
+    Optional<ReservationPolicyEntity> findPendingExpirePolicyForUpdate(@Param("teamId") Long teamId);
 
     /**
      * チームIDでポリシーを取得する。

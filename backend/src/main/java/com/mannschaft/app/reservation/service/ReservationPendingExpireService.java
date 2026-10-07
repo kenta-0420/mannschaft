@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -9,8 +10,13 @@ import com.mannschaft.app.reservation.ReservationStatus;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import com.mannschaft.app.reservation.repository.ReservationPolicyRepository;
+import com.mannschaft.app.reservation.repository.ReservationRepository.PendingExpireCandidate;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import com.mannschaft.app.reservation.service.ReservationPendingExpireProgressService.RunState;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -20,16 +26,18 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
-import java.time.Instant;
-import java.util.Locale;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -71,8 +79,8 @@ public class ReservationPendingExpireService {
      * 1 回の実行で処理する失効単位の上限（殿の裁定・2026-07-29）。
      *
      * <p>デプロイ初回の一斉失効・通知バーストを「5 分ごとに最大 500 単位ずつ」へ平滑化する。
-     * 上限で打ち切った回は残件がある旨をログに出し、次回起動で続きが処理される
-     * （失効条件は時刻経過なので、取りこぼしは構造的に発生しない）。</p>
+     * 成功・0件・失敗を含む単位呼出回数を数える。検査済み連続prefixを永続cursorへ保存し、
+     * 上限到達時は次回へ継続する。失敗IDはretryに残し、cursorを後退させない。</p>
      */
     static final int MAX_UNITS_PER_RUN = 500;
 
@@ -83,153 +91,180 @@ public class ReservationPendingExpireService {
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
     private final Clock clock;
+    private final ReservationPolicyRepository policyRepository;
+    private final ReservationPendingExpireProgressService progress;
+    private final TeamTimezoneResolver timezoneResolver;
+    private final EntityManager entityManager;
 
-    // ────────────────────────────────────────────────────────────
-    // 対象抽出
-    // ────────────────────────────────────────────────────────────
+    /** 検査順を保つraw行。eligibleでも500枠外ならunitはnullで、cursorを越えさせない。 */
+    public record ScanEntry(long primaryId, boolean retry, boolean eligible, PendingExpireUnit unit) { }
+    public record ScanPlan(List<ScanEntry> entries, long scannedThrough, boolean exhausted) { }
 
-    /**
-     * 失効対象を「失効単位」（単枠予約 = 1 行 / グループ = 兄弟行全部）のリストとして抽出する。
-     *
-     * <p>クエリは<b>最大 3 本固定</b>（候補の代表行 / グループ兄弟行 / 枠）で、対象件数に比例した
-     * クエリを出さない（AC-6-17）。グループが 1 件も無ければ兄弟行クエリは走らない。</p>
-     *
-     * <h2>「現在時刻」の時間基準について（実測で判明した罠）</h2>
-     * <p>{@code Clock} Bean は <b>UTC 固定</b>（{@code ClockConfig#utcClock}）である一方、
-     * {@code ReservationEntity} の {@code bookedAt} は {@code LocalDateTime.now()}
-     * （<b>JVM 既定ゾーン</b>）で書かれる。両者をそのまま比較すると、サーバ既定ゾーンが UTC でない環境
-     * （開発機の JST 等）ではオフセット分（+9h）だけ経過時間が短く見積もられ、
-     * 「24 時間で自動キャンセル」の設定が実際には 33 時間になる。
-     * 「{@code booked_at} からの経過時間」は <b>{@code booked_at} と同じ時間基準</b>で測る必要があるため、
-     * 注入 {@code Clock} の<b>瞬間</b>（テストで固定可能）を JVM 既定ゾーンで解釈する。</p>
-     *
-     * <p><b>既存箇所との差異（誤解しないこと）</b>: 本メソッドは {@code booked_at} と同一基準
-     * （JVM 既定ゾーン）を採るが、<b>予約ドメインの既存判定はこれと基準が異なる</b>。
-     * {@code ReservationWaitlistService}（過去枠拒否・失効クリーンアップ）や
-     * {@code ReservationGroupService}（先頭枠が未来かの判定）は
-     * {@code LocalDateTime.now(clock)} で <b>UTC Clock を直接</b>使っており、JST 環境では
-     * 最大 9 時間ずれる既知の不具合が残っている（<b>GitHub Issue #2526</b> で別途是正）。
-     * 「既存に揃えた」ではなく「本メソッドだけ正しい基準に直した」状態である。</p>
-     *
-     * <p>根本には「枠の日時（{@code slot_date}/{@code start_time}）は業務ローカル時刻だが
-     * テナントのタイムゾーンを持たない」という設計負債がある。テナント TZ の導入は
-     * Issue #2526 で扱う（本 PR のスコープ外）。</p>
-     *
-     * @return 失効単位のリスト（対象なしなら空）
-     */
-    @Transactional(readOnly = true)
+    /** 非TX抽出の既入口。進捗を変更しない検査用で、公開batchはRunState付き入口を使う。 */
     public List<PendingExpireUnit> findExpirableUnits() {
-        Instant nowInstant = clock.instant();
-        LocalDateTime now = LocalDateTime.ofInstant(nowInstant, UserZoneLocalDateTimeParser.SERVER_ZONE);
-        // TeamTimezoneResolver converts each team's wall-clock deadline to the same Instant domain.
-
-        // 1 本目: slot・policy を join して代表行のみ抽出する（グループは代表行基準で判定）。
-        // 1 回あたり MAX_UNITS_PER_RUN 単位で打ち切り、初回デプロイ時の一斉失効を平滑化する。
-        List<ReservationEntity> primaries = reservationRepository.findExpirablePendingPrimaryRows(
-                ReservationStatus.PENDING, now, now.toLocalDate(), now.toLocalTime(),
-                ReservationPolicyEntity.DEFAULT_PENDING_EXPIRE_HOURS,
-                PageRequest.of(0, MAX_UNITS_PER_RUN));
-        if (primaries.isEmpty()) {
-            return List.of();
-        }
-        if (primaries.size() >= MAX_UNITS_PER_RUN) {
-            // 打ち切ったことを可視化する（「静かに取りこぼしている」ように見せない）。
-            log.info("仮押さえ自動失効: 1回あたりの上限{}単位に達したため打ち切った（残件は次回起動で処理する）",
-                    MAX_UNITS_PER_RUN);
-        }
-
-        // 2 本目: グループ代表行の兄弟行を一括取得する（部分失効を作らないための単位化）。
-        Set<UUID> groupIds = primaries.stream()
-                .map(ReservationEntity::getGroupId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<UUID, List<ReservationEntity>> siblingsByGroup = groupIds.isEmpty()
-                ? Map.of()
-                : reservationRepository.findByGroupIdInAndStatus(groupIds, ReservationStatus.PENDING).stream()
-                        .collect(Collectors.groupingBy(ReservationEntity::getGroupId));
-
-        // 単位を組み立てる（単枠は自身 1 行・グループは兄弟行全部）。
-        List<List<ReservationEntity>> rowsPerUnit = new ArrayList<>(primaries.size());
-        Set<Long> slotIds = new HashSet<>();
-        for (ReservationEntity primary : primaries) {
-            List<ReservationEntity> rows = primary.getGroupId() == null
-                    ? List.of(primary)
-                    : siblingsByGroup.getOrDefault(primary.getGroupId(), List.of(primary));
-            rowsPerUnit.add(rows);
-            rows.forEach(r -> slotIds.add(r.getReservationSlotId()));
-        }
-
-        // 3 本目: 枠を一括取得する（枠復帰 decrementAndReopen 用）。
-        Map<Long, ReservationSlotEntity> slotById = slotRepository.findAllById(slotIds).stream()
-                .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
-
-        List<PendingExpireUnit> units = new ArrayList<>(primaries.size());
-        for (int i = 0; i < primaries.size(); i++) {
-            units.add(new PendingExpireUnit(primaries.get(i), rowsPerUnit.get(i), slotById));
-        }
-        return units;
+        var run = new RunState(0, reservationRepository.findPendingExpireHighWater(), 0, List.of());
+        return findScanPlan(run).entries().stream().map(ScanEntry::unit).filter(Objects::nonNull).toList();
     }
 
-    // ────────────────────────────────────────────────────────────
-    // 1 単位の失効（独立トランザクション）
-    // ────────────────────────────────────────────────────────────
+    /**
+     * 候補最大9＋TZ一括1＋兄弟1＋slot1。COUNTなし、raw4500までを先に取得して分類する。
+     * 進捗/highwater/unit再読はこの抽出予算に含めない。共通TZ窓口をTX内では呼ばない。
+     */
+    public ScanPlan findScanPlan(RunState run) {
+        var now = LocalDateTime.ofInstant(clock.instant(), UserZoneLocalDateTimeParser.SERVER_ZONE);
+        var oldRetry = new HashSet<>(run.retryPrimaryIds());
+        List<PendingExpireCandidate> retryRows = run.retryPrimaryIds().isEmpty() ? List.of()
+                : reservationRepository.findPendingPrimaryCandidatesByIds(ReservationStatus.PENDING,
+                        run.retryPrimaryIds(), now, ReservationPolicyEntity.DEFAULT_PENDING_EXPIRE_HOURS);
+        var freshRows = new ArrayList<PendingExpireCandidate>();
+        long pageCursor = run.cursor();
+        boolean exhausted = pageCursor == run.highWater();
+        int pages = retryRows.isEmpty() && run.retryPrimaryIds().isEmpty() ? 9 : 8;
+        for (int page = 0; page < pages && !exhausted; page++) {
+            var rows = reservationRepository.findPendingPrimaryCandidates(ReservationStatus.PENDING,
+                    pageCursor, run.highWater(), now, ReservationPolicyEntity.DEFAULT_PENDING_EXPIRE_HOURS,
+                    PageRequest.of(0, MAX_UNITS_PER_RUN));
+            freshRows.addAll(rows);
+            if (!rows.isEmpty()) pageCursor = rows.getLast().getPrimary().getId();
+            exhausted = rows.size() < MAX_UNITS_PER_RUN || pageCursor == run.highWater();
+            if (exhausted) pageCursor = run.highWater();
+        }
+        var all = new ArrayList<>(retryRows);
+        all.addAll(freshRows);
+        var zones = all.isEmpty() ? Map.<Long, ZoneId>of() : timezoneResolver.resolveZones(
+                all.stream().map(row -> row.getPrimary().getTeamId()).collect(Collectors.toSet()));
+        var retryById = retryRows.stream().collect(Collectors.toMap(row -> row.getPrimary().getId(), row -> row));
+        var candidates = new LinkedHashMap<Long, PendingExpireCandidate>();
+        var eligible = new HashSet<Long>();
+        for (long id : run.retryPrimaryIds()) {
+            var candidate = retryById.get(id);
+            candidates.put(id, candidate);
+            if (candidate != null && isExpired(candidate, zones)) eligible.add(id);
+        }
+        for (var candidate : freshRows) {
+            long id = candidate.getPrimary().getId();
+            if (!oldRetry.contains(id)) {
+                candidates.put(id, candidate);
+                if (isExpired(candidate, zones)) eligible.add(id);
+            }
+        }
+        var selected = candidates.entrySet().stream().filter(entry -> eligible.contains(entry.getKey()))
+                .limit(MAX_UNITS_PER_RUN).map(Map.Entry::getValue).toList();
+        var groupIds = selected.stream().map(row -> row.getPrimary().getGroupId())
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<UUID, List<ReservationEntity>> siblings = groupIds.isEmpty() ? Map.of()
+                : reservationRepository.findByGroupIdInAndStatus(groupIds, ReservationStatus.PENDING).stream()
+                        .collect(Collectors.groupingBy(ReservationEntity::getGroupId));
+        var rowsById = new LinkedHashMap<Long, List<ReservationEntity>>();
+        var slotIds = new HashSet<Long>();
+        for (var candidate : selected) {
+            var primary = candidate.getPrimary();
+            var rows = primary.getGroupId() == null ? List.of(primary)
+                    : siblings.getOrDefault(primary.getGroupId(), List.of(primary));
+            rowsById.put(primary.getId(), rows);
+            rows.forEach(row -> slotIds.add(row.getReservationSlotId()));
+        }
+        Map<Long, ReservationSlotEntity> slotById = slotIds.isEmpty() ? Map.of()
+                : slotRepository.findAllById(slotIds).stream()
+                        .collect(Collectors.toMap(ReservationSlotEntity::getId, slot -> slot));
+        var units = new HashMap<Long, PendingExpireUnit>();
+        for (var candidate : selected) {
+            var primary = candidate.getPrimary();
+            units.put(primary.getId(), new PendingExpireUnit(primary, rowsById.get(primary.getId()), slotById));
+        }
+        var entries = new ArrayList<ScanEntry>();
+        for (long id : run.retryPrimaryIds()) {
+            entries.add(new ScanEntry(id, true, eligible.contains(id), units.get(id)));
+        }
+        for (var candidate : freshRows) {
+            long id = candidate.getPrimary().getId();
+            entries.add(new ScanEntry(id, false, !oldRetry.contains(id) && eligible.contains(id),
+                    oldRetry.contains(id) ? null : units.get(id)));
+        }
+        return new ScanPlan(List.copyOf(entries), pageCursor, exhausted);
+    }
+
+    private boolean isExpired(PendingExpireCandidate candidate, Map<Long, ZoneId> zones) {
+        if (!Boolean.TRUE.equals(candidate.getEnabled())) return false;
+        if (Boolean.TRUE.equals(candidate.getBookedExpired())) return true;
+        return endPassed(candidate.getSlotDate(), candidate.getEndDate(), candidate.getEndTime(),
+                zones.getOrDefault(candidate.getPrimary().getTeamId(), ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)));
+    }
+
+    private boolean endPassed(java.time.LocalDate slotDate, java.time.LocalDate endDate,
+                              java.time.LocalTime endTime, ZoneId zone) {
+        if (slotDate == null || endTime == null) return false;
+        try {
+            return !timezoneResolver.toInstant(endDate == null ? slotDate : endDate, endTime, zone)
+                    .isAfter(clock.instant());
+        } catch (DateTimeException e) {
+            // DST gapは終了枝だけfalse。bookedAt枝がtrueなら先に採用済み。
+            return false;
+        }
+    }
 
     /**
-     * 失効単位 1 件を独立トランザクションで失効させる。
-     *
-     * <p>処理順序: 状態の再確認 → 全行 CANCELLED 化 → 枠復帰 → 申込者へ通知。
-     * 通知まで含めて 1 トランザクションのため、途中で失敗すれば全て巻き戻り
-     * 「キャンセル済みだが通知されない」中途半端な状態を残さない。失効条件は時刻経過なので、
-     * 失敗した単位は次回起動でも対象に残り自己修復する。</p>
-     *
-     * <p><b>枠復帰は {@link ReservationSlotService#decrementAndReopen} を必ず経由する。</b>
-     * DB が実際に FULL→AVAILABLE 遷移を起こしたときのみ {@code ReservationSlotReopenedEvent} が
-     * 発行され、{@code ReservationWaitlistNotificationEventListener} が AFTER_COMMIT で購読して
-     * キャンセル待ち全員へ通知する（§6.1 の統合点・独自にイベントを撃たない）。</p>
-     *
-     * @param unit 失効単位
-     * @return 失効させた予約行数（既に他経路で状態が変わっていた場合は 0）
+     * 最新行をcurrent readで再構成し、進捗・予約・枠・既通知DB行を同じunit TXでcommitする。
+     * 旧unitはIDだけを使う。必要slotの欠損は失敗として全rollbackしdurable retryを残す。
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int expireUnit(PendingExpireUnit unit) {
-        // 抽出は別トランザクションのため、この tx で managed な最新状態を取り直す。
-        // 併せて「抽出後に承認/キャンセルされた行」を除外し、booked_count の二重減算を防ぐ。
-        List<Long> ids = unit.rows().stream().map(ReservationEntity::getId).toList();
-        List<ReservationEntity> rows = reservationRepository.findAllById(ids).stream()
-                .filter(r -> r.getStatus() == ReservationStatus.PENDING)
-                .toList();
-        if (rows.isEmpty()) {
-            log.debug("仮押さえ自動失効スキップ: 抽出後に状態が変化していた reservationIds={}", ids);
+        long epoch = unit.epoch();
+        long completedPrefix = unit.completedPrefix();
+        ZoneId zone = unit.zone();
+        if (epoch <= 0 || completedPrefix < 0 || zone == null) {
+            throw new IllegalArgumentException("失効unitにはepoch・検査済みprefix・TZが必要です");
+        }
+        progress.lockForUnit(epoch);
+        var primary = reservationRepository.findPendingExpirePrimaryForUpdate(unit.primary().getId()).orElse(null);
+        // OSIV等で候補取得時のmanaged Entityが残っても最新行を使う。EM全体はclearしない。
+        if (primary != null) entityManager.refresh(primary, LockModeType.PESSIMISTIC_WRITE);
+        if (primary == null || primary.getDeletedAt() != null || primary.getStatus() != ReservationStatus.PENDING
+                || !Boolean.TRUE.equals(primary.getIsGroupPrimary())) {
+            progress.completeUnit(epoch, unit.primary().getId(), completedPrefix);
             return 0;
         }
-        if (rows.size() != ids.size()) {
-            // グループの一部だけが PENDING でなくなっている＝別経路で部分遷移が起きた異常。
-            // ここで残りを失効させると部分失効を追認することになるため、握り潰さず記録して見送る。
-            log.warn("仮押さえ自動失効スキップ: グループの一部だけ状態が異なる（部分失効を作らない）"
-                    + " groupId={}, 期待={}件, PENDING={}件", unit.primary().getGroupId(), ids.size(), rows.size());
+        var rows = primary.getGroupId() == null ? List.of(primary)
+                : reservationRepository.findPendingExpireGroupForUpdate(primary.getGroupId());
+        rows.forEach(row -> entityManager.refresh(row, LockModeType.PESSIMISTIC_WRITE));
+        if (rows.stream().anyMatch(row -> row.getStatus() != ReservationStatus.PENDING)) {
+            log.warn("仮押さえ自動失効スキップ: グループの一部だけ状態が異なる groupId={}", primary.getGroupId());
+            progress.completeUnit(epoch, primary.getId(), completedPrefix);
             return 0;
         }
-
-        for (ReservationEntity row : rows) {
-            row.cancel(CANCEL_REASON, CancelledBy.SYSTEM);
+        if (!Objects.equals(primary.getTeamId(), unit.primary().getTeamId())) {
+            throw new IllegalStateException("抽出後に予約のチームが変更されました: reservationId=" + primary.getId());
         }
+        var policy = policyRepository.findPendingExpirePolicyForUpdate(primary.getTeamId()).orElse(null);
+        if (policy != null) entityManager.refresh(policy, LockModeType.PESSIMISTIC_WRITE);
+        Integer hours = policy == null ? ReservationPolicyEntity.DEFAULT_PENDING_EXPIRE_HOURS
+                : policy.getPendingExpireHours();
+        if (hours == null) {
+            progress.completeUnit(epoch, primary.getId(), completedPrefix);
+            return 0;
+        }
+        var slots = slotRepository.findPendingExpireSlotsForUpdate(
+                rows.stream().map(ReservationEntity::getReservationSlotId).collect(Collectors.toSet()));
+        slots.forEach(slot -> entityManager.refresh(slot, LockModeType.PESSIMISTIC_WRITE));
+        var slotsById = slots.stream().collect(Collectors.toMap(ReservationSlotEntity::getId, slot -> slot));
+        if (rows.isEmpty() || rows.stream().anyMatch(row -> !slotsById.containsKey(row.getReservationSlotId()))) {
+            throw new IllegalStateException("仮押さえ失効に必要な最新枠がありません: reservationId=" + primary.getId());
+        }
+        var primarySlot = slotsById.get(primary.getReservationSlotId());
+        var now = LocalDateTime.ofInstant(clock.instant(), UserZoneLocalDateTimeParser.SERVER_ZONE);
+        boolean expired = reservationRepository.pendingExpireElapsedHours(primary.getBookedAt(), now) >= hours
+                || endPassed(primarySlot.getSlotDate(), primarySlot.getEndDate(), primarySlot.getEndTime(), zone);
+        if (!expired) {
+            progress.completeUnit(epoch, primary.getId(), completedPrefix);
+            return 0;
+        }
+        for (var row : rows) row.cancel(CANCEL_REASON, CancelledBy.SYSTEM);
         reservationRepository.saveAll(rows);
-
-        for (ReservationEntity row : rows) {
-            ReservationSlotEntity slot = unit.slotsById().get(row.getReservationSlotId());
-            if (slot == null) {
-                // 枠が解決できないと booked_count を戻せない。握り潰さず記録する（次回も対象に残る）。
-                log.warn("仮押さえ自動失効: 枠が解決できず枠復帰をスキップ reservationId={}, slotId={}",
-                        row.getId(), row.getReservationSlotId());
-                continue;
-            }
-            slotService.decrementAndReopen(slot);
-        }
-
-        notifyApplicant(unit.primary(), unit.slotsById().get(unit.primary().getReservationSlotId()));
-
+        for (var row : rows) slotService.decrementAndReopen(slotsById.get(row.getReservationSlotId()));
+        notifyApplicant(primary, primarySlot);
+        progress.completeUnit(epoch, primary.getId(), completedPrefix);
         log.info("仮押さえ自動失効: teamId={}, reservationId={}, groupId={}, {}行",
-                unit.primary().getTeamId(), unit.primary().getId(), unit.primary().getGroupId(), rows.size());
+                primary.getTeamId(), primary.getId(), primary.getGroupId(), rows.size());
         return rows.size();
     }
 
@@ -283,16 +318,39 @@ public class ReservationPendingExpireService {
         return Locale.forLanguageTag(userLocaleCache.getLocale(userId));
     }
 
+    /** managed Entityへ依存しない候補の同一性。latest read後も採取値が書き換わらない。 */
+    public record PendingExpirePrimary(Long id, Long teamId) {
+        public Long getId() { return id; }
+        public Long getTeamId() { return teamId; }
+    }
+
     /**
-     * 失効単位。単枠予約は {@code rows} が 1 行、グループ予約は兄弟行全部を含む。
+     * 抽出候補とunit実行command。業務更新はprimaryのIDから最新行を再構成する。
      *
-     * @param primary   代表行（{@code is_group_primary = TRUE}）。通知の宛先・本文解決に使う
-     * @param rows      失効させる全行（グループは兄弟行全部＝部分失効を作らないための単位）
-     * @param slotsById 枠の一括取得結果（枠復帰 {@code decrementAndReopen} に渡す）
+     * @param primary 採取した代表IDとチームID
+     * @param rows 抽出時の兄弟候補（更新には使用しない）
+     * @param slotsById 抽出時の枠候補（更新・通知には使用しない）
+     * @param epoch 所有runnerの実行世代
+     * @param completedPrefix 検査済み連続prefixの終端
+     * @param zone 非TXのunit直前に解決したチームTZ
      */
     public record PendingExpireUnit(
-            ReservationEntity primary,
+            PendingExpirePrimary primary,
             List<ReservationEntity> rows,
-            Map<Long, ReservationSlotEntity> slotsById) {
+            Map<Long, ReservationSlotEntity> slotsById,
+            long epoch,
+            long completedPrefix,
+            ZoneId zone) {
+
+        /** 抽出候補はまだ実行commandではない。Entityから同一性だけを切り離す。 */
+        public PendingExpireUnit(ReservationEntity primary, List<ReservationEntity> rows,
+                                 Map<Long, ReservationSlotEntity> slotsById) {
+            this(new PendingExpirePrimary(primary.getId(), primary.getTeamId()),
+                    List.copyOf(rows), Map.copyOf(slotsById), 0, 0, null);
+        }
+
+        public PendingExpireUnit withProgress(long epoch, long completedPrefix, ZoneId zone) {
+            return new PendingExpireUnit(primary, rows, slotsById, epoch, completedPrefix, zone);
+        }
     }
 }
