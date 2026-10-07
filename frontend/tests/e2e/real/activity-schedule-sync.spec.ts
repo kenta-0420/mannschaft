@@ -95,6 +95,18 @@ for (const type of ['TEAM', 'ORGANIZATION'] as const) {
       await expect(
         page.locator('.lg\\:col-span-2:visible').getByText(title, { exact: true }),
       ).toHaveCount(1)
+      const [reused] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname === '/api/v1/activities/draft-from-schedule' &&
+            response.request().method() === 'POST',
+        ),
+        page.locator('[data-testid="schedule-create-activity"]:visible').click(),
+      ])
+      expect(reused.status()).toBe(200)
+      expect(((await reused.json()) as { data: Activity }).data.id).toBe(activity.id)
+      await expect(page).toHaveURL(new RegExp(`/activities/${activity.id}$`))
+      await page.getByTestId('activity-source-schedule').click()
       await page.locator(`[data-testid="schedule-activity-${activity.id}"]:visible`).click()
       await expect(page).toHaveURL(new RegExp(`/activities/${activity.id}$`))
       await page.getByRole('button', { name: '活動記録', exact: true }).click()
