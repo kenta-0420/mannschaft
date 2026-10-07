@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 # 専用 DB に限る。3306 / mannschaft への暗黙フォールバックは禁止。
 $expected = @{ E2E_DB_PORT = '13310'; E2E_DB_NAME = 'cmp2610071510'; E2E_DB_USER = 'cmp_test'; E2E_DB_PASSWORD = 'cmp-test-only' }
 foreach ($entry in $expected.GetEnumerator()) {
