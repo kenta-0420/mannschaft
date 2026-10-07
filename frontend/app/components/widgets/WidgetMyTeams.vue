@@ -42,8 +42,8 @@ onMounted(async () => {
           </NuxtLink>
           <NuxtLink
             v-if="reservationEnabledTeamIds.includes(team.id) && team.slug"
-            :to="`/teams/${team.slug}/reservations`"
             v-tooltip.top="$t('dashboard.team_reservation_link')"
+            :to="`/teams/${team.slug}/reservations`"
             class="border-l border-surface-400 px-3 py-2 text-primary transition-colors hover:bg-surface-100 dark:border-surface-600 dark:hover:bg-surface-600"
           >
             <i class="pi pi-calendar text-sm" />

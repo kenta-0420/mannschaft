@@ -1,13 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
 import { ref, computed } from 'vue'
+import { useHolidays } from './useHolidays'
 
 vi.stubGlobal('ref', ref)
 vi.stubGlobal('computed', computed)
 vi.stubGlobal('useUserSettingsApi', () => ({
   getProfile: () => Promise.resolve({ data: { countryCode: 'JP' } }),
 }))
-
-import { useHolidays } from './useHolidays'
 
 describe('useHolidays.getHoliday', () => {
   // 2026-10-12 はスポーツの日（Sports Day）
