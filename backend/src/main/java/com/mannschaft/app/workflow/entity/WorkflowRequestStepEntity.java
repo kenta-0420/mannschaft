@@ -30,7 +30,7 @@ public class WorkflowRequestStepEntity extends BaseEntity {
     @Column(nullable = false)
     private Long requestId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT")
     private Integer stepOrder;
 
     @Enumerated(EnumType.STRING)

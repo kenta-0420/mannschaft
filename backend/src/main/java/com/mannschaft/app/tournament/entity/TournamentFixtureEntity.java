@@ -63,6 +63,7 @@ public class TournamentFixtureEntity extends BaseEntity {
 
     private Long awayParticipantId;
 
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer matchNumber;
 
     private LocalDateTime scheduledDatetime;
@@ -71,9 +72,11 @@ public class TournamentFixtureEntity extends BaseEntity {
     private String venue;
 
     /** 本戦ホーム得点（matches 正本の派生スナップショット・05 §H.2.3）。順位計算はこの列を参照する。 */
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer homeScore;
 
     /** 本戦アウェイ得点（matches 正本の派生スナップショット・05 §H.2.3）。順位計算はこの列を参照する。 */
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer awayScore;
 
     // 延長別スコア列（home_extra_score / away_extra_score）は Phase 5b-3（Contract）で廃止した。
@@ -81,9 +84,11 @@ public class TournamentFixtureEntity extends BaseEntity {
     // （05 §H.1 移行表・sports/01_soccer.md §4.1）。勝敗判定・順位は本戦スコアで完結する。
 
     /** PK 戦ホーム得点（matches 正本の派生スナップショット・05 §H.2.3）。 */
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer homePenaltyScore;
 
     /** PK 戦アウェイ得点（matches 正本の派生スナップショット・05 §H.2.3）。 */
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer awayPenaltyScore;
 
     /** 勝者 participant（matches 正本の派生スナップショット・05 §H.2.3）。順位計算が fixture 内で完結するよう保持する。 */

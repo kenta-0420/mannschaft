@@ -33,7 +33,7 @@ public class TournamentMatchdayEntity extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer matchdayNumber;
 
     private LocalDate scheduledDate;

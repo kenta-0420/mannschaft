@@ -1,5 +1,6 @@
 package com.mannschaft.app.weather.entity;
 
+import com.mannschaft.app.common.persistence.TinyIntShortJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -13,6 +14,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -36,6 +40,7 @@ public class PostalCodeEntity {
 
     /** ISO 3166-1 alpha-2 国コード。 */
     @Id
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "country_code", length = 2, nullable = false)
     private String countryCode;
 
@@ -71,7 +76,8 @@ public class PostalCodeEntity {
 
     /** GeoNames の精度コード（1-6）。 */
     @Setter
-    @Column(name = "accuracy")
+    @JdbcType(TinyIntShortJdbcType.class)
+    @Column(name = "accuracy", columnDefinition = "smallint")
     private Short accuracy;
 
     @Column(name = "updated_at", nullable = false)

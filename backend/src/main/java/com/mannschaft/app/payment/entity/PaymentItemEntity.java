@@ -16,6 +16,8 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -49,6 +51,7 @@ public class PaymentItemEntity extends BaseEntity {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 3)
     @Builder.Default
     private String currency = "JPY";

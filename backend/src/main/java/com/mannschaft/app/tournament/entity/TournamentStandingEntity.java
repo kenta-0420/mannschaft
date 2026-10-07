@@ -1,5 +1,6 @@
 package com.mannschaft.app.tournament.entity;
 
+import com.mannschaft.app.common.persistence.SmallIntIntegerJdbcType;
 import com.mannschaft.app.tournament.PromotionZone;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +16,7 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcType;
 import java.time.LocalDateTime;
 
 /**
@@ -37,22 +39,23 @@ public class TournamentStandingEntity {
     @Column(nullable = false)
     private Long participantId;
 
-    @Column(name = "`rank`", nullable = false)
+    @JdbcType(SmallIntIntegerJdbcType.class)
+    @Column(name = "`rank`", nullable = false, columnDefinition = "integer")
     private Integer rank;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer played = 0;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer wins = 0;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer draws = 0;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer losses = 0;
 
@@ -72,15 +75,15 @@ public class TournamentStandingEntity {
     @Builder.Default
     private Integer points = 0;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "smallint")
     @Builder.Default
     private Integer bonusPoints = 0;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer setsWon = 0;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer setsLost = 0;
 

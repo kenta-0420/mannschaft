@@ -14,6 +14,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -114,6 +116,7 @@ public class BillingChangePreviewEntity extends UuidV7Entity {
     private Long contractVersion;
 
     /** 見積りリクエストの body ハッシュ（SHA-256 hex, 64桁。使い回し検出用）。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "request_hash", nullable = false, length = 64)
     private String requestHash;
 

@@ -1,5 +1,6 @@
 package com.mannschaft.app.service.entity;
 
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcType;
 import java.time.LocalDateTime;
 
 /**
@@ -41,7 +43,8 @@ public class ServiceRecordAttachmentEntity {
     @Column(nullable = false, length = 100)
     private String contentType;
 
-    @Column(nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(nullable = false, columnDefinition = "bigint")
     private Long fileSize;
 
     @Column(nullable = false)

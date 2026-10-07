@@ -59,7 +59,7 @@ public class ResidentActivitySnapshot extends UuidV7Entity {
     private LocalDate snapshotDate;
 
     /** 当日合計重みスコア */
-    @Column(name = "activity_score_total", nullable = false)
+    @Column(name = "activity_score_total", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer activityScoreTotal;
 
     /** 各 activity_kind の発生回数 JSON */

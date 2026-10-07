@@ -48,14 +48,14 @@ public class AgeGroupSettingsEntity {
     private String displayName;
 
     /** 年齢グループの最小年齢（歳）*/
-    @Column(name = "min_age", nullable = false)
+    @Column(name = "min_age", nullable = false, columnDefinition = "TINYINT")
     private Integer minAge;
 
     /**
      * 年齢グループの最大年齢（歳）。
      * 成人（ADULT）などの上限なしグループは NULL とする。
      */
-    @Column(name = "max_age")
+    @Column(name = "max_age", columnDefinition = "TINYINT")
     private Integer maxAge;
 
     /**

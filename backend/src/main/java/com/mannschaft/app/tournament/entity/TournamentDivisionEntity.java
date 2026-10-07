@@ -44,12 +44,15 @@ public class TournamentDivisionEntity extends BaseEntity {
     @Builder.Default
     private Integer playoffPromotionSlots = 0;
 
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer maxParticipants;
 
     /** エントリー最小人数（nullable: 未設定の場合は制限なし） */
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer minEntryCount;
 
     /** エントリー最大人数（nullable: 未設定の場合は制限なし） */
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer maxEntryCount;
 
     @Column(nullable = false)

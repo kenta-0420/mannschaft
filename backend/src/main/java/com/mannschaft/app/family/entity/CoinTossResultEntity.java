@@ -44,7 +44,7 @@ public class CoinTossResultEntity {
     @Column(nullable = false, columnDefinition = "JSON")
     private String options;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT")
     private Integer resultIndex;
 
     @Column(length = 200)

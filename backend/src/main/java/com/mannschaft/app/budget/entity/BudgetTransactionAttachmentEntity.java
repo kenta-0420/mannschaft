@@ -1,6 +1,7 @@
 package com.mannschaft.app.budget.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -9,6 +10,7 @@ import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcType;
 
 /**
  * 予算取引添付ファイルエンティティ。
@@ -29,7 +31,8 @@ public class BudgetTransactionAttachmentEntity extends BaseEntity {
     @Column(nullable = false, length = 255)
     private String originalFilename;
 
-    @Column(nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(nullable = false, columnDefinition = "bigint")
     private Long fileSize;
 
     @Column(nullable = false, length = 100)

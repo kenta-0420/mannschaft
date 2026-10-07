@@ -1,6 +1,7 @@
 package com.mannschaft.app.repairplan.entity;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
@@ -13,6 +14,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -47,10 +49,11 @@ public class RepairPlanTemplate extends UuidV7Entity {
     @Column(name = "category", nullable = false, length = 60)
     private String category;
 
-    @Column(name = "cycle_years", nullable = false)
+    @Column(name = "cycle_years", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer cycleYears;
 
-    @Column(name = "unit_cost_per_dwelling", nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(name = "unit_cost_per_dwelling", nullable = false, columnDefinition = "bigint")
     private Long unitCostPerDwelling;
 
     @Column(name = "source_reference", length = 500)

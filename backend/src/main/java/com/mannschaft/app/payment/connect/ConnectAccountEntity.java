@@ -14,6 +14,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 /**
@@ -76,9 +78,11 @@ public class ConnectAccountEntity extends UuidV7Entity {
     @Column(name = "requirements_due", columnDefinition = "JSON")
     private String requirementsDue;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "country", nullable = false, length = 2)
     private String country;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "default_currency", nullable = false, length = 3)
     private String defaultCurrency;
 

@@ -37,6 +37,7 @@ public class TournamentParticipantEntity {
     @Column(nullable = false)
     private Long teamId;
 
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer seed;
 
     @Column(length = 100)

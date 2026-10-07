@@ -1,5 +1,6 @@
 package com.mannschaft.app.weather.entity;
 
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -10,6 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcType;
 import java.time.LocalDateTime;
 
 /**
@@ -40,11 +42,13 @@ public class WeatherLocationBootstrapJobEntity {
 
     /** 処理済みユーザー数。 */
     @Setter
-    @Column(name = "processed_user_count")
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(name = "processed_user_count", columnDefinition = "bigint")
     private Long processedUserCount;
 
     /** スキップユーザー数（郵便番号未ヒット等）。 */
     @Setter
-    @Column(name = "skipped_user_count")
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(name = "skipped_user_count", columnDefinition = "bigint")
     private Long skippedUserCount;
 }

@@ -10,6 +10,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 
 /**
@@ -28,6 +30,7 @@ public class PerformanceMonthlySummaryEntity extends BaseEntity {
     @Column(nullable = false)
     private Long userId;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "`year_month`", nullable = false, length = 7)
     private String yearMonth;
 

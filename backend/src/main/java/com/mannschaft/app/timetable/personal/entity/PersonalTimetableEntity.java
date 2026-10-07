@@ -35,6 +35,7 @@ public class PersonalTimetableEntity extends BaseEntity {
     @Column(nullable = false, length = 200)
     private String name;
 
+    @Column(columnDefinition = "smallint")
     private Integer academicYear;
 
     @Column(length = 50)

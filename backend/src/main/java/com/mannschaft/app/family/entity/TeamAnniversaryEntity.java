@@ -41,7 +41,7 @@ public class TeamAnniversaryEntity {
     @Column(nullable = false)
     private Boolean repeatAnnually;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TINYINT")
     private Integer notifyDaysBefore;
 
     @Column(nullable = false)

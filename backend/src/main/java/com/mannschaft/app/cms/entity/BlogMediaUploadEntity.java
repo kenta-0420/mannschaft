@@ -32,7 +32,8 @@ public class BlogMediaUploadEntity {
     private Long scopeId;
 
     /** メディア種別（DB: ENUM('IMAGE','VIDEO')、デフォルト 'IMAGE'）。 */
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 10,
+            columnDefinition = "ENUM('IMAGE','VIDEO')")
     @Builder.Default
     private String mediaType = "IMAGE";
 
@@ -55,7 +56,8 @@ public class BlogMediaUploadEntity {
     private Integer durationSeconds;
 
     /** 後処理ステータス。IMAGE は常に READY。VIDEO は PENDING → PROCESSING → READY/FAILED。 */
-    @Column(name = "processing_status", nullable = false, length = 20)
+    @Column(name = "processing_status", nullable = false, length = 20,
+            columnDefinition = "ENUM('PENDING','PROCESSING','READY','FAILED','UPLOADING')")
     @Builder.Default
     private String processingStatus = "READY";
 

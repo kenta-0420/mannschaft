@@ -88,6 +88,16 @@ public abstract class AbstractMySqlIntegrationTest {
         }
     }
 
+    /**
+     * 共有MySQLの接続参照を返す。
+     *
+     * <p>所有はJVM/Testcontainersにあり、呼出側でstopや設定変更をしない。
+     * Spring基底の継承をせずplain JUnitから参照できる。</p>
+     */
+    public static MySQLContainer<?> sharedMySqlContainer() {
+        return MYSQL;
+    }
+
     /** Redis は外部依存のため Mock 化（全派生テストで共通に必要）。 */
     @MockitoBean
     protected org.springframework.data.redis.core.StringRedisTemplate redisTemplate;

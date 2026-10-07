@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.entity;
 
+import com.mannschaft.app.common.persistence.TinyIntIntegerJdbcType;
 import com.mannschaft.app.shift.ShiftPreference;
 import com.mannschaft.app.shift.ShiftRequestDeleteReason;
 import jakarta.persistence.Column;
@@ -18,6 +19,7 @@ import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
@@ -47,6 +49,7 @@ public class ShiftRequestEntity {
     @Column(name = "delete_reason", length = 20, insertable = false, updatable = false)
     private ShiftRequestDeleteReason deleteReason;
 
+    @JdbcType(TinyIntIntegerJdbcType.class)
     @Column(name = "active_uq", insertable = false, updatable = false,
             columnDefinition = "TINYINT GENERATED ALWAYS AS (IF(deleted_at IS NULL, 1, NULL)) VIRTUAL")
     private Integer activeUq;

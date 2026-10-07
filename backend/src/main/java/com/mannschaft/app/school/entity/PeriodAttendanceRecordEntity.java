@@ -35,7 +35,7 @@ public class PeriodAttendanceRecordEntity extends BaseEntity {
     private LocalDate attendanceDate;
 
     /** 時限番号（1〜15） */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition="TINYINT UNSIGNED")
     private Integer periodNumber;
 
     /** FK → timetable_slots.id */

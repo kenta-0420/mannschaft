@@ -14,6 +14,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 /**
@@ -52,6 +54,7 @@ public class UserCalendarLayerSettingEntity extends UuidV7Entity {
     private Long scopeId;
 
     /** ユーザー指定色（#RRGGBB 大文字）。NULL の場合は自動色にフォールバックする。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "color", length = 7)
     private String color;
 

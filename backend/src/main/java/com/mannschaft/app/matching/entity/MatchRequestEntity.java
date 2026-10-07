@@ -17,6 +17,8 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -59,9 +61,11 @@ public class MatchRequestEntity extends BaseEntity {
     @Builder.Default
     private MatchVisibility visibility = MatchVisibility.PLATFORM;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 2)
     private String prefectureCode;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(length = 5)
     private String cityCode;
 

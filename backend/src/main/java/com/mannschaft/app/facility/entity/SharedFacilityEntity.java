@@ -45,7 +45,7 @@ public class SharedFacilityEntity extends BaseEntity {
     @Column(length = 50)
     private String facilityTypeLabel;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer capacity;
 
     @Column(length = 10)
@@ -70,7 +70,7 @@ public class SharedFacilityEntity extends BaseEntity {
 
     private LocalTime checkOutTime;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer cleaningBufferMinutes = 0;
 
@@ -82,7 +82,7 @@ public class SharedFacilityEntity extends BaseEntity {
     @Builder.Default
     private Boolean isActive = true;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer displayOrder = 0;
 

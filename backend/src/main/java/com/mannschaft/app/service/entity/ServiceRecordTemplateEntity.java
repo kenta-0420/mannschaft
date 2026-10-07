@@ -37,6 +37,7 @@ public class ServiceRecordTemplateEntity extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String noteTemplate;
 
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer defaultDurationMinutes;
 
     @Column(nullable = false)

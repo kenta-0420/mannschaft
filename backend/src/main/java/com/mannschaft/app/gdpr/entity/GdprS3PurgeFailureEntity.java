@@ -1,10 +1,12 @@
 package com.mannschaft.app.gdpr.entity;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.gdpr.persistence.UnsignedTinyIntIntegerJdbcType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcType;
 
 import java.time.LocalDateTime;
 
@@ -54,6 +56,7 @@ public class GdprS3PurgeFailureEntity extends UuidV7Entity {
      * リトライ累計回数。初期値 0。
      * {@code GdprPurgeAuditBatchService#retryS3PurgeFailures} が実行するたびにインクリメントする。
      */
+    @JdbcType(UnsignedTinyIntIntegerJdbcType.class)
     @Column(name = "retry_count", nullable = false, columnDefinition = "TINYINT UNSIGNED NOT NULL DEFAULT 0")
     private int retryCount = 0;
 

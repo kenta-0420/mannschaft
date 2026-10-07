@@ -11,6 +11,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -46,6 +48,7 @@ public class NotificationLabelEntity extends UuidV7Entity {
     private String name;
 
     /** 表示色 #RRGGBB（任意） */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "color", length = 7)
     private String color;
 

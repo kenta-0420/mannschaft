@@ -12,6 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 /**
@@ -43,6 +45,7 @@ public class BlogMediaR2DeleteRetryEntity extends UuidV7Entity {
      * （3072 byte）を超えるため UNIQUE 索引を直接張れない。ハッシュ列側に UNIQUE 制約を
      * 張ることで二重登録防止の一意性を索引長制限内で成立させる。</p>
      */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "object_key_hash", nullable = false, length = 64)
     private String objectKeyHash;
 

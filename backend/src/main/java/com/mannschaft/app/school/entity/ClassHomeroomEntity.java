@@ -32,7 +32,7 @@ public class ClassHomeroomEntity extends BaseEntity {
     private String assistantTeacherUserIds;
 
     /** 年度 */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer academicYear;
 
     /** 有効開始日 */

@@ -40,7 +40,7 @@ public class AnnualReview extends UuidV7Entity {
     private Long organizationId;
 
     /** 対象年度（西暦） */
-    @Column(name = "review_year", nullable = false)
+    @Column(name = "review_year", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer reviewYear;
 
     @Column(name = "started_at", nullable = false)

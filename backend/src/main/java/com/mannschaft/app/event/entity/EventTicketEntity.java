@@ -13,6 +13,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 /**
@@ -34,6 +36,7 @@ public class EventTicketEntity extends BaseEntity {
     @Column(nullable = false)
     private Long ticketTypeId;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 36)
     private String qrToken;
 

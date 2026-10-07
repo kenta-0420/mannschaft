@@ -41,7 +41,7 @@ public class FacilityBookingEntity extends BaseEntity {
 
     private LocalDate checkOutDate;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer stayNights = 0;
 
@@ -51,12 +51,13 @@ public class FacilityBookingEntity extends BaseEntity {
     @Column(nullable = false)
     private LocalTime timeTo;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer slotCount;
 
     @Column(length = 500)
     private String purpose;
 
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer attendeeCount;
 
     @Column(nullable = false, precision = 10, scale = 0)

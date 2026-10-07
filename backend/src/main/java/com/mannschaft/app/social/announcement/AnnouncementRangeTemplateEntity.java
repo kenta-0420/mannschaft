@@ -47,7 +47,8 @@ public class AnnouncementRangeTemplateEntity extends BaseEntity {
     /**
      * 告知対象ロール（MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC）。
      */
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 30,
+            columnDefinition = "ENUM('MEMBERS_AND_ABOVE','SUPPORTERS_AND_ABOVE','PUBLIC')")
     @Builder.Default
     private String targetRole = "MEMBERS_AND_ABOVE";
 

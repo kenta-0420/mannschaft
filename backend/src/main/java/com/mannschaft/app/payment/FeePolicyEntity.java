@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment;
 
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -13,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -51,7 +53,8 @@ public class FeePolicyEntity {
     private BigDecimal percentRate;
 
     /** 総手数料の固定額（円・最小単位・0 で率のみ）。 */
-    @Column(name = "flat_fee_minor", nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(name = "flat_fee_minor", nullable = false, columnDefinition = "bigint")
     private Long flatFeeMinor;
 
     /** 無効化フラグ（無効パターンは新規割当・解決から除外。既存焼き付け取引には影響しない）。 */

@@ -71,7 +71,7 @@ public class MatchScoreEntryEntity extends UuidV7Entity {
      * 順位（合計点の降順で Service が導出・同点は同順位〔次順位を飛ばす標準ルール 1,2,2,4〕・§5B.2 / §6）。
      * 記録時に Service が再計算する（クライアントは設定しない）。
      */
-    @Column(name = "rank_position")
+    @Column(name = "rank_position", columnDefinition = "SMALLINT UNSIGNED")
     private Integer rankPosition;
 
     @Column(name = "created_at", nullable = false, updatable = false)

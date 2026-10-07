@@ -44,11 +44,11 @@ public class MatchEventEntity extends UuidV7Entity {
     private UUID matchId;
 
     /** 経過分（タイマー連動・手動訂正可・NULL=分不明） */
-    @Column(name = "minute")
+    @Column(name = "minute", columnDefinition = "SMALLINT UNSIGNED")
     private Integer minute;
 
     /** アディショナルタイム（例 45+2 の "2"・NULL=なし） */
-    @Column(name = "stoppage_minute")
+    @Column(name = "stoppage_minute", columnDefinition = "SMALLINT UNSIGNED")
     private Integer stoppageMinute;
 
     /**
@@ -83,7 +83,7 @@ public class MatchEventEntity extends UuidV7Entity {
     private String playerName;
 
     /** 背番号（未登録選手の同一性キーの一部） */
-    @Column(name = "jersey_number")
+    @Column(name = "jersey_number", columnDefinition = "SMALLINT UNSIGNED")
     private Integer jerseyNumber;
 
     /** 関連選手（アシスト者/交代相手・user ドメイン ID 参照・FK なし） */

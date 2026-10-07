@@ -14,6 +14,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -32,6 +34,7 @@ public class PaymentRequestPaymentAttemptEntity extends UuidV7Entity {
     @Column(name = "payer_user_id", nullable = false)
     private Long payerUserId;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "client_key_hash", nullable = false, length = 64)
     private String clientKeyHash;
 

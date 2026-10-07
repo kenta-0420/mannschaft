@@ -11,6 +11,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 
 /**
@@ -36,6 +38,7 @@ public class EventTicketTypeEntity extends BaseEntity {
     @Builder.Default
     private BigDecimal price = BigDecimal.ZERO;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(nullable = false, length = 3)
     @Builder.Default
     private String currency = "JPY";

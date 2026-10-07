@@ -37,7 +37,8 @@ public class RecruitmentUserPenaltyEntity {
     private Long scopeId;
 
     /** 現状は NO_SHOW のみ。将来の拡張用に ENUM 化。 */
-    @Column(name = "penalty_type", nullable = false, length = 20)
+    @Column(name = "penalty_type", nullable = false, length = 20,
+            columnDefinition = "ENUM('NO_SHOW')")
     private String penaltyType = "NO_SHOW";
 
     @Column(name = "triggered_by_setting_id", nullable = false)

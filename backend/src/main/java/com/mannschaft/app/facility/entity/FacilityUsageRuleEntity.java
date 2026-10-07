@@ -34,26 +34,27 @@ public class FacilityUsageRuleEntity extends BaseEntity {
     @Builder.Default
     private BigDecimal minHoursPerBooking = new BigDecimal("0.5");
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer maxBookingsPerMonthPerUser = 4;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer maxConsecutiveSlots = 8;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer minAdvanceHours = 1;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer maxAdvanceDays = 30;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer maxStayNights = 0;
 
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer cancellationDeadlineHours;
 
     @Column(nullable = false)

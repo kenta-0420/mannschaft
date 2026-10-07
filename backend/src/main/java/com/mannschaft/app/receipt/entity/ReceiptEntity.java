@@ -2,6 +2,7 @@ package com.mannschaft.app.receipt.entity;
 
 import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.common.EncryptedStringConverter;
+import com.mannschaft.app.common.persistence.TinyIntIntegerJdbcType;
 import com.mannschaft.app.receipt.ReceiptPdfStatus;
 import com.mannschaft.app.receipt.ReceiptScopeType;
 import com.mannschaft.app.receipt.ReceiptSourceType;
@@ -20,6 +21,7 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcType;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -242,6 +244,7 @@ public class ReceiptEntity extends BaseEntity {
      * 投げられるため {@code DataIntegrityViolationException} に正しく分類される。
      * 「アプリ層が扱える形で違反が届く」ことまで含めて制約の設計とする。</p>
      */
+    @JdbcType(TinyIntIntegerJdbcType.class)
     @Column(name = "platform_source_present", insertable = false, updatable = false,
             columnDefinition = "TINYINT UNSIGNED GENERATED ALWAYS AS ("
                     + "CASE WHEN scope_type = 'PLATFORM' "

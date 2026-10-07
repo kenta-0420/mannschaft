@@ -6,6 +6,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import org.hibernate.annotations.Check;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -59,6 +61,7 @@ public class BillingInvoiceAdjustmentEntity extends UuidV7Entity {
     @Column(name = "amount", nullable = false)
     private Long amount;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
     private String currency;
 

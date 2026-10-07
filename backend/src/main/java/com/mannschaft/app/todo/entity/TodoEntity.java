@@ -3,6 +3,7 @@ package com.mannschaft.app.todo.entity;
 import com.mannschaft.app.todo.TodoPriority;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.TodoStatus;
+import com.mannschaft.app.common.persistence.TinyIntIntegerJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -19,6 +20,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -55,13 +57,14 @@ public class TodoEntity {
     private Boolean milestoneLocked = false;
 
     /** 同一マイルストーン内での表示順。ドラッグ＆ドロップ並び替え用（F02.7） */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer position = 0;
 
     private Long parentId;
 
-    @Column(nullable = false)
+    @JdbcType(TinyIntIntegerJdbcType.class)
+    @Column(nullable = false, columnDefinition = "integer")
     @Builder.Default
     private Integer depth = 0;
 

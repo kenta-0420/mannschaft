@@ -57,9 +57,11 @@ public class AdEntity extends BaseEntity {
             com.mannschaft.app.advertising.AdPlacement.DASHBOARD_TILE;
 
     /** バナー幅 px（NULL: FE の placement 既定サイズ）。 */
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer width;
 
     /** バナー高さ px。 */
+    @Column(columnDefinition = "SMALLINT UNSIGNED")
     private Integer height;
 
     /** 代替テキスト（NULL: title を代用）。 */

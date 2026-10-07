@@ -93,7 +93,7 @@ public class VillageMatchRecruitEntity extends UuidV7Entity {
     private String venue;
 
     /** 募集人数 / チーム数 */
-    @Column(name = "required_count")
+    @Column(name = "required_count", columnDefinition = "SMALLINT UNSIGNED")
     private Integer requiredCount;
 
     /** 連絡方法（自由文字列） */

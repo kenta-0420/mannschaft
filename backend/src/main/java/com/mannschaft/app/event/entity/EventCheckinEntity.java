@@ -76,7 +76,8 @@ public class EventCheckinEntity {
 
     private Integer lateArrivalMinutes;
 
-    @Column(length = 30)
+    @Column(length = 30,
+            columnDefinition = "ENUM('NOT_ARRIVED','SICK','PERSONAL_REASON','OTHER')")
     private String absenceReason;
 
     /**

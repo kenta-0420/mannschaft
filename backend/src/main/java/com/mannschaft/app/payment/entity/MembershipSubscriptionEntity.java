@@ -4,6 +4,7 @@ import com.mannschaft.app.common.entity.UuidV7Entity;
 import com.mannschaft.app.payment.BillingInterval;
 import com.mannschaft.app.payment.MembershipSubscriptionStatus;
 import com.mannschaft.app.payment.connect.ScopeKind;
+import com.mannschaft.app.common.persistence.TinyIntShortJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,6 +21,9 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -121,7 +125,8 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
      * 手数料モデルの世代。1 = 旧（額面のみ請求＝折半が効いていない既存契約・バックフィル対象）、
      * 2 = 新（額面＋支払側折半を 2 明細で請求）。新規 subscribe は必ず 2 で起票する。
      */
-    @Column(name = "fee_model_version", nullable = false)
+    @JdbcType(TinyIntShortJdbcType.class)
+    @Column(name = "fee_model_version", nullable = false, columnDefinition = "smallint")
     @Builder.Default
     private Short feeModelVersion = FEE_MODEL_VERSION_LEGACY;
 
@@ -135,7 +140,8 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
     private BillingInterval billingInterval;
 
     /** ユーザ指定決済日（1-28 等）。 */
-    @Column(name = "billing_anchor_day")
+    @JdbcType(TinyIntShortJdbcType.class)
+    @Column(name = "billing_anchor_day", columnDefinition = "smallint")
     private Short billingAnchorDay;
 
     /** 状態。 */
@@ -154,6 +160,7 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
     private Integer faceAmount;
 
     /** 通貨（加入時に固定）。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
     @Builder.Default
     private String currency = "JPY";

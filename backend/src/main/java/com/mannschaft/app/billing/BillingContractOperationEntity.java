@@ -16,6 +16,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -78,10 +80,12 @@ public class BillingContractOperationEntity extends UuidV7Entity {
     private BillingOperationStep step;
 
     /** 呼出側が発行する冪等キー（{@code uk_bco_idempotency} により contract_id 単位で一意）。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "idempotency_key", nullable = false, length = 36)
     private String idempotencyKey;
 
     /** 冪等キー使い回し時の body 相違検出用ハッシュ（SHA-256 hex, 64桁）。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "request_hash", nullable = false, length = 64)
     private String requestHash;
 

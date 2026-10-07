@@ -2,6 +2,7 @@ package com.mannschaft.app.billing.beta;
 
 import com.mannschaft.app.billing.EntitlementScopeKind;
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.persistence.TinyIntIntegerJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,6 +19,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.Check;
+import org.hibernate.annotations.JdbcType;
 
 import java.time.LocalDateTime;
 
@@ -73,7 +75,8 @@ public class BetaGrantEntity extends UuidV7Entity {
     private GrantKind grantKind;
 
     /** ベータ段階（1〜4。4=1万人規模）。 */
-    @Column(name = "beta_phase", nullable = false)
+    @JdbcType(TinyIntIntegerJdbcType.class)
+    @Column(name = "beta_phase", nullable = false, columnDefinition = "integer")
     private Integer betaPhase;
 
     /** USER / TEAM / ORG（INDIVIDUAL は USER 固定・TEAM_ORG は TEAM/ORG）。 */

@@ -1,6 +1,7 @@
 package com.mannschaft.app.village.entity;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
@@ -14,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcType;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -49,11 +51,13 @@ public class VillageSerendipityScoreEntity extends UuidV7Entity {
     private Long userId;
 
     /** 出会い回数（累積、>= 0） */
-    @Column(name = "encounter_count", nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(name = "encounter_count", nullable = false, columnDefinition = "bigint")
     private Long encounterCount;
 
     /** 交流スコア（累積、>= 0） */
-    @Column(name = "interaction_score", nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(name = "interaction_score", nullable = false, columnDefinition = "bigint")
     private Long interactionScore;
 
     /** 最終更新日時（バッチ実行時刻） */

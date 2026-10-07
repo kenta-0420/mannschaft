@@ -1,6 +1,7 @@
 package com.mannschaft.app.tournament.entry;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.persistence.TinyIntShortJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
@@ -14,6 +15,7 @@ import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcType;
 import java.time.LocalDateTime;
 
 /**
@@ -43,7 +45,8 @@ public class TournamentEntryTemplateEntity extends UuidV7Entity {
     private String description;
 
     /** 並び順 */
-    @Column(nullable = false)
+    @JdbcType(TinyIntShortJdbcType.class)
+    @Column(nullable = false, columnDefinition = "smallint")
     @Builder.Default
     private Short sortOrder = 0;
 

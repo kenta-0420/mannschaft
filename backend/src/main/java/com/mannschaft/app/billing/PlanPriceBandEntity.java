@@ -1,5 +1,6 @@
 package com.mannschaft.app.billing;
 
+import com.mannschaft.app.common.persistence.TinyIntShortJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -16,6 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import org.hibernate.annotations.JdbcType;
 import java.time.LocalDateTime;
 
 /**
@@ -52,7 +54,8 @@ public class PlanPriceBandEntity {
 
     /** バンド番号（1〜・昇順）。 */
     @Id
-    @Column(name = "band_no", nullable = false)
+    @JdbcType(TinyIntShortJdbcType.class)
+    @Column(name = "band_no", nullable = false, columnDefinition = "smallint")
     private Short bandNo;
 
     /** アクティブ人数下限（この値以上）。 */

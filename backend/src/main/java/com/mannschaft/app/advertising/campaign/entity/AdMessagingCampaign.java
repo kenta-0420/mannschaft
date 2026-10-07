@@ -67,7 +67,7 @@ public class AdMessagingCampaign extends UuidV7Entity {
     private Long consumedBudgetYen;
 
     /** NULL 時はデフォルト週 3 件 */
-    @Column(name = "frequency_cap_override")
+    @Column(name = "frequency_cap_override", columnDefinition="TINYINT UNSIGNED")
     private Integer frequencyCapOverride;
 
     @Column(name = "starts_at", nullable = false)

@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
@@ -798,7 +799,7 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
             ContactInviteTokenEntity issuerToken = contactInviteTokenRepository.save(
                     ContactInviteTokenEntity.builder()
                             .userId(issuerId)
-                            .token("contactauthz-preview-token-" + uniq)
+                            .token(UUID.randomUUID().toString())
                             .label("CONTACTAUTHZ プレビュー用")
                             .expiresAt(LocalDateTime.now().plusDays(7))
                             .build());
@@ -846,7 +847,7 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
             ContactInviteTokenEntity validToken = contactInviteTokenRepository.save(
                     ContactInviteTokenEntity.builder()
                             .userId(issuerId)
-                            .token("contactauthz-accept-valid-" + uniq)
+                            .token(UUID.randomUUID().toString())
                             .label("CONTACTAUTHZ 受諾用")
                             .expiresAt(LocalDateTime.now().plusDays(7))
                             .build());
@@ -882,7 +883,7 @@ class ContactScopeContractIT extends AbstractMySqlIntegrationTest {
             ContactInviteTokenEntity expiredToken = contactInviteTokenRepository.save(
                     ContactInviteTokenEntity.builder()
                             .userId(issuerId)
-                            .token("contactauthz-accept-expired-" + uniq)
+                            .token(UUID.randomUUID().toString())
                             .label("CONTACTAUTHZ 期限切れ用")
                             .expiresAt(LocalDateTime.now().minusDays(1))
                             .build());

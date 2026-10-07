@@ -60,19 +60,19 @@ public class PlayerAppearanceEntity extends UuidV7Entity {
     private String position;
 
     /** 背番号（未登録選手の同一性キーの一部） */
-    @Column(name = "jersey_number")
+    @Column(name = "jersey_number", columnDefinition = "SMALLINT UNSIGNED")
     private Integer jerseyNumber;
 
     /** 最初の出場開始分（STARTER=0 / 初回 SUB_IN・代表値） */
-    @Column(name = "first_in_minute")
+    @Column(name = "first_in_minute", columnDefinition = "SMALLINT UNSIGNED")
     private Integer firstInMinute;
 
     /** 最後の退場分（代表値） */
-    @Column(name = "last_out_minute")
+    @Column(name = "last_out_minute", columnDefinition = "SMALLINT UNSIGNED")
     private Integer lastOutMinute;
 
     /** 自動算出出場分＝全 in/out 区間の合計（再出場対応） */
-    @Column(name = "computed_minutes")
+    @Column(name = "computed_minutes", columnDefinition = "SMALLINT UNSIGNED")
     private Integer computedMinutes;
 
     /** 自チーム編集権限の判定（team ドメイン ID 参照・FK なし） */

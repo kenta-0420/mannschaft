@@ -27,7 +27,7 @@ public class PersonalTimetablePeriodEntity extends BaseEntity {
     @Column(nullable = false)
     private Long personalTimetableId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition="TINYINT UNSIGNED")
     private Integer periodNumber;
 
     @Column(nullable = false, length = 50)

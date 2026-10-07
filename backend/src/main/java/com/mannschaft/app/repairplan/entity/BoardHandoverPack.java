@@ -1,6 +1,7 @@
 package com.mannschaft.app.repairplan.entity;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
@@ -13,7 +14,10 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -43,7 +47,7 @@ public class BoardHandoverPack extends UuidV7Entity {
     @Column(name = "scope_id", nullable = false)
     private Long scopeId;
 
-    @Column(name = "term_year", nullable = false)
+    @Column(name = "term_year", nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer termYear;
 
     @Column(name = "period_start", nullable = false)
@@ -55,9 +59,11 @@ public class BoardHandoverPack extends UuidV7Entity {
     @Column(name = "pdf_r2_key", length = 500)
     private String pdfR2Key;
 
-    @Column(name = "pdf_size")
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(name = "pdf_size", columnDefinition = "bigint")
     private Long pdfSize;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "pdf_sha256", length = 64)
     private String pdfSha256;
 

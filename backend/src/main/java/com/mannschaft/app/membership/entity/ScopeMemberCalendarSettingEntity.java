@@ -11,6 +11,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * スコープ別のメンバー表示設定。
@@ -35,6 +37,7 @@ public class ScopeMemberCalendarSettingEntity extends UuidV7Entity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "calendar_color", nullable = false, length = 7)
     private String calendarColor;
 

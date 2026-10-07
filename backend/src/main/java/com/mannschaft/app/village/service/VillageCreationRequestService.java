@@ -17,6 +17,8 @@ import com.mannschaft.app.village.entity.enums.VillageType;
 import com.mannschaft.app.village.repository.VillageCreationRequestRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -37,7 +39,7 @@ import java.util.UUID;
  * すべての @Transactional は village ドメイン内（VillageRepository / VillageMembershipRepository /
  * VillageCreationRequestRepository）に閉じている。
  * 申請者が SYSTEM_ADMIN か否かの判定のため {@link UserRoleRepository} を読み取り専用で参照するが、
- * これは権限判定であって write は行わない（CommonErrorCode COMMON_002 と同じ位置づけ）。</p>
+ * これは権限判定であって write は行わない。入村のUSER根にはauthの行ロック窓口を使い、ユーザーentityの書込みはしない。</p>
  */
 @Slf4j
 @Service
@@ -53,6 +55,8 @@ public class VillageCreationRequestService {
     private final VillageCreationRequestRepository requestRepository;
     private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
+    private final VillageMembershipSlotService slotService;
+    private final EntityManager entityManager;
     private final UserRoleRepository userRoleRepository;
 
     // ------------------------------------------------------------------
@@ -108,6 +112,11 @@ public class VillageCreationRequestService {
             throw new BusinessException(VillageErrorCode.CREATION_REQUEST_SLUG_TAKEN);
         }
 
+        if (!slotService.lockUser(requesterUserId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        Short userSlot = slotService.allocate(requesterUserId).slot();
+
         VillageCreationRequestEntity entity = VillageCreationRequestEntity.builder()
                 .requesterUserId(requesterUserId)
                 .proposedName(req.name())
@@ -142,6 +151,7 @@ public class VillageCreationRequestService {
                 .villageId(savedVillage.getId())
                 .subjectType(VillageSubjectType.USER)
                 .subjectId(requesterUserId)
+                .userSlot(userSlot)
                 .role(VillageRole.HEADMAN)
                 .build();
         membershipRepository.save(membership);
@@ -191,8 +201,15 @@ public class VillageCreationRequestService {
     public VillageCreationRequestResponse approve(UUID requestId,
                                                   Long reviewerUserId,
                                                   VillageCreationRequestReviewRequest review) {
-        VillageCreationRequestEntity request = requestRepository.findById(requestId)
+        Long requesterUserId = requestRepository.findAdmissionRequesterId(requestId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.CREATION_REQUEST_NOT_FOUND));
+        if (!slotService.lockUser(requesterUserId)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        VillageCreationRequestEntity request = loadRequestForUpdate(requestId);
+        if (!requesterUserId.equals(request.getRequesterUserId())) {
+            throw new IllegalStateException("村作成申請の申請者が変更されています");
+        }
 
         ensurePending(request);
 
@@ -200,6 +217,8 @@ public class VillageCreationRequestService {
         if (villageRepository.existsBySlug(request.getProposedSlug())) {
             throw new BusinessException(VillageErrorCode.CREATION_REQUEST_SLUG_TAKEN);
         }
+
+        Short userSlot = slotService.allocate(request.getRequesterUserId()).slot();
 
         // 自動村作成（B2 への侵入を避け、本足軽の責任範囲で直接生成。
         //  B2 が createFromApprovedRequest を提供したら将来差し替え予定）
@@ -222,6 +241,7 @@ public class VillageCreationRequestService {
                 .villageId(savedVillage.getId())
                 .subjectType(VillageSubjectType.USER)
                 .subjectId(request.getRequesterUserId())
+                .userSlot(userSlot)
                 .role(VillageRole.HEADMAN)
                 .build();
         membershipRepository.save(membership);
@@ -250,8 +270,7 @@ public class VillageCreationRequestService {
             // 拒否コメント必須は WARN/400 相当として CommonErrorCode を流用
             throw new BusinessException(CommonErrorCode.COMMON_001);
         }
-        VillageCreationRequestEntity request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.CREATION_REQUEST_NOT_FOUND));
+        VillageCreationRequestEntity request = loadRequestForUpdate(requestId);
 
         ensurePending(request);
 
@@ -273,8 +292,7 @@ public class VillageCreationRequestService {
      */
     @Transactional
     public VillageCreationRequestResponse withdraw(UUID requestId, Long actorUserId) {
-        VillageCreationRequestEntity request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.CREATION_REQUEST_NOT_FOUND));
+        VillageCreationRequestEntity request = loadRequestForUpdate(requestId);
 
         boolean isOwner = request.getRequesterUserId().equals(actorUserId);
         boolean isAdmin = isSystemAdmin(actorUserId);
@@ -298,6 +316,14 @@ public class VillageCreationRequestService {
     // ------------------------------------------------------------------
     // ヘルパ
     // ------------------------------------------------------------------
+
+    /** 拒否・取下げも同じ行ロックを使う。USER根を後から取得する逆順経路は作らない。 */
+    private VillageCreationRequestEntity loadRequestForUpdate(UUID requestId) {
+        VillageCreationRequestEntity request = requestRepository.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.CREATION_REQUEST_NOT_FOUND));
+        entityManager.refresh(request, LockModeType.PESSIMISTIC_WRITE);
+        return request;
+    }
 
     private void ensurePending(VillageCreationRequestEntity request) {
         switch (request.getStatus()) {

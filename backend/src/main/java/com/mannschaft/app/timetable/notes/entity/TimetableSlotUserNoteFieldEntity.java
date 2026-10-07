@@ -29,11 +29,11 @@ public class TimetableSlotUserNoteFieldEntity extends BaseEntity {
     @Column(length = 100)
     private String placeholder;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition="TINYINT UNSIGNED")
     @Builder.Default
     private Integer sortOrder = 0;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer maxLength = 2000;
 

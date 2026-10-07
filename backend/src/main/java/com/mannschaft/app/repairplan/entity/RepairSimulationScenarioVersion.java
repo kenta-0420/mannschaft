@@ -12,6 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -48,6 +50,7 @@ public class RepairSimulationScenarioVersion extends UuidV7Entity {
     @Column(name = "engine_version", nullable = false, length = 20)
     private String engineVersion;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "content_sha256", nullable = false, length = 64)
     private String contentSha256;
 

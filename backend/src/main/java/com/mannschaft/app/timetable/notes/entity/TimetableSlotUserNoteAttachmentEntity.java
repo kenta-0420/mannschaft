@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.notes.entity;
 
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -11,6 +12,7 @@ import lombok.AccessLevel;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -45,7 +47,8 @@ public class TimetableSlotUserNoteAttachmentEntity {
     @Column(nullable = false, length = 100)
     private String mimeType;
 
-    @Column(nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(nullable = false, columnDefinition = "bigint")
     private Long sizeBytes;
 
     @Column(nullable = false)

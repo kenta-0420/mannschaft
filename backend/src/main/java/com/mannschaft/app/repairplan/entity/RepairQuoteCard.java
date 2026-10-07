@@ -14,6 +14,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -57,6 +59,7 @@ public class RepairQuoteCard extends UuidV7Entity {
     @Column(name = "breakdown_json", columnDefinition = "JSON")
     private String breakdownJson;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "bid_token_hash", length = 64)
     private String bidTokenHash;
 

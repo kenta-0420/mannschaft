@@ -31,9 +31,9 @@ public class TournamentFixtureSetEntity {
     @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     private Integer setNumber;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer homeScore;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     private Integer awayScore;
 }

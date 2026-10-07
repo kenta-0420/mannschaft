@@ -49,7 +49,7 @@ public class ParkingApplicationEntity extends BaseEntity {
     @Builder.Default
     private ParkingApplicationStatus status = ParkingApplicationStatus.PENDING;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "SMALLINT UNSIGNED")
     @Builder.Default
     private Integer priority = 0;
 

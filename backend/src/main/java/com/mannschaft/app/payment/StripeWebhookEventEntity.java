@@ -14,6 +14,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -69,6 +71,7 @@ public class StripeWebhookEventEntity extends UuidV7Entity {
     private String stripeObjectRef;
 
     /** V196: ペイロードの SHA-256（重複検知・監査用）。 */
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "payload_sha256", length = 64)
     private String payloadSha256;
 

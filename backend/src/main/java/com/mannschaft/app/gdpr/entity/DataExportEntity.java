@@ -34,7 +34,7 @@ public class DataExportEntity extends BaseEntity {
     private String categories;
 
     /** 進捗率 (0-100) */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition="TINYINT UNSIGNED")
     @Builder.Default
     private Integer progressPercent = 0;
 

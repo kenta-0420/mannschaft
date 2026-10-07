@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment.escrow;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.common.persistence.IntegerLongJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,6 +15,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -46,12 +50,15 @@ public class LedgerEntryEntity extends UuidV7Entity {
     private LedgerAccount account;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "direction", nullable = false, length = 1)
     private LedgerDirection direction;
 
-    @Column(name = "amount", nullable = false)
+    @JdbcType(IntegerLongJdbcType.class)
+    @Column(name = "amount", nullable = false, columnDefinition = "bigint")
     private Long amount;
 
+    @JdbcTypeCode(SqlTypes.CHAR)
     @Column(name = "currency", nullable = false, length = 3)
     private String currency;
 

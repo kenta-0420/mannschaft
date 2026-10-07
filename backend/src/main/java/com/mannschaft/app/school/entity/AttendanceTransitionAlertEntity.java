@@ -34,11 +34,11 @@ public class AttendanceTransitionAlertEntity extends BaseEntity {
     private LocalDate attendanceDate;
 
     /** 直前時限（出席だった） */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition="TINYINT UNSIGNED")
     private Integer previousPeriodNumber;
 
     /** 現在時限（欠席になった） */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition="TINYINT UNSIGNED")
     private Integer currentPeriodNumber;
 
     @Enumerated(EnumType.STRING)

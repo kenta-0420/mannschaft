@@ -25,7 +25,8 @@ import java.time.LocalDateTime;
 @SuperBuilder(toBuilder = true)
 public class CouponEntity extends BaseEntity {
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20,
+            columnDefinition = "ENUM('TEAM','ORGANIZATION')")
     private String scopeType;
 
     @Column(nullable = false)

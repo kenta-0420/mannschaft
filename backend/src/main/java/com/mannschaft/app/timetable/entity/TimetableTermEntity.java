@@ -25,7 +25,7 @@ public class TimetableTermEntity extends BaseEntity {
 
     private Long organizationId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "smallint")
     private Integer academicYear;
 
     @Column(nullable = false, length = 100)

@@ -63,7 +63,8 @@ public class EventRsvpResponseEntity {
     private LocalDateTime guardianRsvpNotifiedAt;
     private Integer expectedArrivalMinutesLate;
 
-    @Column(length = 30)
+    @Column(length = 30,
+            columnDefinition = "ENUM('SICK','PERSONAL_REASON','OTHER')")
     private String advanceAbsenceReason;
 
     @PrePersist

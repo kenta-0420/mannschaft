@@ -80,7 +80,7 @@ public class ShiftSwapRequestEntity extends BaseEntity {
 
     /** 楽観ロック用バージョン */
     @Version
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "bigint")
     @Builder.Default
     private Long version = 0L;
 
