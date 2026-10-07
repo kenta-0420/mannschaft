@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Browser } from '@playwright/test'
+import { test, expect, type Page, type Browser, type Response } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { loginViaApi } from '../fixtures/auth'
 import {
@@ -355,9 +355,11 @@ test('公開済みの差分を mobile 390/360 と keyboard で確認・選択す
         'activity-sync-schedule-only',
         'activity-sync-apply',
       ]) {
-        const box = await page.getByTestId(key).boundingBox()
-        expect(box?.height).toBeGreaterThanOrEqual(44)
-        expect(box?.width).toBeGreaterThanOrEqual(44)
+        // Dialog の enter scale が終わった実寸で判定し、44px の閾値は維持する。
+        await expect.poll(async () => (await page.getByTestId(key).boundingBox())?.height)
+          .toBeGreaterThanOrEqual(44)
+        await expect.poll(async () => (await page.getByTestId(key).boundingBox())?.width)
+          .toBeGreaterThanOrEqual(44)
       }
       await testInfo.attach(`公開済み差分-${width}px`, {
         body: await page.screenshot({ fullPage: true }),
@@ -467,7 +469,15 @@ test('通常一覧の下書き保存から詳細へ進み必須実参加者を�
     const title = `実機通常下書き-${Date.now()}`
     const templateName = `実機通常テンプレ-${Date.now()}`
     await fixture.template(templateName, true)
-    await page.goto(`${scope.path}/activities`)
+    const [listResponse] = await Promise.all([
+      page.waitForResponse(
+        (res) => new URL(res.url()).pathname === '/api/v1/activities'
+          && res.request().method() === 'GET',
+        { timeout: 30_000 },
+      ),
+      page.goto(`${scope.path}/activities`),
+    ])
+    expect(listResponse.status(), '実一覧取得後に通常作成を操作する').toBe(200)
     await expect(page.getByTestId('activity-add-record')).toBeVisible()
     const deferPermissions = page.getByRole('button', { name: 'あとで決める', exact: true })
     if (await deferPermissions.isVisible()) await deferPermissions.click()
@@ -542,6 +552,14 @@ test('実 MinIO 添付を詳細画面から開けて他scope・非所属は直�
     const button = reader.getByRole('button', { name, exact: true })
     await expect(button).toBeVisible()
     await expect(button).toBeEnabled()
+    let actualAttachmentResponse: Response | undefined
+    const captureAttachment = (res: Response) => {
+      const url = new URL(res.url())
+      if (['http://localhost:19010', 'http://127.0.0.1:19010'].includes(url.origin)
+        && url.pathname.split('/')[1] === 'cmp2610071510-storage'
+        && res.request().isNavigationRequest()) actualAttachmentResponse = res
+    }
+    reader.context().on('response', captureAttachment)
     const opened = Promise.race([
       reader
         .context()
@@ -563,6 +581,17 @@ test('実 MinIO 添付を詳細画面から開けて他scope・非所属は直�
     expect(['http://localhost:19010', 'http://127.0.0.1:19010']).toContain(downloadUrl.origin)
     expect(downloadUrl.pathname.split('/')[1]).toBe('cmp2610071510-storage')
     if (result.kind === 'page') {
+      await expect.poll(() => actualAttachmentResponse?.status()).toBe(200)
+      const actual = actualAttachmentResponse!
+      // 実クリックで開いた同じ navigation 応答の bytes を検証する。別 API GET で代替しない。
+      const body = await actual.body()
+      await testInfo.attach('実物添付の応答と文字コード', {
+        body: JSON.stringify({ url: actual.url(), headers: await actual.allHeaders(),
+          displayedBody: await result.page.locator('body').innerText(), utf8Body: body.toString('utf8') }),
+        contentType: 'application/json',
+      })
+      await testInfo.attach('実物添付の生bytes', { body, contentType: 'application/octet-stream' })
+      expect(body).toEqual(Buffer.from(content, 'utf8'))
       await expect(result.page.locator('body')).toContainText(content)
       await testInfo.attach('実物添付の表示', {
         body: await result.page.screenshot(),
@@ -575,6 +604,7 @@ test('実 MinIO 添付を詳細画面から開けて他scope・非所属は直�
       await result.download.saveAs(output)
       expect(await readFile(output, 'utf8')).toBe(content)
     }
+    reader.context().off('response', captureAttachment)
     for (const email of [OTHER_TENANT, OUTSIDER]) {
       const denied = await rolePage(browser, email)
       pages.push(denied)

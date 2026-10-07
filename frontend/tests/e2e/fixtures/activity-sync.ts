@@ -213,12 +213,13 @@ export class ActivitySyncFixture {
     )
     this.folderIds.push(folder.id)
     const body = Buffer.from(content, 'utf8')
+    const contentType = 'text/plain; charset=utf-8'
     const presign = await data<{ uploadUrl: string; fileKey: string }>(
       await this.page.request.post(`${API}/files/presign-upload`, {
         data: {
           folderId: folder.id,
           fileName: name,
-          contentType: 'text/plain',
+          contentType,
           fileSize: body.length,
         },
       }),
@@ -233,7 +234,7 @@ export class ActivitySyncFixture {
     )
     const uploaded = await this.page.request.put(presign.uploadUrl, {
       data: body,
-      headers: { 'Content-Type': 'text/plain' },
+      headers: { 'Content-Type': contentType },
     })
     await success(uploaded)
     const file = await data<{ id: number }>(
@@ -243,7 +244,7 @@ export class ActivitySyncFixture {
           name,
           fileKey: presign.fileKey,
           fileSize: body.length,
-          contentType: 'text/plain',
+          contentType,
         },
       }),
     )
