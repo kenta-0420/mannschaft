@@ -772,7 +772,8 @@
       "createFailed": "创建失败",
       "deleteSuccess": "标签已删除",
       "deleteFailed": "删除失败"
-    }
+    },
+    "pageTitle": "博客与公告"
   },
   "todo": {
     "backToList": "返回待办列表",
@@ -1759,8 +1760,6 @@
       "downloadLabel": "下载 {format}（{type}）"
     },
     "menu": "菜单",
-    "moreActions": "更多操作",
-    "openNavigation": "打开导航",
     "scopeShell": {
       "memberCount": "成员 {count} 人",
       "supporterCount": "支持者 {count} 人",
@@ -1789,7 +1788,9 @@
     "unsavedChanges": {
       "title": "未保存的更改",
       "confirmLeave": "您有未保存的更改。离开此页面将丢失已输入的内容。要继续吗？"
-    }
+    },
+    "moreActions": "更多操作",
+    "openNavigation": "打开导航"
   },
   "teamHub": {
     "pageTitle": "我的团队",
@@ -2799,5 +2800,11 @@
       "SUPPORTERS_AND_ABOVE": "支持者及以上",
       "MEMBERS_AND_ABOVE": "成员及以上"
     }
+  },
+  "relativeTime": {
+    "justNow": "刚刚",
+    "minutesAgo": "{count}分钟前",
+    "hoursAgo": "{count}小时前",
+    "daysAgo": "{count}天前"
   }
 }

@@ -772,7 +772,8 @@
       "createFailed": "Erstellen fehlgeschlagen",
       "deleteSuccess": "Tag gelöscht",
       "deleteFailed": "Löschen fehlgeschlagen"
-    }
+    },
+    "pageTitle": "Blog & Ankündigungen"
   },
   "todo": {
     "backToList": "Zurück zur Aufgabenliste",
@@ -1759,8 +1760,6 @@
       "downloadLabel": "{format} herunterladen ({type})"
     },
     "menu": "Menü",
-    "moreActions": "Weitere Aktionen",
-    "openNavigation": "Navigation öffnen",
     "scopeShell": {
       "memberCount": "{count} Mitglieder",
       "supporterCount": "{count} Unterstützer",
@@ -1789,7 +1788,9 @@
     "unsavedChanges": {
       "title": "Ungespeicherte Änderungen",
       "confirmLeave": "Es gibt ungespeicherte Änderungen. Wenn Sie diese Seite verlassen, gehen Ihre Eingaben verloren. Fortfahren?"
-    }
+    },
+    "moreActions": "Weitere Aktionen",
+    "openNavigation": "Navigation öffnen"
   },
   "teamHub": {
     "pageTitle": "Meine Teams",
@@ -2799,5 +2800,11 @@
       "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
       "MEMBERS_AND_ABOVE": "Mitglieder und höher"
     }
+  },
+  "relativeTime": {
+    "justNow": "Gerade eben",
+    "minutesAgo": "vor {count} Minute | vor {count} Minuten",
+    "hoursAgo": "vor {count} Stunde | vor {count} Stunden",
+    "daysAgo": "vor {count} Tag | vor {count} Tagen"
   }
 }

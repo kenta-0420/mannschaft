@@ -1,5 +1,6 @@
 {
   "dashboard": {
+    "widget_detail_link": "详情",
     "widget_settings": {
       "dialog_header": "小部件设置",
       "config_button": "小部件设置",
@@ -256,6 +257,143 @@
       "detail_status": "状态",
       "detail_description_changed": "详情已更新",
       "unknown": "执行了操作"
+    },
+    "recent_content": {
+      "blogAnnouncements": "博客与公告",
+      "latestPosts": "最新文章",
+      "viewAll": "查看全部",
+      "noPublishedPosts": "暂无已发布的文章",
+      "noFollowedPosts": "没有关注对象的博客文章",
+      "bulletinAnnouncements": "公告板与通知",
+      "noThreads": "暂无公告板主题",
+      "priority": {
+        "critical": "紧急",
+        "important": "重要",
+        "warning": "注意",
+        "info": "通知",
+        "low": "低"
+      }
+    },
+    "attendance_results": {
+      "recentRange": "前后30天内的活动",
+      "empty": "没有符合条件的活动",
+      "noData": "没有出勤数据",
+      "memberTotal": "/ {total}人",
+      "status": {
+        "yes": "出席",
+        "no": "缺席",
+        "maybe": "待定",
+        "pending": "未回复"
+      }
+    },
+    "widgets": {
+      "common": {
+        "viewAll": "查看全部",
+        "allDay": "全天",
+        "middleDot": "·"
+      },
+      "priority": {
+        "critical": "紧急",
+        "important": "重要",
+        "warning": "注意",
+        "info": "通知",
+        "low": "低"
+      },
+      "familyHub": {
+        "title": "家庭",
+        "noFamilyTeam": "尚未加入家庭团队",
+        "announcements": "通知",
+        "noAnnouncements": "暂无通知",
+        "noOpenTodos": "没有未完成的待办"
+      },
+      "memberInfo": {
+        "fieldsNotConfigured": "尚未设置{fieldList}的字段",
+        "countWithLabel": "{label}：{count}项",
+        "totalFields": "共{count}个字段"
+      },
+      "myBlog": {
+        "title": "我的博客",
+        "create": "新建",
+        "empty": "暂无文章",
+        "status": {
+          "draft": "草稿",
+          "published": "已发布",
+          "scheduled": "已预约"
+        }
+      },
+      "myCalendar": {
+        "title": "我的日历",
+        "openFullScreen": "全屏打开",
+        "show": "显示：",
+        "scopePlaceholder": "选择要显示的范围",
+        "selectedCount": "已选择{n}项",
+        "legendPersonal": "个人",
+        "legendTeamOrg": "团队/组织"
+      },
+      "myOrganizations": {
+        "title": "Links：组织",
+        "nonprofit": "非营利",
+        "forProfit": "营利",
+        "empty": "尚未加入任何组织"
+      },
+      "myTeams": {
+        "title": "Links：团队",
+        "empty": "尚未加入任何团队"
+      },
+      "notices": {
+        "title": "通知",
+        "markAllRead": "全部已读",
+        "markedAllRead": "已全部标为已读",
+        "empty": "暂无通知"
+      },
+      "orgAnnouncements": {
+        "title": "组织通知",
+        "noOrg": "尚未加入任何组织",
+        "empty": "组织暂无通知"
+      },
+      "teamAnnouncements": {
+        "title": "团队通知",
+        "noTeam": "尚未加入任何团队",
+        "empty": "团队暂无通知"
+      },
+      "personalTodo": {
+        "teamFallback": "团队",
+        "orgFallback": "组织",
+        "completed": "待办已完成！",
+        "updateFailed": "更新失败",
+        "overdue": "已逾期：{count}项",
+        "withDue": "有截止日期",
+        "noDue": "无截止日期",
+        "allDone": "待办已全部完成"
+      },
+      "recentActivity": {
+        "title": "最近动态",
+        "empty": "暂无动态"
+      },
+      "surveyResults": {
+        "count": "{count}份问卷",
+        "open": "进行中",
+        "closed": "已截止",
+        "responseUnit": "份",
+        "noResponses": "暂无回答",
+        "resultsUnavailable": "无法显示结果",
+        "empty": "暂无问卷"
+      },
+      "todoCountdown": {
+        "title": "待办倒计时",
+        "empty": "没有带截止日期的待办",
+        "hours": "{h}小时",
+        "overdue": "已超过{hours}{minutes}分钟",
+        "daysHours": "{days}天{hours}小时"
+      },
+      "unreadThreads": {
+        "title": "未读",
+        "boardTitle": "公告栏・通知",
+        "boardDesc": "团队和组织的未读主题",
+        "chatTitle": "聊天",
+        "chatDesc": "未读消息",
+        "empty": "没有未读内容"
+      }
     }
   },
   "swipeWidgets": {

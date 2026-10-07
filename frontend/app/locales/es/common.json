@@ -772,7 +772,8 @@
       "createFailed": "No se pudo crear",
       "deleteSuccess": "Etiqueta eliminada",
       "deleteFailed": "No se pudo eliminar"
-    }
+    },
+    "pageTitle": "Blog y anuncios"
   },
   "todo": {
     "backToList": "Volver a la lista de tareas",
@@ -1759,8 +1760,6 @@
       "downloadLabel": "Descargar {format} ({type})"
     },
     "menu": "Menú",
-    "moreActions": "Más acciones",
-    "openNavigation": "Abrir navegación",
     "scopeShell": {
       "memberCount": "{count} miembros",
       "supporterCount": "{count} seguidores",
@@ -1789,7 +1788,9 @@
     "unsavedChanges": {
       "title": "Cambios sin guardar",
       "confirmLeave": "Tienes cambios sin guardar. Si sales de esta página, se perderá lo que has introducido. ¿Continuar?"
-    }
+    },
+    "moreActions": "Más acciones",
+    "openNavigation": "Abrir navegación"
   },
   "teamHub": {
     "pageTitle": "Mis equipos",
@@ -2799,5 +2800,11 @@
       "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
       "MEMBERS_AND_ABOVE": "Miembros y superiores"
     }
+  },
+  "relativeTime": {
+    "justNow": "Ahora mismo",
+    "minutesAgo": "hace {count} minuto | hace {count} minutos",
+    "hoursAgo": "hace {count} hora | hace {count} horas",
+    "daysAgo": "hace {count} día | hace {count} días"
   }
 }
