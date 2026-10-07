@@ -160,7 +160,10 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
             for (JsonNode item : body.path("data")) {
                 assertThat(item.path("meta").path("visibility").asText()).isEqualTo("PUBLIC");
                 assertThat(item.path("meta").path("status").asText()).isEqualTo("PUBLISHED");
-                assertThat(item.path("content").has("body")).as("一覧は本文を返さない").isFalse();
+                // stripBody は body を null にするため JSON には "body": null が出うる。欠落または null を許し、
+                // 本文の中身（"本文 ..."）が返らないことを検証する。
+                assertAbsentOrNull(item.path("content"), "body", "一覧は本文を返さない");
+                assertThat(item.toString()).doesNotContain("本文 ");
             }
         }
 
@@ -537,9 +540,11 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
         JsonNode lockedNode = bySlug(body, locked.getSlug());
         assertThat(lockedNode.path("accessState").asText()).isEqualTo("LOCKED");
         assertThat(lockedNode.path("content").path("title").asText()).isEqualTo(locked.getTitle());
-        assertThat(lockedNode.path("content").has("body")).isFalse();
-        assertThat(lockedNode.path("content").has("excerpt")).isFalse();
-        assertThat(lockedNode.path("content").has("coverImageUrl")).isFalse();
+        // マスクは各値を null にする（JSON に null として出うる）。欠落または null を許し、中身が返らないことを検証する。
+        assertAbsentOrNull(lockedNode.path("content"), "body", "LOCKED は本文を返さない");
+        assertAbsentOrNull(lockedNode.path("content"), "excerpt", "LOCKED は要約を返さない");
+        assertAbsentOrNull(lockedNode.path("content"), "coverImageUrl", "LOCKED はカバーを返さない");
+        assertThat(lockedNode.toString()).doesNotContain("本文 ").doesNotContain("要約 ").doesNotContain("example.com/cover/");
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -828,6 +833,12 @@ class BlogPostListScopeVisibilityIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(body);
+    }
+
+    /** フィールドが欠落しているか JSON null であること（値が入っていないこと）を検証する。 */
+    private static void assertAbsentOrNull(JsonNode node, String field, String description) {
+        JsonNode value = node.get(field);
+        assertThat(value == null || value.isNull()).as(description + " (" + field + "=" + value + ")").isTrue();
     }
 
     private static Set<String> slugs(JsonNode body) {

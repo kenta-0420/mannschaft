@@ -311,8 +311,8 @@ class BlogPostServiceTest {
             ReflectionTestUtils.setField(draft, "id", 302L);
             lenient().doThrow(new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
                     .when(accessControlService).checkMembership(any(), any(), any());
-            // スコープ判定（teamService.assertActiveTeamExists / contentVisibilityChecker.assertCanView(TEAM)）は
-            // void のモック既定（例外なし）＝「実在・ACTIVE で閲覧可」。呼ばれたことは下で verify する。
+            // スコープの門（実在・可視性）は BlogScopeAccessGuard が取引の外で先に通す（D-3T）。
+            // Service は記事判定だけを行い、スコープ判定を呼ばないことを下で verify する。
             given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(eq(TEAM_ID), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(visible, draft)));
             given(contentVisibilityChecker.filterAccessible(
@@ -335,32 +335,15 @@ class BlogPostServiceTest {
                 assertThat(result.getContent()).hasSize(1);
                 assertThat(result.getTotalElements()).isEqualTo(1);
                 verify(accessControlService, never()).checkMembership(any(), any(), any());
-                // スコープ判定が記事判定より前に呼ばれている
-                verify(teamService).assertActiveTeamExists(TEAM_ID);
-                verify(contentVisibilityChecker).assertCanView(ReferenceType.TEAM, TEAM_ID, VIEWER_ID);
+                // 記事判定（F00 BLOG_POST）は Service で行い、スコープ判定は取引の外の門に任せる
+                verify(contentVisibilityChecker).filterAccessible(ReferenceType.BLOG_POST, Set.of(301L, 302L), VIEWER_ID);
+                verify(contentVisibilityChecker, never()).assertCanView(eq(ReferenceType.TEAM), any(), any());
+                verify(teamService, never()).assertActiveTeamExists(any());
             }
         }
 
         @Test
-        @DisplayName("AC-8: スコープが閲覧不可なら記事を引かずに TEAM_NOT_FOUND（CMS_024）")
-        void チーム別一覧_スコープ閲覧不可は不存在と同一() {
-            org.mockito.BDDMockito.willThrow(new BusinessException(
-                            com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001))
-                    .given(contentVisibilityChecker).assertCanView(ReferenceType.TEAM, TEAM_ID, VIEWER_ID);
-
-            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
-                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
-
-                assertThatThrownBy(() -> service.listByTeam(TEAM_ID_STR, PageRequest.of(0, 10)))
-                        .isInstanceOf(BusinessException.class)
-                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                                .isEqualTo(CmsErrorCode.TEAM_NOT_FOUND));
-                verify(postRepository, never()).findByTeamIdOrderByPinnedDescCreatedAtDesc(any(), any());
-            }
-        }
-
-        @Test
-        @DisplayName("AC-11: 想定外の例外は握りつぶさず伝播する（空ページで 200 にしない）")
+        @DisplayName("AC-11: 課金判定の想定外の例外は握りつぶさず伝播する（空ページで 200 にしない）")
         void チーム別一覧_想定外の例外は伝播する() {
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             ReflectionTestUtils.setField(entity, "id", POST_ID);
@@ -377,6 +360,25 @@ class BlogPostServiceTest {
 
                 assertThatThrownBy(() -> service.listByTeam(TEAM_ID_STR, PageRequest.of(0, 10)))
                         .isInstanceOf(IllegalStateException.class);
+            }
+        }
+
+        @Test
+        @DisplayName("AC-11: 可視性判定の想定外の例外も握りつぶさず伝播する")
+        void チーム別一覧_可視性判定の例外は伝播する() {
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            ReflectionTestUtils.setField(entity, "id", POST_ID);
+            given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(eq(TEAM_ID), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(entity)));
+            given(contentVisibilityChecker.filterAccessible(ReferenceType.BLOG_POST, Set.of(POST_ID), VIEWER_ID))
+                    .willThrow(new IllegalStateException("想定外"));
+
+            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+
+                assertThatThrownBy(() -> service.listByTeam(TEAM_ID_STR, PageRequest.of(0, 10)))
+                        .isInstanceOf(IllegalStateException.class);
+                verify(paymentGateService, never()).checkAccessBatch(any(), any(), any(), any(Map.class));
             }
         }
     }
@@ -401,7 +403,7 @@ class BlogPostServiceTest {
                     .willReturn(new GateCheckResponse(true, false, List.of()));
 
             // When
-            BlogPostResponse result = service.getBySlug(TEAM_ID_STR, null, null, "test-slug");
+            BlogPostResponse result = service.getBySlug(TEAM_ID, null, null, "test-slug");
 
             // Then
             assertThat(result).isNotNull();
@@ -414,7 +416,7 @@ class BlogPostServiceTest {
             given(postRepository.findByTeamIdAndSlug(TEAM_ID, "no-exist")).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.getBySlug(TEAM_ID_STR, null, null, "no-exist"))
+            assertThatThrownBy(() -> service.getBySlug(TEAM_ID, null, null, "no-exist"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CMS_001"));
@@ -436,63 +438,10 @@ class BlogPostServiceTest {
                 securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
 
                 // When
-                service.getBySlug(TEAM_ID_STR, null, null, "test-slug");
+                service.getBySlug(TEAM_ID, null, null, "test-slug");
 
                 // Then: 解決した記事IDと固定 viewerUserId で可視性判定が委譲される
                 verify(contentVisibilityChecker).assertCanView(ReferenceType.BLOG_POST, POST_ID, VIEWER_ID);
-                // スコープ判定（CMP-261007-2052）も通っている
-                verify(teamService).assertActiveTeamExists(TEAM_ID);
-                verify(contentVisibilityChecker).assertCanView(ReferenceType.TEAM, TEAM_ID, VIEWER_ID);
-            }
-        }
-
-        @Test
-        @DisplayName("AC-9: チームの slug はチームとして解決し、スコープ判定を通す")
-        void slug指定のチームを解決する() {
-            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
-            ReflectionTestUtils.setField(entity, "id", POST_ID);
-            TeamEntity team = TeamEntity.builder().build();
-            ReflectionTestUtils.setField(team, "id", TEAM_ID);
-            given(teamRepository.findBySlugAndDeletedAtIsNull("fc-tokyo")).willReturn(Optional.of(team));
-            given(postRepository.findByTeamIdAndSlug(TEAM_ID, "test-slug")).willReturn(Optional.of(entity));
-            given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
-
-            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
-                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
-
-                assertThat(service.getBySlug("fc-tokyo", null, null, "test-slug")).isNotNull();
-                verify(teamService).assertActiveTeamExists(TEAM_ID);
-                verify(contentVisibilityChecker).assertCanView(ReferenceType.TEAM, TEAM_ID, VIEWER_ID);
-                verify(organizationRepository, never()).findBySlugAndDeletedAtIsNull(any());
-            }
-        }
-
-        @Test
-        @DisplayName("AC-9: 解決できないチーム slug は 不可視スコープと同じ CMS_001（COMMON_005 等に分かれない）")
-        void 解決できないslugはCMS_001() {
-            given(teamRepository.findBySlugAndDeletedAtIsNull("no-such-team")).willReturn(Optional.empty());
-
-            assertThatThrownBy(() -> service.getBySlug("no-such-team", null, null, "test-slug"))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(CmsErrorCode.POST_NOT_FOUND));
-            verify(postRepository, never()).findByTeamIdAndSlug(any(), any());
-        }
-
-        @Test
-        @DisplayName("AC-8: スコープが閲覧不可なら記事を引かずに CMS_001")
-        void スコープ閲覧不可はCMS_001() {
-            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
-                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
-                org.mockito.BDDMockito.willThrow(new BusinessException(
-                                com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001))
-                        .given(contentVisibilityChecker).assertCanView(ReferenceType.TEAM, TEAM_ID, VIEWER_ID);
-
-                assertThatThrownBy(() -> service.getBySlug(TEAM_ID_STR, null, null, "test-slug"))
-                        .isInstanceOf(BusinessException.class)
-                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                                .isEqualTo(CmsErrorCode.POST_NOT_FOUND));
-                verify(postRepository, never()).findByTeamIdAndSlug(any(), any());
             }
         }
 
@@ -515,7 +464,7 @@ class BlogPostServiceTest {
                         .assertCanView(ReferenceType.BLOG_POST, POST_ID, VIEWER_ID);
 
                 // When / Then: 例外がそのまま伝播し、レスポンス生成（漏洩）に到達しない
-                assertThatThrownBy(() -> service.getBySlug(TEAM_ID_STR, null, null, "secret-slug"))
+                assertThatThrownBy(() -> service.getBySlug(TEAM_ID, null, null, "secret-slug"))
                         .isInstanceOf(BusinessException.class)
                         .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                                 .isEqualTo("VISIBILITY_001"));
@@ -1253,7 +1202,7 @@ class BlogPostServiceTest {
                         .willReturn(new GateCheckResponse(false, false, List.of()));
 
                 BlogPostResponse result = service.getBySlugWithPreviewToken(
-                        TEAM_ID_STR, null, null, "slug", "tok-123");
+                        TEAM_ID, null, null, "slug", "tok-123");
 
                 assertThat(result.getContent().body()).isEqualTo((String) null);
             }

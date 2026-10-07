@@ -11,6 +11,7 @@ import com.mannschaft.app.cms.dto.PublishRequest;
 import com.mannschaft.app.cms.dto.UpdateBlogPostRequest;
 import com.mannschaft.app.cms.service.BlogFeedService;
 import com.mannschaft.app.cms.service.BlogPostService;
+import com.mannschaft.app.cms.service.BlogScopeAccessGuard;
 import com.mannschaft.app.cms.service.BlogReactionService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
@@ -49,6 +50,7 @@ import org.springframework.lang.Nullable;
 public class BlogPostController {
 
     private final BlogPostService postService;
+    private final BlogScopeAccessGuard scopeAccessGuard;
     private final BlogFeedService feedService;
     private final BlogReactionService reactionService;
 
@@ -73,11 +75,17 @@ public class BlogPostController {
         // フィルタパラメータは BlogPostRepository のクエリ拡張時に対応予定
         // 範囲外は丸めて 200（size は 1〜100、page は 0 以上。application.yml の max-page-size=100 に合わせる）。
         PageRequest pageRequest = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
+        // スコープの解決と可視性の門は、BlogPostService の取引の外で先に通す（CMP-261007-2052・D-3T）。
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         Page<BlogPostResponse> result;
         if (teamId != null) {
-            result = postService.listByTeam(teamId, pageRequest);
+            Long resolvedTeamId = scopeAccessGuard.resolveVisibleTeam(teamId, viewerUserId);
+            result = postService.listByTeam(resolvedTeamId.toString(), pageRequest);
+        } else if (organizationId != null) {
+            Long resolvedOrgId = scopeAccessGuard.resolveVisibleOrganization(organizationId, viewerUserId);
+            result = postService.listByOrganization(resolvedOrgId.toString(), pageRequest);
         } else {
-            result = postService.listByOrganization(organizationId, pageRequest);
+            result = postService.listByOrganization(null, pageRequest);
         }
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -88,9 +96,10 @@ public class BlogPostController {
      * 記事詳細をslugで取得する。
      *
      * <p>{@code teamId} / {@code organizationId} は一覧と同じく slug・数値文字列の双方を受け、
-     * Service がチーム・組織それぞれとして解決する（CMP-261007-2052）。{@code Long} で受けると
-     * グローバルの {@code ScopeSlugIdConverter} が先に働き、不在 slug だけが別のエラーコードになる
-     * （存在オラクル）ため、String で受ける。</p>
+     * {@link BlogScopeAccessGuard} がチーム・組織それぞれとして解決し可視性を確かめる（CMP-261007-2052）。
+     * {@code Long} で受けるとグローバルの {@code ScopeSlugIdConverter} が先に働き、不在 slug だけが別の
+     * エラーコードになる（存在オラクル）うえ組織の slug がチームとして解決されるため、String で受ける。
+     * 門は BlogPostService の取引の外で先に通し、Service には解決済みの ID だけを渡す（D-3T）。</p>
      */
     @GetMapping("/posts/{slug}")
     @Operation(summary = "記事詳細（slug）")
@@ -101,14 +110,17 @@ public class BlogPostController {
             @RequestParam(required = false) String organizationId,
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String previewToken) {
+        Long currentUserId = SecurityUtils.getCurrentUserIdOrNull();
+        BlogScopeAccessGuard.ResolvedScope scope =
+                scopeAccessGuard.resolveVisibleScopeForDetail(teamId, organizationId, currentUserId);
         BlogPostResponse response;
         if (previewToken != null) {
-            response = postService.getBySlugWithPreviewToken(teamId, organizationId, userId, slug, previewToken);
+            response = postService.getBySlugWithPreviewToken(
+                    scope.teamId(), scope.organizationId(), userId, slug, previewToken);
         } else {
-            response = postService.getBySlug(teamId, organizationId, userId, slug);
+            response = postService.getBySlug(scope.teamId(), scope.organizationId(), userId, slug);
         }
         // リアクション情報（みたよ！）を付与する
-        Long currentUserId = SecurityUtils.getCurrentUserIdOrNull();
         BlogReactionResponse reactionStatus = reactionService.getReactionStatus(response.getId(), currentUserId);
         response = response.withReaction(reactionStatus.isMitayo(), reactionStatus.getMitayoCount());
         return ResponseEntity.ok(ApiResponse.of(response));

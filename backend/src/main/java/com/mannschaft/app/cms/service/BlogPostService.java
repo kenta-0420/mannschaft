@@ -108,15 +108,16 @@ public class BlogPostService {
      * <p>CMP-261007-2052: チーム非所属のログイン済みユーザーにも一覧を開く。メンバー限定
      * （{@link AccessControlService#checkMembership}）は外した。判定は次の順で行う。</p>
      * <ol>
-     *   <li>スコープ判定: チームが実在・ACTIVE で、閲覧者がチームを見られること
-     *       （F00 {@link ContentVisibilityChecker}、{@link ReferenceType#TEAM}）。満たさなければ
-     *       「不存在」と同一の {@link CmsErrorCode#TEAM_NOT_FOUND}（404）。slug・数値の別なく同一応答。</li>
+     *   <li>スコープ判定: チームが実在・ACTIVE で、閲覧者がチームを見られること。<b>取引の外</b>で
+     *       {@link BlogScopeAccessGuard#resolveVisibleTeam} が行い（Controller が先に呼ぶ）、満たさなければ
+     *       「不存在」と同一の {@link CmsErrorCode#TEAM_NOT_FOUND}（404）。本メソッドは呼ばない
+     *       （他ドメインへの取引の越境＝D-3T を避けるため）。</li>
      *   <li>記事判定: 記事ごとの F00 可視性・課金軸（{@link #scanVisiblePage}）。見えない記事は
      *       一覧にも件数にも入れない（下書きの列挙は作者・管理者のみ Resolver が許す）。</li>
      * </ol>
      * <p>未ログイン開放は別戦役（Controller 側で 401 のまま）。</p>
      *
-     * @param teamIdStr チームの公開ID（slug）または内部Long ID文字列
+     * @param teamIdStr チームの内部Long ID文字列（門で解決済みのもの。slug も後方互換で受ける）
      */
     public Page<BlogPostResponse> listByTeam(String teamIdStr, Pageable pageable) {
         if (teamIdStr == null) {
@@ -124,7 +125,6 @@ public class BlogPostService {
         }
         Long teamId = resolveTeamId(teamIdStr);
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
-        assertScopeVisible(teamId, null, viewerUserId, CmsErrorCode.TEAM_NOT_FOUND);
         return scanVisiblePage(pageable, viewerUserId,
                 request -> postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(teamId, request));
     }
@@ -132,10 +132,10 @@ public class BlogPostService {
     /**
      * 組織別記事一覧をページング取得する。
      *
-     * <p>{@link #listByTeam} と同じ契約（スコープ判定 → 記事判定）。スコープ不可視は
-     * {@link CmsErrorCode#ORG_NOT_FOUND}（404）。</p>
+     * <p>{@link #listByTeam} と同じ契約。スコープ判定は取引の外で
+     * {@link BlogScopeAccessGuard#resolveVisibleOrganization} が行う（不可視は {@link CmsErrorCode#ORG_NOT_FOUND}）。</p>
      *
-     * @param organizationIdStr 組織の公開ID（slug）または内部Long ID文字列。null の場合は空ページを返す。
+     * @param organizationIdStr 組織の内部Long ID文字列（門で解決済みのもの）。null の場合は空ページを返す。
      */
     public Page<BlogPostResponse> listByOrganization(String organizationIdStr, Pageable pageable) {
         if (organizationIdStr == null) {
@@ -143,7 +143,6 @@ public class BlogPostService {
         }
         Long organizationId = resolveOrganizationId(organizationIdStr);
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
-        assertScopeVisible(null, organizationId, viewerUserId, CmsErrorCode.ORG_NOT_FOUND);
         return scanVisiblePage(pageable, viewerUserId,
                 request -> postRepository.findByOrganizationIdOrderByPinnedDescCreatedAtDesc(organizationId, request));
     }
@@ -234,36 +233,15 @@ public class BlogPostService {
      * viewerUserId は認証コンテキストから取得する（リクエスト引数 {@code userId} は
      * スコープ解決用であり閲覧者IDではないため使用しない）。</p>
      *
-     * <p>CMP-261007-2052（Codex 検分後）: {@code teamIdStr} / {@code organizationIdStr} は一覧と同じく
-     * slug・数値文字列の双方を受け、チームはチーム・組織は組織として本メソッドで解決する
-     * （グローバルの {@code ScopeSlugIdConverter} に任せると、不在 slug が変換段階で COMMON_005 になり、
-     * 実在する不可視スコープの CMS_001 と区別できる存在オラクルになるうえ、URI に {@code /organizations/}
-     * が無いため組織の slug がチームとして解決されてしまう）。不存在・論理削除済み・PROVISIONED・
-     * 閲覧不可は slug・数値の別なくすべて {@link CmsErrorCode#POST_NOT_FOUND}（404）に畳む。
-     * 両方指定された場合は従来どおりチームを優先する。</p>
-     *
-     * @param teamIdStr         チームの slug または内部ID文字列（null/空白なら未指定）
-     * @param organizationIdStr 組織の slug または内部ID文字列（null/空白なら未指定）
+     * <p>CMP-261007-2052: {@code teamId} / {@code organizationId} は、取引の外で
+     * {@link BlogScopeAccessGuard#resolveVisibleScopeForDetail} が slug・数値文字列からチームはチーム・
+     * 組織は組織として解決し、実在・ACTIVE・閲覧可を確認した後の内部 ID である（Controller が先に呼ぶ）。
+     * 不存在・論理削除済み・PROVISIONED・閲覧不可は門が {@link CmsErrorCode#POST_NOT_FOUND}（404）に畳む。</p>
      */
-    public BlogPostResponse getBySlug(String teamIdStr, String organizationIdStr, Long userId, String slug) {
-        Long teamId = null;
-        Long organizationId = null;
-        try {
-            if (teamIdStr != null && !teamIdStr.isBlank()) {
-                teamId = resolveTeamId(teamIdStr.strip());
-            } else if (organizationIdStr != null && !organizationIdStr.isBlank()) {
-                organizationId = resolveOrganizationId(organizationIdStr.strip());
-            }
-        } catch (BusinessException e) {
-            // 解決できない slug（不存在・論理削除済み）は、不可視スコープと同一の応答に畳む（存在秘匿）。
-            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
-        }
-        // 検分第2巡 残存経路チェック: 数値ID直指定では slug 解決（削除済み除外）を経由しないため、
-        // PROVISIONED（承諾前の事前作成状態）スコープの ID を直接指定された場合の防御多層として、
-        // ここで lifecycleStatus=ACTIVE を確認する（存在秘匿のため POST_NOT_FOUND に畳む）。
+    public BlogPostResponse getBySlug(Long teamId, Long organizationId, Long userId, String slug) {
+        // 検分第2巡 残存経路チェック: 門を経由しない呼び出し（将来の経路変化）に備えた防御多層として、
+        // PROVISIONED（承諾前の事前作成状態）スコープを POST_NOT_FOUND に畳む。
         assertScopeNotProvisioned(teamId, organizationId);
-        // CMP-261007-2052: スコープ（チーム/組織）を閲覧者が見られなければ「記事が無い」と同一応答（CMS_001）。
-        assertScopeVisible(teamId, organizationId, SecurityUtils.getCurrentUserIdOrNull(), CmsErrorCode.POST_NOT_FOUND);
 
         BlogPostEntity entity;
         if (teamId != null) {
@@ -697,9 +675,9 @@ public class BlogPostService {
     /**
      * slug でプレビュートークン付き記事を取得する。
      */
-    public BlogPostResponse getBySlugWithPreviewToken(String teamIdStr, String organizationIdStr, Long userId,
+    public BlogPostResponse getBySlugWithPreviewToken(Long teamId, Long organizationId, Long userId,
                                                        String slug, String previewToken) {
-        BlogPostResponse response = getBySlug(teamIdStr, organizationIdStr, userId, slug);
+        BlogPostResponse response = getBySlug(teamId, organizationId, userId, slug);
         // プレビュートークン検証はgetBySlug内で将来実装
         // 現時点ではパラメータを受け取るのみ
         return response;
@@ -997,25 +975,6 @@ public class BlogPostService {
             throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
         } else if (organizationId != null && organizationService.isProvisioned(organizationId)) {
             throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
-        }
-    }
-
-    /**
-     * スコープ（チーム or 組織）が実在・ACTIVE で、閲覧者が見られることを確認する。
-     * 不存在・論理削除済み・PROVISIONED・閲覧不可はすべて同一の {@code notFound} に畳む（存在秘匿）。
-     * 数値 ID 経路も slug 経路と同じ判定を通す。teamId/organizationId が両方 null（個人記事）は対象外。
-     */
-    private void assertScopeVisible(Long teamId, Long organizationId, Long viewerUserId, CmsErrorCode notFound) {
-        try {
-            if (teamId != null) {
-                teamService.assertActiveTeamExists(teamId);
-                contentVisibilityChecker.assertCanView(ReferenceType.TEAM, teamId, viewerUserId);
-            } else if (organizationId != null) {
-                organizationService.assertActiveOrganizationExists(organizationId);
-                contentVisibilityChecker.assertCanView(ReferenceType.ORGANIZATION, organizationId, viewerUserId);
-            }
-        } catch (BusinessException e) {
-            throw new BusinessException(notFound);
         }
     }
 }
