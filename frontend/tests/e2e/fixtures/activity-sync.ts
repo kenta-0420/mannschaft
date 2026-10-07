@@ -94,13 +94,13 @@ export class ActivitySyncFixture {
 
   async published(title: string, scheduleId?: number, fileIds: number[] = []): Promise<Activity> {
     const templateId = await this.template(title)
-    const activity = await data<Activity>(await this.page.request.post(`${API}/activities?${this.query}`, { data: {
+    const activity = await data<{ id: number }>(await this.page.request.post(`${API}/activities?${this.query}`, { data: {
       title, templateId, activityDate: '2026-10-15', description: '**保持する活動本文**',
       fieldValues: { numberZero: 0, checkboxFalse: false, historicalNull: null, unknownOldKey: '過去値' },
       visibility: 'MEMBERS_ONLY', participantUserIds: [], fileIds, postToTimeline: false, scheduleId,
     } }))
     this.activityIds.push(activity.id)
-    return activity
+    return this.detail(activity.id)
   }
 
   async attachment(name: string, content: string): Promise<number> {

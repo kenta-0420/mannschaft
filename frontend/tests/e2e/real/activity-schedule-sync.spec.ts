@@ -319,14 +319,15 @@ test('通常一覧から下書き保存して同じ記録の詳細へ遷移す�
       page.getByTestId('activity-save-draft').click(),
     ])
     expect(response.status()).toBe(201)
-    const record = (await response.json() as { data: Activity }).data
-    expect(record.scopePublicId).toBe(scope.slug)
+    const record = (await response.json() as { data: { id: number } }).data
     fixture.activityIds.push(record.id)
     await expect(page).toHaveURL(new RegExp(`/activities/${record.id}$`))
     await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
     await expect(page.getByTestId('activity-description')).toContainText('通常下書きの本文')
     await expect(page.getByTestId('activity-source-schedule')).toHaveCount(0)
-    expect((await fixture.detail(record.id)).status).toBe('DRAFT')
+    const persisted = await fixture.detail(record.id)
+    expect(persisted.status).toBe('DRAFT')
+    expect(persisted.scopePublicId).toBe(scope.slug)
     await page.getByRole('button', { name: '活動記録', exact: true }).click()
     await expect(page).toHaveURL(`${scope.path}/activities`)
   } finally { await fixture.cleanup() }
