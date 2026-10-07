@@ -256,6 +256,34 @@
       "detail_status": "ステータス",
       "detail_description_changed": "詳細が更新されました",
       "unknown": "アクションしました"
+    },
+    "recent_content": {
+      "blogAnnouncements": "ブログ・お知らせ",
+      "latestPosts": "最新記事",
+      "viewAll": "すべて見る",
+      "noPublishedPosts": "公開済みの記事はまだありません",
+      "noFollowedPosts": "フォロー中のブログ記事はありません",
+      "bulletinAnnouncements": "掲示板・お知らせ",
+      "noThreads": "掲示板のスレッドはまだありません",
+      "priority": {
+        "critical": "緊急",
+        "important": "重要",
+        "warning": "注意",
+        "info": "通知",
+        "low": "低"
+      }
+    },
+    "attendance_results": {
+      "recentRange": "直近30日 ± のイベント",
+      "empty": "対象のイベントがありません",
+      "noData": "出欠データがありません",
+      "memberTotal": "/ {total}名",
+      "status": {
+        "yes": "出席",
+        "no": "欠席",
+        "maybe": "未定",
+        "pending": "未回答"
+      }
     }
   },
   "swipeWidgets": {

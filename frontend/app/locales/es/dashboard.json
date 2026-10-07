@@ -256,6 +256,34 @@
       "detail_status": "ステータス",
       "detail_description_changed": "詳細が更新されました",
       "unknown": "アクションしました"
+    },
+    "recent_content": {
+      "blogAnnouncements": "Blog y anuncios",
+      "latestPosts": "Últimas publicaciones",
+      "viewAll": "Ver todo",
+      "noPublishedPosts": "Aún no hay publicaciones",
+      "noFollowedPosts": "No hay publicaciones de blogs que sigues",
+      "bulletinAnnouncements": "Tablón y anuncios",
+      "noThreads": "Aún no hay hilos en el tablón",
+      "priority": {
+        "critical": "Crítico",
+        "important": "Importante",
+        "warning": "Aviso",
+        "info": "Información",
+        "low": "Baja"
+      }
+    },
+    "attendance_results": {
+      "recentRange": "Eventos de ±30 días",
+      "empty": "No hay eventos",
+      "noData": "No hay datos de asistencia",
+      "memberTotal": "/ {total}",
+      "status": {
+        "yes": "Asiste",
+        "no": "Ausente",
+        "maybe": "Quizá",
+        "pending": "Sin respuesta"
+      }
     }
   },
   "swipeWidgets": {

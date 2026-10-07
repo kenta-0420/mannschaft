@@ -256,6 +256,34 @@
       "detail_status": "Status",
       "detail_description_changed": "Description updated",
       "unknown": "did something"
+    },
+    "recent_content": {
+      "blogAnnouncements": "Blog & Announcements",
+      "latestPosts": "Latest Posts",
+      "viewAll": "View all",
+      "noPublishedPosts": "No published posts yet",
+      "noFollowedPosts": "No blog posts from people you follow",
+      "bulletinAnnouncements": "Bulletin Board & Announcements",
+      "noThreads": "No bulletin board threads yet",
+      "priority": {
+        "critical": "Critical",
+        "important": "Important",
+        "warning": "Warning",
+        "info": "Notice",
+        "low": "Low"
+      }
+    },
+    "attendance_results": {
+      "recentRange": "Events within ±30 days",
+      "empty": "No events found",
+      "noData": "No attendance data",
+      "memberTotal": "/ {total}",
+      "status": {
+        "yes": "Attending",
+        "no": "Absent",
+        "maybe": "Maybe",
+        "pending": "No response"
+      }
     }
   },
   "swipeWidgets": {

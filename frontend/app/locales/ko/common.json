@@ -772,7 +772,8 @@
       "createFailed": "作成に失敗しました",
       "deleteSuccess": "タグを削除しました",
       "deleteFailed": "削除に失敗しました"
-    }
+    },
+    "pageTitle": "블로그·공지"
   },
   "todo": {
     "backToList": "할 일 목록으로 돌아가기",

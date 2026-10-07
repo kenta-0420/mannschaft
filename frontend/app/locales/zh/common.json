@@ -772,7 +772,8 @@
       "createFailed": "作成に失敗しました",
       "deleteSuccess": "タグを削除しました",
       "deleteFailed": "削除に失敗しました"
-    }
+    },
+    "pageTitle": "博客与公告"
   },
   "todo": {
     "backToList": "返回待办列表",

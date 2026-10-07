@@ -32,8 +32,9 @@ export function useHolidays() {
   /**
    * 指定した日付が祝日であれば祝日名を返す。祝日でなければ null を返す。
    * @param dateStr - "YYYY-MM-DD" 形式の日付文字列
+   * @param lang - 祝日名の表示言語（i18n locale。未指定なら date-holidays の国既定言語）
    */
-  function getHoliday(dateStr: string): string | null {
+  function getHoliday(dateStr: string, lang?: string): string | null {
     const parts = dateStr.split('-').map(Number)
     const year = parts[0] ?? 0
     const month = parts[1] ?? 1
@@ -41,6 +42,7 @@ export function useHolidays() {
     // タイムゾーン問題を避けるためローカル日付で生成する
     const date = new Date(year, month - 1, day)
     const hd = new Holidays(countryCode.value)
+    if (lang) hd.setLanguages(lang)
     const results = hd.isHoliday(date)
     if (!results) return null
     // public（法定祝日）を優先し、なければ最初の結果を使用する

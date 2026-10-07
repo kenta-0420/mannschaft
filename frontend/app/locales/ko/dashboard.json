@@ -256,6 +256,34 @@
       "detail_status": "ステータス",
       "detail_description_changed": "詳細が更新されました",
       "unknown": "アクションしました"
+    },
+    "recent_content": {
+      "blogAnnouncements": "블로그·공지",
+      "latestPosts": "최신 글",
+      "viewAll": "모두 보기",
+      "noPublishedPosts": "공개된 글이 아직 없습니다",
+      "noFollowedPosts": "팔로우 중인 블로그 글이 없습니다",
+      "bulletinAnnouncements": "게시판·공지",
+      "noThreads": "게시판 스레드가 아직 없습니다",
+      "priority": {
+        "critical": "긴급",
+        "important": "중요",
+        "warning": "주의",
+        "info": "알림",
+        "low": "낮음"
+      }
+    },
+    "attendance_results": {
+      "recentRange": "최근 ±30일 이벤트",
+      "empty": "대상 이벤트가 없습니다",
+      "noData": "출석 데이터가 없습니다",
+      "memberTotal": "/ {total}명",
+      "status": {
+        "yes": "출석",
+        "no": "결석",
+        "maybe": "미정",
+        "pending": "미응답"
+      }
     }
   },
   "swipeWidgets": {

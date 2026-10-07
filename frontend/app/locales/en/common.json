@@ -772,7 +772,8 @@
       "createFailed": "Failed to create",
       "deleteSuccess": "Tag deleted",
       "deleteFailed": "Failed to delete"
-    }
+    },
+    "pageTitle": "Blog & Announcements"
   },
   "todo": {
     "backToList": "Back to TODO list",

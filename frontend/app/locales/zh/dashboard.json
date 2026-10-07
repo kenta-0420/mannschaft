@@ -256,6 +256,34 @@
       "detail_status": "ステータス",
       "detail_description_changed": "詳細が更新されました",
       "unknown": "アクションしました"
+    },
+    "recent_content": {
+      "blogAnnouncements": "博客与公告",
+      "latestPosts": "最新文章",
+      "viewAll": "查看全部",
+      "noPublishedPosts": "暂无已发布的文章",
+      "noFollowedPosts": "没有关注对象的博客文章",
+      "bulletinAnnouncements": "公告板与通知",
+      "noThreads": "暂无公告板主题",
+      "priority": {
+        "critical": "紧急",
+        "important": "重要",
+        "warning": "注意",
+        "info": "通知",
+        "low": "低"
+      }
+    },
+    "attendance_results": {
+      "recentRange": "前后30天内的活动",
+      "empty": "没有符合条件的活动",
+      "noData": "没有出勤数据",
+      "memberTotal": "/ {total}人",
+      "status": {
+        "yes": "出席",
+        "no": "缺席",
+        "maybe": "待定",
+        "pending": "未回复"
+      }
     }
   },
   "swipeWidgets": {

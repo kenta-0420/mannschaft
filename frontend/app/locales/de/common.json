@@ -772,7 +772,8 @@
       "createFailed": "作成に失敗しました",
       "deleteSuccess": "タグを削除しました",
       "deleteFailed": "削除に失敗しました"
-    }
+    },
+    "pageTitle": "Blog & Ankündigungen"
   },
   "todo": {
     "backToList": "Zurück zur Aufgabenliste",
