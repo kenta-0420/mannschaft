@@ -1,7 +1,7 @@
 import { test, expect, type Page, type Browser } from '@playwright/test'
 import { loginViaApi } from '../fixtures/auth'
 import { ActivitySyncFixture, ADMIN, PASSWORD, READER, SCHEDULE_EDITOR,
-  OUTSIDER, OTHER_TENANT, resolveScope, type Activity, type Scope } from '../fixtures/activity-sync'
+  OUTSIDER, OTHER_TENANT, resolveScope, success, type Activity, type Scope } from '../fixtures/activity-sync'
 
 // fixture/ログイン/後始末のみ API を利用。対象操作は実クリック・入力で通す。
 async function signIn(page: Page, email = ADMIN): Promise<void> {
@@ -142,6 +142,8 @@ test('閲覧専用と他tenant・匿名は画面と直 URL で認可される', 
     await reader.getByTestId(`activity-detail-${published.id}`).click()
     await expect(reader.getByTestId('activity-description')).toContainText('保持する活動本文')
     await expect(reader.getByTestId('activity-template-fields')).toContainText('0')
+    await expect(reader.getByTestId('activity-template-fields')).toContainText('false')
+    await expect(reader.getByTestId('activity-template-fields')).toContainText('—')
     await expect(reader.getByTestId('activity-template-fields')).toContainText('過去値')
     await expect(reader.getByTestId('activity-edit-draft')).toHaveCount(0)
     await expect(reader.getByTestId('activity-publish')).toHaveCount(0)
@@ -160,6 +162,101 @@ test('閲覧専用と他tenant・匿名は画面と直 URL で認可される', 
     for (const member of contexts) await member.context().close()
     await fixture.cleanup()
   }
+})
+
+for (const options of [{ allDay: true, endAt: null }, { allDay: false, endAt: null }]) {
+  test(`${options.allDay ? '終日' : '終了なし'}予定から画面で下書き作成し null 時刻を保持する`, async ({ page }) => {
+    await signIn(page)
+    const scope = await resolveScope('TEAM')
+    const fixture = new ActivitySyncFixture(page, scope)
+    try {
+      const title = `実機空終了-${options.allDay}-${Date.now()}`
+      const id = await fixture.schedule(title, options)
+      await schedule(page, scope, id)
+      const [response] = await Promise.all([
+        page.waitForResponse((res) => res.url().includes('/activities/draft-from-schedule') && res.request().method() === 'POST'),
+        page.getByTestId('schedule-create-activity').click(),
+      ])
+      expect(response.ok()).toBeTruthy()
+      const activity = (await response.json() as { data: Activity }).data
+      fixture.activityIds.push(activity.id)
+      await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
+      expect(activity.activityEndDate).toBeNull()
+      expect(activity.activityTimeEnd).toBeNull()
+      if (options.allDay) {
+        expect(activity.activityTimeStart).toBeNull()
+        await expect(page.getByTestId('activity-datetime')).not.toContainText('23:00')
+      } else await expect(page.getByTestId('activity-datetime')).toContainText('23:00')
+      const persisted = await fixture.detail(activity.id)
+      expect(persisted.activityEndDate).toBeNull()
+      expect(persisted.activityTimeEnd).toBeNull()
+    } finally { await fixture.cleanup() }
+  })
+}
+
+test('公開済みの差分を mobile 390/360 と keyboard で確認・選択する', async ({ page }, testInfo) => {
+  await signIn(page)
+  const scope = await resolveScope('TEAM')
+  const fixture = new ActivitySyncFixture(page, scope)
+  try {
+    const id = await fixture.schedule(`実機公開同期-${Date.now()}`)
+    const activity = await fixture.published(`実機公開値-${Date.now()}`, id)
+    const before = await fixture.detail(activity.id)
+    for (const width of [390, 360]) {
+      await page.setViewportSize({ width, height: 844 })
+      await schedule(page, scope, id)
+      const title = `実機公開選択-${width}-${Date.now()}`
+      await editScheduleTitle(page, title)
+      await expect(page.getByTestId('activity-sync-apply')).toBeVisible()
+      expect((await fixture.detail(activity.id)).title).toBe(width === 390 ? before.title : activity.title)
+      const checkbox = page.locator(`[id="sync-${activity.id}-title"]`)
+      await checkbox.focus()
+      await page.keyboard.press('Space')
+      await expect(checkbox).toBeChecked()
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
+      expect(overflow, `${width}px 画面全体は横パンしない`).toBe(false)
+      for (const key of ['activity-sync-cancel', 'activity-sync-schedule-only', 'activity-sync-apply']) {
+        const box = await page.getByTestId(key).boundingBox()
+        expect(box?.height).toBeGreaterThanOrEqual(44)
+        expect(box?.width).toBeGreaterThanOrEqual(44)
+      }
+      await testInfo.attach(`公開済み差分-${width}px`, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+      await page.getByTestId('activity-sync-apply').focus()
+      await mutation(page, `/schedules/${id}`, () => page.keyboard.press('Enter'))
+      activity.title = title
+      await detail(page, activity)
+      const after = await fixture.detail(activity.id)
+      expect(after.status).toBe('PUBLISHED')
+      expect(after.description).toBe(before.description)
+      expect(after.fieldValues).toBe(before.fieldValues)
+    }
+  } finally { await fixture.cleanup() }
+})
+
+test('元予定が中止・削除されても記録本文を保持し参照状態を画面で示す', async ({ page }, testInfo) => {
+  await signIn(page)
+  const scope = await resolveScope('TEAM')
+  const fixture = new ActivitySyncFixture(page, scope)
+  try {
+    const id = await fixture.schedule(`実機参照元-${Date.now()}`)
+    const activity = await fixture.published(`実機残す記録-${Date.now()}`, id)
+    await detail(page, activity)
+    await page.getByTestId('activity-source-schedule').click()
+    await expect(page).toHaveURL(new RegExp(`eventId=${id}`))
+    // 中止/削除済み参照の fixture。検証対象は保持された記録と参照表示。
+    await success(await page.request.post(`${fixture.schedules}/${id}/cancel`))
+    await detail(page, activity)
+    await expect(page.getByText('元の予定は中止されています', { exact: true })).toBeVisible()
+    await expect(page.getByTestId('activity-source-schedule')).toBeVisible()
+    await success(await page.request.delete(`${fixture.schedules}/${id}?updateScope=THIS_ONLY`))
+    fixture.scheduleIds.splice(fixture.scheduleIds.indexOf(id), 1)
+    await detail(page, activity)
+    await expect(page.getByTestId('activity-source-schedule')).toHaveCount(0)
+    await expect(page.getByText('元の予定は閲覧できません', { exact: true })).toBeVisible()
+    await expect(page.getByTestId('activity-description')).toContainText('保持する活動本文')
+    await testInfo.attach('参照元削除後の保持記録', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+    expect((await fixture.detail(activity.id)).description).toBe(activity.description)
+  } finally { await fixture.cleanup() }
 })
 
 test('予定のみ編集権の MEMBER が予定を更新しても他作者の記録を上書きしない', async ({ page, browser }) => {

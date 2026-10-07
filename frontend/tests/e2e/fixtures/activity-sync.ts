@@ -23,6 +23,10 @@ export async function data<T>(response: APIResponse): Promise<T> {
   return (await response.json() as { data: T }).data
 }
 
+export async function success(response: APIResponse): Promise<void> {
+  expect(response.ok(), `${response.url()} ${response.status()} ${await response.text()}`).toBeTruthy()
+}
+
 async function database(): Promise<Connection> {
   const values = ['E2E_DB_PORT', 'E2E_DB_NAME', 'E2E_DB_USER', 'E2E_DB_PASSWORD'] as const
   const expected = ['13310', 'cmp2610071510', 'cmp_test', 'cmp-test-only']
@@ -56,10 +60,11 @@ export class ActivitySyncFixture {
   get query(): string { return `scope_type=${this.scope.type}&scope_id=${this.scope.id}` }
   get schedules(): string { return `${API}/${this.scope.type === 'TEAM' ? 'teams' : 'organizations'}/${this.scope.id}/schedules` }
 
-  async schedule(title: string): Promise<number> {
+  async schedule(title: string, options: { allDay?: boolean; endAt?: string | null } = {}): Promise<number> {
     const schedule = await data<{ id: number }>(await this.page.request.post(this.schedules, { data: {
-      title, startAt: '2026-10-15T23:00:00+09:00', endAt: '2026-10-16T01:00:00+09:00',
-      allDay: false, eventType: 'EVENT', visibility: 'MEMBERS_ONLY', attendanceRequired: false,
+      title, startAt: '2026-10-15T23:00:00+09:00',
+      endAt: options.endAt === undefined ? '2026-10-16T01:00:00+09:00' : options.endAt,
+      allDay: options.allDay ?? false, eventType: 'EVENT', visibility: 'MEMBERS_ONLY', attendanceRequired: false,
       description: '予定本文は活動本文に同期しない', location: '専用会場',
     } }))
     this.scheduleIds.push(schedule.id)
@@ -117,13 +122,13 @@ export class ActivitySyncFixture {
 
   async cleanup(): Promise<void> {
     // 所有 ID だけを後始末する。seed fixture 一括削除・TRUNCATE は行わない。
-    for (const id of this.activityIds) await data(await this.page.request.delete(`${API}/activities/${id}`))
-    for (const id of this.scheduleIds) await data(await this.page.request.delete(`${this.schedules}/${id}?delete_scope=THIS_ONLY`))
-    for (const id of this.templateIds) await data(await this.page.request.delete(`${API}/activity-templates/${id}`))
+    for (const id of this.activityIds) await success(await this.page.request.delete(`${API}/activities/${id}`))
+    for (const id of this.scheduleIds) await success(await this.page.request.delete(`${this.schedules}/${id}?updateScope=THIS_ONLY`))
+    for (const id of this.templateIds) await success(await this.page.request.delete(`${API}/activity-templates/${id}`))
     if (this.editorGroup) {
       const query = `scopeType=${this.scope.type}&scopeId=${this.scope.id}`
-      await data(await this.page.request.patch(`${API}/admin/permission-groups/${this.editorGroup.id}/unassign/${this.editorGroup.userId}?${query}`))
-      await data(await this.page.request.delete(`${API}/admin/permission-groups/${this.editorGroup.id}?${query}`))
+      await success(await this.page.request.patch(`${API}/admin/permission-groups/${this.editorGroup.id}/unassign/${this.editorGroup.userId}?${query}`))
+      await success(await this.page.request.delete(`${API}/admin/permission-groups/${this.editorGroup.id}?${query}`))
     }
   }
 }
