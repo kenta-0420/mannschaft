@@ -280,6 +280,41 @@ class ActivityScheduleSyncIntegrationTest extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    void 旧複数リンクの一覧は公開と下書きが増えても認可SQL数を増やさない() throws Exception {
+        create();
+        for (int i = 0; i < 2; i++) legacyLink(i);
+        em.flush();
+        em.clear();
+        var statistics = em.getEntityManagerFactory().unwrap(org.hibernate.SessionFactory.class).getStatistics();
+        boolean previouslyEnabled = statistics.isStatisticsEnabled();
+        statistics.setStatisticsEnabled(true);
+        try {
+            statistics.clear();
+            var first = mvc.perform(get("/api/v1/teams/{team}/schedules/{schedule}/activities", teamId, scheduleId))
+                    .andExpect(status().isOk()).andReturn();
+            long initialQueries = statistics.getPrepareStatementCount();
+            assertThat(json.readTree(first.getResponse().getContentAsString()).path("data").size()).isEqualTo(3);
+            for (int i = 2; i < 10; i++) legacyLink(i);
+            em.flush();
+            em.clear();
+            statistics.clear();
+            var multiple = mvc.perform(get("/api/v1/teams/{team}/schedules/{schedule}/activities", teamId, scheduleId))
+                    .andExpect(status().isOk()).andReturn();
+            assertThat(json.readTree(multiple.getResponse().getContentAsString()).path("data").size()).isEqualTo(11);
+            assertThat(statistics.getPrepareStatementCount()).isEqualTo(initialQueries);
+        } finally {
+            statistics.setStatisticsEnabled(previouslyEnabled);
+        }
+    }
+
+    private void legacyLink(int index) {
+        activities.save(com.mannschaft.app.activity.entity.ActivityResultEntity.builder().scopeType(ActivityScopeType.TEAM)
+                .scopeId(teamId).scheduleId(scheduleId).createdBy(940200002L).title("旧関連" + index)
+                .activityDate(java.time.LocalDate.of(2026, 10, 10))
+                .status(index % 2 == 0 ? ActivityStatus.DRAFT : ActivityStatus.PUBLISHED).build());
+    }
+
+    @Test
     void 非作者下書きは誤versionでも版競合より先に拒否する() throws Exception {
         JsonNode activity = create();
         MembershipTestHelper.insertMembership(em, 940200002L, ScopeType.TEAM, teamId, RoleKind.MEMBER);

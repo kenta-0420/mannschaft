@@ -52,7 +52,7 @@ public class ActivityScheduleSyncService {
         List<ActivityResultEntity> linked = results.findAllByScheduleIdOrderByIdAsc(source.id()).stream()
                 .filter(a -> sameScope(a, source)).toList();
         if (!linked.isEmpty()) {
-            return linked.stream().filter(a -> visible(a, userId)).findFirst().map(ActivityResultEntity::getId)
+            return visibleLinks(linked, source, userId).stream().findFirst().map(ActivityResultEntity::getId)
                     .orElseThrow(() -> new BusinessException(ActivityErrorCode.DUPLICATE_SCHEDULE_ACTIVITY));
         }
         ActivityScheduleValues values = ActivityScheduleValues.from(source);
@@ -76,8 +76,20 @@ public class ActivityScheduleSyncService {
     }
 
     public List<ActivityRecordResponse> linked(ScheduleActivitySource source, Long userId) {
-        return results.findAllByScheduleIdOrderByIdAsc(source.id()).stream()
-                .filter(a -> sameScope(a, source) && visible(a, userId)).map(mapper::toActivityRecordResponse).toList();
+        var linked = results.findAllByScheduleIdOrderByIdAsc(source.id()).stream()
+                .filter(a -> sameScope(a, source)).toList();
+        return visibleLinks(linked, source, userId).stream().map(mapper::toActivityRecordResponse).toList();
+    }
+
+    /** 同一スコープの旧複数リンクも認可SQLを行数に比例させず判定する。 */
+    private List<ActivityResultEntity> visibleLinks(List<ActivityResultEntity> linked, ScheduleActivitySource source, Long userId) {
+        if (linked.isEmpty()) return List.of();
+        var permission = permission(source, userId);
+        if (!permission.member()) return List.of();
+        Set<Long> published = visibility.filterAccessible(ReferenceType.ACTIVITY_RESULT,
+                linked.stream().filter(a -> a.getStatus() != ActivityStatus.DRAFT).map(ActivityResultEntity::getId).toList(), userId);
+        return linked.stream().filter(a -> a.getStatus() == ActivityStatus.DRAFT
+                ? Objects.equals(a.getCreatedBy(), userId) || permission.admin() : published.contains(a.getId())).toList();
     }
 
     public List<ActivitySyncPreviewEntry> preview(List<ScheduleActivitySource> projected, Long userId, boolean lock) {
@@ -196,20 +208,6 @@ public class ActivityScheduleSyncService {
             }
         });
         return changes;
-    }
-
-    private boolean visible(ActivityResultEntity a, Long userId) {
-        try { access.checkMembership(userId, a.getScopeType(), a.getScopeId()); }
-        catch (BusinessException denied) { return false; }
-        if (a.getStatus() == ActivityStatus.DRAFT) {
-            return Objects.equals(a.getCreatedBy(), userId) || access.isAdminOrAbove(userId, a.getScopeType(), a.getScopeId());
-        }
-        return visibility.canView(ReferenceType.ACTIVITY_RESULT, a.getId(), userId);
-    }
-
-    private boolean editable(ActivityResultEntity a, Long userId) {
-        if (!visible(a, userId)) return false;
-        return Objects.equals(a.getCreatedBy(), userId) || access.isAdminOrAbove(userId, a.getScopeType(), a.getScopeId());
     }
 
     private boolean sameScope(ActivityResultEntity a, ScheduleActivitySource source) {
