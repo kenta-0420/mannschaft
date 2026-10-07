@@ -803,8 +803,13 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 1 行は tx 内に残すので残す）。計 33 行（すべて認可由来の MembershipRepository / RoleRepository / UserRoleRepository /
      * UserCareLinkRepository 等への到達）。ClassHomeroomService・DisclosureService・AttendanceRequirementService は
      * 本 PR の対象外で残す。main のストアとの差分は「追加 0・削除 33（上記のキーのみ）」。{@code 7409 → 7376}。</p>
+     *
+     * <p>CMP-261007-2052（ブログ一覧の非所属者開放）: {@code BlogPostService.listByTeam} / {@code listByOrganization} から
+     * メンバー限定（{@code AccessControlService#checkMembership}）を外し、スコープの門は取引を持たない
+     * {@code BlogScopeAccessGuard} へ出した（Controller が先に呼ぶ）。これにより両入口から MembershipRepository への
+     * 到達 2 行が解消。追加 0（FreezingArchRule の既定挙動・解消済み違反の自動削除で反映）。{@code 7364 → 7362}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7364;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7362;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
