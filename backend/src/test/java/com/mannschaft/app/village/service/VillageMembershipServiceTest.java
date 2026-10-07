@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.service;
 
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.village.VillageErrorCode;
@@ -21,7 +22,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -29,7 +29,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -76,6 +75,9 @@ class VillageMembershipServiceTest {
     private static final Long ORG_ID = 89L;
 
     @Mock
+    private UserRowLockService userRowLockService;
+
+    @Mock
     private VillageRepository villageRepository;
     @Mock
     private VillageMembershipRepository membershipRepository;
@@ -86,8 +88,15 @@ class VillageMembershipServiceTest {
     @Mock
     private VillageAccessGate accessGate;
 
-    @InjectMocks
     private VillageMembershipService service;
+
+    @BeforeEach
+    void wireRealAdmissionSlots() {
+        org.mockito.Mockito.lenient().when(userRowLockService.lock(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(UserRowLockService.UserState.ACTIVE);
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(userRowLockService, membershipRepository);
+        service = new VillageMembershipService(membershipRepository, slots, userRoleRepository, accessGate);
+    }
 
     /**
      * 村サービスの村存在確認は {@link VillageAccessGate} へ移った。
@@ -134,10 +143,9 @@ class VillageMembershipServiceTest {
     @DisplayName("FREE 村 USER 参加: 即時参加し membership が作成される")
     void join_freeVillage_user_success() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID)).willReturn(Optional.empty());
-        given(membershipRepository.findBySubjectTypeAndSubjectIdAndLeftAtIsNull(
-                VillageSubjectType.USER, ACTOR_USER_ID)).willReturn(List.of());
+        given(membershipRepository.findAdmissionPresenceForUpdate(
+                VILLAGE_ID, "USER", ACTOR_USER_ID)).willReturn(List.of());
+        given(membershipRepository.findAdmissionSlotsForUpdate(ACTOR_USER_ID)).willReturn(List.of());
         given(membershipRepository.save(any(VillageMembershipEntity.class)))
                 .willAnswer(inv -> {
                     VillageMembershipEntity e = inv.getArgument(0);
@@ -198,8 +206,8 @@ class VillageMembershipServiceTest {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
         given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID))
                 .willReturn(List.of(ACTOR_USER_ID, 999L));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                VILLAGE_ID, VillageSubjectType.ORGANIZATION, ORG_ID)).willReturn(Optional.empty());
+        given(membershipRepository.findAdmissionPresenceForUpdate(
+                VILLAGE_ID, "ORGANIZATION", ORG_ID)).willReturn(List.of());
         given(membershipRepository.save(any(VillageMembershipEntity.class)))
                 .willAnswer(inv -> {
                     VillageMembershipEntity e = inv.getArgument(0);
@@ -220,8 +228,8 @@ class VillageMembershipServiceTest {
     void join_alreadyMember() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
         VillageMembershipEntity existing = activeMembership(VillageSubjectType.USER, ACTOR_USER_ID, VillageRole.VILLAGER);
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID)).willReturn(Optional.of(existing));
+        given(membershipRepository.findAdmissionPresenceForUpdate(
+                VILLAGE_ID, "USER", ACTOR_USER_ID)).willReturn(List.of(VillageMembershipSlotTestFixture.presence(existing.getBannedAt() != null)));
 
         assertThatThrownBy(() -> service.join(
                 VILLAGE_ID, ACTOR_USER_ID,
@@ -236,8 +244,8 @@ class VillageMembershipServiceTest {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
         VillageMembershipEntity banned = activeMembership(VillageSubjectType.USER, ACTOR_USER_ID, VillageRole.VILLAGER);
         banned.setBannedAt(LocalDateTime.now());
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID)).willReturn(Optional.of(banned));
+        given(membershipRepository.findAdmissionPresenceForUpdate(
+                VILLAGE_ID, "USER", ACTOR_USER_ID)).willReturn(List.of(VillageMembershipSlotTestFixture.presence(banned.getBannedAt() != null)));
 
         assertThatThrownBy(() -> service.join(
                 VILLAGE_ID, ACTOR_USER_ID,
@@ -250,14 +258,10 @@ class VillageMembershipServiceTest {
     @DisplayName("参加上限 100 村到達 → VILLAGE_012")
     void join_participationLimit_exceeded() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID)).willReturn(Optional.empty());
-        List<VillageMembershipEntity> hundredVillages = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
-            hundredVillages.add(activeMembership(VillageSubjectType.USER, ACTOR_USER_ID, VillageRole.VILLAGER));
-        }
-        given(membershipRepository.findBySubjectTypeAndSubjectIdAndLeftAtIsNull(
-                VillageSubjectType.USER, ACTOR_USER_ID)).willReturn(hundredVillages);
+        given(membershipRepository.findAdmissionPresenceForUpdate(
+                VILLAGE_ID, "USER", ACTOR_USER_ID)).willReturn(List.of());
+        given(membershipRepository.findAdmissionSlotsForUpdate(ACTOR_USER_ID))
+                .willReturn(VillageMembershipSlotTestFixture.occupied(100));
 
         assertThatThrownBy(() -> service.join(
                 VILLAGE_ID, ACTOR_USER_ID,
@@ -270,19 +274,12 @@ class VillageMembershipServiceTest {
     @DisplayName("30 村超過のソフト警告が participationWarn=true で返る")
     void join_softWarn_over30() {
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
-        given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID)).willReturn(Optional.empty());
+        given(membershipRepository.findAdmissionPresenceForUpdate(
+                VILLAGE_ID, "USER", ACTOR_USER_ID)).willReturn(List.of());
 
-        // 1 回目: 上限チェック用（30 件）、2 回目: warn 判定用（31 件）
-        List<VillageMembershipEntity> thirty = new ArrayList<>();
-        for (int i = 0; i < 30; i++) {
-            thirty.add(activeMembership(VillageSubjectType.USER, ACTOR_USER_ID, VillageRole.VILLAGER));
-        }
-        List<VillageMembershipEntity> thirtyOne = new ArrayList<>(thirty);
-        thirtyOne.add(activeMembership(VillageSubjectType.USER, ACTOR_USER_ID, VillageRole.VILLAGER));
-        given(membershipRepository.findBySubjectTypeAndSubjectIdAndLeftAtIsNull(
-                VillageSubjectType.USER, ACTOR_USER_ID))
-                .willReturn(thirty, thirtyOne);
+        // current readの30枠に今回の1枠を加え、保存後31件の警告を判定する。
+        given(membershipRepository.findAdmissionSlotsForUpdate(ACTOR_USER_ID))
+                .willReturn(VillageMembershipSlotTestFixture.occupied(30));
         given(membershipRepository.save(any(VillageMembershipEntity.class)))
                 .willAnswer(inv -> {
                     VillageMembershipEntity e = inv.getArgument(0);

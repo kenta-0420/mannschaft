@@ -1,6 +1,7 @@
 package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.MembershipBanRequest;
@@ -44,7 +45,7 @@ import java.util.UUID;
  *   <li>原則1: TeamMember/OrganizationMember 相当の {@link UserRoleRepository} は Read-only で呼ぶ。
  *       subject_id に FK は張らない（B1 で対応済み）。</li>
  *   <li>原則5: {@code @Transactional} は village ドメインに閉じる。
- *       UserRoleRepository は読取のみで呼び、書き込みは行わない。</li>
+ *       UserRoleRepository は読取のみ。入村ではauthの狭いUSER行ロック窓口を同一TXで使う。</li>
  * </ul>
  *
  * <p>HEADMAN 引き継ぎ仕様:</p>
@@ -66,6 +67,7 @@ public class VillageMembershipService {
     static final int PARTICIPATION_SOFT_WARN_THRESHOLD = 30;
 
     private final VillageMembershipRepository membershipRepository;
+    private final VillageMembershipSlotService slotService;
     /** Read-only: チーム/組織の ADMIN 権限検証用（原則1 FK 不在）。 */
     private final UserRoleRepository userRoleRepository;
     private final VillageAccessGate accessGate;
@@ -93,27 +95,13 @@ public class VillageMembershipService {
         // 主体検証（IDOR / 代表権限）
         validateSubjectAuthorization(actorUserId, request.subjectType(), request.subjectId());
 
-        // 既存の現役メンバーシップを検出
-        Optional<VillageMembershipEntity> existing = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        villageId, request.subjectType(), request.subjectId());
-        if (existing.isPresent()) {
-            VillageMembershipEntity m = existing.get();
-            if (m.getBannedAt() != null) {
-                throw new BusinessException(VillageErrorCode.MEMBER_BANNED);
-            }
-            throw new BusinessException(VillageErrorCode.ALREADY_MEMBER);
+        boolean userSubject = request.subjectType() == VillageSubjectType.USER;
+        if (userSubject && !slotService.lockUser(request.subjectId())) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
-
-        // 参加上限（USER のみ。TEAM/ORG は別管理）
-        if (request.subjectType() == VillageSubjectType.USER) {
-            int activeCount = membershipRepository
-                    .findBySubjectTypeAndSubjectIdAndLeftAtIsNull(VillageSubjectType.USER, request.subjectId())
-                    .size();
-            if (activeCount >= PARTICIPATION_HARD_LIMIT) {
-                throw new BusinessException(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED);
-            }
-        }
+        slotService.ensureNotCurrentMember(villageId, request.subjectType(), request.subjectId());
+        VillageMembershipSlotService.Allocation allocation = userSubject
+                ? slotService.allocate(request.subjectId()) : null;
 
         // 退村中レコードがあれば履歴として残し、新規行で再参加（B1 設計の UNIQUE に準拠）
         VillageMembershipEntity created = membershipRepository.save(
@@ -121,6 +109,7 @@ public class VillageMembershipService {
                         .villageId(villageId)
                         .subjectType(request.subjectType())
                         .subjectId(request.subjectId())
+                        .userSlot(allocation == null ? null : allocation.slot())
                         .role(VillageRole.VILLAGER)
                         .joinedAt(LocalDateTime.now())
                         .build()
@@ -128,10 +117,7 @@ public class VillageMembershipService {
         log.info("Village joined: villageId={} subjectType={} subjectId={} membershipId={}",
                 villageId, request.subjectType(), request.subjectId(), created.getId());
 
-        boolean warn = request.subjectType() == VillageSubjectType.USER
-                && (membershipRepository
-                        .findBySubjectTypeAndSubjectIdAndLeftAtIsNull(VillageSubjectType.USER, request.subjectId())
-                        .size() > PARTICIPATION_SOFT_WARN_THRESHOLD);
+        boolean warn = allocation != null && allocation.joinedCount() > PARTICIPATION_SOFT_WARN_THRESHOLD;
         return MembershipResponse.ofJoined(created, resolveDisplayName(created), warn);
     }
 

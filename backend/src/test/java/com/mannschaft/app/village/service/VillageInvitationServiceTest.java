@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.service;
 
+import com.mannschaft.app.auth.service.UserRowLockService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ErrorCode;
 import com.mannschaft.app.village.VillageErrorCode;
@@ -22,9 +23,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import com.mannschaft.app.common.token.SecretTokenVault;
-import org.mockito.InjectMocks;
 import org.mockito.Spy;
 import org.mockito.Mock;
+import jakarta.persistence.EntityManager;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -43,7 +44,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -95,6 +95,11 @@ class VillageInvitationServiceTest {
     private static final String VALID_TOKEN = "valid-token-00000000000000000000000000000";
 
     @Mock
+    private UserRowLockService userRowLockService;
+    @Mock
+    private EntityManager entityManager;
+
+    @Mock
     private VillageInvitationRepository invitationRepository;
 
     @Mock
@@ -120,8 +125,15 @@ class VillageInvitationServiceTest {
     @Spy
     private java.time.Clock clock = java.time.Clock.fixed(java.time.Instant.now(), java.time.ZoneOffset.UTC);
 
-    @InjectMocks
     private VillageInvitationService service;
+
+    @BeforeEach
+    void wireRealAdmissionSlots() {
+        org.mockito.Mockito.lenient().when(userRowLockService.lock(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(UserRowLockService.UserState.ACTIVE);
+        VillageMembershipSlotService slots = new VillageMembershipSlotService(userRowLockService, membershipRepository);
+        service = new VillageInvitationService(invitationRepository, membershipRepository, slots, entityManager, villageAccessGate, secretTokenVault, clock);
+    }
 
     @BeforeEach
     void setUpGate() {
@@ -331,7 +343,7 @@ class VillageInvitationServiceTest {
         foreign.setUsedCount(0);
         foreign.setExpiresAt(Instant.now().plus(1, ChronoUnit.HOURS));
         foreign.setCreatedByMembershipId(HEADMAN_MEMBERSHIP_ID);
-        lenient().when(invitationRepository.findById(OTHER_INVITATION_ID))
+        lenient().when(invitationRepository.findByIdForUpdate(OTHER_INVITATION_ID))
                 .thenReturn(Optional.of(foreign));
 
         Throwable thrown =
@@ -357,7 +369,7 @@ class VillageInvitationServiceTest {
         actorIs(HEADMAN_ID, VillageRole.HEADMAN);
         VillageInvitationEntity revoked = invitation(inv ->
                 inv.setRevokedAt(Instant.now().minus(1, ChronoUnit.HOURS)));
-        lenient().when(invitationRepository.findById(INVITATION_ID)).thenReturn(Optional.of(revoked));
+        lenient().when(invitationRepository.findByIdForUpdate(INVITATION_ID)).thenReturn(Optional.of(revoked));
         Instant firstRevokedAt = revoked.getRevokedAt();
 
         Throwable thrown =
@@ -536,9 +548,9 @@ class VillageInvitationServiceTest {
         VillageMembershipEntity banned =
                 membership(UUID.randomUUID(), VILLAGE_ID, BANNED_ID, VillageRole.VILLAGER);
         banned.setBannedAt(LocalDateTime.now().minusDays(1));
-        lenient().when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        VILLAGE_ID, VillageSubjectType.USER, BANNED_ID))
-                .thenReturn(Optional.of(banned));
+        lenient().when(membershipRepository.findAdmissionPresenceForUpdate(
+                        VILLAGE_ID, "USER", BANNED_ID))
+                .thenReturn(List.of(VillageMembershipSlotTestFixture.presence(banned.getBannedAt() != null)));
 
         ErrorCode code = acceptErrorCode(VALID_TOKEN, BANNED_ID);
 
@@ -553,10 +565,9 @@ class VillageInvitationServiceTest {
         unlistedVillage();
         tokenResolvesTo(usableInvitation());
         actorIs(VILLAGER_ID, VillageRole.VILLAGER);
-        lenient().when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        VILLAGE_ID, VillageSubjectType.USER, VILLAGER_ID))
-                .thenReturn(Optional.of(
-                        membership(UUID.randomUUID(), VILLAGE_ID, VILLAGER_ID, VillageRole.VILLAGER)));
+        lenient().when(membershipRepository.findAdmissionPresenceForUpdate(
+                        VILLAGE_ID, "USER", VILLAGER_ID))
+                .thenReturn(List.of(VillageMembershipSlotTestFixture.presence(false)));
 
         ErrorCode code = acceptErrorCode(VALID_TOKEN, VILLAGER_ID);
 
@@ -569,13 +580,8 @@ class VillageInvitationServiceTest {
     void accept_participationLimitExceeded() {
         unlistedVillage();
         tokenResolvesTo(usableInvitation());
-        List<VillageMembershipEntity> hundred = IntStream.range(0, 100)
-                .mapToObj(i -> membership(UUID.randomUUID(), UUID.randomUUID(),
-                        INVITEE_ID, VillageRole.VILLAGER))
-                .toList();
-        lenient().when(membershipRepository.findBySubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        VillageSubjectType.USER, INVITEE_ID))
-                .thenReturn(hundred);
+        lenient().when(membershipRepository.findAdmissionSlotsForUpdate(INVITEE_ID))
+                .thenReturn(VillageMembershipSlotTestFixture.occupied(100));
 
         ErrorCode code = acceptErrorCode(VALID_TOKEN, INVITEE_ID);
 
@@ -590,10 +596,9 @@ class VillageInvitationServiceTest {
         tokenResolvesTo(usableInvitation());
 
         // 既村人の受諾 → 409 のまま（UNLISTED 向けの 404 畳み込みが PUBLIC へ波及していないこと）。
-        lenient().when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        VILLAGE_ID, VillageSubjectType.USER, VILLAGER_ID))
-                .thenReturn(Optional.of(
-                        membership(UUID.randomUUID(), VILLAGE_ID, VILLAGER_ID, VillageRole.VILLAGER)));
+        lenient().when(membershipRepository.findAdmissionPresenceForUpdate(
+                        VILLAGE_ID, "USER", VILLAGER_ID))
+                .thenReturn(List.of(VillageMembershipSlotTestFixture.presence(false)));
         assertThat(acceptErrorCode(VALID_TOKEN, VILLAGER_ID))
                 .isSameAs(VillageErrorCode.ALREADY_MEMBER);
 

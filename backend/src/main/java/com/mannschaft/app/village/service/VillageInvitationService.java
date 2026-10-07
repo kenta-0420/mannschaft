@@ -16,6 +16,8 @@ import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageInvitationRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -54,11 +55,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class VillageInvitationService {
 
-    /** 1 ユーザーが参加できる村数のハード上限（{@code VillageMembershipService} と同値）。 */
-    private static final int PARTICIPATION_HARD_LIMIT = 100;
-
     private final VillageInvitationRepository invitationRepository;
     private final VillageMembershipRepository membershipRepository;
+    private final VillageMembershipSlotService slotService;
+    private final EntityManager entityManager;
     private final VillageAccessGate villageAccessGate;
 
     /**
@@ -128,10 +128,14 @@ public class VillageInvitationService {
         villageAccessGate.loadActiveVillage(villageId, actorUserId);
         requireHeadmanOrElder(villageId, actorUserId);
 
-        VillageInvitationEntity invitation = invitationRepository.findById(invitationId)
+        VillageInvitationEntity invitation = invitationRepository.findByIdForUpdate(invitationId)
                 .filter(inv -> villageId.equals(inv.getVillageId()))
                 .orElseThrow(VillageInvitationService::foldToAbsent);
 
+        entityManager.refresh(invitation, LockModeType.PESSIMISTIC_WRITE);
+        if (!villageId.equals(invitation.getVillageId())) {
+            throw foldToAbsent();
+        }
         if (invitation.getRevokedAt() != null) {
             // 冪等: 既に失効済みなら何もしない。上書きすると「いつ失効したか」の履歴が壊れる。
             return;
@@ -156,26 +160,19 @@ public class VillageInvitationService {
      */
     @Transactional
     public VillageInvitationAcceptResponse accept(String token, Long actorUserId) {
+        if (token == null || token.isBlank()) {
+            throw foldToAbsent();
+        }
+        if (!slotService.lockUser(actorUserId)) {
+            throw foldToAbsent();
+        }
         VillageInvitationEntity invitation = resolveUsableInvitation(token, actorUserId);
         VillageEntity village = villageAccessGate.findVillageByCapability(invitation.getVillageId())
                 .orElseThrow(VillageInvitationService::foldToAbsent);
 
         // ここから先は「既に村と関係を持つ者」への応答であり、存在は秘密ではない。従来の契約どおり返す。
-        Optional<VillageMembershipEntity> existing = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        village.getId(), VillageSubjectType.USER, actorUserId);
-        if (existing.isPresent()) {
-            if (existing.get().getBannedAt() != null) {
-                throw new BusinessException(VillageErrorCode.MEMBER_BANNED);
-            }
-            throw new BusinessException(VillageErrorCode.ALREADY_MEMBER);
-        }
-        int activeCount = membershipRepository
-                .findBySubjectTypeAndSubjectIdAndLeftAtIsNull(VillageSubjectType.USER, actorUserId)
-                .size();
-        if (activeCount >= PARTICIPATION_HARD_LIMIT) {
-            throw new BusinessException(VillageErrorCode.PARTICIPATION_LIMIT_EXCEEDED);
-        }
+        slotService.ensureNotCurrentMember(village.getId(), VillageSubjectType.USER, actorUserId);
+        Short userSlot = slotService.allocate(actorUserId).slot();
 
         invitation.setUsedCount(invitation.getUsedCount() + 1);
         invitationRepository.save(invitation);
@@ -185,6 +182,7 @@ public class VillageInvitationService {
                         .villageId(village.getId())
                         .subjectType(VillageSubjectType.USER)
                         .subjectId(actorUserId)
+                        .userSlot(userSlot)
                         .role(VillageRole.VILLAGER)
                         .joinedAt(LocalDateTime.now(UserZoneLocalDateTimeParser.SERVER_ZONE))
                         // 「入村のきっかけとなった村人」。招待では発行者、参加申請では承認者が入る（両義）。
@@ -215,6 +213,7 @@ public class VillageInvitationService {
         VillageInvitationEntity invitation =
                 invitationRepository.findByTokenHashForUpdate(secretTokenVault.hash(token))
                         .orElseThrow(VillageInvitationService::foldToAbsent);
+        entityManager.refresh(invitation, LockModeType.PESSIMISTIC_WRITE);
         if (!invitation.isUsable(clock.instant())) {
             throw foldToAbsent();
         }
