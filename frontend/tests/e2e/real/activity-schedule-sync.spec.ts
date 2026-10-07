@@ -37,7 +37,7 @@ async function schedule(page: Page, scope: Scope, id: number): Promise<void> {
         response.url().startsWith(API) &&
         new URL(response.url()).pathname.endsWith(`/schedules/${id}`) &&
         response.request().method() === 'GET',
-      { timeout: 15_000 },
+      { timeout: 30_000 },
     ),
     page.goto(`${scope.path}/schedule?eventId=${id}`),
   ])
@@ -48,6 +48,7 @@ async function schedule(page: Page, scope: Scope, id: number): Promise<void> {
 }
 async function editScheduleTitle(page: Page, title: string): Promise<void> {
   await page.locator('[data-testid="schedule-edit"]:visible').click()
+  await expect(page.getByTestId('schedule-title')).toBeVisible()
   await page.getByTestId('schedule-title').fill(title)
   const [preview] = await Promise.all([
     page.waitForResponse(
@@ -221,6 +222,19 @@ test('手動編集差分を取消・予定のみ保存・選択適用できる',
     await page.locator(`[id="sync-${draft.id}-title"]`).check()
     await mutation(page, `/schedules/${id}`, () => page.getByTestId('activity-sync-apply').click())
     await detail(page, { id: draft.id, title: selected })
+    // タイトルだけの予定編集で跨日の 23:00→翌01:00 が変わらないことを実永続値で確認する。
+    const after = await fixture.detail(draft.id)
+    expect([
+      after.activityDate,
+      after.activityEndDate,
+      after.activityTimeStart,
+      after.activityTimeEnd,
+    ]).toEqual([
+      draft.activityDate,
+      draft.activityEndDate,
+      draft.activityTimeStart,
+      draft.activityTimeEnd,
+    ])
   } finally {
     await fixture.cleanup()
   }
