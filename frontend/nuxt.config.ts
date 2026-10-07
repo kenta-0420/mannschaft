@@ -65,7 +65,8 @@ const connectSrc = [
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   // 本番では Nuxt DevTools を無効化（情報露出・バンドル肥大の抑止）。
-  devtools: { enabled: process.env.NODE_ENV !== 'production' },
+  // simple-git の修正版は default export を持たないため、旧 API を使う DevTools を全環境で無効化する。
+  devtools: { enabled: false },
 
   app: {
     head: {

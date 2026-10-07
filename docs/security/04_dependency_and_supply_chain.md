@@ -128,6 +128,12 @@ braces 側は上記16パッケージについて実監査の既知 `nodes` と�
 
 有効期限は **2026-10-16 UTC 当日まで（2026-10-17T00:00:00Z 以降は当該例外を拒否）**。解除管理は既存 CMP-261003-1229 に集約する。解除条件: `braces` の修正版が公開されたら lock を引き上げ、除外を削除して通常の `npm audit --audit-level=high` に戻す。期限延長を自動では行わない。
 
+### 4.5. simple-git 等の修正版と DevTools 無効化（2026-10-07）
+
+新たに検出された [simple-git](https://github.com/advisories/GHSA-x6jw-m9v5-85vh) / [argv-parser](https://github.com/advisories/GHSA-v5rq-49vh-5v5c) の critical は例外に追加せず、simple-git 4.0.2（argv-parser 2.0.1）へ更新する。[Vue SSR](https://github.com/advisories/GHSA-g2v6-rqmx-r4w6) 3.5.43、[seroval](https://github.com/advisories/GHSA-jp82-f5mq-hwhp) 1.6.8、[source-map-js](https://github.com/advisories/GHSA-68fv-2mgg-jv7q) 1.2.2、[postcss-selector-parser](https://github.com/advisories/GHSA-rj75-hqrm-r3gf) 7.1.6 も既知 advisory の影響範囲外へ更新する。Vue compiler-sfc の実依存要求を満たすため、正規 npm resolver の PostCSS 8.5.29 / nanoid 3.3.20 の node を同期し、既存 platform binding は保持する。
+
+DevTools 3.4.1 / 3.4.2 は simple-git の default import を使い、4.0.2 の named export と互換性がないため、全環境で `devtools.enabled: false` とする。installed Nuxt の静的条件分岐を確認したが、修正後の実 dev 起動・CI・本番生成は別途検証が必要であり、本記録だけで合格とは扱わない。既存 node-forge / braces の期限付き個別例外と経路制限を維持し、critical の例外追加や audit 閾値緩和は行わない。
+
 ## 5. 脆弱性対応フロー
 
 1. **検知**: Dependabot / Dependency-Check / npm audit / GitHub Security Advisory
