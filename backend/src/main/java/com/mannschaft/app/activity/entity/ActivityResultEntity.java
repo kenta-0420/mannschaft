@@ -51,7 +51,7 @@ public class ActivityResultEntity extends BaseEntity {
     private LocalDate activityEndDate;
 
     @jakarta.persistence.Version
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "BIGINT NOT NULL DEFAULT 0")
     @Builder.Default
     private Long version = 0L;
 

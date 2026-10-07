@@ -124,6 +124,32 @@ class ActivityScheduleSyncIntegrationTest extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    void 確認日時の異なるoffsetは同一瞬間なら競合せずJST跨日を保持する() throws Exception {
+        JsonNode activity = create();
+        JsonNode preview = preview(update("UTC確認"));
+        var state = (com.fasterxml.jackson.databind.node.ObjectNode) preview.path("expectedScheduleState");
+        assertThat(state.path("startAt").asText()).endsWith("+09:00");
+        var states = new java.util.ArrayList<com.fasterxml.jackson.databind.node.ObjectNode>();
+        states.add(state);
+        state.path("schedules").forEach(entry -> states.add((com.fasterxml.jackson.databind.node.ObjectNode) entry));
+        for (var entry : states) {
+            for (String field : java.util.List.of("updatedAt", "startAt", "endAt")) {
+                if (!entry.path(field).isNull()) {
+                    entry.put(field, java.time.OffsetDateTime.parse(entry.path(field).asText())
+                            .withOffsetSameInstant(java.time.ZoneOffset.UTC).toString());
+                }
+            }
+        }
+        save(update("UTC確認"), previewConfirmation(preview), 200);
+        em.flush(); em.clear();
+        var saved = activities.findById(activity.path("id").asLong()).orElseThrow();
+        assertThat(saved.getActivityDate()).isEqualTo(java.time.LocalDate.of(2026, 10, 10));
+        assertThat(saved.getActivityEndDate()).isEqualTo(java.time.LocalDate.of(2026, 10, 11));
+        assertThat(saved.getActivityTimeStart()).isEqualTo(java.time.LocalTime.of(23, 0));
+        assertThat(saved.getActivityTimeEnd()).isEqualTo(java.time.LocalTime.of(1, 0));
+    }
+
+    @Test
     @WithMockUser(username = "940200002")
     void 非所属ユーザーは予定から活動作成できない() throws Exception {
         mvc.perform(post("/api/v1/activities/draft-from-schedule").param("scope_type", "TEAM")

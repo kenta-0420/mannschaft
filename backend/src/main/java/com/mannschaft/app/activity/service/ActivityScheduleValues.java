@@ -11,13 +11,17 @@ public record ActivityScheduleValues(String title, LocalDate activityDate, Local
                                      LocalTime activityTimeStart, LocalTime activityTimeEnd) {
     public static ActivityScheduleValues from(ScheduleActivitySource source) {
         boolean allDay = Boolean.TRUE.equals(source.allDay());
-        LocalDate start = source.startAt().toLocalDate();
-        LocalDate end = source.endAt() == null ? start : source.endAt().toLocalDate();
-        if (allDay && source.endAt() != null && source.endAt().toLocalTime().equals(LocalTime.MIDNIGHT)
+        var startAt = source.startAt().atZoneSameInstant(
+                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE);
+        var endAt = source.endAt() == null ? null : source.endAt().atZoneSameInstant(
+                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE);
+        LocalDate start = startAt.toLocalDate();
+        LocalDate end = endAt == null ? start : endAt.toLocalDate();
+        if (allDay && endAt != null && endAt.toLocalTime().equals(LocalTime.MIDNIGHT)
                 && end.isAfter(start)) end = end.minusDays(1);
         return new ActivityScheduleValues(source.title(), start, end.equals(start) ? null : end,
-                allDay ? null : source.startAt().toLocalTime(),
-                allDay || source.endAt() == null ? null : source.endAt().toLocalTime());
+                allDay ? null : startAt.toLocalTime(),
+                allDay || endAt == null ? null : endAt.toLocalTime());
     }
 
     public Map<String, Object> fields() {

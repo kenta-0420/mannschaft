@@ -92,7 +92,13 @@ public class ScheduleActivitySourceService {
         List<Long> attending = participants ? attendanceRepository
                 .findByScheduleIdAndStatus(source.getId(), AttendanceStatus.ATTENDING).stream()
                 .map(a -> a.getUserId()).distinct().toList() : List.of();
-        return new ScheduleActivitySource(source.getId(), type, scopeId, source.getTitle(), source.getStartAt(),
-                source.getEndAt(), source.getAllDay(), source.getStatus().name(), source.getUpdatedAt(), attending);
+        return new ScheduleActivitySource(source.getId(), type, scopeId, source.getTitle(), offset(source.getStartAt()),
+                offset(source.getEndAt()), source.getAllDay(), source.getStatus().name(), offset(source.getUpdatedAt()), attending);
+    }
+
+    /** 既存予定のサーバ壁時計を、ゾーンが明示されたドメイン間の値へ変換する。 */
+    private java.time.OffsetDateTime offset(java.time.LocalDateTime value) {
+        return value == null ? null : value.atZone(
+                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE).toOffsetDateTime();
     }
 }

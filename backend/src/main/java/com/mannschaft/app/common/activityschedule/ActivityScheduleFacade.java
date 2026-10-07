@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
@@ -114,5 +114,9 @@ public class ActivityScheduleFacade {
                 .sorted(java.util.Comparator.comparing(ExpectedScheduleEntry::id)).toList());
     }
 
-    private LocalDateTime second(LocalDateTime value) { return value == null ? null : value.truncatedTo(ChronoUnit.SECONDS); }
+    private OffsetDateTime second(OffsetDateTime value) {
+        return value == null ? null : value.atZoneSameInstant(
+                com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE)
+                .toOffsetDateTime().truncatedTo(ChronoUnit.SECONDS);
+    }
 }
