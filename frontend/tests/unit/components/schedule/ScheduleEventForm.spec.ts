@@ -426,6 +426,38 @@ describe('ScheduleEventForm: recurrence update scope', () => {
     expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).toMatchObject({ title: '復元後のユーザー入力' })
   })
 
+  it.each([
+    ['team', '2026-10-16T00:00:00'], ['organization', '2026-10-16T00:00:00'], ['personal', '2026-10-16T00:00:00'],
+    ['team', null], ['organization', null], ['personal', null],
+  ] as const)('%s の終日予定はタイトルだけ編集して排他的終了 %s を保持する', async (scope, endAt) => {
+    const response = { data: {
+      content: { title: '終日予定' },
+      time: { startAt: '2026-10-15T00:00:00', endAt, allDay: true },
+    } }
+    scheduleApiMock.getSchedule.mockResolvedValue(response)
+    scheduleApiMock.getMyScheduleDetail.mockResolvedValue(response)
+    scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
+    scheduleApiMock.updatePersonalSchedule.mockResolvedValue({ data: {} })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType: scope === 'personal' ? 'team' : scope, scopeId: 'scope-one', scheduleId: 42, isPersonal: scope === 'personal' },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    const form = wrapper.findComponent(BasicFieldsStub).props('form') as { endDate: Date | null }
+    if (endAt) expect(form.endDate?.getDate()).toBe(15)
+    else expect(form.endDate).toBeNull()
+    await wrapper.get('[data-testid="title-input"]').setValue('終了日は維持')
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+    const body = scope === 'personal'
+      ? scheduleApiMock.updatePersonalSchedule.mock.calls[0]?.[1]
+      : scheduleApiMock.updateSchedule.mock.calls[0]?.[3]
+    expect(body).toMatchObject({ startAt: expect.stringContaining('2026-10-15T00:00:00') })
+    if (endAt) expect(body.endAt).toEqual(expect.stringContaining(endAt))
+    else expect(body.endAt).toBeUndefined()
+  })
+
   it('編集GET失敗時は未取得の予定を更新しない', async () => {
     scheduleApiMock.getSchedule.mockRejectedValue(new Error('取得失敗'))
     const wrapper = await mountSuspended(ScheduleEventForm, {

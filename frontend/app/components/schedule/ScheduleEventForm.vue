@@ -219,6 +219,7 @@ watch(
 watch(
   () => form.value.startDate,
   (newDate) => {
+    if (suppressEndTimeAutoAdjust) return
     if (!newDate) return
     if (!form.value.endDate || form.value.endDate < newDate) {
       form.value.endDate = new Date(newDate)
@@ -268,8 +269,10 @@ watch(
           }
           if (time.endAt) {
             const end = new Date(time.endAt as string)
-            form.value.endDate = end
+            form.value.endDate = savedEndDate(end, form.value.allDay)
             form.value.endTime = savedTimeString(end)
+          } else {
+            form.value.endDate = null
           }
           // 個人予定: detailedReminders からリマインダーフォーム状態を復元する
           const detailedReminders = (data.detailedReminders as Array<Record<string, unknown>> | null) ?? []
@@ -327,8 +330,10 @@ watch(
           }
           if (time.endAt) {
             const end = new Date(time.endAt as string)
-            form.value.endDate = end
+            form.value.endDate = savedEndDate(end, form.value.allDay)
             form.value.endTime = savedTimeString(end)
+          } else {
+            form.value.endDate = null
           }
           // 共有予定: reminders からリマインダーフォーム状態を復元する
           const reminders = (data.reminders as Array<Record<string, unknown>> | null) ?? []
@@ -397,6 +402,13 @@ watch(
 
 function savedTimeString(date: Date): string {
   return date.toTimeString().slice(0, date.getSeconds() ? 8 : 5)
+}
+
+// APIの終日終了は排他的、日付ピッカーの終了日は当日を含む。
+function savedEndDate(date: Date, allDay: boolean): Date {
+  const end = new Date(date)
+  if (allDay) end.setDate(end.getDate() - 1)
+  return end
 }
 
 function buildScheduleDateTime(date: Date | null, time: string): string | null {
