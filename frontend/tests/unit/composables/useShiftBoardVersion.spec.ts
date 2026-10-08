@@ -42,7 +42,7 @@ describe('CMP-261008-1253 ボードの実版契約', () => {
       [1, { addUserIds: [4], slotVersion: version }],
       [1, { removeUserIds: [4], slotVersion: version + 1 }],
     ])
-    expect(slots.value[0].version).toBe(version + 2)
+    expect(slots.value[0]?.version).toBe(version + 2)
     expect(state.localAssignments.value[1]).toEqual([])
   })
 
