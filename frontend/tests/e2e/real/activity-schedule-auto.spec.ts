@@ -89,18 +89,13 @@ function date(days: number): string {
   value.setDate(value.getDate() + days)
   return `${value.getFullYear()}/${String(value.getMonth() + 1).padStart(2, '0')}/${String(value.getDate()).padStart(2, '0')}`
 }
-async function createViaCalendar(
-  page: Page,
-  scope: Scope,
-  title: string,
-  expired = false,
-): Promise<number> {
+async function createViaCalendar(page: Page, scope: Scope, title: string): Promise<number> {
   await page.goto(`${scopePath(scope)}/schedule`)
   await expect(page.getByRole('button', { name: '予定を追加', exact: true })).toBeVisible()
   await dismissInitialPermissionDialog(page)
   await page.getByRole('button', { name: '予定を追加', exact: true }).click()
   await page.getByTestId('schedule-title').fill(title)
-  const day = date(expired ? -1 : 2)
+  const day = date(2)
   for (const id of ['schedule-start-date', 'schedule-end-date']) {
     await page.locator(`#${id}`).fill(day)
     await page.locator(`#${id}`).press('Tab')
@@ -114,11 +109,6 @@ async function createViaCalendar(
   }
   const attendance = page.locator('#attendance-required')
   if (await attendance.isChecked()) await attendance.uncheck()
-  if (expired) {
-    // 毎分 batch の直後に保存し、初期 planned=true を観察できる時間を確保する。
-    const seconds = new Date().getSeconds()
-    if (seconds > 10) await page.waitForTimeout((65 - seconds) * 1000)
-  }
   const [created] = await Promise.all([
     page.waitForResponse(
       (response) =>
@@ -131,6 +121,53 @@ async function createViaCalendar(
   ])
   expect(created.ok()).toBe(true)
   return ((await created.json()) as { data: { id: number } }).data.id
+}
+async function writePrivateDescription(
+  page: Page,
+  id: number,
+  title: string,
+  body: string,
+): Promise<void> {
+  await page.getByTestId('activity-edit-draft').click()
+  await expect(page.getByTestId('activity-edit-title')).toHaveValue(title)
+  await page.getByTestId('activity-edit-description').fill(body)
+  const [saved] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url() === `${API}/activities/${id}` && response.request().method() === 'PUT',
+    ),
+    page.getByTestId('activity-edit-save').click(),
+  ])
+  expect(saved.status()).toBe(200)
+  expect(saved.request().postDataJSON()).toMatchObject({ title, description: body })
+  await expect(page.getByTestId('activity-description')).toContainText(body)
+}
+async function moveScheduleIntoPast(
+  page: Page,
+  scope: Scope,
+  id: number,
+  title: string,
+): Promise<void> {
+  await page.getByTestId('activity-source-schedule').click()
+  await page.locator('[data-testid="schedule-edit"]:visible').click()
+  await expect(page.getByTestId('schedule-edit-loading')).toHaveCount(0)
+  await expect(page.getByTestId('schedule-title')).toHaveValue(title)
+  for (const field of ['schedule-start-date', 'schedule-end-date']) {
+    await page.locator(`#${field}`).fill(date(-1))
+    await page.locator(`#${field}`).press('Tab')
+  }
+  const [updated] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        [
+          `${schedulesApi(scope)}/${id}`,
+          `${API}/${scope.type === 'TEAM' ? 'teams' : 'organizations'}/${scope.slug}/schedules/${id}`,
+        ].includes(response.url()) && response.request().method() === 'PATCH',
+    ),
+    page.getByTestId('schedule-submit').click(),
+  ])
+  expect(updated.status()).toBe(200)
+  expect(updated.request().postDataJSON()).toMatchObject({ title })
 }
 async function openActivityFromList(page: Page, scope: Scope, title: string): Promise<number> {
   await page.goto(`${scopePath(scope)}/activities`)
@@ -180,12 +217,16 @@ for (const [type, width] of [
       activityId = await openActivityFromList(page, scope, title)
       await expect(page.getByTestId(`activity-planned-${activityId}`)).toBeVisible()
       await expect(page.getByTestId(`activity-status-${activityId}`)).toHaveText('未公開')
+      const privateBody = `${title}：まだ公開していない実活動本文`
+      await writePrivateDescription(page, activityId, title, privateBody)
+      await image(page, info, `${type}-desktop-author-detail`)
       await page.getByTestId('activity-source-schedule').click()
       await expect(page).toHaveURL(new RegExp(`eventId=${scheduleId}`))
       await page.locator(`[data-testid="schedule-activity-${activityId}"]:visible`).click()
       reader = await readerPage(browser, width)
       await openActivityFromList(reader, scope, title)
       await expect(reader.getByTestId('activity-metadata-only')).toBeVisible()
+      await expect(reader.locator('body')).not.toContainText(privateBody)
       for (const id of [
         'activity-description',
         'activity-template-fields',
@@ -218,7 +259,23 @@ for (const [type, width] of [
       await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
       await page.context().setOffline(true)
       await page.getByTestId('activity-delete').click()
-      await dialog.getByRole('button', { name: '削除する', exact: true }).click()
+      const [failed] = await Promise.all([
+        page.waitForEvent('requestfailed', {
+          predicate: (request) =>
+            request.method() === 'DELETE' && request.url() === `${API}/activities/${activityId}`,
+        }),
+        dialog.getByRole('button', { name: '削除する', exact: true }).click(),
+      ])
+      expect(failed.failure()?.errorText).toBeTruthy()
+      expect(requests).toEqual([`/api/v1/activities/${activityId}`])
+      await info.attach(`${type}-failed-delete`, {
+        body: JSON.stringify({
+          method: failed.method(),
+          path: new URL(failed.url()).pathname,
+          error: failed.failure()?.errorText,
+        }),
+        contentType: 'application/json',
+      })
       await expect(page.getByTestId('activity-delete')).toBeEnabled()
       await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
       await image(page, info, `${type}-delete-offline`)
@@ -261,10 +318,14 @@ test('終了経過の毎分完了後、再表示で予定だけ外れ未公開�
   let scheduleId: number | undefined
   let activityId: number | undefined
   try {
-    scheduleId = await createViaCalendar(page, scope, title, true)
+    scheduleId = await createViaCalendar(page, scope, title)
     activityId = await openActivityFromList(page, scope, title)
     await expect(page.getByTestId(`activity-planned-${activityId}`)).toBeVisible()
     await image(page, info, 'planned-before-batch')
+    // 初期 planned を実画面で確認してから、予定終了を実UIで過去へ移す。
+    // fixedDelay は前回実行終了基準なので壁時計の0秒を位相と仮定しない。
+    await moveScheduleIntoPast(page, scope, scheduleId, title)
+    await openActivityFromList(page, scope, title)
     for (let attempt = 0; attempt < 2; attempt++) {
       await page.waitForTimeout(60_000)
       await page.reload()
@@ -273,6 +334,15 @@ test('終了経過の毎分完了後、再表示で予定だけ外れ未公開�
     }
     await expect(page.getByTestId(`activity-planned-${activityId}`)).toHaveCount(0)
     await expect(page.getByTestId(`activity-status-${activityId}`)).toHaveText('未公開')
+    const source = await page.request.get(`${schedulesApi(scope)}/${scheduleId}`)
+    expect(source.status()).toBe(200)
+    const sourceStatus = ((await source.json()) as { data: { content: { status: string } } }).data
+      .content.status
+    expect(sourceStatus).toBe('COMPLETED')
+    await info.attach('source-completed', {
+      body: JSON.stringify({ id: scheduleId, status: sourceStatus }),
+      contentType: 'application/json',
+    })
     await image(page, info, 'unpublished-after-batch')
   } finally {
     await cleanup(page, scope, scheduleId, title, activityId)
