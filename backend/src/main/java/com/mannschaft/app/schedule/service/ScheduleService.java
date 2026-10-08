@@ -725,15 +725,15 @@ public class ScheduleService {
     }
 
     private void checkManagementScopeAccess(Long userId, Long scopeId, String scopeType) {
-        try {
-            accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
-        } catch (BusinessException denied) {
-            if ("MEMBER".equals(accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType))
-                    && accessControlService.hasPermission(userId, scopeId, scopeType, MANAGE_SCHEDULES)) {
-                return;
-            }
-            throw denied;
+        // 許可へ分岐する判定でTX参加Serviceの例外をcatchすると、外側TXがrollback-onlyになる。
+        if (accessControlService.isAdminOrAbove(userId, scopeId, scopeType)) {
+            return;
         }
+        if ("MEMBER".equals(accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType))
+                && accessControlService.hasPermission(userId, scopeId, scopeType, MANAGE_SCHEDULES)) {
+            return;
+        }
+        throw new BusinessException(CommonErrorCode.COMMON_002);
     }
 
     private void checkMemberScheduleDeleteAccess(ScheduleEntity schedule, Long userId) {

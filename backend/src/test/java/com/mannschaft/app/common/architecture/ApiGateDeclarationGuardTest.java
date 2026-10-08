@@ -42,9 +42,7 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3673);   // 245e の独立走査 3671 + F02.6 本文プレビュー GET 2 本。
-                                    // main 差分の本番 controller mapping 注釈は追加 2・削除 0。
-                                    // Ranch 41 本の追加と学校出欠の権限判定 GET 1 本を維持する。
+                .isEqualTo(3678);   // 2026-10-08: merged main 90fe + Ranch; independent scanner verified HTTP 3678, freeze 777 rows.
                                     // + F01.2.1 部隊 2-A の4エンドポイント（TeamAffiliationSettingsController の
                                     //   設定 GET/PUT・申請フォーム GET の3本 + OrgAffiliationEligibilityController の1本。
                                     //   いずれも @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（0|3・0|1））

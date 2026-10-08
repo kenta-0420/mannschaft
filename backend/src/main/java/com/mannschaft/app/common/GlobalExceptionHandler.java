@@ -1990,6 +1990,9 @@ public class GlobalExceptionHandler {
             Map.entry("ACTIVITY_008", HttpStatus.FORBIDDEN),             // NOT_AUTHOR（自分の投稿以外は編集不可）
             Map.entry("ACTIVITY_016", HttpStatus.NOT_FOUND),             // PRESET_NOT_FOUND
             Map.entry("ACTIVITY_018", HttpStatus.CONFLICT),              // FIELD_TYPE_CHANGE_NOT_ALLOWED（既存フィールドとの型競合）
+            Map.entry("ACTIVITY_009", HttpStatus.CONFLICT),
+            Map.entry("ACTIVITY_022", HttpStatus.CONFLICT),
+            Map.entry("ACTIVITY_023", HttpStatus.CONFLICT),
 
             // F02.2 ダッシュボード: チャットフォルダの不在/所有者不一致・アイテム不在は 404/403、
             // 同名フォルダ重複は 409（Severity.WARN 既定 400 を上書き）

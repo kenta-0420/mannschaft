@@ -6,6 +6,7 @@ import type {
   SharedFilePresignRequest,
   SharedFilePresignResponse,
 } from '~/types/filesharing'
+import type { components } from '~/types/generated'
 
 export function useFileSharingApi() {
   const api = useApi()
@@ -51,6 +52,11 @@ export function useFileSharingApi() {
 
   async function getFile(fileId: number) {
     return api<{ data: SharedFile }>(`/api/v1/files/${fileId}`)
+  }
+
+  /** 認可済み添付メタデータ。実APIのname/downloadDisabledを生成型で受け取る。 */
+  async function getFileMetadata(fileId: number) {
+    return api<{ data: components['schemas']['FileResponse'] }>(`/api/v1/files/${fileId}`)
   }
 
   async function getUploadUrl(fileName: string, contentType: string, fileSize: number) {
@@ -235,6 +241,7 @@ export function useFileSharingApi() {
     deleteFolder,
     getFiles,
     getFile,
+    getFileMetadata,
     getUploadUrl,
     presignUpload,
     registerFile,

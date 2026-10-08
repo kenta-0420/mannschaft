@@ -55,6 +55,7 @@ public class OrgScheduleController {
     private final ScheduleScheduledTaskService scheduledTaskService;
     private final NameResolverService nameResolverService;
     private final AccessControlService accessControlService;
+    private final com.mannschaft.app.common.activityschedule.ActivityScheduleFacade activitySchedules;
 
 
     /**
@@ -168,9 +169,24 @@ public class OrgScheduleController {
             @PathVariable Long scheduleId,
             @Valid @RequestBody UpdateScheduleRequest request,
             @RequestParam(defaultValue = "THIS_ONLY") String updateScope) {
-        ScheduleResponse response = scheduleService.updateSchedule(
-                scheduleId, request, updateScope, SecurityUtils.getCurrentUserId());
+        ScheduleResponse response = activitySchedules.update(
+                scheduleId, "ORGANIZATION", orgPublicId.value(), SecurityUtils.getCurrentUserId(), request, updateScope);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    @GetMapping("/{scheduleId}/activities")
+    @Operation(summary = "予定に関連する閲覧可能な活動記録")
+    public ResponseEntity<ApiResponse<List<com.mannschaft.app.activity.dto.ActivityRecordResponse>>> linkedActivities(
+            @PathVariable OrgScopeId orgPublicId, @PathVariable Long scheduleId) {
+        return ResponseEntity.ok(ApiResponse.of(activitySchedules.linked(scheduleId, "ORGANIZATION", orgPublicId.value(), SecurityUtils.getCurrentUserId())));
+    }
+
+    @PostMapping("/{scheduleId}/activity-sync-preview")
+    @Operation(summary = "予定編集時の活動記録同期確認")
+    public ResponseEntity<ApiResponse<com.mannschaft.app.activity.dto.ActivitySyncPreviewResponse>> activitySyncPreview(
+            @PathVariable OrgScopeId orgPublicId, @PathVariable Long scheduleId,
+            @Valid @RequestBody com.mannschaft.app.activity.dto.ActivitySyncPreviewRequest request) {
+        return ResponseEntity.ok(ApiResponse.of(activitySchedules.preview(scheduleId, "ORGANIZATION", orgPublicId.value(), SecurityUtils.getCurrentUserId(), request)));
     }
 
     /**

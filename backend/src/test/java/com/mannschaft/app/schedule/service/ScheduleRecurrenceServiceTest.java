@@ -175,7 +175,7 @@ class ScheduleRecurrenceServiceTest {
         ScheduleEntity selectedFromQuery = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false);
         ScheduleEntity exception = child(12L, LocalDateTime.of(2026, 9, 17, 10, 0), true);
         ScheduleEntity following = child(13L, LocalDateTime.of(2026, 9, 24, 10, 0), false);
-        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+        when(scheduleRepository.lockActivitySeriesChildren(1L))
                 .thenReturn(List.of(past, selectedFromQuery, exception, following));
         AtomicInteger applied = new AtomicInteger();
 
@@ -197,7 +197,7 @@ class ScheduleRecurrenceServiceTest {
                 .toBuilder().endAt(LocalDateTime.of(2026, 9, 17, 11, 0)).build();
         ScheduleEntity future = child(12L, LocalDateTime.of(2026, 9, 24, 10, 0), false)
                 .toBuilder().endAt(LocalDateTime.of(2026, 9, 24, 11, 0)).build();
-        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+        when(scheduleRepository.lockActivitySeriesChildren(1L))
                 .thenReturn(List.of(selected, completed, future));
         service = new ScheduleRecurrenceService(scheduleRepository, scheduleTargetService,
                 new ObjectMapper().registerModule(new JavaTimeModule()),
@@ -220,7 +220,7 @@ class ScheduleRecurrenceServiceTest {
         ScheduleEntity selectedException = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), true);
         ScheduleEntity futureException = child(11L, LocalDateTime.of(2026, 9, 17, 10, 0), true);
         ScheduleEntity futureNonException = child(12L, LocalDateTime.of(2026, 9, 24, 10, 0), false);
-        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+        when(scheduleRepository.lockActivitySeriesChildren(1L))
                 .thenReturn(List.of(selectedException, futureException, futureNonException));
         AtomicInteger applied = new AtomicInteger();
 
@@ -241,7 +241,7 @@ class ScheduleRecurrenceServiceTest {
         ScheduleEntity parent = ScheduleEntity.builder().id(1L).title("parent")
                 .startAt(LocalDateTime.of(2026, 9, 3, 10, 0)).build();
         when(scheduleRepository.findById(1L)).thenReturn(java.util.Optional.of(parent));
-        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+        when(scheduleRepository.lockActivitySeriesChildren(1L))
                 .thenReturn(List.of(selected, child(11L, LocalDateTime.of(2026, 9, 17, 10, 0), true),
                         child(12L, LocalDateTime.of(2026, 9, 24, 10, 0), false)));
         AtomicInteger applied = new AtomicInteger();
@@ -290,7 +290,7 @@ class ScheduleRecurrenceServiceTest {
     @DisplayName("THIS_AND_FOLLOWINGは選択行の更新後Entityを返す")
     void thisAndFollowing_returnsUpdatedSelectedSchedule() {
         ScheduleEntity child = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false);
-        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L)).thenReturn(List.of(child));
+        when(scheduleRepository.lockActivitySeriesChildren(1L)).thenReturn(List.of(child));
 
         ScheduleRecurrenceService.RecurringScheduleUpdateResult result =
                 service.updateRecurringSchedule(child, null, "THIS_AND_FOLLOWING",
@@ -306,7 +306,7 @@ class ScheduleRecurrenceServiceTest {
         ScheduleEntity parent = ScheduleEntity.builder().id(1L).title("parent")
                 .startAt(LocalDateTime.of(2026, 9, 3, 10, 0)).build();
         when(scheduleRepository.findById(1L)).thenReturn(java.util.Optional.of(parent));
-        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L)).thenReturn(List.of(selectedException));
+        when(scheduleRepository.lockActivitySeriesChildren(1L)).thenReturn(List.of(selectedException));
         List<Long> appliedIds = new ArrayList<>();
 
         ScheduleRecurrenceService.RecurringScheduleUpdateResult result =
@@ -337,7 +337,7 @@ class ScheduleRecurrenceServiceTest {
                 .toBuilder().endAt(LocalDateTime.of(2026, 9, 10, 11, 0)).build();
         ScheduleEntity following = child(11L, LocalDateTime.of(2026, 9, 17, 10, 0), false)
                 .toBuilder().endAt(LocalDateTime.of(2026, 9, 17, 11, 0)).build();
-        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+        when(scheduleRepository.lockActivitySeriesChildren(1L))
                 .thenReturn(List.of(selected, following));
         Map<Long, UpdateScheduleRequest> applied = new HashMap<>();
         UpdateScheduleRequest request = requestWithTimes("new", selected.getStartAt(), selected.getEndAt());
@@ -358,7 +358,7 @@ class ScheduleRecurrenceServiceTest {
                 .toBuilder().endAt(LocalDateTime.of(2026, 9, 10, 11, 0)).build();
         ScheduleEntity following = child(11L, LocalDateTime.of(2026, 9, 17, 10, 0), false)
                 .toBuilder().endAt(LocalDateTime.of(2026, 9, 17, 11, 0)).build();
-        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+        when(scheduleRepository.lockActivitySeriesChildren(1L))
                 .thenReturn(List.of(selected, following));
         Map<Long, UpdateScheduleRequest> applied = new HashMap<>();
         UpdateScheduleRequest request = requestWithTimes("new",
@@ -390,7 +390,7 @@ class ScheduleRecurrenceServiceTest {
                 .toBuilder().endAt(LocalDateTime.of(2026, 9, 17, 11, 0)).build();
         ScheduleEntity last = child(12L, LocalDateTime.of(2026, 9, 24, 10, 0), false)
                 .toBuilder().endAt(LocalDateTime.of(2026, 9, 24, 11, 0)).build();
-        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+        when(scheduleRepository.lockActivitySeriesChildren(1L))
                 .thenReturn(List.of(selected, next, last));
         UpdateScheduleRequest request = requestWithTimes("new",
                 LocalDateTime.of(2026, 9, 17, 10, 0), LocalDateTime.of(2026, 9, 17, 11, 0));
@@ -414,7 +414,7 @@ class ScheduleRecurrenceServiceTest {
         ScheduleEntity child = child(10L, LocalDateTime.of(2026, 9, 10, 10, 0), false)
                 .toBuilder().endAt(LocalDateTime.of(2026, 9, 10, 11, 0)).build();
         when(scheduleRepository.findById(1L)).thenReturn(java.util.Optional.of(parent));
-        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+        when(scheduleRepository.lockActivitySeriesChildren(1L))
                 .thenReturn(List.of(child));
         Map<Long, UpdateScheduleRequest> applied = new HashMap<>();
         UpdateScheduleRequest request = requestWithTimes("new", parent.getStartAt(), parent.getEndAt());
@@ -437,7 +437,7 @@ class ScheduleRecurrenceServiceTest {
         ScheduleEntity last = child(11L, LocalDateTime.of(2026, 9, 17, 10, 0), false)
                 .toBuilder().endAt(LocalDateTime.of(2026, 9, 17, 11, 0)).build();
         when(scheduleRepository.findById(1L)).thenReturn(java.util.Optional.of(parent));
-        when(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(1L))
+        when(scheduleRepository.lockActivitySeriesChildren(1L))
                 .thenReturn(List.of(first, last));
         UpdateScheduleRequest request = requestWithTimes("new",
                 LocalDateTime.of(2026, 9, 10, 10, 0), LocalDateTime.of(2026, 9, 10, 11, 0));
