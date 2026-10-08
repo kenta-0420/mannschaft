@@ -1,6 +1,8 @@
 package com.mannschaft.app.proxy.repository;
 
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +18,34 @@ import java.util.Optional;
  * 追記専用テーブル。UNIQUE KEY uq_pir_idempotent により二重登録を防止する。
  */
 public interface ProxyInputRecordRepository extends JpaRepository<ProxyInputRecordEntity, Long> {
+
+    /**
+     * 同意書の組合IDを境界として代理入力履歴をページ取得する。
+     * 同意書IDがNULLの後見代理履歴は組合を特定できないため、組合管理画面には返さない。
+     */
+    @Query(value = """
+            SELECT r FROM ProxyInputRecordEntity r
+            JOIN ProxyInputConsentEntity c ON c.id = r.proxyInputConsentId
+            WHERE c.organizationId = :organizationId
+              AND (:subjectUserId IS NULL OR r.subjectUserId = :subjectUserId)
+            ORDER BY r.createdAt DESC, r.id DESC
+            """,
+            countQuery = """
+            SELECT COUNT(r) FROM ProxyInputRecordEntity r
+            JOIN ProxyInputConsentEntity c ON c.id = r.proxyInputConsentId
+            WHERE c.organizationId = :organizationId
+              AND (:subjectUserId IS NULL OR r.subjectUserId = :subjectUserId)
+            """)
+    Page<ProxyInputRecordEntity> findByOrganizationId(
+            @Param("organizationId") Long organizationId,
+            @Param("subjectUserId") Long subjectUserId,
+            Pageable pageable);
+
+    /**
+     * 本人向け監査経路として、組合をまたいだ本人の代理入力履歴を取得する。
+     */
+    Page<ProxyInputRecordEntity> findBySubjectUserIdOrderByCreatedAtDescIdDesc(
+            Long subjectUserId, Pageable pageable);
 
     /**
      * 冪等性チェック（紙運用での二重登録防止）。
