@@ -3,8 +3,8 @@
 CREATE TABLE reservation_pending_expire_scan_state (
     id BINARY(16) NOT NULL,
     singleton_key TINYINT NOT NULL,
-    cycle_high_water BIGINT NOT NULL,
-    last_inspected_id BIGINT NOT NULL,
+    cycle_high_water BIGINT UNSIGNED NOT NULL,
+    last_inspected_id BIGINT UNSIGNED NOT NULL,
     run_epoch BIGINT NOT NULL,
     retry_primary_ids JSON NOT NULL,
     updated_at DATETIME(6) NOT NULL,
