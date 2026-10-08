@@ -2111,7 +2111,10 @@
       "scheduleCancelled": "元の予定は中止されています",
       "endDate": "終了日（複数日の場合）",
       "startTime": "開始時刻",
-      "endTime": "終了時刻"
+      "endTime": "終了時刻",
+      "edit": "编辑",
+      "save": "保存",
+      "updated": "活动记录已保存"
     },
     "sync": {
       "title": "予定と活動記録の変更を確認",
@@ -2134,6 +2137,15 @@
       "create": "この予定の活動記録を作成",
       "records": "活動記録",
       "loadError": "活動記録の取得に失敗しました"
+    },
+    "planned": "计划",
+    "unpublished": "未发布",
+    "metadataOnly": "活动内容尚未发布。这里只显示原日程的信息。",
+    "delete": {
+      "title": "删除活动记录",
+      "action": "删除",
+      "confirm": "将删除活动记录。原日程不会被删除。",
+      "success": "活动记录已删除"
     }
   },
   "dashboard": {
