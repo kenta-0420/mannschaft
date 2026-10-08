@@ -119,6 +119,9 @@ class ScheduleServiceTest {
 
     @BeforeEach
     void 通常操作の利用者はスコープ管理者として明示する() {
+        // 通常unitは予定writerを実物で接続する。活動側の同期listener/TXは実MySQL試験で検証する。
+        ReflectionTestUtils.setField(scheduleService, "creationWriter",
+                new ScheduleCreationWriter(scheduleRepository, event -> { }));
         // 旧void認可mockの暗黙許可を、実際のADMIN判定として明示する。拒否caseは各試験で上書きする。
         lenient().when(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).thenReturn(true);
         lenient().when(accessControlService.isAdminOrAbove(eq(USER_ID), anyLong(), eq("ORGANIZATION"))).thenReturn(true);
