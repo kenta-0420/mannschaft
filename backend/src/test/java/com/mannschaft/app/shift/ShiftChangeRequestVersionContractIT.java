@@ -13,6 +13,8 @@ import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.entity.ShiftChangeRequestEntity;
 import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
+import com.mannschaft.app.shift.entity.ShiftAssignmentEntity;
+import com.mannschaft.app.shift.repository.ShiftAssignmentRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -70,6 +72,7 @@ class ShiftChangeRequestVersionContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private ShiftScheduleRepository schedules;
     @Autowired private ShiftSlotRepository slots;
     @Autowired private ShiftChangeRequestRepository changeRequests;
+    @Autowired private ShiftAssignmentRepository assignments;
     @Autowired private FeatureFlagRepository flags;
     @Autowired private CacheManager caches;
     @Autowired private PlatformTransactionManager txManager;
@@ -82,6 +85,8 @@ class ShiftChangeRequestVersionContractIT extends AbstractMySqlIntegrationTest {
     private Long scheduleId;
     private Long slotId;
     private Long requestId;
+    private Long assignmentId;
+    private boolean fixtureCommitted;
     private Long teamId;
     private Long foreignTeamId;
     private FeatureFlagEntity flagBefore;
@@ -118,50 +123,58 @@ class ShiftChangeRequestVersionContractIT extends AbstractMySqlIntegrationTest {
                     .scheduleId(scheduleId).slotId(slotId).requestedBy(member)
                     .requestType(ChangeRequestType.PRE_CONFIRM_EDIT).reason("実版契約の所有fixture")
                     .build()).getId();
+            // 履歴は現在の割当状態ではない。取消済みの所有履歴を1件保全する。
+            assignmentId = assignments.save(ShiftAssignmentEntity.builder()
+                    .slotId(slotId).userId(member).assignedBy(admin)
+                    .status(ShiftAssignmentStatus.REVOKED).note("所有の既存割当履歴").build()).getId();
             em.flush();
             em.clear();
-        return null;
+            return null;
         });
+        fixtureCommitted = true;
     }
 
     @AfterEach
     void 所有fixtureだけを独立TXで削除する() {
-        if (slotId == null) return;
         try {
-        inTx(() -> {
-            changeRequests.deleteById(requestId);
-            changeRequests.flush();
-            em.createNativeQuery("DELETE FROM shift_assignments WHERE slot_id = :id")
-                    .setParameter("id", slotId).executeUpdate();
-            slots.deleteById(slotId);
-            slots.flush();
-            schedules.deleteById(scheduleId);
-            schedules.flush();
-            List<Long> actors = List.of(admin, member, outsider, foreignAdmin);
-            em.createNativeQuery("DELETE FROM user_roles WHERE user_id IN (:ids)")
-                    .setParameter("ids", actors).executeUpdate();
-            em.createNativeQuery("DELETE FROM memberships WHERE user_id IN (:ids)")
-                    .setParameter("ids", actors).executeUpdate();
-            teams.deleteAllById(List.of(teamId, foreignTeamId));
-            users.deleteAllById(actors);
-            return null;
-        });
+            if (!fixtureCommitted) return;
+            try {
+                inTx(() -> {
+                    changeRequests.deleteById(requestId);
+                    changeRequests.flush();
+                    assignments.deleteById(assignmentId);
+                    assignments.flush();
+                    slots.deleteById(slotId);
+                    slots.flush();
+                    schedules.deleteById(scheduleId);
+                    schedules.flush();
+                    List<Long> actors = List.of(admin, member, outsider, foreignAdmin);
+                    em.createNativeQuery("DELETE FROM user_roles WHERE user_id IN (:ids)")
+                            .setParameter("ids", actors).executeUpdate();
+                    em.createNativeQuery("DELETE FROM memberships WHERE user_id IN (:ids)")
+                            .setParameter("ids", actors).executeUpdate();
+                    teams.deleteAllById(List.of(teamId, foreignTeamId));
+                    users.deleteAllById(actors);
+                    return null;
+                });
+            } finally {
+                inTx(() -> {
+                    FeatureFlagEntity current = flags.findByFlagKey(SHIFT_FLAG).orElseThrow();
+                    assertThat(current.getId()).isEqualTo(ownedFlagId);
+                    if (flagBefore == null) {
+                        flags.delete(current);
+                    } else {
+                        // JPA の監査フックで updated_at を再更新せず、変更した列を元値へ戻す。
+                        em.createNativeQuery("UPDATE feature_flags SET is_enabled = :enabled, updated_by = :actor, updated_at = :time WHERE id = :id AND flag_key = :key")
+                                .setParameter("enabled", flagBefore.getIsEnabled())
+                                .setParameter("actor", flagBefore.getUpdatedBy())
+                                .setParameter("time", flagBefore.getUpdatedAt())
+                                .setParameter("id", ownedFlagId).setParameter("key", SHIFT_FLAG).executeUpdate();
+                    }
+                    return null;
+                });
+            }
         } finally {
-            inTx(() -> {
-                FeatureFlagEntity current = flags.findByFlagKey(SHIFT_FLAG).orElseThrow();
-                assertThat(current.getId()).isEqualTo(ownedFlagId);
-                if (flagBefore == null) {
-                    flags.delete(current);
-                } else {
-                    // JPA の監査フックで updated_at を再更新せず、変更した列を元値へ戻す。
-                    em.createNativeQuery("UPDATE feature_flags SET is_enabled = :enabled, updated_by = :actor, updated_at = :time WHERE id = :id AND flag_key = :key")
-                            .setParameter("enabled", flagBefore.getIsEnabled())
-                            .setParameter("actor", flagBefore.getUpdatedBy())
-                            .setParameter("time", flagBefore.getUpdatedAt())
-                            .setParameter("id", ownedFlagId).setParameter("key", SHIFT_FLAG).executeUpdate();
-                }
-                return null;
-            });
             FeatureFlagTestSupport.clearFlagCaches(caches);
         }
     }
@@ -211,6 +224,8 @@ class ShiftChangeRequestVersionContractIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void stale版409は依頼の全列と関連割当履歴を変更しない() throws Exception {
+        assertThat(inTx(() -> ((Number) em.createNativeQuery("SELECT COUNT(*) FROM shift_assignments WHERE slot_id = :id")
+                .setParameter("id", slotId).getSingleResult()).longValue())).isEqualTo(1L);
         String before = databaseSnapshot();
         http(admin, "PATCH", requestPath() + "/review", review(1L))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("SHIFT_018"));
