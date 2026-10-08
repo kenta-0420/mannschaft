@@ -1,6 +1,7 @@
 import { test, expect, type Browser, type Page, type TestInfo } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { loginViaApi } from '../fixtures/auth'
+import type { ActivitySyncPreview } from '../../../app/types/activityScheduleSync'
 
 const API = 'http://localhost:8081/api/v1'
 const CAMPAIGN = 'CMP-261008-1203'
@@ -238,6 +239,7 @@ async function moveScheduleIntoPast(
   page: Page,
   scope: Scope,
   id: number,
+  activityId: number,
   title: string,
 ): Promise<void> {
   await page.getByTestId('activity-source-schedule').click()
@@ -248,18 +250,57 @@ async function moveScheduleIntoPast(
     await page.locator(`#${field}`).fill(date(-1))
     await page.locator(`#${field}`).press('Tab')
   }
-  const [updated] = await Promise.all([
+  const scheduleUrls = [
+    `${schedulesApi(scope)}/${id}`,
+    `${API}/${scope.type === 'TEAM' ? 'teams' : 'organizations'}/${scope.slug}/schedules/${id}`,
+  ]
+  const [updated, preview] = await Promise.all([
     page.waitForResponse(
       (response) =>
-        [
-          `${schedulesApi(scope)}/${id}`,
-          `${API}/${scope.type === 'TEAM' ? 'teams' : 'organizations'}/${scope.slug}/schedules/${id}`,
-        ].includes(response.url()) && response.request().method() === 'PATCH',
+        scheduleUrls.includes(response.url()) && response.request().method() === 'PATCH',
     ),
-    page.getByTestId('schedule-submit').click(),
+    (async () => {
+      const [response] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            scheduleUrls.some((url) => response.url() === `${url}/activity-sync-preview`) &&
+            response.request().method() === 'POST',
+        ),
+        page.getByTestId('schedule-submit').click(),
+      ])
+      expect(response.status()).toBe(200)
+      expect(response.request().postDataJSON()).toMatchObject({ scheduleUpdate: { title } })
+      const preview = ((await response.json()) as { data: ActivitySyncPreview }).data
+      expect(preview.expectedScheduleState.schedules.map((schedule) => schedule.id)).toEqual([id])
+      expect(preview.activities.map((activity) => activity.id)).toEqual([activityId])
+      const changes = preview.activities.flatMap((activity) => activity.changes)
+      // この操作で承認するのは、所有する予定・活動の日付変更だけ。
+      expect(changes.length).toBeGreaterThan(0)
+      for (const change of changes) {
+        expect(['activityDate', 'activityEndDate']).toContain(change.field)
+      }
+      if (changes.some((change) => !change.automatic)) {
+        await expect(page.getByTestId('activity-sync-apply')).toBeVisible()
+        for (const change of changes.filter((change) => !change.automatic)) {
+          await page.locator(`input[id="sync-${activityId}-${change.field}"]`).check()
+        }
+        await page.getByTestId('activity-sync-apply').click()
+      }
+      return preview
+    })(),
   ])
   expect(updated.status()).toBe(200)
-  expect(updated.request().postDataJSON()).toMatchObject({ title })
+  expect(updated.request().postDataJSON()).toMatchObject({
+    title,
+    syncConfirmation: {
+      expectedScheduleState: preview.expectedScheduleState,
+      activities: preview.activities.map((activity) => ({
+        id: activity.id,
+        version: activity.version,
+        applyFields: activity.changes.map((change) => change.field),
+      })),
+    },
+  })
 }
 async function openActivityFromList(page: Page, scope: Scope, title: string): Promise<number> {
   await page.goto(`${scopePath(scope)}/activities`)
@@ -417,7 +458,7 @@ test('終了経過の毎分完了後、再表示で予定だけ外れ未公開�
     await image(page, info, 'planned-before-batch')
     // 初期 planned を実画面で確認してから、予定終了を実UIで過去へ移す。
     // fixedDelay は前回実行終了基準なので壁時計の0秒を位相と仮定しない。
-    await moveScheduleIntoPast(page, scope, scheduleId, title)
+    await moveScheduleIntoPast(page, scope, scheduleId, activityId, title)
     await openActivityFromList(page, scope, title)
     for (let attempt = 0; attempt < 2; attempt++) {
       await page.waitForTimeout(60_000)
