@@ -99,14 +99,21 @@ export function useActionMemoWeekly() {
   /**
    * 週次まとめ詳細を取得する。
    *
-   * <p>{@code GET /api/v1/blog/posts/{slug}} を呼ぶ。
+   * <p>週次まとめは個人ブログ記事なので、個人ブログの詳細
+   * {@code GET /api/v1/users/{userId}/blog/posts/{slug}} を呼ぶ。スコープ無しの
+   * {@code GET /api/v1/blog/posts/{slug}} は 404（CMP-261007-2052 AC-20）。
    * 週次まとめブログの slug は Backend が自動生成するため、ID ベースではなく
    * slug ベースで取得する。ただし一覧から ID を持っている場合が多いので、
    * 一覧の body をそのまま使えば追加リクエスト不要。</p>
+   *
+   * @param userId 記事の持ち主（個人ブログのユーザーID）
+   * @param slug 記事の slug
    */
-  async function getWeeklySummary(slug: string): Promise<WeeklySummary> {
+  async function getWeeklySummary(userId: number, slug: string): Promise<WeeklySummary> {
     try {
-      const res = await api<{ data: RawBlogPost }>(`/api/v1/blog/posts/${slug}`)
+      const res = await api<{ data: RawBlogPost }>(
+        `/api/v1/users/${userId}/blog/posts/${encodeURIComponent(slug)}`,
+      )
       return normalizeBlogPostToWeeklySummary(res.data)
     } catch (error) {
       rethrow(error)

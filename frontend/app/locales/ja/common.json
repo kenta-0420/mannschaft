@@ -580,7 +580,10 @@
     "group_name": "グループ名",
     "targets": "対象",
     "target_id": "対象ID",
-    "target_type": { "ORGANIZATION": "組織", "TEAM": "チーム" },
+    "target_type": {
+      "ORGANIZATION": "組織",
+      "TEAM": "チーム"
+    },
     "template": "テンプレート",
     "audience": "宛先",
     "current_scope": "この組織・チーム",
@@ -738,6 +741,8 @@
       "titlePlaceholder": "記事タイトルを入力",
       "createDialogHint": "下書きとして保存されます。タイトル入力後、編集ページで本文を書いてください。",
       "loadListFailed": "記事一覧の取得に失敗しました",
+      "loadListErrorHint": "記事一覧を表示できませんでした。通信状況や権限をご確認のうえ、再読み込みしてください。",
+      "reloadList": "再読み込み",
       "createFailed": "記事の作成に失敗しました",
       "archived": "アーカイブ",
       "publishSuccess": "公開しました",
@@ -769,7 +774,8 @@
       "lastSaved": "{time}に自動保存",
       "enabled": "自動保存を有効にしました",
       "disabled": "自動保存を無効にしました"
-    }
+    },
+    "pageTitle": "ブログ・お知らせ"
   },
   "todo": {
     "backToList": "TODO一覧",
@@ -1756,6 +1762,8 @@
       "downloadLabel": "{format}ダウンロード（{type}）"
     },
     "menu": "メニュー",
+    "moreActions": "その他の操作",
+    "openNavigation": "ナビゲーションを開く",
     "scopeShell": {
       "memberCount": "メンバー {count}人",
       "supporterCount": "サポーター {count}人",
@@ -2088,6 +2096,58 @@
         "public_desc": "リンクを知っていれば誰でも閲覧できます。一覧にシェアボタンが表示され、外部への共有が可能です。",
         "note": "公開範囲の初期値はテンプレートの設定に従います。"
       }
+    },
+    "detail": {
+      "open": "詳細を見る",
+      "publish": "公開する",
+      "saved": "下書きを保存しました",
+      "participants": "参加者",
+      "participantsHint": "実際に参加したメンバーを選択してください",
+      "participantsRequired": "このテンプレートの公開には参加者が必要です",
+      "noParticipants": "参加者は登録されていません",
+      "attachments": "添付ファイル",
+      "attachment": "添付ファイル {id}",
+      "sourceSchedule": "元の予定",
+      "openSchedule": "予定を開く",
+      "scheduleUnavailable": "元の予定は閲覧できません",
+      "scheduleCancelled": "元の予定は中止されています",
+      "endDate": "終了日（複数日の場合）",
+      "startTime": "開始時刻",
+      "endTime": "終了時刻",
+      "edit": "編集する",
+      "save": "保存する",
+      "updated": "活動記録を保存しました"
+    },
+    "sync": {
+      "title": "予定と活動記録の変更を確認",
+      "description": "予定の変更を活動記録へ反映する項目を選んでください。自動反映の項目も「予定のみ保存」では変更されません。",
+      "record": "活動記録 {id}",
+      "automatic": "自動反映",
+      "current": "現在の記録",
+      "updated": "変更後の予定",
+      "scheduleOnly": "予定のみ保存",
+      "apply": "選択した項目を反映して保存",
+      "fields": {
+        "title": "タイトル",
+        "activityDate": "活動日",
+        "activityEndDate": "終了日",
+        "activityTimeStart": "開始時刻",
+        "activityTimeEnd": "終了時刻"
+      }
+    },
+    "schedule": {
+      "create": "この予定の活動記録を作成",
+      "records": "活動記録",
+      "loadError": "活動記録の取得に失敗しました"
+    },
+    "planned": "予定",
+    "unpublished": "未公開",
+    "metadataOnly": "活動内容は未公開です。ここでは元の予定の情報だけを表示しています。",
+    "delete": {
+      "title": "活動記録の削除",
+      "action": "削除する",
+      "confirm": "活動記録を削除します。元の予定は削除されません。",
+      "success": "活動記録を削除しました"
     }
   },
   "dashboard": {
@@ -2794,5 +2854,11 @@
       "SUPPORTERS_AND_ABOVE": "サポーター以上",
       "MEMBERS_AND_ABOVE": "メンバー以上"
     }
+  },
+  "relativeTime": {
+    "justNow": "たった今",
+    "minutesAgo": "{count}分前",
+    "hoursAgo": "{count}時間前",
+    "daysAgo": "{count}日前"
   }
 }

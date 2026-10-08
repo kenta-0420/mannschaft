@@ -379,6 +379,12 @@ public class ActivityTemplateService {
     /**
      * テンプレートレスポンスにフィールド定義を付与して返す。
      */
+    public List<ActivityTemplateResponse.TemplateFieldResponse> fieldsIfPresent(Long id, ActivityScopeType type, Long scopeId) {
+        if (templateRepository.findById(id)
+                .filter(t -> t.getScopeType() == type && java.util.Objects.equals(t.getScopeId(), scopeId)).isEmpty()) return List.of();
+        return activityMapper.toTemplateFieldResponseList(fieldRepository.findByTemplateIdOrderBySortOrderAsc(id));
+    }
+
     private ActivityTemplateResponse toResponseWithFields(ActivityTemplateEntity entity) {
         List<ActivityTemplateFieldEntity> fields =
                 fieldRepository.findByTemplateIdOrderBySortOrderAsc(entity.getId());
