@@ -42,7 +42,7 @@ class RanchDinosaurLifecycleTest {
     }
 
     @Test
-    void 同日の週枠五XPで成長期になり翌週十XPで同名成体になる() {
+    void 累積ケアXPの閾値で成長期と成体になり名前を維持する() {
         var dinosaur = readyEgg();
         dinosaur.hatch("ひかり", now);
         dinosaur.applyCareXp(4, 5, 10);

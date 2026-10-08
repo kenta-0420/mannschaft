@@ -1,5 +1,17 @@
 {
   "ranch": {
+    "guide": {
+      "title": "玩法",
+      "participationTitle": "按自己的节奏开始",
+      "eggTitle": "从蛋到自己的恐龙",
+      "eggBody": "开始后经过7天，并确认外观选择后，就可以取名并孵化。尚未选择的蛋会安全地等待。",
+      "growthTitle": "照顾与装饰积分",
+      "growthBody": "开放时可通过免费照顾成长。请查看可用状态和本周剩余额度。不加入团队也能使用免费的个人回忆练习。完成回忆等符合条件的活动可能获得装饰积分，但受开放设置和每周上限限制。仅登录不会获得奖励。",
+      "safetyTitle": "可以放心休息",
+      "safetyBody": "退出登录或一段时间不使用，不会失去已保存的恐龙、成长或积分。可以隐藏房间，也可以暂停后以同一只恐龙继续。",
+      "availabilityTitle": "关于准备中的内容",
+      "availabilityBody": "选择方式、恐龙对应关系或素材处于准备中时，只能使用已开放的内容。保存诊断结果与将结果对应到恐龙外观是两回事。"
+    },
     "status": {"growth":"成长","points":"装饰积分余额","affinity":"亲密度","freeCare":"免费照料规则","careAvailable":"已发布","careStopped":"准备中或已停止","careRemaining":"本周免费照料剩余: {remaining} / {cap} XP","careUsed":"已用: {used} XP / 每次照料数量: {amount} XP","deliveryPaused":"积分配送已暂停，与免费照料是否可用相互独立。","deliveryActive":"积分反映可能需要时间。","pointRemaining":"本周活动积分剩余: {remaining}","personalReference":"个人回忆参考次数: {required} / 已完成: {completed}","referenceNotice":"次数仅供参考。来源上限、停止和配送情况可能影响获得全部积分，不作保证。","reward":{"ENABLED":"活动积分已启用。","DISABLED":"活动积分未注册或已禁用。","PAUSED":"活动奖励已暂停。"}},
     "admin": {"developmentFixtureNotice":"DEV_ 奖励仅用于隔离开发验证，不代表正式问题或素材获批或发布。需要经过测量的配送设置。","title":"恐龙运营","controls":"使用控制","care":"启用免费照料","shop":"启用商店","deliveryPause":"暂停积分配送","rewardPause":"暂停发生的活动奖励","independent":"免费照料、兑换、活动奖励和配送相互独立。","reason":"原因代码","saved":"已保存。","health":"活动来源配送状态","pending":"等待数量","dead":"最终失败数量","oldest":"最早等待事件的时长","seconds":"{count} 秒","refresh":"重新获取","retrySource":"预约此事件的重新配送","retryNotice":"这是配送预约，不代表积分已发放。请勿输入正文或学习回答。","sourceLabel":"活动来源","eventId":"事件 ID","RETRY_SCHEDULED":"已预约重新配送。","ALREADY_TERMINAL":"此事件已处于终止状态。","source":{"ATTENDANCE_RESPONSE":"本人出勤回答","TIMELINE_ORIGINAL":"本人时间线发布","BLOG_FIRST_PUBLISH":"博客首次公开","PERSONAL_RECALL_COMPLETE":"个人回忆完成"},"publicationNotice":"注册在未来UTC星期一00:00生效的不可变版本。停用版本的所有数值也必须为正。启用奖励策略需要启用个人回忆、注册公开素材及经测量的配送范围。不会改变现有周快照或已获得数量。","publishCare":"发布照料规则","publishPolicy":"发布奖励策略","effectiveAt":"生效时间（未来UTC星期一00:00）","amountXp":"每次照料XP","weeklyCapXp":"每周照料XP上限","juvenileXp":"幼年阶段XP阈值","adultXp":"成年阶段XP阈值","policyEnabled":"启用活动积分","globalWeeklyCap":"每周积分总上限","amountPoints":"每次活动积分","countLimit":"每周活动次数上限","batchSize":"配送批次大小","leaseSeconds":"配送租约秒数","maxAttempts":"配送尝试次数上限","initialBackoffSeconds":"首次重试等待秒数","maxBackoffSeconds":"最长重试等待秒数","publicationSaved":"已保存版本 {version} · 生效 {effectiveAt}"},
     "title": "恐龙房间",

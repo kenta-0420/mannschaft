@@ -4,6 +4,7 @@ import type { RanchSettings } from '~/types/ranch'
 const { t } = useI18n(); useHead({ title: t('ranch.title') })
 const ranch = useRanchState(); const visibility = useRanchVisibility()
 const message = ref(''); const visibilityFailed = ref(false)
+const guideVisible = ref(false)
 const busy = computed(() => ranch.loading.value || ranch.api.command.running.value)
 async function changeVisibility(visible: boolean) {
  visibilityFailed.value = false
@@ -27,7 +28,19 @@ onMounted(ranch.load)
 </script>
 <template>
  <div class="space-y-5 min-w-0">
-  <PageHeader :title="t('ranch.title')" back-to="/settings" />
+  <PageHeader :title="t('ranch.title')" back-to="/settings">
+   <template #actions>
+    <Button
+     icon="pi pi-question-circle"
+     :label="t('ranch.guide.title')"
+     text
+     class="min-h-11 min-w-11"
+     aria-haspopup="dialog"
+     aria-controls="ranch-guide-dialog"
+     @click="guideVisible = true"
+    />
+   </template>
+  </PageHeader>
   <NuxtLink to="/my/ranch/results" class="inline-flex min-h-11 items-center text-primary">{{ t('ranch.diagnosisResults.title') }}</NuxtLink>
   <PageLoading v-if="ranch.loading.value" />
   <DashboardErrorState v-else-if="ranch.failed.value" @retry="ranch.load" />
@@ -43,6 +56,7 @@ onMounted(ranch.load)
    <NuxtLink v-if="ranch.state.value.owner" to="/my/ranch/records" class="inline-flex min-h-11 items-center ml-4 text-primary">{{ t('ranch.records.title') }}</NuxtLink>
    <NuxtLink to="/reflections/recall" class="inline-flex min-h-11 items-center ml-4 text-primary">{{ t('ranch.recall') }}</NuxtLink>
   </template>
+  <RanchGuideModal v-model:visible="guideVisible" />
   <p role="status" aria-live="polite">{{ message }}</p>
   <Button v-if="ranch.api.command.pending.value && !ranch.api.command.running.value" class="min-h-11" :label="t('ranch.retry')" @click="retryCommand" />
   <Button v-if="visibilityFailed" class="min-h-11" :label="t('ranch.retry')" @click="changeVisibility(true)" />
