@@ -145,4 +145,22 @@ describe('CMP-261008-1253 ボードの実版契約', () => {
     expect(slots.value).toEqual([])
     expect(state.localAssignments.value).toEqual({})
   })
+
+  it('旧scheduleのPATCH成功を新scheduleの状態へ混入させない', async () => {
+    const schedule = ref(1)
+    const slots = ref([slot(1, 1)])
+    const state = useShiftBoard(schedule, slots)
+    const patch = deferred<{ data: ShiftSlotResponse }>()
+    api.patchSlotAssignments.mockReturnValue(patch.promise)
+    const adding = state.addUser(1, 4)
+    schedule.value = 2
+    await nextTick()
+    const current = { ...slot(2, 8, [5]), scheduleId: 2 }
+    api.getShiftSlots.mockResolvedValue({ data: [current] })
+    await state.loadSlots()
+    patch.resolve({ data: slot(1, 2, [4]) })
+    await adding
+    expect(slots.value).toEqual([current])
+    expect(state.localAssignments.value).toEqual({ 2: [5] })
+  })
 })

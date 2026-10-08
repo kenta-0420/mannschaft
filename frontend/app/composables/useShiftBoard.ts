@@ -29,6 +29,8 @@ export function useShiftBoard(scheduleId: Ref<number>, slots: Ref<ShiftSlotRespo
   }
 
   function applySlot(slot: ShiftSlotResponse): void {
+    // 切替前の API 成功は取り消さず、応答だけを現在の別スケジュールへ混入させない。
+    if (slot.scheduleId !== scheduleId.value || !slots.value.some((current) => current.id === slot.id)) return
     // 警告・マスクを含む応答全体と、次の操作で送る実版を保持する。
     slots.value = slots.value.map((current) => current.id === slot.id ? slot : current)
     localAssignments.value[slot.id] = [...slot.assignedUserIds]
