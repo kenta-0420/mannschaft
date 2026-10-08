@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-08T13:39:37+00:00",
+  "generatedAt": "2026-10-08T14:15:36+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,19 +8,19 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "56bdd1add8565f36a75f337d8b90b112a4e518da",
-    "taskListCommit": "967edf0208f94503790811078e8e15da2565df85",
+    "taskListCommit": "9e57ff291ac3d1b7e24f3e5c9cfd632b2b53a6ee",
     "inventorySha256": "50fcac2d602060752d611b7babe6f04327fc4b1b6a9ebccbcac383a464fef302",
-    "taskListSha256": "ade3d05350819f0f4e1aecb9a77e56f7e0a1b6479043a9962df8c935a1fa963c",
+    "taskListSha256": "86ab83ea94171acf1d5be568c203557fd46e3aa87f771763a5471b0a672cd67a",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "9c9833b71a5b5fba829ac7a97b9cfeafd2da9bf28c3fd46220fdaf47a2f15f92"
+    "githubSnapshotSha256": "bd84af5ce01e0b68eaf3f29ccb31b8c4a034a93f6337aad1a30cef0ab807fc59"
   },
   "sourceCounts": {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 417,
+    "campaigns": 418,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 417
+      "campaigns": 418
     },
     "parsed": {
       "features": 44,
-      "campaigns": 417,
+      "campaigns": 418,
       "core": 25,
       "noncore": 19,
       "blockers": 22,
@@ -39722,12 +39722,89 @@ window.BETA_INVENTORY_DATA = {
       ],
       "githubRefs": [],
       "github": []
+    },
+    {
+      "id": "CMP-261008-2305",
+      "title": "棚卸住民観測の空insights自己検証と完了棚卸更新",
+      "status": "done",
+      "statusLabel": "完了（登録PR #3734 MERGED、Docs PR #3732で実装・検証）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "空insightsの正常受入・整合する自己検証baseline受入・既存8不正入力の拒否、住民観測observed-unverified/trusted=false/coverage不昇格の保持、GitHub同期・棚卸生成・検証の成功を確認する",
+      "acceptance": [
+        "空insightsの正常受入・整合する自己検証baseline受入・既存8不正入力の拒否、住民観測observed-unverified/trusted=false/coverage不昇格の保持、GitHub同期・棚卸生成・検証の成功を確認する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "登録 [PR #3734](https://github.com/kenta-0420/mannschaft/pull/3734) は通常MERGED。Docs [PR #3732](https://github.com/kenta-0420/mannschaft/pull/3732) で自己検証枝だけを根治。空insights受入・整合baseline受入・8不正拒否・通常validate成功。実overlayのinsights空／trusted=false／observed-unverified／coverage不昇格を保持し、GitHub同期・正本生成も成功。旧自己検証TypeError原は保持",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "登録 [PR #3734](https://github.com/kenta-0420/mannschaft/pull/3734) は通常MERGED。Docs [PR #3732](https://github.com/kenta-0420/mannschaft/pull/3732) で自己検証枝だけを根治。空insights受入・整合baseline受入・8不正拒否・通常validate成功。実overlayのinsights空／trusted=false／observed-unverified／coverage不昇格を保持し、GitHub同期・正本生成も成功。旧自己検証TypeError原は保持"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "insights",
+        "insights",
+        "baseline",
+        "observed-unverified",
+        "trusted",
+        "false",
+        "coverage",
+        "GitHub"
+      ],
+      "tags": [
+        "完了"
+      ],
+      "githubRefs": [
+        3732,
+        3734
+      ],
+      "github": [
+        {
+          "number": 3732,
+          "kind": "pull_request",
+          "state": "open",
+          "title": "CMP-261008-2305 完了台帳・棚卸更新と空insights自己検証修正",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3732",
+          "updatedAt": "2026-10-08T14:13:36Z",
+          "ci": {
+            "status": "success",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        },
+        {
+          "number": 3734,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "CMP-261008-2305 棚卸更新・空insights自己検証修正の登録",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/3734",
+          "updatedAt": "2026-10-08T14:12:17Z",
+          "ci": {
+            "status": "unavailable",
+            "reason": "終了済みPRのCIは同期対象外",
+            "checks": [],
+            "source": "GraphQL statusCheckRollup"
+          }
+        }
+      ]
     }
   ],
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-10-08T13:38:29+00:00",
+    "synchronizedAt": "2026-10-08T14:14:30+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -41041,7 +41118,11 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261008-1703": [],
       "CMP-261008-1704": [],
       "CMP-261008-1705": [],
-      "CMP-261008-2151": []
+      "CMP-261008-2151": [],
+      "CMP-261008-2305": [
+        3732,
+        3734
+      ]
     },
     "items": {
       "261": {
@@ -47252,13 +47333,40 @@ window.BETA_INVENTORY_DATA = {
           "checks": [],
           "source": "GraphQL statusCheckRollup"
         }
+      },
+      "3732": {
+        "number": 3732,
+        "kind": "pull_request",
+        "state": "open",
+        "title": "CMP-261008-2305 完了台帳・棚卸更新と空insights自己検証修正",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3732",
+        "updatedAt": "2026-10-08T14:13:36Z",
+        "ci": {
+          "status": "success",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
+      },
+      "3734": {
+        "number": 3734,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "CMP-261008-2305 棚卸更新・空insights自己検証修正の登録",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/3734",
+        "updatedAt": "2026-10-08T14:12:17Z",
+        "ci": {
+          "status": "unavailable",
+          "reason": "終了済みPRのCIは同期対象外",
+          "checks": [],
+          "source": "GraphQL statusCheckRollup"
+        }
       }
     },
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-10-08T13:38:29+00:00",
-      "referenceCount": 466
+      "synchronizedAt": "2026-10-08T14:14:30+00:00",
+      "referenceCount": 468
     }
   }
 };

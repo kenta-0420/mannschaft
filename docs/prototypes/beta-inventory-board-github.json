@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-10-08T13:38:29+00:00",
+  "synchronizedAt": "2026-10-08T14:14:30+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -1315,7 +1315,11 @@
     "CMP-261008-1703": [],
     "CMP-261008-1704": [],
     "CMP-261008-1705": [],
-    "CMP-261008-2151": []
+    "CMP-261008-2151": [],
+    "CMP-261008-2305": [
+      3732,
+      3734
+    ]
   },
   "items": {
     "261": {
@@ -7520,6 +7524,33 @@
       "title": "修正: 非所属者がチームのブログ一覧から公開記事を辿れるようにする CMP-261007-2052",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3719",
       "updatedAt": "2026-10-08T09:21:15Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3732": {
+      "number": 3732,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "CMP-261008-2305 完了台帳・棚卸更新と空insights自己検証修正",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3732",
+      "updatedAt": "2026-10-08T14:13:36Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3734": {
+      "number": 3734,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "CMP-261008-2305 棚卸更新・空insights自己検証修正の登録",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3734",
+      "updatedAt": "2026-10-08T14:12:17Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
