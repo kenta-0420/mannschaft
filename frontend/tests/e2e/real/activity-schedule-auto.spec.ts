@@ -46,7 +46,7 @@ function scopePath(scope: Scope): string {
 function schedulesApi(scope: Scope): string {
   return `${API}/${scope.type === 'TEAM' ? 'teams' : 'organizations'}/${scope.id}/schedules`
 }
-async function signIn(page: Page, role: 'AUTHOR' | 'READER'): Promise<void> {
+async function signIn(page: Page, role: 'AUTHOR' | 'READER' | 'OUTSIDER'): Promise<void> {
   const email = process.env[`CMP_ACTIVITY_${role}_EMAIL`]
   const password = process.env[`CMP_ACTIVITY_${role}_PASSWORD`]
   if (!email || !password) throw new Error('専用ロールの認証設定が必要です')
@@ -75,6 +75,89 @@ async function readerPage(browser: Browser, width: number): Promise<Page> {
   } catch (error) {
     await context.close()
     throw error
+  }
+}
+async function verifyOutsiderCannotRead(
+  browser: Browser,
+  scope: Scope,
+  id: number,
+  title: string,
+  privateBody: string,
+  info: TestInfo,
+): Promise<void> {
+  const context = await browser.newContext({
+    baseURL: 'http://localhost:3001',
+    locale: 'ja-JP',
+    timezoneId: 'Asia/Tokyo',
+    viewport: { width: 1280, height: 720 },
+  })
+  const outsider = await context.newPage()
+  try {
+    await signIn(outsider, 'OUTSIDER')
+    const [listed] = await Promise.all([
+      outsider.waitForResponse((response) => {
+        const url = new URL(response.url())
+        return (
+          url.origin === 'http://localhost:8081' &&
+          url.pathname === '/api/v1/activities' &&
+          url.searchParams.get('scope_type') === scope.type &&
+          url.searchParams.get('scope_id') === String(scope.id) &&
+          response.request().method() === 'GET'
+        )
+      }),
+      outsider.goto(`${scopePath(scope)}/activities`),
+    ])
+    expect([200, 403, 404]).toContain(listed.status())
+    await dismissInitialPermissionDialog(outsider)
+    if (listed.status() === 200) {
+      const rows = ((await listed.json()) as { data: Array<{ id: number }> }).data
+      expect(rows.some((row) => row.id === id)).toBe(false)
+      await expect(outsider.getByTestId('activity-status-filter')).toBeVisible()
+    } else {
+      await expect(outsider.getByTestId('load-error-state')).toBeVisible()
+    }
+    await expect(outsider.getByRole('link', { name: title, exact: true })).toHaveCount(0)
+    await expect(outsider.getByTestId(`activity-detail-${id}`)).toHaveCount(0)
+    await expect(outsider.locator('body')).not.toContainText(privateBody)
+    await image(outsider, info, `${scope.type}-outsider-list`)
+    const [denied] = await Promise.all([
+      outsider.waitForResponse(
+        (response) =>
+          response.url() === `${API}/activities/${id}` &&
+          response.request().method() === 'GET',
+      ),
+      outsider.goto(`/activities/${id}`),
+    ])
+    expect([403, 404]).toContain(denied.status())
+    const error = outsider.getByTestId('load-error-state')
+    await expect(error).toBeVisible()
+    await expect(error).not.toHaveText('')
+    await expect(outsider.getByRole('heading', { name: title, exact: true })).toHaveCount(0)
+    await expect(outsider.locator('body')).not.toContainText(privateBody)
+    for (const testid of [
+      'activity-metadata-only',
+      'activity-description',
+      'activity-template-fields',
+      'activity-participants',
+      'activity-edit-draft',
+      'activity-publish',
+      'activity-delete',
+      'activity-source-schedule',
+    ]) {
+      await expect(outsider.getByTestId(testid)).toHaveCount(0)
+    }
+    await info.attach(`${scope.type}-outsider-denied`, {
+      body: JSON.stringify({
+        listStatus: listed.status(),
+        detailStatus: denied.status(),
+        detailPath: new URL(outsider.url()).pathname,
+        visibleError: await error.innerText(),
+      }),
+      contentType: 'application/json',
+    })
+    await image(outsider, info, `${scope.type}-outsider-detail-denied`)
+  } finally {
+    await context.close()
   }
 }
 async function image(page: Page, info: TestInfo, name: string): Promise<void> {
@@ -244,6 +327,7 @@ for (const [type, width] of [
         true,
       )
       await image(reader, info, `${type}-metadata-${width}`)
+      await verifyOutsiderCannotRead(browser, scope, activityId, title, privateBody, info)
       await page.setViewportSize({ width, height: 800 })
       const requests: string[] = []
       page.on('request', (request) => {
