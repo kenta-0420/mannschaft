@@ -3,6 +3,7 @@ package com.mannschaft.app.shift;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.admin.repository.FeatureFlagRepository;
+import com.mannschaft.app.admin.entity.FeatureFlagEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
@@ -61,6 +62,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ShiftSlotVersionContractIT extends AbstractMySqlIntegrationTest {
     private static final long ABOVE_INTEGER_MAX = 2_147_483_648L;
     private static final long MISSING_SLOT_ID = 999_999_999L;
+    private static final String SHIFT_FLAG = "FEATURE_SHIFT_ENABLED";
 
     @Autowired private MockMvc mvc;
     @Autowired private ObjectMapper mapper;
@@ -82,11 +84,16 @@ class ShiftSlotVersionContractIT extends AbstractMySqlIntegrationTest {
     private Long slotId;
     private Long teamId;
     private Long foreignTeamId;
+    private FeatureFlagEntity flagBefore;
+    private Long ownedFlagId;
 
     @BeforeEach
     void fixtureを実Repositoryで保存する() {
         inTx(() -> {
-            FeatureFlagTestSupport.enable(flags, caches, "FEATURE_SHIFT_ENABLED");
+            flagBefore = flags.findByFlagKey(SHIFT_FLAG).map(flag -> flag.toBuilder().build()).orElse(null);
+            FeatureFlagTestSupport.enable(flags, caches, SHIFT_FLAG);
+            flags.flush();
+            ownedFlagId = flags.findByFlagKey(SHIFT_FLAG).orElseThrow().getId();
             admin = user("admin");
             member = user("member");
             outsider = user("outsider");
@@ -116,6 +123,7 @@ class ShiftSlotVersionContractIT extends AbstractMySqlIntegrationTest {
     @AfterEach
     void 所有fixtureだけを独立TXで削除する() {
         if (slotId == null) return;
+        try {
         inTx(() -> {
             em.createNativeQuery("DELETE FROM shift_assignments WHERE slot_id = :id")
                     .setParameter("id", slotId).executeUpdate();
@@ -132,6 +140,24 @@ class ShiftSlotVersionContractIT extends AbstractMySqlIntegrationTest {
             users.deleteAllById(actors);
             return null;
         });
+        } finally {
+            inTx(() -> {
+                FeatureFlagEntity current = flags.findByFlagKey(SHIFT_FLAG).orElseThrow();
+                assertThat(current.getId()).isEqualTo(ownedFlagId);
+                if (flagBefore == null) {
+                    flags.delete(current);
+                } else {
+                    // JPA の監査フックで updated_at を再更新せず、変更した列を元値へ戻す。
+                    em.createNativeQuery("UPDATE feature_flags SET is_enabled = :enabled, updated_by = :actor, updated_at = :time WHERE id = :id AND flag_key = :key")
+                            .setParameter("enabled", flagBefore.getIsEnabled())
+                            .setParameter("actor", flagBefore.getUpdatedBy())
+                            .setParameter("time", flagBefore.getUpdatedAt())
+                            .setParameter("id", ownedFlagId).setParameter("key", SHIFT_FLAG).executeUpdate();
+                }
+                return null;
+            });
+            FeatureFlagTestSupport.clearFlagCaches(caches);
+        }
     }
 
     @Test
