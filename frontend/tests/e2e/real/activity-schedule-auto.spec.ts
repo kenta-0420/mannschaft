@@ -94,31 +94,38 @@ async function verifyOutsiderCannotRead(
   const outsider = await context.newPage()
   try {
     await signIn(outsider, 'OUTSIDER')
-    const [listed] = await Promise.all([
-      outsider.waitForResponse((response) => {
-        const url = new URL(response.url())
-        return (
-          url.origin === 'http://localhost:8081' &&
-          url.pathname === '/api/v1/activities' &&
-          url.searchParams.get('scope_type') === scope.type &&
-          url.searchParams.get('scope_id') === String(scope.id) &&
-          response.request().method() === 'GET'
-        )
-      }),
+    const listRequests: string[] = []
+    outsider.on('request', (request) => {
+      const url = new URL(request.url())
+      if (
+        request.method() === 'GET' &&
+        url.origin === 'http://localhost:8081' &&
+        url.pathname === '/api/v1/activities'
+      )
+        listRequests.push(url.pathname)
+    })
+    const plural = scope.type === 'TEAM' ? 'teams' : 'organizations'
+    // 非所属は me の slug 解決が null になり、活動一覧APIの前にUIエラーとなる。
+    const [membership] = await Promise.all([
+      outsider.waitForResponse(
+        (response) =>
+          response.url() === `${API}/me/${plural}` && response.request().method() === 'GET',
+      ),
       outsider.goto(`${scopePath(scope)}/activities`),
     ])
-    expect([200, 403, 404]).toContain(listed.status())
+    expect(membership.status()).toBe(200)
+    const rows = ((await membership.json()) as { data: Array<{ id: number }> }).data
+    expect(rows.some((row) => row.id === scope.id)).toBe(false)
     await dismissInitialPermissionDialog(outsider)
-    if (listed.status() === 200) {
-      const rows = ((await listed.json()) as { data: Array<{ id: number }> }).data
-      expect(rows.some((row) => row.id === id)).toBe(false)
-      await expect(outsider.getByTestId('activity-status-filter')).toBeVisible()
-    } else {
-      await expect(outsider.getByTestId('load-error-state')).toBeVisible()
-    }
+    const listError = outsider.getByTestId('load-error-state')
+    await expect(listError).toBeVisible()
+    await expect(listError).not.toHaveText('')
+    expect(listRequests).toEqual([])
+    const listErrorText = await listError.innerText()
     await expect(outsider.getByRole('link', { name: title, exact: true })).toHaveCount(0)
     await expect(outsider.getByTestId(`activity-detail-${id}`)).toHaveCount(0)
     await expect(outsider.locator('body')).not.toContainText(privateBody)
+    await expect(outsider.locator('body')).not.toContainText(title)
     await image(outsider, info, `${scope.type}-outsider-list`)
     const [denied] = await Promise.all([
       outsider.waitForResponse(
@@ -148,7 +155,9 @@ async function verifyOutsiderCannotRead(
     }
     await info.attach(`${scope.type}-outsider-denied`, {
       body: JSON.stringify({
-        listStatus: listed.status(),
+        membershipStatus: membership.status(),
+        listRequestCount: listRequests.length,
+        listVisibleError: listErrorText,
         detailStatus: denied.status(),
         detailPath: new URL(outsider.url()).pathname,
         visibleError: await error.innerText(),
