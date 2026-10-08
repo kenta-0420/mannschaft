@@ -237,7 +237,7 @@ public class ReservationPendingExpireService {
         }
         var policy = policyRepository.findPendingExpirePolicyForUpdate(primary.getTeamId()).orElse(null);
         if (policy != null) entityManager.refresh(policy, LockModeType.PESSIMISTIC_WRITE);
-        Integer hours = policy == null ? ReservationPolicyEntity.DEFAULT_PENDING_EXPIRE_HOURS
+        Integer hours = policy == null ? Integer.valueOf(ReservationPolicyEntity.DEFAULT_PENDING_EXPIRE_HOURS)
                 : policy.getPendingExpireHours();
         if (hours == null) {
             progress.completeUnit(epoch, primary.getId(), completedPrefix);

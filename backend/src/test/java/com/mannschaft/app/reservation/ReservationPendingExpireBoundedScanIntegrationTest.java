@@ -219,7 +219,7 @@ class ReservationPendingExpireBoundedScanIntegrationTest extends AbstractMySqlIn
             }
             return result;
         });
-        ((Advised) reservations).addAdvisor(candidateObserver);
+        ((Advised) reservations).addAdvisor(0, candidateObserver);
         ((Advised) expire).addAdvisor(unitObserver);
         ((Advised) expire).addAdvisor(scanObserver);
         dispatchObserver = observer(List.of("dispatch"), invocation -> {
