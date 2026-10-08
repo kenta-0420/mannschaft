@@ -20,6 +20,7 @@ import com.mannschaft.app.team.repository.TeamRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -30,13 +31,15 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
@@ -48,11 +51,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>共通 MOCK 構成、実 JWT フィルター、実 MySQL を使う。新 getter に依存せず
  * 公開 JSON と永続化された counter・割当履歴を観測し、欠落応答と Integer 入力の
- * 範囲不足を実装前に赤くする。テスト TX は fixture を各ケース後に巻き戻すためだけに使い、
- * DB 観測前に flush/clear して managed entity の自己整合だけで緑にしない。</p>
+ * 範囲不足を実装前に赤くする。fixture のみ事前に独立 TX でコミットし、各 API は
+ * 本来の Service TX でコミットする。DB 観測も新しい TX で実施するため、テスト TX の
+ * flush が未確定の更新応答を救済しない。後始末は所有 fixture ID だけを対象とする。</p>
  */
 @AutoConfigureMockMvc
-@Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("CMP-261008-1253 ShiftSlotController 枠版番号の実 API 契約")
 class ShiftSlotVersionContractIT extends AbstractMySqlIntegrationTest {
@@ -68,6 +71,7 @@ class ShiftSlotVersionContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private ShiftSlotRepository slots;
     @Autowired private FeatureFlagRepository flags;
     @Autowired private CacheManager caches;
+    @Autowired private PlatformTransactionManager txManager;
     @PersistenceContext private EntityManager em;
 
     private Long admin;
@@ -76,32 +80,58 @@ class ShiftSlotVersionContractIT extends AbstractMySqlIntegrationTest {
     private Long foreignAdmin;
     private Long scheduleId;
     private Long slotId;
+    private Long teamId;
+    private Long foreignTeamId;
 
     @BeforeEach
     void fixtureを実Repositoryで保存する() {
-        FeatureFlagTestSupport.enable(flags, caches, "FEATURE_SHIFT_ENABLED");
-        admin = user("admin");
-        member = user("member");
-        outsider = user("outsider");
-        foreignAdmin = user("foreign");
-        Long teamId = team("own");
-        Long foreignTeamId = team("foreign");
-        MembershipTestHelper.insertMembership(em, admin, ScopeType.TEAM, teamId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, admin, "ADMIN", teamId, null);
-        MembershipTestHelper.insertMembership(em, member, ScopeType.TEAM, teamId, RoleKind.MEMBER);
-        MembershipTestHelper.insertMembership(em, foreignAdmin, ScopeType.TEAM, foreignTeamId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, foreignAdmin, "ADMIN", foreignTeamId, null);
-        scheduleId = schedules.save(ShiftScheduleEntity.builder()
-                .teamId(teamId).title("版番号契約")
-                .periodType(ShiftPeriodType.WEEKLY).status(ShiftScheduleStatus.DRAFT)
-                .startDate(LocalDate.of(2026, 10, 8)).endDate(LocalDate.of(2026, 10, 10))
-                .createdBy(admin).build()).getId();
-        slotId = slots.save(ShiftSlotEntity.builder()
-                .scheduleId(scheduleId).slotDate(LocalDate.of(2026, 10, 9))
-                .startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(10, 0))
-                .requiredCount(2).build()).getId();
-        em.flush();
-        em.clear();
+        inTx(() -> {
+            FeatureFlagTestSupport.enable(flags, caches, "FEATURE_SHIFT_ENABLED");
+            admin = user("admin");
+            member = user("member");
+            outsider = user("outsider");
+            foreignAdmin = user("foreign");
+            teamId = team("own");
+            foreignTeamId = team("foreign");
+            MembershipTestHelper.insertMembership(em, admin, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+            MembershipTestHelper.insertUserRole(em, admin, "ADMIN", teamId, null);
+            MembershipTestHelper.insertMembership(em, member, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+            MembershipTestHelper.insertMembership(em, foreignAdmin, ScopeType.TEAM, foreignTeamId, RoleKind.MEMBER);
+            MembershipTestHelper.insertUserRole(em, foreignAdmin, "ADMIN", foreignTeamId, null);
+            scheduleId = schedules.save(ShiftScheduleEntity.builder()
+                    .teamId(teamId).title("版番号契約")
+                    .periodType(ShiftPeriodType.WEEKLY).status(ShiftScheduleStatus.DRAFT)
+                    .startDate(LocalDate.of(2026, 10, 8)).endDate(LocalDate.of(2026, 10, 10))
+                    .createdBy(admin).build()).getId();
+            slotId = slots.save(ShiftSlotEntity.builder()
+                    .scheduleId(scheduleId).slotDate(LocalDate.of(2026, 10, 9))
+                    .startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(10, 0))
+                    .requiredCount(2).build()).getId();
+            em.flush();
+            em.clear();
+        return null;
+        });
+    }
+
+    @AfterEach
+    void 所有fixtureだけを独立TXで削除する() {
+        if (slotId == null) return;
+        inTx(() -> {
+            em.createNativeQuery("DELETE FROM shift_assignments WHERE slot_id = :id")
+                    .setParameter("id", slotId).executeUpdate();
+            slots.deleteById(slotId);
+            slots.flush();
+            schedules.deleteById(scheduleId);
+            schedules.flush();
+            List<Long> actors = List.of(admin, member, outsider, foreignAdmin);
+            em.createNativeQuery("DELETE FROM user_roles WHERE user_id IN (:ids)")
+                    .setParameter("ids", actors).executeUpdate();
+            em.createNativeQuery("DELETE FROM memberships WHERE user_id IN (:ids)")
+                    .setParameter("ids", actors).executeUpdate();
+            teams.deleteAllById(List.of(teamId, foreignTeamId));
+            users.deleteAllById(actors);
+            return null;
+        });
     }
 
     @Test
@@ -142,9 +172,11 @@ class ShiftSlotVersionContractIT extends AbstractMySqlIntegrationTest {
 
     @Test
     void Integer上限を越える実counterでもLong契約で更新できる() throws Exception {
-        em.createNativeQuery("UPDATE shift_slots SET version = :version WHERE id = :id")
+        inTx(() -> {
+            em.createNativeQuery("UPDATE shift_slots SET version = :version WHERE id = :id")
                 .setParameter("version", ABOVE_INTEGER_MAX).setParameter("id", slotId).executeUpdate();
-        em.clear();
+            return null;
+        });
         assertThat(databaseVersion()).isEqualTo(ABOVE_INTEGER_MAX);
         JsonNode added = assignment(Map.of("addUserIds", List.of(member), "slotVersion", ABOVE_INTEGER_MAX));
         assertThat(added.path("version").longValue()).isEqualTo(ABOVE_INTEGER_MAX + 1);
@@ -207,19 +239,19 @@ class ShiftSlotVersionContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private long databaseVersion() {
-        em.flush();
-        em.clear();
-        return ((Number) em.createNativeQuery("SELECT version FROM shift_slots WHERE id = :id")
-                .setParameter("id", slotId).getSingleResult()).longValue();
+        return inTx(() -> ((Number) em.createNativeQuery("SELECT version FROM shift_slots WHERE id = :id")
+                .setParameter("id", slotId).getSingleResult()).longValue());
     }
 
     private String databaseSnapshot() {
-        em.flush();
-        em.clear();
-        return em.createNativeQuery("SELECT CONCAT(version, ':', COALESCE(assigned_user_ids, 'null')) FROM shift_slots WHERE id = :id")
+        return inTx(() -> em.createNativeQuery("SELECT CONCAT(version, ':', COALESCE(assigned_user_ids, 'null')) FROM shift_slots WHERE id = :id")
                 .setParameter("id", slotId).getSingleResult() + "|"
                 + java.util.Arrays.deepToString(em.createNativeQuery("SELECT * FROM shift_assignments WHERE slot_id = :id ORDER BY id")
-                .setParameter("id", slotId).getResultList().toArray());
+                .setParameter("id", slotId).getResultList().toArray()));
+    }
+
+    private <T> T inTx(Supplier<T> work) {
+        return new TransactionTemplate(txManager).execute(status -> work.get());
     }
 
     private Long user(String label) {
