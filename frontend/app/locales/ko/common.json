@@ -741,6 +741,8 @@
       "titlePlaceholder": "게시글 제목을 입력하세요",
       "createDialogHint": "임시 저장으로 저장됩니다. 제목 입력 후 편집 페이지에서 본문을 작성하세요.",
       "loadListFailed": "게시글 목록을 불러오지 못했습니다",
+      "loadListErrorHint": "게시글 목록을 표시하지 못했습니다. 통신 상태나 권한을 확인한 뒤 다시 불러오세요.",
+      "reloadList": "다시 불러오기",
       "createFailed": "게시글을 작성하지 못했습니다",
       "archived": "보관됨",
       "publishSuccess": "게시했습니다",

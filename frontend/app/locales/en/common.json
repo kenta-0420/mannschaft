@@ -741,6 +741,8 @@
       "titlePlaceholder": "Enter a post title",
       "createDialogHint": "The post will be saved as a draft. After entering a title, write the body on the edit page.",
       "loadListFailed": "Failed to load the post list",
+      "loadListErrorHint": "Could not display the post list. Check your connection or permissions and reload.",
+      "reloadList": "Reload",
       "createFailed": "Failed to create the post",
       "archived": "Archived",
       "publishSuccess": "Published",

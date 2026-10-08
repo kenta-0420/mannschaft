@@ -741,6 +741,8 @@
       "titlePlaceholder": "请输入文章标题",
       "createDialogHint": "将保存为草稿。输入标题后，请在编辑页面撰写正文。",
       "loadListFailed": "获取文章列表失败",
+      "loadListErrorHint": "无法显示文章列表。请检查网络或权限后重新加载。",
+      "reloadList": "重新加载",
       "createFailed": "创建文章失败",
       "archived": "已归档",
       "publishSuccess": "已发布",

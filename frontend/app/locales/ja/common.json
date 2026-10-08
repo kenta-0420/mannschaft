@@ -741,6 +741,8 @@
       "titlePlaceholder": "記事タイトルを入力",
       "createDialogHint": "下書きとして保存されます。タイトル入力後、編集ページで本文を書いてください。",
       "loadListFailed": "記事一覧の取得に失敗しました",
+      "loadListErrorHint": "記事一覧を表示できませんでした。通信状況や権限をご確認のうえ、再読み込みしてください。",
+      "reloadList": "再読み込み",
       "createFailed": "記事の作成に失敗しました",
       "archived": "アーカイブ",
       "publishSuccess": "公開しました",
