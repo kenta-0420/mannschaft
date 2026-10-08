@@ -1,5 +1,9 @@
 package com.mannschaft.app.common.migration;
 
+import java.util.UUID;
+import java.nio.ByteBuffer;
+import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
+import com.mannschaft.app.common.entity.UuidV7Entity;
 import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.circulation.RecipientStatus;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
@@ -64,6 +68,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -1107,6 +1112,89 @@ class FlywayFromScratchMigrationTest {
              SessionFactory factory = ShiftVersionBigintMigrationFixture.sessionFactory(
                      MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
             ShiftVersionBigintMigrationFixture.assertStaleWriterRejected(factory, connection);
+        }
+    }
+
+    @Test
+    @DisplayName("GDPR CHAR64: 正式DDLで削除完了証跡の実Hibernate validateが通る")
+    void 削除完了証跡のメールハッシュを正式CHAR64スキーマで検証できる() throws Exception {
+        migrateFromScratch();
+        assertAccountPurgeHashColumn();
+        assertThatCode(() -> {
+            try (SessionFactory ignored = accountPurgeValidatedSessionFactory()) {
+                // SessionFactory構築時に、当Entityと正式Flywayスキーマの型を実検証する。
+            }
+        }).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("GDPR CHAR64: 64桁hexをcommit後の別Sessionから完全一致で読み戻せる")
+    void 削除完了証跡の64桁メールハッシュを永続化して再読込できる() throws Exception {
+        migrateFromScratch();
+        UUID ownedId = UuidV7.generate();
+        String emailHash = "0123456789abcdef".repeat(4);
+        try (SessionFactory sf = accountPurgeValidatedSessionFactory()) {
+            try (Session session = sf.openSession()) {
+                session.beginTransaction();
+                AccountPurgeCompletionStatusEntity status = new AccountPurgeCompletionStatusEntity();
+                status.setId(ownedId);
+                status.setUserId(9_215_100L); // クロスドメインFKを持たない参照値。
+                status.setEmailHash(emailHash);
+                status.setDomainName("role");
+                status.setStatus("PENDING");
+                status.setAttemptedAt(LocalDateTime.of(2026, 10, 8, 13, 0));
+                session.persist(status);
+                session.getTransaction().commit();
+            }
+            try (Session session = sf.openSession()) {
+                AccountPurgeCompletionStatusEntity found = session.find(AccountPurgeCompletionStatusEntity.class, ownedId);
+                assertThat(found).isNotNull();
+                assertThat(found.getEmailHash()).isEqualTo(emailHash).matches("[0-9a-f]{64}");
+            }
+            assertAccountPurgeHashColumn();
+        } finally {
+            // commit途中の失敗も、この試練が生成したUUIDの1行だけを後始末する。
+            try (Connection connection = connect();
+                 var statement = connection.prepareStatement("DELETE FROM account_purge_completion_status WHERE id = ?")) {
+                statement.setBytes(1, ByteBuffer.allocate(16).putLong(ownedId.getMostSignificantBits())
+                        .putLong(ownedId.getLeastSignificantBits()).array());
+                statement.executeUpdate();
+            }
+        }
+    }
+
+    private static void assertAccountPurgeHashColumn() throws SQLException {
+        try (Connection connection = connect(); Statement statement = connection.createStatement();
+             ResultSet column = statement.executeQuery("SELECT COLUMN_TYPE, IS_NULLABLE FROM information_schema.COLUMNS "
+                     + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'account_purge_completion_status' "
+                     + "AND COLUMN_NAME = 'email_hash'")) {
+            assertThat(column.next()).isTrue();
+            assertThat(column.getString("COLUMN_TYPE")).isEqualTo("char(64)");
+            assertThat(column.getString("IS_NULLABLE")).isEqualTo("NO");
+            assertThat(column.next()).isFalse();
+        }
+    }
+
+    private static SessionFactory accountPurgeValidatedSessionFactory() {
+        StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
+                .applySetting(AvailableSettings.DIALECT, MySQLDialect.class.getName())
+                .applySetting(AvailableSettings.JAKARTA_JDBC_DRIVER, "com.mysql.cj.jdbc.Driver")
+                .applySetting(AvailableSettings.JAKARTA_JDBC_URL, MYSQL.getJdbcUrl())
+                .applySetting(AvailableSettings.JAKARTA_JDBC_USER, MYSQL.getUsername())
+                .applySetting(AvailableSettings.JAKARTA_JDBC_PASSWORD, MYSQL.getPassword())
+                .applySetting(AvailableSettings.HBM2DDL_AUTO, "validate")
+                .build();
+        try {
+            return new MetadataSources(registry)
+                    .addAnnotatedClass(UuidV7Entity.class)
+                    .addAnnotatedClass(AccountPurgeCompletionStatusEntity.class)
+                    .getMetadataBuilder()
+                    .applyPhysicalNamingStrategy(new CamelCaseToUnderscoresNamingStrategy())
+                    .applyImplicitNamingStrategy(new SpringImplicitNamingStrategy())
+                    .build().buildSessionFactory();
+        } catch (RuntimeException error) {
+            StandardServiceRegistryBuilder.destroy(registry);
+            throw error;
         }
     }
 

@@ -7,6 +7,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -48,7 +50,8 @@ public class AccountPurgeCompletionStatusEntity extends UuidV7Entity {
      * 削除時点の email を SHA-256 でハッシュ化した値。
      * GDPR 証跡として保持するが、生 email は保持しない。
      */
-    @Column(name = "email_hash", nullable = false, length = 64)
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(name = "email_hash", nullable = false, length = 64, columnDefinition = "CHAR(64)")
     private String emailHash;
 
     /**

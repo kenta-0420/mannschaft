@@ -414,6 +414,7 @@ public void backfill() {
 - `account_purge_completion_status` テーブル新設（6 ドメイン × `(userId, domain, completed_at, status)` で per-domain 完了を記録）
   - Flyway: `V9.172__create_account_purge_completion_status.sql`
   - Entity: `com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity`（UUIDv7, FK なし）
+  - `email_hash` は SHA-256 の64桁hexを保持する。正本DDLの `CHAR(64) NOT NULL` を維持し、Entity は JDBC 型 `CHAR` と `columnDefinition = "CHAR(64)"` を明示する。
   - Repository: `com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository`
 - `AccountPurgeService#purgeUser()` が `AccountPurgedEvent` 発火前に 6 ドメイン分の PENDING レコードを INSERT
 - 各 `*PurgeEventListener` が処理成功時に対応ドメインの status を SUCCESS に更新
