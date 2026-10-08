@@ -192701,6 +192701,10 @@
           "time": {
             "$ref": "#/components/schemas/ShiftSlotTimeDto"
           },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
           "warnings": {
             "type": "array",
             "items": {
@@ -211864,7 +211868,7 @@
           },
           "slotVersion": {
             "type": "integer",
-            "format": "int32"
+            "format": "int64"
           }
         },
         "required": [
