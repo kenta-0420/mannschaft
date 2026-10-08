@@ -184,9 +184,13 @@ function date(days: number): string {
 }
 async function createViaCalendar(page: Page, scope: Scope, title: string): Promise<number> {
   await page.goto(`${scopePath(scope)}/schedule`)
-  await expect(page.getByRole('button', { name: '予定を追加', exact: true })).toBeVisible()
+  const add = page.getByRole('button', { name: '予定を追加', exact: true })
+  const defer = page.getByRole('button', { name: 'あとで決める', exact: true })
+  // 初期権限modalが開くと、背面の予定ボタンはrole探索の対象外になる。
+  await expect(add.or(defer).first()).toBeVisible()
   await dismissInitialPermissionDialog(page)
-  await page.getByRole('button', { name: '予定を追加', exact: true }).click()
+  await expect(add).toBeVisible()
+  await add.click()
   await page.getByTestId('schedule-title').fill(title)
   const day = date(2)
   for (const id of ['schedule-start-date', 'schedule-end-date']) {
