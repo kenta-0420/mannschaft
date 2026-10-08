@@ -14,5 +14,5 @@ import java.util.List;
 public record SlotAssignmentPatchRequest(
         List<Long> addUserIds,
         List<Long> removeUserIds,
-        @NotNull Integer slotVersion
+        @NotNull Long slotVersion
 ) {}
