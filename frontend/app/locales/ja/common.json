@@ -2113,7 +2113,10 @@
       "scheduleCancelled": "元の予定は中止されています",
       "endDate": "終了日（複数日の場合）",
       "startTime": "開始時刻",
-      "endTime": "終了時刻"
+      "endTime": "終了時刻",
+      "edit": "編集する",
+      "save": "保存する",
+      "updated": "活動記録を保存しました"
     },
     "sync": {
       "title": "予定と活動記録の変更を確認",
@@ -2136,6 +2139,15 @@
       "create": "この予定の活動記録を作成",
       "records": "活動記録",
       "loadError": "活動記録の取得に失敗しました"
+    },
+    "planned": "予定",
+    "unpublished": "未公開",
+    "metadataOnly": "活動内容は未公開です。ここでは元の予定の情報だけを表示しています。",
+    "delete": {
+      "title": "活動記録の削除",
+      "action": "削除する",
+      "confirm": "活動記録を削除します。元の予定は削除されません。",
+      "success": "活動記録を削除しました"
     }
   },
   "dashboard": {

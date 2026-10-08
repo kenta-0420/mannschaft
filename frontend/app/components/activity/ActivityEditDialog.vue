@@ -132,9 +132,11 @@ watch(visible, async (open) => {
   }
 })
 const save = handleSubmit(async (values) => {
-  if (!props.record.canEdit || !activityDate.value || saving.value) return
+  if (!props.record.canEdit || props.record.metadataOnly || !activityDate.value || saving.value)
+    return
   saving.value = true
   try {
+    if (props.record.version === null) throw new Error('活動記録の更新版を取得できません')
     await updateActivity(props.record.id, {
       ...values,
       activityDate: toYmd(activityDate.value),
@@ -155,7 +157,7 @@ const save = handleSubmit(async (values) => {
         ? { participantUserIds: [...participantUserIds.value] }
         : {}),
     })
-    notification.success(t('activity.detail.saved'))
+    notification.success(t('activity.detail.updated'))
     visible.value = false
     emit('saved')
   } catch (error) {
@@ -170,7 +172,7 @@ const save = handleSubmit(async (values) => {
   <Dialog
     v-model:visible="visible"
     modal
-    :header="t('activity.list.editDraft')"
+    :header="t('activity.detail.edit')"
     :style="{ width: '640px', maxWidth: '95vw' }"
   >
     <form id="activity-edit-form" class="space-y-4" @submit="save">
@@ -304,7 +306,7 @@ const save = handleSubmit(async (values) => {
         class="min-h-11 min-w-11"
         type="submit"
         form="activity-edit-form"
-        :label="t('activity.create.saveDraft')"
+        :label="t('activity.detail.save')"
         :loading="saving"
         data-testid="activity-edit-save"
       />

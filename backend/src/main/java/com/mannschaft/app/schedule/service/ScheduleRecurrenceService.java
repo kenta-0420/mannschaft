@@ -82,6 +82,7 @@ public class ScheduleRecurrenceService {
     }
 
     private final ScheduleRepository scheduleRepository;
+    private final ScheduleCreationWriter creationWriter;
     private final ScheduleTargetService scheduleTargetService;
     private final ObjectMapper objectMapper;
     @Qualifier("wallClock")
@@ -119,7 +120,7 @@ public class ScheduleRecurrenceService {
                     .googleCalendarEventId(null)
                     .build();
 
-            ScheduleEntity savedChild = scheduleRepository.save(child);
+            ScheduleEntity savedChild = creationWriter.saveNew(child);
             scheduleTargetService.copyTargets(parent.getId(), savedChild.getId());
         }
 

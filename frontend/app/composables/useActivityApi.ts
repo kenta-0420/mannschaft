@@ -40,15 +40,13 @@ export function useActivityApi() {
    * 活動記録一覧を取得する。
    *
    * BE {@code GET /api/v1/activities} はオフセットページング（{@code page}（0始まり・既定 0）/
-   * {@code limit}）。以前の型は {@code meta: { nextCursor, hasNext } } を宣言していたが、
-   * BE はそのようなフィールドを返しておらず（{@code ApiResponse} は {@code data} のみ）、
-   * 実体の無い「幻の型」だった（本コードベースを検索した結果、この meta を読んでいる箇所は
-   * 存在しなかった）。実態に合わせて {@code data} のみへ是正した。
+   * {@code limit}）。認可後の件数とページ情報は {@code meta} に返る。
    */
   async function getActivities(params: Record<string, unknown>) {
     const qs = buildQuery(params)
     return api<{
       data: ActivityRecordResponse[]
+      meta: { total: number; page: number; size: number; totalPages: number }
     }>(`/api/v1/activities?${qs}`)
   }
 
