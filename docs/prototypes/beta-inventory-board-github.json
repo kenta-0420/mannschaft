@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-10-08T12:43:18+00:00",
+  "synchronizedAt": "2026-10-08T13:38:29+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -1314,7 +1314,8 @@
     "CMP-261008-1702": [],
     "CMP-261008-1703": [],
     "CMP-261008-1704": [],
-    "CMP-261008-1705": []
+    "CMP-261008-1705": [],
+    "CMP-261008-2151": []
   },
   "items": {
     "261": {

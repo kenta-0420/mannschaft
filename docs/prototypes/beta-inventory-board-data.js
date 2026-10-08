@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-10-08T13:16:12+00:00",
+  "generatedAt": "2026-10-08T13:39:37+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -8,19 +8,19 @@ window.BETA_INVENTORY_DATA = {
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "56bdd1add8565f36a75f337d8b90b112a4e518da",
-    "taskListCommit": "6031ea31cfe41e944dc3e8768189e266598abc2a",
+    "taskListCommit": "967edf0208f94503790811078e8e15da2565df85",
     "inventorySha256": "50fcac2d602060752d611b7babe6f04327fc4b1b6a9ebccbcac383a464fef302",
-    "taskListSha256": "642b111494c57a4a6d1bfd556ceb680ccf645eb1f4912b9f6d873690798347a5",
+    "taskListSha256": "ade3d05350819f0f4e1aecb9a77e56f7e0a1b6479043a9962df8c935a1fa963c",
     "decisionsSha256": "49dc59d8aa82e66c21579970c4cfed34f5e4e44ea731719c3bcfe43b6931f8d7",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "82c51549423d4841d2a9e88cf5523896ba183225bd5149a870c7de00ad5b760d"
+    "githubSnapshotSha256": "9c9833b71a5b5fba829ac7a97b9cfeafd2da9bf28c3fd46220fdaf47a2f15f92"
   },
   "sourceCounts": {
     "features": 44,
     "capabilities": 95,
     "splitParents": 33,
-    "campaigns": 416,
+    "campaigns": 417,
     "layer": {
       "能力": 26,
       "ドメイン": 18
@@ -37,11 +37,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 44,
-      "campaigns": 416
+      "campaigns": 417
     },
     "parsed": {
       "features": 44,
-      "campaigns": 416,
+      "campaigns": 417,
       "core": 25,
       "noncore": 19,
       "blockers": 22,
@@ -39666,12 +39666,68 @@ window.BETA_INVENTORY_DATA = {
       ],
       "githubRefs": [],
       "github": []
+    },
+    {
+      "id": "CMP-261008-2151",
+      "title": "GDPR削除完了証跡のメールハッシュを既存CHAR64型へ整合",
+      "status": "working",
+      "statusLabel": "実装中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "既存Flywayのemail_hash CHAR(64) NOT NULLとJava StringのJDBC mappingを整合し、実MySQLの当Entity Hibernate validateおよび64桁hexの永続化・再読込を通す。既存DDL・API・匿名化仕様を保持する",
+      "acceptance": [
+        "既存Flywayのemail_hash CHAR(64) NOT NULLとJava StringのJDBC mappingを整合し、実MySQLの当Entity Hibernate validateおよび64桁hexの永続化・再読込を通す。既存DDL・API・匿名化仕様を保持する"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "Shift統合実機の起動時にCHARとVARCHARの不一致を観測。試練先行・対象1Entityの根治・GDPR設計同期",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "Shift統合実機の起動時にCHARとVARCHARの不一致を観測。試練先行・対象1Entityの根治・GDPR設計同期"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "—"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "GDPR",
+        "CHAR64",
+        "Flyway",
+        "email_hash",
+        "CHAR",
+        "NOT",
+        "NULL",
+        "Java",
+        "String",
+        "JDBC",
+        "mapping",
+        "MySQL",
+        "Entity",
+        "Hibernate",
+        "validate",
+        "hex",
+        "DDL",
+        "API"
+      ],
+      "tags": [
+        "進行中"
+      ],
+      "githubRefs": [],
+      "github": []
     }
   ],
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-10-08T12:43:18+00:00",
+    "synchronizedAt": "2026-10-08T13:38:29+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -40984,7 +41040,8 @@ window.BETA_INVENTORY_DATA = {
       "CMP-261008-1702": [],
       "CMP-261008-1703": [],
       "CMP-261008-1704": [],
-      "CMP-261008-1705": []
+      "CMP-261008-1705": [],
+      "CMP-261008-2151": []
     },
     "items": {
       "261": {
@@ -47200,7 +47257,7 @@ window.BETA_INVENTORY_DATA = {
     "lastAttempt": {
       "status": "synced",
       "error": null,
-      "synchronizedAt": "2026-10-08T12:43:18+00:00",
+      "synchronizedAt": "2026-10-08T13:38:29+00:00",
       "referenceCount": 466
     }
   }
