@@ -126,6 +126,11 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
      */
     protected abstract List<P> loadProjections(Collection<Long> ids);
 
+    /** 明示viewerが必要な機能だけが拡張する。既存resolverは従来の投影取得を維持する。 */
+    protected List<P> loadProjections(Collection<Long> ids, Long viewerUserId) {
+        return loadProjections(ids);
+    }
+
     /**
      * 機能側 visibility enum 値を {@link StandardVisibility} に正規化する。
      *
@@ -224,7 +229,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         }
 
         // 1) 実存確認込み射影取得（SQL 1）。null Projection は除外（fail-closed）。
-        List<P> rows = loadProjections(contentIds);
+        List<P> rows = loadProjections(contentIds, viewerUserId);
         if (rows == null || rows.isEmpty()) {
             return Set.of();
         }
@@ -299,7 +304,7 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         }
 
         // 1) 実存確認（SQL 1）
-        List<P> rows = loadProjections(List.of(contentId));
+        List<P> rows = loadProjections(List.of(contentId), viewerUserId);
         if (rows == null || rows.isEmpty()) {
             return VisibilityDecision.deny(referenceType(), contentId, DenyReason.NOT_FOUND);
         }
