@@ -53,7 +53,7 @@
                 :slot-id="slot.id"
                 :assignments="getAssignments(slot)"
                 :warnings="getSlotWarnings(slot.id)"
-                @drop="(userId) => $emit('dropUser', { fromSlotId: null, toSlotId: slot.id, userId })"
+                @drop="(payload) => $emit('dropUser', { ...payload, toSlotId: slot.id })"
                 @remove-user="(userId) => $emit('removeUser', { slotId: slot.id, userId })"
                 @add-user="$emit('addUser', slot.id)"
               />

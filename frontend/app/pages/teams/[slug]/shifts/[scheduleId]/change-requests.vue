@@ -6,12 +6,22 @@ const teamSlug = computed(() => String(route.params.slug))
 const scheduleId = computed(() => Number(route.params.scheduleId))
 
 const authStore = useAuthStore()
-const isAdmin = computed(() => authStore.currentUser?.systemRole === 'ADMIN')
+const notification = useNotification()
+const { t } = useI18n()
+const { isAdminOrDeputy, loading: permissionLoading, loadPermissions } = useRoleAccess('team', teamSlug)
+const isAdmin = computed(() => !permissionLoading.value && isAdminOrDeputy.value)
 
 const { requests, isLoading, fetchRequests, review, withdraw } =
   useChangeRequest(scheduleId)
 
-onMounted(() => fetchRequests())
+onMounted(async () => {
+  const result = await loadPermissions()
+  if (!result.ok) {
+    notification.error(t('shift.hourlyRate.permissionLoadFailed'))
+    return
+  }
+  await fetchRequests()
+})
 
 async function onSubmitted(): Promise<void> {
   await fetchRequests()
