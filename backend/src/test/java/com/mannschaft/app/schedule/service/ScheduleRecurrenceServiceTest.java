@@ -48,7 +48,8 @@ class ScheduleRecurrenceServiceTest {
     @BeforeEach
     void setUp() {
         ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-        service = new ScheduleRecurrenceService(scheduleRepository, scheduleTargetService, objectMapper,
+        service = new ScheduleRecurrenceService(scheduleRepository,
+                new ScheduleCreationWriter(scheduleRepository, event -> { }), scheduleTargetService, objectMapper,
                 fixedClock(LocalDateTime.of(2026, 9, 1, 0, 0)));
     }
 
@@ -199,7 +200,8 @@ class ScheduleRecurrenceServiceTest {
                 .toBuilder().endAt(LocalDateTime.of(2026, 9, 24, 11, 0)).build();
         when(scheduleRepository.lockActivitySeriesChildren(1L))
                 .thenReturn(List.of(selected, completed, future));
-        service = new ScheduleRecurrenceService(scheduleRepository, scheduleTargetService,
+        service = new ScheduleRecurrenceService(scheduleRepository,
+                new ScheduleCreationWriter(scheduleRepository, event -> { }), scheduleTargetService,
                 new ObjectMapper().registerModule(new JavaTimeModule()),
                 fixedClock(LocalDateTime.of(2026, 9, 20, 10, 0)));
         List<Long> appliedIds = new ArrayList<>();

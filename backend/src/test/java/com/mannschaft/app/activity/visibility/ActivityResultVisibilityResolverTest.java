@@ -87,7 +87,10 @@ class ActivityResultVisibilityResolverTest {
                 templateEvaluator,
                 visibilityMetrics,
                 null,                 // FollowBatchService 不使用
-                auditLogService);
+                auditLogService,
+                new com.mannschaft.app.common.activityschedule.AutomaticActivityActualPolicy(
+                        org.mockito.Mockito.mock(com.mannschaft.app.schedule.service.ScheduleActivityVisibilityService.class),
+                        org.mockito.Mockito.mock(com.mannschaft.app.activity.service.ActivityScopeAccessGuard.class)));
     }
 
     // ========================================================================
