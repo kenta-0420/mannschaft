@@ -1,5 +1,5 @@
-import { test, expect, type Browser, type Page, type TestInfo } from '@playwright/test'
-import { readFile } from 'node:fs/promises'
+import { test, expect, type Browser, type Page, type Request, type Response, type TestInfo } from '@playwright/test'
+import { readFile, writeFile } from 'node:fs/promises'
 import { loginViaApi } from '../fixtures/auth'
 import type { ActivitySyncPreview } from '../../../app/types/activityScheduleSync'
 
@@ -182,8 +182,70 @@ function date(days: number): string {
   value.setDate(value.getDate() + days)
   return `${value.getFullYear()}/${String(value.getMonth() + 1).padStart(2, '0')}/${String(value.getDate()).padStart(2, '0')}`
 }
-async function createViaCalendar(page: Page, scope: Scope, title: string): Promise<number> {
-  await page.goto(`${scopePath(scope)}/schedule`)
+async function createViaCalendar(
+  page: Page,
+  scope: Scope,
+  title: string,
+  info: TestInfo,
+): Promise<number> {
+  const startedAt = Date.now()
+  const schedulePaths = [
+    new URL(schedulesApi(scope)).pathname,
+    `/api/v1/${scope.type === 'TEAM' ? 'teams' : 'organizations'}/${scope.slug}/schedules`,
+  ]
+  const isSchedule = (request: Request) =>
+    request.method() === 'GET' && schedulePaths.includes(new URL(request.url()).pathname)
+  const permissionsPaths = schedulePaths.map((path) => path.replace(/\/schedules$/, '/me/permissions'))
+  const isPermissions = (request: Request) =>
+    request.method() === 'GET' && permissionsPaths.includes(new URL(request.url()).pathname)
+  const observed = (request: Request) => {
+    const url = new URL(request.url())
+    return request.method() === 'GET' && url.hostname === 'localhost' && ['3001', '8081'].includes(url.port)
+  }
+  const events: Array<Record<string, string | number>> = []
+  const pending = new Map<Request, string>()
+  const onRequest = (request: Request) => {
+    if (!observed(request)) return
+    const url = new URL(request.url())
+    const path = `${url.port}${url.pathname}`
+    pending.set(request, path)
+    events.push({ event: 'request', path, elapsedMs: Date.now() - startedAt })
+  }
+  const onResponse = (response: Response) => {
+    if (!observed(response.request())) return
+    const url = new URL(response.url())
+    events.push({ event: 'response', path: `${url.port}${url.pathname}`, status: response.status(), elapsedMs: Date.now() - startedAt })
+  }
+  const onFinished = (request: Request) => {
+    if (!observed(request)) return
+    events.push({ event: 'finished', path: pending.get(request) ?? new URL(request.url()).pathname, elapsedMs: Date.now() - startedAt })
+    pending.delete(request)
+  }
+  const onFailed = (request: Request) => {
+    if (!observed(request)) return
+    events.push({ event: 'failed', path: pending.get(request) ?? new URL(request.url()).pathname, error: request.failure()?.errorText ?? 'unknown', elapsedMs: Date.now() - startedAt })
+    pending.delete(request)
+  }
+  page.on('request', onRequest)
+  page.on('response', onResponse)
+  page.on('requestfinished', onFinished)
+  page.on('requestfailed', onFailed)
+  try {
+    // UIが発行する実GETを受動観測する。データ作成・権限変更のAPI代替はしない。
+    const [schedules, permissions] = await Promise.all([
+      page.waitForResponse((response) => isSchedule(response.request()), { timeout: 60_000 }),
+      page.waitForResponse((response) => isPermissions(response.request()), { timeout: 60_000 }),
+      page.goto(`${scopePath(scope)}/schedule`),
+    ])
+    expect(schedules.status()).toBe(200)
+    expect(permissions.status()).toBe(200)
+  } finally {
+    page.off('request', onRequest)
+    page.off('response', onResponse)
+    page.off('requestfinished', onFinished)
+    page.off('requestfailed', onFailed)
+    await writeFile(info.outputPath('calendar-readiness.json'), JSON.stringify({ scope: scope.type, scopeId: scope.id, startedAt: new Date(startedAt).toISOString(), elapsedMs: Date.now() - startedAt, events, pending: [...pending.values()] }, null, 2))
+  }
   const add = page.getByRole('button', { name: '予定を追加', exact: true })
   const defer = page.getByRole('button', { name: 'あとで決める', exact: true })
   // 初期権限modalが開くと、背面の予定ボタンはrole探索の対象外になる。
@@ -201,8 +263,15 @@ async function createViaCalendar(page: Page, scope: Scope, title: string): Promi
     ['開始時刻', '09:00'],
     ['終了時刻', '10:00'],
   ] as const) {
-    await page.getByText(label, { exact: true }).locator('..').getByRole('combobox').click()
-    await page.getByRole('option', { name: time, exact: true }).click()
+    const combobox = page.getByText(label, { exact: true }).locator('..').getByRole('combobox')
+    await combobox.click()
+    const controls = await combobox.getAttribute('aria-controls')
+    expect(controls).toBeTruthy()
+    const listbox = page.locator(`[id="${controls}"]`)
+    await expect(listbox).toBeVisible()
+    await listbox.getByRole('option', { name: time, exact: true }).click()
+    // 前のSelectの閉鎖transitionを次の同名option選択へ持ち越さない。
+    await expect(listbox).toBeHidden()
   }
   const attendance = page.locator('#attendance-required')
   if (await attendance.isChecked()) await attendance.uncheck()
@@ -350,7 +419,7 @@ for (const [type, width] of [
     let activityId: number | undefined
     let reader: Page | undefined
     try {
-      scheduleId = await createViaCalendar(page, scope, title)
+      scheduleId = await createViaCalendar(page, scope, title, info)
       activityId = await openActivityFromList(page, scope, title)
       await expect(page.getByTestId(`activity-planned-${activityId}`)).toBeVisible()
       await expect(page.getByTestId(`activity-status-${activityId}`)).toHaveText('未公開')
@@ -456,7 +525,7 @@ test('終了経過の毎分完了後、再表示で予定だけ外れ未公開�
   let scheduleId: number | undefined
   let activityId: number | undefined
   try {
-    scheduleId = await createViaCalendar(page, scope, title)
+    scheduleId = await createViaCalendar(page, scope, title, info)
     activityId = await openActivityFromList(page, scope, title)
     await expect(page.getByTestId(`activity-planned-${activityId}`)).toBeVisible()
     await image(page, info, 'planned-before-batch')
