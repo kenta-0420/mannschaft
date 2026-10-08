@@ -46,6 +46,8 @@ const showTagSection = computed(
 
 const posts = ref<BlogPostResponse[]>([])
 const loading = ref(false)
+/** 一覧取得の失敗。true の間は「記事がありません」ではなく失敗表示を出す。 */
+const loadError = ref(false)
 
 // 新規作成ダイアログ
 const showCreateDialog = ref(false)
@@ -62,7 +64,10 @@ async function loadPosts() {
       size: 20,
     })
     posts.value = res.data
+    loadError.value = false
   } catch {
+    posts.value = []
+    loadError.value = true
     showError(t('blog.post.loadListFailed'))
   } finally {
     loading.value = false
@@ -263,6 +268,23 @@ defineExpose({ refresh: loadPosts })
       <LoadingBounce />
     </div>
 
+    <div
+      v-else-if="loadError"
+      role="alert"
+      data-testid="blog-post-load-error"
+      class="flex flex-col items-center gap-3 py-8 text-center text-surface-500"
+    >
+      <i class="pi pi-exclamation-triangle text-3xl" aria-hidden="true" />
+      <p class="text-sm">{{ $t('blog.post.loadListErrorHint') }}</p>
+      <Button
+        :label="$t('blog.post.reloadList')"
+        icon="pi pi-refresh"
+        severity="secondary"
+        data-testid="blog-post-reload-button"
+        @click="loadPosts"
+      />
+    </div>
+
     <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div
         v-for="post in posts"
@@ -346,7 +368,7 @@ defineExpose({ refresh: loadPosts })
       </div>
     </div>
 
-    <DashboardEmptyState v-if="!loading && posts.length === 0" icon="pi pi-book" :message="$t('blog.post.noPost')" />
+    <DashboardEmptyState v-if="!loading && !loadError && posts.length === 0" data-testid="blog-post-empty" icon="pi pi-book" :message="$t('blog.post.noPost')" />
 
     <!-- 新規作成ダイアログ -->
     <Dialog

@@ -260,7 +260,8 @@ class BlogPostServiceTest {
 
                 // Then
                 assertThat(result).hasSize(1);
-                verify(accessControlService).checkMembership(VIEWER_ID, TEAM_ID, "TEAM");
+                // CMP-261007-2052 AC-16: 一覧はメンバー限定を外した（可視性は F00 で判定する）。
+                verify(accessControlService, never()).checkMembership(any(), any(), any());
             }
         }
 
@@ -294,27 +295,90 @@ class BlogPostServiceTest {
                 // Then
                 assertThat(result).hasSize(1);
                 verify(teamRepository).findBySlugAndDeletedAtIsNull(teamSlug);
-                verify(accessControlService).checkMembership(VIEWER_ID, TEAM_ID, "TEAM");
+                // CMP-261007-2052 AC-16: 一覧はメンバー限定を外した（可視性は F00 で判定する）。
+                verify(accessControlService, never()).checkMembership(any(), any(), any());
             }
         }
 
         @Test
-        @DisplayName("認可: 非メンバーは COMMON_002 で拒否される（他チームの下書き列挙禁止）")
-        void チーム別一覧_非メンバー拒否() {
-            // Given
+        @DisplayName("AC-16: 非メンバーでも checkMembership で拒否せず、F00 で可視と判定された記事だけを返す")
+        void チーム別一覧_非メンバーでも可視記事を返す() {
+            // Given: 旧契約の checkMembership が呼ばれたら非メンバーとして拒否される（呼ばれてはならない）
             Pageable pageable = PageRequest.of(0, 10);
+            BlogPostEntity visible = createPostEntity(PostStatus.PUBLISHED);
+            BlogPostEntity draft = createPostEntity(PostStatus.DRAFT);
+            ReflectionTestUtils.setField(visible, "id", 301L);
+            ReflectionTestUtils.setField(draft, "id", 302L);
+            lenient().doThrow(new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkMembership(any(), any(), any());
+            // スコープの門（実在・可視性）は BlogScopeAccessGuard が取引の外で先に通す（D-3T）。
+            // Service は記事判定だけを行い、スコープ判定を呼ばないことを下で verify する。
+            given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(eq(TEAM_ID), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(visible, draft)));
+            given(contentVisibilityChecker.filterAccessible(
+                    ReferenceType.BLOG_POST, Set.of(301L, 302L), VIEWER_ID)).willReturn(Set.of(301L));
+            given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
+            given(paymentGateService.checkAccessBatch(
+                    eq(ContentGateType.POST), eq(List.of(301L, 302L)), eq(VIEWER_ID), any(Map.class)))
+                    .willReturn(Map.of(
+                            301L, new GateCheckResponse(true, false, List.of()),
+                            302L, new GateCheckResponse(true, false, List.of())));
+
             try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
                 securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(VIEWER_ID);
-                org.mockito.BDDMockito.willThrow(
-                                new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
-                        .given(accessControlService)
-                        .checkMembership(VIEWER_ID, TEAM_ID, "TEAM");
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
 
-                // When / Then
-                assertThatThrownBy(() -> service.listByTeam(TEAM_ID_STR, pageable))
-                        .isInstanceOf(BusinessException.class);
-                verify(postRepository, never())
-                        .findByTeamIdOrderByPinnedDescCreatedAtDesc(any(), any());
+                // When
+                Page<BlogPostResponse> result = service.listByTeam(TEAM_ID_STR, pageable);
+
+                // Then: 可視の1件のみ・件数も可視件数のみ（下書きは列挙しない）
+                assertThat(result.getContent()).hasSize(1);
+                assertThat(result.getTotalElements()).isEqualTo(1);
+                verify(accessControlService, never()).checkMembership(any(), any(), any());
+                // 記事判定（F00 BLOG_POST）は Service で行い、スコープ判定は取引の外の門に任せる
+                verify(contentVisibilityChecker).filterAccessible(ReferenceType.BLOG_POST, Set.of(301L, 302L), VIEWER_ID);
+                verify(contentVisibilityChecker, never()).assertCanView(eq(ReferenceType.TEAM), any(), any());
+                verify(teamService, never()).assertActiveTeamExists(any());
+            }
+        }
+
+        @Test
+        @DisplayName("AC-11: 課金判定の想定外の例外は握りつぶさず伝播する（空ページで 200 にしない）")
+        void チーム別一覧_想定外の例外は伝播する() {
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            ReflectionTestUtils.setField(entity, "id", POST_ID);
+            given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(eq(TEAM_ID), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(entity)));
+            given(contentVisibilityChecker.filterAccessible(
+                    ReferenceType.BLOG_POST, Set.of(POST_ID), VIEWER_ID)).willReturn(Set.of(POST_ID));
+            given(paymentGateService.checkAccessBatch(
+                    eq(ContentGateType.POST), eq(List.of(POST_ID)), eq(VIEWER_ID), any(Map.class)))
+                    .willThrow(new IllegalStateException("想定外"));
+
+            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+
+                assertThatThrownBy(() -> service.listByTeam(TEAM_ID_STR, PageRequest.of(0, 10)))
+                        .isInstanceOf(IllegalStateException.class);
+            }
+        }
+
+        @Test
+        @DisplayName("AC-11: 可視性判定の想定外の例外も握りつぶさず伝播する")
+        void チーム別一覧_可視性判定の例外は伝播する() {
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            ReflectionTestUtils.setField(entity, "id", POST_ID);
+            given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(eq(TEAM_ID), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(entity)));
+            given(contentVisibilityChecker.filterAccessible(ReferenceType.BLOG_POST, Set.of(POST_ID), VIEWER_ID))
+                    .willThrow(new IllegalStateException("想定外"));
+
+            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+
+                assertThatThrownBy(() -> service.listByTeam(TEAM_ID_STR, PageRequest.of(0, 10)))
+                        .isInstanceOf(IllegalStateException.class);
+                verify(paymentGateService, never()).checkAccessBatch(any(), any(), any(), any(Map.class));
             }
         }
     }
