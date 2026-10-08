@@ -226,6 +226,8 @@ public class ShiftSlotService {
 
         slotRepository.save(entity);
         recordAssignmentHistory(entity, before, deserializeUserIds(entity.getAssignedUserIds()), userId);
+        // 応答には commit 時と同じ確定済み版を載せる（note のみでも query の AUTO flush に依存しない）。
+        slotRepository.flush();
         log.info("シフト枠更新: id={}", slotId);
         return toSlotResponse(entity);
     }
@@ -281,6 +283,7 @@ public class ShiftSlotService {
         slotRepository.save(entity);
         recordAssignmentHistory(entity, before, currentUserIds, userId);
 
+        slotRepository.flush();
         log.info("スロット差分割当更新: slotId={}, added={}, removed={}",
                 slotId,
                 request.addUserIds() != null ? request.addUserIds().size() : 0,
@@ -427,6 +430,7 @@ public class ShiftSlotService {
         return ShiftSlotResponse.builder()
                 .id(entity.getId())
                 .scheduleId(entity.getScheduleId())
+                .version(entity.getVersion())
                 .time(new ShiftSlotResponse.ShiftSlotTimeDto(
                         entity.getSlotDate(), entity.getStartTime(), entity.getEndTime(),
                         entity.isEndsNextDay()))
