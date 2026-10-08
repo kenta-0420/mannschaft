@@ -14,8 +14,9 @@ public class ActivityDetailResponse {
     @JsonUnwrapped
     private final ActivityRecordResponse record;
     private final String scopePublicId;
+    @io.swagger.v3.oas.annotations.media.Schema(types = {"string", "null"}, format = "date")
     private final LocalDate activityEndDate;
-    @io.swagger.v3.oas.annotations.media.Schema(nullable = true)
+    @io.swagger.v3.oas.annotations.media.Schema(types = {"integer", "null"}, format = "int64")
     private final Long version;
     private final boolean canEdit;
     private final boolean canPublish;

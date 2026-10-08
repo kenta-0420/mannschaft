@@ -23,25 +23,27 @@ public class ActivityRecordResponse {
     private final Long id;
     private final String scopeType;
     private final Long scopeId;
-    @Schema(nullable = true)
+    @Schema(types = {"integer", "null"}, format = "int64")
     private final Long templateId;
     private final String title;
     private final LocalDate activityDate;
+    @Schema(types = {"string", "null"})
     private final LocalTime activityTimeStart;
+    @Schema(types = {"string", "null"})
     private final LocalTime activityTimeEnd;
-    @Schema(nullable = true)
+    @Schema(types = {"string", "null"})
     private final String location;
-    @Schema(nullable = true)
+    @Schema(types = {"integer", "null"}, format = "int64")
     private final Long venueId;
-    @Schema(nullable = true)
+    @Schema(types = {"string", "null"})
     private final String description;
 
     /** JSON 文字列型のまま保持する（オブジェクトへの展開はしない）。 */
-    @Schema(nullable = true)
+    @Schema(types = {"string", "null"})
     private final String fieldValues;
 
     /** JSON 文字列型のまま保持する（オブジェクトへの展開はしない）。 */
-    @Schema(nullable = true)
+    @Schema(types = {"string", "null"})
     private final String attachments;
 
     private final String visibility;
@@ -56,11 +58,11 @@ public class ActivityRecordResponse {
     private final boolean metadataOnly;
 
     /** 作成者のユーザー ID をそのまま保持する（ユーザー情報への解決はしない）。 */
-    @Schema(nullable = true)
+    @Schema(types = {"integer", "null"}, format = "int64")
     private final Long createdBy;
 
-    @Schema(nullable = true)
+    @Schema(types = {"string", "null"}, format = "date-time")
     private final LocalDateTime createdAt;
-    @Schema(nullable = true)
+    @Schema(types = {"string", "null"}, format = "date-time")
     private final LocalDateTime updatedAt;
 }
