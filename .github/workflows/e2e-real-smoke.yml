@@ -180,3 +180,246 @@ jobs:
       - name: Stop backend
         if: always()
         run: kill "$BACKEND_PID" 2>/dev/null || true
+
+  # CMP1730実機Jarを得るための一時job。利用完了後に削除する。
+  cmp1730-build-only:
+    name: CMP1730 固定ソース bootJarのみ
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 3721 && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    permissions:
+      contents: read
+    steps:
+      - name: 固定ソースをcheckout
+        uses: actions/checkout@v7
+        with:
+          ref: 2a3f0ee04c53536f33a509be826297ca099601b0
+          persist-credentials: false
+      - name: Java 21 Temurin
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+      - name: bootJarと元来歴を作成（App・DB・testを起動しない）
+        env:
+          CMP1730_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          """CMP1730 CI専用bootJar来歴。workflow埋込み候補、未実行。"""
+          import hashlib
+          import json
+          import os
+          from pathlib import Path, PurePosixPath
+          import re
+          import shutil
+          import stat
+          import struct
+          import subprocess
+          import sys
+          import zipfile
+          import zlib
+
+          CHUNK = 4 * 1024 * 1024
+          SOURCE_COMMIT = '2a3f0ee04c53536f33a509be826297ca099601b0'
+          SOURCE_TREE = '6b1af0327a44e7bc98a7d4ec800fd30154e9c06e'
+          HEADER_SHA = 'c85086627c091dfddaae344c8058cdd23eabf1ebd8626442ceb3cad6eb866242'
+          JVM_BASE = '-Xmx2g -XX:MaxMetaspaceSize=768m -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8'
+          JVM_ADDED = '-XX:MaxDirectMemorySize=256m -XX:ReservedCodeCacheSize=128m'
+          SOURCE25 = {'.github/workflows/backend-ci.yml': '553a3718df655326b0d1ec18bf36ab8f242c1969ac6257da9d0db720cbee6861', 'backend/.claudecode.md': 'df655997be4f2598ff43e923402c8435967f22eb5d4ebb1e0db58863a7aed696', 'backend/src/main/java/com/mannschaft/app/notification/service/NotificationHelper.java': 'ddba94dd701e7626793482f1403ed6e61f16635c86cd29ae85fccad0fdd6699c', 'backend/src/main/java/com/mannschaft/app/reservation/entity/ReservationPendingExpireScanStateEntity.java': 'fe9d05f1ac2d2361a4675af3656b2a1a98fc37cd5dea3ce744440b18dedb8266', 'backend/src/main/java/com/mannschaft/app/reservation/repository/ReservationPendingExpireScanStateRepository.java': '0e463fb6af356c17a4d40237aeef9b5430aaafb6ffa667db5cd37db1580eb198', 'backend/src/main/java/com/mannschaft/app/reservation/repository/ReservationPolicyRepository.java': '3c3c855204a7b9a6634d128383bee6f1428193fa5d4751c8034f80b29ae0584d', 'backend/src/main/java/com/mannschaft/app/reservation/repository/ReservationRepository.java': '66f4d232bf71761846da1b8aca9151f53ae0e0c5b9491754377dc73bbed26b20', 'backend/src/main/java/com/mannschaft/app/reservation/repository/ReservationSlotRepository.java': '7dd443d0e21ed5e043cd0ea0dd09ded6bdc63d41cb6227fe8a81ab1f4d285c2e', 'backend/src/main/java/com/mannschaft/app/reservation/service/ReservationPendingExpireBatchService.java': '235e79cf62825c6389c9bd7e10b2a3c72d59d7a076827c381d2b0f1cdef5fa96', 'backend/src/main/java/com/mannschaft/app/reservation/service/ReservationPendingExpireProgressService.java': '8c539278bd820058e195a4117898623f01c2956e7c89e1496173e9df94534c65', 'backend/src/main/java/com/mannschaft/app/reservation/service/ReservationPendingExpireService.java': 'd8e2f281e3439f61b44059424a7855c2a37696ae3e0c27ccd68a0f4643d17902', 'backend/src/main/resources/db/migration/V236.20261007141025__create_reservation_pending_expire_scan_state.sql': '480294bd591fc29f34e32e4b1dee0b4dd48eb44a7496488322868d344b9b53cd', 'backend/src/test/java/com/mannschaft/app/common/migration/FlywayFromScratchMigrationTest.java': 'a7fda0e4f82a25bc84369ed89c770598946710cb2d26f8b8327868adaff655e2', 'backend/src/test/java/com/mannschaft/app/notification/NotificationHelperTest.java': 'e91b8b9c1b138752aff63792fd0a65694f7579123a331c562a7767585f81c62c', 'backend/src/test/java/com/mannschaft/app/reservation/ReservationPendingExpireBoundedScanIntegrationTest.java': '9fd7e4b5d059d91a3a26ad08ceaa488d58942de262fd309865f3f90727207767', 'backend/src/test/java/com/mannschaft/app/reservation/ReservationPendingExpirePersistenceIntegrationTest.java': 'be6803fa5fbe31939df42865f6f87dccab1c6d87f371cfbb8073dc6cd21d8d1e', 'backend/src/test/java/com/mannschaft/app/reservation/ReservationPendingExpireProgressIntegrationTest.java': '940f4f07db0be1cad878da6cadab8d28e4770adfd532704f9379fc70c31c37a4', 'backend/src/test/java/com/mannschaft/app/reservation/ReservationPendingExpireScanStateTest.java': '6a42f52fcd9ba51ab5870fd2fc3204a575419728a72c73a0ec10d0e20076cc34', 'backend/src/test/java/com/mannschaft/app/reservation/ReservationPendingExpireTestFixture.java': '7a4f26a895beed85cf884477c61de188f46ae48151d80dee1b2212392e10075a', 'backend/src/test/java/com/mannschaft/app/reservation/service/ReservationPendingExpireBatchServiceContextTest.java': '58dd180d554b411504b7f4c9eefa509b831cbd626ece1b18d6b525078cc23cad', 'backend/src/test/java/com/mannschaft/app/reservation/service/ReservationPendingExpireBatchServiceTest.java': '6a872d248e42a8c955e7d9f9e609baaea75d14744d79a17e6928d34dc81c6fd8', 'backend/src/test/java/com/mannschaft/app/reservation/service/ReservationPendingExpireServiceClockZoneTest.java': 'caf5ed9dac80019b7f1be77253aa3c7cebe466a516b3717ec5c7931df7339c28', 'backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java': '6a9571a5a972e8cf70bb77c1a256a75afc4dac95fd40b2949e7bb12edc600171', 'docs/features/F03.4.5_reservation_schedule_first.md': '287da797b6d80356691c60e99235ee6482c43e6c696f0895a5092cc7f4d9cf1d', 'backend/src/test/java/com/mannschaft/app/organization/teamgroup/OrgTeamGroupAssignmentRateLimitWiringIT.java': 'bf01f3d008cd43b5b52091a6ad97884206ee9f589201aa52c9a6052a53e60155'}
+
+
+          def sha(path):
+              h = hashlib.sha256()
+              with Path(path).open('rb') as f:
+                  while block := f.read(CHUNK):
+                      h.update(block)
+              return h.hexdigest()
+
+
+          def canonical(value):
+              return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()
+
+
+          def save(path, value):
+              with path.open('xb') as f:
+                  f.write(canonical(value))
+              return {'path': path.name, 'SHA': sha(path), 'bytes': path.stat().st_size}
+
+
+          def run(argv, cwd=None):
+              return subprocess.check_output(argv, cwd=cwd, stderr=subprocess.STDOUT).decode().strip()
+
+
+          def git(*args):
+              return run(['git', '--no-optional-locks', *args])
+
+
+          def source_snapshot(artifact, label):
+              commit = git('rev-parse', 'HEAD')
+              tree = git('rev-parse', 'HEAD^{tree}')
+              assert (commit, tree) == (SOURCE_COMMIT, SOURCE_TREE), 'fixed-checkout'
+              raw = subprocess.check_output(['git', '--no-optional-locks', 'ls-tree', '-r', '-l', '-z', 'HEAD', '--', 'backend/'])
+              header_files, physical_files = [], []
+              for entry in raw.split(b'\0'):
+                  if not entry:
+                      continue
+                  metadata, name = entry.split(b'\t', 1)
+                  mode, kind, blob, size = metadata.decode().split()
+                  name = name.decode('utf-8')
+                  assert kind == 'blob' and mode in ('100644', '100755'), 'backend-regular-file'
+                  path = Path(name)
+                  assert path.is_file() and not path.is_symlink(), 'physical-file'
+                  size = int(size)
+                  actual_mode = '100755' if path.stat().st_mode & 0o111 else '100644'
+                  assert actual_mode == mode, 'physical-mode'
+                  raw_bytes = path.read_bytes()
+                  def git_blob(value):
+                      return hashlib.sha1(('blob ' + str(len(value)) + '\0').encode() + value).hexdigest()
+                  canonical_bytes = raw_bytes
+                  transformation = 'NONE'
+                  if git_blob(raw_bytes) != blob:
+                      canonical_bytes = raw_bytes.replace(b'\r\n', b'\n')
+                      transformation = 'CRLF_TO_LF_EXACT_GIT_BLOB'
+                  assert git_blob(canonical_bytes) == blob and len(canonical_bytes) == size, 'exact-canonical-git-blob'
+                  row = {'path': name, 'mode': mode, 'blob': blob, 'bytes': size}
+                  header_files.append(row)
+                  physical_files.append(dict(row, physicalSHA=hashlib.sha256(raw_bytes).hexdigest(), rawBytes=len(raw_bytes), canonicalSHA=hashlib.sha256(canonical_bytes).hexdigest(), transformation=transformation))
+              header = {'commit': commit, 'tree': tree, 'files': header_files}
+              assert hashlib.sha256(canonical(header)).hexdigest() == HEADER_SHA, 'exact-approved-backend-header'
+              assert len(header_files) == 12181 and sum(x['bytes'] for x in header_files) == 95566053, 'backend-count-bytes'
+              expected_paths = {x['path'] for x in header_files}
+              actual_paths = set()
+              for path in Path('backend').rglob('*'):
+                  rel = path.relative_to('backend')
+                  if rel.parts[0] in ('build', '.gradle'):
+                      continue
+                  assert not path.is_symlink(), 'backend-no-extra-symlinks'
+                  if path.is_file():
+                      actual_paths.add(path.as_posix())
+              assert actual_paths == expected_paths, 'backend-no-untracked-source'
+              source25, source25_physical = {}, {}
+              for name, expected_sha in SOURCE25.items():
+                  path = Path(name)
+                  assert path.is_file() and not path.is_symlink(), 'source25-regular'
+                  blob = subprocess.check_output(['git', '--no-optional-locks', 'show', 'HEAD:' + name])
+                  assert hashlib.sha256(blob).hexdigest() == expected_sha, 'source25-git-canonical'
+                  raw_bytes = path.read_bytes()
+                  canonical_bytes = raw_bytes if raw_bytes == blob else raw_bytes.replace(b'\r\n', b'\n')
+                  assert canonical_bytes == blob, 'source25-physical-canonical'
+                  source25[name] = expected_sha
+                  source25_physical[name] = {'physicalSHA': hashlib.sha256(raw_bytes).hexdigest(), 'rawBytes': len(raw_bytes), 'canonicalSHA': expected_sha, 'bytes': len(blob), 'mode': '100755' if path.stat().st_mode & 0o111 else '100644'}
+              manifest = {'commit': commit, 'tree': tree, 'headerSHA': HEADER_SHA, 'files': physical_files, 'source25CanonicalPins': source25, 'source25PhysicalPins': source25_physical}
+              pin = save(artifact / ('backend-source-' + label + '.json'), manifest)
+              return manifest, pin
+
+
+          def toolchain():
+              java_home = Path(os.environ['JAVA_HOME']).resolve()
+              java_version = run([str(java_home / 'bin/java'), '-version'])
+              raw_gradle_version = run(['bash', './gradlew', '--version', '--no-daemon', '--console=plain'], cwd='backend')
+              version_marker = re.search(r'(?m)^Gradle 8\.14\.4\s*$', raw_gradle_version)
+              assert version_marker, 'gradle8144'
+              # 初回のdownload/welcome出力は版fingerprintに含めない。配布物bytesは別途全libをpinする。
+              gradle_version = raw_gradle_version[version_marker.start():]
+              gradle_user_home = Path(os.environ.get('GRADLE_USER_HOME', str(Path.home() / '.gradle')))
+              homes = list((gradle_user_home / 'wrapper/dists/gradle-8.14.4-bin').glob('*/gradle-8.14.4'))
+              assert len(homes) == 1, 'exact-wrapper-distribution'
+              gradle_home = homes[0]
+              gradle = gradle_home / 'bin/gradle'
+              assert 'version "21.' in java_version and ('Temurin' in java_version or 'temurin' in java_version), 'temurin21'
+              assert re.search(r'(?m)^Gradle 8\.14\.4\s*$', gradle_version), 'gradle8144'
+              files = [java_home / 'bin/java', java_home / 'bin/javac', java_home / 'release', java_home / 'lib/modules', java_home / 'lib/server/libjvm.so', gradle, Path('backend/gradle/wrapper/gradle-wrapper.properties'), Path('backend/gradle/wrapper/gradle-wrapper.jar'), Path('backend/gradlew')]
+              files.extend(sorted((gradle_home / 'lib').rglob('*.jar')))
+              pins = [{'path': str(p), 'SHA': sha(p), 'bytes': p.stat().st_size} for p in files]
+              fingerprint = {'distribution': 'temurin', 'javaMajor': 21, 'gradleVersion': '8.14.4', 'javaVersionOutput': java_version, 'gradleVersionOutput': gradle_version, 'files': pins, 'notSameBytesAsLocalOpenJDK21': True}
+              return dict(fingerprint, rawGradleVersionOutput=raw_gradle_version, fingerprintSHA=hashlib.sha256(canonical(fingerprint)).hexdigest(), versionArgv=['bash', './gradlew', '--version', '--no-daemon', '--console=plain'])
+
+
+          def jar_manifest(artifact):
+              jars = [p for p in Path('backend/build/libs').glob('*.jar') if not p.name.endswith('-plain.jar')]
+              assert len(jars) == 1, 'exactly-one-bootjar'
+              jar = jars[0]
+              assert jar.is_file() and not jar.is_symlink(), 'jar-regular'
+              members, names = [], set()
+              entry = 'BOOT-INF/classes/com/mannschaft/app/MannschaftApplication.class'
+              entry_major = None
+              with zipfile.ZipFile(jar) as z:
+                  for member in z.infolist():
+                      name = member.filename
+                      parts = name.rstrip('/').split('/')
+                      assert name and not name.startswith('/') and '\\' not in name and '\0' not in name and all(x not in ('', '.', '..') for x in parts), 'safe-member-path'
+                      assert not re.match(r'^[A-Za-z]:', name) and name not in names, 'unique-relative-member'
+                      assert not stat.S_ISLNK(member.external_attr >> 16), 'no-member-symlink'
+                      names.add(name)
+                      h, size, crc, first = hashlib.sha256(), 0, 0, b''
+                      with z.open(member) as f:
+                          while block := f.read(CHUNK):
+                              if len(first) < 8:
+                                  first += block[:8 - len(first)]
+                              h.update(block)
+                              size += len(block)
+                              crc = zlib.crc32(block, crc)
+                      assert size == member.file_size and crc & 0xffffffff == member.CRC, 'member-size-crc'
+                      if name == entry:
+                          assert first[:4] == b'\xca\xfe\xba\xbe', 'entry-class-magic'
+                          entry_major = struct.unpack('>H', first[6:8])[0]
+                          assert entry_major == 65, 'entry-class-java21'
+                      members.append({'member': name, 'bytes': size, 'CRC': member.CRC, 'compressedBytes': member.compress_size, 'SHA': h.hexdigest(), 'directory': member.is_dir()})
+              assert entry_major == 65, 'entry-class-present'
+              assert {'org/springframework/boot/loader/launch/PropertiesLauncher.class', 'org/springframework/boot/loader/launch/JarLauncher.class'} <= names, 'boot-loader-present'
+              dependencies = [x for x in members if x['member'].startswith('BOOT-INF/lib/') and not x['directory']]
+              assert dependencies and all(x['member'].endswith('.jar') for x in dependencies), 'dependency-library-pins'
+              member_pin = save(artifact / 'jar-members.json', members)
+              destination = artifact / jar.name
+              shutil.copyfile(jar, destination)
+              assert sha(destination) == sha(jar), 'artifact-exact-jar'
+              return {'path': destination.name, 'SHA': sha(destination), 'bytes': destination.stat().st_size, 'fullMembersManifest': member_pin, 'entryClass': entry, 'entryClassMajor': entry_major, 'javaMajor': 21, 'dependencyLibraryPins': dependencies}
+
+
+          def main():
+              artifact = Path('cmp1730-buildonly-artifact')
+              artifact.mkdir(mode=0o700)
+              workflow = {k: os.environ[k] for k in ('GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'GITHUB_SHA', 'GITHUB_WORKFLOW_REF', 'GITHUB_WORKFLOW_SHA', 'GITHUB_JOB', 'CMP1730_PR_HEAD')}
+              receipt = {'schema': 'cmp1730-ci-buildonly-provenance/v1', 'workflow': workflow, 'source': None, 'toolchain': {}, 'build': {'argv': None, 'actualExit': None}, 'jar': None, 'status': 'NOT_BUILT', 'remoteProcessClosure': 'NOT_OBSERVED', 'compileAppTestDBGreen': False, 'applicationStarted': False, 'testsStarted': False, 'databaseStarted': False, 'seedStarted': False, 'deploymentStarted': False, 'doesNotClaimGlobalProcessZero': True}
+              try:
+                  before, before_pin = source_snapshot(artifact, 'before')
+                  receipt['source'] = {'actualCheckoutCommit': SOURCE_COMMIT, 'actualCheckoutTree': SOURCE_TREE, 'expectedBackendHeaderSHA': HEADER_SHA, 'backendBefore': before_pin, 'backendAfter': None, 'source25CanonicalPins': before['source25CanonicalPins'], 'overlays': []}
+                  receipt['toolchain']['before'] = toolchain()
+                  match = re.search(r'(?m)^org\.gradle\.jvmargs=(.*)$', Path('backend/gradle.properties').read_text())
+                  assert match and match.group(1).strip() == JVM_BASE, 'unchanged-source-jvm'
+                  argv = ['bash', './gradlew', '-Dorg.gradle.jvmargs=' + JVM_BASE + ' ' + JVM_ADDED, 'bootJar', '--no-daemon', '--max-workers=1', '--console=plain']
+                  receipt['build']['argv'] = argv
+                  receipt['build']['argvSHA'] = hashlib.sha256(canonical(argv)).hexdigest()
+                  receipt['status'] = 'BUILD_STARTED'
+                  actual_exit = subprocess.run(argv, cwd='backend', check=False).returncode
+                  receipt['build']['actualExit'] = actual_exit
+                  after, after_pin = source_snapshot(artifact, 'after')
+                  receipt['source']['backendAfter'] = after_pin
+                  assert before == after, 'build-source-before-after-identical'
+                  receipt['toolchain']['after'] = toolchain()
+                  assert receipt['toolchain']['before']['fingerprintSHA'] == receipt['toolchain']['after']['fingerprintSHA'], 'toolchain-before-after-identical'
+                  assert actual_exit == 0, 'bootjar-actual-exit'
+                  receipt['jar'] = jar_manifest(artifact)
+                  receipt['status'] = 'BOOTJAR_BUILD_ONLY_NOT_RUNTIME_OR_TEST_GREEN'
+              except BaseException as exc:
+                  receipt['status'] = 'UNKNOWN_OR_BUILD_FAILURE'
+                  receipt['failureType'] = type(exc).__name__
+                  raise
+              finally:
+                  save(artifact / 'provenance.json', receipt)
+              return 0
+
+
+          if __name__ == '__main__':
+              sys.exit(main())
+          PY
+      - name: exact Jarと元manifest・来歴を保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmp1730-bootjar-${{ github.run_id }}-${{ github.run_attempt }}
+          path: cmp1730-buildonly-artifact/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
