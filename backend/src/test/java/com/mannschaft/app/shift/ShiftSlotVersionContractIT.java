@@ -287,7 +287,7 @@ class ShiftSlotVersionContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long team(String label) {
-        return teams.save(TeamEntity.builder().slug("slot-version-" + UUID.randomUUID())
+        return teams.save(TeamEntity.builder().slug("sv-" + new java.math.BigInteger(UUID.randomUUID().toString().replace("-", ""), 16).toString(36))
                 .name(label).visibility(TeamEntity.Visibility.PUBLIC).supporterEnabled(false).build()).getId();
     }
 }
