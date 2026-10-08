@@ -71,11 +71,7 @@ onMounted(load)
       <SectionCard v-for="act in activities" :key="act.id">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex min-w-0 items-center gap-2">
-            <Tag
-              :value="t(`activity.statusLabel.${act.status}`)"
-              :severity="act.status === 'DRAFT' ? 'warn' : 'success'"
-              :data-testid="`activity-status-${act.id}`"
-            />
+            <ActivityStatusBadges :record="act" />
             <NuxtLink
               :to="`/activities/${act.id}`"
               class="inline-flex min-h-11 min-w-0 items-center break-words font-semibold hover:underline"
@@ -85,20 +81,29 @@ onMounted(load)
           </div>
           <span class="text-sm text-surface-500">{{ act.activityDate }}</span>
         </div>
-        <p v-if="act.description" class="mt-2 whitespace-pre-wrap break-words text-sm">
+        <p
+          v-if="!act.metadataOnly && act.description"
+          class="mt-2 whitespace-pre-wrap break-words text-sm"
+        >
           {{ act.description }}
         </p>
         <div class="mt-3 flex flex-wrap gap-2">
           <Button
             class="min-h-11 min-w-11"
-            :label="t(act.status === 'DRAFT' ? 'activity.list.editDraft' : 'activity.detail.open')"
+            :label="
+              t(
+                !act.metadataOnly && act.status === 'DRAFT'
+                  ? 'activity.list.editDraft'
+                  : 'activity.detail.open',
+              )
+            "
             icon="pi pi-arrow-right"
             outlined
             size="small"
             @click="navigateTo(`/activities/${act.id}`)"
           />
           <Button
-            v-if="act.visibility === 'PUBLIC' && act.status === 'PUBLISHED'"
+            v-if="!act.metadataOnly && act.visibility === 'PUBLIC' && act.status === 'PUBLISHED'"
             class="min-h-11 min-w-11"
             :label="t('share.title')"
             icon="pi pi-share-alt"

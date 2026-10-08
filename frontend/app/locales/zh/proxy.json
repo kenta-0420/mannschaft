@@ -16,7 +16,8 @@
         "pending": "待审批",
         "active": "有效",
         "expired": "已过期",
-        "revoked": "已撤销"
+        "revoked": "已撤销",
+        "scheduled": "尚未生效"
       },
       "effectiveFrom": "有效期（开始）",
       "effectiveUntil": "有效期（结束）",
@@ -229,6 +230,25 @@
         "not_allowed": "此日程/活动不允许代理出席",
         "rate_limit": "操作太频繁，请1分钟后重试"
       }
+    },
+    "admin": {
+      "consentsTitle": "代理输入同意书管理",
+      "description": "查看本组织的代理输入同意书，进行批准或撤销，并查看代理输入记录。",
+      "organization": "管理的组织",
+      "proxyUserId": "代理人ID",
+      "status": "状态",
+      "actions": "操作",
+      "approve": "批准",
+      "revoke": "撤销",
+      "approveConfirm": "将批准同意书 #{id}。请确认后继续。",
+      "approved": "同意书已批准。",
+      "revoked": "同意书已撤销。",
+      "selfApprovalDenied": "您不能批准指定自己为代理人的同意书。",
+      "noConsents": "暂无同意书。",
+      "noRecords": "暂无代理输入记录。",
+      "none": "无",
+      "recordId": "记录ID",
+      "targetType": "对象类型"
     }
   }
 }

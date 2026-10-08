@@ -62,15 +62,18 @@ class ActivityControllerTest {
     @Mock
     private ActivityMapper activityMapper;
 
+    @Mock private com.mannschaft.app.activity.service.AutomaticActivityListService automaticLists;
+
     private MockMvc mockMvc;
     private MockedStatic<SecurityUtils> securityUtilsMock;
 
     @BeforeEach
     void setUp() {
         ActivityController controller = new ActivityController(activityService, activityMapper,
-                Mockito.mock(com.mannschaft.app.activity.service.ActivityDetailService.class),
+                Mockito.mock(com.mannschaft.app.activity.service.ActivityDetailService.class), automaticLists,
                 Mockito.mock(com.mannschaft.app.common.activityschedule.ActivityScheduleFacade.class),
-                Mockito.mock(com.mannschaft.app.common.activityschedule.ActivityMutationFacade.class));
+                Mockito.mock(com.mannschaft.app.common.activityschedule.ActivityMutationFacade.class),
+                Mockito.mock(com.mannschaft.app.common.activityschedule.ActivityScheduleCreationFacade.class));
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
@@ -89,9 +92,8 @@ class ActivityControllerTest {
     @Test
     @DisplayName("AC-9: page=1 を渡すと Service へ渡る Pageable の pageNumber が 1 になる")
     void listActivities_page1_passesPageNumber1() throws Exception {
-        given(activityService.listActivities(anyLong(), any(ActivityScopeType.class), anyLong(), isNull(), any()))
-                .willReturn(new PageImpl<ActivityResultEntity>(List.of()));
-        given(activityMapper.toActivityRecordResponseList(any())).willReturn(List.of());
+        given(automaticLists.list(anyLong(), any(ActivityScopeType.class), anyLong(), isNull(), any()))
+                .willReturn(new PageImpl<com.mannschaft.app.activity.dto.ActivityRecordResponse>(List.of()));
 
         mockMvc.perform(get("/api/v1/activities")
                         .param("scope_type", "TEAM")
@@ -100,7 +102,7 @@ class ActivityControllerTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        Mockito.verify(activityService).listActivities(
+        Mockito.verify(automaticLists).list(
                 eq(USER_ID), eq(ActivityScopeType.TEAM), eq(SCOPE_ID), isNull(), pageableCaptor.capture());
         assertThat(pageableCaptor.getValue().getPageNumber()).isEqualTo(1);
     }
@@ -108,9 +110,8 @@ class ActivityControllerTest {
     @Test
     @DisplayName("AC-10: page 未指定時は従来どおり 0 ページ目（後方互換）")
     void listActivities_pageOmitted_defaultsToPage0() throws Exception {
-        given(activityService.listActivities(anyLong(), any(ActivityScopeType.class), anyLong(), isNull(), any()))
-                .willReturn(new PageImpl<ActivityResultEntity>(List.of()));
-        given(activityMapper.toActivityRecordResponseList(any())).willReturn(List.of());
+        given(automaticLists.list(anyLong(), any(ActivityScopeType.class), anyLong(), isNull(), any()))
+                .willReturn(new PageImpl<com.mannschaft.app.activity.dto.ActivityRecordResponse>(List.of()));
 
         mockMvc.perform(get("/api/v1/activities")
                         .param("scope_type", "TEAM")
@@ -118,7 +119,7 @@ class ActivityControllerTest {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        Mockito.verify(activityService).listActivities(
+        Mockito.verify(automaticLists).list(
                 eq(USER_ID), eq(ActivityScopeType.TEAM), eq(SCOPE_ID), isNull(), pageableCaptor.capture());
         assertThat(pageableCaptor.getValue().getPageNumber()).isEqualTo(0);
     }
@@ -132,7 +133,7 @@ class ActivityControllerTest {
                         .param("page", "-1"))
                 .andExpect(status().isBadRequest());
 
-        Mockito.verifyNoInteractions(activityService);
+        Mockito.verifyNoInteractions(activityService, automaticLists);
     }
 
     @Test
@@ -144,6 +145,6 @@ class ActivityControllerTest {
                         .param("limit", "0"))
                 .andExpect(status().isBadRequest());
 
-        Mockito.verifyNoInteractions(activityService);
+        Mockito.verifyNoInteractions(activityService, automaticLists);
     }
 }

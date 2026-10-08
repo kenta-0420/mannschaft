@@ -49,6 +49,8 @@ class ActivityControllerDraftTest {
 
     @Mock
     private com.mannschaft.app.common.activityschedule.ActivityMutationFacade activityMutations;
+    @Mock
+    private com.mannschaft.app.common.activityschedule.ActivityScheduleCreationFacade activityCreation;
 
     @InjectMocks
     private ActivityController controller;

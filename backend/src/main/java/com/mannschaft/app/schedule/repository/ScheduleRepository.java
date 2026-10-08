@@ -16,6 +16,17 @@ import java.util.Optional;
  */
 public interface ScheduleRepository extends AbstractTenantAwareRepository<ScheduleEntity, Long> {
 
+    /** source削除後も保存実績を削除できるよう、論理削除を除外せず保存行をcurrent lockする。 */
+    @Query(value="SELECT id FROM schedules WHERE id=:id FOR UPDATE", nativeQuery=true)
+    java.util.Optional<Long> lockStoredActivitySourceId(@Param("id") Long id);
+
+    /** 毎分の完了候補。上限はPageableで渡し、各行TXで現在状態を再確認する。 */
+    @Query("SELECT s.id FROM ScheduleEntity s WHERE s.status=com.mannschaft.app.schedule.ScheduleStatus.SCHEDULED "
+            + "AND s.endAt IS NOT NULL AND s.endAt<:now AND (s.teamId IS NOT NULL OR s.organizationId IS NOT NULL) "
+            + "AND s.recurrenceRule IS NULL AND s.deletedAt IS NULL ORDER BY s.endAt ASC,s.id ASC")
+    List<Long> findDueSharedConcreteIds(@Param("now") java.time.LocalDateTime now,
+                                       org.springframework.data.domain.Pageable pageable);
+
     /** 同一予定からの作成と更新を直列化する。取得順を固定して繰返し群のdeadlockを避ける。 */
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM ScheduleEntity s WHERE s.id IN :ids ORDER BY s.id")

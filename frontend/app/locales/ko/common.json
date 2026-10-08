@@ -741,6 +741,8 @@
       "titlePlaceholder": "게시글 제목을 입력하세요",
       "createDialogHint": "임시 저장으로 저장됩니다. 제목 입력 후 편집 페이지에서 본문을 작성하세요.",
       "loadListFailed": "게시글 목록을 불러오지 못했습니다",
+      "loadListErrorHint": "게시글 목록을 표시하지 못했습니다. 통신 상태나 권한을 확인한 뒤 다시 불러오세요.",
+      "reloadList": "다시 불러오기",
       "createFailed": "게시글을 작성하지 못했습니다",
       "archived": "보관됨",
       "publishSuccess": "게시했습니다",
@@ -2111,7 +2113,10 @@
       "scheduleCancelled": "元の予定は中止されています",
       "endDate": "終了日（複数日の場合）",
       "startTime": "開始時刻",
-      "endTime": "終了時刻"
+      "endTime": "終了時刻",
+      "edit": "편집",
+      "save": "저장",
+      "updated": "활동 기록을 저장했습니다"
     },
     "sync": {
       "title": "予定と活動記録の変更を確認",
@@ -2134,6 +2139,15 @@
       "create": "この予定の活動記録を作成",
       "records": "活動記録",
       "loadError": "活動記録の取得に失敗しました"
+    },
+    "planned": "예정",
+    "unpublished": "미공개",
+    "metadataOnly": "활동 내용은 아직 공개되지 않았습니다. 원래 일정 정보만 표시합니다.",
+    "delete": {
+      "title": "활동 기록 삭제",
+      "action": "삭제",
+      "confirm": "활동 기록을 삭제합니다. 원래 일정은 삭제되지 않습니다.",
+      "success": "활동 기록을 삭제했습니다"
     }
   },
   "dashboard": {

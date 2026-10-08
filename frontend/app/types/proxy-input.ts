@@ -9,6 +9,7 @@ export type ProxyInputFeatureScope =
   | 'PARKING_APPLICATION'
   | 'CIRCULAR'
   | 'PAYMENT'
+  | 'SUPPORTER_VIEW'
 
 /** 同意書の取得方法 */
 export type ProxyInputConsentMethod =
@@ -18,29 +19,30 @@ export type ProxyInputConsentMethod =
   | 'GUARDIAN_BY_COURT'
 
 /** 代理入力の入力手段 */
-export type ProxyInputSource =
-  | 'PAPER_FORM'
-  | 'PHONE_INTERVIEW'
-  | 'IN_PERSON'
+export type ProxyInputSource = 'PAPER_FORM' | 'PHONE_INTERVIEW' | 'IN_PERSON'
 
 /** 同意撤回の方法 */
 export type ProxyRevokeMethod =
   | 'API_BY_SUBJECT'
-  | 'PAPER'
-  | 'LIFE_EVENT'
-  | 'TENURE_END'
+  | 'PAPER_BY_SUBJECT'
+  | 'AUTO_BY_LIFE_EVENT'
+  | 'AUTO_BY_TENURE_END'
 
 /** 代理入力同意書 */
 export interface ProxyInputConsent {
   id: number
   subjectUserId: number
   proxyUserId: number
-  orgId: number
+  organizationId: number
+  status: 'PENDING_APPROVAL' | 'APPROVED' | 'REVOKED'
   consentMethod: ProxyInputConsentMethod
-  effectiveFrom: string        // ISO date string
-  effectiveUntil: string       // ISO date string
+  effectiveFrom: string // ISO date string
+  effectiveUntil: string // ISO date string
   approvedAt: string | null
+  approvedByUserId: number | null
   revokedAt: string | null
+  revokeMethod: ProxyRevokeMethod | null
+  revokeReason: string | null
   scopes: ProxyInputFeatureScope[]
 }
 
@@ -55,13 +57,13 @@ export interface ProxyInputDeskState {
 /** 代理入力操作履歴レコード */
 export interface ProxyInputRecord {
   id: number
-  proxyInputConsentId: number
+  proxyInputConsentId: number | null
   subjectUserId: number
   proxyUserId: number
   featureScope: ProxyInputFeatureScope
   targetEntityType: string
   targetEntityId: number
-  inputSource: ProxyInputSource
+  inputSource: ProxyInputSource | 'GUARDIANSHIP_SWITCH'
   originalStorageLocation: string | null
   createdAt: string
 }
@@ -69,18 +71,21 @@ export interface ProxyInputRecord {
 /** 同意書登録リクエスト */
 export interface CreateProxyInputConsentRequest {
   subjectUserId: number
-  orgId: number
+  proxyUserId: number
   consentMethod: ProxyInputConsentMethod
   effectiveFrom: string
   effectiveUntil: string
   scopes: ProxyInputFeatureScope[]
-  scanS3Key?: string
+  scannedDocumentS3Key?: string
+  guardianCertificateS3Key?: string
+  witnessUserId?: number
 }
 
 /** 同意書撤回リクエスト */
 export interface RevokeProxyInputConsentRequest {
   revokeMethod: ProxyRevokeMethod
   revokeReason?: string
+  revokeWitnessedByUserId?: number
 }
 
 /** スキャン画像アップロード用 presigned URL レスポンス */
