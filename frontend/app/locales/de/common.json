@@ -741,6 +741,8 @@
       "titlePlaceholder": "Beitragstitel eingeben",
       "createDialogHint": "Er wird als Entwurf gespeichert. Schreiben Sie den Text nach Eingabe des Titels auf der Bearbeitungsseite.",
       "loadListFailed": "Beitragsliste konnte nicht geladen werden",
+      "loadListErrorHint": "Die Beitragsliste konnte nicht angezeigt werden. Prüfen Sie Verbindung oder Berechtigungen und laden Sie neu.",
+      "reloadList": "Neu laden",
       "createFailed": "Beitrag konnte nicht erstellt werden",
       "archived": "Archiviert",
       "publishSuccess": "Veröffentlicht",
