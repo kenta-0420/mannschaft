@@ -267,6 +267,71 @@ class ActivityAutomaticScheduleIntegrationTest extends AbstractMySqlIntegrationT
     }
 
     @Test
+    void 生存元予定の閲覧権を失っても作者は保存実績を編集でき秘密予定を参照しない() throws Exception {
+        long scheduleId = createSchedule(Map.of());
+        long id = activityId(scheduleId);
+        tx.executeWithoutResult(t -> {
+            em.createNativeQuery("UPDATE activity_results SET description='保存済み実績本文' WHERE id=:id")
+                    .setParameter("id", id).executeUpdate();
+            em.createNativeQuery("DELETE FROM user_roles WHERE user_id=:user AND team_id=:team")
+                    .setParameter("user", AUTHOR).setParameter("team", teamId).executeUpdate();
+            em.createNativeQuery("UPDATE schedules SET min_view_role='ADMIN_ONLY',title='閲覧不可の新秘密予定', "
+                    + "start_at='2027-02-01 09:17:23',end_at='2027-02-02 10:19:29',target_mode='SELECTED_MEMBERS' WHERE id=:id")
+                    .setParameter("id", scheduleId).executeUpdate();
+        });
+        // 共有予定はPUBLISHED相当で作者短絡しない。在籍作者でも変更後の閾値には届かない。
+        assertThat(visibilityChecker.canView(com.mannschaft.app.common.visibility.ReferenceType.SCHEDULE, scheduleId, AUTHOR)).isFalse();
+        Boolean sourceRetained = tx.execute(t -> schedules.findById(scheduleId).isPresent());
+        assertThat(sourceRetained).isTrue();
+        var saved = detail(id, AUTHOR);
+        assertThat(saved.path("metadataOnly").asBoolean()).isFalse();
+        assertThat(saved.path("canEdit").asBoolean()).isTrue();
+        assertThat(saved.path("title").asText()).isEqualTo("自動予定");
+        assertThat(saved.path("activityDate").asText()).isEqualTo("2026-10-15");
+        assertThat(saved.path("description").asText()).isEqualTo("保存済み実績本文");
+        assertThat(saved.path("sourceSchedule").path("state").asText()).isEqualTo("UNAVAILABLE");
+        assertThat(saved.path("sourceSchedule").path("canView").asBoolean()).isFalse();
+        for (String key : List.of("scopeType", "scopeId", "scopePublicId", "id")) {
+            assertThat(saved.path("sourceSchedule").path(key).isNull()).as(key).isTrue();
+        }
+        assertThat(saved.toString()).doesNotContain("閲覧不可の新秘密予定", "2027-02-01", "2027-02-02", "SELECTED_MEMBERS");
+        mvc.perform(put("/api/v1/activities/{id}", id).with(user(Long.toString(AUTHOR)))
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of(
+                        "title", "保存実績の追記", "activityDate", "2026-10-15", "activityEndDate", "2026-10-16",
+                        "description", "閲覧権喪失後の実績追記", "version", saved.path("version").asLong()))))
+                .andExpect(status().isOk());
+        var updated = detail(id, AUTHOR);
+        assertThat(updated.path("title").asText()).isEqualTo("保存実績の追記");
+        assertThat(updated.path("description").asText()).isEqualTo("閲覧権喪失後の実績追記");
+        assertThat(updated.toString()).doesNotContain("閲覧不可の新秘密予定", "2027-02-01", "2027-02-02", "SELECTED_MEMBERS");
+        assertThat(visibilityChecker.canView(com.mannschaft.app.common.visibility.ReferenceType.SCHEDULE, scheduleId, AUTHOR)).isFalse();
+    }
+
+    @Test
+    void 予定を中止しても活動を保持し元予定の中止状態を返す() throws Exception {
+        long scheduleId = createSchedule(Map.of());
+        long id = activityId(scheduleId);
+        mvc.perform(post("/api/v1/teams/{team}/schedules/{id}/cancel", teamId, scheduleId)
+                .with(user(Long.toString(AUTHOR))))
+                .andExpect(status().isNoContent());
+        tx.executeWithoutResult(t -> {
+            var schedule = schedules.findById(scheduleId).orElseThrow();
+            assertThat(schedule.getStatus()).isEqualTo(com.mannschaft.app.schedule.ScheduleStatus.CANCELLED);
+            var retained = activities.findById(id).orElseThrow();
+            assertThat(retained.getScheduleId()).isEqualTo(scheduleId);
+            assertThat(retained.isPlanned()).isTrue();
+            assertThat(retained.getStatus()).isEqualTo(ActivityStatus.DRAFT);
+        });
+        for (Long viewer : List.of(AUTHOR, MEMBER)) {
+            var saved = detail(id, viewer);
+            assertThat(saved.path("sourceSchedule").path("state").asText()).isEqualTo("CANCELLED");
+            assertThat(saved.path("sourceSchedule").path("canView").asBoolean()).isTrue();
+            assertThat(saved.path("sourceSchedule").path("id").asLong()).isEqualTo(scheduleId);
+            assertThat(saved.path("isPlanned").asBoolean()).isTrue();
+        }
+    }
+
+    @Test
     void 元予定が論理削除済みでも作者の実績保持と明示削除は許可する() throws Exception {
         long scheduleId = createSchedule(Map.of());
         long id = activityId(scheduleId);
@@ -297,6 +362,13 @@ class ActivityAutomaticScheduleIntegrationTest extends AbstractMySqlIntegrationT
         mvc.perform(post("/api/v1/activities/{id}/participants", id).with(user(Long.toString(MEMBER)))
                 .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("userIds", List.of(MEMBER)))))
                 .andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/activities/{id}/participants", id).with(user(Long.toString(AUTHOR)))
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("userIds", List.of(AUTHOR)))))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/v1/activities/{id}/participants", id).with(user(Long.toString(MEMBER)))
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("userIds", List.of(AUTHOR)))))
+                .andExpect(status().isNotFound());
+        assertThat(detail(id, AUTHOR).path("participants").size()).isEqualTo(1);
         mvc.perform(post("/api/v1/activities/{id}/duplicate", id).with(user(Long.toString(MEMBER))))
                 .andExpect(status().isNotFound());
     }
@@ -315,6 +387,16 @@ class ActivityAutomaticScheduleIntegrationTest extends AbstractMySqlIntegrationT
         sqlLogger.addAppender(capture);
         sqlLogger.setAdditive(false);
         sqlLogger.setLevel(ch.qos.logback.classic.Level.DEBUG);
+        // 実依存JdbcBindingLoggingのint parameter indexだけを読み、値を証跡へ出さない。
+        var bindLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("org.hibernate.orm.jdbc.bind");
+        var oldBindLevel = bindLogger.getLevel();
+        boolean oldBindAdditive = bindLogger.isAdditive();
+        var bindCapture = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        bindCapture.start();
+        bindLogger.addAppender(bindCapture);
+        bindLogger.setAdditive(false);
+        bindLogger.setLevel(ch.qos.logback.classic.Level.OFF);
+        var parameterIndex = java.util.regex.Pattern.compile("^binding parameter \\((\\d+):");
         int inserted = 0;
         try {
             for (int count : List.of(20, 1000, 10000)) {
@@ -342,14 +424,26 @@ class ActivityAutomaticScheduleIntegrationTest extends AbstractMySqlIntegrationT
                 inserted = count;
                 statistics.clear();
                 capture.list.clear();
+                bindCapture.list.clear();
+                bindLogger.setLevel(ch.qos.logback.classic.Level.TRACE);
                 long start = System.nanoTime();
                 var page = automaticLists.list(MEMBER, ActivityScopeType.TEAM, teamId, null,
                         org.springframework.data.domain.PageRequest.of(1, 3));
+                bindLogger.setLevel(ch.qos.logback.classic.Level.OFF);
                 long elapsedMillis = (System.nanoTime() - start) / 1_000_000;
                 long statements = statistics.getPrepareStatementCount();
                 int maximumPlaceholders = capture.list.stream()
                         .filter(event -> event.getThreadName().equals(Thread.currentThread().getName()))
                         .mapToInt(event -> (int) event.getFormattedMessage().chars().filter(c -> c == '?').count()).max().orElse(0);
+                var boundIndexes = bindCapture.list.stream()
+                        .filter(event -> event.getThreadName().equals(Thread.currentThread().getName()))
+                        .map(event -> parameterIndex.matcher(event.getFormattedMessage()))
+                        .filter(java.util.regex.Matcher::find)
+                        .map(matcher -> Integer.parseInt(matcher.group(1))).toList();
+                int maximumBindIndex = boundIndexes.stream().mapToInt(Integer::intValue).max().orElse(0);
+                assertThat(maximumBindIndex).as("Hibernate JDBC binderの実parameter index最大値").isGreaterThanOrEqualTo(count);
+                assertThat(maximumBindIndex).isLessThan(65535);
+                assertThat(boundIndexes.size()).isGreaterThanOrEqualTo(maximumBindIndex);
                 assertThat(page.getTotalElements()).isEqualTo(count / 2);
                 assertThat(page.getContent()).hasSize(3).allSatisfy(row -> {
                     assertThat(row.isMetadataOnly()).isTrue();
@@ -359,10 +453,14 @@ class ActivityAutomaticScheduleIntegrationTest extends AbstractMySqlIntegrationT
                 assertThat(statements).as("件数依存のSQL発行を禁止").isLessThanOrEqualTo(25);
                 assertThat(maximumPlaceholders).as("展開済みsource ID集合のSQLを実際に観測する").isGreaterThanOrEqualTo(count);
                 assertThat(maximumPlaceholders).isLessThan(65535);
-                System.out.printf("AUTO_PAGE_PERF candidates=%d visible=%d statements=%d elapsedMs=%d maxSqlPlaceholders=%d page=1 size=3%n",
-                        count, page.getTotalElements(), statements, elapsedMillis, maximumPlaceholders);
+                System.out.printf("AUTO_PAGE_PERF candidates=%d visible=%d statements=%d elapsedMs=%d maxSqlPlaceholders=%d maxJdbcBindIndex=%d jdbcBindEvents=%d page=1 size=3%n",
+                        count, page.getTotalElements(), statements, elapsedMillis, maximumPlaceholders, maximumBindIndex, boundIndexes.size());
             }
         } finally {
+            bindLogger.detachAppender(bindCapture);
+            bindCapture.stop();
+            bindLogger.setLevel(oldBindLevel);
+            bindLogger.setAdditive(oldBindAdditive);
             sqlLogger.detachAppender(capture);
             capture.stop();
             sqlLogger.setLevel(oldLevel);
@@ -448,19 +546,89 @@ class ActivityAutomaticScheduleIntegrationTest extends AbstractMySqlIntegrationT
 
     @Test
     void 一般統計とCSVにauto未公開実績件数や手編集題名を混ぜない() throws Exception {
-        long id = activityId(createSchedule(Map.of()));
-        tx.executeWithoutResult(t -> em.createNativeQuery("UPDATE activity_results SET title='秘匿実績CSV題名' WHERE id=:id")
-                .setParameter("id", id).executeUpdate());
-        var response = mvc.perform(get("/api/v1/activities/stats").with(user(Long.toString(MEMBER)))
-                .param("scope_type", "TEAM").param("scope_id", teamId.toString()))
-                .andExpect(status().isOk()).andReturn();
-        var stats = json.readTree(response.getResponse().getContentAsString()).path("data");
-        assertThat(stats.path("totalActivities").asLong()).isZero();
-        assertThat(stats.path("byMonth").size()).isZero();
-        var csv = mvc.perform(get("/api/v1/activities/export").with(user(Long.toString(MEMBER)))
-                .param("scope_type", "TEAM").param("scope_id", teamId.toString()))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(csv).doesNotContain("秘匿実績CSV題名");
+        long scheduleId = createSchedule(Map.of());
+        long id = activityId(scheduleId);
+        Long templateId = tx.execute(t -> {
+            var template = com.mannschaft.app.activity.entity.ActivityTemplateEntity.builder()
+                    .scopeType(ActivityScopeType.TEAM).scopeId(teamId).name("統計対照テンプレート")
+                    .createdBy(AUTHOR).build();
+            em.persist(template);
+            em.flush();
+            em.createNativeQuery("UPDATE activity_results SET title='秘匿実績CSV題名',template_id=:template WHERE id=:id")
+                    .setParameter("template", template.getId()).setParameter("id", id).executeUpdate();
+            em.createNativeQuery("INSERT INTO activity_participants(activity_result_id,user_id,role_label,created_at) VALUES (:id,:user,'秘匿参加者',NOW())")
+                    .setParameter("id", id).setParameter("user", AUTHOR).executeUpdate();
+            return template.getId();
+        });
+        try {
+            // 非空の未公開actualも、予定が見えるだけの一般所属者の統計へ混ぜない。
+            var response = mvc.perform(get("/api/v1/activities/stats").with(user(Long.toString(MEMBER)))
+                    .param("scope_type", "TEAM").param("scope_id", teamId.toString()))
+                    .andExpect(status().isOk()).andReturn();
+            var stats = json.readTree(response.getResponse().getContentAsString()).path("data");
+            assertThat(stats.path("totalActivities").asLong()).isZero();
+            for (String key : List.of("byMonth", "byTemplate", "topParticipants")) {
+                assertThat(stats.path(key).size()).as(key).isZero();
+            }
+            var csv = mvc.perform(get("/api/v1/activities/export").with(user(Long.toString(MEMBER)))
+                    .param("scope_type", "TEAM").param("scope_id", teamId.toString()))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertThat(csv.replace("\uFEFF", "").lines().toList()).containsExactly("日付,タイトル,参加者数,作成者");
+            tx.executeWithoutResult(t -> {
+                em.createNativeQuery("UPDATE activity_results SET status='PUBLISHED',visibility='PUBLIC',is_planned=FALSE WHERE id=:id")
+                        .setParameter("id", id).executeUpdate();
+                em.createNativeQuery("UPDATE schedules SET min_view_role='ADMIN_ONLY' WHERE id=:id")
+                        .setParameter("id", scheduleId).executeUpdate();
+            });
+            assertThat(visibilityChecker.canView(com.mannschaft.app.common.visibility.ReferenceType.SCHEDULE, scheduleId, MEMBER)).isFalse();
+            // 公開autoでも恒久source ACLを統計・参加者集計・CSVへ適用する。
+            var hiddenResponse = mvc.perform(get("/api/v1/activities/stats").with(user(Long.toString(MEMBER)))
+                    .param("scope_type", "TEAM").param("scope_id", teamId.toString()))
+                    .andExpect(status().isOk()).andReturn();
+            var hiddenStats = json.readTree(hiddenResponse.getResponse().getContentAsString()).path("data");
+            assertThat(hiddenStats.path("totalActivities").asLong()).isZero();
+            for (String key : List.of("byMonth", "byTemplate", "topParticipants")) {
+                assertThat(hiddenStats.path(key).size()).as(key).isZero();
+            }
+            var hiddenCsv = mvc.perform(get("/api/v1/activities/export").with(user(Long.toString(MEMBER)))
+                    .param("scope_type", "TEAM").param("scope_id", teamId.toString()))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertThat(hiddenCsv.replace("\uFEFF", "").lines().toList()).containsExactly("日付,タイトル,参加者数,作成者");
+            Long manualId = tx.execute(t -> {
+                var manual = activities.saveAndFlush(com.mannschaft.app.activity.entity.ActivityResultEntity.builder()
+                        .scopeType(ActivityScopeType.TEAM).scopeId(teamId).templateId(templateId)
+                        .title("閲覧可能な手動実績CSV題名").activityDate(java.time.LocalDate.of(2026, 10, 15))
+                        .createdBy(AUTHOR).status(ActivityStatus.PUBLISHED).visibility(ActivityVisibility.MEMBERS_ONLY).build());
+                em.createNativeQuery("INSERT INTO activity_participants(activity_result_id,user_id,role_label,created_at) VALUES (:id,:user,'手動参加者',NOW())")
+                        .setParameter("id", manual.getId()).setParameter("user", MEMBER).executeUpdate();
+                return manual.getId();
+            });
+            assertThat(detail(manualId, MEMBER).path("title").asText()).isEqualTo("閲覧可能な手動実績CSV題名");
+            var visibleResponse = mvc.perform(get("/api/v1/activities/stats").with(user(Long.toString(MEMBER)))
+                    .param("scope_type", "TEAM").param("scope_id", teamId.toString()))
+                    .andExpect(status().isOk()).andReturn();
+            var visibleStats = json.readTree(visibleResponse.getResponse().getContentAsString()).path("data");
+            assertThat(visibleStats.path("totalActivities").asLong()).isEqualTo(1);
+            assertThat(visibleStats.path("byTemplate").size()).isEqualTo(1);
+            assertThat(visibleStats.path("byTemplate").get(0).path("templateId").asLong()).isEqualTo(templateId);
+            assertThat(visibleStats.path("byTemplate").get(0).path("count").asLong()).isEqualTo(1);
+            assertThat(visibleStats.path("byMonth").get(0).path("count").asLong()).isEqualTo(1);
+            assertThat(visibleStats.path("topParticipants").size()).isEqualTo(1);
+            assertThat(visibleStats.path("topParticipants").get(0).path("userId").asLong()).isEqualTo(MEMBER);
+            assertThat(visibleStats.path("topParticipants").get(0).path("participationCount").asLong()).isEqualTo(1);
+            var visibleCsv = mvc.perform(get("/api/v1/activities/export").with(user(Long.toString(MEMBER)))
+                    .param("scope_type", "TEAM").param("scope_id", teamId.toString()))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertThat(visibleCsv.replace("\uFEFF", "").lines().toList()).containsExactly("日付,タイトル,参加者数,作成者",
+                    "2026-10-15,閲覧可能な手動実績CSV題名,1," + AUTHOR);
+        } finally {
+            tx.executeWithoutResult(t -> {
+                em.createNativeQuery("UPDATE activity_results SET template_id=NULL WHERE scope_type='TEAM' AND scope_id=:scope")
+                        .setParameter("scope", teamId).executeUpdate();
+                em.createNativeQuery("DELETE FROM activity_templates WHERE id=:id AND scope_type='TEAM' AND scope_id=:scope")
+                        .setParameter("id", templateId).setParameter("scope", teamId).executeUpdate();
+            });
+        }
     }
 
     @Test
