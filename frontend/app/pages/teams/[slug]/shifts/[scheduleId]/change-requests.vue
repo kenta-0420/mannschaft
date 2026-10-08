@@ -18,9 +18,7 @@ async function onSubmitted(): Promise<void> {
 }
 
 async function onReview(id: number, decision: 'ACCEPTED' | 'REJECTED'): Promise<void> {
-  await review(id, decision).catch(() => {
-    // review内で通知済みの拒否をここで捕捉し、未処理例外にしない。
-  })
+  await review(id, decision)
 }
 
 async function onWithdraw(id: number): Promise<void> {
