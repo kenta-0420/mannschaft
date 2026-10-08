@@ -70,6 +70,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
@@ -1160,6 +1161,134 @@ class FlywayFromScratchMigrationTest {
                         .putLong(ownedId.getLeastSignificantBits()).array());
                 statement.executeUpdate();
             }
+        }
+    }
+
+    @Test
+    @DisplayName("GDPR retry_count: 0・127・128・255をcommit後の別SessionとJDBCから保持できる")
+    void 削除完了証跡のretry回数はunsigned上限まで保持できる() throws Exception {
+        migrateFromScratch();
+        UUID ownedId = UuidV7.generate();
+        try (SessionFactory factory = accountPurgeValidatedSessionFactory()) {
+            boolean persisted = false;
+            for (int retryCount : new int[] {0, 127, 128, 255}) {
+                try (Session session = factory.openSession()) {
+                    session.beginTransaction();
+                    if (!persisted) {
+                        session.persist(accountPurgeRetryStatus(ownedId, retryCount));
+                    } else {
+                        session.find(AccountPurgeCompletionStatusEntity.class, ownedId).setRetryCount(retryCount);
+                    }
+                    session.getTransaction().commit();
+                    persisted = true;
+                }
+                try (Session session = factory.openSession()) {
+                    AccountPurgeCompletionStatusEntity found = session.find(AccountPurgeCompletionStatusEntity.class, ownedId);
+                    assertThat(found).isNotNull();
+                    assertThat(found.getRetryCount()).isEqualTo(retryCount);
+                }
+                assertThat(accountPurgeRetrySnapshot(ownedId).get("retry_count")).isEqualTo(Integer.toString(retryCount));
+            }
+            assertAccountPurgeRetryColumn();
+        } finally {
+            deleteOwnedAccountPurgeStatus(ownedId);
+        }
+    }
+
+    @Test
+    @DisplayName("GDPR retry_count: 256の更新拒否後もcommit済み255の全列を保持する")
+    void 削除完了証跡のretry回数は範囲外更新をrollbackして既存行を保全する() throws Exception {
+        migrateFromScratch();
+        UUID ownedId = UuidV7.generate();
+        try (SessionFactory factory = accountPurgeValidatedSessionFactory()) {
+            try (Session session = factory.openSession()) {
+                session.beginTransaction();
+                session.persist(accountPurgeRetryStatus(ownedId, 255));
+                session.getTransaction().commit();
+            }
+            Map<String, String> before = accountPurgeRetrySnapshot(ownedId);
+            assertThat(before.get("retry_count")).isEqualTo("255");
+            assertThatThrownBy(() -> {
+                try (Session session = factory.openSession()) {
+                    var transaction = session.beginTransaction();
+                    try {
+                        session.find(AccountPurgeCompletionStatusEntity.class, ownedId).setRetryCount(256);
+                        session.flush();
+                        transaction.commit();
+                    } catch (RuntimeException error) {
+                        if (transaction.isActive()) {
+                            transaction.rollback();
+                        }
+                        throw error;
+                    }
+                }
+            }).isInstanceOf(jakarta.persistence.PersistenceException.class).satisfies(error -> {
+                Throwable cause = error;
+                while (cause != null && !(cause instanceof SQLException)) {
+                    cause = cause.getCause();
+                }
+                assertThat(cause).isInstanceOf(SQLException.class);
+                SQLException sqlError = (SQLException) cause;
+                assertThat(sqlError.getErrorCode()).isEqualTo(1264);
+                // MySQLの範囲外拒否は22003。Connector/Jの書込みDataTruncationは22001を返す。
+                assertThat(sqlError.getSQLState()).isIn("22003", "22001");
+            });
+            try (Session session = factory.openSession()) {
+                assertThat(session.find(AccountPurgeCompletionStatusEntity.class, ownedId).getRetryCount()).isEqualTo(255);
+            }
+            assertThat(accountPurgeRetrySnapshot(ownedId)).isEqualTo(before);
+            assertAccountPurgeRetryColumn();
+        } finally {
+            deleteOwnedAccountPurgeStatus(ownedId);
+        }
+    }
+
+    private static AccountPurgeCompletionStatusEntity accountPurgeRetryStatus(UUID id, int retryCount) {
+        AccountPurgeCompletionStatusEntity status = new AccountPurgeCompletionStatusEntity();
+        status.setId(id);
+        status.setUserId(9_215_101L);
+        status.setEmailHash("0123456789abcdef".repeat(4));
+        status.setDomainName("role");
+        status.setStatus("PENDING");
+        status.setAttemptedAt(LocalDateTime.of(2026, 10, 8, 13, 0));
+        status.setRetryCount(retryCount);
+        return status;
+    }
+
+    private static Map<String, String> accountPurgeRetrySnapshot(UUID id) throws SQLException {
+        try (Connection connection = connect();
+             var statement = connection.prepareStatement("SELECT HEX(id) AS id, user_id, email_hash, domain_name, status, "
+                     + "attempted_at, completed_at, retry_count, last_retried_at FROM account_purge_completion_status WHERE id = ?")) {
+            statement.setBytes(1, ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array());
+            try (ResultSet result = statement.executeQuery()) {
+                assertThat(result.next()).isTrue();
+                Map<String, String> row = new HashMap<>();
+                for (int index = 1; index <= result.getMetaData().getColumnCount(); index++) {
+                    row.put(result.getMetaData().getColumnLabel(index), result.getString(index));
+                }
+                assertThat(result.next()).isFalse();
+                return row;
+            }
+        }
+    }
+
+    private static void assertAccountPurgeRetryColumn() throws SQLException {
+        try (Connection connection = connect(); Statement statement = connection.createStatement();
+             ResultSet column = statement.executeQuery("SELECT COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT FROM information_schema.COLUMNS "
+                     + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'account_purge_completion_status' AND COLUMN_NAME = 'retry_count'")) {
+            assertThat(column.next()).isTrue();
+            assertThat(column.getString("COLUMN_TYPE")).isEqualTo("tinyint unsigned");
+            assertThat(column.getString("IS_NULLABLE")).isEqualTo("NO");
+            assertThat(column.getString("COLUMN_DEFAULT")).isEqualTo("0");
+            assertThat(column.next()).isFalse();
+        }
+    }
+
+    private static void deleteOwnedAccountPurgeStatus(UUID id) throws SQLException {
+        try (Connection connection = connect();
+             var statement = connection.prepareStatement("DELETE FROM account_purge_completion_status WHERE id = ?")) {
+            statement.setBytes(1, ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array());
+            statement.executeUpdate();
         }
     }
 
