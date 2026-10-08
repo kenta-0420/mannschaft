@@ -193331,6 +193331,10 @@
           },
           "timing": {
             "$ref": "#/components/schemas/ChangeRequestTimingDto"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -212111,7 +212115,7 @@
           },
           "version": {
             "type": "integer",
-            "format": "int32"
+            "format": "int64"
           }
         },
         "required": [

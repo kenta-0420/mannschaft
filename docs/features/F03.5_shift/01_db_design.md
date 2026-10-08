@@ -21,6 +21,17 @@
 
 ### テーブル定義
 
+#### 楽観ロック列の型整合
+
+`shift_assignments`・`shift_assignment_runs`・`shift_change_requests`・`shift_swap_requests` の
+`version` は Java `Long` / `@Version` と整合する `BIGINT NOT NULL DEFAULT 0` とし、
+`CHECK (version >= 0)` で非負の範囲を維持する（`.claudecode.md` §22）。
+V237.20261008050316 で旧 `INT UNSIGNED` から拡張し、既存値 0〜4294967295 と業務列を保全する。
+4294967295 を越える更新も可能とし、Long 上限での更新失敗はトランザクション全体を戻す。
+適用済みの旧 migration は変更せず、アプリを旧版へ戻す場合も拡張した列と既存値を保持する。
+回帰検証は `FlywayFromScratchMigrationTest` の実MySQLに相乗りし、既存行の移行・型validate・
+境界値更新・上限失敗時の全列保全・独立した2トランザクションの古いwriter拒否を確認する。
+
 #### `shift_schedules`
 
 シフトスケジュールの管理単位。週次/月次のシフト表1枚に対し1レコード。

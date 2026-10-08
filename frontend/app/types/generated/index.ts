@@ -64048,6 +64048,8 @@ export interface components {
             /** Format: int64 */
             slotId?: number;
             timing?: components["schemas"]["ChangeRequestTimingDto"];
+            /** Format: int64 */
+            version?: number;
         };
         ChangeRequestStatusDto: {
             reviewComment?: string;
@@ -70789,7 +70791,7 @@ export interface components {
             /** @enum {string} */
             decision: "OPEN" | "ACCEPTED" | "REJECTED" | "WITHDRAWN" | "EXPIRED";
             reviewComment?: string;
-            /** Format: int32 */
+            /** Format: int64 */
             version: number;
         };
         ResolveDisputeRequest: {
