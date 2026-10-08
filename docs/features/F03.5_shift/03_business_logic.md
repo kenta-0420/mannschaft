@@ -227,6 +227,7 @@
    f. 監査ログ: SHIFT_CHANGE_REQUEST_CREATED
 
 2. 管理者が審査（PATCH /shifts/change-requests/{id}/review）
+   - 審査操作はチームの ADMIN / DEPUTY_ADMIN または SYSTEM_ADMIN に表示する。権限取得中・取得失敗時は表示せず、取得失敗は通知する。MANAGE_SHIFTS の単独保有だけでは審査を許可しない。
    ＜ACCEPTED のケース＞
    a. 管理者が先に D&D UI / PATCH /slots/{id}/assignments などで実スロットを調整
       （依頼内容に従って人を差し替え・別日へ移動・スロットから外す等）
@@ -584,6 +585,8 @@ public record AssignmentResult(
 | 「破棄」ボタン | 提案を破棄 | DELETE /schedules/{id}/auto-assign |
 
 #### 楽観的 UI 更新
+
+割当済み chip のドラッグは利用者 ID と移動元枠 ID を渡し、プールからの追加は移動元なしとして扱う。同じ枠への drop と安全な正の整数でない ID は PATCH を発行しない。
 
 1. ユーザーがドラッグで移動した瞬間、**クライアント側で即座に UI を更新**（useShiftBoard composable でローカル状態を進める）
 2. 並行して PATCH /slots/{id}/assignments を発行
