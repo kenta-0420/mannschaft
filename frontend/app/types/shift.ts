@@ -95,6 +95,9 @@ export interface ShiftPositionResponse {
  * `assignedUserIds` / `assignmentMasked` / `note` はトップレベルのまま。
  */
 export interface ShiftSlotResponse {
+  version: number
+  /** 割当更新の警告。参照応答では未判定。 */
+  warnings?: { code: string; conflictingSlotIds: number[] }[] | null
   id: number
   scheduleId: number
   time: {
