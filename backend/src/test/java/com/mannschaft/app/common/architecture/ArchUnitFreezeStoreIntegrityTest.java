@@ -809,7 +809,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code BlogScopeAccessGuard} へ出した（Controller が先に呼ぶ）。これにより両入口から MembershipRepository への
      * 到達 2 行が解消。追加 0（FreezingArchRule の既定挙動・解消済み違反の自動削除で反映）。{@code 7364 → 7362}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7362;
+    // CMP-260820-1018: Proxy の一覧・アップロードURL生成を非TX認可入口へ整理したため4行減。Role依存自体は残る。
+    // main: BetaGrantService の通知RepositoryへのTX到達12行減も統合。独立した削除16行で7376→7360。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7358;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -903,7 +905,8 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code LocationChangeResponse}（DTO）へ替えたため 1 行が解消（605→604）。{@code recordLocationChange} は
      * 戻り値が Entity のままなので残す。</p>
      */
-    private static final int EXPECTED_LINES_SERVICE_API = 604;
+    // CMP-260820-1018: Proxy 一覧を Page<ProxyInputConsentResponse> に変更し、公開APIのEntity露出1件を解消。
+    private static final int EXPECTED_LINES_SERVICE_API = 603;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

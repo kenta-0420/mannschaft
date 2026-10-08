@@ -5,11 +5,13 @@ import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -25,12 +27,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link ProxyInputContextFilter} の単体テスト。
@@ -345,6 +350,85 @@ class ProxyInputContextFilterTest {
             filter.doFilterInternal(request, response, new MockFilterChain());
 
             assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        }
+    }
+
+    @Nested
+    @DisplayName("紙原本ヘッダーの既存形式とUTF-8転送形式")
+    class OriginalStorageProtocol {
+
+        private MockHttpServletRequest originalStorageRequest(String storage, String encoding) {
+            authenticateAs(200L);
+            // 新形式の入力不正はDB照会前に拒否できる。旧実装の受入れも同じfixtureで観測する。
+            lenient().when(proxyInputConsentRepository.findValidConsent(1L, 200L))
+                    .thenReturn(Optional.of(buildConsent(100L, 200L)));
+            MockHttpServletRequest request = buildRequest("100", "1", "PAPER_FORM", storage);
+            if (encoding != null) request.addHeader("X-Proxy-Original-Storage-Encoding", encoding);
+            return request;
+        }
+
+        @Test
+        @DisplayName("markerなしの既存percentとplusはdecodeせず前後空白だけ除く")
+        void 原本保管場所_マーカーなし_percentとplusを保存する() throws Exception {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilterInternal(originalStorageRequest("  paper%2Fcopy+1.pdf  ", null), response, new MockFilterChain());
+
+            assertThat(response.getStatus()).isEqualTo(200);
+            verify(proxyInputContext).activate(100L, 1L, "PAPER_FORM", "paper%2Fcopy+1.pdf", java.util.Set.of());
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("validOriginalStorageCases")
+        @DisplayName("uri-componentだけをstrict UTF-8で一度decodeし255文字を許可")
+        void 原本保管場所_明示されたUTF8を一度復号する(String name, String encoded, String decoded) throws Exception {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilterInternal(originalStorageRequest(encoded, "uri-component"), response, new MockFilterChain());
+
+            assertThat(response.getStatus()).isEqualTo(200);
+            verify(proxyInputContext).activate(100L, 1L, "PAPER_FORM", decoded, java.util.Set.of());
+        }
+
+        static Stream<Arguments> validOriginalStorageCases() {
+            return Stream.of(
+                    Arguments.of("日本語原本名", "%E7%B4%99%E5%8E%9F%E6%9C%AC%2F2026%E5%B9%B4%2F%E6%8E%A7%E3%81%88.pdf", "紙原本/2026年/控え.pdf"),
+                    Arguments.of("literal plusは空白にしない", "paper%2Fcopy+1.pdf", "paper/copy+1.pdf"),
+                    Arguments.of("percent escapeは二度decodeしない", "paper%252Fcopy%2B1.pdf", "paper%2Fcopy+1.pdf"),
+                    Arguments.of("decoded255文字", "%61".repeat(255), "a".repeat(255)));
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("invalidOriginalStorageCases")
+        @DisplayName("不正転送形式は400でcontextをactivateしない")
+        void 原本保管場所_不正な転送値をDB照会前に拒否する(String name, String encoding, String storage) throws Exception {
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+            filter.doFilterInternal(originalStorageRequest(storage, encoding), response, chain);
+
+            assertThat(response.getStatus()).isEqualTo(400);
+            verify(proxyInputContext, never()).activate(anyLong(), any(), any(), any(), any());
+            assertThat(chain.getRequest()).isNull();
+            verifyNoInteractions(proxyInputConsentRepository);
+        }
+
+        static Stream<Arguments> invalidOriginalStorageCases() {
+            return Stream.of(
+                    Arguments.of("未知marker", "base64", "paper.pdf"),
+                    Arguments.of("percent単独", "uri-component", "%"),
+                    Arguments.of("percent桁不足", "uri-component", "%0"),
+                    Arguments.of("percent非hex", "uri-component", "%GG"),
+                    Arguments.of("非ASCII転送値", "uri-component", "紙原本.pdf"),
+                    Arguments.of("非ASCIIhex桁", "uri-component", "%ＦＦ"),
+                    Arguments.of("不正UTF-8継続byte", "uri-component", "%C3%28"),
+                    Arguments.of("不正UTF-8先頭byte", "uri-component", "%FF"),
+                    Arguments.of("UTF-8 surrogate", "uri-component", "%ED%A0%80"),
+                    Arguments.of("decoded空白だけ", "uri-component", "%20%20"),
+                    Arguments.of("decoded C0 NUL", "uri-component", "paper%00copy.pdf"),
+                    Arguments.of("decoded C0 LF", "uri-component", "paper%0Acopy.pdf"),
+                    Arguments.of("decoded CRLF", "uri-component", "paper%0D%0Acopy.pdf"),
+                    Arguments.of("decoded前後CRLFはtrim前に拒否", "uri-component", "%0Dpaper.pdf%0A"),
+                    Arguments.of("decoded256文字", "uri-component", "%61".repeat(256)),
+                    Arguments.of("既存形式256文字", null, "a".repeat(256)),
+                    Arguments.of("既存形式内部C0", null, "paper\u0000copy.pdf"));
         }
     }
 

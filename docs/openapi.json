@@ -70814,6 +70814,26 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
           }
         ],
         "responses": {
@@ -70822,7 +70842,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListProxyInputConsentResponse"
+                  "$ref": "#/components/schemas/PagedResponseProxyInputConsentResponse"
                 }
               }
             }
@@ -131164,12 +131184,41 @@
         "operationId": "getProxyInputRecords",
         "parameters": [
           {
+            "name": "organizationId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
             "name": "subjectUserId",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
             }
           }
         ],
@@ -131179,7 +131228,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListProxyInputConsentResponse"
+                  "$ref": "#/components/schemas/PagedResponseProxyInputRecordResponse"
                 }
               }
             }
@@ -233494,6 +233543,73 @@
           }
         }
       },
+      "PagedResponseProxyInputRecordResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProxyInputRecordResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "ProxyInputRecordResponse": {
+        "type": "object",
+        "properties": {
+          "auditLogId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "監査ログID（未紐付けはnull）"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "featureScope": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "inputSource": {
+            "type": "string"
+          },
+          "originalStorageLocation": {
+            "type": "string"
+          },
+          "proxyInputConsentId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "代理入力同意ID（同意書紐付けのない履歴はnull）"
+          },
+          "proxyUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "subjectUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetEntityId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetEntityType": {
+            "type": "string"
+          }
+        }
+      },
       "ApiResponseListProxyInputConsentResponse": {
         "type": "object",
         "properties": {
@@ -235667,6 +235783,20 @@
             "items": {
               "$ref": "#/components/schemas/ActivitySnapshotDto"
             }
+          }
+        }
+      },
+      "PagedResponseProxyInputConsentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProxyInputConsentResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
           }
         }
       },
