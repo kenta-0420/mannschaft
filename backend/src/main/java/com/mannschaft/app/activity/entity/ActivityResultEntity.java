@@ -141,6 +141,9 @@ public class ActivityResultEntity extends BaseEntity {
 
     public void replaceScheduleSyncState(String value) { this.scheduleSyncState = value; }
 
+    /** 公開状態と実績を保ったまま、予定表示だけを切り替える。 */
+    public void changePlanned(boolean value) { this.planned = value; }
+
     /** 同期対象は予定由来の基本項目だけに限定する。 */
     public void synchronizeBasicFields(String title, LocalDate activityDate, LocalDate activityEndDate,
                                        LocalTime activityTimeStart, LocalTime activityTimeEnd) {

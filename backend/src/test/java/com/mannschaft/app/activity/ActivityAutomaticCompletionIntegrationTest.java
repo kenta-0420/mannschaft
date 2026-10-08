@@ -1,5 +1,7 @@
 package com.mannschaft.app.activity;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.activity.entity.ActivityResultEntity;
 import com.mannschaft.app.common.activityschedule.AutomaticScheduleCompletionBatch;
 import com.mannschaft.app.common.activityschedule.AutomaticScheduleCompletionFacade;
@@ -10,6 +12,7 @@ import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.service.ScheduleCompletionService;
+import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -35,6 +38,9 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,9 +58,11 @@ class ActivityAutomaticCompletionIntegrationTest extends AbstractMySqlIntegratio
     private static final long TEAM = 940208301L;
     private static final long ORGANIZATION = 940208302L;
     @Autowired private ScheduleCompletionService schedules;
+    @Autowired private ScheduleRepository scheduleRows;
     @Autowired private AutomaticScheduleCompletionFacade completion;
     @Autowired private PlatformTransactionManager transactions;
     @Autowired private DataSource dataSource;
+    @Autowired private ObjectMapper json;
     @PersistenceContext private EntityManager em;
     private TransactionTemplate tx;
     private final List<Long> scheduleIds = new ArrayList<>();
@@ -123,6 +131,42 @@ class ActivityAutomaticCompletionIntegrationTest extends AbstractMySqlIntegratio
     }
 
     @Test
+    void 別TXで予定lockを保持した延期と完了が並行しても最新日時を守る() throws Exception {
+        Pair pair = fixture(NOW.minusSeconds(1), "TEAM", ScheduleStatus.SCHEDULED, false, false);
+        var writerLocked = new CountDownLatch(1);
+        var releaseWriter = new CountDownLatch(1);
+        var completionStarted = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var writer = executor.submit(() -> tx.executeWithoutResult(status -> {
+                ScheduleEntity schedule = scheduleRows.lockActivitySources(List.of(pair.scheduleId())).getFirst();
+                schedule.updateScheduleFields(schedule.getTitle(), schedule.getDescription(), schedule.getLocation(),
+                        schedule.getStartAt(), NOW.plusHours(1).toLocalDateTime(), schedule.getColor());
+                writerLocked.countDown();
+                try {
+                    assertThat(releaseWriter.await(15, TimeUnit.SECONDS)).isTrue();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("延期試練の待機中断", e);
+                }
+            }));
+            assertThat(writerLocked.await(15, TimeUnit.SECONDS)).isTrue();
+            var due = executor.submit(() -> {
+                completionStarted.countDown();
+                return completion.completeOne(pair.scheduleId(), NOW);
+            });
+            assertThat(completionStarted.await(15, TimeUnit.SECONDS)).isTrue();
+            releaseWriter.countDown();
+            writer.get(15, TimeUnit.SECONDS);
+            assertThat(due.get(15, TimeUnit.SECONDS)).isFalse();
+            assertState(pair, ScheduleStatus.SCHEDULED, true);
+        } finally {
+            releaseWriter.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
     void 完了は実績と公開状態を保護し再処理でversionを増やさない() {
         Pair pair = fixture(NOW.minusSeconds(1), "ORGANIZATION", ScheduleStatus.SCHEDULED, false, false);
         long before = version(pair);
@@ -135,11 +179,24 @@ class ActivityAutomaticCompletionIntegrationTest extends AbstractMySqlIntegratio
             assertThat(value.getStatus()).isEqualTo(ActivityStatus.PUBLISHED);
             assertThat(value.getVisibility()).isEqualTo(ActivityVisibility.PUBLIC);
             assertThat(value.getTitle()).isEqualTo("実績手編集");
+            assertThat(value.getActivityDate()).isEqualTo(NOW.toLocalDate());
+            assertThat(value.getActivityEndDate()).isNull();
+            assertThat(value.getActivityTimeStart()).isEqualTo(java.time.LocalTime.of(23, 0));
+            assertThat(value.getActivityTimeEnd()).isEqualTo(java.time.LocalTime.of(1, 0));
             assertThat(value.getDescription()).isEqualTo("実績本文");
-            assertThat(value.getFieldValues()).isEqualTo("{\"zero\":0,\"flag\":false,\"empty\":\"\"}");
-            assertThat(value.getAttachments()).isEqualTo("{\"file_ids\":[9001]}");
+            assertJsonEquals(value.getFieldValues(), "{\"zero\":0,\"flag\":false,\"empty\":\"\"}");
+            assertJsonEquals(value.getAttachments(), "{\"file_ids\":[9001]}");
             assertThat(value.getTemplateId()).isEqualTo(9002L);
         });
+    }
+
+    /** MySQL JSONのキー順・空白正規化に依存せず、0/false/空文字と添付IDの意味値を守る。 */
+    private void assertJsonEquals(String actual, String expected) {
+        try {
+            assertThat(json.readTree(actual)).isEqualTo(json.readTree(expected));
+        } catch (JsonProcessingException e) {
+            throw new AssertionError("保存JSONを解析できない", e);
+        }
     }
 
     @Test
@@ -162,6 +219,23 @@ class ActivityAutomaticCompletionIntegrationTest extends AbstractMySqlIntegratio
         Pair pair = fixture(NOW.minusSeconds(1), "TEAM", ScheduleStatus.SCHEDULED, false, false);
         assertThat(completion.completeOne(pair.scheduleId(), NOW.withOffsetSameInstant(java.time.ZoneOffset.UTC))).isTrue();
         assertState(pair, ScheduleStatus.COMPLETED, false);
+    }
+
+    @Test
+    void 未flushの延期日時を捨てず予定へ戻して再完了する() {
+        Pair pair = fixture(NOW.minusSeconds(1), "TEAM", ScheduleStatus.COMPLETED, false, false);
+        tx.executeWithoutResult(status -> {
+            ScheduleEntity schedule = em.find(ScheduleEntity.class, pair.scheduleId());
+            schedule.updateScheduleFields(schedule.getTitle(), schedule.getDescription(), schedule.getLocation(),
+                    schedule.getStartAt(), NOW.plusSeconds(1).toLocalDateTime(), schedule.getColor());
+            completion.reopenFuture(List.of(pair.scheduleId()), NOW);
+        });
+        assertState(pair, ScheduleStatus.SCHEDULED, true);
+        tx.executeWithoutResult(status -> assertThat(em.find(ScheduleEntity.class, pair.scheduleId()).getEndAt())
+                .isEqualTo(NOW.plusSeconds(1).toLocalDateTime()));
+        assertThat(completion.completeOne(pair.scheduleId(), NOW.plusSeconds(2))).isTrue();
+        assertState(pair, ScheduleStatus.COMPLETED, false);
+        assertThat(version(pair)).isEqualTo(2L);
     }
 
     @Test
@@ -199,6 +273,7 @@ class ActivityAutomaticCompletionIntegrationTest extends AbstractMySqlIntegratio
         Pair pair = fixture(NOW.minusSeconds(1), "TEAM", ScheduleStatus.SCHEDULED, false, false);
         assertThatThrownBy(() -> tx.executeWithoutResult(status -> {
             assertThat(completion.completeOne(pair.scheduleId(), NOW)).isTrue();
+            em.flush();
             throw new IllegalStateException("途中失敗の試練");
         })).isInstanceOf(IllegalStateException.class);
         assertState(pair, ScheduleStatus.SCHEDULED, true);
