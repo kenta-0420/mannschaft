@@ -1,6 +1,8 @@
 package com.mannschaft.app.common.activityschedule;
 
 import com.mannschaft.app.activity.service.AutomaticScheduleActivityService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.schedule.event.ScheduleActivityCreationEvent;
 import com.mannschaft.app.schedule.service.ScheduleActivitySourceService;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,8 @@ public class AutomaticScheduleActivityCreationListener {
     private final ScheduleActivitySourceService sources;
     private final AutomaticScheduleActivityService activities;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "停止すると保存済み予定と自動活動の対応が欠落し、予定保存との原子性を保てないため常時実行する")
     @EventListener
     @Transactional(propagation = Propagation.MANDATORY)
     public void onCreated(ScheduleActivityCreationEvent event) {
