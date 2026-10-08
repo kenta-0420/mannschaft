@@ -86,6 +86,7 @@ class ShiftSlotVersionContractIT extends AbstractMySqlIntegrationTest {
     private Long foreignTeamId;
     private FeatureFlagEntity flagBefore;
     private Long ownedFlagId;
+    private boolean fixtureCommitted;
 
     @BeforeEach
     void fixtureを実Repositoryで保存する() {
@@ -116,46 +117,50 @@ class ShiftSlotVersionContractIT extends AbstractMySqlIntegrationTest {
                     .requiredCount(2).build()).getId();
             em.flush();
             em.clear();
-        return null;
+            return null;
         });
+        fixtureCommitted = true;
     }
 
     @AfterEach
     void 所有fixtureだけを独立TXで削除する() {
-        if (slotId == null) return;
         try {
-        inTx(() -> {
-            em.createNativeQuery("DELETE FROM shift_assignments WHERE slot_id = :id")
-                    .setParameter("id", slotId).executeUpdate();
-            slots.deleteById(slotId);
-            slots.flush();
-            schedules.deleteById(scheduleId);
-            schedules.flush();
-            List<Long> actors = List.of(admin, member, outsider, foreignAdmin);
-            em.createNativeQuery("DELETE FROM user_roles WHERE user_id IN (:ids)")
-                    .setParameter("ids", actors).executeUpdate();
-            em.createNativeQuery("DELETE FROM memberships WHERE user_id IN (:ids)")
-                    .setParameter("ids", actors).executeUpdate();
-            teams.deleteAllById(List.of(teamId, foreignTeamId));
-            users.deleteAllById(actors);
-            return null;
-        });
+            if (!fixtureCommitted) return;
+            try {
+                inTx(() -> {
+                    em.createNativeQuery("DELETE FROM shift_assignments WHERE slot_id = :id")
+                            .setParameter("id", slotId).executeUpdate();
+                    slots.deleteById(slotId);
+                    slots.flush();
+                    schedules.deleteById(scheduleId);
+                    schedules.flush();
+                    List<Long> actors = List.of(admin, member, outsider, foreignAdmin);
+                    em.createNativeQuery("DELETE FROM user_roles WHERE user_id IN (:ids)")
+                            .setParameter("ids", actors).executeUpdate();
+                    em.createNativeQuery("DELETE FROM memberships WHERE user_id IN (:ids)")
+                            .setParameter("ids", actors).executeUpdate();
+                    teams.deleteAllById(List.of(teamId, foreignTeamId));
+                    users.deleteAllById(actors);
+                    return null;
+                });
+            } finally {
+                inTx(() -> {
+                    FeatureFlagEntity current = flags.findByFlagKey(SHIFT_FLAG).orElseThrow();
+                    assertThat(current.getId()).isEqualTo(ownedFlagId);
+                    if (flagBefore == null) {
+                        flags.delete(current);
+                    } else {
+                        // JPA の監査フックで updated_at を再更新せず、変更した列を元値へ戻す。
+                        em.createNativeQuery("UPDATE feature_flags SET is_enabled = :enabled, updated_by = :actor, updated_at = :time WHERE id = :id AND flag_key = :key")
+                                .setParameter("enabled", flagBefore.getIsEnabled())
+                                .setParameter("actor", flagBefore.getUpdatedBy())
+                                .setParameter("time", flagBefore.getUpdatedAt())
+                                .setParameter("id", ownedFlagId).setParameter("key", SHIFT_FLAG).executeUpdate();
+                    }
+                    return null;
+                });
+            }
         } finally {
-            inTx(() -> {
-                FeatureFlagEntity current = flags.findByFlagKey(SHIFT_FLAG).orElseThrow();
-                assertThat(current.getId()).isEqualTo(ownedFlagId);
-                if (flagBefore == null) {
-                    flags.delete(current);
-                } else {
-                    // JPA の監査フックで updated_at を再更新せず、変更した列を元値へ戻す。
-                    em.createNativeQuery("UPDATE feature_flags SET is_enabled = :enabled, updated_by = :actor, updated_at = :time WHERE id = :id AND flag_key = :key")
-                            .setParameter("enabled", flagBefore.getIsEnabled())
-                            .setParameter("actor", flagBefore.getUpdatedBy())
-                            .setParameter("time", flagBefore.getUpdatedAt())
-                            .setParameter("id", ownedFlagId).setParameter("key", SHIFT_FLAG).executeUpdate();
-                }
-                return null;
-            });
             FeatureFlagTestSupport.clearFlagCaches(caches);
         }
     }
