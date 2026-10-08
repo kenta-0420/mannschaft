@@ -1,12 +1,14 @@
 package com.mannschaft.app.gdpr.entity;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.gdpr.type.UnsignedTinyintIntegerJdbcType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -88,6 +90,7 @@ public class AccountPurgeCompletionStatusEntity extends UuidV7Entity {
      * 管理者による手動 retry の累計実行回数。
      * Phase F で追加。retry を一度も実行していない場合は 0。
      */
+    @JdbcType(UnsignedTinyintIntegerJdbcType.class)
     @Column(name = "retry_count", nullable = false, columnDefinition = "TINYINT UNSIGNED NOT NULL DEFAULT 0")
     private Integer retryCount = 0;
 
