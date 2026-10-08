@@ -247,7 +247,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: 7c01a53f63264a67cde7cb48d8aa9d4d7843fb74
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: false
       - uses: actions/setup-java@v4
         with:
