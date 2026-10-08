@@ -49,6 +49,7 @@ v2.1 では以下を追補する:
   - (A-1) **確定前の変更依頼**（`DRAFT / COLLECTING / ADJUSTING` 中に作成者＝管理者へ「この日の割当を変えてほしい」等を依頼する新テーブル `shift_change_requests`）
   - (A-2) **公開後・個別交代依頼**（既存 `shift_swap_requests` の 1 対 1 指名パターン）
   - (A-3) **公開後・全体募集**（オープンコール。`shift_swap_requests.is_open_call = TRUE` + `target_user_id = NULL` でチーム全体へ broadcast、先着手挙げ方式）
+- **変更依頼の審査版番号**: 一覧・詳細の実版を Long 入力で審査し、確定後の版を応答する。画面は実版と応答全体を引き継ぎ、版不足・非安全整数では送信せず、競合時に自動再送しない。
 - **自動割当結果の目視確認必須化**: `shift_assignment_runs` に `visual_review_confirmed_by` / `visual_review_confirmed_at` を追加し、公開時に同意ボタン押下を必須化。監査ログ `SHIFT_SCHEDULE_VISUAL_REVIEW_CONFIRMED` を記録
 
 v2.2 では以下を追補する:

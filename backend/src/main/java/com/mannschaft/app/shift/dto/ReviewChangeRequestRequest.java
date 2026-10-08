@@ -16,6 +16,6 @@ public record ReviewChangeRequestRequest(
         @Size(max = 500) String reviewComment,
 
         /** 楽観ロック用バージョン */
-        @NotNull Integer version
+        @NotNull Long version
 ) {
 }
