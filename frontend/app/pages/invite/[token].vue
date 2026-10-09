@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import dayjs from 'dayjs'
+import type { components } from '~/types/generated'
 definePageMeta({
   layout: 'auth',
 })
@@ -9,19 +9,25 @@ const api = useApi()
 const authStore = useAuthStore()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
-const { userTimezone } = useDatetime()
 
 const token = computed(() => String(route.params.token))
 
-interface InvitePreview {
-  id: number
-  name: string
-  type: 'ORGANIZATION' | 'TEAM'
-  description: string | null
-  iconUrl: string | null
-  roleName: string
-  expiresAt: string | null
-  isValid: boolean
+type InvitePreviewWire = components['schemas']['InvitePreviewResponse']
+// 生成スキーマの任意項目を実行時に検証し、Backend が返し得る null を表示時に扱う。
+type InvitePreview = Omit<InvitePreviewWire, 'targetName' | 'roleName'> & {
+  targetName?: InvitePreviewWire['targetName'] | null
+  roleName?: InvitePreviewWire['roleName'] | null
+  targetType: 'ORGANIZATION' | 'TEAM'
+  valid: boolean
+}
+
+function isInvitePreview(value: unknown): value is InvitePreview {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Record<string, unknown>
+  return typeof candidate.valid === 'boolean'
+    && (candidate.targetType === 'TEAM' || candidate.targetType === 'ORGANIZATION')
+    && (candidate.targetName == null || typeof candidate.targetName === 'string')
+    && (candidate.roleName == null || typeof candidate.roleName === 'string')
 }
 
 const preview = ref<InvitePreview | null>(null)
@@ -48,11 +54,15 @@ const typeLabel: Record<string, string> = {
   TEAM: 'チーム',
 }
 
+const targetName = computed(() => preview.value?.targetName?.trim()
+  || (preview.value ? typeLabel[preview.value.targetType] : ''))
+
 async function fetchPreview() {
   loading.value = true
   error.value = false
   try {
-    const result = await api<{ data: InvitePreview }>(`/api/v1/invite/${token.value}`)
+    const result = await api<components['schemas']['ApiResponseInvitePreviewResponse']>(`/api/v1/invite/${token.value}`)
+    if (!isInvitePreview(result?.data)) throw new Error('Invalid invite preview response')
     preview.value = result.data
   } catch {
     error.value = true
@@ -62,6 +72,7 @@ async function fetchPreview() {
 }
 
 async function joinWithToken() {
+  if (!preview.value?.valid || joining.value) return
   joining.value = true
   try {
     // F15.3: フォルダ選択ありなら folderId を body に含める。未選択時は
@@ -69,11 +80,11 @@ async function joinWithToken() {
     const body = selectedFolderId.value != null
       ? { folderId: selectedFolderId.value }
       : {}
-    await api(`/api/v1/invite/${token.value}/join`, {
+    await api<undefined>(`/api/v1/invite/${token.value}/join`, {
       method: 'POST',
       body,
     })
-    notification.success(`${typeLabel[preview.value!.type]}に参加しました`)
+    notification.success(`${typeLabel[preview.value.targetType]}に参加しました`)
     navigateTo('/dashboard')
   } catch (err) {
     handleApiError(err, '招待参加')
@@ -88,11 +99,6 @@ function goToLogin() {
 
 function goToRegister() {
   navigateTo(`/register?invite=${token.value}`)
-}
-
-function formatExpiry(expiresAt: string | null): string {
-  if (!expiresAt) return '無期限'
-  return `${dayjs(expiresAt).tz(userTimezone.value).format('YYYY/MM/DD')} まで有効`
 }
 
 onMounted(() => {
@@ -113,7 +119,7 @@ onMounted(() => {
 
     <div v-else-if="preview" class="w-full max-w-md rounded-lg border p-8">
       <!-- 無効な招待 -->
-      <template v-if="!preview.isValid">
+      <template v-if="!preview.valid">
         <div class="text-center">
           <i class="pi pi-times-circle mb-4 text-5xl text-red-500" />
           <h2 class="mb-2 text-xl font-bold">この招待リンクは無効です</h2>
@@ -126,28 +132,19 @@ onMounted(() => {
       <template v-else>
         <div class="text-center">
           <Avatar
-            :image="preview.iconUrl ?? undefined"
-            :label="preview.iconUrl ? undefined : preview.name.charAt(0)"
+            :label="targetName.charAt(0)"
             shape="circle"
             size="xlarge"
             class="mb-4"
           />
-          <Tag :value="typeLabel[preview.type]" severity="info" class="mb-2" />
+          <Tag :value="typeLabel[preview.targetType]" severity="info" class="mb-2" />
           <h2 class="mb-1 text-xl font-bold">
-            {{ preview.name }}
+            {{ targetName }}
           </h2>
-          <p v-if="preview.description" class="mb-4 text-sm text-gray-600">
-            {{ preview.description }}
-          </p>
-
-          <div class="mb-6 space-y-2 rounded-lg bg-gray-50 p-4 text-sm">
+          <div v-if="preview.roleName" class="mb-6 space-y-2 rounded-lg bg-gray-50 p-4 text-sm">
             <div class="flex items-center justify-between">
               <span class="text-gray-500">参加ロール</span>
               <span class="font-medium">{{ roleLabel[preview.roleName] ?? preview.roleName }}</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-gray-500">有効期限</span>
-              <span class="font-medium">{{ formatExpiry(preview.expiresAt) }}</span>
             </div>
           </div>
 
@@ -156,7 +153,7 @@ onMounted(() => {
             <!-- F15.3: マイスコープフォルダ任意選択。未選択時は「未分類」自動配置。 -->
             <InviteFolderPicker
               v-model="selectedFolderId"
-              :scope-type="preview.type"
+              :scope-type="preview.targetType"
               class="mb-4"
             />
             <Button

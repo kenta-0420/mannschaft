@@ -20,6 +20,7 @@ export function useDiagnosisApi() {
   },
   start: () => mutate<DiagnosisSession>(`${base}/sessions`, {}),
   session: async (id: string) => (await privateRead.read<ApiResponse<DiagnosisSession>>(`${base}/sessions/${id}`)).data,
+  pendingSession: async () => (await privateRead.read<ApiResponse<DiagnosisSession | null>>(`${base}/sessions/pending`)).data,
   save: (session: DiagnosisSession, answers: DiagnosisSession['answers']) => mutate<DiagnosisSession>(`${base}/sessions/${session.id}/answers`, { version: session.version, answers }, 'PUT'),
   complete: (session: DiagnosisSession, tieAnswers: { axisId: string; value: number }[]) => mutate<DiagnosisSession>(`${base}/sessions/${session.id}/complete`, { version: session.version, answerRevision: session.answerRevision, tieAnswers }),
   cancel: (session: DiagnosisSession) => mutate<DiagnosisSession>(`${base}/sessions/${session.id}/cancel`, { version: session.version }),

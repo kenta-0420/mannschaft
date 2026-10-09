@@ -8,14 +8,15 @@ import { flushPromises } from '@vue/test-utils'
 import { useAuthStore } from '~/stores/useAuthStore'
 import type { DiagnosisSession } from '~/types/ranch'
 import DiagnosisPage from './diagnosis.vue'
+import ResultsPage from './results/index.vue'
 
-const external = vi.hoisted(() => ({ fetch: vi.fn<typeof fetch>(), report: vi.fn(), navigate: vi.fn() }))
+const external = vi.hoisted(() => ({ fetch: vi.fn<typeof fetch>(), report: vi.fn(), navigate: vi.fn(), query: {} as Record<string, string> }))
 vi.mock('ofetch', async importOriginal => {
   const original = await importOriginal<typeof import('ofetch')>()
   return { ...original, ofetch: original.ofetch.create({}, { fetch: external.fetch }) }
 })
 vi.mock('~/composables/useApiBaseUrl', () => ({ resolveApiBaseUrl: () => 'http://synthetic.invalid' }))
-mockNuxtImport('useRoute', () => () => ({ query: { session: 'synthetic-session' } }))
+mockNuxtImport('useRoute', () => () => ({ query: external.query }))
 mockNuxtImport('navigateTo', () => external.navigate)
 mockNuxtImport('useErrorReport', () => () => ({ capture: external.report, captureQuiet: external.report }))
 mockNuxtImport('useProxyDeskStore', () => () => ({ isPinned: false }))
@@ -27,6 +28,7 @@ const mutations: { path: string; body: Record<string, unknown>; key: string | nu
 let savedSession: DiagnosisSession
 let completionTies: DiagnosisSession['tieQuestions']
 let saveStatus: number
+let pendingSession: DiagnosisSession | null
 const base = '/api/v1/me/diagnoses/sessions/synthetic-session'
 function session(): DiagnosisSession {
   return {
@@ -55,9 +57,13 @@ beforeEach(async () => {
   savedSession = { ...session(), version: '2', answerRevision: '1' }
   completionTies = []
   saveStatus = 200
+  external.query = { session: 'synthetic-session' }
+  pendingSession = session()
   external.fetch.mockImplementation(async (request, options) => {
     const path = new URL(String(request)).pathname
     if ((options?.method ?? 'GET') === 'GET' && path === base) return json(session())
+    if (path === '/api/v1/me/diagnoses/sessions/pending') return json(pendingSession)
+    if (path === '/api/v1/me/diagnoses/results') return new Response(JSON.stringify({ data: [], meta: { hasNext: false, nextCursor: null, limit: 20 } }), { headers: { 'Content-Type': 'application/json' } })
     const body = JSON.parse(String(options?.body)) as Record<string, unknown>
     mutations.push({ path, body, key: new Headers(options?.headers).get('Idempotency-Key') })
     if (path === `${base}/answers`) {
@@ -171,5 +177,72 @@ describe('24問回答後の診断結果操作', () => {
     expect(pending?.key).toBe(mutations[0]?.key)
     expect(resultButton(wrapper).attributes('disabled')).toBeDefined()
     expect(wrapper.findAll('input[type="radio"]:checked')).toHaveLength(24)
+  })
+})
+
+describe('queryを失った診断の再開入口', () => {
+  it('通常の結果一覧に再開を表示し診断ページに保存済み部分回答を復元する', async () => {
+    external.query = {}
+    pendingSession = { ...session(), answers: [{ questionId: 'question-0', value: 2 }, { questionId: 'question-1', value: 4 }] }
+    const results = await mountSuspended(ResultsPage)
+    wrappers.push(results); await flushPromises()
+    const resume = results.findAll('a').find(link => link.text() === useNuxtApp().$i18n.t('ranch.diagnosis.resume'))
+    expect(resume?.attributes('href')).toContain('/my/ranch/diagnosis?session=synthetic-session')
+    const diagnosis = await mountSuspended(DiagnosisPage)
+    wrappers.push(diagnosis); await flushPromises()
+    expect(diagnosis.get('input[name="question-0"][value="2"]').element).toHaveProperty('checked', true)
+    expect(diagnosis.get('input[name="question-1"][value="4"]').element).toHaveProperty('checked', true)
+    expect(diagnosis.findAll('input:checked')).toHaveLength(2)
+    expect(mutations).toHaveLength(0)
+  })
+  it('queryなしの同点保留は保存された追加質問を復元する', async () => {
+    external.query = {}
+    pendingSession = { ...session(), status: 'TIE_BREAK_REQUIRED', answers: session().questions.map(q => ({ questionId: q.id, value: 3 })),
+      tieQuestions: [{ axisId: 'axis-0', zero: { ja: '左' }, one: { ja: '右' } }] }
+    const diagnosis = await mountSuspended(DiagnosisPage)
+    wrappers.push(diagnosis); await flushPromises()
+    expect(diagnosis.findAll('input:checked')).toHaveLength(24)
+    expect(diagnosis.findAll('input[name="axis-0"]')).toHaveLength(2)
+    expect(resultButton(diagnosis).attributes('disabled')).toBeDefined()
+    expect(mutations).toHaveLength(0)
+  })
+  it('未完了がない時だけ開始を表示し失敗時は再試行後に復元する', async () => {
+    external.query = {}; pendingSession = null
+    const empty = await mountSuspended(DiagnosisPage)
+    wrappers.push(empty); await flushPromises()
+    expect(empty.text()).toContain(useNuxtApp().$i18n.t('ranch.diagnosis.start'))
+    empty.unmount()
+    external.fetch.mockResolvedValueOnce(json(null, 500))
+    const failed = await mountSuspended(DiagnosisPage)
+    wrappers.push(failed); await flushPromises()
+    expect(failed.text()).not.toContain(useNuxtApp().$i18n.t('ranch.diagnosis.start'))
+    const error = failed.findComponent({ name: 'DashboardErrorState' })
+    expect(error.exists()).toBe(true)
+    pendingSession = session()
+    error.vm.$emit('retry'); await flushPromises()
+    expect(failed.findAll('input[type="radio"]')).toHaveLength(120)
+  })
+  it('表示済みの旧本人回答も本人変更時に即座に消す', async () => {
+    external.query = {}
+    pendingSession = { ...session(), answers: [{ questionId: 'question-0', value: 2 }] }
+    const diagnosis = await mountSuspended(DiagnosisPage)
+    wrappers.push(diagnosis); await flushPromises()
+    expect(diagnosis.findAll('input:checked')).toHaveLength(1)
+    await useAuthStore().setUser({ id: 2, email: 'other@example.invalid', fullName: 'Other', profileImageUrl: null })
+    await flushPromises()
+    expect(diagnosis.findAll('input[type="radio"]')).toHaveLength(0)
+    expect(diagnosis.text()).not.toContain(useNuxtApp().$i18n.t('ranch.diagnosis.start'))
+  })
+  it('旧本人の遅延pending応答を本人変更後に描画しない', async () => {
+    external.query = {}
+    let resolve: ((value: Response) => void) | undefined
+    external.fetch.mockImplementationOnce(() => new Promise<Response>(done => { resolve = done }))
+    const diagnosis = await mountSuspended(DiagnosisPage)
+    wrappers.push(diagnosis); await flushPromises()
+    await useAuthStore().setUser({ id: 2, email: 'other@example.invalid', fullName: 'Other', profileImageUrl: null })
+    resolve?.(json({ ...session(), answers: [{ questionId: 'question-0', value: 2 }] }))
+    await flushPromises()
+    expect(diagnosis.findAll('input[type="radio"]')).toHaveLength(0)
+    expect(mutations).toHaveLength(0)
   })
 })

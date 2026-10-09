@@ -2,6 +2,7 @@ package com.mannschaft.app.ranch.openapi;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mannschaft.app.ranch.dto.HatchResponse;
+import com.mannschaft.app.diagnosis.dto.PendingDiagnosisSessionResponse;
 import com.mannschaft.app.ranch.dto.RanchRecord;
 import com.mannschaft.app.ranch.dto.RanchState;
 import io.swagger.v3.core.converter.ModelConverters;
@@ -86,11 +87,24 @@ class RanchOpenApiNullableCustomizerTest {
         assertThat(Json.mapper().writeValueAsString(older)).isEqualTo(before);
     }
 
+    @Test
+    void pendingEnvelopeKeepsRequiredDataAndAcceptsNullWithoutMakingSessionNullable() throws Exception {
+        var api=resolvedApi();
+        customizer.customise(api);
+        var schemas=actualJson(api).path("components").path("schemas");
+        var data=property(schemas,"PendingDiagnosisSessionResponse","data");
+        assertNullBranch(data);
+        assertThat(data.path("anyOf").get(0).path("$ref").asText()).isEqualTo("#/components/schemas/DiagnosisSessionResponse");
+        assertThat(schemas.path("PendingDiagnosisSessionResponse").path("required").toString()).isEqualTo("[\"data\"]");
+        assertThat(schemas.path("DiagnosisSessionResponse").has("anyOf")).isFalse();
+        assertThat(Json31.mapper().readTree(Json31.mapper().writeValueAsString(new PendingDiagnosisSessionResponse(null))).has("data")).isTrue();
+        assertThat(Json31.mapper().readTree(Json31.mapper().writeValueAsString(new PendingDiagnosisSessionResponse(null))).path("data").isNull()).isTrue();
+    }
     private static OpenAPI resolvedApi() {
         // singleton converterの設定変更をせず、この試験専用の実3.1 converterを使う。
         var converters = new ModelConverters(true);
         var components = new Components();
-        for (Class<?> root : List.of(RanchState.class, HatchResponse.class, RanchRecord.class, ForeignNullableControl.class)) {
+        for (Class<?> root : List.of(RanchState.class, HatchResponse.class, RanchRecord.class, PendingDiagnosisSessionResponse.class, ForeignNullableControl.class)) {
             converters.readAll(root).forEach(components::addSchemas);
         }
         return new OpenAPI().openapi("3.1.0").components(components);

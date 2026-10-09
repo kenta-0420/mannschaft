@@ -142043,6 +142043,26 @@
         }
       }
     },
+    "/api/v1/me/diagnoses/sessions/pending": {
+      "get": {
+        "tags": [
+          "diagnosis-controller"
+        ],
+        "operationId": "readPendingSession",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingDiagnosisSessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/diagnoses/results": {
       "get": {
         "tags": [
@@ -242452,6 +242472,24 @@
             "type": "boolean"
           }
         }
+      },
+      "PendingDiagnosisSessionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DiagnosisSessionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ]
       },
       "CursorPagedResponseDiagnosisResultSummary": {
         "type": "object",

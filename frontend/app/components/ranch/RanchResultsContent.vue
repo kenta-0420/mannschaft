@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 方式ごとのGET成功を確認してから、未診断・最新結果・履歴を表示する。
-import type { DiagnosisResult } from '~/types/ranch'
+import type { DiagnosisResult, DiagnosisSession } from '~/types/ranch'
 const { t } = useI18n(); useHead({ title: t('ranch.diagnosisResults.title') })
 const api = useDiagnosisApi(); const route = useRoute(); const { handleApiError } = useErrorHandler()
 const { formatDateTime } = useDatetime()
@@ -11,6 +11,19 @@ const groups = reactive<Record<Method, MethodResults>>({
  DIAGNOSIS: { results: [], loading: false, failed: false, received: false, cursor: null, run: 0 },
  BIRTH_STYLE: { results: [], loading: false, failed: false, received: false, cursor: null, run: 0 },
 })
+const pendingSession = ref<DiagnosisSession | null>(null)
+const pendingLoading = ref(true); const pendingFailed = ref(false)
+async function loadPending() {
+ pendingLoading.value = true; pendingFailed.value = false
+ try {
+  const value = typeof route.query.session === 'string' ? await api.session(route.query.session) : await api.pendingSession()
+  if (!api.isCurrent()) return
+  pendingSession.value = value && (value.status === 'STARTED' || value.status === 'TIE_BREAK_REQUIRED') ? value : null
+ } catch (error) {
+  if (!api.isCurrent()) return
+  pendingFailed.value = true; handleApiError(error, 'DiagnosisPending')
+ } finally { if (api.isCurrent()) pendingLoading.value = false }
+}
 async function load(method: Method, cursor?: string) {
  const group = groups[method]
  const run = ++group.run
@@ -27,13 +40,15 @@ async function load(method: Method, cursor?: string) {
   group.failed = true; handleApiError(error, 'DiagnosisResults')
  } finally { if (api.isCurrent() && group.run === run) group.loading = false }
 }
-onMounted(() => { for (const method of methods) void load(method) })
+onMounted(() => { for (const method of methods) void load(method); void loadPending() })
 </script>
 <template>
  <div class="space-y-5">
   <PageHeader :title="t('ranch.diagnosisResults.title')" back-to="/my/ranch" />
   <p>{{ t('ranch.diagnosisResults.avatarUnchanged') }}</p>
-  <NuxtLink v-if="typeof route.query.session === 'string'" :to="{ path: '/my/ranch/diagnosis', query: { session: route.query.session } }" class="flex min-h-11 items-center text-primary">{{ t('ranch.diagnosis.resume') }}</NuxtLink>
+  <PageLoading v-if="pendingLoading" />
+  <DashboardErrorState v-else-if="pendingFailed" @retry="loadPending" />
+  <NuxtLink v-else-if="pendingSession" :to="{ path: '/my/ranch/diagnosis', query: { session: pendingSession.id } }" class="flex min-h-11 items-center text-primary">{{ t('ranch.diagnosis.resume') }}</NuxtLink>
   <SectionCard v-for="method in methods" :key="method" :title="t(method === 'DIAGNOSIS' ? 'ranch.diagnosisResults.type64' : 'ranch.diagnosisResults.birthStyle')">
    <PageLoading v-if="!groups[method].received && !groups[method].failed" />
    <DashboardErrorState v-else-if="groups[method].failed" @retry="load(method)" />

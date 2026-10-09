@@ -3,6 +3,7 @@ package com.mannschaft.app.diagnosis.controller;
 import org.springframework.web.bind.annotation.PutMapping;
 import com.mannschaft.app.diagnosis.service.DiagnosisSessionInputParser;
 import com.mannschaft.app.diagnosis.dto.DiagnosisSessionResponse;
+import com.mannschaft.app.diagnosis.dto.PendingDiagnosisSessionResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.featuregate.AlwaysReachable;
@@ -73,6 +74,13 @@ public class DiagnosisController {
             @RequestHeader("Idempotency-Key") UUID key, HttpServletRequest request, HttpServletResponse response) {
         Long userId=accessGuard.requireSelfAccess(request,response);sessionInput.start(body);
         return ResponseEntity.status(201).body(ApiResponse.of(operations.startSession(userId,key)));
+    }
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "本人の未完了診断再開は牧場参加から独立する")
+    @GetMapping("/sessions/pending")
+    public ResponseEntity<PendingDiagnosisSessionResponse> readPendingSession(
+            HttpServletRequest request,HttpServletResponse response) {
+        Long userId=accessGuard.requireSelfAccess(request,response);
+        return ResponseEntity.ok(new PendingDiagnosisSessionResponse(operations.readPendingSession(userId)));
     }
     @AlwaysReachable(category = AlwaysReachableCategory.CORE, reason = "本人の未完了診断再開は牧場参加から独立する")
     @GetMapping("/sessions/{id}")

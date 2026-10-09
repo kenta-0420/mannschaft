@@ -193,6 +193,7 @@ GET /api/v1/me/diagnoses/results?method=DIAGNOSIS|BIRTH_STYLE&cursor=...&limit=2
 | auth | POST `/api/v1/me/birth-profile/confirmations` | {revision,useConfirmed:true}→{confirmationRef,expiresAt,profileRevision}。opaque UUID、auth行参照、TTL10分。本人/用途/revision/nonce/withdrawalAttemptId/期限を既存HMACで検査 |
 | diagnosis | POST `/api/v1/me/diagnoses/birth-style-results` | {confirmationRef}→派生数と説明snapshotを持つ本人resultId。未知/他人ref同形404、期限切れ/版変更409、成功同keyは旧result |
 | diagnosis | POST `/api/v1/me/diagnoses/sessions` | {}→201{id,status:STARTED,version,answerRevision,questionnaireVersion,scoringVersion,questions[24],answers:[],tieQuestions:[]}。回答3を自動投入しない |
+| diagnosis | GET `/api/v1/me/diagnoses/sessions/pending` | 本人のSTARTED/TIE_BREAK_REQUIREDからupdatedAt降順・UUIDのunsigned降順で最新1件。各状態の索引先頭だけを読み最大2行で選択。200 `{data:session snapshot}`、未完了なしは省略せず `{data:null}`。no-store、認証/変身/ACTIVE本人境界は他の本人診断APIと同じ。牧場参加不要 |
 | diagnosis | GET `/api/v1/me/diagnoses/sessions/{id}` | 本人session snapshotと途中回答、no-store、出生rawなし |
 | diagnosis | PUT `/api/v1/me/diagnoses/sessions/{id}/answers` | {version,answers:[{questionId,value:1..5}]}。途中部分回答可、questionId/valueの欠落・未知/重複/null/小数/booleanは不正。answerRevision++で旧tie無効 |
 | diagnosis | POST `/api/v1/me/diagnoses/sessions/{id}/complete` | {version,answerRevision,tieAnswers:[{axisId,value:0..1}]}。24required不足400、必要tie不足はTIE_BREAK_REQUIRED/result=null/tieQuestions。全tie後COMPLETED/resultId、非tie/未知/重複400、古いanswerRevision409 |

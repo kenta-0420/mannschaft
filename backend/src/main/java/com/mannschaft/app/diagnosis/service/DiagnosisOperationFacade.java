@@ -54,6 +54,9 @@ public class DiagnosisOperationFacade {
     public DiagnosisSessionResponse readSession(Long userId, UUID id) {
         return users.withActiveUser(userId, () -> sessionWriter.read(userId,id));
     }
+    public DiagnosisSessionResponse readPendingSession(Long userId) {
+        return users.withActiveUser(userId, () -> sessionWriter.readPending(userId));
+    }
     public DiagnosisSessionResponse answerSession(Long userId, UUID id, UUID key, DiagnosisSessionInputParser.Answers request) {
         return users.withActiveUser(userId, () -> sessionWriter.answer(userId,id,key,request.version(),request.answers()));
     }

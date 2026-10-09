@@ -31,12 +31,12 @@ class DiagnosisPrivateSecurityIT extends AbstractMySqlIntegrationTest {
     }
     @Test @DisplayName("未認証では出生情報も診断履歴も401")
     void 未認証は拒否() throws Exception {
-        for(String path : new String[]{"/api/v1/me/birth-profile","/api/v1/me/diagnoses/results"})
+        for(String path : new String[]{"/api/v1/me/birth-profile","/api/v1/me/diagnoses/results","/api/v1/me/diagnoses/sessions/pending"})
             mvc.perform(get(path)).andExpect(status().isUnauthorized());
     }
     @Test @DisplayName("管理者変身は本人私有API403、本人の管理者利用は許可")
     void 管理者変身を拒否() throws Exception {
-        for(String path : new String[]{"/api/v1/me/birth-profile","/api/v1/me/diagnoses/results"}) {
+        for(String path : new String[]{"/api/v1/me/birth-profile","/api/v1/me/diagnoses/results","/api/v1/me/diagnoses/sessions/pending"}) {
             mvc.perform(get(path).with(user("999999999").roles("SYSTEM_ADMIN"))
                     .header(AdminImpersonationFilter.HEADER_IMPERSONATE,owner)).andExpect(status().isForbidden());
             mvc.perform(get(path).with(user(owner).roles("SYSTEM_ADMIN"))).andExpect(status().isOk());

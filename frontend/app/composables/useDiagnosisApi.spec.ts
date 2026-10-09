@@ -23,6 +23,7 @@ mockNuxtImport('useAdminImpersonationStore', () => () => ({ isImpersonating: fal
 
 const listPath = '/api/v1/me/diagnoses/results' satisfies keyof paths
 const detailPath = '/api/v1/me/diagnoses/results/{resultId}' satisfies keyof paths
+const pendingPath = '/api/v1/me/diagnoses/sessions/pending' satisfies keyof paths
 const resultId = '33333333-3333-4333-8333-333333333333'
 const scopes: ReturnType<typeof effectScope>[] = []
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8')
@@ -53,7 +54,7 @@ describe('診断結果GETと実バックエンド契約', () => {
       paths: Record<string, { get?: { operationId?: string } }>
     }
     const generated = source('app/types/generated/index.ts')
-    const contracts = [[listPath, 'listResults'], [detailPath, 'getResult']] as const
+    const contracts = [[listPath, 'listResults'], [detailPath, 'getResult'], [pendingPath, 'readPendingSession']] as const
     for (const [path, operation] of contracts) {
       expect(controllerGets).toContain(path)
       expect(document.paths[path]?.get?.operationId).toBe(operation)
@@ -75,6 +76,7 @@ describe('診断結果GETと実バックエンド契約', () => {
       expect(options?.cache).toBe('no-store')
       expect(new Headers(options?.headers).get('Authorization')).toBe('Bearer synthetic-access')
       requests.push(path)
+      if (path === pendingPath) return new Response(JSON.stringify({ data: null }), { headers: { 'Content-Type': 'application/json' } })
       if (path === listPath) {
         expect(url.searchParams.get('method')).toBe('DIAGNOSIS')
         expect(url.searchParams.get('cursor')).toBe('opaque-cursor')
@@ -94,8 +96,9 @@ describe('診断結果GETと実バックエンド契約', () => {
     scopes.push(scope)
     const diagnosis = await useNuxtApp().runWithContext(() => scope.run(() => useDiagnosisApi()))
     if (!diagnosis) throw new Error('SYNTHETIC_SCOPE_MISSING')
+    expect(await diagnosis.pendingSession()).toBeNull()
     expect((await diagnosis.results('DIAGNOSIS', 'opaque-cursor')).data[0]?.id).toBe(resultId)
     expect((await diagnosis.result(resultId)).id).toBe(resultId)
-    expect(requests).toEqual([listPath, detailPath.replace('{resultId}', resultId)])
+    expect(requests).toEqual([pendingPath, listPath, detailPath.replace('{resultId}', resultId)])
   })
 })

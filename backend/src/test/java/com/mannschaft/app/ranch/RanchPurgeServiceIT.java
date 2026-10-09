@@ -17,6 +17,11 @@ import com.mannschaft.app.ranch.reward.api.RanchRewardDeliveryOutcome;
 import com.mannschaft.app.ranch.reward.api.RanchRewardEnvelope;
 import com.mannschaft.app.ranch.service.RanchOwnerActionFacade;
 import com.mannschaft.app.ranch.service.RanchSelfFacade;
+import com.mannschaft.app.ranch.service.RanchPrivateQueryFacade;
+import com.mannschaft.app.ranch.entity.RanchCollectibleCatalogEntity;
+import com.mannschaft.app.ranch.entity.RanchInventoryEntity;
+import com.mannschaft.app.ranch.repository.RanchCollectibleCatalogRepository;
+import com.mannschaft.app.ranch.repository.RanchInventoryRepository;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -31,6 +36,7 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.time.DayOfWeek;
 import java.time.Duration;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -85,6 +91,9 @@ class RanchPurgeServiceIT extends AbstractMySqlIntegrationTest {
     @Autowired private RanchRewardConsumer consumer;
     @Autowired private RanchOwnerActionFacade actions;
     @Autowired private RanchSelfFacade self;
+    @Autowired private RanchPrivateQueryFacade queries;
+    @Autowired private RanchCollectibleCatalogRepository collectibleCatalog;
+    @Autowired private RanchInventoryRepository inventory;
     @Autowired private TransactionTemplate transaction;
     @Autowired private AccountPurgeCompletionStatusRepository completions;
     @Autowired private GdprPurgeRetryService retry;
@@ -100,6 +109,7 @@ class RanchPurgeServiceIT extends AbstractMySqlIntegrationTest {
     @MockitoSpyBean private JdbcTemplate jdbc;
     private Long me;
     private Long other;
+    private String restorationCollectibleKey;
     private final List<RanchGdprFixture.FixtureIds> masterRows = new ArrayList<>();
     private static final String[] OWNED_TABLES = {
             "ranch_point_ledger", "ranch_reward_decisions", "ranch_week_budgets",
@@ -116,6 +126,7 @@ class RanchPurgeServiceIT extends AbstractMySqlIntegrationTest {
     void createSyntheticUsers() {
         RanchTestFixture.operationalControl(controls);
         masterRows.clear();
+        restorationCollectibleKey = null;
         // 外部Redisだけを既共通基底のmockにし、退会処理とDB guardは実Beanを使う。
         @SuppressWarnings("unchecked")
         ValueOperations<String, String> values = mock(ValueOperations.class);
@@ -137,6 +148,9 @@ class RanchPurgeServiceIT extends AbstractMySqlIntegrationTest {
                     row.policyId().toString());
             jdbc.update("DELETE FROM ranch_collectible_catalog WHERE collectible_key = ?",
                     row.collectibleKey());
+        }
+        if (restorationCollectibleKey != null) {
+            collectibleCatalog.deleteById(restorationCollectibleKey);
         }
     }
 
@@ -239,6 +253,97 @@ class RanchPurgeServiceIT extends AbstractMySqlIntegrationTest {
         assertThat(currentAttemptId).isEqualTo(renewed.withdrawalAttemptId());
         assertThat(owners.findByUserId(me).orElseThrow().getStatus()).isEqualTo(original);
         assertThat(ownRows(me)).usingRecursiveComparison().isEqualTo(before);
+    }
+
+    /** populated状態の取消復帰を固定する回帰試験。申請中factの取消後再配送は別契約。 */
+    @ParameterizedTest
+    @EnumSource(value = ParticipationStatus.class, names = {"ACTIVE", "PAUSED"})
+    void 名前XP残高と所有配置済み置物は退会申請中操作を拒否して取消後に同値復帰する(
+            ParticipationStatus original) throws Exception {
+        enroll(me);
+        UUID inventoryId = populateRestorationState();
+        if (original == ParticipationStatus.PAUSED) {
+            actions.pause(me, UUID.randomUUID(), new RanchVersionRequest(ownerVersion()));
+        }
+        var beforeState = self.read(me);
+        var beforeInventory = queries.collectibles(me, null, 100).getData();
+        assertThat(beforeState.owner().status()).isEqualTo(original);
+        assertThat(beforeState.owner().balance()).isEqualTo("37");
+        assertThat(beforeState.dinosaur().id()).isEqualTo(dinosaurs.findByUserId(me).orElseThrow().getId());
+        assertThat(beforeState.dinosaur().name()).isEqualTo("取消復帰の試験個体");
+        assertThat(beforeState.dinosaur().stage()).isEqualTo(DinosaurStage.BABY);
+        assertThat(beforeState.dinosaur().xp()).isEqualTo("20");
+        assertThat(beforeInventory).hasSize(1).allSatisfy(item -> {
+            assertThat(item.id()).isEqualTo(inventoryId);
+            assertThat(item.acquisitionKind()).isEqualTo("LEGACY_BADGE");
+            assertThat(item.isRevoked()).isFalse();
+            assertThat(item.placedSlotKey()).isEqualTo("SHELF_1");
+        });
+        assertThat(beforeState.roomSlots()).filteredOn(slot -> slot.slotKey().equals("SHELF_1"))
+                .singleElement().satisfies(slot -> {
+                    assertThat(slot.inventoryId()).isEqualTo(inventoryId);
+                    assertThat(slot.decoration()).isNotNull();
+                    assertThat(slot.decoration().collectibleKey()).isEqualTo(restorationCollectibleKey);
+                });
+        var beforeRows = ownRows(me);
+        var otherBefore = ownRows(other);
+
+        lifecycle.requestWithdrawal(me, new RequestWithdrawalRequest(null));
+        var pending = deliveryGuard.withLockedDeliveryUser(me, state -> state);
+        assertThat(pending.lifecycle()).isEqualTo(DeliveryUserState.Lifecycle.WITHDRAWAL);
+        assertCommandDenied(() -> self.read(me));
+        assertCommandDenied(() -> queries.collectibles(me, null, 100));
+        assertCommandDenied(() -> actions.feed(me, UUID.randomUUID(),
+                new RanchVersionRequest(beforeState.dinosaur().version())));
+        assertCommandDenied(() -> actions.pause(me, UUID.randomUUID(),
+                new RanchVersionRequest(ownerVersion())));
+        // 実consumerも申請中は0付与。取消後の遡及判定をこのDEFERだけで合格扱いにしない。
+        assertDeferred(fact(me));
+        assertThat(ownRows(me)).usingRecursiveComparison().isEqualTo(beforeRows);
+
+        lifecycle.cancelWithdrawal(me);
+        var cancelled = deliveryGuard.withLockedDeliveryUser(me, state -> state);
+        assertThat(cancelled.lifecycle()).isEqualTo(DeliveryUserState.Lifecycle.ACTIVE);
+        var restored = self.read(me);
+        assertThat(restored.owner()).isEqualTo(beforeState.owner());
+        assertThat(restored.dinosaur()).isEqualTo(beforeState.dinosaur());
+        assertThat(restored.roomSlots()).isEqualTo(beforeState.roomSlots());
+        assertThat(queries.collectibles(me, null, 100).getData()).isEqualTo(beforeInventory);
+        assertThat(ownRows(me)).usingRecursiveComparison().isEqualTo(beforeRows);
+        assertThat(ownRows(other)).usingRecursiveComparison().isEqualTo(otherBefore);
+    }
+
+    /** 実MySQL内だけで既存domainメソッドを使い、復帰対象の非空・非0状態を用意する。 */
+    private UUID populateRestorationState() {
+        restorationCollectibleKey = "RESTORE_" + UUID.randomUUID().toString().replace("-", "");
+        return transaction.execute(tx -> {
+            var owner = owners.findByUserId(me).orElseThrow();
+            var dinosaur = dinosaurs.findByUserId(me).orElseThrow();
+            // 孵化時計の検証ではないため、既存卵のready時刻をfixtureの孵化時刻に使う。
+            Instant fixtureHatchAt = dinosaur.getEggReadyAt();
+            dinosaur.confirmAssignment(AssignmentMethod.HABITAT_RANDOM, Habitat.LAND,
+                    "RESTORE_FIXTURE", "BASE", 1, "RESTORE_FIXTURE", null, null,
+                    dinosaur.getEggStartedAt());
+            dinosaur.hatch("取消復帰の試験個体", fixtureHatchAt);
+            dinosaur.applyCareXp(20, 100, 200);
+            owner.credit(37);
+            dinosaurs.saveAndFlush(dinosaur);
+            owners.saveAndFlush(owner);
+            collectibleCatalog.saveAndFlush(RanchCollectibleCatalogEntity.builder()
+                    .collectibleKey(restorationCollectibleKey).labelKey("ranch.fixture.restore")
+                    .assetKey("finite-restore-fixture").sourceKind("LEGACY_BADGE").active(true)
+                    .createdAt(fixtureHatchAt).updatedAt(fixtureHatchAt).build());
+            var item = inventory.saveAndFlush(RanchInventoryEntity.builder()
+                    .ownerId(owner.getId()).userId(me).collectibleKey(restorationCollectibleKey)
+                    .acquisitionKind("LEGACY_BADGE")
+                    .acquisitionKey(("RESTORE:" + me).getBytes(StandardCharsets.US_ASCII))
+                    .legacyBadgeId("RESTORE_BADGE_" + me).legacyAwardPeriod("RESTORE_FIXTURE")
+                    .awardedAt(fixtureHatchAt).revoked(false).build());
+            var shelf = slots.findByUserIdAndSlotKey(me, "SHELF_1").orElseThrow();
+            shelf.place(item.getId());
+            slots.saveAndFlush(shelf);
+            return item.getId();
+        });
     }
 
     /** 消去前から待機する配送をmarkerとcleanupの後に解放し、新規作成を拒否する。 */

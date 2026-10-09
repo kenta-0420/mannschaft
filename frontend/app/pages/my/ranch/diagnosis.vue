@@ -14,8 +14,33 @@ const allAnswered = computed(() => {
  })
 })
 function apply(value: DiagnosisSession) { session.value = value; answers.value = Object.fromEntries(value.answers.map(a => [a.questionId,a.value])); ties.value = {}; saved.value = true }
-async function load() { loading.value = true; failed.value = false; try { if (typeof route.query.session === 'string') apply(await api.session(route.query.session)) } catch(error) { failed.value = true; handleApiError(error, 'DiagnosisLoad') } finally { loading.value = false } }
-async function run(action: () => Promise<DiagnosisSession>) { loading.value = true; failed.value = false; try { const value = await action(); apply(value); await navigateTo({ path: '/my/ranch/diagnosis', query: { session: value.id } }); if (value.status === 'COMPLETED' && value.resultId) await navigateTo(`/my/ranch/results/${value.resultId}`); return value } catch(error) { failed.value = true; handleApiError(error, 'DiagnosisCommand'); if ((error as {statusCode?:number;status?:number}).statusCode === 409 || (error as {status?:number}).status === 409) await load() } finally { loading.value = false } }
+async function load() {
+ loading.value = true; failed.value = false
+ try {
+  const value = typeof route.query.session === 'string' ? await api.session(route.query.session) : await api.pendingSession()
+  if (!api.isCurrent()) return
+  if (value) apply(value)
+  else { session.value = null; answers.value = {}; ties.value = {}; saved.value = false }
+ } catch(error) {
+  if (!api.isCurrent()) return
+  failed.value = true; handleApiError(error, 'DiagnosisLoad')
+ } finally { if (api.isCurrent()) loading.value = false }
+}
+async function run(action: () => Promise<DiagnosisSession>) {
+ loading.value = true; failed.value = false
+ try {
+  const value = await action()
+  if (!api.isCurrent()) return
+  apply(value)
+  await navigateTo({ path: '/my/ranch/diagnosis', query: { session: value.id } })
+  if (value.status === 'COMPLETED' && value.resultId) await navigateTo(`/my/ranch/results/${value.resultId}`)
+  return value
+ } catch(error) {
+  if (!api.isCurrent()) return
+  failed.value = true; handleApiError(error, 'DiagnosisCommand')
+  if ((error as {statusCode?:number;status?:number}).statusCode === 409 || (error as {status?:number}).status === 409) await load()
+ } finally { if (api.isCurrent()) loading.value = false }
+}
 function save() { if (session.value) { const current = session.value; return run(() => api.save(current, Object.entries(answers.value).map(([questionId,value]) => ({ questionId,value })))) } }
 async function focusTieNotice() {
  await nextTick()
@@ -40,6 +65,12 @@ async function complete() {
 watch(answers, () => { saved.value = false; ties.value = {} }, { deep: true, flush: 'sync' })
 async function retryPending() { await run(() => api.retryPending<DiagnosisSession>()) }
 async function hold() { if (!saved.value) await save(); if (saved.value && !api.command.pending.value && session.value) await navigateTo({ path: '/my/ranch/results', query: { session: session.value.id } }) }
+// 本人が切り替わる瞬間に既表示の私的回答も消し、旧scopeで操作させない。
+const auth = useAuthStore()
+watch(() => auth.user?.id ?? null, () => {
+ session.value = null; answers.value = {}; ties.value = {}; saved.value = false
+ failed.value = false; loading.value = true
+}, { flush: 'sync' })
 onMounted(load)
 </script>
 <template>

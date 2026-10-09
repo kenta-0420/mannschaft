@@ -183,6 +183,7 @@ describe('独立診断結果と装飾loadingの実ページ先行赤候補', () 
   const methods: (string | null)[] = []
   external.fetch.mockImplementation(async request => {
    const url = new URL(String(request))
+   if (url.pathname === '/api/v1/me/diagnoses/sessions/pending') return json({ data: null })
    expect(url.pathname).toBe('/api/v1/me/diagnoses/results')
    methods.push(url.searchParams.get('method'))
    return json(empty)
@@ -196,6 +197,7 @@ describe('独立診断結果と装飾loadingの実ページ先行赤候補', () 
  it('片方式の失敗を未診断に変換せず、成功空の別方式は表示する', async () => {
   external.fetch.mockImplementation(async request => {
    const url = new URL(String(request))
+   if (url.pathname === '/api/v1/me/diagnoses/sessions/pending') return json({ data: null })
    expect(url.pathname).toBe('/api/v1/me/diagnoses/results')
    const method = url.searchParams.get('method')
    if (method === 'BIRTH_STYLE') return json(empty)

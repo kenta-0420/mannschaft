@@ -70,6 +70,20 @@ public class DiagnosisSessionWriter {
     public DiagnosisSessionResponse read(Long userId, UUID id) {
         return response(sessions.findByIdAndUserId(id,userId).orElseThrow(DiagnosisSessionWriter::notFound));
     }
+    /** 各状態の索引先頭だけを読み、本人の最新未完了を最大二行から選ぶ。 */
+    public DiagnosisSessionResponse readPending(Long userId) {
+        var started=sessions.findFirstByUserIdAndStatusOrderByUpdatedAtDescIdDesc(userId,DiagnosisStatus.STARTED);
+        var tied=sessions.findFirstByUserIdAndStatusOrderByUpdatedAtDescIdDesc(userId,DiagnosisStatus.TIE_BREAK_REQUIRED);
+        if(started.isEmpty())return tied.map(this::response).orElse(null);
+        if(tied.isEmpty())return response(started.get());
+        var first=started.get();var second=tied.get();
+        int time=first.getUpdatedAt().compareTo(second.getUpdatedAt());
+        if(time!=0)return response(time>0?first:second);
+        // MySQL BINARY(16)の降順に合わせ、UUIDの符号付きcompareToは使わない。
+        int id=Long.compareUnsigned(first.getId().getMostSignificantBits(),second.getId().getMostSignificantBits());
+        if(id==0)id=Long.compareUnsigned(first.getId().getLeastSignificantBits(),second.getId().getLeastSignificantBits());
+        return response(id>0?first:second);
+    }
     public DiagnosisSessionResponse answer(Long userId, UUID id, UUID key, long version, List<DiagnosisAnswer> submitted) {
         if (submitted == null || submitted.isEmpty() || submitted.size() > 24) throw invalid();
         String hash=hash(List.of("session:answers:v1",id,version,submitted));

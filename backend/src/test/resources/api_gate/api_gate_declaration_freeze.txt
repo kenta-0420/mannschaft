@@ -188,7 +188,7 @@ HTTP|com.mannschaft.app.dashboard.controller.DashboardScopeTabController|2|2
 HTTP|com.mannschaft.app.dashboard.controller.DashboardWidgetVisibilityController|4|4
 HTTP|com.mannschaft.app.dashboard.controller.PersonalActionRequiredController|1|1
 HTTP|com.mannschaft.app.dashboard.controller.PersonalAdminActionRequiredController|1|1
-HTTP|com.mannschaft.app.diagnosis.controller.DiagnosisController|0|8
+HTTP|com.mannschaft.app.diagnosis.controller.DiagnosisController|0|9
 HTTP|com.mannschaft.app.digest.controller.DigestAdminController|1|1
 HTTP|com.mannschaft.app.digest.controller.DigestConfigController|3|3
 HTTP|com.mannschaft.app.digest.controller.DigestController|7|7

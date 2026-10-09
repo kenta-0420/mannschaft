@@ -1,6 +1,7 @@
 package com.mannschaft.app.ranch.openapi;
 
 import com.mannschaft.app.ranch.dto.AssignmentSummary;
+import com.mannschaft.app.diagnosis.dto.PendingDiagnosisSessionResponse;
 import com.mannschaft.app.ranch.dto.DinosaurSummary;
 import com.mannschaft.app.ranch.dto.EggSummary;
 import com.mannschaft.app.ranch.dto.HatchResponse;
@@ -17,13 +18,13 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Set;
 
-/** 牧場の明示nullableだけをOAS3.1のnull分岐へ変換し、参照先自体は変更しない。 */
+/** 牧場・診断の明示nullableだけをOAS3.1のnull分岐へ変換し、参照先自体は変更しない。 */
 @Component
 @Order(Ordered.LOWEST_PRECEDENCE - 1)
 public final class RanchOpenApiNullableCustomizer implements OpenApiCustomizer {
     private static final List<Class<?>> OWNED_RECORDS = List.of(RanchState.class, HatchResponse.class,
             DinosaurSummary.class, AssignmentSummary.class, EggSummary.class, RanchRecord.class,
-            RoomSlotSummary.class);
+            RoomSlotSummary.class, PendingDiagnosisSessionResponse.class);
 
     @Override
     public void customise(OpenAPI openApi) {
