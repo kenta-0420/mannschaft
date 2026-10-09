@@ -2,7 +2,7 @@
 
 Mannschaftには、ハーネスを設計・検証する仕組みがあります。ただし、開発成果への効果や再現性はまだ実測していません。今回はモデルの賢さだけでなく、作業場所、渡す文脈、検査、失敗から戻す流れをどう整えたか振り返ります。
 
-これは公式認証ではなく、実装とCI記録に基づく筆者個人の評価です。別プロジェクトへ移せる構造と、確認できている範囲を紹介します。
+実装とCI記録に基づく筆者個人の評価として、別プロジェクトへ移せる構造と確認できた範囲を紹介します。
 
 ## ハーネスをモデルの外側に置く
 
@@ -31,7 +31,7 @@ Mannschaftでは [`CLAUDE.md`](https://github.com/kenta-0420/mannschaft/blob/mai
 
 台帳は7列に固定し、列数とID重複を番人が検出します。重要な約束を、差分から違反を見つけられる形にしました。移植先も入口文書と詳細規約、一時メモの置き場を決め、重要な形式制約を一つ自動検査するところから始められます。
 
-規約だけでなく、既存コードにも番人があります。[`CrossDomainRepositoryDependencyArchTest`](https://github.com/kenta-0420/mannschaft/blob/main/backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainRepositoryDependencyArchTest.java) は別ドメインRepositoryへの直接依存を、[`TaskListCmpIdDuplicateGuardTest`](https://github.com/kenta-0420/mannschaft/blob/main/backend/src/test/java/com/mannschaft/app/common/architecture/TaskListCmpIdDuplicateGuardTest.java) は台帳のID重複を検出します。[OpenAPI Drift Check](https://github.com/kenta-0420/mannschaft/blob/main/.github/workflows/openapi-drift-check.yml) はAPI関連変更後に仕様を再生成し、`docs/openapi.json`との差分をCIで失敗させます。
+規約だけでなく、既存コードにも番人があります。[`CrossDomainRepositoryDependencyArchTest`](https://github.com/kenta-0420/mannschaft/blob/main/backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainRepositoryDependencyArchTest.java) は別ドメインRepositoryへの直接依存を検出します。`FreezingArchRule`で既存違反を凍結しているため、新しい直接依存違反が失敗します。greenでも過去の違反がすべて解消済みとは限りません。[`TaskListCmpIdDuplicateGuardTest`](https://github.com/kenta-0420/mannschaft/blob/main/backend/src/test/java/com/mannschaft/app/common/architecture/TaskListCmpIdDuplicateGuardTest.java) は台帳のID重複を、[OpenAPI Drift Check](https://github.com/kenta-0420/mannschaft/blob/main/.github/workflows/openapi-drift-check.yml) はAPI関連変更後に仕様を再生成し、`docs/openapi.json`との差分をCIで失敗させます。
 
 ## 隔離とフィードバックをひと続きにする
 
@@ -187,11 +187,11 @@ npm test
 npm run build
 ```
 
-この内容を `scripts/verify.sh` に置き、CIからも同じスクリプトを呼びます。
+この内容を `scripts/verify.sh` に置き、CIからも同じスクリプトを呼びます。新規ファイルの実行bitに依存しないよう、ローカルとCIの両方で `sh scripts/verify.sh` と実行します。WindowsではWSLやGit BashなどPOSIX shellを使う例です。
 
 ```yaml
 - name: Verify
-  run: ./scripts/verify.sh
+  run: sh scripts/verify.sh
 ```
 
 ローカルとCIで別々の検査コマンドを持つと、片方だけ直して結果が食い違いやすくなります。CIの実行環境、認証情報、テスト用データはプロジェクトに合わせて別途設定してください。
@@ -203,7 +203,7 @@ npm run build
 
 - 開発ルールの正本: [CONTRIBUTING.md](CONTRIBUTING.md)
 - 作業は専用branchまたはworktreeで行う
-- 変更後は `./scripts/verify.sh` を実行する
+- 変更後は `sh scripts/verify.sh` を実行する
 - 完了報告には変更、実行した検査、未実施事項を記載する
 ```
 
@@ -217,7 +217,7 @@ AC-1: 入力が空ならエラーになる
 結果: pass / CI run 123456
 ```
 
-これだけでも、「何を満たすつもりだったか」「どの検査がそれを見たか」「どこで実行されたか」を結べます。テスト名を並べるだけで要件を満たした扱いにせず、テストが実際に条件を確かめているかは人が確認します。
+実行コマンドはVitestを使う架空のNode.jsプロジェクト例です。これだけでも「何を満たすか」「どの検査で確認するか」「どこで実行したか」を結べます。テスト名だけで要件達成とせず、テスト内容も確認します。
 
 ### 導入を小さく始める
 
@@ -229,6 +229,15 @@ AC-1: 入力が空ならエラーになる
 6. **必要な範囲だけ計測する**: 代表課題を固定条件で複数回解き、成功、介入、時間、費用を残す。
 7. **CIでも同じ入口を使う**: ローカルとCIが異なる検査を実行していないか確認する。
 8. **秘密と権限の境界を決める**: 診断やログへ値を出さず、PR由来コードを実行するjobの権限を絞る。
+
+移植時には、まず次の項目をチェックします。
+
+- [ ] 規約の正本が一つに決まっている
+- [ ] 各作業が専用branchやworktreeに隔離される
+- [ ] ローカルとCIが同じ検査入口を呼ぶ
+- [ ] 重要な受け入れ条件がテストや番人に対応している
+- [ ] 未実施の確認を成功扱いしない
+- [ ] 失敗・中断した試行も成功率の分母に含める
 
 最初から完了証拠ゲートや複雑なCIを移植する必要はありません。変更が小さなうちは、PR本文のチェック欄とCIだけで十分かもしれません。完了状態が複数人に影響し、後で根拠をたどれなくなった段階で、証拠JSONやvalidatorを検討できます。
 
