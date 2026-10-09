@@ -2,142 +2,199 @@ name: Task-List PR Gate
 
 on:
   pull_request_target:
-    branches:
-      - main
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
-      - edited
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
   checks: write
   pull-requests: read
+
+concurrency:
+  group: task-list-pr-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   task-list-pr-gate:
     name: Task-List PR Gate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Check code PR against the main Task-List
+      # pull_request_target では必ずbase SHAをcheckoutする。PRのソースはcheckout/import/実行しない。
+      - name: Checkout trusted base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Validate registration and completion evidence
         uses: actions/github-script@v9
         with:
           script: |
-            const rolloutAt = Date.parse("2026-10-07T02:51:05Z");
-            if (context.eventName === "workflow_dispatch") {
-              if (context.ref !== "refs/heads/main") {
-                core.setFailed("Legacy check backfill may only run from main.");
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const rolloutAt = Date.parse('2026-10-07T02:51:05Z');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            if (context.eventName === 'workflow_dispatch') {
+              if (context.ref !== 'refs/heads/main') {
+                core.setFailed('Legacy check backfill may only run from main.');
                 return;
               }
-              const openPulls = await github.paginate(github.rest.pulls.list, {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: "open",
-                base: "main",
-                per_page: 100,
-              });
+              const openPulls = await github.paginate(github.rest.pulls.list, { owner, repo, state: 'open', base: 'main', per_page: 100 });
               let backfilled = 0;
               let failed = 0;
               for (const legacyPull of openPulls.filter(pr => Date.parse(pr.created_at) < rolloutAt)) {
-                const existingChecks = await github.paginate(github.rest.checks.listForRef, {
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  ref: legacyPull.head.sha,
-                  per_page: 100,
-                });
-                if (existingChecks.some(check => check.name === "Task-List PR Gate" && check.conclusion === "success")) {
-                  continue;
-                }
+                const existingChecks = await github.paginate(github.rest.checks.listForRef, { owner, repo, ref: legacyPull.head.sha, per_page: 100 });
+                if (existingChecks.some(check => check.name === 'Task-List PR Gate' && check.conclusion === 'success')) continue;
                 try {
-                  await github.rest.checks.create({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    name: "Task-List PR Gate",
-                    head_sha: legacyPull.head.sha,
-                    status: "completed",
-                    conclusion: "success",
-                    output: {
-                      title: "Legacy PR migration grace",
-                      summary: `PR #${legacyPull.number} was opened before ${new Date(rolloutAt).toISOString()} and is grandfathered for this rollout.`,
-                    },
-                  });
+                  await github.rest.checks.create({ owner, repo, name: 'Task-List PR Gate', head_sha: legacyPull.head.sha, status: 'completed', conclusion: 'success', output: {
+                    title: 'Legacy PR migration grace', summary: `PR #${legacyPull.number} predates ${new Date(rolloutAt).toISOString()} and is grandfathered for registration.`
+                  }});
                   backfilled++;
-                } catch (error) {
-                  core.error(`Could not backfill PR #${legacyPull.number}: ${error.message}`);
-                  failed++;
-                }
+                } catch (error) { core.error(`Could not backfill PR #${legacyPull.number}: ${error.message}`); failed++; }
               }
-              if (failed > 0) {
-                core.setFailed("One or more legacy PR checks could not be backfilled.");
-                return;
-              }
-              core.info(`Backfilled the legacy success check for ${backfilled} open PR(s).`);
+              if (failed) core.setFailed('One or more legacy PR checks could not be backfilled.');
+              else core.info(`Backfilled ${backfilled} legacy check(s).`);
               return;
             }
 
             const pull = context.payload.pull_request;
-            if (!pull) {
-              core.setFailed("pull_request payload is missing");
-              return;
+            if (!pull) throw new Error('pull_request payload is missing');
+            const validatorPath = path.join(process.cwd(), 'scripts', 'completion-evidence.mjs');
+            const validatorAvailable = fs.existsSync(validatorPath);
+            const files = await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: pull.number, per_page: 100 });
+
+            let trustedValidator = null;
+            if (validatorAvailable) {
+              async function readContent(filePath, ref) {
+                try {
+                  const response = await github.rest.repos.getContent({ owner, repo, path: filePath, ref });
+                  if (Array.isArray(response.data) || response.data.type !== 'file' || response.data.encoding !== 'base64') throw new Error(`Expected a base64 file: ${filePath}@${ref}`);
+                  return Buffer.from(response.data.content, 'base64').toString('utf8');
+                } catch (error) {
+                  if (error.status === 404) return null;
+                  throw error;
+                }
+              }
+              const baseRef = pull.base.sha;
+              const headRef = pull.head.sha;
+              const baseTaskList = await readContent('docs/task-list.md', baseRef);
+              const headTaskList = await readContent('docs/task-list.md', headRef);
+              if (baseTaskList === null || headTaskList === null) throw new Error('docs/task-list.md could not be read from base and PR head.');
+              const { pathToFileURL } = require('node:url');
+              trustedValidator = await import(pathToFileURL(validatorPath).href);
+              const changedEvidencePaths = files.filter(file => /^docs\/evidence\/CMP-(?:\d{6}-\d{4}|\d{3})\.json$/.test(file.filename)).map(file => file.filename);
+              const selectedEvidencePaths = trustedValidator.selectEvidencePaths(baseTaskList, headTaskList, changedEvidencePaths);
+              const evidenceByPath = {};
+              const evidenceChanged = new Set(changedEvidencePaths.filter(filePath => selectedEvidencePaths.includes(filePath)));
+              const evidenceDeleted = new Set(files.filter(file => file.status === 'removed' && selectedEvidencePaths.includes(file.filename)).map(file => file.filename));
+              const evidenceObjects = [];
+              for (const filePath of selectedEvidencePaths) {
+                const after = await readContent(filePath, headRef);
+                if (after !== null) {
+                  let parsed;
+                  try { parsed = JSON.parse(after); } catch { parsed = null; }
+                  evidenceByPath[filePath] = parsed;
+                  if (parsed) evidenceObjects.push(parsed);
+                } else evidenceByPath[filePath] = null;
+              }
+              for (const item of evidenceObjects) trustedValidator.validateEvidence(item, item.cmpId, { repository: `${owner}/${repo}` });
+              const existingFiles = new Set();
+              const evidenceRefs = [];
+              for (const item of evidenceObjects) {
+                for (const ac of item.acceptanceCriteria || []) for (const check of ac.tests || []) evidenceRefs.push(check.evidence);
+                for (const stage of Object.values(item.stages || {})) if (stage && stage.status === 'passed') evidenceRefs.push(stage.evidence);
+                for (const regression of item.regressions || []) evidenceRefs.push(regression.redEvidence, regression.greenEvidence);
+              }
+              const localEvidenceRefs = [...new Set(evidenceRefs.filter(ref => typeof ref === 'string' && !/^https:\/\//i.test(ref)))];
+              if (localEvidenceRefs.length) {
+                const treeResponse = await github.rest.git.getTree({ owner, repo, tree_sha: headRef, recursive: '1' });
+                if (treeResponse.data.truncated) throw new Error('PR head tree was truncated; evidence file existence cannot be verified.');
+                const headFiles = new Set(treeResponse.data.tree.filter(entry => entry.type === 'blob').map(entry => entry.path));
+                for (const ref of localEvidenceRefs) {
+                  if (!ref.startsWith('/') && !ref.startsWith('\\') && !/^[A-Za-z]:/.test(ref) && !ref.split(/[\\/]/).includes('..') && headFiles.has(ref)) existingFiles.add(ref);
+                }
+              }
+
+              const implementations = {};
+              for (const item of evidenceObjects) {
+                const prNumber = item.implementation?.pr;
+                if (!Number.isInteger(prNumber) || implementations[prNumber]) continue;
+                const response = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+                const implementationPr = response.data;
+                const checkRuns = await github.paginate(github.rest.checks.listForRef, { owner, repo, ref: implementationPr.head.sha, per_page: 100 });
+                const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, { owner, repo, ref: implementationPr.head.sha, per_page: 100 });
+                const latestChecks = new Map();
+                for (const check of [...checkRuns].sort((a, b) => Date.parse(b.completed_at || b.started_at || b.created_at) - Date.parse(a.completed_at || a.started_at || a.created_at))) {
+                  if (!latestChecks.has(check.name)) latestChecks.set(check.name, check.conclusion);
+                }
+                const latestStatuses = new Map();
+                for (const status of [...statuses].sort((a, b) => Date.parse(b.updated_at || b.created_at) - Date.parse(a.updated_at || a.created_at))) {
+                  if (!latestStatuses.has(status.context)) latestStatuses.set(status.context, status.state === 'success' ? 'success' : status.state);
+                }
+                implementations[prNumber] = {
+                  repository: implementationPr.base.repo?.full_name,
+                  merged: Boolean(implementationPr.merged_at),
+                  sha: implementationPr.head.sha,
+                  checks: [...latestChecks.values(), ...latestStatuses.values()],
+                  files: (await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: prNumber, per_page: 100 })).map(file => file.filename),
+                };
+              }
+              const runs = [];
+              for (const item of evidenceObjects) for (const ci of item.ci || []) {
+                if (runs.some(run => run.runId === ci.runId)) continue;
+                const response = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: ci.runId });
+                runs.push({ runId: ci.runId, repository: response.data.repository?.full_name, sha: response.data.head_sha, conclusion: response.data.conclusion });
+              }
+              const input = {
+                repository: `${owner}/${repo}`, baseTaskList, headTaskList, evidenceByPath,
+                evidenceChanged: [...evidenceChanged], evidenceDeleted: [...evidenceDeleted], existingFiles: [...existingFiles],
+                implementations, runs,
+              };
+              const runsById = Object.fromEntries(input.runs.map(run => [run.runId, run]));
+              const implementationsByPr = input.implementations;
+              trustedValidator.validateCompletionChanges(input.baseTaskList, input.headTaskList, input.evidenceByPath, {
+                repository: input.repository,
+                fileExists: filePath => input.existingFiles.includes(filePath),
+                evidenceChanged: new Set(input.evidenceChanged),
+                evidenceDeleted: new Set(input.evidenceDeleted),
+                implementations: implementationsByPr,
+                runs: runsById,
+              });
+              core.info(`Completion evidence validated for ${selectedEvidencePaths.length} changed/new completion proof(s).`);
+            } else {
+              core.notice('Completion validator is absent from the trusted base (bootstrap PR); completion evidence validation starts after this PR lands. Registration checks still run.');
             }
 
-            // PRs opened before the Task-List registration PR reached main are
-            // grandfathered so this rollout does not block existing work.
+            // 登録検査はvalidatorのbootstrap・既存の移行猶予より前に完了証拠検査を通した後に行う。
             if (Date.parse(pull.created_at) < rolloutAt) {
-              core.info(`Legacy PR #${pull.number} predates the rollout; passing with migration grace.`);
+              core.info(`Legacy PR #${pull.number} predates the registration rollout; migration grace applies after completion validation.`);
               return;
             }
-
-            const files = await github.paginate(github.rest.pulls.listFiles, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pull.number,
-              per_page: 100,
-            });
             const codeExtensions = /\.(java|kt|kts|gradle|sql|ts|tsx|js|jsx|vue|mjs|cjs|tf|tfvars|hcl|sh|ps1|go|py|rb|php|html|css|scss|sass|less|xml|yml|yaml|json|jsonc|json5|toml|properties|conf|ini|config|env|lock|proto|graphql|bzl|bazel|mk)$/i;
             const codeBasenames = /(^|\/)(Dockerfile(?:\.[^/]*)?|Containerfile(?:\.[^/]*)?|Makefile|GNUmakefile|Justfile|Procfile|\.env(?:\..*)?|\.npmrc|\.nvmrc|\.editorconfig|\.dockerignore|\.gitignore|\.gitattributes|\.gitmodules)$/i;
-            const codeFiles = files.map(file => file.filename).filter(path => codeExtensions.test(path) || codeBasenames.test(path));
+            const codeFiles = files.map(file => file.filename).filter(filePath => !/^docs\/evidence\/CMP-(?:\d{6}-\d{4}|\d{3})\.json$/.test(filePath) && (codeExtensions.test(filePath) || codeBasenames.test(filePath)));
             if (codeFiles.length === 0) {
-              core.info("No code or configuration files changed; Task-List registration is not required.");
+              core.info('No code or configuration files changed; Task-List registration is not required.');
               return;
             }
-
-            const references = [...new Set(`${pull.title}\n${pull.body || ""}`.match(/\bCMP-(?:\d{6}-\d{4}|\d{3})\b/g) || [])];
+            const references = [...new Set(`${pull.title}\n${pull.body || ''}`.match(/\bCMP-(?:\d{6}-\d{4}|\d{3})\b/g) || [])];
             if (references.length !== 1) {
               core.setFailed(`Code PR must contain exactly one CMP-ID in its title or body; found ${references.length}.`);
               return;
             }
             const cmpId = references[0];
-
-            const response = await github.rest.repos.getContent({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              path: "docs/task-list.md",
-              ref: pull.base.ref,
-            });
-            if (Array.isArray(response.data) || response.data.encoding !== "base64") {
-              core.setFailed("Could not read docs/task-list.md from the PR base branch.");
-              return;
-            }
-            const taskList = Buffer.from(response.data.content, "base64").toString("utf8");
-            const rows = taskList.split(/\r?\n/).filter(line => line.startsWith("|") && line.includes(cmpId));
-            const matchingRows = rows.filter(line => {
-              const cells = line.split("|").map(cell => cell.trim());
-              return cells[1] === cmpId;
-            });
-            if (matchingRows.length !== 1) {
-              core.setFailed(`${cmpId} must appear exactly once in docs/task-list.md on ${pull.base.ref}; found ${matchingRows.length}.`);
-              return;
-            }
-
-            const cells = matchingRows[0].split("|").map(cell => cell.trim());
-            const state = cells[3]?.replace(/^\*\*(.*)\*\*$/, "$1");
-            if (state !== "実装中") {
-              core.setFailed(`${cmpId} is not marked 実装中 on ${pull.base.ref} (state: ${state || "missing"}).`);
-              return;
-            }
-
+            const response = await github.rest.repos.getContent({ owner, repo, path: 'docs/task-list.md', ref: pull.base.ref });
+            if (Array.isArray(response.data) || response.data.encoding !== 'base64') throw new Error('Could not read docs/task-list.md from the PR base branch.');
+            const taskList = Buffer.from(response.data.content, 'base64').toString('utf8');
+            const matchedRow = trustedValidator
+              ? trustedValidator.parseTaskList(taskList).byId.get(cmpId)
+              : taskList.split(/\r?\n/).filter(line => line.startsWith('|') && line.includes(cmpId)).map(line => line.split('|').map(cell => cell.trim())).find(cells => cells[1] === cmpId);
+            if (!matchedRow) throw new Error(`${cmpId} must appear exactly once in docs/task-list.md on ${pull.base.ref}; found 0.`);
+            const state = trustedValidator ? matchedRow.state : matchedRow[3]?.replace(/^\*\*(.*)\*\*$/, '$1');
+            if (state !== '\u5b9f\u88c5\u4e2d') throw new Error(`${cmpId} must be registered as 実装中 on ${pull.base.ref} (state: ${state || 'missing'}).`);
             core.info(`${cmpId} is registered as 実装中 on ${pull.base.ref}; checked ${codeFiles.length} code/configuration file(s).`);
