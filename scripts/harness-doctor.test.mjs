@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -99,4 +99,32 @@ test('既存の独自pre-commitを上書きせず、再導入は冪等', async (
   const repeated = JSON.parse((await run(root, '--install-hooks')).stdout);
   assert.equal(repeated.hookInstall.status, 'already-installed');
   assert.equal(await readFile(target, 'utf8'), content);
+});
+
+test('linked worktreeから共有pre-commitの実行bitを変更しない', async (t) => {
+  const root = await fixture(t);
+  await writeFile(join(root, 'README.md'), 'fixture\n');
+  await git(root, ['add', 'README.md']);
+  await git(root, ['commit', '-m', 'fixture']);
+  const linked = join(root, 'linked-worktree');
+  await git(root, ['worktree', 'add', '--detach', linked, 'HEAD']);
+  await mkdir(join(linked, '.githooks'), { recursive: true });
+  await writeFile(join(linked, '.githooks', 'pre-commit'), '#!/bin/sh\nexit 0\n');
+  const sharedHook = join(root, '.git', 'hooks', 'pre-commit');
+  await writeFile(sharedHook, '#!/bin/sh\nexit 0\n');
+  await chmod(sharedHook, 0o644);
+  const beforeMode = (await stat(sharedHook)).mode;
+  const { diagnose } = await import('./harness-doctor.mjs');
+  let chmodCalls = 0;
+  const result = await diagnose(linked, {
+    installHooks: true,
+    platform: 'linux',
+    spawn: () => ({ status: 0, stdout: '22.23.2', stderr: '' }),
+    statFile: async () => ({ mode: 0o100644, isDirectory: () => false }),
+    chmodFile: async () => { chmodCalls += 1; },
+  });
+  assert.equal(chmodCalls, 0, 'linked worktreeから共有hookをchmodしない');
+  assert.equal(result.hooks.preCommit, 'not-executable');
+  assert.equal(result.hookInstall.status, 'outside-worktree');
+  assert.equal((await stat(sharedHook)).mode, beforeMode);
 });

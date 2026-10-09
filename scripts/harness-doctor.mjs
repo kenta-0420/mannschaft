@@ -53,7 +53,7 @@ async function exists(path) {
   try { await access(path); return true; } catch { return false; }
 }
 
-async function inspectHooks(repo, install) {
+async function inspectHooks(repo, install, platform = process.platform, statFile = stat, chmodFile = chmod) {
   const commonDir = resolve(repo, await git(repo, ['rev-parse', '--path-format=absolute', '--git-common-dir']));
   const gitDir = resolve(repo, await git(repo, ['rev-parse', '--absolute-git-dir']));
   const hooksDir = resolve(repo, await git(repo, ['rev-parse', '--path-format=absolute', '--git-path', 'hooks']));
@@ -91,34 +91,30 @@ async function inspectHooks(repo, install) {
   if (sourceExists && await exists(target)) {
     const [expected, actual] = await Promise.all([readFile(source), readFile(target)]);
     if (expected.equals(actual)) {
-      const targetStat = await stat(target);
-      gitHook = process.platform !== 'win32' && (targetStat.mode & 0o111) === 0 ? 'not-executable' : 'installed';
+      const targetStat = await statFile(target);
+      gitHook = platform !== 'win32' && (targetStat.mode & 0o111) === 0 ? 'not-executable' : 'installed';
     } else gitHook = 'custom-hook-conflict';
   }
 
   let installResult = null;
   if (install) {
-    if (gitHook === 'not-executable') {
-      try {
-        await chmod(target, (await stat(target)).mode | 0o111);
-        gitHook = 'installed';
-        installResult = { status: 'already-installed', message: '正本と一致するhookへ実行bitを付与しました' };
-      } catch {
-        installResult = { status: 'permission-required', message: 'Git hookへの実行bit設定に権限が必要です' };
-      }
-    }
-    if (installResult) {
-      // 同じhook内容の実行bit補修を済ませた。
-    } else
     if (!sourceExists) installResult = { status: 'source-missing', message: '.githooks/pre-commit が見つかりません' };
     else if (gitHook === 'installed') installResult = { status: 'already-installed', message: 'Git hook は正本と一致しています' };
     else if (gitHook === 'custom-hook-conflict') installResult = { status: 'conflict', message: '既存のpre-commitを上書きしません。内容を確認して手動で統合してください' };
     else if (resolve(gitDir) !== resolve(commonDir)) {
       installResult = { status: 'outside-worktree', message: 'hookはgit共通ディレクトリにあります。書込権限のある本陣作業環境で実行してください' };
+    } else if (gitHook === 'not-executable') {
+      try {
+        await chmodFile(target, (await statFile(target)).mode | 0o111);
+        gitHook = 'installed';
+        installResult = { status: 'already-installed', message: '正本と一致するhookへ実行bitを付与しました' };
+      } catch {
+        installResult = { status: 'permission-required', message: 'Git hookへの実行bit設定に権限が必要です' };
+      }
     } else {
       try {
         if (!(await exists(hooksDir))) {
-          const insideCommon = resolve(hooksDir).startsWith(`${resolve(commonDir)}${process.platform === 'win32' ? '\\' : '/'}`);
+          const insideCommon = resolve(hooksDir).startsWith(`${resolve(commonDir)}${platform === 'win32' ? '\\' : '/'}`);
           if (hooksPathConfig !== 'unset' && !insideCommon) {
             installResult = { status: 'custom-hooks-path', message: '設定済みの外部hooksPathを自動作成しません' };
             return { git: { commonDir, worktreeGitDir: gitDir, hooksPath: hooksDir, hooksPathConfig, hooksPathOrigin, source: sourceExists ? 'available' : 'missing', preCommit: gitHook }, claude: { settings: localSettingsExists ? 'available' : 'missing', localHook: claudeHook, guidance: 'docs/development/honjin_protection_setup.md を参照。Claude設定は自動変更しません' }, installResult };
@@ -128,7 +124,7 @@ async function inspectHooks(repo, install) {
         await access(hooksDir, constants.W_OK);
         if (!(await stat(hooksDir)).isDirectory()) throw new Error('hooks path is not a directory');
         await copyFile(source, target, constants.COPYFILE_EXCL);
-        if (process.platform !== 'win32') await chmod(target, (await stat(source)).mode | 0o111);
+        if (platform !== 'win32') await chmod(target, (await stat(source)).mode | 0o111);
         installResult = { status: 'installed', message: 'Git pre-commitを導入しました' };
         gitHook = 'installed';
       } catch (error) {
@@ -145,7 +141,7 @@ async function inspectHooks(repo, install) {
   };
 }
 
-export async function diagnose(repo, { installHooks = false, platform = process.platform, spawn } = {}) {
+export async function diagnose(repo, { installHooks = false, platform = process.platform, spawn, statFile = stat, chmodFile = chmod } = {}) {
   const requiredFiles = [
     '.githooks/pre-commit', '.claude/hooks/block-honjin-git.ps1', 'frontend/package.json', 'backend/gradlew',
   ];
@@ -175,7 +171,7 @@ export async function diagnose(repo, { installHooks = false, platform = process.
   }
   const javaVersion = tools.java.version;
   if (tools.java.status === 'available' && javaVersion && Number(javaVersion.split('.')[0]) !== expected.javaMajor) tools.java.status = 'version-mismatch';
-  const hooks = await inspectHooks(repo, installHooks);
+  const hooks = await inspectHooks(repo, installHooks, platform, statFile, chmodFile);
   const environment = {};
   for (const name of ['CI', 'JAVA_HOME', 'DOCKER_HOST', 'CLAUDE_PROJECT_DIR']) environment[name] = Boolean(process.env[name]);
   const secretEnvironment = Object.fromEntries(SECRET_ENV_VARS.map((name) => [name, Boolean(process.env[name])]));
