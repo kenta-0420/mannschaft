@@ -63853,6 +63853,8 @@ export interface components {
             /** Format: int64 */
             scheduleId?: number;
             time?: components["schemas"]["ShiftSlotTimeDto"];
+            /** Format: int64 */
+            version?: number;
             warnings?: components["schemas"]["ShiftAssignmentWarningDto"][];
         };
         ShiftSlotTimeDto: {
@@ -70758,7 +70760,7 @@ export interface components {
         SlotAssignmentPatchRequest: {
             addUserIds?: number[];
             removeUserIds?: number[];
-            /** Format: int32 */
+            /** Format: int64 */
             slotVersion: number;
         };
         UpdateShiftScheduleRequest: {

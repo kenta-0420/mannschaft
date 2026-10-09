@@ -213,7 +213,7 @@ class ShiftSlotFacadeTest {
         private final UpdateShiftSlotRequest updateReq =
                 new UpdateShiftSlotRequest(null, null, null, null, null, null, "メモ");
         private final SlotAssignmentPatchRequest patchReq =
-                new SlotAssignmentPatchRequest(List.of(1L), List.of(), 0);
+                new SlotAssignmentPatchRequest(List.of(1L), List.of(), 0L);
 
         @Test
         @DisplayName("越境は不在と同じ 404 SHIFT_002 で tx 本体を呼ばない")
