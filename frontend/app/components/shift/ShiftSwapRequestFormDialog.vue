@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MemberResponse } from '~/types/member'
 import type { CreateSwapRequestRequest, ShiftSlotResponse } from '~/types/shift'
+import { useMatchOrgContext } from '~/composables/match/useMatchOrgContext'
 
 /**
  * シフト交代依頼フォームダイアログ（3モード対応）
@@ -14,7 +15,7 @@ import type { CreateSwapRequestRequest, ShiftSlotResponse } from '~/types/shift'
  * @prop slotId     交代対象シフト枠 ID
  * @prop slotDate   交代対象日（YYYY-MM-DD）
  * @prop scheduleId TEMPLATEモードでスロット一覧を取得するためのスケジュール ID
- * @prop teamId     SPECIFICモードでメンバー一覧を取得するためのチーム ID
+ * @prop teamId     確定シフト応答の数値チーム ID
  */
 
 type RecipientMode = 'SPECIFIC' | 'TEMPLATE' | 'OPEN_CALL'
@@ -24,7 +25,7 @@ const props = defineProps<{
   slotId: number
   slotDate: string
   scheduleId: number
-  teamId: string
+  teamId: number
 }>()
 
 const emit = defineEmits<{
@@ -37,6 +38,7 @@ const { error: showError, success: showSuccess } = useNotification()
 const { createSwapRequest } = useShiftSwapApi()
 const { listSlots } = useShiftSlotApi()
 const { getMembers } = useTeamApi()
+const { resolveContextByTeamId } = useMatchOrgContext()
 
 // ---- ダイアログ表示制御 ----
 const dialogVisible = computed({
@@ -68,6 +70,8 @@ watch(
     reason.value = ''
     selectedUserIds.value = []
     templatePeriod.value = 'day'
+    members.value = []
+    slots.value = []
     await Promise.all([loadMembers(), loadSlots()])
   },
 )
@@ -76,7 +80,9 @@ async function loadMembers() {
   if (members.value.length > 0) return
   membersLoading.value = true
   try {
-    const res = await getMembers(props.teamId, { size: 100 })
+    const teamContext = await resolveContextByTeamId(props.teamId)
+    if (!teamContext) return
+    const res = await getMembers(teamContext.teamSlug, { size: 100 })
     members.value = res.data
   } catch {
     // メンバー取得に失敗しても SPECIFIC モードは動作させる
@@ -325,7 +331,7 @@ const modeOptions: { value: RecipientMode; labelKey: string }[] = [
       <div>
         <label class="mb-1 block text-sm font-medium text-surface-700 dark:text-surface-300">
           {{ t('shift.field.reason') }}
-          <span class="ml-1 text-xs text-surface-400">（{{ t('common.label.optional') }}）</span>
+          <span class="ml-1 text-xs text-surface-400">（{{ t('label.optional') }}）</span>
         </label>
         <Textarea
           v-model="reason"
