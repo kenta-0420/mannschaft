@@ -49,7 +49,7 @@ const roleLabel: Record<string, string> = {
   GUEST: 'ゲスト',
 }
 
-const typeLabel: Record<string, string> = {
+const typeLabel: Record<InvitePreview['targetType'], string> = {
   ORGANIZATION: '組織',
   TEAM: 'チーム',
 }
