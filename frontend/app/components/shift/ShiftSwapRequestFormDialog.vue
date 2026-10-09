@@ -60,46 +60,57 @@ const selectedUserIds = ref<number[]>([])
 const slots = ref<ShiftSlotResponse[]>([])
 const slotsLoading = ref(false)
 const templatePeriod = ref<'day' | 'night'>('day')
+let openGeneration = 0
+
+function isCurrentOpen(generation: number): boolean {
+  return props.visible && openGeneration === generation
+}
 
 // ---- 初期化 ----
 watch(
   () => props.visible,
-  async (visible) => {
+  async (visible, _previousVisible, onCleanup) => {
     if (!visible) return
+    const generation = ++openGeneration
+    const teamId = props.teamId
+    const scheduleId = props.scheduleId
+    onCleanup(() => {
+      if (openGeneration === generation) openGeneration++
+    })
+
     recipientMode.value = 'SPECIFIC'
     reason.value = ''
     selectedUserIds.value = []
     templatePeriod.value = 'day'
     members.value = []
     slots.value = []
-    await Promise.all([loadMembers(), loadSlots()])
+    await Promise.all([loadMembers(generation, teamId), loadSlots(generation, scheduleId)])
   },
 )
 
-async function loadMembers() {
-  if (members.value.length > 0) return
+async function loadMembers(generation: number, teamId: number) {
   membersLoading.value = true
   try {
-    const teamContext = await resolveContextByTeamId(props.teamId)
-    if (!teamContext) return
+    const teamContext = await resolveContextByTeamId(teamId)
+    if (!isCurrentOpen(generation) || !teamContext) return
     const res = await getMembers(teamContext.teamSlug, { size: 100 })
-    members.value = res.data
+    if (isCurrentOpen(generation)) members.value = res.data
   } catch {
     // メンバー取得に失敗しても SPECIFIC モードは動作させる
   } finally {
-    membersLoading.value = false
+    if (isCurrentOpen(generation)) membersLoading.value = false
   }
 }
 
-async function loadSlots() {
-  if (slots.value.length > 0) return
+async function loadSlots(generation: number, scheduleId: number) {
   slotsLoading.value = true
   try {
-    slots.value = await listSlots(props.scheduleId)
+    const result = await listSlots(scheduleId)
+    if (isCurrentOpen(generation)) slots.value = result
   } catch {
     // スロット取得失敗時は TEMPLATE モードが無効になる
   } finally {
-    slotsLoading.value = false
+    if (isCurrentOpen(generation)) slotsLoading.value = false
   }
 }
 
