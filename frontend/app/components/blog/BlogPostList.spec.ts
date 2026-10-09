@@ -98,6 +98,92 @@ async function mountPosts(posts: unknown[], canManage = false) {
   return wrapper
 }
 
+describe('BlogPostList 一覧取得の失敗表示（CMP-261007-2052）', () => {
+  beforeEach(() => {
+    apiMock.mockReset()
+    navigateMock.mockReset()
+    auth.currentUser = { id: 100 }
+  })
+
+  const failures: Array<[string, Error]> = [
+    ['403', Object.assign(new Error('Forbidden'), { statusCode: 403 })],
+    ['500', Object.assign(new Error('Server Error'), { statusCode: 500 })],
+    ['ネットワーク断', new TypeError('Failed to fetch')],
+  ]
+
+  it.each(failures)('AC-17a: 一覧APIが%sで失敗しても「記事がありません」を出さず、失敗表示と再読み込みを出す', async (_label, err) => {
+    apiMock.mockImplementation((url: string) =>
+      url.startsWith('/api/v1/blog/posts') ? Promise.reject(err) : Promise.resolve({ data: [] }),
+    )
+    const wrapper = await mountSuspended(BlogPostList, {
+      props: { scopeType: 'TEAM', scopeId: '1', canCreate: false },
+      global: { stubs },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="blog-post-empty"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="blog-post-load-error"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="blog-post-load-error"]').text().length).toBeGreaterThan(0)
+    expect(wrapper.find('[data-testid="blog-post-reload-button"]').exists()).toBe(true)
+  })
+
+  it('AC-17b: 再読み込みで成功すると失敗表示が消えて記事が並ぶ', async () => {
+    let fail = true
+    apiMock.mockImplementation((url: string) => {
+      if (!url.startsWith('/api/v1/blog/posts')) return Promise.resolve({ data: [] })
+      return fail ? Promise.reject(new Error('boom')) : Promise.resolve({ data: [makePost({ id: 5 })] })
+    })
+    const wrapper = await mountSuspended(BlogPostList, {
+      props: { scopeType: 'TEAM', scopeId: '1', canCreate: false },
+      global: { stubs },
+    })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="blog-post-load-error"]').exists()).toBe(true)
+
+    fail = false
+    await wrapper.get('[data-testid="blog-post-reload-button"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="blog-post-load-error"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-testid="blog-post-card"]')).toHaveLength(1)
+    expect(wrapper.find('[data-testid="blog-post-empty"]').exists()).toBe(false)
+  })
+
+  it('AC-17c: 成功して0件のときだけ「記事がありません」を出し、失敗表示は出さない', async () => {
+    apiMock.mockResolvedValue({ data: [] })
+    const wrapper = await mountSuspended(BlogPostList, {
+      props: { scopeType: 'TEAM', scopeId: '1', canCreate: false },
+      global: { stubs },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="blog-post-empty"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="blog-post-load-error"]').exists()).toBe(false)
+  })
+
+  it('AC-18: canCreate=false（非所属者）でも公開記事のカードと詳細リンクが並び、作成ボタンとタグ管理は出ない', async () => {
+    const post = makePost({
+      id: 9,
+      scope: { teamId: 42, organizationId: null, userId: null, authorId: 999 },
+      meta: { status: 'PUBLISHED', visibility: 'PUBLIC', postType: 'BLOG', publicVisible: true },
+    })
+    apiMock.mockImplementation((url: string) =>
+      Promise.resolve({ data: url.startsWith('/api/v1/blog/posts') ? [post] : [] }),
+    )
+    const wrapper = await mountSuspended(BlogPostList, {
+      props: { scopeType: 'TEAM', scopeId: '1', canCreate: false },
+      global: { stubs },
+    })
+    await flushPromises()
+
+    expect(wrapper.findAll('[data-testid="blog-post-card"]')).toHaveLength(1)
+    expect(wrapper.find('[data-testid="blog-post-read-9"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="blog-post-create-button"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="blog-tag-add-button"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="blog-tag-list"]').exists()).toBe(false)
+  })
+})
+
 describe('BlogPostList タグ管理・記事モデレーション', () => {
   beforeEach(() => {
     apiMock.mockReset()

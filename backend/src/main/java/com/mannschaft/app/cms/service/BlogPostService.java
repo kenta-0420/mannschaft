@@ -106,37 +106,45 @@ public class BlogPostService {
     /**
      * チーム別記事一覧をページング取得する。
      *
-     * <p>認可根治戦役 Wave7: 本一覧は下書き・非公開ステータスを含む全記事を返す
-     * 内部管理用の入口のため、{@link #createPost} と同一の
-     * {@link AccessControlService#checkMembership} でチームメンバーに限定する。</p>
+     * <p>CMP-261007-2052: チーム非所属のログイン済みユーザーにも一覧を開く。メンバー限定
+     * （{@link AccessControlService#checkMembership}）は外した。判定は次の順で行う。</p>
+     * <ol>
+     *   <li>スコープ判定: チームが実在・ACTIVE で、閲覧者がチームを見られること。<b>取引の外</b>で
+     *       {@link BlogScopeAccessGuard#resolveVisibleTeam} が行い（Controller が先に呼ぶ）、満たさなければ
+     *       「不存在」と同一の {@link CmsErrorCode#TEAM_NOT_FOUND}（404）。本メソッドは呼ばない
+     *       （他ドメインへの取引の越境＝D-3T を避けるため）。</li>
+     *   <li>記事判定: 記事ごとの F00 可視性・課金軸（{@link #scanVisiblePage}）。見えない記事は
+     *       一覧にも件数にも入れない（下書きの列挙は作者・管理者のみ Resolver が許す）。</li>
+     * </ol>
+     * <p>未ログイン開放は別戦役（Controller 側で 401 のまま）。</p>
      *
-     * @param teamIdStr チームの公開ID（UUID文字列）または内部Long ID文字列
+     * @param teamIdStr チームの内部Long ID文字列（門で解決済みのもの。slug も後方互換で受ける）
      */
     public Page<BlogPostResponse> listByTeam(String teamIdStr, Pageable pageable) {
         if (teamIdStr == null) {
             return Page.empty(pageable);
         }
         Long teamId = resolveTeamId(teamIdStr);
-        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
-        return scanVisiblePage(pageable, SecurityUtils.getCurrentUserIdOrNull(),
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        return scanVisiblePage(pageable, viewerUserId,
                 request -> postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(teamId, request));
     }
 
     /**
      * 組織別記事一覧をページング取得する。
      *
-     * <p>認可根治戦役 Wave7: {@link #listByTeam} と同一の理由で
-     * {@link AccessControlService#checkMembership} を敷く。</p>
+     * <p>{@link #listByTeam} と同じ契約。スコープ判定は取引の外で
+     * {@link BlogScopeAccessGuard#resolveVisibleOrganization} が行う（不可視は {@link CmsErrorCode#ORG_NOT_FOUND}）。</p>
      *
-     * @param organizationIdStr 組織の公開ID（UUID文字列）または内部Long ID文字列。null の場合は空ページを返す。
+     * @param organizationIdStr 組織の内部Long ID文字列（門で解決済みのもの）。null の場合は空ページを返す。
      */
     public Page<BlogPostResponse> listByOrganization(String organizationIdStr, Pageable pageable) {
         if (organizationIdStr == null) {
             return Page.empty(pageable);
         }
         Long organizationId = resolveOrganizationId(organizationIdStr);
-        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), organizationId, "ORGANIZATION");
-        return scanVisiblePage(pageable, SecurityUtils.getCurrentUserIdOrNull(),
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        return scanVisiblePage(pageable, viewerUserId,
                 request -> postRepository.findByOrganizationIdOrderByPinnedDescCreatedAtDesc(organizationId, request));
     }
 
@@ -165,6 +173,13 @@ public class BlogPostService {
             List<BlogPostEntity> content = page.getContent();
             if (content.isEmpty()) break;
             Set<Long> ids = content.stream().map(BlogPostEntity::getId).collect(Collectors.toSet());
+            // CMP-261007-2052 AC-11（Codex 検分後の改訂）: ここで例外を捕捉して握りつぶしてはならない。
+            // 呼び先（ContentVisibilityChecker / PaymentGateService）は @Transactional(readOnly=true) で
+            // 本メソッドの取引に参加しており、RuntimeException が抜けた時点で取引は rollback-only になる。
+            // 捕捉して空ページを返しても、外側の終了時に UnexpectedRollbackException の 500 になる。
+            // 課金の照会失敗は PaymentGateService#checkAccessBatch 内で HIDDEN に変換され（記事ごとの欠損も
+            // 同様）、下の applyListPaywall で一覧と件数から除外される。想定外の例外はそのまま伝播させ、
+            // 本文・件数を返さない（500・fail-closed）。
             Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
                     ReferenceType.BLOG_POST, ids, viewerUserId);
             Map<Long, ContentGateTarget> targets = content.stream()
@@ -218,13 +233,15 @@ public class BlogPostService {
      * MEMBERS_ONLY/DRAFT 記事が漏洩する（実機E2Eで捕捉した認可漏洩バグ）。
      * viewerUserId は認証コンテキストから取得する（リクエスト引数 {@code userId} は
      * スコープ解決用であり閲覧者IDではないため使用しない）。</p>
+     *
+     * <p>CMP-261007-2052: {@code teamId} / {@code organizationId} は、取引の外で
+     * {@link BlogScopeAccessGuard#resolveVisibleScopeForDetail} が slug・数値文字列からチームはチーム・
+     * 組織は組織として解決し、実在・ACTIVE・閲覧可を確認した後の内部 ID である（Controller が先に呼ぶ）。
+     * 不存在・論理削除済み・PROVISIONED・閲覧不可は門が {@link CmsErrorCode#POST_NOT_FOUND}（404）に畳む。</p>
      */
     public BlogPostResponse getBySlug(Long teamId, Long organizationId, Long userId, String slug) {
-        // 検分第2巡 残存経路チェック: teamId/organizationId は Controller が数値IDをそのまま
-        // 受け取る（slug 解決を経由しない）ため、PROVISIONED（承諾前の事前作成状態）スコープの
-        // ID を直接指定された場合の防御多層として、ここで lifecycleStatus=ACTIVE を確認する。
-        // PROVISIONED スコープは作成時点で会員が存在せず記事も作られ得ないため実害は現状無いが、
-        // 将来の経路変化に備えた最小差分の防御として追加する（存在秘匿のため POST_NOT_FOUND に畳む）。
+        // 検分第2巡 残存経路チェック: 門を経由しない呼び出し（将来の経路変化）に備えた防御多層として、
+        // PROVISIONED（承諾前の事前作成状態）スコープを POST_NOT_FOUND に畳む。
         assertScopeNotProvisioned(teamId, organizationId);
 
         BlogPostEntity entity;
@@ -234,9 +251,20 @@ public class BlogPostService {
         } else if (organizationId != null) {
             entity = postRepository.findByOrganizationIdAndSlug(organizationId, slug)
                     .orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND));
-        } else {
+        } else if (userId != null) {
             entity = postRepository.findByUserIdAndSlug(userId, slug)
                     .orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND));
+            // CMP-261007-2052 AC-21: 個人記事経路は、個人スコープ（team_id・organization_id とも null）で
+            // user_id が一致する記事だけを返す。チーム・組織の記事を個人経路で読ませない（親スコープの門の迂回防止）。
+            if (entity.getTeamId() != null || entity.getOrganizationId() != null
+                    || !userId.equals(entity.getUserId())) {
+                throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
+            }
+        } else {
+            // CMP-261007-2052 AC-20: スコープ指定（teamId・organizationId・userId）がすべて未指定・空白なら 404。
+            // findByUserIdAndSlug(null, slug) は user_id IS NULL ＝チーム・組織の記事に一致し、
+            // 親スコープの門を通さずに不可視チームの記事を読ませてしまうため、検索に進ませない。
+            throw new BusinessException(CmsErrorCode.POST_NOT_FOUND);
         }
         // 可視性判定を ContentVisibilityChecker に一元化（getById と完全に同じ認可挙動）。
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();

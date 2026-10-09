@@ -12,6 +12,7 @@ import com.mannschaft.app.cms.dto.BlogReactionResponse;
 import com.mannschaft.app.cms.service.BlogFeedService;
 import com.mannschaft.app.cms.service.BlogPostService;
 import com.mannschaft.app.cms.service.BlogReactionService;
+import com.mannschaft.app.cms.service.BlogScopeAccessGuard;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -50,6 +51,9 @@ class BlogPostControllerTest {
 
     @Mock
     private com.mannschaft.app.cms.service.BlogRanchNativeOperationFacade ranchNative;
+
+    @Mock
+    private BlogScopeAccessGuard scopeAccessGuard;
 
     @Mock
     private BlogFeedService feedService;
@@ -103,6 +107,7 @@ class BlogPostControllerTest {
         @DisplayName("正常系: teamIdで記事一覧が返却される")
         void チームID指定_記事一覧_正常() {
             Page<BlogPostResponse> page = new PageImpl<>(List.of(mockResponse()));
+            given(scopeAccessGuard.resolveVisibleTeam(eq(TEAM_ID_STR), any())).willReturn(TEAM_ID);
             given(postService.listByTeam(eq(TEAM_ID_STR), any())).willReturn(page);
 
             ResponseEntity<PagedResponse<BlogPostResponse>> result =
@@ -117,6 +122,7 @@ class BlogPostControllerTest {
         @DisplayName("正常系: organizationIdで記事一覧が返却される")
         void 組織ID指定_記事一覧_正常() {
             Page<BlogPostResponse> page = new PageImpl<>(List.of(mockResponse()));
+            given(scopeAccessGuard.resolveVisibleOrganization(eq(ORG_ID_STR), any())).willReturn(ORG_ID);
             given(postService.listByOrganization(eq(ORG_ID_STR), any())).willReturn(page);
 
             ResponseEntity<PagedResponse<BlogPostResponse>> result =
@@ -130,7 +136,9 @@ class BlogPostControllerTest {
         void チームUUID指定_記事一覧_正常() {
             String teamUuid = "01961234-5678-7000-9abc-def012345678";
             Page<BlogPostResponse> page = new PageImpl<>(List.of(mockResponse()));
-            given(postService.listByTeam(eq(teamUuid), any())).willReturn(page);
+            // slug 等の識別子は門が内部IDへ解決し、Service には解決済みIDだけが渡る
+            given(scopeAccessGuard.resolveVisibleTeam(eq(teamUuid), any())).willReturn(TEAM_ID);
+            given(postService.listByTeam(eq(TEAM_ID_STR), any())).willReturn(page);
 
             ResponseEntity<PagedResponse<BlogPostResponse>> result =
                     controller.listPosts(teamUuid, null, null, null, null, null, null, null, 0, 20);
@@ -150,12 +158,16 @@ class BlogPostControllerTest {
         @Test
         @DisplayName("正常系: previewTokenなしでslug取得")
         void slug取得_プレビューなし_正常() {
+            given(scopeAccessGuard.resolveVisibleScopeForDetail(eq(TEAM_ID_STR), eq(null), any()))
+                    .willReturn(new BlogScopeAccessGuard.ResolvedScope(TEAM_ID, null));
+            // userId 未指定は個人記事経路を使わない（null）。Long の既定値 0 を渡させない
+            given(scopeAccessGuard.parsePersonalUserId(null)).willReturn(null);
             given(postService.getBySlug(TEAM_ID, null, null, "my-post")).willReturn(mockResponse());
             given(reactionService.getReactionStatus(eq(POST_ID), any()))
                     .willReturn(new BlogReactionResponse(POST_ID, false, 0));
 
             ResponseEntity<ApiResponse<BlogPostResponse>> result =
-                    controller.getPostBySlug("my-post", TEAM_ID, null, null, null);
+                    controller.getPostBySlug("my-post", TEAM_ID.toString(), null, null, null);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(result.getBody().getData().getContent().title()).isEqualTo("テスト記事");
@@ -164,13 +176,17 @@ class BlogPostControllerTest {
         @Test
         @DisplayName("正常系: previewTokenありでslug取得")
         void slug取得_プレビューあり_正常() {
+            given(scopeAccessGuard.resolveVisibleScopeForDetail(eq(TEAM_ID_STR), eq(null), any()))
+                    .willReturn(new BlogScopeAccessGuard.ResolvedScope(TEAM_ID, null));
+            // userId 未指定は個人記事経路を使わない（null）。Long の既定値 0 を渡させない
+            given(scopeAccessGuard.parsePersonalUserId(null)).willReturn(null);
             given(postService.getBySlugWithPreviewToken(TEAM_ID, null, null, "my-post", "token123"))
                     .willReturn(mockResponse());
             given(reactionService.getReactionStatus(eq(POST_ID), any()))
                     .willReturn(new BlogReactionResponse(POST_ID, false, 0));
 
             ResponseEntity<ApiResponse<BlogPostResponse>> result =
-                    controller.getPostBySlug("my-post", TEAM_ID, null, null, "token123");
+                    controller.getPostBySlug("my-post", TEAM_ID.toString(), null, null, "token123");
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         }

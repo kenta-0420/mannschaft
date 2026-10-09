@@ -741,6 +741,8 @@
       "titlePlaceholder": "Beitragstitel eingeben",
       "createDialogHint": "Er wird als Entwurf gespeichert. Schreiben Sie den Text nach Eingabe des Titels auf der Bearbeitungsseite.",
       "loadListFailed": "Beitragsliste konnte nicht geladen werden",
+      "loadListErrorHint": "Die Beitragsliste konnte nicht angezeigt werden. Prüfen Sie Verbindung oder Berechtigungen und laden Sie neu.",
+      "reloadList": "Neu laden",
       "createFailed": "Beitrag konnte nicht erstellt werden",
       "archived": "Archiviert",
       "publishSuccess": "Veröffentlicht",
@@ -2111,7 +2113,10 @@
       "scheduleCancelled": "元の予定は中止されています",
       "endDate": "終了日（複数日の場合）",
       "startTime": "開始時刻",
-      "endTime": "終了時刻"
+      "endTime": "終了時刻",
+      "edit": "Bearbeiten",
+      "save": "Speichern",
+      "updated": "Aktivitätsbericht gespeichert"
     },
     "sync": {
       "title": "予定と活動記録の変更を確認",
@@ -2134,6 +2139,15 @@
       "create": "この予定の活動記録を作成",
       "records": "活動記録",
       "loadError": "活動記録の取得に失敗しました"
+    },
+    "planned": "Geplant",
+    "unpublished": "Unveröffentlicht",
+    "metadataOnly": "Die Aktivitätsinhalte sind noch nicht veröffentlicht. Hier werden nur die Angaben des ursprünglichen Termins angezeigt.",
+    "delete": {
+      "title": "Aktivitätsbericht löschen",
+      "action": "Löschen",
+      "confirm": "Dieser Aktivitätsbericht wird gelöscht. Der ursprüngliche Termin bleibt erhalten.",
+      "success": "Aktivitätsbericht gelöscht"
     }
   },
   "dashboard": {
