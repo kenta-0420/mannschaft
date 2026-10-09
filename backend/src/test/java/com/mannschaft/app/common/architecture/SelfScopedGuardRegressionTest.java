@@ -1,12 +1,10 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -51,16 +49,10 @@ import static org.junit.jupiter.api.Assertions.fail;
  * 未マージの 4 メソッドは {@code Service} 層がまだ {@code AccessControlService} を呼んでおらず、
  * 本試練は該当パラメータで <b>意図的に red</b> になる（試練の性質上、これは正しい）。</p>
  */
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class SelfScopedGuardRegressionTest {
 
-    private static JavaClasses importedClasses;
-
-    @BeforeAll
-    static void importClasses() {
-        importedClasses = new ClassFileImporter()
-            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-            .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses importedClasses = ProductionClasses.get();
 
     // ═══════════════════════════════════════════════════════════════════
     // AC-34

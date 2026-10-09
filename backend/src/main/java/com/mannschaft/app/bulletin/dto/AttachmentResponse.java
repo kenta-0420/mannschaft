@@ -1,5 +1,6 @@
 package com.mannschaft.app.bulletin.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -8,6 +9,7 @@ import java.time.LocalDateTime;
 /**
  * 添付ファイルレスポンスDTO。
  */
+@Schema(name = "BulletinAttachmentResponse")
 @Getter
 @RequiredArgsConstructor
 public class AttachmentResponse {

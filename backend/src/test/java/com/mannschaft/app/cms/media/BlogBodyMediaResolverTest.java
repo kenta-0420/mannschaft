@@ -60,6 +60,41 @@ class BlogBodyMediaResolverTest {
     /** 他スコープ（TEAM/99）のキー＝本文に手書きされた越境キー。 */
     private static final String FOREIGN_KEY = "blog/TEAM/99/secret-of-another-team.png";
 
+    @Test
+    @DisplayName("PREVIEW-09 台帳障害は preview に伝播し、通常記事の fallback は維持")
+    void preview台帳障害を本文成功に丸めない() {
+        given(blogMediaUploadRepository.findByS3KeyIn(any())).willThrow(new IllegalStateException("台帳障害"));
+        String body = "![画像](" + OWN_IMAGE_KEY + ")";
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> resolver.resolveBodyForPreview(body,
+                StorageScopeType.TEAM, 12L, 100L)).isInstanceOf(IllegalStateException.class);
+        assertThat(resolver.resolveBody(body, StorageScopeType.TEAM, 12L, 100L)).isEqualTo(body);
+        verify(storageAccessService, never()).generateDownloadUrlsForList(any(), any());
+    }
+
+    @Test
+    @DisplayName("PREVIEW-09 署名障害は preview に伝播する")
+    void preview署名障害を伝播する() {
+        stubLedgerContains(OWN_IMAGE_KEY);
+        given(storageAccessService.generateDownloadUrlsForList(any(), any())).willThrow(new IllegalStateException("署名障害"));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> resolver.resolveBodyForPreview(
+                "![画像](" + OWN_IMAGE_KEY + ")", StorageScopeType.TEAM, 12L, 100L))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("PREVIEW-09 null 署名と ACL 未登録の空結果は区別する")
+    void preview署名nullは障害で空結果は省略する() {
+        stubLedgerContains(OWN_IMAGE_KEY);
+        Map<String, String> invalid = new java.util.HashMap<>();
+        invalid.put(OWN_IMAGE_KEY, null);
+        given(storageAccessService.generateDownloadUrlsForList(any(), any())).willReturn(invalid);
+        String body = "![画像](" + OWN_IMAGE_KEY + ")";
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> resolver.resolveBodyForPreview(body,
+                StorageScopeType.TEAM, 12L, 100L)).isInstanceOf(IllegalStateException.class);
+        given(storageAccessService.generateDownloadUrlsForList(any(), any())).willReturn(Map.of());
+        assertThat(resolver.resolveBodyForPreview(body, StorageScopeType.TEAM, 12L, 100L)).isEqualTo(body);
+    }
+
     private static final String SIGNED_IMAGE =
             "https://r2.example.com/bucket/blog/TEAM/12/aaaaaaaa-1111.png?X-Amz-Signature=img";
     private static final String SIGNED_VIDEO =

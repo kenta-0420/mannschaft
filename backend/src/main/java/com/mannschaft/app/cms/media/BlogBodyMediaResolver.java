@@ -88,6 +88,16 @@ public class BlogBodyMediaResolver {
      * @return 署名 URL へ置換済みの本文。body が null なら null
      */
     public String resolveBody(String body, StorageScopeType scopeType, Long scopeId, Long postId) {
+        return resolveBody(body, scopeType, scopeId, postId, false);
+    }
+
+    /** preview は内部取得・署名の失敗を正常な本文として扱わない。未登録/ACL不一致の省略は維持する。 */
+    public String resolveBodyForPreview(String body, StorageScopeType scopeType, Long scopeId, Long postId) {
+        return resolveBody(body, scopeType, scopeId, postId, true);
+    }
+
+    private String resolveBody(String body, StorageScopeType scopeType, Long scopeId, Long postId,
+                               boolean propagateReadFailure) {
         if (body == null || body.isEmpty()) {
             return body;
         }
@@ -123,6 +133,7 @@ public class BlogBodyMediaResolver {
                     .filter(Objects::nonNull)
                     .collect(Collectors.toCollection(LinkedHashSet::new));
         } catch (Exception e) {
+            if (propagateReadFailure) throw new IllegalStateException("preview 本文メディア台帳照合に失敗しました", e);
             // 検証できない以上 presign しない。本文は失わずそのまま返す（記事全体は 500 にしない）。
             log.warn("本文メディア: 台帳照合に失敗したため presign を見送る（fail-closed）: scope={}/{}",
                     scopeType, scopeId, e);
@@ -158,6 +169,10 @@ public class BlogBodyMediaResolver {
                 }).toList();
         Map<String, String> resolvedUrls = storageAccessService.generateDownloadUrlsForList(
                 requests, java.time.Duration.ofMinutes(10));
+        if (propagateReadFailure && (resolvedUrls == null
+                || resolvedUrls.values().stream().anyMatch(url -> url == null || url.isBlank()))) {
+            throw new IllegalStateException("preview 本文メディア署名結果が不正です");
+        }
         if (resolvedUrls == null || resolvedUrls.isEmpty()) {
             log.warn("本文メディア: 署名URLが 1 件も解決できなかった: scope={}/{}, 対象={}件",
                     scopeType, scopeId, verifiedKeys.size());

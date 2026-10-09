@@ -73,6 +73,7 @@ async function mountPage() {
   expect(router.hasRoute(routeName)).toBe(false)
   removeDetailRoute = router.addRoute({ name: routeName, path: '/shift/:id', component: Page })
   expect(router.resolve({ name: routeName, params: { id: '4' } }).params.id).toBe('4')
+  await router.replace({ name: routeName, params: { id: '4' } })
   const wrapper = await mountSuspended(Page, {
     route: { name: routeName, params: { id: '4' } },
     global: { plugins: [ToastService, ConfirmationService] },

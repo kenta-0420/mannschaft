@@ -2,8 +2,7 @@ export function useAccountProfile() {
   const notification = useNotification()
   const { t } = useI18n()
   const { resolveMessage } = useErrorHandler()
-  const { changeLocale } = useLocale()
-  const authStore = useAuthStore()
+  const { applyAccountLocale } = useLocale()
   const {
     getProfile,
     updateProfile,
@@ -156,12 +155,8 @@ export function useAccountProfile() {
     savingLocale.value = true
     try {
       await updateProfile({ locale: profile.value.locale, timezone: profile.value.timezone })
-      await changeLocale(profile.value.locale)
-      // authStore の user.locale を更新して localStorage と同期する。
-      // これにより次回リロード時に locale.client.ts が正しいロケールを復元できる。
-      if (authStore.user) {
-        await authStore.setUser({ ...authStore.user, locale: profile.value.locale })
-      }
+      // 保存した言語を正として、Cookie・authStore キャッシュ（次回起動時の復元元）・表示言語を揃える。
+      await applyAccountLocale(profile.value.locale)
       notification.success(t('settings.locale.toast.save_success'))
     } catch {
       notification.error(t('settings.locale.toast.save_error'))

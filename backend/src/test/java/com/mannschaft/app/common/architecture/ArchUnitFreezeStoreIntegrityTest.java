@@ -793,8 +793,25 @@ class ArchUnitFreezeStoreIntegrityTest {
      * UserRepository への行は、未提出者の抽出・通知・監査ログという業務由来の到達なので残す。
      * main のストアとの差分は「追加 0・削除 82（上記のキーのみ）」。{@code 7538（W5 #3600 取込み後の main） → 7456}。</p>
      * <p>正式1e8の削減47件は旧原因35件と注釈入口scope12件。scope分は越境解消としない。</p>
+     *
+     * <p>学校出欠の認可（{@code SchoolAttendanceAccessPolicy} / 各 {@code *Facade}。PR #3598）: 認可を tx の外へ出し、
+     * tx 本体の AttendanceLocationService（4 行）・AttendanceRequirementEvaluationService（8 行）・
+     * AttendanceStatisticsService（2 行）・AttendanceSummaryService（3 行）・DailyAttendanceService（3 行）・
+     * PeriodAttendanceService（4 行）・TransitionAlertService（3 行）は AccessControlService にクラスごと依存しなくなった
+     * ため計 27 行が解消。FamilyAttendanceNoticeService は acknowledgeNotice・applyToAttendanceRecord・getTeamNotices の
+     * checkAdminOrAbove を除去して role の 6 行が解消（submitNotice の {@code checkCareLink} → UserCareLinkRepository の
+     * 1 行は tx 内に残すので残す）。計 33 行（すべて認可由来の MembershipRepository / RoleRepository / UserRoleRepository /
+     * UserCareLinkRepository 等への到達）。ClassHomeroomService・DisclosureService・AttendanceRequirementService は
+     * 本 PR の対象外で残す。main のストアとの差分は「追加 0・削除 33（上記のキーのみ）」。{@code 7409 → 7376}。</p>
+     *
+     * <p>CMP-261007-2052（ブログ一覧の非所属者開放）: {@code BlogPostService.listByTeam} / {@code listByOrganization} から
+     * メンバー限定（{@code AccessControlService#checkMembership}）を外し、スコープの門は取引を持たない
+     * {@code BlogScopeAccessGuard} へ出した（Controller が先に呼ぶ）。これにより両入口から MembershipRepository への
+     * 到達 2 行が解消。追加 0（FreezingArchRule の既定挙動・解消済み違反の自動削除で反映）。{@code 7364 → 7362}。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7409;
+    // CMP-260820-1018: Proxy の一覧・アップロードURL生成を非TX認可入口へ整理したため4行減。Role依存自体は残る。
+    // main: BetaGrantService の通知RepositoryへのTX到達12行減も統合。独立した削除16行で7376→7360。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7358;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -883,8 +900,13 @@ class ArchUnitFreezeStoreIntegrityTest {
     /**
      * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。
      * <p>正式1e8の全量解析と原因検分で旧原因2件の削減を確認（607→605）。</p>
+     *
+     * <p>学校出欠の認可（PR #3598）: {@code AttendanceLocationService.getTimeline} の戻り値を Entity から
+     * {@code LocationChangeResponse}（DTO）へ替えたため 1 行が解消（605→604）。{@code recordLocationChange} は
+     * 戻り値が Entity のままなので残す。</p>
      */
-    private static final int EXPECTED_LINES_SERVICE_API = 605;
+    // CMP-260820-1018: Proxy 一覧を Page<ProxyInputConsentResponse> に変更し、公開APIのEntity露出1件を解消。
+    private static final int EXPECTED_LINES_SERVICE_API = 603;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

@@ -7,7 +7,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  click: [item: AnnouncementFeedItem]
+  click: [item: AnnouncementFeedItem, trigger: HTMLElement]
   pin: [id: number]
   delete: [id: number]
 }>()
@@ -32,7 +32,7 @@ const priorityColorMap: Record<string, string> = {
   NORMAL: '',
 }
 
-const sourceIcon = computed(() => sourceTypeIconMap[props.item.sourceType] ?? 'pi pi-info-circle')
+const sourceIcon = computed(() => props.item.sourceType ? sourceTypeIconMap[props.item.sourceType] ?? 'pi pi-info-circle' : 'pi pi-lock')
 const priorityClass = computed(() => priorityColorMap[props.item.priority] ?? '')
 const showPriorityBadge = computed(() => props.item.priority !== 'NORMAL')
 
@@ -77,8 +77,9 @@ function relativeTime(dateStr: string): string {
   return fromNow(dateStr) || formatDate(dateStr)
 }
 
-function handleClick() {
-  emit('click', props.item)
+function handleClick(event: MouseEvent | KeyboardEvent) {
+  if (event.target !== event.currentTarget && event instanceof KeyboardEvent) return
+  emit('click', props.item, event.currentTarget as HTMLElement)
 }
 </script>
 
@@ -88,9 +89,11 @@ function handleClick() {
     class="group flex cursor-pointer items-start gap-3 rounded-lg p-3 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800"
     :class="{ 'opacity-60': item.isRead }"
     tabindex="0"
+    data-announcement-item
+    :data-announcement-id="item.id"
     @click="handleClick"
-    @keydown.enter="handleClick"
-    @keydown.space.prevent="handleClick"
+    @keydown.enter.self.prevent="handleClick"
+    @keydown.space.self.prevent="handleClick"
   >
     <!-- ピン留めインジケーター -->
     <div class="mt-0.5 flex-shrink-0">
@@ -134,7 +137,7 @@ function handleClick() {
 
       <!-- メタ情報 -->
       <div class="mt-1 flex items-center gap-2 text-xs text-surface-400">
-        <span>{{ t(`announcement.source_type.${item.sourceType}`) }}</span>
+        <span>{{ item.sourceType ? t(`announcement.source_type.${item.sourceType}`) : t('announcement.preview.locked') }}</span>
         <span v-if="item.author">• {{ item.author.displayName }}</span>
         <span>• {{ relativeTime(item.createdAt) }}</span>
         <span v-if="item.expiresAt" class="text-orange-500">
@@ -167,6 +170,7 @@ function handleClick() {
         rounded
         size="small"
         @click.stop="emit('pin', item.id)"
+        @keydown.stop
       />
       <Button
         icon="pi pi-times"
@@ -176,6 +180,7 @@ function handleClick() {
         rounded
         size="small"
         @click.stop="emit('delete', item.id)"
+        @keydown.stop
       />
     </div>
 

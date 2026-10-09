@@ -17,6 +17,7 @@ public interface ActivityParticipantRepository extends JpaRepository<ActivityPar
 
     void deleteByActivityResultIdAndUserIdIn(Long activityResultId, List<Long> userIds);
 
+
     long countByActivityResultId(Long activityResultId);
 
     long countByUserId(Long userId);

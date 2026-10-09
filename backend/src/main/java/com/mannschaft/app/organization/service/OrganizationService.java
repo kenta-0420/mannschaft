@@ -150,7 +150,8 @@ public class OrganizationService {
                     eventPublisher.publishEvent(new OrganizationCreatedEvent(userId, org.getId(), org.getName()));
 
                     log.info("組織作成完了: orgId={}, userId={}", org.getId(), userId);
-                    return ApiResponse.of(toResponse(org, 1));
+                    // 作成直後の組織にサポーターはまだいないため集計クエリを発行せず 0 を返す
+                    return ApiResponse.of(toResponse(org, 1, new OrganizationResponse.OrgSocialDto(0L)));
                 });
     }
 
@@ -175,7 +176,7 @@ public class OrganizationService {
         OrganizationEntity org = findOrganizationBySlugOrThrow(slug);
         Long orgId = org.getId();
         int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
-        return ApiResponse.of(toResponse(org, memberCount));
+        return ApiResponse.of(toResponse(org, memberCount, null));
     }
 
     /**
@@ -591,7 +592,7 @@ public class OrganizationService {
         // 同一 slug は no-op（200・履歴を増やさない）
         if (oldSlug.equals(newSlug)) {
             int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
-            return ApiResponse.of(toResponse(org, memberCount));
+            return ApiResponse.of(toResponse(org, memberCount, null));
         }
 
         validateRenameSlug(newSlug, orgId);
@@ -608,7 +609,7 @@ public class OrganizationService {
         log.info("組織 slug リネーム完了: orgId={}, {} -> {}", orgId, oldSlug, newSlug);
 
         int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
-        return ApiResponse.of(toResponse(org, memberCount));
+        return ApiResponse.of(toResponse(org, memberCount, null));
     }
 
     /**
@@ -696,7 +697,7 @@ public class OrganizationService {
 
         int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
         log.info("組織更新完了: orgId={}", orgId);
-        return ApiResponse.of(toResponse(org, memberCount));
+        return ApiResponse.of(toResponse(org, memberCount, null));
     }
 
     /**
@@ -965,7 +966,16 @@ public class OrganizationService {
         }
     }
 
-    private OrganizationResponse toResponse(OrganizationEntity org, int memberCount) {
+    /**
+     * 組織詳細レスポンスを組み立てる。
+     *
+     * <p>CMP-261004-1942: {@code social}（サポーター数）は membership ドメインの集計であり、本 Service の
+     * トランザクションから membership の Repository へ届かせない（D-3T・原則 5）。作成直後の 0 以外は
+     * {@code null} で組み立て、トランザクションの外の {@link OrganizationDetailFacade} が合成する。
+     * そのため {@code org-detail} キャッシュには人数を載せない。</p>
+     */
+    private OrganizationResponse toResponse(
+            OrganizationEntity org, int memberCount, OrganizationResponse.OrgSocialDto social) {
         return OrganizationResponse.builder()
                 .id(org.getSlug())
                 .slug(org.getSlug())
@@ -991,6 +1001,7 @@ public class OrganizationService {
                         org.getArchivedAt(), org.getCreatedAt()))
                 .teamApplication(new OrganizationResponse.TeamApplicationDto(
                         Boolean.TRUE.equals(org.getTeamApplicationEnabled())))
+                .social(social)
                 .build();
     }
 }

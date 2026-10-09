@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Install only production + build-time deps via ci for reproducibility
 COPY package.json package-lock.json ./
-COPY scripts/patch-devtools-simple-git.mjs ./scripts/
+COPY scripts/prepare-devtools-simple-git.mjs ./scripts/prepare-devtools-simple-git.mjs
 RUN npm ci
 
 # ============================================================
