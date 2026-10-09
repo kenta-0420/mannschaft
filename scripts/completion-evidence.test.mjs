@@ -125,6 +125,8 @@ test('pull_request_targetはbase trusted validatorだけを実行しPR headを�
   assert.match(workflow, /selectEvidencePaths\(baseTaskList, headTaskList, changedEvidencePaths\)/);
   assert.match(workflow, /github\.rest\.git\.getTree/);
   assert.doesNotMatch(workflow, /github\.rest\.repos\.getContent\(\{ owner, repo, path: ref/);
+  assert.match(workflow, /file\.status === 'removed'/);
+  assert.match(workflow, /file\.previous_filename === validatorPathInBase/);
   assert.doesNotMatch(workflow, /execFileSync|execSync|pull\.head\.sha\s*\}\}/);
   assert.match(workflow, /github\.rest\.actions\.getWorkflowRun/);
 });

@@ -2,7 +2,7 @@
 
 `docs/task-list.md` の状態を新たに「完了」へ変えるPRは、同じPRで `docs/evidence/<CMP-ID>.json` を追加し、証拠列へ `[完了証拠](evidence/<CMP-ID>.json)` の形でリンクする。リンク先は台帳ファイルからの相対pathである。台帳は従来どおり7列で、セル内の `|` は `\|` にする。
 
-validatorは `pull_request_target` で動くため、workflowのbase SHAからcheckoutしたtrusted版だけを実行する。PR headから取得するのは台帳とJSONなどのデータだけで、PR由来のソースをcheckout・import・実行しない。証拠JSONだけのdocs PRはコード登録対象から除外する一方、完了遷移と証拠変更は検査する。validatorがbaseにまだ無い初回導入PRはbootstrapとして登録検査だけ行い、このPRがmainへ入った後に完了証拠検査が有効になる。validatorは以後mainから削除しない。
+validatorは `pull_request_target` で動くため、workflowのbase SHAからcheckoutしたtrusted版だけを実行する。PR headから取得するのは台帳とJSONなどのデータだけで、PR由来のソースをcheckout・import・実行しない。証拠JSONだけのdocs PRはコード登録対象から除外する一方、完了遷移と証拠変更は検査する。validatorがbaseにまだ無い初回導入PRはbootstrapとして登録検査だけ行い、このPRがmainへ入った後に完了証拠検査が有効になる。mainからvalidatorを削除・改名するPRはTask-List PR Gateが`pulls.listFiles`の`removed` / `previous_filename`で拒否し、bootstrap経由で検査を無効化できないようにする。
 
 ## JSON形式
 

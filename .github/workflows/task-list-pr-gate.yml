@@ -67,6 +67,12 @@ jobs:
             const validatorPath = path.join(process.cwd(), 'scripts', 'completion-evidence.mjs');
             const validatorAvailable = fs.existsSync(validatorPath);
             const files = await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: pull.number, per_page: 100 });
+            const validatorPathInBase = 'scripts/completion-evidence.mjs';
+            const validatorRemoval = files.find(file =>
+              file.filename === validatorPathInBase && file.status === 'removed'
+              || file.previous_filename === validatorPathInBase
+            );
+            if (validatorRemoval) throw new Error('The trusted completion validator cannot be deleted or renamed.');
 
             let trustedValidator = null;
             if (validatorAvailable) {
