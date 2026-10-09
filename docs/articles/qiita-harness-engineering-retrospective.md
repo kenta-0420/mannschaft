@@ -1,8 +1,8 @@
 # ハーネスエンジニアリングができているかどうか振り返ってみた
 
-AIエージェントにコードを書いてもらうとき、モデルの賢さだけでなく、作業場所、渡す文脈、実行できる検査、失敗を見つけて戻す流れが結果を左右します。これらをまとめて「ハーネス」と呼び、今回は自分が開発している Mannschaft の仕組みを棚卸ししました。
+Mannschaftには、ハーネスを設計・検証する仕組みがあります。ただし、開発成果への効果や再現性はまだ実測していません。今回はモデルの賢さだけでなく、作業場所、渡す文脈、検査、失敗から戻す流れをどう整えたか振り返ります。
 
-先に断っておくと、これは「ハーネスエンジニアリング認定」のような評価ではありません。実装とCIの記録を材料にした、筆者個人の振り返りです。また、ハーネスを入れれば開発が何倍速くなる、といった効果測定もまだしていません。ここで紹介するのは、別のプロジェクトでも試せる構造と、今確認できている範囲です。
+これは公式認証ではなく、実装とCI記録に基づく筆者個人の評価です。別プロジェクトへ移せる構造と、確認できている範囲を紹介します。
 
 ## ハーネスをモデルの外側に置く
 
@@ -15,21 +15,23 @@ flowchart LR
   H[人が目的と受け入れ条件を決める] --> C[正本の規約とタスクを読む]
   C --> W[隔離された作業場所で変更]
   W --> G[テスト・番人・CIで機械検査]
-  G --> R[人が差分と証拠を検分]
+  G --> R[検分者が差分と証拠を確認]
   R -->|指摘| W
   R -->|完了| E[完了証拠を残す]
   E --> M[台帳を完了にする]
 ```
 
-この流れの肝は、エージェントに任せる範囲と、人が判断する範囲を分けることです。コードの形式や必須ファイルの存在は機械で確かめやすい一方、「この要件でよいか」「記録された実機試験は本当に要件を満たすか」は人の判断が要ります。自動化の量だけを増やすのではなく、どこまでを機械が保証するかを明示するようにしています。
+検分者は別のAIエージェントでも構いませんが、要件や権限、証拠の妥当性を判断し、最終責任を持つのは人です。コード形式は機械で調べられても、要件や実機試験の妥当性は人が確認します。
 
 ## まず、プロジェクトの正本を一つにする
 
-Mannschaftでは [`CLAUDE.md`](https://github.com/kenta-0420/mannschaft/blob/main/CLAUDE.md) に開発の入口や大きな規約を置き、Codex向けの [`AGENTS.md`](https://github.com/kenta-0420/mannschaft/blob/main/AGENTS.md) はその正本へ案内する役にとどめています。ツールごとに同じ規約を複製すると、片方だけ直って古い指示が残るからです。
+Mannschaftでは [`CLAUDE.md`](https://github.com/kenta-0420/mannschaft/blob/main/CLAUDE.md) に開発の規約を置き、Codex向けの [`AGENTS.md`](https://github.com/kenta-0420/mannschaft/blob/main/AGENTS.md) は正本への案内役にしています。同じ規約を複製すると、片方だけ直って古い指示が残るためです。
 
-長く残す横断タスクは [`docs/task-list.md`](https://github.com/kenta-0420/mannschaft/blob/main/docs/task-list.md) に置きます。一つの作業期間だけ使う詳細な進捗地図は `.claude/campaigns/` に分け、完了後に捨てます。前者はGitで追跡する永続情報、後者は作業中だけの情報です。全情報を永久保存するのではなく、「次の担当者にも必要か」で置き場所を決めています。
+横断タスクはGit追跡する [`docs/task-list.md`](https://github.com/kenta-0420/mannschaft/blob/main/docs/task-list.md) に置き、一時的な進捗地図は `.claude/campaigns/` に分けて完了後に捨てます。次の担当者にも必要かで保存先を決めています。
 
-台帳の行は7列に固定し、列数やIDの重複は既存の番人で検出します。ここでは、文章上の約束を「人が覚えている」状態から、差分で違反を見つけられる状態へ移せました。新しいプロジェクトでは、最初から巨大な規約集を作る必要はありません。まず入口文書を一つ決め、詳細規約や一時メモの置き先を分け、重要な形式制約を一つ自動検査するところから始められます。
+台帳は7列に固定し、列数とID重複を番人が検出します。重要な約束を、差分から違反を見つけられる形にしました。移植先も入口文書と詳細規約、一時メモの置き場を決め、重要な形式制約を一つ自動検査するところから始められます。
+
+規約だけでなく、既存コードにも番人があります。[`CrossDomainRepositoryDependencyArchTest`](https://github.com/kenta-0420/mannschaft/blob/main/backend/src/test/java/com/mannschaft/app/common/architecture/CrossDomainRepositoryDependencyArchTest.java) は別ドメインRepositoryへの直接依存を、[`TaskListCmpIdDuplicateGuardTest`](https://github.com/kenta-0420/mannschaft/blob/main/backend/src/test/java/com/mannschaft/app/common/architecture/TaskListCmpIdDuplicateGuardTest.java) は台帳のID重複を検出します。[OpenAPI Drift Check](https://github.com/kenta-0420/mannschaft/blob/main/.github/workflows/openapi-drift-check.yml) はAPI関連変更後に仕様を再生成し、`docs/openapi.json`との差分をCIで失敗させます。
 
 ## 隔離とフィードバックをひと続きにする
 
@@ -62,64 +64,100 @@ sequenceDiagram
 
 ## 今回追加した五つの確認
 
-今回のハーネス整備では、環境診断、検査範囲の可視化、反復計測、完了証拠、台帳との接続を整えました。仕組みの入口は [`docs/development/harness-engineering.md`](https://github.com/kenta-0420/mannschaft/blob/main/docs/development/harness-engineering.md) にまとめています。
+今回整えたのは、完了証拠ゲート、既知不具合をredからgreenまで記録する流れ、環境診断、検査範囲の可視化、反復計測の五つです。仕組みの入口は [`docs/development/harness-engineering.md`](https://github.com/kenta-0420/mannschaft/blob/main/docs/development/harness-engineering.md) にあります。
+
+これは主に開発toolingの確認です。アプリの画面や認可を変更するPRでは、CLIの成功だけで終えず、画面を実際に操作し、権限あり・なしや別ロールをまたぐ実機確認が必要です。
 
 ### 1. 作業環境の診断
 
 `node scripts/harness-doctor.mjs` はNode.js、npm、Java、Git、GitHub CLI、Docker CLIや設定ファイルを調べます。既定は診断だけで、ネットワーク接続、認証確認、DB操作、サービス起動はしません。値そのものを表示せず、環境変数は設定有無だけを出します。hookの導入は `--install-hooks` を付けた明示操作に分けています。
 
-この設計で「足りないツールがあった」「秘密の値を診断ログに出した」といった問題を分けやすくなります。実際の診断では期待するNode/npmの版との不一致やDocker CLI不在などが見つかりましたが、環境設定は変更していません。環境doctorはコマンドを実行したシェルだけを見るため、Windows側で見つからないツールがWSL側にもないとは限りません。これは診断結果を読む際の注意点です。
+診断ではNode/npmの版不一致やDocker CLI不在などを見つけましたが、設定は変更していません。対象は実行したシェルの環境だけなので、Windows側の結果からWSL側の状態までは分かりません。
 
 ### 2. 検査範囲の可視化
 
 `node scripts/guard-coverage.mjs` は画面台帳の宣言とVueファイルから得たrouteを照合します。記録した実測はVue 521ファイル、unique route 519、追跡対象26、対象外493、台帳違反0でした。数値は「どこを追跡対象として宣言したか」を示します。
 
-これは画面からリンクをたどれることや、権限によって正しく表示されることを証明しません。521件すべての到達性や機能の正しさを確認した、と読める書き方は避ける必要があります。検査対象の数と、検査が保証する性質をセットで説明するのが大切です。
+この結果はリンク到達性、認可、機能の正しさを証明しません。521ファイルすべての画面を確認したとは言えず、追跡対象数と保証範囲は分けて読みます。
 
 ### 3. 完了証拠と台帳を結ぶ
 
-完了証拠ゲートは、台帳の状態を「完了」に変えるPRに証拠JSONを求め、実装PRのmerge状態、head SHA、CI状態を照合します。完了行、証拠ファイル、受け入れ条件とテスト参照を後から確認できます。
+完了証拠ゲートは、台帳を「完了」に変えるPRへ証拠JSONを求め、実装PRのmerge状態、head SHA、CIを照合します。完了行と証拠、受け入れ条件、テスト参照を後からたどれます。
 
-PRから実行コードを取得する仕組みに権限を与えるのは危険なので、GitHubの `pull_request_target` ではbase側の信頼できるvalidatorを実行します。PR headのファイルはデータとして読むだけです。この境界を置いても、証拠JSONに書かれた内容が真実か、実機確認が説明どおり行われたかまでは自動判定できません。そこは検分者が証拠の中身を見る必要があります。
+`pull_request_target` ではbase側のvalidatorを実行し、PR headからは台帳とJSONのデータだけを読みます。これでPR由来コードの実行を避けますが、証拠の真実性や実機確認の妥当性までは自動で判断できず、検分者が中身を確認します。
+
+実際に証拠PR #3747 で新ゲートを走らせ、完了証拠1件についてvalidatorが変更内容を検査した結果、成功しました。PR #3746 のmerge状態・head SHA・CI/run、証拠ファイルの存在と変更範囲を照合しています。[Task List PR Gateの実装](https://github.com/kenta-0420/mannschaft/blob/main/.github/workflows/task-list-pr-gate.yml) と[証拠validator](https://github.com/kenta-0420/mannschaft/blob/main/scripts/completion-evidence.mjs)がこの経路を担います。
+
+```mermaid
+sequenceDiagram
+  participant PR as 証拠PR
+  participant Base as 信頼できるbase
+  participant API as GitHub API
+  participant Head as PR headのデータ
+  PR->>Base: trusted版validatorを起動
+  Base->>Head: 台帳・証拠JSONだけ取得
+  Base->>API: 実装PR・head SHA・CI/runを照合
+  API-->>Base: merge状態と検査結果
+  Base->>PR: 一致なら検証成功を報告
+```
 
 ### 4. 反復計測の型を用意する
 
 `node scripts/harness-benchmark.mjs <記録.json>` は、事前に記録された試行をcaseごとに集計します。モデル呼び出しや外部接続をするCLIではありません。比較する条件、開始SHA、モデル、環境、受け入れ条件を固定し、各caseを独立worktreeで最低3回試す計画です。
 
-成功率の分母は完了した試行だけではなく全runです。途中で止まったrunも失敗として残し、0 runの率は `null`、未測定の費用も `null` にします。測定済みの0費用とは区別します。こうして都合の悪い失敗を消したり、測っていない値を0として扱ったりしにくくします。
+成功率の分母は全runで、途中中断も失敗として含めます。0 runの率と未測定費用は `null` にし、測定済みの0費用と区別します。
 
-たとえば、次の記録は形式の例です。実測値ではありません。
+次は `node scripts/harness-benchmark.mjs <記録.json>` にそのまま渡せる、架空の記入例です。成功した試行の観測値を入れていますが、実測結果ではありません。
 
 ```json
 {
-  "id": "guard-fix",
-  "startSha": "0123456789abcdef0123456789abcdef01234567",
-  "model": "固定したモデル名",
-  "effort": "medium",
-  "environment": "OS・Node版・fixture識別子",
-  "acceptanceCriteria": [
-    { "id": "AC-1", "description": "違反を再現できる" },
-    { "id": "AC-2", "description": "修正後に番人が通る" }
-  ],
-  "runs": [
+  "schemaVersion": 1,
+  "cases": [
     {
-      "id": "run-1",
-      "completed": true,
-      "passedCriteria": ["AC-1", "AC-2"],
-      "defects": 0,
-      "interventions": 1,
-      "durationSeconds": 900,
-      "cost": null
+      "id": "guard-fix",
+      "startSha": "0123456789abcdef0123456789abcdef01234567",
+      "model": "example-model",
+      "effort": "medium",
+      "environment": "架空例; Node 24; Linux; fixture-v1",
+      "costUnit": "USD",
+      "acceptanceCriteria": [
+        { "id": "AC-1", "description": "違反を再現できる" },
+        { "id": "AC-2", "description": "修正後に番人が通る" }
+      ],
+      "runs": [
+        {
+          "id": "run-1",
+          "completed": true,
+          "passedCriteria": ["AC-1", "AC-2"],
+          "defects": 0,
+          "interventions": 1,
+          "durationSeconds": 900,
+          "cost": null
+        }
+      ]
     }
   ]
 }
 ```
 
-実際のCLI用JSONはcase一覧や費用単位などを含むschemaに従います。上の抜粋だけを保存してCLIが受理すると誤解しないでください。具体的な形式は[計測手順](https://github.com/kenta-0420/mannschaft/blob/main/docs/development/harness-benchmark.md)を参照してください。
+費用が未測定なので、この例の集計結果でも総費用は `null` です。具体的な計測手順は[計測文書](https://github.com/kenta-0420/mannschaft/blob/main/docs/development/harness-benchmark.md)を参照してください。
 
-### 5. 改善をPRとテストで確かめる
+### 5. 既知の不具合をredからgreenまで記録する
 
-実装PR #3746 はマージ済みで、ハーネス関連の4テストファイル、計25件が成功しました。実装PRのCIは全check成功または明示skipで、失敗・未完了はありません。doctor、coverage、benchmark、完了証拠の正負例や、既知のhook共有書込の回帰を確認しています。詳細は[完了証拠](https://github.com/kenta-0420/mannschaft/blob/main/docs/evidence/CMP-261010-0006.md)に記録しました。台帳と証拠JSONを新しいゲートで検証する証拠PR [#3747](https://github.com/kenta-0420/mannschaft/pull/3747) は作成済みで、記事執筆時点ではCI待ちです。
+既知の不具合があると分かったら、まず現象を再現して失敗する状態（red）を記録し、修正後に通る状態（green）をテストと証拠へ残します。今回はlinked worktreeから共有Git hookの実行権限を書き換えてしまう経路をredとして記録し、doctorが共有領域へ書き込まない修正をテストで確認しました。[redの再現記録](https://github.com/kenta-0420/mannschaft/blob/main/docs/evidence/CMP-261010-0006-hook-regression.md) と[完了証拠](https://github.com/kenta-0420/mannschaft/blob/main/docs/evidence/CMP-261010-0006.md)に経緯があります。
+
+```mermaid
+flowchart LR
+  K[既知不具合を発見] --> R[失敗を再現しred証拠を記録]
+  R --> F[原因を修正]
+  F --> G[回帰テストをgreenにする]
+  G --> D[正本の証拠へリンク]
+  D --> N[同じ不具合を次回から検出]
+```
+
+### 実装とCIの検証
+
+実装PR #3746 はマージ済みで、ハーネス関連の4テストファイル、計25件が成功しました。実装PRのCIは全check成功または明示skipで、失敗・未完了はありません。証拠PR [#3747](https://github.com/kenta-0420/mannschaft/pull/3747) でも新しい完了ゲートの実データ照合に成功しました。詳細は[完了証拠](https://github.com/kenta-0420/mannschaft/blob/main/docs/evidence/CMP-261010-0006.md)に記録しています。
 
 ただし、AIを使った反復実験はまだ0回です。仕組みのテストが通ったことは、作業時間や費用が下がった証拠ではありません。測定の器を作った段階であり、効果の比較は今後の課題です。
 
@@ -138,6 +176,25 @@ project/
 │   └── verify.sh             # 検査を一つの入口にまとめる
 └── .github/workflows/ci.yml  # verifyをCIでも実行
 ```
+
+Node.jsプロジェクトなら、たとえば次のように実コマンドを一つの入口へまとめられます。この例は `package.json` に `lint`、`test`、`build` の各scriptがある前提です。
+
+```sh
+#!/usr/bin/env sh
+set -eu
+npm run lint
+npm test
+npm run build
+```
+
+この内容を `scripts/verify.sh` に置き、CIからも同じスクリプトを呼びます。
+
+```yaml
+- name: Verify
+  run: ./scripts/verify.sh
+```
+
+ローカルとCIで別々の検査コマンドを持つと、片方だけ直して結果が食い違いやすくなります。CIの実行環境、認証情報、テスト用データはプロジェクトに合わせて別途設定してください。
 
 入口文書は短く保ちます。たとえば次のように、正本、作業隔離、検査コマンド、完了報告に必要なものだけを書く方法があります。
 
@@ -170,6 +227,8 @@ AC-1: 入力が空ならエラーになる
 4. **受け入れ条件を検査へ結ぶ**: 重要な条件からテストまたは機械的な番人を対応づける。
 5. **未実施を記録する**: 動かしていない実機確認や測れていない費用を、成功や0として扱わない。
 6. **必要な範囲だけ計測する**: 代表課題を固定条件で複数回解き、成功、介入、時間、費用を残す。
+7. **CIでも同じ入口を使う**: ローカルとCIが異なる検査を実行していないか確認する。
+8. **秘密と権限の境界を決める**: 診断やログへ値を出さず、PR由来コードを実行するjobの権限を絞る。
 
 最初から完了証拠ゲートや複雑なCIを移植する必要はありません。変更が小さなうちは、PR本文のチェック欄とCIだけで十分かもしれません。完了状態が複数人に影響し、後で根拠をたどれなくなった段階で、証拠JSONやvalidatorを検討できます。
 
@@ -191,10 +250,10 @@ AC-1: 入力が空ならエラーになる
 
 次は同程度の課題を3種類選び、それぞれ同じ開始SHA、モデル、effort、fixture、受け入れ条件で最低3回実行します。例は番人違反の修正、API契約の不具合、UI導線の欠落です。課題同士は混ぜず、case別に成功率、欠陥数、介入回数、所要時間、費用を比較します。モデルや環境が変わった試行は、同じ条件のrunに混ぜません。
 
-この方法でも課題の選び方や実験者の差は残りますし、3回は強い統計的結論を出すには少ない回数です。まず再現可能な比較の型を作り、結果を見て回数や課題を見直すための小さな開始点です。結果が出るまでは「成功率が上がった」「費用を削減した」と主張しません。
+課題選びや実験者による差は残り、3回だけでは強い統計的結論を出せません。再現可能な比較の出発点として使い、結果が出るまでは成功率や費用が改善したとは主張しません。
 
-Mannschaftでは、環境の診断、検査範囲の表示、条件とテストの紐づけ、完了証拠の保存を機械に担わせるところまでは用意できました。受け入れ条件の妥当性、証拠の真実性、実画面での使いやすさは人の確認として残っています。ハーネスを「できている」と言えるかは、目的と対象範囲を決めて初めて評価できるものだと思います。今回の私の評価は、再現性を意識した構造はできつつあるが、効果の実測と人間の確認を含めて完成とはまだ言えない、です。
+環境や検査範囲の診断、条件とテストの対応、完了証拠を機械で確認する構造はできました。一方、要件や証拠の妥当性は人が判断し、AI開発への効果も未計測です。私の評価は「仕組みはあるが、効果の再現性はこれから確かめる」です。
 
 参照した実装文書: [ハーネス入口](https://github.com/kenta-0420/mannschaft/blob/main/docs/development/harness-engineering.md)、[環境診断とcoverage](https://github.com/kenta-0420/mannschaft/blob/main/docs/development/harness-environment.md)、[再現性計測](https://github.com/kenta-0420/mannschaft/blob/main/docs/development/harness-benchmark.md)、[完了証拠ゲート](https://github.com/kenta-0420/mannschaft/blob/main/docs/development/completion-evidence.md)。
 
-図はQiitaが案内するMermaid記法で記述しています（[Qiita公式ガイド](https://qiita.com/Qiita/items/c686397e4a0f4f11683e)）。タグ候補: `AI` `開発` `エージェント` `テスト` `効率化`
+図はQiitaが案内するMermaid記法で記述しています（[Qiita公式ガイド](https://qiita.com/Qiita/items/c686397e4a0f4f11683d)）。タグ候補: `AI` `開発` `エージェント` `テスト` `効率化`
