@@ -2,7 +2,7 @@
 
 | 項目 | 内容 |
 |---|---|
-| ステータス | 🟡 実装中（P1 試練まで。P1 出陣で 🟢 にする） |
+| ステータス | 🟢 P1 実装済み（team の outbox・relay・2-C の C 案。social は 6-E' で追従） |
 | 起草 | 2026-10-10（陣立て書 `2026-10-10-notification-outbox-gungi.md` 改訂第2版。マスター裁可 Q1〜Q8 すべて推奨案） |
 | 関連 | [F01.2.1 §6.7・§8.5.3](../features/F01.2.1_org_team_groups.md)、[ドメイン・DB 設計原則](domain_db_design_principles.md) 原則1・5・6・7 |
 
@@ -51,7 +51,9 @@ outbox にすると、業務の tx は**自ドメインの表に1行書くだけ
 | `team.service` | `OutboxTeamAffiliationNotifier` | `TeamAffiliationNotifier` の実装（`MANDATORY`。outbox への冪等 INSERT と起こしの publish）|
 | `team.service` | `TeamNotificationOutboxSource` | SPI 実装（各操作 `REQUIRES_NEW`、team の Repository だけ）|
 
-`FanoutTeamAffiliationNotifier` と `TeamAffiliationNotifier#enqueueAfterCommit` は削除する（OG03）。
+| `config` | `AsyncConfig#notificationOutboxPool`（Bean 名 `notification-outbox-pool`）| 起こし専用の executor（§5）|
+
+`FanoutTeamAffiliationNotifier` と `TeamAffiliationNotifier#enqueueAfterCommit` は P1 で削除した（OG03）。`NotificationFanoutJobService#enqueueInOwnTransaction` は本番の呼び出し元が無くなったが、D-3P-3 の陽性検体（test の `*.mandatoryport`）が参照するため残してある（notification 以外からの依存は D-3P-3 が禁じる）。
 
 ## 3. DDL（team。social も同型）
 
@@ -96,6 +98,8 @@ CREATE TABLE team_notification_outbox (
 ### 3.2 時刻
 起きた瞬間なので Entity は `Instant`（`hibernate.jdbc.time_zone=UTC` で UTC の DATETIME として保存）。`LocalDateTime` のフィールドは新設しない（`DateTimeAndZoneGuardTest`）。relay・バッチは注入した `Clock` から `Instant` を取る。
 
+native SQL へは `Instant` を**エポックからのマイクロ秒**で渡し、SQL の中で `TIMESTAMPADD(MICROSECOND, :micros, '1970-01-01 00:00:00')` により UTC の DATETIME(6) にする（読み出しは `TIMESTAMPDIFF(MICROSECOND, '1970-01-01 00:00:00', 列)`）。加盟行の `TeamOrgMembershipRepository` がエポック秒で渡すのと同じ作法で、JVM 既定ゾーン（JST に強制）にも接続のセッションゾーンにも依らない。`LocalDateTime` を束縛すると Hibernate が JVM 既定ゾーンから UTC へ変換して9時間ずれ、時刻列に Java の値を直接束縛する形は `RawSqlTimeColumnGuardTest` が禁じている。
+
 ### 3.3 境界（原則1・5・6・7）
 - クロスドメイン FK なし（`organization_id` は運用用の写しで索引のみ）。
 - 主キーは UUIDv7（`UuidV7Entity`）。
@@ -122,18 +126,18 @@ outbox の Repository は `organization_id` で絞り込む問い合わせを持
 ### 4.4 再試行・DEAD・回収
 - 取り込みの例外 → PENDING に戻し `attempt_count+1`、`next_attempt_at = now + 30秒×2^(n-1)`（上限1時間）、`last_error` を記録、`claim_token=NULL`（OB06）。業務の行は巻き戻らない。
 - 10回目の失敗で DEAD と `dead_at`、メトリクス `dead`＋ERROR ログ。以後 claim されない（OB07・Q7）。管理画面からの再送は作らない。
-- 回収: `claimed_at` が2分を超えた RELAYING を PENDING・`claim_token=NULL` に戻す（毎分、`@SchedulerLock(name="notificationOutboxStuckRecovery")`＋`@BatchEndpoint(name="notification-outbox-stuck-recovery")`、メトリクス `recovered`。OB08）。
+- 回収: `claimed_at` が2分を超えた RELAYING を PENDING・`claim_token=NULL` に戻す（毎分、`@SchedulerLock(name="notificationOutboxStuckRecovery", lockAtMostFor="PT50S")`＋`@BatchEndpoint(name="notification-outbox-stuck-recovery")`、メトリクス `recovered`。OB08）。
 
 ### 4.5 掃除
-RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎたものを削除する（起算点は `created_at` ではない）。PENDING・RELAYING は消さない。日次、`@SchedulerLock(name="notificationOutboxSweep")`＋`@BatchEndpoint(name="notification-outbox-sweep")`（OB11）。
+RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎたものを削除する（起算点は `created_at` ではない）。PENDING・RELAYING は消さない。日次 04:40、`@SchedulerLock(name="notificationOutboxSweep", lockAtMostFor="PT30M")`＋`@BatchEndpoint(name="notification-outbox-sweep")`（OB11）。
 
 ### 4.6 順序
 保証しない（UUIDv7 の id 昇順でおおむね FIFO）。通知は互いに独立したジョブである。
 
 ## 5. 起こしとポーラー（Q6）
 
-- 起こし: 書き込み側が tx の中で `NotificationOutboxAppendedEvent` を publish → relay の `onAppended` が `@Async("notification-outbox-pool") @TransactionalEventListener(phase = AFTER_COMMIT)` で即 drain（OB10）。
-- 専用の executor `notification-outbox-pool`: core 2・max 4・キュー100 程度、拒否時は CallerRuns（捨てない・例外を投げない）、拒否をメトリクス `nudge_rejected` に数える。
+- 起こし: 書き込み側が tx の中で `NotificationOutboxAppendedEvent` を publish → relay の `onAppended` が `@Async("notification-outbox-pool") @TransactionalEventListener(phase = AFTER_COMMIT)` で即 drain（OB10）。`@BackgroundFeaturePolicy(mode = ALWAYS)`（バックグラウンド入口の番人が宣言を要求する）。drain するのはイベントの `sourceName` の source だけ（名前が一致しなければ全 source）。
+- 専用の executor `notification-outbox-pool`: core 2・max 4・キュー100 程度、拒否時は CallerRuns（捨てない・例外を投げない）、拒否をメトリクス `nudge_rejected`（tag なし。executor は source を知らない）に数える。
 - 予備ポーラー: `poll()` に `@Scheduled(fixedDelay = 5000)`・`@SchedulerLock(name = "notificationOutboxRelay", lockAtMostFor = "PT1M", lockAtLeastFor = "PT1S")`・`@BackgroundFeaturePolicy(mode = ALWAYS)`。成功のたびに `poller_last_success_epoch` を更新する。ポーラーのノードが lock を持ったまま落ちても、`lockAtMostFor` の1分で別ノードが引き継ぐ（OB12a）。
 - 起こしと予備ポーラーが重なっても、`SKIP LOCKED` で行が分かれ、重なっても冪等。
 
@@ -193,7 +197,7 @@ RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎた
 ## 11. 段取り
 
 1. P0（本書・F01.2.1 の改訂）＋ P1 試練（red）— 本 PR。
-2. P1 出陣（同じブランチで green 化）: common.outbox・notification.outbox（SPI・ingest・relay・バッチ・executor）・team outbox・`OutboxTeamAffiliationNotifier` への差し替えと `FanoutTeamAffiliationNotifier` の削除・2-C の C 案・D-3P。
+2. P1 出陣（同じブランチで green 化。**済**）: common.outbox・notification.outbox（SPI・ingest・relay・バッチ・executor）・team outbox・`OutboxTeamAffiliationNotifier` への差し替えと `FanoutTeamAffiliationNotifier` の削除・2-C の C 案・D-3P。
 3. 6-E'（social）: `social_notification_outbox`、`SocialNotificationOutboxSource`、`AnnouncementPushEnqueuer` の実装の差し替え、`FANOUT_WITH_AUDIENCE`、AC-H21 の再定義（F01.2.1 §16）。
 4. 2-B2・2-D: P1 の後に追従（本体コード不変、IT に drain を挟む）。
 
@@ -202,3 +206,4 @@ RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎた
 | 日付 | 内容 |
 |---|---|
 | 2026-10-10 | 初版（陣立て書 改訂第2版・マスター裁可 Q1〜Q8）。P1 試練と同時に作成 |
+| 2026-10-10 | P1 出陣: ステータスを 🟢 に。§2.1 に executor を追加、§3.2 に native SQL への時刻の渡し方（エポックマイクロ秒）、§4.4・§4.5 にロックと実行時刻を追記 |
