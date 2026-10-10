@@ -109,7 +109,13 @@ async function onBookmark(targetId: number) {
 }
 
 function goBack() {
-  router.back()
+  // vue-router が積む history.state.back はアプリ内の直前ルート（URL 直開きなら null）。
+  // history.length 判定はアプリ外ページが履歴にあると誤るため使わない。
+  if (window.history.state?.back) {
+    router.back()
+  } else {
+    router.push('/timeline')
+  }
 }
 
 onMounted(() => loadPost())
