@@ -53,7 +53,7 @@ describe('JoinRequestList', () => {
       props: { ...baseProps },
       global: { stubs },
     })
-    expect(wrapper.text()).toContain('承認待ちの参加申請はありません')
+    expect(wrapper.text()).toContain('There are no join requests awaiting approval')
   })
 
   it('申請一覧を行として描画し、承認/却下ボタンで各 emit を発火する（1件目）', async () => {
@@ -145,7 +145,7 @@ describe('JoinRequestList', () => {
       props: { ...baseProps, error: true },
       global: { stubs },
     })
-    expect(wrapper.text()).not.toContain('承認待ちの参加申請はありません')
+    expect(wrapper.text()).not.toContain('There are no join requests awaiting approval')
     const errorBox = wrapper.find('[data-testid="join-request-list-error"]')
     expect(errorBox.exists()).toBe(true)
 

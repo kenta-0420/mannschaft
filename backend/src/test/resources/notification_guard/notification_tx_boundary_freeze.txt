@@ -55,7 +55,7 @@
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 27
+# CLASSIFIED_FLOOR: 23
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
 # TX_NOTIFY_VIA_DELEGATE / TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY について呼び先の宣言から区分を導出し、
@@ -241,7 +241,15 @@
 #   是正後: 凍結エントリ 30 + REMOVED 8 + AMBIGUOUS 0 = 38
 # ■ CLASSIFIED_FLOOR: 32 -> 27（消した5件はすべて ROLLBACK_COUPLED の分類済み行）
 #
-# CENSUS_FLOOR: 38
+# ■ 最終（G1 jobmatching と G8 の merge 後の実測）: 凍結エントリ 26 + REMOVED 8 + AMBIGUOUS 0 = 34 / 分類済み 23。
+#   上下の 38 / 39 / 27 / 28 は各単独時点の値であり、有効値は本行の 34 / 23。
+# --- jobmatching ドメイン 4件の是正（Issue #2997 / CENSUS_FLOOR 43 -> 39 / CLASSIFIED_FLOOR 32 -> 28）---
+# JobApplicationService#apply / JobContractService#acceptApplication / #reportCompletion /
+# JobCheckInService#fireNotifications（いずれも TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED）。
+# 業務TX内は JobNotificationEvent の publish のみとし、配送は新設の JobNotificationListener
+# （AFTER_COMMIT + @Async("event-pool")）へ移した。実DB検証: JobNotificationTransactionIT。
+# 裏取り: 凍結エントリ 35 + REMOVED 8 = 43 -> 凍結エントリ 31 + REMOVED 8 = 39。分類済み 32 -> 28。
+# CENSUS_FLOOR: 34
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -249,10 +257,6 @@ com.mannschaft.app.admin.batch.BatchEventListener#onCompleted -> PLAIN_EVENT_LIS
 com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.jobmatching.service.JobApplicationService#apply -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.jobmatching.service.JobCheckInService#fireNotifications -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.jobmatching.service.JobContractService#acceptApplication -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.jobmatching.service.JobContractService#reportCompletion -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfirmService#resendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processAlertIfNeeded -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processReminders -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
