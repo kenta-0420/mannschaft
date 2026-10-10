@@ -626,6 +626,14 @@
     "detail": {
       "back": "Zurück",
       "loadFailed": "Beitrag konnte nicht geladen werden",
+      "repliesLoadFailed": "Antworten konnten nicht geladen werden",
+      "replySuccess": "Antwort gesendet",
+      "replyFailed": "Antwort konnte nicht gesendet werden",
+      "bookmarkFailed": "Lesezeichen konnte nicht aktualisiert werden",
+      "replyPlaceholder": "Antwort schreiben...",
+      "replySubmit": "Antworten",
+      "replyCount": "{count} Antworten",
+      "loadMoreReplies": "Weitere Antworten laden",
       "notFound": "Der Beitrag wurde nicht gefunden oder kann nicht angezeigt werden"
     },
     "videoProcessing": "Video wird verarbeitet...",

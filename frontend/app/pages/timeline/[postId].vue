@@ -62,7 +62,7 @@ async function loadMoreReplies() {
     replyCursor.value = res.meta.nextCursor
     hasMoreReplies.value = res.meta.hasNext
   } catch {
-    showError('返信の取得に失敗しました')
+    showError(t('timeline.detail.repliesLoadFailed'))
   } finally {
     loadingMore.value = false
   }
@@ -76,9 +76,9 @@ async function onReply() {
     replies.value.unshift(res.data)
     if (post.value?.stats) post.value.stats.replyCount++
     replyContent.value = ''
-    showSuccess('返信しました')
+    showSuccess(t('timeline.detail.replySuccess'))
   } catch {
-    showError('返信に失敗しました')
+    showError(t('timeline.detail.replyFailed'))
   } finally {
     submittingReply.value = false
   }
@@ -104,7 +104,7 @@ async function onBookmark(targetId: number) {
       target.isBookmarked = true
     }
   } catch {
-    showError('ブックマークに失敗しました')
+    showError(t('timeline.detail.bookmarkFailed'))
   }
 }
 
@@ -134,14 +134,14 @@ onMounted(() => loadPost())
       <div class="mt-4 rounded-xl border border-surface-300 bg-surface-0 p-4">
         <Textarea
           v-model="replyContent"
-          placeholder="返信を入力..."
+          :placeholder="t('timeline.detail.replyPlaceholder')"
           auto-resize
           rows="2"
           class="mb-2 w-full"
         />
         <div class="flex justify-end">
           <Button
-            label="返信"
+            :label="t('timeline.detail.replySubmit')"
             size="small"
             :loading="submittingReply"
             :disabled="!replyContent.trim()"
@@ -153,7 +153,7 @@ onMounted(() => loadPost())
       <!-- リプライ一覧 -->
       <div class="mt-4 flex flex-col gap-3">
         <p v-if="replies.length > 0" class="text-sm font-medium text-surface-500">
-          返信 {{ post.stats?.replyCount }}件
+          {{ t('timeline.detail.replyCount', { count: post.stats?.replyCount ?? 0 }) }}
         </p>
         <TimelinePostCard
           v-for="reply in replies"
@@ -166,7 +166,7 @@ onMounted(() => loadPost())
         />
         <Button
           v-if="hasMoreReplies"
-          label="さらに返信を読み込む"
+          :label="t('timeline.detail.loadMoreReplies')"
           text
           :loading="loadingMore"
           @click="loadMoreReplies"

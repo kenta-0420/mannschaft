@@ -626,6 +626,14 @@
     "detail": {
       "back": "戻る",
       "loadFailed": "投稿を取得できませんでした",
+      "repliesLoadFailed": "返信の取得に失敗しました",
+      "replySuccess": "返信しました",
+      "replyFailed": "返信に失敗しました",
+      "bookmarkFailed": "ブックマークに失敗しました",
+      "replyPlaceholder": "返信を入力...",
+      "replySubmit": "返信",
+      "replyCount": "返信 {count}件",
+      "loadMoreReplies": "さらに返信を読み込む",
       "notFound": "投稿が見つからないか、表示できません"
     },
     "videoProcessing": "動画を処理中...",

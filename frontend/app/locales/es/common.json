@@ -626,6 +626,14 @@
     "detail": {
       "back": "Volver",
       "loadFailed": "No se pudo obtener la publicación",
+      "repliesLoadFailed": "No se pudieron cargar las respuestas",
+      "replySuccess": "Respuesta enviada",
+      "replyFailed": "No se pudo enviar la respuesta",
+      "bookmarkFailed": "No se pudo actualizar el marcador",
+      "replyPlaceholder": "Escribe una respuesta...",
+      "replySubmit": "Responder",
+      "replyCount": "{count} respuestas",
+      "loadMoreReplies": "Cargar más respuestas",
       "notFound": "No se encontró la publicación o no se puede mostrar"
     },
     "videoProcessing": "Procesando video...",

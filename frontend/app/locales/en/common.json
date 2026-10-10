@@ -626,6 +626,14 @@
     "detail": {
       "back": "Back",
       "loadFailed": "Failed to load the post",
+      "repliesLoadFailed": "Failed to load replies",
+      "replySuccess": "Reply sent",
+      "replyFailed": "Failed to send the reply",
+      "bookmarkFailed": "Failed to update the bookmark",
+      "replyPlaceholder": "Write a reply...",
+      "replySubmit": "Reply",
+      "replyCount": "{count} replies",
+      "loadMoreReplies": "Load more replies",
       "notFound": "This post was not found or cannot be displayed"
     },
     "videoProcessing": "Processing video...",
