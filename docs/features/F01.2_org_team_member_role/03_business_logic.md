@@ -480,7 +480,7 @@
 1. PATCH /api/v1/teams/{id}/restore（または /organizations/{id}/restore）を受付
 2. 操作者が SYSTEM_ADMIN か確認 → SYSTEM_ADMIN 以外は 403
 3. 対象エンティティが存在するか確認 → なければ 404
-4. deleted_at IS NULL → 論理削除されていない → 422
+4. deleted_at IS NULL → 論理削除されていない → 409（TEAM_006 / ORG_006）
 5. deleted_at = NULL で UPDATE（復元）
 6. audit_logs に TEAM_RESTORED（または ORGANIZATION_RESTORED）を記録
    metadata: {"restored_by": SYSTEM_ADMIN の user_id, "originally_deleted_at": 元の deleted_at}

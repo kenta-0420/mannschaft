@@ -161,6 +161,13 @@ public interface TeamRepository
     Optional<TeamEntity> findByIdIncludingDeleted(@Param("id") Long id);
 
     /**
+     * 復元専用: 論理削除状態・lifecycle にかかわらず slug から ID だけを取得する。
+     * エンティティ取得時の {@code @SQLRestriction} を回避するため native scalar query を使う。
+     */
+    @Query(value = "SELECT id FROM teams WHERE slug = :slug", nativeQuery = true)
+    Optional<Long> findIdBySlugIncludingDeleted(@Param("slug") String slug);
+
+    /**
      * 論理削除済みチームを復元する。deleted_at を NULL に戻す。
      * @return 更新件数（0 = 対象なし or 削除済みでない）
      */
