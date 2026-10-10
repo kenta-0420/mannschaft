@@ -125,11 +125,11 @@
           "keypoint": "Wichtige Punkte zum Merken"
         },
         "vocab": {
-          "cards": "今日の単語"
+          "cards": "Heutige Wörter"
         }
       },
-      "VOCAB": "単語帳",
-      "vocab_desc": "語句と意味を暗記カードとして登録し、想起テストで交互に出題する"
+      "VOCAB": "Vokabelliste",
+      "vocab_desc": "Begriffe und Bedeutungen als Karteikarten anlegen und im Abruftest abwechselnd abfragen"
     },
     "entry": {
       "list_heading": "Rückblicke",
@@ -187,7 +187,7 @@
       "history_empty": "Noch kein Abrufverlauf.",
       "not_masked": "Dieser Eintrag ist nicht verborgen. Du kannst ihn normal bearbeiten.",
       "back_to_entry": "Zurück zum Rückblick",
-      "card_answer_placeholder": "答えを入力...",
+      "card_answer_placeholder": "Antwort eingeben...",
       "outline_scaffold": {
         "panel_heading": "Gerüsthinweise",
         "main_theme_label": "Thema",
@@ -251,51 +251,51 @@
     },
     "section": {
       "type": {
-        "outline": "アウトライン",
-        "term_card": "暗記カード"
+        "outline": "Gliederung",
+        "term_card": "Karteikarten"
       },
-      "type_label": "中見出しの型",
-      "expand": "展開する",
-      "collapse": "折りたたむ",
-      "summary_subsections": "小見出し{n}件",
-      "summary_cards": "カード{n}枚"
+      "type_label": "Typ der Zwischenüberschrift",
+      "expand": "Aufklappen",
+      "collapse": "Zuklappen",
+      "summary_subsections": "{n} Unterüberschrift(en)",
+      "summary_cards": "{n} Karte(n)"
     },
     "card": {
-      "term_label": "語句",
-      "meaning_label": "意味",
-      "add": "カードを追加",
-      "remove": "カードを削除"
+      "term_label": "Begriff",
+      "meaning_label": "Bedeutung",
+      "add": "Karte hinzufügen",
+      "remove": "Karte löschen"
     },
     "vocab": {
-      "title": "単語帳（期間横断）",
-      "period_from": "開始日",
-      "period_to": "終了日",
-      "filter_theme": "テーマで絞り込み",
-      "filter_subject": "科目で絞り込み",
+      "title": "Vokabelliste (zeitraumübergreifend)",
+      "period_from": "Startdatum",
+      "period_to": "Enddatum",
+      "filter_theme": "Nach Thema filtern",
+      "filter_subject": "Nach Fach filtern",
       "mode": {
-        "view": "一覧",
-        "quiz": "自己クイズ"
+        "view": "Liste",
+        "quiz": "Selbsttest"
       },
       "direction": {
-        "meaning_to_term": "意味→語句",
-        "term_to_meaning": "語句→意味",
-        "shuffle": "シャッフル"
+        "meaning_to_term": "Bedeutung → Begriff",
+        "term_to_meaning": "Begriff → Bedeutung",
+        "shuffle": "Mischen"
       },
-      "flip": "めくる",
-      "empty": "この期間に暗記カードはありません",
-      "total_cards": "{n}枚のカード",
-      "source_label": "出典",
-      "subjects_all": "全教科",
-      "subjects_filter": "教科フィルター",
-      "shuffle": "シャッフル",
-      "shuffle_note": "取得のたびに順番が変わります",
-      "card_limit_warning": "カードが多すぎます。教科または期間を絞ってください（最大500件）",
+      "flip": "Umdrehen",
+      "empty": "In diesem Zeitraum gibt es keine Karteikarten",
+      "total_cards": "{n} Karte(n)",
+      "source_label": "Quelle",
+      "subjects_all": "Alle Fächer",
+      "subjects_filter": "Fachfilter",
+      "shuffle": "Mischen",
+      "shuffle_note": "Die Reihenfolge ändert sich bei jedem Abruf",
+      "card_limit_warning": "Zu viele Karten. Bitte nach Fach oder Zeitraum eingrenzen (maximal 500)",
       "inline": {
-        "title": "＋単語を追加",
-        "term_placeholder": "語句 (例: apple)",
-        "meaning_placeholder": "意味 (例: りんご)",
-        "add_button": "追加",
-        "added": "追加しました"
+        "title": "+ Wort hinzufügen",
+        "term_placeholder": "Begriff (z. B. apple)",
+        "meaning_placeholder": "Bedeutung (z. B. Apfel)",
+        "add_button": "Hinzufügen",
+        "added": "Hinzugefügt"
       }
     }
   }
