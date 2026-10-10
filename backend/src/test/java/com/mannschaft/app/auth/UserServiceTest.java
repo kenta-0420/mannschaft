@@ -808,6 +808,30 @@ class UserServiceTest {
         }
 
         @Test
+        @DisplayName("CMP-261010-1130: 解決済みURL（署名付きURL）を含む更新を2回送っても avatar_url は保存キーのまま")
+        void updateProfile_解決済みURLのavatarUrlは保存されない() {
+            UserEntity user = createActiveUser();
+            String storedKey = "users/42/icon/abc.png";
+            user.updateAvatarUrl(storedKey);
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(encryptionService.hmac(anyString())).willReturn("hashed-value");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webauthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(oauthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            String signedUrl = "https://minio.example.com/bucket/" + storedKey + "?X-Amz-Signature=" + "a".repeat(600);
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, "en", null, null,
+                    null, signedUrl, null, null, null);
+
+            userService.updateProfile(USER_ID, req);
+            userService.updateProfile(USER_ID, req);
+
+            assertThat(user.getAvatarUrl()).isEqualTo(storedKey);
+        }
+
+        @Test
         @DisplayName("正常系: プロフィールが更新される")
         void updateProfile_正常_プロフィール更新() {
             // Given
