@@ -623,6 +623,19 @@
     }
   },
   "timeline": {
+    "detail": {
+      "back": "返回",
+      "loadFailed": "无法获取帖子",
+      "repliesLoadFailed": "无法获取回复",
+      "replySuccess": "已回复",
+      "replyFailed": "回复失败",
+      "bookmarkFailed": "收藏操作失败",
+      "replyPlaceholder": "输入回复...",
+      "replySubmit": "回复",
+      "replyCount": "回复 {count} 条",
+      "loadMoreReplies": "加载更多回复",
+      "notFound": "未找到该帖子或无法显示"
+    },
     "videoProcessing": "视频处理中...",
     "videoFailed": "视频无法播放",
     "videoUploadButton": "附加视频",
