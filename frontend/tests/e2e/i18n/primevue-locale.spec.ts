@@ -8,7 +8,8 @@ import { waitForHydration } from '../helpers/wait'
  * 前提とする検証用ページ（出陣で作成）: /e2e/primevue-locale（app/pages/e2e/primevue-locale.vue）
  * - auth: false。本番ビルドでは 404（開発・E2E 環境のみ有効）
  * - data-testid="pv-dialog"     : <Dialog visible appendTo="self" closable :modal="false"> 常時表示
- * - data-testid="pv-drawer"     : <Drawer visible appendTo="self" :modal="false"> 常時表示
+ * - data-testid="pv-drawer"     : <Drawer visible appendTo="self" position="right" :modal="false"> 常時表示
+ *   （Drawer パネルは body 直下に fixed 描画されるため、左上の言語切替ボタンを覆わないよう右端・幅 16rem に置く）
  * - data-testid="pv-tabs"       : 幅を狭めた <Tabs scrollable>（タブ多数で送りボタンが出る）
  * - data-testid="pv-datepicker" : <DatePicker inline showButtonBar>
  * - data-testid="pv-paginator"  : <Paginator :rows="10" :totalRecords="100">
