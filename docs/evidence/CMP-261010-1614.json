@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261010-1614",
+  "scope": "app",
+  "implementation": {
+    "pr": 3761,
+    "sha": "93e8c8cbc034f270cfc505cd9225ee302f8f1766"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "取得失敗（404）時にスピナーで止まらず、見つからない表示（data-testid=timeline-post-not-found）と戻る導線が出る。",
+      "tests": [
+        {
+          "name": "取得失敗(404相当)では読み込み中のまま止まらず、見つからない表示と戻る導線を出す",
+          "evidence": "frontend/app/pages/timeline/[postId].spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "不在ID・同組織非メンバー・他テナントで同じ表示になる（存在を漏らさない）。",
+      "tests": [
+        {
+          "name": "チームTLのカーソルページング: ピン先頭1回・重複欠落なし・末尾で停止、同組織非メンバー/他テナントは閲覧不可（permalink の拒否確認）",
+          "evidence": "frontend/tests/e2e/real/timeline/timeline-team-feed-ui-roles.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "文言はi18n（6言語）で直書きがない。",
+      "tests": [
+        {
+          "name": "timeline.detail の文言キー（ja）",
+          "evidence": "frontend/app/locales/ja/common.json"
+        },
+        {
+          "name": "取得失敗(404相当)では読み込み中のまま止まらず、見つからない表示と戻る導線を出す",
+          "evidence": "frontend/app/pages/timeline/[postId].spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "戻る: アプリ内の直前履歴があれば戻り、無ければ /timeline へ遷移する。",
+      "tests": [
+        {
+          "name": "戻る: history.state.back=$back のとき（アプリ内履歴が無ければ一覧へ push、あれば router.back）",
+          "evidence": "frontend/app/pages/timeline/[postId].spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38037623929
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3761"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "frontend/tests/e2e/real/timeline/timeline-team-feed-ui-roles.spec.ts"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3761"
+    }
+  },
+  "regressions": [
+    {
+      "description": "取得失敗時に PageLoading が残る。",
+      "test": "取得失敗(404相当)では読み込み中のまま止まらず、見つからない表示と戻る導線を出す",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/commit/edaddd918dff7b22b39278b0a1a7c92b396b2a02",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38037623929"
+    },
+    {
+      "description": "取得失敗時の戻るで、アプリ内履歴が無いとき /timeline へ push されない。",
+      "test": "戻る: history.state.back=$back のとき（アプリ内履歴が無ければ一覧へ push、あれば router.back）",
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/commit/a71483c521275b766a1ef4999148293a0c7caf9f",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38037623929"
+    }
+  ]
+}

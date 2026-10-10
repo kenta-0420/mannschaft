@@ -519,6 +519,8 @@ onUnmounted(() => {
 
 UI に表示する文字列は **直書き禁止**。必ずロケールファイル（`app/locales/{ja,en,zh,ko,es,de}/*.json`）に追加してから `$t('key')` / `t('key')` で参照する。デフォルトロケールは `ja`。対応言語は日本語・英語・中国語（簡体）・韓国語・スペイン語・ドイツ語の 6 言語。
 
+**PrimeVue 既定文言**（aria-label・日付・ページ送り等）は `app/utils/primevueLocales.ts` で 6 言語の完全辞書として管理し、`plugins/primevue-locale.ts` が `i18n.locale` に追従させる（SSR 対応）。`app/error.vue` の文言は `common.json` の `error_page.*`。
+
 ### ロケール別フォーマット関数を呼ぶ際の注意
 
 `toLocaleDateString` / `toLocaleString` / `Intl.DateTimeFormat` 等にロケールを渡す場合、`useI18n()` から取り出した `locale` は `WritableComputedRef<string>` なので、**必ず `locale.value` を渡すこと**。`locale` をそのまま渡すと実行時に `Ref` オブジェクトが toString されて `[object Object]` となる、または `RangeError: Invalid language tag` を投げる恐れがある。

@@ -623,6 +623,19 @@
     }
   },
   "timeline": {
+    "detail": {
+      "back": "뒤로",
+      "loadFailed": "게시물을 불러오지 못했습니다",
+      "repliesLoadFailed": "답글을 불러오지 못했습니다",
+      "replySuccess": "답글을 등록했습니다",
+      "replyFailed": "답글 등록에 실패했습니다",
+      "bookmarkFailed": "북마크 처리에 실패했습니다",
+      "replyPlaceholder": "답글을 입력하세요...",
+      "replySubmit": "답글",
+      "replyCount": "답글 {count}개",
+      "loadMoreReplies": "답글 더 보기",
+      "notFound": "게시물을 찾을 수 없거나 표시할 수 없습니다"
+    },
     "videoProcessing": "동영상 처리 중...",
     "videoFailed": "동영상을 재생할 수 없습니다",
     "videoUploadButton": "동영상 첨부",
@@ -2860,5 +2873,12 @@
     "minutesAgo": "{count}분 전",
     "hoursAgo": "{count}시간 전",
     "daysAgo": "{count}일 전"
+  },
+  "error_page": {
+    "not_found_title": "페이지를 찾을 수 없습니다",
+    "not_found_description": "찾으시는 페이지가 존재하지 않거나 이동 또는 삭제되었을 수 있습니다.",
+    "generic_title": "오류가 발생했습니다",
+    "generic_description": "잠시 후 다시 시도해 주세요. 문제가 계속되면 관리자에게 문의해 주세요.",
+    "back_home": "홈으로 돌아가기"
   }
 }

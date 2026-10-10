@@ -497,4 +497,12 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     int clearGroupOfActive(@Param("organizationId") Long organizationId,
                            @Param("teamIds") java.util.Collection<Long> teamIds,
                            @Param("now") java.time.Instant now);
+
+    /**
+     * チームが ACTIVE で加盟している組織と、その所属グループ ID（未分類は NULL）を返す（告知の表示判定。§8.2）。
+     */
+    @Query("SELECT m.organizationId AS organizationId, m.groupId AS groupId FROM TeamOrgMembershipEntity m "
+        + "WHERE m.teamId = :teamId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE")
+    List<TeamOrgGroupProjection> findActiveOrgGroupsByTeamId(@Param("teamId") Long teamId);
 }

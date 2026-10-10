@@ -57,7 +57,7 @@
       "subject_link_placeholder": "从课程表科目中选择",
       "subject_link_help": "所选科目的全部课时将在今日视图中显示此主题",
       "subject_link_empty": "尚未注册课程表",
-      "academic_year_label": "学年度",
+      "academic_year_label": "学年",
       "term_label_label": "学期",
       "academic_year_placeholder": "例：2026",
       "term_label_placeholder": "例：第一学期、前期、Q1",
@@ -125,11 +125,11 @@
           "keypoint": "需记住的要点"
         },
         "vocab": {
-          "cards": "今日の単語"
+          "cards": "今日单词"
         }
       },
-      "VOCAB": "単語帳",
-      "vocab_desc": "語句と意味を暗記カードとして登録し、想起テストで交互に出題する"
+      "VOCAB": "单词本",
+      "vocab_desc": "将词语与释义登记为记忆卡片，并在回忆测试中交替出题"
     },
     "entry": {
       "list_heading": "回顾列表",
@@ -187,7 +187,7 @@
       "history_empty": "还没有回忆历史。",
       "not_masked": "此条目未被隐藏，可正常编辑。",
       "back_to_entry": "返回回顾",
-      "card_answer_placeholder": "答えを入力...",
+      "card_answer_placeholder": "请输入答案...",
       "outline_scaffold": {
         "panel_heading": "脚手架提示",
         "main_theme_label": "主题",
@@ -251,51 +251,51 @@
     },
     "section": {
       "type": {
-        "outline": "アウトライン",
-        "term_card": "暗記カード"
+        "outline": "大纲",
+        "term_card": "记忆卡片"
       },
-      "type_label": "中見出しの型",
-      "expand": "展開する",
-      "collapse": "折りたたむ",
-      "summary_subsections": "小見出し{n}件",
-      "summary_cards": "カード{n}枚"
+      "type_label": "小标题类型",
+      "expand": "展开",
+      "collapse": "折叠",
+      "summary_subsections": "{n} 个小标题",
+      "summary_cards": "{n} 张卡片"
     },
     "card": {
-      "term_label": "語句",
-      "meaning_label": "意味",
-      "add": "カードを追加",
-      "remove": "カードを削除"
+      "term_label": "词语",
+      "meaning_label": "释义",
+      "add": "添加卡片",
+      "remove": "删除卡片"
     },
     "vocab": {
-      "title": "単語帳（期間横断）",
-      "period_from": "開始日",
-      "period_to": "終了日",
-      "filter_theme": "テーマで絞り込み",
-      "filter_subject": "科目で絞り込み",
+      "title": "单词本（跨时间段）",
+      "period_from": "开始日期",
+      "period_to": "结束日期",
+      "filter_theme": "按主题筛选",
+      "filter_subject": "按科目筛选",
       "mode": {
-        "view": "一覧",
-        "quiz": "自己クイズ"
+        "view": "列表",
+        "quiz": "自测"
       },
       "direction": {
-        "meaning_to_term": "意味→語句",
-        "term_to_meaning": "語句→意味",
-        "shuffle": "シャッフル"
+        "meaning_to_term": "释义→词语",
+        "term_to_meaning": "词语→释义",
+        "shuffle": "随机打乱"
       },
-      "flip": "めくる",
-      "empty": "この期間に暗記カードはありません",
-      "total_cards": "{n}枚のカード",
-      "source_label": "出典",
-      "subjects_all": "全教科",
-      "subjects_filter": "教科フィルター",
-      "shuffle": "シャッフル",
-      "shuffle_note": "取得のたびに順番が変わります",
-      "card_limit_warning": "カードが多すぎます。教科または期間を絞ってください（最大500件）",
+      "flip": "翻开",
+      "empty": "该时间段内没有记忆卡片",
+      "total_cards": "共 {n} 张卡片",
+      "source_label": "出处",
+      "subjects_all": "全部科目",
+      "subjects_filter": "科目筛选",
+      "shuffle": "随机打乱",
+      "shuffle_note": "每次获取时顺序都会变化",
+      "card_limit_warning": "卡片过多。请缩小科目或时间范围（最多 500 张）",
       "inline": {
-        "title": "＋単語を追加",
-        "term_placeholder": "語句 (例: apple)",
-        "meaning_placeholder": "意味 (例: りんご)",
-        "add_button": "追加",
-        "added": "追加しました"
+        "title": "+ 添加单词",
+        "term_placeholder": "词语 (例: apple)",
+        "meaning_placeholder": "释义 (例: 苹果)",
+        "add_button": "添加",
+        "added": "已添加"
       }
     },
     "arSession": {
