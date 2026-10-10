@@ -59,6 +59,13 @@ mannschaft:
   # F09.18: テスト環境では実 SES を叩かない（simulate=true でログのみ送信）
   email:
     simulate: true
+  # 通知 outbox の起こし（AFTER_COMMIT・@Async の即時 drain）を試験では止める（docs/architecture/notification_outbox.md §7）。
+  # IT は NotificationOutboxRelay#drainAll() を同期で呼んで取り込む（起こしと IT の drain が競合して結果が揺れないように）。
+  # 起こし自体を検証する IT（NotificationOutboxNudgeIT）だけ @TestPropertySource で true にする。
+  # 予備ポーラーは test プロファイルで @EnableScheduling が無効（ShedLockConfig）なので自動では走らない。
+  notification:
+    outbox:
+      nudge-enabled: false
   jwt:
     secret: test-secret-key-that-is-at-least-256-bits-long-for-hmac-sha256-algorithm
     access-token-expiration: 900
