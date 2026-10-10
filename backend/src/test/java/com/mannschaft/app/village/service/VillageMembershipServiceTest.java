@@ -334,7 +334,7 @@ class VillageMembershipServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
         given(membershipRepository.findById(membershipId)).willReturn(Optional.of(headman));
-        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
+        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(
                 VILLAGE_ID, VillageRole.ELDER)).willReturn(Optional.of(elder));
         given(membershipRepository.save(any(VillageMembershipEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
@@ -343,6 +343,9 @@ class VillageMembershipServiceTest {
 
         assertThat(elder.getRole()).isEqualTo(VillageRole.HEADMAN);
         assertThat(headman.getLeftAt()).isNotNull();
+        // CMP-260826-1455: 後継候補は BAN 済みを除外する述語で取得する（BAN 済みを村長へ昇格させない）
+        verify(membershipRepository, never()).findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
+                any(), any());
     }
 
     @Test
@@ -356,9 +359,9 @@ class VillageMembershipServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
         given(membershipRepository.findById(membershipId)).willReturn(Optional.of(headman));
-        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
+        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(
                 VILLAGE_ID, VillageRole.ELDER)).willReturn(Optional.empty());
-        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
+        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(
                 VILLAGE_ID, VillageRole.VILLAGER)).willReturn(Optional.of(villager));
         given(membershipRepository.save(any(VillageMembershipEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
@@ -377,9 +380,9 @@ class VillageMembershipServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
         given(membershipRepository.findById(membershipId)).willReturn(Optional.of(headman));
-        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
+        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(
                 VILLAGE_ID, VillageRole.ELDER)).willReturn(Optional.empty());
-        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
+        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(
                 VILLAGE_ID, VillageRole.VILLAGER)).willReturn(Optional.empty());
         given(membershipRepository.save(any(VillageMembershipEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));

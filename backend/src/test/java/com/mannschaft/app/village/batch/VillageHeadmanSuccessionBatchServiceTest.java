@@ -153,7 +153,7 @@ class VillageHeadmanSuccessionBatchServiceTest {
                 .willReturn(Optional.of(headman));
         given(userRepository.findById(HEADMAN_USER_ID)).willReturn(Optional.of(deletedUser(HEADMAN_USER_ID)));
         given(membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
                 .willReturn(Optional.of(elder));
 
         VillageHeadmanSuccessionBatchService.SuccessionResult result = batch.processVillage(VILLAGE_ID);
@@ -183,10 +183,10 @@ class VillageHeadmanSuccessionBatchServiceTest {
                 .willReturn(Optional.of(headman));
         given(userRepository.findById(HEADMAN_USER_ID)).willReturn(Optional.of(deletedUser(HEADMAN_USER_ID)));
         given(membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
                 .willReturn(Optional.empty());
         given(membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.VILLAGER))
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.VILLAGER))
                 .willReturn(Optional.of(villager));
 
         VillageHeadmanSuccessionBatchService.SuccessionResult result = batch.processVillage(VILLAGE_ID);
@@ -206,10 +206,10 @@ class VillageHeadmanSuccessionBatchServiceTest {
                 .willReturn(Optional.of(headman));
         given(userRepository.findById(HEADMAN_USER_ID)).willReturn(Optional.of(deletedUser(HEADMAN_USER_ID)));
         given(membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
                 .willReturn(Optional.empty());
         given(membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.VILLAGER))
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.VILLAGER))
                 .willReturn(Optional.empty());
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
 
@@ -256,7 +256,7 @@ class VillageHeadmanSuccessionBatchServiceTest {
                 .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.HEADMAN))
                 .willReturn(Optional.empty());
         given(membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
                 .willReturn(Optional.of(elder));
 
         VillageHeadmanSuccessionBatchService.SuccessionResult result = batch.processVillage(VILLAGE_ID);

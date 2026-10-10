@@ -185,7 +185,7 @@ public class VillageMembershipService {
         UUID villageId = village.getId();
 
         Optional<VillageMembershipEntity> elder = membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(villageId, VillageRole.ELDER);
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(villageId, VillageRole.ELDER);
         if (elder.isPresent() && !elder.get().getId().equals(leavingHeadman.getId())) {
             VillageMembershipEntity succ = elder.get();
             succ.setRole(VillageRole.HEADMAN);
@@ -196,7 +196,7 @@ public class VillageMembershipService {
         }
 
         Optional<VillageMembershipEntity> villager = membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(villageId, VillageRole.VILLAGER);
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(villageId, VillageRole.VILLAGER);
         if (villager.isPresent() && !villager.get().getId().equals(leavingHeadman.getId())) {
             VillageMembershipEntity succ = villager.get();
             succ.setRole(VillageRole.HEADMAN);
