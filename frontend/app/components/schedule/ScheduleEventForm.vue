@@ -311,9 +311,10 @@ watch(
         }
         else {
           const content = (data.content as Record<string, unknown>) ?? {}
+          const detail = (data.detail as Record<string, unknown>) ?? {}
           const time = (data.time as Record<string, unknown>) ?? {}
           form.value.title = (content.title as string) ?? ''
-          form.value.description = (content.description as string) ?? ''
+          form.value.description = (detail.description as string) ?? ''
           form.value.location = (content.location as string) ?? ''
           form.value.allDay = (time.allDay as boolean) ?? false
           form.value.attendanceRequired = (content.attendanceRequired as boolean) ?? false

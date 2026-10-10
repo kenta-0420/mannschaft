@@ -8,6 +8,7 @@ import com.mannschaft.app.schedule.dto.AttendanceResponse;
 import com.mannschaft.app.schedule.dto.AttendanceTeamBreakdownResponse;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
+import com.mannschaft.app.schedule.dto.ScheduleDetailResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
@@ -98,7 +99,7 @@ public class OrgScheduleController {
     @GetMapping("/{scheduleId}")
     @Operation(summary = "組織スケジュール詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<ScheduleResponse>> getSchedule(
+    public ResponseEntity<ApiResponse<ScheduleDetailResponse>> getSchedule(
             @PathVariable OrgScopeId orgPublicId,
             @PathVariable Long scheduleId) {
         Long orgId = orgPublicId.value();
@@ -111,8 +112,11 @@ public class OrgScheduleController {
                 .orElse(null);
         var targetResponse = scheduleService.targetResponseForViewer(
                 entity, SecurityUtils.getCurrentUserId());
-        ScheduleResponse response = ScheduleResponse.builder()
+        ScheduleDetailResponse response = ScheduleDetailResponse.builder()
                 .id(entity.getId())
+                .detail(new ScheduleDetailResponse.ScheduleDetailContentDto(
+                        entity.getDescription(), entity.getVisibility().name(), entity.getColor(),
+                        entity.getCommentOption() != null ? entity.getCommentOption().name() : null))
                 .content(new ScheduleResponse.ScheduleContentDto(
                         entity.getTitle(),
                         entity.getStatus().name(),

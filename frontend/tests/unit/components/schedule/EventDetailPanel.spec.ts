@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import type { DOMWrapper } from '@vue/test-utils'
 import EventDetailPanel from '~/components/schedule/EventDetailPanel.vue'
+import { toFlatScheduleEvent } from '~/utils/scheduleCalendar'
 
 /**
  * F08.10 入口④ EventDetailPanel.vue ユニットテスト
@@ -91,6 +92,21 @@ describe('EventDetailPanel.vue（入口④）', () => {
     mockResolveContext.mockReset()
     mockResolveBySchedule.mockReset()
     mockCreateMatch.mockReset()
+  })
+
+  it.each(['team', 'organization'] as const)('CMP-260902-0058: %s の詳細GETから保存済み説明文を表示する', async (scopeType) => {
+    const response = {
+      id: 123,
+      content: { title: '集合案内', eventType: 'OTHER', attendanceRequired: false },
+      time: { startAt: '2026-07-01T10:00:00+09:00', endAt: '2026-07-01T12:00:00+09:00' },
+      detail: { description: '集合は正門\n持ち物：水筒', color: '#a855f7', visibility: 'MEMBERS_ONLY' },
+    }
+    const wrapper = await mountSuspended(EventDetailPanel, {
+      props: { event: toFlatScheduleEvent(response), scopeType, scopeId: 'scope-1', canEdit: false },
+    })
+    expect(wrapper.text()).toContain('集合は正門')
+    expect(wrapper.text()).toContain('持ち物：水筒')
+    wrapper.unmount()
   })
 
   it('EDP-001: TEAM スコープ予定では記録ボタンを描画する', async () => {

@@ -56,6 +56,16 @@ export interface NestedScheduleResponse {
   }>
 }
 
+/** 詳細 GET の追加情報。一覧応答には detail がなくても変換できる。 */
+export interface NestedScheduleDetailResponse extends NestedScheduleResponse {
+  detail?: {
+    description?: string | null
+    visibility?: string | null
+    color?: string | null
+    commentOption?: string | null
+  } | null
+}
+
 /** EventDetailPanel.vue が期待する平坦な予定詳細型。 */
 export interface FlatScheduleEvent {
   id: number
@@ -63,6 +73,7 @@ export interface FlatScheduleEvent {
   scheduleId: number | null
   title: string
   description: string | null
+  color?: string | null
   location: string | null
   startAt: string
   endAt: string
@@ -140,9 +151,10 @@ export function toCalendarEventItems(
  *
  * 詳細 GET（TeamScheduleController#getSchedule 等）は academic.eventCategory を null で返すため、
  * categoryName / categoryColor は null になる（バックエンドの現仕様）。
- * description / attendanceStats も ScheduleResponse には存在しないため null とする。
+ * 説明・個別色は ScheduleDetailResponse.detail から取得する。
+ * detail のない一覧応答も受け付け、attendanceStats は従来どおり null とする。
  */
-export function toFlatScheduleEvent(raw: NestedScheduleResponse): FlatScheduleEvent {
+export function toFlatScheduleEvent(raw: NestedScheduleDetailResponse): FlatScheduleEvent {
   const content = raw.content ?? {}
   const time = raw.time ?? {}
   const category = raw.academic?.eventCategory ?? null
@@ -151,7 +163,8 @@ export function toFlatScheduleEvent(raw: NestedScheduleResponse): FlatScheduleEv
     id: raw.id,
     scheduleId: raw.id,
     title: content.title ?? '',
-    description: null,
+    description: raw.detail?.description ?? null,
+    color: raw.detail?.color ?? null,
     location: content.location ?? null,
     startAt: time.startAt ?? '',
     endAt: time.endAt ?? time.startAt ?? '',
@@ -207,7 +220,7 @@ export interface CalendarPanelContext {
  * 応答を優先する（同じ予定について2つの真実を作らない）。
  */
 export function toCalendarPanelEvent(
-  raw: NestedScheduleResponse,
+  raw: NestedScheduleDetailResponse,
   ctx: CalendarPanelContext = {},
 ): CalendarPanelEvent {
   const flat = toFlatScheduleEvent(raw)
@@ -219,7 +232,7 @@ export function toCalendarPanelEvent(
     createdBy: raw.audit?.createdByDisplayName
       ? { displayName: raw.audit.createdByDisplayName }
       : { displayName: '' },
-    color: flat.categoryColor,
+    color: flat.color ?? flat.categoryColor,
     scopeType: ctx.scopeType,
     scopeId: ctx.scopeId,
     scopeName: raw.scope?.scopeName ?? ctx.scopeName ?? null,
@@ -242,9 +255,15 @@ export function toCalendarPanelEvent(
  * 下の代入がコンパイルエラーになる。BE 応答の構造が変わった場合も同様に落ちる。
  */
 type GeneratedScheduleResponse = components['schemas']['ScheduleResponse']
+type GeneratedScheduleDetailResponse = components['schemas']['ScheduleDetailResponse']
 type KeysExistIn<T, U> = keyof T extends keyof U ? true : { 'このキーは API 応答に存在しない': Exclude<keyof T, keyof U> }
 
 const _scheduleResponseKeysExist: KeysExistIn<NestedScheduleResponse, GeneratedScheduleResponse> = true
+const _scheduleDetailResponseKeysExist: KeysExistIn<NestedScheduleDetailResponse, GeneratedScheduleDetailResponse> = true
+const _detailKeysExist: KeysExistIn<
+  NonNullable<NestedScheduleDetailResponse['detail']>,
+  NonNullable<GeneratedScheduleDetailResponse['detail']>
+> = true
 const _contentKeysExist: KeysExistIn<
   NonNullable<NestedScheduleResponse['content']>,
   NonNullable<GeneratedScheduleResponse['content']>
@@ -270,3 +289,4 @@ const _academicKeysExist: KeysExistIn<
 export const SCHEDULE_RESPONSE_SHAPE_VERIFIED
   = _scheduleResponseKeysExist && _contentKeysExist && _timeKeysExist
     && _scopeKeysExist && _auditKeysExist && _academicKeysExist
+    && _scheduleDetailResponseKeysExist && _detailKeysExist
