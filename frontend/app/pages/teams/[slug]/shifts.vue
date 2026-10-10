@@ -78,6 +78,13 @@ const isScopeAdmin = computed(() => roleName.value === 'ADMIN' || roleName.value
 const { userTimezone } = useDatetime()
 
 const activeTab = ref(0)
+watch(
+  () => route.query.tab,
+  tab => {
+    activeTab.value = tab === 'swaps' ? 1 : 0
+  },
+  { immediate: true },
+)
 const showCreateDialog = ref(false)
 const showRequestDialog = ref(false)
 const selectedScheduleId = ref<number | null>(null)
