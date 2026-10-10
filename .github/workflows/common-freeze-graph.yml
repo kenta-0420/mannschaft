@@ -45,7 +45,7 @@ jobs:
         run: python3 .github/fixtures/common-freeze-graph/run-linux.py
       - name: 成否を含む原本を保存
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: common-freeze-graph-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/common-freeze-graph/evidence/

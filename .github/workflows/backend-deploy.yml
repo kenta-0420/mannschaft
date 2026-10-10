@@ -291,7 +291,7 @@ jobs:
       # 詳細な経緯・設計判断は backend-ci.yml の同名ステップのコメントを参照）。
       - name: ヒープダンプ（OOM調査用）をアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: heap-dump-main-${{ github.run_id }}-shard-${{ matrix.shard }}
           path: backend/build/heap-dumps/*.hprof
@@ -301,7 +301,7 @@ jobs:
       # test-results の XML（JUnit 形式）。backend-ci.yml と同じ方式に揃える。
       - name: テスト結果XML（JUnit）をアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-xml-main-${{ github.run_id }}-shard-${{ matrix.shard }}
           path: backend/build/test-results/test/
@@ -313,7 +313,7 @@ jobs:
       #  "No files were found" で何もアップロードされていなかった）。
       - name: テスト結果レポートをアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-reports-shard-${{ matrix.shard }}
           path: backend/build/reports/tests/
@@ -356,7 +356,7 @@ jobs:
 
       - name: ヒープダンプ（OOM調査用）をアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: heap-dump-main-${{ github.run_id }}-archtest
           path: backend/build/heap-dumps/*.hprof
@@ -366,7 +366,7 @@ jobs:
       # artifact 名は "test-results-xml-" で始めない（shard 重み表の材料に混ぜないため）。
       - name: テスト結果XML（JUnit）をアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archtest-results-xml-main-${{ github.run_id }}
           path: backend/build/test-results/archTest/
@@ -374,7 +374,7 @@ jobs:
 
       - name: テスト結果レポートをアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archtest-reports-main-${{ github.run_id }}
           path: backend/build/reports/tests/archTest/
