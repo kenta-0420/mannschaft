@@ -35,6 +35,7 @@ import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
+import com.mannschaft.app.social.announcement.audience.AnnouncementAudienceMatcher;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementVisibility;
 import com.mannschaft.app.payment.constant.ContentGateType;
@@ -49,7 +50,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.mannschaft.app.common.timezone.TimezoneContextHolder;
 import java.time.LocalDate;
@@ -67,9 +67,18 @@ import java.util.concurrent.CompletableFuture;
  * 個人・チーム・組織ダッシュボードの一括取得を担当する。
  * 各ウィジェットのデータは将来的にCompletableFuture（Virtual Threads）で並行取得するが、
  * 現時点では各リポジトリから実データを取得する。他機能のServiceが実装され次第、段階的に連携する。
+ *
+ * <p><b>トランザクションを持たない</b>（クラス・メソッドとも {@code @Transactional} を付けない）。
+ * 本クラスは多数のドメイン（通知・予定・TODO・タイムライン・掲示板・チャット・告知・課金・チーム・組織）を
+ * 読み集めるだけの集約であり、1 本の読み取り tx にそれらを束ねる理由が無い（原則 #5: tx はドメイン内に閉じる）。
+ * 各読み取りは呼び出し先（各ドメインの Service / Spring Data Repository）が自分の tx で行う。
+ * open-in-view=false のため、ここで受け取る Entity は呼び出しから戻った時点で切り離されている。
+ * 受け取る Entity（Notification / Schedule / Todo / PlatformAnnouncement / TimelinePost / BulletinThread /
+ * ChatChannelMember / AnnouncementFeed）はいずれも関連（{@code @ManyToOne} 等）を持たず、
+ * 本クラスは列の値しか読まないため遅延ロードは起きない。関連を持つ Entity をここで受け取る場合は、
+ * 呼び出し先で DTO / ID に変換してから返すこと。</p>
  */
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 @Slf4j
 public class DashboardService {
@@ -91,6 +100,7 @@ public class DashboardService {
     private final UserRoleRepository userRoleRepository;
     private final MembershipScopeQueryService membershipScopeQueryService;
     private final AnnouncementFeedQueryRepository announcementFeedQueryRepository;
+    private final AnnouncementAudienceMatcher announcementAudienceMatcher;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final PaymentGateService paymentGateService;
     private final com.mannschaft.app.social.announcement.AnnouncementReadService announcementReadService;
@@ -498,15 +508,17 @@ public class DashboardService {
         List<AnnouncementFeedEntity> teamAnnouncementFeeds = announcementFeedQueryRepository
                 .findByScope(AnnouncementScopeType.TEAM, teamId, allowedVisibilities, null, 10);
 
-        // F02.8: 親組織の告知フィードを取得（target_team_ids フィルタ付き）
-        // CMP-027: user_roles ∪ memberships の在籍組織 ID（素メンバー/応援者を取りこぼさない）
-        List<Long> feedOrgIds = membershipScopeQueryService.findActiveOrganizationIds(userId);
-        // 多重 org ロール行に対する防御的な feedId 重複排除（findOrganizationIdsByUserId は既に DISTINCT だが
-        // インボックス（AnnouncementInboxAdapter の feedById.putIfAbsent）と同等に feedId で先勝ち dedup する）。
-        List<AnnouncementFeedEntity> orgAnnouncementFeeds = new ArrayList<>(feedOrgIds.stream()
-                .flatMap(orgId -> announcementFeedQueryRepository
-                        .findByOrgScopeForTeamDashboard(orgId, allowedVisibilities, 20).stream())
-                .filter(feed -> isTargetedToTeam(feed, teamId))
+        // F02.8: 親組織の告知フィードを取得（宛先の判定付き）
+        // 対象はチームが ACTIVE で加盟している組織（組織ロールを持たないチームメンバーにも出す。F01.2.1 AC-E01）。
+        // 閲覧者本人の在籍組織（CMP-027）でもチームが加盟していなければ宛先の判定で必ず落ちるため、起点にしない。
+        // 宛先の判定（加盟・チーム指定・グループ・スナップショット）は AnnouncementAudienceMatcher が行い、
+        // 組織あたり 20 件の上限は判定を通った後に掛かる（上位 20 件を取ってから判定すると、他グループ宛ての
+        // 新しい告知の後ろにある自チーム宛ての告知を取りこぼすため）。
+        List<AnnouncementFeedEntity> orgVisibleFeeds =
+                announcementAudienceMatcher.findVisibleOrgFeeds(teamId, allowedVisibilities, 20);
+        // 防御的な feedId 重複排除（インボックス（AnnouncementInboxAdapter の feedById.putIfAbsent）と同等に
+        // feedId で先勝ち dedup する）。
+        List<AnnouncementFeedEntity> orgAnnouncementFeeds = new ArrayList<>(orgVisibleFeeds.stream()
                 .collect(java.util.stream.Collectors.toMap(
                         AnnouncementFeedEntity::getId,
                         feed -> feed,
@@ -941,43 +953,6 @@ public class DashboardService {
      */
     private Set<String> resolveVisibilityParam(ViewerRole viewerRole) {
         return AnnouncementVisibility.allowedFor(viewerRole == null ? null : viewerRole.name());
-    }
-
-    /**
-     * F02.8: 組織告知フィードがチームに向けられているか判定する。
-     *
-     * <p>target_team_ids IS NULL（全チーム対象）または teamId を含む場合に true を返す。</p>
-     *
-     * <p><b>暫定（F01.2.1 部隊 6-C の AnnouncementAudienceMatcher で置き換える）</b>: グループ宛ての告知
-     * （target_group_ids・include_unassigned・target_audience のいずれかを持つ）は target_team_ids が NULL のため、
-     * 従来の判定では「全チーム宛て」と誤認され、宛先外のチームにも出てしまう。グループに応じた表示判定（§8.2）は
-     * 6-C の受け持ちなので、それが着地するまでは閉じる側に倒し、どのチームにも出さない
-     * （組織側の一覧には従来どおり出る）。</p>
-     */
-    private boolean isTargetedToTeam(AnnouncementFeedEntity feed, Long teamId) {
-        String targetTeamIds = feed.getTargetTeamIds();
-        if (targetTeamIds == null || targetTeamIds.isBlank() || "null".equals(targetTeamIds)) {
-            // 暫定（6-C で置き換える）: 宛先を絞った記録があるのに target_team_ids が無い告知は全チーム宛てではない
-            return !hasNarrowedAudienceRecord(feed);
-        }
-        // JSON 配列文字列から teamId が含まれるか判定
-        // "[3,5,12]" から "3" を探す（前後の区切り文字を考慮）
-        String needle = teamId.toString();
-        return targetTeamIds.contains("\"" + needle + "\"")
-                || targetTeamIds.matches(".*[\\[,]" + needle + "[,\\]].*");
-    }
-
-    /**
-     * 暫定（F01.2.1 部隊 6-C で置き換える）: 告知に宛先を絞った記録（グループ宛て・未分類・target_audience）があるか。
-     */
-    private static boolean hasNarrowedAudienceRecord(AnnouncementFeedEntity feed) {
-        return isPresentJson(feed.getTargetGroupIds())
-                || Boolean.TRUE.equals(feed.getIncludeUnassigned())
-                || isPresentJson(feed.getTargetAudience());
-    }
-
-    private static boolean isPresentJson(String json) {
-        return json != null && !json.isBlank() && !"null".equals(json);
     }
 
     /**
