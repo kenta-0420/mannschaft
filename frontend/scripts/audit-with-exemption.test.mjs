@@ -144,6 +144,14 @@ test('braces 除外は node-forge の消費者名を流用できず、逆も拒�
   }
   assert.throws(() => check(report(forge)), /許可されない脆弱性/)
 })
+test('消費者の深刻度が到達する例外 advisory の最大深刻度を超えると拒否する', () => {
+  // listhen は許可された消費者だが、critical は到達する node-forge の high を超える。
+  const g = report({
+    'node-forge': entry('node-forge', [advisory()]),
+    listhen: entry('listhen', ['node-forge'], 'critical'),
+  })
+  assert.throws(() => check(g), /許可されない脆弱性: critical listhen/)
+})
 const SG_X6JW = 'https://github.com/advisories/GHSA-x6jw-m9v5-85vh'
 const SG_V5RQ = 'https://github.com/advisories/GHSA-v5rq-49vh-5v5c'
 const SG_LOCK = {
