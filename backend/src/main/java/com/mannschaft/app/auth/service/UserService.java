@@ -317,7 +317,10 @@ public class UserService {
                 req.getNickname() != null ? req.getNickname() : user.getDisplayName(),
                 req.getNickname2() != null ? req.getNickname2() : user.getNickname2(),
                 req.getIsSearchable() != null ? req.getIsSearchable() : user.getIsSearchable(),
-                req.getAvatarUrl() != null ? req.getAvatarUrl() : user.getAvatarUrl(),
+                // CMP-261010-1130: avatar_url は保存キー列。GET /users/me は MediaUrlResolver で解決済みの署名付きURLを
+                // 返すため、クライアントがそれを PUT で戻すと URL が保存キーとして書き込まれ（二重に包まれ・列長500超過で500）。
+                // アバターの正規設定経路は ProfileMediaService（presigned upload + commit）なので、ここでは req の値を採用せず常に据置く。
+                user.getAvatarUrl(),
                 newPhoneNumber,
                 req.getPostalCode() != null ? req.getPostalCode() : user.getPostalCode(),
                 encryptionService.hmac(newLastName),
