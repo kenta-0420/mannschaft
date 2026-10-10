@@ -395,19 +395,45 @@ class RangeTemplateGroupAudienceIT extends AbstractBroadcastAudienceIT {
         }
 
         @Test
-        @DisplayName("除外した後が空（個別選択の全グループが削除済み・未分類なし）なら 400 BROADCAST_009、フィードは作られない")
-        void everythingRemoved_is009() throws Exception {
+        @DisplayName("除外した後が空でも、直属メンバーがいる組織なら送信は成功し、宛先は直属メンバーだけ（全チーム宛てにならない）")
+        void everythingRemoved_withDirectMembers_isAcceptedAsDirectMembersOnly() throws Exception {
             long id = saveTemplate("G2だけ", Map.of("targetGroupIds", ids(g2.getId())));
             softDeleteGroup(g2.getId());
             flushAndClear();
 
-            long before = feedCount(orgX.getId());
-            broadcastToOrg(XA, orgX.getId(), templateOnlyBody(id))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error.code").value("BROADCAST_009"));
-            assertThat(feedCount(orgX.getId())).isEqualTo(before);
+            ResultActions result = broadcastToOrg(XA, orgX.getId(), templateOnlyBody(id));
+            result.andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.warnings", hasItem("TEMPLATE_GROUPS_REMOVED:1")));
+            long feedId = feedIdOf(result);
+            // 絞り込みの記録が残り（全チーム宛て＝記録なしに化けない）、チーム宛先もスナップショットも空
+            assertThat(savedTargetTeamIds(feedId)).isNull();
+            assertThat(savedTargetGroupIds(feedId)).isEmpty();
+            assertThat(savedTargetAudience(feedId)).isNotNull();
+            assertThat(snapshotPairs(feedId)).isEmpty();
         }
 
+        @Test
+        @DisplayName("除外した後が空で、直属メンバーもいない組織なら 400 BROADCAST_009、フィードは作られない（設計書 §8.3・§8.6 手順5）")
+        void everythingRemoved_withoutDirectMembers_is009() throws Exception {
+            OrganizationEntity orgW = newOrg(true);
+            OrgTeamGroupEntity gw = newGroup(orgW.getId(), "Wのグループ", 0);
+            Long wa = 940601098L;
+            seedOrgPerson(wa, orgW.getId(), "ADMIN");
+            flushAndClear();
+            ResultActions saved = createTemplate(wa, orgW.getId(),
+                    templateBody("Wのグループだけ", Map.of("targetGroupIds", ids(gw.getId()))));
+            saved.andExpect(status().isCreated());
+            long id = objectMapper.readTree(saved.andReturn().getResponse().getContentAsString())
+                    .path("data").path("id").asLong();
+            softDeleteGroup(gw.getId());
+            flushAndClear();
+
+            long before = feedCount(orgW.getId());
+            broadcastToOrg(wa, orgW.getId(), templateOnlyBody(id))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error.code").value("BROADCAST_009"));
+            assertThat(feedCount(orgW.getId())).isEqualTo(before);
+        }
         @Test
         @DisplayName("全グループが削除済みのテンプレートでも、プレビューは 200・チーム0件・警告 TEMPLATE_GROUPS_REMOVED:1（400 にしない）")
         void everythingRemoved_previewIs200WithZeroAndWarning() throws Exception {

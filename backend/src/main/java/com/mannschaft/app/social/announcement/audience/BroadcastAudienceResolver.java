@@ -88,7 +88,7 @@ public class BroadcastAudienceResolver {
     public ResolvedBroadcastAudience resolveForBroadcast(
             Long callerUserId, String scopeType, Long scopeId, BroadcastAudienceSpec spec) {
         accessControlService.checkMembership(callerUserId, scopeId, scopeType);
-        ResolvedBroadcastAudience resolved = resolve(callerUserId, scopeType, scopeId, spec, true);
+        ResolvedBroadcastAudience resolved = resolve(callerUserId, scopeType, scopeId, spec);
         if (resolved.mode() == ResolvedBroadcastAudience.Mode.GROUPS
                 && resolved.resolvedTeamIds().isEmpty()
                 && resolved.directMemberCount() == 0) {
@@ -108,7 +108,7 @@ public class BroadcastAudienceResolver {
      */
     public AudiencePreviewResponseDto preview(Long callerUserId, Long organizationId, AudiencePreviewRequestDto request) {
         accessControlService.checkMembership(callerUserId, organizationId, ORGANIZATION);
-        ResolvedBroadcastAudience resolved = resolve(callerUserId, ORGANIZATION, organizationId, request.toSpec(), false);
+        ResolvedBroadcastAudience resolved = resolve(callerUserId, ORGANIZATION, organizationId, request.toSpec());
 
         List<Long> teamIds = resolved.mode() == ResolvedBroadcastAudience.Mode.ALL
                 ? membershipQueryService.findActiveTeamGroupAssignments(organizationId).stream()
@@ -182,7 +182,7 @@ public class BroadcastAudienceResolver {
     // ───────── 解決 ─────────
 
     private ResolvedBroadcastAudience resolve(
-            Long callerUserId, String scopeType, Long scopeId, BroadcastAudienceSpec spec, boolean forBroadcast) {
+            Long callerUserId, String scopeType, Long scopeId, BroadcastAudienceSpec spec) {
         BroadcastAudienceSpec s = spec != null ? spec : new BroadcastAudienceSpec(null, null, null, null, null, null);
         if (TEAM.equals(scopeType)) {
             if (s.hasGroupItems()) {
@@ -201,7 +201,7 @@ public class BroadcastAudienceResolver {
                     .orElseThrow(() -> new BusinessException(AnnouncementErrorCode.BROADCAST_003));
             if (s.isTemplateOnly()) {
                 // 手順2: 宛先を明示していないときだけ、テンプレートの宛先を使う（明示があれば明示が優先）
-                return resolveTemplate(callerUserId, scopeId, s, template, forBroadcast);
+                return resolveTemplate(callerUserId, scopeId, s, template);
             }
         }
         if (s.hasTeamItems() && s.hasGroupItems()) {
@@ -227,7 +227,7 @@ public class BroadcastAudienceResolver {
      */
     private ResolvedBroadcastAudience resolveTemplate(
             Long callerUserId, Long organizationId, BroadcastAudienceSpec spec,
-            AnnouncementRangeTemplateEntity template, boolean forBroadcast) {
+            AnnouncementRangeTemplateEntity template) {
         boolean includeSupporters = includesSupporters(spec.targetRole());
         List<UUID> storedIds = TemplateGroupItemsCodec.parseGroupIds(template.getTargetGroupIds());
         TargetGroupRange storedRange = TemplateGroupItemsCodec.parseRange(template.getTargetGroupRange());
@@ -266,12 +266,10 @@ public class BroadcastAudienceResolver {
                 warnings.add(WARNING_TEMPLATE_GROUPS_REMOVED + ":" + removed);
             }
         }
-        // 除外の結果として空になった場合（リクエストでの明示の空選択ではない）。送信は §8.6 手順5どおり
-        // 400 BROADCAST_009、プレビューは 400 にせず 0 件＋警告を返す（§8.4: 画面が「次へ」を止める）
+        // 除外の結果として空になった場合（リクエストでの明示の空選択ではない）は空集合として扱い、
+        // 0 件の判定は §8.3 に委ねる（送信: チーム0かつ直属メンバー0なら resolveForBroadcast が 400 BROADCAST_009。
+        // 直属メンバーがいれば GROUPS のまま直属メンバーだけが宛先。プレビュー: 0 件＋警告）。全チーム宛てには倒さない
         boolean emptiedByRemoval = kept != null && kept.isEmpty() && storedRange == null && !storedUnassigned;
-        if (emptiedByRemoval && forBroadcast) {
-            throw new BusinessException(AnnouncementErrorCode.BROADCAST_009);
-        }
         BroadcastAudienceSpec resolvedSpec = new BroadcastAudienceSpec(
                 null, kept, storedRange, storedUnassigned, spec.templateId(), spec.targetRole());
         return resolveGroups(callerUserId, organizationId, resolvedSpec, includeSupporters, emptiedByRemoval)
