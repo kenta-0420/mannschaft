@@ -553,9 +553,21 @@ class ShiftScheduleSlotFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest
     @DisplayName("AC-18/AC-19: 管理者の書き込み — 認可クエリは是正前と同数、認可の前は素の読み取り 1 本ずつ・FOR UPDATE 0、"
             + "認可の後に自ドメインの読み直しが 1 本ずつ（FOR UPDATE は認可の後だけ。remind はロックなしの読み直しでよい）")
     void 管理者の書き込みのクエリ回数(MeasuredWrite w) throws Exception {
+        assertMeasuredWrite(w, false);
+    }
+
+    @Test
+    @DisplayName("AC-18: 別スレッドの実MySQL SQLはCREATE_SLOTの認可クエリ数に含めない")
+    void 別スレッドSQLを認可クエリ数に含めない() throws Exception {
+        assertMeasuredWrite(MeasuredWrite.CREATE_SLOT, true);
+    }
+
+    private void assertMeasuredWrite(MeasuredWrite w, boolean injectForeignSql) throws Exception {
         long baseline = adminCheckBaseline();
-        Measured m = measure(adminId, measuredRequest(w));
-        m.print(w.name());
+        Measured m = measure(adminId, measuredRequest(w), injectForeignSql);
+        if (!injectForeignSql) {
+            m.print(w.name());
+        }
         assertThat(m.status).isEqualTo(w.status);
         assertThat(m.authzSql).as("認可のクエリ数は是正前（isSystemAdmin＋isAdminOrAbove 単体）と同じ").isEqualTo(baseline);
         // 在籍判定は拒否経路だけ（許可経路では足さない）。
@@ -651,7 +663,13 @@ class ShiftScheduleSlotFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest
      * 入れ子（checkAdminOrAbove → isAdminOrAbove 等）は最外側だけを数える。
      */
     private Measured measure(Long actor, MockHttpServletRequestBuilder request) throws Exception {
+        return measure(actor, request, false);
+    }
+
+    private Measured measure(Long actor, MockHttpServletRequestBuilder request, boolean injectForeignSql)
+            throws Exception {
         Measured m = new Measured();
+        AtomicBoolean foreignSqlInserted = new AtomicBoolean();
         ThreadLocal<Integer> depth = ThreadLocal.withInitial(() -> 0);
         Answer<Object> wrap = inv -> {
             int d = depth.get();
@@ -661,6 +679,14 @@ class ShiftScheduleSlotFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest
                 m.firstAuthzStart = start;
             }
             try {
+                if (d == 0 && injectForeignSql && foreignSqlInserted.compareAndSet(false, true)) {
+                    // start/end の間で別threadの実SQLを完了させる。業務Bean・認可は実物のまま。
+                    CompletableFuture.runAsync(() -> tx.executeWithoutResult(status -> {
+                        Object result = em.createNativeQuery("SELECT 1").getSingleResult();
+                        assertThat(((Number) result).intValue()).as("別スレッドの実MySQL SQLが完了したこと")
+                                .isEqualTo(1);
+                    }), executor).get(10, TimeUnit.SECONDS);
+                }
                 return inv.callRealMethod();
             } finally {
                 depth.set(d);
@@ -684,6 +710,9 @@ class ShiftScheduleSlotFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest
         MvcResult result = mockMvc.perform(request).andReturn();
         m.sqls = new ArrayList<>(SqlIntentCounter.capturedSqls());
         m.status = result.getResponse().getStatus();
+        if (injectForeignSql) {
+            assertThat(foreignSqlInserted).as("別スレッドSQLを測定窓へ一度挿入したこと").isTrue();
+        }
         assertThat(m.sqls).as("SQL 記録が有効であること").isNotEmpty();
         assertThat(m.firstAuthzStart).as("認可の呼び出しがあること").isNotNegative();
         return m;
