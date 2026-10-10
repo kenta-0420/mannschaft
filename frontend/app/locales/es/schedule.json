@@ -82,7 +82,7 @@
     },
     "attendanceTeamBreakdown": {
       "toggleLabel": "Agrupar por equipo",
-      "toggleHint": "Agrupa la asistencia por equipo subordinado (solo distribucion de la organizacion).",
+      "toggleHint": "Agrupa la asistencia por equipo subordinado (solo distribución de la organización).",
       "title": "Asistencia por equipo",
       "team": "Equipo",
       "attending": "Asiste",
@@ -91,7 +91,7 @@
       "undecided": "Sin responder",
       "total": "Total",
       "totalNote": "El total cuenta personas unicas; el conteo por equipo puede solaparse (los miembros en varios equipos se cuentan en cada uno).",
-      "directMembers": "Miembros directos de la organizacion",
+      "directMembers": "Miembros directos de la organización",
       "reload": "Recargar",
       "retry": "Reintentar",
       "exportCsv": "Exportar CSV",
@@ -215,106 +215,106 @@
     "memberColor": { "column": "Color del evento", "auto": "Automático", "reset": "Restablecer color automático", "updated": "Se actualizó el color del evento del miembro", "resetDone": "Se restableció el color automático del miembro", "updateFailed": "No se pudo actualizar el color del miembro", "colorLabel": "Color del evento de {name}" },
     "todo_load_error": {
       "summary": "No se pudieron cargar las tareas (TODO)",
-      "detail": "No se pudieron mostrar las tareas en el calendario. Los eventos siguen visibles. Vuelve a cargar mas tarde."
+      "detail": "No se pudieron mostrar las tareas en el calendario. Los eventos siguen visibles. Vuelve a cargar más tarde."
     }
   },
   "scheduleKeep": {
-    "title": "キープ",
-    "subtitle": "日付が決まっていない予定を置いておく場所",
-    "empty": "まだ何もありません。思いついたことを書いてみましょう",
+    "title": "Planes en espera",
+    "subtitle": "Un lugar para planes que aún no tienen fecha",
+    "empty": "Todavía no hay nada. Anota lo que se te ocurra.",
     "form": {
-      "titleLabel": "やりたいこと",
-      "titlePlaceholder": "例: 夏合宿",
-      "memoLabel": "メモ（任意）",
-      "candidateDatesLabel": "候補日（任意）",
-      "submit": "キープする"
+      "titleLabel": "¿Qué quieres hacer?",
+      "titlePlaceholder": "p. ej., Campamento de verano",
+      "memoLabel": "Nota (opcional)",
+      "candidateDatesLabel": "Fechas candidatas (opcional)",
+      "submit": "Guardar en espera"
     },
     "action": {
-      "convert": "予定にする",
-      "convertFromCandidate": "この日に決める",
-      "pickDate": "日付を選ぶ",
-      "specifyTime": "時刻を指定する",
-      "archive": "見送る",
-      "restore": "もどす",
-      "revert": "予定を取り消す",
-      "reorder": "並び替え"
+      "convert": "Añadir al calendario",
+      "convertFromCandidate": "Elegir este día",
+      "pickDate": "Elegir una fecha",
+      "specifyTime": "Indicar una hora",
+      "archive": "Descartar por ahora",
+      "restore": "Restaurar",
+      "revert": "Deshacer la programación",
+      "reorder": "Reordenar"
     },
     "status": {
-      "kept": "キープ中",
-      "scheduled": "予定になりました",
-      "archived": "見送り"
+      "kept": "En espera",
+      "scheduled": "Programado",
+      "archived": "Descartado"
     },
     "filter": {
-      "kept": "キープ中",
-      "scheduled": "予定済み",
-      "archived": "見送り",
-      "all": "すべて"
+      "kept": "En espera",
+      "scheduled": "Programados",
+      "archived": "Descartados",
+      "all": "Todos"
     },
     "badge": {
-      "candidateCount": "候補日 {count} 件"
+      "candidateCount": "{count} fechas candidatas"
     },
     "origin": {
-      "label": "このキープから作られました",
-      "cancelled": "予定は中止になりました",
-      "deleted": "元の予定は削除されました"
+      "label": "Creado a partir de un plan en espera",
+      "cancelled": "El evento fue cancelado",
+      "deleted": "El evento original fue eliminado"
     },
     "lockedHint": {
-      "scheduled": "予定になったので、内容の変更は予定側で行ってください",
-      "archived": "見送り中は編集できません。「もどす」と編集できます"
+      "scheduled": "Como ya es un evento, haz los cambios en el evento",
+      "archived": "Los elementos descartados no se pueden editar. Con «Restaurar» vuelven a ser editables"
     },
     "notification": {
-      "converted": "「{title}」の日程が決まりました",
-      "created": "「{title}」がキープされました"
+      "converted": "Se ha fijado la fecha de «{title}»",
+      "created": "Se ha guardado «{title}» en espera"
     },
     "confirm": {
-      "archive": "見送りにしますか？あとで戻せます"
+      "archive": "¿Descartar por ahora? Podrás restaurarlo más tarde"
     },
     "limit": {
-      "hint": "見送りにすると枠が空きます"
+      "hint": "Al descartar un elemento se libera espacio"
     },
     "help": {
-      "title": "キープの使い方",
-      "body": "日付が決まっていない予定をひとまず置いておける場所です。タイトルだけで作成でき、あとから候補日やメモを足せます。候補日が決まったらタップひとつでカレンダーの予定に変換できます。",
+      "title": "Cómo usar los planes en espera",
+      "body": "Es un lugar donde dejar por ahora los planes que aún no tienen fecha. Se pueden crear solo con un título y añadir fechas candidatas o notas más tarde. Cuando se decide una fecha, con un toque se convierte en un evento del calendario.",
       "create": {
-        "title": "キープする",
-        "body": "タイトルだけ入力すれば作成できます。候補日やメモは後からでも構いません。",
+        "title": "Guardar en espera",
+        "body": "Basta con escribir un título. Las fechas candidatas y las notas se pueden añadir después.",
         "steps": {
-          "step1": "やりたいことをタイトルに入力",
-          "step2": "必要なら候補日・メモを追加",
-          "step3": "「キープする」を押す"
+          "step1": "Escribe como título lo que quieres hacer",
+          "step2": "Si lo necesitas, añade fechas candidatas o notas",
+          "step3": "Pulsa «Guardar en espera»"
         }
       },
       "convert": {
-        "title": "予定に変換する",
-        "body": "候補日があれば1タップ、無くても日付を選ぶだけの2タップ以内で予定になります。",
+        "title": "Convertir en evento",
+        "body": "Si hay una fecha candidata, basta un toque; si no, solo hay que elegir una fecha: como máximo dos toques para tener el evento.",
         "steps": {
-          "step1": "候補日バッジ、または「予定にする」を押す",
-          "step2": "候補日が無ければ日付を選ぶ",
-          "step3": "カレンダーに予定として反映される"
+          "step1": "Toca la insignia de una fecha candidata o «Añadir al calendario»",
+          "step2": "Si aún no hay fecha candidata, elige una fecha",
+          "step3": "Aparece en el calendario como un evento"
         }
       },
       "organize": {
-        "title": "整理する",
-        "body": "見送ったキープは一覧から消えますが、いつでも「もどす」で復帰できます。並び替えもできます。",
+        "title": "Organizar",
+        "body": "Los elementos descartados desaparecen de la lista, pero puedes recuperarlos en cualquier momento con «Restaurar». También se pueden reordenar.",
         "steps": {
-          "step1": "不要になったら「見送る」",
-          "step2": "「見送り」フィルタから「もどす」で復帰",
-          "step3": "ドラッグで並び替え"
+          "step1": "Cuando ya no lo necesites, pulsa «Descartar por ahora»",
+          "step2": "Recupéralo con «Restaurar» desde el filtro «Descartados»",
+          "step3": "Reordena arrastrando"
         }
       }
     },
     "error": {
-      "notFound": "キープが見つかりません",
-      "titleRequired": "タイトルを入力してください",
-      "tooManyCandidateDates": "候補日は最大10件です",
-      "invalidCandidateDate": "候補日の形式が正しくありません",
-      "forbidden": "このキープを操作する権限がありません",
-      "notConvertible": "このキープは予定に変換できません",
-      "notEditable": "この状態では編集できません",
-      "revertBlockedByAttendance": "出欠の回答があるため変換を取り消せません",
-      "invalidStateTransition": "この操作はできません",
-      "limitExceeded": "キープの上限に達しました",
-      "invalidReorder": "並び替えの指定が正しくありません"
+      "notFound": "No se encontró el plan en espera",
+      "titleRequired": "Introduce un título",
+      "tooManyCandidateDates": "Máximo 10 fechas candidatas",
+      "invalidCandidateDate": "El formato de la fecha candidata no es válido",
+      "forbidden": "No tienes permiso para operar este plan en espera",
+      "notConvertible": "Este plan en espera no se puede convertir en evento",
+      "notEditable": "No se puede editar en este estado",
+      "revertBlockedByAttendance": "No se puede deshacer la conversión porque hay respuestas de asistencia",
+      "invalidStateTransition": "Esta acción no es posible",
+      "limitExceeded": "Se alcanzó el límite de planes en espera",
+      "invalidReorder": "La indicación de reordenación no es válida"
     }
   }
 }

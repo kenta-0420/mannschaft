@@ -455,12 +455,12 @@
     },
     "org_select": {
       "label": "Organización",
-      "invalid": "指定された組織は無効です（このチームの組織ではありません）。組織を選び直してください",
-      "placeholder": "組織を選択"
+      "invalid": "La organización indicada no es válida (no es una organización de este equipo). Vuelve a elegir la organización",
+      "placeholder": "Selecciona una organización"
     },
     "org_context": {
       "resolve_failed": "No se pudo resolver la información del equipo/organización. Verifica tus membresías",
-      "not_member_of_org": "このチームはこの大会の組織に加盟していないため、試合を記録できません"
+      "not_member_of_org": "Este equipo no pertenece a la organización de este torneo, por lo que no se puede registrar el partido"
     },
     "entry": {
       "record_from_schedule": "Registrar este partido",
@@ -655,7 +655,7 @@
       },
       "ranking": {
         "switch_to_ranking": "Introducir clasificacion de varios competidores",
-        "intro": "Anade competidores e introduce la puntuacion total de cada uno; el servidor los clasifica automaticamente de mayor a menor total.",
+        "intro": "Añade competidores e introduce la puntuación total de cada uno; el servidor los clasifica automáticamente de mayor a menor total.",
         "mode_label": "Clasificacion de varios competidores",
         "switch_to_direct": "Cambiar a entrada directa del total",
         "canonical_notice": "Existen entradas de competidores, por lo que la clasificacion de varios competidores es la fuente de registro.",
@@ -663,11 +663,11 @@
         "standings": "Clasificacion (calculada por el servidor)",
         "competitor_label": "Nombre del competidor",
         "competitor_placeholder": "p. ej., Hanako Yamada",
-        "total_label": "Puntuacion total",
-        "add_entry": "Anadir competidor",
+        "total_label": "Puntuación total",
+        "add_entry": "Añadir competidor",
         "remove_entry": "Eliminar este competidor",
         "complete": "Confirmar clasificacion",
-        "complete_hint": "Anade al menos dos competidores e introduce el nombre y la puntuacion total de cada uno",
+        "complete_hint": "Añade al menos dos competidores e introduce el nombre y la puntuación total de cada uno",
         "user_fallback": "Jugador n.o {id}",
         "team_fallback": "Equipo n.o {id}",
         "error": {

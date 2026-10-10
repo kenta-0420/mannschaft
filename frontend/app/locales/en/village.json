@@ -822,127 +822,127 @@
       "level3": "Detail"
     },
     "listGuide": {
-      "page_title": "村一覧の使い方",
-      "description": "ここは「村」をさがして参加するための一覧ページです。気になる村を見つけて中に入ったり、自分で新しい村を作ったりできます。",
+      "page_title": "How to use the village list",
+      "description": "This is the list page for finding villages and joining them. You can find a village that interests you and step inside, or create a new village of your own.",
       "search": {
-        "title": "村をさがす",
-        "body": "キーワードや種別・カテゴリで、公開されている村をしぼり込めます。",
+        "title": "Search for villages",
+        "body": "You can narrow down public villages by keyword, type, or category.",
         "steps": {
-          "step1": "上の検索ボックスにキーワード（村名・話題など）を入力します。",
-          "step2": "「種別」で公式・コミュニティをしぼり込めます。",
-          "step3": "「カテゴリ」に言葉を入れると、そのカテゴリの村だけ表示されます。"
+          "step1": "Enter a keyword (village name, topic, etc.) in the search box at the top.",
+          "step2": "Use \"Type\" to narrow down to official or community villages.",
+          "step3": "Enter a word in \"Category\" to show only villages in that category."
         }
       },
       "cards": {
-        "title": "村カードの見方",
-        "body": "各カードに村のアイコン・名前・公式バッジ・カテゴリ・人数・紹介文が表示されます。",
+        "title": "How to read a village card",
+        "body": "Each card shows the village's icon, name, official badge, category, member count, and introduction.",
         "steps": {
-          "step1": "「公式」バッジは運営公認の村の印です。",
-          "step2": "人数が多い村ほど活発に動いています。",
-          "step3": "紹介文でその村の雰囲気を確認できます。"
+          "step1": "The \"Official\" badge marks a village officially recognized by the operators.",
+          "step2": "Villages with more members tend to be more active.",
+          "step3": "The introduction gives you a sense of the village's atmosphere."
         }
       },
       "enter": {
-        "title": "村に入る",
-        "body": "気になる村のカードを押すと、その村の中（掲示板・チャットなど）に入れます。",
+        "title": "Enter a village",
+        "body": "Select the card of a village you are interested in to go inside it (bulletin board, chat, and more).",
         "steps": {
-          "step1": "村のカードをクリックします。",
-          "step2": "村の中で「参加する」を押すと正式なメンバーになれます。",
-          "step3": "村の中の各タブの使い方は、村ヘッダーの「？使い方」で確認できます。"
+          "step1": "Click the village card.",
+          "step2": "Inside the village, press \"Join\" to become a full member.",
+          "step3": "To learn how to use each tab inside a village, see \"? How to use\" in the village header."
         }
       },
       "create": {
-        "title": "新しい村をつくる",
-        "body": "自分で新しい村を立ち上げられます（運営の承認制）。",
+        "title": "Create a new village",
+        "body": "You can start a new village yourself (subject to approval by the operators).",
         "steps": {
-          "step1": "右上の「村を作る」ボタンを押します。",
-          "step2": "申請フォームに村名・種別などを入力します。",
-          "step3": "運営に承認されると村が作成されます。"
+          "step1": "Press the \"Create a village\" button at the top right.",
+          "step2": "Enter the village name, type, and other details in the application form.",
+          "step3": "The village is created once the operators approve it."
         }
       }
     },
     "guide": {
-      "page_title": "村の使い方",
-      "description": "村は、同じ目的や興味を持つ仲間が集まる小さなコミュニティです。参加すると掲示板・チャット・投稿などの機能が使えます。下のカードで、村でできることと操作の手順を順番に確認できます。",
+      "page_title": "How to use a village",
+      "description": "A village is a small community where people with a shared purpose or interest gather. Once you join, you can use features such as the bulletin board, chat, and posts. The cards below walk you through what you can do in a village and how, step by step.",
       "join": {
-        "title": "村に参加する／お気に入り登録",
-        "body": "村に参加すると、掲示板・タイムライン・チャットなど村のすべての機能が使えるようになります。よく見る村はお気に入り（ピン留め）にしておくと探しやすくなります。",
+        "title": "Join a village / add to favorites",
+        "body": "Once you join a village, you can use all of its features, including the bulletin board, timeline, and chat. Adding villages you visit often to your favorites (pinning) makes them easier to find.",
         "steps": {
-          "step1": "ヘッダー右上の「参加する」ボタンを押します。",
-          "step2": "だれでも入れる村はその場で参加完了。承認制の村は参加申請の画面が開くので、申請を送って承認を待ちます。",
-          "step3": "参加後は★（お気に入りに追加）でピン留め、「退村する」で抜けられます。"
+          "step1": "Press the \"Join\" button at the top right of the header.",
+          "step2": "In villages anyone can enter, you join immediately. In approval-based villages, a join request screen opens: send your request and wait for approval.",
+          "step3": "After joining, pin the village with ★ (add to favorites), or leave with \"Leave village\"."
         }
       },
       "bulletin": {
-        "title": "掲示板でお知らせを読む",
-        "body": "村長や長老からの大切なお知らせが、話題（スレッド）ごとに並びます。村人になると読めるようになります。",
+        "title": "Read announcements on the bulletin board",
+        "body": "Important announcements from the village head and elders are listed by topic (thread). They become readable once you are a villager.",
         "steps": {
-          "step1": "「掲示板」タブを開きます。",
-          "step2": "気になるスレッドを押すと、本文と返信が表示されます。",
-          "step3": "村長・長老は「スレッド作成」から新しいお知らせを投稿できます。"
+          "step1": "Open the \"Bulletin board\" tab.",
+          "step2": "Select a thread that interests you to see its body and replies.",
+          "step3": "The village head and elders can post new announcements with \"Create thread\"."
         }
       },
       "timeline": {
-        "title": "タイムラインに投稿する",
-        "body": "村の仲間みんなに見える、ひとことフィードです。村人ならだれでも気軽に投稿できます。",
+        "title": "Post to the timeline",
+        "body": "A short-post feed visible to everyone in the village. Any villager can post casually.",
         "steps": {
-          "step1": "「タイムライン」タブを開きます。",
-          "step2": "上の入力欄に本文を書いて「送信」を押すと投稿されます。",
-          "step3": "村長・長老は投稿のピン留めや削除ができます。"
+          "step1": "Open the \"Timeline\" tab.",
+          "step2": "Write your text in the input field at the top and press \"Submit\" to post.",
+          "step3": "The village head and elders can pin or delete posts."
         }
       },
       "lobby": {
-        "title": "井戸端（ロビー）でリアルタイムに話す",
-        "body": "その日の村人とリアルタイムで雑談できるチャットです。過去7日分のやりとりも日付ごとにさかのぼれます。",
+        "title": "Chat in real time in the lobby (the village well)",
+        "body": "A chat for casual conversation in real time with the villagers of the day. You can also look back over the past 7 days, organized by date.",
         "steps": {
-          "step1": "「ロビー」タブを開きます。",
-          "step2": "左の日付一覧から日を選びます（過去の日は読むだけ）。",
-          "step3": "「今日」を選ぶと入力欄が出るので、メッセージを書いてEnterまたは送信ボタンで投稿します。"
+          "step1": "Open the \"Lobby\" tab.",
+          "step2": "Choose a day from the date list on the left (past days are read-only).",
+          "step3": "Choose \"Today\" to show the input field, then write a message and post it with Enter or the send button."
         }
       },
       "members": {
-        "title": "メンバーを見る・管理する",
-        "body": "村に参加している人の一覧です。村長は役割（長老／村人）の変更や、迷惑な人の追放（BAN）ができます。",
+        "title": "View and manage members",
+        "body": "A list of the people who have joined the village. The village head can change roles (elder / villager) and ban disruptive people (BAN).",
         "steps": {
-          "step1": "「メンバー」タブを開きます。",
-          "step2": "一覧から相手のメニューを開きます。",
-          "step3": "村長は「役割変更」「追放（BAN）」、村人はだれでも「通報」ができます。"
+          "step1": "Open the \"Members\" tab.",
+          "step2": "Open the menu for the person in the list.",
+          "step3": "The village head can use \"Change role\" and \"Ban\"; any villager can use \"Report\"."
         }
       },
       "calendar": {
-        "title": "歳時記カレンダーで行事を知る",
-        "body": "村の記念日やイベントを月ごとのカレンダーで確認できます。毎年くり返す行事も登録できます。",
+        "title": "Learn about events with the village calendar",
+        "body": "Check the village's anniversaries and events on a monthly calendar. You can also register events that repeat every year.",
         "steps": {
-          "step1": "「カレンダー」タブを開きます。",
-          "step2": "「前月」「翌月」ボタンで月を切り替えます。",
-          "step3": "行事カードを押すと詳細が出ます。村長・長老は「行事を追加」から登録・編集・削除ができます。"
+          "step1": "Open the \"Calendar\" tab.",
+          "step2": "Switch months with the \"Previous month\" and \"Next month\" buttons.",
+          "step3": "Select an event card to see its details. The village head and elders can register, edit, and delete events with \"Add event\"."
         }
       },
       "events": {
-        "title": "お祭り・練習試合の募集",
-        "body": "村のイベント（お祭り）や、対外試合・審判・会場などの募集をまとめて告知できます。状態でしぼり込めます。",
+        "title": "Festivals and practice-match recruitment",
+        "body": "You can announce village events (festivals) as well as recruitment for external matches, referees, venues, and more, all in one place. You can narrow them down by status.",
         "steps": {
-          "step1": "「お祭り」または「練習試合・募集」タブを開きます。",
-          "step2": "上のフィルタで「募集中」などにしぼり込めます。",
-          "step3": "村人は「企画」「募集を作成」から新規作成、カードを押すと詳細表示や応募ができます。"
+          "step1": "Open the \"Festival\" or \"Match recruit\" tab.",
+          "step2": "Use the filter at the top to narrow down to \"Open\" and so on.",
+          "step3": "Villagers can create new ones with \"Plan a festival\" or \"Create listing\"; select a card to see details and apply."
         }
       },
       "meetup": {
-        "title": "寄合で集まる日を決める",
-        "body": "村の集まりの開催日を、みんなの投票で決める機能です。複数の候補日から投票し、開催者が確定します。",
+        "title": "Decide on a meeting day with a meetup",
+        "body": "A feature for deciding the date of a village gathering by everyone's vote. Vote among several candidate dates, and the organizer confirms one.",
         "steps": {
-          "step1": "「寄合」タブを開きます。",
-          "step2": "村人は「寄合を開く」から候補日をいくつか出して作成します。",
-          "step3": "詳細画面で候補日ごとに賛成／保留／反対を投票し、開催者が日を選んで「確定」します。"
+          "step1": "Open the \"Meetup\" tab.",
+          "step2": "Villagers create one with \"Plan a meetup\" by proposing several candidate dates.",
+          "step3": "On the details screen, vote yes / maybe / no for each candidate date; the organizer picks a date and presses \"Confirm\"."
         }
       },
       "chronicle": {
-        "title": "村史で歩みをふり返る",
-        "body": "村の月ごとの記録です。投稿数・新しく参加した人の数・よく使われた話題が自動でまとまります（読むだけのページです）。",
+        "title": "Look back on the village's journey in the chronicle",
+        "body": "A monthly record of the village. The number of posts, the number of new members, and the most-used topics are compiled automatically (read-only page).",
         "steps": {
-          "step1": "「村史」タブを開きます。",
-          "step2": "年でしぼり込むと、その年の月別カードが並びます。",
-          "step3": "各カードで、その月の盛り上がりをふり返れます。"
+          "step1": "Open the \"Chronicle\" tab.",
+          "step2": "Filter by year and that year's monthly cards are listed.",
+          "step3": "Each card lets you look back on how lively that month was."
         }
       },
       "charter": {
