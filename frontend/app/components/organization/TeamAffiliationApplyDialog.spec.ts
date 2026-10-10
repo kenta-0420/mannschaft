@@ -179,4 +179,31 @@ describe('TeamAffiliationApplyDialog', () => {
     expect(wrapper.emitted('applied')).toBeUndefined()
     expect(wrapper.emitted('update:visible')).toBeUndefined()
   })
+
+  it('AD-09: 再表示でフォーム取得に失敗したら、前回の選択を持ち越さず送信できない', async () => {
+    const wrapper = await mountDialog(makeForm({ groupMode: 'REQUIRED' }))
+    await wrapper.find('[data-testid="apply-group-select"]').setValue(GROUP_A)
+    expect(submitButton(wrapper).attributes('disabled')).toBeUndefined()
+    // いったん閉じて、取得失敗のまま開き直す。
+    getApplicationForm.mockReset()
+    getApplicationForm.mockRejectedValue(new Error('network'))
+    await wrapper.setProps({ visible: false })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="apply-load-error"]').exists()).toBe(true)
+    expect(submitButton(wrapper).attributes('disabled')).toBeDefined()
+    await submitButton(wrapper).trigger('click')
+    expect(applyToOrganization).not.toHaveBeenCalled()
+  })
+
+  it('AD-10: 添え書きは BE と同じ 500 文字まで（maxlength と文字数表示。501 文字は送信不可）', async () => {
+    const wrapper = await mountDialog(makeForm())
+    const textarea = wrapper.find('[data-testid="apply-message"]')
+    expect(textarea.attributes('maxlength')).toBe('500')
+    await textarea.setValue('あ'.repeat(500))
+    expect(wrapper.find('[data-testid="apply-message-count"]').text()).toContain('500 / 500')
+    expect(submitButton(wrapper).attributes('disabled')).toBeUndefined()
+    await textarea.setValue('あ'.repeat(501))
+    expect(submitButton(wrapper).attributes('disabled')).toBeDefined()
+  })
 })

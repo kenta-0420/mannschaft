@@ -17,17 +17,20 @@ const authStore = useAuthStore()
 const { canApply } = useTeamAffiliationApi()
 
 const eligible = ref(false)
+const loadFailed = ref(false)
 const showDialog = ref(false)
 
 async function loadEligibility() {
   eligible.value = false
+  loadFailed.value = false
   if (!authStore.isAuthenticated) return
   try {
     eligible.value = await canApply(props.orgSlug)
   }
   catch {
-    // 判定できないときはボタンを出さない（fail-close）。付随の導線であり、ページ本体の表示は止めない。
-    eligible.value = false
+    // 通信失敗は「申請不可」と区別する。ボタンを無言で消さず、エラー表示と再試行を出す。
+    // 付随の導線なのでページ本体の表示は止めない。
+    loadFailed.value = true
   }
 }
 
@@ -35,7 +38,19 @@ watch(() => props.orgSlug, () => void loadEligibility(), { immediate: true })
 </script>
 
 <template>
-  <span v-if="eligible" class="inline-flex">
+  <span v-if="loadFailed" class="inline-flex items-center gap-1" data-testid="team-affiliation-apply-error">
+    <span class="text-xs text-red-500" role="alert">{{ t('teamAffiliation.apply.eligibility_error') }}</span>
+    <Button
+      :label="t('teamAffiliation.apply.eligibility_retry')"
+      icon="pi pi-refresh"
+      severity="secondary"
+      text
+      size="small"
+      data-testid="team-affiliation-apply-retry"
+      @click="loadEligibility"
+    />
+  </span>
+  <span v-else-if="eligible" class="inline-flex">
     <Button
       :label="t('teamAffiliation.apply.button')"
       icon="pi pi-sitemap"

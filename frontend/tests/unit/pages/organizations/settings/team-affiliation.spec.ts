@@ -17,6 +17,7 @@ import TeamAffiliationSettingsPage from '~/pages/organizations/[slug]/settings/t
  *   TS-06 REQUIRED の設定が実効 OPTIONAL に格下げされているとき警告を出す（AC-G112 の画面側）
  *   TS-07 格下げされていなければ警告を出さない
  *   TS-08 保存失敗はエラー表示し、成功トーストにしない
+ *   TS-10 案内文は BE と同じ 500 文字まで（maxlength と文字数表示）
  *   TS-09 PageHeader(help) と SectionCard が付き、使い方モーダルが開く（AC-G143）
  */
 
@@ -173,5 +174,11 @@ describe('pages/organizations/[slug]/settings/team-affiliation.vue', () => {
     expect(wrapper.find('[data-testid="stub-guide-modal"]').attributes('data-visible')).toBe('false')
     await wrapper.find('[data-testid="page-header-help"]').trigger('click')
     expect(wrapper.find('[data-testid="stub-guide-modal"]').attributes('data-visible')).toBe('true')
+  })
+
+  it('TS-10: 案内文は BE（@Size max=500）と同じ 500 文字までで、文字数を表示する', async () => {
+    const wrapper = await mountPage(makeSettings({ applicationGuidance: 'あ'.repeat(500) }))
+    expect(wrapper.find('[data-testid="settings-guidance"]').attributes('maxlength')).toBe('500')
+    expect(wrapper.find('[data-testid="settings-guidance-count"]').text()).toContain('500 / 500')
   })
 })

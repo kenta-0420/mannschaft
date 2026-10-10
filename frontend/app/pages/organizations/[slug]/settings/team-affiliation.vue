@@ -41,6 +41,9 @@ const groupsEnabled = ref(false)
 const groupMode = ref<ApplicationGroupMode>('OFF')
 const guidance = ref('')
 
+/** BE の案内文上限（UpdateTeamAffiliationSettingsRequest の @Size(max = 500)。設計書 §10.2）。 */
+const GUIDANCE_MAX = 500
+
 const groupModeOptions = computed(() => [
   { value: 'OFF', label: t('teamAffiliation.settings.group_mode_off') },
   { value: 'OPTIONAL', label: t('teamAffiliation.settings.group_mode_optional') },
@@ -166,10 +169,13 @@ await load()
             id="settings-guidance"
             v-model="guidance"
             rows="4"
-            maxlength="2000"
+            :maxlength="GUIDANCE_MAX"
             class="w-full"
             data-testid="settings-guidance"
           />
+          <p class="mt-1 text-right text-xs text-surface-400" data-testid="settings-guidance-count">
+            {{ guidance.length }} / {{ GUIDANCE_MAX }}
+          </p>
         </div>
       </SectionCard>
 

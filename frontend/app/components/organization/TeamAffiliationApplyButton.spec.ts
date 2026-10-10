@@ -13,7 +13,9 @@ import TeamAffiliationApplyButton from './TeamAffiliationApplyButton.vue'
  *   AB-02 canApply=false のときボタンが出ない（AC-A08: 受付 off / AC-A09・A11: N・TM・TD）
  *   AB-03 未ログインでは eligibility を呼ばずボタンも出さない（AC-A11）
  *   AB-04 ボタンを押すと申請ダイアログが開く
- *   AB-05 eligibility の取得に失敗したらボタンは出さない（fail-close）
+ *   AB-05 canApply=false（正常な不可）ではエラー表示を出さない
+ *   AB-06 eligibility の取得に失敗したら、無言で消さずエラーと再試行を出す（申請ボタンは出さない）
+ *   AB-07 再試行で成功すればエラーが消えて申請ボタンが出る
  */
 
 const canApply = vi.fn()
@@ -89,9 +91,29 @@ describe('TeamAffiliationApplyButton', () => {
     expect(dialog().attributes('data-org')).toBe('org-1')
   })
 
-  it('AB-05: eligibility の取得に失敗したらボタンを出さない（fail-close）', async () => {
+  it('AB-05: canApply=false（正常な不可）ではエラー表示を出さない', async () => {
+    canApply.mockResolvedValue(false)
+    const wrapper = await mountButton()
+    expect(wrapper.find('[data-testid="team-affiliation-apply-button"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="team-affiliation-apply-error"]').exists()).toBe(false)
+  })
+
+  it('AB-06: eligibility の取得に失敗したらエラーと再試行を出す（申請ボタンは出さない）', async () => {
     canApply.mockRejectedValue(new Error('network'))
     const wrapper = await mountButton()
     expect(wrapper.find('[data-testid="team-affiliation-apply-button"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="team-affiliation-apply-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="team-affiliation-apply-retry"]').exists()).toBe(true)
+  })
+
+  it('AB-07: 再試行で成功すればエラーが消えて申請ボタンが出る', async () => {
+    canApply.mockRejectedValueOnce(new Error('network'))
+    canApply.mockResolvedValueOnce(true)
+    const wrapper = await mountButton()
+    await wrapper.find('[data-testid="team-affiliation-apply-retry"]').trigger('click')
+    await flushPromises()
+    expect(canApply).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('[data-testid="team-affiliation-apply-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="team-affiliation-apply-button"]').exists()).toBe(true)
   })
 })

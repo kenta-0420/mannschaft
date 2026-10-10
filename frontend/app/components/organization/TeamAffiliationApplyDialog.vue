@@ -33,6 +33,9 @@ const loadFailed = ref(false)
 const submitting = ref(false)
 const submitFailed = ref(false)
 
+/** BE の添え書き上限（TeamOrgAffiliationService.MESSAGE_MAX_CODE_POINTS = 500。設計書 §10.2）。 */
+const MESSAGE_MAX = 500
+
 const selectedTeamSlug = ref<string | null>(null)
 const selectedGroupId = ref<string | null>(null)
 const message = ref('')
@@ -65,16 +68,28 @@ const groupRequiredButMissing = computed(
   () => groupMode.value === 'REQUIRED' && !selectedGroupId.value,
 )
 
+// フォームが取得できていない（取得中・取得失敗）ときは送信させない。groupMode の既定 OFF で
+// グループ必須判定が素通りするのを防ぐ。
 const canSubmit = computed(
-  () => !!selectedTeamSlug.value && !groupRequiredButMissing.value && !submitting.value && !loading.value,
+  () =>
+    !!form.value
+    && !loadFailed.value
+    && !!selectedTeamSlug.value
+    && !groupRequiredButMissing.value
+    && message.value.length <= MESSAGE_MAX
+    && !submitting.value
+    && !loading.value,
 )
 
 async function load() {
   loading.value = true
   loadFailed.value = false
   submitFailed.value = false
+  // 開くたびに前回の選択を持ち越さない（取得失敗時に古い選択のまま送信できてしまうため）。
+  selectedTeamSlug.value = null
   selectedGroupId.value = null
   message.value = ''
+  form.value = null
   try {
     form.value = await getApplicationForm(props.orgSlug)
     // 申請できるチームが1つだけなら選択の手間を省く。
@@ -189,10 +204,13 @@ async function submit() {
           id="apply-message"
           v-model="message"
           rows="3"
-          maxlength="1000"
+          :maxlength="MESSAGE_MAX"
           class="w-full"
           data-testid="apply-message"
         />
+        <p class="mt-1 text-right text-xs text-surface-400" data-testid="apply-message-count">
+          {{ message.length }} / {{ MESSAGE_MAX }}
+        </p>
       </div>
 
       <Message v-if="submitFailed" severity="error" data-testid="apply-error">

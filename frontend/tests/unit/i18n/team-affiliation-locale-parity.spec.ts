@@ -52,6 +52,8 @@ const teamAffiliationKeys = [
   'teamAffiliation.view.groups',
   'teamAffiliation.apply.button',
   'teamAffiliation.apply.dialog_title',
+  'teamAffiliation.apply.eligibility_error',
+  'teamAffiliation.apply.eligibility_retry',
   'teamAffiliation.apply.select_team',
   'teamAffiliation.apply.select_group',
   'teamAffiliation.apply.group_none',

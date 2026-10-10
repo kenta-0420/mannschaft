@@ -50,6 +50,8 @@
         "UNAVAILABLE": "Applications to this organization are currently unavailable"
       },
       "find_orgs": "Find organizations to join",
+      "eligibility_error": "Could not check whether you can apply because of a network error",
+      "eligibility_retry": "Retry",
       "load_error": "申請フォームを読み込めませんでした。時間をおいてもう一度お試しください",
       "submit_error": "申請できませんでした。入力内容をご確認のうえ、もう一度お試しください"
     },
