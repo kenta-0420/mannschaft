@@ -230,7 +230,7 @@ class AccountPurgeServiceTest {
             service.purgeExpiredAccounts();
 
             // 旧8domainと本人設定27domainが重複なくPENDING登録されること
-            verify(completionStatusRepository, org.mockito.Mockito.times(35)).save(any(AccountPurgeCompletionStatusEntity.class));
+            verify(completionStatusRepository, org.mockito.Mockito.times(36)).save(any(AccountPurgeCompletionStatusEntity.class));
 
             // 各ドメイン名の PENDING レコードが INSERT されること（残債1: billing を追加登録）
             for (String domain : List.of(
@@ -240,7 +240,7 @@ class AccountPurgeServiceTest {
                     "filesharing", "contact", "user", "appearance", "navsettings",
                     "gamification", "reflection", "timetable.personal", "cms", "chat",
                     "knowledgebase", "favorite", "membership", "weather", "inbox",
-                    "timetable.notes", "seal")) {
+                    "timetable.notes", "seal", "visibility")) {
                 verify(completionStatusRepository).save(argThat(entity ->
                         entity.getUserId().equals(USER_ID)
                                 && entity.getDomainName().equals(domain)
