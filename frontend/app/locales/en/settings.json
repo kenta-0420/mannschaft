@@ -301,7 +301,7 @@
       "defaults": {
         "title": "Default Settings",
         "body": "Set which variant (last name, full name, first name) is automatically used when stamping documents. Saves you from selecting each time.",
-        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
+        "note": "Use \"Add scope\" to set which seal variant is used for each team or organization.",
         "steps": {
           "step1": "Open the \"Default Settings\" tab",
           "step2": "Select your preferred variant (last name, full name, first name) from the dropdown",
@@ -332,25 +332,25 @@
         "save_defaults_error": "Failed to save settings"
       },
       "scope_defaults": {
-        "section_title": "スコープ別デフォルト印鑑",
-        "add_button": "スコープを追加",
-        "add_dialog_title": "スコープを追加",
-        "scope_type_label": "スコープ種別",
-        "scope_type_team": "チーム",
-        "scope_type_org": "組織",
-        "scope_target_label": "対象",
-        "scope_target_placeholder": "選択してください",
-        "variant_label": "使用する印鑑",
-        "variant_last_name": "姓",
-        "variant_full_name": "フルネーム",
-        "variant_first_name": "名",
-        "default_label": "デフォルト（全体）",
-        "delete_tooltip": "このスコープを削除",
-        "no_teams": "所属チームがありません",
-        "no_orgs": "所属組織がありません",
-        "save_button": "保存",
-        "cancel_button": "キャンセル",
-        "add_scope_button": "追加"
+        "section_title": "Default seals by scope",
+        "add_button": "Add scope",
+        "add_dialog_title": "Add scope",
+        "scope_type_label": "Scope type",
+        "scope_type_team": "Team",
+        "scope_type_org": "Organization",
+        "scope_target_label": "Target",
+        "scope_target_placeholder": "Please select",
+        "variant_label": "Seal to use",
+        "variant_last_name": "Last name",
+        "variant_full_name": "Full name",
+        "variant_first_name": "First name",
+        "default_label": "Default (all)",
+        "delete_tooltip": "Remove this scope",
+        "no_teams": "You don't belong to any teams",
+        "no_orgs": "You don't belong to any organizations",
+        "save_button": "Save",
+        "cancel_button": "Cancel",
+        "add_scope_button": "Add"
       }
     },
     "login_history": {
