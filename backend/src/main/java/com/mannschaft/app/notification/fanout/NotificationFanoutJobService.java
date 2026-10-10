@@ -321,6 +321,10 @@ public class NotificationFanoutJobService {
      * <p>呼び出し側にトランザクションが無いときに使う（ある場合はそのトランザクションに参加してしまうため、
      * 業務の書き込みトランザクションの中からは呼ばない）。</p>
      *
+     * <p><b>2-C は通知 outbox へ移行済み</b>（docs/architecture/notification_outbox.md §10）で、本番コードの呼び出し元は無い。
+     * notification 以外のドメインからの依存は番人 D-3P-3 が禁じる（{@code CrossDomainMandatoryPropagationArchTest}。
+     * 検出の陽性検体が本メソッドを参照している）。</p>
+     *
      * @param command enqueue の引数一式
      * @return 登録済み（新規または既存）の親ジョブ行の ID とシャード状態
      */
