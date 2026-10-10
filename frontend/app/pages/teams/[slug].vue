@@ -94,6 +94,7 @@ const {
     getStatus: teamApi.getFollowStatus,
   },
   roleAccess: { roleName, loadPermissions },
+  refreshDetail: fetchTeam,
 })
 
 // =============================================================================
@@ -151,32 +152,63 @@ const displayName = computed(
   () => team.value?.basicInfo?.nickname1 || team.value?.basicInfo?.name || '',
 )
 
+/**
+ * チーム詳細の取得（CMP-261004-1942/1943）。
+ *
+ * - 静かな再取得: 既に team が取得済み（null でない）なら `loading` を立てない。
+ *   応援・解除後の人数取り直しで全画面スピナーを出し、ヘッダ・確認ダイアログを
+ *   一瞬消さないため（AC-1）。
+ * - 世代ガード: 「最後に発行した要求」かつ「slug が要求時と同じ」応答だけを反映する（AC-5）。
+ *   slug 一致だけでは、同一スコープの取り直しが逆順に返ると古い人数で上書きされ、A→B→A でも
+ *   古い A の応答が新しい A を上書きする。403 で閉じた詳細を、それより前の要求の遅延 200 が
+ *   再表示することも防ぐ（連番は useRoleAccess・useOrgDetail と同じ作法）。
+ * - AC-11: 取得失敗が 403（権限喪失）のときは team を null にして保護された詳細表示を閉じる。
+ */
+let fetchTeamSeq = 0
 async function fetchTeam() {
-  loading.value = true
+  const seq = ++fetchTeamSeq
+  const requestedSlug = teamSlug.value
+  const isCurrent = () => seq === fetchTeamSeq && teamSlug.value === requestedSlug
+  const quiet = team.value !== null
+  if (!quiet) loading.value = true
   try {
-    const result = await teamApi.getTeam(teamSlug.value)
+    const result = await teamApi.getTeam(requestedSlug)
+    if (!isCurrent()) return
     team.value = result.data
   }
   catch (error) {
+    if (!isCurrent()) return
     // 404 のときは「旧 slug → 新 slug の 301 移動」かもしれないので解決を試みる（村方式・BE #1542）。
-    if ((error as FetchError)?.response?.status === 404 && await tryRedirectMovedSlug()) {
-      return
+    // 解決は非同期（await）のため、待機中に後発の要求が成功している／別スコープへ
+    // 移動している可能性がある。解決後は isCurrent() を再確認し、古い 404 由来の
+    // 通知・遷移が後発の結果を踏みつけないようにする（検分修繕2・CMP-261004-1942）。
+    if ((error as FetchError)?.response?.status === 404) {
+      const redirected = await tryRedirectMovedSlug(isCurrent)
+      if (!isCurrent()) return
+      if (redirected) return
     }
+    const status = (error as FetchError)?.response?.status
+    if (status === 403) team.value = null
     handleApiError(error, 'チーム詳細取得')
   }
   finally {
-    loading.value = false
+    // 後発の要求が無いときだけ解く（後発がある場合はその要求の完了で解く）
+    if (seq === fetchTeamSeq) loading.value = false
   }
 }
 
 /**
  * 現 slug が旧 slug（MOVED）なら新 slug の同一パスへ 301 遷移する。
  * 遷移した場合は true を返す（呼び出し元はそれ以上のエラー表示を行わない）。
+ *
+ * `isCurrent` が渡された場合、解決待ち（await）の間に後発の要求が成功済み／
+ * 別スコープへ移動済みなら、古い 404 由来の遷移を行わない（検分修繕2・CMP-261004-1942）。
  */
-async function tryRedirectMovedSlug(): Promise<boolean> {
+async function tryRedirectMovedSlug(isCurrent?: () => boolean): Promise<boolean> {
   const { resolveSlug } = useSlugRedirect()
   const target = await resolveSlugRedirectPath(useRoute().path, resolveSlug)
   if (!target) return false
+  if (isCurrent && !isCurrent()) return false
   await navigateTo(
     { path: target, query: useRoute().query, hash: useRoute().hash },
     { redirectCode: 301, replace: true },
