@@ -787,17 +787,26 @@ export const PRIMEVUE_LOCALES: Record<SupportedLocale, PrimeVueLocaleOptions> = 
 const isPlainObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
 
-/** 新しいオブジェクトを返す深いマージ（配列は複製して置換。入力は変更しない） */
-function deepMerge(base: Record<string, unknown>, override: Record<string, unknown>): Record<string, unknown> {
+/** 値単位の深いマージ（配列は複製して置換、プレーンオブジェクトは再帰、入力は変更しない） */
+function mergeValue(base: unknown, override: unknown): unknown {
+  if (override === undefined) return isPlainObject(base) ? mergeValue(base, {}) : Array.isArray(base) ? [...base] : base
+  if (!isPlainObject(override)) return Array.isArray(override) ? [...override] : override
+  const b = isPlainObject(base) ? base : {}
   const out: Record<string, unknown> = {}
-  for (const key of new Set([...Object.keys(base), ...Object.keys(override)])) {
-    const b = base[key]
-    const o = override[key]
-    if (o === undefined) out[key] = isPlainObject(b) ? deepMerge(b, {}) : Array.isArray(b) ? [...b] : b
-    else if (isPlainObject(o)) out[key] = deepMerge(isPlainObject(b) ? b : {}, o)
-    else out[key] = Array.isArray(o) ? [...o] : o
+  for (const key of new Set([...Object.keys(b), ...Object.keys(override)])) {
+    out[key] = mergeValue(b[key], override[key])
   }
   return out
+}
+
+/**
+ * base を土台に override で深く置換した、入力と参照を共有しない新しい T を返す。
+ * キーごとの再帰マージが T の形を保つことは TypeScript の型検査では証明できないため、
+ * 実装は unknown で行い、型の境界（ここ1か所）でだけ T に戻す。
+ * 呼び出し側は base: T と override: Partial<T> を型検査されるので、型の異なる辞書は渡せない。
+ */
+function deepMerge<T extends object>(base: T, override: Partial<T>): T {
+  return mergeValue(base, override) as T
 }
 
 /**
@@ -807,10 +816,9 @@ function deepMerge(base: Record<string, unknown>, override: Record<string, unkno
  */
 export function resolvePrimeVueLocale(code: string | null | undefined): PrimeVueLocaleOptions {
   const lang: SupportedLocale = code && isSupportedLocale(code) ? code : 'ja'
-  return deepMerge(
-    defaultOptions.locale as unknown as Record<string, unknown>,
-    PRIMEVUE_LOCALES[lang] as unknown as Record<string, unknown>,
-  ) as PrimeVueLocaleOptions
+  const dictionary = PRIMEVUE_LOCALES[lang]
+  const base = defaultOptions.locale
+  return base ? deepMerge(base, dictionary) : deepMerge(dictionary, {})
 }
 
 /** config.locale を指定言語の辞書で置き換える（前言語の値を残さない） */
