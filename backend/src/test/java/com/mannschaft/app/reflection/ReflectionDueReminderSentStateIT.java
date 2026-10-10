@@ -15,6 +15,7 @@ import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageRequest;
@@ -75,7 +76,11 @@ class ReflectionDueReminderSentStateIT extends AbstractMySqlIntegrationTest {
                     && arg.getStatus() == ReflectionReminderStatus.SENT) {
                 throw new RuntimeException("SENT の保存失敗（模擬）");
             }
-            return inv.callRealMethod();
+            // Spring Data の Repository は JDK 動的プロキシで、@MockitoSpyBean はインターフェース型の mock の既定 Answer を
+            // delegatesTo(元の Bean) にする。callRealMethod() は抽象メソッドで "Cannot call abstract real method" になり、
+            // 2 回目の保存まで失敗して SENT 検証が落ちるため、既定 Answer へ委譲する
+            // （前例: member/MemberTxBoundaryITSupport#callReal）。
+            return Mockito.mockingDetails(inv.getMock()).getMockCreationSettings().getDefaultAnswer().answer(inv);
         }).when(reminderRepository).save(any(ReflectionSpacedReminderEntity.class));
 
         reminderService.processDueReminders();
