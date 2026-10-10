@@ -580,7 +580,10 @@
     "group_name": "Nombre del grupo",
     "targets": "Destinos",
     "target_id": "ID de destino",
-    "target_type": { "ORGANIZATION": "Organización", "TEAM": "Equipo" },
+    "target_type": {
+      "ORGANIZATION": "Organización",
+      "TEAM": "Equipo"
+    },
     "template": "Plantilla",
     "audience": "Destinatarios",
     "current_scope": "Esta organización o equipo",
@@ -620,6 +623,19 @@
     }
   },
   "timeline": {
+    "detail": {
+      "back": "Volver",
+      "loadFailed": "No se pudo obtener la publicación",
+      "repliesLoadFailed": "No se pudieron cargar las respuestas",
+      "replySuccess": "Respuesta enviada",
+      "replyFailed": "No se pudo enviar la respuesta",
+      "bookmarkFailed": "No se pudo actualizar el marcador",
+      "replyPlaceholder": "Escribe una respuesta...",
+      "replySubmit": "Responder",
+      "replyCount": "{count} respuestas",
+      "loadMoreReplies": "Cargar más respuestas",
+      "notFound": "No se encontró la publicación o no se puede mostrar"
+    },
     "videoProcessing": "Procesando video...",
     "videoFailed": "Video no disponible",
     "videoUploadButton": "Adjuntar video",
@@ -731,24 +747,26 @@
       "saveSettings": "Guardar configuración",
       "loadFailed": "No se pudo cargar el artículo",
       "scheduledPublishUnavailable": "La publicación programada no está disponible por ahora. Al publicar, la entrada se hace pública de inmediato.",
-      "listHeading": "記事",
-      "createButton": "新規作成",
-      "createDialogTitle": "新規記事作成",
-      "titleLabel": "タイトル",
-      "titlePlaceholder": "記事タイトルを入力",
-      "createDialogHint": "下書きとして保存されます。タイトル入力後、編集ページで本文を書いてください。",
-      "loadListFailed": "記事一覧の取得に失敗しました",
-      "createFailed": "記事の作成に失敗しました",
-      "archived": "アーカイブ",
-      "publishSuccess": "公開しました",
-      "unpublishSuccess": "非公開にしました",
-      "publishStatusFailed": "ステータスの変更に失敗しました",
-      "deleteConfirm": "この記事を削除しますか？",
-      "deleteSuccess": "記事を削除しました",
-      "deleteFailed": "削除に失敗しました",
-      "publishButton": "公開",
-      "unpublishButton": "非公開",
-      "updatedAt": "更新日"
+      "listHeading": "Artículos",
+      "createButton": "Crear nuevo",
+      "createDialogTitle": "Crear nuevo artículo",
+      "titleLabel": "Título",
+      "titlePlaceholder": "Introduce el título del artículo",
+      "createDialogHint": "Se guardará como borrador. Después de introducir el título, escribe el contenido en la página de edición.",
+      "loadListFailed": "No se pudo cargar la lista de artículos",
+      "loadListErrorHint": "No se pudo mostrar la lista de artículos. Compruebe la conexión o los permisos y vuelva a cargar.",
+      "reloadList": "Volver a cargar",
+      "createFailed": "No se pudo crear el artículo",
+      "archived": "Archivado",
+      "publishSuccess": "Publicado",
+      "unpublishSuccess": "Publicación retirada",
+      "publishStatusFailed": "No se pudo cambiar el estado",
+      "deleteConfirm": "¿Eliminar este artículo?",
+      "deleteSuccess": "Artículo eliminado",
+      "deleteFailed": "No se pudo eliminar",
+      "publishButton": "Publicar",
+      "unpublishButton": "Retirar",
+      "updatedAt": "Actualizado el"
     },
     "autoSave": {
       "label": "Guardado automático",
@@ -758,18 +776,19 @@
       "disabled": "Guardado automático desactivado"
     },
     "tag": {
-      "heading": "タグ",
-      "addButton": "タグを追加",
-      "addDialogTitle": "タグを追加",
-      "nameLabel": "タグ名",
-      "namePlaceholder": "例: お知らせ",
-      "empty": "タグがありません",
-      "loadFailed": "タグの取得に失敗しました",
-      "createSuccess": "タグを作成しました",
-      "createFailed": "作成に失敗しました",
-      "deleteSuccess": "タグを削除しました",
-      "deleteFailed": "削除に失敗しました"
-    }
+      "heading": "Etiquetas",
+      "addButton": "Añadir etiqueta",
+      "addDialogTitle": "Añadir etiqueta",
+      "nameLabel": "Nombre de la etiqueta",
+      "namePlaceholder": "Ej.: Avisos",
+      "empty": "No hay etiquetas",
+      "loadFailed": "No se pudieron cargar las etiquetas",
+      "createSuccess": "Etiqueta creada",
+      "createFailed": "No se pudo crear",
+      "deleteSuccess": "Etiqueta eliminada",
+      "deleteFailed": "No se pudo eliminar"
+    },
+    "pageTitle": "Blog y anuncios"
   },
   "todo": {
     "backToList": "Volver a la lista de tareas",
@@ -1757,24 +1776,36 @@
     },
     "menu": "Menú",
     "scopeShell": {
+      "memberCount": "{count} miembros",
+      "supporterCount": "{count} seguidores",
       "supporter_cancel_confirm_title": "¿Dejar de apoyar?",
       "supporter_cancel_confirm_body": "Dejarás de apoyar a {name}. ¿Estás seguro?",
       "supporter_cancel_action": "Dejar",
       "supporter_registered": "Registrado como seguidor",
       "supporter_applied": "Solicitud de seguidor enviada",
       "supporter_canceled": "Has dejado de apoyar",
+      "follow_approved_badge": "Eres seguidor/a",
+      "follow_unfollow_aria": "Dejar de apoyar",
+      "follow_pending_label": "Solicitud pendiente",
+      "follow_pending_cancel_button": "Cancelar",
+      "follow_apply_button": "Convertirse en seguidor/a",
       "leave_action": "Salir",
       "load_error_title": "No se pudo cargar la información",
       "load_error_body": "Inténtalo de nuevo más tarde. Puede estar oculto si no tienes permiso.",
       "back_to_dashboard": "Volver al panel",
       "retry": "Reintentar",
       "slow_loading": "La carga está tardando más de lo esperado",
-      "join_request_applied": "参加申請を送信しました"
+      "join_request_applied": "参加申請を送信しました",
+      "follow_fetch_error": "No se pudo obtener el estado de seguimiento",
+      "follow_permission_sync_error_title": "Error al actualizar los permisos",
+      "follow_permission_sync_error_body": "Dejaste de seguir, pero no se pudieron actualizar tus permisos. Inténtalo de nuevo."
     },
     "unsavedChanges": {
       "title": "Cambios sin guardar",
       "confirmLeave": "Tienes cambios sin guardar. Si sales de esta página, se perderá lo que has introducido. ¿Continuar?"
-    }
+    },
+    "moreActions": "Más acciones",
+    "openNavigation": "Abrir navegación"
   },
   "teamHub": {
     "pageTitle": "Mis equipos",
@@ -2078,6 +2109,58 @@
         "public_desc": "Cualquier persona con el enlace puede verlo. Aparece un botón de compartir en la lista para facilitar la difusión externa.",
         "note": "La visibilidad predeterminada está determinada por la configuración de la plantilla."
       }
+    },
+    "detail": {
+      "open": "詳細を見る",
+      "publish": "公開する",
+      "saved": "下書きを保存しました",
+      "participants": "参加者",
+      "participantsHint": "実際に参加したメンバーを選択してください",
+      "participantsRequired": "このテンプレートの公開には参加者が必要です",
+      "noParticipants": "参加者は登録されていません",
+      "attachments": "添付ファイル",
+      "attachment": "添付ファイル {id}",
+      "sourceSchedule": "元の予定",
+      "openSchedule": "予定を開く",
+      "scheduleUnavailable": "元の予定は閲覧できません",
+      "scheduleCancelled": "元の予定は中止されています",
+      "endDate": "終了日（複数日の場合）",
+      "startTime": "開始時刻",
+      "endTime": "終了時刻",
+      "edit": "Editar",
+      "save": "Guardar",
+      "updated": "Registro de actividad guardado"
+    },
+    "sync": {
+      "title": "予定と活動記録の変更を確認",
+      "description": "予定の変更を活動記録へ反映する項目を選んでください。自動反映の項目も「予定のみ保存」では変更されません。",
+      "record": "活動記録 {id}",
+      "automatic": "自動反映",
+      "current": "現在の記録",
+      "updated": "変更後の予定",
+      "scheduleOnly": "予定のみ保存",
+      "apply": "選択した項目を反映して保存",
+      "fields": {
+        "title": "タイトル",
+        "activityDate": "活動日",
+        "activityEndDate": "終了日",
+        "activityTimeStart": "開始時刻",
+        "activityTimeEnd": "終了時刻"
+      }
+    },
+    "schedule": {
+      "create": "この予定の活動記録を作成",
+      "records": "活動記録",
+      "loadError": "活動記録の取得に失敗しました"
+    },
+    "planned": "Previsto",
+    "unpublished": "Sin publicar",
+    "metadataOnly": "El contenido de la actividad aún no se ha publicado. Aquí solo se muestra la información del evento original.",
+    "delete": {
+      "title": "Eliminar registro de actividad",
+      "action": "Eliminar",
+      "confirm": "Se eliminará este registro de actividad. El evento original se conservará.",
+      "success": "Registro de actividad eliminado"
     }
   },
   "dashboard": {
@@ -2371,7 +2454,8 @@
     "action": {
       "leave_confirm_title": "Salir del equipo",
       "leave_confirm_body": "¿Seguro que quieres salir de este equipo? No se puede deshacer.",
-      "left": "Has salido del equipo"
+      "left": "Has salido del equipo",
+      "leave_button": "Salir del equipo"
     }
   },
   "orgShell": {
@@ -2389,7 +2473,8 @@
     "action": {
       "leave_confirm_title": "Salir de la organización",
       "leave_confirm_body": "¿Seguro que quieres salir de esta organización? No se puede deshacer.",
-      "left": "Has salido de la organización"
+      "left": "Has salido de la organización",
+      "leave_button": "Salir de la organización"
     }
   },
   "blog_guide": {
@@ -2653,33 +2738,33 @@
     "saveFailed": "Error al guardar",
     "deleteFailed": "Error al eliminar",
     "pages": {
-      "title": "メンバー紹介ページ",
-      "newPage": "新規ページ作成",
-      "empty": "ページがまだありません",
-      "titleLabel": "タイトル",
-      "slugLabel": "URLスラッグ",
+      "title": "Páginas de presentación de miembros",
+      "newPage": "Crear página nueva",
+      "empty": "Aún no hay páginas",
+      "titleLabel": "Título",
+      "slugLabel": "Slug de URL",
       "yearLabel": "対象年度",
       "visibilityLabel": "公開範囲",
       "visibilityPublic": "全体公開",
-      "visibilityMembersOnly": "メンバー限定",
-      "statusDraft": "下書き",
+      "visibilityMembersOnly": "Solo miembros",
+      "statusDraft": "Borrador",
       "statusPublished": "公開中",
-      "publish": "公開する",
-      "unpublish": "下書きに戻す",
-      "delete": "ページを削除",
-      "deleteConfirm": "このページを削除しますか？この操作は元に戻せません。",
-      "createSuccess": "ページを作成しました",
-      "createFailed": "ページの作成に失敗しました",
-      "updateSuccess": "ページを更新しました",
-      "statusChangeFailed": "公開ステータスの変更に失敗しました",
-      "deleteSuccess": "ページを削除しました",
-      "deleteFailed": "ページの削除に失敗しました",
-      "open": "メンバーを見る",
-      "copyFromPrevious": "前年度からメンバーをコピー",
-      "copySourceLabel": "コピー元ページ",
-      "copyConfirm": "コピーする",
-      "copySuccess": "{count}件のメンバーをコピーしました",
-      "copyFailed": "メンバーのコピーに失敗しました"
+      "publish": "Publicar",
+      "unpublish": "Volver a borrador",
+      "delete": "Eliminar página",
+      "deleteConfirm": "¿Eliminar esta página? Esta acción no se puede deshacer.",
+      "createSuccess": "Página creada",
+      "createFailed": "No se pudo crear la página",
+      "updateSuccess": "Página actualizada",
+      "statusChangeFailed": "No se pudo cambiar el estado de publicación",
+      "deleteSuccess": "Página eliminada",
+      "deleteFailed": "No se pudo eliminar la página",
+      "open": "Ver miembros",
+      "copyFromPrevious": "Copiar miembros del año anterior",
+      "copySourceLabel": "Página de origen",
+      "copyConfirm": "Copiar",
+      "copySuccess": "Se copiaron {count} miembro(s)",
+      "copyFailed": "No se pudieron copiar los miembros"
     },
     "members": {
       "title": "メンバー一覧",
@@ -2782,5 +2867,18 @@
       "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
       "MEMBERS_AND_ABOVE": "Miembros y superiores"
     }
+  },
+  "relativeTime": {
+    "justNow": "Ahora mismo",
+    "minutesAgo": "hace {count} minuto | hace {count} minutos",
+    "hoursAgo": "hace {count} hora | hace {count} horas",
+    "daysAgo": "hace {count} día | hace {count} días"
+  },
+  "error_page": {
+    "not_found_title": "No se encontró esta página",
+    "not_found_description": "La página que busca no existe o puede haber sido movida o eliminada.",
+    "generic_title": "Se ha producido un error",
+    "generic_description": "Inténtelo de nuevo en unos minutos. Si el problema continúa, póngase en contacto con el administrador.",
+    "back_home": "Volver al inicio"
   }
 }

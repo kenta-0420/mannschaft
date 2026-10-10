@@ -5,7 +5,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.school.dto.AtRiskStudentResponse;
 import com.mannschaft.app.school.dto.EvaluationResponse;
 import com.mannschaft.app.school.dto.ResolveEvaluationRequest;
-import com.mannschaft.app.school.service.AttendanceRequirementEvaluationService;
+import com.mannschaft.app.school.service.AttendanceRequirementEvaluationFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,7 +30,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AttendanceRequirementEvaluationController {
 
-    private final AttendanceRequirementEvaluationService evaluationService;
+    private final AttendanceRequirementEvaluationFacade evaluationFacade;
 
     /**
      * 生徒の出席要件評価一覧を取得する。
@@ -44,7 +44,7 @@ public class AttendanceRequirementEvaluationController {
             @PathVariable Long studentId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.of(
-                evaluationService.getStudentEvaluations(studentId, currentUserId)));
+                evaluationFacade.getStudentEvaluations(studentId, currentUserId)));
     }
 
     /**
@@ -61,7 +61,7 @@ public class AttendanceRequirementEvaluationController {
             @RequestParam(required = false) List<String> status) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.of(
-                evaluationService.getAtRiskStudents(teamId, status, currentUserId)));
+                evaluationFacade.getAtRiskStudents(teamId, status, currentUserId)));
     }
 
     /**
@@ -79,7 +79,7 @@ public class AttendanceRequirementEvaluationController {
             @PathVariable Long ruleId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(evaluationService.evaluate(studentId, ruleId, currentUserId)));
+                .body(ApiResponse.of(evaluationFacade.evaluate(studentId, ruleId, currentUserId)));
     }
 
     /**
@@ -96,6 +96,6 @@ public class AttendanceRequirementEvaluationController {
             @Valid @RequestBody ResolveEvaluationRequest request) {
         Long resolverUserId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.of(
-                evaluationService.resolveViolation(evaluationId, resolverUserId, request)));
+                evaluationFacade.resolveViolation(evaluationId, resolverUserId, request)));
     }
 }

@@ -43,6 +43,15 @@ public class OrgTeamGroupService {
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
 
+    /** 保存済み告知の対象判定用。機能 off 後も宛先を維持し、他組織・不在 ID は返さない。 */
+    public Map<UUID, Boolean> findDeletedStates(Long organizationId, java.util.Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return Map.of();
+        Map<UUID, Boolean> result = new LinkedHashMap<>();
+        groupRepository.findByOrganizationIdAndIdIn(organizationId, ids)
+                .forEach(g -> result.put(g.getId(), g.getDeletedAt() != null));
+        return Map.copyOf(result);
+    }
+
     /**
      * 一覧（並び順どおり。teamCount は ACTIVE のみ、unassignedTeamCount は削除済みグループを指す行を含む）。
      * SQL は一定本数（グループ数・チーム数に比例しない）。
@@ -88,6 +97,55 @@ public class OrgTeamGroupService {
         audit("ORG_TEAM_GROUP_REORDERED", userId, organizationId, Map.of(
                 "groupIds", ordered.stream().map(g -> g.id().toString()).toList()));
         return toListResponse(organizationId, ordered);
+    }
+
+    /**
+     * 告知の宛先解決（F01.2.1 §8.1・§8.2。social ドメインの {@code BroadcastAudienceResolver}）に渡す、
+     * 組織のグループ機能の有効状態と生存グループの並び（sort_order 昇順・同値は作成順）。
+     *
+     * <p>認可は呼び出し側が済ませる。組織が無い場合は「無効・グループ0件」を返す（呼び出し側は先に
+     * メンバーシップを確かめているため、ここで存在の区別を返さない）。</p>
+     *
+     * @param organizationId 組織 ID
+     * @return グループ機能の有効状態と生存グループ
+     */
+    public TeamGroupCatalog findAudienceCatalog(Long organizationId) {
+        boolean enabled = organizationRepository.findById(organizationId)
+                .map(org -> Boolean.TRUE.equals(org.getTeamGroupsEnabled()))
+                .orElse(false);
+        if (!enabled) {
+            return new TeamGroupCatalog(false, List.of());
+        }
+        List<OrgTeamGroupView> groups = groupRepository
+                .findByOrganizationIdAndDeletedAtIsNullOrderBySortOrderAscIdAsc(organizationId).stream()
+                .map(g -> new OrgTeamGroupView(g.getId(), g.getName(), g.getDescription(), g.getSortOrder()))
+                .toList();
+        return new TeamGroupCatalog(true, groups);
+    }
+
+    /**
+     * 指定した組織群の生存グループ ID を 1 回の SQL で返す（告知の表示判定用。F01.2.1 §8.2）。
+     *
+     * <p>グループ機能が off でも、削除されていないグループは生存として返す（送信済みの告知の表示を
+     * 機能の on/off で変えないため。AC-G111）。</p>
+     *
+     * @param organizationIds 組織 ID
+     * @return 生存グループの ID
+     */
+    public java.util.Set<UUID> findLiveGroupIds(java.util.Collection<Long> organizationIds) {
+        if (organizationIds == null || organizationIds.isEmpty()) {
+            return java.util.Set.of();
+        }
+        return new java.util.HashSet<>(groupRepository.findLiveIdsByOrganizationIdIn(organizationIds));
+    }
+
+    /**
+     * 組織のグループ機能の有効状態と、生存グループの並び（告知の宛先解決用）。
+     *
+     * @param enabled    グループ機能が有効か
+     * @param liveGroups 生存グループ（sort_order 昇順・同値は ID＝作成順）。無効なら空
+     */
+    public record TeamGroupCatalog(boolean enabled, List<OrgTeamGroupView> liveGroups) {
     }
 
     // ───────── 内部 ─────────

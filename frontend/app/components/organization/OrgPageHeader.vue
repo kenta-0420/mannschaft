@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AncestorOrganization } from '~/types/organization'
 import type { OrgDetail } from '~/composables/useOrgDetail'
+import type { FollowUiStatus } from '~/composables/useFollowSelfStatus'
 import type { JoinRequestUiStatus } from '~/composables/useJoinRequestApi'
 import FavoriteToggleButton from '~/components/favorites/FavoriteToggleButton.vue'
 
@@ -10,8 +11,10 @@ const props = defineProps<{
   roleName: string | null
   isAdmin: boolean
   isAdminOrDeputy: boolean
-  followStatus: 'NONE' | 'PENDING' | 'APPROVED'
+  followStatus: FollowUiStatus
   followLoading: boolean
+  /** AC-9: フォロー解除成功・権限再取得失敗の同期失敗フラグ（未所属確定として扱わない）。 */
+  followPermissionSyncError: boolean
   joinRequestStatus: JoinRequestUiStatus
   joinRequestLoading: boolean
   ancestors: AncestorOrganization[]
@@ -21,6 +24,8 @@ const emit = defineEmits<{
   back: []
   applySupporter: []
   cancelSupporter: []
+  retryFollowStatus: []
+  retryFollowPermissionSync: []
   applyJoinRequest: []
   retryJoinRequestStatus: []
   showCancelConfirm: []
@@ -36,6 +41,19 @@ const { t } = useI18n()
 
 // F02.8 告知ウィザード（ローカル管理）
 const showBroadcastWizard = ref(false)
+
+/**
+ * ヘッダ人数表示（CMP-261004-1943）。
+ * AC-13: 0 は「0」、欠落/null は「—」で表示する。AC-14: i18n キーへ移行し直書きをやめる。
+ */
+const memberCountText = computed(() => {
+  const count = props.org.metadata?.memberCount
+  return t('common.scopeShell.memberCount', { count: count === null || count === undefined ? '—' : count })
+})
+const supporterCountText = computed(() => {
+  const count = props.org.social?.supporterCount
+  return t('common.scopeShell.supporterCount', { count: count === null || count === undefined ? '—' : count })
+})
 
 /**
  * モバイル(<sm)向け「⋯」オーバーフローメニュー。
@@ -69,9 +87,10 @@ const overflowMenuItems = computed(() => {
       command: () => { showBroadcastWizard.value = true },
     })
   }
-  if (!props.isAdmin && props.roleName) {
+  // AC-2/AC-3: 応援者(SUPPORTER)には退出を出さない（退出できるのは MEMBER 等の正規加入者のみ）。
+  if (!props.isAdmin && props.roleName && props.roleName !== 'SUPPORTER') {
     items.push({
-      label: '組織から退出',
+      label: t('orgShell.action.leave_button'),
       icon: 'pi pi-sign-out',
       command: () => emit('showLeaveConfirm'),
     })
@@ -103,13 +122,17 @@ const overflowMenuItems = computed(() => {
           <RoleBadge v-if="roleName" :role="roleName" />
         </div>
         <div class="flex items-center gap-3 text-xs sm:text-sm text-surface-500 flex-wrap pl-8">
-          <span class="flex items-center gap-1">
+          <span class="flex items-center gap-1" data-testid="scope-header-member-count">
             <i class="pi pi-users text-xs" />
-            メンバー <strong class="text-surface-700">{{ org.metadata?.memberCount }}</strong>人
+            {{ memberCountText }}
           </span>
-          <span v-if="org.visibility?.supporterEnabled" class="flex items-center gap-1">
+          <span
+            v-if="org.visibility?.supporterEnabled"
+            class="flex items-center gap-1"
+            data-testid="scope-header-supporter-count"
+          >
             <i class="pi pi-heart text-xs" />
-            サポーター <strong class="text-surface-700">{{ org.supporterCount ?? '—' }}</strong>人
+            {{ supporterCountText }}
           </span>
         </div>
       </div>
@@ -133,42 +156,87 @@ const overflowMenuItems = computed(() => {
           data-testid="organization-market-link"
           @click="navigateTo(`/organizations/${orgId}/market`)"
         />
-        <template v-if="org.visibility?.supporterEnabled && !roleName">
+        <!--
+          フォロー（サポーター）状態の表示（CMP-261001-0835）。
+          AC-1: APPROVED は roleName・supporterEnabled に関係なく「フォロー解除」導線を出す
+          （SUPPORTER ロール自身も含む。フォロー承認で SUPPORTER ロールが付与されるため）。
+          AC-4: 「フォローする」(NONE) は supporterEnabled=true かつ未所属（roleName なし）
+          かつ同期エラーが無いときだけ出す。
+          AC-6: UNKNOWN/LOADING の間は押せる状態を一切出さない（fail-close）。
+        -->
+        <template v-if="followStatus === 'APPROVED'">
           <Button
-            v-if="followStatus === 'APPROVED'"
             icon="pi pi-heart-fill"
-            label="サポーターです"
+            :label="$t('common.scopeShell.follow_approved_badge')"
+            :aria-label="$t('common.scopeShell.follow_unfollow_aria')"
             size="small"
+            data-testid="follow-unfollow-button"
             :loading="followLoading"
             class="border-red-400 bg-red-50 text-red-500 hover:bg-red-100"
             outlined
             @click="emit('showCancelConfirm')"
           />
-          <span
-            v-else-if="followStatus === 'PENDING'"
-            class="flex items-center gap-2 text-sm text-orange-500"
-          >
-            <i class="pi pi-clock" />申請中（承認待ち）
-            <Button
-              label="取消"
-              size="small"
-              severity="secondary"
-              text
-              :loading="followLoading"
-              @click="emit('cancelSupporter')"
-            />
-          </span>
-          <Button
-            v-else
-            label="サポーターになる"
-            icon="pi pi-heart"
-            severity="secondary"
-            outlined
-            size="small"
-            :loading="followLoading"
-            @click="emit('applySupporter')"
-          />
         </template>
+        <!--
+          検分修繕: PENDING の「取消」は SUPPORTER 以外の正規所属ロールを持つ人には出さない
+          （MEMBER/ADMIN 等の正規所属に PENDING 申請が併存していても、BE はそれを解除対象として
+          扱わないため、取消ボタンを出すと誤操作導線になる）。
+        -->
+        <span
+          v-else-if="followStatus === 'PENDING' && (!roleName || roleName === 'SUPPORTER')"
+          class="flex items-center gap-2 text-sm text-orange-500"
+        >
+          <i class="pi pi-clock" />{{ $t('common.scopeShell.follow_pending_label') }}
+          <Button
+            :label="$t('common.scopeShell.follow_pending_cancel_button')"
+            size="small"
+            severity="secondary"
+            text
+            data-testid="follow-pending-cancel-button"
+            :loading="followLoading"
+            @click="emit('cancelSupporter')"
+          />
+        </span>
+        <span
+          v-else-if="followStatus === 'ERROR'"
+          class="flex items-center gap-2 text-sm text-red-500"
+          data-testid="follow-fetch-error"
+        >
+          <i class="pi pi-exclamation-triangle" />{{ $t('common.scopeShell.follow_fetch_error') }}
+          <Button
+            :label="$t('common.scopeShell.retry')"
+            text
+            size="small"
+            data-testid="follow-retry-button"
+            @click="emit('retryFollowStatus')"
+          />
+        </span>
+        <!-- AC-9: 解除は成功済みだが権限再取得が未同期。フォロー系操作は出さず再試行のみ出す。 -->
+        <span
+          v-else-if="followPermissionSyncError"
+          class="flex items-center gap-2 text-sm text-red-500"
+          data-testid="follow-permission-sync-error"
+        >
+          <i class="pi pi-exclamation-triangle" />{{ $t('common.scopeShell.follow_permission_sync_error_body') }}
+          <Button
+            :label="$t('common.scopeShell.retry')"
+            text
+            size="small"
+            data-testid="follow-permission-sync-retry-button"
+            @click="emit('retryFollowPermissionSync')"
+          />
+        </span>
+        <Button
+          v-else-if="followStatus === 'NONE' && org.visibility?.supporterEnabled && !roleName"
+          :label="$t('common.scopeShell.follow_apply_button')"
+          icon="pi pi-heart"
+          severity="secondary"
+          outlined
+          size="small"
+          data-testid="follow-apply-button"
+          :loading="followLoading"
+          @click="emit('applySupporter')"
+        />
         <template v-if="org.visibility?.visibility === 'PUBLIC' && !roleName">
           <span
             v-if="joinRequestStatus === 'PENDING'"
@@ -248,14 +316,16 @@ const overflowMenuItems = computed(() => {
           class="hidden sm:inline-flex"
           @click="showBroadcastWizard = true"
         />
+        <!-- AC-2/AC-3: 応援者(SUPPORTER)には退出を出さない（退出できるのは MEMBER 等の正規加入者のみ）。 -->
         <Button
-          v-if="!isAdmin && roleName"
-          label="組織から退出"
+          v-if="!isAdmin && roleName && roleName !== 'SUPPORTER'"
+          :label="$t('orgShell.action.leave_button')"
           icon="pi pi-sign-out"
           severity="danger"
           outlined
           size="small"
           class="hidden sm:inline-flex"
+          data-testid="org-leave-button"
           @click="emit('showLeaveConfirm')"
         />
 

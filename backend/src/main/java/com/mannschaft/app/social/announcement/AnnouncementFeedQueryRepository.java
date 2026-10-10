@@ -291,18 +291,129 @@ public class AnnouncementFeedQueryRepository {
     }
 
     /**
-     * チームダッシュボード向けに、組織スコープのお知らせフィードを取得する。
+     * チームダッシュボードの組織告知を読み進める位置（直前のページの最後の行）。時刻は持たない。
      *
-     * <p>target_team_ids のフィルタリングは Service 層（Java Stream）で行う。
-     * {@code DashboardService.getTeamDashboard()} から呼び出される。</p>
+     * @param pinned その行を取得したときの {@code is_pinned}
+     * @param feedId その行の ID
+     */
+    public record OrgFeedCursor(boolean pinned, Long feedId) {
+
+        /** 取得した行から位置を作る。 */
+        public static OrgFeedCursor of(AnnouncementFeedEntity feed) {
+            return new OrgFeedCursor(Boolean.TRUE.equals(feed.getIsPinned()), feed.getId());
+        }
+    }
+
+    /**
+     * チームダッシュボード向けに、組織スコープのお知らせフィードを 1 ページ分、キーセットで取得する（F01.2.1 §8.2・§15）。
+     *
+     * <p><b>宛先の判定はしない</b>。表示するかどうかの正は {@code AnnouncementAudienceMatcher}（Java）であり、
+     * 呼び出し側は本メソッドの結果を必ず Matcher に通してから件数を数える（件数の上限は判定の後に掛ける）。</p>
+     *
+     * <p><b>宛先の前絞り（必要条件だけ）</b>: 読み進める行数を減らすため、Matcher が<b>必ず落とす</b>行だけを
+     * DB 側で除く。除くのは次の全部を満たす行に限る。</p>
+     * <ul>
+     *   <li>{@code target_team_ids} が SQL の NULL（＝「チームを選ぶ」ではない）</li>
+     *   <li>{@code target_group_ids} が JSON 配列（＝グループ宛て。SQL の NULL や JSON の null は除かない）</li>
+     *   <li>{@code include_unassigned} が偽</li>
+     *   <li>チームの今の所属グループ {@code currentGroupId} を {@code target_group_ids} に含まない
+     *       （{@code currentGroupId} が null なら、この条件は常に満たす）</li>
+     *   <li>このチームのスナップショット行が 1 行も無い</li>
+     * </ul>
+     * <p>これらを満たす行は、Matcher でも「動的（所属が宛先に含まれる）」「未分類」「スナップショット」の
+     * どれにも当たらないため表示されない。逆に、この条件で残る行が表示されるとは限らない（生死の判定・
+     * 「チームを選ぶ」の照合・スナップショットのグループの生死は Matcher が行う）。つまり DB 側は
+     * Matcher の<b>上位集合</b>を返すだけで、判定の意味は Matcher だけが持つ。両者が食い違わないことは
+     * {@code AnnouncementAudiencePagingConsistencyIT} が固定する。</p>
+     *
+     * <p>並びは {@code is_pinned DESC, created_at DESC, id DESC}（{@link #findByScope} の並びに、
+     * 同時刻の行を一意に並べるための {@code id} を足したもの）。{@code after} の位置より後ろの行だけを返す。</p>
+     *
+     * <p><b>位置（カーソル）</b>は直前のページの最後の行の「取得したときの {@code is_pinned}」と「ID」で持つ
+     * （{@link OrgFeedCursor}）。{@code created_at} は SQL の中でその行（{@code k}）から読み、同じ列どうしで比べる。
+     * 時刻を Java の値として取り出して束縛し直さないため、型の変換・ゾーン・精度で比較の意味がずれない
+     * （日時方針 {@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md}。アプリ層に新しく
+     * {@code LocalDateTime} の値を持たせない）。{@code created_at} と {@code id} は行の生涯で変わらない。</p>
+     *
+     * <p><b>ピン留めが読み進める間に変わる場合</b>: {@code is_pinned} は位置の行の今の値ではなく取得時の値で
+     * 比べるので、位置の行がピン留め・解除されても位置は動かない（同じ範囲を読み直さない・飛ばさない）。
+     * 他の行がページの間にピン留め・解除されると、その行が既読の範囲と未読の範囲の間を移ることはある。
+     * 既読側から未読側へ移った行は呼び出し側（Matcher）が ID で重複を除き、未読側から既読側へ移った行は
+     * その回の表示から漏れる（次回の表示で正しい位置に出る）。位置は並びの上で単調に進むので、
+     * 読み進めが終わらないことは無い。</p>
+     *
+     * <p>位置の行が読み進める間に物理削除された場合は空結果になる（呼び出し側が検知して WARN を残す）。</p>
      *
      * @param orgId               組織 ID
-     * @param allowedVisibilities 閲覧者が閲覧できる visibility 値の集合
-     * @param limit               取得上限件数（Java 層でフィルタするため多めに取得）
-     * @return 組織スコープのお知らせフィードリスト（ピン留め優先 → 新着順）
+     * @param allowedVisibilities 閲覧者が閲覧できる visibility 値の集合（空・null は空結果）
+     * @param teamId              閲覧中のチーム ID（スナップショットの前絞りに使う）
+     * @param currentGroupId      そのチームのこの組織での所属グループ ID（未分類なら null。削除済みでもよい）
+     * @param after               直前のページの最後の行の位置（先頭から読むときは null）
+     * @param pageSize            1 ページの行数
+     * @return 組織スコープのお知らせフィード（宛先の判定前）
      */
-    public List<AnnouncementFeedEntity> findByOrgScopeForTeamDashboard(
-            Long orgId, Set<String> allowedVisibilities, int limit) {
-        return findByScope(AnnouncementScopeType.ORGANIZATION, orgId, allowedVisibilities, null, limit);
+    public List<AnnouncementFeedEntity> findOrgScopePageForTeamDashboard(
+            Long orgId,
+            Set<String> allowedVisibilities,
+            Long teamId,
+            java.util.UUID currentGroupId,
+            OrgFeedCursor after,
+            int pageSize) {
+        if (allowedVisibilities == null || allowedVisibilities.isEmpty() || teamId == null || pageSize <= 0) {
+            return List.of();
+        }
+        Long afterFeedId = after == null ? null : after.feedId();
+
+        StringBuilder jpql = new StringBuilder(afterFeedId == null
+                        ? "SELECT a FROM AnnouncementFeedEntity a\n"
+                        : "SELECT a FROM AnnouncementFeedEntity a, AnnouncementFeedEntity k\n")
+                .append(VISIBLE_IN_SCOPE_WHERE)
+                .append("""
+                          AND (a.targetGroupIds IS NULL
+                               OR a.targetTeamIds IS NOT NULL
+                               OR a.includeUnassigned = true
+                               OR function('JSON_TYPE', a.targetGroupIds) <> 'ARRAY'
+                        """);
+        if (currentGroupId != null) {
+            jpql.append("       OR function('JSON_CONTAINS', a.targetGroupIds, :currentGroupJson) = 1\n");
+        }
+        jpql.append("""
+                               OR EXISTS (SELECT s.id FROM AnnouncementFeedGroupSnapshotEntity s
+                                          WHERE s.feedId = a.id AND s.teamId = :teamId))
+                        """);
+        if (afterFeedId != null) {
+            // 並び (is_pinned DESC, created_at DESC, id DESC) で位置より後ろ。is_pinned は取得時の値（after.pinned）
+            if (after.pinned()) {
+                jpql.append("""
+                          AND k.id = :afterFeedId
+                          AND (a.isPinned = false
+                               OR (a.isPinned = true
+                                   AND (a.createdAt < k.createdAt
+                                        OR (a.createdAt = k.createdAt AND a.id < k.id))))
+                        """);
+            } else {
+                jpql.append("""
+                          AND k.id = :afterFeedId
+                          AND a.isPinned = false
+                          AND (a.createdAt < k.createdAt
+                               OR (a.createdAt = k.createdAt AND a.id < k.id))
+                        """);
+            }
+        }
+        jpql.append("ORDER BY a.isPinned DESC, a.createdAt DESC, a.id DESC");
+
+        TypedQuery<AnnouncementFeedEntity> query =
+                em.createQuery(jpql.toString(), AnnouncementFeedEntity.class);
+        bindVisibleInScopeParameters(query, AnnouncementScopeType.ORGANIZATION, orgId, allowedVisibilities);
+        query.setParameter("teamId", teamId);
+        if (currentGroupId != null) {
+            // JSON_CONTAINS の候補は JSON 文書。UUID 文字列を JSON の文字列として渡す
+            query.setParameter("currentGroupJson", "\"" + currentGroupId + "\"");
+        }
+        if (afterFeedId != null) {
+            query.setParameter("afterFeedId", afterFeedId);
+        }
+        query.setMaxResults(pageSize);
+        return query.getResultList();
     }
 }

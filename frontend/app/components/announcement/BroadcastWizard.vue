@@ -33,6 +33,7 @@ const currentStep = ref<WizardStep>(1)
 
 /** 使い方ガイドの展開状態（②インライン折りたたみ式） */
 const showHelp = ref(false)
+const guidePanelId = `broadcast-guide-panel-${useId()}`
 
 const initialFormState: WizardFormState = {
   step: 1,
@@ -213,6 +214,7 @@ watch(
           text
           size="small"
           :aria-expanded="showHelp"
+          :aria-controls="guidePanelId"
           data-testid="broadcast-guide-toggle"
           @click="showHelp = !showHelp"
         />
@@ -220,6 +222,7 @@ watch(
 
       <!-- 使い方ガイド展開領域（フェード＋高さスムーズ伸縮・同一モーダル内・重ねない） -->
       <div
+        :id="guidePanelId"
         class="grid transition-all duration-300 ease-in-out motion-reduce:transition-none"
         :class="showHelp ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'"
         data-testid="broadcast-guide-panel"

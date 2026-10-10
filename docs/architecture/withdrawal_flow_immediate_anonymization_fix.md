@@ -171,7 +171,7 @@ public void withdrawUser(Long userId) {
 
 ---
 
-## §3. 退会イベント購読者の正本（2026-09-17 実装同期）
+## §3. 退会イベント購読者の正本（2026-10-03 CMP1243 実装同期）
 
 この表は `UserAnonymizedEvent`（即時匿名化層）と `AccountPurgedEvent`（30日後の確定削除層）を実際に購読するクラスの正本である。同じクラスが両イベントを購読する場合は、イベントごとの削除責務が異なるため2行に分ける。
 
@@ -181,7 +181,7 @@ public void withdrawUser(Long userId) {
 | イベント | 購読クラス（FQCN） | ドメイン | 対象データと操作 |
 |---|---|---|---|
 | UserAnonymizedEvent | `com.mannschaft.app.actionmemo.event.ActionMemoAnonymizationEventListener` | actionmemo | `action_memos` を物理削除 |
-| AccountPurgedEvent | `com.mannschaft.app.actionmemo.event.ActionMemoAnonymizationEventListener` | actionmemo | `action_memo_tags` と `user_action_memo_settings` を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.actionmemo.event.ActionMemoAnonymizationEventListener` | actionmemo | `action_memo_tags`、`user_action_memo_settings`を物理削除し、所有TXのcommit後に完了記録 |
 | UserAnonymizedEvent | `com.mannschaft.app.auth.event.AuthAnonymizationEventListener` | auth | `oauth_accounts` と `two_factor_auth` を物理削除 |
 | AccountPurgedEvent | `com.mannschaft.app.billing.BillingPurgeEventListener` | billing | ユーザー課金契約を取消し、Stripe subscription を即時解約 |
 | AccountPurgedEvent | `com.mannschaft.app.billing.beta.BetaPerkPurgeEventListener` | billing | USERスコープのベータ特典と由来 entitlement を取消 |
@@ -193,7 +193,7 @@ public void withdrawUser(Long userId) {
 | UserAnonymizedEvent | `com.mannschaft.app.notification.event.NotificationAnonymizationEventListener` | notification | push・通知設定・通知本体・`notifications_archive` を物理削除 |
 | AccountPurgedEvent | `com.mannschaft.app.payment.event.PaymentPurgeEventListener` | payment | `member_payments.user_id` をセンチネル化し、`stripe_customers` を物理削除 |
 | UserAnonymizedEvent | `com.mannschaft.app.pointcard.event.PointCardAnonymizationEventListener` | pointcard | `user_point_cards` を物理削除 |
-| AccountPurgedEvent | `com.mannschaft.app.pointcard.event.PointCardAnonymizationEventListener` | pointcard | `point_card_groups` と `point_card_user_settings` を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.pointcard.event.PointCardAnonymizationEventListener` | pointcard | `point_card_groups`、`point_card_user_settings`を物理削除し、所有TXのcommit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.proxy.event.ProxyPurgeEventListener` | proxy | `proxy_input_records` を物理削除し、`proxy_input_consents` を論理削除 |
 | UserAnonymizedEvent | `com.mannschaft.app.reservation.event.ReservationAnonymizationEventListener` | reservation | `emergency_closure_confirmations` を物理削除 |
 | UserAnonymizedEvent | `com.mannschaft.app.resident.event.ResidentAnonymizationEventListener` | resident | `property_listing_inquiries` を物理削除 |
@@ -206,15 +206,38 @@ public void withdrawUser(Long userId) {
 | UserAnonymizedEvent | `com.mannschaft.app.schedule.listener.CalendarLayerLifecycleListener` | schedule | `user_calendar_layer_settings` を物理削除 |
 | UserAnonymizedEvent | `com.mannschaft.app.schedule.listener.ScheduleKeepAnonymizationEventListener` | schedule | ユーザーの schedule keep を論理削除 |
 | UserAnonymizedEvent | `com.mannschaft.app.search.event.SearchAnonymizationEventListener` | search | 検索履歴を物理削除 |
-| AccountPurgedEvent | `com.mannschaft.app.search.event.SearchAnonymizationEventListener` | search | 保存検索条件を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.search.event.SearchAnonymizationEventListener` | search | `search_saved_queries`を物理削除し、所有TXのcommit後に完了記録 |
 | UserAnonymizedEvent | `com.mannschaft.app.social.event.SocialAnonymizationEventListener` | social | USER型followを物理削除し、social profileを無効化 |
 | AccountPurgedEvent | `com.mannschaft.app.team.event.TeamPurgeEventListener` | team | `team_org_memberships.invited_by/responded_by` をNULL化 |
-| AccountPurgedEvent | `com.mannschaft.app.timeline.event.TimelineBookmarkAnonymizationEventListener` | timeline | timeline bookmark を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.timeline.event.TimelineBookmarkAnonymizationEventListener` | timeline | `timeline_bookmarks`、`user_mutes`を物理削除し、所有TXのcommit後に完了記録 |
 | UserAnonymizedEvent | `com.mannschaft.app.village.event.VillageUserCleanerEventListener` | village | nickname・pinを削除し、membershipを離脱化、charter drafterをNULL化 |
 | UserAnonymizedEvent | `com.mannschaft.app.weather.event.WeatherLocationCleanupListener` | weather | `user_weather_locations` を物理削除 |
+| AccountPurgedEvent | `com.mannschaft.app.appearance.event.AppearanceSettingsPurgeEventListener` | appearance | `appearance_settings`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.auth.event.AuthAnonymizationEventListener` | auth | `user_interest_tags`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.chat.event.ChatBookmarkPurgeEventListener` | chat | `chat_message_bookmarks`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.cms.event.UserBlogSettingsPurgeEventListener` | cms | `user_blog_settings`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.contact.event.ContactRequestBlockPurgeEventListener` | contact | `contact_request_blocks`を物理削除し、所有TXのcommit後に完了記録（両端の退会者参照を削除、他者間は保持） |
+| AccountPurgedEvent | `com.mannschaft.app.dashboard.event.DashboardSettingsPurgeEventListener` | dashboard | `chat_contact_folder_items`、`chat_contact_folders`、`dashboard_widget_settings`、`dashboard_scope_tab_order`を物理削除し、所有TXのcommit後に完了記録（退会者向けCONTACT参照子も削除） |
+| AccountPurgedEvent | `com.mannschaft.app.favorite.event.FavoriteAnonymizationEventListener` | favorite | `user_favorites`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.filesharing.event.SharedFileStarPurgeEventListener` | filesharing | `shared_file_stars`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.gamification.event.GamificationSettingsPurgeEventListener` | gamification | `gamification_user_settings`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.inbox.event.InboxAnonymizationEventListener` | inbox | `inbox_label_links`、`inbox_item_states`、`notification_labels`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.knowledgebase.event.KbPageFavoritePurgeEventListener` | knowledgebase | `kb_page_favorites`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.membership.event.ScopeMemberCalendarSettingAnonymizationEventListener` | membership | `scope_member_calendar_settings`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.navsettings.event.NavSettingsPurgeEventListener` | navsettings | `user_nav_settings`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.notification.event.NotificationAnonymizationEventListener` | notification | `notification_settings`、`notification_preferences`、`notification_type_preferences`、`push_subscriptions`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.quickmemo.event.QuickMemoSettingsPurgeEventListener` | quickmemo | `user_quick_memo_settings`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.reflection.event.ReflectionSettingsPurgeEventListener` | reflection | `user_reflection_settings`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.schedule.listener.CalendarLayerLifecycleListener` | schedule | `user_calendar_sync_settings`、`user_calendar_layer_settings`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.scopefolder.event.MyScopeFolderPurgeEventListener` | scopefolder | `my_scope_folder_items`、`my_scope_folders`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.seal.event.SealScopeDefaultsPurgeEventListener` | seal | `seal_scope_defaults`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.timetable.notes.event.TimetableNoteFieldsPurgeEventListener` | timetable.notes | `timetable_slot_user_note_fields`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.timetable.personal.event.PersonalTimetableSettingsPurgeEventListener` | timetable.personal | `personal_timetable_settings`を物理削除し、所有TXのcommit後に完了記録 |
+| AccountPurgedEvent | `com.mannschaft.app.user.event.UserBlockPurgeEventListener` | user | `user_blocks`を物理削除し、所有TXのcommit後に完了記録（両端の退会者参照を削除、他者間は保持） |
+| AccountPurgedEvent | `com.mannschaft.app.weather.event.WeatherLocationCleanupListener` | weather | `user_weather_locations`を物理削除し、所有TXのcommit後に完了記録 |
 <!-- GDPR_EVENT_LISTENER_LEDGER_END -->
 
-実装同期時点の件数は `UserAnonymizedEvent` 18クラス、`AccountPurgedEvent` 14クラス、両方を購読する4クラス、ユニーク28クラスである。件数は説明用であり、番人は固定件数ではなく購読者の集合そのものを照合する。
+実装同期時点の件数は `UserAnonymizedEvent` 18クラス、`AccountPurgedEvent` 37クラス、両方を購読する11クラス、ユニーク44クラスである。件数は説明用であり、番人は固定件数ではなく購読者の集合そのものを照合する。
 
 この番人が保証するのは、**既に実装された2イベントの購読者と本台帳のドリフトが無いこと**である。新しい個人データ表にリスナー自体を実装し忘れた場合、既存リスナー内の対象表だけを変更した場合、または実装と台帳を同時に誤って削除した場合までは検出できない。「全個人データ表の削除経路が存在すること」の保証には、`@PersonalData`・削除方式・CASCADE・外部リソースを含む別の宣言的マニフェストが必要になる。
 

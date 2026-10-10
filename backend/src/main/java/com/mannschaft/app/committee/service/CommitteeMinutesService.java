@@ -68,12 +68,12 @@ public class CommitteeMinutesService {
                 .orElseThrow(() -> new BusinessException(CommitteeErrorCode.NOT_FOUND));
 
         // 4. スコープが COMMITTEE かつ committeeId 一致確認
-        //    越境（他委員会・非委員会スコープの記録）は MINUTES_NOT_COMMITTEE_SCOPE = 404 で、
-        //    不在（NOT_FOUND = 404）と同一ステータスに畳む。割ると recordId の列挙で
-        //    他委員会の議事録の実在が応答差から判別できる（存在オラクル）。
+        //    越境（他委員会・非委員会スコープの記録）は不在と同じ NOT_FOUND 応答
+        //    （status/code/message）に畳む。割ると recordId の列挙で他委員会の議事録の実在が
+        //    応答差から判別できる（存在オラクル）。
         if (record.getScopeType() != ActivityScopeType.COMMITTEE
                 || !committeeId.equals(record.getScopeId())) {
-            throw new BusinessException(CommitteeErrorCode.MINUTES_NOT_COMMITTEE_SCOPE);
+            throw new BusinessException(CommitteeErrorCode.NOT_FOUND);
         }
 
         // 5. fieldValues の _meta を解析して既に CONFIRMED か確認

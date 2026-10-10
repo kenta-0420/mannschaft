@@ -165,7 +165,7 @@ watch(() => props.threadId, () => loadThread())
         <span v-if="thread.readTrackingMode !== 'NONE'"><i class="pi pi-eye" /> {{ thread.readCount }}人既読</span>
       </div>
       <!-- eslint-disable-next-line vue/no-v-html -->
-      <div class="prose max-w-none text-sm leading-relaxed" v-html="sanitizeHtml(thread.body)" />
+      <div class="article-body text-sm leading-relaxed" v-html="sanitizeHtml(thread.body)" />
     </SectionCard>
 
     <!-- 添付ファイル一覧 -->

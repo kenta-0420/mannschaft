@@ -6,6 +6,8 @@ import com.mannschaft.app.gdpr.GdprErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 /**
  * 柱①「ADMINゼロ根治」§12.5 — purge × cancel-withdrawal の勝敗を判定するガード。
  *
@@ -36,6 +38,11 @@ public class PurgeStartGuard {
         purgeMarkerService.markPurgeStarted(userId);
     }
 
+    /** 最新の退会状態が対象条件を満たす場合だけ開始マークを独立コミットする。 */
+    public boolean markPurgeStartedIfEligible(Long userId, LocalDateTime cutoff) {
+        return purgeMarkerService.markPurgeStartedIfEligible(userId, cutoff);
+    }
+
     /** purge 開始マーク済みなら true。 */
     public boolean isPurgeStarted(Long userId) {
         return purgeMarkerService.isPurgeStarted(userId);
@@ -46,7 +53,12 @@ public class PurgeStartGuard {
      * {@code BusinessException(GdprErrorCode.GDPR_012)} を投げる（409）。
      */
     public void checkCancelAllowed(Long userId) {
-        if (isPurgeStarted(userId)) {
+        checkCancelAllowed(isPurgeStarted(userId));
+    }
+
+    /** ロック済みの最新行から得た状態を判定する。古い RR snapshot を再読しない。 */
+    public void checkCancelAllowed(boolean purgeStarted) {
+        if (purgeStarted) {
             throw new BusinessException(GdprErrorCode.GDPR_012);
         }
     }
