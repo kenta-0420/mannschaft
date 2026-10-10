@@ -52274,12 +52274,23 @@ export interface components {
             status?: string;
         };
         AnnouncementRangeTemplateRequest: {
+            includeUnassigned?: boolean;
             isDefault?: boolean;
             name?: string;
             preferredChannel?: string;
+            targetGroupIds?: string[];
+            targetGroupIdsJson?: string;
+            targetGroupRange?: components["schemas"]["TargetGroupRange"];
+            targetGroupRangeJson?: string;
             targetRole?: string;
             targetTeamIds?: number[];
             targetTeamIdsJson?: string;
+        };
+        TargetGroupRange: {
+            /** Format: uuid */
+            fromGroupId?: string;
+            /** Format: uuid */
+            toGroupId?: string;
         };
         ApiResponseTemplateResponseDto: {
             data?: components["schemas"]["TemplateResponseDto"];
@@ -52291,12 +52302,15 @@ export interface components {
             createdBy?: number;
             /** Format: int64 */
             id?: number;
+            includeUnassigned?: boolean;
             isDefault?: boolean;
             name?: string;
             preferredChannel?: string;
             /** Format: int64 */
             scopeId?: number;
             scopeType?: string;
+            targetGroupIds?: string[];
+            targetGroupRange?: components["schemas"]["TargetGroupRange"];
             targetRole?: string;
             targetTeamIds?: number[];
         };
@@ -61758,12 +61772,6 @@ export interface components {
             /** Format: int64 */
             templateId?: number;
         };
-        TargetGroupRange: {
-            /** Format: uuid */
-            fromGroupId?: string;
-            /** Format: uuid */
-            toGroupId?: string;
-        };
         ApiResponseBroadcastResponseDto: {
             data?: components["schemas"]["BroadcastResponseDto"];
         };
@@ -61783,6 +61791,7 @@ export interface components {
             targetGroupIds?: string[];
             targetRole?: string;
             targetTeamIds?: number[];
+            warnings?: string[];
         };
         GroupRef: {
             /** Format: uuid */
