@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.dto.RequestWithdrawalRequest;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.gdpr.dto.RetryResultResponse;
+import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import jakarta.persistence.EntityManager;
@@ -22,6 +23,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.concurrent.Executor;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -200,10 +202,16 @@ class VisibilityTemplateAccountPurgeIT extends AbstractMySqlIntegrationTest {
     }
 
     private void seedPending(Long userId) {
-        transactionTemplate.executeWithoutResult(tx -> entityManager.createNativeQuery(
-                "INSERT INTO account_purge_completion_status "
-                        + "(user_id,email_hash,domain_name,status,attempted_at,retry_count) VALUES ("
-                        + userId + ",'" + "a".repeat(64) + "','visibility','PENDING',NOW(),0)").executeUpdate());
+        // id は UUIDv7 のアプリ採番のため、native INSERT ではなく Entity 経由で投入する。
+        transactionTemplate.executeWithoutResult(tx -> {
+            AccountPurgeCompletionStatusEntity pending = new AccountPurgeCompletionStatusEntity();
+            pending.setUserId(userId);
+            pending.setEmailHash("a".repeat(64));
+            pending.setDomainName("visibility");
+            pending.setStatus("PENDING");
+            pending.setAttemptedAt(LocalDateTime.now());
+            entityManager.persist(pending);
+        });
     }
 
     private void executeTriggerDdl(String sql) {
