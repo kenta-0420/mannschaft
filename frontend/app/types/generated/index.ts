@@ -53662,7 +53662,7 @@ export interface components {
             autoNoShowDetection?: boolean;
             /** Format: int32 */
             disputeAllowedDays?: number;
-            enabled?: boolean;
+            isEnabled?: boolean;
             /** Format: int32 */
             penaltyDurationDays?: number;
             /** Format: int32 */
@@ -53679,9 +53679,9 @@ export interface components {
             createdAt?: string;
             /** Format: int32 */
             disputeAllowedDays?: number;
-            enabled?: boolean;
             /** Format: int64 */
             id?: number;
+            isEnabled?: boolean;
             /** Format: int32 */
             penaltyDurationDays?: number;
             /** Format: int64 */
