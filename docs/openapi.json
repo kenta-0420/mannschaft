@@ -165018,7 +165018,7 @@
             "maximum": 30,
             "minimum": 0
           },
-          "enabled": {
+          "isEnabled": {
             "type": "boolean"
           },
           "penaltyDurationDays": {
@@ -165065,12 +165065,12 @@
             "type": "integer",
             "format": "int32"
           },
-          "enabled": {
-            "type": "boolean"
-          },
           "id": {
             "type": "integer",
             "format": "int64"
+          },
+          "isEnabled": {
+            "type": "boolean"
           },
           "penaltyDurationDays": {
             "type": "integer",
