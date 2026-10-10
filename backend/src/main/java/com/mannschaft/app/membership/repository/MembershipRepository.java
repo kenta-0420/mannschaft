@@ -485,4 +485,18 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             + "  ))",
             nativeQuery = true)
     long countOnlyInMemberships();
+
+    /**
+     * 指定スコープの現役メンバー数（DISTINCT user_id）を、指定ユーザーを除き、必要なら SUPPORTER も除いて数える
+     * （F01.2.1 6-A の告知の直属メンバー数。告知対象ロールが MEMBERS_AND_ABOVE なら SUPPORTER を数えない）。
+     */
+    @Query("SELECT COUNT(DISTINCT m.userId) FROM MembershipEntity m "
+            + "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL "
+            + "AND m.userId <> :excludeUserId "
+            + "AND (:includeSupporters = TRUE OR m.roleKind <> com.mannschaft.app.membership.domain.RoleKind.SUPPORTER)")
+    long countActiveDistinctUsersByScopeExcluding(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("includeSupporters") boolean includeSupporters,
+            @Param("excludeUserId") Long excludeUserId);
 }

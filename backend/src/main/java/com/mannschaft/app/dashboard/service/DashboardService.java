@@ -947,17 +947,37 @@ public class DashboardService {
      * F02.8: 組織告知フィードがチームに向けられているか判定する。
      *
      * <p>target_team_ids IS NULL（全チーム対象）または teamId を含む場合に true を返す。</p>
+     *
+     * <p><b>暫定（F01.2.1 部隊 6-C の AnnouncementAudienceMatcher で置き換える）</b>: グループ宛ての告知
+     * （target_group_ids・include_unassigned・target_audience のいずれかを持つ）は target_team_ids が NULL のため、
+     * 従来の判定では「全チーム宛て」と誤認され、宛先外のチームにも出てしまう。グループに応じた表示判定（§8.2）は
+     * 6-C の受け持ちなので、それが着地するまでは閉じる側に倒し、どのチームにも出さない
+     * （組織側の一覧には従来どおり出る）。</p>
      */
     private boolean isTargetedToTeam(AnnouncementFeedEntity feed, Long teamId) {
         String targetTeamIds = feed.getTargetTeamIds();
         if (targetTeamIds == null || targetTeamIds.isBlank() || "null".equals(targetTeamIds)) {
-            return true; // 全チーム対象
+            // 暫定（6-C で置き換える）: 宛先を絞った記録があるのに target_team_ids が無い告知は全チーム宛てではない
+            return !hasNarrowedAudienceRecord(feed);
         }
         // JSON 配列文字列から teamId が含まれるか判定
         // "[3,5,12]" から "3" を探す（前後の区切り文字を考慮）
         String needle = teamId.toString();
         return targetTeamIds.contains("\"" + needle + "\"")
                 || targetTeamIds.matches(".*[\\[,]" + needle + "[,\\]].*");
+    }
+
+    /**
+     * 暫定（F01.2.1 部隊 6-C で置き換える）: 告知に宛先を絞った記録（グループ宛て・未分類・target_audience）があるか。
+     */
+    private static boolean hasNarrowedAudienceRecord(AnnouncementFeedEntity feed) {
+        return isPresentJson(feed.getTargetGroupIds())
+                || Boolean.TRUE.equals(feed.getIncludeUnassigned())
+                || isPresentJson(feed.getTargetAudience());
+    }
+
+    private static boolean isPresentJson(String json) {
+        return json != null && !json.isBlank() && !"null".equals(json);
     }
 
     /**
