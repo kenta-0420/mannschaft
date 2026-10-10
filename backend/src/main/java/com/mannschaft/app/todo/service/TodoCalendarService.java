@@ -1,5 +1,6 @@
 package com.mannschaft.app.todo.service;
 
+import com.mannschaft.app.common.calendar.CalendarScopeAutoColor;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.team.service.TeamService;
@@ -88,6 +89,7 @@ public class TodoCalendarService {
         return new CalendarTodoResponse(
                 todo.getId(), todo.getTitle(), todo.getStartDate(), todo.getDueDate(), todo.getDueTime(),
                 todo.getStatus().name(), todo.getPriority().name(), todo.getScopeType().name(), todo.getScopeId(),
-                scopeSlug, scopeName, todo.getLinkedScheduleId());
+                scopeSlug, scopeName, todo.getLinkedScheduleId(),
+                CalendarScopeAutoColor.resolveForScope(todo.getScopeType().name(), todo.getScopeId()));
     }
 }

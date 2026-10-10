@@ -1,5 +1,7 @@
 package com.mannschaft.app.todo;
 
+import com.mannschaft.app.schedule.service.CalendarLayerAutoColor;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -480,6 +482,12 @@ class TodoPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data[*].id", hasItem(personalCalendarTodoId.intValue())))
                     .andExpect(jsonPath("$.data[*].id", hasItem(teamCalendarTodoId.intValue())))
                     .andExpect(jsonPath("$.data[*].id", hasItem(orgCalendarTodoId.intValue())))
+                    .andExpect(jsonPath("$.data[?(@.id == " + personalCalendarTodoId + ")].scopeAutoColor")
+                            .value(org.hamcrest.Matchers.contains(CalendarLayerAutoColor.resolve("PERSONAL", 0L))))
+                    .andExpect(jsonPath("$.data[?(@.id == " + teamCalendarTodoId + ")].scopeAutoColor")
+                            .value(org.hamcrest.Matchers.contains(CalendarLayerAutoColor.resolve("TEAM", teamId))))
+                    .andExpect(jsonPath("$.data[?(@.id == " + orgCalendarTodoId + ")].scopeAutoColor")
+                            .value(org.hamcrest.Matchers.contains(CalendarLayerAutoColor.resolve("ORGANIZATION", orgId))))
                     .andExpect(jsonPath("$.data[*].id", not(hasItem(otherAssigneeTodoId.intValue()))))
                     .andExpect(jsonPath("$.data[*].id", not(hasItem(completedTodoId.intValue()))))
                     .andExpect(jsonPath("$.data[*].id", not(hasItem(deletedTodoId.intValue()))))
@@ -489,6 +497,39 @@ class TodoPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data[?(@.id == " + personalCalendarTodoId + ")].startDate")
                             .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.nullValue())))
                     .andExpect(jsonPath("$.data[?(@.id == " + teamCalendarTodoId + ")].linkedScheduleId").value(org.hamcrest.Matchers.contains(701)));
+        }
+
+        @Test
+        @DisplayName("マイカレンダー: 名称を解決できない所属スコープのTODOにも独立自動色を返す")
+        void マイカレンダー_名称欠落スコープでも独立自動色を返す() throws Exception {
+            Long orphanTodoId = saveAssignedCalendarTodo(
+                    TodoScopeType.TEAM, teamId, ownerId, "PERSAUTHZ 名称欠落TODO", null,
+                    LocalDate.of(2030, 1, 15), TodoStatus.OPEN, null, false);
+            // 担当者であっても無所属なら取得できない陰性対照。
+            assigneeRepository.save(TodoAssigneeEntity.builder()
+                    .todoId(orphanTodoId).userId(attackerId).assignedBy(ownerId).build());
+            em.flush();
+            // 専用Testcontainers DBのBeforeEachで生成したこのteamIdだけを変更し、終了時にrollbackする。
+            assertThat(em.createNativeQuery("UPDATE teams SET deleted_at = CURRENT_TIMESTAMP WHERE id = :id")
+                    .setParameter("id", teamId).executeUpdate()).isEqualTo(1);
+            em.clear();
+
+            setAuth(ownerId);
+            mockMvc.perform(get("/api/v1/todos/my/calendar")
+                            .param("from", "2030-01-01")
+                            .param("to", "2030-01-31"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.id == " + orphanTodoId + ")].scopeName")
+                            .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.nullValue())))
+                    .andExpect(jsonPath("$.data[?(@.id == " + orphanTodoId + ")].scopeAutoColor")
+                            .value(org.hamcrest.Matchers.contains(CalendarLayerAutoColor.resolve("TEAM", teamId))));
+
+            setAuth(attackerId);
+            mockMvc.perform(get("/api/v1/todos/my/calendar")
+                            .param("from", "2030-01-01")
+                            .param("to", "2030-01-31"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[*].id", not(hasItem(orphanTodoId.intValue()))));
         }
 
         @Test

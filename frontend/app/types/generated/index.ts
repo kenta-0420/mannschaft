@@ -73048,6 +73048,7 @@ export interface components {
             /** Format: int64 */
             linkedScheduleId?: number;
             priority?: string;
+            scopeAutoColor?: string;
             /** Format: int64 */
             scopeId?: number;
             scopeName?: string;
@@ -80253,6 +80254,7 @@ export interface components {
             eventType?: string;
             referenceKind?: string;
             referenceUuid?: string;
+            scopeAutoColor?: string;
             status?: string;
             title?: string;
         };

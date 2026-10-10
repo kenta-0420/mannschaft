@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.service;
 
+import com.mannschaft.app.common.calendar.CalendarScopeAutoColor;
 import com.mannschaft.app.schedule.dto.CalendarColorSource;
 
 import java.util.Map;
@@ -68,9 +69,7 @@ public final class CalendarColorResolver {
         if (categoryColor != null) {
             return new Resolved(categoryColor, CalendarColorSource.CATEGORY);
         }
-        String normalizedType = scopeType == null ? SCOPE_PERSONAL : scopeType;
-        Long normalizedId = SCOPE_PERSONAL.equals(normalizedType) ? 0L : scopeId;
-        return new Resolved(CalendarLayerAutoColor.resolve(normalizedType, normalizedId),
+        return new Resolved(CalendarScopeAutoColor.resolveForScope(scopeType, scopeId),
                 CalendarColorSource.LAYER_AUTO);
     }
 

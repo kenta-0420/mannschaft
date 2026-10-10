@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -133,6 +134,7 @@ class CalendarColorResolutionTest {
 
             assertThat(content.color()).isEqualTo("#DC2626");
             assertThat(content.colorSource()).isEqualTo(CalendarColorSource.LAYER_USER);
+            assertScopeAutoColor(content, "TEAM", TEAM_ID);
         }
 
         @Test
@@ -144,6 +146,7 @@ class CalendarColorResolutionTest {
 
             assertThat(content.color()).isEqualTo("#00FF00");
             assertThat(content.colorSource()).isEqualTo(CalendarColorSource.SCHEDULE);
+            assertScopeAutoColor(content, "TEAM", TEAM_ID);
         }
 
         @Test
@@ -158,6 +161,7 @@ class CalendarColorResolutionTest {
             assertThat(content.color()).isEqualTo("#123456");
             assertThat(content.colorSource()).isEqualTo(CalendarColorSource.CATEGORY);
             assertThat(content.categoryColor()).isEqualTo("#123456");
+            assertScopeAutoColor(content, "TEAM", TEAM_ID);
         }
 
         @Test
@@ -170,6 +174,7 @@ class CalendarColorResolutionTest {
             assertThat(content.color())
                     .isEqualTo(CalendarLayerAutoColor.resolve("TEAM", TEAM_ID));
             assertThat(content.colorSource()).isEqualTo(CalendarColorSource.LAYER_AUTO);
+            assertScopeAutoColor(content, "TEAM", TEAM_ID);
         }
 
         @Test
@@ -270,6 +275,7 @@ class CalendarColorResolutionTest {
             assertThat(entries).allSatisfy(e -> {
                 assertThat(e.getContent().color()).isNotNull();
                 assertThat(e.getContent().colorSource()).isNotNull();
+                assertScopeAutoColor(e.getContent(), e.getScope().scopeType(), e.getScope().scopeId());
             });
         }
 
@@ -380,6 +386,15 @@ class CalendarColorResolutionTest {
         List<CalendarEntryResponse> entries = service.getMyCalendar(ME, FROM, TO);
         assertThat(entries).hasSize(1);
         return entries.get(0).getContent();
+    }
+
+    /** 表示色の採用元によらず、BE 応答には独立したスコープ自動色が載る。 */
+    private void assertScopeAutoColor(CalendarEntryResponse.CalendarContentDto content,
+                                     String scopeType, Long scopeId) {
+        String normalizedType = scopeType == null ? "PERSONAL" : scopeType;
+        Long normalizedId = "PERSONAL".equals(normalizedType) ? 0L : scopeId;
+        assertThat(new ObjectMapper().valueToTree(content).path("scopeAutoColor").asText(null))
+                .isEqualTo(CalendarLayerAutoColor.resolve(normalizedType, normalizedId));
     }
 
     private void givenTeamSchedule(Long id, String color, Long categoryId) {

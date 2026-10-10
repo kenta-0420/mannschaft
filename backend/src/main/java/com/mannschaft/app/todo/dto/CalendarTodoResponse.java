@@ -22,6 +22,14 @@ public record CalendarTodoResponse(
         Long scopeId,
         String scopeSlug,
         String scopeName,
-        Long linkedScheduleId
+        Long linkedScheduleId,
+        String scopeAutoColor
 ) {
+    /** 既存12引数の後方互換。応答経路ではサービス層がスコープ自動色を埋める。 */
+    public CalendarTodoResponse(Long id, String title, LocalDate startDate, LocalDate dueDate,
+                                LocalTime dueTime, String status, String priority, String scopeType,
+                                Long scopeId, String scopeSlug, String scopeName, Long linkedScheduleId) {
+        this(id, title, startDate, dueDate, dueTime, status, priority, scopeType,
+                scopeId, scopeSlug, scopeName, linkedScheduleId, null);
+    }
 }
