@@ -405,136 +405,136 @@
       "back": "Zurück zum Bearbeiten"
     },
     "hourlyRate": {
-      "title": "時給設定",
-      "description": "メンバーごとの時給を登録します。時給が未設定のメンバーのシフトは、シフト予算の消化額に反映されません。",
-      "missingWarning": "時給が未設定のメンバーが {count} 名います。このままではシフトを公開しても予算の消化額に反映されません。",
-      "unset": "未設定",
-      "setButton": "設定",
-      "perHour": "{amount}円/h",
-      "saved": "時給を保存しました",
-      "saveFailed": "時給の保存に失敗しました",
-      "loadFailed": "時給の取得に失敗しました",
-      "historyLoadFailed": "時給履歴の取得に失敗しました",
-      "permissionLoadFailed": "権限の取得に失敗しました",
-      "forbidden": "この画面を表示する権限がありません",
-      "noMembers": "メンバーがいません",
-      "dialogTitle": "{name} の時給設定",
-      "effectiveFromHint": "指定した日から適用されます。過去の設定は履歴として残ります。同じ日付で登録し直すと、その日の設定を訂正します。",
-      "historyTitle": "時給履歴",
-      "noHistory": "時給の登録履歴はありません",
+      "title": "Stundensatz-Einstellungen",
+      "description": "Hinterlegen Sie den Stundensatz für jedes Mitglied. Schichten von Mitgliedern ohne Stundensatz werden im verbrauchten Schichtbudget nicht berücksichtigt.",
+      "missingWarning": "{count} Mitglied(er) haben keinen Stundensatz. Ihre Schichten werden bei Veröffentlichung des Schichtplans nicht im verbrauchten Budget berücksichtigt.",
+      "unset": "Nicht festgelegt",
+      "setButton": "Festlegen",
+      "perHour": "{amount} JPY/Std.",
+      "saved": "Stundensatz gespeichert",
+      "saveFailed": "Der Stundensatz konnte nicht gespeichert werden",
+      "loadFailed": "Die Stundensätze konnten nicht geladen werden",
+      "historyLoadFailed": "Der Stundensatz-Verlauf konnte nicht geladen werden",
+      "permissionLoadFailed": "Die Berechtigungen konnten nicht geladen werden",
+      "forbidden": "Sie haben keine Berechtigung, diese Seite anzuzeigen",
+      "noMembers": "Keine Mitglieder",
+      "dialogTitle": "Stundensatz für {name}",
+      "effectiveFromHint": "Gilt ab dem angegebenen Datum. Frühere Einstellungen bleiben als Verlauf erhalten. Wird erneut mit demselben Datum gespeichert, wird die Einstellung dieses Tages korrigiert.",
+      "historyTitle": "Stundensatz-Verlauf",
+      "noHistory": "Es wurde noch kein Stundensatz erfasst",
       "column": {
-        "member": "メンバー",
-        "rate": "時給",
-        "effectiveFrom": "適用開始日"
+        "member": "Mitglied",
+        "rate": "Stundensatz",
+        "effectiveFrom": "Gültig ab"
       },
       "validation": {
-        "rateRequired": "時給を入力してください",
-        "ratePositive": "時給は1円以上で入力してください"
+        "rateRequired": "Bitte geben Sie einen Stundensatz ein",
+        "ratePositive": "Bitte geben Sie einen Stundensatz von mindestens 1 JPY ein"
       }
     }
   },
   "my_shift_guide": {
-    "title": "シフトページの使い方",
-    "description": "このページでは、自分にアサインされた確定シフトの確認や、交代依頼の申請ができます。",
+    "title": "So verwenden Sie die Schichtseite",
+    "description": "Auf dieser Seite können Sie Ihre zugewiesenen bestätigten Schichten einsehen und Tauschanfragen stellen.",
     "view_shifts": {
-      "title": "確定シフトを確認する",
-      "body": "ログインユーザーにアサインされた確定済みシフトを、月次カレンダーまたは週次リストで表示します。シフトがない日付は空欄のまま表示されます。",
+      "title": "Bestätigte Schichten ansehen",
+      "body": "Zeigt die dem angemeldeten Benutzer zugewiesenen bestätigten Schichten in einem Monatskalender oder einer Wochenliste an. Tage ohne Schicht bleiben leer.",
       "steps": {
-        "step1": "「/my/shift」ページを開きます",
-        "step2": "ページが自動的に確定シフトを読み込み、カレンダーまたはリストに表示します",
-        "step3": "シフトがない場合は「シフトがありません」と表示されます"
+        "step1": "Öffnen Sie die Seite „/my/shift“",
+        "step2": "Die Seite lädt Ihre bestätigten Schichten automatisch und zeigt sie im Kalender oder in der Liste an",
+        "step3": "Gibt es keine Schichten, wird „Keine Schichten“ angezeigt"
       }
     },
     "switch_view": {
-      "title": "表示を切り替える",
-      "body": "月次カレンダー（全体把握向き）と週次リスト（詳細確認向き）の2つのビューを切り替えられます。矢印ボタンで前後の月・週に移動できます。",
+      "title": "Ansicht wechseln",
+      "body": "Sie können zwischen zwei Ansichten wechseln: dem Monatskalender (für den Überblick) und der Wochenliste (für Details). Mit den Pfeiltasten gelangen Sie zum vorherigen oder nächsten Monat bzw. zur vorherigen oder nächsten Woche.",
       "steps": {
-        "step1": "画面上部の「月ビュー」「週ビュー」ボタンで表示形式を切り替えます",
-        "step2": "◀ ▶ ボタンで前月・次月（または前週・次週）に移動します",
-        "step3": "「今日」ボタンで今日を含む月・週に戻ります"
+        "step1": "Wechseln Sie die Darstellung mit den Schaltflächen „Monatsansicht“ und „Wochenansicht“ oben auf dem Bildschirm",
+        "step2": "Mit den Schaltflächen ◀ ▶ wechseln Sie zum vorherigen oder nächsten Monat (bzw. zur vorherigen oder nächsten Woche)",
+        "step3": "Mit der Schaltfläche „Heute“ kehren Sie zu dem Monat bzw. der Woche mit dem heutigen Tag zurück"
       }
     },
     "filter_team": {
-      "title": "チームで絞り込む",
-      "body": "複数のチームに所属している場合、特定チームのシフトのみを表示できます。「全て」ボタンを選ぶと全チームのシフトが表示されます。",
+      "title": "Nach Team filtern",
+      "body": "Wenn Sie mehreren Teams angehören, können Sie nur die Schichten eines bestimmten Teams anzeigen. Mit der Schaltfläche „Alle“ werden die Schichten aller Teams angezeigt.",
       "steps": {
-        "step1": "画面上部「チーム:」欄の「全て」またはチーム名ボタンをタップします",
-        "step2": "選択したチームのシフトのみ表示されます",
-        "step3": "「全て」を再度タップすると絞り込みが解除されます"
+        "step1": "Tippen Sie im Feld „Team:“ oben auf dem Bildschirm auf „Alle“ oder auf eine Team-Schaltfläche",
+        "step2": "Es werden nur die Schichten des ausgewählten Teams angezeigt",
+        "step3": "Tippen Sie erneut auf „Alle“, um den Filter aufzuheben"
       }
     },
     "view_detail": {
-      "title": "シフト詳細を確認する",
-      "body": "特定の日付をタップすると、そのシフトのチーム名・ポジション・時刻・スケジュール名などの詳細を確認できます。",
+      "title": "Schichtdetails ansehen",
+      "body": "Tippen Sie auf ein bestimmtes Datum, um Details zur Schicht wie Teamname, Position, Uhrzeit und Planname anzuzeigen.",
       "steps": {
-        "step1": "【月次ビュー】日付セルをタップすると、画面右側に詳細パネルが開きます",
-        "step2": "【週次ビュー】日付カードのヘッダーをタップすると、カードが展開してシフト一覧が表示されます",
-        "step3": "月次ビューでは同じ日付をもう一度タップすると詳細パネルが閉じます"
+        "step1": "[Monatsansicht] Tippen Sie auf ein Datumsfeld, um rechts auf dem Bildschirm das Detailfenster zu öffnen",
+        "step2": "[Wochenansicht] Tippen Sie auf die Kopfzeile einer Datumskarte, um die Karte zu erweitern und die Schichtliste anzuzeigen",
+        "step3": "In der Monatsansicht schließt ein erneutes Tippen auf dasselbe Datum das Detailfenster"
       }
     },
     "swap_request": {
-      "title": "交代依頼を申請する",
-      "body": "確定シフトを他のメンバーと交代したい場合、3つの方式で依頼を送れます。送信後は自動的にシフト一覧が更新されます。",
+      "title": "Tauschanfrage stellen",
+      "body": "Wenn Sie eine bestätigte Schicht mit einem anderen Mitglied tauschen möchten, können Sie die Anfrage auf drei Arten senden. Nach dem Senden wird die Schichtliste automatisch aktualisiert.",
       "steps": {
-        "step1": "シフト詳細内の「交代依頼を作成」ボタンをクリックします",
-        "step2": "送信方式を選びます：「メンバーを指定」（1名以上選択）／「シフト帯でまとめて」（同日の昼または夜シフト担当者全員）／「全員に公開」（誰でも立候補可）",
-        "step3": "必要であれば理由を記入します（任意）",
-        "step4": "「提出」ボタンをクリックして送信します"
+        "step1": "Klicken Sie in den Schichtdetails auf die Schaltfläche „Tauschanfrage erstellen“",
+        "step2": "Wählen Sie die Sendeart: „Mitglieder festlegen“ (mindestens ein Mitglied auswählen) / „Nach Schichtzeit“ (alle, die am selben Tag in der Tag- oder Nachtschicht arbeiten) / „Für alle öffnen“ (jeder kann sich melden)",
+        "step3": "Geben Sie bei Bedarf einen Grund an (optional)",
+        "step4": "Klicken Sie zum Senden auf die Schaltfläche „Einreichen“"
       },
-      "note": "提出後は確定シフト一覧が自動的に更新されます。送信中はボタンが無効になりますので、完了するまでそのままお待ちください。"
+      "note": "Nach dem Einreichen wird die Liste der bestätigten Schichten automatisch aktualisiert. Während des Sendens ist die Schaltfläche deaktiviert; bitte warten Sie, bis der Vorgang abgeschlossen ist."
     }
   },
   "shift_guide": {
-    "title": "シフト管理の使い方",
-    "description": "シフト管理では、チームのシフトスケジュールを作成・公開し、メンバーの希望を収集して調整できます。",
+    "title": "So funktioniert die Schichtverwaltung",
+    "description": "In der Schichtverwaltung können Sie die Schichtpläne Ihres Teams erstellen und veröffentlichen sowie die Wünsche der Mitglieder einholen und abstimmen.",
     "overview": {
-      "title": "シフトスケジュール一覧を確認する",
-      "body": "このページでは、チームのシフトスケジュール一覧を管理します。ステータスバッジで進捗が一目で分かります。",
+      "title": "Liste der Schichtpläne ansehen",
+      "body": "Auf dieser Seite verwalten Sie die Liste der Schichtpläne Ihres Teams. Statusabzeichen zeigen den Fortschritt auf einen Blick.",
       "steps": {
-        "step1": "ステータスフィルタ（下書き・収集中・調整中・公開済みなど）で絞り込む",
-        "step2": "各カードの提出率バーでメンバーの希望提出状況を確認する",
-        "step3": "カードをクリックして詳細ページへ移動する"
+        "step1": "Nach Status filtern (Entwurf, Wird gesammelt, In Abstimmung, Veröffentlicht usw.)",
+        "step2": "Anhand des Einreichungsbalkens auf jeder Karte sehen Sie, wie viele Wünsche die Mitglieder eingereicht haben",
+        "step3": "Klicken Sie auf eine Karte, um zur Detailseite zu gelangen"
       }
     },
     "create": {
-      "title": "新しいシフトスケジュールを作成する",
-      "body": "チームの管理者がシフトスケジュールを新規作成できます。タイトルと期間を設定してスタートしましょう。",
+      "title": "Neuen Schichtplan erstellen",
+      "body": "Team-Administratoren können einen neuen Schichtplan erstellen. Legen Sie zum Start einen Titel und einen Zeitraum fest.",
       "steps": {
-        "step1": "右上の「新規作成」ボタンをクリックする",
-        "step2": "タイトル・開始日・終了日を入力する（必須）",
-        "step3": "希望締切・メモを必要に応じて入力する",
-        "step4": "「作成」ボタンで確定する（ステータス：下書きで作成）"
+        "step1": "Klicken Sie oben rechts auf die Schaltfläche „Neu erstellen“",
+        "step2": "Geben Sie Titel, Startdatum und Enddatum ein (Pflichtfelder)",
+        "step3": "Geben Sie bei Bedarf die Frist für Wünsche und eine Notiz ein",
+        "step4": "Bestätigen Sie mit der Schaltfläche „Erstellen“ (der Plan wird mit dem Status „Entwurf“ angelegt)"
       }
     },
     "status": {
-      "title": "ステータスを進めてシフトを確定させる",
-      "body": "シフトは5段階のステータスで管理されます。詳細ページのステッパーで現在のフェーズを確認し、順番に進めましょう。",
+      "title": "Status weiterschalten, um Schichten festzulegen",
+      "body": "Schichten werden über fünf Status verwaltet. Prüfen Sie die aktuelle Phase im Stepper auf der Detailseite und schalten Sie der Reihe nach weiter.",
       "steps": {
-        "step1": "「下書き」：スロットや制約を設定する準備段階",
-        "step2": "「収集中」：メンバーにシフト希望の提出を依頼する",
-        "step3": "「調整中」：希望を元にシフトを調整・作成する",
-        "step4": "「公開済み」：確定シフトをメンバーに公開する",
-        "step5": "「完了」：終了したシフトをアーカイブする"
+        "step1": "„Entwurf“: die Vorbereitungsphase, in der Sie Slots und Einschränkungen festlegen",
+        "step2": "„Wird gesammelt“: Mitglieder bitten, ihre Schichtwünsche einzureichen",
+        "step3": "„In Abstimmung“: Schichten anhand der Wünsche anpassen und erstellen",
+        "step4": "„Veröffentlicht“: die festgelegten Schichten für die Mitglieder freigeben",
+        "step5": "„Abgeschlossen“: beendete Schichten archivieren"
       }
     },
     "requests": {
-      "title": "メンバーのシフト希望を収集・確認する",
-      "body": "「収集中」ステータスになるとメンバーが希望を提出できます。詳細ページの「希望一覧」タブで全員の状況をマトリクスで確認できます。",
+      "title": "Schichtwünsche der Mitglieder einholen und prüfen",
+      "body": "Sobald der Status „Wird gesammelt“ erreicht ist, können Mitglieder ihre Wünsche einreichen. Im Tab „Wunschliste“ auf der Detailseite sehen Sie den Stand aller in einer Matrix.",
       "steps": {
-        "step1": "詳細ページの「希望一覧」タブをクリックする",
-        "step2": "サマリーカードで提出率・未提出人数を確認する",
-        "step3": "マトリクス表で各メンバーの日付ごとの希望強度を確認する",
-        "step4": "「出勤希望・指定なし・出れなくはない・できれば休み・絶対休み」の5段階で表示される"
+        "step1": "Klicken Sie auf der Detailseite auf den Tab „Wunschliste“",
+        "step2": "Prüfen Sie auf den Übersichtskarten die Einreichungsquote und die Zahl der Mitglieder ohne Einreichung",
+        "step3": "Prüfen Sie in der Matrixtabelle die Wunschstärke jedes Mitglieds je Datum",
+        "step4": "Angezeigt in fünf Stufen: „Möchte arbeiten / Keine Angabe / Notfalls möglich / Lieber frei / Unbedingt frei“"
       }
     },
     "slots": {
-      "title": "スロットと勤務制約を設定する",
-      "body": "シフトの時間帯（スロット）を登録し、チーム・メンバー別の勤務制約を設定します。",
+      "title": "Slots und Arbeitseinschränkungen festlegen",
+      "body": "Legen Sie die Zeitfenster (Slots) der Schichten an und definieren Sie Arbeitseinschränkungen für das Team und einzelne Mitglieder.",
       "steps": {
-        "step1": "「編集」タブでスロット（日付・開始〜終了時刻・ポジション・必要人数）を作成する",
-        "step2": "「一括作成」ボタンで日付範囲・曜日指定による複数スロットの一括登録も可能",
-        "step3": "「制約」タブでチームデフォルトの勤務制約（月最大時間・連続勤務日数など）を設定する",
-        "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
+        "step1": "Erstellen Sie im Tab „Bearbeiten“ Slots (Datum, Beginn bis Ende, Position, benötigte Personenzahl)",
+        "step2": "Mit der Schaltfläche „Massenerstellung“ können Sie auch mehrere Slots nach Datumsbereich und Wochentagen auf einmal anlegen",
+        "step3": "Legen Sie im Tab „Einschränkungen“ die Standard-Arbeitseinschränkungen des Teams fest (maximale Monatsstunden, aufeinanderfolgende Arbeitstage usw.)",
+        "step4": "Für bestimmte Mitglieder können Sie über „Ausnahmen pro Mitglied“ individuelle Einschränkungen überschreiben"
       }
     }
   }

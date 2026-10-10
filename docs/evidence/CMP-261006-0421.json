@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261006-0421",
+  "scope": "app",
+  "implementation": {
+    "pr": 3750,
+    "sha": "505e50bf91298ae5c1d78242514ab729aa53c88d"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "6件それぞれの判定と根拠が台帳行に記録されている。",
+      "tests": [
+        {
+          "name": "台帳行 CMP-261006-0421 の判定結果（6件）欄に各件の判定と根拠を記録（文書証拠）",
+          "evidence": "docs/task-list.md"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "rescue 固有のテストまで要否判定し、回収すべき統合テストを回収する。",
+      "tests": [
+        {
+          "name": "TEAMフィードのカーソルページング",
+          "evidence": "backend/src/test/java/com/mannschaft/app/timeline/TimelineReadScopeContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "実装を壊すと新テストが赤になる（偽 green でない）。nextCursor を null に固定したコミット 56377133bb で CI shard 0 が FAILED、47730d602a で戻して green。",
+      "tests": [
+        {
+          "name": "TEAMフィードのカーソルページング",
+          "evidence": "backend/src/test/java/com/mannschaft/app/timeline/TimelineReadScopeContractIT.java"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "チームのタイムラインの続き読み込みがロール横断で画面から動く。",
+      "tests": [
+        {
+          "name": "チームTLのカーソルページング: ピン先頭1回・重複欠落なし・末尾で停止、同組織非メンバー/他テナントは閲覧不可",
+          "evidence": "frontend/tests/e2e/real/timeline/timeline-team-feed-ui-roles.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38018306133
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3750"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "frontend/tests/e2e/real/timeline/timeline-team-feed-ui-roles.spec.ts"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3758"
+    }
+  },
+  "regressions": []
+}

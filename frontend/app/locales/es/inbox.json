@@ -95,46 +95,46 @@
       "applyAria": "Agregar etiqueta {name}"
     },
     "guide": {
-      "title": "インボックスの使い方",
+      "title": "Cómo usar la bandeja de entrada",
       "tabs": {
-        "title": "タブで通知を整理する",
-        "body": "インボックス・スヌーズ中・保管庫の3つのタブで通知の状態を管理できます。各タブには件数バッジが表示されます。",
-        "step1": "ページ上部の3つのタブから目的のタブをクリックします",
-        "step2": "「受信箱」は未読・未対応の通知、「スヌーズ中」は後で確認する通知、「保管庫」は処理済みの通知を表示します",
-        "step3": "タブをクリックするだけで表示が切り替わります"
+        "title": "Organiza las notificaciones con pestañas",
+        "body": "Gestiona el estado de tus notificaciones con tres pestañas: Bandeja de entrada, Pospuestas y Archivo. Cada pestaña muestra una insignia con el recuento.",
+        "step1": "Haz clic en la pestaña que quieras entre las tres de la parte superior de la página",
+        "step2": "\"Bandeja de entrada\" muestra las notificaciones no leídas o pendientes, \"Pospuestas\" las que revisarás más tarde y \"Archivo\" las ya procesadas",
+        "step3": "Basta con hacer clic en una pestaña para cambiar la vista"
       },
       "filter": {
-        "title": "優先度と種類で絞り込む",
-        "body": "通知の優先度（緊急・高・通常・低）と種類（通知・お知らせ・メンション・確認必須・TODO期限）でフィルタリングできます。複数同時選択が可能です。",
-        "step1": "「緊急度」セクションで希望する優先度をクリックします（複数選択可）",
-        "step2": "「種類」セクションで希望する種類をクリックします（複数選択可）",
-        "step3": "フィルタが適用され、条件に合う通知だけが表示されます",
-        "step4": "同じチップをもう一度クリックするとフィルタが解除されます"
+        "title": "Filtrar por prioridad y tipo",
+        "body": "Puedes filtrar las notificaciones por prioridad (urgente, alta, normal, baja) y por tipo (notificación, aviso, mención, confirmación obligatoria, vencimiento de TODO). Se pueden seleccionar varias a la vez.",
+        "step1": "Haz clic en la prioridad deseada en la sección \"Urgencia\" (se pueden elegir varias)",
+        "step2": "Haz clic en el tipo deseado en la sección \"Tipo\" (se pueden elegir varios)",
+        "step3": "Se aplica el filtro y solo se muestran las notificaciones que coinciden",
+        "step4": "Vuelve a hacer clic en la misma etiqueta para quitar el filtro"
       },
       "snooze": {
-        "title": "スヌーズで後で対応する",
-        "body": "今すぐ対応する必要のない通知を一時的に非表示にできます。プリセット（3時間後・今晩・明朝・来週）から選ぶだけで設定完了です。",
-        "step1": "通知アイテムの右側にある時計アイコン（スヌーズボタン）をクリックします",
-        "step2": "表示されるプリセット（3時間後・今晩21:00・明朝9:00・来週月曜9:00）を選択します",
-        "step3": "通知が「スヌーズ中」タブに移動し、指定した時刻に自動で受信箱に戻ります",
-        "step4": "スヌーズ中の通知のベルアイコンをクリックするといつでも解除できます"
+        "title": "Posponer para atender más tarde",
+        "body": "Puedes ocultar temporalmente las notificaciones que no necesitas atender ahora. Solo tienes que elegir una de las opciones habituales (en 3 horas, esta noche, mañana por la mañana, la semana que viene).",
+        "step1": "Haz clic en el icono de reloj (botón de posponer) a la derecha de la notificación",
+        "step2": "Selecciona una de las horas propuestas (en 3 horas, esta noche a las 21:00, mañana a las 9:00, el próximo lunes a las 9:00)",
+        "step3": "La notificación pasa a la pestaña \"Pospuestas\" y vuelve automáticamente a la bandeja de entrada a la hora indicada",
+        "step4": "Haz clic en el icono de campana de una notificación pospuesta para cancelar el aplazamiento en cualquier momento"
       },
       "label": {
-        "title": "ラベルで分類・管理する",
-        "body": "通知にラベルを付与して整理できます。自分でラベルを作成し、色やアイコンでカスタマイズすることも可能です。最大20件まで作成できます。",
-        "step1": "ページ右上の歯車アイコンをクリックしてラベル管理パネルを開きます",
-        "step2": "「ラベルを作成」からラベルを新規作成します（名前・色・アイコンを設定）",
-        "step3": "通知アイテムの右側にあるタグアイコンから、作成したラベルを付与します",
-        "step4": "ラベルの絞り込みチップをクリックすると、そのラベルが付いた通知だけを表示できます",
-        "step5": "1件の通知に最大10件のラベルを付与できます"
+        "title": "Clasificar y gestionar con etiquetas",
+        "body": "Puedes organizar las notificaciones asignándoles etiquetas. También puedes crear tus propias etiquetas y personalizarlas con colores e iconos. Se pueden crear hasta 20.",
+        "step1": "Haz clic en el icono de engranaje de la parte superior derecha de la página para abrir el panel de gestión de etiquetas",
+        "step2": "Crea una etiqueta nueva con \"Crear etiqueta\" (define nombre, color e icono)",
+        "step3": "Asigna una etiqueta creada con el icono de etiqueta a la derecha de la notificación",
+        "step4": "Haz clic en la etiqueta de filtro para mostrar solo las notificaciones que la tienen",
+        "step5": "Puedes asignar hasta 10 etiquetas a cada notificación"
       },
       "bulk": {
-        "title": "複数を一括処理する",
-        "body": "複数の通知を選択して、まとめてスヌーズ・アーカイブ・ラベル付与ができます。大量の通知を効率よく処理したい場合に便利です。",
-        "step1": "ページ右上のチェックボックスアイコンをクリックして選択モードを有効にします",
-        "step2": "処理したい通知のチェックボックスをクリックして選択します",
-        "step3": "上部に表示されるバーから操作を選択します（アーカイブ・スヌーズ・ラベル付与）",
-        "step4": "「キャンセル」ボタンまたはチェックボックスアイコンをクリックして選択モードを終了します"
+        "title": "Procesar varias a la vez",
+        "body": "Selecciona varias notificaciones para posponerlas, archivarlas o etiquetarlas todas a la vez. Es útil para procesar muchas notificaciones con eficacia.",
+        "step1": "Haz clic en el icono de casilla de la parte superior derecha de la página para activar el modo de selección",
+        "step2": "Marca las casillas de las notificaciones que quieras procesar",
+        "step3": "Elige una acción en la barra que aparece en la parte superior (archivar, posponer o etiquetar)",
+        "step4": "Haz clic en el botón \"Cancelar\" o en el icono de casilla para salir del modo de selección"
       }
     }
   }

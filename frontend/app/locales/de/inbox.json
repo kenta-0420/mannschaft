@@ -95,46 +95,46 @@
       "applyAria": "Etikett {name} hinzufügen"
     },
     "guide": {
-      "title": "インボックスの使い方",
+      "title": "So nutzen Sie den Posteingang",
       "tabs": {
-        "title": "タブで通知を整理する",
-        "body": "インボックス・スヌーズ中・保管庫の3つのタブで通知の状態を管理できます。各タブには件数バッジが表示されます。",
-        "step1": "ページ上部の3つのタブから目的のタブをクリックします",
-        "step2": "「受信箱」は未読・未対応の通知、「スヌーズ中」は後で確認する通知、「保管庫」は処理済みの通知を表示します",
-        "step3": "タブをクリックするだけで表示が切り替わります"
+        "title": "Benachrichtigungen mit Tabs ordnen",
+        "body": "Verwalten Sie den Status Ihrer Benachrichtigungen mit den drei Tabs Posteingang, Zurückgestellt und Archiv. Jeder Tab zeigt ein Zähler-Badge an.",
+        "step1": "Klicken Sie oben auf der Seite auf den gewünschten der drei Tabs",
+        "step2": "\"Posteingang\" zeigt ungelesene und unbearbeitete Benachrichtigungen, \"Zurückgestellt\" Benachrichtigungen für später und \"Archiv\" bearbeitete Benachrichtigungen",
+        "step3": "Ein Klick auf einen Tab genügt, um die Ansicht zu wechseln"
       },
       "filter": {
-        "title": "優先度と種類で絞り込む",
-        "body": "通知の優先度（緊急・高・通常・低）と種類（通知・お知らせ・メンション・確認必須・TODO期限）でフィルタリングできます。複数同時選択が可能です。",
-        "step1": "「緊急度」セクションで希望する優先度をクリックします（複数選択可）",
-        "step2": "「種類」セクションで希望する種類をクリックします（複数選択可）",
-        "step3": "フィルタが適用され、条件に合う通知だけが表示されます",
-        "step4": "同じチップをもう一度クリックするとフィルタが解除されます"
+        "title": "Nach Priorität und Art filtern",
+        "body": "Sie können Benachrichtigungen nach Priorität (Dringend, Hoch, Normal, Niedrig) und Art (Benachrichtigung, Ankündigung, Erwähnung, Bestätigung erforderlich, TODO-Frist) filtern. Mehrfachauswahl ist möglich.",
+        "step1": "Klicken Sie im Abschnitt \"Dringlichkeit\" auf die gewünschte Priorität (Mehrfachauswahl möglich)",
+        "step2": "Klicken Sie im Abschnitt \"Art\" auf die gewünschte Art (Mehrfachauswahl möglich)",
+        "step3": "Der Filter wird angewendet und nur passende Benachrichtigungen werden angezeigt",
+        "step4": "Klicken Sie erneut auf denselben Chip, um den Filter aufzuheben"
       },
       "snooze": {
-        "title": "スヌーズで後で対応する",
-        "body": "今すぐ対応する必要のない通知を一時的に非表示にできます。プリセット（3時間後・今晩・明朝・来週）から選ぶだけで設定完了です。",
-        "step1": "通知アイテムの右側にある時計アイコン（スヌーズボタン）をクリックします",
-        "step2": "表示されるプリセット（3時間後・今晩21:00・明朝9:00・来週月曜9:00）を選択します",
-        "step3": "通知が「スヌーズ中」タブに移動し、指定した時刻に自動で受信箱に戻ります",
-        "step4": "スヌーズ中の通知のベルアイコンをクリックするといつでも解除できます"
+        "title": "Zurückstellen, um später zu reagieren",
+        "body": "Benachrichtigungen, auf die Sie nicht sofort reagieren müssen, können Sie vorübergehend ausblenden. Wählen Sie einfach eine der gängigen Optionen (in 3 Stunden, heute Abend, morgen früh, nächste Woche) aus.",
+        "step1": "Klicken Sie rechts neben einer Benachrichtigung auf das Uhrsymbol (Schaltfläche Zurückstellen)",
+        "step2": "Wählen Sie einen der vorgeschlagenen Zeitpunkte (in 3 Stunden, heute Abend 21:00, morgen früh 9:00, nächsten Montag 9:00)",
+        "step3": "Die Benachrichtigung wechselt in den Tab \"Zurückgestellt\" und kehrt zum angegebenen Zeitpunkt automatisch in den Posteingang zurück",
+        "step4": "Klicken Sie auf das Glockensymbol einer zurückgestellten Benachrichtigung, um das Zurückstellen jederzeit aufzuheben"
       },
       "label": {
-        "title": "ラベルで分類・管理する",
-        "body": "通知にラベルを付与して整理できます。自分でラベルを作成し、色やアイコンでカスタマイズすることも可能です。最大20件まで作成できます。",
-        "step1": "ページ右上の歯車アイコンをクリックしてラベル管理パネルを開きます",
-        "step2": "「ラベルを作成」からラベルを新規作成します（名前・色・アイコンを設定）",
-        "step3": "通知アイテムの右側にあるタグアイコンから、作成したラベルを付与します",
-        "step4": "ラベルの絞り込みチップをクリックすると、そのラベルが付いた通知だけを表示できます",
-        "step5": "1件の通知に最大10件のラベルを付与できます"
+        "title": "Mit Labels kategorisieren und verwalten",
+        "body": "Sie können Benachrichtigungen mit Labels ordnen. Sie können auch eigene Labels erstellen und mit Farben und Symbolen anpassen. Es lassen sich bis zu 20 Labels anlegen.",
+        "step1": "Klicken Sie oben rechts auf der Seite auf das Zahnradsymbol, um das Label-Verwaltungsfenster zu öffnen",
+        "step2": "Erstellen Sie über \"Label erstellen\" ein neues Label (Name, Farbe und Symbol festlegen)",
+        "step3": "Weisen Sie ein erstelltes Label über das Tag-Symbol rechts neben einer Benachrichtigung zu",
+        "step4": "Klicken Sie auf einen Label-Filterchip, um nur Benachrichtigungen mit diesem Label anzuzeigen",
+        "step5": "Pro Benachrichtigung können bis zu 10 Labels zugewiesen werden"
       },
       "bulk": {
-        "title": "複数を一括処理する",
-        "body": "複数の通知を選択して、まとめてスヌーズ・アーカイブ・ラベル付与ができます。大量の通知を効率よく処理したい場合に便利です。",
-        "step1": "ページ右上のチェックボックスアイコンをクリックして選択モードを有効にします",
-        "step2": "処理したい通知のチェックボックスをクリックして選択します",
-        "step3": "上部に表示されるバーから操作を選択します（アーカイブ・スヌーズ・ラベル付与）",
-        "step4": "「キャンセル」ボタンまたはチェックボックスアイコンをクリックして選択モードを終了します"
+        "title": "Mehrere Einträge gleichzeitig bearbeiten",
+        "body": "Wählen Sie mehrere Benachrichtigungen aus, um sie gemeinsam zurückzustellen, zu archivieren oder mit Labels zu versehen. Das ist praktisch, wenn Sie viele Benachrichtigungen effizient bearbeiten möchten.",
+        "step1": "Klicken Sie oben rechts auf der Seite auf das Kontrollkästchen-Symbol, um den Auswahlmodus zu aktivieren",
+        "step2": "Klicken Sie auf die Kontrollkästchen der Benachrichtigungen, die Sie bearbeiten möchten",
+        "step3": "Wählen Sie in der oben angezeigten Leiste eine Aktion aus (Archivieren, Zurückstellen oder Label zuweisen)",
+        "step4": "Klicken Sie auf \"Abbrechen\" oder das Kontrollkästchen-Symbol, um den Auswahlmodus zu beenden"
       }
     }
   }
