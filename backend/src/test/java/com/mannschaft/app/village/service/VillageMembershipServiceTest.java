@@ -372,6 +372,41 @@ class VillageMembershipServiceTest {
     }
 
     @Test
+    @DisplayName("HEADMAN 退出: BAN 済みの ELDER/VILLAGER しかいなければ昇格させない（CMP-260826-1455）")
+    void leave_headman_onlyBannedCandidates_notPromoted() {
+        UUID membershipId = UUID.randomUUID();
+        VillageMembershipEntity headman = activeMembership(VillageSubjectType.USER, ACTOR_USER_ID, VillageRole.HEADMAN);
+        headman.setId(membershipId);
+        VillageMembershipEntity bannedElder = activeMembership(VillageSubjectType.USER, 300L, VillageRole.ELDER);
+        bannedElder.setId(UUID.randomUUID());
+        bannedElder.setBannedAt(LocalDateTime.now());
+        VillageMembershipEntity bannedVillager = activeMembership(VillageSubjectType.USER, 400L, VillageRole.VILLAGER);
+        bannedVillager.setId(UUID.randomUUID());
+        bannedVillager.setBannedAt(LocalDateTime.now());
+
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
+        given(membershipRepository.findById(membershipId)).willReturn(Optional.of(headman));
+        // 旧述語（BAN 未検査）なら BAN 済みを返す。実装が旧述語へ戻ると BAN 済みが HEADMAN になり assert が落ちる。
+        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
+                VILLAGE_ID, VillageRole.ELDER)).willReturn(Optional.of(bannedElder));
+        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
+                VILLAGE_ID, VillageRole.VILLAGER)).willReturn(Optional.of(bannedVillager));
+        // 正準（BAN 除外）述語は BAN 済みを返さない
+        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(
+                VILLAGE_ID, VillageRole.ELDER)).willReturn(Optional.empty());
+        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(
+                VILLAGE_ID, VillageRole.VILLAGER)).willReturn(Optional.empty());
+        given(membershipRepository.save(any(VillageMembershipEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        service.leave(VILLAGE_ID, membershipId, ACTOR_USER_ID);
+
+        assertThat(bannedElder.getRole()).isEqualTo(VillageRole.ELDER);
+        assertThat(bannedVillager.getRole()).isEqualTo(VillageRole.VILLAGER);
+        assertThat(headman.getLeftAt()).isNotNull();
+    }
+
+    @Test
     @DisplayName("HEADMAN 退出: 後継者がいなければ村は memberships 退出のみで終了（B11 バッチ任せ）")
     void leave_headman_noSuccessor_abandons() {
         UUID membershipId = UUID.randomUUID();
