@@ -35,6 +35,9 @@ const submitFailed = ref(false)
 
 /** BE の添え書き上限（TeamOrgAffiliationService.MESSAGE_MAX_CODE_POINTS = 500。設計書 §10.2）。 */
 const MESSAGE_MAX = 500
+// BE はコードポイントで数える（絵文字は 1 文字）。String.length / maxlength は UTF-16 単位で
+// 絵文字を 2 と数えるため使わない。超過時は切り詰めず、カウンターを赤にして送信不可にする。
+const messageLength = computed(() => [...message.value].length)
 
 const selectedTeamSlug = ref<string | null>(null)
 const selectedGroupId = ref<string | null>(null)
@@ -76,7 +79,7 @@ const canSubmit = computed(
     && !loadFailed.value
     && !!selectedTeamSlug.value
     && !groupRequiredButMissing.value
-    && message.value.length <= MESSAGE_MAX
+    && messageLength.value <= MESSAGE_MAX
     && !submitting.value
     && !loading.value,
 )
@@ -204,12 +207,15 @@ async function submit() {
           id="apply-message"
           v-model="message"
           rows="3"
-          :maxlength="MESSAGE_MAX"
           class="w-full"
           data-testid="apply-message"
         />
-        <p class="mt-1 text-right text-xs text-surface-400" data-testid="apply-message-count">
-          {{ message.length }} / {{ MESSAGE_MAX }}
+        <p
+          class="mt-1 text-right text-xs"
+          :class="messageLength > MESSAGE_MAX ? 'text-red-500' : 'text-surface-400'"
+          data-testid="apply-message-count"
+        >
+          {{ messageLength }} / {{ MESSAGE_MAX }}
         </p>
       </div>
 

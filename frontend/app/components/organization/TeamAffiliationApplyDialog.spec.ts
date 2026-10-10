@@ -199,11 +199,23 @@ describe('TeamAffiliationApplyDialog', () => {
   it('AD-10: 添え書きは BE と同じ 500 文字まで（maxlength と文字数表示。501 文字は送信不可）', async () => {
     const wrapper = await mountDialog(makeForm())
     const textarea = wrapper.find('[data-testid="apply-message"]')
-    expect(textarea.attributes('maxlength')).toBe('500')
+    // UTF-16 単位の maxlength は絵文字を 2 と数えて入力を塞ぐため付けない
+    expect(textarea.attributes('maxlength')).toBeUndefined()
     await textarea.setValue('あ'.repeat(500))
     expect(wrapper.find('[data-testid="apply-message-count"]').text()).toContain('500 / 500')
     expect(submitButton(wrapper).attributes('disabled')).toBeUndefined()
     await textarea.setValue('あ'.repeat(501))
+    expect(submitButton(wrapper).attributes('disabled')).toBeDefined()
+  })
+
+  it('AD-10b: 添え書きはコードポイントで数える（絵文字 500 個は送信可・501 個は不可）', async () => {
+    const wrapper = await mountDialog(makeForm())
+    const textarea = wrapper.find('[data-testid="apply-message"]')
+    await textarea.setValue('😀'.repeat(500))
+    expect(wrapper.find('[data-testid="apply-message-count"]').text()).toContain('500 / 500')
+    expect(submitButton(wrapper).attributes('disabled')).toBeUndefined()
+    await textarea.setValue('😀'.repeat(501))
+    expect(wrapper.find('[data-testid="apply-message-count"]').text()).toContain('501 / 500')
     expect(submitButton(wrapper).attributes('disabled')).toBeDefined()
   })
 })
