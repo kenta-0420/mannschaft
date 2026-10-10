@@ -244,13 +244,13 @@
     },
     "standings": {
       "title": "Tabelle",
-      "back": "Zuruck zum Turnier",
+      "back": "Zurück zum Turnier",
       "rank": "Pl.",
       "team": "Team",
       "played": "Sp.",
       "winDrawLoss": "S/U/N",
       "goalDiff": "Diff.",
-      "setsWonLost": "Satze G/V",
+      "setsWonLost": "Sätze G/V",
       "points": "Pkt.",
       "form": "Aktuelle Form",
       "recalculate": "Neu berechnen",
@@ -265,11 +265,11 @@
     },
     "rankings": {
       "title": "Ranglisten",
-      "back": "Zuruck zum Turnier",
+      "back": "Zurück zum Turnier",
       "rank": "Pl.",
       "player": "Spieler",
       "anonymousPlayer": "Anonymer Spieler",
-      "matchesPlayed": "Einsatze",
+      "matchesPlayed": "Einsätze",
       "value": "Wert",
       "downloadPdf": "PDF exportieren",
       "pdfFailed": "PDF-Export fehlgeschlagen",
@@ -280,8 +280,8 @@
     },
     "matrix": {
       "title": "Spielmatrix",
-      "back": "Zuruck zum Turnier",
-      "homeAway": "Heim \\ Auswarts",
+      "back": "Zurück zum Turnier",
+      "homeAway": "Heim \\ Auswärts",
       "notPlayed": "Nicht gespielt",
       "downloadPdf": "PDF exportieren",
       "pdfFailed": "PDF-Export fehlgeschlagen",
@@ -289,7 +289,7 @@
       "noDivisions": "Keine Divisionen registriert",
       "loadFailed": "Matrix konnte nicht geladen werden",
       "forbidden": "Du hast keine Berechtigung, dieses Turnier anzusehen",
-      "setsNote": "Dieses Turnier wird in Satzen gespielt, daher zeigt jede Zelle die Gesamtpunkte aller Satze. Der Sieger wird anhand der Anzahl gewonnener Satze ermittelt."
+      "setsNote": "Dieses Turnier wird in Sätzen gespielt, daher zeigt jede Zelle die Gesamtpunkte aller Sätze. Der Sieger wird anhand der Anzahl gewonnener Sätze ermittelt."
     },
     "visibility": {
       "title": "Sichtbarkeit",
@@ -299,57 +299,57 @@
       "saveFailed": "Sichtbarkeit konnte nicht aktualisiert werden",
       "levels": {
         "PUBLIC": {
-          "label": "Offentlich",
+          "label": "Öffentlich",
           "description": "Jeder kann es sehen, auch nicht angemeldete Besucher."
         },
         "SUPPORTERS_AND_ABOVE": {
-          "label": "Unterstutzer und hoher",
-          "description": "Unterstutzer, Mitglieder und Admins konnen es sehen."
+          "label": "Unterstützer und höher",
+          "description": "Unterstützer, Mitglieder und Admins können es sehen."
         },
         "MEMBERS_AND_ABOVE": {
-          "label": "Mitglieder und hoher",
-          "description": "Nur Mitglieder und Admins konnen es sehen (Unterstutzer ausgeschlossen)."
+          "label": "Mitglieder und höher",
+          "description": "Nur Mitglieder und Admins können es sehen (Unterstützer ausgeschlossen)."
         },
         "ADMINS_AND_ABOVE": {
           "label": "Nur Admins",
-          "description": "Nur Organisations-Admins und stellvertretende Admins konnen es sehen."
+          "description": "Nur Organisations-Admins und stellvertretende Admins können es sehen."
         },
         "SCOPE_AFFILIATED": {
-          "label": "Nur Zugehorige",
-          "description": "Nur direkt der Organisation Zugehorige (inkl. Unterstutzer) konnen es sehen."
+          "label": "Nur Zugehörige",
+          "description": "Nur direkt der Organisation Zugehörige (inkl. Unterstützer) können es sehen."
         },
         "PARTICIPANTS_ONLY": {
           "label": "Nur Teilnehmer",
-          "description": "Nur Personen aus teilnehmenden Teams dieses Turniers konnen es sehen."
+          "description": "Nur Personen aus teilnehmenden Teams dieses Turniers können es sehen."
         }
       }
     },
     "scoreEntry": {
       "title": "Ergebniserfassung",
       "navLink": "Ergebniserfassung (Admin)",
-      "back": "Zuruck zum Turnier",
+      "back": "Zurück zum Turnier",
       "matchday": "Spieltag",
       "home": "Heim",
-      "away": "Auswarts",
+      "away": "Auswärts",
       "homeScore": "Heim-Tore",
-      "awayScore": "Auswarts-Tore",
+      "awayScore": "Auswärts-Tore",
       "homeExtraScore": "Heim (n.V.)",
-      "awayExtraScore": "Auswarts (n.V.)",
+      "awayExtraScore": "Auswärts (n.V.)",
       "homePenaltyScore": "Heim (Elfm.)",
-      "awayPenaltyScore": "Auswarts (Elfm.)",
-      "extraPenaltyHint": "Die Verlangerung wird zum regularen Ergebnis addiert, um den Sieger zu ermitteln. Das Elfmeterschiessen zahlt nur, wenn es nach regularer Spielzeit und Verlangerung weiterhin unentschieden steht. Lass nicht ausgetragene Felder leer.",
+      "awayPenaltyScore": "Auswärts (Elfm.)",
+      "extraPenaltyHint": "Die Verlängerung wird zum regulären Ergebnis addiert, um den Sieger zu ermitteln. Das Elfmeterschießen zahlt nur, wenn es nach regulärer Spielzeit und Verlängerung weiterhin unentschieden steht. Lass nicht ausgetragene Felder leer.",
       "setHeader": "Satz {n}",
       "setHomeAria": "Satz {n} Heimpunkte",
-      "setAwayAria": "Satz {n} Auswartspunkte",
-      "setsHint": "Wer zuerst {n} Satze gewinnt, gewinnt das Spiel. Gib nur die Ergebnisse der gespielten Satze ein und lass nicht gespielte Satze leer. Der Sieger wird anhand der Anzahl gewonnener Satze ermittelt.",
+      "setAwayAria": "Satz {n} Auswärtspunkte",
+      "setsHint": "Wer zuerst {n} Sätze gewinnt, gewinnt das Spiel. Gib nur die Ergebnisse der gespielten Sätze ein und lass nicht gespielte Sätze leer. Der Sieger wird anhand der Anzahl gewonnener Sätze ermittelt.",
       "save": "Alle speichern",
       "saved": "Ergebnisse gespeichert",
       "saveFailed": "Ergebnisse konnten nicht gespeichert werden",
       "conflict": "Konflikt mit einer anderen Bearbeitung. Der aktuelle Stand wurde neu geladen. Bitte erneut eingeben.",
-      "invalidInput": "Ungultige Eingabe (Ergebnisse mussen nicht negative ganze Zahlen sein und sowohl Heim als auch Auswarts mussen ausgefullt werden).",
+      "invalidInput": "Ungültige Eingabe (Ergebnisse müssen nicht negative ganze Zahlen sein und sowohl Heim als auch Auswärts müssen ausgefüllt werden).",
       "nothingToSave": "Keine Ergebnisse zum Speichern",
       "standingsHint": "Ergebnisse gespeichert. Die Tabelle wird automatisch neu berechnet.",
-      "forbidden": "Sie haben keine Berechtigung, Ergebnisse fur dieses Turnier zu bearbeiten",
+      "forbidden": "Sie haben keine Berechtigung, Ergebnisse für dieses Turnier zu bearbeiten",
       "loadFailed": "Daten konnten nicht geladen werden",
       "noDivisions": "Keine Divisionen registriert",
       "noMatchdays": "Keine Spieltage registriert",
@@ -360,7 +360,7 @@
         "import": "Importieren",
         "imported": "CSV importiert",
         "importFailed": "CSV-Import fehlgeschlagen",
-        "invalidFormat": "Ungultiges CSV-Format. Ergebnisse mussen ganze Zahlen sein.",
+        "invalidFormat": "Ungültiges CSV-Format. Ergebnisse müssen ganze Zahlen sein.",
         "downloadTemplate": "Vorlage herunterladen"
       }
     },

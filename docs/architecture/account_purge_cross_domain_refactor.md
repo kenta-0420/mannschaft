@@ -412,8 +412,10 @@ public void backfill() {
 **3. GDPR 監査ログ強化（意思決定 ① 案 A）** ✅ Phase D-8 で実施済み
 
 - `account_purge_completion_status` テーブル新設（6 ドメイン × `(userId, domain, completed_at, status)` で per-domain 完了を記録）
-  - Flyway: `V9.172__create_account_purge_completion_status.sql`
+  - Flyway: `V9.179__create_account_purge_completion_status.sql`
   - Entity: `com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity`（UUIDv7, FK なし）
+  - `email_hash` は SHA-256 の64桁hexを保持する。正本DDLの `CHAR(64) NOT NULL` を維持し、Entity は JDBC 型 `CHAR` と `columnDefinition = "CHAR(64)"` を明示する。
+  - `retry_count` は正本DDLの `TINYINT UNSIGNED NOT NULL DEFAULT 0` と Java `Integer` を維持する。GDPR限定の JDBC 型でDDL照合コードだけを `TINYINT` にし、bind/extract は `INTEGER` の `setInt` / `getInt` を継承して0..255を保持する。256はMySQLの範囲外拒否とし、rollback後もcommit済み255の行を保全する。
   - Repository: `com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository`
 - `AccountPurgeService#purgeUser()` が `AccountPurgedEvent` 発火前に 6 ドメイン分の PENDING レコードを INSERT
 - 各 `*PurgeEventListener` が処理成功時に対応ドメインの status を SUCCESS に更新
@@ -425,7 +427,7 @@ public void backfill() {
 
 | 追加・変更ファイル | 内容 |
 |---|---|
-| `V9.172__create_account_purge_completion_status.sql` | Flyway マイグレーション（証跡テーブル新設） |
+| `V9.179__create_account_purge_completion_status.sql` | Flyway マイグレーション（証跡テーブル新設） |
 | `AccountPurgeCompletionStatusEntity` | Entity（UUIDv7 主キー、FK なし） |
 | `AccountPurgeCompletionStatusRepository` | Repository（findByStatusAndAttemptedAtBefore / findByUserId / findByUserIdAndDomainName） |
 | `AccountPurgeService` | purgeUser() に PENDING INSERT ロジック追加 |

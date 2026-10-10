@@ -80,7 +80,7 @@ const TEAM_ID = 1
 /**
  * 一斉配信ウィザードを開くための入口ルート。
  *
- * 「チーム内告知」ボタンは `TeamPageHeader.vue` にあり、これは永続シェル
+ * 「チームに告知を送る」ボタンは `TeamPageHeader.vue` にあり、これは永続シェル
  * `pages/teams/[slug].vue` が SHELL_SEGMENTS のルートで常駐描画する。
  * したがって `/teams/{slug}`（ダッシュボード）でも `/teams/{slug}/info` でも同じボタンが出る。
  *
@@ -90,7 +90,7 @@ const TEAM_ID = 1
  * 本陣 FE（:3000）と worktree FE（:3003）で共有され、片方が再最適化すると
  * もう片方の稼働中サーバーが古いハッシュを掴んだまま `504 Outdated Optimize Dep` を返し続ける
  * （実測: `deps/chart__js.js?v=4424bf25` が 504 → ダッシュボードが 500 エラー面になり
- *  「チーム内告知」ボタンが 0 件。リロードでも復旧しない＝FE 再起動が必要）。
+ *  「チームに告知を送る」ボタンが 0 件。リロードでも復旧しない＝FE 再起動が必要）。
  * 本 spec の検証対象は日時オフセットであってダッシュボードの描画ではないため、
  * chart.js に依存しない `/info` から同一ウィザードを開く。
  */
@@ -104,7 +104,7 @@ const JST_TZ = 'Asia/Tokyo'
 
 // UI 文字列（locales/ja と一致することを確認済み）
 const TXT = {
-  broadcastButton: 'チーム内告知',
+  broadcastButton: 'チームに告知を送る',
   next: '次へ',
   channelTimeline: 'タイムライン',
   channelSurvey: 'アンケート',
@@ -634,7 +634,7 @@ test.describe('DT2508-01 出力履歴の保管期限延長（newExpiresAt）', (
 
 // ===========================================================================
 // 経路②③ 一斉配信（BroadcastRequestDto.expiresAt / AnnouncementContentRequest.closesAt）
-//   URL: /teams/{slug} → ヘッダ「チーム内告知」→ ウィザード Step3
+//   URL: /teams/{slug} → ヘッダ「チームに告知を送る」→ ウィザード Step3
 //   入力: DatePicker（testid 無し・ラベルで引く）
 //   送信: POST /api/v1/teams/{teamId}/broadcast
 //
@@ -668,7 +668,7 @@ test.describe('DT2508-02/03 一斉配信の日時（expiresAt / closesAt）', ()
   /** ウィザードを Step3 まで進める。 */
   async function openWizardToStep3(page: Page, channelLabel: string): Promise<Locator> {
     const btn = page.getByRole('button', { name: TXT.broadcastButton })
-    await expect(btn, '「チーム内告知」ボタン（SUPPORTER 以外に表示）').toBeVisible({ timeout: 30_000 })
+    await expect(btn, '「チームに告知を送る」ボタン（SUPPORTER 以外に表示）').toBeVisible({ timeout: 30_000 })
     await btn.click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 10_000 })

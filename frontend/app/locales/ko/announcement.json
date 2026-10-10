@@ -39,7 +39,7 @@
     "already_registered": "이 콘텐츠는 이미 공지로 등록되어 있습니다.",
     "no_longer_available": "이 공지는 공개가 종료되어 목록에서 제거했습니다.",
     "mark_all_read_partial": "{count}건을 읽은 것으로 처리했습니다. 아직 읽지 않은 공지가 남아 있습니다. 한 번 더 누르시면 계속 처리합니다.",
-    "broadcast_button_team": "팀 내 공지",
+    "broadcast_button_team": "팀에 공지 보내기",
     "broadcast_button_org": "조직 내 공지",
     "wizard_title": "공지 보내기",
     "step1_title": "대상 범위",
@@ -91,77 +91,77 @@
       "dismiss": "닫기"
     },
     "broadcast_guide": {
-      "toggle": "使い方",
-      "description": "告知ウィザードの使い方を、ステップ順にまとめました。上から順に進めれば告知を送れます。",
+      "toggle": "사용법",
+      "description": "공지 마법사의 사용법을 단계 순서대로 정리했습니다. 위에서부터 차례로 진행하면 공지를 보낼 수 있습니다.",
       "audience": {
-        "title": "誰に届けるか（対象範囲）",
-        "body": "告知を見せる相手の範囲を決めます（最初のステップ）。",
+        "title": "누구에게 전달할지 (대상 범위)",
+        "body": "공지를 보여줄 상대의 범위를 정합니다 (첫 번째 단계).",
         "steps": {
-          "step1": "届け先をメンバーのみ／サポーター以上／全員（公開）から選ぶ",
-          "step2": "（組織告知のみ）対象チームを『すべて』または個別に選ぶ"
+          "step1": "수신 대상을 회원만 / 서포터 이상 / 전체 (공개) 중에서 선택한다",
+          "step2": "(조직 공지만) 대상 팀을 「모든 팀」 또는 개별로 선택한다"
         }
       },
       "template": {
-        "title": "テンプレートで時短",
-        "body": "よく使う宛先設定を呼び出し・保存できます。",
+        "title": "템플릿으로 시간 절약",
+        "body": "자주 쓰는 수신 대상 설정을 불러오고 저장할 수 있습니다.",
         "steps": {
-          "step1": "『テンプレートから読み込む』で宛先を自動入力",
-          "step2": "（管理者のみ）『テンプレートとして保存』で現在の範囲を登録（1範囲あたり20件まで）"
+          "step1": "「템플릿에서 불러오기」로 수신 대상을 자동 입력한다",
+          "step2": "(관리자만) 「템플릿으로 저장」으로 현재 범위를 등록한다 (범위당 20건까지)"
         }
       },
       "channel": {
-        "title": "届け方を選ぶ（チャネル）",
-        "body": "掲示板・タイムライン・ブログ・TODO・スケジュール・アンケートから配信先を1つ選びます。",
+        "title": "전달 방법 선택 (채널)",
+        "body": "게시판·타임라인·블로그·TODO·일정·설문 중에서 전달할 곳을 하나 고릅니다.",
         "steps": {
-          "step1": "6つのカードから1つ選ぶ",
-          "step2": "『次へ』。※テンプレに既定チャネルがあるとこの画面は省略されます"
+          "step1": "6개의 카드 중 하나를 고른다",
+          "step2": "「다음」을 누른다. ※템플릿에 기본 채널이 있으면 이 화면은 건너뜁니다"
         }
       },
       "content": {
-        "title": "内容を書く",
-        "body": "選んだチャネルに合わせて入力欄が変わります。＊印は必須です。",
+        "title": "내용 작성",
+        "body": "선택한 채널에 따라 입력란이 바뀝니다. *표시는 필수입니다.",
         "steps": {
-          "step1": "タイトル・本文など必須欄を入力",
-          "step2": "例: スケジュールは開始日時、タイムラインは本文が必須"
+          "step1": "제목·본문 등 필수 항목을 입력한다",
+          "step2": "예: 일정은 시작 일시, 타임라인은 본문이 필수"
         }
       },
       "priority": {
-        "title": "優先度と表示期限",
-        "body": "目立たせ方と掲載の終了日時を設定できます。",
+        "title": "우선순위와 표시 기한",
+        "body": "눈에 띄는 정도와 게시 종료 일시를 설정할 수 있습니다.",
         "steps": {
-          "step1": "（管理者以上）優先度を通常／重要／緊急から選ぶ。一般メンバーは『通常』固定",
-          "step2": "表示期限を任意で設定"
+          "step1": "(관리자 이상) 우선순위를 일반 / 중요 / 긴급 중에서 고른다. 일반 회원은 「일반」으로 고정",
+          "step2": "표시 기한을 필요에 따라 설정한다"
         }
       },
       "submit": {
-        "title": "送信して確認",
-        "body": "入力が揃うと送信できます。送信後はお知らせに表示されます。",
+        "title": "전송 후 확인",
+        "body": "입력이 모두 갖춰지면 전송할 수 있습니다. 전송 후에는 공지사항에 표시됩니다.",
         "steps": {
-          "step1": "『告知を送る』を押す",
-          "step2": "送信完了を確認。※アンケートの設問・TODOの担当者は送信後に各画面で追加します"
+          "step1": "「공지 보내기」를 누른다",
+          "step2": "전송 완료를 확인한다. ※설문 문항과 TODO 담당자는 전송 후 각 화면에서 추가합니다"
         }
       }
     },
-    "target_mode_all": "すべてのチーム",
-    "target_mode_teams": "チームを選ぶ",
-    "target_mode_groups": "チームグループで選ぶ",
-    "target_groups_label": "チームグループ",
-    "target_range_label": "範囲で選ぶ",
-    "target_range_up_to": "{name} 以前（並び順で先頭から）",
-    "target_range_from": "{name} 以降（並び順で末尾まで）",
+    "target_mode_all": "모든 팀",
+    "target_mode_teams": "팀 선택",
+    "target_mode_groups": "팀 그룹으로 선택",
+    "target_groups_label": "팀 그룹",
+    "target_range_label": "범위로 선택",
+    "target_range_up_to": "{name} 이전 (정렬 순서상 처음부터)",
+    "target_range_from": "{name} 이후 (정렬 순서상 끝까지)",
     "target_range_between": "{from} 〜 {to}",
     "target_range_kind_up_to": "〜以前",
     "target_range_kind_from": "〜以降",
     "target_range_kind_between": "A〜B",
-    "target_include_unassigned": "未分類のチームを含める",
-    "target_direct_members_note": "組織の直属メンバー（どのチームにも属さない人）にも届きます",
-    "target_resolved_count": "該当: {teams} チーム＋直属メンバー {members} 人",
-    "target_resolved_empty": "該当する人がいません",
-    "target_order_hint": "並び順はチームグループ管理で変えられます",
-    "push_disabled_note": "このお知らせの push 通知は送られません",
-    "dynamic_display_note": "表示は現在の所属で判定されます（削除されたグループは送信時点の対象チームで判定）",
-    "template_deleted_groups_removed": "削除されたチームグループがテンプレートから除外されました",
-    "template_range_invalid": "テンプレートの範囲に削除されたチームグループが含まれています。範囲を選び直してください",
-    "audience_summary": "宛先: {label}（送信時 {count} チーム）"
+    "target_include_unassigned": "미분류 팀 포함",
+    "target_direct_members_note": "조직 직속 멤버(어느 팀에도 속하지 않은 사람)에게도 전달됩니다",
+    "target_resolved_count": "해당: {teams}개 팀 + 직속 멤버 {members}명",
+    "target_resolved_empty": "해당하는 사람이 없습니다",
+    "target_order_hint": "정렬 순서는 팀 그룹 관리에서 바꿀 수 있습니다",
+    "push_disabled_note": "이 공지의 푸시 알림은 발송되지 않습니다",
+    "dynamic_display_note": "표시는 현재 소속을 기준으로 판정됩니다(삭제된 그룹은 발송 시점의 대상 팀으로 판정)",
+    "template_deleted_groups_removed": "삭제된 팀 그룹이 템플릿에서 제외되었습니다",
+    "template_range_invalid": "템플릿의 범위에 삭제된 팀 그룹이 포함되어 있습니다. 범위를 다시 선택해 주세요",
+    "audience_summary": "수신 대상: {label} (발송 시 {count}개 팀)"
   }
 }

@@ -65,7 +65,8 @@ const connectSrc = [
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   // 本番では Nuxt DevTools を無効化（情報露出・バンドル肥大の抑止）。
-  devtools: { enabled: process.env.NODE_ENV !== 'production' },
+  // Nuxt DevTools の専用パネルは利用方針により全環境で無効化する（インストール時の互換パッチは維持）。
+  devtools: { enabled: false },
 
   app: {
     head: {
@@ -436,6 +437,7 @@ export default defineNuxtConfig({
   // E2E テスト時（NUXT_API_PROXY=true 環境変数）は API を Nuxt サーバー経由でプロキシする。
   // これにより CORS プリフライト問題を回避し、Playwright のルートインターセプトが確実に機能する。
   routeRules: {
+    '/activities/**': { ssr: false },
     // 未公開機能（Gate 基盤工事②）のガード対象パスは SSR 対象外にする。
     // SSR 実行時は公開フラグを取得できない（localStorage のトークンに依存）ため、
     // フラグ未確定のまま未公開ページの HTML がサーバーから出力されるのを防ぐ
@@ -1011,7 +1013,18 @@ export default defineNuxtConfig({
       // chart.js / dompurify / vuedraggable は遅延ロードされる詳細ページで初めて参照される。
       // 未指定だと初回 SPA 遷移中に Vite が依存を発見してページ全体を reload し、
       // URL 確定前の一覧へ戻るため、dev server 起動時に事前最適化しておく。
-      include: ['date-holidays', 'dexie', 'chart.js', 'dompurify', 'vuedraggable'],
+      // 活動詳細のMarkdown・編集フォームも初回アクセス中の再最適化を避ける。
+      include: [
+        'date-holidays',
+        'dexie',
+        'chart.js',
+        'dompurify',
+        'vuedraggable',
+        'marked',
+        'zod',
+        '@vee-validate/zod',
+        'vee-validate',
+      ],
     },
   },
 
