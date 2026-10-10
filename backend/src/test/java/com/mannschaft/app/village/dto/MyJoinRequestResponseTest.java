@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.village.dto;
+package com.mannschaft.app.village.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

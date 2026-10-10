@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { ref } from 'vue'
 import VillageJoinRequestsPage from '~/pages/my/village-join-requests.vue'

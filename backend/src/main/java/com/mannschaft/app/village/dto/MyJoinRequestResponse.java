@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.village.dto;
+package com.mannschaft.app.village.dto;
 
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageJoinRequestEntity;
