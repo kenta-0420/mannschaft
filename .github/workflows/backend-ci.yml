@@ -302,7 +302,7 @@ jobs:
 
       - name: ヒープダンプ（OOM調査用）をアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: heap-dump-pr-${{ github.event.pull_request.number || 'manual' }}-archtest
           path: backend/build/heap-dumps/*.hprof
@@ -313,7 +313,7 @@ jobs:
       # shard 重み表の材料を集めるため。archTest のクラスは通常 test の shard 割当に入れない）。
       - name: テスト結果XML（JUnit）をアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archtest-results-xml-pr-${{ github.event.pull_request.number || 'manual' }}
           path: backend/build/test-results/archTest/
@@ -321,7 +321,7 @@ jobs:
 
       - name: テスト結果レポートをアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archtest-results-pr-${{ github.event.pull_request.number || 'manual' }}
           path: backend/build/reports/tests/archTest/
@@ -486,7 +486,7 @@ jobs:
       # 正常系であり、これを error にすると本来の失敗原因を覆い隠す形で CI を毎回汚す）。
       - name: ヒープダンプ（OOM調査用）をアップロード
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: heap-dump-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
           path: backend/build/heap-dumps/*.hprof
@@ -497,7 +497,7 @@ jobs:
       # 持つため、「Run tests の壁時計」と「Gradle 集計テスト時間」の差を分解できる。
       - name: テスト結果XML（JUnit）をアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-xml-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
           path: |
@@ -507,7 +507,7 @@ jobs:
 
       - name: テスト結果レポートをアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
           path: backend/build/reports/tests/
@@ -515,7 +515,7 @@ jobs:
 
       - name: JaCoCo カバレッジレポートをアップロード
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
           path: backend/build/reports/jacoco/
