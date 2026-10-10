@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import TimelinePostDetailPage from './[postId].vue'
@@ -27,7 +27,12 @@ const options = {
 }
 
 describe('投稿詳細ページの取得結果', () => {
+  const originalHistoryState = window.history.state
   beforeEach(() => vi.clearAllMocks())
+  afterEach(() => {
+    vi.restoreAllMocks()
+    window.history.replaceState(originalHistoryState, '')
+  })
 
   it('取得失敗(404相当)では読み込み中のまま止まらず、見つからない表示と戻る導線を出す', async () => {
     mocks.getPost.mockRejectedValue({ status: 404 })
