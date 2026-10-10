@@ -623,6 +623,19 @@
     }
   },
   "timeline": {
+    "detail": {
+      "back": "Back",
+      "loadFailed": "Failed to load the post",
+      "repliesLoadFailed": "Failed to load replies",
+      "replySuccess": "Reply sent",
+      "replyFailed": "Failed to send the reply",
+      "bookmarkFailed": "Failed to update the bookmark",
+      "replyPlaceholder": "Write a reply...",
+      "replySubmit": "Reply",
+      "replyCount": "{count} replies",
+      "loadMoreReplies": "Load more replies",
+      "notFound": "This post was not found or cannot be displayed"
+    },
     "videoProcessing": "Processing video...",
     "videoFailed": "Video unavailable",
     "videoUploadButton": "Attach video",
@@ -741,6 +754,8 @@
       "titlePlaceholder": "Enter a post title",
       "createDialogHint": "The post will be saved as a draft. After entering a title, write the body on the edit page.",
       "loadListFailed": "Failed to load the post list",
+      "loadListErrorHint": "Could not display the post list. Check your connection or permissions and reload.",
+      "reloadList": "Reload",
       "createFailed": "Failed to create the post",
       "archived": "Archived",
       "publishSuccess": "Published",
@@ -772,7 +787,8 @@
       "createFailed": "Failed to create",
       "deleteSuccess": "Tag deleted",
       "deleteFailed": "Failed to delete"
-    }
+    },
+    "pageTitle": "Blog & Announcements"
   },
   "todo": {
     "backToList": "Back to TODO list",
@@ -1759,6 +1775,8 @@
       "downloadLabel": "Download {format} ({type})"
     },
     "menu": "Menu",
+    "moreActions": "More actions",
+    "openNavigation": "Open navigation",
     "scopeShell": {
       "memberCount": "{count} members",
       "supporterCount": "{count} supporters",
@@ -2091,6 +2109,58 @@
         "public_desc": "Anyone with the link can view it. A share button appears in the list for easy external sharing.",
         "note": "The default visibility is determined by the template's settings."
       }
+    },
+    "detail": {
+      "open": "詳細を見る",
+      "publish": "公開する",
+      "saved": "下書きを保存しました",
+      "participants": "参加者",
+      "participantsHint": "実際に参加したメンバーを選択してください",
+      "participantsRequired": "このテンプレートの公開には参加者が必要です",
+      "noParticipants": "参加者は登録されていません",
+      "attachments": "添付ファイル",
+      "attachment": "添付ファイル {id}",
+      "sourceSchedule": "元の予定",
+      "openSchedule": "予定を開く",
+      "scheduleUnavailable": "元の予定は閲覧できません",
+      "scheduleCancelled": "元の予定は中止されています",
+      "endDate": "終了日（複数日の場合）",
+      "startTime": "開始時刻",
+      "endTime": "終了時刻",
+      "edit": "Edit",
+      "save": "Save",
+      "updated": "Activity record saved"
+    },
+    "sync": {
+      "title": "予定と活動記録の変更を確認",
+      "description": "予定の変更を活動記録へ反映する項目を選んでください。自動反映の項目も「予定のみ保存」では変更されません。",
+      "record": "活動記録 {id}",
+      "automatic": "自動反映",
+      "current": "現在の記録",
+      "updated": "変更後の予定",
+      "scheduleOnly": "予定のみ保存",
+      "apply": "選択した項目を反映して保存",
+      "fields": {
+        "title": "タイトル",
+        "activityDate": "活動日",
+        "activityEndDate": "終了日",
+        "activityTimeStart": "開始時刻",
+        "activityTimeEnd": "終了時刻"
+      }
+    },
+    "schedule": {
+      "create": "この予定の活動記録を作成",
+      "records": "活動記録",
+      "loadError": "活動記録の取得に失敗しました"
+    },
+    "planned": "Planned",
+    "unpublished": "Unpublished",
+    "metadataOnly": "Activity content is unpublished. Only the source schedule information is shown here.",
+    "delete": {
+      "title": "Delete activity record",
+      "action": "Delete",
+      "confirm": "Delete this activity record. The source schedule will remain.",
+      "success": "Activity record deleted"
     }
   },
   "dashboard": {
@@ -2797,5 +2867,18 @@
       "SUPPORTERS_AND_ABOVE": "Supporters and above",
       "MEMBERS_AND_ABOVE": "Members and above"
     }
+  },
+  "relativeTime": {
+    "justNow": "Just now",
+    "minutesAgo": "{count} minute ago | {count} minutes ago",
+    "hoursAgo": "{count} hour ago | {count} hours ago",
+    "daysAgo": "{count} day ago | {count} days ago"
+  },
+  "error_page": {
+    "not_found_title": "This page could not be found",
+    "not_found_description": "The page you are looking for does not exist, or it may have been moved or removed.",
+    "generic_title": "Something went wrong",
+    "generic_description": "Please try again in a moment. If the problem continues, contact your administrator.",
+    "back_home": "Back to home"
   }
 }

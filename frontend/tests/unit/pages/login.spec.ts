@@ -43,7 +43,7 @@ vi.mock('~/composables/useNotification', () => ({
 
 vi.mock('~/composables/useLocale', () => ({
   useLocale: () => ({
-    applyUserLocale: vi.fn(),
+    applyAccountLocale: vi.fn(),
   }),
 }))
 

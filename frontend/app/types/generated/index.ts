@@ -8362,6 +8362,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/activity-sync-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 予定編集時の活動記録同期確認 */
+        post: operations["activitySyncPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamPublicId}/schedule-keeps": {
         parameters: {
             query?: never;
@@ -17240,6 +17257,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/activity-sync-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 予定編集時の活動記録同期確認 */
+        post: operations["activitySyncPreview_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgPublicId}/schedule-keeps": {
         parameters: {
             query?: never;
@@ -19578,6 +19612,26 @@ export interface paths {
          * @description F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。targetTeamIds を指定した場合は組織配下チームであることを検証する。
          */
         post: operations["broadcastToOrg"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/broadcast/audience-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 組織告知の宛先プレビュー
+         * @description F01.2.1 §10.9。宛先指定（チーム・グループ個別・範囲・未分類）を解決し、チーム数・直属メンバー数・先頭50件のチーム・展開後のグループ・pushEnabled を返す。組織の非メンバーは 403 COMMON_002。
+         */
+        post: operations["previewOrgAudience"];
         delete?: never;
         options?: never;
         head?: never;
@@ -24846,6 +24900,23 @@ export interface paths {
         put?: never;
         /** 活動記録 下書き作成 */
         post: operations["createDraftActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/activities/draft-from-schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 予定から活動記録の下書きを作成 */
+        post: operations["draftFromSchedule"];
         delete?: never;
         options?: never;
         head?: never;
@@ -33216,6 +33287,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予定に関連する閲覧可能な活動記録 */
+        get: operations["linkedActivities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamPublicId}/schedule-keeps/by-schedule/{scheduleId}": {
         parameters: {
             query?: never;
@@ -40490,6 +40578,23 @@ export interface paths {
         };
         /** 組織出欠CSVエクスポート */
         get: operations["exportAttendancesCsv_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予定に関連する閲覧可能な活動記録 */
+        get: operations["linkedActivities_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -53543,7 +53648,7 @@ export interface components {
             autoNoShowDetection?: boolean;
             /** Format: int32 */
             disputeAllowedDays?: number;
-            enabled?: boolean;
+            isEnabled?: boolean;
             /** Format: int32 */
             penaltyDurationDays?: number;
             /** Format: int32 */
@@ -53560,9 +53665,9 @@ export interface components {
             createdAt?: string;
             /** Format: int32 */
             disputeAllowedDays?: number;
-            enabled?: boolean;
             /** Format: int64 */
             id?: number;
+            isEnabled?: boolean;
             /** Format: int32 */
             penaltyDurationDays?: number;
             /** Format: int64 */
@@ -55844,6 +55949,8 @@ export interface components {
         UpdateActivityRequest: {
             /** Format: date */
             activityDate: string;
+            /** Format: date */
+            activityEndDate?: string;
             /** @example 14:30:00 */
             activityTimeEnd?: string;
             /** @example 14:30:00 */
@@ -55854,26 +55961,33 @@ export interface components {
             };
             fileIds?: number[];
             participantUserIds?: number[];
+            /** Format: int64 */
+            templateId?: number;
             title?: string;
+            /** Format: int64 */
+            version?: number;
             visibility?: string;
         };
         ActivityRecordResponse: {
             /** Format: date */
             activityDate?: string;
             /** @example 14:30:00 */
-            activityTimeEnd?: string;
+            activityTimeEnd?: string | null;
             /** @example 14:30:00 */
-            activityTimeStart?: string;
-            attachments?: string;
+            activityTimeStart?: string | null;
+            attachments?: string | null;
+            autoGeneratedFromSchedule: boolean;
             /** Format: date-time */
-            createdAt?: string;
+            createdAt?: string | null;
             /** Format: int64 */
-            createdBy?: number;
-            description?: string;
-            fieldValues?: string;
+            createdBy?: number | null;
+            description?: string | null;
+            fieldValues?: string | null;
             /** Format: int64 */
             id?: number;
-            location?: string;
+            isPlanned: boolean;
+            location?: string | null;
+            metadataOnly: boolean;
             /** Format: int64 */
             scheduleId?: number;
             /** Format: int64 */
@@ -55881,12 +55995,12 @@ export interface components {
             scopeType?: string;
             status?: string;
             /** Format: int64 */
-            templateId?: number;
+            templateId?: number | null;
             title?: string;
             /** Format: date-time */
-            updatedAt?: string;
+            updatedAt?: string | null;
             /** Format: int64 */
-            venueId?: number;
+            venueId?: number | null;
             visibility?: string;
         };
         ApiResponseActivityRecordResponse: {
@@ -58418,6 +58532,106 @@ export interface components {
             /** Format: int64 */
             targetScheduleId?: number;
             targetType?: string;
+        };
+        ActivitySyncConfirmation: {
+            activities: components["schemas"]["ActivitySyncSelection"][];
+            expectedScheduleState: components["schemas"]["ExpectedScheduleState"];
+        };
+        ActivitySyncPreviewRequest: {
+            scheduleUpdate: components["schemas"]["UpdateScheduleRequest"];
+            updateScope?: string;
+        };
+        ActivitySyncSelection: {
+            applyFields: string[];
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            version: number;
+        };
+        ExpectedScheduleEntry: {
+            allDay?: boolean;
+            /** Format: date-time */
+            endAt?: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: date-time */
+            startAt?: string;
+            status?: string;
+            title?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ExpectedScheduleState: {
+            allDay?: boolean;
+            /** Format: date-time */
+            endAt?: string;
+            schedules?: components["schemas"]["ExpectedScheduleEntry"][];
+            /** Format: date-time */
+            startAt?: string;
+            status?: string;
+            title?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        UpdateReminderRequest: {
+            /** Format: date-time */
+            remindAt?: string;
+            remindAtValid?: boolean;
+            /** Format: int32 */
+            remindBeforeMinutes?: number;
+            remindBeforeMinutesValid?: boolean;
+            /** @enum {string} */
+            reminderKind?: "RELATIVE" | "ABSOLUTE";
+        };
+        UpdateScheduleRequest: {
+            /** Format: int32 */
+            academicYear?: number;
+            allDay?: boolean;
+            /** Format: date-time */
+            attendanceDeadline?: string;
+            attendanceRequired?: boolean;
+            commentOption?: string;
+            description?: string;
+            /** Format: date-time */
+            endAt?: string;
+            /** Format: int64 */
+            eventCategoryId?: number;
+            eventType?: string;
+            location?: string;
+            minResponseRole?: string;
+            minViewRole?: string;
+            reminders?: components["schemas"]["UpdateReminderRequest"][];
+            scheduledAttendance?: components["schemas"]["ScheduledAttendanceRequest"];
+            scheduledSurveys?: components["schemas"]["ScheduledSurveyRequest"][];
+            /** Format: date-time */
+            startAt?: string;
+            syncConfirmation?: components["schemas"]["ActivitySyncConfirmation"];
+            targetMode?: string;
+            targetUserIds?: number[];
+            title?: string;
+            updateScope?: string;
+            visibility?: string;
+        };
+        ActivitySyncChange: {
+            automatic?: boolean;
+            currentValue?: Record<string, never>;
+            field?: string;
+            scheduleValue?: Record<string, never>;
+        };
+        ActivitySyncPreviewEntry: {
+            changes?: components["schemas"]["ActivitySyncChange"][];
+            /** Format: int64 */
+            id?: number;
+            status?: string;
+            /** Format: int64 */
+            version?: number;
+        };
+        ActivitySyncPreviewResponse: {
+            activities?: components["schemas"]["ActivitySyncPreviewEntry"][];
+            expectedScheduleState?: components["schemas"]["ExpectedScheduleState"];
+        };
+        ApiResponseActivitySyncPreviewResponse: {
+            data?: components["schemas"]["ActivitySyncPreviewResponse"];
         };
         CreateScheduleKeepRequest: {
             candidateDates?: string[];
@@ -61535,11 +61749,20 @@ export interface components {
             content: components["schemas"]["AnnouncementContentRequest"];
             /** Format: date-time */
             expiresAt?: string;
+            includeUnassigned?: boolean;
             priority?: string;
+            targetGroupIds?: string[];
+            targetGroupRange?: components["schemas"]["TargetGroupRange"];
             targetRole: string;
             targetTeamIds?: number[];
             /** Format: int64 */
             templateId?: number;
+        };
+        TargetGroupRange: {
+            /** Format: uuid */
+            fromGroupId?: string;
+            /** Format: uuid */
+            toGroupId?: string;
         };
         ApiResponseBroadcastResponseDto: {
             data?: components["schemas"]["BroadcastResponseDto"];
@@ -61554,9 +61777,35 @@ export interface components {
             contentUrl?: string;
             /** Format: date-time */
             createdAt?: string;
+            includeUnassigned?: boolean;
             priority?: string;
+            targetAudience?: components["schemas"]["TargetAudience"];
+            targetGroupIds?: string[];
             targetRole?: string;
             targetTeamIds?: number[];
+        };
+        GroupRef: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+        };
+        RangeRef: {
+            /** Format: uuid */
+            fromGroupId?: string;
+            fromGroupName?: string;
+            /** Format: uuid */
+            toGroupId?: string;
+            toGroupName?: string;
+        };
+        TargetAudience: {
+            /** Format: int32 */
+            directMemberCount?: number;
+            groups?: components["schemas"]["GroupRef"][];
+            includeUnassigned?: boolean;
+            mode?: string;
+            range?: components["schemas"]["RangeRef"];
+            /** Format: int32 */
+            teamCount?: number;
         };
         /** @description 手動介入中の請求担当引継を再開（または失敗確定）する要求 */
         BillingPayerHandoverResumeRequest: {
@@ -65951,6 +66200,39 @@ export interface components {
             /** @enum {string} */
             visibilityToOrg?: "HIDDEN" | "NAME_ONLY" | "NAME_AND_PURPOSE";
         };
+        AudiencePreviewRequestDto: {
+            /** @enum {string} */
+            channel?: "BULLETIN_THREAD" | "TIMELINE_POST" | "BLOG_POST" | "TODO" | "SCHEDULE" | "SURVEY";
+            includeUnassigned?: boolean;
+            targetGroupIds?: string[];
+            targetGroupRange?: components["schemas"]["TargetGroupRange"];
+            targetRole?: string;
+            targetTeamIds?: number[];
+            /** Format: int64 */
+            templateId?: number;
+        };
+        ApiResponseAudiencePreviewResponseDto: {
+            data?: components["schemas"]["AudiencePreviewResponseDto"];
+        };
+        AudiencePreviewResponseDto: {
+            /** Format: int32 */
+            directMemberCount?: number;
+            groups?: components["schemas"]["GroupItem"][];
+            pushEnabled?: boolean;
+            /** Format: int32 */
+            resolvedTeamCount?: number;
+            sampleTeams?: components["schemas"]["SampleTeam"][];
+            warnings?: string[];
+        };
+        GroupItem: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+        };
+        SampleTeam: {
+            name?: string;
+            slug?: string;
+        };
         ActivateTemplateResponse: {
             /** Format: int64 */
             id?: number;
@@ -68822,6 +69104,10 @@ export interface components {
             title?: string;
             visibility?: string;
         };
+        ActivityVersionRequest: {
+            /** Format: int64 */
+            version?: number;
+        };
         AddParticipantsRequest: {
             roleLabels?: {
                 [key: string]: string;
@@ -68862,6 +69148,69 @@ export interface components {
             templateId?: number;
             title?: string;
             visibility?: string;
+        };
+        CreateDraftFromScheduleRequest: {
+            /** Format: int64 */
+            scheduleId: number;
+        };
+        ActivityDetailResponse: {
+            /** Format: date */
+            activityDate?: string;
+            /** Format: date */
+            activityEndDate?: string | null;
+            /** @example 14:30:00 */
+            activityTimeEnd?: string | null;
+            /** @example 14:30:00 */
+            activityTimeStart?: string | null;
+            attachments?: string | null;
+            autoGeneratedFromSchedule: boolean;
+            canDelete: boolean;
+            canEdit?: boolean;
+            canPublish?: boolean;
+            /** Format: date-time */
+            createdAt?: string | null;
+            /** Format: int64 */
+            createdBy?: number | null;
+            description?: string | null;
+            fieldValues?: string | null;
+            /** Format: int64 */
+            id?: number;
+            isPlanned: boolean;
+            location?: string | null;
+            metadataOnly: boolean;
+            participants?: components["schemas"]["ActivityParticipantResponse"][];
+            /** Format: int64 */
+            scheduleId?: number;
+            /** Format: int64 */
+            scopeId?: number;
+            scopePublicId?: string;
+            scopeType?: string;
+            sourceSchedule?: components["schemas"]["ActivitySourceScheduleResponse"];
+            status?: string;
+            templateFields?: components["schemas"]["TemplateFieldResponse"][];
+            /** Format: int64 */
+            templateId?: number | null;
+            title?: string;
+            /** Format: date-time */
+            updatedAt?: string | null;
+            /** Format: int64 */
+            venueId?: number | null;
+            /** Format: int64 */
+            version?: number | null;
+            visibility?: string;
+        };
+        ActivitySourceScheduleResponse: {
+            canView?: boolean;
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            scopeId?: number;
+            scopePublicId?: string;
+            scopeType?: string;
+            state?: string;
+        };
+        ApiResponseActivityDetailResponse: {
+            data?: components["schemas"]["ActivityDetailResponse"];
         };
         CreateActionMemoRequest: {
             /** @enum {string} */
@@ -69373,44 +69722,6 @@ export interface components {
             displayName?: string;
             /** Format: int64 */
             id?: number;
-        };
-        UpdateReminderRequest: {
-            /** Format: date-time */
-            remindAt?: string;
-            remindAtValid?: boolean;
-            /** Format: int32 */
-            remindBeforeMinutes?: number;
-            remindBeforeMinutesValid?: boolean;
-            /** @enum {string} */
-            reminderKind?: "RELATIVE" | "ABSOLUTE";
-        };
-        UpdateScheduleRequest: {
-            /** Format: int32 */
-            academicYear?: number;
-            allDay?: boolean;
-            /** Format: date-time */
-            attendanceDeadline?: string;
-            attendanceRequired?: boolean;
-            commentOption?: string;
-            description?: string;
-            /** Format: date-time */
-            endAt?: string;
-            /** Format: int64 */
-            eventCategoryId?: number;
-            eventType?: string;
-            location?: string;
-            minResponseRole?: string;
-            minViewRole?: string;
-            reminders?: components["schemas"]["UpdateReminderRequest"][];
-            scheduledAttendance?: components["schemas"]["ScheduledAttendanceRequest"];
-            scheduledSurveys?: components["schemas"]["ScheduledSurveyRequest"][];
-            /** Format: date-time */
-            startAt?: string;
-            targetMode?: string;
-            targetUserIds?: number[];
-            title?: string;
-            updateScope?: string;
-            visibility?: string;
         };
         BulkAttendanceItem: {
             comment?: string;
@@ -72892,6 +73203,9 @@ export interface components {
         };
         ApiResponseListAttendanceResponse: {
             data?: components["schemas"]["AttendanceResponse"][];
+        };
+        ApiResponseListActivityRecordResponse: {
+            data?: components["schemas"]["ActivityRecordResponse"][];
         };
         ApiResponseListScheduleKeepResponse: {
             data?: components["schemas"]["ScheduleKeepResponse"][];
@@ -78626,6 +78940,36 @@ export interface components {
             status?: string;
             summary?: components["schemas"]["SummaryResponse"];
         };
+        PagedResponseProxyInputRecordResponse: {
+            data?: components["schemas"]["ProxyInputRecordResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
+        ProxyInputRecordResponse: {
+            /**
+             * Format: int64
+             * @description 監査ログID（未紐付けはnull）
+             */
+            auditLogId?: number | null;
+            /** Format: date-time */
+            createdAt?: string;
+            featureScope?: string;
+            /** Format: int64 */
+            id?: number;
+            inputSource?: string;
+            originalStorageLocation?: string;
+            /**
+             * Format: int64
+             * @description 代理入力同意ID（同意書紐付けのない履歴はnull）
+             */
+            proxyInputConsentId?: number | null;
+            /** Format: int64 */
+            proxyUserId?: number;
+            /** Format: int64 */
+            subjectUserId?: number;
+            /** Format: int64 */
+            targetEntityId?: number;
+            targetEntityType?: string;
+        };
         ApiResponseListProxyInputConsentResponse: {
             data?: components["schemas"]["ProxyInputConsentResponse"][];
         };
@@ -79462,6 +79806,10 @@ export interface components {
         };
         ApiResponseListActivitySnapshotDto: {
             data?: components["schemas"]["ActivitySnapshotDto"][];
+        };
+        PagedResponseProxyInputConsentResponse: {
+            data?: components["schemas"]["ProxyInputConsentResponse"][];
+            meta?: components["schemas"]["PageMeta"];
         };
         ApiResponseListStampEventResponse: {
             data?: components["schemas"]["StampEventResponse"][];
@@ -82908,8 +83256,9 @@ export interface components {
         ApiResponseListActivityTemplateResponse: {
             data?: components["schemas"]["ActivityTemplateResponse"][];
         };
-        ApiResponseListActivityRecordResponse: {
+        PagedResponseActivityRecordResponse: {
             data?: components["schemas"]["ActivityRecordResponse"][];
+            meta?: components["schemas"]["PageMeta"];
         };
         ApiResponseListActivityCommentResponse: {
             data?: components["schemas"]["ActivityCommentResponse"][];
@@ -98629,7 +98978,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
+                    "*/*": components["schemas"]["ApiResponseActivityDetailResponse"];
                 };
             };
         };
@@ -104282,6 +104631,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    activitySyncPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivitySyncPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseActivitySyncPreviewResponse"];
+                };
             };
         };
     };
@@ -121666,6 +122042,33 @@ export interface operations {
             };
         };
     };
+    activitySyncPreview_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivitySyncPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseActivitySyncPreviewResponse"];
+                };
+            };
+        };
+    };
     list_55: {
         parameters: {
             query?: {
@@ -124113,7 +124516,10 @@ export interface operations {
     };
     getConsentsByOrganization: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                size?: number;
+            };
             header?: never;
             path: {
                 orgId: number;
@@ -124128,7 +124534,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListProxyInputConsentResponse"];
+                    "*/*": components["schemas"]["PagedResponseProxyInputConsentResponse"];
                 };
             };
         };
@@ -126420,6 +126826,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBroadcastResponseDto"];
+                };
+            };
+        };
+    };
+    previewOrgAudience: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AudiencePreviewRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAudiencePreviewResponseDto"];
                 };
             };
         };
@@ -135517,7 +135949,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListActivityRecordResponse"];
+                    "*/*": components["schemas"]["PagedResponseActivityRecordResponse"];
                 };
             };
         };
@@ -135558,7 +135990,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActivityVersionRequest"];
+            };
+        };
         responses: {
             /** @description 公開成功 */
             200: {
@@ -135720,6 +136156,33 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
+                };
+            };
+        };
+    };
+    draftFromSchedule: {
+        parameters: {
+            query: {
+                scope_type: string;
+                scope_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDraftFromScheduleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseActivityDetailResponse"];
                 };
             };
         };
@@ -151307,6 +151770,29 @@ export interface operations {
             };
         };
     };
+    linkedActivities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListActivityRecordResponse"];
+                };
+            };
+        };
+    };
     getByConvertedSchedule: {
         parameters: {
             query?: never;
@@ -160084,7 +160570,10 @@ export interface operations {
     getProxyInputRecords: {
         parameters: {
             query?: {
+                organizationId?: number;
                 subjectUserId?: number;
+                page?: number;
+                size?: number;
             };
             header?: never;
             path?: never;
@@ -160098,7 +160587,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListProxyInputConsentResponse"];
+                    "*/*": components["schemas"]["PagedResponseProxyInputRecordResponse"];
                 };
             };
         };
@@ -161489,6 +161978,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": string;
+                };
+            };
+        };
+    };
+    linkedActivities_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListActivityRecordResponse"];
                 };
             };
         };
@@ -168174,9 +168686,9 @@ export interface operations {
     getPostBySlug: {
         parameters: {
             query?: {
-                teamId?: number;
-                organizationId?: number;
-                userId?: number;
+                teamId?: string;
+                organizationId?: string;
+                userId?: string;
                 previewToken?: string;
             };
             header?: never;

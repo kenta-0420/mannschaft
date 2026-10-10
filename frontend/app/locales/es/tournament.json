@@ -1,5 +1,10 @@
 {
   "tournament": {
+    "detail": {
+      "noDivisions": "No hay divisiones registradas",
+      "divisionsLoadError": "No se pudo cargar la lista de divisiones",
+      "loadError": "No se pudo cargar el torneo"
+    },
     "sport": {
       "label": "Deporte",
       "help": "Elige el deporte de este torneo. Los partidos creados al introducir el marcador directamente usarán este deporte.",

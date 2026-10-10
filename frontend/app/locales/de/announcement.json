@@ -39,7 +39,7 @@
     "already_registered": "Dieser Inhalt ist bereits als Ankündigung registriert.",
     "no_longer_available": "Diese Ankündigung ist nicht mehr verfügbar und wurde aus der Liste entfernt.",
     "mark_all_read_partial": "{count} Ankündigungen als gelesen markiert. Es sind noch ungelesene übrig – erneut drücken, um fortzufahren.",
-    "broadcast_button_team": "Team-Ankündigung",
+    "broadcast_button_team": "Ankündigung ans Team senden",
     "broadcast_button_org": "Organisations-Ankündigung",
     "wizard_title": "Ankündigung senden",
     "step1_title": "Zielbereich",
@@ -91,77 +91,77 @@
       "dismiss": "Schließen"
     },
     "broadcast_guide": {
-      "toggle": "使い方",
-      "description": "告知ウィザードの使い方を、ステップ順にまとめました。上から順に進めれば告知を送れます。",
+      "toggle": "Anleitung",
+      "description": "Die Bedienung des Ankündigungs-Assistenten, Schritt für Schritt zusammengefasst. Wenn du von oben nach unten vorgehst, kannst du eine Ankündigung senden.",
       "audience": {
-        "title": "誰に届けるか（対象範囲）",
-        "body": "告知を見せる相手の範囲を決めます（最初のステップ）。",
+        "title": "Wen erreichen? (Zielbereich)",
+        "body": "Lege fest, wer die Ankündigung sehen soll (erster Schritt).",
         "steps": {
-          "step1": "届け先をメンバーのみ／サポーター以上／全員（公開）から選ぶ",
-          "step2": "（組織告知のみ）対象チームを『すべて』または個別に選ぶ"
+          "step1": "Wähle den Empfängerkreis: Nur Mitglieder / Unterstützer und höher / Alle (Öffentlich)",
+          "step2": "(Nur Organisationsankündigungen) Wähle als Zielteams „Alle Teams“ oder einzelne Teams"
         }
       },
       "template": {
-        "title": "テンプレートで時短",
-        "body": "よく使う宛先設定を呼び出し・保存できます。",
+        "title": "Mit Vorlagen Zeit sparen",
+        "body": "Du kannst häufig genutzte Empfängereinstellungen abrufen und speichern.",
         "steps": {
-          "step1": "『テンプレートから読み込む』で宛先を自動入力",
-          "step2": "（管理者のみ）『テンプレートとして保存』で現在の範囲を登録（1範囲あたり20件まで）"
+          "step1": "Mit „Aus Vorlage laden“ werden die Empfänger automatisch eingetragen",
+          "step2": "(Nur Administratoren) Mit „Als Vorlage speichern“ den aktuellen Bereich registrieren (bis zu 20 pro Bereich)"
         }
       },
       "channel": {
-        "title": "届け方を選ぶ（チャネル）",
-        "body": "掲示板・タイムライン・ブログ・TODO・スケジュール・アンケートから配信先を1つ選びます。",
+        "title": "Zustellweg wählen (Kanal)",
+        "body": "Wähle einen Zielkanal aus Pinnwand, Zeitleiste, Blog, TODO, Kalender und Umfrage.",
         "steps": {
-          "step1": "6つのカードから1つ選ぶ",
-          "step2": "『次へ』。※テンプレに既定チャネルがあるとこの画面は省略されます"
+          "step1": "Wähle eine der 6 Karten",
+          "step2": "Klicke auf „Weiter“. Hinweis: Hat die Vorlage einen Standardkanal, wird dieser Bildschirm übersprungen"
         }
       },
       "content": {
-        "title": "内容を書く",
-        "body": "選んだチャネルに合わせて入力欄が変わります。＊印は必須です。",
+        "title": "Inhalt schreiben",
+        "body": "Die Eingabefelder ändern sich je nach gewähltem Kanal. Mit * markierte Felder sind Pflicht.",
         "steps": {
-          "step1": "タイトル・本文など必須欄を入力",
-          "step2": "例: スケジュールは開始日時、タイムラインは本文が必須"
+          "step1": "Fülle die Pflichtfelder wie Titel und Text aus",
+          "step2": "Beispiel: Beim Kalender ist die Startzeit Pflicht, bei der Zeitleiste der Text"
         }
       },
       "priority": {
-        "title": "優先度と表示期限",
-        "body": "目立たせ方と掲載の終了日時を設定できます。",
+        "title": "Priorität und Anzeigedauer",
+        "body": "Du kannst festlegen, wie auffällig die Ankündigung ist und bis wann sie angezeigt wird.",
         "steps": {
-          "step1": "（管理者以上）優先度を通常／重要／緊急から選ぶ。一般メンバーは『通常』固定",
-          "step2": "表示期限を任意で設定"
+          "step1": "(Ab Administrator) Wähle die Priorität: Normal / Wichtig / Dringend. Normale Mitglieder haben fest „Normal“",
+          "step2": "Lege optional ein Anzeigeende fest"
         }
       },
       "submit": {
-        "title": "送信して確認",
-        "body": "入力が揃うと送信できます。送信後はお知らせに表示されます。",
+        "title": "Senden und prüfen",
+        "body": "Sobald alle Angaben vollständig sind, kannst du senden. Nach dem Versand erscheint die Ankündigung in den Mitteilungen.",
         "steps": {
-          "step1": "『告知を送る』を押す",
-          "step2": "送信完了を確認。※アンケートの設問・TODOの担当者は送信後に各画面で追加します"
+          "step1": "Klicke auf „Ankündigung senden“",
+          "step2": "Prüfe, ob der Versand abgeschlossen ist. Hinweis: Umfragefragen und TODO-Zuständige werden nach dem Versand auf den jeweiligen Seiten ergänzt"
         }
       }
     },
-    "target_mode_all": "すべてのチーム",
-    "target_mode_teams": "チームを選ぶ",
-    "target_mode_groups": "チームグループで選ぶ",
-    "target_groups_label": "チームグループ",
-    "target_range_label": "範囲で選ぶ",
-    "target_range_up_to": "{name} 以前（並び順で先頭から）",
-    "target_range_from": "{name} 以降（並び順で末尾まで）",
+    "target_mode_all": "Alle Teams",
+    "target_mode_teams": "Teams auswählen",
+    "target_mode_groups": "Nach Teamgruppe auswählen",
+    "target_groups_label": "Teamgruppen",
+    "target_range_label": "Nach Bereich auswählen",
+    "target_range_up_to": "Bis {name} (in Reihenfolge ab Anfang)",
+    "target_range_from": "Ab {name} (in Reihenfolge bis Ende)",
     "target_range_between": "{from} 〜 {to}",
     "target_range_kind_up_to": "〜以前",
     "target_range_kind_from": "〜以降",
     "target_range_kind_between": "A〜B",
-    "target_include_unassigned": "未分類のチームを含める",
-    "target_direct_members_note": "組織の直属メンバー（どのチームにも属さない人）にも届きます",
-    "target_resolved_count": "該当: {teams} チーム＋直属メンバー {members} 人",
-    "target_resolved_empty": "該当する人がいません",
-    "target_order_hint": "並び順はチームグループ管理で変えられます",
-    "push_disabled_note": "このお知らせの push 通知は送られません",
-    "dynamic_display_note": "表示は現在の所属で判定されます（削除されたグループは送信時点の対象チームで判定）",
-    "template_deleted_groups_removed": "削除されたチームグループがテンプレートから除外されました",
-    "template_range_invalid": "テンプレートの範囲に削除されたチームグループが含まれています。範囲を選び直してください",
-    "audience_summary": "宛先: {label}（送信時 {count} チーム）"
+    "target_include_unassigned": "Nicht eingeordnete Teams einbeziehen",
+    "target_direct_members_note": "Erreicht auch direkte Mitglieder der Organisation (Personen ohne Teamzugehörigkeit)",
+    "target_resolved_count": "Treffer: {teams} Teams + {members} direkte Mitglieder",
+    "target_resolved_empty": "Keine passenden Personen",
+    "target_order_hint": "Die Reihenfolge lässt sich in der Teamgruppenverwaltung ändern",
+    "push_disabled_note": "Für diese Ankündigung werden keine Push-Benachrichtigungen gesendet",
+    "dynamic_display_note": "Die Anzeige richtet sich nach der aktuellen Zugehörigkeit (bei gelöschten Gruppen nach den Zielteams zum Zeitpunkt des Versands)",
+    "template_deleted_groups_removed": "Gelöschte Teamgruppen wurden aus der Vorlage entfernt",
+    "template_range_invalid": "Der Bereich der Vorlage enthält gelöschte Teamgruppen. Bitte wähle den Bereich neu aus",
+    "audience_summary": "Empfänger: {label} ({count} Teams beim Versand)"
   }
 }

@@ -724,7 +724,10 @@ class ArchUnitFreezeStoreIntegrityTest {
      */
     // origin/main の CMP-260922-2230（1459→1447、12件解消）は上記1407行版の
     // 削除集合に全件包含されるため、並行ブランチの削除数を二重加算しない。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1366;
+    // F01.2.1 6-C: DashboardService からクラス単位の @Transactional を外したため、
+    // DashboardService の越境依存 46 行が解消（追加 0・削除 46）。
+    // 6-A 側の期待値 1363 − 46 = 1317（6-A 統合後の実数）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1317;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -803,8 +806,28 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 1 行は tx 内に残すので残す）。計 33 行（すべて認可由来の MembershipRepository / RoleRepository / UserRoleRepository /
      * UserCareLinkRepository 等への到達）。ClassHomeroomService・DisclosureService・AttendanceRequirementService は
      * 本 PR の対象外で残す。main のストアとの差分は「追加 0・削除 33（上記のキーのみ）」。{@code 7409 → 7376}。</p>
+     *
+     * <p>CMP-261007-2052（ブログ一覧の非所属者開放）: {@code BlogPostService.listByTeam} / {@code listByOrganization} から
+     * メンバー限定（{@code AccessControlService#checkMembership}）を外し、スコープの門は取引を持たない
+     * {@code BlogScopeAccessGuard} へ出した（Controller が先に呼ぶ）。これにより両入口から MembershipRepository への
+     * 到達 2 行が解消。追加 0（FreezingArchRule の既定挙動・解消済み違反の自動削除で反映）。{@code 7364 → 7362}。</p>
+     *
+     * <p>F01.2.1 6-A（組織グループ宛て告知）: {@code AnnouncementBroadcastService.validateTargetTeamIds} を廃止し、
+     * 宛先の検証・展開を tx の外の {@code BroadcastAudienceResolver} へ出したため、その入口の 1 行
+     * （→ UserRoleRepository）が解消。追加 0・削除 1。{@code 7376 → 7375}。</p>
+     *
+     * <p>F01.2.1 6-C（組織告知のダッシュボード表示判定）: {@code DashboardService} からクラス単位の
+     * {@code @Transactional(readOnly = true)} を外し、各ドメインの部品が自分の tx で読む形にしたため、
+     * {@code DashboardService} を入口とする 93 行がすべて解消（getPersonalDashboard 24・getTeamDashboard 21・
+     * getOrgDashboard 21・loadRecentActivity 14・filterAnnouncementGated 3・loadUnreadThreads 3・buildGreeting 2・
+     * buildScopeCoverage 1・getActivePlatformAnnouncements 1・getPersonalTodos 1・loadMyPosts 1・
+     * loadPersonalCalendarCounts 1）。追加 0・削除 93。{@code 7375 → 7282}。</p>
+     *
+     * <p>6-A と 6-C の統合（merge）: 6-A 側の期待値 7357 から 6-C の返済 93 行を引いた実数 7264 に合わせた。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7376;
+    // CMP-260820-1018: Proxy の一覧・アップロードURL生成を非TX認可入口へ整理したため4行減。Role依存自体は残る。
+    // main: BetaGrantService の通知RepositoryへのTX到達12行減も統合。独立した削除16行で7376→7360。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7264;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -888,7 +911,7 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
      * <p>正式1e8の全量解析と原因検分で確認した旧原因73件の削減（1938→1865）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1865;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1862;
 
     /**
      * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。
@@ -898,7 +921,8 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code LocationChangeResponse}（DTO）へ替えたため 1 行が解消（605→604）。{@code recordLocationChange} は
      * 戻り値が Entity のままなので残す。</p>
      */
-    private static final int EXPECTED_LINES_SERVICE_API = 604;
+    // CMP-260820-1018: Proxy 一覧を Page<ProxyInputConsentResponse> に変更し、公開APIのEntity露出1件を解消。
+    private static final int EXPECTED_LINES_SERVICE_API = 603;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

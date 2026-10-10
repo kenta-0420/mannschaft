@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -122,6 +123,81 @@ public class TeamOrgMembershipQueryService {
         long total = teamOrgMembershipRepository.countByOrganizationIdAndStatus(
                 organizationId, TeamOrgMembershipEntity.Status.ACTIVE);
         return new GroupTeamCounts(byGroup, total);
+    }
+
+    /**
+     * 指定チームのうち、組織に ACTIVE で加盟しているチーム ID だけを返す（F01.2.1 §8.3・AC-K07）。
+     *
+     * <p>告知の「チームを選ぶ」の候補の検証に使う。PENDING（申請中・招待中）、加盟行の無いチーム
+     * （離脱済み・他組織）、アーカイブ済み・論理削除済みのチームは返らない。{@code user_roles} は見ない。</p>
+     *
+     * @param organizationId 組織 ID
+     * @param teamIds        確かめるチーム ID（null・空なら空リスト）
+     * @return ACTIVE で加盟しているチーム ID（順序は不定・重複なし）
+     */
+    public List<Long> findActiveTeamIdsIn(Long organizationId, Collection<Long> teamIds) {
+        if (organizationId == null || teamIds == null || teamIds.isEmpty()) {
+            return List.of();
+        }
+        return teamOrgMembershipRepository
+                .findActiveTeamIdsByOrganizationIdAndTeamIdIn(organizationId, teamIds)
+                .stream()
+                .distinct()
+                .toList();
+    }
+
+    /**
+     * 組織に ACTIVE で加盟しているチームと、その所属グループを team_id 昇順で返す（F01.2.1 §8.2 のグループ宛て展開）。
+     *
+     * <p>{@code groupId} は未分類なら null。削除済みグループを指す行もそのまま返すため、生存グループかどうかは
+     * 呼び出し側がグループの一覧と照合して決める（削除済みを指す行は未分類として扱う。§5.1）。</p>
+     *
+     * @param organizationId 組織 ID
+     * @return ACTIVE な加盟（チーム ID・所属グループ ID）
+     */
+    public List<ActiveTeamGroupAssignment> findActiveTeamGroupAssignments(Long organizationId) {
+        if (organizationId == null) {
+            return List.of();
+        }
+        return teamOrgMembershipRepository.findActiveTeamGroupAssignments(organizationId).stream()
+                .map(p -> new ActiveTeamGroupAssignment(p.getTeamId(), p.getGroupId()))
+                .toList();
+    }
+
+    /**
+     * チームが ACTIVE で加盟している組織と、その所属グループを返す（告知の表示判定。F01.2.1 §8.2）。
+     *
+     * <p>{@code groupId} は未分類なら null。削除済みグループを指す行もそのまま返すため、生存グループかどうかは
+     * 呼び出し側が照合する。SQL は 1 本。</p>
+     *
+     * @param teamId チーム ID
+     * @return ACTIVE な加盟（組織 ID・所属グループ ID）。無ければ空
+     */
+    public List<TeamOrgGroupAssignment> findActiveOrgGroupAssignments(Long teamId) {
+        if (teamId == null) {
+            return List.of();
+        }
+        return teamOrgMembershipRepository.findActiveOrgGroupsByTeamId(teamId).stream()
+                .map(p -> new TeamOrgGroupAssignment(p.getOrganizationId(), p.getGroupId()))
+                .toList();
+    }
+
+    /**
+     * チーム 1 件の ACTIVE な加盟（組織 ID と所属グループ ID）。
+     *
+     * @param organizationId 加盟先の組織 ID
+     * @param groupId        所属チームグループ ID（未分類は null）
+     */
+    public record TeamOrgGroupAssignment(Long organizationId, UUID groupId) {
+    }
+
+    /**
+     * ACTIVE な加盟 1 件（チーム ID と所属グループ ID）。
+     *
+     * @param teamId  チーム ID
+     * @param groupId 所属チームグループ ID（未分類は null）
+     */
+    public record ActiveTeamGroupAssignment(Long teamId, UUID groupId) {
     }
 
     /**

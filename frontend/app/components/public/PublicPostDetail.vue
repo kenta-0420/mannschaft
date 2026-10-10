@@ -46,7 +46,7 @@ const sanitizedBody = computed(() => sanitizeHtml(props.post.bodyHtml ?? ''))
 
     <!-- 本文（サニタイズ済み HTML） -->
     <div
-      class="prose prose-sm max-w-none text-surface-800 dark:prose-invert dark:text-surface-100"
+      class="article-body text-surface-800 dark:text-surface-100"
       data-testid="public-post-body"
       v-html="sanitizedBody"
     />

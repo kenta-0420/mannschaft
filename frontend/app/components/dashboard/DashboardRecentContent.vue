@@ -9,6 +9,7 @@ const props = defineProps<{
   basePath?: string
 }>()
 
+const { t } = useI18n()
 const { getPosts, getFeed } = useBlogApi()
 const { getThreads } = useBulletinApi()
 const { relativeTime } = useRelativeTime()
@@ -26,12 +27,12 @@ const blogAllLink = computed(() => (props.basePath ? `${props.basePath}/blog` : 
 
 const bulletinAllLink = computed(() => (props.basePath ? `${props.basePath}/bulletin` : null))
 
-const priorityConfig: Record<string, { label: string; class: string }> = {
-  CRITICAL: { label: '緊急', class: 'bg-red-100 text-red-700' },
-  IMPORTANT: { label: '重要', class: 'bg-orange-100 text-orange-700' },
-  WARNING: { label: '注意', class: 'bg-yellow-100 text-yellow-700' },
-  INFO: { label: '通知', class: 'bg-blue-100 text-blue-700' },
-  LOW: { label: '低', class: 'bg-surface-100 text-surface-500' },
+const priorityConfig: Record<string, { labelKey: string; class: string }> = {
+  CRITICAL: { labelKey: 'critical', class: 'bg-red-100 text-red-700' },
+  IMPORTANT: { labelKey: 'important', class: 'bg-orange-100 text-orange-700' },
+  WARNING: { labelKey: 'warning', class: 'bg-yellow-100 text-yellow-700' },
+  INFO: { labelKey: 'info', class: 'bg-blue-100 text-blue-700' },
+  LOW: { labelKey: 'low', class: 'bg-surface-100 text-surface-500' },
 }
 
 async function loadPosts() {
@@ -92,10 +93,10 @@ onMounted(() => {
           class="flex items-center gap-2 text-base font-semibold text-surface-700 dark:text-surface-200"
         >
           <i class="pi pi-book text-primary" />
-          {{ isScopedContent ? 'ブログ・お知らせ' : '最新記事' }}
+          {{ isScopedContent ? t('dashboard.recent_content.blogAnnouncements') : t('dashboard.recent_content.latestPosts') }}
         </h2>
         <NuxtLink v-if="blogAllLink" :to="blogAllLink" class="text-sm text-primary hover:underline">
-          すべて見る
+          {{ t('dashboard.recent_content.viewAll') }}
         </NuxtLink>
       </div>
 
@@ -106,7 +107,7 @@ onMounted(() => {
       <div v-else-if="recentPosts.length === 0" class="py-6 text-center text-sm text-surface-400">
         <i class="pi pi-book mb-2 block text-2xl" />
         {{
-          isScopedContent ? '公開済みの記事はまだありません' : 'フォロー中のブログ記事はありません'
+          isScopedContent ? t('dashboard.recent_content.noPublishedPosts') : t('dashboard.recent_content.noFollowedPosts')
         }}
       </div>
 
@@ -149,14 +150,14 @@ onMounted(() => {
           class="flex items-center gap-2 text-base font-semibold text-surface-700 dark:text-surface-200"
         >
           <i class="pi pi-megaphone text-primary" />
-          掲示板・お知らせ
+          {{ t('dashboard.recent_content.bulletinAnnouncements') }}
         </h2>
         <NuxtLink
           v-if="bulletinAllLink"
           :to="bulletinAllLink"
           class="text-sm text-primary hover:underline"
         >
-          すべて見る
+          {{ t('dashboard.recent_content.viewAll') }}
         </NuxtLink>
       </div>
 
@@ -166,7 +167,7 @@ onMounted(() => {
 
       <div v-else-if="recentThreads.length === 0" class="py-6 text-center text-sm text-surface-400">
         <i class="pi pi-clipboard mb-2 block text-2xl" />
-        掲示板のスレッドはまだありません
+        {{ t('dashboard.recent_content.noThreads') }}
       </div>
 
       <div v-else class="divide-y divide-surface-100 dark:divide-surface-700">
@@ -187,7 +188,7 @@ onMounted(() => {
                 :class="priorityConfig[thread.priority]?.class"
                 class="rounded px-1.5 py-0.5 text-xs font-medium"
               >
-                {{ priorityConfig[thread.priority]?.label }}
+                {{ priorityConfig[thread.priority] ? t(`dashboard.recent_content.priority.${priorityConfig[thread.priority]!.labelKey}`) : '' }}
               </span>
               <span class="truncate text-sm font-medium text-surface-700 dark:text-surface-200">
                 {{ thread.title }}

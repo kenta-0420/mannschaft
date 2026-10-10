@@ -52,6 +52,12 @@ class ScheduleAnnualCopyServiceTest {
     @InjectMocks
     private ScheduleAnnualCopyService copyService;
 
+    @org.junit.jupiter.api.BeforeEach
+    void 新規予定writerを接続する() {
+        org.springframework.test.util.ReflectionTestUtils.setField(copyService, "creationWriter",
+                new com.mannschaft.app.schedule.service.ScheduleCreationWriter(scheduleRepository, event -> { }));
+    }
+
     // ========================================
     // テスト用定数
     // ========================================

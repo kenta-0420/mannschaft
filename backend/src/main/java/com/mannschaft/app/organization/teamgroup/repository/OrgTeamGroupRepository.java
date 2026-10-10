@@ -32,4 +32,9 @@ public interface OrgTeamGroupRepository
 
     /** 自分自身を除いて、組織の生存グループに同名が存在するか（改名用）。 */
     boolean existsByOrganizationIdAndNameAndDeletedAtIsNullAndIdNot(Long organizationId, String name, UUID id);
+
+    /** 指定した組織群の生存グループの ID（告知の表示判定。機能の有効・無効に関わらず返す）。 */
+    @Query("SELECT g.id FROM OrgTeamGroupEntity g "
+            + "WHERE g.organizationId IN :organizationIds AND g.deletedAt IS NULL")
+    List<UUID> findLiveIdsByOrganizationIdIn(@Param("organizationIds") java.util.Collection<Long> organizationIds);
 }
