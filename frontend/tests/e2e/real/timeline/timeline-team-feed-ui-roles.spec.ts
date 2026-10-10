@@ -57,78 +57,88 @@ test('チームTLのカーソルページング: ピン先頭1回・重複欠落
   const team = { slug: TEAM_SLUG }
 
   const ids: number[] = []
-  for (let i = 0; i < TOTAL; i++) {
-    const r = await a.ctx.request.post(`${API}/api/v1/timeline/posts`, { data: { content: `${tag}-P${String(i).padStart(2, '0')}`, scopeType: 'TEAM', scopeId: team.slug } })
-    expect(r.status(), await r.text()).toBe(201)
-    ids.push((await r.json() as { data: { id: number } }).data.id)
-  }
-  const pinIdx = 3
-  const pin = await a.ctx.request.post(`${API}/api/v1/timeline/posts/${ids[pinIdx]}/pin?pinned=true`)
-  expect(pin.status(), await pin.text()).toBe(200)
+  const cleanupErrors: string[] = []
+  try {
+    for (let i = 0; i < TOTAL; i++) {
+      const r = await a.ctx.request.post(`${API}/api/v1/timeline/posts`, { data: { content: `${tag}-P${String(i).padStart(2, '0')}`, scopeType: 'TEAM', scopeId: team.slug } })
+      expect(r.status(), await r.text()).toBe(201)
+      ids.push((await r.json() as { data: { id: number } }).data.id)
+    }
+    const pinIdx = 3
+    const pin = await a.ctx.request.post(`${API}/api/v1/timeline/posts/${ids[pinIdx]}/pin?pinned=true`)
+    expect(pin.status(), await pin.text()).toBe(200)
 
-  // 正: メンバー(作成者)
-  const url = `/teams/${team.slug}/timeline`
-  await o.page.goto(url, { waitUntil: 'domcontentloaded' })
-  await waitForHydration(o.page)
-  const initialPermissions = o.page.getByTestId('member-permission-setup')
-  if (await initialPermissions.isVisible({ timeout: 5_000 }).catch(() => false)) {
-    await initialPermissions.getByRole('button', { name: 'あとで決める' }).click()
-  }
-  const feed = o.page.getByTestId('timeline-feed')
-  await expect(feed).toHaveAttribute('data-loaded', 'true', { timeout: 60_000 })
-  await waitIdle(o.page)
-  const posts = feed.getByTestId('team-timeline-post')
-  const texts = async () => (await posts.allInnerTexts()).map(x => (/UIR-\d+-P\d{2}/.exec(x) ?? [""])[0])
-  const first = await texts()
-  console.log(`[UIR] initial cards=${first.length} first=${first[0]} pinnedMarker=${tag}-P${String(pinIdx).padStart(2, '0')}`)
-  expect(first[0], 'ピン留め投稿が先頭').toBe(`${tag}-P${String(pinIdx).padStart(2, '0')}`)
-  expect(first.filter(x => x === first[0]), 'ピン留めは初回に1回だけ').toHaveLength(1)
-  expect(first.length, '初回は limit(20)+ピン1 以下').toBeLessThan(TOTAL)
+    // 正: メンバー(作成者)
+    const url = `/teams/${team.slug}/timeline`
+    await o.page.goto(url, { waitUntil: 'domcontentloaded' })
+    await waitForHydration(o.page)
+    const initialPermissions = o.page.getByTestId('member-permission-setup')
+    if (await initialPermissions.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await initialPermissions.getByRole('button', { name: 'あとで決める' }).click()
+    }
+    const feed = o.page.getByTestId('timeline-feed')
+    await expect(feed).toHaveAttribute('data-loaded', 'true', { timeout: 60_000 })
+    await waitIdle(o.page)
+    const posts = feed.getByTestId('team-timeline-post')
+    const texts = async () => (await posts.allInnerTexts()).map(x => (/UIR-\d+-P\d{2}/.exec(x) ?? [""])[0])
+    const first = await texts()
+    console.log(`[UIR] initial cards=${first.length} first=${first[0]} pinnedMarker=${tag}-P${String(pinIdx).padStart(2, '0')}`)
+    expect(first[0], 'ピン留め投稿が先頭').toBe(`${tag}-P${String(pinIdx).padStart(2, '0')}`)
+    expect(first.filter(x => x === first[0]), 'ピン留めは初回に1回だけ').toHaveLength(1)
+    expect(first.length, '初回は limit(20)+ピン1 以下').toBeLessThan(TOTAL)
 
-  const cursorResponses: number[] = []
-  o.page.on('response', (r) => {
-    const u = new URL(r.url())
-    if (u.pathname === '/api/v1/timeline/feed' && u.searchParams.get('cursor')) cursorResponses.push(r.status())
-  })
-  const loadMore = feed.getByTestId('timeline-load-more-target')
-  for (let i = 0; i < 10 && await loadMore.count() > 0; i++) {
-    await loadMore.scrollIntoViewIfNeeded()
-    await o.page.waitForTimeout(1500)
-  }
-  await expect(loadMore, '最後まで到達したら読み込みトリガが消える').toHaveCount(0)
-  const all = await texts()
-  console.log(`[UIR] final cards=${all.length} cursorResponses=${cursorResponses.join(',')}`)
-  expect(new Set(all).size, '重複なし').toBe(all.length)
-  expect(all.sort(), '欠落なし').toEqual(ids.map((_, i) => `${tag}-P${String(i).padStart(2, '0')}`).sort())
-  expect(cursorResponses.length).toBeGreaterThan(0)
-  expect(cursorResponses.every(c => c === 200)).toBe(true)
-  // 停止確認: 追加スクロール後もカード数不変、cursor リクエストも増えない
-  const before = cursorResponses.length
-  await o.page.mouse.wheel(0, 5000)
-  await o.page.waitForTimeout(2000)
-  expect(await posts.count()).toBe(TOTAL)
-  expect(cursorResponses.length).toBe(before)
-  await o.page.screenshot({ path: testInfo.outputPath('member-final.png'), fullPage: true })
+    const cursorResponses: number[] = []
+    o.page.on('response', (r) => {
+      const u = new URL(r.url())
+      if (u.pathname === '/api/v1/timeline/feed' && u.searchParams.get('cursor')) cursorResponses.push(r.status())
+    })
+    const loadMore = feed.getByTestId('timeline-load-more-target')
+    for (let i = 0; i < 10 && await loadMore.count() > 0; i++) {
+      await loadMore.scrollIntoViewIfNeeded()
+      await o.page.waitForTimeout(1500)
+    }
+    await expect(loadMore, '最後まで到達したら読み込みトリガが消える').toHaveCount(0)
+    const all = await texts()
+    console.log(`[UIR] final cards=${all.length} cursorResponses=${cursorResponses.join(',')}`)
+    expect(new Set(all).size, '重複なし').toBe(all.length)
+    expect(all.sort(), '欠落なし').toEqual(ids.map((_, i) => `${tag}-P${String(i).padStart(2, '0')}`).sort())
+    expect(cursorResponses.length).toBeGreaterThan(0)
+    expect(cursorResponses.every(c => c === 200)).toBe(true)
+    // 停止確認: 追加スクロール後もカード数不変、cursor リクエストも増えない
+    const before = cursorResponses.length
+    await o.page.mouse.wheel(0, 5000)
+    await o.page.waitForTimeout(2000)
+    expect(await posts.count()).toBe(TOTAL)
+    expect(cursorResponses.length).toBe(before)
+    await o.page.screenshot({ path: testInfo.outputPath('member-final.png'), fullPage: true })
 
-  // 負/他テナント: URL 直打ち
-  for (const [label, who] of [['同組織非メンバー', s], ['他テナント', t]] as const) {
-    const apiRes = await who.ctx.request.get(`${API}/api/v1/timeline/feed?scopeType=TEAM&scopeId=${team.slug}&limit=2&cursor=${ids[TOTAL - 1]}`)
-    console.log(`[UIR] ${label} API cursor feed -> ${apiRes.status()} ${(await apiRes.text()).slice(0, 160)}`)
-    expect([403, 404]).toContain(apiRes.status())
-    await who.page.goto(url, { waitUntil: 'domcontentloaded' })
-    await waitForHydration(who.page)
-    await waitIdle(who.page)
-    await who.page.waitForTimeout(3000)
-    const body = (await who.page.locator('body').innerText()).replace(/\s+/g, ' ')
-    console.log(`[UIR] ${label} URL=${who.page.url()} text="${body.slice(0, 200)}"`)
-    await who.page.screenshot({ path: testInfo.outputPath(`${label}.png`), fullPage: true })
-    expect(body).not.toContain(tag)
-    await who.page.goto(`/timeline/${ids[pinIdx]}`, { waitUntil: 'domcontentloaded' })
-    await waitForHydration(who.page)
-    await who.page.waitForTimeout(3000)
-    const body2 = (await who.page.locator('body').innerText()).replace(/\s+/g, ' ')
-    console.log(`[UIR] ${label} permalink URL=${who.page.url()} text="${body2.slice(0, 200)}"`)
-    expect(body2).not.toContain(tag)
+    // 負/他テナント: URL 直打ち
+    for (const [label, who] of [['同組織非メンバー', s], ['他テナント', t]] as const) {
+      const apiRes = await who.ctx.request.get(`${API}/api/v1/timeline/feed?scopeType=TEAM&scopeId=${team.slug}&limit=2&cursor=${ids[TOTAL - 1]}`)
+      console.log(`[UIR] ${label} API cursor feed -> ${apiRes.status()} ${(await apiRes.text()).slice(0, 160)}`)
+      expect([403, 404]).toContain(apiRes.status())
+      await who.page.goto(url, { waitUntil: 'domcontentloaded' })
+      await waitForHydration(who.page)
+      await waitIdle(who.page)
+      await who.page.waitForTimeout(3000)
+      const body = (await who.page.locator('body').innerText()).replace(/\s+/g, ' ')
+      console.log(`[UIR] ${label} URL=${who.page.url()} text="${body.slice(0, 200)}"`)
+      await who.page.screenshot({ path: testInfo.outputPath(`${label}.png`), fullPage: true })
+      expect(body).not.toContain(tag)
+      await who.page.goto(`/timeline/${ids[pinIdx]}`, { waitUntil: 'domcontentloaded' })
+      await waitForHydration(who.page)
+      await who.page.waitForTimeout(3000)
+      const body2 = (await who.page.locator('body').innerText()).replace(/\s+/g, ' ')
+      console.log(`[UIR] ${label} permalink URL=${who.page.url()} text="${body2.slice(0, 200)}"`)
+      expect(body2).not.toContain(tag)
+    }
+  } finally {
+    // 共有チーム e2e に投稿を残さない。ピン留め投稿も削除で消える。失敗は握りつぶさず最後に失敗させる
+    for (const id of ids.reverse()) {
+      const r = await a.ctx.request.delete(`${API}/api/v1/timeline/posts/${id}`)
+      if (r.status() !== 204) cleanupErrors.push(`投稿 ${id}: HTTP ${r.status()}`)
+    }
+    for (const c of ctxs) await c.close()
+    expect(cleanupErrors, `後始末失敗: ${cleanupErrors.join(" / ")}`).toEqual([])
   }
-  for (const c of ctxs) await c.close()
 })
