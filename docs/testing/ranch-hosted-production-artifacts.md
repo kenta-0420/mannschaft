@@ -13,3 +13,5 @@ FEはNode22.23.2・UID1000、準備前とbuild直前の実MemAvailable/cgroup残
 初回run `38075847925` はBE製造成功、FEは依存準備で失敗しcompileへ到達していない。rootの既存Node22/npm10.9.8によるversion-only確認では、同じ空ファイルをUSERCONFIG/GLOBALCONFIGへ指定した場合は実exit1（double-loading-config）、異なる空ファイルでは実exit0/version10.9.8。hydrate/offline双方を別々の空設定ファイルに修正した。hydrate内shellはset-euoでnpm失敗を伝搬し、外側containerのactual exitをhydrate-exit.txtへ記録して明示uploadした後、0を要求する。元run/proofは保持し、再実行・FE build成功・配置成功はまだ未確認。
 
 offline側もshell冒頭をset-euoとし、設定作成・cache copy・Node22 version確認の失敗を伝搬する。npmci・lock・launcherのchainだけは既存set+eとactual exit記録を維持する。
+
+rootの既存Node22/npm10.9.8によるoffline local-file依存の限定probeでは、NODE_ENV=productionのnpm ciは実exit0でもdev moduleが不在、同じ条件で--include=devを加えると実exit0で存在した。Nuxt buildがdevDependenciesの@nuxt/eslint・nuxt-securityを必要とするためhydrate/offline双方へ--include=devを明示した。lock、production runtime設定、offline境界は維持し、製品コードは変更しない。このprobeはproduction build成功の証拠ではない。
