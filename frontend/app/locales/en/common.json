@@ -2381,6 +2381,14 @@
     "SUPPORTERS_AND_ABOVE": "Supporters and above",
     "MEMBERS_AND_ABOVE": "Members and above"
   },
+  "organization_visibility": {
+    "PUBLIC": "Public",
+    "PRIVATE": "Restricted"
+  },
+  "entity_create": {
+    "error_heading": "Please check your input",
+    "supporter_label": "Enable supporter feature"
+  },
   "module_settings": {
     "enabled_count": "有効な機能: {count} / {limit}",
     "fetch_error": "機能一覧の取得に失敗しました",

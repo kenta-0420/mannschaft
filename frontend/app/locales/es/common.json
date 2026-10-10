@@ -2381,6 +2381,14 @@
     "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
     "MEMBERS_AND_ABOVE": "Miembros y superiores"
   },
+  "organization_visibility": {
+    "PUBLIC": "Público",
+    "PRIVATE": "Acceso restringido"
+  },
+  "entity_create": {
+    "error_heading": "Revise los datos introducidos",
+    "supporter_label": "Activar la función de simpatizantes"
+  },
   "module_settings": {
     "enabled_count": "有効な機能: {count} / {limit}",
     "fetch_error": "機能一覧の取得に失敗しました",
