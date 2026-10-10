@@ -78,7 +78,7 @@ public class TeamFavoriteResolver implements FavoriteEntityResolver {
                         team.getName(),
                         // DB には生の R2 キーが入る。表示用署名付き URL へ解決して返す（生キーは 404）。
                         mediaUrlResolver.resolve(team.getIconUrl()),
-                        "/teams/" + team.getId(),
+                        "/teams/" + team.getSlug(),
                         canEdit,
                         FavoriteEntityStatus.AVAILABLE
                 ));
