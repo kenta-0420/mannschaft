@@ -38,6 +38,33 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
+/** dev の Nuxt エラーオーバーレイ（id/class/タグ名に nuxt-error-overlay を含む要素）か */
+const OVERLAY_MARK = 'nuxt-error-overlay'
+
+/**
+ * SSR HTML から利用者に見える本文テキストだけを取り出す。
+ * __NUXT_DATA__ 等の <script>（Nuxt 標準のエラー直列化 "Page not found: /path" を含む）、
+ * <style>/<template>/<noscript>/<iframe>、dev のエラーオーバーレイ要素、タグ・属性値を除く。
+ */
+function visibleTextOfSsrHtml(html: string): string {
+  return html
+    .replace(/<(script|style|template|noscript|iframe)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+    .replace(new RegExp(`<([a-z][\\w-]*)\\b[^>]*${OVERLAY_MARK}[^>]*>[\\s\\S]*?</\\1>`, 'gi'), ' ')
+    .replace(new RegExp(`<${OVERLAY_MARK}\\b[\\s\\S]*?</${OVERLAY_MARK}>`, 'gi'), ' ')
+    .replace(/<[^>]*>/g, ' ')
+}
+
+/** 描画済みページの body から、script 等と dev のエラーオーバーレイを除いた本文テキストを取り出す */
+async function visibleBodyText(page: Page): Promise<string> {
+  return page.evaluate((mark) => {
+    const clone = document.body.cloneNode(true) as HTMLElement
+    clone
+      .querySelectorAll(`script, style, template, noscript, iframe, ${mark}, [id*="${mark}"], [class*="${mark}"]`)
+      .forEach((el) => el.remove())
+    return clone.textContent ?? ''
+  }, OVERLAY_MARK)
+}
+
 async function setLocaleCookie(page: Page, baseURL: string | undefined, lang: Lang) {
   if (!baseURL) throw new Error('locale Cookie 試験には baseURL が必要です')
   await page.context().addCookies([
@@ -56,14 +83,18 @@ test.describe('CMP-261007-2053 error.vue の言語追従', () => {
       const html = await res.text()
       expect(html).toMatch(new RegExp(`<html[^>]*\\blang="${lang}"`))
       expect(html).toContain(escapeHtml(msg.not_found_title))
-      expect(html).not.toMatch(/Page not found/i)
+      // AC の趣旨は「利用者に見える文言に英語固定の既定文言が出ない」。
+      // __NUXT_DATA__ ペイロード（Nuxt 標準のエラー直列化）と dev オーバーレイは検査対象外とする
+      expect(visibleTextOfSsrHtml(html)).toContain(escapeHtml(msg.not_found_title))
+      expect(visibleTextOfSsrHtml(html)).not.toMatch(/Page not found/i)
 
       await setLocaleCookie(page, baseURL, lang)
       await page.goto(NOT_EXIST_PATH)
       await waitForHydration(page)
       await expect(page.getByTestId('error-page-title')).toHaveText(msg.not_found_title)
       await expect(page.getByTestId('error-page-home')).toContainText(msg.back_home)
-      await expect(page.locator('body')).not.toContainText(/Page not found/i)
+      await expect(page.getByTestId('error-page')).not.toContainText(/Page not found/i)
+      expect(await visibleBodyText(page)).not.toMatch(/Page not found/i)
       expect(await page.evaluate(() => document.documentElement.lang)).toBe(lang)
     })
   }

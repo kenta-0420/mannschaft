@@ -58,7 +58,10 @@ test.describe('CMP-261007-2053 PrimeVue 既定文言の言語追従', () => {
     await waitForHydration(page)
 
     const dialogClose = page.getByTestId('pv-dialog').locator('.p-dialog-close-button')
-    const drawerClose = page.getByTestId('pv-drawer').locator('.p-drawer-close-button')
+    // Drawer は append-to="self" を指定しても Portal で body 直下へ描画されるため、
+    // pv-drawer ラッパ内ではなくページ全体から Drawer ルート（.p-drawer）配下の閉じるボタンを特定する。
+    // Dialog の閉じるボタンは .p-dialog-close-button で別クラスのため取り違えない（strict mode で一意性も担保）
+    const drawerClose = page.locator('.p-drawer .p-drawer-close-button')
     const tabsNext = page.getByTestId('pv-tabs').locator('.p-tablist-next-button')
     const datePrev = page.getByTestId('pv-datepicker').locator('.p-datepicker-prev-button')
     const dateNext = page.getByTestId('pv-datepicker').locator('.p-datepicker-next-button')
