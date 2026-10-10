@@ -1306,21 +1306,17 @@ public class ConnectChargeService {
         if (payee.getScopeKind() == ScopeKind.USER) {
             return actorUserId.equals(payee.getScopeId());
         }
-        try {
-            switch (payee.getScopeKind()) {
-                case TEAM -> accessControlService.checkPermission(actorUserId, payee.getScopeId(),
-                        payeeScopeResolver.toAccessControlScopeType(payee.getScopeKind()), PERMISSION_MANAGE_PAYMENT);
-                case ORG -> accessControlService.checkAdminOrHasPermission(actorUserId, payee.getScopeId(),
-                        payeeScopeResolver.toAccessControlScopeType(payee.getScopeKind()), PERMISSION_MANAGE_PAYMENT);
-                default -> {
-                    return false;
-                }
-            }
-            return true;
-        } catch (BusinessException e) {
-            // 権限が無いことは真偽値で返す（例外を呼び出し側へ漏らさない）。判定であって認可の実行ではない。
-            return false;
-        }
+        // 例外を投げない真偽値版で判定する。AccessControlService は readOnly tx のため、check 系の例外を
+        // catch で握ると例外がプロキシ境界を越えた時点で外側 tx が rollback-only になり、確定時に
+        // UnexpectedRollbackException（500）となる。
+        String scopeType = payeeScopeResolver.toAccessControlScopeType(payee.getScopeKind());
+        return switch (payee.getScopeKind()) {
+            case TEAM -> accessControlService.hasPermission(actorUserId, payee.getScopeId(), scopeType,
+                    PERMISSION_MANAGE_PAYMENT);
+            case ORG -> accessControlService.hasAdminOrPermissionInScope(actorUserId, payee.getScopeId(), scopeType,
+                    PERMISSION_MANAGE_PAYMENT);
+            default -> false;
+        };
     }
 
     /**

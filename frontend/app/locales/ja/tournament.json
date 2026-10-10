@@ -1,5 +1,10 @@
 {
   "tournament": {
+    "detail": {
+      "noDivisions": "部門が登録されていません",
+      "divisionsLoadError": "部門一覧の取得に失敗しました",
+      "loadError": "大会情報の取得に失敗しました"
+    },
     "sport": {
       "label": "競技",
       "help": "この大会の競技を選びます。直接スコア入力時の試合がこの競技で作成されます。",

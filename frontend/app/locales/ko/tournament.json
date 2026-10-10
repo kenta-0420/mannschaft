@@ -1,5 +1,10 @@
 {
   "tournament": {
+    "detail": {
+      "noDivisions": "등록된 부문이 없습니다",
+      "divisionsLoadError": "부문 목록을 불러오지 못했습니다",
+      "loadError": "대회 정보를 불러오지 못했습니다"
+    },
     "sport": {
       "label": "종목",
       "help": "이 대회의 종목을 선택합니다. 직접 점수 입력 시 생성되는 경기가 이 종목으로 만들어집니다.",
