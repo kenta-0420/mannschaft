@@ -354,4 +354,4 @@
 | 新版稼働後に旧途中sessionを当時の文面と採点で再開・同点・完了し保存結果を保持 | `DiagnosisQuizPersistenceIT.新版稼働後も旧版の途中回答を当時の設問で再開完了し結果を保持する` |
 | 新版表示の再開保持と逆極性採点 | `DiagnosisQuizPersistenceIT.新版の交互表示を再開しても保持し逆極性回答を六軸へ正しく採点する` |
 
-テストを先に作成しましたが、共有heavy枠使用中のためRED/GREEN実行は未確認です。製品差分は保全候補へ退避し、RED待ちの状態です。実MySQL/API、既存Security filterの本人・他本人・未認証境界、実機、アリシゼーションの成功をこの文書では主張しません。
+CI run38073294036（event398cc60b0c84a08aa04139296097d434354bd14c、TEST_ONLY source49fb75180addfcab0a63b842f14bfeb7e3801a53）で実Gradle exit1、26cases中追加5caseのsemantic assertion failure、既存21pass、error0/skip0をrootが確認しました。Persistenceの実MySQL試験もPOST201通過後の版差異でREDです。採用済みREDを受けて新版JSON・catalogの旧新版読取・全draft正式登録拒否を適用しました。GREENは未実行でpending。Security filterの本人・他本人・未認証境界、実機、アリシゼーションの成功をこの文書では主張しません。

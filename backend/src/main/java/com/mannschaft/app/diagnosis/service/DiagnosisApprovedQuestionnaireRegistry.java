@@ -128,7 +128,7 @@ public final class DiagnosisApprovedQuestionnaireRegistry {
                 || !DiagnosisQuestionnaireCatalog.SNAPSHOT_SCHEMA_VERSION.equals(definition.snapshotSchemaVersion())
                 || definition.approval() != DiagnosisQuestionnaireCatalog.SnapshotApproval.APPROVED
                 || !versionToken(definition.questionnaireVersion())
-                || definition.questionnaireVersion().equals("draft-20261003-v1")
+                || definition.questionnaireVersion().startsWith("draft-")
                 || !"signed-centered-v1".equals(definition.scoringVersion())
                 || definition.questions().size() != 24 || definition.ties().size() != 6
                 || !definition.axisDescriptions().keySet().equals(Set.of(DiagnosisAxis.values()))) throw invalid();

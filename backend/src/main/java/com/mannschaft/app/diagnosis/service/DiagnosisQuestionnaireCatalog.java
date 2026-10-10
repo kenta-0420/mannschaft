@@ -46,6 +46,8 @@ public class DiagnosisQuestionnaireCatalog {
     public static final String SNAPSHOT_SCHEMA_VERSION = "diagnosis-session-snapshot-v1";
     public enum SnapshotApproval { DRAFT, APPROVED }
     private static final List<String> LOCALES = List.of("ja", "en", "zh", "ko", "es", "de");
+    private static final java.util.Set<String> READABLE_DRAFT_VERSIONS =
+            java.util.Set.of("draft-20261003-v1", "draft-20261010-v2");
 
     /** Entityを公開せず、設問・同点表示・説明の不変値だけを返す。 */
     public record Definition(String snapshotSchemaVersion, SnapshotApproval approval, String questionnaireVersion, String scoringVersion,
@@ -63,7 +65,7 @@ public class DiagnosisQuestionnaireCatalog {
 
     public Definition draft() {
         requireDraftFixture();
-        try (var stream = new ClassPathResource("diagnosis/questionnaire-draft-20261003.json").getInputStream()) {
+        try (var stream = new ClassPathResource("diagnosis/questionnaire-draft-20261010.json").getInputStream()) {
             JsonNode root = mapper.readTree(stream);
             if (root.path("approved").asBoolean(true) || root.path("translationsApproved").asBoolean(true)) throw unavailable();
             List<DiagnosisQuestion> questions = new ArrayList<>();
@@ -101,7 +103,8 @@ public class DiagnosisQuestionnaireCatalog {
                 && approved.contains(definition)) return;
         if (definition == null || !SNAPSHOT_SCHEMA_VERSION.equals(definition.snapshotSchemaVersion())
                 || !"signed-centered-v1".equals(definition.scoringVersion())
-                || !"draft-20261003-v1".equals(definition.questionnaireVersion())
+                || definition.questionnaireVersion() == null
+                || !READABLE_DRAFT_VERSIONS.contains(definition.questionnaireVersion())
                 || definition.approval() != SnapshotApproval.DRAFT) throw unavailable();
     }
     public void requireMutationAllowed(Definition definition) {
