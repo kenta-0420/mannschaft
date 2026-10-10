@@ -17,10 +17,8 @@ import com.tngtech.archunit.lang.SimpleConditionEvent;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,9 +49,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul>
  *
  * <h2>MANDATORY の判定（実効値）</h2>
- * <p>メソッドの {@code @Transactional} → 宣言クラスの {@code @Transactional} → 継承元（親クラス・interface）の
- * 同じシグネチャのメソッドの {@code @Transactional} → その宣言型の {@code @Transactional} の順に最初に見つかったもの
- * （Spring の {@code AnnotationTransactionAttributeSource} の探索順に合わせる）。</p>
+ * <p>Spring 6.2 の {@code AbstractFallbackTransactionAttributeSource#computeTransactionAttribute} と同じ順に最初に
+ * 見つかったもの: ① 実体のメソッドのメソッド階層（メソッド自身 → 宣言クラスの interface の同じシグネチャのメソッド →
+ * 親クラスの同じシグネチャのメソッド …。Spring は {@code TYPE_HIERARCHY} で探すため、<b>interface のメソッドの宣言が
+ * 実装クラスの宣言より先に当たる</b>）→ ② 宣言クラスの型階層（クラス → interface → 親クラス）→ ③ 呼び出し口の
+ * メソッド（ポート越しならポートのメソッド）の階層とその型。詳細は {@link #effectivePropagation(JavaMethod, JavaMethod)}。</p>
  *
  * <h2>検出範囲（静的解析の限界）</h2>
  * <p>直接のメソッド呼び出しと interface の実装関係だけを見る。イベント経由（{@code @EventListener}・
@@ -201,11 +201,13 @@ class CrossDomainMandatoryPropagationArchTest {
         }
         Map<String, Violation> unique = new LinkedHashMap<>();
         for (JavaMethod method : implementationMethods(clazz)) {
-            if (effectivePropagation(method).orElse(null) != Propagation.MANDATORY) {
-                continue;
-            }
             for (JavaClass port : foreignInterfaces) {
-                if (findSameSignature(port, method).isEmpty()) {
+                Optional<JavaMethod> portMethod = findSameSignature(port, method);
+                if (portMethod.isEmpty()) {
+                    continue;
+                }
+                // ポート越しの呼び出しで実体に効く値（実装メソッド → 実装クラス → ポートのメソッド → ポートの型）
+                if (effectivePropagation(method, portMethod.get()).orElse(null) != Propagation.MANDATORY) {
                     continue;
                 }
                 String auditKey = clazz.getName() + "." + method.getName();
@@ -252,35 +254,86 @@ class CrossDomainMandatoryPropagationArchTest {
     }
 
     /**
-     * {@code method} の実効の propagation。Spring の {@code AnnotationTransactionAttributeSource} の探索順に合わせ、
-     * メソッド → 宣言クラス（{@code @Transactional} は {@code @Inherited} なので親クラスの宣言も含む）→
-     * 継承元（親クラス・interface）の同じシグネチャのメソッド → その宣言型、の順に最初に見つかった {@code @Transactional}。
+     * {@code method} を（その宣言クラスの Bean として）直接呼んだときの実効の propagation。
+     * {@link #effectivePropagation(JavaMethod, JavaMethod)} の呼び出し口の型＝宣言クラスの場合。
      */
     static Optional<Propagation> effectivePropagation(JavaMethod method) {
-        Optional<Transactional> onMethod = method.tryGetAnnotationOfType(Transactional.class);
+        return effectivePropagation(method, method);
+    }
+
+    /**
+     * {@code invokedMethod}（呼び出し口の型で解決されたメソッド。interface 越しならその interface のメソッド）を
+     * 呼んだとき、実体 {@code specificMethod} に効く propagation。Spring 6.2 の
+     * {@code AbstractFallbackTransactionAttributeSource#computeTransactionAttribute} と同じ順に探す。
+     *
+     * <ol>
+     *   <li>{@code specificMethod} のメソッド階層（{@code SpringTransactionAnnotationParser} は
+     *       {@code AnnotatedElementUtils.findMergedAnnotationAttributes}＝{@code SearchStrategy.TYPE_HIERARCHY} で探すので、
+     *       メソッド自身 → 宣言クラスの interface の同じシグネチャのメソッド（その上位 interface を含む）→
+     *       親クラスの同じシグネチャのメソッド → その interface … の順。<b>実装クラスの宣言より、interface の
+     *       メソッドの宣言が先に当たる</b>）</li>
+     *   <li>{@code specificMethod} の宣言クラスの型階層（クラス自身 → その interface → 親クラス …）</li>
+     *   <li>{@code invokedMethod} が {@code specificMethod} と異なるとき、{@code invokedMethod} のメソッド階層 →
+     *       その宣言型の型階層</li>
+     * </ol>
+     */
+    static Optional<Propagation> effectivePropagation(JavaMethod specificMethod, JavaMethod invokedMethod) {
+        Optional<Transactional> found = findOnMethodHierarchy(specificMethod.getOwner(), specificMethod, new HashSet<>());
+        if (found.isEmpty()) {
+            found = findOnTypeHierarchy(specificMethod.getOwner(), new HashSet<>());
+        }
+        if (found.isEmpty() && !invokedMethod.equals(specificMethod)) {
+            found = findOnMethodHierarchy(invokedMethod.getOwner(), invokedMethod, new HashSet<>());
+            if (found.isEmpty()) {
+                found = findOnTypeHierarchy(invokedMethod.getOwner(), new HashSet<>());
+            }
+        }
+        return found.map(Transactional::propagation);
+    }
+
+    /**
+     * Spring の {@code AnnotationsScanner#processMethodHierarchy} と同じ順: {@code type} の同じシグネチャのメソッド →
+     * {@code type} の interface（宣言順・再帰）→ 親クラス（再帰）。
+     */
+    private static Optional<Transactional> findOnMethodHierarchy(JavaClass type, JavaMethod method, Set<String> seen) {
+        if (!seen.add(type.getName())) {
+            return Optional.empty();
+        }
+        Optional<Transactional> onMethod = (type.equals(method.getOwner()) ? Optional.of(method)
+                : findSameSignature(type, method))
+                .flatMap(m -> m.tryGetAnnotationOfType(Transactional.class));
         if (onMethod.isPresent()) {
-            return Optional.of(onMethod.get().propagation());
+            return onMethod;
         }
-        for (JavaClass type = method.getOwner(); type != null; type = type.getRawSuperclass().orElse(null)) {
-            Optional<Transactional> onType = type.tryGetAnnotationOfType(Transactional.class);
-            if (onType.isPresent()) {
-                return Optional.of(onType.get().propagation());
+        for (JavaClass interfaceType : type.getRawInterfaces()) {
+            Optional<Transactional> found = findOnMethodHierarchy(interfaceType, method, seen);
+            if (found.isPresent()) {
+                return found;
             }
         }
-        for (JavaClass ancestor : ancestors(method.getOwner())) {
-            Optional<JavaMethod> inherited = findSameSignature(ancestor, method);
-            if (inherited.isPresent()) {
-                Optional<Transactional> onInherited = inherited.get().tryGetAnnotationOfType(Transactional.class);
-                if (onInherited.isPresent()) {
-                    return Optional.of(onInherited.get().propagation());
-                }
-                Optional<Transactional> onAncestor = ancestor.tryGetAnnotationOfType(Transactional.class);
-                if (onAncestor.isPresent()) {
-                    return Optional.of(onAncestor.get().propagation());
-                }
+        return type.getRawSuperclass()
+                .flatMap(superclass -> findOnMethodHierarchy(superclass, method, seen));
+    }
+
+    /**
+     * Spring の {@code AnnotationsScanner#processClassHierarchy} と同じ順: {@code type} 自身 → interface（宣言順・再帰）
+     * → 親クラス（再帰）。
+     */
+    private static Optional<Transactional> findOnTypeHierarchy(JavaClass type, Set<String> seen) {
+        if (!seen.add(type.getName())) {
+            return Optional.empty();
+        }
+        Optional<Transactional> onType = type.tryGetAnnotationOfType(Transactional.class);
+        if (onType.isPresent()) {
+            return onType;
+        }
+        for (JavaClass interfaceType : type.getRawInterfaces()) {
+            Optional<Transactional> found = findOnTypeHierarchy(interfaceType, seen);
+            if (found.isPresent()) {
+                return found;
             }
         }
-        return Optional.empty();
+        return type.getRawSuperclass().flatMap(superclass -> findOnTypeHierarchy(superclass, seen));
     }
 
     /** {@code clazz} のインスタンスで呼ばれる実装メソッド（自クラス宣言＋アプリ内の親クラスから継承したもの）。 */
@@ -299,25 +352,6 @@ class CrossDomainMandatoryPropagationArchTest {
             current = current.getRawSuperclass().orElse(null);
         }
         return new ArrayList<>(bySignature.values());
-    }
-
-    /** 親クラスと interface を幅優先で（自分は含まない）。 */
-    private static List<JavaClass> ancestors(JavaClass clazz) {
-        List<JavaClass> result = new ArrayList<>();
-        Set<String> seen = new HashSet<>();
-        Deque<JavaClass> queue = new ArrayDeque<>();
-        clazz.getRawSuperclass().ifPresent(queue::add);
-        queue.addAll(clazz.getRawInterfaces());
-        while (!queue.isEmpty()) {
-            JavaClass next = queue.removeFirst();
-            if (!seen.add(next.getName())) {
-                continue;
-            }
-            result.add(next);
-            next.getRawSuperclass().ifPresent(queue::add);
-            queue.addAll(next.getRawInterfaces());
-        }
-        return result;
     }
 
     private static Optional<JavaMethod> findSameSignature(JavaClass type, JavaMethod method) {

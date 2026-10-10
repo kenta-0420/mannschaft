@@ -41,7 +41,7 @@ public class NotificationOutboxStuckRecoveryBatch {
 
     /** RELAYING の残骸を PENDING に戻す。 */
     @Scheduled(cron = "0 * * * * *")
-    @SchedulerLock(name = "notificationOutboxStuckRecovery", lockAtMostFor = "PT50S", lockAtLeastFor = "PT5S")
+    @SchedulerLock(name = "notificationOutboxStuckRecovery", lockAtMostFor = "PT3M", lockAtLeastFor = "PT5S")
     @BatchEndpoint(name = BATCH_NAME,
             description = "claimから2分を超えてRELAYINGのまま止まった通知outboxの行をPENDINGに戻し再取り込みさせる（毎分）")
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,

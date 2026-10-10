@@ -40,12 +40,13 @@ class CrossDomainMandatoryPropagationGuardConditionTest {
                 d3p1(MandatoryPortMembershipFixtures.CrossDomainCaller.class);
 
         assertThat(violations).extracting(CrossDomainMandatoryPropagationArchTest.Violation::auditKey)
-                .as("陽性の4件（メソッド・クラス・親クラス・interface の宣言）だけ")
-                .hasSize(4)
+                .as("陽性の5件（メソッド・クラス・親クラス・interface の宣言と、interface の MANDATORY がクラスの REQUIRED に勝つ競合）だけ")
+                .hasSize(5)
                 .anyMatch(k -> k.contains("callMethodLevel"))
                 .anyMatch(k -> k.contains("callClassLevel"))
                 .anyMatch(k -> k.contains("callInherited"))
-                .anyMatch(k -> k.contains("callInterfaceDeclared"));
+                .anyMatch(k -> k.contains("callInterfaceDeclared"))
+                .anyMatch(k -> k.contains("callInterfaceMandatoryOverClassRequired"));
         assertThat(violations).allMatch(v -> v.rule().equals("D-3P-1"))
                 .allMatch(v -> v.message().contains("domain 'membership'") && v.message().contains("domain 'resident'"));
     }
@@ -87,6 +88,23 @@ class CrossDomainMandatoryPropagationGuardConditionTest {
                     assertThat(v.auditKey()).endsWith("InheritedReversePortAdapter.lock");
                     assertThat(v.message()).contains("MembershipLockPort").contains("domain 'membership'");
                 });
+    }
+
+    @Test
+    @DisplayName("OG02 D-3P-2: ポートのメソッドが MANDATORY・実装メソッドが無印・実装クラスが REQUIRED なら、Spring と同じく MANDATORY とみなして検出する")
+    void og02_ポートのメソッドのMANDATORYは実装クラスのREQUIREDより先に当たる() {
+        assertThat(d3p2(MandatoryPortResidentFixtures.InterfaceMandatoryOverClassRequiredAdapter.class))
+                .singleElement()
+                .satisfies(v -> {
+                    assertThat(v.auditKey()).endsWith("InterfaceMandatoryOverClassRequiredAdapter.lock");
+                    assertThat(v.message()).contains("MembershipMandatoryLockPort");
+                });
+    }
+
+    @Test
+    @DisplayName("OG02 D-3P-2: ポートのメソッドが MANDATORY でも、実装メソッドに REQUIRED を明示していれば違反にしない")
+    void og02_実装メソッドのREQUIREDはポートのMANDATORYより先に当たる() {
+        assertThat(d3p2(MandatoryPortResidentFixtures.MethodRequiredOverInterfaceMandatoryAdapter.class)).isEmpty();
     }
 
     @Test

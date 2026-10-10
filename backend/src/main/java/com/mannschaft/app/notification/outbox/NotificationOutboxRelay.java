@@ -2,6 +2,7 @@ package com.mannschaft.app.notification.outbox;
 
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.batch.BatchEndpointExempt;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -136,7 +137,22 @@ public class NotificationOutboxRelay {
         drain(targets.isEmpty() ? sources : targets);
     }
 
-    /** 予備ポーラー（5秒ごと・ShedLock で単一ノード）。成功したら {@code poller_last_success_epoch} を更新する。 */
+    /**
+     * 予備ポーラー（5秒ごと・ShedLock で単一ノード）。成功したら {@code poller_last_success_epoch} を更新する。
+     *
+     * <p><b>バッチ実行履歴に載せない理由（{@link BatchEndpointExempt}）</b>: 5秒間隔（日次 17,280 回）で回り、
+     * 起こしが動いている平常時はほぼ毎回「取り込み待ち0件」で終わる。1回ごとに実行履歴を書くと、日次・月次
+     * バッチの記録が空振りの記録に埋もれて履歴基盤自体が役に立たなくなる。</p>
+     *
+     * <p><b>代わりの監視</b>: ① ゲージ {@code mannschaft.notification.outbox.poller_last_success_epoch}
+     * （最後に成功したエポック秒。止まれば進まなくなる）② ゲージ
+     * {@code mannschaft.notification.outbox.oldest_pending_age_seconds{source}}（取り込み待ちの滞留秒）
+     * ③ カウンタ {@code relayed}・{@code failed}・{@code dead}・{@code stale_mark}{source}。
+     * 1行ごとの進み具合は outbox の行自体（status・attempt_count・last_error・next_attempt_at）が記録している。</p>
+     */
+    @BatchEndpointExempt("5 秒間隔（日次 17,280 回）の予備ポーラーで、平常時はほぼ毎回取り込み待ち0件で終わるため、"
+        + "実行履歴を書くと日次・月次バッチの記録が埋没する。生存は poller_last_success_epoch・"
+        + "oldest_pending_age_seconds のゲージ、進捗は outbox の行（status・attempt_count・last_error）が記録")
     @Scheduled(fixedDelay = 5000)
     @SchedulerLock(name = "notificationOutboxRelay", lockAtMostFor = "PT1M", lockAtLeastFor = "PT1S")
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,

@@ -262,7 +262,7 @@ class TeamNotificationOutboxRelayIT extends TeamNotificationOutboxItSupport {
     }
 
     @Test
-    @DisplayName("OB08b A が claim して止まり、回収後に B が取り込んで RELAYED にした後で A が再開しても、ジョブは1件で、A の古い世代の印付けは当たらず B の状態は変わらない")
+    @DisplayName("OB08b A が claim して止まり、回収後に B が claim し直して RELAYING の間に A が再開しても、A の古い世代の印付けは0行で B の claim_token・状態・attempt は変わらず、B は印付けでき、ジョブは1件")
     void ob08b_古い世代の印付けは当たらない() {
         OrgFx org = inTx(this::newOrg);
         long membershipId = appendNotice(org);
@@ -270,53 +270,80 @@ class TeamNotificationOutboxRelayIT extends TeamNotificationOutboxItSupport {
         UUID outboxId = uuidFromBytes(outboxRow(key).get("id"));
 
         // A が claim して止まる
-        NotificationOutboxMessage claimedByA = sourceSpy.claim(NotificationOutboxRelay.CLAIM_LIMIT, Instant.now())
-                .stream().filter(m -> m.id().equals(outboxId)).findFirst().orElseThrow();
+        NotificationOutboxMessage claimedByA = claimOne(outboxId);
         jdbc.update("UPDATE team_notification_outbox SET claimed_at = UTC_TIMESTAMP(6) - INTERVAL 3 MINUTE "
                 + "WHERE idempotency_key = ?", uuidBytes(key));
         recoveryBatch.recover();
+        assertThat(statusOf(membershipId)).isEqualTo("PENDING");
 
-        // B が取り込んで RELAYED にする
-        drain();
-        Map<String, Object> afterB = outboxRow(key);
-        assertThat(afterB.get("status")).isEqualTo("RELAYED");
-        Object relayedAtByB = afterB.get("relayed_at");
+        // B が claim し直し、取り込み中（RELAYING）のまま A が再開する。status 条件だけでは弾けない状態で世代を試す
+        NotificationOutboxMessage claimedByB = claimOne(outboxId);
+        assertThat(claimedByB.claimToken()).as("B は新しい世代").isNotEqualTo(claimedByA.claimToken());
+        Map<String, Object> whileB = outboxRow(key);
+        assertThat(whileB.get("status")).isEqualTo("RELAYING");
 
-        // A が再開する（取り込みは冪等、印付けは古い世代なので当たらない）
+        // A の取り込みは冪等、A の印付けは古い世代なので当たらない
         ingestSpy.ingest(codecSpy.decode(claimedByA.payloadVersion(), claimedByA.payloadJson()));
         boolean markedByA = sourceSpy.markRelayed(outboxId, claimedByA.claimToken(), Instant.now());
         boolean failedByA = sourceSpy.markFailed(outboxId, claimedByA.claimToken(), "A の失敗",
                 Instant.now().plusSeconds(30), false, Instant.now());
+        boolean deadByA = sourceSpy.markFailed(outboxId, claimedByA.claimToken(), "A の失敗（DEAD）",
+                Instant.now().plusSeconds(30), true, Instant.now());
 
         assertThat(markedByA).as("古い世代の markRelayed は0行").isFalse();
         assertThat(failedByA).as("古い世代の markFailed は0行").isFalse();
+        assertThat(deadByA).as("古い世代の markFailed(DEAD) は0行").isFalse();
         Map<String, Object> afterA = outboxRow(key);
-        assertThat(afterA.get("status")).isEqualTo("RELAYED");
-        assertThat(afterA.get("relayed_at")).isEqualTo(relayedAtByB);
+        assertThat(afterA.get("status")).as("B の RELAYING のまま").isEqualTo("RELAYING");
+        assertThat(uuidFromBytes(afterA.get("claim_token"))).as("B の世代のまま").isEqualTo(claimedByB.claimToken());
         assertThat(((Number) afterA.get("attempt_count")).intValue()).isZero();
-        assertThat(jobCount(key)).isEqualTo(1);
+        assertThat(afterA.get("claimed_at")).isEqualTo(whileB.get("claimed_at"));
+        assertThat(afterA.get("last_error")).isNull();
+        assertThat(afterA.get("dead_at")).isNull();
+        assertThat(afterA.get("relayed_at")).isNull();
+
+        // B は自分の世代で印付けできる
+        ingestSpy.ingest(codecSpy.decode(claimedByB.payloadVersion(), claimedByB.payloadJson()));
+        assertThat(sourceSpy.markRelayed(outboxId, claimedByB.claimToken(), Instant.now())).isTrue();
+        assertThat(statusOf(membershipId)).isEqualTo("RELAYED");
+        assertThat(jobCount(key)).as("A・B の二重取り込みでもジョブは1件").isEqualTo(1);
     }
 
     @Test
-    @DisplayName("OB08b relay が取り込んでいる間に別の relay が先に RELAYED にしていたら、印付けは0行で stale_mark が +1、状態は変わらない")
+    @DisplayName("OB08b relay が取り込んでいる間に回収され別の relay が claim し直していたら（RELAYING・別の claim_token）、印付けは0行で stale_mark が +1、別の relay の世代・状態・attempt は変わらない")
     void ob08b_relayの印付けが古い世代ならstale_markを数える() {
         OrgFx org = inTx(this::newOrg);
         long membershipId = appendNotice(org);
         UUID key = idempotencyKeyOf(NotificationType.TEAM_ORG_APPLICATION_RECEIVED, membershipId);
+        UUID outboxId = uuidFromBytes(outboxRow(key).get("id"));
+        UUID otherRelayToken = UUID.randomUUID();
         double staleBefore = counterSum(NotificationOutboxRelay.METRIC_STALE_MARK);
         doAnswer(invocation -> {
-            // 取り込みの途中で「回収 → 別の relay が取り込み RELAYED に」を起こす
-            jdbc.update("UPDATE team_notification_outbox SET status = 'RELAYED', relayed_at = UTC_TIMESTAMP(6), "
-                    + "claim_token = ? WHERE idempotency_key = ?", uuidBytes(UUID.randomUUID()), uuidBytes(key));
+            // 取り込みの途中で「回収 → 別の relay が claim し直して取り込み中（RELAYING）」を起こす
+            jdbc.update("UPDATE team_notification_outbox SET status = 'RELAYING', claimed_at = UTC_TIMESTAMP(6), "
+                    + "claim_token = ? WHERE idempotency_key = ?", uuidBytes(otherRelayToken), uuidBytes(key));
             return invocation.callRealMethod();
         }).when(ingestSpy).ingest(any());
 
         drain();
 
         assertThat(counterSum(NotificationOutboxRelay.METRIC_STALE_MARK) - staleBefore).isEqualTo(1.0);
-        assertThat(statusOf(membershipId)).isEqualTo("RELAYED");
-        assertThat(attemptOf(membershipId)).isZero();
+        Map<String, Object> row = outboxRow(key);
+        assertThat(row.get("status")).as("別の relay の RELAYING のまま").isEqualTo("RELAYING");
+        assertThat(uuidFromBytes(row.get("claim_token"))).isEqualTo(otherRelayToken);
+        assertThat(((Number) row.get("attempt_count")).intValue()).isZero();
+        assertThat(row.get("relayed_at")).isNull();
         assertThat(jobCount(key)).isEqualTo(1);
+
+        // 別の relay は自分の世代で印付けできる
+        assertThat(sourceSpy.markRelayed(outboxId, otherRelayToken, Instant.now())).isTrue();
+        assertThat(statusOf(membershipId)).isEqualTo("RELAYED");
+    }
+
+    /** {@code outboxId} の行を claim する（他の行も claim されうるので該当行だけを返す）。 */
+    private NotificationOutboxMessage claimOne(UUID outboxId) {
+        return sourceSpy.claim(NotificationOutboxRelay.CLAIM_LIMIT, Instant.now())
+                .stream().filter(m -> m.id().equals(outboxId)).findFirst().orElseThrow();
     }
 
     // =====================================================================

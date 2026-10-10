@@ -65,6 +65,23 @@ public final class MandatoryPortResidentFixtures {
         }
     }
 
+    /** interface のメソッドに MANDATORY を宣言（実装クラスの REQUIRED と競合させる検体用）。 */
+    public interface ConflictMandatoryPort {
+        @Transactional(propagation = Propagation.MANDATORY)
+        void conflictJoin();
+    }
+
+    /**
+     * 実装メソッドは無印、実装クラスは REQUIRED、interface のメソッドは MANDATORY。Spring は実装メソッドの階層
+     * （interface のメソッドを含む）をクラスより先に探すので、実効値は MANDATORY。
+     */
+    @Transactional
+    public static class InterfaceMandatoryOverClassRequiredService implements ConflictMandatoryPort {
+        @Override
+        public void conflictJoin() {
+        }
+    }
+
     /** 同じドメインからの呼び出し（D-3P-1 の陰性）。 */
     public static class SameDomainCaller {
         MethodMandatoryService service;
@@ -104,6 +121,27 @@ public final class MandatoryPortResidentFixtures {
     /** 陽性: 親の MANDATORY 実装を継承して membership のポートを満たす。 */
     public static class InheritedReversePortAdapter extends MandatoryLockBase
             implements MandatoryPortMembershipFixtures.MembershipLockPort {
+    }
+
+    /**
+     * 陽性: membership のポートのメソッドが MANDATORY、実装クラスが REQUIRED、実装メソッドは無印。
+     * Spring はポートのメソッドの宣言をクラスの宣言より先に拾うので、実効値は MANDATORY。
+     */
+    @Transactional
+    public static class InterfaceMandatoryOverClassRequiredAdapter
+            implements MandatoryPortMembershipFixtures.MembershipMandatoryLockPort {
+        @Override
+        public void lock(Long id) {
+        }
+    }
+
+    /** 陰性: ポートのメソッドは MANDATORY だが、実装メソッドに REQUIRED を明示（実装メソッドが最初に当たる）。 */
+    public static class MethodRequiredOverInterfaceMandatoryAdapter
+            implements MandatoryPortMembershipFixtures.MembershipMandatoryLockPort {
+        @Override
+        @Transactional
+        public void lock(Long id) {
+        }
     }
 
     /** 陰性: REQUIRED で実装。 */

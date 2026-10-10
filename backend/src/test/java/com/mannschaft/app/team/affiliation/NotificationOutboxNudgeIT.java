@@ -23,7 +23,9 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -81,6 +83,11 @@ class NotificationOutboxNudgeIT extends TeamNotificationOutboxItSupport {
         OrgFx org = inTx(this::newOrg);
         long membershipId = appendNotice(org); // 先に1件流して、飽和前の起こしが済むのを待つ
         await().atMost(Duration.ofSeconds(5)).until(() -> "RELAYED".equals(statusOf(membershipId)));
+        // RELAYED は drain の途中（印付け）で立つ。先行の非同期 drain がスレッドを返し終えるまで待たないと、
+        // 下の飽和の手順の数が狂い、blocker 自身が CallerRuns でこのスレッドを塞ぎうる
+        ThreadPoolExecutor executor = pool.getThreadPoolExecutor();
+        await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(20))
+                .until(() -> executor.getActiveCount() == 0 && executor.getQueue().isEmpty());
 
         Thread testThread = Thread.currentThread();
         List<Boolean> ingestOnCallerThread = new CopyOnWriteArrayList<>();
@@ -98,17 +105,47 @@ class NotificationOutboxNudgeIT extends TeamNotificationOutboxItSupport {
         }).when(sourceSpy).markRelayed(any(), any(), any());
 
         CountDownLatch release = new CountDownLatch(1);
-        int blockers = pool.getMaxPoolSize() + pool.getQueueCapacity();
-        try {
-            for (int i = 0; i < blockers; i++) {
-                pool.execute(() -> {
-                    try {
-                        release.await(60, TimeUnit.SECONDS);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                });
+        AtomicInteger started = new AtomicInteger();
+        List<Boolean> blockerOnTestThread = new CopyOnWriteArrayList<>();
+        Runnable blocker = () -> {
+            if (Thread.currentThread() == testThread) {
+                // 飽和の手順が崩れて blocker 自身が CallerRuns になった。ここで待つとテストが固まるので記録して戻る
+                blockerOnTestThread.add(true);
+                return;
             }
+            started.incrementAndGet();
+            try {
+                release.await(60, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
+        int core = pool.getCorePoolSize();
+        int max = pool.getMaxPoolSize();
+        int queueCapacity = pool.getQueueCapacity();
+        try {
+            // ① 生きているスレッド（先行の drain で core を超えて立ったものを含む）と core のうち多い方の本数を、
+            // 1本ずつ起動を確かめながら塞ぐ（idle のスレッドはキュー経由で拾うので、数えずに投入すると②が狂う）
+            int busyFirst = Math.max(core, executor.getPoolSize());
+            for (int i = 1; i <= busyFirst; i++) {
+                pool.execute(blocker);
+                int expected = i;
+                await().atMost(Duration.ofSeconds(5)).until(() -> started.get() == expected);
+            }
+            // ② キューを満杯にする（生きているスレッドは全部塞がっているので誰も拾わない）
+            for (int i = 0; i < queueCapacity; i++) {
+                pool.execute(blocker);
+            }
+            assertThat(executor.getQueue().size()).as("キューが満杯").isEqualTo(queueCapacity);
+            // ③ キュー満杯なので max まで新しいスレッドが立つ。1本ずつ起動を確かめる
+            for (int i = busyFirst + 1; i <= max; i++) {
+                pool.execute(blocker);
+                int expected = i;
+                await().atMost(Duration.ofSeconds(5)).until(() -> started.get() == expected);
+            }
+            assertThat(blockerOnTestThread).as("blocker は1件も CallerRuns になっていない").isEmpty();
+            assertThat(executor.getActiveCount()).as("max 本すべてが塞がっている").isEqualTo(max);
+            assertThat(executor.getQueue().size()).as("キューは満杯のまま").isEqualTo(queueCapacity);
 
             // コミット → AFTER_COMMIT → @Async が拒否され CallerRuns → この（テストの）スレッドで同期に drain
             appendNotice(org, target);

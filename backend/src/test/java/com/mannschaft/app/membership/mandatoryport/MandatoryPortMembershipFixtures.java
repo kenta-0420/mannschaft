@@ -6,6 +6,8 @@ import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import com.mannschaft.app.notification.outbox.NotificationOutboxIngestService;
 import com.mannschaft.app.resident.mandatoryport.MandatoryPortResidentFixtures;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * D-3P（{@code CrossDomainMandatoryPropagationArchTest}）の検体。ドメイン {@code membership} 側。
@@ -23,12 +25,19 @@ public final class MandatoryPortMembershipFixtures {
         void lock(Long id);
     }
 
+    /** membership が宣言したポートで、メソッドに MANDATORY を宣言したもの（実装クラスの宣言と競合させる検体用）。 */
+    public interface MembershipMandatoryLockPort {
+        @Transactional(propagation = Propagation.MANDATORY)
+        void lock(Long id);
+    }
+
     /** D-3P-1: resident の各種メソッドを呼ぶ。 */
     public static class CrossDomainCaller {
         MandatoryPortResidentFixtures.MethodMandatoryService methodService;
         MandatoryPortResidentFixtures.ClassMandatoryService classService;
         MandatoryPortResidentFixtures.InheritingService inheritingService;
         MandatoryPortResidentFixtures.DeclaredMandatoryPortImpl declaredPortImpl;
+        MandatoryPortResidentFixtures.InterfaceMandatoryOverClassRequiredService conflictService;
         MandatoryPortCommonFixtures.CommonMandatoryService commonService;
         ApplicationEventPublisher publisher;
 
@@ -50,6 +59,11 @@ public final class MandatoryPortMembershipFixtures {
         /** 陽性: interface のメソッドで宣言された MANDATORY。 */
         public void callInterfaceDeclared() {
             declaredPortImpl.ifaceJoin();
+        }
+
+        /** 陽性: interface のメソッドの MANDATORY が、実装クラスの REQUIRED より先に当たる（Spring の探索順）。 */
+        public void callInterfaceMandatoryOverClassRequired() {
+            conflictService.conflictJoin();
         }
 
         /** 陰性: REQUIRED。 */

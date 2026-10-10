@@ -126,7 +126,7 @@ outbox の Repository は `organization_id` で絞り込む問い合わせを持
 ### 4.4 再試行・DEAD・回収
 - 取り込みの例外 → PENDING に戻し `attempt_count+1`、`next_attempt_at = now + 30秒×2^(n-1)`（上限1時間）、`last_error` を記録、`claim_token=NULL`（OB06）。業務の行は巻き戻らない。
 - 10回目の失敗で DEAD と `dead_at`、メトリクス `dead`＋ERROR ログ。以後 claim されない（OB07・Q7）。管理画面からの再送は作らない。
-- 回収: `claimed_at` が2分を超えた RELAYING を PENDING・`claim_token=NULL` に戻す（毎分、`@SchedulerLock(name="notificationOutboxStuckRecovery", lockAtMostFor="PT50S")`＋`@BatchEndpoint(name="notification-outbox-stuck-recovery")`、メトリクス `recovered`。OB08）。
+- 回収: `claimed_at` が2分を超えた RELAYING を PENDING・`claim_token=NULL` に戻す（毎分、`@SchedulerLock(name="notificationOutboxStuckRecovery", lockAtMostFor="PT3M")`＋`@BatchEndpoint(name="notification-outbox-stuck-recovery")`。`lockAtMostFor` は起動間隔1分の3倍（`backend/.claudecode.md` §30.1 の短周期バッチの基本値。番人 `ScheduledBatchGuardTest` が「起動間隔を上回ること」を要求する）、メトリクス `recovered`。OB08）。
 
 ### 4.5 掃除
 RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎたものを削除する（起算点は `created_at` ではない）。PENDING・RELAYING は消さない。日次 04:40、`@SchedulerLock(name="notificationOutboxSweep", lockAtMostFor="PT30M")`＋`@BatchEndpoint(name="notification-outbox-sweep")`（OB11）。
@@ -138,7 +138,7 @@ RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎた
 
 - 起こし: 書き込み側が tx の中で `NotificationOutboxAppendedEvent` を publish → relay の `onAppended` が `@Async("notification-outbox-pool") @TransactionalEventListener(phase = AFTER_COMMIT)` で即 drain（OB10）。`@BackgroundFeaturePolicy(mode = ALWAYS)`（バックグラウンド入口の番人が宣言を要求する）。drain するのはイベントの `sourceName` の source だけ（名前が一致しなければ全 source）。
 - 専用の executor `notification-outbox-pool`: core 2・max 4・キュー100 程度、拒否時は CallerRuns（捨てない・例外を投げない）、拒否をメトリクス `nudge_rejected`（tag なし。executor は source を知らない）に数える。
-- 予備ポーラー: `poll()` に `@Scheduled(fixedDelay = 5000)`・`@SchedulerLock(name = "notificationOutboxRelay", lockAtMostFor = "PT1M", lockAtLeastFor = "PT1S")`・`@BackgroundFeaturePolicy(mode = ALWAYS)`。成功のたびに `poller_last_success_epoch` を更新する。ポーラーのノードが lock を持ったまま落ちても、`lockAtMostFor` の1分で別ノードが引き継ぐ（OB12a）。
+- 予備ポーラー: `poll()` に `@Scheduled(fixedDelay = 5000)`・`@SchedulerLock(name = "notificationOutboxRelay", lockAtMostFor = "PT1M", lockAtLeastFor = "PT1S")`・`@BackgroundFeaturePolicy(mode = ALWAYS)`・`@BatchEndpointExempt`（5秒間隔で平常時はほぼ毎回0件のため、実行履歴を書くと日次・月次バッチの記録が埋没する。代わりの監視はゲージ `poller_last_success_epoch`・`oldest_pending_age_seconds` と outbox の行自体）。成功のたびに `poller_last_success_epoch` を更新する。ポーラーのノードが lock を持ったまま落ちても、`lockAtMostFor` の1分で別ノードが引き継ぐ（OB12a）。
 - 起こしと予備ポーラーが重なっても、`SKIP LOCKED` で行が分かれ、重なっても冪等。
 
 ## 6. payload_version の2段階展開（Q8）
@@ -167,7 +167,10 @@ RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎた
 | D-3P-2 | ドメイン Y の `MANDATORY` メソッドが、ドメイン X（≠Y・common 以外）の interface のメソッドを実装する（逆向きポート）| 監査済みの1件（`OrganizationAffiliationPortAdapter#lockForAffiliation`。加盟申請の直列化に組織行の行ロックが team の tx 内で必要。書き込みはしない。Q4）|
 | D-3P-3 | notification 以外から `NotificationFanoutJobService#enqueueInCurrentTransaction*`・`#enqueueInOwnTransaction`・`NotificationFanoutAudienceService`・`NotificationOutboxIngestService` へ依存する | 0件 |
 
-- **MANDATORY の判定は実効値**: メソッド → 宣言クラス（`@Inherited` なので親クラスの宣言も含む）→ 継承元の同じシグネチャのメソッド → その宣言型（Spring の `AnnotationTransactionAttributeSource` の探索順）。
+- **MANDATORY の判定は実効値**: Spring 6.2 の `AbstractFallbackTransactionAttributeSource#computeTransactionAttribute` と同じ順に、最初に見つかった `@Transactional` を採る。
+  1. 実体のメソッドの**メソッド階層**: メソッド自身 → 宣言クラスの interface の同じシグネチャのメソッド（上位 interface を含む）→ 親クラスの同じシグネチャのメソッド → その interface …。`SpringTransactionAnnotationParser` が `AnnotatedElementUtils.findMergedAnnotationAttributes`（`SearchStrategy.TYPE_HIERARCHY`。走査は `AnnotationsScanner#processMethodHierarchy`）で探すため、**interface のメソッドの宣言は実装クラスの宣言より先に当たる**（interface のメソッドが `MANDATORY`・実装メソッドが無印・実装クラスが `REQUIRED` なら実効値は `MANDATORY`）。
+  2. 実体のメソッドの宣言クラスの**型階層**: クラス自身 → その interface → 親クラス …（`AnnotationsScanner#processClassHierarchy`）。
+  3. 呼び出し口のメソッド（D-3P-2 ならポートのメソッド）が実体と異なるとき、その階層 → その宣言型。
 - **検出範囲は「直接のメソッド呼び出しと interface の実装関係」だけ**。イベント経由（`@EventListener`・`@TransactionalEventListener`）、`REQUIRED` や無印での参加、リフレクション、動的ディスパッチは対象外（`REQUIRED` の越境は D-3T が Repository への到達で見る）。
 - 凍結ストアを使わない。既存の違反は理由つきの監査済み例外だけで、監査済み例外が実在しなくなると赤になる（台帳の腐り防止）。
 - 検出の陽性・陰性は検体（test ソースの `*.mandatoryport`）で `CrossDomainMandatoryPropagationGuardConditionTest` が固定する（OG01・OG02）。
