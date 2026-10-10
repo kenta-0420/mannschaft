@@ -299,6 +299,11 @@ public class ScheduleEntity extends BaseEntity {
         this.status = ScheduleStatus.COMPLETED;
     }
 
+    /** 完了済み予定を未来へ延期した時だけ予定へ戻す。条件はServiceで判定する。 */
+    public void reopen() {
+        this.status = ScheduleStatus.SCHEDULED;
+    }
+
     /**
      * 繰り返しルールを更新する（個人スケジュール PATCH 用）。
      * null を渡すとルールを削除（繰り返しなし）。

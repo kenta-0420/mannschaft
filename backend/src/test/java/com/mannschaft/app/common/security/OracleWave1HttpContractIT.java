@@ -1,5 +1,8 @@
 package com.mannschaft.app.common.security;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.ActivityVisibility;
@@ -17,8 +20,13 @@ import com.mannschaft.app.committee.entity.CommitteeMemberEntity;
 import com.mannschaft.app.committee.entity.CommitteeRole;
 import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.committee.repository.CommitteeRepository;
+import com.mannschaft.app.membership.CardStatus;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.entity.CheckinLocationEntity;
+import com.mannschaft.app.membership.entity.MemberCardEntity;
+import com.mannschaft.app.membership.service.MemberCardService;
+import com.mannschaft.app.membership.service.QrTokenService;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.payment.PaymentItemType;
@@ -38,6 +46,7 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +55,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -102,6 +112,7 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper mapper;
     @Autowired private AuthTokenService tokens;
+    @Autowired private QrTokenService locationTokens;
     @Autowired private PlatformTransactionManager txManager;
     @PersistenceContext private EntityManager em;
     @Autowired private UserRepository users;
@@ -538,5 +549,135 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
             PaymentItemEntity item = items.save(PaymentItemEntity.builder().teamId(ownTeam.getId()).name("試練会費").type(PaymentItemType.ANNUAL_FEE).amount(BigDecimal.TEN).currency("JPY").build());
             return payments.save(MemberPaymentEntity.builder().userId(member).payerUserId(payer).paymentItemId(item.getId()).amountPaid(amount).paymentMethod(PaymentMethod.CASH).status(state).build());
         });
+    }
+
+    @Nested
+    @DisplayName("M: セルフチェックインの拠点存在秘匿（実Cookie・HMAC）")
+    class SelfCheckinLocation {
+        private MemberCardEntity card;
+        private CheckinLocationEntity location;
+
+        @BeforeEach
+        void セルフチェックイン検体を保存する() {
+            inTx(() -> {
+                card = MemberCardEntity.builder()
+                        .userId(member).scopeType(com.mannschaft.app.membership.ScopeType.TEAM)
+                        .scopeId(ownTeam.getId()).cardCode(UUID.randomUUID().toString())
+                        .cardNumber("ORACLE-0001").displayName("試練会員")
+                        .status(CardStatus.ACTIVE)
+                        .checkinCount(0).totalSpend(BigDecimal.ZERO).qrSecret(locationTokens.generateSecret())
+                        .build();
+                em.persist(card);
+                location = CheckinLocationEntity.builder()
+                        .scopeType(com.mannschaft.app.membership.ScopeType.TEAM).scopeId(ownTeam.getId())
+                        .name("試練拠点").locationCode(UUID.randomUUID().toString())
+                        .locationSecret(locationTokens.generateSecret()).isActive(true)
+                        .autoCompleteReservation(false).createdBy(admin).build();
+                em.persist(location);
+                em.flush();
+                return null;
+            });
+        }
+
+        @AfterEach
+        void セルフチェックインの自所有検体だけ削除する() {
+            if (card == null || card.getId() == null) {
+                return;
+            }
+            inTx(() -> {
+                em.createNativeQuery("DELETE FROM member_card_checkins WHERE member_card_id = :id")
+                        .setParameter("id", card.getId()).executeUpdate();
+                em.createNativeQuery("DELETE FROM member_cards WHERE id = :id")
+                        .setParameter("id", card.getId()).executeUpdate();
+                if (location != null && location.getId() != null) {
+                    em.createNativeQuery("DELETE FROM checkin_locations WHERE id = :id")
+                            .setParameter("id", location.getId()).executeUpdate();
+                }
+                return null;
+            });
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"ja", "en"})
+        void M1_未知拠点と実在拠点の不正署名は同一本文でログ及びDB不変(String locale) throws Exception {
+            inTx(() -> {
+                em.createNativeQuery("UPDATE users SET locale = :locale WHERE id = :id")
+                        .setParameter("locale", locale).setParameter("id", member).executeUpdate();
+                return null;
+            });
+            String missingToken = locationTokens.generateLocationQrToken(
+                    UUID.randomUUID().toString(), locationTokens.generateSecret());
+            String badToken = locationTokens.generateLocationQrToken(
+                    location.getLocationCode(), locationTokens.generateSecret());
+            Map<String, String> before = snapshot();
+            Logger logger = (Logger)
+                    LoggerFactory.getLogger(MemberCardService.class);
+            ListAppender<ILoggingEvent> capture =
+                    new ListAppender<>();
+            capture.start();
+            logger.addAppender(capture);
+            try {
+                MvcResult missing = checkin(missingToken, locale)
+                        .andExpect(status().isOk()).andExpect(jsonPath("$.data.checkedIn").value(false))
+                        .andExpect(jsonPath("$.data.reason").value("INVALID_LOCATION")).andReturn();
+                MvcResult bad = checkin(badToken, locale)
+                        .andExpect(status().isOk()).andExpect(jsonPath("$.data.checkedIn").value(false))
+                        .andExpect(jsonPath("$.data.reason").value("INVALID_LOCATION")).andReturn();
+                assertThat(mapper.readTree(bad.getResponse().getContentAsByteArray()))
+                        .isEqualTo(mapper.readTree(missing.getResponse().getContentAsByteArray()));
+                assertThat(mapper.readTree(bad.getResponse().getContentAsByteArray())
+                        .at("/data/message").asText()).isEqualTo("拠点QRコードが無効です。");
+                assertThat(snapshot()).isEqualTo(before);
+                assertThat(capture.list).isEmpty();
+            } finally {
+                logger.detachAppender(capture);
+                capture.stop();
+            }
+        }
+
+        @Test
+        void M2_正しい拠点署名と本人Cookieは実チェックインを一件保存する() throws Exception {
+            String token = locationTokens.generateLocationQrToken(
+                    location.getLocationCode(), location.getLocationSecret());
+            checkin(token, "ja").andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.checkedIn").value(true))
+                    .andExpect(jsonPath("$.data.memberCard.id").value(card.getId()));
+            inTx(() -> {
+                Number count = (Number) em.createNativeQuery(
+                                "SELECT COUNT(*) FROM member_card_checkins WHERE member_card_id = :id AND checkin_location_id = :location AND checkin_type = 'SELF'")
+                        .setParameter("id", card.getId()).setParameter("location", location.getId()).getSingleResult();
+                assertThat(count.longValue()).isEqualTo(1L);
+                Object[] row = (Object[]) em.createNativeQuery(
+                                "SELECT checkin_count, last_checkin_at FROM member_cards WHERE id = :id")
+                        .setParameter("id", card.getId()).getSingleResult();
+                assertThat(((Number) row[0]).intValue()).isEqualTo(1);
+                assertThat(row[1]).isNotNull();
+                return null;
+            });
+        }
+
+        private ResultActions checkin(String token, String locale) throws Exception {
+            return mockMvc.perform(request(HttpMethod.POST, "/api/v1/member-cards/self-checkin")
+                    .cookie(new Cookie("access_token",
+                            tokens.issueAccessToken(member, List.of("USER"))))
+                    .header("Accept-Language", locale).contentType(MediaType.APPLICATION_JSON)
+                    .content(mapper.writeValueAsBytes(Map.of("locationQrToken", token))));
+        }
+
+        private Map<String, String> snapshot() {
+            return inTx(() -> Map.of(
+                    "card", Arrays.deepToString(em.createNativeQuery(
+                                    "SELECT * FROM member_cards WHERE id = :id")
+                            .setParameter("id", card.getId()).getResultList().toArray()),
+                    "location", Arrays.deepToString(em.createNativeQuery(
+                                    "SELECT * FROM checkin_locations WHERE id = :id")
+                            .setParameter("id", location.getId()).getResultList().toArray()),
+                    "checkins", Arrays.deepToString(em.createNativeQuery(
+                                    "SELECT * FROM member_card_checkins WHERE member_card_id = :id ORDER BY id")
+                            .setParameter("id", card.getId()).getResultList().toArray()),
+                    "notifications", Arrays.deepToString(em.createNativeQuery(
+                                    "SELECT * FROM notifications WHERE user_id = :id ORDER BY id")
+                            .setParameter("id", member).getResultList().toArray())));
+        }
     }
 }

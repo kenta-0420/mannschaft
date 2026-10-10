@@ -7,6 +7,7 @@ const props = defineProps<{
   scopeId: string
 }>()
 
+const { t, locale } = useI18n()
 const { listSchedules, getAttendances } = useScheduleApi()
 const { captureQuiet } = useErrorReport()
 const { userTimezone } = useDatetime()
@@ -65,9 +66,10 @@ async function toggleExpand(schedule: ScheduleResponse) {
 
 function formatDate(dateStr: string): string {
   const d = dayjs.tz(dateStr, userTimezone.value)
-  // 例: "5月20日(火)" 形式
-  const weekdays = ['日', '月', '火', '水', '木', '金', '土']
-  return `${d.month() + 1}月${d.date()}日(${weekdays[d.day()]})`
+  // 例: ja は "5月20日(火)" 形式。表示言語に合わせて Intl で整形する
+  return new Intl.DateTimeFormat(locale.value, { month: 'numeric', day: 'numeric', weekday: 'short' }).format(
+    new Date(d.year(), d.month(), d.date()),
+  )
 }
 
 // 出欠率バーの幅(%)
@@ -77,10 +79,10 @@ function barWidth(count: number, total: number): number {
 }
 
 const statusConfig = {
-  YES: { label: '出席', color: '#22c55e', icon: 'pi-check', bg: 'bg-green-100 text-green-700' },
-  NO: { label: '欠席', color: '#ef4444', icon: 'pi-times', bg: 'bg-red-100 text-red-600' },
-  MAYBE: { label: '未定', color: '#f59e0b', icon: 'pi-question', bg: 'bg-yellow-100 text-yellow-700' },
-  PENDING: { label: '未回答', color: '#94a3b8', icon: 'pi-clock', bg: 'bg-surface-100 text-surface-500' },
+  YES: { labelKey: 'yes', color: '#22c55e', icon: 'pi-check', bg: 'bg-green-100 text-green-700' },
+  NO: { labelKey: 'no', color: '#ef4444', icon: 'pi-times', bg: 'bg-red-100 text-red-600' },
+  MAYBE: { labelKey: 'maybe', color: '#f59e0b', icon: 'pi-question', bg: 'bg-yellow-100 text-yellow-700' },
+  PENDING: { labelKey: 'pending', color: '#94a3b8', icon: 'pi-clock', bg: 'bg-surface-100 text-surface-500' },
 }
 
 onMounted(load)
@@ -90,7 +92,7 @@ onMounted(load)
   <div @click.stop>
     <!-- ヘッダー -->
     <div class="mb-3 flex items-center justify-between">
-      <span class="text-xs text-surface-400">直近30日 ± のイベント</span>
+      <span class="text-xs text-surface-400">{{ t('dashboard.attendance_results.recentRange') }}</span>
       <Button icon="pi pi-refresh" text rounded size="small" :loading="loading" @click="load" />
     </div>
 
@@ -152,7 +154,7 @@ onMounted(load)
                 <span class="text-surface-400">
                   <i class="pi pi-clock text-[10px]" /> {{ schedule.attendanceStats.pending }}
                 </span>
-                <span class="text-surface-400">/ {{ schedule.attendanceStats.total }}名</span>
+                <span class="text-surface-400">{{ t('dashboard.attendance_results.memberTotal', { total: schedule.attendanceStats.total }) }}</span>
               </div>
             </div>
           </div>
@@ -206,14 +208,14 @@ onMounted(load)
                 class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium"
                 :class="statusConfig[member.status].bg"
               >
-                {{ statusConfig[member.status].label }}
+                {{ t(`dashboard.attendance_results.status.${statusConfig[member.status].labelKey}`) }}
               </span>
             </div>
           </div>
 
           <!-- データなし -->
           <div v-else class="py-3 text-center text-sm text-surface-400">
-            出欠データがありません
+            {{ t('dashboard.attendance_results.noData') }}
           </div>
         </div>
       </div>
@@ -222,7 +224,7 @@ onMounted(load)
     <!-- 空状態 -->
     <div v-else class="py-8 text-center">
       <i class="pi pi-calendar-times mb-2 text-3xl text-surface-300" />
-      <p class="text-sm text-surface-400">対象のイベントがありません</p>
+      <p class="text-sm text-surface-400">{{ t('dashboard.attendance_results.empty') }}</p>
     </div>
   </div>
 </template>

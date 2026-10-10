@@ -1,5 +1,6 @@
 package com.mannschaft.app.social.announcement;
 
+import com.mannschaft.app.social.announcement.audience.ResolvedBroadcastAudience;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -50,4 +51,12 @@ public class BroadcastRequest {
 
     /** スコープ ID（チーム ID または組織 ID）。 */
     private Long scopeId;
+
+    /**
+     * 解決済みの宛先（F01.2.1 §8。{@code BroadcastAudienceResolver#resolveForBroadcast} の結果）。
+     *
+     * <p>組織告知で宛先を絞る場合は必須。宛先の解決は別ドメインを引くため、告知のトランザクションの外で
+     * 済ませてから渡す。</p>
+     */
+    private ResolvedBroadcastAudience audience;
 }

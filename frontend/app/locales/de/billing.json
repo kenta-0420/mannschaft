@@ -106,10 +106,10 @@
       "close": "Schließen"
     },
     "manage": {
-      "title": "課金・プラン管理",
-      "personalTitle": "課金・プラン管理",
-      "teamTitle": "チームの課金・プラン管理",
-      "orgTitle": "組織の課金・プラン管理",
+      "title": "Abrechnung & Planverwaltung",
+      "personalTitle": "Abrechnung & Planverwaltung",
+      "teamTitle": "Abrechnung & Planverwaltung des Teams",
+      "orgTitle": "Abrechnung & Planverwaltung der Organisation",
       "activeContract": "契約中のプラン",
       "addons": "アドオン",
       "entitledFeatures": "利用できる機能",
@@ -166,7 +166,7 @@
         "cancelCta": "やめておく"
       },
       "help": {
-        "title": "課金・プラン管理の使い方ガイド",
+        "title": "Anleitung zur Abrechnung & Planverwaltung",
         "plan": {
           "title": "プランとは",
           "body": "現在契約しているプランと、利用できる機能の一覧を確認できます。プランを変更したい場合は「プラン一覧を見る」から新しいプランを選んでください。"
