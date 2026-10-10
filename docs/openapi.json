@@ -3290,7 +3290,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -3346,7 +3346,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -20766,8 +20766,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -20775,8 +20774,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -20814,8 +20812,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -20823,8 +20820,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -20872,8 +20868,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -20881,8 +20876,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -25953,7 +25947,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -25993,7 +25987,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -27226,7 +27220,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
+                  "$ref": "#/components/schemas/ApiResponseActivityDetailResponse"
                 }
               }
             }
@@ -30680,7 +30674,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseThreadResponse"
+                  "$ref": "#/components/schemas/PagedResponseBulletinThreadResponse"
                 }
               }
             }
@@ -30727,7 +30721,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -30994,7 +30988,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -31042,7 +31036,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -31099,7 +31093,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -37274,6 +37268,56 @@
         "responses": {
           "204": {
             "description": "キャンセル成功"
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/activity-sync-preview": {
+      "post": {
+        "tags": [
+          "チームスケジュール管理"
+        ],
+        "summary": "予定編集時の活動記録同期確認",
+        "operationId": "activitySyncPreview",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivitySyncPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseActivitySyncPreviewResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -45687,8 +45731,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -45802,8 +45845,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -45844,8 +45886,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -45853,8 +45894,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -45968,8 +46008,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -45977,8 +46016,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -51078,7 +51116,9 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "maximum": 15,
+              "minimum": 1
             }
           }
         ],
@@ -66198,6 +66238,56 @@
         }
       }
     },
+    "/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/activity-sync-preview": {
+      "post": {
+        "tags": [
+          "組織スケジュール管理"
+        ],
+        "summary": "予定編集時の活動記録同期確認",
+        "operationId": "activitySyncPreview_1",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivitySyncPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseActivitySyncPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgPublicId}/schedule-keeps": {
       "get": {
         "tags": [
@@ -69207,8 +69297,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -69216,8 +69305,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -69246,8 +69334,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -69255,8 +69342,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -70728,6 +70814,26 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
           }
         ],
         "responses": {
@@ -70736,7 +70842,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListProxyInputConsentResponse"
+                  "$ref": "#/components/schemas/PagedResponseProxyInputConsentResponse"
                 }
               }
             }
@@ -74749,6 +74855,49 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBroadcastResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/broadcast/audience-preview": {
+      "post": {
+        "tags": [
+          "告知ウィザード"
+        ],
+        "summary": "組織告知の宛先プレビュー",
+        "description": "F01.2.1 §10.9。宛先指定（チーム・グループ個別・範囲・未分類）を解決し、チーム数・直属メンバー数・先頭50件のチーム・展開後のグループ・pushEnabled を返す。組織の非メンバーは 403 COMMON_002。",
+        "operationId": "previewOrgAudience",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AudiencePreviewRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAudiencePreviewResponseDto"
                 }
               }
             }
@@ -84086,7 +84235,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseThreadResponse"
+                  "$ref": "#/components/schemas/PagedResponseBulletinThreadResponse"
                 }
               }
             }
@@ -84135,7 +84284,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -84293,7 +84442,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -84582,7 +84731,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseAttachmentResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinAttachmentResponse"
                 }
               }
             }
@@ -88689,7 +88838,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListActivityRecordResponse"
+                  "$ref": "#/components/schemas/PagedResponseActivityRecordResponse"
                 }
               }
             }
@@ -88763,6 +88912,15 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityVersionRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "公開成功",
@@ -89015,6 +89173,56 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/activities/draft-from-schedule": {
+      "post": {
+        "tags": [
+          "活動記録"
+        ],
+        "summary": "予定から活動記録の下書きを作成",
+        "operationId": "draftFromSchedule",
+        "parameters": [
+          {
+            "name": "scope_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDraftFromScheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseActivityDetailResponse"
                 }
               }
             }
@@ -90054,7 +90262,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -95008,8 +95216,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95017,8 +95224,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95068,8 +95274,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95119,8 +95324,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95170,8 +95374,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95179,8 +95382,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95230,8 +95432,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95239,8 +95440,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95290,8 +95490,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95341,8 +95540,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95350,8 +95548,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95389,8 +95586,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95398,8 +95594,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95430,8 +95625,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95439,8 +95633,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95490,8 +95683,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95529,8 +95721,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95561,8 +95752,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -108614,7 +108804,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -108656,7 +108846,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -108698,7 +108888,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -111863,7 +112053,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseThreadResponse"
+                  "$ref": "#/components/schemas/PagedResponseBulletinThreadResponse"
                 }
               }
             }
@@ -111930,7 +112120,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseThreadResponse"
+                  "$ref": "#/components/schemas/PagedResponseBulletinThreadResponse"
                 }
               }
             }
@@ -115070,6 +115260,46 @@
                 "schema": {
                   "type": "string",
                   "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/activities": {
+      "get": {
+        "tags": [
+          "チームスケジュール管理"
+        ],
+        "summary": "予定に関連する閲覧可能な活動記録",
+        "operationId": "linkedActivities",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListActivityRecordResponse"
                 }
               }
             }
@@ -118930,8 +119160,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -118971,8 +119200,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -118980,8 +119208,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -119021,8 +119248,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -119062,8 +119288,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -119071,8 +119296,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -121851,6 +122075,39 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/attendance/permissions": {
+      "get": {
+        "tags": [
+          "学校出欠管理"
+        ],
+        "summary": "学校出欠の権限判定結果取得",
+        "description": "自分が当該クラスの出欠を閲覧・日次登録・時限登録できるかを返す。権限なしでも 200 で全項目 false。",
+        "operationId": "getPermissions",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttendancePermissionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/attendance/periods": {
       "get": {
         "tags": [
@@ -121883,7 +122140,9 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "maximum": 15,
+              "minimum": 1
             }
           }
         ],
@@ -121924,7 +122183,9 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "maximum": 15,
+              "minimum": 1
             }
           },
           {
@@ -123323,6 +123584,47 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponsePageViewAnalyticsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{scopeId}/announcements/{feedId}/preview": {
+      "get": {
+        "tags": [
+          "お知らせ本文プレビュー"
+        ],
+        "summary": "チームお知らせ本文プレビュー",
+        "operationId": "teamPreview",
+        "parameters": [
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "feedId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAnnouncementPreviewResponse"
                 }
               }
             }
@@ -126691,7 +126993,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -126701,7 +127003,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -130968,12 +131270,41 @@
         "operationId": "getProxyInputRecords",
         "parameters": [
           {
+            "name": "organizationId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
             "name": "subjectUserId",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
             }
           }
         ],
@@ -130983,7 +131314,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListProxyInputConsentResponse"
+                  "$ref": "#/components/schemas/PagedResponseProxyInputRecordResponse"
                 }
               }
             }
@@ -132289,6 +132620,47 @@
         }
       }
     },
+    "/api/v1/organizations/{scopeId}/announcements/{feedId}/preview": {
+      "get": {
+        "tags": [
+          "お知らせ本文プレビュー"
+        ],
+        "summary": "組織お知らせ本文プレビュー",
+        "operationId": "organizationPreview",
+        "parameters": [
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "feedId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAnnouncementPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{organizationId}/parking/visitor-reservations/{id}": {
       "get": {
         "tags": [
@@ -133330,6 +133702,46 @@
         }
       }
     },
+    "/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/activities": {
+      "get": {
+        "tags": [
+          "組織スケジュール管理"
+        ],
+        "summary": "予定に関連する閲覧可能な活動記録",
+        "operationId": "linkedActivities_1",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListActivityRecordResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgPublicId}/schedule-keeps/by-schedule/{scheduleId}": {
       "get": {
         "tags": [
@@ -133383,8 +133795,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -133401,8 +133812,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -133483,8 +133893,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -133501,8 +133910,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -133603,8 +134011,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -133694,8 +134101,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -134803,8 +135209,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -134812,8 +135217,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -144364,7 +144768,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListAttachmentResponse"
+                  "$ref": "#/components/schemas/ApiResponseListBulletinAttachmentResponse"
                 }
               }
             }
@@ -144396,7 +144800,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListAttachmentResponse"
+                  "$ref": "#/components/schemas/ApiResponseListBulletinAttachmentResponse"
                 }
               }
             }
@@ -144727,8 +145131,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -144736,8 +145139,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -144745,8 +145147,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -152607,11 +153008,11 @@
           }
         }
       },
-      "ApiResponseThreadResponse": {
+      "ApiResponseBulletinThreadResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ThreadResponse"
+            "$ref": "#/components/schemas/BulletinThreadResponse"
           }
         }
       },
@@ -152630,7 +153031,7 @@
           }
         }
       },
-      "ThreadResponse": {
+      "BulletinThreadResponse": {
         "type": "object",
         "properties": {
           "archiveFolderId": {
@@ -164660,7 +165061,7 @@
             "maximum": 30,
             "minimum": 0
           },
-          "enabled": {
+          "isEnabled": {
             "type": "boolean"
           },
           "penaltyDurationDays": {
@@ -164707,12 +165108,12 @@
             "type": "integer",
             "format": "int32"
           },
-          "enabled": {
-            "type": "boolean"
-          },
           "id": {
             "type": "integer",
             "format": "int64"
+          },
+          "isEnabled": {
+            "type": "boolean"
           },
           "penaltyDurationDays": {
             "type": "integer",
@@ -166159,6 +166560,15 @@
           }
         }
       },
+      "OrgSocialDto": {
+        "type": "object",
+        "properties": {
+          "supporterCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "OrgTimestampsDto": {
         "type": "object",
         "properties": {
@@ -166210,6 +166620,9 @@
           },
           "slug": {
             "type": "string"
+          },
+          "social": {
+            "$ref": "#/components/schemas/OrgSocialDto"
           },
           "teamApplication": {
             "$ref": "#/components/schemas/TeamApplicationDto"
@@ -170878,6 +171291,10 @@
             "type": "string",
             "format": "date"
           },
+          "activityEndDate": {
+            "type": "string",
+            "format": "date"
+          },
           "activityTimeEnd": {
             "type": "string",
             "example": "14:30:00"
@@ -170911,10 +171328,18 @@
               "format": "int64"
             }
           },
+          "templateId": {
+            "type": "integer",
+            "format": "int64"
+          },
           "title": {
             "type": "string",
             "maxLength": 200,
             "minLength": 0
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
           },
           "visibility": {
             "type": "string"
@@ -170932,36 +171357,69 @@
             "format": "date"
           },
           "activityTimeEnd": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "example": "14:30:00"
           },
           "activityTimeStart": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "example": "14:30:00"
           },
           "attachments": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "autoGeneratedFromSchedule": {
+            "type": "boolean"
           },
           "createdAt": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "createdBy": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64"
           },
           "description": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "fieldValues": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "id": {
             "type": "integer",
             "format": "int64"
           },
+          "isPlanned": {
+            "type": "boolean"
+          },
           "location": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadataOnly": {
+            "type": "boolean"
           },
           "scheduleId": {
             "type": "integer",
@@ -170978,24 +171436,38 @@
             "type": "string"
           },
           "templateId": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64"
           },
           "title": {
             "type": "string"
           },
           "updatedAt": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "venueId": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64"
           },
           "visibility": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "autoGeneratedFromSchedule",
+          "isPlanned",
+          "metadataOnly"
+        ]
       },
       "ApiResponseActivityRecordResponse": {
         "type": "object",
@@ -177930,6 +178402,312 @@
           },
           "targetType": {
             "type": "string"
+          }
+        }
+      },
+      "ActivitySyncConfirmation": {
+        "type": "object",
+        "properties": {
+          "activities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivitySyncSelection"
+            }
+          },
+          "expectedScheduleState": {
+            "$ref": "#/components/schemas/ExpectedScheduleState"
+          }
+        },
+        "required": [
+          "activities",
+          "expectedScheduleState"
+        ]
+      },
+      "ActivitySyncPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "scheduleUpdate": {
+            "$ref": "#/components/schemas/UpdateScheduleRequest"
+          },
+          "updateScope": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduleUpdate"
+        ]
+      },
+      "ActivitySyncSelection": {
+        "type": "object",
+        "properties": {
+          "applyFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "applyFields",
+          "id",
+          "version"
+        ]
+      },
+      "ExpectedScheduleEntry": {
+        "type": "object",
+        "properties": {
+          "allDay": {
+            "type": "boolean"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "ExpectedScheduleState": {
+        "type": "object",
+        "properties": {
+          "allDay": {
+            "type": "boolean"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "schedules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpectedScheduleEntry"
+            }
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UpdateReminderRequest": {
+        "type": "object",
+        "properties": {
+          "remindAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "remindAtValid": {
+            "type": "boolean"
+          },
+          "remindBeforeMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "remindBeforeMinutesValid": {
+            "type": "boolean"
+          },
+          "reminderKind": {
+            "type": "string",
+            "enum": [
+              "RELATIVE",
+              "ABSOLUTE"
+            ]
+          }
+        }
+      },
+      "UpdateScheduleRequest": {
+        "type": "object",
+        "properties": {
+          "academicYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "allDay": {
+            "type": "boolean"
+          },
+          "attendanceDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attendanceRequired": {
+            "type": "boolean"
+          },
+          "commentOption": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventCategoryId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "eventType": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 0
+          },
+          "minResponseRole": {
+            "type": "string"
+          },
+          "minViewRole": {
+            "type": "string"
+          },
+          "reminders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpdateReminderRequest"
+            },
+            "maxItems": 5,
+            "minItems": 0
+          },
+          "scheduledAttendance": {
+            "$ref": "#/components/schemas/ScheduledAttendanceRequest"
+          },
+          "scheduledSurveys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduledSurveyRequest"
+            },
+            "maxItems": 10,
+            "minItems": 0
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "syncConfirmation": {
+            "$ref": "#/components/schemas/ActivitySyncConfirmation"
+          },
+          "targetMode": {
+            "type": "string"
+          },
+          "targetUserIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "maxItems": 500,
+            "minItems": 0
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "updateScope": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          }
+        }
+      },
+      "ActivitySyncChange": {
+        "type": "object",
+        "properties": {
+          "automatic": {
+            "type": "boolean"
+          },
+          "currentValue": {
+            "type": "object"
+          },
+          "field": {
+            "type": "string"
+          },
+          "scheduleValue": {
+            "type": "object"
+          }
+        }
+      },
+      "ActivitySyncPreviewEntry": {
+        "type": "object",
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivitySyncChange"
+            }
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ActivitySyncPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "activities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivitySyncPreviewEntry"
+            }
+          },
+          "expectedScheduleState": {
+            "$ref": "#/components/schemas/ExpectedScheduleState"
+          }
+        }
+      },
+      "ApiResponseActivitySyncPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ActivitySyncPreviewResponse"
           }
         }
       },
@@ -186424,8 +187202,21 @@
             "type": "string",
             "format": "date-time"
           },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
           "priority": {
             "type": "string"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "targetGroupRange": {
+            "$ref": "#/components/schemas/TargetGroupRange"
           },
           "targetRole": {
             "type": "string",
@@ -186449,6 +187240,19 @@
           "content",
           "targetRole"
         ]
+      },
+      "TargetGroupRange": {
+        "type": "object",
+        "properties": {
+          "fromGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toGroupId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       },
       "ApiResponseBroadcastResponseDto": {
         "type": "object",
@@ -186487,8 +187291,21 @@
             "type": "string",
             "format": "date-time"
           },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
           "priority": {
             "type": "string"
+          },
+          "targetAudience": {
+            "$ref": "#/components/schemas/TargetAudience"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           },
           "targetRole": {
             "type": "string"
@@ -186499,6 +187316,65 @@
               "type": "integer",
               "format": "int64"
             }
+          }
+        }
+      },
+      "GroupRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "RangeRef": {
+        "type": "object",
+        "properties": {
+          "fromGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromGroupName": {
+            "type": "string"
+          },
+          "toGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toGroupName": {
+            "type": "string"
+          }
+        }
+      },
+      "TargetAudience": {
+        "type": "object",
+        "properties": {
+          "directMemberCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupRef"
+            }
+          },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "range": {
+            "$ref": "#/components/schemas/RangeRef"
+          },
+          "teamCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -186868,7 +187744,8 @@
             "items": {
               "$ref": "#/components/schemas/PeriodAttendanceEntry"
             },
-            "minItems": 1
+            "maxItems": 200,
+            "minItems": 0
           }
         },
         "required": [
@@ -187235,7 +188112,8 @@
             "items": {
               "$ref": "#/components/schemas/DailyRollCallEntry"
             },
-            "minItems": 1
+            "maxItems": 200,
+            "minItems": 0
           }
         },
         "required": [
@@ -187498,6 +188376,9 @@
             "type": "integer",
             "format": "int64"
           },
+          "contentPreviewAvailable": {
+            "type": "boolean"
+          },
           "createdAt": {
             "type": "string"
           },
@@ -187555,7 +188436,18 @@
           "visibility": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "accessState",
+          "contentPreviewAvailable",
+          "excerptCache",
+          "id",
+          "scopeId",
+          "scopeType",
+          "sourceId",
+          "sourceType",
+          "titleCache"
+        ]
       },
       "ApiResponseAnnouncementFeedItemDto": {
         "type": "object",
@@ -198405,6 +199297,116 @@
           }
         }
       },
+      "AudiencePreviewRequestDto": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "BULLETIN_THREAD",
+              "TIMELINE_POST",
+              "BLOG_POST",
+              "TODO",
+              "SCHEDULE",
+              "SURVEY"
+            ]
+          },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "targetGroupRange": {
+            "$ref": "#/components/schemas/TargetGroupRange"
+          },
+          "targetRole": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 0
+          },
+          "targetTeamIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "templateId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseAudiencePreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AudiencePreviewResponseDto"
+          }
+        }
+      },
+      "AudiencePreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "directMemberCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupItem"
+            }
+          },
+          "pushEnabled": {
+            "type": "boolean"
+          },
+          "resolvedTeamCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sampleTeams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SampleTeam"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "GroupItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "SampleTeam": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
       "ActivateTemplateResponse": {
         "type": "object",
         "properties": {
@@ -204665,6 +205667,51 @@
           }
         }
       },
+      "ApiResponseBulletinAttachmentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BulletinAttachmentResponse"
+          }
+        }
+      },
+      "BulletinAttachmentResponse": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fileKey": {
+            "type": "string"
+          },
+          "fileSize": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "originalFilename": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetType": {
+            "type": "string"
+          }
+        }
+      },
       "ReverseTransactionRequest": {
         "type": "object",
         "properties": {
@@ -206482,6 +207529,15 @@
           "templateId"
         ]
       },
+      "ActivityVersionRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "AddParticipantsRequest": {
         "type": "object",
         "properties": {
@@ -206594,6 +207650,213 @@
         "required": [
           "activityDate"
         ]
+      },
+      "CreateDraftFromScheduleRequest": {
+        "type": "object",
+        "properties": {
+          "scheduleId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "scheduleId"
+        ]
+      },
+      "ActivityDetailResponse": {
+        "type": "object",
+        "properties": {
+          "activityDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "activityEndDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "activityTimeEnd": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "14:30:00"
+          },
+          "activityTimeStart": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "14:30:00"
+          },
+          "attachments": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "autoGeneratedFromSchedule": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "type": "boolean"
+          },
+          "canEdit": {
+            "type": "boolean"
+          },
+          "canPublish": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fieldValues": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isPlanned": {
+            "type": "boolean"
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadataOnly": {
+            "type": "boolean"
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityParticipantResponse"
+            }
+          },
+          "scheduleId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopePublicId": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "sourceSchedule": {
+            "$ref": "#/components/schemas/ActivitySourceScheduleResponse"
+          },
+          "status": {
+            "type": "string"
+          },
+          "templateFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateFieldResponse"
+            }
+          },
+          "templateId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "venueId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "visibility": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "autoGeneratedFromSchedule",
+          "canDelete",
+          "isPlanned",
+          "metadataOnly"
+        ]
+      },
+      "ActivitySourceScheduleResponse": {
+        "type": "object",
+        "properties": {
+          "canView": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopePublicId": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseActivityDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ActivityDetailResponse"
+          }
+        }
       },
       "CreateActionMemoRequest": {
         "type": "object",
@@ -208042,127 +209305,6 @@
           "id": {
             "type": "integer",
             "format": "int64"
-          }
-        }
-      },
-      "UpdateReminderRequest": {
-        "type": "object",
-        "properties": {
-          "remindAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "remindAtValid": {
-            "type": "boolean"
-          },
-          "remindBeforeMinutes": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "remindBeforeMinutesValid": {
-            "type": "boolean"
-          },
-          "reminderKind": {
-            "type": "string",
-            "enum": [
-              "RELATIVE",
-              "ABSOLUTE"
-            ]
-          }
-        }
-      },
-      "UpdateScheduleRequest": {
-        "type": "object",
-        "properties": {
-          "academicYear": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "allDay": {
-            "type": "boolean"
-          },
-          "attendanceDeadline": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "attendanceRequired": {
-            "type": "boolean"
-          },
-          "commentOption": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string",
-            "maxLength": 5000,
-            "minLength": 0
-          },
-          "endAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "eventCategoryId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "eventType": {
-            "type": "string"
-          },
-          "location": {
-            "type": "string",
-            "maxLength": 300,
-            "minLength": 0
-          },
-          "minResponseRole": {
-            "type": "string"
-          },
-          "minViewRole": {
-            "type": "string"
-          },
-          "reminders": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/UpdateReminderRequest"
-            },
-            "maxItems": 5,
-            "minItems": 0
-          },
-          "scheduledAttendance": {
-            "$ref": "#/components/schemas/ScheduledAttendanceRequest"
-          },
-          "scheduledSurveys": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ScheduledSurveyRequest"
-            },
-            "maxItems": 10,
-            "minItems": 0
-          },
-          "startAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "targetMode": {
-            "type": "string"
-          },
-          "targetUserIds": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "maxItems": 500,
-            "minItems": 0
-          },
-          "title": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          },
-          "updateScope": {
-            "type": "string"
-          },
-          "visibility": {
-            "type": "string"
           }
         }
       },
@@ -214638,13 +215780,13 @@
           }
         }
       },
-      "PagedResponseThreadResponse": {
+      "PagedResponseBulletinThreadResponse": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ThreadResponse"
+              "$ref": "#/components/schemas/BulletinThreadResponse"
             }
           },
           "meta": {
@@ -217696,6 +218838,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AttendanceResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListActivityRecordResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityRecordResponse"
             }
           }
         }
@@ -223603,6 +224756,32 @@
           }
         }
       },
+      "ApiResponseAttendancePermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AttendancePermissionsResponse"
+          }
+        }
+      },
+      "AttendancePermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "canRecordDaily": {
+            "type": "boolean"
+          },
+          "canRecordPeriod": {
+            "type": "boolean"
+          },
+          "canView": {
+            "type": "boolean"
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ApiResponsePeriodAttendanceListResponse": {
         "type": "object",
         "properties": {
@@ -225084,6 +226263,114 @@
           "uniqueVisitors": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "AnnouncementPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "accessState": {
+            "type": "string",
+            "enum": [
+              "FULL",
+              "LOCKED"
+            ]
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulletinAttachmentResponse"
+            }
+          },
+          "blogPost": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BlogPostResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bulletinThread": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BulletinThreadResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "feedId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string",
+            "enum": [
+              "TEAM",
+              "ORGANIZATION"
+            ]
+          },
+          "sourceId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "BLOG_POST",
+                  "BULLETIN_THREAD"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "accessState",
+          "attachments",
+          "blogPost",
+          "bulletinThread",
+          "feedId",
+          "scopeId",
+          "scopeType",
+          "sourceId",
+          "sourceType",
+          "sourceUrl"
+        ]
+      },
+      "ApiResponseAnnouncementPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AnnouncementPreviewResponse"
           }
         }
       },
@@ -232564,6 +233851,73 @@
           }
         }
       },
+      "PagedResponseProxyInputRecordResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProxyInputRecordResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "ProxyInputRecordResponse": {
+        "type": "object",
+        "properties": {
+          "auditLogId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "監査ログID（未紐付けはnull）"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "featureScope": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "inputSource": {
+            "type": "string"
+          },
+          "originalStorageLocation": {
+            "type": "string"
+          },
+          "proxyInputConsentId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "代理入力同意ID（同意書紐付けのない履歴はnull）"
+          },
+          "proxyUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "subjectUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetEntityId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetEntityType": {
+            "type": "string"
+          }
+        }
+      },
       "ApiResponseListProxyInputConsentResponse": {
         "type": "object",
         "properties": {
@@ -234737,6 +236091,20 @@
             "items": {
               "$ref": "#/components/schemas/ActivitySnapshotDto"
             }
+          }
+        }
+      },
+      "PagedResponseProxyInputConsentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProxyInputConsentResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
           }
         }
       },
@@ -241666,6 +243034,38 @@
           }
         }
       },
+      "ApiResponseThreadResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ThreadResponse"
+          }
+        }
+      },
+      "ThreadResponse": {
+        "type": "object",
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "root": {
+            "$ref": "#/components/schemas/ChatMessageResponse"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "ApiResponseDownloadUrlResponse": {
         "type": "object",
         "properties": {
@@ -241788,6 +243188,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FolderItemResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListBulletinAttachmentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulletinAttachmentResponse"
             }
           }
         }
@@ -243281,7 +244692,7 @@
           }
         }
       },
-      "ApiResponseListActivityRecordResponse": {
+      "PagedResponseActivityRecordResponse": {
         "type": "object",
         "properties": {
           "data": {
@@ -243289,6 +244700,9 @@
             "items": {
               "$ref": "#/components/schemas/ActivityRecordResponse"
             }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
           }
         }
       },

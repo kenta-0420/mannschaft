@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.tngtech.archunit.core.domain.JavaAnnotation;
 import com.tngtech.archunit.core.domain.JavaClass;
@@ -35,10 +36,10 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * 追加したのに正本表を更新し忘れた場合と、表だけが残って実装が消えた場合の両方を失敗させる。</p>
  */
 @DisplayName("退会個人データ削除リスナー正本整合番人")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class WithdrawalPersonalDataListenerCoverageGuardTest {
 
     private static final Path REPOSITORY_ROOT = findRepositoryRoot();
-    private static final Path MAIN_CLASSES = REPOSITORY_ROOT.resolve("backend/build/classes/java/main");
     private static final Path LEDGER = REPOSITORY_ROOT.resolve(
             "docs/architecture/withdrawal_flow_immediate_anonymization_fix.md");
     private static final String LEDGER_START = "<!-- GDPR_EVENT_LISTENER_LEDGER_START -->";
@@ -105,11 +106,7 @@ class WithdrawalPersonalDataListenerCoverageGuardTest {
     }
 
     private static Set<Subscription> productionSubscriptions() {
-        assertThat(MAIN_CLASSES)
-                .as("mainクラスがコンパイル済みであること")
-                .isDirectory();
-
-        return subscriptionsFrom(new ClassFileImporter().importPath(MAIN_CLASSES));
+        return subscriptionsFrom(ProductionClasses.get());
     }
 
     private static Set<Subscription> subscriptionsFrom(JavaClasses classes) {

@@ -12,7 +12,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * お知らせ作成サービス（F02.6）。
@@ -38,6 +42,7 @@ public class AnnouncementCreationService {
     private static final int MAX_TITLE_CACHE_LENGTH = 200;
 
     private final AnnouncementFeedRepository feedRepository;
+    private final AnnouncementFeedGroupSnapshotRepository snapshotRepository;
     private final AccessControlService accessControlService;
     private final ProxyInputContext proxyInputContext;
     private final ProxyInputRecordRepository proxyInputRecordRepository;
@@ -250,6 +255,43 @@ public class AnnouncementCreationService {
         log.info("告知ウィザード経由フィード登録完了 feedId={}, sourceType={}, sourceId={}, priority={}",
                 saved.getId(), sourceType, sourceId, priority);
         return saved;
+    }
+
+    /**
+     * 告知ウィザードで作ったフィードに、宛先の記録（F01.2.1 §5.6・§8.2）を書き込む。
+     *
+     * <p>{@code target_group_ids}・{@code include_unassigned}・{@code target_audience} を更新し、グループ宛てなら
+     * 送信時の (グループ, チーム) を {@code announcement_feed_group_snapshots} に保存する（push の有無にかかわらず
+     * 常に保存。AC-H26）。同じフィードの既存スナップショットは置き換える（同じ告知の再登録で重複させない）。</p>
+     *
+     * @param feedId            フィード ID
+     * @param targetGroupIds    展開したグループ ID の JSON 配列（グループ宛てでなければ null）
+     * @param includeUnassigned 未分類のチームを含めるか
+     * @param targetAudience    送信時の宛先指定の記録（JSON。絞り込みなしなら null）
+     * @param groupTeams        グループ ID → 送信時に ACTIVE で所属していたチーム ID
+     */
+    @Transactional
+    public void recordBroadcastAudience(Long feedId, String targetGroupIds, boolean includeUnassigned,
+                                        String targetAudience, Map<UUID, List<Long>> groupTeams) {
+        AnnouncementFeedEntity feed = feedRepository.findById(feedId)
+                .orElseThrow(() -> new IllegalStateException("宛先を記録するフィードがありません: feedId=" + feedId));
+        feedRepository.save(feed.toBuilder()
+                .targetGroupIds(targetGroupIds)
+                .includeUnassigned(includeUnassigned)
+                .targetAudience(targetAudience)
+                .build());
+
+        snapshotRepository.deleteByFeedId(feedId);
+        List<AnnouncementFeedGroupSnapshotEntity> rows = new ArrayList<>();
+        groupTeams.forEach((groupId, teamIds) -> teamIds.forEach(teamId -> rows.add(
+                AnnouncementFeedGroupSnapshotEntity.builder()
+                        .feedId(feedId)
+                        .groupId(groupId.toString())
+                        .teamId(teamId)
+                        .build())));
+        if (!rows.isEmpty()) {
+            snapshotRepository.saveAll(rows);
+        }
     }
 
     // ═════════════════════════════════════════════════════════════

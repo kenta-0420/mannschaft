@@ -268,6 +268,12 @@ class ParkingVisitorReservationServiceTest {
     @DisplayName("create")
     class Create {
 
+        @BeforeEach
+        void setUpSpaceInScope() {
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(createSpaceInScope().toBuilder().id(SPACE_ID).build()));
+        }
+
         @Test
         @DisplayName("正常系: 承認必要な設定で予約がPENDING_APPROVALで作成される")
         void create_承認必要_PENDING_APPROVALで作成() {

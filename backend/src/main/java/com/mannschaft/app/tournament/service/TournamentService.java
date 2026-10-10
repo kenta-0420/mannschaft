@@ -65,6 +65,8 @@ public class TournamentService {
     private final TournamentParticipantRepository participantRepository;
     private final TournamentMapper mapper;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    /** 閲覧可否の共通ゲート（部門・参加チーム一覧と同じ判定。非 @Transactional の独立部品）。 */
+    private final TournamentViewAccessGate viewAccessGate;
     /** 認可根治戦役 Wave7: 大会一覧/詳細で主催組織 ADMIN/DEPUTY_ADMIN を判定するため。 */
     private final com.mannschaft.app.common.AccessControlService accessControlService;
     /** CMP-028 Phase C: 大会一覧の可視レベル解決（SQL 述語化）のため。 */
@@ -210,13 +212,7 @@ public class TournamentService {
                 .filter(t -> orgId.equals(t.getOrganizationId()))
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
 
-        boolean orgManager = viewerUserId != null
-                && (accessControlService.isSystemAdmin(viewerUserId)
-                    || accessControlService.isAdminOrAbove(
-                            viewerUserId, tournament.getOrganizationId(), "ORGANIZATION"));
-        if (!orgManager
-                && !contentVisibilityChecker.canView(
-                        ReferenceType.TOURNAMENT, tournamentId, viewerUserId)) {
+        if (!viewAccessGate.isViewableBy(tournamentId, tournament.getOrganizationId(), viewerUserId)) {
             throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
         }
 

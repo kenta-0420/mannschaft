@@ -10,8 +10,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -59,7 +61,6 @@ class ArchUnitFreezeStoreIntegrityTest {
     private static final Path STORE_DIR =
         Paths.get("src", "test", "resources", "archunit_store");
 
-    private static final Path STORED_RULES_FILE = STORE_DIR.resolve("stored.rules");
 
     /**
      * 認可番人ストア（Wave4）の期待行数。
@@ -702,8 +703,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      * このブランチの分岐後に main 側で解消された D-1 越境依存 61 行が chip-away
      * （FreezingArchRule の既定挙動・解消済み違反の自動削除）で反映された。フルビルド
      * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値へ追随。</p>
+     * <p>正式1e8の全量解析と原因検分で確認した旧原因17件の削減（2063→2046）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2063;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2046;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -718,10 +720,14 @@ class ArchUnitFreezeStoreIntegrityTest {
      *
      * <p>CMP-260820-1014 で所属スコープ列挙を正本サービスへ集約後、CIフル解析で実測した
      * {@code 1450 → 1407}（43件解消）へ追随。</p>
+     * <p>正式1e8の削減41件は旧原因3件と注釈入口scope38件。scope分は越境解消としない。</p>
      */
     // origin/main の CMP-260922-2230（1459→1447、12件解消）は上記1407行版の
     // 削除集合に全件包含されるため、並行ブランチの削除数を二重加算しない。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1407;
+    // F01.2.1 6-C: DashboardService からクラス単位の @Transactional を外したため、
+    // DashboardService の越境依存 46 行が解消（追加 0・削除 46）。
+    // 6-A 側の期待値 1363 − 46 = 1317（6-A 統合後の実数）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1317;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -789,8 +795,39 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （認可の {@code checkAdminOrAbove} 経由の到達のみだったため）。同メソッドの UserRoleRepository・通知・監査ログ・
      * UserRepository への行は、未提出者の抽出・通知・監査ログという業務由来の到達なので残す。
      * main のストアとの差分は「追加 0・削除 82（上記のキーのみ）」。{@code 7538（W5 #3600 取込み後の main） → 7456}。</p>
+     * <p>正式1e8の削減47件は旧原因35件と注釈入口scope12件。scope分は越境解消としない。</p>
+     *
+     * <p>学校出欠の認可（{@code SchoolAttendanceAccessPolicy} / 各 {@code *Facade}。PR #3598）: 認可を tx の外へ出し、
+     * tx 本体の AttendanceLocationService（4 行）・AttendanceRequirementEvaluationService（8 行）・
+     * AttendanceStatisticsService（2 行）・AttendanceSummaryService（3 行）・DailyAttendanceService（3 行）・
+     * PeriodAttendanceService（4 行）・TransitionAlertService（3 行）は AccessControlService にクラスごと依存しなくなった
+     * ため計 27 行が解消。FamilyAttendanceNoticeService は acknowledgeNotice・applyToAttendanceRecord・getTeamNotices の
+     * checkAdminOrAbove を除去して role の 6 行が解消（submitNotice の {@code checkCareLink} → UserCareLinkRepository の
+     * 1 行は tx 内に残すので残す）。計 33 行（すべて認可由来の MembershipRepository / RoleRepository / UserRoleRepository /
+     * UserCareLinkRepository 等への到達）。ClassHomeroomService・DisclosureService・AttendanceRequirementService は
+     * 本 PR の対象外で残す。main のストアとの差分は「追加 0・削除 33（上記のキーのみ）」。{@code 7409 → 7376}。</p>
+     *
+     * <p>CMP-261007-2052（ブログ一覧の非所属者開放）: {@code BlogPostService.listByTeam} / {@code listByOrganization} から
+     * メンバー限定（{@code AccessControlService#checkMembership}）を外し、スコープの門は取引を持たない
+     * {@code BlogScopeAccessGuard} へ出した（Controller が先に呼ぶ）。これにより両入口から MembershipRepository への
+     * 到達 2 行が解消。追加 0（FreezingArchRule の既定挙動・解消済み違反の自動削除で反映）。{@code 7364 → 7362}。</p>
+     *
+     * <p>F01.2.1 6-A（組織グループ宛て告知）: {@code AnnouncementBroadcastService.validateTargetTeamIds} を廃止し、
+     * 宛先の検証・展開を tx の外の {@code BroadcastAudienceResolver} へ出したため、その入口の 1 行
+     * （→ UserRoleRepository）が解消。追加 0・削除 1。{@code 7376 → 7375}。</p>
+     *
+     * <p>F01.2.1 6-C（組織告知のダッシュボード表示判定）: {@code DashboardService} からクラス単位の
+     * {@code @Transactional(readOnly = true)} を外し、各ドメインの部品が自分の tx で読む形にしたため、
+     * {@code DashboardService} を入口とする 93 行がすべて解消（getPersonalDashboard 24・getTeamDashboard 21・
+     * getOrgDashboard 21・loadRecentActivity 14・filterAnnouncementGated 3・loadUnreadThreads 3・buildGreeting 2・
+     * buildScopeCoverage 1・getActivePlatformAnnouncements 1・getPersonalTodos 1・loadMyPosts 1・
+     * loadPersonalCalendarCounts 1）。追加 0・削除 93。{@code 7375 → 7282}。</p>
+     *
+     * <p>6-A と 6-C の統合（merge）: 6-A 側の期待値 7357 から 6-C の返済 93 行を引いた実数 7264 に合わせた。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7456;
+    // CMP-260820-1018: Proxy の一覧・アップロードURL生成を非TX認可入口へ整理したため4行減。Role依存自体は残る。
+    // main: BetaGrantService の通知RepositoryへのTX到達12行減も統合。独立した削除16行で7376→7360。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7264;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -872,11 +909,23 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code MembershipSubscriptionService} 経由（Service 経由・CLAUDE.md のモジュラーモノリス原則）で
      * のみ触れる形に是正し、Repository への直接依存を撤去したため。
      * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
+     * <p>正式1e8の全量解析と原因検分で確認した旧原因73件の削減（1938→1865）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1938;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1862;
+
+    /**
+     * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。
+     * <p>正式1e8の全量解析と原因検分で旧原因2件の削減を確認（607→605）。</p>
+     *
+     * <p>学校出欠の認可（PR #3598）: {@code AttendanceLocationService.getTimeline} の戻り値を Entity から
+     * {@code LocationChangeResponse}（DTO）へ替えたため 1 行が解消（605→604）。{@code recordLocationChange} は
+     * 戻り値が Entity のままなので残す。</p>
+     */
+    // CMP-260820-1018: Proxy 一覧を Page<ProxyInputConsentResponse> に変更し、公開APIのEntity露出1件を解消。
+    private static final int EXPECTED_LINES_SERVICE_API = 603;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
-    private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
+    static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
         new FrozenStoreExpectation(
             "public controller endpoints must have an authorization signal (Wave4)",
             "9ed4737d-c74f-4374-923e-4663d3c9e256",
@@ -900,23 +949,49 @@ class ArchUnitFreezeStoreIntegrityTest {
         new FrozenStoreExpectation(
             "no cross-domain repository dependency (D-5)",
             "427c445d-37ce-4d6e-b095-a1733efe209f",
-            EXPECTED_LINES_CROSS_DOMAIN_REPO_D5)
+            EXPECTED_LINES_CROSS_DOMAIN_REPO_D5),
+        new FrozenStoreExpectation(
+            "service API must not expose entities in signature (D-1 API boundary)",
+            "93124b52-f328-4f09-8c4f-6d022519fae2",
+            EXPECTED_LINES_SERVICE_API)
     );
 
     @Test
     @DisplayName("stored.rulesのルール説明→ストアファイルUUID対応がずれていない（UUID取り違え検知）")
     void ストアUUID対応の裏取り() throws IOException {
-        assertTrue(Files.isRegularFile(STORED_RULES_FILE),
-            "stored.rules が見つからない: " + STORED_RULES_FILE.toAbsolutePath()
+        verifyStoreMapping(STORE_DIR, EXPECTATIONS);
+    }
+
+    static void verifyStoreMapping(Path storeDir, List<FrozenStoreExpectation> expectations) throws IOException {
+        Path storedRulesFile = storeDir.resolve("stored.rules");
+        assertTrue(Files.isRegularFile(storedRulesFile),
+            "stored.rules が見つからない: " + storedRulesFile.toAbsolutePath()
                 + "（CWD=" + Paths.get("").toAbsolutePath() + "）");
 
         Properties storedRules = new Properties();
-        try (InputStream in = Files.newInputStream(STORED_RULES_FILE)) {
+        try (InputStream in = Files.newInputStream(storedRulesFile)) {
             storedRules.load(in);
         }
 
         List<String> mismatches = new ArrayList<>();
-        for (FrozenStoreExpectation expectation : EXPECTATIONS) {
+        Set<String> expectedRules = new HashSet<>();
+        Set<String> expectedStoreFiles = new HashSet<>();
+        for (FrozenStoreExpectation expectation : expectations) {
+            if (!expectedRules.add(expectation.ruleDescription())) {
+                mismatches.add("期待側のルール説明が重複しています: " + expectation.ruleDescription());
+            }
+            if (!expectedStoreFiles.add(expectation.storeFileName())) {
+                mismatches.add("期待側のストアUUIDが重複しています: " + expectation.storeFileName());
+            }
+        }
+        if (!storedRules.stringPropertyNames().equals(expectedRules)) {
+            mismatches.add("stored.rules のルール集合が期待登録と一致しません: actual="
+                + storedRules.stringPropertyNames() + ", expected=" + expectedRules);
+        }
+        if (new HashSet<>(storedRules.values()).size() != storedRules.size()) {
+            mismatches.add("stored.rules のストアUUIDが重複しています");
+        }
+        for (FrozenStoreExpectation expectation : expectations) {
             String actualStoreFile = storedRules.getProperty(expectation.ruleDescription());
             if (actualStoreFile == null) {
                 mismatches.add(String.format(
@@ -940,16 +1015,20 @@ class ArchUnitFreezeStoreIntegrityTest {
     }
 
     @Test
-    @DisplayName("5つの凍結ストアの行数(=凍結された違反件数)が想定から不自然に増減していない"
+    @DisplayName("7つの凍結ストアの行数(=凍結された違反件数)が想定から不自然に増減していない"
         + "（--tests絞り込み実行によるストア破壊事故の検知）")
     void 凍結ストアの行数が期待値と一致する() throws IOException {
-        assertTrue(Files.isDirectory(STORE_DIR),
-            "ArchUnit 凍結ストアディレクトリが見つからない: " + STORE_DIR.toAbsolutePath()
+        verifyStoreCounts(STORE_DIR, EXPECTATIONS);
+    }
+
+    static void verifyStoreCounts(Path storeDir, List<FrozenStoreExpectation> expectations) throws IOException {
+        assertTrue(Files.isDirectory(storeDir),
+            "ArchUnit 凍結ストアディレクトリが見つからない: " + storeDir.toAbsolutePath()
                 + "（CWD=" + Paths.get("").toAbsolutePath() + "）");
 
         List<String> failures = new ArrayList<>();
-        for (FrozenStoreExpectation expectation : EXPECTATIONS) {
-            Path storeFile = STORE_DIR.resolve(expectation.storeFileName());
+        for (FrozenStoreExpectation expectation : expectations) {
+            Path storeFile = storeDir.resolve(expectation.storeFileName());
             assertTrue(Files.isRegularFile(storeFile),
                 "凍結ストアファイルが見つからない: " + storeFile.toAbsolutePath()
                     + "（ルール: " + expectation.ruleDescription() + "）");
@@ -1010,7 +1089,7 @@ class ArchUnitFreezeStoreIntegrityTest {
     }
 
     /** ルール説明・凍結ストアファイル名・期待行数の1組。 */
-    private record FrozenStoreExpectation(
+    record FrozenStoreExpectation(
         String ruleDescription, String storeFileName, int expectedLineCount) {
     }
 }

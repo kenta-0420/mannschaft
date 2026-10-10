@@ -2,6 +2,7 @@ package com.mannschaft.app.social.announcement.dto;
 
 import com.mannschaft.app.social.announcement.AnnouncementChannel;
 import com.mannschaft.app.social.announcement.BroadcastResult;
+import com.mannschaft.app.social.announcement.audience.TargetAudience;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * F02.8 告知ウィザード実行レスポンス DTO。
@@ -40,6 +42,15 @@ public class BroadcastResponseDto {
     /** 組織告知でのチーム絞り込み（null = 全チーム対象）。 */
     private List<Long> targetTeamIds;
 
+    /** グループ宛て: 範囲を展開したチームグループ ID（並び順。グループ宛てでなければ null）。 */
+    private List<UUID> targetGroupIds;
+
+    /** グループ宛て: 未分類のチームを含めたか。 */
+    private boolean includeUnassigned;
+
+    /** 送信時の宛先指定の記録（送信履歴の「宛先: …（送信時 N チーム）」。絞り込みなしなら null）。 */
+    private TargetAudience targetAudience;
+
     /** 優先度（NORMAL / IMPORTANT / URGENT）。 */
     private String priority;
 
@@ -60,6 +71,9 @@ public class BroadcastResponseDto {
                 .contentUrl(result.getContentUrl())
                 .targetRole(result.getTargetRole())
                 .targetTeamIds(result.getTargetTeamIds())
+                .targetGroupIds(result.getTargetGroupIds())
+                .includeUnassigned(result.isIncludeUnassigned())
+                .targetAudience(result.getTargetAudience())
                 .priority(result.getPriority())
                 .createdAt(result.getCreatedAt())
                 .build();

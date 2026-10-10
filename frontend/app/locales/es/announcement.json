@@ -1,5 +1,17 @@
 {
   "announcement": {
+    "preview": {
+      "title": "Contenido",
+      "open_source": "Abrir página original",
+      "close": "Cerrar",
+      "loading": "Cargando contenido",
+      "empty_body": "Sin contenido",
+      "retry": "Reintentar",
+      "load_failed": "No se pudo cargar el contenido",
+      "locked": "Necesitas acceso para ver este contenido",
+      "image_failed": "No se pudo mostrar la imagen",
+      "read_failed": "No se pudo marcar como leído"
+    },
     "widget_title": "Anuncios",
     "all_announcements": "Todos los anuncios",
     "display_in_announcement": "Mostrar en el widget de anuncios",
@@ -27,7 +39,7 @@
     "already_registered": "Este contenido ya está registrado como anuncio.",
     "no_longer_available": "Este anuncio ya no está disponible, por lo que se ha eliminado de la lista.",
     "mark_all_read_partial": "Se marcaron {count} anuncios como leídos. Todavía quedan sin leer: pulsa de nuevo para continuar.",
-    "broadcast_button_team": "Anuncio del equipo",
+    "broadcast_button_team": "Enviar anuncio al equipo",
     "broadcast_button_org": "Anuncio de la organización",
     "wizard_title": "Enviar anuncio",
     "step1_title": "Alcance objetivo",
@@ -79,77 +91,77 @@
       "dismiss": "Cerrar"
     },
     "broadcast_guide": {
-      "toggle": "使い方",
-      "description": "告知ウィザードの使い方を、ステップ順にまとめました。上から順に進めれば告知を送れます。",
+      "toggle": "Cómo usar",
+      "description": "Resumen paso a paso del asistente de anuncios. Si avanzas de arriba abajo, podrás enviar tu anuncio.",
       "audience": {
-        "title": "誰に届けるか（対象範囲）",
-        "body": "告知を見せる相手の範囲を決めます（最初のステップ）。",
+        "title": "A quién llega (alcance)",
+        "body": "Define quién verá el anuncio (primer paso).",
         "steps": {
-          "step1": "届け先をメンバーのみ／サポーター以上／全員（公開）から選ぶ",
-          "step2": "（組織告知のみ）対象チームを『すべて』または個別に選ぶ"
+          "step1": "Elige el destinatario: Solo miembros / Seguidores y superiores / Todos (Público)",
+          "step2": "(Solo anuncios de organización) Elige «Todos los equipos» o equipos concretos"
         }
       },
       "template": {
-        "title": "テンプレートで時短",
-        "body": "よく使う宛先設定を呼び出し・保存できます。",
+        "title": "Ahorra tiempo con plantillas",
+        "body": "Puedes cargar y guardar los ajustes de destinatarios que más usas.",
         "steps": {
-          "step1": "『テンプレートから読み込む』で宛先を自動入力",
-          "step2": "（管理者のみ）『テンプレートとして保存』で現在の範囲を登録（1範囲あたり20件まで）"
+          "step1": "Con «Cargar desde plantilla» se rellenan los destinatarios automáticamente",
+          "step2": "(Solo administradores) Con «Guardar como plantilla» registras el alcance actual (hasta 20 por alcance)"
         }
       },
       "channel": {
-        "title": "届け方を選ぶ（チャネル）",
-        "body": "掲示板・タイムライン・ブログ・TODO・スケジュール・アンケートから配信先を1つ選びます。",
+        "title": "Elegir cómo se entrega (canal)",
+        "body": "Elige un destino entre Tablón, Línea de tiempo, Blog, TODO, Agenda y Encuesta.",
         "steps": {
-          "step1": "6つのカードから1つ選ぶ",
-          "step2": "『次へ』。※テンプレに既定チャネルがあるとこの画面は省略されます"
+          "step1": "Elige una de las 6 tarjetas",
+          "step2": "Pulsa «Siguiente». Nota: si la plantilla tiene un canal predeterminado, se omite esta pantalla"
         }
       },
       "content": {
-        "title": "内容を書く",
-        "body": "選んだチャネルに合わせて入力欄が変わります。＊印は必須です。",
+        "title": "Escribir el contenido",
+        "body": "Los campos cambian según el canal elegido. Los marcados con * son obligatorios.",
         "steps": {
-          "step1": "タイトル・本文など必須欄を入力",
-          "step2": "例: スケジュールは開始日時、タイムラインは本文が必須"
+          "step1": "Rellena los campos obligatorios, como título y texto",
+          "step2": "Ejemplo: en Agenda la fecha de inicio es obligatoria; en Línea de tiempo, el texto"
         }
       },
       "priority": {
-        "title": "優先度と表示期限",
-        "body": "目立たせ方と掲載の終了日時を設定できます。",
+        "title": "Prioridad y fecha de caducidad",
+        "body": "Puedes ajustar cuánto destaca el anuncio y cuándo termina su publicación.",
         "steps": {
-          "step1": "（管理者以上）優先度を通常／重要／緊急から選ぶ。一般メンバーは『通常』固定",
-          "step2": "表示期限を任意で設定"
+          "step1": "(Administrador o superior) Elige la prioridad: Normal / Importante / Urgente. Los miembros generales tienen «Normal» fijo",
+          "step2": "Si quieres, define una fecha de caducidad"
         }
       },
       "submit": {
-        "title": "送信して確認",
-        "body": "入力が揃うと送信できます。送信後はお知らせに表示されます。",
+        "title": "Enviar y comprobar",
+        "body": "Cuando todo esté completo podrás enviarlo. Tras el envío aparece en los avisos.",
         "steps": {
-          "step1": "『告知を送る』を押す",
-          "step2": "送信完了を確認。※アンケートの設問・TODOの担当者は送信後に各画面で追加します"
+          "step1": "Pulsa «Enviar anuncio»",
+          "step2": "Comprueba que el envío se ha completado. Nota: las preguntas de las encuestas y los responsables de los TODO se añaden después en sus pantallas"
         }
       }
     },
-    "target_mode_all": "すべてのチーム",
-    "target_mode_teams": "チームを選ぶ",
-    "target_mode_groups": "チームグループで選ぶ",
-    "target_groups_label": "チームグループ",
-    "target_range_label": "範囲で選ぶ",
-    "target_range_up_to": "{name} 以前（並び順で先頭から）",
-    "target_range_from": "{name} 以降（並び順で末尾まで）",
+    "target_mode_all": "Todos los equipos",
+    "target_mode_teams": "Elegir equipos",
+    "target_mode_groups": "Elegir por grupo de equipos",
+    "target_groups_label": "Grupos de equipos",
+    "target_range_label": "Elegir por rango",
+    "target_range_up_to": "Hasta {name} (desde el principio según el orden)",
+    "target_range_from": "Desde {name} (hasta el final según el orden)",
     "target_range_between": "{from} 〜 {to}",
     "target_range_kind_up_to": "〜以前",
     "target_range_kind_from": "〜以降",
     "target_range_kind_between": "A〜B",
-    "target_include_unassigned": "未分類のチームを含める",
-    "target_direct_members_note": "組織の直属メンバー（どのチームにも属さない人）にも届きます",
-    "target_resolved_count": "該当: {teams} チーム＋直属メンバー {members} 人",
-    "target_resolved_empty": "該当する人がいません",
-    "target_order_hint": "並び順はチームグループ管理で変えられます",
-    "push_disabled_note": "このお知らせの push 通知は送られません",
-    "dynamic_display_note": "表示は現在の所属で判定されます（削除されたグループは送信時点の対象チームで判定）",
-    "template_deleted_groups_removed": "削除されたチームグループがテンプレートから除外されました",
-    "template_range_invalid": "テンプレートの範囲に削除されたチームグループが含まれています。範囲を選び直してください",
-    "audience_summary": "宛先: {label}（送信時 {count} チーム）"
+    "target_include_unassigned": "Incluir equipos sin clasificar",
+    "target_direct_members_note": "También llega a los miembros directos de la organización (quienes no pertenecen a ningún equipo)",
+    "target_resolved_count": "Coincidencias: {teams} equipos + {members} miembros directos",
+    "target_resolved_empty": "No hay destinatarios que coincidan",
+    "target_order_hint": "El orden se puede cambiar en la gestión de grupos de equipos",
+    "push_disabled_note": "No se enviarán notificaciones push para este aviso",
+    "dynamic_display_note": "La visualización se determina según la pertenencia actual (los grupos eliminados se determinan por los equipos de destino en el momento del envío)",
+    "template_deleted_groups_removed": "Se han quitado de la plantilla los grupos de equipos eliminados",
+    "template_range_invalid": "El rango de la plantilla incluye grupos de equipos eliminados. Vuelve a elegir el rango",
+    "audience_summary": "Destinatarios: {label} ({count} equipos al enviar)"
   }
 }

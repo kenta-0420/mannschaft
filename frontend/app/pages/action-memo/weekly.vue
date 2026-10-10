@@ -225,7 +225,7 @@ onMounted(async () => {
           >
             {{ t('action_memo.weekly.period_label') }}: {{ detailSummary.period.from }} ~ {{ detailSummary.period.to }}
           </p>
-          <div class="prose prose-sm max-w-none whitespace-pre-line text-surface-700 dark:prose-invert dark:text-surface-200">
+          <div class="article-body whitespace-pre-line text-surface-700 dark:text-surface-200">
             {{ detailSummary.body }}
           </div>
         </div>

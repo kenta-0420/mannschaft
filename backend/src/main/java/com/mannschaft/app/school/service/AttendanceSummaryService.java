@@ -1,6 +1,5 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.dto.ClassSummaryListResponse;
@@ -42,10 +41,6 @@ public class AttendanceSummaryService {
     private final StudentAttendanceSummaryRepository summaryRepository;
     private final DailyAttendanceRecordRepository dailyRepository;
     private final PeriodAttendanceRecordRepository periodRepository;
-    private final AccessControlService accessControlService;
-
-    /** 認可スコープ種別（出席集計は常にクラスチーム単位）。 */
-    private static final String SCOPE_TEAM = "TEAM";
 
     // ========================================
     // 集計取得
@@ -54,20 +49,18 @@ public class AttendanceSummaryService {
     /**
      * 生徒の出席集計を取得する。
      *
-     * <p>出席集計は児童の PII のため、対象クラスチームのメンバーであることを検証する。</p>
+     * <p>認可（AC-4: 生徒本人・保護者・対象クラスの閲覧権 V を持つ教職員のみ。同級の一般 MEMBER・別クラスの教員・
+     * 別テナントは 403）は、トランザクションの外の {@code AttendanceSummaryFacade} が済ませてから呼ばれる。</p>
      *
      * @param studentUserId 生徒ユーザーID
      * @param teamId        チームID
      * @param academicYear  学年度
      * @param termId        学期ID（null なら年度通算）
-     * @param currentUserId 現在のユーザーID
      * @return 出席集計レスポンス
-     * @throws BusinessException 非メンバーの場合（COMMON_002）／集計が存在しない場合
+     * @throws BusinessException 集計が存在しない場合
      */
     public StudentSummaryResponse getStudentSummary(
-            Long studentUserId, Long teamId, short academicYear, Long termId, Long currentUserId) {
-        accessControlService.checkMembership(currentUserId, teamId, SCOPE_TEAM);
-
+            Long studentUserId, Long teamId, short academicYear, Long termId) {
         StudentAttendanceSummaryEntity entity = summaryRepository
                 .findByStudentUserIdAndTeamIdAndAcademicYearAndTermId(
                         studentUserId, teamId, academicYear, termId)
@@ -78,19 +71,14 @@ public class AttendanceSummaryService {
     /**
      * クラス全員の年度/学期別出席集計一覧を取得する。
      *
-     * <p>クラス全員分の PII を返すため、対象クラスチームのメンバーであることを検証する。</p>
+     * <p>クラス全員分の PII を返すため、閲覧権（V）の検証は {@code AttendanceSummaryFacade} が済ませてから呼ばれる。</p>
      *
      * @param teamId        チームID
      * @param academicYear  学年度
      * @param termId        学期ID（null なら年度通算）
-     * @param currentUserId 現在のユーザーID
      * @return クラス出席集計一覧レスポンス
-     * @throws BusinessException 非メンバーの場合（COMMON_002）
      */
-    public ClassSummaryListResponse getClassSummaries(
-            Long teamId, short academicYear, Long termId, Long currentUserId) {
-        accessControlService.checkMembership(currentUserId, teamId, SCOPE_TEAM);
-
+    public ClassSummaryListResponse getClassSummaries(Long teamId, short academicYear, Long termId) {
         List<StudentAttendanceSummaryEntity> entities;
         if (termId == null) {
             entities = summaryRepository.findClassSummaries(teamId, academicYear);
@@ -120,19 +108,16 @@ public class AttendanceSummaryService {
      * <p>日次出欠レコードを集計期間で取得し、ステータス・場所別に集計する。
      * 既存レコードがあれば {@code toBuilder()} で更新、なければ新規作成する。</p>
      *
-     * <p>児童の PII を書き換えるため、対象クラスチームのメンバーであることを検証する。</p>
+     * <p>認可（AC-13: 日次登録権 R を持つ担任・副担任・管理者のみ）と対象生徒の在籍確認
+     * （非在籍は 404 SUMMARY_NOT_FOUND）は、トランザクションの外の {@code AttendanceSummaryFacade} が
+     * 済ませてから呼ばれる。時限記録の集計は当該クラス（teamId）の記録だけを対象とし、兼籍生徒の他クラスの記録を混ぜない（AC-21）。</p>
      *
      * @param studentUserId 生徒ユーザーID
      * @param req           再計算リクエスト
-     * @param currentUserId 現在のユーザーID
      * @return 再計算結果レスポンス
-     * @throws BusinessException 非メンバーの場合（COMMON_002）
      */
     @Transactional
-    public RecalculateSummaryResponse recalculate(
-            Long studentUserId, RecalculateSummaryRequest req, Long currentUserId) {
-        accessControlService.checkMembership(currentUserId, req.getTeamId(), SCOPE_TEAM);
-
+    public RecalculateSummaryResponse recalculate(Long studentUserId, RecalculateSummaryRequest req) {
         LocalDate from = LocalDate.parse(req.getPeriodFrom());
         LocalDate to = LocalDate.parse(req.getPeriodTo());
 
@@ -192,8 +177,8 @@ public class AttendanceSummaryService {
 
         // 時限別出欠レコード取得
         List<PeriodAttendanceRecordEntity> periodRecords =
-                periodRepository.findByStudentUserIdAndAttendanceDateBetweenOrderByAttendanceDateAscPeriodNumberAsc(
-                        studentUserId, from, to);
+                periodRepository.findByTeamIdAndStudentUserIdAndAttendanceDateBetweenOrderByAttendanceDateAscPeriodNumberAsc(
+                        req.getTeamId(), studentUserId, from, to);
 
         short totalPeriods = (short) periodRecords.size();
         short presentPeriods = 0;

@@ -717,7 +717,7 @@
       const feature = features.find((item) => item.key === featureKey);
       if (feature) return feature;
       const parent = baseInventory.features.find((item) => item.key === featureKey);
-      if (parent) return parent;
+      if (parent) return { ...parent, stage: decisions?.features?.[featureKey]?.stage || parent.stage };
       const campaign = campaigns.find((item) => item.featureKey === featureKey);
       return {
         key: featureKey,
