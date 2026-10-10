@@ -3,6 +3,7 @@ package com.mannschaft.app.gdpr.service;
 import com.mannschaft.app.auth.dto.RequestWithdrawalRequest;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.service.UserService;
+import com.mannschaft.app.gdpr.dto.RetryResultResponse;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import jakarta.persistence.EntityManager;
@@ -16,6 +17,10 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.concurrent.Executor;
 
@@ -39,6 +44,7 @@ class VisibilityTemplateAccountPurgeIT extends AbstractMySqlIntegrationTest {
     @Autowired private TransactionTemplate transactionTemplate;
     @Autowired private UserService userService;
     @Autowired private AccountPurgeService accountPurgeService;
+    @Autowired private GdprPurgeRetryFacade retryService;
     @Autowired private VisibilityTemplateEvaluator evaluator;
     @Autowired @Qualifier("purge-pool") private Executor purgeExecutor;
     @PersistenceContext private EntityManager entityManager;
@@ -111,6 +117,102 @@ class VisibilityTemplateAccountPurgeIT extends AbstractMySqlIntegrationTest {
             assertThat(evaluator.canView(viewer, template, target)).as("取消後も使える").isTrue();
         } finally {
             cleanup(target, null, viewer, null);
+        }
+    }
+
+    /**
+     * 再試行経路（管理画面の手動 retry）の実削除を確認する。
+     * retryPurge を {@code return true} だけの no-op にすると、本人分の templates/rules が残るためこのテストは落ちる
+     * （PENDING を SUCCESS にするだけで消去しない実装を検出する）。
+     */
+    @Test
+    @DisplayName("再試行経路: 本人のテンプレートとルールだけが消え、他人とプリセットは残る（retryPurge が no-op なら落ちる）")
+    void retryDeletesOnlyOwnTemplatesAndRules() {
+        stubRedis();
+        Long target = createUser("再試行の本人");
+        Long other = createUser("別所有者");
+        Long viewer = createUser("閲覧者");
+        Long presetId = null;
+        try {
+            Long targetT1 = seedTemplate(target, "本人T1", viewer);
+            Long targetT2 = seedTemplate(target, "本人T2", viewer);
+            Long otherT = seedTemplate(other, "他人T", viewer);
+            presetId = seedPreset(viewer);
+            seedPending(target);
+
+            RetryResultResponse result = retryService.retryDomainPurge(target, "visibility");
+
+            assertThat(result.succeeded()).isTrue();
+            assertThat(count("SELECT COUNT(*) FROM visibility_templates WHERE owner_user_id = " + target))
+                    .as("本人のテンプレート").isZero();
+            assertThat(count("SELECT COUNT(*) FROM visibility_template_rules WHERE template_id IN ("
+                    + targetT1 + "," + targetT2 + ")")).as("本人の子ルール").isZero();
+            assertThat(count("SELECT COUNT(*) FROM visibility_templates WHERE id IN (" + otherT + "," + presetId + ")"))
+                    .as("他人とプリセットのテンプレート").isEqualTo(2);
+            assertThat(count("SELECT COUNT(*) FROM visibility_template_rules WHERE template_id IN ("
+                    + otherT + "," + presetId + ")")).as("他人とプリセットのルール").isEqualTo(2);
+            assertThat(count("SELECT COUNT(*) FROM account_purge_completion_status WHERE user_id = " + target
+                    + " AND domain_name = 'visibility' AND status = 'SUCCESS'")).isEqualTo(1);
+        } finally {
+            cleanup(target, other, viewer, presetId);
+        }
+    }
+
+    /**
+     * 親(templates)の DELETE が失敗したら、先に消した子(rules)も同じ TX でロールバックされ PENDING が残る。
+     * 子を別 TX で先にコミットする実装だと rules だけ0件になりこのテストは落ちる。
+     */
+    @Test
+    @DisplayName("再試行経路: 親の削除失敗で子ルールもロールバックされPENDINGが残り、障害解消後の再試行で0件になる")
+    void retryFailureRollsBackChildrenAndKeepsPending() {
+        stubRedis();
+        Long target = createUser("親削除失敗の本人");
+        Long viewer = createUser("閲覧者");
+        String trigger = "cmp1243_vt_" + target;
+        try {
+            Long t1 = seedTemplate(target, "本人T1", viewer);
+            Long t2 = seedTemplate(target, "本人T2", viewer);
+            seedPending(target);
+            executeTriggerDdl("CREATE TRIGGER " + trigger + " BEFORE DELETE ON visibility_templates "
+                    + "FOR EACH ROW BEGIN IF OLD.owner_user_id = " + target + " THEN SIGNAL SQLSTATE '45000' "
+                    + "SET MESSAGE_TEXT = 'cmp1243 template delete failure'; END IF; END");
+
+            RetryResultResponse failed = retryService.retryDomainPurge(target, "visibility");
+
+            assertThat(failed.succeeded()).isFalse();
+            assertThat(failed.newStatus()).isEqualTo("PENDING");
+            assertThat(count("SELECT COUNT(*) FROM visibility_template_rules WHERE template_id IN ("
+                    + t1 + "," + t2 + ")")).as("子ルールもロールバック").isEqualTo(2);
+            assertThat(count("SELECT COUNT(*) FROM visibility_templates WHERE owner_user_id = " + target))
+                    .isEqualTo(2);
+
+            executeTriggerDdl("DROP TRIGGER IF EXISTS " + trigger);
+            RetryResultResponse recovered = retryService.retryDomainPurge(target, "visibility");
+            assertThat(recovered.succeeded()).isTrue();
+            assertThat(recovered.newStatus()).isEqualTo("SUCCESS");
+            assertThat(count("SELECT COUNT(*) FROM visibility_templates WHERE owner_user_id = " + target)).isZero();
+            assertThat(count("SELECT COUNT(*) FROM visibility_template_rules WHERE template_id IN ("
+                    + t1 + "," + t2 + ")")).isZero();
+        } finally {
+            executeTriggerDdl("DROP TRIGGER IF EXISTS " + trigger);
+            cleanup(target, null, viewer, null);
+        }
+    }
+
+    private void seedPending(Long userId) {
+        transactionTemplate.executeWithoutResult(tx -> entityManager.createNativeQuery(
+                "INSERT INTO account_purge_completion_status "
+                        + "(user_id,email_hash,domain_name,status,attempted_at,retry_count) VALUES ("
+                        + userId + ",'" + "a".repeat(64) + "','visibility','PENDING',NOW(),0)").executeUpdate());
+    }
+
+    private void executeTriggerDdl(String sql) {
+        // trigger 権限は所有 container の root で実行する（PersonalSettingsAccountPurgeIT と同じ作法）。
+        try (Connection connection = DriverManager.getConnection(MYSQL.getJdbcUrl(), "root", MYSQL.getPassword());
+             Statement statement = connection.createStatement()) {
+            statement.execute(sql);
+        } catch (SQLException failure) {
+            throw new IllegalStateException("試練trigger DDL失敗", failure);
         }
     }
 
