@@ -27,7 +27,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * {@code @BeforeEach} で実施)。
  *
  * <p><strong>スレッドセーフ性</strong>: 内部の捕捉リスト操作はすべて {@code synchronized}
- * で保護する。性能テストでは原則単一スレッドだが、Hibernate 内部の保険として保持する。
+ * で保護する。inspect と reset/read は同じ class monitor を使う。
+ * global API は全スレッド・全インスタンスを捕捉し、明示 scope だけ現在スレッドへ限定する。
  */
 public class SqlIntentCounter implements StatementInspector {
 
@@ -42,9 +43,72 @@ public class SqlIntentCounter implements StatementInspector {
      * @return 元の SQL 文をそのまま返す（書き換えは行わない）
      */
     @Override
-    public synchronized String inspect(String sql) {
-        CAPTURED_SQL.get().add(sql);
-        return sql;
+    public String inspect(String sql) {
+        synchronized (SqlIntentCounter.class) {
+            CAPTURED_SQL.get().add(sql);
+            CurrentThreadCapture capture = CURRENT_THREAD_CAPTURE.get();
+            if (capture != null) {
+                capture.sqls.add(sql);
+            }
+            return sql;
+        }
+    }
+
+    private static final ThreadLocal<CurrentThreadCapture> CURRENT_THREAD_CAPTURE = new ThreadLocal<>();
+
+    /**
+     * 現在スレッドの測定窓を開く。global 捕捉は並行して続ける。
+     * try-with-resources で閉じる。scope は別スレッドへ継承せず、入れ子は許可しない。
+     */
+    public static synchronized CurrentThreadCapture captureCurrentThread() {
+        if (CURRENT_THREAD_CAPTURE.get() != null) {
+            throw new IllegalStateException("SQL capture scope is already active");
+        }
+        CurrentThreadCapture capture = new CurrentThreadCapture();
+        CURRENT_THREAD_CAPTURE.set(capture);
+        return capture;
+    }
+
+    /** 明示測定窓の結果。global reset はこの結果を消さない。 */
+    public static final class CurrentThreadCapture implements AutoCloseable {
+        private final Thread owner = Thread.currentThread();
+        private final List<String> sqls = new ArrayList<>();
+
+        private CurrentThreadCapture() {
+        }
+
+        /** 共有spyへ別スレッドから到達した呼び出しは測定せず実処理だけを通す。 */
+        public boolean isCurrentThread() {
+            return Thread.currentThread() == owner;
+        }
+
+        public int totalCount() {
+            synchronized (SqlIntentCounter.class) {
+                requireActive();
+                return sqls.size();
+            }
+        }
+
+        public List<String> capturedSqls() {
+            synchronized (SqlIntentCounter.class) {
+                requireActive();
+                return List.copyOf(sqls);
+            }
+        }
+
+        private void requireActive() {
+            if (!isCurrentThread() || CURRENT_THREAD_CAPTURE.get() != this) {
+                throw new IllegalStateException("SQL capture scope is not active on this thread");
+            }
+        }
+
+        @Override
+        public void close() {
+            synchronized (SqlIntentCounter.class) {
+                requireActive();
+                CURRENT_THREAD_CAPTURE.remove();
+            }
+        }
     }
 
     /**

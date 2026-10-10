@@ -1,6 +1,6 @@
 # AC-18 別thread SQL測定の限定hosted RED
 
-状態: 製造済み・実行待ち（pending）。semantic REDはまだ取得していない。自然CI run38049654507 のAUTHZ_BASELINE失敗原因は未立証。
+状態: hosted run38071508710でsemantic RED確認済み（実Gradle exit1、tests1/failure1/error0/skip0、AssertionFailedErrorとAUTHZ_BASELINE一致）。自然CI run38049654507 のAUTHZ_BASELINE失敗原因は未立証。
 
 ## 固定sourceと実行境界
 
@@ -16,4 +16,8 @@ Gradle終了直後の実exitを `ac18-gradle-exit.txt` へ記録し、同じ値�
 
 回収後は既存 `classify-junit.py` へ実exitを渡す。tests=1・skipped=0と、HTTP201通過後の認可baseline assertion failureをXMLで確認する。起動/fixture/Docker/Future失敗やtimeoutはsemantic REDにしない。XMLまたは実exitがない場合、特にtimeoutで実exit未記録の場合はRED不成立。
 
-この結果は計測器の別thread混入契約の診断であり、自然CIの原因立証・製品全回帰・Security filter認可・E2E完了の証拠ではない。実行・回収・分類・後続回帰はpending。
+この結果は計測器の別thread混入契約の診断であり、自然CIの原因立証・製品全回帰・Security filter認可・E2E完了の証拠ではない。REDの実行・回収・有限分類は完了。後続GREEN回帰は未実行。
+
+## 後続GREEN（未適用template）
+
+root確認後にtest-only capture修正を適用済み。新actual sourcecommitへcheckoutを固定するworkflow templateはdiagnosisの外部候補でUNBOUNDのまま準備し、現workflowは変更していない。同じbranch/concurrency/caps/cacheでShiftScheduleSlotFacadeRaceAndQueryIT全体とSqlIntentCounterTestを選択し、両exact XMLと実exitだけを収容する。compile/GREEN/自然CI原因確定/全CI回帰の証拠はまだ無い。

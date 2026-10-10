@@ -625,10 +625,12 @@ class ShiftScheduleSlotFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest
     private long countSql(Runnable action) {
         action.run();
         SqlIntentCounter.reset();
-        action.run();
-        long count = SqlIntentCounter.totalCount();
-        Mockito.clearInvocations(accessControlService);
-        return count;
+        try (SqlIntentCounter.CurrentThreadCapture capture = SqlIntentCounter.captureCurrentThread()) {
+            action.run();
+            long count = capture.totalCount();
+            Mockito.clearInvocations(accessControlService);
+            return count;
+        }
     }
 
     /** 1 リクエストの計測結果。認可呼び出し（最外側）の区間で、SQL 記録を「前・後」に分ける。 */
@@ -668,13 +670,23 @@ class ShiftScheduleSlotFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest
 
     private Measured measure(Long actor, MockHttpServletRequestBuilder request, boolean injectForeignSql)
             throws Exception {
+        try (SqlIntentCounter.CurrentThreadCapture capture = SqlIntentCounter.captureCurrentThread()) {
+            return measure(actor, request, injectForeignSql, capture);
+        }
+    }
+
+    private Measured measure(Long actor, MockHttpServletRequestBuilder request, boolean injectForeignSql,
+                             SqlIntentCounter.CurrentThreadCapture capture) throws Exception {
         Measured m = new Measured();
         AtomicBoolean foreignSqlInserted = new AtomicBoolean();
         ThreadLocal<Integer> depth = ThreadLocal.withInitial(() -> 0);
         Answer<Object> wrap = inv -> {
+            if (!capture.isCurrentThread()) {
+                return inv.callRealMethod();
+            }
             int d = depth.get();
             depth.set(d + 1);
-            int start = SqlIntentCounter.totalCount();
+            int start = capture.totalCount();
             if (d == 0 && m.firstAuthzStart < 0) {
                 m.firstAuthzStart = start;
             }
@@ -691,7 +703,7 @@ class ShiftScheduleSlotFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest
             } finally {
                 depth.set(d);
                 if (d == 0) {
-                    int end = SqlIntentCounter.totalCount();
+                    int end = capture.totalCount();
                     m.authzSql += end - start;
                     m.lastAuthzEnd = end;
                 }
@@ -708,7 +720,7 @@ class ShiftScheduleSlotFacadeRaceAndQueryIT extends AbstractMySqlIntegrationTest
         setAuth(actor);
         SqlIntentCounter.reset();
         MvcResult result = mockMvc.perform(request).andReturn();
-        m.sqls = new ArrayList<>(SqlIntentCounter.capturedSqls());
+        m.sqls = new ArrayList<>(capture.capturedSqls());
         m.status = result.getResponse().getStatus();
         if (injectForeignSql) {
             assertThat(foreignSqlInserted).as("別スレッドSQLを測定窓へ一度挿入したこと").isTrue();
