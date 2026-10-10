@@ -279,7 +279,12 @@ const activeTab = ref('posts')
 
 <template>
   <div v-if="organization" class="space-y-10">
-    <PublicOrganizationHeader :organization="organization" />
+    <PublicOrganizationHeader :organization="organization">
+      <template #actions>
+        <!-- F01.2.1: TA・TG にだけ出る（eligibility に従う。未ログイン・TM・TD・受付 off では出ない） -->
+        <TeamAffiliationApplyButton :org-slug="orgSlug" />
+      </template>
+    </PublicOrganizationHeader>
 
     <!-- 2026-08-06 マスター御裁可（第三陣）: 投稿／タイムライン／イベント／活動記録を横並びの実タブで切り替える -->
     <Tabs v-model:value="activeTab">

@@ -13,7 +13,17 @@
       "group_mode_required": "必ず選ばせる",
       "guidance": "申請フォームの案内文",
       "turn_off_pending_confirm": "受付済みの申請が {count} 件残っています。受付を停止しても、これらの申請は申請一覧から承認・拒否できます。",
-      "required_mode_degraded": "グループが1件も無いため、グループ選択は「任意」として扱われています"
+      "required_mode_degraded": "グループが1件も無いため、グループ選択は「任意」として扱われています",
+      "section_application": "加盟申請の受付",
+      "section_groups": "チームグループ",
+      "saved": "設定を保存しました",
+      "save_error": "設定を保存できませんでした。時間をおいてもう一度お試しください",
+      "load_error": "設定を読み込めませんでした。時間をおいてもう一度お試しください",
+      "manage_groups": "グループを管理",
+      "turn_off_confirm_title": "加盟申請の受付を停止しますか？",
+      "turn_off_confirm": "受付を停止すると、組織ページから「チームとして加盟を申請」ボタンが消えます。",
+      "turn_off_confirm_ok": "受付を停止する",
+      "card_desc": "加盟申請の受付、チームグループ、申請時の案内文を設定します"
     },
     "view": {
       "teams": "所属チーム",
@@ -39,7 +49,11 @@
         "ACTIVE": "加盟済みです",
         "UNAVAILABLE": "現在この組織には申請できません"
       },
-      "find_orgs": "加盟先の組織を探す"
+      "find_orgs": "加盟先の組織を探す",
+      "eligibility_error": "Ob ein Beitrittsantrag möglich ist, konnte wegen eines Netzwerkfehlers nicht geprüft werden",
+      "eligibility_retry": "Erneut versuchen",
+      "load_error": "申請フォームを読み込めませんでした。時間をおいてもう一度お試しください",
+      "submit_error": "申請できませんでした。入力内容をご確認のうえ、もう一度お試しください"
     },
     "review": {
       "approve": "承認",
@@ -92,5 +106,29 @@
     "bulk_assign": "選択したチームをグループに割り当てる",
     "filter_all": "すべてのグループ",
     "disabled_cta": "チームグループ機能は無効です。設定から有効にできます"
+  },
+  "teamAffiliationGuide": {
+    "title": "チーム加盟の設定の使い方",
+    "description": "チームが組織へ加盟を申請できるようにする設定画面です。上から順に設定すれば終わります。",
+    "accept": {
+      "title": "申請の受付を始める",
+      "body": "受付を on にすると、組織ページに「チームとして加盟を申請」ボタンが出ます。ボタンは、加盟の手続きを任されたチームの担当者にだけ表示されます。",
+      "steps": {
+        "step1": "「チームからの加盟申請を受け付ける」を on にする",
+        "step2": "必要なら「申請フォームの案内文」に、申請前に伝えたいことを書く",
+        "step3": "右下の「保存」を押す"
+      }
+    },
+    "groups": {
+      "title": "チームグループを使う",
+      "body": "加盟チームを年度や地区などのグループに分けておくと、お知らせの宛先に使えます。申請のときにチームへグループを選んでもらうこともできます。",
+      "mode_off": "選ばせない: 申請フォームにグループ欄を出しません",
+      "mode_optional": "任意で選べる: 選ばなくても申請できます",
+      "mode_required": "必ず選ばせる: グループを選ばないと申請できません。グループが1件も無いときは「任意」として扱われます"
+    },
+    "stop": {
+      "title": "受付を止めるとき",
+      "body": "受付を off にして保存すると確認が出ます。すでに届いている申請は、受付を止めても所属チームの「加盟申請」から承認・拒否できます。"
+    }
   }
 }

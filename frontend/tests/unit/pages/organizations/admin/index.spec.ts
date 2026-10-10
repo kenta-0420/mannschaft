@@ -21,8 +21,10 @@ mockNuxtImport('useRoute', () => () => ({ params: { slug: 'org-000004' } }))
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 
 const loadPermissions = vi.fn(async () => {})
+const access = { isAdmin: true }
 mockNuxtImport('useRoleAccess', () => () => ({
   isAdminOrDeputy: { value: true },
+  isAdmin: { get value() { return access.isAdmin } },
   loadPermissions,
 }))
 
@@ -44,9 +46,9 @@ describe('pages/organizations/[slug]/admin/index.vue — カードが実リン�
     const wrapper = await mountSuspended(OrgAdminConsolePage)
     await flushMicrotasks()
 
-    // to を持つカードは budget/payments/paymentRequests/members/settings/pointCards の6件（approvals は to: null）。
+    // to を持つカードは budget/payments/paymentRequests/members/settings/teamAffiliation/pointCards の7件（approvals は to: null）。
     const anchors = wrapper.findAll('a[href]')
-    expect(anchors.length).toBe(6)
+    expect(anchors.length).toBe(7)
   })
 
   it('OAC-002: 「設定」カードの href が /organizations/org-000004/settings/faq-settings を指す', async () => {
@@ -56,6 +58,25 @@ describe('pages/organizations/[slug]/admin/index.vue — カードが実リン�
     const anchors = wrapper.findAll('a[href]')
     const hrefs = anchors.map(a => a.attributes('href'))
     expect(hrefs).toContain('/organizations/org-000004/settings/faq-settings')
+  })
+})
+
+describe('pages/organizations/[slug]/admin/index.vue — チーム加盟の設定カード', () => {
+  it('OAC-003: ADMIN には「チーム加盟の設定」カードが出て、設定画面を指す', async () => {
+    access.isAdmin = true
+    const wrapper = await mountSuspended(OrgAdminConsolePage)
+    await flushMicrotasks()
+    const hrefs = wrapper.findAll('a[href]').map(a => a.attributes('href'))
+    expect(hrefs).toContain('/organizations/org-000004/settings/team-affiliation')
+  })
+
+  it('OAC-004: DEPUTY_ADMIN にはそのカードを出さない', async () => {
+    access.isAdmin = false
+    const wrapper = await mountSuspended(OrgAdminConsolePage)
+    await flushMicrotasks()
+    const hrefs = wrapper.findAll('a[href]').map(a => a.attributes('href'))
+    expect(hrefs).not.toContain('/organizations/org-000004/settings/team-affiliation')
+    access.isAdmin = true
   })
 })
 
