@@ -19778,6 +19778,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/broadcast/audience-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 組織告知の宛先プレビュー
+         * @description F01.2.1 §10.9。宛先指定（チーム・グループ個別・範囲・未分類）を解決し、チーム数・直属メンバー数・先頭50件のチーム・展開後のグループ・pushEnabled を返す。組織の非メンバーは 403 COMMON_002。
+         */
+        post: operations["previewOrgAudience"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/billing/contracts": {
         parameters: {
             query?: never;
@@ -54224,7 +54244,7 @@ export interface components {
             autoNoShowDetection?: boolean;
             /** Format: int32 */
             disputeAllowedDays?: number;
-            enabled?: boolean;
+            isEnabled?: boolean;
             /** Format: int32 */
             penaltyDurationDays?: number;
             /** Format: int32 */
@@ -54241,9 +54261,9 @@ export interface components {
             createdAt?: string;
             /** Format: int32 */
             disputeAllowedDays?: number;
-            enabled?: boolean;
             /** Format: int64 */
             id?: number;
+            isEnabled?: boolean;
             /** Format: int32 */
             penaltyDurationDays?: number;
             /** Format: int64 */
@@ -62488,11 +62508,20 @@ export interface components {
             content: components["schemas"]["AnnouncementContentRequest"];
             /** Format: date-time */
             expiresAt?: string;
+            includeUnassigned?: boolean;
             priority?: string;
+            targetGroupIds?: string[];
+            targetGroupRange?: components["schemas"]["TargetGroupRange"];
             targetRole: string;
             targetTeamIds?: number[];
             /** Format: int64 */
             templateId?: number;
+        };
+        TargetGroupRange: {
+            /** Format: uuid */
+            fromGroupId?: string;
+            /** Format: uuid */
+            toGroupId?: string;
         };
         ApiResponseBroadcastResponseDto: {
             data?: components["schemas"]["BroadcastResponseDto"];
@@ -62507,9 +62536,35 @@ export interface components {
             contentUrl?: string;
             /** Format: date-time */
             createdAt?: string;
+            includeUnassigned?: boolean;
             priority?: string;
+            targetAudience?: components["schemas"]["TargetAudience"];
+            targetGroupIds?: string[];
             targetRole?: string;
             targetTeamIds?: number[];
+        };
+        GroupRef: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+        };
+        RangeRef: {
+            /** Format: uuid */
+            fromGroupId?: string;
+            fromGroupName?: string;
+            /** Format: uuid */
+            toGroupId?: string;
+            toGroupName?: string;
+        };
+        TargetAudience: {
+            /** Format: int32 */
+            directMemberCount?: number;
+            groups?: components["schemas"]["GroupRef"][];
+            includeUnassigned?: boolean;
+            mode?: string;
+            range?: components["schemas"]["RangeRef"];
+            /** Format: int32 */
+            teamCount?: number;
         };
         /** @description 手動介入中の請求担当引継を再開（または失敗確定）する要求 */
         BillingPayerHandoverResumeRequest: {
@@ -66990,6 +67045,39 @@ export interface components {
             updatedAt?: string;
             /** @enum {string} */
             visibilityToOrg?: "HIDDEN" | "NAME_ONLY" | "NAME_AND_PURPOSE";
+        };
+        AudiencePreviewRequestDto: {
+            /** @enum {string} */
+            channel?: "BULLETIN_THREAD" | "TIMELINE_POST" | "BLOG_POST" | "TODO" | "SCHEDULE" | "SURVEY";
+            includeUnassigned?: boolean;
+            targetGroupIds?: string[];
+            targetGroupRange?: components["schemas"]["TargetGroupRange"];
+            targetRole?: string;
+            targetTeamIds?: number[];
+            /** Format: int64 */
+            templateId?: number;
+        };
+        ApiResponseAudiencePreviewResponseDto: {
+            data?: components["schemas"]["AudiencePreviewResponseDto"];
+        };
+        AudiencePreviewResponseDto: {
+            /** Format: int32 */
+            directMemberCount?: number;
+            groups?: components["schemas"]["GroupItem"][];
+            pushEnabled?: boolean;
+            /** Format: int32 */
+            resolvedTeamCount?: number;
+            sampleTeams?: components["schemas"]["SampleTeam"][];
+            warnings?: string[];
+        };
+        GroupItem: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+        };
+        SampleTeam: {
+            name?: string;
+            slug?: string;
         };
         ActivateTemplateResponse: {
             /** Format: int64 */
@@ -128350,6 +128438,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBroadcastResponseDto"];
+                };
+            };
+        };
+    };
+    previewOrgAudience: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AudiencePreviewRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAudiencePreviewResponseDto"];
                 };
             };
         };

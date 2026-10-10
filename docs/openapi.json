@@ -75471,6 +75471,49 @@
         }
       }
     },
+    "/api/v1/organizations/{orgId}/broadcast/audience-preview": {
+      "post": {
+        "tags": [
+          "告知ウィザード"
+        ],
+        "summary": "組織告知の宛先プレビュー",
+        "description": "F01.2.1 §10.9。宛先指定（チーム・グループ個別・範囲・未分類）を解決し、チーム数・直属メンバー数・先頭50件のチーム・展開後のグループ・pushEnabled を返す。組織の非メンバーは 403 COMMON_002。",
+        "operationId": "previewOrgAudience",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AudiencePreviewRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAudiencePreviewResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/billing/contracts": {
       "post": {
         "tags": [
@@ -166674,7 +166717,7 @@
             "maximum": 30,
             "minimum": 0
           },
-          "enabled": {
+          "isEnabled": {
             "type": "boolean"
           },
           "penaltyDurationDays": {
@@ -166721,12 +166764,12 @@
             "type": "integer",
             "format": "int32"
           },
-          "enabled": {
-            "type": "boolean"
-          },
           "id": {
             "type": "integer",
             "format": "int64"
+          },
+          "isEnabled": {
+            "type": "boolean"
           },
           "penaltyDurationDays": {
             "type": "integer",
@@ -189309,8 +189352,21 @@
             "type": "string",
             "format": "date-time"
           },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
           "priority": {
             "type": "string"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "targetGroupRange": {
+            "$ref": "#/components/schemas/TargetGroupRange"
           },
           "targetRole": {
             "type": "string",
@@ -189334,6 +189390,19 @@
           "content",
           "targetRole"
         ]
+      },
+      "TargetGroupRange": {
+        "type": "object",
+        "properties": {
+          "fromGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toGroupId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       },
       "ApiResponseBroadcastResponseDto": {
         "type": "object",
@@ -189372,8 +189441,21 @@
             "type": "string",
             "format": "date-time"
           },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
           "priority": {
             "type": "string"
+          },
+          "targetAudience": {
+            "$ref": "#/components/schemas/TargetAudience"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           },
           "targetRole": {
             "type": "string"
@@ -189384,6 +189466,65 @@
               "type": "integer",
               "format": "int64"
             }
+          }
+        }
+      },
+      "GroupRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "RangeRef": {
+        "type": "object",
+        "properties": {
+          "fromGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromGroupName": {
+            "type": "string"
+          },
+          "toGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toGroupName": {
+            "type": "string"
+          }
+        }
+      },
+      "TargetAudience": {
+        "type": "object",
+        "properties": {
+          "directMemberCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupRef"
+            }
+          },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "range": {
+            "$ref": "#/components/schemas/RangeRef"
+          },
+          "teamCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -201529,6 +201670,116 @@
               "NAME_ONLY",
               "NAME_AND_PURPOSE"
             ]
+          }
+        }
+      },
+      "AudiencePreviewRequestDto": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "BULLETIN_THREAD",
+              "TIMELINE_POST",
+              "BLOG_POST",
+              "TODO",
+              "SCHEDULE",
+              "SURVEY"
+            ]
+          },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "targetGroupRange": {
+            "$ref": "#/components/schemas/TargetGroupRange"
+          },
+          "targetRole": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 0
+          },
+          "targetTeamIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "templateId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseAudiencePreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AudiencePreviewResponseDto"
+          }
+        }
+      },
+      "AudiencePreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "directMemberCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupItem"
+            }
+          },
+          "pushEnabled": {
+            "type": "boolean"
+          },
+          "resolvedTeamCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sampleTeams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SampleTeam"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "GroupItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "SampleTeam": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
           }
         }
       },

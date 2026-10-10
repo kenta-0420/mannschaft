@@ -42,7 +42,12 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3679);   // 独立走査で確認した main90fe + Ranch 3678件に、本人の未完了診断GETを1件追加。
+                .isEqualTo(3680);   // 統合後 source を番人 scanner で独立走査: HTTP 3680 / STOMP 5、全台帳一致。
+                                    // Ranch 側 3679（本人の未完了診断GETを含む）+ main 55e48575 の
+                                    // F01.2.1 6-A 組織告知の宛先プレビュー1本。双方のendpoint/guardを保持。
+                                    // main 側内訳: 3638 = 3637 + F01.2.1 6-A 組織告知の宛先プレビュー1
+                                    // main 3637 = 3632 + CMP-261007-1510 予定由来作成1 + TEAM/ORGリンク・同期preview各2
+                                    // 既存内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2（CMP-260919-1140 Phase 1）+ 5（F01.2.1 4-A）+ 3（F01.2.1 2-B1）+ 4（F01.2.1 2-A）+ 1（F01.2.1 3-D）+ 2（F01.2.1 4-B）+ 10（F01.2.1 2-C）= 3629
                                     // + F01.2.1 部隊 2-A の4エンドポイント（TeamAffiliationSettingsController の
                                     //   設定 GET/PUT・申請フォーム GET の3本 + OrgAffiliationEligibilityController の1本。
                                     //   いずれも @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（0|3・0|1））
@@ -81,6 +86,8 @@ class ApiGateDeclarationGuardTest {
                                     //   @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（0|N）
                                     // + CMP-261001-0630 学校出欠の認可是正 第1段の AttendancePermissionController（権限判定結果 GET の1本）。
                                     //   学校出欠の既存流儀に揃えて feature gate は未宣言（1|1）
+                                    // + F01.2.1 6-A 組織告知の宛先プレビュー（AnnouncementBroadcastController の audience-preview 1本）。
+                                    //   @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（2|3）
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.STOMP).count())
                 .as("STOMP @MessageMapping の走査総数。Chat 2件と VillageLobbyPresence 3件")
                 .isEqualTo(5);

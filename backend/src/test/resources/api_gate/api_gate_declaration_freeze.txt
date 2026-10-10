@@ -621,7 +621,7 @@ HTTP|com.mannschaft.app.skill.controller.SkillCategoryController|4|4
 HTTP|com.mannschaft.app.skill.controller.SkillController|8|8
 HTTP|com.mannschaft.app.skill.controller.SkillMatrixController|1|1
 HTTP|com.mannschaft.app.skill.controller.SkillSearchController|2|2
-HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementBroadcastController|2|2
+HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementBroadcastController|2|3
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementFeedController|6|6
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementFeedOrgController|6|6
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementPreviewController|0|2
