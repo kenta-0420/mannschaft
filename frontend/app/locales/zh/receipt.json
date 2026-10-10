@@ -13,7 +13,7 @@
       "column": {
         "issuedAt": "开具日期",
         "receiptNumber": "收据编号",
-        "recipientName": "收件人",
+        "recipientName": "抬头",
         "amount": "金额",
         "status": "状态",
         "action": "操作"
@@ -31,7 +31,7 @@
       },
       "dialog": {
         "issueTitle": "开具收据",
-        "recipientName": "收件人",
+        "recipientName": "抬头",
         "recipientNamePlaceholder": "例如：山田太郎",
         "amount": "金额（日元）",
         "amountPlaceholder": "例如：10000",

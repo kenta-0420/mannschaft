@@ -13,7 +13,7 @@
       "column": {
         "issuedAt": "Ausstellungsdatum",
         "receiptNumber": "Quittungsnummer",
-        "recipientName": "Empfängername",
+        "recipientName": "Quittungsempfänger",
         "amount": "Betrag",
         "status": "Status",
         "action": "Aktionen"
@@ -31,7 +31,7 @@
       },
       "dialog": {
         "issueTitle": "Quittung ausstellen",
-        "recipientName": "Empfängername",
+        "recipientName": "Quittungsempfänger",
         "recipientNamePlaceholder": "z. B. Taro Yamada",
         "amount": "Betrag (JPY)",
         "amountPlaceholder": "z. B. 10000",

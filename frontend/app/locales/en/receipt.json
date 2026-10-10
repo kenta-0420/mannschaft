@@ -13,7 +13,7 @@
       "column": {
         "issuedAt": "Issue Date",
         "receiptNumber": "Receipt No.",
-        "recipientName": "Payee Name",
+        "recipientName": "Addressee",
         "amount": "Amount",
         "status": "Status",
         "action": "Actions"
@@ -31,7 +31,7 @@
       },
       "dialog": {
         "issueTitle": "Issue Receipt",
-        "recipientName": "Payee Name",
+        "recipientName": "Addressee",
         "recipientNamePlaceholder": "e.g. Taro Yamada",
         "amount": "Amount (JPY)",
         "amountPlaceholder": "e.g. 10000",
