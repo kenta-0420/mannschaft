@@ -10,6 +10,8 @@ import com.mannschaft.app.jobmatching.enums.JobPostingStatus;
 import com.mannschaft.app.jobmatching.enums.RewardType;
 import com.mannschaft.app.jobmatching.enums.VisibilityScope;
 import com.mannschaft.app.jobmatching.enums.WorkLocationType;
+import com.mannschaft.app.jobmatching.event.JobNotificationEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import com.mannschaft.app.jobmatching.repository.JobApplicationRepository;
 import com.mannschaft.app.jobmatching.repository.JobCheckInRepository;
 import com.mannschaft.app.jobmatching.repository.JobContractRepository;
@@ -92,6 +94,7 @@ class JobNotificationTransactionIT extends AbstractMySqlIntegrationTest {
     @Autowired private JobCheckInRepository checkInRepository;
     @Autowired private NotificationRepository notificationRepository;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private ApplicationEventPublisher eventPublisher;
 
     @PersistenceContext
     private EntityManager em;
@@ -145,7 +148,7 @@ class JobNotificationTransactionIT extends AbstractMySqlIntegrationTest {
 
         assertThat(app.getId()).isNotNull();
         // 別接続（別TX）から確認する。
-        assertThat(transactionTemplate.execute(tx -> applicationRepository.findById(app.getId()))).isPresent();
+        assertThat(applicationExists(app.getId())).isTrue();
         await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> assertThat(createNotificationCalls()).isPositive());
     }
 
@@ -191,7 +194,7 @@ class JobNotificationTransactionIT extends AbstractMySqlIntegrationTest {
         JobContractEntity contract = contractService.acceptApplication(appId, f.requesterId());
 
         assertThat(contract.getId()).isNotNull();
-        assertThat(transactionTemplate.execute(tx -> contractRepository.findById(contract.getId()))).isPresent();
+        assertThat(contractExists(contract.getId())).isTrue();
         await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> assertThat(createNotificationCalls()).isPositive());
     }
 
@@ -221,8 +224,7 @@ class JobNotificationTransactionIT extends AbstractMySqlIntegrationTest {
             throw new RuntimeException("強制ロールバック（AC-A検証用）");
         })).isInstanceOf(RuntimeException.class);
 
-        assertThat(transactionTemplate.execute(tx -> contractRepository.findById(contractId).orElseThrow()
-                .getStatus())).isEqualTo(JobContractStatus.MATCHED);
+        assertThat(contractStatus(contractId)).isEqualTo(JobContractStatus.MATCHED);
         assertThat(createNotificationCalls()).isZero();
         assertThat(notificationsOf(f.requesterId(), "JOB_COMPLETION_REPORTED")).isEmpty();
     }
@@ -236,8 +238,7 @@ class JobNotificationTransactionIT extends AbstractMySqlIntegrationTest {
 
         contractService.reportCompletion(contractId, new ReportCompletionCommand("完了"), f.workerId());
 
-        assertThat(transactionTemplate.execute(tx -> contractRepository.findById(contractId).orElseThrow()
-                .getStatus())).isEqualTo(JobContractStatus.COMPLETION_REPORTED);
+        assertThat(contractStatus(contractId)).isEqualTo(JobContractStatus.COMPLETION_REPORTED);
         await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> assertThat(createNotificationCalls()).isPositive());
     }
 
@@ -285,14 +286,81 @@ class JobNotificationTransactionIT extends AbstractMySqlIntegrationTest {
         checkInService.recordCheckIn(checkInCommand(contractId, f.workerId()));
 
         assertThat(checkInRepository.findByJobContractIdAndType(contractId, JobCheckInType.IN)).isPresent();
-        assertThat(transactionTemplate.execute(tx -> contractRepository.findById(contractId).orElseThrow()
-                .getStatus())).isEqualTo(JobContractStatus.IN_PROGRESS);
+        assertThat(contractStatus(contractId)).isEqualTo(JobContractStatus.IN_PROGRESS);
         await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> assertThat(createNotificationCalls()).isPositive());
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // リスナーの CHECKED_OUT / GEO_ANOMALY 分岐（イベントを業務TXのコミットで直接発火して配送を固定する）
+    // recordCheckIn 経由では geo_anomaly を立てられない（求人に緯度経度カラムが無い）ため、
+    // 業務TXの中で publish → コミット、の形でリスナーを実DBで駆動する。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("listener AC-A2: CHECKED_OUT イベントのコミットで Requester に JOB_CHECKED_OUT 通知行が作られる")
+    void listener_チェックアウト通知が作られる() {
+        Fixture f = fixture("lsn-out", 1);
+        Long contractId = insertContract(f, JobContractStatus.IN_PROGRESS);
+
+        publishInCommittedTx(JobNotificationEvent.checkedOut(contractId));
+
+        awaitNotification(f.requesterId(), "JOB_CHECKED_OUT", contractId);
+    }
+
+    @Test
+    @DisplayName("listener AC-A2: GEO_ANOMALY イベントのコミットで Requester に JOB_GEO_ANOMALY 通知行が作られる")
+    void listener_位置乖離通知が作られる() {
+        Fixture f = fixture("lsn-geo", 1);
+        Long contractId = insertContract(f, JobContractStatus.IN_PROGRESS);
+
+        publishInCommittedTx(JobNotificationEvent.geoAnomaly(contractId, 123.0));
+
+        awaitNotification(f.requesterId(), "JOB_GEO_ANOMALY", contractId);
+    }
+
+    @Test
+    @DisplayName("listener AC-B2: CHECKED_OUT と GEO_ANOMALY を同時に送る場面で、片方の永続化が失敗しても他方は届く")
+    void listener_片方が失敗しても他方は届く() {
+        Fixture f = fixture("lsn-both", 1);
+        Long contractId = insertContract(f, JobContractStatus.IN_PROGRESS);
+        // JOB_CHECKED_OUT の永続化だけ失敗させる（他の種別は実 Bean の処理を通す）。
+        willThrow(new DataIntegrityViolationException("模擬通知永続化失敗（CHECKED_OUT のみ）"))
+                .given(notificationService).createNotification(
+                        any(), org.mockito.ArgumentMatchers.eq("JOB_CHECKED_OUT"), any(), any(), any(), any(),
+                        any(), any(), any(), any(), any());
+
+        publishInCommittedTx(JobNotificationEvent.checkedOut(contractId),
+                JobNotificationEvent.geoAnomaly(contractId, 123.0));
+
+        awaitNotification(f.requesterId(), "JOB_GEO_ANOMALY", contractId);
+        assertThat(notificationsOf(f.requesterId(), "JOB_CHECKED_OUT")).isEmpty();
+    }
+
+    private void publishInCommittedTx(JobNotificationEvent... events) {
+        transactionTemplate.executeWithoutResult(tx -> {
+            for (JobNotificationEvent e : events) {
+                eventPublisher.publishEvent(e);
+            }
+        });
     }
 
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
+
+    private boolean applicationExists(Long id) {
+        Boolean exists = transactionTemplate.execute(tx -> applicationRepository.findById(id).isPresent());
+        return Boolean.TRUE.equals(exists);
+    }
+
+    private boolean contractExists(Long id) {
+        Boolean exists = transactionTemplate.execute(tx -> contractRepository.findById(id).isPresent());
+        return Boolean.TRUE.equals(exists);
+    }
+
+    private JobContractStatus contractStatus(Long id) {
+        return transactionTemplate.execute(tx -> contractRepository.findById(id).orElseThrow().getStatus());
+    }
 
     private void failNotificationPersistence() {
         willThrow(new DataIntegrityViolationException("模擬通知永続化失敗（AC-B検証用）"))

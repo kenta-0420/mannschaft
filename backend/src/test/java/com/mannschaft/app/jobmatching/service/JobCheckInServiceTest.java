@@ -161,7 +161,10 @@ class JobCheckInServiceTest {
             // 通知発火（IN のみ）。
             verify(eventPublisher).publishEvent((Object) JobNotificationEvent.checkedIn(CONTRACT_ID));
             verify(eventPublisher, never()).publishEvent((Object) JobNotificationEvent.checkedOut(CONTRACT_ID));
-            verify(eventPublisher, never()).publishEvent((Object) JobNotificationEvent.geoAnomaly(CONTRACT_ID, -1.0));
+            // 距離に依らず GEO_ANOMALY 種別のイベント全体が発行されないこと（旧 anyDouble() と同じ強さ）。
+            verify(eventPublisher, never()).publishEvent(org.mockito.ArgumentMatchers.<Object>argThat(
+                    e -> e instanceof JobNotificationEvent ev
+                            && ev.kind() == JobNotificationEvent.Kind.GEO_ANOMALY));
         }
 
         @Test
