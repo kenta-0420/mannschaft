@@ -291,24 +291,6 @@ public class AnnouncementFeedQueryRepository {
     }
 
     /**
-     * チームダッシュボードの組織告知を読み進めるときの位置（直前のページの最後の行の並びキー）。
-     *
-     * @param pinned    最後の行の {@code is_pinned}
-     * @param createdAt 最後の行の {@code created_at}
-     * @param id        最後の行の {@code id}
-     */
-    public record TeamDashboardFeedKey(boolean pinned, LocalDateTime createdAt, Long id) {
-
-        /** 行から位置を作る。{@code created_at} が無い行は位置にできないので null を返す。 */
-        public static TeamDashboardFeedKey of(AnnouncementFeedEntity feed) {
-            if (feed == null || feed.getCreatedAt() == null || feed.getId() == null) {
-                return null;
-            }
-            return new TeamDashboardFeedKey(Boolean.TRUE.equals(feed.getIsPinned()), feed.getCreatedAt(), feed.getId());
-        }
-    }
-
-    /**
      * チームダッシュボード向けに、組織スコープのお知らせフィードを 1 ページ分、キーセットで取得する（F01.2.1 §8.2・§15）。
      *
      * <p><b>宛先の判定はしない</b>。表示するかどうかの正は {@code AnnouncementAudienceMatcher}（Java）であり、
@@ -331,13 +313,20 @@ public class AnnouncementFeedQueryRepository {
      * {@code AnnouncementAudiencePagingConsistencyIT} が固定する。</p>
      *
      * <p>並びは {@code is_pinned DESC, created_at DESC, id DESC}（{@link #findByScope} の並びに、
-     * 同時刻の行を一意に並べるための {@code id} を足したもの）。{@code after} より後ろの行だけを返す。</p>
+     * 同時刻の行を一意に並べるための {@code id} を足したもの）。{@code afterFeedId} の行より後ろの行だけを返す。</p>
+     *
+     * <p><b>位置（カーソル）は直前のページの最後の行の ID だけで持つ</b>。並びキー（{@code is_pinned}・
+     * {@code created_at}）は SQL の中でその行（{@code k}）から読み、同じ列どうしで比べる。時刻を Java の値として
+     * 取り出して束縛し直さないため、型の変換・ゾーン・精度の違いで比較の意味がずれることが無い
+     * （日時方針 {@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md}。アプリ層に新しく
+     * {@code LocalDateTime} の値を持たせない）。位置の行が読み進める間に物理削除された場合は空結果になり、
+     * それ以降を読まずに打ち切る側へ倒れる（物理削除は 90 日後のバッチだけ）。</p>
      *
      * @param orgId               組織 ID
      * @param allowedVisibilities 閲覧者が閲覧できる visibility 値の集合（空・null は空結果）
      * @param teamId              閲覧中のチーム ID（スナップショットの前絞りに使う）
      * @param currentGroupId      そのチームのこの組織での所属グループ ID（未分類なら null。削除済みでもよい）
-     * @param after               直前のページの最後の行の位置（先頭から読むときは null）
+     * @param afterFeedId         直前のページの最後の行の ID（先頭から読むときは null）
      * @param pageSize            1 ページの行数
      * @return 組織スコープのお知らせフィード（宛先の判定前）
      */
@@ -346,13 +335,15 @@ public class AnnouncementFeedQueryRepository {
             Set<String> allowedVisibilities,
             Long teamId,
             java.util.UUID currentGroupId,
-            TeamDashboardFeedKey after,
+            Long afterFeedId,
             int pageSize) {
         if (allowedVisibilities == null || allowedVisibilities.isEmpty() || teamId == null || pageSize <= 0) {
             return List.of();
         }
 
-        StringBuilder jpql = new StringBuilder("SELECT a FROM AnnouncementFeedEntity a\n")
+        StringBuilder jpql = new StringBuilder(afterFeedId == null
+                        ? "SELECT a FROM AnnouncementFeedEntity a\n"
+                        : "SELECT a FROM AnnouncementFeedEntity a, AnnouncementFeedEntity k\n")
                 .append(VISIBLE_IN_SCOPE_WHERE)
                 .append("""
                           AND (a.targetGroupIds IS NULL
@@ -367,14 +358,15 @@ public class AnnouncementFeedQueryRepository {
                                OR EXISTS (SELECT s.id FROM AnnouncementFeedGroupSnapshotEntity s
                                           WHERE s.feedId = a.id AND s.teamId = :teamId))
                         """);
-        if (after != null) {
-            if (after.pinned()) {
-                jpql.append("  AND (a.isPinned = false OR (a.isPinned = true AND (a.createdAt < :afterCreatedAt"
-                        + " OR (a.createdAt = :afterCreatedAt AND a.id < :afterId))))\n");
-            } else {
-                jpql.append("  AND a.isPinned = false AND (a.createdAt < :afterCreatedAt"
-                        + " OR (a.createdAt = :afterCreatedAt AND a.id < :afterId))\n");
-            }
+        if (afterFeedId != null) {
+            // 並び (is_pinned DESC, created_at DESC, id DESC) で位置の行 k より後ろ
+            jpql.append("""
+                      AND k.id = :afterFeedId
+                      AND ((k.isPinned = true AND a.isPinned = false)
+                           OR (a.isPinned = k.isPinned
+                               AND (a.createdAt < k.createdAt
+                                    OR (a.createdAt = k.createdAt AND a.id < k.id))))
+                    """);
         }
         jpql.append("ORDER BY a.isPinned DESC, a.createdAt DESC, a.id DESC");
 
@@ -386,9 +378,8 @@ public class AnnouncementFeedQueryRepository {
             // JSON_CONTAINS の候補は JSON 文書。UUID 文字列を JSON の文字列として渡す
             query.setParameter("currentGroupJson", "\"" + currentGroupId + "\"");
         }
-        if (after != null) {
-            query.setParameter("afterCreatedAt", after.createdAt());
-            query.setParameter("afterId", after.id());
+        if (afterFeedId != null) {
+            query.setParameter("afterFeedId", afterFeedId);
         }
         query.setMaxResults(pageSize);
         return query.getResultList();

@@ -4,7 +4,6 @@ import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedGroupSnapshotEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedGroupSnapshotRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
-import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository.TeamDashboardFeedKey;
 import com.mannschaft.app.social.announcement.AnnouncementFeedRepository;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementSourceType;
@@ -159,15 +158,15 @@ class AnnouncementAudiencePagingConsistencyIT extends AbstractAudienceDisplayIT 
                     .map(AnnouncementFeedEntity::getId).toList();
 
             List<Long> paged = new ArrayList<>();
-            TeamDashboardFeedKey after = null;
+            Long afterFeedId = null;
             for (int guard = 0; guard < 10_000; guard++) {
                 List<AnnouncementFeedEntity> page = feedQueryRepository.findOrgScopePageForTeamDashboard(
-                        orgX.getId(), ALL_VISIBILITIES, teamId, group, after, 3);
+                        orgX.getId(), ALL_VISIBILITIES, teamId, group, afterFeedId, 3);
                 page.forEach(f -> paged.add(f.getId()));
                 if (page.size() < 3) {
                     break;
                 }
-                after = TeamDashboardFeedKey.of(page.get(page.size() - 1));
+                afterFeedId = page.get(page.size() - 1).getId();
             }
 
             assertThat(single).as("前提: 3 行のページを何枚もまたぐ").hasSizeGreaterThan(9);
@@ -186,11 +185,14 @@ class AnnouncementAudiencePagingConsistencyIT extends AbstractAudienceDisplayIT 
                 .toList();
     }
 
+    /** チームの組織X での所属グループ（未分類なら null。Stream#findFirst は null 要素を扱えないため走査で返す）。 */
     private UUID currentGroupOf(Long teamId) {
-        return membershipRepository.findActiveOrgGroupsByTeamId(teamId).stream()
-                .filter(p -> orgX.getId().equals(p.getOrganizationId()))
-                .map(p -> p.getGroupId())
-                .findFirst().orElse(null);
+        for (var p : membershipRepository.findActiveOrgGroupsByTeamId(teamId)) {
+            if (orgX.getId().equals(p.getOrganizationId())) {
+                return p.getGroupId();
+            }
+        }
+        throw new IllegalStateException("前提: teamId=" + teamId + " は組織X に ACTIVE で加盟している");
     }
 
     /** 3 件ずつ同じ時刻にして、同時刻の並び（id 降順）も検証の対象にする。 */

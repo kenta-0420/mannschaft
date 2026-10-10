@@ -7,7 +7,6 @@ import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedGroupSnapshotEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedGroupSnapshotRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
-import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository.TeamDashboardFeedKey;
 import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import com.mannschaft.app.team.service.TeamOrgMembershipQueryService.TeamOrgGroupAssignment;
 import lombok.RequiredArgsConstructor;
@@ -112,7 +111,7 @@ public class AnnouncementAudienceMatcher {
     private List<AnnouncementFeedEntity> findVisibleInOrg(TeamContext ctx, Long orgId, Set<String> allowedVisibilities,
                                                           int limitPerOrg) {
         List<AnnouncementFeedEntity> picked = new ArrayList<>();
-        TeamDashboardFeedKey after = null;
+        Long afterFeedId = null;
         int scanned = 0;
         while (picked.size() < limitPerOrg) {
             if (scanned >= MAX_SCANNED_PER_ORG) {
@@ -122,7 +121,7 @@ public class AnnouncementAudienceMatcher {
                 break;
             }
             List<AnnouncementFeedEntity> page = feedQueryRepository.findOrgScopePageForTeamDashboard(
-                    orgId, allowedVisibilities, ctx.teamId(), ctx.groupByOrg().get(orgId), after, PAGE_SIZE);
+                    orgId, allowedVisibilities, ctx.teamId(), ctx.groupByOrg().get(orgId), afterFeedId, PAGE_SIZE);
             scanned += page.size();
             Set<Long> matched = judge(ctx, page);
             for (AnnouncementFeedEntity feed : page) {
@@ -136,13 +135,14 @@ public class AnnouncementAudienceMatcher {
             if (page.size() < PAGE_SIZE) {
                 break;
             }
-            after = TeamDashboardFeedKey.of(page.get(page.size() - 1));
-            if (after == null) {
+            AnnouncementFeedEntity last = page.get(page.size() - 1);
+            if (last.getCreatedAt() == null) {
                 // created_at の無い行は位置にできない。読み進めず、黙らせずに痕跡を残す
                 log.warn("created_at の無い組織告知があるため、それ以降を読み進めません（teamId={}, orgId={}）",
                         ctx.teamId(), orgId);
                 break;
             }
+            afterFeedId = last.getId();
         }
         return picked;
     }
