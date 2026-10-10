@@ -233,4 +233,117 @@ class ReflectionSpacedReminderServiceTest {
                 any(), anyLong(), any(), any());
         verify(reminderRepository).save(r);
     }
+
+    // ─── Issue #2997 G8: 送信済み状態の契約（共通AC-D） ───────────────────────────
+
+    private ReflectionSpacedReminderEntity dueReminder(ReflectionEntryEntity e, Long userId) {
+        ReflectionSpacedReminderEntity r = ReflectionSpacedReminderEntity.builder()
+                .entryId(e.getId()).userId(userId)
+                .remindAt(LocalDateTime.now().minusMinutes(1))
+                .intervalDays(1).kind(ReflectionReminderKind.SPACED)
+                .status(ReflectionReminderStatus.PENDING).build();
+        setId(r, UUID.randomUUID());
+        return r;
+    }
+
+    private void givenParents(ReflectionEntryEntity e) {
+        given(entryRepository.findById(e.getId())).willReturn(Optional.of(e));
+        given(themeRepository.findById(e.getThemeId())).willReturn(Optional.of(theme("1,3,7,14", null)));
+    }
+
+    @Test
+    @DisplayName("AC-D-1: 通知が例外で失敗した項目は SENT にならず PENDING のまま残り、他の項目の送信・SENT 遷移は止まらない")
+    void processDueReminders_notifyFailure_staysPendingAndOthersContinue() {
+        ReflectionEntryEntity e1 = entry(LocalDate.of(2026, 6, 1));
+        ReflectionEntryEntity e2 = entry(LocalDate.of(2026, 6, 1));
+        ReflectionSpacedReminderEntity failing = dueReminder(e1, 101L);
+        ReflectionSpacedReminderEntity ok = dueReminder(e2, 102L);
+        given(reminderRepository.findByStatusAndRemindAtLessThanEqual(eq(ReflectionReminderStatus.PENDING), any()))
+                .willReturn(List.of(failing, ok));
+        givenParents(e1);
+        givenParents(e2);
+        org.mockito.Mockito.doThrow(new RuntimeException("通知の永続化失敗（模擬）"))
+                .when(notificationHelper).notify(eq(101L), any(), any(), any(), any(), any(),
+                        any(), any(), any(), any());
+
+        service.processDueReminders();
+
+        assertThat(failing.getStatus()).as("通知に失敗した項目は送信済みにしない").isEqualTo(ReflectionReminderStatus.PENDING);
+        assertThat(ok.getStatus()).as("他の項目は送信済みになる").isEqualTo(ReflectionReminderStatus.SENT);
+        verify(reminderRepository, never()).save(failing);
+        verify(reminderRepository).save(ok);
+    }
+
+    @Test
+    @DisplayName("AC-D-2: visibility deny（通知は作られず例外も出ない）の項目は SENT にする（現行どおり。毎分の再送ループを避ける）")
+    void processDueReminders_visibilityDeny_isMarkedSent() {
+        ReflectionEntryEntity e = entry(LocalDate.of(2026, 6, 1));
+        ReflectionSpacedReminderEntity r = dueReminder(e, USER_ID);
+        given(reminderRepository.findByStatusAndRemindAtLessThanEqual(eq(ReflectionReminderStatus.PENDING), any()))
+                .willReturn(List.of(r));
+        givenParents(e);
+        // NotificationHelper#notify は deny のとき何もせず void で復帰する（モックの既定動作と同じ）。
+
+        service.processDueReminders();
+
+        assertThat(r.getStatus()).isEqualTo(ReflectionReminderStatus.SENT);
+        verify(reminderRepository).save(r);
+    }
+
+    @Test
+    @DisplayName("AC-D-3: 通知は成功したが SENT の保存に失敗した場合は PENDING が残り次回再送される（二重送信を許容する側に固定）。他の項目は止まらない")
+    void processDueReminders_sentSaveFailure_isTolerated_andOthersContinue() {
+        ReflectionEntryEntity e1 = entry(LocalDate.of(2026, 6, 1));
+        ReflectionEntryEntity e2 = entry(LocalDate.of(2026, 6, 1));
+        ReflectionSpacedReminderEntity saveFails = dueReminder(e1, 101L);
+        ReflectionSpacedReminderEntity ok = dueReminder(e2, 102L);
+        given(reminderRepository.findByStatusAndRemindAtLessThanEqual(eq(ReflectionReminderStatus.PENDING), any()))
+                .willReturn(List.of(saveFails, ok));
+        givenParents(e1);
+        givenParents(e2);
+        given(reminderRepository.save(saveFails)).willThrow(new RuntimeException("SENT の保存失敗（模擬）"));
+
+        service.processDueReminders();
+
+        // 通知は 2 件とも送られている（保存失敗の項目も通知自体は成功済み）。
+        verify(notificationHelper).notify(eq(101L), any(), any(), any(), any(), any(),
+                any(), any(), any(), any());
+        verify(notificationHelper).notify(eq(102L), any(), any(), any(), any(), any(),
+                any(), any(), any(), any());
+        verify(reminderRepository).save(ok);
+    }
+
+    @Test
+    @DisplayName("AC-D-4: 部分成功の後で再実行しても、SENT 済みの項目には再送しない（PENDING だけが対象）")
+    void processDueReminders_rerunAfterPartialSuccess_doesNotResendSent() {
+        ReflectionEntryEntity e1 = entry(LocalDate.of(2026, 6, 1));
+        ReflectionEntryEntity e2 = entry(LocalDate.of(2026, 6, 1));
+        ReflectionSpacedReminderEntity first = dueReminder(e1, 101L);
+        ReflectionSpacedReminderEntity second = dueReminder(e2, 102L);
+        List<ReflectionSpacedReminderEntity> all = List.of(first, second);
+        // 実リポジトリと同じく PENDING の行だけを返す。
+        given(reminderRepository.findByStatusAndRemindAtLessThanEqual(eq(ReflectionReminderStatus.PENDING), any()))
+                .willAnswer(inv -> all.stream()
+                        .filter(r -> r.getStatus() == ReflectionReminderStatus.PENDING).toList());
+        givenParents(e1);
+        givenParents(e2);
+        // 1 回目: second の通知だけ失敗する。
+        org.mockito.Mockito.doThrow(new RuntimeException("通知の永続化失敗（模擬）"))
+                .doNothing()
+                .when(notificationHelper).notify(eq(102L), any(), any(), any(), any(), any(),
+                        any(), any(), any(), any());
+
+        service.processDueReminders();
+        assertThat(first.getStatus()).isEqualTo(ReflectionReminderStatus.SENT);
+        assertThat(second.getStatus()).isEqualTo(ReflectionReminderStatus.PENDING);
+
+        // 2 回目: second だけが再送され、first には再送されない。
+        service.processDueReminders();
+
+        verify(notificationHelper, org.mockito.Mockito.times(1)).notify(eq(101L), any(), any(), any(), any(),
+                any(), any(), any(), any(), any());
+        verify(notificationHelper, org.mockito.Mockito.times(2)).notify(eq(102L), any(), any(), any(), any(),
+                any(), any(), any(), any(), any());
+        assertThat(second.getStatus()).isEqualTo(ReflectionReminderStatus.SENT);
+    }
 }

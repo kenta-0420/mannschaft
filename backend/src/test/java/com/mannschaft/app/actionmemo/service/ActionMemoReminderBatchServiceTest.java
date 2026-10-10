@@ -387,4 +387,37 @@ class ActionMemoReminderBatchServiceTest {
                     any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
     }
+
+    // ================================================================
+    // Issue #2997 G8 AC-B2: 1 件の通知失敗が他のユーザー・監査記録を巻き込まない
+    // ================================================================
+
+    @Nested
+    @DisplayName("Issue #2997 G8: 通知失敗の隔離")
+    class NotificationFailureIsolation {
+
+        @Test
+        @DisplayName("1 人分の createNotification が例外でも、他のユーザーへは通知され、監査記録も残る")
+        void 一人の通知失敗が他のユーザーと監査記録を巻き込まない() {
+            LocalTime nine = LocalTime.of(9, 0);
+            UserActionMemoSettingsEntity failing = UserActionMemoSettingsEntity.builder()
+                    .userId(1L).reminderEnabled(true).reminderTime(nine).build();
+            UserActionMemoSettingsEntity ok = UserActionMemoSettingsEntity.builder()
+                    .userId(2L).reminderEnabled(true).reminderTime(nine).build();
+            given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
+                    .willReturn(List.of(failing, ok));
+            given(notificationService.createNotification(
+                    eq(1L), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .willThrow(new RuntimeException("通知の永続化失敗（模擬）"));
+
+            service.executeAt(nine, LocalDate.of(2026, 5, 4));
+
+            verify(notificationService, times(1)).createNotification(
+                    eq(2L), eq("ACTION_MEMO_REMINDER"), any(), any(), any(), any(), any(), any(),
+                    eq(2L), contains("/action-memo?date="), eq(null));
+            verify(auditLogService, times(1)).record(
+                    "ACTION_MEMO_REMINDER_BATCH", null, null, null, null, null, null, null,
+                    "{\"targets\":2,\"notified\":1}");
+        }
+    }
 }

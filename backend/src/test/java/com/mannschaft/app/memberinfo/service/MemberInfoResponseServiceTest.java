@@ -52,6 +52,10 @@ class MemberInfoResponseServiceTest {
     @Mock
     private NotificationHelper notificationHelper;
 
+    /** Issue #2997 G8: 付随通知は業務TX内では publishEvent だけを行う。 */
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     /** Issue #2715 CMP-055 lot C-5: newly added i18n dependencies. */
     @Mock private UserLocaleCache userLocaleCache;
     @Mock private MessageSource messageSource;
@@ -227,6 +231,49 @@ class MemberInfoResponseServiceTest {
                     .isEqualTo(MemberInfoErrorCode.REMIND_TOO_SOON);
 
             verify(notificationHelper, never()).notify(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("Issue #2997 G8 AC-A2: 送信に成功したら、業務TX内では通知を作らず配送要求イベントを publish する（実通知は AFTER_COMMIT）")
+        void sendRemind_publishesEventInsteadOfNotifyingInTransaction() {
+            Long adminUserId = 2L;
+            TeamMemberInfoFieldEntity field = buildField(FIELD_ID, true, false, MemberInfoFieldType.TEXT, null);
+            given(fieldRepository.findByTeamIdAndIsActiveTrueOrderBySortOrderAsc(TEAM_ID))
+                    .willReturn(List.of(field));
+            given(responseRepository.findByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(List.of());
+            given(responseRepository.findByUserIdAndFieldId(USER_ID, FIELD_ID)).willReturn(Optional.empty());
+
+            service.sendRemind(TEAM_ID, USER_ID, adminUserId);
+
+            // 業務TX内で通知基盤を直接呼ばない（rollback-only 汚染と、ロールバック後に通知だけ残る不整合の元）。
+            org.mockito.Mockito.verifyNoInteractions(notificationHelper);
+            ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue())
+                    .isInstanceOf(com.mannschaft.app.memberinfo.event.MemberInfoUpdateReminderNotificationEvent.class)
+                    .hasFieldOrPropertyWithValue("teamId", TEAM_ID)
+                    .hasFieldOrPropertyWithValue("recipientUserId", USER_ID)
+                    .hasFieldOrPropertyWithValue("fieldId", field.getId())
+                    // 通知の実行者（actor）は依頼した管理者。是正前の notify(..., requestUserId) と同じ。
+                    .hasFieldOrPropertyWithValue("actorId", adminUserId);
+            // 業務状態（last_reminder_sent_at）は同じTXで記録される。
+            verify(responseRepository).save(any(TeamMemberInfoResponseEntity.class));
+        }
+
+        @Test
+        @DisplayName("Issue #2997 G8 AC-A: クールダウン中（REMIND_TOO_SOON）は配送要求イベントも publish しない")
+        void sendRemind_cooldown_doesNotPublish() {
+            TeamMemberInfoFieldEntity field = buildField(FIELD_ID, true, false, MemberInfoFieldType.TEXT, null);
+            given(fieldRepository.findByTeamIdAndIsActiveTrueOrderBySortOrderAsc(TEAM_ID))
+                    .willReturn(List.of(field));
+            given(responseRepository.findByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(List.of(
+                    TeamMemberInfoResponseEntity.builder().teamId(TEAM_ID).userId(USER_ID).fieldId(FIELD_ID)
+                            .lastReminderSentAt(LocalDateTime.now().minusHours(1)).build()));
+
+            assertThatThrownBy(() -> service.sendRemind(TEAM_ID, USER_ID, 2L))
+                    .isInstanceOf(BusinessException.class);
+
+            org.mockito.Mockito.verifyNoInteractions(eventPublisher);
         }
     }
 
