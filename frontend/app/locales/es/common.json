@@ -2873,5 +2873,12 @@
     "minutesAgo": "hace {count} minuto | hace {count} minutos",
     "hoursAgo": "hace {count} hora | hace {count} horas",
     "daysAgo": "hace {count} día | hace {count} días"
+  },
+  "error_page": {
+    "not_found_title": "No se encontró esta página",
+    "not_found_description": "La página que busca no existe o puede haber sido movida o eliminada.",
+    "generic_title": "Se ha producido un error",
+    "generic_description": "Inténtelo de nuevo en unos minutos. Si el problema continúa, póngase en contacto con el administrador.",
+    "back_home": "Volver al inicio"
   }
 }

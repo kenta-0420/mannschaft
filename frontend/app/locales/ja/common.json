@@ -2873,5 +2873,12 @@
     "minutesAgo": "{count}分前",
     "hoursAgo": "{count}時間前",
     "daysAgo": "{count}日前"
+  },
+  "error_page": {
+    "not_found_title": "このページは見つかりませんでした",
+    "not_found_description": "お探しのページは存在しないか、移動または削除された可能性があります。",
+    "generic_title": "エラーが発生しました",
+    "generic_description": "しばらくしてからもう一度お試しください。問題が続く場合は、管理者へお問い合わせください。",
+    "back_home": "ホームへ戻る"
   }
 }
