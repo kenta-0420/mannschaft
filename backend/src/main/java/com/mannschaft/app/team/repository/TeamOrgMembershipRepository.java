@@ -95,33 +95,13 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     // ========================================================================
 
     /**
-     * チーム ID 集合に対応する ACTIVE な親組織 ID をバルク取得する。
-     *
-     * <p>F00 基盤の {@code ScopeAncestorResolver} から呼ばれ、
-     * {@code ORGANIZATION_WIDE} 公開判定および §11.6 親 ORG 連鎖チェックの土台となる。</p>
-     *
-     * <p>{@code teamIds} が空の場合は SQL を発行せず空 Map を即返却する。</p>
-     *
-     * @param teamIds 対象チーム ID 集合
-     * @return チーム ID → 組織 ID のマップ。所属組織が見つからない team は entry に含めない
-     */
-    default Map<Long, Long> findOrganizationIdByTeamIdIn(Set<Long> teamIds) {
-        if (teamIds == null || teamIds.isEmpty()) {
-            return Map.of();
-        }
-        Map<Long, Long> result = new HashMap<>();
-        for (TeamOrgIdProjection p : findTeamOrgIdProjectionsByTeamIdIn(teamIds)) {
-            result.put(p.getTeamId(), p.getOrganizationId());
-        }
-        return result;
-    }
-
-    /**
      * チーム ID 集合に対応する ACTIVE な親組織 ID を、チームごとに<strong>全件</strong>バルク取得する
      * （F01.2.1 §9.2 #1。複数組織への同時加盟に対応する）。
      *
-     * <p>{@link #findOrganizationIdByTeamIdIn(Set)} は {@code HashMap.put} の後勝ちで
-     * 任意の1件に潰れるため、本メソッドへ置き換える（旧メソッドは 3-F で削除する）。</p>
+     * <p>F00 基盤の {@code ScopeAncestorResolver} から呼ばれ、{@code ORGANIZATION_WIDE} 公開判定および
+     * §11.6 親 ORG 連鎖チェックの土台となる。旧 {@code findOrganizationIdByTeamIdIn}（{@code Map<Long, Long>}・
+     * {@code HashMap.put} の後勝ちで任意の1件に潰れる）は 3-F で削除した。チーム→組織を {@code Map<Long, Long>} で
+     * 返す形は {@code TeamOrgSingleParentAssumptionGuardTest} が禁じる。</p>
      *
      * <p>SQL は 1 本（IN 句）で、親組織の数に比例して増えない。親組織が0件のチームは entry に含めない。</p>
      *
@@ -181,7 +161,7 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     List<TeamOrgIdProjection> findTeamOrgIdProjectionsInPrimaryOrderByTeamIdIn(@Param("teamIds") Set<Long> teamIds);
 
     /**
-     * {@link #findOrganizationIdByTeamIdIn(Set)} の内部 JPQL 実装。
+     * {@link #findOrganizationIdsByTeamIdIn(Set)} の内部 JPQL 実装。
      * 空集合チェックは default メソッド側で行うため、本メソッドは {@code teamIds}
      * 非空でのみ呼び出される。
      */

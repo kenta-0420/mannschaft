@@ -39,6 +39,20 @@ const { t } = useI18n()
 const showBroadcastWizard = ref(false)
 
 /**
+ * ヘッダ人数表示（CMP-261004-1943）。
+ * AC-13: 0 は「0」、欠落/null は「—」で表示する（`?? undefined` では 0 を拾えないため、
+ * null/undefined の判定を明示する）。AC-14: i18n キーへ移行し直書きをやめる。
+ */
+const memberCountText = computed(() => {
+  const count = props.team.metadata?.memberCount
+  return t('common.scopeShell.memberCount', { count: count === null || count === undefined ? '—' : count })
+})
+const supporterCountText = computed(() => {
+  const count = props.team.social?.supporterCount
+  return t('common.scopeShell.supporterCount', { count: count === null || count === undefined ? '—' : count })
+})
+
+/**
  * モバイル(<sm)向け「⋯」オーバーフローメニュー。
  * 低頻度アクション（市場出品導線・チーム内告知・チームから退出）をここへ格納し、
  * デスクトップ(sm以上)は従来どおりインライン表示のまま維持する。
@@ -98,7 +112,7 @@ const overflowMenuItems = computed(() => {
       <!-- 左: 戻る + 名前 + メタ情報 -->
       <div class="flex flex-col gap-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap tag-on-light-band">
-          <Button icon="pi pi-arrow-left" text rounded size="small" @click="emit('back')" />
+          <Button icon="pi pi-arrow-left" text rounded size="small" :aria-label="$t('button.back')" @click="emit('back')" />
           <h1 class="text-xl sm:text-2xl font-bold truncate text-surface-900">
             {{ displayName }}
           </h1>
@@ -106,13 +120,17 @@ const overflowMenuItems = computed(() => {
           <RoleBadge v-if="roleName" :role="roleName" />
         </div>
         <div class="flex items-center gap-3 text-xs sm:text-sm text-surface-500 flex-wrap pl-8">
-          <span class="flex items-center gap-1">
+          <span class="flex items-center gap-1" data-testid="scope-header-member-count">
             <i class="pi pi-users text-xs" />
-            メンバー <strong class="text-surface-700">{{ team.metadata?.memberCount ?? 0 }}</strong>人
+            {{ memberCountText }}
           </span>
-          <span v-if="team.visibility?.supporterEnabled" class="flex items-center gap-1">
+          <span
+            v-if="team.visibility?.supporterEnabled"
+            class="flex items-center gap-1"
+            data-testid="scope-header-supporter-count"
+          >
             <i class="pi pi-heart text-xs" />
-            サポーター <strong class="text-surface-700">{{ team.social?.supporterCount ?? '—' }}</strong>人
+            {{ supporterCountText }}
           </span>
         </div>
       </div>
@@ -314,7 +332,7 @@ const overflowMenuItems = computed(() => {
             rounded
             severity="secondary"
             size="small"
-            :aria-label="$t('common.menu')"
+            :aria-label="$t('common.moreActions')"
             @click="toggleOverflowMenu"
           />
           <Menu ref="overflowMenu" :model="overflowMenuItems" popup />

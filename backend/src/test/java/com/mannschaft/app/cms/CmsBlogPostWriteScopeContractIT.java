@@ -578,15 +578,25 @@ class CmsBlogPostWriteScopeContractIT extends AbstractMySqlIntegrationTest {
     @DisplayName("チーム別記事一覧(listPosts)")
     class ListPosts {
 
+        /**
+         * CMP-261007-2052 AC-16: 旧契約「非メンバーの一覧は403」を改める。一覧は PUBLIC チームなら
+         * 非メンバーにも開くが、他チームの下書きは列挙させない（下書き列挙禁止は維持）。
+         * 件数（meta.total）も可視記事のみを数え、下書きの存在を漏らさない。
+         */
         @Test
-        @DisplayName("非メンバーの一覧取得は403(他チームの下書き列挙禁止)")
-        void 非メンバーの一覧取得は403() throws Exception {
-            createTeamPostAsAdminA();
+        @DisplayName("AC-16: 非メンバーの一覧取得は200・下書きは不在・件数は可視記事のみ(他チームの下書き列挙禁止を維持)")
+        void 非メンバーの一覧取得は200で下書きを列挙しない() throws Exception {
+            Long draftId = createTeamPostAsAdminA();
+            Long publicId = createPublicPublishedTeamPostAsAdminA();
 
             setAuthentication(outsiderId);
-            mockMvc.perform(get("/api/v1/blog/posts").param("teamId", teamAId.toString()))
-                    .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
+            String resp = mockMvc.perform(get("/api/v1/blog/posts").param("teamId", teamAId.toString()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.meta.total").value(1))
+                    .andReturn().getResponse().getContentAsString();
+            List<Long> ids = new java.util.ArrayList<>();
+            objectMapper.readTree(resp).path("data").forEach(item -> ids.add(item.path("id").asLong()));
+            org.assertj.core.api.Assertions.assertThat(ids).containsExactly(publicId).doesNotContain(draftId);
         }
 
         @Test
@@ -685,6 +695,21 @@ class CmsBlogPostWriteScopeContractIT extends AbstractMySqlIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readTree(resp).path("data").path("id").asLong();
+    }
+
+    /** adminA の認証コンテキストでチームAの PUBLIC 記事を作成して PUBLISHED にし、そのIDを返す。 */
+    private Long createPublicPublishedTeamPostAsAdminA() throws Exception {
+        setAuthentication(adminAId);
+        Map<String, Object> body = createPostBody();
+        body.put("visibility", "PUBLIC");
+        String resp = mockMvc.perform(post("/api/v1/blog/posts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Long postId = objectMapper.readTree(resp).path("data").path("id").asLong();
+        publishAsAdminA(postId);
+        return postId;
     }
 
     /** 指定ユーザーの認証コンテキストで個人ブログ記事(team/org無し)を1件作成し、そのIDを返す。 */

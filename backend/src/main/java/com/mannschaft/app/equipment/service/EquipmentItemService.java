@@ -87,8 +87,11 @@ public class EquipmentItemService {
      * チーム備品の詳細を取得する。
      */
     public EquipmentItemResponse getByTeam(Long teamId, Long id, Long actorUserId) {
+        // 非所属者には備品の有無を知らせず、既存の不在応答へ統一する。
+        if (!accessControlService.isMember(actorUserId, teamId, "TEAM")) {
+            throw new BusinessException(EquipmentErrorCode.ITEM_NOT_FOUND);
+        }
         EquipmentItemEntity entity = findTeamItemOrThrow(teamId, id);
-        accessControlService.checkMembership(actorUserId, entity.getTeamId(), "TEAM");
         return equipmentMapper.toItemResponse(entity);
     }
 

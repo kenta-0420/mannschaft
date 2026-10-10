@@ -1,9 +1,10 @@
 <script setup lang="ts">
+const { t } = useI18n()
 const orgStore = useOrganizationStore()
 </script>
 
 <template>
-  <DashboardWidgetCard title="Links：組織" icon="pi pi-building" to="/organizations">
+  <DashboardWidgetCard :title="t('dashboard.widgets.myOrganizations.title')" icon="pi pi-building" to="/organizations">
     <template v-if="orgStore.myOrganizations.length > 0">
       <div class="flex flex-wrap gap-2">
         <NuxtLink
@@ -15,15 +16,15 @@ const orgStore = useOrganizationStore()
           <i class="pi pi-building text-xs text-primary" />
           <div class="min-w-0 flex-1">
             <p class="truncate font-medium">{{ org.nickname1 || org.name }}</p>
-            <p class="text-xs text-surface-500">{{ org.orgType === 'NONPROFIT' ? '非営利' : '営利' }}</p>
+            <p class="text-xs text-surface-500">{{ org.orgType === 'NONPROFIT' ? t('dashboard.widgets.myOrganizations.nonprofit') : t('dashboard.widgets.myOrganizations.forProfit') }}</p>
           </div>
           <RoleBadge :role="org.role" />
         </NuxtLink>
       </div>
       <div class="mt-3 flex justify-end">
-        <NuxtLink to="/organizations" class="text-sm text-primary hover:underline">すべて表示</NuxtLink>
+        <NuxtLink to="/organizations" class="text-sm text-primary hover:underline">{{ t('dashboard.widgets.common.viewAll') }}</NuxtLink>
       </div>
     </template>
-    <DashboardEmptyState v-else icon="pi pi-building" message="まだ組織に参加していません" />
+    <DashboardEmptyState v-else icon="pi pi-building" :message="t('dashboard.widgets.myOrganizations.empty')" />
   </DashboardWidgetCard>
 </template>

@@ -11,6 +11,7 @@ const runtimeConfig = useRuntimeConfig()
 const api = useApi()
 const { t } = useI18n()
 const notification = useNotification()
+const { applyAccountLocale } = useLocale()
 
 const error = ref<string | null>(null)
 const loading = ref(true)
@@ -55,6 +56,8 @@ onMounted(async () => {
         timezone: profile.data.timezone ?? undefined,
         locale: profile.data.locale || undefined,
       })
+      // ログイン時もアカウント言語を正として Cookie と表示を揃える（CMP-261007-1243）。
+      await applyAccountLocale(profile.data.locale)
     } catch {
       // プロフィール取得失敗はサイレント（トークンは取得済み）
     }
