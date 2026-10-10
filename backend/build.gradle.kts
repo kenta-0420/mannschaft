@@ -135,7 +135,7 @@ dependencies {
     implementation("org.apache.xmlgraphics:batik-codec:1.17")
 
     // PDF内容検証用（テストスコープのみ）
-    testImplementation("org.apache.pdfbox:pdfbox:3.0.3")
+    testImplementation("org.apache.pdfbox:pdfbox:3.0.8")
 
     // === F09.13 Phase 1-γ Excel生成共通基盤（Apache POI） ===
     // SXSSFWorkbook によるストリーミング生成で大量レコード（〜20,000件）に対応
