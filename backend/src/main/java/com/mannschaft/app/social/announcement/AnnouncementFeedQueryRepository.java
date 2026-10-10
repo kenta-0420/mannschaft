@@ -291,6 +291,20 @@ public class AnnouncementFeedQueryRepository {
     }
 
     /**
+     * チームダッシュボードの組織告知を読み進める位置（直前のページの最後の行）。時刻は持たない。
+     *
+     * @param pinned その行を取得したときの {@code is_pinned}
+     * @param feedId その行の ID
+     */
+    public record OrgFeedCursor(boolean pinned, Long feedId) {
+
+        /** 取得した行から位置を作る。 */
+        public static OrgFeedCursor of(AnnouncementFeedEntity feed) {
+            return new OrgFeedCursor(Boolean.TRUE.equals(feed.getIsPinned()), feed.getId());
+        }
+    }
+
+    /**
      * チームダッシュボード向けに、組織スコープのお知らせフィードを 1 ページ分、キーセットで取得する（F01.2.1 §8.2・§15）。
      *
      * <p><b>宛先の判定はしない</b>。表示するかどうかの正は {@code AnnouncementAudienceMatcher}（Java）であり、
@@ -313,20 +327,28 @@ public class AnnouncementFeedQueryRepository {
      * {@code AnnouncementAudiencePagingConsistencyIT} が固定する。</p>
      *
      * <p>並びは {@code is_pinned DESC, created_at DESC, id DESC}（{@link #findByScope} の並びに、
-     * 同時刻の行を一意に並べるための {@code id} を足したもの）。{@code afterFeedId} の行より後ろの行だけを返す。</p>
+     * 同時刻の行を一意に並べるための {@code id} を足したもの）。{@code after} の位置より後ろの行だけを返す。</p>
      *
-     * <p><b>位置（カーソル）は直前のページの最後の行の ID だけで持つ</b>。並びキー（{@code is_pinned}・
-     * {@code created_at}）は SQL の中でその行（{@code k}）から読み、同じ列どうしで比べる。時刻を Java の値として
-     * 取り出して束縛し直さないため、型の変換・ゾーン・精度の違いで比較の意味がずれることが無い
+     * <p><b>位置（カーソル）</b>は直前のページの最後の行の「取得したときの {@code is_pinned}」と「ID」で持つ
+     * （{@link OrgFeedCursor}）。{@code created_at} は SQL の中でその行（{@code k}）から読み、同じ列どうしで比べる。
+     * 時刻を Java の値として取り出して束縛し直さないため、型の変換・ゾーン・精度で比較の意味がずれない
      * （日時方針 {@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md}。アプリ層に新しく
-     * {@code LocalDateTime} の値を持たせない）。位置の行が読み進める間に物理削除された場合は空結果になり、
-     * それ以降を読まずに打ち切る側へ倒れる（物理削除は 90 日後のバッチだけ）。</p>
+     * {@code LocalDateTime} の値を持たせない）。{@code created_at} と {@code id} は行の生涯で変わらない。</p>
+     *
+     * <p><b>ピン留めが読み進める間に変わる場合</b>: {@code is_pinned} は位置の行の今の値ではなく取得時の値で
+     * 比べるので、位置の行がピン留め・解除されても位置は動かない（同じ範囲を読み直さない・飛ばさない）。
+     * 他の行がページの間にピン留め・解除されると、その行が既読の範囲と未読の範囲の間を移ることはある。
+     * 既読側から未読側へ移った行は呼び出し側（Matcher）が ID で重複を除き、未読側から既読側へ移った行は
+     * その回の表示から漏れる（次回の表示で正しい位置に出る）。位置は並びの上で単調に進むので、
+     * 読み進めが終わらないことは無い。</p>
+     *
+     * <p>位置の行が読み進める間に物理削除された場合は空結果になる（呼び出し側が検知して WARN を残す）。</p>
      *
      * @param orgId               組織 ID
      * @param allowedVisibilities 閲覧者が閲覧できる visibility 値の集合（空・null は空結果）
      * @param teamId              閲覧中のチーム ID（スナップショットの前絞りに使う）
      * @param currentGroupId      そのチームのこの組織での所属グループ ID（未分類なら null。削除済みでもよい）
-     * @param afterFeedId         直前のページの最後の行の ID（先頭から読むときは null）
+     * @param after               直前のページの最後の行の位置（先頭から読むときは null）
      * @param pageSize            1 ページの行数
      * @return 組織スコープのお知らせフィード（宛先の判定前）
      */
@@ -335,11 +357,12 @@ public class AnnouncementFeedQueryRepository {
             Set<String> allowedVisibilities,
             Long teamId,
             java.util.UUID currentGroupId,
-            Long afterFeedId,
+            OrgFeedCursor after,
             int pageSize) {
         if (allowedVisibilities == null || allowedVisibilities.isEmpty() || teamId == null || pageSize <= 0) {
             return List.of();
         }
+        Long afterFeedId = after == null ? null : after.feedId();
 
         StringBuilder jpql = new StringBuilder(afterFeedId == null
                         ? "SELECT a FROM AnnouncementFeedEntity a\n"
@@ -359,14 +382,23 @@ public class AnnouncementFeedQueryRepository {
                                           WHERE s.feedId = a.id AND s.teamId = :teamId))
                         """);
         if (afterFeedId != null) {
-            // 並び (is_pinned DESC, created_at DESC, id DESC) で位置の行 k より後ろ
-            jpql.append("""
-                      AND k.id = :afterFeedId
-                      AND ((k.isPinned = true AND a.isPinned = false)
-                           OR (a.isPinned = k.isPinned
-                               AND (a.createdAt < k.createdAt
-                                    OR (a.createdAt = k.createdAt AND a.id < k.id))))
-                    """);
+            // 並び (is_pinned DESC, created_at DESC, id DESC) で位置より後ろ。is_pinned は取得時の値（after.pinned）
+            if (after.pinned()) {
+                jpql.append("""
+                          AND k.id = :afterFeedId
+                          AND (a.isPinned = false
+                               OR (a.isPinned = true
+                                   AND (a.createdAt < k.createdAt
+                                        OR (a.createdAt = k.createdAt AND a.id < k.id))))
+                        """);
+            } else {
+                jpql.append("""
+                          AND k.id = :afterFeedId
+                          AND a.isPinned = false
+                          AND (a.createdAt < k.createdAt
+                               OR (a.createdAt = k.createdAt AND a.id < k.id))
+                        """);
+            }
         }
         jpql.append("ORDER BY a.isPinned DESC, a.createdAt DESC, a.id DESC");
 

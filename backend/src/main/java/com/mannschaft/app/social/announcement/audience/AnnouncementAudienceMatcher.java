@@ -7,6 +7,8 @@ import com.mannschaft.app.social.announcement.AnnouncementFeedEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedGroupSnapshotEntity;
 import com.mannschaft.app.social.announcement.AnnouncementFeedGroupSnapshotRepository;
 import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository;
+import com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository.OrgFeedCursor;
+import com.mannschaft.app.social.announcement.AnnouncementFeedRepository;
 import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import com.mannschaft.app.team.service.TeamOrgMembershipQueryService.TeamOrgGroupAssignment;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +65,7 @@ public class AnnouncementAudienceMatcher {
     private final OrgTeamGroupService orgTeamGroupService;
     private final AnnouncementFeedGroupSnapshotRepository snapshotRepository;
     private final AnnouncementFeedQueryRepository feedQueryRepository;
+    private final AnnouncementFeedRepository feedRepository;
 
     /**
      * チーム {@code teamId} のダッシュボードに出す組織告知を、宛先の判定を通ったものだけで、
@@ -111,7 +114,9 @@ public class AnnouncementAudienceMatcher {
     private List<AnnouncementFeedEntity> findVisibleInOrg(TeamContext ctx, Long orgId, Set<String> allowedVisibilities,
                                                           int limitPerOrg) {
         List<AnnouncementFeedEntity> picked = new ArrayList<>();
-        Long afterFeedId = null;
+        // ページの間にピン留めが変わると、既に読んだ行が次のページにもう一度現れうる。ID で重複を除き、件数に数えない
+        Set<Long> seen = new HashSet<>();
+        OrgFeedCursor after = null;
         int scanned = 0;
         while (picked.size() < limitPerOrg) {
             if (scanned >= MAX_SCANNED_PER_ORG) {
@@ -121,10 +126,17 @@ public class AnnouncementAudienceMatcher {
                 break;
             }
             List<AnnouncementFeedEntity> page = feedQueryRepository.findOrgScopePageForTeamDashboard(
-                    orgId, allowedVisibilities, ctx.teamId(), ctx.groupByOrg().get(orgId), afterFeedId, PAGE_SIZE);
+                    orgId, allowedVisibilities, ctx.teamId(), ctx.groupByOrg().get(orgId), after, PAGE_SIZE);
             scanned += page.size();
-            Set<Long> matched = judge(ctx, page);
-            for (AnnouncementFeedEntity feed : page) {
+            if (page.isEmpty() && after != null && !feedRepository.existsById(after.feedId())) {
+                // 位置の行が読み進める間に物理削除されると、それより後ろを辿れない。黙って終えず痕跡を残す
+                log.warn("組織告知の読み進めの位置（feedId={}）が削除されたため打ち切ります（teamId={}, orgId={}, 表示 {} 件）",
+                        after.feedId(), ctx.teamId(), orgId, picked.size());
+                break;
+            }
+            List<AnnouncementFeedEntity> fresh = page.stream().filter(f -> seen.add(f.getId())).toList();
+            Set<Long> matched = judge(ctx, fresh);
+            for (AnnouncementFeedEntity feed : fresh) {
                 if (picked.size() >= limitPerOrg) {
                     break;
                 }
@@ -135,14 +147,7 @@ public class AnnouncementAudienceMatcher {
             if (page.size() < PAGE_SIZE) {
                 break;
             }
-            AnnouncementFeedEntity last = page.get(page.size() - 1);
-            if (last.getCreatedAt() == null) {
-                // created_at の無い行は位置にできない。読み進めず、黙らせずに痕跡を残す
-                log.warn("created_at の無い組織告知があるため、それ以降を読み進めません（teamId={}, orgId={}）",
-                        ctx.teamId(), orgId);
-                break;
-            }
-            afterFeedId = last.getId();
+            after = OrgFeedCursor.of(page.get(page.size() - 1));
         }
         return picked;
     }
