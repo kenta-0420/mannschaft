@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Locale;
@@ -92,6 +94,44 @@ public class NotificationHelper {
             return;
         }
         dispatchService.dispatch(notification);
+    }
+
+    /**
+     * DB通知は呼出元TXで作成し、外部配信の投入だけをcommit成立後へ延期する。
+     *
+     * <p>CMP1730の予約取消・進捗更新のrollback時に、通知だけ先に外部へ届くことを防ぐ。
+     * 実TXがない場合は既notifyと同じ即時投入。commit後の投入失敗はDB通知を残し、
+     * 識別子と原因をERROR記録する。commit済み業務をrollback失敗として再throwしない。</p>
+     */
+    public void notifyAfterCommit(Long userId, String notificationType, String title, String body,
+                                  String sourceType, Long sourceId,
+                                  NotificationScopeType scopeType, Long scopeId,
+                                  String actionUrl, Long actorId) {
+        boolean active = TransactionSynchronizationManager.isActualTransactionActive();
+        if (active && !TransactionSynchronizationManager.isSynchronizationActive()) {
+            throw new IllegalStateException("notification transaction synchronization is required");
+        }
+        NotificationEntity notification = notificationService.createNotification(
+                userId, notificationType, NotificationPriority.NORMAL,
+                title, body, sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
+        if (notification == null) {
+            return;
+        }
+        if (!active) {
+            dispatchService.dispatch(notification);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    dispatchService.dispatch(notification);
+                } catch (RuntimeException failure) {
+                    log.error("commit済み通知の配信投入失敗: notificationId={}, userId={}, type={}",
+                            notification.getId(), notification.getUserId(), notification.getNotificationType(), failure);
+                }
+            }
+        });
     }
 
     /**

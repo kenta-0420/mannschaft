@@ -29,6 +29,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -185,23 +186,36 @@ class MemberSubtabVisibilityTxBoundaryIT extends MemberTxBoundaryITSupport {
             asyncLogger.addAppender(appender);
 
             CountDownLatch hold = new CountDownLatch(1);
+            AtomicInteger ownedStarted = new AtomicInteger();
             try {
                 // 飽和: max 5 + queue 100 = 105 件を latch で止める
                 int capacity = eventPool().getThreadPoolExecutor().getMaximumPoolSize()
                         + eventPool().getThreadPoolExecutor().getQueue().remainingCapacity();
                 assertThat(capacity).as("前提: event-pool は max 5 / queue 100").isEqualTo(105);
-                for (int i = 0; i < capacity; i++) {
-                    eventPool().execute(() -> {
-                        try {
-                            hold.await(120, TimeUnit.SECONDS);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
+                Runnable blocker = () -> {
+                    ownedStarted.incrementAndGet();
+                    try {
+                        hold.await(120, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                };
+                AtomicInteger submitted = new AtomicInteger();
+                // idle worker の dequeue 前は理論容量105でも投入できない。拒否を隠さず実容量を待つ。
+                Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> {
+                    while (submitted.get() < capacity) {
+                        ThreadPoolExecutor executor = eventPool().getThreadPoolExecutor();
+                        if (executor.getQueue().remainingCapacity() == 0
+                                && executor.getPoolSize() >= executor.getMaximumPoolSize()) {
+                            return false;
                         }
-                    });
-                }
-                Awaitility.await().atMost(Duration.ofSeconds(30)).until(() ->
-                        eventPool().getActiveCount() == 5
-                                && eventPool().getThreadPoolExecutor().getQueue().size() == 100);
+                        eventPool().execute(blocker);
+                        submitted.incrementAndGet();
+                    }
+                    return ownedStarted.get() == 5
+                            && eventPool().getActiveCount() == 5
+                            && eventPool().getThreadPoolExecutor().getQueue().size() == 100;
+                });
 
                 setAuth(admId);
                 mockMvc.perform(putSettingsRequest(PROFILES, "PUBLIC"))
