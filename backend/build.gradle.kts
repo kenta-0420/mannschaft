@@ -121,7 +121,7 @@ dependencies {
     // testImplementation へ変更しコンパイルクラスパスにも乗せる（実行時の挙動は変わらない。
     // 既に testRuntimeOnly で実行時には存在していたため追加の依存取得は発生しない）。
     testImplementation("org.junit.platform:junit-platform-launcher")
-    testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
+    testImplementation("com.tngtech.archunit:archunit-junit5:1.5.1")
 
     // === F12.1 PDF生成共通基盤 ===
     // Thymeleaf: PDF用HTMLテンプレートエンジン（画面描画には使わない）
