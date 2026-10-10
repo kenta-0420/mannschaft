@@ -219,102 +219,102 @@
     }
   },
   "scheduleKeep": {
-    "title": "キープ",
-    "subtitle": "日付が決まっていない予定を置いておく場所",
-    "empty": "まだ何もありません。思いついたことを書いてみましょう",
+    "title": "Vormerken",
+    "subtitle": "Ein Ort für Pläne, deren Datum noch nicht feststeht",
+    "empty": "Noch nichts vorhanden. Schreiben Sie auf, was Ihnen einfällt.",
     "form": {
-      "titleLabel": "やりたいこと",
-      "titlePlaceholder": "例: 夏合宿",
-      "memoLabel": "メモ（任意）",
-      "candidateDatesLabel": "候補日（任意）",
-      "submit": "キープする"
+      "titleLabel": "Was möchten Sie tun?",
+      "titlePlaceholder": "z. B. Sommercamp",
+      "memoLabel": "Notiz (optional)",
+      "candidateDatesLabel": "Terminvorschläge (optional)",
+      "submit": "Vormerken"
     },
     "action": {
-      "convert": "予定にする",
-      "convertFromCandidate": "この日に決める",
-      "pickDate": "日付を選ぶ",
-      "specifyTime": "時刻を指定する",
-      "archive": "見送る",
-      "restore": "もどす",
-      "revert": "予定を取り消す",
-      "reorder": "並び替え"
+      "convert": "Als Termin eintragen",
+      "convertFromCandidate": "Diesen Tag festlegen",
+      "pickDate": "Datum wählen",
+      "specifyTime": "Uhrzeit festlegen",
+      "archive": "Zurückstellen",
+      "restore": "Wiederherstellen",
+      "revert": "Termin zurücknehmen",
+      "reorder": "Neu anordnen"
     },
     "status": {
-      "kept": "キープ中",
-      "scheduled": "予定になりました",
-      "archived": "見送り"
+      "kept": "Vorgemerkt",
+      "scheduled": "Als Termin eingetragen",
+      "archived": "Zurückgestellt"
     },
     "filter": {
-      "kept": "キープ中",
-      "scheduled": "予定済み",
-      "archived": "見送り",
-      "all": "すべて"
+      "kept": "Vorgemerkt",
+      "scheduled": "Eingetragen",
+      "archived": "Zurückgestellt",
+      "all": "Alle"
     },
     "badge": {
-      "candidateCount": "候補日 {count} 件"
+      "candidateCount": "{count} Terminvorschläge"
     },
     "origin": {
-      "label": "このキープから作られました",
-      "cancelled": "予定は中止になりました",
-      "deleted": "元の予定は削除されました"
+      "label": "Aus einer Vormerkung erstellt",
+      "cancelled": "Der Termin wurde abgesagt",
+      "deleted": "Der ursprüngliche Termin wurde gelöscht"
     },
     "lockedHint": {
-      "scheduled": "予定になったので、内容の変更は予定側で行ってください",
-      "archived": "見送り中は編集できません。「もどす」と編集できます"
+      "scheduled": "Da daraus ein Termin geworden ist, nehmen Sie Änderungen bitte am Termin vor",
+      "archived": "Zurückgestellte Einträge können nicht bearbeitet werden. Mit „Wiederherstellen“ lassen sie sich wieder bearbeiten"
     },
     "notification": {
-      "converted": "「{title}」の日程が決まりました",
-      "created": "「{title}」がキープされました"
+      "converted": "Der Termin für „{title}“ steht fest",
+      "created": "„{title}“ wurde vorgemerkt"
     },
     "confirm": {
-      "archive": "見送りにしますか？あとで戻せます"
+      "archive": "Zurückstellen? Sie können es später wiederherstellen"
     },
     "limit": {
-      "hint": "見送りにすると枠が空きます"
+      "hint": "Durch Zurückstellen wird ein Platz frei"
     },
     "help": {
-      "title": "キープの使い方",
-      "body": "日付が決まっていない予定をひとまず置いておける場所です。タイトルだけで作成でき、あとから候補日やメモを足せます。候補日が決まったらタップひとつでカレンダーの予定に変換できます。",
+      "title": "So funktioniert „Vormerken“",
+      "body": "Hier können Sie Pläne ablegen, deren Datum noch nicht feststeht. Es genügt ein Titel; Terminvorschläge und Notizen lassen sich später ergänzen. Steht ein Termin fest, wird daraus mit einem Tipp ein Kalendereintrag.",
       "create": {
-        "title": "キープする",
-        "body": "タイトルだけ入力すれば作成できます。候補日やメモは後からでも構いません。",
+        "title": "Vormerken",
+        "body": "Es genügt, einen Titel einzugeben. Terminvorschläge und Notizen können auch später ergänzt werden.",
         "steps": {
-          "step1": "やりたいことをタイトルに入力",
-          "step2": "必要なら候補日・メモを追加",
-          "step3": "「キープする」を押す"
+          "step1": "Geben Sie als Titel ein, was Sie tun möchten",
+          "step2": "Fügen Sie bei Bedarf Terminvorschläge und Notizen hinzu",
+          "step3": "Tippen Sie auf „Vormerken“"
         }
       },
       "convert": {
-        "title": "予定に変換する",
-        "body": "候補日があれば1タップ、無くても日付を選ぶだけの2タップ以内で予定になります。",
+        "title": "In einen Termin umwandeln",
+        "body": "Mit einem Terminvorschlag genügt ein Tipp, ohne Vorschlag wählen Sie nur ein Datum aus – höchstens zwei Tipps bis zum Termin.",
         "steps": {
-          "step1": "候補日バッジ、または「予定にする」を押す",
-          "step2": "候補日が無ければ日付を選ぶ",
-          "step3": "カレンダーに予定として反映される"
+          "step1": "Tippen Sie auf ein Terminvorschlag-Abzeichen oder auf „Als Termin eintragen“",
+          "step2": "Gibt es noch keinen Vorschlag, wählen Sie ein Datum aus",
+          "step3": "Er erscheint als Termin im Kalender"
         }
       },
       "organize": {
-        "title": "整理する",
-        "body": "見送ったキープは一覧から消えますが、いつでも「もどす」で復帰できます。並び替えもできます。",
+        "title": "Aufräumen",
+        "body": "Zurückgestellte Einträge verschwinden aus der Liste, lassen sich aber jederzeit mit „Wiederherstellen“ zurückholen. Sie können sie auch neu anordnen.",
         "steps": {
-          "step1": "不要になったら「見送る」",
-          "step2": "「見送り」フィルタから「もどす」で復帰",
-          "step3": "ドラッグで並び替え"
+          "step1": "Nicht mehr Benötigtes mit „Zurückstellen“ ablegen",
+          "step2": "Über den Filter „Zurückgestellt“ mit „Wiederherstellen“ zurückholen",
+          "step3": "Per Ziehen neu anordnen"
         }
       }
     },
     "error": {
-      "notFound": "キープが見つかりません",
-      "titleRequired": "タイトルを入力してください",
-      "tooManyCandidateDates": "候補日は最大10件です",
-      "invalidCandidateDate": "候補日の形式が正しくありません",
-      "forbidden": "このキープを操作する権限がありません",
-      "notConvertible": "このキープは予定に変換できません",
-      "notEditable": "この状態では編集できません",
-      "revertBlockedByAttendance": "出欠の回答があるため変換を取り消せません",
-      "invalidStateTransition": "この操作はできません",
-      "limitExceeded": "キープの上限に達しました",
-      "invalidReorder": "並び替えの指定が正しくありません"
+      "notFound": "Die Vormerkung wurde nicht gefunden",
+      "titleRequired": "Bitte geben Sie einen Titel ein",
+      "tooManyCandidateDates": "Höchstens 10 Terminvorschläge",
+      "invalidCandidateDate": "Das Format des Terminvorschlags ist ungültig",
+      "forbidden": "Sie haben keine Berechtigung für diese Vormerkung",
+      "notConvertible": "Diese Vormerkung kann nicht in einen Termin umgewandelt werden",
+      "notEditable": "In diesem Zustand nicht bearbeitbar",
+      "revertBlockedByAttendance": "Die Umwandlung kann nicht rückgängig gemacht werden, da bereits Zu- oder Absagen vorliegen",
+      "invalidStateTransition": "Diese Aktion ist nicht möglich",
+      "limitExceeded": "Das Limit für Vormerkungen ist erreicht",
+      "invalidReorder": "Die Angabe zur Neuanordnung ist ungültig"
     }
   }
 }
