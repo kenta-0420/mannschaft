@@ -104,7 +104,7 @@ const selectedTemplate = computed(() =>
 async function fetchEntryMembers() {
   loading.value = true
   try {
-    const res = await getEntryMembers(
+    const { data: res } = await getEntryMembers(
       props.orgId,
       props.tournamentId,
       props.divisionId,
@@ -132,8 +132,8 @@ async function fetchEntryMembers() {
 async function fetchTemplates() {
   if (!props.isAdmin) return
   try {
-    const res = await getEntryTemplates(props.orgId, props.teamId)
-    templates.value = Array.isArray(res) ? res : []
+    const { data } = await getEntryTemplates(props.orgId, props.teamId)
+    templates.value = data
   }
   catch {
     // エラーは useApi の onResponseError で処理される
@@ -165,7 +165,7 @@ async function onApplyTemplate() {
   if (!selectedTemplateId.value) return
   applyingTemplate.value = true
   try {
-    const res = await applyEntryTemplate(
+    const { data: res } = await applyEntryTemplate(
       props.orgId,
       props.tournamentId,
       props.divisionId,
@@ -209,7 +209,7 @@ async function onSaveMembers() {
         sortOrder: i + 1,
       }))
 
-    const res = await upsertEntryMembers(
+    const { data: res } = await upsertEntryMembers(
       props.orgId,
       props.tournamentId,
       props.divisionId,
@@ -237,7 +237,7 @@ async function onSaveMembers() {
 async function onLoadFromTeam() {
   saving.value = true
   try {
-    const res = await loadEntryMembersFromTeam(
+    const { data: res } = await loadEntryMembersFromTeam(
       props.orgId,
       props.tournamentId,
       props.divisionId,
@@ -304,6 +304,8 @@ watch(
       selectedTemplateId.value = null
     }
   },
+  // 親は v-if でモーダルを生成するため、生成時点で isOpen は既に true。immediate で初回も取得する
+  { immediate: true },
 )
 </script>
 
@@ -493,7 +495,7 @@ watch(
           @click="onDownloadPdf"
         />
         <Button
-          :label="$t('common.close')"
+          :label="$t('button.close')"
           text
           @click="emit('close')"
         />

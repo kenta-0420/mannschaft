@@ -317,7 +317,7 @@ function extractHttpStatus(e: unknown): number | null {
       <!-- DEFERRED / AUTHORIZED 等: 確認不要なので閉じる -->
       <Button
         v-else-if="view && !isHeld && !notReady"
-        :label="t('common.close')"
+        :label="t('button.close')"
         @click="onProceedWithoutConfirm"
       />
     </template>
