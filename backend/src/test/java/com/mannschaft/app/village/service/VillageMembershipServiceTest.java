@@ -39,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -386,11 +387,11 @@ class VillageMembershipServiceTest {
 
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(freeVillage));
         given(membershipRepository.findById(membershipId)).willReturn(Optional.of(headman));
-        // 旧述語（BAN 未検査）なら BAN 済みを返す。実装が旧述語へ戻ると BAN 済みが HEADMAN になり assert が落ちる。
-        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
-                VILLAGE_ID, VillageRole.ELDER)).willReturn(Optional.of(bannedElder));
-        given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
-                VILLAGE_ID, VillageRole.VILLAGER)).willReturn(Optional.of(bannedVillager));
+        // 旧述語（BAN 未検査）なら BAN 済みを返す。新実装は旧述語を呼ばないため、このスタブだけ lenient（呼ばれない＝正常。呼ばれたら never() 検証で落ちる）。実装が旧述語へ戻ると BAN 済みが HEADMAN になり assert が落ちる。
+        lenient().when(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
+                VILLAGE_ID, VillageRole.ELDER)).thenReturn(Optional.of(bannedElder));
+        lenient().when(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
+                VILLAGE_ID, VillageRole.VILLAGER)).thenReturn(Optional.of(bannedVillager));
         // 正準（BAN 除外）述語は BAN 済みを返さない
         given(membershipRepository.findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(
                 VILLAGE_ID, VillageRole.ELDER)).willReturn(Optional.empty());
@@ -404,6 +405,8 @@ class VillageMembershipServiceTest {
         assertThat(bannedElder.getRole()).isEqualTo(VillageRole.ELDER);
         assertThat(bannedVillager.getRole()).isEqualTo(VillageRole.VILLAGER);
         assertThat(headman.getLeftAt()).isNotNull();
+        verify(membershipRepository, never()).findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(any(), eq(VillageRole.ELDER));
+        verify(membershipRepository, never()).findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(any(), eq(VillageRole.VILLAGER));
     }
 
     @Test
