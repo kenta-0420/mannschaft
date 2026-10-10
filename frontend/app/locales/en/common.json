@@ -2873,5 +2873,12 @@
     "minutesAgo": "{count} minute ago | {count} minutes ago",
     "hoursAgo": "{count} hour ago | {count} hours ago",
     "daysAgo": "{count} day ago | {count} days ago"
+  },
+  "error_page": {
+    "not_found_title": "This page could not be found",
+    "not_found_description": "The page you are looking for does not exist, or it may have been moved or removed.",
+    "generic_title": "Something went wrong",
+    "generic_description": "Please try again in a moment. If the problem continues, contact your administrator.",
+    "back_home": "Back to home"
   }
 }

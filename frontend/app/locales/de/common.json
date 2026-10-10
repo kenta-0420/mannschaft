@@ -2873,5 +2873,12 @@
     "minutesAgo": "vor {count} Minute | vor {count} Minuten",
     "hoursAgo": "vor {count} Stunde | vor {count} Stunden",
     "daysAgo": "vor {count} Tag | vor {count} Tagen"
+  },
+  "error_page": {
+    "not_found_title": "Diese Seite wurde nicht gefunden",
+    "not_found_description": "Die gesuchte Seite existiert nicht oder wurde möglicherweise verschoben oder entfernt.",
+    "generic_title": "Es ist ein Fehler aufgetreten",
+    "generic_description": "Bitte versuchen Sie es in Kürze erneut. Besteht das Problem weiterhin, wenden Sie sich an Ihre Administration.",
+    "back_home": "Zurück zur Startseite"
   }
 }

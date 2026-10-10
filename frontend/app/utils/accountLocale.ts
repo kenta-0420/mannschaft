@@ -33,9 +33,17 @@ export async function applyAccountLocaleTo(
   accountLocale: string | null | undefined,
 ): Promise<SupportedLocale | null> {
   if (!accountLocale || !isSupportedLocale(accountLocale)) return null
+  const previousLocale = target.locale.value
   target.setLocaleCookie(accountLocale)
-  if (target.locale.value !== accountLocale) {
-    await target.setLocale(accountLocale)
+  if (previousLocale !== accountLocale) {
+    try {
+      await target.setLocale(accountLocale)
+    } catch (error) {
+      // 切替に失敗したら表示言語は旧言語のまま。Cookie だけ新言語で残ると次回 SSR と食い違うため、
+      // 現在の表示言語へ戻してから失敗を呼び出し元へ伝える（PrimeVue 既定文言は i18n.locale に追従するので揃う）。
+      if (isSupportedLocale(target.locale.value)) target.setLocaleCookie(target.locale.value)
+      throw error
+    }
   }
   return accountLocale
 }
