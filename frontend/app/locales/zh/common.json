@@ -169,33 +169,33 @@
     "GUEST": "访客",
     "transfer": {
       "offer": {
-        "button": "管理者を引き継ぐ",
-        "notification": "{scope} の管理者への就任を打診されています",
-        "pending": "管理者就任の打診が届いています",
-        "pendingByMe": "{name} さんへ管理者委譲を打診中です",
-        "accept": "引き受ける",
-        "decline": "辞退する",
-        "cancel": "取消",
-        "accepted": "管理者を引き継ぎました",
-        "declined": "打診を辞退しました",
-        "expired": "打診は期限切れです",
-        "cancelled": "打診は取り消されました",
-        "confirmTitle": "オーナー委譲の打診",
-        "confirmMessage": "{name} さんへ管理者権限の委譲を打診しますか？相手が引き受けを承諾すると、あなたはメンバーに降格されます（この時点ではまだ委譲されません）。",
-        "acceptConfirmTitle": "管理者就任の承諾",
-        "acceptConfirmMessage": "引き受けると、あなたが管理者(ADMIN)になり、現在の管理者はメンバーに降格されます。よろしいですか？",
-        "declineConfirmTitle": "打診の辞退",
-        "declineConfirmMessage": "この打診を辞退しますか？あなたのロールは変わりません。",
-        "cancelConfirmTitle": "打診の取消",
-        "cancelConfirmMessage": "この委譲の打診を取り消しますか？相手のロールは変わりません。",
-        "created": "委譲を打診しました",
-        "cancelSuccess": "打診を取り消しました"
+        "button": "接任管理员",
+        "notification": "有人邀请你成为 {scope} 的管理员",
+        "pending": "你收到了接任管理员的邀请",
+        "pendingByMe": "已向 {name} 发出管理员移交邀请，等待回应",
+        "accept": "接受",
+        "decline": "拒绝",
+        "cancel": "撤回",
+        "accepted": "你已成为管理员",
+        "declined": "已拒绝该邀请",
+        "expired": "该邀请已过期",
+        "cancelled": "该邀请已被撤回",
+        "confirmTitle": "发出所有者移交邀请",
+        "confirmMessage": "要向 {name} 发出管理员权限移交邀请吗？对方接受后，你将降为成员（此时尚未移交）。",
+        "acceptConfirmTitle": "接受接任管理员",
+        "acceptConfirmMessage": "接受后，你将成为管理员（ADMIN），现任管理员将降为成员。确定继续吗？",
+        "declineConfirmTitle": "拒绝邀请",
+        "declineConfirmMessage": "要拒绝这个邀请吗？你的角色不会改变。",
+        "cancelConfirmTitle": "撤回邀请",
+        "cancelConfirmMessage": "要撤回这个移交邀请吗？对方的角色不会改变。",
+        "created": "已发出移交邀请",
+        "cancelSuccess": "已撤回邀请"
       },
       "error": {
-        "notTarget": "この打診はあなた宛てではありません",
+        "notTarget": "该邀请不是发给你的",
         "need2fa": {
-          "message": "管理者になるには2段階認証の設定が必要です",
-          "cta": "2段階認証を設定する"
+          "message": "成为管理员需要先设置两步验证",
+          "cta": "设置两步验证"
         }
       }
     }
@@ -326,24 +326,24 @@
     "AUTH_011": "尚未设置密码",
     "AUTH_044": "请求过于频繁，请稍后再试",
     "SURVEY_023": "匿名问卷无法启用团队明细",
-    "SCHEDULE_KEEP_001": "キープが見つかりません",
-    "SCHEDULE_KEEP_002": "タイトルを入力してください",
-    "SCHEDULE_KEEP_003": "候補日は最大10件です",
-    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
-    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
-    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
-    "SCHEDULE_KEEP_007": "この状態では編集できません",
-    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
-    "SCHEDULE_KEEP_009": "この操作はできません",
-    "SCHEDULE_KEEP_010": "キープの上限に達しました",
-    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "SCHEDULE_KEEP_001": "未找到暂存",
+    "SCHEDULE_KEEP_002": "请输入标题",
+    "SCHEDULE_KEEP_003": "候选日期最多 10 个",
+    "SCHEDULE_KEEP_004": "候选日期的格式不正确",
+    "SCHEDULE_KEEP_005": "你无权操作这个暂存",
+    "SCHEDULE_KEEP_006": "这个暂存无法转换为日程",
+    "SCHEDULE_KEEP_007": "当前状态下无法编辑",
+    "SCHEDULE_KEEP_008": "已有出勤回复，无法撤销转换",
+    "SCHEDULE_KEEP_009": "无法执行此操作",
+    "SCHEDULE_KEEP_010": "暂存数量已达上限",
+    "SCHEDULE_KEEP_012": "排序设置不正确",
     "TIMELINE_017": "已达到隐藏上限（200 个）。请先取消一些不需要的隐藏。",
-    "ROLE_009": "この打診はあなた宛てではありません",
-    "ROLE_010": "管理者になるには2段階認証の設定が必要です",
-    "ROLE_011": "既に有効な委譲オファーが存在します",
-    "ROLE_012": "委譲オファーは既に処理済みか無効です",
-    "ROLE_013": "対象が見つかりません",
-    "ROLE_014": "自分自身への委譲はできません"
+    "ROLE_009": "该邀请不是发给你的",
+    "ROLE_010": "成为管理员需要先设置两步验证",
+    "ROLE_011": "已存在有效的移交邀请",
+    "ROLE_012": "该移交邀请已处理或已失效",
+    "ROLE_013": "未找到对象",
+    "ROLE_014": "无法移交给自己"
   },
   "annual_plan": {
     "title": "年度行事计划",
@@ -1014,51 +1014,51 @@
       "none": "无"
     },
     "guide": {
-      "title": "通知の使い方",
-      "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
+      "title": "通知使用方法",
+      "description": "在通知列表中，可以集中查看发给你的日程、聊天、公告、确认请求、紧急停业等通知。点击某一行会自动标为已读，并跳转到相关页面。",
       "read": {
-        "title": "通知を読む",
-        "body": "通知の行をタップすると既読になり、関連する画面へ移動します。まだ読んでいない通知には青いドットが付きます。",
+        "title": "阅读通知",
+        "body": "点击通知所在行即可标为已读，并跳转到相关页面。尚未阅读的通知会带有蓝色圆点。",
         "steps": {
-          "step1": "気になる通知の行をタップします",
-          "step2": "自動で既読になり、関連する画面へ移動します",
-          "step3": "未読の通知は左端の青いドットで見分けられます"
+          "step1": "点击想查看的通知所在行",
+          "step2": "自动标为已读，并跳转到相关页面",
+          "step3": "未读通知可通过最左侧的蓝色圆点识别"
         }
       },
       "filter": {
-        "title": "絞り込み",
-        "body": "上部の「すべて／未読」の切り替えで、未読の通知だけを表示できます。",
+        "title": "筛选",
+        "body": "通过顶部的“全部/未读”切换，可以只显示未读通知。",
         "steps": {
-          "step1": "画面上部の「すべて／未読」ボタンを押します",
-          "step2": "「未読」を選ぶと、まだ読んでいない通知だけが表示されます",
-          "step3": "「すべて」に戻すと全ての通知が表示されます"
+          "step1": "点击页面顶部的“全部/未读”按钮",
+          "step2": "选择“未读”后，只显示尚未阅读的通知",
+          "step3": "切换回“全部”即可显示所有通知"
         }
       },
       "snooze": {
-        "title": "スヌーズ",
-        "body": "今すぐ対応できない通知は、時計アイコンから後回しにできます。指定した時刻に再び表示されます。",
+        "title": "稍后提醒",
+        "body": "暂时无法处理的通知，可通过时钟图标推迟处理，到你指定的时间会再次显示。",
         "steps": {
-          "step1": "通知の右側にある時計アイコンを押します",
-          "step2": "「3時間後／今夜／明朝／来週」から再表示するタイミングを選びます",
-          "step3": "選んだ時刻になると、その通知が再び一覧に表示されます"
+          "step1": "点击通知右侧的时钟图标",
+          "step2": "从“3 小时后/今晚/明早/下周”中选择再次显示的时间",
+          "step3": "到了所选时间，该通知会重新出现在列表中"
         }
       },
       "confirm": {
-        "title": "確認通知",
-        "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
+        "title": "确认通知",
+        "body": "带有“确认”按钮的通知，可以告知发送方你已确认内容。有时还会显示尚未确认的人数。",
         "steps": {
-          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
-          "step2": "「確認する」ボタンを押して確認済みにします",
-          "step3": "確認後は「確認済み」ラベルに変わります"
+          "step1": "阅读确认通知（带背景色的通知）的内容",
+          "step2": "点击“确认”按钮，将其标为已确认",
+          "step3": "确认后会变为“已确认”标签"
         }
       },
       "urgent": {
-        "title": "緊急休業・一括既読",
-        "body": "緊急休業の通知は「確認する」を押して確認します。溜まった通知は右上の「すべて既読にする」でまとめて既読にできます。",
+        "title": "紧急停业与全部已读",
+        "body": "紧急停业通知请点击“确认”进行确认。积压的通知可通过右上角的“全部标为已读”一次性标为已读。",
         "steps": {
-          "step1": "緊急休業の通知は「確認する」ボタンで確認します",
-          "step2": "右上の「すべて既読にする」で通知をまとめて既読にできます",
-          "step3": "既読にするとベルのバッジも0になります"
+          "step1": "紧急停业通知请通过“确认”按钮进行确认",
+          "step2": "通过右上角的“全部标为已读”，可一次性将通知全部标为已读",
+          "step3": "全部标为已读后，铃铛上的角标也会变为 0"
         }
       }
     }
@@ -1566,7 +1566,7 @@
   },
   "schedule": {
     "filter": {
-      "allTeamsOrgs": "团队・组织（全部）",
+      "allTeamsOrgs": "团队、组织（全部）",
       "selectScope": "选择创建目标"
     },
     "calendar": {
@@ -1575,7 +1575,7 @@
         "unknown": "其他日程",
         "loadError": {
           "summary": "图层列表加载失败",
-          "detail": "团队・组织的显示切换暂时无法使用。日程仍会显示。请稍后重新加载。"
+          "detail": "团队、组织的显示切换暂时无法使用，日程仍正常显示。请稍后重新加载。"
         },
         "hiddenNotice": "创建目标图层已隐藏",
         "showIt": "显示",
@@ -1795,7 +1795,7 @@
       "back_to_dashboard": "返回仪表板",
       "retry": "重试",
       "slow_loading": "加载时间较长，请稍候",
-      "join_request_applied": "参加申請を送信しました",
+      "join_request_applied": "已提交加入申请",
       "follow_fetch_error": "无法获取关注状态",
       "follow_permission_sync_error_title": "权限信息更新失败",
       "follow_permission_sync_error_body": "已取消关注，但权限信息刷新失败。请重试。"
@@ -1819,7 +1819,7 @@
     "noSearchResults": "未找到符合条件的团队",
     "viewGrid": "网格视图",
     "viewList": "列表视图",
-    "memberCount": "{count}人",
+    "memberCount": "{count} 名成员",
     "supporterRegistered": "已注册为支持者",
     "becomeSupporter": "成为支持者",
     "supporterSuccess": "已注册为支持者",
@@ -1874,7 +1874,7 @@
     "noSearchResults": "未找到符合条件的组织",
     "viewGrid": "网格视图",
     "viewList": "列表视图",
-    "memberCount": "{count}人",
+    "memberCount": "{count} 名成员",
     "supporterRegistered": "已注册为支持者",
     "becomeSupporter": "成为支持者",
     "supporterSuccess": "已注册为支持者",
@@ -1969,11 +1969,11 @@
       "feedbackInbox": "意见箱（全体）",
       "billing": "课金主数据管理",
       "priceRevisions": "价格修订",
-      "betaPerks": "ベータ特典管理",
-      "villageCreationRequests": "村作成申請",
-      "seasonalWallpapers": "季節壁紙",
-      "pointCardSynonyms": "ポイントカード同義語",
-      "appeals": "異議申立"
+      "betaPerks": "测试版福利管理",
+      "villageCreationRequests": "村庄创建申请",
+      "seasonalWallpapers": "季节壁纸",
+      "pointCardSynonyms": "积分卡同义词",
+      "appeals": "申诉"
     },
     "impersonation": {
       "banner": "管理员伪装中: {label}",
@@ -2111,47 +2111,47 @@
       }
     },
     "detail": {
-      "open": "詳細を見る",
-      "publish": "公開する",
-      "saved": "下書きを保存しました",
-      "participants": "参加者",
-      "participantsHint": "実際に参加したメンバーを選択してください",
-      "participantsRequired": "このテンプレートの公開には参加者が必要です",
-      "noParticipants": "参加者は登録されていません",
-      "attachments": "添付ファイル",
-      "attachment": "添付ファイル {id}",
-      "sourceSchedule": "元の予定",
-      "openSchedule": "予定を開く",
-      "scheduleUnavailable": "元の予定は閲覧できません",
-      "scheduleCancelled": "元の予定は中止されています",
-      "endDate": "終了日（複数日の場合）",
-      "startTime": "開始時刻",
-      "endTime": "終了時刻",
+      "open": "查看详情",
+      "publish": "发布",
+      "saved": "草稿已保存",
+      "participants": "参与者",
+      "participantsHint": "请选择实际参加的成员",
+      "participantsRequired": "发布此模板需要有参与者",
+      "noParticipants": "尚未登记参与者",
+      "attachments": "附件",
+      "attachment": "附件 {id}",
+      "sourceSchedule": "原日程",
+      "openSchedule": "打开日程",
+      "scheduleUnavailable": "无法查看原日程",
+      "scheduleCancelled": "原日程已取消",
+      "endDate": "结束日期（跨多天时）",
+      "startTime": "开始时间",
+      "endTime": "结束时间",
       "edit": "编辑",
       "save": "保存",
       "updated": "活动记录已保存"
     },
     "sync": {
-      "title": "予定と活動記録の変更を確認",
-      "description": "予定の変更を活動記録へ反映する項目を選んでください。自動反映の項目も「予定のみ保存」では変更されません。",
-      "record": "活動記録 {id}",
-      "automatic": "自動反映",
-      "current": "現在の記録",
-      "updated": "変更後の予定",
-      "scheduleOnly": "予定のみ保存",
-      "apply": "選択した項目を反映して保存",
+      "title": "确认日程与活动记录的变更",
+      "description": "请选择要将日程的哪些变更同步到活动记录。即使是自动同步的项目，选择“仅保存日程”也不会更改。",
+      "record": "活动记录 {id}",
+      "automatic": "自动同步",
+      "current": "当前记录",
+      "updated": "变更后的日程",
+      "scheduleOnly": "仅保存日程",
+      "apply": "同步所选项目并保存",
       "fields": {
-        "title": "タイトル",
-        "activityDate": "活動日",
-        "activityEndDate": "終了日",
-        "activityTimeStart": "開始時刻",
-        "activityTimeEnd": "終了時刻"
+        "title": "标题",
+        "activityDate": "活动日期",
+        "activityEndDate": "结束日期",
+        "activityTimeStart": "开始时间",
+        "activityTimeEnd": "结束时间"
       }
     },
     "schedule": {
-      "create": "この予定の活動記録を作成",
-      "records": "活動記録",
-      "loadError": "活動記録の取得に失敗しました"
+      "create": "为此日程创建活动记录",
+      "records": "活动记录",
+      "loadError": "获取活动记录失败"
     },
     "planned": "计划",
     "unpublished": "未发布",
@@ -2249,7 +2249,7 @@
       "evidenceNotReady": "证据 ZIP 尚未生成",
       "warningLegalCheck": "此功能为 v1（未经律师审核），实际提交前请咨询律师。",
       "residentRegistryId": "居民台账 ID",
-      "dwellingUnitId": "居室 ID",
+      "dwellingUnitId": "房间 ID",
       "note": "备注",
       "createdAt": "申请日期",
       "evidenceBuiltAt": "证据 ZIP 生成时间",
@@ -2382,74 +2382,74 @@
     "MEMBERS_AND_ABOVE": "成员及以上"
   },
   "module_settings": {
-    "enabled_count": "有効な機能: {count} / {limit}",
-    "fetch_error": "機能一覧の取得に失敗しました",
-    "empty": "現在このスコープで利用できる追加機能はありません",
-    "toggle_success_on": "{name} を有効にしました",
-    "toggle_success_off": "{name} を無効にしました",
+    "enabled_count": "已启用的功能：{count} / {limit}",
+    "fetch_error": "获取功能列表失败",
+    "empty": "当前此范围没有可用的附加功能",
+    "toggle_success_on": "已启用 {name}",
+    "toggle_success_off": "已停用 {name}",
     "badge": {
-      "level_unavailable": "このレベルでは利用できません",
-      "paid_plan": "有料プラン",
-      "limit_reached": "上限（{limit}）に達しています"
+      "level_unavailable": "此级别不可用",
+      "paid_plan": "付费方案",
+      "limit_reached": "已达上限（{limit}）"
     },
     "error": {
-      "paid_required": "この機能は有料プランが必要です",
-      "limit_reached": "無料プランで有効化できる機能の上限（10個）に達しています",
-      "level_unavailable": "このレベルではこの機能を利用できません",
-      "generic": "機能の切替に失敗しました"
+      "paid_required": "此功能需要付费方案",
+      "limit_reached": "已达到免费方案可启用功能的上限（10 个）",
+      "level_unavailable": "此级别无法使用该功能",
+      "generic": "切换功能失败"
     }
   },
   "module_settings_guide": {
-    "title": "機能設定の使い方",
-    "help_button": "使い方",
-    "description": "「機能設定」では、このチーム・組織で使える機能を一覧から探して、スイッチで ON / OFF できます。ここで ON にした機能だけが、メンバーの画面に表示され利用できるようになります。",
+    "title": "功能设置使用方法",
+    "help_button": "使用方法",
+    "description": "在“功能设置”中，可以从列表里找到此团队、组织可用的功能，并通过开关将其开启或关闭。只有在这里开启的功能，才会显示在成员的页面上并可供使用。",
     "what": {
-      "title": "機能設定とは",
-      "body": "チーム・組織で使える機能（モジュール）の一覧です。利用できる機能がすべてカードで並び、各機能を ON にするとメンバーが使えるようになり、OFF にすると画面から隠れて使えなくなります。必要な機能だけを選んで、画面をすっきり保てます。"
+      "title": "什么是功能设置",
+      "body": "这是此团队、组织可使用的功能（模块）列表。所有可用功能都以卡片形式排列，开启后成员即可使用，关闭后会从页面中隐藏、无法使用。只选择需要的功能，可以让页面保持简洁。"
     },
     "toggle": {
-      "title": "機能を ON / OFF する",
-      "body": "使いたい機能を一覧から探して、カード右のスイッチを ON にするだけです。保存ボタンは不要で、押すとすぐに反映されます。",
+      "title": "开启/关闭功能",
+      "body": "在列表中找到想用的功能，打开卡片右侧的开关即可。无需点击保存按钮，操作后立即生效。",
       "steps": {
-        "step1": "一覧から使いたい機能のカードを探す",
-        "step2": "カード右のスイッチを押して ON にする（もう一度押すと OFF）",
-        "step3": "「有効にしました」または「無効にしました」と通知が出れば完了（保存操作は不要）",
-        "step4": "切り替え中はそのスイッチが一時的に押せなくなります（二重操作を防ぐためです）"
+        "step1": "在列表中找到想使用的功能卡片",
+        "step2": "点击卡片右侧的开关将其开启（再次点击则关闭）",
+        "step3": "出现“已启用”或“已停用”的提示即完成（无需保存）",
+        "step4": "切换过程中，该开关会暂时无法点击（为防止重复操作）"
       }
     },
     "count": {
-      "title": "今いくつ使えるかを確認する",
-      "body": "画面の上部に「有効な機能: 2 / 10」のように、ON にしている数と有効化できる上限の数が表示されます。右の更新ボタン（回転する矢印）を押すと、最新の状態を取得し直せます。"
+      "title": "查看还能使用多少个",
+      "body": "页面顶部会显示类似“已启用的功能：2 / 10”的内容，表示已开启的数量和可启用的上限。点击右侧的刷新按钮（旋转箭头）可重新获取最新状态。"
     },
     "restrictions": {
-      "title": "使えないスイッチがあるとき",
-      "body": "スイッチが押せない（グレーアウトしている）機能には、理由を示すバッジが付きます。",
+      "title": "有无法使用的开关时",
+      "body": "开关无法点击（呈灰色）的功能会带有说明原因的角标。",
       "items": {
-        "paid": "「有料プラン」… 有料プランに加入すると使える機能です。",
-        "limit": "「上限（10）に達しています」… 無料プランで同時に ON にできる機能の数が上限に達しています。ほかの機能を OFF にすると新しく ON にできます。",
-        "level": "「このレベルでは利用できません」… このチーム・組織の種別では使えない機能です。"
+        "paid": "“付费方案”：订阅付费方案后才能使用的功能。",
+        "limit": "“已达上限（10）”：免费方案可同时开启的功能数量已达上限。关闭其他功能后，才能开启新的功能。",
+        "level": "“此级别不可用”：当前团队、组织的类型无法使用的功能。"
       }
     },
     "empty": {
-      "title": "機能が表示されないとき",
-      "body": "「現在このスコープで利用できる追加機能はありません」と出る場合は、いまのところこのチーム・組織で追加できる機能がありません。"
+      "title": "没有显示功能时",
+      "body": "如果显示“当前此范围没有可用的附加功能”，表示目前没有可添加到此团队、组织的功能。"
     },
     "permission": {
-      "title": "設定できる人",
-      "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+      "title": "谁可以进行设置",
+      "body": "功能设置只有团队、组织的管理员才能打开。即使是管理员，如果页面右上角的视图切换为“成员视图”，此标签页也会被隐藏。需要设置时，请切换到“管理员视图”。"
     }
   },
   "teamShell": {
     "tab": {
-      "affiliations": "所属組織",
-      "permissionGroups": "権限グループ",
+      "affiliations": "所属组织",
+      "permissionGroups": "权限组",
       "dashboard": "仪表板",
       "info": "基本信息",
       "members": "成员",
       "invites": "邀请",
       "supporters": "支持者管理",
       "modules": "功能设置",
-      "joinRequests": "参加申請"
+      "joinRequests": "加入申请"
     },
     "action": {
       "leave_confirm_title": "退出团队",
@@ -2468,7 +2468,7 @@
       "permission_groups": "权限组",
       "supporters": "支持者管理",
       "modules": "功能设置",
-      "joinRequests": "参加申請"
+      "joinRequests": "加入申请"
     },
     "action": {
       "leave_confirm_title": "退出组织",
@@ -2632,25 +2632,25 @@
     "goOrganizations": "选择组织"
   },
   "joinRequest": {
-    "apply": "参加申請",
-    "pending": "申請中（承認待ち）",
-    "approved": "承認済み",
-    "rejected": "却下されました",
-    "fetchError": "取得に失敗しました",
-    "retry": "再試行",
+    "apply": "加入申请",
+    "pending": "申请中（等待审批）",
+    "approved": "已批准",
+    "rejected": "已被拒绝",
+    "fetchError": "获取失败",
+    "retry": "重试",
     "admin": {
-      "pendingTitle": "承認待ちの参加申請",
-      "empty": "承認待ちの参加申請はありません",
-      "requesterLabel": "ユーザーID: {userId}",
-      "requestedAt": "申請日",
-      "approve": "承認",
-      "reject": "却下",
-      "fetchError": "一覧の取得に失敗しました",
-      "retry": "再試行",
-      "loadMore": "さらに読み込む",
-      "loadMoreError": "追加読み込みに失敗しました",
-      "approveSuccess": "参加申請を承認しました",
-      "rejectSuccess": "参加申請を却下しました"
+      "pendingTitle": "待审批的加入申请",
+      "empty": "没有待审批的加入申请",
+      "requesterLabel": "用户 ID：{userId}",
+      "requestedAt": "申请日期",
+      "approve": "批准",
+      "reject": "拒绝",
+      "fetchError": "获取列表失败",
+      "retry": "重试",
+      "loadMore": "加载更多",
+      "loadMoreError": "加载更多失败",
+      "approveSuccess": "已批准加入申请",
+      "rejectSuccess": "已拒绝加入申请"
     }
   },
   "myPage": {
@@ -2689,8 +2689,8 @@
         "description": "爽约与处罚记录"
       },
       "resume": {
-        "label": "简历・履历书",
-        "description": "创建和导出简历・履历书"
+        "label": "简历与履历表",
+        "description": "创建并导出简历和履历表"
       },
       "receipts": {
         "description": "查看和下载付款的收据"
@@ -2743,12 +2743,12 @@
       "empty": "还没有页面",
       "titleLabel": "标题",
       "slugLabel": "URL 别名",
-      "yearLabel": "対象年度",
-      "visibilityLabel": "公開範囲",
-      "visibilityPublic": "全体公開",
+      "yearLabel": "适用年度",
+      "visibilityLabel": "公开范围",
+      "visibilityPublic": "完全公开",
       "visibilityMembersOnly": "仅限成员",
       "statusDraft": "草稿",
-      "statusPublished": "公開中",
+      "statusPublished": "公开中",
       "publish": "发布",
       "unpublish": "恢复为草稿",
       "delete": "删除页面",
@@ -2767,21 +2767,21 @@
       "copyFailed": "复制成员失败"
     },
     "members": {
-      "title": "メンバー一覧",
-      "add": "メンバー追加",
-      "edit": "メンバー編集",
-      "empty": "メンバーが登録されていません",
-      "bulkRegister": "一括登録",
-      "bulkRegisterHelp": "1行に1名、「表示名,番号」の形式で入力してください（番号は省略可）",
-      "bulkRegisterSuccess": "{count}件のメンバーを登録しました",
-      "bulkRegisterFailed": "一括登録に失敗しました",
-      "delete": "メンバーを削除",
-      "deleteConfirm": "{name}さんのプロフィールを削除しますか？この操作は元に戻せません。",
-      "deleteSuccess": "メンバーを削除しました",
-      "back": "ページ一覧に戻る",
-      "customFieldsError": "カスタム項目の読み込みに失敗しました",
-      "optionsInvalidFormat": "選択肢データの形式が不正です",
-      "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
+      "title": "成员列表",
+      "add": "添加成员",
+      "edit": "编辑成员",
+      "empty": "尚未登记成员",
+      "bulkRegister": "批量登记",
+      "bulkRegisterHelp": "每行输入一名成员，格式为“显示名称,编号”（编号可省略）",
+      "bulkRegisterSuccess": "已登记 {count} 名成员",
+      "bulkRegisterFailed": "批量登记失败",
+      "delete": "删除成员",
+      "deleteConfirm": "要删除 {name} 的资料吗？此操作无法撤销。",
+      "deleteSuccess": "已删除成员",
+      "back": "返回页面列表",
+      "customFieldsError": "加载自定义项目失败",
+      "optionsInvalidFormat": "选项数据的格式不正确",
+      "optionsLoadFailed": "加载选项数据失败"
     }
   },
   "memberPermissions": {
@@ -2846,7 +2846,7 @@
       "BEAUTY": "美容院或沙龙",
       "STORE": "商店或零售",
       "VOLUNTEER": "志愿服务或非营利组织",
-      "NEIGHBORHOOD": "自治会",
+      "NEIGHBORHOOD": "居民自治会",
       "CONDO": "公寓管理委员会",
       "OTHER": "其他"
     },
