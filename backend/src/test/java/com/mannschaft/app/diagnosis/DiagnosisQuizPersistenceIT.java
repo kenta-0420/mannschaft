@@ -35,6 +35,9 @@ class DiagnosisQuizPersistenceIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserRepository users;
     @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired private com.mannschaft.app.diagnosis.service.DiagnosisSessionWriter sessionWriter;
+    @Autowired private com.mannschaft.app.diagnosis.repository.DiagnosisSessionRepository sessions;
+    @Autowired private com.mannschaft.app.diagnosis.service.DiagnosisSessionSnapshotCodec snapshotCodec;
+    @Autowired private java.time.Clock clock;
     @Autowired private jakarta.persistence.EntityManagerFactory entityManagers;
     private static final String BASE="/api/v1/me/diagnoses";
     private Long owner;
@@ -61,6 +64,86 @@ class DiagnosisQuizPersistenceIT extends AbstractMySqlIntegrationTest {
     private byte[] sessionBytes(JsonNode session) {
         var id=UUID.fromString(session.path("id").asText());
         return java.nio.ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();
+    }
+    @Test void 新版稼働後も旧版の途中回答を当時の設問で再開完了し結果を保持する() throws Exception {
+        var legacy = DiagnosisQuestionnaireTestFixture.legacy(mapper);
+        var partial = legacy.questions().subList(0, 12).stream()
+                .map(question -> new com.mannschaft.app.diagnosis.dto.DiagnosisAnswer(question.id(), 3)).toList();
+        String frozen = snapshotCodec.encodeDefinition(legacy);
+        var saved = sessions.saveAndFlush(com.mannschaft.app.diagnosis.entity.DiagnosisSessionEntity.builder()
+                .id(com.mannschaft.app.common.UuidV7.generate()).userId(owner).status(DiagnosisStatus.STARTED)
+                .questionnaireVersion(legacy.questionnaireVersion()).scoringVersion(legacy.scoringVersion())
+                .questionsSnapshot(frozen)
+                .answersSnapshot(snapshotCodec.encodeAnswers(
+                        new com.mannschaft.app.diagnosis.service.DiagnosisSessionSnapshotCodec.Answers(partial, Map.of())))
+                .answerRevision(1).createdAt(clock.instant()).updatedAt(clock.instant()).build());
+        String id = saved.getId().toString();
+
+        var current = mutate(post(BASE + "/sessions"), Map.of(), UUID.randomUUID(), 201);
+        assertThat(current.path("questionnaireVersion").asText()).isEqualTo("draft-20261010-v2");
+        assertThat(current.path("questions")).isNotEqualTo(mapper.valueToTree(legacy.questions()));
+        var resumed = resume(id);
+        assertThat(resumed.path("questionnaireVersion").asText()).isEqualTo("draft-20261003-v1");
+        assertThat(resumed.path("questions")).isEqualTo(mapper.valueToTree(legacy.questions()));
+        assertThat(resumed.path("answers")).isEqualTo(mapper.valueToTree(partial));
+        var remaining = legacy.questions().subList(12, 24).stream()
+                .map(question -> Map.<String, Object>of("questionId", question.id(), "value", 3)).toList();
+        resumed = mutate(put(BASE + "/sessions/" + id + "/answers"),
+                Map.of("version", resumed.path("version").asText(), "answers", remaining), UUID.randomUUID(), 200);
+        resumed = mutate(post(BASE + "/sessions/" + id + "/complete"), completeBody(resumed, List.of()), UUID.randomUUID(), 200);
+        assertThat(resumed.path("tieQuestions")).isEqualTo(mapper.valueToTree(legacy.ties()));
+        var choices = new ArrayList<Map<String, Object>>();
+        for (int index = 0; index < DiagnosisAxis.values().length; index++) {
+            choices.add(Map.of("axisId", DiagnosisAxis.values()[index].name(), "value", index % 2));
+        }
+        resumed = mutate(post(BASE + "/sessions/" + id + "/complete"), completeBody(resumed, choices), UUID.randomUUID(), 200);
+        assertThat(resumed.path("status").asText()).isEqualTo("COMPLETED");
+        assertThat(resume(id)).isEqualTo(resumed);
+        assertThat(jdbc.queryForObject("SELECT questions_snapshot FROM diagnosis_sessions WHERE id = ?",
+                String.class, sessionBytes(resumed))).isEqualTo(frozen);
+        var result = readResult(resumed.path("resultId").asText());
+        assertThat(result.path("questionnaireVersion").asText()).isEqualTo(legacy.questionnaireVersion());
+        assertThat(result.path("scoringVersion").asText()).isEqualTo(legacy.scoringVersion());
+        assertThat(result.path("typeCode").asText()).isEqualTo("010101");
+        assertThat(result.path("axes").size()).isEqualTo(6);
+        result.path("axes").forEach(value -> assertThat(value.asInt()).isZero());
+        assertThat(result.path("axisDescriptions")).isEqualTo(mapper.valueToTree(legacy.axisDescriptions()));
+        assertThat(result.path("descriptionSnapshot")).isEqualTo(mapper.valueToTree(legacy.descriptionSnapshot()));
+        for (var tie : legacy.ties()) {
+            assertThat(result.path("axisSelections").path(tie.axisId().name()).path("zero")).isEqualTo(mapper.valueToTree(tie.zero()));
+            assertThat(result.path("axisSelections").path(tie.axisId().name()).path("one")).isEqualTo(mapper.valueToTree(tie.one()));
+        }
+        String resultSnapshot = jdbc.queryForObject("SELECT summary_snapshot FROM diagnosis_results WHERE id = ?",
+                String.class, resultBytes(result));
+        mutate(post(BASE + "/sessions"), Map.of(), UUID.randomUUID(), 201);
+        assertThat(readResult(result.path("id").asText())).isEqualTo(result);
+        assertThat(jdbc.queryForObject("SELECT summary_snapshot FROM diagnosis_results WHERE id = ?",
+                String.class, resultBytes(result))).isEqualTo(resultSnapshot);
+    }
+
+    @Test void 新版の交互表示を再開しても保持し逆極性回答を六軸へ正しく採点する() throws Exception {
+        var session = mutate(post(BASE + "/sessions"), Map.of(), UUID.randomUUID(), 201);
+        assertThat(session.path("questionnaireVersion").asText()).isEqualTo("draft-20261010-v2");
+        var ids = new ArrayList<String>(); session.path("questions").forEach(question -> ids.add(question.path("id").asText()));
+        assertThat(ids).containsExactly("Q01", "Q05", "Q09", "Q13", "Q17", "Q21",
+                "Q02", "Q06", "Q10", "Q14", "Q18", "Q22",
+                "Q03", "Q07", "Q11", "Q15", "Q19", "Q23",
+                "Q04", "Q08", "Q12", "Q16", "Q20", "Q24");
+        String id = session.path("id").asText();
+        var frozenQuestions = session.path("questions").deepCopy();
+        var answers = new ArrayList<Map<String, Object>>();
+        session.path("questions").forEach(question -> answers.add(Map.of("questionId", question.path("id").asText(),
+                "value", question.path("polarity").asInt() > 0 ? 1 : 5)));
+        session = mutate(put(BASE + "/sessions/" + id + "/answers"),
+                Map.of("version", session.path("version").asText(), "answers", answers), UUID.randomUUID(), 200);
+        assertThat(resume(id).path("questions")).isEqualTo(frozenQuestions);
+        session = mutate(post(BASE + "/sessions/" + id + "/complete"), completeBody(session, List.of()), UUID.randomUUID(), 200);
+        var result = readResult(session.path("resultId").asText());
+        assertThat(result.path("questionnaireVersion").asText()).isEqualTo("draft-20261010-v2");
+        assertThat(result.path("typeCode").asText()).isEqualTo("000000");
+        for (var axis : DiagnosisAxis.values()) assertThat(result.path("axes").path(axis.name()).asInt()).isEqualTo(-8);
+        assertThat(result.path("axisSelections").path("NOTICE").path("one").path("en").asText())
+                .isEqualTo("Enjoy small differences in leaves or stones");
     }
     @Test void 未完了検索は本人の保存回答と凍結設問を返し取消を除外する() throws Exception {
         assertThat(pending().isNull()).isTrue();

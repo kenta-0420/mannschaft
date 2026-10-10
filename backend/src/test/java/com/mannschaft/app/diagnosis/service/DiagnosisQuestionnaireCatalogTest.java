@@ -9,6 +9,68 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** 標準Environment/実catalogで未承認masterのprofile境界を検証する。認可・DB証拠ではない。 */
 class DiagnosisQuestionnaireCatalogTest {
+    @Test void 新版は六軸一巡の24問で旧版の軸極性と採点を保持する() throws Exception {
+        var mapper = new ObjectMapper();
+        var environment = new MockEnvironment(); environment.setActiveProfiles("test");
+        var current = new DiagnosisQuestionnaireCatalog(mapper, environment).forStart();
+        var legacy = com.mannschaft.app.diagnosis.DiagnosisQuestionnaireTestFixture.legacy(mapper);
+        assertThat(current.questionnaireVersion()).isEqualTo("draft-20261010-v2");
+        assertThat(current.scoringVersion()).isEqualTo(legacy.scoringVersion());
+        assertThat(current.approval()).isEqualTo(DiagnosisQuestionnaireCatalog.SnapshotApproval.DRAFT);
+        assertThat(current.questions()).extracting(com.mannschaft.app.diagnosis.dto.DiagnosisQuestion::id)
+                .containsExactly("Q01", "Q05", "Q09", "Q13", "Q17", "Q21",
+                        "Q02", "Q06", "Q10", "Q14", "Q18", "Q22",
+                        "Q03", "Q07", "Q11", "Q15", "Q19", "Q23",
+                        "Q04", "Q08", "Q12", "Q16", "Q20", "Q24");
+        for (int round = 0; round < 4; round++) {
+            assertThat(current.questions().subList(round * 6, round * 6 + 6))
+                    .extracting(com.mannschaft.app.diagnosis.dto.DiagnosisQuestion::axis)
+                    .containsExactly(com.mannschaft.app.diagnosis.DiagnosisAxis.values());
+        }
+        var answers = new java.util.HashMap<String, Integer>();
+        for (var question : current.questions()) {
+            var old = legacy.questions().stream().filter(value -> value.id().equals(question.id())).findFirst().orElseThrow();
+            assertThat(question.axis()).isEqualTo(old.axis());
+            assertThat(question.polarity()).isEqualTo(old.polarity());
+            assertThat(question.text().keySet()).containsExactlyInAnyOrder("ja", "en", "zh", "ko", "es", "de");
+            assertThat(question.text().values()).doesNotContainNull().allMatch(value -> !value.isBlank());
+            for (String locale : java.util.List.of("en", "zh", "ko", "es", "de")) {
+                assertThat(question.text().get(locale)).isNotEqualTo(question.text().get("ja"));
+            }
+            answers.put(question.id(), question.polarity() > 0 ? 5 : 1);
+        }
+        var scoring = new com.mannschaft.app.diagnosis.DiagnosisScoringService();
+        assertThat(scoring.score(current.questions(), answers, java.util.Map.of()))
+                .isEqualTo(scoring.score(legacy.questions(), answers, java.util.Map.of()));
+        assertThat(scoring.score(current.questions(), answers, java.util.Map.of()).typeCode()).isEqualTo("111111");
+        answers.replaceAll((id, value) -> 3);
+        var neutral = scoring.score(current.questions(), answers, java.util.Map.of());
+        assertThat(neutral.typeCode()).isNull();
+        assertThat(neutral.tiedAxes()).containsExactly(com.mannschaft.app.diagnosis.DiagnosisAxis.values());
+        assertThat(current.descriptionSnapshot()).isEqualTo(legacy.descriptionSnapshot());
+        assertThat(current.questions().getFirst().text().get("ja")).startsWith("食べ物や飲み物を選ぶなら");
+    }
+
+    @Test void 現在版が新版でも保存済み旧新版は読めるが未登録draft版は拒否する() throws Exception {
+        var mapper = new ObjectMapper();
+        var environment = new MockEnvironment(); environment.setActiveProfiles("test");
+        var catalog = new DiagnosisQuestionnaireCatalog(mapper, environment);
+        var legacy = com.mannschaft.app.diagnosis.DiagnosisQuestionnaireTestFixture.legacy(mapper);
+        var current = catalog.forStart();
+        assertThat(current.questionnaireVersion()).isEqualTo("draft-20261010-v2");
+        var codec = new DiagnosisSessionSnapshotCodec(mapper);
+        environment.setActiveProfiles("production");
+        for (var saved : java.util.List.of(legacy, current)) {
+            var frozen = codec.definition(codec.encodeDefinition(saved));
+            catalog.requireSnapshotReadable(frozen);
+            assertThat(frozen).isEqualTo(saved);
+            assertThatThrownBy(() -> catalog.requireMutationAllowed(frozen)).isInstanceOf(BusinessException.class);
+        }
+        var unknown = new DiagnosisQuestionnaireCatalog.Definition(current.snapshotSchemaVersion(), current.approval(),
+                "draft-20261011-v3", current.scoringVersion(), current.questions(), current.ties(),
+                current.descriptionSnapshot(), current.axisDescriptions());
+        assertThatThrownBy(() -> catalog.requireSnapshotReadable(unknown)).isInstanceOf(BusinessException.class);
+    }
     @Test void productionAlwaysRejectsEvenWithTestAndIsolatedFlag() {
         for (String production : new String[]{"prod","production"}) {
             var environment=new MockEnvironment();environment.setActiveProfiles("test","ranch-isolated",production);
