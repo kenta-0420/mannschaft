@@ -16,8 +16,8 @@ import java.util.UUID;
  *
  * <p>{@code scope_ref} は宛先集合のキー {@code audience_snapshot_id}（UUID 文字列。§5.6）。組織 ID は宛先集合の見出し
  * （{@code notification_fanout_audiences.organization_id}）から引く。母集団は
- * 「宛先チーム（{@code notification_fanout_audience_teams}）のうち<b>配信時点でも</b>組織に ACTIVE で加盟しているものの
- * 現役メンバー」∪「組織の直属メンバー」を、ユーザー単位で重複排除したもの。宛先チームは送信時に固定され、
+ * 「宛先チーム（{@code notification_fanout_audience_teams}）のうち<b>配信時点でも</b>組織に ACTIVE で加盟し、
+ * アーカイブ済み・論理削除済みでないものの現役メンバー」∪「組織の直属メンバー」を、ユーザー単位で重複排除したもの。宛先チームは送信時に固定され、
  * 受信ユーザーは Worker が各チャンクを取るたびにその時点の所属で決まる（§8.5.2・AC-H33）。
  * 子組織のメンバー・宛先外チームのメンバーは含めない。</p>
  *

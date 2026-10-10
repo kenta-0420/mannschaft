@@ -61,6 +61,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li>H08（宛先外・退会者・他組織は返さない）→ {@link #宛先外と退会者と他組織は返さない()}</li>
  *   <li>H22（応援者トグル）→ {@link #応援者トグルがfalseなら純SUPPORTERを返さずtrueなら返す()}</li>
  *   <li>H10・H33（配信時点でも加盟 ACTIVE を要求）→ {@link #配信時点で加盟していないチームのメンバーは返さない()}</li>
+ *   <li>H10・H33（配信時点でアーカイブ済み・論理削除済みのチームを除く。ACTIVE の加盟行が残っていても）
+ *       → {@link #配信時点でアーカイブ済みか論理削除済みのチームのメンバーは配信にも総数にも入らない()}</li>
  *   <li>宛先チームが0件の見出し（直属メンバーだけに届く告知）→ {@link #宛先チームが0件の見出しなら直属メンバーだけを返す()}</li>
  *   <li>H32b（シャードの和が全体と一致し重複しない）→ {@link #シャード分割した各シャードの和は全体と一致し重複しない()}</li>
  *   <li>H32c（scope_ref が UUID でない・見出し行が無いと例外）→ {@link #scope_refがUUIDでなければ例外を投げ空集合で終わらない()} ／
@@ -303,6 +305,38 @@ class OrgTeamsFanoutRecipientSourceIT extends AbstractMySqlIntegrationTest {
         assertThat(scanned).as("TA だけに属する人は返さない").doesNotContainAnyElementsOf(aOnly);
         assertThat(scanned).as("TA を離れた後も、TB・直属としての所属は残る")
                 .containsAll(f.bMembers).containsAll(f.directs);
+    }
+
+    @Test
+    @DisplayName("H10/H33: 送信後にアーカイブ・論理削除されたチームのメンバーは、ACTIVE の加盟行が残っていても配信にも総数にも入らない（直属は返す）")
+    void 配信時点でアーカイブ済みか論理削除済みのチームのメンバーは配信にも総数にも入らない() {
+        Fx f = fixture();
+        // 宛先集合（送信時スナップショット）を作った後に、TA をアーカイブ・TB を論理削除する。
+        // §4.5・§6.6 によりアーカイブしても加盟行は ACTIVE のまま残る（ここでも加盟行には触れない）。
+        jdbc.update("UPDATE teams SET archived_at = UTC_TIMESTAMP() WHERE id = ?", f.teamA);
+        jdbc.update("UPDATE teams SET deleted_at = UTC_TIMESTAMP() WHERE id = ?", f.teamB);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM team_org_memberships WHERE organization_id = ? AND team_id IN (?, ?) AND status = 'ACTIVE'",
+                Integer.class, f.orgId, f.teamA, f.teamB))
+                .as("前提: 加盟行は ACTIVE のまま残っている").isEqualTo(2);
+        String ref = f.audienceId.toString();
+
+        List<Long> scanned = scanAll(ref, false, 0, 1, 7);
+        List<Long> scannedWithSupporters = scanAll(ref, true, 0, 1, 7);
+
+        Set<Long> teamOnly = new HashSet<>(f.aMembers);
+        teamOnly.addAll(f.bMembers);
+        teamOnly.removeAll(f.directs);
+        assertThat(scanned).as("アーカイブ済み TA・論理削除済み TB だけに属する人は返さない")
+                .doesNotContainAnyElementsOf(teamOnly);
+        assertThat(scannedWithSupporters).as("応援者込みでも TB の SUPPORTER は返さない")
+                .doesNotContainAnyElementsOf(teamOnly).doesNotContain(f.teamSupporter);
+        assertThat(scanned).as("直属メンバーは引き続き返す（TA との兼任者も直属として1回）")
+                .containsExactlyElementsOf(new TreeSet<>(f.directs));
+        assertThat(source.countRecipients(ref, false)).as("総数（自動シャード数の算出）も配信と同じ判定で数える")
+                .isEqualTo(scanned.size());
+        assertThat(source.countRecipients(ref, true)).as("応援者込みの総数も配信と一致")
+                .isEqualTo(scannedWithSupporters.size());
     }
 
     @Test

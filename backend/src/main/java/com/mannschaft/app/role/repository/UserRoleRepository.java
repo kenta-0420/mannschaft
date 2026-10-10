@@ -1482,7 +1482,10 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * F01.2.1 §8.5.2: {@code ORGANIZATION_TEAMS} 受信者ソースの<strong>キーセットページング版</strong>（シャード述語つき）。
      *
      * <p>母集団は「宛先集合（{@code notification_fanout_audience_teams}）のチームのうち<b>配信時点でも</b>組織に ACTIVE で
-     * 加盟しているものの現役メンバー」∪「組織の<b>直属</b>メンバー（子組織・配下チームは含めない）」。
+     * 加盟し、かつ<b>配信時点で</b>アーカイブ済み（{@code teams.archived_at}）・論理削除済み（{@code teams.deleted_at}）でない
+     * ものの現役メンバー」∪「組織の<b>直属</b>メンバー（子組織・配下チームは含めない）」。
+     * アーカイブしても ACTIVE の加盟行は残る（§4.5・§6.6）ため、加盟行の status だけでは除けない。除外の基準は
+     * 6-A の宛先解決（{@code TeamOrgMembershipRepository.findActiveTeamGroupAssignments} 等）と同じ。
      * 候補は {@code user_roles} ∪ {@code memberships}（{@code left_at IS NULL}）の和集合で、生存・ACTIVE のユーザーに限る。
      * 応援者トグル {@code includeSupporters=false} のときは、この母集団の範囲（組織＋宛先チーム）で純 SUPPORTER
      * （MEMBER を兼ねない応援者）を除く。形は {@link #findDistributionUserIdsForOrganizationRecursiveKeyset} に揃え、
@@ -1492,7 +1495,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * @param audienceId 宛先集合のキー（UUID 文字列。ハイフン付き）
      */
     @Query(value =
-            "WITH scope_teams (team_id) AS ( SELECT DISTINCT nfat.team_id FROM notification_fanout_audience_teams nfat JOIN team_org_memberships tom ON tom.team_id = nfat.team_id AND tom.organization_id = :organizationId AND tom.status = 'ACTIVE' WHERE nfat.audience_snapshot_id = UNHEX(REPLACE(:audienceId, '-', '')) ) " +
+            "WITH scope_teams (team_id) AS ( SELECT DISTINCT nfat.team_id FROM notification_fanout_audience_teams nfat JOIN team_org_memberships tom ON tom.team_id = nfat.team_id AND tom.organization_id = :organizationId AND tom.status = 'ACTIVE' JOIN teams t ON t.id = nfat.team_id AND t.archived_at IS NULL AND t.deleted_at IS NULL WHERE nfat.audience_snapshot_id = UNHEX(REPLACE(:audienceId, '-', '')) ) " +
             "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid, cand.locale AS locale FROM ( " +
             "  ( SELECT DISTINCT ur.user_id AS user_id, u.locale AS locale FROM user_roles ur " +
             "      JOIN users u ON u.id = ur.user_id " +
@@ -1548,7 +1551,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * （enqueue の自動シャード数算出用。配信と母集団の定義を厳密に一致させる）。
      */
     @Query(value =
-            "WITH scope_teams (team_id) AS ( SELECT DISTINCT nfat.team_id FROM notification_fanout_audience_teams nfat JOIN team_org_memberships tom ON tom.team_id = nfat.team_id AND tom.organization_id = :organizationId AND tom.status = 'ACTIVE' WHERE nfat.audience_snapshot_id = UNHEX(REPLACE(:audienceId, '-', '')) ) " +
+            "WITH scope_teams (team_id) AS ( SELECT DISTINCT nfat.team_id FROM notification_fanout_audience_teams nfat JOIN team_org_memberships tom ON tom.team_id = nfat.team_id AND tom.organization_id = :organizationId AND tom.status = 'ACTIVE' JOIN teams t ON t.id = nfat.team_id AND t.archived_at IS NULL AND t.deleted_at IS NULL WHERE nfat.audience_snapshot_id = UNHEX(REPLACE(:audienceId, '-', '')) ) " +
             "SELECT COUNT(DISTINCT cand.user_id) FROM ( " +
             "  ( SELECT ur.user_id AS user_id FROM user_roles ur " +
             "      JOIN users u ON u.id = ur.user_id " +
