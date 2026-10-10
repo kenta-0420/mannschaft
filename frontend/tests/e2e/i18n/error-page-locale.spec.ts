@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
+import { loginViaApi } from '../fixtures/auth'
 
 /**
  * CMP-261007-2053: 404/エラーページ（app/error.vue）の言語追従と情報秘匿（E2E）。
@@ -17,6 +18,11 @@ test.use({ storageState: { cookies: [], origins: [] } })
 
 const LANGS = ['ja', 'en', 'zh', 'ko', 'es', 'de'] as const
 type Lang = (typeof LANGS)[number]
+
+// ロケール検証用アカウント（アカウント言語 ja。言語は保存・変更しない）。
+// e2e-user は他の試験でアカウント言語が ja 以外になりうるため、ja のまま保たれている e2e-admin を使う。
+const LOCALE_ACCOUNT_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
+const LOCALE_ACCOUNT_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
 
 const NOT_EXIST_PATH = '/no-such-page-cmp-261007-2053'
 // 存在秘匿で 404 に倒れる URL（非公開・他テナント・削除済みを区別しない公開活動記録の詳細）
@@ -159,23 +165,29 @@ test.describe('CMP-261007-2053 error.vue の言語追従', () => {
     expect(html).toMatch(/<html[^>]*\blang="de"/)
     expect(html).toContain(escapeHtml(de.not_found_title))
 
-    // ログイン済み（アカウント言語 ja）の状態を localStorage に置く
-    await page.addInitScript(() => {
-      localStorage.setItem(
-        'currentUser',
-        JSON.stringify({
-          id: 1,
-          email: 'locale-e2e@example.com',
-          displayName: 'ロケール検証',
-          profileImageUrl: null,
-          locale: 'ja',
-          timezone: 'Asia/Tokyo',
-        }),
-      )
-    })
+    // 本物のログイン状態を作る（有効な access_token Cookie と localStorage の currentUser）。
+    // 偽の currentUser だけではセッション失効でログイン画面へ飛ばされ、間欠的に落ちる。
+    // アカウントの言語は保存・変更せず、/users/me で ja であることを前提として確かめる（崩れていれば理由の分かる失敗にする）。
+    await loginViaApi(page, { email: LOCALE_ACCOUNT_EMAIL, password: LOCALE_ACCOUNT_PASSWORD }, { deferNavigation: true })
+    const apiBase = process.env.API_BASE_URL ?? ''
+    const meRes = await page.request.get(`${apiBase}/api/v1/users/me`)
+    expect(meRes.ok()).toBe(true)
+    const accountLocale = ((await meRes.json()).data as { locale?: string | null }).locale
+    expect(accountLocale, '検証アカウントのアカウント言語（前提）').toBe('ja')
+    // loginViaApi の currentUser にはアカウント言語が入らないため、/users/me の値を足す
+    // （ログイン画面と同じく currentUser.locale がアカウント言語の正本。init script は追加順に走る）
+    await page.addInitScript((locale) => {
+      const raw = localStorage.getItem('currentUser')
+      if (!raw) throw new Error('loginViaApi の currentUser がありません')
+      localStorage.setItem('currentUser', JSON.stringify({ ...JSON.parse(raw), locale }))
+    }, accountLocale)
     await setLocaleCookie(page, baseURL, 'de')
-    await page.goto(NOT_EXIST_PATH)
+    // ブラウザの最初のドキュメント応答（ログイン済み・Cookie=de）でも SSR は de
+    const docRes = await page.goto(NOT_EXIST_PATH)
+    expect(docRes?.status()).toBe(404)
+    expect(await docRes?.text()).toMatch(/<html[^>]*\blang="de"/)
     await waitForHydration(page)
+    await expect(page).toHaveURL(new RegExp(`${NOT_EXIST_PATH}$`))
     await expect(page.getByTestId('error-page-title')).toHaveText(ja.not_found_title, { timeout: 60_000 })
     await expect.poll(() => page.evaluate(() => document.documentElement.lang), { timeout: 60_000 }).toBe('ja')
     const cookies = (await page.context().cookies()).filter((c) => c.name === 'i18n_locale')
