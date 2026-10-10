@@ -26,21 +26,43 @@ const { handleApiError } = useErrorHandler()
 const { formatDate } = useDatetime()
 
 const scopeStore = useScopeStore()
+const authStore = useAuthStore()
+const teamStore = useTeamStore()
+const organizationStore = useOrganizationStore()
 const scopeId = computed(() => scopeStore.current.id ?? '')
 const scopeType = computed((): ReceiptScopeType =>
   scopeStore.current.type === 'organization' ? 'ORGANIZATION' : 'TEAM',
 )
 // 領収書はチーム／組織スコープのみが対象（F08.4 §2）。個人スコープでは案内を出して終える。
 const isPersonalScope = computed(() => scopeStore.current.type === 'personal')
-// 操作は checkAdminOrAbove（DEPUTY_ADMIN 以上）要求。直リンク防御（CMP-260917-1351 課題B）。
+// 一覧の直リンク防御は DEPUTY_ADMIN 以上。無効化は下の canVoid で別途制限する。
 useAdminScopeGuard('DEPUTY_ADMIN')
-const scopeReady = computed(() => !isPersonalScope.value && !!scopeId.value)
+const scopeReady = computed(() =>
+  ['team', 'organization'].includes(scopeStore.current.type) && !!scopeId.value,
+)
+const scopeKey = computed(() => scopeReady.value ? `${scopeType.value}:${scopeId.value}` : null)
 
 const receipts = ref<ReceiptResponse[]>([])
 const loading = ref(false)
 const totalRecords = ref(0)
 const page = ref(0)
 const rows = ref(20)
+const loadedScopeKey = ref<string | null>(null)
+let loadRequestSequence = 0
+
+// 所属を確認済みの ADMIN だけに無効化操作を出す。SYS の兼任も UI では対象外。
+const canVoid = computed(() => {
+  if (!authStore.user || authStore.isSystemAdmin || loading.value
+    || !scopeKey.value || loadedScopeKey.value !== scopeKey.value) return false
+  if (scopeStore.current.type === 'team') {
+    return !teamStore.loading
+      && teamStore.myTeams.some(team => String(team.id) === scopeId.value && team.role === 'ADMIN')
+  }
+  return !organizationStore.loading
+    && organizationStore.myOrganizations.some(organization =>
+      String(organization.id) === scopeId.value && organization.role === 'ADMIN',
+    )
+})
 
 // 新規発行ダイアログ
 const showIssueDialog = ref(false)
@@ -56,12 +78,21 @@ const issueSubmitting = ref(false)
 // 無効化ダイアログ（BE `VoidReceiptRequest.reason` は @NotBlank なので理由を必ず取る）
 const showVoidDialog = ref(false)
 const voidTargetId = ref<number | null>(null)
+const voidScopeKey = ref<string | null>(null)
 const voidReason = ref('')
 const voidReasonError = ref<string | null>(null)
 const voidSubmitting = ref(false)
 
 async function load() {
-  if (!scopeReady.value) return
+  const requestSequence = ++loadRequestSequence
+  const requestScopeKey = scopeKey.value
+  loadedScopeKey.value = null
+  receipts.value = []
+  totalRecords.value = 0
+  if (!requestScopeKey) {
+    loading.value = false
+    return
+  }
   loading.value = true
   try {
     // BE は 0 起点の `page` と `size` を受ける（1 起点の page / per_page ではない）。
@@ -69,20 +100,26 @@ async function load() {
       page: page.value,
       size: rows.value,
     })
+    if (requestSequence !== loadRequestSequence || requestScopeKey !== scopeKey.value) return
     receipts.value = res.data
     totalRecords.value = res.meta?.total ?? res.data.length
+    loadedScopeKey.value = requestScopeKey
   } catch (err) {
+    if (requestSequence !== loadRequestSequence || requestScopeKey !== scopeKey.value) return
     // 握りつぶさない: 原因はコンソールへ、利用者にはサーバーが返した理由・エラーコードを見せる。
     console.error('[receipts] 領収書一覧の取得に失敗しました', err)
     handleApiError(err, 'receipts.load')
   } finally {
-    loading.value = false
+    if (requestSequence === loadRequestSequence) loading.value = false
   }
 }
 
 // スコープが確定してから初回発火する（空の scopeId を Long へ送ると 400 になるため）。
-watch([scopeId, isPersonalScope], () => {
+watch([() => scopeStore.current.type, scopeId], () => {
   page.value = 0
+  showVoidDialog.value = false
+  voidTargetId.value = null
+  voidScopeKey.value = null
   load()
 }, { immediate: true })
 
@@ -104,7 +141,9 @@ async function handleApprove(id: number) {
 }
 
 function openVoidDialog(id: number) {
+  if (!canVoid.value || !receipts.value.some(receipt => receipt.id === id)) return
   voidTargetId.value = id
+  voidScopeKey.value = scopeKey.value
   voidReason.value = ''
   voidReasonError.value = null
   showVoidDialog.value = true
@@ -113,7 +152,8 @@ function openVoidDialog(id: number) {
 async function submitVoid() {
   const id = voidTargetId.value
   const reason = voidReason.value.trim()
-  if (id === null) return
+  if (id === null || !canVoid.value || voidScopeKey.value !== scopeKey.value
+    || !receipts.value.some(receipt => receipt.id === id) || voidSubmitting.value) return
   if (!reason) {
     voidReasonError.value = t('receipt.list.validation.voidReasonRequired')
     return
@@ -293,6 +333,7 @@ function statusLabel(status: string): string {
               @click="handleApprove(data.id)"
             />
             <Button
+              v-if="canVoid"
               :label="t('receipt.list.action.void')"
               size="small"
               severity="danger"
@@ -403,7 +444,7 @@ function statusLabel(status: string): string {
           icon="pi pi-ban"
           severity="danger"
           :loading="voidSubmitting"
-          :disabled="!voidReason.trim()"
+          :disabled="!canVoid || voidScopeKey !== scopeKey || !voidReason.trim()"
           @click="submitVoid"
         />
       </template>
