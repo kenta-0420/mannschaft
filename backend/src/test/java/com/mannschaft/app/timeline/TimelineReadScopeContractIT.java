@@ -263,6 +263,15 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
             Long oldest = savePost(PostScopeType.TEAM, TEAM_A, null, USER_TEAM_A_MEMBER).getId();
             Long middle = savePost(PostScopeType.TEAM, TEAM_A, null, USER_TEAM_A_MEMBER).getId();
             Long newest = savePost(PostScopeType.TEAM, TEAM_A, null, USER_TEAM_A_MEMBER).getId();
+            // ピン留め投稿は通常フィード（isPinned = false 条件）に出ず、1ページ目の pinned のみに出る
+            Long pinnedId = postRepository.save(TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.TEAM)
+                    .scopeId(TEAM_A)
+                    .userId(USER_TEAM_A_MEMBER)
+                    .content("ピン留め投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .isPinned(true)
+                    .build()).getId();
             setAuthentication(USER_TEAM_A_MEMBER);
 
             TimelineFeedResponse page1 = feedController
@@ -271,6 +280,8 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
                     .containsExactly(newest, middle);
             assertThat(page1.getMeta().isHasNext()).isTrue();
             assertThat(page1.getMeta().getNextCursor()).isEqualTo(middle);
+            assertThat(page1.getData().getPinned()).extracting(PostResponse::getId)
+                    .containsExactly(pinnedId);
 
             TimelineFeedResponse page2 = feedController
                     .getFeedPage("TEAM", TEAM_A.toString(), null,
