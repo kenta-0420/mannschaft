@@ -89,7 +89,7 @@ dependencies {
 
     // Cloudflare R2（S3互換 API）+ AWS SES
     // R2 は S3 SDK でアクセスするため cloudfront 依存は不要
-    implementation(platform("software.amazon.awssdk:bom:2.29.45"))
+    implementation(platform("software.amazon.awssdk:bom:2.46.18"))
     implementation("software.amazon.awssdk:s3")
     implementation("software.amazon.awssdk:sesv2")
 
@@ -114,6 +114,7 @@ dependencies {
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("software.amazon.awssdk:apache-client")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:mysql")
     // [test-jvm-heap] 計測用 LauncherSessionListener（TestJvmHeapLoggingLauncherSessionListener）が
