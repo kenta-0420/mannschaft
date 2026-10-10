@@ -508,21 +508,17 @@ public class DashboardService {
         List<AnnouncementFeedEntity> teamAnnouncementFeeds = announcementFeedQueryRepository
                 .findByScope(AnnouncementScopeType.TEAM, teamId, allowedVisibilities, null, 10);
 
-        // F02.8: 親組織の告知フィードを取得（target_team_ids フィルタ付き）
-        // CMP-027: user_roles ∪ memberships の在籍組織 ID（素メンバー/応援者を取りこぼさない）
-        // 加えてチームが ACTIVE で加盟している組織も対象にする（組織ロールを持たないチームメンバーにも出す。F01.2.1 AC-E01）。
-        // 宛先の判定（加盟・グループ・スナップショット）は AnnouncementAudienceMatcher が行う
-        Set<Long> feedOrgIds = new java.util.LinkedHashSet<>(membershipScopeQueryService.findActiveOrganizationIds(userId));
-        feedOrgIds.addAll(announcementAudienceMatcher.activeOrganizationIds(teamId));
-        List<AnnouncementFeedEntity> orgCandidateFeeds = feedOrgIds.stream()
-                .flatMap(orgId -> announcementFeedQueryRepository
-                        .findByOrgScopeForTeamDashboard(orgId, allowedVisibilities, 20).stream())
-                .toList();
-        Set<Long> audienceMatched = announcementAudienceMatcher.matchingFeedIds(teamId, orgCandidateFeeds);
-        // 多重 org ロール行に対する防御的な feedId 重複排除（インボックス（AnnouncementInboxAdapter の
-        // feedById.putIfAbsent）と同等に feedId で先勝ち dedup する）。
-        List<AnnouncementFeedEntity> orgAnnouncementFeeds = new ArrayList<>(orgCandidateFeeds.stream()
-                .filter(feed -> audienceMatched.contains(feed.getId()))
+        // F02.8: 親組織の告知フィードを取得（宛先の判定付き）
+        // 対象はチームが ACTIVE で加盟している組織（組織ロールを持たないチームメンバーにも出す。F01.2.1 AC-E01）。
+        // 閲覧者本人の在籍組織（CMP-027）でもチームが加盟していなければ宛先の判定で必ず落ちるため、起点にしない。
+        // 宛先の判定（加盟・チーム指定・グループ・スナップショット）は AnnouncementAudienceMatcher が行い、
+        // 組織あたり 20 件の上限は判定を通った後に掛かる（上位 20 件を取ってから判定すると、他グループ宛ての
+        // 新しい告知の後ろにある自チーム宛ての告知を取りこぼすため）。
+        List<AnnouncementFeedEntity> orgVisibleFeeds =
+                announcementAudienceMatcher.findVisibleOrgFeeds(teamId, allowedVisibilities, 20);
+        // 防御的な feedId 重複排除（インボックス（AnnouncementInboxAdapter の feedById.putIfAbsent）と同等に
+        // feedId で先勝ち dedup する）。
+        List<AnnouncementFeedEntity> orgAnnouncementFeeds = new ArrayList<>(orgVisibleFeeds.stream()
                 .collect(java.util.stream.Collectors.toMap(
                         AnnouncementFeedEntity::getId,
                         feed -> feed,
