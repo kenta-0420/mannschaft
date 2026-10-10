@@ -1,0 +1,266 @@
+# SOURCE_BOUND_UNRUN. Fixed source; actual hosted artifacts are not yet available.
+name: Hosted final production artifacts (proposal)
+on:
+  push:
+    branches: [feature/ranch-hosted-final-build]
+permissions:
+  contents: read
+concurrency:
+  group: hosted-final-build-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  FINAL_SOURCE: 33a4489ed302309bff556545cce365f79d4f2c93
+  NODE_VERSION: "22.23.2"
+  JAVA_VERSION: "21"
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Refuse unbound source
+        shell: bash
+        run: '[[ "$FINAL_SOURCE" =~ ^[0-9a-f]{40}$ ]]'
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.FINAL_SOURCE }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Prepare owned source and finite memory guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p artifact/private
+          [[ $(git rev-parse HEAD) == "$FINAL_SOURCE" ]]
+          git archive HEAD > artifact/source.tar
+          git rev-parse HEAD^{tree} > artifact/source-tree.txt
+          run=$(mktemp -d "$PWD/fe-owned-XXXXXXXX")
+          [[ $(realpath "$run") == "$PWD"/fe-owned-* ]]
+          mkdir "$run/frontend" "$run/cache" "$run/private" "$run/proof"
+          cp -a frontend/. "$run/frontend/"
+          [[ ! -e "$run/frontend/node_modules" && ! -e "$run/frontend/.output" && ! -e "$run/frontend/.nuxt" ]]
+          printf '%s' "$run" > artifact/owned-path.txt
+          python3 - <<'PY'
+          import json,pathlib,re
+          m=pathlib.Path('/proc/meminfo').read_text()
+          available=int(re.search(r'^MemAvailable:\s+(\d+) kB$',m,re.M)[1])*1024
+          mx=pathlib.Path('/sys/fs/cgroup/memory.max');cur=pathlib.Path('/sys/fs/cgroup/memory.current')
+          limit=None if not mx.exists() or mx.read_text().strip()=='max' else int(mx.read_text())
+          current=int(cur.read_text()) if cur.exists() else None
+          effective=min(available,limit-current) if limit is not None and current is not None else available
+          proof={'schema':'hosted-fe-entry-budget-v1','memAvailableBytes':available,'cgroupLimitBytes':limit,'cgroupCurrentBytes':current,'effectiveAvailableBytes':effective,'requiredBytes':12*1024**3,'heapMiB':8192,'reserveMiB':4096,'budgetSatisfied':effective>=12*1024**3}
+          pathlib.Path('artifact/memory-entry.json').write_text(json.dumps(proof)+'\n')
+          assert proof['budgetSatisfied']
+          PY
+          sudo chown -R 1000:1000 "$run"
+          sudo chmod 755 "$run" "$run/frontend" "$run/cache" "$run/proof"
+          python3 - <<'PY'
+          import hashlib,json,pathlib,stat
+          root=pathlib.Path(pathlib.Path('artifact/owned-path.txt').read_text())/'frontend'
+          h=hashlib.sha256();files=0;total=0
+          for p in sorted(root.rglob('*')):
+              rel=p.relative_to(root).as_posix()
+              if any(rel==x or rel.startswith(x+'/') for x in ('node_modules','.nuxt','.output')):continue
+              st=p.lstat();assert not stat.S_ISLNK(st.st_mode) and st.st_uid==1000 and (p.is_dir() or p.is_file())
+              kind='D' if p.is_dir() else 'F';h.update(kind.encode()+b'\0'+rel.encode()+b'\0')
+              if p.is_file():
+                  files+=1;total+=st.st_size;assert files<=50000 and total<=5*1024**3 and st.st_size<=2*1024**3
+                  with p.open('rb') as f:d=hashlib.file_digest(f,'sha256').digest()
+                  h.update(st.st_size.to_bytes(8,'big'));h.update(d)
+          pathlib.Path('artifact/frontend-source-before.json').write_text(json.dumps({'sha256':h.hexdigest(),'files':files,'bytes':total})+'\n')
+          PY
+          # Pulling exact-version producer environments is preparation, outside network-none build.
+          docker pull node:22.23.2-bookworm > artifact/private/image-node.log 2>&1
+          docker pull python:3.12-slim > artifact/private/image-python.log 2>&1
+          docker image inspect node:22.23.2-bookworm --format '{{.Id}}' > artifact/node-image-id.txt
+          docker image inspect python:3.12-slim --format '{{.Id}}' > artifact/python-image-id.txt
+      - name: Hydrate dedicated lock-pinned cache (preparation only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          run=$(cat artifact/owned-path.txt)
+          docker run --rm --user 1000:1000 -v "$run:/work" -w /work/frontend \
+            -e HOME=/tmp/home -e NPM_CONFIG_CACHE=/work/cache node:22.23.2-bookworm \
+            bash -c 'mkdir -p /tmp/home; : > /tmp/empty.npmrc; export NPM_CONFIG_USERCONFIG=/tmp/empty.npmrc NPM_CONFIG_GLOBALCONFIG=/tmp/empty.npmrc; test "$(node --version)" = v22.23.2; sha256sum package-lock.json > /work/proof/lock-before.txt; npm ci --no-audit --no-fund; sha256sum -c /work/proof/lock-before.txt' \
+            > artifact/private/hydrate.log 2>&1
+          # Fresh offline reinstall uses only this dedicated cache; no dependency tree reuse.
+          [[ $(realpath "$run") == "$PWD"/fe-owned-* && -d "$run/frontend/node_modules" && ! -L "$run/frontend/node_modules" ]]
+          sudo rm -rf -- "$run/frontend/node_modules"
+          tar -C "$run/cache" -cf artifact/dedicated-cache.tar .
+          sha256sum artifact/dedicated-cache.tar | cut -d' ' -f1 > artifact/cache-input-sha256.txt
+      - name: Production build offline and network-none
+        shell: bash
+        run: |
+          set -euo pipefail
+          run=$(cat artifact/owned-path.txt)
+          [[ $(realpath "$run") == "$PWD"/fe-owned-* ]]
+          cat > artifact/launcher.mjs <<'JS'
+          import {createRequire} from 'node:module';
+          import {readFileSync,realpathSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          import {resolve} from 'node:path';
+          import {pathToFileURL} from 'node:url';
+          const sha=p=>createHash('sha256').update(readFileSync(p)).digest('hex');
+          const pins=[['@nuxt/cli','node_modules/@nuxt/cli/dist/index.mjs','8a9664ef3a4019a176a8482eeaeb0d097dbb730e216cbd4d705d50f8653016ae'],['@nuxt/kit','node_modules/@nuxt/kit/dist/index.mjs','5220a88dad0153e8c5a3e61e4266d59dab395eb1184ef0e8f4698ec5bbec1e23'],['c12','node_modules/c12/dist/index.mjs','aa96ae4e2cf6d0c09fceec3d4f3385a373cfff0c8ae3c19469bc88e6b594a02a']];
+          let from=resolve('package.json');
+          for(const[name,rel,digest]of pins){const expected=resolve(rel);if(realpathSync(createRequire(from).resolve(name))!==expected||sha(expected)!==digest)throw Error('PIN_REFUSED');from=expected;}
+          const {runCommand}=await import(pathToFileURL(resolve(pins[0][1])).href);
+          await runCommand('build',['--cwd','/work/frontend'],{overrides:{runtimeConfig:{internalApiBase:'http://127.0.0.1:18082',public:{apiBase:''}},routeRules:{'/api/v1/**':{proxy:'http://127.0.0.1:18082/api/v1/**'}}}});
+          JS
+          python3 - <<'PY'
+          import json,pathlib,re
+          m=pathlib.Path('/proc/meminfo').read_text()
+          available=int(re.search(r'^MemAvailable:\s+(\d+) kB$',m,re.M)[1])*1024
+          mx=pathlib.Path('/sys/fs/cgroup/memory.max');cur=pathlib.Path('/sys/fs/cgroup/memory.current')
+          limit=None if not mx.exists() or mx.read_text().strip()=='max' else int(mx.read_text())
+          current=int(cur.read_text()) if cur.exists() else None
+          effective=min(available,limit-current) if limit is not None and current is not None else available
+          proof={'schema':'hosted-fe-entry-budget-v1','memAvailableBytes':available,'cgroupLimitBytes':limit,'cgroupCurrentBytes':current,'effectiveAvailableBytes':effective,'requiredBytes':12*1024**3,'heapMiB':8192,'reserveMiB':4096,'budgetSatisfied':effective>=12*1024**3}
+          pathlib.Path('artifact/memory-build-entry.json').write_text(json.dumps(proof)+'\n')
+          assert proof['budgetSatisfied']
+          PY
+          chmod 444 artifact/launcher.mjs
+          set +e
+          docker run --rm --network none --user 1000:1000 -v "$run:/work" -v "$PWD/artifact/launcher.mjs:/launcher.mjs:ro" -w /work/frontend \
+            -e HOME=/tmp/home -e NPM_CONFIG_CACHE=/work/cache -e NPM_CONFIG_OFFLINE=true \
+            -e NODE_ENV=production -e NODE_OPTIONS=--max-old-space-size=8192 \
+            -e NUXT_API_PROXY=true -e NUXT_PUBLIC_API_BASE= \
+            -e NUXT_INTERNAL_API_BASE=http://127.0.0.1:18082 -e NUXT_PUBLIC_BASE_URL=http://localhost:3103 \
+            -e NUXT_PUBLIC_RANCH_DEVELOPMENT_VISUALS=true node:22.23.2-bookworm \
+            bash -c 'mkdir -p /tmp/home; : > /tmp/empty.npmrc; export NPM_CONFIG_USERCONFIG=/tmp/empty.npmrc NPM_CONFIG_GLOBALCONFIG=/tmp/empty.npmrc; cp -a /work/cache /tmp/build-cache; export NPM_CONFIG_CACHE=/tmp/build-cache; test "$(node --version)" = v22.23.2; set +e; npm ci --offline --no-audit --no-fund && sha256sum -c /work/proof/lock-before.txt && node /launcher.mjs; actual=$?; printf "%s\n" "$actual" > /work/proof/build-exit.txt; exit "$actual"' \
+            > artifact/private/build.log 2>&1
+          container_exit=$?
+          set -e
+          printf '%s\n' "$container_exit" > artifact/container-exit.txt
+          [[ -f "$run/proof/build-exit.txt" ]]
+          cp "$run/proof/build-exit.txt" artifact/build-exit.txt
+          [[ $(cat artifact/build-exit.txt) == "$container_exit" && $container_exit == 0 ]]
+      - name: Validate exact output links and export tar plus finite proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          run=$(cat artifact/owned-path.txt)
+          python3 - <<'PY'
+          import base64,hashlib,pathlib
+          data=base64.b64decode('IiIi5Zu65a6a44GV44KM44GfTnV4dOeUn+aIkOeJqeWGheODquODs+OCr+OBoOOBkeOCkuioseWPr+OBmeOCi+iqreOBv+WPluOCiuaknOafu+OAgiIiIgppbXBvcnQgaGFzaGxpYiwgb3MsIHN0YXQKZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpPVVRQVVQ9UGF0aCgnL3Zhci90bXAvbWFubnNjaGFmdC1yYW5jaC0yMDI2MTAwMy1rb2tvL2xhdGVzdC1hNTEtbG9jYWxlLXJhbmNoLXNvdXJjZS0wMS9mcm9udGVuZC8ub3V0cHV0JykKTElOS1M9ewogJ3NlcnZlci9ub2RlX21vZHVsZXMvcGVyZmVjdC1kZWJvdW5jZSc6Jy5uaXRyby9wZXJmZWN0LWRlYm91bmNlQDIuMS4wJywKICdzZXJ2ZXIvbm9kZV9tb2R1bGVzL2VudGl0aWVzJzonLm5pdHJvL2VudGl0aWVzQDcuMC4xJywKICdzZXJ2ZXIvbm9kZV9tb2R1bGVzL2hvb2thYmxlJzonLm5pdHJvL2hvb2thYmxlQDYuMS4xJywKICdzZXJ2ZXIvbm9kZV9tb2R1bGVzL3Z1ZS1yb3V0ZXInOicubml0cm8vdnVlLXJvdXRlckA1LjMuMScsCiAnc2VydmVyL25vZGVfbW9kdWxlcy91bmhlYWQvbm9kZV9tb2R1bGVzL2hvb2thYmxlJzonLi4vLi4vLm5pdHJvL2hvb2thYmxlQDYuMS4xJywKICdzZXJ2ZXIvbm9kZV9tb2R1bGVzL2RvbS1zZXJpYWxpemVyL25vZGVfbW9kdWxlcy9lbnRpdGllcyc6Jy4uLy4uLy5uaXRyby9lbnRpdGllc0A0LjUuMCcsCiAnc2VydmVyL25vZGVfbW9kdWxlcy9odG1scGFyc2VyMi9ub2RlX21vZHVsZXMvZW50aXRpZXMnOicuLi8uLi8ubml0cm8vZW50aXRpZXNANC41LjAnLAogJ3NlcnZlci9ub2RlX21vZHVsZXMvcGluaWEvbm9kZV9tb2R1bGVzL0B2dWUvZGV2dG9vbHMtYXBpJzonLi4vLi4vLi4vLm5pdHJvL0B2dWUvZGV2dG9vbHMtYXBpQDcuNy45JywKICdzZXJ2ZXIvbm9kZV9tb2R1bGVzL0B2dWUvZGV2dG9vbHMtYXBpJzonLi4vLm5pdHJvL0B2dWUvZGV2dG9vbHMtYXBpQDguMi4xJywKICdzZXJ2ZXIvbm9kZV9tb2R1bGVzL0B2dWUvY29tcGlsZXItY29yZS9ub2RlX21vZHVsZXMvZW50aXRpZXMnOicuLi8uLi8uLi8ubml0cm8vZW50aXRpZXNANy4wLjEnLAogJ3NlcnZlci9ub2RlX21vZHVsZXMvQHZ1ZS9kZXZ0b29scy1raXQvbm9kZV9tb2R1bGVzL3BlcmZlY3QtZGVib3VuY2UnOicuLi8uLi8uLi8ubml0cm8vcGVyZmVjdC1kZWJvdW5jZUAxLjAuMCcsCiAnc2VydmVyL25vZGVfbW9kdWxlcy9AdnVlL2RldnRvb2xzLWtpdC9ub2RlX21vZHVsZXMvaG9va2FibGUnOicuLi8uLi8uLi8ubml0cm8vaG9va2FibGVANS41LjMnLAogJ3NlcnZlci9ub2RlX21vZHVsZXMvcGFyc2U1L25vZGVfbW9kdWxlcy9lbnRpdGllcyc6Jy4uLy4uLy5uaXRyby9lbnRpdGllc0A2LjAuMScsCiAnc2VydmVyL25vZGVfbW9kdWxlcy8ubml0cm8vdnVlLXJvdXRlckA0LjYuNC9ub2RlX21vZHVsZXMvQHZ1ZS9kZXZ0b29scy1hcGknOicuLi8uLi8uLi9AdnVlL2RldnRvb2xzLWFwaUA2LjYuNCcsCiAnc2VydmVyL25vZGVfbW9kdWxlcy8ubml0cm8vdnVlLXJvdXRlckA1LjMuMS9ub2RlX21vZHVsZXMvQHZ1ZS9kZXZ0b29scy1hcGknOicuLi8uLi8uLi9AdnVlL2RldnRvb2xzLWFwaUA4LjIuMScsCiAnc2VydmVyL25vZGVfbW9kdWxlcy92ZWUtdmFsaWRhdGUvbm9kZV9tb2R1bGVzL0B2dWUvZGV2dG9vbHMtYXBpJzonLi4vLi4vLi4vLm5pdHJvL0B2dWUvZGV2dG9vbHMtYXBpQDcuNy45JywKfQoKZGVmIG5lZWQodik6CiBpZiBub3QgdjpyYWlzZSBWYWx1ZUVycm9yKCdGSVhFRF9PVVRQVVRfUkVGVVNFRCcpCgpkZWYgZGlnZXN0X2ZpbGUocCk6CiBoPWhhc2hsaWIuc2hhMjU2KCkKIHdpdGggcC5vcGVuKCdyYicpIGFzIGY6CiAgZm9yIGNodW5rIGluIGl0ZXIobGFtYmRhOmYucmVhZCgxMDI0KjEwMjQpLGInJyk6aC51cGRhdGUoY2h1bmspCiByZXR1cm4gaC5oZXhkaWdlc3QoKQoKZGVmIGFydGlmYWN0X3RyZWUoKToKIG5lZWQoT1VUUFVULmlzX2RpcigpIGFuZCBub3QgT1VUUFVULmlzX3N5bWxpbmsoKSBhbmQgT1VUUFVULnJlc29sdmUoc3RyaWN0PVRydWUpPT1PVVRQVVQgYW5kIE9VVFBVVC5zdGF0KCkuc3RfdWlkPT0xMDAwKQogZm9yIHBhcmVudCBpbiBPVVRQVVQucGFyZW50czpuZWVkKHBhcmVudC5pc19kaXIoKSBhbmQgbm90IHBhcmVudC5pc19zeW1saW5rKCkpCiByZWNvcmRzPVtdO2xpbmtzPXt9O3RvdGFsPTA7ZmlsZXM9MAogZm9yIGN1cnJlbnQsZGlycyxuYW1lcyBpbiBvcy53YWxrKE9VVFBVVCxmb2xsb3dsaW5rcz1GYWxzZSk6CiAgZm9yIG5hbWUgaW4gZGlycytuYW1lczoKICAgcD1QYXRoKGN1cnJlbnQpL25hbWU7cz1wLmxzdGF0KCk7cmVsPXAucmVsYXRpdmVfdG8oT1VUUFVUKS5hc19wb3NpeCgpCiAgIG5lZWQocy5zdF91aWQ9PTEwMDApCiAgIGlmIHN0YXQuU19JU0xOSyhzLnN0X21vZGUpOgogICAgdGFyZ2V0PW9zLnJlYWRsaW5rKHApO3Jlc29sdmVkPXAucmVzb2x2ZShzdHJpY3Q9VHJ1ZSkKICAgIG5lZWQocmVsIGluIExJTktTIGFuZCB0YXJnZXQ9PUxJTktTW3JlbF0gYW5kIG5vdCBQYXRoKHRhcmdldCkuaXNfYWJzb2x1dGUoKQogICAgICAgICBhbmQgcmVzb2x2ZWQuaXNfcmVsYXRpdmVfdG8oT1VUUFVUKSBhbmQgcmVzb2x2ZWQuaXNfZGlyKCkgYW5kIHJlc29sdmVkLnN0YXQoKS5zdF91aWQ9PTEwMDApCiAgICBsaW5rc1tyZWxdPXRhcmdldDtyYXc9dGFyZ2V0LmVuY29kZSgndXRmOCcpCiAgICByZWNvcmRzLmFwcGVuZCgocmVsLCdMJyxsZW4ocmF3KSxoYXNobGliLnNoYTI1NihyYXcpLmhleGRpZ2VzdCgpKSkKICAgZWxpZiBzdGF0LlNfSVNESVIocy5zdF9tb2RlKToKICAgIG5lZWQocC5yZXNvbHZlKHN0cmljdD1UcnVlKT09cCkKICAgZWxzZToKICAgIG5lZWQoc3RhdC5TX0lTUkVHKHMuc3RfbW9kZSkgYW5kIHAucmVzb2x2ZShzdHJpY3Q9VHJ1ZSk9PXAgYW5kIDA8PXMuc3Rfc2l6ZTw9MioxMDI0KiozKQogICAgdG90YWwrPXMuc3Rfc2l6ZTtmaWxlcys9MTtuZWVkKHRvdGFsPD01KjEwMjQqKjMgYW5kIGZpbGVzPD01MDAwMCkKICAgIHJlY29yZHMuYXBwZW5kKChyZWwsJ0YnLHMuc3Rfc2l6ZSxkaWdlc3RfZmlsZShwKSkpCiBuZWVkKGxpbmtzPT1MSU5LUykKIHJlY29yZHMuc29ydChrZXk9bGFtYmRhIHg6eFswXS5lbmNvZGUoJ3V0ZjgnKSk7aD1oYXNobGliLnNoYTI1NigpCiBmb3IgcmVsLGtpbmQsc2l6ZSxkaWdlc3QgaW4gcmVjb3JkczoKICByYXc9cmVsLmVuY29kZSgndXRmOCcpO2gudXBkYXRlKGtpbmQuZW5jb2RlKCdhc2NpaScpKTtoLnVwZGF0ZShsZW4ocmF3KS50b19ieXRlcyg0LCdiaWcnKSk7aC51cGRhdGUocmF3KTtoLnVwZGF0ZShzaXplLnRvX2J5dGVzKDgsJ2JpZycpKTtoLnVwZGF0ZShieXRlcy5mcm9taGV4KGRpZ2VzdCkpCiBlbnRyeT1bciBmb3IgciBpbiByZWNvcmRzIGlmIHJbMF09PSdzZXJ2ZXIvaW5kZXgubWpzJyBhbmQgclsxXT09J0YnXTtuZWVkKGxlbihlbnRyeSk9PTEpCiByZXR1cm4geyd0cmVlU2NoZW1hJzonZml4ZWQtbnV4dC1vdXRwdXQtaW50ZXJuYWwtbGlua3MtdjInLCd0cmVlU2hhMjU2JzpoLmhleGRpZ2VzdCgpLCdmaWxlQ291bnQnOmZpbGVzLCdzeW1saW5rQ291bnQnOmxlbihsaW5rcyksJ3RvdGFsQnl0ZXMnOnRvdGFsLCdzZXJ2ZXJFbnRyeUJ5dGVzJzplbnRyeVswXVsyXSwnc2VydmVyRW50cnlTaGEyNTYnOmVudHJ5WzBdWzNdfQo=',validate=True)
+          assert hashlib.sha256(data).hexdigest()=='123ca4f3778a8208392c8a030a1032995262fda7598b54704a92546232fa45bc'
+          pathlib.Path('artifact/output-validator.py').write_bytes(data)
+          PY
+          chmod 444 artifact/output-validator.py
+          docker run --rm --network none --user 1000:1000 -v "$run:/work" -v "$PWD/artifact/output-validator.py:/validator.py:ro" python:3.12-slim \
+            python -I -B -c 'import importlib.util,json,pathlib;s=importlib.util.spec_from_file_location("v","/validator.py");m=importlib.util.module_from_spec(s);s.loader.exec_module(m);m.OUTPUT=pathlib.Path("/work/frontend/.output");p=m.artifact_tree();pathlib.Path("/work/proof/output-tree.json").write_text(json.dumps(p)+"\n")'
+          cp "$run/proof/output-tree.json" artifact/output-tree.json
+          # tar retains exactly validated relative links; direct directory ZIP upload is not used.
+          tar --hard-dereference -C "$run/frontend" -cf artifact/frontend-output.tar .output
+          sha256sum "$run/frontend/package-lock.json" | cut -d' ' -f1 > artifact/lock-sha256.txt
+          [[ $(git diff --name-only HEAD -- frontend | wc -l) == 0 ]]
+          python3 - <<'PY'
+          import hashlib,json,pathlib,stat
+          root=pathlib.Path(pathlib.Path('artifact/owned-path.txt').read_text())/'frontend'
+          h=hashlib.sha256();files=0;total=0
+          for p in sorted(root.rglob('*')):
+              rel=p.relative_to(root).as_posix()
+              if any(rel==x or rel.startswith(x+'/') for x in ('node_modules','.nuxt','.output')):continue
+              st=p.lstat();assert not stat.S_ISLNK(st.st_mode) and st.st_uid==1000 and (p.is_dir() or p.is_file())
+              kind='D' if p.is_dir() else 'F';h.update(kind.encode()+b'\0'+rel.encode()+b'\0')
+              if p.is_file():
+                  files+=1;total+=st.st_size;assert files<=50000 and total<=5*1024**3 and st.st_size<=2*1024**3
+                  with p.open('rb') as f:d=hashlib.file_digest(f,'sha256').digest()
+                  h.update(st.st_size.to_bytes(8,'big'));h.update(d)
+          pathlib.Path('artifact/frontend-source-after.json').write_text(json.dumps({'sha256':h.hexdigest(),'files':files,'bytes':total})+'\n')
+          PY
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path('artifact')
+          def pin(name):
+              p=root/name
+              with p.open('rb') as f:d=hashlib.file_digest(f,'sha256').hexdigest()
+              return {'name':name,'bytes':p.stat().st_size,'sha256':d}
+          p={'schema':'hosted-production-fe-build-v1','sourceCommit':os.environ['FINAL_SOURCE'],'sourceIdentityKind':'STAGED_TREE','sourceTree':(root/'source-tree.txt').read_text().strip(),'frontendRoot':'/work/frontend','actualBuildExit':int((root/'build-exit.txt').read_text()),'containerExit':int((root/'container-exit.txt').read_text()),'nodeVersion':'v22.23.2','nodeImageId':(root/'node-image-id.txt').read_text().strip(),'pythonImageId':(root/'python-image-id.txt').read_text().strip(),'artifactTree':json.loads((root/'output-tree.json').read_text()),'packageLockSha256':(root/'lock-sha256.txt').read_text().strip(),'archive':pin('source.tar'),'outputTar':pin('frontend-output.tar'),'outputValidator':pin('output-validator.py'),'cacheInputSha256':(root/'cache-input-sha256.txt').read_text().strip(),'frontendSourceBefore':json.loads((root/'frontend-source-before.json').read_text()),'frontendSourceAfter':json.loads((root/'frontend-source-after.json').read_text()),'actorCount':0,'runtimeStarted':False,'productGreen':False}
+          assert p['frontendSourceBefore']==p['frontendSourceAfter']
+          (root/'original-hosted-fe-proof.json').write_text(json.dumps(p)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hosted-final-fe-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifact/source.tar
+            artifact/frontend-output.tar
+            artifact/original-hosted-fe-proof.json
+            artifact/output-validator.py
+            artifact/memory-entry.json
+            artifact/memory-build-entry.json
+            artifact/build-exit.txt
+            artifact/container-exit.txt
+          retention-days: 3
+          if-no-files-found: error
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Refuse unbound source
+        working-directory: .
+        shell: bash
+        run: '[[ "$FINAL_SOURCE" =~ ^[0-9a-f]{40}$ ]]'
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.FINAL_SOURCE }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+          gradle-home-cache-includes: |
+            caches
+            notifications
+      - name: Build final bootJar (normal CI is separate)
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p ../artifact
+          [[ $(git rev-parse HEAD) == "$FINAL_SOURCE" ]]
+          chmod +x gradlew
+          set +e
+          ./gradlew compileJava bootJar --no-daemon --build-cache > ../artifact/private-build.log 2>&1
+          actual=$?
+          set -e
+          printf '%s\n' "$actual" > ../artifact/build-exit.txt
+          [[ $actual == 0 ]]
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,subprocess,zipfile
+          jars=[p for p in pathlib.Path('build/libs').glob('*.jar') if not p.name.endswith('-plain.jar')]
+          assert len(jars)==1
+          jar=jars[0]
+          with zipfile.ZipFile(jar) as z:assert any(n.startswith('BOOT-INF/classes/') for n in z.namelist())
+          with jar.open('rb') as f:d=hashlib.file_digest(f,'sha256').hexdigest()
+          import shutil
+          shutil.copyfile(jar,'../artifact/final-backend.jar')
+          version=subprocess.run(['java','-version'],capture_output=True,check=True).stderr.decode('utf-8','replace')
+          import re
+          java_version=re.search(r'version \"(21[^\"]*)\"',version)
+          assert java_version is not None
+          tree=subprocess.check_output(['git','rev-parse','HEAD^{tree}'],text=True).strip()
+          assert not subprocess.check_output(['git','diff','--name-only','HEAD','--','src/main'])
+          p={'schema':'hosted-production-backend-build-v1','sourceCommit':os.environ['FINAL_SOURCE'],'sourceIdentityKind':'STAGED_TREE','sourceTree':tree,'actualBuildExit':int(pathlib.Path('../artifact/build-exit.txt').read_text()),'javaVersion':java_version[1],'jar':{'bytes':jar.stat().st_size,'sha256':d,'sourceTree':tree},'runtimeStarted':False,'actorCount':0,'productGreen':False}
+          pathlib.Path('../artifact/original-hosted-be-proof.json').write_text(json.dumps(p)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hosted-final-be-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifact/final-backend.jar
+            artifact/original-hosted-be-proof.json
+            artifact/build-exit.txt
+          retention-days: 3
+          if-no-files-found: error
