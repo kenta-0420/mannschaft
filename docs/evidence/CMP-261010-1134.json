@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261010-1134",
+  "scope": "app",
+  "implementation": {
+    "pr": 3752,
+    "sha": "1095a393ed9a7a8aee53d486ac3d0e6ba260c0c3"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "frontend/tests/e2e/real/scope-header-headcount.spec.ts が main に入り、実機（モックなし）で全件 PASS する",
+      "tests": [
+        {
+          "name": "scope-header-headcount.spec.ts",
+          "evidence": "frontend/tests/e2e/real/scope-header-headcount.spec.ts"
+        },
+        {
+          "name": "実機E2E: 修正版を検証環境で実行し 11 passed / skipped 0 / failed 0",
+          "evidence": "docs/evidence/CMP-261010-1134-real.md"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38023185984
+    },
+    {
+      "runId": 38023185956
+    },
+    {
+      "runId": 38023185955
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3752"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261010-1134-real.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261004-1942-alicization.md"
+    }
+  },
+  "regressions": []
+}
