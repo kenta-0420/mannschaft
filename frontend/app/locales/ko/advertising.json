@@ -607,7 +607,7 @@
         "impressions_label": "노출 수",
         "clicks_label": "클릭 수",
         "prefecture_label": "도도부현(선택)",
-        "prefecture_placeholder": "예: 도쿄도",
+        "prefecture_placeholder": "예: 東京都 (도도부현 이름을 일본어로 입력하세요)",
         "template_label": "템플릿(선택)",
         "template_placeholder": "예: SPORTS",
         "run_button": "시뮬레이션 실행",

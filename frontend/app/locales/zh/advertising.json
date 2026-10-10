@@ -607,7 +607,7 @@
         "impressions_label": "展示次数",
         "clicks_label": "点击次数",
         "prefecture_label": "都道府县（可选）",
-        "prefecture_placeholder": "例如：东京都",
+        "prefecture_placeholder": "例如：東京都（请用日文输入都道府县名称）",
         "template_label": "模板（可选）",
         "template_placeholder": "例: SPORTS",
         "run_button": "运行模拟",

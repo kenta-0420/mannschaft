@@ -607,7 +607,7 @@
         "impressions_label": "Anzahl Impressionen",
         "clicks_label": "Anzahl Klicks",
         "prefecture_label": "Präfektur (optional)",
-        "prefecture_placeholder": "z. B. Tokio",
+        "prefecture_placeholder": "z. B. 東京都 (Präfekturname auf Japanisch eingeben)",
         "template_label": "Vorlage (optional)",
         "template_placeholder": "z. B. SPORTS",
         "run_button": "Simulation ausführen",

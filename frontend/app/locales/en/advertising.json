@@ -607,7 +607,7 @@
         "impressions_label": "Impressions",
         "clicks_label": "Clicks",
         "prefecture_label": "Prefecture (optional)",
-        "prefecture_placeholder": "e.g. Tokyo",
+        "prefecture_placeholder": "e.g. 東京都 (enter the prefecture name in Japanese)",
         "template_label": "Template (optional)",
         "template_placeholder": "e.g. SPORTS",
         "run_button": "Run simulation",
