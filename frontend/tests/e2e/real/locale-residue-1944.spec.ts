@@ -520,3 +520,116 @@ for (const lang of ALL_LANGS) {
     })
   }
 }
+
+// ── AC-13 ────────────────────────────────────────────────────────────────
+// 訳語が長い言語（de/es）をモバイル幅で開くと、キープ画面（/teams/{slug}/schedule-keeps）の
+// 送信ボタンが潰れて文字が切れ、状態タブがカード幅を超えてページ全体が横に伸びていた
+// （アリシゼーションで発見。原因は訳語ではなくレイアウト側: ボタンの縮み許容とタブ列の折返し欠如）。
+// 画面の導線（チームのスケジュール画面 →「キープ」ボタン）で開き、終端状態で寸法を測る。
+const AC13_VIEWPORTS = [
+  { name: '390x844', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
+  { name: '360x800', viewport: { width: 360, height: 800 }, isMobile: true, hasTouch: true },
+] as const
+
+for (const lang of ['de', 'es'] as const) {
+  for (const vp of AC13_VIEWPORTS) {
+    test(`AC-13 [${lang}] ${vp.name} キープ画面の送信ボタンが潰れず状態タブでページが横に伸びない`, async ({
+      browser,
+    }) => {
+      const state = authStates.get('ADMIN')
+      if (!state) throw new Error('ADMIN の storageState が無い（beforeAll のログインが失敗している）')
+      const ctx = await browser.newContext({
+        locale: BROWSER_LOCALE[lang],
+        storageState: state,
+        viewport: vp.viewport,
+        isMobile: vp.isMobile,
+        hasTouch: vp.hasTouch,
+      })
+      await ctx.addCookies([{ name: 'i18n_locale', value: lang, domain: 'localhost', path: '/' }])
+      const page = await ctx.newPage()
+      try {
+        await gotoSettled(page, `/teams/${teamSlug}/schedule`)
+        await assertLangApplied(page, lang)
+        await dismissInitialSetup(page, lang)
+        // 画面の導線: スケジュール画面の「キープ」ボタンから開く（URL 直打ちしない）
+        const nav = page.getByTestId('schedule-keep-nav-link')
+        await expect(nav).toBeVisible({ timeout: 30_000 })
+        await nav.click()
+        await expect(page).toHaveURL(new RegExp(`/teams/${teamSlug}/schedule-keeps`))
+        await waitSpinnersGone(page)
+        // 終端状態: skeleton が消え、一覧または空状態が出ている
+        await expect(page.getByTestId('schedule-keep-skeleton')).toHaveCount(0, { timeout: 30_000 })
+        await expect(
+          page.getByTestId('schedule-keep-list').or(page.getByTestId('schedule-keep-empty')).first(),
+        ).toBeVisible({ timeout: 30_000 })
+        const submit = page.getByTestId('schedule-keep-submit-button')
+        await expect(submit).toBeVisible()
+        await expect(submit).toContainText(tr(lang, 'scheduleKeep.form.submit'))
+        const filter = page.getByTestId('schedule-keep-status-filter')
+        await expect(filter).toBeVisible()
+
+        // 3つの観点はどれが壊れても全部報告されるよう soft で検査する
+        // 1) ページ全体が横に伸びていない（ページの横パンが無い）
+        const doc = await page.evaluate(() => ({
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth,
+        }))
+        expect.soft(doc.scrollWidth, `ページ全体の scrollWidth <= clientWidth (${JSON.stringify(doc)})`).toBeLessThanOrEqual(
+          doc.clientWidth,
+        )
+
+        // 2) 送信ボタンの文字が切れておらず、44px 以上の幅がある
+        const btn = await submit.evaluate((el) => {
+          const label = el.querySelector('.p-button-label') as HTMLElement | null
+          return {
+            width: el.getBoundingClientRect().width,
+            scrollWidth: el.scrollWidth,
+            clientWidth: el.clientWidth,
+            labelScrollWidth: label?.scrollWidth ?? 0,
+            labelClientWidth: label?.clientWidth ?? 0,
+          }
+        })
+        expect.soft(btn.scrollWidth, `送信ボタンの scrollWidth <= clientWidth (${JSON.stringify(btn)})`).toBeLessThanOrEqual(
+          btn.clientWidth,
+        )
+        expect.soft(
+          btn.labelScrollWidth,
+          `送信ボタンのラベルが切れていない (${JSON.stringify(btn)})`,
+        ).toBeLessThanOrEqual(btn.labelClientWidth)
+        expect.soft(btn.width, `送信ボタンの幅が 44px 以上 (${JSON.stringify(btn)})`).toBeGreaterThanOrEqual(44)
+
+        // 3) 状態タブ: 各タブが viewport 内に収まるか、タブ列が自分のコンテナ内で横スクロールする
+        const tabs = await filter.evaluate((root) => {
+          const vw = document.documentElement.clientWidth
+          const items = Array.from(root.querySelectorAll<HTMLElement>('.p-togglebutton')).map((el) => {
+            const r = el.getBoundingClientRect()
+            return { text: el.innerText.trim(), left: Math.round(r.left), right: Math.round(r.right) }
+          })
+          // タブ列自身または祖先（body 手前まで）に横スクロールのコンテナがあるか
+          let scroller: { overflowX: string; scrollWidth: number; clientWidth: number } | null = null
+          for (let el: HTMLElement | null = root; el && el !== document.body; el = el.parentElement) {
+            const ox = getComputedStyle(el).overflowX
+            if (ox === 'auto' || ox === 'scroll') {
+              scroller = { overflowX: ox, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }
+              break
+            }
+          }
+          return { vw, items, scroller }
+        })
+        expect(tabs.items.length, '状態タブが4つある').toBe(4)
+        const outside = tabs.items.filter((it) => it.left < 0 || it.right > tabs.vw)
+        if (outside.length > 0) {
+          expect.soft(
+            tabs.scroller,
+            `viewport 外のタブがあるなら、タブ列はコンテナ内で横スクロールする作りであること (${JSON.stringify(tabs)})`,
+          ).not.toBeNull()
+        }
+
+        fs.mkdirSync(SHOT_DIR, { recursive: true })
+        await page.screenshot({ path: path.join(SHOT_DIR, `${lang}-AC13-schedule-keeps-${vp.name}.png`) })
+      } finally {
+        await closeAs(ctx, 'ADMIN')
+      }
+    })
+  }
+}
