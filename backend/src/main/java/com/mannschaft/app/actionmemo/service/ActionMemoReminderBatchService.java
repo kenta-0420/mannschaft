@@ -19,7 +19,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -48,6 +47,14 @@ import java.util.Map;
  * <p>プライバシー保護: 通知にメモ内容を含めない。</p>
  *
  * <p>ShedLock により複数インスタンス起動時も重複実行を防ぐ。</p>
+ *
+ * <h2>トランザクション境界（Issue #2997 / 原則5）</h2>
+ * <p>本バッチは業務データを書き込まない（読み取りと通知のみ）。かつては {@code execute()} が
+ * {@code @Transactional(readOnly = true)} で全体を包んでおり、{@code createNotification} の DB 例外が
+ * 外側TXへ rollback-only を立てて、try/catch で握っても監査記録を含む後続処理を巻き込んでいた。
+ * 現在は<b>非トランザクションのオーケストレータ</b>であり、通知は 1 件ごとに
+ * {@link NotificationService#createNotification} 自身のトランザクションで確定する。
+ * 1 人の失敗は他のユーザーにも監査記録にも影響しない。</p>
  */
 @Slf4j
 @Service
@@ -78,7 +85,6 @@ public class ActionMemoReminderBatchService {
     @BatchEndpoint(name = "actionmemo-reminder", description = "行動メモのリマインド通知を毎分送信する")
     @Scheduled(cron = "0 * * * * *")
     @SchedulerLock(name = "actionMemoReminderBatch", lockAtMostFor = "PT3M", lockAtLeastFor = "PT0S")
-    @Transactional(readOnly = true)
     public void execute() {
         ZonedDateTime nowUtc = ZonedDateTime.now(wallClock).withZoneSameInstant(ZoneOffset.UTC);
         executeAt(nowUtc);

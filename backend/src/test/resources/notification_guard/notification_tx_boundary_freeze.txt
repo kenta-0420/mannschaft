@@ -55,7 +55,7 @@
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 28
+# CLASSIFIED_FLOOR: 23
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
 # TX_NOTIFY_VIA_DELEGATE / TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY について呼び先の宣言から区分を導出し、
@@ -221,22 +221,42 @@
 #   凍結エントリ 50 + REMOVED 8 + AMBIGUOUS 0 = 58（= 是正前の CENSUS_FLOOR）
 #   凍結エントリ 43 + REMOVED 8 + AMBIGUOUS 0 = 51
 # CLASSIFIED_FLOOR は変更なし（本ロットの7件はいずれも未分類行であり、分類済み2件に触れていない）。
+# --- 2026-10-11 Issue #2997 G8: 軽量バッチ群 5件の是正（CENSUS_FLOOR 43 -> 38 / CLASSIFIED_FLOOR 32 -> 27）---
+#
+# 是正した5件（エントリを削除。いずれも ROLLBACK_COUPLED のため CLASSIFIED_FLOOR も同数下げる）:
+#   ActionMemoReminderBatchService#executeAt / TeamMemberTermReminderBatch#executeAt /
+#   TodoDueReminderBatch#notifyAssignees
+#     … 業務データを書き込まない通知バッチ。execute()/sendXxxReminders() の @Transactional(readOnly) を外し、
+#       非トランザクションのオーケストレータにした（通知は createNotification 自身のTXで1件ずつ確定）。
+#       通知呼び出し自体は残す（RAW/STRUCTURAL の下限は減らない）。
+#   ReflectionSpacedReminderService#processDueReminders
+#     … 全体を包む @Transactional を外し、項目ごとに「通知 → SENT 保存」をそれぞれ独立に確定する。
+#       送信済み状態の契約は ReflectionSpacedReminderServiceTest の AC-D で固定。
+#   MemberInfoResponseService#sendRemind
+#     … NotificationHelper#notify の直呼びをやめ、MemberInfoUpdateReminderNotificationEvent を publish する。
+#       実通知は既存の MemberInfoUpdateReminderNotificationListener（AFTER_COMMIT + @Async + sendOne）。
+#
+# ■ CENSUS_FLOOR: 43 -> 38 の裏取り（実測）
+#   是正前: 凍結エントリ 35 + REMOVED 8 + AMBIGUOUS 0 = 43
+#   是正後: 凍結エントリ 30 + REMOVED 8 + AMBIGUOUS 0 = 38
+# ■ CLASSIFIED_FLOOR: 32 -> 27（消した5件はすべて ROLLBACK_COUPLED の分類済み行）
+#
+# ■ 最終（G1 jobmatching と G8 の merge 後の実測）: 凍結エントリ 26 + REMOVED 8 + AMBIGUOUS 0 = 34 / 分類済み 23。
+#   上下の 38 / 39 / 27 / 28 は各単独時点の値であり、有効値は本行の 34 / 23。
 # --- jobmatching ドメイン 4件の是正（Issue #2997 / CENSUS_FLOOR 43 -> 39 / CLASSIFIED_FLOOR 32 -> 28）---
 # JobApplicationService#apply / JobContractService#acceptApplication / #reportCompletion /
 # JobCheckInService#fireNotifications（いずれも TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED）。
 # 業務TX内は JobNotificationEvent の publish のみとし、配送は新設の JobNotificationListener
 # （AFTER_COMMIT + @Async("event-pool")）へ移した。実DB検証: JobNotificationTransactionIT。
 # 裏取り: 凍結エントリ 35 + REMOVED 8 = 43 -> 凍結エントリ 31 + REMOVED 8 = 39。分類済み 32 -> 28。
-# CENSUS_FLOOR: 39
+# CENSUS_FLOOR: 34
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
-com.mannschaft.app.actionmemo.service.ActionMemoReminderBatchService#executeAt -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.admin.batch.BatchEventListener#onCompleted -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.admin.batch.BatchEventListener#onFailed -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.digest.service.DigestAsyncExecutor#generateAiDigestAsync -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.memberinfo.service.MemberInfoResponseService#sendRemind -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfirmService#resendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processAlertIfNeeded -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processReminders -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
@@ -244,8 +264,6 @@ com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX
 com.mannschaft.app.recruitment.service.MarketFriendTargetService#distributeFriendListing -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.recruitment.service.RecruitmentListingService#confirmApplication -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.recruitment.service.RecruitmentListingService#sendPublishedNotifications -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.reflection.service.ReflectionSpacedReminderService#processDueReminders -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.repairplan.batch.TeamMemberTermReminderBatch#executeAt -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.EmergencyClosureService#sendClosure -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.ReservationPendingExpireService#notifyApplicant -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.ReservationReminderDispatchBatchService#sendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
@@ -258,7 +276,6 @@ com.mannschaft.app.ticket.service.TicketExpiryBatchService#expireTickets -> TX_N
 com.mannschaft.app.ticket.service.TicketExpiryBatchService#sendExpiryNotifications -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.todo.batch.TodoDueReminderBatch#notifyAssignees -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 
 # --- 2026-09-01 main 取り込みで増えた既存負債（本PRの差分が生んだものではない）---
 # baseline 採取後に main へ着地した実装が持ち込んだ3件。番人が正しく検知したため既存負債として凍結し、
