@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 
+const { t } = useI18n()
 const { getPersonalTodos } = useDashboardApi()
 const { captureQuiet } = useErrorReport()
 const { userTimezone } = useDatetime()
@@ -41,7 +42,7 @@ function formatCountdown(dueDate: string): { text: string; urgent: boolean; over
     const overMs = -ms
     const h = Math.floor(overMs / 3600000)
     const m = Math.floor((overMs % 3600000) / 60000)
-    return { text: `${h > 0 ? `${h}時間` : ''}${m}分 超過`, urgent: false, overdue: true }
+    return { text: t('dashboard.widgets.todoCountdown.overdue', { hours: h > 0 ? t('dashboard.widgets.todoCountdown.hours', { h }) : '', minutes: m }), urgent: false, overdue: true }
   }
   const DAY = 86400000
   if (ms < DAY) {
@@ -56,7 +57,7 @@ function formatCountdown(dueDate: string): { text: string; urgent: boolean; over
   }
   const days = Math.floor(ms / DAY)
   const h = Math.floor((ms % DAY) / 3600000)
-  return { text: `${days}日 ${h}時間`, urgent: days <= 3, overdue: false }
+  return { text: t('dashboard.widgets.todoCountdown.daysHours', { days, hours: h }), urgent: days <= 3, overdue: false }
 }
 
 const priorityColor: Record<string, string> = {
@@ -77,14 +78,14 @@ onUnmounted(() => clearInterval(intervalId))
 
 <template>
   <DashboardWidgetCard
-    title="TODOカウントダウン"
+    :title="t('dashboard.widgets.todoCountdown.title')"
     icon="pi pi-stopwatch"
     to="/todos"
     refreshable
     @refresh="load"
   >
     <div v-if="todos.length === 0" class="py-2 text-center text-sm text-surface-400">
-      期限付きTODOはありません
+      {{ t('dashboard.widgets.todoCountdown.empty') }}
     </div>
 
     <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">

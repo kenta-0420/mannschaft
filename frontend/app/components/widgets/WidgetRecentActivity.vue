@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ActivityDetailField } from '~/types/dashboard'
 
+const { t } = useI18n()
 const { getActivity } = useDashboardApi()
 const { captureQuiet } = useErrorReport()
 
@@ -53,7 +54,7 @@ onMounted(load)
 
 <template>
   <DashboardWidgetCard
-    title="最近のアクティビティ"
+    :title="t('dashboard.widgets.recentActivity.title')"
     icon="pi pi-history"
     :loading="loading"
     :col-span="2"
@@ -80,6 +81,6 @@ onMounted(load)
         </NuxtLink>
       </div>
     </div>
-    <DashboardEmptyState v-else icon="pi pi-history" message="まだアクティビティはありません" />
+    <DashboardEmptyState v-else icon="pi pi-history" :message="t('dashboard.widgets.recentActivity.empty')" />
   </DashboardWidgetCard>
 </template>

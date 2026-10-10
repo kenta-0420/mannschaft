@@ -187,6 +187,7 @@ class RecruitmentMoneyPenaltyScopeContractIT extends AbstractMySqlIntegrationTes
     // ---- 主体 ----
     private Long adminAId;
     private Long memberAId;
+    private Long supporterAId;
     private Long urAdminAId;
     private Long urDeputyAId;
     private Long adminBId;
@@ -249,6 +250,7 @@ class RecruitmentMoneyPenaltyScopeContractIT extends AbstractMySqlIntegrationTes
 
         adminAId = insertUser("w4m-admin-a@example.com");
         memberAId = insertUser("w4m-member-a@example.com");
+        supporterAId = insertUser("w4m-supporter-a@example.com");
         urAdminAId = insertUser("w4m-ur-admin-a@example.com");
         urDeputyAId = insertUser("w4m-ur-deputy-a@example.com");
         adminBId = insertUser("w4m-admin-b@example.com");
@@ -265,6 +267,7 @@ class RecruitmentMoneyPenaltyScopeContractIT extends AbstractMySqlIntegrationTes
         MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", teamAId, null);
         MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, supporterAId, ScopeType.TEAM, teamAId, RoleKind.SUPPORTER);
         MembershipTestHelper.insertUserRole(em, urAdminAId, "ADMIN", teamAId, null);
         MembershipTestHelper.insertUserRole(em, urDeputyAId, "DEPUTY_ADMIN", teamAId, null);
         MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
@@ -845,6 +848,33 @@ class RecruitmentMoneyPenaltyScopeContractIT extends AbstractMySqlIntegrationTes
                 expectStatus(patchJson("/api/v1/cancellation-policies/abc", policyPatchBody()), 400);
                 expectStatus(post("/api/v1/cancellation-policies/abc/archive"), 400);
             }
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 7. SUPPORTER（同スコープの権限不足主体。MEMBER と同じ 403 のまま・404 に化けない）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("7. SUPPORTER（同スコープの権限不足）は管理系 EP で一般メンバーと同じ403 COMMON_002")
+    class Supporter {
+
+        @Test
+        @DisplayName("lift / confirm / ポリシー GET・PATCH・archive は403 COMMON_002（一般メンバーと同じ。404に化けない）")
+        void サポーターは管理系で403() throws Exception {
+            setAuth(supporterAId);
+            expectError(lift("TEAM", teamAId, penaltyAId), 403, C002);
+            expectError(confirm(listingAId, pAppliedAId), 403, C002);
+            expectError(policyGet(policyAId), 403, C002);
+            expectError(policyPatch(policyAId), 403, C002);
+            expectError(policyArchive(policyAId), 403, C002);
+        }
+
+        @Test
+        @DisplayName("waive は403 COMMON_002（受取側でない在籍者。一般メンバーと同じ。404に化けない）")
+        void サポーターはwaiveで403() throws Exception {
+            setAuth(supporterAId);
+            expectError(waive(recUserPayeeId), 403, C002);
         }
     }
 

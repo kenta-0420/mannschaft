@@ -133,6 +133,26 @@ function validateRunOverlay(overlay) {
 validateRunOverlay(data.b0RunOverlay);
 if (process.argv.includes('--self-test-overlay')) {
   if (data.b0RunOverlay?.registrationSource !== 'actual-resident-artifacts') throw new Error('自己検証には実住民の宣言overlayが必要です');
+  const emptyInsights = structuredClone(data.b0RunOverlay);
+  emptyInsights.insights = [];
+  validateRunOverlay(emptyInsights);
+  // 合成insightは自己検証用cloneだけに置き、実観測・生成データを変更しない。
+  const baseline = structuredClone(data.b0RunOverlay);
+  const journey = baseline.journeys[0];
+  const persona = baseline.personas.find((item) => item.id === journey.personaId);
+  baseline.insights = [{
+    id: 'self-test-insight',
+    featureKey: data.features[0].key,
+    title: '自己検証専用',
+    detail: '宣言済みpersonaとjourneyを使う検証用insight',
+    personaId: persona.id,
+    journeyId: journey.id,
+    personaArchetype: persona.personaArchetype,
+    originalRunId: journey.runId,
+    evidencePath: journey.evidencePath,
+    status: 'observed-unverified',
+  }];
+  validateRunOverlay(baseline);
   const mutations = [
     (overlay) => { overlay.insights[0].personaId = 'undeclared-persona'; },
     (overlay) => { overlay.insights[0].journeyId = 'undeclared-journey'; },
@@ -144,13 +164,13 @@ if (process.argv.includes('--self-test-overlay')) {
     (overlay) => { overlay.trusted = true; },
   ];
   for (const mutate of mutations) {
-    const invalid = structuredClone(data.b0RunOverlay);
+    const invalid = structuredClone(baseline);
     mutate(invalid);
     let rejected = false;
     try { validateRunOverlay(invalid); } catch { rejected = true; }
     if (!rejected) throw new Error('住民overlayの不正な宣言を拒否できませんでした');
   }
-  console.log(JSON.stringify({ residentOverlayAccepted: true, invalidOverlaysRejected: mutations.length }));
+  console.log(JSON.stringify({ residentOverlayAccepted: true, emptyInsightsAccepted: true, syntheticBaselineAccepted: true, invalidOverlaysRejected: mutations.length }));
 }
 if (!Array.isArray(strategy.timeline) || strategy.timeline.length < 6 || !Array.isArray(strategy.evidence) || strategy.evidence.length < 4) throw new Error('B0自律テスト戦略の時間軸・証拠定義が不足しています');
 if (strategy.safety?.database !== '開発DB限定' || strategy.safety?.externalSending !== false || strategy.safety?.cookies !== 'personaごとに分離' || !String(strategy.safety?.passCriteria || '').includes('0件・全skip・途中停止は非合格')) throw new Error('B0自律テスト戦略の安全条件が不正です');

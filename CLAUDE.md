@@ -60,6 +60,8 @@
 6. **`/実機`** — 実機E2E（ユーザー視点・モックなし）。**権限あり／権限なし／他テナントのロール横断を必須**とし、URL 直打ちまで確認する
 7. **`/アリシゼーション`** — 実機E2E の**後に必ず行う**。決めたシナリオをなぞる実機E2E とは別種の欠陥（とくに**導線の欠落**）を出すため。実機が全緑でもアリシゼーションは別の欠陥を出すので、実機の緑を実施省略の根拠にしてはならない
 
+開発ハーネスの入口（環境診断・検査範囲・再現性計測）は [`docs/development/harness-engineering.md`](docs/development/harness-engineering.md) を参照する。環境準備は [`docs/development/harness-environment.md`](docs/development/harness-environment.md)、完了証拠の正本手順は [`docs/development/completion-evidence.md`](docs/development/completion-evidence.md)。
+
 **⑥⑦を飛ばして戦役を閉じてはならない。** 単体・IT・CI がすべて緑でも、「画面から到達できない」類の欠陥は原理的に検出できない（2026-09-09、戦役 CMP-260901-1538 を実機E2E・アリシゼーション未実施のまま閉じかけた。UI を含む PR で検分が導線欠陥を5件出していた）。実施できない事情があるときは、**PR 本文と台帳に未実施である旨と理由を明記**すること。
 
 **開発作業は原則として必ず大名システム（Agent サブエージェント）経由で実行すること。** 本陣 `C:\Claude\mannschaft` で直接コーディング・コミットする運用は禁止。BE/API はテスト先行、FE/設計が薄い機能は従来順で可。
