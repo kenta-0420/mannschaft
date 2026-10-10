@@ -1,5 +1,10 @@
 {
   "tournament": {
+    "detail": {
+      "noDivisions": "Es sind keine Divisionen registriert",
+      "divisionsLoadError": "Die Divisionen konnten nicht geladen werden",
+      "loadError": "Das Turnier konnte nicht geladen werden"
+    },
     "sport": {
       "label": "Sportart",
       "help": "Wähle die Sportart für dieses Turnier. Bei direkter Ergebniseingabe erstellte Spiele verwenden diese Sportart.",
