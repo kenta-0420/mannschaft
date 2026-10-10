@@ -1,156 +1,156 @@
 {
   "receipt": {
     "nav": {
-      "receipts": "領収書一覧",
-      "settings": "発行者設定"
+      "receipts": "Recibos",
+      "settings": "Configuración del emisor"
     },
     "list": {
-      "title": "領収書管理",
-      "settingsButton": "発行者設定",
-      "issueButton": "新規発行",
-      "empty": "領収書がありません",
+      "title": "Gestión de recibos",
+      "settingsButton": "Configuración del emisor",
+      "issueButton": "Emitir nuevo",
+      "empty": "No hay recibos",
       "amountWithUnit": "{amount} JPY",
       "column": {
-        "issuedAt": "発行日",
-        "receiptNumber": "領収書番号",
-        "recipientName": "宛名",
-        "amount": "金額",
-        "status": "ステータス",
-        "action": "操作"
+        "issuedAt": "Fecha de emisión",
+        "receiptNumber": "N.º de recibo",
+        "recipientName": "Nombre del destinatario",
+        "amount": "Importe",
+        "status": "Estado",
+        "action": "Acciones"
       },
       "status": {
-        "DRAFT": "下書き",
-        "ISSUED": "発行済"
+        "DRAFT": "Borrador",
+        "ISSUED": "Emitido"
       },
       "action": {
-        "approve": "承認",
-        "void": "無効化",
-        "reissue": "再発行",
+        "approve": "Aprobar",
+        "void": "Anular",
+        "reissue": "Reemitir",
         "pdf": "PDF",
-        "sendEmail": "メール送信"
+        "sendEmail": "Enviar correo electrónico"
       },
       "dialog": {
-        "issueTitle": "領収書を発行",
-        "recipientName": "宛名",
-        "recipientNamePlaceholder": "例: 山田 太郎",
-        "amount": "金額（円）",
-        "amountPlaceholder": "例: 10000",
-        "description": "品目・摘要",
-        "descriptionPlaceholder": "例: 月会費",
-        "notes": "メモ",
-        "notesPlaceholder": "備考など",
-        "cancel": "キャンセル",
-        "submit": "発行する",
-        "voidTitle": "領収書を無効化",
-        "voidReason": "無効化の理由",
-        "voidReasonPlaceholder": "例: 金額誤りのため",
-        "voidSubmit": "無効化する"
+        "issueTitle": "Emitir recibo",
+        "recipientName": "Nombre del destinatario",
+        "recipientNamePlaceholder": "p. ej., Taro Yamada",
+        "amount": "Importe (JPY)",
+        "amountPlaceholder": "p. ej., 10000",
+        "description": "Concepto / Descripción",
+        "descriptionPlaceholder": "p. ej., Cuota mensual de socio",
+        "notes": "Notas",
+        "notesPlaceholder": "Observaciones, etc.",
+        "cancel": "Cancelar",
+        "submit": "Emitir",
+        "voidTitle": "Anular recibo",
+        "voidReason": "Motivo de la anulación",
+        "voidReasonPlaceholder": "p. ej., Importe incorrecto",
+        "voidSubmit": "Anular"
       },
       "toast": {
-        "loadFailed": "領収書一覧の取得に失敗しました",
-        "approved": "承認しました",
-        "approveFailed": "承認に失敗しました",
-        "voided": "無効化しました",
-        "voidFailed": "無効化に失敗しました",
-        "reissued": "再発行しました",
-        "reissueFailed": "再発行に失敗しました",
-        "pdfDownloaded": "PDFをダウンロードしました",
-        "pdfDownloadFailed": "PDFダウンロードに失敗しました",
-        "emailSent": "メールを送信しました",
-        "emailSendFailed": "メール送信に失敗しました",
-        "issued": "領収書を発行しました",
-        "issueFailed": "領収書の発行に失敗しました"
+        "loadFailed": "No se pudieron obtener los recibos",
+        "approved": "Aprobado",
+        "approveFailed": "No se pudo aprobar",
+        "voided": "Anulado",
+        "voidFailed": "No se pudo anular",
+        "reissued": "Reemitido",
+        "reissueFailed": "No se pudo reemitir",
+        "pdfDownloaded": "PDF descargado",
+        "pdfDownloadFailed": "No se pudo descargar el PDF",
+        "emailSent": "Correo electrónico enviado",
+        "emailSendFailed": "No se pudo enviar el correo electrónico",
+        "issued": "Recibo emitido",
+        "issueFailed": "No se pudo emitir el recibo"
       },
       "notice": {
-        "personalScopeUnsupported": "領収書管理は個人スコープでは利用できません。チームまたは組織スコープに切り替えてください。",
-        "scopeNotReady": "スコープを選択すると領収書一覧を表示します。"
+        "personalScopeUnsupported": "La gestión de recibos no está disponible en el ámbito personal. Cambie al ámbito de equipo u organización.",
+        "scopeNotReady": "Seleccione un ámbito para mostrar la lista de recibos."
       },
       "validation": {
-        "voidReasonRequired": "無効化の理由を入力してください"
+        "voidReasonRequired": "Introduzca el motivo de la anulación"
       }
     },
     "settings": {
-      "title": "領収書発行者設定",
-      "description": "領収書の発行に使う発行者情報・インボイス対応・番号体系・PDF体裁を設定します。",
-      "backToList": "領収書一覧へ戻る",
+      "title": "Configuración del emisor de recibos",
+      "description": "Configure la información del emisor, el cumplimiento de facturas (sistema Invoice), el esquema de numeración y el formato del PDF que se usan al emitir recibos.",
+      "backToList": "Volver a la lista de recibos",
       "notice": {
-        "personalScopeUnsupported": "発行者設定は個人スコープでは利用できません。チームまたは組織スコープに切り替えてください。"
+        "personalScopeUnsupported": "La configuración del emisor no está disponible en el ámbito personal. Cambie al ámbito de equipo u organización."
       },
-      "firstTimeNotice": "まだ発行者設定が登録されていません。保存すると作成されます。",
-      "notRetroactiveNotice": "ここで変更した内容は、これから発行する領収書に適用されます。すでに発行済みの領収書の内容は法令上変更できません。",
-      "notRetroactiveAfterSave": "この変更は、これから発行する領収書にのみ適用されます。すでに発行済みの領収書は法令上変更できません。過去分を訂正したい場合は、対象の領収書を無効化してから再発行してください。",
+      "firstTimeNotice": "Aún no se ha registrado la configuración del emisor. Se creará al guardar.",
+      "notRetroactiveNotice": "Los cambios realizados aquí se aplican a los recibos que se emitan a partir de ahora. El contenido de los recibos ya emitidos no puede modificarse por ley.",
+      "notRetroactiveAfterSave": "Este cambio se aplica únicamente a los recibos que se emitan a partir de ahora. Los recibos ya emitidos no pueden modificarse por ley. Para corregir recibos anteriores, anule el recibo correspondiente y vuelva a emitirlo.",
       "section": {
-        "issuer": "発行者情報",
-        "invoice": "インボイス対応",
-        "numbering": "領収書番号",
-        "pdf": "PDF体裁"
+        "issuer": "Información del emisor",
+        "invoice": "Cumplimiento de facturas (sistema Invoice)",
+        "numbering": "Numeración de recibos",
+        "pdf": "Formato del PDF"
       },
       "form": {
-        "issuerName": "発行者名",
-        "postalCode": "郵便番号",
-        "address": "住所",
-        "phone": "電話番号",
-        "isQualifiedInvoicer": "適格請求書発行事業者である",
-        "invoiceRegistrationNumber": "インボイス登録番号",
-        "defaultSealVariant": "印鑑バリアント",
-        "receiptNoteTemplate": "但し書きテンプレート",
-        "receiptNumberPrefix": "領収書番号プレフィックス",
-        "fiscalYearStartMonth": "会計年度開始月",
-        "autoResetNumber": "年度切替で番号を自動リセット",
-        "customFooter": "PDFカスタムフッター",
-        "logo": "ロゴ画像",
-        "nextReceiptNumber": "次の領収書番号"
+        "issuerName": "Nombre del emisor",
+        "postalCode": "Código postal",
+        "address": "Dirección",
+        "phone": "Número de teléfono",
+        "isQualifiedInvoicer": "Emisor de facturas cualificado (Qualified Invoice Issuer)",
+        "invoiceRegistrationNumber": "Número de registro de factura (Invoice)",
+        "defaultSealVariant": "Variante del sello",
+        "receiptNoteTemplate": "Plantilla del concepto («en concepto de»)",
+        "receiptNumberPrefix": "Prefijo del número de recibo",
+        "fiscalYearStartMonth": "Mes de inicio del ejercicio fiscal",
+        "autoResetNumber": "Reiniciar la numeración automáticamente al cambiar el ejercicio fiscal",
+        "customFooter": "Pie de página personalizado del PDF",
+        "logo": "Imagen del logotipo",
+        "nextReceiptNumber": "Próximo número de recibo"
       },
       "placeholder": {
-        "issuerName": "例: 一般社団法人〇〇",
-        "postalCode": "例: 100-0001",
-        "address": "例: 東京都千代田区〇〇1-2-3",
-        "phone": "例: 03-1234-5678",
-        "invoiceRegistrationNumber": "例: T1234567890123",
-        "receiptNoteTemplate": "例: 会費として",
-        "receiptNumberPrefix": "例: RCP-",
-        "customFooter": "例: お問い合わせは事務局まで"
+        "issuerName": "p. ej., Asociación General XX",
+        "postalCode": "p. ej., 100-0001",
+        "address": "p. ej., 1-2-3 XX, Chiyoda-ku, Tokio",
+        "phone": "p. ej., 03-1234-5678",
+        "invoiceRegistrationNumber": "p. ej., T1234567890123",
+        "receiptNoteTemplate": "p. ej., En concepto de cuota de socio",
+        "receiptNumberPrefix": "p. ej., RCP-",
+        "customFooter": "p. ej., Para consultas, póngase en contacto con la secretaría"
       },
       "sealVariant": {
-        "LAST_NAME": "姓のみ",
-        "FULL_NAME": "氏名",
-        "FIRST_NAME": "名のみ"
+        "LAST_NAME": "Solo apellido",
+        "FULL_NAME": "Nombre completo",
+        "FIRST_NAME": "Solo nombre de pila"
       },
       "hint": {
-        "notFirstYet": "まだ発行されていません",
-        "nextReceiptNumberFormat": "{prefix}{number}（発行後に採番されます）",
-        "registrationNumberDisabled": "登録番号は適格請求書発行事業者の場合のみ入力します",
-        "registrationNumberWillBeCleared": "保存すると登録番号も削除されます",
-        "logoResize": "アップロードした画像はサーバー側で長辺200px以内に縮小され、透過部分は白背景になります",
-        "logoNotSet": "ロゴ未設定",
-        "logoPosition": "設定すると、PDFのヘッダー左上とタイトル中央に表示されます",
-        "logoDisabledUntilSaved": "先に発行者設定を保存してください",
-        "unsavedChanges": "保存していない変更があります。移動すると失われます。"
+        "notFirstYet": "Aún no emitido",
+        "nextReceiptNumberFormat": "{prefix}{number} (se asigna después de emitir)",
+        "registrationNumberDisabled": "Introduzca el número de registro solo si es un emisor de facturas cualificado",
+        "registrationNumberWillBeCleared": "Al guardar, también se eliminará el número de registro",
+        "logoResize": "Las imágenes subidas se reducen en el servidor para que el lado largo no supere los 200 px, y las zonas transparentes pasan a fondo blanco",
+        "logoNotSet": "Sin logotipo",
+        "logoPosition": "Si se configura, aparece en la parte superior izquierda del encabezado del PDF y en el centro del título",
+        "logoDisabledUntilSaved": "Guarde primero la configuración del emisor",
+        "unsavedChanges": "Tiene cambios sin guardar. Se perderán si sale de esta página."
       },
       "validation": {
-        "issuerNameRequired": "発行者名を入力してください",
-        "registrationNumberRequired": "インボイス登録番号を入力してください",
-        "registrationNumberFormat": "T + 数字13桁の形式で入力してください（例: T1234567890123）",
-        "logoTooLarge": "ロゴ画像は1MB以下にしてください",
-        "logoUnsupportedType": "ロゴ画像はPNGまたはJPEG形式にしてください"
+        "issuerNameRequired": "Introduzca el nombre del emisor",
+        "registrationNumberRequired": "Introduzca el número de registro de factura",
+        "registrationNumberFormat": "Introduzca el formato T seguido de 13 dígitos (p. ej., T1234567890123)",
+        "logoTooLarge": "La imagen del logotipo debe pesar 1 MB o menos",
+        "logoUnsupportedType": "La imagen del logotipo debe estar en formato PNG o JPEG"
       },
       "toast": {
-        "loadFailed": "発行者設定の取得に失敗しました",
-        "saved": "発行者設定を保存しました",
-        "saveFailed": "発行者設定の保存に失敗しました",
-        "logoUploaded": "ロゴ画像をアップロードしました",
-        "logoUploadFailed": "ロゴ画像のアップロードに失敗しました",
-        "logoDeleted": "ロゴ画像を削除しました",
-        "logoDeleteFailed": "ロゴ画像の削除に失敗しました",
-        "forbidden": "この操作を行う権限がありません"
+        "loadFailed": "No se pudo obtener la configuración del emisor",
+        "saved": "Configuración del emisor guardada",
+        "saveFailed": "No se pudo guardar la configuración del emisor",
+        "logoUploaded": "Imagen del logotipo subida",
+        "logoUploadFailed": "No se pudo subir la imagen del logotipo",
+        "logoDeleted": "Imagen del logotipo eliminada",
+        "logoDeleteFailed": "No se pudo eliminar la imagen del logotipo",
+        "forbidden": "No tiene permiso para realizar esta acción"
       },
       "button": {
-        "save": "保存する",
-        "uploadLogo": "ロゴをアップロード",
-        "deleteLogo": "ロゴを削除",
-        "deleteLogoConfirm": "ロゴ画像を削除しますか？",
-        "cancel": "キャンセル",
-        "confirmDelete": "削除する"
+        "save": "Guardar",
+        "uploadLogo": "Subir logotipo",
+        "deleteLogo": "Eliminar logotipo",
+        "deleteLogoConfirm": "¿Eliminar la imagen del logotipo?",
+        "cancel": "Cancelar",
+        "confirmDelete": "Eliminar"
       }
     }
   }
