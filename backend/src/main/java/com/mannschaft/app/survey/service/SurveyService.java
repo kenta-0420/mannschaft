@@ -347,18 +347,9 @@ public class SurveyService {
     /**
      * アンケートを公開する。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param surveyId  アンケートID
-     * @return 更新されたアンケートレスポンス
-     */
-    @Transactional
-    public SurveyResponse publishSurvey(String scopeType, Long scopeId, Long surveyId) {
-        return publishSurvey(scopeType, scopeId, surveyId, false);
-    }
-
-    /**
-     * アンケートを公開する（push の宛先を告知ウィザードが制御する場合の印付き版。F01.2.1 §8.5.3）。
+     * <p>公開の入口はこの1本だけにしている（F01.2.1 6-E）。印の有無で入口を分けると、クラス単位の
+     * {@code @Transactional} により印付きの版も別の取引入口として数えられ、公開が他ドメインの Repository
+     * へ届く既存の負債（D-3T）が入口の数だけ増えるため。通常の公開（画面・予約公開）は {@code false} を渡す。</p>
      *
      * @param scopeType                     スコープ種別
      * @param scopeId                       スコープID

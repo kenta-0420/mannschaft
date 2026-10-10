@@ -107,11 +107,7 @@ public class SurveyAnnouncementAdapter implements AnnouncementChannelAdapter {
         // 作成直後に公開し PUBLISHED 化する（設問 1 問を同梱済みなので NO_QUESTIONS を通過）。
         // これで受信者は告知直後からそのまま回答できる。publish の失敗は握りつぶさず伝播させ、
         // 告知（broadcast）全体をロールバックさせる（設問ゼロ DRAFT の回答不可矛盾を残さない）。
-        if (audienceControlledByBroadcast) {
-            surveyService.publishSurvey(scopeType, scopeId, surveyId, true);
-        } else {
-            surveyService.publishSurvey(scopeType, scopeId, surveyId);
-        }
+        surveyService.publishSurvey(scopeType, scopeId, surveyId, audienceControlledByBroadcast);
 
         log.info("アンケート作成・公開完了 surveyId={}, scopeType={}, scopeId={}",
                 surveyId, scopeType, scopeId);

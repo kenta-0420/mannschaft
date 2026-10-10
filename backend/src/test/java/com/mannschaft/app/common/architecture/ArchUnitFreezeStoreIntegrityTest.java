@@ -812,6 +812,12 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>F01.2.1 6-A（組織グループ宛て告知）: {@code AnnouncementBroadcastService.validateTargetTeamIds} を廃止し、
      * 宛先の検証・展開を tx の外の {@code BroadcastAudienceResolver} へ出したため、その入口の 1 行
      * （→ UserRoleRepository）が解消。追加 0・削除 1。{@code 7358 → 7357}。</p>
+     *
+     * <p>F01.2.1 6-E（グループ宛て告知の push）: 公開の印を渡すため {@code SurveyService.publishSurvey} の入口を
+     * 3引数版から4引数版（{@code boolean} 付き）1本に差し替えた。既存負債 2 行（→ OrganizationRepository /
+     * UserRoleRepository）の入口名を付け替えただけで、追加 0・削除 0。{@code 7357 → 7357}。
+     * 告知の push は social ドメインのポート {@code AnnouncementPushEnqueuer} 経由とし、notification の Repository へは
+     * 届かない（ストア変更なし）。</p>
      */
     // CMP-260820-1018: Proxy の一覧・アップロードURL生成を非TX認可入口へ整理したため4行減。Role依存自体は残る。
     // main: BetaGrantService の通知RepositoryへのTX到達12行減も統合。独立した削除16行で7376→7360。

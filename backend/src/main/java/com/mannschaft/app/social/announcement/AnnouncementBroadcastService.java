@@ -5,12 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EnumInputParser;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.fanout.FanoutEnqueueCommand;
-import com.mannschaft.app.notification.fanout.FanoutMessageKind;
-import com.mannschaft.app.notification.fanout.NotificationFanoutAudienceService;
-import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
-import com.mannschaft.app.role.fanout.OrgTeamsFanoutRecipientSource;
 import com.mannschaft.app.social.announcement.adapter.AnnouncementChannelAdapter;
 import com.mannschaft.app.social.announcement.adapter.AnnouncementChannelAdapterRegistry;
 import com.mannschaft.app.social.announcement.audience.BroadcastAudienceResolver;
@@ -20,9 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -47,11 +39,7 @@ public class AnnouncementBroadcastService {
     private final AccessControlService accessControlService;
     private final ObjectMapper objectMapper;
     private final BroadcastAudienceResolver audienceResolver;
-    private final NotificationFanoutAudienceService fanoutAudienceService;
-    private final NotificationFanoutJobService fanoutJobService;
-
-    /** push の通知種別（アンケート公開通知と同じ。F01.2.1 §8.5.3）。 */
-    private static final String PUSH_NOTIFICATION_TYPE = "SURVEY_CREATED";
+    private final AnnouncementPushEnqueuer pushEnqueuer;
 
     /**
      * 告知ウィザードを実行し、コンテンツを作成してお知らせフィードに登録する。
@@ -203,31 +191,20 @@ public class AnnouncementBroadcastService {
         if (!audienceResolver.pushEnabled(req.getCallerUserId(), req.getScopeId(), req.getChannel())) {
             return;
         }
-        UUID audienceSnapshotId = UUID.nameUUIDFromBytes(
-                ("F02.8:broadcast-audience:" + feedId).getBytes(StandardCharsets.UTF_8));
-        UUID idempotencyKey = UUID.nameUUIDFromBytes(
-                ("F02.8:broadcast:" + feedId).getBytes(StandardCharsets.UTF_8));
-        fanoutAudienceService.registerAudience(audienceSnapshotId, req.getScopeId(), audience.resolvedTeamIds());
-
         String title = req.getContent() != null && req.getContent().getTitle() != null
                 ? req.getContent().getTitle() : "";
         // 応援者トグルは告知の target_role から決める（MEMBERS_AND_ABOVE なら純 SUPPORTER を除く。§8.5.2）。
         boolean includeSupporters = !AnnouncementVisibility.MEMBERS_AND_ABOVE.equals(req.getTargetRole());
-        fanoutJobService.enqueueInCurrentTransaction(new FanoutEnqueueCommand(
-                OrgTeamsFanoutRecipientSource.SCOPE_TYPE,
-                audienceSnapshotId.toString(),
-                PUSH_NOTIFICATION_TYPE,
-                idempotencyKey,
+        // 宛先集合の登録とジョブの enqueue はポート経由で行う（social の tx から notification の Repository へ
+        // 推移的に届かせない。CLAUDE.md DB 設計の原則 #5・D-3T）。どちらも本トランザクションに参加する。
+        pushEnqueuer.enqueue(new AnnouncementPushEnqueuer.NarrowedAnnouncementPush(
                 req.getScopeId(),
-                NotificationPriority.NORMAL,
-                req.getCallerUserId(),
-                "SURVEY",
+                audience.resolvedTeamIds(),
+                feedId,
                 contentId,
-                "/surveys/" + contentId,
+                title,
                 includeSupporters,
-                FanoutMessageKind.SURVEY_PUBLISHED,
-                List.of(title),
-                FanoutEnqueueCommand.ShardMode.AUTO));
+                req.getCallerUserId()));
         log.info("宛先を絞った告知の push を enqueue: feedId={}, orgId={}, teams={}",
                 feedId, req.getScopeId(), audience.resolvedTeamIds().size());
     }
