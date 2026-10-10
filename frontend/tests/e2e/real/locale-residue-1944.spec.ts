@@ -11,9 +11,17 @@
  *   AC-12:  billing / shift / receipt 系ページの本文に日本語が残らず、代表キーの訳文が出る
  *
  * ロケールの決め方: nuxt.config.ts の i18n は strategy: no_prefix・cookieKey: 'i18n_locale'。
- *   loginViaApi はロケールを持たないため、言語ごとに BrowserContext を作り直し、
- *   cookie `i18n_locale` と Accept-Language（context の locale）を入れる。
+ *   言語ごとに BrowserContext を作り直し、cookie `i18n_locale` と Accept-Language（context の locale）を入れる。
  *   表示言語が切り替わったことは <html lang> と、訳文そのものが画面に出ていることで確かめる。
+ *
+ * ログインの回数: AuthService.login() にはメール＋IP 単位で 10回/分 のレート制限（AUTH_044）がある。
+ *   ケースごとに再ログインすると同じ ADMIN が1回の実行で数十回ログインし、偽の失敗になりうる。
+ *   そこで beforeAll でロール（ADMIN / DEPUTY_ADMIN / MEMBER / OUTSIDER）ごとに1回だけ loginViaApi し、
+ *   認証済みの storageState を保持する。各ケースは新しい context にその storageState を流し込む
+ *   （ブラウザ側の隔離はケース単位、ログインはロール単位で1回）。ケース終了時に context の storageState
+ *   を書き戻すため、アクセストークン失効後に FE が refresh でトークンを回転させても、次のケースは
+ *   最新の refresh token を使う（古い refresh token の再利用検知に掛からない）。
+ *   前提データの API 呼び出しも同じログインで得た access_token を使い、追加のログインはしない。
  *
  * 日本語残存の判定: ページ全体の innerText から判定する。ただし次の「ユーザーが入力・サーバーが保持するデータ」
  *   は翻訳の対象外なので除外する（除外対象は EXCLUDE_PATTERNS / 実行時のログイン者氏名に限る）。
@@ -100,7 +108,7 @@ function loadBundle(lang: string): Record<string, unknown> {
   const merged: Record<string, unknown> = {}
   for (const f of fs.readdirSync(dir)) {
     if (!f.endsWith('.json')) continue
-    const json = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8').replace(/^﻿/, ''))
+    const json = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8').replace(/^\uFEFF/, ''))
     for (const [k, v] of Object.entries(json)) merged[k] = v
   }
   bundleCache.set(lang, merged)
@@ -122,19 +130,35 @@ let api: APIRequestContext
 let teamSlug = ''
 const fullNames: Partial<Record<Role, string>> = {}
 
-async function apiLogin(email: string): Promise<string> {
-  const res = await api.post('/api/v1/auth/login', { data: { email, password: PASSWORD } })
-  expect(res.status(), `${email} のログイン`).toBe(200)
-  return ((await res.json()).data as { accessToken: string }).accessToken
+type AuthState = Awaited<ReturnType<BrowserContext['storageState']>>
+/** ロールごとの認証済み storageState（beforeAll で1回だけログインして作る）。 */
+const authStates = new Map<Role, AuthState>()
+/** 1回の実行で行ったログインの回数（報告用。ロール数=4 を超えないことを確かめる）。 */
+let loginCount = 0
+
+/** ロールごとに1回だけ loginViaApi し、storageState と access_token（前提データ作成用）を得る。 */
+async function loginOnce(browser: Browser, role: Role): Promise<string> {
+  const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  try {
+    const page = await ctx.newPage()
+    await loginViaApi(page, { email: ACCOUNTS[role], password: PASSWORD }, { apiBaseUrl: API })
+    loginCount++
+    authStates.set(role, await ctx.storageState())
+    const token = (await ctx.cookies()).find((c) => c.name === 'access_token')?.value
+    if (!token) throw new Error(`${role} の access_token Cookie が無い`)
+    return token
+  } finally {
+    await ctx.close()
+  }
 }
 const bearer = (t: string) => ({ Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' })
 
-test.beforeAll(async () => {
+test.beforeAll(async ({ browser }) => {
   api = await pwRequest.newContext({ baseURL: API })
-  const adminTok = await apiLogin(ACCOUNTS.ADMIN)
-  const deputyTok = await apiLogin(ACCOUNTS.DEPUTY_ADMIN)
-  const memberTok = await apiLogin(ACCOUNTS.MEMBER)
-  const outsiderTok = await apiLogin(ACCOUNTS.OUTSIDER)
+  const adminTok = await loginOnce(browser, 'ADMIN')
+  const deputyTok = await loginOnce(browser, 'DEPUTY_ADMIN')
+  const memberTok = await loginOnce(browser, 'MEMBER')
+  const outsiderTok = await loginOnce(browser, 'OUTSIDER')
 
   for (const [role, tok] of [
     ['ADMIN', adminTok],
@@ -179,21 +203,34 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
+  console.log(`[locale-residue-1944] loginCount=${loginCount}`)
+  expect(loginCount, 'ログインはロールごとに1回だけ').toBeLessThanOrEqual(Object.keys(ACCOUNTS).length)
   await api?.dispose()
 })
 
 // ── 画面ヘルパー ─────────────────────────────────────────────────────────
+/**
+ * 言語ごとに新しい context を作り、ロールの認証済み storageState を流し込む（ここではログインしない）。
+ * ロケールは cookie `i18n_locale` と context の locale で決める。
+ */
 async function openAs(browser: Browser, lang: Lang, role: Role): Promise<{ ctx: BrowserContext; page: Page }> {
-  const ctx = await browser.newContext({
-    locale: BROWSER_LOCALE[lang],
-    storageState: { cookies: [], origins: [] },
-  })
-  await ctx.addCookies([
-    { name: 'i18n_locale', value: lang, domain: 'localhost', path: '/' },
-  ])
+  const state = authStates.get(role)
+  if (!state) throw new Error(`${role} の storageState が無い（beforeAll のログインが失敗している）`)
+  const ctx = await browser.newContext({ locale: BROWSER_LOCALE[lang], storageState: state })
+  await ctx.addCookies([{ name: 'i18n_locale', value: lang, domain: 'localhost', path: '/' }])
   const page = await ctx.newPage()
-  await loginViaApi(page, { email: ACCOUNTS[role], password: PASSWORD }, { apiBaseUrl: API })
   return { ctx, page }
+}
+
+/** context を閉じる前に storageState を書き戻す（FE の refresh で回転したトークンを次のケースへ渡す）。 */
+async function closeAs(ctx: BrowserContext, role: Role): Promise<void> {
+  try {
+    const state = await ctx.storageState()
+    // i18n_locale はケースごとに入れ直すため、保持する状態からは外す
+    authStates.set(role, { ...state, cookies: state.cookies.filter((c) => c.name !== 'i18n_locale') })
+  } finally {
+    await ctx.close()
+  }
 }
 
 async function gotoSettled(page: Page, url: string): Promise<void> {
@@ -275,7 +312,7 @@ for (const lang of ALL_LANGS) {
         expect(lines, `ページ本文の日本語残存行(${lang})`).toEqual([])
       }
     } finally {
-      await ctx.close()
+      await closeAs(ctx, 'OUTSIDER')
     }
   })
 }
@@ -306,7 +343,7 @@ for (const lang of ALL_LANGS) {
           expect(lines, `参加申請管理画面の日本語残存行(${lang}/${role})`).toEqual([])
         }
       } finally {
-        await ctx.close()
+        await closeAs(ctx, role)
       }
     })
   }
@@ -334,7 +371,7 @@ for (const lang of ALL_LANGS) {
         await expect(page.getByText(tr(lang, 'joinRequest.admin.empty'))).toHaveCount(0)
         await shot(page, `${lang}-AC11b-${role}-direct-url`)
       } finally {
-        await ctx.close()
+        await closeAs(ctx, role)
       }
     })
   }
@@ -342,11 +379,104 @@ for (const lang of ALL_LANGS) {
 
 // ── AC-12 ────────────────────────────────────────────────────────────────
 // billing / shift / receipt の画面。ADMIN(e2e-user) のセッションで開く。
-const AC12_PAGES = [
-  { name: 'billing-plans', url: '/billing/plans', key: 'billing.plans.title' },
-  { name: 'billing-settings', url: '/settings/billing', key: 'billing.manage.personalTitle' },
-  { name: 'shift-index', url: '/shift', key: 'shift.index.title' },
-  { name: 'shift-my', url: '/my/shifts', key: 'shift.myShifts.title' },
+//
+// 偽 green 対策: 文字種の検査は「データ表示後の終端状態」で行う。固定の待ち時間は使わない。
+//   - 初期値 loading=false の画面（/shift・/my/shifts・receipt）は、SSR とマウント直後に空状態や
+//     スピナー0件が先に出るため、スピナー0件・見出しだけでは終端の証拠にならない。
+//     画面が onMounted で叩く API の応答完了（waitForResponse・goto 前に登録）を待ち、
+//     そのうえで終端の DOM（一覧の行または空状態）が可視であることをアサーションで固定する。
+//   - /shift は onMounted が先に teamStore.fetchMyTeams() を待ち、選択チームが決まってから
+//     一覧 API（/api/v1/shifts/schedules?teamId=）を呼ぶ。この一覧 API の応答完了は
+//     「所属チームの取得が終わり、チームが選ばれた」ことを含む。
+type TerminalCheck = (page: Page, lang: Lang) => Promise<void>
+
+/** /shift の終端: チーム選択肢があり選択済み、ローディング無し、一覧の行または空状態が可視。 */
+const shiftIndexTerminal: TerminalCheck = async (page, lang) => {
+  const teamSelect = page.locator('.p-select').first()
+  const label = teamSelect.locator('.p-select-label')
+  await expect(label, 'チームが選択済み（プレースホルダではない）').not.toHaveClass(/p-placeholder/)
+  await expect(label).not.toHaveText(tr(lang, 'shift.index.selectTeam'))
+  await expect(label).toHaveText(/\S/)
+  await teamSelect.click()
+  await expect(page.locator('.p-select-overlay .p-select-option').first(), 'チーム選択肢が出ている').toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.p-select-overlay')).toHaveCount(0)
+  await expect(page.locator('.p-progressspinner')).toHaveCount(0)
+  await expect(
+    page
+      .locator('.grid > .cursor-pointer.rounded-xl')
+      .or(page.getByText(tr(lang, 'shift.index.noSchedule'), { exact: true }))
+      .first(),
+    '選択チームの一覧（行または空状態）が可視',
+  ).toBeVisible()
+}
+
+/** /my/shifts の終端: ローディング無し、希望シフトの行または空状態が可視。 */
+const myShiftsTerminal: TerminalCheck = async (page, lang) => {
+  await expect(page.locator('.p-progressspinner')).toHaveCount(0)
+  await expect(
+    page
+      .locator('[data-testid^="my-shift-request-"]')
+      .or(page.getByText(tr(lang, 'shift.myShifts.empty'), { exact: true }))
+      .first(),
+    '希望シフトの行または空状態が可視',
+  ).toBeVisible()
+}
+
+/** 領収書の終端: ローディング無し、空状態文言が可視（OUTSIDER は支払い 0 件）。 */
+const receiptTerminal: TerminalCheck = async (page, lang) => {
+  await expect(page.locator('.p-progressspinner')).toHaveCount(0)
+  await expect(page.getByText(tr(lang, 'payment.receipt.noReceipts'), { exact: true })).toBeVisible()
+}
+
+/** /billing/plans の終端: プラン一覧の領域（loading 解除後の v-else）が可視。 */
+const billingPlansTerminal: TerminalCheck = async (page) => {
+  await expect(page.locator('.p-progressspinner')).toHaveCount(0)
+  await expect(page.locator('.fade-in.space-y-6')).toBeVisible()
+}
+
+/** /settings/billing の終端: 契約パネル・β特典ともローディング解除済み（初期値 loading=true のため真の終端）。 */
+const billingSettingsTerminal: TerminalCheck = async (page) => {
+  await expect(page.locator('.p-progressspinner')).toHaveCount(0)
+}
+
+const AC12_PAGES: ReadonlyArray<{
+  name: string
+  url: string
+  key: string
+  role?: Role
+  /** goto 前に登録し、応答完了を待つ API（画面が onMounted で叩くもの） */
+  apis: RegExp[]
+  terminal: TerminalCheck
+}> = [
+  {
+    name: 'billing-plans',
+    url: '/billing/plans',
+    key: 'billing.plans.title',
+    apis: [/\/api\/v1\/billing\/plans(\?|$)/, /\/api\/v1\/me\/entitlements(\?|$)/],
+    terminal: billingPlansTerminal,
+  },
+  {
+    name: 'billing-settings',
+    url: '/settings/billing',
+    key: 'billing.manage.personalTitle',
+    apis: [/\/api\/v1\/me\/entitlements(\?|$)/],
+    terminal: billingSettingsTerminal,
+  },
+  {
+    name: 'shift-index',
+    url: '/shift',
+    key: 'shift.index.title',
+    apis: [/\/api\/v1\/shifts\/schedules\?teamId=/],
+    terminal: shiftIndexTerminal,
+  },
+  {
+    name: 'shift-my',
+    url: '/my/shifts',
+    key: 'shift.myShifts.title',
+    apis: [/\/api\/v1\/shifts\/my\/requests(\?|$)/],
+    terminal: myShiftsTerminal,
+  },
   // 領収書は支払い済みの行を持つアカウント(e2e-user)だと FE がクラッシュする（既知の別欠陥・報告書参照:
   // GET /api/v1/me/payments が paymentItem/scope を返さず receipts.vue が描画で落ちる）。
   // 翻訳の検証は「支払い 0 件」の OUTSIDER で、見出し + 空状態文言(noReceipts)を見る。
@@ -355,32 +485,37 @@ const AC12_PAGES = [
     url: '/me/payments/receipts',
     key: 'payment.receipt.title',
     role: 'OUTSIDER',
-    extraKey: 'payment.receipt.noReceipts',
+    apis: [/\/api\/v1\/me\/payments(\?|$)/],
+    terminal: receiptTerminal,
   },
-] as const
+]
 
 for (const lang of ALL_LANGS) {
   for (const pg of AC12_PAGES) {
     test(`AC-12 [${lang}] ${pg.name} (${pg.url}) 本文に日本語が残らず代表キーの訳が出る`, async ({ browser }) => {
-      const role: Role = 'role' in pg ? pg.role : 'ADMIN'
+      const role: Role = pg.role ?? 'ADMIN'
       const { ctx, page } = await openAs(browser, lang, role)
       try {
+        // goto 前に登録する（応答を取り逃がさない）。待ちの時計は goto の前から進むため、
+        // goto・hydration が遅い回でも切れないよう、テスト全体の上限（180s）近くまで取る。
+        const responses = pg.apis.map((re) =>
+          page.waitForResponse((r) => r.request().method() === 'GET' && re.test(r.url()), { timeout: 150_000 }),
+        )
         await gotoSettled(page, pg.url)
+        for (const [i, res] of (await Promise.all(responses)).entries()) {
+          expect(res.ok(), `${pg.apis[i]} の応答 ${res.status()}`).toBe(true)
+        }
         await assertLangApplied(page, lang)
         await expect(page.locator('body')).toContainText(tr(lang, pg.key), { timeout: 30_000 })
-        if ('extraKey' in pg) {
-          await expect(page.locator('body')).toContainText(tr(lang, pg.extraKey), { timeout: 30_000 })
-        }
-        // データ取得完了後の本文で判定する
-        await waitSpinnersGone(page)
-        await page.waitForTimeout(1_500)
+        // データ表示後の終端状態を確かめてから判定する
+        await pg.terminal(page, lang)
         await shot(page, `${lang}-AC12-${pg.name}`)
         if (lang !== 'ja') {
           const lines = await residueLines(page, lang, role)
           expect(lines, `${pg.url} の日本語残存行(${lang})`).toEqual([])
         }
       } finally {
-        await ctx.close()
+        await closeAs(ctx, role)
       }
     })
   }
