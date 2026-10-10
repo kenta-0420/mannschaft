@@ -322,6 +322,54 @@ public class AsyncConfig {
     }
 
     /**
+     * 通知 outbox の起こし（{@code NotificationOutboxRelay#onAppended}）専用スレッドプール
+     * （docs/architecture/notification_outbox.md §5）。
+     *
+     * <p>業務のコミット直後（AFTER_COMMIT）に outbox を即 drain する。{@code event-pool} と分けるのは、
+     * 監査ログ・通知配送が相乗りする共用プールの飽和に起こしが巻き込まれないようにするため。</p>
+     *
+     * <p><b>拒否時は CallerRuns</b>（捨てない・例外を投げない）。起こしが捨てられても予備ポーラーが5秒で拾うが、
+     * 例外を投げると AFTER_COMMIT の呼び出し元（業務の応答スレッド）にエラーが伝わるため採らない。
+     * CallerRuns でコミット済みの業務のスレッドで同期に drain しても、取り込み（{@code NotificationOutboxIngestService}）と
+     * claim・印付けはそれぞれ {@code REQUIRES_NEW} の独立した tx なので、終わった業務の tx に参加して書き込みが消えることはない
+     * （OB15・OB16）。拒否の回数はカウンタ {@code mannschaft.notification.outbox.nudge_rejected} で数える。</p>
+     *
+     * <p>サイジング: corePoolSize=2 / maxPoolSize=4 / queueCapacity=100。1回の drain は claim を空になるまで繰り返すので、
+     * 並列の起こしが多くても取り込み量は増えない（{@code SKIP LOCKED} で行を分け合うだけ）。</p>
+     *
+     * @param meterRegistryProvider 拒否回数カウンタ登録用 Micrometer レジストリの optional プロバイダ
+     * @return notification-outbox-pool エグゼキュータ
+     */
+    @Bean("notification-outbox-pool")
+    public Executor notificationOutboxPool(ObjectProvider<MeterRegistry> meterRegistryProvider) {
+        MeterRegistry meterRegistry = meterRegistryProvider.getIfAvailable();
+        Counter rejectedCounter = meterRegistry == null ? null
+                : Counter.builder("mannschaft.notification.outbox.nudge_rejected")
+                        .description("notification-outbox-pool 飽和時に CallerRuns で実行した起こしの数（捨てずに可視化）")
+                        .register(meterRegistry);
+
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("notification-outbox-");
+        executor.setTaskDecorator(new MdcTaskDecorator());
+        executor.setRejectedExecutionHandler((runnable, poolExecutor) -> {
+            if (rejectedCounter != null) {
+                rejectedCounter.increment();
+            }
+            log.warn("notification-outbox-pool 投入拒否: pool_saturated pool=notification-outbox-pool "
+                            + "policy=caller_runs activeCount={} poolSize={} queueSize={}",
+                    poolExecutor.getActiveCount(), poolExecutor.getPoolSize(), poolExecutor.getQueue().size());
+            if (!poolExecutor.isShutdown()) {
+                runnable.run();
+            }
+        });
+        executor.initialize();
+        return executor;
+    }
+
+    /**
      * 外部 AI API 呼び出し専用スレッドプール（Issue #2990 L4 検分是正）。
      *
      * <p>{@link com.mannschaft.app.errorreport.service.ErrorReportAiAnalysisAsyncRunner#analyzeAsync}
