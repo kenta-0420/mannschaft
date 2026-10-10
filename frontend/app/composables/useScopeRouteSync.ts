@@ -73,13 +73,16 @@ export function useScopeRouteSync() {
 
   /**
    * パスから現在スコープを同期する。切り替えた場合のみ true。
+   * isCurrent を指定した場合、所属取得後に画面の団体が変わっていれば書き込まない。
    */
-  async function syncFromPath(path: string): Promise<boolean> {
+  async function syncFromPath(path: string, isCurrent?: () => boolean): Promise<boolean> {
     const parsed = parseScopeRoute(path)
     if (!parsed) return false
 
     if (parsed.scopeType === 'team') {
       await ensureMyTeams()
+      // 呼び出し元が離脱した同期だけを止める。既存 caller（guard 省略）の挙動は変えない。
+      if (isCurrent && !isCurrent()) return false
       const team = teamStore.myTeams.find(t => t.slug === parsed.slug)
       if (!team) return false
       if (scopeStore.current.type === 'team' && scopeStore.current.id === String(team.id)) return false
@@ -88,6 +91,7 @@ export function useScopeRouteSync() {
     }
 
     await ensureMyOrganizations()
+    if (isCurrent && !isCurrent()) return false
     const org = orgStore.myOrganizations.find(o => o.slug === parsed.slug)
     if (!org) return false
     if (scopeStore.current.type === 'organization' && scopeStore.current.id === String(org.id)) return false

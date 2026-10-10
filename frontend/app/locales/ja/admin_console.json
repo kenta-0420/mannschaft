@@ -124,6 +124,23 @@
         "summary": "有効 {enabled} / 全 {total}",
         "fetchFailed": "モジュール情報を取得できませんでした"
       }
+    },
+    "settingsHub": {
+      "title": "管理設定一覧",
+      "scopeSettings": "団体の設定",
+      "integrations": "連携・発行者設定",
+      "confirmingScope": "表示中の団体を確認しています。確認後に連携設定を開けます。",
+      "items": {
+        "shift": "シフト設定",
+        "faq": "FAQ設定",
+        "public": "公開設定",
+        "care": "本人のケア設定",
+        "todoLabels": "TODOステータス表示名",
+        "notificationCredits": "通知クレジット",
+        "modules": "機能設定",
+        "line": "LINE連携設定",
+        "receipts": "領収書の発行者設定"
+      }
     }
   }
 }

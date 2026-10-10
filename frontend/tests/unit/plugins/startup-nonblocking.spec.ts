@@ -7,6 +7,7 @@ const appRoot = resolve(process.cwd(), 'app')
 
 describe('起動時のバックグラウンド同期', () => {
   for (const plugin of [
+    'scope.client.ts',
     'scope-dashboard.client.ts',
     'feature-flags.client.ts',
     'nav-settings.client.ts',

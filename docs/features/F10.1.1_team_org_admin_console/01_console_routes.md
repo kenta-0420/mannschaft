@@ -127,6 +127,10 @@
 - 既存の `settings/*` 個別ルートを内包するハブ。各設定は既存ページをそのまま導線集約する（§4 再編マッピング）。
 - DEPUTY_ADMIN の可否はセクションごとに権限グループで分岐（[04](./04_security_authorization.md) §4）。
 
+> **CMP-260902-1016 の限定実装（2026-10-03、検証中）**: 原 AC の ADMIN 設定一覧を先に実装する。新 index は `roleName === 'ADMIN'` のみ表示し、L2 の ADMIN 設定カードから入る。DEPUTY_ADMIN と既存 SYSTEM_ADMIN の L2 設定カードは従来 URL を維持する。DEPUTY のグループ別設定と現 ORG FAQ の ADMIN-only ACL の差は未解決であり、本 CMP で ACL を統一しない。
+>
+> TEAM/ORG の §4 の設定群（care は本人設定）と既存 `modules` へリンクし、LINE `/admin/line-settings` と payment 有効時の `/admin/receipt-settings` は URL slug・親シェル内部 ID・同期後 store が同じ団体と確認できる場合だけ案内する。ORG 予約設定・SYS 専用税設定は掲載しない。取得失敗は空状態と区別する。受け入れ条件と検証証跡は [README の実装範囲](./README.md#cmp-260902-1016-設定一覧の実装範囲検証中) を参照する。
+
 ---
 
 ## 4. 既存ルート再編マッピング表

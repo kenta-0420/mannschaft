@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
+import { ref } from 'vue'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import TeamAdminConsolePage from '~/pages/teams/[slug]/admin/index.vue'
 
@@ -20,8 +21,13 @@ mockNuxtImport('useRoute', () => () => ({ params: { slug: 'team-000001' } }))
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 
 const loadPermissions = vi.fn(async () => {})
+const access = {
+  roleName: ref<string | null>('ADMIN'),
+  isAdmin: ref(true),
+  isAdminOrDeputy: ref(true),
+}
 mockNuxtImport('useRoleAccess', () => () => ({
-  isAdminOrDeputy: { value: true },
+  ...access,
   loadPermissions,
 }))
 
@@ -38,6 +44,12 @@ beforeAll(async () => {
   warmup.unmount()
 })
 
+beforeEach(() => {
+  access.roleName.value = 'ADMIN'
+  access.isAdmin.value = true
+  access.isAdminOrDeputy.value = true
+})
+
 describe('pages/teams/[slug]/admin/index.vue — カードが実リンクとして描画される', () => {
   it('TAC-001: 遷移先ありのカードが a[href] として描画される（NuxtLink 文字列渡しの罠の再発防止）', async () => {
     const wrapper = await mountSuspended(TeamAdminConsolePage)
@@ -48,13 +60,44 @@ describe('pages/teams/[slug]/admin/index.vue — カードが実リンクとし�
     expect(anchors.length).toBe(5)
   })
 
-  it('TAC-002: 「設定」カードの href が /teams/team-000001/settings/shift を指す', async () => {
+  it('AC1: ADMINの設定カードから同じチームの設定ハブへ進める', async () => {
     const wrapper = await mountSuspended(TeamAdminConsolePage)
     await flushMicrotasks()
 
     const anchors = wrapper.findAll('a[href]')
     const hrefs = anchors.map(a => a.attributes('href'))
+    expect(hrefs).toContain('/teams/team-000001/admin/settings')
+  })
+
+  it('AC3: DEPUTYの既存シフト設定への入口を維持する', async () => {
+    access.roleName.value = 'DEPUTY_ADMIN'
+    access.isAdmin.value = false
+    const wrapper = await mountSuspended(TeamAdminConsolePage)
+    await flushMicrotasks()
+
+    const hrefs = wrapper.findAll('a[href]').map(a => a.attributes('href'))
     expect(hrefs).toContain('/teams/team-000001/settings/shift')
+    expect(hrefs).not.toContain('/teams/team-000001/admin/settings')
+  })
+
+  it('AC4: 権限が未確定の場合に設定ハブのリンクを公開しない', async () => {
+    access.roleName.value = null
+    access.isAdmin.value = false
+    access.isAdminOrDeputy.value = false
+    const wrapper = await mountSuspended(TeamAdminConsolePage)
+    await flushMicrotasks()
+
+    expect(wrapper.findAll('a[href]')).toHaveLength(0)
+  })
+
+  it('AC3: SYSTEM_ADMINは既存の入口を維持し、新しいスコープ管理者ハブへ案内しない', async () => {
+    access.roleName.value = 'SYSTEM_ADMIN'
+    const wrapper = await mountSuspended(TeamAdminConsolePage)
+    await flushMicrotasks()
+
+    const hrefs = wrapper.findAll('a[href]').map(a => a.attributes('href'))
+    expect(hrefs).toContain('/teams/team-000001/settings/shift')
+    expect(hrefs).not.toContain('/teams/team-000001/admin/settings')
   })
 })
 

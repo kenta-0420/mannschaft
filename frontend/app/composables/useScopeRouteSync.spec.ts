@@ -132,4 +132,40 @@ describe('useScopeRouteSync', () => {
 
     expect(await sync.syncFromPath('/teams/alpha/members')).toBe(false)
   })
+
+  it('TEAMの所属取得中に画面が離れた場合、旧スコープを書き込まない', async () => {
+    const teamStore = useTeamStore()
+    let finishFetch: () => void = () => {}
+    const fetched = new Promise<void>((resolve) => { finishFetch = resolve })
+    vi.spyOn(teamStore, 'fetchMyTeams').mockImplementation(async () => {
+      await fetched
+      teamStore.myTeams = [team(12, 'alpha', '朝練チーム')]
+    })
+    let current = true
+    const pending = useScopeRouteSync().syncFromPath('/teams/alpha', () => current)
+    current = false
+    finishFetch()
+
+    expect(await pending).toBe(false)
+    expect(useScopeStore().current).toMatchObject({ type: 'personal', id: null })
+    expect(localStorage.getItem('currentScope')).toBeNull()
+  })
+
+  it('ORGの所属取得中に画面が離れた場合、旧スコープを書き込まない', async () => {
+    const orgStore = useOrganizationStore()
+    let finishFetch: () => void = () => {}
+    const fetched = new Promise<void>((resolve) => { finishFetch = resolve })
+    vi.spyOn(orgStore, 'fetchMyOrganizations').mockImplementation(async () => {
+      await fetched
+      orgStore.myOrganizations = [org(7, 'beta', 'ベータ連盟')]
+    })
+    let current = true
+    const pending = useScopeRouteSync().syncFromPath('/organizations/beta', () => current)
+    current = false
+    finishFetch()
+
+    expect(await pending).toBe(false)
+    expect(useScopeStore().current).toMatchObject({ type: 'personal', id: null })
+    expect(localStorage.getItem('currentScope')).toBeNull()
+  })
 })
