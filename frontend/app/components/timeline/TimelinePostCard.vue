@@ -28,6 +28,7 @@ const emit = defineEmits<{
   bookmark: [postId: number]
   pin: [postId: number]
   delete: [postId: number]
+  edited: []
   repost: [postId: number]
   clickPost: [postId: number]
   mitayoToggled: [postId: number, mitayo: boolean, mitayoCount: number]
@@ -37,6 +38,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const auth = useAuthStore()
 const { relativeTime } = useRelativeTime()
 const { addReaction, removeReaction, getReplies, createReply } = useTimelineApi()
 const { showError } = useNotification()
@@ -392,6 +394,11 @@ function replyIsSystemPost(r: TimelinePostResponse): boolean {
         size="small"
         data-testid="team-timeline-post-menu"
         @click.stop="toggleMenu"
+      />
+      <TimelinePostEdit
+        :key="`${post.id}:${auth.currentUser?.id}:${post.scope.scopeType}:${post.scope.scopeId}`"
+        :post="post"
+        @edited="emit('edited')"
       />
       <Menu ref="menu" :model="menuItems" popup />
     </div>

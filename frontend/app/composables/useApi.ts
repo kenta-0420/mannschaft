@@ -1,9 +1,10 @@
 import { ofetch } from 'ofetch'
+import { getAuthSessionContext, type AuthSessionSnapshot } from '~/composables/authSessionContext'
 import { resolveApiBaseUrl } from '~/composables/useApiBaseUrl'
 import type { PaywallDetails } from '~/stores/usePaywallStore'
 
 /**
- * トークンリフレッシュの結果を表す 3 状態。
+ * トークンリフレッシュの結果と本人セッション変更を区別する。
  *
  * boolean（成功/失敗）だと「本物の認証失敗（refresh_token 無効）」と
  * 「一時的な失敗（timeout / ネットワーク / 5xx）」が区別できず、回線が遅いだけの
@@ -12,8 +13,9 @@ import type { PaywallDetails } from '~/stores/usePaywallStore'
  * - 'refreshed'   : 更新成功（新トークンを setTokens 済み）
  * - 'auth_failed' : refresh エンドポイントが 401/403 ＝ refresh_token が無効な本物の認証失敗
  * - 'transient'   : timeout / abort / ネットワークエラー / 5xx ＝ 一時的（回線が遅い/詰まっただけ）
+ * - 'session_changed': 開始時の本人セッションが終了。旧副作用・再送は行わない。
  */
-export type TokenRefreshResult = 'refreshed' | 'auth_failed' | 'transient'
+export type TokenRefreshResult = 'refreshed' | 'auth_failed' | 'transient' | 'session_changed'
 
 // refresh API のハング保険。15 秒で abort する。
 // これが無いと refresh がハングした際に await が永久 pending となり、
@@ -21,71 +23,55 @@ export type TokenRefreshResult = 'refreshed' | 'auth_failed' | 'transient'
 // layouts/default.vue の LoadingBounce フォールバックが固着して白画面化する。
 const REFRESH_TIMEOUT_MS = 15_000
 
-let refreshPromise: Promise<TokenRefreshResult> | null = null
 
 /**
- * access_token の先回り／事後リフレッシュを行うモジュールスコープ関数。
+ * access_token の先回り／事後リフレッシュを行う共通関数。
  *
  * 定期的な先回りリフレッシュ（armProactiveRefresh スケジューラ）と interceptor の 401 リカバリの
- * 両方から呼ばれ、モジュール level の refreshPromise で二重リフレッシュを防止する
+ * 両方から呼ばれ、同store・同sessionのrefresh flight で二重リフレッシュを防止する
  * （同時に複数の呼び出しが来ても 1 本の Promise を共有する）。
  *
  * config / authStore は引数で受け取る。リクエスト時コンテキスト（イベントハンドラ等）から
  * useRuntimeConfig() / useAuthStore() を呼ぶと Nuxt インスタンスが未解決になる落とし穴が
  * あるため、setup 時に capture したものを必ず渡すこと。
  *
- * 返り値は 3 状態（TokenRefreshResult）。呼び出し側は 'transient' でログアウトしないこと。
+ * 返り値にはsession_changedを含む（TokenRefreshResult）。呼び出し側は 'transient' でログアウトしないこと。
  */
 export function performTokenRefresh(
   config: ReturnType<typeof useRuntimeConfig>,
   authStore: ReturnType<typeof useAuthStore>,
 ): Promise<TokenRefreshResult> {
-  // 二重リフレッシュ防止
-  if (refreshPromise) {
-    return refreshPromise
-  }
-
-  refreshPromise = (async (): Promise<TokenRefreshResult> => {
-    // ofetch の timeout オプションに依存せず、確実に abort できるよう自前の
-    // AbortController + setTimeout で 15 秒のハング保険を張る。
-    const controller = new AbortController()
+  const session = getAuthSessionContext(authStore)
+  const snapshot = session.capture()
+  if (!session.current(snapshot)) return Promise.resolve('session_changed')
+  if (session.refreshFlight && session.current(session.refreshFlight.snapshot)) return session.refreshFlight.promise
+  const controller = new AbortController()
+  let settle: ((result: TokenRefreshResult) => void) | undefined
+  const promise = new Promise<TokenRefreshResult>(done => { settle = done })
+  const flight = { snapshot, controller, promise }
+  session.refreshFlight = flight
+  // flight登録後に同期でHTTPを開始し、先回り更新の遅延0の挙動を保つ。
+  void (async (): Promise<TokenRefreshResult> => {
     const timer = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS)
     try {
-      // バックエンドは refresh_token Cookie を読むため、body への refreshToken 送信は不要。
-      // credentials: 'include' で Cookie が自動送信される。
       const data = await ofetch<{ data: { accessToken: string; refreshToken: string } }>(
         '/api/v1/auth/refresh',
-        {
-          baseURL: resolveApiBaseUrl(config),
-          method: 'POST',
-          credentials: 'include',
-          signal: controller.signal,
-        },
+        { baseURL: resolveApiBaseUrl(config), method: 'POST', credentials: 'include', signal: controller.signal },
       )
+      if (!session.current(snapshot) || session.refreshFlight !== flight) return 'session_changed'
+      if (controller.signal.aborted) return 'transient'
       authStore.setTokens(data.data.accessToken, data.data.refreshToken)
       return 'refreshed'
-    }
-    catch (error) {
-      // 401/403/400 ＝ refresh_token が無効な本物の認証失敗。
-      // 401: 現行 BE の正規レスポンス。AUTH_007（無効/リボーク済み）は
-      //      GlobalExceptionHandler.ERROR_CODE_STATUS_MAP で 401 にマップされている。
-      // 400: 旧 BE（AUTH_007 が Severity.WARN 既定の 400 で返っていた頃）およびモバイル等の
-      //      旧クライアント互換のため、引き続き認証失敗として扱う。後方互換目的で残す。
-      // それ以外（timeout/abort/ネットワークエラー/レスポンス無し/5xx）は一時的とみなし、
-      // ログアウトさせない（回線が遅いだけのユーザーを誤ってログアウトさせないため）。
+    } catch (error) {
+      if (!session.current(snapshot) || session.refreshFlight !== flight) return 'session_changed'
       const status = (error as { response?: { status?: number } })?.response?.status
-      if (status === 400 || status === 401 || status === 403) {
-        return 'auth_failed'
-      }
-      return 'transient'
-    }
-    finally {
+      return status === 400 || status === 401 || status === 403 ? 'auth_failed' : 'transient'
+    } finally {
       clearTimeout(timer)
-      refreshPromise = null
+      if (session.refreshFlight === flight) session.refreshFlight = null
     }
-  })()
-
-  return refreshPromise
+  })().then(result => settle?.(result))
+  return promise
 }
 
 /**
@@ -108,15 +94,13 @@ const PROACTIVE_REFRESH_BUFFER_MS = 60_000
 // 再武装遅延。リアクティブ 401 ノイズに戻さず、短い間隔でリトライして回復を試みる（AC-7）。
 const PROACTIVE_REFRESH_RETRY_DELAY_MS = 30_000
 
-// タイマーハンドルは module-scope で保持する（refreshPromise と同様の single-flight パターン。AC-5）。
-let proactiveRefreshTimer: ReturnType<typeof setTimeout> | null = null
+// タイマーハンドルは store別session contextで保持する（AC-5）。
 
 // 'auth_failed' を掴んだログアウト処理の single-flight ガード。
 // auth_failed は「先回りリフレッシュ経路（armProactiveRefresh の fire）」と
 // 「401 interceptor 経路（onResponseError）」の両方から同時に観測され得る
 // （performTokenRefresh は 1 本の Promise を共有するため、両者が同じ 'auth_failed' を受け取る）。
 // ガードが無いと logout が二重に走り、navigateTo('/login?reason=...') が二重発火する。
-let authFailureLogoutPromise: Promise<void> | null = null
 
 /**
  * refresh_token が本当に無効（auth_failed）だったときのログアウトを 1 回に束ねる。
@@ -128,33 +112,38 @@ let authFailureLogoutPromise: Promise<void> | null = null
 export function handleAuthFailureLogout(
   authStore: ReturnType<typeof useAuthStore>,
 ): Promise<void> {
-  if (authFailureLogoutPromise) {
-    return authFailureLogoutPromise
-  }
-  authFailureLogoutPromise = (async () => {
+  const session = getAuthSessionContext(authStore)
+  const snapshot = session.capture()
+  if (!session.current(snapshot)) return Promise.resolve()
+  if (session.logoutFlight && session.current(session.logoutFlight.snapshot)) return session.logoutFlight.promise
+  let done: (() => void) | undefined
+  let fail: ((error: unknown) => void) | undefined
+  const promise = new Promise<void>((resolve, reject) => { done = resolve; fail = reject })
+  const flight = { snapshot, promise }
+  session.logoutFlight = flight
+  void (async () => {
     try {
-      // reason=session_expired を付与し、ログイン画面でセッション失効の案内を表示する。
-      await authStore.logout({ reason: 'session_expired' })
+      if (session.current(snapshot)) await authStore.logout({ reason: 'session_expired' })
+    } finally {
+      if (session.logoutFlight === flight) session.logoutFlight = null
     }
-    finally {
-      authFailureLogoutPromise = null
-    }
-  })()
-  return authFailureLogoutPromise
+  })().then(() => done?.(), error => fail?.(error))
+  return promise
 }
 
 /**
  * 武装中の先回りリフレッシュタイマーを解除する（AC-3）。ログアウト時に呼ぶこと。
  */
-export function disarmProactiveRefresh(): void {
-  if (proactiveRefreshTimer !== null) {
-    clearTimeout(proactiveRefreshTimer)
-    proactiveRefreshTimer = null
+export function disarmProactiveRefresh(authStore: ReturnType<typeof useAuthStore>): void {
+  const session = getAuthSessionContext(authStore)
+  if (session.proactiveTimer !== null) {
+    clearTimeout(session.proactiveTimer)
+    session.proactiveTimer = null
   }
 }
 
 /**
- * access_token の先回りリフレッシュタイマーを（再）武装するモジュールスコープ関数。
+ * access_token の先回りリフレッシュタイマーを（再）武装する共通関数。
  *
  * 【呼び出しタイミング】
  * setTokens（ログイン成功時・リフレッシュ成功時の両方。useAuthStore 側でフック）、
@@ -193,18 +182,23 @@ export function armProactiveRefresh(
 ): void {
   if (!import.meta.client) return
 
-  disarmProactiveRefresh()
+  disarmProactiveRefresh(authStore)
   // 武装＝生存中のセッションが（再）確立された状態。過去のログアウト処理のガードが
   // 何らかの理由で残っていても、ここで解除して再ログイン後の失効に備える。
-  authFailureLogoutPromise = null
+  const session = getAuthSessionContext(authStore)
+  const snapshot = session.capture()
+  if (!session.current(snapshot)) return
+  session.logoutFlight = null
 
   const raw = localStorage.getItem('tokenExpiresAt')
   const expiresAtMs = raw ? Number(raw) : 0
   const delayMs = computeProactiveRefreshDelayMs(expiresAtMs, Date.now(), PROACTIVE_REFRESH_BUFFER_MS)
 
   const fire = (): void => {
+    if (!session.current(snapshot)) return
     void (async () => {
       const result = await performTokenRefresh(config, authStore)
+      if (!session.current(snapshot) || result === 'session_changed') return
       if (result === 'refreshed') {
         // 新しい tokenExpiresAt（setTokens 内で書き込み済み）に基づいて次のタイマーを再武装する。
         armProactiveRefresh(config, authStore)
@@ -213,8 +207,8 @@ export function armProactiveRefresh(
       if (result === 'transient') {
         // timeout / ネットワーク / 5xx の一時的失敗。回線が遅いだけのユーザーを誤ってログアウト
         // させないため、諦めず短い遅延で再武装して回復を試みる（AC-7）。
-        proactiveRefreshTimer = setTimeout(() => {
-          armProactiveRefresh(config, authStore)
+        session.proactiveTimer = setTimeout(() => {
+          if (session.current(snapshot)) armProactiveRefresh(config, authStore)
         }, PROACTIVE_REFRESH_RETRY_DELAY_MS)
         return
       }
@@ -233,7 +227,7 @@ export function armProactiveRefresh(
     fire()
   }
   else {
-    proactiveRefreshTimer = setTimeout(fire, delayMs)
+    session.proactiveTimer = setTimeout(fire, delayMs)
   }
 }
 
@@ -277,6 +271,8 @@ export function useApi() {
   const guardianshipSwitchStore = useGuardianshipSwitchStore()
   const adminImpersonationStore = useAdminImpersonationStore()
   const nuxtApp = useNuxtApp()
+  const session = getAuthSessionContext(authStore)
+  session.bindApp(nuxtApp)
   const errorReport = useErrorReport()
 
   // useI18n() は setup コンテキスト外（イベントハンドラや Pinia アクション）では
@@ -296,6 +292,9 @@ export function useApi() {
     retryStatusCodes: [401],
 
     onRequest({ options }) {
+      const meta = options as typeof options & { _authSessionSnapshot?: AuthSessionSnapshot }
+      meta._authSessionSnapshot ??= session.capture()
+      if (!session.current(meta._authSessionSnapshot) || options.signal?.aborted) throw new Error('AUTH_SESSION_CHANGED')
       // Cookie認証でも、認証済みの紙ピン留めには代理入力ヘッダーを付与する。
       if (authStore.accessToken || (proxyDeskStore.isPinned && authStore.isAuthenticated)) {
         const headers = new Headers(options.headers)
@@ -333,6 +332,9 @@ export function useApi() {
     },
 
     async onResponseError({ options, request, response }) {
+      const meta = options as typeof options & { _authSessionSnapshot?: AuthSessionSnapshot }
+      const snapshot = meta._authSessionSnapshot
+      if (!snapshot || !session.current(snapshot) || options.signal?.aborted) throw new Error('AUTH_SESSION_CHANGED')
       // 401: Refresh Token ローテーション
       // バックエンドは未認証リクエストに必ず 401 を返す（SecurityConfig.exceptionHandling 参照）。
       if (response.status === 401) {
@@ -343,6 +345,7 @@ export function useApi() {
 
         if (authStore.user) {
           const result = await performTokenRefresh(config, authStore)
+          if (!session.current(snapshot) || options.signal?.aborted || result === 'session_changed') throw new Error('AUTH_SESSION_CHANGED')
           if (result === 'auth_failed') {
             // refresh_token が無効な本物の認証失敗。ログアウトして /login へ誘導する。
             // 先回りリフレッシュ経路（armProactiveRefresh の fire）と同じ single-flight ヘルパーを

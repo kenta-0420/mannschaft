@@ -1,6 +1,7 @@
 # STRING永続化enumの読取り互換性台帳。自動更新禁止。
 # 初期台帳: 公式CI run36959618701 / head24007c89f5 / merge5d3dd93116のfresh本番全量走査で取得。展開済みの証明ではない。
 # 作法: docs/development/persisted_enum_deployment.md
+# 本人診断6定数: 読取り互換性を全taskへ先配布し、旧task0の証跡後に別releaseで書込み開始。実展開済みの証明ではない。
 com.mannschaft.app.actionmemo.ActionMemoMood#BAD
 com.mannschaft.app.actionmemo.ActionMemoMood#GOOD
 com.mannschaft.app.actionmemo.ActionMemoMood#GREAT
@@ -457,6 +458,12 @@ com.mannschaft.app.dashboard.TargetType#POLL
 com.mannschaft.app.dashboard.TargetType#SCHEDULE
 com.mannschaft.app.dashboard.TargetType#TIMELINE_POST
 com.mannschaft.app.dashboard.TargetType#TODO
+com.mannschaft.app.diagnosis.DiagnosisMethod#BIRTH_STYLE
+com.mannschaft.app.diagnosis.DiagnosisMethod#DIAGNOSIS
+com.mannschaft.app.diagnosis.DiagnosisStatus#CANCELLED
+com.mannschaft.app.diagnosis.DiagnosisStatus#COMPLETED
+com.mannschaft.app.diagnosis.DiagnosisStatus#STARTED
+com.mannschaft.app.diagnosis.DiagnosisStatus#TIE_BREAK_REQUIRED
 com.mannschaft.app.digest.DigestScopeType#ORGANIZATION
 com.mannschaft.app.digest.DigestScopeType#TEAM
 com.mannschaft.app.digest.DigestStatus#DISCARDED
@@ -1334,6 +1341,34 @@ com.mannschaft.app.queue.TicketStatus#COMPLETED
 com.mannschaft.app.queue.TicketStatus#NO_SHOW
 com.mannschaft.app.queue.TicketStatus#SERVING
 com.mannschaft.app.queue.TicketStatus#WAITING
+com.mannschaft.app.ranch.AssignmentMethod#BIRTH_STYLE
+com.mannschaft.app.ranch.AssignmentMethod#DIAGNOSIS
+com.mannschaft.app.ranch.AssignmentMethod#HABITAT_RANDOM
+com.mannschaft.app.ranch.DinosaurStage#ADULT
+com.mannschaft.app.ranch.DinosaurStage#BABY
+com.mannschaft.app.ranch.DinosaurStage#EGG
+com.mannschaft.app.ranch.DinosaurStage#JUVENILE
+com.mannschaft.app.ranch.Habitat#AIR
+com.mannschaft.app.ranch.Habitat#LAND
+com.mannschaft.app.ranch.Habitat#SEA
+com.mannschaft.app.ranch.MotionMode#NORMAL
+com.mannschaft.app.ranch.MotionMode#REDUCED
+com.mannschaft.app.ranch.MotionMode#STOPPED
+com.mannschaft.app.ranch.ParticipationStatus#ACTIVE
+com.mannschaft.app.ranch.ParticipationStatus#PAUSED
+com.mannschaft.app.ranch.RenderStyle#PAINT_2D
+com.mannschaft.app.ranch.RenderStyle#PIXEL
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#AWARDED
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#CAPPED
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#INELIGIBLE
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#NOT_PARTICIPATING
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#REWARDS_PAUSED
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#SOURCE_COUNT_CAPPED
+com.mannschaft.app.ranch.reward.RanchRewardDecisionStatus#SOURCE_DISABLED
+com.mannschaft.app.ranch.reward.RanchRewardSourceType#ATTENDANCE_RESPONSE
+com.mannschaft.app.ranch.reward.RanchRewardSourceType#BLOG_FIRST_PUBLISH
+com.mannschaft.app.ranch.reward.RanchRewardSourceType#PERSONAL_RECALL_COMPLETE
+com.mannschaft.app.ranch.reward.RanchRewardSourceType#TIMELINE_ORIGINAL
 com.mannschaft.app.receipt.ReceiptArchiveKind#ORIGINAL
 com.mannschaft.app.receipt.ReceiptArchiveKind#VOIDED
 com.mannschaft.app.receipt.ReceiptPdfStatus#FAILED
@@ -2093,3 +2128,10 @@ com.mannschaft.app.workflow.WorkflowStatus#IN_PROGRESS
 com.mannschaft.app.workflow.WorkflowStatus#PENDING
 com.mannschaft.app.workflow.WorkflowStatus#REJECTED
 com.mannschaft.app.workflow.WorkflowStatus#WITHDRAWN
+com.mannschaft.app.reflection.RecallSessionStatus#STARTED
+com.mannschaft.app.reflection.RecallSessionStatus#COMPLETED
+com.mannschaft.app.reflection.RecallSessionStatus#CANCELLED
+com.mannschaft.app.reflection.RecallSessionCommandType#START
+com.mannschaft.app.reflection.RecallSessionCommandType#ANSWERS
+com.mannschaft.app.reflection.RecallSessionCommandType#COMPLETE
+com.mannschaft.app.reflection.RecallSessionCommandType#CANCEL

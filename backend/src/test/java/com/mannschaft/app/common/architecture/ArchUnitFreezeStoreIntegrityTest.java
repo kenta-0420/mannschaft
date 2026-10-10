@@ -867,7 +867,10 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>ScheduleMediaUploadEntity が {@code UuidV7Entity} を継承済みとなり、凍結ストアから解消行 1 件が
      * 自動で縮退したため 568 → 567（PR #3387 の main 追従で反映）。</p>
      */
-    private static final int EXPECTED_LINES_UUID_V7_D2B = 567;
+    // RanchCollectibleCatalogEntity は承認済み置物の自然キーを主キーとする設計是認例外。
+    // 凍結ストアへの当該1行追加を正確に追随し、新規 Entity の検出規則は維持する。
+    // V245のid=1固定管理行は独立発番を持たないsingleton設計是認例外。追加は当該1型だけ。
+    private static final int EXPECTED_LINES_UUID_V7_D2B = 569;
 
     /**
      * 越境 Repository 依存禁止ストア（D-5）の期待行数。

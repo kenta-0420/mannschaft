@@ -129,6 +129,8 @@ class PersonalDataCollectorTest {
     // F03.16 予定コメントスレッド（AC-35）
     @Mock
     private ScheduleCommentService scheduleCommentService;
+    @Mock
+    private com.mannschaft.app.ranch.service.RanchPersonalDataExportService ranchPersonalDataExportService;
 
     @InjectMocks
     private PersonalDataCollector collector;
@@ -138,7 +140,7 @@ class PersonalDataCollectorTest {
     class Collect {
 
         @Test
-        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（19カテゴリ）")
+        @DisplayName("正常系: nullカテゴリで全カテゴリが収集される（20カテゴリ）")
         void 正常_nullカテゴリ_全カテゴリ収集() {
             given(userRepository.findById(anyLong())).willReturn(Optional.empty());
             given(oAuthAccountRepository.findByUserId(anyLong())).willReturn(List.of());
@@ -185,16 +187,18 @@ class PersonalDataCollectorTest {
             // F03.16 予定コメントスレッド（AC-35）
             given(scheduleCommentService.collectPersonalDataForGdpr(anyLong())).willReturn(List.of());
 
+            given(ranchPersonalDataExportService.exportUser(anyLong())).willReturn("{}");
+
             Map<String, String> result = collector.collect(1L, null);
 
-            assertThat(result).hasSize(19);
+            assertThat(result).hasSize(20);
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     "account.json", "oauth_accounts.json", "memberships.json", "profiles.json",
                     "payments.json", "charts.json", "chat_messages.json", "timeline_posts.json",
                     "audit_logs.json", "notifications.json", "action_memos.json",
                     "error_reports.json", "proxy_input_consents.json", "proxy_input_records.json",
                     "weather_locations.json", "point_cards.json", "resumes.json", "inbox.json",
-                    "scheduleComments"
+                    "scheduleComments", "ranch.json"
             );
             assertThat(result).as("F03.16 予定コメントスレッド（AC-35）が全カテゴリ収集に含まれること")
                     .containsKey("scheduleComments");
@@ -229,16 +233,16 @@ class PersonalDataCollectorTest {
     class GetCategoryKeys {
 
         @Test
-        @DisplayName("正常系: 19カテゴリキーが返る")
-        void 正常_19カテゴリキー返却() {
+        @DisplayName("正常系: 20カテゴリキーが返る")
+        void 正常_20カテゴリキー返却() {
             Set<String> keys = collector.getCategoryKeys();
 
-            assertThat(keys).hasSize(19);
+            assertThat(keys).hasSize(20);
             assertThat(keys).containsExactlyInAnyOrder(
                     "account", "oauth", "memberships", "profiles", "payments",
                     "charts", "chat_messages", "timeline", "audit_logs", "notifications",
                     "action_memos", "error_reports", "proxy_consents", "proxy_records",
-                    "location_preference", "point_cards", "resumes", "inbox", "scheduleComments"
+                    "location_preference", "point_cards", "resumes", "inbox", "scheduleComments", "ranch"
             );
             assertThat(keys).as("F03.16 予定コメントスレッド（AC-35）のカテゴリキーが含まれること")
                     .contains("scheduleComments");

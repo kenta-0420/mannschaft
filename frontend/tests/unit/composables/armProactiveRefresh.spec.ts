@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { getAuthSessionContext } from '~/composables/authSessionContext'
 
 /**
  * armProactiveRefresh / disarmProactiveRefresh（useApi.ts）のユニットテスト。
@@ -40,11 +41,17 @@ function makeConfig(): RefreshConfig {
   return { public: { apiBase: '' } } as unknown as RefreshConfig
 }
 
+const fixtureStores: RefreshAuthStore[] = []
 function makeAuthStore() {
-  return {
+  const store = {
     setTokens: vi.fn(),
     logout: vi.fn().mockResolvedValue(undefined),
   }
+  fixtureStores.push(asAuthStore(store))
+  return store
+}
+function disarmFixtureTimers() {
+  for (const store of fixtureStores) disarmProactiveRefresh(store)
 }
 
 function asAuthStore(store: ReturnType<typeof makeAuthStore>): RefreshAuthStore {
@@ -65,11 +72,14 @@ describe('armProactiveRefresh / disarmProactiveRefresh', () => {
     vi.useFakeTimers()
     mockOfetch.mockReset()
     localStorage.clear()
-    disarmProactiveRefresh()
+    disarmFixtureTimers()
+    fixtureStores.length = 0
   })
 
   afterEach(() => {
-    disarmProactiveRefresh()
+    disarmFixtureTimers()
+    for (const store of fixtureStores) getAuthSessionContext(store).dispose()
+    fixtureStores.length = 0
     vi.useRealTimers()
   })
 
@@ -164,7 +174,7 @@ describe('armProactiveRefresh / disarmProactiveRefresh', () => {
     })
 
     armProactiveRefresh(makeConfig(), asAuthStore(makeAuthStore()))
-    disarmProactiveRefresh()
+    disarmFixtureTimers()
 
     await vi.advanceTimersByTimeAsync(24 * 60 * 60_000) // 24時間進めても発火しない
     await flushPromises()

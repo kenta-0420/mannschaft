@@ -17,7 +17,7 @@
 
 出欠の `firstRespondedAt` はproxy/UNDECIDEDでも付きうるので資格の証明にしない。当時request contextと信頼できるnative初回履歴証拠で資格をcaptureする。commit後のtransport witness UNIQUE(schedule ID,subject ID)は記録済みfactの配送dedupだけで、witness不在から初回を推定しない。証拠不明は0。過去proxyフラグの残留を今回代理の判定へ流用しない。本人の複数予定を本人一括操作で処理する導線がある場合は一件ごとに同じactor/subject/今回proxy判定を通す。管理者がメンバーへ一括登録するケースは対象外。
 
-Timeline originはクライアント任意入力を信用せず、通常投稿/内部共有それぞれのサーバー入口で確定する。原文本文の文字数や内容の質を報酬条件にしない。同ID再付与に加え、新IDでも一定範囲の同内容完全一致を対象外とする（意味AI判定なし）。完全一致の正規化/期間/証跡保存と初回判定は後続設計、源件数/個人上限は併用する。空/無効投稿は本体の既存validationで拒否する。記事共有がTimelineに生まれてもBlog一源だけが対象で二重付与しない。
+Timeline originはクライアント任意入力を信用せず、通常投稿/内部共有それぞれのサーバー入口で確定する。原文本文の文字数や内容の質を報酬条件にしない。同ID再付与に加え、新IDでも同じ本人・同じ機能・同じUTC週の同内容完全一致は最初の一件だけを対象とする（2026-10-04ユーザー裁可、意味AI判定なし）。本文・タイトル・添付の組合せを比較し、Unicode NFC・改行・前後空白を正規化する。源件数/個人上限は併用する。空/無効投稿は本体の既存validationで拒否する。記事共有がTimelineに生まれてもBlog一源だけが対象で二重付与しない。
 
 Blogの手動公開、一括公開、自己承認、承認者による公開、予約公開の**全経路**を共通の初公開witness/fact生成へ収束させる。予約公開ではactor=`SYSTEM`、recipient=author、subject=author。公開失敗/権限拒否ではwitness/outboxを確定しない。公開後削除では授与済みポイントを取り消さず、資料リンクだけ権限を再判定する。
 
@@ -94,6 +94,8 @@ stateDiagram-v2
 
 複数workerはsourceごとに短い `FOR UPDATE SKIP LOCKED` TXで一batchをlease。lease tokenとexpiresAtでACK/retryを比較更新し、古いworkerが新leaseを消さない。処理中はsourceのロックを保持しない。次pageは `(nextAttemptAt,id)` keyset、失敗一件が他件を止めない。lease時間/batch数/backoff最大/retry上限は運営必須設定で検証後有効化。指数backoffにjitter、schema/対象不整合はpoisonとしてdead-letter。再送は元event ID/occurredAt/canonical keyのまま。過去週policyが保存されているため長期遅延も元週へ反映可能。
 
+定期配送workerは `mannschaft.ranch.delivery.worker.enabled=true` の明示環境だけに登録し、未測定の本番ではOFFを維持する。`interval-ms` と `lock-at-most` は `@PostConstruct` の `getRequiredProperty` で両方必須、正の有限intervalと `lock > interval` を検証し、片方でも欠落すれば起動を拒否する。annotationの `interval-ms:1000` / `lock-at-most:PT30S` は既存 `ScheduledBatchGuardTest` が間隔とlockを静的比較するためのmetadataであり、実環境の設定欠落を補う既定値ではない。実測した最大処理時間に合わせた明示設定と四源の実配送確認を、有効化の条件にする。
+
 auth所有guardで既存users先lock/ACTIVE確認後、Ranch REQUIRES_NEW writerはuser単位にowner行をロックし、当該週budgetをUNIQUEで作成/ロック、同canonical decision存在を検査、参加期間/源enabled/容量を判定、台帳/残高/予算を一括commit。複数source同時配送・複数tabでもglobalCapを超えない。claim済みを示すDB uniqueとrow lockが正本でValkeyだけに依存しない。consumer commit直後・ACK前に停止しても再配送は元decisionを返す。
 
 未参加userにはowner/個体/decisionを自動作成しない。source ACKのterminal_outcome=NOT_ENROLLEDを保存して完了し、源にevent ID/時刻/recipientの最小metadataだけ残す。遅延配送時にownerが作成済みでも、最初の参加時刻より前なら同結果。参加開始/休止/再開はowner participation periodに有効時刻を保存し、`occurredAt >= startsAt && occurredAt < endsAt` の期間で判定。表示OFFとは独立。休止中factはNOT_PARTICIPATINGのterminal0、再開後replayでも変えない。逆にactive期間に発生して配送時だけPAUSEDなら元週へ付与する（現在PAUSEDの給餌は不可）。源OFF/rollout前/historicalもterminal0。運営の配送一時停止は未処理を保留するだけ、報酬停止の有効期間はfact時刻で0判断する。運営停止と本人休止を区別する。
@@ -143,6 +145,8 @@ stateDiagram-v2
 初期catalogは少数の永久置物（starter plant/ball等。実素材は別裁可）だけ。SKUは自然key、価格は運営不変price version、全user同額、ポイント購入/送金なし。購入はowner lock→残高/priceVersion/未所有検証→残高減算/台帳/SHOP inventory/command結果を同ranch TX。残高不足409、同SKU既所有は409追加消費なし。同key同bodyは元結果、別body409。refund/売却/譲渡を初期に設けない。reward pause/point policyなしでも既得ポイントで交換可、shop control OFFのみ503。
 
 置物はSHOPまたはLEGACY_BADGE由来。同一user+acquisitionKind+acquisitionKey uniqueで再配送/購入競合を防ぐ。SHOPのkeyはSKU、LEGACY_BADGEは型付きlegacy badge ID+award period。betaのentitlementは装飾とは独立で維持する。
+
+LEGACY_BADGEは本人が記念品取込POSTを明示したときだけ、旧取得行を最大100件ずつ走査して承認済みcatalogへ写す。内部catalog keyは `LEGACY_BADGE:<canonical decimal badgeId>`、元periodは欠損なら空文字、全periodを元UTF-8 bytesの無paddingBase64urlでASCII化した型付きLB1 acquisition keyで一意化する。未承認の行を飛ばしても恒久high-watermarkにはせず、後日承認後のcursor 0再走査を許す。旧名前/説明/icon URLは移さず、元badge可用性と運営承認素材を別に検証する。元earnedOnは日付のみなのでRanchのawardedAtは取込時UTC MICROSとし、元獲得時刻を捏造しない。
 
 ## 5. DDL契約（Phase 1のみ）
 
@@ -204,7 +208,9 @@ Flywayは必須だがこの設計PRではSQLを追加しない。実装時 `V{or
 
 ### 卵・選定adapterの契約
 
-egg_started_atはserver初期化時刻、egg_ready_at=started_at+凍結egg duration、egg_rule_snapshotはdurationSecondsとcrack thresholds/asset keys/version。約7日604800秒と[0,259200,432000,604800]は提案値で、本番既定値ではない。ひび段階/hatchReadyはGETでserverTimeから算出、GET自体でstageを更新しない。hatchReady=`now>=egg_ready_at && selection_confirmed_at!=null`。未確認/未成熟はstage EGGのまま安全待機。
+egg_started_atはserver初期化時刻、egg_ready_at=started_at+凍結egg duration、egg_rule_snapshotはdurationSecondsとcrack thresholds/asset keys/version。約7日604800秒と[0,259200,432000,604800]は提案値で、本番既定値ではない。
+
+`ranch-development-v1` は `mannschaft.ranch.development-fixtures=true` の非本番profileだけで読む暫定開発fixture。卵duration=604800秒、small/wide crack=259200/432000秒、無料care=20XP/回、週care cap=100XP、juvenile/adult=60/100XPとし、同じ週・同じ日でも5回で成体へ到達できる。このversionと数値は旧純粋試験fixture（care 1XP等）とは別で、本番運営公開値として未承認。既存個体のegg/growth snapshotをfixture変更で上書きしない。ひび段階/hatchReadyはGETでserverTimeから算出、GET自体でstageを更新しない。hatchReady=`now>=egg_ready_at && selection_confirmed_at!=null`。未確認/未成熟はstage EGGのまま安全待機。
 
 次回部屋アクセスでFEがhatchReadyを確認して命名導線を出し、確認後だけPOST hatchへnameを送る。owner/dino lock下でEGG→BABY/hatched_at/name/named_at/commandを同TX保存する。hatched_at=named_atはserverの同一Instant、名前と孵化の片方だけ保存しない。二tab/retryでも孵化・命名一回、points/care XP増分0。本人PAUSEDでも孵化は可（成長加算なし）、care control OFFなら安全待機/503。孵化後のみ無料care XP対象。EGGのXPは0、BABY起点0、成長閾値とcare量は正。CHECK:未選定はspecies/catalog/method/confirmed NULL、選定済みはspecies/catalog/method/confirmed必須、EGGはhatched_at/name/named_at NULL、BABY以降はhatched_at/name/named_at/confirmed必須。
 
@@ -237,6 +243,58 @@ ranchの出生選定snapshotには利用したresultのopaque IDと固定した�
 
 愛着は非減衰で成長/権利/pointsとは独立。versioned unitはkind(FEED/TOUCH)＋UTC日、初回gain1、band0/1/5は開発fixture。同unitは別key/二tab/連打でも一加算、週care XP枠後も反応可、卵touch XP0、PAUSED/care OFFは反応のみ加算0。公開数値ゲージなし。
 
-TL/Blog完全一致はそれぞれsource-owned、同user・同feature・同UTC週の新ID同内容を最初一件だけとする案。比較期間/正規化はユーザー回答待ち。NFC/改行/前後空白/title/添付/length-prefix/HMAC/key rotation/保持は承認fixture後に検証し、本文複製0、cross-source/想起意味比較なし。源の公開gateで未決を管理する。
+TL/Blog完全一致はそれぞれsource-owned、同user・同feature・同UTC週の新ID同内容を最初一件だけとする（2026-10-04ユーザー裁可）。本文・タイトル・添付の組合せにNFC・改行・前後空白の正規化を適用し、報酬記録へ原文を複製しない。実装のnormalizationVersion、length-prefix/HMAC、key rotation、保持期限、同時投稿winnerをfixtureへ対応付けて検証する。cross-source/想起意味比較はしない。製造・試験が未完了の源は公開gateを閉じる。
 
 本体COMMIT→AFTER_COMMIT非blocking bounded queue→source-owned REQUIRES_NEW(witness+outbox原子)→短lease→ranch decision TX→token比較ACK。受付前lossはユーザー採択済み、durable受付後のみretry保証。CallerRuns/同期DB fallbackなし。queue満杯/transport失敗を本体HTTP失敗へ戻さない。queue1000/batch50/lease30s/attempt8/backoff1〜300s+jitterは開発fixture、本番自動採用しない。初回資格はnative履歴とtrusted actorを使い、現在状態/witness不在から捏造しない。
+
+### 新ARの保存・公開境界
+
+本人fresh ACTIVEと所有SQLを照合する。設問はTERM_CARD cue専用（200）とFREE_RECALL kind表示（10000）、合計1〜1501で開始時に凍結する。回答はHtmlSanitizer後のUTF16長、圧縮attemptは実JSON UTF8 65536bytes以下。途中保存と全回答完了を分け、完了・attempt・commandはreflection同一TXで一回保存する。保存ACK比較は私有SHA256/BINARY32、配送用AC67 HMACとは分離し、HTTP/outbox/log/exportに本文やhashを追加しない。原文は開始時ReflectionEntryResponseをCOMPLETED本人にだけ開示する。旧Recall単発へ報酬を追加しない。報酬witness/outboxの接続と実機証明は後続であり、このAPI製造だけで報酬完成とは扱わない。
+
+AR私有2表は `V243.20261004182521__create_private_recall_sessions.sql`。commands→sessionsだけの同domain FK、user_id UNSIGNED、MICROS、7保存enumの許容値を明示する。配送witness/outbox/historical bootstrapは別の後続migrationであり、このschemaから報酬稼働を推定しない。展開は既存persisted_enum_deployment規約に従い読取り可能なバイナリとDDLを先配布し、旧taskの退場を確認してから新AR操作の公開を行う。台帳登録は実展開の証明ではない。
+
+### reflection配送受付の製造checkpoint
+
+V246.20261004191545__create_reflection_ranch_transport.sql は reflection の witness/outbox/admin-command 3表を新設する。V243を再定義しない。V243既存COMPLETEDセッションだけを本人・entry UUID・保存UTC週ごとにHISTORICALへ保守的bootstrapし、既存UuidV7セッションIDを行IDとして使う。旧Recall単発は新ARのsession完了証拠を持たずproducerへ接続しない。
+
+新ARは mandatory ACTIVE/users lock→native独立commit→保護中に本文0の有限payload捕捉→auth正常proxy復帰→有界queue→current lifecycle lock→源独立witness/outbox原子受付の順。PURGING/PURGED/ABSENTで新規INSERTしない。CAPTURE/queue/源保存失敗はlossで、本体成功応答を保持する。CURRENT session読取は不変captureとの整合確認に限り、当時資格の再構成をしない。server設定 ranch.source.transport.queue-capacity は0〜1000、既定0は受付停止、元thread同期DBfallbackを行わない。
+
+このcheckpointは耐久受付までの候補製造で、lease/backoff/consumer/ACK、四源health実Bean、実MySQL/HTTP/移行greenはまだ未証明。source transportの原文・私有hashはHTTP/exportに公開しない。reflection本人purgeの同TXでoutbox/witness/admin commandを削除する。耐久受付IT2は原子性/技術payload限定の試験で、fixture資格をHTTP時点資格の証明へ流用しない。
+
+### ブログnative履歴と保守的cutover（製造済み・未検証）
+
+V242.20261004202135__blog_native_history_and_ranch_transport.sql は既存全記事を履歴不明のHISTORICALとして固定する。新記事のis_publication_history_knownのみnative作成時にtrueとなり、is_ranch_publication_observedは公開flush後に単調trueを保つ。撤回、同PersistenceContextの次TX、再公開で履歴を消さない。early flush後同TX撤回は保守的な喪失を許容し、初公開を再分類しない。
+
+初公開metadataはsource own current-lockでbefore-firstと最終PUBLISHEDを照合し、本人ACTIVE保護を実証したnative境界からのみ固定する。Entityメソッド単独、配送時の現在status、witness不在は資格証拠ではない。公開撤回でmetadataを消さない。既存CMS公開/予約/審査の意味と既イベントを保つ。
+
+同migrationのblog_ranch_witnesses/outboxes/admin_commandsは本文を持たないsource own transport表で、BIGINT UNSIGNEDのuser参照、DATETIME(6)、utf8mb4_0900_ai_ci、他domain FKなしとする。このcheckpointではnative履歴のみ接続、資格保護/公開candidate/AC67原子勝者/consumer lease・ACK/管理health・retryの実接続と実MySQL greenは未完成である。
+
+### CMS本人公開のnative/transport接続境界
+
+- 本人の `changeStatus` / `selfReview` は、既存の同じ純粋遷移規則を使用する。追加auth受付の開始前失敗、非本人、管理者変身、既存外側TXは従来業務へ戻り、ゲーム資格を理由にeditor/SYSTEMの公開可能範囲を狭めない。
+- users current lockを保持した本人操作では、別CMS TXで記事を最初のEntity取得前にcurrent lockする。変更前のknown/nonhistorical/notObservedを確定し、最終PUBLISHEDの場合だけ初公開metadataとobservedを同じ記事保存で凍結する。本文由来の有限HMAC captureは私有メモリだけに保持し、本体TXへwitness・winner・outboxを書かない。
+- native proxyと外auth proxyの正常commit復帰後だけbounded queueへofferする。callback開始後の業務失敗は再実行せず伝播する。本体commit後に追加auth/記録が失敗した場合は元ACKを保持し、捕捉lossとして報酬受付を行わない。queue容量0は意図的OFF、負値/1000超は固定分類警告を伴う非稼働で、測定済み容量を捏造しない。
+- 別CMS transport TX内で、native不変初公開metadataと保護中captureを照合し、witness/AC67完全一致winner/outboxを原子受付する。V242.20261004202135__blog_native_history_and_ranch_transport.sqlの私有content_week/version/key_id/digestは本文を含まず、HTTP/payload/log/exportへ出さない。recipient/UTC週/version/digestのUNIQUEに最初に耐久受付した一件をwinnerとし、後着occurredAtが早くても置換しない。native captureの取りこぼしがあるため最古投稿の保証はしない。
+- 同週旧content keyが利用できない場合はUNKNOWN/無報酬とし、新規winnerを推定しない。URLから添付IDを捏造せず、本文・表紙で実利用されたキーについて、CMS所有の唯一の実在・紐付け済みREADYメディア永続IDだけを比較に使用する。未使用uploadは比較せず、実キー未解決・多義はUNKNOWNとする。補助captureの有限性を確定できない場合は元保存を優先する。
+- この閉束の実接続は本人公開二経路に限る。他editor/一括/SYSTEM/予約/作成時即公開、TL/出欠、lease/ACK、四源health/retry Bean、CMS purge接続、HTTP故障注入・追加auth commit失敗の実証は未完了。新MySQL fixture6件はprepared/not-runで、receiverのrollback証拠をHTTP/filterの認可証拠へ流用しない。
+### TL通常本文投稿のnative接続（部分製造、未検証）
+V240.20261004235601__timeline_native_origin_and_ranch_transport.sql は旧全postをHISTORICALに保守bootstrapし、新規native rowのis_ranch_origin_known/ranch_qualified_at/ranch_qualified_user_idを導入する。PUBLIC/PERSONAL・本人USER・即時・本文のみの通常新規投稿をfresh ACTIVE guard下の源独立TX一回で保存し、時点証拠は同じINSERTへ固定する。容量不足などcallback開始前だけ従来保存へ一回fallback（UNKNOWN無報酬）。本体成功後auth失敗は元ACK保持・capture loss。本体とauth正常復帰後の有限queue offerから、別TL TXでwitness/同本人同UTC週完全一致の到着先着winner/outboxを原子受付する。本文はHMAC計算の一時入力のみでtransport/API/logへ複製しない。旧content鍵不能はUNKNOWN無報酬。TL source-own lease/ACK/failure/DEFER/admin health/retry実Beanを追加し、既最終timeline purgeと同TXで私有transport/資格関連を除去する。
+
+添付・poll・団体/VILLAGE/派生/reply/repost/予約等の残経路は未接続で全AC10合格ではない。新実MySQL5fixtureはnative2成功/winner1、receiver rollback、本体ACK＋意図的queueOFF、既PERSONAL拒否、source purge旧capture/tokenの逐次境界を準備（未実行）。HTTPfilter認可・真queue故障・全AccountPurge並行race・perf実測は未検証。
+
+### TEAM/ORG 通常本人 native 接続（製造済み・未検証）
+既存 ScheduleAttendanceService.respondAttendance と TimelinePostService.createPost の3引数入口だけを REQUIRES_NEW とする。通常Controllerの非TX facadeから fresh ACTIVE Guard を保持し、既存proxyを一回呼ぶ。回答資格・期限・コメント・調査・委任処理、投稿scope認可・添付保存・イベントの元bodyを複製しない。TLの2引数内部入口は既存REQUIREDとself-callを保持する。元の本体を全体ACTIVE限定へ変更せず、callback開始前の容量/資格取得失敗は従来保存へ一回だけ戻る。arm無し保存も初回observedを消費し、配送時に資格を再生成しない。
+本人captureはserver-onlyの@JsonIgnore/Schema(hidden) request値で、元SOURCE TX内の純粋な有限値に限定する。native証拠は通常保存と同じ行で固定し、報酬用witness/digest/outboxのDB書込は本体TXに参加しない。source proxyと外auth proxy正常復帰後だけ一回消費してbounded offerする。本体commit後auth障害は元ACKを保持して捕捉lossにし、native rollbackや業務validation失敗は伝播し再実行しない。
+TEAM/ORG出欠は既min_response_role/配下救済を通る。初load前の回答更新専用PESSIMISTIC_WRITEでcurrent rowを取得し、TEAM/ORG scope IDは保存Scheduleから固定する。TEAM/ORG TLは元scope membership/create権限を通り、保存postのscopeからpayloadを固定する。通常本文の接続までで、TL添付はuploadの永続identity確認が未完、poll/reply/repost/予約/VILLAGE/非本人主体は未接続のまま。結合添付row IDを同内容upload IDと仮定しない。実HTTP・実MySQL・pool2・既ambient fixtureの追随は未検証であり、本節をAC全greenの証拠にはしない。
+### TL IMAGE 添付の永続 identity 捕捉
+
+通常投稿の IMAGE は既存 DTO の最大10件を維持する。元の添付行保存と StorageAclService.claimPending の所有・scope・parent・binding 認可を変更せず、その成功後に StorageClaimedIdentityReader.currentClaimedIdentity が同じ native TX の current read で CLAIMED / CONTENT_BOUND の永続 upload UUID だけを取得する。新TX・network・reward専用DB書込は追加しない。投稿ごとに採番される添付結合行 ID、URL、推測されたファイル内容 ID は比較に用いない。
+
+捕捉 HMAC は本文と確認済み upload UUID の typed 集合を使用し、集合順は無視し多重度を保持する。本文・file key・upload UUID は outbox の配送 payload に複製しない。補助 identity の取得不能や捕捉失敗は UNKNOWN / loss とし、本来の保存成功を保持する。元 claim の認可・業務保存失敗は通常どおり伝播する。VIDEO_FILE は既存 network 呼出があるためこの保持境界へ未接続、LINK / VIDEO_LINK は永続 identity 未確認のため未接続のまま残す。
+
+実 claim の正負境界・rollbackと IMAGE native capture の試験は準備済みだが未実行。補助 SQL 故障時の native commit 維持、実 HTTP、pool2、全添付機能の完成をこの静的接続だけで主張しない。
+
+
+### 隔離開発の報酬検証候補
+
+DEV_ reasonCode を保存 provenance として予約する。初回現在 UTC 週の例外は同 control lock 下の policy/budget/decision 空＋REWARD ledger 空だけ。CARE/PURCHASE 履歴は除外。DEV consumer control→owner mutex と policy current read で空判定を直列化し、正式 mode は維持する。 実測 bounds と実 UI/worker の検証は未実行。

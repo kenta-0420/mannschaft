@@ -1,0 +1,201 @@
+{
+  "ranch": {
+    "guide": {
+      "title": "How to play",
+      "participationTitle": "Start at your own pace",
+      "eggTitle": "From an egg to your dinosaur",
+      "eggBody": "Once seven days have passed since starting and your appearance selection is confirmed, name your dinosaur to hatch it. An egg safely waits until you choose.",
+      "growthTitle": "Care and decoration points",
+      "growthBody": "Grow with free care when it is available. Check its availability and your remaining weekly allowance. Free personal recall is available without team membership. Completing recall and other eligible activities may earn decoration points, subject to publication settings and weekly limits. Logging in alone earns no rewards.",
+      "safetyTitle": "It is safe to take a break",
+      "safetyBody": "Logging out or taking time away does not remove your saved dinosaur, growth, or points. You can hide the room, or pause and later resume with the same dinosaur.",
+      "availabilityTitle": "When something is being prepared",
+      "availabilityBody": "If a selection method, dinosaur mapping, or artwork is being prepared, only the published options are available. Saving diagnosis results is separate from mapping them to a dinosaur appearance."
+    },
+    "status": {"growth":"Growth","points":"Decoration point balance","affinity":"Affinity","freeCare":"Free care rule","careAvailable":"Published","careStopped":"Preparing or stopped","careRemaining":"Free care remaining this week: {remaining} / {cap} XP","careUsed":"Used: {used} XP / Amount per care: {amount} XP","deliveryPaused":"Point delivery is paused. This is separate from free care availability.","deliveryActive":"Point updates may take time.","pointRemaining":"Activity points remaining this week: {remaining}","personalReference":"Personal recall reference count: {required} / Completed: {completed}","referenceNotice":"This is a reference count. Source limits, pauses, and delivery conditions may prevent receiving the full amount.","reward":{"ENABLED":"Activity points are enabled.","DISABLED":"Activity points are unregistered or disabled.","PAUSED":"Activity rewards are paused."}},
+    "admin": {"developmentFixtureNotice":"DEV_ rewards are for isolated development checks. They do not approve or publish official questions or assets. Measured delivery settings are required.","title":"Dinosaur operations","controls":"Availability controls","care":"Enable free care","shop":"Enable shop","deliveryPause":"Pause point delivery","rewardPause":"Pause rewards for occurring activity","independent":"Free care, exchanges, activity rewards, and delivery are independent.","reason":"Reason code","saved":"Saved.","health":"Activity source delivery health","pending":"Pending","dead":"Terminal failures","oldest":"Age of oldest pending event","seconds":"{count} seconds","refresh":"Refresh","retrySource":"Schedule delivery retry for this event","retryNotice":"This schedules delivery; it does not confirm points were awarded. Do not enter content or learning answers.","sourceLabel":"Activity source","eventId":"Event ID","RETRY_SCHEDULED":"Delivery retry scheduled.","ALREADY_TERMINAL":"This event is already terminal.","source":{"ATTENDANCE_RESPONSE":"Personal attendance response","TIMELINE_ORIGINAL":"Personal timeline post","BLOG_FIRST_PUBLISH":"First blog publication","PERSONAL_RECALL_COMPLETE":"Personal recall completion"},"publicationNotice":"Publish an immutable version for a future Monday at 00:00 UTC. All numbers must remain positive even when disabled. An enabled rewards policy requires personal recall, registered public assets and measured delivery bounds. Existing weekly snapshots and earned amounts stay unchanged.","publishCare":"Publish care rules","publishPolicy":"Publish rewards policy","effectiveAt":"Effective time (future Monday, 00:00 UTC)","amountXp":"XP per care action","weeklyCapXp":"Weekly care XP cap","juvenileXp":"Juvenile XP threshold","adultXp":"Adult XP threshold","policyEnabled":"Enable activity points","globalWeeklyCap":"Global weekly points cap","amountPoints":"Points per activity","countLimit":"Weekly activity count limit","batchSize":"Delivery batch size","leaseSeconds":"Delivery lease seconds","maxAttempts":"Maximum delivery attempts","initialBackoffSeconds":"Initial retry delay seconds","maxBackoffSeconds":"Maximum retry delay seconds","publicationSaved":"Saved version {version} · Effective {effectiveAt}"},
+    "title": "Dinosaur room",
+    "optional": "Starting is optional. Free care alone can raise your dinosaur to adulthood. You will not lose it by leaving it alone, and affinity does not decrease over time.",
+    "start": "Start with an egg",
+    "save": "Save",
+    "retry": "Retry",
+    "next": "Next page",
+    "pause": "Pause",
+    "resume": "Resume",
+    "paused": "Paused. You can still view your results and decorations.",
+    "unavailable": "This is being prepared. You can still view your own results.",
+    "recall": "Recall",
+    "avatar": {
+      "label": "My dinosaur avatar",
+      "description": "The dinosaur is an avatar of yourself. Slowly raise a form that reflects your preferences and personality."
+    },
+    "stage": {
+      "EGG": "Egg",
+      "BABY": "Hatchling",
+      "JUVENILE": "Young dinosaur",
+      "ADULT": "Adult"
+    },
+    "egg": {
+      "INTACT": "The egg is developing.",
+      "SMALL_CRACK": "A small crack has appeared.",
+      "WIDE_CRACK": "The cracks are widening.",
+      "READY": "The egg waits safely until you choose a name and a selection method."
+    },
+    "care": {
+      "eggTouch": "Touch",
+      "food": "Food",
+      "touch": "Interact",
+      "choose": "Choose a form",
+      "status": "Status",
+      "fed": "You gave food. Growth: {xp} XP.",
+      "touched": "You touched your own avatar."
+    },
+    "scene": {
+      "staticFallback": "Showing a still image of the same dinosaur.",
+      "assetPreparing": "The artwork for this form is being prepared. Text and controls remain available."
+    },
+    "style": {
+      "PIXEL": "96-pixel style",
+      "PAINT_2D": "Standard 2D"
+    },
+    "motion": {
+      "NORMAL": "Normal",
+      "REDUCED": "Reduced motion",
+      "STOPPED": "Stop motion"
+    },
+    "settings": {
+      "title": "Dinosaur room settings",
+      "style": "Rendering style",
+      "motion": "Motion",
+      "sound": "Enable sound",
+      "volume": "Volume",
+      "freewalkLater": "Room view is available now. Free roaming will be available in a later phase.",
+      "hide": "Hide",
+      "show": "Show",
+      "visibilityFailed": "The egg was created, but saving its visibility failed. Retry only the visibility setting."
+    },
+    "command": {
+      "failed": "Could not save. If the response did not arrive, retry the same action.",
+      "retryRequired": "The save result is still unknown. Retry with the same name."
+    },
+    "naming": {
+      "title": "Choose a name",
+      "nameLabel": "Dinosaur name",
+      "characterCount": "{count} / 10",
+      "irreversibleWarning": "This name cannot be changed after confirmation. Enter no more than 10 characters.",
+      "checkName": "Review name",
+      "confirmPrompt": "Confirm “{name}”? This name cannot be changed later.",
+      "confirm": "Confirm this name",
+      "back": "Back to editing",
+      "invalid": "Enter 1–10 characters. Invisible characters, line breaks and control characters are not allowed."
+    },
+    "habitat": {
+      "LAND": "Random land form",
+      "SEA": "Random sea form",
+      "AIR": "Random air form"
+    },
+    "assignment": {
+      "title": "Choose your dinosaur form",
+      "description": "Choose using birth-date and name numerology, a 64-type quiz, or a random land, sea or air form.",
+      "fromResult": "Choose from my results",
+      "mappingPending": "Your result was saved. Its dinosaur form mapping is being prepared.",
+      "useResult": "Use this result to choose a form"
+    },
+    "diagnosisResults": {
+      "title": "My quiz results",
+      "type64": "64-type quiz",
+      "birthStyle": "Birth-date and name numerology",
+      "notCompleted": "Not completed",
+      "completedAt": "Completed: {date}",
+      "retake": "Take or retake the quiz",
+      "avatarUnchanged": "Even if your results change, your hatched dinosaur avatar keeps its name, form and growth.",
+      "typeCode": "Type: {code}",
+      "latest": "Latest result",
+      "history": "Previous results",
+      "tendencies": "Your six tendencies",
+      "labelsUnavailable": "This saved result has no tendency labels. You can still read its original explanation.",
+      "tieSelection": "Your answers were tied, so this shows the side you chose.",
+      "draftNotice": "This result uses an initial draft. The questions and translations are not approved; Japanese draft text also appears in other languages.",
+      "axes": {
+        "FAMILIAR_NEW": "Familiarity and novelty",
+        "FOCUS_VARIETY": "Exploring interests",
+        "SPONTANEOUS_PLAN": "Choosing free-time activities",
+        "SOLO_TOGETHER": "Comfortable company",
+        "EXPRESSION": "Expressing feelings",
+        "NOTICE": "Enjoying scenery"
+      }
+    },
+    "diagnosis": {
+      "description": "Imagine yourself as a dinosaur and choose how you would spend your time in a way that fits you now. There are no correct or superior answers. This is not a scientific measure of personality or ability.",
+      "start": "Start quiz",
+      "save": "Save current answers",
+      "complete": "View results",
+      "hold": "Save and return later",
+      "cancel": "Cancel quiz",
+      "resume": "Resume saved quiz",
+      "tie": "Choose between the equally matched preferences",
+      "scale1": "Closer to the left",
+      "scale2": "Somewhat left",
+      "scale3": "About equal",
+      "scale4": "Somewhat right",
+      "scale5": "Closer to the right"
+    },
+    "birth": {
+      "purpose": "Your saved profile name, its kana reading and your birth date are used to calculate your own numerology result. Review the saved information below.",
+      "rule": "This is our own numerology rule. It converts your birth date and the reading of your name into numbers, each reduced to 1–9. It is not a scientific measurement.",
+      "profile": "My profile",
+      "lastName": "Family name",
+      "firstName": "Given name",
+      "lastNameKana": "Family name reading (kana)",
+      "firstNameKana": "Given name reading (kana)",
+      "birthDate": "Date of birth",
+      "save": "Save and review my information",
+      "savedProfile": "Saved information used for calculation",
+      "confirmUse": "I have reviewed my saved personal information and agree to use it for this calculation.",
+      "create": "Create my numerology result",
+      "numbers": "Birth-date number: {life} / Name number: {name}",
+      "reconfirm": "Review my information again to choose",
+      "required": "Enter your personal information.",
+      "keyRotated": "The save key has changed. Reload your profile, review it and save again.",
+      "reloadProfile": "Reload my profile",
+      "parentalConsentRequired": "Parental approval is required to save this birth date. Continue through the existing consent page.",
+      "openConsent": "Continue to parental consent"
+    },
+    "decorations": {
+      "importTitle": "Import keepsakes",
+      "importDescription": "Check up to 100 previously earned badges for published keepsakes per action. Choose whether to continue.",
+      "importStart": "Import keepsakes",
+      "importContinue": "Check the next 100 badges",
+      "importAgain": "Check again from the beginning",
+      "importResult": "Badges checked: {processed} / Keepsakes imported: {imported}",
+      "title": "Decorations and exchanges",
+      "permanent": "Points can be spent only on permanent decorations. They do not affect growth speed or access rights.",
+      "slots": "Three decoration slots",
+      "choose": "Choose a decoration",
+      "slot": "Slot {n}",
+      "placed": "Placed",
+      "empty": "Empty",
+      "place": "Place",
+      "remove": "Remove",
+      "shop": "Exchange for permanent decorations",
+      "balance": "Balance: {balance}",
+      "noItems": "No decorations are registered.",
+      "owned": "Owned",
+      "purchase": "Exchange"
+    },
+    "records": {
+      "title": "Growth and exchange records",
+      "empty": "No records yet.",
+      "REWARD": "Decoration points",
+      "CARE": "Free care",
+      "PURCHASE": "Decoration exchange",
+      "amounts": "Points {points} / Growth {xp} XP",
+      "source": "View original activity"
+    },
+    "affinity": {
+      "NEUTRAL": "Getting acquainted",
+      "WARM": "Friendly",
+      "CLOSE": "Close"
+    }
+  }
+}

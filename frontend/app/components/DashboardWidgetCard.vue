@@ -3,8 +3,9 @@ import type { RouteLocationRaw } from 'vue-router'
 
 defineOptions({ inheritAttrs: false })
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
+    collapsed?: boolean
     title?: string
     icon?: string
     loading?: boolean
@@ -30,6 +31,7 @@ withDefaults(
     maxHeight?: string
   }>(),
   {
+    collapsed: undefined,
     title: undefined,
     icon: undefined,
     colSpan: undefined,
@@ -41,9 +43,19 @@ withDefaults(
 
 const emit = defineEmits<{
   refresh: []
+  'collapse-change': [collapsed: boolean]
+  'update:collapsed': [collapsed: boolean]
 }>()
 
-const collapsed = ref(false)
+const localCollapsed = ref(false)
+const collapsed = computed({
+  get: () => props.collapsed ?? localCollapsed.value,
+  set: value => {
+    if (props.collapsed === undefined) localCollapsed.value = value
+    emit('update:collapsed', value)
+  },
+})
+watch(collapsed, value => emit('collapse-change', value), { flush: 'sync' })
 </script>
 
 <template>

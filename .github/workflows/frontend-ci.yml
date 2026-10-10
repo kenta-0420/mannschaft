@@ -71,7 +71,7 @@ jobs:
       # 設計書 docs/security/04_dependency_and_supply_chain.md §4/§6 に基づく。
       # high レベルの脆弱性が 0 件のためブロッキング化（2026-06-02）。
       - name: Audit gate regression tests
-        run: node --test scripts/audit-with-exemption.test.mjs
+        run: node --test scripts/audit-with-exemption.test.mjs scripts/patch-nuxt-devtools-simple-git.test.mjs
 
       - name: npm audit (依存脆弱性スキャン)
       # 【期限付き除外】GHSA-86w9-cpqp-85rv（node-forge）と GHSA-vfj7-8cjw-p6xm（braces）を名指しで除外（期限 2026-10-16、超過で exit 1）。

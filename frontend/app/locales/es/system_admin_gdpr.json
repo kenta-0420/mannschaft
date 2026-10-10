@@ -45,6 +45,7 @@
       },
       "noData": "No hay datos disponibles",
       "retry": {
+        "queued": "Se aceptó el reintento. Espera a que termine y después consulta el estado.",
         "button": "Reintentar",
         "confirm": "¿Reintentar la purga GDPR para el dominio \"{domain}\"?",
         "success": "Reintento exitoso",

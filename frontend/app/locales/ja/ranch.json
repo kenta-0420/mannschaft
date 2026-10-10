@@ -1,0 +1,201 @@
+{
+  "ranch": {
+    "guide": {
+      "title": "遊び方",
+      "participationTitle": "自分のペースで始める",
+      "eggTitle": "卵から自分の恐竜へ",
+      "eggBody": "開始から7日が経過し、姿の選び方を確定すると、名前を付けて孵化できます。まだ選んでいない卵は安全に待ちます。",
+      "growthTitle": "お世話と装飾ポイント",
+      "growthBody": "公開中の無料のお世話で育ちます。お世話の利用状態と今週の残枠を確認してください。チーム未所属でも無料の個人想起を使えます。活動ポイントは想起の完了などが対象で、公開設定や週間上限によって付与されない場合があります。ログインだけでは報酬は付きません。",
+      "safetyTitle": "離れても大丈夫",
+      "safetyBody": "ログアウトやしばらく使わないことで、保存済みの恐竜・成長・ポイントが失われることはありません。非表示にすることも、育成を休止して同じ恐竜で再開することもできます。",
+      "availabilityTitle": "準備中の表示について",
+      "availabilityBody": "選び方・姿への対応付け・素材が準備中の場合は、公開済みの範囲だけ利用できます。診断結果の保存と恐竜の姿への対応付けは別です。"
+    },
+    "status": {"growth":"成長","points":"装飾ポイント残高","affinity":"親密さ","freeCare":"無料ケア規則","careAvailable":"公開中","careStopped":"準備中・停止中","careRemaining":"今週の無料ケア残枠: {remaining} / {cap} XP","careUsed":"使用済み: {used} XP / 一回の量: {amount} XP","deliveryPaused":"ポイント配送は一時停止中です。無料ケアの停止とは別です。","deliveryActive":"ポイントの反映に時間がかかる場合があります。","pointRemaining":"今週の活動ポイント残枠: {remaining}","personalReference":"個人想起の参考件数: {required} / 完了 {completed}","referenceNotice":"件数は目安です。各源の上限・停止・配送状況により、全額の獲得を保証するものではありません。","reward":{"ENABLED":"活動ポイントは有効です。","DISABLED":"活動ポイントは未登録・無効です。","PAUSED":"活動の報酬は停止中です。"}},
+    "admin": {"developmentFixtureNotice":"DEV_ は隔離開発用の報酬検証です。正式な質問・素材の承認や公開にはなりません。配送の測定済み設定が必要です。","title":"恐竜の運営","controls":"利用制御","care":"無料ケアを利用可能にする","shop":"ショップを利用可能にする","deliveryPause":"ポイント配送を一時停止する","rewardPause":"発生した活動の報酬を停止する","independent":"無料ケア・交換・活動報酬・配送はそれぞれ独立しています。","reason":"理由コード","saved":"保存しました。","health":"活動源の配送状況","pending":"待機件数","dead":"終端失敗件数","oldest":"最も古い待機の経過","seconds":"{count} 秒","refresh":"再取得","retrySource":"同じイベントの再配送を予約","retryNotice":"再配送の予約であり、ポイント付与の完了ではありません。本文や学習回答は入力しないでください。","sourceLabel":"活動源","eventId":"イベント ID","RETRY_SCHEDULED":"再配送を予約しました。","ALREADY_TERMINAL":"このイベントはすでに終端です。","source":{"ATTENDANCE_RESPONSE":"本人の出欠回答","TIMELINE_ORIGINAL":"本人のタイムライン投稿","BLOG_FIRST_PUBLISH":"ブログの初回公開","PERSONAL_RECALL_COMPLETE":"個人の想起完了"},"publicationNotice":"将来のUTC月曜日00:00に適用する不変の版を登録します。停止版もすべての数値を正にしてください。有効な報酬版には個人想起の有効化と、登録済み公開素材・測定済み配送範囲が必要です。現在の週や既獲得量は変更しません。","publishCare":"お世話ルールを登録","publishPolicy":"報酬ポリシーを登録","effectiveAt":"適用時刻（将来のUTC月曜日00:00）","amountXp":"1回のお世話XP","weeklyCapXp":"週間お世話XP上限","juvenileXp":"子ども段階のXP","adultXp":"成体段階のXP","policyEnabled":"活動ポイントを有効化","globalWeeklyCap":"週間ポイント全体上限","amountPoints":"1活動のポイント","countLimit":"週間活動件数上限","batchSize":"配送1回の件数","leaseSeconds":"配送リース秒数","maxAttempts":"配送試行上限","initialBackoffSeconds":"初回再試行待ち秒数","maxBackoffSeconds":"最大再試行待ち秒数","publicationSaved":"保存済みの版 {version} · 適用時刻 {effectiveAt}"},
+    "title": "恐竜の部屋",
+    "optional": "任意で始められます。無料のお世話だけで成体まで育ち、放置しても失いません。親しさは時間で減りません。",
+    "start": "卵から始める",
+    "save": "保存する",
+    "retry": "再試行",
+    "next": "次のページ",
+    "pause": "休止する",
+    "resume": "再開する",
+    "paused": "休止中です。結果や置物は引き続き見られます。",
+    "unavailable": "準備中です。本人の診断結果は引き続き見られます。",
+    "recall": "想起をする",
+    "avatar": {
+      "label": "自分の恐竜の分身",
+      "description": "恐竜は自分自身の分身です。自分の好みや個性を映した姿を、ゆっくり育てます。"
+    },
+    "stage": {
+      "EGG": "卵",
+      "BABY": "幼体",
+      "JUVENILE": "若い恐竜",
+      "ADULT": "成体"
+    },
+    "egg": {
+      "INTACT": "卵が育っています。",
+      "SMALL_CRACK": "小さなひびが入りました。",
+      "WIDE_CRACK": "ひびが広がっています。",
+      "READY": "名前と選び方を決めるまで、卵は安全に待ちます。"
+    },
+    "care": {
+      "eggTouch": "触る",
+      "food": "ごはん",
+      "touch": "ふれあい",
+      "choose": "選び方",
+      "status": "ようす",
+      "fed": "ごはんをあげました。成長 {xp} XP。",
+      "touched": "自分の分身に触れました。"
+    },
+    "scene": {
+      "staticFallback": "同じ個体の静止画で表示しています。",
+      "assetPreparing": "この姿の素材は準備中です。文字と操作で引き続き利用できます。"
+    },
+    "style": {
+      "PIXEL": "96ドット",
+      "PAINT_2D": "通常2D"
+    },
+    "motion": {
+      "NORMAL": "通常",
+      "REDUCED": "動きを控える",
+      "STOPPED": "動きを止める"
+    },
+    "settings": {
+      "title": "恐竜の部屋の設定",
+      "style": "描画スタイル",
+      "motion": "動き",
+      "sound": "音を使う",
+      "volume": "音量",
+      "freewalkLater": "今は部屋表示です。自由歩行は後のPhaseで利用できます。",
+      "hide": "非表示にする",
+      "show": "表示する",
+      "visibilityFailed": "卵は作成済みですが表示設定の保存に失敗しました。表示だけ再試行してください。"
+    },
+    "command": {
+      "failed": "保存できませんでした。応答が届かなかった場合は同じ操作を再試行してください。",
+      "retryRequired": "保存結果を確認できていません。同じ名前で再試行してください。"
+    },
+    "naming": {
+      "title": "名前を付けよう",
+      "nameLabel": "恐竜の名前",
+      "characterCount": "{count} / 10",
+      "irreversibleWarning": "この名前は確定後に変更できません。10文字以内で入力してください。",
+      "checkName": "名前を確認する",
+      "confirmPrompt": "「{name}」で決めますか？ この名前はあとから変更できません。",
+      "confirm": "この名前で決める",
+      "back": "入力に戻る",
+      "invalid": "1〜10文字で入力してください。不可視文字・改行・制御文字は使えません。"
+    },
+    "habitat": {
+      "LAND": "陸からランダム",
+      "SEA": "海からランダム",
+      "AIR": "空からランダム"
+    },
+    "assignment": {
+      "title": "自分の恐竜の姿を選ぶ",
+      "description": "生年月日・名前の占い、64タイプ診断、陸・海・空のランダムから選べます。",
+      "fromResult": "自分の結果から選ぶ",
+      "mappingPending": "診断結果は保存されました。恐竜の姿への対応付けは準備中です。",
+      "useResult": "この結果で姿を選ぶ"
+    },
+    "diagnosisResults": {
+      "title": "自分の診断結果",
+      "type64": "64タイプ診断",
+      "birthStyle": "生年月日・名前占い",
+      "notCompleted": "未診断",
+      "completedAt": "実施日: {date}",
+      "retake": "診断する・再診断する",
+      "avatarUnchanged": "結果が変わっても、生まれた恐竜アバターの名前・姿・育成状態は変わりません。",
+      "typeCode": "タイプ: {code}",
+      "latest": "最新の結果",
+      "history": "過去の結果",
+      "tendencies": "あなたの六つの傾向",
+      "labelsUnavailable": "この保存結果には傾向ラベルの情報がありません。保存当時の説明を確認できます。",
+      "tieSelection": "回答が同点だったため、あなたが選んだ側を表示しています。",
+      "draftNotice": "初期草案による結果です。質問内容と翻訳は未承認で、外国語表示にも日本語の草案が含まれます。",
+      "axes": {
+        "FAMILIAR_NEW": "親しみと新しさ",
+        "FOCUS_VARIETY": "楽しみの広げ方",
+        "SPONTANEOUS_PLAN": "自由な時間の選び方",
+        "SOLO_TOGETHER": "心地よい過ごし方",
+        "EXPRESSION": "気持ちの表し方",
+        "NOTICE": "景色の楽しみ方"
+      }
+    },
+    "diagnosis": {
+      "description": "自分が恐竜の姿になったところを想像して、今の自分に近い過ごし方を選んでください。正解や優劣はなく、科学的な性格や能力の測定ではありません。",
+      "start": "診断を始める",
+      "save": "途中の回答を保存",
+      "complete": "結果を見る",
+      "hold": "保留して戻る",
+      "cancel": "診断を取り消す",
+      "resume": "保留した診断を再開",
+      "tie": "同じくらいだった軸を選んでください",
+      "scale1": "左に近い",
+      "scale2": "やや左",
+      "scale3": "同じくらい",
+      "scale4": "やや右",
+      "scale5": "右に近い"
+    },
+    "birth": {
+      "purpose": "本人のプロフィールに保存した氏名・読み（カナ）・生年月日を、本人の占い結果の計算に使います。下の保存済み情報を確認してください。",
+      "rule": "独自の占いルールです。生年月日と氏名の読みを数値にし、どちらも1〜9へまとめます。科学的な測定ではありません。",
+      "profile": "本人のプロフィール",
+      "lastName": "姓",
+      "firstName": "名",
+      "lastNameKana": "姓の読み（カナ）",
+      "firstNameKana": "名の読み（カナ）",
+      "birthDate": "生年月日",
+      "save": "本人情報を保存して確認",
+      "savedProfile": "計算に使う保存済み情報",
+      "confirmUse": "保存済みの本人情報を確認し、計算に使うことに同意します。",
+      "create": "本人の占い結果を作る",
+      "numbers": "生年月日の数: {life} / 名前の数: {name}",
+      "reconfirm": "本人情報を再確認して選ぶ",
+      "required": "本人情報を入力してください。",
+      "keyRotated": "保存鍵が更新されました。本人情報を再読み込みして内容を確認し、もう一度保存してください。",
+      "reloadProfile": "本人情報を再読み込み",
+      "parentalConsentRequired": "この生年月日を保存するには保護者の承認が必要です。保護者同意の画面で手続きしてください。",
+      "openConsent": "保護者同意へ進む"
+    },
+    "decorations": {
+      "importTitle": "記念品を取り込む",
+      "importDescription": "過去に獲得したバッジから、公開済みの記念品を最大100件ずつ取り込みます。続きは自分で選べます。",
+      "importStart": "記念品を取り込む",
+      "importContinue": "次の100件を取り込む",
+      "importAgain": "最初からもう一度確認",
+      "importResult": "確認したバッジ: {processed}件 / 取り込んだ記念品: {imported}件",
+      "title": "置物と交換",
+      "permanent": "ポイントは永久の装飾品だけに使えます。育成の速度や権利には影響しません。",
+      "slots": "3つの置物枠",
+      "choose": "置物を選ぶ",
+      "slot": "枠 {n}",
+      "placed": "配置済み",
+      "empty": "空き",
+      "place": "配置する",
+      "remove": "取り外す",
+      "shop": "永久装飾の交換",
+      "balance": "残高: {balance}",
+      "noItems": "登録された装飾品はありません。",
+      "owned": "持っています",
+      "purchase": "交換する"
+    },
+    "records": {
+      "title": "育成と交換の記録",
+      "empty": "記録はまだありません。",
+      "REWARD": "装飾ポイント",
+      "CARE": "無料のお世話",
+      "PURCHASE": "装飾の交換",
+      "amounts": "ポイント {points} / 成長 {xp} XP",
+      "source": "元の活動を見る"
+    },
+    "affinity": {
+      "NEUTRAL": "知り合いはじめ",
+      "WARM": "なかよし",
+      "CLOSE": "親しい"
+    }
+  }
+}

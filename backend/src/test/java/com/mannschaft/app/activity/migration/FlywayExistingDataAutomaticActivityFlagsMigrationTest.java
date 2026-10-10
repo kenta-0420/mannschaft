@@ -13,7 +13,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** 既存activity移行金型と同じ専用MySQLで、236系の実既存行を237のDDLへ移行する。 */
+/** 既存activity移行金型と同じ専用MySQLで、flags追加の直前スキーマにある既存行を対象DDLだけで移行する。 */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class FlywayExistingDataAutomaticActivityFlagsMigrationTest {
     @Test
@@ -24,7 +24,7 @@ class FlywayExistingDataAutomaticActivityFlagsMigrationTest {
             mysql.start();
             var before = Flyway.configure().dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
                     .locations("classpath:db/migration").outOfOrder(false)
-                    .target(MigrationVersion.fromVersion("236.20261007094759")).load().migrate();
+                    .target(MigrationVersion.fromVersion("237.20261003065229")).load().migrate();
             assertThat(before.success).isTrue();
             List<List<Object>> existing;
             try (var connection = DriverManager.getConnection(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())) {
@@ -43,8 +43,10 @@ class FlywayExistingDataAutomaticActivityFlagsMigrationTest {
                 existing = actualRows(connection);
                 assertThat(existing).hasSize(2);
             }
+            // 対象DDLだけを適用し、他ドメインや後続migrationの追加で移行件数が変わらないようにする。
             var after = Flyway.configure().dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
-                    .locations("classpath:db/migration").outOfOrder(false).load().migrate();
+                    .locations("classpath:db/migration").outOfOrder(false)
+                    .target(MigrationVersion.fromVersion("237.20261008035358")).load().migrate();
             assertThat(after.success).isTrue();
             assertThat(after.migrationsExecuted).isEqualTo(1);
             try (var connection = DriverManager.getConnection(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())) {

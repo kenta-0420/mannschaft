@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { SpotlightItem } from '~/composables/useSpotlightApi'
 
+withDefaults(defineProps<{ active?: boolean }>(), { active: true })
+
 const authStore = useAuthStore()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
@@ -83,6 +85,7 @@ onMounted(() => {
     <template v-else>
       <DashboardPersonalAccordion
         :widgets="visibleWidgets"
+        :active="active"
         :collapsed-keys="collapsedKeys"
         class="mb-8"
         @toggle-collapse="toggleCollapse"

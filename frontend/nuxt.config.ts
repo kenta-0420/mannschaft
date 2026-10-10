@@ -425,6 +425,7 @@ export default defineNuxtConfig({
       // 設計書: docs/features/F18_point_card_wallet.md §1.4 / §16 / §17
       // 既定 false（凍結中）。再開時は NUXT_PUBLIC_F18_BALANCE_ENABLED=true で復活可能。
       f18BalanceEnabled: process.env.NUXT_PUBLIC_F18_BALANCE_ENABLED === 'true',
+      ranchDevelopmentVisuals: process.env.NUXT_PUBLIC_RANCH_DEVELOPMENT_VISUALS === 'true',
       // F08.9 P5 継続課金（Stripe.js）公開可能キー。
       // クライアントで `loadStripe(publishableKey)` に渡す。公開鍵は秘匿情報ではない（pk_*）が、
       // 環境（test/live）で切り替えるため値はコミットせず環境変数から注入する。
@@ -482,6 +483,7 @@ export default defineNuxtConfig({
         name: '日本語',
         files: [
           'ja/common.json',
+          'ja/ranch.json',
           'ja/auth.json',
           'ja/validation.json',
           'ja/landing.json',
@@ -560,6 +562,7 @@ export default defineNuxtConfig({
         name: 'English',
         files: [
           'en/common.json',
+          'en/ranch.json',
           'en/auth.json',
           'en/validation.json',
           'en/landing.json',
@@ -638,6 +641,7 @@ export default defineNuxtConfig({
         name: '中文（简体）',
         files: [
           'zh/common.json',
+          'zh/ranch.json',
           'zh/auth.json',
           'zh/validation.json',
           'zh/landing.json',
@@ -716,6 +720,7 @@ export default defineNuxtConfig({
         name: '한국어',
         files: [
           'ko/common.json',
+          'ko/ranch.json',
           'ko/auth.json',
           'ko/validation.json',
           'ko/landing.json',
@@ -794,6 +799,7 @@ export default defineNuxtConfig({
         name: 'Español',
         files: [
           'es/common.json',
+          'es/ranch.json',
           'es/auth.json',
           'es/validation.json',
           'es/landing.json',
@@ -872,6 +878,7 @@ export default defineNuxtConfig({
         name: 'Deutsch',
         files: [
           'de/common.json',
+          'de/ranch.json',
           'de/auth.json',
           'de/validation.json',
           'de/landing.json',

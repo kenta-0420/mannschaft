@@ -78,6 +78,7 @@ public class ScheduleAttendanceService {
     private final ProxyInputRecordRepository proxyInputRecordRepository;
     private final ScheduleDelegationService scheduleDelegationService;
     private final ScheduleTargetRepository scheduleTargetRepository;
+    private final ScheduleRanchResponseCaptureFactory ranchCaptureFactory;
 
     /**
      * (B) 組織→参加チーム配信 案C フェーズA: 組織スコープ配信の宛先解決窓口。
@@ -104,7 +105,7 @@ public class ScheduleAttendanceService {
      * @return 出欠回答レスポンス
      */
     // TODO: scheduleドメインとproxyドメインをまたいでいる（ProxyInputRecordRepositoryを直接参照）。将来はProxyInputServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public AttendanceResponse respondAttendance(Long scheduleId, Long userId, AttendanceRequest req) {
         ScheduleEntity schedule = scheduleService.getSchedule(scheduleId);
         validateAttendanceRequired(schedule);
@@ -115,10 +116,17 @@ public class ScheduleAttendanceService {
         AttendanceStatus newStatus = EnumInputParser.parse(AttendanceStatus.class, req.getStatus(), "status");
 
         ScheduleAttendanceEntity attendance = attendanceRepository
-                .findByScheduleIdAndUserId(scheduleId, userId)
+                .findForResponseUpdate(scheduleId, userId)
                 .orElseThrow(() -> new BusinessException(ScheduleErrorCode.SCHEDULE_NOT_FOUND));
 
-        attendance.respond(newStatus, req.getComment());
+        if (ranchCaptureFactory != null && req.isRanchCaptureArmed() && !proxyInputContext.isProxy()
+                && !Boolean.FALSE.equals(req.getRanchSelfResponse())) {
+            ranchCaptureFactory.capture(schedule, attendance, userId, newStatus, req);
+        }
+
+        if (proxyInputContext.isProxy() || Boolean.FALSE.equals(req.getRanchSelfResponse()))
+            attendance.respondProxy(newStatus, req.getComment());
+        else attendance.respond(newStatus, req.getComment());
         attendance = attendanceRepository.save(attendance);
 
         // 代理入力の場合: proxy_input_records を作成し、出欠エンティティにフラグをセット

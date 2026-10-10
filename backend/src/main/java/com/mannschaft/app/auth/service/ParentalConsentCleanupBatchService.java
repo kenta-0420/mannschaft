@@ -21,8 +21,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
 
 /**
  * F01.9 年齢確認・保護者同意機能: 保護者同意期限切れクリーンアップバッチ。
@@ -57,25 +56,21 @@ public class ParentalConsentCleanupBatchService {
 
         LocalDateTime now = LocalDateTime.now();
 
-        // 期限切れ PENDING リンクを取得
-        List<ParentalConsentLinkEntity> expiredLinks = parentalConsentLinkRepository
-                .findByStatusAndExpiresAtBefore(ParentalConsentLinkStatus.PENDING, now);
+        // Entityは先loadしない。scalar候補のusersを全件ID昇順でlockしてからlinkをcurrent readする。
+        List<Long> affectedChildUserIds = parentalConsentLinkRepository
+                .findExpiredChildUserIds(ParentalConsentLinkStatus.PENDING, now).stream().distinct().sorted().toList();
 
-        if (expiredLinks.isEmpty()) {
+        if (affectedChildUserIds.isEmpty()) {
             log.info("保護者同意期限切れクリーンアップバッチ完了: 対象なし");
             return;
         }
 
-        // 各リンクを REVOKED に更新（SYSTEM による自動失効）
-        expiredLinks.forEach(link -> link.revoke(null));
-
-        // 影響した childUserId を distinct 収集
-        Set<Long> affectedChildUserIds = expiredLinks.stream()
-                .map(ParentalConsentLinkEntity::getChildUserId)
-                .collect(Collectors.toSet());
-
-        log.info("期限切れ PENDING リンク失効処理: {}件, 影響子ユーザー: {}件",
-                expiredLinks.size(), affectedChildUserIds.size());
+        Map<Long, Optional<UserEntity>> lockedUsers = new LinkedHashMap<>();
+        for (Long childId : affectedChildUserIds) {
+            // ACTIVE限定ではない。PENDINGの同意待ち子と論理削除済み/orphanリンクも処理対象として保持する。
+            lockedUsers.put(childId, userRepository.findByIdForUpdateIncludingDeleted(childId));
+        }
+        int revokedCount = 0;
 
         int deletedCount = 0;
         int skippedCount = 0;
@@ -83,9 +78,19 @@ public class ParentalConsentCleanupBatchService {
 
         for (Long childUserId : affectedChildUserIds) {
             try {
-                // ユーザー取得（存在しない / 論理削除済み → skip）
-                Optional<UserEntity> userOpt = userRepository.findById(childUserId);
-                if (userOpt.isEmpty()) {
+                List<ParentalConsentLinkEntity> currentLinks = parentalConsentLinkRepository
+                        .findByChildUserIdForUpdate(childUserId);
+                List<ParentalConsentLinkEntity> expiredLinks = currentLinks.stream()
+                        .filter(link -> link.getStatus() == ParentalConsentLinkStatus.PENDING
+                                && link.getExpiresAt().isBefore(now)).toList();
+                if (expiredLinks.isEmpty()) {
+                    skippedCount++;
+                    continue;
+                }
+                expiredLinks.forEach(link -> link.revoke(null));
+                revokedCount += expiredLinks.size();
+                Optional<UserEntity> userOpt = lockedUsers.get(childUserId);
+                if (userOpt.isEmpty() || userOpt.get().getDeletedAt() != null) {
                     log.debug("子ユーザーが存在しないためスキップ: childUserId={}", childUserId);
                     skippedCount++;
                     continue;
@@ -93,11 +98,11 @@ public class ParentalConsentCleanupBatchService {
                 UserEntity user = userOpt.get();
 
                 // APPROVED リンクが残っているか確認
-                boolean hasApproved = parentalConsentLinkRepository
-                        .existsByChildUserIdAndStatusIn(childUserId, List.of(ParentalConsentLinkStatus.APPROVED));
-                // PENDING リンクが残っているか確認（他の期限内 PENDING が残っている場合）
-                boolean hasPending = parentalConsentLinkRepository
-                        .existsByChildUserIdAndStatusIn(childUserId, List.of(ParentalConsentLinkStatus.PENDING));
+                boolean hasApproved = currentLinks.stream()
+                        .anyMatch(link -> link.getStatus() == ParentalConsentLinkStatus.APPROVED);
+                // scalar候補queryのRR snapshotを使わず、lock取得後のcurrent状態で判定する。
+                boolean hasPending = currentLinks.stream()
+                        .anyMatch(link -> link.getStatus() == ParentalConsentLinkStatus.PENDING);
 
                 // APPROVED・PENDING のいずれも残っていなければ子アカウントを削除
                 if (!hasApproved && !hasPending) {
@@ -136,6 +141,6 @@ public class ParentalConsentCleanupBatchService {
         }
 
         log.info("保護者同意期限切れクリーンアップバッチ完了: 失効リンク={}件, アカウント削除={}件, スキップ={}件, 失敗={}件",
-                expiredLinks.size(), deletedCount, skippedCount, failedCount);
+                revokedCount, deletedCount, skippedCount, failedCount);
     }
 }

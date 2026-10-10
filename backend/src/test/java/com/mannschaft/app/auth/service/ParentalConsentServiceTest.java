@@ -220,14 +220,16 @@ class ParentalConsentServiceTest {
 
             ParentalConsentLinkEntity link = buildPendingLink(childUserId, null, "parent@example.com");
             given(authTokenService.hashToken(rawToken)).willReturn("tokenHash123");
-            given(parentalConsentLinkRepository.findByTokenHash("tokenHash123"))
+            given(parentalConsentLinkRepository.findChildUserIdByTokenHash("tokenHash123"))
+                    .willReturn(Optional.of(childUserId));
+            given(parentalConsentLinkRepository.findByTokenHashForUpdate("tokenHash123"))
                     .willReturn(Optional.of(link));
 
             UserEntity parentUser = buildAdultParentUser(parentUserId, "parent@example.com");
             given(userRepository.findById(parentUserId)).willReturn(Optional.of(parentUser));
 
             UserEntity childUser = buildChildUser(childUserId, "child@example.com");
-            given(userRepository.findById(childUserId)).willReturn(Optional.of(childUser));
+            given(userRepository.findByIdForUpdateIncludingDeleted(childUserId)).willReturn(Optional.of(childUser));
             given(emailOutboxService.enqueue(any())).willReturn(UUID.randomUUID());
 
             // when
@@ -247,7 +249,7 @@ class ParentalConsentServiceTest {
         void approveParentalConsent_invalidToken_throwsAuth060() {
             // given
             given(authTokenService.hashToken(anyString())).willReturn("invalidHash");
-            given(parentalConsentLinkRepository.findByTokenHash("invalidHash"))
+            given(parentalConsentLinkRepository.findChildUserIdByTokenHash("invalidHash"))
                     .willReturn(Optional.empty());
 
             // when / then
@@ -264,8 +266,13 @@ class ParentalConsentServiceTest {
             Long childUserId = 1L;
             ParentalConsentLinkEntity link = buildPendingLink(childUserId, null, "parent@example.com");
             given(authTokenService.hashToken(anyString())).willReturn("tokenHash123");
-            given(parentalConsentLinkRepository.findByTokenHash("tokenHash123"))
+            given(parentalConsentLinkRepository.findChildUserIdByTokenHash("tokenHash123"))
+                    .willReturn(Optional.of(childUserId));
+            given(parentalConsentLinkRepository.findByTokenHashForUpdate("tokenHash123"))
                     .willReturn(Optional.of(link));
+
+            UserEntity lockedChild = buildChildUser(childUserId, "child@example.com");
+            given(userRepository.findByIdForUpdateIncludingDeleted(childUserId)).willReturn(Optional.of(lockedChild));
 
             // when / then: 保護者IDが子IDと同じ
             assertThatThrownBy(() -> parentalConsentService.approveParentalConsent("rawToken", childUserId, "127.0.0.1"))
@@ -282,7 +289,9 @@ class ParentalConsentServiceTest {
             Long parentUserId = 2L;
             ParentalConsentLinkEntity link = buildPendingLink(childUserId, null, "parent@example.com");
             given(authTokenService.hashToken(anyString())).willReturn("tokenHash123");
-            given(parentalConsentLinkRepository.findByTokenHash("tokenHash123"))
+            given(parentalConsentLinkRepository.findChildUserIdByTokenHash("tokenHash123"))
+                    .willReturn(Optional.of(childUserId));
+            given(parentalConsentLinkRepository.findByTokenHashForUpdate("tokenHash123"))
                     .willReturn(Optional.of(link));
 
             // 保護者が未成年（2015年生まれ）
@@ -298,6 +307,9 @@ class ParentalConsentServiceTest {
                     .birthDate("2015-06-01")
                     .build();
             given(userRepository.findById(parentUserId)).willReturn(Optional.of(minorParent));
+
+            UserEntity lockedChild = buildChildUser(childUserId, "child@example.com");
+            given(userRepository.findByIdForUpdateIncludingDeleted(childUserId)).willReturn(Optional.of(lockedChild));
 
             // when / then
             assertThatThrownBy(() -> parentalConsentService.approveParentalConsent("rawToken", parentUserId, "127.0.0.1"))
@@ -324,14 +336,16 @@ class ParentalConsentServiceTest {
             ParentalConsentLinkEntity approvedLink = buildApprovedLink(childUserId, 3L, "parent2@example.com");
 
             given(authTokenService.hashToken(anyString())).willReturn("tokenHash123");
-            given(parentalConsentLinkRepository.findByTokenHash("tokenHash123"))
+            given(parentalConsentLinkRepository.findChildUserIdByTokenHash("tokenHash123"))
+                    .willReturn(Optional.of(childUserId));
+            given(parentalConsentLinkRepository.findByTokenHashForUpdate("tokenHash123"))
                     .willReturn(Optional.of(pendingLink));
-            given(parentalConsentLinkRepository.findByChildUserId(childUserId))
+            given(parentalConsentLinkRepository.findByChildUserIdForUpdate(childUserId))
                     .willReturn(List.of(pendingLink, approvedLink));
-            given(emailOutboxService.enqueue(any())).willReturn(UUID.randomUUID());
+
             // 子ユーザーを返す（拒否通知メール用）
             UserEntity childUser = buildChildUser(childUserId, "child@example.com");
-            given(userRepository.findById(childUserId)).willReturn(Optional.of(childUser));
+            given(userRepository.findByIdForUpdateIncludingDeleted(childUserId)).willReturn(Optional.of(childUser));
 
             // when
             parentalConsentService.rejectParentalConsent("rawToken", "127.0.0.1");
@@ -351,15 +365,17 @@ class ParentalConsentServiceTest {
             ParentalConsentLinkEntity pendingLink = buildPendingLink(childUserId, 2L, "parent@example.com");
 
             given(authTokenService.hashToken(anyString())).willReturn("tokenHash123");
-            given(parentalConsentLinkRepository.findByTokenHash("tokenHash123"))
+            given(parentalConsentLinkRepository.findChildUserIdByTokenHash("tokenHash123"))
+                    .willReturn(Optional.of(childUserId));
+            given(parentalConsentLinkRepository.findByTokenHashForUpdate("tokenHash123"))
                     .willReturn(Optional.of(pendingLink));
             // 拒否後: pendingLink が REJECTED に変化 → PENDING / APPROVED なし
-            given(parentalConsentLinkRepository.findByChildUserId(childUserId))
+            given(parentalConsentLinkRepository.findByChildUserIdForUpdate(childUserId))
                     .willReturn(List.of(pendingLink)); // status は reject() 後に REJECTED
-            given(emailOutboxService.enqueue(any())).willReturn(UUID.randomUUID());
+
 
             UserEntity childUser = buildChildUser(childUserId, "child@example.com");
-            given(userRepository.findById(childUserId)).willReturn(Optional.of(childUser));
+            given(userRepository.findByIdForUpdateIncludingDeleted(childUserId)).willReturn(Optional.of(childUser));
 
             // when
             parentalConsentService.rejectParentalConsent("rawToken", "127.0.0.1");

@@ -1,5 +1,7 @@
 package com.mannschaft.app.auth;
 
+import com.mannschaft.app.auth.service.UserRowLockService;
+
 import com.mannschaft.app.auth.entity.EmailChangeTokenEntity;
 import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
 import com.mannschaft.app.auth.entity.UserEntity;
@@ -125,6 +127,9 @@ class UserServiceTest {
 
     @Spy
     private PostalCodePolicyRegistry postalCodePolicyRegistry = new PostalCodePolicyRegistry();
+
+    // Existing isolated unit fixture only; real locking acceptance uses MySQL IT.
+    @Mock private UserRowLockService userRowLockService;
 
     @InjectMocks
     private UserService userService;
