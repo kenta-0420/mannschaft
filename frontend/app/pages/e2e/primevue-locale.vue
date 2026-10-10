@@ -56,12 +56,14 @@ const apply = async (code: string) => {
         既定 position="left" ではパネル本体（pointer-events:auto・幅 20rem・全高）が画面左端を覆う。
         modal=false ならマスク自体は pointer-events:none だが、パネルが左上の言語切替ボタンに重なり
         クリックを奪うため、右端に寄せて幅も絞り、操作対象と重ならないようにする。
+        また modal=false では dismissable（既定 true）で外側クリックリスナーが付き言語切替の押下で閉じるため、dismissable=false にする。
       -->
       <Drawer
         v-model:visible="drawerVisible"
         append-to="self"
         position="right"
         :modal="false"
+        :dismissable="false"
         header="Drawer"
         :pt="{ root: { style: { width: '16rem' } } }"
       />
