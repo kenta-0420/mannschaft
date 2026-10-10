@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SurveyResponse, SurveyResultSummary } from '~/types/survey'
 
+const { t } = useI18n()
 const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: string
@@ -79,7 +80,7 @@ onMounted(load)
   <div @click.stop>
     <!-- ヘッダー -->
     <div class="mb-3 flex items-center justify-between">
-      <span class="text-xs text-surface-400">{{ surveys.length }}件のアンケート</span>
+      <span class="text-xs text-surface-400">{{ t('dashboard.widgets.surveyResults.count', { count: surveys.length }, surveys.length) }}</span>
       <Button icon="pi pi-refresh" text rounded size="small" :loading="loading" @click="load" />
     </div>
 
@@ -106,7 +107,7 @@ onMounted(load)
             class="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium"
             :class="survey.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' : 'bg-surface-100 text-surface-500'"
           >
-            {{ survey.status === 'PUBLISHED' ? '受付中' : '締切' }}
+            {{ survey.status === 'PUBLISHED' ? t('dashboard.widgets.surveyResults.open') : t('dashboard.widgets.surveyResults.closed') }}
           </span>
 
           <!-- タイトル -->
@@ -120,7 +121,7 @@ onMounted(load)
               <span class="text-xs font-semibold" :style="{ color: rateColor(responseRate(survey)) }">
                 {{ survey.stats?.responseCount }}{{ survey.stats?.targetCount ? `/${survey.stats.targetCount}` : '' }}
               </span>
-              <span class="text-xs text-surface-400">件</span>
+              <span class="text-xs text-surface-400">{{ t('dashboard.widgets.surveyResults.responseUnit') }}</span>
             </div>
             <!-- 進捗バー -->
             <div v-if="survey.stats?.targetCount" class="h-1.5 w-20 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-600">
@@ -155,7 +156,7 @@ onMounted(load)
             class="py-4 text-center text-sm text-surface-400"
           >
             <i class="pi pi-chart-bar mb-2 block text-2xl" />
-            {{ (survey.stats?.responseCount ?? 0) === 0 ? 'まだ回答がありません' : '結果を表示できません' }}
+            {{ (survey.stats?.responseCount ?? 0) === 0 ? t('dashboard.widgets.surveyResults.noResponses') : t('dashboard.widgets.surveyResults.resultsUnavailable') }}
           </div>
 
           <!-- 質問ごとのグラフ -->
@@ -175,7 +176,7 @@ onMounted(load)
     <!-- 空状態 -->
     <div v-else class="py-8 text-center">
       <i class="pi pi-chart-bar mb-2 text-3xl text-surface-300" />
-      <p class="text-sm text-surface-400">アンケートがありません</p>
+      <p class="text-sm text-surface-400">{{ t('dashboard.widgets.surveyResults.empty') }}</p>
     </div>
   </div>
 </template>

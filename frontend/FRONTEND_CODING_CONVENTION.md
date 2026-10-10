@@ -413,17 +413,16 @@ export default defineNuxtPlugin((nuxtApp) => {
 
 **`composables/useErrorReport.ts`** に実装する。
 
-- **`capture(error, meta?)`**: エラーを受け取り、エラーレポートモーダル（`ErrorReportModal.vue`）を表示状態にする。自動収集情報（エラーメッセージ・スタックトレース・URL・UA・タイムスタンプ）を内部 state に保持する。
-- **`submit(userComment?)`**: バックエンドの公開エンドポイント `POST /api/v1/error-reports` へ送信する。認証不要のため `$fetch` のベースURLのみ使用し、JWT は付与しない。送信後はモーダルを「送信完了」状態に切り替え、お礼メッセージを表示する。
-- **エラー連鎖の防止**: `capture` 内でさらにエラーが発生した場合は `console.error` に留め、再帰的なモーダル表示を行わない。
+- **`capture(error, meta?)`**: エラーを受け取り、エラー報告バッジ（`ErrorReportDialog.vue`）を表示状態にする。詳細は自動展開せず、利用者が選択した場合だけ展開する（CMP-260920-1042）。自動収集情報（エラーメッセージ・スタックトレース・URL・UA・タイムスタンプ）を内部 state に保持する。
+- **`submitComment(userComment)`**: 利用者が詳細パネルで入力した任意の追加コメントを `POST /api/v1/error-reports` へ送信する。エラー情報は `capture` 時に自動報告し、追加コメントの送信後は詳細パネルにお礼を表示して閉じる。
+- **エラー連鎖の防止**: `capture` 内でさらにエラーが発生した場合は `console.error` に留め、再帰的なパネル表示を行わない。
 
-### `ErrorReportModal.vue` コンポーネント
+### `ErrorReportDialog.vue` コンポーネント
 
-- 通常のページ遷移をブロックしない **モーダル（オーバーレイ）** として実装する。`Teleport` を利用して `<body>` 直下に描画する。
-- **表示状態**:
-  1. **入力画面**: エラー発生の旨を伝えるメッセージ + 任意のコメント入力欄 + 「送信する」ボタン + 「閉じる」リンク
-  2. **送信中**: ボタンをローディング状態にし、二重送信を防止する。
-  3. **完了画面**: 「ご報告ありがとうございます。開発チームが確認します。」とお礼を表示し、数秒後に自動クローズ。
+- **`app.vue` の `<ClientOnly>` 内に単一インスタンスを配置する**。layoutにも置くと二重表示になり、default layoutだけに置くと認証・公開ページで報告UIが欠落する。
+- エラー発生時は右上の44x44pxバッジだけを表示し、利用者が選択した場合のみ詳細パネルを展開する（CMP-260920-1042）。画面全体を覆うモーダルや自動展開で主要操作を塞がない。
+- `Teleport` で `<body>` 直下に描画する。バッジと詳細パネルは右上（`top-20 right-4`）に置き、右下の操作領域を避ける。
+- 自動報告と任意の追加コメント送信を維持する。エラー報告状態は `useErrorReport` が保持し、layoutの切替で報告UIを重複させない。
 - エラーの技術的詳細（スタックトレース等）はユーザーに表示しない。
 
 ### 送信データ仕様
@@ -440,7 +439,6 @@ export default defineNuxtPlugin((nuxtApp) => {
 
 ### 注意事項
 - エラーレポートの送信エンドポイントは認証不要（`POST /api/v1/error-reports` は公開）。ただしレート制限をバックエンドで実施する。
-- 開発環境（`NODE_ENV === 'development'`）では `console.error` へのフォールスルーのみとし、モーダルを表示しないオプションを設ける（開発中の誤送信防止）。
 - **バックエンド設計書**: `docs/features/F12.5_frontend_error_tracking.md` を参照。レート制限（IP単位10回/分）、エラーメッセージ正規化による重複集約、リグレッション検知（RESOLVED→REOPENED）、既知の不具合バナーAPI（`GET /api/v1/active-incidents`）、X-Request-Id 相関などの仕様が定義されている。
 
 ## 14. メール送信フィードバック (Email Send Feedback)

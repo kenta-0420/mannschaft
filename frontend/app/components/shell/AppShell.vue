@@ -84,6 +84,14 @@ onUnmounted(() => {
           class="!w-72"
           :base-z-index="10"
           :pt="{
+            pcCloseButton: {
+              root: {
+                style: {
+                  minWidth: '44px',
+                  minHeight: '44px',
+                },
+              },
+            },
             mask: {
               style: {
                 top: 'var(--app-header-h)',
