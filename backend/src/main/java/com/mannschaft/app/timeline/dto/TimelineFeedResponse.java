@@ -72,9 +72,7 @@ public class TimelineFeedResponse {
         int pageSize = limit > 0 ? limit : 20;
         boolean hasNext = posts.size() > pageSize;
         List<PostResponse> pagePosts = hasNext ? posts.subList(0, pageSize) : posts;
-        Long nextCursor = hasNext && !pagePosts.isEmpty()
-                ? pagePosts.get(pagePosts.size() - 1).getId()
-                : null;
+        Long nextCursor = null; // [検証用の意図的破壊・次コミットで戻す]
         FeedData feedData = new FeedData(pinned, pagePosts);
         FeedMeta feedMeta = new FeedMeta(nextCursor, pageSize, hasNext);
         return new TimelineFeedResponse(feedData, feedMeta);
