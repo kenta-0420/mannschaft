@@ -3,6 +3,7 @@ package com.mannschaft.app.gdpr.service;
 import com.mannschaft.app.dashboard.event.DashboardSettingsPurgeEventListener;
 import com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity;
 import com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository;
+import com.mannschaft.app.village.event.VillageUserCleanerEventListener;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,10 +42,60 @@ class GdprSettingsPurgeRetryServiceTest {
     @Mock
     private DashboardSettingsPurgeEventListener dashboardSettingsPurgeEventListener;
     @Mock
+    private VillageUserCleanerEventListener villageUserCleanerEventListener;
+    @Mock
     private Clock clock;
 
     @InjectMocks
     private GdprSettingsPurgeRetryService service;
+
+    @Test
+    @DisplayName("村設定retryはowner proxyのcommit成立後だけSUCCESSへ保存する")
+    void villageSettingsSuccessFollowsOwnerProxyReturn() {
+        Long userId = 912L;
+        var entity = buildPendingEntity(userId, "village.settings");
+        given(completionStatusRepository.findByUserIdAndDomainName(userId, "village.settings"))
+                .willReturn(Optional.of(entity));
+        given(clock.instant()).willReturn(RETRIED_AT, COMPLETED_AT);
+        given(villageUserCleanerEventListener.retryPurge(userId)).willAnswer(invocation -> {
+            assertThat(entity.getStatus()).isEqualTo("PENDING");
+            assertThat(entity.getCompletedAt()).isNull();
+            verify(clock, never()).instant();
+            verify(completionStatusRepository, never()).save(entity);
+            return true;
+        });
+
+        var result = service.retryDomainPurge(userId, "village.settings");
+
+        assertThat(service.supports("village.settings")).isTrue();
+        assertThat(result.succeeded()).isTrue();
+        assertThat(entity.getStatus()).isEqualTo("SUCCESS");
+        assertThat(entity.getRetryCount()).isEqualTo(1);
+        assertThat(entity.getLastRetriedAt()).isEqualTo(RETRIED_AT_SERVER);
+        assertThat(entity.getCompletedAt()).isEqualTo(COMPLETED_AT_SERVER);
+        verify(completionStatusRepository).save(entity);
+    }
+
+    @Test
+    @DisplayName("村設定retryのowner commit失敗はPENDINGと試行数へ保存する")
+    void villageSettingsCommitFailureRemainsPending() {
+        Long userId = 913L;
+        var entity = buildPendingEntity(userId, "village.settings");
+        given(completionStatusRepository.findByUserIdAndDomainName(userId, "village.settings"))
+                .willReturn(Optional.of(entity));
+        given(clock.instant()).willReturn(RETRIED_AT);
+        doThrow(new org.springframework.transaction.TransactionSystemException("owner commit"))
+                .when(villageUserCleanerEventListener).retryPurge(userId);
+
+        var result = service.retryDomainPurge(userId, "village.settings");
+
+        assertThat(result.succeeded()).isFalse();
+        assertThat(entity.getStatus()).isEqualTo("PENDING");
+        assertThat(entity.getRetryCount()).isEqualTo(1);
+        assertThat(entity.getLastRetriedAt()).isEqualTo(RETRIED_AT_SERVER);
+        assertThat(entity.getCompletedAt()).isNull();
+        verify(completionStatusRepository).save(entity);
+    }
 
     // ---- テストヘルパー ----
 

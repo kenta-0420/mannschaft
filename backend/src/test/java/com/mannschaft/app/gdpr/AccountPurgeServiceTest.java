@@ -220,7 +220,7 @@ class AccountPurgeServiceTest {
         }
 
         @Test
-        @DisplayName("CMP1243: AccountPurgedEvent 発火前に旧8＋設定27domainのPENDINGが登録される")
+        @DisplayName("CMP1243: AccountPurgedEvent 発火前に旧8＋設定28domainのPENDINGが登録される")
         void PhaseD8_PENDING_レコードがINSERTされる() {
             UserEntity user = buildUser(USER_ID);
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
@@ -229,8 +229,8 @@ class AccountPurgeServiceTest {
 
             service.purgeExpiredAccounts();
 
-            // 旧8domainと本人設定27domainが重複なくPENDING登録されること
-            verify(completionStatusRepository, org.mockito.Mockito.times(35)).save(any(AccountPurgeCompletionStatusEntity.class));
+            // 旧8domainと本人設定28domainが重複なくPENDING登録されること
+            verify(completionStatusRepository, org.mockito.Mockito.times(36)).save(any(AccountPurgeCompletionStatusEntity.class));
 
             // 各ドメイン名の PENDING レコードが INSERT されること（残債1: billing を追加登録）
             for (String domain : List.of(
@@ -240,7 +240,7 @@ class AccountPurgeServiceTest {
                     "filesharing", "contact", "user", "appearance", "navsettings",
                     "gamification", "reflection", "timetable.personal", "cms", "chat",
                     "knowledgebase", "favorite", "membership", "weather", "inbox",
-                    "timetable.notes", "seal")) {
+                    "timetable.notes", "seal", "village.settings")) {
                 verify(completionStatusRepository).save(argThat(entity ->
                         entity.getUserId().equals(USER_ID)
                                 && entity.getDomainName().equals(domain)

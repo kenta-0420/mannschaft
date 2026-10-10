@@ -211,6 +211,7 @@ public void withdrawUser(Long userId) {
 | AccountPurgedEvent | `com.mannschaft.app.team.event.TeamPurgeEventListener` | team | `team_org_memberships.invited_by/responded_by` をNULL化 |
 | AccountPurgedEvent | `com.mannschaft.app.timeline.event.TimelineBookmarkAnonymizationEventListener` | timeline | `timeline_bookmarks`、`user_mutes`を物理削除し、所有TXのcommit後に完了記録 |
 | UserAnonymizedEvent | `com.mannschaft.app.village.event.VillageUserCleanerEventListener` | village | nickname・pinを削除し、membershipを離脱化、charter drafterをNULL化 |
+| AccountPurgedEvent | `com.mannschaft.app.village.event.VillageUserCleanerEventListener` | village.settings | 本人のpin・nicknameを30日後に削除し、commit後に完了を記録 |
 | UserAnonymizedEvent | `com.mannschaft.app.weather.event.WeatherLocationCleanupListener` | weather | `user_weather_locations` を物理削除 |
 | AccountPurgedEvent | `com.mannschaft.app.appearance.event.AppearanceSettingsPurgeEventListener` | appearance | `appearance_settings`を物理削除し、所有TXのcommit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.auth.event.AuthAnonymizationEventListener` | auth | `user_interest_tags`を物理削除し、所有TXのcommit後に完了記録 |

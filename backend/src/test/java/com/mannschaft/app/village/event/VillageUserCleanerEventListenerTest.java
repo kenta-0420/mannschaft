@@ -1,6 +1,8 @@
 package com.mannschaft.app.village.event;
 
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
+import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
+import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
 import com.mannschaft.app.village.entity.UserVillagePinEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
@@ -17,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,10 +27,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -62,9 +68,47 @@ class VillageUserCleanerEventListenerTest {
     /** F17.3 で退会時の憲章策定者 user_id NULL 化（anonymizeCharterDrafters）が追加されたため注入対象に追随。 */
     @Mock
     private VillageCharterDrafterRepository charterDrafterRepository;
+    @Mock
+    private AccountPurgeCompletionService completionService;
 
     @InjectMocks
     private VillageUserCleanerEventListener listener;
+
+    @Test
+    @DisplayName("強消去は本人2設定だけを消し、owner commit後のcallbackだけで完了記録する")
+    void strongSettingsCompletionFollowsCommit() {
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            listener.onAccountPurged(new AccountPurgedEvent(USER_ID, "a".repeat(64)));
+
+            verify(pinRepository).deleteAllByUserId(USER_ID);
+            verify(nicknameRepository).deleteAllByUserId(USER_ID);
+            verifyNoInteractions(membershipRepository, charterDrafterRepository, completionService);
+            var callbacks = TransactionSynchronizationManager.getSynchronizations();
+            assertThat(callbacks).hasSize(1);
+            callbacks.get(0).afterCommit();
+            verify(completionService).markDomainSuccess(USER_ID, "village.settings");
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    @DisplayName("強消去2表目の失敗は伝播し完了callbackを登録しない")
+    void strongSettingsFailureDoesNotRegisterCompletion() {
+        doThrow(new IllegalStateException("owner delete"))
+                .when(nicknameRepository).deleteAllByUserId(USER_ID);
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            assertThatThrownBy(() -> listener.onAccountPurged(new AccountPurgedEvent(USER_ID, "a".repeat(64))))
+                    .isInstanceOf(IllegalStateException.class).hasMessage("owner delete");
+            verify(pinRepository).deleteAllByUserId(USER_ID);
+            assertThat(TransactionSynchronizationManager.getSynchronizations()).isEmpty();
+            verifyNoInteractions(membershipRepository, charterDrafterRepository, completionService);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
 
     private UserVillageNicknameEntity nickname() {
         UserVillageNicknameEntity n = new UserVillageNicknameEntity();

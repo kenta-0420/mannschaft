@@ -3,6 +3,7 @@ package com.mannschaft.app.village.repository;
 import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,6 +19,11 @@ import java.util.UUID;
  * Phase 2 で村ごと上書き行を追加可能にする。</p>
  */
 public interface UserVillageNicknameRepository extends JpaRepository<UserVillageNicknameEntity, UUID> {
+
+    /** 30日後の強消去専用。全村共通と村別の本人ニックネームを全行物理削除する。 */
+    @Modifying
+    @Query(value = "DELETE FROM user_village_nicknames WHERE user_id = :userId", nativeQuery = true)
+    int deleteAllByUserId(@Param("userId") Long userId);
 
     /** Phase 1: ユーザーの全村共通ニックネーム（villageId IS NULL）を取得。 */
     Optional<UserVillageNicknameEntity> findByUserIdAndVillageIdIsNull(Long userId);

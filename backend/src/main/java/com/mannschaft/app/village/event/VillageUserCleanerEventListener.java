@@ -3,6 +3,8 @@ package com.mannschaft.app.village.event;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
 import com.mannschaft.app.village.entity.UserVillagePinEntity;
 import com.mannschaft.app.village.entity.VillageCharterDrafterEntity;
@@ -20,6 +22,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -63,6 +67,37 @@ public class VillageUserCleanerEventListener {
     private final UserVillagePinRepository pinRepository;
     private final VillageMembershipRepository membershipRepository;
     private final VillageCharterDrafterRepository charterDrafterRepository;
+    private final AccountPurgeCompletionService completionService;
+
+    /** 30日後の安全網。本人の2設定だけを消し、DELETE commit後に完了を記録する。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "完全削除済み利用者の村設定を消去する。停止すると設定が残留し、消去イベントは再生されない")
+    @Async("purge-pool")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAccountPurged(AccountPurgedEvent event) {
+        Long userId = event.getUserId();
+        purgeSettings(userId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                completionService.markDomainSuccess(userId, "village.settings");
+            }
+        });
+    }
+
+    /** 手動再試行。owner TXのcommit成立後、呼出元が完了記録を更新する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean retryPurge(Long userId) {
+        purgeSettings(userId);
+        return true;
+    }
+
+    /** 2表を同一owner TXで消す。途中失敗は伝播させ全体をrollbackする。 */
+    private void purgeSettings(Long userId) {
+        pinRepository.deleteAllByUserId(userId);
+        nicknameRepository.deleteAllByUserId(userId);
+    }
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "退会匿名化イベントを購読し村ドメインの個人データを消す。止めると退会者の PII が残留し、イベントは再生されない")
