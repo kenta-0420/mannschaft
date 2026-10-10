@@ -292,27 +292,65 @@ class ReflectionSpacedReminderServiceTest {
     }
 
     @Test
-    @DisplayName("AC-D-3: 通知は成功したが SENT の保存に失敗した場合は PENDING が残り次回再送される（二重送信を許容する側に固定）。他の項目は止まらない")
-    void processDueReminders_sentSaveFailure_isTolerated_andOthersContinue() {
+    @DisplayName("AC-D-3: 通知は成功したが SENT の保存に失敗した項目は、永続状態が PENDING のまま残り、次回の実行で再送される。他の項目は止まらない")
+    void processDueReminders_sentSaveFailure_staysPersistedPending_andIsResentNextRun() {
+        // 状態を持つ偽の Repository: 永続状態は id -> status の Map。due 走査は永続状態から detached な複製を返し、
+        // save が成功したときだけ永続状態を更新する（エンティティのメモリ上の status 変更は永続化とみなさない）。
+        // 是正前（全体が 1 つの @Transactional）は due 行が managed で、markAsSent のメモリ変更がコミット時に
+        // flush されるため、save が失敗しても SENT が永続化されてしまう。本テストの「永続状態は PENDING のまま」は
+        // その実装では成り立たない（実DBでの裏付けは ReflectionDueReminderSentStateIT）。
         ReflectionEntryEntity e1 = entry(LocalDate.of(2026, 6, 1));
         ReflectionEntryEntity e2 = entry(LocalDate.of(2026, 6, 1));
         ReflectionSpacedReminderEntity saveFails = dueReminder(e1, 101L);
         ReflectionSpacedReminderEntity ok = dueReminder(e2, 102L);
+        java.util.Map<UUID, ReflectionSpacedReminderEntity> persisted = new java.util.LinkedHashMap<>();
+        persisted.put(saveFails.getId(), saveFails);
+        persisted.put(ok.getId(), ok);
+        java.util.Map<UUID, ReflectionReminderStatus> persistedStatus = new java.util.HashMap<>();
+        persisted.keySet().forEach(id -> persistedStatus.put(id, ReflectionReminderStatus.PENDING));
+        java.util.concurrent.atomic.AtomicBoolean failSentSave = new java.util.concurrent.atomic.AtomicBoolean(true);
+
         given(reminderRepository.findByStatusAndRemindAtLessThanEqual(eq(ReflectionReminderStatus.PENDING), any()))
-                .willReturn(List.of(saveFails, ok));
+                .willAnswer(inv -> persisted.values().stream()
+                        .filter(r -> persistedStatus.get(r.getId()) == ReflectionReminderStatus.PENDING)
+                        .map(r -> {
+                            ReflectionSpacedReminderEntity copy = ReflectionSpacedReminderEntity.builder()
+                                    .entryId(r.getEntryId()).userId(r.getUserId()).remindAt(r.getRemindAt())
+                                    .intervalDays(r.getIntervalDays()).kind(r.getKind())
+                                    .status(ReflectionReminderStatus.PENDING).build();
+                            setId(copy, r.getId());
+                            return copy;
+                        }).toList());
+        org.mockito.Mockito.lenient().when(reminderRepository.save(any(ReflectionSpacedReminderEntity.class)))
+                .thenAnswer(inv -> {
+                    ReflectionSpacedReminderEntity arg = inv.getArgument(0);
+                    if (failSentSave.get() && arg.getId().equals(saveFails.getId())
+                            && arg.getStatus() == ReflectionReminderStatus.SENT) {
+                        throw new RuntimeException("SENT の保存失敗（模擬）");
+                    }
+                    persistedStatus.put(arg.getId(), arg.getStatus());
+                    return arg;
+                });
         givenParents(e1);
         givenParents(e2);
-        org.mockito.Mockito.lenient().when(reminderRepository.save(saveFails))
-                .thenThrow(new RuntimeException("SENT の保存失敗（模擬）"));
 
         service.processDueReminders();
 
-        // 通知は 2 件とも送られている（保存失敗の項目も通知自体は成功済み）。
-        verify(notificationHelper).notify(eq(101L), any(), any(), any(), any(), any(),
+        assertThat(persistedStatus.get(saveFails.getId())).as("保存失敗: 永続状態は PENDING のまま")
+                .isEqualTo(ReflectionReminderStatus.PENDING);
+        assertThat(persistedStatus.get(ok.getId())).as("他の項目は止まらず SENT").isEqualTo(ReflectionReminderStatus.SENT);
+        verify(notificationHelper, org.mockito.Mockito.times(1)).notify(eq(101L), any(), any(), any(), any(), any(),
                 any(), any(), any(), any());
-        verify(notificationHelper).notify(eq(102L), any(), any(), any(), any(), any(),
+
+        // 2 回目: 保存が通る。PENDING が残っていた 101 だけが再送され（二重送信を許容する契約）、SENT 済みの 102 には再送しない。
+        failSentSave.set(false);
+        service.processDueReminders();
+
+        verify(notificationHelper, org.mockito.Mockito.times(2)).notify(eq(101L), any(), any(), any(), any(), any(),
                 any(), any(), any(), any());
-        verify(reminderRepository).save(ok);
+        verify(notificationHelper, org.mockito.Mockito.times(1)).notify(eq(102L), any(), any(), any(), any(), any(),
+                any(), any(), any(), any());
+        assertThat(persistedStatus.get(saveFails.getId())).isEqualTo(ReflectionReminderStatus.SENT);
     }
 
     @Test

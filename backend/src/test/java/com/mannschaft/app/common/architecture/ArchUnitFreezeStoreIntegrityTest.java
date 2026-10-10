@@ -727,7 +727,10 @@ class ArchUnitFreezeStoreIntegrityTest {
     // F01.2.1 6-C: DashboardService からクラス単位の @Transactional を外したため、
     // DashboardService の越境依存 46 行が解消（追加 0・削除 46）。
     // 6-A 側の期待値 1363 − 46 = 1317（6-A 統合後の実数）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1317;
+    // Issue #2997 G8: 1317 -> 1308（-9）。ActionMemoReminderBatchService と TodoDueReminderBatch が
+    //   業務TX（クラス/メソッドの @Transactional）を持たなくなり、UserRepository / NotificationRepository への
+    //   依存行が各3件ずつ消えた。CI shard1・2 の実測 -9 件と一致。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1308;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -827,7 +830,12 @@ class ArchUnitFreezeStoreIntegrityTest {
      */
     // CMP-260820-1018: Proxy の一覧・アップロードURL生成を非TX認可入口へ整理したため4行減。Role依存自体は残る。
     // main: BetaGrantService の通知RepositoryへのTX到達12行減も統合。独立した削除16行で7376→7360。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7264;
+    // Issue #2997 G8: 軽量バッチ群の付随通知を業務TXから切り離し 7264 -> 7238（-26）。
+    //   @Transactional を外した actionmemo execute 3 / repairplan execute 3 / todo 2メソッド 10 /
+    //   reflection processDueReminders 5、および sendRemind が NotificationHelper を呼ばなくなり
+    //   到達しなくなった 5（UserRepository と通知系4）。sendRemind の RoleRepository/UserRoleRepository は
+    //   AccessControlService 経由で残る。CI shard1 の実測 -26 件と一致。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7238;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
