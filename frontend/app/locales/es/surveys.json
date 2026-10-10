@@ -90,7 +90,7 @@
         "dateHint": "Los encuestados elegirán una fecha"
       },
       "teamBreakdownEnabled": "Agrupar por equipo",
-      "teamBreakdownHint": "Agrupa las respuestas por equipo subordinado (solo distribucion de la organizacion).",
+      "teamBreakdownHint": "Agrupa las respuestas por equipo subordinado (solo distribución de la organización).",
       "teamBreakdownAnonymousConflict": "El desglose por equipo no esta disponible en encuestas anonimas."
     },
     "detail": {
@@ -188,7 +188,7 @@
       "forbidden": "No tienes permiso para ver este desglose.",
       "empty": "No hay datos de desglose por equipo.",
       "masked": "Oculto porque hay menos de 5 encuestados.",
-      "directMembers": "Miembros directos de la organizacion",
+      "directMembers": "Miembros directos de la organización",
       "totalRespondents": "Total de encuestados: {count}",
       "respondentCount": "{count} encuestados",
       "optionCount": "{count} ({percentage}%)",

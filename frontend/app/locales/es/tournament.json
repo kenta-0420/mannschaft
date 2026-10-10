@@ -294,7 +294,7 @@
       "noDivisions": "No hay divisiones registradas",
       "loadFailed": "No se pudo cargar la matriz",
       "forbidden": "No tienes permiso para ver este torneo",
-      "setsNote": "Este torneo usa sets, por lo que cada celda muestra los puntos totales de todos los sets. El ganador se decide por el numero de sets ganados."
+      "setsNote": "Este torneo usa sets, por lo que cada celda muestra los puntos totales de todos los sets. El ganador se decide por el número de sets ganados."
     },
     "visibility": {
       "title": "Visibilidad",
@@ -304,7 +304,7 @@
       "saveFailed": "No se pudo actualizar la visibilidad",
       "levels": {
         "PUBLIC": {
-          "label": "Publico",
+          "label": "Público",
           "description": "Cualquiera puede verlo, incluso visitantes no registrados."
         },
         "SUPPORTERS_AND_ABOVE": {
@@ -317,11 +317,11 @@
         },
         "ADMINS_AND_ABOVE": {
           "label": "Solo administradores",
-          "description": "Solo administradores y subadministradores de la organizacion pueden verlo."
+          "description": "Solo administradores y subadministradores de la organización pueden verlo."
         },
         "SCOPE_AFFILIATED": {
           "label": "Solo afiliados",
-          "description": "Solo quienes estan directamente afiliados a la organizacion (incluidos seguidores) pueden verlo."
+          "description": "Solo quienes están directamente afiliados a la organización (incluidos seguidores) pueden verlo."
         },
         "PARTICIPANTS_ONLY": {
           "label": "Solo participantes",
@@ -346,7 +346,7 @@
       "setHeader": "Set {n}",
       "setHomeAria": "Set {n} puntos local",
       "setAwayAria": "Set {n} puntos visitante",
-      "setsHint": "Gana quien llegue primero a {n} sets. Introduce el marcador solo de los sets disputados y deja en blanco los no disputados. El ganador se decide por el numero de sets ganados.",
+      "setsHint": "Gana quien llegue primero a {n} sets. Introduce el marcador solo de los sets disputados y deja en blanco los no disputados. El ganador se decide por el número de sets ganados.",
       "save": "Guardar todo",
       "saved": "Marcadores guardados",
       "saveFailed": "No se pudieron guardar los marcadores",
