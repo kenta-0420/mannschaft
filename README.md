@@ -1161,6 +1161,8 @@ CI では `openapi.json` と生成型の乖離を自動検出します。`docs/o
 | `/検分` | コードレビュー・品質チェック |
 | `/撤収` | 開発環境の終了 |
 
+開発ハーネスの診断・検査範囲・再現性計測は [`docs/development/harness-engineering.md`](docs/development/harness-engineering.md) を参照。環境準備は [`docs/development/harness-environment.md`](docs/development/harness-environment.md)。
+
 ---
 
 ## アーキテクチャ・開発ガイドライン
