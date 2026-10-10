@@ -5,7 +5,7 @@
  * 作法: モックなし（page.route 禁止）。ログイン・前提データ作成・後始末のみ API 使用。
  *   対象操作（応援・解除・承認・言語切替）は画面操作で行い、結果は画面表示で確認する。
  * 実機（モックなし）で 10 件 PASS / skipped 0 を確認済み。
- * 資格情報: TEST_USER_PASSWORD（frontend/.env.test と同じ共通パスワード）。値は spec に書かない。
+ * 資格情報: TEST_USER_PASSWORD（frontend/.env.test と同じ共通パスワード）。未設定時は既存 spec と同じ既定値 'TestPass2026!' を使う。
  * 実行: BASE_URL=http://localhost:3001 API_BASE_URL=http://localhost:8081 TEST_USER_PASSWORD=... \
  *   npx playwright test -c playwright-real.config.ts --project=chromium-real --no-deps scope-header-headcount
  */
@@ -15,7 +15,7 @@ import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000'
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8080'
-const PASSWORD = process.env.TEST_USER_PASSWORD ?? ''
+const PASSWORD = process.env.TEST_USER_PASSWORD ?? 'TestPass2026!'
 
 const ADMIN = { email: 'e2e-admin@test.mannschaft.local', password: PASSWORD }
 const MEMBER = { email: 'e2e-user@test.mannschaft.local', password: PASSWORD }
@@ -144,8 +144,8 @@ async function ensureUnfollowed(page: Page, apiPath: string): Promise<void> {
   if (statusRes.ok()) {
     const body = (await statusRes.json()).data as { status: string }
     if (body.status !== 'NONE') {
-      // eslint-disable-next-line no-restricted-syntax -- 後始末の応援解除はベストエフォート（失敗しても後続の検証結果に影響しない。残置は開発DBのため許容）
-      await page.request.delete(`${API_BASE_URL}${apiPath}/follow`).catch(() => {})
+      const res = await page.request.delete(`${API_BASE_URL}${apiPath}/follow`)
+      expect([200, 204, 404], await res.text()).toContain(res.status())
     }
   }
 }
@@ -256,8 +256,8 @@ test('AC6-ORG: 承認制で申請中は数が変わらず、管理者承認後�
     await expect(applicantPage.getByTestId('follow-unfollow-button')).toBeVisible({ timeout: 30_000 })
     await expect(applicantPage.getByTestId('scope-header-supporter-count')).toContainText(String(beforeNum + 1), { timeout: 15_000 })
 
-    // eslint-disable-next-line no-restricted-syntax -- 後始末の応援解除はベストエフォート（失敗しても後続の検証結果に影響しない。残置は開発DBのため許容）
-    await applicantPage.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`).catch(() => {})
+    const unfollowRes = await applicantPage.request.delete(`${API_BASE_URL}/api/v1/organizations/${ORG_SLUG}/follow`)
+    expect([200, 204, 404], await unfollowRes.text()).toContain(unfollowRes.status())
     await applicantPage.context().close()
   } finally {
     await adminPage.goto(`${BASE_URL}/organizations/${ORG_SLUG}/supporters`, { waitUntil: 'domcontentloaded' })
@@ -339,7 +339,7 @@ test('AC11-TEAM: 応援後に公開範囲をサポーター以上へ変更→画
   await expect(applyButton).toBeVisible({ timeout: 60_000 })
   await applyButton.click()
   await expect(page.getByTestId('follow-unfollow-button')).toBeVisible({ timeout: 30_000 })
-  await page.screenshot({ path: 'e2e-evidence-1942/ac11-team-01-after-apply.png', fullPage: true })
+  await page.screenshot({ path: test.info().outputPath('ac11-team-01-after-apply.png'), fullPage: true })
 
   // 2) 管理者が公開範囲を「サポーター以上」へ変更（画面に可視性編集UIが無いためAPIで前提化。
   //    フロントの team settings 画面を調査したが visibility を変更する入力が見当たらなかった）
@@ -355,7 +355,7 @@ test('AC11-TEAM: 応援後に公開範囲をサポーター以上へ変更→画
   await page.reload({ waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
-  await page.screenshot({ path: 'e2e-evidence-1942/ac11-team-02-before-unfollow-restricted.png', fullPage: true })
+  await page.screenshot({ path: test.info().outputPath('ac11-team-02-before-unfollow-restricted.png'), fullPage: true })
 
   const unfollowButton = page.getByTestId('follow-unfollow-button')
   await expect(unfollowButton).toBeVisible({ timeout: 60_000 })
@@ -367,7 +367,7 @@ test('AC11-TEAM: 応援後に公開範囲をサポーター以上へ変更→画
   expect((await unfollowCompleted).status()).toBe(204)
 
   await page.waitForTimeout(1500)
-  await page.screenshot({ path: 'e2e-evidence-1942/ac11-team-03-after-unfollow.png', fullPage: true })
+  await page.screenshot({ path: test.info().outputPath('ac11-team-03-after-unfollow.png'), fullPage: true })
 
   // 4) 期待値を緩めない: 詳細（旧ヘッダ人数・旧コンテンツ）は残らず、読み込みエラー面（再試行/ダッシュボードへ戻る）になる
   await expect(page.getByTestId('scope-header-member-count')).toHaveCount(0)
@@ -402,7 +402,7 @@ test('AC11-ORG: 応援後に公開範囲をPRIVATEへ変更→画面から解除
   await expect(applyButton).toBeVisible({ timeout: 60_000 })
   await applyButton.click()
   await expect(page.getByTestId('follow-unfollow-button')).toBeVisible({ timeout: 30_000 })
-  await page.screenshot({ path: 'e2e-evidence-1942/ac11-org-01-after-apply.png', fullPage: true })
+  await page.screenshot({ path: test.info().outputPath('ac11-org-01-after-apply.png'), fullPage: true })
 
   // 2) 管理者が公開範囲をPRIVATEへ変更（組織設定画面にvisibility変更UIが無いためAPIで前提化）
   const version2Res = await request.get(`${API_BASE_URL}/api/v1/organizations/${slug}`, { headers: { Authorization: `Bearer ${adminToken}` } })
@@ -417,7 +417,7 @@ test('AC11-ORG: 応援後に公開範囲をPRIVATEへ変更→画面から解除
   await page.reload({ waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
   await waitForSpinnerGone(page)
-  await page.screenshot({ path: 'e2e-evidence-1942/ac11-org-02-before-unfollow-restricted.png', fullPage: true })
+  await page.screenshot({ path: test.info().outputPath('ac11-org-02-before-unfollow-restricted.png'), fullPage: true })
 
   const unfollowButton = page.getByTestId('follow-unfollow-button')
   await expect(unfollowButton).toBeVisible({ timeout: 60_000 })
@@ -429,7 +429,7 @@ test('AC11-ORG: 応援後に公開範囲をPRIVATEへ変更→画面から解除
   expect((await unfollowCompleted).status()).toBe(204)
 
   await page.waitForTimeout(1500)
-  await page.screenshot({ path: 'e2e-evidence-1942/ac11-org-03-after-unfollow.png', fullPage: true })
+  await page.screenshot({ path: test.info().outputPath('ac11-org-03-after-unfollow.png'), fullPage: true })
 
   await expect(page.getByTestId('scope-header-member-count')).toHaveCount(0)
   await expect(page.getByTestId('scope-header-supporter-count')).toHaveCount(0)
