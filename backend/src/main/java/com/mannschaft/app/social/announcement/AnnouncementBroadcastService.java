@@ -37,6 +37,7 @@ public class AnnouncementBroadcastService {
     private final AnnouncementRangeTemplateRepository templateRepository;
     private final AccessControlService accessControlService;
     private final ObjectMapper objectMapper;
+    private final AnnouncementPushEnqueuer pushEnqueuer;
 
     /**
      * 告知ウィザードを実行し、コンテンツを作成してお知らせフィードに登録する。
@@ -96,12 +97,24 @@ public class AnnouncementBroadcastService {
         AnnouncementChannelAdapter adapter = adapterRegistry.getAdapter(req.getChannel());
         AnnouncementSourceType sourceType = adapter.getSourceType();
 
-        Long contentId = adapter.createContent(
-                req.getContent(),
-                req.getScopeType(),
-                req.getScopeId(),
-                req.getTargetRole(),   // visibility は target_role をそのまま使用（設計書§7）
-                req.getCallerUserId());
+        // 宛先を絞った組織の告知（チームを選ぶ・グループで選ぶ）では、チャネル側の push（アンケート公開通知リスナー）を
+        // 抑止する印を載せる。push はこのあと同一トランザクションで1件に一本化して enqueue する（F01.2.1 §8.5.3）。
+        boolean narrowedOrgAudience = "ORGANIZATION".equals(req.getScopeType())
+                && audience.mode() != ResolvedBroadcastAudience.Mode.ALL;
+        Long contentId = narrowedOrgAudience
+                ? adapter.createContent(
+                        req.getContent(),
+                        req.getScopeType(),
+                        req.getScopeId(),
+                        req.getTargetRole(),
+                        req.getCallerUserId(),
+                        true)
+                : adapter.createContent(
+                        req.getContent(),
+                        req.getScopeType(),
+                        req.getScopeId(),
+                        req.getTargetRole(),   // visibility は target_role をそのまま使用（設計書§7）
+                        req.getCallerUserId());
 
         String contentUrl = adapter.buildContentUrl(
                 req.getScopeType(), req.getScopeId(), contentId);
@@ -135,6 +148,12 @@ public class AnnouncementBroadcastService {
                     audience.groupTeams());
         }
 
+        // 6.6. 宛先を絞ったアンケート告知の push（F01.2.1 §8.5.3）。フィード登録と同一トランザクションで enqueue する
+        //      ため、告知がロールバックされれば宛先集合もジョブも残らない（transactional outbox 相当）。
+        if (narrowedOrgAudience) {
+            enqueueNarrowedAudiencePush(req, audience, feed.getId(), contentId);
+        }
+
         log.info("告知ウィザード実行完了 feedId={}, channel={}, scopeType={}, scopeId={}",
                 feed.getId(), req.getChannel(), req.getScopeType(), req.getScopeId());
 
@@ -151,6 +170,43 @@ public class AnnouncementBroadcastService {
                 .priority(priority)
                 .createdAt(feed.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * 宛先を絞ったアンケート告知の push を、告知と同じトランザクションで1件 enqueue する（F01.2.1 §8.5.1・§8.5.3）。
+     *
+     * <p>push を出せるのはアンケートで、送信者が組織 ADMIN・MANAGE_CONTENT を持つ DEPUTY_ADMIN・SYSTEM_ADMIN のときだけ。
+     * それ以外（組織 MEMBER など）は表示の絞り込みだけで push は出さず、宛先集合もジョブも作らない。
+     * 冪等キーと宛先集合のキーはフィード ID から決定的に導く（二重 enqueue は1件に収束する）。
+     * 受信者の母集団は Worker がチャンクごとに所属を解決する（{@code OrgTeamsFanoutRecipientSource}）。
+     * シャードは AUTO（{@code shard_count=0}）で登録し、評価は Worker に任せる。</p>
+     *
+     * <p>送信者本人の扱い: 受信者ソースは送信者を特別扱いしない（組織の直属メンバーなら他の直属メンバーと同様に受け取る）。
+     * 従来の {@code ORGANIZATION} fan-out（リスナー経由）も actorId を母集団から除外しないため、同じ扱いに揃えている。</p>
+     */
+    private void enqueueNarrowedAudiencePush(BroadcastRequest req, ResolvedBroadcastAudience audience,
+                                             Long feedId, Long contentId) {
+        // push の可否は宛先の解決（トランザクションの外）で決めて運ばれてくる。ここで権限を引き直すと、
+        // 本トランザクションから role ドメインの Repository へ届く（D-3T）。
+        if (!audience.pushEnabled()) {
+            return;
+        }
+        String title = req.getContent() != null && req.getContent().getTitle() != null
+                ? req.getContent().getTitle() : "";
+        // 応援者トグルは告知の target_role から決める（MEMBERS_AND_ABOVE なら純 SUPPORTER を除く。§8.5.2）。
+        boolean includeSupporters = !AnnouncementVisibility.MEMBERS_AND_ABOVE.equals(req.getTargetRole());
+        // 宛先集合の登録とジョブの enqueue はポート経由で行う（social の tx から notification の Repository へ
+        // 推移的に届かせない。CLAUDE.md DB 設計の原則 #5・D-3T）。どちらも本トランザクションに参加する。
+        pushEnqueuer.enqueue(new AnnouncementPushEnqueuer.NarrowedAnnouncementPush(
+                req.getScopeId(),
+                audience.resolvedTeamIds(),
+                feedId,
+                contentId,
+                title,
+                includeSupporters,
+                req.getCallerUserId()));
+        log.info("宛先を絞った告知の push を enqueue: feedId={}, orgId={}, teams={}",
+                feedId, req.getScopeId(), audience.resolvedTeamIds().size());
     }
 
     /**

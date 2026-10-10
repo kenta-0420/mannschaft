@@ -73,7 +73,8 @@ public class AnnouncementBroadcastController {
         Long userId = SecurityUtils.getCurrentUserId();
         BroadcastRequest serviceReq = toBroadcastRequest(req, "TEAM", teamId, userId);
         // 宛先の解決は告知のトランザクションの外で行う（TEAM スコープでのグループ指定は 400 BROADCAST_012）
-        serviceReq.setAudience(audienceResolver.resolveForBroadcast(userId, "TEAM", teamId, req.toAudienceSpec()));
+        serviceReq.setAudience(audienceResolver.resolveForBroadcast(
+                userId, "TEAM", teamId, req.toAudienceSpec(), serviceReq.getChannel()));
         BroadcastResult result = broadcastService.broadcast(serviceReq);
 
         log.info("チーム告知ウィザード実行 teamId={}, channel={}, userId={}",
@@ -110,7 +111,8 @@ public class AnnouncementBroadcastController {
         BroadcastRequest serviceReq = toBroadcastRequest(req, "ORGANIZATION", orgId, userId);
         // 宛先の解決（認可 → 検証 → グループ展開）は告知のトランザクションの外で行う。
         // 組織・チーム・グループは別ドメインであり、告知（social）のトランザクションから引かないため。
-        serviceReq.setAudience(audienceResolver.resolveForBroadcast(userId, "ORGANIZATION", orgId, req.toAudienceSpec()));
+        serviceReq.setAudience(audienceResolver.resolveForBroadcast(
+                userId, "ORGANIZATION", orgId, req.toAudienceSpec(), serviceReq.getChannel()));
         BroadcastResult result = broadcastService.broadcast(serviceReq);
 
         log.info("組織告知ウィザード実行 orgId={}, channel={}, userId={}",

@@ -249,7 +249,7 @@ class SurveyAnnouncementAdapterTest {
             inOrder.verify(surveyService)
                     .createSurvey(anyString(), anyLong(), anyLong(), any(CreateSurveyRequest.class));
             inOrder.verify(surveyService)
-                    .publishSurvey(eq("TEAM"), eq(SCOPE_ID), eq(SURVEY_ID));
+                    .publishSurvey(eq("TEAM"), eq(SCOPE_ID), eq(SURVEY_ID), eq(false));
         }
 
         @Test
@@ -268,7 +268,7 @@ class SurveyAnnouncementAdapterTest {
             adapter.createContent(content, "ORGANIZATION", SCOPE_ID, "PUBLIC", USER_ID);
 
             // then
-            verify(surveyService).publishSurvey(eq("ORGANIZATION"), eq(SCOPE_ID), eq(SURVEY_ID));
+            verify(surveyService).publishSurvey(eq("ORGANIZATION"), eq(SCOPE_ID), eq(SURVEY_ID), eq(false));
         }
 
         @Test

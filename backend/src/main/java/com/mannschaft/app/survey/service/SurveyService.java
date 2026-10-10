@@ -347,13 +347,19 @@ public class SurveyService {
     /**
      * アンケートを公開する。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param surveyId  アンケートID
+     * <p>公開の入口はこの1本だけにしている（F01.2.1 6-E）。印の有無で入口を分けると、クラス単位の
+     * {@code @Transactional} により印付きの版も別の取引入口として数えられ、公開が他ドメインの Repository
+     * へ届く既存の負債（D-3T）が入口の数だけ増えるため。通常の公開（画面・予約公開）は {@code false} を渡す。</p>
+     *
+     * @param scopeType                     スコープ種別
+     * @param scopeId                       スコープID
+     * @param surveyId                      アンケートID
+     * @param audienceControlledByBroadcast 真なら公開通知リスナーは fan-out を出さない（告知ウィザードが push を一本化する）
      * @return 更新されたアンケートレスポンス
      */
     @Transactional
-    public SurveyResponse publishSurvey(String scopeType, Long scopeId, Long surveyId) {
+    public SurveyResponse publishSurvey(String scopeType, Long scopeId, Long surveyId,
+                                        boolean audienceControlledByBroadcast) {
         SurveyEntity entity = findSurveyOrThrow(scopeType, scopeId, surveyId);
 
         if (!entity.isPublishable()) {
@@ -386,7 +392,8 @@ public class SurveyService {
                 saved.getTitle(),
                 saved.getDistributionMode(),
                 Boolean.TRUE.equals(saved.getIncludeSupporters()),
-                saved.getCreatedBy()));
+                saved.getCreatedBy(),
+                audienceControlledByBroadcast));
 
         return surveyMapper.toSurveyResponse(saved);
     }
