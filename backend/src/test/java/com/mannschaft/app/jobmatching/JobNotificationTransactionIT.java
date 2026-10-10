@@ -332,8 +332,21 @@ class JobNotificationTransactionIT extends AbstractMySqlIntegrationTest {
         publishInCommittedTx(JobNotificationEvent.checkedOut(contractId),
                 JobNotificationEvent.geoAnomaly(contractId, 123.0));
 
+        // 失敗させた側（CHECKED_OUT）の永続化呼び出しが実際に起きる（＝リスナーがその分岐を処理した）ことを待つ。
+        // これを待たないと、CHECKED_OUT が未処理のままでも GEO_ANOMALY だけで緑になってしまう。
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(createNotificationCallsOfType("JOB_CHECKED_OUT")).isPositive());
         awaitNotification(f.requesterId(), "JOB_GEO_ANOMALY", contractId);
+        // 例外は spy が createNotification の入口で投げるため、その直後にリスナーの catch で処理が完了する。
+        // 限界: 本テストは spy 例外であり、実DBで @Transactional 境界を跨いだ rollback-only 伝播は再現しない。
         assertThat(notificationsOf(f.requesterId(), "JOB_CHECKED_OUT")).isEmpty();
+    }
+
+    private long createNotificationCallsOfType(String type) {
+        return Mockito.mockingDetails(notificationService).getInvocations().stream()
+                .filter(i -> "createNotification".equals(i.getMethod().getName()))
+                .filter(i -> type.equals(i.getArgument(1)))
+                .count();
     }
 
     private void publishInCommittedTx(JobNotificationEvent... events) {
