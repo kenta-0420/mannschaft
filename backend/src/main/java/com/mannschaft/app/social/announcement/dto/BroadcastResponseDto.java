@@ -51,6 +51,10 @@ public class BroadcastResponseDto {
     /** 送信時の宛先指定の記録（送信履歴の「宛先: …（送信時 N チーム）」。絞り込みなしなら null）。 */
     private TargetAudience targetAudience;
 
+    /** 警告（除外が無ければ空配列。例: {@code TEMPLATE_GROUPS_REMOVED:2}。F01.2.1 §8.6）。 */
+    @Builder.Default
+    private List<String> warnings = List.of();
+
     /** 優先度（NORMAL / IMPORTANT / URGENT）。 */
     private String priority;
 
@@ -74,6 +78,7 @@ public class BroadcastResponseDto {
                 .targetGroupIds(result.getTargetGroupIds())
                 .includeUnassigned(result.isIncludeUnassigned())
                 .targetAudience(result.getTargetAudience())
+                .warnings(result.getWarnings())
                 .priority(result.getPriority())
                 .createdAt(result.getCreatedAt())
                 .build();

@@ -334,14 +334,14 @@ class BroadcastAudienceValidationIT extends AbstractBroadcastAudienceIT {
         }
 
         @Test
-        @DisplayName("宛先を明示せず templateId だけの送信・プレビューは 400 COMMON_001（テンプレートの解決は 6-B まで未実装）")
-        void templateOnly_isRejected() throws Exception {
+        @DisplayName("存在しない templateId だけの送信・プレビューは 400 BROADCAST_003（6-B でテンプレートの解決を実装済み）")
+        void templateOnly_unknownTemplate_is003() throws Exception {
             long before = feedCount(orgX.getId());
             assertRejected(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of("templateId", 123_456L))),
-                    "COMMON_001", orgX.getId(), before);
+                    "BROADCAST_003", orgX.getId(), before);
             preview(XA, orgX.getId(), bulletinBody(Map.of("templateId", 123_456L)))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error.code").value("COMMON_001"));
+                    .andExpect(jsonPath("$.error.code").value("BROADCAST_003"));
         }
 
         @Test
