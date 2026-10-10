@@ -1,6 +1,7 @@
 package com.mannschaft.app.tournament.service;
 
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
 import com.mannschaft.app.tournament.dto.ParticipantResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -24,21 +25,28 @@ import java.util.stream.Collectors;
 public class ParticipantTeamNameEnricher {
 
     private final NameResolverService nameResolverService;
+    private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
 
-    /** 参加チーム一覧のチーム名をまとめて1回で解決して付与する。 */
-    public List<ParticipantResponse> enrich(List<ParticipantResponse> participants) {
+    /**
+     * 参加チーム一覧のチーム名をまとめて1回で解決して付与する。
+     *
+     * <p>名前を出すのは主催組織に ACTIVE 加盟しているチームだけ（他組織の不可視チーム名を漏らさない）。
+     * 加盟していないチーム（過去データの他組織チーム・離脱済み等）の {@code teamName} は null になる。</p>
+     */
+    public List<ParticipantResponse> enrich(Long orgId, List<ParticipantResponse> participants) {
         Set<Long> teamIds = participants.stream()
                 .map(ParticipantResponse::getTeamId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<Long, String> names = nameResolverService.resolveTeamNames(teamIds);
+        Set<Long> visibleTeamIds = Set.copyOf(teamOrgMembershipQueryService.findActiveTeamIdsIn(orgId, teamIds));
+        Map<Long, String> names = nameResolverService.resolveTeamNames(visibleTeamIds);
         return participants.stream()
                 .map(p -> ParticipantResponse.withTeamName(p, names.get(p.getTeamId())))
                 .toList();
     }
 
     /** 単一の参加チームにチーム名を付与する。 */
-    public ParticipantResponse enrich(ParticipantResponse participant) {
-        return enrich(Collections.singletonList(participant)).get(0);
+    public ParticipantResponse enrich(Long orgId, ParticipantResponse participant) {
+        return enrich(orgId, Collections.singletonList(participant)).get(0);
     }
 }

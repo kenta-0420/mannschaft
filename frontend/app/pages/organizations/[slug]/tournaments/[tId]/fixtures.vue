@@ -200,7 +200,7 @@ async function load(): Promise<void> {
         getParticipants(orgId, tId, div.id),
       ])
       for (const p of pRes.data ?? []) {
-        pMap.set(p.id, { teamId: p.teamId, displayName: p.teamName })
+        pMap.set(p.id, { teamId: p.teamId, displayName: p.displayName ?? p.teamName ?? '' })
       }
       const matchdays: TournamentMatchday[] = mdRes.data ?? []
       for (const md of matchdays) {

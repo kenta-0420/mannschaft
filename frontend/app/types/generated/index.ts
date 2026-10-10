@@ -65451,6 +65451,7 @@ export interface components {
             status?: string;
             /** Format: int64 */
             teamId?: number;
+            teamName?: string;
         };
         LoadFromTeamRequest: {
             overwriteExisting?: boolean;

@@ -9,6 +9,7 @@ import com.mannschaft.app.tournament.dto.ParticipantResponse;
 import com.mannschaft.app.tournament.dto.UpdateDivisionRequest;
 import com.mannschaft.app.tournament.dto.UpdateParticipantRequest;
 import com.mannschaft.app.tournament.service.DivisionService;
+import com.mannschaft.app.tournament.service.ParticipantRegistrationFacade;
 import com.mannschaft.app.tournament.service.ParticipantTeamNameEnricher;
 import com.mannschaft.app.tournament.service.TournamentViewAccessGate;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,6 +47,8 @@ public class DivisionController {
     private final DivisionService divisionService;
     /** 参加チームへのチーム名付与（非トランザクション。D-3T のため Service 外で team ドメインを引く）。 */
     private final ParticipantTeamNameEnricher participantTeamNameEnricher;
+    /** 参加登録の入口（認可 → 主催組織加盟チームの検証 → 登録）。 */
+    private final ParticipantRegistrationFacade participantRegistrationFacade;
     private final TournamentViewAccessGate tournamentViewAccessGate;
 
     // ===== Division =====
@@ -92,7 +95,7 @@ public class DivisionController {
     public ResponseEntity<ApiResponse<List<ParticipantResponse>>> listParticipants(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
         tournamentViewAccessGate.verifyViewable(tId, SecurityUtils.getCurrentUserIdOrNull());
-        return ResponseEntity.ok(ApiResponse.of(participantTeamNameEnricher.enrich(divisionService.listParticipants(tId, divId))));
+        return ResponseEntity.ok(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, divisionService.listParticipants(tId, divId))));
     }
 
     @PostMapping("/divisions/{divId}/participants")
@@ -101,7 +104,7 @@ public class DivisionController {
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId,
             @Valid @RequestBody CreateParticipantRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(participantTeamNameEnricher.enrich(divisionService.addParticipant(
+                .body(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, participantRegistrationFacade.addParticipant(
                         orgId, tId, divId, SecurityUtils.getCurrentUserId(), request))));
     }
 
@@ -111,7 +114,7 @@ public class DivisionController {
             @PathVariable Long orgId, @PathVariable Long tId,
             @PathVariable Long divId, @PathVariable Long pId,
             @Valid @RequestBody UpdateParticipantRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(participantTeamNameEnricher.enrich(divisionService.updateParticipant(
+        return ResponseEntity.ok(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, divisionService.updateParticipant(
                 orgId, tId, divId, pId, SecurityUtils.getCurrentUserId(), request))));
     }
 
