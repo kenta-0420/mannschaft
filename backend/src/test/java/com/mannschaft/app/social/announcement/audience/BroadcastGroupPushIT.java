@@ -660,7 +660,8 @@ class BroadcastGroupPushIT extends AbstractBroadcastAudienceIT {
         BroadcastAudienceSpec spec = new BroadcastAudienceSpec(
                 null, List.of(sc.g3.getId()), null, null, null, "MEMBERS_AND_ABOVE");
         ResolvedBroadcastAudience resolved =
-                audienceResolver.resolveForBroadcast(sc.xa, "ORGANIZATION", sc.org.getId(), spec);
+                audienceResolver.resolveForBroadcast(
+                        sc.xa, "ORGANIZATION", sc.org.getId(), spec, AnnouncementChannel.SURVEY);
         BroadcastRequest request = BroadcastRequest.builder()
                 .channel(AnnouncementChannel.SURVEY)
                 .targetRole("MEMBERS_AND_ABOVE")

@@ -77,16 +77,22 @@ public class BroadcastAudienceResolver {
      * @param scopeType    {@code TEAM} / {@code ORGANIZATION}
      * @param scopeId      チーム ID または組織 ID
      * @param spec         宛先指定
-     * @return 解決済みの宛先（TEAM スコープ・絞り込みなしは {@link ResolvedBroadcastAudience.Mode#ALL}）
+     * @param channel      告知のチャネル（push の可否の判定に使う。§8.5.1）
+     * @return 解決済みの宛先（TEAM スコープ・絞り込みなしは {@link ResolvedBroadcastAudience.Mode#ALL}）。
+     *         宛先を絞った組織の告知では push の可否も載せる（権限の判定を告知のトランザクションに持ち込まないため）
      */
     public ResolvedBroadcastAudience resolveForBroadcast(
-            Long callerUserId, String scopeType, Long scopeId, BroadcastAudienceSpec spec) {
+            Long callerUserId, String scopeType, Long scopeId, BroadcastAudienceSpec spec,
+            AnnouncementChannel channel) {
         accessControlService.checkMembership(callerUserId, scopeId, scopeType);
         ResolvedBroadcastAudience resolved = resolve(callerUserId, scopeType, scopeId, spec);
         if (resolved.mode() == ResolvedBroadcastAudience.Mode.GROUPS
                 && resolved.resolvedTeamIds().isEmpty()
                 && resolved.directMemberCount() == 0) {
             throw new BusinessException(AnnouncementErrorCode.BROADCAST_009);
+        }
+        if (ORGANIZATION.equals(scopeType) && resolved.mode() != ResolvedBroadcastAudience.Mode.ALL) {
+            return resolved.withPushEnabled(pushEnabled(callerUserId, scopeId, channel));
         }
         return resolved;
     }
@@ -183,7 +189,7 @@ public class BroadcastAudienceResolver {
         TargetAudience audience = new TargetAudience(
                 TargetAudience.MODE_TEAMS, List.of(), null, false, distinct.size(), direct);
         return new ResolvedBroadcastAudience(ResolvedBroadcastAudience.Mode.TEAMS, distinct, List.of(), false,
-                Map.of(), distinct, direct, audience);
+                Map.of(), distinct, direct, audience, false);
     }
 
     /** 「チームグループで選ぶ」: 機能の有効確認 → 個別・範囲の検証と展開 → ACTIVE 加盟から宛先チームを引く。 */
@@ -274,7 +280,7 @@ public class BroadcastAudienceResolver {
         Map<UUID, List<Long>> frozen = new LinkedHashMap<>();
         groupTeams.forEach((k, v) -> frozen.put(k, List.copyOf(v)));
         return new ResolvedBroadcastAudience(ResolvedBroadcastAudience.Mode.GROUPS, List.of(), List.copyOf(groups),
-                includeUnassigned, frozen, List.copyOf(resolvedTeams), direct, audience);
+                includeUnassigned, frozen, List.copyOf(resolvedTeams), direct, audience, false);
     }
 
     private static int requireIndex(Map<UUID, Integer> indexOf, UUID groupId) {
@@ -319,7 +325,7 @@ public class BroadcastAudienceResolver {
      * push が送られるか（§8.5.1）。push を出すのはアンケートだけで、送信者は組織 ADMIN・MANAGE_CONTENT を持つ
      * DEPUTY_ADMIN・SYSTEM_ADMIN のいずれかに限る。
      */
-    public boolean pushEnabled(Long callerUserId, Long organizationId, AnnouncementChannel channel) {
+    private boolean pushEnabled(Long callerUserId, Long organizationId, AnnouncementChannel channel) {
         if (channel != AnnouncementChannel.SURVEY) {
             return false;
         }

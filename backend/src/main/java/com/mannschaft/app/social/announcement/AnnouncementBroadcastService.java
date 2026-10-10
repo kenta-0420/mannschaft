@@ -7,7 +7,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.social.announcement.adapter.AnnouncementChannelAdapter;
 import com.mannschaft.app.social.announcement.adapter.AnnouncementChannelAdapterRegistry;
-import com.mannschaft.app.social.announcement.audience.BroadcastAudienceResolver;
 import com.mannschaft.app.social.announcement.audience.ResolvedBroadcastAudience;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +37,6 @@ public class AnnouncementBroadcastService {
     private final AnnouncementRangeTemplateRepository templateRepository;
     private final AccessControlService accessControlService;
     private final ObjectMapper objectMapper;
-    private final BroadcastAudienceResolver audienceResolver;
     private final AnnouncementPushEnqueuer pushEnqueuer;
 
     /**
@@ -188,7 +186,9 @@ public class AnnouncementBroadcastService {
      */
     private void enqueueNarrowedAudiencePush(BroadcastRequest req, ResolvedBroadcastAudience audience,
                                              Long feedId, Long contentId) {
-        if (!audienceResolver.pushEnabled(req.getCallerUserId(), req.getScopeId(), req.getChannel())) {
+        // push の可否は宛先の解決（トランザクションの外）で決めて運ばれてくる。ここで権限を引き直すと、
+        // 本トランザクションから role ドメインの Repository へ届く（D-3T）。
+        if (!audience.pushEnabled()) {
             return;
         }
         String title = req.getContent() != null && req.getContent().getTitle() != null
