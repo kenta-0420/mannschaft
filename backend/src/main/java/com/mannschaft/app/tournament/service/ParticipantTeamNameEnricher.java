@@ -1,8 +1,11 @@
 package com.mannschaft.app.tournament.service;
 
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
+import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.dto.ParticipantResponse;
+import com.mannschaft.app.tournament.repository.TournamentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -26,14 +29,23 @@ public class ParticipantTeamNameEnricher {
 
     private final NameResolverService nameResolverService;
     private final TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    private final TournamentRepository tournamentRepository;
 
     /**
      * 参加チーム一覧のチーム名をまとめて1回で解決して付与する。
      *
+     * <p>加盟判定に使う組織は、パスの orgId ではなく大会エンティティの実際の主催組織。パスの orgId が
+     * 主催組織と一致しない（不在の大会と同じく）場合は {@code TOURNAMENT_NOT_FOUND}（404）にする。
+     * これにより、別組織のパスに差し替えて、その組織専属のチーム名を引き出すことはできない。</p>
+     *
      * <p>名前を出すのは主催組織に ACTIVE 加盟しているチームだけ（他組織の不可視チーム名を漏らさない）。
      * 加盟していないチーム（過去データの他組織チーム・離脱済み等）の {@code teamName} は null になる。</p>
      */
-    public List<ParticipantResponse> enrich(Long orgId, List<ParticipantResponse> participants) {
+    public List<ParticipantResponse> enrich(Long pathOrgId, Long tournamentId, List<ParticipantResponse> participants) {
+        Long orgId = tournamentRepository.findById(tournamentId)
+                .map(t -> t.getOrganizationId())
+                .filter(hostOrgId -> hostOrgId.equals(pathOrgId))
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
         Set<Long> teamIds = participants.stream()
                 .map(ParticipantResponse::getTeamId)
                 .filter(Objects::nonNull)
@@ -46,7 +58,7 @@ public class ParticipantTeamNameEnricher {
     }
 
     /** 単一の参加チームにチーム名を付与する。 */
-    public ParticipantResponse enrich(Long orgId, ParticipantResponse participant) {
-        return enrich(orgId, Collections.singletonList(participant)).get(0);
+    public ParticipantResponse enrich(Long pathOrgId, Long tournamentId, ParticipantResponse participant) {
+        return enrich(pathOrgId, tournamentId, Collections.singletonList(participant)).get(0);
     }
 }

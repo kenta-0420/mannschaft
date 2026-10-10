@@ -2,7 +2,10 @@ package com.mannschaft.app.tournament;
 
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.team.service.TeamOrgMembershipQueryService;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.tournament.dto.ParticipantResponse;
+import com.mannschaft.app.tournament.entity.TournamentEntity;
+import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.tournament.service.ParticipantTeamNameEnricher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,10 +16,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -32,6 +38,17 @@ class ParticipantTeamNameEnricherTest {
 
     @Mock private NameResolverService nameResolverService;
     @Mock private TeamOrgMembershipQueryService teamOrgMembershipQueryService;
+    @Mock private TournamentRepository tournamentRepository;
+
+    private static final Long T_ID = 1L;
+    private static final Long OTHER_ORG_ID = 200L;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubTournament() {
+        // 大会 T_ID の実際の主催組織は ORG_ID
+        org.mockito.Mockito.lenient().when(tournamentRepository.findById(T_ID))
+                .thenReturn(Optional.of(TournamentEntity.builder().organizationId(ORG_ID).build()));
+    }
 
     @InjectMocks
     private ParticipantTeamNameEnricher enricher;
@@ -47,7 +64,7 @@ class ParticipantTeamNameEnricherTest {
         given(nameResolverService.resolveTeamNames(Set.of(5L, 6L)))
                 .willReturn(Map.of(5L, "レッドFC", 6L, "ブルーFC"));
 
-        List<ParticipantResponse> result = enricher.enrich(ORG_ID, List.of(response(1, 5), response(2, 6)));
+        List<ParticipantResponse> result = enricher.enrich(ORG_ID, T_ID, List.of(response(1, 5), response(2, 6)));
 
         assertThat(result).extracting(ParticipantResponse::getTeamName).containsExactly("レッドFC", "ブルーFC");
         assertThat(result).extracting(ParticipantResponse::getTeamId).containsExactly(5L, 6L);
@@ -60,7 +77,7 @@ class ParticipantTeamNameEnricherTest {
         given(teamOrgMembershipQueryService.findActiveTeamIdsIn(ORG_ID, Set.of(5L))).willReturn(List.of(5L));
         given(nameResolverService.resolveTeamNames(Set.of(5L))).willReturn(Map.of(5L, "レッドFC"));
 
-        ParticipantResponse result = enricher.enrich(ORG_ID, response(1, 5));
+        ParticipantResponse result = enricher.enrich(ORG_ID, T_ID, response(1, 5));
 
         assertThat(result.getTeamName()).isEqualTo("レッドFC");
         assertThat(result.getId()).isEqualTo(1L);
@@ -74,8 +91,28 @@ class ParticipantTeamNameEnricherTest {
         given(teamOrgMembershipQueryService.findActiveTeamIdsIn(ORG_ID, Set.of(5L, 9L))).willReturn(List.of(5L));
         given(nameResolverService.resolveTeamNames(Set.of(5L))).willReturn(Map.of(5L, "レッドFC"));
 
-        List<ParticipantResponse> result = enricher.enrich(ORG_ID, List.of(response(1, 5), response(2, 9)));
+        List<ParticipantResponse> result = enricher.enrich(ORG_ID, T_ID, List.of(response(1, 5), response(2, 9)));
 
         assertThat(result).extracting(ParticipantResponse::getTeamName).containsExactly("レッドFC", null);
+    }
+
+    @Test
+    @DisplayName("パスの orgId が大会の主催組織と違えば 404（別組織専属のチーム名を引き出せない）。加盟判定にもパス orgId を使わない")
+    void パス差し替えは404() {
+        assertThatThrownBy(() -> enricher.enrich(OTHER_ORG_ID, T_ID, List.of(response(1, 5))))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        verify(teamOrgMembershipQueryService, never()).findActiveTeamIdsIn(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(nameResolverService, never()).resolveTeamNames(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("大会が存在しなければ 404（不一致と同じコード）")
+    void 大会不在は404() {
+        assertThatThrownBy(() -> enricher.enrich(ORG_ID, 999L, List.of(response(1, 5))))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
     }
 }

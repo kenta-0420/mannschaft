@@ -95,7 +95,7 @@ public class DivisionController {
     public ResponseEntity<ApiResponse<List<ParticipantResponse>>> listParticipants(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
         tournamentViewAccessGate.verifyViewable(tId, SecurityUtils.getCurrentUserIdOrNull());
-        return ResponseEntity.ok(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, divisionService.listParticipants(tId, divId))));
+        return ResponseEntity.ok(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, tId, divisionService.listParticipants(tId, divId))));
     }
 
     @PostMapping("/divisions/{divId}/participants")
@@ -104,7 +104,7 @@ public class DivisionController {
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId,
             @Valid @RequestBody CreateParticipantRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, participantRegistrationFacade.addParticipant(
+                .body(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, tId, participantRegistrationFacade.addParticipant(
                         orgId, tId, divId, SecurityUtils.getCurrentUserId(), request))));
     }
 
@@ -114,7 +114,7 @@ public class DivisionController {
             @PathVariable Long orgId, @PathVariable Long tId,
             @PathVariable Long divId, @PathVariable Long pId,
             @Valid @RequestBody UpdateParticipantRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, divisionService.updateParticipant(
+        return ResponseEntity.ok(ApiResponse.of(participantTeamNameEnricher.enrich(orgId, tId, divisionService.updateParticipant(
                 orgId, tId, divId, pId, SecurityUtils.getCurrentUserId(), request))));
     }
 
