@@ -169,33 +169,33 @@
     "GUEST": "Gast",
     "transfer": {
       "offer": {
-        "button": "管理者を引き継ぐ",
-        "notification": "{scope} の管理者への就任を打診されています",
-        "pending": "管理者就任の打診が届いています",
-        "pendingByMe": "{name} さんへ管理者委譲を打診中です",
-        "accept": "引き受ける",
-        "decline": "辞退する",
-        "cancel": "取消",
-        "accepted": "管理者を引き継ぎました",
-        "declined": "打診を辞退しました",
-        "expired": "打診は期限切れです",
-        "cancelled": "打診は取り消されました",
-        "confirmTitle": "オーナー委譲の打診",
-        "confirmMessage": "{name} さんへ管理者権限の委譲を打診しますか？相手が引き受けを承諾すると、あなたはメンバーに降格されます（この時点ではまだ委譲されません）。",
-        "acceptConfirmTitle": "管理者就任の承諾",
-        "acceptConfirmMessage": "引き受けると、あなたが管理者(ADMIN)になり、現在の管理者はメンバーに降格されます。よろしいですか？",
-        "declineConfirmTitle": "打診の辞退",
-        "declineConfirmMessage": "この打診を辞退しますか？あなたのロールは変わりません。",
-        "cancelConfirmTitle": "打診の取消",
-        "cancelConfirmMessage": "この委譲の打診を取り消しますか？相手のロールは変わりません。",
-        "created": "委譲を打診しました",
-        "cancelSuccess": "打診を取り消しました"
+        "button": "Administratorrolle übernehmen",
+        "notification": "Dir wurde die Administratorrolle für {scope} angeboten",
+        "pending": "Dir wurde die Administratorrolle angeboten",
+        "pendingByMe": "Die Übertragung der Administratorrolle an {name} steht noch aus",
+        "accept": "Annehmen",
+        "decline": "Ablehnen",
+        "cancel": "Zurückziehen",
+        "accepted": "Du bist jetzt Administrator",
+        "declined": "Das Angebot wurde abgelehnt",
+        "expired": "Das Angebot ist abgelaufen",
+        "cancelled": "Das Angebot wurde zurückgezogen",
+        "confirmTitle": "Übertragung der Eigentümerschaft anbieten",
+        "confirmMessage": "Möchtest du {name} die Übertragung der Administratorrechte anbieten? Nimmt die Person an, wirst du zum Mitglied herabgestuft (bis dahin ändert sich nichts).",
+        "acceptConfirmTitle": "Übernahme der Administratorrolle bestätigen",
+        "acceptConfirmMessage": "Wenn du annimmst, wirst du Administrator (ADMIN) und der bisherige Administrator wird zum Mitglied herabgestuft. Fortfahren?",
+        "declineConfirmTitle": "Angebot ablehnen",
+        "declineConfirmMessage": "Möchtest du dieses Angebot ablehnen? Deine Rolle bleibt unverändert.",
+        "cancelConfirmTitle": "Angebot zurückziehen",
+        "cancelConfirmMessage": "Möchtest du dieses Übertragungsangebot zurückziehen? Die Rolle der Person bleibt unverändert.",
+        "created": "Übertragung angeboten",
+        "cancelSuccess": "Angebot zurückgezogen"
       },
       "error": {
-        "notTarget": "この打診はあなた宛てではありません",
+        "notTarget": "Dieses Angebot ist nicht an dich gerichtet",
         "need2fa": {
-          "message": "管理者になるには2段階認証の設定が必要です",
-          "cta": "2段階認証を設定する"
+          "message": "Um Administrator zu werden, musst du die Zwei-Faktor-Authentifizierung einrichten",
+          "cta": "Zwei-Faktor-Authentifizierung einrichten"
         }
       }
     }
@@ -326,24 +326,24 @@
     "AUTH_011": "Es wurde noch kein Passwort festgelegt",
     "AUTH_044": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut",
     "SURVEY_023": "Die Team-Aufschlüsselung kann bei anonymen Umfragen nicht aktiviert werden",
-    "SCHEDULE_KEEP_001": "キープが見つかりません",
-    "SCHEDULE_KEEP_002": "タイトルを入力してください",
-    "SCHEDULE_KEEP_003": "候補日は最大10件です",
-    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
-    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
-    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
-    "SCHEDULE_KEEP_007": "この状態では編集できません",
-    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
-    "SCHEDULE_KEEP_009": "この操作はできません",
-    "SCHEDULE_KEEP_010": "キープの上限に達しました",
-    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "SCHEDULE_KEEP_001": "Der Merker wurde nicht gefunden",
+    "SCHEDULE_KEEP_002": "Bitte gib einen Titel ein",
+    "SCHEDULE_KEEP_003": "Es sind höchstens 10 Terminvorschläge möglich",
+    "SCHEDULE_KEEP_004": "Das Format der Terminvorschläge ist ungültig",
+    "SCHEDULE_KEEP_005": "Du hast keine Berechtigung für diesen Merker",
+    "SCHEDULE_KEEP_006": "Dieser Merker kann nicht in einen Termin umgewandelt werden",
+    "SCHEDULE_KEEP_007": "In diesem Zustand ist keine Bearbeitung möglich",
+    "SCHEDULE_KEEP_008": "Die Umwandlung kann nicht rückgängig gemacht werden, da Zu-/Absagen vorliegen",
+    "SCHEDULE_KEEP_009": "Dieser Vorgang ist nicht möglich",
+    "SCHEDULE_KEEP_010": "Das Limit für Merker wurde erreicht",
+    "SCHEDULE_KEEP_012": "Die Angabe zur Sortierung ist ungültig",
     "TIMELINE_017": "Du hast das Limit von 200 Ausblendungen erreicht. Blende bitte etwas wieder ein.",
-    "ROLE_009": "この打診はあなた宛てではありません",
-    "ROLE_010": "管理者になるには2段階認証の設定が必要です",
-    "ROLE_011": "既に有効な委譲オファーが存在します",
-    "ROLE_012": "委譲オファーは既に処理済みか無効です",
-    "ROLE_013": "対象が見つかりません",
-    "ROLE_014": "自分自身への委譲はできません"
+    "ROLE_009": "Dieses Angebot ist nicht an dich gerichtet",
+    "ROLE_010": "Um Administrator zu werden, musst du die Zwei-Faktor-Authentifizierung einrichten",
+    "ROLE_011": "Es besteht bereits ein aktives Übertragungsangebot",
+    "ROLE_012": "Das Übertragungsangebot wurde bereits bearbeitet oder ist ungültig",
+    "ROLE_013": "Das Ziel wurde nicht gefunden",
+    "ROLE_014": "Du kannst die Rolle nicht an dich selbst übertragen"
   },
   "annual_plan": {
     "title": "Jahresveranstaltungsplan",
@@ -1014,51 +1014,51 @@
       "none": "Keine"
     },
     "guide": {
-      "title": "通知の使い方",
-      "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
+      "title": "So funktionieren Benachrichtigungen",
+      "description": "In der Benachrichtigungsliste siehst du alles, was an dich gerichtet ist: Termine, Chat, Mitteilungen, Bestätigungsanfragen, Notfallschließungen und mehr. Tippe auf eine Zeile, um sie automatisch als gelesen zu markieren und zum passenden Bildschirm zu wechseln.",
       "read": {
-        "title": "通知を読む",
-        "body": "通知の行をタップすると既読になり、関連する画面へ移動します。まだ読んでいない通知には青いドットが付きます。",
+        "title": "Benachrichtigungen lesen",
+        "body": "Tippe auf eine Benachrichtigung, um sie als gelesen zu markieren und zum passenden Bildschirm zu wechseln. Ungelesene Benachrichtigungen haben einen blauen Punkt.",
         "steps": {
-          "step1": "気になる通知の行をタップします",
-          "step2": "自動で既読になり、関連する画面へ移動します",
-          "step3": "未読の通知は左端の青いドットで見分けられます"
+          "step1": "Tippe auf die gewünschte Benachrichtigung",
+          "step2": "Sie wird automatisch als gelesen markiert und du wechselst zum passenden Bildschirm",
+          "step3": "Ungelesene Benachrichtigungen erkennst du am blauen Punkt am linken Rand"
         }
       },
       "filter": {
-        "title": "絞り込み",
-        "body": "上部の「すべて／未読」の切り替えで、未読の通知だけを表示できます。",
+        "title": "Filtern",
+        "body": "Mit dem Umschalter „Alle / Ungelesen“ oben kannst du nur ungelesene Benachrichtigungen anzeigen.",
         "steps": {
-          "step1": "画面上部の「すべて／未読」ボタンを押します",
-          "step2": "「未読」を選ぶと、まだ読んでいない通知だけが表示されます",
-          "step3": "「すべて」に戻すと全ての通知が表示されます"
+          "step1": "Tippe oben auf die Schaltfläche „Alle / Ungelesen“",
+          "step2": "Wähle „Ungelesen“, um nur noch nicht gelesene Benachrichtigungen anzuzeigen",
+          "step3": "Wechsle zurück zu „Alle“, um alle Benachrichtigungen zu sehen"
         }
       },
       "snooze": {
-        "title": "スヌーズ",
-        "body": "今すぐ対応できない通知は、時計アイコンから後回しにできます。指定した時刻に再び表示されます。",
+        "title": "Erinnerung verschieben",
+        "body": "Kannst du eine Benachrichtigung gerade nicht bearbeiten, verschiebe sie über das Uhrsymbol. Zur gewählten Zeit erscheint sie erneut.",
         "steps": {
-          "step1": "通知の右側にある時計アイコンを押します",
-          "step2": "「3時間後／今夜／明朝／来週」から再表示するタイミングを選びます",
-          "step3": "選んだ時刻になると、その通知が再び一覧に表示されます"
+          "step1": "Tippe auf das Uhrsymbol rechts neben der Benachrichtigung",
+          "step2": "Wähle, wann sie wieder erscheinen soll: in 3 Stunden, heute Abend, morgen früh oder nächste Woche",
+          "step3": "Zur gewählten Zeit erscheint die Benachrichtigung wieder in der Liste"
         }
       },
       "confirm": {
-        "title": "確認通知",
-        "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
+        "title": "Bestätigungsbenachrichtigungen",
+        "body": "Bei Benachrichtigungen mit der Schaltfläche „Bestätigen“ kannst du dem Absender mitteilen, dass du den Inhalt gesehen hast. Teilweise wird auch die Zahl der noch nicht Bestätigten angezeigt.",
         "steps": {
-          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
-          "step2": "「確認する」ボタンを押して確認済みにします",
-          "step3": "確認後は「確認済み」ラベルに変わります"
+          "step1": "Lies den Inhalt der Bestätigungsbenachrichtigung (mit farbigem Hintergrund)",
+          "step2": "Tippe auf „Bestätigen“, um sie als bestätigt zu markieren",
+          "step3": "Nach der Bestätigung wechselt die Anzeige zu „Bestätigt“"
         }
       },
       "urgent": {
-        "title": "緊急休業・一括既読",
-        "body": "緊急休業の通知は「確認する」を押して確認します。溜まった通知は右上の「すべて既読にする」でまとめて既読にできます。",
+        "title": "Notfallschließungen und alles als gelesen markieren",
+        "body": "Bestätige Benachrichtigungen zu Notfallschließungen mit „Bestätigen“. Angesammelte Benachrichtigungen kannst du oben rechts mit „Alle als gelesen markieren“ auf einmal erledigen.",
         "steps": {
-          "step1": "緊急休業の通知は「確認する」ボタンで確認します",
-          "step2": "右上の「すべて既読にする」で通知をまとめて既読にできます",
-          "step3": "既読にするとベルのバッジも0になります"
+          "step1": "Bestätige Benachrichtigungen zu Notfallschließungen mit der Schaltfläche „Bestätigen“",
+          "step2": "Mit „Alle als gelesen markieren“ oben rechts markierst du alle Benachrichtigungen auf einmal als gelesen",
+          "step3": "Sobald alles gelesen ist, springt auch das Glockenabzeichen auf 0"
         }
       }
     }
@@ -1795,7 +1795,7 @@
       "back_to_dashboard": "Zurück zum Dashboard",
       "retry": "Erneut versuchen",
       "slow_loading": "Das Laden dauert länger als erwartet",
-      "join_request_applied": "参加申請を送信しました",
+      "join_request_applied": "Beitrittsanfrage gesendet",
       "follow_fetch_error": "Follow-Status konnte nicht abgerufen werden",
       "follow_permission_sync_error_title": "Aktualisierung der Berechtigungen fehlgeschlagen",
       "follow_permission_sync_error_body": "Du folgst nicht mehr, aber die Aktualisierung deiner Berechtigungen ist fehlgeschlagen. Bitte versuche es erneut."
@@ -1969,11 +1969,11 @@
       "feedbackInbox": "Feedback-Posteingang (Global)",
       "billing": "Abrechnungs-Stammdaten",
       "priceRevisions": "Preisänderungen",
-      "betaPerks": "ベータ特典管理",
-      "villageCreationRequests": "村作成申請",
-      "seasonalWallpapers": "季節壁紙",
-      "pointCardSynonyms": "ポイントカード同義語",
-      "appeals": "異議申立"
+      "betaPerks": "Beta-Vorteile verwalten",
+      "villageCreationRequests": "Anträge auf Dorfgründung",
+      "seasonalWallpapers": "Saisonale Hintergrundbilder",
+      "pointCardSynonyms": "Synonyme für Punktekarten",
+      "appeals": "Einsprüche"
     },
     "impersonation": {
       "banner": "Identitätswechsel: {label}",
@@ -2111,47 +2111,47 @@
       }
     },
     "detail": {
-      "open": "詳細を見る",
-      "publish": "公開する",
-      "saved": "下書きを保存しました",
-      "participants": "参加者",
-      "participantsHint": "実際に参加したメンバーを選択してください",
-      "participantsRequired": "このテンプレートの公開には参加者が必要です",
-      "noParticipants": "参加者は登録されていません",
-      "attachments": "添付ファイル",
-      "attachment": "添付ファイル {id}",
-      "sourceSchedule": "元の予定",
-      "openSchedule": "予定を開く",
-      "scheduleUnavailable": "元の予定は閲覧できません",
-      "scheduleCancelled": "元の予定は中止されています",
-      "endDate": "終了日（複数日の場合）",
-      "startTime": "開始時刻",
-      "endTime": "終了時刻",
+      "open": "Details ansehen",
+      "publish": "Veröffentlichen",
+      "saved": "Entwurf gespeichert",
+      "participants": "Teilnehmer",
+      "participantsHint": "Wähle die Mitglieder aus, die tatsächlich teilgenommen haben",
+      "participantsRequired": "Für die Veröffentlichung dieser Vorlage sind Teilnehmer erforderlich",
+      "noParticipants": "Es sind keine Teilnehmer eingetragen",
+      "attachments": "Anhänge",
+      "attachment": "Anhang {id}",
+      "sourceSchedule": "Ursprünglicher Termin",
+      "openSchedule": "Termin öffnen",
+      "scheduleUnavailable": "Der ursprüngliche Termin kann nicht angezeigt werden",
+      "scheduleCancelled": "Der ursprüngliche Termin wurde abgesagt",
+      "endDate": "Enddatum (bei mehrtägigen Terminen)",
+      "startTime": "Startzeit",
+      "endTime": "Endzeit",
       "edit": "Bearbeiten",
       "save": "Speichern",
       "updated": "Aktivitätsbericht gespeichert"
     },
     "sync": {
-      "title": "予定と活動記録の変更を確認",
-      "description": "予定の変更を活動記録へ反映する項目を選んでください。自動反映の項目も「予定のみ保存」では変更されません。",
-      "record": "活動記録 {id}",
-      "automatic": "自動反映",
-      "current": "現在の記録",
-      "updated": "変更後の予定",
-      "scheduleOnly": "予定のみ保存",
-      "apply": "選択した項目を反映して保存",
+      "title": "Änderungen an Termin und Aktivitätsprotokoll prüfen",
+      "description": "Wähle aus, welche Änderungen am Termin in das Aktivitätsprotokoll übernommen werden sollen. Auch automatisch übernommene Felder bleiben unverändert, wenn du „Nur Termin speichern“ wählst.",
+      "record": "Aktivitätsprotokoll {id}",
+      "automatic": "Automatisch übernommen",
+      "current": "Aktueller Eintrag",
+      "updated": "Termin nach der Änderung",
+      "scheduleOnly": "Nur Termin speichern",
+      "apply": "Ausgewählte Felder übernehmen und speichern",
       "fields": {
-        "title": "タイトル",
-        "activityDate": "活動日",
-        "activityEndDate": "終了日",
-        "activityTimeStart": "開始時刻",
-        "activityTimeEnd": "終了時刻"
+        "title": "Titel",
+        "activityDate": "Aktivitätsdatum",
+        "activityEndDate": "Enddatum",
+        "activityTimeStart": "Startzeit",
+        "activityTimeEnd": "Endzeit"
       }
     },
     "schedule": {
-      "create": "この予定の活動記録を作成",
-      "records": "活動記録",
-      "loadError": "活動記録の取得に失敗しました"
+      "create": "Aktivitätsprotokoll für diesen Termin erstellen",
+      "records": "Aktivitätsprotokolle",
+      "loadError": "Die Aktivitätsprotokolle konnten nicht geladen werden"
     },
     "planned": "Geplant",
     "unpublished": "Unveröffentlicht",
@@ -2382,74 +2382,74 @@
     "MEMBERS_AND_ABOVE": "Mitglieder und höher"
   },
   "module_settings": {
-    "enabled_count": "有効な機能: {count} / {limit}",
-    "fetch_error": "機能一覧の取得に失敗しました",
-    "empty": "現在このスコープで利用できる追加機能はありません",
-    "toggle_success_on": "{name} を有効にしました",
-    "toggle_success_off": "{name} を無効にしました",
+    "enabled_count": "Aktive Funktionen: {count} / {limit}",
+    "fetch_error": "Die Funktionsliste konnte nicht geladen werden",
+    "empty": "Für diesen Bereich sind derzeit keine zusätzlichen Funktionen verfügbar",
+    "toggle_success_on": "{name} wurde aktiviert",
+    "toggle_success_off": "{name} wurde deaktiviert",
     "badge": {
-      "level_unavailable": "このレベルでは利用できません",
-      "paid_plan": "有料プラン",
-      "limit_reached": "上限（{limit}）に達しています"
+      "level_unavailable": "Auf dieser Ebene nicht verfügbar",
+      "paid_plan": "Kostenpflichtiger Tarif",
+      "limit_reached": "Limit ({limit}) erreicht"
     },
     "error": {
-      "paid_required": "この機能は有料プランが必要です",
-      "limit_reached": "無料プランで有効化できる機能の上限（10個）に達しています",
-      "level_unavailable": "このレベルではこの機能を利用できません",
-      "generic": "機能の切替に失敗しました"
+      "paid_required": "Diese Funktion erfordert einen kostenpflichtigen Tarif",
+      "limit_reached": "Du hast das Limit (10) der im kostenlosen Tarif aktivierbaren Funktionen erreicht",
+      "level_unavailable": "Diese Funktion ist auf dieser Ebene nicht verfügbar",
+      "generic": "Die Funktion konnte nicht umgeschaltet werden"
     }
   },
   "module_settings_guide": {
-    "title": "機能設定の使い方",
-    "help_button": "使い方",
-    "description": "「機能設定」では、このチーム・組織で使える機能を一覧から探して、スイッチで ON / OFF できます。ここで ON にした機能だけが、メンバーの画面に表示され利用できるようになります。",
+    "title": "So funktionieren die Funktionseinstellungen",
+    "help_button": "Anleitung",
+    "description": "In den Funktionseinstellungen suchst du in der Liste die Funktionen, die dieses Team bzw. diese Organisation nutzen kann, und schaltest sie per Schalter EIN oder AUS. Nur hier eingeschaltete Funktionen erscheinen auf den Bildschirmen der Mitglieder und stehen ihnen zur Verfügung.",
     "what": {
-      "title": "機能設定とは",
-      "body": "チーム・組織で使える機能（モジュール）の一覧です。利用できる機能がすべてカードで並び、各機能を ON にするとメンバーが使えるようになり、OFF にすると画面から隠れて使えなくなります。必要な機能だけを選んで、画面をすっきり保てます。"
+      "title": "Was sind Funktionseinstellungen?",
+      "body": "Hier siehst du alle Funktionen (Module), die dein Team oder deine Organisation nutzen kann. Alle verfügbaren Funktionen erscheinen als Karten. Schaltest du eine Funktion EIN, können die Mitglieder sie nutzen; schaltest du sie AUS, wird sie ausgeblendet und ist nicht mehr nutzbar. Wähle nur die Funktionen aus, die du brauchst, um die Oberfläche übersichtlich zu halten."
     },
     "toggle": {
-      "title": "機能を ON / OFF する",
-      "body": "使いたい機能を一覧から探して、カード右のスイッチを ON にするだけです。保存ボタンは不要で、押すとすぐに反映されます。",
+      "title": "Eine Funktion EIN-/AUSschalten",
+      "body": "Suche die gewünschte Funktion in der Liste und schalte den Schalter rechts auf der Karte ein. Eine Speichern-Schaltfläche gibt es nicht; die Änderung wird sofort wirksam.",
       "steps": {
-        "step1": "一覧から使いたい機能のカードを探す",
-        "step2": "カード右のスイッチを押して ON にする（もう一度押すと OFF）",
-        "step3": "「有効にしました」または「無効にしました」と通知が出れば完了（保存操作は不要）",
-        "step4": "切り替え中はそのスイッチが一時的に押せなくなります（二重操作を防ぐためです）"
+        "step1": "Suche in der Liste die Karte der gewünschten Funktion",
+        "step2": "Tippe auf den Schalter rechts auf der Karte, um die Funktion einzuschalten (erneut tippen zum Ausschalten)",
+        "step3": "Fertig, sobald eine Meldung erscheint, dass die Funktion aktiviert oder deaktiviert wurde (Speichern ist nicht nötig)",
+        "step4": "Während des Umschaltens ist der Schalter kurz nicht bedienbar (um Doppeleingaben zu vermeiden)"
       }
     },
     "count": {
-      "title": "今いくつ使えるかを確認する",
-      "body": "画面の上部に「有効な機能: 2 / 10」のように、ON にしている数と有効化できる上限の数が表示されます。右の更新ボタン（回転する矢印）を押すと、最新の状態を取得し直せます。"
+      "title": "Prüfen, wie viele du nutzen kannst",
+      "body": "Oben auf dem Bildschirm steht z. B. „Aktive Funktionen: 2 / 10“, also wie viele Funktionen eingeschaltet sind und wie viele du höchstens aktivieren kannst. Mit der Aktualisieren-Schaltfläche rechts (kreisender Pfeil) rufst du den aktuellen Stand erneut ab."
     },
     "restrictions": {
-      "title": "使えないスイッチがあるとき",
-      "body": "スイッチが押せない（グレーアウトしている）機能には、理由を示すバッジが付きます。",
+      "title": "Wenn ein Schalter nicht bedienbar ist",
+      "body": "Bei Funktionen, deren Schalter nicht bedienbar (ausgegraut) ist, erscheint ein Hinweis mit dem Grund.",
       "items": {
-        "paid": "「有料プラン」… 有料プランに加入すると使える機能です。",
-        "limit": "「上限（10）に達しています」… 無料プランで同時に ON にできる機能の数が上限に達しています。ほかの機能を OFF にすると新しく ON にできます。",
-        "level": "「このレベルでは利用できません」… このチーム・組織の種別では使えない機能です。"
+        "paid": "„Kostenpflichtiger Tarif“: Diese Funktion kannst du nach dem Abschluss eines kostenpflichtigen Tarifs nutzen.",
+        "limit": "„Limit (10) erreicht“: Die Zahl der im kostenlosen Tarif gleichzeitig eingeschalteten Funktionen hat das Limit erreicht. Schalte eine andere Funktion AUS, um eine neue einzuschalten.",
+        "level": "„Auf dieser Ebene nicht verfügbar“: Diese Funktion kann für diese Art von Team bzw. Organisation nicht genutzt werden."
       }
     },
     "empty": {
-      "title": "機能が表示されないとき",
-      "body": "「現在このスコープで利用できる追加機能はありません」と出る場合は、いまのところこのチーム・組織で追加できる機能がありません。"
+      "title": "Wenn keine Funktionen angezeigt werden",
+      "body": "Wird „Für diesen Bereich sind derzeit keine zusätzlichen Funktionen verfügbar“ angezeigt, gibt es für dieses Team bzw. diese Organisation aktuell keine Funktionen, die hinzugefügt werden können."
     },
     "permission": {
-      "title": "設定できる人",
-      "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+      "title": "Wer die Einstellungen ändern kann",
+      "body": "Die Funktionseinstellungen können nur Administratoren des Teams bzw. der Organisation öffnen. Auch für Administratoren ist dieser Tab verborgen, wenn der Ansichtsumschalter oben rechts auf „Mitgliedsansicht“ steht. Wechsle zum Einstellen auf „Administratoransicht“."
     }
   },
   "teamShell": {
     "tab": {
-      "affiliations": "所属組織",
-      "permissionGroups": "権限グループ",
+      "affiliations": "Zugehörige Organisationen",
+      "permissionGroups": "Berechtigungsgruppen",
       "dashboard": "Dashboard",
       "info": "Basisinfo",
       "members": "Mitglieder",
       "invites": "Einladungen",
       "supporters": "Unterstützerverwaltung",
       "modules": "Funktionen",
-      "joinRequests": "参加申請"
+      "joinRequests": "Beitrittsanfrage"
     },
     "action": {
       "leave_confirm_title": "Team verlassen",
@@ -2468,7 +2468,7 @@
       "permission_groups": "Berechtigungsgruppen",
       "supporters": "Unterstützerverwaltung",
       "modules": "Funktionen",
-      "joinRequests": "参加申請"
+      "joinRequests": "Beitrittsanfrage"
     },
     "action": {
       "leave_confirm_title": "Organisation verlassen",
@@ -2632,25 +2632,25 @@
     "goOrganizations": "Organisation auswählen"
   },
   "joinRequest": {
-    "apply": "参加申請",
-    "pending": "申請中（承認待ち）",
-    "approved": "承認済み",
-    "rejected": "却下されました",
-    "fetchError": "取得に失敗しました",
-    "retry": "再試行",
+    "apply": "Beitrittsanfrage",
+    "pending": "Anfrage ausstehend (wartet auf Genehmigung)",
+    "approved": "Genehmigt",
+    "rejected": "Abgelehnt",
+    "fetchError": "Laden fehlgeschlagen",
+    "retry": "Erneut versuchen",
     "admin": {
-      "pendingTitle": "承認待ちの参加申請",
-      "empty": "承認待ちの参加申請はありません",
-      "requesterLabel": "ユーザーID: {userId}",
-      "requestedAt": "申請日",
-      "approve": "承認",
-      "reject": "却下",
-      "fetchError": "一覧の取得に失敗しました",
-      "retry": "再試行",
-      "loadMore": "さらに読み込む",
-      "loadMoreError": "追加読み込みに失敗しました",
-      "approveSuccess": "参加申請を承認しました",
-      "rejectSuccess": "参加申請を却下しました"
+      "pendingTitle": "Beitrittsanfragen, die auf Genehmigung warten",
+      "empty": "Es gibt keine Beitrittsanfragen, die auf Genehmigung warten",
+      "requesterLabel": "Benutzer-ID: {userId}",
+      "requestedAt": "Beantragt am",
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "fetchError": "Die Liste konnte nicht geladen werden",
+      "retry": "Erneut versuchen",
+      "loadMore": "Mehr laden",
+      "loadMoreError": "Weitere Einträge konnten nicht geladen werden",
+      "approveSuccess": "Beitrittsanfrage genehmigt",
+      "rejectSuccess": "Beitrittsanfrage abgelehnt"
     }
   },
   "myPage": {
@@ -2743,12 +2743,12 @@
       "empty": "Noch keine Seiten vorhanden",
       "titleLabel": "Titel",
       "slugLabel": "URL-Slug",
-      "yearLabel": "対象年度",
-      "visibilityLabel": "公開範囲",
-      "visibilityPublic": "全体公開",
+      "yearLabel": "Bezugsjahr",
+      "visibilityLabel": "Sichtbarkeit",
+      "visibilityPublic": "Öffentlich",
       "visibilityMembersOnly": "Nur für Mitglieder",
       "statusDraft": "Entwurf",
-      "statusPublished": "公開中",
+      "statusPublished": "Veröffentlicht",
       "publish": "Veröffentlichen",
       "unpublish": "Zurück in den Entwurf",
       "delete": "Seite löschen",
@@ -2767,21 +2767,21 @@
       "copyFailed": "Mitglieder konnten nicht kopiert werden"
     },
     "members": {
-      "title": "メンバー一覧",
-      "add": "メンバー追加",
-      "edit": "メンバー編集",
-      "empty": "メンバーが登録されていません",
-      "bulkRegister": "一括登録",
-      "bulkRegisterHelp": "1行に1名、「表示名,番号」の形式で入力してください（番号は省略可）",
-      "bulkRegisterSuccess": "{count}件のメンバーを登録しました",
-      "bulkRegisterFailed": "一括登録に失敗しました",
-      "delete": "メンバーを削除",
-      "deleteConfirm": "{name}さんのプロフィールを削除しますか？この操作は元に戻せません。",
-      "deleteSuccess": "メンバーを削除しました",
-      "back": "ページ一覧に戻る",
-      "customFieldsError": "カスタム項目の読み込みに失敗しました",
-      "optionsInvalidFormat": "選択肢データの形式が不正です",
-      "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
+      "title": "Mitgliederliste",
+      "add": "Mitglied hinzufügen",
+      "edit": "Mitglied bearbeiten",
+      "empty": "Es sind keine Mitglieder eingetragen",
+      "bulkRegister": "Sammelregistrierung",
+      "bulkRegisterHelp": "Gib pro Zeile eine Person im Format „Anzeigename,Nummer“ ein (die Nummer ist optional)",
+      "bulkRegisterSuccess": "{count} Mitglieder wurden registriert",
+      "bulkRegisterFailed": "Die Sammelregistrierung ist fehlgeschlagen",
+      "delete": "Mitglied löschen",
+      "deleteConfirm": "Möchtest du das Profil von {name} löschen? Das lässt sich nicht rückgängig machen.",
+      "deleteSuccess": "Mitglied gelöscht",
+      "back": "Zurück zur Seitenliste",
+      "customFieldsError": "Die benutzerdefinierten Felder konnten nicht geladen werden",
+      "optionsInvalidFormat": "Das Format der Auswahldaten ist ungültig",
+      "optionsLoadFailed": "Die Auswahldaten konnten nicht geladen werden"
     }
   },
   "memberPermissions": {
