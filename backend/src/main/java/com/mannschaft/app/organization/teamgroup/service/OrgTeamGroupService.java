@@ -99,6 +99,39 @@ public class OrgTeamGroupService {
         return toListResponse(organizationId, ordered);
     }
 
+    /**
+     * 告知の宛先解決（F01.2.1 §8.1・§8.2。social ドメインの {@code BroadcastAudienceResolver}）に渡す、
+     * 組織のグループ機能の有効状態と生存グループの並び（sort_order 昇順・同値は作成順）。
+     *
+     * <p>認可は呼び出し側が済ませる。組織が無い場合は「無効・グループ0件」を返す（呼び出し側は先に
+     * メンバーシップを確かめているため、ここで存在の区別を返さない）。</p>
+     *
+     * @param organizationId 組織 ID
+     * @return グループ機能の有効状態と生存グループ
+     */
+    public TeamGroupCatalog findAudienceCatalog(Long organizationId) {
+        boolean enabled = organizationRepository.findById(organizationId)
+                .map(org -> Boolean.TRUE.equals(org.getTeamGroupsEnabled()))
+                .orElse(false);
+        if (!enabled) {
+            return new TeamGroupCatalog(false, List.of());
+        }
+        List<OrgTeamGroupView> groups = groupRepository
+                .findByOrganizationIdAndDeletedAtIsNullOrderBySortOrderAscIdAsc(organizationId).stream()
+                .map(g -> new OrgTeamGroupView(g.getId(), g.getName(), g.getDescription(), g.getSortOrder()))
+                .toList();
+        return new TeamGroupCatalog(true, groups);
+    }
+
+    /**
+     * 組織のグループ機能の有効状態と、生存グループの並び（告知の宛先解決用）。
+     *
+     * @param enabled    グループ機能が有効か
+     * @param liveGroups 生存グループ（sort_order 昇順・同値は ID＝作成順）。無効なら空
+     */
+    public record TeamGroupCatalog(boolean enabled, List<OrgTeamGroupView> liveGroups) {
+    }
+
     // ───────── 内部 ─────────
 
     private void requireEnabled(Long organizationId) {
