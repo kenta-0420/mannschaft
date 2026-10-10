@@ -407,10 +407,23 @@ class RangeTemplateGroupAudienceIT extends AbstractBroadcastAudienceIT {
                     .andExpect(jsonPath("$.error.code").value("BROADCAST_009"));
             assertThat(feedCount(orgX.getId())).isEqualTo(before);
         }
+
+        @Test
+        @DisplayName("全グループが削除済みのテンプレートでも、プレビューは 200・チーム0件・警告 TEMPLATE_GROUPS_REMOVED:1（400 にしない）")
+        void everythingRemoved_previewIs200WithZeroAndWarning() throws Exception {
+            long id = saveTemplate("G2だけ", Map.of("targetGroupIds", ids(g2.getId())));
+            softDeleteGroup(g2.getId());
+            flushAndClear();
+
+            preview(XA, orgX.getId(), templateOnlyBody(id)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.resolvedTeamCount").value(0))
+                    .andExpect(jsonPath("$.data.groups", hasSize(0)))
+                    .andExpect(jsonPath("$.data.warnings", hasItem("TEMPLATE_GROUPS_REMOVED:1")));
+        }
     }
 
     @Nested
-    @DisplayName("AC-J03 範囲の端が削除されていたら 400 BROADCAST_013")
+    @DisplayName("AC-J03範囲の端が削除されていたら 400 BROADCAST_013")
     class RangeEndDeleted {
 
         @Test

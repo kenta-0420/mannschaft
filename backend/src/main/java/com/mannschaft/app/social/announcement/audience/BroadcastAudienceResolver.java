@@ -88,7 +88,7 @@ public class BroadcastAudienceResolver {
     public ResolvedBroadcastAudience resolveForBroadcast(
             Long callerUserId, String scopeType, Long scopeId, BroadcastAudienceSpec spec) {
         accessControlService.checkMembership(callerUserId, scopeId, scopeType);
-        ResolvedBroadcastAudience resolved = resolve(callerUserId, scopeType, scopeId, spec);
+        ResolvedBroadcastAudience resolved = resolve(callerUserId, scopeType, scopeId, spec, true);
         if (resolved.mode() == ResolvedBroadcastAudience.Mode.GROUPS
                 && resolved.resolvedTeamIds().isEmpty()
                 && resolved.directMemberCount() == 0) {
@@ -108,7 +108,7 @@ public class BroadcastAudienceResolver {
      */
     public AudiencePreviewResponseDto preview(Long callerUserId, Long organizationId, AudiencePreviewRequestDto request) {
         accessControlService.checkMembership(callerUserId, organizationId, ORGANIZATION);
-        ResolvedBroadcastAudience resolved = resolve(callerUserId, ORGANIZATION, organizationId, request.toSpec());
+        ResolvedBroadcastAudience resolved = resolve(callerUserId, ORGANIZATION, organizationId, request.toSpec(), false);
 
         List<Long> teamIds = resolved.mode() == ResolvedBroadcastAudience.Mode.ALL
                 ? membershipQueryService.findActiveTeamGroupAssignments(organizationId).stream()
@@ -182,7 +182,7 @@ public class BroadcastAudienceResolver {
     // ───────── 解決 ─────────
 
     private ResolvedBroadcastAudience resolve(
-            Long callerUserId, String scopeType, Long scopeId, BroadcastAudienceSpec spec) {
+            Long callerUserId, String scopeType, Long scopeId, BroadcastAudienceSpec spec, boolean forBroadcast) {
         BroadcastAudienceSpec s = spec != null ? spec : new BroadcastAudienceSpec(null, null, null, null, null, null);
         if (TEAM.equals(scopeType)) {
             if (s.hasGroupItems()) {
@@ -201,7 +201,7 @@ public class BroadcastAudienceResolver {
                     .orElseThrow(() -> new BusinessException(AnnouncementErrorCode.BROADCAST_003));
             if (s.isTemplateOnly()) {
                 // 手順2: 宛先を明示していないときだけ、テンプレートの宛先を使う（明示があれば明示が優先）
-                return resolveTemplate(callerUserId, scopeId, s, template);
+                return resolveTemplate(callerUserId, scopeId, s, template, forBroadcast);
             }
         }
         if (s.hasTeamItems() && s.hasGroupItems()) {
@@ -212,7 +212,7 @@ public class BroadcastAudienceResolver {
             return resolveTeams(callerUserId, scopeId, s.targetTeamIds(), includeSupporters);
         }
         if (s.hasGroupItems()) {
-            return resolveGroups(callerUserId, scopeId, s, includeSupporters);
+            return resolveGroups(callerUserId, scopeId, s, includeSupporters, false);
         }
         return ResolvedBroadcastAudience.unrestricted();
     }
@@ -227,7 +227,7 @@ public class BroadcastAudienceResolver {
      */
     private ResolvedBroadcastAudience resolveTemplate(
             Long callerUserId, Long organizationId, BroadcastAudienceSpec spec,
-            AnnouncementRangeTemplateEntity template) {
+            AnnouncementRangeTemplateEntity template, boolean forBroadcast) {
         boolean includeSupporters = includesSupporters(spec.targetRole());
         List<UUID> storedIds = TemplateGroupItemsCodec.parseGroupIds(template.getTargetGroupIds());
         TargetGroupRange storedRange = TemplateGroupItemsCodec.parseRange(template.getTargetGroupRange());
@@ -266,9 +266,16 @@ public class BroadcastAudienceResolver {
                 warnings.add(WARNING_TEMPLATE_GROUPS_REMOVED + ":" + removed);
             }
         }
+        // 除外の結果として空になった場合（リクエストでの明示の空選択ではない）。送信は §8.6 手順5どおり
+        // 400 BROADCAST_009、プレビューは 400 にせず 0 件＋警告を返す（§8.4: 画面が「次へ」を止める）
+        boolean emptiedByRemoval = kept != null && kept.isEmpty() && storedRange == null && !storedUnassigned;
+        if (emptiedByRemoval && forBroadcast) {
+            throw new BusinessException(AnnouncementErrorCode.BROADCAST_009);
+        }
         BroadcastAudienceSpec resolvedSpec = new BroadcastAudienceSpec(
                 null, kept, storedRange, storedUnassigned, spec.templateId(), spec.targetRole());
-        return resolveGroups(callerUserId, organizationId, resolvedSpec, includeSupporters).withWarnings(warnings);
+        return resolveGroups(callerUserId, organizationId, resolvedSpec, includeSupporters, emptiedByRemoval)
+                .withWarnings(warnings);
     }
 
     /** MEMBERS_AND_ABOVE（と未指定）は純 SUPPORTER を含めない。SUPPORTERS_AND_ABOVE・PUBLIC は含める（§8.5.2）。 */
@@ -303,12 +310,13 @@ public class BroadcastAudienceResolver {
 
     /** 「チームグループで選ぶ」: 機能の有効確認 → 個別・範囲の検証と展開 → ACTIVE 加盟から宛先チームを引く。 */
     private ResolvedBroadcastAudience resolveGroups(
-            Long callerUserId, Long organizationId, BroadcastAudienceSpec spec, boolean includeSupporters) {
+            Long callerUserId, Long organizationId, BroadcastAudienceSpec spec, boolean includeSupporters,
+            boolean emptyChoiceAllowed) {
         TeamGroupCatalog catalog = orgTeamGroupService.findAudienceCatalog(organizationId);
         if (!catalog.enabled()) {
             throw new BusinessException(AnnouncementErrorCode.BROADCAST_007);
         }
-        boolean nothingChosen = spec.targetGroupIds() != null && spec.targetGroupIds().isEmpty()
+        boolean nothingChosen = !emptyChoiceAllowed && spec.targetGroupIds() != null && spec.targetGroupIds().isEmpty()
                 && spec.targetGroupRange() == null && !Boolean.TRUE.equals(spec.includeUnassigned());
         if (nothingChosen) {
             // 個別の空配列だけ（範囲も未分類も無い）は「誰も選ばなかった」。すべてのチームに倒さない
