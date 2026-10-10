@@ -34,6 +34,19 @@ function onPage(event: { page: number; rows: number }) {
           <Tag :value="$t(`village.joinRequest.${request.status.toLowerCase()}`)" />
         </div>
         <dl class="mt-3 grid gap-2 text-sm">
+          <div :data-testid="`my-village-join-request-village-${request.id}`">
+            <dt class="text-surface-500">{{ $t('village.myJoinRequests.village') }}</dt>
+            <dd class="flex flex-wrap items-center gap-2">
+              <span class="font-semibold break-words">{{
+                request.villageName ?? $t('village.myJoinRequests.unknownVillage')
+              }}</span>
+              <Tag
+                v-if="request.villageState !== 'ACTIVE'"
+                severity="secondary"
+                :value="$t(`village.myJoinRequests.villageState.${request.villageState}`)"
+              />
+            </dd>
+          </div>
           <div>
             <dt class="text-surface-500">{{ $t('village.myJoinRequests.submittedAt') }}</dt>
             <dd>{{ formatDateTime(request.createdAt) }}</dd>

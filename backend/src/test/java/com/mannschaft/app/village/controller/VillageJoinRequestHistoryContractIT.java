@@ -140,7 +140,9 @@ class VillageJoinRequestHistoryContractIT extends AbstractMySqlIntegrationTest {
         assertThat(response.path("data").findValuesAsText("subjectType"))
                 .contains("USER", "TEAM", "ORGANIZATION");
         // 現在の代表ロールは一切付与していない。履歴は代表者一覧ではなく申請時の本人情報。
-        assertThat(response.toString()).doesNotContain("villageName", "monsho", "秘密の村");
+        // 本人が申請した村の名前と状態だけを返し、村の他の情報（紋章など）は載せない。
+        assertThat(response.path("data").findValuesAsText("villageName")).containsOnly("秘密の村");
+        assertThat(response.toString()).doesNotContain("monsho", "slug");
     }
 
     @Test
@@ -263,6 +265,58 @@ class VillageJoinRequestHistoryContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    @DisplayName("AC-9: 複数の村へメッセージ無しで申請しても、行ごとに申請先の村名を識別できる")
+    void 複数の村への申請を村名で識別できる() throws Exception {
+        VillageEntity sakura = village(VillageVisibility.UNLISTED, "桜村");
+        VillageEntity ume = village(VillageVisibility.UNLISTED, "梅村");
+        VillageJoinRequestEntity toSakura = request(sakura, ACTOR, VillageSubjectType.USER, ACTOR,
+                VillageRequestStatus.APPROVED, SUBMITTED_AT);
+        VillageJoinRequestEntity toUme = request(ume, ACTOR, VillageSubjectType.USER, ACTOR,
+                VillageRequestStatus.REJECTED, SUBMITTED_AT.plusMinutes(1));
+        toSakura.setMessage(null);
+        toUme.setMessage(null);
+        requestRepository.saveAllAndFlush(List.of(toSakura, toUme));
+
+        JsonNode data = body(as(ACTOR, get(HISTORY_PATH)).andExpect(status().isOk())).path("data");
+        assertThat(data.size()).isEqualTo(2);
+        assertThat(data.get(0).path("id").asText()).isEqualTo(toUme.getId().toString());
+        assertThat(data.get(0).path("villageName").asText()).isEqualTo("梅村");
+        assertThat(data.get(0).path("villageState").asText()).isEqualTo("ACTIVE");
+        assertThat(data.get(1).path("id").asText()).isEqualTo(toSakura.getId().toString());
+        assertThat(data.get(1).path("villageName").asText()).isEqualTo("桜村");
+    }
+
+    @Test
+    @DisplayName("AC-9: 凍結・論理削除された村も履歴に残り、名前を保ったまま状態で示す")
+    void 凍結や削除された村の申請履歴を失わない() throws Exception {
+        VillageEntity archived = village(VillageVisibility.UNLISTED, "凍結村");
+        VillageEntity deleted = village(VillageVisibility.UNLISTED, "削除村");
+        request(archived, ACTOR, VillageSubjectType.USER, ACTOR, VillageRequestStatus.PENDING, SUBMITTED_AT);
+        request(deleted, ACTOR, VillageSubjectType.USER, ACTOR, VillageRequestStatus.PENDING,
+                SUBMITTED_AT.plusMinutes(1));
+        archived.setArchivedAt(LocalDateTime.of(2026, 9, 1, 0, 0));
+        deleted.setDeletedAt(LocalDateTime.of(2026, 9, 2, 0, 0));
+        villageRepository.saveAllAndFlush(List.of(archived, deleted));
+
+        as(ACTOR, get(HISTORY_PATH)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].villageName").value("削除村"))
+                .andExpect(jsonPath("$.data[0].villageState").value("DELETED"))
+                .andExpect(jsonPath("$.data[1].villageName").value("凍結村"))
+                .andExpect(jsonPath("$.data[1].villageState").value("ARCHIVED"));
+    }
+
+    @Test
+    @DisplayName("AC-9: 申請していない第三者には他人の申請先の村名が一切返らない")
+    void 第三者の履歴に他人の申請先の村名は出ない() throws Exception {
+        VillageEntity hidden = village(VillageVisibility.UNLISTED, "ひみつ村");
+        request(hidden, ACTOR, VillageSubjectType.USER, ACTOR, VillageRequestStatus.PENDING, SUBMITTED_AT);
+        String other = as(OTHER, get(HISTORY_PATH)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(other).doesNotContain("ひみつ村", hidden.getId().toString());
+    }
+
+    @Test
     @DisplayName("AC-8: 本人WHERE・LIMIT・安定順序をSQLで固定し村の追加SELECTを行わない")
     void 本人の履歴検索だけで一ページを取得する() throws Exception {
         for (int i = 0; i < 3; i++) {
@@ -283,8 +337,11 @@ class VillageJoinRequestHistoryContractIT extends AbstractMySqlIntegrationTest {
                         "(?s).*where .*requester_user_id\\s*=\\s*\\?.*"));
         assertThat(sql).anyMatch(statement -> statement.matches(
                 "(?s).*order by .*created_at desc,.*id desc.*limit.*"));
+        // 申請先の村名は、このページ分の villageId を 1 回の IN 検索でまとめて引く（N+1 を作らない）。
+        assertThat(sql).filteredOn(statement -> statement.matches("(?s).*from villages\\b.*"))
+                .hasSize(1).allMatch(statement -> statement.contains(" in ("));
         assertThat(sql).noneMatch(statement -> statement.matches(
-                "(?s).*(from|join) (villages|village_memberships|teams|organizations)\\b.*"));
+                "(?s).*(from|join) (village_memberships|teams|organizations)\\b.*"));
     }
 
     private ResultActions as(Long actor, MockHttpServletRequestBuilder request) throws Exception {
@@ -304,8 +361,12 @@ class VillageJoinRequestHistoryContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private VillageEntity village(VillageVisibility visibility) {
+        return village(visibility, "秘密の村");
+    }
+
+    private VillageEntity village(VillageVisibility visibility, String name) {
         return villageRepository.saveAndFlush(VillageEntity.builder()
-                .slug("history-" + UUID.randomUUID()).name("秘密の村")
+                .slug("history-" + UUID.randomUUID()).name(name)
                 .type(VillageType.COMMUNITY).joinPolicy(VillageJoinPolicy.APPROVAL)
                 .visibility(visibility).memberCountCache(0L).createdByUserId(REVIEWER).build());
     }

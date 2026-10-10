@@ -3,7 +3,7 @@ import { useApi } from '~/composables/useApi'
 import { useErrorReport } from '~/composables/useErrorReport'
 import { useAuthStore } from '~/stores/useAuthStore'
 import type { PageMeta, PagedResponse } from '~/types/api'
-import type { JoinRequestResponse } from '~/types/village'
+import type { MyJoinRequestResponse } from '~/types/village'
 
 /** 認証本人の申請履歴。利用者切替を跨いだ応答を画面へ適用しない。 */
 export function useVillageJoinRequestHistory() {
@@ -12,7 +12,7 @@ export function useVillageJoinRequestHistory() {
   const { captureQuiet } = useErrorReport()
   const actor = computed(() => auth.user?.id ?? null)
   const actorGeneration = ref(0)
-  const requests = ref<JoinRequestResponse[]>([])
+  const requests = ref<MyJoinRequestResponse[]>([])
   const page = ref(0)
   const size = ref(20)
   const meta = ref<PageMeta>({ total: 0, page: 0, size: 20, totalPages: 0 })
@@ -49,7 +49,7 @@ export function useVillageJoinRequestHistory() {
     loading.value = true
     error.value = null
     try {
-      const response = await api<PagedResponse<JoinRequestResponse>>(
+      const response = await api<PagedResponse<MyJoinRequestResponse>>(
         `/api/v1/village-join-requests/me?page=${requestPage}&size=${requestSize}`,
       )
       if (!isCurrent()) return

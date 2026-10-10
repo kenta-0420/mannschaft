@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { effectScope, nextTick, reactive } from 'vue'
 import type { PagedResponse } from '~/types/api'
-import type { JoinRequestResponse } from '~/types/village'
+import type { MyJoinRequestResponse } from '~/types/village'
 
 const mocks = vi.hoisted(() => ({ api: vi.fn(), captureQuiet: vi.fn() }))
 const auth = reactive<{ user: { id: number } | null }>({ user: { id: 1 } })
@@ -13,21 +13,23 @@ vi.mock('~/stores/useAuthStore', () => ({ useAuthStore: () => auth }))
 import { useVillageJoinRequestHistory } from '~/composables/village/useVillageJoinRequestHistory'
 
 function deferred() {
-  let resolve!: (value: PagedResponse<JoinRequestResponse>) => void
+  let resolve!: (value: PagedResponse<MyJoinRequestResponse>) => void
   let reject!: (reason: unknown) => void
-  const promise = new Promise<PagedResponse<JoinRequestResponse>>((yes, no) => {
+  const promise = new Promise<PagedResponse<MyJoinRequestResponse>>((yes, no) => {
     resolve = yes
     reject = no
   })
   return { promise, resolve, reject }
 }
 
-function response(id: string): PagedResponse<JoinRequestResponse> {
+function response(id: string): PagedResponse<MyJoinRequestResponse> {
   return {
     data: [
       {
         id,
         villageId: 'village-id',
+        villageName: '申請先の村',
+        villageState: 'ACTIVE',
         subjectType: 'USER',
         subjectId: 1,
         message: '本人の申請',

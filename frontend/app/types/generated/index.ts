@@ -72547,9 +72547,32 @@ export interface components {
             /** Format: int64 */
             totalElements?: number;
         };
-        PagedResponseJoinRequestResponse: {
-            data?: components["schemas"]["JoinRequestResponse"][];
+        PagedResponseMyJoinRequestResponse: {
+            data?: components["schemas"]["MyJoinRequestResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        MyJoinRequestResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            id?: string;
+            message?: string;
+            reviewComment?: string;
+            /** Format: date-time */
+            reviewedAt?: string;
+            /** Format: uuid */
+            reviewedBy?: string;
+            /** @enum {string} */
+            status?: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
+            /** Format: int64 */
+            subjectId?: number;
+            /** @enum {string} */
+            subjectType?: "USER" | "TEAM" | "ORGANIZATION";
+            /** Format: uuid */
+            villageId?: string;
+            villageName?: string;
+            /** @enum {string} */
+            villageState?: "ACTIVE" | "ARCHIVED" | "DELETED";
         };
         ApiResponseListVillageCategoryResponse: {
             data?: components["schemas"]["VillageCategoryResponse"][];
@@ -150533,7 +150556,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseJoinRequestResponse"];
+                    "*/*": components["schemas"]["PagedResponseMyJoinRequestResponse"];
                 };
             };
         };

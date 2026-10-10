@@ -113167,7 +113167,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseJoinRequestResponse"
+                  "$ref": "#/components/schemas/PagedResponseMyJoinRequestResponse"
                 }
               }
             }
@@ -217028,17 +217028,80 @@
           }
         }
       },
-      "PagedResponseJoinRequestResponse": {
+      "PagedResponseMyJoinRequestResponse": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/JoinRequestResponse"
+              "$ref": "#/components/schemas/MyJoinRequestResponse"
             }
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "MyJoinRequestResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": "string"
+          },
+          "reviewComment": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED",
+              "WITHDRAWN"
+            ]
+          },
+          "subjectId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "subjectType": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "TEAM",
+              "ORGANIZATION"
+            ]
+          },
+          "villageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "villageName": {
+            "type": "string"
+          },
+          "villageState": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "ARCHIVED",
+              "DELETED"
+            ]
           }
         }
       },

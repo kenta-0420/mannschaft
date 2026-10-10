@@ -199,7 +199,13 @@
       "description": "查看您提交的加入申请及其审核状态。",
       "submittedAt": "申请时间",
       "empty": "您尚未提交加入申请",
-      "fetchError": "无法加载您的申请记录"
+      "fetchError": "无法加载您的申请记录",
+      "village": "申请的村落",
+      "unknownVillage": "无法确认村落名称",
+      "villageState": {
+        "ARCHIVED": "已冻结",
+        "DELETED": "已删除"
+      }
     },
     "joinRequest": {
       "title": "加入申请",

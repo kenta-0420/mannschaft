@@ -199,7 +199,13 @@
       "description": "自分が送信した参加申請と審査状況を確認できます。",
       "submittedAt": "申請日時",
       "empty": "自分が送信した参加申請はありません",
-      "fetchError": "参加申請の履歴を取得できませんでした"
+      "fetchError": "参加申請の履歴を取得できませんでした",
+      "village": "申請先の村",
+      "unknownVillage": "村の名前を確認できません",
+      "villageState": {
+        "ARCHIVED": "凍結済み",
+        "DELETED": "削除済み"
+      }
     },
     "joinRequest": {
       "title": "参加申請",

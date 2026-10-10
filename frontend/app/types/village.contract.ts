@@ -30,6 +30,8 @@ import type { PageMeta, PagedResponse, SpringPage } from './api'
 import type { components } from './generated'
 import type {
   JoinRequestResponse,
+  MyJoinRequestResponse,
+  MyJoinRequestVillageState,
   VillageCalendarEventCreateRequest,
   VillageCalendarEventListResponse,
   VillageCalendarEventLogCreateRequest,
@@ -284,13 +286,20 @@ export type JoinRequestResponseKeysMatch = AssertTrue<
 
 /** 村から独立した本人履歴は既存のdata/metaページ応答であり、Spring Pageではない。 */
 export type JoinRequestHistoryKeysMatch = AssertTrue<
-  SameKeys<PagedResponse<JoinRequestResponse>, Schemas['PagedResponseJoinRequestResponse']>
+  SameKeys<PagedResponse<MyJoinRequestResponse>, Schemas['PagedResponseMyJoinRequestResponse']>
 >
 export type JoinRequestHistoryMetaKeysMatch = AssertTrue<
-  SameKeys<PageMeta, NonNullable<Schemas['PagedResponseJoinRequestResponse']['meta']>>
+  SameKeys<PageMeta, NonNullable<Schemas['PagedResponseMyJoinRequestResponse']['meta']>>
 >
 export type JoinRequestHistoryItemKeysMatch = AssertTrue<
-  SameKeys<JoinRequestResponse, NonNullable<Schemas['PagedResponseJoinRequestResponse']['data']>[number]>
+  SameKeys<MyJoinRequestResponse, NonNullable<Schemas['PagedResponseMyJoinRequestResponse']['data']>[number]>
+>
+
+export type MyJoinRequestVillageStateEnumMatch = AssertTrue<
+  Assignable<MyJoinRequestVillageState, NonNullable<Schemas['MyJoinRequestResponse']['villageState']>>
+>
+export type MyJoinRequestVillageStateEnumExhaustive = AssertTrue<
+  Assignable<NonNullable<Schemas['MyJoinRequestResponse']['villageState']>, MyJoinRequestVillageState>
 >
 
 export type VillageCreationRequestResponseKeysMatch = AssertTrue<

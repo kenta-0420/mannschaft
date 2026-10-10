@@ -199,7 +199,13 @@
       "description": "Sehen Sie Ihre eingereichten Anträge und deren Prüfstatus.",
       "submittedAt": "Eingereicht am",
       "empty": "Sie haben keine Beitrittsanträge eingereicht",
-      "fetchError": "Ihre Beitrittsanträge konnten nicht geladen werden"
+      "fetchError": "Ihre Beitrittsanträge konnten nicht geladen werden",
+      "village": "Beantragtes Dorf",
+      "unknownVillage": "Dorfname nicht verfügbar",
+      "villageState": {
+        "ARCHIVED": "Eingefroren",
+        "DELETED": "Gelöscht"
+      }
     },
     "joinRequest": {
       "title": "Beitrittsantrag",
