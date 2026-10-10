@@ -1,7 +1,7 @@
-# 実行sourceはsource-review済み旧3cb＋TEST_ONLY commitへ固定。workflow/docs commitとは別SHA。
-# 既存CI・製品コード・テスト期待値は変更しない。限定RED診断専用。
-name: Backend — Question v2 semantic RED diagnostic
-run-name: Question v2 semantic RED / ${{ github.sha }}
+# 実行sourceはsource-review済み製品適用commitへ固定。workflow/event commitとは別SHA。GREEN実行待ち。
+# 既存CI・製品コード・テスト期待値は変更しない。限定GREEN診断専用。
+name: Backend — Question v2 semantic GREEN diagnostic
+run-name: Question v2 semantic GREEN / ${{ github.sha }}
 
 on:
   push:
@@ -12,25 +12,25 @@ permissions:
   contents: read
 
 concurrency:
-  group: backend-question-v2-semantic-red-${{ github.ref }}
+  group: backend-question-v2-semantic-green-${{ github.ref }}
   cancel-in-progress: false
 
 env:
   JAVA_VERSION: "21"
 
 jobs:
-  semantic-red:
-    name: Question v2 semantic RED (diagnostic only)
+  semantic-green:
+    name: Question v2 semantic GREEN (diagnostic only)
     runs-on: ubuntu-latest
     timeout-minutes: 35
     defaults:
       run:
         working-directory: ./backend
     steps:
-      - name: Checkout reviewed TEST-ONLY source
+      - name: Checkout reviewed implementation source
         uses: actions/checkout@v7
         with:
-          ref: 49fb75180addfcab0a63b842f14bfeb7e3801a53
+          ref: ce25ecdb75217e5bdff36ad0aa703f55c74673ce
           persist-credentials: false
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
@@ -57,7 +57,7 @@ jobs:
         timeout-minutes: 15
         run: ./gradlew compileJava compileTestJava --no-daemon --build-cache
 
-      - name: Run three question v2 RED class selectors（test cache不使用）
+      - name: Run three question v2 GREEN class selectors（test cache不使用）
         timeout-minutes: 15
         shell: bash
         run: |
@@ -79,7 +79,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: question-v2-semantic-red-xml-${{ github.run_id }}-${{ github.run_attempt }}
+          name: question-v2-semantic-green-xml-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             backend/build/test-results/test/TEST-com.mannschaft.app.diagnosis.service.DiagnosisQuestionnaireCatalogTest.xml
             backend/build/test-results/test/TEST-com.mannschaft.app.diagnosis.service.DiagnosisApprovedQuestionnaireRegistryTest.xml

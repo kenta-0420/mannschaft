@@ -14,4 +14,4 @@ Git whole source treeは `b2a9cb219d8693995b62efc7e4d8139e06c6b898`、backend/sr
 
 既存 `question-wording-test-owner-20261010-02/question-wording-owner.py` のinert `junit_results`/`summarize` とMETHOD_ALLOWLISTを再利用し、実exitと5caseのsemantic差異をrootが照合した。既存owner/receiverのWSL process/source proofをhosted結果から捏造しない。新validator/frameworkは作らない。GREEN・Security filter認可・実機E2E・アリシゼーションの完了を主張しない。
 
-GREEN候補は同じ3class/時間上限/cache方針で、製品適用sourceの新commitへliteral checkoutする案。RED用workflowの既存pathを置き換え、RED sourceの再実行と併走させない。source commitと後続workflow/event commitは別に記録する。26tests/failed0/error0/skipped0と実exit0を確認するまでGREENとしない。旧JSON・false承認flags・production guard・試練assertionsは保持する。
+GREEN workflowは同じ3class/時間上限/cache方針で、製品適用source `ce25ecdb75217e5bdff36ad0aa703f55c74673ce` へliteral checkoutする。whole treeは `c257f80df85cf745e1b5b6f460d0ff0a68a5d2af`、main treeは `29c1d71e6eb461ef2c61f04761de9082c07e8ffc`。RED用workflowの既存pathを置き換え済み、実行/回収/分類はpending。source commitと後続workflow/event commitは別に記録する。26tests/failed0/error0/skipped0と実exit0を確認するまでGREENとしない。旧JSON・false承認flags・production guard・試練assertionsは保持する。
