@@ -1,10 +1,12 @@
 package com.mannschaft.app.social.announcement;
 
+import com.mannschaft.app.social.announcement.audience.TargetAudience;
 import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * F02.8 告知ウィザード実行結果 DTO。
@@ -33,6 +35,15 @@ public class BroadcastResult {
 
     /** 組織告知でのチーム絞り込み（null = 全チーム対象）。 */
     private final List<Long> targetTeamIds;
+
+    /** グループ宛て: 範囲を展開したチームグループ ID（並び順。グループ宛てでなければ null）。 */
+    private final List<UUID> targetGroupIds;
+
+    /** グループ宛て: 未分類のチームを含めたか。 */
+    private final boolean includeUnassigned;
+
+    /** 送信時の宛先指定の記録（絞り込みなしなら null。F01.2.1 AC-H17）。 */
+    private final TargetAudience targetAudience;
 
     /** 優先度。 */
     private final String priority;
