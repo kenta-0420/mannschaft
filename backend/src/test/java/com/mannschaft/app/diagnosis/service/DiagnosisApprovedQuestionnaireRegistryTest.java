@@ -21,6 +21,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** 合成バイトのみで登録機構を検証する。本物原稿の承認、実resource登録、公開gate合格の証拠ではない。 */
 class DiagnosisApprovedQuestionnaireRegistryTest {
+    @Test void 承認flagと翻訳flagと正しいdigestでも旧新版および未知draftは正式登録できない() {
+        for (String version : List.of("draft-20261003-v1", "draft-20261010-v2", "draft-future-v99")) {
+            var candidate = pack(definition(version));
+            assertThatThrownBy(() -> registry(candidate, version)).isInstanceOf(IllegalArgumentException.class);
+        }
+    }
     private final ObjectMapper mapper = new ObjectMapper();
     private static final Map<String, String> TEXT = Map.of("ja", "合成試験のみ", "en", "synthetic test only",
             "zh", "合成試験のみ", "ko", "synthetic test only", "es", "synthetic test only", "de", "synthetic test only");
