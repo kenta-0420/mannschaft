@@ -138,6 +138,10 @@ describe('CMP-261007-2053 error.vue', () => {
       const wrapper = await mountError({ statusCode: 404 })
       const home = wrapper.find('[data-testid="error-page-home"]')
       expect(home.exists()).toBe(true)
+      // この spec は useAuthStore を例外化するため app 初期化が失敗して Nuxt の error 状態が残り、
+      // Nuxt 内部の router.afterEach（nuxt/dist/pages/runtime/plugins/router.js）が引数なしの clearError() を呼ぶ。
+      // mockNuxtImport はそれも拾うので、ボタン押下による呼び出しだけを数えるためにクリック直前で履歴を消す。
+      clearErrorMock.mockClear()
       await home.trigger('click')
       expect(clearErrorMock).toHaveBeenCalledTimes(1)
       expect(clearErrorMock).toHaveBeenCalledWith({ redirect: '/' })
