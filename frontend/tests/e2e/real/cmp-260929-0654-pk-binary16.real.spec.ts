@@ -2,8 +2,9 @@ import { test, expect, type APIRequestContext, type Browser, type Page } from '@
 import { loginViaApi } from '../fixtures/auth'
 import { waitForHydration } from '../helpers/wait'
 /**
- * 注記: 2026-10-02 時点で未実走。FE dev サーバがビルド後に HTTP 応答しなくなる環境不具合で画面を開けなかった。
- * API の AC は curl で確認済み。
+ * 注記: 2026-10-02 時点では FE dev サーバの環境不具合で画面を開けず未実走だった（API の AC は curl で確認）。
+ * 2026-10-10 に検証環境で実走した（9件中 AC4 系は全通過）。画面のエントリー管理モーダルは、
+ * 取得不発・応答の { data } 包み・チーム名空欄を直した修正（PR #3759）の後に再走する。
  */
 
 /**
@@ -283,14 +284,15 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     await expect(user.getByRole('option', { name: `PKB16-ui-${SUFFIX}` })).toBeVisible({ timeout: 20_000 })
     await user.getByRole('option', { name: `PKB16-ui-${SUFFIX}` }).click()
     await dialog.getByRole('button', { name: '一括適用' }).click()
-    await expect(user.getByText('件追加しました').first()).toBeVisible({ timeout: 20_000 })
+    await expect(user.getByText('名を追加しました').first()).toBeVisible({ timeout: 20_000 })
 
     // 手動編集: 先頭の候補を選択し position・notes を入れて保存
     const firstCheck = dialog.locator('[id^="member-"]').first()
     const boxes = dialog.locator('.p-checkbox')
     await expect(boxes.first()).toBeVisible({ timeout: 20_000 })
     expect(await firstCheck.count()).toBeGreaterThan(0)
-    const row = dialog.locator('div.rounded.border').filter({ has: dialog.locator('[id^="member-"]') }).first()
+    // filter の has は「行を起点」に解決される。dialog.locator を渡すと「行の中の dialog」を探して 0 件になるため、ページ起点で渡す
+    const row = dialog.locator('div.rounded.border').filter({ has: user.locator('[id^="member-"]') }).first()
     const rowCheckbox = row.locator('.p-checkbox').first()
     if (!(await row.locator('input[type="checkbox"]').first().isChecked())) await rowCheckbox.click()
     await row.getByPlaceholder('ポジション').fill('MF')

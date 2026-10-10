@@ -197125,6 +197125,9 @@
           "teamId": {
             "type": "integer",
             "format": "int64"
+          },
+          "teamName": {
+            "type": "string"
           }
         }
       },

@@ -79,7 +79,7 @@ onMounted(async () => {
             class="text-sm text-primary-500 hover:underline"
             @click="showForm = !showForm"
           >
-            {{ showForm ? $t('common.close') : $t('common.open') }}
+            {{ showForm ? $t('button.close') : $t('button.open') }}
           </button>
         </div>
 
