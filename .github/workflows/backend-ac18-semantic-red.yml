@@ -1,0 +1,85 @@
+# 実行sourceはsource-review済みTEST_ONLY commitへ固定。workflow/docs commitとは別SHA。
+# 既存CI・製品コード・テスト期待値は変更しない。限定RED診断専用。
+name: Backend — AC18 semantic RED diagnostic
+run-name: AC18 semantic RED / ${{ github.sha }}
+
+on:
+  push:
+    branches:
+      - feature/61741-ac18-semantic-red-ci
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ac18-semantic-red-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  JAVA_VERSION: "21"
+
+jobs:
+  semantic-red:
+    name: AC18 semantic RED (diagnostic only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout reviewed TEST-ONLY source
+        uses: actions/checkout@v7
+        with:
+          ref: d7fdfa88f82d90faa68ddd0e916e0e7bf6db4991
+          persist-credentials: false
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Set up Gradle（既存cache読取のみ）
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+          gradle-home-cache-includes: |
+            caches
+            notifications
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: Verify Docker availability
+        run: docker info > /dev/null
+
+      - name: Compile
+        timeout-minutes: 15
+        run: ./gradlew compileJava compileTestJava --no-daemon --build-cache
+
+      - name: Run one semantic RED selector（test cache不使用）
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          mkdir -p build/test-results/test
+          set +e
+          ./gradlew test --no-daemon --no-build-cache \
+          --tests 'com.mannschaft.app.shift.ShiftScheduleSlotFacadeRaceAndQueryIT.別スレッドSQLを認可クエリ数に含めない' \
+          -Pmax.parallel.forks=1 \
+          -x archUnitTest -x archUnitFreezeStoreIntegrityTest
+          task_status=$?
+          printf '%s\n' "$task_status" > build/test-results/test/ac18-gradle-exit.txt
+          exit "$task_status"
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "false"
+
+      - name: Upload selected test XML and actual Gradle exit（失敗時も保存）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ac18-semantic-red-xml-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            backend/build/test-results/test/TEST-com.mannschaft.app.shift.ShiftScheduleSlotFacadeRaceAndQueryIT.xml
+            backend/build/test-results/test/ac18-gradle-exit.txt
+          retention-days: 3
+          if-no-files-found: error
