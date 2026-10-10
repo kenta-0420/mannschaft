@@ -1,0 +1,730 @@
+[
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.hero.title_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.stats.heading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.features.heading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.features.subheading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.features.pricing_note_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.features.pricing_note_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.features.growing_note_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.usecases.subheading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.cta.subheading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.heading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.desc_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.desc_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.hero.title_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.stats.heading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.features.heading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.features.subheading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.features.pricing_note_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.features.pricing_note_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.features.growing_note_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.usecases.subheading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.cta.subheading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.heading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.desc_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.desc_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.hero.title_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.stats.heading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.features.heading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.features.subheading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.features.pricing_note_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.features.pricing_note_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.features.growing_note_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.usecases.subheading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.cta.subheading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.heading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.desc_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.desc_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.hero.title_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.stats.heading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.features.heading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.features.subheading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.features.pricing_note_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.features.pricing_note_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.features.growing_note_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.usecases.subheading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.cta.subheading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.desc_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.desc_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "zh",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments[2]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "zh",
+    "file": "landing.json",
+    "path": "landing.v2.stats.heading_segments[1]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-4",
+    "lang": "zh",
+    "file": "landing.json",
+    "path": "landing.v2.hero.title_segments[3]",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.hero.title_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.stats.heading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.features.heading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.features.subheading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.features.pricing_note_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.features.growing_note_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.usecases.subheading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.cta.subheading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.heading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "en",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.desc_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.hero.title_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.stats.heading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.features.heading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.features.subheading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.features.pricing_note_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.features.growing_note_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.usecases.subheading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.cta.subheading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.heading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "de",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.desc_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.hero.title_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.stats.heading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.features.heading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.features.subheading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.features.pricing_note_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.features.growing_note_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.usecases.subheading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.cta.subheading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.heading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "es",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.desc_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.hero.title_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.stats.heading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.features.heading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.features.subheading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.features.pricing_note_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.features.growing_note_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.usecases.subheading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.cta.subheading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "ko",
+    "file": "landing.json",
+    "path": "landing.v2.pwa.desc_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "zh",
+    "file": "landing.json",
+    "path": "landing.v2.hero.title_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "zh",
+    "file": "landing.json",
+    "path": "landing.v2.hero.subtitle_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  },
+  {
+    "rule": "AC-9c",
+    "lang": "zh",
+    "file": "landing.json",
+    "path": "landing.v2.stats.heading_segments",
+    "reason": "基準時点 origin/main da74b6dab6 で既存の不一致。LP v2 の *_segments は改行位置を制御する分節配列で、言語ごとに分節数が異なる（ja の分節を機械的に揃えると訳文の改行が崩れる）"
+  }
+]
