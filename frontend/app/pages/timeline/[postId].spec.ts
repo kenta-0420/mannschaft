@@ -49,4 +49,25 @@ describe('投稿詳細ページの取得結果', () => {
     expect(wrapper.find('[data-testid="post-card"]').text()).toContain('hello post')
     expect(wrapper.find('[data-testid="timeline-post-not-found"]').exists()).toBe(false)
   })
+
+  it.each([
+    { back: null, expectPush: true },
+    { back: '/timeline', expectPush: false },
+  ])('戻る: history.state.back=$back のとき（アプリ内履歴が無ければ一覧へ push、あれば router.back）', async ({ back, expectPush }) => {
+    mocks.getPost.mockRejectedValue({ status: 404 })
+    const router = useRouter()
+    const push = vi.spyOn(router, 'push').mockResolvedValue(undefined)
+    const goBack = vi.spyOn(router, 'back').mockImplementation(() => {})
+    window.history.replaceState({ ...window.history.state, back }, '')
+    const wrapper = await mountSuspended(TimelinePostDetailPage, options)
+    await flushPromises()
+    await wrapper.find('[data-testid="btn"]').trigger('click')
+    if (expectPush) {
+      expect(push).toHaveBeenCalledWith('/timeline')
+      expect(goBack).not.toHaveBeenCalled()
+    } else {
+      expect(goBack).toHaveBeenCalled()
+      expect(push).not.toHaveBeenCalledWith('/timeline')
+    }
+  })
 })
