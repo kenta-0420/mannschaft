@@ -2381,6 +2381,14 @@
     "SUPPORTERS_AND_ABOVE": "서포터 이상",
     "MEMBERS_AND_ABOVE": "멤버 이상"
   },
+  "organization_visibility": {
+    "PUBLIC": "공개",
+    "PRIVATE": "제한 공개"
+  },
+  "entity_create": {
+    "error_heading": "입력 내용을 확인해 주세요",
+    "supporter_label": "서포터 기능 활성화"
+  },
   "module_settings": {
     "enabled_count": "有効な機能: {count} / {limit}",
     "fetch_error": "機能一覧の取得に失敗しました",
