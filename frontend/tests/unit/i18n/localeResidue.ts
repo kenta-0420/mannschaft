@@ -147,7 +147,10 @@ export interface AllowEntry {
   reason: string
 }
 
-/** AC-4/AC-9c の基準時点（origin/main da74b6dab6）で既に存在した不一致。 */
+/**
+ * AC-4/AC-9c の基準時点（origin/main da74b6dab6）で既に存在した不一致と、
+ * AC-9b の「語順の都合で接頭辞・接尾辞が空になるのが正しいキー」（殿裁定）。
+ */
 export interface BaselineEntry {
   rule: string
   lang: string
@@ -252,7 +255,10 @@ export function pluralSeparatorCount(s: string): number {
   return (stripInterpolations(s).match(/\|/g) ?? []).length
 }
 
-/** AC-6: 複数形区切り | の数が ja と一致する。 */
+/**
+ * AC-6（殿裁定で改定）: ja の区切り | が1以上のキーに限り、数が ja と一致する。
+ * ja に複数形が無いキーへ en/de/es 等が文法上の複数形を入れるのは正しい訳なので許す（構文の正しさは AC-7 が守る）。
+ */
 export function checkPluralSeparators(ja: LocaleDoc, doc: LocaleDoc): Violation[] {
   const base = stringLeaves(ja.messages)
   const out: Violation[] = []
@@ -260,6 +266,7 @@ export function checkPluralSeparators(ja: LocaleDoc, doc: LocaleDoc): Violation[
     const b = base.get(p)
     if (b === undefined) continue
     const want = pluralSeparatorCount(b)
+    if (want === 0) continue
     const got = pluralSeparatorCount(s)
     if (want !== got) out.push(v('AC-6', doc, p, `${s}  (ja=${want} / ${doc.lang}=${got})`))
   }

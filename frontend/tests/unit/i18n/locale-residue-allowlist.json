@@ -1,1 +1,37 @@
-[]
+[
+  {
+    "rule": "AC-1",
+    "lang": "en",
+    "file": "advertising.json",
+    "path": "advertising.teams_page.rate_simulator.prefecture_placeholder",
+    "reason": "入力例の都道府県名は API に日本語のまま送られ、AdRateCardService.matchesCriteria が完全一致で照合するため（PR #3767）。訳文側は「日本語で入力する」旨を各言語で添えている"
+  },
+  {
+    "rule": "AC-1",
+    "lang": "de",
+    "file": "advertising.json",
+    "path": "advertising.teams_page.rate_simulator.prefecture_placeholder",
+    "reason": "入力例の都道府県名は API に日本語のまま送られ、AdRateCardService.matchesCriteria が完全一致で照合するため（PR #3767）。訳文側は「日本語で入力する」旨を各言語で添えている"
+  },
+  {
+    "rule": "AC-1",
+    "lang": "es",
+    "file": "advertising.json",
+    "path": "advertising.teams_page.rate_simulator.prefecture_placeholder",
+    "reason": "入力例の都道府県名は API に日本語のまま送られ、AdRateCardService.matchesCriteria が完全一致で照合するため（PR #3767）。訳文側は「日本語で入力する」旨を各言語で添えている"
+  },
+  {
+    "rule": "AC-1",
+    "lang": "ko",
+    "file": "advertising.json",
+    "path": "advertising.teams_page.rate_simulator.prefecture_placeholder",
+    "reason": "入力例の都道府県名は API に日本語のまま送られ、AdRateCardService.matchesCriteria が完全一致で照合するため（PR #3767）。訳文側は「日本語で入力する」旨を各言語で添えている"
+  },
+  {
+    "rule": "AC-3",
+    "lang": "zh",
+    "file": "advertising.json",
+    "path": "advertising.teams_page.rate_simulator.prefecture_placeholder",
+    "reason": "入力例の都道府県名は API に日本語のまま送られ、AdRateCardService.matchesCriteria が完全一致で照合するため（PR #3767）。訳文側は「日本語で入力する」旨を各言語で添えている"
+  }
+]

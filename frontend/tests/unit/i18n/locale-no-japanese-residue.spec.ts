@@ -45,7 +45,8 @@ import {
  * 例外:
  *  - locale-residue-allowlist.json: AC-1/AC-3 の例外。意図的に日本語であるべき値（言語の自称など）だけを載せる。
  *    未翻訳の残存を載せてはならない（凍結は負債）。
- *  - locale-residue-baseline.json: AC-4/AC-9c の基準時点（origin/main da74b6dab6）で既に存在した不一致。
+ *  - locale-residue-baseline.json: AC-4/AC-9c の基準時点（origin/main da74b6dab6）で既に存在した不一致と、
+ *    AC-9b の「語順の都合で接頭辞・接尾辞が空になるのが正しいキー」（例 en の timetable.period_suffix）。
  *    これ以外の不一致を増やさない。
  *  いずれも未使用の行があれば失敗する（直った例外を台帳に残さない）。
  */
@@ -131,7 +132,7 @@ describe('本物のロケール: 構造の一致（AC-4〜AC-9）', () => {
     expectNone('AC-5 プレースホルダの不一致', runPair(loaded, checkPlaceholders))
   })
 
-  it('AC-6: 各キーの複数形区切り | の数が ja と一致する', () => {
+  it('AC-6: ja に複数形区切り | があるキーは、その数が ja と一致する', () => {
     expectNone('AC-6 複数形区切りの数の不一致', runPair(loaded, checkPluralSeparators))
   })
 
@@ -147,21 +148,25 @@ describe('本物のロケール: 構造の一致（AC-4〜AC-9）', () => {
     expectNone('AC-9a 空文字の不一致', runPair(loaded, checkEmptyStaysEmpty))
   })
 
-  it('AC-9b: ja で trim 後非空の値は他言語でも trim 後非空', () => {
-    expectNone('AC-9b 空値化', runPair(loaded, checkNonEmptyStaysNonEmpty))
+  it('AC-9b: ja で trim 後非空の値は他言語でも trim 後非空（語順の都合で空が正しいキーを除く）', () => {
+    expectNone('AC-9b 空値化', afterBaseline(runPair(loaded, checkNonEmptyStaysNonEmpty)))
   })
 
   it('AC-9c: 値の型と配列長が ja と一致する（基準時点の既存不一致を除く）', () => {
     expectNone('AC-9c 型・配列長の不一致', afterBaseline(runPair(loaded, checkTypesAndLengths)))
   })
 
-  it('基準時点リストの全行が理由を持ち、AC-4/AC-9c のいずれかを対象とする', () => {
-    const bad = baseline.filter((e) => !['AC-4', 'AC-9c'].includes(e.rule) || !e.reason?.trim())
+  it('基準時点リストの全行が理由を持ち、AC-4/AC-9b/AC-9c のいずれかを対象とする', () => {
+    const bad = baseline.filter((e) => !['AC-4', 'AC-9b', 'AC-9c'].includes(e.rule) || !e.reason?.trim())
     expect(bad).toEqual([])
   })
 
   it('基準時点リストに未使用の行が無い', () => {
-    const violations = [...runPair(loaded, checkKeySet), ...runPair(loaded, checkTypesAndLengths)]
+    const violations = [
+      ...runPair(loaded, checkKeySet),
+      ...runPair(loaded, checkNonEmptyStaysNonEmpty),
+      ...runPair(loaded, checkTypesAndLengths),
+    ]
     expect(applyExemptions(violations, baseline).unused).toEqual([])
   })
 })
@@ -236,10 +241,16 @@ describe('検出器の自己検査: AC-4〜AC-9', () => {
     expect(checkPlaceholders(ja, doc('en', { m: 'user@example.com' }))).toEqual([])
   })
 
-  it('AC-6: 複数形区切り | の数の不一致を1件検出する', () => {
+  it('AC-6: ja に | があるキーで区切りの数が違えば1件検出する', () => {
     const en = structuredClone(CLEAN_EN)
     en.a.plural = 'one | {n} items'
     expect(checkPluralSeparators(JA, doc('en', en)).map((x) => x.path)).toEqual(['a.plural'])
+  })
+
+  it('AC-6: ja に | が無いキーへ en が複数形を入れても違反にしない', () => {
+    const en = structuredClone(CLEAN_EN)
+    en.a.count = '{n} item | {n} items'
+    expect(checkPluralSeparators(JA, doc('en', en))).toEqual([])
   })
 
   it("AC-6: リテラル補間 {'|'} は区切りとして数えない", () => {
@@ -272,6 +283,16 @@ describe('検出器の自己検査: AC-4〜AC-9', () => {
     const en = structuredClone(CLEAN_EN)
     en.a.title = '  '
     expect(checkNonEmptyStaysNonEmpty(JA, doc('en', en)).map((x) => x.path)).toEqual(['a.title'])
+  })
+
+  it('AC-9b: 基準リストに理由付きで載せた空値（語順の都合）は除外され、他の空値化は残る', () => {
+    const ja = doc('ja', { suffix: '限', title: 'タイトル' })
+    const violations = checkNonEmptyStaysNonEmpty(ja, doc('en', { suffix: '', title: '' }))
+    const entries: BaselineEntry[] = [
+      { rule: 'AC-9b', lang: 'en', file: 'fixture.json', path: 'suffix', reason: '英語は接尾辞を置かない語順' },
+    ]
+    const r = applyExemptions(violations, entries)
+    expect({ remaining: r.remaining.map((x) => x.path), unused: r.unused }).toEqual({ remaining: ['title'], unused: [] })
   })
 
   it('AC-9c: 値の型の不一致を1件検出する', () => {
