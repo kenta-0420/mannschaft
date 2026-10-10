@@ -42,7 +42,7 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3638);   // main 3637 + F01.2.1 6-A 組織告知の宛先プレビュー1
+                .isEqualTo(3639);   // main 3638 + CMP-260826-1456 本人参加申請履歴1（main 3638 = 3637 + F01.2.1 6-A 組織告知の宛先プレビュー1）
                                     // main 3637 = 3632 + CMP-261007-1510 予定由来作成1 + TEAM/ORGリンク・同期preview各2
                                     // 既存内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2（CMP-260919-1140 Phase 1）+ 5（F01.2.1 4-A）+ 3（F01.2.1 2-B1）+ 4（F01.2.1 2-A）+ 1（F01.2.1 3-D）+ 2（F01.2.1 4-B）+ 10（F01.2.1 2-C）= 3629
                                     // + F01.2.1 部隊 2-A の4エンドポイント（TeamAffiliationSettingsController の

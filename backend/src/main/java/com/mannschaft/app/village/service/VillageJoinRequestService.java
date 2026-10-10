@@ -6,6 +6,7 @@ import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.JoinRequestCreateRequest;
 import com.mannschaft.app.village.dto.JoinRequestResponse;
 import com.mannschaft.app.village.dto.JoinRequestReviewRequest;
+import com.mannschaft.app.village.dto.MyJoinRequestResponse;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageJoinRequestEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
@@ -15,17 +16,22 @@ import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageJoinRequestRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
+import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * F17.1 Phase 1 B6 — 村参加申請 Service（APPROVAL 村のみ）。
@@ -58,6 +64,7 @@ public class VillageJoinRequestService {
 
     private final VillageJoinRequestRepository joinRequestRepository;
     private final VillageMembershipRepository membershipRepository;
+    private final VillageRepository villageRepository;
     /** 代表権限検証ロジックを委譲する（B3 既存メソッド再利用）。 */
     private final VillageMembershipService membershipService;
     private final VillageAccessGate accessGate;
@@ -187,6 +194,31 @@ public class VillageJoinRequestService {
                 .stream()
                 .map(JoinRequestResponse::from)
                 .toList();
+    }
+
+    /**
+     * 申請時のrequesterが認証本人である履歴だけを返す。
+     * 現在の村人・チーム代表者・組織管理者であるかを照会せず、村は申請先の識別（名前・状態）に必要な分だけ読む。
+     * ページ境界は既存の村一覧と同じ丸めとし、同時刻もID降順で安定させる。
+     *
+     * @param actorUserId Controllerが認証情報から解決した本人ID
+     */
+    @Transactional(readOnly = true)
+    public Page<MyJoinRequestResponse> listMyHistory(Long actorUserId, int page, int size) {
+        if (actorUserId == null) {
+            throw new BusinessException(CommonErrorCode.COMMON_000);
+        }
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size)),
+                Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        Page<VillageJoinRequestEntity> requests = joinRequestRepository.findByRequesterUserId(actorUserId, pageable);
+        // 村名は本人が申請した村に限り、この1ページ分の villageId を 1 回の IN 検索でまとめて引く（N+1 を作らない）。
+        // 論理削除・凍結済みの村も行は残るため、状態は MyJoinRequestResponse 側で判別して履歴を失わない。
+        List<UUID> villageIds = requests.getContent().stream()
+                .map(VillageJoinRequestEntity::getVillageId).distinct().toList();
+        Map<UUID, VillageEntity> villages = villageIds.isEmpty() ? Map.of()
+                : villageRepository.findAllById(villageIds).stream()
+                        .collect(Collectors.toMap(VillageEntity::getId, Function.identity()));
+        return requests.map(request -> MyJoinRequestResponse.of(request, villages.get(request.getVillageId())));
     }
 
     // ========================================================================
