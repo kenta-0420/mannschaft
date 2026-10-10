@@ -219,7 +219,7 @@
     }
   },
   "scheduleKeep": {
-    "title": "Vormerken",
+    "title": "Vormerkungen",
     "subtitle": "Ein Ort für Pläne, deren Datum noch nicht feststeht",
     "empty": "Noch nichts vorhanden. Schreiben Sie auf, was Ihnen einfällt.",
     "form": {
@@ -273,7 +273,7 @@
       "hint": "Durch Zurückstellen wird ein Platz frei"
     },
     "help": {
-      "title": "So funktioniert „Vormerken“",
+      "title": "So funktionieren Vormerkungen",
       "body": "Hier können Sie Pläne ablegen, deren Datum noch nicht feststeht. Es genügt ein Titel; Terminvorschläge und Notizen lassen sich später ergänzen. Steht ein Termin fest, wird daraus mit einem Tipp ein Kalendereintrag.",
       "create": {
         "title": "Vormerken",

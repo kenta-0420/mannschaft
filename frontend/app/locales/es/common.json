@@ -331,7 +331,7 @@
     "SCHEDULE_KEEP_003": "Se permiten como máximo 10 fechas candidatas",
     "SCHEDULE_KEEP_004": "El formato de las fechas candidatas no es válido",
     "SCHEDULE_KEEP_005": "No tienes permiso para operar esta reserva provisional",
-    "SCHEDULE_KEEP_006": "Esta reserva provisional no se puede convertir en un evento",
+    "SCHEDULE_KEEP_006": "Esta reserva provisional no se puede convertir en evento",
     "SCHEDULE_KEEP_007": "No se puede editar en este estado",
     "SCHEDULE_KEEP_008": "No se puede deshacer la conversión porque hay respuestas de asistencia",
     "SCHEDULE_KEEP_009": "Esta operación no está permitida",
