@@ -39,7 +39,7 @@
     "already_registered": "该内容已注册为公告。",
     "no_longer_available": "该公告已结束公开，已从列表中移除。",
     "mark_all_read_partial": "已将 {count} 条公告标为已读。仍有未读公告，再次点击可继续处理。",
-    "broadcast_button_team": "团队内通知",
+    "broadcast_button_team": "向团队发送通知",
     "broadcast_button_org": "组织内通知",
     "wizard_title": "发送通知",
     "step1_title": "目标范围",
@@ -91,77 +91,77 @@
       "dismiss": "关闭"
     },
     "broadcast_guide": {
-      "toggle": "使い方",
-      "description": "告知ウィザードの使い方を、ステップ順にまとめました。上から順に進めれば告知を送れます。",
+      "toggle": "使用说明",
+      "description": "按步骤整理了通知向导的使用方法。从上到下依次进行即可发送通知。",
       "audience": {
-        "title": "誰に届けるか（対象範囲）",
-        "body": "告知を見せる相手の範囲を決めます（最初のステップ）。",
+        "title": "发给谁（目标范围）",
+        "body": "决定通知展示给哪些人（第一步）。",
         "steps": {
-          "step1": "届け先をメンバーのみ／サポーター以上／全員（公開）から選ぶ",
-          "step2": "（組織告知のみ）対象チームを『すべて』または個別に選ぶ"
+          "step1": "从仅成员 / 支持者及以上 / 所有人（公开）中选择送达对象",
+          "step2": "（仅组织通知）将目标团队选为“所有团队”或逐个选择"
         }
       },
       "template": {
-        "title": "テンプレートで時短",
-        "body": "よく使う宛先設定を呼び出し・保存できます。",
+        "title": "用模板节省时间",
+        "body": "可以调用和保存常用的收件对象设置。",
         "steps": {
-          "step1": "『テンプレートから読み込む』で宛先を自動入力",
-          "step2": "（管理者のみ）『テンプレートとして保存』で現在の範囲を登録（1範囲あたり20件まで）"
+          "step1": "通过“从模板加载”自动填入收件对象",
+          "step2": "（仅管理员）通过“保存为模板”登记当前范围（每个范围最多20个）"
         }
       },
       "channel": {
-        "title": "届け方を選ぶ（チャネル）",
-        "body": "掲示板・タイムライン・ブログ・TODO・スケジュール・アンケートから配信先を1つ選びます。",
+        "title": "选择发送方式（渠道）",
+        "body": "从公告板、时间线、博客、待办、日程、问卷中选择一个发布渠道。",
         "steps": {
-          "step1": "6つのカードから1つ選ぶ",
-          "step2": "『次へ』。※テンプレに既定チャネルがあるとこの画面は省略されます"
+          "step1": "从6张卡片中选择一个",
+          "step2": "点击“下一步”。※如果模板设有默认渠道，则会跳过此画面"
         }
       },
       "content": {
-        "title": "内容を書く",
-        "body": "選んだチャネルに合わせて入力欄が変わります。＊印は必須です。",
+        "title": "撰写内容",
+        "body": "输入栏会随所选渠道而变化。带 * 的为必填项。",
         "steps": {
-          "step1": "タイトル・本文など必須欄を入力",
-          "step2": "例: スケジュールは開始日時、タイムラインは本文が必須"
+          "step1": "填写标题、正文等必填项",
+          "step2": "例：日程必须填写开始日期时间，时间线必须填写正文"
         }
       },
       "priority": {
-        "title": "優先度と表示期限",
-        "body": "目立たせ方と掲載の終了日時を設定できます。",
+        "title": "优先级和显示期限",
+        "body": "可以设置醒目程度和发布的结束日期时间。",
         "steps": {
-          "step1": "（管理者以上）優先度を通常／重要／緊急から選ぶ。一般メンバーは『通常』固定",
-          "step2": "表示期限を任意で設定"
+          "step1": "（管理员及以上）从普通 / 重要 / 紧急中选择优先级。普通成员固定为“普通”",
+          "step2": "可按需设置显示期限"
         }
       },
       "submit": {
-        "title": "送信して確認",
-        "body": "入力が揃うと送信できます。送信後はお知らせに表示されます。",
+        "title": "发送并确认",
+        "body": "填写完整后即可发送。发送后会显示在公告中。",
         "steps": {
-          "step1": "『告知を送る』を押す",
-          "step2": "送信完了を確認。※アンケートの設問・TODOの担当者は送信後に各画面で追加します"
+          "step1": "点击“发送通知”",
+          "step2": "确认发送完成。※问卷的题目和待办的负责人需在发送后到各自的画面中添加"
         }
       }
     },
-    "target_mode_all": "すべてのチーム",
-    "target_mode_teams": "チームを選ぶ",
-    "target_mode_groups": "チームグループで選ぶ",
-    "target_groups_label": "チームグループ",
-    "target_range_label": "範囲で選ぶ",
-    "target_range_up_to": "{name} 以前（並び順で先頭から）",
-    "target_range_from": "{name} 以降（並び順で末尾まで）",
+    "target_mode_all": "所有团队",
+    "target_mode_teams": "选择团队",
+    "target_mode_groups": "按团队组选择",
+    "target_groups_label": "团队组",
+    "target_range_label": "按范围选择",
+    "target_range_up_to": "{name} 及之前（按排序从开头起）",
+    "target_range_from": "{name} 及之后（按排序到末尾）",
     "target_range_between": "{from} 〜 {to}",
     "target_range_kind_up_to": "〜以前",
     "target_range_kind_from": "〜以降",
     "target_range_kind_between": "A〜B",
-    "target_include_unassigned": "未分類のチームを含める",
-    "target_direct_members_note": "組織の直属メンバー（どのチームにも属さない人）にも届きます",
-    "target_resolved_count": "該当: {teams} チーム＋直属メンバー {members} 人",
-    "target_resolved_empty": "該当する人がいません",
-    "target_order_hint": "並び順はチームグループ管理で変えられます",
-    "push_disabled_note": "このお知らせの push 通知は送られません",
-    "dynamic_display_note": "表示は現在の所属で判定されます（削除されたグループは送信時点の対象チームで判定）",
-    "template_deleted_groups_removed": "削除されたチームグループがテンプレートから除外されました",
-    "template_range_invalid": "テンプレートの範囲に削除されたチームグループが含まれています。範囲を選び直してください",
-    "audience_summary": "宛先: {label}（送信時 {count} チーム）"
+    "target_include_unassigned": "包含未分类的团队",
+    "target_direct_members_note": "也会送达组织的直属成员（不属于任何团队的人）",
+    "target_resolved_count": "符合：{teams} 个团队 + 直属成员 {members} 人",
+    "target_resolved_empty": "没有符合条件的人",
+    "target_order_hint": "排序可在团队组管理中更改",
+    "push_disabled_note": "此通知不会发送推送通知",
+    "dynamic_display_note": "显示按当前所属关系判定（已删除的组按发送时的目标团队判定）",
+    "template_deleted_groups_removed": "已从模板中移除被删除的团队组",
+    "template_range_invalid": "模板的范围包含已删除的团队组。请重新选择范围",
+    "audience_summary": "收件对象：{label}（发送时 {count} 个团队）"
   }
 }

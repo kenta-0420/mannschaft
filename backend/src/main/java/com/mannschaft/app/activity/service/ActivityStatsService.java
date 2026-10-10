@@ -50,7 +50,20 @@ public class ActivityStatsService {
     public ActivityStatsResponse getStats(ActivityScopeType scopeType, Long scopeId,
                                            Long templateId, String period,
                                            LocalDate dateFrom, LocalDate dateTo) {
-        long totalActivities = resultRepository.countByScopeTypeAndScopeId(scopeType, scopeId);
+        return stats(scopeType, scopeId, templateId, dateFrom, dateTo, null);
+    }
+
+    /** 認可段取り役が判定したauto actualだけを統計へ含める。manualは従来条件を維持する。 */
+    public ActivityStatsResponse getStatsWithAutomaticAccess(ActivityScopeType scopeType, Long scopeId,
+            Long templateId, String period, LocalDate dateFrom, LocalDate dateTo, java.util.Set<Long> automaticIds) {
+        return stats(scopeType, scopeId, templateId, dateFrom, dateTo,
+                automaticIds.isEmpty() ? java.util.Set.of(-1L) : automaticIds);
+    }
+
+    private ActivityStatsResponse stats(ActivityScopeType scopeType, Long scopeId, Long templateId,
+            LocalDate dateFrom, LocalDate dateTo, java.util.Set<Long> automaticIds) {
+        long totalActivities = automaticIds == null ? resultRepository.countByScopeTypeAndScopeId(scopeType, scopeId)
+                : resultRepository.countActualWithAutomaticIds(scopeType, scopeId, null, automaticIds);
 
         // テンプレート別集計
         List<ActivityTemplateEntity> templates = templateRepository
@@ -58,13 +71,16 @@ public class ActivityStatsService {
         List<ActivityStatsResponse.TemplateCount> byTemplate = templates.stream()
                 .map(t -> new ActivityStatsResponse.TemplateCount(
                         t.getId(), t.getName(),
-                        resultRepository.countByScopeTypeAndScopeIdAndTemplateId(scopeType, scopeId, t.getId())))
+                        automaticIds == null ? resultRepository.countByScopeTypeAndScopeIdAndTemplateId(scopeType, scopeId, t.getId())
+                                : resultRepository.countActualWithAutomaticIds(scopeType, scopeId, t.getId(), automaticIds)))
                 .filter(tc -> tc.getCount() > 0)
                 .toList();
 
         // 月別集計（Java Stream APIでグルーピング）
-        List<ActivityResultEntity> allResults = resultRepository.findForExport(
-                scopeType, scopeId, templateId, dateFrom, dateTo, PageRequest.of(0, 10000));
+        List<ActivityResultEntity> allResults = automaticIds == null ? resultRepository.findForExport(
+                scopeType, scopeId, templateId, dateFrom, dateTo, PageRequest.of(0, 10000))
+                : resultRepository.findForExportWithAutomaticIds(scopeType, scopeId, templateId, dateFrom, dateTo,
+                        automaticIds, PageRequest.of(0, 10000));
         DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern("yyyy-MM");
         Map<String, Long> monthGroup = allResults.stream()
                 .filter(r -> r.getActivityDate() != null)
@@ -134,8 +150,21 @@ public class ActivityStatsService {
     public void exportCsv(ActivityScopeType scopeType, Long scopeId,
                            Long templateId, LocalDate dateFrom, LocalDate dateTo,
                            HttpServletResponse response) {
-        List<ActivityResultEntity> results = resultRepository.findForExport(
-                scopeType, scopeId, templateId, dateFrom, dateTo, PageRequest.of(0, 5000));
+        csv(scopeType, scopeId, templateId, dateFrom, dateTo, response, null);
+    }
+
+    public void exportCsvWithAutomaticAccess(ActivityScopeType scopeType, Long scopeId, Long templateId,
+            LocalDate dateFrom, LocalDate dateTo, HttpServletResponse response, java.util.Set<Long> automaticIds) {
+        csv(scopeType, scopeId, templateId, dateFrom, dateTo, response,
+                automaticIds.isEmpty() ? java.util.Set.of(-1L) : automaticIds);
+    }
+
+    private void csv(ActivityScopeType scopeType, Long scopeId, Long templateId, LocalDate dateFrom,
+            LocalDate dateTo, HttpServletResponse response, java.util.Set<Long> automaticIds) {
+        List<ActivityResultEntity> results = automaticIds == null ? resultRepository.findForExport(
+                scopeType, scopeId, templateId, dateFrom, dateTo, PageRequest.of(0, 5000))
+                : resultRepository.findForExportWithAutomaticIds(scopeType, scopeId, templateId, dateFrom, dateTo,
+                        automaticIds, PageRequest.of(0, 5000));
 
         response.setContentType("text/csv; charset=UTF-8");
         response.setHeader("Content-Disposition", "attachment; filename=activities_" +
