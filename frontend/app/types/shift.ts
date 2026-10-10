@@ -469,6 +469,7 @@ export type ChangeRequestStatus = 'OPEN' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN'
  * `requestInfo` / `reviewInfo` / `timing` の 3 グループにネストして返す。
  */
 export interface ChangeRequest {
+  version: number
   id: number
   scheduleId: number
   slotId: number | null

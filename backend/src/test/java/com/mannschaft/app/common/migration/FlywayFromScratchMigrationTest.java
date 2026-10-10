@@ -186,6 +186,9 @@ class FlywayFromScratchMigrationTest {
      */
     private static final Set<String> KNOWN_UNPAID_DRIFT = Set.of();
 
+    // PER_CLASSの同一container内で初回migration callbackの証拠を共有する。staticに持ち越さない。
+    private final ShiftVersionBigintMigrationFixture shiftVersionFixture = new ShiftVersionBigintMigrationFixture();
+
     /**
      * fresh DB 検証用の MySQL コンテナ。
      *
@@ -221,6 +224,7 @@ class FlywayFromScratchMigrationTest {
 
     @BeforeAll
     void startContainer() {
+        shiftVersionFixture.resetForContainer();
         MYSQL.start();
     }
 
@@ -1264,6 +1268,65 @@ class FlywayFromScratchMigrationTest {
         }
     }
 
+    @Test
+    @Order(3)
+    void シフトversionの旧UINT32既存行を全列保全してBIGINTへ移行する() throws Exception {
+        migrateFromScratch();
+        try (Connection connection = DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
+            shiftVersionFixture.assertUpgradeVerified(connection);
+        }
+    }
+
+    @Test
+    @Order(3)
+    void シフトversionはBIGINT非負NOTNULLかつ省略時0である() throws Exception {
+        migrateFromScratch();
+        try (Connection connection = DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
+            try (SessionFactory factory = ShiftVersionBigintMigrationFixture.sessionFactory(
+                    MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
+                ShiftVersionBigintMigrationFixture.assertDefinitionsAndConstraints(factory, connection);
+            }
+        }
+    }
+
+    @Test
+    @Order(3)
+    void シフト4Entityは実Flywayスキーマの型validateと旧UINT32を越える更新に成功する() throws Exception {
+        migrateFromScratch();
+        try (Connection connection = DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+             SessionFactory factory = ShiftVersionBigintMigrationFixture.sessionFactory(
+                     MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
+            ShiftVersionBigintMigrationFixture.assertHibernateUpdates(factory, connection);
+        }
+    }
+
+    @Test
+    @Order(3)
+    void シフトversionのLong上限更新失敗は全業務列をロールバックする() throws Exception {
+        migrateFromScratch();
+        try (Connection connection = DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+             SessionFactory factory = ShiftVersionBigintMigrationFixture.sessionFactory(
+                     MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
+            ShiftVersionBigintMigrationFixture.assertOverflowRollsBack(factory, connection);
+        }
+    }
+
+    @Test
+    @Order(3)
+    void シフトversionを旧UINT32上限から増分後に古いwriterの更新を拒否する() throws Exception {
+        migrateFromScratch();
+        try (Connection connection = DriverManager.getConnection(
+                MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
+             SessionFactory factory = ShiftVersionBigintMigrationFixture.sessionFactory(
+                     MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
+            ShiftVersionBigintMigrationFixture.assertStaleWriterRejected(factory, connection);
+        }
+    }
+
     private static SessionFactory sessionFactory(Class<?> entity) {
         return UnpaidDriftRepaymentFixture.buildSessionFactory(
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword(), entity);
@@ -1288,12 +1351,12 @@ class FlywayFromScratchMigrationTest {
      * <p>{@link UnpaidDriftRepaymentFixture} を Callback として登録し、V230（返済 migration）の
      * 直前に既存行をシード・直後に既存データ経路を検査する（初回の from-scratch 適用でだけ発火する）。</p>
      */
-    private static MigrateResult migrateFromScratch() {
+    private MigrateResult migrateFromScratch() {
         Flyway flyway = Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
                 .outOfOrder(false)
-                .callbacks(new UnpaidDriftRepaymentFixture())
+                .callbacks(new UnpaidDriftRepaymentFixture(), shiftVersionFixture)
                 .load();
         return flyway.migrate();
     }
