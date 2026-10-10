@@ -9,17 +9,14 @@ import com.mannschaft.app.memberinfo.TeamMemberInfoFieldRepository;
 import com.mannschaft.app.memberinfo.TeamMemberInfoResponseEntity;
 import com.mannschaft.app.memberinfo.TeamMemberInfoResponseRepository;
 import com.mannschaft.app.memberinfo.dto.UpsertMemberInfoResponseRequest;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.MessageSource;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -49,33 +46,12 @@ class MemberInfoResponseServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
-    @Mock
-    private NotificationHelper notificationHelper;
-
     /** Issue #2997 G8: 付随通知は業務TX内では publishEvent だけを行う。 */
     @Mock
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
-    /** Issue #2715 CMP-055 lot C-5: newly added i18n dependencies. */
-    @Mock private UserLocaleCache userLocaleCache;
-    @Mock private MessageSource messageSource;
-
     @InjectMocks
     private MemberInfoResponseService service;
-
-    /**
-     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
-     * title/body. Return the supplied default message so existing assertions keep working.
-     */
-    @org.junit.jupiter.api.BeforeEach
-    void stubI18nMessageSource() {
-        org.mockito.Mockito.lenient().when(messageSource.getMessage(
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.any(),
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.any()))
-                .thenAnswer(inv -> inv.getArgument(2));
-    }
 
     private static final Long TEAM_ID = 10L;
     private static final Long USER_ID = 1L;
@@ -230,7 +206,7 @@ class MemberInfoResponseServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MemberInfoErrorCode.REMIND_TOO_SOON);
 
-            verify(notificationHelper, never()).notify(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            org.mockito.Mockito.verifyNoInteractions(eventPublisher);
         }
 
         @Test
@@ -245,8 +221,7 @@ class MemberInfoResponseServiceTest {
 
             service.sendRemind(TEAM_ID, USER_ID, adminUserId);
 
-            // 業務TX内で通知基盤を直接呼ばない（rollback-only 汚染と、ロールバック後に通知だけ残る不整合の元）。
-            org.mockito.Mockito.verifyNoInteractions(notificationHelper);
+            // 業務TX内で通知基盤を直接呼ばない（Service は NotificationHelper を持たない）。配送は AFTER_COMMIT リスナー。
             ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
             verify(eventPublisher).publishEvent(captor.capture());
             assertThat(captor.getValue())

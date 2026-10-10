@@ -262,7 +262,8 @@ class ReflectionSpacedReminderServiceTest {
                 .willReturn(List.of(failing, ok));
         givenParents(e1);
         givenParents(e2);
-        org.mockito.Mockito.doThrow(new RuntimeException("通知の永続化失敗（模擬）"))
+        // strict stubs は「同じメソッドを別引数で呼ぶ」ことを PotentialStubbingProblem にするため lenient で仕込む。
+        org.mockito.Mockito.lenient().doThrow(new RuntimeException("通知の永続化失敗（模擬）"))
                 .when(notificationHelper).notify(eq(101L), any(), any(), any(), any(), any(),
                         any(), any(), any(), any());
 
@@ -301,7 +302,8 @@ class ReflectionSpacedReminderServiceTest {
                 .willReturn(List.of(saveFails, ok));
         givenParents(e1);
         givenParents(e2);
-        given(reminderRepository.save(saveFails)).willThrow(new RuntimeException("SENT の保存失敗（模擬）"));
+        org.mockito.Mockito.lenient().when(reminderRepository.save(saveFails))
+                .thenThrow(new RuntimeException("SENT の保存失敗（模擬）"));
 
         service.processDueReminders();
 
@@ -328,7 +330,7 @@ class ReflectionSpacedReminderServiceTest {
         givenParents(e1);
         givenParents(e2);
         // 1 回目: second の通知だけ失敗する。
-        org.mockito.Mockito.doThrow(new RuntimeException("通知の永続化失敗（模擬）"))
+        org.mockito.Mockito.lenient().doThrow(new RuntimeException("通知の永続化失敗（模擬）"))
                 .doNothing()
                 .when(notificationHelper).notify(eq(102L), any(), any(), any(), any(), any(),
                         any(), any(), any(), any());

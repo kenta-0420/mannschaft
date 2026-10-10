@@ -16,7 +16,6 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -31,6 +30,12 @@ import java.util.Map;
  *
  * <p>TODO: repairplan ドメインと notification / auth ドメインをまたいでいる。
  * 将来は TeamMemberTermReminderTriggeredEvent で分離予定。</p>
+ *
+ * <h2>トランザクション境界（Issue #2997 / 原則5）</h2>
+ * <p>本バッチは業務データを書き込まない（DB は一切書き換わらない）。かつては {@code execute()} が
+ * {@code @Transactional(readOnly = true)} で全体を包んでおり、通知の DB 例外が rollback-only を残して
+ * 後続の理事への通知と監査記録を巻き込んでいた。現在は<b>非トランザクションのオーケストレータ</b>であり、
+ * 通知は 1 件ごとに {@link NotificationService#createNotification} 自身のトランザクションで確定する。</p>
  */
 @Slf4j
 @Service
@@ -55,7 +60,6 @@ public class TeamMemberTermReminderBatch {
     @BatchEndpoint(name = "repairplan-team-member-term-reminder-daily", description = "理事任期終了 30 日前のリマインドを毎日 09:00 に通知する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "TeamMemberTermReminderBatch", lockAtMostFor = "PT55M")
-    @Transactional(readOnly = true)
     public void execute() {
         executeAt(LocalDate.now(java.time.ZoneId.of("Asia/Tokyo")));
     }

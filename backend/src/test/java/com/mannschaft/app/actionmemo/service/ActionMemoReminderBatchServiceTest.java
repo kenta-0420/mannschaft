@@ -406,9 +406,10 @@ class ActionMemoReminderBatchServiceTest {
                     .userId(2L).reminderEnabled(true).reminderTime(nine).build();
             given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
                     .willReturn(List.of(failing, ok));
-            given(notificationService.createNotification(
+            // strict stubs は別引数の呼び出しを PotentialStubbingProblem にするため lenient で仕込む。
+            lenient().when(notificationService.createNotification(
                     eq(1L), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                    .willThrow(new RuntimeException("通知の永続化失敗（模擬）"));
+                    .thenThrow(new RuntimeException("通知の永続化失敗（模擬）"));
 
             service.executeAt(nine, LocalDate.of(2026, 5, 4));
 
