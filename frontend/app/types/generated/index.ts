@@ -72547,10 +72547,6 @@ export interface components {
             /** Format: int64 */
             totalElements?: number;
         };
-        PagedResponseMyJoinRequestResponse: {
-            data?: components["schemas"]["MyJoinRequestResponse"][];
-            meta?: components["schemas"]["PageMeta"];
-        };
         MyJoinRequestResponse: {
             /** Format: date-time */
             createdAt?: string;
@@ -72573,6 +72569,10 @@ export interface components {
             villageName?: string;
             /** @enum {string} */
             villageState?: "ACTIVE" | "ARCHIVED" | "DELETED";
+        };
+        PagedResponseMyJoinRequestResponse: {
+            data?: components["schemas"]["MyJoinRequestResponse"][];
+            meta?: components["schemas"]["PageMeta"];
         };
         ApiResponseListVillageCategoryResponse: {
             data?: components["schemas"]["VillageCategoryResponse"][];

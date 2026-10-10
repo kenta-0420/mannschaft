@@ -38,6 +38,23 @@ function row(
   }
 }
 
+/**
+ * テスト環境のロケールは navigator 言語に引きずられ英語になりうるため、本アプリの既定ロケール(ja)へ
+ * 明示的に切り替えてから描画を確かめる（DashboardScopeAccordion.spec.ts と同じ setLocale + 待機の作法）。
+ */
+async function mountJa() {
+  const wrapper = await mountSuspended(VillageJoinRequestsPage)
+  const i18n = wrapper.vm.$i18n as { locale: string; setLocale?: (locale: string) => Promise<void> }
+  if (i18n.setLocale) await i18n.setLocale('ja')
+  else i18n.locale = 'ja'
+  for (let i = 0; i < 40; i++) {
+    await wrapper.vm.$nextTick()
+    if (wrapper.text().includes('申請先の村')) break
+    await new Promise((resolve) => setTimeout(resolve, 25))
+  }
+  return wrapper
+}
+
 const requests = ref<MyJoinRequestResponse[]>([])
 vi.mock('~/composables/village/useVillageJoinRequestHistory', () => ({
   useVillageJoinRequestHistory: () => ({
@@ -63,7 +80,7 @@ describe('pages/my/village-join-requests.vue — 申請先の村の識別', () =
       row('r1', '桜村', 'ACTIVE', 'APPROVED'),
       row('r2', '梅村', 'ACTIVE', 'REJECTED'),
     ]
-    const wrapper = await mountSuspended(VillageJoinRequestsPage)
+    const wrapper = await mountJa()
 
     expect(wrapper.find('[data-testid="my-village-join-request-village-r1"]').text()).toContain('桜村')
     expect(wrapper.find('[data-testid="my-village-join-request-village-r2"]').text()).toContain('梅村')
@@ -77,7 +94,7 @@ describe('pages/my/village-join-requests.vue — 申請先の村の識別', () =
       row('r2', '梅村', 'ARCHIVED', 'APPROVED'),
       row('r3', '松村', 'DELETED', 'WITHDRAWN'),
     ]
-    const wrapper = await mountSuspended(VillageJoinRequestsPage)
+    const wrapper = await mountJa()
 
     const active = wrapper.find('[data-testid="my-village-join-request-village-r1"]').text()
     const archived = wrapper.find('[data-testid="my-village-join-request-village-r2"]').text()
@@ -92,7 +109,7 @@ describe('pages/my/village-join-requests.vue — 申請先の村の識別', () =
 
   it('MJ-003: 村の行が無く名前が null の場合は代替表示にする', async () => {
     requests.value = [row('r1', null, 'DELETED', 'PENDING')]
-    const wrapper = await mountSuspended(VillageJoinRequestsPage)
+    const wrapper = await mountJa()
 
     const text = wrapper.find('[data-testid="my-village-join-request-village-r1"]').text()
     expect(text).toContain('村の名前を確認できません')

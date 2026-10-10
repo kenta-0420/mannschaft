@@ -217028,20 +217028,6 @@
           }
         }
       },
-      "PagedResponseMyJoinRequestResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MyJoinRequestResponse"
-            }
-          },
-          "meta": {
-            "$ref": "#/components/schemas/PageMeta"
-          }
-        }
-      },
       "MyJoinRequestResponse": {
         "type": "object",
         "properties": {
@@ -217102,6 +217088,20 @@
               "ARCHIVED",
               "DELETED"
             ]
+          }
+        }
+      },
+      "PagedResponseMyJoinRequestResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyJoinRequestResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
           }
         }
       },
