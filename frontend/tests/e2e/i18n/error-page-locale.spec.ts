@@ -168,14 +168,18 @@ test.describe('CMP-261007-2053 error.vue の言語追従', () => {
     // 本物のログイン状態を作る（有効な access_token Cookie と localStorage の currentUser）。
     // 偽の currentUser だけではセッション失効でログイン画面へ飛ばされ、間欠的に落ちる。
     // アカウントの言語は保存・変更せず、/users/me で ja であることを前提として確かめる（崩れていれば理由の分かる失敗にする）。
-    await loginViaApi(page, { email: LOCALE_ACCOUNT_EMAIL, password: LOCALE_ACCOUNT_PASSWORD }, { deferNavigation: true })
+    // deferNavigation は使わない。ヘルパも addInitScript で currentUser を書くが、Playwright は複数の init script の
+    // 実行順序を保証しない（playwright-core types.d.ts の page.addInitScript の NOTE「The order of evaluation ... is not defined」）。
+    // ヘルパの init script は currentUser を無条件に上書きするため、順序次第で locale が消える。
+    // 既定の経路ならヘルパは同一オリジンの /robots.txt 上で page.evaluate により直接書き込み、init script はこの spec の1本だけになる。
+    await loginViaApi(page, { email: LOCALE_ACCOUNT_EMAIL, password: LOCALE_ACCOUNT_PASSWORD })
     const apiBase = process.env.API_BASE_URL ?? ''
     const meRes = await page.request.get(`${apiBase}/api/v1/users/me`)
     expect(meRes.ok()).toBe(true)
     const accountLocale = ((await meRes.json()).data as { locale?: string | null }).locale
     expect(accountLocale, '検証アカウントのアカウント言語（前提）').toBe('ja')
     // loginViaApi の currentUser にはアカウント言語が入らないため、/users/me の値を足す
-    // （ログイン画面と同じく currentUser.locale がアカウント言語の正本。init script は追加順に走る）
+    // （ログイン画面と同じく currentUser.locale がアカウント言語の正本。currentUser は上の loginViaApi で既に localStorage にある）
     await page.addInitScript((locale) => {
       const raw = localStorage.getItem('currentUser')
       if (!raw) throw new Error('loginViaApi の currentUser がありません')
