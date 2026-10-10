@@ -99,13 +99,15 @@ test('チームTLのカーソルページング: ピン先頭1回・重複欠落
     }
     o.page.on('request', (r) => { if (isCursorFeed(r.url())) cursorRequests.push(r.url()) })
     o.page.on('response', (r) => { if (isCursorFeed(r.url())) cursorStatuses.push(r.status()) })
+    const allCards = feed.getByTestId('team-timeline-post')
     const loadMore = feed.getByTestId('timeline-load-more-target')
     for (let i = 0; i < 30 && await loadMore.count() > 0; i++) {
-      const before = await mine.count()
+      const before = await allCards.count()
       const response = o.page.waitForResponse(r => isCursorFeed(r.url()), { timeout: 20_000 })
       await loadMore.scrollIntoViewIfNeeded()
       await response
-      await expect.poll(() => mine.count(), { timeout: 20_000 }).toBeGreaterThan(before)
+      // 進行条件は全カード数の増加か末尾到達。tag は内容照合にだけ使う（共有チームの古い投稿でも詰まらない）
+      await expect.poll(async () => (await allCards.count()) > before || (await loadMore.count()) === 0, { timeout: 20_000 }).toBe(true)
     }
     await expect(loadMore, '最後まで到達したら読み込みトリガが消える').toHaveCount(0)
     const all = await mineTexts()
@@ -115,8 +117,10 @@ test('チームTLのカーソルページング: ピン先頭1回・重複欠落
     expect(cursorStatuses.every(c => c === 200)).toBe(true)
     // 停止確認: 追加スクロールしても枚数不変で、cursor 付きリクエスト自体が発生しない
     const requestsBefore = cursorRequests.length
-    await o.page.mouse.wheel(0, 5000)
-    await o.page.waitForLoadState('networkidle')
+    await o.page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    await o.page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+    // 「何も起きないこと」の確認なので固定の観測期間で request イベントを数える
+    await o.page.waitForTimeout(3_000)
     expect(await mine.count()).toBe(TOTAL)
     expect(cursorRequests.length).toBe(requestsBefore)
     await o.page.screenshot({ path: testInfo.outputPath('member-final.png'), fullPage: true })
@@ -131,10 +135,10 @@ test('チームTLのカーソルページング: ピン先頭1回・重複欠落
       await waitIdle(who.page)
       await who.page.screenshot({ path: testInfo.outputPath(`${label}.png`), fullPage: true })
       expect(await who.page.locator('body').innerText()).not.toContain(tag)
-      // 投稿詳細: main には timeline-post-not-found が無く、既存の取得失敗表示に合わせる
+      // 投稿詳細: #3761 で追加される timeline-post-not-found を待つ（#3761 のマージ後に実行する前提）
       await who.page.goto(`/timeline/${ids[pinIdx]}`, { waitUntil: 'domcontentloaded' })
       await waitForHydration(who.page)
-      await expect(who.page.getByText('投稿の取得に失敗しました')).toBeVisible({ timeout: 30_000 })
+      await expect(who.page.getByTestId('timeline-post-not-found')).toBeVisible({ timeout: 30_000 })
       expect(await who.page.locator('body').innerText()).not.toContain(tag)
     }
   } finally {
