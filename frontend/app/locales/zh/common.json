@@ -623,6 +623,11 @@
     }
   },
   "timeline": {
+    "detail": {
+      "back": "返回",
+      "loadFailed": "无法获取帖子",
+      "notFound": "未找到该帖子或无法显示"
+    },
     "videoProcessing": "视频处理中...",
     "videoFailed": "视频无法播放",
     "videoUploadButton": "附加视频",

@@ -623,6 +623,11 @@
     }
   },
   "timeline": {
+    "detail": {
+      "back": "Zurück",
+      "loadFailed": "Beitrag konnte nicht geladen werden",
+      "notFound": "Der Beitrag wurde nicht gefunden oder kann nicht angezeigt werden"
+    },
     "videoProcessing": "Video wird verarbeitet...",
     "videoFailed": "Video nicht verfügbar",
     "videoUploadButton": "Video anhängen",

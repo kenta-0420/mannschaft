@@ -16,6 +16,7 @@ const {
   addBookmark,
   removeBookmark,
 } = useTimelineApi()
+const { t } = useI18n()
 const { showSuccess, showError } = useNotification()
 
 const post = ref<(TimelinePostResponse & { recentReplies: TimelinePostResponse[] }) | null>(null)
@@ -25,8 +26,13 @@ const submittingReply = ref(false)
 const loadingMore = ref(false)
 const replyCursor = ref<number | null>(null)
 const hasMoreReplies = ref(false)
+// 取得状態: loading / error(不在・権限なしを区別しない) / loaded(post が非 null)
+const loadingPost = ref(true)
+const loadFailed = ref(false)
 
 async function loadPost() {
+  loadingPost.value = true
+  loadFailed.value = false
   try {
     const res = await getPost(postId)
     post.value = res.data
@@ -38,7 +44,12 @@ async function loadPost() {
     hasMoreReplies.value = total > recent.length
     replyCursor.value = recent.length > 0 ? recent[recent.length - 1]!.id : null
   } catch {
-    showError('投稿の取得に失敗しました')
+    // 不在(404)と権限なしを区別せず同じ表示にする（存在を漏らさない）
+    post.value = null
+    loadFailed.value = true
+    showError(t('timeline.detail.loadFailed'))
+  } finally {
+    loadingPost.value = false
   }
 }
 
@@ -107,7 +118,7 @@ onMounted(() => loadPost())
 <template>
   <div class="mx-auto max-w-2xl">
     <!-- 戻るボタン -->
-    <Button icon="pi pi-arrow-left" label="戻る" text size="small" class="mb-4" @click="goBack" />
+    <Button icon="pi pi-arrow-left" :label="t('timeline.detail.back')" text size="small" class="mb-4" @click="goBack" />
 
     <div v-if="post">
       <!-- メイン投稿 -->
@@ -163,7 +174,16 @@ onMounted(() => loadPost())
       </div>
     </div>
 
+    <!-- 取得失敗（不在・権限なし共通） -->
+    <div
+      v-else-if="loadFailed"
+      data-testid="timeline-post-not-found"
+      class="rounded border border-dashed border-surface-300 p-8 text-center text-surface-500 dark:border-surface-600"
+    >
+      {{ t('timeline.detail.notFound') }}
+    </div>
+
     <!-- ローディング -->
-    <PageLoading v-else size="40px" />
+    <PageLoading v-else-if="loadingPost" size="40px" />
   </div>
 </template>

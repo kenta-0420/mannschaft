@@ -623,6 +623,11 @@
     }
   },
   "timeline": {
+    "detail": {
+      "back": "Volver",
+      "loadFailed": "No se pudo obtener la publicación",
+      "notFound": "No se encontró la publicación o no se puede mostrar"
+    },
     "videoProcessing": "Procesando video...",
     "videoFailed": "Video no disponible",
     "videoUploadButton": "Adjuntar video",

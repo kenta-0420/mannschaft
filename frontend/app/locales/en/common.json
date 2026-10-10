@@ -623,6 +623,11 @@
     }
   },
   "timeline": {
+    "detail": {
+      "back": "Back",
+      "loadFailed": "Failed to load the post",
+      "notFound": "This post was not found or cannot be displayed"
+    },
     "videoProcessing": "Processing video...",
     "videoFailed": "Video unavailable",
     "videoUploadButton": "Attach video",

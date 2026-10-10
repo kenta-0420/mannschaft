@@ -623,6 +623,11 @@
     }
   },
   "timeline": {
+    "detail": {
+      "back": "戻る",
+      "loadFailed": "投稿を取得できませんでした",
+      "notFound": "投稿が見つからないか、表示できません"
+    },
     "videoProcessing": "動画を処理中...",
     "videoFailed": "動画を再生できません",
     "videoUploadButton": "動画を添付",
