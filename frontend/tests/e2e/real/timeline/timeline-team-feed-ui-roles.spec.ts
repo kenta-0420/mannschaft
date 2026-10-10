@@ -18,7 +18,7 @@ interface MyOrg { id: number, role: string }
 const otherTenant = { email: process.env.TEST_OUTSIDER_EMAIL ?? 'e2e-outsider@test.mannschaft.local', password: pw }
 
 async function waitIdle(page: Page) {
-  await page.locator('.pi-spin, .p-progressspinner').first().waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
+  await expect(page.locator('.pi-spin, .p-progressspinner')).toHaveCount(0, { timeout: 30_000 })
 }
 
 test('チームTLのカーソルページング: ピン先頭1回・重複欠落なし・末尾で停止、同組織非メンバー/他テナントは閲覧不可', async ({ browser }, testInfo) => {
@@ -73,7 +73,7 @@ test('チームTLのカーソルページング: ピン先頭1回・重複欠落
     await o.page.goto(url, { waitUntil: 'domcontentloaded' })
     await waitForHydration(o.page)
     const initialPermissions = o.page.getByTestId('member-permission-setup')
-    if (await initialPermissions.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    if (await initialPermissions.isVisible()) {
       await initialPermissions.getByRole('button', { name: 'あとで決める' }).click()
     }
     const feed = o.page.getByTestId('timeline-feed')
