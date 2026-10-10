@@ -1,10 +1,10 @@
 {
   "required": "Dieses Feld ist erforderlich",
-  "email": "Bitte geben Sie eine gultige E-Mail-Adresse ein",
+  "email": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
   "min_length": "Muss mindestens {min} Zeichen lang sein",
   "max_length": "Darf hochstens {max} Zeichen lang sein",
   "password_mismatch": "Die Passworter stimmen nicht uberein",
-  "invalid_format": "Ungultiges Format",
-  "postal_code_format": "Ungultiges Postleitzahlformat (z.B. 123-4567)",
+  "invalid_format": "Ungültiges Format",
+  "postal_code_format": "Ungültiges Postleitzahlformat (z.B. 123-4567)",
   "postal_code_required": "Postleitzahl ist erforderlich"
 }
