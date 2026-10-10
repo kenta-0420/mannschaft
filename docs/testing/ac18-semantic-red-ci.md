@@ -18,6 +18,6 @@ Gradle終了直後の実exitを `ac18-gradle-exit.txt` へ記録し、同じ値�
 
 この結果は計測器の別thread混入契約の診断であり、自然CIの原因立証・製品全回帰・Security filter認可・E2E完了の証拠ではない。REDの実行・回収・有限分類は完了。後続GREEN回帰は未実行。
 
-## 後続GREEN（未適用template）
+## 後続GREEN（source固定済み・実行待ち）
 
-root確認後にtest-only capture修正を適用済み。新actual sourcecommitへcheckoutを固定するworkflow templateはdiagnosisの外部候補でUNBOUNDのまま準備し、現workflowは変更していない。同じbranch/concurrency/caps/cacheでShiftScheduleSlotFacadeRaceAndQueryIT全体とSqlIntentCounterTestを選択し、両exact XMLと実exitだけを収容する。compile/GREEN/自然CI原因確定/全CI回帰の証拠はまだ無い。
+root確認後にtest-only capture修正を適用済み。GREEN workflowのcheckoutを検分済みsource commit `626975682d35527703f11f5202291cef61c11473`（tree `c42dbc83c18b044eb29cbcb018917593dcd126c5`）へ固定した。workflow/event commitとは別SHAであり、rootによるworkflow commit/push・実行・回収はpending。同じbranch/concurrency/caps/cacheでShiftScheduleSlotFacadeRaceAndQueryIT全体とSqlIntentCounterTestを選択し、両exact XMLと実exitだけを収容する。compile/GREEN/自然CI原因確定/全CI回帰の証拠はまだ無い。
