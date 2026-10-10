@@ -219,7 +219,7 @@
     }
   },
   "scheduleKeep": {
-    "title": "Reservas provisionales",
+    "title": "Planes en espera",
     "subtitle": "Un lugar para planes que aún no tienen fecha",
     "empty": "Todavía no hay nada. Anota lo que se te ocurra.",
     "form": {
@@ -227,7 +227,7 @@
       "titlePlaceholder": "p. ej., Campamento de verano",
       "memoLabel": "Nota (opcional)",
       "candidateDatesLabel": "Fechas candidatas (opcional)",
-      "submit": "Reservar provisionalmente"
+      "submit": "Guardar en espera"
     },
     "action": {
       "convert": "Añadir al calendario",
@@ -240,12 +240,12 @@
       "reorder": "Reordenar"
     },
     "status": {
-      "kept": "En reserva provisional",
+      "kept": "En espera",
       "scheduled": "Programado",
       "archived": "Descartado"
     },
     "filter": {
-      "kept": "En reserva provisional",
+      "kept": "En espera",
       "scheduled": "Programados",
       "archived": "Descartados",
       "all": "Todos"
@@ -254,7 +254,7 @@
       "candidateCount": "{count} fechas candidatas"
     },
     "origin": {
-      "label": "Creado a partir de una reserva provisional",
+      "label": "Creado a partir de un plan en espera",
       "cancelled": "El evento fue cancelado",
       "deleted": "El evento original fue eliminado"
     },
@@ -264,7 +264,7 @@
     },
     "notification": {
       "converted": "Se ha fijado la fecha de «{title}»",
-      "created": "Se ha reservado provisionalmente «{title}»"
+      "created": "Se ha guardado «{title}» en espera"
     },
     "confirm": {
       "archive": "¿Descartar por ahora? Podrás restaurarlo más tarde"
@@ -273,15 +273,15 @@
       "hint": "Al descartar un elemento se libera espacio"
     },
     "help": {
-      "title": "Cómo usar las reservas provisionales",
+      "title": "Cómo usar los planes en espera",
       "body": "Es un lugar donde dejar por ahora los planes que aún no tienen fecha. Se pueden crear solo con un título y añadir fechas candidatas o notas más tarde. Cuando se decide una fecha, con un toque se convierte en un evento del calendario.",
       "create": {
-        "title": "Reservar provisionalmente",
+        "title": "Guardar en espera",
         "body": "Basta con escribir un título. Las fechas candidatas y las notas se pueden añadir después.",
         "steps": {
           "step1": "Escribe como título lo que quieres hacer",
           "step2": "Si lo necesitas, añade fechas candidatas o notas",
-          "step3": "Pulsa «Reservar provisionalmente»"
+          "step3": "Pulsa «Guardar en espera»"
         }
       },
       "convert": {
@@ -304,16 +304,16 @@
       }
     },
     "error": {
-      "notFound": "No se encontró la reserva provisional",
+      "notFound": "No se encontró el plan en espera",
       "titleRequired": "Introduce un título",
       "tooManyCandidateDates": "Máximo 10 fechas candidatas",
       "invalidCandidateDate": "El formato de la fecha candidata no es válido",
-      "forbidden": "No tienes permiso para operar esta reserva provisional",
-      "notConvertible": "Esta reserva provisional no se puede convertir en evento",
+      "forbidden": "No tienes permiso para operar este plan en espera",
+      "notConvertible": "Este plan en espera no se puede convertir en evento",
       "notEditable": "No se puede editar en este estado",
       "revertBlockedByAttendance": "No se puede deshacer la conversión porque hay respuestas de asistencia",
       "invalidStateTransition": "Esta acción no es posible",
-      "limitExceeded": "Se alcanzó el límite de reservas provisionales",
+      "limitExceeded": "Se alcanzó el límite de planes en espera",
       "invalidReorder": "La indicación de reordenación no es válida"
     }
   }
