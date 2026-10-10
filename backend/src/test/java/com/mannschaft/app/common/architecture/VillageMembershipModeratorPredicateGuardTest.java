@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class VillageMembershipModeratorPredicateGuardTest {
 
     private static final Path SOURCE = Path.of("src/main/java/com/mannschaft/app/village/service/VillageMembershipService.java");
+    private static final Path BULLETIN_SOURCE = Path.of("src/main/java/com/mannschaft/app/village/service/VillageBulletinAccessService.java");
     private static final String CANONICAL = "findActiveByVillageIdAndSubject";
     private static final String RAW = "findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull";
     private static final Pattern ACTOR_QUERY = Pattern.compile(
@@ -35,6 +36,34 @@ class VillageMembershipModeratorPredicateGuardTest {
         assertThat(usesCanonicalActorQuery(Files.readString(SOURCE, StandardCharsets.UTF_8), method))
                 .as("VillageMembershipService#%s の実行者認可は正準述語を使う", method)
                 .isTrue();
+    }
+
+    @Test
+    void 掲示板モデレーター認可_正準述語だけを使う() throws IOException {
+        assertThat(bulletinModeratorUsesCanonical(Files.readString(BULLETIN_SOURCE, StandardCharsets.UTF_8)))
+                .as("VillageBulletinAccessService#checkVillageBulletinModerator は正準述語を使う")
+                .isTrue();
+    }
+
+    @Test
+    void 番人_掲示板に生述語を混入_拒否する() {
+        String body = "public void checkVillageBulletinModerator() { membershipRepository." + RAW
+                + "(a).filter(m -> true); membershipRepository." + CANONICAL + "(a); }"
+                + " public void requireHeadmanOrElder() { }";
+        assertThat(bulletinModeratorUsesCanonical(body)).isFalse();
+        assertThat(bulletinModeratorUsesCanonical(
+                "public void checkVillageBulletinModerator() { membershipRepository." + RAW + "(a); }"
+                        + " public void requireHeadmanOrElder() { }")).isFalse();
+    }
+
+    private static boolean bulletinModeratorUsesCanonical(String source) {
+        String masked = JavaSourceScanningUtils.maskCommentsAndLiterals(source);
+        int start = masked.indexOf("public void checkVillageBulletinModerator(");
+        if (start < 0) return false;
+        int end = masked.indexOf("public void requireHeadmanOrElder(", start + 1);
+        if (end < 0) return false;
+        String body = masked.substring(start, end);
+        return Pattern.compile("\\." + CANONICAL + "\\s*\\(").matcher(body).find() && !body.contains(RAW);
     }
 
     @Test

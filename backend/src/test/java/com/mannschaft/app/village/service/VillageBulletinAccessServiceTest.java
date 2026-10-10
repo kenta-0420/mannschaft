@@ -16,6 +16,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -269,7 +271,7 @@ class VillageBulletinAccessServiceTest {
         @DisplayName("AC-2: PUBLIC 村の非モデレーターは従来どおり 403（404 に倒さない）")
         void ac2_moderate_publicVillageStays403() {
             givenVillage(village(VillageBulletinVisibility.PUBLIC, VillageVisibility.PUBLIC));
-            given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            given(membershipRepository.findActiveByVillageIdAndSubject(
                     VILLAGE_ID, VillageSubjectType.USER, USER_ID)).willReturn(Optional.empty());
 
             assertThat(codeOf(catchThrowable(() -> service.checkVillageBulletinModerator(VILLAGE_ID, USER_ID))))
@@ -306,18 +308,49 @@ class VillageBulletinAccessServiceTest {
             givenVillage(village(VillageBulletinVisibility.MEMBERS_ONLY, VillageVisibility.UNLISTED));
             given(membershipRepository.findActiveByVillageIdAndSubject(
                     eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(USER_ID)))
-                    .willReturn(Optional.of(new VillageMembershipEntity()));
-            given(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                    VILLAGE_ID, VillageSubjectType.USER, USER_ID))
-                    .willReturn(Optional.of(VillageMembershipEntity.builder()
-                            .villageId(VILLAGE_ID)
-                            .subjectType(VillageSubjectType.USER)
-                            .subjectId(USER_ID)
-                            .role(VillageRole.HEADMAN)
-                            .build()));
+                    .willReturn(Optional.of(activeMember(VillageRole.HEADMAN)));
 
             assertThatCode(() -> service.checkVillageBulletinModerator(VILLAGE_ID, USER_ID))
                     .doesNotThrowAnyException();
+        }
+
+        private VillageMembershipEntity activeMember(VillageRole role) {
+            return VillageMembershipEntity.builder()
+                    .villageId(VILLAGE_ID)
+                    .subjectType(VillageSubjectType.USER)
+                    .subjectId(USER_ID)
+                    .role(role)
+                    .build();
+        }
+
+        @ParameterizedTest
+        @EnumSource(value = VillageRole.class, names = {"HEADMAN", "ELDER"})
+        @DisplayName("BAN されていない HEADMAN / ELDER はモデレーション可・旧述語は呼ばれない")
+        void moderate_activeHeadmanOrElder_ok(VillageRole role) {
+            givenVillage(village(VillageBulletinVisibility.PUBLIC, VillageVisibility.PUBLIC));
+            given(membershipRepository.findActiveByVillageIdAndSubject(
+                    VILLAGE_ID, VillageSubjectType.USER, USER_ID))
+                    .willReturn(Optional.of(activeMember(role)));
+
+            assertThatCode(() -> service.checkVillageBulletinModerator(VILLAGE_ID, USER_ID))
+                    .doesNotThrowAnyException();
+            verify(membershipRepository, never()).findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                    any(), any(), anyLong());
+        }
+
+        @ParameterizedTest
+        @EnumSource(value = VillageRole.class, names = {"HEADMAN", "ELDER"})
+        @DisplayName("BAN 済みの HEADMAN / ELDER は正準述語が空を返し 403・旧述語は呼ばれない")
+        void moderate_bannedHeadmanOrElder_forbidden(VillageRole role) {
+            // 正準述語は BAN 済みを除外するため Optional.empty() を返す（givenVillage の既定どおり）
+            givenVillage(village(VillageBulletinVisibility.PUBLIC, VillageVisibility.PUBLIC));
+
+            assertThat(codeOf(catchThrowable(() -> service.checkVillageBulletinModerator(VILLAGE_ID, USER_ID))))
+                    .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN);
+            verify(membershipRepository, org.mockito.Mockito.atLeastOnce()).findActiveByVillageIdAndSubject(
+                    VILLAGE_ID, VillageSubjectType.USER, USER_ID);
+            verify(membershipRepository, never()).findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                    any(), any(), anyLong());
         }
 
         @Test
