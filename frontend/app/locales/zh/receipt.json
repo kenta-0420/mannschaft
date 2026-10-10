@@ -1,156 +1,156 @@
 {
   "receipt": {
     "nav": {
-      "receipts": "領収書一覧",
-      "settings": "発行者設定"
+      "receipts": "收据列表",
+      "settings": "开具方设置"
     },
     "list": {
-      "title": "領収書管理",
-      "settingsButton": "発行者設定",
-      "issueButton": "新規発行",
-      "empty": "領収書がありません",
+      "title": "收据管理",
+      "settingsButton": "开具方设置",
+      "issueButton": "新建开具",
+      "empty": "暂无收据",
       "amountWithUnit": "{amount}日元",
       "column": {
-        "issuedAt": "発行日",
-        "receiptNumber": "領収書番号",
-        "recipientName": "宛名",
-        "amount": "金額",
-        "status": "ステータス",
+        "issuedAt": "开具日期",
+        "receiptNumber": "收据编号",
+        "recipientName": "收件人",
+        "amount": "金额",
+        "status": "状态",
         "action": "操作"
       },
       "status": {
-        "DRAFT": "下書き",
-        "ISSUED": "発行済"
+        "DRAFT": "草稿",
+        "ISSUED": "已开具"
       },
       "action": {
-        "approve": "承認",
-        "void": "無効化",
-        "reissue": "再発行",
+        "approve": "批准",
+        "void": "作废",
+        "reissue": "重新开具",
         "pdf": "PDF",
-        "sendEmail": "メール送信"
+        "sendEmail": "发送邮件"
       },
       "dialog": {
-        "issueTitle": "領収書を発行",
-        "recipientName": "宛名",
-        "recipientNamePlaceholder": "例: 山田 太郎",
-        "amount": "金額（円）",
-        "amountPlaceholder": "例: 10000",
-        "description": "品目・摘要",
-        "descriptionPlaceholder": "例: 月会費",
-        "notes": "メモ",
-        "notesPlaceholder": "備考など",
-        "cancel": "キャンセル",
-        "submit": "発行する",
-        "voidTitle": "領収書を無効化",
-        "voidReason": "無効化の理由",
-        "voidReasonPlaceholder": "例: 金額誤りのため",
-        "voidSubmit": "無効化する"
+        "issueTitle": "开具收据",
+        "recipientName": "收件人",
+        "recipientNamePlaceholder": "例如：山田太郎",
+        "amount": "金额（日元）",
+        "amountPlaceholder": "例如：10000",
+        "description": "品目、摘要",
+        "descriptionPlaceholder": "例如：月会费",
+        "notes": "备注",
+        "notesPlaceholder": "备注等",
+        "cancel": "取消",
+        "submit": "开具",
+        "voidTitle": "作废收据",
+        "voidReason": "作废原因",
+        "voidReasonPlaceholder": "例如：金额有误",
+        "voidSubmit": "作废"
       },
       "toast": {
-        "loadFailed": "領収書一覧の取得に失敗しました",
-        "approved": "承認しました",
-        "approveFailed": "承認に失敗しました",
-        "voided": "無効化しました",
-        "voidFailed": "無効化に失敗しました",
-        "reissued": "再発行しました",
-        "reissueFailed": "再発行に失敗しました",
-        "pdfDownloaded": "PDFをダウンロードしました",
-        "pdfDownloadFailed": "PDFダウンロードに失敗しました",
-        "emailSent": "メールを送信しました",
-        "emailSendFailed": "メール送信に失敗しました",
-        "issued": "領収書を発行しました",
-        "issueFailed": "領収書の発行に失敗しました"
+        "loadFailed": "获取收据列表失败",
+        "approved": "已批准",
+        "approveFailed": "批准失败",
+        "voided": "已作废",
+        "voidFailed": "作废失败",
+        "reissued": "已重新开具",
+        "reissueFailed": "重新开具失败",
+        "pdfDownloaded": "已下载PDF",
+        "pdfDownloadFailed": "下载PDF失败",
+        "emailSent": "邮件已发送",
+        "emailSendFailed": "邮件发送失败",
+        "issued": "收据已开具",
+        "issueFailed": "开具收据失败"
       },
       "notice": {
-        "personalScopeUnsupported": "領収書管理は個人スコープでは利用できません。チームまたは組織スコープに切り替えてください。",
-        "scopeNotReady": "スコープを選択すると領収書一覧を表示します。"
+        "personalScopeUnsupported": "收据管理不适用于个人范围。请切换到团队或组织范围。",
+        "scopeNotReady": "选择范围后将显示收据列表。"
       },
       "validation": {
-        "voidReasonRequired": "無効化の理由を入力してください"
+        "voidReasonRequired": "请输入作废原因"
       }
     },
     "settings": {
-      "title": "領収書発行者設定",
-      "description": "領収書の発行に使う発行者情報・インボイス対応・番号体系・PDF体裁を設定します。",
-      "backToList": "領収書一覧へ戻る",
+      "title": "收据开具方设置",
+      "description": "设置开具收据时使用的开具方信息、发票（Invoice）合规、编号规则和PDF版式。",
+      "backToList": "返回收据列表",
       "notice": {
-        "personalScopeUnsupported": "発行者設定は個人スコープでは利用できません。チームまたは組織スコープに切り替えてください。"
+        "personalScopeUnsupported": "开具方设置不适用于个人范围。请切换到团队或组织范围。"
       },
-      "firstTimeNotice": "まだ発行者設定が登録されていません。保存すると作成されます。",
-      "notRetroactiveNotice": "ここで変更した内容は、これから発行する領収書に適用されます。すでに発行済みの領収書の内容は法令上変更できません。",
-      "notRetroactiveAfterSave": "この変更は、これから発行する領収書にのみ適用されます。すでに発行済みの領収書は法令上変更できません。過去分を訂正したい場合は、対象の領収書を無効化してから再発行してください。",
+      "firstTimeNotice": "尚未登记开具方设置。保存后将自动创建。",
+      "notRetroactiveNotice": "此处所做的更改将适用于今后开具的收据。已开具收据的内容依法不得更改。",
+      "notRetroactiveAfterSave": "此更改仅适用于今后开具的收据。已开具的收据依法不得更改。如需更正过往收据，请先作废相应收据，再重新开具。",
       "section": {
-        "issuer": "発行者情報",
-        "invoice": "インボイス対応",
-        "numbering": "領収書番号",
-        "pdf": "PDF体裁"
+        "issuer": "开具方信息",
+        "invoice": "发票（Invoice）合规",
+        "numbering": "收据编号",
+        "pdf": "PDF版式"
       },
       "form": {
-        "issuerName": "発行者名",
-        "postalCode": "郵便番号",
+        "issuerName": "开具方名称",
+        "postalCode": "邮政编码",
         "address": "住所",
-        "phone": "電話番号",
-        "isQualifiedInvoicer": "適格請求書発行事業者である",
-        "invoiceRegistrationNumber": "インボイス登録番号",
-        "defaultSealVariant": "印鑑バリアント",
-        "receiptNoteTemplate": "但し書きテンプレート",
-        "receiptNumberPrefix": "領収書番号プレフィックス",
-        "fiscalYearStartMonth": "会計年度開始月",
-        "autoResetNumber": "年度切替で番号を自動リセット",
-        "customFooter": "PDFカスタムフッター",
-        "logo": "ロゴ画像",
-        "nextReceiptNumber": "次の領収書番号"
+        "phone": "电话号码",
+        "isQualifiedInvoicer": "是合格发票开具事业者",
+        "invoiceRegistrationNumber": "发票（Invoice）登记号",
+        "defaultSealVariant": "印章样式",
+        "receiptNoteTemplate": "用途说明（但书）模板",
+        "receiptNumberPrefix": "收据编号前缀",
+        "fiscalYearStartMonth": "会计年度起始月",
+        "autoResetNumber": "会计年度切换时自动重置编号",
+        "customFooter": "PDF自定义页脚",
+        "logo": "徽标图片",
+        "nextReceiptNumber": "下一个收据编号"
       },
       "placeholder": {
-        "issuerName": "例: 一般社団法人〇〇",
-        "postalCode": "例: 100-0001",
-        "address": "例: 東京都千代田区〇〇1-2-3",
-        "phone": "例: 03-1234-5678",
-        "invoiceRegistrationNumber": "例: T1234567890123",
-        "receiptNoteTemplate": "例: 会費として",
-        "receiptNumberPrefix": "例: RCP-",
-        "customFooter": "例: お問い合わせは事務局まで"
+        "issuerName": "例如：一般社团法人XX",
+        "postalCode": "例如：100-0001",
+        "address": "例如：东京都千代田区XX 1-2-3",
+        "phone": "例如：03-1234-5678",
+        "invoiceRegistrationNumber": "例如：T1234567890123",
+        "receiptNoteTemplate": "例如：作为会费",
+        "receiptNumberPrefix": "例如：RCP-",
+        "customFooter": "例如：如有疑问，请联系事务局"
       },
       "sealVariant": {
-        "LAST_NAME": "姓のみ",
+        "LAST_NAME": "仅姓",
         "FULL_NAME": "氏名",
-        "FIRST_NAME": "名のみ"
+        "FIRST_NAME": "仅名"
       },
       "hint": {
-        "notFirstYet": "まだ発行されていません",
-        "nextReceiptNumberFormat": "{prefix}{number}（発行後に採番されます）",
-        "registrationNumberDisabled": "登録番号は適格請求書発行事業者の場合のみ入力します",
-        "registrationNumberWillBeCleared": "保存すると登録番号も削除されます",
-        "logoResize": "アップロードした画像はサーバー側で長辺200px以内に縮小され、透過部分は白背景になります",
-        "logoNotSet": "ロゴ未設定",
-        "logoPosition": "設定すると、PDFのヘッダー左上とタイトル中央に表示されます",
-        "logoDisabledUntilSaved": "先に発行者設定を保存してください",
-        "unsavedChanges": "保存していない変更があります。移動すると失われます。"
+        "notFirstYet": "尚未开具",
+        "nextReceiptNumberFormat": "{prefix}{number}（开具后自动编号）",
+        "registrationNumberDisabled": "仅合格发票开具事业者需填写登记号",
+        "registrationNumberWillBeCleared": "保存后登记号也将被删除",
+        "logoResize": "上传的图片会在服务器端缩小至长边不超过200px，透明部分将变为白色背景",
+        "logoNotSet": "未设置徽标",
+        "logoPosition": "设置后将显示在PDF页眉左上方和标题中央",
+        "logoDisabledUntilSaved": "请先保存开具方设置",
+        "unsavedChanges": "有未保存的更改。离开页面后将丢失。"
       },
       "validation": {
-        "issuerNameRequired": "発行者名を入力してください",
-        "registrationNumberRequired": "インボイス登録番号を入力してください",
-        "registrationNumberFormat": "T + 数字13桁の形式で入力してください（例: T1234567890123）",
-        "logoTooLarge": "ロゴ画像は1MB以下にしてください",
-        "logoUnsupportedType": "ロゴ画像はPNGまたはJPEG形式にしてください"
+        "issuerNameRequired": "请输入开具方名称",
+        "registrationNumberRequired": "请输入发票（Invoice）登记号",
+        "registrationNumberFormat": "请按“T + 13位数字”的格式输入（例如：T1234567890123）",
+        "logoTooLarge": "徽标图片不得超过1MB",
+        "logoUnsupportedType": "徽标图片必须为PNG或JPEG格式"
       },
       "toast": {
-        "loadFailed": "発行者設定の取得に失敗しました",
-        "saved": "発行者設定を保存しました",
-        "saveFailed": "発行者設定の保存に失敗しました",
-        "logoUploaded": "ロゴ画像をアップロードしました",
-        "logoUploadFailed": "ロゴ画像のアップロードに失敗しました",
-        "logoDeleted": "ロゴ画像を削除しました",
-        "logoDeleteFailed": "ロゴ画像の削除に失敗しました",
-        "forbidden": "この操作を行う権限がありません"
+        "loadFailed": "获取开具方设置失败",
+        "saved": "开具方设置已保存",
+        "saveFailed": "保存开具方设置失败",
+        "logoUploaded": "徽标图片已上传",
+        "logoUploadFailed": "上传徽标图片失败",
+        "logoDeleted": "徽标图片已删除",
+        "logoDeleteFailed": "删除徽标图片失败",
+        "forbidden": "您无权执行此操作"
       },
       "button": {
-        "save": "保存する",
-        "uploadLogo": "ロゴをアップロード",
-        "deleteLogo": "ロゴを削除",
-        "deleteLogoConfirm": "ロゴ画像を削除しますか？",
-        "cancel": "キャンセル",
-        "confirmDelete": "削除する"
+        "save": "保存",
+        "uploadLogo": "上传徽标",
+        "deleteLogo": "删除徽标",
+        "deleteLogoConfirm": "确定要删除徽标图片吗？",
+        "cancel": "取消",
+        "confirmDelete": "删除"
       }
     }
   }
