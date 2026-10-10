@@ -7,6 +7,7 @@ import com.mannschaft.app.jobmatching.entity.JobPostingEntity;
 import com.mannschaft.app.jobmatching.enums.JobApplicationStatus;
 import com.mannschaft.app.jobmatching.enums.JobContractStatus;
 import com.mannschaft.app.jobmatching.enums.JobPostingStatus;
+import com.mannschaft.app.jobmatching.event.JobNotificationEvent;
 import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
 import com.mannschaft.app.jobmatching.policy.JobPolicy;
 import com.mannschaft.app.jobmatching.repository.JobApplicationRepository;
@@ -18,6 +19,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -63,7 +65,7 @@ public class JobContractService {
     private final JobContractStateMachine stateMachine;
     private final JobPolicy jobPolicy;
     private final JobChatService jobChatService;
-    private final JobNotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -160,12 +162,8 @@ public class JobContractService {
                 log.info("求人定員充足により CLOSED: postingId={}, capacity={}", postingId, posting.getCapacity());
             }
 
-            // 通知送信（失敗しても業務トランザクションは継続）。
-            try {
-                notificationService.notifyMatched(contract, posting);
-            } catch (Exception e) {
-                log.warn("JOB_MATCHED 通知失敗: contractId={}, error={}", contract.getId(), e.getMessage());
-            }
+            // 通知はイベント発行のみ。実通知は AFTER_COMMIT のリスナーが行う（Issue #2997）。
+            eventPublisher.publishEvent(JobNotificationEvent.matched(contract.getId(), postingId));
 
             log.info("採用確定・契約成立: contractId={}, applicationId={}, postingId={}, requesterId={}, workerId={}",
                     contract.getId(), applicationId, postingId, requesterId, contract.getWorkerUserId());
@@ -193,14 +191,9 @@ public class JobContractService {
         contract.reportCompletion();
         JobContractEntity saved = contractRepository.save(contract);
 
-        // Requester へ通知。
-        try {
-            JobPostingEntity posting = postingRepository.findById(contract.getJobPostingId())
-                    .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND));
-            notificationService.notifyCompletionReported(saved, posting);
-        } catch (Exception e) {
-            log.warn("JOB_COMPLETION_REPORTED 通知失敗: contractId={}, error={}", contractId, e.getMessage());
-        }
+        // Requester へ通知。イベント発行のみ。実通知は AFTER_COMMIT のリスナーが行う（Issue #2997）。
+        eventPublisher.publishEvent(JobNotificationEvent.completionReported(
+                saved.getId(), contract.getJobPostingId()));
 
         log.info("業務完了報告: contractId={}, workerId={}, comment={}",
                 contractId, workerId, cmd.comment() != null ? "あり" : "なし");
