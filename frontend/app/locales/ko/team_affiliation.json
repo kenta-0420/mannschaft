@@ -1,96 +1,96 @@
 {
   "teamAffiliation": {
     "settings": {
-      "title": "チーム加盟の設定",
-      "entry_button": "加盟の設定",
-      "application_enabled": "チームからの加盟申請を受け付ける",
-      "application_enabled_hint": "オンにすると、組織ページに「チームとして加盟を申請」ボタンが表示されます",
-      "groups_enabled": "チームグループを使う",
-      "groups_enabled_hint": "加盟チームを年度や地区などのグループに分け、お知らせの宛先に使えます",
-      "group_mode": "申請時のチームグループ選択",
-      "group_mode_off": "選ばせない",
-      "group_mode_optional": "任意で選べる",
-      "group_mode_required": "必ず選ばせる",
-      "guidance": "申請フォームの案内文",
-      "turn_off_pending_confirm": "受付済みの申請が {count} 件残っています。受付を停止しても、これらの申請は申請一覧から承認・拒否できます。",
-      "required_mode_degraded": "グループが1件も無いため、グループ選択は「任意」として扱われています"
+      "title": "팀 가맹 설정",
+      "entry_button": "가맹 설정",
+      "application_enabled": "팀의 가맹 신청 받기",
+      "application_enabled_hint": "켜면 조직 페이지에 \"팀으로 가맹 신청\" 버튼이 표시됩니다",
+      "groups_enabled": "팀 그룹 사용",
+      "groups_enabled_hint": "가맹 팀을 연도나 지구 등의 그룹으로 나누어 공지 수신 대상으로 쓸 수 있습니다",
+      "group_mode": "신청 시 팀 그룹 선택",
+      "group_mode_off": "선택하지 않게 함",
+      "group_mode_optional": "선택 사항",
+      "group_mode_required": "반드시 선택하게 함",
+      "guidance": "신청 양식 안내문",
+      "turn_off_pending_confirm": "접수된 신청이 {count}건 남아 있습니다. 접수를 중지해도 이 신청들은 신청 목록에서 승인・거절할 수 있습니다.",
+      "required_mode_degraded": "그룹이 하나도 없어서 그룹 선택은 \"선택 사항\"으로 처리됩니다"
     },
     "view": {
-      "teams": "所属チーム",
-      "applications": "加盟申請",
-      "invites": "送った招待",
-      "restrictions": "申請の制限",
-      "groups": "チームグループ"
+      "teams": "소속 팀",
+      "applications": "가맹 신청",
+      "invites": "보낸 초대",
+      "restrictions": "신청 제한",
+      "groups": "팀 그룹"
     },
     "apply": {
-      "button": "チームとして加盟を申請",
-      "dialog_title": "{org} への加盟申請",
-      "select_team": "申請するチーム",
-      "select_group": "チームグループ",
-      "group_none": "選ばない",
-      "message": "添え書き（任意）",
-      "submit": "申請する",
-      "success": "加盟を申請しました。組織の承認をお待ちください",
-      "expires_hint": "{date} までに応答が無い場合、申請は自動で取り消されます",
+      "button": "팀으로 가맹 신청",
+      "dialog_title": "{org} 가맹 신청",
+      "select_team": "신청할 팀",
+      "select_group": "팀 그룹",
+      "group_none": "선택하지 않음",
+      "message": "메시지(선택 사항)",
+      "submit": "신청하기",
+      "success": "가맹을 신청했습니다. 조직의 승인을 기다려 주세요",
+      "expires_hint": "{date}까지 응답이 없으면 신청이 자동으로 취소됩니다",
       "status": {
-        "NONE": "申請できます",
-        "APPLYING": "申請中です",
-        "INVITED": "この組織から招待が届いています",
-        "ACTIVE": "加盟済みです",
-        "UNAVAILABLE": "現在この組織には申請できません"
+        "NONE": "신청할 수 있습니다",
+        "APPLYING": "신청 중입니다",
+        "INVITED": "이 조직에서 초대가 도착했습니다",
+        "ACTIVE": "이미 가맹했습니다",
+        "UNAVAILABLE": "현재 이 조직에는 신청할 수 없습니다"
       },
-      "find_orgs": "加盟先の組織を探す"
+      "find_orgs": "가맹할 조직 찾기"
     },
     "review": {
-      "approve": "承認",
-      "reject": "拒否",
-      "approve_dialog_title": "{team} の加盟を承認",
-      "approve_group": "所属させるチームグループ",
-      "requested_group": "希望: {requested} → 承認時: {decided}",
-      "unassigned": "未分類",
-      "reject_reason": "理由（任意・相手チームに通知されます）",
-      "reject_block": "今後このチームからの申請を受け付けない",
-      "approved": "承認しました",
-      "rejected": "拒否しました"
+      "approve": "승인",
+      "reject": "거절",
+      "approve_dialog_title": "{team}의 가맹 승인",
+      "approve_group": "소속시킬 팀 그룹",
+      "requested_group": "희망: {requested} → 승인 시: {decided}",
+      "unassigned": "미분류",
+      "reject_reason": "사유(선택 사항, 상대 팀에 통지됩니다)",
+      "reject_block": "앞으로 이 팀의 신청을 받지 않기",
+      "approved": "승인했습니다",
+      "rejected": "거절했습니다"
     },
     "invite": {
-      "button": "チームを招待",
-      "accept": "承諾",
-      "decline": "辞退",
-      "decline_block": "今後この組織からの招待を受け付けない",
-      "cancel": "招待を取り消す"
+      "button": "팀 초대",
+      "accept": "수락",
+      "decline": "거절",
+      "decline_block": "앞으로 이 조직의 초대를 받지 않기",
+      "cancel": "초대 취소"
     },
     "restriction": {
-      "kind_COOLDOWN": "冷却期間中（{until} まで）",
-      "kind_BLOCK": "ブロック中",
-      "lift": "解除"
+      "kind_COOLDOWN": "대기 기간 중({until}까지)",
+      "kind_BLOCK": "차단 중",
+      "lift": "해제"
     },
     "leave": {
-      "button": "この組織から離脱",
-      "confirm": "{org} から離脱しますか？ 組織からのお知らせが届かなくなります（他の組織への加盟には影響しません）"
+      "button": "이 조직에서 탈퇴",
+      "confirm": "{org}에서 탈퇴하시겠습니까? 조직의 공지가 오지 않게 됩니다(다른 조직에 대한 가맹에는 영향이 없습니다)"
     },
     "remove": {
-      "button": "除名",
-      "confirm": "{team} を組織から除名しますか？"
+      "button": "제명",
+      "confirm": "{team}을(를) 조직에서 제명하시겠습니까?"
     },
-    "badge_accepting": "加盟受付中",
-    "public_page_apply_hint": "あなたが加盟の手続きを任されているチームから申請できます",
-    "filter_accepting": "チーム加盟を受付中"
+    "badge_accepting": "가맹 접수 중",
+    "public_page_apply_hint": "가맹 절차를 맡고 있는 팀에서 신청할 수 있습니다",
+    "filter_accepting": "팀 가맹 접수 중"
   },
   "teamGroup": {
-    "title": "チームグループ",
-    "create": "チームグループを作成",
-    "name": "グループ名",
-    "description": "説明",
-    "team_count": "{count} チーム",
-    "unassigned": "未分類",
-    "unassigned_count": "未分類のチーム: {count}",
-    "reorder_hint": "並び順は、お知らせの「〜以前／〜以降」の基準になります",
-    "delete_confirm": "「{name}」を削除しますか？ 所属している {count} チームは未分類に戻ります。このグループ宛ての過去のお知らせは、送信時点で対象だったチームに引き続き表示されます",
-    "limit_reached": "チームグループは200件までです",
-    "assign": "グループを割り当てる",
-    "bulk_assign": "選択したチームをグループに割り当てる",
-    "filter_all": "すべてのグループ",
-    "disabled_cta": "チームグループ機能は無効です。設定から有効にできます"
+    "title": "팀 그룹",
+    "create": "팀 그룹 만들기",
+    "name": "그룹 이름",
+    "description": "설명",
+    "team_count": "{count}개 팀",
+    "unassigned": "미분류",
+    "unassigned_count": "미분류 팀: {count}",
+    "reorder_hint": "정렬 순서는 공지의 \"~이전/~이후\" 기준이 됩니다",
+    "delete_confirm": "\"{name}\"을(를) 삭제하시겠습니까? 소속된 {count}개 팀은 미분류로 돌아갑니다. 이 그룹 앞으로 보낸 지난 공지는 발송 시점에 대상이었던 팀에게 계속 표시됩니다",
+    "limit_reached": "팀 그룹은 최대 200개까지입니다",
+    "assign": "그룹 지정",
+    "bulk_assign": "선택한 팀을 그룹에 지정",
+    "filter_all": "모든 그룹",
+    "disabled_cta": "팀 그룹 기능이 꺼져 있습니다. 설정에서 켤 수 있습니다"
   }
 }

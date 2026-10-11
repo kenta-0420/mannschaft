@@ -1,96 +1,96 @@
 {
   "teamAffiliation": {
     "settings": {
-      "title": "チーム加盟の設定",
-      "entry_button": "加盟の設定",
-      "application_enabled": "チームからの加盟申請を受け付ける",
-      "application_enabled_hint": "オンにすると、組織ページに「チームとして加盟を申請」ボタンが表示されます",
-      "groups_enabled": "チームグループを使う",
-      "groups_enabled_hint": "加盟チームを年度や地区などのグループに分け、お知らせの宛先に使えます",
-      "group_mode": "申請時のチームグループ選択",
-      "group_mode_off": "選ばせない",
-      "group_mode_optional": "任意で選べる",
-      "group_mode_required": "必ず選ばせる",
-      "guidance": "申請フォームの案内文",
-      "turn_off_pending_confirm": "受付済みの申請が {count} 件残っています。受付を停止しても、これらの申請は申請一覧から承認・拒否できます。",
-      "required_mode_degraded": "グループが1件も無いため、グループ選択は「任意」として扱われています"
+      "title": "Einstellungen zur Team-Zugehörigkeit",
+      "entry_button": "Zugehörigkeit einstellen",
+      "application_enabled": "Zugehörigkeitsanträge von Teams annehmen",
+      "application_enabled_hint": "Wenn aktiviert, erscheint auf der Organisationsseite die Schaltfläche „Als Team Zugehörigkeit beantragen“",
+      "groups_enabled": "Teamgruppen verwenden",
+      "groups_enabled_hint": "Angeschlossene Teams lassen sich nach Geschäftsjahr, Bezirk usw. in Gruppen einteilen und als Empfänger von Ankündigungen verwenden",
+      "group_mode": "Teamgruppen-Auswahl beim Antrag",
+      "group_mode_off": "Keine Auswahl zulassen",
+      "group_mode_optional": "Optional wählbar",
+      "group_mode_required": "Auswahl verpflichtend",
+      "guidance": "Hinweistext für das Antragsformular",
+      "turn_off_pending_confirm": "Es sind noch {count} eingegangene Anträge offen. Auch wenn du die Annahme beendest, kannst du diese Anträge weiterhin in der Antragsliste genehmigen oder ablehnen.",
+      "required_mode_degraded": "Da keine Gruppe vorhanden ist, wird die Gruppenauswahl als „Optional“ behandelt"
     },
     "view": {
-      "teams": "所属チーム",
-      "applications": "加盟申請",
-      "invites": "送った招待",
-      "restrictions": "申請の制限",
-      "groups": "チームグループ"
+      "teams": "Zugehörige Teams",
+      "applications": "Zugehörigkeitsanträge",
+      "invites": "Gesendete Einladungen",
+      "restrictions": "Antragsbeschränkungen",
+      "groups": "Teamgruppen"
     },
     "apply": {
-      "button": "チームとして加盟を申請",
-      "dialog_title": "{org} への加盟申請",
-      "select_team": "申請するチーム",
-      "select_group": "チームグループ",
-      "group_none": "選ばない",
-      "message": "添え書き（任意）",
-      "submit": "申請する",
-      "success": "加盟を申請しました。組織の承認をお待ちください",
-      "expires_hint": "{date} までに応答が無い場合、申請は自動で取り消されます",
+      "button": "Als Team Zugehörigkeit beantragen",
+      "dialog_title": "Zugehörigkeitsantrag an {org}",
+      "select_team": "Team für den Antrag",
+      "select_group": "Teamgruppe",
+      "group_none": "Keine auswählen",
+      "message": "Nachricht (optional)",
+      "submit": "Beantragen",
+      "success": "Zugehörigkeit beantragt. Bitte warte auf die Genehmigung der Organisation",
+      "expires_hint": "Wenn bis zum {date} keine Antwort erfolgt, wird der Antrag automatisch zurückgezogen",
       "status": {
-        "NONE": "申請できます",
-        "APPLYING": "申請中です",
-        "INVITED": "この組織から招待が届いています",
-        "ACTIVE": "加盟済みです",
-        "UNAVAILABLE": "現在この組織には申請できません"
+        "NONE": "Du kannst einen Antrag stellen",
+        "APPLYING": "Antrag in Bearbeitung",
+        "INVITED": "Du hast eine Einladung von dieser Organisation erhalten",
+        "ACTIVE": "Bereits zugehörig",
+        "UNAVAILABLE": "Anträge an diese Organisation sind derzeit nicht möglich"
       },
-      "find_orgs": "加盟先の組織を探す"
+      "find_orgs": "Organisationen zum Beitreten suchen"
     },
     "review": {
-      "approve": "承認",
-      "reject": "拒否",
-      "approve_dialog_title": "{team} の加盟を承認",
-      "approve_group": "所属させるチームグループ",
-      "requested_group": "希望: {requested} → 承認時: {decided}",
-      "unassigned": "未分類",
-      "reject_reason": "理由（任意・相手チームに通知されます）",
-      "reject_block": "今後このチームからの申請を受け付けない",
-      "approved": "承認しました",
-      "rejected": "拒否しました"
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "approve_dialog_title": "Zugehörigkeit von {team} genehmigen",
+      "approve_group": "Zuzuweisende Teamgruppe",
+      "requested_group": "Gewünscht: {requested} → Bei Genehmigung: {decided}",
+      "unassigned": "Nicht zugeordnet",
+      "reject_reason": "Grund (optional; das Team wird benachrichtigt)",
+      "reject_block": "Künftig keine Anträge dieses Teams mehr annehmen",
+      "approved": "Genehmigt",
+      "rejected": "Abgelehnt"
     },
     "invite": {
-      "button": "チームを招待",
-      "accept": "承諾",
-      "decline": "辞退",
-      "decline_block": "今後この組織からの招待を受け付けない",
-      "cancel": "招待を取り消す"
+      "button": "Team einladen",
+      "accept": "Annehmen",
+      "decline": "Ablehnen",
+      "decline_block": "Künftig keine Einladungen dieser Organisation mehr annehmen",
+      "cancel": "Einladung zurückziehen"
     },
     "restriction": {
-      "kind_COOLDOWN": "冷却期間中（{until} まで）",
-      "kind_BLOCK": "ブロック中",
-      "lift": "解除"
+      "kind_COOLDOWN": "In der Sperrfrist (bis {until})",
+      "kind_BLOCK": "Blockiert",
+      "lift": "Aufheben"
     },
     "leave": {
-      "button": "この組織から離脱",
-      "confirm": "{org} から離脱しますか？ 組織からのお知らせが届かなくなります（他の組織への加盟には影響しません）"
+      "button": "Diese Organisation verlassen",
+      "confirm": "{org} verlassen? Du erhältst dann keine Ankündigungen der Organisation mehr (die Zugehörigkeit zu anderen Organisationen bleibt unberührt)"
     },
     "remove": {
-      "button": "除名",
-      "confirm": "{team} を組織から除名しますか？"
+      "button": "Ausschließen",
+      "confirm": "{team} aus der Organisation ausschließen?"
     },
-    "badge_accepting": "加盟受付中",
-    "public_page_apply_hint": "あなたが加盟の手続きを任されているチームから申請できます",
-    "filter_accepting": "チーム加盟を受付中"
+    "badge_accepting": "Nimmt Zugehörigkeitsanträge an",
+    "public_page_apply_hint": "Du kannst über ein Team beantragen, für dessen Zugehörigkeitsverfahren du zuständig bist",
+    "filter_accepting": "Nimmt Team-Zugehörigkeiten an"
   },
   "teamGroup": {
-    "title": "チームグループ",
-    "create": "チームグループを作成",
-    "name": "グループ名",
-    "description": "説明",
-    "team_count": "{count} チーム",
-    "unassigned": "未分類",
-    "unassigned_count": "未分類のチーム: {count}",
-    "reorder_hint": "並び順は、お知らせの「〜以前／〜以降」の基準になります",
-    "delete_confirm": "「{name}」を削除しますか？ 所属している {count} チームは未分類に戻ります。このグループ宛ての過去のお知らせは、送信時点で対象だったチームに引き続き表示されます",
-    "limit_reached": "チームグループは200件までです",
-    "assign": "グループを割り当てる",
-    "bulk_assign": "選択したチームをグループに割り当てる",
-    "filter_all": "すべてのグループ",
-    "disabled_cta": "チームグループ機能は無効です。設定から有効にできます"
+    "title": "Teamgruppen",
+    "create": "Teamgruppe erstellen",
+    "name": "Gruppenname",
+    "description": "Beschreibung",
+    "team_count": "{count} Teams",
+    "unassigned": "Nicht zugeordnet",
+    "unassigned_count": "Nicht zugeordnete Teams: {count}",
+    "reorder_hint": "Die Reihenfolge ist die Grundlage für „bis / ab“ bei Ankündigungen",
+    "delete_confirm": "„{name}“ löschen? Die {count} zugehörigen Teams werden wieder als „Nicht zugeordnet“ geführt. Frühere Ankündigungen an diese Gruppe bleiben für die Teams sichtbar, die zum Zeitpunkt des Versands Empfänger waren",
+    "limit_reached": "Es sind höchstens 200 Teamgruppen möglich",
+    "assign": "Gruppe zuweisen",
+    "bulk_assign": "Ausgewählte Teams einer Gruppe zuweisen",
+    "filter_all": "Alle Gruppen",
+    "disabled_cta": "Die Teamgruppen-Funktion ist deaktiviert. Du kannst sie in den Einstellungen aktivieren"
   }
 }

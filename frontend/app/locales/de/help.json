@@ -1,44 +1,44 @@
 {
   "security_help": {
-    "title": "セキュリティの使い方ガイド",
-    "description": "二要素認証・アクティブセッション・セキュリティキーの使い方と、不審なログインを見つけたときの対処方法をまとめました。",
-    "link_label": "❔ 使い方ガイド",
+    "title": "Sicherheits-Anleitung",
+    "description": "Hier erfahren Sie, wie Sie die Zwei-Faktor-Authentifizierung, aktive Sitzungen und Sicherheitsschlüssel verwenden und was zu tun ist, wenn Sie eine verdächtige Anmeldung bemerken.",
+    "link_label": "❔ Anleitung",
     "twofa": {
-      "title": "二要素認証（2FA）",
-      "intro": "パスワードに加えて、もう一段階の本人確認を追加してアカウントを守るしくみです。万が一パスワードが漏れても、第三者だけではログインできなくなります。",
-      "setup_title": "有効化のしかた",
+      "title": "Zwei-Faktor-Authentifizierung (2FA)",
+      "intro": "Zusätzlich zum Passwort wird ein weiterer Schritt zur Identitätsprüfung hinzugefügt, um Ihr Konto zu schützen. Selbst wenn Ihr Passwort bekannt wird, kann sich eine dritte Person damit allein nicht anmelden.",
+      "setup_title": "So aktivieren Sie sie",
       "setup_steps": {
-        "step1": "認証アプリ（Google Authenticator など）をスマートフォンに用意します。",
-        "step2": "「2FAをセットアップ」を押すと、QRコードとシークレットキーが表示されます。",
-        "step3": "認証アプリでそのQRコードを読み取ります（読み取れない場合はシークレットキーを手入力します）。",
-        "step4": "認証アプリに表示された6桁のコードを入力して有効化を完了します。"
+        "step1": "Halten Sie eine Authentifizierungs-App (z. B. Google Authenticator) auf Ihrem Smartphone bereit.",
+        "step2": "Klicken Sie auf «2FA einrichten», um einen QR-Code und einen geheimen Schlüssel anzuzeigen.",
+        "step3": "Scannen Sie den QR-Code mit Ihrer Authentifizierungs-App (falls das nicht möglich ist, geben Sie den geheimen Schlüssel manuell ein).",
+        "step4": "Geben Sie den in der Authentifizierungs-App angezeigten 6-stelligen Code ein, um die Aktivierung abzuschließen."
       },
-      "backup_title": "バックアップコードについて",
-      "backup_desc": "バックアップコードは、スマートフォンを紛失するなどして認証アプリが使えなくなったときの予備の入り口です。安全な場所に保管してください。各コードは一度だけ使えます。「バックアップコード再生成」を押すと新しいコードが発行され、古いコードはすべて無効になります。"
+      "backup_title": "Über Backup-Codes",
+      "backup_desc": "Backup-Codes sind ein Ersatzzugang, falls Sie Ihre Authentifizierungs-App nicht mehr nutzen können, zum Beispiel weil Sie Ihr Smartphone verloren haben. Bewahren Sie sie an einem sicheren Ort auf. Jeder Code kann nur einmal verwendet werden. Mit «Backup-Codes neu generieren» werden neue Codes ausgestellt und alle alten ungültig."
     },
     "sessions": {
-      "title": "アクティブセッション",
-      "intro": "いま自分のアカウントにログインしている端末の一覧です。心当たりのない端末がないか、ここで確認できます。",
-      "row_desc": "各行は1つの端末を表し、ブラウザ／OSの情報・IPアドレス・ログインした日時が並びます。先頭の英字の羅列は、使われたブラウザとOSの情報です。",
-      "current_tag_desc": "「現在」タグが付いている行は、いま見ているこの端末です。",
-      "revoke_desc": "怪しい行は「×」ボタンで個別に無効化（ログアウト）できます。",
-      "revoke_all_desc": "「全てログアウト」を押すと、ほかの端末をまとめて締め出せます。",
-      "current_note": "いま使っているこのセッションは、誤操作で自分を締め出さないように個別では削除できません（その操作はサーバー側で拒否されます）。すべて締め出したいときは「全てログアウト」を使ってください。"
+      "title": "Aktive Sitzungen",
+      "intro": "Eine Liste der Geräte, die gerade bei Ihrem Konto angemeldet sind. Hier können Sie prüfen, ob Geräte darunter sind, die Sie nicht kennen.",
+      "row_desc": "Jede Zeile steht für ein Gerät und zeigt Browser-/Betriebssystem-Informationen, IP-Adresse und Anmeldezeitpunkt. Die Buchstabenfolge am Anfang enthält die Angaben zu Browser und Betriebssystem.",
+      "current_tag_desc": "Die Zeile mit dem Etikett «Aktuell» ist das Gerät, das Sie gerade verwenden.",
+      "revoke_desc": "Verdächtige Zeilen können Sie mit der Schaltfläche «×» einzeln ungültig machen (abmelden).",
+      "revoke_all_desc": "Mit «Alle abmelden» können Sie alle anderen Geräte auf einmal abmelden.",
+      "current_note": "Die aktuell verwendete Sitzung kann nicht einzeln gelöscht werden, damit Sie sich nicht versehentlich selbst aussperren (der Server lehnt diese Aktion ab). Wenn Sie überall abmelden möchten, verwenden Sie «Alle abmelden»."
     },
     "webauthn": {
-      "title": "セキュリティキー（WebAuthn）",
-      "intro": "指紋認証・顔認証や、物理的なセキュリティキー（FIDO2）を使ってログインできるしくみです。パスワードを入力せず、すばやく安全にログインできます。",
-      "manage_desc": "登録した鍵には分かりやすい名前を付けられます（リネーム）。使わなくなった鍵は削除できます。"
+      "title": "Sicherheitsschlüssel (WebAuthn)",
+      "intro": "Eine Möglichkeit zur Anmeldung per Fingerabdruck, Gesichtserkennung oder physischem Sicherheitsschlüssel (FIDO2). Sie melden sich schnell und sicher ohne Passworteingabe an.",
+      "manage_desc": "Registrierten Schlüsseln können Sie verständliche Namen geben (umbenennen). Nicht mehr benötigte Schlüssel lassen sich löschen."
     },
     "suspicious": {
-      "title": "身に覚えのないログインを見つけたら",
-      "intro": "アクティブセッションに知らない端末があるなど、不審な点に気づいたら、上から順に対処してください。",
+      "title": "Wenn Sie eine Anmeldung bemerken, die Sie nicht kennen",
+      "intro": "Wenn Ihnen etwas Verdächtiges auffällt, etwa ein unbekanntes Gerät in den aktiven Sitzungen, gehen Sie die Schritte der Reihe nach von oben durch.",
       "steps": {
-        "step1": "心当たりのないセッションを「×」で無効化する",
-        "step2": "不安なら「全てログアウト」で全端末から締め出す",
-        "step3": "パスワードを変更する",
-        "step4": "二要素認証（2FA）を有効化する",
-        "step5": "バックアップコードを安全な場所に保管する"
+        "step1": "Unbekannte Sitzungen mit «×» ungültig machen",
+        "step2": "Im Zweifel mit «Alle abmelden» auf allen Geräten abmelden",
+        "step3": "Passwort ändern",
+        "step4": "Zwei-Faktor-Authentifizierung (2FA) aktivieren",
+        "step5": "Backup-Codes an einem sicheren Ort aufbewahren"
       }
     }
   },

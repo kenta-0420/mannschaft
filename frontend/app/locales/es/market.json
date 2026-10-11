@@ -1,6 +1,6 @@
 {
   "market": {
-    "title": "市（いち）",
+    "title": "Ichi (Mercado)",
     "listing": {
       "label": "Anuncio",
       "count": "{count} anuncios",
@@ -297,67 +297,67 @@
       }
     },
     "market_guide": {
-      "page_title": "市の使い方",
+      "page_title": "Cómo usar Ichi",
       "what": {
-        "title": "市とは？",
-        "body": "市は、個人・チーム・組織が公開する活動や参加者募集の札を探せる場所です。",
+        "title": "¿Qué es Ichi?",
+        "body": "Ichi es un lugar donde puedes buscar los anuncios de actividades y de captación de participantes que publican personas, equipos y organizaciones.",
         "steps": {
-          "step1": "札の内容を確認し、自分に合う活動や募集を探します",
-          "step2": "気になる札を開いて、応募または札の作成へ進みます"
+          "step1": "Revisa el contenido de los anuncios y busca actividades o convocatorias que te convengan",
+          "step2": "Abre el anuncio que te interese y continúa para postularte o crear un anuncio"
         }
       },
       "search": {
-        "title": "絞り込み検索",
-        "body": "都道府県・市区町村・ジャンル・札主・キーワードで条件を絞り込めます。",
+        "title": "Búsqueda con filtros",
+        "body": "Puedes filtrar los resultados por prefectura, municipio, género, autor y palabra clave.",
         "steps": {
-          "step1": "都道府県を選び、市区町村を選択します",
-          "step2": "ジャンル、札主、自由入力キーワードを設定します",
-          "step3": "締切が近い順または遠い順を選びます",
-          "step4": "検索ボタンを押して条件に合う札を表示します",
-          "step5": "絞り込み条件はURLに保存されるため、リンクで共有・ブックマークが可能です"
+          "step1": "Selecciona una prefectura y luego un municipio",
+          "step2": "Configura el género, el autor y la palabra clave libre",
+          "step3": "Elige ordenar por fecha límite más cercana o más lejana",
+          "step4": "Pulsa el botón de búsqueda para mostrar los anuncios que coinciden",
+          "step5": "Las condiciones del filtro se guardan en la URL, por lo que puedes compartirlas o guardarlas como favoritos mediante el enlace"
         }
       },
       "apply": {
-        "title": "札に応じる（応募する）",
-        "body": "気になる札をクリックして内容を確認し、OPENの札へ応募できます。応募にはログインが必要です。",
+        "title": "Responder a un anuncio (postularse)",
+        "body": "Haz clic en un anuncio que te interese para revisar su contenido y postúlate a los anuncios en estado OPEN. Para postularte debes iniciar sesión.",
         "steps": {
-          "step1": "一覧から気になる札をクリックして詳細ページを開く",
-          "step2": "開催日時・開催場所・応募締切・定員・地域を確認する",
-          "step3": "チーム募集では応募するチームを選び、「札に応じる」を押します。応募済みの札には再応募できません"
+          "step1": "Haz clic en un anuncio de la lista para abrir su página de detalle",
+          "step2": "Comprueba la fecha y hora, el lugar, la fecha límite de postulación, el aforo y la zona",
+          "step3": "En las convocatorias de equipos, selecciona el equipo que se postula y pulsa \"Responder al anuncio\". No se puede volver a postular a un anuncio ya solicitado"
         }
       },
       "personal_create": {
-        "title": "個人札を下書きから公開する",
-        "body": "個人の札は、まず非公開の下書きとして作成し、内容を編集してから公開します。",
+        "title": "Publicar un anuncio personal a partir de un borrador",
+        "body": "Un anuncio personal se crea primero como un borrador privado y se publica después de editar su contenido.",
         "steps": {
-          "step1": "マイ市で必要な内容を入力し、下書きを作成します",
-          "step2": "タイトル、開催日時、必須の開催場所などを確認して編集します",
-          "step3": "公開範囲を選び、内容を確認して公開します"
+          "step1": "Introduce los datos necesarios en Mi Ichi y crea un borrador",
+          "step2": "Revisa y edita el título, la fecha y hora, y el lugar obligatorio",
+          "step3": "Elige el alcance de publicación, revisa el contenido y publícalo"
         }
       },
       "visibility": {
-        "title": "公開範囲と表示名",
-        "body": "個人札では公開範囲を選べます。下書きは公開されません。",
+        "title": "Alcance de publicación y nombre mostrado",
+        "body": "En los anuncios personales puedes elegir el alcance de publicación. Los borradores no se publican.",
         "steps": {
-          "step1": "所属チーム・組織のメンバーには登録済みの実名が表示されます",
-          "step2": "それ以外の人にはニックネームが表示されます",
-          "step3": "公開、選択したチーム・組織への公開、下書きの非公開を使い分けます"
+          "step1": "Los miembros de tus equipos y organizaciones ven tu nombre real registrado",
+          "step2": "El resto de personas ven tu apodo",
+          "step3": "Usa según convenga: público, público para los equipos y organizaciones seleccionados, o borrador privado"
         }
       },
       "team_organization": {
-        "title": "チーム・組織の札作成と応募者管理",
-        "body": "チーム・組織の札の作成と応募者の管理には、対象の管理権限が必要です。",
+        "title": "Crear anuncios de equipos y organizaciones y gestionar postulantes",
+        "body": "Para crear anuncios de un equipo u organización y gestionar a los postulantes se necesita el permiso de administración correspondiente.",
         "steps": {
-          "step1": "チームまたは組織の画面から札を作成します",
-          "step2": "公開後は応募者を確認し、必要に応じて参加状況を管理します"
+          "step1": "Crea un anuncio desde la pantalla del equipo o de la organización",
+          "step2": "Tras publicar, revisa a los postulantes y gestiona el estado de participación si es necesario"
         }
       },
       "cancellation": {
-        "title": "成立と取消",
-        "body": "札の成立状況を確認し、不要になった札は取り消せます。",
+        "title": "Confirmación y cancelación",
+        "body": "Puedes comprobar si un anuncio se ha confirmado y cancelar los que ya no necesites.",
         "steps": {
-          "step1": "応募状況と定員を確認して、成立に必要な対応を行います",
-          "step2": "公開済みの札を取り消すと、応募者に影響するため内容を確認してから実行します"
+          "step1": "Comprueba las postulaciones y el aforo, y realiza las acciones necesarias para la confirmación",
+          "step2": "Cancelar un anuncio publicado afecta a los postulantes, así que revisa el contenido antes de hacerlo"
         }
       }
     }

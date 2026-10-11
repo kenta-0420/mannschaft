@@ -11,8 +11,8 @@
     },
     "cards": {
       "teamAffiliation": {
-        "title": "チーム加盟の設定",
-        "desc": "チームからの加盟申請の受付とチームグループを設定します"
+        "title": "团队加盟设置",
+        "desc": "设置团队加盟申请的受理以及团队分组"
       },
       "reservations": {
         "title": "预约确认",
