@@ -624,7 +624,7 @@ for (const lang of ['de', 'es'] as const) {
           })
           // タブ列自身または祖先（body 手前まで）に横スクロールのコンテナがあるか
           let scroller: { overflowX: string; scrollWidth: number; clientWidth: number } | null = null
-          for (let el: HTMLElement | null = root; el && el !== document.body; el = el.parentElement) {
+          for (let el: HTMLElement | SVGElement | null = root; el && el !== document.body; el = el.parentElement) {
             const ox = getComputedStyle(el).overflowX
             if (ox === 'auto' || ox === 'scroll') {
               scroller = { overflowX: ox, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }
