@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261004-1944",
+  "scope": "app",
+  "implementation": {
+    "pr": 3785,
+    "sha": "b247e66d6dd71f28924c2046d5e748cbf84896ce"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "en/de/es/ko の全文字列値に仮名・漢字が残らない（許容リストの例外のみ）。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue AC-1",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "zh の全文字列値に仮名が残らない。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue AC-2",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "zh の漢字が GB2312 で符号化できる（字体検査）。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue AC-3",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "各言語・各ファイルのキー集合が ja と一致する（既存不一致は固定リスト）。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue AC-4",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "プレースホルダ {name} の集合が ja と一致する。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue AC-5",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "ja に複数形区切り | があるキーは、複数形区切りの数が ja と一致する。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue AC-6",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "全言語の全メッセージが vue-i18n のコンパイラでエラーなく通る。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue AC-7",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-8",
+      "description": "es の値にアクセント欠落の綴りがない。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue AC-8",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-9a",
+      "description": "ja で空文字の値は他言語でも空文字。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue AC-9a",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-9b",
+      "description": "ja で trim 後非空の値は他言語でも trim 後非空（語順都合の例外は理由付き基準リスト）。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue AC-9b",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-9c",
+      "description": "値の型と配列長が ja と一致する。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue AC-9c",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-10",
+      "description": "番人が登録された全ロケールファイルを読み、不在・パース失敗・対象0件・違反・許容リスト未使用行で失敗し、CI の unit テストで実行される。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue AC-10",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-11a",
+      "description": "実機: 非所属者のチームページで、参加申請ボタンが5言語の訳で出る。",
+      "tests": [
+        {
+          "name": "e2e locale-residue-1944 AC-11a",
+          "evidence": "frontend/tests/e2e/real/locale-residue-1944.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-11b",
+      "description": "実機: 管理者・副管理者の管理者表示で、参加申請管理タブが5言語の訳で出る。",
+      "tests": [
+        {
+          "name": "e2e locale-residue-1944 AC-11b",
+          "evidence": "frontend/tests/e2e/real/locale-residue-1944.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-12",
+      "description": "実機: billing・shift・receipt の画面で、今回訳したキー由来の文言が期待する訳で出る。",
+      "tests": [
+        {
+          "name": "e2e locale-residue-1944 AC-12",
+          "evidence": "frontend/tests/e2e/real/locale-residue-1944.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-13",
+      "description": "キープ画面が de/es の 390/360 幅でページの横パンを起こさず、送信ボタンも切れない。",
+      "tests": [
+        {
+          "name": "e2e locale-residue-1944 AC-13",
+          "evidence": "frontend/tests/e2e/real/locale-residue-1944.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38077083934
+    },
+    {
+      "runId": 38139960634
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261004-1944.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261004-1944.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261004-1944.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "キープ画面（/teams/{slug}/schedule-keeps）の de/es モバイル表示で、送信ボタンが幅 26px に潰れて文字が切れ、状態タブ列がページを横に伸ばしていた（scrollWidth 492/390）。アリシゼーションの de スマホ住民が発見した。",
+      "test": "frontend/tests/e2e/real/locale-residue-1944.spec.ts AC-13",
+      "redEvidence": "修正前 c1a033906f で AC-13 の4件（de/es × 390x844/360x800）がアサーションで失敗した（de 390: scrollWidth 492 > clientWidth 390、ボタン width 26、scrollWidth 66 > clientWidth 24、タブ右端 491 で scroller なし）。",
+      "greenEvidence": "修正 c2a5e00a6c の後、spec 全体 64 passed を2回連続で確認した（loginCount 4）。並列設定でも 64 passed。PR #3786 の CI run 38139960634 は green。"
+    }
+  ]
+}
