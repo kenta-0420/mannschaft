@@ -127,6 +127,46 @@ const globalStubs = {
 const teamScope = { label: 'チームA', value: scheduleScopeKey('TEAM', 't1'), isPersonal: false, scopeType: 'team' as const, scopeId: 't1' }
 const personalScope = { label: '個人', value: PERSONAL_SCOPE_KEY, isPersonal: true, scopeType: 'team' as const, scopeId: '' }
 
+describe('CMP-260902-0058: 共有予定の説明文を未編集保存しても失わない', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    scheduleApiMock.getSchedule.mockReset()
+    scheduleApiMock.updateSchedule.mockReset()
+  })
+
+  it.each(['team', 'organization'] as const)('%s の詳細説明をフォームへ復元し、そのまま更新する', async (scopeType) => {
+    const description = '集合は正門\n持ち物：水筒'
+    scheduleApiMock.getSchedule.mockResolvedValue({
+      data: {
+        id: 42,
+        content: { title: '集合案内', eventType: 'OTHER', attendanceRequired: false },
+        time: { startAt: '2026-09-22T10:00:00', endAt: '2026-09-22T11:00:00', allDay: false },
+        detail: { description, color: '#a855f7', visibility: 'MEMBERS_ONLY' },
+        reminders: [],
+        scheduledTasks: [],
+      },
+    })
+    scheduleApiMock.updateSchedule.mockResolvedValue({ data: {} })
+    const wrapper = await mountSuspended(ScheduleEventForm, {
+      props: { visible: false, scopeType, scopeId: 'scope-1', scheduleId: 42 },
+      global: { stubs: globalStubs },
+    })
+    await wrapper.setProps({ visible: true })
+    await flushPromises()
+
+    expect(wrapper.findComponent(BasicFieldsStub).props('form').description).toBe(description)
+    expect(wrapper.findComponent({ name: 'ScheduleEventColorPicker' }).exists()).toBe(false)
+    await wrapper.get('[data-testid="schedule-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(scheduleApiMock.updateSchedule).toHaveBeenCalledWith(
+      scopeType, 'scope-1', 42, expect.objectContaining({ description }), undefined,
+    )
+    expect(scheduleApiMock.updateSchedule.mock.calls[0]?.[3]).not.toHaveProperty('color')
+    wrapper.unmount()
+  })
+})
+
 describe('ScheduleEventForm: saved イベントのスコープ', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
