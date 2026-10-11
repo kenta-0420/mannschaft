@@ -177,30 +177,6 @@ class ShiftHourlyRateServiceTest {
     }
 
     // ========================================
-    // deleteHourlyRate
-    // ========================================
-
-    @Nested
-    @DisplayName("deleteHourlyRate")
-    class DeleteHourlyRate {
-
-        @Test
-        @DisplayName("時給設定削除_本人_deleteが呼ばれる")
-        void 時給設定削除_本人_deleteが呼ばれる() {
-            // Given
-            ShiftHourlyRateEntity entity = createRateEntity();
-            given(hourlyRateRepository.findById(RATE_ID)).willReturn(Optional.of(entity));
-
-            // When
-            shiftHourlyRateService.deleteHourlyRate(RATE_ID, CURRENT_USER_ID);
-
-            // Then
-            verify(accessControlService).checkMembership(CURRENT_USER_ID, TEAM_ID, "TEAM");
-            verify(hourlyRateRepository).delete(entity);
-        }
-    }
-
-    // ========================================
     // 認可（CMP-260910-1555: ロール横断の裏取り）
     // ========================================
 

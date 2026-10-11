@@ -6,7 +6,7 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.shift.entity.ShiftHourlyRateEntity;
 import com.mannschaft.app.shift.repository.ShiftHourlyRateRepository;
-import com.mannschaft.app.shift.service.ShiftHourlyRateService;
+import com.mannschaft.app.shift.service.ShiftHourlyRateDeletionFacade;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 時給削除（{@link ShiftHourlyRateService#deleteHourlyRate}）の認可契約テスト。
+ * 時給削除（{@link ShiftHourlyRateDeletionFacade#deleteHourlyRate}）の認可契約テスト。
  *
  * <p>削除には HTTP エンドポイントが無いため、サービス層を実 MySQL で直接検証する。
  * 作成・参照と同じ方針（本人 + 当該チーム ADMIN、対象側 BOLA 封鎖、違反は COMMON_002 / 403）。
@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ShiftHourlyRateDeleteAuthzIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
-    private ShiftHourlyRateService service;
+    private ShiftHourlyRateDeletionFacade service;
 
     @Autowired
     private ShiftHourlyRateRepository hourlyRateRepository;
@@ -110,6 +110,16 @@ class ShiftHourlyRateDeleteAuthzIT extends AbstractMySqlIntegrationTest {
         em.flush();
         em.clear();
         assertThat(hourlyRateRepository.findById(rateId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("認可ファサードは非TX（クラスにも@Transactionalを付けない。D-3T回避の前提）")
+    void ファサードは非TX() {
+        assertThat(ShiftHourlyRateDeletionFacade.class
+                .isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class)).isFalse();
+        assertThat(java.util.Arrays.stream(ShiftHourlyRateDeletionFacade.class.getDeclaredMethods())
+                .anyMatch(m -> m.isAnnotationPresent(
+                        org.springframework.transaction.annotation.Transactional.class))).isFalse();
     }
 
     @Test
