@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -128,12 +127,12 @@ public class TodoDueReminderBatch {
     /**
      * 明日期限の未完了・非ロック TODO に対して {@code TODO_DUE_TOMORROW} 通知を送信する。
      *
-     * <p>読み取り専用トランザクションで TODO 一覧を取得し、通知作成そのものは
-     * {@link NotificationService#createNotification} 側の独立トランザクションに委ねる。</p>
+     * <p>非トランザクション。TODO 一覧の取得はリポジトリ呼び出し単位、通知作成は
+     * {@link NotificationService#createNotification} 側のトランザクションで 1 件ずつ確定する
+     * （Issue #2997: 1 人の通知失敗が rollback-only を残して他の担当者を巻き込まない）。</p>
      *
      * @return 通知対象となった TODO 件数
      */
-    @Transactional(readOnly = true)
     public int sendDueTomorrowReminders() {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         List<TodoEntity> todos = todoRepository.findDueTomorrowForReminder(tomorrow);
@@ -154,7 +153,6 @@ public class TodoDueReminderBatch {
      *
      * @return 通知対象となった TODO 件数
      */
-    @Transactional(readOnly = true)
     public int sendOverdueReminders() {
         LocalDate today = LocalDate.now();
         List<TodoEntity> todos = todoRepository.findOverdueForReminder(today);
