@@ -67,7 +67,7 @@ public class MatchTemplateService {
                 .orElseThrow(() -> new BusinessException(MatchingErrorCode.TEMPLATE_NOT_FOUND));
 
         if (!entity.getTeamId().equals(teamId)) {
-            throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+            throw new BusinessException(MatchingErrorCode.TEMPLATE_NOT_FOUND);
         }
 
         entity.update(request.getName(), request.getTemplateJson());
@@ -85,7 +85,7 @@ public class MatchTemplateService {
                 .orElseThrow(() -> new BusinessException(MatchingErrorCode.TEMPLATE_NOT_FOUND));
 
         if (!entity.getTeamId().equals(teamId)) {
-            throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+            throw new BusinessException(MatchingErrorCode.TEMPLATE_NOT_FOUND);
         }
 
         templateRepository.delete(entity);

@@ -1,5 +1,7 @@
 package com.mannschaft.app.recruitment;
 
+import com.mannschaft.app.notification.entity.NotificationEntity;
+import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.recruitment.entity.RecruitmentDistributionTargetEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentFriendTargetEntity;
@@ -17,6 +19,7 @@ import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +27,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -54,8 +58,8 @@ import static org.mockito.BDDMockito.willThrow;
  * を投げる形の注入であり、実 MySQL 上で通知の永続化そのものを失敗させる形ではない
  * （spy 例外は {@code NotificationService} の {@code @Transactional} プロキシを通らないため、
  * rollback-only の伝播自体は再現しない）。業務状態は別接続（別TX）から読んで確認する。
- * AC-A2 は通知行の有無ではなく「期待した受信者・種別で createNotification が呼ばれたこと」で固定する
- * （通知行の生成は visibility ガード次第で、本 IT の関心外のため）。</p>
+ * AC-A2 / AC-B2 は呼び出し回数ではなく、別TXから読んだ通知行（期待受信者に有り、失敗させた受信者に無い）で固定する。
+ * 受信者は memberships と ADMIN ロールを持たせ、visibility deny されない形で fixture を組む。</p>
  *
  * <p>クラスに {@code @Transactional} を付けない（付けるとコミットが起きず AFTER_COMMIT が発火しないため）。</p>
  */
@@ -69,6 +73,7 @@ class RecruitmentNotificationTransactionIT extends AbstractMySqlIntegrationTest 
     @Autowired private RecruitmentDistributionTargetRepository distributionTargetRepository;
     @Autowired private RecruitmentFriendTargetRepository friendTargetRepository;
     @Autowired private TeamFriendRepository teamFriendRepository;
+    @Autowired private NotificationRepository notificationRepository;
     @Autowired private TransactionTemplate transactionTemplate;
 
     @PersistenceContext
@@ -94,8 +99,8 @@ class RecruitmentNotificationTransactionIT extends AbstractMySqlIntegrationTest 
 
         listingService.publish(listingId, f.adminId());
 
-        awaitCreateNotification(f.adminId(), "RECRUITMENT_PUBLISHED");
-        awaitCreateNotification(f.admin2Id(), "RECRUITMENT_PUBLISHED");
+        awaitNotificationRow(f.adminId(), "RECRUITMENT_PUBLISHED", listingId);
+        awaitNotificationRow(f.admin2Id(), "RECRUITMENT_PUBLISHED", listingId);
     }
 
     @Test
@@ -139,8 +144,11 @@ class RecruitmentNotificationTransactionIT extends AbstractMySqlIntegrationTest 
         listingService.publish(listingId, f.adminId());
 
         assertThat(listingStatus(listingId)).isEqualTo(RecruitmentListingStatus.OPEN);
+        // 失敗させた受信者の配送が実際に試みられたことを待つ（待たないと「行が無い」が未配送のせいで緑になる）。
         awaitCreateNotification(f.adminId(), "RECRUITMENT_PUBLISHED");
-        awaitCreateNotification(f.admin2Id(), "RECRUITMENT_PUBLISHED");
+        awaitNotificationRow(f.admin2Id(), "RECRUITMENT_PUBLISHED", listingId);
+        assertThat(notificationsOf(f.adminId(), "RECRUITMENT_PUBLISHED"))
+                .as("失敗させた受信者の通知行は無い").isEmpty();
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -156,8 +164,8 @@ class RecruitmentNotificationTransactionIT extends AbstractMySqlIntegrationTest 
 
         listingService.publish(listingId, owner.adminId());
 
-        awaitCreateNotification(friend.adminId(), "MARKET_FRIEND_LISTING");
-        awaitCreateNotification(friend.admin2Id(), "MARKET_FRIEND_LISTING");
+        awaitNotificationRow(friend.adminId(), "MARKET_FRIEND_LISTING", listingId);
+        awaitNotificationRow(friend.admin2Id(), "MARKET_FRIEND_LISTING", listingId);
     }
 
     @Test
@@ -202,7 +210,9 @@ class RecruitmentNotificationTransactionIT extends AbstractMySqlIntegrationTest 
 
         assertThat(listingStatus(listingId)).isEqualTo(RecruitmentListingStatus.OPEN);
         awaitCreateNotification(friend.adminId(), "MARKET_FRIEND_LISTING");
-        awaitCreateNotification(friend.admin2Id(), "MARKET_FRIEND_LISTING");
+        awaitNotificationRow(friend.admin2Id(), "MARKET_FRIEND_LISTING", listingId);
+        assertThat(notificationsOf(friend.adminId(), "MARKET_FRIEND_LISTING"))
+                .as("失敗させた受信者の通知行は無い").isEmpty();
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -218,7 +228,7 @@ class RecruitmentNotificationTransactionIT extends AbstractMySqlIntegrationTest 
 
         listingService.confirmApplication(participantId, f.adminId());
 
-        awaitCreateNotification(f.admin2Id(), "RECRUITMENT_CONFIRMED");
+        awaitNotificationRow(f.admin2Id(), "RECRUITMENT_CONFIRMED", listingId);
     }
 
     @Test
@@ -282,6 +292,20 @@ class RecruitmentNotificationTransactionIT extends AbstractMySqlIntegrationTest 
                         .count())
                         .as("%s の通知生成が userId=%s に対して呼ばれていること", type, userId)
                         .isPositive());
+    }
+
+    /** 別TXから、期待する受信者の通知行が実際に作られる（visibility deny でない）ことを確認する。 */
+    private void awaitNotificationRow(Long userId, String type, Long sourceId) {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(notificationsOf(userId, type))
+                        .as("%s の通知行が userId=%s に作られていること（deny されていない）", type, userId)
+                        .anyMatch(n -> sourceId.equals(n.getSourceId())));
+    }
+
+    private List<NotificationEntity> notificationsOf(Long userId, String type) {
+        List<NotificationEntity> all = transactionTemplate.execute(tx ->
+                notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, 50)).getContent());
+        return all.stream().filter(n -> type.equals(n.getNotificationType())).toList();
     }
 
     private RecruitmentListingStatus listingStatus(Long id) {
