@@ -5,12 +5,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.common.visibility.RolePriority;
 import com.mannschaft.app.matching.entity.MatchRequestTemplateEntity;
 import com.mannschaft.app.matching.repository.MatchRequestTemplateRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.RoleRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
-import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import jakarta.persistence.EntityManager;
@@ -71,6 +77,9 @@ class MatchTemplateScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private UserRepository users;
     @Autowired private TeamRepository teams;
     @Autowired private MatchRequestTemplateRepository templates;
+    @Autowired private MembershipRepository memberships;
+    @Autowired private RoleRepository roles;
+    @Autowired private UserRoleRepository userRoles;
     @Autowired private PlatformTransactionManager transactionManager;
     @PersistenceContext private EntityManager em;
 
@@ -102,18 +111,18 @@ class MatchTemplateScopeContractIT extends AbstractMySqlIntegrationTest {
             for (String role : List.of("ADMIN", "DEPUTY_ADMIN")) {
                 for (boolean membership : List.of(true, false)) {
                     Long actor = user();
-                    MembershipTestHelper.insertUserRole(em, actor, role, ownTeam, null);
+                    userRole(actor, role, ownTeam);
                     if (membership) {
-                        MembershipTestHelper.insertMembership(em, actor, ScopeType.TEAM, ownTeam, RoleKind.MEMBER);
+                        membership(actor);
                     }
                     writers.add(actor);
                 }
             }
             Long system = user();
-            MembershipTestHelper.insertUserRole(em, system, "SYSTEM_ADMIN", null, null);
+            userRole(system, "SYSTEM_ADMIN", null);
             writers.add(system);
             member = user();
-            MembershipTestHelper.insertMembership(em, member, ScopeType.TEAM, ownTeam, RoleKind.MEMBER);
+            membership(member);
             outsider = user();
             ownTemplate = template(ownTeam);
             template(ownTeam);
@@ -314,6 +323,21 @@ class MatchTemplateScopeContractIT extends AbstractMySqlIntegrationTest {
                 .status(UserEntity.UserStatus.ACTIVE).locale("ja").timezone("Asia/Tokyo").build()).getId();
         userIds.add(id);
         return id;
+    }
+
+    private Long role(String name) {
+        return roles.findByName(name).orElseGet(() -> roles.save(RoleEntity.builder()
+                .name(name).displayName(name).priority(RolePriority.priority(name)).isSystem(false).build())).getId();
+    }
+
+    private void userRole(Long actor, String name, Long team) {
+        userRoles.save(UserRoleEntity.builder().userId(actor).roleId(role(name)).teamId(team).build());
+    }
+
+    private void membership(Long actor) {
+        role("MEMBER");
+        memberships.save(MembershipEntity.builder().userId(actor).scopeType(ScopeType.TEAM)
+                .scopeId(ownTeam).roleKind(RoleKind.MEMBER).build());
     }
 
     private Long team() {
