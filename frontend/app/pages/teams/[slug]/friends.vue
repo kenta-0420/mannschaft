@@ -23,6 +23,7 @@ const { t } = useI18n()
 const { roleName, isAdmin, isAdminOrDeputy, can, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const dialogOpen = ref(false)
+const showGuide = ref(false)
 const listRef = ref<{ refresh: () => Promise<void> } | null>(null)
 
 // 「フォロー追加」ボタン表示権限: ADMIN または MANAGE_FRIEND_TEAMS 保持の DEPUTY_ADMIN
@@ -57,7 +58,7 @@ onMounted(() => {
   <div>
     <div class="mb-6 flex items-start justify-between gap-3">
       <div>
-        <PageHeader :title="t('friends.title')" />
+        <PageHeader :title="t('friends.title')" help @help="showGuide = true" />
         <p class="text-sm text-surface-500">{{ t('friends.subtitle') }}</p>
       </div>
       <Button
@@ -88,5 +89,7 @@ onMounted(() => {
       :team-id="teamSlug"
       @success="onFollowSuccess"
     />
+
+    <FriendTeamGuideModal v-model:visible="showGuide" />
   </div>
 </template>
