@@ -476,6 +476,44 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // AC-13: 本是正の対象外エンドポイントの既存挙動の固定（入口ガードの 403 COMMON_002 のまま）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("AC-13: 対象外エンドポイントは非メンバー・権限不足とも従来どおり 403 COMMON_002")
+    class UnchangedEntryGuardEndpoints {
+
+        @ParameterizedTest(name = "AC-13: 非メンバーの{0}は403 COMMON_002（不在化しない）")
+        @ValueSource(strings = {
+                "GET /skills/me", "POST /skills/upload-url", "GET /skills/search",
+                "GET /skill-matrix", "GET /skills/export"})
+        @DisplayName("AC-13: 非メンバーが me / upload-url / search / skill-matrix / export を叩くと従来どおり 403 COMMON_002")
+        void AC13_非メンバーは入口ガードで403(String endpoint) throws Exception {
+            assertThat(callEndpoint(outsiderId, endpoint, teamAId)).isEqualTo(FORBIDDEN);
+            verify(storageService, never()).generateUploadUrl(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-13: 非管理者メンバーの export は従来どおり 403 COMMON_002（管理者判定の入口ガード）")
+        void AC13_非管理者メンバーのexportは403() throws Exception {
+            assertThat(callEndpoint(otherMemberId, "GET /skills/export", teamAId)).isEqualTo(FORBIDDEN);
+        }
+
+        @ParameterizedTest(name = "AC-13: {0} の verify は403 COMMON_002、資格は不変")
+        @ValueSource(strings = {"member", "outsider"})
+        @DisplayName("AC-13: 非管理者（同チーム一般メンバー・非メンバー）の verify は従来どおり 403 COMMON_002、資格不変")
+        void AC13_非管理者のverifyは403(String actorKind) throws Exception {
+            Long actor = "member".equals(actorKind) ? otherMemberId : outsiderId;
+            String before = snapshot(skillAId);
+
+            Resp actual = callEndpoint(actor, "PATCH /skills/" + skillAId + "/verify", teamAId);
+
+            assertThat(actual).isEqualTo(FORBIDDEN);
+            assertThat(snapshot(skillAId)).isEqualTo(before);
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
@@ -514,6 +552,18 @@ class MemberSkillAccessConcealmentContractIT extends AbstractMySqlIntegrationTes
         em.flush();
         em.clear();
         return response;
+    }
+
+    private Resp callEndpoint(Long actor, String endpoint, Long teamId) throws Exception {
+        String[] parts = endpoint.split(" ", 2);
+        String path = "/api/v1/teams/" + teamId + parts[1];
+        setAuth(actor);
+        MockHttpServletResponse response = mockMvc.perform(
+                        request(HttpMethod.valueOf(parts[0]), path).header("Accept-Language", "ja"))
+                .andReturn().getResponse();
+        em.flush();
+        em.clear();
+        return toResp(response);
     }
 
     private MockHttpServletResponse performRegister(Long actor, Long teamId, Long categoryId, String name)

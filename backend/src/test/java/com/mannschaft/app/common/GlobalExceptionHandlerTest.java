@@ -1608,6 +1608,10 @@ class GlobalExceptionHandlerTest {
             // SKILL_002（越境＝不在と完全一致）に統一した）。写像（404）は互換のため残している。
             // 注意: 「複数の理由を1コードに畳み、status だけ不在側に揃えれば秘匿できる」は誤りで、
             // 秘匿には error.code・error.message まで不在時と一致している必要がある。
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_003))
+                    .as("非推奨・未使用だが写像は互換のため残す（不在側 SKILL_001/002 と同じ404）")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+
             // SIGNAGE_002は『不在／無効化済み／期限切れ』を集約しているが、この3者はそもそも
             // 対比される「不在は404・その他は別ステータス」という設計になっておらず、
             // 3者とも同一コード・同一ステータス（400）で応答することそのものが契約
