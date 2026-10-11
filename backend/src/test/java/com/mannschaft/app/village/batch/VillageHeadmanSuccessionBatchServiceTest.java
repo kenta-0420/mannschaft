@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -153,7 +154,7 @@ class VillageHeadmanSuccessionBatchServiceTest {
                 .willReturn(Optional.of(headman));
         given(userRepository.findById(HEADMAN_USER_ID)).willReturn(Optional.of(deletedUser(HEADMAN_USER_ID)));
         given(membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
                 .willReturn(Optional.of(elder));
 
         VillageHeadmanSuccessionBatchService.SuccessionResult result = batch.processVillage(VILLAGE_ID);
@@ -183,10 +184,10 @@ class VillageHeadmanSuccessionBatchServiceTest {
                 .willReturn(Optional.of(headman));
         given(userRepository.findById(HEADMAN_USER_ID)).willReturn(Optional.of(deletedUser(HEADMAN_USER_ID)));
         given(membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
                 .willReturn(Optional.empty());
         given(membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.VILLAGER))
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.VILLAGER))
                 .willReturn(Optional.of(villager));
 
         VillageHeadmanSuccessionBatchService.SuccessionResult result = batch.processVillage(VILLAGE_ID);
@@ -198,6 +199,47 @@ class VillageHeadmanSuccessionBatchServiceTest {
     }
 
     @Test
+    @DisplayName("HEADMAN 退会 + BAN 済みの ELDER/VILLAGER しかいない → BAN 済みを昇格させず村を archive（CMP-260826-1455）")
+    void headmanDeleted_onlyBannedCandidates_notPromoted_archive() {
+        VillageMembershipEntity headman = membership(HEADMAN_MS_ID, HEADMAN_USER_ID, VillageRole.HEADMAN);
+        VillageMembershipEntity bannedElder = membership(ELDER_MS_ID, ELDER_USER_ID, VillageRole.ELDER);
+        bannedElder.setBannedAt(java.time.LocalDateTime.now());
+        VillageMembershipEntity bannedVillager = membership(VILLAGER_MS_ID, VILLAGER_USER_ID, VillageRole.VILLAGER);
+        bannedVillager.setBannedAt(java.time.LocalDateTime.now());
+
+        given(membershipRepository
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.HEADMAN))
+                .willReturn(Optional.of(headman));
+        given(userRepository.findById(HEADMAN_USER_ID)).willReturn(Optional.of(deletedUser(HEADMAN_USER_ID)));
+        // 旧述語（BAN 未検査）なら BAN 済みを返す。新実装は旧述語を呼ばないため、このスタブだけ lenient（呼ばれない＝正常。呼ばれたら never() 検証で落ちる）。実装が旧述語へ戻ると BAN 済みが昇格し、下の assert/verify が落ちる。
+        lenient().when(membershipRepository
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
+                .thenReturn(Optional.of(bannedElder));
+        lenient().when(membershipRepository
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.VILLAGER))
+                .thenReturn(Optional.of(bannedVillager));
+        // 正準（BAN 除外）述語は BAN 済みを返さない（DB 側の bannedAt IS NULL を再現）
+        given(membershipRepository
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
+                .willReturn(Optional.empty());
+        given(membershipRepository
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.VILLAGER))
+                .willReturn(Optional.empty());
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
+
+        VillageHeadmanSuccessionBatchService.SuccessionResult result = batch.processVillage(VILLAGE_ID);
+
+        assertThat(result).isEqualTo(VillageHeadmanSuccessionBatchService.SuccessionResult.ARCHIVED);
+        assertThat(bannedElder.getRole()).isEqualTo(VillageRole.ELDER);
+        assertThat(bannedVillager.getRole()).isEqualTo(VillageRole.VILLAGER);
+        verify(auditLogService, never()).record(
+                eq(AuditEventType.VILLAGE_ROLE_GRANTED.name()),
+                any(), any(), any(), any(), any(), any(), any(), anyString());
+        verify(membershipRepository, never()).findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(any(), eq(VillageRole.ELDER));
+        verify(membershipRepository, never()).findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(any(), eq(VillageRole.VILLAGER));
+    }
+
+    @Test
     @DisplayName("HEADMAN 退会 + 全員不在 → 村を archive")
     void headmanDeleted_nobody_archiveVillage() {
         VillageMembershipEntity headman = membership(HEADMAN_MS_ID, HEADMAN_USER_ID, VillageRole.HEADMAN);
@@ -206,10 +248,10 @@ class VillageHeadmanSuccessionBatchServiceTest {
                 .willReturn(Optional.of(headman));
         given(userRepository.findById(HEADMAN_USER_ID)).willReturn(Optional.of(deletedUser(HEADMAN_USER_ID)));
         given(membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
                 .willReturn(Optional.empty());
         given(membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.VILLAGER))
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.VILLAGER))
                 .willReturn(Optional.empty());
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(activeVillage()));
 
@@ -256,7 +298,7 @@ class VillageHeadmanSuccessionBatchServiceTest {
                 .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.HEADMAN))
                 .willReturn(Optional.empty());
         given(membershipRepository
-                .findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
+                .findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(VILLAGE_ID, VillageRole.ELDER))
                 .willReturn(Optional.of(elder));
 
         VillageHeadmanSuccessionBatchService.SuccessionResult result = batch.processVillage(VILLAGE_ID);
