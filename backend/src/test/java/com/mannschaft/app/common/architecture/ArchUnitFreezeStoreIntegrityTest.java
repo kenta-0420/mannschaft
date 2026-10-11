@@ -831,7 +831,9 @@ class ArchUnitFreezeStoreIntegrityTest {
     // 通知を AFTER_COMMIT リスナーへ移したため、通知系Repository(4)+UserRepository への到達25行減。7264→7239。
     // 内訳: fireNotifications 5・recordCheckIn 5・apply 5・acceptApplication 5・reportCompletion 5（CI 実測 7239 と一致）。
     // D-3（他の6ストア）は CI の整合性テストが不一致を報告していないため変更なし。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7239;
+    // CMP-260821-1027: cancel/agreeの認可段取りを非TXへ分離し、両EPからroleの2Repositoryへの4行を返済。
+    // full CI 38169182205のD-3T成功と後段Integrity実測7239→7235に対応。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7235;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
