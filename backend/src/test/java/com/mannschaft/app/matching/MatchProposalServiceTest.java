@@ -399,6 +399,7 @@ class MatchProposalServiceTest {
                     .proposingTeamId(OTHER_TEAM_ID)
                     .build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
+            given(accessControlService.isMember(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(true);
 
             // When & Then - status is PENDING so should throw INVALID_PROPOSAL_STATUS
             assertThatThrownBy(() -> service.agreeCancellation(PROPOSAL_ID, ACTOR_ID))
@@ -541,6 +542,7 @@ class MatchProposalServiceTest {
             MatchProposalEntity proposal = MatchProposalEntity.builder()
                     .requestId(REQUEST_ID).proposingTeamId(OTHER_TEAM_ID).build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
+            given(accessControlService.isMember(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(true);
 
             // When / Then
             assertThatThrownBy(() -> service.cancelProposal(PROPOSAL_ID, ACTOR_ID,
@@ -551,9 +553,9 @@ class MatchProposalServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 募集・応募いずれのチーム管理者でもないユーザーはキャンセル不可（越境は存在秘匿のため 404 相当）")
+        @DisplayName("異常系: 閲覧できる募集チームMEMBERでも管理者でなければキャンセル不可（404相当）")
         void 権限なしキャンセル不可() {
-            // Given: 募集チーム=999, 応募チーム=OTHER_TEAM_ID のいずれの管理者でもない（未スタブ＝false）
+            // Given: 募集チーム=999のMEMBER。応募は閲覧できるが、いずれのチーム管理者でもない。
             MatchProposalEntity proposal = MatchProposalEntity.builder()
                     .requestId(REQUEST_ID).proposingTeamId(OTHER_TEAM_ID).build();
             proposal.accept();
@@ -562,6 +564,8 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.MATCHED).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+
+            given(accessControlService.isMember(ACTOR_ID, 999L, "TEAM")).willReturn(true);
 
             // When / Then
             assertThatThrownBy(() -> service.cancelProposal(PROPOSAL_ID, ACTOR_ID,
