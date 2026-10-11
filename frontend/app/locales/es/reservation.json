@@ -168,7 +168,7 @@
       "list": "Reservas",
       "my_reservations": "Mis reservas",
       "line_manage": "Gestión de {resourceName}",
-      "emergency_closure": "緊急休業",
+      "emergency_closure": "Cierre de emergencia",
       "team_page": "Reservas"
     },
     "management": {
@@ -605,13 +605,13 @@
       "need_business_hours_hint": "Configura primero el horario comercial",
       "generated_zero_hint": "No se creó ninguna franja (fuera del horario comercial o día de cierre). Revisa el horario comercial",
       "grid": {
-        "title": "ドラッグで枠を作成",
-        "hint": "グリッドをなぞると、その範囲の枠をまとめて作成できます（左右にまたげば複数曜日を一度に）。スマートフォンやキーボードでは、始点のセルと終点のセルを順にタップ／Enterしてください。Escで取り消せます",
-        "legend_existing": "登録済み",
-        "legend_selected": "選択中",
-        "blocked": "選択した範囲に登録済みの枠が含まれています。空いている範囲を選んでください",
-        "confirm_title": "枠を作成",
-        "create": "作成"
+        "title": "Crear franjas arrastrando",
+        "hint": "Arrastra sobre la cuadrícula para crear de una vez las franjas de ese rango (si abarcas varias columnas, se crean para varios días de la semana a la vez). En móviles o con teclado, toca o pulsa Enter primero en la celda inicial y luego en la celda final. Pulsa Esc para cancelar",
+        "legend_existing": "Registradas",
+        "legend_selected": "Seleccionadas",
+        "blocked": "El rango seleccionado incluye franjas ya registradas. Elige un rango libre",
+        "confirm_title": "Crear franjas",
+        "create": "Crear"
       }
     },
     "recurring_block": {

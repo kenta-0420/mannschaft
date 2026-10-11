@@ -174,7 +174,7 @@
 ## i18n ルール
 
 - UIに表示する文字列は **直書き禁止**。ロケールファイルに追加してから `$t('key')` で参照すること
-- ロケールファイル: `frontend/app/locales/{ja,en,zh,ko,es,de}/{common,auth,validation,landing}.json`（6言語すべてに追加。未翻訳ならとりあえず日本語と同じ値で可）
+- ロケールファイル: `frontend/app/locales/{ja,en,zh,ko,es,de}/{common,auth,validation,landing}.json`（6言語すべてに、その言語の訳を入れる。ja 以外に日本語を置かない。番人 `frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts` が CI で検出する。意図的に日本語を残す値は `frontend/tests/unit/i18n/locale-residue-allowlist.json` に理由付きで載せる）
 - デフォルトロケール: `ja`
 
 ---

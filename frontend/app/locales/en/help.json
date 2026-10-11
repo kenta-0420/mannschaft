@@ -1,44 +1,44 @@
 {
   "security_help": {
-    "title": "セキュリティの使い方ガイド",
-    "description": "二要素認証・アクティブセッション・セキュリティキーの使い方と、不審なログインを見つけたときの対処方法をまとめました。",
-    "link_label": "❔ 使い方ガイド",
+    "title": "Security guide",
+    "description": "How to use two-factor authentication, active sessions, and security keys, and what to do when you notice a suspicious login.",
+    "link_label": "❔ How-to guide",
     "twofa": {
-      "title": "二要素認証（2FA）",
-      "intro": "パスワードに加えて、もう一段階の本人確認を追加してアカウントを守るしくみです。万が一パスワードが漏れても、第三者だけではログインできなくなります。",
-      "setup_title": "有効化のしかた",
+      "title": "Two-factor authentication (2FA)",
+      "intro": "Adds a second step of identity verification on top of your password to protect your account. Even if your password leaks, a third party cannot log in with it alone.",
+      "setup_title": "How to enable it",
       "setup_steps": {
-        "step1": "認証アプリ（Google Authenticator など）をスマートフォンに用意します。",
-        "step2": "「2FAをセットアップ」を押すと、QRコードとシークレットキーが表示されます。",
-        "step3": "認証アプリでそのQRコードを読み取ります（読み取れない場合はシークレットキーを手入力します）。",
-        "step4": "認証アプリに表示された6桁のコードを入力して有効化を完了します。"
+        "step1": "Prepare an authenticator app (such as Google Authenticator) on your smartphone.",
+        "step2": "Press \"Set up 2FA\" to display a QR code and a secret key.",
+        "step3": "Scan the QR code with your authenticator app (if you cannot scan it, enter the secret key manually).",
+        "step4": "Enter the 6-digit code shown in the authenticator app to finish enabling."
       },
-      "backup_title": "バックアップコードについて",
-      "backup_desc": "バックアップコードは、スマートフォンを紛失するなどして認証アプリが使えなくなったときの予備の入り口です。安全な場所に保管してください。各コードは一度だけ使えます。「バックアップコード再生成」を押すと新しいコードが発行され、古いコードはすべて無効になります。"
+      "backup_title": "About backup codes",
+      "backup_desc": "Backup codes are a spare way in when you can no longer use your authenticator app, for example because you lost your smartphone. Store them in a safe place. Each code can be used only once. Pressing \"Regenerate backup codes\" issues new codes and invalidates all old ones."
     },
     "sessions": {
-      "title": "アクティブセッション",
-      "intro": "いま自分のアカウントにログインしている端末の一覧です。心当たりのない端末がないか、ここで確認できます。",
-      "row_desc": "各行は1つの端末を表し、ブラウザ／OSの情報・IPアドレス・ログインした日時が並びます。先頭の英字の羅列は、使われたブラウザとOSの情報です。",
-      "current_tag_desc": "「現在」タグが付いている行は、いま見ているこの端末です。",
-      "revoke_desc": "怪しい行は「×」ボタンで個別に無効化（ログアウト）できます。",
-      "revoke_all_desc": "「全てログアウト」を押すと、ほかの端末をまとめて締め出せます。",
-      "current_note": "いま使っているこのセッションは、誤操作で自分を締め出さないように個別では削除できません（その操作はサーバー側で拒否されます）。すべて締め出したいときは「全てログアウト」を使ってください。"
+      "title": "Active sessions",
+      "intro": "A list of devices currently logged in to your account. You can check here whether there are any devices you don't recognize.",
+      "row_desc": "Each row is one device, showing browser/OS information, IP address, and login time. The string of Latin characters at the start is the browser and OS information used.",
+      "current_tag_desc": "The row with the \"Current\" tag is the device you are using right now.",
+      "revoke_desc": "You can invalidate (log out) a suspicious row individually with the \"×\" button.",
+      "revoke_all_desc": "Press \"Log out all\" to sign out all other devices at once.",
+      "current_note": "The session you are using right now cannot be removed individually, so that you do not lock yourself out by mistake (the server rejects that action). To sign out everywhere, use \"Log out all\"."
     },
     "webauthn": {
-      "title": "セキュリティキー（WebAuthn）",
-      "intro": "指紋認証・顔認証や、物理的なセキュリティキー（FIDO2）を使ってログインできるしくみです。パスワードを入力せず、すばやく安全にログインできます。",
-      "manage_desc": "登録した鍵には分かりやすい名前を付けられます（リネーム）。使わなくなった鍵は削除できます。"
+      "title": "Security keys (WebAuthn)",
+      "intro": "A way to log in using fingerprint or face recognition, or a physical security key (FIDO2). You can log in quickly and securely without entering a password.",
+      "manage_desc": "You can give registered keys easy-to-recognize names (rename). Keys you no longer use can be deleted."
     },
     "suspicious": {
-      "title": "身に覚えのないログインを見つけたら",
-      "intro": "アクティブセッションに知らない端末があるなど、不審な点に気づいたら、上から順に対処してください。",
+      "title": "If you find a login you don't recognize",
+      "intro": "If you notice anything suspicious, such as an unknown device in your active sessions, work through these steps from the top.",
       "steps": {
-        "step1": "心当たりのないセッションを「×」で無効化する",
-        "step2": "不安なら「全てログアウト」で全端末から締め出す",
-        "step3": "パスワードを変更する",
-        "step4": "二要素認証（2FA）を有効化する",
-        "step5": "バックアップコードを安全な場所に保管する"
+        "step1": "Invalidate sessions you don't recognize with \"×\"",
+        "step2": "If in doubt, sign out of every device with \"Log out all\"",
+        "step3": "Change your password",
+        "step4": "Enable two-factor authentication (2FA)",
+        "step5": "Store your backup codes in a safe place"
       }
     }
   },
