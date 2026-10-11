@@ -9,6 +9,7 @@ import com.mannschaft.app.committee.entity.CommitteeMemberEntity;
 import com.mannschaft.app.committee.service.CommitteeInvitationService;
 import com.mannschaft.app.committee.service.CommitteeInvitationService.SendInvitationsResult;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,6 +40,7 @@ import java.util.stream.Collectors;
 public class CommitteeInvitationController {
 
     private final CommitteeInvitationService committeeInvitationService;
+    private final NameResolverService nameResolverService;
 
     /**
      * 招集状送付レスポンス。送付した招集状リストとスキップ件数を返す。
@@ -127,7 +129,10 @@ public class CommitteeInvitationController {
         CommitteeMemberEntity member =
                 committeeInvitationService.acceptInvitation(request.getInviteToken(), currentUserId);
 
-        return ApiResponse.of(CommitteeMemberResponse.of(member));
+        String displayName = nameResolverService.resolveUserDisplayName(member.getUserId());
+        String avatarUrl = nameResolverService.resolveUserAvatarUrls(List.of(member.getUserId()))
+                .get(member.getUserId());
+        return ApiResponse.of(CommitteeMemberResponse.of(member, displayName, avatarUrl));
     }
 
     /**
