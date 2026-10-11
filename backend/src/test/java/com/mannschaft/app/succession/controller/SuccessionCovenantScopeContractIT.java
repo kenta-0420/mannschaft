@@ -29,6 +29,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -86,6 +88,7 @@ class SuccessionCovenantScopeContractIT extends AbstractSuccessionIntegrationTes
     @Autowired private ResidentRegistryRepository residents;
     @Autowired private SuccessionCovenantRepository covenants;
     @Autowired private FeatureFlagRepository featureFlags;
+    @Autowired private CacheManager cacheManager;
 
     private final List<Long> actorIds = new ArrayList<>();
     private final List<Long> organizationIds = new ArrayList<>();
@@ -183,7 +186,11 @@ class SuccessionCovenantScopeContractIT extends AbstractSuccessionIntegrationTes
             try {
                 restoreFeatureFlag();
             } finally {
-                SecurityContextHolder.clearContext();
+                try {
+                    evictFeatureFlagCache();
+                } finally {
+                    SecurityContextHolder.clearContext();
+                }
             }
         }
     }
@@ -330,6 +337,17 @@ class SuccessionCovenantScopeContractIT extends AbstractSuccessionIntegrationTes
             em.flush();
             return null;
         });
+        evictFeatureFlagCache();
+    }
+
+    private void evictFeatureFlagCache() {
+        if (fixtureFlagId == null) {
+            return;
+        }
+        Cache cache = cacheManager.getCache("featureFlags");
+        if (cache != null) {
+            cache.evict(FEATURE_KEY);
+        }
     }
 
     private void restoreFeatureFlag() {
