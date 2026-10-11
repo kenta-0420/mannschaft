@@ -5,6 +5,7 @@ import com.mannschaft.app.jobmatching.entity.JobApplicationEntity;
 import com.mannschaft.app.jobmatching.entity.JobPostingEntity;
 import com.mannschaft.app.jobmatching.enums.JobApplicationStatus;
 import com.mannschaft.app.jobmatching.enums.JobPostingStatus;
+import com.mannschaft.app.jobmatching.event.JobNotificationEvent;
 import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
 import com.mannschaft.app.jobmatching.policy.JobPolicy;
 import com.mannschaft.app.jobmatching.repository.JobApplicationRepository;
@@ -13,6 +14,7 @@ import com.mannschaft.app.jobmatching.service.command.ApplyCommand;
 import com.mannschaft.app.jobmatching.state.JobApplicationStateMachine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -41,7 +43,7 @@ public class JobApplicationService {
     private final JobPostingRepository postingRepository;
     private final JobApplicationStateMachine stateMachine;
     private final JobPolicy jobPolicy;
-    private final JobNotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ---------------------------------------------------------------------
     // コマンド系
@@ -113,13 +115,8 @@ public class JobApplicationService {
         JobApplicationEntity saved = applicationRepository.save(application);
         log.info("求人応募: applicationId={}, postingId={}, userId={}", saved.getId(), postingId, userId);
 
-        // 応募通知（Requester 宛）。DB 例外等に巻き込まれない設計とするため catch でログ出力に留める。
-        try {
-            notificationService.notifyApplied(saved, posting);
-        } catch (Exception e) {
-            log.warn("JOB_APPLIED 通知送信失敗（応募自体は成立）: applicationId={}, error={}",
-                    saved.getId(), e.getMessage());
-        }
+        // 応募通知（Requester 宛）。業務TX内ではイベント発行のみ。実通知は AFTER_COMMIT のリスナーが行う（Issue #2997）。
+        eventPublisher.publishEvent(JobNotificationEvent.applied(saved.getId(), postingId));
         return saved;
     }
 
