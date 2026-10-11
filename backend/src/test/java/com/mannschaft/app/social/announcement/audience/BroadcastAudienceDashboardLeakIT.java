@@ -28,13 +28,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * F01.2.1 部隊 6-A — グループ宛ての告知がチームのダッシュボードへ漏れないこと（Codex 検分 高1）。
  *
  * <p>グループ宛ての告知は target_team_ids が NULL になる。従来の表示判定は NULL を「全チーム宛て」と読むため、
- * G1 宛ての告知が G2 のチームにも出てしまう。グループに応じた正しい表示判定は部隊 6-C の受け持ちなので、
- * それが着地するまではどのチームにも出さない（閉じる側）。組織側の一覧には出る。</p>
+ * G1 宛ての告知が G2 のチームにも出てしまう。部隊 6-C の表示判定（AnnouncementAudienceMatcher）により、
+ * 宛先の G1 のチームには出て、宛先外のチームには漏れない。組織側の一覧には出る。</p>
  */
 @AutoConfigureMockMvc
 @Transactional
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("F01.2.1 6-A グループ宛ての告知はチームのダッシュボードに漏れない（6-C 着地までの暫定）")
+@DisplayName("F01.2.1 6-A グループ宛ての告知は宛先外のチームのダッシュボードに漏れない")
 class BroadcastAudienceDashboardLeakIT extends AbstractBroadcastAudienceIT {
 
     private static final Long U1 = 940601051L;
@@ -64,7 +64,7 @@ class BroadcastAudienceDashboardLeakIT extends AbstractBroadcastAudienceIT {
     }
 
     @Test
-    @DisplayName("グループ宛て（G1・G2 以前・未分類）はどのチームにも出ず、全チーム宛て・チームを選ぶは従来どおり出る")
+    @DisplayName("グループ宛て（G1・G1 以前＋未分類）は宛先の G1 のチームにだけ出て、全チーム宛て・チームを選ぶは従来どおり出る")
     void groupTargetedFeedsAreHiddenFromTeams() throws Exception {
         long all = feedIdOf(broadcastToOrg(XA, orgX.getId(), bulletinBody(Map.of())).andExpect(status().isCreated()));
         long toT1 = feedIdOf(broadcastToOrg(XA, orgX.getId(),
@@ -83,7 +83,7 @@ class BroadcastAudienceDashboardLeakIT extends AbstractBroadcastAudienceIT {
         assertThat(seenByT2).as("対照: 全チーム宛ては T2 にも出るが、T1 を選んだ告知は出ない").contains(all)
                 .doesNotContain(toT1);
         assertThat(seenByT2).as("G1 宛ては G2 のチームに漏れない").doesNotContain(toG1, rangeG1);
-        assertThat(seenByT1).as("6-C 着地までは G1 のチームにも出さない（閉じる側）").doesNotContain(toG1, rangeG1);
+        assertThat(seenByT1).as("6-C: 宛先の G1 のチームには出る").contains(toG1, rangeG1);
     }
 
     @Test

@@ -29,6 +29,52 @@
       "already_following": "Sie folgen bereits",
       "target_not_found": "Ziel-Team nicht gefunden",
       "permission_denied": "Keine Berechtigung"
+    },
+    "guide": {
+      "title": "So verwendest du Befreundete Teams",
+      "description": "Auf diesem Bildschirm folgst du anderen Teams, wirst mit ihnen befreundet und verwaltest diese Beziehungen.",
+      "what": {
+        "title": "Was sind befreundete Teams?",
+        "body": "Wenn sich zwei Teams gegenseitig folgen, werden sie befreundete Teams. Die Liste zeigt für jedes Team das Gründungsdatum sowie den Status Öffentlich oder Privat. Ab 20 Einträgen wird die Liste in Seiten aufgeteilt.",
+        "note": "Supportern und anderen werden nur öffentliche befreundete Teams angezeigt."
+      },
+      "follow": {
+        "title": "Folgen und befreundet werden",
+        "step1": "Tippe oben rechts auf die Schaltfläche „Folgen“",
+        "step2": "Gib die ID (Zahl) des Teams ein, dem du folgen möchtest",
+        "step3": "Gib einen Begrüßungskommentar ein (optional, bis zu 300 Zeichen)",
+        "step4": "Tippe im Dialog auf „Folgen“",
+        "mutual": "Sobald das andere Team dir ebenfalls folgt, erscheint „Ihr seid jetzt befreundete Teams“ und die Freundschaft ist hergestellt.",
+        "caution_title": "Hinweise",
+        "caution_self": "Dem eigenen Team kannst du nicht folgen",
+        "caution_already": "Einem Team, dem du bereits folgst, kannst du nicht erneut folgen",
+        "caution_busy": "Bei hoher Auslastung wird automatisch bis zu 3-mal erneut versucht. Klappt es trotzdem nicht, versuche es etwas später noch einmal",
+        "caution_role": "Die Schaltfläche „Folgen“ wird nur Administratoren und stellvertretenden Administratoren mit Berechtigung angezeigt"
+      },
+      "visibility": {
+        "title": "Zwischen öffentlich und privat wechseln",
+        "step1": "Betätige den Schalter auf der Karte des befreundeten Teams",
+        "step2": "Prüfe, dass „Sichtbarkeit wurde geändert“ angezeigt wird",
+        "caution_title": "Hinweise",
+        "caution_admin": "Nur Administratoren können das tun. Für alle anderen wird der Schalter deaktiviert angezeigt",
+        "caution_revert": "Schlägt der Wechsel fehl, springt der Schalter in den vorherigen Zustand zurück"
+      },
+      "unfollow": {
+        "title": "Nicht mehr folgen",
+        "step1": "Tippe rechts auf der Karte des befreundeten Teams auf „︙“",
+        "step2": "Wähle im Menü „Entfolgen“",
+        "step3": "Bestätige im Bestätigungsdialog",
+        "caution_title": "Hinweise",
+        "caution_kept": "Auch nach dem Entfolgen bleiben bereits weitergeleitete Beiträge erhalten",
+        "caution_role": "Nur Administratoren und stellvertretende Administratoren mit Berechtigung können entfolgen"
+      },
+      "related": {
+        "title": "Verwandte Bildschirme",
+        "body": "Die folgenden Bildschirme zu befreundeten Teams kannst du über das Teammenü öffnen.",
+        "item_folders": "Freundesordner – Ordne befreundete Teams in Ordnern (bis zu 20 Ordner möglich)",
+        "item_feed": "Admin-Feed – Sieh dir Beiträge befreundeter Teams an und leite sie an dein eigenes Team weiter",
+        "item_exports": "Verlauf der Rückweiterleitung – Sieh nach, an welche Freunde die Beiträge deines Teams weitergeleitet wurden"
+      }
     }
   },
   "folders": {

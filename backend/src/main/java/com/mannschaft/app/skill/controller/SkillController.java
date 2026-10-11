@@ -11,6 +11,7 @@ import com.mannschaft.app.skill.dto.RegisterSkillRequest;
 import com.mannschaft.app.skill.dto.UpdateSkillRequest;
 import com.mannschaft.app.skill.dto.UploadUrlResponse;
 import com.mannschaft.app.skill.entity.MemberSkillEntity;
+import com.mannschaft.app.skill.service.MemberSkillFacade;
 import com.mannschaft.app.skill.service.MemberSkillService;
 import com.mannschaft.app.skill.service.SkillCategoryService;
 import jakarta.validation.Valid;
@@ -36,7 +37,7 @@ import java.util.stream.Collectors;
 /**
  * メンバースキル・資格管理コントローラー。
  * 資格の登録・取得・更新・削除・承認・証明書アップロードを提供する。
- * 認可チェックはサービス層に委譲する。
+ * 個別 ID の 4 操作の認可は {@link MemberSkillFacade}、それ以外はサービス層・本クラスで行う。
  */
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/skills")
@@ -44,6 +45,8 @@ import java.util.stream.Collectors;
 public class SkillController {
 
     private final MemberSkillService memberSkillService;
+    /** 個別 ID の 4 操作（取得・更新・削除・証明書 URL）が呼ぶ。認可は tx の外の Facade（CMP-261010-2226）。 */
+    private final MemberSkillFacade memberSkillFacade;
     private final SkillCategoryService skillCategoryService;
     private final SkillMapper skillMapper;
     private final AccessControlService accessControlService;
@@ -92,12 +95,7 @@ public class SkillController {
     public ApiResponse<MemberSkillResponse> getSkill(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        String userRole = accessControlService.getRoleName(userId, teamId, "TEAM");
-
-        MemberSkillEntity entity = memberSkillService.getSkill(id, userId, userRole, "TEAM", teamId).getData();
-        String categoryName = resolveCategoryName(entity.getSkillCategoryId(), teamId);
-        return ApiResponse.of(skillMapper.toResponse(entity, categoryName));
+        return ApiResponse.of(memberSkillFacade.getSkill(id, SecurityUtils.getCurrentUserId(), teamId));
     }
 
     /**
@@ -108,17 +106,8 @@ public class SkillController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateSkillRequest request) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        String userRole = accessControlService.getRoleName(userId, teamId, "TEAM");
-
-        MemberSkillEntity entity = memberSkillService.updateSkill(
-                id, userId, userRole, "TEAM", teamId,
-                request.name(), request.issuer(), request.credentialNumber(),
-                request.acquiredOn(), request.expiresAt(), request.version()
-        ).getData();
-
-        String categoryName = resolveCategoryName(entity.getSkillCategoryId(), teamId);
-        return ApiResponse.of(skillMapper.toResponse(entity, categoryName));
+        return ApiResponse.of(
+                memberSkillFacade.updateSkill(id, SecurityUtils.getCurrentUserId(), teamId, request));
     }
 
     /**
@@ -128,9 +117,7 @@ public class SkillController {
     public ResponseEntity<Void> deleteSkill(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        String userRole = accessControlService.getRoleName(userId, teamId, "TEAM");
-        memberSkillService.deleteSkill(id, userId, userRole, "TEAM", teamId);
+        memberSkillFacade.deleteSkill(id, SecurityUtils.getCurrentUserId(), teamId);
         return ResponseEntity.noContent().build();
     }
 
@@ -166,19 +153,13 @@ public class SkillController {
     }
 
     /**
-     * 証明書のダウンロード用Pre-signed URLを取得する。
+     * 証明書のダウンロード用Pre-signed URLを取得する。本人または ADMIN のみ。
      */
     @GetMapping("/{id}/certificate-url")
     public ApiResponse<String> getCertificateUrl(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        Long userId = SecurityUtils.getCurrentUserId();
-        String userRole = accessControlService.getRoleName(userId, teamId, "TEAM");
-
-        MemberSkillEntity entity = memberSkillService.getSkill(id, userId, userRole, "TEAM", teamId).getData();
-        String downloadUrl = storageService.generateDownloadUrl(
-                entity.getCertificateS3Key(), Duration.ofMinutes(15));
-        return ApiResponse.of(downloadUrl);
+        return ApiResponse.of(memberSkillFacade.getCertificateUrl(id, SecurityUtils.getCurrentUserId(), teamId));
     }
 
     // ========================================

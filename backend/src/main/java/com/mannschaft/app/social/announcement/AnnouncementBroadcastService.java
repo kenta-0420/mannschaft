@@ -167,6 +167,7 @@ public class AnnouncementBroadcastService {
                 .targetGroupIds(audience.mode() == ResolvedBroadcastAudience.Mode.GROUPS ? audience.groupIds() : null)
                 .includeUnassigned(audience.includeUnassigned())
                 .targetAudience(audience.targetAudience())
+                .warnings(audience.warnings())
                 .priority(priority)
                 .createdAt(feed.getCreatedAt())
                 .build();

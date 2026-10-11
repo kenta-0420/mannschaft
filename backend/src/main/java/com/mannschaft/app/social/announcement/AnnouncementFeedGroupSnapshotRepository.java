@@ -26,4 +26,9 @@ public interface AnnouncementFeedGroupSnapshotRepository
     @Modifying
     @Query("DELETE FROM AnnouncementFeedGroupSnapshotEntity s WHERE s.feedId = :feedId")
     int deleteByFeedId(@Param("feedId") Long feedId);
+
+    /** チームが対象に含まれる、指定フィード群のスナップショット行を 1 回の SQL で取得する（表示判定用）。 */
+    @Query("SELECT s FROM AnnouncementFeedGroupSnapshotEntity s WHERE s.teamId = :teamId AND s.feedId IN :feedIds")
+    List<AnnouncementFeedGroupSnapshotEntity> findByTeamIdAndFeedIdIn(
+            @Param("teamId") Long teamId, @Param("feedIds") java.util.Collection<Long> feedIds);
 }

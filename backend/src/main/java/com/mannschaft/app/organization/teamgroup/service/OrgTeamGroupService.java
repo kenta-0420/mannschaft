@@ -124,6 +124,22 @@ public class OrgTeamGroupService {
     }
 
     /**
+     * 指定した組織群の生存グループ ID を 1 回の SQL で返す（告知の表示判定用。F01.2.1 §8.2）。
+     *
+     * <p>グループ機能が off でも、削除されていないグループは生存として返す（送信済みの告知の表示を
+     * 機能の on/off で変えないため。AC-G111）。</p>
+     *
+     * @param organizationIds 組織 ID
+     * @return 生存グループの ID
+     */
+    public java.util.Set<UUID> findLiveGroupIds(java.util.Collection<Long> organizationIds) {
+        if (organizationIds == null || organizationIds.isEmpty()) {
+            return java.util.Set.of();
+        }
+        return new java.util.HashSet<>(groupRepository.findLiveIdsByOrganizationIdIn(organizationIds));
+    }
+
+    /**
      * 組織のグループ機能の有効状態と、生存グループの並び（告知の宛先解決用）。
      *
      * @param enabled    グループ機能が有効か

@@ -29,6 +29,52 @@
       "already_following": "Ya estás siguiendo",
       "target_not_found": "No se encontró el equipo objetivo",
       "permission_denied": "Sin permiso"
+    },
+    "guide": {
+      "title": "Cómo usar Equipos amigos",
+      "description": "En esta pantalla puedes seguir a otros equipos para hacerte amigo de ellos y gestionar esas relaciones.",
+      "what": {
+        "title": "Qué son los equipos amigos",
+        "body": "Cuando dos equipos se siguen mutuamente, pasan a ser equipos amigos. La lista muestra la fecha de establecimiento de cada equipo y si es público o privado. A partir de 20 elementos, la lista se divide en páginas.",
+        "note": "A los seguidores y otros usuarios solo se les muestran los equipos amigos públicos."
+      },
+      "follow": {
+        "title": "Seguir para hacerse amigo",
+        "step1": "Pulsa el botón «Seguir» en la parte superior derecha de la pantalla",
+        "step2": "Introduce el ID (número) del equipo al que quieres seguir",
+        "step3": "Escribe un mensaje de saludo (opcional, hasta 300 caracteres)",
+        "step4": "Pulsa «Seguir» en el cuadro de diálogo",
+        "mutual": "Cuando el otro equipo también te siga, se mostrará «Ya sois equipos amigos» y se establecerá la relación de equipos amigos.",
+        "caution_title": "Aviso",
+        "caution_self": "No puedes seguir a tu propio equipo",
+        "caution_already": "No puedes seguir a un equipo al que ya sigues",
+        "caution_busy": "Si hay mucha carga, se reintenta automáticamente hasta 3 veces. Si aun así falla, espera un momento e inténtalo de nuevo",
+        "caution_role": "El botón «Seguir» solo se muestra a administradores y subadministradores con permiso"
+      },
+      "visibility": {
+        "title": "Cambiar entre público y privado",
+        "step1": "Activa o desactiva el interruptor de la tarjeta del equipo amigo",
+        "step2": "Comprueba que aparece «Se ha cambiado la configuración de visibilidad»",
+        "caution_title": "Aviso",
+        "caution_admin": "Solo pueden hacerlo los administradores. Para los demás, el interruptor aparece desactivado",
+        "caution_revert": "Si el cambio falla, el interruptor vuelve a su estado anterior"
+      },
+      "unfollow": {
+        "title": "Dejar de seguir",
+        "step1": "Pulsa «︙» a la derecha de la tarjeta del equipo amigo",
+        "step2": "Elige «Dejar de seguir» en el menú",
+        "step3": "Acepta en el cuadro de confirmación",
+        "caution_title": "Aviso",
+        "caution_kept": "Aunque dejes de seguir, las publicaciones reenviadas anteriormente se conservan",
+        "caution_role": "Solo pueden dejar de seguir los administradores y subadministradores con permiso"
+      },
+      "related": {
+        "title": "Pantallas relacionadas",
+        "body": "Las siguientes pantallas relacionadas con los equipos amigos se abren desde el menú del equipo.",
+        "item_folders": "Carpetas de amigos: organiza los equipos amigos en carpetas (hasta 20)",
+        "item_feed": "Feed de administración: revisa las publicaciones de los equipos amigos y reenvíalas a tu equipo",
+        "item_exports": "Historial de reenvío inverso: comprueba a qué amigos se reenviaron las publicaciones de tu equipo"
+      }
     }
   },
   "folders": {
