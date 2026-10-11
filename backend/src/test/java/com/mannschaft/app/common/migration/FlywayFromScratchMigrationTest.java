@@ -1408,4 +1408,75 @@ class FlywayFromScratchMigrationTest {
         String location = domain.getCodeSource().getLocation().getPath();
         return location.contains("/classes/java/test");
     }
+    @Test
+    @Order(25)
+    @DisplayName("CMP1730のUUIDv7進捗1行・singleton・cursor・retry制約が正式Flywayで成立する")
+    void reservationPendingExpireStateMigrationContract() throws SQLException {
+        migrateFromScratch();
+        var types = readActualColumnTypes().get("reservation_pending_expire_scan_state");
+        assertThat(types.get("id")).isEqualTo("binary(16)");
+        assertThat(types.get("updated_at")).isEqualTo("datetime(6)");
+        byte[] seedId;
+        try (Connection conn = connect(); Statement statement = conn.createStatement()) {
+            try (ResultSet row = statement.executeQuery("SELECT id, singleton_key, cycle_high_water, "
+                    + "last_inspected_id, run_epoch, retry_primary_ids, updated_at "
+                    + "FROM reservation_pending_expire_scan_state")) {
+                assertThat(row.next()).isTrue();
+                seedId = row.getBytes(1);
+                var bytes = java.nio.ByteBuffer.wrap(seedId);
+                var uuid = new java.util.UUID(bytes.getLong(), bytes.getLong());
+                assertThat(uuid.version()).isEqualTo(7);
+                assertThat(uuid.variant()).isEqualTo(2);
+                assertThat(row.getInt(2)).isEqualTo(1);
+                assertThat(row.getLong(3)).isZero();
+                assertThat(row.getLong(4)).isZero();
+                assertThat(row.getLong(5)).isZero();
+                assertThat(row.getString(6)).isEqualTo("[]");
+                assertThat(row.getTimestamp(7)).isNotNull();
+                assertThat(row.next()).isFalse();
+            }
+            try (ResultSet row = statement.executeQuery("SELECT TABLE_COLLATION FROM information_schema.TABLES "
+                    + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'reservation_pending_expire_scan_state'")) {
+                assertThat(row.next()).isTrue();
+                assertThat(row.getString(1)).isEqualTo("utf8mb4_0900_ai_ci");
+            }
+            // この試験が行う有効/不正更新はrollbackし、正式seedを他の相乗り試験へ保全する。
+            conn.setAutoCommit(false);
+            try {
+                for (String sql : List.of(
+                        "UPDATE reservation_pending_expire_scan_state SET singleton_key = 2",
+                        "UPDATE reservation_pending_expire_scan_state SET last_inspected_id = 1",
+                        "UPDATE reservation_pending_expire_scan_state SET run_epoch = -1",
+                        "UPDATE reservation_pending_expire_scan_state SET retry_primary_ids = '{}'",
+                        "INSERT INTO reservation_pending_expire_scan_state SELECT "
+                                + "UNHEX('01999999777770008000000000001730'), singleton_key, cycle_high_water, "
+                                + "last_inspected_id, run_epoch, retry_primary_ids, updated_at "
+                                + "FROM reservation_pending_expire_scan_state")) {
+                    org.assertj.core.api.Assertions.assertThatThrownBy(() -> statement.executeUpdate(sql))
+                            .isInstanceOf(SQLException.class);
+                }
+                String fiveHundred = java.util.stream.LongStream.rangeClosed(1, 500).mapToObj(Long::toString)
+                        .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+                try (var update = conn.prepareStatement("UPDATE reservation_pending_expire_scan_state "
+                        + "SET retry_primary_ids = ?")) {
+                    update.setString(1, fiveHundred);
+                    assertThat(update.executeUpdate()).isEqualTo(1);
+                    update.setString(1, fiveHundred.substring(0, fiveHundred.length() - 1) + ",501]");
+                    org.assertj.core.api.Assertions.assertThatThrownBy(update::executeUpdate)
+                            .isInstanceOf(SQLException.class);
+                }
+            } finally {
+                conn.rollback();
+            }
+        }
+        migrateFromScratch();
+        try (Connection conn = connect(); Statement statement = conn.createStatement();
+             ResultSet row = statement.executeQuery("SELECT id, retry_primary_ids FROM reservation_pending_expire_scan_state")) {
+            assertThat(row.next()).isTrue();
+            assertThat(row.getBytes(1)).containsExactly(seedId);
+            assertThat(row.getString(2)).isEqualTo("[]");
+            assertThat(row.next()).isFalse();
+        }
+    }
+
 }

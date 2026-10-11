@@ -1,18 +1,25 @@
 package com.mannschaft.app.organization.teamgroup;
 
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.teamgroup.entity.OrgTeamGroupEntity;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,6 +50,11 @@ class OrgTeamGroupAssignmentRateLimitWiringIT extends AbstractOrgTeamGroupAssign
 
     private static final int LIMIT = 20;
 
+    @Autowired
+    private ValkeyRateLimiter rateLimiter;
+
+    private Clock originalClock;
+
     /** Valkey の代役（zone+key ごとの固定ウィンドウカウンタ）。 */
     private final Map<String, AtomicLong> counters = new ConcurrentHashMap<>();
 
@@ -52,6 +64,10 @@ class OrgTeamGroupAssignmentRateLimitWiringIT extends AbstractOrgTeamGroupAssign
 
     @BeforeEach
     void setUp() {
+        originalClock = (Clock) ReflectionTestUtils.getField(rateLimiter, "clock");
+        assertThat(originalClock).isNotNull();
+        ReflectionTestUtils.invokeMethod(rateLimiter, "setClock",
+                Clock.fixed(Instant.parse("2026-10-08T00:35:30Z"), ZoneOffset.UTC));
         counters.clear();
         willAnswer(invocation -> {
             List<?> keys = invocation.getArgument(1);
@@ -66,6 +82,13 @@ class OrgTeamGroupAssignmentRateLimitWiringIT extends AbstractOrgTeamGroupAssign
         em.flush();
         em.clear();
         bulkPath = "/api/v1/organizations/" + org.getSlug() + "/team-group-assignments";
+    }
+
+    @AfterEach
+    void restoreClock() {
+        if (originalClock != null) {
+            ReflectionTestUtils.invokeMethod(rateLimiter, "setClock", originalClock);
+        }
     }
 
     @Test

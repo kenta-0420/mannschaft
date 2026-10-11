@@ -3,10 +3,11 @@ package com.mannschaft.app.reservation.repository;
 import com.mannschaft.app.reservation.ReservationStatus;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -22,6 +23,54 @@ import java.util.UUID;
  * 予約リポジトリ。
  */
 public interface ReservationRepository extends JpaRepository<ReservationEntity, Long> {
+
+    /** COUNTを発行しない有界走査の行。bookedAt枝は従来TIMESTAMPDIFFの意味を保持する。 */
+    interface PendingExpireCandidate {
+        ReservationEntity getPrimary();
+        LocalDate getSlotDate();
+        LocalDate getEndDate();
+        LocalTime getEndTime();
+        Boolean getEnabled();
+        Boolean getBookedExpired();
+    }
+
+    String PENDING_EXPIRE_SELECT = "SELECT r AS primary, s.slotDate AS slotDate, "
+            + "s.endDate AS endDate, s.endTime AS endTime, "
+            + "CASE WHEN p.id IS NULL OR p.pendingExpireHours IS NOT NULL THEN TRUE ELSE FALSE END AS enabled, "
+            + "CASE WHEN FUNCTION('TIMESTAMPDIFF', HOUR, r.bookedAt, :now) "
+            + ">= COALESCE(p.pendingExpireHours, :defaultHours) THEN TRUE ELSE FALSE END AS bookedExpired "
+            + "FROM ReservationEntity r LEFT JOIN ReservationSlotEntity s "
+            + "ON s.id = r.reservationSlotId AND s.deletedAt IS NULL "
+            + "LEFT JOIN ReservationPolicyEntity p ON p.teamId = r.teamId "
+            + "WHERE r.status = :pendingStatus AND r.isGroupPrimary = TRUE AND r.deletedAt IS NULL ";
+
+    @Query("SELECT COALESCE(MAX(r.id), 0) FROM ReservationEntity r")
+    long findPendingExpireHighWater();
+
+    @Query(PENDING_EXPIRE_SELECT + "AND r.id > :cursor AND r.id <= :highWater ORDER BY r.id ASC")
+    List<PendingExpireCandidate> findPendingPrimaryCandidates(
+            @Param("pendingStatus") ReservationStatus pendingStatus,
+            @Param("cursor") long cursor, @Param("highWater") long highWater,
+            @Param("now") LocalDateTime now, @Param("defaultHours") int defaultHours, Pageable pageable);
+
+    @Query(PENDING_EXPIRE_SELECT + "AND r.id IN :ids ORDER BY r.id ASC")
+    List<PendingExpireCandidate> findPendingPrimaryCandidatesByIds(
+            @Param("pendingStatus") ReservationStatus pendingStatus, @Param("ids") Collection<Long> ids,
+            @Param("now") LocalDateTime now, @Param("defaultHours") int defaultHours);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.id = :id")
+    Optional<ReservationEntity> findPendingExpirePrimaryForUpdate(@Param("id") long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM ReservationEntity r WHERE r.groupId = :groupId "
+            + "AND r.deletedAt IS NULL ORDER BY r.id ASC")
+    List<ReservationEntity> findPendingExpireGroupForUpdate(@Param("groupId") UUID groupId);
+
+    /** unitの最新policy/primary値で従来のSQL時間切捨てを再判定する。 */
+    @Query(value = "SELECT TIMESTAMPDIFF(HOUR, :bookedAt, :now)", nativeQuery = true)
+    long pendingExpireElapsedHours(@Param("bookedAt") LocalDateTime bookedAt,
+            @Param("now") LocalDateTime now);
 
     /**
      * チームの予約をステータス指定でページング取得する（代表行のみ・F03.4.3 §5.6 #10）。

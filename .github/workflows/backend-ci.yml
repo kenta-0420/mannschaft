@@ -370,6 +370,7 @@ jobs:
           -Ptest.timezone=America/Los_Angeles
           -x jacocoTestReport
           --tests "com.mannschaft.app.config.NonJstTimezoneContractTest"
+          --tests "com.mannschaft.app.reservation.service.ReservationPendingExpireServiceClockZoneTest"
           --tests "com.mannschaft.app.config.JacksonTimeTypeSymmetryGuardTest"
           --tests "com.mannschaft.app.schedule.ScheduleAttendanceServiceTest"
           --tests "com.mannschaft.app.shift.service.ShiftRequestServiceTest"
