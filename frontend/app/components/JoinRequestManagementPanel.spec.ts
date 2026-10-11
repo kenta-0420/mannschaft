@@ -67,7 +67,7 @@ describe('JoinRequestManagementPanel（子ルート実描画）', () => {
     })
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    expect(wrapper.text()).not.toContain('承認待ちの参加申請はありません')
+    expect(wrapper.text()).not.toContain('There are no join requests awaiting approval')
     expect(wrapper.find('[data-testid="join-request-list-error"]').exists()).toBe(true)
   })
 })
