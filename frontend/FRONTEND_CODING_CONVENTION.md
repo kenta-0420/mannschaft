@@ -543,7 +543,7 @@ date.toLocaleDateString(locale.value, { weekday: 'short' })
 
 新規追加時の確認手順:
 
-1. **6 言語すべて**（ja/en/zh/ko/es/de）に同じファイル名で JSON を配置する（未翻訳ならひとまず日本語と同じ値で可、後で翻訳でもよい）。
+1. **6 言語すべて**（ja/en/zh/ko/es/de）に同じファイル名で JSON を配置し、各言語にその言語の訳を入れる（ja 以外に日本語を置かない。キー集合・プレースホルダ・複数形区切りも ja と揃える）。番人 `tests/unit/i18n/locale-no-japanese-residue.spec.ts` が CI で日本語の残存と構造の不一致を検出する。意図的に日本語を残す値（例: API へ日本語のまま送る入力例）は `tests/unit/i18n/locale-residue-allowlist.json` に理由付きで載せる。
 2. `nuxt.config.ts` の各ロケール定義の `files:` 配列にファイル名を追加する（6 箇所）。
 3. `npm run dev` で該当画面を目視し、キーが実テキストに解決されていることを確認する。
 

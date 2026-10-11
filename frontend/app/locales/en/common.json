@@ -1014,51 +1014,51 @@
       "none": "None"
     },
     "guide": {
-      "title": "通知の使い方",
-      "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
+      "title": "How to use notifications",
+      "description": "The notification list brings together everything addressed to you, such as schedules, chat, announcements, confirmation requests and emergency closures. Tap a row to mark it as read automatically and jump to the related screen.",
       "read": {
-        "title": "通知を読む",
-        "body": "通知の行をタップすると既読になり、関連する画面へ移動します。まだ読んでいない通知には青いドットが付きます。",
+        "title": "Reading notifications",
+        "body": "Tap a notification row to mark it as read and go to the related screen. Notifications you have not read yet show a blue dot.",
         "steps": {
-          "step1": "気になる通知の行をタップします",
-          "step2": "自動で既読になり、関連する画面へ移動します",
-          "step3": "未読の通知は左端の青いドットで見分けられます"
+          "step1": "Tap the row of a notification you want to open",
+          "step2": "It is marked as read automatically and you go to the related screen",
+          "step3": "Unread notifications are marked with a blue dot on the left edge"
         }
       },
       "filter": {
-        "title": "絞り込み",
-        "body": "上部の「すべて／未読」の切り替えで、未読の通知だけを表示できます。",
+        "title": "Filtering",
+        "body": "Use the All / Unread switch at the top to show only unread notifications.",
         "steps": {
-          "step1": "画面上部の「すべて／未読」ボタンを押します",
-          "step2": "「未読」を選ぶと、まだ読んでいない通知だけが表示されます",
-          "step3": "「すべて」に戻すと全ての通知が表示されます"
+          "step1": "Press the All / Unread button at the top of the screen",
+          "step2": "Choose Unread to show only the notifications you have not read yet",
+          "step3": "Switch back to All to see every notification"
         }
       },
       "snooze": {
-        "title": "スヌーズ",
-        "body": "今すぐ対応できない通知は、時計アイコンから後回しにできます。指定した時刻に再び表示されます。",
+        "title": "Snooze",
+        "body": "If you cannot deal with a notification right now, postpone it with the clock icon. It shows up again at the time you choose.",
         "steps": {
-          "step1": "通知の右側にある時計アイコンを押します",
-          "step2": "「3時間後／今夜／明朝／来週」から再表示するタイミングを選びます",
-          "step3": "選んだ時刻になると、その通知が再び一覧に表示されます"
+          "step1": "Press the clock icon on the right of the notification",
+          "step2": "Choose when it should reappear: in 3 hours, tonight, tomorrow morning or next week",
+          "step3": "At the time you chose, the notification appears in the list again"
         }
       },
       "confirm": {
-        "title": "確認通知",
-        "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
+        "title": "Confirmation notices",
+        "body": "For notifications with a Confirm button, you can let the sender know that you have seen the content. The number of people who have not confirmed yet may also be shown.",
         "steps": {
-          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
-          "step2": "「確認する」ボタンを押して確認済みにします",
-          "step3": "確認後は「確認済み」ラベルに変わります"
+          "step1": "Read the content of the confirmation notice (the one with a coloured background)",
+          "step2": "Press the Confirm button to mark it as confirmed",
+          "step3": "After confirming, the button changes to a Confirmed label"
         }
       },
       "urgent": {
-        "title": "緊急休業・一括既読",
-        "body": "緊急休業の通知は「確認する」を押して確認します。溜まった通知は右上の「すべて既読にする」でまとめて既読にできます。",
+        "title": "Emergency closures and mark all as read",
+        "body": "Confirm an emergency closure notice by pressing Confirm. To clear a pile of notifications, use Mark all as read at the top right.",
         "steps": {
-          "step1": "緊急休業の通知は「確認する」ボタンで確認します",
-          "step2": "右上の「すべて既読にする」で通知をまとめて既読にできます",
-          "step3": "既読にするとベルのバッジも0になります"
+          "step1": "Confirm an emergency closure notice with the Confirm button",
+          "step2": "Use Mark all as read at the top right to mark all notifications as read at once",
+          "step3": "Once everything is read, the bell badge also goes back to 0"
         }
       }
     }
@@ -1797,7 +1797,7 @@
       "back_to_dashboard": "Back to dashboard",
       "retry": "Retry",
       "slow_loading": "Loading is taking longer than expected",
-      "join_request_applied": "参加申請を送信しました",
+      "join_request_applied": "Join request sent",
       "follow_fetch_error": "Could not get follow status",
       "follow_permission_sync_error_title": "Failed to refresh permissions",
       "follow_permission_sync_error_body": "You stopped following, but refreshing your permissions failed. Please retry."
@@ -2111,47 +2111,47 @@
       }
     },
     "detail": {
-      "open": "詳細を見る",
-      "publish": "公開する",
-      "saved": "下書きを保存しました",
-      "participants": "参加者",
-      "participantsHint": "実際に参加したメンバーを選択してください",
-      "participantsRequired": "このテンプレートの公開には参加者が必要です",
-      "noParticipants": "参加者は登録されていません",
-      "attachments": "添付ファイル",
-      "attachment": "添付ファイル {id}",
-      "sourceSchedule": "元の予定",
-      "openSchedule": "予定を開く",
-      "scheduleUnavailable": "元の予定は閲覧できません",
-      "scheduleCancelled": "元の予定は中止されています",
-      "endDate": "終了日（複数日の場合）",
-      "startTime": "開始時刻",
-      "endTime": "終了時刻",
+      "open": "View details",
+      "publish": "Publish",
+      "saved": "Draft saved",
+      "participants": "Participants",
+      "participantsHint": "Select the members who actually took part",
+      "participantsRequired": "This template requires participants before it can be published",
+      "noParticipants": "No participants have been registered",
+      "attachments": "Attachments",
+      "attachment": "Attachment {id}",
+      "sourceSchedule": "Original event",
+      "openSchedule": "Open event",
+      "scheduleUnavailable": "The original event cannot be viewed",
+      "scheduleCancelled": "The original event has been cancelled",
+      "endDate": "End date (for multi-day events)",
+      "startTime": "Start time",
+      "endTime": "End time",
       "edit": "Edit",
       "save": "Save",
       "updated": "Activity record saved"
     },
     "sync": {
-      "title": "予定と活動記録の変更を確認",
-      "description": "予定の変更を活動記録へ反映する項目を選んでください。自動反映の項目も「予定のみ保存」では変更されません。",
-      "record": "活動記録 {id}",
-      "automatic": "自動反映",
-      "current": "現在の記録",
-      "updated": "変更後の予定",
-      "scheduleOnly": "予定のみ保存",
-      "apply": "選択した項目を反映して保存",
+      "title": "Review changes to the event and activity record",
+      "description": "Choose which changes to the event should be carried over to the activity record. Items marked as automatic are also left unchanged if you choose “Save event only”.",
+      "record": "Activity record {id}",
+      "automatic": "Applied automatically",
+      "current": "Current record",
+      "updated": "Event after the change",
+      "scheduleOnly": "Save event only",
+      "apply": "Apply selected items and save",
       "fields": {
-        "title": "タイトル",
-        "activityDate": "活動日",
-        "activityEndDate": "終了日",
-        "activityTimeStart": "開始時刻",
-        "activityTimeEnd": "終了時刻"
+        "title": "Title",
+        "activityDate": "Activity date",
+        "activityEndDate": "End date",
+        "activityTimeStart": "Start time",
+        "activityTimeEnd": "End time"
       }
     },
     "schedule": {
-      "create": "この予定の活動記録を作成",
-      "records": "活動記録",
-      "loadError": "活動記録の取得に失敗しました"
+      "create": "Create an activity record for this event",
+      "records": "Activity records",
+      "loadError": "Failed to load the activity records"
     },
     "planned": "Planned",
     "unpublished": "Unpublished",
@@ -2382,61 +2382,61 @@
     "MEMBERS_AND_ABOVE": "Members and above"
   },
   "module_settings": {
-    "enabled_count": "有効な機能: {count} / {limit}",
-    "fetch_error": "機能一覧の取得に失敗しました",
-    "empty": "現在このスコープで利用できる追加機能はありません",
-    "toggle_success_on": "{name} を有効にしました",
-    "toggle_success_off": "{name} を無効にしました",
+    "enabled_count": "Enabled features: {count} / {limit}",
+    "fetch_error": "Failed to load the feature list",
+    "empty": "There are no additional features available for this scope right now",
+    "toggle_success_on": "{name} has been enabled",
+    "toggle_success_off": "{name} has been disabled",
     "badge": {
-      "level_unavailable": "このレベルでは利用できません",
-      "paid_plan": "有料プラン",
-      "limit_reached": "上限（{limit}）に達しています"
+      "level_unavailable": "Not available at this level",
+      "paid_plan": "Paid plan",
+      "limit_reached": "Limit ({limit}) reached"
     },
     "error": {
-      "paid_required": "この機能は有料プランが必要です",
-      "limit_reached": "無料プランで有効化できる機能の上限（10個）に達しています",
-      "level_unavailable": "このレベルではこの機能を利用できません",
-      "generic": "機能の切替に失敗しました"
+      "paid_required": "This feature requires a paid plan",
+      "limit_reached": "You have reached the limit (10) of features that can be enabled on the free plan",
+      "level_unavailable": "This feature is not available at this level",
+      "generic": "Failed to switch the feature"
     }
   },
   "module_settings_guide": {
-    "title": "機能設定の使い方",
-    "help_button": "使い方",
-    "description": "「機能設定」では、このチーム・組織で使える機能を一覧から探して、スイッチで ON / OFF できます。ここで ON にした機能だけが、メンバーの画面に表示され利用できるようになります。",
+    "title": "How to use feature settings",
+    "help_button": "How to use",
+    "description": "In Feature settings, you can look through the list of features available to this team or organization and turn them ON or OFF with a switch. Only the features you turn ON here appear on members’ screens and become available to them.",
     "what": {
-      "title": "機能設定とは",
-      "body": "チーム・組織で使える機能（モジュール）の一覧です。利用できる機能がすべてカードで並び、各機能を ON にするとメンバーが使えるようになり、OFF にすると画面から隠れて使えなくなります。必要な機能だけを選んで、画面をすっきり保てます。"
+      "title": "What are feature settings?",
+      "body": "This is the list of features (modules) that your team or organization can use. All available features appear as cards. Turn a feature ON to let members use it, or OFF to hide it from their screens. Choose only the features you need to keep the screens uncluttered."
     },
     "toggle": {
-      "title": "機能を ON / OFF する",
-      "body": "使いたい機能を一覧から探して、カード右のスイッチを ON にするだけです。保存ボタンは不要で、押すとすぐに反映されます。",
+      "title": "Turning a feature ON / OFF",
+      "body": "Find the feature you want in the list and turn on the switch on the right of its card. There is no Save button; the change takes effect as soon as you press the switch.",
       "steps": {
-        "step1": "一覧から使いたい機能のカードを探す",
-        "step2": "カード右のスイッチを押して ON にする（もう一度押すと OFF）",
-        "step3": "「有効にしました」または「無効にしました」と通知が出れば完了（保存操作は不要）",
-        "step4": "切り替え中はそのスイッチが一時的に押せなくなります（二重操作を防ぐためです）"
+        "step1": "Find the card of the feature you want to use in the list",
+        "step2": "Press the switch on the right of the card to turn it ON (press again to turn it OFF)",
+        "step3": "You are done when a notice says the feature was enabled or disabled (no need to save)",
+        "step4": "While a switch is changing, it cannot be pressed for a moment (this prevents double operations)"
       }
     },
     "count": {
-      "title": "今いくつ使えるかを確認する",
-      "body": "画面の上部に「有効な機能: 2 / 10」のように、ON にしている数と有効化できる上限の数が表示されます。右の更新ボタン（回転する矢印）を押すと、最新の状態を取得し直せます。"
+      "title": "Checking how many you can use",
+      "body": "At the top of the screen, a line such as “Enabled features: 2 / 10” shows how many features are ON and the maximum you can enable. Press the refresh button on the right (the rotating arrow) to fetch the latest status."
     },
     "restrictions": {
-      "title": "使えないスイッチがあるとき",
-      "body": "スイッチが押せない（グレーアウトしている）機能には、理由を示すバッジが付きます。",
+      "title": "When a switch cannot be used",
+      "body": "Features whose switch cannot be pressed (greyed out) show a badge explaining why.",
       "items": {
-        "paid": "「有料プラン」… 有料プランに加入すると使える機能です。",
-        "limit": "「上限（10）に達しています」… 無料プランで同時に ON にできる機能の数が上限に達しています。ほかの機能を OFF にすると新しく ON にできます。",
-        "level": "「このレベルでは利用できません」… このチーム・組織の種別では使えない機能です。"
+        "paid": "“Paid plan”: a feature you can use after subscribing to a paid plan.",
+        "limit": "“Limit (10) reached”: the number of features that can be ON at the same time on the free plan has reached its limit. Turn another feature OFF to turn a new one ON.",
+        "level": "“Not available at this level”: a feature that cannot be used with this type of team or organization."
       }
     },
     "empty": {
-      "title": "機能が表示されないとき",
-      "body": "「現在このスコープで利用できる追加機能はありません」と出る場合は、いまのところこのチーム・組織で追加できる機能がありません。"
+      "title": "When no features are shown",
+      "body": "If you see “There are no additional features available for this scope right now”, there are currently no features that can be added to this team or organization."
     },
     "permission": {
-      "title": "設定できる人",
-      "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+      "title": "Who can change settings",
+      "body": "Only administrators of the team or organization can open Feature settings. Even for administrators, this tab is hidden when the view switch at the top right of the screen is set to Member view. To change settings, switch to Administrator view."
     }
   },
   "teamShell": {
@@ -2449,7 +2449,7 @@
       "invites": "Invites",
       "supporters": "Supporter Management",
       "modules": "Features",
-      "joinRequests": "参加申請"
+      "joinRequests": "Join request"
     },
     "action": {
       "leave_confirm_title": "Leave team",
@@ -2468,7 +2468,7 @@
       "permission_groups": "Permission Groups",
       "supporters": "Supporter Management",
       "modules": "Features",
-      "joinRequests": "参加申請"
+      "joinRequests": "Join request"
     },
     "action": {
       "leave_confirm_title": "Leave organization",
@@ -2632,25 +2632,25 @@
     "goOrganizations": "Choose an organization"
   },
   "joinRequest": {
-    "apply": "参加申請",
-    "pending": "申請中（承認待ち）",
-    "approved": "承認済み",
-    "rejected": "却下されました",
-    "fetchError": "取得に失敗しました",
-    "retry": "再試行",
+    "apply": "Join request",
+    "pending": "Request pending (awaiting approval)",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "fetchError": "Failed to load",
+    "retry": "Retry",
     "admin": {
-      "pendingTitle": "承認待ちの参加申請",
-      "empty": "承認待ちの参加申請はありません",
-      "requesterLabel": "ユーザーID: {userId}",
-      "requestedAt": "申請日",
-      "approve": "承認",
-      "reject": "却下",
-      "fetchError": "一覧の取得に失敗しました",
-      "retry": "再試行",
-      "loadMore": "さらに読み込む",
-      "loadMoreError": "追加読み込みに失敗しました",
-      "approveSuccess": "参加申請を承認しました",
-      "rejectSuccess": "参加申請を却下しました"
+      "pendingTitle": "Join requests awaiting approval",
+      "empty": "There are no join requests awaiting approval",
+      "requesterLabel": "User ID: {userId}",
+      "requestedAt": "Requested on",
+      "approve": "Approve",
+      "reject": "Reject",
+      "fetchError": "Failed to load the list",
+      "retry": "Retry",
+      "loadMore": "Load more",
+      "loadMoreError": "Failed to load more",
+      "approveSuccess": "Join request approved",
+      "rejectSuccess": "Join request rejected"
     }
   },
   "myPage": {

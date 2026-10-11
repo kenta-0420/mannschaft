@@ -99,9 +99,9 @@
     "online_option": {
       "nobody": "Nadie",
       "contacts_only": "Solo contactos",
-      "everyone": "全員"
+      "everyone": "Todos"
     },
-    "save": "保存",
+    "save": "Guardar",
     "saved": "Configuración de privacidad guardada",
     "save_failed": "Error al guardar",
     "guide": {

@@ -1,134 +1,134 @@
 {
   "teamAffiliation": {
     "settings": {
-      "title": "チーム加盟の設定",
-      "entry_button": "加盟の設定",
-      "application_enabled": "チームからの加盟申請を受け付ける",
-      "application_enabled_hint": "オンにすると、組織ページに「チームとして加盟を申請」ボタンが表示されます",
-      "groups_enabled": "チームグループを使う",
-      "groups_enabled_hint": "加盟チームを年度や地区などのグループに分け、お知らせの宛先に使えます",
-      "group_mode": "申請時のチームグループ選択",
-      "group_mode_off": "選ばせない",
-      "group_mode_optional": "任意で選べる",
-      "group_mode_required": "必ず選ばせる",
-      "guidance": "申請フォームの案内文",
-      "turn_off_pending_confirm": "受付済みの申請が {count} 件残っています。受付を停止しても、これらの申請は申請一覧から承認・拒否できます。",
-      "required_mode_degraded": "グループが1件も無いため、グループ選択は「任意」として扱われています",
-      "section_application": "加盟申請の受付",
-      "section_groups": "チームグループ",
-      "saved": "設定を保存しました",
-      "save_error": "設定を保存できませんでした。時間をおいてもう一度お試しください",
-      "load_error": "設定を読み込めませんでした。時間をおいてもう一度お試しください",
-      "manage_groups": "グループを管理",
-      "turn_off_confirm_title": "加盟申請の受付を停止しますか？",
-      "turn_off_confirm": "受付を停止すると、組織ページから「チームとして加盟を申請」ボタンが消えます。",
-      "turn_off_confirm_ok": "受付を停止する",
-      "card_desc": "加盟申請の受付、チームグループ、申請時の案内文を設定します"
+      "title": "Configuración de afiliación de equipos",
+      "entry_button": "Configurar afiliación",
+      "application_enabled": "Aceptar solicitudes de afiliación de equipos",
+      "application_enabled_hint": "Si se activa, aparecerá el botón \"Solicitar afiliación como equipo\" en la página de la organización",
+      "groups_enabled": "Usar grupos de equipos",
+      "groups_enabled_hint": "Permite dividir los equipos afiliados en grupos por año fiscal, distrito, etc., y usarlos como destinatarios de los avisos",
+      "group_mode": "Selección de grupo de equipos al solicitar",
+      "group_mode_off": "No permitir elegir",
+      "group_mode_optional": "Opcional",
+      "group_mode_required": "Obligatorio",
+      "guidance": "Texto de orientación del formulario de solicitud",
+      "turn_off_pending_confirm": "Quedan {count} solicitudes recibidas. Aunque detengas la recepción, podrás aprobarlas o rechazarlas desde la lista de solicitudes.",
+      "required_mode_degraded": "Como no hay ningún grupo, la selección de grupo se trata como \"Opcional\"",
+      "section_application": "Recepción de solicitudes de afiliación",
+      "section_groups": "Grupos de equipos",
+      "saved": "Se guardó la configuración",
+      "save_error": "No se pudo guardar la configuración. Inténtalo de nuevo más tarde",
+      "load_error": "No se pudo cargar la configuración. Inténtalo de nuevo más tarde",
+      "manage_groups": "Gestionar grupos",
+      "turn_off_confirm_title": "¿Detener la recepción de solicitudes de afiliación?",
+      "turn_off_confirm": "Si detienes la recepción, el botón «Solicitar afiliación como equipo» desaparecerá de la página de la organización.",
+      "turn_off_confirm_ok": "Detener la recepción",
+      "card_desc": "Configura la recepción de solicitudes de afiliación, los grupos de equipos y el texto de orientación de la solicitud"
     },
     "view": {
-      "teams": "所属チーム",
-      "applications": "加盟申請",
-      "invites": "送った招待",
-      "restrictions": "申請の制限",
-      "groups": "チームグループ"
+      "teams": "Equipos afiliados",
+      "applications": "Solicitudes de afiliación",
+      "invites": "Invitaciones enviadas",
+      "restrictions": "Restricciones de solicitud",
+      "groups": "Grupos de equipos"
     },
     "apply": {
-      "button": "チームとして加盟を申請",
-      "dialog_title": "{org} への加盟申請",
-      "select_team": "申請するチーム",
-      "select_group": "チームグループ",
-      "group_none": "選ばない",
-      "message": "添え書き（任意）",
-      "submit": "申請する",
-      "success": "加盟を申請しました。組織の承認をお待ちください",
-      "expires_hint": "{date} までに応答が無い場合、申請は自動で取り消されます",
+      "button": "Solicitar afiliación como equipo",
+      "dialog_title": "Solicitud de afiliación a {org}",
+      "select_team": "Equipo que solicita",
+      "select_group": "Grupo de equipos",
+      "group_none": "No elegir ninguno",
+      "message": "Mensaje (opcional)",
+      "submit": "Solicitar",
+      "success": "Solicitud de afiliación enviada. Espera la aprobación de la organización",
+      "expires_hint": "Si no hay respuesta antes del {date}, la solicitud se cancelará automáticamente",
       "status": {
-        "NONE": "申請できます",
-        "APPLYING": "申請中です",
-        "INVITED": "この組織から招待が届いています",
-        "ACTIVE": "加盟済みです",
-        "UNAVAILABLE": "現在この組織には申請できません"
+        "NONE": "Puedes solicitar",
+        "APPLYING": "Solicitud pendiente",
+        "INVITED": "Tienes una invitación de esta organización",
+        "ACTIVE": "Ya estás afiliado",
+        "UNAVAILABLE": "Actualmente no se pueden enviar solicitudes a esta organización"
       },
-      "find_orgs": "加盟先の組織を探す",
-      "eligibility_error": "No se pudo comprobar si puede solicitar la afiliación por un error de red",
+      "find_orgs": "Buscar organizaciones a las que afiliarse",
+      "eligibility_error": "No se pudo comprobar si es posible solicitar la afiliación por un error de comunicación",
       "eligibility_retry": "Reintentar",
-      "load_error": "申請フォームを読み込めませんでした。時間をおいてもう一度お試しください",
-      "submit_error": "申請できませんでした。入力内容をご確認のうえ、もう一度お試しください"
+      "load_error": "No se pudo cargar el formulario de solicitud. Inténtalo de nuevo más tarde",
+      "submit_error": "No se pudo enviar la solicitud. Revisa lo introducido e inténtalo de nuevo"
     },
     "review": {
-      "approve": "承認",
-      "reject": "拒否",
-      "approve_dialog_title": "{team} の加盟を承認",
-      "approve_group": "所属させるチームグループ",
-      "requested_group": "希望: {requested} → 承認時: {decided}",
-      "unassigned": "未分類",
-      "reject_reason": "理由（任意・相手チームに通知されます）",
-      "reject_block": "今後このチームからの申請を受け付けない",
-      "approved": "承認しました",
-      "rejected": "拒否しました"
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "approve_dialog_title": "Aprobar la afiliación de {team}",
+      "approve_group": "Grupo de equipos al que asignar",
+      "requested_group": "Solicitado: {requested} -> Al aprobar: {decided}",
+      "unassigned": "Sin clasificar",
+      "reject_reason": "Motivo (opcional; se notificará al equipo)",
+      "reject_block": "No aceptar más solicitudes de este equipo en el futuro",
+      "approved": "Aprobado",
+      "rejected": "Rechazado"
     },
     "invite": {
-      "button": "チームを招待",
-      "accept": "承諾",
-      "decline": "辞退",
-      "decline_block": "今後この組織からの招待を受け付けない",
-      "cancel": "招待を取り消す"
+      "button": "Invitar a un equipo",
+      "accept": "Aceptar",
+      "decline": "Rechazar",
+      "decline_block": "No aceptar más invitaciones de esta organización en el futuro",
+      "cancel": "Cancelar invitación"
     },
     "restriction": {
-      "kind_COOLDOWN": "冷却期間中（{until} まで）",
-      "kind_BLOCK": "ブロック中",
-      "lift": "解除"
+      "kind_COOLDOWN": "En período de espera (hasta {until})",
+      "kind_BLOCK": "Bloqueado",
+      "lift": "Levantar"
     },
     "leave": {
-      "button": "この組織から離脱",
-      "confirm": "{org} から離脱しますか？ 組織からのお知らせが届かなくなります（他の組織への加盟には影響しません）"
+      "button": "Salir de esta organización",
+      "confirm": "¿Salir de {org}? Dejarás de recibir los avisos de la organización (no afecta a la afiliación a otras organizaciones)"
     },
     "remove": {
-      "button": "除名",
-      "confirm": "{team} を組織から除名しますか？"
+      "button": "Expulsar",
+      "confirm": "¿Expulsar a {team} de la organización?"
     },
-    "badge_accepting": "加盟受付中",
-    "public_page_apply_hint": "あなたが加盟の手続きを任されているチームから申請できます",
-    "filter_accepting": "チーム加盟を受付中"
+    "badge_accepting": "Acepta afiliaciones",
+    "public_page_apply_hint": "Puedes solicitar desde un equipo del que tengas encargados los trámites de afiliación",
+    "filter_accepting": "Aceptando afiliaciones de equipos"
   },
   "teamGroup": {
-    "title": "チームグループ",
-    "create": "チームグループを作成",
-    "name": "グループ名",
-    "description": "説明",
-    "team_count": "{count} チーム",
-    "unassigned": "未分類",
-    "unassigned_count": "未分類のチーム: {count}",
-    "reorder_hint": "並び順は、お知らせの「〜以前／〜以降」の基準になります",
-    "delete_confirm": "「{name}」を削除しますか？ 所属している {count} チームは未分類に戻ります。このグループ宛ての過去のお知らせは、送信時点で対象だったチームに引き続き表示されます",
-    "limit_reached": "チームグループは200件までです",
-    "assign": "グループを割り当てる",
-    "bulk_assign": "選択したチームをグループに割り当てる",
-    "filter_all": "すべてのグループ",
-    "disabled_cta": "チームグループ機能は無効です。設定から有効にできます"
+    "title": "Grupos de equipos",
+    "create": "Crear grupo de equipos",
+    "name": "Nombre del grupo",
+    "description": "Descripción",
+    "team_count": "{count} equipos",
+    "unassigned": "Sin clasificar",
+    "unassigned_count": "Equipos sin clasificar: {count}",
+    "reorder_hint": "El orden es la base de \"hasta / desde\" en los avisos",
+    "delete_confirm": "¿Eliminar \"{name}\"? Los {count} equipos que pertenecen a él volverán a quedar sin clasificar. Los avisos anteriores dirigidos a este grupo seguirán visibles para los equipos que eran destinatarios en el momento del envío",
+    "limit_reached": "Se permiten hasta 200 grupos de equipos",
+    "assign": "Asignar un grupo",
+    "bulk_assign": "Asignar los equipos seleccionados a un grupo",
+    "filter_all": "Todos los grupos",
+    "disabled_cta": "La función de grupos de equipos está desactivada. Puedes activarla en la configuración"
   },
   "teamAffiliationGuide": {
-    "title": "チーム加盟の設定の使い方",
-    "description": "チームが組織へ加盟を申請できるようにする設定画面です。上から順に設定すれば終わります。",
+    "title": "Cómo usar la configuración de afiliación de equipos",
+    "description": "Esta pantalla de configuración permite que los equipos soliciten afiliarse a una organización. Basta con configurarla de arriba abajo.",
     "accept": {
-      "title": "申請の受付を始める",
-      "body": "受付を on にすると、組織ページに「チームとして加盟を申請」ボタンが出ます。ボタンは、加盟の手続きを任されたチームの担当者にだけ表示されます。",
+      "title": "Empezar a recibir solicitudes",
+      "body": "Al activar la recepción, aparece en la página de la organización el botón «Solicitar afiliación como equipo». El botón solo se muestra a los responsables del equipo encargados del trámite de afiliación.",
       "steps": {
-        "step1": "「チームからの加盟申請を受け付ける」を on にする",
-        "step2": "必要なら「申請フォームの案内文」に、申請前に伝えたいことを書く",
-        "step3": "右下の「保存」を押す"
+        "step1": "Activa «Aceptar solicitudes de afiliación de equipos»",
+        "step2": "Si hace falta, escribe en «Texto de orientación del formulario de solicitud» lo que quieras comunicar antes de solicitar",
+        "step3": "Pulsa «Guardar» en la parte inferior derecha"
       }
     },
     "groups": {
-      "title": "チームグループを使う",
-      "body": "加盟チームを年度や地区などのグループに分けておくと、お知らせの宛先に使えます。申請のときにチームへグループを選んでもらうこともできます。",
-      "mode_off": "選ばせない: 申請フォームにグループ欄を出しません",
-      "mode_optional": "任意で選べる: 選ばなくても申請できます",
-      "mode_required": "必ず選ばせる: グループを選ばないと申請できません。グループが1件も無いときは「任意」として扱われます"
+      "title": "Usar grupos de equipos",
+      "body": "Si divides los equipos afiliados en grupos por año, distrito, etc., puedes usarlos como destinatarios de los avisos. También puedes pedir a los equipos que elijan un grupo al solicitar.",
+      "mode_off": "No permitir elegir: el formulario no muestra el campo de grupo",
+      "mode_optional": "Opcional: se puede solicitar sin elegir",
+      "mode_required": "Obligatorio: no se puede solicitar sin elegir un grupo. Si no hay ningún grupo, se trata como «Opcional»"
     },
     "stop": {
-      "title": "受付を止めるとき",
-      "body": "受付を off にして保存すると確認が出ます。すでに届いている申請は、受付を止めても所属チームの「加盟申請」から承認・拒否できます。"
+      "title": "Cuando quieras detener la recepción",
+      "body": "Si desactivas la recepción y guardas, aparece una confirmación. Las solicitudes ya recibidas se pueden aprobar o rechazar desde «Solicitudes de afiliación» del equipo afiliado aunque detengas la recepción."
     }
   }
 }
