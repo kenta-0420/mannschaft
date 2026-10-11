@@ -31,49 +31,49 @@
       "permission_denied": "Permission denied"
     },
     "guide": {
-      "title": "フレンドチームの使い方",
-      "description": "他のチームとフォローし合ってフレンドチームになり、その関係を管理する画面です。",
+      "title": "How to use Friend Teams",
+      "description": "Follow other teams to become friend teams and manage those relationships on this screen.",
       "what": {
-        "title": "フレンドチームとは",
-        "body": "2つのチームがお互いにフォローし合うと、フレンドチームになります。一覧には各チームの成立日と、公開・非公開の状態が表示されます。20件を超えるとページ送りされます。",
-        "note": "サポーターなどには、公開されているフレンドチームだけが表示されます。"
+        "title": "What are friend teams?",
+        "body": "When two teams follow each other, they become friend teams. The list shows each team's established date and whether it is public or private. Results are paginated after 20 items.",
+        "note": "Supporters and others only see friend teams that are set to public."
       },
       "follow": {
-        "title": "フォローしてフレンドになる",
-        "step1": "画面右上の「フォロー」ボタンを押します",
-        "step2": "相手チームのID（数字）を入力します",
-        "step3": "挨拶コメントを入力します（任意・300文字まで）",
-        "step4": "ダイアログの「フォロー」を押します",
-        "mutual": "相手チームからもフォローされると「フレンドチームになりました」と表示され、フレンドチームが成立します。",
-        "caution_title": "注意",
-        "caution_self": "自チームはフォローできません",
-        "caution_already": "すでにフォロー済みのチームはフォローできません",
-        "caution_busy": "混み合っているときは自動で最大3回まで再試行します。それでもだめなときは、時間をおいてもう一度お試しください",
-        "caution_role": "「フォロー」ボタンは、管理者と、権限を持つ副管理者だけに表示されます"
+        "title": "Follow a team to become friends",
+        "step1": "Press the \"Follow\" button at the top right of the screen",
+        "step2": "Enter the ID (number) of the team you want to follow",
+        "step3": "Enter a greeting message (optional, up to 300 characters)",
+        "step4": "Press \"Follow\" in the dialog",
+        "mutual": "When the other team follows you back, \"you are now friend teams\" is displayed and the friend team relationship is established.",
+        "caution_title": "Notes",
+        "caution_self": "You cannot follow your own team",
+        "caution_already": "You cannot follow a team you already follow",
+        "caution_busy": "When the system is busy, it automatically retries up to 3 times. If it still fails, please wait a moment and try again",
+        "caution_role": "The \"Follow\" button is shown only to admins and deputy admins with permission"
       },
       "visibility": {
-        "title": "公開・非公開を切り替える",
-        "step1": "フレンドチームのカードにあるスイッチを切り替えます",
-        "step2": "「公開設定を変更しました」と表示されたことを確認します",
-        "caution_title": "注意",
-        "caution_admin": "操作できるのは管理者のみです。ほかの人にはスイッチが無効の状態で表示されます",
-        "caution_revert": "切り替えに失敗したときは、スイッチは元の状態に戻ります"
+        "title": "Switch between public and private",
+        "step1": "Toggle the switch on the friend team's card",
+        "step2": "Confirm that \"Visibility updated\" is displayed",
+        "caution_title": "Notes",
+        "caution_admin": "Only admins can do this. Everyone else sees the switch disabled",
+        "caution_revert": "If the change fails, the switch returns to its previous state"
       },
       "unfollow": {
-        "title": "フォローを解除する",
-        "step1": "フレンドチームのカード右側の「︙」を押します",
-        "step2": "メニューから「フォロー解除」を選びます",
-        "step3": "確認ダイアログで承認します",
-        "caution_title": "注意",
-        "caution_kept": "フォローを解除しても、過去に転送した投稿はそのまま残ります",
-        "caution_role": "解除できるのは、管理者と、権限を持つ副管理者だけです"
+        "title": "Unfollow a team",
+        "step1": "Press the \"︙\" on the right side of the friend team's card",
+        "step2": "Choose \"Unfollow\" from the menu",
+        "step3": "Confirm in the confirmation dialog",
+        "caution_title": "Notes",
+        "caution_kept": "Posts that were forwarded in the past remain even after you unfollow",
+        "caution_role": "Only admins and deputy admins with permission can unfollow"
       },
       "related": {
-        "title": "関連画面",
-        "body": "フレンドチームに関する次の画面は、チームのメニューから開けます。",
-        "item_folders": "フレンドフォルダ — フレンドチームをフォルダに整理します（最大20個まで作成できます）",
-        "item_feed": "管理者フィード — フレンドチームの投稿を確認し、自チームへ転送します",
-        "item_exports": "逆転送履歴 — 自チームの投稿がどのフレンドに転送されたかを確認します"
+        "title": "Related screens",
+        "body": "The following screens related to friend teams can be opened from the team menu.",
+        "item_folders": "Friend folders — Organize friend teams into folders (you can create up to 20)",
+        "item_feed": "Admin feed — Review posts from friend teams and forward them to your own team",
+        "item_exports": "Reverse forwarding history — See which friends your team's posts were forwarded to"
       }
     }
   },
