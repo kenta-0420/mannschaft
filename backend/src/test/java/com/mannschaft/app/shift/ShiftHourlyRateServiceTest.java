@@ -185,13 +185,18 @@ class ShiftHourlyRateServiceTest {
     class DeleteHourlyRate {
 
         @Test
-        @DisplayName("時給設定削除_正常_deleteByIdが呼ばれる")
-        void 時給設定削除_正常_deleteByIdが呼ばれる() {
+        @DisplayName("時給設定削除_本人_deleteが呼ばれる")
+        void 時給設定削除_本人_deleteが呼ばれる() {
+            // Given
+            ShiftHourlyRateEntity entity = createRateEntity();
+            given(hourlyRateRepository.findById(RATE_ID)).willReturn(Optional.of(entity));
+
             // When
-            shiftHourlyRateService.deleteHourlyRate(RATE_ID);
+            shiftHourlyRateService.deleteHourlyRate(RATE_ID, CURRENT_USER_ID);
 
             // Then
-            verify(hourlyRateRepository).deleteById(RATE_ID);
+            verify(accessControlService).checkMembership(CURRENT_USER_ID, TEAM_ID, "TEAM");
+            verify(hourlyRateRepository).delete(entity);
         }
     }
 

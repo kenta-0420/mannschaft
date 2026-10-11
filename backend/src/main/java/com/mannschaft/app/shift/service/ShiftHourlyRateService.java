@@ -1,6 +1,8 @@
 package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.shift.ShiftMapper;
 import com.mannschaft.app.shift.dto.CreateHourlyRateRequest;
 import com.mannschaft.app.shift.dto.HourlyRateResponse;
@@ -18,7 +20,7 @@ import java.util.Optional;
 /**
  * シフト時給サービス。メンバーの時給設定・履歴管理を担当する。
  *
- * <p><b>認可（認可根治 Wave6 追加戦）:</b> 時給は金銭情報のため、参照・登録とも
+ * <p><b>認可（認可根治 Wave6 追加戦）:</b> 時給は金銭情報のため、参照・登録・削除とも
  * {@link #checkHourlyRateAccess} で per-scope 認可を強制する。判定は F03.5 設計書
  * {@code 01_db_design.md}（時給の閲覧権限 = 本人 + ADMIN/DEPUTY_ADMIN）に準拠する。
  * shift ドメインの金型 {@code ShiftScheduleService#checkScheduleAdminAccess} と同一方針
@@ -153,12 +155,21 @@ public class ShiftHourlyRateService {
     /**
      * 時給設定を削除する。
      *
-     * @param rateId 時給設定ID
+     * <p><b>認可:</b> 作成・参照と同じ {@link #checkHourlyRateAccess} を、削除対象行の
+     * {@code userId} / {@code teamId} に対して強制する（呼び出し元から渡された値は信用しない）。
+     * 対象行が存在しない場合も 403（COMMON_002）とし、存在有無を権限のない者に漏らさない。</p>
+     *
+     * @param rateId        時給設定ID
+     * @param currentUserId 操作ユーザーID（認可判定に使用）
+     * @throws BusinessException 権限がない、または対象が存在しない場合（COMMON_002 / 403）
      */
     @Transactional
-    public void deleteHourlyRate(Long rateId) {
-        hourlyRateRepository.deleteById(rateId);
-        log.info("時給設定削除: id={}", rateId);
+    public void deleteHourlyRate(Long rateId, Long currentUserId) {
+        ShiftHourlyRateEntity entity = hourlyRateRepository.findById(rateId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
+        checkHourlyRateAccess(currentUserId, entity.getUserId(), entity.getTeamId());
+        hourlyRateRepository.delete(entity);
+        log.info("時給設定削除: id={}, userId={}, teamId={}", rateId, entity.getUserId(), entity.getTeamId());
     }
 
     /**
