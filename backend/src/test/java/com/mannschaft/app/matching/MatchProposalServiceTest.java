@@ -52,6 +52,34 @@ import static org.mockito.Mockito.verify;
 @DisplayName("MatchProposalService 単体テスト")
 class MatchProposalServiceTest {
 
+    @Nested
+    @DisplayName("CMP1027 cancel/agree-cancel 非readerの状態秘匿とsaveゼロ")
+    class PrivateProposalState {
+        @Test
+        void 全状態全canceltypeは非readerに不在を返しsaveしない() {
+            java.util.List<CancellationType> types = new java.util.ArrayList<>(java.util.Arrays.asList(CancellationType.values()));
+            types.add(null);
+            org.mockito.Mockito.lenient().when(requestRepository.findById(REQUEST_ID))
+                    .thenReturn(Optional.of(createOpenRequest()));
+            for (MatchProposalStatus state : MatchProposalStatus.values()) {
+                for (CancellationType type : types) {
+                    MatchProposalEntity proposal = MatchProposalEntity.builder().id(PROPOSAL_ID)
+                            .requestId(REQUEST_ID).proposingTeamId(TEAM_ID).status(state)
+                            .cancellationType(type).cancelledByTeamId(OTHER_TEAM_ID).build();
+                    given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
+                    assertThatThrownBy(() -> service.cancelProposal(PROPOSAL_ID, ACTOR_ID, new CancelProposalRequest(null, null)))
+                            .isInstanceOf(BusinessException.class)
+                            .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(MatchingErrorCode.PROPOSAL_NOT_FOUND);
+                    assertThatThrownBy(() -> service.agreeCancellation(PROPOSAL_ID, ACTOR_ID))
+                            .isInstanceOf(BusinessException.class)
+                            .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(MatchingErrorCode.PROPOSAL_NOT_FOUND);
+                }
+            }
+            org.mockito.Mockito.verify(proposalRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+            org.mockito.Mockito.verify(requestRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+        }
+    }
+
     @Mock
     private MatchProposalRepository proposalRepository;
     @Mock
