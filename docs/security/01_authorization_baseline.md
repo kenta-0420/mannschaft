@@ -169,7 +169,7 @@ matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人�
 > **適用範囲は上記 2 経路に限る**。「認証付きの slug 経路すべてで差を許容する」という包括的な判断ではない。とくに次の契約は変更・免責しない。
 >
 > - F01.2.1 の招待先の可視性（`docs/features/F01.2.1_org_team_groups.md:537`）と加盟受付設定（同 `:993`、実装 `TeamAffiliationFacade`）での「不在と同一ステータス・同一コード」。
-> - 本書 §3.3.2（個別 ID 指定系の秘匿ゲート `ScopeConcealingAccessGate`）の、越境応答を不在 ID への応答と完全一致（status・`error.code`・`error.message`）させる契約。チームスコープ配下の**子リソース**（資格・投稿など）の実在や所属を、拒否時の status・code・message の差から判別させてはならない。
+> - 本書 §3.3.2（個別 ID 指定系の秘匿ゲート `ScopeConcealingAccessGate`）の、越境応答を不在 ID への応答と完全一致（status・`error.code`・`error.message`）させる契約。チームスコープ配下の**子リソース**（資格・投稿など）の実在や所属を、拒否時の status・code・message の差から判別させてはならない。資格 API（`SkillController` の個別 ID 4 操作と登録）は CMP-261010-2226 で適用済み（`MemberSkillFacade`。越境・不在は 404 `SKILL_002`、同チーム権限不足は 403 `COMMON_002`、`SKILL_003` は非推奨・未使用）。
 >
 > 本項にも対応する番人（自動テスト）は無いため、既存方針どおり契約表へは昇格させない。
 

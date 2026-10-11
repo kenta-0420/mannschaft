@@ -29,6 +29,52 @@
       "already_following": "Already following",
       "target_not_found": "Target team not found",
       "permission_denied": "Permission denied"
+    },
+    "guide": {
+      "title": "How to use Friend Teams",
+      "description": "Follow other teams to become friend teams and manage those relationships on this screen.",
+      "what": {
+        "title": "What are friend teams?",
+        "body": "When two teams follow each other, they become friend teams. The list shows each team's established date and whether it is public or private. Results are paginated after 20 items.",
+        "note": "Supporters and others only see friend teams that are set to public."
+      },
+      "follow": {
+        "title": "Follow a team to become friends",
+        "step1": "Press the \"Follow\" button at the top right of the screen",
+        "step2": "Enter the ID (number) of the team you want to follow",
+        "step3": "Enter a greeting message (optional, up to 300 characters)",
+        "step4": "Press \"Follow\" in the dialog",
+        "mutual": "When the other team follows you back, \"you are now friend teams\" is displayed and the friend team relationship is established.",
+        "caution_title": "Notes",
+        "caution_self": "You cannot follow your own team",
+        "caution_already": "You cannot follow a team you already follow",
+        "caution_busy": "When the system is busy, it automatically retries up to 3 times. If it still fails, please wait a moment and try again",
+        "caution_role": "The \"Follow\" button is shown only to admins and deputy admins with permission"
+      },
+      "visibility": {
+        "title": "Switch between public and private",
+        "step1": "Toggle the switch on the friend team's card",
+        "step2": "Confirm that \"Visibility updated\" is displayed",
+        "caution_title": "Notes",
+        "caution_admin": "Only admins can do this. Everyone else sees the switch disabled",
+        "caution_revert": "If the change fails, the switch returns to its previous state"
+      },
+      "unfollow": {
+        "title": "Unfollow a team",
+        "step1": "Press the \"︙\" on the right side of the friend team's card",
+        "step2": "Choose \"Unfollow\" from the menu",
+        "step3": "Confirm in the confirmation dialog",
+        "caution_title": "Notes",
+        "caution_kept": "Posts that were forwarded in the past remain even after you unfollow",
+        "caution_role": "Only admins and deputy admins with permission can unfollow"
+      },
+      "related": {
+        "title": "Related screens",
+        "body": "The following screens related to friend teams can be opened from the team menu.",
+        "item_folders": "Friend folders — Organize friend teams into folders (you can create up to 20)",
+        "item_feed": "Admin feed — Review posts from friend teams and forward them to your own team",
+        "item_exports": "Reverse forwarding history — See which friends your team's posts were forwarded to"
+      }
     }
   },
   "folders": {

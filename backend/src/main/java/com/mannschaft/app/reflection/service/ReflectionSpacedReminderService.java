@@ -17,7 +17,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -178,11 +177,23 @@ public class ReflectionSpacedReminderService {
     /**
      * due（remind_at<=now・PENDING）を走査し、孤児 fail-safe＋status 遷移で送信する（§5.2・AC-10）。
      *
-     * <p><b>@Transactional 必須</b>: status 遷移を 1 トランザクションで確定し二重送信を防ぐ。
+     * <p><b>非トランザクションのオーケストレータ</b>（Issue #2997 / 原則5）: 以前は全体を 1 つの
+     * {@code @Transactional} で包んでおり、通知の DB 例外が rollback-only を残して、握りつぶして続行した
+     * 他の項目の SENT 遷移までコミット時に巻き戻していた。現在は項目ごとに通知（NotificationService の
+     * トランザクション）→ SENT 保存（リポジトリ単位のトランザクション）を独立に確定する。
      * 親存在チェック・通知・status 遷移はすべて reflection ドメイン内 + notification ファサード経由
      * （別ドメイン Repository には直接依存しない・D-3 番人遵守）。</p>
+     *
+     * <h3>送信済み状態の契約（共通AC-D。テストで固定）</h3>
+     * <ul>
+     *   <li>通知が例外で失敗した項目は SENT にしない（PENDING のまま次回再試行）。</li>
+     *   <li>visibility deny（通知は作られず例外も出ない）の項目は SENT にする。再送しても同じ deny になり、
+     *       毎分の再送ループになるため。是正前の挙動と同じ。</li>
+     *   <li>通知は成功したが SENT の保存に失敗した項目は PENDING が残り、次回再送される（二重送信を許容する側）。
+     *       通知を落とさないことを優先する。是正前も、1 件でも失敗すると全体が巻き戻って次回再送されていた。</li>
+     *   <li>SENT 済みの項目は次回の走査対象（PENDING）に入らないため、部分成功の後に再実行しても再送しない。</li>
+     * </ul>
      */
-    @Transactional
     public void processDueReminders() {
         LocalDateTime now = LocalDateTime.now(STORAGE_ZONE);
         List<ReflectionSpacedReminderEntity> due = reflectionSpacedReminderRepository
