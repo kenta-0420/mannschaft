@@ -68,10 +68,17 @@ public interface TeamNotificationOutboxRepository extends JpaRepository<TeamNoti
             """, nativeQuery = true)
     List<TeamNotificationOutboxEntity> lockClaimable(@Param("nowMicros") long nowMicros, @Param("limit") int limit);
 
-    /** ロック済みの PENDING を RELAYING・新しい {@code claim_token} にする（{@link #lockClaimable} と同じ tx で呼ぶ）。 */
+    /**
+     * ロック済みの PENDING を RELAYING・新しい {@code claim_token} にする（{@link #lockClaimable} と同じ tx で呼ぶ）。
+     *
+     * <p>{@code FORCE INDEX (PRIMARY)} で主キーの点検索だけにする。{@code status = 'PENDING'} の条件で
+     * 索引 {@code (status, next_attempt_at)} の範囲走査を選ばれると、{@link #lockClaimable} で取っていない
+     * （並行する claim が取った）PENDING の行までロックしにいき、ロックの範囲が SELECT と食い違う（設計書 §4.7）。
+     * IN の値は主キー昇順の範囲に並べ替えられるので、ロックは主キー昇順に取られる。</p>
+     */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = """
-            UPDATE team_notification_outbox
+            UPDATE team_notification_outbox FORCE INDEX (PRIMARY)
                SET status = 'RELAYING',
                    claim_token = :claimToken,
                    claimed_at = TIMESTAMPADD(MICROSECOND, :nowMicros, '1970-01-01 00:00:00'),

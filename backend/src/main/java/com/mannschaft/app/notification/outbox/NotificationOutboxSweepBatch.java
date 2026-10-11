@@ -3,9 +3,12 @@ package com.mannschaft.app.notification.outbox;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +22,8 @@ import java.util.List;
  *
  * <p>RELAYED は {@code relayed_at} から7日、DEAD は {@code dead_at} から30日を過ぎたものを削除する
  * （起算点は {@code created_at} ではない）。PENDING・RELAYING は消さない。tx を持たず、各 source の
- * {@link NotificationOutboxSource#sweep} を呼ぶ。</p>
+ * {@link NotificationOutboxSource#sweep} を呼ぶ。ロックの競合（デッドロック・ロック待ちタイムアウト）は WARN とカウンタ
+ * {@code lock_conflict{source,operation=sweep}} に残し、次の日の実行に回す（設計書 §4.7）。</p>
  */
 @Slf4j
 @Component
@@ -34,6 +38,7 @@ public class NotificationOutboxSweepBatch {
     public static final Duration DEAD_RETENTION = Duration.ofDays(30);
 
     private final List<NotificationOutboxSource> sources;
+    private final ObjectProvider<MeterRegistry> meterRegistryProvider;
     private final Clock clock;
 
     /** 保存期間を過ぎた RELAYED・DEAD を削除する。 */
@@ -46,7 +51,14 @@ public class NotificationOutboxSweepBatch {
     public void sweep() {
         Instant now = Instant.now(clock);
         for (NotificationOutboxSource source : sources) {
-            int deleted = source.sweep(now.minus(RELAYED_RETENTION), now.minus(DEAD_RETENTION));
+            int deleted;
+            try {
+                deleted = source.sweep(now.minus(RELAYED_RETENTION), now.minus(DEAD_RETENTION));
+            } catch (PessimisticLockingFailureException e) {
+                // tx ごと巻き戻り、何も消えていない。次の日の実行が消す（他の source は止めない）
+                NotificationOutboxRelay.recordLockConflict(meterRegistryProvider, source.name(), "sweep", e);
+                continue;
+            }
             if (deleted > 0) {
                 log.info("通知 outbox の保存期間を過ぎた行 {} 件を削除した: source={}", deleted, source.name());
             }

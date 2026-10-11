@@ -287,10 +287,14 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
             return id;
         });
         // 招待の行がコミットされた後の読み直しの直前に、組織をアーカイブする（別の操作のコミットとして差し込む）
+        Injection injection = new Injection();
         doAnswer(invocation -> {
             commitByAnotherSession(() -> {
-                if (membershipCount(team.id(), org.id()) > 0) {
-                    jdbc.update("UPDATE organizations SET archived_at = UTC_TIMESTAMP() WHERE id = ?", org.id());
+                String row = membershipRowState(team.id(), org.id());
+                if (row != null) {
+                    injection.observedRows.add(row);
+                    injection.affectedRows.add(jdbc.update(
+                            "UPDATE organizations SET archived_at = UTC_TIMESTAMP() WHERE id = ?", org.id()));
                 }
             });
             return invocation.callRealMethod();
@@ -299,7 +303,12 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         Result invited = invite(xa, org.slug(), team.slug());
         relay.drainAll();
 
+        // 差し込みが「招待の行（PENDING / ORG_INVITE）ができた後」にちょうど1回成立したこと（招待前の 403・404 で
+        // 終わって差し込みが走らないまま通る偽 green を塞ぐ）
+        assertThat(injection.observedRows).as("差し込みの時点の招待の行").containsExactly("PENDING/ORG_INVITE");
+        assertThat(injection.affectedRows).as("アーカイブの UPDATE の影響行数").containsExactly(1);
         assertThat(invited.status()).isNotEqualTo(201);
+        assertThat(invited.errorCode()).as("読み直しでアーカイブを見つけた").isEqualTo("ORG_003");
         assertThat(membershipCount(team.id(), org.id())).as("作った招待は取り下げられる").isZero();
         assertThat(outboxCountByOrganization(org.id())).as("outbox に書かない").isZero();
         assertThat(jobCountByOrganization(org.id())).as("fan-out ジョブも作られない").isZero();
@@ -321,20 +330,30 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
             return id;
         });
         // 読み直し（組織は生存）を通過した直後に、別の操作が招待を取り消してコミットした状況を作る
+        Injection injection = new Injection();
         doAnswer(invocation -> {
             Object state = invocation.callRealMethod();
             commitByAnotherSession(() -> {
-                if (membershipCount(team.id(), org.id()) > 0) {
-                    jdbc.update("DELETE FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
-                            team.id(), org.id());
+                String row = membershipRowState(team.id(), org.id());
+                if (row != null) {
+                    injection.observedRows.add(row);
+                    injection.affectedRows.add(jdbc.update(
+                            "DELETE FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
+                            team.id(), org.id()));
                 }
             });
             return state;
         }).when(organizationPortTarget()).findAffiliationState(any());
 
-        invite(xa, org.slug(), team.slug()); // 応答の形は問わない（残ったものを検証する）
+        Result invited = invite(xa, org.slug(), team.slug());
         relay.drainAll();
 
+        // 差し込みが「招待の行（PENDING / ORG_INVITE）ができ、読み直しを通過した後」にちょうど1回成立したこと
+        assertThat(injection.observedRows).as("差し込みの時点の招待の行").containsExactly("PENDING/ORG_INVITE");
+        assertThat(injection.affectedRows).as("取消の DELETE の影響行数").containsExactly(1);
+        // 現実装: 読み直し（組織は生存）を通過しているので招待作成の応答は 201。通知の予約だけが取消を見て書かない
+        assertThat(invited.status()).isEqualTo(201);
+        assertThat(membershipCount(team.id(), org.id())).as("加盟行は取消で消えたまま").isZero();
         assertThat(outboxCountByOrganization(org.id()))
                 .as("招待の行が PENDING のまま残っていることを FOR UPDATE で確かめてから書く").isZero();
         assertThat(jobCountByOrganization(org.id())).isZero();
@@ -535,6 +554,23 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
     /** フィクスチャ作りをトランザクションに包んでコミットする。 */
     private <T> T inTx(java.util.function.Supplier<T> action) {
         return new TransactionTemplate(transactionManager).execute(status -> action.get());
+    }
+
+    /** 別の操作の差し込みで観測した加盟行（{@code status/direction}）と、差し込んだ更新の影響行数。 */
+    private static final class Injection {
+        private final List<String> observedRows = new java.util.concurrent.CopyOnWriteArrayList<>();
+        private final List<Integer> affectedRows = new java.util.concurrent.CopyOnWriteArrayList<>();
+    }
+
+    /** チームと組織の加盟行の {@code status/direction}（無ければ null。2行以上あれば失敗）。 */
+    private String membershipRowState(long teamId, long orgId) {
+        List<String> rows = jdbc.queryForList(
+                "SELECT CONCAT(status, '/', direction) FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
+                String.class, teamId, orgId);
+        if (rows.size() > 1) {
+            throw new IllegalStateException("加盟行が2行以上ある: " + rows);
+        }
+        return rows.isEmpty() ? null : rows.get(0);
     }
 
     private long membershipCount(long teamId, long orgId) {

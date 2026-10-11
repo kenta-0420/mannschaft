@@ -134,6 +134,24 @@ RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎた
 ### 4.6 順序
 保証しない（UUIDv7 の id 昇順でおおむね FIFO）。通知は互いに独立したジョブである。
 
+### 4.7 ロック戦略（claim・印付け・回収・掃除）
+**分離レベルは READ COMMITTED**（送り手の `NotificationOutboxSource` の書き込み系メソッドすべて。`@Transactional(propagation = REQUIRES_NEW, isolation = READ_COMMITTED)`）。
+
+- **なぜ REPEATABLE READ ではいけないか（2026-10-11 の CI で実測したデッドロック）**: claim の `SELECT ... WHERE status='PENDING' AND next_attempt_at <= :now ORDER BY id LIMIT :n FOR UPDATE SKIP LOCKED` は索引 `(status, next_attempt_at)` の PENDING の範囲を走査し、REPEATABLE READ では走査した範囲の終わり（PENDING の最後の項目の次の項目、無ければ supremum）に **next-key（gap）ロック**を残す。gap ロック同士は両立するので、並行する claim A・B はどちらもこの隙間の gap ロックを持てる。続く `UPDATE ... SET status='RELAYING'` は索引 `(status, next_attempt_at)` に `('RELAYING', …)` の新しい項目を挿入するが、その挿入位置は PENDING の範囲の直後＝相手が gap ロックを持つ隙間であり、**挿入意図ロックが相手の gap ロックを待つ**。A は B を、B は A を待って循環し、MySQL が一方を 1213（Deadlock found）で落とす（`TeamNotificationOutboxRelayIT` OB09「2スレッドで同時に50行を drain」で発生）。本番でも複数ノードの起こしと予備ポーラーが同時に claim すれば起きる。
+- **READ COMMITTED で何が変わるか**: 検索・索引走査の gap ロックが取られない（挿入意図ロックとぶつかる相手がいない）。WHERE に合わない行のロックはすぐ外れる。claim のロックは `SKIP LOCKED` で取った行（の主キーと索引項目）だけになる。回収（`(status, claimed_at)` の範囲を走査して PENDING へ戻す）・掃除（`(status, relayed_at)`・`(status, dead_at)` の範囲を削除）・印付けも同じ索引の範囲を走査・更新するので、同じ分離レベルにそろえる。binlog は ROW 形式（MySQL 8 の既定）を前提とする。
+- **claim の UPDATE は主キーだけを使う**: `UPDATE team_notification_outbox FORCE INDEX (PRIMARY) ... WHERE id IN (:ids) AND status = 'PENDING'`。SELECT で取った id 以外に触らないよう、`status` の条件で `(status, next_attempt_at)` の範囲走査を選ばせない（選ばれると、並行する claim が取った PENDING の行までロックしにいき、ロックの範囲が SELECT と食い違う）。IN の値は主キー昇順の範囲に並べ替えられるので、ロックは主キー昇順に取られる。
+- **それでもロックの競合が起きたとき**（MySQL 1213 デッドロック・1205 ロック待ちタイムアウト。Spring の `PessimisticLockingFailureException`）: どの経路でも drain・バッチ全体を落とさず、失敗した1回だけを見送る。tx は丸ごと巻き戻るので行は元の状態のまま残り、失われない。WARN ログとカウンタ `lock_conflict{source, operation}` で可視化する（握りつぶさない）。
+
+| 経路（`operation`） | 見送った行の状態 | 次に拾うもの |
+|---|---|---|
+| `claim` | PENDING のまま | 同じ drain で3回まで取り直す（`MAX_CLAIM_LOCK_CONFLICT_RETRIES`）。超えたら次の起こし・予備ポーラー |
+| `markRelayed`・`markFailed`・`deferUnsupportedVersion` | RELAYING のまま（取り込みはコミット済みのことがある） | 回収バッチが2分後に PENDING へ戻し、再取り込み（冪等で結果は1件） |
+| `recoverStuck` | RELAYING のまま | 次の分の回収バッチ |
+| `sweep` | 消えずに残る | 次の日の掃除 |
+
+- ロックの競合以外の例外（DB 停止など）は従来どおり外へ出す（claim・回収・掃除）か ERROR で残す（印付け）。
+- 既知の制約: claim の SELECT が `(status, next_attempt_at)` を使って `ORDER BY id` をファイルソートで処理すると、`LIMIT` を超える PENDING の行まで読んでロックする（READ COMMITTED でも WHERE に合う行のロックは tx の終わりまで残る）。並行する claim はそれらを `SKIP LOCKED` で飛ばすだけで、正しさ（重複なし・取りこぼしなし）には影響しない。滞留が大きいときの並列度が下がるだけである。
+
 ## 5. 起こしとポーラー（Q6）
 
 - 起こし: 書き込み側が tx の中で `NotificationOutboxAppendedEvent` を publish → relay の `onAppended` が `@Async("notification-outbox-pool") @TransactionalEventListener(phase = AFTER_COMMIT)` で即 drain（OB10）。`@BackgroundFeaturePolicy(mode = ALWAYS)`（バックグラウンド入口の番人が宣言を要求する）。drain するのはイベントの `sourceName` の source だけ（名前が一致しなければ全 source）。
@@ -155,7 +173,7 @@ RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎた
 | ポーラーのノードが落ちる | ≤ 1分＋5秒 |
 | 滞留時の処理量 | ≥ 50行/秒 |
 
-- メトリクス（prefix `mannschaft.notification.outbox.`、tag `source`）: カウンタ `relayed`・`failed`・`dead`・`recovered`・`stale_mark`・`unsupported_version`・`nudge_rejected`、ゲージ `oldest_pending_age_seconds{source}`（起動時に source ごとに登録し、読まれた時点の最古の PENDING の経過秒。無ければ0。OB12b）、`poller_last_success_epoch`。
+- メトリクス（prefix `mannschaft.notification.outbox.`、tag `source`）: カウンタ `relayed`・`failed`・`dead`・`recovered`・`stale_mark`・`unsupported_version`・`nudge_rejected`・`lock_conflict`（tag `operation` も付く。§4.7）、ゲージ `oldest_pending_age_seconds{source}`（起動時に source ごとに登録し、読まれた時点の最古の PENDING の経過秒。無ければ0。OB12b）、`poller_last_success_epoch`。
 - 警報: 「最古の PENDING が60秒超の状態が5分続く」。
 - 試験プロファイルでは起こしを止める（`mannschaft.notification.outbox.nudge-enabled=false`）。予備ポーラーは test で `@EnableScheduling` が無効なので走らない。IT は `NotificationOutboxRelay#drainAll()` を同期で呼ぶ。起こしを検証する IT だけ `@TestPropertySource` で有効にする。
 
@@ -210,3 +228,4 @@ RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎた
 |---|---|
 | 2026-10-10 | 初版（陣立て書 改訂第2版・マスター裁可 Q1〜Q8）。P1 試練と同時に作成 |
 | 2026-10-10 | P1 出陣: ステータスを 🟢 に。§2.1 に executor を追加、§3.2 に native SQL への時刻の渡し方（エポックマイクロ秒）、§4.4・§4.5 にロックと実行時刻を追記 |
+| 2026-10-11 | §4.7 ロック戦略を追加（OB09 のデッドロックの機構と根治: READ COMMITTED・claim の UPDATE を主キーに固定・ロック競合の見送りとメトリクス `lock_conflict`） |

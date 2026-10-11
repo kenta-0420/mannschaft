@@ -11,6 +11,7 @@ import com.mannschaft.app.notification.outbox.NotificationOutboxStuckRecoveryBat
 import com.mannschaft.app.notification.outbox.NotificationOutboxSweepBatch;
 import com.mannschaft.app.team.service.TeamNotificationOutboxSource;
 import com.mannschaft.app.team.service.TeamOrgAffiliationCommandService;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import net.javacrumbs.shedlock.core.DefaultLockingTaskExecutor;
 import net.javacrumbs.shedlock.core.LockConfiguration;
@@ -20,7 +21,10 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.mockito.stubbing.Stubber;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.time.Duration;
@@ -37,6 +41,8 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -44,6 +50,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -51,7 +58,7 @@ import static org.mockito.Mockito.verify;
  * 通知 outbox P1 — relay（claim → 取り込み → 印付け・再試行・回収・掃除・メトリクス）の試練 IT。
  *
  * <p>AC（陣立て書 2026-10-10-notification-outbox-gungi.md §5 P1 と改訂第2版）:
- * OB03・OB04・OB06・OB06a・OB07・OB08・OB08b・OB09・OB11・OB12a・OB12b・OB17・OB19・OB20。</p>
+ * OB03・OB04・OB06・OB06a・OB07・OB08・OB08b・OB09・OB09a〜c（ロックの競合。設計書 §4.7）・OB11・OB12a・OB12b・OB17・OB19・OB20。</p>
  *
  * <p>取り込みは {@link #drain()}（{@link NotificationOutboxRelay#drainAll()} の同期呼び出し）でだけ起きる
  * （試験プロファイルで起こしを止め、予備ポーラーもスケジュールされない）。</p>
@@ -379,6 +386,137 @@ class TeamNotificationOutboxRelayIT extends TeamNotificationOutboxItSupport {
 
         assertThat(jobCountByOrganization(org.id())).isEqualTo(50);
         assertThat(memberships).allSatisfy(m -> assertThat(statusOf(m)).isEqualTo("RELAYED"));
+    }
+
+    // =====================================================================
+    // OB09a〜d ロックの競合（MySQL 1213 デッドロック・1205 ロック待ちタイムアウト）で drain・バッチを落とさない
+    // （設計書 §4.7）
+    // =====================================================================
+
+    @Test
+    @DisplayName("OB09a claim がデッドロックで落ちても drain は例外を投げず、同じ drain で取り直して RELAYED にし、lock_conflict{operation=claim} を数える")
+    void ob09a_claimのデッドロックはdrainを落とさず取り直す() {
+        OrgFx org = inTx(this::newOrg);
+        long membershipId = appendNotice(org);
+        double before = lockConflicts("claim");
+        doThrow(deadlock()).doCallRealMethod().when(sourceSpy).claim(anyInt(), any());
+
+        drain();
+
+        assertThat(lockConflicts("claim") - before).isEqualTo(1.0);
+        assertThat(statusOf(membershipId)).as("巻き戻った claim の行は失われず、取り直しで取り込まれる").isEqualTo("RELAYED");
+        assertThat(jobCountOf(membershipId)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("OB09a claim のデッドロックが再試行の上限を超えても drain は例外を投げず、行は PENDING のまま残り、次の drain で取り込まれる")
+    void ob09a_claimのデッドロックが続いても行はPENDINGで残る() {
+        OrgFx org = inTx(this::newOrg);
+        long membershipId = appendNotice(org);
+        double before = lockConflicts("claim");
+        int attempts = NotificationOutboxRelay.MAX_CLAIM_LOCK_CONFLICT_RETRIES + 1;
+        Stubber stubber = doThrow(deadlock());
+        for (int i = 1; i < attempts; i++) {
+            stubber = stubber.doThrow(deadlock());
+        }
+        stubber.doCallRealMethod().when(sourceSpy).claim(anyInt(), any());
+
+        drain();
+
+        assertThat(lockConflicts("claim") - before).isEqualTo(attempts);
+        assertThat(statusOf(membershipId)).as("見送った行は PENDING のまま").isEqualTo("PENDING");
+        assertThat(jobCountOf(membershipId)).isZero();
+
+        drain();
+        assertThat(statusOf(membershipId)).isEqualTo("RELAYED");
+        assertThat(jobCountOf(membershipId)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("OB09b 印付け（RELAYED・失敗の記録）がデッドロックで落ちても drain は例外を投げず、行は RELAYING のまま残り、回収 → 再 drain でジョブは1件")
+    void ob09b_印付けのデッドロックはdrainを落とさず回収で戻る() {
+        OrgFx org = inTx(this::newOrg);
+        long relayedFails = appendNotice(org);
+        long failedFails = appendNotice(org);
+        double relayedBefore = lockConflicts("markRelayed");
+        double failedBefore = lockConflicts("markFailed");
+        doThrow(deadlock()).doCallRealMethod().when(sourceSpy).markRelayed(any(), any(), any());
+        doAnswer(invocation -> {
+            NotificationOutboxPayload payload = invocation.getArgument(0);
+            if (Long.valueOf(failedFails).equals(payload.fanout().sourceId())) {
+                throw new IllegalStateException("取り込みの失敗（テスト）");
+            }
+            return invocation.callRealMethod();
+        }).when(ingestSpy).ingest(any());
+        doThrow(deadlock()).doCallRealMethod()
+                .when(sourceSpy).markFailed(any(), any(), anyString(), any(), anyBoolean(), any());
+
+        drain();
+
+        assertThat(lockConflicts("markRelayed") - relayedBefore).isEqualTo(1.0);
+        assertThat(lockConflicts("markFailed") - failedBefore).isEqualTo(1.0);
+        assertThat(statusOf(relayedFails)).as("印付けを見送った行は RELAYING のまま").isEqualTo("RELAYING");
+        assertThat(statusOf(failedFails)).as("失敗の記録を見送った行は RELAYING のまま").isEqualTo("RELAYING");
+        assertThat(jobCountOf(relayedFails)).as("取り込みはコミット済み").isEqualTo(1);
+
+        jdbc.update("UPDATE team_notification_outbox SET claimed_at = UTC_TIMESTAMP(6) - INTERVAL 3 MINUTE "
+                + "WHERE status = 'RELAYING' AND organization_id = ?", org.id());
+        recoveryBatch.recover();
+        reset(ingestSpy);
+        drain();
+
+        assertThat(statusOf(relayedFails)).isEqualTo("RELAYED");
+        assertThat(statusOf(failedFails)).isEqualTo("RELAYED");
+        assertThat(jobCountOf(relayedFails)).as("再取り込みでもジョブは1件").isEqualTo(1);
+        assertThat(jobCountOf(failedFails)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("OB09c 回収と掃除がデッドロックで落ちてもバッチは例外を投げず、行は元のまま残り、次の実行で回収・削除される")
+    void ob09c_回収と掃除のデッドロックはバッチを落とさない() {
+        OrgFx org = inTx(this::newOrg);
+        long stuck = appendNotice(org);
+        long oldRelayed = appendNotice(org);
+        setState(stuck, "RELAYING", "claimed_at", 1, 1);
+        setState(oldRelayed, "RELAYED", "relayed_at", 8 * 24, 9 * 24);
+        double recoverBefore = lockConflicts("recoverStuck");
+        double sweepBefore = lockConflicts("sweep");
+        doThrow(deadlock()).doCallRealMethod().when(sourceSpy).recoverStuck(any(), any());
+        doThrow(lockWaitTimeout()).doCallRealMethod().when(sourceSpy).sweep(any(), any());
+
+        recoveryBatch.recover();
+        sweepBatch.sweep();
+
+        assertThat(lockConflicts("recoverStuck") - recoverBefore).isEqualTo(1.0);
+        assertThat(lockConflicts("sweep") - sweepBefore).isEqualTo(1.0);
+        assertThat(statusOf(stuck)).as("回収を見送った行は RELAYING のまま").isEqualTo("RELAYING");
+        assertThat(outboxRowOf(oldRelayed)).as("掃除を見送った行は残る").isNotNull();
+
+        recoveryBatch.recover();
+        sweepBatch.sweep();
+
+        assertThat(statusOf(stuck)).isEqualTo("PENDING");
+        assertThat(outboxRowOf(oldRelayed)).isNull();
+    }
+
+    /** MySQL 1213（Deadlock found）を Spring が変換した例外。 */
+    private static CannotAcquireLockException deadlock() {
+        return new CannotAcquireLockException("Deadlock found when trying to get lock（テスト）",
+                new java.sql.SQLTransactionRollbackException("Deadlock found when trying to get lock", "40001", 1213));
+    }
+
+    /** MySQL 1205（Lock wait timeout exceeded）を Spring が変換した例外。 */
+    private static PessimisticLockingFailureException lockWaitTimeout() {
+        return new CannotAcquireLockException("Lock wait timeout exceeded（テスト）",
+                new java.sql.SQLTransientException("Lock wait timeout exceeded", "HY000", 1205));
+    }
+
+    /** {@code lock_conflict{source=team, operation}} の累計。 */
+    private double lockConflicts(String operation) {
+        return meterRegistry.find(NotificationOutboxRelay.METRIC_LOCK_CONFLICT)
+                .tag(NotificationOutboxRelay.TAG_SOURCE, TeamNotificationOutboxSource.SOURCE_NAME)
+                .tag(NotificationOutboxRelay.TAG_OPERATION, operation)
+                .counters().stream().mapToDouble(Counter::count).sum();
     }
 
     // =====================================================================

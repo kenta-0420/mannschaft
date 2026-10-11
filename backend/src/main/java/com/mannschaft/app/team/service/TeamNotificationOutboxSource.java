@@ -6,6 +6,7 @@ import com.mannschaft.app.team.entity.TeamNotificationOutboxEntity;
 import com.mannschaft.app.team.repository.TeamNotificationOutboxRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,16 @@ import java.util.UUID;
  * <p>触るのは team の Repository だけ。各メソッドは {@code @Transactional(propagation = REQUIRES_NEW)}
  * の独立した tx にする（OB16。relay は tx を持たず、起こしが CallerRuns で AFTER_COMMIT の中から呼ばれても、
  * 終わった業務の tx に参加しない）。{@code MANDATORY} にしない（D-3P-2）。</p>
+ *
+ * <h2>ロック戦略（設計書 §4.7）</h2>
+ * <p>書き込み系の tx は <b>READ COMMITTED</b> にする。REPEATABLE READ だと claim の
+ * {@code SELECT … FOR UPDATE SKIP LOCKED} が索引 {@code (status, next_attempt_at)} の PENDING の範囲を舐めて、その
+ * 範囲の終わりの隙間に next-key（gap）ロックを残す。並行する2つの claim はどちらもその隙間の gap ロックを持ったまま、
+ * 続く {@code UPDATE … SET status='RELAYING'} で同じ索引の同じ隙間（PENDING の範囲の直後）へ新しい索引項目を
+ * 挿入しようとし（挿入意図ロック）、互いの gap ロックを待って循環する（MySQL 1213。2026-10-11 CI で実測）。
+ * READ COMMITTED では検索・索引走査の gap ロックが取られず、WHERE に合わない行のロックもすぐ外れるので、
+ * claim のロックは SKIP LOCKED で取った行（の主キーと索引項目）だけになる。回収・掃除・印付けも同じ索引の範囲を
+ * 走査・更新するので同じ分離レベルにそろえる。それでも起きたロックの競合は relay・回収・掃除の側で1回の見送りとして扱う。</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -37,7 +48,7 @@ public class TeamNotificationOutboxSource implements NotificationOutboxSource {
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public List<NotificationOutboxMessage> claim(int limit, Instant now) {
         List<TeamNotificationOutboxEntity> locked = repository.lockClaimable(micros(now), limit);
         if (locked.isEmpty()) {
@@ -58,13 +69,13 @@ public class TeamNotificationOutboxSource implements NotificationOutboxSource {
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public boolean markRelayed(UUID id, UUID claimToken, Instant now) {
         return repository.markRelayed(id, claimToken, micros(now)) == 1;
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public boolean markFailed(UUID id, UUID claimToken, String error, Instant nextAttemptAt, boolean dead,
                               Instant now) {
         int updated = dead
@@ -74,19 +85,19 @@ public class TeamNotificationOutboxSource implements NotificationOutboxSource {
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public boolean deferUnsupportedVersion(UUID id, UUID claimToken, Instant nextAttemptAt, Instant now) {
         return repository.deferUnsupportedVersion(id, claimToken, micros(nextAttemptAt), micros(now)) == 1;
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public int recoverStuck(Instant claimedBefore, Instant now) {
         return repository.recoverStuck(micros(claimedBefore), micros(now));
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public int sweep(Instant relayedBefore, Instant deadBefore) {
         return repository.deleteRelayedBefore(micros(relayedBefore)) + repository.deleteDeadBefore(micros(deadBefore));
     }

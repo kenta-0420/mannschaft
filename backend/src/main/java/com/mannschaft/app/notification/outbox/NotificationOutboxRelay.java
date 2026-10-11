@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -42,7 +43,9 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * <p>失敗の扱い: 取り込みの例外は {@code attempt_count+1} と指数バックオフで PENDING に戻し、{@link #MAX_ATTEMPTS} 回目で
  * DEAD にする。印付けの例外は行を RELAYING のまま残す（回収バッチが2分後に PENDING へ戻し、取り込みは冪等なので
- * 再取り込みしても結果は1件）。印付けが0行なら古い世代（回収後に別の relay が claim し直した）として何も変えない。</p>
+ * 再取り込みしても結果は1件）。印付けが0行なら古い世代（回収後に別の relay が claim し直した）として何も変えない。
+ * ロックの競合（デッドロック・ロック待ちタイムアウト）は drain を落とさず、WARN とカウンタ {@code lock_conflict} に残して
+ * 次の回に回す（claim は同じ drain で {@link #MAX_CLAIM_LOCK_CONFLICT_RETRIES} 回まで取り直す。設計書 §4.7）。</p>
  */
 @Slf4j
 @Component
@@ -73,8 +76,14 @@ public class NotificationOutboxRelay {
     public static final String METRIC_NUDGE_REJECTED = METRIC_PREFIX + "nudge_rejected";
     public static final String METRIC_OLDEST_PENDING_AGE_SECONDS = METRIC_PREFIX + "oldest_pending_age_seconds";
     public static final String METRIC_POLLER_LAST_SUCCESS_EPOCH = METRIC_PREFIX + "poller_last_success_epoch";
+    /** ロックの競合（MySQL 1213 デッドロック・1205 ロック待ちタイムアウト）で1回の操作を見送った回数（tag {@code source}・{@code operation}）。 */
+    public static final String METRIC_LOCK_CONFLICT = METRIC_PREFIX + "lock_conflict";
     /** メトリクスの tag 名。 */
     public static final String TAG_SOURCE = "source";
+    /** メトリクスの tag 名（{@link #METRIC_LOCK_CONFLICT} の操作: claim・markRelayed・markFailed・deferUnsupportedVersion・recoverStuck・sweep）。 */
+    public static final String TAG_OPERATION = "operation";
+    /** 1回の drain で、claim のロック競合をこの回数まで続けて再試行する（超えたらその source は次の起こし・ポーラーに回す）。 */
+    public static final int MAX_CLAIM_LOCK_CONFLICT_RETRIES = 3;
 
     private final List<NotificationOutboxSource> sources;
     private final NotificationOutboxIngestService ingestService;
@@ -178,6 +187,7 @@ public class NotificationOutboxRelay {
     private int drain(List<NotificationOutboxSource> targets) {
         long deadline = System.nanoTime() + DRAIN_TIME_BUDGET.toNanos();
         int relayed = 0;
+        int claimLockConflicts = 0;
         boolean claimedAny;
         do {
             claimedAny = false;
@@ -187,7 +197,18 @@ public class NotificationOutboxRelay {
                             DRAIN_TIME_BUDGET);
                     return relayed;
                 }
-                List<NotificationOutboxMessage> claimed = source.claim(CLAIM_LIMIT, Instant.now(clock));
+                List<NotificationOutboxMessage> claimed;
+                try {
+                    claimed = source.claim(CLAIM_LIMIT, Instant.now(clock));
+                } catch (PessimisticLockingFailureException e) {
+                    // claim の tx は丸ごと巻き戻り、行は PENDING のまま残る（失われない）。数回までは同じ drain で取り直す
+                    lockConflict(source, "claim", e);
+                    claimLockConflicts++;
+                    if (claimLockConflicts <= MAX_CLAIM_LOCK_CONFLICT_RETRIES) {
+                        claimedAny = true;
+                    }
+                    continue;
+                }
                 if (claimed.isEmpty()) {
                     continue;
                 }
@@ -222,6 +243,10 @@ public class NotificationOutboxRelay {
                 staleMark(source, message, "markRelayed");
                 return false;
             }
+        } catch (PessimisticLockingFailureException e) {
+            // 取り込みはコミット済み。行は RELAYING のまま残り、回収バッチが PENDING に戻す（再取り込みは冪等）
+            lockConflict(source, "markRelayed", e);
+            return false;
         } catch (RuntimeException e) {
             // 取り込みはコミット済み。行は RELAYING のまま残り、回収バッチが PENDING に戻す（再取り込みは冪等）
             log.error("通知 outbox の印付け（RELAYED）に失敗。回収バッチが戻して再取り込みする: source={} id={}",
@@ -243,6 +268,8 @@ public class NotificationOutboxRelay {
                     now.plus(UNSUPPORTED_VERSION_DEFER), now)) {
                 staleMark(source, message, "deferUnsupportedVersion");
             }
+        } catch (PessimisticLockingFailureException e) {
+            lockConflict(source, "deferUnsupportedVersion", e);
         } catch (RuntimeException e) {
             log.error("通知 outbox の先送りの記録に失敗。回収バッチが戻す: source={} id={}",
                     source.name(), message.id(), e);
@@ -260,6 +287,9 @@ public class NotificationOutboxRelay {
         try {
             marked = source.markFailed(message.id(), message.claimToken(), lastError(cause), nextAttemptAt, dead,
                     now);
+        } catch (PessimisticLockingFailureException e) {
+            lockConflict(source, "markFailed", e);
+            return;
         } catch (RuntimeException e) {
             log.error("通知 outbox の失敗の記録に失敗。回収バッチが戻す: source={} id={} 取り込みの失敗={}",
                     source.name(), message.id(), cause.toString(), e);
@@ -285,6 +315,30 @@ public class NotificationOutboxRelay {
         increment(METRIC_STALE_MARK, source);
         log.warn("通知 outbox の {} が古い世代で当たらなかった（回収後に別の relay が claim し直した）: source={} id={}",
                 operation, source.name(), message.id());
+    }
+
+    /** ロックの競合で1回の操作を見送った（行は tx の巻き戻しで元の状態のまま）。数えて警告を残す。 */
+    private void lockConflict(NotificationOutboxSource source, String operation, PessimisticLockingFailureException e) {
+        recordLockConflict(meterRegistryProvider, source.name(), operation, e);
+    }
+
+    /**
+     * ロックの競合（MySQL 1213 デッドロック・1205 ロック待ちタイムアウト。Spring の
+     * {@link PessimisticLockingFailureException}）を WARN とカウンタ {@link #METRIC_LOCK_CONFLICT} に残す
+     * （relay・回収・掃除で共通。設計書 §4.7）。失敗した1回は tx ごと巻き戻っているので、行は失われず次の回で再試行される。
+     */
+    static void recordLockConflict(ObjectProvider<MeterRegistry> meterRegistryProvider, String sourceName,
+                                   String operation, PessimisticLockingFailureException e) {
+        log.warn("通知 outbox の {} がロックの競合で失敗した。行は元の状態のまま残り、次の回で再試行する: source={} 原因={}",
+                operation, sourceName, e.getMostSpecificCause().toString());
+        MeterRegistry registry = meterRegistryProvider.getIfAvailable();
+        if (registry != null) {
+            Counter.builder(METRIC_LOCK_CONFLICT)
+                    .tag(TAG_SOURCE, sourceName)
+                    .tag(TAG_OPERATION, operation)
+                    .register(registry)
+                    .increment();
+        }
     }
 
     /** 30秒×2^(n-1)、上限1時間。 */

@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -22,7 +23,8 @@ import java.util.List;
  * （docs/architecture/notification_outbox.md §4.4）。毎分。
  *
  * <p>tx を持たず、各 source の {@link NotificationOutboxSource#recoverStuck}（送り手の REQUIRES_NEW）を呼ぶ。
- * 回収した件数をメトリクス {@code recovered{source}} に足す。戻した行は claim_token を手放しているので、
+ * 回収した件数をメトリクス {@code recovered{source}} に足す。ロックの競合（デッドロック・ロック待ちタイムアウト）は
+ * WARN とカウンタ {@code lock_conflict{source,operation=recoverStuck}} に残し、次の分の実行に回す（設計書 §4.7）。戻した行は claim_token を手放しているので、
  * 止まっていた relay が後から印を付けようとしても当たらない（OB08b）。</p>
  */
 @Slf4j
@@ -50,7 +52,14 @@ public class NotificationOutboxStuckRecoveryBatch {
         Instant now = Instant.now(clock);
         Instant claimedBefore = now.minus(CLAIM_TIMEOUT);
         for (NotificationOutboxSource source : sources) {
-            int recovered = source.recoverStuck(claimedBefore, now);
+            int recovered;
+            try {
+                recovered = source.recoverStuck(claimedBefore, now);
+            } catch (PessimisticLockingFailureException e) {
+                // tx ごと巻き戻り、残骸は RELAYING のまま。次の分の実行が戻す（他の source は止めない）
+                NotificationOutboxRelay.recordLockConflict(meterRegistryProvider, source.name(), "recoverStuck", e);
+                continue;
+            }
             if (recovered > 0) {
                 log.warn("通知 outbox の RELAYING の残骸 {} 件を PENDING に戻した: source={} claimedBefore={}",
                         recovered, source.name(), claimedBefore);
