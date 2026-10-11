@@ -189,6 +189,8 @@ export interface PublicOrganizationSearchResult {
   iconUrl: string | null
   memberCount: number
   lastPostDate: string | null
+  /** F01.2.1: チームからの加盟申請を受け付けているか（公開検索のカードにバッジを出す）。 */
+  acceptingTeamApplications?: boolean
 }
 
 // ─── F19.1 Phase 2: Admin 向け supporter_name_disclosure 切替 API 型 ───
