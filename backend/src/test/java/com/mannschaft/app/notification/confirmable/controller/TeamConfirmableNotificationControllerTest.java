@@ -11,7 +11,10 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus;
 import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
+import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationRecipientPageFacade;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
+import com.mannschaft.app.notification.confirmable.service.ConfirmableScopeAuthorizer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -54,6 +57,14 @@ class TeamConfirmableNotificationControllerTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    /** CMP-260923-0954 W3b: ID 付き EP の認可（越境は NOT_FOUND に畳む）。拒否の作り分けは IT が持つ。 */
+    @Mock
+    private ConfirmableScopeAuthorizer scopeAuthorizer;
+
+    /** CMP-260923-0954 W3b: recipients/page の認可ファサード（非 tx）。 */
+    @Mock
+    private ConfirmableNotificationRecipientPageFacade recipientPageFacade;
 
     @InjectMocks
     private TeamConfirmableNotificationController controller;
@@ -209,7 +220,35 @@ class TeamConfirmableNotificationControllerTest {
 
                 // then
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+                // 認可（SEND_NOTIFICATION）は tx 本体（cancel）の前に、越境は NOT_FOUND を不在コードとして行う。
+                verify(scopeAuthorizer).requireSendPermission(
+                        USER_ID, ScopeType.TEAM, TEAM_ID, ConfirmableNotificationErrorCode.NOT_FOUND);
                 verify(notificationService).cancel(NOTIFICATION_ID, USER_ID);
+            }
+        }
+
+        @Test
+        @DisplayName("PATCH_id_cancel_他スコープの通知は認可も cancel も呼ばずNOT_FOUND（不在IDと同じコード）")
+        void PATCH_id_cancel_他スコープの通知はNOT_FOUND() {
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(notificationService.getDetail(NOTIFICATION_ID)).willReturn(
+                        ConfirmableNotificationEntity.builder()
+                                .scopeType(ScopeType.TEAM)
+                                .scopeId(TEAM_ID + 1)
+                                .title("他チームの通知")
+                                .priority(ConfirmableNotificationPriority.NORMAL)
+                                .totalRecipientCount(1)
+                                .build());
+
+                org.assertj.core.api.Assertions.assertThatThrownBy(
+                                () -> controller.cancel(TEAM_ID, NOTIFICATION_ID))
+                        .isInstanceOf(com.mannschaft.app.common.BusinessException.class)
+                        .extracting(e -> ((com.mannschaft.app.common.BusinessException) e).getErrorCode())
+                        .isEqualTo(ConfirmableNotificationErrorCode.NOT_FOUND);
+                org.mockito.Mockito.verifyNoInteractions(scopeAuthorizer);
+                org.mockito.Mockito.verify(notificationService, org.mockito.Mockito.never())
+                        .cancel(any(), any());
             }
         }
     }

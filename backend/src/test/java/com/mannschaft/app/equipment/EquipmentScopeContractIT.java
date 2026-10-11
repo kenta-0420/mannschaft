@@ -281,19 +281,19 @@ class EquipmentScopeContractIT extends AbstractMySqlIntegrationTest {
     class GetEquipment {
 
         @Test
-        @DisplayName("非メンバーは403")
-        void 非メンバーは403() throws Exception {
+        @DisplayName("非メンバーは404")
+        void 非メンバーは404() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/equipment/{id}", teamAId, itemTeamAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
         }
 
         @Test
-        @DisplayName("別scope ADMIN（teamBのADMINがteamAのURLを叩く越境）は403")
-        void 別scopeADMINは403() throws Exception {
+        @DisplayName("別scope ADMIN（teamBのADMINがteamAのURLを叩く越境）は404")
+        void 別scopeADMINは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/equipment/{id}", teamAId, itemTeamAId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
         }
 
         @Test

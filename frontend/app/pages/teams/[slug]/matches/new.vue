@@ -4,6 +4,7 @@
 import { z } from 'zod'
 import type { CreateMatchRequest, MatchKind, HomeAway } from '~/types/match'
 import { MATCH_KINDS } from '~/types/match'
+import { parseOrgQuery, type MatchOrgOption } from '~/composables/match/useMatchOrgContext'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
@@ -20,15 +21,24 @@ const notification = useNotification()
 const { resolveContext } = useMatchOrgContext()
 const orgId = ref<number | null>(null)
 const teamId = ref<number | null>(null)
+const organizations = ref<MatchOrgOption[]>([])
+/** org クエリが無効（不正・親組織に無い）。true の間は作成を止める。 */
+const orgInvalid = ref(false)
+/** 遷移先へ選択中の組織（URL クエリ org）を引き継ぐ。 */
+const orgQuery = computed<{ org?: string }>(() => (orgId.value !== null ? { org: String(orgId.value) } : {}))
+/** 組織は URL クエリ `org` で選ぶ（F01.2.1 §9.2 F1）。未指定は代表親組織。 */
 async function loadOrganizationId(): Promise<boolean> {
-  const ctx = await resolveContext(teamSlug)
+  const ctx = await resolveContext(teamSlug, { orgId: parseOrgQuery(route.query.org) })
   if (!ctx) {
     notification.warn(t('match.org_context.resolve_failed'))
     return false
   }
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
-  return true
+  organizations.value = ctx?.organizations ?? []
+  orgInvalid.value = ctx.orgInvalid
+  // 指定された組織が無効なら代表親組織へ落とさず作成を止める（セレクタと警告が出る）
+  return !ctx.orgInvalid && ctx.orgId !== null
 }
 
 // === フォーム状態 ===
@@ -113,9 +123,9 @@ async function submit(): Promise<void> {
     const created = await createMatch(orgId.value, teamId.value, body)
     // 作成成功後は live.vue へ遷移する（§G.1a-2 = 即記録開始）。3-B で live.vue を実装済み。
     if (created.id) {
-      await router.push(`/teams/${teamSlug}/matches/${created.id}/live`)
+      await router.push({ path: `/teams/${teamSlug}/matches/${created.id}/live`, query: orgQuery.value })
     } else {
-      await router.push(`/teams/${teamSlug}/matches`)
+      await router.push({ path: `/teams/${teamSlug}/matches`, query: orgQuery.value })
     }
   } catch {
     submitError.value = t('match.create.error.create_failed')
@@ -126,18 +136,25 @@ async function submit(): Promise<void> {
 }
 
 function cancel(): void {
-  void router.push(`/teams/${teamSlug}/matches`)
+  void router.push({ path: `/teams/${teamSlug}/matches`, query: orgQuery.value })
 }
 
 onMounted(() => loadOrganizationId())
+watch(
+  () => route.query.org,
+  () => loadOrganizationId(),
+)
 </script>
 
 <template>
   <div class="mx-auto max-w-xl">
     <div class="mb-1 flex items-center gap-3">
-      <PageHeader :title="$t('match.create.title')" size="sm" :back-to="`/teams/${teamSlug}/matches`" />
+      <PageHeader :title="$t('match.create.title')" size="sm" :back-to="orgQuery.org ? `/teams/${teamSlug}/matches?org=${orgQuery.org}` : `/teams/${teamSlug}/matches`" />
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ $t('match.create.subtitle') }}</p>
+
+    <!-- 組織選択（親組織が複数のときだけ表示。作成先の組織になる） -->
+    <MatchOrgSelect :organizations="organizations" :org-id="orgId" :invalid="orgInvalid" />
 
     <form @submit.prevent="submit">
       <!-- 種別（必須・タップ選択） -->

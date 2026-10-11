@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.Dependency;
+import com.tngtech.archunit.junit.ArchTag;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -50,6 +51,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
     packages = "com.mannschaft.app",
     importOptions = ImportOption.DoNotIncludeTests.class
 )
+@ArchTag(ArchUnitTestTag.ARCHUNIT)
 class CrossDomainTransactionalArchTest {
 
     private static final String REPOSITORY_MARKER = ".repository";

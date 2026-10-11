@@ -112,17 +112,17 @@
   "button": {
     "save": "Speichern",
     "cancel": "Abbrechen",
-    "delete": "Loschen",
+    "delete": "Löschen",
     "edit": "Bearbeiten",
     "create": "Erstellen",
     "submit": "Senden",
-    "close": "Schliessen",
-    "back": "Zuruck",
+    "close": "Schließen",
+    "back": "Zurück",
     "help": "Anleitung",
     "next": "Weiter",
     "search": "Suchen",
     "loading": "Laden...",
-    "confirm": "Bestatigen",
+    "confirm": "Bestätigen",
     "logout": "Abmelden",
     "update": "Aktualisieren",
     "see_more": "Mehr anzeigen",
@@ -140,11 +140,11 @@
     "status": "Status",
     "actions": "Aktionen",
     "teamFriendCount": "Teamfreunde",
-    "supporterCount": "Unterstuetzer",
+    "supporterCount": "Unterstützer",
     "following": "Gefolgt",
     "followers": "Follower",
     "followListVisibility": "Sichtbarkeit der Folgeliste",
-    "visibilityPublic": "Oeffentlich",
+    "visibilityPublic": "Öffentlich",
     "visibilityFriendsOnly": "Nur Gegenseitig",
     "visibilityPrivate": "Privat",
     "followListPrivate": "Die Folgeliste dieses Benutzers ist privat",
@@ -155,8 +155,8 @@
     "advanced_settings": "Erweiterte Einstellungen"
   },
   "dialog": {
-    "confirm_delete": "Sind Sie sicher, dass Sie dies loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
-    "confirm_title": "Bestatigen",
+    "confirm_delete": "Sind Sie sicher, dass Sie dies löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "confirm_title": "Bestätigen",
     "success": "Abgeschlossen",
     "error": "Ein Fehler ist aufgetreten"
   },
@@ -165,37 +165,37 @@
     "ADMIN": "Administrator",
     "DEPUTY_ADMIN": "Stellvertretender Administrator",
     "MEMBER": "Mitglied",
-    "SUPPORTER": "Unterstuzer",
+    "SUPPORTER": "Unterstützer",
     "GUEST": "Gast",
     "transfer": {
       "offer": {
-        "button": "管理者を引き継ぐ",
-        "notification": "{scope} の管理者への就任を打診されています",
-        "pending": "管理者就任の打診が届いています",
-        "pendingByMe": "{name} さんへ管理者委譲を打診中です",
-        "accept": "引き受ける",
-        "decline": "辞退する",
-        "cancel": "取消",
-        "accepted": "管理者を引き継ぎました",
-        "declined": "打診を辞退しました",
-        "expired": "打診は期限切れです",
-        "cancelled": "打診は取り消されました",
-        "confirmTitle": "オーナー委譲の打診",
-        "confirmMessage": "{name} さんへ管理者権限の委譲を打診しますか？相手が引き受けを承諾すると、あなたはメンバーに降格されます（この時点ではまだ委譲されません）。",
-        "acceptConfirmTitle": "管理者就任の承諾",
-        "acceptConfirmMessage": "引き受けると、あなたが管理者(ADMIN)になり、現在の管理者はメンバーに降格されます。よろしいですか？",
-        "declineConfirmTitle": "打診の辞退",
-        "declineConfirmMessage": "この打診を辞退しますか？あなたのロールは変わりません。",
-        "cancelConfirmTitle": "打診の取消",
-        "cancelConfirmMessage": "この委譲の打診を取り消しますか？相手のロールは変わりません。",
-        "created": "委譲を打診しました",
-        "cancelSuccess": "打診を取り消しました"
+        "button": "Administratorrolle übernehmen",
+        "notification": "Dir wurde die Administratorrolle für {scope} angeboten",
+        "pending": "Dir wurde die Administratorrolle angeboten",
+        "pendingByMe": "Die Übertragung der Administratorrolle an {name} steht noch aus",
+        "accept": "Annehmen",
+        "decline": "Ablehnen",
+        "cancel": "Zurückziehen",
+        "accepted": "Du bist jetzt Administrator",
+        "declined": "Das Angebot wurde abgelehnt",
+        "expired": "Das Angebot ist abgelaufen",
+        "cancelled": "Das Angebot wurde zurückgezogen",
+        "confirmTitle": "Übertragung der Eigentümerschaft anbieten",
+        "confirmMessage": "Möchtest du {name} die Übertragung der Administratorrechte anbieten? Nimmt die Person an, wirst du zum Mitglied herabgestuft (bis dahin ändert sich nichts).",
+        "acceptConfirmTitle": "Übernahme der Administratorrolle bestätigen",
+        "acceptConfirmMessage": "Wenn du annimmst, wirst du Administrator (ADMIN) und der bisherige Administrator wird zum Mitglied herabgestuft. Fortfahren?",
+        "declineConfirmTitle": "Angebot ablehnen",
+        "declineConfirmMessage": "Möchtest du dieses Angebot ablehnen? Deine Rolle bleibt unverändert.",
+        "cancelConfirmTitle": "Angebot zurückziehen",
+        "cancelConfirmMessage": "Möchtest du dieses Übertragungsangebot zurückziehen? Die Rolle der Person bleibt unverändert.",
+        "created": "Übertragung angeboten",
+        "cancelSuccess": "Angebot zurückgezogen"
       },
       "error": {
-        "notTarget": "この打診はあなた宛てではありません",
+        "notTarget": "Dieses Angebot ist nicht an dich gerichtet",
         "need2fa": {
-          "message": "管理者になるには2段階認証の設定が必要です",
-          "cta": "2段階認証を設定する"
+          "message": "Um Administrator zu werden, musst du die Zwei-Faktor-Authentifizierung einrichten",
+          "cta": "Zwei-Faktor-Authentifizierung einrichten"
         }
       }
     }
@@ -294,7 +294,7 @@
   },
   "error": {
     "server": "Ein Serverfehler ist aufgetreten",
-    "server_retry": "Bitte versuchen Sie es spater erneut.",
+    "server_retry": "Bitte versuchen Sie es später erneut.",
     "rate_limited": "Zu viele Anfragen",
     "rate_limited_detail": "Sie haben in kurzer Zeit zu viele Anfragen gesendet. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
     "rate_limited_retry_after": "Sie haben in kurzer Zeit zu viele Anfragen gesendet. Bitte versuchen Sie es in etwa {seconds} Sekunden erneut.",
@@ -303,7 +303,7 @@
     "section_load_failed": "Dieser Abschnitt konnte nicht geladen werden. Bitte neu laden.",
     "unknown": "Ein Fehler ist aufgetreten",
     "COMMON_001": "Die Eingaben sind fehlerhaft",
-    "COMMON_002": "Sie haben keine Berechtigung fur diese Aktion",
+    "COMMON_002": "Sie haben keine Berechtigung für diese Aktion",
     "COMMON_003": "Von einem anderen Benutzer aktualisiert. Bitte aktualisieren Sie die Seite",
     "COMMON_999": "Ein Systemfehler ist aufgetreten",
     "CONFIRMABLE_NOTIFICATION_TARGETS_EMPTY": "Wählen Sie mindestens ein Empfängerziel aus",
@@ -325,25 +325,25 @@
     "AUTH_010": "Das aktuelle Passwort ist nicht korrekt",
     "AUTH_011": "Es wurde noch kein Passwort festgelegt",
     "AUTH_044": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut",
-    "SURVEY_023": "Die Team-Aufschluesselung kann bei anonymen Umfragen nicht aktiviert werden",
-    "SCHEDULE_KEEP_001": "キープが見つかりません",
-    "SCHEDULE_KEEP_002": "タイトルを入力してください",
-    "SCHEDULE_KEEP_003": "候補日は最大10件です",
-    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
-    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
-    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
-    "SCHEDULE_KEEP_007": "この状態では編集できません",
-    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
-    "SCHEDULE_KEEP_009": "この操作はできません",
-    "SCHEDULE_KEEP_010": "キープの上限に達しました",
-    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "SURVEY_023": "Die Team-Aufschlüsselung kann bei anonymen Umfragen nicht aktiviert werden",
+    "SCHEDULE_KEEP_001": "Die Vormerkung wurde nicht gefunden",
+    "SCHEDULE_KEEP_002": "Bitte gib einen Titel ein",
+    "SCHEDULE_KEEP_003": "Es sind höchstens 10 Terminvorschläge möglich",
+    "SCHEDULE_KEEP_004": "Das Format der Terminvorschläge ist ungültig",
+    "SCHEDULE_KEEP_005": "Sie haben keine Berechtigung für diese Vormerkung",
+    "SCHEDULE_KEEP_006": "Diese Vormerkung kann nicht in einen Termin umgewandelt werden",
+    "SCHEDULE_KEEP_007": "In diesem Zustand ist keine Bearbeitung möglich",
+    "SCHEDULE_KEEP_008": "Die Umwandlung kann nicht rückgängig gemacht werden, da Zu-/Absagen vorliegen",
+    "SCHEDULE_KEEP_009": "Dieser Vorgang ist nicht möglich",
+    "SCHEDULE_KEEP_010": "Das Limit für Vormerkungen ist erreicht",
+    "SCHEDULE_KEEP_012": "Die Angabe zur Sortierung ist ungültig",
     "TIMELINE_017": "Du hast das Limit von 200 Ausblendungen erreicht. Blende bitte etwas wieder ein.",
-    "ROLE_009": "この打診はあなた宛てではありません",
-    "ROLE_010": "管理者になるには2段階認証の設定が必要です",
-    "ROLE_011": "既に有効な委譲オファーが存在します",
-    "ROLE_012": "委譲オファーは既に処理済みか無効です",
-    "ROLE_013": "対象が見つかりません",
-    "ROLE_014": "自分自身への委譲はできません"
+    "ROLE_009": "Dieses Angebot ist nicht an dich gerichtet",
+    "ROLE_010": "Um Administrator zu werden, musst du die Zwei-Faktor-Authentifizierung einrichten",
+    "ROLE_011": "Es besteht bereits ein aktives Übertragungsangebot",
+    "ROLE_012": "Das Übertragungsangebot wurde bereits bearbeitet oder ist ungültig",
+    "ROLE_013": "Das Ziel wurde nicht gefunden",
+    "ROLE_014": "Du kannst die Rolle nicht an dich selbst übertragen"
   },
   "annual_plan": {
     "title": "Jahresveranstaltungsplan",
@@ -355,7 +355,7 @@
     "copy_dialog_title": "Vorjahr kopieren",
     "copy_dialog_message": "Veranstaltungen von {sourceYear} nach {targetYear} kopieren? Termine werden automatisch angepasst.",
     "copy_preview": "Vorschau",
-    "copy_execute": "Kopieren ausfuhren",
+    "copy_execute": "Kopieren ausführen",
     "conflict_with": "Konflikt mit {title}",
     "load_error": "Jahresveranstaltungsplan konnte nicht geladen werden",
     "copy_error": "Kopieren fehlgeschlagen",
@@ -370,113 +370,113 @@
   },
   "timedMessage": {
     "earlyMorning": [
-      "Was fur ein frischer Morgen! Lass uns heute Schritt fur Schritt vorankommen.",
-      "Morgenstund hat Gold im Mund. Du hast einen grossartigen Start hingelegt.",
-      "In der Stille des Morgens: Setze dir dein Ziel fur heute.",
-      "Ein neuer Morgen beginnt. Moge heute ein kleines bisschen besser sein als gestern.",
+      "Was für ein frischer Morgen! Lass uns heute Schritt für Schritt vorankommen.",
+      "Morgenstund hat Gold im Mund. Du hast einen großartigen Start hingelegt.",
+      "In der Stille des Morgens: Setze dir dein Ziel für heute.",
+      "Ein neuer Morgen beginnt. Möge heute ein kleines bisschen besser sein als gestern.",
       "Atme die Morgenluft tief ein und lade deine Energie auf.",
       "Dieser Tag kommt nie wieder. Nutze ihn gut.",
-      "Den Tag beginnen heisst, kleine Freuden zu finden.",
+      "Den Tag beginnen heißt, kleine Freuden zu finden.",
       "Mit dem Morgengrauen kommen neue Chancen.",
-      "Die fruhe Stille bringt die Energie, die du heute brauchst.",
-      "Der heutige Tag ist wie unberuhrter Schnee — gestalte ihn nach deiner Art.",
-      "Wie die Sonne aufgeht, so wachsen auch deine Moglichkeiten.",
-      "Wie der Morgenkaffee — moge der heutige Tag warm und erfullend sein.",
+      "Die frühe Stille bringt die Energie, die du heute brauchst.",
+      "Der heutige Tag ist wie unberührter Schnee — gestalte ihn nach deiner Art.",
+      "Wie die Sonne aufgeht, so wachsen auch deine Möglichkeiten.",
+      "Wie der Morgenkaffee — möge der heutige Tag warm und erfüllend sein.",
       "Aufzuwachen ist an sich schon ein Wunder. Beginne heute mit Dankbarkeit.",
       "Jeder Morgen ist eine neue Seite. Welche Geschichte schreibst du heute?",
-      "Die frische Morgenluft klart deinen Kopf fur den Tag.",
-      "Entscheide dich fur ein Ziel fur heute, und der Rest wird folgen.",
-      "Der Morgen ist voller Moglichkeiten. Gib alles!",
+      "Die frische Morgenluft klärt deinen Kopf für den Tag.",
+      "Entscheide dich für ein Ziel für heute, und der Rest wird folgen.",
+      "Der Morgen ist voller Möglichkeiten. Gib alles!",
       "Beginne den Tag mit einem Herzen so klar wie der Morgentau.",
-      "Jeder kleine Schritt heute verbindet sich mit dem grossen Weg in die Zukunft.",
-      "Das Morgenlicht offnet einen brandneuen Tag fur dich."
+      "Jeder kleine Schritt heute verbindet sich mit dem großen Weg in die Zukunft.",
+      "Das Morgenlicht öffnet einen brandneuen Tag für dich."
     ],
     "morning": [
-      "Der Vormittag ist die Zeit hochster Konzentration. Nutze jetzt deine beste Zeit.",
-      "Wie lauft die erste Halfte deines Tages?",
+      "Der Vormittag ist die Zeit höchster Konzentration. Nutze jetzt deine beste Zeit.",
+      "Wie läuft die erste Hälfte deines Tages?",
       "Gehe jede Aufgabe mit Sorgfalt und Aufmerksamkeit an.",
       "Wichtiges am Vormittag erledigen macht den Nachmittag leichter.",
-      "Deine Bemuhungen heute machen einen Unterschied fur jemanden.",
-      "Kleine bestandige Schritte fuhren zu grossen Ergebnissen.",
+      "Deine Bemühungen heute machen einen Unterschied für jemanden.",
+      "Kleine beständige Schritte führen zu großen Ergebnissen.",
       "Du bist heute etwas mehr gewachsen als gestern — glaub daran.",
       "Trink etwas Wasser und frische deinen Geist auf.",
       "Es ist in Ordnung, heute in deinem eigenen Tempo zu gehen.",
-      "Die schwierigsten Herausforderungen sind es, wo du am meisten wachst.",
-      "Die Anstrengung von heute wird deinem zukunftigen Ich sicher helfen.",
-      "Eine kurze Pause erzeugt die nachste Welle der Konzentration.",
-      "Dein Lacheln erhellt gerade jemandes Tag.",
+      "Die schwierigsten Herausforderungen sind es, wo du am meisten wächst.",
+      "Die Anstrengung von heute wird deinem zukünftigen Ich sicher helfen.",
+      "Eine kurze Pause erzeugt die nächste Welle der Konzentration.",
+      "Dein Lächeln erhellt gerade jemandes Tag.",
       "Fang mit dem an, was du kannst. Das ist das Wichtigste.",
       "Das Lernen von heute wird zum Vertrauen von morgen.",
       "Loszulegen ist wichtiger als perfekt zu sein.",
-      "Ein ruhiger Moment mit Tee hilft dabei, den Geist zu klaren.",
+      "Ein ruhiger Moment mit Tee hilft dabei, den Geist zu klären.",
       "Es ist in Ordnung, wenn die Dinge nicht nach Plan laufen. Bleib flexibel.",
       "Denk daran, dass du heute Mitstreiter an deiner Seite hast.",
-      "Begruse dein heutiges Ich mit einem herzlichen Willkommen."
+      "Begrüße dein heutiges Ich mit einem herzlichen Willkommen."
     ],
     "afternoon": [
       "Halten wir die Energie auch am Nachmittag aufrecht.",
-      "Hast du zu Mittag gegessen? Stell sicher, dass du dich richtig ernahrst.",
-      "Ein bisschen schlafrig? Strecke dich und reset dich.",
+      "Hast du zu Mittag gegessen? Stell sicher, dass du dich richtig ernährst.",
+      "Ein bisschen schläfrig? Strecke dich und reset dich.",
       "Strahle wie die Nachmittagssonne und mach weiter stark.",
-      "Bleib du selbst in der zweiten Halfte des heutigen Tages.",
+      "Bleib du selbst in der zweiten Hälfte des heutigen Tages.",
       "Klopf dir auf die Schulter, wie weit du heute schon gekommen bist.",
-      "Die Halfte des Tages ist vorbei. Lass die zweite Halfte zahlen.",
-      "Nachmittage sind ideal fur frische Ideen.",
-      "Hol Luft und uberprufe dein Ziel fur heute noch einmal.",
-      "Wenn du dich mude fuhlst, versuche einen kurzen Spaziergang.",
+      "Die Hälfte des Tages ist vorbei. Lass die zweite Hälfte zahlen.",
+      "Nachmittage sind ideal für frische Ideen.",
+      "Hol Luft und überprüfe dein Ziel für heute noch einmal.",
+      "Wenn du dich müde fühlst, versuche einen kurzen Spaziergang.",
       "Deine morgendliche Anstrengung treibt deinen Nachmittagsschwung an.",
       "Eine Kaffeepause kann deine Nachmittagsenergie aufladen.",
-      "Deine Arbeit heute fuhrt zum Lacheln von jemandem.",
-      "Ruhig und stetig. Kummere dich gut um das, was vom Tag noch ubrig ist.",
-      "Schau aus dem Fenster — die Aussenwelt wartet auf dich.",
-      "Zeit fur den Fokus am Nachmittag. Noch ein letzter Schub.",
+      "Deine Arbeit heute führt zum Lächeln von jemandem.",
+      "Ruhig und stetig. Kümmere dich gut um das, was vom Tag noch übrig ist.",
+      "Schau aus dem Fenster — die Außenwelt wartet auf dich.",
+      "Zeit für den Fokus am Nachmittag. Noch ein letzter Schub.",
       "Hast du eine klare Vorstellung davon, was heute noch erledigt werden muss?",
-      "Den Korper zu bewegen, erfrischt auch den Geist.",
+      "Den Körper zu bewegen, erfrischt auch den Geist.",
       "Du machst heute stetige Fortschritte. Vertrau dir selbst.",
-      "Im Nachmittagslicht konnen die Dinge frisch und neu wirken."
+      "Im Nachmittagslicht können die Dinge frisch und neu wirken."
     ],
     "evening": [
       "Gute Arbeit heute. Du hast deine Ruhe verdient.",
-      "Wenn die Sonne untergeht, blick zuruck auf das, was du heute erreicht hast.",
-      "Finde am Ende des Tages eine Sache, fur die du dankbar bist.",
-      "Geniess das Abendessen und tanke Energie fur morgen.",
-      "Gonne dir einen Applaus fur die Anstrengungen von heute.",
+      "Wenn die Sonne untergeht, blick zurück auf das, was du heute erreicht hast.",
+      "Finde am Ende des Tages eine Sache, für die du dankbar bist.",
+      "Genieße das Abendessen und tanke Energie für morgen.",
+      "Gönne dir einen Applaus für die Anstrengungen von heute.",
       "Atme langsam aus und lass die Anspannung des Tages los.",
       "Auch kleine Erfolge sind es wert, heute festgehalten zu werden.",
-      "Die Ruckschlage von heute werden zur Weisheit von morgen.",
-      "Lass die Arbeit los und geniess deine eigene Zeit heute Abend.",
-      "Schliesse das heutige Kapitel mit der Warme eines Sonnenuntergangs.",
+      "Die Rückschläge von heute werden zur Weisheit von morgen.",
+      "Lass die Arbeit los und genieße deine eigene Zeit heute Abend.",
+      "Schließe das heutige Kapitel mit der Wärme eines Sonnenuntergangs.",
       "Teile deine Dankbarkeit mit jemandem, den du heute getroffen hast.",
       "Am Ende des Tages: Bereite dir etwas Kleines vor, auf das du dich morgen freuen kannst.",
       "Du bist heute definitiv mehr gewachsen als gestern — das stimmt.",
-      "Die Stille der Dammerung hilft dabei, dein Herz zu beruhigen.",
-      "Lass die Mudigkeit des Tages los, bevor sie sich auf morgen ubertragt.",
-      "Zeit mit Menschen, die dir wichtig sind, nahrt die Energie fur morgen.",
-      "Wenn du auf den heutigen Tag zuruckblickst — was war der beste Moment?",
-      "Die Nacht ist deine Zeit, um vom Larm wegzukommen und zu dir selbst zuruckzufinden.",
-      "Heute warst du fur jemanden wichtig, auch wenn du es nicht wusstest.",
-      "Lass die Abendbrise deine Mudigkeit von heute davontragen."
+      "Die Stille der Dämmerung hilft dabei, dein Herz zu beruhigen.",
+      "Lass die Müdigkeit des Tages los, bevor sie sich auf morgen überträgt.",
+      "Zeit mit Menschen, die dir wichtig sind, nährt die Energie für morgen.",
+      "Wenn du auf den heutigen Tag zurückblickst — was war der beste Moment?",
+      "Die Nacht ist deine Zeit, um vom Lärm wegzukommen und zu dir selbst zurückzufinden.",
+      "Heute warst du für jemanden wichtig, auch wenn du es nicht wusstest.",
+      "Lass die Abendbrise deine Müdigkeit von heute davontragen."
     ],
     "night": [
-      "Schlaf heute Nacht gut — das ist ein Geschenk an dein zukunftiges Ich.",
-      "Unter dem Sternenhimmel schliesse sanft das Buch des heutigen Tages.",
+      "Schlaf heute Nacht gut — das ist ein Geschenk an dein zukünftiges Ich.",
+      "Unter dem Sternenhimmel schließe sanft das Buch des heutigen Tages.",
       "Ruh dich gut aus und treffen wir uns morgen voller Energie wieder.",
       "In der Stille dieser Nacht lass deinen Geist zur Ruhe kommen.",
-      "Schlaf fruh, damit dein Ich von morgen lachelnd aufwachen kann.",
+      "Schlaf früh, damit dein Ich von morgen lächelnd aufwachen kann.",
       "Du hast das heute wunderbar gemacht. Wirklich.",
       "Ein gutes Buch heute Nacht bereichert die Gedanken von morgen.",
-      "Hor deine Lieblingsmusik und lass dich heute Nacht entspannen.",
+      "Hör deine Lieblingsmusik und lass dich heute Nacht entspannen.",
       "Morgen beginnt wieder ein brandneuer Tag — freu dich darauf.",
-      "Atme tief durch und erinnere dich an die schonen Momente von heute.",
-      "Die Stille dieser Nacht nahrt die Ideen von morgen.",
-      "Zahle drei Dinge, fur die du heute dankbar bist.",
+      "Atme tief durch und erinnere dich an die schönen Momente von heute.",
+      "Die Stille dieser Nacht nährt die Ideen von morgen.",
+      "Zähle drei Dinge, für die du heute dankbar bist.",
       "Etwas Vorbereitung heute Nacht erleichtert den Morgen von morgen.",
-      "Den Nachthimmel anzuschauen lasst deine Sorgen kleiner erscheinen.",
-      "Ein ausgiebiges Bad hilft, Korper und Geist zu losen.",
-      "Der Traum dieser Nacht konnte zur Inspiration von morgen werden.",
-      "An alle, die noch spat arbeiten — uberfordere dich nicht.",
-      "Sei dankbar fur etwas Neues, dem du heute begegnet bist.",
-      "Schlaf heute Nacht gut, um morgen fruh erfrischt aufzuwachen.",
+      "Den Nachthimmel anzuschauen lässt deine Sorgen kleiner erscheinen.",
+      "Ein ausgiebiges Bad hilft, Körper und Geist zu lösen.",
+      "Der Traum dieser Nacht könnte zur Inspiration von morgen werden.",
+      "An alle, die noch spät arbeiten — überfordere dich nicht.",
+      "Sei dankbar für etwas Neues, dem du heute begegnet bist.",
+      "Schlaf heute Nacht gut, um morgen früh erfrischt aufzuwachen.",
       "Du hast das heute wirklich toll gemacht. Gute Nacht."
     ]
   },
@@ -485,8 +485,8 @@
       "title": "Sprache und Zeitzone",
       "display_language": "Anzeigesprache",
       "timezone": "Zeitzone",
-      "country_code": "Land fur Feiertage",
-      "country_code_placeholder": "Land auswahlen (automatische Erkennung wenn nicht gesetzt)",
+      "country_code": "Land für Feiertage",
+      "country_code_placeholder": "Land auswählen (automatische Erkennung wenn nicht gesetzt)",
       "load_error": "Einstellungen konnten nicht geladen werden",
       "save_success": "Sprache und Zeitzone wurden aktualisiert",
       "save_error": "Aktualisierung fehlgeschlagen"
@@ -567,20 +567,23 @@
     "title_required": "Bitte gib einen Titel ein",
     "recipients_required": "Bitte gib mindestens einen Empfänger an",
     "unconfirmed_visibility": {
-      "label": "Sichtbarkeit der Liste nicht bestaetigter Empfaenger",
-      "help": "Waehlen Sie aus, wer die Liste der noch nicht bestaetigten Empfaenger sehen kann.",
+      "label": "Sichtbarkeit der Liste nicht bestätigter Empfänger",
+      "help": "Wählen Sie aus, wer die Liste der noch nicht bestätigten Empfänger sehen kann.",
       "HIDDEN": "Verborgen",
       "CREATOR_AND_ADMIN": "Nur Ersteller und Admins",
-      "ALL_MEMBERS": "Fuer alle Mitglieder"
+      "ALL_MEMBERS": "Für alle Mitglieder"
     },
-    "unconfirmed_count": "Nicht bestaetigt: {count}",
-    "unconfirmed_list": "Nicht bestaetigte Empfaenger",
+    "unconfirmed_count": "Nicht bestätigt: {count}",
+    "unconfirmed_list": "Nicht bestätigte Empfänger",
     "recipient_groups": "Empfängergruppen",
     "recipient_groups_help": "Organisationen oder Teams als Empfänger speichern.",
     "group_name": "Gruppenname",
     "targets": "Ziele",
     "target_id": "Ziel-ID",
-    "target_type": { "ORGANIZATION": "Organisation", "TEAM": "Team" },
+    "target_type": {
+      "ORGANIZATION": "Organisation",
+      "TEAM": "Team"
+    },
     "template": "Vorlage",
     "audience": "Empfänger",
     "current_scope": "Diese Organisation oder dieses Team",
@@ -620,6 +623,19 @@
     }
   },
   "timeline": {
+    "detail": {
+      "back": "Zurück",
+      "loadFailed": "Beitrag konnte nicht geladen werden",
+      "repliesLoadFailed": "Antworten konnten nicht geladen werden",
+      "replySuccess": "Antwort gesendet",
+      "replyFailed": "Antwort konnte nicht gesendet werden",
+      "bookmarkFailed": "Lesezeichen konnte nicht aktualisiert werden",
+      "replyPlaceholder": "Antwort schreiben...",
+      "replySubmit": "Antworten",
+      "replyCount": "{count} Antworten",
+      "loadMoreReplies": "Weitere Antworten laden",
+      "notFound": "Der Beitrag wurde nicht gefunden oder kann nicht angezeigt werden"
+    },
     "videoProcessing": "Video wird verarbeitet...",
     "videoFailed": "Video nicht verfügbar",
     "videoUploadButton": "Video anhängen",
@@ -731,24 +747,26 @@
       "saveSettings": "Einstellungen speichern",
       "loadFailed": "Artikel konnte nicht geladen werden",
       "scheduledPublishUnavailable": "Geplantes Veröffentlichen ist derzeit nicht verfügbar. Beim Veröffentlichen wird der Beitrag sofort sichtbar.",
-      "listHeading": "記事",
-      "createButton": "新規作成",
-      "createDialogTitle": "新規記事作成",
-      "titleLabel": "タイトル",
-      "titlePlaceholder": "記事タイトルを入力",
-      "createDialogHint": "下書きとして保存されます。タイトル入力後、編集ページで本文を書いてください。",
-      "loadListFailed": "記事一覧の取得に失敗しました",
-      "createFailed": "記事の作成に失敗しました",
-      "archived": "アーカイブ",
-      "publishSuccess": "公開しました",
-      "unpublishSuccess": "非公開にしました",
-      "publishStatusFailed": "ステータスの変更に失敗しました",
-      "deleteConfirm": "この記事を削除しますか？",
-      "deleteSuccess": "記事を削除しました",
-      "deleteFailed": "削除に失敗しました",
-      "publishButton": "公開",
-      "unpublishButton": "非公開",
-      "updatedAt": "更新日"
+      "listHeading": "Beiträge",
+      "createButton": "Neu erstellen",
+      "createDialogTitle": "Neuen Beitrag erstellen",
+      "titleLabel": "Titel",
+      "titlePlaceholder": "Beitragstitel eingeben",
+      "createDialogHint": "Er wird als Entwurf gespeichert. Schreiben Sie den Text nach Eingabe des Titels auf der Bearbeitungsseite.",
+      "loadListFailed": "Beitragsliste konnte nicht geladen werden",
+      "loadListErrorHint": "Die Beitragsliste konnte nicht angezeigt werden. Prüfen Sie Verbindung oder Berechtigungen und laden Sie neu.",
+      "reloadList": "Neu laden",
+      "createFailed": "Beitrag konnte nicht erstellt werden",
+      "archived": "Archiviert",
+      "publishSuccess": "Veröffentlicht",
+      "unpublishSuccess": "Veröffentlichung zurückgezogen",
+      "publishStatusFailed": "Status konnte nicht geändert werden",
+      "deleteConfirm": "Diesen Beitrag löschen?",
+      "deleteSuccess": "Beitrag gelöscht",
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "publishButton": "Veröffentlichen",
+      "unpublishButton": "Zurückziehen",
+      "updatedAt": "Aktualisiert am"
     },
     "autoSave": {
       "label": "Automatisch speichern",
@@ -758,18 +776,19 @@
       "disabled": "Automatisches Speichern deaktiviert"
     },
     "tag": {
-      "heading": "タグ",
-      "addButton": "タグを追加",
-      "addDialogTitle": "タグを追加",
-      "nameLabel": "タグ名",
-      "namePlaceholder": "例: お知らせ",
-      "empty": "タグがありません",
-      "loadFailed": "タグの取得に失敗しました",
-      "createSuccess": "タグを作成しました",
-      "createFailed": "作成に失敗しました",
-      "deleteSuccess": "タグを削除しました",
-      "deleteFailed": "削除に失敗しました"
-    }
+      "heading": "Tags",
+      "addButton": "Tag hinzufügen",
+      "addDialogTitle": "Tag hinzufügen",
+      "nameLabel": "Tag-Name",
+      "namePlaceholder": "z. B. Ankündigungen",
+      "empty": "Keine Tags vorhanden",
+      "loadFailed": "Tags konnten nicht geladen werden",
+      "createSuccess": "Tag erstellt",
+      "createFailed": "Erstellen fehlgeschlagen",
+      "deleteSuccess": "Tag gelöscht",
+      "deleteFailed": "Löschen fehlgeschlagen"
+    },
+    "pageTitle": "Blog & Ankündigungen"
   },
   "todo": {
     "backToList": "Zurück zur Aufgabenliste",
@@ -995,51 +1014,51 @@
       "none": "Keine"
     },
     "guide": {
-      "title": "通知の使い方",
-      "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
+      "title": "So funktionieren Benachrichtigungen",
+      "description": "In der Benachrichtigungsliste siehst du alles, was an dich gerichtet ist: Termine, Chat, Mitteilungen, Bestätigungsanfragen, Notfallschließungen und mehr. Tippe auf eine Zeile, um sie automatisch als gelesen zu markieren und zum passenden Bildschirm zu wechseln.",
       "read": {
-        "title": "通知を読む",
-        "body": "通知の行をタップすると既読になり、関連する画面へ移動します。まだ読んでいない通知には青いドットが付きます。",
+        "title": "Benachrichtigungen lesen",
+        "body": "Tippe auf eine Benachrichtigung, um sie als gelesen zu markieren und zum passenden Bildschirm zu wechseln. Ungelesene Benachrichtigungen haben einen blauen Punkt.",
         "steps": {
-          "step1": "気になる通知の行をタップします",
-          "step2": "自動で既読になり、関連する画面へ移動します",
-          "step3": "未読の通知は左端の青いドットで見分けられます"
+          "step1": "Tippe auf die gewünschte Benachrichtigung",
+          "step2": "Sie wird automatisch als gelesen markiert und du wechselst zum passenden Bildschirm",
+          "step3": "Ungelesene Benachrichtigungen erkennst du am blauen Punkt am linken Rand"
         }
       },
       "filter": {
-        "title": "絞り込み",
-        "body": "上部の「すべて／未読」の切り替えで、未読の通知だけを表示できます。",
+        "title": "Filtern",
+        "body": "Mit dem Umschalter „Alle / Ungelesen“ oben kannst du nur ungelesene Benachrichtigungen anzeigen.",
         "steps": {
-          "step1": "画面上部の「すべて／未読」ボタンを押します",
-          "step2": "「未読」を選ぶと、まだ読んでいない通知だけが表示されます",
-          "step3": "「すべて」に戻すと全ての通知が表示されます"
+          "step1": "Tippe oben auf die Schaltfläche „Alle / Ungelesen“",
+          "step2": "Wähle „Ungelesen“, um nur noch nicht gelesene Benachrichtigungen anzuzeigen",
+          "step3": "Wechsle zurück zu „Alle“, um alle Benachrichtigungen zu sehen"
         }
       },
       "snooze": {
-        "title": "スヌーズ",
-        "body": "今すぐ対応できない通知は、時計アイコンから後回しにできます。指定した時刻に再び表示されます。",
+        "title": "Erinnerung verschieben",
+        "body": "Kannst du eine Benachrichtigung gerade nicht bearbeiten, verschiebe sie über das Uhrsymbol. Zur gewählten Zeit erscheint sie erneut.",
         "steps": {
-          "step1": "通知の右側にある時計アイコンを押します",
-          "step2": "「3時間後／今夜／明朝／来週」から再表示するタイミングを選びます",
-          "step3": "選んだ時刻になると、その通知が再び一覧に表示されます"
+          "step1": "Tippe auf das Uhrsymbol rechts neben der Benachrichtigung",
+          "step2": "Wähle, wann sie wieder erscheinen soll: in 3 Stunden, heute Abend, morgen früh oder nächste Woche",
+          "step3": "Zur gewählten Zeit erscheint die Benachrichtigung wieder in der Liste"
         }
       },
       "confirm": {
-        "title": "確認通知",
-        "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
+        "title": "Bestätigungsbenachrichtigungen",
+        "body": "Bei Benachrichtigungen mit der Schaltfläche „Bestätigen“ kannst du dem Absender mitteilen, dass du den Inhalt gesehen hast. Teilweise wird auch die Zahl der noch nicht Bestätigten angezeigt.",
         "steps": {
-          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
-          "step2": "「確認する」ボタンを押して確認済みにします",
-          "step3": "確認後は「確認済み」ラベルに変わります"
+          "step1": "Lies den Inhalt der Bestätigungsbenachrichtigung (mit farbigem Hintergrund)",
+          "step2": "Tippe auf „Bestätigen“, um sie als bestätigt zu markieren",
+          "step3": "Nach der Bestätigung wechselt die Anzeige zu „Bestätigt“"
         }
       },
       "urgent": {
-        "title": "緊急休業・一括既読",
-        "body": "緊急休業の通知は「確認する」を押して確認します。溜まった通知は右上の「すべて既読にする」でまとめて既読にできます。",
+        "title": "Notfallschließungen und alles als gelesen markieren",
+        "body": "Bestätige Benachrichtigungen zu Notfallschließungen mit „Bestätigen“. Angesammelte Benachrichtigungen kannst du oben rechts mit „Alle als gelesen markieren“ auf einmal erledigen.",
         "steps": {
-          "step1": "緊急休業の通知は「確認する」ボタンで確認します",
-          "step2": "右上の「すべて既読にする」で通知をまとめて既読にできます",
-          "step3": "既読にするとベルのバッジも0になります"
+          "step1": "Bestätige Benachrichtigungen zu Notfallschließungen mit der Schaltfläche „Bestätigen“",
+          "step2": "Mit „Alle als gelesen markieren“ oben rechts markierst du alle Benachrichtigungen auf einmal als gelesen",
+          "step3": "Sobald alles gelesen ist, springt auch das Glockenabzeichen auf 0"
         }
       }
     }
@@ -1152,8 +1171,8 @@
       "fetch_failed": "Projekte konnten nicht geladen werden",
       "create_failed": "Projekt konnte nicht erstellt werden",
       "update_failed": "Aktualisierung fehlgeschlagen",
-      "delete_failed": "Loeschen fehlgeschlagen",
-      "status_change_failed": "Statusaenderung fehlgeschlagen",
+      "delete_failed": "Löschen fehlgeschlagen",
+      "status_change_failed": "Statusänderung fehlgeschlagen",
       "milestone_save_failed": "Meilenstein konnte nicht gespeichert werden"
     },
     "status": {
@@ -1164,20 +1183,20 @@
     "action": {
       "edit": "Bearbeiten",
       "complete": "Als abgeschlossen markieren",
-      "reopen": "Wieder oeffnen"
+      "reopen": "Wieder öffnen"
     },
     "stats": {
       "progress": "Fortschritt",
       "tasks": "Aufgaben",
       "milestones": "Meilensteine",
-      "due_date": "Faelligkeitsdatum",
+      "due_date": "Fälligkeitsdatum",
       "no_due_date": "Nicht festgelegt"
     },
     "task_unit": "Aufgaben",
     "days_remaining": "Noch {n} Tage",
-    "days_overdue": "{n} Tage ueberfaellig",
+    "days_overdue": "{n} Tage überfällig",
     "related_tasks": "Verwandte Aufgaben",
-    "no_related_tasks": "Keine verwandten Aufgaben fuer dieses Projekt",
+    "no_related_tasks": "Keine verwandten Aufgaben für dieses Projekt",
     "widget": {
       "label": "Projekte",
       "description": "Projektfortschritt und Liste"
@@ -1757,24 +1776,36 @@
     },
     "menu": "Menü",
     "scopeShell": {
+      "memberCount": "{count} Mitglieder",
+      "supporterCount": "{count} Unterstützer",
       "supporter_cancel_confirm_title": "Unterstützung beenden?",
       "supporter_cancel_confirm_body": "Du beendest die Unterstützung von {name}. Bist du sicher?",
       "supporter_cancel_action": "Beenden",
       "supporter_registered": "Als Unterstützer registriert",
       "supporter_applied": "Unterstützerantrag gesendet",
       "supporter_canceled": "Unterstützung beendet",
+      "follow_approved_badge": "Du unterstützt",
+      "follow_unfollow_aria": "Unterstützung beenden",
+      "follow_pending_label": "Antrag ausstehend",
+      "follow_pending_cancel_button": "Abbrechen",
+      "follow_apply_button": "Unterstützer werden",
       "leave_action": "Verlassen",
       "load_error_title": "Informationen konnten nicht geladen werden",
       "load_error_body": "Bitte versuche es später erneut. Ohne Berechtigung ist die Anzeige evtl. nicht möglich.",
       "back_to_dashboard": "Zurück zum Dashboard",
       "retry": "Erneut versuchen",
       "slow_loading": "Das Laden dauert länger als erwartet",
-      "join_request_applied": "参加申請を送信しました"
+      "join_request_applied": "Beitrittsanfrage gesendet",
+      "follow_fetch_error": "Follow-Status konnte nicht abgerufen werden",
+      "follow_permission_sync_error_title": "Aktualisierung der Berechtigungen fehlgeschlagen",
+      "follow_permission_sync_error_body": "Du folgst nicht mehr, aber die Aktualisierung deiner Berechtigungen ist fehlgeschlagen. Bitte versuche es erneut."
     },
     "unsavedChanges": {
       "title": "Ungespeicherte Änderungen",
       "confirmLeave": "Es gibt ungespeicherte Änderungen. Wenn Sie diese Seite verlassen, gehen Ihre Eingaben verloren. Fortfahren?"
-    }
+    },
+    "moreActions": "Weitere Aktionen",
+    "openNavigation": "Navigation öffnen"
   },
   "teamHub": {
     "pageTitle": "Meine Teams",
@@ -1938,11 +1969,11 @@
       "feedbackInbox": "Feedback-Posteingang (Global)",
       "billing": "Abrechnungs-Stammdaten",
       "priceRevisions": "Preisänderungen",
-      "betaPerks": "ベータ特典管理",
-      "villageCreationRequests": "村作成申請",
-      "seasonalWallpapers": "季節壁紙",
-      "pointCardSynonyms": "ポイントカード同義語",
-      "appeals": "異議申立"
+      "betaPerks": "Beta-Vorteile verwalten",
+      "villageCreationRequests": "Anträge auf Dorfgründung",
+      "seasonalWallpapers": "Saisonale Hintergrundbilder",
+      "pointCardSynonyms": "Synonyme für Punktekarten",
+      "appeals": "Einsprüche"
     },
     "impersonation": {
       "banner": "Identitätswechsel: {label}",
@@ -2078,6 +2109,58 @@
         "public_desc": "Jeder mit dem Link kann den Eintrag aufrufen. In der Liste wird ein Teilen-Button angezeigt, um den Link einfach weiterzugeben.",
         "note": "Die Standard-Sichtbarkeit richtet sich nach den Einstellungen der Vorlage."
       }
+    },
+    "detail": {
+      "open": "Details ansehen",
+      "publish": "Veröffentlichen",
+      "saved": "Entwurf gespeichert",
+      "participants": "Teilnehmer",
+      "participantsHint": "Wähle die Mitglieder aus, die tatsächlich teilgenommen haben",
+      "participantsRequired": "Für die Veröffentlichung dieser Vorlage sind Teilnehmer erforderlich",
+      "noParticipants": "Es sind keine Teilnehmer eingetragen",
+      "attachments": "Anhänge",
+      "attachment": "Anhang {id}",
+      "sourceSchedule": "Ursprünglicher Termin",
+      "openSchedule": "Termin öffnen",
+      "scheduleUnavailable": "Der ursprüngliche Termin kann nicht angezeigt werden",
+      "scheduleCancelled": "Der ursprüngliche Termin wurde abgesagt",
+      "endDate": "Enddatum (bei mehrtägigen Terminen)",
+      "startTime": "Startzeit",
+      "endTime": "Endzeit",
+      "edit": "Bearbeiten",
+      "save": "Speichern",
+      "updated": "Aktivitätsbericht gespeichert"
+    },
+    "sync": {
+      "title": "Änderungen an Termin und Aktivitätsprotokoll prüfen",
+      "description": "Wähle aus, welche Änderungen am Termin in das Aktivitätsprotokoll übernommen werden sollen. Auch automatisch übernommene Felder bleiben unverändert, wenn du „Nur Termin speichern“ wählst.",
+      "record": "Aktivitätsprotokoll {id}",
+      "automatic": "Automatisch übernommen",
+      "current": "Aktueller Eintrag",
+      "updated": "Termin nach der Änderung",
+      "scheduleOnly": "Nur Termin speichern",
+      "apply": "Ausgewählte Felder übernehmen und speichern",
+      "fields": {
+        "title": "Titel",
+        "activityDate": "Aktivitätsdatum",
+        "activityEndDate": "Enddatum",
+        "activityTimeStart": "Startzeit",
+        "activityTimeEnd": "Endzeit"
+      }
+    },
+    "schedule": {
+      "create": "Aktivitätsprotokoll für diesen Termin erstellen",
+      "records": "Aktivitätsprotokolle",
+      "loadError": "Die Aktivitätsprotokolle konnten nicht geladen werden"
+    },
+    "planned": "Geplant",
+    "unpublished": "Unveröffentlicht",
+    "metadataOnly": "Die Aktivitätsinhalte sind noch nicht veröffentlicht. Hier werden nur die Angaben des ursprünglichen Termins angezeigt.",
+    "delete": {
+      "title": "Aktivitätsbericht löschen",
+      "action": "Löschen",
+      "confirm": "Dieser Aktivitätsbericht wird gelöscht. Der ursprüngliche Termin bleibt erhalten.",
+      "success": "Aktivitätsbericht gelöscht"
     }
   },
   "dashboard": {
@@ -2299,79 +2382,80 @@
     "MEMBERS_AND_ABOVE": "Mitglieder und höher"
   },
   "module_settings": {
-    "enabled_count": "有効な機能: {count} / {limit}",
-    "fetch_error": "機能一覧の取得に失敗しました",
-    "empty": "現在このスコープで利用できる追加機能はありません",
-    "toggle_success_on": "{name} を有効にしました",
-    "toggle_success_off": "{name} を無効にしました",
+    "enabled_count": "Aktive Funktionen: {count} / {limit}",
+    "fetch_error": "Die Funktionsliste konnte nicht geladen werden",
+    "empty": "Für diesen Bereich sind derzeit keine zusätzlichen Funktionen verfügbar",
+    "toggle_success_on": "{name} wurde aktiviert",
+    "toggle_success_off": "{name} wurde deaktiviert",
     "badge": {
-      "level_unavailable": "このレベルでは利用できません",
-      "paid_plan": "有料プラン",
-      "limit_reached": "上限（{limit}）に達しています"
+      "level_unavailable": "Auf dieser Ebene nicht verfügbar",
+      "paid_plan": "Kostenpflichtiger Tarif",
+      "limit_reached": "Limit ({limit}) erreicht"
     },
     "error": {
-      "paid_required": "この機能は有料プランが必要です",
-      "limit_reached": "無料プランで有効化できる機能の上限（10個）に達しています",
-      "level_unavailable": "このレベルではこの機能を利用できません",
-      "generic": "機能の切替に失敗しました"
+      "paid_required": "Diese Funktion erfordert einen kostenpflichtigen Tarif",
+      "limit_reached": "Du hast das Limit (10) der im kostenlosen Tarif aktivierbaren Funktionen erreicht",
+      "level_unavailable": "Diese Funktion ist auf dieser Ebene nicht verfügbar",
+      "generic": "Die Funktion konnte nicht umgeschaltet werden"
     }
   },
   "module_settings_guide": {
-    "title": "機能設定の使い方",
-    "help_button": "使い方",
-    "description": "「機能設定」では、このチーム・組織で使える機能を一覧から探して、スイッチで ON / OFF できます。ここで ON にした機能だけが、メンバーの画面に表示され利用できるようになります。",
+    "title": "So funktionieren die Funktionseinstellungen",
+    "help_button": "Anleitung",
+    "description": "In den Funktionseinstellungen suchst du in der Liste die Funktionen, die dieses Team bzw. diese Organisation nutzen kann, und schaltest sie per Schalter EIN oder AUS. Nur hier eingeschaltete Funktionen erscheinen auf den Bildschirmen der Mitglieder und stehen ihnen zur Verfügung.",
     "what": {
-      "title": "機能設定とは",
-      "body": "チーム・組織で使える機能（モジュール）の一覧です。利用できる機能がすべてカードで並び、各機能を ON にするとメンバーが使えるようになり、OFF にすると画面から隠れて使えなくなります。必要な機能だけを選んで、画面をすっきり保てます。"
+      "title": "Was sind Funktionseinstellungen?",
+      "body": "Hier siehst du alle Funktionen (Module), die dein Team oder deine Organisation nutzen kann. Alle verfügbaren Funktionen erscheinen als Karten. Schaltest du eine Funktion EIN, können die Mitglieder sie nutzen; schaltest du sie AUS, wird sie ausgeblendet und ist nicht mehr nutzbar. Wähle nur die Funktionen aus, die du brauchst, um die Oberfläche übersichtlich zu halten."
     },
     "toggle": {
-      "title": "機能を ON / OFF する",
-      "body": "使いたい機能を一覧から探して、カード右のスイッチを ON にするだけです。保存ボタンは不要で、押すとすぐに反映されます。",
+      "title": "Eine Funktion EIN-/AUSschalten",
+      "body": "Suche die gewünschte Funktion in der Liste und schalte den Schalter rechts auf der Karte ein. Eine Speichern-Schaltfläche gibt es nicht; die Änderung wird sofort wirksam.",
       "steps": {
-        "step1": "一覧から使いたい機能のカードを探す",
-        "step2": "カード右のスイッチを押して ON にする（もう一度押すと OFF）",
-        "step3": "「有効にしました」または「無効にしました」と通知が出れば完了（保存操作は不要）",
-        "step4": "切り替え中はそのスイッチが一時的に押せなくなります（二重操作を防ぐためです）"
+        "step1": "Suche in der Liste die Karte der gewünschten Funktion",
+        "step2": "Tippe auf den Schalter rechts auf der Karte, um die Funktion einzuschalten (erneut tippen zum Ausschalten)",
+        "step3": "Fertig, sobald eine Meldung erscheint, dass die Funktion aktiviert oder deaktiviert wurde (Speichern ist nicht nötig)",
+        "step4": "Während des Umschaltens ist der Schalter kurz nicht bedienbar (um Doppeleingaben zu vermeiden)"
       }
     },
     "count": {
-      "title": "今いくつ使えるかを確認する",
-      "body": "画面の上部に「有効な機能: 2 / 10」のように、ON にしている数と有効化できる上限の数が表示されます。右の更新ボタン（回転する矢印）を押すと、最新の状態を取得し直せます。"
+      "title": "Prüfen, wie viele du nutzen kannst",
+      "body": "Oben auf dem Bildschirm steht z. B. „Aktive Funktionen: 2 / 10“, also wie viele Funktionen eingeschaltet sind und wie viele du höchstens aktivieren kannst. Mit der Aktualisieren-Schaltfläche rechts (kreisender Pfeil) rufst du den aktuellen Stand erneut ab."
     },
     "restrictions": {
-      "title": "使えないスイッチがあるとき",
-      "body": "スイッチが押せない（グレーアウトしている）機能には、理由を示すバッジが付きます。",
+      "title": "Wenn ein Schalter nicht bedienbar ist",
+      "body": "Bei Funktionen, deren Schalter nicht bedienbar (ausgegraut) ist, erscheint ein Hinweis mit dem Grund.",
       "items": {
-        "paid": "「有料プラン」… 有料プランに加入すると使える機能です。",
-        "limit": "「上限（10）に達しています」… 無料プランで同時に ON にできる機能の数が上限に達しています。ほかの機能を OFF にすると新しく ON にできます。",
-        "level": "「このレベルでは利用できません」… このチーム・組織の種別では使えない機能です。"
+        "paid": "„Kostenpflichtiger Tarif“: Diese Funktion kannst du nach dem Abschluss eines kostenpflichtigen Tarifs nutzen.",
+        "limit": "„Limit (10) erreicht“: Die Zahl der im kostenlosen Tarif gleichzeitig eingeschalteten Funktionen hat das Limit erreicht. Schalte eine andere Funktion AUS, um eine neue einzuschalten.",
+        "level": "„Auf dieser Ebene nicht verfügbar“: Diese Funktion kann für diese Art von Team bzw. Organisation nicht genutzt werden."
       }
     },
     "empty": {
-      "title": "機能が表示されないとき",
-      "body": "「現在このスコープで利用できる追加機能はありません」と出る場合は、いまのところこのチーム・組織で追加できる機能がありません。"
+      "title": "Wenn keine Funktionen angezeigt werden",
+      "body": "Wird „Für diesen Bereich sind derzeit keine zusätzlichen Funktionen verfügbar“ angezeigt, gibt es für dieses Team bzw. diese Organisation aktuell keine Funktionen, die hinzugefügt werden können."
     },
     "permission": {
-      "title": "設定できる人",
-      "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+      "title": "Wer die Einstellungen ändern kann",
+      "body": "Die Funktionseinstellungen können nur Administratoren des Teams bzw. der Organisation öffnen. Auch für Administratoren ist dieser Tab verborgen, wenn der Ansichtsumschalter oben rechts auf „Mitgliedsansicht“ steht. Wechsle zum Einstellen auf „Administratoransicht“."
     }
   },
   "teamShell": {
     "tab": {
-      "affiliations": "所属組織",
-      "permissionGroups": "権限グループ",
+      "affiliations": "Zugehörige Organisationen",
+      "permissionGroups": "Berechtigungsgruppen",
       "dashboard": "Dashboard",
       "info": "Basisinfo",
       "members": "Mitglieder",
       "invites": "Einladungen",
       "supporters": "Unterstützerverwaltung",
       "modules": "Funktionen",
-      "joinRequests": "参加申請"
+      "joinRequests": "Beitrittsanfrage"
     },
     "action": {
       "leave_confirm_title": "Team verlassen",
       "leave_confirm_body": "Möchtest du dieses Team wirklich verlassen? Dies kann nicht rückgängig gemacht werden.",
-      "left": "Team verlassen"
+      "left": "Team verlassen",
+      "leave_button": "Team verlassen"
     }
   },
   "orgShell": {
@@ -2384,12 +2468,13 @@
       "permission_groups": "Berechtigungsgruppen",
       "supporters": "Unterstützerverwaltung",
       "modules": "Funktionen",
-      "joinRequests": "参加申請"
+      "joinRequests": "Beitrittsanfrage"
     },
     "action": {
       "leave_confirm_title": "Organisation verlassen",
       "leave_confirm_body": "Möchtest du diese Organisation wirklich verlassen? Dies kann nicht rückgängig gemacht werden.",
-      "left": "Organisation verlassen"
+      "left": "Organisation verlassen",
+      "leave_button": "Organisation verlassen"
     }
   },
   "blog_guide": {
@@ -2547,25 +2632,25 @@
     "goOrganizations": "Organisation auswählen"
   },
   "joinRequest": {
-    "apply": "参加申請",
-    "pending": "申請中（承認待ち）",
-    "approved": "承認済み",
-    "rejected": "却下されました",
-    "fetchError": "取得に失敗しました",
-    "retry": "再試行",
+    "apply": "Beitrittsanfrage",
+    "pending": "Anfrage ausstehend (wartet auf Genehmigung)",
+    "approved": "Genehmigt",
+    "rejected": "Abgelehnt",
+    "fetchError": "Laden fehlgeschlagen",
+    "retry": "Erneut versuchen",
     "admin": {
-      "pendingTitle": "承認待ちの参加申請",
-      "empty": "承認待ちの参加申請はありません",
-      "requesterLabel": "ユーザーID: {userId}",
-      "requestedAt": "申請日",
-      "approve": "承認",
-      "reject": "却下",
-      "fetchError": "一覧の取得に失敗しました",
-      "retry": "再試行",
-      "loadMore": "さらに読み込む",
-      "loadMoreError": "追加読み込みに失敗しました",
-      "approveSuccess": "参加申請を承認しました",
-      "rejectSuccess": "参加申請を却下しました"
+      "pendingTitle": "Beitrittsanfragen, die auf Genehmigung warten",
+      "empty": "Es gibt keine Beitrittsanfragen, die auf Genehmigung warten",
+      "requesterLabel": "Benutzer-ID: {userId}",
+      "requestedAt": "Beantragt am",
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "fetchError": "Die Liste konnte nicht geladen werden",
+      "retry": "Erneut versuchen",
+      "loadMore": "Mehr laden",
+      "loadMoreError": "Weitere Einträge konnten nicht geladen werden",
+      "approveSuccess": "Beitrittsanfrage genehmigt",
+      "rejectSuccess": "Beitrittsanfrage abgelehnt"
     }
   },
   "myPage": {
@@ -2653,48 +2738,50 @@
     "saveFailed": "Speichern fehlgeschlagen",
     "deleteFailed": "Löschen fehlgeschlagen",
     "pages": {
-      "title": "メンバー紹介ページ",
-      "newPage": "新規ページ作成",
-      "empty": "ページがまだありません",
-      "titleLabel": "タイトル",
-      "slugLabel": "URLスラッグ",
-      "yearLabel": "対象年度",
-      "visibilityLabel": "公開範囲",
-      "visibilityPublic": "全体公開",
-      "visibilityMembersOnly": "メンバー限定",
-      "statusDraft": "下書き",
-      "statusPublished": "公開中",
-      "publish": "公開する",
-      "unpublish": "下書きに戻す",
-      "delete": "ページを削除",
-      "deleteConfirm": "このページを削除しますか？この操作は元に戻せません。",
-      "createSuccess": "ページを作成しました",
-      "createFailed": "ページの作成に失敗しました",
-      "updateSuccess": "ページを更新しました",
-      "statusChangeFailed": "公開ステータスの変更に失敗しました",
-      "deleteSuccess": "ページを削除しました",
-      "deleteFailed": "ページの削除に失敗しました",
-      "open": "メンバーを見る",
-      "copyFromPrevious": "前年度からメンバーをコピー",
-      "copySourceLabel": "コピー元ページ",
-      "copyConfirm": "コピーする",
-      "copySuccess": "{count}件のメンバーをコピーしました",
-      "copyFailed": "メンバーのコピーに失敗しました"
+      "title": "Seiten zur Mitgliedervorstellung",
+      "newPage": "Neue Seite erstellen",
+      "empty": "Noch keine Seiten vorhanden",
+      "titleLabel": "Titel",
+      "slugLabel": "URL-Slug",
+      "yearLabel": "Bezugsjahr",
+      "visibilityLabel": "Sichtbarkeit",
+      "visibilityPublic": "Öffentlich",
+      "visibilityMembersOnly": "Nur für Mitglieder",
+      "statusDraft": "Entwurf",
+      "statusPublished": "Veröffentlicht",
+      "publish": "Veröffentlichen",
+      "unpublish": "Zurück in den Entwurf",
+      "delete": "Seite löschen",
+      "deleteConfirm": "Diese Seite löschen? Dies kann nicht rückgängig gemacht werden.",
+      "createSuccess": "Seite erstellt",
+      "createFailed": "Seite konnte nicht erstellt werden",
+      "updateSuccess": "Seite aktualisiert",
+      "statusChangeFailed": "Veröffentlichungsstatus konnte nicht geändert werden",
+      "deleteSuccess": "Seite gelöscht",
+      "deleteFailed": "Seite konnte nicht gelöscht werden",
+      "open": "Mitglieder ansehen",
+      "copyFromPrevious": "Mitglieder aus dem Vorjahr kopieren",
+      "copySourceLabel": "Quellseite",
+      "copyConfirm": "Kopieren",
+      "copySuccess": "{count} Mitglied(er) kopiert",
+      "copyFailed": "Mitglieder konnten nicht kopiert werden"
     },
     "members": {
-      "title": "メンバー一覧",
-      "add": "メンバー追加",
-      "edit": "メンバー編集",
-      "empty": "メンバーが登録されていません",
-      "bulkRegister": "一括登録",
-      "bulkRegisterHelp": "1行に1名、「表示名,番号」の形式で入力してください（番号は省略可）",
-      "bulkRegisterSuccess": "{count}件のメンバーを登録しました",
-      "bulkRegisterFailed": "一括登録に失敗しました",
-      "deleteConfirm": "このメンバーを削除しますか？",
-      "back": "ページ一覧に戻る",
-      "customFieldsError": "カスタム項目の読み込みに失敗しました",
-      "optionsInvalidFormat": "選択肢データの形式が不正です",
-      "optionsLoadFailed": "選択肢データの読み込みに失敗しました"
+      "title": "Mitgliederliste",
+      "add": "Mitglied hinzufügen",
+      "edit": "Mitglied bearbeiten",
+      "empty": "Es sind keine Mitglieder eingetragen",
+      "bulkRegister": "Sammelregistrierung",
+      "bulkRegisterHelp": "Gib pro Zeile eine Person im Format „Anzeigename,Nummer“ ein (die Nummer ist optional)",
+      "bulkRegisterSuccess": "{count} Mitglieder wurden registriert",
+      "bulkRegisterFailed": "Die Sammelregistrierung ist fehlgeschlagen",
+      "delete": "Mitglied löschen",
+      "deleteConfirm": "Möchtest du das Profil von {name} löschen? Das lässt sich nicht rückgängig machen.",
+      "deleteSuccess": "Mitglied gelöscht",
+      "back": "Zurück zur Seitenliste",
+      "customFieldsError": "Die benutzerdefinierten Felder konnten nicht geladen werden",
+      "optionsInvalidFormat": "Das Format der Auswahldaten ist ungültig",
+      "optionsLoadFailed": "Die Auswahldaten konnten nicht geladen werden"
     }
   },
   "memberPermissions": {
@@ -2780,5 +2867,18 @@
       "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
       "MEMBERS_AND_ABOVE": "Mitglieder und höher"
     }
+  },
+  "relativeTime": {
+    "justNow": "Gerade eben",
+    "minutesAgo": "vor {count} Minute | vor {count} Minuten",
+    "hoursAgo": "vor {count} Stunde | vor {count} Stunden",
+    "daysAgo": "vor {count} Tag | vor {count} Tagen"
+  },
+  "error_page": {
+    "not_found_title": "Diese Seite wurde nicht gefunden",
+    "not_found_description": "Die gesuchte Seite existiert nicht oder wurde möglicherweise verschoben oder entfernt.",
+    "generic_title": "Es ist ein Fehler aufgetreten",
+    "generic_description": "Bitte versuchen Sie es in Kürze erneut. Besteht das Problem weiterhin, wenden Sie sich an Ihre Administration.",
+    "back_home": "Zurück zur Startseite"
   }
 }

@@ -366,16 +366,19 @@ class RoleMembershipLeaveContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("AC8: user_roles無しのSUPPORTERは会員退会経路を使えない")
+        @DisplayName("AC8: user_roles無しのSUPPORTERは会員退会経路を使えない（CMP-261001-0835 でROLE_015/422へ仕様変更）")
         void ac8_bareSupporterCannotUseMemberLeave() {
             Long teamId = saveTeam();
             Long user = 9054L;
             enrollBare(user, ScopeType.TEAM, teamId, RoleKind.SUPPORTER);
 
+            // CMP-261001-0835: 設計書 F01.2 03_business_logic の自主退会仕様変更により、
+            // SUPPORTER の leaveScope は 404(ROLE_001) ではなく 422(ROLE_015) を返す
+            // （応援の解除はフォロー解除導線から行う旨を案内するため）。
             assertThatThrownBy(() -> roleService.leaveScope(user, teamId, "TEAM"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("ROLE_001"));
+                            .isEqualTo("ROLE_015"));
 
             assertAffiliated(user, ScopeType.TEAM, teamId);
             assertThat(membershipOf(user, ScopeType.TEAM, teamId).orElseThrow().getLeftAt()).isNull();

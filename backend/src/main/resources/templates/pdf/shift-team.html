@@ -12,8 +12,8 @@
 </head>
 <body>
     <div class="pdf-header">
-        <h1 th:text="${schedule.title} + ' — チーム全体シフト表'">シフト表</h1>
-        <p th:text="'対象期間: ' + ${schedule.periodStart} + ' 〜 ' + ${schedule.periodEnd}">期間</p>
+        <h1 th:text="${schedule.content.title()} + ' — チーム全体シフト表'">シフト表</h1>
+        <p th:text="'対象期間: ' + ${schedule.period.startDate()} + ' 〜 ' + ${schedule.period.endDate()}">期間</p>
     </div>
 
     <div class="pdf-body">
@@ -30,11 +30,11 @@
             </thead>
             <tbody>
                 <tr th:each="slot : ${slots}">
-                    <td class="slot-date" th:text="${slot.slotDate}">日付</td>
-                    <td th:text="${slot.startTime}">開始</td>
-                    <td th:text="${slot.endTime}">終了</td>
-                    <td th:text="${slot.positionName}">役割</td>
-                    <td style="text-align: center;" th:text="${slot.requiredCount}">1</td>
+                    <td class="slot-date" th:text="${slot.time.slotDate()}">日付</td>
+                    <td th:text="${slot.time.startTime()}">開始</td>
+                    <td th:text="${slot.time.endTime()}">終了</td>
+                    <td th:text="${slot.position.positionName()}">役割</td>
+                    <td style="text-align: center;" th:text="${slot.position.requiredCount()}">1</td>
                     <td th:text="${#strings.listJoin(slot.assignedUserIds, ', ')}">メンバー</td>
                 </tr>
             </tbody>

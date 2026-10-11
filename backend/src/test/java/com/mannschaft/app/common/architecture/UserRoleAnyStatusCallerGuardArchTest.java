@@ -1,9 +1,8 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * ユーザーを許可するため、この呼出し元を厳密に一つへ固定する。</p>
  */
 @DisplayName("CMP-052 状態を問わない在籍判定の呼出元ガード")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class UserRoleAnyStatusCallerGuardArchTest {
 
     private static final String REPOSITORY_FQN =
@@ -35,9 +35,7 @@ class UserRoleAnyStatusCallerGuardArchTest {
     @Test
     @DisplayName("AC-1: 本番呼出しは FamilyPersonalTimetableService の一箇所だけである")
     void 本番呼出しは許可済みサービスの一箇所だけである() {
-        JavaClasses imported = new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
+        JavaClasses imported = ProductionClasses.get();
 
         assertThat(imported.contain(REPOSITORY_FQN))
                 .as("対象メソッドの所有者 %s が本番クラスとして存在すること", REPOSITORY_FQN)

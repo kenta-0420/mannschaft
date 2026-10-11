@@ -75,12 +75,14 @@ class ReservationDetailScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long ownerMemberId;
     private Long ownerNonMemberId;
     private Long otherMemberId;
+    private Long supporterId;
     private Long userRolesOnlyAdminId;
     private Long userRolesOnlyDeputyId;
     private Long systemAdminId;
     private Long outsiderId;
 
     private Long reservationId;          // owner = ownerMember
+    private Long supporterOwnedResId;   // owner = supporter
     private Long nonMemberOwnerResId;    // owner = ownerNonMember（在籍なし）
     private Long deletedReservationId;
 
@@ -93,6 +95,7 @@ class ReservationDetailScopeContractIT extends AbstractMySqlIntegrationTest {
         ownerMemberId = insertUser("w3a-owner-member@example.com");
         ownerNonMemberId = insertUser("w3a-owner-nonmember@example.com");
         otherMemberId = insertUser("w3a-other-member@example.com");
+        supporterId = insertUser("w3a-supporter@example.com");
         userRolesOnlyAdminId = insertUser("w3a-ur-admin@example.com");
         userRolesOnlyDeputyId = insertUser("w3a-ur-deputy@example.com");
         systemAdminId = insertUser("w3a-system-admin@example.com");
@@ -104,12 +107,14 @@ class ReservationDetailScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertUserRole(em, adminTeamBId, "ADMIN", teamBId, null);
         MembershipTestHelper.insertMembership(em, ownerMemberId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, otherMemberId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, supporterId, ScopeType.TEAM, teamAId, RoleKind.SUPPORTER);
         MembershipTestHelper.insertUserRole(em, userRolesOnlyAdminId, "ADMIN", teamAId, null);
         MembershipTestHelper.insertUserRole(em, userRolesOnlyDeputyId, "DEPUTY_ADMIN", teamAId, null);
         MembershipTestHelper.insertUserRole(em, systemAdminId, "SYSTEM_ADMIN", null, null);
 
         reservationId = saveReservation(teamAId, ownerMemberId);
         nonMemberOwnerResId = saveReservation(teamAId, ownerNonMemberId);
+        supporterOwnedResId = saveReservation(teamAId, supporterId);
         deletedReservationId = saveReservation(teamAId, ownerMemberId);
         em.createNativeQuery("UPDATE reservations SET deleted_at = NOW() WHERE id = :id")
                 .setParameter("id", deletedReservationId).executeUpdate();
@@ -165,6 +170,20 @@ class ReservationDetailScopeContractIT extends AbstractMySqlIntegrationTest {
             setAuth(actor);
             mockMvc.perform(detail(teamAId, reservationId)).andExpect(status().isOk());
         }
+    }
+
+    @Test
+    @DisplayName("SUPPORTER（在籍・非本人）は同チームの他の会員と同じ403 RESERVATION_021（404に化けない）")
+    void サポーターは非本人予約で403() throws Exception {
+        setAuth(supporterId);
+        expectError(detail(teamAId, reservationId), 403, "RESERVATION_021");
+    }
+
+    @Test
+    @DisplayName("SUPPORTER が自分の予約を見るのは本人として200（ReservationDetailFacade の本人許可）")
+    void サポーターは自分の予約なら200() throws Exception {
+        setAuth(supporterId);
+        mockMvc.perform(detail(teamAId, supporterOwnedResId)).andExpect(status().isOk());
     }
 
     @Test

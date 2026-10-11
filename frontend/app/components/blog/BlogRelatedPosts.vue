@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BlogTag, BlogPostResponse } from '~/types/cms'
+import { blogPostReadRoute } from '~/utils/blogPostRoute'
 
 const props = defineProps<{
   tags: BlogTag[]
@@ -20,8 +21,9 @@ async function loadRelatedPosts() {
     const firstTagId = props.tags[0]?.id
     if (!firstTagId) return
     const res = await getPosts({ tag_id: firstTagId, page: 0, size: 4 })
+    // 記事詳細はスコープ指定が必須（スコープ無しの URL は 404）。閲覧ルートを組めない記事は並べない。
     relatedPosts.value = res.data
-      .filter((p) => p.id !== props.currentPostId)
+      .filter((p) => p.id !== props.currentPostId && blogPostReadRoute(p) !== null)
       .slice(0, 3)
   } catch {
     showError('関連記事の取得に失敗しました')
@@ -50,7 +52,7 @@ onMounted(() => loadRelatedPosts())
       <NuxtLink
         v-for="post in relatedPosts"
         :key="post.id"
-        :to="`/blog/posts/${post.content?.slug}`"
+        :to="blogPostReadRoute(post) ?? undefined"
         class="group overflow-hidden rounded-xl border border-surface-200 bg-surface-0 transition-shadow hover:shadow-md dark:border-surface-700 dark:bg-surface-900"
       >
         <img

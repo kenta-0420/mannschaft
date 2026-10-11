@@ -6,7 +6,8 @@ import { NAV_GROUP_LABEL_KEYS, NAV_GROUP_ORDER, resolveNavGroup } from '~/consta
  * navGroups 定義でグループ化した SidebarGroup[] へ射影する。
  *
  * 現 default.vue 108-131行のロジック（固定ダッシュボード・代理入力デスク・SYSTEM・同期の
- * 合流条件）をそのまま移植する。挙動は1ビットも変えない（表示条件・パスは既存と同一）。
+ * 合流条件）を移植する。代理入力業務の導線はSYSTEM_ADMINを除外し、
+ * 同意管理・監査は組合のADMIN/DEPUTY_ADMINを対象に表示する。
  * 追加の API 呼び出しは行わない（各ストアは既存プラグイン/認証フローで既にフェッチ済み）。
  *
  * Phase2 AC-21: 受信箱バッジ — inboxStore.inboxCount（layouts/default.vue が既に60秒間隔で
@@ -17,17 +18,28 @@ import { NAV_GROUP_LABEL_KEYS, NAV_GROUP_ORDER, resolveNavGroup } from '~/consta
 export function useAppNavGroups() {
   const navSettingsStore = useNavSettingsStore()
   const teamStore = useTeamStore()
+  const organizationStore = useOrganizationStore()
   const authStore = useAuthStore()
   const syncStore = useSyncStore()
   const inboxStore = useInboxStore()
 
   /** NEIGHBORHOOD/CONDO テンプレートかつ DEPUTY_ADMIN 以上のチームが1つでもあれば表示 */
-  const showProxyDeskNav = computed(() =>
-    teamStore.myTeams.some(
-      team =>
-        (team.template === 'NEIGHBORHOOD' || team.template === 'CONDO')
-        && (team.role === 'ADMIN' || team.role === 'SYSTEM_ADMIN' || team.role === 'DEPUTY_ADMIN'),
-    ),
+  const showProxyDeskNav = computed(
+    () =>
+      !authStore.isSystemAdmin &&
+      teamStore.myTeams.some(
+        (team) =>
+          (team.template === 'NEIGHBORHOOD' || team.template === 'CONDO') &&
+          (team.role === 'ADMIN' || team.role === 'DEPUTY_ADMIN'),
+      ),
+  )
+
+  const showProxyAdminNav = computed(
+    () =>
+      !authStore.isSystemAdmin &&
+      organizationStore.myOrganizations.some(
+        (org) => org.role === 'ADMIN' || org.role === 'DEPUTY_ADMIN',
+      ),
   )
 
   /** 未解決コンフリクトがある場合のみ「同期」ナビを表示 */
@@ -64,6 +76,23 @@ export function useAppNavGroups() {
         labelKey: 'proxy.title',
         icon: 'pi pi-tablet',
         path: '/admin/proxy-desk',
+        variant: 'admin',
+      })
+    }
+
+    if (showProxyAdminNav.value) {
+      list.push({
+        key: 'proxy-consents',
+        labelKey: 'proxy.admin.consentsTitle',
+        icon: 'pi pi-file-check',
+        path: '/admin/proxy/consents',
+        variant: 'admin',
+      })
+      list.push({
+        key: 'proxy-records',
+        labelKey: 'proxy.record.title',
+        icon: 'pi pi-history',
+        path: '/admin/proxy/records',
         variant: 'admin',
       })
     }
@@ -106,17 +135,17 @@ export function useAppNavGroups() {
       }
     }
 
-    return NAV_GROUP_ORDER
-      .filter(groupKey => (byGroup.get(groupKey)?.length ?? 0) > 0)
-      .map(groupKey => ({
+    return NAV_GROUP_ORDER.filter((groupKey) => (byGroup.get(groupKey)?.length ?? 0) > 0).map(
+      (groupKey) => ({
         key: groupKey,
         labelKey: NAV_GROUP_LABEL_KEYS[groupKey],
         items: byGroup.get(groupKey) ?? [],
-      }))
+      }),
+    )
   })
 
   /** 現在ルートが完全一致しているか判定するための全パス一覧（default.vue の allNavPaths と同義） */
-  const allPaths = computed(() => items.value.map(item => item.path))
+  const allPaths = computed(() => items.value.map((item) => item.path))
 
-  return { groups, items, allPaths, showProxyDeskNav, showSyncNav }
+  return { groups, items, allPaths, showProxyDeskNav, showProxyAdminNav, showSyncNav }
 }

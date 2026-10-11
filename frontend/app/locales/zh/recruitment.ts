@@ -240,7 +240,6 @@ export default {
     "error": {
       "RECRUITMENT_001": "未找到招募",
       "RECRUITMENT_002": "没有创建招募的权限",
-      "RECRUITMENT_003": "因公开范围限制无法查看此招募",
       "RECRUITMENT_005": "名额已满",
       "RECRUITMENT_007": "参加形式不匹配",
       "RECRUITMENT_008": "最小名额超过总名额",
@@ -275,10 +274,10 @@ export default {
       "RECRUITMENT_312": "未找到处罚设置"
     },
     "noShow": {
-      "pageTitle": "NO_SHOW履歴",
+      "pageTitle": "NO_SHOW记录",
       "adminPageTitle": "NO_SHOW管理",
       "status": {
-        "pending": "确认待ち",
+        "pending": "待确认",
         "confirmed": "确定",
         "expired": "异议期限已过",
         "disputed": "异议中",

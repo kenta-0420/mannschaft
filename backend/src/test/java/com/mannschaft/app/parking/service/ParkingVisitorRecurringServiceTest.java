@@ -6,8 +6,11 @@ import com.mannschaft.app.parking.RecurrenceType;
 import com.mannschaft.app.parking.dto.CreateVisitorRecurringRequest;
 import com.mannschaft.app.parking.dto.UpdateVisitorRecurringRequest;
 import com.mannschaft.app.parking.dto.VisitorRecurringResponse;
+import com.mannschaft.app.parking.entity.ParkingSpaceEntity;
 import com.mannschaft.app.parking.entity.ParkingVisitorRecurringEntity;
+import com.mannschaft.app.parking.repository.ParkingSpaceRepository;
 import com.mannschaft.app.parking.repository.ParkingVisitorRecurringRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -37,6 +40,9 @@ class ParkingVisitorRecurringServiceTest {
 
     @Mock
     private ParkingVisitorRecurringRepository recurringRepository;
+
+    @Mock
+    private ParkingSpaceRepository spaceRepository;
 
     @Mock
     private ParkingMapper parkingMapper;
@@ -119,6 +125,13 @@ class ParkingVisitorRecurringServiceTest {
     @Nested
     @DisplayName("create")
     class Create {
+
+        @BeforeEach
+        void setUpSpaceInScope() {
+            given(spaceRepository.findByIdAndScopeTypeAndScopeId(SPACE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(ParkingSpaceEntity.builder()
+                            .id(SPACE_ID).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).build()));
+        }
 
         @Test
         @DisplayName("正常系: テンプレートが作成される")

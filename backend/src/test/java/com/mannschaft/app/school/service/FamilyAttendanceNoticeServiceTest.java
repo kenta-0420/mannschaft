@@ -3,6 +3,7 @@ package com.mannschaft.app.school.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.storage.StorageService;
 import com.mannschaft.app.family.repository.UserCareLinkRepository;
 import com.mannschaft.app.school.dto.FamilyAttendanceNoticeRequest;
@@ -36,6 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import org.mockito.ArgumentCaptor;
 
@@ -145,6 +147,39 @@ class FamilyAttendanceNoticeServiceTest {
     // ────────────────────────────────
 
     @Nested
+    @DisplayName("requireNoticeInTeam（認可の前段・存在秘匿）")
+    class RequireNoticeInTeam {
+
+        @Test
+        @DisplayName("path の teamId 配下の連絡なら通る")
+        void inTeam_ok() {
+            FamilyAttendanceNoticeEntity entity = buildEntity(false, null, null);
+            setId(entity, NOTICE_ID);
+            given(noticeRepository.findById(NOTICE_ID)).willReturn(Optional.of(entity));
+
+            service.requireNoticeInTeam(TEAM_ID, NOTICE_ID);
+        }
+
+        @Test
+        @DisplayName("他チームの連絡・存在しない連絡は同じ FAMILY_NOTICE_NOT_FOUND（存在秘匿）")
+        void otherTeam_orMissing_hidden() {
+            FamilyAttendanceNoticeEntity entity = buildEntity(false, null, null);
+            setId(entity, NOTICE_ID);
+            given(noticeRepository.findById(NOTICE_ID)).willReturn(Optional.of(entity));
+            given(noticeRepository.findById(404L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.requireNoticeInTeam(TEAM_ID + 1, NOTICE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(SchoolErrorCode.FAMILY_NOTICE_NOT_FOUND));
+            assertThatThrownBy(() -> service.requireNoticeInTeam(TEAM_ID, 404L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(SchoolErrorCode.FAMILY_NOTICE_NOT_FOUND));
+        }
+    }
+
+    @Nested
     @DisplayName("acknowledgeNotice")
     class AcknowledgeNotice {
 
@@ -239,7 +274,7 @@ class FamilyAttendanceNoticeServiceTest {
             given(noticeRepository.findByTeamIdAndAttendanceDateOrderByCreatedAtDesc(TEAM_ID, TODAY))
                     .willReturn(List.of(unack, acked));
 
-            FamilyNoticeListResponse response = service.getTeamNotices(TEAM_ID, TODAY, TEACHER_ID);
+            FamilyNoticeListResponse response = service.getTeamNotices(TEAM_ID, TODAY);
 
             assertThat(response.getTotalCount()).isEqualTo(2);
             assertThat(response.getUnacknowledgedCount()).isEqualTo(1);

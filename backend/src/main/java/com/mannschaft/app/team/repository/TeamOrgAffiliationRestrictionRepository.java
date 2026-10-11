@@ -103,4 +103,76 @@ public interface TeamOrgAffiliationRestrictionRepository
                             @Param("direction") String direction,
                             @Param("reason") String reason,
                             @Param("createdBy") Long createdBy);
+
+    // ========================================================================
+    // F01.2.1 2-C: 止めた側の制限一覧と解除（§5.4「解除一覧に出す行」）
+    //
+    // 一覧・解除の対象は「止めた側が意思を持って作った行」だけに絞る。組織側は (TEAM_APPLY, REJECTED)、
+    // チーム側は (ORG_INVITE, DECLINED)。自分の操作で自分側が止まる WITHDRAWN・CANCELLED と、
+    // 相手側が作った行は、一覧に出さず解除もさせない（制限の迂回を封じる）。
+    // ========================================================================
+
+    /**
+     * 組織が止めている、いま有効な制限を作成日時の降順で引く（{@code kind='BLOCK' OR restricted_until > :now}）。
+     */
+    @Query(value = "SELECT r FROM TeamOrgAffiliationRestrictionEntity r "
+            + "WHERE r.organizationId = :organizationId AND r.direction = :direction AND r.reason = :reason "
+            + "AND (r.kind = :blockKind OR r.restrictedUntil > :now) "
+            + "ORDER BY r.createdAt DESC, r.id DESC",
+            countQuery = "SELECT COUNT(r) FROM TeamOrgAffiliationRestrictionEntity r "
+            + "WHERE r.organizationId = :organizationId AND r.direction = :direction AND r.reason = :reason "
+            + "AND (r.kind = :blockKind OR r.restrictedUntil > :now)")
+    org.springframework.data.domain.Page<TeamOrgAffiliationRestrictionEntity> findActivePageByOrganization(
+            @Param("organizationId") Long organizationId,
+            @Param("direction") TeamOrgAffiliationDirection direction,
+            @Param("reason") com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionReason reason,
+            @Param("blockKind") TeamOrgAffiliationRestrictionKind blockKind,
+            @Param("now") Instant now,
+            org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * チームが止めている、いま有効な制限を作成日時の降順で引く（{@code kind='BLOCK' OR restricted_until > :now}）。
+     */
+    @Query(value = "SELECT r FROM TeamOrgAffiliationRestrictionEntity r "
+            + "WHERE r.teamId = :teamId AND r.direction = :direction AND r.reason = :reason "
+            + "AND (r.kind = :blockKind OR r.restrictedUntil > :now) "
+            + "ORDER BY r.createdAt DESC, r.id DESC",
+            countQuery = "SELECT COUNT(r) FROM TeamOrgAffiliationRestrictionEntity r "
+            + "WHERE r.teamId = :teamId AND r.direction = :direction AND r.reason = :reason "
+            + "AND (r.kind = :blockKind OR r.restrictedUntil > :now)")
+    org.springframework.data.domain.Page<TeamOrgAffiliationRestrictionEntity> findActivePageByTeam(
+            @Param("teamId") Long teamId,
+            @Param("direction") TeamOrgAffiliationDirection direction,
+            @Param("reason") com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionReason reason,
+            @Param("blockKind") TeamOrgAffiliationRestrictionKind blockKind,
+            @Param("now") Instant now,
+            org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * 組織が止めた制限を解除する。ID・組織・向き・理由がすべて一致する行だけを消す
+     * （他組織の ID・相手側が作った行・WITHDRAWN の行は 0 件になる）。
+     *
+     * @return 削除した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM TeamOrgAffiliationRestrictionEntity r WHERE r.id = :id "
+            + "AND r.organizationId = :organizationId AND r.direction = :direction AND r.reason = :reason")
+    int deleteOwnedByOrganization(@Param("id") UUID id,
+                                  @Param("organizationId") Long organizationId,
+                                  @Param("direction") TeamOrgAffiliationDirection direction,
+                                  @Param("reason") com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionReason reason);
+
+    /**
+     * チームが止めた制限を解除する。ID・チーム・向き・理由がすべて一致する行だけを消す
+     * （他チームの ID・相手側が作った行・CANCELLED の行は 0 件になる）。
+     *
+     * @return 削除した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM TeamOrgAffiliationRestrictionEntity r WHERE r.id = :id "
+            + "AND r.teamId = :teamId AND r.direction = :direction AND r.reason = :reason")
+    int deleteOwnedByTeam(@Param("id") UUID id,
+                          @Param("teamId") Long teamId,
+                          @Param("direction") TeamOrgAffiliationDirection direction,
+                          @Param("reason") com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionReason reason);
 }

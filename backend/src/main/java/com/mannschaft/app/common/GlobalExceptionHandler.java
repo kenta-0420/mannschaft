@@ -187,6 +187,8 @@ public class GlobalExceptionHandler {
             Map.entry("ROLE_012", HttpStatus.CONFLICT),             // オファー状態不整合/期限切れ/発行後状態変化 → 409
             Map.entry("ROLE_013", HttpStatus.NOT_FOUND),            // オファー不在（BOLA）/対象非所属 → 404
             Map.entry("ROLE_014", HttpStatus.UNPROCESSABLE_ENTITY), // 自己委譲など不正対象 → 422
+            // CMP-261001-0835: 応援者（SUPPORTER）の /me 自主退会はフォロー解除 API への案内のため 422
+            Map.entry("ROLE_015", HttpStatus.UNPROCESSABLE_ENTITY),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
             // 組織不在は 404（Severity.WARN 既定の 400 を上書き）。兄弟の TEAM_001 と流儀を揃える。
@@ -1727,11 +1729,11 @@ public class GlobalExceptionHandler {
             Map.entry("CMS_025", HttpStatus.NOT_FOUND),
             // CMS_026（予約公開待ち記事の共有不可・issue #2616）は記事の状態と操作の競合 → 409
             Map.entry("CMS_026", HttpStatus.CONFLICT),
-            // 認可根治戦役 Wave3-B12notif: confirmable notification（F04.9）は notificationId↔pathスコープ
-            // 突合の BOLA 対策で SCOPE_MISMATCH を新設・NOT_FOUND と同様に 404 秘匿する必要がある。
+            // 認可根治戦役 Wave3-B12notif: confirmable notification（F04.9）の NOT_FOUND は存在秘匿の 404。
             // Severity.WARN 既定の 400 のままだと存在有無が漏れる（他ドメイン同様の慣例に合わせて上書き）。
+            // CMP-260923-0954 W3b: 他スコープの通知 ID は不在 ID と同一の NOT_FOUND に畳むため、
+            // 専用の SCOPE_MISMATCH コード（と本写像）は廃止した。
             Map.entry("CONFIRMABLE_NOTIFICATION_NOT_FOUND", HttpStatus.NOT_FOUND),
-            Map.entry("CONFIRMABLE_NOTIFICATION_SCOPE_MISMATCH", HttpStatus.NOT_FOUND),
             // 認可根治戦役 Wave7: テンプレートの templateId↔pathスコープ突合の BOLA 対策で
             // TEMPLATE_NOT_FOUND を存在秘匿の404に上書きする（CMS_004 と同様、不存在・スコープ
             // 不一致のいずれも同一コードで返す）。Severity.WARN 既定の 400 のままだと
@@ -1827,7 +1829,7 @@ public class GlobalExceptionHandler {
             Map.entry("ANNOUNCE_008", HttpStatus.NOT_FOUND),             // テンプレート不在 → 404
             Map.entry("ANNOUNCE_009", HttpStatus.FORBIDDEN),             // テンプレート操作権限なし → 403
             Map.entry("ANNOUNCE_010", HttpStatus.CONFLICT),              // テンプレート上限超過 → 409
-            Map.entry("BROADCAST_003", HttpStatus.NOT_FOUND),            // 一斉配信テンプレート不在 → 404
+            Map.entry("BROADCAST_003", HttpStatus.BAD_REQUEST),         // 一斉配信テンプレート不在・他スコープ → 400（F01.2.1 §8.6。存在を区別しない）
             Map.entry("ORG_064", HttpStatus.NOT_FOUND), // F01.2.1 §11 チームグループが見つかりません
             Map.entry("ORG_065", HttpStatus.CONFLICT), // F01.2.1 §11 同じ名前のチームグループがすでにあります
             Map.entry("ORG_066", HttpStatus.UNPROCESSABLE_ENTITY), // F01.2.1 §11 チームグループは1組織あたり100件までです
@@ -1895,19 +1897,8 @@ public class GlobalExceptionHandler {
             // PENALTY_SETTING_NOT_FOUND（RECRUITMENT_312）は throw 元が存在しない未使用定数のため対象外。
             Map.entry("RECRUITMENT_001", HttpStatus.NOT_FOUND),          // LISTING_NOT_FOUND
             Map.entry("RECRUITMENT_313", HttpStatus.NOT_FOUND),          // TEMPLATE_NOT_FOUND
-            // TEMPLATE_SCOPE_MISMATCH: createFromTemplate で他スコープのテンプレート ID を指した越境。
-            // 従来は本マップ未登録で Severity.WARN 既定の 400 に落ちていた（設計判断ではなく登録漏れ）。
-            // 不在（RECRUITMENT_313）が 404 なので、400 のままだと templateId の列挙で他チーム・
-            // 他組織のテンプレートの実在が判別できる（存在オラクル）。越境の存在秘匿で 404 固定。
-            Map.entry("RECRUITMENT_314", HttpStatus.NOT_FOUND),          // TEMPLATE_SCOPE_MISMATCH（越境の存在秘匿で 404）
             Map.entry("RECRUITMENT_309", HttpStatus.NOT_FOUND),          // NO_SHOW_RECORD_NOT_FOUND
             Map.entry("RECRUITMENT_310", HttpStatus.NOT_FOUND),          // PENALTY_NOT_FOUND
-            // RecruitmentNoShowService.dispute(): NO_SHOW 記録は findById で取得済み（存在確認後）で、
-            // 本人以外のレコードを操作しようとした場合に VISIBILITY_DENIED を throw する。
-            // 既定 400 のままだと「レコードは実在するが本人でない」ことが 404（不在）と区別できてしまい、
-            // recordId の列挙で他人の NO_SHOW 記録の存在を判別できる IDOR となるため、
-            // NOT_FOUND 系と同一の 404 に畳んで存在秘匿する。
-            Map.entry("RECRUITMENT_003", HttpStatus.NOT_FOUND),          // VISIBILITY_DENIED（本人以外の NO_SHOW 記録操作を存在秘匿）
             // RecruitmentListingService.getListing(): DRAFT 募集は作成者/スコープ ADMIN のみ閲覧可。
             // 対象は findOrThrow 済み（存在は前提）で、権限不足のみを理由に拒否するため 403（F00 の
             // 「NOT_FOUND→404, deny→403」規約と同型）。
@@ -1971,6 +1962,9 @@ public class GlobalExceptionHandler {
             Map.entry("ACTIVITY_008", HttpStatus.FORBIDDEN),             // NOT_AUTHOR（自分の投稿以外は編集不可）
             Map.entry("ACTIVITY_016", HttpStatus.NOT_FOUND),             // PRESET_NOT_FOUND
             Map.entry("ACTIVITY_018", HttpStatus.CONFLICT),              // FIELD_TYPE_CHANGE_NOT_ALLOWED（既存フィールドとの型競合）
+            Map.entry("ACTIVITY_009", HttpStatus.CONFLICT),
+            Map.entry("ACTIVITY_022", HttpStatus.CONFLICT),
+            Map.entry("ACTIVITY_023", HttpStatus.CONFLICT),
 
             // F02.2 ダッシュボード: チャットフォルダの不在/所有者不一致・アイテム不在は 404/403、
             // 同名フォルダ重複は 409（Severity.WARN 既定 400 を上書き）
@@ -2160,19 +2154,14 @@ public class GlobalExceptionHandler {
             // 409。SKILL_001 は「カテゴリ不在」「名称重複」「非アクティブカテゴリ」の3意味で割れて
             // いたため、不在（404・SKILL_001 に限定）／名称重複（409・SKILL_009）／非アクティブ
             // （409・SKILL_010）に分割した。
-            // SKILL_003（スコープ越境の拒否／本人でもADMINでもない場合の権限拒否）は
-            // PARKING_020 に起点を持つ「越境は存在秘匿で404」の流儀に揃え、404固定とする
-            // （equipment/membership/todo/corkboard/pointcard で既に同じ流儀を採用）。
-            // かつては WARN=400 の既定のままだったため、404（SKILL_001/002＝不在）と
-            // 400（SKILL_003＝越境）でステータスが割れ、攻撃者が応答の違いだけで
-            // 「そのIDが実在するか」を判別できる存在オラクルになっていた（CMP-052想定）。
-            // 越境も権限拒否も「対象の存在自体を隠す」という同じ目的のため、不在と同一の
-            // 404に畳むのが正しい（不在側を400にする逆方向は選ばない）。
-            // 契約は MemberSkillScopeContractIT / SkillCategoryScopeContractIT が
-            // 「不在と越境の応答が一致すること」として固定している。
+            // SKILL_003 は非推奨・未使用（CMP-261010-2226）。資格 API の拒否は、同チームの権限不足を
+            // COMMON_002（403）、越境（非メンバー）を不在と完全一致の SKILL_002（404）に統一した。
+            // 秘匿は status だけでなく error.code・error.message まで不在時と一致して初めて成立する。
+            // 写像は互換のため残す。契約は MemberSkillAccessConcealmentContractIT /
+            // MemberSkillScopeContractIT / SkillCategoryScopeContractIT が固定している。
             Map.entry("SKILL_001", HttpStatus.NOT_FOUND),                   // カテゴリ不在
             Map.entry("SKILL_002", HttpStatus.NOT_FOUND),                   // 資格不在
-            Map.entry("SKILL_003", HttpStatus.NOT_FOUND),                   // スコープ越境・権限拒否（存在秘匿）
+            Map.entry("SKILL_003", HttpStatus.NOT_FOUND),                   // 非推奨・未使用（互換のため残置）
             Map.entry("SKILL_009", HttpStatus.CONFLICT),                    // カテゴリ名称の重複
             Map.entry("SKILL_010", HttpStatus.CONFLICT),                    // 非アクティブカテゴリへの登録
             Map.entry("SKILL_005", HttpStatus.CONFLICT),                    // 同一資格の重複登録
@@ -2417,7 +2406,6 @@ public class GlobalExceptionHandler {
             // MODERATION_003（自分のコンテンツは通報不可）は入力制約寄りのため見送り（既定 400 のまま）。
 
             // F04.9 確認通知システム（ConfirmableNotificationErrorCode）の残り未登録分。
-            Map.entry("CONFIRMABLE_NOTIFICATION_RECIPIENT_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("CONFIRMABLE_NOTIFICATION_ALREADY_CANCELLED", HttpStatus.CONFLICT),
             Map.entry("CONFIRMABLE_NOTIFICATION_ALREADY_CONFIRMED", HttpStatus.CONFLICT),
             Map.entry("CONFIRMABLE_NOTIFICATION_INVALID_TOKEN", HttpStatus.NOT_FOUND), // 確認トークンの秘匿
@@ -2437,6 +2425,7 @@ public class GlobalExceptionHandler {
             Map.entry("SUPPORTER_004", HttpStatus.CONFLICT),             // 申請は既に処理済み
             Map.entry("SUPPORTER_005", HttpStatus.FORBIDDEN),            // ブロックされているため申請不可
             Map.entry("SUPPORTER_006", HttpStatus.FORBIDDEN),            // サポーター機能が無効（兄弟 MEMBERSHIP_SUPPORTER_DISABLED と同流儀）
+            Map.entry("SUPPORTER_007", HttpStatus.NOT_FOUND),            // フォロー解除対象（SUPPORTER所属/PENDING申請）不在 → 404
 
             // F01.3 テンプレート・モジュール管理機能（TemplateErrorCode）の残り未登録分。
             Map.entry("TMPL_001", HttpStatus.NOT_FOUND),                 // テンプレートが見つからない（兄弟 TMPL_002 と同流儀）
@@ -2774,10 +2763,28 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ErrorResponse> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
-        log.warn("HandlerMethodValidationException: {}", ex.getMessage());
+        List<ErrorResponse.FieldError> fieldErrors = new java.util.ArrayList<>();
+        for (org.springframework.validation.method.ParameterValidationResult result
+                : ex.getParameterValidationResults()) {
+            String paramName = result.getMethodParameter().getParameterName();
+            if (result instanceof org.springframework.validation.method.ParameterErrors errors) {
+                // @Valid 付きリクエストボディ等: MethodArgumentNotValidException と同じくフィールド名で返す
+                errors.getFieldErrors().forEach(fe ->
+                        fieldErrors.add(new ErrorResponse.FieldError(fe.getField(), fe.getDefaultMessage())));
+                errors.getGlobalErrors().forEach(ge ->
+                        fieldErrors.add(new ErrorResponse.FieldError(
+                                paramName != null ? paramName : ge.getObjectName(), ge.getDefaultMessage())));
+            } else {
+                // @Min / @NotBlank 等を付けたパス・クエリ引数: 引数名を field に入れる
+                result.getResolvableErrors().forEach(re ->
+                        fieldErrors.add(new ErrorResponse.FieldError(
+                                paramName != null ? paramName : "parameter", re.getDefaultMessage())));
+            }
+        }
+        log.warn("HandlerMethodValidationException: {} field error(s)", fieldErrors.size());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_001, fieldErrors));
     }
 
     /**

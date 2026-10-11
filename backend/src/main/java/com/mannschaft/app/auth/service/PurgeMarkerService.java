@@ -1,10 +1,13 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 /**
  * auth境界内で {@code users.purge_started_at} の読み書きだけを提供する狭い窓口。
@@ -23,6 +26,25 @@ public class PurgeMarkerService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markPurgeStarted(Long userId) {
         userRepository.markPurgeStarted(userId);
+    }
+
+    /**
+     * 最新の退会状態をロックして再検証し、猶予切れの場合だけ開始マークを独立コミットする。
+     * 取消や再申請が先にコミットした旧候補にはマークを付けない。
+     * 既にマーク済みでも対象条件を満たせば、本体失敗後の再実行を許可する。
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean markPurgeStartedIfEligible(Long userId, LocalDateTime cutoff) {
+        if (userId == 0L) {
+            return false;
+        }
+        UserEntity user = userRepository.findByIdForUpdateIncludingDeleted(userId).orElse(null);
+        if (user == null || user.getDeletedAt() == null
+                || !user.getDeletedAt().isBefore(cutoff) || user.getPurgedAt() != null) {
+            return false;
+        }
+        userRepository.markPurgeStarted(userId);
+        return true;
     }
 
     /** purge 開始マーク済みなら true。 */

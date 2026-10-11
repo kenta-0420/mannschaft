@@ -74,7 +74,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>{@code BULLETIN_002}（THREAD_NOT_FOUND）→ <b>404</b></li>
  *   <li>{@code BULLETIN_003}（REPLY_NOT_FOUND）→ <b>404</b></li>
  *   <li>{@code BULLETIN_016}（ARCHIVE_FOLDER_NOT_FOUND）→ <b>404</b></li>
- *   <li>{@code BULLETIN_020}（ARCHIVE_FOLDER_SCOPE_MISMATCH）→ <b>404</b>（越境の存在秘匿のため不在 BULLETIN_016 と同一ステータス）</li>
+ *   <li>保管庫フォルダ越境 → {@code BULLETIN_016}（不在と同一の404応答）</li>
  *   <li>認可拒否は {@code CommonErrorCode.COMMON_002} が <b>403</b> で明示登録</li>
  * </ul>
  * <p>{@code BULLETIN_012}（PARENT_REPLY_MISMATCH）は {@code Severity.WARN} かつ
@@ -470,14 +470,15 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data.scopeId").value(teamAId));
         }
 
-        /** AC-B11: 部外者は 403（所属ゲート）。 */
+        /** AC-B11: TEAM/ORG の詳細読取は、部外者と不在を同一 404 にする（F02.6）。 */
         @Test
-        @DisplayName("AC-B11 部外者のスレッド詳細取得は403")
-        void ac_b11_部外者は403() throws Exception {
+        @DisplayName("AC-B11 部外者のスレッド詳細取得は不在と同一404")
+        void ac_b11_部外者は不在と同一404() throws Exception {
             setAuth(outsiderId);
-            mockMvc.perform(get("/api/v1/{scopeType}/{scopeId}/bulletin/threads/{threadId}",
-                            "teams", teamAId, threadAId))
-                    .andExpect(status().isForbidden());
+            String denied = getThreadExpectingNotFound(threadAId);
+            String absent = getThreadExpectingNotFound(ABSENT_THREAD_ID);
+            assertThat(denied).isEqualTo(absent);
+            assertThat(denied).doesNotContain("\"data\"");
         }
 
         private String getThreadExpectingNotFound(Long threadId) throws Exception {
@@ -1235,7 +1236,7 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
                                     .param("folder_id", folderBId.toString()))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH.getCode()))
+                            .value(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND.getCode()))
                     .andReturn().getResponse().getContentAsString();
 
             assertThat(body).doesNotContain("BULAUTHZ teamB 保管済");
@@ -1285,7 +1286,7 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
                             .content(objectMapper.writeValueAsString(moveFolderBody(folderBId))))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH.getCode()));
+                            .value(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND.getCode()));
 
             em.flush();
             em.clear();
@@ -1627,7 +1628,7 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
                                     createFolderBody("越境フォルダ", folderBId))))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH.getCode()));
+                            .value(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND.getCode()));
 
             em.flush();
             em.clear();

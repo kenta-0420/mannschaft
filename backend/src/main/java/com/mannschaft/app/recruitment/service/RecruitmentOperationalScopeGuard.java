@@ -2,6 +2,7 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.market.MarketErrorCode;
+import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 
@@ -21,6 +22,20 @@ public final class RecruitmentOperationalScopeGuard {
         if (listing.getScopeType() != RecruitmentScopeType.TEAM
                 && listing.getScopeType() != RecruitmentScopeType.ORGANIZATION) {
             throw new BusinessException(MarketErrorCode.LISTING_NOT_FOUND);
+        }
+    }
+
+    /**
+     * TEAM / ORGANIZATION でない募集（PERSONAL・GLOBAL）を、不在と同じ {@code LISTING_NOT_FOUND}(404) で隠す。
+     *
+     * <p>{@link #requireTeamOrOrganization} は {@code MARKET_404} を返すため、同じ EP で募集不在
+     * （{@code RECRUITMENT_001}）とコードが割れて個人札の実在が判る。認可ファサード経由の EP
+     * （CMP-260923-0954 W5）はこちらを使い、コードを揃える。</p>
+     */
+    public static void requireTeamOrOrganizationOrNotFound(RecruitmentListingEntity listing) {
+        if (listing.getScopeType() != RecruitmentScopeType.TEAM
+                && listing.getScopeType() != RecruitmentScopeType.ORGANIZATION) {
+            throw new BusinessException(RecruitmentErrorCode.LISTING_NOT_FOUND);
         }
     }
 

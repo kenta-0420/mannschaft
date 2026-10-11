@@ -2,7 +2,6 @@ package com.mannschaft.app.tournament;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.tournament.dto.CreateParticipantRequest;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
@@ -22,6 +21,7 @@ import org.mockito.quality.Strictness;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -47,7 +47,6 @@ class DivisionServiceTest {
     @Mock private com.mannschaft.app.tournament.service.TournamentContactSpaceProvisioningService contactSpaceProvisioningService;
     @Mock private com.mannschaft.app.filesharing.service.SharedFolderService sharedFolderService;
     @Mock private AccessControlService accessControlService;
-    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private DivisionService service;
@@ -61,6 +60,45 @@ class DivisionServiceTest {
         TournamentEntity tournament = TournamentEntity.builder()
                 .organizationId(ORG_ID).build();
         given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament));
+    }
+
+    @Nested
+    @DisplayName("閲覧系（listDivisions / listParticipants）")
+    class ListViews {
+
+        // 大会の可視性ゲートは公開入口の Controller が TournamentViewAccessGate で行う（判定は同クラスのテストで検証）。
+
+        @Test
+        @DisplayName("部門一覧を返す")
+        void 部門一覧() {
+            given(divisionRepository.findByTournamentIdOrderByLevelAscSortOrderAsc(TOURNAMENT_ID))
+                    .willReturn(java.util.List.of(TournamentDivisionEntity.builder().tournamentId(TOURNAMENT_ID).build()));
+
+            assertThat(service.listDivisions(TOURNAMENT_ID)).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("参加チーム一覧を返す")
+        void 参加チーム一覧() {
+            given(divisionRepository.findByIdAndTournamentId(DIV_ID, TOURNAMENT_ID))
+                    .willReturn(Optional.of(TournamentDivisionEntity.builder().tournamentId(TOURNAMENT_ID).build()));
+            given(participantRepository.findByDivisionIdOrderBySeedAsc(DIV_ID))
+                    .willReturn(java.util.List.of(TournamentParticipantEntity.builder().build()));
+
+            assertThat(service.listParticipants(TOURNAMENT_ID, DIV_ID)).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("divId が tId 配下でなければ DIVISION_NOT_FOUND（公開大会の tId を踏み台にした越境を遮断）")
+        void 部門が大会配下でなければ404() {
+            given(divisionRepository.findByIdAndTournamentId(DIV_ID, TOURNAMENT_ID))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.listParticipants(TOURNAMENT_ID, DIV_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(TournamentErrorCode.DIVISION_NOT_FOUND);
+        }
     }
 
     @Nested

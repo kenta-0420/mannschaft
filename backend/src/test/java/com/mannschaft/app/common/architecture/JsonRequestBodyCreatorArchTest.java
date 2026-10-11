@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.junit.ArchTag;
 import com.tngtech.archunit.core.domain.JavaAnnotation;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -226,6 +227,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
     packages = "com.mannschaft.app",
     importOptions = ImportOption.DoNotIncludeTests.class
 )
+@ArchTag(ArchUnitTestTag.ARCHUNIT)
 class JsonRequestBodyCreatorArchTest {
 
     /** Jackson の creator マーカー FQN。 */

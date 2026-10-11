@@ -240,7 +240,6 @@ export default {
     "error": {
       "RECRUITMENT_001": "Ausschreibung nicht gefunden",
       "RECRUITMENT_002": "Keine Berechtigung zum Erstellen einer Ausschreibung",
-      "RECRUITMENT_003": "Sichtbarkeit verhindert das Anzeigen dieser Ausschreibung",
       "RECRUITMENT_005": "Kapazität erreicht",
       "RECRUITMENT_007": "Teilnahmeart stimmt nicht überein",
       "RECRUITMENT_008": "Mindestkapazität überschreitet die Kapazität",

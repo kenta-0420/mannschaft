@@ -12,6 +12,7 @@ definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const orgSlug = String(route.params.slug)
 const scheduleApi = useScheduleApi()
+const { handleApiError } = useErrorHandler()
 const { isAdminOrDeputy, roleName, can, loadPermissions } = useRoleAccess('organization', orgSlug)
 const canManageSchedule = computed(
   () => isAdminOrDeputy.value || (roleName.value === 'MEMBER' && can('MANAGE_SCHEDULES')),
@@ -53,8 +54,8 @@ async function onEventClick(eventId: number) {
     selectedEvent.value = toFlatScheduleEvent(res.data as NestedScheduleResponse)
     selectedEventId.value = eventId
     showDetailPanel.value = true
-  } catch {
-    /* ignore */
+  } catch (error) {
+    handleApiError(error, '予定詳細')
   }
 }
 
@@ -87,6 +88,8 @@ async function onSaved() {
 onMounted(async () => {
   await loadPermissions()
   await loadEvents()
+  const eventId = Number(route.query.eventId)
+  if (Number.isSafeInteger(eventId) && eventId > 0) await onEventClick(eventId)
 })
 </script>
 

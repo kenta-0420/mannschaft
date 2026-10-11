@@ -1,13 +1,12 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.domain.JavaParameterizedType;
 import com.tngtech.archunit.core.domain.JavaType;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.cache.annotation.CachePut;
@@ -91,6 +90,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <b>引っかかった箇所は凍結せず是正する</b>（凍結は免罪符になる）。</p>
  */
 @DisplayName("@Cacheable 戻り値の復元可能性 静的番人 (issue #2544)")
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class CacheableReturnValueShapeGuardTest {
 
     /** キャッシュ値にしてはならない型（Jackson で復元できない）。 */
@@ -121,9 +121,7 @@ class CacheableReturnValueShapeGuardTest {
     }
 
     private static JavaClasses importedClasses() {
-        return new ClassFileImporter()
-                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-                .importPackages("com.mannschaft.app");
+        return ProductionClasses.get();
     }
 
     private static boolean isCacheWriting(JavaMethod method) {

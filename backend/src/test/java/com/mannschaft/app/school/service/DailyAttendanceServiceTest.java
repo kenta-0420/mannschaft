@@ -1,6 +1,5 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.school.dto.AttendanceHistoryItem;
@@ -13,7 +12,9 @@ import com.mannschaft.app.school.dto.DailyRollCallSummary;
 import com.mannschaft.app.school.entity.DailyAttendanceRecordEntity;
 import com.mannschaft.app.school.error.SchoolErrorCode;
 import com.mannschaft.app.school.event.DailyRollCallRecordedEvent;
+import com.mannschaft.app.school.entity.FamilyAttendanceNoticeEntity;
 import com.mannschaft.app.school.repository.DailyAttendanceRecordRepository;
+import com.mannschaft.app.school.repository.FamilyAttendanceNoticeRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import org.mockito.ArgumentCaptor;
@@ -56,10 +57,10 @@ class DailyAttendanceServiceTest {
     private DailyAttendanceRecordRepository dailyAttendanceRecordRepository;
 
     @Mock
-    private AccessControlService accessControlService;
+    private ApplicationEventPublisher eventPublisher;
 
     @Mock
-    private ApplicationEventPublisher eventPublisher;
+    private FamilyAttendanceNoticeRepository familyAttendanceNoticeRepository;
 
     @InjectMocks
     private DailyAttendanceService dailyAttendanceService;
@@ -116,8 +117,6 @@ class DailyAttendanceServiceTest {
             ReflectionTestUtils.setField(request, "attendanceDate", ATTENDANCE_DATE);
             ReflectionTestUtils.setField(request, "entries", List.of(entry1, entry2, entry3));
 
-            // checkMembership は void メソッドのため doNothing
-            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
 
             // 既存レコードなし
             given(dailyAttendanceRecordRepository.findByTeamIdAndStudentUserIdAndAttendanceDate(
@@ -166,7 +165,6 @@ class DailyAttendanceServiceTest {
             ReflectionTestUtils.setField(request, "attendanceDate", ATTENDANCE_DATE);
             ReflectionTestUtils.setField(request, "entries", List.of(entry));
 
-            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
 
             // 既存レコードあり（UNDECIDED → ABSENT に更新）
             DailyAttendanceRecordEntity existingEntity = buildEntity(10L, STUDENT_USER_ID_1, AttendanceStatus.UNDECIDED);
@@ -204,7 +202,6 @@ class DailyAttendanceServiceTest {
             ReflectionTestUtils.setField(request, "attendanceDate", ATTENDANCE_DATE);
             ReflectionTestUtils.setField(request, "entries", List.of(entry));
 
-            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
             given(dailyAttendanceRecordRepository.findByTeamIdAndStudentUserIdAndAttendanceDate(
                     any(), any(), any())).willReturn(Optional.empty());
             // 新規行は save で採番される。Issue #2990 L6 のイベントは採番後の ID を載せるため、
@@ -230,6 +227,49 @@ class DailyAttendanceServiceTest {
     // ========================================
 
     @Nested
+    @DisplayName("submitDailyRollCall の入力整合（認可・在籍確認は DailyAttendanceFacade の責務）")
+    class SubmitDailyRollCallIntegrity {
+
+        private DailyRollCallRequest requestOf(DailyRollCallEntry... entries) {
+            DailyRollCallRequest request = new DailyRollCallRequest();
+            ReflectionTestUtils.setField(request, "attendanceDate", ATTENDANCE_DATE);
+            ReflectionTestUtils.setField(request, "entries", List.of(entries));
+            return request;
+        }
+
+        @Test
+        @DisplayName("異常系: familyNoticeId が別の生徒の連絡なら FAMILY_NOTICE_MISMATCH で何も保存しない")
+        void familyNotice_otherStudent_rejected() {
+            DailyRollCallEntry entry = buildEntry(STUDENT_USER_ID_1, AttendanceStatus.ABSENT);
+            ReflectionTestUtils.setField(entry, "familyNoticeId", 7L);
+            FamilyAttendanceNoticeEntity notice = FamilyAttendanceNoticeEntity.builder()
+                    .teamId(TEAM_ID).studentUserId(STUDENT_USER_ID_2).attendanceDate(ATTENDANCE_DATE).build();
+            ReflectionTestUtils.setField(notice, "id", 7L);
+            given(familyAttendanceNoticeRepository.findAllById(any())).willReturn(List.of(notice));
+
+            assertThatThrownBy(() -> dailyAttendanceService.submitDailyRollCall(
+                    TEAM_ID, requestOf(entry), OPERATOR_USER_ID))
+                    .isInstanceOfSatisfying(BusinessException.class, ex ->
+                            assertThat(ex.getErrorCode()).isEqualTo(SchoolErrorCode.FAMILY_NOTICE_MISMATCH));
+
+            verify(dailyAttendanceRecordRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("異常系: 存在しない familyNoticeId も FAMILY_NOTICE_MISMATCH")
+        void familyNotice_nonexistent_rejected() {
+            DailyRollCallEntry entry = buildEntry(STUDENT_USER_ID_1, AttendanceStatus.ABSENT);
+            ReflectionTestUtils.setField(entry, "familyNoticeId", 999L);
+            given(familyAttendanceNoticeRepository.findAllById(any())).willReturn(List.of());
+
+            assertThatThrownBy(() -> dailyAttendanceService.submitDailyRollCall(
+                    TEAM_ID, requestOf(entry), OPERATOR_USER_ID))
+                    .isInstanceOfSatisfying(BusinessException.class, ex ->
+                            assertThat(ex.getErrorCode()).isEqualTo(SchoolErrorCode.FAMILY_NOTICE_MISMATCH));
+        }
+    }
+
+    @Nested
     @DisplayName("getDailyAttendance")
     class GetDailyAttendance {
 
@@ -237,7 +277,6 @@ class DailyAttendanceServiceTest {
         @DisplayName("正常系: 日次出欠一覧と集計を返す")
         void success() {
             // Arrange
-            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
 
             List<DailyAttendanceRecordEntity> entities = List.of(
                     buildEntity(1L, STUDENT_USER_ID_1, AttendanceStatus.ATTENDING),
@@ -249,7 +288,7 @@ class DailyAttendanceServiceTest {
 
             // Act
             DailyAttendanceListResponse response =
-                    dailyAttendanceService.getDailyAttendance(TEAM_ID, ATTENDANCE_DATE, OPERATOR_USER_ID);
+                    dailyAttendanceService.getDailyAttendance(TEAM_ID, ATTENDANCE_DATE);
 
             // Assert
             assertThat(response.getAttendanceDate()).isEqualTo(ATTENDANCE_DATE);
@@ -274,7 +313,6 @@ class DailyAttendanceServiceTest {
         @DisplayName("正常系: 部分更新で ABSENT に変更できる")
         void success() {
             // Arrange
-            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
 
             DailyAttendanceRecordEntity existingEntity = buildEntity(1L, STUDENT_USER_ID_1, AttendanceStatus.UNDECIDED);
             given(dailyAttendanceRecordRepository.findById(1L)).willReturn(Optional.of(existingEntity));
@@ -297,7 +335,6 @@ class DailyAttendanceServiceTest {
         @DisplayName("異常系: 存在しないレコードIDで DAILY_RECORD_NOT_FOUND が投げられる")
         void notFound() {
             // Arrange
-            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
             given(dailyAttendanceRecordRepository.findById(999L)).willReturn(Optional.empty());
 
             DailyAttendanceUpdateRequest request = new DailyAttendanceUpdateRequest();
@@ -318,7 +355,6 @@ class DailyAttendanceServiceTest {
         void notFound_differentTeam() {
             // Arrange
             Long differentTeamId = 999L;
-            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, differentTeamId, "TEAM");
 
             // teamId が異なるエンティティ（TEAM_ID=1 のレコードを differentTeamId=999 で検索）
             DailyAttendanceRecordEntity entityOfOtherTeam = buildEntity(1L, STUDENT_USER_ID_1, AttendanceStatus.ATTENDING);
@@ -358,7 +394,6 @@ class DailyAttendanceServiceTest {
         @DisplayName("updateDailyRecord: 取得した同一インスタンスを id 保持のまま UPDATE する（新インスタンス化しない）")
         void updateDailyRecord_既存行をUPDATE_id保持() {
             // Given
-            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
 
             DailyAttendanceRecordEntity existing = buildEntity(null, STUDENT_USER_ID_1, AttendanceStatus.UNDECIDED);
             ReflectionTestUtils.setField(existing, "id", EXISTING_ID);
@@ -385,7 +420,6 @@ class DailyAttendanceServiceTest {
         @DisplayName("submitDailyRollCall upsert: 既存行を id 保持のまま UPDATE する（toBuilder ではなく applyRollCallUpdate）")
         void submitDailyRollCall_upsert_既存行をUPDATE_id保持() {
             // Given
-            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
 
             DailyAttendanceRecordEntity existing = buildEntity(null, STUDENT_USER_ID_1, AttendanceStatus.UNDECIDED);
             ReflectionTestUtils.setField(existing, "id", EXISTING_ID);

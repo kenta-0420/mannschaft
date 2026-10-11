@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: ソースのチェックアウト
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Node.js ${{ env.NODE_VERSION }} セットアップ
         uses: actions/setup-node@v4

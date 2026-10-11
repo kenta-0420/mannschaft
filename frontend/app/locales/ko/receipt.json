@@ -1,156 +1,156 @@
 {
   "receipt": {
     "nav": {
-      "receipts": "領収書一覧",
-      "settings": "発行者設定"
+      "receipts": "영수증 목록",
+      "settings": "발행자 설정"
     },
     "list": {
-      "title": "領収書管理",
-      "settingsButton": "発行者設定",
-      "issueButton": "新規発行",
-      "empty": "領収書がありません",
+      "title": "영수증 관리",
+      "settingsButton": "발행자 설정",
+      "issueButton": "신규 발행",
+      "empty": "영수증이 없습니다",
       "amountWithUnit": "{amount}엔",
       "column": {
-        "issuedAt": "発行日",
-        "receiptNumber": "領収書番号",
-        "recipientName": "宛名",
-        "amount": "金額",
-        "status": "ステータス",
-        "action": "操作"
+        "issuedAt": "발행일",
+        "receiptNumber": "영수증 번호",
+        "recipientName": "수신인",
+        "amount": "금액",
+        "status": "상태",
+        "action": "작업"
       },
       "status": {
-        "DRAFT": "下書き",
-        "ISSUED": "発行済"
+        "DRAFT": "임시 저장",
+        "ISSUED": "발행 완료"
       },
       "action": {
-        "approve": "承認",
-        "void": "無効化",
-        "reissue": "再発行",
+        "approve": "승인",
+        "void": "무효화",
+        "reissue": "재발행",
         "pdf": "PDF",
-        "sendEmail": "メール送信"
+        "sendEmail": "이메일 전송"
       },
       "dialog": {
-        "issueTitle": "領収書を発行",
-        "recipientName": "宛名",
-        "recipientNamePlaceholder": "例: 山田 太郎",
-        "amount": "金額（円）",
-        "amountPlaceholder": "例: 10000",
-        "description": "品目・摘要",
-        "descriptionPlaceholder": "例: 月会費",
-        "notes": "メモ",
-        "notesPlaceholder": "備考など",
-        "cancel": "キャンセル",
-        "submit": "発行する",
-        "voidTitle": "領収書を無効化",
-        "voidReason": "無効化の理由",
-        "voidReasonPlaceholder": "例: 金額誤りのため",
-        "voidSubmit": "無効化する"
+        "issueTitle": "영수증 발행",
+        "recipientName": "수신인",
+        "recipientNamePlaceholder": "예: 야마다 다로",
+        "amount": "금액(엔)",
+        "amountPlaceholder": "예: 10000",
+        "description": "품목·적요",
+        "descriptionPlaceholder": "예: 월회비",
+        "notes": "메모",
+        "notesPlaceholder": "비고 등",
+        "cancel": "취소",
+        "submit": "발행하기",
+        "voidTitle": "영수증 무효화",
+        "voidReason": "무효화 사유",
+        "voidReasonPlaceholder": "예: 금액 오류",
+        "voidSubmit": "무효화하기"
       },
       "toast": {
-        "loadFailed": "領収書一覧の取得に失敗しました",
-        "approved": "承認しました",
-        "approveFailed": "承認に失敗しました",
-        "voided": "無効化しました",
-        "voidFailed": "無効化に失敗しました",
-        "reissued": "再発行しました",
-        "reissueFailed": "再発行に失敗しました",
-        "pdfDownloaded": "PDFをダウンロードしました",
-        "pdfDownloadFailed": "PDFダウンロードに失敗しました",
-        "emailSent": "メールを送信しました",
-        "emailSendFailed": "メール送信に失敗しました",
-        "issued": "領収書を発行しました",
-        "issueFailed": "領収書の発行に失敗しました"
+        "loadFailed": "영수증 목록을 가져오지 못했습니다",
+        "approved": "승인했습니다",
+        "approveFailed": "승인에 실패했습니다",
+        "voided": "무효화했습니다",
+        "voidFailed": "무효화에 실패했습니다",
+        "reissued": "재발행했습니다",
+        "reissueFailed": "재발행에 실패했습니다",
+        "pdfDownloaded": "PDF를 다운로드했습니다",
+        "pdfDownloadFailed": "PDF 다운로드에 실패했습니다",
+        "emailSent": "이메일을 전송했습니다",
+        "emailSendFailed": "이메일 전송에 실패했습니다",
+        "issued": "영수증을 발행했습니다",
+        "issueFailed": "영수증 발행에 실패했습니다"
       },
       "notice": {
-        "personalScopeUnsupported": "領収書管理は個人スコープでは利用できません。チームまたは組織スコープに切り替えてください。",
-        "scopeNotReady": "スコープを選択すると領収書一覧を表示します。"
+        "personalScopeUnsupported": "영수증 관리는 개인 스코프에서는 사용할 수 없습니다. 팀 또는 조직 스코프로 전환해 주세요.",
+        "scopeNotReady": "스코프를 선택하면 영수증 목록이 표시됩니다."
       },
       "validation": {
-        "voidReasonRequired": "無効化の理由を入力してください"
+        "voidReasonRequired": "무효화 사유를 입력해 주세요"
       }
     },
     "settings": {
-      "title": "領収書発行者設定",
-      "description": "領収書の発行に使う発行者情報・インボイス対応・番号体系・PDF体裁を設定します。",
-      "backToList": "領収書一覧へ戻る",
+      "title": "영수증 발행자 설정",
+      "description": "영수증 발행에 사용하는 발행자 정보, 인보이스 대응, 번호 체계, PDF 서식을 설정합니다.",
+      "backToList": "영수증 목록으로 돌아가기",
       "notice": {
-        "personalScopeUnsupported": "発行者設定は個人スコープでは利用できません。チームまたは組織スコープに切り替えてください。"
+        "personalScopeUnsupported": "발행자 설정은 개인 스코프에서는 사용할 수 없습니다. 팀 또는 조직 스코프로 전환해 주세요."
       },
-      "firstTimeNotice": "まだ発行者設定が登録されていません。保存すると作成されます。",
-      "notRetroactiveNotice": "ここで変更した内容は、これから発行する領収書に適用されます。すでに発行済みの領収書の内容は法令上変更できません。",
-      "notRetroactiveAfterSave": "この変更は、これから発行する領収書にのみ適用されます。すでに発行済みの領収書は法令上変更できません。過去分を訂正したい場合は、対象の領収書を無効化してから再発行してください。",
+      "firstTimeNotice": "아직 발행자 설정이 등록되어 있지 않습니다. 저장하면 생성됩니다.",
+      "notRetroactiveNotice": "여기서 변경한 내용은 앞으로 발행하는 영수증에 적용됩니다. 이미 발행된 영수증의 내용은 법령상 변경할 수 없습니다.",
+      "notRetroactiveAfterSave": "이 변경은 앞으로 발행하는 영수증에만 적용됩니다. 이미 발행된 영수증은 법령상 변경할 수 없습니다. 과거분을 정정하려면 해당 영수증을 무효화한 후 재발행해 주세요.",
       "section": {
-        "issuer": "発行者情報",
-        "invoice": "インボイス対応",
-        "numbering": "領収書番号",
-        "pdf": "PDF体裁"
+        "issuer": "발행자 정보",
+        "invoice": "인보이스 대응",
+        "numbering": "영수증 번호",
+        "pdf": "PDF 서식"
       },
       "form": {
-        "issuerName": "発行者名",
-        "postalCode": "郵便番号",
-        "address": "住所",
-        "phone": "電話番号",
-        "isQualifiedInvoicer": "適格請求書発行事業者である",
-        "invoiceRegistrationNumber": "インボイス登録番号",
-        "defaultSealVariant": "印鑑バリアント",
-        "receiptNoteTemplate": "但し書きテンプレート",
-        "receiptNumberPrefix": "領収書番号プレフィックス",
-        "fiscalYearStartMonth": "会計年度開始月",
-        "autoResetNumber": "年度切替で番号を自動リセット",
-        "customFooter": "PDFカスタムフッター",
-        "logo": "ロゴ画像",
-        "nextReceiptNumber": "次の領収書番号"
+        "issuerName": "발행자명",
+        "postalCode": "우편번호",
+        "address": "주소",
+        "phone": "전화번호",
+        "isQualifiedInvoicer": "적격청구서 발행사업자입니다",
+        "invoiceRegistrationNumber": "인보이스 등록번호",
+        "defaultSealVariant": "인감 유형",
+        "receiptNoteTemplate": "용도 문구(단서) 템플릿",
+        "receiptNumberPrefix": "영수증 번호 접두사",
+        "fiscalYearStartMonth": "회계연도 시작월",
+        "autoResetNumber": "회계연도 전환 시 번호 자동 초기화",
+        "customFooter": "PDF 사용자 지정 바닥글",
+        "logo": "로고 이미지",
+        "nextReceiptNumber": "다음 영수증 번호"
       },
       "placeholder": {
-        "issuerName": "例: 一般社団法人〇〇",
-        "postalCode": "例: 100-0001",
-        "address": "例: 東京都千代田区〇〇1-2-3",
-        "phone": "例: 03-1234-5678",
-        "invoiceRegistrationNumber": "例: T1234567890123",
-        "receiptNoteTemplate": "例: 会費として",
-        "receiptNumberPrefix": "例: RCP-",
-        "customFooter": "例: お問い合わせは事務局まで"
+        "issuerName": "예: 일반사단법인 XX",
+        "postalCode": "예: 100-0001",
+        "address": "예: 도쿄도 지요다구 XX 1-2-3",
+        "phone": "예: 03-1234-5678",
+        "invoiceRegistrationNumber": "예: T1234567890123",
+        "receiptNoteTemplate": "예: 회비로서",
+        "receiptNumberPrefix": "예: RCP-",
+        "customFooter": "예: 문의는 사무국으로 연락해 주세요"
       },
       "sealVariant": {
-        "LAST_NAME": "姓のみ",
-        "FULL_NAME": "氏名",
-        "FIRST_NAME": "名のみ"
+        "LAST_NAME": "성만",
+        "FULL_NAME": "성명",
+        "FIRST_NAME": "이름만"
       },
       "hint": {
-        "notFirstYet": "まだ発行されていません",
-        "nextReceiptNumberFormat": "{prefix}{number}（発行後に採番されます）",
-        "registrationNumberDisabled": "登録番号は適格請求書発行事業者の場合のみ入力します",
-        "registrationNumberWillBeCleared": "保存すると登録番号も削除されます",
-        "logoResize": "アップロードした画像はサーバー側で長辺200px以内に縮小され、透過部分は白背景になります",
-        "logoNotSet": "ロゴ未設定",
-        "logoPosition": "設定すると、PDFのヘッダー左上とタイトル中央に表示されます",
-        "logoDisabledUntilSaved": "先に発行者設定を保存してください",
-        "unsavedChanges": "保存していない変更があります。移動すると失われます。"
+        "notFirstYet": "아직 발행되지 않았습니다",
+        "nextReceiptNumberFormat": "{prefix}{number} (발행 후 채번됩니다)",
+        "registrationNumberDisabled": "등록번호는 적격청구서 발행사업자인 경우에만 입력합니다",
+        "registrationNumberWillBeCleared": "저장하면 등록번호도 삭제됩니다",
+        "logoResize": "업로드한 이미지는 서버에서 긴 변이 200px 이내로 축소되며, 투명한 부분은 흰색 배경이 됩니다",
+        "logoNotSet": "로고 미설정",
+        "logoPosition": "설정하면 PDF 헤더 왼쪽 위와 제목 중앙에 표시됩니다",
+        "logoDisabledUntilSaved": "먼저 발행자 설정을 저장해 주세요",
+        "unsavedChanges": "저장하지 않은 변경 사항이 있습니다. 이동하면 사라집니다."
       },
       "validation": {
-        "issuerNameRequired": "発行者名を入力してください",
-        "registrationNumberRequired": "インボイス登録番号を入力してください",
-        "registrationNumberFormat": "T + 数字13桁の形式で入力してください（例: T1234567890123）",
-        "logoTooLarge": "ロゴ画像は1MB以下にしてください",
-        "logoUnsupportedType": "ロゴ画像はPNGまたはJPEG形式にしてください"
+        "issuerNameRequired": "발행자명을 입력해 주세요",
+        "registrationNumberRequired": "인보이스 등록번호를 입력해 주세요",
+        "registrationNumberFormat": "T + 숫자 13자리 형식으로 입력해 주세요(예: T1234567890123)",
+        "logoTooLarge": "로고 이미지는 1MB 이하로 해 주세요",
+        "logoUnsupportedType": "로고 이미지는 PNG 또는 JPEG 형식이어야 합니다"
       },
       "toast": {
-        "loadFailed": "発行者設定の取得に失敗しました",
-        "saved": "発行者設定を保存しました",
-        "saveFailed": "発行者設定の保存に失敗しました",
-        "logoUploaded": "ロゴ画像をアップロードしました",
-        "logoUploadFailed": "ロゴ画像のアップロードに失敗しました",
-        "logoDeleted": "ロゴ画像を削除しました",
-        "logoDeleteFailed": "ロゴ画像の削除に失敗しました",
-        "forbidden": "この操作を行う権限がありません"
+        "loadFailed": "발행자 설정을 가져오지 못했습니다",
+        "saved": "발행자 설정을 저장했습니다",
+        "saveFailed": "발행자 설정 저장에 실패했습니다",
+        "logoUploaded": "로고 이미지를 업로드했습니다",
+        "logoUploadFailed": "로고 이미지 업로드에 실패했습니다",
+        "logoDeleted": "로고 이미지를 삭제했습니다",
+        "logoDeleteFailed": "로고 이미지 삭제에 실패했습니다",
+        "forbidden": "이 작업을 수행할 권한이 없습니다"
       },
       "button": {
-        "save": "保存する",
-        "uploadLogo": "ロゴをアップロード",
-        "deleteLogo": "ロゴを削除",
-        "deleteLogoConfirm": "ロゴ画像を削除しますか？",
-        "cancel": "キャンセル",
-        "confirmDelete": "削除する"
+        "save": "저장하기",
+        "uploadLogo": "로고 업로드",
+        "deleteLogo": "로고 삭제",
+        "deleteLogoConfirm": "로고 이미지를 삭제하시겠습니까?",
+        "cancel": "취소",
+        "confirmDelete": "삭제하기"
       }
     }
   }

@@ -14,6 +14,7 @@ const orgApi = useOrganizationApi()
 const notification = useNotification()
 const { isAdmin, loadPermissions } = useRoleAccess('organization', orgSlug)
 const { t } = useI18n()
+const { handleApiError } = useErrorHandler()
 
 // 年度別ページの二段構え: ページ一覧 → ページを選ぶとそのページのメンバー一覧、という2画面構成。
 // BE の実在エンドポイントは /api/v1/team/pages・/api/v1/team/members（teamId/organizationId は
@@ -212,13 +213,53 @@ async function saveMember() {
   }
 }
 
-async function handleDeleteMember(id: number) {
+// CMP-261002-1342 検分第2巡の根治:
+// 「ダイアログに表示している対象」（deleteTargetMember / showDeleteMemberDialog）と
+// 「実際に API 送信中の ID」（deletingMemberId）を別の状態に分離する。
+// 分離前は削除中は closable=false で閉じられなくしていたため、API 応答がタイムアウトせず
+// 返らないと（共通の API クライアントにタイムアウトが無い）画面を永久に塞いでしまっていた。
+// 分離後は「閉じられない」ではなく「ダイアログは常に閉じられるが、送信中の削除はキャンセルしない」
+// という設計にする。これにより:
+//   - ユーザーは応答待ちのまま固まったダイアログを閉じて他の操作に移れる
+//   - 削除中に別メンバーの削除ボタンを押しても、ダイアログの表示対象は切り替わるが
+//     実際の送信（deletingMemberId）は上書きされない（確定ボタンを無効化して新規送信を防ぐ）
+//   - 成功時にダイアログの状態を消すのは「表示中の対象が、今成功した送信対象と同じ場合」だけに
+//     限定するため、A の成功処理が後から開いた B の確認状態を消す事故（検分第1巡の指摘）を防ぐ
+const showDeleteMemberDialog = ref(false)
+const deleteTargetMember = ref<MemberProfile | null>(null)
+/** 現在 API 送信中のメンバー ID（null = 送信中なし）。ダイアログの表示対象とは独立。 */
+const deletingMemberId = ref<number | null>(null)
+
+function handleDeleteMember(id: number) {
+  // ダイアログを開くだけなら送信は発生しないため、他の削除が送信中でも許可する
+  // （表示だけ切り替わる。確定は executeDeleteMember 側のガードで止める）。
+  const target = members.value.find((m) => m.id === id) ?? null
+  deleteTargetMember.value = target
+  showDeleteMemberDialog.value = true
+}
+
+async function executeDeleteMember() {
+  // 送信中に別メンバーの確定を押しても新しい削除は始めない（二重送信防止）。
+  if (deletingMemberId.value != null) return
+  if (!deleteTargetMember.value) return
+  const targetId = deleteTargetMember.value.id
+  deletingMemberId.value = targetId
   try {
-    await memberProfileApi.deleteMember(id)
-    notification.success('メンバーを削除しました')
+    await memberProfileApi.deleteMember(targetId)
+    notification.success(t('memberProfile.members.deleteSuccess'))
+    // ダイアログの表示対象が、今成功した送信対象と同じ場合だけ消す。
+    // ダイアログを閉じて別メンバーを選び直していた場合はここで上書きしない。
+    if (deleteTargetMember.value?.id === targetId) {
+      showDeleteMemberDialog.value = false
+      deleteTargetMember.value = null
+    }
     await loadMembers()
-  } catch {
-    notification.error(t('memberProfile.deleteFailed'))
+  } catch (error) {
+    handleApiError(error, 'member-profiles.deleteMember')
+  } finally {
+    if (deletingMemberId.value === targetId) {
+      deletingMemberId.value = null
+    }
   }
 }
 
@@ -474,6 +515,38 @@ onMounted(loadData)
       <template #footer>
         <Button :label="t('button.cancel')" severity="secondary" @click="showDeletePageDialog = false" />
         <Button :label="t('button.delete')" severity="danger" icon="pi pi-trash" @click="executeDeletePage" />
+      </template>
+    </Dialog>
+
+    <!-- メンバー削除確認ダイアログ -->
+    <!-- ×・Escape は常に有効（削除中でも閉じられる）。送信中かどうかは確定ボタンの
+         disabled/loading でのみ表現し、ダイアログの開閉自体をブロックしない。 -->
+    <Dialog
+      v-model:visible="showDeleteMemberDialog"
+      :header="t('memberProfile.members.delete')"
+      :modal="true"
+      class="w-full max-w-sm"
+      data-testid="member-delete-confirm-dialog"
+    >
+      <p>
+        {{ t('memberProfile.members.deleteConfirm', { name: deleteTargetMember?.displayName ?? '' }) }}
+      </p>
+      <template #footer>
+        <Button
+          :label="t('button.cancel')"
+          severity="secondary"
+          data-testid="member-delete-confirm-cancel"
+          @click="showDeleteMemberDialog = false"
+        />
+        <Button
+          :label="t('button.delete')"
+          severity="danger"
+          icon="pi pi-trash"
+          data-testid="member-delete-confirm-submit"
+          :loading="deletingMemberId === deleteTargetMember?.id"
+          :disabled="deletingMemberId != null"
+          @click="executeDeleteMember"
+        />
       </template>
     </Dialog>
 

@@ -145,6 +145,49 @@ export async function mockCatchAllApis(page: Page): Promise<void> {
       }),
     })
   })
+  // CMP-261001-0630 AC-18: 教員用画面は権限判定 API の結果で出し分ける。
+  // 既存 spec は教員（全権限あり）前提のため既定で全 true を返す（個別 spec が後勝ちで上書き可）
+  await mockAttendancePermissions(page, {})
+}
+
+export interface AttendancePermissionsMock {
+  canView?: boolean
+  canRecordDaily?: boolean
+  canRecordPeriod?: boolean
+  /** 指定すると権限判定 API 自体をこの HTTP ステータスで失敗させる（403 検証用） */
+  status?: number
+}
+
+/**
+ * GET /api/v1/teams/{teamId}/attendance/permissions をモック（AC-18）。
+ * 未指定の項目は true（教員）。権限なしは全項目 false で 200 を返す BE 仕様に合わせる。
+ */
+export async function mockAttendancePermissions(
+  page: Page,
+  perms: AttendancePermissionsMock,
+): Promise<void> {
+  await page.route('**/api/v1/teams/*/attendance/permissions', async (route) => {
+    if (perms.status && perms.status >= 400) {
+      await route.fulfill({
+        status: perms.status,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'COMMON_002', message: 'forbidden' } }),
+      })
+      return
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          teamId: DEFAULT_TEAM_ID,
+          canView: perms.canView ?? true,
+          canRecordDaily: perms.canRecordDaily ?? true,
+          canRecordPeriod: perms.canRecordPeriod ?? true,
+        },
+      }),
+    })
+  })
 }
 
 // ---------------------------------------------------------------------------

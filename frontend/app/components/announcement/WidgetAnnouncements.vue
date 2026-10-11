@@ -1,15 +1,28 @@
 <script setup lang="ts">
-import type { AnnouncementScopeType } from '~/types/announcement'
+import type { AnnouncementFeedItem, AnnouncementScopeType } from '~/types/announcement'
+import { computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { useApi } from '~/composables/useApi'
+import { useErrorHandler } from '~/composables/useErrorHandler'
+import { useAnnouncementFeed } from '~/composables/useAnnouncementFeed'
+import { useAnnouncementPreview } from '~/composables/useAnnouncementPreview'
+import { useRoleAccess } from '~/composables/useRoleAccess'
 
 const props = defineProps<{
   scopeType: AnnouncementScopeType
   scopeId: string
   /** 表示件数（デフォルト 5） */
   limit?: number
+  initialItems?: AnnouncementFeedItem[]
+  scopeSlug?: string
 }>()
+const emit = defineEmits<{ refresh: []; unavailable: [id: number] }>()
 
 const { t } = useI18n()
 const router = useRouter()
+const api = useApi()
+const { handleApiError } = useErrorHandler()
 
 const {
   feed,
@@ -21,11 +34,21 @@ const {
   deleteAnnouncement,
   markAsReadBeforeOpen,
   markAllAsRead,
+  setReadLocally,
+  removeFromFeedLocally,
+  setFeedItemsLocally,
 } = useAnnouncementFeed(props.scopeType, props.scopeId)
+const preview = useAnnouncementPreview({
+  onRead: item => setReadLocally(item.id),
+  onUnavailable: item => {
+    removeFromFeedLocally(item.id)
+    emit('unavailable', item.id)
+  },
+})
 
 const { isAdmin } = useRoleAccess(
   props.scopeType === 'TEAM' ? 'team' : 'organization',
-  props.scopeId,
+  props.scopeSlug ?? props.scopeId,
 )
 
 const displayLimit = computed(() => props.limit ?? 5)
@@ -37,47 +60,73 @@ const normalItems = computed(() =>
 )
 const displayItems = computed(() => [...pinnedItems.value, ...normalItems.value])
 
-const unreadCount = computed(() => meta.value?.unreadCount ?? 0)
+const unreadCount = computed(() => props.initialItems !== undefined
+  ? feed.value.filter(item => !item.isRead).length
+  : meta.value?.unreadCount ?? 0)
 
 /** 全件ページへの遷移パス */
 const allAnnouncementsPath = computed(() => {
-  if (props.scopeType === 'TEAM') return `/teams/${props.scopeId}/announcements`
-  return `/organizations/${props.scopeId}/announcements`
+  if (props.scopeType === 'TEAM' && props.scopeSlug) return `/teams/${props.scopeSlug}/announcements`
+  return null
 })
 
+watch(() => props.initialItems, value => {
+  if (value !== undefined) setFeedItemsLocally(value.map(item => ({ ...item })))
+}, { immediate: true })
+
+function refresh(): void {
+  if (props.initialItems !== undefined) emit('refresh')
+  else void fetchFeed({ limit: displayLimit.value + 3 })
+}
+
 onMounted(() => {
-  fetchFeed({ limit: displayLimit.value + 3 })
+  if (props.initialItems === undefined) refresh()
 })
 
 /** アイテムクリック: 既読マーク → 元コンテンツへ遷移 */
-async function onItemClick(item: (typeof feed.value)[number]) {
+async function onItemClick(item: (typeof feed.value)[number], trigger: HTMLElement) {
+  if (item.contentPreviewAvailable) {
+    await preview.open(item, trigger)
+    return
+  }
+  if (!item.sourceUrl) return
   // #2495: 期限切れ・削除で既読 API が ANNOUNCE_001 を返した場合は遷移せず、
   // 一覧から取り除いてトーストで知らせる（判定は composable 側に一元化）。
   const canOpen = await markAsReadBeforeOpen(item)
-  if (!canOpen) return
+  if (!canOpen) {
+    if (!feed.value.some(entry => entry.id === item.id)) emit('unavailable', item.id)
+    return
+  }
   router.push(item.sourceUrl)
 }
 
 async function onTogglePin(id: number) {
-  await togglePin(id)
+  try { await togglePin(id) } catch (error) { handleApiError(error) }
 }
 
 async function onDelete(id: number) {
-  await deleteAnnouncement(id)
+  try { await deleteAnnouncement(id) } catch (error) { handleApiError(error) }
 }
 
 async function onMarkAllRead() {
-  await markAllAsRead()
+  try {
+    if (props.initialItems === undefined) await markAllAsRead()
+    else {
+      const scopes = new Set(feed.value.map(item => `${item.scopeType === 'TEAM' ? 'teams' : 'organizations'}/${item.scopeId}`))
+      await Promise.all([...scopes].map(scope => api(`/api/v1/${scope}/announcements/read-all`, { method: 'POST' })))
+      emit('refresh')
+    }
+  } catch (error) { handleApiError(error) }
 }
 </script>
 
 <template>
-  <DashboardWidgetCard>
+  <DashboardWidgetCard data-announcement-list>
     <!-- ヘッダー -->
     <template #header>
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <span class="font-semibold text-surface-700 dark:text-surface-200">
+          <span tabindex="-1" data-announcement-heading class="font-semibold text-surface-700 dark:text-surface-200">
             {{ t('announcement.widget_title') }}
           </span>
           <span
@@ -103,9 +152,9 @@ async function onMarkAllRead() {
             size="small"
             class="text-surface-400"
             :title="t('button.loading')"
-            @click="fetchFeed({ limit: displayLimit + 3 })"
+            @click="refresh"
           />
-          <NuxtLink :to="allAnnouncementsPath">
+          <NuxtLink v-if="allAnnouncementsPath" :to="allAnnouncementsPath">
             <Button
               :label="t('announcement.all_announcements')"
               icon="pi pi-arrow-right"
@@ -123,9 +172,7 @@ async function onMarkAllRead() {
     <PageLoading v-if="loading" />
 
     <!-- エラー -->
-    <div v-else-if="error" class="py-4 text-center text-sm text-red-500">
-      {{ error }}
-    </div>
+    <DashboardErrorState v-else-if="error" :message="error" @retry="refresh" />
 
     <!-- 空状態 -->
     <DashboardEmptyState
@@ -140,11 +187,21 @@ async function onMarkAllRead() {
         v-for="item in displayItems"
         :key="item.id"
         :item="item"
-        :show-pin-control="isAdmin"
+        :show-pin-control="isAdmin && item.scopeType === scopeType && String(item.scopeId) === scopeId"
         @click="onItemClick"
         @pin="onTogglePin"
         @delete="onDelete"
       />
     </div>
   </DashboardWidgetCard>
+  <AnnouncementDetailModal
+    :state="preview.state.value"
+    :preview="preview.preview.value"
+    :item-title="preview.item.value?.title ?? ''"
+    :error="preview.error.value"
+    :trigger="preview.trigger.value"
+    @close="preview.close"
+    @retry="preview.retry"
+    @displayed="preview.markDisplayed"
+  />
 </template>

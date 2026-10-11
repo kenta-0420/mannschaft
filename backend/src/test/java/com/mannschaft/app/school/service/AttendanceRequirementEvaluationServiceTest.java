@@ -1,6 +1,5 @@
 package com.mannschaft.app.school.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.school.dto.EvaluationResponse;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity;
@@ -24,7 +23,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -53,9 +54,6 @@ class AttendanceRequirementEvaluationServiceTest {
 
     @Mock
     private StudentAttendanceSummaryRepository summaryRepository;
-
-    @Mock
-    private AccessControlService accessControlService;
 
     // ========================================
     // evaluate
@@ -251,8 +249,6 @@ class AttendanceRequirementEvaluationServiceTest {
             ReflectionTestUtils.setField(entity, "id", 50L);
 
             given(evaluationRepository.findById(50L)).willReturn(Optional.of(entity));
-            given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
-            given(accessControlService.isMember(999L, 10L, "TEAM")).willReturn(true);
             given(evaluationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
             ResolveEvaluationRequest request = new ResolveEvaluationRequest("保護者と面談し指導完了");
@@ -294,18 +290,46 @@ class AttendanceRequirementEvaluationServiceTest {
             entity.resolve(888L, "既存の解消理由");
 
             given(evaluationRepository.findById(50L)).willReturn(Optional.of(entity));
-            given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
-            given(accessControlService.isMember(999L, 10L, "TEAM")).willReturn(true);
 
             ResolveEvaluationRequest request = new ResolveEvaluationRequest("再解消しようとする");
             assertThatThrownBy(() -> service.resolveViolation(50L, 999L, request))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining(SchoolErrorCode.EVALUATION_ALREADY_RESOLVED.getMessage());
         }
+    }
+
+    // ========================================
+    // スコープ解決（認可の前段・Facade が使う）
+    // ========================================
+
+    @Nested
+    @DisplayName("findRuleScope / findRuleScopeByEvaluation — entity 由来スコープの解決")
+    class FindRuleScope {
 
         @Test
-        @DisplayName("認可: 規程スコープ非メンバーは 404（EVALUATION_NOT_FOUND・存在秘匿）")
-        void 非メンバーはEVALUATION_NOT_FOUND() {
+        @DisplayName("規程のチームスコープを返す")
+        void ruleScope_team() {
+            given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
+
+            var scope = service.findRuleScope(1L);
+
+            assertThat(scope.teamId()).isEqualTo(10L);
+            assertThat(scope.organizationId()).isNull();
+        }
+
+        @Test
+        @DisplayName("規程が存在しない → REQUIREMENT_RULE_NOT_FOUND")
+        void ruleScope_notFound() {
+            given(ruleRepository.findById(999L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.findRuleScope(999L))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining(SchoolErrorCode.REQUIREMENT_RULE_NOT_FOUND.getMessage());
+        }
+
+        @Test
+        @DisplayName("評価 → 規程と辿ったスコープを返す")
+        void evaluationScope() {
             AttendanceRequirementEvaluationEntity entity = AttendanceRequirementEvaluationEntity.builder()
                     .requirementRuleId(1L)
                     .studentUserId(200L)
@@ -315,55 +339,81 @@ class AttendanceRequirementEvaluationServiceTest {
                     .remainingAllowedAbsences(0)
                     .evaluatedAt(LocalDateTime.now().minusDays(1))
                     .build();
-            ReflectionTestUtils.setField(entity, "id", 50L);
-
             given(evaluationRepository.findById(50L)).willReturn(Optional.of(entity));
             given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
-            given(accessControlService.isMember(777L, 10L, "TEAM")).willReturn(false);
 
-            ResolveEvaluationRequest request = new ResolveEvaluationRequest("越境で解消しようとする");
-            assertThatThrownBy(() -> service.resolveViolation(50L, 777L, request))
+            assertThat(service.findRuleScopeByEvaluation(50L).teamId()).isEqualTo(10L);
+        }
+
+        @Test
+        @DisplayName("評価が存在しない → EVALUATION_NOT_FOUND")
+        void evaluationScope_notFound() {
+            given(evaluationRepository.findById(999L)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.findRuleScopeByEvaluation(999L))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining(SchoolErrorCode.EVALUATION_NOT_FOUND.getMessage());
         }
     }
 
     // ========================================
-    // evaluate（HTTP 公開入口・認可あり）
+    // getStudentEvaluations（AC-4: Facade が解決した返却範囲で絞る）
     // ========================================
 
     @Nested
-    @DisplayName("evaluate — 公開入口の認可")
-    class EvaluateAuthorization {
+    @DisplayName("getStudentEvaluations — 返却範囲")
+    class GetStudentEvaluations {
 
-        @Test
-        @DisplayName("認可: 規程スコープ非メンバーは 404（REQUIREMENT_RULE_NOT_FOUND・存在秘匿）")
-        void 非メンバーはREQUIREMENT_RULE_NOT_FOUND() {
-            given(ruleRepository.findById(1L)).willReturn(Optional.of(buildRule(null, null, null)));
-            given(accessControlService.isMember(777L, 10L, "TEAM")).willReturn(false);
-
-            assertThatThrownBy(() -> service.evaluate(200L, 1L, 777L))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining(SchoolErrorCode.REQUIREMENT_RULE_NOT_FOUND.getMessage());
+        private AttendanceRequirementEvaluationEntity evaluation(Long ruleId) {
+            return AttendanceRequirementEvaluationEntity.builder()
+                    .requirementRuleId(ruleId)
+                    .studentUserId(200L)
+                    .summaryId(10L)
+                    .status(EvaluationStatus.OK)
+                    .currentAttendanceRate(new BigDecimal("90.00"))
+                    .remainingAllowedAbsences(3)
+                    .evaluatedAt(LocalDateTime.now())
+                    .build();
         }
-    }
 
-    // ========================================
-    // getAtRiskStudents（チームスコープ認可）
-    // ========================================
-
-    @Nested
-    @DisplayName("getAtRiskStudents — チームスコープ認可")
-    class GetAtRiskStudentsAuthorization {
+        private AttendanceRequirementRuleEntity rule(Long id, Long teamId) {
+            AttendanceRequirementRuleEntity r = AttendanceRequirementRuleEntity.builder()
+                    .teamId(teamId)
+                    .academicYear((short) 2026)
+                    .name("規程" + id)
+                    .effectiveFrom(LocalDate.of(2026, 4, 1))
+                    .build();
+            ReflectionTestUtils.setField(r, "id", id);
+            return r;
+        }
 
         @Test
-        @DisplayName("認可: checkMembership を対象チームで呼ぶ")
-        void checkMembershipを呼ぶ() {
-            given(evaluationRepository.findAtRiskByTeamId(any(), any())).willReturn(java.util.List.of());
+        @DisplayName("AC-4: 範囲が null（本人・保護者）なら全クラス分が返る")
+        void unscoped_getsAll() {
+            given(evaluationRepository.findByStudentUserIdOrderByEvaluatedAtDesc(200L))
+                    .willReturn(List.of(evaluation(1L), evaluation(2L)));
 
-            service.getAtRiskStudents(10L, null, 999L);
+            assertThat(service.getStudentEvaluations(200L, null)).hasSize(2);
+        }
 
-            verify(accessControlService).checkMembership(999L, 10L, "TEAM");
+        @Test
+        @DisplayName("AC-4: 範囲が指定されたら、そのクラスの規程の評価だけが返る")
+        void scoped_getsOnlyViewable() {
+            given(evaluationRepository.findByStudentUserIdOrderByEvaluatedAtDesc(200L))
+                    .willReturn(List.of(evaluation(1L), evaluation(2L)));
+            given(ruleRepository.findAllById(any())).willReturn(List.of(rule(1L, 10L), rule(2L, 20L)));
+
+            var result = service.getStudentEvaluations(200L, Set.of(10L));
+
+            assertThat(result).extracting(EvaluationResponse::requirementRuleId).containsExactly(1L);
+        }
+
+        @Test
+        @DisplayName("AC-4: 評価が 0 件でも範囲付きなら 200 の空配列")
+        void scoped_zeroEvaluations_emptyList() {
+            given(evaluationRepository.findByStudentUserIdOrderByEvaluatedAtDesc(200L)).willReturn(List.of());
+
+            assertThat(service.getStudentEvaluations(200L, Set.of(10L))).isEmpty();
         }
     }
 

@@ -52,4 +52,9 @@ public interface UserCalendarSyncSettingRepository extends JpaRepository<UserCal
                 @Param("scopeType") String scopeType,
                 @Param("scopeId") Long scopeId,
                 @Param("isEnabled") boolean isEnabled);
+
+    /** 強匿名化専用。対象利用者の行を論理削除済みも含めて物理削除する。 */
+    @Modifying
+    @Query(value = "DELETE FROM user_calendar_sync_settings WHERE user_id = :userId", nativeQuery = true)
+    int deleteByUserId(@Param("userId") Long userId);
 }

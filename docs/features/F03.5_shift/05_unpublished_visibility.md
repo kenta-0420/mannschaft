@@ -666,7 +666,7 @@ BE が未公開を返さなくなる以上、FE 側の絞り込みは冗長で�
 | # | 内容 | 根拠 | 所見 |
 |---|---|---|---|
 | B-1 | `ShiftMyService#getMyConfirmedSlots`（:53-121）が schedule のステータスを見ずに CONFIRMED 割当を返す。未公開シフトの日時・チーム名・シフト表名が本人に露出する | §1.2 X1 | 中。公開前に「自分のシフトが決まった」と誤認させる。本件と同じ根（ステータス無視） |
-| B-2 | ダッシュボード直近予定（`ShiftAssignmentRepository#findUpcomingByUserIdBetween`:61-71 / `DashboardController`:334,351-352）が同様にステータス非考慮 | §1.2 X2 | 中。B-1 と同一原因・別経路。**B-1 と同じ戦役で一緒に直すべき** |
+| B-2 | 当時のダッシュボード直近予定（旧 `ShiftAssignmentRepository#findUpcomingByUserIdBetween`:61-71 / `DashboardController`:334,351-352）が同様にステータス非考慮 | §1.2 X2（当時の調査記録）・CMP-260903-0652・[PR #3175](https://github.com/kenta-0420/mannschaft/pull/3175) | 本設計の射程外だった残件は PR #3175 で解消済み。現行は `ShiftMyService#getUpcomingAssignedSlots` → `ShiftSlotRepository#findUpcomingAssignedByUserIdBetween` の native SQL が `ShiftScheduleEntity.FULLY_VISIBLE_SQL` を適用し、未公開・削除済みシフト表を除外する。[Backend CI #37062334549](https://github.com/kenta-0420/mannschaft/actions/runs/37062334549) は確認時 main と同一 backend tree で、実 MySQL＋MockMvc の直近予定2件（公開表示・DRAFT 非表示）を含む契約 IT 12件と `ShiftMyServiceTest` 8件が成功・skip 0。MockMvc は `addFilters=false` で JWT 認証は証明せず、全6状態の unit 確認は `getMyConfirmedSlots` の範囲 |
 | B-3 | `ShiftRequestService#listMyRequests`（:84-87）・`ShiftSwapService#listMySwapRequests`（:91-94）に status 境界が無い | §1.2 X3/X5 | 低。自分が出したものしか返らない |
 | B-4 | `ShiftChangeRequestService#list`（:110-122）/ `#get`（:141-153）に status 境界が無い | §1.2 X4 | 低〜中。認可自体は効いている |
 | B-5 | **`ShiftSwapService#createOpenCall`（:222-235）に認可が一切無い。** `slotId` の所属チーム検証もしていないため、任意の slotId に対してオープンコールを作成できる | §1.2 X6 | **高。本件とは別系統の欠陥で、書込 API の無認可**。単独で早期起票を推奨 |

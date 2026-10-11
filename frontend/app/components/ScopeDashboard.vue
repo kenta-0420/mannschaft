@@ -361,7 +361,7 @@ function onDragEnd() {
                 class="shrink-0 text-xs text-surface-400 hover:text-primary"
                 @click.stop
               >
-                詳細 <i class="pi pi-external-link text-[10px]" />
+                {{ $t('dashboard.widget_detail_link') }} <i class="pi pi-external-link text-[10px]" />
               </NuxtLink>
             </div>
 

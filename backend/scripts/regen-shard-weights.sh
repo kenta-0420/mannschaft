@@ -124,7 +124,8 @@ work_dir, out_file, run_id, pr_number, head_branch, conclusion, created_at, work
 
 weights = collections.defaultdict(float)
 count = 0
-for f in glob.glob(os.path.join(work_dir, "s*", "TEST-*.xml")):
+# 旧 artifact の flat XML と、task ごとのディレクトリを保持する新 artifact の両方を拾う。
+for f in glob.glob(os.path.join(work_dir, "s*", "**", "TEST-*.xml"), recursive=True):
     base_name = os.path.basename(f)
     fqcn = base_name[len("TEST-"):-len(".xml")]
     top = fqcn.split("$")[0]

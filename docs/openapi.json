@@ -3290,7 +3290,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -3346,7 +3346,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -17262,6 +17262,85 @@
         }
       }
     },
+    "/api/v1/organizations/{slug}/teams/{teamSlug}/team-group": {
+      "put": {
+        "tags": [
+          "チームグループ割当"
+        ],
+        "summary": "加盟チームのグループ割当（単体）",
+        "operationId": "assignOne",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignTeamGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "割当成功（更新後の加盟）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "組織 ADMIN ではない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ORG_064: グループなし（他組織・削除済みも同じ）/ TEAM_070: その組織の ACTIVE 加盟ではないチーム",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ORG_067: 機能無効",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{slug}/team-groups/order": {
       "put": {
         "tags": [
@@ -17316,6 +17395,97 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/OrgTeamGroupListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/team-group-assignments": {
+      "put": {
+        "tags": [
+          "チームグループ割当"
+        ],
+        "summary": "加盟チームのグループ割当（一括）",
+        "operationId": "assignBulk",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkAssignTeamGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "割当成功（updatedCount）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkAssignTeamGroupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ORG_069: その組織の ACTIVE 加盟でないチームを含む（何も更新しない）/ teamSlugs が空・欠落・501 件以上",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkAssignTeamGroupResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "組織 ADMIN ではない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkAssignTeamGroupResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ORG_064: グループなし（他組織・削除済みも同じ）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkAssignTeamGroupResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ORG_067: 機能無効",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkAssignTeamGroupResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "一括割当は 20 件/分/ユーザー",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkAssignTeamGroupResponse"
                 }
               }
             }
@@ -20596,8 +20766,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -20605,8 +20774,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -20644,8 +20812,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -20653,8 +20820,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -20702,8 +20868,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -20711,8 +20876,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -25783,7 +25947,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -25823,7 +25987,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -27056,7 +27220,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
+                  "$ref": "#/components/schemas/ApiResponseActivityDetailResponse"
                 }
               }
             }
@@ -30510,7 +30674,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseThreadResponse"
+                  "$ref": "#/components/schemas/PagedResponseBulletinThreadResponse"
                 }
               }
             }
@@ -30557,7 +30721,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -30824,7 +30988,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -30872,7 +31036,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -30929,7 +31093,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -36558,6 +36722,157 @@
         }
       }
     },
+    "/api/v1/teams/{teamSlug}/org-invites/{membershipId}/reject": {
+      "post": {
+        "tags": [
+          "チームが受け取った加盟招待"
+        ],
+        "summary": "招待の辞退（チームの加盟操作者。block\u003dtrue でこの組織からの招待を止める）",
+        "operationId": "decline",
+        "parameters": [
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeclineOrgInviteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "辞退成功（記録された制限を返す）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgRestrictionSummaryResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "加盟操作権限なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgRestrictionSummaryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "TEAM_070（存在しない ID・他チームの ID・処理済みで消えた行は同じ応答）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgRestrictionSummaryResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "TEAM_071（既に ACTIVE・申請の行など、辞退の前提と違う状態）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgRestrictionSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamSlug}/org-invites/{membershipId}/accept": {
+      "post": {
+        "tags": [
+          "チームが受け取った加盟招待"
+        ],
+        "summary": "招待の承諾（チームの加盟操作者）",
+        "operationId": "accept_1",
+        "parameters": [
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "承諾成功（加盟が ACTIVE になる）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "加盟操作権限なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "TEAM_070（存在しない ID・他チームの ID・処理済みで消えた行は同じ応答）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "TEAM_071（既に ACTIVE・申請の行など、承諾の前提と違う状態）/ アーカイブ済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamSlug}/org-applications": {
       "get": {
         "tags": [
@@ -36953,6 +37268,56 @@
         "responses": {
           "204": {
             "description": "キャンセル成功"
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/activity-sync-preview": {
+      "post": {
+        "tags": [
+          "チームスケジュール管理"
+        ],
+        "summary": "予定編集時の活動記録同期確認",
+        "operationId": "activitySyncPreview",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivitySyncPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseActivitySyncPreviewResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -45366,8 +45731,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -45481,8 +45845,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -45523,8 +45886,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -45532,8 +45894,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -45647,8 +46008,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -45656,8 +46016,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -50757,7 +51116,9 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "maximum": 15,
+              "minimum": 1
             }
           }
         ],
@@ -61085,7 +61446,7 @@
           "販促プロビジョニング招待（承諾者側）"
         ],
         "summary": "招待トークンを承諾する（ADMIN役割+membership付与→スコープACTIVE化）",
-        "operationId": "accept_1",
+        "operationId": "accept_2",
         "requestBody": {
           "content": {
             "application/json": {
@@ -61837,6 +62198,156 @@
         }
       }
     },
+    "/api/v1/organizations/{slug}/team-invites": {
+      "get": {
+        "tags": [
+          "組織からの加盟招待"
+        ],
+        "summary": "送信済み招待一覧（組織 ADMIN）",
+        "operationId": "listSentInvites",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功（招待日時の降順）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "組織 ADMIN ではない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "組織からの加盟招待"
+        ],
+        "summary": "チームを加盟に招待（組織 ADMIN）",
+        "operationId": "invite",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteTeamToOrganizationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "招待成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "TEAM_072（グループが選択できない）/ 入力不備",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "組織 ADMIN ではない / TEAM_068（現在招待できない）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "組織・チームが見つからない（見えないチームは存在しない slug と同じ応答）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "TEAM_065（加盟済み）/ TEAM_066（処理中の申請・招待がある）/ アーカイブ済み",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "招待は30件/時/ユーザー",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{slug}/team-groups": {
       "get": {
         "tags": [
@@ -61950,185 +62461,6 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseOrgTeamGroupResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/organizations/{slug}/team-applications/{membershipId}/reject": {
-      "post": {
-        "tags": [
-          "組織の加盟申請（受信）"
-        ],
-        "summary": "加盟申請の拒否（組織 ADMIN。30日の冷却または無期限ブロック）",
-        "operationId": "reject_2",
-        "parameters": [
-          {
-            "name": "slug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "membershipId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RejectTeamApplicationRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "拒否成功（記録した制限）",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseRejectTeamApplicationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "理由が500文字を超える",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseRejectTeamApplicationResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "組織 ADMIN ではない",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseRejectTeamApplicationResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "ORG_001: 組織が見つからない / TEAM_070: 申請が見つからない（他組織の ID・処理済みも同じ）",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseRejectTeamApplicationResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "TEAM_071（既に処理済み）",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseRejectTeamApplicationResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/organizations/{slug}/team-applications/{membershipId}/approve": {
-      "post": {
-        "tags": [
-          "組織の加盟申請（受信）"
-        ],
-        "summary": "加盟申請の承認（組織 ADMIN。グループを確定する）",
-        "operationId": "approve_4",
-        "parameters": [
-          {
-            "name": "slug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "membershipId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApproveTeamApplicationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "承認成功（ACTIVE の加盟）",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "overrideGroup が無い / TEAM_072（指定したグループが選択できない）",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "組織 ADMIN ではない",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "ORG_001: 組織が見つからない / TEAM_070: 申請が見つからない（他組織の ID・処理済みも同じ）",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "TEAM_071（既に処理済み）/ 組織・チームがアーカイブ済み",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseTeamOrgAffiliationResponse"
                 }
               }
             }
@@ -65906,6 +66238,56 @@
         }
       }
     },
+    "/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/activity-sync-preview": {
+      "post": {
+        "tags": [
+          "組織スケジュール管理"
+        ],
+        "summary": "予定編集時の活動記録同期確認",
+        "operationId": "activitySyncPreview_1",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivitySyncPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseActivitySyncPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgPublicId}/schedule-keeps": {
       "get": {
         "tags": [
@@ -67983,7 +68365,7 @@
         ],
         "summary": "受け入れ承認・配属",
         "description": "受け入れ側 org ADMIN のみ。target_division_id セット・PLACED・participant 作成（REGISTERED）",
-        "operationId": "approve_5",
+        "operationId": "approve_4",
         "parameters": [
           {
             "name": "orgId",
@@ -68915,8 +69297,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -68924,8 +69305,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -68954,8 +69334,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -68963,8 +69342,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -69253,7 +69631,7 @@
           "封緘解除申請（F09.15）"
         ],
         "summary": "封緘解除申請の一次承認（申請者本人以外の MANAGE_SUCCESSION_UNSEAL または ADMIN）",
-        "operationId": "approve_6",
+        "operationId": "approve_5",
         "parameters": [
           {
             "name": "orgId",
@@ -70436,6 +70814,26 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
           }
         ],
         "responses": {
@@ -70444,7 +70842,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListProxyInputConsentResponse"
+                  "$ref": "#/components/schemas/PagedResponseProxyInputConsentResponse"
                 }
               }
             }
@@ -70961,7 +71359,7 @@
           "プロモーション管理（組織）"
         ],
         "summary": "承認",
-        "operationId": "approve_7",
+        "operationId": "approve_6",
         "parameters": [
           {
             "name": "orgId",
@@ -72109,7 +72507,7 @@
         ],
         "summary": "受け入れ拒否",
         "description": "受け入れ側 org ADMIN のみ → DECLINED",
-        "operationId": "decline",
+        "operationId": "decline_1",
         "parameters": [
           {
             "name": "orgId",
@@ -74457,6 +74855,49 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBroadcastResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/broadcast/audience-preview": {
+      "post": {
+        "tags": [
+          "告知ウィザード"
+        ],
+        "summary": "組織告知の宛先プレビュー",
+        "description": "F01.2.1 §10.9。宛先指定（チーム・グループ個別・範囲・未分類）を解決し、チーム数・直属メンバー数・先頭50件のチーム・展開後のグループ・pushEnabled を返す。組織の非メンバーは 403 COMMON_002。",
+        "operationId": "previewOrgAudience",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AudiencePreviewRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAudiencePreviewResponseDto"
                 }
               }
             }
@@ -82225,7 +82666,7 @@
           "回覧押印"
         ],
         "summary": "拒否",
-        "operationId": "reject_3",
+        "operationId": "reject_2",
         "parameters": [
           {
             "name": "documentId",
@@ -83794,7 +84235,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseThreadResponse"
+                  "$ref": "#/components/schemas/PagedResponseBulletinThreadResponse"
                 }
               }
             }
@@ -83843,7 +84284,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -84001,7 +84442,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -84290,7 +84731,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseAttachmentResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinAttachmentResponse"
                 }
               }
             }
@@ -86720,7 +87161,7 @@
           "F17.1 村機能 - 村作成申請"
         ],
         "summary": "運営: 村作成申請を拒否",
-        "operationId": "reject_4",
+        "operationId": "reject_3",
         "parameters": [
           {
             "name": "id",
@@ -86762,7 +87203,7 @@
           "F17.1 村機能 - 村作成申請"
         ],
         "summary": "運営: 村作成申請を承認",
-        "operationId": "approve_8",
+        "operationId": "approve_7",
         "parameters": [
           {
             "name": "id",
@@ -88397,7 +88838,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListActivityRecordResponse"
+                  "$ref": "#/components/schemas/PagedResponseActivityRecordResponse"
                 }
               }
             }
@@ -88471,6 +88912,15 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityVersionRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "公開成功",
@@ -88723,6 +89173,56 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseActivityRecordResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/activities/draft-from-schedule": {
+      "post": {
+        "tags": [
+          "活動記録"
+        ],
+        "summary": "予定から活動記録の下書きを作成",
+        "operationId": "draftFromSchedule",
+        "parameters": [
+          {
+            "name": "scope_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDraftFromScheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseActivityDetailResponse"
                 }
               }
             }
@@ -89762,7 +90262,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -94423,7 +94923,7 @@
           "チームサブリース"
         ],
         "summary": "チームサブリース承認",
-        "operationId": "approve_9",
+        "operationId": "approve_8",
         "parameters": [
           {
             "name": "teamId",
@@ -94617,7 +95117,7 @@
           "チーム区画申請"
         ],
         "summary": "チーム申請拒否",
-        "operationId": "reject_5",
+        "operationId": "reject_4",
         "parameters": [
           {
             "name": "teamId",
@@ -94668,7 +95168,7 @@
           "チーム区画申請"
         ],
         "summary": "チーム申請承認",
-        "operationId": "approve_10",
+        "operationId": "approve_9",
         "parameters": [
           {
             "name": "teamId",
@@ -94716,8 +95216,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -94725,8 +95224,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -94776,8 +95274,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -94827,8 +95324,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -94878,8 +95374,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -94887,8 +95382,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -94938,8 +95432,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -94947,8 +95440,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -94998,8 +95490,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95049,8 +95540,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95058,8 +95548,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95097,8 +95586,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95106,8 +95594,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95138,8 +95625,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95147,8 +95633,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95198,8 +95683,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95237,8 +95721,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -95269,8 +95752,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -99367,7 +99849,7 @@
         "tags": [
           "system-admin-ad-creative-controller"
         ],
-        "operationId": "reject_6",
+        "operationId": "reject_5",
         "parameters": [
           {
             "name": "adId",
@@ -99398,7 +99880,7 @@
         "tags": [
           "system-admin-ad-creative-controller"
         ],
-        "operationId": "approve_11",
+        "operationId": "approve_10",
         "parameters": [
           {
             "name": "adId",
@@ -99462,7 +99944,7 @@
         "tags": [
           "システム管理 - 運用型キャンペーン審査"
         ],
-        "operationId": "reject_7",
+        "operationId": "reject_6",
         "parameters": [
           {
             "name": "id",
@@ -99503,7 +99985,7 @@
         "tags": [
           "システム管理 - 運用型キャンペーン審査"
         ],
-        "operationId": "approve_12",
+        "operationId": "approve_11",
         "parameters": [
           {
             "name": "id",
@@ -100343,7 +100825,7 @@
         ],
         "summary": "代理拒否",
         "description": "F03.10 §4.1: 代理人が代理を拒否する",
-        "operationId": "reject_8",
+        "operationId": "reject_7",
         "parameters": [
           {
             "name": "delegationId",
@@ -100376,7 +100858,7 @@
         ],
         "summary": "代理承認",
         "description": "F03.10 §4.1: 代理人が代理を承認する",
-        "operationId": "accept_2",
+        "operationId": "accept_3",
         "parameters": [
           {
             "name": "delegationId",
@@ -102404,7 +102886,7 @@
           "組織サブリース"
         ],
         "summary": "組織サブリース承認",
-        "operationId": "approve_13",
+        "operationId": "approve_12",
         "parameters": [
           {
             "name": "organizationId",
@@ -102598,7 +103080,7 @@
           "組織区画申請"
         ],
         "summary": "組織申請拒否",
-        "operationId": "reject_9",
+        "operationId": "reject_8",
         "parameters": [
           {
             "name": "organizationId",
@@ -102649,7 +103131,7 @@
           "組織区画申請"
         ],
         "summary": "組織申請承認",
-        "operationId": "approve_14",
+        "operationId": "approve_13",
         "parameters": [
           {
             "name": "organizationId",
@@ -107272,7 +107754,7 @@
         ],
         "summary": "代理拒否",
         "description": "F03.10 §4.2: 代理人が代理を拒否する",
-        "operationId": "reject_10",
+        "operationId": "reject_9",
         "parameters": [
           {
             "name": "delegationId",
@@ -107305,7 +107787,7 @@
         ],
         "summary": "代理承認",
         "description": "F03.10 §4.2: 代理人が代理を承認する",
-        "operationId": "accept_3",
+        "operationId": "accept_4",
         "parameters": [
           {
             "name": "delegationId",
@@ -108322,7 +108804,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -108364,7 +108846,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -108406,7 +108888,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -111571,7 +112053,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseThreadResponse"
+                  "$ref": "#/components/schemas/PagedResponseBulletinThreadResponse"
                 }
               }
             }
@@ -111638,7 +112120,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseThreadResponse"
+                  "$ref": "#/components/schemas/PagedResponseBulletinThreadResponse"
                 }
               }
             }
@@ -114537,6 +115019,130 @@
         }
       }
     },
+    "/api/v1/teams/{teamSlug}/org-invites": {
+      "get": {
+        "tags": [
+          "チームが受け取った加盟招待"
+        ],
+        "summary": "受信した招待の一覧（チームの加盟操作者）",
+        "operationId": "listReceivedInvites",
+        "parameters": [
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功（招待日時の降順）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "加盟操作権限なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamSlug}/org-affiliation-restrictions": {
+      "get": {
+        "tags": [
+          "チームの加盟招待の制限"
+        ],
+        "summary": "チームが止めている招待の一覧（チームの加盟操作者）",
+        "operationId": "list_81",
+        "parameters": [
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功（記録日時の降順）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationRestrictionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "加盟操作権限なし",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationRestrictionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/attendances": {
       "get": {
         "tags": [
@@ -114611,6 +115217,46 @@
                 "schema": {
                   "type": "string",
                   "format": "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/activities": {
+      "get": {
+        "tags": [
+          "チームスケジュール管理"
+        ],
+        "summary": "予定に関連する閲覧可能な活動記録",
+        "operationId": "linkedActivities",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListActivityRecordResponse"
                 }
               }
             }
@@ -117132,7 +117778,7 @@
           "協会請求（チーム視点）"
         ],
         "summary": "受信した協会請求の一覧",
-        "operationId": "list_81",
+        "operationId": "list_82",
         "parameters": [
           {
             "name": "teamId",
@@ -117247,7 +117893,7 @@
           "立替/精算（チーム視点）"
         ],
         "summary": "立替/精算記録の一覧",
-        "operationId": "list_82",
+        "operationId": "list_83",
         "parameters": [
           {
             "name": "teamId",
@@ -117639,7 +118285,7 @@
         "tags": [
           "team-onboarding-progress-controller"
         ],
-        "operationId": "list_83",
+        "operationId": "list_84",
         "parameters": [
           {
             "name": "teamId",
@@ -118471,8 +119117,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -118512,8 +119157,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -118521,8 +119165,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -118562,8 +119205,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -118603,8 +119245,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -118612,8 +119253,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -120955,7 +121595,7 @@
         "tags": [
           "team-budget-transaction-controller"
         ],
-        "operationId": "list_84",
+        "operationId": "list_85",
         "parameters": [
           {
             "name": "teamId",
@@ -121392,6 +122032,39 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/attendance/permissions": {
+      "get": {
+        "tags": [
+          "学校出欠管理"
+        ],
+        "summary": "学校出欠の権限判定結果取得",
+        "description": "自分が当該クラスの出欠を閲覧・日次登録・時限登録できるかを返す。権限なしでも 200 で全項目 false。",
+        "operationId": "getPermissions",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttendancePermissionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/attendance/periods": {
       "get": {
         "tags": [
@@ -121424,7 +122097,9 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "maximum": 15,
+              "minimum": 1
             }
           }
         ],
@@ -121465,7 +122140,9 @@
             "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32"
+              "format": "int32",
+              "maximum": 15,
+              "minimum": 1
             }
           },
           {
@@ -122871,6 +123548,47 @@
         }
       }
     },
+    "/api/v1/teams/{scopeId}/announcements/{feedId}/preview": {
+      "get": {
+        "tags": [
+          "お知らせ本文プレビュー"
+        ],
+        "summary": "チームお知らせ本文プレビュー",
+        "operationId": "teamPreview",
+        "parameters": [
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "feedId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAnnouncementPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{id}/payment-summary": {
       "get": {
         "tags": [
@@ -123544,7 +124262,7 @@
           "販促プロビジョニング（SYSTEM_ADMIN）"
         ],
         "summary": "プロビジョニング招待の一覧を取得する",
-        "operationId": "list_85",
+        "operationId": "list_86",
         "responses": {
           "200": {
             "description": "OK",
@@ -123568,7 +124286,7 @@
           "プロモーション課金（SYSTEM_ADMIN）"
         ],
         "summary": "課金状況一覧",
-        "operationId": "list_86",
+        "operationId": "list_87",
         "parameters": [
           {
             "name": "billingStatus",
@@ -124042,7 +124760,7 @@
           "システム管理 - エラーレポート"
         ],
         "summary": "エラーレポート一覧取得",
-        "operationId": "list_87",
+        "operationId": "list_88",
         "parameters": [
           {
             "name": "status",
@@ -125775,7 +126493,7 @@
         ],
         "summary": "通報一覧",
         "description": "status / reasonCode で任意に絞り込んだ通報を created_at DESC で取得する。campaignId（メッセージ型）/ operationalCampaignId（運用型）を併記する。",
-        "operationId": "list_88",
+        "operationId": "list_89",
         "parameters": [
           {
             "name": "status",
@@ -125944,7 +126662,7 @@
         "tags": [
           "system-admin-ad-creative-controller"
         ],
-        "operationId": "list_89",
+        "operationId": "list_90",
         "parameters": [
           {
             "name": "status",
@@ -126024,7 +126742,7 @@
         ],
         "summary": "審査キュー一覧",
         "description": "運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。",
-        "operationId": "list_90",
+        "operationId": "list_91",
         "parameters": [
           {
             "name": "status",
@@ -126232,7 +126950,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -126242,7 +126960,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseThreadResponse"
+                  "$ref": "#/components/schemas/ApiResponseBulletinThreadResponse"
                 }
               }
             }
@@ -127196,7 +127914,7 @@
           "シフト予算 失敗イベント (F08.7)"
         ],
         "summary": "失敗イベント一覧を取得 (status で絞り込み可、新しい順)",
-        "operationId": "list_91",
+        "operationId": "list_92",
         "parameters": [
           {
             "name": "X-Organization-Id",
@@ -128443,7 +129161,7 @@
         ],
         "summary": "キャンセル料記録の一覧",
         "description": "受取先側の管理者・受取先本人・運営管理者が、自分が受け取るべきキャンセル料の記録を一覧する（免除対象を選ぶための一覧）。ページングはカーソル方式で、続きは meta.nextCursor を cursor に渡して取得する。",
-        "operationId": "list_92",
+        "operationId": "list_93",
         "parameters": [
           {
             "name": "status",
@@ -130509,12 +131227,41 @@
         "operationId": "getProxyInputRecords",
         "parameters": [
           {
+            "name": "organizationId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
             "name": "subjectUserId",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
             }
           }
         ],
@@ -130524,7 +131271,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListProxyInputConsentResponse"
+                  "$ref": "#/components/schemas/PagedResponseProxyInputRecordResponse"
                 }
               }
             }
@@ -131091,58 +131838,8 @@
           "組織管理"
         ],
         "summary": "組織所属チーム一覧",
+        "description": "各チームに所属チームグループ（teamGroup）を付ける。グループ機能が off・未分類・削除済みグループ・閲覧者が組織の MEMBER 以上でない場合は null。teamGroupId（UUID）または unassigned\u003dtrue で絞り込める（併用は 400。絞り込みは組織の MEMBER 以上と SYSTEM_ADMIN のみ）。他組織・削除済み・不在の teamGroupId は空の一覧を返す。",
         "operationId": "getTeams_1",
-        "parameters": [
-          {
-            "name": "slug",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "取得成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "可視性レベル未満（非メンバー等）でアクセス不可",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "組織が存在しない / 論理削除済み",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/organizations/{slug}/team-applications": {
-      "get": {
-        "tags": [
-          "組織の加盟申請（受信）"
-        ],
-        "summary": "受信した加盟申請の一覧（組織 ADMIN）",
-        "operationId": "listApplications_2",
         "parameters": [
           {
             "name": "slug",
@@ -131162,53 +131859,52 @@
             }
           },
           {
-            "name": "page",
+            "name": "unassigned",
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 0
-            }
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 20
+              "type": "boolean",
+              "default": false
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "取得成功（申請日時の降順）",
+            "description": "取得成功",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationResponse"
+                  "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "teamGroupId と unassigned の併用 / teamGroupId が UUID でない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
                 }
               }
             }
           },
           "403": {
-            "description": "組織 ADMIN ではない",
+            "description": "可視性レベル未満（非メンバー等）でアクセス不可 / 非メンバーによるグループ絞り込み",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationResponse"
+                  "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
                 }
               }
             }
           },
           "404": {
-            "description": "ORG_001: 組織が見つからない",
+            "description": "組織が存在しない / 論理削除済み",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationResponse"
+                  "$ref": "#/components/schemas/ApiResponseListOrgTeamSummaryResponse"
                 }
               }
             }
@@ -131260,6 +131956,67 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseTeamApplicationFormResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/team-affiliation-restrictions": {
+      "get": {
+        "tags": [
+          "組織の加盟申請の制限"
+        ],
+        "summary": "組織が止めている申請の一覧（組織 ADMIN）",
+        "operationId": "list_94",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功（記録日時の降順）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationRestrictionResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "組織 ADMIN ではない",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseTeamOrgAffiliationRestrictionResponse"
                 }
               }
             }
@@ -131813,6 +132570,47 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponsePageViewAnalyticsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{scopeId}/announcements/{feedId}/preview": {
+      "get": {
+        "tags": [
+          "お知らせ本文プレビュー"
+        ],
+        "summary": "組織お知らせ本文プレビュー",
+        "operationId": "organizationPreview",
+        "parameters": [
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "feedId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAnnouncementPreviewResponse"
                 }
               }
             }
@@ -132861,6 +133659,46 @@
         }
       }
     },
+    "/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/activities": {
+      "get": {
+        "tags": [
+          "組織スケジュール管理"
+        ],
+        "summary": "予定に関連する閲覧可能な活動記録",
+        "operationId": "linkedActivities_1",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListActivityRecordResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgPublicId}/schedule-keeps/by-schedule/{scheduleId}": {
       "get": {
         "tags": [
@@ -132914,8 +133752,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -132932,8 +133769,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -133014,8 +133850,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -133032,8 +133867,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -133134,8 +133968,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -133225,8 +134058,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -134334,8 +135166,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -134343,8 +135174,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -135449,7 +136279,7 @@
         "tags": [
           "org-onboarding-progress-controller"
         ],
-        "operationId": "list_93",
+        "operationId": "list_95",
         "parameters": [
           {
             "name": "orgId",
@@ -136532,7 +137362,7 @@
         "tags": [
           "org-budget-transaction-controller"
         ],
-        "operationId": "list_94",
+        "operationId": "list_96",
         "parameters": [
           {
             "name": "orgId",
@@ -137013,7 +137843,7 @@
         "tags": [
           "onboarding-me-controller"
         ],
-        "operationId": "list_95",
+        "operationId": "list_97",
         "parameters": [
           {
             "name": "status",
@@ -137798,7 +138628,7 @@
           "村投稿主体 (F17.1)"
         ],
         "summary": "村でなれる投稿主体一覧を取得する（村人のみ）",
-        "operationId": "list_96",
+        "operationId": "list_98",
         "parameters": [
           {
             "name": "villageId",
@@ -137905,7 +138735,7 @@
           "個人メモ-添付"
         ],
         "summary": "メモ添付一覧",
-        "operationId": "list_97",
+        "operationId": "list_99",
         "parameters": [
           {
             "name": "noteId",
@@ -140014,7 +140844,7 @@
         ],
         "summary": "請求書一覧",
         "description": "指定スコープの請求書を period_end 降順で返す。cursor は不透明値。",
-        "operationId": "list_98",
+        "operationId": "list_100",
         "parameters": [
           {
             "name": "scopeKind",
@@ -141230,7 +142060,7 @@
           "家族個人時間割閲覧"
         ],
         "summary": "家族メンバーの個人時間割一覧（status\u003dACTIVE のみ、共有設定済みのみ）",
-        "operationId": "list_99",
+        "operationId": "list_101",
         "parameters": [
           {
             "name": "teamId",
@@ -143895,7 +144725,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListAttachmentResponse"
+                  "$ref": "#/components/schemas/ApiResponseListBulletinAttachmentResponse"
                 }
               }
             }
@@ -143927,7 +144757,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListAttachmentResponse"
+                  "$ref": "#/components/schemas/ApiResponseListBulletinAttachmentResponse"
                 }
               }
             }
@@ -144258,8 +145088,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -144267,8 +145096,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -144276,8 +145104,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           },
           {
@@ -147650,6 +148477,46 @@
         }
       }
     },
+    "/api/v1/teams/{teamSlug}/org-affiliation-restrictions/{restrictionId}": {
+      "delete": {
+        "tags": [
+          "チームの加盟招待の制限"
+        ],
+        "summary": "チームが止めている招待の解除（チームの加盟操作者）",
+        "operationId": "lift",
+        "parameters": [
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "restrictionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "解除成功"
+          },
+          "403": {
+            "description": "加盟操作権限なし"
+          },
+          "404": {
+            "description": "COMMON_005（制限が無い。他チームの ID・解除できない種類の行も同じ応答）"
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamPublicId}/schedules/{scheduleId}/scheduled-tasks/{taskId}": {
       "delete": {
         "tags": [
@@ -149005,6 +149872,86 @@
         }
       }
     },
+    "/api/v1/organizations/{slug}/team-invites/{teamSlug}": {
+      "delete": {
+        "tags": [
+          "組織からの加盟招待"
+        ],
+        "summary": "招待の取消（組織 ADMIN）",
+        "operationId": "cancel_18",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "取消成功"
+          },
+          "403": {
+            "description": "組織 ADMIN ではない"
+          },
+          "404": {
+            "description": "TEAM_070（招待が無い。存在しないチームの slug も同じ応答）"
+          },
+          "409": {
+            "description": "TEAM_071（既に ACTIVE・申請の行など、取消の前提と違う状態）"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/team-affiliation-restrictions/{restrictionId}": {
+      "delete": {
+        "tags": [
+          "組織の加盟申請の制限"
+        ],
+        "summary": "組織が止めている申請の解除（組織 ADMIN）",
+        "operationId": "lift_1",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "restrictionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "解除成功"
+          },
+          "403": {
+            "description": "組織 ADMIN ではない"
+          },
+          "404": {
+            "description": "COMMON_005（制限が無い。他組織の ID・解除できない種類の行も同じ応答）"
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{slug}/members/{userId}": {
       "delete": {
         "tags": [
@@ -149168,7 +150115,7 @@
           "組織区画申請"
         ],
         "summary": "組織申請取消",
-        "operationId": "cancel_18",
+        "operationId": "cancel_19",
         "parameters": [
           {
             "name": "organizationId",
@@ -149685,7 +150632,7 @@
           "継続課金"
         ],
         "summary": "継続課金 期末解約（F08.9 P5）",
-        "operationId": "cancel_19",
+        "operationId": "cancel_20",
         "parameters": [
           {
             "name": "id",
@@ -152018,11 +152965,11 @@
           }
         }
       },
-      "ApiResponseThreadResponse": {
+      "ApiResponseBulletinThreadResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ThreadResponse"
+            "$ref": "#/components/schemas/BulletinThreadResponse"
           }
         }
       },
@@ -152041,7 +152988,7 @@
           }
         }
       },
-      "ThreadResponse": {
+      "BulletinThreadResponse": {
         "type": "object",
         "properties": {
           "archiveFolderId": {
@@ -160517,6 +161464,9 @@
       "AnnouncementRangeTemplateRequest": {
         "type": "object",
         "properties": {
+          "includeUnassigned": {
+            "type": "boolean"
+          },
           "isDefault": {
             "type": "boolean"
           },
@@ -160524,6 +161474,22 @@
             "type": "string"
           },
           "preferredChannel": {
+            "type": "string"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "targetGroupIdsJson": {
+            "type": "string"
+          },
+          "targetGroupRange": {
+            "$ref": "#/components/schemas/TargetGroupRange"
+          },
+          "targetGroupRangeJson": {
             "type": "string"
           },
           "targetRole": {
@@ -160538,6 +161504,19 @@
           },
           "targetTeamIdsJson": {
             "type": "string"
+          }
+        }
+      },
+      "TargetGroupRange": {
+        "type": "object",
+        "properties": {
+          "fromGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toGroupId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -160564,6 +161543,9 @@
             "type": "integer",
             "format": "int64"
           },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
           "isDefault": {
             "type": "boolean"
           },
@@ -160579,6 +161561,16 @@
           },
           "scopeType": {
             "type": "string"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "targetGroupRange": {
+            "$ref": "#/components/schemas/TargetGroupRange"
           },
           "targetRole": {
             "type": "string"
@@ -164071,7 +165063,7 @@
             "maximum": 30,
             "minimum": 0
           },
-          "enabled": {
+          "isEnabled": {
             "type": "boolean"
           },
           "penaltyDurationDays": {
@@ -164118,12 +165110,12 @@
             "type": "integer",
             "format": "int32"
           },
-          "enabled": {
-            "type": "boolean"
-          },
           "id": {
             "type": "integer",
             "format": "int64"
+          },
+          "isEnabled": {
+            "type": "boolean"
           },
           "penaltyDurationDays": {
             "type": "integer",
@@ -165238,6 +166230,103 @@
           }
         }
       },
+      "AssignTeamGroupRequest": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "AffiliationGroupRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "AffiliationPartyRef": {
+        "type": "object",
+        "properties": {
+          "iconUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      },
+      "AffiliationRequesterRef": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseTeamOrgAffiliationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TeamOrgAffiliationResponse"
+          }
+        }
+      },
+      "TeamOrgAffiliationResponse": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "message": {
+            "type": "string"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/AffiliationPartyRef"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestedBy": {
+            "$ref": "#/components/schemas/AffiliationRequesterRef"
+          },
+          "respondedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "team": {
+            "$ref": "#/components/schemas/AffiliationPartyRef"
+          },
+          "teamGroup": {
+            "$ref": "#/components/schemas/AffiliationGroupRef"
+          }
+        }
+      },
       "ReorderOrgTeamGroupsRequest": {
         "type": "object",
         "properties": {
@@ -165300,6 +166389,38 @@
           "teamCount": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "BulkAssignTeamGroupRequest": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teamSlugs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ApiResponseBulkAssignTeamGroupResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BulkAssignTeamGroupResponse"
+          }
+        }
+      },
+      "BulkAssignTeamGroupResponse": {
+        "type": "object",
+        "properties": {
+          "updatedCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -165441,6 +166562,15 @@
           }
         }
       },
+      "OrgSocialDto": {
+        "type": "object",
+        "properties": {
+          "supporterCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "OrgTimestampsDto": {
         "type": "object",
         "properties": {
@@ -165492,6 +166622,9 @@
           },
           "slug": {
             "type": "string"
+          },
+          "social": {
+            "$ref": "#/components/schemas/OrgSocialDto"
           },
           "teamApplication": {
             "$ref": "#/components/schemas/TeamApplicationDto"
@@ -170160,6 +171293,10 @@
             "type": "string",
             "format": "date"
           },
+          "activityEndDate": {
+            "type": "string",
+            "format": "date"
+          },
           "activityTimeEnd": {
             "type": "string",
             "example": "14:30:00"
@@ -170193,10 +171330,18 @@
               "format": "int64"
             }
           },
+          "templateId": {
+            "type": "integer",
+            "format": "int64"
+          },
           "title": {
             "type": "string",
             "maxLength": 200,
             "minLength": 0
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
           },
           "visibility": {
             "type": "string"
@@ -170214,36 +171359,69 @@
             "format": "date"
           },
           "activityTimeEnd": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "example": "14:30:00"
           },
           "activityTimeStart": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "example": "14:30:00"
           },
           "attachments": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "autoGeneratedFromSchedule": {
+            "type": "boolean"
           },
           "createdAt": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "createdBy": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64"
           },
           "description": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "fieldValues": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "id": {
             "type": "integer",
             "format": "int64"
           },
+          "isPlanned": {
+            "type": "boolean"
+          },
           "location": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadataOnly": {
+            "type": "boolean"
           },
           "scheduleId": {
             "type": "integer",
@@ -170260,24 +171438,38 @@
             "type": "string"
           },
           "templateId": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64"
           },
           "title": {
             "type": "string"
           },
           "updatedAt": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "venueId": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "int64"
           },
           "visibility": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "autoGeneratedFromSchedule",
+          "isPlanned",
+          "metadataOnly"
+        ]
       },
       "ApiResponseActivityRecordResponse": {
         "type": "object",
@@ -176606,6 +177798,42 @@
           }
         }
       },
+      "DeclineOrgInviteRequest": {
+        "type": "object",
+        "properties": {
+          "block": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseTeamOrgRestrictionSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TeamOrgRestrictionSummaryResponse"
+          }
+        }
+      },
+      "Restriction": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "restrictedUntil": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TeamOrgRestrictionSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "restriction": {
+            "$ref": "#/components/schemas/Restriction"
+          }
+        }
+      },
       "ApplyToOrganizationRequest": {
         "type": "object",
         "properties": {
@@ -176618,94 +177846,6 @@
           },
           "organizationSlug": {
             "type": "string"
-          }
-        }
-      },
-      "AffiliationGroupRef": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          }
-        }
-      },
-      "AffiliationPartyRef": {
-        "type": "object",
-        "properties": {
-          "iconUrl": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "slug": {
-            "type": "string"
-          }
-        }
-      },
-      "AffiliationRequesterRef": {
-        "type": "object",
-        "properties": {
-          "displayName": {
-            "type": "string"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "ApiResponseTeamOrgAffiliationResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/TeamOrgAffiliationResponse"
-          }
-        }
-      },
-      "TeamOrgAffiliationResponse": {
-        "type": "object",
-        "properties": {
-          "direction": {
-            "type": "string"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "message": {
-            "type": "string"
-          },
-          "organization": {
-            "$ref": "#/components/schemas/AffiliationPartyRef"
-          },
-          "requestedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "requestedBy": {
-            "$ref": "#/components/schemas/AffiliationRequesterRef"
-          },
-          "respondedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "status": {
-            "type": "string"
-          },
-          "team": {
-            "$ref": "#/components/schemas/AffiliationPartyRef"
-          },
-          "teamGroup": {
-            "$ref": "#/components/schemas/AffiliationGroupRef"
           }
         }
       },
@@ -177264,6 +178404,312 @@
           },
           "targetType": {
             "type": "string"
+          }
+        }
+      },
+      "ActivitySyncConfirmation": {
+        "type": "object",
+        "properties": {
+          "activities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivitySyncSelection"
+            }
+          },
+          "expectedScheduleState": {
+            "$ref": "#/components/schemas/ExpectedScheduleState"
+          }
+        },
+        "required": [
+          "activities",
+          "expectedScheduleState"
+        ]
+      },
+      "ActivitySyncPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "scheduleUpdate": {
+            "$ref": "#/components/schemas/UpdateScheduleRequest"
+          },
+          "updateScope": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduleUpdate"
+        ]
+      },
+      "ActivitySyncSelection": {
+        "type": "object",
+        "properties": {
+          "applyFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "applyFields",
+          "id",
+          "version"
+        ]
+      },
+      "ExpectedScheduleEntry": {
+        "type": "object",
+        "properties": {
+          "allDay": {
+            "type": "boolean"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "ExpectedScheduleState": {
+        "type": "object",
+        "properties": {
+          "allDay": {
+            "type": "boolean"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "schedules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpectedScheduleEntry"
+            }
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UpdateReminderRequest": {
+        "type": "object",
+        "properties": {
+          "remindAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "remindAtValid": {
+            "type": "boolean"
+          },
+          "remindBeforeMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "remindBeforeMinutesValid": {
+            "type": "boolean"
+          },
+          "reminderKind": {
+            "type": "string",
+            "enum": [
+              "RELATIVE",
+              "ABSOLUTE"
+            ]
+          }
+        }
+      },
+      "UpdateScheduleRequest": {
+        "type": "object",
+        "properties": {
+          "academicYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "allDay": {
+            "type": "boolean"
+          },
+          "attendanceDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attendanceRequired": {
+            "type": "boolean"
+          },
+          "commentOption": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 0
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventCategoryId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "eventType": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 0
+          },
+          "minResponseRole": {
+            "type": "string"
+          },
+          "minViewRole": {
+            "type": "string"
+          },
+          "reminders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpdateReminderRequest"
+            },
+            "maxItems": 5,
+            "minItems": 0
+          },
+          "scheduledAttendance": {
+            "$ref": "#/components/schemas/ScheduledAttendanceRequest"
+          },
+          "scheduledSurveys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduledSurveyRequest"
+            },
+            "maxItems": 10,
+            "minItems": 0
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "syncConfirmation": {
+            "$ref": "#/components/schemas/ActivitySyncConfirmation"
+          },
+          "targetMode": {
+            "type": "string"
+          },
+          "targetUserIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "maxItems": 500,
+            "minItems": 0
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "updateScope": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          }
+        }
+      },
+      "ActivitySyncChange": {
+        "type": "object",
+        "properties": {
+          "automatic": {
+            "type": "boolean"
+          },
+          "currentValue": {
+            "type": "object"
+          },
+          "field": {
+            "type": "string"
+          },
+          "scheduleValue": {
+            "type": "object"
+          }
+        }
+      },
+      "ActivitySyncPreviewEntry": {
+        "type": "object",
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivitySyncChange"
+            }
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ActivitySyncPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "activities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivitySyncPreviewEntry"
+            }
+          },
+          "expectedScheduleState": {
+            "$ref": "#/components/schemas/ExpectedScheduleState"
+          }
+        }
+      },
+      "ApiResponseActivitySyncPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ActivitySyncPreviewResponse"
           }
         }
       },
@@ -185758,8 +187204,21 @@
             "type": "string",
             "format": "date-time"
           },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
           "priority": {
             "type": "string"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "targetGroupRange": {
+            "$ref": "#/components/schemas/TargetGroupRange"
           },
           "targetRole": {
             "type": "string",
@@ -185821,8 +187280,21 @@
             "type": "string",
             "format": "date-time"
           },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
           "priority": {
             "type": "string"
+          },
+          "targetAudience": {
+            "$ref": "#/components/schemas/TargetAudience"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           },
           "targetRole": {
             "type": "string"
@@ -185833,6 +187305,71 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "GroupRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "RangeRef": {
+        "type": "object",
+        "properties": {
+          "fromGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromGroupName": {
+            "type": "string"
+          },
+          "toGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toGroupName": {
+            "type": "string"
+          }
+        }
+      },
+      "TargetAudience": {
+        "type": "object",
+        "properties": {
+          "directMemberCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupRef"
+            }
+          },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "range": {
+            "$ref": "#/components/schemas/RangeRef"
+          },
+          "teamCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -186202,7 +187739,8 @@
             "items": {
               "$ref": "#/components/schemas/PeriodAttendanceEntry"
             },
-            "minItems": 1
+            "maxItems": 200,
+            "minItems": 0
           }
         },
         "required": [
@@ -186569,7 +188107,8 @@
             "items": {
               "$ref": "#/components/schemas/DailyRollCallEntry"
             },
-            "minItems": 1
+            "maxItems": 200,
+            "minItems": 0
           }
         },
         "required": [
@@ -186832,6 +188371,9 @@
             "type": "integer",
             "format": "int64"
           },
+          "contentPreviewAvailable": {
+            "type": "boolean"
+          },
           "createdAt": {
             "type": "string"
           },
@@ -186889,7 +188431,18 @@
           "visibility": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "accessState",
+          "contentPreviewAvailable",
+          "excerptCache",
+          "id",
+          "scopeId",
+          "scopeType",
+          "sourceId",
+          "sourceType",
+          "titleCache"
+        ]
       },
       "ApiResponseAnnouncementFeedItemDto": {
         "type": "object",
@@ -194347,6 +195900,21 @@
           }
         }
       },
+      "InviteTeamToOrganizationRequest": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message": {
+            "type": "string"
+          },
+          "teamSlug": {
+            "type": "string"
+          }
+        }
+      },
       "CreateOrgTeamGroupRequest": {
         "type": "object",
         "properties": {
@@ -194366,57 +195934,6 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/OrgTeamGroupResponse"
-          }
-        }
-      },
-      "RejectTeamApplicationRequest": {
-        "type": "object",
-        "properties": {
-          "block": {
-            "type": "boolean"
-          },
-          "reason": {
-            "type": "string"
-          }
-        }
-      },
-      "ApiResponseRejectTeamApplicationResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/RejectTeamApplicationResponse"
-          }
-        }
-      },
-      "ApplicationRestriction": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string"
-          },
-          "restrictedUntil": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "RejectTeamApplicationResponse": {
-        "type": "object",
-        "properties": {
-          "restriction": {
-            "$ref": "#/components/schemas/ApplicationRestriction"
-          }
-        }
-      },
-      "ApproveTeamApplicationRequest": {
-        "type": "object",
-        "properties": {
-          "groupId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "overrideGroup": {
-            "type": "boolean"
           }
         }
       },
@@ -197772,6 +199289,116 @@
               "NAME_ONLY",
               "NAME_AND_PURPOSE"
             ]
+          }
+        }
+      },
+      "AudiencePreviewRequestDto": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "BULLETIN_THREAD",
+              "TIMELINE_POST",
+              "BLOG_POST",
+              "TODO",
+              "SCHEDULE",
+              "SURVEY"
+            ]
+          },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "targetGroupRange": {
+            "$ref": "#/components/schemas/TargetGroupRange"
+          },
+          "targetRole": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 0
+          },
+          "targetTeamIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "templateId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseAudiencePreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AudiencePreviewResponseDto"
+          }
+        }
+      },
+      "AudiencePreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "directMemberCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupItem"
+            }
+          },
+          "pushEnabled": {
+            "type": "boolean"
+          },
+          "resolvedTeamCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sampleTeams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SampleTeam"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "GroupItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "SampleTeam": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
           }
         }
       },
@@ -204035,6 +205662,51 @@
           }
         }
       },
+      "ApiResponseBulletinAttachmentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BulletinAttachmentResponse"
+          }
+        }
+      },
+      "BulletinAttachmentResponse": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fileKey": {
+            "type": "string"
+          },
+          "fileSize": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "originalFilename": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetType": {
+            "type": "string"
+          }
+        }
+      },
       "ReverseTransactionRequest": {
         "type": "object",
         "properties": {
@@ -205852,6 +207524,15 @@
           "templateId"
         ]
       },
+      "ActivityVersionRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "AddParticipantsRequest": {
         "type": "object",
         "properties": {
@@ -205964,6 +207645,213 @@
         "required": [
           "activityDate"
         ]
+      },
+      "CreateDraftFromScheduleRequest": {
+        "type": "object",
+        "properties": {
+          "scheduleId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "scheduleId"
+        ]
+      },
+      "ActivityDetailResponse": {
+        "type": "object",
+        "properties": {
+          "activityDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "activityEndDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "activityTimeEnd": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "14:30:00"
+          },
+          "activityTimeStart": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "14:30:00"
+          },
+          "attachments": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "autoGeneratedFromSchedule": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "type": "boolean"
+          },
+          "canEdit": {
+            "type": "boolean"
+          },
+          "canPublish": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fieldValues": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isPlanned": {
+            "type": "boolean"
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadataOnly": {
+            "type": "boolean"
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityParticipantResponse"
+            }
+          },
+          "scheduleId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopePublicId": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "sourceSchedule": {
+            "$ref": "#/components/schemas/ActivitySourceScheduleResponse"
+          },
+          "status": {
+            "type": "string"
+          },
+          "templateFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateFieldResponse"
+            }
+          },
+          "templateId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "venueId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "visibility": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "autoGeneratedFromSchedule",
+          "canDelete",
+          "isPlanned",
+          "metadataOnly"
+        ]
+      },
+      "ActivitySourceScheduleResponse": {
+        "type": "object",
+        "properties": {
+          "canView": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopePublicId": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseActivityDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ActivityDetailResponse"
+          }
+        }
       },
       "CreateActionMemoRequest": {
         "type": "object",
@@ -207412,127 +209300,6 @@
           "id": {
             "type": "integer",
             "format": "int64"
-          }
-        }
-      },
-      "UpdateReminderRequest": {
-        "type": "object",
-        "properties": {
-          "remindAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "remindAtValid": {
-            "type": "boolean"
-          },
-          "remindBeforeMinutes": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "remindBeforeMinutesValid": {
-            "type": "boolean"
-          },
-          "reminderKind": {
-            "type": "string",
-            "enum": [
-              "RELATIVE",
-              "ABSOLUTE"
-            ]
-          }
-        }
-      },
-      "UpdateScheduleRequest": {
-        "type": "object",
-        "properties": {
-          "academicYear": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "allDay": {
-            "type": "boolean"
-          },
-          "attendanceDeadline": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "attendanceRequired": {
-            "type": "boolean"
-          },
-          "commentOption": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string",
-            "maxLength": 5000,
-            "minLength": 0
-          },
-          "endAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "eventCategoryId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "eventType": {
-            "type": "string"
-          },
-          "location": {
-            "type": "string",
-            "maxLength": 300,
-            "minLength": 0
-          },
-          "minResponseRole": {
-            "type": "string"
-          },
-          "minViewRole": {
-            "type": "string"
-          },
-          "reminders": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/UpdateReminderRequest"
-            },
-            "maxItems": 5,
-            "minItems": 0
-          },
-          "scheduledAttendance": {
-            "$ref": "#/components/schemas/ScheduledAttendanceRequest"
-          },
-          "scheduledSurveys": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ScheduledSurveyRequest"
-            },
-            "maxItems": 10,
-            "minItems": 0
-          },
-          "startAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "targetMode": {
-            "type": "string"
-          },
-          "targetUserIds": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "maxItems": 500,
-            "minItems": 0
-          },
-          "title": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          },
-          "updateScope": {
-            "type": "string"
-          },
-          "visibility": {
-            "type": "string"
           }
         }
       },
@@ -214008,13 +215775,13 @@
           }
         }
       },
-      "PagedResponseThreadResponse": {
+      "PagedResponseBulletinThreadResponse": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ThreadResponse"
+              "$ref": "#/components/schemas/BulletinThreadResponse"
             }
           },
           "meta": {
@@ -216988,6 +218755,52 @@
           }
         }
       },
+      "PagedResponseTeamOrgAffiliationRestrictionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamOrgAffiliationRestrictionResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "TeamOrgAffiliationRestrictionResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/AffiliationPartyRef"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "restrictedUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "team": {
+            "$ref": "#/components/schemas/AffiliationPartyRef"
+          }
+        }
+      },
       "ApiResponseListScheduleResponse": {
         "type": "object",
         "properties": {
@@ -217006,6 +218819,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AttendanceResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListActivityRecordResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityRecordResponse"
             }
           }
         }
@@ -222913,6 +224737,32 @@
           }
         }
       },
+      "ApiResponseAttendancePermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AttendancePermissionsResponse"
+          }
+        }
+      },
+      "AttendancePermissionsResponse": {
+        "type": "object",
+        "properties": {
+          "canRecordDaily": {
+            "type": "boolean"
+          },
+          "canRecordPeriod": {
+            "type": "boolean"
+          },
+          "canView": {
+            "type": "boolean"
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ApiResponsePeriodAttendanceListResponse": {
         "type": "object",
         "properties": {
@@ -223932,6 +225782,18 @@
           }
         }
       },
+      "TeamOrgSummaryGroupRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "TeamOrgSummaryResponse": {
         "type": "object",
         "properties": {
@@ -223950,6 +225812,9 @@
           },
           "slug": {
             "type": "string"
+          },
+          "teamGroup": {
+            "$ref": "#/components/schemas/TeamOrgSummaryGroupRef"
           },
           "visibility": {
             "type": "string"
@@ -224379,6 +226244,114 @@
           "uniqueVisitors": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "AnnouncementPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "accessState": {
+            "type": "string",
+            "enum": [
+              "FULL",
+              "LOCKED"
+            ]
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulletinAttachmentResponse"
+            }
+          },
+          "blogPost": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BlogPostResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bulletinThread": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BulletinThreadResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "feedId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string",
+            "enum": [
+              "TEAM",
+              "ORGANIZATION"
+            ]
+          },
+          "sourceId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "BLOG_POST",
+                  "BULLETIN_THREAD"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "accessState",
+          "attachments",
+          "blogPost",
+          "bulletinThread",
+          "feedId",
+          "scopeId",
+          "scopeType",
+          "sourceId",
+          "sourceType",
+          "sourceUrl"
+        ]
+      },
+      "ApiResponseAnnouncementPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AnnouncementPreviewResponse"
           }
         }
       },
@@ -231859,6 +233832,73 @@
           }
         }
       },
+      "PagedResponseProxyInputRecordResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProxyInputRecordResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "ProxyInputRecordResponse": {
+        "type": "object",
+        "properties": {
+          "auditLogId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "監査ログID（未紐付けはnull）"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "featureScope": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "inputSource": {
+            "type": "string"
+          },
+          "originalStorageLocation": {
+            "type": "string"
+          },
+          "proxyInputConsentId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "代理入力同意ID（同意書紐付けのない履歴はnull）"
+          },
+          "proxyUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "subjectUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetEntityId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetEntityType": {
+            "type": "string"
+          }
+        }
+      },
       "ApiResponseListProxyInputConsentResponse": {
         "type": "object",
         "properties": {
@@ -232498,6 +234538,22 @@
           }
         }
       },
+      "OrgTeamSummaryGroupRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "OrgTeamSummaryResponse": {
         "type": "object",
         "properties": {
@@ -232516,6 +234572,9 @@
           },
           "slug": {
             "type": "string"
+          },
+          "teamGroup": {
+            "$ref": "#/components/schemas/OrgTeamSummaryGroupRef"
           },
           "visibility": {
             "type": "string"
@@ -234013,6 +236072,20 @@
             "items": {
               "$ref": "#/components/schemas/ActivitySnapshotDto"
             }
+          }
+        }
+      },
+      "PagedResponseProxyInputConsentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProxyInputConsentResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
           }
         }
       },
@@ -240942,6 +243015,38 @@
           }
         }
       },
+      "ApiResponseThreadResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ThreadResponse"
+          }
+        }
+      },
+      "ThreadResponse": {
+        "type": "object",
+        "properties": {
+          "hasMore": {
+            "type": "boolean"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "root": {
+            "$ref": "#/components/schemas/ChatMessageResponse"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "ApiResponseDownloadUrlResponse": {
         "type": "object",
         "properties": {
@@ -241064,6 +243169,17 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FolderItemResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListBulletinAttachmentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulletinAttachmentResponse"
             }
           }
         }
@@ -242557,7 +244673,7 @@
           }
         }
       },
-      "ApiResponseListActivityRecordResponse": {
+      "PagedResponseActivityRecordResponse": {
         "type": "object",
         "properties": {
           "data": {
@@ -242565,6 +244681,9 @@
             "items": {
               "$ref": "#/components/schemas/ActivityRecordResponse"
             }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
           }
         }
       },

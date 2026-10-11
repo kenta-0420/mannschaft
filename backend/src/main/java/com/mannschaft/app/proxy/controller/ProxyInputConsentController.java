@@ -1,10 +1,12 @@
 package com.mannschaft.app.proxy.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.proxy.dto.CreateProxyInputConsentRequest;
 import com.mannschaft.app.proxy.dto.ProxyInputConsentResponse;
+import com.mannschaft.app.proxy.dto.ProxyInputRecordResponse;
 import com.mannschaft.app.proxy.dto.RevokeProxyInputConsentRequest;
 import com.mannschaft.app.proxy.dto.ScanUploadUrlResponse;
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
@@ -13,6 +15,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -58,14 +63,14 @@ public class ProxyInputConsentController {
      */
     @Operation(summary = "代理入力同意書一覧（組合単位）")
     @GetMapping("/api/v1/organizations/{orgId}/proxy-input-consents")
-    public ApiResponse<List<ProxyInputConsentResponse>> getConsentsByOrganization(
-            @PathVariable Long orgId) {
+    public PagedResponse<ProxyInputConsentResponse> getConsentsByOrganization(
+            @PathVariable Long orgId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         Long requestUserId = SecurityUtils.getCurrentUserId();
-        List<ProxyInputConsentResponse> responses = consentService.getConsentsByOrganization(requestUserId, orgId)
-                .stream()
-                .map(ProxyInputConsentResponse::from)
-                .toList();
-        return ApiResponse.of(responses);
+        Page<ProxyInputConsentResponse> result = consentService.getConsentsByOrganization(
+                requestUserId, orgId, toPageable(page, size));
+        return toPagedResponse(result);
     }
 
     /**
@@ -112,21 +117,27 @@ public class ProxyInputConsentController {
     }
 
     /**
-     * 代理入力履歴を取得する（監査用）。
-     * 権限: ADMIN以上 or 本人（subjectUserId指定時）。
-     * Phase 12-α では同意書ベースの一覧を返す。Phase 13-α で proxy_input_records の詳細一覧に拡張予定。
+     * 実際の代理入力履歴をページ取得する（監査用）。
+     * organizationId指定時は組合管理者またはSYSTEM_ADMINに限定し、同意書の組合IDで境界を強制する。
+     * organizationId省略時は本人の履歴を返し、他人のsubjectUserId指定はSYSTEM_ADMINに限定する。
      */
     @Operation(summary = "代理入力履歴一覧（監査用）")
     @GetMapping("/api/v1/proxy-input-records")
-    public ApiResponse<List<ProxyInputConsentResponse>> getProxyInputRecords(
-            @RequestParam(required = false) Long subjectUserId) {
+    public PagedResponse<ProxyInputRecordResponse> getProxyInputRecords(
+            @RequestParam(required = false) Long organizationId,
+            @RequestParam(required = false) Long subjectUserId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         Long requestUserId = SecurityUtils.getCurrentUserId();
-        Long targetUserId = subjectUserId != null ? subjectUserId : requestUserId;
-        List<ProxyInputConsentResponse> responses = consentService.getConsentsBySubject(requestUserId, targetUserId)
-                .stream()
-                .map(ProxyInputConsentResponse::from)
-                .toList();
-        return ApiResponse.of(responses);
+        Pageable pageable = toPageable(page, size);
+        Page<ProxyInputRecordResponse> result = organizationId != null
+                ? consentService.getRecordsByOrganization(
+                        requestUserId, organizationId, subjectUserId, pageable)
+                : consentService.getRecordsBySubject(
+                        requestUserId,
+                        subjectUserId != null ? subjectUserId : requestUserId,
+                        pageable);
+        return toPagedResponse(result);
     }
 
     /**
@@ -152,5 +163,21 @@ public class ProxyInputConsentController {
     public ApiResponse<String> generateScanDownloadUrl(@PathVariable Long id) {
         Long requestUserId = SecurityUtils.getCurrentUserId();
         return ApiResponse.of(consentService.generateScanDownloadUrl(requestUserId, id));
+    }
+
+    private static Pageable toPageable(int page, int size) {
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = Math.min(Math.max(size, 1), 100);
+        return PageRequest.of(normalizedPage, normalizedSize);
+    }
+
+    private static <T> PagedResponse<T> toPagedResponse(Page<T> result) {
+        return PagedResponse.of(
+                result.getContent(),
+                new PagedResponse.PageMeta(
+                        result.getTotalElements(),
+                        result.getNumber(),
+                        result.getSize(),
+                        result.getTotalPages()));
     }
 }

@@ -15,6 +15,7 @@ import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
 import com.mannschaft.app.bulletin.service.BulletinReadStatusService;
 import com.mannschaft.app.bulletin.service.BulletinScopeIdResolver;
 import com.mannschaft.app.bulletin.service.BulletinThreadService;
+import com.mannschaft.app.bulletin.service.BulletinReadFacade;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
@@ -78,6 +79,7 @@ import java.util.UUID;
 public class GlobalBulletinThreadController {
 
     private final BulletinThreadService threadService;
+    private final BulletinReadFacade readFacade;
     private final BulletinReadStatusService readStatusService;
     private final ObjectMapper objectMapper;
     private final BulletinScopeIdResolver scopeIdResolver;
@@ -139,9 +141,11 @@ public class GlobalBulletinThreadController {
     @GetMapping("/{threadId}")
     @Operation(summary = "スレッド詳細（グローバル）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    // authBasis: 非 TX BulletinReadFacade が最新実 scope/所属/F00/準備中を確認後、旧認可を持つ DTO leaf を読む。
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<ThreadResponse>> getThread(@PathVariable Long threadId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        ThreadResponse response = threadService.getThreadGlobal(threadId, currentUserId);
+        ThreadResponse response = readFacade.getThreadGlobal(threadId, currentUserId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

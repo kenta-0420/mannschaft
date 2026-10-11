@@ -3,6 +3,7 @@ package com.mannschaft.app.school.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -21,9 +22,10 @@ public class PeriodAttendanceRequest {
     @NotNull
     private LocalDate attendanceDate;
 
-    /** 出欠エントリ一覧。1件以上必須。 */
+    /** 出欠エントリ一覧。1件以上必須（最大200件。同じ生徒の重複は 400）。 */
     @NotNull
     @NotEmpty
+    @Size(max = 200)
     @Valid
     private List<PeriodAttendanceEntry> entries;
 }

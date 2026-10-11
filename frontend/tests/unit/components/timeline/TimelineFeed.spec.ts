@@ -242,6 +242,7 @@ describe('TimelineFeed.vue — ミュート導線', () => {
 describe('TimelineFeed.vue — 追加読み込み', () => {
   let onIntersection: IntersectionObserverCallback
   const observe = vi.fn()
+  const unobserve = vi.fn()
   const disconnect = vi.fn()
 
   beforeEach(() => {
@@ -254,6 +255,7 @@ describe('TimelineFeed.vue — 追加読み込み', () => {
         }
 
         observe = observe
+        unobserve = unobserve
         disconnect = disconnect
       },
     )

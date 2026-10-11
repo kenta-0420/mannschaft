@@ -367,6 +367,24 @@ method-security が無効な現状、以下は **認可が事実上ゼロ**で�
 
 **✅ 決定（2026-05-30 マスター裁可）= A-1 を採用。** 出席開示の 3 EP（disclose/withhold/disclosure-history）は、`@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")` を **`@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')`** に置換し、「学校チーム（クラス）の ADMIN/DEPUTY_ADMIN ＝教員相当」として per-scope 認可する。新ロールは追加しない。将来「教員＝管理者ではない」運用要件（F03.13 学校ドメイン）が確定した場合に A-2（permission `ATTENDANCE_DISCLOSE`）へ発展させる余地を残す。**Phase 2（per-scope SpEL 化＋生穴封鎖）で実装済み（Phase 3-a）**: `DisclosureService` に `checkAdminOrAbove(teamId, "TEAM")`（SYSTEM_ADMIN 短絡）を注入し、3 EP の注釈を `@accessGuard.isScopeAdmin(...)` へ置換。
 
+#### 7.1.1 学校出欠における担任判定の定義（CMP-261001-0630 第1段、2026-10-02 マスター裁可）
+
+上記 A-1（「ADMIN/DEPUTY_ADMIN ＝教員相当」）は**出席開示**の裁可である。学校出欠（F03.13）の日次・時限出欠は、これに**名簿（`class_homerooms`）と委任（`VIEW_ATTENDANCE`）を加えた**次の定義で認可する。A-1 は撤回せず、管理者は引き続き教員相当として扱う。
+
+| 記号 | 該当者 | 対象 |
+|---|---|---|
+| 閲覧 V | チームの ADMIN/DEPUTY_ADMIN、`class_homerooms` の現役の担任・副担任（チームの有効なメンバーに限る）、`VIEW_ATTENDANCE` を委任された者 | クラス全体の一覧・統計・CSV・集計・要注意者・位置一覧・保護者連絡一覧・アラート一覧 |
+| 登録 R | 現役の担任・副担任、または ADMIN/DEPUTY_ADMIN（代行を含む） | 点呼・時限出欠の登録と修正、アラート解決、保護者連絡の確認と反映、生徒単位の集計再計算、場所の変更、評価の実行と解消 |
+
+- **現役の判定**: `effective_from <= 今日(Asia/Tokyo) <= effective_until`（`effective_until` が null なら無期限）。複数行は和集合。副担任の JSON が不正なら副担任の資格だけを無効にする。
+- **名簿だけでは足りない**: 担任・副担任でも、チームの有効なメンバーでなくなっていれば資格を失う（退会・停止後に名簿が残る穴の封鎖）。
+- **SYSTEM_ADMIN 単独では見られない**（システム管理者は通常のテナント内アカウントではない）。組織規程の評価と解消は組織の ADMIN/DEPUTY_ADMIN のみ。
+- **生徒単位の閲覧**: 本人と `user_care_links` の保護者には全クラスの分、教員には自分が V を持つクラスの分だけを返す。
+- **失敗応答**: 権限がなければ 403 `COMMON_002`。`recordId` の越境は 404、`teamId` を持たない評価系 EP は 404 で秘匿する。
+- **教科担当**は第1段では扱わない（P = R）。第2段（CMP-261002-0801）で教科担当マスターと代理委任を導入する。
+- **実装構造**: Controller → Facade（TX なし）→ `SchoolAttendanceAccessPolicy` → `AccessControlService`。業務 Service は Policy を呼ばない（`@PreAuthorize` では表現できない名簿・日付・メンバー資格の判定を、トランザクションの外で行うため）。
+- 詳細: `docs/features/F03.13_school_daily_subject_attendance.md` §5・§8.1。
+
 ### 7.2 【論点 B・要判断】シフト PDF の認可（負論理 SUPPORTER）
 
 `ShiftPdfController` の `!hasRole('SUPPORTER')` は「SUPPORTER 以外は誰でも」という意図だが、(1) per-scope ロールを `hasRole` で表現する誤り、(2) `scheduleId` の所属スコープ検証が無い、の二重欠陥がある。方針:

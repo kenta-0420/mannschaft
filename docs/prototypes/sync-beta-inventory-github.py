@@ -29,6 +29,8 @@ def cmp_refs(source: str) -> dict[str, list[int]]:
         if not match:
             continue
         cmp_id = match.group(1).split("|", 1)[0].strip()
+        # Actions の実行番号は Issue/PR 番号ではない。別の同値参照は保持する。
+        line = re.sub(r"\[[^\]\n]*\]\(https://github\.com/[^/\s)]+/[^/\s)]+/actions/runs/\d+\)", "", line)
         numbers = sorted({number for value in re.findall(r"(?<![A-Za-z0-9])#(\d+)", line) if (number := int(value)) >= GITHUB_REFERENCE_MINIMUM})
         refs[cmp_id] = numbers
     return refs

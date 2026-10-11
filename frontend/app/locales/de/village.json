@@ -822,127 +822,127 @@
       "level3": "Unterkategorie (3. Ebene)"
     },
     "listGuide": {
-      "page_title": "村一覧の使い方",
-      "description": "ここは「村」をさがして参加するための一覧ページです。気になる村を見つけて中に入ったり、自分で新しい村を作ったりできます。",
+      "page_title": "So nutzt du die Dorfliste",
+      "description": "Auf dieser Listenseite findest du Dörfer und kannst ihnen beitreten. Du kannst ein Dorf entdecken, das dich interessiert, und es betreten oder selbst ein neues Dorf gründen.",
       "search": {
-        "title": "村をさがす",
-        "body": "キーワードや種別・カテゴリで、公開されている村をしぼり込めます。",
+        "title": "Dörfer suchen",
+        "body": "Öffentliche Dörfer lassen sich nach Stichwort, Typ oder Kategorie eingrenzen.",
         "steps": {
-          "step1": "上の検索ボックスにキーワード（村名・話題など）を入力します。",
-          "step2": "「種別」で公式・コミュニティをしぼり込めます。",
-          "step3": "「カテゴリ」に言葉を入れると、そのカテゴリの村だけ表示されます。"
+          "step1": "Gib oben im Suchfeld ein Stichwort (Dorfname, Thema usw.) ein.",
+          "step2": "Mit „Typ“ kannst du auf offizielle oder Community-Dörfer eingrenzen.",
+          "step3": "Wenn du in „Kategorie“ einen Begriff eingibst, werden nur Dörfer dieser Kategorie angezeigt."
         }
       },
       "cards": {
-        "title": "村カードの見方",
-        "body": "各カードに村のアイコン・名前・公式バッジ・カテゴリ・人数・紹介文が表示されます。",
+        "title": "So liest du eine Dorfkarte",
+        "body": "Jede Karte zeigt Symbol, Name, Offiziell-Abzeichen, Kategorie, Mitgliederzahl und Vorstellungstext des Dorfes.",
         "steps": {
-          "step1": "「公式」バッジは運営公認の村の印です。",
-          "step2": "人数が多い村ほど活発に動いています。",
-          "step3": "紹介文でその村の雰囲気を確認できます。"
+          "step1": "Das Abzeichen „Offiziell“ kennzeichnet ein vom Betreiber anerkanntes Dorf.",
+          "step2": "Dörfer mit mehr Mitgliedern sind in der Regel aktiver.",
+          "step3": "Am Vorstellungstext erkennst du die Atmosphäre des Dorfes."
         }
       },
       "enter": {
-        "title": "村に入る",
-        "body": "気になる村のカードを押すと、その村の中（掲示板・チャットなど）に入れます。",
+        "title": "Ein Dorf betreten",
+        "body": "Wenn du die Karte eines Dorfes antippst, das dich interessiert, gelangst du in das Dorf (Schwarzes Brett, Chat usw.).",
         "steps": {
-          "step1": "村のカードをクリックします。",
-          "step2": "村の中で「参加する」を押すと正式なメンバーになれます。",
-          "step3": "村の中の各タブの使い方は、村ヘッダーの「？使い方」で確認できます。"
+          "step1": "Klicke auf die Dorfkarte.",
+          "step2": "Tippe im Dorf auf „Beitreten“, um vollwertiges Mitglied zu werden.",
+          "step3": "Wie die einzelnen Tabs im Dorf funktionieren, erfährst du unter „? Anleitung“ in der Dorfkopfzeile."
         }
       },
       "create": {
-        "title": "新しい村をつくる",
-        "body": "自分で新しい村を立ち上げられます（運営の承認制）。",
+        "title": "Ein neues Dorf gründen",
+        "body": "Du kannst selbst ein neues Dorf gründen (mit Genehmigung durch den Betreiber).",
         "steps": {
-          "step1": "右上の「村を作る」ボタンを押します。",
-          "step2": "申請フォームに村名・種別などを入力します。",
-          "step3": "運営に承認されると村が作成されます。"
+          "step1": "Tippe oben rechts auf die Schaltfläche „Dorf erstellen“.",
+          "step2": "Gib im Antragsformular Dorfname, Typ und weitere Angaben ein.",
+          "step3": "Das Dorf wird angelegt, sobald der Betreiber es genehmigt hat."
         }
       }
     },
     "guide": {
-      "page_title": "村の使い方",
-      "description": "村は、同じ目的や興味を持つ仲間が集まる小さなコミュニティです。参加すると掲示板・チャット・投稿などの機能が使えます。下のカードで、村でできることと操作の手順を順番に確認できます。",
+      "page_title": "So nutzt du ein Dorf",
+      "description": "Ein Dorf ist eine kleine Gemeinschaft von Menschen mit gemeinsamem Ziel oder Interesse. Nach dem Beitritt kannst du Funktionen wie das Schwarze Brett, den Chat und Beiträge nutzen. Die Karten unten zeigen dir Schritt für Schritt, was du im Dorf tun kannst und wie.",
       "join": {
-        "title": "村に参加する／お気に入り登録",
-        "body": "村に参加すると、掲示板・タイムライン・チャットなど村のすべての機能が使えるようになります。よく見る村はお気に入り（ピン留め）にしておくと探しやすくなります。",
+        "title": "Einem Dorf beitreten / zu Favoriten hinzufügen",
+        "body": "Sobald du einem Dorf beigetreten bist, kannst du alle Funktionen nutzen, darunter Schwarzes Brett, Zeitstrahl und Chat. Häufig besuchte Dörfer kannst du zu den Favoriten hinzufügen (anheften), damit du sie leichter findest.",
         "steps": {
-          "step1": "ヘッダー右上の「参加する」ボタンを押します。",
-          "step2": "だれでも入れる村はその場で参加完了。承認制の村は参加申請の画面が開くので、申請を送って承認を待ちます。",
-          "step3": "参加後は★（お気に入りに追加）でピン留め、「退村する」で抜けられます。"
+          "step1": "Tippe oben rechts in der Kopfzeile auf die Schaltfläche „Beitreten“.",
+          "step2": "In Dörfern, die jeder betreten darf, bist du sofort dabei. Bei Dörfern mit Genehmigung öffnet sich der Beitrittsantrag: Sende den Antrag ab und warte auf die Genehmigung.",
+          "step3": "Nach dem Beitritt kannst du das Dorf mit ★ (zu Favoriten hinzufügen) anheften oder es über „Dorf verlassen“ verlassen."
         }
       },
       "bulletin": {
-        "title": "掲示板でお知らせを読む",
-        "body": "村長や長老からの大切なお知らせが、話題（スレッド）ごとに並びます。村人になると読めるようになります。",
+        "title": "Ankündigungen am Schwarzen Brett lesen",
+        "body": "Wichtige Ankündigungen des Dorfvorstehers und der Ältesten sind nach Themen (Threads) geordnet. Du kannst sie lesen, sobald du Dorfbewohner bist.",
         "steps": {
-          "step1": "「掲示板」タブを開きます。",
-          "step2": "気になるスレッドを押すと、本文と返信が表示されます。",
-          "step3": "村長・長老は「スレッド作成」から新しいお知らせを投稿できます。"
+          "step1": "Öffne den Tab „Schwarzes Brett“.",
+          "step2": "Tippe auf einen Thread, der dich interessiert, um Text und Antworten zu sehen.",
+          "step3": "Dorfvorsteher und Älteste können über „Thread erstellen“ neue Ankündigungen veröffentlichen."
         }
       },
       "timeline": {
-        "title": "タイムラインに投稿する",
-        "body": "村の仲間みんなに見える、ひとことフィードです。村人ならだれでも気軽に投稿できます。",
+        "title": "Im Zeitstrahl posten",
+        "body": "Ein Kurzbeitrags-Feed, den alle im Dorf sehen können. Jeder Dorfbewohner kann unkompliziert posten.",
         "steps": {
-          "step1": "「タイムライン」タブを開きます。",
-          "step2": "上の入力欄に本文を書いて「送信」を押すと投稿されます。",
-          "step3": "村長・長老は投稿のピン留めや削除ができます。"
+          "step1": "Öffne den Tab „Zeitstrahl“.",
+          "step2": "Schreibe deinen Text in das Eingabefeld oben und tippe auf „Absenden“, um zu posten.",
+          "step3": "Dorfvorsteher und Älteste können Beiträge anheften oder löschen."
         }
       },
       "lobby": {
-        "title": "井戸端（ロビー）でリアルタイムに話す",
-        "body": "その日の村人とリアルタイムで雑談できるチャットです。過去7日分のやりとりも日付ごとにさかのぼれます。",
+        "title": "Im Foyer (am Dorfbrunnen) in Echtzeit plaudern",
+        "body": "Ein Chat für zwanglose Gespräche in Echtzeit mit den Dorfbewohnern des Tages. Auch die letzten 7 Tage lassen sich nach Datum zurückverfolgen.",
         "steps": {
-          "step1": "「ロビー」タブを開きます。",
-          "step2": "左の日付一覧から日を選びます（過去の日は読むだけ）。",
-          "step3": "「今日」を選ぶと入力欄が出るので、メッセージを書いてEnterまたは送信ボタンで投稿します。"
+          "step1": "Öffne den Tab „Foyer“.",
+          "step2": "Wähle links in der Datumsliste einen Tag aus (vergangene Tage sind nur lesbar).",
+          "step3": "Wähle „Heute“, dann erscheint das Eingabefeld: Schreibe eine Nachricht und sende sie mit der Eingabetaste oder der Senden-Schaltfläche."
         }
       },
       "members": {
-        "title": "メンバーを見る・管理する",
-        "body": "村に参加している人の一覧です。村長は役割（長老／村人）の変更や、迷惑な人の追放（BAN）ができます。",
+        "title": "Mitglieder ansehen und verwalten",
+        "body": "Eine Liste der Personen, die dem Dorf beigetreten sind. Der Dorfvorsteher kann Rollen ändern (Ältester / Dorfbewohner) und störende Personen sperren (BAN).",
         "steps": {
-          "step1": "「メンバー」タブを開きます。",
-          "step2": "一覧から相手のメニューを開きます。",
-          "step3": "村長は「役割変更」「追放（BAN）」、村人はだれでも「通報」ができます。"
+          "step1": "Öffne den Tab „Mitglieder“.",
+          "step2": "Öffne in der Liste das Menü der gewünschten Person.",
+          "step3": "Der Dorfvorsteher kann „Rolle ändern“ und „Sperren (BAN)“ nutzen; jeder Dorfbewohner kann „Melden“."
         }
       },
       "calendar": {
-        "title": "歳時記カレンダーで行事を知る",
-        "body": "村の記念日やイベントを月ごとのカレンダーで確認できます。毎年くり返す行事も登録できます。",
+        "title": "Veranstaltungen im Dorfkalender kennenlernen",
+        "body": "Im Monatskalender siehst du Jubiläen und Veranstaltungen des Dorfes. Auch jährlich wiederkehrende Veranstaltungen lassen sich eintragen.",
         "steps": {
-          "step1": "「カレンダー」タブを開きます。",
-          "step2": "「前月」「翌月」ボタンで月を切り替えます。",
-          "step3": "行事カードを押すと詳細が出ます。村長・長老は「行事を追加」から登録・編集・削除ができます。"
+          "step1": "Öffne den Tab „Kalender“.",
+          "step2": "Wechsle den Monat mit den Schaltflächen „Vorheriger Monat“ und „Nächster Monat“.",
+          "step3": "Tippe auf eine Veranstaltungskarte, um Details zu sehen. Dorfvorsteher und Älteste können über „Veranstaltung hinzufügen“ Veranstaltungen eintragen, bearbeiten und löschen."
         }
       },
       "events": {
-        "title": "お祭り・練習試合の募集",
-        "body": "村のイベント（お祭り）や、対外試合・審判・会場などの募集をまとめて告知できます。状態でしぼり込めます。",
+        "title": "Feste und Aufrufe für Übungsspiele",
+        "body": "Du kannst Dorfveranstaltungen (Feste) sowie Aufrufe für externe Spiele, Schiedsrichter, Spielstätten usw. gebündelt bekannt geben. Nach Status lässt sich eingrenzen.",
         "steps": {
-          "step1": "「お祭り」または「練習試合・募集」タブを開きます。",
-          "step2": "上のフィルタで「募集中」などにしぼり込めます。",
-          "step3": "村人は「企画」「募集を作成」から新規作成、カードを押すと詳細表示や応募ができます。"
+          "step1": "Öffne den Tab „Festival“ oder „Spielrekrutierung“.",
+          "step2": "Mit dem Filter oben kannst du z. B. auf „Offen“ eingrenzen.",
+          "step3": "Dorfbewohner können über „Festival planen“ oder „Ausschreibung erstellen“ neue Einträge anlegen; auf einer Karte siehst du Details und kannst dich bewerben."
         }
       },
       "meetup": {
-        "title": "寄合で集まる日を決める",
-        "body": "村の集まりの開催日を、みんなの投票で決める機能です。複数の候補日から投票し、開催者が確定します。",
+        "title": "Mit einem Treffen einen gemeinsamen Termin finden",
+        "body": "Eine Funktion, mit der alle gemeinsam per Abstimmung den Termin eines Dorftreffens festlegen. Es wird über mehrere Terminvorschläge abgestimmt, und der Veranstalter bestätigt einen.",
         "steps": {
-          "step1": "「寄合」タブを開きます。",
-          "step2": "村人は「寄合を開く」から候補日をいくつか出して作成します。",
-          "step3": "詳細画面で候補日ごとに賛成／保留／反対を投票し、開催者が日を選んで「確定」します。"
+          "step1": "Öffne den Tab „Treffen“.",
+          "step2": "Dorfbewohner legen über „Treffen planen“ ein Treffen an und schlagen mehrere Termine vor.",
+          "step3": "Stimme im Detailbildschirm für jeden Terminvorschlag mit Ja / Vielleicht / Nein ab; der Veranstalter wählt einen Tag und tippt auf „Bestätigen“."
         }
       },
       "chronicle": {
-        "title": "村史で歩みをふり返る",
-        "body": "村の月ごとの記録です。投稿数・新しく参加した人の数・よく使われた話題が自動でまとまります（読むだけのページです）。",
+        "title": "Mit der Dorfchronik auf den Weg des Dorfes zurückblicken",
+        "body": "Eine monatliche Aufzeichnung des Dorfes. Anzahl der Beiträge, neue Mitglieder und häufige Themen werden automatisch zusammengestellt (reine Leseseite).",
         "steps": {
-          "step1": "「村史」タブを開きます。",
-          "step2": "年でしぼり込むと、その年の月別カードが並びます。",
-          "step3": "各カードで、その月の盛り上がりをふり返れます。"
+          "step1": "Öffne den Tab „Dorfchronik“.",
+          "step2": "Wenn du nach Jahr filterst, werden die Monatskarten dieses Jahres aufgelistet.",
+          "step3": "Auf jeder Karte kannst du nachvollziehen, wie lebhaft der jeweilige Monat war."
         }
       },
       "charter": {

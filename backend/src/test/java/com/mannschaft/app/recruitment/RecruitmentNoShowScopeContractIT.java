@@ -102,6 +102,10 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long outsiderId;
     /** orgC の ADMIN（ORGANIZATION スコープの正当な管理者）。 */
     private Long adminCId;
+    /** teamA の user_roles にだけ ADMIN を持つ主体（memberships の行なし）。 */
+    private Long urAdminAId;
+    /** orgC の user_roles にだけ ADMIN を持つ主体（memberships の行なし）。 */
+    private Long urAdminCId;
 
     /** teamA の募集に紐づく異議申立中 NO_SHOW 記録。 */
     private Long noShowAId;
@@ -126,6 +130,8 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
         adminBId = insertUser("rcrtauthz-admin-b@example.com");
         outsiderId = insertUser("rcrtauthz-outsider@example.com");
         adminCId = insertUser("rcrtauthz-admin-c@example.com");
+        urAdminAId = insertUser("rcrtauthz-ur-admin-a@example.com");
+        urAdminCId = insertUser("rcrtauthz-ur-admin-c@example.com");
 
         // isScopeAdmin（user_roles）と isMember（memberships）は別系統のため、
         // ADMIN にも memberships 行を張る（Wave 踏襲の既知の地雷）。
@@ -136,6 +142,9 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertUserRole(em, adminBId, "ADMIN", teamBId, null);
         MembershipTestHelper.insertMembership(em, adminCId, ScopeType.ORGANIZATION, orgCId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminCId, "ADMIN", null, orgCId);
+        // user_roles だけの管理者（memberships の行は作らない）。
+        MembershipTestHelper.insertUserRole(em, urAdminAId, "ADMIN", teamAId, null);
+        MembershipTestHelper.insertUserRole(em, urAdminCId, "ADMIN", null, orgCId);
         // outsiderId はどこにも所属させない。
 
         listingAId = insertListing(RecruitmentScopeType.TEAM, teamAId, adminAId);
@@ -226,6 +235,37 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
             assertThat(resolved.getDisputeResolution())
                     .as("正当スコープの異議解決は従来どおり反映されること")
                     .isEqualTo(DisputeResolution.REVOKED);
+        }
+
+        /** 是正の契約: user_roles だけの ADMIN も、memberships 側の管理者と同じく 200（403/404 に化けない）。 */
+        @Test
+        @DisplayName("CMP-260923-0954: user_rolesのみのADMINの異議解決は200（既存ADMINと同じ・404に化けない）")
+        void userRolesOnly管理者は200() throws Exception {
+            setAuth(urAdminAId);
+            mockMvc.perform(patch("/api/v1/scopes/{scopeType}/{scopeId}/no-shows/{noShowId}/dispute",
+                            "TEAM", teamAId, noShowAId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody())))
+                    .andExpect(status().isOk());
+
+            em.flush();
+            em.clear();
+            assertThat(noShowRepository.findById(noShowAId).orElseThrow().getDisputeResolution())
+                    .isEqualTo(DisputeResolution.REVOKED);
+        }
+
+        /** 同じ主体が他団体の記録 ID を差し込んだときは、既存ADMINと同じ不在と同一の 404（越境は通さない）。 */
+        @Test
+        @DisplayName("CMP-260923-0954: user_rolesのみのADMINが別スコープのnoShowIdを差し込むと404（既存ADMINと同じ）")
+        void userRolesOnly管理者の越境noShowIdは404() throws Exception {
+            setAuth(urAdminAId);
+            mockMvc.perform(patch("/api/v1/scopes/{scopeType}/{scopeId}/no-shows/{noShowId}/dispute",
+                            "TEAM", teamAId, noShowBId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody())))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND.getCode()));
         }
 
         /** AC-R4: 非管理者メンバーは 403（{@code checkAdminOrAbove} → COMMON_002）。 */
@@ -353,6 +393,18 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk());
         }
 
+        /** 是正の契約: user_roles だけの組織 ADMIN も 200。 */
+        @Test
+        @DisplayName("CMP-260923-0954: user_rolesのみの組織ADMINの異議解決は200（既存ADMINと同じ・404に化けない）")
+        void userRolesOnly組織ADMINは200() throws Exception {
+            setAuth(urAdminCId);
+            mockMvc.perform(patch("/api/v1/scopes/{scopeType}/{scopeId}/no-shows/{noShowId}/dispute",
+                            "ORGANIZATION", orgCId, noShowCId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(resolveBody())))
+                    .andExpect(status().isOk());
+        }
+
         /** AC-R1（スコープ種別越境）: 同じ scopeId でも scopeType が異なれば遮断されること。 */
         @Test
         @DisplayName("AC-R1: TEAMスコープのnoShowIdをORGANIZATION URLに差し込むと404")
@@ -378,24 +430,34 @@ class RecruitmentNoShowScopeContractIT extends AbstractMySqlIntegrationTest {
     class SelfDispute {
 
         /**
-         * VISIBILITY_DENIED（RECRUITMENT_003）: {@code RecruitmentNoShowService#dispute} は
-         * record.getUserId().equals(userId) で本人所有を検証し、他人の記録は不在と同一の 404 に畳む
-         * （記録の実在をレスポンス差分から漏らさないための存在秘匿）。
+         * NO_SHOW_RECORD_NOT_FOUND（RECRUITMENT_309）: {@code RecruitmentNoShowService#dispute} は本人所有を検証し、
+         * 他人の記録は不在と<b>完全一致</b>の 404 に畳む（記録の実在をレスポンス差分から漏らさないための存在秘匿）。
+         *
+         * <p>是正前は {@code VISIBILITY_DENIED}（RECRUITMENT_003・404）で、ステータスは揃っていたがコードとメッセージが
+         * 不在（RECRUITMENT_309）と割れていた（CMP-260923-0954 W5 で是正。詳細は
+         * {@code RecruitmentListingTemplateScopeContractIT}）。</p>
          */
         @Test
-        @DisplayName("本人以外の異議申立は404（存在秘匿）")
-        void 本人以外の異議申立は404() throws Exception {
+        @DisplayName("W5: 本人以外の異議申立は不在と同一の404（NO_SHOW_RECORD_NOT_FOUND）")
+        void 本人以外の異議申立は不在と同一の404() throws Exception {
             Long undisputed = insertUndisputedNoShow(listingAId, memberAId);
             em.flush();
             em.clear();
 
             setAuth(adminAId);
-            mockMvc.perform(post("/api/v1/recruitment/no-shows/{noShowId}/dispute", undisputed)
+            String real = mockMvc.perform(post("/api/v1/recruitment/no-shows/{noShowId}/dispute", undisputed)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("reason", "裏目付テスト"))))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(RecruitmentErrorCode.VISIBILITY_DENIED.getCode()));
+                            .value(RecruitmentErrorCode.NO_SHOW_RECORD_NOT_FOUND.getCode()))
+                    .andReturn().getResponse().getContentAsString();
+            String absent = mockMvc.perform(post("/api/v1/recruitment/no-shows/{noShowId}/dispute", 999_999_999L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("reason", "裏目付テスト"))))
+                    .andExpect(status().isNotFound())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(real).as("他人の実在記録と不在記録の応答は完全一致でなければならない").isEqualTo(absent);
         }
     }
 

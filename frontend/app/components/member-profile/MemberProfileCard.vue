@@ -75,7 +75,14 @@ const customFieldsError = computed(() => customFieldsResult.value.error)
           </NuxtLink>
           <template v-if="editable">
             <Button icon="pi pi-pencil" size="small" text severity="secondary" @click="emit('edit', profile)" />
-            <Button icon="pi pi-trash" size="small" text severity="danger" @click="emit('delete', profile.id)" />
+            <Button
+              icon="pi pi-trash"
+              size="small"
+              text
+              severity="danger"
+              :data-testid="`member-card-delete-${profile.id}`"
+              @click="emit('delete', profile.id)"
+            />
           </template>
         </div>
       </div>

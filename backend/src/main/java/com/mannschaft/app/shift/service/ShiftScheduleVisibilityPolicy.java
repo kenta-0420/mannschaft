@@ -71,6 +71,18 @@ public final class ShiftScheduleVisibilityPolicy {
      * @return 可視性
      */
     public static Visibility classify(ShiftScheduleStatus status, LocalDateTime publishedAt) {
+        return classify(status, publishedAt != null);
+    }
+
+    /**
+     * {@link #classify(ShiftScheduleStatus, LocalDateTime)} の公開日時有無版。
+     * 公開日時の値は分類に使わず「有るか否か」だけが要るので、時刻型を持ち回らずに済ませる。
+     *
+     * @param status         ステータス（{@code null} は fail-closed で HIDDEN）
+     * @param hasPublishedAt 公開日時が設定されているか
+     * @return 可視性
+     */
+    public static Visibility classify(ShiftScheduleStatus status, boolean hasPublishedAt) {
         if (status == null) {
             return Visibility.HIDDEN;
         }
@@ -79,7 +91,7 @@ public final class ShiftScheduleVisibilityPolicy {
             // PUBLISHED は publishedAt を見ない（published_at に整合制約が無いため）。
             case PUBLISHED -> Visibility.FULL;
             // ARCHIVED は publishedAt が唯一の手がかり。NULL は fail-closed。
-            case ARCHIVED -> publishedAt != null ? Visibility.FULL : Visibility.HIDDEN;
+            case ARCHIVED -> hasPublishedAt ? Visibility.FULL : Visibility.HIDDEN;
             case DRAFT -> Visibility.HIDDEN;
         };
     }

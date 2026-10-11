@@ -106,7 +106,7 @@ public class RecruitmentNoShowController {
      * 異議申立（本人）。
      */
     // 認可根治済み: RecruitmentNoShowService#dispute が record.getUserId().equals(userId) で
-    // 本人所有を検証する（VISIBILITY_DENIED）。
+    // 本人所有を検証する（本人以外は NO_SHOW_RECORD_NOT_FOUND で存在秘匿）。
     @AuthorizedInService
     @PostMapping("/recruitment/no-shows/{noShowId}/dispute")
     @Operation(summary = "NO_SHOW 異議申立 (本人, §9.5)")

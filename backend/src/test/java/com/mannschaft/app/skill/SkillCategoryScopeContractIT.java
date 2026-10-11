@@ -35,12 +35,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * skill（スキルカテゴリ管理）ドメイン scope 突合 API 契約テスト。
  *
  * <p>正本: {@code SkillCategoryService} の updateCategory/deleteCategory は「不在」（SKILL_001・404）
- * と「越境（所有スコープ不一致）」（SKILL_003）の応答が割れており、存在オラクルになっていた。
- * 本テストは越境も404に揃った（SKILL_003 が404に是正された）ことを契約として固定する。
+ * と「越境（所有スコープ不一致）」の応答本文が割れており、存在オラクルになっていた。
+ * 本テストは越境も SKILL_001 に揃うことを契約として固定する。
  * SkillCategoryController の updateCategory/deleteCategory はいずれも
  * {@code accessControlService.checkAdminOrAbove(userId, teamId, "TEAM")} で path teamId に対する
  * ADMIN 権限を確認するため、そこは通過するが対象カテゴリの所有スコープ（category.scopeType/scopeId）
- * が path teamId と一致しない場合に SKILL_003 を投げる（{@code SkillCategoryService} 内部）。</p>
+ * が path teamId と一致しない場合に SKILL_001 を投げる（{@code SkillCategoryService} 内部）。</p>
  *
  * <p>金型: {@code MemberSkillScopeContractIT}（{@code @AutoConfigureMockMvc(addFilters=false)} +
  * 実 MySQL + 手動 SecurityContext + {@code MembershipTestHelper}）。</p>

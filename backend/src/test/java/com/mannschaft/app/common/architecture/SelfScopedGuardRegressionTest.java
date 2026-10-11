@@ -1,12 +1,10 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
-import com.tngtech.archunit.core.importer.ClassFileImporter;
-import com.tngtech.archunit.core.importer.ImportOption;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -51,16 +49,10 @@ import static org.junit.jupiter.api.Assertions.fail;
  * 未マージの 4 メソッドは {@code Service} 層がまだ {@code AccessControlService} を呼んでおらず、
  * 本試練は該当パラメータで <b>意図的に red</b> になる（試練の性質上、これは正しい）。</p>
  */
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class SelfScopedGuardRegressionTest {
 
-    private static JavaClasses importedClasses;
-
-    @BeforeAll
-    static void importClasses() {
-        importedClasses = new ClassFileImporter()
-            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-            .importPackages("com.mannschaft.app");
-    }
+    private final JavaClasses importedClasses = ProductionClasses.get();
 
     // ═══════════════════════════════════════════════════════════════════
     // AC-34
@@ -219,11 +211,11 @@ class SelfScopedGuardRegressionTest {
          * 与えれば targets が空になり、契約テスト必須の縛りは自然に外れる（免除リストではなく
          * 「対象が存在しない」ことによって）。
          *
-         * <p>本テストは、注釈が実際に削除済みのメソッド（{@code getMyPerformance}）については
-         * 現物ソースをそのまま、まだ削除されていないメソッド（Shift 3件・updatePreference）に
-         * ついては注釈を機械的に取り除いた「削除後」シミュレーションソースを与えて、
-         * どちらの場合も {@code extractTargets} が対象を検出しない（＝契約テストを要求しない）
-         * ことを固定する。</p>
+         * <p>本テストは現物ソースをそのまま与え、5 メソッドに注釈が残っていないことを固定する。
+         * かつて置いていた「注釈を機械的に取り除いたソースで判定する」第2テストは、前処理で
+         * 結果を作ってから判定する構造的に失敗しえないテストだったため撤去した
+         * （CMP-260917-1135 AC-15。再付与の検出は {@code SelfScopedEndpointScopeInputGuardTest} が
+         * バイトコードで担う）。</p>
          */
         @Test
         @DisplayName("対象5メソッドの現物ソースに @SelfScopedEndpoint が存在しないこと（シミュレーションなし）")
@@ -264,97 +256,6 @@ class SelfScopedGuardRegressionTest {
                 fail("対象5メソッドの現物ソースに @SelfScopedEndpoint が検出された"
                     + "（注釈削除の回帰、または再付与）:\n" + failures);
             }
-        }
-
-        @Test
-        @DisplayName("注釈削除後、5メソッドは SelfScopedEndpointMarkerGuardTest の走査対象から外れること")
-        void 注釈削除後は5メソッドが契約テスト必須の走査対象から外れること() throws IOException {
-            List<Path> paths = List.of(
-                Paths.get("src", "main", "java", "com", "mannschaft", "app",
-                    "shift", "controller", "ShiftAvailabilityController.java"),
-                Paths.get("src", "main", "java", "com", "mannschaft", "app",
-                    "notification", "controller", "NotificationPreferenceController.java"),
-                Paths.get("src", "main", "java", "com", "mannschaft", "app",
-                    "performance", "controller", "PerformancePersonalController.java")
-            );
-
-            List<String> methodsToCheck = List.of(
-                "getAvailabilityDefaults", "setAvailabilityDefaults", "deleteAvailabilityDefaults",
-                "updatePreference", "getMyPerformance");
-
-            StringBuilder failures = new StringBuilder();
-            for (Path path : paths) {
-                String rawContent = Files.readString(path, StandardCharsets.UTF_8);
-                String simulated = stripAllSelfScopedEndpointAnnotations(rawContent);
-
-                SelfScopedEndpointMarkerGuardTest.Src src =
-                    new SelfScopedEndpointMarkerGuardTest.Src(path.toString().replace('\\', '/'), simulated);
-                List<SelfScopedEndpointMarkerGuardTest.Target> targets =
-                    SelfScopedEndpointMarkerGuardTest.extractTargets(src);
-
-                for (SelfScopedEndpointMarkerGuardTest.Target t : targets) {
-                    if (methodsToCheck.contains(t.methodName)) {
-                        failures.append("  ✗ ").append(t).append('\n');
-                    }
-                }
-            }
-
-            if (failures.length() > 0) {
-                fail("注釈削除をシミュレートしたソースでも @SelfScopedEndpoint が検出された "
-                    + "（削除漏れ、または extractTargets の誤検出）:\n" + failures);
-            }
-        }
-
-        /**
-         * {@code @SelfScopedEndpoint(...)} 呼び出し全体（引数括弧含む）をソースから機械的に
-         * 取り除く。パーサは {@code SelfScopedEndpointMarkerGuardTest} と同じマスク方式で
-         * 括弧の対応を取る。
-         */
-        private String stripAllSelfScopedEndpointAnnotations(String content) {
-            String masked = SelfScopedEndpointMarkerGuardTest.mask(content);
-            String token = "@SelfScopedEndpoint";
-            StringBuilder out = new StringBuilder(content);
-
-            int searchFrom = 0;
-            while (true) {
-                int at = masked.indexOf(token, searchFrom);
-                if (at < 0) {
-                    break;
-                }
-                int afterToken = at + token.length();
-                int cursor = afterToken;
-                while (cursor < masked.length() && Character.isWhitespace(masked.charAt(cursor))) {
-                    cursor++;
-                }
-                int end;
-                if (cursor < masked.length() && masked.charAt(cursor) == '(') {
-                    end = matchParenLocal(masked, cursor) + 1;
-                } else {
-                    end = afterToken;
-                }
-                // 原文・マスク文とも同じオフセットを指すので、そのまま原文を消して良い。
-                for (int i = at; i < end; i++) {
-                    out.setCharAt(i, ' ');
-                }
-                searchFrom = end;
-            }
-            return out.toString();
-        }
-
-        private int matchParenLocal(String s, int open) {
-            int depth = 0;
-            for (int i = open; i < s.length(); i++) {
-                char c = s.charAt(i);
-                if (c == '(') {
-                    depth++;
-                } else if (c == ')') {
-                    depth--;
-                    if (depth == 0) {
-                        return i;
-                    }
-                }
-            }
-            return s.length() - 1;
         }
     }
 }

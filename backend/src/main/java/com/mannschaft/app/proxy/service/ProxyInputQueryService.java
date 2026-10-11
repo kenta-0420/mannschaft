@@ -1,10 +1,15 @@
 package com.mannschaft.app.proxy.service;
 
 import com.mannschaft.app.proxy.dto.ProxyActionView;
+import com.mannschaft.app.proxy.dto.ProxyInputConsentResponse;
+import com.mannschaft.app.proxy.dto.ProxyInputRecordResponse;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
+import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProxyInputQueryService {
 
     private final ProxyInputRecordRepository proxyInputRecordRepository;
+    private final ProxyInputConsentRepository proxyInputConsentRepository;
 
     /**
      * 指定した本人（subject）が代理された代理入力記録を、新しい順で取得する。
@@ -34,6 +40,26 @@ public class ProxyInputQueryService {
         return proxyInputRecordRepository.findBySubjectUserIdOrderByCreatedAtDesc(subjectUserId).stream()
                 .map(ProxyInputQueryService::toView)
                 .toList();
+    }
+
+    public Page<ProxyInputConsentResponse> getConsentsByOrganization(
+            Long organizationId, Pageable pageable) {
+        return proxyInputConsentRepository
+                .findByOrganizationIdOrderByCreatedAtDescIdDesc(organizationId, pageable)
+                .map(ProxyInputConsentResponse::from);
+    }
+
+    public Page<ProxyInputRecordResponse> getRecordsByOrganization(
+            Long organizationId, Long subjectUserId, Pageable pageable) {
+        return proxyInputRecordRepository.findByOrganizationId(organizationId, subjectUserId, pageable)
+                .map(ProxyInputRecordResponse::from);
+    }
+
+    public Page<ProxyInputRecordResponse> getRecordsBySubject(
+            Long subjectUserId, Pageable pageable) {
+        return proxyInputRecordRepository
+                .findBySubjectUserIdOrderByCreatedAtDescIdDesc(subjectUserId, pageable)
+                .map(ProxyInputRecordResponse::from);
     }
 
     /** Entity → プリミティブ DTO（Entity をドメイン外へ漏らさない）。 */

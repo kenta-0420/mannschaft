@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.atLeastOnce;
@@ -168,7 +169,11 @@ class OnboardingReminderBatchTransactionIT extends AbstractMySqlIntegrationTest 
         assertThat(lastRemindedAt(progressId))
                 .as("業務トランザクションがロールバックしたので記録も残らない")
                 .isNull();
-        verify(notificationDeliveryRunner, never()).sendOne(any());
+        // 他の進捗のコミット後配送が遅れて到着しうるため、ロールバックした今回の進捗を検証する。
+        verify(notificationDeliveryRunner, never()).sendOne(argThat(request -> request != null
+                && "ONBOARDING".equals(request.sourceType())
+                && progressId.equals(request.sourceId())
+                && userId.equals(request.recipientUserId())));
     }
 
     @Test

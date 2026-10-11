@@ -1,6 +1,9 @@
 /**
  * F02.6 お知らせウィジェット — 型定義
  */
+import type { components } from '~/types/generated'
+
+export type AnnouncementFeedDto = components['schemas']['AnnouncementFeedItemDto']
 
 export type AnnouncementScopeType = 'TEAM' | 'ORGANIZATION'
 
@@ -10,6 +13,8 @@ export type AnnouncementSourceType =
   | 'TIMELINE_POST'
   | 'CIRCULATION'
   | 'SURVEY'
+  | 'TODO'
+  | 'SCHEDULE'
 
 export type AnnouncementPriority = 'URGENT' | 'IMPORTANT' | 'NORMAL'
 
@@ -45,10 +50,12 @@ export interface AnnouncementSourceMeta {
 export interface AnnouncementFeedItem {
   id: number
   scopeType: AnnouncementScopeType
-  scopeId: string
-  sourceType: AnnouncementSourceType
-  sourceId: number
-  sourceUrl: string
+  scopeId: string | number
+  sourceType: string | null
+  sourceId: number | null
+  sourceUrl: string | null
+  accessState?: 'FULL' | 'LOCKED'
+  contentPreviewAvailable?: boolean
   title: string
   excerpt: string | null
   priority: AnnouncementPriority

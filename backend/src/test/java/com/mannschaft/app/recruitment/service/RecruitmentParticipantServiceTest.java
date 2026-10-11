@@ -348,22 +348,22 @@ class RecruitmentParticipantServiceTest {
         }
 
         @Test
-        @DisplayName("参加者一覧はPERSONAL札をMARKET_404で存在秘匿し参加者Repositoryを呼ばない")
+        @DisplayName("参加者一覧はPERSONAL札を不在と同じ RECRUITMENT_001 で存在秘匿し参加者Repositoryを呼ばない")
         void listParticipants_personal_doesNotQueryParticipant() throws Exception {
             RecruitmentListingEntity listing = buildOpenListing();
             setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
             given(listingService.findOrThrow(LISTING_ID)).willReturn(listing);
 
-            assertThatThrownBy(() -> service.listParticipants(LISTING_ID, USER_ID,
+            assertThatThrownBy(() -> service.listParticipants(LISTING_ID,
                     org.springframework.data.domain.PageRequest.of(0, 20)))
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
 
             verify(participantRepository, never()).findByListingIdOrderByAppliedAtAsc(anyLong(), any());
         }
 
         @Test
-        @DisplayName("出席記録はPERSONAL札をMARKET_404で存在秘匿し参加者Repositoryを呼ばない")
+        @DisplayName("出席記録はPERSONAL札を不在と同じ RECRUITMENT_001 で存在秘匿し参加者Repositoryを呼ばない")
         void markAttended_personal_doesNotQueryParticipant() throws Exception {
             RecruitmentListingEntity listing = buildOpenListing();
             setField(listing, "scopeType", RecruitmentScopeType.PERSONAL);
@@ -371,7 +371,7 @@ class RecruitmentParticipantServiceTest {
 
             assertThatThrownBy(() -> service.markAttended(LISTING_ID, 999L, USER_ID))
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MarketErrorCode.LISTING_NOT_FOUND);
+                    .isEqualTo(RecruitmentErrorCode.LISTING_NOT_FOUND);
 
             verify(participantRepository, never()).findByIdAndListingId(anyLong(), anyLong());
         }

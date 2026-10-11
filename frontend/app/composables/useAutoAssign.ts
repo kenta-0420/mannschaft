@@ -40,8 +40,8 @@ export function useAutoAssign(scheduleId: Ref<number>) {
     }
   }
 
-  async function revokeAutoAssign(): Promise<void> {
-    await shiftApi.revokeAutoAssign(scheduleId.value)
+  async function revokeAutoAssign(runId: number): Promise<void> {
+    await shiftApi.revokeAutoAssign(scheduleId.value, runId)
     currentRun.value = null
     await fetchRuns()
   }

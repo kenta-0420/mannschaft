@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * 柱①「ADMINゼロ根治」AC11 — {@link PurgeStartGuard} の受け入れテスト。
@@ -41,6 +42,18 @@ class PurgeStartGuardTest {
     @Nested
     @DisplayName("AC11: purge開始マーク後のcancel-withdrawalは拒否、マーク前はcancelが勝つ")
     class Ac11PurgeVsCancel {
+
+        @Test
+        @DisplayName("AC11: ロック後の最新マーク状態で判定し、通常 SELECT を再読しない")
+        void ロック後は最新状態を判定する() {
+            assertThatCode(() -> guard.checkCancelAllowed(false)).doesNotThrowAnyException();
+
+            assertThatThrownBy(() -> guard.checkCancelAllowed(true))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(GdprErrorCode.GDPR_012));
+            verifyNoInteractions(purgeMarkerService);
+        }
 
         @Test
         @DisplayName("AC11: purge開始マーク前はcancel-withdrawalが許可される（purge自体が起動しない）")

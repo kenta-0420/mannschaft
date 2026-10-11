@@ -1,8 +1,8 @@
 import type {
+  AnnouncementFeedDto,
   AnnouncementFeedItem,
   AnnouncementFeedMeta,
   AnnouncementFeedParams,
-  AnnouncementFeedResponse,
   AnnouncementScopeType,
   CreateAnnouncementRequest,
   MarkAllReadResponse,
@@ -11,6 +11,12 @@ import type {
   TogglePinResponse,
 } from '~/types/announcement'
 import type { ApiResponse } from '~/types/api'
+import type { Ref } from 'vue'
+import { nextTick, ref, unref } from 'vue'
+import { useNuxtApp } from 'nuxt/app'
+import { useApi } from '~/composables/useApi'
+import { useErrorReport } from '~/composables/useErrorReport'
+import { toAnnouncementItem } from '~/utils/announcementAdapter'
 
 /**
  * 「そのお知らせはもう開けない」ことを表す BE エラーコード。
@@ -19,9 +25,8 @@ import type { ApiResponse } from '~/types/api'
  * 「当該スコープに属さない」「そもそも存在しない」「自分には可視でない（内輪限定・削除済み・
  * 期限切れ）」の 3 つをすべて {@code ANNOUNCE_001} に畳み込んで返す。
  *
- * 注意: このコードは {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} に未登録のため、
- * {@code Severity.WARN} 既定の **HTTP 400** で返る（enum の Javadoc にある「404」は宣言と
- * 実挙動の乖離）。したがって HTTP ステータスでは判別できず、**エラーコードで判別する**。
+ * {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} に登録済みで HTTP 404 を返す。
+ * 他の不在エラーと区別するため、**エラーコードで判別する**。
  */
 const ANNOUNCEMENT_GONE_ERROR_CODE = 'ANNOUNCE_001'
 
@@ -61,7 +66,7 @@ export function isRateLimitedError(error: unknown): boolean {
  * @param scopeType スコープ種別（TEAM / ORGANIZATION）
  * @param scopeId   スコープ ID（チームまたは組織の ID）
  */
-export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: string) {
+export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: string | Ref<string>) {
   const api = useApi()
   const errorReport = useErrorReport()
 
@@ -96,11 +101,25 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
   const meta = ref<AnnouncementFeedMeta | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  // 一覧の配信対象判定がpreviewに追随するまで、不可視と確定したカードを再挿入しない。
+  const unavailableIds = new Set<number>()
+
+  function setFeedItemsLocally(items: AnnouncementFeedItem[]): void {
+    feed.value = items.filter(item => !unavailableIds.has(item.id))
+  }
 
   /** スコープに応じた API ベースパスを返す */
   function basePath() {
-    if (scopeType === 'TEAM') return `/api/v1/teams/${scopeId}/announcements`
-    return `/api/v1/organizations/${scopeId}/announcements`
+    if (scopeType === 'TEAM') return `/api/v1/teams/${unref(scopeId)}/announcements`
+    return `/api/v1/organizations/${unref(scopeId)}/announcements`
+  }
+
+  /** チーム集約に含まれる組織feedも項目の所有scopeで操作する。 */
+  function itemPath(id: number): string {
+    const item = feed.value.find(value => value.id === id)
+    if (!item) return `${basePath()}/${id}`
+    const scope = item.scopeType === 'TEAM' ? 'teams' : 'organizations'
+    return `/api/v1/${scope}/${item.scopeId}/announcements/${id}`
   }
 
   /**
@@ -120,14 +139,18 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
 
       const qs = query.toString()
       const url = `${basePath()}${qs ? '?' + qs : ''}`
-      const res = await api<AnnouncementFeedResponse>(url)
+      type RawFeedResponse = { data: AnnouncementFeedDto[]; meta: AnnouncementFeedMeta }
+      const res = await api<RawFeedResponse | ApiResponse<RawFeedResponse>>(url)
+      const payload = 'meta' in res ? res : res.data
+      const items = payload.data.map(toAnnouncementItem)
       // cursor がある場合は追記（ページング）、なければ置き換え（初回ロード）
       if (params?.cursor !== undefined) {
-        feed.value = [...feed.value, ...res.data]
+        setFeedItemsLocally([...feed.value, ...items])
       } else {
-        feed.value = res.data
+        setFeedItemsLocally(items)
       }
-      meta.value = res.meta
+      const goneUnread = items.filter(item => unavailableIds.has(item.id) && !item.isRead).length
+      meta.value = { ...payload.meta, unreadCount: Math.max(0, payload.meta.unreadCount - goneUnread) }
     }
     catch {
       error.value = 'お知らせの取得に失敗しました'
@@ -153,7 +176,7 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
    * @param id announcement_feed ID
    */
   async function deleteAnnouncement(id: number): Promise<void> {
-    await api(`${basePath()}/${id}`, { method: 'DELETE' })
+    await api(itemPath(id), { method: 'DELETE' })
     feed.value = feed.value.filter(item => item.id !== id)
   }
 
@@ -165,7 +188,7 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
     const item = feed.value.find(f => f.id === id)
     if (!item) return
     const req: TogglePinRequest = { pinned: !item.isPinned }
-    const res = await api<ApiResponse<TogglePinResponse>>(`${basePath()}/${id}/pin`, {
+    const res = await api<ApiResponse<TogglePinResponse>>(`${itemPath(id)}/pin`, {
       method: 'PATCH',
       body: req,
     })
@@ -184,7 +207,7 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
    * @param id announcement_feed ID
    */
   async function markAsRead(id: number): Promise<void> {
-    await api<ApiResponse<MarkReadResponse>>(`${basePath()}/${id}/read`, { method: 'POST' })
+    await api<ApiResponse<MarkReadResponse>>(`${itemPath(id)}/read`, { method: 'POST' })
     const idx = feed.value.findIndex(f => f.id === id)
     if (idx !== -1) {
       feed.value[idx] = { ...feed.value[idx]!, isRead: true }
@@ -203,11 +226,37 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
    * 落とすためだけに使う。</p>
    */
   function removeFromFeedLocally(id: number): void {
+    unavailableIds.add(id)
     const target = feed.value.find(item => item.id === id)
     if (!target) return
+    // 閉じた後のread404で、復元済みカードが消える場合だけフォーカスを補完する。
+    const focused = typeof document === 'undefined' ? null : document.activeElement as HTMLElement | null
+    const card = focused?.closest<HTMLElement>('[data-announcement-item]')
+    const list = card?.dataset.announcementId === String(id)
+      ? card.closest<HTMLElement>('[data-announcement-list]') : null
+    const index = list && card ? [...list.querySelectorAll('[data-announcement-item]')].indexOf(card) : 0
     feed.value = feed.value.filter(item => item.id !== id)
     // 消した項目が未読だったぶんだけ未読カウントを戻す（表示と実体を揃える）
     if (!target.isRead && meta.value && meta.value.unreadCount > 0) {
+      meta.value = { ...meta.value, unreadCount: meta.value.unreadCount - 1 }
+    }
+    if (list && card) void nextTick(() => {
+      // 新しいモーダルや利用者の移動先、別scopeの再生成後からは奪わない。
+      if (!list.isConnected || card.isConnected || (document.activeElement !== document.body && document.activeElement !== focused)) return
+      const remaining = list.querySelectorAll<HTMLElement>('[data-announcement-item]')
+      const fallback = remaining[Math.max(0, Math.min(index, remaining.length - 1))]
+        ?? list.querySelector<HTMLElement>('[data-announcement-heading]')
+      fallback?.focus({ preventScroll: true })
+    })
+  }
+
+  /** preview の所有scope APIで既読化済みの項目を一覧へ反映する。二重減算しない。 */
+  function setReadLocally(id: number): void {
+    const index = feed.value.findIndex(value => value.id === id)
+    const value = feed.value[index]
+    if (!value || value.isRead) return
+    feed.value[index] = { ...value, isRead: true }
+    if (meta.value && meta.value.unreadCount > 0) {
       meta.value = { ...meta.value, unreadCount: meta.value.unreadCount - 1 }
     }
   }
@@ -314,6 +363,8 @@ export function useAnnouncementFeed(scopeType: AnnouncementScopeType, scopeId: s
     markAsRead,
     markAsReadBeforeOpen,
     removeFromFeedLocally,
+    setReadLocally,
+    setFeedItemsLocally,
     markAllAsRead,
   }
 }

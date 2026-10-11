@@ -9,6 +9,7 @@ import com.mannschaft.app.school.dto.DailyAttendanceResponse;
 import com.mannschaft.app.school.dto.DailyAttendanceUpdateRequest;
 import com.mannschaft.app.school.dto.DailyRollCallRequest;
 import com.mannschaft.app.school.dto.DailyRollCallSummary;
+import com.mannschaft.app.school.service.DailyAttendanceFacade;
 import com.mannschaft.app.school.service.DailyAttendanceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,6 +38,7 @@ import java.util.List;
 public class DailyAttendanceController {
 
     private final DailyAttendanceService dailyAttendanceService;
+    private final DailyAttendanceFacade dailyAttendanceFacade;
 
     /**
      * 特定日のクラス日次出欠一覧を取得する。
@@ -51,7 +53,7 @@ public class DailyAttendanceController {
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(dailyAttendanceService.getDailyAttendance(teamId, date, currentUserId));
+        return ApiResponse.of(dailyAttendanceFacade.getDailyAttendance(teamId, date, currentUserId));
     }
 
     /**
@@ -67,7 +69,7 @@ public class DailyAttendanceController {
             @PathVariable Long teamId,
             @Valid @RequestBody DailyRollCallRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        DailyRollCallSummary summary = dailyAttendanceService.submitDailyRollCall(teamId, request, currentUserId);
+        DailyRollCallSummary summary = dailyAttendanceFacade.submitDailyRollCall(teamId, request, currentUserId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(summary));
     }
 
@@ -86,7 +88,7 @@ public class DailyAttendanceController {
             @PathVariable Long recordId,
             @Valid @RequestBody DailyAttendanceUpdateRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(dailyAttendanceService.updateDailyRecord(teamId, recordId, request, currentUserId));
+        return ApiResponse.of(dailyAttendanceFacade.updateDailyRecord(teamId, recordId, request, currentUserId));
     }
 
     /**

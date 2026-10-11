@@ -3,6 +3,7 @@ package com.mannschaft.app.school;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.school.entity.ClassHomeroomEntity;
 import com.mannschaft.app.school.entity.StudentAttendanceSummaryEntity;
 import com.mannschaft.app.school.repository.StudentAttendanceSummaryRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -48,6 +49,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code checkMembership} により非メンバーは 403（COMMON_002）。生徒個別集計は
  * {@code (studentUserId, teamId)} の複合キーで引くため、自チームの teamId で他チームの生徒を
  * 指定しても行がヒットせず SUMMARY_NOT_FOUND に収束する（スコープとリソースが束縛済み）。</p>
+ *
+ * <p><b>学校出欠の認可是正 第1段で書き換え（CMP-261001-0630 / CMP-260930-0230）</b>: 旧版は「担任役」を
+ * RoleKind.MEMBER で作り、そのクラスの MEMBER 全員に 200/201 を期待していた。これは「同級の誰でも他生徒の
+ * 集計を取得・再計算できる」欠陥の追認だったため、(1) 担任を class_homerooms の現役担任として張り、
+ * (2) 担任でも本人でもない一般 MEMBER（同級生徒）は 403 を期待する（AC-4・AC-3・AC-13）。
+ * 全 EP × 全ロールの行列は {@code SchoolAttendanceAuthzMatrixIT}。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -70,8 +77,9 @@ class SchoolAttendanceSummaryScopeContractIT extends AbstractMySqlIntegrationTes
     private Long teamAId;
     private Long teamBId;
 
-    private Long teacherAId;   // teamA の正当メンバー（担任相当）
+    private Long teacherAId;   // teamA の現役担任（class_homerooms。ADMIN ではない）
     private Long studentAId;   // teamA に所属する生徒（集計対象）
+    private Long classmateId;  // teamA に所属する同級生徒（担任でも本人でもない一般 MEMBER）
     private Long memberBId;    // teamB のみに所属する越境攻撃者
     private Long outsiderId;   // どこにも所属しない非メンバー
 
@@ -86,8 +94,16 @@ class SchoolAttendanceSummaryScopeContractIT extends AbstractMySqlIntegrationTes
         studentAId = insertUser("sumauthz-student-a@example.com");
         memberBId = insertUser("sumauthz-member-b@example.com");
         outsiderId = insertUser("sumauthz-outsider@example.com");
+        classmateId = insertUser("sumauthz-classmate@example.com");
 
         MembershipTestHelper.insertMembership(em, teacherAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, classmateId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        // 担任は担任名簿（class_homerooms）の現役行で表す（第1段 V/R の判定源）。
+        LocalDate today = LocalDate.now(java.time.ZoneId.of("Asia/Tokyo"));
+        em.persist(ClassHomeroomEntity.builder()
+                .teamId(teamAId).homeroomTeacherUserId(teacherAId)
+                .academicYear(today.getYear()).effectiveFrom(today.minusDays(30)).createdBy(teacherAId)
+                .build());
         MembershipTestHelper.insertMembership(em, studentAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, memberBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
         // outsiderId はどこにも所属させない。
@@ -146,8 +162,18 @@ class SchoolAttendanceSummaryScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("正当メンバーは200")
-        void 正当メンバーは200() throws Exception {
+        @DisplayName("AC-4: 同級の一般MEMBER（本人でも担任でもない）は他生徒の集計を取得できず403")
+        void 同級の一般MEMBERは403() throws Exception {
+            setAuth(classmateId);
+            mockMvc.perform(get(studentSummary(studentAId))
+                            .param("teamId", String.valueOf(teamAId))
+                            .param("academicYear", String.valueOf(ACADEMIC_YEAR)))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("AC-4: 現役担任は200")
+        void 担任は200() throws Exception {
             setAuth(teacherAId);
             mockMvc.perform(get(studentSummary(studentAId))
                             .param("teamId", String.valueOf(teamAId))
@@ -193,8 +219,17 @@ class SchoolAttendanceSummaryScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("正当メンバーは200")
-        void 正当メンバーは200() throws Exception {
+        @DisplayName("AC-3: 一般MEMBER（同級生徒）はクラス全員の集計を取得できず403")
+        void 一般MEMBERは403() throws Exception {
+            setAuth(classmateId);
+            mockMvc.perform(get(classSummaries(teamAId))
+                            .param("academicYear", String.valueOf(ACADEMIC_YEAR)))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("AC-3: 現役担任は200")
+        void 担任は200() throws Exception {
             setAuth(teacherAId);
             mockMvc.perform(get(classSummaries(teamAId))
                             .param("academicYear", String.valueOf(ACADEMIC_YEAR)))
@@ -231,8 +266,18 @@ class SchoolAttendanceSummaryScopeContractIT extends AbstractMySqlIntegrationTes
         }
 
         @Test
-        @DisplayName("正当メンバーは201")
-        void 正当メンバーは201() throws Exception {
+        @DisplayName("AC-13: 一般MEMBER（同級生徒）は他生徒の集計を再計算できず403")
+        void 一般MEMBERは403() throws Exception {
+            setAuth(classmateId);
+            mockMvc.perform(post(recalculate(studentAId))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(recalcBody(teamAId))))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("AC-13: 現役担任は201")
+        void 担任は201() throws Exception {
             setAuth(teacherAId);
             mockMvc.perform(post(recalculate(studentAId))
                             .contentType(MediaType.APPLICATION_JSON)

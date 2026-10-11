@@ -35,6 +35,14 @@ export interface OrgTimestampsDto {
   createdAt?: string
 }
 
+/**
+ * CMP-261004-1942/1943: BE が OrganizationResponse に追加中のサポーター人数ネスト。
+ * 旧フラット `supporterCount`（OrgDetail 直下）は本フィールドへ段階移行する。
+ */
+export interface OrgSocialDto {
+  supporterCount?: number | null
+}
+
 export interface OrganizationResponse {
   /**
    * URL 識別子（カスタムスラッグ）。実体は slug と同値の string 型。BE slug 移行対応。
@@ -54,6 +62,7 @@ export interface OrganizationResponse {
   visibility?: OrgVisibilityDto
   metadata?: OrgMetadataDto
   timestamps?: OrgTimestampsDto
+  social?: OrgSocialDto
 }
 
 export interface OrganizationSummaryResponse {

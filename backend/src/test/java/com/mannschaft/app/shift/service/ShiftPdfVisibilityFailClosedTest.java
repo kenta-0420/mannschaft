@@ -1,6 +1,5 @@
 package com.mannschaft.app.shift.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.ErrorCode;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
@@ -35,7 +34,7 @@ import static org.mockito.Mockito.verify;
  *
  * <p><b>なぜ独立したテストが要るか</b>: {@link ShiftPdfService} はエンティティを持たず
  * {@link ShiftScheduleResponse}（DTO）しか受け取らない。この DTO は {@code status} が
- * {@code null} でも組み立てられ、実際に既存の {@code ShiftPdfServiceAuthzTest#scheduleOf}（:65-70）が
+ * {@code null} でも組み立てられ、実際に既存の {@code ShiftPdfFacadeAuthzTest} 系のフィクスチャが
  * {@code status} を設定しないまま生成している。{@code status == null} を「公開済み」と解釈すると、
  * DTO を部分的にしか組み立てない経路から遮断がまるごと抜ける。
  * <b>null は未公開扱い（fail-closed）</b>でなければならない。</p>
@@ -54,9 +53,6 @@ class ShiftPdfVisibilityFailClosedTest {
     private ShiftSlotService shiftSlotService;
     @Mock
     private PdfGeneratorService pdfGeneratorService;
-    @Mock
-    private AccessControlService accessControlService;
-
     @InjectMocks
     private ShiftPdfService shiftPdfService;
 
@@ -64,13 +60,12 @@ class ShiftPdfVisibilityFailClosedTest {
     private static final Long TEAM_ID = 10L;
     private static final Long REQUESTER = 99L;
 
-    /** 当該チームの一般メンバー（非 SUPPORTER・非 SYSTEM_ADMIN）として認可を通す。 */
+    /**
+     * 当該チームの一般メンバー（管理者側でない＝privileged=false）として、認可の後の tx 本体を呼ぶ。
+     * 認可（メンバー判定）は {@code ShiftPdfFacade} の責務で、ここでは公開状態の再判定だけを固定する。
+     */
     private void givenPlainMember() {
-        given(accessControlService.isSystemAdmin(REQUESTER)).willReturn(false);
-        given(accessControlService.isMember(REQUESTER, TEAM_ID, "TEAM")).willReturn(true);
-        given(accessControlService.isSupporter(REQUESTER, TEAM_ID, "TEAM")).willReturn(false);
-        given(accessControlService.isAdminOrAbove(REQUESTER, TEAM_ID, "TEAM")).willReturn(false);
-        given(shiftSlotService.listSlots(SCHEDULE_ID, REQUESTER)).willReturn(List.of(
+        given(shiftSlotService.listSlots(SCHEDULE_ID, false)).willReturn(List.of(
                 ShiftSlotResponse.builder().id(1L).scheduleId(SCHEDULE_ID)
                         .assignedUserIds(List.of(REQUESTER)).build()));
     }
@@ -92,11 +87,11 @@ class ShiftPdfVisibilityFailClosedTest {
         @DisplayName("チームPDF: status が null なら未公開扱いで SHIFT_SCHEDULE_NOT_FOUND")
         void チームPDFはstatusがnullなら404相当() {
             givenPlainMember();
-            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER))
+            given(scheduleService.getSchedule(SCHEDULE_ID, false))
                     .willReturn(scheduleWithStatus(null, null));
 
             Throwable thrown = catchThrowable(
-                    () -> shiftPdfService.generateTeamPdf(SCHEDULE_ID, REQUESTER));
+                    () -> shiftPdfService.generateTeamPdf(SCHEDULE_ID, REQUESTER, false));
 
             assertThat(thrown).isInstanceOf(BusinessException.class);
             assertThat(((BusinessException) thrown).getErrorCode())
@@ -108,11 +103,11 @@ class ShiftPdfVisibilityFailClosedTest {
         @DisplayName("個人PDF: status が null なら未公開扱いで SHIFT_SCHEDULE_NOT_FOUND")
         void 個人PDFはstatusがnullなら404相当() {
             givenPlainMember();
-            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER))
+            given(scheduleService.getSchedule(SCHEDULE_ID, false))
                     .willReturn(scheduleWithStatus(null, null));
 
             Throwable thrown = catchThrowable(
-                    () -> shiftPdfService.generatePersonalPdf(SCHEDULE_ID, REQUESTER));
+                    () -> shiftPdfService.generatePersonalPdf(SCHEDULE_ID, REQUESTER, false));
 
             assertThat(thrown).isInstanceOf(BusinessException.class);
             assertThat(((BusinessException) thrown).getErrorCode())
@@ -129,12 +124,12 @@ class ShiftPdfVisibilityFailClosedTest {
         @DisplayName("AC-17: PUBLISHED かつ publishedAt が null でも公開扱い（PDF は発行される）")
         void 公開済みはpublishedAtがnullでも発行される() {
             givenPlainMember();
-            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER))
+            given(scheduleService.getSchedule(SCHEDULE_ID, false))
                     .willReturn(scheduleWithStatus("PUBLISHED", null));
             given(pdfGeneratorService.generateFromTemplate(any(), any()))
                     .willReturn(new byte[]{0x25, 0x50, 0x44, 0x46});
 
-            byte[] result = shiftPdfService.generateTeamPdf(SCHEDULE_ID, REQUESTER);
+            byte[] result = shiftPdfService.generateTeamPdf(SCHEDULE_ID, REQUESTER, false);
 
             assertThat(result).startsWith((byte) 0x25);
         }
@@ -143,11 +138,11 @@ class ShiftPdfVisibilityFailClosedTest {
         @DisplayName("AC-7: ARCHIVED かつ publishedAt が null は未公開扱いで SHIFT_SCHEDULE_NOT_FOUND")
         void アーカイブはpublishedAtがnullなら404相当() {
             givenPlainMember();
-            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER))
+            given(scheduleService.getSchedule(SCHEDULE_ID, false))
                     .willReturn(scheduleWithStatus("ARCHIVED", null));
 
             Throwable thrown = catchThrowable(
-                    () -> shiftPdfService.generateTeamPdf(SCHEDULE_ID, REQUESTER));
+                    () -> shiftPdfService.generateTeamPdf(SCHEDULE_ID, REQUESTER, false));
 
             assertThat(thrown).isInstanceOf(BusinessException.class);
             assertThat(((BusinessException) thrown).getErrorCode())
@@ -159,12 +154,12 @@ class ShiftPdfVisibilityFailClosedTest {
         @DisplayName("ARCHIVED かつ publishedAt ありは公開扱い（PDF は発行される）")
         void アーカイブはpublishedAtがあれば発行される() {
             givenPlainMember();
-            given(scheduleService.getSchedule(SCHEDULE_ID, REQUESTER))
+            given(scheduleService.getSchedule(SCHEDULE_ID, false))
                     .willReturn(scheduleWithStatus("ARCHIVED", LocalDateTime.of(2026, 2, 20, 10, 0)));
             given(pdfGeneratorService.generateFromTemplate(any(), any()))
                     .willReturn(new byte[]{0x25, 0x50, 0x44, 0x46});
 
-            byte[] result = shiftPdfService.generateTeamPdf(SCHEDULE_ID, REQUESTER);
+            byte[] result = shiftPdfService.generateTeamPdf(SCHEDULE_ID, REQUESTER, false);
 
             assertThat(result).startsWith((byte) 0x25);
         }
