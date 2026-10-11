@@ -65,7 +65,10 @@ class ProvisioningLeakGuardTest {
                     "existsBySlugAndDeletedAtIsNull",
                     // 既存債務: BulletinScopeIdResolver / BlogPostService が直接使用中。
                     // 是正は別タスク（本 PR は resolveTeamId の入口のみを対象とする）。
-                    "findBySlugAndDeletedAtIsNull"
+                    "findBySlugAndDeletedAtIsNull",
+                    // SYS認可後の復元専用。削除済み/PROVISIONEDのID解決を許可する。
+                    // 通常導線のACTIVEなslug解決では使用しない。
+                    "findIdBySlugIncludingDeleted"
             ),
             "OrganizationRepository", Set.of(
                     "existsBySlugAndDeletedAtIsNull",

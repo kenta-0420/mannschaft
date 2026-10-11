@@ -380,6 +380,15 @@ public class TeamService {
     }
 
     /**
+     * SYSTEM_ADMIN 認可後の復元専用 slug 解決。論理削除済み・PROVISIONED も対象とする。
+     * 通常 API は ACTIVE 限定の {@link #resolveTeamId(String)} を使用する。
+     */
+    public Long resolveTeamIdForRestore(String slug) {
+        return teamRepository.findIdBySlugIncludingDeleted(slug)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+    }
+
+    /**
      * チームがサポーター受け入れを有効化していることを表明する。
      *
      * <p>{@code supporter_enabled} は「このチームがサポーター登録を受け付けるか」を表す
