@@ -148,8 +148,8 @@ public class AnnouncementBroadcastService {
                     audience.groupTeams());
         }
 
-        // 6.6. 宛先を絞ったアンケート告知の push（F01.2.1 §8.5.3）。フィード登録と同一トランザクションで enqueue する
-        //      ため、告知がロールバックされれば宛先集合もジョブも残らない（transactional outbox 相当）。
+        // 6.6. 宛先を絞ったアンケート告知の push（F01.2.1 §8.5.3）。フィード登録と同一トランザクションで social の outbox に
+        //      1行書くため、告知がロールバックされれば outbox の行も残らない（宛先集合とジョブはコミット後に relay が作る）。
         if (narrowedOrgAudience) {
             enqueueNarrowedAudiencePush(req, audience, feed.getId(), contentId);
         }
@@ -174,7 +174,7 @@ public class AnnouncementBroadcastService {
     }
 
     /**
-     * 宛先を絞ったアンケート告知の push を、告知と同じトランザクションで1件 enqueue する（F01.2.1 §8.5.1・§8.5.3）。
+     * 宛先を絞ったアンケート告知の push を、告知と同じトランザクションで1件予約する（social の outbox。F01.2.1 §8.5.1・§8.5.3）。
      *
      * <p>push を出せるのはアンケートで、送信者が組織 ADMIN・MANAGE_CONTENT を持つ DEPUTY_ADMIN・SYSTEM_ADMIN のときだけ。
      * それ以外（組織 MEMBER など）は表示の絞り込みだけで push は出さず、宛先集合もジョブも作らない。
@@ -196,8 +196,8 @@ public class AnnouncementBroadcastService {
                 ? req.getContent().getTitle() : "";
         // 応援者トグルは告知の target_role から決める（MEMBERS_AND_ABOVE なら純 SUPPORTER を除く。§8.5.2）。
         boolean includeSupporters = !AnnouncementVisibility.MEMBERS_AND_ABOVE.equals(req.getTargetRole());
-        // 宛先集合の登録とジョブの enqueue はポート経由で行う（social の tx から notification の Repository へ
-        // 推移的に届かせない。CLAUDE.md DB 設計の原則 #5・D-3T）。どちらも本トランザクションに参加する。
+        // ポートの実装は social の outbox に1行書くだけ（social の tx から notification の表へは書かない。
+        // 宛先集合とジョブはコミット後に通知ドメインの relay が登録する。CLAUDE.md DB 設計の原則 #5・D-3P）。
         pushEnqueuer.enqueue(new AnnouncementPushEnqueuer.NarrowedAnnouncementPush(
                 req.getScopeId(),
                 audience.resolvedTeamIds(),

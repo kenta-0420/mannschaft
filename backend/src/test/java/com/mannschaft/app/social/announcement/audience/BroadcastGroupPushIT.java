@@ -2,10 +2,17 @@ package com.mannschaft.app.social.announcement.audience;
 
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.fanout.FanoutEnqueueCommand;
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
+import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobStatus;
 import com.mannschaft.app.notification.fanout.NotificationFanoutWorker;
+import com.mannschaft.app.notification.outbox.NotificationOutboxIngestService;
+import com.mannschaft.app.notification.outbox.NotificationOutboxPayload;
+import com.mannschaft.app.notification.outbox.NotificationOutboxRelay;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.teamgroup.entity.OrgTeamGroupEntity;
 import com.mannschaft.app.social.announcement.AnnouncementBroadcastService;
@@ -22,7 +29,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -36,10 +46,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.reset;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -61,7 +80,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>H13 → {@link #H13_MEMBERがグループ宛てで送るとpushは出ずジョブも作られない()}</li>
  *   <li>H18 → {@link #H18_チームを選ぶでもpushは選んだチームと直属メンバーだけに届く()}</li>
  *   <li>H19 → {@link #H19_掲示板の告知ではfanoutジョブが作られない()}</li>
- *   <li>H21 → {@link #H21_コンテンツ作成がロールバックされたらジョブも宛先集合も作られない()}</li>
+ *   <li>H21（再定義。通知 outbox）→ {@link #H21_ロールバックでoutboxも残らずコミットでoutbox1行とdrainで1組だけできる()}</li>
+ *   <li>H21a → {@link #H21a_宛先集合の登録後ジョブ登録前に落ちると何も残らず再試行で1組できる()}</li>
+ *   <li>H21b → {@link #H21b_relay前に宛先グループへ移ったチームは宛先集合に入らない()}</li>
+ *   <li>H21c → {@link #H21c_relayが失敗してもフィードとコンテンツは残りoutboxはPENDING()}</li>
+ *   <li>H21d → {@link #H21d_同じ依頼の同時取り込みでも見出し1件と宛先チーム過不足なしとジョブ1件()} ／
+ *       {@link #H21d_組織が食い違う依頼は取り込みが失敗し何も足さない()}</li>
+ *   <li>H21e → {@link #H21e_宛先チーム0件でも見出し1件とジョブ1件で直属メンバーにだけ届く()}</li>
  *   <li>H22 → {@link #H22_MEMBERS_AND_ABOVEでは純SUPPORTERにpushが届かない()} ／
  *       {@link #H22_SUPPORTERS_AND_ABOVEでは純SUPPORTERにもpushが届く()}</li>
  *   <li>H27 → {@link #H27_MEMBERがチームを選ぶで送るとpushは出ずジョブも作られない()}</li>
@@ -74,12 +99,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * </ul>
  * H32a・H32b・H32c は別クラス（{@code OrgTeamsShardScopeRefIT}・{@code OrgTeamsFanoutRecipientSourceIT}）。
  *
+ * <p>宛先を絞った告知の push は、告知と同じ tx で social の outbox（{@code social_notification_outbox}）に1行書かれ、
+ * 宛先集合とジョブは通知ドメインの relay が取り込んだときに作られる（docs/architecture/notification_outbox.md）。
+ * 試験プロファイルでは起こし（AFTER_COMMIT の即時 drain）と予備ポーラーが止まっているので、本クラスは
+ * {@link NotificationOutboxRelay#drainAll()} を同期で呼んでから観測する（{@link #jobsAfterSettling}）。</p>
+ *
  * <p>「ジョブが作られない」系の検証は、リスナー（AFTER_COMMIT・非同期）が遅れて enqueue する経路も
- * 捕まえるため、送信後に数秒待ってから表を SELECT する。</p>
+ * 捕まえるため、送信後に drain し、数秒待ってから表を SELECT する。</p>
  */
 @AutoConfigureMockMvc
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@DisplayName("F01.2.1 6-E グループ宛て告知の push（AC-H04・H07〜H11・H13・H18・H19・H21・H22・H27・H28・H30・H31・H33）")
+@DisplayName("F01.2.1 6-E グループ宛て告知の push（AC-H04・H07〜H11・H13・H18・H19・H21〜H21e・H22・H27・H28・H30・H31・H33）")
 class BroadcastGroupPushIT extends AbstractBroadcastAudienceIT {
 
     private static final String TEAMS_SCOPE = "ORGANIZATION_TEAMS";
@@ -101,6 +131,14 @@ class BroadcastGroupPushIT extends AbstractBroadcastAudienceIT {
     private BroadcastAudienceResolver audienceResolver;
     @Autowired
     private AnnouncementBroadcastService broadcastService;
+    @Autowired
+    private NotificationOutboxRelay relay;
+    @Autowired
+    private NotificationOutboxIngestService ingestService;
+
+    /** H21a・H21c でジョブの登録だけを失敗させる（それ以外は実物を呼ぶ）。 */
+    @MockitoSpyBean
+    private NotificationFanoutJobService fanoutJobServiceSpy;
 
     // =====================================================================
     // フィクスチャ
@@ -290,10 +328,57 @@ class BroadcastGroupPushIT extends AbstractBroadcastAudienceIT {
         return id.toString().replace("-", "").toUpperCase();
     }
 
-    /** 送信後に数秒待ってから、組織に紐づく fan-out ジョブを全件返す（遅れて enqueue する経路も捕まえる）。 */
+    /**
+     * 送信後に outbox を drain し（relay の同期呼び出し）、数秒待ってから組織に紐づく fan-out ジョブを全件返す
+     * （遅れて enqueue する経路も捕まえる）。
+     */
     private List<Map<String, Object>> jobsAfterSettling(long orgId) throws InterruptedException {
+        relay.drainAll();
         Thread.sleep(SETTLE_MILLIS);
         return jobs(orgId);
+    }
+
+    /** 組織の social outbox の行（冪等キー・種類・状態・失敗回数・payload）。 */
+    private List<Map<String, Object>> outboxRows(long orgId) {
+        return jdbc.queryForList(
+                "SELECT HEX(idempotency_key) AS ik, message_kind, notification_type, status, attempt_count, last_error, "
+                        + "relayed_at, payload_json FROM social_notification_outbox WHERE organization_id = ?", orgId);
+    }
+
+    /** 失敗した outbox の行をすぐ再試行できるようにする（{@code next_attempt_at} を過去へ）。 */
+    private void makeRetryableNow(long orgId) {
+        jdbc.update("UPDATE social_notification_outbox "
+                + "SET next_attempt_at = DATE_SUB(UTC_TIMESTAMP(6), INTERVAL 1 SECOND) "
+                + "WHERE organization_id = ? AND status = 'PENDING'", orgId);
+    }
+
+    /** 冪等キーで引いたジョブ行（親・子シャードを含む）の件数。 */
+    private long jobCountByKey(UUID key) {
+        Long n = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notification_fanout_jobs WHERE source_event_uuid = UNHEX(?)", Long.class, hex(key));
+        return n == null ? 0L : n;
+    }
+
+    private long audienceHeaderCountById(UUID audienceId) {
+        Long n = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notification_fanout_audiences WHERE audience_snapshot_id = UNHEX(?)",
+                Long.class, hex(audienceId));
+        return n == null ? 0L : n;
+    }
+
+    /**
+     * ジョブの登録（{@code enqueueInCurrentTransaction}）を失敗させる（{@code always} でなければ次の1回だけ）。
+     * MANDATORY のメソッドなので、プロキシ越しにスタブすると tx の外で弾かれる。AOP の内側の spy に直接スタブする。
+     */
+    private void failJobEnqueue(boolean always) {
+        NotificationFanoutJobService target = AopTestUtils.getUltimateTargetObject(fanoutJobServiceSpy);
+        if (always) {
+            doThrow(new IllegalStateException("ジョブ登録の失敗（テスト）"))
+                    .when(target).enqueueInCurrentTransaction(any());
+        } else {
+            doThrow(new IllegalStateException("ジョブ登録の失敗（テスト）")).doCallRealMethod()
+                    .when(target).enqueueInCurrentTransaction(any());
+        }
     }
 
     private List<Map<String, Object>> jobs(long orgId) {
@@ -649,19 +734,51 @@ class BroadcastGroupPushIT extends AbstractBroadcastAudienceIT {
     // =====================================================================
 
     @Test
-    @DisplayName("H21: コンテンツ作成がロールバックされたら、ジョブも宛先集合も作られない（告知と同一トランザクションで enqueue）")
-    void H21_コンテンツ作成がロールバックされたらジョブも宛先集合も作られない() throws Exception {
+    @DisplayName("H21: 告知が巻き戻ると social outbox の行も残らない。コミットすると outbox 1行が告知と同時に確定し、relay の前はジョブ0件、drain で ORGANIZATION_TEAMS のジョブと宛先集合がちょうど1組、drain を繰り返しても1組のまま")
+    void H21_ロールバックでoutboxも残らずコミットでoutbox1行とdrainで1組だけできる() throws Exception {
         Sc sc = scenario();
-        // 対照: 普通に送ればジョブと宛先集合が1組できる（これが無いと「作られない」が空振りでも通る）
-        sendSurvey(sc.xa, sc, groupRange(sc));
-        assertThat(jobsOfType(jobsAfterSettling(sc.org.getId()), TEAMS_SCOPE)).hasSize(1);
-        long feedsBefore = feedCount(sc.org.getId());
+        long orgId = sc.org.getId();
 
+        // コミット側: 告知と同時に outbox 1行。relay の前は通知ドメインに何も無い
+        long feedId = sendSurvey(sc.xa, sc, groupRange(sc));
+        List<Map<String, Object>> rows = outboxRows(orgId);
+        assertThat(rows).as("告知と同時に outbox がちょうど1行").hasSize(1);
+        assertThat(rows.get(0).get("ik")).as("冪等キーはフィード ID から導いた決定的な UUID")
+                .isEqualTo(hex(broadcastKey(feedId)));
+        assertThat(rows.get(0).get("message_kind")).isEqualTo("FANOUT_WITH_AUDIENCE");
+        assertThat(rows.get(0).get("notification_type")).isEqualTo(SURVEY_TYPE);
+        assertThat(rows.get(0).get("status")).isEqualTo("PENDING");
+        assertThat(jobs(orgId)).as("relay の前はジョブ0件").isEmpty();
+        assertThat(audienceHeaderCount(orgId)).as("relay の前は宛先集合0件").isZero();
+
+        // drain で1組
+        assertThat(jobsOfType(jobsAfterSettling(orgId), TEAMS_SCOPE)).hasSize(1);
+        assertThat(audienceHeaderCount(orgId)).isEqualTo(1L);
+        assertThat(audienceTeamIds(audienceId(feedId))).containsExactlyInAnyOrder(sc.t1.getId(), sc.t2.getId());
+        assertThat(outboxRows(orgId).get(0).get("status")).isEqualTo("RELAYED");
+        assertThat(outboxRows(orgId).get(0).get("relayed_at")).isNotNull();
+
+        // 取り込みの後・印付けの前に落ちた（行が PENDING に戻った）状態から drain を2回繰り返しても1組のまま
+        jdbc.update("UPDATE social_notification_outbox SET status = 'PENDING', claim_token = NULL, claimed_at = NULL, "
+                + "relayed_at = NULL WHERE organization_id = ?", orgId);
+        relay.drainAll();
+        relay.drainAll();
+        assertThat(jobsOfType(jobs(orgId), TEAMS_SCOPE)).as("再取り込みでもジョブは1件").hasSize(1);
+        assertThat(jobCountByKey(broadcastKey(feedId))).isEqualTo(1L);
+        assertThat(audienceHeaderCount(orgId)).as("宛先集合の見出しも1件").isEqualTo(1L);
+        assertThat(audienceTeamIds(audienceId(feedId))).as("宛先チームは過不足なし")
+                .containsExactlyInAnyOrder(sc.t1.getId(), sc.t2.getId());
+        assertThat(outboxRows(orgId)).hasSize(1);
+        assertThat(outboxRows(orgId).get(0).get("status")).isEqualTo("RELAYED");
+
+        // ロールバック側: outbox もジョブも宛先集合も増えない
+        long feedsBefore = feedCount(orgId);
         BroadcastAudienceSpec spec = new BroadcastAudienceSpec(
                 null, List.of(sc.g3.getId()), null, null, null, "MEMBERS_AND_ABOVE");
         ResolvedBroadcastAudience resolved =
                 audienceResolver.resolveForBroadcast(
-                        sc.xa, "ORGANIZATION", sc.org.getId(), spec, AnnouncementChannel.SURVEY);
+                        sc.xa, "ORGANIZATION", orgId, spec, AnnouncementChannel.SURVEY);
+        assertThat(resolved.pushEnabled()).as("対照: 巻き戻す告知も push を出す条件を満たす").isTrue();
         BroadcastRequest request = BroadcastRequest.builder()
                 .channel(AnnouncementChannel.SURVEY)
                 .targetRole("MEMBERS_AND_ABOVE")
@@ -669,18 +786,211 @@ class BroadcastGroupPushIT extends AbstractBroadcastAudienceIT {
                 .content(AnnouncementContentRequest.builder().title("巻き戻す告知").description("説明").build())
                 .callerUserId(sc.xa)
                 .scopeType("ORGANIZATION")
-                .scopeId(sc.org.getId())
+                .scopeId(orgId)
                 .audience(resolved)
                 .build();
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             broadcastService.broadcast(request);
+            assertThat(outboxRowsInTx(orgId)).as("巻き戻す前は同じ tx の中に outbox の行が見える").isEqualTo(2L);
             status.setRollbackOnly();
         });
 
-        assertThat(feedCount(sc.org.getId())).as("フィードは巻き戻る").isEqualTo(feedsBefore);
-        assertThat(jobsOfType(jobsAfterSettling(sc.org.getId()), TEAMS_SCOPE))
-                .as("ジョブも巻き戻る（最初の1件だけが残る）").hasSize(1);
-        assertThat(audienceHeaderCount(sc.org.getId())).as("宛先集合の見出しも巻き戻る").isEqualTo(1L);
+        assertThat(feedCount(orgId)).as("フィードは巻き戻る").isEqualTo(feedsBefore);
+        assertThat(outboxRows(orgId)).as("outbox の行も巻き戻る（最初の1行だけが残る）").hasSize(1);
+        assertThat(jobsOfType(jobsAfterSettling(orgId), TEAMS_SCOPE))
+                .as("drain してもジョブは増えない（最初の1件だけが残る）").hasSize(1);
+        assertThat(audienceHeaderCount(orgId)).as("宛先集合の見出しも増えない").isEqualTo(1L);
+    }
+
+    /** 同じ tx（呼び出し側の接続）から見える outbox の行数。 */
+    private long outboxRowsInTx(long orgId) {
+        return ((Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM social_notification_outbox WHERE organization_id = :o")
+                .setParameter("o", orgId).getSingleResult()).longValue();
+    }
+
+    @Test
+    @DisplayName("H21a: 取り込みで宛先集合を登録した後・ジョブを登録する前に失敗すると、宛先集合もジョブも残らず outbox は PENDING（attempt=1）。再試行で1組だけできる")
+    void H21a_宛先集合の登録後ジョブ登録前に落ちると何も残らず再試行で1組できる() throws Exception {
+        Sc sc = scenario();
+        long orgId = sc.org.getId();
+        long feedId = sendSurvey(sc.xa, sc, groupRange(sc));
+        failJobEnqueue(false);
+
+        relay.drainAll();
+
+        assertThat(audienceHeaderCountById(audienceId(feedId))).as("宛先集合の見出しも巻き戻る（同じ tx）").isZero();
+        assertThat(audienceTeamIds(audienceId(feedId))).as("宛先チームも巻き戻る").isEmpty();
+        assertThat(jobCountByKey(broadcastKey(feedId))).isZero();
+        Map<String, Object> row = outboxRows(orgId).get(0);
+        assertThat(row.get("status")).isEqualTo("PENDING");
+        assertThat(((Number) row.get("attempt_count")).intValue()).isEqualTo(1);
+        assertThat((String) row.get("last_error")).contains("ジョブ登録の失敗");
+
+        makeRetryableNow(orgId);
+        relay.drainAll();
+
+        assertThat(jobCountByKey(broadcastKey(feedId))).as("再試行でジョブ1件").isEqualTo(1L);
+        assertThat(audienceHeaderCountById(audienceId(feedId))).isEqualTo(1L);
+        assertThat(audienceTeamIds(audienceId(feedId))).containsExactlyInAnyOrder(sc.t1.getId(), sc.t2.getId());
+        assertThat(outboxRows(orgId).get(0).get("status")).isEqualTo("RELAYED");
+    }
+
+    @Test
+    @DisplayName("H21b: 送信後・relay の前にチーム(T4)を宛先グループ(G1)へ移しても、宛先集合は送信時のチーム(T1)のまま（payload に送信時の teamIds）")
+    void H21b_relay前に宛先グループへ移ったチームは宛先集合に入らない() throws Exception {
+        Sc sc = scenario();
+        long feedId = sendSurvey(sc.xa, sc, Map.of("targetGroupIds", ids(sc.g1.getId())));
+        assertThat((String) outboxRows(sc.org.getId()).get(0).get("payload_json"))
+                .as("payload に送信時の宛先チームが入る").contains("\"teamIds\":[" + sc.t1.getId() + "]");
+
+        moveTeamToGroup(sc.t4.getId(), sc.org.getId(), sc.g1.getId());
+        jobsAfterSettling(sc.org.getId());
+
+        assertThat(audienceTeamIds(audienceId(feedId))).as("宛先集合は送信時のチームだけ").containsExactly(sc.t1.getId());
+        runWorker(feedId);
+        Map<Long, Integer> counts = notifiedAll(sc);
+        assertThat(counts.get(sc.t1m)).isEqualTo(1);
+        assertThat(counts).as("relay の前に G1 へ移った T4 のメンバーには届かない").doesNotContainKey(sc.t4m);
+    }
+
+    @Test
+    @DisplayName("H21c: relay（取り込み）が失敗しても、告知のフィードとコンテンツ（アンケート）は残り、outbox は PENDING のまま再試行を待つ")
+    void H21c_relayが失敗してもフィードとコンテンツは残りoutboxはPENDING() throws Exception {
+        Sc sc = scenario();
+        long orgId = sc.org.getId();
+        ResultActions result = broadcastToOrg(sc.xa, orgId, body("SURVEY", groupRange(sc)));
+        result.andExpect(status().isCreated());
+        long feedId = feedIdOf(result);
+        long contentId = objectMapper.readTree(result.andReturn().getResponse().getContentAsString())
+                .path("data").path("contentId").asLong();
+        failJobEnqueue(true);
+
+        relay.drainAll();
+
+        Long feeds = jdbc.queryForObject("SELECT COUNT(*) FROM announcement_feeds WHERE id = ?", Long.class, feedId);
+        assertThat(feeds).as("フィードは残る").isEqualTo(1L);
+        Long surveys = jdbc.queryForObject("SELECT COUNT(*) FROM surveys WHERE id = ?", Long.class, contentId);
+        assertThat(surveys).as("コンテンツ（アンケート）は残る").isEqualTo(1L);
+        Map<String, Object> row = outboxRows(orgId).get(0);
+        assertThat(row.get("status")).isEqualTo("PENDING");
+        assertThat(((Number) row.get("attempt_count")).intValue()).isEqualTo(1);
+        assertThat(jobCountByKey(broadcastKey(feedId))).isZero();
+        assertThat(audienceHeaderCountById(audienceId(feedId))).isZero();
+
+        // 失敗の注入を外すと再試行で取り込まれる（他のテストの drain に PENDING を残さない）
+        reset(AopTestUtils.<NotificationFanoutJobService>getUltimateTargetObject(fanoutJobServiceSpy));
+        makeRetryableNow(orgId);
+        relay.drainAll();
+        assertThat(outboxRows(orgId).get(0).get("status")).isEqualTo("RELAYED");
+        assertThat(jobCountByKey(broadcastKey(feedId))).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("H21d: 同じ依頼を4本同時に取り込んでも、見出し1件・宛先チームは過不足なし・ジョブ1件（デッドロックは再試行で収まる）")
+    void H21d_同じ依頼の同時取り込みでも見出し1件と宛先チーム過不足なしとジョブ1件() throws Exception {
+        Sc sc = scenario();
+        UUID audience = UUID.randomUUID();
+        UUID key = UUID.randomUUID();
+        List<Long> teams = List.of(sc.t3.getId(), sc.t1.getId(), sc.t2.getId());
+        NotificationOutboxPayload payload = NotificationOutboxPayload.fanoutWithAudience(
+                surveyCommand(audience, key, sc.org.getId()), audience, teams);
+
+        int threads = 4;
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Integer>> results = new ArrayList<>();
+        try {
+            for (int i = 0; i < threads; i++) {
+                results.add(pool.submit(() -> {
+                    start.await();
+                    return ingestWithRetry(payload);
+                }));
+            }
+            start.countDown();
+            for (Future<Integer> f : results) {
+                assertThat(f.get(60, TimeUnit.SECONDS)).as("再試行の回数（上限内で成功）").isLessThan(5);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertThat(audienceHeaderCountById(audience)).isEqualTo(1L);
+        assertThat(audienceTeamIds(audience)).containsExactlyInAnyOrderElementsOf(teams);
+        Long teamRows = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notification_fanout_audience_teams WHERE audience_snapshot_id = UNHEX(?)",
+                Long.class, hex(audience));
+        assertThat(teamRows).as("宛先チームの行は重複しない").isEqualTo(3L);
+        assertThat(jobCountByKey(key)).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("H21d(補): 既存の宛先集合と組織が食い違う依頼は取り込みが失敗し、宛先チームもジョブも足さない")
+    void H21d_組織が食い違う依頼は取り込みが失敗し何も足さない() {
+        Sc sc = scenario();
+        UUID audience = UUID.randomUUID();
+        ingestService.ingest(NotificationOutboxPayload.fanoutWithAudience(
+                surveyCommand(audience, UUID.randomUUID(), sc.org.getId()), audience, List.of(sc.t1.getId())));
+        UUID otherKey = UUID.randomUUID();
+
+        assertThatThrownBy(() -> ingestService.ingest(NotificationOutboxPayload.fanoutWithAudience(
+                surveyCommand(audience, otherKey, sc.orgY.getId()), audience, List.of(sc.t2.getId()))))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(audienceTeamIds(audience)).as("他組織の依頼で宛先チームは増えない").containsExactly(sc.t1.getId());
+        assertThat(jobCountByKey(otherKey)).as("食い違った依頼のジョブは作られない").isZero();
+    }
+
+    /** 同時取り込みでロックの競合（デッドロック・待ちタイムアウト）が起きたら再試行する（relay の再試行と同じ扱い）。 */
+    private int ingestWithRetry(NotificationOutboxPayload payload) {
+        for (int attempt = 0; ; attempt++) {
+            try {
+                ingestService.ingest(payload);
+                return attempt;
+            } catch (PessimisticLockingFailureException e) {
+                if (attempt >= 4) {
+                    throw e;
+                }
+            }
+        }
+    }
+
+    /** H21d 用の取り込み依頼（告知 push と同じ形。scope_ref は宛先集合のキー）。 */
+    private static FanoutEnqueueCommand surveyCommand(UUID audience, UUID key, long orgId) {
+        return new FanoutEnqueueCommand(TEAMS_SCOPE, audience.toString(), SURVEY_TYPE, key, orgId,
+                NotificationPriority.NORMAL, null, "SURVEY", 1L, "/surveys/1", false,
+                FanoutMessageKind.SURVEY_PUBLISHED, List.of("同時取り込み"), FanoutEnqueueCommand.ShardMode.AUTO);
+    }
+
+    @Test
+    @DisplayName("H21e: 宛先チームが0件のグループ宛てでも、見出し1件・ジョブ1件（ORGANIZATION_TEAMS）で、組織の直属メンバーにだけ届き、組織全体への fan-out（ORGANIZATION ジョブ・チームのメンバーへの配信）は出ない")
+    void H21e_宛先チーム0件でも見出し1件とジョブ1件で直属メンバーにだけ届く() throws Exception {
+        Sc sc = scenario();
+        OrgTeamGroupEntity empty = new TransactionTemplate(transactionManager)
+                .execute(status -> newGroup(sc.org.getId(), "G空", 9));
+        long feedId = sendSurvey(sc.xa, sc, Map.of("targetGroupIds", ids(empty.getId())));
+        assertThat((String) outboxRows(sc.org.getId()).get(0).get("payload_json"))
+                .as("payload の宛先チームは空").contains("\"teamIds\":[]");
+
+        List<Map<String, Object>> all = jobsAfterSettling(sc.org.getId());
+        assertThat(jobsOfType(all, ORG_SCOPE)).as("組織全体への ORGANIZATION ジョブは出ない").isEmpty();
+        assertThat(jobsOfType(all, TEAMS_SCOPE)).as("ORGANIZATION_TEAMS ジョブがちょうど1件").hasSize(1);
+        assertThat(audienceHeaderCount(sc.org.getId())).as("宛先集合の見出しが1件").isEqualTo(1L);
+        assertThat(audienceTeamIds(audienceId(feedId))).as("宛先チームは0件").isEmpty();
+
+        runWorker(feedId);
+
+        Map<Long, Integer> counts = notifiedAll(sc);
+        for (long direct : List.of(sc.xo, sc.xm, sc.xd, sc.xd2, sc.sa, sc.t1xo)) {
+            assertThat(counts.get(direct)).as("組織の直属メンバーには届く userId=" + direct).isEqualTo(1);
+        }
+        for (long teamOnly : List.of(sc.t1m, sc.t2m, sc.t3m, sc.t0m, sc.t4m, sc.t12m, sc.teamSupporter)) {
+            assertThat(counts).as("チームだけのメンバーには届かない（組織全体へ広がらない） userId=" + teamOnly)
+                    .doesNotContainKey(teamOnly);
+        }
+        for (long outside : List.of(sc.outsider, sc.ym)) {
+            assertThat(counts).as("組織の外には届かない userId=" + outside).doesNotContainKey(outside);
+        }
     }
 
     // =====================================================================
