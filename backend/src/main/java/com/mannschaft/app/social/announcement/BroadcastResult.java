@@ -45,6 +45,10 @@ public class BroadcastResult {
     /** 送信時の宛先指定の記録（絞り込みなしなら null。F01.2.1 AC-H17）。 */
     private final TargetAudience targetAudience;
 
+    /** 警告（テンプレートのグループを除外したときの {@code TEMPLATE_GROUPS_REMOVED:N} など。無ければ空）。 */
+    @Builder.Default
+    private final List<String> warnings = List.of();
+
     /** 優先度。 */
     private final String priority;
 
