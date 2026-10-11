@@ -48,16 +48,24 @@ public class CalendarEntryResponse {
      * @param color         §3.4 で解決済みの最終表示色（{@code #RRGGBB}）。応答経路では非 null（AC-18b）
      * @param colorSource   色の由来（§4.3.2 の共通4値）。応答経路では非 null（AC-18b）
      * @param categoryColor カテゴリ色そのもの（カテゴリ無し・未設定は null）
+     * @param scopeAutoColor 最終表示色と独立したスコープの自動色（チップ用）
      */
     public record CalendarContentDto(String title, String eventType, String status,
                                      String referenceUuid, String referenceKind,
                                      String color, CalendarColorSource colorSource,
-                                     String categoryColor) {
+                                     String categoryColor, String scopeAutoColor) {
+
+        /** 8 引数の後方互換コンストラクタ。応答経路ではサービス層がスコープ自動色を埋める。 */
+        public CalendarContentDto(String title, String eventType, String status,
+                                  String referenceUuid, String referenceKind,
+                                  String color, CalendarColorSource colorSource, String categoryColor) {
+            this(title, eventType, status, referenceUuid, referenceKind, color, colorSource, categoryColor, null);
+        }
 
         /**
          * 5 引数の後方互換コンストラクタ（F03.19 §4.6 / R8-2）。
          *
-         * <p>正準コンストラクタが 8 引数へ広がったことで<b>暗黙に存在していた 5 引数版が消える</b>ため、
+         * <p>正準コンストラクタの拡張で<b>暗黙に存在していた 5 引数版が消える</b>ため、
          * 明示コンストラクタとして書き足したものである。色は {@code null} のまま構築されるので、
          * {@code GET /my/calendar} の応答経路では<b>サービス層が必ず色を埋める</b>こと
          * （色 null のまま返してはならない・AC-18b）。</p>
@@ -75,8 +83,14 @@ public class CalendarEntryResponse {
         /** 色だけを差し替えた複製を返す（サービス層が色を後付けするための手段・R14）。 */
         public CalendarContentDto withColor(String newColor, CalendarColorSource newSource,
                                             String newCategoryColor) {
+            return withColor(newColor, newSource, newCategoryColor, scopeAutoColor);
+        }
+
+        /** 最終表示色と独立したスコープ自動色をサービス層で埋める。 */
+        public CalendarContentDto withColor(String newColor, CalendarColorSource newSource,
+                                            String newCategoryColor, String newScopeAutoColor) {
             return new CalendarContentDto(title, eventType, status, referenceUuid, referenceKind,
-                    newColor, newSource, newCategoryColor);
+                    newColor, newSource, newCategoryColor, newScopeAutoColor);
         }
     }
 

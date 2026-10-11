@@ -155,6 +155,8 @@ export interface MyCalendarTodo {
   scopeId: number | null
   scopeSlug: string | null
   scopeName: string | null
+  /** 最終優先度色とは独立した、BE 解決済みスコープ自動色。 */
+  scopeAutoColor?: string | null
 }
 
 export interface MyCalendarTodoResponse {

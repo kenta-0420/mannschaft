@@ -2,7 +2,7 @@
 # E2E Real Smoke — seed データ投入 + Backend API smoke チェック
 # =============================================================================
 # 概要:
-#   1. MySQL サービスコンテナを起動
+#   1. MySQL と Valkey のサービスコンテナを起動
 #   2. Spring Boot を ci プロファイルで起動（Flyway マイグレーションを自動適用）
 #   3. seed-e2e-data.js で E2E テスト用データを投入
 #   4. smoke-check.sh で API を叩き、HTTP 200 を確認する
@@ -28,9 +28,8 @@
 #   - smoke チェック: 約 30 秒
 #
 # 制限事項:
-#   - Valkey (Redis) は CI 環境に存在しない。
-#     既存の fail-open 機構（ValkeyFailSilentAspect 等）が接続失敗をスキップするため、
-#     Valkey を使用する機能（セッション管理・レートリミット等）は smoke 対象外とする。
+#   - Valkey は ci プロファイルの localhost:6379 に接続する専用サービスとして起動する。
+#     ブラウザの補助 API も実依存で検証し、接続失敗を合格扱いにしない。
 #   - bcrypt ハッシュ（seed スクリプトが投入した $2a$ 形式）は DelegatingPasswordEncoder の
 #     setDefaultPasswordEncoderForMatches(BCrypt) により正常に検証できる。
 #     Argon2id 移行（PR #1094）の影響でログインが失敗することはない。
@@ -49,6 +48,11 @@ on:
     # 毎週日曜 20:00 UTC = 月曜 JST 05:00
     - cron: '0 20 * * 0'
   workflow_dispatch:
+    inputs:
+      run_calendar_browser:
+        description: '検分後のカレンダー実ブラウザ検証を実行する'
+        type: boolean
+        default: false
 
 jobs:
   seed-and-api-smoke:
@@ -68,6 +72,16 @@ jobs:
           - 3306:3306
         options: >-
           --health-cmd "mysqladmin ping -h localhost -u mannschaft -pmannschaft"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
@@ -127,6 +141,9 @@ jobs:
       # Flyway が自動でマイグレーションを適用してからバックエンドが起動する。
       # JAR ファイルは *-SNAPSHOT.jar（plain は除外）。
       - name: Start backend (with Flyway migration)
+        env:
+          # 実機FEのOriginだけをCI専用に明示する（security/03 §6、ワイルドカード禁止）。
+          MANNSCHAFT_ALLOWED_ORIGINS: 'http://localhost:8081,http://localhost:8080'
         run: |
           JAR=$(ls backend/build/libs/*.jar | grep -v plain | head -1)
           echo "起動する JAR: $JAR"
@@ -186,9 +203,107 @@ jobs:
 
       # seed データが Hibernate 経由で正常に読み取れるかを API で確認する
       - name: Run API smoke check
+        id: api_smoke
         run: |
           chmod +x backend/scripts/smoke-check.sh
           bash backend/scripts/smoke-check.sh http://localhost:8080
+
+      # 同runのAPI smokeを通ったJARだけを、ローカル隔離実機用に回収する。本番配備はしない。
+      - name: Prepare verified calendar backend artifact
+        id: calendar_backend_artifact
+        if: success() && github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser && steps.api_smoke.outcome == 'success'
+        run: |
+          set -euo pipefail
+          checkout_sha="$(git rev-parse HEAD)"
+          if [[ "$checkout_sha" != "$GITHUB_SHA" ]]; then
+            echo "::error::checkout SHA と GITHUB_SHA が一致しません"
+            exit 1
+          fi
+          mapfile -d '' -t jars < <(find backend/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' -print0)
+          if [[ "${#jars[@]}" -ne 1 ]]; then
+            echo "::error::非plainの検証JARは1個だけ必要です"
+            exit 1
+          fi
+          artifact_dir="$(mktemp -d "$RUNNER_TEMP/calendar-backend-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.XXXXXX")"
+          cp -- "${jars[0]}" "$artifact_dir/backend-verification.jar"
+          checksum="$(sha256sum "$artifact_dir/backend-verification.jar" | cut -d ' ' -f 1)"
+          printf '%s  backend-verification.jar\n' "$checksum" > "$artifact_dir/SHA256SUMS"
+          printf '%s\n' "$checkout_sha" > "$artifact_dir/CHECKOUT_SHA"
+          echo "directory=$artifact_dir" >> "$GITHUB_OUTPUT"
+
+      - name: Upload verified calendar backend artifact
+        if: success() && github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser && steps.calendar_backend_artifact.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: calendar-verified-backend-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ steps.calendar_backend_artifact.outputs.directory }}/backend-verification.jar
+            ${{ steps.calendar_backend_artifact.outputs.directory }}/SHA256SUMS
+            ${{ steps.calendar_backend_artifact.outputs.directory }}/CHECKOUT_SHA
+          if-no-files-found: error
+          retention-days: 7
+      # PR 自動実行は従来の API smoke のみ。検分後の明示実行で本物の UI を検証する。
+      - name: Install browser test dependencies
+        if: github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
+        working-directory: frontend
+        env:
+          HUSKY: '0'
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Verify calendar browser CORS preflight
+        if: github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
+        run: |
+          set -euo pipefail
+          origin='http://localhost:8081'
+          headers="$(mktemp "$RUNNER_TEMP/calendar-cors.XXXXXX")"
+          trap 'rm -f -- "$headers"' EXIT
+          if ! curl --fail --silent --show-error --max-time 15 \
+            --request OPTIONS http://localhost:8080/api/v1/my/calendar \
+            --header "Origin: $origin" \
+            --header 'Access-Control-Request-Method: GET' \
+            --header 'Access-Control-Request-Headers: authorization,content-type' \
+            --dump-header "$headers" --output /dev/null; then
+            echo '::error::カレンダー実機のCORS preflightが失敗しました'
+            exit 1
+          fi
+          allow_origin="$(awk 'tolower($1) == "access-control-allow-origin:" {gsub("\r", "", $2); print $2}' "$headers")"
+          allow_credentials="$(awk 'tolower($1) == "access-control-allow-credentials:" {gsub("\r", "", $2); print $2}' "$headers")"
+          if [[ "$allow_origin" != "$origin" || "$allow_credentials" != 'true' ]]; then
+            echo '::error::CORSのallow-origin/credentialsが実機FEの契約と一致しません'
+            exit 1
+          fi
+          echo 'カレンダー実機のOriginとcredentialsのCORS契約を確認しました'
+
+      - name: Run calendar browser verification (real backend)
+        if: github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
+        working-directory: frontend
+        env:
+          BASE_URL: http://localhost:8081
+          API_BASE_URL: http://localhost:8080
+          E2E_ISOLATED_DB: 'true'
+          E2E_DB_HOST: '127.0.0.1'
+          E2E_DB_PORT: '3306'
+          E2E_DB_NAME: mannschaft
+          E2E_DB_USER: mannschaft
+          E2E_DB_PASSWORD: mannschaft
+          E2E_MYSQL_CONTAINER_ID: ${{ job.services.mysql.id }}
+        run: >-
+          npx playwright test
+          'cmp26090(1-1246|2-0058).*real.spec.ts'
+          --project=chromium-real --workers=1 --retries=0 --trace=off
+
+      # storageState・Cookie・トークンを含む .auth は成果物へ含めない。
+      - name: Upload browser evidence
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.run_calendar_browser
+        uses: actions/upload-artifact@v4
+        with:
+          name: calendar-browser-evidence-${{ github.run_id }}
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
 
       # 失敗時のデバッグ用にバックエンドログをアップロードする
       - name: バックエンドログをアップロード（失敗時）
