@@ -1,10 +1,12 @@
 package com.mannschaft.app.village.dto;
 
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageJoinRequestEntity;
 import com.mannschaft.app.village.entity.enums.VillageRequestStatus;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -29,9 +31,9 @@ public record MyJoinRequestResponse(
         String message,
         VillageRequestStatus status,
         UUID reviewedBy,
-        LocalDateTime reviewedAt,
+        Instant reviewedAt,
         String reviewComment,
-        LocalDateTime createdAt
+        Instant createdAt
 ) {
 
     /** 申請先の村の現在の状態。 */
@@ -66,9 +68,17 @@ public record MyJoinRequestResponse(
                 e.getMessage(),
                 e.getStatus(),
                 e.getReviewerMembershipId(),
-                e.getReviewedAt(),
+                toInstant(e.getReviewedAt()),
                 e.getReviewComment(),
-                e.getCreatedAt()
+                toInstant(e.getCreatedAt())
         );
+    }
+
+    /**
+     * Entity の壁時計（サーバー基準ゾーンで記録された {@link LocalDateTime}）を、起きた瞬間の {@link Instant} へ変換する。
+     * 日時方針（docs/architecture/datetime_policy_utc_instant_vs_wallclock.md）に従い、DTO は瞬間型で返す。
+     */
+    private static Instant toInstant(LocalDateTime wallClock) {
+        return wallClock == null ? null : wallClock.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant();
     }
 }

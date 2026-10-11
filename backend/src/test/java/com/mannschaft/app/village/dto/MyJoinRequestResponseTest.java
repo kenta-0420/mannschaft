@@ -52,4 +52,14 @@ class MyJoinRequestResponseTest {
         assertThat(response.villageName()).isNull();
         assertThat(response.villageState()).isEqualTo(VillageState.DELETED);
     }
+
+    @Test
+    @DisplayName("壁時計の日時はサーバー基準ゾーン(JST)として瞬間(Instant)へ変換し、nullはnullのまま")
+    void wallClockToInstant() {
+        VillageJoinRequestEntity req = request();
+        req.setReviewedAt(LocalDateTime.of(2026, 9, 1, 9, 0));
+        MyJoinRequestResponse response = MyJoinRequestResponse.of(req, null);
+        assertThat(response.reviewedAt()).isEqualTo(java.time.Instant.parse("2026-09-01T00:00:00Z"));
+        assertThat(response.createdAt()).isNull();
+    }
 }
