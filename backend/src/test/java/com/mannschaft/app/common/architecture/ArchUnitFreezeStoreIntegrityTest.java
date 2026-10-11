@@ -827,7 +827,11 @@ class ArchUnitFreezeStoreIntegrityTest {
      */
     // CMP-260820-1018: Proxy の一覧・アップロードURL生成を非TX認可入口へ整理したため4行減。Role依存自体は残る。
     // main: BetaGrantService の通知RepositoryへのTX到達12行減も統合。独立した削除16行で7376→7360。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7264;
+    // Issue #2997 jobmatching: apply / acceptApplication / reportCompletion / recordCheckIn(fireNotifications) の
+    // 通知を AFTER_COMMIT リスナーへ移したため、通知系Repository(4)+UserRepository への到達25行減。7264→7239。
+    // 内訳: fireNotifications 5・recordCheckIn 5・apply 5・acceptApplication 5・reportCompletion 5（CI 実測 7239 と一致）。
+    // D-3（他の6ストア）は CI の整合性テストが不一致を報告していないため変更なし。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7239;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。

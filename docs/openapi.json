@@ -161507,6 +161507,9 @@
       "AnnouncementRangeTemplateRequest": {
         "type": "object",
         "properties": {
+          "includeUnassigned": {
+            "type": "boolean"
+          },
           "isDefault": {
             "type": "boolean"
           },
@@ -161514,6 +161517,22 @@
             "type": "string"
           },
           "preferredChannel": {
+            "type": "string"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "targetGroupIdsJson": {
+            "type": "string"
+          },
+          "targetGroupRange": {
+            "$ref": "#/components/schemas/TargetGroupRange"
+          },
+          "targetGroupRangeJson": {
             "type": "string"
           },
           "targetRole": {
@@ -161528,6 +161547,19 @@
           },
           "targetTeamIdsJson": {
             "type": "string"
+          }
+        }
+      },
+      "TargetGroupRange": {
+        "type": "object",
+        "properties": {
+          "fromGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toGroupId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -161554,6 +161586,9 @@
             "type": "integer",
             "format": "int64"
           },
+          "includeUnassigned": {
+            "type": "boolean"
+          },
           "isDefault": {
             "type": "boolean"
           },
@@ -161569,6 +161604,16 @@
           },
           "scopeType": {
             "type": "string"
+          },
+          "targetGroupIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "targetGroupRange": {
+            "$ref": "#/components/schemas/TargetGroupRange"
           },
           "targetRole": {
             "type": "string"
@@ -187241,19 +187286,6 @@
           "targetRole"
         ]
       },
-      "TargetGroupRange": {
-        "type": "object",
-        "properties": {
-          "fromGroupId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "toGroupId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        }
-      },
       "ApiResponseBroadcastResponseDto": {
         "type": "object",
         "properties": {
@@ -187315,6 +187347,12 @@
             "items": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           }
         }
