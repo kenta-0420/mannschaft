@@ -268,6 +268,8 @@ abstract class TeamAffiliationItSupport extends AbstractMySqlIntegrationTest {
         String teams = idList(createdTeamIds);
         String orgs = idList(createdOrgIds);
         if (!createdOrgIds.isEmpty()) {
+            // 通知 outbox（docs/architecture/notification_outbox.md）。加盟の通知はテナントの組織 ID を写しに持つ
+            jdbc.update("DELETE FROM team_notification_outbox WHERE organization_id IN (" + orgs + ")");
             jdbc.update("DELETE FROM notification_fanout_job_messages WHERE job_id IN "
                     + "(SELECT id FROM notification_fanout_jobs WHERE organization_id IN (" + orgs + "))");
             jdbc.update("DELETE FROM notification_fanout_jobs WHERE organization_id IN (" + orgs + ")");
