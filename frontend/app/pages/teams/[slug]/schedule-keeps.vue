@@ -214,11 +214,14 @@ onMounted(async () => {
     <!-- 作成: タイトル1項目のみ必須（AC-01） -->
     <SectionCard v-if="isMember" class="mb-4">
       <form class="flex flex-col gap-2" data-testid="schedule-keep-create-form" @submit.prevent="onCreate">
-        <div class="flex gap-2">
+        <!-- 訳語の長い言語（de/es 等）のモバイル幅でも送信ボタンを潰さない:
+             狭い幅（sm 未満）では入力欄とボタンを縦に並べ、sm 以上では横並びにする。
+             横並びのときもボタンは縮ませず（shrink-0・折返し無し）、入力欄の側を縮ませる（min-w-0） -->
+        <div class="flex flex-col gap-2 sm:flex-row">
           <InputText
             v-model="newTitle"
             :placeholder="t('scheduleKeep.form.titlePlaceholder')"
-            class="flex-1"
+            class="min-w-0 sm:flex-1"
             data-testid="schedule-keep-title-input"
           />
           <Button
@@ -226,6 +229,7 @@ onMounted(async () => {
             :label="t('scheduleKeep.form.submit')"
             :loading="creating"
             :disabled="!newTitle.trim()"
+            class="shrink-0 whitespace-nowrap"
             data-testid="schedule-keep-submit-button"
           />
         </div>
@@ -262,15 +266,20 @@ onMounted(async () => {
 
     <!-- フィルタ & 並び替えトグル -->
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <SelectButton
-        v-model="statusFilter"
-        :options="['KEPT', 'SCHEDULED', 'ARCHIVED', 'ALL']"
-        data-testid="schedule-keep-status-filter"
-      >
-        <template #option="{ option }">
-          {{ t(`scheduleKeep.filter.${option.toLowerCase()}`) }}
-        </template>
-      </SelectButton>
+      <!-- 状態タブは横一列のまま、はみ出す分はこのコンテナ内で横スクロールさせる
+           （ページ全体を横に伸ばさない。訳語の長い言語のモバイル幅で4タブが収まらないため） -->
+      <div class="min-w-0 max-w-full overflow-x-auto">
+        <SelectButton
+          v-model="statusFilter"
+          :options="['KEPT', 'SCHEDULED', 'ARCHIVED', 'ALL']"
+          class="flex-nowrap whitespace-nowrap"
+          data-testid="schedule-keep-status-filter"
+        >
+          <template #option="{ option }">
+            {{ t(`scheduleKeep.filter.${option.toLowerCase()}`) }}
+          </template>
+        </SelectButton>
+      </div>
       <Button
         v-if="statusFilter === 'KEPT'"
         :label="t('scheduleKeep.action.reorder')"
