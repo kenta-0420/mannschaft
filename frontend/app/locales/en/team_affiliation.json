@@ -14,16 +14,16 @@
       "guidance": "Guidance text for the application form",
       "turn_off_pending_confirm": "{count} received application(s) remain. Even if you stop accepting, you can still approve or reject them from the applications list.",
       "required_mode_degraded": "Because there are no groups, group selection is treated as \"Optional\"",
-      "section_application": "加盟申請の受付",
-      "section_groups": "チームグループ",
-      "saved": "設定を保存しました",
-      "save_error": "設定を保存できませんでした。時間をおいてもう一度お試しください",
-      "load_error": "設定を読み込めませんでした。時間をおいてもう一度お試しください",
-      "manage_groups": "グループを管理",
-      "turn_off_confirm_title": "加盟申請の受付を停止しますか？",
-      "turn_off_confirm": "受付を停止すると、組織ページから「チームとして加盟を申請」ボタンが消えます。",
-      "turn_off_confirm_ok": "受付を停止する",
-      "card_desc": "加盟申請の受付、チームグループ、申請時の案内文を設定します"
+      "section_application": "Receiving affiliation applications",
+      "section_groups": "Team groups",
+      "saved": "Settings saved",
+      "save_error": "Couldn't save the settings. Please try again later",
+      "load_error": "Couldn't load the settings. Please try again later",
+      "manage_groups": "Manage groups",
+      "turn_off_confirm_title": "Stop accepting affiliation applications?",
+      "turn_off_confirm": "If you stop accepting applications, the \"Apply as a team\" button will disappear from the organization page.",
+      "turn_off_confirm_ok": "Stop accepting",
+      "card_desc": "Set up receiving affiliation applications, team groups, and the guidance text shown when applying"
     },
     "view": {
       "teams": "Affiliated teams",
@@ -50,10 +50,10 @@
         "UNAVAILABLE": "Applications to this organization are currently unavailable"
       },
       "find_orgs": "Find organizations to join",
-      "eligibility_error": "Could not check whether you can apply because of a network error",
+      "eligibility_error": "Couldn't check whether you can apply for affiliation because of a connection error",
       "eligibility_retry": "Retry",
-      "load_error": "申請フォームを読み込めませんでした。時間をおいてもう一度お試しください",
-      "submit_error": "申請できませんでした。入力内容をご確認のうえ、もう一度お試しください"
+      "load_error": "Couldn't load the application form. Please try again later",
+      "submit_error": "Couldn't submit the application. Please check what you entered and try again"
     },
     "review": {
       "approve": "Approve",
@@ -108,27 +108,27 @@
     "disabled_cta": "The team group feature is disabled. You can enable it in settings"
   },
   "teamAffiliationGuide": {
-    "title": "チーム加盟の設定の使い方",
-    "description": "チームが組織へ加盟を申請できるようにする設定画面です。上から順に設定すれば終わります。",
+    "title": "How to use team affiliation settings",
+    "description": "This settings screen lets teams apply to affiliate with an organization. Just set it up from top to bottom.",
     "accept": {
-      "title": "申請の受付を始める",
-      "body": "受付を on にすると、組織ページに「チームとして加盟を申請」ボタンが出ます。ボタンは、加盟の手続きを任されたチームの担当者にだけ表示されます。",
+      "title": "Start accepting applications",
+      "body": "When you turn on acceptance, an \"Apply as a team\" button appears on the organization page. The button is shown only to the team representatives in charge of affiliation procedures.",
       "steps": {
-        "step1": "「チームからの加盟申請を受け付ける」を on にする",
-        "step2": "必要なら「申請フォームの案内文」に、申請前に伝えたいことを書く",
-        "step3": "右下の「保存」を押す"
+        "step1": "Turn on \"Accept affiliation applications from teams\"",
+        "step2": "If needed, write what you want to tell applicants in \"Guidance for the application form\"",
+        "step3": "Click \"Save\" at the bottom right"
       }
     },
     "groups": {
-      "title": "チームグループを使う",
-      "body": "加盟チームを年度や地区などのグループに分けておくと、お知らせの宛先に使えます。申請のときにチームへグループを選んでもらうこともできます。",
-      "mode_off": "選ばせない: 申請フォームにグループ欄を出しません",
-      "mode_optional": "任意で選べる: 選ばなくても申請できます",
-      "mode_required": "必ず選ばせる: グループを選ばないと申請できません。グループが1件も無いときは「任意」として扱われます"
+      "title": "Use team groups",
+      "body": "If you divide affiliated teams into groups by year, district, and so on, you can use them as recipients of announcements. You can also have teams choose a group when they apply.",
+      "mode_off": "Don't let them choose: the application form shows no group field",
+      "mode_optional": "Optional: teams can apply without choosing",
+      "mode_required": "Required: teams can't apply without choosing a group. If there are no groups, it is treated as \"Optional\""
     },
     "stop": {
-      "title": "受付を止めるとき",
-      "body": "受付を off にして保存すると確認が出ます。すでに届いている申請は、受付を止めても所属チームの「加盟申請」から承認・拒否できます。"
+      "title": "When you want to stop accepting",
+      "body": "Turning acceptance off and saving shows a confirmation. Applications already received can still be approved or rejected from \"Applications\" in the affiliated teams, even after you stop accepting."
     }
   }
 }
