@@ -14,6 +14,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -125,7 +126,10 @@ class TeamNotificationOutboxWriteIT extends TeamNotificationOutboxItSupport {
             makeTeamAdmin(u, team.id());
             return u;
         });
-        doThrow(new DataIntegrityViolationException("outbox の INSERT 失敗（テスト）")).when(notifierSpy).enqueue(any());
+        // スタブは AOP プロキシの内側の spy に置く。プロキシ越しに when(...).enqueue(any()) を呼ぶと、
+        // tx の外で MANDATORY の境界に当たって落ち、未完了のスタブが後続のテストを汚染する
+        doThrow(new DataIntegrityViolationException("outbox の INSERT 失敗（テスト）"))
+                .when(AopTestUtils.<TeamAffiliationNotifier>getUltimateTargetObject(notifierSpy)).enqueue(any());
 
         int status;
         try {

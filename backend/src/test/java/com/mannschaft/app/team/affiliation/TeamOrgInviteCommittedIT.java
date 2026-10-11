@@ -18,6 +18,7 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -115,6 +117,30 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
     @AfterEach
     void cleanUp() {
         deleteCommittedFixtures(jdbc);
+    }
+
+    /**
+     * スタブを置く先（AOP プロキシの内側の spy）。プロキシ越しに {@code when(spy).method(...)} を呼ぶと
+     * スタブの登録の呼び出しにも tx の境界が掛かる（{@code MANDATORY} は tx の外で落ちて未完了のスタブが後続を汚染し、
+     * {@code readOnly} は読み取り専用の tx を無駄に張る）ので、内側の spy に直接置く。
+     */
+    private TeamAffiliationNotifier notifierTarget() {
+        return AopTestUtils.getUltimateTargetObject(notifierSpy);
+    }
+
+    private TeamAffiliationOrganizationPort organizationPortTarget() {
+        return AopTestUtils.getUltimateTargetObject(organizationPortSpy);
+    }
+
+    /**
+     * 「別の操作がコミットした」状況を、別スレッド（= 別のコネクション・tx 文脈なし）の自動コミットで作る。
+     *
+     * <p>差し込みの呼び出し元は組織ドメインの読み取り専用 tx（{@code findAffiliationState} の {@code readOnly}）の中なので、
+     * そこで書くと {@code Connection is read-only} で落ちる。同じ tx で先に読むと REPEATABLE READ のスナップショットが
+     * 確定して後のコミットが見えなくなるため、存在の確認も含めて別スレッドで行う。</p>
+     */
+    private void commitByAnotherSession(Runnable action) {
+        CompletableFuture.runAsync(action).join();
     }
 
     // =====================================================================
@@ -260,13 +286,15 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
             makeOrgAdmin(id, org.id());
             return id;
         });
-        // 招待の行がコミットされた後の読み直しの直前に、組織をアーカイブする
+        // 招待の行がコミットされた後の読み直しの直前に、組織をアーカイブする（別の操作のコミットとして差し込む）
         doAnswer(invocation -> {
-            if (membershipCount(team.id(), org.id()) > 0) {
-                jdbc.update("UPDATE organizations SET archived_at = UTC_TIMESTAMP() WHERE id = ?", org.id());
-            }
+            commitByAnotherSession(() -> {
+                if (membershipCount(team.id(), org.id()) > 0) {
+                    jdbc.update("UPDATE organizations SET archived_at = UTC_TIMESTAMP() WHERE id = ?", org.id());
+                }
+            });
             return invocation.callRealMethod();
-        }).when(organizationPortSpy).findAffiliationState(any());
+        }).when(organizationPortTarget()).findAffiliationState(any());
 
         Result invited = invite(xa, org.slug(), team.slug());
         relay.drainAll();
@@ -295,12 +323,14 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         // 読み直し（組織は生存）を通過した直後に、別の操作が招待を取り消してコミットした状況を作る
         doAnswer(invocation -> {
             Object state = invocation.callRealMethod();
-            if (membershipCount(team.id(), org.id()) > 0) {
-                jdbc.update("DELETE FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
-                        team.id(), org.id());
-            }
+            commitByAnotherSession(() -> {
+                if (membershipCount(team.id(), org.id()) > 0) {
+                    jdbc.update("DELETE FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
+                            team.id(), org.id());
+                }
+            });
             return state;
-        }).when(organizationPortSpy).findAffiliationState(any());
+        }).when(organizationPortTarget()).findAffiliationState(any());
 
         invite(xa, org.slug(), team.slug()); // 応答の形は問わない（残ったものを検証する）
         relay.drainAll();
@@ -356,7 +386,7 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         });
         Result invited = invite(users[0], org.slug(), team.slug());
         assertThat(invited.status()).isEqualTo(201);
-        doThrow(new IllegalStateException("outbox の書き込み失敗（テスト）")).when(notifierSpy)
+        doThrow(new IllegalStateException("outbox の書き込み失敗（テスト）")).when(notifierTarget())
                 .enqueue(argThat(n -> n != null && n.notificationType() == NotificationType.TEAM_ORG_INVITE_ACCEPTED));
 
         int status;
