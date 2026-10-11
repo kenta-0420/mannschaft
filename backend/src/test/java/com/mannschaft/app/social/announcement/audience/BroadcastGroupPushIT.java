@@ -1,5 +1,6 @@
 package com.mannschaft.app.social.announcement.audience;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.notification.NotificationPriority;
@@ -343,6 +344,18 @@ class BroadcastGroupPushIT extends AbstractBroadcastAudienceIT {
         return jdbc.queryForList(
                 "SELECT HEX(idempotency_key) AS ik, message_kind, notification_type, status, attempt_count, last_error, "
                         + "relayed_at, payload_json FROM social_notification_outbox WHERE organization_id = ?", orgId);
+    }
+
+    /** 組織の social outbox の1行目の payload の {@code teamIds}（JSON 列は MySQL が正規化するので文字列で比べず読む）。 */
+    private List<Long> payloadTeamIds(long orgId) throws Exception {
+        JsonNode node = objectMapper.readTree(
+                (String) outboxRows(orgId).get(0).get("payload_json")).get("teamIds");
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        List<Long> ids = new ArrayList<>();
+        node.forEach(n -> ids.add(n.asLong()));
+        return ids;
     }
 
     /** 失敗した outbox の行をすぐ再試行できるようにする（{@code next_attempt_at} を過去へ）。 */
@@ -841,8 +854,8 @@ class BroadcastGroupPushIT extends AbstractBroadcastAudienceIT {
     void H21b_relay前に宛先グループへ移ったチームは宛先集合に入らない() throws Exception {
         Sc sc = scenario();
         long feedId = sendSurvey(sc.xa, sc, Map.of("targetGroupIds", ids(sc.g1.getId())));
-        assertThat((String) outboxRows(sc.org.getId()).get(0).get("payload_json"))
-                .as("payload に送信時の宛先チームが入る").contains("\"teamIds\":[" + sc.t1.getId() + "]");
+        assertThat(payloadTeamIds(sc.org.getId())).as("payload に送信時の宛先チームが入る")
+                .containsExactly(sc.t1.getId());
 
         moveTeamToGroup(sc.t4.getId(), sc.org.getId(), sc.g1.getId());
         jobsAfterSettling(sc.org.getId());
@@ -969,8 +982,7 @@ class BroadcastGroupPushIT extends AbstractBroadcastAudienceIT {
         OrgTeamGroupEntity empty = new TransactionTemplate(transactionManager)
                 .execute(status -> newGroup(sc.org.getId(), "G空", 9));
         long feedId = sendSurvey(sc.xa, sc, Map.of("targetGroupIds", ids(empty.getId())));
-        assertThat((String) outboxRows(sc.org.getId()).get(0).get("payload_json"))
-                .as("payload の宛先チームは空").contains("\"teamIds\":[]");
+        assertThat(payloadTeamIds(sc.org.getId())).as("payload の宛先チームは空（null ではなく空配列）").isNotNull().isEmpty();
 
         List<Map<String, Object>> all = jobsAfterSettling(sc.org.getId());
         assertThat(jobsOfType(all, ORG_SCOPE)).as("組織全体への ORGANIZATION ジョブは出ない").isEmpty();
