@@ -38,6 +38,7 @@
  *     npx playwright test tests/e2e/real/locale-residue-1944.spec.ts \
  *     --config playwright-real.config.ts --project chromium-real --reporter=list
  */
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import {
@@ -54,6 +55,14 @@ import { waitForHydration } from '../helpers/wait'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 test.setTimeout(180_000)
+/**
+ * 並列設定（playwright.config.ts の fullyParallel: true）でも正しく動かすため、このファイルの
+ * テストは1ワーカーで順に流す。fullyParallel のままだとテストごとに別ワーカーで beforeAll が繰り返され、
+ * 同じ4アカウントへのログインが重なって AUTH_044（10回/分）に達し、前提チームも重複作成される。
+ * mode: 'serial' は1件の失敗で残りを skip するため使わない（'default' は失敗したケースだけを赤にし、
+ * 新しいワーカーで続きを流す）。playwright-real.config.ts の workers: 1 には頼らない。
+ */
+test.describe.configure({ mode: 'default' })
 
 const API = process.env.API_BASE_URL ?? 'http://localhost:8080'
 const PASSWORD = 'TestPass2026!'
@@ -133,7 +142,13 @@ const fullNames: Partial<Record<Role, string>> = {}
 type AuthState = Awaited<ReturnType<BrowserContext['storageState']>>
 /** ロールごとの認証済み storageState（beforeAll で1回だけログインして作る）。 */
 const authStates = new Map<Role, AuthState>()
-/** 1回の実行で行ったログインの回数（報告用。ロール数=4 を超えないことを確かめる）。 */
+/**
+ * このワーカーで行ったログインの回数（報告用。ロール数=4 を超えないことを確かめる）。
+ * モジュール変数なのでワーカー単位で数える。ケースが失敗すると Playwright はそのワーカーを捨て
+ * （afterAll を流してから）新しいワーカーで beforeAll をやり直すが、新ワーカーでは 0 から数え直すため、
+ * 再起動によって偽の赤にはならない。ここで確かめているのは「1つの beforeAll 区間でロールごとに1回」である
+ * （実行全体の総ログイン回数ではない。総数は失敗による再起動の回数だけ 4 回ずつ増える）。
+ */
 let loginCount = 0
 
 /** ロールごとに1回だけ loginViaApi し、storageState と access_token（前提データ作成用）を得る。 */
@@ -171,7 +186,9 @@ test.beforeAll(async ({ browser }) => {
     fullNames[role] = `${d.lastName} ${d.firstName}`
   }
 
-  const stamp = new Date().toISOString().replace(/\D/g, '').slice(4, 14)
+  // 秒単位の時刻だけだと同じ秒に beforeAll が走ったワーカー同士で slug が衝突するため、乱数を足す。
+  // slug は ^[a-z0-9]+(-[a-z0-9]+)*$・最大30文字（SlugValidator / CreateTeamRequest）。ここでは 29 文字。
+  const stamp = `${new Date().toISOString().replace(/\D/g, '').slice(4, 14)}-${crypto.randomUUID().slice(0, 8)}`
   teamSlug = `jikki1944-${stamp}`
   const created = await api.post('/api/v1/teams', {
     headers: bearer(adminTok),
