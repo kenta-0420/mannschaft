@@ -17,12 +17,13 @@ import com.mannschaft.app.matching.repository.MatchProposalDateRepository;
 import com.mannschaft.app.matching.repository.MatchProposalRepository;
 import com.mannschaft.app.matching.repository.MatchRequestRepository;
 import com.mannschaft.app.matching.repository.NgTeamRepository;
+import com.mannschaft.app.matching.service.MatchProposalCancellationWriter;
 import com.mannschaft.app.matching.service.MatchProposalService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -93,8 +94,14 @@ class MatchProposalServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
-    @InjectMocks
     private MatchProposalService service;
+
+    @BeforeEach
+    void 実Writerを接続する() {
+        service = new MatchProposalService(proposalRepository, proposalDateRepository, requestRepository,
+                ngTeamRepository, matchingMapper, accessControlService,
+                new MatchProposalCancellationWriter(proposalRepository, requestRepository));
+    }
 
     private static final Long TEAM_ID = 1L;
     private static final Long OTHER_TEAM_ID = 2L;
@@ -421,8 +428,10 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(request));
             // 相手チーム＝応募チーム(OTHER_TEAM_ID)の管理者
             given(accessControlService.isAdminOrAbove(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(true);
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(false);
             given(proposalRepository.save(any())).willReturn(proposal);
             given(requestRepository.save(any())).willReturn(request);
 
@@ -446,6 +455,7 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(request));
             // 相手チーム(OTHER_TEAM_ID)の管理者ではない一方、キャンセルした側(TEAM_ID)の管理者
             given(accessControlService.isAdminOrAbove(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
@@ -456,6 +466,27 @@ class MatchProposalServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.CANNOT_AGREE_OWN_CANCEL));
         }
+    }
+
+    @Test
+    void 旧第三teamの自己ADMIN判定は段取りで保持して022を維持する() {
+        MatchProposalEntity proposal = MatchProposalEntity.builder().requestId(REQUEST_ID)
+                .proposingTeamId(OTHER_TEAM_ID).status(MatchProposalStatus.CANCELLED)
+                .cancellationType(CancellationType.MUTUAL_PENDING).cancelledByTeamId(999L).build();
+        MatchRequestEntity parent = MatchRequestEntity.builder().teamId(TEAM_ID).title("募集").build();
+        given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
+        given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(parent));
+        given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(parent));
+        given(accessControlService.isMember(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(true);
+        given(accessControlService.isAdminOrAbove(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(false);
+        given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(false);
+        given(accessControlService.isAdminOrAbove(ACTOR_ID, 999L, "TEAM")).willReturn(true);
+        assertThatThrownBy(() -> service.agreeCancellation(PROPOSAL_ID, ACTOR_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(MatchingErrorCode.CANNOT_AGREE_OWN_CANCEL);
+        verify(accessControlService).isAdminOrAbove(ACTOR_ID, 999L, "TEAM");
+        org.mockito.Mockito.verify(proposalRepository, org.mockito.Mockito.never()).save(any());
+        org.mockito.Mockito.verify(requestRepository, org.mockito.Mockito.never()).save(any());
     }
 
     @Nested
@@ -523,6 +554,8 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.MATCHED).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(request));
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(proposalRepository.save(any())).willReturn(proposal);
             given(requestRepository.save(any())).willReturn(request);
@@ -564,7 +597,9 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.MATCHED).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            given(requestRepository.findByIdForUpdate(REQUEST_ID)).willReturn(Optional.of(request));
 
+            given(accessControlService.isMember(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.isMember(ACTOR_ID, 999L, "TEAM")).willReturn(true);
 
             // When / Then

@@ -7,23 +7,34 @@ import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.visibility.RolePriority;
 import com.mannschaft.app.matching.entity.MatchProposalEntity;
 import com.mannschaft.app.matching.entity.MatchRequestEntity;
 import com.mannschaft.app.matching.repository.MatchProposalRepository;
 import com.mannschaft.app.matching.repository.MatchRequestRepository;
+import com.mannschaft.app.matching.service.MatchProposalCancellationWriter;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.RoleRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
-import com.mannschaft.app.support.test.MembershipTestHelper;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.aopalliance.intercept.MethodInterceptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.springframework.aop.framework.Advised;
+import org.springframework.aop.support.DefaultPointcutAdvisor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.cache.Cache;
@@ -36,6 +47,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionInterceptor;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -45,6 +57,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,6 +88,8 @@ class MatchProposalCancelScopeContractIT extends AbstractMySqlIntegrationTest {
     private static final long MISSING = Long.MAX_VALUE;
     private static final String FEATURE = "FEATURE_MATCHING_ENABLED";
     @Autowired private MockMvc mvc;
+    @Autowired private AccessControlService accessControl;
+    @Autowired private MatchProposalCancellationWriter cancellationWriter;
     @Autowired private ObjectMapper mapper;
     @Autowired private AuthTokenService tokens;
     @Autowired private PlatformTransactionManager transactions;
@@ -79,6 +99,9 @@ class MatchProposalCancelScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private MatchProposalRepository proposals;
     @Autowired private FeatureFlagRepository flags;
     @Autowired private CacheManager caches;
+    @Autowired private MembershipRepository memberships;
+    @Autowired private RoleRepository roles;
+    @Autowired private UserRoleRepository userRoles;
     @PersistenceContext private EntityManager em;
     private final List<Long> userIds = new ArrayList<>();
     private final List<Long> teamIds = new ArrayList<>();
@@ -91,6 +114,7 @@ class MatchProposalCancelScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long flagId;
     private FlagState previousFlag;
     private boolean createdFlag;
+    private boolean unfinishedWorkers;
 
     @BeforeEach
     void fixtureを独立TXで確定する() {
@@ -118,11 +142,11 @@ class MatchProposalCancelScopeContractIT extends AbstractMySqlIntegrationTest {
                 }
             }
             system = user();
-            MembershipTestHelper.insertUserRole(em, system, "SYSTEM_ADMIN", null, null);
+            assignRole(system, "SYSTEM_ADMIN", null);
             systemAdmin = admin(proposingTeam, "ADMIN", false);
-            MembershipTestHelper.insertUserRole(em, systemAdmin, "SYSTEM_ADMIN", null, null);
+            assignRole(systemAdmin, "SYSTEM_ADMIN", null);
             dualAdmin = admin(requestingTeam, "ADMIN", false);
-            MembershipTestHelper.insertUserRole(em, dualAdmin, "ADMIN", proposingTeam, null);
+            assignRole(dualAdmin, "ADMIN", proposingTeam);
             assertThat(proposals.existsById(MISSING)).isFalse();
             return null;
         });
@@ -130,6 +154,10 @@ class MatchProposalCancelScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @AfterEach
     void 自所有fixtureと共有flagを復元する() {
+        if (unfinishedWorkers) {
+            SecurityContextHolder.clearContext();
+            throw new IllegalStateException("worker終了未確認: advisor・自所有fixtureを保全して調査する");
+        }
         try {
             tx(() -> {
                 proposals.deleteAllById(proposalIds);
@@ -333,6 +361,164 @@ class MatchProposalCancelScopeContractIT extends AbstractMySqlIntegrationTest {
         assertThat(snapshot()).isEqualTo(before);
     }
 
+    @Test
+    void 同時cancelは成功1件と009で増分1だけになる() throws Exception {
+        Long id = fixture(MatchProposalStatus.ACCEPTED, null);
+        List<MvcResult> results = simultaneous(id, "cancel", requestingAdmins.get(0), "{\"mutual\":true}");
+        assertThat(results.stream().map(r -> r.getResponse().getStatus()).sorted().toList()).containsExactly(200, 409);
+        diagnostic(results.stream().filter(r -> r.getResponse().getStatus() == 409).findFirst().orElseThrow(), 409, "MATCHING_009");
+        tx(() -> {
+            MatchProposalEntity proposal = proposals.findById(id).orElseThrow();
+            assertThat(proposal.getStatus()).isEqualTo(MatchProposalStatus.CANCELLED);
+            assertThat(proposal.getCancellationType()).isEqualTo(CancellationType.MUTUAL_PENDING);
+            assertThat(requests.findById(proposal.getRequestId()).orElseThrow().getCancelCount()).isEqualTo((short) 2);
+            return null;
+        });
+    }
+
+    @Test
+    void 同時agreeは成功1件と021で減分1だけになる() throws Exception {
+        Long id = fixture(MatchProposalStatus.CANCELLED, CancellationType.MUTUAL_PENDING);
+        List<MvcResult> results = simultaneous(id, "agree-cancel", proposingAdmins.get(0), "{}");
+        assertThat(results.stream().map(r -> r.getResponse().getStatus()).sorted().toList()).containsExactly(200, 409);
+        diagnostic(results.stream().filter(r -> r.getResponse().getStatus() == 409).findFirst().orElseThrow(), 409, "MATCHING_021");
+        tx(() -> {
+            MatchProposalEntity proposal = proposals.findById(id).orElseThrow();
+            assertThat(proposal.getCancellationType()).isEqualTo(CancellationType.MUTUAL);
+            assertThat(proposal.getMutualAgreedAt()).isNotNull();
+            assertThat(requests.findById(proposal.getRequestId()).orElseThrow().getCancelCount()).isZero();
+            return null;
+        });
+    }
+
+    @Test
+    void ACL外側TXなしWriter内TXあり途中2行更新はrollbackする() throws Exception {
+        synchronized (MatchProposalCancelScopeContractIT.class) {
+            Long id = fixture(MatchProposalStatus.ACCEPTED, null);
+            Long parentId = tx(() -> proposals.findById(id).orElseThrow().getRequestId());
+            Long actor = requestingAdmins.get(0);
+            Snapshot before = snapshot();
+            Advised acl = editableProxy(accessControl);
+            Advised writer = editableProxy(cancellationWriter);
+            Advised repository = editableProxy(requests);
+            AtomicInteger aclCalls = new AtomicInteger(), writerCalls = new AtomicInteger(), failures = new AtomicInteger();
+            long testThread = Thread.currentThread().threadId();
+            DefaultPointcutAdvisor aclProbe = new DefaultPointcutAdvisor((MethodInterceptor) invocation -> {
+                if (Thread.currentThread().threadId() == testThread && invocation.getArguments().length > 0
+                        && actor.equals(invocation.getArguments()[0])) {
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+                    aclCalls.incrementAndGet();
+                }
+                return invocation.proceed();
+            });
+            DefaultPointcutAdvisor writerProbe = new DefaultPointcutAdvisor((MethodInterceptor) invocation -> {
+                if (Thread.currentThread().threadId() == testThread && ownsWriterInvocation(invocation.getArguments(), id)) {
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+                    writerCalls.incrementAndGet();
+                }
+                return invocation.proceed();
+            });
+            DefaultPointcutAdvisor rollback = new DefaultPointcutAdvisor((MethodInterceptor) invocation -> {
+                Object result = invocation.proceed();
+                if (Thread.currentThread().threadId() == testThread && invocation.getMethod().getName().equals("save")
+                        && invocation.getArguments()[0] instanceof MatchRequestEntity parent && parentId.equals(parent.getId())) {
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+                    em.flush();
+                    assertThat(em.createNativeQuery("SELECT status FROM match_proposals WHERE id=:id")
+                            .setParameter("id", id).getSingleResult().toString()).isEqualTo("CANCELLED");
+                    assertThat(((Number) em.createNativeQuery("SELECT cancel_count FROM match_requests WHERE id=:id")
+                            .setParameter("id", parentId).getSingleResult()).intValue()).isEqualTo(2);
+                    failures.incrementAndGet();
+                    throw new IllegalStateException("CMP1027 fixture限定の2行flush後失敗");
+                }
+                return result;
+            });
+            // ACLのTX advisorより外側、WriterのTX advisorより内側をそれぞれ観測する。
+            acl.addAdvisor(0, aclProbe);
+            try {
+                writer.addAdvisor(writerProbe);
+                try {
+                    repository.addAdvisor(0, rollback);
+                    try {
+                        assertThat(call(actor, "cancel", id, "{}").getResponse().getStatus()).isEqualTo(500);
+                        assertThat(aclCalls.get()).isPositive();
+                        assertThat(writerCalls.get()).isEqualTo(1);
+                        assertThat(failures.get()).isEqualTo(1);
+                        assertThat(snapshot()).isEqualTo(before);
+                    } finally { assertThat(repository.removeAdvisor(rollback)).isTrue(); }
+                } finally { assertThat(writer.removeAdvisor(writerProbe)).isTrue(); }
+            } finally {
+                try { assertThat(acl.removeAdvisor(aclProbe)).isTrue(); }
+                finally { SecurityContextHolder.clearContext(); }
+            }
+        }
+    }
+
+    private Advised editableProxy(Object bean) {
+        assertThat(bean).isInstanceOf(Advised.class);
+        Advised proxy = (Advised) bean;
+        assertThat(proxy.isFrozen()).isFalse();
+        assertThat(Arrays.stream(proxy.getAdvisors()).anyMatch(a -> a.getAdvice() instanceof TransactionInterceptor)).isTrue();
+        return proxy;
+    }
+
+    private boolean ownsWriterInvocation(Object[] arguments, Long id) {
+        return arguments.length > 0 && arguments[0] instanceof MatchProposalCancellationWriter.Context context
+                && id.equals(context.proposalId());
+    }
+
+    private List<MvcResult> simultaneous(Long id, String endpoint, Long actor, String body) throws Exception {
+        synchronized (MatchProposalCancelScopeContractIT.class) {
+            Advised writer = editableProxy(cancellationWriter);
+            CyclicBarrier barrier = new CyclicBarrier(2);
+            AtomicInteger arrived = new AtomicInteger();
+            java.util.Set<Long> workerThreads = java.util.concurrent.ConcurrentHashMap.newKeySet();
+            DefaultPointcutAdvisor rendezvous = new DefaultPointcutAdvisor((MethodInterceptor) invocation -> {
+                if (workerThreads.contains(Thread.currentThread().threadId()) && ownsWriterInvocation(invocation.getArguments(), id)) {
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+                    arrived.incrementAndGet();
+                    barrier.await(20, TimeUnit.SECONDS);
+                }
+                return invocation.proceed();
+            });
+            ExecutorService executor = Executors.newFixedThreadPool(2);
+            List<Future<MvcResult>> futures = new ArrayList<>();
+            writer.addAdvisor(0, rendezvous);
+            try {
+                for (int i = 0; i < 2; i++) futures.add(executor.submit(() -> {
+                    workerThreads.add(Thread.currentThread().threadId());
+                    try { return call(actor, endpoint, id, body); }
+                    finally {
+                        try { SecurityContextHolder.clearContext(); }
+                        finally { workerThreads.remove(Thread.currentThread().threadId()); }
+                    }
+                }));
+                List<MvcResult> results = new ArrayList<>();
+                for (Future<MvcResult> future : futures) results.add(future.get(40, TimeUnit.SECONDS));
+                assertThat(arrived.get()).isEqualTo(2);
+                return results;
+            } finally {
+                executor.shutdown();
+                boolean stopped = executor.awaitTermination(45, TimeUnit.SECONDS);
+                if (!stopped) {
+                    for (Future<MvcResult> future : futures) future.cancel(true);
+                    executor.shutdownNow();
+                    stopped = executor.awaitTermination(15, TimeUnit.SECONDS);
+                }
+                // 全workerが終わるまでadvisorを残し、実行中の他fixtureへ流用しない。
+                try {
+                    if (!stopped) {
+                        unfinishedWorkers = true;
+                        throw new IllegalStateException("worker終了未確認: 実行中advisorを除去しない");
+                    }
+                    assertThat(futures).allMatch(Future::isDone);
+                    assertThat(workerThreads).isEmpty();
+                    assertThat(writer.removeAdvisor(rendezvous)).isTrue();
+                } finally { SecurityContextHolder.clearContext(); }
+            }
+        }
+    }
+
     private MvcResult http(Long actor, MockHttpServletRequestBuilder request) throws Exception {
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
         return mvc.perform(request.header("Accept-Language", "ja")
@@ -407,10 +593,22 @@ class MatchProposalCancelScopeContractIT extends AbstractMySqlIntegrationTest {
         teamIds.add(id); return id;
     }
     private Long member(Long team) {
-        Long id = user(); MembershipTestHelper.insertMembership(em, id, ScopeType.TEAM, team, RoleKind.MEMBER); return id;
+        Long id = user();
+        role("MEMBER");
+        memberships.save(MembershipEntity.builder().userId(id).scopeType(ScopeType.TEAM).scopeId(team)
+                .roleKind(RoleKind.MEMBER).build());
+        return id;
     }
     private Long admin(Long team, String role, boolean membership) {
-        Long id = membership ? member(team) : user(); MembershipTestHelper.insertUserRole(em, id, role, team, null); return id;
+        Long id = membership ? member(team) : user(); assignRole(id, role, team); return id;
+    }
+    private RoleEntity role(String name) {
+        // 共有の固定ロールを既存の正準priorityでseedする。手書きINSERTは使わない。
+        return roles.findByName(name).orElseGet(() -> roles.save(RoleEntity.builder().name(name)
+                .displayName(name).priority(RolePriority.priority(name)).isSystem(false).build()));
+    }
+    private void assignRole(Long user, String name, Long team) {
+        userRoles.save(UserRoleEntity.builder().userId(user).roleId(role(name).getId()).teamId(team).build());
     }
     private Snapshot snapshot() {
         return tx(() -> {
