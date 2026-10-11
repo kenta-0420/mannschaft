@@ -14,14 +14,15 @@ import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotific
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationSettingsRepository;
 import com.mannschaft.app.notification.service.NotificationHelper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.MessageSource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -39,7 +40,6 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ConfirmableNotificationReminderBatchService {
 
     private final ConfirmableNotificationRepository notificationRepository;
@@ -50,6 +50,31 @@ public class ConfirmableNotificationReminderBatchService {
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
     private final JdbcTemplate jdbcTemplate;
+    /**
+     * runBatch は同一クラス内から processReminders / processAlertIfNeeded を呼ぶため、
+     * {@code @Transactional} のプロキシを通らない（自己呼び出し）。通知1件ごとに明示的に
+     * トランザクションを張り、その中で通知を再取得して遅延読み込み（recipient.user / createdBy）を成立させる。
+     */
+    private final TransactionTemplate transactionTemplate;
+
+    public ConfirmableNotificationReminderBatchService(
+            ConfirmableNotificationRepository notificationRepository,
+            ConfirmableNotificationRecipientRepository recipientRepository,
+            ConfirmableNotificationSettingsRepository settingsRepository,
+            NotificationHelper notificationHelper,
+            UserLocaleCache userLocaleCache,
+            MessageSource messageSource,
+            JdbcTemplate jdbcTemplate,
+            PlatformTransactionManager transactionManager) {
+        this.notificationRepository = notificationRepository;
+        this.recipientRepository = recipientRepository;
+        this.settingsRepository = settingsRepository;
+        this.notificationHelper = notificationHelper;
+        this.userLocaleCache = userLocaleCache;
+        this.messageSource = messageSource;
+        this.jdbcTemplate = jdbcTemplate;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+    }
 
     /** リマインドの1バッチあたりの受信者数上限（軍議第8版確定稿 §9.4: 「受信者500人ごと」）。 */
     static final int REMINDER_BATCH_SIZE = 500;
@@ -72,30 +97,38 @@ public class ConfirmableNotificationReminderBatchService {
         log.debug("確認通知リマインドバッチ開始: {}", now);
 
         // STEP0: ACTIVE 状態の通知のみを対象にする（パフォーマンス最適化）
-        List<ConfirmableNotificationEntity> activeNotifications =
-                notificationRepository.findByStatus(ConfirmableNotificationStatus.ACTIVE);
+        List<Long> activeNotificationIds = notificationRepository.findByStatus(ConfirmableNotificationStatus.ACTIVE)
+                .stream().map(ConfirmableNotificationEntity::getId).toList();
 
-        if (activeNotifications.isEmpty()) {
+        if (activeNotificationIds.isEmpty()) {
             return;
         }
 
         int reminderCount = 0;
         int alertCount = 0;
 
-        for (ConfirmableNotificationEntity notification : activeNotifications) {
+        for (Long notificationId : activeNotificationIds) {
             try {
-                reminderCount += processReminders(notification, now);
-                boolean alerted = processAlertIfNeeded(notification);
-                if (alerted) alertCount++;
+                // リマインドと送信者アラートは別トランザクション（一方の失敗が他方を巻き戻さない）
+                Integer sent = transactionTemplate.execute(status -> notificationRepository.findById(notificationId)
+                        .filter(n -> n.getStatus() == ConfirmableNotificationStatus.ACTIVE)
+                        .map(n -> processReminders(n, now))
+                        .orElse(0));
+                reminderCount += sent == null ? 0 : sent;
+                Boolean alerted = transactionTemplate.execute(status -> notificationRepository.findById(notificationId)
+                        .filter(n -> n.getStatus() == ConfirmableNotificationStatus.ACTIVE)
+                        .map(this::processAlertIfNeeded)
+                        .orElse(false));
+                if (Boolean.TRUE.equals(alerted)) alertCount++;
             } catch (Exception e) {
                 log.error("確認通知リマインドバッチ処理失敗: notificationId={}, error={}",
-                        notification.getId(), e.getMessage());
+                        notificationId, e.getMessage(), e);
             }
         }
 
         if (reminderCount > 0 || alertCount > 0) {
             log.info("確認通知リマインドバッチ完了: activeNotifications={}, reminders={}, alerts={}",
-                    activeNotifications.size(), reminderCount, alertCount);
+                    activeNotificationIds.size(), reminderCount, alertCount);
         }
     }
 

@@ -217,4 +217,27 @@ class ConfirmableNotificationReminderBatchTransactionIT extends AbstractMySqlInt
                         + "（次回バッチで再送される）")
                 .isZero();
     }
+
+    @Test
+    @DisplayName("CMP-260925-0905: runBatch 経由（スケジューラと同じ入口）で未確認者にリマインドが実際に送られる"
+            + "（トランザクション境界外の遅延読み込みで失敗しない）")
+    void runBatchActuallySendsReminders() {
+        List<Long> userIds = seed(3, LocalDateTime.now().minusMinutes(10));
+
+        reminderBatchService.runBatch();
+
+        Integer sentRecipients = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM confirmable_notification_recipients "
+                        + "WHERE confirmable_notification_id = ? AND first_reminder_sent_at IS NOT NULL",
+                Integer.class, notificationId);
+        Integer reminderNotifications = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM notifications WHERE source_type = 'CONFIRMABLE_NOTIFICATION' "
+                        + "AND source_id = ? AND notification_type = 'CONFIRMABLE_NOTIFICATION_REMINDER_1'",
+                Integer.class, notificationId);
+        assertThat(sentRecipients).as("送信済みとして記録された受信者数").isEqualTo(userIds.size());
+        assertThat(reminderNotifications).as("実際に作られたリマインド通知の数").isEqualTo(userIds.size());
+
+        jdbc.update("DELETE FROM notifications WHERE source_type = 'CONFIRMABLE_NOTIFICATION' AND source_id = ?",
+                notificationId);
+    }
 }
