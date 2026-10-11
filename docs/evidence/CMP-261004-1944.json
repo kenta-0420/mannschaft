@@ -194,8 +194,8 @@
     {
       "description": "キープ画面（/teams/{slug}/schedule-keeps）の de/es モバイル表示で、送信ボタンが幅 26px に潰れて文字が切れ、状態タブ列がページを横に伸ばしていた（scrollWidth 492/390）。アリシゼーションの de スマホ住民が発見した。",
       "test": "frontend/tests/e2e/real/locale-residue-1944.spec.ts AC-13",
-      "redEvidence": "修正前 c1a033906f で AC-13 の4件（de/es × 390x844/360x800）がアサーションで失敗した（de 390: scrollWidth 492 > clientWidth 390、ボタン width 26、scrollWidth 66 > clientWidth 24、タブ右端 491 で scroller なし）。",
-      "greenEvidence": "修正 c2a5e00a6c の後、spec 全体 64 passed を2回連続で確認した（loginCount 4）。並列設定でも 64 passed。PR #3786 の CI run 38139960634 は green。"
+      "redEvidence": "docs/evidence/CMP-261004-1944.md",
+      "greenEvidence": "docs/evidence/CMP-261004-1944.md"
     }
   ]
 }
