@@ -1,7 +1,8 @@
 {
   "skill": {
     "list": {
-      "loadDetailFailed": "スキルの詳細取得に失敗しました"
+      "loadDetailFailed": "Die Details der Qualifikation konnten nicht geladen werden",
+      "loadCategoriesFailed": "Die Kategorien konnten nicht geladen werden"
     }
   },
   "chat": {

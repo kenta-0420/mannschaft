@@ -40,7 +40,7 @@ const searchItem = (over: Record<string, unknown> = {}) => ({
 })
 
 const fullSkill = {
-  id: 501, skillCategoryId: 7, categoryName: '運転', userId: 10, scopeType: 'TEAM', scopeId: '1',
+  id: 501, skillCategoryId: 7, categoryName: '運転', userId: 10, scopeType: 'TEAM', scopeId: 1,
   name: '普通自動車免許', issuer: '公安委員会', credentialNumber: 'No.123', acquiredOn: '2026-01-01',
   expiresAt: '2030-01-01', status: 'PENDING_REVIEW', hasCertificate: false, verifiedAt: null,
   verifiedBy: null, version: 3, createdAt: '2026-01-01T00:00:00',
@@ -53,7 +53,13 @@ const Button = defineComponent({
     return () => h('button', { type: 'button', 'data-icon': p.icon, onClick: () => emit('click') }, p.label)
   },
 })
-const stubs = { Button, InputText: true, Select: true, LoadingBounce: true }
+const Select = defineComponent({
+  props: { options: { type: Array, default: () => [] }, placeholder: { type: String, default: '' } },
+  setup(p) {
+    return () => h('div', { 'data-ph': p.placeholder }, (p.options as { label: string }[]).map((o) => o.label).join('|'))
+  },
+})
+const stubs = { Button, InputText: true, Select, LoadingBounce: true }
 
 let wrapper: VueWrapper | undefined
 async function render(canManage = false) {
@@ -74,7 +80,7 @@ beforeEach(() => {
   api.getSkill.mockResolvedValue({ data: fullSkill })
   api.deleteSkill.mockResolvedValue({})
   api.verifySkill.mockResolvedValue({ data: fullSkill })
-  api.getCertificateUrl.mockResolvedValue({ data: { url: 'https://example.invalid/c.pdf' } })
+  api.getCertificateUrl.mockResolvedValue({ data: 'https://example.invalid/c.pdf' })
 })
 afterEach(() => {
   wrapper?.unmount()
@@ -108,6 +114,18 @@ describe('SkillList: 検索APIの形（memberSkillId / skillName / categoryId）
     await btn(w, 'pi pi-download').trigger('click')
     await flushPromises()
     expect(api.getCertificateUrl).toHaveBeenCalledWith('e2e', 501)
+    vi.unstubAllGlobals()
+  })
+
+  it('証明書URLは実API形（data が URL 文字列）から読み、その URL で window.open する', async () => {
+    const open = vi.fn()
+    vi.stubGlobal('open', open)
+    api.getCertificateUrl.mockResolvedValue({ data: 'https://example.invalid/real.pdf?sig=1' })
+    const w = await render(true)
+    await btn(w, 'pi pi-download').trigger('click')
+    await flushPromises()
+    expect(open).toHaveBeenCalledWith('https://example.invalid/real.pdf?sig=1', '_blank')
+    expect(notify.error).not.toHaveBeenCalled()
     vi.unstubAllGlobals()
   })
 
@@ -150,5 +168,30 @@ describe('SkillList: 操作ボタンの表示条件（BE: 本人または ADMIN/
     auth.currentUser = { id: 99 }
     const w = await render(true)
     expect(btn(w, 'pi pi-pencil').exists()).toBe(true)
+  })
+})
+
+describe('SkillList: カテゴリ取得', () => {
+  const cat = (id: number, name: string, isActive: boolean) => ({ id, name, description: null, icon: null, sortOrder: id, isActive, createdAt: '' })
+
+  it('名前解決のため無効化済みも含めて取得し、無効カテゴリの資格にもカテゴリ名が出る', async () => {
+    api.getSkillCategories.mockResolvedValue({ data: [cat(7, '旧運転', false)] })
+    const w = await render(true)
+    expect(api.getSkillCategories).toHaveBeenCalledWith('e2e', true)
+    expect(w.text()).toContain('旧運転')
+  })
+
+  it('絞り込みの選択肢には有効カテゴリだけを出す', async () => {
+    api.getSkillCategories.mockResolvedValue({ data: [cat(7, '旧運転', false), cat(8, '救急', true)] })
+    const w = await render(true)
+    const options = w.find('[data-ph="カテゴリ"]').text()
+    expect(options).toContain('救急')
+    expect(options).not.toContain('旧運転')
+  })
+
+  it('取得に失敗したら握りつぶさずエラー通知する', async () => {
+    api.getSkillCategories.mockRejectedValue(new Error('500'))
+    await render(true)
+    expect(notify.error).toHaveBeenCalledWith('skill.list.loadCategoriesFailed')
   })
 })

@@ -1,7 +1,8 @@
 {
   "skill": {
     "list": {
-      "loadDetailFailed": "スキルの詳細取得に失敗しました"
+      "loadDetailFailed": "스킬 상세 정보를 불러오지 못했습니다",
+      "loadCategoriesFailed": "카테고리를 불러오지 못했습니다"
     }
   },
   "chat": {

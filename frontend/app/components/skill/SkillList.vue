@@ -12,7 +12,7 @@ const emit = defineEmits<{
   verify: [skill: MemberSkillResponse]
 }>()
 
-const { searchSkills, getSkill, deleteSkill, verifySkill, getCertificateUrl } = useSkillApi()
+const { searchSkills, getSkill, deleteSkill, verifySkill, getCertificateUrl, getSkillCategories } = useSkillApi()
 const notification = useNotification()
 const { formatDate } = useDatetime()
 const { t } = useI18n()
@@ -35,17 +35,17 @@ const statusOptions = [
 
 async function loadCategories() {
   try {
-    const { getSkillCategories } = useSkillApi()
-    const res = await getSkillCategories(props.teamId)
+    // 無効化済みカテゴリに属する資格の名前解決のため、無効も含めて取得する
+    const res = await getSkillCategories(props.teamId, true)
     categories.value = res.data
   } catch {
-    // categories are optional for filtering
+    notification.error(t('skill.list.loadCategoriesFailed'))
   }
 }
 
 const categoryOptions = computed(() => [
   { label: 'すべてのカテゴリ', value: null },
-  ...categories.value.map((c) => ({ label: c.name, value: c.id })),
+  ...categories.value.filter((c) => c.isActive).map((c) => ({ label: c.name, value: c.id })),
 ])
 
 async function loadItems() {
@@ -131,7 +131,7 @@ async function handleVerify(skill: SkillSearchItem) {
 async function handleDownloadCertificate(skill: SkillSearchItem) {
   try {
     const res = await getCertificateUrl(props.teamId, skill.memberSkillId)
-    window.open(res.data.url, '_blank')
+    window.open(res.data, '_blank')
   } catch {
     notification.error('証明書の取得に失敗しました')
   }
