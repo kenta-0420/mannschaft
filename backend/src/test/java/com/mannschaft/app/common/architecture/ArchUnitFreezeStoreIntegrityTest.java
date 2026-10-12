@@ -852,13 +852,14 @@ class ArchUnitFreezeStoreIntegrityTest {
     //   到達しなくなった 5（UserRepository と通知系4）。sendRemind の RoleRepository/UserRoleRepository は
     //   AccessControlService 経由で残る。CI shard1 の実測 -26 件と一致。
     // G2(recruitment)との合算: 7213 - 24 = 7189（ストア実数と一致）。
-    // Issue #2997 G6(shift / ticket): 付随通知を業務TXから切り離し 7189 -> 7167（-22）。
+    // main: CMP-260821-1027 の cancel/agree が解消した role の RoleRepository/UserRoleRepository 到達4行を除外し 7185。
+    // Issue #2997 G6(shift / ticket): 付随通知を業務TXから切り離し 7185 -> 7163（-22）。
     //   ShiftPreferenceReminderBatchService.processReminders は @Transactional を外したため 7、
     //   triggerManualReminder は通知を AFTER_COMMIT リスナーへ移したため UserRepository と通知系4の 5
     //   （UserRoleRepository・AuditLogRepository への到達は監査ログ・未提出者抽出という業務由来のため残す）、
     //   TicketExpiryBatchService.expireTickets は @Transactional を外したため 5、sendExpiryNotifications は
-    //   通知を呼ばなくなったため 5。追加 0・削除 22。CI の実測と一致することを確認すること。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7167;
+    //   通知を呼ばなくなったため 5。追加 0・削除 22（解消済みの main 側4行は残していない）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7163;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
