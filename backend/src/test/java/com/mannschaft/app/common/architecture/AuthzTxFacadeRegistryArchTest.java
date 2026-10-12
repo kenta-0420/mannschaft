@@ -164,7 +164,8 @@ class AuthzTxFacadeRegistryArchTest {
                 "listSchedules", "getSchedule", "createSchedule", "updateSchedule", "deleteSchedule", "transitionStatus",
                 "getScheduleSummary", "remindUnsubmitted", "duplicateSchedule");
         add(list, "W6a", SHIFT + "controller.ShiftSlotController", SHIFT + "service.ShiftSlotFacade",
-                "listSlots", "createSlot", "bulkCreateSlots", "updateSlot", "deleteSlot", "patchSlotAssignments");
+                "listSlots", "createSlot", "bulkCreateSlots", "updateSlot", "deleteSlot", "patchSlotAssignments",
+                "moveSlotAssignment"); // moveSlotAssignment: CMP-261010-1432 枠間移動
         add(list, "W6a", SHIFT + "controller.ShiftPdfController", SHIFT + "service.ShiftPdfFacade", "exportPdf");
         // W7: 資格 API（個別 ID の取得・更新・削除・証明書 URL。CMP-261010-2226）
         add(list, "W7", SKL + "controller.SkillController", SKL + "service.MemberSkillFacade",

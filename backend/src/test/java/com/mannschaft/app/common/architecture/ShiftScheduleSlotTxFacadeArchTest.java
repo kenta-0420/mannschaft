@@ -91,7 +91,7 @@ class ShiftScheduleSlotTxFacadeArchTest {
         map.put(SCHEDULE_CONTROLLER, schedule);
         Map<String, String> slot = new LinkedHashMap<>();
         for (String m : List.of("listSlots", "createSlot", "bulkCreateSlots", "updateSlot", "deleteSlot",
-                "patchSlotAssignments")) {
+                "patchSlotAssignments", "moveSlotAssignment")) { // moveSlotAssignment: CMP-261010-1432 枠間移動
             slot.put(m, SLOT_FACADE);
         }
         map.put(SLOT_CONTROLLER, slot);
