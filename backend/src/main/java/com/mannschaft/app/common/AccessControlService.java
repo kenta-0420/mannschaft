@@ -111,6 +111,50 @@ public class AccessControlService {
     }
 
     /**
+     * ユーザーがスコープの<b>正式メンバー以上</b>（ADMIN / DEPUTY_ADMIN / MEMBER）かどうかを返す（CMP-261012-0313）。
+     *
+     * <p>{@link #isMember} は在籍（{@code memberships}）の有無だけを見るため SUPPORTER も通す。
+     * 本メソッドは在籍が {@code role_kind = MEMBER} であること、または在籍したうえで当該スコープの
+     * ADMIN / DEPUTY_ADMIN であることを要求し、SUPPORTER・GUEST（在籍なし）・非メンバーを除く。
+     * SYSTEM_ADMIN を特別扱いしない（在籍していなければ false）。</p>
+     *
+     * <p>既存の {@link #isMember} / {@link #checkMembership} の意味は変えない（SUPPORTER を通している他機能へ
+     * 影響させないため、正式メンバー限定が要る入口だけがこちらを呼ぶ）。</p>
+     */
+    public boolean isRegularMemberOrAbove(Long userId, Long scopeId, String scopeType) {
+        ScopeType scope = ScopeType.valueOf(scopeType);
+        if (membershipRepository.existsActiveByUserAndScopeAndRoleKind(userId, scope, scopeId, RoleKind.MEMBER)) {
+            return true;
+        }
+        return isMember(userId, scopeId, scopeType) && isAdminOrAbove(userId, scopeId, scopeType);
+    }
+
+    /**
+     * {@link #isRegularMemberOrAbove} の例外版。違反時は 403（COMMON_002）。
+     */
+    public void checkRegularMemberOrAbove(Long userId, Long scopeId, String scopeType) {
+        if (!isRegularMemberOrAbove(userId, scopeId, scopeType)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * スコープに<b>正式メンバーとして在籍中</b>（{@code role_kind = MEMBER}・{@code left_at IS NULL}）の
+     * userId を 1 クエリで返す（CMP-261012-0313）。
+     *
+     * <p>{@link #listActiveMemberIds} の SUPPORTER を除く版。ADMIN / DEPUTY_ADMIN は在籍が MEMBER 種別のため含まれる。
+     * GUEST（user_roles のみ・在籍なし）と脱退者は含まれない。</p>
+     *
+     * @param scopeId   スコープ ID
+     * @param scopeType スコープ種別（{@code "TEAM"} 等）
+     * @return 正式メンバーの userId（重複なし。0 名なら空リスト）
+     */
+    public List<Long> listActiveRegularMemberIds(Long scopeId, String scopeType) {
+        ScopeType scope = ScopeType.valueOf(scopeType);
+        return membershipRepository.findActiveDistinctUserIdsByScopeAndRoleKind(scope, scopeId, RoleKind.MEMBER);
+    }
+
+    /**
      * ユーザーがスコープのメンバー、または（ORGANIZATION スコープのとき）その配下ツリーの
      * <b>応答母集団メンバー</b>かどうかを返す（欠陥Z 根治）。
      *

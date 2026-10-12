@@ -88,6 +88,10 @@ public class SkillSearchService {
                     item.put("expiresAt", s.getExpiresAt());
                     item.put("status", s.getStatus().name());
                     item.put("verifiedAt", s.getVerifiedAt());
+                    // 証明書の有無（CMP-261012-0313）。判定式は MemberSkillResponse（SkillMapper#toResponse）と同じ。
+                    // キーそのものは返さない（F07.5 §6: 他メンバーには has_certificate フラグのみ）。
+                    item.put("hasCertificate",
+                            s.getCertificateS3Key() != null && !s.getCertificateS3Key().isBlank());
                     // 期限切れフラグ（有効期限が今日より前 && status=ACTIVE）
                     boolean isExpiringSoon = s.getExpiresAt() != null
                             && s.getStatus() == SkillStatus.ACTIVE

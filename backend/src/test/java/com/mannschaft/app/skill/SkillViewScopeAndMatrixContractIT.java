@@ -730,7 +730,7 @@ class SkillViewScopeAndMatrixContractIT extends AbstractMySqlIntegrationTest {
                                 + "locale, timezone, reporting_restricted, follow_list_visibility, "
                                 + "care_notification_enabled, offline_only, "
                                 + "created_at, updated_at) "
-                                + "VALUES (:email, 'SKVIEW', 'テスト', :dn, 'ACTIVE', "
+                                + "VALUES (:email, '資格', 'テスト', :dn, 'ACTIVE', "
                                 + "1, 1, 1, "
                                 + "'NOBODY', 'ANYONE', 1, "
                                 + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "

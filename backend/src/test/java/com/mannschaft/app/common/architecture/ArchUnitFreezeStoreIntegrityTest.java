@@ -705,7 +705,10 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値へ追随。</p>
      * <p>正式1e8の全量解析と原因検分で確認した旧原因17件の削減（2063→2046）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2046;
+    // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
+    //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
+    //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 2）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2044;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -730,7 +733,10 @@ class ArchUnitFreezeStoreIntegrityTest {
     // Issue #2997 G8: 1317 -> 1308（-9）。ActionMemoReminderBatchService と TodoDueReminderBatch が
     //   業務TX（クラス/メソッドの @Transactional）を持たなくなり、UserRepository / NotificationRepository への
     //   依存行が各3件ずつ消えた。CI shard1・2 の実測 -9 件と一致。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1308;
+    // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
+    //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
+    //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1304;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -839,7 +845,10 @@ class ArchUnitFreezeStoreIntegrityTest {
     //   reflection processDueReminders 5、および sendRemind が NotificationHelper を呼ばなくなり
     //   到達しなくなった 5（UserRepository と通知系4）。sendRemind の RoleRepository/UserRoleRepository は
     //   AccessControlService 経由で残る。CI shard1 の実測 -26 件と一致。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7213;
+    // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
+    //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
+    //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 2）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7211;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -923,7 +932,10 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
      * <p>正式1e8の全量解析と原因検分で確認した旧原因73件の削減（1938→1865）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1862;
+    // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
+    //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
+    //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1858;
 
     /**
      * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。

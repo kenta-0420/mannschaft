@@ -20,6 +20,9 @@ import java.util.Map;
 @Component
 public class SkillMapper {
 
+    /** 表示名を引けない利用者の表示（{@code SkillSearchService}・{@code SkillCsvService} と同じ）。 */
+    public static final String UNKNOWN_USER_DISPLAY_NAME = "不明なユーザー";
+
     /**
      * SkillCategoryEntity を SkillCategoryResponse に変換する。
      */
@@ -93,11 +96,14 @@ public class SkillMapper {
      * SkillMatrixService が返す Map<String, Object> 形式のマトリックスデータを
      * SkillMatrixRowResponse リストに変換する。
      *
-     * @param matrixData SkillMatrixService.getMatrix() が返すデータ
+     * @param matrixData   SkillMatrixService.getMatrix() が返すデータ
+     * @param displayNames userId → 表示名（一括解決済み。CMP-261012-0313）。引けない利用者は
+     *                     {@value #UNKNOWN_USER_DISPLAY_NAME}
      * @return 行レスポンスリスト
      */
     @SuppressWarnings("unchecked")
-    public List<SkillMatrixRowResponse> toMatrixRowResponseList(Map<String, Object> matrixData) {
+    public List<SkillMatrixRowResponse> toMatrixRowResponseList(
+            Map<String, Object> matrixData, Map<Long, String> displayNames) {
         List<Map<String, Object>> rawRows =
                 (List<Map<String, Object>>) matrixData.getOrDefault("rows", List.of());
         List<Map<String, Object>> rawColumns =
@@ -111,7 +117,7 @@ public class SkillMapper {
         List<SkillMatrixRowResponse> rows = new ArrayList<>();
         for (Map<String, Object> rawRow : rawRows) {
             Long userId = toLong(rawRow.get("userId"));
-            String displayName = (String) rawRow.getOrDefault("displayName", "");
+            String displayName = displayNames.getOrDefault(userId, UNKNOWN_USER_DISPLAY_NAME);
 
             List<Map<String, Object>> rawCells =
                     (List<Map<String, Object>>) rawRow.getOrDefault("cells", List.of());
