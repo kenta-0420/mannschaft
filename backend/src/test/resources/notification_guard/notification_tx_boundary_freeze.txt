@@ -55,7 +55,7 @@
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 23
+# CLASSIFIED_FLOOR: 19
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
 # TX_NOTIFY_VIA_DELEGATE / TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY について呼び先の宣言から区分を導出し、
@@ -249,7 +249,13 @@
 # 業務TX内は JobNotificationEvent の publish のみとし、配送は新設の JobNotificationListener
 # （AFTER_COMMIT + @Async("event-pool")）へ移した。実DB検証: JobNotificationTransactionIT。
 # 裏取り: 凍結エントリ 35 + REMOVED 8 = 43 -> 凍結エントリ 31 + REMOVED 8 = 39。分類済み 32 -> 28。
-# CENSUS_FLOOR: 34
+# Issue #2997 第1陣 G2（recruitment）: RecruitmentListingService#publish / #sendPublishedNotifications / #confirmApplication /
+# MarketFriendTargetService#distributeFriendListing（いずれも ROLLBACK_COUPLED）を是正。
+# 業務TX内は RecruitmentNotificationEvent の publish のみとし、配送は新設の RecruitmentNotificationListener
+# （AFTER_COMMIT + @Async("event-pool") + NotificationDeliveryRunner#sendOne）へ移した。実DB検証: RecruitmentNotificationTransactionIT。
+# 4件とも RecruitmentListingService / MarketFriendTargetService から通知呼び出しが消えたため削除（publish は委譲先が消えた連動）。
+# 裏取り: G2 単独: 凍結エントリ 31 + REMOVED 8 = 39 -> 27 + 8 = 35、分類済み 28 -> 24。G8（main）との合算の最終実数: 凍結エントリ 22 + REMOVED 8 = 30、分類済み 19。
+# CENSUS_FLOOR: 30
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -261,9 +267,6 @@ com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationConfi
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processAlertIfNeeded -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationReminderBatchService#processReminders -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 com.mannschaft.app.notification.fanout.NotificationFanoutWorker#processOne -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.recruitment.service.MarketFriendTargetService#distributeFriendListing -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.recruitment.service.RecruitmentListingService#confirmApplication -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.recruitment.service.RecruitmentListingService#sendPublishedNotifications -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.EmergencyClosureService#sendClosure -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.ReservationPendingExpireService#notifyApplicant -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.ReservationReminderDispatchBatchService#sendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
@@ -1047,7 +1050,6 @@ com.mannschaft.app.role.service.OwnershipTransferOfferService#declineOffer -> TX
 # --- L12 で追加した凍結エントリ（型解決の根治であらたに見えた既存負債 3 件） ---
 # ------------------------------------------------------------------------------
 
-com.mannschaft.app.recruitment.service.RecruitmentListingService#publish -> TX_NOTIFY_VIA_DELEGATE | ROLLBACK_COUPLED
 
 # ------------------------------------------------------------------------------
 # --- 2026-09-07 Issue #2990 L13: shiftbudget ドメイン 5件の処理（CENSUS_FLOOR 49 -> 44 / CLASSIFIED_FLOOR 38 -> 33）---

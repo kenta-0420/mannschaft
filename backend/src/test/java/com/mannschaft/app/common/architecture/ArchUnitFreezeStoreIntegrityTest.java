@@ -827,19 +827,32 @@ class ArchUnitFreezeStoreIntegrityTest {
      * loadPersonalCalendarCounts 1）。追加 0・削除 93。{@code 7375 → 7282}。</p>
      *
      * <p>6-A と 6-C の統合（merge）: 6-A 側の期待値 7357 から 6-C の返済 93 行を引いた実数 7264 に合わせた。</p>
+     *
+     * <p>F01.2.1 6-E（グループ宛て告知の push）: 公開の印を渡すため {@code SurveyService.publishSurvey} の入口を
+     * 3引数版から4引数版（{@code boolean} 付き）1本に差し替えた。既存負債 2 行（→ OrganizationRepository /
+     * UserRoleRepository）の入口名を付け替えただけで、追加 0・削除 0。増減なし。
+     * 告知の push は social ドメインの outbox（{@code social_notification_outbox}）へ書くだけで、notification の
+     * Repository へは届かない（ストア変更なし）。</p>
      */
     // CMP-260820-1018: Proxy の一覧・アップロードURL生成を非TX認可入口へ整理したため4行減。Role依存自体は残る。
     // main: BetaGrantService の通知RepositoryへのTX到達12行減も統合。独立した削除16行で7376→7360。
     // Issue #2997 jobmatching: apply / acceptApplication / reportCompletion / recordCheckIn(fireNotifications) の
     // 通知を AFTER_COMMIT リスナーへ移したため、通知系Repository(4)+UserRepository への到達25行減。7264→7239。
     // 内訳: fireNotifications 5・recordCheckIn 5・apply 5・acceptApplication 5・reportCompletion 5（CI 実測 7239 と一致）。
+    // Issue #2997 recruitment(G2): publish / confirmApplication / sendPublishedNotifications /
+    // distributeFriendListing の通知を AFTER_COMMIT リスナーへ移したため、通知系Repository+UserRepository への到達26行減。
+    // 一方、受信者解決の private 化（sendPublishedNotifications→resolvePublishedRecipients の改名）で
+    // UserRoleRepository/FollowRepository への到達2行が同債務のまま付け替わった（+2）。7239→7215（実測一致、差し引き-24）。
+    // 内訳: distributeFriendListing 9・confirmApplication 5・publish 5・sendPublishedNotifications 7（改名で+2のため実減は26-2）。
+    // D-1 API境界（93124b52）も distributeFriendListing の Entity 露出1行が消え 603→602。
     // D-3（他の6ストア）は CI の整合性テストが不一致を報告していないため変更なし。
     // Issue #2997 G8: 軽量バッチ群の付随通知を業務TXから切り離し 7264 -> 7238（-26。G1 と併せた最終値は 7213）。
     //   @Transactional を外した actionmemo execute 3 / repairplan execute 3 / todo 2メソッド 10 /
     //   reflection processDueReminders 5、および sendRemind が NotificationHelper を呼ばなくなり
     //   到達しなくなった 5（UserRepository と通知系4）。sendRemind の RoleRepository/UserRoleRepository は
     //   AccessControlService 経由で残る。CI shard1 の実測 -26 件と一致。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7213;
+    // G2(recruitment)との合算: 7213 - 24 = 7189（ストア実数と一致）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7189;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -934,7 +947,8 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 戻り値が Entity のままなので残す。</p>
      */
     // CMP-260820-1018: Proxy 一覧を Page<ProxyInputConsentResponse> に変更し、公開APIのEntity露出1件を解消。
-    private static final int EXPECTED_LINES_SERVICE_API = 603;
+    // Issue #2997 recruitment(G2): MarketFriendTargetService#distributeFriendListing の Entity 露出が消え 603→602。
+    private static final int EXPECTED_LINES_SERVICE_API = 602;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

@@ -148,6 +148,21 @@ class CrossDomainMandatoryPropagationArchTest {
                 .doesNotContain("enqueueAfterCommit");
     }
 
+    /**
+     * 6-E'（social）: 告知 push の旧経路（social の tx から通知ドメインの {@code registerAudience}・
+     * {@code enqueueInCurrentTransaction} を MANDATORY で直接呼ぶ {@code FanoutAnnouncementPushEnqueuer}）が削除され、
+     * ポートの実装が social の outbox に書く {@code OutboxAnnouncementPushEnqueuer} だけになっている。
+     */
+    @ArchTest
+    static void og03_旧経路のFanoutAnnouncementPushEnqueuerは削除されポートの実装はsocialのoutboxだけ(JavaClasses classes) {
+        assertThat(classes.contain("com.mannschaft.app.social.announcement.FanoutAnnouncementPushEnqueuer"))
+                .as("FanoutAnnouncementPushEnqueuer は削除する（OutboxAnnouncementPushEnqueuer に置き換える）").isFalse();
+        JavaClass port = classes.get("com.mannschaft.app.social.announcement.AnnouncementPushEnqueuer");
+        assertThat(port.getAllSubclasses()).extracting(JavaClass::getName)
+                .as("AnnouncementPushEnqueuer の実装は social の outbox に書くものだけ")
+                .containsExactly("com.mannschaft.app.social.announcement.OutboxAnnouncementPushEnqueuer");
+    }
+
     // =====================================================================
     // 判定（ConditionTest からも呼ぶ）
     // =====================================================================

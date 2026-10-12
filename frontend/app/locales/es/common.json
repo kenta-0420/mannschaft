@@ -2635,7 +2635,8 @@
   "scopeSwitch": {
     "hint": "Para cambiar, abre un equipo u organización desde el menú «Equipos» / «Organizaciones» de la parte superior. El que abras pasa a ser el ámbito actual.",
     "goTeams": "Elegir un equipo",
-    "goOrganizations": "Elegir una organización"
+    "goOrganizations": "Elegir una organización",
+    "personalUnsupported": "Esta configuración solo está disponible en un ámbito de equipo u organización. No se puede mostrar en el ámbito personal."
   },
   "joinRequest": {
     "apply": "Solicitud de ingreso",

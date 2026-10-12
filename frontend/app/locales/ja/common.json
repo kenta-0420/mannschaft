@@ -2635,7 +2635,8 @@
   "scopeSwitch": {
     "hint": "切り替えは、画面上部の「チーム」「組織」メニューから対象を選んで開くと行われます。開いた団体が、そのまま現在のスコープになります。",
     "goTeams": "チームを選ぶ",
-    "goOrganizations": "組織を選ぶ"
+    "goOrganizations": "組織を選ぶ",
+    "personalUnsupported": "この設定はチームまたは組織のスコープでのみ利用できます。個人スコープでは表示できません。"
   },
   "joinRequest": {
     "apply": "参加申請",
