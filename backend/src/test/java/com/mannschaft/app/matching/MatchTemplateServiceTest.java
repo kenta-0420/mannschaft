@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 /**
  * {@link MatchTemplateService} の単体テスト。
@@ -83,8 +84,8 @@ class MatchTemplateServiceTest {
     class UpdateTemplate {
 
         @Test
-        @DisplayName("異常系: 他チームのテンプレート更新は権限エラー")
-        void 他チーム更新権限エラー() {
+        @DisplayName("異常系: 他チームのテンプレート更新は不在と同じエラー")
+        void 他チーム更新は不在と同じエラー() {
             // Given
             MatchRequestTemplateEntity entity = MatchRequestTemplateEntity.builder()
                     .teamId(999L).name("テスト").build();
@@ -96,13 +97,32 @@ class MatchTemplateServiceTest {
             assertThatThrownBy(() -> service.updateTemplate(TEAM_ID, TEMPLATE_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
-                    .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+                    .isEqualTo(MatchingErrorCode.TEMPLATE_NOT_FOUND);
+            assertThat(entity.getName()).isEqualTo("テスト");
+            assertThat(entity.getTemplateJson()).isNull();
+            verify(templateRepository, never()).save(any());
         }
     }
 
     @Nested
     @DisplayName("deleteTemplate")
     class DeleteTemplate {
+
+        @Test
+        @DisplayName("異常系: 他チームのテンプレート削除は不在と同じエラーかつ削除しない")
+        void 他チーム削除は不在と同じエラーで変更しない() {
+            MatchRequestTemplateEntity entity = MatchRequestTemplateEntity.builder()
+                    .teamId(999L).name("テスト").templateJson("{}").build();
+            given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.deleteTemplate(TEAM_ID, TEMPLATE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MatchingErrorCode.TEMPLATE_NOT_FOUND);
+            verify(templateRepository, never()).delete(any());
+            assertThat(entity.getName()).isEqualTo("テスト");
+            assertThat(entity.getTemplateJson()).isEqualTo("{}");
+        }
 
         @Test
         @DisplayName("正常系: テンプレート削除成功")

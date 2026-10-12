@@ -1,6 +1,8 @@
 package com.mannschaft.app.team.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.notification.NotificationType;
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.entity.TeamOrgAffiliationDirection;
@@ -20,6 +22,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -29,7 +32,9 @@ import java.util.UUID;
  * <p>本クラスのメソッドが<b>トランザクションの入口</b>であり、トランザクションは <b>team ドメインの中に閉じる</b>
  * （CLAUDE.md 原則5）。触る表はチーム・加盟・制限だけで、組織の状態の確認・グループの検証・通知・監査は、
  * 呼び出し元の {@link TeamOrgInviteService} がトランザクションの<b>外</b>で行う（組織の確認は書き込みの前、
- * 通知と監査はコミットの後。4-A の監査と同じ形）。</p>
+ * 監査はコミットの後。4-A の監査と同じ形）。通知は team ドメインの outbox に書くだけなので、トランザクションの<b>中</b>で
+ * 予約する（承諾は {@link #accept} の中、招待は読み直しの後の {@link #appendInviteReceivedNotice}。
+ * docs/architecture/notification_outbox.md §10）。</p>
  *
  * <h2>ロックの順序（デッドロックしない理由）</h2>
  * <ul>
@@ -51,6 +56,7 @@ public class TeamOrgInviteCommandService {
     private final TeamOrgMembershipRepository membershipRepository;
     private final TeamOrgAffiliationRestrictionService restrictionService;
     private final TeamOrgAffiliationRestrictionRepository restrictionRepository;
+    private final TeamAffiliationNotifier notifier;
     private final Clock clock;
     private final Duration declineCooldown;
     private final Duration resendCooldown;
@@ -60,6 +66,7 @@ public class TeamOrgInviteCommandService {
             TeamOrgMembershipRepository membershipRepository,
             TeamOrgAffiliationRestrictionService restrictionService,
             TeamOrgAffiliationRestrictionRepository restrictionRepository,
+            TeamAffiliationNotifier notifier,
             Clock clock,
             @Value("${mannschaft.affiliation.reject-cooldown-days:30}") long declineCooldownDays,
             @Value("${mannschaft.affiliation.resend-cooldown-hours:24}") long resendCooldownHours) {
@@ -67,6 +74,7 @@ public class TeamOrgInviteCommandService {
         this.membershipRepository = membershipRepository;
         this.restrictionService = restrictionService;
         this.restrictionRepository = restrictionRepository;
+        this.notifier = notifier;
         this.clock = clock;
         this.declineCooldown = Duration.ofDays(declineCooldownDays);
         this.resendCooldown = Duration.ofHours(resendCooldownHours);
@@ -141,6 +149,27 @@ public class TeamOrgInviteCommandService {
     }
 
     /**
+     * 招待のコミット後の組織の読み直しを通過した後に、招待の通知を outbox に予約する（設計書 §10 C 案・OB13a〜c）。
+     *
+     * <p>最初の文で招待の行を {@code FOR UPDATE} で読み、まだこのチームの PENDING / ORG_INVITE であるときだけ書く。
+     * 読み直しの後に辞退・取消・承諾で行が変わっていれば何も書かない（取り消された招待の通知を出さない）。
+     * 辞退・取消・承諾も同じ行を {@code FOR UPDATE} で取るので、確認と書き込みの間に状態は変わらない。</p>
+     *
+     * @return 予約したら true。招待の行が PENDING の招待として残っていなければ false
+     */
+    @Transactional
+    public boolean appendInviteReceivedNotice(Long membershipId, Long teamId, TeamAffiliationNotice notice) {
+        Optional<TeamOrgMembershipEntity> row = membershipRepository.findByIdAndTeamIdForUpdate(membershipId, teamId);
+        if (row.isEmpty()
+                || row.get().getStatus() != TeamOrgMembershipEntity.Status.PENDING
+                || row.get().getDirection() != TeamOrgAffiliationDirection.ORG_INVITE) {
+            return false;
+        }
+        notifier.enqueue(notice);
+        return true;
+    }
+
+    /**
      * 承諾の前に、招待行がこのチームの PENDING / ORG_INVITE であることを確かめ、組織 ID を返す（ロックしない読み取り）。
      *
      * <p>組織の状態の確認（トランザクションの外）に組織 ID が要るため、書き込みの前に行を一度読む。
@@ -164,12 +193,18 @@ public class TeamOrgInviteCommandService {
      * 呼び出し前にトランザクションの外で済ませてある。応答は §6.4 の判定表に従う: 行が無い（他チームの ID・存在しない ID・
      * 削除済み）→ 404 {@code TEAM_070}、招待でない行・ACTIVE の行 → 409 {@code TEAM_071}。</p>
      *
+     * <p>承諾の通知（{@code TEAM_ORG_INVITE_ACCEPTED}・組織 ADMIN 全員）は同じトランザクションで outbox に予約する。
+     * 予約が失敗すれば承諾ごと巻き戻る（OB14）。</p>
+     *
      * @param expectedOrganizationId 事前に読んだ組織（行の組織と一致することを確かめる）
      * @param confirmedGroupId       確定グループ（null なら未分類）
+     * @param organizationName       通知の文面に使う組織名（事前に読んだ組織の状態）
+     * @param organizationSlug       通知から開く画面の組織 slug
      */
     @Transactional
     public AcceptedInvite accept(Long teamId, Long membershipId, Long operatorUserId,
-                                 Long expectedOrganizationId, UUID confirmedGroupId) {
+                                 Long expectedOrganizationId, UUID confirmedGroupId,
+                                 String organizationName, String organizationSlug) {
         // 1. 最初の文でチーム行をロックする（同じチームの招待・申請の作成と直列化する）。削除済みなら行は無いものとして扱う
         TeamEntity team = teamRepository.findByIdForUpdate(teamId)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_070));
@@ -199,12 +234,24 @@ public class TeamOrgInviteCommandService {
             throw new IllegalStateException("ロック済みの加盟招待を条件付き UPDATE できない: membershipId=" + membershipId);
         }
 
+        // 承諾と同じトランザクションで通知を予約する（outbox への書き込みが失敗すれば承諾も巻き戻る）
+        notifier.enqueue(new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_INVITE_ACCEPTED,
+                FanoutMessageKind.TEAM_ORG_INVITE_ACCEPTED,
+                List.of(team.getName(), organizationName),
+                TeamAffiliationNotice.RecipientScope.ORGANIZATION_ADMINS,
+                expectedOrganizationId,
+                expectedOrganizationId,
+                membershipId,
+                operatorUserId,
+                "/organizations/" + organizationSlug + "/member-teams"));
+
         // コミット後に行を取り直さない（その間に離脱・除名で消えると 500 になる）。確定した値から応答の入力を作る
         TeamOrgAffiliationAssembler.AffiliationRow accepted = new TeamOrgAffiliationAssembler.AffiliationRow(
                 membershipId, teamId, expectedOrganizationId, TeamOrgMembershipEntity.Status.ACTIVE,
                 TeamOrgAffiliationDirection.ORG_INVITE, confirmedGroupId, null,
                 requested.invitedBy(), requested.invitedAt(), respondedAt);
-        return new AcceptedInvite(accepted, team.getName());
+        return new AcceptedInvite(accepted);
     }
 
     /**
@@ -286,8 +333,8 @@ public class TeamOrgInviteCommandService {
     public record InviteTarget(Long membershipId, Long organizationId, UUID requestedGroupId) {
     }
 
-    /** 承諾で成立した加盟の確定値と、通知に使うチーム名。 */
-    public record AcceptedInvite(TeamOrgAffiliationAssembler.AffiliationRow row, String teamName) {
+    /** 承諾で成立した加盟の確定値。 */
+    public record AcceptedInvite(TeamOrgAffiliationAssembler.AffiliationRow row) {
     }
 
     /** 辞退の結果（合成後の、いま有効な制限）。 */

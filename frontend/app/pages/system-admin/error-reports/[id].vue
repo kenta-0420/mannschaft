@@ -6,7 +6,7 @@ import type {
   WorkflowStage,
 } from '~/types/error-report'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const route = useRoute()
 const router = useRouter()
