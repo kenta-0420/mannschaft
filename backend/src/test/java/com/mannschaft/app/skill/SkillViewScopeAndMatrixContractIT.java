@@ -774,6 +774,7 @@ class SkillViewScopeAndMatrixContractIT extends AbstractMySqlIntegrationTest {
                 .name(name)
                 .sortOrder(sortOrder)
                 .isActive(true)
+                .createdBy(adminId)
                 .build());
         return category.getId();
     }
