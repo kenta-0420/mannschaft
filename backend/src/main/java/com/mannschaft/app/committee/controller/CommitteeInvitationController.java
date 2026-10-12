@@ -129,7 +129,7 @@ public class CommitteeInvitationController {
         CommitteeMemberEntity member =
                 committeeInvitationService.acceptInvitation(request.getInviteToken(), currentUserId);
 
-        String displayName = nameResolverService.resolveUserDisplayName(member.getUserId());
+        String displayName = nameResolverService.resolveUserFullName(member.getUserId());
         String avatarUrl = nameResolverService.resolveUserAvatarUrls(List.of(member.getUserId()))
                 .get(member.getUserId());
         return ApiResponse.of(CommitteeMemberResponse.of(member, displayName, avatarUrl));

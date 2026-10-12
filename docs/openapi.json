@@ -204441,6 +204441,12 @@
       "CommitteeMemberResponse": {
         "type": "object",
         "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
           "invitedBy": {
             "type": "integer",
             "format": "int64"

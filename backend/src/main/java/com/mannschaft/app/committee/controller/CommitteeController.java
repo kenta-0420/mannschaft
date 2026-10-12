@@ -232,7 +232,7 @@ public class CommitteeController {
      */
     private List<CommitteeMemberResponse> toMemberResponses(List<CommitteeMemberEntity> members) {
         List<Long> userIds = members.stream().map(CommitteeMemberEntity::getUserId).toList();
-        Map<Long, String> displayNames = nameResolverService.resolveUserDisplayNames(userIds);
+        Map<Long, String> displayNames = nameResolverService.resolveUserFullNames(userIds);
         Map<Long, String> avatarUrls = nameResolverService.resolveUserAvatarUrls(userIds);
         return members.stream()
                 .map(m -> CommitteeMemberResponse.of(m,

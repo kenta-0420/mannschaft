@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 public class CommitteeMemberResponse {
 
     private Long userId;
-    /** 表示名（ニックネーム）。FE がアバターの頭文字を取るため null にしない。 */
+    /** 表示名（組織内のため実名: 姓 名）。FE がアバターの頭文字を取るため null にしない。 */
     private String displayName;
     /** アバター表示 URL（署名付き）。未設定の場合は null。 */
     private String avatarUrl;

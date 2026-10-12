@@ -204,7 +204,7 @@ class CommitteeAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data[*].displayName",
                             org.hamcrest.Matchers.hasSize(4)))
                     .andExpect(jsonPath("$.data[*].displayName",
-                            org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("委員会契約テスト"))));
+                            org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("委員会契約 テスト"))));
         }
     }
 
