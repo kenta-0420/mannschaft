@@ -356,6 +356,8 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
                 String subject = renderer.resolveMessage("email.password-reset.subject", locale);
                 yield new RenderedEmail(subject, html);
             }
+            // CMP-261012-0910: 2FA メールOTP（ja 固定・ログインリンク無し。構造化変数から Worker で描画）
+            case "MFA_EMAIL_OTP" -> MfaEmailOtpMailRenderer.render(vars);
             // Phase 18-b/c スルー方式: 呼び出し元が subject/body を組み立てて payloadVars に詰める
             case "RESERVATION_EMERGENCY_CLOSURE",
                  "ANALYTICS_KPI_MONTHLY",

@@ -205,7 +205,7 @@ public enum AuthErrorCode implements ErrorCode {
     /** 郵便番号フォーマット不正 */
     AUTH_072("AUTH_072", "invalid postal code format", Severity.WARN),
 
-    // ===== CMP-261012-0910 多要素認証(2FA)の穴埋め (AUTH_073〜AUTH_081) =====
+    // ===== CMP-261012-0910 多要素認証(2FA)の穴埋め (AUTH_073〜AUTH_082) =====
 
     /**
      * MFA セッションが無効（不在・期限切れ・試行上限で削除済み）。再ログインが必要。
@@ -242,7 +242,14 @@ public enum AuthErrorCode implements ErrorCode {
     AUTH_080("AUTH_080", "本人確認に失敗しました", Severity.WARN),
 
     /** メールアドレスが登録されていないためメールOTP を利用できない（AC-24）。400 を返す。 */
-    AUTH_081("AUTH_081", "メールアドレスが登録されていないため、メールでの確認コードは利用できません", Severity.WARN);
+    AUTH_081("AUTH_081", "メールアドレスが登録されていないため、メールでの確認コードは利用できません", Severity.WARN),
+
+    /**
+     * メール方式の 2FA（method=EMAIL）は現在有効化できない（永続 enum EMAIL の段階リリース門番。
+     * {@code mannschaft.auth.mfa.email-method-enabled=false} の間は設定開始・有効化を拒否する）。400 を返す。
+     * ログイン時のメールOTP（TOTP 利用者の代替手段）・本人確認用メールOTP は本コードの対象外。
+     */
+    AUTH_082("AUTH_082", "メールでの2段階認証は現在ご利用いただけません", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -49,6 +49,32 @@ public interface MfaEmailOtpService {
     boolean verifyAndConsume(MfaEmailOtpPurpose purpose, String subject, String code);
 
     /**
+     * {@link #verifyAndConsume} と同じ照合・消費を行い、失敗の内訳（不一致か、試行上限による失効か）まで返す
+     * （CMP-261012-0910 AC-45。設定用コードの 5 回目の誤りを 429 AUTH_075 で返すために使う）。
+     *
+     * <p>SETUP / REAUTH の試行上限は照合<b>前</b>に原子 INCR で数える（同一主体への並列照合でも上限を越えない）。
+     * 上限到達（5 回目の誤り）でコードを削除し、以後は正しいコードでも {@link VerifyOutcome#EXHAUSTED}。
+     * 計数は最初の失敗から {@link ValkeyMfaEmailOtpService#CODE_TTL}（10 分）で解除される。再送・設定開始の
+     * 再実行では解除されない。LOGIN は常に {@link VerifyOutcome#MATCHED} か {@link VerifyOutcome#MISMATCHED}。</p>
+     *
+     * @param purpose 用途
+     * @param subject 主体
+     * @param code    提示された 6 桁コード
+     * @return 照合結果
+     */
+    VerifyOutcome verify(MfaEmailOtpPurpose purpose, String subject, String code);
+
+    /** {@link #verify} の結果。 */
+    enum VerifyOutcome {
+        /** 一致し、この呼び出しがコードを消費した。 */
+        MATCHED,
+        /** 不一致・期限切れ・未送信・形式違反。 */
+        MISMATCHED,
+        /** 試行上限に達した（コードは削除済み。SETUP / REAUTH のみ）。 */
+        EXHAUSTED
+    }
+
+    /**
      * 用途・主体のコードと照合失敗回数を破棄する（無効化・方式切替・セッション破棄時）。
      * 送信回数・再送待ちは送信爆撃対策のため残す。
      *

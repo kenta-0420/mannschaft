@@ -2712,6 +2712,21 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * CMP-261012-0910: 「しばらく待てば通る」業務例外（{@link RetryAfterBusinessException}）のハンドラ。
+     *
+     * <p>本文・ステータスは {@link #handleBusinessException} と同じ（エラーコード既定。メールOTP の
+     * 再送待ち AUTH_076 / 送信上限 AUTH_077 は 429）で、{@code Retry-After} ヘッダ（残り秒数）だけを足す。</p>
+     */
+    @ExceptionHandler(RetryAfterBusinessException.class)
+    public ResponseEntity<ErrorResponse> handleRetryAfterBusinessException(
+            RetryAfterBusinessException ex, HttpServletRequest request) {
+        ResponseEntity<ErrorResponse> base = handleBusinessException(ex, request);
+        return ResponseEntity.status(base.getStatusCode())
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.getRetryAfterSeconds()))
+                .body(base.getBody());
+    }
+
+    /**
      * Bean Validation エラー（@Valid 付きリクエストボディ）。
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)

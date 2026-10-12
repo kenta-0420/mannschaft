@@ -79,6 +79,7 @@ public class Auth2faService {
     private final MfaSessionService mfaSessionService;
     private final MfaEmailOtpService mfaEmailOtpService;
     private final MfaFailureAuditRecorder mfaFailureAuditRecorder;
+    private final MfaEmailTwoFactorService mfaEmailTwoFactorService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -456,7 +457,7 @@ public class Auth2faService {
      */
     @Transactional
     public ApiResponse<MfaEmailSendResponse> startEmailSetup(Long userId) {
-        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+        return ApiResponse.of(mfaEmailTwoFactorService.startSetup(userId));
     }
 
     /**
@@ -468,7 +469,7 @@ public class Auth2faService {
      */
     @Transactional
     public ApiResponse<BackupCodesResponse> enableEmailTwoFactor(Long userId, String code) {
-        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+        return ApiResponse.of(mfaEmailTwoFactorService.enable(userId, code));
     }
 
     /**
@@ -479,7 +480,7 @@ public class Auth2faService {
      */
     @Transactional
     public ApiResponse<MfaEmailSendResponse> sendReauthEmailOtp(Long userId) {
-        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+        return ApiResponse.of(mfaEmailTwoFactorService.sendReauth(userId));
     }
 
     /**
