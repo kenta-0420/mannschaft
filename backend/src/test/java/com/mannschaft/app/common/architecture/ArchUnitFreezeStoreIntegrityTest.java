@@ -827,6 +827,12 @@ class ArchUnitFreezeStoreIntegrityTest {
      * loadPersonalCalendarCounts 1）。追加 0・削除 93。{@code 7375 → 7282}。</p>
      *
      * <p>6-A と 6-C の統合（merge）: 6-A 側の期待値 7357 から 6-C の返済 93 行を引いた実数 7264 に合わせた。</p>
+     *
+     * <p>F01.2.1 6-E（グループ宛て告知の push）: 公開の印を渡すため {@code SurveyService.publishSurvey} の入口を
+     * 3引数版から4引数版（{@code boolean} 付き）1本に差し替えた。既存負債 2 行（→ OrganizationRepository /
+     * UserRoleRepository）の入口名を付け替えただけで、追加 0・削除 0。増減なし。
+     * 告知の push は social ドメインの outbox（{@code social_notification_outbox}）へ書くだけで、notification の
+     * Repository へは届かない（ストア変更なし）。</p>
      */
     // CMP-260820-1018: Proxy の一覧・アップロードURL生成を非TX認可入口へ整理したため4行減。Role依存自体は残る。
     // main: BetaGrantService の通知RepositoryへのTX到達12行減も統合。独立した削除16行で7376→7360。
