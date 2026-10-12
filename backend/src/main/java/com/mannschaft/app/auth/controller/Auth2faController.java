@@ -3,6 +3,8 @@ package com.mannschaft.app.auth.controller;
 import com.mannschaft.app.auth.service.Auth2faService;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.dto.BackupCodesResponse;
+import com.mannschaft.app.auth.dto.ConfirmMfaRecoveryRequest;
+import com.mannschaft.app.auth.dto.RequestMfaRecoveryRequest;
 import com.mannschaft.app.auth.dto.DisableTwoFactorRequest;
 import com.mannschaft.app.auth.dto.EnableEmailTwoFactorRequest;
 import com.mannschaft.app.auth.dto.MessageResponse;
@@ -183,7 +185,7 @@ public class Auth2faController {
         // F08.9 P3b: 後見切替セッション中はバックアップコード再生成を代理不可（03_security §3.2）
         authenticationCriticalOperationGuard.assertNotActingAs();
         Long userId = SecurityUtils.getCurrentUserId();
-        // CMP-261012-0910 AC-44: 本人確認（PW or 有効要素）を本文で受ける。骨格段階は本文省略も許容。
+        // CMP-261012-0910 AC-44: 本人確認（PW or 有効要素）を本文で受ける。本文省略は本人確認なしとして Service が 400 で拒否する。
         return ResponseEntity.ok(auth2faService.regenerateBackupCodes(userId, req));
     }
 
@@ -340,8 +342,10 @@ public class Auth2faController {
     @Operation(summary = "MFAリカバリー要求")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リカバリーメール送信完了")
     public ResponseEntity<ApiResponse<MessageResponse>> requestMfaRecovery(
-            @RequestParam String mfaSessionToken) {
-
+            @RequestBody(required = false) RequestMfaRecoveryRequest body,
+            @RequestParam(name = "mfaSessionToken", required = false) String legacyMfaSessionToken) {
+        // CMP-261012-0910 殿裁定: 本文を正とし、移行期間中はクエリも受け付ける（本文があれば本文を優先）
+        String mfaSessionToken = firstNonBlank(body == null ? null : body.getMfaSessionToken(), legacyMfaSessionToken);
         return ResponseEntity.ok(auth2faService.requestMfaRecovery(mfaSessionToken));
     }
 
@@ -374,8 +378,24 @@ public class Auth2faController {
     @Operation(summary = "MFAリカバリー確認")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リカバリー完了")
     public ResponseEntity<ApiResponse<TokenResponse>> confirmMfaRecovery(
-            @RequestParam String token) {
+            @RequestBody(required = false) ConfirmMfaRecoveryRequest body,
+            @RequestParam(name = "token", required = false) String legacyToken) {
+        // CMP-261012-0910 殿裁定: 本文を正とし、移行期間中はクエリも受け付ける（本文があれば本文を優先）
+        String token = firstNonBlank(body == null ? null : body.getToken(), legacyToken);
+        ApiResponse<TokenResponse> response = auth2faService.confirmMfaRecovery(token);
+        // AC-52: メールのリンクから（MFA セッションも認証も無い別ブラウザで）開いてもログインを完了させる
+        TokenResponse tokens = response.getData();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, buildAccessTokenCookie(tokens.getAccessToken()).toString())
+                .header(HttpHeaders.SET_COOKIE, buildRefreshTokenCookie(tokens.getRefreshToken()).toString())
+                .body(response);
+    }
 
-        return ResponseEntity.ok(auth2faService.confirmMfaRecovery(token));
+    /** 本文の値を優先し、無ければ移行期間中のクエリの値を使う。 */
+    private static String firstNonBlank(String fromBody, String fromQuery) {
+        if (fromBody != null && !fromBody.isBlank()) {
+            return fromBody;
+        }
+        return fromQuery;
     }
 }

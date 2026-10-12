@@ -358,6 +358,18 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
             }
             // CMP-261012-0910: 2FA メールOTP（ja 固定・ログインリンク無し。構造化変数から Worker で描画）
             case "MFA_EMAIL_OTP" -> MfaEmailOtpMailRenderer.render(vars);
+            // CMP-261012-0910: 2FA セキュリティ通知・回復メール（スルー方式。auth の MfaSecurityEmailEventListener が組み立てる）
+            case "MFA_SECURITY_NOTICE", "MFA_RECOVERY" -> {
+                String subject = vars.get("subject");
+                String htmlBody = vars.get("body");
+                if (subject == null || htmlBody == null) {
+                    throw new EmailOutboxValidationException(
+                            "EMAIL_OUTBOX_002",
+                            templateKind + " には subject と body が必要"
+                    );
+                }
+                yield new RenderedEmail(subject, htmlBody);
+            }
             // Phase 18-b/c スルー方式: 呼び出し元が subject/body を組み立てて payloadVars に詰める
             case "RESERVATION_EMERGENCY_CLOSURE",
                  "ANALYTICS_KPI_MONTHLY",

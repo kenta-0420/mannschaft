@@ -343,7 +343,7 @@ public class AuditLogEventListener {
             null,
             null,
             SecurityUtils.getCurrentSessionHash(),
-            null
+            mfaMetadata(event.getMethod(), null)
         );
     }
 
@@ -361,8 +361,42 @@ public class AuditLogEventListener {
             null,
             null,
             SecurityUtils.getCurrentSessionHash(),
-            null
+            mfaMetadata(event.getMethod(), event.getReason())
         );
+    }
+
+    /**
+     * CMP-261012-0910 AC-12/AC-35: ログイン時のバックアップコード使用。残数を metadata に残す（平文コードは持たない）。
+     */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると認証・アカウント操作の監査記録が欠落する。イベントは再生されないため停止期間の監査証跡は恒久的に失われる")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleMfaBackupCodeUsed(MfaBackupCodeUsedEvent event) {
+        // ログイン完了直前（セッション確立前）のため session_hash は null のまま
+        auditLogService.record(
+            AuditEventType.MFA_BACKUP_CODE_USED.name(),
+            event.getUserId(),
+            null,
+            null,
+            null,
+            event.getIpAddress(),
+            event.getUserAgent(),
+            null,
+            toJson(Map.of("backupCodesRemaining", event.getBackupCodesRemaining()))
+        );
+    }
+
+    /** MFA 監査の metadata（{@code method} / {@code reason}。null の項目は載せない。AC-35）。 */
+    private String mfaMetadata(com.mannschaft.app.auth.TwoFactorMethod method, String reason) {
+        Map<String, Object> metadata = new java.util.LinkedHashMap<>();
+        if (method != null) {
+            metadata.put("method", method.name());
+        }
+        if (reason != null) {
+            metadata.put("reason", reason);
+        }
+        return metadata.isEmpty() ? null : toJson(metadata);
     }
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
