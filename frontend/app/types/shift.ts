@@ -477,6 +477,11 @@ export interface ChangeRequest {
     reason: string | null
     requestedBy: number
   }
+  /**
+   * 依頼者の表示名（BE が ChangeRequestResponse のトップレベルに足す契約）。
+   * 名前を解決できない（退会者等）ときは null。BE 反映前の応答では未定義。
+   */
+  requesterName?: string | null
   reviewInfo: {
     status: ChangeRequestStatus
     reviewerId: number | null

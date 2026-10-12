@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MemberResponse } from '~/types/member'
 import type {
   ShiftScheduleResponse,
   MemberWorkConstraintResponse,
@@ -11,7 +12,7 @@ const route = useRoute()
 const teamStore = useTeamStore()
 const { getSchedule } = useShiftApi()
 const { listConstraints, getTeamDefault } = useMemberWorkConstraintApi()
-const { handleApiError } = useErrorHandler()
+const { getAllMembers } = useTeamApi()
 const { warn } = useNotification()
 
 const scheduleId = computed(() => Number(route.params.id))
@@ -49,28 +50,71 @@ function isNotFoundError(error: unknown): boolean {
   return false
 }
 
-async function load() {
-  if (!schedule.value) return
-  loading.value = true
+/** 取得失敗（空状態へ倒さず DashboardErrorState で出す。AC-E1〜E3） */
+const loadError = ref<unknown>(null)
+
+// メンバー名の解決（AC-N3）。取得失敗は制約の表示を止めず、名前だけ「不明なユーザー」に倒す。
+const members = ref<MemberResponse[]>([])
+const membersError = ref<unknown>(null)
+const membersLoading = ref(false)
+
+const teamSlug = computed(() =>
+  schedule.value
+    ? teamStore.myTeams.find((m) => m.id === schedule.value!.teamId)?.slug ?? null
+    : null,
+)
+
+async function loadMembers(): Promise<void> {
+  const slug = teamSlug.value
+  if (!slug) return
+  membersLoading.value = true
+  membersError.value = null
   try {
+    // 件数上限のあるページング API ではなく全件取得 API を使う（AC-N5: 全員に到達できる）
+    members.value = (await getAllMembers(slug)).data
+  } catch (error) {
+    members.value = []
+    membersError.value = error
+  } finally {
+    membersLoading.value = false
+  }
+}
+
+const memberNameById = computed(() => new Map(members.value.map((m) => [m.userId, m.displayName])))
+
+function memberName(userId: number | null): string {
+  return (userId !== null && memberNameById.value.get(userId)) || t('shift.workConstraint.unknownMember')
+}
+
+async function load() {
+  loading.value = true
+  loadError.value = null
+  try {
+    schedule.value = await getSchedule(scheduleId.value)
+    if (!canManage.value) return
+    const teamId = String(schedule.value.teamId)
     const [constraints, def] = await Promise.all([
-      listConstraints(String(schedule.value.teamId)),
+      listConstraints(teamId),
       (async () => {
         try {
-          return await getTeamDefault(String(schedule.value!.teamId))
+          return await getTeamDefault(teamId)
         } catch (e) {
           // 未設定（404 / WORK_CONSTRAINT_NOT_FOUND）のみ null として許容。
-          // 403/500/ネットワーク断などは上位へ伝搬させ、handleApiError で通知する。
+          // 403/500/ネットワーク断などは上位へ伝搬させ、エラー状態で出す。
           if (isNotFoundError(e)) return null
           throw e
         }
       })(),
+      loadMembers(),
     ])
     teamDefault.value = def
     // userId !== null のもののみメンバー個別制約として表示
     memberConstraints.value = constraints.filter((c) => c.userId !== null)
   } catch (error) {
-    handleApiError(error)
+    schedule.value = null
+    teamDefault.value = null
+    memberConstraints.value = []
+    loadError.value = error
   } finally {
     loading.value = false
   }
@@ -91,24 +135,30 @@ watch(
 
 onMounted(async () => {
   await teamStore.fetchMyTeams()
-  try {
-    schedule.value = await getSchedule(scheduleId.value)
-    if (!canManage.value) return
-    await load()
-  } catch (error) {
-    handleApiError(error)
-  }
+  await load()
 })
 
 // =====================================================
-// メンバー追加フォーム
+// メンバー追加フォーム（チームのメンバー一覧から名前で選ぶ）
 // =====================================================
 const showAddMemberDialog = ref(false)
 const addMemberUserId = ref<number | null>(null)
+const memberSearch = ref('')
+
+/** 個別制約が既にあるメンバーは出さない（重複追加できない。AC-N2）。 */
+const selectableMembers = computed(() => {
+  const q = memberSearch.value.trim().toLowerCase()
+  const existing = new Set(memberConstraints.value.map((c) => c.userId))
+  return members.value.filter(
+    (m) => !existing.has(m.userId) && (q === '' || m.displayName.toLowerCase().includes(q)),
+  )
+})
 
 function openAddMember() {
   addMemberUserId.value = null
+  memberSearch.value = ''
   showAddMemberDialog.value = true
+  if (members.value.length === 0 && !membersLoading.value) void loadMembers()
 }
 
 function handleMemberConstraintSaved(saved: MemberWorkConstraintResponse) {
@@ -163,34 +213,19 @@ function confirmAddMember() {
       <ShiftStatusBadge v-if="schedule" :status="schedule.status.status" />
     </div>
 
-    <!-- タブ -->
-    <nav class="mb-6 flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700">
-      <NuxtLink
-        :to="`/shift/${scheduleId}`"
-        class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
-      >
-        <i class="pi pi-calendar" />{{ t('shift.detail.tabOverview') }}
-      </NuxtLink>
-      <NuxtLink
-        :to="`/shift/${scheduleId}/edit`"
-        class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
-      >
-        <i class="pi pi-pencil" />{{ t('shift.detail.tabEdit') }}
-      </NuxtLink>
-      <NuxtLink
-        :to="`/shift/${scheduleId}/requests`"
-        class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
-      >
-        <i class="pi pi-list" />{{ t('shift.detail.tabRequests') }}
-      </NuxtLink>
-      <span class="flex shrink-0 items-center gap-1.5 border-b-2 border-primary px-4 py-2 text-sm font-medium text-primary">
-        <i class="pi pi-shield" />{{ t('shift.detail.tabConstraints') }}
-      </span>
-    </nav>
+    <DashboardErrorState
+      v-if="loadError"
+      :error="loadError"
+      testid="shift-load-error"
+      @retry="load"
+    />
 
-    <PageLoading v-if="loading" />
+    <PageLoading v-else-if="loading" />
 
     <template v-else>
+      <!-- タブ -->
+      <ShiftDetailTabs :schedule-id="scheduleId" :team-id="schedule?.teamId ?? null" current="constraints" />
+
       <!-- チームデフォルト -->
       <section class="mb-8">
         <div class="mb-3 flex items-center justify-between">
@@ -251,6 +286,8 @@ function confirmAddMember() {
           </h2>
           <Button
             v-if="canManage"
+            data-testid="work-constraint-add-member"
+            class="min-h-[44px]"
             icon="pi pi-plus"
             :label="t('shift.workConstraint.addMember')"
             size="small"
@@ -270,15 +307,16 @@ function confirmAddMember() {
           <div
             v-for="constraint in memberConstraints"
             :key="constraint.userId ?? 0"
+            :data-testid="`work-constraint-card-${constraint.userId}`"
             class="rounded-xl border border-surface-200 bg-surface-0 dark:border-surface-700 dark:bg-surface-900"
           >
             <!-- アコーディオンヘッダー -->
             <button
-              class="flex w-full items-center justify-between px-4 py-3 text-left"
+              class="flex min-h-[44px] w-full items-center justify-between px-4 py-3 text-left"
               @click="toggleExpand(constraint.userId!)"
             >
               <span class="text-sm font-medium">
-                {{ t('shift.workConstraint.memberLabel', { userId: constraint.userId }) }}
+                {{ memberName(constraint.userId) }}
               </span>
               <i
                 class="pi transition-transform"
@@ -312,21 +350,53 @@ function confirmAddMember() {
       :style="{ width: '420px' }"
       modal
     >
-      <div class="flex flex-col gap-4">
-        <div>
-          <label class="mb-1 block text-sm font-medium">{{ t('shift.workConstraint.userId') }}</label>
-          <InputNumber
-            v-model="addMemberUserId"
-            :min="1"
+      <div class="flex flex-col gap-3">
+        <DashboardErrorState
+          v-if="membersError"
+          :error="membersError"
+          :message="t('shift.workConstraint.membersLoadError')"
+          testid="work-constraint-members-error"
+          @retry="loadMembers"
+        />
+        <template v-else>
+          <InputText
+            v-model="memberSearch"
+            data-testid="work-constraint-member-search"
             class="w-full"
-            :placeholder="t('shift.workConstraint.userIdPlaceholder')"
+            :placeholder="t('shift.workConstraint.searchMember')"
+            :aria-label="t('shift.workConstraint.searchMember')"
           />
-        </div>
+          <PageLoading v-if="membersLoading" size="32px" />
+          <p
+            v-else-if="selectableMembers.length === 0"
+            class="py-4 text-center text-sm text-surface-500"
+          >
+            {{ t('shift.workConstraint.noSelectableMembers') }}
+          </p>
+          <ul v-else class="max-h-64 space-y-1 overflow-y-auto" role="listbox">
+            <li v-for="m in selectableMembers" :key="m.userId" role="option" :aria-selected="addMemberUserId === m.userId">
+              <button
+                type="button"
+                :data-testid="`work-constraint-member-option-${m.userId}`"
+                class="flex min-h-[44px] w-full items-center rounded-lg border px-3 text-left text-sm"
+                :class="
+                  addMemberUserId === m.userId
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-surface-200 dark:border-surface-700'
+                "
+                @click="addMemberUserId = m.userId"
+              >
+                {{ m.displayName }}
+              </button>
+            </li>
+          </ul>
+        </template>
       </div>
       <template #footer>
         <Button :label="t('common.cancel')" text @click="showAddMemberDialog = false" />
         <Button
-          :label="t('common.next')"
+          data-testid="work-constraint-add-confirm"
+          :label="t('shift.workConstraint.addMember')"
           icon="pi pi-check"
           :disabled="!addMemberUserId"
           @click="confirmAddMember"

@@ -63,7 +63,7 @@ async function resolveTeamNumericId() {
     teamLoading.value = false
   }
 }
-const { isAdmin, isAdminOrDeputy, roleName, loadPermissions } = useRoleAccess('team', teamSlug)
+const { isAdmin, isAdminOrDeputy, isMember, roleName, loadPermissions } = useRoleAccess('team', teamSlug)
 // シフトボードは当該チームの ADMIN / DEPUTY_ADMIN 限定。
 // 判定手段は board.vue（`shifts/[scheduleId]/board.vue` の isScopeAdmin）に合わせる。
 //
@@ -169,6 +169,7 @@ onMounted(() => {
                 :team-slug="teamSlug"
                 :can-manage="isAdminOrDeputy"
                 :can-manage-board="isScopeAdmin"
+                :can-request-change="isMember"
                 @select="onScheduleSelect"
                 @create="showCreateDialog = true"
               />

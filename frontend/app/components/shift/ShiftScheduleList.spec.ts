@@ -25,6 +25,8 @@ mockNuxtImport('useConfirm', () => () => ({
   },
 }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: vi.fn() }))
+const mockNavigateTo = vi.hoisted(() => vi.fn())
+mockNuxtImport('navigateTo', () => mockNavigateTo)
 
 function schedule(status = 'COLLECTING'): ShiftScheduleResponse {
   return {
@@ -58,6 +60,49 @@ beforeEach(() => {
   mockNotifyInfo.mockReset()
   mockNotifyError.mockReset()
   confirmAcceptCallback = null
+})
+
+async function mountListWith(
+  props: { canManage: boolean; canManageBoard: boolean; canRequestChange: boolean },
+  schedules = [schedule()],
+) {
+  mockListSchedules.mockResolvedValue(schedules)
+  const wrapper = await mountSuspended(ShiftScheduleList, {
+    props: { teamId: 12, teamSlug: 'team-12', ...props },
+  })
+  await new Promise(resolve => setTimeout(resolve, 0))
+  return wrapper
+}
+
+describe('ShiftScheduleList 変更依頼ボタン（CMP-261010-1432 AC-J1 / J2 / J4）', () => {
+  it('AC-J1: 変更依頼を出せる利用者は行の「変更依頼」ボタンから change-requests へ遷移する', async () => {
+    const wrapper = await mountListWith({ canManage: false, canManageBoard: false, canRequestChange: true })
+    const button = wrapper.find('[data-testid="shift-change-request-399"]')
+    expect(button.exists()).toBe(true)
+    await button.trigger('click')
+    expect(mockNavigateTo).toHaveBeenCalledWith('/teams/team-12/shifts/399/change-requests')
+  })
+
+  it('AC-J1: 変更依頼を出せない利用者（SUPPORTER 等）には行の変更依頼ボタンを出さない', async () => {
+    const wrapper = await mountListWith({ canManage: false, canManageBoard: false, canRequestChange: false })
+    expect(wrapper.find('[data-testid="shift-change-request-399"]').exists()).toBe(false)
+  })
+
+  it('AC-J2: ボードへのボタンは canManageBoard のときだけ（一般メンバーには変更依頼だけ）', async () => {
+    const member = await mountListWith({ canManage: false, canManageBoard: false, canRequestChange: true })
+    expect(member.find('[data-testid="shift-board-399"]').exists()).toBe(false)
+    expect(member.find('[data-testid="shift-change-request-399"]').exists()).toBe(true)
+    member.unmount()
+
+    const admin = await mountListWith({ canManage: true, canManageBoard: true, canRequestChange: true })
+    expect(admin.find('[data-testid="shift-board-399"]').exists()).toBe(true)
+  })
+
+  it('AC-J4: シフト表が0件のときは空状態だけを描画し、変更依頼ボタンを出さない', async () => {
+    const wrapper = await mountListWith({ canManage: false, canManageBoard: false, canRequestChange: true }, [])
+    expect(wrapper.find('[data-testid="shift-change-request-399"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Change request')
+  })
 })
 
 describe('ShiftScheduleList 手動リマインド', () => {
