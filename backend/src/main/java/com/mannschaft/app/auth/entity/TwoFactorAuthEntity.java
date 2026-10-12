@@ -1,7 +1,11 @@
 package com.mannschaft.app.auth.entity;
 
+import com.mannschaft.app.auth.TwoFactorMethod;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import lombok.Builder;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -32,7 +36,18 @@ public class TwoFactorAuthEntity {
     @Column(nullable = false, unique = true)
     private Long userId;
 
-    @Column(nullable = false, length = 500)
+    /**
+     * 2FA の主手段（CMP-261012-0910）。既存行は Flyway で TOTP が入る。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    @Builder.Default
+    private TwoFactorMethod method = TwoFactorMethod.TOTP;
+
+    /**
+     * AES-256-GCM 暗号化済み TOTP 秘密鍵。{@link TwoFactorMethod#EMAIL} 方式では NULL。
+     */
+    @Column(length = 500)
     private String totpSecret;
 
     @Column(nullable = false, columnDefinition = "JSON")

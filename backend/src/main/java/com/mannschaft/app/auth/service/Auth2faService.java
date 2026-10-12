@@ -1,6 +1,12 @@
 package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.AuthErrorCode;
+import com.mannschaft.app.auth.MfaVerificationMethod;
+import com.mannschaft.app.auth.dto.DisableTwoFactorRequest;
+import com.mannschaft.app.auth.dto.MfaEmailSendResponse;
+import com.mannschaft.app.auth.dto.MfaLoginTokenResponse;
+import com.mannschaft.app.auth.dto.RegenerateBackupCodesRequest;
+import com.mannschaft.app.auth.dto.TwoFactorStatusResponse;
 import com.mannschaft.app.auth.entity.MfaRecoveryTokenEntity;
 import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
 import com.mannschaft.app.auth.entity.RefreshTokenEntity;
@@ -372,6 +378,131 @@ public class Auth2faService {
         return twoFactorAuthRepository.findByUserId(userId)
                 .map(TwoFactorAuthEntity::getIsEnabled)
                 .orElse(false);
+    }
+
+    // =====================================================================
+    // CMP-261012-0910 多要素認証(2FA)の穴埋め — API 表面（骨格。出陣で実装）
+    // =====================================================================
+
+    private static final String NOT_IMPLEMENTED = "CMP-261012-0910 未実装";
+
+    /**
+     * 2FA ログイン検証（TOTP / バックアップコード / メールOTP）。
+     *
+     * <p>骨格段階では TOTP のみ既存 {@link #validateTotp} へ委譲して挙動を保つ。
+     * 出陣（甲）で試行カウンタ・バックアップコード消費・メールOTP 照合を実装する。</p>
+     *
+     * @param mfaSessionToken MFA セッショントークン
+     * @param method          提示要素（null 不可。DTO 側で欠落→TOTP に解決済み）
+     * @param code            コード
+     * @param ipAddress       リクエスト元 IP（LoginSuccessEvent 用）
+     * @param userAgent       User-Agent（LoginSuccessEvent 用）
+     * @return トークン＋使用要素＋バックアップコード残数
+     */
+    @Transactional
+    public ApiResponse<MfaLoginTokenResponse> validateMfaLogin(
+            String mfaSessionToken, MfaVerificationMethod method, String code,
+            String ipAddress, String userAgent) {
+        if (method == MfaVerificationMethod.TOTP) {
+            TokenResponse tokens = validateTotp(mfaSessionToken, code).getData();
+            return ApiResponse.of(new MfaLoginTokenResponse(tokens, method, null));
+        }
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+    }
+
+    /**
+     * ログイン時のメールOTP 送信（公開 EP。MFA セッションに紐付ける。AC-19〜21）。
+     *
+     * @param mfaSessionToken MFA セッショントークン（本文で受ける）
+     * @param ipAddress       リクエスト元 IP（IP レート制限用）
+     * @return マスク済みアドレス・有効期限・再送待ち秒数
+     */
+    @Transactional
+    public ApiResponse<MfaEmailSendResponse> sendLoginEmailOtp(
+            String mfaSessionToken, String ipAddress) {
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+    }
+
+    /**
+     * メール 2FA 設定開始（設定用メールOTP を送信。AC-25）。
+     *
+     * @param userId 認証済みユーザー ID
+     * @return マスク済みアドレス・有効期限・再送待ち秒数
+     */
+    @Transactional
+    public ApiResponse<MfaEmailSendResponse> startEmailSetup(Long userId) {
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+    }
+
+    /**
+     * メール 2FA 有効化（設定用メールOTP を照合し method=EMAIL で有効化。AC-25/AC-45）。
+     *
+     * @param userId 認証済みユーザー ID
+     * @param code   設定用メールOTP
+     * @return 平文バックアップコード 8 件
+     */
+    @Transactional
+    public ApiResponse<BackupCodesResponse> enableEmailTwoFactor(Long userId, String code) {
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+    }
+
+    /**
+     * 無効化・再生成用の本人確認メールOTP 送信（認証済み・本人固定・用途別名前空間。AC-51）。
+     *
+     * @param userId 認証済みユーザー ID
+     * @return マスク済みアドレス・有効期限・再送待ち秒数
+     */
+    @Transactional
+    public ApiResponse<MfaEmailSendResponse> sendReauthEmailOtp(Long userId) {
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+    }
+
+    /**
+     * ログイン中の 2FA 無効化（AC-30〜33）。
+     *
+     * @param userId 認証済みユーザー ID
+     * @param req    本人確認（パスワード＋要素）
+     * @return メッセージ
+     */
+    @Transactional
+    public ApiResponse<MessageResponse> disableTwoFactor(
+            Long userId, DisableTwoFactorRequest req) {
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+    }
+
+    /**
+     * 2FA 設定状態の取得（本人のみ。秘密鍵・ハッシュは返さない。AC-4）。
+     *
+     * @param userId 認証済みユーザー ID
+     * @return 有効状態・方式・バックアップコード残数
+     */
+    public ApiResponse<TwoFactorStatusResponse> getTwoFactorStatus(Long userId) {
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+    }
+
+    /**
+     * バックアップコード再生成（本人確認付き。AC-36/AC-44）。
+     *
+     * <p>骨格段階では本人確認を行わず既存 {@link #regenerateBackupCodes(Long)} へ委譲して挙動を保つ。</p>
+     *
+     * @param userId 認証済みユーザー ID
+     * @param req    本人確認（null 可＝骨格段階の互換）
+     * @return 平文バックアップコード 8 件
+     */
+    @Transactional
+    public ApiResponse<BackupCodesResponse> regenerateBackupCodes(
+            Long userId, RegenerateBackupCodesRequest req) {
+        return regenerateBackupCodes(userId);
+    }
+
+    /**
+     * オーナー移譲（ADMIN 昇格）の 2FA 要件を満たす「強い 2FA」が有効か（AC-47。EMAIL 方式は不可）。
+     *
+     * @param userId ユーザー ID
+     * @return TOTP 方式の 2FA が有効、または WebAuthn 登録済みなら true
+     */
+    public boolean isStrongTwoFactorEnabled(Long userId) {
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
     // === ヘルパーメソッド ===

@@ -304,6 +304,12 @@ public class GlobalExceptionHandler {
             // 「取消可能な退会申請という状態が無い」ことを理由に拒否する状態遷移違反のため、
             // 兄弟の SCHEDULE_KEEP_006 等と同じく 409 Conflict が正準（入力不備の 400 ではない）。
             Map.entry("AUTH_032", HttpStatus.CONFLICT), // 退会申請が存在しない状態での取消要求 → 409
+            // CMP-261012-0910 多要素認証(2FA)の穴埋め（AUTH_073/074/080/081 は Severity.WARN 既定の 400 のまま）
+            Map.entry("AUTH_075", HttpStatus.TOO_MANY_REQUESTS), // MFA 試行回数上限 → 429
+            Map.entry("AUTH_076", HttpStatus.TOO_MANY_REQUESTS), // メールOTP 再送待ち → 429
+            Map.entry("AUTH_077", HttpStatus.TOO_MANY_REQUESTS), // メールOTP 送信回数上限 → 429
+            Map.entry("AUTH_078", HttpStatus.CONFLICT),          // 2FA 有効化済み → 409
+            Map.entry("AUTH_079", HttpStatus.CONFLICT),          // 2FA 未有効 → 409
             // F03.3 カレンダー同期: 非メンバーの同期トグルは IDOR 対策で 403 ではなく 404（存在秘匿）
             Map.entry("GCAL_010", HttpStatus.NOT_FOUND),
             // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す

@@ -203,7 +203,46 @@ public enum AuthErrorCode implements ErrorCode {
     AUTH_071("AUTH_071", "postal code is required for your region", Severity.WARN),
 
     /** 郵便番号フォーマット不正 */
-    AUTH_072("AUTH_072", "invalid postal code format", Severity.WARN);
+    AUTH_072("AUTH_072", "invalid postal code format", Severity.WARN),
+
+    // ===== CMP-261012-0910 多要素認証(2FA)の穴埋め (AUTH_073〜AUTH_081) =====
+
+    /**
+     * MFA セッションが無効（不在・期限切れ・試行上限で削除済み）。再ログインが必要。
+     * 不在と期限切れを区別せず同一応答にする（AC-17）。400 を返す（401 は FE の
+     * リフレッシュ再試行経路に乗ってしまうため、既存 AUTH_019 の 400 契約を踏襲する）。
+     */
+    AUTH_073("AUTH_073", "認証の有効期限が切れました。もう一度ログインしてください", Severity.WARN),
+
+    /**
+     * 2FA の確認コードが正しくない（TOTP・バックアップコード・メールOTP 共通。使用済み・期限切れ・
+     * 未送信もすべて同一応答に畳む。AC-8/AC-22）。400 を返す。
+     */
+    AUTH_074("AUTH_074", "確認コードが正しくありません", Severity.WARN),
+
+    /**
+     * MFA の試行回数上限に達した（同一 MFA セッションで全手段合計 5 回失敗。AC-14）。
+     * セッションは削除され再ログインが必要。429 を返す。
+     */
+    AUTH_075("AUTH_075", "確認コードの試行回数が上限に達しました。もう一度ログインしてください", Severity.WARN),
+
+    /** メールOTP 再送の待ち時間中（前回送信から 60 秒以内。AC-20）。429 を返す。 */
+    AUTH_076("AUTH_076", "確認コードの再送は少し時間をおいてからお試しください", Severity.WARN),
+
+    /** メールOTP の送信回数上限（セッション 5 回・ユーザー 10 回/時・IP 上限。AC-20）。429 を返す。 */
+    AUTH_077("AUTH_077", "確認コードの送信回数が上限に達しました。しばらく時間をおいてお試しください", Severity.WARN),
+
+    /** 2FA は既に有効化されている（有効化済みでの再有効化。AC-1/AC-25）。409 を返す。 */
+    AUTH_078("AUTH_078", "2段階認証は既に有効になっています", Severity.WARN),
+
+    /** 2FA が有効化されていない（無効化・再生成・状態依存操作の前提違反。AC-32）。409 を返す。 */
+    AUTH_079("AUTH_079", "2段階認証が有効になっていません", Severity.WARN),
+
+    /** 本人確認（パスワード・確認コード）に失敗した（無効化・再生成時の再認証。AC-30/AC-44）。400 を返す。 */
+    AUTH_080("AUTH_080", "本人確認に失敗しました", Severity.WARN),
+
+    /** メールアドレスが登録されていないためメールOTP を利用できない（AC-24）。400 を返す。 */
+    AUTH_081("AUTH_081", "メールアドレスが登録されていないため、メールでの確認コードは利用できません", Severity.WARN);
 
     private final String code;
     private final String message;
