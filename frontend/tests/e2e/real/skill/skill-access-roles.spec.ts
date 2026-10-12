@@ -24,12 +24,13 @@ const TEAM_SLUG = 'e2e'
 interface MyTeam { id: number, slug: string, organizationId: number | null, role: string }
 interface MyOrg { id: number, role: string }
 interface Session { ctx: BrowserContext, page: Page }
+type SessionKey = 'owner' | 'member' | 'same' | 'other'
 interface Shape { status: number, code: string | null, message: string | null }
 
 const tag = `SKL-${Date.now()}`
 const skillName = `${tag}-資格`
 const editedName = `${tag}-資格(編集後)`
-// 一覧の検索 API は name を返さないため、カードの特定には issuer（発行元）に入れた自タグを使う
+// カードの特定には issuer（発行元）に入れた自タグを使う（資格名は h3 に表示されることを別途確認する）
 const uiIssuer = `${tag}-UI発行元`
 const apiSkillName = `${tag}-API資格`
 const apiIssuer = `${tag}-API発行元`
@@ -57,7 +58,13 @@ test.describe('資格画面のロール横断と越境応答の一致', () => {
   test.setTimeout(300_000)
   const ctxs: BrowserContext[] = []
   const cleanupErrors: string[] = []
-  const sessions: Record<string, Session> = {}
+  const sessions: Partial<Record<SessionKey, Session>> = {}
+  // 未ログインのロールを取り出したら握りつぶさず明示的に失敗させる
+  const sess = (key: SessionKey): Session => {
+    const s = sessions[key]
+    if (!s) throw new Error(`セッション未確立: ${key}`)
+    return s
+  }
   let teamId = 0
   let categoryId = 0
   let categoryName = ''
@@ -82,27 +89,27 @@ test.describe('資格画面のロール横断と越境応答の一致', () => {
     // 前提: 各ロールの所属関係を API で実証する
     const myTeams = async (s: Session) => (await (await s.ctx.request.get(`${API}/api/v1/me/teams`)).json() as { data: MyTeam[] }).data
     const myOrgs = async (s: Session) => (await (await s.ctx.request.get(`${API}/api/v1/me/organizations`)).json() as { data: MyOrg[] }).data
-    const ownerTeam = (await myTeams(sessions.owner)).find(t => t.slug === TEAM_SLUG)
+    const ownerTeam = (await myTeams(sess('owner'))).find(t => t.slug === TEAM_SLUG)
     expect(ownerTeam, '本人は対象チームの所属').toBeTruthy()
     teamId = ownerTeam!.id
     const orgId = ownerTeam!.organizationId
     expect(orgId, '対象チームは組織配下').not.toBeNull()
-    const memberTeam = (await myTeams(sessions.member)).find(t => t.slug === TEAM_SLUG)
+    const memberTeam = (await myTeams(sess('member'))).find(t => t.slug === TEAM_SLUG)
     expect(memberTeam, '一般メンバーは対象チームの所属').toBeTruthy()
     expect(memberTeam!.role, '一般メンバーの役割').toBe('MEMBER')
-    const sameTeams = await myTeams(sessions.same)
+    const sameTeams = await myTeams(sess('same'))
     expect(sameTeams.some(t => t.slug === TEAM_SLUG), '同組織非メンバーは対象チームに所属しない').toBe(false)
     expect(sameTeams.some(t => t.organizationId === orgId), '同組織非メンバーは同組織の別チームに所属').toBe(true)
-    expect((await myTeams(sessions.other)).some(t => t.slug === TEAM_SLUG || t.organizationId === orgId), '他テナントは対象組織・チームに無関係').toBe(false)
-    expect((await myOrgs(sessions.other)).some(o => o.id === orgId), '他テナントは対象組織に所属しない').toBe(false)
+    expect((await myTeams(sess('other'))).some(t => t.slug === TEAM_SLUG || t.organizationId === orgId), '他テナントは対象組織・チームに無関係').toBe(false)
+    expect((await myOrgs(sess('other'))).some(o => o.id === orgId), '他テナントは対象組織に所属しない').toBe(false)
 
     // 前提データ（API 作成。afterAll で削除）: 共有チーム e2e には資格カテゴリが無いため管理者 API で自タグのカテゴリを作る。
     // ロール別の検証 2・3 用の「本人の資格」も API で作る（手順 1 の UI 登録とは別物）
     categoryName = `${tag}-cat`
-    const cat = await sessions.owner.ctx.request.post(`${API}/api/v1/teams/${teamId}/skill-categories`, { data: { name: categoryName } })
+    const cat = await sess('owner').ctx.request.post(`${API}/api/v1/teams/${teamId}/skill-categories`, { data: { name: categoryName } })
     expect(cat.status(), await cat.text()).toBe(201)
     categoryId = (await cat.json() as { data: { id: number } }).data.id
-    const sk = await sessions.owner.ctx.request.post(`${API}/api/v1/teams/${teamId}/skills`, {
+    const sk = await sess('owner').ctx.request.post(`${API}/api/v1/teams/${teamId}/skills`, {
       data: { skillCategoryId: categoryId, name: apiSkillName, issuer: apiIssuer },
     })
     expect(sk.status(), await sk.text()).toBe(201)
@@ -140,7 +147,7 @@ test.describe('資格画面のロール横断と越境応答の一致', () => {
   })
 
   test('1. 本人: 画面から資格を登録・編集・削除できる', async () => {
-    const { page } = sessions.owner
+    const { page } = sess('owner')
     await openSkillsPage(page)
     await page.getByRole('button', { name: 'スキル登録' }).click()
     const dialog = page.getByRole('dialog')
@@ -168,11 +175,12 @@ test.describe('資格画面のロール横断と越境応答の一致', () => {
   })
 
   test('2. 同チームの一般メンバー: 本人の資格の編集・削除導線と API', async () => {
-    const { page } = sessions.member
+    const { page } = sess('member')
     await openSkillsPage(page)
     await expect(page.getByRole('button', { name: 'スキル登録' }), '一般メンバーには登録ボタンが出ない').toHaveCount(0)
     const c = card(page, apiIssuer)
     await expect(c, '同チームの資格は一覧に見える').toBeVisible()
+    await expect(c.locator('h3'), '一覧に資格名が表示される').toHaveText(apiSkillName)
     observed.push(`一般メンバー: 他人の資格カード表示=${(await c.innerText()).replace(/\s+/g, ' ')}`)
     await expect(c.locator('button:has(.pi-trash)'), '削除導線は出ない').toHaveCount(0)
     const editButtons = await c.locator('button:has(.pi-pencil)').count()
@@ -192,7 +200,7 @@ test.describe('資格画面のロール横断と越境応答の一致', () => {
       }
       await page.screenshot({ path: test.info().outputPath('member-edit.png'), fullPage: true })
       // 他人の資格は変更されていない
-      const after = await (await sessions.owner.ctx.request.get(`${API}/api/v1/teams/${teamId}/skills/${apiSkillId}`)).json() as { data: { name: string } }
+      const after = await (await sess('owner').ctx.request.get(`${API}/api/v1/teams/${teamId}/skills/${apiSkillId}`)).json() as { data: { name: string } }
       expect(after.data.name, '一般メンバーの更新は反映されない').toBe(apiSkillName)
     }
     // 補助 API
@@ -204,7 +212,7 @@ test.describe('資格画面のロール横断と越境応答の一致', () => {
 
   for (const [label, key] of [['同組織の非メンバー', 'same'], ['他テナント', 'other']] as const) {
     test(`3. ${label}: URL 直打ちで他人の資格名が見えず、実在IDと不在IDの応答が完全一致`, async () => {
-      const { page } = sessions[key]
+      const { page } = sess(key)
       await page.goto(`/teams/${TEAM_SLUG}/skills`, { waitUntil: 'domcontentloaded' })
       await waitForHydration(page)
       await expect(page.locator('.pi-spin, .p-progressspinner')).toHaveCount(0, { timeout: 30_000 })
