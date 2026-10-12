@@ -80,7 +80,7 @@ class SkillViewScopeAndMatrixContractIT extends AbstractMySqlIntegrationTest {
 
     private static final String MANAGE_MEMBER = "MANAGE_MEMBER";
     private static final String MIGRATION_RESOURCE =
-            "db/migration/V239.20261012040500__add_manage_member_permission.sql";
+            "db/migration/V240.20261012140609__add_manage_member_permission.sql";
     private static final long MISSING_TEAM_ID = 999_999_999L;
     private static final String UNKNOWN_USER = "不明なユーザー";
 

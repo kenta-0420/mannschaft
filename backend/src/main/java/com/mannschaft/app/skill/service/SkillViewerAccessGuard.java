@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class SkillViewerAccessGuard {
 
-    /** F07.5 §2 の「MANAGE_MEMBER 権限」。カタログ登録は {@code V239.20261012040500}。 */
+    /** F07.5 §2 の「MANAGE_MEMBER 権限」。カタログ登録は {@code V240.20261012140609}。 */
     public static final String PERMISSION_MANAGE_MEMBER = "MANAGE_MEMBER";
 
     private static final String TEAM = "TEAM";
