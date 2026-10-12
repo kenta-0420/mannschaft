@@ -80,7 +80,7 @@ class SkillViewScopeAndMatrixContractIT extends AbstractMySqlIntegrationTest {
 
     private static final String MANAGE_MEMBER = "MANAGE_MEMBER";
     private static final String MIGRATION_RESOURCE =
-            "db/migration/V239.20261012040500__add_manage_member_permission.sql";
+            "db/migration/V240.20261012140609__add_manage_member_permission.sql";
     private static final long MISSING_TEAM_ID = 999_999_999L;
     private static final String UNKNOWN_USER = "不明なユーザー";
 
@@ -302,16 +302,22 @@ class SkillViewScopeAndMatrixContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("B-AC2: 個別ID系は不変 — SUPPORTER が他人の資格を叩くと 403 COMMON_002（所属者扱い）、不在IDは 404 SKILL_002")
+        @DisplayName("B-AC2: 個別ID系は不変 — 在籍者（SUPPORTER）は所属者扱いで 403 COMMON_002。非メンバーの 404 SKILL_002 とは別（不在IDは 404 SKILL_002）")
         void BAC2_個別ID系のSUPPORTER応答は不変() throws Exception {
+            // 在籍者（SUPPORTER）は memberships に在籍するため ScopeConcealingAccessGate が所属者として扱い、
+            // GET / certificate-url / PUT / DELETE のいずれも 403 COMMON_002。非メンバーの 404 SKILL_002 とは別契約。
             Long skillId = saveSkill(memberId, teamAId, categoryXId, "SKVIEW 一般の資格", SkillStatus.ACTIVE, null, null);
             String base = "/api/v1/teams/" + teamAId + "/skills/";
 
             assertThat(callPath(supporterId, "GET", base + skillId)).isEqualTo(FORBIDDEN);
             assertThat(callPath(supporterId, "GET", base + skillId + "/certificate-url")).isEqualTo(FORBIDDEN);
+            Map<String, Object> putBody = new LinkedHashMap<>();
+            putBody.put("name", "SKVIEW SUPPORTERによる改名");
+            assertThat(toResp(perform(supporterId, HttpMethod.PUT, base + skillId, putBody))).isEqualTo(FORBIDDEN);
             assertThat(callPath(supporterId, "DELETE", base + skillId)).isEqualTo(FORBIDDEN);
             assertThat(callPath(supporterId, "GET", base + 999_999_999L)).isEqualTo(SKILL_NOT_FOUND);
             assertThat(countSkills(memberId, "SKVIEW 一般の資格")).isEqualTo(1L);
+            assertThat(countSkills(memberId, "SKVIEW SUPPORTERによる改名")).isZero();
         }
 
         private void assertMemberAllowed(Long actor) throws Exception {
@@ -536,6 +542,66 @@ class SkillViewScopeAndMatrixContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // B-AC8: 資格番号の秘匿（F07.5 §6。検索結果・マトリクスに credentialNumber を含めない）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("B-AC8: 資格番号は検索結果・マトリクスに含めない")
+    class CredentialNumberHidden {
+
+        private Long saveSkillWithCredentialNumber() {
+            MemberSkillEntity saved = memberSkillRepository.save(MemberSkillEntity.builder()
+                    .userId(memberId)
+                    .scopeType("TEAM")
+                    .scopeId(teamAId)
+                    .skillCategoryId(categoryXId)
+                    .name("SKVIEW 資格番号あり")
+                    .credentialNumber("SECRET-12345")
+                    .status(SkillStatus.ACTIVE)
+                    .build());
+            em.flush();
+            em.clear();
+            return saved.getId();
+        }
+
+        @Test
+        @DisplayName("B-AC8: 検索結果の各要素に credentialNumber キーが無い（資格番号を設定した資格でも）")
+        void BAC8_検索結果にcredentialNumberが無い() throws Exception {
+            Long skillId = saveSkillWithCredentialNumber();
+
+            MockHttpServletResponse res = perform(adminId, HttpMethod.GET,
+                    "/api/v1/teams/" + teamAId + "/skills/search", null);
+            assertThat(res.getStatus()).isEqualTo(200);
+            assertThat(res.getContentAsString()).as("資格番号の値が応答に現れない").doesNotContain("SECRET-12345");
+
+            boolean found = false;
+            for (JsonNode n : json(res).path("data")) {
+                assertThat(n.has("credentialNumber")).as("credentialNumber キー無し").isFalse();
+                if (n.path("memberSkillId").asLong() == skillId) {
+                    found = true;
+                }
+            }
+            assertThat(found).as("検索結果に対象資格が含まれる").isTrue();
+        }
+
+        @Test
+        @DisplayName("B-AC8: マトリクスのセルにも credentialNumber キーが無い")
+        void BAC8_マトリクスのセルにcredentialNumberが無い() throws Exception {
+            saveSkillWithCredentialNumber();
+
+            MockHttpServletResponse res = perform(adminId, HttpMethod.GET,
+                    "/api/v1/teams/" + teamAId + "/skill-matrix", null);
+            assertThat(res.getStatus()).isEqualTo(200);
+            assertThat(res.getContentAsString()).as("資格番号の値が応答に現れない").doesNotContain("SECRET-12345");
+
+            for (JsonNode row : json(res).path("data").path("rows")) {
+                row.path("cells").forEach(cell ->
+                        assertThat(cell.has("credentialNumber")).as("credentialNumber キー無し").isFalse());
+            }
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
@@ -731,7 +797,7 @@ class SkillViewScopeAndMatrixContractIT extends AbstractMySqlIntegrationTest {
                                 + "locale, timezone, reporting_restricted, follow_list_visibility, "
                                 + "care_notification_enabled, offline_only, "
                                 + "created_at, updated_at) "
-                                + "VALUES (:email, 'SKVIEW', 'テスト', :dn, 'ACTIVE', "
+                                + "VALUES (:email, '資格', 'テスト', :dn, 'ACTIVE', "
                                 + "1, 1, 1, "
                                 + "'NOBODY', 'ANYONE', 1, "
                                 + "'ja', 'Asia/Tokyo', 0, 'PUBLIC', "
