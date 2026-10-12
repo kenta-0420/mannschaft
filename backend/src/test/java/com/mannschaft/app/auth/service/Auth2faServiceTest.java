@@ -409,63 +409,6 @@ class Auth2faServiceTest {
     }
 
     // ========================================
-    // regenerateBackupCodes
-    // ========================================
-
-    @Nested
-    @DisplayName("regenerateBackupCodes")
-    class RegenerateBackupCodes {
-
-        @Test
-        @DisplayName("正常系: 新しいバックアップコード8個が返る")
-        void regenerateBackupCodes_正常_8個のコードが返る() {
-            // Given
-            TwoFactorAuthEntity twoFactorAuth = createEnabledTwoFactorAuth();
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
-            given(passwordEncoder.encode(anyString())).willReturn("hashed-backup-code");
-            given(twoFactorAuthRepository.save(any(TwoFactorAuthEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
-
-            // When
-            ApiResponse<BackupCodesResponse> response = auth2faService.regenerateBackupCodes(TEST_USER_ID);
-
-            // Then
-            assertThat(response.getData().getBackupCodes()).hasSize(8);
-            response.getData().getBackupCodes().forEach(code ->
-                    assertThat(code).matches("\\d{8}")
-            );
-            verify(twoFactorAuthRepository).save(any(TwoFactorAuthEntity.class));
-        }
-
-        @Test
-        @DisplayName("異常系: 2FA設定不在でAUTH_016例外")
-        void regenerateBackupCodes_設定不在_AUTH016例外() {
-            // Given
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.empty());
-
-            // When / Then
-            assertThatThrownBy(() -> auth2faService.regenerateBackupCodes(TEST_USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_016"));
-        }
-
-        @Test
-        @DisplayName("異常系: 2FA未有効でAUTH_020例外")
-        void regenerateBackupCodes_2FA未有効_AUTH020例外() {
-            // Given
-            TwoFactorAuthEntity disabled = createDisabledTwoFactorAuth();
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.of(disabled));
-
-            // When / Then
-            assertThatThrownBy(() -> auth2faService.regenerateBackupCodes(TEST_USER_ID))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_020"));
-        }
-    }
-
-    // ========================================
     // requestMfaRecovery
     // ========================================
 

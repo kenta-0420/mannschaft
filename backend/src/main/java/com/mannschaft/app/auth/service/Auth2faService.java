@@ -219,35 +219,6 @@ public class Auth2faService {
     }
 
     /**
-     * バックアップコードを再生成する。
-     *
-     * @param userId ユーザーID
-     * @return 新しいバックアップコードレスポンス
-     */
-    @Transactional
-    public ApiResponse<BackupCodesResponse> regenerateBackupCodes(Long userId) {
-        TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserId(userId)
-                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_016));
-
-        if (!twoFactorAuth.getIsEnabled()) {
-            throw new BusinessException(AuthErrorCode.AUTH_020);
-        }
-
-        // 新しい8個生成
-        List<String> plainCodes = generateBackupCodes();
-        List<String> hashedCodes = plainCodes.stream()
-                .map(passwordEncoder::encode)
-                .collect(Collectors.toList());
-
-        TwoFactorAuthEntity updated = twoFactorAuth.toBuilder()
-                .backupCodes(toJson(hashedCodes))
-                .build();
-        twoFactorAuthRepository.save(updated);
-
-        return ApiResponse.of(new BackupCodesResponse(plainCodes));
-    }
-
-    /**
      * MFAリカバリーをリクエストする。リカバリーメールが送信される。
      *
      * @param mfaSessionToken MFAセッショントークン
