@@ -851,8 +851,9 @@ class ArchUnitFreezeStoreIntegrityTest {
     //   reflection processDueReminders 5、および sendRemind が NotificationHelper を呼ばなくなり
     //   到達しなくなった 5（UserRepository と通知系4）。sendRemind の RoleRepository/UserRoleRepository は
     //   AccessControlService 経由で残る。CI shard1 の実測 -26 件と一致。
-    // G2(recruitment)との合算: 7213 - 24 = 7189（ストア実数と一致）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7189;
+    // G2(recruitment)との合算後のmain実数7189から、CMP-260821-1027のcancel/agreeが解消した
+    // roleのRoleRepository/UserRoleRepository到達4行を除外し、期待値を7185にする。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7185;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
