@@ -367,7 +367,9 @@ class DateTimeAndZoneGuardTest {
      * 認可監査戦役の {@code EXPECTED_LINES_*} 方式を踏襲する。
      * 件数が減った場合はここも追随して更新し、返済の進捗を数値で残すこと。
      */
-    private static final int EXPECTED_FROZEN_NO_ARG_NOW = 1648;
+    private static final int EXPECTED_FROZEN_NO_ARG_NOW = 1647;
+    // 2026-10-12 返済 -1件: CMP-260910-0043 で ChatMessageArchiveBatchService の退避閾値（LocalDateTime.now().minusMonths(6)）を
+    // SQL 側の UTC_TIMESTAMP() 基準へ置き換えたため（1→0）。
     // 2026-10-01 返済 -1件: CMP-260930-1932 で RecruitmentAutoCancelBatch の通知期限計算（LocalDateTime.now().plusHours(72)）を
     // AFTER_COMMIT リスナーへ移し、SERVER_ZONE 明示の now(ZoneId) にしたため（2→1）。
     // 2026-08-13 返済 -28件（全件）: CMP-023 第1ロット。ZoneId.systemDefault() の28箇所を全て
