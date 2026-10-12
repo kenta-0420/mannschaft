@@ -1,0 +1,153 @@
+// @vitest-environment happy-dom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
+import { defineComponent, h } from 'vue'
+import { mockNuxtImport } from '@nuxt/test-utils/runtime'
+import SkillList from './SkillList.vue'
+
+const api = vi.hoisted(() => ({
+  searchSkills: vi.fn(),
+  getSkill: vi.fn(),
+  deleteSkill: vi.fn(),
+  verifySkill: vi.fn(),
+  getCertificateUrl: vi.fn(),
+  getSkillCategories: vi.fn(),
+}))
+const notify = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }))
+const auth = vi.hoisted(() => ({ currentUser: { id: 10 } as { id: number } | null }))
+
+mockNuxtImport('useSkillApi', () => () => api)
+mockNuxtImport('useNotification', () => () => notify)
+mockNuxtImport('useDatetime', () => () => ({ formatDate: (v: string) => v }))
+mockNuxtImport('useAuthStore', () => () => auth)
+
+// 検索API（SkillSearchService）が返す実際の形。name / id / categoryName / version は無い。
+const searchItem = (over: Record<string, unknown> = {}) => ({
+  memberSkillId: 501,
+  userId: 10,
+  displayName: '山田',
+  categoryId: 7,
+  skillName: '普通自動車免許',
+  issuer: '公安委員会',
+  credentialNumber: 'No.123',
+  acquiredOn: '2026-01-01',
+  expiresAt: '2030-01-01',
+  status: 'PENDING_REVIEW',
+  verifiedAt: null,
+  expiringSoon: false,
+  ...over,
+})
+
+const fullSkill = {
+  id: 501, skillCategoryId: 7, categoryName: '運転', userId: 10, scopeType: 'TEAM', scopeId: '1',
+  name: '普通自動車免許', issuer: '公安委員会', credentialNumber: 'No.123', acquiredOn: '2026-01-01',
+  expiresAt: '2030-01-01', status: 'PENDING_REVIEW', hasCertificate: false, verifiedAt: null,
+  verifiedBy: null, version: 3, createdAt: '2026-01-01T00:00:00',
+}
+
+const Button = defineComponent({
+  props: { icon: { type: String, default: '' }, label: { type: String, default: '' } },
+  emits: ['click'],
+  setup(p, { emit }) {
+    return () => h('button', { type: 'button', 'data-icon': p.icon, onClick: () => emit('click') }, p.label)
+  },
+})
+const stubs = { Button, InputText: true, Select: true, LoadingBounce: true }
+
+let wrapper: VueWrapper | undefined
+async function render(canManage = false) {
+  wrapper = mount(SkillList, {
+    props: { teamId: 'e2e', canManage },
+    global: { stubs, directives: { tooltip: {} } },
+  })
+  await flushPromises()
+  return wrapper
+}
+const btn = (w: VueWrapper, icon: string) => w.find(`button[data-icon="${icon}"]`)
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  auth.currentUser = { id: 10 }
+  api.searchSkills.mockResolvedValue({ data: [searchItem()] })
+  api.getSkillCategories.mockResolvedValue({ data: [{ id: 7, name: '運転', description: null, icon: null, sortOrder: 1, isActive: true, createdAt: '' }] })
+  api.getSkill.mockResolvedValue({ data: fullSkill })
+  api.deleteSkill.mockResolvedValue({})
+  api.verifySkill.mockResolvedValue({ data: fullSkill })
+  api.getCertificateUrl.mockResolvedValue({ data: { url: 'https://example.invalid/c.pdf' } })
+})
+afterEach(() => {
+  wrapper?.unmount()
+  wrapper = undefined
+})
+
+describe('SkillList: 検索APIの形（memberSkillId / skillName / categoryId）で描画する', () => {
+  it('資格名とカテゴリ名が表示される', async () => {
+    const w = await render(true)
+    expect(w.text()).toContain('普通自動車免許')
+    expect(w.text()).toContain('運転')
+  })
+
+  it('削除は memberSkillId で呼ばれる', async () => {
+    const w = await render(true)
+    await btn(w, 'pi pi-trash').trigger('click')
+    await flushPromises()
+    expect(api.deleteSkill).toHaveBeenCalledWith('e2e', 501)
+  })
+
+  it('承認は memberSkillId で呼ばれる', async () => {
+    const w = await render(true)
+    await btn(w, 'pi pi-check').trigger('click')
+    await flushPromises()
+    expect(api.verifySkill).toHaveBeenCalledWith('e2e', 501)
+  })
+
+  it('証明書は memberSkillId で呼ばれる', async () => {
+    vi.stubGlobal('open', vi.fn())
+    const w = await render(true)
+    await btn(w, 'pi pi-download').trigger('click')
+    await flushPromises()
+    expect(api.getCertificateUrl).toHaveBeenCalledWith('e2e', 501)
+    vi.unstubAllGlobals()
+  })
+
+  it('編集は個別取得の完全な資格で emit される', async () => {
+    const w = await render(true)
+    await btn(w, 'pi pi-pencil').trigger('click')
+    await flushPromises()
+    expect(api.getSkill).toHaveBeenCalledWith('e2e', 501)
+    expect(w.emitted('edit')?.[0]).toEqual([fullSkill])
+  })
+
+  it('個別取得に失敗したら握りつぶさずエラー通知し emit しない', async () => {
+    api.getSkill.mockRejectedValue(new Error('403'))
+    const w = await render(true)
+    await btn(w, 'pi pi-pencil').trigger('click')
+    await flushPromises()
+    expect(notify.error).toHaveBeenCalled()
+    expect(w.emitted('edit')).toBeUndefined()
+  })
+})
+
+describe('SkillList: 操作ボタンの表示条件（BE: 本人または ADMIN/DEPUTY のみ）', () => {
+  it('本人でなく canManage=false の一般メンバーには編集・削除・証明書が出ない', async () => {
+    auth.currentUser = { id: 99 }
+    const w = await render(false)
+    expect(btn(w, 'pi pi-pencil').exists()).toBe(false)
+    expect(btn(w, 'pi pi-trash').exists()).toBe(false)
+    expect(btn(w, 'pi pi-download').exists()).toBe(false)
+    expect(btn(w, 'pi pi-check').exists()).toBe(false)
+  })
+
+  it('本人には canManage=false でも編集・削除が出る（承認は出ない）', async () => {
+    const w = await render(false)
+    expect(btn(w, 'pi pi-pencil').exists()).toBe(true)
+    expect(btn(w, 'pi pi-trash').exists()).toBe(true)
+    expect(btn(w, 'pi pi-check').exists()).toBe(false)
+  })
+
+  it('管理者(canManage)は他人の資格も編集できる', async () => {
+    auth.currentUser = { id: 99 }
+    const w = await render(true)
+    expect(btn(w, 'pi pi-pencil').exists()).toBe(true)
+  })
+})
