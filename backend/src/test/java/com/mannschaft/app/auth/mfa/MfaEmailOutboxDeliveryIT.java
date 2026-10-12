@@ -6,11 +6,14 @@ import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.mail.outbox.EmailOutboxWorker;
 import com.mannschaft.app.mail.outbox.EmailTransport;
 import net.javacrumbs.shedlock.core.LockAssert;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
@@ -273,15 +276,33 @@ class MfaEmailOutboxDeliveryIT extends MfaEmailOtpItSupport {
     @Test
     @DisplayName("AC-26 送信から配送までコードをログに出さない")
     void コードをログに出さない(CapturedOutput output) throws Exception {
-        MfaUser u = totpUser();
-        String session = loginForMfaSession(u);
-        String code = sendLoginOtpAndGetCode(u, session);
-        UUID rowId = otpOutboxRows(u.userId()).get(0).id();
-        drainWorkerUntilProcessed(rowId);
-        MvcResult ok = validate(session, "EMAIL", code);
-        assertThat(ok.getResponse().getStatus()).as("前提: 検証成功: %s", body(ok)).isEqualTo(200);
-
-        String logs = output.getAll();
+        // test プロファイルの logback は root が WARN のため、Worker の送信ログ（INFO）が出ず前提が実行順次第で崩れる。
+        // 捕捉対象のロガー（送信ログの LoggingEmailTransport と、コードを出しうる mail / auth 配下）を DEBUG へ上げ、
+        // 終了時に必ず元のレベルへ戻す（logback-spring.xml は変えない）。検査（コードが出ないこと）は弱めない。
+        List<String> loggerNames = List.of(
+                "com.mannschaft.app.mail.outbox.LoggingEmailTransport",
+                "com.mannschaft.app.mail",
+                "com.mannschaft.app.auth");
+        java.util.Map<String, Level> originalLevels = new java.util.LinkedHashMap<>();
+        for (String name : loggerNames) {
+            Logger logger = (Logger) LoggerFactory.getLogger(name);
+            originalLevels.put(name, logger.getLevel());
+            logger.setLevel(Level.DEBUG);
+        }
+        String logs;
+        String code;
+        try {
+            MfaUser u = totpUser();
+            String session = loginForMfaSession(u);
+            code = sendLoginOtpAndGetCode(u, session);
+            UUID rowId = otpOutboxRows(u.userId()).get(0).id();
+            drainWorkerUntilProcessed(rowId);
+            MvcResult ok = validate(session, "EMAIL", code);
+            assertThat(ok.getResponse().getStatus()).as("前提: 検証成功: %s", body(ok)).isEqualTo(200);
+            logs = output.getAll();
+        } finally {
+            originalLevels.forEach((name, level) -> ((Logger) LoggerFactory.getLogger(name)).setLevel(level));
+        }
 
         assertThat(logs).as("前提: ログを捕捉できている（Worker の送信ログ）").contains("[EMAIL_OUTBOX][SIMULATE]");
         assertThat(containsCode(logs, code)).as("AC-26 コード %s をログに出さない", code).isFalse();
