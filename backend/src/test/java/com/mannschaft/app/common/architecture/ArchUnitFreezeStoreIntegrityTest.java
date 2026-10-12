@@ -860,8 +860,9 @@ class ArchUnitFreezeStoreIntegrityTest {
     // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
     //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
     //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 2）。
-    // G2(recruitment)との合算（main）: 7213 - 24 = 7189 から本戦役の -2 を引いて 7187（ストア実数と一致）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7187;
+    // G2(recruitment)との合算後のmain実数7189から、CMP-260821-1027のcancel/agreeが解消したroleの
+    //   RoleRepository/UserRoleRepository到達4行を除いた7185（origin/main）から本戦役の -2 を引いて 7183（ストア実数と一致）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7183;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。

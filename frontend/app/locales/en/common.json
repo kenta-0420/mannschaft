@@ -1,4 +1,10 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "Failed to load the skill details",
+      "loadCategoriesFailed": "Failed to load the categories"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "Reply in Thread",
