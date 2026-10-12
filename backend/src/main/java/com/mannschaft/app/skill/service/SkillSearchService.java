@@ -83,7 +83,6 @@ public class SkillSearchService {
                     item.put("categoryId", s.getSkillCategoryId());
                     item.put("skillName", s.getName());
                     item.put("issuer", s.getIssuer());
-                    item.put("credentialNumber", s.getCredentialNumber());
                     item.put("acquiredOn", s.getAcquiredOn());
                     item.put("expiresAt", s.getExpiresAt());
                     item.put("status", s.getStatus().name());

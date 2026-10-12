@@ -536,6 +536,66 @@ class SkillViewScopeAndMatrixContractIT extends AbstractMySqlIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // B-AC8: 資格番号の秘匿（F07.5 §6。検索結果・マトリクスに credentialNumber を含めない）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("B-AC8: 資格番号は検索結果・マトリクスに含めない")
+    class CredentialNumberHidden {
+
+        private Long saveSkillWithCredentialNumber() {
+            MemberSkillEntity saved = memberSkillRepository.save(MemberSkillEntity.builder()
+                    .userId(memberId)
+                    .scopeType("TEAM")
+                    .scopeId(teamAId)
+                    .skillCategoryId(categoryXId)
+                    .name("SKVIEW 資格番号あり")
+                    .credentialNumber("SECRET-12345")
+                    .status(SkillStatus.ACTIVE)
+                    .build());
+            em.flush();
+            em.clear();
+            return saved.getId();
+        }
+
+        @Test
+        @DisplayName("B-AC8: 検索結果の各要素に credentialNumber キーが無い（資格番号を設定した資格でも）")
+        void BAC8_検索結果にcredentialNumberが無い() throws Exception {
+            Long skillId = saveSkillWithCredentialNumber();
+
+            MockHttpServletResponse res = perform(adminId, HttpMethod.GET,
+                    "/api/v1/teams/" + teamAId + "/skills/search", null);
+            assertThat(res.getStatus()).isEqualTo(200);
+            assertThat(res.getContentAsString()).as("資格番号の値が応答に現れない").doesNotContain("SECRET-12345");
+
+            boolean found = false;
+            for (JsonNode n : json(res).path("data")) {
+                assertThat(n.has("credentialNumber")).as("credentialNumber キー無し").isFalse();
+                if (n.path("memberSkillId").asLong() == skillId) {
+                    found = true;
+                }
+            }
+            assertThat(found).as("検索結果に対象資格が含まれる").isTrue();
+        }
+
+        @Test
+        @DisplayName("B-AC8: マトリクスのセルにも credentialNumber キーが無い")
+        void BAC8_マトリクスのセルにcredentialNumberが無い() throws Exception {
+            saveSkillWithCredentialNumber();
+
+            MockHttpServletResponse res = perform(adminId, HttpMethod.GET,
+                    "/api/v1/teams/" + teamAId + "/skill-matrix", null);
+            assertThat(res.getStatus()).isEqualTo(200);
+            assertThat(res.getContentAsString()).as("資格番号の値が応答に現れない").doesNotContain("SECRET-12345");
+
+            for (JsonNode row : json(res).path("data").path("rows")) {
+                row.path("cells").forEach(cell ->
+                        assertThat(cell.has("credentialNumber")).as("credentialNumber キー無し").isFalse());
+            }
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
 
