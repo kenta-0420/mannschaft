@@ -554,4 +554,127 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         assertThat(jobRow(job).get("scope_type")).isEqualTo("ORGANIZATION_ADMINS");
         assertThat(jobRow(job).get("scope_ref")).isEqualTo(String.valueOf(fx.org().id()));
     }
+
+    // =====================================================================
+    // 2-D 検分差し戻し（2巡目）①: 片付けの前にアーカイブ解除されても、閉鎖より前の PENDING を復元しない（§4.5）
+    // =====================================================================
+
+    /** 組織を「アーカイブ（閉鎖時刻を記録）→ 片付けの前に解除」した状態にする（イベントは出さない）。 */
+    private void archiveThenUnarchiveWithoutCleanup(long orgId) {
+        inTxVoid(() -> em.createNativeQuery("UPDATE organizations SET archived_at = UTC_TIMESTAMP(), "
+                        + "last_closed_at = UTC_TIMESTAMP() WHERE id = :id")
+                .setParameter("id", orgId).executeUpdate());
+        inTxVoid(() -> em.createNativeQuery("UPDATE organizations SET archived_at = NULL WHERE id = :id")
+                .setParameter("id", orgId).executeUpdate());
+    }
+
+    /** 加盟行をアーカイブより前に作られたものにする（作成日時を UTC 壁時計の1時間前にする。§4.6 の格納基準）。 */
+    private void backdate(long membershipId) {
+        inTxVoid(() -> em.createNativeQuery("UPDATE team_org_memberships "
+                        + "SET created_at = TIMESTAMPADD(HOUR, -1, UTC_TIMESTAMP()) WHERE id = :id")
+                .setParameter("id", membershipId).executeUpdate());
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し（2巡目）①・§4.5: アーカイブ → 片付けの前に解除 → 片付け、の順でも、アーカイブより前の PENDING"
+            + "（申請・招待）は消えて取消が予約される（解除で復元しない）。解除後の新しい申請は消さない")
+    void 片付けの前に解除されてもアーカイブ前のPENDINGは消える() throws Exception {
+        Fixture fx = fixture();
+        TeamWithAdmin applyTeam = extraTeam();
+        TeamWithAdmin inviteTeam = extraTeam();
+        long oldApply = membership(applyTeam.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
+        long oldInvite = membership(inviteTeam.team().id(), fx.org().id(), "PENDING", "ORG_INVITE", null);
+        backdate(oldApply);
+        backdate(oldInvite);
+
+        archiveThenUnarchiveWithoutCleanup(fx.org().id());
+        Result applied = apply(fx.ta(), fx.team().slug(), fx.org().slug());
+        assertThat(applied.status()).as("解除後の申請は通る: %s", applied).isEqualTo(201);
+        Long newApply = jdbc.queryForObject(
+                "SELECT id FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
+                Long.class, fx.team().id(), fx.org().id());
+        assertThat(statusOf(oldApply)).as("片付けの前はアーカイブ前の申請が残っている").isEqualTo("PENDING");
+
+        // 遅れて届いたアーカイブの片付け（リスナーと同じ入口）
+        assertThat(cleanupService.cleanUpOrganization(fx.org().id())).as("アーカイブ前の2件だけを消す").isEqualTo(2);
+
+        assertThat(statusOf(oldApply)).as("アーカイブ前の申請は解除で復元しない").isNull();
+        assertThat(statusOf(oldInvite)).as("アーカイブ前の招待も同じ").isNull();
+        assertThat(jobIdsOf(oldApply, CANCELLED)).hasSize(1);
+        assertThat(jobIdsOf(oldInvite, CANCELLED)).hasSize(1);
+        UUID job = singleJob(oldApply, CANCELLED);
+        assertThat(jobRow(job).get("scope_ref")).isEqualTo(String.valueOf(applyTeam.team().id()));
+        assertThat(statusOf(newApply)).as("解除後の新しい申請は残る").isEqualTo("PENDING");
+        assertThat(jobIdsOf(newApply, CANCELLED)).isEmpty();
+
+        // 冪等: もう一度呼んでも何も消さず、通知も増えない
+        assertThat(cleanupService.cleanUpOrganization(fx.org().id())).isZero();
+        assertThat(jobIdsOf(oldApply, CANCELLED)).hasSize(1);
+        assertThat(statusOf(newApply)).isEqualTo("PENDING");
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し（2巡目）①・§4.5: 片付けの前に解除された組織のアーカイブ前の PENDING も、回復バッチが候補に拾って片付ける。"
+            + "一度も閉じていない組織・解除後の申請には触れない")
+    void 回復バッチは解除済み組織のアーカイブ前PENDINGを拾う() throws Exception {
+        Fixture fx = fixture();
+        TeamWithAdmin applyTeam = extraTeam();
+        OrgFx aliveOrg = inTx(() -> newOrg(true, false, "OFF", "PUBLIC"));
+        long oldApply = membership(applyTeam.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
+        backdate(oldApply);
+        long alivePending = membership(applyTeam.team().id(), aliveOrg.id(), "PENDING", "TEAM_APPLY", null);
+        backdate(alivePending);
+
+        archiveThenUnarchiveWithoutCleanup(fx.org().id());
+        Result applied = apply(fx.ta(), fx.team().slug(), fx.org().slug());
+        assertThat(applied.status()).as("解除後の申請は通る: %s", applied).isEqualTo(201);
+        Long newApply = jdbc.queryForObject(
+                "SELECT id FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
+                Long.class, fx.team().id(), fx.org().id());
+
+        cleanupBatch.cleanUp();
+
+        assertThat(statusOf(oldApply)).as("アーカイブ前の申請はバッチが片付ける").isNull();
+        assertThat(jobIdsOf(oldApply, CANCELLED)).hasSize(1);
+        assertThat(statusOf(newApply)).as("解除後の申請は残る").isEqualTo("PENDING");
+        assertThat(statusOf(alivePending)).as("一度も閉じていない組織の PENDING には触れない").isEqualTo("PENDING");
+        assertThat(jobIdsOf(alivePending, CANCELLED)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し（2巡目）①: 組織のアーカイブ API の経路で閉鎖時刻（last_closed_at）が記録され、アーカイブ解除しても消えない")
+    void 組織のアーカイブ解除で閉鎖時刻は消えない() {
+        Fixture fx = fixture();
+        organizationService.archiveOrganization(fx.org().id());
+        organizationService.unarchiveOrganization(fx.org().id());
+
+        Map<String, Object> row = jdbc.queryForMap(
+                "SELECT archived_at, last_closed_at FROM organizations WHERE id = ?", fx.org().id());
+        assertThat(row.get("archived_at")).as("解除済み").isNull();
+        assertThat(row.get("last_closed_at")).as("最後の閉鎖時刻は解除しても残る").isNotNull();
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し（2巡目）①・§4.5: 他ドメインの tx からアーカイブされたチームが片付けの前にアーカイブ解除されても、"
+            + "解除（unarchiveTeam）がチーム行のロックの下でアーカイブ前の PENDING を消して取消を予約する（復元しない）")
+    void チームのアーカイブ解除はアーカイブ前のPENDINGを復元しない() throws Exception {
+        Fixture fx = fixture();
+        OrgFx keeper = inTx(() -> newOrg(true, false, "OFF", "PUBLIC"));
+        long apply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
+        long active = membership(fx.team().id(), keeper.id(), "ACTIVE", "ORG_INVITE", null);
+        // 片付けを伴わないアーカイブ（リスナーの前にプロセスが止まった状況）
+        inTxVoid(() -> em.createNativeQuery("UPDATE teams SET archived_at = UTC_TIMESTAMP() WHERE id = :id")
+                .setParameter("id", fx.team().id()).executeUpdate());
+        assertThat(statusOf(apply)).isEqualTo("PENDING");
+
+        teamService.unarchiveTeam(fx.team().id());
+
+        assertThat(statusOf(apply)).as("アーカイブ前の申請は解除で復元しない").isNull();
+        assertThat(statusOf(active)).as("ACTIVE は残す").isEqualTo("ACTIVE");
+        UUID job = singleJob(apply, CANCELLED);
+        assertThat(jobRow(job).get("scope_type")).isEqualTo("ORGANIZATION_ADMINS");
+        assertThat(jobRow(job).get("scope_ref")).isEqualTo(String.valueOf(fx.org().id()));
+        assertThat(jdbc.queryForObject("SELECT archived_at IS NULL FROM teams WHERE id = ?", Boolean.class,
+                fx.team().id())).as("解除は行われる").isTrue();
+    }
 }

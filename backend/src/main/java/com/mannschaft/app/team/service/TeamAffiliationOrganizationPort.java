@@ -102,10 +102,10 @@ public interface TeamAffiliationOrganizationPort {
     Optional<OrganizationClosureState> findClosureStateIncludingDeleted(Long organizationId);
 
     /**
-     * 指定の組織のうち、アーカイブ済み・論理削除済み・行の無いものの ID を返す（ロックしない。F01.2.1 2-D・片付けの回復バッチの
-     * 候補選び）。最終的な判定は片付けの中で {@link #findClosureStateIncludingDeleted} により行う。
+     * 指定の組織の閉鎖の状態（論理削除済みを含む）をまとめて引く（ロックしない。F01.2.1 2-D・片付けの回復バッチの候補選び）。
+     * 行の無い組織はキーに含めない。最終的な判定は片付けの中で {@link #findClosureStateIncludingDeleted} により行う。
      */
-    java.util.Set<Long> findClosedOrganizationIds(Collection<Long> organizationIds);
+    Map<Long, OrganizationClosureState> findClosureStatesIncludingDeleted(Collection<Long> organizationIds);
 
     /**
      * ロック時点の組織の状態。
@@ -131,17 +131,30 @@ public interface TeamAffiliationOrganizationPort {
     /**
      * 組織の閉鎖の状態（論理削除済みを含む）。
      *
-     * @param id       組織 ID
-     * @param slug     組織の slug
-     * @param name     組織名（取消の通知の文面に使う。論理削除済みでも引ける）
-     * @param archived アーカイブ済みか
-     * @param deleted  論理削除済みか
+     * @param id           組織 ID
+     * @param slug         組織の slug
+     * @param name         組織名（取消の通知の文面に使う。論理削除済みでも引ける）
+     * @param archived     アーカイブ済みか
+     * @param deleted      論理削除済みか
+     * @param lastClosedAt 最後にアーカイブまたは論理削除した時刻（{@code organizations.last_closed_at}。解除・復元しても消えない。
+     *                     一度も閉じていなければ null）
      */
-    record OrganizationClosureState(Long id, String slug, String name, boolean archived, boolean deleted) {
+    record OrganizationClosureState(Long id, String slug, String name, boolean archived, boolean deleted,
+                                    java.time.LocalDateTime lastClosedAt) {
 
         /** 申請・招待を受け付けない状態（アーカイブ済みか論理削除済み）か。 */
         public boolean closed() {
             return archived || deleted;
+        }
+
+        /**
+         * 指定の時刻に作られた PENDING が、最後の閉鎖（アーカイブ・論理削除）より前に作られたか（F01.2.1 §4.5）。
+         * 片付けの前にアーカイブ解除・復元されても、閉鎖より前の申請・招待はこれで見分けて消す。
+         * {@code lastClosedAt} は秒に切り捨てて持つので、厳密に前（{@code createdAt < lastClosedAt}）の行だけを数える。
+         * 閉鎖の後に作られた行（解除後の申請・招待）は必ず false になる（同じ秒に作られた閉鎖前の行は見分けられない）。
+         */
+        public boolean createdBeforeLastClosure(java.time.LocalDateTime createdAt) {
+            return lastClosedAt != null && createdAt != null && createdAt.isBefore(lastClosedAt);
         }
     }
 

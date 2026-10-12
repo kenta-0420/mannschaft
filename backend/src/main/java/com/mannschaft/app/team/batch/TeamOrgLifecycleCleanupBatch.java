@@ -13,8 +13,11 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -23,7 +26,8 @@ import java.util.TreeSet;
  *
  * <p>速い経路（{@code TeamOrgLifecycleListener}・AFTER_COMMIT）は、リスナーの前のプロセス停止や、片付け・outbox の
  * 書き込みの失敗で取りこぼしうる。本バッチは「組織／チームがアーカイブ・論理削除済みなのに PENDING（削除済みなら
- * ACTIVE・制限も）が残っている」状態を探し、リスナーと<b>同じ</b> {@link TeamOrgLifecycleCleanupService} の片付けを呼ぶ。
+ * ACTIVE・制限も）が残っている」状態と、「アーカイブ解除・復元済みの組織に、最後の閉鎖より前に作られた PENDING が
+ * 残っている」状態を探し、リスナーと<b>同じ</b> {@link TeamOrgLifecycleCleanupService} の片付けを呼ぶ。
  * 片付けはロックの下で現在の状態を確かめ直す（候補選びの後にアーカイブ解除されていれば何もしない）ので、ここでの候補選びは
  * ロックしない読み取りでよい。</p>
  *
@@ -55,9 +59,7 @@ public class TeamOrgLifecycleCleanupBatch {
         int teams = 0;
         int failures = 0;
 
-        Set<Long> organizationCandidates = new TreeSet<>(membershipRepository.findDistinctOrganizationIdsOfPending());
-        organizationCandidates.addAll(restrictionRepository.findDistinctOrganizationIds());
-        for (Long organizationId : organizationPort.findClosedOrganizationIds(organizationCandidates)) {
+        for (Long organizationId : selectOrganizationCandidates()) {
             try {
                 cleanupService.cleanUpOrganization(organizationId);
                 organizations++;
@@ -80,6 +82,35 @@ public class TeamOrgLifecycleCleanupBatch {
         }
 
         log.info("チーム加盟の片付けの回復バッチ: organizations={}, teams={}, failures={}", organizations, teams, failures);
+    }
+
+    /**
+     * 片付けの要る組織を選ぶ（ロックしない）。
+     * <ul>
+     *   <li>行の無い組織・アーカイブ済み・論理削除済みの組織で、PENDING か制限が残っているもの</li>
+     *   <li>アーカイブ解除・復元済みでも、最後の閉鎖（{@code organizations.last_closed_at}）より前に作られた PENDING が
+     *       残っているもの（片付けの前に解除された。§4.5「解除で PENDING を復元しない」）</li>
+     * </ul>
+     */
+    private Set<Long> selectOrganizationCandidates() {
+        Map<Long, LocalDateTime> oldestPending = new HashMap<>();
+        for (TeamOrgMembershipRepository.OldestPendingProjection row
+                : membershipRepository.findOldestPendingCreatedAtByOrganization()) {
+            oldestPending.put(row.getOrganizationId(), row.getOldestCreatedAt());
+        }
+        Set<Long> ids = new TreeSet<>(oldestPending.keySet());
+        ids.addAll(restrictionRepository.findDistinctOrganizationIds());
+        Map<Long, TeamAffiliationOrganizationPort.OrganizationClosureState> states =
+                organizationPort.findClosureStatesIncludingDeleted(ids);
+
+        Set<Long> candidates = new TreeSet<>();
+        for (Long id : ids) {
+            TeamAffiliationOrganizationPort.OrganizationClosureState state = states.get(id);
+            if (state == null || state.closed() || state.createdBeforeLastClosure(oldestPending.get(id))) {
+                candidates.add(id);
+            }
+        }
+        return candidates;
     }
 
     private static List<Long> toLongs(Collection<Number> values) {

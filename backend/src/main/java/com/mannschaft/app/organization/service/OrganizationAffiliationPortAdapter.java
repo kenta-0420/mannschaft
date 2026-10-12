@@ -107,26 +107,25 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
         // 呼び出し側（team ドメインの片付け）の tx には参加せず、組織ドメインの新しい読み取り tx で最新のコミット済みの
         // 状態を読む。論理削除済みも読む（ネイティブ）
         return organizationRepository.findByIdIncludingDeleted(organizationId)
-                .map(org -> new OrganizationClosureState(org.getId(), org.getSlug(), org.getName(),
-                        org.getArchivedAt() != null, org.getDeletedAt() != null));
+                .map(OrganizationAffiliationPortAdapter::toClosureState);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public java.util.Set<Long> findClosedOrganizationIds(Collection<Long> organizationIds) {
+    public Map<Long, OrganizationClosureState> findClosureStatesIncludingDeleted(Collection<Long> organizationIds) {
         if (organizationIds == null || organizationIds.isEmpty()) {
-            return java.util.Set.of();
+            return Map.of();
         }
-        java.util.Set<Long> closed = new java.util.HashSet<>(organizationIds);
-        for (Object[] row : organizationRepository.findClosureFlagsIncludingDeleted(organizationIds)) {
-            long id = ((Number) row[0]).longValue();
-            boolean archived = ((Number) row[1]).intValue() != 0;
-            boolean deleted = ((Number) row[2]).intValue() != 0;
-            if (!archived && !deleted) {
-                closed.remove(id); // 生きている組織だけを外す（行の無い組織は閉鎖として残す）
-            }
+        Map<Long, OrganizationClosureState> result = new HashMap<>();
+        for (OrganizationEntity org : organizationRepository.findAllByIdInIncludingDeleted(organizationIds)) {
+            result.put(org.getId(), toClosureState(org));
         }
-        return closed;
+        return result;
+    }
+
+    private static OrganizationClosureState toClosureState(OrganizationEntity org) {
+        return new OrganizationClosureState(org.getId(), org.getSlug(), org.getName(),
+                org.getArchivedAt() != null, org.getDeletedAt() != null, org.getLastClosedAt());
     }
 
     private static OrganizationAffiliationState toState(OrganizationEntity org) {

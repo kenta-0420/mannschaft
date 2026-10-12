@@ -168,11 +168,16 @@ public class PersonalDataCollector {
     }
 
     /**
-     * 指定ユーザーの個人データをカテゴリ別に収集する。
+     * 指定ユーザーの個人データをカテゴリ別に収集する（事前取得なし）。
+     *
+     * <p>事前取得の要るカテゴリ（{@code memberships}）を対象に含めると（{@code categories} が null・空の全カテゴリを含む）、
+     * {@link IllegalStateException} で失敗する。そのカテゴリを収集するときは
+     * {@link #collect(Long, Set, PrefetchedPersonalData)} に事前取得の結果を渡すこと。</p>
      *
      * @param userId     対象ユーザーID
      * @param categories 収集対象カテゴリ（nullまたは空=全カテゴリ）
      * @return ファイル名 → JSON文字列のマップ
+     * @throws IllegalStateException 事前取得の要るカテゴリが対象に含まれるとき
      */
     public Map<String, String> collect(Long userId, Set<String> categories) {
         return collect(userId, categories, PrefetchedPersonalData.none());
@@ -196,11 +201,14 @@ public class PersonalDataCollector {
         for (String category : targets) {
             String fileName = CATEGORY_FILES.get(category);
             if (fileName == null) continue;
+            if (PersonalDataPrefetcher.MEMBERSHIPS.equals(category)) {
+                // 事前取得の欠落は「0 件」ではなく収集の失敗。"[]" に畳むと実データ 0 件と区別できず、欠けた ZIP が
+                // COMPLETED になる。握らずに伝播させ、エクスポートを FAILED にする（DataExportService#processExportAsync）
+                data.put(fileName, collectMemberships(prefetched));
+                continue;
+            }
             try {
-                String json = "memberships".equals(category)
-                        ? collectMemberships(prefetched)
-                        : collectByCategory(userId, category);
-                data.put(fileName, json);
+                data.put(fileName, collectByCategory(userId, category));
             } catch (Exception e) {
                 log.warn("カテゴリ収集失敗: category={}, userId={}", category, userId, e);
                 data.put(fileName, "[]");
@@ -507,15 +515,20 @@ public class PersonalDataCollector {
         }).toList());
     }
 
-    private String collectMemberships(PrefetchedPersonalData prefetched) throws Exception {
+    private String collectMemberships(PrefetchedPersonalData prefetched) {
         // F01.2.1 §15・AC-G127: team_org_memberships の invited_by・responded_by として関わった加盟。
         // エクスポートの gdpr トランザクションから team の Repository へ届かせないため、呼び出し元がトランザクションの外で
-        // 事前取得した値を書き出すだけにする（PersonalDataPrefetcher・D-3T）。事前取得していなければ収集の失敗として扱う
+        // 事前取得した値を書き出すだけにする（PersonalDataPrefetcher・D-3T）。事前取得していなければ収集の失敗として扱い、
+        // 呼び出し元へ伝播させる（"[]" に畳まない）
         if (prefetched == null || prefetched.teamOrgMemberships() == null) {
             throw new IllegalStateException(
                     "memberships は PersonalDataPrefetcher による事前取得が必要（エクスポートの tx 内では収集しない）");
         }
-        return OBJECT_MAPPER.writeValueAsString(prefetched.teamOrgMemberships());
+        try {
+            return OBJECT_MAPPER.writeValueAsString(prefetched.teamOrgMemberships());
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("memberships の書き出しに失敗した", e);
+        }
     }
 
     private String collectProfiles(Long userId) throws Exception {

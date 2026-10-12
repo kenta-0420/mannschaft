@@ -660,13 +660,22 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     int markInviteNotified(@Param("id") Long id, @Param("epochSecond") long epochSecond);
 
     /**
-     * 片付けの回復バッチ（{@code TeamOrgLifecycleCleanupBatch}）: PENDING の行がある組織の ID を昇順に返す
-     * （組織の状態は organization ドメインのポートで確かめる。組織の表は team ドメインから JOIN しない）。
+     * 片付けの回復バッチ（{@code TeamOrgLifecycleCleanupBatch}）: PENDING の行がある組織ごとに、最も古い PENDING の作成日時を
+     * 組織 ID の昇順に返す（組織の状態は organization ドメインのポートで確かめる。組織の表は team ドメインから JOIN しない）。
+     * 「最後の閉鎖より前に作られた PENDING が残っている」組織を、アーカイブ解除済みでも拾うのに使う（§4.5）。
      */
-    @Query("SELECT DISTINCT m.organizationId FROM TeamOrgMembershipEntity m "
+    @Query("SELECT m.organizationId AS organizationId, MIN(m.createdAt) AS oldestCreatedAt "
+        + "FROM TeamOrgMembershipEntity m "
         + "WHERE m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
-        + "ORDER BY m.organizationId")
-    List<Long> findDistinctOrganizationIdsOfPending();
+        + "GROUP BY m.organizationId ORDER BY m.organizationId")
+    List<OldestPendingProjection> findOldestPendingCreatedAtByOrganization();
+
+    /** {@link #findOldestPendingCreatedAtByOrganization} の1行。 */
+    interface OldestPendingProjection {
+        Long getOrganizationId();
+
+        java.time.LocalDateTime getOldestCreatedAt();
+    }
 
     /**
      * 片付けの回復バッチ: 片付けが残っているチームの ID を昇順に返す。アーカイブ済みのチームの PENDING と、

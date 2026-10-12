@@ -73,13 +73,15 @@ public class GdprController {
     public ResponseEntity<ApiResponse<DataExportResponse>> requestExport(
             @Valid @RequestBody DataExportRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        DataExportEntity entity = dataExportService.requestExport(userId, request.getCategories());
         // ユーザー情報をコントローラー層で先取り（DataExportService から auth.UserRepository を呼ばないドメイン境界設計）。
-        // 他ドメインの個人データの一部も、エクスポートの tx の外で先に取得して渡す（F01.2.1 2-D・D-3T）
+        // 他ドメインの個人データの一部も、エクスポートの tx の外で先に取得して渡す（F01.2.1 2-D・D-3T）。
+        // 先取りはエクスポートの行（PENDING）を作る<b>前</b>に行う。後に行うと、先取りが例外で終わったときに非同期処理が
+        // 起動せず、PENDING の行だけが残る（回復処理 recoverStuckExports は PROCESSING しか拾わない）
         PrefetchedPersonalData prefetched = personalDataPrefetcher.prefetch(userId, request.getCategories());
         UserEmailInfo userInfo = userRepository.findById(userId)
                 .map(u -> new UserEmailInfo(u.getId(), u.getEmail(), u.getLastName(), u.getFirstName(), prefetched))
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
+        DataExportEntity entity = dataExportService.requestExport(userId, request.getCategories());
         dataExportService.processExportAsync(entity.getId(), userInfo, request.getCategories());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(toResponse(entity)));
     }

@@ -69,6 +69,7 @@ class TeamServiceTest {
     @Mock private ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
     @Mock private AdminRoleMutationLockService adminRoleMutationLockService;
     @Mock private DuplicateNameGuardService duplicateNameGuardService;
+    @Mock private com.mannschaft.app.team.service.TeamOrgLifecycleCleanupService teamOrgLifecycleCleanupService;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;
@@ -348,6 +349,43 @@ class TeamServiceTest {
             assertThat(event.getValue()).isInstanceOfSatisfying(
                     com.mannschaft.app.team.event.TeamArchivedEvent.class,
                     e -> assertThat(e.getTeamId()).isEqualTo(TEAM_ID));
+        }
+    }
+
+    @Nested
+    @DisplayName("unarchiveTeam")
+    class UnarchiveTeam {
+
+        @Test
+        @DisplayName("F01.2.1 2-D・§4.5: 片付けの前に解除されても、チーム行をロックして解除の前に残った PENDING を片付ける（復元しない）")
+        void 解除の前に残ったPENDINGを片付ける() {
+            TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
+            team.archive();
+            given(teamRepository.findByIdForUpdate(TEAM_ID)).willReturn(Optional.of(team));
+            given(teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(any(), eq("テスト")))
+                    .willAnswer(inv -> {
+                        // 解除の前（まだアーカイブ済みの状態）で呼ばれること
+                        assertThat(team.getArchivedAt()).isNotNull();
+                        return 1;
+                    });
+
+            service.unarchiveTeam(TEAM_ID);
+
+            assertThat(team.getArchivedAt()).isNull();
+            verify(teamOrgLifecycleCleanupService).cancelPendingOfArchivedTeam(any(), eq("テスト"));
+        }
+
+        @Test
+        @DisplayName("アーカイブされていないチームの解除では片付けを呼ばない")
+        void 未アーカイブなら片付けを呼ばない() {
+            TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
+            given(teamRepository.findByIdForUpdate(TEAM_ID)).willReturn(Optional.of(team));
+
+            service.unarchiveTeam(TEAM_ID);
+
+            org.mockito.Mockito.verifyNoInteractions(teamOrgLifecycleCleanupService);
         }
     }
 

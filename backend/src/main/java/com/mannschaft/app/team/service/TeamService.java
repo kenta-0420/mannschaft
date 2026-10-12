@@ -775,7 +775,7 @@ public class TeamService {
         TeamEntity team = lockAndArchive(teamId);
         // 当該チームの PENDING（申請・招待の両方向）を同じトランザクションで削除し、相手側（組織 ADMIN）へ取消を予約する。
         // ACTIVE は残す（既存のアーカイブ規則どおり）
-        teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(team);
+        teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(team.getId(), team.getName());
         log.info("チームアーカイブ完了: teamId={}", teamId);
     }
 
@@ -823,7 +823,14 @@ public class TeamService {
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void unarchiveTeam(Long teamId) {
-        TeamEntity team = findTeamOrThrow(teamId);
+        // F01.2.1 §4.5・§6.9: チーム行を PESSIMISTIC_WRITE で取り、解除の前に残った PENDING を片付ける。
+        // アーカイブ中のチームへの申請・招待はチーム行のロックの下で拒否されるので、ここで残っている PENDING は
+        // アーカイブより前のもの（他ドメインの tx からのアーカイブの片付けがまだ済んでいない）。解除で復元しない
+        TeamEntity team = teamRepository.findByIdForUpdate(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+        if (team.getArchivedAt() != null) {
+            teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(team.getId(), team.getName());
+        }
         team.unarchive();
         log.info("チームアーカイブ解除完了: teamId={}", teamId);
     }

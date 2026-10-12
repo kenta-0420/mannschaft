@@ -125,6 +125,9 @@ class GdprControllerTest {
         @Test
         @DisplayName("異常系: GDPR_001 レートリミット時に400が返る")
         void 異常_GDPR001_レートリミット_400() throws Exception {
+            UserEntity mockUser = Mockito.mock(UserEntity.class);
+            given(mockUser.getId()).willReturn(1L);
+            given(userRepository.findById(1L)).willReturn(Optional.of(mockUser));
             given(dataExportService.requestExport(anyLong(), any()))
                     .willThrow(new BusinessException(GdprErrorCode.GDPR_001));
 
@@ -133,6 +136,21 @@ class GdprControllerTest {
                             .content("{}"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error.code").value("GDPR_001"));
+        }
+
+        @Test
+        @DisplayName("異常系: 事前取得が例外で終わったら、エクスポートの行（PENDING）を作らず非同期処理も起動しない（F01.2.1 2-D）")
+        void 異常_事前取得失敗_PENDINGを作らない() throws Exception {
+            given(personalDataPrefetcher.prefetch(anyLong(), any()))
+                    .willThrow(new IllegalStateException("prefetch failed"));
+
+            mockMvc.perform(post("/api/v1/account/data-export")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().is5xxServerError());
+
+            Mockito.verify(dataExportService, Mockito.never()).requestExport(anyLong(), any());
+            Mockito.verify(dataExportService, Mockito.never()).processExportAsync(any(), any(), any());
         }
     }
 
