@@ -17,6 +17,7 @@ import com.mannschaft.app.recruitment.dto.RecruitmentParticipantResponse;
 import com.mannschaft.app.recruitment.entity.RecruitmentDistributionTargetEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentListingEntity;
 import com.mannschaft.app.recruitment.entity.RecruitmentParticipantEntity;
+import com.mannschaft.app.recruitment.event.RecruitmentNotificationEvent;
 import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentDistributionTargetRepository;
@@ -82,8 +83,6 @@ class RecruitmentListingServicePhase2Test {
     @Mock
     private FollowRepository followRepository;
     @Mock
-    private NotificationHelper notificationHelper;
-    @Mock
     private AccessControlService accessControlService;
     @Mock
     private RecruitmentMapper mapper;
@@ -101,14 +100,9 @@ class RecruitmentListingServicePhase2Test {
     @Mock
     private com.mannschaft.app.team.service.TeamService teamService;
 
-    // Issue #2715 ロットA: 通知本文の i18n 化で RecruitmentListingService に追加した依存。
-    // confirmApplication / publish(→sendPublishedNotifications) が受信者 locale 解決のため呼び出すので、
-    // スタブしないと Locale.forLanguageTag(null) の NPE になる（行単位 try/catch に飲まれて
-    // 「通知が飛ばない」という一見無関係な失敗に化ける罠があるため、削除せず必ず維持すること）。
-    @Mock
-    private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
-    @Mock
-    private org.springframework.context.MessageSource messageSource;
+    // Issue #2997: 通知の組み立て・配送は AFTER_COMMIT の RecruitmentNotificationListener へ移設した。
+    // RecruitmentListingService は受信者を確定して publishEvent するのみで、locale 解決・文面・
+    // NotificationHelper の依存は無い。
 
     @InjectMocks
     private RecruitmentListingService service;
@@ -168,10 +162,6 @@ class RecruitmentListingServicePhase2Test {
             given(listingRepository.save(any())).willReturn(savedListing);
             given(userRoleRepository.findUserIdsByScope(anyString(), anyLong())).willReturn(List.of(5L, 6L));
             given(mapper.toListingResponse(any())).willReturn(null);
-            // Issue #2715 / 検分是正: sendPublishedNotifications は notificationHelper.notifyAllLocalized(...)
-            // に委譲するのみで、locale 解決 (userLocaleCache) や本文組み立て (messageSource) は
-            // NotificationHelper 側 or bodyBuilder ラムダ内で行われる。notificationHelper 自体を
-            // @Mock にしているためラムダは呼ばれず、ここでのスタブは不要（UnnecessaryStubbingException）。
 
             service.publish(LISTING_ID, ADMIN_ID);
 
@@ -179,25 +169,12 @@ class RecruitmentListingServicePhase2Test {
         }
 
         /**
-         * PR #2764 検分是正の配線確認テスト。
-         *
-         * <p>訂正（2026-08-14）: 当初は「notify を受信者数分ループ直呼びすると F00 Phase F の
-         * 可視性フィルタを迂回し情報漏洩する退行」だと判断していたが、これは誤りだった。
-         * {@code NotificationService#createNotification} が単発経路でも {@code canView} による
-         * 可視性ガードを担保しているため、notify 直呼びループでも漏洩は発生しない。</p>
-         *
-         * <p>本テストが検証しているのは漏洩の有無ではなく、publish() が
-         * {@code notificationHelper.notify(...)} を直接ループ呼び出しせず、必ず
-         * {@code notifyAllLocalized(...)} を経由して配線されていることである。
-         * {@code notifyAllLocalized} は「受信者別 locale の一括本文組み立て」「locale の一括解決
-         * による N+1 回避」「前段フィルタで閲覧不可ユーザー分の無駄な本文組み立て・
-         * createNotification 呼び出しを省くこと」を目的として導入したものであり、本テストは
-         * その配線が保たれていることを確認する。前段フィルタの単体動作は
-         * {@code NotificationHelperTest#NotifyAllLocalized} で検証する。</p>
+         * Issue #2997: 業務TXは通知を同期で作らず、{@link RecruitmentNotificationEvent} を publish するだけであること。
+         * 受信者解決・文面・配送は AFTER_COMMIT のリスナーの責務（実DB検証: RecruitmentNotificationTransactionIT）。
          */
         @Test
-        @DisplayName("配線確認: publish は notify を直接ループせず notifyAllLocalized を経由する")
-        void publish_通知はnotifyAllLocalized経由でありnotify直呼びしない() throws Exception {
+        @DisplayName("配線確認: publish は RECRUITMENT_PUBLISHED の通知イベントを publish する（同期で通知を作らない）")
+        void publish_通知イベントをpublishする() throws Exception {
             RecruitmentListingEntity listing = buildDraftListing();
             RecruitmentListingEntity savedListing = buildOpenListing();
 
@@ -211,17 +188,11 @@ class RecruitmentListingServicePhase2Test {
 
             service.publish(LISTING_ID, ADMIN_ID);
 
-            // notifyAllLocalized が sourceType=RECRUITMENT_LISTING で呼ばれること（前段フィルタが
-            // このソース種別で ReferenceType 解決できる前提の配線を検証する）。
-            verify(notificationHelper).notifyAllLocalized(
-                    eq(List.of(5L, 6L)),
-                    eq("RECRUITMENT_PUBLISHED"),
-                    eq("RECRUITMENT_LISTING"), eq(LISTING_ID),
-                    any(), any(), any(), any(),
-                    any());
-            // notify の受信者ループ直呼び（notifyAllLocalized 経由に一本化する前の形）が復活していないこと。
-            verify(notificationHelper, never()).notify(
-                    any(), eq("RECRUITMENT_PUBLISHED"), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(eventPublisher).publishEvent(argThat((Object event) ->
+                    event instanceof RecruitmentNotificationEvent e
+                            && e.kind() == RecruitmentNotificationEvent.Kind.PUBLISHED
+                            && LISTING_ID.equals(e.listingId())
+                            && List.of(5L, 6L).equals(e.recipientUserIds())));
         }
     }
 
@@ -248,15 +219,18 @@ class RecruitmentListingServicePhase2Test {
             given(listingRepository.incrementConfirmedAtomic(LISTING_ID)).willReturn(1);
             given(reminderRepository.save(any())).willReturn(null);
             given(mapper.toParticipantResponse(any())).willReturn(null);
-            // Issue #2715: RECRUITMENT_CONFIRMED 通知の受信者 locale 解決のためのスタブ。
-            given(userLocaleCache.getLocale(any())).willReturn("ja");
-            given(messageSource.getMessage(any(), any(), any(), any()))
-                    .willAnswer(invocation -> invocation.getArgument(2));
 
             service.confirmApplication(PARTICIPANT_ID, ADMIN_ID);
 
             verify(participantRepository).save(any());
             verify(reminderRepository).save(any());
+            // Issue #2997: RECRUITMENT_CONFIRMED 通知は同期で作らず、通知イベントを publish するだけ。
+            verify(eventPublisher).publishEvent(argThat((Object event) ->
+                    event instanceof RecruitmentNotificationEvent e
+                            && e.kind() == RecruitmentNotificationEvent.Kind.CONFIRMED
+                            && LISTING_ID.equals(e.listingId())
+                            && List.of(USER_ID).equals(e.recipientUserIds())
+                            && ADMIN_ID.equals(e.actorId())));
             verify(eventPublisher).publishEvent(argThat((Object event) -> {
                 if (!(event instanceof RecruitmentParticipantConfirmedEvent confirmedEvent)) {
                     return false;
