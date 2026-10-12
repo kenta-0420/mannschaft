@@ -2,7 +2,9 @@ package com.mannschaft.app.shift.repository;
 
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,11 +12,27 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * シフト枠リポジトリ。
  */
 public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long> {
+
+    /**
+     * 枠の所属スケジュール ID だけを読む（エンティティを永続化コンテキストに載せない。CMP-261010-1432 P）。
+     *
+     * <p>枠間移動は「親スケジュールを FOR UPDATE → 両枠を FOR UPDATE」の順でロックする（既存の枠更新と同じ
+     * 親→子の順序でデッドロックを避ける）。親の ID を知るために枠エンティティを先に読むと、後の FOR UPDATE が
+     * 永続化コンテキスト上の古い状態を返してしまうため、スカラーで読む。</p>
+     */
+    @Query("SELECT s.scheduleId FROM ShiftSlotEntity s WHERE s.id = :id")
+    Optional<Long> findScheduleIdById(@Param("id") Long id);
+
+    /** 枠を排他ロック付きで読む（最新のコミット済みの version・割当を読む。CMP-261010-1432 P）。 */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM ShiftSlotEntity s WHERE s.id = :id")
+    Optional<ShiftSlotEntity> findByIdForUpdate(@Param("id") Long id);
 
     /** 親削除のみの連鎖。割当JSON・業務値・更新日時は保持する。 */
     @Modifying(flushAutomatically = true)
