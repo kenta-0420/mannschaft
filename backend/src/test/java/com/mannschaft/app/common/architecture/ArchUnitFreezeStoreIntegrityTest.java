@@ -831,7 +831,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     // 通知を AFTER_COMMIT リスナーへ移したため、通知系Repository(4)+UserRepository への到達25行減。7264→7239。
     // 内訳: fireNotifications 5・recordCheckIn 5・apply 5・acceptApplication 5・reportCompletion 5（CI 実測 7239 と一致）。
     // D-3（他の6ストア）は CI の整合性テストが不一致を報告していないため変更なし。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7239;
+    // CMP-260909-2149: 時給の認可判定を非TXの ShiftHourlyRateAuthorizer へ一本化したため、ShiftHourlyRateService#checkHourlyRateAccess の3行が返済された（7239→7236）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7236;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。

@@ -1,6 +1,5 @@
 package com.mannschaft.app.shift.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.shift.entity.ShiftHourlyRateEntity;
@@ -18,8 +17,7 @@ import org.springframework.stereotype.Service;
  * クラスにもメソッドにも付けない）で行い、削除は {@link ShiftHourlyRateRepository} 自身の TX に任せる。
  * {@link ShiftHourlyRateService} には削除メソッドを置かない（認可なしの削除入口を残さない）。</p>
  *
- * <p>認可の方針は {@code ShiftHourlyRateService#checkHourlyRateAccess} と同一（SYSTEM_ADMIN 許可 /
- * 本人は当該チームのメンバー / 他人分は当該チームの ADMIN 以上かつ対象も当該チームのメンバー）。
+ * <p>認可の判定は {@link ShiftHourlyRateAuthorizer} に一本化しており、作成・参照と同一の判定を通る。
  * 対象行が存在しない場合も権限なしと同じ 403（COMMON_002）とし、存在の有無を漏らさない。
  * 名前を {@code *AccessService} 等にしないのは、呼んだだけで認可シグナル扱いになるのを避けるため。</p>
  */
@@ -28,10 +26,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ShiftHourlyRateDeletionFacade {
 
-    private static final String TEAM = "TEAM";
-
     private final ShiftHourlyRateRepository hourlyRateRepository;
-    private final AccessControlService accessControlService;
+    private final ShiftHourlyRateAuthorizer hourlyRateAuthorizer;
 
     /**
      * 時給設定を削除する。
@@ -46,14 +42,7 @@ public class ShiftHourlyRateDeletionFacade {
         Long targetUserId = entity.getUserId();
         Long teamId = entity.getTeamId();
 
-        if (!accessControlService.isSystemAdmin(currentUserId)) {
-            if (currentUserId.equals(targetUserId)) {
-                accessControlService.checkMembership(currentUserId, teamId, TEAM);
-            } else {
-                accessControlService.checkAdminOrAbove(currentUserId, teamId, TEAM);
-                accessControlService.checkMembership(targetUserId, teamId, TEAM);
-            }
-        }
+        hourlyRateAuthorizer.checkHourlyRateAccess(currentUserId, targetUserId, teamId);
 
         hourlyRateRepository.deleteById(rateId);
         log.info("時給設定削除: id={}, userId={}, teamId={}", rateId, targetUserId, teamId);
