@@ -40,7 +40,7 @@
       },
       "follow": {
         "title": "Follow a team to become friends",
-        "step1": "Press the \"Follow\" button at the top right of the screen",
+        "step1": "Press the \"Follow\" button at the top of the Friend Teams tab",
         "step2": "Enter the ID (number) of the team you want to follow",
         "step3": "Enter a greeting message (optional, up to 300 characters)",
         "step4": "Press \"Follow\" in the dialog",
