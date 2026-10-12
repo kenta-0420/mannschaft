@@ -2629,7 +2629,8 @@
   "scopeSwitch": {
     "hint": "Zum Wechseln öffnen Sie oben im Menü „Teams“ / „Organisationen“ das gewünschte Team bzw. die Organisation. Das geöffnete wird zum aktuellen Bereich.",
     "goTeams": "Team auswählen",
-    "goOrganizations": "Organisation auswählen"
+    "goOrganizations": "Organisation auswählen",
+    "personalUnsupported": "Diese Einstellung ist nur im Team- oder Organisationsbereich verfügbar. Im persönlichen Bereich kann sie nicht angezeigt werden."
   },
   "joinRequest": {
     "apply": "Beitrittsanfrage",
