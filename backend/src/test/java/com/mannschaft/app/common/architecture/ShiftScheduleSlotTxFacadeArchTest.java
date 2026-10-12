@@ -151,7 +151,7 @@ class ShiftScheduleSlotTxFacadeArchTest {
             total += entry.getValue().size();
         }
         // schedules 9 本・slots 6 本・PDF 1 本（ep_tables_w6.md §3.1）。
-        assertThat(total).as("W6a の対象 Controller メソッドの本数").isEqualTo(16);
+        assertThat(total).as("W6a の対象 Controller メソッドの本数").isEqualTo(17); // CMP-261010-1432 枠間移動で +1
     }
 
     // ═════════════════════════════════════════════════════════════════════

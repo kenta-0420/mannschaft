@@ -268,7 +268,7 @@ class AuthzTxFacadeRegistryArchTest {
         Map<String, Long> byWave = ENTRIES.stream()
                 .collect(Collectors.groupingBy(Entry::wave, TreeMap::new, Collectors.counting()));
         assertThat(byWave).containsExactlyInAnyOrderEntriesOf(Map.of(
-                "W1", 9L, "W2", 16L, "W3a", 1L, "W3b", 2L, "W4", 6L, "W5", 11L, "W5周辺", 1L, "W6a", 16L, "W7", 4L));
+                "W1", 9L, "W2", 16L, "W3a", 1L, "W3b", 2L, "W4", 6L, "W5", 11L, "W5周辺", 1L, "W6a", 17L, "W7", 4L)); // W6a: CMP-261010-1432 枠間移動で +1
         assertThat(ENTRIES).hasSize(66);
         assertThat(ENTRIES.stream().map(Entry::key).distinct().count()).as("登録表に重複が無い").isEqualTo(66);
         assertThat(ENTRIES.stream().map(Entry::facade).collect(Collectors.toSet()))
