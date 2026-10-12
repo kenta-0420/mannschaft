@@ -99,9 +99,10 @@ public class OrganizationEntity extends BaseEntity {
 
     /**
      * 最後にアーカイブまたは論理削除した時刻（F01.2.1 2-D・§4.5）。アーカイブ解除・論理削除の取消では消さない。
-     * team ドメインの加盟の片付けが「閉鎖より前に作られた PENDING」を見分けるのに使う（ポート越しに読む）。
+     * team ドメインの加盟の片付け・承認・承諾が「閉鎖より前に作られた PENDING」を見分けるのに使う（ポート越しに読む）。
+     * 起きた瞬間なので {@link java.time.Instant} で持つ（列は UTC 壁時計の DATETIME。{@code hibernate.jdbc.time_zone=UTC}）。
      */
-    private LocalDateTime lastClosedAt;
+    private java.time.Instant lastClosedAt;
 
     // --- F01.2 拡張プロフィールフィールド ---
 
@@ -260,7 +261,7 @@ public class OrganizationEntity extends BaseEntity {
      */
     public void archive() {
         this.archivedAt = LocalDateTime.now();
-        this.lastClosedAt = closedAtWatermark(this.archivedAt);
+        this.lastClosedAt = closedAtWatermark();
     }
 
     /**
@@ -276,18 +277,18 @@ public class OrganizationEntity extends BaseEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
-        this.lastClosedAt = closedAtWatermark(this.deletedAt);
+        this.lastClosedAt = closedAtWatermark();
     }
 
     /**
-     * 閉鎖時刻の目印を秒に切り捨てる（F01.2.1 §4.5）。加盟行の {@code created_at} は秒の精度
+     * 閉鎖時刻の目印（いまの瞬間を秒に切り捨てた値）を返す（F01.2.1 §4.5）。加盟行の {@code created_at} は秒の精度
      * （JPA の経路は四捨五入、招待の INSERT は切り捨て）なので、閉鎖の<b>後</b>に作られた行の {@code created_at} は
      * 切り捨てた閉鎖時刻より前にならない。片付けは {@code created_at < last_closed_at} の行だけを「閉鎖より前」として消すので、
      * 解除後の申請・招待を誤って消さない（閉鎖と同じ秒に作られた閉鎖前の行は見分けられず残しうるが、
      * 組織が閉じている間はすべての PENDING を消すので、残りうるのは閉鎖と解除が同じ秒の間に重なったときだけ）。
      */
-    private static LocalDateTime closedAtWatermark(LocalDateTime at) {
-        return at.truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+    private static java.time.Instant closedAtWatermark() {
+        return java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
     }
 
     /**

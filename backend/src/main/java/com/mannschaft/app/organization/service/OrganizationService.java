@@ -37,6 +37,7 @@ import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.organization.event.OrganizationCreatedEvent;
 import com.mannschaft.app.organization.event.OrganizationArchivedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
+import com.mannschaft.app.organization.event.OrganizationReopenedEvent;
 import com.mannschaft.app.organization.teamgroup.repository.OrgTeamGroupRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -773,6 +774,9 @@ public class OrganizationService {
     public void unarchiveOrganization(Long orgId) {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         org.unarchive();
+        // F01.2.1 §4.5: 閉鎖の片付けがまだ済んでいなくても、閉鎖より前の PENDING は解除で復元しない。片付けは team ドメインが
+        // AFTER_COMMIT で行う（最後の閉鎖 last_closed_at より前に作られた行だけを消す。解除後の申請・招待には触れない）
+        eventPublisher.publishEvent(new OrganizationReopenedEvent(orgId));
         log.info("組織アーカイブ解除完了: orgId={}", orgId);
     }
 
@@ -873,6 +877,8 @@ public class OrganizationService {
         if (updated == 0) {
             throw new BusinessException(OrgErrorCode.ORG_006);
         }
+        // F01.2.1 §4.5: 論理削除の片付けがまだ済んでいなくても、削除より前の PENDING は復元しない（unarchiveOrganization と同じ）
+        eventPublisher.publishEvent(new OrganizationReopenedEvent(orgId));
         log.info("組織復元完了: orgId={}", orgId);
     }
 

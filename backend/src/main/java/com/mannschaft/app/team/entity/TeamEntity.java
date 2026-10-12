@@ -124,6 +124,14 @@ public class TeamEntity extends BaseEntity {
     private LocalDateTime deletedAt;
 
     /**
+     * 最後にアーカイブまたは論理削除した時刻（F01.2.1 2-D・§4.5）。アーカイブ解除・論理削除の取消では消さない。
+     * 加盟の片付け・承認・承諾が「チームの閉鎖より前に作られた PENDING」を見分けるのに使う
+     * （片付けの前に解除・復元されても、閉鎖より前の申請・招待を復元しない）。起きた瞬間なので {@link java.time.Instant} で持つ
+     * （列は UTC 壁時計の DATETIME。{@code hibernate.jdbc.time_zone=UTC}）。秒に切り捨てて持つ（{@link #closedAtWatermark}）。
+     */
+    private java.time.Instant lastClosedAt;
+
+    /**
      * 柱②-1: 販促プロビジョニング。PROVISIONED（承諾前の事前作成状態）/ ACTIVE（通常）。
      * <p>本 PR では ACTIVE 以外を生成するコードは存在しない（DDL とエンティティ骨格のみ）。
      * 作成 API とゲート（PROVISIONED を通常導線から隠す等）は後続 PR で実装する。</p>
@@ -264,12 +272,14 @@ public class TeamEntity extends BaseEntity {
      */
     public void archive() {
         this.archivedAt = LocalDateTime.now();
+        this.lastClosedAt = closedAtWatermark();
     }
 
     /**
      * チームのアーカイブを解除する。
      */
     public void unarchive() {
+        // lastClosedAt は消さない（解除の前の PENDING を加盟の片付け・承認・承諾が見分けられるように。F01.2.1 §4.5）
         this.archivedAt = null;
     }
 
@@ -278,6 +288,16 @@ public class TeamEntity extends BaseEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+        this.lastClosedAt = closedAtWatermark();
+    }
+
+    /**
+     * 閉鎖時刻の目印（いまの瞬間を秒に切り捨てた値）を返す（F01.2.1 §4.5）。加盟行の {@code created_at} は秒の精度なので、
+     * 閉鎖の<b>後</b>に作られた行の {@code created_at} は切り捨てた閉鎖時刻より前にならない。閉鎖より前の判定は
+     * {@code created_at < last_closed_at}（厳密に前）で行うので、解除後の申請・招待を誤って閉鎖前と見なさない。
+     */
+    private static java.time.Instant closedAtWatermark() {
+        return java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
     }
 
     /**

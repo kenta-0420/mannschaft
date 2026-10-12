@@ -3,6 +3,7 @@ package com.mannschaft.app.team.batch;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.team.repository.OldestPendingByOrganizationRow;
 import com.mannschaft.app.team.repository.TeamOrgAffiliationRestrictionRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.service.TeamAffiliationOrganizationPort;
@@ -26,7 +27,7 @@ import java.util.TreeSet;
  *
  * <p>速い経路（{@code TeamOrgLifecycleListener}・AFTER_COMMIT）は、リスナーの前のプロセス停止や、片付け・outbox の
  * 書き込みの失敗で取りこぼしうる。本バッチは「組織／チームがアーカイブ・論理削除済みなのに PENDING（削除済みなら
- * ACTIVE・制限も）が残っている」状態と、「アーカイブ解除・復元済みの組織に、最後の閉鎖より前に作られた PENDING が
+ * ACTIVE・制限も）が残っている」状態と、「アーカイブ解除・復元済みの組織／チームに、最後の閉鎖より前に作られた PENDING が
  * 残っている」状態を探し、リスナーと<b>同じ</b> {@link TeamOrgLifecycleCleanupService} の片付けを呼ぶ。
  * 片付けはロックの下で現在の状態を確かめ直す（候補選びの後にアーカイブ解除されていれば何もしない）ので、ここでの候補選びは
  * ロックしない読み取りでよい。</p>
@@ -94,7 +95,7 @@ public class TeamOrgLifecycleCleanupBatch {
      */
     private Set<Long> selectOrganizationCandidates() {
         Map<Long, LocalDateTime> oldestPending = new HashMap<>();
-        for (TeamOrgMembershipRepository.OldestPendingProjection row
+        for (OldestPendingByOrganizationRow row
                 : membershipRepository.findOldestPendingCreatedAtByOrganization()) {
             oldestPending.put(row.getOrganizationId(), row.getOldestCreatedAt());
         }

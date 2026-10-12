@@ -10,6 +10,7 @@ import com.mannschaft.app.team.event.TeamArchivedEvent;
 import com.mannschaft.app.team.event.TeamCreatedEvent;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
 import com.mannschaft.app.team.event.TeamMemberRemovedEvent;
+import com.mannschaft.app.team.event.TeamUnarchivedEvent;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamSlugHistoryRepository;
@@ -823,16 +824,44 @@ public class TeamService {
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void unarchiveTeam(Long teamId) {
-        // F01.2.1 §4.5・§6.9: チーム行を PESSIMISTIC_WRITE で取り、解除の前に残った PENDING を片付ける。
+        // F01.2.1 §4.5・§6.9: チーム行を PESSIMISTIC_WRITE で取り、解除の時点で残っている PENDING を同じ tx で片付ける。
         // アーカイブ中のチームへの申請・招待はチーム行のロックの下で拒否されるので、ここで残っている PENDING は
         // アーカイブより前のもの（他ドメインの tx からのアーカイブの片付けがまだ済んでいない）。解除で復元しない
         TeamEntity team = teamRepository.findByIdForUpdate(teamId)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
-        if (team.getArchivedAt() != null) {
-            teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(team.getId(), team.getName());
-        }
+        boolean wasArchived = team.getArchivedAt() != null;
+        Long id = team.getId();
+        String name = team.getName();
+        // 解除を片付けより前に行う。片付けの削除は永続化コンテキストをクリアする（@Modifying(clearAutomatically)）ので、
+        // 片付けの後に Entity を変更しても保存されない（2-D 検分3巡目 High 1）。片付けは最初に flush して解除を書き出す
         team.unarchive();
+        if (wasArchived) {
+            teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(id, name);
+        }
         log.info("チームアーカイブ解除完了: teamId={}", teamId);
+    }
+
+    /**
+     * 他ドメインのトランザクション（システム管理者の強制解除 {@code SystemAdminScopeForceUnarchiveController} など）から
+     * チームのアーカイブを解除する（F01.2.1 2-D）。
+     *
+     * <p>解除そのものは {@link #unarchiveTeam} と同じ（チーム行のロック）だが、加盟（PENDING）の片付けを呼び出し元の
+     * トランザクションに持ち込まない（CLAUDE.md 原則5・D-3T）。代わりに {@link TeamUnarchivedEvent} を発行し、team ドメインが
+     * コミット後に自分のトランザクションで、チームの最後の閉鎖（{@code teams.last_closed_at}。解除しても消えない）より前に
+     * 作られた PENDING を片付ける（{@code TeamOrgLifecycleListener}。取りこぼしは {@code TeamOrgLifecycleCleanupBatch} が拾う）。
+     * 片付けまでの間に閉鎖前の PENDING を承認・承諾しようとしても、同じ規則で無効として拒む（ACTIVE にしない。§4.5）。</p>
+     */
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "team-detail", allEntries = true),
+            @CacheEvict(value = "team-search", allEntries = true)
+    })
+    public void unarchiveTeamDeferringAffiliationCleanup(Long teamId) {
+        TeamEntity team = teamRepository.findByIdForUpdate(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
+        team.unarchive();
+        eventPublisher.publishEvent(new TeamUnarchivedEvent(teamId));
+        log.info("チームアーカイブ解除完了（加盟の片付けはコミット後）: teamId={}", teamId);
     }
 
     /**
@@ -1085,6 +1114,9 @@ public class TeamService {
         if (teamRepository.countByIdIncludingDeleted(teamId) == 0) {
             throw new BusinessException(TeamErrorCode.TEAM_001);
         }
+        // F01.2.1 §4.5: 論理削除の片付け（加盟の PENDING・ACTIVE と制限）がまだ済んでいなければ、復元の前に同じ tx で済ませる
+        // （チーム行のロックの下で状態を確かめる。復元で削除前の加盟を戻さない。済んでいれば何もしない）
+        teamOrgLifecycleCleanupService.cleanUpTeam(teamId);
         int updated = teamRepository.restoreById(teamId);
         if (updated == 0) {
             throw new BusinessException(TeamErrorCode.TEAM_006);

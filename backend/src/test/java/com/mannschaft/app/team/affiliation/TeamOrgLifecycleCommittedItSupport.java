@@ -212,6 +212,18 @@ abstract class TeamOrgLifecycleCommittedItSupport extends TeamAffiliationItSuppo
                 .with(user(String.valueOf(actor)))).andReturn());
     }
 
+    protected Result unarchiveTeamApi(long actor, String teamSlug) throws Exception {
+        return toResult(mockMvc.perform(patch("/api/v1/teams/{slug}/unarchive", teamSlug)
+                .with(user(String.valueOf(actor)))).andReturn());
+    }
+
+    /** チーム側の招待の承諾（POST /teams/{teamSlug}/org-invites/{id}/accept。2-C）。 */
+    protected Result acceptInvite(long actor, String teamSlug, long membershipId) throws Exception {
+        return toResult(mockMvc.perform(post("/api/v1/teams/{teamSlug}/org-invites/{id}/accept",
+                        teamSlug, membershipId)
+                .with(user(String.valueOf(actor)))).andReturn());
+    }
+
     protected Result archiveOrgApi(long actor, String orgSlug) throws Exception {
         return toResult(mockMvc.perform(patch("/api/v1/organizations/{slug}/archive", orgSlug)
                 .with(user(String.valueOf(actor)))).andReturn());

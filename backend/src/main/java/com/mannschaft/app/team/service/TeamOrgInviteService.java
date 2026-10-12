@@ -227,7 +227,7 @@ public class TeamOrgInviteService {
         // 4. 書き込み（team ドメインのトランザクション）。承諾の通知（組織 ADMIN 全員）は同じ tx で outbox に予約する（OB14）
         TeamOrgInviteCommandService.AcceptedInvite accepted = commandService.accept(
                 teamId, membershipId, operatorUserId, organizationId, confirmedGroupId,
-                organization.name(), organization.slug());
+                organization.name(), organization.slug(), organization.lastClosedAt());
 
         // 5. コミットの後: 監査
         Map<String, Object> metadata = new LinkedHashMap<>();

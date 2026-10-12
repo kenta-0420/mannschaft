@@ -37,8 +37,11 @@ import java.util.stream.Collectors;
  *   <li>アーカイブも論理削除もされていなければ、解除後の申請・招待は消さない（アーカイブ → 解除 → 新しい申請、の後に古い契機で
  *       呼ばれても、解除後の申請を消さない）。ただし<b>閉鎖より前の</b> PENDING は解除で復元しない（§4.5）: 組織側は、組織が
  *       最後に閉じた時刻（{@code organizations.last_closed_at}。解除・復元しても消えない）より前に作られた PENDING を消す。
- *       チーム側は、アーカイブ解除（{@code TeamService#unarchiveTeam}）がチーム行のロックの下で解除の前に残った PENDING を消す
- *       （{@link #cancelPendingOfArchivedTeam}）。</li>
+ *       チーム側も同じ規則（{@code teams.last_closed_at}）で見分ける。加えてチーム自身のアーカイブ解除
+ *       （{@code TeamService#unarchiveTeam}）はチーム行のロックの下で残った PENDING を同じ tx で消し（{@link #cancelPendingOfArchivedTeam}）、
+ *       論理削除の取消（{@code TeamService#restoreTeam}）は復元の前に削除の片付けを同じ tx で済ませる。</li>
+ *   <li>承認・承諾も同じ規則（{@link TeamOrgClosureWatermark}）で閉鎖前の PENDING を無効として拒み（ACTIVE にしない）、
+ *       ロールバックの後にこの片付けを呼ぶ（{@code TeamOrgLifecycleListener#onStalePendingDetected}）。</li>
  *   <li>同じ契機で何度呼ばれても結果は同じ（消す行が無ければ 0 件・通知なし）。</li>
  * </ul>
  * <p>同じ片付けを2つの経路から呼ぶ。速い経路はイベント（{@code TeamOrgLifecycleListener}・AFTER_COMMIT）、
@@ -63,7 +66,9 @@ import java.util.stream.Collectors;
  *   <tr><td>組織の論理削除</td><td>同上</td><td>削除・チームへ通知</td><td>触らない（対象外）</td><td>物理削除</td></tr>
  *   <tr><td>チームのアーカイブ（チーム自身の API）</td><td>{@link #cancelPendingOfArchivedTeam}（{@code TeamService#archiveTeam} と同じ tx）</td><td>削除・組織へ通知</td><td>残す</td><td>残す</td></tr>
  *   <tr><td>組織のアーカイブ解除・復元（片付けの前）</td><td>{@link #cleanUpOrganization}</td><td>最後の閉鎖より前に作られた行だけ削除・チームへ通知</td><td>残す</td><td>残す</td></tr>
- *   <tr><td>チームのアーカイブ解除（片付けの前）</td><td>{@link #cancelPendingOfArchivedTeam}（{@code TeamService#unarchiveTeam} と同じ tx・解除の前）</td><td>削除・組織へ通知</td><td>残す</td><td>残す</td></tr>
+ *   <tr><td>チームのアーカイブ解除（チーム自身の API・片付けの前）</td><td>{@link #cancelPendingOfArchivedTeam}（{@code TeamService#unarchiveTeam} と同じ tx・解除の後）</td><td>削除・組織へ通知</td><td>残す</td><td>残す</td></tr>
+ *   <tr><td>チームのアーカイブ解除（システム管理者の強制解除など他ドメインの tx から・片付けの前）</td><td>{@link #cleanUpTeam}（コミット後）</td><td>最後の閉鎖より前に作られた行だけ削除・組織へ通知</td><td>残す</td><td>残す</td></tr>
+ *   <tr><td>チームの論理削除の取消（片付けの前）</td><td>{@link #cleanUpTeam}（{@code TeamService#restoreTeam} と同じ tx・復元の前）</td><td>削除・組織へ通知</td><td>削除</td><td>物理削除</td></tr>
  *   <tr><td>チームのアーカイブ（後継者不在の自動アーカイブなど他ドメインの tx から）</td><td>{@link #cleanUpTeam}（コミット後）</td><td>削除・組織へ通知</td><td>残す</td><td>残す</td></tr>
  *   <tr><td>チームの論理削除</td><td>{@link #cleanUpTeam}</td><td>削除・組織へ通知</td><td>削除</td><td>物理削除</td></tr>
  * </table>
@@ -92,7 +97,8 @@ public class TeamOrgLifecycleCleanupService {
      * 取消を予約する。ACTIVE は残す。{@code TeamService#archiveTeam} がチーム行をロックしたトランザクションの中で呼ぶ
      * （コミットの時点で PENDING を残さない。AC-G105・AC-E07①）。
      *
-     * <p>アーカイブ解除（{@code TeamService#unarchiveTeam}）も、チーム行をロックしたトランザクションの中で解除の前に呼ぶ。
+     * <p>アーカイブ解除（{@code TeamService#unarchiveTeam}）も、チーム行をロックしたトランザクションの中で、解除（Entity の変更）の
+     * <b>後に</b>呼ぶ（下記「永続化コンテキストのクリア」）。
      * アーカイブ中のチームへの申請・招待はチーム行のロックの下で拒否されるので、解除の時点で残っている PENDING は
      * すべてアーカイブより前のもの（片付けの前に解除された＝他ドメインの tx からのアーカイブの片付けが未了）であり、
      * 解除で復元しない（§4.5）。</p>
@@ -100,12 +106,21 @@ public class TeamOrgLifecycleCleanupService {
      * <p>引数はチームの ID と名前（通知の文面）だけを受ける（Service の公開 API に Entity を出さない。
      * {@code ServiceApiEntityBoundaryArchTest}）。</p>
      *
+     * <p><b>永続化コンテキストのクリア</b>: 行の削除は {@code @Modifying(clearAutomatically = true)} なので、呼び出し側の
+     * トランザクションの永続化コンテキストをクリアする（呼び出し側が読んだチームの Entity は detached になる）。本メソッドは
+     * 最初に {@code flush} して呼び出し側の変更を書き出すが、<b>呼び出しの後に</b>管理下の Entity を変更しても保存されない。
+     * 呼び出し側はチーム行の変更（アーカイブ・解除）を本メソッドの前に済ませること（{@code TeamService#archiveTeam}・
+     * {@code TeamService#unarchiveTeam}）。</p>
+     *
      * @param teamId   チーム ID（呼び出し側がチーム行をロック済み）
      * @param teamName チーム名（取消の通知の文面に使う）
      * @return 削除した PENDING の件数
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public int cancelPendingOfArchivedTeam(Long teamId, String teamName) {
+        // 呼び出し側の変更（チームのアーカイブ・解除）を先に書き出す。削除（deleteByIdIn）は永続化コンテキストを
+        // クリアするので、呼び出し側は本メソッドの前にチーム行を変更し終え、後では管理下の Entity を変更しないこと
+        membershipRepository.flush();
         List<TeamOrgMembershipEntity> pending = membershipRepository.findAllByTeamIdForUpdate(teamId).stream()
                 .filter(m -> m.getStatus() == TeamOrgMembershipEntity.Status.PENDING)
                 .toList();
@@ -117,7 +132,9 @@ public class TeamOrgLifecycleCleanupService {
      * <ul>
      *   <li>論理削除済み（または行が無い）なら、PENDING・ACTIVE・制限を消し、PENDING の相手（組織 ADMIN）へ取消を予約する</li>
      *   <li>アーカイブ済みなら、PENDING を消して相手へ取消を予約する（ACTIVE・制限は残す）</li>
-     *   <li>どちらでもなければ何もしない（アーカイブ解除済み）</li>
+     *   <li>どちらでもなければ（アーカイブ解除・復元済み）、<b>最後の閉鎖より前に作られた</b> PENDING
+     *       （{@code created_at < teams.last_closed_at}）だけを消して相手へ取消を予約する（他ドメインの tx からのアーカイブの
+     *       片付けの前に解除されても、閉鎖より前の申請・招待を残さない。§4.5。解除後の申請・招待は消さない）</li>
      * </ul>
      *
      * @return 削除した加盟行の件数
@@ -127,11 +144,23 @@ public class TeamOrgLifecycleCleanupService {
         Optional<TeamEntity> locked = teamRepository.findByIdIncludingDeletedForUpdate(teamId);
         boolean deleted = locked.map(t -> t.getDeletedAt() != null).orElse(true);
         boolean archived = locked.map(t -> t.getArchivedAt() != null).orElse(false);
-        if (!deleted && !archived) {
-            return 0;
-        }
         String teamName = locked.map(TeamEntity::getName).orElse(null);
         List<TeamOrgMembershipEntity> rows = membershipRepository.findAllByTeamIdForUpdate(teamId);
+        if (!deleted && !archived) {
+            // アーカイブ解除・復元済み。最後の閉鎖より前に作られた PENDING だけを消す（チーム行のロックの下なので、
+            // 解除後の申請・招待は created_at が閉鎖より後であり、消さない）
+            java.time.Instant lastClosedAt = locked.map(TeamEntity::getLastClosedAt).orElse(null);
+            List<TeamOrgMembershipEntity> beforeClosure = rows.stream()
+                    .filter(m -> m.getStatus() == TeamOrgMembershipEntity.Status.PENDING)
+                    .filter(m -> TeamOrgClosureWatermark.createdBefore(m.getCreatedAt(), lastClosedAt))
+                    .toList();
+            int removed = deleteAndNotifyOrganizations(teamName, beforeClosure, List.of());
+            if (removed > 0) {
+                log.info("アーカイブ解除・復元の前に片付けが済んでいなかったチームの PENDING を片付け: teamId={}, pending={}",
+                        teamId, removed);
+            }
+            return removed;
+        }
         List<TeamOrgMembershipEntity> pending = rows.stream()
                 .filter(m -> m.getStatus() == TeamOrgMembershipEntity.Status.PENDING).toList();
         List<TeamOrgMembershipEntity> active = deleted

@@ -54,14 +54,7 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
         OrganizationEntity org = organizationRepository.findByIdForUpdate(organizationId)
                 .filter(o -> o.getLifecycleStatus() == OrganizationEntity.LifecycleStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
-        return new OrganizationAffiliationState(
-                org.getId(),
-                org.getSlug(),
-                org.getName(),
-                org.getArchivedAt() != null,
-                Boolean.TRUE.equals(org.getTeamApplicationEnabled()),
-                Boolean.TRUE.equals(org.getTeamGroupsEnabled()),
-                org.getTeamApplicationGroupMode());
+        return toState(org);
     }
 
     @Override
@@ -71,14 +64,7 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
         // 論理削除済みは Entity の @SQLRestriction が除外する。承諾前（PROVISIONED）は不在と同じ扱い
         return organizationRepository.findById(organizationId)
                 .filter(o -> o.getLifecycleStatus() == OrganizationEntity.LifecycleStatus.ACTIVE)
-                .map(org -> new OrganizationAffiliationState(
-                        org.getId(),
-                        org.getSlug(),
-                        org.getName(),
-                        org.getArchivedAt() != null,
-                        Boolean.TRUE.equals(org.getTeamApplicationEnabled()),
-                        Boolean.TRUE.equals(org.getTeamGroupsEnabled()),
-                        org.getTeamApplicationGroupMode()));
+                .map(OrganizationAffiliationPortAdapter::toState);
     }
 
     @Override
@@ -136,7 +122,8 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
                 org.getArchivedAt() != null,
                 Boolean.TRUE.equals(org.getTeamApplicationEnabled()),
                 Boolean.TRUE.equals(org.getTeamGroupsEnabled()),
-                org.getTeamApplicationGroupMode());
+                org.getTeamApplicationGroupMode(),
+                org.getLastClosedAt());
     }
 
     private static OrganizationRef toRef(OrganizationEntity org) {

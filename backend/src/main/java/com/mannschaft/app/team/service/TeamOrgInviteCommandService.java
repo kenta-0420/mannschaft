@@ -14,6 +14,7 @@ import com.mannschaft.app.team.repository.TeamOrgAffiliationRestrictionRepositor
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +58,7 @@ public class TeamOrgInviteCommandService {
     private final TeamOrgAffiliationRestrictionService restrictionService;
     private final TeamOrgAffiliationRestrictionRepository restrictionRepository;
     private final TeamAffiliationNotifier notifier;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
     private final Duration declineCooldown;
     private final Duration resendCooldown;
@@ -67,6 +69,7 @@ public class TeamOrgInviteCommandService {
             TeamOrgAffiliationRestrictionService restrictionService,
             TeamOrgAffiliationRestrictionRepository restrictionRepository,
             TeamAffiliationNotifier notifier,
+            ApplicationEventPublisher eventPublisher,
             Clock clock,
             @Value("${mannschaft.affiliation.reject-cooldown-days:30}") long declineCooldownDays,
             @Value("${mannschaft.affiliation.resend-cooldown-hours:24}") long resendCooldownHours) {
@@ -75,6 +78,7 @@ public class TeamOrgInviteCommandService {
         this.restrictionService = restrictionService;
         this.restrictionRepository = restrictionRepository;
         this.notifier = notifier;
+        this.eventPublisher = eventPublisher;
         this.clock = clock;
         this.declineCooldown = Duration.ofDays(declineCooldownDays);
         this.resendCooldown = Duration.ofHours(resendCooldownHours);
@@ -205,11 +209,14 @@ public class TeamOrgInviteCommandService {
      * @param confirmedGroupId       確定グループ（null なら未分類）
      * @param organizationName       通知の文面に使う組織名（事前に読んだ組織の状態）
      * @param organizationSlug       通知から開く画面の組織 slug
+     * @param organizationLastClosedAt 事前に読んだ組織の最後の閉鎖の瞬間（{@code organizations.last_closed_at}。
+     *                                 一度も閉じていなければ null）。これより前に作られた招待は無効として拒む（§4.5）
      */
     @Transactional
     public AcceptedInvite accept(Long teamId, Long membershipId, Long operatorUserId,
                                  Long expectedOrganizationId, UUID confirmedGroupId,
-                                 String organizationName, String organizationSlug) {
+                                 String organizationName, String organizationSlug,
+                                 Instant organizationLastClosedAt) {
         // 1. 最初の文でチーム行をロックする（同じチームの招待・申請の作成と直列化する）。削除済みなら行は無いものとして扱う
         TeamEntity team = teamRepository.findByIdForUpdate(teamId)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_070));
@@ -225,6 +232,9 @@ public class TeamOrgInviteCommandService {
         if (team.getArchivedAt() != null) {
             throw new BusinessException(TeamErrorCode.TEAM_002);
         }
+        // 組織・チームの最後の閉鎖より前に作られた招待は、閉鎖の片付けの前に解除・復元されて残った無効な行（§4.5。
+        // 解除で復元しない）。承諾せず（ACTIVE にしない）、行が無いのと同じ 404 で拒み、ロールバックの後に片付けさせる
+        TeamOrgClosureWatermark.rejectIfCreatedBeforeLastClosure(row, organizationLastClosedAt, team, eventPublisher);
         TeamOrgAffiliationAssembler.AffiliationRow requested = TeamOrgAffiliationAssembler.AffiliationRow.from(row);
 
         // 3. 条件付き UPDATE。行ロックを保持しているので必ず1行に当たる。0 件ならロックの前提が崩れているため握り潰さない

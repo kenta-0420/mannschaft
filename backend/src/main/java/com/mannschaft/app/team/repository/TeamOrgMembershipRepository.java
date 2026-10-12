@@ -668,24 +668,19 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
         + "FROM TeamOrgMembershipEntity m "
         + "WHERE m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
         + "GROUP BY m.organizationId ORDER BY m.organizationId")
-    List<OldestPendingProjection> findOldestPendingCreatedAtByOrganization();
-
-    /** {@link #findOldestPendingCreatedAtByOrganization} の1行。 */
-    interface OldestPendingProjection {
-        Long getOrganizationId();
-
-        java.time.LocalDateTime getOldestCreatedAt();
-    }
+    List<OldestPendingByOrganizationRow> findOldestPendingCreatedAtByOrganization();
 
     /**
      * 片付けの回復バッチ: 片付けが残っているチームの ID を昇順に返す。アーカイブ済みのチームの PENDING と、
-     * 論理削除済み（または行の無い）チームの加盟（PENDING・ACTIVE とも）が対象（チームの表は同じ team ドメイン。
-     * {@code @SQLRestriction} を通さず削除済みを見るためネイティブで読む）。
+     * 論理削除済み（または行の無い）チームの加盟（PENDING・ACTIVE とも）と、アーカイブ解除・復元済みのチームに残った
+     * 最後の閉鎖（{@code teams.last_closed_at}）より前に作られた PENDING が対象（チームの表は同じ team ドメイン。
+     * {@code @SQLRestriction} を通さず削除済みを見るためネイティブで読む。時刻は DB の列どうしで比べ、Java の値を束縛しない）。
      */
     @Query(value = "SELECT DISTINCT m.team_id FROM team_org_memberships m "
             + "LEFT JOIN teams t ON t.id = m.team_id "
             + "WHERE t.id IS NULL OR t.deleted_at IS NOT NULL "
-            + "OR (t.archived_at IS NOT NULL AND m.status = 'PENDING') ORDER BY m.team_id", nativeQuery = true)
+            + "OR (t.archived_at IS NOT NULL AND m.status = 'PENDING') "
+            + "OR (m.status = 'PENDING' AND m.created_at < t.last_closed_at) ORDER BY m.team_id", nativeQuery = true)
     List<Number> findTeamIdsNeedingLifecycleCleanup();
 
     /**

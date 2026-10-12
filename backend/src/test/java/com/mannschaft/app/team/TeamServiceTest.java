@@ -357,7 +357,8 @@ class TeamServiceTest {
     class UnarchiveTeam {
 
         @Test
-        @DisplayName("F01.2.1 2-D・§4.5: 片付けの前に解除されても、チーム行をロックして解除の前に残った PENDING を片付ける（復元しない）")
+        @DisplayName("F01.2.1 2-D・§4.5: 片付けの前に解除されても、チーム行をロックして残った PENDING を同じ tx で片付ける（復元しない）。"
+                + "片付けの削除は永続化コンテキストをクリアするので、解除は片付けより前に済ませる（検分3巡目 High 1）")
         void 解除の前に残ったPENDINGを片付ける() {
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
                     .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
@@ -365,8 +366,8 @@ class TeamServiceTest {
             given(teamRepository.findByIdForUpdate(TEAM_ID)).willReturn(Optional.of(team));
             given(teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(any(), eq("テスト")))
                     .willAnswer(inv -> {
-                        // 解除の前（まだアーカイブ済みの状態）で呼ばれること
-                        assertThat(team.getArchivedAt()).isNotNull();
+                        // 片付けの前に解除が済んでいること（片付けの後の Entity の変更は detached で保存されない）
+                        assertThat(team.getArchivedAt()).isNull();
                         return 1;
                     });
 
@@ -386,6 +387,26 @@ class TeamServiceTest {
             service.unarchiveTeam(TEAM_ID);
 
             org.mockito.Mockito.verifyNoInteractions(teamOrgLifecycleCleanupService);
+        }
+
+        @Test
+        @DisplayName("F01.2.1 2-D D-3T: 他ドメインの tx からの解除は、加盟の片付けを持ち込まず TeamUnarchivedEvent を発行する")
+        void 他ドメインからの解除はイベントを発行する() {
+            TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
+            team.archive();
+            given(teamRepository.findByIdForUpdate(TEAM_ID)).willReturn(Optional.of(team));
+
+            service.unarchiveTeamDeferringAffiliationCleanup(TEAM_ID);
+
+            assertThat(team.getArchivedAt()).isNull();
+            assertThat(team.getLastClosedAt()).as("最後の閉鎖時刻は解除しても残る").isNotNull();
+            org.mockito.Mockito.verifyNoInteractions(teamOrgLifecycleCleanupService);
+            org.mockito.ArgumentCaptor<Object> event = org.mockito.ArgumentCaptor.forClass(Object.class);
+            org.mockito.Mockito.verify(eventPublisher).publishEvent(event.capture());
+            assertThat(event.getValue()).isInstanceOfSatisfying(
+                    com.mannschaft.app.team.event.TeamUnarchivedEvent.class,
+                    e -> assertThat(e.getTeamId()).isEqualTo(TEAM_ID));
         }
     }
 
