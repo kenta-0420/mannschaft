@@ -1,4 +1,10 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "No se pudieron cargar los detalles de la habilidad",
+      "loadCategoriesFailed": "No se pudieron cargar las categorías"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "Responder en hilo",
