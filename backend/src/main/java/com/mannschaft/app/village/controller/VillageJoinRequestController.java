@@ -1,11 +1,16 @@
 package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.village.dto.JoinRequestCreateRequest;
 import com.mannschaft.app.village.dto.JoinRequestResponse;
 import com.mannschaft.app.village.dto.JoinRequestReviewRequest;
+import com.mannschaft.app.village.dto.MyJoinRequestResponse;
 import com.mannschaft.app.village.entity.enums.VillageRequestStatus;
 import com.mannschaft.app.village.service.VillageJoinRequestService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,6 +51,26 @@ import java.util.UUID;
 public class VillageJoinRequestController {
 
     private final VillageJoinRequestService service;
+
+    /**
+     * 認証本人が申請した履歴を、村の公開状態や現在の代表者権限によらず取得する。
+     * 村ID・他人のユーザーIDを入力に取らない。申請先の村名・状態は本人が申請した行に限って付与する。
+     */
+    @SelfScopedEndpoint("SecurityUtils.getCurrentUserId() の認証本人を"
+            + "VillageJoinRequestService#listMyHistory へ渡し、findByRequesterUserId のWHEREで固定する")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "Village基盤の認証本人の既存参加申請履歴を村の公開状態によらず確認するコア機能のため")
+    @GetMapping("/api/v1/village-join-requests/me")
+    @Operation(summary = "認証本人の村参加申請履歴")
+    public ResponseEntity<PagedResponse<MyJoinRequestResponse>> listMyHistory(
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        Page<MyJoinRequestResponse> result = service.listMyHistory(actorUserId, page, size);
+        return ResponseEntity.ok(PagedResponse.of(result.getContent(),
+                new PagedResponse.PageMeta(result.getTotalElements(), result.getNumber(),
+                        result.getSize(), result.getTotalPages())));
+    }
 
     // ------------------------------------------------------------------
     // 申請（申請者向け）
