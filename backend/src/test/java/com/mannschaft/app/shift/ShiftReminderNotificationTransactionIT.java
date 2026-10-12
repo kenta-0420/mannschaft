@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.shift;
+package com.mannschaft.app.shift;
 
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
