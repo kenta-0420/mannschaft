@@ -3,6 +3,7 @@ package com.mannschaft.app.notification.outbox;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.social.service.SocialNotificationOutboxSource;
 import com.mannschaft.app.team.service.TeamNotificationOutboxSource;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.junit.jupiter.api.DisplayName;
@@ -58,20 +59,22 @@ class NotificationOutboxContractTest {
     }
 
     @Test
-    @DisplayName("OB16 team の source の claim・印付け・回収・掃除はすべて実効 REQUIRES_NEW（MANDATORY・REQUIRED にしない）")
+    @DisplayName("OB16 各送り手（team・social）の source の claim・印付け・回収・掃除はすべて実効 REQUIRES_NEW（MANDATORY・REQUIRED にしない）")
     void ob16_sourceの各操作はREQUIRES_NEW() throws Exception {
-        List<Method> operations = List.of(
-                TeamNotificationOutboxSource.class.getMethod("claim", int.class, Instant.class),
-                TeamNotificationOutboxSource.class.getMethod("markRelayed", UUID.class, UUID.class, Instant.class),
-                TeamNotificationOutboxSource.class.getMethod("markFailed", UUID.class, UUID.class, String.class,
-                        Instant.class, boolean.class, Instant.class),
-                TeamNotificationOutboxSource.class.getMethod("deferUnsupportedVersion", UUID.class, UUID.class,
-                        Instant.class, Instant.class),
-                TeamNotificationOutboxSource.class.getMethod("recoverStuck", Instant.class, Instant.class),
-                TeamNotificationOutboxSource.class.getMethod("sweep", Instant.class, Instant.class));
-        for (Method operation : operations) {
-            assertThat(effectivePropagation(operation, TeamNotificationOutboxSource.class))
-                    .as(operation.getName()).isEqualTo(Propagation.REQUIRES_NEW);
+        for (Class<?> source : List.of(TeamNotificationOutboxSource.class, SocialNotificationOutboxSource.class)) {
+            List<Method> operations = List.of(
+                    source.getMethod("claim", int.class, Instant.class),
+                    source.getMethod("markRelayed", UUID.class, UUID.class, Instant.class),
+                    source.getMethod("markFailed", UUID.class, UUID.class, String.class,
+                            Instant.class, boolean.class, Instant.class),
+                    source.getMethod("deferUnsupportedVersion", UUID.class, UUID.class,
+                            Instant.class, Instant.class),
+                    source.getMethod("recoverStuck", Instant.class, Instant.class),
+                    source.getMethod("sweep", Instant.class, Instant.class));
+            for (Method operation : operations) {
+                assertThat(effectivePropagation(operation, source))
+                        .as(source.getSimpleName() + "#" + operation.getName()).isEqualTo(Propagation.REQUIRES_NEW);
+            }
         }
     }
 

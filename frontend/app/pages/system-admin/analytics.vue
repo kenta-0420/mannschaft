@@ -29,7 +29,7 @@ Chart.register(
   Filler,
 )
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const analyticsApi = useSystemAdminAnalyticsApi()
 const notification = useNotification()

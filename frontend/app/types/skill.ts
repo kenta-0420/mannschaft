@@ -16,7 +16,7 @@ export interface MemberSkillResponse {
   categoryName: string
   userId: number
   scopeType: string
-  scopeId: string
+  scopeId: number
   name: string
   issuer: string | null
   credentialNumber: string | null
@@ -28,6 +28,22 @@ export interface MemberSkillResponse {
   verifiedBy: number | null
   version: number
   createdAt: string
+}
+
+/** 検索API（GET /skills/search）の1件。MemberSkillResponse とは項目名が異なる。 */
+export interface SkillSearchItem {
+  memberSkillId: number
+  userId: number
+  displayName: string | null
+  categoryId: number
+  skillName: string
+  issuer: string | null
+  credentialNumber: string | null
+  acquiredOn: string | null
+  expiresAt: string | null
+  status: SkillStatus
+  verifiedAt: string | null
+  expiringSoon: boolean
 }
 
 export interface RegisterSkillRequest {
