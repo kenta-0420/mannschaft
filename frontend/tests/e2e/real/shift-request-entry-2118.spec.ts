@@ -108,9 +108,7 @@ const test = base
 
 // dev サーバーの初回ルートコンパイルが重く、既定 60s では役者 2 人ぶんの
 // ページ遷移が入るテストが落ちる（症状隠しではなく実測に基づく余裕の確保）。
-test.beforeEach((_, testInfo) => {
-  testInfo.setTimeout(180_000)
-})
+test.setTimeout(180_000)
 
 /** 指定ユーザーでログイン済みのページを開く。 */
 async function openAs(browser: Browser, email: string): Promise<Page> {
