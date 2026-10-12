@@ -78,8 +78,8 @@ class ChatMessageArchiveBatchServiceUtcBoundaryIT extends AbstractMySqlIntegrati
 
     private static void insertDeletedMessage(java.sql.Statement st, long id, String createdAtExpr) throws java.sql.SQLException {
         st.executeUpdate(
-                "INSERT INTO chat_messages (id, channel_id, body, depth, is_edited, is_system, reply_count, reaction_count, is_pinned, "
-                        + "created_at, updated_at, deleted_at) VALUES (" + id + ", 1, 'utc-boundary', 0, 0, 0, 0, 0, 0, "
+                "INSERT INTO chat_messages (id, channel_id, body, depth, is_edited, is_system, reply_count, reaction_count, is_pinned, posted_as_subject_type, "
+                        + "created_at, updated_at, deleted_at) VALUES (" + id + ", 1, 'utc-boundary', 0, 0, 0, 0, 0, 0, 'USER', "
                         + createdAtExpr + ", " + createdAtExpr + ", " + createdAtExpr + ")");
     }
 
