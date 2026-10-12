@@ -3,32 +3,22 @@ package com.mannschaft.app.notification.confirmable.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationRecipientEntity;
-import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationSettingsEntity;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
-import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationSettingsRepository;
-import com.mannschaft.app.notification.service.NotificationHelper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.context.MessageSource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.stream.Collectors;
 
 /**
  * F04.9 確認通知リマインドバッチサービス。
@@ -40,41 +30,14 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ConfirmableNotificationReminderBatchService {
 
     private final ConfirmableNotificationRepository notificationRepository;
     private final ConfirmableNotificationRecipientRepository recipientRepository;
-    private final ConfirmableNotificationSettingsRepository settingsRepository;
-    private final NotificationHelper notificationHelper;
-    /** Issue #2715 ロットB: 送信者アラート本文の locale 解決（D-5: auth の UserRepository を直接呼ばない）。 */
-    private final UserLocaleCache userLocaleCache;
-    private final MessageSource messageSource;
     private final JdbcTemplate jdbcTemplate;
-    /**
-     * runBatch は同一クラス内から processReminders / processAlertIfNeeded を呼ぶため、
-     * {@code @Transactional} のプロキシを通らない（自己呼び出し）。通知1件ごとに明示的に
-     * トランザクションを張り、その中で通知を再取得して遅延読み込み（recipient.user / createdBy）を成立させる。
-     */
-    private final TransactionTemplate transactionTemplate;
-
-    public ConfirmableNotificationReminderBatchService(
-            ConfirmableNotificationRepository notificationRepository,
-            ConfirmableNotificationRecipientRepository recipientRepository,
-            ConfirmableNotificationSettingsRepository settingsRepository,
-            NotificationHelper notificationHelper,
-            UserLocaleCache userLocaleCache,
-            MessageSource messageSource,
-            JdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager) {
-        this.notificationRepository = notificationRepository;
-        this.recipientRepository = recipientRepository;
-        this.settingsRepository = settingsRepository;
-        this.notificationHelper = notificationHelper;
-        this.userLocaleCache = userLocaleCache;
-        this.messageSource = messageSource;
-        this.jdbcTemplate = jdbcTemplate;
-        this.transactionTemplate = new TransactionTemplate(transactionManager);
-    }
+    /** 受信者1人・アラート1件ごとに独立トランザクションで確定する実行 Bean（CMP-260925-0905）。 */
+    private final ConfirmableNotificationReminderRunner reminderRunner;
 
     /** リマインドの1バッチあたりの受信者数上限（軍議第8版確定稿 §9.4: 「受信者500人ごと」）。 */
     static final int REMINDER_BATCH_SIZE = 500;
@@ -106,194 +69,43 @@ public class ConfirmableNotificationReminderBatchService {
 
         int reminderCount = 0;
         int alertCount = 0;
+        int failedCount = 0;
 
+        // runBatch 自体は非トランザクション。受信者1人・アラート1件ごとに Runner の独立トランザクションで確定し、
+        // 1件の失敗が他の受信者・アラートへ波及しないようにする。失敗は握りつぶさず ERROR ログに残す。
         for (Long notificationId : activeNotificationIds) {
+            List<Long> recipientIds;
             try {
-                // リマインドと送信者アラートは別トランザクション（一方の失敗が他方を巻き戻さない）
-                Integer sent = transactionTemplate.execute(status -> notificationRepository.findById(notificationId)
-                        .filter(n -> n.getStatus() == ConfirmableNotificationStatus.ACTIVE)
-                        .map(n -> processReminders(n, now))
-                        .orElse(0));
-                reminderCount += sent == null ? 0 : sent;
-                Boolean alerted = transactionTemplate.execute(status -> notificationRepository.findById(notificationId)
-                        .filter(n -> n.getStatus() == ConfirmableNotificationStatus.ACTIVE)
-                        .map(this::processAlertIfNeeded)
-                        .orElse(false));
-                if (Boolean.TRUE.equals(alerted)) alertCount++;
+                recipientIds = recipientRepository.findActiveUnconfirmedByNotificationId(notificationId)
+                        .stream().map(ConfirmableNotificationRecipientEntity::getId).toList();
             } catch (Exception e) {
-                log.error("確認通知リマインドバッチ処理失敗: notificationId={}, error={}",
-                        notificationId, e.getMessage(), e);
+                failedCount++;
+                log.error("確認通知リマインド対象の取得に失敗: notificationId={}", notificationId, e);
+                continue;
             }
-        }
-
-        if (reminderCount > 0 || alertCount > 0) {
-            log.info("確認通知リマインドバッチ完了: activeNotifications={}, reminders={}, alerts={}",
-                    activeNotificationIds.size(), reminderCount, alertCount);
-        }
-    }
-
-    /**
-     * STEP1: 通知の未確認受信者へのリマインド送信処理。
-     *
-     * @param notification 対象の確認通知
-     * @param now          現在日時
-     * @return 送信したリマインド件数
-     */
-    @Transactional
-    public int processReminders(ConfirmableNotificationEntity notification, LocalDateTime now) {
-        // 未確認かつ除外されていない受信者を取得
-        List<ConfirmableNotificationRecipientEntity> unconfirmedRecipients =
-                recipientRepository.findActiveUnconfirmedByNotificationId(notification.getId());
-
-        int sentCount = 0;
-        NotificationScopeType scopeType = toNotificationScopeType(notification);
-        NotificationPriority priority = toNotificationPriority(notification);
-
-        for (ConfirmableNotificationRecipientEntity recipient : unconfirmedRecipients) {
-            try {
-                // 1回目リマインド判定と送信
-                if (recipient.needsFirstReminder(now)) {
-                    recipient.markFirstReminderSent();
-                    recipientRepository.save(recipient);
-
-                    notificationHelper.notify(
-                            recipient.getUser().getId(),
-                            "CONFIRMABLE_NOTIFICATION_REMINDER_1",
-                            priority,
-                            notification.getTitle(),
-                            notification.getBody() != null ? notification.getBody() : "",
-                            "CONFIRMABLE_NOTIFICATION",
-                            notification.getId(),
-                            scopeType,
-                            notification.getScopeId(),
-                            notification.getActionUrl(),
-                            null);
-
-                    sentCount++;
-                    log.debug("1回目リマインド送信: notificationId={}, userId={}",
-                            notification.getId(), recipient.getUser().getId());
+            for (Long recipientId : recipientIds) {
+                try {
+                    reminderCount += reminderRunner.remindRecipient(recipientId, now);
+                } catch (Exception e) {
+                    failedCount++;
+                    log.error("リマインド確定失敗（継続）: notificationId={}, recipientId={}",
+                            notificationId, recipientId, e);
                 }
-                // 2回目リマインド判定と送信
-                else if (recipient.needsSecondReminder(now)) {
-                    recipient.markSecondReminderSent();
-                    recipientRepository.save(recipient);
-
-                    notificationHelper.notify(
-                            recipient.getUser().getId(),
-                            "CONFIRMABLE_NOTIFICATION_REMINDER_2",
-                            priority,
-                            notification.getTitle(),
-                            notification.getBody() != null ? notification.getBody() : "",
-                            "CONFIRMABLE_NOTIFICATION",
-                            notification.getId(),
-                            scopeType,
-                            notification.getScopeId(),
-                            notification.getActionUrl(),
-                            null);
-
-                    sentCount++;
-                    log.debug("2回目リマインド送信: notificationId={}, userId={}",
-                            notification.getId(), recipient.getUser().getId());
+            }
+            try {
+                if (reminderRunner.alertIfNeeded(notificationId)) {
+                    alertCount++;
                 }
             } catch (Exception e) {
-                log.warn("リマインド送信失敗（継続）: notificationId={}, userId={}, error={}",
-                        notification.getId(), recipient.getUser().getId(), e.getMessage());
+                failedCount++;
+                log.error("送信者アラート確定失敗（継続）: notificationId={}", notificationId, e);
             }
         }
 
-        return sentCount;
-    }
-
-    /**
-     * STEP2: 確認率が閾値を下回った場合の送信者アラート処理。
-     *
-     * <p>確認率 = 確認済み件数 / 除外を除いた受信者数 × 100</p>
-     *
-     * @param notification 対象の確認通知
-     * @return アラートを送信した場合 true
-     */
-    @Transactional
-    public boolean processAlertIfNeeded(ConfirmableNotificationEntity notification) {
-        // 送信者（作成者）が存在しない場合はスキップ
-        if (notification.getCreatedBy() == null) {
-            return false;
+        if (reminderCount > 0 || alertCount > 0 || failedCount > 0) {
+            log.info("確認通知リマインドバッチ完了: activeNotifications={}, reminders={}, alerts={}, failed={}",
+                    activeNotificationIds.size(), reminderCount, alertCount, failedCount);
         }
-
-        // スコープ設定からアラート閾値を取得
-        int alertThreshold = settingsRepository
-                .findByScopeTypeAndScopeId(notification.getScopeType(), notification.getScopeId())
-                .map(ConfirmableNotificationSettingsEntity::getSenderAlertThresholdPercent)
-                .orElse(80); // デフォルト 80%
-
-        // 確認率の計算
-        long confirmedCount = recipientRepository
-                .countByConfirmableNotificationIdAndIsConfirmedTrue(notification.getId());
-        long totalActiveCount = recipientRepository
-                .countByConfirmableNotificationIdAndExcludedAtIsNull(notification.getId());
-
-        if (totalActiveCount == 0) {
-            return false;
-        }
-
-        int confirmRate = (int) (confirmedCount * 100L / totalActiveCount);
-
-        // 確認率が閾値を下回っている場合に送信者へアラート通知
-        if (confirmRate < alertThreshold) {
-            try {
-                NotificationScopeType scopeType = toNotificationScopeType(notification);
-                Locale locale = Locale.forLanguageTag(
-                        userLocaleCache.getLocale(notification.getCreatedBy().getId()));
-                String title = messageSource.getMessage(
-                        "notification.confirmable.senderAlert.title", null, "確認通知のアラート", locale);
-                String body = messageSource.getMessage(
-                        "notification.confirmable.senderAlert.body",
-                        new Object[]{confirmRate, alertThreshold, notification.getTitle()},
-                        "確認率が " + confirmRate + "% です（閾値: " + alertThreshold + "%）: " + notification.getTitle(),
-                        locale);
-                notificationHelper.notify(
-                        notification.getCreatedBy().getId(),
-                        "CONFIRMABLE_NOTIFICATION_SENDER_ALERT",
-                        NotificationPriority.HIGH,
-                        title,
-                        body,
-                        "CONFIRMABLE_NOTIFICATION",
-                        notification.getId(),
-                        scopeType,
-                        notification.getScopeId(),
-                        notification.getActionUrl(),
-                        null);
-
-                log.info("送信者アラート送信: notificationId={}, confirmRate={}%, threshold={}%",
-                        notification.getId(), confirmRate, alertThreshold);
-                return true;
-            } catch (Exception e) {
-                log.warn("送信者アラート送信失敗: notificationId={}, error={}",
-                        notification.getId(), e.getMessage());
-            }
-        }
-
-        return false;
-    }
-
-    // =========================================================================
-    // プライベートヘルパーメソッド
-    // =========================================================================
-
-    private NotificationScopeType toNotificationScopeType(ConfirmableNotificationEntity notification) {
-        return switch (notification.getScopeType()) {
-            case TEAM -> NotificationScopeType.TEAM;
-            case ORGANIZATION -> NotificationScopeType.ORGANIZATION;
-            case PLATFORM -> NotificationScopeType.SYSTEM;
-            case COMMITTEE -> NotificationScopeType.COMMITTEE;
-        };
-    }
-
-    private NotificationPriority toNotificationPriority(ConfirmableNotificationEntity notification) {
-        return switch (notification.getPriority()) {
-            case URGENT -> NotificationPriority.URGENT;
-            case HIGH -> NotificationPriority.HIGH;
-            case NORMAL -> NotificationPriority.NORMAL;
-        };
     }
 
     /**

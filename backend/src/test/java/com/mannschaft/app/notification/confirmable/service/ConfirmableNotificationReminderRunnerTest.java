@@ -10,7 +10,8 @@ import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificatio
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRecipientRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationRepository;
 import com.mannschaft.app.notification.confirmable.repository.ConfirmableNotificationSettingsRepository;
-import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.notification.confirmable.event.ConfirmableReminderNotificationEvent;
+import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.auth.entity.UserEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,13 +39,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link ConfirmableNotificationReminderBatchService} の単体テスト。
+ * {@link ConfirmableNotificationReminderRunner} の単体テスト。
  * リマインドバッチのビジネスロジック（送信条件・除外判定）を検証する。
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-@DisplayName("ConfirmableNotificationReminderBatchService 単体テスト")
-class ConfirmableNotificationReminderBatchServiceTest {
+@DisplayName("ConfirmableNotificationReminderRunner 単体テスト")
+class ConfirmableNotificationReminderRunnerTest {
 
     @Mock
     private ConfirmableNotificationRepository notificationRepository;
@@ -56,7 +57,7 @@ class ConfirmableNotificationReminderBatchServiceTest {
     private ConfirmableNotificationSettingsRepository settingsRepository;
 
     @Mock
-    private NotificationHelper notificationHelper;
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Mock
     private UserLocaleCache userLocaleCache;
@@ -65,7 +66,7 @@ class ConfirmableNotificationReminderBatchServiceTest {
     private MessageSource messageSource;
 
     @InjectMocks
-    private ConfirmableNotificationReminderBatchService batchService;
+    private ConfirmableNotificationReminderRunner runner;
 
     // Issue #2715 ロットB: 依存追加に伴う mock 漏れ対策（本クラスは @MockitoSettings LENIENT のため
     // 未使用でも失敗しない。processAlertIfNeeded が userLocaleCache/messageSource を使うため NPE を防ぐ）。
@@ -118,101 +119,82 @@ class ConfirmableNotificationReminderBatchServiceTest {
     }
 
     // ========================================
-    // processReminders（runBatchのコア処理）
+    // remindRecipient（受信者1人ぶん）
     // ========================================
 
+    private ConfirmableNotificationRecipientEntity recipientOf(
+            ConfirmableNotificationEntity notification, ConfirmableNotificationRecipientEntity recipient) {
+        given(recipient.getConfirmableNotification()).willReturn(notification);
+        given(recipient.getIsConfirmed()).willReturn(false);
+        given(recipient.getExcludedAt()).willReturn(null);
+        given(notification.getStatus()).willReturn(
+                com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus.ACTIVE);
+        given(recipientRepository.findById(5L)).willReturn(java.util.Optional.of(recipient));
+        return recipient;
+    }
+
     @Nested
-    @DisplayName("processReminders")
-    class ProcessReminders {
+    @DisplayName("remindRecipient")
+    class RemindRecipient {
 
         @Test
-        @DisplayName("runBatch_1回目リマインド送信_resolvedFirstReminderMinutes以上経過した未確認受信者にリマインドが送られmarkFirstReminderSentが呼ばれる")
-        void runBatch_1回目リマインド送信_resolvedFirstReminderMinutes以上経過した未確認受信者にリマインドが送られmarkFirstReminderSentが呼ばれる() {
-            // given
+        @DisplayName("1回目リマインド対象なら送信済みを記録し、通知配送要求イベントを publish する（通知は直接作らない）")
+        void 一回目リマインドを確定してイベントをpublishする() {
             ConfirmableNotificationEntity notification = createActiveNotificationMock(100L);
-            LocalDateTime now = LocalDateTime.now();
-
             ConfirmableNotificationRecipientEntity recipient =
-                    createRecipientNeedingFirstReminder(1L);
+                    recipientOf(notification, createRecipientNeedingFirstReminder(1L));
 
-            given(recipientRepository.findActiveUnconfirmedByNotificationId(100L))
-                    .willReturn(List.of(recipient));
-            given(recipientRepository.save(any())).willReturn(recipient);
+            int sent = runner.remindRecipient(5L, LocalDateTime.now());
 
-            // when
-            int sentCount = batchService.processReminders(notification, now);
-
-            // then: 1回目リマインドが送られ、markFirstReminderSent が呼ばれる
-            assertThat(sentCount).isEqualTo(1);
+            assertThat(sent).isEqualTo(1);
             verify(recipient).markFirstReminderSent();
             verify(recipientRepository).save(recipient);
-            verify(notificationHelper).notify(
-                    anyLong(), anyString(), any(NotificationPriority.class),
-                    anyString(), anyString(), anyString(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), any(), any());
+            org.mockito.ArgumentCaptor<ConfirmableReminderNotificationEvent> captor =
+                    org.mockito.ArgumentCaptor.forClass(ConfirmableReminderNotificationEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            NotificationDeliveryRequest request = captor.getValue().request();
+            assertThat(request.recipientUserId()).isEqualTo(1L);
+            assertThat(request.notificationType()).isEqualTo("CONFIRMABLE_NOTIFICATION_REMINDER_1");
+            assertThat(request.sourceId()).isEqualTo(100L);
         }
 
         @Test
-        @DisplayName("runBatch_除外済み受信者はスキップ_needsFirstReminderがfalseの受信者はリマインド対象外")
-        void runBatch_除外済み受信者はスキップ_needsFirstReminderがfalseの受信者はリマインド対象外() {
-            // given
+        @DisplayName("リマインド不要の受信者は記録もイベントも出さない")
+        void リマインド不要なら何もしない() {
             ConfirmableNotificationEntity notification = createActiveNotificationMock(100L);
-            LocalDateTime now = LocalDateTime.now();
+            ConfirmableNotificationRecipientEntity recipient =
+                    recipientOf(notification, createRecipientNeedingNoReminder(1L));
 
-            // needsFirstReminder=false（除外済みまたは既確認）の受信者
-            ConfirmableNotificationRecipientEntity noReminderRecipient =
-                    createRecipientNeedingNoReminder(1L);
+            int sent = runner.remindRecipient(5L, LocalDateTime.now());
 
-            given(recipientRepository.findActiveUnconfirmedByNotificationId(100L))
-                    .willReturn(List.of(noReminderRecipient));
-
-            // when
-            int sentCount = batchService.processReminders(notification, now);
-
-            // then: リマインドは送られない
-            assertThat(sentCount).isEqualTo(0);
-            verify(notificationHelper, never()).notify(
-                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            assertThat(sent).isEqualTo(0);
+            verify(recipientRepository, never()).save(any());
+            verify(eventPublisher, never()).publishEvent(any(Object.class));
         }
 
         @Test
-        @DisplayName("runBatch_ACTIVE以外はスキップ_statusがCANCELLEDの通知の受信者にはリマインドを送らない")
-        void runBatch_ACTIVE以外はスキップ_statusがCANCELLEDの通知の受信者にはリマインドを送らない() {
-            // given
-            // CANCELLED通知の場合、findActiveUnconfirmedByNotificationId は
-            // ACTIVE 条件でフィルタするため空リストを返す
-            ConfirmableNotificationEntity cancelledNotification = ConfirmableNotificationEntity.builder()
-                    .scopeType(ScopeType.TEAM)
-                    .scopeId(10L)
-                    .title("キャンセル済み通知")
-                    .priority(ConfirmableNotificationPriority.NORMAL)
-                    .totalRecipientCount(1)
-                    .build();
-            cancelledNotification.cancel(null);
+        @DisplayName("通知が ACTIVE でなければ（取消・期限切れ）リマインドしない")
+        void ACTIVE以外はスキップ() {
+            ConfirmableNotificationEntity notification = createActiveNotificationMock(100L);
+            ConfirmableNotificationRecipientEntity recipient =
+                    recipientOf(notification, createRecipientNeedingFirstReminder(1L));
+            given(notification.getStatus()).willReturn(
+                    com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus.CANCELLED);
 
-            LocalDateTime now = LocalDateTime.now();
+            int sent = runner.remindRecipient(5L, LocalDateTime.now());
 
-            // ACTIVE 条件のクエリ結果として空リストを返す
-            given(recipientRepository.findActiveUnconfirmedByNotificationId(any()))
-                    .willReturn(List.of());
-
-            // when
-            int sentCount = batchService.processReminders(cancelledNotification, now);
-
-            // then: リマインドは送られない
-            assertThat(sentCount).isEqualTo(0);
-            verify(notificationHelper, never()).notify(
-                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            assertThat(sent).isEqualTo(0);
+            verify(eventPublisher, never()).publishEvent(any(Object.class));
         }
     }
 
     // ========================================
-    // processAlertIfNeeded（送信者アラート）
+    // alertIfNeeded（送信者アラート）
     // ========================================
 
     @Nested
-    @DisplayName("processAlertIfNeeded")
-    class ProcessAlertIfNeeded {
+    @DisplayName("alertIfNeeded")
+    class AlertIfNeeded {
 
         @Test
         @DisplayName("Issue #2715 ロットB: 送信者 locale が en の場合、アラート件名・本文が英語で組み立てられプレースホルダが残らない")
@@ -221,7 +203,7 @@ class ConfirmableNotificationReminderBatchServiceTest {
             realMessageSource.setBasename("messages");
             realMessageSource.setDefaultEncoding("UTF-8");
             org.springframework.test.util.ReflectionTestUtils.setField(
-                    batchService, "messageSource", realMessageSource);
+                    runner, "messageSource", realMessageSource);
 
             UserEntity creator = mock(UserEntity.class);
             given(creator.getId()).willReturn(7L);
@@ -229,27 +211,30 @@ class ConfirmableNotificationReminderBatchServiceTest {
 
             ConfirmableNotificationEntity notification = mock(ConfirmableNotificationEntity.class);
             given(notification.getId()).willReturn(100L);
+            given(notification.getStatus()).willReturn(
+                    com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationStatus.ACTIVE);
             given(notification.getCreatedBy()).willReturn(creator);
             given(notification.getScopeType()).willReturn(ScopeType.TEAM);
             given(notification.getScopeId()).willReturn(10L);
             given(notification.getTitle()).willReturn("テスト確認通知");
             given(notification.getActionUrl()).willReturn(null);
+            given(notificationRepository.findById(100L)).willReturn(java.util.Optional.of(notification));
 
             given(settingsRepository.findByScopeTypeAndScopeId(any(), any())).willReturn(java.util.Optional.empty());
             given(recipientRepository.countByConfirmableNotificationIdAndIsConfirmedTrue(100L)).willReturn(1L);
             given(recipientRepository.countByConfirmableNotificationIdAndExcludedAtIsNull(100L)).willReturn(2L);
 
-            boolean alerted = batchService.processAlertIfNeeded(notification);
+            boolean alerted = runner.alertIfNeeded(100L);
 
             assertThat(alerted).isTrue();
-            org.mockito.ArgumentCaptor<String> titleCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
-            org.mockito.ArgumentCaptor<String> bodyCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
-            verify(notificationHelper).notify(
-                    eq(7L), eq("CONFIRMABLE_NOTIFICATION_SENDER_ALERT"), any(NotificationPriority.class),
-                    titleCaptor.capture(), bodyCaptor.capture(), anyString(), eq(100L),
-                    any(NotificationScopeType.class), eq(10L), any(), any());
-            assertThat(titleCaptor.getValue()).isEqualTo("Confirmation notification alert");
-            assertThat(bodyCaptor.getValue()).doesNotContain("{0}").doesNotContain("{1}").doesNotContain("{2}")
+            org.mockito.ArgumentCaptor<ConfirmableReminderNotificationEvent> captor =
+                    org.mockito.ArgumentCaptor.forClass(ConfirmableReminderNotificationEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            NotificationDeliveryRequest request = captor.getValue().request();
+            assertThat(request.recipientUserId()).isEqualTo(7L);
+            assertThat(request.notificationType()).isEqualTo("CONFIRMABLE_NOTIFICATION_SENDER_ALERT");
+            assertThat(request.title()).isEqualTo("Confirmation notification alert");
+            assertThat(request.body()).doesNotContain("{0}").doesNotContain("{1}").doesNotContain("{2}")
                     .contains("50").contains("テスト確認通知");
         }
     }
