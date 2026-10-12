@@ -24,6 +24,8 @@ import com.mannschaft.app.auth.MfaEmailOtpPurpose;
  *   <tr><td>主体ごとの送信回数</td><td>{@code mfa_email_{purpose}_sent_count:{subject}}</td><td>INCR（LOGIN はセッション 5 回）</td></tr>
  *   <tr><td>ユーザー単位の送信回数</td><td>{@code mfa_email_user_sent_count:{userId}}</td><td>INCR・1 時間（10 回）</td></tr>
  *   <tr><td>IP 単位の送信回数（公開 EP）</td><td>{@code mfa_email_send_ip_rate:{ip}}</td><td>INCR・{@link #IP_SEND_WINDOW_SECONDS} 秒</td></tr>
+ *   <tr><td>LOGIN セッション延長の上限</td><td>{@code mfa_email_login_session_limit:{sessionHash}}</td>
+ *       <td>SET NX・ログイン時刻 + 15 分まで</td></tr>
  * </table>
  *
  * <p><b>命名規約（試練の観測契約）</b>: コード保持キーは {@code mfa_email} を含み、SETUP/REAUTH は {@code :{userId}} で
@@ -80,6 +82,17 @@ public final class MfaEmailOtpKeys {
     /** IP 単位の送信回数（公開 EP）。 */
     public static String ipSendRateKey(String ipAddress) {
         return PREFIX + "mfa_email_send_ip_rate:" + ipAddress;
+    }
+
+    /**
+     * LOGIN の MFA セッション延長の上限時刻（AC-19。ログインから最大 15 分）。
+     *
+     * <p>初回送信時に {@code SET NX} し、TTL を「ログイン時刻 + 15 分」までの残り時間にする（値は意味を持たない）。
+     * 以後の送信はこのキーの残り TTL を延長の上限に使う。セッション自体はログイン時刻を持たないため、
+     * 延長前のセッション残り TTL（＝5 分 − 経過時間）から初回送信時に一度だけ逆算して固定する。</p>
+     */
+    public static String loginSessionLimitKey(String sessionHash) {
+        return PREFIX + "mfa_email_login_session_limit:" + sessionHash;
     }
 
     private static String purposeToken(MfaEmailOtpPurpose purpose) {

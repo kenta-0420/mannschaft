@@ -3,6 +3,7 @@ package com.mannschaft.app.auth.dto;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 
 /**
@@ -11,8 +12,9 @@ import lombok.Getter;
 @Getter
 public class EnableEmailTwoFactorRequest {
 
-    /** 設定用メールOTP（6 桁）。 */
+    /** 設定用メールOTP（6 桁）。形式違反は 400 で、AC-45 の試行回数に計上しない（AC-10 と同じ扱い）。 */
     @NotBlank
+    @Pattern(regexp = "^\\d{6}$")
     private final String code;
 
     @JsonCreator
