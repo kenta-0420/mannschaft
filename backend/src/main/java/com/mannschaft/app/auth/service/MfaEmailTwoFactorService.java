@@ -7,8 +7,10 @@ import com.mannschaft.app.auth.MfaEmailOtpPurpose;
 import com.mannschaft.app.auth.TwoFactorMethod;
 import com.mannschaft.app.auth.dto.BackupCodesResponse;
 import com.mannschaft.app.auth.dto.MfaEmailSendResponse;
+import com.mannschaft.app.auth.entity.MfaRecoveryTokenEntity;
 import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
 import com.mannschaft.app.auth.event.MfaEnabledEvent;
+import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
@@ -46,6 +48,7 @@ public class MfaEmailTwoFactorService {
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final TwoFactorAuthRepository twoFactorAuthRepository;
+    private final MfaRecoveryTokenRepository mfaRecoveryTokenRepository;
     private final MfaEmailOtpService mfaEmailOtpService;
     private final PasswordEncoder passwordEncoder;
     private final DomainEventPublisher eventPublisher;
@@ -53,11 +56,13 @@ public class MfaEmailTwoFactorService {
 
     public MfaEmailTwoFactorService(
             TwoFactorAuthRepository twoFactorAuthRepository,
+            MfaRecoveryTokenRepository mfaRecoveryTokenRepository,
             MfaEmailOtpService mfaEmailOtpService,
             PasswordEncoder passwordEncoder,
             DomainEventPublisher eventPublisher,
             @Value("${mannschaft.auth.mfa.email-method-enabled:false}") boolean emailMethodEnabled) {
         this.twoFactorAuthRepository = twoFactorAuthRepository;
+        this.mfaRecoveryTokenRepository = mfaRecoveryTokenRepository;
         this.mfaEmailOtpService = mfaEmailOtpService;
         this.passwordEncoder = passwordEncoder;
         this.eventPublisher = eventPublisher;
@@ -121,6 +126,9 @@ public class MfaEmailTwoFactorService {
         enabled.enable();
         twoFactorAuthRepository.save(enabled);
 
+        // AC-48: 再設定前に発行された回復トークンで新しい 2FA を外させない（TOTP 有効化と同じ扱い）
+        revokeUnusedRecoveryTokens(userId);
+
         eventPublisher.publish(new MfaEnabledEvent(userId, TwoFactorMethod.EMAIL));
         return new BackupCodesResponse(plainCodes);
     }
@@ -145,6 +153,20 @@ public class MfaEmailTwoFactorService {
     private Optional<TwoFactorAuthEntity> findEnabled(Long userId) {
         return twoFactorAuthRepository.findByUserId(userId)
                 .filter(tfa -> Boolean.TRUE.equals(tfa.getIsEnabled()));
+    }
+
+    /**
+     * 未使用の回復トークンをすべて使用済みにする（AC-48。{@link Auth2faService} の TOTP 有効化・無効化・回復再要求と同じ規則）。
+     * 本クラスは {@link Auth2faService} から委譲される側のため、逆向きに呼ぶと循環依存になる。よって同ドメインの
+     * Repository を直接使う。
+     */
+    private void revokeUnusedRecoveryTokens(Long userId) {
+        List<MfaRecoveryTokenEntity> unused = mfaRecoveryTokenRepository.findByUserIdAndUsedAtIsNull(userId);
+        if (unused.isEmpty()) {
+            return;
+        }
+        unused.forEach(MfaRecoveryTokenEntity::markUsed);
+        mfaRecoveryTokenRepository.saveAll(unused);
     }
 
     private void assertEmailMethodEnabled() {

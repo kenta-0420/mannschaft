@@ -2,6 +2,7 @@ package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.AuthErrorCode;
 import com.mannschaft.app.auth.MfaEmailOtpPurpose;
+import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
@@ -35,6 +36,8 @@ class MfaEmailTwoFactorServiceTest {
     @Mock
     private TwoFactorAuthRepository twoFactorAuthRepository;
     @Mock
+    private MfaRecoveryTokenRepository mfaRecoveryTokenRepository;
+    @Mock
     private MfaEmailOtpService mfaEmailOtpService;
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -43,7 +46,8 @@ class MfaEmailTwoFactorServiceTest {
 
     private MfaEmailTwoFactorService service(boolean emailMethodEnabled) {
         return new MfaEmailTwoFactorService(
-                twoFactorAuthRepository, mfaEmailOtpService, passwordEncoder, eventPublisher, emailMethodEnabled);
+                twoFactorAuthRepository, mfaRecoveryTokenRepository, mfaEmailOtpService, passwordEncoder,
+                eventPublisher, emailMethodEnabled);
     }
 
     @Test
@@ -55,7 +59,7 @@ class MfaEmailTwoFactorServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(AuthErrorCode.AUTH_082);
-        verifyNoInteractions(twoFactorAuthRepository, mfaEmailOtpService, eventPublisher);
+        verifyNoInteractions(twoFactorAuthRepository, mfaRecoveryTokenRepository, mfaEmailOtpService, eventPublisher);
     }
 
     @Test

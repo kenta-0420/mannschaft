@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.ColumnDefault;
 import lombok.AccessLevel;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
@@ -38,9 +39,14 @@ public class TwoFactorAuthEntity {
 
     /**
      * 2FA の主手段（CMP-261012-0910）。既存行は Flyway で TOTP が入る。
+     *
+     * <p>DB 既定値 {@code 'TOTP'} は Flyway（V239）と同じものを {@link ColumnDefault} でも宣言する。
+     * Hibernate が生成するスキーマ（test プロファイル）にも同じ既定値を持たせ、method を指定しない INSERT
+     * （既存コード・ネイティブ SQL）が本番と同じく TOTP になるようにする。</p>
      */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
+    @ColumnDefault("'TOTP'")
     @Builder.Default
     private TwoFactorMethod method = TwoFactorMethod.TOTP;
 
@@ -50,8 +56,12 @@ public class TwoFactorAuthEntity {
     @Column(length = 500)
     private String totpSecret;
 
+    /**
+     * ハッシュ済みバックアップコードの JSON 配列（NOT NULL）。未発行（設定途中の未有効行など）は空配列。
+     */
     @Column(nullable = false, columnDefinition = "JSON")
-    private String backupCodes;
+    @Builder.Default
+    private String backupCodes = "[]";
 
     @Column(nullable = false)
     private Boolean isEnabled;
