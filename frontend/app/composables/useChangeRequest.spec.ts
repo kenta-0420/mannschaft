@@ -185,6 +185,21 @@ describe('useChangeRequest 再入ガードと 409（AC-I1 / AC-I3）', () => {
   })
 })
 
+describe('useChangeRequest 再取得の失敗（検分差し戻し1）', () => {
+  it('409 後の再取得が失敗しても、既存の一覧を空にせず loadError に積む', async () => {
+    const api = await useIt()
+    mocks.withdrawChangeRequest.mockRejectedValue({ statusCode: 409, data: { error: { code: 'SHIFT_031' } } })
+    const failure = { statusCode: 500 }
+    mocks.listChangeRequests.mockRejectedValue(failure)
+    api.requests.value = [row(4)]
+
+    await api.withdraw(4)
+
+    expect(api.requests.value).toHaveLength(1)
+    expect(api.loadError.value).toEqual(failure)
+  })
+})
+
 describe('useChangeRequest 取得（AC-E）', () => {
   it('取得失敗は通知ではなく loadError に積み、一覧を空にしたまま成功扱いにしない', async () => {
     const api = await useIt()

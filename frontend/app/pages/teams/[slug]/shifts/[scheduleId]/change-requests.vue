@@ -17,13 +17,25 @@ const { getTeam } = useTeamApi()
 // 権限取得に失敗したときは roleName が null のままなので審査ボタンは出ない（権限なしに倒れる側）。
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 
-const { requests, isLoading, processingIds, fetchRequests, review, withdraw } =
-  useChangeRequest(scheduleId)
+const {
+  requests,
+  isLoading,
+  processingIds,
+  loadError: listError,
+  fetchRequests,
+  review,
+  withdraw,
+} = useChangeRequest(scheduleId)
 
 const schedule = ref<ShiftScheduleResponse | null>(null)
 const loading = ref(true)
-/** 取得失敗（空状態とは区別して DashboardErrorState で出す） */
-const loadError = ref<unknown>(null)
+/** 初回取得の失敗 */
+const initialError = ref<unknown>(null)
+/**
+ * 取得失敗（空状態とは区別して DashboardErrorState で出す）。
+ * 初回取得に加え、作成・審査・取り下げ後の一覧再取得の失敗もここに載る。再試行は初回と同じ load。
+ */
+const loadError = computed(() => initialError.value ?? listError.value)
 
 const canCreate = computed(() =>
   schedule.value ? isAcceptingChangeRequests(schedule.value.status.status) : false,
@@ -31,32 +43,37 @@ const canCreate = computed(() =>
 
 async function load(): Promise<void> {
   loading.value = true
-  loadError.value = null
+  initialError.value = null
   try {
-    const [scheduleRes, teamRes, listError] = await Promise.all([
+    const [scheduleRes, teamRes, fetchFailure, permissions] = await Promise.all([
       getSchedule(scheduleId.value),
       getTeam(teamSlug.value),
       fetchRequests(),
       loadPermissions(),
     ])
-    if (listError) {
-      loadError.value = listError
+    if (fetchFailure) {
+      initialError.value = fetchFailure
+      return
+    }
+    // 権限取得の失敗を捨てない。審査ボタンは出さないまま、取得エラーと再試行を見せる。
+    if (!permissions.ok) {
+      initialError.value = permissions.error
       return
     }
     // URL の slug のチームとシフト表のチームが食い違う画面は存在しないものとして扱う
     // （他チームのシフト表 ID を slug 違いで開かせない。存在オラクルを作らないため 404 相当）。
     const urlTeamId = teamRes.data.numericId
     if (urlTeamId === undefined) {
-      loadError.value = new Error('team_numeric_id_missing')
+      initialError.value = new Error('team_numeric_id_missing')
       return
     }
     if (scheduleRes.teamId !== urlTeamId) {
-      loadError.value = { statusCode: 404 }
+      initialError.value = { statusCode: 404 }
       return
     }
     schedule.value = scheduleRes
   } catch (error) {
-    loadError.value = error
+    initialError.value = error
   } finally {
     loading.value = false
   }

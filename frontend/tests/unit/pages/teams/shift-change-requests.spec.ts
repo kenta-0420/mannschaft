@@ -182,6 +182,34 @@ describe('change-requests.vue 取得失敗（AC-E1〜E4 / AC-J5）', () => {
   })
 })
 
+describe('change-requests.vue 検分差し戻し（権限取得失敗・再取得失敗）', () => {
+  it('権限取得に失敗したら取得エラー表示と再試行を出し、審査ボタンは出さない。再試行で権限を取り直す', async () => {
+    mocks.isAdminOrDeputy.value = false
+    mocks.loadPermissions.mockResolvedValueOnce({ ok: false, error: { statusCode: 500 } })
+    const wrapper = await mountPage()
+    expect(wrapper.find('[data-testid="change-request-load-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="change-request-approve-1"]').exists()).toBe(false)
+
+    await wrapper.find('[data-testid="change-request-load-error-retry"]').trigger('click')
+    await flushPromises()
+
+    expect(mocks.loadPermissions).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('[data-testid="change-request-load-error"]').exists()).toBe(false)
+  })
+
+  it('取り下げの 409 後の一覧再取得が失敗したら、空一覧でなく取得エラー表示と再試行を出す', async () => {
+    mocks.withdrawChangeRequest.mockRejectedValue({ statusCode: 409, data: { error: { code: 'SHIFT_031' } } })
+    const wrapper = await mountPage()
+    mocks.listChangeRequests.mockRejectedValue({ statusCode: 500 })
+
+    await wrapper.find('[data-testid="change-request-withdraw-2"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="change-request-load-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="change-request-list"]').exists()).toBe(false)
+  })
+})
+
 describe('change-requests.vue 受付状態（AC-J3b）', () => {
   it('AC-J3b: COLLECTING までは作成フォームを出す', async () => {
     const wrapper = await mountPage()

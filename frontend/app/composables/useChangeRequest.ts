@@ -48,7 +48,7 @@ export function useChangeRequest(scheduleId: Ref<number>) {
       requests.value = list
       return null
     } catch (error) {
-      requests.value = []
+      // 再取得の失敗で既存の一覧を空にしない（空状態に見せない）。画面が loadError を見て出す。
       loadError.value = error
       return error
     } finally {
