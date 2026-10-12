@@ -2,7 +2,7 @@
 
 | 項目 | 内容 |
 |---|---|
-| ステータス | 🟢 P1 実装済み（team の outbox・relay・2-C の C 案。social は 6-E' で追従） |
+| ステータス | 🟢 実装済み（P1: team の outbox・relay・2-C の C 案。6-E': social の outbox・`FANOUT_WITH_AUDIENCE`） |
 | 起草 | 2026-10-10（陣立て書 `2026-10-10-notification-outbox-gungi.md` 改訂第2版。マスター裁可 Q1〜Q8 すべて推奨案） |
 | 関連 | [F01.2.1 §6.7・§8.5.3](../features/F01.2.1_org_team_groups.md)、[ドメイン・DB 設計原則](domain_db_design_principles.md) 原則1・5・6・7 |
 
@@ -50,6 +50,9 @@ outbox にすると、業務の tx は**自ドメインの表に1行書くだけ
 | `team.entity` / `team.repository` | `TeamNotificationOutboxEntity` / `TeamNotificationOutboxRepository` | team の outbox 表（`JpaRepository` 直継承）|
 | `team.service` | `OutboxTeamAffiliationNotifier` | `TeamAffiliationNotifier` の実装（`MANDATORY`。outbox への冪等 INSERT と起こしの publish）|
 | `team.service` | `TeamNotificationOutboxSource` | SPI 実装（各操作 `REQUIRES_NEW`、team の Repository だけ）|
+| `social.entity` / `social.repository` | `SocialNotificationOutboxEntity` / `SocialNotificationOutboxRepository` | social の outbox 表（6-E'。team と同型）|
+| `social.announcement` | `OutboxAnnouncementPushEnqueuer` | `AnnouncementPushEnqueuer` の実装（`MANDATORY`。宛先を絞った告知の push を `FANOUT_WITH_AUDIENCE` で outbox に冪等 INSERT し、起こしを publish）|
+| `social.service` | `SocialNotificationOutboxSource` | SPI 実装（source 名 `social`。各操作 `REQUIRES_NEW`、social の Repository だけ）|
 
 | `config` | `AsyncConfig#notificationOutboxPool`（Bean 名 `notification-outbox-pool`）| 起こし専用の executor（§5）|
 
@@ -112,7 +115,7 @@ outbox の Repository は `organization_id` で絞り込む問い合わせを持
 
 ### 4.1 取り込みの依頼（payload）
 - P1 は `FANOUT` のみ: `FanoutEnqueueCommand` 一式（受信者は Worker の処理時点で解決）。
-- `FANOUT_WITH_AUDIENCE`（6-E'）: 送信時の宛先チーム ID を payload に固定し、宛先集合（見出し `notification_fanout_audiences`・宛先チーム `notification_fanout_audience_teams`）とジョブを**1つの tx**で冪等に登録する。`registerAudience` の冪等 SQL 化（見出しは `INSERT ... ON DUPLICATE KEY UPDATE audience_snapshot_id = audience_snapshot_id`、宛先チームは多値 `INSERT ... ON DUPLICATE KEY UPDATE id = id`、`organization_id` の不一致は例外、デッドロックは失敗として再試行）は 6-E' で行う。
+- `FANOUT_WITH_AUDIENCE`（6-E'・実装済み）: 送り手は social の `OutboxAnnouncementPushEnqueuer`（宛先を絞った告知の push。冪等キーは `F02.8:broadcast:<feedId>`、宛先集合のキーは `F02.8:broadcast-audience:<feedId>`）。送信時の宛先チーム ID を payload の `teamIds` に固定し（relay の前にチームが宛先グループへ移っても変わらない）、宛先集合（見出し `notification_fanout_audiences`・宛先チーム `notification_fanout_audience_teams`）とジョブを**1つの tx**で冪等に登録する。取り込みは `audienceSnapshotId`・`teamIds`・組織 ID の欠落と、`audienceSnapshotId` とジョブの `scope_ref` の食い違いを例外にする。`NotificationFanoutAudienceService#registerAudience` は冪等 SQL: 見出しは `INSERT ... ON DUPLICATE KEY UPDATE audience_snapshot_id = audience_snapshot_id` の後にロック読み（`FOR UPDATE`）で `organization_id` を確かめ、食い違えば例外。宛先チームはチーム ID 昇順に並べて（並行する取り込みのロック順をそろえる）500行ずつの多値 `INSERT ... ON DUPLICATE KEY UPDATE id = id`。デッドロック・ロック待ちタイムアウトは握りつぶさず例外のまま relay に返し、取り込みの失敗として再試行する。宛先チームが0件でも見出しとジョブは作る（直属メンバーだけに届く）。
 
 ### 4.2 claim と印付け
 - claim: `SELECT ... WHERE status='PENDING' AND next_attempt_at <= :now ORDER BY id LIMIT :n FOR UPDATE SKIP LOCKED` → RELAYING・新しい `claim_token`・`claimed_at=:now`（送り手の `REQUIRES_NEW`）。
@@ -219,7 +222,7 @@ RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎた
 
 1. P0（本書・F01.2.1 の改訂）＋ P1 試練（red）— 本 PR。
 2. P1 出陣（同じブランチで green 化。**済**）: common.outbox・notification.outbox（SPI・ingest・relay・バッチ・executor）・team outbox・`OutboxTeamAffiliationNotifier` への差し替えと `FanoutTeamAffiliationNotifier` の削除・2-C の C 案・D-3P。
-3. 6-E'（social）: `social_notification_outbox`、`SocialNotificationOutboxSource`、`AnnouncementPushEnqueuer` の実装の差し替え、`FANOUT_WITH_AUDIENCE`、AC-H21 の再定義（F01.2.1 §16）。
+3. 6-E'（social。実装済み 2026-10-12）: `social_notification_outbox`（V239）、`SocialNotificationOutboxEntity`・`SocialNotificationOutboxRepository`（`social.entity`・`social.repository`）、`SocialNotificationOutboxSource`（`social.service`。source 名 `social`、team と同じ READ COMMITTED・`FORCE INDEX (PRIMARY)`）、`AnnouncementPushEnqueuer` の実装を `OutboxAnnouncementPushEnqueuer` に差し替え（`FanoutAnnouncementPushEnqueuer` は削除）、`FANOUT_WITH_AUDIENCE` の取り込み、`registerAudience` の冪等 SQL 化、AC-H21 の再定義と H21a〜e（F01.2.1 §16、`BroadcastGroupPushIT`）。
 4. 2-B2・2-D: P1 の後に追従（本体コード不変、IT に drain を挟む）。
 
 ## 12. 変更履歴
@@ -229,3 +232,4 @@ RELAYED は `relayed_at` から7日、DEAD は `dead_at` から30日を過ぎた
 | 2026-10-10 | 初版（陣立て書 改訂第2版・マスター裁可 Q1〜Q8）。P1 試練と同時に作成 |
 | 2026-10-10 | P1 出陣: ステータスを 🟢 に。§2.1 に executor を追加、§3.2 に native SQL への時刻の渡し方（エポックマイクロ秒）、§4.4・§4.5 にロックと実行時刻を追記 |
 | 2026-10-11 | §4.7 ロック戦略を追加（OB09 のデッドロックの機構と根治: READ COMMITTED・claim の UPDATE を主キーに固定・ロック競合の見送りとメトリクス `lock_conflict`） |
+| 2026-10-12 | 6-E' 実装: social の outbox（V239・`SocialNotificationOutboxSource`・`OutboxAnnouncementPushEnqueuer`）、`FANOUT_WITH_AUDIENCE` の取り込み、`registerAudience` の冪等 SQL 化（§4.1・§11）。ステータスを実装済みに |
