@@ -14,7 +14,6 @@ import com.mannschaft.app.notification.confirmable.support.ConfirmableFanoutFixt
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,7 +23,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -249,8 +247,9 @@ class ConfirmableNotificationReminderBatchTransactionIT extends AbstractMySqlInt
 
         reminderBatchService.runBatch();
 
-        // 通知の作成は commit 後の非同期リスナーで行われる。
-        Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> countReminderNotifications() == userIds.size());
+        // 通知行は送信済み記録と同じトランザクションで作成される（非同期の配信プールに依存しない）ため、
+        // runBatch が戻った時点で受信箱に存在する。
+        assertThat(countReminderNotifications()).as("受信箱に作られたリマインド通知の数").isEqualTo(userIds.size());
         assertThat(countSentRecipients()).as("送信済みとして記録された受信者数").isEqualTo(userIds.size());
 
         deleteReminderNotifications();
@@ -273,8 +272,8 @@ class ConfirmableNotificationReminderBatchTransactionIT extends AbstractMySqlInt
         try {
             reminderBatchService.runBatch();
 
-            Awaitility.await().atMost(Duration.ofSeconds(30))
-                    .until(() -> countReminderNotifications() == userIds.size() - 1);
+            assertThat(countReminderNotifications()).as("失敗した1人を除く受信者の通知行がコミットされる")
+                    .isEqualTo(userIds.size() - 1);
             assertThat(countSentRecipients()).as("失敗した1人を除く受信者の送信済み記録がコミットされる")
                     .isEqualTo(userIds.size() - 1);
             Integer failedUserNotifications = jdbc.queryForObject(

@@ -705,7 +705,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値へ追随。</p>
      * <p>正式1e8の全量解析と原因検分で確認した旧原因17件の削減（2063→2046）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2046;
+    // CMP-260925-0905: ConfirmableNotificationReminderBatchService が UserEntity に依存しなくなり（受信者の user_id は
+    // ConfirmableNotificationRecipientEntity#getRecipientUserId 経由）6行減。2046→2040。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2040;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -831,7 +833,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     // 通知を AFTER_COMMIT リスナーへ移したため、通知系Repository(4)+UserRepository への到達25行減。7264→7239。
     // 内訳: fireNotifications 5・recordCheckIn 5・apply 5・acceptApplication 5・reportCompletion 5（CI 実測 7239 と一致）。
     // D-3（他の6ストア）は CI の整合性テストが不一致を報告していないため変更なし。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7239;
+    // CMP-260925-0905: ConfirmableNotificationReminderBatchService#processAlertIfNeeded の@Transactional解消で1行減。7239→7238。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7238;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -926,7 +929,8 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 戻り値が Entity のままなので残す。</p>
      */
     // CMP-260820-1018: Proxy 一覧を Page<ProxyInputConsentResponse> に変更し、公開APIのEntity露出1件を解消。
-    private static final int EXPECTED_LINES_SERVICE_API = 603;
+    // CMP-260925-0905: ConfirmableNotificationReminderBatchService の processAlertIfNeeded / processReminders 削除で2行減。603→601。
+    private static final int EXPECTED_LINES_SERVICE_API = 601;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
