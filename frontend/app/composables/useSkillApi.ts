@@ -1,5 +1,6 @@
 import type {
   MemberSkillResponse,
+  SkillSearchItem,
   SkillCategoryResponse,
   RegisterSkillRequest,
   UpdateSkillRequest,
@@ -47,7 +48,7 @@ export function useSkillApi() {
   async function verifySkill(teamId: string, skillId: number) {
     return api<{ data: MemberSkillResponse }>(
       `/api/v1/teams/${teamId}/skills/${skillId}/verify`,
-      { method: 'POST' },
+      { method: 'PATCH' },
     )
   }
 
@@ -59,13 +60,13 @@ export function useSkillApi() {
 
   async function searchSkills(teamId: string, params: Record<string, unknown> = {}) {
     const qs = buildQuery(params)
-    return api<{ data: MemberSkillResponse[] }>(
+    return api<{ data: SkillSearchItem[] }>(
       `/api/v1/teams/${teamId}/skills/search${qs ? `?${qs}` : ''}`,
     )
   }
 
   async function getCertificateUrl(teamId: string, skillId: number) {
-    return api<{ data: { url: string } }>(
+    return api<{ data: string }>(
       `/api/v1/teams/${teamId}/skills/${skillId}/certificate-url`,
     )
   }
@@ -78,9 +79,10 @@ export function useSkillApi() {
   }
 
   // === Skill Categories ===
-  async function getSkillCategories(teamId: string) {
+  /** includeInactive=true で無効化済みカテゴリも返す（BE 既定は false）。 */
+  async function getSkillCategories(teamId: string, includeInactive = false) {
     return api<{ data: SkillCategoryResponse[] }>(
-      `/api/v1/teams/${teamId}/skill-categories`,
+      `/api/v1/teams/${teamId}/skill-categories${includeInactive ? '?includeInactive=true' : ''}`,
     )
   }
 
