@@ -194,6 +194,19 @@
       "rejectSuccess": "Solicitud rechazada",
       "reviewFailed": "Error al procesar la revisión"
     },
+    "myJoinRequests": {
+      "title": "Mis solicitudes de ingreso a aldeas",
+      "description": "Consulta las solicitudes que enviaste y su estado de revisión.",
+      "submittedAt": "Fecha de envío",
+      "empty": "No has enviado solicitudes de ingreso",
+      "fetchError": "No se pudo cargar tu historial de solicitudes",
+      "village": "Aldea solicitada",
+      "unknownVillage": "No se puede confirmar el nombre de la aldea",
+      "villageState": {
+        "ARCHIVED": "Congelada",
+        "DELETED": "Eliminada"
+      }
+    },
     "joinRequest": {
       "title": "Solicitud de ingreso",
       "message": "Mensaje de solicitud (opcional)",
