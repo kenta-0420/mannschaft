@@ -551,14 +551,12 @@ class Auth2faServiceTest {
                     .tokenHash(tokenHash)
                     .expiresAt(LocalDateTime.now().plusHours(1))
                     .build();
-            given(mfaRecoveryTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(recoveryToken));
+            given(mfaRecoveryTokenRepository.findByTokenHashForUpdate(tokenHash)).willReturn(Optional.of(recoveryToken));
             given(mfaRecoveryTokenRepository.save(any(MfaRecoveryTokenEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
             TwoFactorAuthEntity twoFactorAuth = createEnabledTwoFactorAuth();
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
-            given(twoFactorAuthRepository.save(any(TwoFactorAuthEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
 
             given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
@@ -572,8 +570,10 @@ class Auth2faServiceTest {
             // Then
             assertThat(response.getData().getAccessToken()).isEqualTo("jwt-access-token");
             assertThat(response.getData().getRefreshToken()).isEqualTo("raw-refresh-token");
-            assertThat(twoFactorAuth.getIsEnabled()).isFalse();
-            verify(eventPublisher).publish(any());
+            // CMP-261012-0910 AC-52: 有効フラグを倒すだけでなく行ごと消す（秘密鍵・バックアップコードを残さない）
+            verify(twoFactorAuthRepository).delete(twoFactorAuth);
+            // MfaDisabledEvent(reason=RECOVERY) と MfaRecoveryCompletedEvent の 2 件
+            verify(eventPublisher, times(2)).publish(any());
         }
 
         @Test
@@ -589,14 +589,12 @@ class Auth2faServiceTest {
                     .tokenHash(tokenHash)
                     .expiresAt(LocalDateTime.now().plusHours(1))
                     .build();
-            given(mfaRecoveryTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(recoveryToken));
+            given(mfaRecoveryTokenRepository.findByTokenHashForUpdate(tokenHash)).willReturn(Optional.of(recoveryToken));
             given(mfaRecoveryTokenRepository.save(any(MfaRecoveryTokenEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
             TwoFactorAuthEntity twoFactorAuth = createEnabledTwoFactorAuth();
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
-            given(twoFactorAuthRepository.save(any(TwoFactorAuthEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
 
             // 既存の active Refresh Token が 2 件あるシナリオ
             com.mannschaft.app.auth.entity.RefreshTokenEntity existingToken1 =
@@ -639,7 +637,7 @@ class Auth2faServiceTest {
             // Given
             String rawToken = "nonexistent-token";
             given(authTokenService.hashToken(rawToken)).willReturn("hashed-nonexistent");
-            given(mfaRecoveryTokenRepository.findByTokenHash("hashed-nonexistent"))
+            given(mfaRecoveryTokenRepository.findByTokenHashForUpdate("hashed-nonexistent"))
                     .willReturn(Optional.empty());
 
             // When / Then
@@ -662,7 +660,7 @@ class Auth2faServiceTest {
                     .tokenHash(tokenHash)
                     .expiresAt(LocalDateTime.now().minusHours(1))
                     .build();
-            given(mfaRecoveryTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(expiredToken));
+            given(mfaRecoveryTokenRepository.findByTokenHashForUpdate(tokenHash)).willReturn(Optional.of(expiredToken));
 
             // When / Then
             assertThatThrownBy(() -> auth2faService.confirmMfaRecovery(rawToken))
@@ -685,7 +683,7 @@ class Auth2faServiceTest {
                     .expiresAt(LocalDateTime.now().plusHours(1))
                     .build();
             usedToken.markUsed();
-            given(mfaRecoveryTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(usedToken));
+            given(mfaRecoveryTokenRepository.findByTokenHashForUpdate(tokenHash)).willReturn(Optional.of(usedToken));
 
             // When / Then
             assertThatThrownBy(() -> auth2faService.confirmMfaRecovery(rawToken))
@@ -695,8 +693,8 @@ class Auth2faServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 2FA設定不在でAUTH_016例外")
-        void confirmMfaRecovery_2FA設定不在_AUTH016例外() {
+        @DisplayName("異常系: 2FA設定不在（無効化済み等）は無効トークン扱いでAUTH_023例外（CMP-261012-0910 AC-48。旧 AUTH_016）")
+        void confirmMfaRecovery_2FA設定不在_AUTH023例外() {
             // Given
             String rawToken = "recovery-token";
             String tokenHash = "hashed-recovery-token";
@@ -707,16 +705,16 @@ class Auth2faServiceTest {
                     .tokenHash(tokenHash)
                     .expiresAt(LocalDateTime.now().plusHours(1))
                     .build();
-            given(mfaRecoveryTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(recoveryToken));
+            given(mfaRecoveryTokenRepository.findByTokenHashForUpdate(tokenHash)).willReturn(Optional.of(recoveryToken));
             given(mfaRecoveryTokenRepository.save(any(MfaRecoveryTokenEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.empty());
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.empty());
 
             // When / Then
             assertThatThrownBy(() -> auth2faService.confirmMfaRecovery(rawToken))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_016"));
+                            .isEqualTo("AUTH_023"));
         }
     }
 

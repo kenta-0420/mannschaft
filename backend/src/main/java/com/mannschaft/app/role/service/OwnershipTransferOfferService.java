@@ -124,7 +124,8 @@ public class OwnershipTransferOfferService {
 
         // 2FA 必須チェック（設計書 step5）: 無駄なオファー作成を防ぐため打診時にも対象の 2FA を確認する
         // （承諾時に承諾者本人の 2FA を再チェックする）。
-        if (!auth2faService.isTwoFactorEnabled(targetUserId)) {
+        // CMP-261012-0910 AC-47: メールOTP 方式は不可。TOTP 有効または WebAuthn 登録済みの「強い 2FA」を要求する
+        if (!auth2faService.isStrongTwoFactorEnabled(targetUserId)) {
             throw new BusinessException(RoleErrorCode.ROLE_010); // 422
         }
 
@@ -211,7 +212,8 @@ public class OwnershipTransferOfferService {
         requireAddressee(offer, actorUserId);
 
         // 2FA 再チェック（設計書 step3）: 承諾者本人が 2FA 設定済みであること。未設定は 422。
-        if (!auth2faService.isTwoFactorEnabled(actorUserId)) {
+        // CMP-261012-0910 AC-47: 打診時の判定を信用せず、承諾時点の方式で「強い 2FA」を再確認する（EMAIL へ変更後は拒否）
+        if (!auth2faService.isStrongTwoFactorEnabled(actorUserId)) {
             throw new BusinessException(RoleErrorCode.ROLE_010); // 422
         }
 

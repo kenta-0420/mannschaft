@@ -182,7 +182,7 @@ class AuthControllerTest {
 
             // When
             ResponseEntity<ApiResponse<MessageResponse>> response =
-                    auth2faController.requestMfaRecovery("mfa-session-token");
+                    auth2faController.requestMfaRecovery(null, "mfa-session-token");
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -199,7 +199,7 @@ class AuthControllerTest {
 
             // When
             ResponseEntity<ApiResponse<TokenResponse>> response =
-                    auth2faController.confirmMfaRecovery("recovery-token");
+                    auth2faController.confirmMfaRecovery(null, "recovery-token");
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);

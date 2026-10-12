@@ -29,6 +29,8 @@ import com.mannschaft.app.auth.event.LoginSuccessEvent;
 import com.mannschaft.app.auth.event.MfaDisabledEvent;
 import com.mannschaft.app.auth.event.MfaEnabledEvent;
 import com.mannschaft.app.auth.event.MfaRecoveryRequestedEvent;
+import com.mannschaft.app.auth.event.MfaBackupCodesRegeneratedEvent;
+import com.mannschaft.app.auth.event.MfaRecoveryCompletedEvent;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
@@ -92,6 +94,12 @@ public class Auth2faService {
     private static final Duration TOTP_USED_TTL = Duration.ofSeconds(90);
     private static final String MFA_SESSION_KEY_PREFIX = MfaSessionService.SESSION_KEY_PREFIX;
     private static final String MFA_RECOVERY_RATE_KEY_PREFIX = "mannschaft:auth:mfa_recovery_attempt:";
+    /** 2FA 無効化の試行回数（AC-30: 5 回/15 分）。 */
+    private static final String MFA_DISABLE_RATE_KEY_PREFIX = "mannschaft:auth:mfa_disable_attempt:";
+    /** バックアップコード再生成の試行回数（AC-44: パスワード総当たり対策として無効化と同じ上限）。 */
+    private static final String MFA_REGENERATE_RATE_KEY_PREFIX = "mannschaft:auth:mfa_regenerate_attempt:";
+    private static final int REAUTH_RATE_LIMIT = 5;
+    private static final Duration REAUTH_RATE_WINDOW = Duration.ofMinutes(15);
     private static final int BACKUP_CODE_COUNT = 8;
     private static final int BACKUP_CODE_LENGTH = 8;
 
@@ -199,6 +207,9 @@ public class Auth2faService {
                 .build();
         twoFactorAuthRepository.save(twoFactorAuth);
 
+        // CMP-261012-0910 AC-48: 再設定前に発行された回復トークンで新しい 2FA を外させない
+        revokeUnusedRecoveryTokens(userId);
+
         // 5. イベント発行
         eventPublisher.publish(new MfaEnabledEvent(userId));
 
@@ -244,6 +255,9 @@ public class Auth2faService {
     @Transactional
     public ApiResponse<MessageResponse> requestMfaRecovery(String mfaSessionToken) {
         // MFAセッショントークンからuserIdを取得（削除はしない。リカバリーフローで再利用可能にする）
+        if (mfaSessionToken == null || mfaSessionToken.isBlank()) {
+            throw new BusinessException(AuthErrorCode.AUTH_019);
+        }
         String sessionHash = authTokenService.hashToken(mfaSessionToken);
         String sessionKey = MFA_SESSION_KEY_PREFIX + sessionHash;
         String userIdStr = redisTemplate.opsForValue().get(sessionKey);
@@ -261,6 +275,9 @@ public class Auth2faService {
         );
 
         UserEntity user = findUserOrThrow(userId);
+
+        // CMP-261012-0910 AC-48: 再要求したら旧トークンは失効させ、最新の 1 通だけを有効にする
+        revokeUnusedRecoveryTokens(userId);
 
         // 2. MfaRecoveryToken生成（1h有効）
         String rawToken = UUID.randomUUID().toString();
@@ -287,10 +304,13 @@ public class Auth2faService {
      */
     @Transactional
     public ApiResponse<TokenResponse> confirmMfaRecovery(String token) {
+        if (token == null || token.isBlank()) {
+            throw new BusinessException(AuthErrorCode.AUTH_023);
+        }
         String tokenHash = authTokenService.hashToken(token);
 
-        // 1. トークン検証
-        MfaRecoveryTokenEntity recoveryToken = mfaRecoveryTokenRepository.findByTokenHash(tokenHash)
+        // 1. トークン検証（CMP-261012-0910 AC-48: 行ロックで同一トークンの並列確認を直列化し、成功を 1 件に限る）
+        MfaRecoveryTokenEntity recoveryToken = mfaRecoveryTokenRepository.findByTokenHashForUpdate(tokenHash)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_023));
 
         if (recoveryToken.getExpiresAt().isBefore(LocalDateTime.now())) {
@@ -306,12 +326,13 @@ public class Auth2faService {
 
         Long userId = recoveryToken.getUserId();
 
-        // 2. 2FAを無効化
-        TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserId(userId)
-                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_016));
-
-        twoFactorAuth.disable();
-        twoFactorAuthRepository.save(twoFactorAuth);
+        // 2. 2FAを無効化（CMP-261012-0910 AC-52: 有効フラグだけ倒すと秘密鍵・バックアップコードが残るため行ごと消す）。
+        // 2FA が既に無い（無効化済み等）なら、このトークンでは何も外せない＝無効トークンと同じ扱い（AC-48）
+        TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserIdForUpdate(userId)
+                .filter(tfa -> Boolean.TRUE.equals(tfa.getIsEnabled()))
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_023));
+        TwoFactorMethod disabledMethod = twoFactorAuth.getMethod();
+        removeTwoFactor(twoFactorAuth);
 
         // 3. 既存セッションを全て無効化（MFA無効化後の不正ログイン防止）
         // パスワードが漏洩していた場合、MFA無効化後に攻撃者が即ログインできてしまうため、
@@ -324,8 +345,9 @@ public class Auth2faService {
         // 4. Access Token + Refresh Token発行
         TokenResponse tokenResponse = issueTokenPair(userId);
 
-        // 5. イベント発行
-        eventPublisher.publish(new MfaDisabledEvent(userId));
+        // 5. イベント発行（AC-52/AC-35/AC-37: 監査 MFA_DISABLED(reason=RECOVERY)・回復完了監査・本人宛通知）
+        eventPublisher.publish(new MfaDisabledEvent(userId, disabledMethod, MfaDisabledEvent.REASON_RECOVERY));
+        eventPublisher.publish(new MfaRecoveryCompletedEvent(userId));
 
         return ApiResponse.of(tokenResponse);
     }
@@ -492,7 +514,25 @@ public class Auth2faService {
     @Transactional
     public ApiResponse<MessageResponse> disableTwoFactor(
             Long userId, DisableTwoFactorRequest req) {
-        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+        // 5 回/15 分（成功・失敗を問わず計上。Valkey のため失敗 TX のロールバックでも戻らない）
+        authTokenService.checkRateLimit(MFA_DISABLE_RATE_KEY_PREFIX + userId,
+                REAUTH_RATE_LIMIT, REAUTH_RATE_WINDOW);
+        TwoFactorAuthEntity twoFactorAuth = findEnabledForUpdateOrThrow(userId);
+        UserEntity user = findUserOrThrow(userId);
+
+        // 盗難アクセストークン対策: パスワード保持者はパスワード＋有効要素の両方（AC-30）
+        if (hasPassword(user) && !passwordMatches(user, req.getCurrentPassword())) {
+            throw new BusinessException(AuthErrorCode.AUTH_080);
+        }
+        if (!verifyReauthFactor(twoFactorAuth, userId, req.getMethod(), req.getCode())) {
+            throw new BusinessException(AuthErrorCode.AUTH_080);
+        }
+
+        TwoFactorMethod disabledMethod = twoFactorAuth.getMethod();
+        removeTwoFactor(twoFactorAuth);
+        // セッションは維持する（裁可事項 3 / AC-33）。リフレッシュトークン失効・user_invalidated_at 更新はしない
+        eventPublisher.publish(new MfaDisabledEvent(userId, disabledMethod, MfaDisabledEvent.REASON_USER));
+        return ApiResponse.of(MessageResponse.of("2段階認証を無効にしました"));
     }
 
     /**
@@ -515,16 +555,43 @@ public class Auth2faService {
     /**
      * バックアップコード再生成（本人確認付き。AC-36/AC-44）。
      *
-     * <p>骨格段階では本人確認を行わず既存 {@link #regenerateBackupCodes(Long)} へ委譲して挙動を保つ。</p>
+     * <p>本人確認は「現在のパスワード」または「有効な要素（TOTP / 本人確認用メールOTP / バックアップコード）」
+     * （裁可事項 8）。提示されたものはすべて正しくなければならず、何も提示されなければ拒否する。
+     * 失敗時はコードを 1 文字も変えず（TX ロールバック）、成功時のみ監査イベントを発行する（AC-36）。</p>
      *
      * @param userId 認証済みユーザー ID
-     * @param req    本人確認（null 可＝骨格段階の互換）
+     * @param req    本人確認（null は本人確認なし＝拒否）
      * @return 平文バックアップコード 8 件
      */
     @Transactional
     public ApiResponse<BackupCodesResponse> regenerateBackupCodes(
             Long userId, RegenerateBackupCodesRequest req) {
-        return regenerateBackupCodes(userId);
+        authTokenService.checkRateLimit(MFA_REGENERATE_RATE_KEY_PREFIX + userId,
+                REAUTH_RATE_LIMIT, REAUTH_RATE_WINDOW);
+        TwoFactorAuthEntity twoFactorAuth = findEnabledForUpdateOrThrow(userId);
+        UserEntity user = findUserOrThrow(userId);
+
+        boolean passwordPresented = req != null && req.getCurrentPassword() != null
+                && !req.getCurrentPassword().isEmpty();
+        boolean factorPresented = req != null && (req.getMethod() != null || req.getCode() != null);
+        if (!passwordPresented && !factorPresented) {
+            throw new BusinessException(AuthErrorCode.AUTH_080);
+        }
+        if (passwordPresented && !(hasPassword(user) && passwordMatches(user, req.getCurrentPassword()))) {
+            throw new BusinessException(AuthErrorCode.AUTH_080);
+        }
+        if (factorPresented && !verifyReauthFactor(twoFactorAuth, userId, req.getMethod(), req.getCode())) {
+            throw new BusinessException(AuthErrorCode.AUTH_080);
+        }
+
+        // 行ロック済みの写しに新しい 8 件を書く（旧コードは全失効）
+        List<String> plainCodes = generateBackupCodes();
+        twoFactorAuth.replaceBackupCodes(toJson(plainCodes.stream()
+                .map(passwordEncoder::encode)
+                .collect(Collectors.toList())));
+        twoFactorAuthRepository.save(twoFactorAuth);
+        eventPublisher.publish(new MfaBackupCodesRegeneratedEvent(userId));
+        return ApiResponse.of(new BackupCodesResponse(plainCodes));
     }
 
     /**
@@ -534,7 +601,73 @@ public class Auth2faService {
      * @return TOTP 方式の 2FA が有効、または WebAuthn 登録済みなら true
      */
     public boolean isStrongTwoFactorEnabled(Long userId) {
-        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+        return twoFactorAuthRepository.countStrongSecondFactor(userId) > 0;
+    }
+
+    // === 無効化・再生成・回復の部品（CMP-261012-0910 丙） ===
+
+    /** 2FA が有効な行を行ロック付きで取る。無い・未有効は AUTH_079（409）。 */
+    private TwoFactorAuthEntity findEnabledForUpdateOrThrow(Long userId) {
+        return twoFactorAuthRepository.findByUserIdForUpdate(userId)
+                .filter(tfa -> Boolean.TRUE.equals(tfa.getIsEnabled()))
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_079));
+    }
+
+    /** パスワードを持つユーザーか（OAuth 専用等はパスワード未設定）。 */
+    private static boolean hasPassword(UserEntity user) {
+        return user.getPasswordHash() != null && !user.getPasswordHash().isBlank();
+    }
+
+    /** 提示パスワードが現在のパスワードと一致するか（未提示は不一致）。 */
+    private boolean passwordMatches(UserEntity user, String rawPassword) {
+        if (rawPassword == null || rawPassword.isEmpty() || !hasPassword(user)) {
+            return false;
+        }
+        return passwordEncoder.matches(rawPassword, user.getPasswordHash());
+    }
+
+    /**
+     * 本人確認の要素を照合する（無効化・再生成用）。TOTP は使用済み印を取り、バックアップコードは一致した 1 件を消費し、
+     * メールOTP は本人確認用（REAUTH・本人固定）のコードを消費する。未提示・不正形式は不一致。
+     * 呼び出し側が {@link TwoFactorAuthRepository#findByUserIdForUpdate} で行ロック済みであること。
+     */
+    private boolean verifyReauthFactor(TwoFactorAuthEntity twoFactorAuth, Long userId,
+                                       MfaVerificationMethod method, String code) {
+        if (method == null || code == null) {
+            return false;
+        }
+        return switch (method) {
+            case TOTP -> verifyLoginTotp(twoFactorAuth, userId, code);
+            case BACKUP_CODE -> consumeBackupCode(twoFactorAuth, code) != null;
+            case EMAIL -> mfaEmailOtpService.verifyAndConsume(
+                    MfaEmailOtpPurpose.REAUTH, MfaEmailOtpKeys.subjectOf(userId), code);
+        };
+    }
+
+    /**
+     * 2FA を完全に外す（無効化・回復の共通処理。AC-31/AC-52）。行を削除して秘密鍵・バックアップコードを残さず、
+     * 発行済みのメールOTP（本人確認用・設定用）と未使用の回復トークンも失効させる（AC-48）。
+     */
+    private void removeTwoFactor(TwoFactorAuthEntity twoFactorAuth) {
+        Long userId = twoFactorAuth.getUserId();
+        twoFactorAuthRepository.delete(twoFactorAuth);
+        twoFactorAuthRepository.flush();
+        String subject = MfaEmailOtpKeys.subjectOf(userId);
+        mfaEmailOtpService.invalidate(MfaEmailOtpPurpose.REAUTH, subject);
+        mfaEmailOtpService.invalidate(MfaEmailOtpPurpose.SETUP, subject);
+        revokeUnusedRecoveryTokens(userId);
+    }
+
+    /**
+     * 未使用の回復トークンをすべて使用済みにする（再要求・無効化・再設定時。裁定: 旧回復トークンで 2FA を外させない）。
+     */
+    private void revokeUnusedRecoveryTokens(Long userId) {
+        List<MfaRecoveryTokenEntity> unused = mfaRecoveryTokenRepository.findByUserIdAndUsedAtIsNull(userId);
+        if (unused.isEmpty()) {
+            return;
+        }
+        unused.forEach(MfaRecoveryTokenEntity::markUsed);
+        mfaRecoveryTokenRepository.saveAll(unused);
     }
 
     // === 2FA ログイン検証の部品（CMP-261012-0910） ===
