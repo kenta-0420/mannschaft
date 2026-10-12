@@ -1,5 +1,6 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.auth.MfaVerificationMethod;
 import com.mannschaft.app.auth.entity.MfaRecoveryTokenEntity;
 import com.mannschaft.app.auth.entity.RefreshTokenEntity;
 import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
@@ -85,6 +86,16 @@ class Auth2faServiceTest {
     @Mock
     private StatusClaimResolver statusClaimResolver;
 
+    // CMP-261012-0910: MFA セッション（試行上限・ロック）・メールOTP・失敗監査の部品
+    @Mock
+    private MfaSessionService mfaSessionService;
+
+    @Mock
+    private MfaEmailOtpService mfaEmailOtpService;
+
+    @Mock
+    private MfaFailureAuditRecorder mfaFailureAuditRecorder;
+
     @InjectMocks
     private Auth2faService auth2faService;
 
@@ -99,6 +110,10 @@ class Auth2faServiceTest {
     private static final String TEST_TOTP_CODE = "123456";
     private static final String TEST_MFA_SESSION_TOKEN = "mfa-session-token";
     private static final String TEST_SESSION_HASH = "hashed-session-token";
+    private static final String TEST_IP = "203.0.113.1";
+    private static final String TEST_UA = "Auth2faServiceTest";
+    private static final MfaSessionService.MfaSession TEST_SESSION =
+            new MfaSessionService.MfaSession(TEST_SESSION_HASH, TEST_USER_ID);
 
     private UserEntity createActiveUser() {
         return UserEntity.builder()
@@ -280,15 +295,18 @@ class Auth2faServiceTest {
     // validateTotp
     // ========================================
 
+    // CMP-261012-0910: 旧 validateTotp(token, totpCode) は validateMfaLogin(token, method, code, ip, ua) へ置き換えた
+    // （D-3T 凍結行の入れ替え）。旧テストの各シナリオは新 API の契約（AUTH_073/AUTH_074）で引き継ぐ。
     @Nested
-    @DisplayName("validateTotp")
+    @DisplayName("validateMfaLogin（旧 validateTotp）")
     class ValidateTotp {
 
         @Test
         @DisplayName("正常系: リフレッシュトークンを保存するため書き込みトランザクションで実行する")
         void validateTotp_書き込みトランザクション() throws NoSuchMethodException {
             Method method = Auth2faService.class.getDeclaredMethod(
-                    "validateTotp", String.class, String.class);
+                    "validateMfaLogin", String.class, MfaVerificationMethod.class, String.class,
+                    String.class, String.class);
             Transactional transactional = method.getAnnotation(Transactional.class);
 
             assertThat(transactional).isNotNull();
@@ -313,82 +331,80 @@ class Auth2faServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: MFAセッショントークン無効でAUTH_019例外")
-        void validateTotp_セッション無効_AUTH019例外() {
+        @DisplayName("異常系: MFAセッショントークン無効でAUTH_073例外（旧 AUTH_019）")
+        void validateTotp_セッション無効_AUTH073例外() {
             // Given
-            given(authTokenService.hashToken(TEST_MFA_SESSION_TOKEN)).willReturn(TEST_SESSION_HASH);
-            given(redisTemplate.opsForValue()).willReturn(valueOperations);
-            given(valueOperations.get("mannschaft:auth:mfa_session_token:" + TEST_SESSION_HASH))
-                    .willReturn(null);
+            given(mfaSessionService.resolve(TEST_MFA_SESSION_TOKEN))
+                    .willThrow(new BusinessException(com.mannschaft.app.auth.AuthErrorCode.AUTH_073));
 
             // When / Then
-            assertThatThrownBy(() -> auth2faService.validateTotp(TEST_MFA_SESSION_TOKEN, TEST_TOTP_CODE))
+            assertThatThrownBy(() -> auth2faService.validateMfaLogin(
+                    TEST_MFA_SESSION_TOKEN, MfaVerificationMethod.TOTP, TEST_TOTP_CODE, TEST_IP, TEST_UA))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_019"));
+                            .isEqualTo("AUTH_073"));
+            verify(refreshTokenRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("異常系: 2FA設定不在でAUTH_016例外")
-        void validateTotp_2FA設定不在_AUTH016例外() {
+        @DisplayName("異常系: 2FA設定不在ならセッションを破棄しAUTH_073例外（旧 AUTH_016）")
+        void validateTotp_2FA設定不在_AUTH073例外() {
             // Given
-            given(authTokenService.hashToken(TEST_MFA_SESSION_TOKEN)).willReturn(TEST_SESSION_HASH);
-            given(redisTemplate.opsForValue()).willReturn(valueOperations);
-            given(valueOperations.get("mannschaft:auth:mfa_session_token:" + TEST_SESSION_HASH))
-                    .willReturn(String.valueOf(TEST_USER_ID));
-            given(redisTemplate.delete("mannschaft:auth:mfa_session_token:" + TEST_SESSION_HASH))
-                    .willReturn(true);
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.empty());
+            given(mfaSessionService.resolve(TEST_MFA_SESSION_TOKEN)).willReturn(TEST_SESSION);
+            given(mfaSessionService.beginAttempt(TEST_SESSION)).willReturn(1L);
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> auth2faService.validateTotp(TEST_MFA_SESSION_TOKEN, TEST_TOTP_CODE))
+            assertThatThrownBy(() -> auth2faService.validateMfaLogin(
+                    TEST_MFA_SESSION_TOKEN, MfaVerificationMethod.TOTP, TEST_TOTP_CODE, TEST_IP, TEST_UA))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_016"));
+                            .isEqualTo("AUTH_073"));
+            verify(mfaSessionService).terminate(TEST_SESSION);
+            verify(refreshTokenRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("異常系: TOTPコード不正でAUTH_018例外")
-        void validateTotp_TOTPコード不正_AUTH018例外() {
+        @DisplayName("異常系: TOTPコード不正でAUTH_074例外・失敗を監査と試行に計上（旧 AUTH_018）")
+        void validateTotp_TOTPコード不正_AUTH074例外() {
             // Given
-            given(authTokenService.hashToken(TEST_MFA_SESSION_TOKEN)).willReturn(TEST_SESSION_HASH);
-            given(redisTemplate.opsForValue()).willReturn(valueOperations);
-            given(valueOperations.get("mannschaft:auth:mfa_session_token:" + TEST_SESSION_HASH))
-                    .willReturn(String.valueOf(TEST_USER_ID));
-            given(redisTemplate.delete("mannschaft:auth:mfa_session_token:" + TEST_SESSION_HASH))
-                    .willReturn(true);
-
+            given(mfaSessionService.resolve(TEST_MFA_SESSION_TOKEN)).willReturn(TEST_SESSION);
+            given(mfaSessionService.beginAttempt(TEST_SESSION)).willReturn(1L);
+            given(mfaSessionService.recordFailure(TEST_SESSION, 1L))
+                    .willReturn(new MfaSessionService.FailureOutcome(false, false));
             TwoFactorAuthEntity twoFactorAuth = createEnabledTwoFactorAuth();
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
             given(encryptionService.decrypt(TEST_ENCRYPTED_SECRET)).willReturn(TEST_TOTP_SECRET);
 
             // When / Then（不正なTOTPコード）
-            assertThatThrownBy(() -> auth2faService.validateTotp(TEST_MFA_SESSION_TOKEN, "000000"))
+            assertThatThrownBy(() -> auth2faService.validateMfaLogin(
+                    TEST_MFA_SESSION_TOKEN, MfaVerificationMethod.TOTP, "000000", TEST_IP, TEST_UA))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_018"));
+                            .isEqualTo("AUTH_074"));
+            verify(mfaFailureAuditRecorder).record(any());
+            verify(mfaSessionService, never()).consume(any());
+            verify(refreshTokenRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("異常系: 使用済みTOTPコードでAUTH_018例外")
-        void validateTotp_使用済みコード_AUTH018例外() {
+        @DisplayName("異常系: 形式違反のTOTPコードでもAUTH_074例外（旧 AUTH_018）")
+        void validateTotp_形式違反コード_AUTH074例外() {
             // Given
-            given(authTokenService.hashToken(TEST_MFA_SESSION_TOKEN)).willReturn(TEST_SESSION_HASH);
-            given(redisTemplate.opsForValue()).willReturn(valueOperations);
-            given(valueOperations.get("mannschaft:auth:mfa_session_token:" + TEST_SESSION_HASH))
-                    .willReturn(String.valueOf(TEST_USER_ID));
-            given(redisTemplate.delete("mannschaft:auth:mfa_session_token:" + TEST_SESSION_HASH))
-                    .willReturn(true);
-
+            given(mfaSessionService.resolve(TEST_MFA_SESSION_TOKEN)).willReturn(TEST_SESSION);
+            given(mfaSessionService.beginAttempt(TEST_SESSION)).willReturn(1L);
+            given(mfaSessionService.recordFailure(TEST_SESSION, 1L))
+                    .willReturn(new MfaSessionService.FailureOutcome(false, false));
             TwoFactorAuthEntity twoFactorAuth = createEnabledTwoFactorAuth();
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
             given(encryptionService.decrypt(TEST_ENCRYPTED_SECRET)).willReturn(TEST_TOTP_SECRET);
 
-            // nullコードはフォーマットバリデーションで弾かれるので不正コードで検証
-            assertThatThrownBy(() -> auth2faService.validateTotp(TEST_MFA_SESSION_TOKEN, "abcdef"))
+            // HTTP 経路では DTO の形式検証で 400 になるが、Service 直呼びでも不一致として扱う
+            assertThatThrownBy(() -> auth2faService.validateMfaLogin(
+                    TEST_MFA_SESSION_TOKEN, MfaVerificationMethod.TOTP, "abcdef", TEST_IP, TEST_UA))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_018"));
+                            .isEqualTo("AUTH_074"));
         }
     }
 

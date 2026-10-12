@@ -1,8 +1,10 @@
 package com.mannschaft.app.auth.dto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.auth.MfaVerificationMethod;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 
@@ -60,4 +62,35 @@ public class ValidateTotpLoginRequest {
     public String effectiveCode() {
         return code != null ? code : totpCode;
     }
+
+    /**
+     * 新旧コード欄の競合が無いこと（AC-53）。両方指定は片方を黙って優先せず 400 にする。
+     */
+    @JsonIgnore
+    @AssertTrue(message = "code と totpCode は同時に指定できません")
+    public boolean isCodeFieldsExclusive() {
+        return code == null || totpCode == null;
+    }
+
+    /**
+     * 要素ごとのコード形式（AC-10）。TOTP / EMAIL は 6 桁、BACKUP_CODE は 8 桁の数字。null・空・違反は 400 で
+     * 試行回数に計上しない（Bean Validation で Service 到達前に弾く）。新旧競合は {@link #isCodeFieldsExclusive} が報告する。
+     */
+    @JsonIgnore
+    @AssertTrue(message = "確認コードの形式が正しくありません")
+    public boolean isCodeFormatValid() {
+        if (code != null && totpCode != null) {
+            return true;
+        }
+        String c = effectiveCode();
+        if (c == null) {
+            return false;
+        }
+        return effectiveMethod() == MfaVerificationMethod.BACKUP_CODE
+                ? BACKUP_CODE_PATTERN.matcher(c).matches()
+                : SIX_DIGIT_PATTERN.matcher(c).matches();
+    }
+
+    private static final java.util.regex.Pattern SIX_DIGIT_PATTERN = java.util.regex.Pattern.compile("^\\d{6}$");
+    private static final java.util.regex.Pattern BACKUP_CODE_PATTERN = java.util.regex.Pattern.compile("^\\d{8}$");
 }

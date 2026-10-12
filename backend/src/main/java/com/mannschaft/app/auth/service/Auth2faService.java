@@ -1,7 +1,13 @@
 package com.mannschaft.app.auth.service;
 
 import com.mannschaft.app.auth.AuthErrorCode;
+import com.mannschaft.app.auth.MfaEmailOtpPurpose;
 import com.mannschaft.app.auth.MfaVerificationMethod;
+import com.mannschaft.app.auth.TwoFactorMethod;
+import com.mannschaft.app.auth.event.LoginFailedEvent;
+import com.mannschaft.app.auth.event.MfaBackupCodeUsedEvent;
+import com.mannschaft.app.auth.event.MfaVerificationFailedEvent;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.mannschaft.app.auth.dto.DisableTwoFactorRequest;
 import com.mannschaft.app.auth.dto.MfaEmailSendResponse;
 import com.mannschaft.app.auth.dto.MfaLoginTokenResponse;
@@ -48,7 +54,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -71,10 +76,21 @@ public class Auth2faService {
     private final EncryptionService encryptionService;
     private final RoleClaimResolver roleClaimResolver;
     private final StatusClaimResolver statusClaimResolver;
+    private final MfaSessionService mfaSessionService;
+    private final MfaEmailOtpService mfaEmailOtpService;
+    private final MfaFailureAuditRecorder mfaFailureAuditRecorder;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final TypeReference<List<String>> STRING_LIST = new TypeReference<>() {
+    };
     private static final String TOTP_USED_KEY_PREFIX = "mannschaft:auth:totp_used:";
-    private static final String MFA_SESSION_KEY_PREFIX = "mannschaft:auth:mfa_session_token:";
+    /**
+     * TOTP 使用済み印の TTL。±1 ウィンドウ検証では 1 つのコードが最大 90 秒間有効でありうるため、
+     * 90 秒保持して有効期間の終わりでの再利用を防ぐ（F01.1 §TOTP コード検証フロー / AC-6）。
+     */
+    private static final Duration TOTP_USED_TTL = Duration.ofSeconds(90);
+    private static final String MFA_SESSION_KEY_PREFIX = MfaSessionService.SESSION_KEY_PREFIX;
     private static final String MFA_RECOVERY_RATE_KEY_PREFIX = "mannschaft:auth:mfa_recovery_attempt:";
     private static final int BACKUP_CODE_COUNT = 8;
     private static final int BACKUP_CODE_LENGTH = 8;
@@ -146,6 +162,16 @@ public class Auth2faService {
         TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_016));
 
+        // CMP-261012-0910 AC-1: 有効化済みの再有効化を拒否する（バックアップコードの黙った全差し替え・
+        // MfaEnabledEvent の二重発行を防ぐ）。方式切替は「無効化 → 再設定」でのみ行う。
+        if (Boolean.TRUE.equals(twoFactorAuth.getIsEnabled())) {
+            throw new BusinessException(AuthErrorCode.AUTH_078);
+        }
+        // TOTP の設定開始（setupTotp）を経ていない行（秘密鍵なし）は確定できない
+        if (twoFactorAuth.getTotpSecret() == null) {
+            throw new BusinessException(AuthErrorCode.AUTH_016);
+        }
+
         // AES-256-GCM で秘密鍵を復号化
         String secret = encryptionService.decrypt(twoFactorAuth.getTotpSecret());
 
@@ -154,13 +180,10 @@ public class Auth2faService {
             throw new BusinessException(AuthErrorCode.AUTH_018);
         }
 
-        // 2. 使用済みチェック
-        String usedKey = TOTP_USED_KEY_PREFIX + userId + ":" + totpCode;
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(usedKey))) {
+        // 2. 使用済み印を原子的に取る（取れなければ使用済み。AC-6）
+        if (!markTotpUsed(userId, totpCode)) {
             throw new BusinessException(AuthErrorCode.AUTH_018);
         }
-        // コードを使用済みとしてマーク（60秒有効 = TOTPの1ウィンドウ分余裕）
-        redisTemplate.opsForValue().set(usedKey, "1", 60, TimeUnit.SECONDS);
 
         // 3. 2FA有効化
         twoFactorAuth.enable();
@@ -181,63 +204,6 @@ public class Auth2faService {
 
         // 6. 平文バックアップコードを返却
         return ApiResponse.of(new BackupCodesResponse(plainCodes));
-    }
-
-    /**
-     * MFAセッショントークンを使用してTOTPを検証し、トークンを発行する。
-     *
-     * @param mfaSessionToken MFAセッショントークン
-     * @param totpCode        TOTPコード
-     * @return トークンレスポンス
-     */
-    @Transactional
-    public ApiResponse<TokenResponse> validateTotp(String mfaSessionToken, String totpCode) {
-        // 1. Valkey: MFAセッショントークンからuserIdを取得
-        String sessionHash = authTokenService.hashToken(mfaSessionToken);
-        String sessionKey = MFA_SESSION_KEY_PREFIX + sessionHash;
-        String userIdStr = redisTemplate.opsForValue().get(sessionKey);
-        if (userIdStr == null) {
-            throw new BusinessException(AuthErrorCode.AUTH_019);
-        }
-        // セッショントークンを削除（一度きり使用）。
-        //
-        // 公開網漏れ是正 監査メモ: POST /api/v1/auth/2fa/validate は permitAll だが専用のレート制限
-        // フィルタを持たない。それでも安全なのは、この delete が TOTP 検証の「成否を問わず」直前に
-        // 実行されるため — 失敗しても使い捨てのセッショントークンが即座に無効化され、再試行には
-        // 毎回ログイン（AuthService の 10 回/分レートリミット下）を要求されるからである
-        // （このセッショントークン自体が「単回使用のケイパビリティ」として振る舞う設計）。
-        //
-        // ⚠️ この delete を「検証成功後」に動かすと、この間接的な保護は消滅し、
-        // 同一セッショントークンに対して無制限に TOTP を総当りできてしまう。
-        // 意図的な設計であり、危うさを内包するため触る際は必ずこのコメントごと確認すること。
-        redisTemplate.delete(sessionKey);
-
-        Long userId = Long.valueOf(userIdStr);
-
-        TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserId(userId)
-                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_016));
-
-        // AES-256-GCM で秘密鍵を復号化
-        String secret = encryptionService.decrypt(twoFactorAuth.getTotpSecret());
-
-        // 2. TOTP検証 + 使用済みチェック
-        if (!verifyTotpCode(secret, totpCode)) {
-            throw new BusinessException(AuthErrorCode.AUTH_018);
-        }
-        String usedKey = TOTP_USED_KEY_PREFIX + userId + ":" + totpCode;
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(usedKey))) {
-            throw new BusinessException(AuthErrorCode.AUTH_018);
-        }
-        redisTemplate.opsForValue().set(usedKey, "1", 60, TimeUnit.SECONDS);
-
-        // 3. Access Token + Refresh Token発行
-        TokenResponse tokenResponse = issueTokenPair(userId);
-
-        // 4. イベント発行
-        // validateTotpはipAddress/userAgentを受け取らないため、ここではnullとする
-        eventPublisher.publish(new LoginSuccessEvent(userId, "TOTP", null, null));
-
-        return ApiResponse.of(tokenResponse);
     }
 
     /**
@@ -387,29 +353,85 @@ public class Auth2faService {
     private static final String NOT_IMPLEMENTED = "CMP-261012-0910 未実装";
 
     /**
-     * 2FA ログイン検証（TOTP / バックアップコード / メールOTP）。
+     * 2FA ログイン検証（TOTP / バックアップコード / メールOTP。CMP-261012-0910 AC-6〜17・AC-46・AC-49）。
      *
-     * <p>骨格段階は未実装（TOTP も含む）。既存 {@link #validateTotp} へ委譲すると、トークン発行経路
-     * （RoleClaimResolver → role.UserRoleRepository）が新しい @Transactional 入口として D-3T 番人
-     * （CrossDomainTransactionalTransitiveArchTest）に検出され、凍結ストアへの負債追加が必要になるため委譲しない。
-     * 出陣（甲）で試行カウンタ・バックアップコード消費・メールOTP 照合を実装し、D-3T の扱いを決めること。</p>
+     * <ol>
+     *   <li>MFA セッション解決（不在・期限切れは同一の AUTH_073）</li>
+     *   <li>ユーザーロック確認（ロック前に発行済みのセッションも全方式で AUTH_003）</li>
+     *   <li>照合<b>前</b>に試行を原子 INCR（全手段合計 5 回）</li>
+     *   <li>2FA 行を PESSIMISTIC_WRITE で取得し要素ごとに照合（バックアップコードは一致した 1 件を削除）</li>
+     *   <li>失敗: 監査 MFA_FAILED を独立 TX で記録 → ユーザー単位の失敗計上（10 回/30 分でロック）→
+     *       AUTH_074（5 回目は AUTH_075・セッション削除）</li>
+     *   <li>成功: セッションキー DEL の戻り値で勝者を 1 人に決め（敗者は AUTH_073 で TX ロールバック）、トークン発行</li>
+     * </ol>
+     *
+     * <p>D-3T 番人: トークン発行（RoleClaimResolver → role.UserRoleRepository）を含むため本メソッドは
+     * 他ドメイン Repository に到達する TX 入口である。旧 {@code validateTotp} の凍結行を本メソッドへ置き換えた
+     * （負債の件数は増やさない入れ替え）。</p>
      *
      * @param mfaSessionToken MFA セッショントークン
      * @param method          提示要素（null 不可。DTO 側で欠落→TOTP に解決済み）
-     * @param code            コード
-     * @param ipAddress       リクエスト元 IP（LoginSuccessEvent 用）
-     * @param userAgent       User-Agent（LoginSuccessEvent 用）
+     * @param code            コード（形式は DTO で検証済み。Service 直呼びでも不正形式は不一致として扱う）
+     * @param ipAddress       リクエスト元 IP（LoginSuccessEvent・監査用）
+     * @param userAgent       User-Agent（LoginSuccessEvent・監査用）
      * @return トークン＋使用要素＋バックアップコード残数
      */
     @Transactional
     public ApiResponse<MfaLoginTokenResponse> validateMfaLogin(
             String mfaSessionToken, MfaVerificationMethod method, String code,
             String ipAddress, String userAgent) {
-        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+        MfaSessionService.MfaSession session = mfaSessionService.resolve(mfaSessionToken);
+        Long userId = session.userId();
+        mfaSessionService.assertNotLocked(userId);
+        long attempt = mfaSessionService.beginAttempt(session);
+
+        // 行ロックをこの TX の最初の読取りで取る（先に通常読取りすると一次キャッシュの古い写しが返る）
+        TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserIdForUpdate(userId)
+                .filter(tfa -> Boolean.TRUE.equals(tfa.getIsEnabled()))
+                .orElse(null);
+        if (twoFactorAuth == null) {
+            // ログイン後に 2FA が無効化された等。このセッションでは完了できない
+            mfaSessionService.terminate(session);
+            throw new BusinessException(AuthErrorCode.AUTH_073);
+        }
+
+        Integer backupCodesRemaining = null;
+        boolean verified;
+        switch (method) {
+            case TOTP -> verified = verifyLoginTotp(twoFactorAuth, userId, code);
+            case BACKUP_CODE -> {
+                backupCodesRemaining = consumeBackupCode(twoFactorAuth, code);
+                verified = backupCodesRemaining != null;
+            }
+            case EMAIL -> verified = mfaEmailOtpService.verifyAndConsume(
+                    MfaEmailOtpPurpose.LOGIN, session.sessionHash(), code);
+            default -> throw new IllegalStateException("未知の 2FA 要素: " + method);
+        }
+
+        if (!verified) {
+            throw onVerificationFailure(session, attempt, method, ipAddress, userAgent);
+        }
+
+        // 勝者を 1 人に決める。敗者は AUTH_073 で TX ごとロールバック（バックアップコードの削除も戻る）
+        if (!mfaSessionService.consume(session)) {
+            throw new BusinessException(AuthErrorCode.AUTH_073);
+        }
+        mfaSessionService.resetUserFailures(userId);
+
+        TokenResponse tokenResponse = issueTokenPair(userId);
+        eventPublisher.publish(new LoginSuccessEvent(userId, ipAddress, userAgent, method.name()));
+        if (backupCodesRemaining != null) {
+            eventPublisher.publish(new MfaBackupCodeUsedEvent(userId, backupCodesRemaining, ipAddress, userAgent));
+        }
+        return ApiResponse.of(new MfaLoginTokenResponse(tokenResponse, method, backupCodesRemaining));
     }
 
     /**
-     * ログイン時のメールOTP 送信（公開 EP。MFA セッションに紐付ける。AC-19〜21）。
+     * ログイン時のメールOTP 送信（公開 EP。MFA セッションに紐付ける。AC-18〜21・AC-46）。
+     *
+     * <p>IP レート制限はセッション照合より<b>前</b>に掛ける（不正トークンでの総当たりも IP 上限で止める。AC-18）。
+     * ロック中のユーザーはロック前に発行済みのセッションでも送信させない（AC-46）。
+     * 送信本体（再送待ち・送信上限・enqueue・セッション延長）は {@link MfaEmailOtpService#send} が担う。</p>
      *
      * @param mfaSessionToken MFA セッショントークン（本文で受ける）
      * @param ipAddress       リクエスト元 IP（IP レート制限用）
@@ -418,7 +440,12 @@ public class Auth2faService {
     @Transactional
     public ApiResponse<MfaEmailSendResponse> sendLoginEmailOtp(
             String mfaSessionToken, String ipAddress) {
-        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+        authTokenService.checkRateLimit(MfaEmailOtpKeys.ipSendRateKey(ipAddress),
+                MfaEmailOtpKeys.IP_SEND_LIMIT, Duration.ofSeconds(MfaEmailOtpKeys.IP_SEND_WINDOW_SECONDS));
+        MfaSessionService.MfaSession session = mfaSessionService.resolve(mfaSessionToken);
+        mfaSessionService.assertNotLocked(session.userId());
+        return ApiResponse.of(mfaEmailOtpService.send(
+                MfaEmailOtpPurpose.LOGIN, session.sessionHash(), session.userId(), ipAddress));
     }
 
     /**
@@ -475,7 +502,14 @@ public class Auth2faService {
      * @return 有効状態・方式・バックアップコード残数
      */
     public ApiResponse<TwoFactorStatusResponse> getTwoFactorStatus(Long userId) {
-        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+        TwoFactorStatusResponse status = twoFactorAuthRepository.findByUserId(userId)
+                .filter(tfa -> Boolean.TRUE.equals(tfa.getIsEnabled()))
+                .map(tfa -> new TwoFactorStatusResponse(
+                        true,
+                        tfa.getMethod() == null ? TwoFactorMethod.TOTP : tfa.getMethod(),
+                        readBackupCodeHashes(tfa).size()))
+                .orElseGet(() -> new TwoFactorStatusResponse(false, null, 0));
+        return ApiResponse.of(status);
     }
 
     /**
@@ -501,6 +535,88 @@ public class Auth2faService {
      */
     public boolean isStrongTwoFactorEnabled(Long userId) {
         throw new UnsupportedOperationException(NOT_IMPLEMENTED);
+    }
+
+    // === 2FA ログイン検証の部品（CMP-261012-0910） ===
+
+    /**
+     * ログイン時の TOTP 照合。EMAIL 方式（秘密鍵なし）は不一致として扱う（NPE にしない）。
+     * 一致したら使用済み印を原子的に取り、取れなければ（同一コードの再利用・並列）不一致とする。
+     */
+    private boolean verifyLoginTotp(TwoFactorAuthEntity twoFactorAuth, Long userId, String code) {
+        if (twoFactorAuth.getTotpSecret() == null) {
+            return false;
+        }
+        String secret = encryptionService.decrypt(twoFactorAuth.getTotpSecret());
+        if (!verifyTotpCode(secret, code)) {
+            return false;
+        }
+        return markTotpUsed(userId, code);
+    }
+
+    /**
+     * TOTP 使用済み印を {@code SET NX} で原子的に取る（AC-6。旧実装の hasKey → set は並列で両者が通った）。
+     *
+     * @return 印を取れた（未使用だった）なら true
+     */
+    private boolean markTotpUsed(Long userId, String code) {
+        return Boolean.TRUE.equals(redisTemplate.opsForValue()
+                .setIfAbsent(TOTP_USED_KEY_PREFIX + userId + ":" + code, "1", TOTP_USED_TTL));
+    }
+
+    /**
+     * バックアップコードを照合し、一致した 1 件を削除する（呼び出し側が PESSIMISTIC_WRITE で行を取得済みであること。AC-7〜11）。
+     * 照合は一致した時点で打ち切る（最大 8 回のパスワードハッシュ照合。AC-54）。
+     *
+     * @return 一致した場合は削除後の残り件数、不一致・形式違反・全件使用済みは null
+     */
+    private Integer consumeBackupCode(TwoFactorAuthEntity twoFactorAuth, String code) {
+        if (code == null || !code.matches("\\d{" + BACKUP_CODE_LENGTH + "}")) {
+            return null;
+        }
+        List<String> hashes = new ArrayList<>(readBackupCodeHashes(twoFactorAuth));
+        for (int i = 0; i < hashes.size(); i++) {
+            if (passwordEncoder.matches(code, hashes.get(i))) {
+                hashes.remove(i);
+                twoFactorAuth.replaceBackupCodes(toJson(hashes));
+                return hashes.size();
+            }
+        }
+        return null;
+    }
+
+    /** 保存済みバックアップコード（ハッシュ）を読む。 */
+    private List<String> readBackupCodeHashes(TwoFactorAuthEntity twoFactorAuth) {
+        String json = twoFactorAuth.getBackupCodes();
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            return JSON.readValue(json, STRING_LIST);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("バックアップコードの JSON 解析に失敗しました", e);
+        }
+    }
+
+    /**
+     * 照合失敗の後始末。監査を独立 TX で残し（AC-49）、試行・ユーザー単位の失敗を計上して（AC-14/16）、
+     * 応答の例外を返す（呼び出し側が throw する。業務 TX はロールバックされる）。
+     */
+    private BusinessException onVerificationFailure(MfaSessionService.MfaSession session, long attempt,
+                                                    MfaVerificationMethod method,
+                                                    String ipAddress, String userAgent) {
+        Long userId = session.userId();
+        mfaFailureAuditRecorder.record(
+                new MfaVerificationFailedEvent(userId, method, ipAddress, userAgent, attempt));
+        MfaSessionService.FailureOutcome outcome = mfaSessionService.recordFailure(session, attempt);
+        if (outcome.lockedNow()) {
+            String email = userRepository.findById(userId).map(UserEntity::getEmail).orElse(null);
+            // 注: LoginFailedEvent / AccountLockedEvent の監査・通知リスナーは AFTER_COMMIT のため、
+            // 失敗 TX のロールバックで発火しない（既存のパスワード失敗ロックと同根の既知欠陥。MFA_FAILED 監査は
+            // MfaFailureAuditRecorder が独立 TX で残す）。
+            eventPublisher.publish(new LoginFailedEvent(email, ipAddress, userAgent, "MFA_FAILED"));
+        }
+        return new BusinessException(outcome.sessionExhausted() ? AuthErrorCode.AUTH_075 : AuthErrorCode.AUTH_074);
     }
 
     // === ヘルパーメソッド ===

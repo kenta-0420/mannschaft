@@ -90,4 +90,13 @@ public class TwoFactorAuthEntity {
     public void disable() {
         this.isEnabled = false;
     }
+
+    /**
+     * バックアップコード（ハッシュの JSON 配列）を差し替える（CMP-261012-0910: ログイン時の 1 件消費）。
+     *
+     * @param backupCodesJson ハッシュ済みバックアップコードの JSON 配列
+     */
+    public void replaceBackupCodes(String backupCodesJson) {
+        this.backupCodes = backupCodesJson;
+    }
 }
