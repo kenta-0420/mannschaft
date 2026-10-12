@@ -231,8 +231,9 @@ class PointCardWalletOwnerBodyContractIT extends AbstractMySqlIntegrationTest {
                     JsonNode payload = mapper.readTree(issuedTokens.get(TOKEN_PREFIX + token));
                     // OffsetDateTime.toStringとJackson ISO formatterは同時点でも末尾0の表記が異なる。
                     assertThat(Instant.parse(payload.path("expiresAt").asText())).isEqualTo(expiresAt);
-                    assertThat(payload).isEqualTo(mapper.valueToTree(Map.of("cardId", own.toString(),
-                            "userId", owner, "expiresAt", payload.path("expiresAt").asText())));
+                    assertThat(payload).isEqualTo(mapper.readTree(mapper.writeValueAsString(
+                            Map.of("cardId", own.toString(), "userId", owner,
+                                    "expiresAt", payload.path("expiresAt").asText()))));
                     assertThat(detail(own)).isEqualTo(cardBefore);
                 }
                 default -> throw new IllegalArgumentException(operation);
