@@ -58,17 +58,17 @@ class ShiftPreferenceReminderRunnerTest {
     }
 
     @Test
-    @DisplayName("48h: 印を立てて保存し、未提出者への配送要求を publish する")
-    void marks48hAndPublishes() {
+    @DisplayName("48h: 印は立てず（配送後にリスナーが立てる）、未提出者への配送要求だけを publish する")
+    void publishesWithoutMarking48h() {
         ShiftScheduleEntity schedule = collecting();
         given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 
         assertThat(runner.remindOne(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_48H, List.of(101L, 102L)))
                 .isTrue();
 
-        assertThat(schedule.getIsReminderSent48h()).isTrue();
-        assertThat(schedule.getIsReminderSent()).as("24h の印は触らない").isFalse();
-        verify(scheduleRepository).save(schedule);
+        assertThat(schedule.getIsReminderSent48h()).as("配送前は印を立てない").isFalse();
+        assertThat(schedule.getIsReminderSent()).isFalse();
+        verify(scheduleRepository, never()).save(any());
         ArgumentCaptor<ShiftPreferenceReminderNotificationEvent> captor =
                 ArgumentCaptor.forClass(ShiftPreferenceReminderNotificationEvent.class);
         verify(eventPublisher).publishEvent(captor.capture());
@@ -79,19 +79,34 @@ class ShiftPreferenceReminderRunnerTest {
     }
 
     @Test
-    @DisplayName("24h: 24h の印だけを立てる")
-    void marks24hOnly() {
+    @DisplayName("markSent: 48h の印だけを立てて保存する")
+    void markSent48h() {
         ShiftScheduleEntity schedule = collecting();
         given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
 
-        assertThat(runner.remindOne(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_24H, List.of(101L))).isTrue();
+        assertThat(runner.markSent(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_48H)).isTrue();
 
-        assertThat(schedule.getIsReminderSent()).isTrue();
-        assertThat(schedule.getIsReminderSent48h()).isFalse();
+        assertThat(schedule.getIsReminderSent48h()).isTrue();
+        assertThat(schedule.getIsReminderSent()).isFalse();
+        verify(scheduleRepository).save(schedule);
     }
 
     @Test
-    @DisplayName("全員提出済み（未提出者が空）でも印は立つが、配送要求は publish しない（是正前と同じ）")
+    @DisplayName("markSent: 24h の印だけを立てる。既に立っていれば何もしない")
+    void markSent24hAndIdempotent() {
+        ShiftScheduleEntity schedule = collecting();
+        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+
+        assertThat(runner.markSent(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_24H)).isTrue();
+        assertThat(runner.markSent(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_24H)).isFalse();
+
+        assertThat(schedule.getIsReminderSent()).isTrue();
+        assertThat(schedule.getIsReminderSent48h()).isFalse();
+        verify(scheduleRepository, org.mockito.Mockito.times(1)).save(schedule);
+    }
+
+    @Test
+    @DisplayName("全員提出済み（未提出者が空）はその場で印を立て、配送要求は publish しない（旧挙動と同じ）")
     void emptyRecipientsStillMarksButDoesNotPublish() {
         ShiftScheduleEntity schedule = collecting();
         given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));

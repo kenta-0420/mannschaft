@@ -40,10 +40,10 @@ import java.util.stream.Collectors;
  *
  * <h2>通知のトランザクション境界（Issue #2997 / CMP-260827-1152 G6）</h2>
  * <p>定期バッチ {@link #processReminders} は<b>非トランザクションのオーケストレータ</b>で、スケジュール 1 件ごとに
- * {@link ShiftPreferenceReminderRunner#remindOne}（{@code REQUIRES_NEW}）で送信済みフラグを確定し、
- * 同じトランザクションで配送要求を publish する。実通知は {@code AFTER_COMMIT} の
- * {@code ShiftPreferenceReminderNotificationListener} が行うため、通知の失敗がフラグを巻き戻すことも、
- * 1 件の失敗が他スケジュールのフラグを巻き戻すこともない。手動リマインド {@link #triggerManualReminder} も
+ * {@link ShiftPreferenceReminderRunner#remindOne}（{@code REQUIRES_NEW}）で配送要求を publish する。
+ * 実通知は {@code AFTER_COMMIT} の {@code ShiftPreferenceReminderNotificationListener} が行い、
+ * 配送後に送信済みフラグを立てる（全員失敗ならフラグは立たず次回再送）。通知の失敗が他スケジュールの状態を
+ * 巻き戻すことはない。バッチ実行の重なりは {@code @SchedulerLock} が防ぐ（旧実装と同じ）。手動リマインド {@link #triggerManualReminder} も
  * 業務TX内では publish のみを行う。</p>
  * TODO: Phase 4-1 で低提出率アラート（isLowSubmissionAlerted）を実装
  */

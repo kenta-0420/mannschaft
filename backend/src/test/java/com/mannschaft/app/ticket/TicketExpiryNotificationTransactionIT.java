@@ -59,6 +59,7 @@ import static org.mockito.Mockito.verify;
 @AutoConfigureMockMvc(addFilters = false)
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("Issue #2997 G6 チケット期限切れ通知の通知トランザクション分離の実DB検証")
+@org.springframework.context.annotation.Import(TicketExpiryNotificationTransactionIT.CommitFailer.class)
 class TicketExpiryNotificationTransactionIT extends AbstractMySqlIntegrationTest {
 
     private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
@@ -98,6 +99,20 @@ class TicketExpiryNotificationTransactionIT extends AbstractMySqlIntegrationTest
 
         assertThat(statusOf(b.bookId)).as("ロールバックされ ACTIVE のまま（次回バッチで再試行）")
                 .isEqualTo(TicketBookStatus.ACTIVE);
+        await().during(2, TimeUnit.SECONDS).atMost(5, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(rows(b.userId, b.bookId, "TICKET_EXPIRED")).isEmpty());
+        verify(notificationDeliveryRunner, never()).sendOne(argThat(r -> forBook(r, b.bookId)));
+    }
+
+    @Test
+    @DisplayName("AC-A: publish 後に項目TXのコミットが失敗（BEFORE_COMMIT で例外）したら、通知は出ず ACTIVE のまま残る")
+    void rollbackAfterPublishCreatesNoNotification() {
+        Book b = expiredBook("a-pub");
+        CommitFailer.armFor(b.bookId);
+
+        batchService.expireTickets();
+
+        assertThat(statusOf(b.bookId)).isEqualTo(TicketBookStatus.ACTIVE);
         await().during(2, TimeUnit.SECONDS).atMost(5, TimeUnit.SECONDS).untilAsserted(() ->
                 assertThat(rows(b.userId, b.bookId, "TICKET_EXPIRED")).isEmpty());
         verify(notificationDeliveryRunner, never()).sendOne(argThat(r -> forBook(r, b.bookId)));
@@ -224,6 +239,24 @@ class TicketExpiryNotificationTransactionIT extends AbstractMySqlIntegrationTest
     // ─────────────────────────────────────────────
     // フィクスチャ・観測
     // ─────────────────────────────────────────────
+
+    /** publish 後・コミット前に例外を投げ、項目TXのコミットを失敗させる検証用リスナー（対象の冊IDのときだけ作動）。 */
+    @org.springframework.boot.test.context.TestComponent
+    static class CommitFailer {
+        private static volatile Long targetBookId;
+
+        static void armFor(Long bookId) {
+            targetBookId = bookId;
+        }
+
+        @org.springframework.transaction.event.TransactionalEventListener(
+                phase = org.springframework.transaction.event.TransactionPhase.BEFORE_COMMIT)
+        void onBeforeCommit(com.mannschaft.app.ticket.event.TicketExpiredNotificationEvent event) {
+            if (event.bookId().equals(targetBookId)) {
+                throw new IllegalStateException("模擬コミット失敗（BEFORE_COMMIT）");
+            }
+        }
+    }
 
     private record Book(Long bookId, Long userId) {}
 

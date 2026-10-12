@@ -6,6 +6,7 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import com.mannschaft.app.shift.service.ShiftPreferenceReminderRunner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,7 @@ class ShiftPreferenceReminderNotificationListenerTest {
 
     @Mock private NotificationDeliveryRunner notificationDeliveryRunner;
     @Mock private UserLocaleCache userLocaleCache;
+    @Mock private ShiftPreferenceReminderRunner reminderRunner;
 
     private ShiftPreferenceReminderNotificationListener listener;
 
@@ -58,7 +60,7 @@ class ShiftPreferenceReminderNotificationListenerTest {
         messageSource.setDefaultEncoding("UTF-8");
         messageSource.setUseCodeAsDefaultMessage(false);
         listener = new ShiftPreferenceReminderNotificationListener(
-                notificationDeliveryRunner, userLocaleCache, messageSource);
+                notificationDeliveryRunner, userLocaleCache, messageSource, reminderRunner);
         Mockito.lenient().when(userLocaleCache.getLocales(anyList()))
                 .thenReturn(Map.of(USER_A, "ja", USER_B, "en"));
         Mockito.lenient().when(notificationDeliveryRunner.sendOne(any()))
@@ -175,6 +177,66 @@ class ShiftPreferenceReminderNotificationListenerTest {
         listener.onShiftPreferenceReminderNotification(event(ShiftPreferenceReminderKind.REMINDER_48H, USER_B));
 
         assertThat(sent(1).get(0).title()).isEqualTo("シフト希望の提出期限 48 時間前です");
+    }
+
+    @Test
+    @DisplayName("AC-D: 全員配送できたら配送後に印を立てる")
+    void marksSentAfterDelivery() {
+        listener.onShiftPreferenceReminderNotification(
+                event(ShiftPreferenceReminderKind.REMINDER_48H, USER_A, USER_B));
+
+        verify(reminderRunner).markSent(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_48H);
+    }
+
+    @Test
+    @DisplayName("AC-D: 全員が例外で失敗したら印を立てない（次回バッチで再送）")
+    void allFailedDoesNotMark() {
+        given(notificationDeliveryRunner.sendOne(any())).willThrow(new RuntimeException("模擬DB例外"));
+
+        listener.onShiftPreferenceReminderNotification(
+                event(ShiftPreferenceReminderKind.REMINDER_48H, USER_A, USER_B));
+
+        Mockito.verifyNoInteractions(reminderRunner);
+    }
+
+    @Test
+    @DisplayName("AC-D: 一部だけ失敗なら印を立てる（成功済みにも失敗者にも再送しない）")
+    void partialFailureMarks() {
+        given(notificationDeliveryRunner.sendOne(any()))
+                .willThrow(new RuntimeException("模擬DB例外"))
+                .willReturn(NotificationDeliveryResult.DELIVERED);
+
+        listener.onShiftPreferenceReminderNotification(
+                event(ShiftPreferenceReminderKind.REMINDER_24H, USER_A, USER_B));
+
+        verify(reminderRunner).markSent(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_24H);
+    }
+
+    @Test
+    @DisplayName("AC-D: 全員 deny でも印を立てる")
+    void denyMarks() {
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.VISIBILITY_DENIED);
+
+        listener.onShiftPreferenceReminderNotification(event(ShiftPreferenceReminderKind.REMINDER_48H, USER_A));
+
+        verify(reminderRunner).markSent(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_48H);
+    }
+
+    @Test
+    @DisplayName("AC-D: 印の保存が失敗してもリスナーは例外を投げない")
+    void markFailureIsContained() {
+        given(reminderRunner.markSent(any(), any())).willThrow(new RuntimeException("模擬保存失敗"));
+
+        assertThatCode(() -> listener.onShiftPreferenceReminderNotification(
+                event(ShiftPreferenceReminderKind.REMINDER_48H, USER_A))).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("手動リマインドは印を持たないので markSent を呼ばない")
+    void manualDoesNotMark() {
+        listener.onShiftPreferenceReminderNotification(event(ShiftPreferenceReminderKind.MANUAL, USER_A));
+
+        Mockito.verifyNoInteractions(reminderRunner);
     }
 
     @Test

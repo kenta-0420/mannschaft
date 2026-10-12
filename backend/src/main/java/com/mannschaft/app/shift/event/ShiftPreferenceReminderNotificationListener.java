@@ -8,6 +8,7 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.notification.service.NotificationDeliveryResult;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
+import com.mannschaft.app.shift.service.ShiftPreferenceReminderRunner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -40,9 +41,17 @@ import java.util.Map;
  *       {@code VISIBILITY_DENIED} として返り、この受信者ぶんは送られない（是正前の絞り込みと同じ結果）。</li>
  * </ul>
  *
- * <h2>送信済みフラグとの関係（AC-D）</h2>
- * <p>送信済みフラグは業務TXで確定済み。配送の成否はフラグに影響しない（失敗した受信者へは再送されない）。
- * これは是正前の実効的な挙動（受信者単位の失敗は握って続行し、フラグは立てる）と同じである。</p>
+ * <h2>送信済みフラグとの関係（AC-D・マスター裁可「配送後に印を立てる」）</h2>
+ * <p>定期バッチ（48h / 24h）では、受信者ごとの {@code sendOne} を終えた<b>後</b>に
+ * {@link ShiftPreferenceReminderRunner#markSent}（別の {@code REQUIRES_NEW}）で印を立てる。</p>
+ * <ul>
+ *   <li>1 人以上に配送できた、または deny があれば立てる。一部の受信者だけ失敗しても立てる
+ *       （成功済みにも失敗した受信者にも再送しない）。</li>
+ *   <li>全員が例外で失敗したときは立てない。次のバッチ実行で再送される。</li>
+ *   <li>印の保存が失敗したときは ERROR ログのみ。配送済みで印が無いため次回に再送されうる
+ *       （旧実装は通知と印が同一TXで一緒に巻き戻っていた）。</li>
+ *   <li>手動リマインドは印を持たないので何もしない。</li>
+ * </ul>
  */
 @Slf4j
 @Component
@@ -52,6 +61,7 @@ public class ShiftPreferenceReminderNotificationListener {
     private final NotificationDeliveryRunner notificationDeliveryRunner;
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
+    private final ShiftPreferenceReminderRunner reminderRunner;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
             gateKeys = {"FEATURE_SHIFT_ENABLED"},
@@ -76,6 +86,7 @@ public class ShiftPreferenceReminderNotificationListener {
             locales = Map.of();
         }
 
+        int delivered = 0;
         int denied = 0;
         int failed = 0;
         Long firstFailedUserId = null;
@@ -92,6 +103,8 @@ public class ShiftPreferenceReminderNotificationListener {
                                     + "recipientUserId={}, notificationType={}, sourceType={}, sourceId={}",
                             request.recipientUserId(), request.notificationType(),
                             request.sourceType(), request.sourceId());
+                } else {
+                    delivered++;
                 }
             } catch (Exception e) {
                 failed++;
@@ -102,6 +115,8 @@ public class ShiftPreferenceReminderNotificationListener {
                         recipientUserId, event.scheduleId(), event.kind().notificationType(), e);
             }
         }
+
+        markSentIfDelivered(event, delivered, denied);
 
         // 集計ログのレベルは個別ログと揃える。deny は正常系なので WARN、例外が1件でもあれば ERROR。
         String summary = "シフト希望リマインドの一括配送結果: type={}, scheduleId={}, total={}, failed={}, denied={}, "
@@ -115,6 +130,19 @@ public class ShiftPreferenceReminderNotificationListener {
         } else {
             log.info("シフト希望リマインド送信: type={}, scheduleId={}, 未提出人数={}",
                     event.kind().notificationType(), event.scheduleId(), recipients.size());
+        }
+    }
+
+    /** 配送後の印。1 人以上に配送できた、または deny があるときだけ立てる（全員例外失敗なら立てず再送に回す）。 */
+    private void markSentIfDelivered(ShiftPreferenceReminderNotificationEvent event, int delivered, int denied) {
+        if (event.kind() == ShiftPreferenceReminderKind.MANUAL || (delivered == 0 && denied == 0)) {
+            return;
+        }
+        try {
+            reminderRunner.markSent(event.scheduleId(), event.kind());
+        } catch (Exception e) {
+            log.error("シフト希望リマインドの送信済みフラグ保存に失敗しました（次回バッチで再送されうる）: "
+                    + "scheduleId={}, type={}", event.scheduleId(), event.kind().notificationType(), e);
         }
     }
 
