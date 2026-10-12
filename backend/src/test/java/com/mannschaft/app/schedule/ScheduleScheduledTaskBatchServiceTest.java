@@ -133,7 +133,7 @@ class ScheduleScheduledTaskBatchServiceTest {
 
             // then
             verify(surveyService).createSurvey(eq("TEAM"), eq(SCOPE_ID), eq(CREATED_BY), any());
-            verify(surveyService).publishSurvey("TEAM", SCOPE_ID, 555L);
+            verify(surveyService).publishSurvey("TEAM", SCOPE_ID, 555L, false);
             assertThat(task.getStatus()).isEqualTo(ScheduledTaskStatus.CREATED);
             assertThat(task.getMaterializedEntityId()).isEqualTo(555L);
         }

@@ -492,6 +492,7 @@ public class TeamFriendsService {
      * @param isPublic     公開フラグ
      * @param userId       操作実行者のユーザー ID
      */
+    @Transactional
     public void setVisibility(Long teamId, Long teamFriendId, boolean isPublic, Long userId) {
         teamFriendVisibilityService.setVisibility(teamId, teamFriendId, isPublic, userId);
     }

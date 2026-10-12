@@ -6,7 +6,7 @@
  * TabView 3 枚: 付与一覧（フィルタ＋行操作＋手動付与）／付与候補（dry-run・Phase1 は TEAM_ORG のみ）／
  * 条件マスタ（betaPhase × grantKind の GET/PUT）。
  *
- * ガードは金型どおり `middleware: 'auth'` のみ（SYSTEM_ADMIN の FE ミドルウェアは無い）。
+ * ガードは `middleware: ['auth', 'system-admin']`（SYSTEM_ADMIN 以外は FE で遮断。BE の 403 が最終防衛線）。
  * 非 SYSTEM_ADMIN で API が 403 のときは handleApiError で綺麗に表示する（白画面にしない）。
  */
 import type {
@@ -18,7 +18,7 @@ import type {
 // BetaPerkScopeKind の正準は既存 useBetaPerkApi.ts（単数形）。二重 re-export 回避のためこちらから import する。
 import type { BetaPerkScopeKind } from '~/composables/useBetaPerkApi'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t, te } = useI18n()
 const notification = useNotification()
