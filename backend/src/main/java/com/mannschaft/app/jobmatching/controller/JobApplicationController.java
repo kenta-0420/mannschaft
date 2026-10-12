@@ -145,7 +145,9 @@ public class JobApplicationController {
     /**
      * 応募詳細を取得する。当事者（応募者本人、または対象求人の採否権限者）のみ許可。
      *
-     * <p>BOLA対策: {@link JobApplicationService#findById(Long, Long)} で当事者チェックを行う。</p>
+     * <p>BOLA対策: {@link JobApplicationService#findById(Long, Long)} で当事者チェックを行う。
+     * 求人が通常参照できる場合、当事者以外は不在と同じ
+     * {@code JOB_APPLICATION_NOT_FOUND}（404・同一本文）を返す。</p>
      */
     @GetMapping("/api/v1/applications/{id}")
     @Operation(summary = "応募詳細取得")
