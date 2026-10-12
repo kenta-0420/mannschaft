@@ -125,9 +125,29 @@ abstract class TeamOrgLifecycleCommittedItSupport extends TeamAffiliationItSuppo
         com.mannschaft.app.support.test.MembershipTestHelper.insertUserRole(em, userId, "DEPUTY_ADMIN", null, orgId);
     }
 
-    /** 加盟の行を、トランザクションを分けてコミットする。 */
+    /**
+     * 加盟の行を、トランザクションを分けてコミットする。招待（ORG_INVITE）は、本番の招待と同じく受信通知の予約まで
+     * 済んだ状態（{@code invite_notified_at} あり。チームが招待を知っている）で作る。
+     */
     protected long membership(long teamId, long orgId, String status, String direction, UUID groupId) {
-        return inTx(() -> insertMembershipRow(teamId, orgId, status, direction, groupId, LocalDateTime.now()));
+        return inTx(() -> {
+            long id = insertMembershipRow(teamId, orgId, status, direction, groupId, LocalDateTime.now());
+            if ("ORG_INVITE".equals(direction)) {
+                markInviteNotified(id);
+            }
+            return id;
+        });
+    }
+
+    /** 招待の受信通知の予約まで済んだ印を立てる（{@code TeamOrgInviteCommandService#appendInviteReceivedNotice} と同じ列）。 */
+    protected void markInviteNotified(long membershipId) {
+        em.createNativeQuery("UPDATE team_org_memberships SET invite_notified_at = UTC_TIMESTAMP() WHERE id = :id")
+                .setParameter("id", membershipId).executeUpdate();
+    }
+
+    /** 招待の受信通知の予約の前（チームがまだ招待を知らない）の招待をコミットする。 */
+    protected long unnotifiedInvite(long teamId, long orgId) {
+        return inTx(() -> insertMembershipRow(teamId, orgId, "PENDING", "ORG_INVITE", null, LocalDateTime.now()));
     }
 
     /** 制限（BLOCK）の行を native INSERT する（再申請の抑止。2-D の片付け対象）。 */

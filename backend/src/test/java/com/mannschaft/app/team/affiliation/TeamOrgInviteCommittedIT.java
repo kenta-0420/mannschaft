@@ -102,6 +102,10 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
     @Autowired
     private NotificationOutboxRelay relay;
 
+    /** 2-D: イベント（OrganizationArchivedEvent）を出す本物の組織のアーカイブを差し込むために使う。 */
+    @Autowired
+    private com.mannschaft.app.organization.service.OrganizationService organizationService;
+
     /** relay の取り込みの失敗を起こすために差し替える（既定は実物を呼ぶ）。 */
     @MockitoSpyBean
     private NotificationOutboxIngestService ingestSpy;
@@ -311,6 +315,57 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
         assertThat(invited.errorCode()).as("読み直しでアーカイブを見つけた").isEqualTo("ORG_003");
         assertThat(membershipCount(team.id(), org.id())).as("作った招待は取り下げられる").isZero();
         assertThat(outboxCountByOrganization(org.id())).as("outbox に書かない").isZero();
+        assertThat(jobCountByOrganization(org.id())).as("fan-out ジョブも作られない").isZero();
+    }
+
+    @Test
+    @DisplayName("OB13a（2-D・イベント経由のアーカイブ）: 招待のコミット後・読み直しの前に、組織のアーカイブ API がコミットされ、"
+            + "そのリスナー（OrganizationArchivedEvent）の片付けが招待の取り下げより先に招待の行を消しても、"
+            + "チームの知らない招待なので取消の通知を予約しない。招待は ORG_003 で拒否され、outbox もジョブも0件")
+    void ob13a_イベント経由のアーカイブの片付けが先に走っても取消を通知しない() throws Exception {
+        TeamFx team = inTx(this::newTeam);
+        OrgFx org = inTx(this::newOrg);
+        long xa = inTx(() -> {
+            seedAffiliationPermission();
+            long id = newUser();
+            makeOrgAdmin(id, org.id());
+            return id;
+        });
+        // 招待の行がコミットされた後の読み直しの直前に、本物の組織のアーカイブ（イベントを出す）をコミットし、
+        // その AFTER_COMMIT のリスナーが招待の行を消し終えるまで待つ（招待の側の取り下げより片付けが先になる順序）
+        Injection injection = new Injection();
+        doAnswer(invocation -> {
+            commitByAnotherSession(() -> {
+                String row = membershipRowState(team.id(), org.id());
+                if (row != null) {
+                    injection.observedRows.add(row);
+                    new TransactionTemplate(transactionManager).executeWithoutResult(
+                            status -> organizationService.archiveOrganization(org.id()));
+                    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+                    while (membershipCount(team.id(), org.id()) != 0 && System.nanoTime() < deadline) {
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            throw new IllegalStateException(e);
+                        }
+                    }
+                    injection.affectedRows.add((int) membershipCount(team.id(), org.id()));
+                }
+            });
+            return invocation.callRealMethod();
+        }).when(organizationPortTarget()).recheckAffiliationStateLocked(any());
+
+        Result invited = invite(xa, org.slug(), team.slug());
+        relay.drainAll();
+
+        assertThat(injection.observedRows).as("差し込みの時点の招待の行").containsExactly("PENDING/ORG_INVITE");
+        assertThat(injection.affectedRows).as("リスナーの片付けが招待の行を消し終えていた（残りの行数）").containsExactly(0);
+        assertThat(invited.status()).isNotEqualTo(201);
+        assertThat(invited.errorCode()).as("読み直しでアーカイブを見つけた").isEqualTo("ORG_003");
+        assertThat(membershipCount(team.id(), org.id())).isZero();
+        assertThat(outboxCountByOrganization(org.id()))
+                .as("招待の受信通知も、チームの知らない招待の取消も outbox に書かない").isZero();
         assertThat(jobCountByOrganization(org.id())).as("fan-out ジョブも作られない").isZero();
     }
 

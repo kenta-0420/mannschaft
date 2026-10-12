@@ -648,6 +648,38 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     int deleteByIdIn(@Param("ids") java.util.Collection<Long> ids);
 
     /**
+     * 招待の受信通知を outbox に予約した瞬間を記録する（F01.2.1 2-D・§4.5）。呼び出し側が同じ tx で
+     * 行を {@code FOR UPDATE} で確かめ、通知を予約するときだけ呼ぶ。時刻はエポック秒で渡し UTC 壁時計へ戻す（§4.6）。
+     *
+     * @return 更新した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE team_org_memberships SET invite_notified_at = "
+            + "TIMESTAMPADD(SECOND, :epochSecond, '1970-01-01 00:00:00') "
+            + "WHERE id = :id AND status = 'PENDING' AND direction = 'ORG_INVITE'", nativeQuery = true)
+    int markInviteNotified(@Param("id") Long id, @Param("epochSecond") long epochSecond);
+
+    /**
+     * 片付けの回復バッチ（{@code TeamOrgLifecycleCleanupBatch}）: PENDING の行がある組織の ID を昇順に返す
+     * （組織の状態は organization ドメインのポートで確かめる。組織の表は team ドメインから JOIN しない）。
+     */
+    @Query("SELECT DISTINCT m.organizationId FROM TeamOrgMembershipEntity m "
+        + "WHERE m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
+        + "ORDER BY m.organizationId")
+    List<Long> findDistinctOrganizationIdsOfPending();
+
+    /**
+     * 片付けの回復バッチ: 片付けが残っているチームの ID を昇順に返す。アーカイブ済みのチームの PENDING と、
+     * 論理削除済み（または行の無い）チームの加盟（PENDING・ACTIVE とも）が対象（チームの表は同じ team ドメイン。
+     * {@code @SQLRestriction} を通さず削除済みを見るためネイティブで読む）。
+     */
+    @Query(value = "SELECT DISTINCT m.team_id FROM team_org_memberships m "
+            + "LEFT JOIN teams t ON t.id = m.team_id "
+            + "WHERE t.id IS NULL OR t.deleted_at IS NOT NULL "
+            + "OR (t.archived_at IS NOT NULL AND m.status = 'PENDING') ORDER BY m.team_id", nativeQuery = true)
+    List<Number> findTeamIdsNeedingLifecycleCleanup();
+
+    /**
      * GDPR の個人データ収集（F01.2.1 §15・AC-G127）: そのユーザーが起こした（{@code invited_by}）か応答した
      * （{@code responded_by}）加盟を ID 昇順に返す。
      */

@@ -153,7 +153,8 @@ public class TeamOrgInviteCommandService {
      *
      * <p>最初の文で招待の行を {@code FOR UPDATE} で読み、まだこのチームの PENDING / ORG_INVITE であるときだけ書く。
      * 読み直しの後に辞退・取消・承諾で行が変わっていれば何も書かない（取り消された招待の通知を出さない）。
-     * 辞退・取消・承諾も同じ行を {@code FOR UPDATE} で取るので、確認と書き込みの間に状態は変わらない。</p>
+     * 辞退・取消・承諾も同じ行を {@code FOR UPDATE} で取るので、確認と書き込みの間に状態は変わらない。
+     * 予約と同じ tx で {@code invite_notified_at} を立てる（2-D。組織の閉鎖の片付けが「チームが知っている招待か」を判定する）。</p>
      *
      * @return 予約したら true。招待の行が PENDING の招待として残っていなければ false
      */
@@ -165,6 +166,10 @@ public class TeamOrgInviteCommandService {
                 || row.get().getDirection() != TeamOrgAffiliationDirection.ORG_INVITE) {
             return false;
         }
+        // 受信通知を予約した印を同じ tx で残す（F01.2.1 2-D）。組織のアーカイブ・削除の片付けは、この印の無い招待
+        // （チームがまだ知らない招待）には取消の通知を送らない。片付けも同じ行を FOR UPDATE で取るので、印と予約は不可分
+        membershipRepository.markInviteNotified(membershipId,
+                Instant.now(clock).truncatedTo(ChronoUnit.SECONDS).getEpochSecond());
         notifier.enqueue(notice);
         return true;
     }

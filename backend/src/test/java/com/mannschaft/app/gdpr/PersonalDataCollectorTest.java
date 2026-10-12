@@ -130,10 +130,6 @@ class PersonalDataCollectorTest {
     @Mock
     private ScheduleCommentService scheduleCommentService;
 
-    /** F01.2.1 2-D（AC-G127）: memberships カテゴリの収集元（未スタブなら空リスト）。 */
-    @Mock
-    private com.mannschaft.app.team.service.TeamOrgMembershipQueryService teamOrgMembershipQueryService;
-
     @InjectMocks
     private PersonalDataCollector collector;
 

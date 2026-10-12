@@ -332,6 +332,23 @@ class TeamServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TEAM_002"));
         }
+
+        @Test
+        @DisplayName("F01.2.1 2-D: 他ドメインの tx からのアーカイブは、加盟の片付けを持ち込まず TeamArchivedEvent を発行する")
+        void 他ドメインからのアーカイブはイベントを発行する() {
+            TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
+            given(teamRepository.findByIdForUpdate(TEAM_ID)).willReturn(Optional.of(team));
+
+            service.archiveTeamDeferringAffiliationCleanup(TEAM_ID);
+
+            assertThat(team.getArchivedAt()).isNotNull();
+            org.mockito.ArgumentCaptor<Object> event = org.mockito.ArgumentCaptor.forClass(Object.class);
+            org.mockito.Mockito.verify(eventPublisher).publishEvent(event.capture());
+            assertThat(event.getValue()).isInstanceOfSatisfying(
+                    com.mannschaft.app.team.event.TeamArchivedEvent.class,
+                    e -> assertThat(e.getTeamId()).isEqualTo(TEAM_ID));
+        }
     }
 
     @Nested

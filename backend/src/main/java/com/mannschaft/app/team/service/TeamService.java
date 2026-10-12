@@ -6,6 +6,7 @@ import com.mannschaft.app.common.duplicatename.DuplicateNameNormalizer;
 import com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind;
 import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.team.entity.TeamEntity;
+import com.mannschaft.app.team.event.TeamArchivedEvent;
 import com.mannschaft.app.team.event.TeamCreatedEvent;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
 import com.mannschaft.app.team.event.TeamMemberRemovedEvent;
@@ -771,18 +772,46 @@ public class TeamService {
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void archiveTeam(Long teamId) {
-        // F01.2.1 §4.5・§6.9: 最初にチーム行を PESSIMISTIC_WRITE で取り、ロック取得後に未アーカイブを再確認する。
-        // 申請・招待の作成（どちらも最初にチーム行を取る）と直列化される
+        TeamEntity team = lockAndArchive(teamId);
+        // 当該チームの PENDING（申請・招待の両方向）を同じトランザクションで削除し、相手側（組織 ADMIN）へ取消を予約する。
+        // ACTIVE は残す（既存のアーカイブ規則どおり）
+        teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(team);
+        log.info("チームアーカイブ完了: teamId={}", teamId);
+    }
+
+    /**
+     * 他ドメインのトランザクション（後継者不在の自動アーカイブ {@code RoleSuccessionService} など）からチームをアーカイブする
+     * （F01.2.1 2-D）。
+     *
+     * <p>アーカイブそのものは {@link #archiveTeam} と同じ（チーム行のロック・未アーカイブの再確認）だが、加盟（PENDING）の
+     * 片付けを呼び出し元のトランザクションに持ち込まない（CLAUDE.md 原則5・D-3T）。代わりに {@link TeamArchivedEvent} を発行し、
+     * team ドメインがコミット後に自分のトランザクションで状態に基づいて片付ける（{@code TeamOrgLifecycleListener}。
+     * 取りこぼしは {@code TeamOrgLifecycleCleanupBatch} が拾う）。コミットから片付けまでの短い間は PENDING が残るが、
+     * 承認・承諾は状態の再確認でアーカイブ済みとして拒否する（§4.5）。</p>
+     */
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "team-detail", allEntries = true),
+            @CacheEvict(value = "team-search", allEntries = true)
+    })
+    public void archiveTeamDeferringAffiliationCleanup(Long teamId) {
+        lockAndArchive(teamId);
+        eventPublisher.publishEvent(new TeamArchivedEvent(teamId));
+        log.info("チームアーカイブ完了（加盟の片付けはコミット後）: teamId={}", teamId);
+    }
+
+    /**
+     * F01.2.1 §4.5・§6.9: 最初にチーム行を PESSIMISTIC_WRITE で取り、ロック取得後に未アーカイブを再確認してアーカイブする。
+     * 申請・招待の作成（どちらも最初にチーム行を取る）と直列化される。
+     */
+    private TeamEntity lockAndArchive(Long teamId) {
         TeamEntity team = teamRepository.findByIdForUpdate(teamId)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
         if (team.getArchivedAt() != null) {
             throw new BusinessException(TeamErrorCode.TEAM_002);
         }
         team.archive();
-        // 当該チームの PENDING（申請・招待の両方向）を同じトランザクションで削除し、相手側（組織 ADMIN）へ取消を予約する。
-        // ACTIVE は残す（既存のアーカイブ規則どおり）
-        teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(team);
-        log.info("チームアーカイブ完了: teamId={}", teamId);
+        return team;
     }
 
     /**

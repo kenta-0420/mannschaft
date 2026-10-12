@@ -4,8 +4,8 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.organization.event.OrganizationArchivedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
+import com.mannschaft.app.team.event.TeamArchivedEvent;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
-import com.mannschaft.app.team.service.TeamAffiliationOrganizationPort;
 import com.mannschaft.app.team.service.TeamOrgLifecycleCleanupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,23 +14,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import java.util.Set;
-
 /**
- * 組織・チームのアーカイブ／削除に伴う、加盟の片付けを行うリスナー（F01.2.1 §4.5・§6.9）。
+ * 組織・チームのアーカイブ／削除に伴う加盟の片付けの<b>速い経路</b>（F01.2.1 §4.5・§6.9・2-D）。
+ *
+ * <p>契機のコミット後（AFTER_COMMIT・非同期）に、{@link TeamOrgLifecycleCleanupService} の<b>状態に基づく</b>片付けを呼ぶ。
+ * 片付けは相手の行をロックして現在の状態を確かめてから消すので、イベントが古くても（アーカイブ解除の後に届いても）
+ * 解除後の申請・招待を消さない。リスナーの前のプロセス停止・片付けや outbox の書き込みの失敗で取りこぼしても、
+ * 回復の経路である定期バッチ {@code TeamOrgLifecycleCleanupBatch} が同じ片付けを状態から呼び直す。</p>
  *
  * <ul>
- *   <li>{@link OrganizationArchivedEvent}（AFTER_COMMIT）: 当該組織の PENDING（申請・招待）を削除し、
- *       残った側（チームの加盟操作者）へ {@code TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM} を予約する。ACTIVE は残す</li>
- *   <li>{@link TeamDeletedEvent}（AFTER_COMMIT）: 当該チームの PENDING・ACTIVE・制限を削除し、
- *       PENDING の相手側（組織 ADMIN）へ取消を予約する</li>
- *   <li>{@link OrganizationDeletedEvent}（AFTER_COMMIT）: 当該組織の制限を物理削除し、PENDING を削除して
- *       相手側（チームの加盟操作者）へ取消を予約する</li>
+ *   <li>{@link OrganizationArchivedEvent}・{@link OrganizationDeletedEvent} → {@link TeamOrgLifecycleCleanupService#cleanUpOrganization}</li>
+ *   <li>{@link TeamDeletedEvent}・{@link TeamArchivedEvent}（他ドメインの tx からのアーカイブ）→ {@link TeamOrgLifecycleCleanupService#cleanUpTeam}</li>
  * </ul>
- *
- * <p>削除と通知の予約は {@link TeamOrgLifecycleCleanupService} の1つのトランザクション（team ドメイン）で行う。
- * 通知の文面に使う組織名は、トランザクションの前に組織ドメインの読み取り（ポート）で引く。
- * チームのアーカイブは {@code TeamService#archiveTeam} が同じトランザクションで片付けるので、ここでは扱わない。</p>
+ * <p>チーム自身のアーカイブ API（{@code TeamService#archiveTeam}）は同じトランザクションで片付けるので、ここでは扱わない。</p>
  */
 @Slf4j
 @Component
@@ -38,36 +34,37 @@ import java.util.Set;
 public class TeamOrgLifecycleListener {
 
     private final TeamOrgLifecycleCleanupService cleanupService;
-    private final TeamAffiliationOrganizationPort organizationPort;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-            reason = "止めるとアーカイブ済み組織に PENDING が残り、チームの同時申請枠を埋め続ける。取りこぼしは 7-A の TeamOrgLifecycleCleanupBatch が拾う")
+            reason = "止めるとアーカイブ済み組織に PENDING が残り、チームの同時申請枠を埋め続ける。取りこぼしは TeamOrgLifecycleCleanupBatch が拾う")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrganizationArchived(OrganizationArchivedEvent event) {
-        Long organizationId = event.getOrganizationId();
-        String organizationName = organizationPort.findOrganizationRefs(Set.of(organizationId))
-                .values().stream().findFirst().map(TeamAffiliationOrganizationPort.OrganizationRef::name).orElse(null);
-        int deleted = cleanupService.cancelPendingOfArchivedOrganization(organizationId, organizationName);
-        log.info("組織アーカイブに伴う PENDING の片付け: organizationId={}, deleted={}", organizationId, deleted);
+        int deleted = cleanupService.cleanUpOrganization(event.getOrganizationId());
+        log.info("組織アーカイブに伴う PENDING の片付け: organizationId={}, deleted={}", event.getOrganizationId(), deleted);
     }
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-            reason = "止めると削除済みチームの加盟・制限が残り、相手側の申請一覧に残り続ける。取りこぼしは 7-A の TeamOrgLifecycleCleanupBatch が拾う")
-    @Async("event-pool")
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onTeamDeleted(TeamDeletedEvent event) {
-        cleanupService.cleanUpDeletedTeam(event.getTeamId());
-    }
-
-    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-            reason = "止めると削除済み組織の制限・PENDING が残り、チームの同時申請枠を埋め続ける。取りこぼしは 7-A の TeamOrgLifecycleCleanupBatch が拾う")
+            reason = "止めると削除済み組織の制限・PENDING が残り、チームの同時申請枠を埋め続ける。取りこぼしは TeamOrgLifecycleCleanupBatch が拾う")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrganizationDeleted(OrganizationDeletedEvent event) {
-        Long organizationId = event.getOrganizationId();
-        String organizationName = organizationPort.findOrganizationRefIncludingDeleted(organizationId)
-                .map(TeamAffiliationOrganizationPort.OrganizationRef::name).orElse(null);
-        cleanupService.cleanUpDeletedOrganization(organizationId, organizationName);
+        cleanupService.cleanUpOrganization(event.getOrganizationId());
+    }
+
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると削除済みチームの加盟・制限が残り、相手側の申請一覧に残り続ける。取りこぼしは TeamOrgLifecycleCleanupBatch が拾う")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onTeamDeleted(TeamDeletedEvent event) {
+        cleanupService.cleanUpTeam(event.getTeamId());
+    }
+
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると他ドメインの tx からアーカイブされたチームの PENDING が残る。取りこぼしは TeamOrgLifecycleCleanupBatch が拾う")
+    @Async("event-pool")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onTeamArchived(TeamArchivedEvent event) {
+        cleanupService.cleanUpTeam(event.getTeamId());
     }
 }

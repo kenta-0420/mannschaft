@@ -81,6 +81,10 @@ class GdprControllerTest {
     @MockitoBean
     private com.mannschaft.app.role.service.RoleSuccessionService roleSuccessionService;
 
+    // F01.2.1 2-D: エクスポートの tx の外で他ドメインの個人データ（memberships）を事前取得する
+    @MockitoBean
+    private com.mannschaft.app.gdpr.service.PersonalDataPrefetcher personalDataPrefetcher;
+
     /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
     @MockitoBean
     private AccessGuard accessGuard;

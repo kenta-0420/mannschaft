@@ -2,6 +2,8 @@ package com.mannschaft.app.team.affiliation;
 
 import com.mannschaft.app.organization.event.OrganizationArchivedEvent;
 import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.batch.TeamOrgLifecycleCleanupBatch;
+import com.mannschaft.app.team.service.TeamOrgLifecycleCleanupService;
 import com.mannschaft.app.team.service.TeamService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,6 +57,12 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
     @Autowired
     private OrganizationService organizationService;
 
+    @Autowired
+    private TeamOrgLifecycleCleanupService cleanupService;
+
+    @Autowired
+    private TeamOrgLifecycleCleanupBatch cleanupBatch;
+
     @AfterEach
     void cleanUp() {
         deleteCommittedFixtures(jdbc);
@@ -77,7 +85,11 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         long active = membership(activeTeam.team().id(), fx.org().id(), "ACTIVE", "ORG_INVITE", null);
         long otherOrgPending = membership(fx.team().id(), orgY.id(), "PENDING", "TEAM_APPLY", null);
 
-        inTxVoid(() -> eventPublisher.publishEvent(new OrganizationArchivedEvent(fx.xa(), fx.org().id())));
+        // 片付けは状態に基づく（2-D）ので、イベントと一緒に組織のアーカイブそのものもコミットする
+        inTxVoid(() -> {
+            archiveOrganization(fx.org().id());
+            eventPublisher.publishEvent(new OrganizationArchivedEvent(fx.xa(), fx.org().id()));
+        });
 
         awaitCondition("組織の PENDING が消える", () -> statusOf(apply) == null && statusOf(invite) == null);
         assertThat(statusOf(active)).as("ACTIVE は残す").isEqualTo("ACTIVE");
@@ -388,5 +400,158 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
                 "SELECT COUNT(*) FROM notification_fanout_jobs WHERE source_type = 'TEAM_ORG_MEMBERSHIP' "
                         + "AND source_id = ?", Long.class, active);
         assertThat(activeJobs).isZero();
+    }
+
+    // =====================================================================
+    // 2-D 検分差し戻し: 状態に基づく片付け・回復バッチ・取消の通知の規則
+    // =====================================================================
+
+    @Test
+    @DisplayName("2-D 差し戻し②: アーカイブ → 解除 → 新しい申請の後に、遅れて古いアーカイブの片付けが走っても、"
+            + "組織の現在の状態（未アーカイブ）をロックの下で確かめて何もしない（新しい申請を消さず、取消も送らない）")
+    void 解除後に遅れて走った古い片付けは新しい申請を消さない() throws Exception {
+        Fixture fx = fixture();
+        // アーカイブ（イベントはまだ処理されていない）→ 解除 → 新しい申請（201）
+        inTxVoid(() -> archiveOrganization(fx.org().id()));
+        inTxVoid(() -> em.createNativeQuery("UPDATE organizations SET archived_at = NULL WHERE id = :id")
+                .setParameter("id", fx.org().id()).executeUpdate());
+        Result applied = apply(fx.ta(), fx.team().slug(), fx.org().slug());
+        assertThat(applied.status()).as("解除後の申請は通る: %s", applied).isEqualTo(201);
+        Long id = jdbc.queryForObject("SELECT id FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
+                Long.class, fx.team().id(), fx.org().id());
+
+        // 遅れて届いた古いアーカイブの片付け（リスナーが呼ぶのと同じ入口を同期で呼ぶ）
+        assertThat(cleanupService.cleanUpOrganization(fx.org().id())).as("何も消さない").isZero();
+        // イベント経由（非同期のリスナー）でも同じ
+        inTxVoid(() -> eventPublisher.publishEvent(new OrganizationArchivedEvent(fx.xa(), fx.org().id())));
+        Thread.sleep(1500);
+
+        assertThat(statusOf(id)).as("解除後の新しい申請は残る").isEqualTo("PENDING");
+        assertThat(jobIdsOf(id, CANCELLED)).as("取消の通知も送らない").isEmpty();
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し③: アーカイブの直後に組織が論理削除されても、片付けは論理削除済みの組織名を引いて、"
+            + "取消の通知を省かずに予約する")
+    void アーカイブ直後に論理削除された組織でも取消の通知を省かない() throws Exception {
+        Fixture fx = fixture();
+        long apply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
+
+        // アーカイブのイベントが処理される前に、組織が論理削除される
+        inTxVoid(() -> {
+            archiveOrganization(fx.org().id());
+            em.createNativeQuery("UPDATE organizations SET deleted_at = UTC_TIMESTAMP() WHERE id = :id")
+                    .setParameter("id", fx.org().id()).executeUpdate();
+            eventPublisher.publishEvent(new OrganizationArchivedEvent(fx.xa(), fx.org().id()));
+        });
+
+        awaitCondition("組織の PENDING が消える", () -> statusOf(apply) == null);
+        UUID job = singleJob(apply, CANCELLED);
+        assertThat(jobRow(job).get("action_url"))
+                .isEqualTo("/teams/" + fx.team().slug() + "/affiliations?view=applications");
+        deliver(job);
+        List<Map<String, Object>> rows = notificationsOf(CANCELLED, fx.ta(), fx.tg());
+        assertThat(userIdsOf(rows)).containsExactlyInAnyOrder(fx.ta(), fx.tg());
+        assertThat(rows).extracting(r -> String.valueOf(r.get("body")))
+                .as("論理削除済みでも組織名が文面に入る")
+                .allSatisfy(body -> assertThat(body).contains(fx.org().name()));
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し④: 受信通知の予約の前（チームが知らない）の招待は、組織の片付けで消えても取消を通知しない。"
+            + "受信通知を予約済みの招待には取消が届く")
+    void チームが知らない招待には取消を通知しない() throws Exception {
+        Fixture fx = fixture();
+        TeamWithAdmin knownTeam = extraTeam();
+        long unknown = unnotifiedInvite(fx.team().id(), fx.org().id());
+        long known = membership(knownTeam.team().id(), fx.org().id(), "PENDING", "ORG_INVITE", null);
+
+        inTxVoid(() -> {
+            archiveOrganization(fx.org().id());
+            eventPublisher.publishEvent(new OrganizationArchivedEvent(fx.xa(), fx.org().id()));
+        });
+
+        awaitCondition("組織の PENDING が消える", () -> statusOf(unknown) == null && statusOf(known) == null);
+        assertThat(jobIdsOf(unknown, CANCELLED)).as("知らない招待の取消は送らない").isEmpty();
+        assertThat(jobIdsOf(known, CANCELLED)).as("知っている招待の取消は送る").hasSize(1);
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し①・AC-E05（保険）: リスナーが走らなかった（イベントの取りこぼし）組織のアーカイブ・論理削除と"
+            + "チームの論理削除を、回復バッチ team-org-lifecycle-cleanup が状態から拾って片付け、取消を予約する。生きている組織・チームには触れない")
+    void 回復バッチがイベントの取りこぼしを片付ける() throws Exception {
+        Fixture fx = fixture();
+        TeamWithAdmin inviteTeam = extraTeam();
+        TeamWithAdmin deletedTeam = extraTeam();
+        OrgFx deletedOrg = inTx(() -> newOrg(true, false, "OFF", "PUBLIC"));
+        OrgFx aliveOrg = inTx(() -> newOrg(true, false, "OFF", "PUBLIC"));
+        long archivedApply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
+        long archivedInvite = membership(inviteTeam.team().id(), fx.org().id(), "PENDING", "ORG_INVITE", null);
+        long archivedActive = membership(deletedTeam.team().id(), fx.org().id(), "ACTIVE", "ORG_INVITE", null);
+        long deletedOrgPending = membership(fx.team().id(), deletedOrg.id(), "PENDING", "TEAM_APPLY", null);
+        blockRestriction(inviteTeam.team().id(), deletedOrg.id(), "TEAM_APPLY");
+        long deletedTeamPending = membership(deletedTeam.team().id(), aliveOrg.id(), "PENDING", "TEAM_APPLY", null);
+        blockRestriction(deletedTeam.team().id(), aliveOrg.id(), "ORG_INVITE");
+        long alivePending = membership(inviteTeam.team().id(), aliveOrg.id(), "PENDING", "TEAM_APPLY", null);
+
+        // イベントを出さずに状態だけをコミットする（リスナーの前にプロセスが止まった状況）
+        inTxVoid(() -> {
+            archiveOrganization(fx.org().id());
+            em.createNativeQuery("UPDATE organizations SET deleted_at = UTC_TIMESTAMP() WHERE id = :id")
+                    .setParameter("id", deletedOrg.id()).executeUpdate();
+            em.createNativeQuery("UPDATE teams SET deleted_at = UTC_TIMESTAMP() WHERE id = :id")
+                    .setParameter("id", deletedTeam.team().id()).executeUpdate();
+        });
+        assertThat(statusOf(archivedApply)).as("バッチの前は残っている").isEqualTo("PENDING");
+
+        cleanupBatch.cleanUp();
+
+        // 組織のアーカイブ: PENDING は消えて取消が予約され、ACTIVE は（チームの論理削除で消えるまでは）組織側では触らない
+        assertThat(statusOf(archivedApply)).isNull();
+        assertThat(statusOf(archivedInvite)).isNull();
+        assertThat(jobIdsOf(archivedApply, CANCELLED)).hasSize(1);
+        assertThat(jobIdsOf(archivedInvite, CANCELLED)).hasSize(1);
+        // 組織の論理削除: PENDING と制限が消える
+        assertThat(statusOf(deletedOrgPending)).isNull();
+        assertThat(jobIdsOf(deletedOrgPending, CANCELLED)).hasSize(1);
+        assertThat(restrictionCountOfOrg(deletedOrg.id())).isZero();
+        // チームの論理削除: PENDING・ACTIVE・制限が消え、PENDING の相手（生きている組織）へ取消が届く
+        assertThat(statusOf(deletedTeamPending)).isNull();
+        assertThat(statusOf(archivedActive)).isNull();
+        assertThat(restrictionCountOfTeam(deletedTeam.team().id())).isZero();
+        assertThat(jobIdsOf(deletedTeamPending, CANCELLED)).hasSize(1);
+        assertThat(jobIdsOf(archivedActive, CANCELLED)).as("ACTIVE の相手には送らない").isEmpty();
+        // 生きている組織・チームの組み合わせには触れない
+        assertThat(statusOf(alivePending)).isEqualTo("PENDING");
+        assertThat(jobIdsOf(alivePending, CANCELLED)).isEmpty();
+
+        // 冪等: もう一度走らせても何も変わらず、通知も増えない
+        cleanupBatch.cleanUp();
+        assertThat(jobIdsOf(archivedApply, CANCELLED)).hasSize(1);
+        assertThat(statusOf(alivePending)).isEqualTo("PENDING");
+    }
+
+    @Test
+    @DisplayName("2-D D-3T 根治: 他ドメインの tx からのチームのアーカイブ（archiveTeamDeferringAffiliationCleanup）は、"
+            + "コミット後に team ドメインが自分の tx で PENDING を片付けて取消を予約する。ACTIVE は残す")
+    void 他ドメインからのチームアーカイブはコミット後に片付く() throws Exception {
+        Fixture fx = fixture();
+        OrgFx keeper = inTx(() -> newOrg(true, false, "OFF", "PUBLIC"));
+        long apply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
+        long active = membership(fx.team().id(), keeper.id(), "ACTIVE", "ORG_INVITE", null);
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            teamService.archiveTeamDeferringAffiliationCleanup(fx.team().id());
+            Number pendingInTx = (Number) em.createNativeQuery(
+                            "SELECT COUNT(*) FROM team_org_memberships WHERE team_id = :id AND status = 'PENDING'")
+                    .setParameter("id", fx.team().id()).getSingleResult();
+            assertThat(pendingInTx.longValue()).as("呼び出し元の tx の中では加盟に触れない").isEqualTo(1L);
+        });
+
+        awaitCondition("コミット後にチームの PENDING が消える", () -> statusOf(apply) == null);
+        assertThat(statusOf(active)).as("ACTIVE は残す").isEqualTo("ACTIVE");
+        UUID job = singleJob(apply, CANCELLED);
+        assertThat(jobRow(job).get("scope_type")).isEqualTo("ORGANIZATION_ADMINS");
+        assertThat(jobRow(job).get("scope_ref")).isEqualTo(String.valueOf(fx.org().id()));
     }
 }

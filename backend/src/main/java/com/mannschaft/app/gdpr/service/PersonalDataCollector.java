@@ -2,6 +2,7 @@ package com.mannschaft.app.gdpr.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.mannschaft.app.gdpr.dto.PrefetchedPersonalData;
 import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
 import com.mannschaft.app.actionmemo.entity.ActionMemoTagEntity;
 import com.mannschaft.app.actionmemo.entity.ActionMemoTagLinkEntity;
@@ -79,7 +80,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PersonalDataCollector {
 
-    private final com.mannschaft.app.team.service.TeamOrgMembershipQueryService teamOrgMembershipQueryService;
     private final UserRepository userRepository;
     private final OAuthAccountRepository oAuthAccountRepository;
     private final MemberProfileRepository memberProfileRepository;
@@ -175,6 +175,19 @@ public class PersonalDataCollector {
      * @return ファイル名 → JSON文字列のマップ
      */
     public Map<String, String> collect(Long userId, Set<String> categories) {
+        return collect(userId, categories, PrefetchedPersonalData.none());
+    }
+
+    /**
+     * 指定ユーザーの個人データをカテゴリ別に収集する。エクスポートのトランザクションの外で事前取得した
+     * 他ドメインの個人データ（{@link PrefetchedPersonalData}。{@link PersonalDataPrefetcher}）を合わせて書き出す。
+     *
+     * @param userId     対象ユーザーID
+     * @param categories 収集対象カテゴリ（nullまたは空=全カテゴリ）
+     * @param prefetched 事前取得した個人データ
+     * @return ファイル名 → JSON文字列のマップ
+     */
+    public Map<String, String> collect(Long userId, Set<String> categories, PrefetchedPersonalData prefetched) {
         Set<String> targets = (categories == null || categories.isEmpty())
                 ? CATEGORY_FILES.keySet()
                 : categories;
@@ -184,7 +197,9 @@ public class PersonalDataCollector {
             String fileName = CATEGORY_FILES.get(category);
             if (fileName == null) continue;
             try {
-                String json = collectByCategory(userId, category);
+                String json = "memberships".equals(category)
+                        ? collectMemberships(prefetched)
+                        : collectByCategory(userId, category);
                 data.put(fileName, json);
             } catch (Exception e) {
                 log.warn("カテゴリ収集失敗: category={}, userId={}", category, userId, e);
@@ -198,7 +213,6 @@ public class PersonalDataCollector {
         return switch (category) {
             case "account" -> collectAccount(userId);
             case "oauth" -> collectOAuth(userId);
-            case "memberships" -> collectMemberships(userId);
             case "profiles" -> collectProfiles(userId);
             case "payments" -> collectPayments(userId);
             case "charts" -> collectCharts(userId);
@@ -493,10 +507,15 @@ public class PersonalDataCollector {
         }).toList());
     }
 
-    private String collectMemberships(Long userId) throws Exception {
-        // F01.2.1 §15・AC-G127: team_org_memberships の invited_by・responded_by として関わった加盟（team ドメインの
-        // 公開クエリサービス経由。他ドメインの Repository を直接参照しない）
-        return OBJECT_MAPPER.writeValueAsString(teamOrgMembershipQueryService.collectPersonalData(userId));
+    private String collectMemberships(PrefetchedPersonalData prefetched) throws Exception {
+        // F01.2.1 §15・AC-G127: team_org_memberships の invited_by・responded_by として関わった加盟。
+        // エクスポートの gdpr トランザクションから team の Repository へ届かせないため、呼び出し元がトランザクションの外で
+        // 事前取得した値を書き出すだけにする（PersonalDataPrefetcher・D-3T）。事前取得していなければ収集の失敗として扱う
+        if (prefetched == null || prefetched.teamOrgMemberships() == null) {
+            throw new IllegalStateException(
+                    "memberships は PersonalDataPrefetcher による事前取得が必要（エクスポートの tx 内では収集しない）");
+        }
+        return OBJECT_MAPPER.writeValueAsString(prefetched.teamOrgMemberships());
     }
 
     private String collectProfiles(Long userId) throws Exception {

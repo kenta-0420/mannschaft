@@ -83,6 +83,14 @@ public class TeamOrgMembershipEntity {
     private java.time.Instant updatedAt;
 
     /**
+     * 招待の受信通知（{@code TEAM_ORG_INVITE_RECEIVED}）を outbox に予約した瞬間（F01.2.1 2-D・§4.5）。
+     * NULL の招待は、招待されたチームがまだ知らない（受信通知の予約の前）。書き込みはネイティブ SQL だけで行う
+     * （{@code TeamOrgMembershipRepository#markInviteNotified}）。申請（TEAM_APPLY）では使わない。
+     */
+    @Column(name = "invite_notified_at", insertable = false, updatable = false)
+    private java.time.Instant inviteNotifiedAt;
+
+    /**
      * チーム−組織所属ステータス
      */
     public enum Status {

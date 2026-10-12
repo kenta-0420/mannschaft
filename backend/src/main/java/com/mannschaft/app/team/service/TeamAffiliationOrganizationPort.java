@@ -91,9 +91,21 @@ public interface TeamAffiliationOrganizationPort {
     Optional<OrganizationRef> findOrganizationRefBySlug(String slug);
 
     /**
-     * 論理削除済みを含めて、組織の表示用の最小情報を ID で引く（F01.2.1 2-D・組織の論理削除の片付けの通知文面）。
+     * 論理削除済みを含めて、組織の<b>いまコミットされている</b>閉鎖の状態（アーカイブ・論理削除）と表示名を返す
+     * （F01.2.1 2-D・加盟の片付け）。行が無いときだけ空を返す。
+     *
+     * <p>組織ドメインの<b>新しい</b>読み取りトランザクション（{@code REQUIRES_NEW}）で読み、呼び出し側（team ドメインの片付け）の
+     * トランザクションには参加しない。片付けは、消す加盟行を先に {@code FOR UPDATE} でロックしてから本メソッドで最新の状態を
+     * 確かめる（ロックした行は、確かめた時点のアーカイブより前に作られた行に限られるので、解除後の新しい申請を消さない）。
+     * 論理削除済みでも組織名を返すので、取消の通知の文面を省かずに済む。</p>
      */
-    Optional<OrganizationRef> findOrganizationRefIncludingDeleted(Long organizationId);
+    Optional<OrganizationClosureState> findClosureStateIncludingDeleted(Long organizationId);
+
+    /**
+     * 指定の組織のうち、アーカイブ済み・論理削除済み・行の無いものの ID を返す（ロックしない。F01.2.1 2-D・片付けの回復バッチの
+     * 候補選び）。最終的な判定は片付けの中で {@link #findClosureStateIncludingDeleted} により行う。
+     */
+    java.util.Set<Long> findClosedOrganizationIds(Collection<Long> organizationIds);
 
     /**
      * ロック時点の組織の状態。
@@ -113,6 +125,23 @@ public interface TeamAffiliationOrganizationPort {
         /** 実効モード（§5.5）: グループ機能が off のときは保存値にかかわらず OFF として扱う。 */
         public TeamApplicationGroupMode effectiveGroupMode() {
             return groupsEnabled ? groupMode : TeamApplicationGroupMode.OFF;
+        }
+    }
+
+    /**
+     * 組織の閉鎖の状態（論理削除済みを含む）。
+     *
+     * @param id       組織 ID
+     * @param slug     組織の slug
+     * @param name     組織名（取消の通知の文面に使う。論理削除済みでも引ける）
+     * @param archived アーカイブ済みか
+     * @param deleted  論理削除済みか
+     */
+    record OrganizationClosureState(Long id, String slug, String name, boolean archived, boolean deleted) {
+
+        /** 申請・招待を受け付けない状態（アーカイブ済みか論理削除済み）か。 */
+        public boolean closed() {
+            return archived || deleted;
         }
     }
 

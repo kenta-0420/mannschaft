@@ -158,7 +158,14 @@ class TeamOrgLifecycleConcurrencyIT extends TeamOrgLifecycleCommittedItSupport {
 
             awaitCondition("いま INSERT された PENDING も消える", () -> statusOf(membershipId[0]) == null);
             assertThat(pendingCount(fx.team().id(), fx.org().id())).isZero();
-            awaitCondition("取消の通知ジョブが作られる", () -> jobIdsOf(membershipId[0], CANCELLED).size() == 1);
+            if (creator == Creator.INVITE && target == Target.ORG) {
+                // 招待の受信通知（INVITE_RECEIVED）はコミット後の読み直しの後に予約するので、その前に組織の片付けが
+                // 消した招待はチームがまだ知らない。知らない招待の取消は送らない（2-D・OB13a と同じ結果）。
+                // 削除と通知の予約は同じ tx なので、行が消えた時点で通知の有無は確定している
+                assertThat(jobIdsOf(membershipId[0], CANCELLED)).as("チームの知らない招待の取消は通知しない").isEmpty();
+            } else {
+                awaitCondition("取消の通知ジョブが作られる", () -> jobIdsOf(membershipId[0], CANCELLED).size() == 1);
+            }
         } finally {
             executor.shutdownNow();
         }

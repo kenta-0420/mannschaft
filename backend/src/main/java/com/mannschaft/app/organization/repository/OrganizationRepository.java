@@ -210,6 +210,14 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     Optional<OrganizationEntity> findByIdIncludingDeleted(@Param("id") Long id);
 
     /**
+     * 指定 ID のうち、行が存在する（論理削除済みを含む）組織の ID と、アーカイブ・論理削除の印を返す
+     * （F01.2.1 2-D・片付けの回復バッチ）。各要素は {@code [id, archived(0/1), deleted(0/1)]}。
+     */
+    @Query(value = "SELECT id, (archived_at IS NOT NULL) AS archived, (deleted_at IS NOT NULL) AS deleted "
+            + "FROM organizations WHERE id IN (:ids)", nativeQuery = true)
+    List<Object[]> findClosureFlagsIncludingDeleted(@Param("ids") java.util.Collection<Long> ids);
+
+    /**
      * 論理削除済み組織を復元する。deleted_at を NULL に戻す。
      * @return 更新件数（0 = 対象なし or 削除済みでない）
      */

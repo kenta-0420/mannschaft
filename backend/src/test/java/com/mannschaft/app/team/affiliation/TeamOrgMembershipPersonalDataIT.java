@@ -3,6 +3,7 @@ package com.mannschaft.app.team.affiliation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.gdpr.service.PersonalDataCollector;
+import com.mannschaft.app.gdpr.service.PersonalDataPrefetcher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,9 @@ class TeamOrgMembershipPersonalDataIT extends TeamAffiliationItSupport {
 
     @Autowired
     private PersonalDataCollector collector;
+
+    @Autowired
+    private PersonalDataPrefetcher prefetcher;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -110,7 +114,9 @@ class TeamOrgMembershipPersonalDataIT extends TeamAffiliationItSupport {
 
     /** memberships カテゴリの収集結果を、1要素ずつの JSON にして返す（配列でなければ1要素として扱う）。 */
     private List<JsonNode> collectRows(long userId) throws Exception {
-        Map<String, String> data = collector.collect(userId, Set.of("memberships"));
+        // 本番の経路と同じく、エクスポートの tx の外で事前取得（PersonalDataPrefetcher）してから書き出す（2-D・D-3T）
+        Map<String, String> data = collector.collect(userId, Set.of("memberships"),
+                prefetcher.prefetch(userId, Set.of("memberships")));
         assertThat(data).containsKey(FILE);
         JsonNode root = objectMapper.readTree(data.get(FILE));
         List<JsonNode> rows = new ArrayList<>();

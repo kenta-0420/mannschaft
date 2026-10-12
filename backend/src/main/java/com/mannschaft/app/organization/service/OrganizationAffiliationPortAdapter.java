@@ -102,10 +102,31 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Optional<OrganizationRef> findOrganizationRefIncludingDeleted(Long organizationId) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public Optional<OrganizationClosureState> findClosureStateIncludingDeleted(Long organizationId) {
+        // 呼び出し側（team ドメインの片付け）の tx には参加せず、組織ドメインの新しい読み取り tx で最新のコミット済みの
+        // 状態を読む。論理削除済みも読む（ネイティブ）
         return organizationRepository.findByIdIncludingDeleted(organizationId)
-                .map(OrganizationAffiliationPortAdapter::toRef);
+                .map(org -> new OrganizationClosureState(org.getId(), org.getSlug(), org.getName(),
+                        org.getArchivedAt() != null, org.getDeletedAt() != null));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Set<Long> findClosedOrganizationIds(Collection<Long> organizationIds) {
+        if (organizationIds == null || organizationIds.isEmpty()) {
+            return java.util.Set.of();
+        }
+        java.util.Set<Long> closed = new java.util.HashSet<>(organizationIds);
+        for (Object[] row : organizationRepository.findClosureFlagsIncludingDeleted(organizationIds)) {
+            long id = ((Number) row[0]).longValue();
+            boolean archived = ((Number) row[1]).intValue() != 0;
+            boolean deleted = ((Number) row[2]).intValue() != 0;
+            if (!archived && !deleted) {
+                closed.remove(id); // 生きている組織だけを外す（行の無い組織は閉鎖として残す）
+            }
+        }
+        return closed;
     }
 
     private static OrganizationAffiliationState toState(OrganizationEntity org) {
