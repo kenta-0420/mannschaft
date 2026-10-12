@@ -40,7 +40,7 @@
       },
       "follow": {
         "title": "Seguir para hacerse amigo",
-        "step1": "Pulsa el botón «Seguir» en la parte superior derecha de la pantalla",
+        "step1": "Pulsa el botón «Seguir» en la parte superior de la pestaña de equipos amigos",
         "step2": "Introduce el ID (número) del equipo al que quieres seguir",
         "step3": "Escribe un mensaje de saludo (opcional, hasta 300 caracteres)",
         "step4": "Pulsa «Seguir» en el cuadro de diálogo",
