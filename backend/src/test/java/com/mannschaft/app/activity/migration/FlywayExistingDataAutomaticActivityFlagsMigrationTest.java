@@ -46,6 +46,7 @@ class FlywayExistingDataAutomaticActivityFlagsMigrationTest {
             // 対象DDLだけを適用し、他ドメインや後続migrationの追加で移行件数が変わらないようにする。
             var after = Flyway.configure().dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
                     .locations("classpath:db/migration").outOfOrder(false)
+                    // V237 の対象DDLに上限を固定し、V238以降の追加を移行1件の期待へ混ぜない。
                     .target(MigrationVersion.fromVersion("237.20261008035358")).load().migrate();
             assertThat(after.success).isTrue();
             assertThat(after.migrationsExecuted).isEqualTo(1);
