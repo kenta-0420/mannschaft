@@ -389,8 +389,10 @@ public class Auth2faService {
     /**
      * 2FA ログイン検証（TOTP / バックアップコード / メールOTP）。
      *
-     * <p>骨格段階では TOTP のみ既存 {@link #validateTotp} へ委譲して挙動を保つ。
-     * 出陣（甲）で試行カウンタ・バックアップコード消費・メールOTP 照合を実装する。</p>
+     * <p>骨格段階は未実装（TOTP も含む）。既存 {@link #validateTotp} へ委譲すると、トークン発行経路
+     * （RoleClaimResolver → role.UserRoleRepository）が新しい @Transactional 入口として D-3T 番人
+     * （CrossDomainTransactionalTransitiveArchTest）に検出され、凍結ストアへの負債追加が必要になるため委譲しない。
+     * 出陣（甲）で試行カウンタ・バックアップコード消費・メールOTP 照合を実装し、D-3T の扱いを決めること。</p>
      *
      * @param mfaSessionToken MFA セッショントークン
      * @param method          提示要素（null 不可。DTO 側で欠落→TOTP に解決済み）
@@ -403,10 +405,6 @@ public class Auth2faService {
     public ApiResponse<MfaLoginTokenResponse> validateMfaLogin(
             String mfaSessionToken, MfaVerificationMethod method, String code,
             String ipAddress, String userAgent) {
-        if (method == MfaVerificationMethod.TOTP) {
-            TokenResponse tokens = validateTotp(mfaSessionToken, code).getData();
-            return ApiResponse.of(new MfaLoginTokenResponse(tokens, method, null));
-        }
         throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
