@@ -681,6 +681,10 @@ public class UserService {
         UserEntity user = userRepository.findByIdForUpdateIncludingDeleted(userId)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
 
+        // ロック待ちの間に purge マークがコミットされる場合がある。
+        // RR の通常 SELECT は古い snapshot を返し得るため、ロック済み managed 行で再判定する。
+        purgeStartGuard.checkCancelAllowed(user.getPurgeStartedAt() != null);
+
         // deleted_at が NULL の場合、退会リクエストが存在しない
         if (user.getDeletedAt() == null) {
             throw new BusinessException(AuthErrorCode.AUTH_032);

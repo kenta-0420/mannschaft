@@ -9,6 +9,7 @@ import com.mannschaft.app.recruitment.dto.RecruitmentListingResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentTemplateCreateRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentTemplateResponse;
 import com.mannschaft.app.recruitment.dto.RecruitmentTemplateUpdateRequest;
+import com.mannschaft.app.recruitment.service.RecruitmentListingFacade;
 import com.mannschaft.app.recruitment.service.RecruitmentListingService;
 import com.mannschaft.app.recruitment.service.RecruitmentTemplateService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,6 +41,7 @@ public class RecruitmentTemplateController {
 
     private final RecruitmentTemplateService templateService;
     private final RecruitmentListingService listingService;
+    private final RecruitmentListingFacade listingFacade;
 
     // ===========================================
     // チーム スコープ
@@ -125,7 +127,7 @@ public class RecruitmentTemplateController {
     @Operation(summary = "募集テンプレート詳細取得", description = "MEMBER 以上の権限が必要")
     public ResponseEntity<ApiResponse<RecruitmentTemplateResponse>> getTemplate(
             @PathVariable Long id) {
-        RecruitmentTemplateResponse response = templateService.getTemplate(id, SecurityUtils.getCurrentUserId());
+        RecruitmentTemplateResponse response = listingFacade.getTemplate(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -134,14 +136,14 @@ public class RecruitmentTemplateController {
     public ResponseEntity<ApiResponse<RecruitmentTemplateResponse>> updateTemplate(
             @PathVariable Long id,
             @Valid @RequestBody RecruitmentTemplateUpdateRequest request) {
-        RecruitmentTemplateResponse response = templateService.update(id, SecurityUtils.getCurrentUserId(), request);
+        RecruitmentTemplateResponse response = listingFacade.updateTemplate(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     @PostMapping("/api/v1/recruitment-templates/{id}/archive")
     @Operation(summary = "募集テンプレート論理削除（アーカイブ）", description = "ADMIN/DEPUTY_ADMIN 権限が必要")
     public ResponseEntity<Void> archiveTemplate(@PathVariable Long id) {
-        templateService.archive(id, SecurityUtils.getCurrentUserId());
+        listingFacade.archiveTemplate(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

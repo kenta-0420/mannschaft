@@ -55,7 +55,7 @@ watch(() => route.path, () => {
             icon="pi pi-bars"
             text
             size="small"
-            :aria-label="$t('common.menu')"
+            :aria-label="$t('common.openNavigation')"
             data-testid="scope-sidebar-toggle"
             @click="showSidebar = true"
           />

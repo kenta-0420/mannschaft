@@ -60,14 +60,12 @@ function handleLogoClick() {
 
 <template>
   <header class="sticky top-0 z-50 h-[var(--app-header-h)] border-b border-surface bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900">
-    <!-- AC-1/AC-16根治: 外枠を overflow-x-hidden にし、右アクション群が想定外に
-         伸長しても document 全体の横パンへ波及しない構造にする（Popover類はPrimeVue Portal
-         でbody直下へteleportされるため、ここでのoverflow-hiddenでクリップされない）。 -->
-    <div class="flex h-full items-center gap-2 overflow-x-hidden px-4">
+    <!-- 操作領域が収まる配置にし、横溢れを切り取りで隠さない。 -->
+    <div class="flex h-full items-center gap-2 px-2 sm:px-4">
       <!-- パネル型トグル（デスクトップ: レール開閉） -->
       <button
         type="button"
-        class="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 md:inline-flex dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100"
+        class="hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 md:inline-flex dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100"
         :aria-label="appShellStore.isRail ? t('global_nav.toggle.expand') : t('global_nav.toggle.collapse')"
         :title="appShellStore.isRail ? t('global_nav.toggle.expand') : t('global_nav.toggle.collapse')"
         @click="appShellStore.togglePanel()"
@@ -85,7 +83,7 @@ function handleLogoClick() {
       <!-- パネル型トグル（モバイル: ドロワー開閉を兼用） -->
       <button
         type="button"
-        class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 md:hidden dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100"
+        class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-900 md:hidden dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100"
         :aria-label="appShellStore.mobileDrawerOpen ? t('global_nav.toggle.closeDrawer') : t('global_nav.toggle.openDrawer')"
         :title="appShellStore.mobileDrawerOpen ? t('global_nav.toggle.closeDrawer') : t('global_nav.toggle.openDrawer')"
         @click="appShellStore.toggleMobileDrawer()"
@@ -103,7 +101,7 @@ function handleLogoClick() {
 
       <!-- ロゴ（通常タップ→/dashboard、長押し600ms→ポイっとメモ作成モーダル） -->
       <span
-        class="cursor-pointer select-none text-2xl font-bold text-primary"
+        class="inline-flex min-h-11 shrink-0 cursor-pointer select-none items-center text-2xl font-bold text-primary"
         style="touch-action: manipulation"
         role="link"
         tabindex="0"
@@ -139,6 +137,8 @@ function handleLogoClick() {
                 v-tooltip.bottom="t('feedback.nav_tooltip')"
                 data-testid="feedback-open-button"
                 icon="pi pi-box"
+                class="!h-11 !w-11 !p-0"
+                :aria-label="t('feedback.nav_tooltip')"
                 text
                 rounded
                 severity="secondary"
@@ -147,7 +147,7 @@ function handleLogoClick() {
               <!-- F04.11: 受信箱アイコン -->
               <NuxtLink
                 to="/inbox"
-                class="relative flex shrink-0 items-center justify-center rounded-lg p-2 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+                class="relative flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg p-2 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
                 :aria-label="t('inbox.title')"
                 :title="t('inbox.title')"
               >
@@ -164,6 +164,8 @@ function handleLogoClick() {
                 v-if="showPwaInstallBtn"
                 v-tooltip.bottom="t('pwa.install_button')"
                 icon="pi pi-download"
+                class="!h-11 !w-11 !p-0"
+                :aria-label="t('pwa.install_button')"
                 text
                 rounded
                 severity="secondary"
@@ -172,6 +174,8 @@ function handleLogoClick() {
               <Button
                 v-tooltip.bottom="t('button.logout')"
                 icon="pi pi-sign-out"
+                class="!h-11 !w-11 !p-0"
+                :aria-label="t('button.logout')"
                 text
                 rounded
                 severity="secondary"

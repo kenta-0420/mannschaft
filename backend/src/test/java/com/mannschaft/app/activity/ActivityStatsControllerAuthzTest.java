@@ -37,6 +37,7 @@ class ActivityStatsControllerAuthzTest {
 
     @Mock private ActivityStatsService statsService;
     @Mock private ActivityScopeAccessGuard scopeAccessGuard;
+    @Mock private com.mannschaft.app.activity.service.AutomaticActivityListService automaticAccess;
 
     private ActivityStatsController controller;
     private MockedStatic<SecurityUtils> securityUtils;
@@ -46,7 +47,7 @@ class ActivityStatsControllerAuthzTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ActivityStatsController(statsService, scopeAccessGuard);
+        controller = new ActivityStatsController(statsService, scopeAccessGuard, automaticAccess);
         securityUtils = Mockito.mockStatic(SecurityUtils.class);
         securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
     }
@@ -67,7 +68,7 @@ class ActivityStatsControllerAuthzTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                         .isEqualTo("COMMON_002"));
-        verify(statsService, never()).getStats(any(), any(), any(), any(), any(), any());
+        verify(statsService, never()).getStatsWithAutomaticAccess(any(), any(), any(), any(), any(), any(), any());
     }
 
     // AC-8: フィールド集計も同様に403、サービス非委譲
@@ -95,18 +96,18 @@ class ActivityStatsControllerAuthzTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                         .isEqualTo("COMMON_002"));
-        verify(statsService, never()).exportCsv(any(), any(), any(), any(), any(), any());
+        verify(statsService, never()).exportCsvWithAutomaticAccess(any(), any(), any(), any(), any(), any(), any());
     }
 
     // AC-2: 自スコープ会員は従来通り成功（非回帰）。membership検証後にサービスへ委譲される
     @Test
     @DisplayName("getStats_自スコープ会員は成功しサービスへ委譲（非回帰）")
     void 統計_自スコープ_委譲() {
-        given(statsService.getStats(any(), any(), any(), any(), any(), any())).willReturn(null);
+        given(statsService.getStatsWithAutomaticAccess(any(), any(), any(), any(), any(), any(), any())).willReturn(null);
 
         controller.getStats("TEAM", SCOPE_ID, null, "MONTH", null, null);
 
         verify(scopeAccessGuard).checkMembership(USER_ID, ActivityScopeType.TEAM, SCOPE_ID);
-        verify(statsService).getStats(ActivityScopeType.TEAM, SCOPE_ID, null, "MONTH", null, null);
+        verify(statsService).getStatsWithAutomaticAccess(ActivityScopeType.TEAM, SCOPE_ID, null, "MONTH", null, null, java.util.Set.of());
     }
 }

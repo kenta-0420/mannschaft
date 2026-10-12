@@ -41,6 +41,8 @@ test.info().annotations.push({
 
 `personaId`は計画に定義した`P01`〜`P20`だけを許可します。省略時は「統括／ペルソナ未特定」です。テスト失敗も統括による気づきとして記録されます。
 
+既存runnerを使わない住民の逐次探索も、実証跡の構造化登録として既存overlayへ取り込めます。この場合は`registrationSource: actual-resident-artifacts`、`trusted: false`、`status: observed-unverified`を明示し、`personas`と`journeys`に一意の実ID・personaArchetype・元runId・sourceHead・evidencePath・目的を宣言します。気づきはその宣言に対応するpersonaId/journeyId・originalRunId・証拠を保持します。原本にIDが無い場合は登録時付与と明記し、固定P01〜P20へ偽って変換しません。既存runner/dynamic runnerの実行やcoverage合格を意味しません。`node docs/prototypes/validate-beta-inventory-board.mjs --self-test-overlay`で宣言整合と不正なID・証拠欠落の拒否を確認できます。
+
 実行後、ローカル結果をダッシュボードデータへ含めて再生成します。
 
 ```powershell

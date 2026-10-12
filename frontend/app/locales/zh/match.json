@@ -453,8 +453,14 @@
       "OH": "主攻手",
       "L": "自由人"
     },
+    "org_select": {
+      "label": "组织",
+      "invalid": "指定的组织无效（不是本团队的组织）。请重新选择组织",
+      "placeholder": "选择组织"
+    },
     "org_context": {
-      "resolve_failed": "无法解析球队/组织信息。请确认你的所属"
+      "resolve_failed": "无法解析球队/组织信息。请确认你的所属",
+      "not_member_of_org": "本团队未加入本赛事所属的组织，因此无法记录比赛"
     },
     "entry": {
       "record_from_schedule": "记录这场比赛",
@@ -527,7 +533,7 @@
         "draw": "平局"
       },
       "draw_type_shogi": "千日手/持将棋",
-      "draw_type_go": "持碁",
+      "draw_type_go": "和棋",
       "side": {
         "home_shogi": "先手",
         "away_shogi": "后手",

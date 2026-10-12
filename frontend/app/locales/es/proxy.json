@@ -16,7 +16,8 @@
         "pending": "Pendiente de aprobación",
         "active": "Activo",
         "expired": "Caducado",
-        "revoked": "Revocado"
+        "revoked": "Revocado",
+        "scheduled": "Aún no vigente"
       },
       "effectiveFrom": "Válido desde",
       "effectiveUntil": "Válido hasta",
@@ -229,6 +230,25 @@
         "not_allowed": "La asistencia por representación no está permitida para este horario/evento",
         "rate_limit": "Demasiadas solicitudes. Por favor, inténtelo de nuevo en 1 minuto"
       }
+    },
+    "admin": {
+      "consentsTitle": "Gestión de consentimientos de entrada por representación",
+      "description": "Revise y apruebe o revoque los consentimientos de entrada por representación y consulte el historial de su organización.",
+      "organization": "Organización administrada",
+      "proxyUserId": "ID del representante",
+      "status": "Estado",
+      "actions": "Acciones",
+      "approve": "Aprobar",
+      "revoke": "Revocar",
+      "approveConfirm": "Se aprobará el consentimiento #{id}. Confirme para continuar.",
+      "approved": "Consentimiento aprobado.",
+      "revoked": "Consentimiento revocado.",
+      "selfApprovalDenied": "No puede aprobar un consentimiento que lo designa como representante.",
+      "noConsents": "No hay consentimientos.",
+      "noRecords": "No hay registros de entrada por representación.",
+      "none": "Ninguno",
+      "recordId": "ID del registro",
+      "targetType": "Tipo de destino"
     }
   }
 }

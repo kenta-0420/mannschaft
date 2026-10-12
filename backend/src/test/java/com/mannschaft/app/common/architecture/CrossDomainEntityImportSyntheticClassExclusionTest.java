@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import org.junit.jupiter.api.Tag;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +47,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * 走っていない等）は {@code skip} ではなく明示的に {@link org.junit.jupiter.api.Assertions#fail}
  * させる（「見つからなければ skip」は偽の緑になるため禁止 — CLAUDE.md 障害対応の原則）。
  */
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class CrossDomainEntityImportSyntheticClassExclusionTest {
 
     private static final String FIXTURES_PACKAGE =

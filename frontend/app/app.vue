@@ -21,7 +21,9 @@ useHead(() => ({
   </Toast>
   <ConfirmDialog />
   <DynamicDialog />
-  <ErrorReportModal />
+  <ClientOnly>
+    <ErrorReportDialog />
+  </ClientOnly>
   <PaywallModal />
 </template>
 

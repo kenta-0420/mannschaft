@@ -279,7 +279,7 @@ watch(() => props.pageId, () => {
       <!-- eslint-disable vue/no-v-html -->
       <div
         v-if="page.body"
-        class="prose max-w-none text-sm leading-relaxed dark:prose-invert"
+        class="article-body text-sm leading-relaxed"
         v-html="sanitizeHtml(page.body)"
       />
       <!-- eslint-enable vue/no-v-html -->

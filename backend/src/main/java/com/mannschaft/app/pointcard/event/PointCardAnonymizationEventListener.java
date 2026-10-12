@@ -1,9 +1,10 @@
 package com.mannschaft.app.pointcard.event;
 
+import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
-import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import com.mannschaft.app.pointcard.repository.PointCardGroupRepository;
 import com.mannschaft.app.pointcard.repository.PointCardUserSettingsRepository;
 import com.mannschaft.app.pointcard.repository.UserPointCardRepository;
@@ -15,6 +16,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * pointcard ドメインの退会データ削除リスナー（クロスドメインFK撤廃キャンペーン 第二陣C）。
@@ -61,13 +64,15 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * </ul>
  * </p>
  *
- * <p>例外は WARN ログのみで伝播させない（他ドメインリスナーの処理を妨げない／
- * GDPR タイムリミットを優先する）。</p>
+ * <p>弱側の例外隔離は維持する。強側の削除失敗は所有TXをロールバックさせ、PENDINGを維持する。
+ * 完了記録は所有TXのコミット成立後だけ行う。</p>
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class PointCardAnonymizationEventListener {
+
+    private final AccountPurgeCompletionService completionService;
 
     private final UserPointCardRepository userPointCardRepository;
     private final PointCardGroupRepository pointCardGroupRepository;
@@ -97,26 +102,33 @@ public class PointCardAnonymizationEventListener {
         }
     }
 
-    /**
-     * 退会30日後の物理削除（{@link AccountPurgedEvent}）を購読し、
-     * カード整理グループ・ユーザー設定（個人設定・復元価値）を削除する。
-     *
-     * @param event アカウント物理削除完了イベント
-     */
+    /** 30日後の強匿名化。所有データの削除コミット後にのみ完了を記録する。 */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-            reason = "止めると退会・完全削除済み利用者のポイントカードに個人情報が残存し、退会済みなのに PII が残るという不整合になる")
+            reason = "完全削除済み利用者の個人設定を消去する。停止すると設定が残留し、消去イベントは再生されない")
     @Async("purge-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onAccountPurged(AccountPurgedEvent event) {
         Long userId = event.getUserId();
-        try {
-            pointCardGroupRepository.deleteByUserId(userId);
-            pointCardUserSettingsRepository.deleteByUserId(userId);
-            log.info("ユーザー退会 pointcard purge 完了: カードグループ・ユーザー設定削除: userId={}", userId);
-        } catch (Exception e) {
-            log.warn("ユーザー退会 pointcard purge: カードグループ・ユーザー設定削除失敗: userId={}, error={}",
-                    userId, e.getMessage(), e);
-        }
+        purgeSettings(userId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                completionService.markDomainSuccess(userId, "pointcard");
+            }
+        });
+    }
+
+    /** 手動再試行。呼出元はこの新規TXのコミット成立後に完了状態を更新する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean retryPurge(Long userId) {
+        purgeSettings(userId);
+        return true;
+    }
+
+    /** 同じ所有domain内の全削除を一つのTXで実行し、途中失敗を伝播させる。 */
+    private void purgeSettings(Long userId) {
+        pointCardGroupRepository.deleteByUserId(userId);
+        pointCardUserSettingsRepository.deleteByUserId(userId);
     }
 }

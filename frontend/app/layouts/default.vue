@@ -132,7 +132,6 @@ async function handleEndSwitch() {
 
     <!-- モーダル群・バナー群は AppShell の外（単一インスタンス） -->
     <ClientOnly>
-      <ErrorReportDialog />
       <IosInstallGuideModal v-model:visible="iosInstallModalVisible" />
       <QuickMemoCaptureModal v-model:visible="quickMemoModalVisible" />
       <FeedbackSubmitModal v-model:visible="feedbackModalVisible" />

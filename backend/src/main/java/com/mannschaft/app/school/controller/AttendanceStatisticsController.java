@@ -5,6 +5,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.school.dto.MonthlyStatisticsResponse;
 import com.mannschaft.app.school.dto.StudentTermStatisticsResponse;
+import com.mannschaft.app.school.service.AttendanceStatisticsFacade;
 import com.mannschaft.app.school.service.AttendanceStatisticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +28,7 @@ import java.time.LocalDate;
 public class AttendanceStatisticsController {
 
     private final AttendanceStatisticsService statisticsService;
+    private final AttendanceStatisticsFacade statisticsFacade;
 
     /**
      * 担任向け月次出欠集計を取得する。
@@ -43,7 +45,7 @@ public class AttendanceStatisticsController {
             @RequestParam Integer year,
             @RequestParam Integer month) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(statisticsService.getMonthlyStatistics(teamId, year, month, currentUserId));
+        return ApiResponse.of(statisticsFacade.getMonthlyStatistics(teamId, year, month, currentUserId));
     }
 
     /**
@@ -82,7 +84,7 @@ public class AttendanceStatisticsController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        byte[] data = statisticsService.exportAttendanceCsv(teamId, from, to, currentUserId);
+        byte[] data = statisticsFacade.exportAttendanceCsv(teamId, from, to, currentUserId);
         return ResponseEntity.ok()
                 .header("Content-Type", "text/csv; charset=utf-8")
                 .header("Content-Disposition",

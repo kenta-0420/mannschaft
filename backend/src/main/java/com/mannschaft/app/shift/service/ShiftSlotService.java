@@ -1,8 +1,6 @@
 package com.mannschaft.app.shift.service;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.shift.ShiftAssignedUserIds;
 import com.mannschaft.app.shift.ShiftAssignmentStatus;
 import com.mannschaft.app.shift.ShiftErrorCode;
@@ -32,50 +30,22 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * シフト枠サービス。シフト枠のCRUD・一括操作を担当する。
+ * シフト枠サービス（<b>トランザクション本体</b>）。シフト枠のCRUD・一括操作を担当する。
  *
- * <p><b>認可（認可根治 Wave6）:</b> 本サービスはかつて {@code AccessControlService} を
- * import すらしておらず、操作者を受け取る口が無かった。結果として
- * {@code ShiftSlotController} の全エンドポイントが無認可で、任意チームのシフト枠を
- * 閲覧・改変・割当できる状態だった。本改修で全 public メソッドが操作者 {@code userId} を
- * 受け取り、<b>シフト枠の所属スケジュール実体から解決した teamId</b> に対して per-scope 認可する
- *（パス変数・クエリの scope 値を鵜呑みにしないことで BOLA を封鎖する）。</p>
+ * <p><b>認可はここに無い（CMP-260923-0954 W6a）:</b> 認可（per-scope・存在オラクル対策・SYSTEM_ADMIN の扱い）は
+ * トランザクションの外の {@link ShiftSlotFacade} が行う。本クラスは {@code AccessControlService}・
+ * {@code ScopeConcealingAccessGate} に<b>クラスごと依存しない</b>（クラスに {@code @Transactional} があると
+ * 認可用の private メソッド・ラムダまで D-3T の入口に数えられるため）。</p>
  *
- * <p>粒度は同ドメインの既存実装に合わせる:</p>
- * <ul>
- *   <li><b>参照</b>（{@code listSlots} / {@code getSlot}）: 当該チームのメンバー、ただし
- *       SUPPORTER は不可。{@code ShiftPdfService#checkMemberAndNotSupporter} と同一方針
- *       （PDF で SUPPORTER に伏せている情報を生 API から取れては意味がないため）。</li>
- *   <li><b>更新・割当</b>（作成/一括作成/更新/削除/差分割当）: ADMIN/DEPUTY_ADMIN 以上
- *       （SYSTEM_ADMIN 短絡）。{@code ShiftScheduleService#checkScheduleAdminAccess} と同一方針。</li>
- * </ul>
+ * <p><b>scope の解決と読み直し:</b> Facade は認可の前に {@link #resolveScheduleScope} /
+ * {@link #resolveSlotTeamId}（readOnly・自ドメインのみ・FOR UPDATE なし）で所属チームを読み、認可の後に
+ * 書き込み・参照の tx 本体を呼ぶ。書き込みは tx の中で<b>親スケジュールを {@code findByIdForUpdate} で
+ * 読み直してロックし</b>（親削除と子の作成・更新を直列化。ロックは認可の後なので部外者は他チームの行を
+ * 掴めない＝K6）、不在・論理削除済みなら<b>対象リソースの不在コード</b>へ揃える（スケジュール起点の
+ * 作成は {@code SHIFT_001}、枠起点の更新・割当・削除は親だけが論理削除済みでも {@code SHIFT_002}＝K5）。</p>
  *
- * <p><b>存在オラクル対策（CMP-260917-1137）:</b> scheduleId は連番で総当りが容易なため、
- * 参照系（{@link #checkScheduleReadAccess}）は越境（当該チームに所属すらしていない）を
- * 不在時と同一の {@code SHIFT_001}（404）へ畳む。兄弟エンドポイントである
- * {@code ShiftScheduleService#getSchedule} と同じ穴（scheduleId の総当りで存在が判別できる）を
- * 本サービス（{@code /slots}）も抱えていたため揃える。同一チーム内の権限不足（SUPPORTER）は
- * 隠す必要が無いため 403 のまま残す。</p>
- *
- * <p><b>存在オラクル対策・更新系（CMP-260923-1641）:</b> 更新系（{@link #checkScheduleAdminAccess}）
- * も同じ穴を抱えていた。{@code ShiftScheduleService#checkScheduleAdminAccess}
- *（Wave6・書込系）が先行是正済みだったのに対し、本サービスは是正が漏れており、
- * 越境（当該チームに所属すらしていない）でも同一チーム内の権限不足（COMMON_002/403）と
- * 同じ応答を返していた。越境は呼び出し元起点の不在応答（scheduleId 起点なら
- * {@code SHIFT_SCHEDULE_NOT_FOUND}、slotId 起点なら {@code SHIFT_SLOT_NOT_FOUND}）へ
- * 畳むよう是正した。同一チーム内で ADMIN/DEPUTY_ADMIN 未満（隠す必要が無い）は
- * 従来どおり {@code COMMON_002}（403）のまま残す。</p>
- *
- * <p><b>判定順（Codex 検分指摘・実測裏取り済み）:</b> {@link #checkScheduleAdminAccess} /
- * {@link #checkScheduleReadAccess} とも、越境判定に {@code isMember} を単独で先に使うと
- * 回帰を生む。{@code isMember} は {@code memberships} のみを見るのに対し、
- * {@code isAdminOrAbove} は有効ロールを {@code user_roles} と {@code memberships} の
- * 2系統で解決する。そのため {@code user_roles} にしか ADMIN/DEPUTY_ADMIN ロールを持たず
- * 在籍中の {@code memberships} 行を持たない利用者（開発DB実測: チーム管理者ロール609件中
- * 2件が該当）を、{@code isMember} 先判定だと「越境」と誤判定して不在応答（404）へ
- * 弾いてしまう。したがって両メソッドとも <b>{@code isAdminOrAbove} を {@code isMember} より
- * 先に評価</b>し、それでも通らない場合にだけ {@code isMember} で 404/403 を作り分ける
- * （{@code ShiftAvailabilityService#checkTeamAccess} と同一方針）。</p>
+ * <p>閲覧の可視性（未公開の秘匿・割当のマスク）は認可の結果（管理者側かどうか）に依存するため、Facade が判定した
+ * {@code privileged} の真偽を引数で受け取り、tx の中の最新の状態で再判定する。呼び出し元は Facade のみ。</p>
  */
 @Slf4j
 @Service
@@ -89,36 +59,68 @@ public class ShiftSlotService {
     /** 手動割当の操作履歴（誰がいつ割り当て・解除したか）を記録するための履歴表。 */
     private final ShiftAssignmentRepository assignmentRepository;
     private final ShiftRequestRepository requestRepository;
-    private final AccessControlService accessControlService;
+
+    // ═════════════════════════════════════════════════════════════════════
+    // scope 解決（Facade が認可の前に呼ぶ readOnly の素の読み取り。戻り値は record で Entity は返さない）
+    // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * スケジュール ID から scope（所属チーム ID・公開状態）を解決する。
+     * 不在・論理削除済みは {@code SHIFT_001}（404）。
+     *
+     * @param scheduleId スケジュール ID
+     * @return scope
+     */
+    public ShiftScheduleScope resolveScheduleScope(Long scheduleId) {
+        ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+        return new ShiftScheduleScope(
+                schedule.getId(), schedule.getTeamId(), schedule.getStatus(),
+                schedule.getPublishedAt() != null);
+    }
+
+    /**
+     * 枠 ID から所属チーム ID を解決する（枠 → 親スケジュール → チーム）。
+     *
+     * <p>枠が不在、または親スケジュールが不在（論理削除済み）のとき、<b>どちらも {@code SHIFT_002}（404）</b>
+     * に揃える（K5: 枠起点の EP は対象リソース＝枠の不在コードで返す。親だけ削除済みでも割れない）。</p>
+     *
+     * @param slotId 枠 ID
+     * @return 所属チーム ID
+     */
+    public Long resolveSlotTeamId(Long slotId) {
+        ShiftSlotEntity slot = findSlotOrThrow(slotId);
+        return scheduleRepository.findById(slot.getScheduleId())
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND))
+                .getTeamId();
+    }
 
     /**
      * スケジュールのシフト枠一覧を取得する。
      *
+     * <p>tx の中で親スケジュールを読み直し、未公開（{@code DRAFT} / {@code ARCHIVED} かつ {@code publishedAt} が
+     * NULL）は管理者側（{@code privileged}）以外に 404、{@code COLLECTING} / {@code ADJUSTING} は割当だけを伏せる
+     * （CMP-260826-2127 / AC-3・AC-4。判定は {@link ShiftScheduleVisibilityPolicy} に閉じる）。</p>
+     *
      * @param scheduleId スケジュールID
-     * @param userId     操作者ユーザーID
+     * @param privileged 管理者側（SYSTEM_ADMIN または当該チームの ADMIN 以上）なら true
      * @return シフト枠一覧
      */
-    public List<ShiftSlotResponse> listSlots(Long scheduleId, Long userId) {
-        // 未公開は認可結果より先に 404 へ正規化し、実在 ID の 403 と
-        // 非存在 ID の 404 を比較する存在オラクルを防ぐ。
-        boolean masked = resolveAssignmentMasked(scheduleId, userId);
-        checkScheduleReadAccess(scheduleId, userId);
+    public List<ShiftSlotResponse> listSlots(Long scheduleId, boolean privileged) {
+        ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+        boolean masked = false;
+        if (!privileged) {
+            ShiftScheduleVisibilityPolicy.Visibility visibility = ShiftScheduleVisibilityPolicy
+                    .classify(schedule.getStatus(), schedule.getPublishedAt());
+            if (visibility.isHidden()) {
+                throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+            }
+            masked = visibility.isAssignmentMasked();
+        }
         List<ShiftSlotEntity> entities = slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(scheduleId);
-        return entities.stream().map(e -> applyMask(toSlotResponse(e), masked)).toList();
-    }
-
-    /**
-     * シフト枠を単体取得する。
-     *
-     * @param slotId シフト枠ID
-     * @param userId 操作者ユーザーID
-     * @return シフト枠
-     */
-    public ShiftSlotResponse getSlot(Long slotId, Long userId) {
-        ShiftSlotEntity entity = findSlotOrThrow(slotId);
-        checkScheduleReadAccess(entity.getScheduleId(), userId);
-        boolean masked = resolveAssignmentMasked(entity.getScheduleId(), userId);
-        return applyMask(toSlotResponse(entity), masked);
+        final boolean maskAssignments = masked;
+        return entities.stream().map(e -> applyMask(toSlotResponse(e), maskAssignments)).toList();
     }
 
     /**
@@ -126,12 +128,11 @@ public class ShiftSlotService {
      *
      * @param scheduleId スケジュールID
      * @param req        作成リクエスト
-     * @param userId     操作者ユーザーID
      * @return 作成されたシフト枠
      */
     @Transactional
-    public ShiftSlotResponse createSlot(Long scheduleId, CreateShiftSlotRequest req, Long userId) {
-        checkScheduleAdminAccess(scheduleId, userId, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+    public ShiftSlotResponse createSlot(Long scheduleId, CreateShiftSlotRequest req) {
+        lockParentForUpdate(scheduleId, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
         // 枠時刻の検証（設計 F03.5 §11.2.5・単一の検証点）。
         ShiftSlotTimeValidator.validateTimeRange(
                 req.getStartTime(), req.getEndTime(), req.endsNextDayOrFalse());
@@ -156,12 +157,11 @@ public class ShiftSlotService {
      *
      * @param scheduleId スケジュールID
      * @param req        一括作成リクエスト
-     * @param userId     操作者ユーザーID
      * @return 作成されたシフト枠一覧
      */
     @Transactional
-    public List<ShiftSlotResponse> bulkCreateSlots(Long scheduleId, BulkCreateShiftSlotRequest req, Long userId) {
-        checkScheduleAdminAccess(scheduleId, userId, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
+    public List<ShiftSlotResponse> bulkCreateSlots(Long scheduleId, BulkCreateShiftSlotRequest req) {
+        lockParentForUpdate(scheduleId, ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
         // 一括作成も単体作成と同じ検証点を通す（1 件でも不正ならトランザクションごと拒否）。
         req.getSlots().forEach(slotReq -> ShiftSlotTimeValidator.validateTimeRange(
                 slotReq.getStartTime(), slotReq.getEndTime(), slotReq.endsNextDayOrFalse()));
@@ -194,7 +194,7 @@ public class ShiftSlotService {
     @Transactional
     public ShiftSlotResponse updateSlot(Long slotId, UpdateShiftSlotRequest req, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
-        checkScheduleAdminAccess(entity.getScheduleId(), userId, ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+        lockParentForUpdate(entity.getScheduleId(), ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
 
         // 枠時刻の検証（設計 F03.5 §11.2.5）。部分更新のため、リクエストで指定されなかった側は
         // 既存値と合成して検証する。時刻・日跨ぎのいずれも指定されていない更新（note のみ等）は
@@ -241,7 +241,7 @@ public class ShiftSlotService {
     @Transactional
     public ShiftSlotResponse patchSlotAssignments(Long slotId, SlotAssignmentPatchRequest request, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
-        checkScheduleAdminAccess(entity.getScheduleId(), userId, ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+        lockParentForUpdate(entity.getScheduleId(), ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
 
         // 楽観ロックチェック: version が一致しない場合は 409
         if (!entity.getVersion().equals(request.slotVersion().longValue())) {
@@ -355,12 +355,11 @@ public class ShiftSlotService {
      * シフト枠を削除する。
      *
      * @param slotId シフト枠ID
-     * @param userId 操作者ユーザーID
      */
     @Transactional
-    public void deleteSlot(Long slotId, Long userId) {
+    public void deleteSlot(Long slotId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
-        checkScheduleAdminAccess(entity.getScheduleId(), userId, ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
+        lockParentForUpdate(entity.getScheduleId(), ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
         // 枠で削除日時を一度だけ確定し、配下の希望・割当へ同じDB値をコピーする。
         if (slotRepository.softDeleteById(slotId) != 1) {
             throw new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND);
@@ -379,143 +378,19 @@ public class ShiftSlotService {
     }
 
     /**
-     * スケジュール ID から所属チーム ID を解決する。
+     * 親スケジュールを行ロック付きで読み直す（認可の後・tx の中）。
      *
-     * <p>scope をパス変数・クエリ入力でなく<b>スケジュール実体由来</b>にすることで、
-     * 「他チームの slotId / scheduleId を直接指定して越境する」BOLA を封鎖する。</p>
+     * <p>親削除と同じ行を先にロックし、確認後に子だけが作成・更新される競合を防ぐ（CMP-260917-1136）。
+     * ロックは認可（Facade）の後なので、部外者の要求は他チームの親行を掴めない（K6）。
+     * 親が不在・論理削除済みなら、呼び出し元の対象リソースの不在コード（{@code notFoundCode}）で拒否する
+     *（スケジュール起点なら {@code SHIFT_001}、枠起点なら {@code SHIFT_002}＝K5）。</p>
      *
-     * @param scheduleId スケジュール ID
-     * @return 所属チーム ID
+     * @param scheduleId   親スケジュール ID
+     * @param notFoundCode 親が不在のときに投げる、対象リソースの不在コード
      */
-    private Long resolveTeamId(Long scheduleId) {
-        return scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
-                .getTeamId();
-    }
-
-    /**
-     * シフト枠の参照認可（当該チームのメンバー、ただし SUPPORTER は不可）。
-     *
-     * <p>CMP-260917-1137: 越境（当該チームに所属すらしていない）は、scheduleId 総当りでの
-     * 存在オラクル対策として不在時と同一の {@link ShiftErrorCode#SHIFT_SCHEDULE_NOT_FOUND}（404）
-     * へ畳む（{@code ShiftScheduleService#checkScheduleReadAccess} と同一方針）。
-     * SUPPORTER（同一チーム内の権限不足）は隠す必要が無いため 403 のまま残す。</p>
-     *
-     * <p><b>判定順（CMP-260923-1641 是正・Codex 検分指摘）:</b> {@code isAdminOrAbove} を
-     * {@code isMember} より先に評価する。{@code isMember} は memberships のみを見るため、
-     * user_roles にしか ADMIN/DEPUTY_ADMIN ロールを持たない利用者（開発DB実測: チーム管理者ロール
-     * 609件中2件）を、isMember 先判定だと越境と誤判定して不在応答（404）へ弾いてしまう。
-     * 「読める条件（admin ロール or メンバーかつ非 SUPPORTER）」を先に評価し、どちらも満たさない
-     * 場合だけ、所属の有無で 404/403 を作り分ける
-     *（{@code ShiftAvailabilityService#checkTeamAccess} と同一方針）。</p>
-     *
-     * @param scheduleId スケジュール ID
-     * @param userId     操作者ユーザー ID
-     * @throws BusinessException 越境の場合（{@code SHIFT_001}／404）、
-     *                           同一チーム内で SUPPORTER の場合（{@code COMMON_002}／403）
-     */
-    private void checkScheduleReadAccess(Long scheduleId, Long userId) {
-        // 親スケジュールの生存確認（resolveTeamId が論理削除済みなら404を投げる）を
-        // SYSTEM_ADMIN 短絡より必ず先に行う。CMP-260917-1136: 短絡を先に置くと
-        // SYSTEM_ADMIN だけが親削除済みでも通過してしまう（一般メンバーは resolveTeamId で404）。
-        Long teamId = resolveTeamId(scheduleId);
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        // CMP-260923-1641: isAdminOrAbove を isMember より先に判定する（user_roles のみに
-        // ADMIN/DEPUTY_ADMIN を持つ利用者を越境と誤判定しないため）。
-        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
-            return;
-        }
-        if (!accessControlService.isMember(userId, teamId, "TEAM")) {
-            throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
-        }
-        if (accessControlService.isSupporter(userId, teamId, "TEAM")) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
-    }
-
-    /**
-     * シフト枠の更新・割当認可（SYSTEM_ADMIN 短絡 or 当該チームの ADMIN/DEPUTY_ADMIN）。
-     *
-     * <p><b>存在オラクル対策（CMP-260923-1641）:</b> {@code checkAdminOrAbove} は所属の有無を
-     * 見ずに一律 {@code COMMON_002}（403）を投げるため、越境（当該チームに所属すらしていない）と
-     * 同一チーム内の権限不足が同じ応答になっていた。所属を先に判定し、
-     * 越境は呼び出し元起点の不在応答（{@code notFoundCode}）へ畳む
-     *（{@code ShiftScheduleService#checkScheduleAdminAccess} と同一方針）。</p>
-     *
-     * <p><b>判定順（Codex 検分指摘）:</b> {@code isAdminOrAbove} を {@code isMember} より先に
-     * 評価する。{@code isMember} は memberships のみを見るのに対し、{@code isAdminOrAbove} は
-     * 有効ロールを user_roles と memberships の2系統で解決するため、user_roles にしか
-     * ADMIN/DEPUTY_ADMIN ロールを持たない利用者（開発DB実測: チーム管理者ロール609件中2件）を
-     * isMember 先判定だと越境と誤判定して不在応答（404）へ弾いてしまう回帰が生じる。</p>
-     *
-     * @param scheduleId   スケジュール ID
-     * @param userId       操作者ユーザー ID
-     * @param notFoundCode 越境時に投げる「不在時と同一」のエラーコード
-     *                     （scheduleId 起点なら {@code SHIFT_SCHEDULE_NOT_FOUND}、
-     *                     slotId 起点なら {@code SHIFT_SLOT_NOT_FOUND}）
-     * @throws BusinessException 越境の場合（{@code notFoundCode}／404）、
-     *                           同一チーム内で権限が足りない場合（{@code COMMON_002}／403）
-     */
-    private void checkScheduleAdminAccess(Long scheduleId, Long userId, ShiftErrorCode notFoundCode) {
-        // 親スケジュールの生存確認を SYSTEM_ADMIN 短絡より必ず先に行う（CMP-260917-1136）。
-        // 短絡を先に置くと SYSTEM_ADMIN だけが亡霊枠（親削除済み）を編集・削除できてしまい、
-        // 一般 ADMIN（親が不在なら 404）と挙動が食い違う。
-        // 親削除と同じ行を先にロックし、確認後に子だけが作成・更新される競合を防ぐ。
-        Long teamId = scheduleRepository.findByIdForUpdate(scheduleId)
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
-                .getTeamId();
-        if (accessControlService.isSystemAdmin(userId)) {
-            return;
-        }
-        // isAdminOrAbove を isMember より先に判定する（user_roles のみに ADMIN/DEPUTY_ADMIN を
-        // 持つ利用者を越境と誤判定しないため）。
-        if (accessControlService.isAdminOrAbove(userId, teamId, "TEAM")) {
-            return;
-        }
-        if (!accessControlService.isMember(userId, teamId, "TEAM")) {
-            // 越境（他チーム／無所属）: 存在自体を隠すべき側。不在時と完全同一のコードを投げる。
-            throw new BusinessException(notFoundCode);
-        }
-        // 同一チーム内の権限不足（メンバーだが ADMIN/DEPUTY_ADMIN ではない）: 隠す必要が無い側。
-        // 従来どおり 403。
-        throw new BusinessException(CommonErrorCode.COMMON_002);
-    }
-
-    /**
-     * 閲覧者に対する枠一覧の可視性を解決する（CMP-260826-2127 / AC-3・AC-4）。
-     *
-     * <p>未公開（{@code DRAFT} / {@code ARCHIVED} かつ {@code publishedAt} が NULL）なら 404、
-     * {@code COLLECTING} / {@code ADJUSTING} なら割当だけを伏せる。判定は
-     * {@link ShiftScheduleVisibilityPolicy} に閉じる（設計 G-1）。</p>
-     *
-     * <p><b>マスクを {@code toSlotResponse} 側で行わない理由</b>: 同メソッドは管理系
-     *（{@code createSlot} / {@code updateSlot} / 差分割当）からも呼ばれており、
-     * そこで伏せると管理画面の D&D 編集が空になる。</p>
-     *
-     * @param scheduleId スケジュール ID
-     * @param userId     閲覧者ユーザー ID
-     * @return 割当を伏せるべきなら true
-     * @throws BusinessException 未公開の場合（SHIFT_SCHEDULE_NOT_FOUND / 404）
-     */
-    private boolean resolveAssignmentMasked(Long scheduleId, Long userId) {
-        // 親スケジュールの生存確認（@SQLRestriction による論理削除フィルタ）を
-        // SYSTEM_ADMIN 短絡より必ず先に行う（CMP-260917-1136。checkScheduleReadAccess と同じ順序）。
-        ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
-        if (accessControlService.isSystemAdmin(userId)) {
-            return false;
-        }
-        if (accessControlService.isAdminOrAbove(userId, schedule.getTeamId(), "TEAM")) {
-            return false;
-        }
-        ShiftScheduleVisibilityPolicy.Visibility visibility = ShiftScheduleVisibilityPolicy
-                .classify(schedule.getStatus(), schedule.getPublishedAt());
-        if (visibility.isHidden()) {
-            throw new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND);
-        }
-        return visibility.isAssignmentMasked();
+    private void lockParentForUpdate(Long scheduleId, ShiftErrorCode notFoundCode) {
+        scheduleRepository.findByIdForUpdate(scheduleId)
+                .orElseThrow(() -> new BusinessException(notFoundCode));
     }
 
     /**

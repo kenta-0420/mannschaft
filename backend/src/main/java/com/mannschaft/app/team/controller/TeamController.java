@@ -1,5 +1,6 @@
 package com.mannschaft.app.team.controller;
 
+import com.mannschaft.app.team.service.TeamOrgSummaryService;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
@@ -76,6 +77,7 @@ public class TeamController {
     private final TeamService teamService;
     private final RoleService roleService;
     private final AccessControlService accessControlService;
+    private final TeamOrgSummaryService teamOrgSummaryService;
     private final InviteService inviteService;
     private final PermissionGroupService permissionGroupService;
     private final BlockService blockService;
@@ -596,9 +598,13 @@ public class TeamController {
         Long id = teamService.resolveTeamId(slug);
         // F00 正準: チームの所属関係はチーム本体・メンバー一覧と同じ visibility ラダーで保護する
         //（兄弟 EP getTeam / getMembers と同じ流儀）。
-        contentVisibilityChecker.assertCanView(
-                ReferenceType.TEAM, id, SecurityUtils.getCurrentUserIdOrNull());
-        return ResponseEntity.ok(ApiResponse.of(teamService.getOrganizations(id)));
+        Long requesterId = SecurityUtils.getCurrentUserIdOrNull();
+        contentVisibilityChecker.assertCanView(ReferenceType.TEAM, id, requesterId);
+        // F01.2.1 §3.1・AC-F10: 自チームのグループ名はチームの MEMBER 以上（と SYSTEM_ADMIN）にだけ見せる
+        boolean viewerSeesGroup = requesterId != null
+                && (accessControlService.isSystemAdmin(requesterId)
+                        || accessControlService.hasRoleOrAbove(requesterId, id, SCOPE_TYPE, "MEMBER"));
+        return ResponseEntity.ok(ApiResponse.of(teamOrgSummaryService.list(id, viewerSeesGroup)));
     }
 
     // ========================================

@@ -89,4 +89,142 @@ test.describe('MOBILE-SHELL: グローバルヘッダー/ドロワー 390px受�
       '390px でチームセレクタがヘッダーに直接可視のまま残っている（AC-16: モバイルでは退避されるべき）',
     ).not.toBeVisible({ timeout: 5_000 })
   })
+
+  test('MSH-05: 共通ヘッダー/ドロワー/スコープメニューの独立操作が44px以上で画面内に収まる', async ({ page }, testInfo) => {
+    await gotoAuthed(page, '/my/')
+    await expect(page.locator('header')).toBeVisible()
+    for (const width of [360, 390, 568, 767, 768]) {
+      await page.setViewportSize({ width, height: 844 })
+      await expect(page.locator('header')).toBeVisible()
+      const headerTargets = await page.evaluate(() => {
+        const header = document.querySelector('header')
+        if (!header) return ['header要素が見つからない']
+        return Array.from(header.querySelectorAll('button, a, [role="button"], [role="link"]'))
+          .filter((el) => getComputedStyle(el).display !== 'none' && el.getClientRects().length > 0)
+          .flatMap((el) => {
+            const rect = el.getBoundingClientRect()
+            const label = (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 32)
+            const errors: string[] = []
+            if (rect.width < 44 || rect.height < 44) errors.push(`${label} ${Math.round(rect.width)}x${Math.round(rect.height)}`)
+            if (rect.left < 0 || rect.right > window.innerWidth) errors.push(`${label} left=${Math.round(rect.left)} right=${Math.round(rect.right)}`)
+            return errors
+          })
+      })
+      expect(headerTargets, `${width}px header target geometry: ${JSON.stringify(headerTargets)}`).toEqual([])
+      if (width === 768) {
+        await page.screenshot({ path: testInfo.outputPath('header-768px.png') })
+      }
+    }
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    const drawerToggle = page.locator('button.md\\:hidden').first()
+    await expect(drawerToggle).toBeVisible()
+    await drawerToggle.click()
+    await expect(page.locator('[data-testid="global-sidebar"]')).toBeVisible()
+
+    const drawerTargets = await page.evaluate(() => {
+      const sidebar = document.querySelector('[data-testid="global-sidebar"]')
+      const drawer = document.querySelector('.p-drawer')
+      if (!sidebar || !drawer) return ['drawer/sidebar not found']
+      return Array.from(drawer.querySelectorAll('button, a, [role="button"], [role="link"]'))
+        .filter((el) => getComputedStyle(el).display !== 'none' && el.getClientRects().length > 0)
+        .flatMap((el) => {
+          const rect = el.getBoundingClientRect()
+          const label = (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 32)
+          return rect.width < 44 || rect.height < 44
+            ? [`${label} ${Math.round(rect.width)}x${Math.round(rect.height)}`]
+            : []
+        })
+    })
+    expect(drawerTargets, `drawer target geometry: ${JSON.stringify(drawerTargets)}`).toEqual([])
+    const lastDrawerAction = page.locator('[data-testid="mobile-drawer-actions"] button').last()
+    await lastDrawerAction.scrollIntoViewIfNeeded()
+    await expect(lastDrawerAction).toBeInViewport()
+
+    const teamToggle = page.getByTestId('mobile-drawer-actions').getByTestId('scope-nav-dropdown-toggle-TEAM')
+    await teamToggle.focus()
+    await teamToggle.press('Enter')
+    await expect(teamToggle).toHaveAttribute('aria-expanded', 'true')
+    const popover = page.locator('.p-popover:visible').last()
+    await expect(popover).toBeVisible()
+    // 入場アニメーションの縮小状態ではなく、通常表示の操作領域を採寸する。
+    await expect(popover).toHaveCSS('transform', 'none')
+    const popoverGeometry = await popover.evaluate((el) => {
+      const rect = el.getBoundingClientRect()
+      const main = el.querySelector('.flex.gap-0.divide-x')
+      const columns = main?.children
+      const leftColumn = columns?.item(0)?.getBoundingClientRect()
+      const rightColumn = columns?.item(1)?.getBoundingClientRect()
+      const undersized = Array.from(el.querySelectorAll('button, a, [role="button"], [role="menuitem"]'))
+        .filter((target) => getComputedStyle(target).display !== 'none' && target.getClientRects().length > 0)
+        .flatMap((target) => {
+          const targetRect = target.getBoundingClientRect()
+          return targetRect.width < 44 || targetRect.height < 44
+            ? [`${target.textContent?.trim().slice(0, 32)} ${Math.round(targetRect.width)}x${Math.round(targetRect.height)}`]
+            : []
+        })
+      return {
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        columnGap: leftColumn && rightColumn ? rightColumn.left - leftColumn.right : null,
+        undersized,
+      }
+    })
+    const popoverLastAction = popover.locator('.border-t button').last()
+    await popoverLastAction.scrollIntoViewIfNeeded()
+    await expect(popoverLastAction).toBeInViewport()
+    expect(popoverGeometry.left, `popover left=${popoverGeometry.left}`).toBeGreaterThanOrEqual(0)
+    expect(popoverGeometry.right, `popover right=${popoverGeometry.right}`).toBeLessThanOrEqual(390)
+    expect(popoverGeometry.top, `popover top=${popoverGeometry.top}`).toBeGreaterThanOrEqual(0)
+    expect(popoverGeometry.bottom, `popover bottom=${popoverGeometry.bottom}`).toBeLessThanOrEqual(844)
+    if (popoverGeometry.columnGap !== null) expect(popoverGeometry.columnGap).toBeGreaterThanOrEqual(-1)
+    expect(popoverGeometry.undersized).toEqual([])
+    await expect(page.getByTestId('scope-nav-dropdown-all-hub-TEAM')).toBeVisible()
+    expect(await page.getByTestId('scope-nav-dropdown-all-hub-TEAM').evaluate((el) => el.closest('[role="menuitem"]'))).toBeNull()
+    expect(await popover.locator('[role="menuitem"] button').count()).toBe(0)
+    await page.screenshot({ path: testInfo.outputPath('drawer-scope-popover-390px.png') })
+    await page.getByTestId('scope-nav-dropdown-all-hub-TEAM').press('Enter')
+    await expect(page).toHaveURL(/\/teams\/?$/)
+    await expect(page.locator('[data-testid="global-sidebar"]')).toBeHidden()
+
+    await page.setViewportSize({ width: 360, height: 844 })
+    const narrowDrawerToggle = page.locator('button.md\\:hidden').first()
+    await expect(narrowDrawerToggle).toBeVisible()
+    await narrowDrawerToggle.click()
+    const narrowTeamToggle = page.getByTestId('mobile-drawer-actions').getByTestId('scope-nav-dropdown-toggle-TEAM')
+    await narrowTeamToggle.focus()
+    await narrowTeamToggle.press('Enter')
+    const narrowPopover = page.locator('.p-popover:visible').last()
+    await expect(narrowPopover).toBeVisible()
+    await expect(narrowPopover).toHaveCSS('transform', 'none')
+    const narrowLastAction = narrowPopover.locator('.border-t button').last()
+    await narrowLastAction.scrollIntoViewIfNeeded()
+    await expect(narrowLastAction).toBeInViewport()
+    const narrowPopoverGeometry = await narrowPopover.evaluate((el) => {
+      const rect = el.getBoundingClientRect()
+      const main = el.querySelector('.flex.gap-0.divide-x')
+      const columns = main?.children
+      const leftColumn = columns?.item(0)?.getBoundingClientRect()
+      const rightColumn = columns?.item(1)?.getBoundingClientRect()
+      const actionFooter = el.querySelector('.border-t')?.getBoundingClientRect()
+      return {
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        columnGap: leftColumn && rightColumn ? rightColumn.left - leftColumn.right : null,
+        footerBottom: actionFooter?.bottom ?? null,
+      }
+    })
+    expect(narrowPopoverGeometry.left, `360px popover left=${narrowPopoverGeometry.left}`).toBeGreaterThanOrEqual(0)
+    expect(narrowPopoverGeometry.right, `360px popover right=${narrowPopoverGeometry.right}`).toBeLessThanOrEqual(360)
+    expect(narrowPopoverGeometry.top, `360px popover top=${narrowPopoverGeometry.top}`).toBeGreaterThanOrEqual(0)
+    expect(narrowPopoverGeometry.bottom, `360px popover bottom=${narrowPopoverGeometry.bottom}`).toBeLessThanOrEqual(844)
+    if (narrowPopoverGeometry.columnGap !== null) expect(narrowPopoverGeometry.columnGap).toBeGreaterThanOrEqual(-1)
+    if (narrowPopoverGeometry.footerBottom !== null) expect(narrowPopoverGeometry.footerBottom).toBeLessThanOrEqual(844)
+    await page.screenshot({ path: testInfo.outputPath('drawer-scope-popover-360px.png') })
+  })
 })

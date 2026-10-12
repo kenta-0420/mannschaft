@@ -36,4 +36,9 @@ public interface DashboardWidgetSettingRepository extends JpaRepository<Dashboar
             @Param("userId") Long userId,
             @Param("scopeType") ScopeType scopeType,
             @Param("scopeId") Long scopeId);
+
+    /** 強匿名化専用。対象利用者の行を論理削除済みも含めて物理削除する。 */
+    @Modifying
+    @Query(value = "DELETE FROM dashboard_widget_settings WHERE user_id = :userId", nativeQuery = true)
+    int deleteByUserId(@Param("userId") Long userId);
 }

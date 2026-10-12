@@ -55,7 +55,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
@@ -74,9 +74,9 @@ jobs:
         run: node --test scripts/audit-with-exemption.test.mjs
 
       - name: npm audit (依存脆弱性スキャン)
-      # 【期限付き除外】GHSA-86w9-cpqp-85rv（node-forge）のみ名指しで除外する（期限 2026-10-16、超過で exit 1）。
-      # 理由: node-forge の修正版がまだ無い。listhen の証明書生成経路を確認。本番 .output の除外は未実測。
-      # 解除条件: node-forge の修正版が出たら override で上げ、このステップを npm audit --audit-level=high に戻す。
+      # 【期限付き除外】GHSA-86w9-cpqp-85rv（node-forge）と GHSA-vfj7-8cjw-p6xm（braces）を名指しで除外（期限 2026-10-16、超過で exit 1）。
+      # 理由: 両依存の修正版が未公開。限定調査の範囲と非到達未証明の留保は security04 §4.3/§4.4 を参照。
+      # 解除条件: 各修正版の導入または依存撤去で該当例外を削除し、全解除後に npm audit --audit-level=high に戻す。
       # audit-level を下げることは禁止。詳細は scripts/audit-with-exemption.mjs 冒頭と docs/task-list.md。
         run: node scripts/audit-with-exemption.mjs
 

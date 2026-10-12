@@ -240,7 +240,6 @@ export default {
     "error": {
       "RECRUITMENT_001": "Recruitment not found",
       "RECRUITMENT_002": "No permission to create recruitment",
-      "RECRUITMENT_003": "Visibility prevents you from viewing this recruitment",
       "RECRUITMENT_005": "Capacity has been reached",
       "RECRUITMENT_007": "Participation type mismatch",
       "RECRUITMENT_008": "Minimum capacity exceeds capacity",

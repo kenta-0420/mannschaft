@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { BulletinThreadResponse } from '~/types/bulletin'
 
+const { t } = useI18n()
 const teamStore = useTeamStore()
 const { getScopedThreads } = useBulletinApi()
 const { listTodos } = useTodoApi()
@@ -31,12 +32,12 @@ const selectedFamily = computed(
   () => familyData.value.find((f) => f.teamId === selectedId.value) ?? familyData.value[0],
 )
 
-const priorityConfig: Record<string, { label: string; class: string }> = {
-  CRITICAL: { label: '緊急', class: 'bg-red-100 text-red-700' },
-  IMPORTANT: { label: '重要', class: 'bg-orange-100 text-orange-700' },
-  WARNING: { label: '注意', class: 'bg-yellow-100 text-yellow-700' },
-  INFO: { label: '通知', class: 'bg-blue-100 text-blue-700' },
-}
+const priorityConfig = computed<Record<string, { label: string; class: string }>>(() => ({
+  CRITICAL: { label: t('dashboard.widgets.priority.critical'), class: 'bg-red-100 text-red-700' },
+  IMPORTANT: { label: t('dashboard.widgets.priority.important'), class: 'bg-orange-100 text-orange-700' },
+  WARNING: { label: t('dashboard.widgets.priority.warning'), class: 'bg-yellow-100 text-yellow-700' },
+  INFO: { label: t('dashboard.widgets.priority.info'), class: 'bg-blue-100 text-blue-700' },
+}))
 
 async function load() {
   if (familyTeams.value.length === 0) return
@@ -81,7 +82,7 @@ watch(familyTeams, (newVal, oldVal) => {
 
 <template>
   <DashboardWidgetCard
-    title="家族"
+    :title="t('dashboard.widgets.familyHub.title')"
     icon="pi pi-home"
     :to="selectedFamily ? `/teams/${selectedFamily.teamId}` : '/teams'"
     :loading="loading"
@@ -93,7 +94,7 @@ watch(familyTeams, (newVal, oldVal) => {
     <DashboardEmptyState
       v-if="familyTeams.length === 0"
       icon="pi pi-home"
-      message="家族チームに参加していません"
+      :message="t('dashboard.widgets.familyHub.noFamilyTeam')"
     />
 
     <template v-else>
@@ -125,13 +126,13 @@ watch(familyTeams, (newVal, oldVal) => {
           <div>
             <div class="mb-2 flex items-center justify-between">
               <span class="text-xs font-semibold text-surface-500">
-                <i class="pi pi-megaphone mr-1" />お知らせ
+                <i class="pi pi-megaphone mr-1" />{{ t('dashboard.widgets.familyHub.announcements') }}
               </span>
               <NuxtLink
                 :to="`/teams/${selectedFamily.teamId}/bulletin`"
                 class="text-[11px] text-primary hover:underline"
               >
-                すべて表示
+                {{ t('dashboard.widgets.common.viewAll') }}
               </NuxtLink>
             </div>
             <div v-if="selectedFamily.announcements.length > 0" class="space-y-1.5">
@@ -166,7 +167,7 @@ watch(familyTeams, (newVal, oldVal) => {
                 </div>
               </NuxtLink>
             </div>
-            <p v-else class="text-xs text-surface-400">お知らせはありません</p>
+            <p v-else class="text-xs text-surface-400">{{ t('dashboard.widgets.familyHub.noAnnouncements') }}</p>
           </div>
 
           <!-- TODO -->
@@ -179,7 +180,7 @@ watch(familyTeams, (newVal, oldVal) => {
                 :to="`/teams/${selectedFamily.teamId}/todos`"
                 class="text-[11px] text-primary hover:underline"
               >
-                すべて表示
+                {{ t('dashboard.widgets.common.viewAll') }}
               </NuxtLink>
             </div>
             <div v-if="selectedFamily.todos.length > 0" class="space-y-1.5">
@@ -200,7 +201,7 @@ watch(familyTeams, (newVal, oldVal) => {
                 </div>
               </NuxtLink>
             </div>
-            <p v-else class="text-xs text-surface-400">未完了のTODOはありません</p>
+            <p v-else class="text-xs text-surface-400">{{ t('dashboard.widgets.familyHub.noOpenTodos') }}</p>
           </div>
         </div>
       </template>

@@ -89,7 +89,10 @@ class DashboardServiceVisibilityFilterTest {
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private MembershipScopeQueryService membershipScopeQueryService;
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
+    @Mock private com.mannschaft.app.social.announcement.audience.AnnouncementAudienceMatcher announcementAudienceMatcher;
+    @Mock private com.mannschaft.app.team.service.TeamOrgMembershipQueryService teamOrgMembershipQueryService;
     @Mock private PaymentGateService paymentGateService;
+    @Mock private com.mannschaft.app.social.announcement.AnnouncementReadService announcementReadService;
     @Mock private ScopeWidgetSummaryService scopeWidgetSummaryService;
     @Mock private ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;

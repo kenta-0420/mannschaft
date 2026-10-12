@@ -68,7 +68,14 @@ public enum RoleErrorCode implements ErrorCode {
     /**
      * オーナー委譲 打診: 委譲対象が不正（自分自身を対象に指定）。→ 422。
      */
-    ROLE_014("ROLE_014", "自分自身への委譲はできません", Severity.WARN);
+    ROLE_014("ROLE_014", "自分自身への委譲はできません", Severity.WARN),
+
+    /**
+     * CMP-261001-0835: 応援者（SUPPORTER）の /me 自主退会ブロック。
+     * SUPPORTER は memberships のみを持ち、専用のフォロー解除 API（{@code SupporterService#unfollow}）
+     * から解除すべきであり、一般会員向け自主退会 API からは解除できない（→ 422）。
+     */
+    ROLE_015("ROLE_015", "応援（サポーター）の解除はフォロー解除から行ってください", Severity.WARN);
 
     private final String code;
     private final String message;

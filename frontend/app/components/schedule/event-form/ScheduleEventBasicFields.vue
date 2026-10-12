@@ -18,6 +18,7 @@ const form = defineModel<ScheduleEventFormState>('form', { required: true })
     >
     <InputText
       v-model="form.title"
+      data-testid="schedule-title"
       class="w-full"
       :class="{ 'p-invalid': fieldErrors.title }"
     />

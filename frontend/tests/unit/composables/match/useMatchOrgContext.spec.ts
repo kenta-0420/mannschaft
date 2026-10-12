@@ -32,7 +32,7 @@ vi.mock('~/composables/useNotification', () => ({
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 
 // eslint-disable-next-line import/first
-import { useMatchOrgContext } from '~/composables/match/useMatchOrgContext'
+import { useMatchOrgContext, parseOrgQuery, INVALID_ORG } from '~/composables/match/useMatchOrgContext'
 
 // slug（URL slug 文字列）。数値 id とは別物であることを表現するための固定値。
 const TEAM_A_SLUG = 'team-alpha'
@@ -53,7 +53,12 @@ describe('useMatchOrgContext', () => {
     const result = await resolveContext(TEAM_A_SLUG)
 
     expect(mockFetch).toHaveBeenCalledWith('/api/v1/me/teams')
-    expect(result).toEqual({ orgId: 10, teamId: 100 })
+    expect(result).toEqual({
+      orgId: 10,
+      teamId: 100,
+      organizations: [{ id: 10, slug: '', name: '' }],
+      orgInvalid: false,
+    })
   })
 
   it('ORG-CTX-002: 同一 teamSlug の 2 回目はキャッシュを返し API を再度叩かない', async () => {
@@ -66,8 +71,9 @@ describe('useMatchOrgContext', () => {
     const second = await resolveContext(TEAM_A_SLUG)
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
-    expect(first).toEqual({ orgId: 20, teamId: 200 })
-    expect(second).toEqual({ orgId: 20, teamId: 200 })
+    expect(first?.orgId).toBe(20)
+    expect(second?.orgId).toBe(20)
+    expect(first?.teamId).toBe(200)
   })
 
   it('ORG-CTX-003: 別の teamSlug は正しい数値を返す（チーム切替バグ根治）', async () => {
@@ -83,8 +89,8 @@ describe('useMatchOrgContext', () => {
     const ctxA = await resolveContext(TEAM_A_SLUG)
     const ctxB = await resolveContext(TEAM_B_SLUG)
 
-    expect(ctxA).toEqual({ orgId: 30, teamId: 300 })
-    expect(ctxB).toEqual({ orgId: 40, teamId: 400 })
+    expect([ctxA?.orgId, ctxA?.teamId]).toEqual([30, 300])
+    expect([ctxB?.orgId, ctxB?.teamId]).toEqual([40, 400])
   })
 
   it('ORG-CTX-004: slug 一致が無ければ静かに null を返す（警告トーストは出さない）', async () => {
@@ -107,7 +113,7 @@ describe('useMatchOrgContext', () => {
     const { resolveContext } = useMatchOrgContext()
     const result = await resolveContext(TEAM_A_SLUG)
 
-    expect(result).toEqual({ orgId: null, teamId: 100 })
+    expect(result).toEqual({ orgId: null, teamId: 100, organizations: [], orgInvalid: false })
     expect(mockWarn).not.toHaveBeenCalled()
   })
 
@@ -132,7 +138,13 @@ describe('useMatchOrgContext', () => {
     const result = await resolveContextByTeamId(500)
 
     expect(mockFetch).toHaveBeenCalledWith('/api/v1/me/teams')
-    expect(result).toEqual({ orgId: 50, teamId: 500, teamSlug: TEAM_A_SLUG })
+    expect(result).toEqual({
+      orgId: 50,
+      teamId: 500,
+      teamSlug: TEAM_A_SLUG,
+      organizations: [{ id: 50, slug: '', name: '' }],
+      orgInvalid: false,
+    })
   })
 
   it('ORG-CTX-102: 同一 teamId の 2 回目はキャッシュを返し API を再度叩かない', async () => {
@@ -145,7 +157,7 @@ describe('useMatchOrgContext', () => {
     const second = await resolveContextByTeamId(600)
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
-    expect(first).toEqual({ orgId: 60, teamId: 600, teamSlug: TEAM_B_SLUG })
+    expect(first?.orgId).toBe(60)
     expect(second).toEqual(first)
   })
 
@@ -169,5 +181,115 @@ describe('useMatchOrgContext', () => {
 
     expect(result).toBeNull()
     expect(mockWarn).toHaveBeenCalled()
+  })
+
+  // ===== F01.2.1 §9.2 F1〜F4: 複数親組織（T が X と Y の両方に ACTIVE） =====
+
+  const MULTI_PARENT_TEAM = {
+    id: 900,
+    slug: TEAM_A_SLUG,
+    // BE 3-B: organizations は代表親組織が先頭。organizationId は互換のため代表親組織に固定。
+    organizationId: 11,
+    organizations: [
+      { id: 11, slug: 'org-x', name: '組織X' },
+      { id: 22, slug: 'org-y', name: '組織Y' },
+    ],
+  }
+
+  it('ORG-CTX-201: 複数親組織なら全親組織を organizations で返し、未指定は代表親組織を使う', async () => {
+    mockFetch.mockResolvedValueOnce({ data: [MULTI_PARENT_TEAM] })
+
+    const { resolveContext } = useMatchOrgContext()
+    const result = await resolveContext(TEAM_A_SLUG)
+
+    expect(result?.orgId).toBe(11)
+    expect(result?.organizations.map((o) => o.id)).toEqual([11, 22])
+  })
+
+  it('ORG-CTX-202: URL クエリ org で選んだ親組織（Y）を使い、/me/teams は1回しか引かない', async () => {
+    mockFetch.mockResolvedValue({ data: [MULTI_PARENT_TEAM] })
+
+    const { resolveContext } = useMatchOrgContext()
+    const y = await resolveContext(TEAM_A_SLUG, { orgId: 22 })
+    const x = await resolveContext(TEAM_A_SLUG, { orgId: 11 })
+
+    expect(y?.orgId).toBe(22)
+    expect(x?.orgId).toBe(11)
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('ORG-CTX-203: チームの親組織でない org を指定したら代表親組織へ落とさず orgInvalid（候補は残す）', async () => {
+    mockFetch.mockResolvedValueOnce({ data: [MULTI_PARENT_TEAM] })
+
+    const { resolveContext } = useMatchOrgContext()
+    const result = await resolveContext(TEAM_A_SLUG, { orgId: 999 })
+
+    expect(result?.orgInvalid).toBe(true)
+    expect(result?.orgId).toBeNull()
+    // 正しい組織へ戻れるよう選択肢は残す（中2）
+    expect(result?.organizations.map((o) => o.id)).toEqual([11, 22])
+    expect(result?.teamId).toBe(900)
+  })
+
+  it('ORG-CTX-203b: 不正な org（org=abc）も代表親組織へ落とさず orgInvalid（高1）', async () => {
+    mockFetch.mockResolvedValueOnce({ data: [MULTI_PARENT_TEAM] })
+
+    const { resolveContext } = useMatchOrgContext()
+    const result = await resolveContext(TEAM_A_SLUG, { orgId: parseOrgQuery('abc') })
+
+    expect(result?.orgInvalid).toBe(true)
+    expect(result?.orgId).toBeNull()
+    expect(result?.organizations).toHaveLength(2)
+  })
+
+  it('ORG-CTX-203c: org 未指定のときだけ代表親組織を既定にする', async () => {
+    mockFetch.mockResolvedValueOnce({ data: [MULTI_PARENT_TEAM] })
+
+    const { resolveContext } = useMatchOrgContext()
+    const result = await resolveContext(TEAM_A_SLUG, { orgId: parseOrgQuery(undefined) })
+
+    expect(result?.orgInvalid).toBe(false)
+    expect(result?.orgId).toBe(11)
+  })
+
+  it('ORG-CTX-204: 大会の組織 slug（ページの [slug]）の組織を使い、代表親組織ではない（F2）', async () => {
+    mockFetch.mockResolvedValueOnce({ data: [MULTI_PARENT_TEAM] })
+
+    const { resolveContextByTeamId } = useMatchOrgContext()
+    const result = await resolveContextByTeamId(900, { orgSlug: 'org-y' })
+
+    expect(result?.orgId).toBe(22)
+    expect(result?.teamSlug).toBe(TEAM_A_SLUG)
+  })
+
+  it('ORG-CTX-205: 大会の組織にチームが加盟していなければ orgInvalid（チームの別の親組織で試合を作らない）', async () => {
+    mockFetch.mockResolvedValueOnce({ data: [MULTI_PARENT_TEAM] })
+
+    const { resolveContextByTeamId } = useMatchOrgContext()
+    const result = await resolveContextByTeamId(900, { orgSlug: 'org-z' })
+
+    expect(result?.orgInvalid).toBe(true)
+    expect(result?.orgId).toBeNull()
+  })
+
+  it('ORG-CTX-206: repair-plan の組織 ID は数値（slug 文字列の id を number 判定して常に null になる旧バグの根治・G124）', async () => {
+    mockFetch.mockResolvedValueOnce({ data: [MULTI_PARENT_TEAM] })
+
+    const { resolveContext } = useMatchOrgContext()
+    const result = await resolveContext(TEAM_A_SLUG, { orgId: 22 })
+
+    expect(typeof result?.orgId).toBe('number')
+  })
+
+  it('ORG-CTX-207: parseOrgQuery は未指定だけ null・数値を orgId・不正値（空文字含む）を INVALID_ORG にする', () => {
+    expect(parseOrgQuery('22')).toBe(22)
+    expect(parseOrgQuery(['22', '33'])).toBe(22)
+    expect(parseOrgQuery('abc')).toBe(INVALID_ORG)
+    expect(parseOrgQuery('1e3')).toBe(INVALID_ORG)
+    // `?org=`（空文字）は未指定ではなく不正値（代表親組織へ落とさない）
+    expect(parseOrgQuery('')).toBe(INVALID_ORG)
+    expect(parseOrgQuery([])).toBeNull()
+    expect(parseOrgQuery(null)).toBeNull()
+    expect(parseOrgQuery(undefined)).toBeNull()
   })
 })

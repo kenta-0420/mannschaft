@@ -1,6 +1,14 @@
 {
   "school": {
     "attendance": {
+      "forbidden": {
+        "title": "権限がありません",
+        "description": "この学校出欠の画面を表示・操作する権限がありません。担任・副担任または管理者に確認してください。"
+      },
+      "permissionError": {
+        "title": "権限の確認に失敗しました",
+        "message": "権限を確認できなかったため、操作と一覧の取得を止めています。通信状況を確認して、もう一度お試しください。"
+      },
       "status": {
         "ATTENDING": "出席",
         "PARTIAL": "部分出席",

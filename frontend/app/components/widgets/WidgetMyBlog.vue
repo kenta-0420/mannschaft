@@ -2,6 +2,7 @@
 import dayjs from 'dayjs'
 import type { BlogPostResponse } from '~/types/cms'
 
+const { t } = useI18n()
 const { getMyPosts } = useBlogApi()
 const { captureQuiet } = useErrorReport()
 const { userTimezone } = useDatetime()
@@ -10,11 +11,11 @@ const posts = ref<BlogPostResponse[]>([])
 const loading = ref(true)
 const showCreate = ref(false)
 
-const statusLabel: Record<string, string> = {
-  DRAFT: '下書き',
-  PUBLISHED: '公開',
-  SCHEDULED: '予約',
-}
+const statusLabel = computed<Record<string, string>>(() => ({
+  DRAFT: t('dashboard.widgets.myBlog.status.draft'),
+  PUBLISHED: t('dashboard.widgets.myBlog.status.published'),
+  SCHEDULED: t('dashboard.widgets.myBlog.status.scheduled'),
+}))
 const statusSeverity: Record<string, string> = {
   DRAFT: 'secondary',
   PUBLISHED: 'success',
@@ -39,7 +40,7 @@ onMounted(load)
 
 <template>
   <DashboardWidgetCard
-    title="マイブログ"
+    :title="t('dashboard.widgets.myBlog.title')"
     icon="pi pi-book"
     to="/blog"
     :loading="loading"
@@ -49,7 +50,7 @@ onMounted(load)
   >
     <template #default>
       <div class="mb-3 flex justify-end">
-        <Button label="新規作成" icon="pi pi-plus" size="small" @click="showCreate = true" />
+        <Button :label="t('dashboard.widgets.myBlog.create')" icon="pi pi-plus" size="small" @click="showCreate = true" />
       </div>
 
       <div v-if="posts.length > 0" class="space-y-2">
@@ -77,7 +78,7 @@ onMounted(load)
           </NuxtLink>
         </div>
       </div>
-      <DashboardEmptyState v-else icon="pi pi-book" message="まだ記事がありません" />
+      <DashboardEmptyState v-else icon="pi pi-book" :message="t('dashboard.widgets.myBlog.empty')" />
     </template>
   </DashboardWidgetCard>
 

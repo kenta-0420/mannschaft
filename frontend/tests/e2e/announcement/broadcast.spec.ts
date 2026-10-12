@@ -5,7 +5,7 @@
  * ページ: /teams/1（teams/[id]/index.vue）
  *
  * DOM 構造の根拠:
- * - 「チーム内告知」ボタン: $t('announcement.broadcast_button_team') ＝ "チーム内告知"
+ * - 「チームに告知を送る」ボタン: $t('announcement.broadcast_button_team') ＝ "チームに告知を送る"
  *   → teams/[id]/index.vue L141 に `<Button :label="$t('announcement.broadcast_button_team')">`
  * - ウィザードダイアログ: PrimeVue Dialog → role="dialog"
  * - Step1 対象ロール ラジオ: `input-id=target_role_{value}` から label[for=target_role_MEMBERS_ONLY]
@@ -47,8 +47,8 @@ test.describe('F02.8 チームスコープ告知ウィザード', () => {
     await page.goto(`/teams/${TEAM_ID}`)
     await waitForHydration(page)
 
-    // 「チーム内告知」ボタンが表示されるまで待機してクリック
-    const broadcastBtn = page.getByRole('button', { name: 'チーム内告知' })
+    // 「チームに告知を送る」ボタンが表示されるまで待機してクリック
+    const broadcastBtn = page.getByRole('button', { name: 'チームに告知を送る' })
     await expect(broadcastBtn).toBeVisible({ timeout: 10_000 })
     await broadcastBtn.click()
 
@@ -130,8 +130,8 @@ test.describe('F02.8 チームスコープ告知ウィザード', () => {
     await page.goto(`/teams/${TEAM_ID}`)
     await waitForHydration(page)
 
-    // 「チーム内告知」ボタンをクリック（MEMBER も表示される: roleName && roleName !== 'SUPPORTER'）
-    const broadcastBtn = page.getByRole('button', { name: 'チーム内告知' })
+    // 「チームに告知を送る」ボタンをクリック（MEMBER も表示される: roleName && roleName !== 'SUPPORTER'）
+    const broadcastBtn = page.getByRole('button', { name: 'チームに告知を送る' })
     await expect(broadcastBtn).toBeVisible({ timeout: 10_000 })
     await broadcastBtn.click()
 
@@ -168,7 +168,7 @@ test.describe('F02.8 チームスコープ告知ウィザード', () => {
     await page.goto(`/teams/${TEAM_ID}`)
     await waitForHydration(page)
 
-    const broadcastBtn = page.getByRole('button', { name: 'チーム内告知' })
+    const broadcastBtn = page.getByRole('button', { name: 'チームに告知を送る' })
     await expect(broadcastBtn).toBeVisible({ timeout: 10_000 })
     await broadcastBtn.click()
 
@@ -195,7 +195,7 @@ test.describe('F02.8 チームスコープ告知ウィザード', () => {
     await page.goto(`/teams/${TEAM_ID}`)
     await waitForHydration(page)
 
-    const broadcastBtn = page.getByRole('button', { name: 'チーム内告知' })
+    const broadcastBtn = page.getByRole('button', { name: 'チームに告知を送る' })
     await expect(broadcastBtn).toBeVisible({ timeout: 10_000 })
     await broadcastBtn.click()
 
@@ -240,7 +240,7 @@ test.describe('F02.8 チームスコープ告知ウィザード', () => {
     await page.goto(`/teams/${TEAM_ID}`)
     await waitForHydration(page)
 
-    const broadcastBtn = page.getByRole('button', { name: 'チーム内告知' })
+    const broadcastBtn = page.getByRole('button', { name: 'チームに告知を送る' })
     await expect(broadcastBtn).toBeVisible({ timeout: 10_000 })
     await broadcastBtn.click()
 
@@ -326,7 +326,7 @@ test.describe('F02.8 チームスコープ告知ウィザード', () => {
     await page.goto(`/teams/${TEAM_ID}`)
     await waitForHydration(page)
 
-    const broadcastBtn = page.getByRole('button', { name: 'チーム内告知' })
+    const broadcastBtn = page.getByRole('button', { name: 'チームに告知を送る' })
     await expect(broadcastBtn).toBeVisible({ timeout: 10_000 })
     await broadcastBtn.click()
 

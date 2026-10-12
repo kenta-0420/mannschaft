@@ -412,8 +412,10 @@ public void backfill() {
 **3. GDPR 監査ログ強化（意思決定 ① 案 A）** ✅ Phase D-8 で実施済み
 
 - `account_purge_completion_status` テーブル新設（6 ドメイン × `(userId, domain, completed_at, status)` で per-domain 完了を記録）
-  - Flyway: `V9.172__create_account_purge_completion_status.sql`
+  - Flyway: `V9.179__create_account_purge_completion_status.sql`
   - Entity: `com.mannschaft.app.gdpr.entity.AccountPurgeCompletionStatusEntity`（UUIDv7, FK なし）
+  - `email_hash` は SHA-256 の64桁hexを保持する。正本DDLの `CHAR(64) NOT NULL` を維持し、Entity は JDBC 型 `CHAR` と `columnDefinition = "CHAR(64)"` を明示する。
+  - `retry_count` は正本DDLの `TINYINT UNSIGNED NOT NULL DEFAULT 0` と Java `Integer` を維持する。GDPR限定の JDBC 型でDDL照合コードだけを `TINYINT` にし、bind/extract は `INTEGER` の `setInt` / `getInt` を継承して0..255を保持する。256はMySQLの範囲外拒否とし、rollback後もcommit済み255の行を保全する。
   - Repository: `com.mannschaft.app.gdpr.repository.AccountPurgeCompletionStatusRepository`
 - `AccountPurgeService#purgeUser()` が `AccountPurgedEvent` 発火前に 6 ドメイン分の PENDING レコードを INSERT
 - 各 `*PurgeEventListener` が処理成功時に対応ドメインの status を SUCCESS に更新
@@ -425,7 +427,7 @@ public void backfill() {
 
 | 追加・変更ファイル | 内容 |
 |---|---|
-| `V9.172__create_account_purge_completion_status.sql` | Flyway マイグレーション（証跡テーブル新設） |
+| `V9.179__create_account_purge_completion_status.sql` | Flyway マイグレーション（証跡テーブル新設） |
 | `AccountPurgeCompletionStatusEntity` | Entity（UUIDv7 主キー、FK なし） |
 | `AccountPurgeCompletionStatusRepository` | Repository（findByStatusAndAttemptedAtBefore / findByUserId / findByUserIdAndDomainName） |
 | `AccountPurgeService` | purgeUser() に PENDING INSERT ロジック追加 |
@@ -725,3 +727,80 @@ Phase D 設計書冒頭に「孤児検出は差分方式・フルスキャン禁
 | 2026-05-18 | Phase B-3 実装 PR `_TBD_`：`PaymentPurgeEventListener` 新設（payment.event、`@Async("event-pool")` + `@TransactionalEventListener(AFTER_COMMIT)` + `@Transactional(REQUIRES_NEW)` 三重防御）。`AccountPurgedEvent` を購読し **2 操作混在パターン** を実行: (1) `memberPaymentRepository.anonymizeUserId(userId, SENTINEL_USER_ID)` でセンチネル化（GDPR Art.17 と会計税法 7 年保持の両立、once-only ターゲット選択型）/ (2) `stripeCustomerRepository.findByUserId().ifPresent(delete)` で Stripe 顧客行物理削除（Stripe API 側顧客は本 PR スコープ外）。2 操作はそれぞれ独立 try-catch で囲み 1 操作失敗時も他継続。既存越境 DML（`AccountPurgeService.java:177-183`）は Phase C-2 まで併走。テスト追加: `PaymentPurgeEventListenerTest`（5 件、正常両操作 / 0 件両方 / センチネル失敗→Stripe 継続 / Stripe 不在で delete 未呼出 / Stripe 削除失敗で例外伝播なし）。Phase B シリーズ最終陣。PR #837（B-1 role）/ #845（B-2 team）/ #850（B-4 chart）/ #851 (B-5 proxy) / #847（B-6 errorreport）と同型 | 足軽（Phase B-3）|
 | 2026-05-19 | **Phase D-1 実装 PR #XXX（purge-pool 専用プール新設 + 6 リスナー切り替え）**: 意思決定 ①②③ を設計書に記録（案 A/不採用/案 A）。`AsyncConfig.java` に `purge-pool` Bean を追加（corePoolSize=2 / maxPoolSize=10 / queueCapacity=500）。6 本の `*PurgeEventListener` の `@Async("event-pool")` を `@Async("purge-pool")` に切り替え。退会バッチ 100 件 × 6 ドメイン = 600 タスクが `event-pool`（queueCapacity=100）を枯渇させる問題を根治 | 足軽（Phase D-1）|
 | 2026-05-19 | **Phase C 実装 PR #858（越境 DML 一括撤去）**: `AccountPurgeService#purgeUser()` から 6 ドメイン越境 DML を全廃。削除した import: `ChartRecordRepository` / `UserRoleRepository` / `TeamOrgMembershipRepository` / `MemberPaymentRepository` / `StripeCustomerRepository` / `ProxyInputConsentRepository` / `ProxyInputRecordRepository` / `ErrorReportOccurrenceRepository` / `UserConstants`。削除したフィールド: 上記 8 Repository 注入。削除した DML 呼び出し: B-1〜B-6 の各 PurgeEventListener が担う全操作（chart匿名化 / role DELETE / team NULL化 / payment センチネル+Stripe削除 / proxy 物理・論理削除 / errorreport 匿名化）。`AccountPurgeServiceTest` を Phase C 後の状態に更新（越境 @Mock 8 フィールド削除・stubAuthAndGdprMocks ヘルパー抽出・data_exports S3削除継続確認テスト追加）。設計書 §4 Phase B PR# 確定・Phase C 完了を記録 | 足軽（Phase C）|
+
+
+## CMP-260822-1243: 本人設定の30日後強消去
+
+既存8domain（role/team/payment/chart/proxy/errorreport/resume/billing）を維持し、本人設定27domainを
+`AccountPurgeService` の本体TXでPENDING登録する。対象はactionmemo、pointcard、timeline、search、
+dashboard、scopefolder、schedule、quickmemo、auth、notification、filesharing、contact、user、appearance、
+navsettings、gamification、reflection、timetable.personal、cms、chat、knowledgebase、favorite、membership、
+weather、inbox、timetable.notes、sealである。設定38親表と同domainの子4表の所有境界・最終FKは
+`PersonalSettingsAccountPurgeIT` と `FlywayFromScratchMigrationTest` の判断一覧・native件数で照合する。
+公開batchのapp-schema子2表と、Flyway実schemaの子4表の証跡範囲は区別する。
+
+各ownerの新規TXで所有設定を全削除し、コミット成立後のafterCommitから既存CompletionService新規TXへ
+SUCCESSを記録する。途中SQL失敗はowner全体をrollbackし、完了更新失敗・queue拒否はPENDINGを保持する。
+設定27domainの手動retryはowner proxyのコミット成立後だけSUCCESSを保存し、失敗はPENDINGと試行数に残す。
+旧7domainの手動retryとresume未対応は変更しない。
+非TXの `GdprPurgeRetryFacade` が入口を振り分け、旧7domainは既存
+`GdprPurgeRetryService` の外側TXと処理を維持する。新27domainは非TXの
+`GdprSettingsPurgeRetryService` からownerのREQUIRES_NEWを呼び、ownerコミット後に
+GDPRリポジトリ自身のTXで結果を保存する。旧7のTX入口から新27へ到達させない。空・重複は冪等に処理する。
+
+弱イベントは引き続き休眠中であり、この強側安全網は即時匿名化の有効化を意味しない。
+共有本文・membership・visibility_templates・村pin/nicknameは今回対象外。時間割メモの定義のみ削除し本文JSONを残し、
+seal_scope_defaultsの選択のみ削除し印鑑・押印履歴を残す。新DDL・pool・共通busは追加しない。
+正式GREENと全AC完了は、この実装sourceでのCI/実機証跡取得後に判断する。
+
+### 監査対象と可否判断（38親表・27設定domain）
+
+以下は強側の消去対象である。所有列は特記以外`user_id`。本人の表示・分類・選択を残す保持根拠が
+アカウント物理削除後にないため消去し、参照先の共同本文は保持する。既存弱側の時期・購読本体は変更しない。
+猶予内保持の承認済み集合は`PersonalSettingsAccountPurgeIT#RETAINED_UNTIL_STRONG`で別に検証する。
+弱側の残存リカバリも含む強側の網羅集合を、猶予保持集合と同一視しない。
+
+| domain | 設定親表 | 可否判断・所有境界 |
+| --- | --- | --- |
+| actionmemo | `action_memo_tags` / `user_action_memo_settings` | 本人の分類・入力設定を消去。タグ論理行も含め、行動メモ本文の弱側は変更しない |
+| pointcard | `point_card_groups` / `point_card_user_settings` | 本人のカード整理・入力設定を消去。カード本文の弱側は変更しない |
+| timeline | `timeline_bookmarks` / `user_mutes` | 本人の保存・表示分類を消去。投稿と他所有者の設定は保持 |
+| search | `search_saved_queries` | 本人の保存検索条件を消去。検索履歴の弱側は変更しない |
+| dashboard | `dashboard_widget_settings` / `dashboard_scope_tab_order` / `chat_contact_folders` | 本人の画面・並び・分類を消去。scope tab即時消去の承認と未配線は別事実で、強側安全網を即時成立としない |
+| scopefolder | `my_scope_folders` | 本人の分類設定を論理行も含め消去。チーム・組織本文は保持 |
+| schedule | `user_calendar_sync_settings` / `user_calendar_layer_settings` | 本人の同期・レイヤー設定を消去。既存弱側とスコープ削除の別Bean境界は保持 |
+| quickmemo | `user_quick_memo_settings` | 本人の入力設定のみ消去。本文・タグ・Sagaは対象外 |
+| auth | `user_interest_tags` | 本人の関心分類を消去。OAuth・2FAの弱側は変更しない |
+| notification | `notification_settings` / `notification_preferences` / `notification_type_preferences` / `push_subscriptions` | 本人の通知設定を消去。通知本文・archiveの即時PII層は変更しない |
+| filesharing | `shared_file_stars` | 本人の保存分類のみ消去。共同ファイル・タグ・フォルダは保持 |
+| contact | `contact_request_blocks` | `user_id`または`blocked_id`が退会者の関係を消去。他者間の関係は保持（F04.8の既存両端CASCADE契約回復） |
+| user | `user_blocks` | `blocker_id`または`blocked_id`が退会者の関係を消去。他者間の関係は保持（V62.002の両端FK撤廃に対応） |
+| appearance | `appearance_settings` | 本人の外観設定を消去。UUID主キーではなく所有列で絞る |
+| navsettings | `user_nav_settings` | 本人の表示設定を消去 |
+| gamification | `gamification_user_settings` | 本人の全スコープ設定を消去。ランキング本文は対象外 |
+| reflection | `user_reflection_settings` | 本人のリマインド設定を消去。テーマ・振り返り本文は対象外 |
+| timetable.personal | `personal_timetable_settings` | 本人の表示設定を消去。時間割本文は対象外 |
+| cms | `user_blog_settings` | 本人のブログ設定を消去。記事本文は対象外 |
+| chat | `chat_message_bookmarks` | 本人の保存分類のみ消去。message・channel・membershipは対象外 |
+| knowledgebase | `kb_page_favorites` | 本人の保存分類のみ消去。KB本文は保持 |
+| favorite | `user_favorites` | 本人の保存分類を強側でも消去。既存弱側の時期は変更しない |
+| membership | `scope_member_calendar_settings` | 本人の色設定のみ強側でも消去。membership本文・状態は対象外 |
+| weather | `user_weather_locations` | 本人の地点設定を強側でも消去。既存即時PII契約の時期は変更しない |
+| inbox | `inbox_item_states` / `notification_labels` / `inbox_label_links` | 本人の受信箱分類を消去。論理削除ラベルも含め、既存弱側の時期は変更しない |
+| timetable.notes | `timetable_slot_user_note_fields` | 本人定義設定を強側のみ消去し、本文JSONは残す（F03.15の本人定義項目契約） |
+| seal | `seal_scope_defaults` | 本人のDEFAULT/TEAM/ORGANIZATION選択を強側のみ消去し、印鑑・押印履歴は保持（F05.3の猶予復元契約） |
+
+| 子表 | 所有経路・現FK | 消去経路と証跡 |
+| --- | --- | --- |
+| `chat_contact_folder_items` | folder→本人所有親。V3.033の同domain CASCADE維持 | 本人子を明示削除し、他所有者の退会者向けCONTACT参照子も消去。app-schema公開batchと最終Flyway実seedで件数確認 |
+| `my_scope_folder_items` | folder→本人所有親。V9.101 `fk_msfi_folder`維持、V62.013はusers FKのみ撤廃 | 論理親配下も明示削除。app-schema公開batchと最終Flyway実seedで件数確認 |
+| `action_memo_tag_links` | tag→本人分類。V5.043のtag/memo両CASCADE維持 | 強側の本人tag削除に連動。最終Flyway実seedの本人子0・他所有者保持で証明 |
+| `point_card_group_items` | group→本人分類。V9.139のgroup/card両CASCADE維持 | 強側の本人group削除に連動。最終Flyway実seedの本人子0・他所有者保持で証明 |
+
+設定全消去から除外する対象は、`shared_folders` / `shared_file_tags`（共同コンテンツ）、
+`onboarding_progresses`（業務進捗）、`confirmable_notification_settings`（本人所有ではないスコープ設定）、
+`chat_channel_members`（membership共有契約）、`activity_feed`（既存30日TTLの共有履歴）である。
+本文・認証・同意・参加履歴等を設定と一律に扱わない。
+`visibility_templates` / 子rulesは正本の理由文言に矛盾がありユーザー判断待ちで変更しない。
+村pin/nicknameは既存即時匿名化契約の別残件とし、この設定強消去へ混ぜない。
+これらの除外・保留を含む棚卸であり、今回の38親表が全システムの個人データ全体の上限であるとはしない。

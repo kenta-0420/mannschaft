@@ -6,6 +6,7 @@ import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobStatus;
 import com.mannschaft.app.notification.fanout.NotificationFanoutWorker;
+import com.mannschaft.app.notification.outbox.NotificationOutboxRelay;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -75,6 +76,10 @@ class OrgTeamApplicationReviewCommittedIT extends TeamAffiliationItSupport {
 
     @Autowired
     private NotificationFanoutWorker worker;
+
+    /** 通知 outbox の relay（試験プロファイルでは起こしを止めてあるので、ジョブを見る前に drain を挟む）。 */
+    @Autowired
+    private NotificationOutboxRelay relay;
 
     @AfterEach
     void cleanUp() {
@@ -363,6 +368,7 @@ class OrgTeamApplicationReviewCommittedIT extends TeamAffiliationItSupport {
     }
 
     private List<UUID> jobIdsOf(long membershipId, String notificationType) {
+        relay.drainAll();
         List<byte[]> raws = jdbc.queryForList(
                 "SELECT id FROM notification_fanout_jobs WHERE source_type = 'TEAM_ORG_MEMBERSHIP' "
                         + "AND source_id = ? AND notification_type = ?", byte[].class, membershipId, notificationType);

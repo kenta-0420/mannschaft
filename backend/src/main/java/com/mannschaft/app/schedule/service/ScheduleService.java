@@ -83,6 +83,7 @@ public class ScheduleService {
     private static final ZoneId STORAGE_ZONE = UserZoneLocalDateTimeParser.SERVER_ZONE;
 
     private final ScheduleRepository scheduleRepository;
+    private final ScheduleCreationWriter creationWriter;
     private final EventSurveyService eventSurveyService;
     private final ScheduleReminderService reminderService;
     private final ApplicationEventPublisher eventPublisher;
@@ -225,7 +226,7 @@ public class ScheduleService {
 
         ScheduleEntity schedule = buildScheduleEntity(req, scopeId, scopeType, userId,
                 startAtJst, endAtJst, deadlineJst);
-        schedule = scheduleRepository.save(schedule);
+        schedule = creationWriter.saveNew(schedule);
         scheduleTargetService.replaceForCreate(
                 schedule, scopeType, scopeId, req.getTargetMode(), req.getTargetUserIds());
 
@@ -599,7 +600,7 @@ public class ScheduleService {
                 .build();
 
         // BaseEntity の id, createdAt, updatedAt は @PrePersist で再設定される
-        duplicate = scheduleRepository.save(duplicate);
+        duplicate = creationWriter.saveNew(duplicate);
         scheduleTargetService.copyTargets(source.getId(), duplicate.getId());
 
         // F03.18 §5.1: 複製は新規作成扱いのため SCHEDULE_CREATED を発行する（AC-01・AC-07）
@@ -632,7 +633,7 @@ public class ScheduleService {
                 .targetMode(ScheduleTargetMode.ALL_MEMBERS)
                 .createdBy(userId)
                 .build();
-        return scheduleRepository.save(duplicate);
+        return creationWriter.saveNew(duplicate);
     }
 
     /** 対象者名簿は同一スコープのアクティブメンバーにだけ返す。 */
@@ -725,15 +726,15 @@ public class ScheduleService {
     }
 
     private void checkManagementScopeAccess(Long userId, Long scopeId, String scopeType) {
-        try {
-            accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
-        } catch (BusinessException denied) {
-            if ("MEMBER".equals(accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType))
-                    && accessControlService.hasPermission(userId, scopeId, scopeType, MANAGE_SCHEDULES)) {
-                return;
-            }
-            throw denied;
+        // 許可へ分岐する判定でTX参加Serviceの例外をcatchすると、外側TXがrollback-onlyになる。
+        if (accessControlService.isAdminOrAbove(userId, scopeId, scopeType)) {
+            return;
         }
+        if ("MEMBER".equals(accessControlService.resolveEffectiveRoleName(userId, scopeId, scopeType))
+                && accessControlService.hasPermission(userId, scopeId, scopeType, MANAGE_SCHEDULES)) {
+            return;
+        }
+        throw new BusinessException(CommonErrorCode.COMMON_002);
     }
 
     private void checkMemberScheduleDeleteAccess(ScheduleEntity schedule, Long userId) {

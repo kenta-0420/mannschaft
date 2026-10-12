@@ -26,7 +26,7 @@ import com.mannschaft.app.repairplan.dto.RepairPlanDashboardResponse;
 import com.mannschaft.app.repairplan.module.RepairPlanModuleGuard;
 import com.mannschaft.app.repairplan.service.RepairPlanDashboardService;
 import com.mannschaft.app.resume.service.ResumeService;
-import com.mannschaft.app.shift.service.ShiftScheduleService;
+import com.mannschaft.app.shift.service.ShiftScheduleFacade;
 import com.mannschaft.app.succession.service.SuccessionCovenantService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.translation.service.TranslationConfigService;
@@ -78,7 +78,7 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
     @Autowired
     private CacheManager cacheManager;
     @MockitoSpyBean private FeatureFlagService featureFlagService;
-    @MockitoSpyBean private ShiftScheduleService shiftScheduleService;
+    @MockitoSpyBean private ShiftScheduleFacade shiftScheduleFacade;
     @MockitoSpyBean private MatchProposalService matchProposalService;
     @MockitoSpyBean private BillingEntitlementQueryService billingEntitlementQueryService;
     @MockitoSpyBean private RateSimulatorService rateSimulatorService;
@@ -156,7 +156,7 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
 
     private Object[] servicesFor(Representative representative) {
         return switch (representative) {
-            case SHIFT -> new Object[]{shiftScheduleService};
+            case SHIFT -> new Object[]{shiftScheduleFacade};
             case MATCHING -> new Object[]{matchProposalService};
             case BILLING_PAYMENT -> new Object[]{billingEntitlementQueryService};
             case PROMOTION -> new Object[]{rateSimulatorService};
@@ -178,7 +178,7 @@ class FeatureGateRepresentativeControllerIT extends AbstractMySqlIntegrationTest
 
     private void stubSuccessfulResponse(Representative representative) {
         switch (representative) {
-            case SHIFT -> doReturn(List.of()).when(shiftScheduleService).listSchedules(1L, 1L);
+            case SHIFT -> doReturn(List.of()).when(shiftScheduleFacade).listSchedules(1L, null, null, 1L);
             case MATCHING -> doReturn(Page.empty()).when(matchProposalService)
                     .listTeamProposals(eq(1L), any(), any());
             case BILLING_PAYMENT -> doReturn(mock(EntitlementSummaryResponse.class))

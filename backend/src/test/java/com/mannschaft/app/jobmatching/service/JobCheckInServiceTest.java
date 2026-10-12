@@ -12,6 +12,7 @@ import com.mannschaft.app.jobmatching.enums.JobPostingStatus;
 import com.mannschaft.app.jobmatching.enums.RewardType;
 import com.mannschaft.app.jobmatching.enums.VisibilityScope;
 import com.mannschaft.app.jobmatching.enums.WorkLocationType;
+import com.mannschaft.app.jobmatching.event.JobNotificationEvent;
 import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
 import com.mannschaft.app.jobmatching.policy.JobPolicy;
 import com.mannschaft.app.jobmatching.repository.JobCheckInRepository;
@@ -21,6 +22,7 @@ import com.mannschaft.app.jobmatching.service.command.CheckInCommand;
 import com.mannschaft.app.jobmatching.service.command.CheckInResult;
 import com.mannschaft.app.jobmatching.state.JobContractStateMachine;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -84,7 +86,7 @@ class JobCheckInServiceTest {
     private GeolocationService geolocationService;
     private JobContractStateMachine stateMachine;
     private JobPolicy jobPolicy;
-    private JobNotificationService notificationService;
+    private ApplicationEventPublisher eventPublisher;
     private QrSigningProperties qrProperties;
     private Clock clock;
 
@@ -99,7 +101,7 @@ class JobCheckInServiceTest {
         geolocationService = mock(GeolocationService.class);
         stateMachine = mock(JobContractStateMachine.class);
         jobPolicy = mock(JobPolicy.class);
-        notificationService = mock(JobNotificationService.class);
+        eventPublisher = mock(ApplicationEventPublisher.class);
         qrProperties = new QrSigningProperties();
         qrProperties.setAnomalyDistanceMeters(500);
         clock = Clock.fixed(NOW, ZoneOffset.UTC);
@@ -107,7 +109,7 @@ class JobCheckInServiceTest {
         service = new JobCheckInService(
                 contractRepository, checkInRepository, postingRepository,
                 qrTokenService, geolocationService, stateMachine, jobPolicy,
-                notificationService, qrProperties, clock);
+                eventPublisher, qrProperties, clock);
 
         // save は引数を ID 付きで返却（CheckIn の ID 埋め）。
         given(checkInRepository.save(any(JobCheckInEntity.class))).willAnswer(inv -> {
@@ -157,9 +159,12 @@ class JobCheckInServiceTest {
             verify(qrTokenService).verifyAndConsume(eq("valid-jwt"), eq(cmd.scannedAt()), eq(false));
 
             // 通知発火（IN のみ）。
-            verify(notificationService).notifyCheckedIn(CONTRACT_ID);
-            verify(notificationService, never()).notifyCheckedOut(any());
-            verify(notificationService, never()).notifyGeoAnomaly(any(), anyDouble());
+            verify(eventPublisher).publishEvent((Object) JobNotificationEvent.checkedIn(CONTRACT_ID));
+            verify(eventPublisher, never()).publishEvent((Object) JobNotificationEvent.checkedOut(CONTRACT_ID));
+            // 距離に依らず GEO_ANOMALY 種別のイベント全体が発行されないこと（旧 anyDouble() と同じ強さ）。
+            verify(eventPublisher, never()).publishEvent(org.mockito.ArgumentMatchers.<Object>argThat(
+                    e -> e instanceof JobNotificationEvent ev
+                            && ev.kind() == JobNotificationEvent.Kind.GEO_ANOMALY));
         }
 
         @Test
@@ -242,7 +247,7 @@ class JobCheckInServiceTest {
             // チェックインは成立。
             assertThat(contract.getStatus()).isEqualTo(JobContractStatus.IN_PROGRESS);
             // アラート通知が飛ぶ。
-            verify(notificationService).notifyGeoAnomaly(eq(CONTRACT_ID), anyDouble());
+            verify(eventPublisher).publishEvent((Object) JobNotificationEvent.geoAnomaly(CONTRACT_ID, -1.0));
         }
 
         @Test
@@ -302,7 +307,7 @@ class JobCheckInServiceTest {
             assertThat(result.newStatus()).isEqualTo(JobContractStatus.CHECKED_OUT);
 
             verify(stateMachine).validate(JobContractStatus.IN_PROGRESS, JobContractStatus.CHECKED_OUT);
-            verify(notificationService).notifyCheckedOut(CONTRACT_ID);
+            verify(eventPublisher).publishEvent((Object) JobNotificationEvent.checkedOut(CONTRACT_ID));
         }
 
         @Test

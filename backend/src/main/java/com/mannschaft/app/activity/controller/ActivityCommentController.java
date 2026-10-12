@@ -34,6 +34,7 @@ import com.mannschaft.app.common.security.AuthorizedInService;
 public class ActivityCommentController {
 
     private final ActivityCommentService commentService;
+    private final com.mannschaft.app.activity.service.ActivityDetailService actualAccess;
 
 
     /**
@@ -44,6 +45,7 @@ public class ActivityCommentController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ActivityCommentResponse>>> listComments(
             @PathVariable Long activityId) {
+        actualAccess.requireActualForAutomatic(activityId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(
                 commentService.listComments(activityId, SecurityUtils.getCurrentUserId())));
     }
@@ -57,6 +59,7 @@ public class ActivityCommentController {
     public ResponseEntity<ApiResponse<ActivityCommentResponse>> createComment(
             @PathVariable Long activityId,
             @Valid @RequestBody CreateCommentRequest request) {
+        actualAccess.requireActualForAutomatic(activityId, SecurityUtils.getCurrentUserId());
         ActivityCommentResponse response = commentService.createComment(activityId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -78,6 +81,7 @@ public class ActivityCommentController {
             @PathVariable Long activityId,
             @PathVariable Long commentId,
             @Valid @RequestBody UpdateCommentRequest request) {
+        actualAccess.requireActualForComment(commentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(commentService.updateComment(commentId, SecurityUtils.getCurrentUserId(), request)));
     }
 
@@ -90,6 +94,7 @@ public class ActivityCommentController {
     public ResponseEntity<Void> deleteComment(
             @PathVariable Long activityId,
             @PathVariable Long commentId) {
+        actualAccess.requireActualForComment(commentId, SecurityUtils.getCurrentUserId());
         commentService.deleteComment(commentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }

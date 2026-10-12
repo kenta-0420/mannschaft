@@ -88,6 +88,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 不在と同一の 404（{@code RECRUITMENT_310} / {@code RECRUITMENT_001}）に揃えた。本ファイルの該当ケースも
  * 404 に改めた（EP 別の詳細な契約は {@code RecruitmentMoneyPenaltyScopeContractIT}）。</p>
  *
+ * <p><b>CMP-260923-0954 W5 で是正</b>: attend の部外者（SCOPE_ONLY の非公開募集）は 403 から不在と同一の 404
+ * （{@code RECRUITMENT_001}）へ、from-template の他スコープ実在テンプレートは {@code TEMPLATE_SCOPE_MISMATCH} から
+ * 不在と同一の {@code TEMPLATE_NOT_FOUND} へ改めた（EP 別の詳細な契約は {@code RecruitmentListingTemplateScopeContractIT}）。</p>
+ *
  * <p><b>観察事項（是正前の記録）</b>: エンティティ由来型の 2 EP は、
  * 「越境した実在 ID」が 403 / 「不在 ID」が 404 と<b>応答が分かれる</b>ため、ID の実在が
  * 応答差分から漏れる（実在オラクル）。URL スコープ先行型はいずれも 404 に収束しこの問題がない。
@@ -157,6 +161,10 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
     private Long adminAId;
     /** teamA の非管理者メンバー。 */
     private Long memberAId;
+    /** teamA の user_roles にだけ ADMIN を持つ主体（memberships の在籍行なし）。 */
+    private Long urAdminAId;
+    /** teamA の user_roles にだけ DEPUTY_ADMIN を持つ主体（memberships の在籍行なし）。 */
+    private Long urDeputyAId;
     /** teamB の ADMIN（越境攻撃者役）。 */
     private Long adminBId;
     /** どこにも所属しない完全な部外者。 */
@@ -188,6 +196,8 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
 
         adminAId = insertUser("rcrtsib-admin-a@example.com");
         memberAId = insertUser("rcrtsib-member-a@example.com");
+        urAdminAId = insertUser("rcrtsib-ur-admin-a@example.com");
+        urDeputyAId = insertUser("rcrtsib-ur-deputy-a@example.com");
         adminBId = insertUser("rcrtsib-admin-b@example.com");
         outsiderId = insertUser("rcrtsib-outsider@example.com");
 
@@ -195,6 +205,9 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, adminAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminAId, "ADMIN", teamAId, null);
         MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        // user_roles だけの管理者（memberships の行は作らない。是正後も 404 に化けず管理者として通ること）
+        MembershipTestHelper.insertUserRole(em, urAdminAId, "ADMIN", teamAId, null);
+        MembershipTestHelper.insertUserRole(em, urDeputyAId, "DEPUTY_ADMIN", teamAId, null);
         MembershipTestHelper.insertMembership(em, adminBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminBId, "ADMIN", teamBId, null);
 
@@ -292,14 +305,28 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isForbidden());
         }
 
-        /** AC-R7: 部外者は 403。 */
+        /**
+         * AC-R7/W5: 部外者は不在と同一の 404（CMP-260923-0954 W5）。
+         *
+         * <p>listingA は SCOPE_ONLY（非公開物）のため、越境は 403 ではなく不在と同一の 404 {@code RECRUITMENT_001}
+         * に畳む（是正前は 403）。EP 別の詳細な契約は {@code RecruitmentListingTemplateScopeContractIT}。</p>
+         */
         @Test
-        @DisplayName("AC-R7: 部外者は403")
-        void ac_r7_部外者は403() throws Exception {
+        @DisplayName("AC-R7/W5: 部外者は不在と同一の404")
+        void ac_r7_部外者は不在と同一の404() throws Exception {
             setAuth(outsiderId);
-            mockMvc.perform(patch("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/attend",
-                            listingAId, participantAConfirmedId))
-                    .andExpect(status().isForbidden());
+            String real = mockMvc.perform(
+                            patch("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/attend",
+                                    listingAId, participantAConfirmedId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value(RecruitmentErrorCode.LISTING_NOT_FOUND.getCode()))
+                    .andReturn().getResponse().getContentAsString();
+            String absent = mockMvc.perform(
+                            patch("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/attend",
+                                    ABSENT_ID, participantAConfirmedId))
+                    .andExpect(status().isNotFound())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(real).as("越境した実在募集と不在募集の応答は完全一致でなければならない").isEqualTo(absent);
         }
 
         /** AC-R7: 正当 ADMIN の出席チェックは 200（非回帰）。 */
@@ -379,6 +406,23 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
                             .value(RecruitmentErrorCode.LISTING_NOT_FOUND.getCode()));
+        }
+
+        /** 是正の契約: user_roles だけの ADMIN / DEPUTY_ADMIN も、memberships の管理者と同じく 200（404 に化けない）。 */
+        @Test
+        @DisplayName("CMP-260923-0954: user_rolesのみのADMIN・DEPUTY_ADMINの申込確定は200（既存ADMINと同じ・404に化けない）")
+        void userRolesOnly管理者は200() throws Exception {
+            for (Long actor : List.of(urAdminAId, urDeputyAId)) {
+                Long applicantId = insertUser("rcrtsib-applicant-" + actor + "@example.com");
+                Long participantId = insertParticipant(listingAId, applicantId, RecruitmentParticipantStatus.APPLIED);
+                em.flush();
+                em.clear();
+
+                setAuth(actor);
+                mockMvc.perform(post("/api/v1/recruitment-listings/{listingId}/participants/{participantId}/confirm",
+                                listingAId, participantId))
+                        .andExpect(status().isOk());
+            }
         }
     }
 
@@ -486,6 +530,24 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
             em.clear();
             assertThat(penaltyRepository.findById(globalPenaltyId).orElseThrow().getLiftReason())
                     .isEqualTo(PenaltyLiftReason.ADMIN_MANUAL);
+        }
+
+        /** 是正の契約: user_roles だけの ADMIN / DEPUTY_ADMIN も、memberships の管理者と同じく 200（404 に化けない）。 */
+        @Test
+        @DisplayName("CMP-260923-0954: user_rolesのみのADMIN・DEPUTY_ADMINのペナルティ解除は200（既存ADMINと同じ・404に化けない）")
+        void userRolesOnly管理者は200() throws Exception {
+            for (Long actor : List.of(urAdminAId, urDeputyAId)) {
+                Long targetPenaltyId = insertPenalty(memberAId, teamAId);
+                em.flush();
+                em.clear();
+
+                setAuth(actor);
+                mockMvc.perform(post("/api/v1/scopes/{scopeType}/{scopeId}/penalties/{penaltyId}/lift",
+                                "TEAM", teamAId, targetPenaltyId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(liftBody())))
+                        .andExpect(status().isOk());
+            }
         }
 
         @Test
@@ -608,21 +670,33 @@ class RecruitmentScopeContractIT extends AbstractMySqlIntegrationTest {
     class CreateFromTemplate {
 
         /**
-         * AC-R7: 別チームの templateId を自チーム URL で使おうとすると 404
-         * （{@code TEMPLATE_SCOPE_MISMATCH}）。本ドメインにおける帰属検証の<b>お手本</b>。
+         * AC-R7/W5（C3）: 別チームの templateId を自チーム URL で使おうとすると、不在と完全一致の 404
+         * （{@code TEMPLATE_NOT_FOUND}）。
          *
-         * <p>不在 {@code TEMPLATE_NOT_FOUND} と同一ステータスであることが存在秘匿の要件。</p>
+         * <p>是正前は {@code TEMPLATE_SCOPE_MISMATCH}（404）で、ステータスは揃っていたがコードとメッセージが
+         * 不在 {@code TEMPLATE_NOT_FOUND} と割れており、templateId の列挙で他スコープのテンプレートの実在が
+         * 判別できた（CMP-260923-0954 W5 で是正）。</p>
          */
         @Test
-        @DisplayName("AC-R7: 正当ADMINが別チームのtemplateIdを使うと404（TEMPLATE_SCOPE_MISMATCH）")
-        void ac_r7_越境templateIdは404() throws Exception {
+        @DisplayName("AC-R7/W5: 正当ADMINが別チームのtemplateIdを使うと不在と同一の404（TEMPLATE_NOT_FOUND）")
+        void ac_r7_越境templateIdは不在と同一の404() throws Exception {
             setAuth(adminAId);
-            mockMvc.perform(post("/api/v1/teams/{teamId}/recruitment-listings/from-template", teamAId)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(fromTemplateBody(templateBId))))
+            String crossScope = mockMvc.perform(
+                            post("/api/v1/teams/{teamId}/recruitment-listings/from-template", teamAId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(fromTemplateBody(templateBId))))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
-                            .value(RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH.getCode()));
+                            .value(RecruitmentErrorCode.TEMPLATE_NOT_FOUND.getCode()))
+                    .andReturn().getResponse().getContentAsString();
+            String absent = mockMvc.perform(
+                            post("/api/v1/teams/{teamId}/recruitment-listings/from-template", teamAId)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(fromTemplateBody(ABSENT_ID))))
+                    .andExpect(status().isNotFound())
+                    .andReturn().getResponse().getContentAsString();
+            assertThat(crossScope).as("他スコープの実在 templateId と不在 templateId の応答は完全一致でなければならない")
+                    .isEqualTo(absent);
         }
 
         /** AC-R7: 非管理者メンバーは 403。 */

@@ -51,6 +51,8 @@ class TournamentServiceTest {
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
     /** 認可根治戦役 Wave7: getTournament/listTournaments の主催組織 ADMIN 判定用モック。 */
     @Mock private com.mannschaft.app.common.AccessControlService accessControlService;
+    /** 閲覧可否の共通ゲート（判定自体は TournamentViewAccessGateTest で検証）。 */
+    @Mock private com.mannschaft.app.tournament.service.TournamentViewAccessGate viewAccessGate;
     @Mock private com.mannschaft.app.tournament.service.TournamentContactSpaceProvisioningService contactSpaceProvisioningService;
     /** F08.7.1 / 04: シーズン継続時のデフォルトフォルダ払い出し検証用。 */
     @Mock private com.mannschaft.app.filesharing.service.SharedFolderService sharedFolderService;

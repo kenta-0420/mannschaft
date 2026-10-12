@@ -69,6 +69,8 @@ class OrganizationControllerTest {
     private static final String ORG_SLUG = "test-org";
 
     @Mock private OrganizationService organizationService;
+    @Mock private com.mannschaft.app.organization.service.OrganizationDetailFacade organizationDetailFacade;
+    @Mock private com.mannschaft.app.organization.service.OrgTeamListService orgTeamListService;
     @Mock private RoleService roleService;
     @Mock private AccessControlService accessControlService;
     @Mock private InviteService inviteService;
@@ -170,7 +172,7 @@ class OrganizationControllerTest {
     @DisplayName("getOrganization: 200 OK（可視性チェック通過時）")
     void getOrganization_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
-        given(organizationService.getOrganization(ORG_SLUG)).willReturn(ApiResponse.of(orgResponse()));
+        given(organizationDetailFacade.getOrganization(ORG_SLUG)).willReturn(ApiResponse.of(orgResponse()));
         assertThat(controller.getOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(contentVisibilityChecker).assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
     }
@@ -185,7 +187,7 @@ class OrganizationControllerTest {
         assertThatThrownBy(() -> controller.getOrganization(ORG_SLUG))
                 .isInstanceOf(BusinessException.class);
         // 可視性で弾かれたら Service の取得本体は呼ばれない
-        verify(organizationService, org.mockito.Mockito.never()).getOrganization(ORG_SLUG);
+        verify(organizationDetailFacade, org.mockito.Mockito.never()).getOrganization(ORG_SLUG);
     }
 
     @Test
@@ -194,7 +196,7 @@ class OrganizationControllerTest {
         UpdateOrganizationRequest req = new UpdateOrganizationRequest(
                 "更新", null, null, null, null, null, null, null, null, 0L);
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
-        given(organizationService.updateOrganization(ORG_ID, req)).willReturn(ApiResponse.of(orgResponse()));
+        given(organizationDetailFacade.updateOrganization(ORG_ID, req)).willReturn(ApiResponse.of(orgResponse()));
         assertThat(controller.updateOrganization(ORG_SLUG, req).getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
     }
@@ -209,7 +211,7 @@ class OrganizationControllerTest {
                 .given(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
         assertThatThrownBy(() -> controller.updateOrganization(ORG_SLUG, req))
                 .isInstanceOf(BusinessException.class);
-        verify(organizationService, org.mockito.Mockito.never()).updateOrganization(ORG_ID, req);
+        verify(organizationDetailFacade, org.mockito.Mockito.never()).updateOrganization(ORG_ID, req);
     }
 
     @Test
@@ -428,8 +430,8 @@ class OrganizationControllerTest {
     @DisplayName("getTeams: 200 OK（組織本体と同じ可視性ラダーで判定する）")
     void getTeams_200() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
-        given(organizationService.getTeams(ORG_ID)).willReturn(List.of());
-        assertThat(controller.getTeams(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
+        given(orgTeamListService.list(ORG_ID, false, null, false)).willReturn(List.of());
+        assertThat(controller.getTeams(ORG_SLUG, null, false).getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(contentVisibilityChecker).assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
     }
 
@@ -440,9 +442,11 @@ class OrganizationControllerTest {
         willThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
                 .given(contentVisibilityChecker)
                 .assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
-        assertThatThrownBy(() -> controller.getTeams(ORG_SLUG))
+        assertThatThrownBy(() -> controller.getTeams(ORG_SLUG, null, false))
                 .isInstanceOf(BusinessException.class);
-        verify(organizationService, org.mockito.Mockito.never()).getTeams(ORG_ID);
+        verify(orgTeamListService, org.mockito.Mockito.never()).list(
+                org.mockito.ArgumentMatchers.eq(ORG_ID), org.mockito.ArgumentMatchers.anyBoolean(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean());
     }
 
     @Test

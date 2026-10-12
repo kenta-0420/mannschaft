@@ -73,6 +73,17 @@ public class ActivityScopeAccessGuard {
         accessControlService.checkMembership(userId, scopeId, scopeType.name());
     }
 
+    /** 同期対象を秘匿して除外するための非例外判定。通常writerのassert認可は変更しない。 */
+    public boolean isMember(Long userId, ActivityScopeType scopeType, Long scopeId) {
+        return isRoleManagedScope(scopeType)
+                && accessControlService.isMember(userId, scopeId, scopeType.name());
+    }
+
+    /** auto actualの所属要件をF00のSYSTEM_ADMIN短絡より前で適用するために使う。 */
+    public boolean isSystemAdmin(Long userId) {
+        return userId != null && accessControlService.isSystemAdmin(userId);
+    }
+
     /**
      * スコープ管理者（ADMIN / DEPUTY_ADMIN）であることを検証する（更新・削除系）。
      *

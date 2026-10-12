@@ -66,7 +66,11 @@ public enum ActivityErrorCode implements ErrorCode {
     INVALID_TIME_RANGE("ACTIVITY_020", "終了時刻は開始時刻より後に設定してください", Severity.WARN),
 
     /** 現在のステータスでは実行できない操作（例: 既に公開済みの活動記録の publish） */
-    INVALID_ACTIVITY_STATUS("ACTIVITY_021", "この操作は現在の活動記録ステータスでは実行できません", Severity.WARN);
+    INVALID_ACTIVITY_STATUS("ACTIVITY_021", "この操作は現在の活動記録ステータスでは実行できません", Severity.WARN),
+
+    SYNC_CONFIRMATION_REQUIRED("ACTIVITY_022", "活動記録の変更項目を確認してください", Severity.WARN),
+
+    SYNC_STATE_CONFLICT("ACTIVITY_023", "予定または活動記録が変更されています。確認をやり直してください", Severity.WARN);
 
     private final String code;
     private final String message;

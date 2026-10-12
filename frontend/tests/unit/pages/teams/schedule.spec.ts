@@ -22,8 +22,9 @@ const scheduleApiMock = {
 vi.mock('~/composables/useScheduleApi', () => ({ useScheduleApi: () => scheduleApiMock }))
 
 const apiMock = vi.fn()
+const routeMock = vi.hoisted(() => ({ params: { slug: 't1' }, query: {} as Record<string, string> }))
 mockNuxtImport('useApi', () => () => apiMock)
-mockNuxtImport('useRoute', () => () => ({ params: { slug: 't1' } }))
+mockNuxtImport('useRoute', () => () => routeMock)
 
 const ScheduleListRowStub = defineComponent({
   name: 'ScheduleListRow',
@@ -75,6 +76,8 @@ async function mountSchedulePage() {
 describe('pages/teams/[slug]/schedule.vue: AC-14b モバイルリスト回帰', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    routeMock.query = {}
+    scheduleApiMock.getSchedule.mockReset()
     apiMock.mockReset().mockResolvedValue({ data: { roleName: 'MEMBER', permissions: [] } })
   })
 
@@ -148,6 +151,15 @@ describe('pages/teams/[slug]/schedule.vue: AC-14b モバイルリスト回帰', 
 
     await wrapper.get('[data-testid="schedule-list-row"]').trigger('click')
     await flushPromises()
+
+    expect(scheduleApiMock.getSchedule).toHaveBeenCalledWith('team', 't1', 5)
+  })
+
+  it('元予定リンクのeventIdクエリから詳細を取得する', async () => {
+    routeMock.query = { eventId: '5' }
+    scheduleApiMock.listSchedules.mockReset().mockResolvedValue(emptySchedules)
+    scheduleApiMock.getSchedule.mockResolvedValue({ data: teamScheduleEntry() })
+    await mountSchedulePage()
 
     expect(scheduleApiMock.getSchedule).toHaveBeenCalledWith('team', 't1', 5)
   })

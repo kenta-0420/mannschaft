@@ -256,6 +256,42 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
             assertThat(response.getBody().getData().getPosts())
                     .extracting(PostResponse::getId).contains(postId);
         }
+
+        @Test
+        @DisplayName("TEAMフィードをIDカーソルで取得すると重複・欠落なく終端へ到達する")
+        void TEAMフィードのカーソルページング() {
+            Long oldest = savePost(PostScopeType.TEAM, TEAM_A, null, USER_TEAM_A_MEMBER).getId();
+            Long middle = savePost(PostScopeType.TEAM, TEAM_A, null, USER_TEAM_A_MEMBER).getId();
+            Long newest = savePost(PostScopeType.TEAM, TEAM_A, null, USER_TEAM_A_MEMBER).getId();
+            // ピン留め投稿は通常フィード（isPinned = false 条件）に出ず、1ページ目の pinned のみに出る
+            Long pinnedId = postRepository.save(TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.TEAM)
+                    .scopeId(TEAM_A)
+                    .userId(USER_TEAM_A_MEMBER)
+                    .content("ピン留め投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .isPinned(true)
+                    .build()).getId();
+            setAuthentication(USER_TEAM_A_MEMBER);
+
+            TimelineFeedResponse page1 = feedController
+                    .getFeedPage("TEAM", TEAM_A.toString(), null, null, 2, null).getBody();
+            assertThat(page1.getData().getPosts()).extracting(PostResponse::getId)
+                    .containsExactly(newest, middle);
+            assertThat(page1.getMeta().isHasNext()).isTrue();
+            assertThat(page1.getMeta().getNextCursor()).isEqualTo(middle);
+            assertThat(page1.getData().getPinned()).extracting(PostResponse::getId)
+                    .containsExactly(pinnedId);
+
+            TimelineFeedResponse page2 = feedController
+                    .getFeedPage("TEAM", TEAM_A.toString(), null,
+                            page1.getMeta().getNextCursor(), 2, null).getBody();
+            assertThat(page2.getData().getPosts()).extracting(PostResponse::getId)
+                    .containsExactly(oldest);
+            assertThat(page2.getMeta().isHasNext()).isFalse();
+            assertThat(page2.getMeta().getNextCursor()).isNull();
+            assertThat(page2.getData().getPinned()).isEmpty();
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════

@@ -1,6 +1,8 @@
 package com.mannschaft.app.proxy;
 
 import com.tngtech.archunit.core.importer.ImportOption;
+import com.mannschaft.app.common.architecture.ArchUnitTestTag;
+import com.tngtech.archunit.junit.ArchTag;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
@@ -15,6 +17,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
     packages = "com.mannschaft.app",
     importOptions = ImportOption.DoNotIncludeTests.class
 )
+@ArchTag(ArchUnitTestTag.ARCHUNIT)
 class ProxyInputArchitectureTest {
 
     /** Repository 層は ProxyInputContext に直接依存してはならない */

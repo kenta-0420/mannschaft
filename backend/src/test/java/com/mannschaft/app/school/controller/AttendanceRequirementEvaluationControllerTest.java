@@ -8,7 +8,7 @@ import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.school.dto.AtRiskStudentResponse;
 import com.mannschaft.app.school.dto.EvaluationResponse;
 import com.mannschaft.app.school.entity.AttendanceRequirementEvaluationEntity.EvaluationStatus;
-import com.mannschaft.app.school.service.AttendanceRequirementEvaluationService;
+import com.mannschaft.app.school.service.AttendanceRequirementEvaluationFacade;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -58,7 +58,7 @@ class AttendanceRequirementEvaluationControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private AttendanceRequirementEvaluationService evaluationService;
+    private AttendanceRequirementEvaluationFacade evaluationFacade;
 
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -101,7 +101,7 @@ class AttendanceRequirementEvaluationControllerTest {
         @Test
         @DisplayName("正常系: 評価一覧を返す → 200 + data = []")
         void 正常系_評価一覧を返す() throws Exception {
-            given(evaluationService.getStudentEvaluations(STUDENT_ID, USER_ID))
+            given(evaluationFacade.getStudentEvaluations(STUDENT_ID, USER_ID))
                     .willReturn(List.of());
 
             mockMvc.perform(get("/api/v1/students/{studentId}/attendance/requirements/evaluations",
@@ -120,7 +120,7 @@ class AttendanceRequirementEvaluationControllerTest {
                     LocalDateTime.of(2026, 5, 1, 10, 0),
                     null, null, null);
 
-            given(evaluationService.getStudentEvaluations(STUDENT_ID, USER_ID))
+            given(evaluationFacade.getStudentEvaluations(STUDENT_ID, USER_ID))
                     .willReturn(List.of(response));
 
             mockMvc.perform(get("/api/v1/students/{studentId}/attendance/requirements/evaluations",
@@ -148,7 +148,7 @@ class AttendanceRequirementEvaluationControllerTest {
                     new BigDecimal("75.00"), 5,
                     LocalDateTime.of(2026, 5, 1, 10, 0));
 
-            given(evaluationService.getAtRiskStudents(eq(TEAM_ID), any(), eq(USER_ID)))
+            given(evaluationFacade.getAtRiskStudents(eq(TEAM_ID), any(), eq(USER_ID)))
                     .willReturn(List.of(response));
 
             mockMvc.perform(get("/api/v1/teams/{teamId}/attendance/requirements/at-risk", TEAM_ID))
@@ -161,7 +161,7 @@ class AttendanceRequirementEvaluationControllerTest {
         @Test
         @DisplayName("正常系: ステータスフィルターなし → デフォルトで RISK,VIOLATION を返す")
         void 正常系_フィルターなし() throws Exception {
-            given(evaluationService.getAtRiskStudents(eq(TEAM_ID), any(), eq(USER_ID)))
+            given(evaluationFacade.getAtRiskStudents(eq(TEAM_ID), any(), eq(USER_ID)))
                     .willReturn(List.of());
 
             mockMvc.perform(get("/api/v1/teams/{teamId}/attendance/requirements/at-risk", TEAM_ID))
@@ -187,7 +187,7 @@ class AttendanceRequirementEvaluationControllerTest {
                     LocalDateTime.of(2026, 5, 1, 10, 0),
                     null, null, null);
 
-            given(evaluationService.evaluate(STUDENT_ID, RULE_ID, USER_ID)).willReturn(response);
+            given(evaluationFacade.evaluate(STUDENT_ID, RULE_ID, USER_ID)).willReturn(response);
 
             mockMvc.perform(post("/api/v1/students/{studentId}/attendance/requirements/{ruleId}/evaluate",
                             STUDENT_ID, RULE_ID))
@@ -216,7 +216,7 @@ class AttendanceRequirementEvaluationControllerTest {
                     "保護者と面談し指導完了",
                     USER_ID);
 
-            given(evaluationService.resolveViolation(eq(EVALUATION_ID), eq(USER_ID), any()))
+            given(evaluationFacade.resolveViolation(eq(EVALUATION_ID), eq(USER_ID), any()))
                     .willReturn(response);
 
             String requestBody = objectMapper.writeValueAsString(

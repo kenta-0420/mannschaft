@@ -411,14 +411,12 @@ public class TournamentEntryTemplateService {
         // 2. 編集ロック確認
         checkEntryLock(tournament);
 
-        // 3. テンプレートを取得し、participant.teamId との一致確認（TOUR_028）
-        TournamentEntryTemplateEntity template = templateRepository.findById(req.getTemplateId())
-                .filter(t -> t.getDeletedAt() == null)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.ENTRY_TEMPLATE_NOT_FOUND));
-
-        if (!participant.getTeamId().equals(template.getTeamId())) {
-            throw new BusinessException(TournamentErrorCode.TEMPLATE_TEAM_MISMATCH);
-        }
+        // 3. テンプレートを participant.teamId で束縛して取得する。
+        //    他チームのテンプレートは「存在しない」と同じ 404 + 同じエラーコード（TOUR_024）に畳む
+        //    （403 TOUR_028 を返すと他チームのテンプレート ID の存在オラクルになる。get/put/delete と同方針）。
+        TournamentEntryTemplateEntity template =
+                templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(req.getTemplateId(), participant.getTeamId())
+                        .orElseThrow(() -> new BusinessException(TournamentErrorCode.ENTRY_TEMPLATE_NOT_FOUND));
 
         // 4. テンプレートメンバーを取得
         List<TournamentEntryTemplateMemberEntity> templateMembers =

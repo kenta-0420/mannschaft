@@ -1,7 +1,7 @@
 package com.mannschaft.app.shift.controller;
 
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.shift.service.ShiftPdfService;
+import com.mannschaft.app.shift.service.ShiftPdfFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ShiftPdfController {
 
-    private final ShiftPdfService shiftPdfService;
+    private final ShiftPdfFacade shiftPdfFacade;
 
     /**
      * シフト PDF をダウンロードする。
@@ -48,8 +48,8 @@ public class ShiftPdfController {
         Long requesterId = SecurityUtils.getCurrentUserId();
 
         byte[] pdfBytes = "personal".equals(layout)
-                ? shiftPdfService.generatePersonalPdf(scheduleId, requesterId)
-                : shiftPdfService.generateTeamPdf(scheduleId, requesterId);
+                ? shiftPdfFacade.generatePersonalPdf(scheduleId, requesterId)
+                : shiftPdfFacade.generateTeamPdf(scheduleId, requesterId);
 
         String filename = "personal".equals(layout)
                 ? "shift-personal-" + scheduleId + ".pdf"

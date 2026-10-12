@@ -5,7 +5,6 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -52,7 +51,6 @@ public class ShiftPreferenceReminderBatchService {
     private final TeamShiftSettingsRepository teamShiftSettingsRepository;
     private final AuditLogService auditLogService;
     private final StringRedisTemplate redisTemplate;
-    private final AccessControlService accessControlService;
     /** Issue #2715 CMP-055 ロットC-4: 受信者 locale に応じた通知本文の組み立て。 */
     private final MessageSource messageSource;
 
@@ -211,15 +209,16 @@ public class ShiftPreferenceReminderBatchService {
      * cron バッチ側の {@code @SchedulerLock} とは独立の名前空間を使用するため、cron 走行中でも
      * 手動 API は別ロックとして競合しない（業務的にも cron と手動は別文脈）。</p>
      *
-     * @throws BusinessException スケジュールが存在しない場合 ({@link ShiftErrorCode#SHIFT_SCHEDULE_NOT_FOUND}) /
-     *                           当該チームの ADMIN/DEPUTY_ADMIN でも SYSTEM_ADMIN でもない場合（COMMON_002）/
+     * @throws BusinessException スケジュールが存在しない場合 ({@link ShiftErrorCode#SHIFT_SCHEDULE_NOT_FOUND) /
      *                           COLLECTING 以外の場合 ({@link ShiftErrorCode#INVALID_SCHEDULE_STATUS}) /
      *                           15 秒以内に同一 scheduleId への連打があった場合 ({@link ShiftErrorCode#MANUAL_REMINDER_THROTTLED})
      */
     @Transactional
     public ManualRemindResponse triggerManualReminder(Long scheduleId, Long userId) {
         // Valkey ロック取得（SET NX EX）。失敗時は連打とみなして 429 相当で短絡。
-        // 連打防止のため認可より先にロックを取得する（throttle-first 維持）。
+        // 認可（越境の 404 隠蔽・管理者判定）は呼び出し元の ShiftScheduleFacade が済ませているので、
+        // ロックは認可の後に取る（CMP-260923-0954 W6a: 部外者が 15 秒ロックを取って管理者の手動リマインドを
+        // 塞ぐ経路を作らない）。
         String lockKey = MANUAL_REMINDER_LOCK_KEY_PREFIX + scheduleId;
         Boolean acquired = redisTemplate.opsForValue().setIfAbsent(
                 lockKey,
@@ -233,12 +232,10 @@ public class ShiftPreferenceReminderBatchService {
         ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
 
-        // per-scope 認可（Track2 第二陣 / 2026-05-29）:
-        // コントローラーの @PreAuthorize("hasRole('ADMIN')") は per-scope 判定にならないため、
-        // ここで「当該シフトが属するチームの ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN」を強制する。
-        if (!accessControlService.isSystemAdmin(userId)) {
-            accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
-        }
+        // per-scope 認可は ShiftScheduleFacade#remindUnsubmitted が tx の外で済ませている
+        // （当該シフトが属するチームの ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN。越境は不在と同じ 404）。
+        // ここは tx の中でスケジュールを読み直し、不在・論理削除済みなら 404 SHIFT_001（K1）。
+        // 状態の判定は認可の後。remind は FOR UPDATE ではなく Valkey のロックで直列化する（是正前から同じ）。
 
         if (schedule.getStatus() != ShiftScheduleStatus.COLLECTING) {
             throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);

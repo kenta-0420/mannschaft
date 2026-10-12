@@ -1,5 +1,17 @@
 {
   "announcement": {
+    "preview": {
+      "title": "本文",
+      "open_source": "元ページを開く",
+      "close": "閉じる",
+      "loading": "本文を読み込んでいます",
+      "empty_body": "本文はありません",
+      "retry": "再試行",
+      "load_failed": "本文を取得できませんでした",
+      "locked": "この本文を閲覧するには利用条件を満たす必要があります",
+      "image_failed": "画像を表示できませんでした",
+      "read_failed": "既読を更新できませんでした"
+    },
     "widget_title": "お知らせ",
     "all_announcements": "すべてのお知らせ",
     "display_in_announcement": "お知らせウィジェットに表示する",
@@ -27,7 +39,7 @@
     "already_registered": "このコンテンツは既にお知らせに登録されています",
     "no_longer_available": "このお知らせは公開が終了したため、一覧から取り除きました",
     "mark_all_read_partial": "{count} 件を既読にしました。まだ未読が残っています。もう一度押すと続きを処理します",
-    "broadcast_button_team": "チーム内告知",
+    "broadcast_button_team": "チームに告知を送る",
     "broadcast_button_org": "組織内告知",
     "wizard_title": "告知を送る",
     "step1_title": "対象範囲",

@@ -80,7 +80,8 @@ class TeamScheduleControllerScheduledTaskTest {
         objectMapper.findAndRegisterModules();
         TeamScheduleController controller = new TeamScheduleController(
                 scheduleService, attendanceService, crossRefService,
-                reminderService, scheduledTaskService, nameResolverService);
+                reminderService, scheduledTaskService, nameResolverService,
+                org.mockito.Mockito.mock(com.mannschaft.app.common.activityschedule.ActivityScheduleFacade.class));
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setConversionService(scopeConversionService())

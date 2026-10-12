@@ -22,8 +22,15 @@ export function useShiftAutoAssignApi() {
     })
   }
 
-  async function revokeAutoAssign(scheduleId: number) {
-    return api(`${BASE}/${scheduleId}/auto-assign`, { method: 'DELETE' })
+  // BE は必須の @RequestBody Long runId（オブジェクトではなく素の JSON 数値）を要求する。
+  // ofetch は数値ボディも JSON 化できるが、送信形式（素の数値）と Content-Type を
+  // 呼び出し側で明示して曖昧さを無くすため、JSON.stringify と header を指定している。
+  async function revokeAutoAssign(scheduleId: number, runId: number) {
+    return api(`${BASE}/${scheduleId}/auto-assign`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(runId),
+    })
   }
 
   async function getAssignmentRuns(scheduleId: number) {
@@ -31,11 +38,11 @@ export function useShiftAutoAssignApi() {
   }
 
   async function getAssignmentRunDetail(runId: number) {
-    return api<{ data: unknown }>(`${BASE}/assignment-runs/${runId}`)
+    return api<{ data: unknown }>(`/api/v1/shifts/assignment-runs/${runId}`)
   }
 
   async function confirmVisualReview(runId: number, note?: string) {
-    return api(`${BASE}/assignment-runs/${runId}/confirm-visual-review`, {
+    return api(`/api/v1/shifts/assignment-runs/${runId}/confirm-visual-review`, {
       method: 'POST',
       body: { note },
     })

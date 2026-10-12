@@ -1602,17 +1602,14 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
-        @DisplayName("意図的な集約でも集約先ステータスは文脈依存: SKILL_003は404・SIGNAGE_002は400")
+        @DisplayName("集約先ステータスは文脈依存: SKILL_003（非推奨・写像のみ残置）は404・SIGNAGE_002は400")
         void 意図的に畳んだコードの集約先ステータスは対比対象の有無で決まる() {
-            // SKILL_003（越境アクセス・権限拒否の集約）は、対比される「不在」側が
-            // SKILL_001/SKILL_002で404を返す。集約先を400のままにすると、不在（404）と
-            // 越境（400）でステータスが割れ、応答の違いだけで対象IDが他スコープに実在するかを
-            // 判別できる存在オラクルになる。そのため集約先も404に揃えた
-            // （PARKING_020を起点とする「越境は存在秘匿で404」の流儀に統一）。
-            // 「複数の理由を1コードに畳めば秘匿できる」は誤りで、畳んだ先のステータスが
-            // 不在側と一致して初めて秘匿が成立する。
+            // SKILL_003 は非推奨・未使用（CMP-261010-2226 で資格 API の拒否を COMMON_002（同チーム権限不足）と
+            // SKILL_002（越境＝不在と完全一致）に統一した）。写像（404）は互換のため残している。
+            // 注意: 「複数の理由を1コードに畳み、status だけ不在側に揃えれば秘匿できる」は誤りで、
+            // 秘匿には error.code・error.message まで不在時と一致している必要がある。
             assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_003))
-                    .as("越境アクセス・権限拒否の集約。不在側（SKILL_001/002）と同じ404に揃えて秘匿する")
+                    .as("非推奨・未使用だが写像は互換のため残す（不在側 SKILL_001/002 と同じ404）")
                     .isEqualTo(HttpStatus.NOT_FOUND);
 
             // SIGNAGE_002は『不在／無効化済み／期限切れ』を集約しているが、この3者はそもそも
@@ -1853,7 +1850,6 @@ class GlobalExceptionHandlerTest {
             GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
 
             HandlerMethodValidationException ex = mock(HandlerMethodValidationException.class);
-            when(ex.getMessage()).thenReturn("validation failed");
 
             ResponseEntity<ErrorResponse> resp = handler.handleHandlerMethodValidation(ex);
 
@@ -1861,6 +1857,46 @@ class GlobalExceptionHandlerTest {
             assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_001");
             verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
             verify(service, never()).recordBackendException(any(), anyString(), anyString(), anyString(), anyString(), any());
+        }
+
+        @Test
+        @DisplayName("メソッド検証: 本文の @Valid 違反はフィールド名つき、パス/クエリ引数の違反は引数名で fieldErrors に入る")
+        void handlerMethodValidation_populatesFieldErrors() {
+            GlobalExceptionHandler handler =
+                    newHandlerWith(mock(ErrorReportService.class), mock(ErrorReportNotifier.class));
+
+            // 本文 (@Valid) の違反: entries フィールド
+            org.springframework.validation.method.ParameterErrors bodyErrors =
+                    mock(org.springframework.validation.method.ParameterErrors.class);
+            org.springframework.core.MethodParameter bodyParam = mock(org.springframework.core.MethodParameter.class);
+            when(bodyParam.getParameterName()).thenReturn("request");
+            when(bodyErrors.getMethodParameter()).thenReturn(bodyParam);
+            when(bodyErrors.getFieldErrors()).thenReturn(List.of(
+                    new org.springframework.validation.FieldError("request", "entries", "最大200件です")));
+            when(bodyErrors.getGlobalErrors()).thenReturn(List.of());
+
+            // クエリ引数 (@Min) の違反: 引数名が field
+            org.springframework.validation.method.ParameterValidationResult periodResult =
+                    mock(org.springframework.validation.method.ParameterValidationResult.class);
+            org.springframework.core.MethodParameter periodParam = mock(org.springframework.core.MethodParameter.class);
+            when(periodParam.getParameterName()).thenReturn("periodNumber");
+            when(periodResult.getMethodParameter()).thenReturn(periodParam);
+            when(periodResult.getResolvableErrors()).thenReturn(List.of(
+                    new org.springframework.context.support.DefaultMessageSourceResolvable(
+                            new String[] {"Min"}, null, "1以上である必要があります")));
+
+            HandlerMethodValidationException ex = mock(HandlerMethodValidationException.class);
+            when(ex.getParameterValidationResults()).thenReturn(List.of(bodyErrors, periodResult));
+
+            ResponseEntity<ErrorResponse> resp = handler.handleHandlerMethodValidation(ex);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_001");
+            assertThat(resp.getBody().getError().getFieldErrors())
+                    .extracting(ErrorResponse.FieldError::getField, ErrorResponse.FieldError::getMessage)
+                    .containsExactly(
+                            org.assertj.core.api.Assertions.tuple("entries", "最大200件です"),
+                            org.assertj.core.api.Assertions.tuple("periodNumber", "1以上である必要があります"));
         }
     }
 
@@ -1959,15 +1995,6 @@ class GlobalExceptionHandlerTest {
             // 他委員会・非委員会スコープの記録なら MINUTES_NOT_COMMITTEE_SCOPE を投げる。
             assertOracleClosed(CommitteeErrorCode.NOT_FOUND,
                     CommitteeErrorCode.MINUTES_NOT_COMMITTEE_SCOPE);
-        }
-
-        @Test
-        @DisplayName("募集テンプレート: RECRUITMENT_313（不在）と RECRUITMENT_314（越境）がともに 404")
-        void 募集テンプレートの存在オラクルが閉じている() {
-            // RecruitmentListingService#createFromTemplate はテンプレートが不在なら TEMPLATE_NOT_FOUND、
-            // 他スコープのテンプレートなら TEMPLATE_SCOPE_MISMATCH。
-            assertOracleClosed(RecruitmentErrorCode.TEMPLATE_NOT_FOUND,
-                    RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH);
         }
 
         @Test

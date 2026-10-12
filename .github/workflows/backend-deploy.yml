@@ -253,7 +253,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
@@ -285,12 +285,99 @@ jobs:
           # Testcontainers host resolution inside GitHub Actions
           TESTCONTAINERS_RYUK_DISABLED: "false"
 
-      - name: Upload test reports on failure
+      # OOM (OutOfMemoryError) 発生時のみ、-XX:HeapDumpOnOutOfMemoryError で
+      # backend/build/heap-dumps/java_pid<PID>.hprof に書き出されるヒープダンプを
+      # アーティファクトとしてアップロードする（backend-ci.yml と同じ方式に揃える。
+      # 詳細な経緯・設計判断は backend-ci.yml の同名ステップのコメントを参照）。
+      - name: ヒープダンプ（OOM調査用）をアップロード
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: heap-dump-main-${{ github.run_id }}-shard-${{ matrix.shard }}
+          path: backend/build/heap-dumps/*.hprof
+          retention-days: 3
+          if-no-files-found: ignore
+
+      # test-results の XML（JUnit 形式）。backend-ci.yml と同じ方式に揃える。
+      - name: テスト結果XML（JUnit）をアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-xml-main-${{ github.run_id }}-shard-${{ matrix.shard }}
+          path: backend/build/test-results/test/
+          retention-days: 7
+
+      # path は defaults.run.working-directory（./backend）の影響を受けず、
+      # リポジトリ直下基準で解釈されるため backend/ を明記する
+      # （旧来は working-directory 基準と誤認し build/reports/tests/ のままになっており、
+      #  "No files were found" で何もアップロードされていなかった）。
+      - name: テスト結果レポートをアップロード
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-reports-shard-${{ matrix.shard }}
-          path: build/reports/tests/
+          path: backend/build/reports/tests/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Job 1b — ArchUnit を使うテスト（タグ archunit）を Spring 系とは別の JVM で 1 回だけ実行する
+  #
+  # backend-ci.yml の arch-test ジョブと同じ（CMP-261002-1606）。通常の `test`（上の shard）は
+  # タグ archunit を除外するため、ここで走らせないと main で ArchUnit の番人が一度も走らない。
+  # build-and-deploy の needs に入れ、失敗時はデプロイしない。
+  # ---------------------------------------------------------------------------
+  arch-test:
+    name: ArchUnit tests (separate JVM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: backend-main-archtest-${{ github.ref }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: gradle
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: Run ArchUnit tests（archTest・別 JVM）
+        run: ./gradlew archTest --no-daemon --continue
+
+      - name: ヒープダンプ（OOM調査用）をアップロード
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: heap-dump-main-${{ github.run_id }}-archtest
+          path: backend/build/heap-dumps/*.hprof
+          retention-days: 3
+          if-no-files-found: ignore
+
+      # artifact 名は "test-results-xml-" で始めない（shard 重み表の材料に混ぜないため）。
+      - name: テスト結果XML（JUnit）をアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archtest-results-xml-main-${{ github.run_id }}
+          path: backend/build/test-results/archTest/
+          retention-days: 7
+
+      - name: テスト結果レポートをアップロード
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archtest-reports-main-${{ github.run_id }}
+          path: backend/build/reports/tests/archTest/
           retention-days: 7
 
   # ---------------------------------------------------------------------------
@@ -303,7 +390,8 @@ jobs:
   build-and-deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
-    needs: test  # only runs when all test shards succeed（matrix needs は全 shard の集約結果）
+    # only runs when all test shards and arch-test succeed（matrix needs は全 shard の集約結果）
+    needs: [test, arch-test]
     concurrency:
       group: backend-deploy-${{ github.ref }}
       cancel-in-progress: true
@@ -332,7 +420,7 @@ jobs:
 
       - name: Checkout source
         if: steps.aws-check.outputs.skip != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Java ${{ env.JAVA_VERSION }}
         if: steps.aws-check.outputs.skip != 'true'

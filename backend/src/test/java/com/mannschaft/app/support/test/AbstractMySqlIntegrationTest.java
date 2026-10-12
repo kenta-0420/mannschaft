@@ -18,7 +18,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Spring TestContext Cache に新しい ApplicationContext エントリが追加される。
  * その結果、CI のテスト JVM ヒープが圧迫され OOM 連鎖が発生する（実際に F03.15 Phase 1 PR で発生）。</p>
  *
- * <p><b>方針</b>: 全 {@code @SpringBootTest} を本基底クラスから派生させ、
+ * <p><b>方針</b>: 内部Service/TX試験とMockMvc結合試験は本基底クラスのMOCK設定を継承し、
  * 構成を完全に揃える（同じ {@code @ActiveProfiles}、同じ {@code @MockitoBean}、
  * 同じ {@code @DynamicPropertySource}）ことで、TestContext Cache に登録される
  * ApplicationContext を 1 つだけにする。これにより:</p>
@@ -44,18 +44,22 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  *
  * <p><b>注意</b>:</p>
  * <ul>
- *   <li>派生クラスでは {@code @SpringBootTest} / {@code @Testcontainers} /
+ *   <li>内部Service/TX・MockMvcの派生クラスでは {@code @SpringBootTest} / {@code @Testcontainers} /
  *       {@code @ActiveProfiles} / {@code @DynamicPropertySource} /
  *       {@code @MockitoBean(StringRedisTemplate)} を再宣言しないこと。
  *       再宣言すると ApplicationContext 構成が分岐し、TestContext Cache が分裂して
  *       本来の目的（OOM 防止）が損なわれる。</li>
+ *   <li>実HTTPクライアント・WebSocket/STOMPの接続契約を検査する場合だけ、
+ *       {@code @SpringBootTest(webEnvironment = RANDOM_PORT)} でWebEnvironmentを上書きする。
+ *       必要性を試験のJavadocに記し、{@code @DirtiesContext(AFTER_CLASS)} で専用contextを閉じる。
+ *       MySQL・ActiveProfiles・外部依存など他の共通設定は継承する。正本: TEST_CONVENTION.md §3.1.2。</li>
  *   <li>{@code @EnabledIf} は <b>例外として派生クラスでも再宣言が必須</b>。
  *       JUnit 5 の {@code @EnabledIf} は {@code @Inherited} メタアノテーションを持たないため、
  *       基底クラスに付与しただけでは派生クラスのテスト実行可否判定に効かない
  *       （Docker 未起動環境でテストが skip されず、{@code DockerClientProviderStrategy} が例外を投げる）。</li>
  * </ul>
  */
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @Testcontainers
 @ActiveProfiles("test")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")

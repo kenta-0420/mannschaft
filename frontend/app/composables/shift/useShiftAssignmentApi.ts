@@ -1,6 +1,6 @@
 export function useShiftAssignmentApi() {
   const api = useApi()
-  const BASE = '/api/v1/shifts/schedules'
+  const BASE = '/api/v1/shifts'
 
   // === Slot Assignments (D&D) ===
   async function patchSlotAssignments(

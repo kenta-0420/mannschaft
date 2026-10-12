@@ -75,6 +75,8 @@ const NAV_ITEM_GROUP_MAP: Record<string, NavGroupKey> = {
 
   // 条件付き項目（default.vue 108-131行のロジックを移植した合流先）
   'proxy-desk': 'admin',
+  'proxy-consents': 'admin',
+  'proxy-records': 'admin',
   'system-admin': 'admin',
   sync: 'account',
 }

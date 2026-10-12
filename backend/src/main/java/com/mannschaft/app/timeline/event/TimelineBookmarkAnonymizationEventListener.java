@@ -3,7 +3,9 @@ package com.mannschaft.app.timeline.event;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
+import com.mannschaft.app.gdpr.service.AccountPurgeCompletionService;
 import com.mannschaft.app.timeline.repository.TimelineBookmarkRepository;
+import com.mannschaft.app.timeline.repository.UserMuteRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -12,6 +14,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * timeline ドメインの退会データ削除リスナー（クロスドメインFK撤廃キャンペーン 第二陣E）。
@@ -38,35 +42,46 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *   <li>{@code @Transactional(REQUIRES_NEW)} — 独立した新規 TX。
  *       素の {@code REQUIRED} は AFTER_COMMIT では起動時バリデーションで弾かれるため必須。</li>
  * </ul>
- * 例外は WARN ログのみで伝播させない（他ドメインリスナーの処理を妨げない／GDPR タイムリミットを優先）。</p>
+ * 削除失敗は所有TXをロールバックさせPENDINGを維持し、コミット成立後だけ完了記録する。
+ * 本人のミュート設定も同じTXで削除し、投稿本体・他所有者の設定は保持する。</p>
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class TimelineBookmarkAnonymizationEventListener {
 
+    private final UserMuteRepository userMuteRepository;
+    private final AccountPurgeCompletionService completionService;
+
     private final TimelineBookmarkRepository timelineBookmarkRepository;
 
-    /**
-     * 退会30日後の物理削除（{@link AccountPurgedEvent}）を購読し、
-     * ブックマーク（お気に入り＝個人設定・復元価値あり）を削除する。
-     *
-     * @param event アカウント物理削除完了イベント
-     */
+    /** 30日後の強匿名化。所有データの削除コミット後にのみ完了を記録する。 */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-            reason = "止めると完全削除済み利用者のタイムラインブックマークが残存し、削除済みなのに参照が残るという不整合になる")
+            reason = "完全削除済み利用者の個人設定を消去する。停止すると設定が残留し、消去イベントは再生されない")
     @Async("purge-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onAccountPurged(AccountPurgedEvent event) {
         Long userId = event.getUserId();
-        try {
-            int deleted = timelineBookmarkRepository.deleteByUserId(userId);
-            log.info("ユーザー退会 timeline purge 完了: ブックマーク削除: userId={}, deleted={}",
-                    userId, deleted);
-        } catch (Exception e) {
-            log.warn("ユーザー退会 timeline purge: ブックマーク削除失敗: userId={}, error={}",
-                    userId, e.getMessage(), e);
-        }
+        purgeSettings(userId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                completionService.markDomainSuccess(userId, "timeline");
+            }
+        });
+    }
+
+    /** 手動再試行。呼出元はこの新規TXのコミット成立後に完了状態を更新する。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean retryPurge(Long userId) {
+        purgeSettings(userId);
+        return true;
+    }
+
+    /** 同じ所有domain内の全削除を一つのTXで実行し、途中失敗を伝播させる。 */
+    private void purgeSettings(Long userId) {
+        timelineBookmarkRepository.deleteByUserId(userId);
+        userMuteRepository.deleteByUserId(userId);
     }
 }

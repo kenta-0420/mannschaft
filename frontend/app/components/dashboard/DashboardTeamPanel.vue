@@ -7,6 +7,9 @@
  * - store.selectedTeamId のダッシュボードを getTeamDashboard で取得し表示。
  */
 import type { TeamDashboardResponse } from '~/types/dashboard-scope'
+import { computed, ref, watch } from 'vue'
+import { useScopeDashboardStore } from '~/stores/useScopeDashboardStore'
+import { useDashboardApi } from '~/composables/useDashboardApi'
 
 const store = useScopeDashboardStore()
 const { getTeamDashboard } = useDashboardApi()
@@ -14,8 +17,12 @@ const { getTeamDashboard } = useDashboardApi()
 const data = ref<TeamDashboardResponse | null>(null)
 const loading = ref(false)
 const errorKey = ref<string | null>(null)
+// 親refreshで子Widgetが再生成されても、不可視と確定したfeedを復活させない。
+const hiddenAnnouncementIds = ref(new Set<number>())
+const visibleAnnouncements = computed(() => data.value?.teamNotices?.filter(item => !hiddenAnnouncementIds.value.has(Number(item.id))) ?? [])
 
 const selectedTeamId = computed(() => store.selectedTeamId)
+const announcementScopeId = computed(() => store.tabPages.TEAM?.items.find(item => item.slug === selectedTeamId.value)?.scopeId)
 
 /**
  * 選択中 ID が「まだ slug へ移行されていない内部 BIGINT」かどうかを判定する。
@@ -60,20 +67,25 @@ const hasResolvedSlug = computed(() =>
  */
 const lastLoadedId = ref<string | null>(null)
 
+let loadSequence = 0
+
 async function load(teamId: string) {
+  const request = ++loadSequence
   lastLoadedId.value = teamId
   loading.value = true
   errorKey.value = null
   try {
     const res = await getTeamDashboard(teamId)
+    if (request !== loadSequence) return
     data.value = res.data
   } catch (e) {
+    if (request !== loadSequence) return
     // 握り潰さない。i18n キーを保持して UI に表示する。
     console.error('[DashboardTeamPanel] getTeamDashboard failed', e)
     errorKey.value = 'swipeWidgets.actionRequired.loadError'
     data.value = null
   } finally {
-    loading.value = false
+    if (request === loadSequence) loading.value = false
   }
 }
 
@@ -92,12 +104,14 @@ async function load(teamId: string) {
 function resolveSelectedTeam() {
   const id = selectedTeamId.value
   if (id === null) {
+    ++loadSequence
     data.value = null
     loading.value = false
     lastLoadedId.value = null
     return
   }
   if (isUnmigratedScopeId(id)) {
+    ++loadSequence
     // 内部 BIGINT（移行前）: loadTabs が slug に張り替えるまでスピナーを表示し、
     // 空白状態（loading=false/data=null/errorKey=null かつ非 null id）を防ぐ。
     loading.value = true
@@ -143,20 +157,24 @@ watch(
       :message="$t('scopeDashboard.tagBar.empty')"
     />
 
-    <!-- 管理者レンズ ON: 管理者グリッドへシート差替（§1.2）。実 slug 確定時のみ（検分🟠）。 -->
-    <DashboardAdminWidgetGrid
-      v-else-if="data && hasResolvedSlug && selectedTeamId && store.isAdminLensOn('TEAM', selectedTeamId)"
-      scope-type="TEAM"
-      :slug="selectedTeamId"
-    />
-
-    <!-- 既定: メンバー向け厳選 8 ウィジェット（F22.1 既存挙動・差替前）。 -->
-    <DashboardSwipeWidgetGrid
-      v-else-if="data"
-      scope-type="TEAM"
-      :scope-id="selectedTeamId"
-      :data="data"
-    />
+    <template v-else-if="data">
+      <DashboardAnnouncements
+        v-if="data.teamNotices != null && announcementScopeId && selectedTeamId"
+        :key="selectedTeamId"
+        scope-type="TEAM"
+        :scope-id="announcementScopeId"
+        :scope-slug="selectedTeamId"
+        :items="visibleAnnouncements"
+        @refresh="load(selectedTeamId)"
+        @unavailable="hiddenAnnouncementIds.add($event)"
+      />
+      <DashboardAdminWidgetGrid
+        v-if="hasResolvedSlug && selectedTeamId && store.isAdminLensOn('TEAM', selectedTeamId)"
+        scope-type="TEAM"
+        :slug="selectedTeamId"
+      />
+      <DashboardSwipeWidgetGrid v-else scope-type="TEAM" :scope-id="selectedTeamId" :data="data" />
+    </template>
 
     <!--
       最終フォールバック（解決待ち）。

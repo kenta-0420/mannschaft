@@ -95,46 +95,46 @@
       "applyAria": "Add {name} label"
     },
     "guide": {
-      "title": "インボックスの使い方",
+      "title": "How to Use the Inbox",
       "tabs": {
-        "title": "タブで通知を整理する",
-        "body": "インボックス・スヌーズ中・保管庫の3つのタブで通知の状態を管理できます。各タブには件数バッジが表示されます。",
-        "step1": "ページ上部の3つのタブから目的のタブをクリックします",
-        "step2": "「受信箱」は未読・未対応の通知、「スヌーズ中」は後で確認する通知、「保管庫」は処理済みの通知を表示します",
-        "step3": "タブをクリックするだけで表示が切り替わります"
+        "title": "Organize notifications with tabs",
+        "body": "Manage the state of your notifications with three tabs: Inbox, Snoozed, and Archive. Each tab shows a count badge.",
+        "step1": "Click the tab you want from the three tabs at the top of the page",
+        "step2": "\"Inbox\" shows unread and unhandled notifications, \"Snoozed\" shows notifications to check later, and \"Archive\" shows processed notifications",
+        "step3": "Simply click a tab to switch the view"
       },
       "filter": {
-        "title": "優先度と種類で絞り込む",
-        "body": "通知の優先度（緊急・高・通常・低）と種類（通知・お知らせ・メンション・確認必須・TODO期限）でフィルタリングできます。複数同時選択が可能です。",
-        "step1": "「緊急度」セクションで希望する優先度をクリックします（複数選択可）",
-        "step2": "「種類」セクションで希望する種類をクリックします（複数選択可）",
-        "step3": "フィルタが適用され、条件に合う通知だけが表示されます",
-        "step4": "同じチップをもう一度クリックするとフィルタが解除されます"
+        "title": "Filter by priority and type",
+        "body": "You can filter notifications by priority (Urgent, High, Normal, Low) and type (Notification, Announcement, Mention, Confirmation required, TODO due). Multiple selections are possible.",
+        "step1": "Click the priority you want in the \"Urgency\" section (multiple selections allowed)",
+        "step2": "Click the type you want in the \"Type\" section (multiple selections allowed)",
+        "step3": "The filter is applied and only matching notifications are shown",
+        "step4": "Click the same chip again to clear the filter"
       },
       "snooze": {
-        "title": "スヌーズで後で対応する",
-        "body": "今すぐ対応する必要のない通知を一時的に非表示にできます。プリセット（3時間後・今晩・明朝・来週）から選ぶだけで設定完了です。",
-        "step1": "通知アイテムの右側にある時計アイコン（スヌーズボタン）をクリックします",
-        "step2": "表示されるプリセット（3時間後・今晩21:00・明朝9:00・来週月曜9:00）を選択します",
-        "step3": "通知が「スヌーズ中」タブに移動し、指定した時刻に自動で受信箱に戻ります",
-        "step4": "スヌーズ中の通知のベルアイコンをクリックするといつでも解除できます"
+        "title": "Snooze to handle things later",
+        "body": "You can temporarily hide notifications you don't need to act on right now. Just pick from the common options (in 3 hours, this evening, tomorrow morning, next week) and you're done.",
+        "step1": "Click the clock icon (snooze button) on the right side of a notification item",
+        "step2": "Select one of the suggested times (in 3 hours, tonight at 21:00, tomorrow at 9:00, next Monday at 9:00)",
+        "step3": "The notification moves to the \"Snoozed\" tab and automatically returns to your inbox at the specified time",
+        "step4": "Click the bell icon on a snoozed notification to cancel the snooze at any time"
       },
       "label": {
-        "title": "ラベルで分類・管理する",
-        "body": "通知にラベルを付与して整理できます。自分でラベルを作成し、色やアイコンでカスタマイズすることも可能です。最大20件まで作成できます。",
-        "step1": "ページ右上の歯車アイコンをクリックしてラベル管理パネルを開きます",
-        "step2": "「ラベルを作成」からラベルを新規作成します（名前・色・アイコンを設定）",
-        "step3": "通知アイテムの右側にあるタグアイコンから、作成したラベルを付与します",
-        "step4": "ラベルの絞り込みチップをクリックすると、そのラベルが付いた通知だけを表示できます",
-        "step5": "1件の通知に最大10件のラベルを付与できます"
+        "title": "Categorize and manage with labels",
+        "body": "You can organize notifications by attaching labels. You can also create your own labels and customize them with colors and icons. Up to 20 labels can be created.",
+        "step1": "Click the gear icon at the top right of the page to open the label management panel",
+        "step2": "Create a new label with \"Create label\" (set the name, color, and icon)",
+        "step3": "Attach a label you created using the tag icon on the right side of a notification item",
+        "step4": "Click a label filter chip to show only notifications with that label",
+        "step5": "You can attach up to 10 labels to a single notification"
       },
       "bulk": {
-        "title": "複数を一括処理する",
-        "body": "複数の通知を選択して、まとめてスヌーズ・アーカイブ・ラベル付与ができます。大量の通知を効率よく処理したい場合に便利です。",
-        "step1": "ページ右上のチェックボックスアイコンをクリックして選択モードを有効にします",
-        "step2": "処理したい通知のチェックボックスをクリックして選択します",
-        "step3": "上部に表示されるバーから操作を選択します（アーカイブ・スヌーズ・ラベル付与）",
-        "step4": "「キャンセル」ボタンまたはチェックボックスアイコンをクリックして選択モードを終了します"
+        "title": "Process multiple items at once",
+        "body": "Select multiple notifications to snooze, archive, or label them all at once. This is handy when you want to process a large number of notifications efficiently.",
+        "step1": "Click the checkbox icon at the top right of the page to enable selection mode",
+        "step2": "Click the checkboxes of the notifications you want to process",
+        "step3": "Choose an action from the bar shown at the top (archive, snooze, or label)",
+        "step4": "Click the \"Cancel\" button or the checkbox icon to exit selection mode"
       }
     }
   }

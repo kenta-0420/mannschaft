@@ -2,6 +2,7 @@
 import dayjs from 'dayjs'
 import type { CreateKanbanRequest, KanbanStage, QuoteKanban } from '~/types/repairPlanKanban'
 import type { RepairPlanTimelineResponse } from '~/types/repairPlanTimeline'
+import { parseOrgQuery, type MatchOrgOption } from '~/composables/match/useMatchOrgContext'
 
 definePageMeta({ middleware: 'auth', layout: 'team' })
 
@@ -12,7 +13,6 @@ const { getTimeline } = useRepairPlanTimelineApi()
 const { listKanbans, createKanban, moveCard } = useRepairPlanKanbanApi()
 const notification = useNotification()
 const { formatDate, userTimezone } = useDatetime()
-const teamApi = useTeamApi()
 const { isAdminOrDeputy, isAdmin, loadPermissions } = useRoleAccess('team', teamSlug)
 
 // タブ管理
@@ -30,6 +30,9 @@ const timelineLoading = ref(false)
 const kanbans = ref<QuoteKanban[]>([])
 const kanbanLoading = ref(false)
 const organizationId = ref<number | null>(null)
+const organizations = ref<MatchOrgOption[]>([])
+const orgInvalid = ref(false)
+const { resolveContext } = useMatchOrgContext()
 const selectedKanban = ref<QuoteKanban | null>(null)
 const showCreateDialog = ref(false)
 const createForm = reactive<CreateKanbanRequest>({
@@ -38,23 +41,30 @@ const createForm = reactive<CreateKanbanRequest>({
   visibilityToMember: 'FULL',
 })
 
-/** チームが所属する組織IDを取得する（最初の組織を使用）*/
+/**
+ * チームが加盟する組織の数値 ID を取得する（F01.2.1 §9.2 F4）。
+ * 旧実装は `getOrganizations` の先頭要素の `id` を `typeof === 'number'` で判定していたが、
+ * そのAPIの `id` は slug 文字列のため常に偽で、組織が常に null だった（id と slug の取り違え）。
+ * 数値 ID は `/me/teams` の `organizations`（useMatchOrgContext）から得る。
+ * 親組織が複数なら URL クエリ `org` の選択に従い、未指定は代表親組織。
+ */
 async function loadOrganizationId() {
-  if (organizationId.value !== null) return
-  try {
-    const res = await teamApi.getOrganizations(teamSlug.value)
-    const orgs = res.data ?? res
-    if (Array.isArray(orgs) && orgs.length > 0) {
-      const firstOrg = orgs[0] as Record<string, unknown>
-      const rawId = firstOrg.id
-      if (typeof rawId === 'number') {
-        organizationId.value = rawId
-      }
-    }
-  } catch {
-    // organization が存在しない場合は null のまま
-  }
+  const ctx = await resolveContext(teamSlug.value, { orgId: parseOrgQuery(route.query.org) })
+  organizationId.value = ctx?.orgId ?? null
+  organizations.value = ctx?.organizations ?? []
+  orgInvalid.value = ctx?.orgInvalid ?? false
 }
+
+// 組織を切り替えたら（URL クエリ org の変化）その組織のカンバンを読み直す
+watch(
+  () => route.query.org,
+  async () => {
+    selectedKanban.value = null
+    kanbans.value = []
+    await loadOrganizationId()
+    if (activeTab.value === 'kanban') await loadKanbans()
+  },
+)
 
 async function loadTimeline() {
   timelineLoading.value = true
@@ -260,9 +270,12 @@ onMounted(async () => {
         />
       </div>
 
+      <!-- 組織選択（親組織が複数のときだけ表示） -->
+      <MatchOrgSelect :organizations="organizations" :org-id="organizationId" :invalid="orgInvalid" />
+
       <!-- 組織ID未取得の警告 -->
       <Message
-        v-if="!kanbanLoading && organizationId === null && !selectedKanban"
+        v-if="!kanbanLoading && organizationId === null && !orgInvalid && !selectedKanban"
         severity="warn"
         :closable="false"
         class="mb-4"

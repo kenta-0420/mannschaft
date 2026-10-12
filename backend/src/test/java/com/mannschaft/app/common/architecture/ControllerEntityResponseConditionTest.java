@@ -3,6 +3,7 @@ package com.mannschaft.app.common.architecture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.common.architecture.fixtures.D6ApiResponseEntityController;
+import org.junit.jupiter.api.Tag;
 import com.mannschaft.app.common.architecture.fixtures.D6DtoController;
 import com.mannschaft.app.common.architecture.fixtures.D6NestedEntityController;
 import com.mannschaft.app.common.architecture.fixtures.D6PageEntityController;
@@ -16,6 +17,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 
 /**
  * D-6 番人（{@link ControllerEntityResponseArchTest}）の Entity 検出ロジックが
@@ -40,15 +42,17 @@ import org.junit.jupiter.api.Test;
  * </ul>
  */
 @DisplayName("D-6 番人 Entity検出ロジックの偽陰性ゼロ・偽陽性ゼロ証明（メタテスト）")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag(ArchUnitTestTag.ARCHUNIT)
 class ControllerEntityResponseConditionTest {
 
     private static final String FIXTURES_PACKAGE =
         "com.mannschaft.app.common.architecture.fixtures";
 
-    private static JavaClasses fixtureClasses;
+    private JavaClasses fixtureClasses;
 
     @BeforeAll
-    static void importFixtures() {
+    void importFixtures() {
         fixtureClasses = new ClassFileImporter().importPackages(FIXTURES_PACKAGE);
     }
 
@@ -106,7 +110,7 @@ class ControllerEntityResponseConditionTest {
     // ------------------------------------------------------------------
 
     /** fixture Controller の指定メソッドが戻り型に露出する Entity のクラス名一覧を返す。 */
-    private static List<String> exposed(Class<?> controller, String methodName) {
+    private List<String> exposed(Class<?> controller, String methodName) {
         JavaMethod method = mappingMethod(controller, methodName);
         return ControllerEntityResponseArchTest.exposedEntityReturnTypes(method).stream()
             .map(JavaClass::getName)
@@ -114,7 +118,7 @@ class ControllerEntityResponseConditionTest {
     }
 
     /** fixture Controller から指定名のメソッドを取得する。 */
-    private static JavaMethod mappingMethod(Class<?> controller, String methodName) {
+    private JavaMethod mappingMethod(Class<?> controller, String methodName) {
         JavaClass javaClass = fixtureClasses.get(controller);
         return javaClass.getMethods().stream()
             .filter(m -> m.getName().equals(methodName))

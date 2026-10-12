@@ -20,7 +20,7 @@ import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 import { monthGridDates } from '~/utils/calendarWeek'
 
 const { userTimezone } = useDatetime()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const props = withDefaults(defineProps<{
   year: number
@@ -61,7 +61,12 @@ function onEventClick(event: CalendarEventItem) {
 }
 
 const { getHoliday } = useHolidays()
-const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土']
+// 曜日見出し（日曜始まり）。表示言語に合わせて Intl で整形する（ja は「日」〜「土」）。
+// 2024-01-07 は日曜日。ローカル日付で生成するのでタイムゾーンの影響を受けない。
+const daysOfWeek = computed(() => {
+  const fmt = new Intl.DateTimeFormat(locale.value, { weekday: 'short' })
+  return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2024, 0, 7 + i)))
+})
 
 // レイアウト定数
 const DATE_HEADER_H = 30  // p-1(4) + h-6(24) + mb-0.5(2) = 30px
@@ -260,7 +265,9 @@ function laneOverflowStyle(di: number, visibleBarLaneCap: number): Record<string
   }
 }
 
-const monthLabel = computed(() => `${props.year}年${props.month}月`)
+const monthLabel = computed(() =>
+  new Intl.DateTimeFormat(locale.value, { year: 'numeric', month: 'long' }).format(new Date(props.year, props.month - 1, 1)),
+)
 
 // ---- 日別ポップオーバー（§6.2・AC-12/AC-12b） ----
 // 実体は週ビューと共有する ScheduleDayDetailPopover（対象日の予定の抽出条件を含め一元化）。
@@ -362,10 +369,10 @@ defineExpose({ focusToday })
           <div :style="{ height: `${week.lanesUsed}px` }" />
           <!-- 祝日名 -->
           <div
-            v-if="getHoliday(day.dateStr)"
+            v-if="getHoliday(day.dateStr, locale)"
             class="truncate text-[10px] font-medium text-red-400"
           >
-            {{ getHoliday(day.dateStr) }}
+            {{ getHoliday(day.dateStr, locale) }}
           </div>
           <!-- 1日イベント -->
           <div class="space-y-0.5">

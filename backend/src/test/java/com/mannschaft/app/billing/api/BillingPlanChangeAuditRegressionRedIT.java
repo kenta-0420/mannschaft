@@ -11,9 +11,11 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -68,9 +70,11 @@ class BillingPlanChangeAuditRegressionRedIT extends AbstractBillingPlanChangeApi
         change(userId, contractId, previewId, contractVersion(), newKey())
                 .andExpect(status().isAccepted());
 
-        org.mockito.Mockito.verify(auditLogService, org.mockito.Mockito.atLeastOnce())
-                .record(eq(AuditEventType.BILLING_PLAN_CHANGE_REQUESTED.name()),
-                        eq(userId), any(), any(), any(), any(), any(), any(), anyString());
+        // AuditLogService.record は @Async のため、HTTP応答後に監査の呼び出しを期限付きで待つ。
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                org.mockito.Mockito.verify(auditLogService, org.mockito.Mockito.atLeastOnce())
+                        .record(eq(AuditEventType.BILLING_PLAN_CHANGE_REQUESTED.name()),
+                                eq(userId), any(), any(), any(), any(), any(), any(), anyString()));
     }
 
     // ═════════ AC-138: Stripe 呼び出し自体の同期失敗も記録される ═════════
@@ -85,9 +89,10 @@ class BillingPlanChangeAuditRegressionRedIT extends AbstractBillingPlanChangeApi
         change(userId, contractId, previewId, contractVersion(), newKey())
                 .andExpect(status().isBadGateway());
 
-        org.mockito.Mockito.verify(auditLogService, org.mockito.Mockito.atLeastOnce())
-                .record(eq(AuditEventType.BILLING_PLAN_CHANGE_FAILED.name()),
-                        eq(userId), any(), any(), any(), any(), any(), any(), anyString());
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                org.mockito.Mockito.verify(auditLogService, org.mockito.Mockito.atLeastOnce())
+                        .record(eq(AuditEventType.BILLING_PLAN_CHANGE_FAILED.name()),
+                                eq(userId), any(), any(), any(), any(), any(), any(), anyString()));
     }
 
     // ═════════ AC-139: clientSecret・カード番号・raw payload・URL を残さない ═════════
@@ -104,9 +109,10 @@ class BillingPlanChangeAuditRegressionRedIT extends AbstractBillingPlanChangeApi
                         .content().contentType(MediaType.APPLICATION_JSON));
 
         ArgumentCaptor<String> metadataCaptor = ArgumentCaptor.forClass(String.class);
-        org.mockito.Mockito.verify(auditLogService, org.mockito.Mockito.atLeastOnce())
-                .record(eq(AuditEventType.BILLING_PLAN_CHANGE_REQUESTED.name()),
-                        eq(userId), any(), any(), any(), any(), any(), any(), metadataCaptor.capture());
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                org.mockito.Mockito.verify(auditLogService, org.mockito.Mockito.atLeastOnce())
+                        .record(eq(AuditEventType.BILLING_PLAN_CHANGE_REQUESTED.name()),
+                                eq(userId), any(), any(), any(), any(), any(), any(), metadataCaptor.capture()));
 
         for (String metadata : metadataCaptor.getAllValues()) {
             if (metadata == null) {

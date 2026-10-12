@@ -15,7 +15,7 @@
     },
     "item": {
       "dashboard": "仪表盘",
-      "member_profiles": "メンバー紹介",
+      "member_profiles": "成员介绍",
       "announcements": "公告",
       "chat": "聊天",
       "bulletin": "公告板",
@@ -53,7 +53,7 @@
       "memberPermissions": "MEMBER 默认权限",
       "receipts": "收据",
       "receiptSettings": "收据开票方设置",
-      "hourlyRate": "時給設定",
+      "hourlyRate": "时薪设置",
       "vendors": "供应商台账",
       "lineSettings": "LINE设置",
       "snsSettings": "社交媒体设置",

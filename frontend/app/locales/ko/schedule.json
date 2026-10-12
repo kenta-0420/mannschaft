@@ -235,102 +235,102 @@
     }
   },
   "scheduleKeep": {
-    "title": "キープ",
-    "subtitle": "日付が決まっていない予定を置いておく場所",
-    "empty": "まだ何もありません。思いついたことを書いてみましょう",
+    "title": "킵",
+    "subtitle": "날짜가 정해지지 않은 일정을 보관해 두는 곳",
+    "empty": "아직 아무것도 없습니다. 떠오른 생각을 적어 보세요.",
     "form": {
-      "titleLabel": "やりたいこと",
-      "titlePlaceholder": "例: 夏合宿",
-      "memoLabel": "メモ（任意）",
-      "candidateDatesLabel": "候補日（任意）",
-      "submit": "キープする"
+      "titleLabel": "하고 싶은 일",
+      "titlePlaceholder": "예: 여름 합숙",
+      "memoLabel": "메모(선택)",
+      "candidateDatesLabel": "후보일(선택)",
+      "submit": "킵하기"
     },
     "action": {
-      "convert": "予定にする",
-      "convertFromCandidate": "この日に決める",
-      "pickDate": "日付を選ぶ",
-      "specifyTime": "時刻を指定する",
-      "archive": "見送る",
-      "restore": "もどす",
-      "revert": "予定を取り消す",
-      "reorder": "並び替え"
+      "convert": "일정으로 만들기",
+      "convertFromCandidate": "이 날로 정하기",
+      "pickDate": "날짜 선택",
+      "specifyTime": "시각 지정하기",
+      "archive": "보류하기",
+      "restore": "되돌리기",
+      "revert": "일정 취소하기",
+      "reorder": "순서 변경"
     },
     "status": {
-      "kept": "キープ中",
-      "scheduled": "予定になりました",
-      "archived": "見送り"
+      "kept": "킵 중",
+      "scheduled": "일정이 되었습니다",
+      "archived": "보류됨"
     },
     "filter": {
-      "kept": "キープ中",
-      "scheduled": "予定済み",
-      "archived": "見送り",
-      "all": "すべて"
+      "kept": "킵 중",
+      "scheduled": "일정 완료",
+      "archived": "보류됨",
+      "all": "전체"
     },
     "badge": {
-      "candidateCount": "候補日 {count} 件"
+      "candidateCount": "후보일 {count}건"
     },
     "origin": {
-      "label": "このキープから作られました",
-      "cancelled": "予定は中止になりました",
-      "deleted": "元の予定は削除されました"
+      "label": "이 킵에서 만들어졌습니다",
+      "cancelled": "일정이 취소되었습니다",
+      "deleted": "원래 일정이 삭제되었습니다"
     },
     "lockedHint": {
-      "scheduled": "予定になったので、内容の変更は予定側で行ってください",
-      "archived": "見送り中は編集できません。「もどす」と編集できます"
+      "scheduled": "일정이 되었으므로 내용 변경은 일정 쪽에서 해 주세요",
+      "archived": "보류 중에는 편집할 수 없습니다. \"되돌리기\"를 누르면 편집할 수 있습니다"
     },
     "notification": {
-      "converted": "「{title}」の日程が決まりました",
-      "created": "「{title}」がキープされました"
+      "converted": "\"{title}\"의 일정이 정해졌습니다",
+      "created": "\"{title}\"이(가) 킵되었습니다"
     },
     "confirm": {
-      "archive": "見送りにしますか？あとで戻せます"
+      "archive": "보류하시겠습니까? 나중에 되돌릴 수 있습니다"
     },
     "limit": {
-      "hint": "見送りにすると枠が空きます"
+      "hint": "보류하면 자리가 비워집니다"
     },
     "help": {
-      "title": "キープの使い方",
-      "body": "日付が決まっていない予定をひとまず置いておける場所です。タイトルだけで作成でき、あとから候補日やメモを足せます。候補日が決まったらタップひとつでカレンダーの予定に変換できます。",
+      "title": "킵 사용법",
+      "body": "날짜가 정해지지 않은 일정을 일단 보관해 두는 곳입니다. 제목만으로 만들 수 있고, 나중에 후보일이나 메모를 추가할 수 있습니다. 후보일이 정해지면 한 번의 탭으로 캘린더 일정으로 변환할 수 있습니다.",
       "create": {
-        "title": "キープする",
-        "body": "タイトルだけ入力すれば作成できます。候補日やメモは後からでも構いません。",
+        "title": "킵하기",
+        "body": "제목만 입력하면 만들 수 있습니다. 후보일이나 메모는 나중에 추가해도 됩니다.",
         "steps": {
-          "step1": "やりたいことをタイトルに入力",
-          "step2": "必要なら候補日・メモを追加",
-          "step3": "「キープする」を押す"
+          "step1": "하고 싶은 일을 제목에 입력",
+          "step2": "필요하면 후보일·메모 추가",
+          "step3": "\"킵하기\" 누르기"
         }
       },
       "convert": {
-        "title": "予定に変換する",
-        "body": "候補日があれば1タップ、無くても日付を選ぶだけの2タップ以内で予定になります。",
+        "title": "일정으로 변환하기",
+        "body": "후보일이 있으면 한 번, 없어도 날짜를 고르기만 하면 두 번 이내의 탭으로 일정이 됩니다.",
         "steps": {
-          "step1": "候補日バッジ、または「予定にする」を押す",
-          "step2": "候補日が無ければ日付を選ぶ",
-          "step3": "カレンダーに予定として反映される"
+          "step1": "후보일 배지 또는 \"일정으로 만들기\" 누르기",
+          "step2": "후보일이 없으면 날짜 선택하기",
+          "step3": "캘린더에 일정으로 반영됨"
         }
       },
       "organize": {
-        "title": "整理する",
-        "body": "見送ったキープは一覧から消えますが、いつでも「もどす」で復帰できます。並び替えもできます。",
+        "title": "정리하기",
+        "body": "보류한 킵은 목록에서 사라지지만 언제든지 \"되돌리기\"로 복귀할 수 있습니다. 순서도 바꿀 수 있습니다.",
         "steps": {
-          "step1": "不要になったら「見送る」",
-          "step2": "「見送り」フィルタから「もどす」で復帰",
-          "step3": "ドラッグで並び替え"
+          "step1": "필요 없어지면 \"보류하기\"",
+          "step2": "\"보류됨\" 필터에서 \"되돌리기\"로 복귀",
+          "step3": "드래그로 순서 변경"
         }
       }
     },
     "error": {
-      "notFound": "キープが見つかりません",
-      "titleRequired": "タイトルを入力してください",
-      "tooManyCandidateDates": "候補日は最大10件です",
-      "invalidCandidateDate": "候補日の形式が正しくありません",
-      "forbidden": "このキープを操作する権限がありません",
-      "notConvertible": "このキープは予定に変換できません",
-      "notEditable": "この状態では編集できません",
-      "revertBlockedByAttendance": "出欠の回答があるため変換を取り消せません",
-      "invalidStateTransition": "この操作はできません",
-      "limitExceeded": "キープの上限に達しました",
-      "invalidReorder": "並び替えの指定が正しくありません"
+      "notFound": "킵을 찾을 수 없습니다",
+      "titleRequired": "제목을 입력해 주세요",
+      "tooManyCandidateDates": "후보일은 최대 10건입니다",
+      "invalidCandidateDate": "후보일 형식이 올바르지 않습니다",
+      "forbidden": "이 킵을 조작할 권한이 없습니다",
+      "notConvertible": "이 킵은 일정으로 변환할 수 없습니다",
+      "notEditable": "이 상태에서는 편집할 수 없습니다",
+      "revertBlockedByAttendance": "출결 응답이 있어 변환을 취소할 수 없습니다",
+      "invalidStateTransition": "이 작업은 할 수 없습니다",
+      "limitExceeded": "킵 상한에 도달했습니다",
+      "invalidReorder": "순서 변경 지정이 올바르지 않습니다"
     }
   }
 }

@@ -1,5 +1,17 @@
 {
   "announcement": {
+    "preview": {
+      "title": "Content",
+      "open_source": "Open original page",
+      "close": "Close",
+      "loading": "Loading content",
+      "empty_body": "No content",
+      "retry": "Retry",
+      "load_failed": "Unable to load content",
+      "locked": "You need access to view this content",
+      "image_failed": "Unable to display image",
+      "read_failed": "Unable to mark as read"
+    },
     "widget_title": "Announcements",
     "all_announcements": "All Announcements",
     "display_in_announcement": "Show in Announcement Widget",
@@ -27,7 +39,7 @@
     "already_registered": "This content is already registered as an announcement.",
     "no_longer_available": "This announcement is no longer available, so it has been removed from the list.",
     "mark_all_read_partial": "Marked {count} announcements as read. Some unread ones remain — press again to continue.",
-    "broadcast_button_team": "Team Announcement",
+    "broadcast_button_team": "Send announcement to team",
     "broadcast_button_org": "Organization Announcement",
     "wizard_title": "Send Announcement",
     "step1_title": "Target Scope",
@@ -79,54 +91,54 @@
       "dismiss": "Dismiss"
     },
     "broadcast_guide": {
-      "toggle": "使い方",
-      "description": "告知ウィザードの使い方を、ステップ順にまとめました。上から順に進めれば告知を送れます。",
+      "toggle": "How to use",
+      "description": "A step-by-step summary of how to use the announcement wizard. Work through it from top to bottom to send your announcement.",
       "audience": {
-        "title": "誰に届けるか（対象範囲）",
-        "body": "告知を見せる相手の範囲を決めます（最初のステップ）。",
+        "title": "Who to reach (audience)",
+        "body": "Decide who gets to see the announcement (the first step).",
         "steps": {
-          "step1": "届け先をメンバーのみ／サポーター以上／全員（公開）から選ぶ",
-          "step2": "（組織告知のみ）対象チームを『すべて』または個別に選ぶ"
+          "step1": "Choose the audience: Members only / Supporters and above / Everyone (Public)",
+          "step2": "(Organization announcements only) Choose \"All teams\" or select specific teams"
         }
       },
       "template": {
-        "title": "テンプレートで時短",
-        "body": "よく使う宛先設定を呼び出し・保存できます。",
+        "title": "Save time with templates",
+        "body": "You can load and save the recipient settings you use often.",
         "steps": {
-          "step1": "『テンプレートから読み込む』で宛先を自動入力",
-          "step2": "（管理者のみ）『テンプレートとして保存』で現在の範囲を登録（1範囲あたり20件まで）"
+          "step1": "Use \"Load from template\" to fill in the recipients automatically",
+          "step2": "(Admins only) Use \"Save as template\" to register the current audience (up to 20 per audience)"
         }
       },
       "channel": {
-        "title": "届け方を選ぶ（チャネル）",
-        "body": "掲示板・タイムライン・ブログ・TODO・スケジュール・アンケートから配信先を1つ選びます。",
+        "title": "Choose how to deliver it (channel)",
+        "body": "Pick one destination from Bulletin, Timeline, Blog, TODO, Schedule and Survey.",
         "steps": {
-          "step1": "6つのカードから1つ選ぶ",
-          "step2": "『次へ』。※テンプレに既定チャネルがあるとこの画面は省略されます"
+          "step1": "Choose one of the 6 cards",
+          "step2": "Click \"Next\". Note: if the template has a default channel, this screen is skipped"
         }
       },
       "content": {
-        "title": "内容を書く",
-        "body": "選んだチャネルに合わせて入力欄が変わります。＊印は必須です。",
+        "title": "Write the content",
+        "body": "The input fields change depending on the channel you chose. Fields marked * are required.",
         "steps": {
-          "step1": "タイトル・本文など必須欄を入力",
-          "step2": "例: スケジュールは開始日時、タイムラインは本文が必須"
+          "step1": "Fill in the required fields such as title and body",
+          "step2": "Example: Schedule requires a start date and time; Timeline requires a body"
         }
       },
       "priority": {
-        "title": "優先度と表示期限",
-        "body": "目立たせ方と掲載の終了日時を設定できます。",
+        "title": "Priority and expiry",
+        "body": "You can set how prominent the announcement is and when it stops being displayed.",
         "steps": {
-          "step1": "（管理者以上）優先度を通常／重要／緊急から選ぶ。一般メンバーは『通常』固定",
-          "step2": "表示期限を任意で設定"
+          "step1": "(Admins and above) Choose the priority: Normal / Important / Urgent. Regular members are fixed to \"Normal\"",
+          "step2": "Optionally set an expiry"
         }
       },
       "submit": {
-        "title": "送信して確認",
-        "body": "入力が揃うと送信できます。送信後はお知らせに表示されます。",
+        "title": "Send and confirm",
+        "body": "Once everything is filled in you can send. After sending, it appears in announcements.",
         "steps": {
-          "step1": "『告知を送る』を押す",
-          "step2": "送信完了を確認。※アンケートの設問・TODOの担当者は送信後に各画面で追加します"
+          "step1": "Click \"Send Announcement\"",
+          "step2": "Confirm that it was sent. Note: survey questions and TODO assignees are added on their own screens after sending"
         }
       }
     },

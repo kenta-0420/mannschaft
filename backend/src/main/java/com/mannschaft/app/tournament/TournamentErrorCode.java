@@ -92,7 +92,7 @@ public enum TournamentErrorCode implements ErrorCode {
     /** 同一ユーザーが既にエントリー済み */
     DUPLICATE_ENTRY_MEMBER("TOUR_027", "このユーザーは既にエントリー済みです", Severity.WARN),
 
-    /** テンプレートとチームが一致しない */
+    /** テンプレートとチームが一致しない（未使用: apply-template は他チームのテンプレートを ENTRY_TEMPLATE_NOT_FOUND へ畳む。存在オラクル防止のため欠番扱い） */
     TEMPLATE_TEAM_MISMATCH("TOUR_028", "テンプレートのチームと参加チームが一致しません", Severity.WARN),
 
     /** 連絡スペースが見つからない（F08.7.1・IDOR 対策で 404 に統一） */

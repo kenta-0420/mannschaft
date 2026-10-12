@@ -301,7 +301,7 @@
       "defaults": {
         "title": "默认设置",
         "body": "设置在文件盖章时自动使用的变体（姓氏·全名·名字）。省去每次重新选择的麻烦。",
-        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
+        "note": "通过「添加范围」可以为每个团队或组织分别设置所使用的印章样式。",
         "steps": {
           "step1": "打开「默认设置」标签",
           "step2": "从下拉菜单中选择要使用的变体（姓氏·全名·名字）",
@@ -332,25 +332,25 @@
         "save_defaults_error": "保存设置失败"
       },
       "scope_defaults": {
-        "section_title": "スコープ別デフォルト印鑑",
-        "add_button": "スコープを追加",
-        "add_dialog_title": "スコープを追加",
-        "scope_type_label": "スコープ種別",
-        "scope_type_team": "チーム",
-        "scope_type_org": "組織",
-        "scope_target_label": "対象",
-        "scope_target_placeholder": "選択してください",
-        "variant_label": "使用する印鑑",
+        "section_title": "按范围设置的默认印章",
+        "add_button": "添加范围",
+        "add_dialog_title": "添加范围",
+        "scope_type_label": "范围类型",
+        "scope_type_team": "团队",
+        "scope_type_org": "组织",
+        "scope_target_label": "对象",
+        "scope_target_placeholder": "请选择",
+        "variant_label": "使用的印章",
         "variant_last_name": "姓",
-        "variant_full_name": "フルネーム",
+        "variant_full_name": "全名",
         "variant_first_name": "名",
-        "default_label": "デフォルト（全体）",
-        "delete_tooltip": "このスコープを削除",
-        "no_teams": "所属チームがありません",
-        "no_orgs": "所属組織がありません",
+        "default_label": "默认（全部）",
+        "delete_tooltip": "删除此范围",
+        "no_teams": "您不属于任何团队",
+        "no_orgs": "您不属于任何组织",
         "save_button": "保存",
-        "cancel_button": "キャンセル",
-        "add_scope_button": "追加"
+        "cancel_button": "取消",
+        "add_scope_button": "添加"
       }
     },
     "login_history": {
@@ -420,7 +420,7 @@
       "global_section_title": "自动推送",
       "priority_auto_delivery_label": "按优先级自动推送",
       "priority_auto_delivery_desc": "将重要通知自动以推送通知发送。",
-      "scope_section_title": "按团队・组织的通知",
+      "scope_section_title": "按团队、组织的通知",
       "scope_section_desc": "可按所属的团队或组织设置通知接收。",
       "scope_type_team": "团队",
       "scope_type_organization": "组织",
@@ -469,7 +469,7 @@
       },
       "security": {
         "label": "安全",
-        "description": "双重验证・会话管理・安全密钥"
+        "description": "双重验证、会话管理、安全密钥"
       },
       "email": {
         "description": "更改电子邮件地址"
@@ -487,13 +487,13 @@
         "description": "管理OAuth和LINE连接"
       },
       "appearance": {
-        "description": "主题・背景色・显示设置"
+        "description": "主题、背景色、显示设置"
       },
       "navigation": {
         "description": "自定义显示的导航项目"
       },
       "memberCards": {
-        "description": "会员卡显示・签到历史"
+        "description": "会员卡显示、签到历史"
       },
       "socialProfiles": {
         "description": "管理匿名资料和关注"
@@ -505,10 +505,10 @@
         "description": "通知接收设置"
       },
       "calendarSync": {
-        "description": "日历同步・iCal集成"
+        "description": "日历同步、iCal集成"
       },
       "contactPrivacy": {
-        "description": "搜索・私信接收・在线状态的公开范围"
+        "description": "搜索、私信接收、在线状态的公开范围"
       },
       "contactInviteTokens": {
         "description": "发放和管理用于添加联系人的邀请链接"
@@ -518,10 +518,10 @@
         "description": "拒绝特定用户的联系人申请"
       },
       "storage": {
-        "description": "查看个人・团队・组织的容量使用情况"
+        "description": "查看个人、团队、组织的容量使用情况"
       },
       "billing": {
-        "description": "查看当前订阅的方案・附加功能・可用功能"
+        "description": "查看当前订阅的方案、附加功能、可用功能"
       },
       "parentalConsentManage": {
         "description": "管理已批准的监护人和受监护的子账户"

@@ -14,6 +14,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
@@ -101,6 +102,7 @@ public class ProxyInputConsentEntity extends BaseEntity {
     /** この同意書で許可された機能スコープ一覧。 */
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @jakarta.persistence.JoinColumn(name = "proxy_input_consent_id")
+    @BatchSize(size = 100)
     @Builder.Default
     private List<ProxyInputConsentScopeEntity> scopes = new ArrayList<>();
 

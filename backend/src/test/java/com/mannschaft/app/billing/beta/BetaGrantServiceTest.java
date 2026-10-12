@@ -12,7 +12,7 @@ import com.mannschaft.app.billing.PlanFeatureRepository;
 import com.mannschaft.app.billing.ScopeMemberCountService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.gamification.service.BetaTesterBadgeAwardService;
-import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.notification.NotificationType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -67,7 +68,7 @@ class BetaGrantServiceTest {
     @Mock private ScopeMemberCountService scopeMemberCountService;
     @Mock private BetaPerkEligibilityService eligibilityService;
     @Mock private BetaTesterBadgeAwardService betaTesterBadgeAwardService;
-    @Mock private NotificationHelper notificationHelper;
+    @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private org.springframework.context.MessageSource messageSource;
 
     private BetaGrantService service;
@@ -77,7 +78,7 @@ class BetaGrantServiceTest {
         service = new BetaGrantService(
                 betaGrantRepository, entitlementRepository, planFeatureRepository,
                 entitlementIssuanceService, cacheEvictor, scopeMemberCountService,
-                eligibilityService, betaTesterBadgeAwardService, notificationHelper,
+                eligibilityService, betaTesterBadgeAwardService, eventPublisher,
                 messageSource, new ObjectMapper(), FIXED_CLOCK);
         // 通知本文の解決（notify する経路のみ使用・未使用テストで落とさないよう lenient）。
         lenient().when(messageSource.getMessage(any(), any(), any())).thenReturn("msg");
@@ -123,8 +124,8 @@ class BetaGrantServiceTest {
         verify(entitlementIssuanceService).issue(eq(EntitlementScopeKind.USER), eq(42L), isNull(),
                 eq(FULL_KEYS), eq(EntitlementSourceKind.BETA_GRANT), any(UUID.class), isNull());
         verify(betaTesterBadgeAwardService).awardBetaTesterBadge(42L, 1);
-        verify(notificationHelper).notify(eq(42L), eq("BETA_PERK_GRANTED"), any(), any(), any(),
-                any(), any(), any(), any(), any(), any());
+        verify(eventPublisher).publishEvent(new BetaGrantNotificationEvent(
+                42L, NotificationType.BETA_PERK_GRANTED, "msg", "msg"));
 
         ArgumentCaptor<BetaGrantEntity> captor = ArgumentCaptor.forClass(BetaGrantEntity.class);
         verify(betaGrantRepository).save(captor.capture());
@@ -147,6 +148,7 @@ class BetaGrantServiceTest {
         verify(entitlementIssuanceService).issue(eq(EntitlementScopeKind.TEAM), eq(7L), eq(99L),
                 eq(FULL_KEYS), eq(EntitlementSourceKind.BETA_GRANT), any(UUID.class), eq(NOW.plusYears(2)));
         verify(betaTesterBadgeAwardService, never()).awardBetaTesterBadge(anyLong(), anyInt());
+        verify(eventPublisher, never()).publishEvent(any(BetaGrantNotificationEvent.class));
         ArgumentCaptor<BetaGrantEntity> captor = ArgumentCaptor.forClass(BetaGrantEntity.class);
         verify(betaGrantRepository).save(captor.capture());
         assertThat(captor.getValue().getActiveMemberCountSnapshot()).isEqualTo(6);
@@ -238,8 +240,7 @@ class BetaGrantServiceTest {
                 .isInstanceOf(BusinessException.class);
 
         verify(betaTesterBadgeAwardService, never()).awardBetaTesterBadge(anyLong(), anyInt());
-        verify(notificationHelper, never()).notify(anyLong(), any(), any(), any(), any(),
-                any(), any(), any(), any(), any(), any());
+        verify(eventPublisher, never()).publishEvent(any(BetaGrantNotificationEvent.class));
         verify(cacheEvictor, never()).evictScopeFeatures(any(), any(), any());
     }
 
@@ -255,8 +256,8 @@ class BetaGrantServiceTest {
         service.grantBetaPerk(GrantKind.INDIVIDUAL, 1, EntitlementScopeKind.USER, 42L, null, true, 9L);
 
         verify(entitlementIssuanceService).issue(any(), any(), any(), anyList(), any(), any(), isNull());
-        verify(notificationHelper).notify(eq(42L), eq("BETA_PERK_GRANTED"), any(), any(), any(),
-                any(), any(), any(), any(), any(), any());
+        verify(eventPublisher).publishEvent(new BetaGrantNotificationEvent(
+                42L, NotificationType.BETA_PERK_GRANTED, "msg", "msg"));
     }
 
     // ------------------------------------------------------------------ 取消
@@ -288,6 +289,8 @@ class BetaGrantServiceTest {
         assertThat(grant.isRevoked()).isTrue();
         assertThat(e1.getRevokedAt()).isEqualTo(NOW);
         verify(entitlementRepository).saveAll(anyList());
+        verify(eventPublisher).publishEvent(new BetaGrantNotificationEvent(
+                42L, NotificationType.BETA_PERK_REVOKED, "msg", "msg"));
     }
 
     @Test
@@ -336,6 +339,7 @@ class BetaGrantServiceTest {
                 eq(EntitlementSourceKind.BETA_GRANT), eq(grant.getId()), eq(until.plusMonths(6)));
         // append-only: 既存行の UPDATE(saveAll)はしない。
         verify(entitlementRepository, never()).saveAll(anyList());
+        verify(eventPublisher, never()).publishEvent(any(BetaGrantNotificationEvent.class));
     }
 
     @Test
@@ -368,5 +372,6 @@ class BetaGrantServiceTest {
         assertThat(grant.isRevoked()).isTrue();
         assertThat(grant.getRevokeReason()).isEqualTo(BetaRevokeReason.WITHDRAWAL);
         assertThat(e1.getRevokedAt()).isEqualTo(NOW);
+        verify(eventPublisher, never()).publishEvent(any(BetaGrantNotificationEvent.class));
     }
 }

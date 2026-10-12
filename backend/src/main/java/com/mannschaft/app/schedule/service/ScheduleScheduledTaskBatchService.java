@@ -150,7 +150,7 @@ public class ScheduleScheduledTaskBatchService {
             SurveyDetailResponse detail = surveyService.createSurvey(
                     scopeType, current.getScopeId(), current.getCreatedBy(), request);
             Long surveyId = detail.getId();
-            surveyService.publishSurvey(scopeType, current.getScopeId(), surveyId);
+            surveyService.publishSurvey(scopeType, current.getScopeId(), surveyId, false);
             current.markCreated(surveyId);
             scheduledTaskRepository.save(current);
             log.info("予約アンケートmaterialize: taskId={}, surveyId={}", current.getId(), surveyId);
