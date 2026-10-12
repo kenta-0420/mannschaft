@@ -1,4 +1,9 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "スキルの詳細取得に失敗しました"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "Reply in Thread",

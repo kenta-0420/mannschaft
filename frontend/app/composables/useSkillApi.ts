@@ -1,5 +1,6 @@
 import type {
   MemberSkillResponse,
+  SkillSearchItem,
   SkillCategoryResponse,
   RegisterSkillRequest,
   UpdateSkillRequest,
@@ -59,7 +60,7 @@ export function useSkillApi() {
 
   async function searchSkills(teamId: string, params: Record<string, unknown> = {}) {
     const qs = buildQuery(params)
-    return api<{ data: MemberSkillResponse[] }>(
+    return api<{ data: SkillSearchItem[] }>(
       `/api/v1/teams/${teamId}/skills/search${qs ? `?${qs}` : ''}`,
     )
   }

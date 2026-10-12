@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MemberSkillResponse, SkillCategoryResponse, SkillStatus } from '~/types/skill'
+import type { MemberSkillResponse, SkillCategoryResponse, SkillSearchItem, SkillStatus } from '~/types/skill'
 
 const props = defineProps<{
   teamId: string
@@ -12,11 +12,13 @@ const emit = defineEmits<{
   verify: [skill: MemberSkillResponse]
 }>()
 
-const { searchSkills, deleteSkill, verifySkill, getCertificateUrl } = useSkillApi()
+const { searchSkills, getSkill, deleteSkill, verifySkill, getCertificateUrl } = useSkillApi()
 const notification = useNotification()
 const { formatDate } = useDatetime()
+const { t } = useI18n()
+const authStore = useAuthStore()
 
-const items = ref<MemberSkillResponse[]>([])
+const items = ref<SkillSearchItem[]>([])
 const categories = ref<SkillCategoryResponse[]>([])
 const loading = ref(false)
 
@@ -63,6 +65,17 @@ async function loadItems() {
   }
 }
 
+function getCategoryName(categoryId: number): string {
+  return categories.value.find((c) => c.id === categoryId)?.name ?? ''
+}
+
+/** BE は編集・削除・証明書を本人または ADMIN/DEPUTY_ADMIN のみに許す。 */
+function canOperate(skill: SkillSearchItem): boolean {
+  const currentUserId = authStore.currentUser?.id
+  const isOwner = typeof currentUserId === 'number' && skill.userId === currentUserId
+  return isOwner || !!props.canManage
+}
+
 function getStatusClass(status: SkillStatus): string {
   switch (status) {
     case 'ACTIVE': return 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
@@ -86,9 +99,18 @@ function formatSkillDate(dateStr: string | null): string {
   return formatDate(dateStr)
 }
 
-async function handleDelete(skill: MemberSkillResponse) {
+async function handleEdit(skill: SkillSearchItem) {
   try {
-    await deleteSkill(props.teamId, skill.id)
+    const res = await getSkill(props.teamId, skill.memberSkillId)
+    emit('edit', res.data)
+  } catch {
+    notification.error(t('skill.list.loadDetailFailed'))
+  }
+}
+
+async function handleDelete(skill: SkillSearchItem) {
+  try {
+    await deleteSkill(props.teamId, skill.memberSkillId)
     notification.success('スキルを削除しました')
     await loadItems()
   } catch {
@@ -96,9 +118,9 @@ async function handleDelete(skill: MemberSkillResponse) {
   }
 }
 
-async function handleVerify(skill: MemberSkillResponse) {
+async function handleVerify(skill: SkillSearchItem) {
   try {
-    await verifySkill(props.teamId, skill.id)
+    await verifySkill(props.teamId, skill.memberSkillId)
     notification.success('スキルを承認しました')
     await loadItems()
   } catch {
@@ -106,9 +128,9 @@ async function handleVerify(skill: MemberSkillResponse) {
   }
 }
 
-async function handleDownloadCertificate(skill: MemberSkillResponse) {
+async function handleDownloadCertificate(skill: SkillSearchItem) {
   try {
-    const res = await getCertificateUrl(props.teamId, skill.id)
+    const res = await getCertificateUrl(props.teamId, skill.memberSkillId)
     window.open(res.data.url, '_blank')
   } catch {
     notification.error('証明書の取得に失敗しました')
@@ -169,7 +191,7 @@ defineExpose({ refresh: loadItems })
     <div v-else class="space-y-2">
       <div
         v-for="skill in items"
-        :key="skill.id"
+        :key="skill.memberSkillId"
         class="flex items-center gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
       >
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-100 dark:bg-surface-700">
@@ -184,10 +206,10 @@ defineExpose({ refresh: loadItems })
               {{ getStatusLabel(skill.status) }}
             </span>
             <span class="rounded bg-surface-100 px-1.5 py-0.5 text-xs text-surface-500 dark:bg-surface-700">
-              {{ skill.categoryName }}
+              {{ getCategoryName(skill.categoryId) }}
             </span>
           </div>
-          <h3 class="text-sm font-semibold">{{ skill.name }}</h3>
+          <h3 class="text-sm font-semibold">{{ skill.skillName }}</h3>
           <div class="text-xs text-surface-400">
             <span v-if="skill.issuer">{{ skill.issuer }}</span>
             <span v-if="skill.issuer && skill.credentialNumber"> / </span>
@@ -201,7 +223,7 @@ defineExpose({ refresh: loadItems })
         </div>
         <div class="flex shrink-0 gap-1">
           <Button
-            v-if="skill.hasCertificate"
+            v-if="canOperate(skill)"
             v-tooltip.top="'証明書を表示'"
             icon="pi pi-download"
             size="small"
@@ -219,13 +241,14 @@ defineExpose({ refresh: loadItems })
             @click="handleVerify(skill)"
           />
           <Button
+            v-if="canOperate(skill)"
             icon="pi pi-pencil"
             size="small"
             text
-            @click="emit('edit', skill)"
+            @click="handleEdit(skill)"
           />
           <Button
-            v-if="canManage"
+            v-if="canOperate(skill)"
             icon="pi pi-trash"
             size="small"
             text

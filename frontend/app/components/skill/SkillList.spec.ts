@@ -16,6 +16,7 @@ const api = vi.hoisted(() => ({
 const notify = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }))
 const auth = vi.hoisted(() => ({ currentUser: { id: 10 } as { id: number } | null }))
 
+vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 mockNuxtImport('useSkillApi', () => () => api)
 mockNuxtImport('useNotification', () => () => notify)
 mockNuxtImport('useDatetime', () => () => ({ formatDate: (v: string) => v }))
