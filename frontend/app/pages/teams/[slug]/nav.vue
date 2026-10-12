@@ -91,7 +91,7 @@ onMounted(() => {
       <TeamFriendList
         ref="listRef"
         :team-id="teamSlug"
-        :can-edit="isAdminOrDeputy"
+        :can-edit="canManageFriends"
         :can-toggle-visibility="isAdmin"
       />
 

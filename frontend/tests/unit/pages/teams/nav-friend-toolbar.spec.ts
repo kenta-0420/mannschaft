@@ -1,3 +1,4 @@
+import { computed, defineComponent } from 'vue'
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import TeamNavPage from '~/pages/teams/[slug]/nav.vue'
@@ -25,8 +26,8 @@ const shell = vi.hoisted(() => ({
 vi.mock('~/composables/useTeamShellContext', () => ({
   useTeamShellContext: () => ({
     roleName: { value: shell.roleName },
-    isAdmin: { value: shell.isAdmin },
-    isAdminOrDeputy: { value: shell.isAdminOrDeputy },
+    isAdmin: computed(() => shell.isAdmin),
+    isAdminOrDeputy: computed(() => shell.isAdminOrDeputy),
   }),
 }))
 
@@ -91,6 +92,22 @@ describe('pages/teams/[slug]/nav.vue — フレンドチームタブのツール
     setRole('SUPPORTER')
     const w = await mountNav()
     expect(w.find('[data-testid="friend-supporter-notice"]').exists()).toBe(true)
+  })
+
+  it('NAVF-007: MANAGE_FRIEND_TEAMS 無しの DEPUTY_ADMIN では TeamFriendList の canEdit が false', async () => {
+    setRole('DEPUTY_ADMIN')
+    const w = await mountSuspended(TeamNavPage, {
+      global: {
+        stubs: {
+          ...stubs,
+          TeamFriendList: defineComponent({
+            props: { canEdit: Boolean },
+            template: '<div data-testid="list-stub" :data-can-edit="String(canEdit)" />',
+          }),
+        },
+      },
+    })
+    expect(w.find('[data-testid="list-stub"]').attributes('data-can-edit')).toBe('false')
   })
 
   it('NAVF-006: ボタンは whitespace-nowrap / shrink-0 で潰れず、行は flex-wrap', async () => {
