@@ -302,16 +302,22 @@ class SkillViewScopeAndMatrixContractIT extends AbstractMySqlIntegrationTest {
         }
 
         @Test
-        @DisplayName("B-AC2: 個別ID系は不変 — SUPPORTER が他人の資格を叩くと 403 COMMON_002（所属者扱い）、不在IDは 404 SKILL_002")
+        @DisplayName("B-AC2: 個別ID系は不変 — 在籍者（SUPPORTER）は所属者扱いで 403 COMMON_002。非メンバーの 404 SKILL_002 とは別（不在IDは 404 SKILL_002）")
         void BAC2_個別ID系のSUPPORTER応答は不変() throws Exception {
+            // 在籍者（SUPPORTER）は memberships に在籍するため ScopeConcealingAccessGate が所属者として扱い、
+            // GET / certificate-url / PUT / DELETE のいずれも 403 COMMON_002。非メンバーの 404 SKILL_002 とは別契約。
             Long skillId = saveSkill(memberId, teamAId, categoryXId, "SKVIEW 一般の資格", SkillStatus.ACTIVE, null, null);
             String base = "/api/v1/teams/" + teamAId + "/skills/";
 
             assertThat(callPath(supporterId, "GET", base + skillId)).isEqualTo(FORBIDDEN);
             assertThat(callPath(supporterId, "GET", base + skillId + "/certificate-url")).isEqualTo(FORBIDDEN);
+            Map<String, Object> putBody = new LinkedHashMap<>();
+            putBody.put("name", "SKVIEW SUPPORTERによる改名");
+            assertThat(toResp(perform(supporterId, HttpMethod.PUT, base + skillId, putBody))).isEqualTo(FORBIDDEN);
             assertThat(callPath(supporterId, "DELETE", base + skillId)).isEqualTo(FORBIDDEN);
             assertThat(callPath(supporterId, "GET", base + 999_999_999L)).isEqualTo(SKILL_NOT_FOUND);
             assertThat(countSkills(memberId, "SKVIEW 一般の資格")).isEqualTo(1L);
+            assertThat(countSkills(memberId, "SKVIEW SUPPORTERによる改名")).isZero();
         }
 
         private void assertMemberAllowed(Long actor) throws Exception {
