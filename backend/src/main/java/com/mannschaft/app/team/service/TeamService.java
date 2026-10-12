@@ -98,6 +98,7 @@ public class TeamService {
     private final MediaUrlResolver mediaUrlResolver;
     private final AdminRoleMutationLockService adminRoleMutationLockService;
     private final DuplicateNameGuardService duplicateNameGuardService;
+    private final TeamOrgLifecycleCleanupService teamOrgLifecycleCleanupService;
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。
@@ -770,11 +771,17 @@ public class TeamService {
             @CacheEvict(value = "team-search", allEntries = true)
     })
     public void archiveTeam(Long teamId) {
-        TeamEntity team = findTeamOrThrow(teamId);
+        // F01.2.1 §4.5・§6.9: 最初にチーム行を PESSIMISTIC_WRITE で取り、ロック取得後に未アーカイブを再確認する。
+        // 申請・招待の作成（どちらも最初にチーム行を取る）と直列化される
+        TeamEntity team = teamRepository.findByIdForUpdate(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
         if (team.getArchivedAt() != null) {
             throw new BusinessException(TeamErrorCode.TEAM_002);
         }
         team.archive();
+        // 当該チームの PENDING（申請・招待の両方向）を同じトランザクションで削除し、相手側（組織 ADMIN）へ取消を予約する。
+        // ACTIVE は残す（既存のアーカイブ規則どおり）
+        teamOrgLifecycleCleanupService.cancelPendingOfArchivedTeam(team);
         log.info("チームアーカイブ完了: teamId={}", teamId);
     }
 

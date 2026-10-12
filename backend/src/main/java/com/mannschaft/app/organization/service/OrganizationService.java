@@ -35,7 +35,9 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.service.AdminRoleMutationLockService;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.organization.event.OrganizationCreatedEvent;
+import com.mannschaft.app.organization.event.OrganizationArchivedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
+import com.mannschaft.app.organization.teamgroup.repository.OrgTeamGroupRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
@@ -82,6 +84,8 @@ public class OrganizationService {
     private final MediaUrlResolver mediaUrlResolver;
     private final AdminRoleMutationLockService adminRoleMutationLockService;
     private final DuplicateNameGuardService duplicateNameGuardService;
+    private final OrgTeamGroupRepository orgTeamGroupRepository;
+    private final java.time.Clock clock;
 
     /**
      * 組織を作成し、作成者をADMINロールで紐付ける。
@@ -718,6 +722,11 @@ public class OrganizationService {
         inviteTokenRepository.findByOrganizationIdAndRevokedAtIsNull(orgId)
                 .forEach(InviteTokenEntity::revoke);
 
+        // F01.2.1 §4.5: チームグループは同じ organization ドメインなので、同じトランザクションで全件を論理削除する
+        // （加盟の PENDING・制限の片付けは team ドメインが OrganizationDeletedEvent の AFTER_COMMIT で行う）
+        orgTeamGroupRepository.softDeleteAllByOrganizationId(orgId,
+                java.time.Instant.now(clock).truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
+
         // 監査ログ用イベント発行
         eventPublisher.publishEvent(new OrganizationDeletedEvent(userId, orgId));
 
@@ -741,11 +750,16 @@ public class OrganizationService {
     @Transactional
     @CacheEvict(value = "org-detail", allEntries = true)
     public void archiveOrganization(Long orgId) {
-        OrganizationEntity org = findOrganizationOrThrow(orgId);
+        // F01.2.1 §6.9: 最初に組織行を PESSIMISTIC_WRITE で取り、ロック取得後に未アーカイブを再確認する。
+        // 申請の作成（チーム行 → 組織行）・招待のコミット後の読み直し（組織行の共有ロック）と直列化される
+        OrganizationEntity org = organizationRepository.findByIdForUpdate(orgId)
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
         if (org.getArchivedAt() != null) {
             throw new BusinessException(OrgErrorCode.ORG_003);
         }
         org.archive();
+        // 当該組織の PENDING（申請・招待）の片付けは team ドメインが AFTER_COMMIT で行う（§4.5。ACTIVE は残す）
+        eventPublisher.publishEvent(new OrganizationArchivedEvent(null, orgId));
         log.info("組織アーカイブ完了: orgId={}", orgId);
     }
 

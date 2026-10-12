@@ -603,4 +603,55 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
         + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
         + "AND m.direction = com.mannschaft.app.team.entity.TeamOrgAffiliationDirection.TEAM_APPLY")
     int deletePendingApplicationOfOrganization(@Param("id") Long id, @Param("organizationId") Long organizationId);
+
+    // ========================================================================
+    // F01.2.1 2-D: 離脱・除名（§6.6）と、アーカイブ・削除の片付け（§4.5・§6.9）
+    // ========================================================================
+
+    /**
+     * 離脱・除名: 条件付き DELETE（{@code id, team_id, organization_id, ACTIVE}。§4.1・§6.6）。
+     *
+     * @return 削除した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM TeamOrgMembershipEntity m WHERE m.id = :id AND m.teamId = :teamId "
+        + "AND m.organizationId = :organizationId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.ACTIVE")
+    int deleteActiveMembership(@Param("id") Long id, @Param("teamId") Long teamId,
+                               @Param("organizationId") Long organizationId);
+
+    /**
+     * 組織の PENDING（申請・招待の両方向）を {@code SELECT ... FOR UPDATE} で ID 昇順に引く
+     * （組織のアーカイブ・論理削除の片付け。消す行と通知する行を一致させるため、ロックしてから消す）。
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM TeamOrgMembershipEntity m WHERE m.organizationId = :organizationId "
+        + "AND m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
+        + "ORDER BY m.id ASC")
+    List<TeamOrgMembershipEntity> findPendingByOrganizationIdForUpdate(@Param("organizationId") Long organizationId);
+
+    /**
+     * チームの加盟（{@code status} 指定なしなら PENDING・ACTIVE とも）を {@code SELECT ... FOR UPDATE} で ID 昇順に引く
+     * （チームのアーカイブ・論理削除の片付け）。
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM TeamOrgMembershipEntity m WHERE m.teamId = :teamId ORDER BY m.id ASC")
+    List<TeamOrgMembershipEntity> findAllByTeamIdForUpdate(@Param("teamId") Long teamId);
+
+    /**
+     * 片付けで、ロック済みの行を ID 集合で物理削除する（呼び出し側が先に {@code FOR UPDATE} で引いた行だけを渡す）。
+     *
+     * @return 削除した行数
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM TeamOrgMembershipEntity m WHERE m.id IN :ids")
+    int deleteByIdIn(@Param("ids") java.util.Collection<Long> ids);
+
+    /**
+     * GDPR の個人データ収集（F01.2.1 §15・AC-G127）: そのユーザーが起こした（{@code invited_by}）か応答した
+     * （{@code responded_by}）加盟を ID 昇順に返す。
+     */
+    @Query("SELECT m FROM TeamOrgMembershipEntity m WHERE m.invitedBy = :userId OR m.respondedBy = :userId "
+        + "ORDER BY m.id ASC")
+    List<TeamOrgMembershipEntity> findByOperatorUserId(@Param("userId") Long userId);
 }

@@ -175,4 +175,22 @@ public interface TeamOrgAffiliationRestrictionRepository
                           @Param("teamId") Long teamId,
                           @Param("direction") TeamOrgAffiliationDirection direction,
                           @Param("reason") com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionReason reason);
+
+    /**
+     * 組織の論理削除の片付け: その組織の制限を向き・種別を問わずすべて物理削除する（F01.2.1 §4.5・2-D）。
+     *
+     * @return 削除した行数
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM TeamOrgAffiliationRestrictionEntity r WHERE r.organizationId = :organizationId")
+    int deleteAllByOrganizationId(@Param("organizationId") Long organizationId);
+
+    /**
+     * チームの論理削除の片付け: そのチームの制限を向き・種別を問わずすべて物理削除する（F01.2.1 §4.5・2-D）。
+     *
+     * @return 削除した行数
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM TeamOrgAffiliationRestrictionEntity r WHERE r.teamId = :teamId")
+    int deleteAllByTeamId(@Param("teamId") Long teamId);
 }

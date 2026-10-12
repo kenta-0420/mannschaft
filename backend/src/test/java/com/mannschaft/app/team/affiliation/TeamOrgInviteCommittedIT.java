@@ -135,7 +135,7 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
     /**
      * 「別の操作がコミットした」状況を、別スレッド（= 別のコネクション・tx 文脈なし）の自動コミットで作る。
      *
-     * <p>差し込みの呼び出し元は組織ドメインの読み取り専用 tx（{@code findAffiliationState} の {@code readOnly}）の中なので、
+     * <p>差し込みの呼び出し元は組織ドメインの読み取り専用 tx（{@code recheckAffiliationStateLocked} の tx。2-D 以前は {@code findAffiliationState} の {@code readOnly}）の中なので、
      * そこで書くと {@code Connection is read-only} で落ちる。同じ tx で先に読むと REPEATABLE READ のスナップショットが
      * 確定して後のコミットが見えなくなるため、存在の確認も含めて別スレッドで行う。</p>
      */
@@ -298,7 +298,7 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
                 }
             });
             return invocation.callRealMethod();
-        }).when(organizationPortTarget()).findAffiliationState(any());
+        }).when(organizationPortTarget()).recheckAffiliationStateLocked(any());
 
         Result invited = invite(xa, org.slug(), team.slug());
         relay.drainAll();
@@ -343,7 +343,7 @@ class TeamOrgInviteCommittedIT extends TeamOrgInviteItSupport {
                 }
             });
             return state;
-        }).when(organizationPortTarget()).findAffiliationState(any());
+        }).when(organizationPortTarget()).recheckAffiliationStateLocked(any());
 
         Result invited = invite(xa, org.slug(), team.slug());
         relay.drainAll();

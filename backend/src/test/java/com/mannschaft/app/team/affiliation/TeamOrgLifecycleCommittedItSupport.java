@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobStatus;
 import com.mannschaft.app.notification.fanout.NotificationFanoutWorker;
+import com.mannschaft.app.notification.outbox.NotificationOutboxRelay;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -64,6 +65,10 @@ abstract class TeamOrgLifecycleCommittedItSupport extends TeamAffiliationItSuppo
 
     @Autowired
     protected NotificationFanoutWorker worker;
+
+    /** team の outbox → fan-out ジョブの取り込み（試験プロファイルでは起こしを止めてあるので、ジョブを見る前に同期で回す。OB21）。 */
+    @Autowired
+    protected NotificationOutboxRelay relay;
 
     // =====================================================================
     // フィクスチャ
@@ -342,6 +347,8 @@ abstract class TeamOrgLifecycleCommittedItSupport extends TeamAffiliationItSuppo
     // =====================================================================
 
     protected List<UUID> jobIdsOf(long membershipId, String notificationType) {
+        // 通知は業務と同じ tx で team の outbox に書かれ、relay がコミット後に fan-out ジョブへ取り込む（OB21）
+        relay.drainAll();
         List<byte[]> raws = jdbc.queryForList(
                 "SELECT id FROM notification_fanout_jobs WHERE source_type = 'TEAM_ORG_MEMBERSHIP' "
                         + "AND source_id = ? AND notification_type = ?", byte[].class, membershipId, notificationType);

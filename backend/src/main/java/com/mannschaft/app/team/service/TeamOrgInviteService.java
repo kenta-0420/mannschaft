@@ -118,9 +118,11 @@ public class TeamOrgInviteService {
         TeamOrgInviteCommandService.CreatedInvite created = commandService.invite(
                 teamId, organizationId, operatorUserId, groupId, message);
 
-        // コミットの後で組織の状態を読み直す。書き込みの間にアーカイブ・削除されていたら、作った招待を取り下げる（§6.9）
+        // コミットの後で組織の状態を読み直す。書き込みの間にアーカイブ・削除されていたら、作った招待を取り下げる（§6.9）。
+        // 組織行の共有ロックで読むので、並行する組織のアーカイブがロックを持っている間は待ち、そのコミット後の状態を見る
+        // （待たずに未アーカイブを見て 201 を返した後でアーカイブがコミットされる、という順序を作らない。2-D・AC-E08）
         TeamAffiliationOrganizationPort.OrganizationAffiliationState current =
-                organizationPort.findAffiliationState(organizationId).orElse(null);
+                organizationPort.recheckAffiliationStateLocked(organizationId).orElse(null);
         if (current == null || current.archived()) {
             commandService.withdrawInviteOfClosedOrganization(created.id(), organizationId);
             throw new BusinessException(current == null ? OrgErrorCode.ORG_001 : OrgErrorCode.ORG_003);

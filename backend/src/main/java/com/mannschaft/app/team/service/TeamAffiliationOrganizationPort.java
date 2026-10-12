@@ -69,6 +69,33 @@ public interface TeamAffiliationOrganizationPort {
     Optional<OrganizationAffiliationState> findAffiliationState(Long organizationId);
 
     /**
+     * 組織の状態を、組織行の<b>共有ロック</b>（{@code SELECT ... FOR SHARE}）を取って読み直す（F01.2.1 2-D・§6.9）。
+     *
+     * <p>招待の作成は組織行をロックしないため、コミットの後に組織の状態を読み直す。ロックしない読み取りでは、
+     * 並行する組織のアーカイブ（組織行の {@code PESSIMISTIC_WRITE}）がまだコミットされていないと見逃し、
+     * そのアーカイブの片付け（{@code OrganizationArchivedEvent}）との前後が時間の偶然に左右される。
+     * 共有ロックで読めば、アーカイブがロックを持っている間は待ち、コミット後の状態（アーカイブ済み）を見る。
+     * 組織ドメインの短いトランザクションで閉じ、呼び出し側のトランザクションには参加させない
+     * （チームの書き込みトランザクションの外で呼ぶ）。</p>
+     *
+     * <p>不在・論理削除済み・承諾前（PROVISIONED）は空を返す。</p>
+     */
+    Optional<OrganizationAffiliationState> recheckAffiliationStateLocked(Long organizationId);
+
+    /**
+     * slug で組織の表示用の最小情報を引く（可視性で絞らない。F01.2.1 2-D の離脱）。
+     *
+     * <p>離脱は、加盟している組織であれば非公開・アーカイブ済みでも行えるため、可視性では絞らない。
+     * 存在しない slug・論理削除済み・承諾前（PROVISIONED）は空（呼び出し側は「加盟していない」と同じ 404 に畳む）。</p>
+     */
+    Optional<OrganizationRef> findOrganizationRefBySlug(String slug);
+
+    /**
+     * 論理削除済みを含めて、組織の表示用の最小情報を ID で引く（F01.2.1 2-D・組織の論理削除の片付けの通知文面）。
+     */
+    Optional<OrganizationRef> findOrganizationRefIncludingDeleted(Long organizationId);
+
+    /**
      * ロック時点の組織の状態。
      *
      * @param id                 組織 ID

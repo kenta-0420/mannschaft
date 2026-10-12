@@ -82,6 +82,49 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
     }
 
     @Override
+    @Transactional
+    public Optional<OrganizationAffiliationState> recheckAffiliationStateLocked(Long organizationId) {
+        // 組織ドメインの短いトランザクションで共有ロックを取って読む（アーカイブの PESSIMISTIC_WRITE と直列化する。§6.9）
+        return organizationRepository.findByIdForShare(organizationId)
+                .filter(o -> o.getLifecycleStatus() == OrganizationEntity.LifecycleStatus.ACTIVE)
+                .map(OrganizationAffiliationPortAdapter::toState);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<OrganizationRef> findOrganizationRefBySlug(String slug) {
+        if (slug == null || slug.isBlank()) {
+            return Optional.empty();
+        }
+        return organizationRepository
+                .findBySlugAndDeletedAtIsNullAndLifecycleStatus(slug, OrganizationEntity.LifecycleStatus.ACTIVE)
+                .map(OrganizationAffiliationPortAdapter::toRef);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<OrganizationRef> findOrganizationRefIncludingDeleted(Long organizationId) {
+        return organizationRepository.findByIdIncludingDeleted(organizationId)
+                .map(OrganizationAffiliationPortAdapter::toRef);
+    }
+
+    private static OrganizationAffiliationState toState(OrganizationEntity org) {
+        return new OrganizationAffiliationState(
+                org.getId(),
+                org.getSlug(),
+                org.getName(),
+                org.getArchivedAt() != null,
+                Boolean.TRUE.equals(org.getTeamApplicationEnabled()),
+                Boolean.TRUE.equals(org.getTeamGroupsEnabled()),
+                org.getTeamApplicationGroupMode());
+    }
+
+    private static OrganizationRef toRef(OrganizationEntity org) {
+        return new OrganizationRef(org.getId(), org.getSlug(), org.getName(),
+                org.getIconUrl(), Boolean.TRUE.equals(org.getTeamGroupsEnabled()));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public boolean isAliveGroupOfOrganization(Long organizationId, UUID groupId) {
         return orgTeamGroupRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(groupId, organizationId)

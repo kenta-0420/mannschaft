@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <ul>
  *   <li>AC-E05（リスナー）・G117g: 組織のアーカイブで PENDING が消えて取消の通知が届き、ACTIVE は残る</li>
- *   <li>AC-C13: 組織のアーカイブ後の承認は、イベント処理の前なら 422 ORG_003（行は PENDING のまま）、後なら 404 TEAM_070</li>
+ *   <li>AC-C13: 組織のアーカイブ後の承認は、イベント処理の前なら既存のアーカイブ拒否 409 ORG_003（行は PENDING のまま）、後なら 404 TEAM_070</li>
  *   <li>AC-C14: 申請中にチームが削除されると、イベント処理後に行が消えて組織 ADMIN に通知が届く。処理前に承認すると 404</li>
  *   <li>AC-G105: チームのアーカイブは同じトランザクションで PENDING（両方向）を消し、相手側に取消を通知する。ACTIVE は残る</li>
  *   <li>AC-G106: 組織の論理削除でグループは同じトランザクションで論理削除され、制限は物理削除され、PENDING の相手側に通知が届く</li>
@@ -134,7 +134,7 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
     // =====================================================================
 
     @Test
-    @DisplayName("AC-C13 組織のアーカイブ後の承認は、イベント処理の前（PENDING が残っている間）は 422 ORG_003 で行は PENDING のまま、"
+    @DisplayName("AC-C13 組織のアーカイブ後の承認は、イベント処理の前（PENDING が残っている間）は既存のアーカイブ拒否（409 ORG_003）で行は PENDING のまま、"
             + "処理の後（行が消えた後）は 404 TEAM_070")
     void 組織アーカイブ後の承認はイベント処理の前後で応答が変わる() throws Exception {
         Fixture fx = fixture();
@@ -143,7 +143,9 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         // 処理の前: アーカイブだけを反映し、イベントはまだ処理されていない状態
         inTxVoid(() -> archiveOrganization(fx.org().id()));
         Result before = approve(fx.xa(), fx.org().slug(), id);
-        assertThat(before.status()).isEqualTo(422);
+        // 殿の判断（2-D 出陣）: 「既存のアーカイブ拒否」を正とし、2-B1・2-B2 の状態の再確認と同じ応答（ORG_003 → 409）に揃える。
+        // 設計書 §4.5・AC-C13 の「422」表記は 9-A で直す
+        assertThat(before.status()).isEqualTo(409);
         assertThat(before.errorCode()).isEqualTo("ORG_003");
         assertThat(statusOf(id)).as("承認は行を変えない").isEqualTo("PENDING");
 
@@ -243,7 +245,7 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
 
     @Test
     @DisplayName("AC-G105 チームのアーカイブは PENDING の削除と通知ジョブの enqueue を同じトランザクションで行う"
-            + "（トランザクションの中で見え、ロールバックすると何も残らない）")
+            + "（team の outbox への予約がトランザクションの中で見え、ロールバックすると何も残らない）")
     void チームアーカイブのPENDING削除と通知は同じトランザクション() {
         Fixture fx = fixture();
         long apply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
@@ -255,14 +257,16 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
             Number pendingInTx = (Number) em.createNativeQuery(
                             "SELECT COUNT(*) FROM team_org_memberships WHERE team_id = :id AND status = 'PENDING'")
                     .setParameter("id", fx.team().id()).getSingleResult();
+            // 通知は team の outbox に同じ tx で1行ずつ書かれる（fan-out ジョブはコミット後に relay が作る。§6.7・OB02）。
+            // 冪等キー（F01.2.1 §6.7）で、取り消した2件の加盟それぞれの行を数える
             Number jobsInTx = (Number) em.createNativeQuery(
-                            "SELECT COUNT(*) FROM notification_fanout_jobs WHERE source_type = 'TEAM_ORG_MEMBERSHIP' "
-                                    + "AND notification_type = :type AND source_id IN (:ids)")
+                            "SELECT COUNT(*) FROM team_notification_outbox WHERE notification_type = :type "
+                                    + "AND idempotency_key IN (:keys)")
                     .setParameter("type", CANCELLED)
-                    .setParameter("ids", List.of(apply, invite))
+                    .setParameter("keys", List.of(cancelledKey(apply), cancelledKey(invite)))
                     .getSingleResult();
             assertThat(pendingInTx.longValue()).as("トランザクションの中で PENDING が消えている").isZero();
-            assertThat(jobsInTx.longValue()).as("トランザクションの中で通知ジョブが2件 enqueue されている").isEqualTo(2);
+            assertThat(jobsInTx.longValue()).as("トランザクションの中で通知が2件 outbox に予約されている").isEqualTo(2);
             status.setRollbackOnly();
         });
 
@@ -270,6 +274,12 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         assertThat(statusOf(invite)).isEqualTo("PENDING");
         assertThat(jobIdsOf(apply, CANCELLED)).as("ロールバックすれば通知ジョブも残らない").isEmpty();
         assertThat(jobIdsOf(invite, CANCELLED)).isEmpty();
+    }
+
+    /** 取消の通知の冪等キー（F01.2.1 §6.7: {@code "F01.2.1:" + notificationType + ":" + membershipId}）。 */
+    private static byte[] cancelledKey(long membershipId) {
+        return uuidBytes(UUID.nameUUIDFromBytes(("F01.2.1:" + CANCELLED + ":" + membershipId)
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8)));
     }
 
     // =====================================================================

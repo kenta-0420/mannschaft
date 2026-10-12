@@ -324,7 +324,7 @@ class TeamServiceTest {
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
                     .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
             team.archive(); // archivedAtをセット
-            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+            given(teamRepository.findByIdForUpdate(TEAM_ID)).willReturn(Optional.of(team));
 
             // When / Then
             assertThatThrownBy(() -> service.archiveTeam(TEAM_ID))

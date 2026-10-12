@@ -121,6 +121,16 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     Optional<OrganizationEntity> findByIdForUpdate(@Param("id") Long id);
 
     /**
+     * 組織行を共有ロック（{@code SELECT ... FOR SHARE}）で取得する（F01.2.1 2-D・§6.9）。
+     *
+     * <p>招待のコミット後の組織の読み直しに使う。組織のアーカイブ（{@link #findByIdForUpdate}）がロックを持っている間は待ち、
+     * コミット後の状態を読む。共有ロック同士は互いを待たない。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("SELECT o FROM OrganizationEntity o WHERE o.id = :id")
+    Optional<OrganizationEntity> findByIdForShare(@Param("id") Long id);
+
+    /**
      * 組織をキーワード検索する（公開検索）。
      *
      * <p>認可根治 Wave6: 結果は <b>PUBLIC かつ未アーカイブ</b>の組織のみに限定する。

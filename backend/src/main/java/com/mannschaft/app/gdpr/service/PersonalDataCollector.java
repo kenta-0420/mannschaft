@@ -79,6 +79,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PersonalDataCollector {
 
+    private final com.mannschaft.app.team.service.TeamOrgMembershipQueryService teamOrgMembershipQueryService;
     private final UserRepository userRepository;
     private final OAuthAccountRepository oAuthAccountRepository;
     private final MemberProfileRepository memberProfileRepository;
@@ -493,9 +494,9 @@ public class PersonalDataCollector {
     }
 
     private String collectMemberships(Long userId) throws Exception {
-        // team_org_membershipsはTeamOrgMembershipEntityであり、userId検索メソッドが存在しない
-        log.warn("リポジトリ未実装: category=memberships (userId単独検索メソッドなし)");
-        return "[]";
+        // F01.2.1 §15・AC-G127: team_org_memberships の invited_by・responded_by として関わった加盟（team ドメインの
+        // 公開クエリサービス経由。他ドメインの Repository を直接参照しない）
+        return OBJECT_MAPPER.writeValueAsString(teamOrgMembershipQueryService.collectPersonalData(userId));
     }
 
     private String collectProfiles(Long userId) throws Exception {

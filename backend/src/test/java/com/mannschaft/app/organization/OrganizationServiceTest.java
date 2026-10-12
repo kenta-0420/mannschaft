@@ -108,8 +108,18 @@ class OrganizationServiceTest {
     @Mock
     private DuplicateNameGuardService duplicateNameGuardService;
 
+    /** F01.2.1 2-D: 組織の論理削除でチームグループを同じ tx で論理削除する。 */
+    @Mock
+    private com.mannschaft.app.organization.teamgroup.repository.OrgTeamGroupRepository orgTeamGroupRepository;
+
     @InjectMocks
     private OrganizationService organizationService;
+
+    @BeforeEach
+    void injectClock() {
+        // Clock は Mockito で作れない（abstract の JDK 型を spy しない）ので、実時計を差し込む
+        ReflectionTestUtils.setField(organizationService, "clock", java.time.Clock.systemUTC());
+    }
 
     /**
      * 検分 P1-2 是正: {@code checkForCreateAndRun} は「候補判定→createAction 実行」を
@@ -572,7 +582,7 @@ class OrganizationServiceTest {
         @DisplayName("正常アーカイブ_archivedAtが設定される")
         void 正常アーカイブ_archivedAtが設定される() {
             OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.findByIdForUpdate(ORG_ID)).willReturn(Optional.of(org));
 
             organizationService.archiveOrganization(ORG_ID);
 
@@ -583,7 +593,7 @@ class OrganizationServiceTest {
         @DisplayName("既にアーカイブ済み_ORG_003例外")
         void 既にアーカイブ済み_ORG_003例外() {
             OrganizationEntity org = createArchivedOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.findByIdForUpdate(ORG_ID)).willReturn(Optional.of(org));
 
             assertThatThrownBy(() -> organizationService.archiveOrganization(ORG_ID))
                     .isInstanceOf(BusinessException.class)
@@ -594,7 +604,7 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("組織不在_ORG_001例外")
         void 組織不在_ORG_001例外() {
-            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+            given(organizationRepository.findByIdForUpdate(999L)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> organizationService.archiveOrganization(999L))
                     .isInstanceOf(BusinessException.class)
