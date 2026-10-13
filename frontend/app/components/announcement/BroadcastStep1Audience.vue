@@ -338,13 +338,26 @@ function templateHasGroupItems(template: AnnouncementTemplate): boolean {
     || template.includeUnassigned === true
 }
 
+/** 最後に始まったテンプレート適用の通し番号（適用が失効したとき、後続の適用が走っていないかの判定に使う） */
+let applySeq = 0
+
 async function onTemplateApply(template: AnnouncementTemplate) {
   templateNotice.value = null
+  const seq = ++applySeq
   // 世代はグループ一覧の待機より前に採番する（待機中に宛先を手で変えたら、この適用は捨てる）
   const gen = ++audienceGen
   // グループ一覧（機能 on/off の判定を含む）が揃う前に適用すると、グループ付きテンプレートを誤って「すべて」にしてしまう
   await groupsReady
-  if (gen !== audienceGen) return
+  if (gen !== audienceGen) {
+    // 不変条件: templateId が残ってよいのは「適用が完了し、その後宛先が変わっていない」ときだけ。
+    // セレクターは apply より先に templateId を保存するため、失効した適用の未適用 templateId をここで必ず外す
+    // （残すと、画面は「すべて」のまま templateId だけが送られ、BE が未適用テンプレートの宛先を復元してしまう）。
+    // 後続の適用が走っている（seq が進んでいる）ときは、その適用が templateId を決めるので触らない。
+    if (seq === applySeq && props.modelValue.templateId === template.id) {
+      emit('update:modelValue', { ...props.modelValue, templateId: null })
+    }
+    return
+  }
   const hasGroups = isOrg.value && groupsEnabled.value && templateHasGroupItems(template)
   const mode: BroadcastTargetMode = template.targetTeamIds != null ? 'TEAMS' : hasGroups ? 'GROUPS' : 'ALL'
   const next: WizardFormState = {

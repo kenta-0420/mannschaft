@@ -466,7 +466,10 @@ describe('テンプレート（AC-J02/J03）', () => {
         'onUpdate:modelValue': (v: WizardFormState) => { latest = v; void wrapper?.setProps({ modelValue: v }) },
       },
     })
-    ;(wrapper.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template())
+    // 実セレクターと同じ順序: update:modelValue（templateId の保存）→ apply
+    const selector = wrapper.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper
+    selector.vm.$emit('update:modelValue', 5)
+    selector.vm.$emit('apply', template())
     await flushPromises()
     // 取得待ちの間に、利用者が宛先をすべてのチームへ変える
     await emitFrom(wrapper, 'broadcast-target-mode-all', 'ALL')
@@ -495,7 +498,10 @@ describe('テンプレート（AC-J02/J03）', () => {
 
   it('High(3巡目): 取得待ち中に対象ロール（公開範囲）を変えたら、取得後の古いテンプレートの公開範囲で上書きされない', async () => {
     const release = await mountWaiting()
-    ;(wrapper!.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template({ targetRole: 'PUBLIC' }))
+    // 実セレクターと同じ順序: update:modelValue（templateId の保存）→ apply
+    const selector = wrapper!.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper
+    selector.vm.$emit('update:modelValue', 5)
+    selector.vm.$emit('apply', template({ targetRole: 'PUBLIC' }))
     await flushPromises()
     // 取得待ちの間に、利用者が公開範囲を絞る（テンプレートは PUBLIC）
     await wrapper!.get('#target_role_SUPPORTERS_AND_ABOVE').setValue(true)

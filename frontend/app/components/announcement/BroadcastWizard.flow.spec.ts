@@ -147,3 +147,63 @@ describe('通常導線（チャネルは画面操作で選ぶ）', () => {
     expect(last?.targetGroupIds).toBeUndefined()
   })
 })
+
+describe('実際のテンプレートセレクター経由（update:modelValue → apply の順序を再現）', () => {
+  const Step3Stub = defineComponent({
+    emits: ['submit', 'back'],
+    template: `<button data-testid="s3" @click="$emit('submit')">s3</button>`,
+  })
+  const TEMPLATE = {
+    id: 5, name: 'T', targetRole: 'PUBLIC', targetTeamIds: null, targetGroupIds: ['g1'],
+    targetGroupRange: null, includeUnassigned: false, preferredChannel: null, isDefault: false, createdBy: null,
+    createdAt: '2026-10-01T00:00:00',
+  }
+
+  function sentBody(): Record<string, unknown> | undefined {
+    const call = mockApi.mock.calls.find(([url, o]) => String(url).endsWith('/broadcast') && (o as { method?: string })?.method === 'POST') as
+      [string, { body: Record<string, unknown> }] | undefined
+    return call?.[1].body
+  }
+
+  it('Medium(4巡目): 「すべて」のまま一覧取得中にグループ付きテンプレートを選び公開範囲を変えても、未適用の templateId は送られない', async () => {
+    let release: (v: unknown) => void = () => {}
+    mockApi.mockImplementation((url: string, opts?: { method?: string, body?: Record<string, unknown> }) => {
+      if (url.endsWith('/team-groups')) return new Promise(r => { release = r })
+      if (url.endsWith('/announcement-templates')) return Promise.resolve({ data: [TEMPLATE] })
+      if (url.endsWith('/broadcast') && opts?.method === 'POST') {
+        return Promise.resolve({ data: { announcementFeedId: 1, channel: 'BULLETIN_THREAD', contentId: 2, contentUrl: '/x', targetRole: 'SUPPORTERS_AND_ABOVE', targetTeamIds: null, priority: 'NORMAL', createdAt: '2026-10-14T00:00:00', warnings: [] } })
+      }
+      return route(url, opts)
+    })
+    wrapper = await mountSuspended(BroadcastWizard, {
+      props: { visible: true, scopeType: 'ORGANIZATION', scopeId: 'acme', isAdmin: true },
+      global: { stubs: { Dialog, BroadcastGuideContent: true, BroadcastStep3Content: Step3Stub } },
+    })
+    const w = wrapper
+    await flushPromises()
+
+    // 実セレクターの Select が値を選ぶ（update:modelValue で templateId を保存 → apply の順）
+    const select = w.getComponent(BroadcastTemplateSelector).findComponent({ name: 'Select' })
+    select.vm.$emit('update:modelValue', 5)
+    await flushPromises()
+    // 一覧の取得待ち中に、利用者が公開範囲を絞る（適用は失効する）
+    await w.get('#target_role_SUPPORTERS_AND_ABOVE').setValue(true)
+    await flushPromises()
+    release({ data: GROUPS, meta: { unassignedTeamCount: 0, limit: 100 } })
+    await flushPromises()
+    await settle()
+
+    // 適用は捨てられ、画面は「すべて」のまま。未適用の templateId は残らない
+    await click(w, 'broadcast-step1-next')
+    await click(w, 'broadcast-channel-BULLETIN_THREAD')
+    await click(w, 'broadcast-step2-next')
+    await w.get('[data-testid="s3"]').trigger('click')
+    await flushPromises()
+    const body = sentBody()
+    expect(body).toBeDefined()
+    expect(body?.templateId ?? null).toBeNull()
+    expect(body?.targetRole).toBe('SUPPORTERS_AND_ABOVE')
+    expect(body?.targetGroupIds ?? []).toEqual([])
+    expect(body?.targetTeamIds ?? null).toBeNull()
+  })
+})
