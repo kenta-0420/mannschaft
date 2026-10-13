@@ -1,0 +1,74 @@
+{
+  "orgMemberTeams": {
+    "switcher_label": "Ansicht wechseln",
+    "count_error": "Die Anzahl offener Anträge konnte nicht geladen werden",
+    "groups_load_error": "Die Teamgruppen konnten nicht geladen werden. Bitte später erneut versuchen.",
+    "groups_placeholder": "Die Verwaltung der Teamgruppen folgt in Kürze",
+    "pager": {
+      "prev": "Zurück",
+      "next": "Weiter",
+      "info": "Seite {page} / {total}"
+    },
+    "applications": {
+      "load_error": "Die Beitrittsanträge konnten nicht geladen werden. Bitte später erneut versuchen.",
+      "empty": "Es gibt keine offenen Beitrittsanträge",
+      "requested_by": "Antragsteller: {name}",
+      "requested_group": "Gewünschte Gruppe: {group}",
+      "requested_at": "Beantragt am: {date}"
+    },
+    "approve": {
+      "error": "Die Genehmigung ist fehlgeschlagen. Bitte später erneut versuchen."
+    },
+    "reject": {
+      "title": "Antrag von {team} ablehnen",
+      "hint": "Nach der Ablehnung kann dieses Team 30 Tage lang keinen Antrag an diese Organisation stellen. Mit „Künftig nicht mehr annehmen“ gilt die Sperre unbefristet (später unter „Antragssperren“ aufhebbar).",
+      "error": "Die Ablehnung ist fehlgeschlagen. Bitte später erneut versuchen."
+    },
+    "invites": {
+      "load_error": "Die gesendeten Einladungen konnten nicht geladen werden. Bitte später erneut versuchen.",
+      "empty": "Es gibt keine Einladungen, die auf eine Antwort warten",
+      "group": "Gruppe: {group}",
+      "invited_at": "Eingeladen am: {date}",
+      "expires_at": "Wird automatisch zurückgezogen, wenn bis {date} keine Antwort kommt",
+      "cancelled": "Einladung zurückgezogen",
+      "cancel_confirm_title": "Einladung zurückziehen?",
+      "cancel_confirm": "Die Einladung an „{team}“ wird zurückgezogen und verschwindet aus den empfangenen Einladungen des Teams.",
+      "cancel_error": "Die Einladung konnte nicht zurückgezogen werden. Bitte später erneut versuchen."
+    },
+    "invite_dialog": {
+      "title": "Team zum Beitritt einladen",
+      "search_label": "Öffentliches Team suchen",
+      "search_placeholder": "Nach Teamname suchen",
+      "search": "Suchen",
+      "search_error": "Die Suche ist fehlgeschlagen. Bitte später erneut versuchen.",
+      "no_results": "Keine passenden öffentlichen Teams gefunden",
+      "member_count": "{count} Mitglieder",
+      "group": "Teamgruppe (optional)",
+      "submit": "Einladen",
+      "success": "Einladung gesendet",
+      "error": "Die Einladung ist fehlgeschlagen. Das Team ist möglicherweise bereits eingeladen oder angeschlossen oder kann derzeit nicht eingeladen werden."
+    },
+    "restrictions": {
+      "load_error": "Die Antragssperren konnten nicht geladen werden. Bitte später erneut versuchen.",
+      "empty": "Es gibt keine Teams mit Antragssperre",
+      "lifted": "Sperre aufgehoben",
+      "lift_error": "Die Sperre konnte nicht aufgehoben werden. Bitte später erneut versuchen."
+    },
+    "guide": {
+      "title": "Anträge, Einladungen und Sperren verwenden",
+      "description": "In der Ansicht der angeschlossenen Teams bearbeiten Sie Beitrittsanträge, laden Teams ein und verwalten Antragssperren.",
+      "applications": {
+        "title": "Anträge bearbeiten",
+        "body": "Unter „Beitrittsanträge“ erscheinen die Anträge der Teams. „Genehmigen“ bestätigt die Gruppe und nimmt das Team auf, „Ablehnen“ lehnt mit optionaler Begründung ab. Die Anzahl wird als Badge am Umschalter angezeigt."
+      },
+      "invites": {
+        "title": "Team einladen",
+        "body": "Über „Team einladen“ unter „Gesendete Einladungen“ suchen Sie öffentliche Teams und senden eine Einladung. Unbeantwortete Einladungen können Sie hier zurückziehen."
+      },
+      "restrictions": {
+        "title": "Antragssperre aufheben",
+        "body": "Ein abgelehntes Team kann 30 Tage lang oder bei Blockierung unbefristet keinen Antrag stellen. Unter „Antragssperren“ können Sie die Sperre jederzeit aufheben."
+      }
+    }
+  }
+}
