@@ -77,7 +77,15 @@ const DashboardEmptyState = defineComponent({
   props: { icon: String, message: String },
   setup: (p) => () => h('div', { 'data-test': 'empty', 'data-icon': p.icon }, p.message),
 })
+const DashboardErrorState = defineComponent({
+  name: 'DashboardErrorState',
+  props: { error: null, message: String },
+  emits: ['retry'],
+  setup: (p, { emit }) => () =>
+    h('button', { 'data-test': 'error-state', onClick: () => emit('retry') }, p.message),
+})
 const stubs = {
+  DashboardErrorState,
   SkillList,
   SkillMatrix,
   SkillCategoryManager,
@@ -170,14 +178,46 @@ describe('skills.vue: F-AC4 非メンバー', () => {
     expect(notify.error).not.toHaveBeenCalled()
   })
 
-  it('権限情報の取得に失敗したら握りつぶさず失敗通知し、「権限なし」とは別の表示にする', async () => {
+  it('権限情報の取得に失敗したら失敗通知し、「権限なし」ではなく再試行付きエラー表示にする', async () => {
     setRole(null)
     perm.loadPermissions.mockResolvedValue({ ok: false, error: new Error('500') })
     const w = await render()
     expect(notify.error).toHaveBeenCalled()
+    expect(has(w, 'error-state')).toBe(true)
+    expect(has(w, 'empty')).toBe(false)
     expect(has(w, 'skill-list')).toBe(false)
     expect(api.getSkillCategories).not.toHaveBeenCalled()
-    expect(w.find('[data-test="empty"]').attributes('data-icon')).not.toBe('pi pi-lock')
+  })
+
+  it('再試行で権限・カテゴリを再取得し、成功すれば通常表示へ戻る', async () => {
+    setRole(null)
+    perm.loadPermissions.mockResolvedValueOnce({ ok: false, error: new Error('503') })
+    const w = await render()
+    expect(has(w, 'error-state')).toBe(true)
+    // 再試行時は権限取得が成功し、ロールが解決される
+    perm.loadPermissions.mockImplementationOnce(async () => {
+      perm.roleName!.value = 'ADMIN'
+      perm.permissions!.value = ['MANAGE_MEMBER']
+      return { ok: true }
+    })
+    await w.find('[data-test="error-state"]').trigger('click')
+    await flushPromises()
+    expect(perm.loadPermissions).toHaveBeenCalledTimes(2)
+    expect(api.getSkillCategories).toHaveBeenCalledTimes(1)
+    expect(has(w, 'error-state')).toBe(false)
+    expect(w.find('[data-test="skill-list"]').attributes('data-scope')).toBe('all')
+  })
+
+  it('再試行も失敗したらエラー表示のまま', async () => {
+    setRole(null)
+    perm.loadPermissions.mockResolvedValue({ ok: false, error: new Error('503') })
+    const w = await render()
+    await w.find('[data-test="error-state"]').trigger('click')
+    await flushPromises()
+    expect(perm.loadPermissions).toHaveBeenCalledTimes(2)
+    expect(has(w, 'error-state')).toBe(true)
+    expect(has(w, 'skill-list')).toBe(false)
+    expect(api.getSkillCategories).not.toHaveBeenCalled()
   })
 })
 

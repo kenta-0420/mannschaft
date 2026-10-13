@@ -95,10 +95,10 @@ onMounted(loadData)
     <PageLoading v-if="loading" />
 
     <!-- 権限情報の取得失敗（「権限なし」とは別物） -->
-    <DashboardEmptyState
+    <DashboardErrorState
       v-else-if="permissionFailed"
-      icon="pi pi-exclamation-triangle"
       :message="t('skill.page.permissionLoadFailed')"
+      @retry="loadData"
     />
 
     <!-- 非メンバー・SUPPORTER・GUEST -->
