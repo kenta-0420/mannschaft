@@ -79,10 +79,10 @@
   },
   "regressions": [
     {
-      "description": "ALIC-1/2: フレンドチームのタブから使い方・フォローへ到達できなかった（アリシゼーションで発見、PR #3829 で修正）。使い方モーダル本体は PR #3788。範囲外の観測: 360px・de で既存の管理者ショートカット（Freundesordner / Ausgehende Weiterleitungen）の文字切れがあるが、#3829 以前からの既存 UI で本戦役の対象外。ALIC-3 は CMP-261012-0315 として別戦役に登録済み。",
+      "description": "ALIC-1/2: フレンドチームのタブから使い方・フォローへ到達できなかった（アリシゼーションで発見、PR #3829 で修正）。使い方モーダル本体は PR #3788。範囲外の観測: 360px・de で既存の管理者ショートカット（Freundesordner / Ausgehende Weiterleitungen）の文字切れがあるが、#3829 以前からの既存 UI で本戦役の対象外。ALIC-3 は CMP-261012-0315 として別戦役に登録済み。red: 修正前に 6件中5件が失敗し、DEPUTY 権限の追加テスト NAVF-007 は修正前に expected 'true' to be 'false' で失敗。green: 修正後 3 spec で 54 件 passed、PR #3829 の CI 緑。",
       "test": "frontend/tests/unit/pages/teams/nav-friend-toolbar.spec.ts NAVF-001〜007",
-      "redEvidence": "修正前に 6件中5件が失敗。DEPUTY 権限の追加テスト NAVF-007 は修正前に expected 'true' to be 'false' で失敗。https://github.com/kenta-0420/mannschaft/pull/3829",
-      "greenEvidence": "修正後 3 spec で 54 件 passed。PR #3829 の CI 緑。https://github.com/kenta-0420/mannschaft/pull/3829"
+      "redEvidence": "https://github.com/kenta-0420/mannschaft/pull/3829",
+      "greenEvidence": "https://github.com/kenta-0420/mannschaft/pull/3829"
     }
   ]
 }
