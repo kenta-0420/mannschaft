@@ -16,7 +16,7 @@
  * - PATCH  /api/v1/organizations/{slug}/team-groups/{groupId}                   … 改名・説明変更（8-C）
  * - DELETE /api/v1/organizations/{slug}/team-groups/{groupId}                   … 削除（所属チームは未分類へ。8-C）
  * - PUT    /api/v1/organizations/{slug}/team-groups/order                       … 並び替え（8-C）
- * - GET    /api/v1/organizations/{slug}/teams                                   … 加盟チーム（teamGroup 付き。teamGroupId / unassigned で絞る）
+ * （加盟チーム一覧 GET /organizations/{slug}/teams は親シェルの orgTeams が teamGroup 付きで持つ。絞り込みはその一覧を FE で行う）
  * - PUT    /api/v1/organizations/{slug}/teams/{teamSlug}/team-group             … 単体割当（groupId=null で未分類）
  * - PUT    /api/v1/organizations/{slug}/team-group-assignments                  … 一括割当
  */
@@ -28,7 +28,6 @@ type Schemas = components['schemas']
 export type TeamOrgAffiliation = Schemas['TeamOrgAffiliationResponse']
 export type TeamOrgAffiliationRestriction = Schemas['TeamOrgAffiliationRestrictionResponse']
 export type OrgTeamGroup = Schemas['OrgTeamGroupResponse']
-export type OrgGroupedTeam = Schemas['OrgTeamSummaryResponse']
 export type CreateOrgTeamGroupRequest = Schemas['CreateOrgTeamGroupRequest']
 export type UpdateOrgTeamGroupRequest = Schemas['UpdateOrgTeamGroupRequest']
 
@@ -37,12 +36,6 @@ export interface OrgTeamGroupList {
   groups: OrgTeamGroup[]
   unassignedTeamCount: number
   limit: number
-}
-
-/** 加盟チーム一覧の絞り込み（同時指定は BE が 400）。 */
-export interface GroupTeamsFilter {
-  teamGroupId?: string
-  unassigned?: boolean
 }
 export type ApproveTeamApplicationRequest = Schemas['ApproveTeamApplicationRequest']
 export type RejectTeamApplicationRequest = Schemas['RejectTeamApplicationRequest']
@@ -187,15 +180,6 @@ export function useOrgTeamMembershipApi() {
     return res.data ?? []
   }
 
-  async function listGroupTeams(orgSlug: string, filter: GroupTeamsFilter = {}): Promise<OrgGroupedTeam[]> {
-    const params = new URLSearchParams()
-    if (filter.teamGroupId) params.set('teamGroupId', filter.teamGroupId)
-    if (filter.unassigned) params.set('unassigned', 'true')
-    const qs = params.toString()
-    const res = await api<{ data?: OrgGroupedTeam[] }>(`${base(orgSlug)}/teams${qs ? `?${qs}` : ''}`)
-    return res.data ?? []
-  }
-
   /** 1 チームを割り当てる。groupId=null で未分類へ戻す。 */
   async function assignTeamGroup(orgSlug: string, teamSlug: string, groupId: string | null): Promise<void> {
     await api(`${base(orgSlug)}/teams/${encodeURIComponent(teamSlug)}/team-group`, {
@@ -232,7 +216,6 @@ export function useOrgTeamMembershipApi() {
     updateTeamGroup,
     deleteTeamGroup,
     reorderTeamGroups,
-    listGroupTeams,
     assignTeamGroup,
     bulkAssignTeamGroup,
   }

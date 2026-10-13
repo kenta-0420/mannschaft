@@ -16,6 +16,7 @@
       "rename_title": "Gruppe bearbeiten",
       "delete_title": "Diese Gruppe löschen?",
       "empty": "Es gibt noch keine Teamgruppen. Fügen Sie eine mit „Teamgruppe erstellen“ hinzu.",
+      "assign_hint": "Teams werden in der Liste „Teams“ zugewiesen (auch mehrere angekreuzt gesammelt möglich)",
       "error": {
         "ORG_065": "Eine Gruppe mit diesem Namen existiert bereits",
         "ORG_066": "Das Gruppenlimit ist erreicht",
@@ -37,7 +38,6 @@
         "team-missing": "Ein Zielteam gehört nicht mehr zur Organisation. Die aktuelle Liste wird angezeigt",
         "too-many": "Es können höchstens {max} Teams gleichzeitig zugewiesen werden"
       },
-      "assign_load_error": "Die Liste der beigetretenen Teams konnte nicht geladen werden. Bitte versuchen Sie es später erneut.",
       "assign_empty": "Keine passenden beigetretenen Teams"
     },
     "pager": {
@@ -107,7 +107,7 @@
       },
       "groups": {
         "title": "Teamgruppen verwalten",
-        "body": "Unter „Teamgruppen“ können Sie Gruppen erstellen, umbenennen, sortieren und löschen sowie Teams zuweisen. Teams einer gelöschten Gruppe kommen zurück zu „Nicht zugeordnet“. Sie können Teams auch ankreuzen und gesammelt zuweisen."
+        "body": "Unter „Teamgruppen“ können Sie Gruppen erstellen, umbenennen, sortieren und löschen. Teams einer gelöschten Gruppe kommen zurück zu „Nicht zugeordnet“. Die Zuweisung erfolgt in der Liste „Teams“, einzeln oder angekreuzt gesammelt."
       }
     }
   }

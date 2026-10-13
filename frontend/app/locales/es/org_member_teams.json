@@ -16,6 +16,7 @@
       "rename_title": "Editar grupo",
       "delete_title": "¿Eliminar este grupo?",
       "empty": "Aún no hay grupos de equipos. Añade uno con \"Crear grupo de equipos\".",
+      "assign_hint": "Los equipos se asignan desde la lista \"Equipos\" (también puedes marcar varios y asignarlos en bloque)",
       "error": {
         "ORG_065": "Ya existe un grupo con el mismo nombre",
         "ORG_066": "Se alcanzó el límite de grupos",
@@ -37,7 +38,6 @@
         "team-missing": "Un equipo de destino ya no está afiliado. Se muestra la lista más reciente",
         "too-many": "Puedes asignar hasta {max} equipos a la vez"
       },
-      "assign_load_error": "No se pudo cargar la lista de equipos afiliados. Inténtalo de nuevo más tarde.",
       "assign_empty": "No hay equipos afiliados que coincidan"
     },
     "pager": {
@@ -107,7 +107,7 @@
       },
       "groups": {
         "title": "Gestionar los grupos de equipos",
-        "body": "En \"Grupos de equipos\" puedes crear, renombrar, reordenar y eliminar grupos, y asignarles equipos afiliados. Los equipos de un grupo eliminado vuelven a \"Sin clasificar\". También puedes marcar equipos y asignarlos en bloque."
+        "body": "En \"Grupos de equipos\" puedes crear, renombrar, reordenar y eliminar grupos. Los equipos de un grupo eliminado vuelven a \"Sin clasificar\". La asignación de equipos se hace en la lista \"Equipos\", uno a uno o marcando varios para asignarlos en bloque."
       }
     }
   }

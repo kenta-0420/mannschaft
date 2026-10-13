@@ -147,7 +147,13 @@ const viewTitleKey = computed(() => `teamAffiliation.view.${activeView.value}`)
           {{ $t('organizationTeamSearch.title') }}
         </NuxtLink>
       </div>
-      <OrgTeamGrid :teams="orgTeams" />
+      <!-- グループ列・絞り込みは閲覧者全員（機能 on のとき）、割当 UI は組織 ADMIN・管理レンズ ON のみ（設計書 §13） -->
+      <MemberTeamsTeamList
+        :org-slug="orgSlug"
+        :teams="orgTeams"
+        :can-assign="canManage"
+        @changed="refreshOrgTeams"
+      />
     </template>
 
     <div v-else class="mt-4 space-y-4">
@@ -176,6 +182,7 @@ const viewTitleKey = computed(() => `teamAffiliation.view.${activeView.value}`)
         <MemberTeamsGroupsView
           v-else
           :org-slug="orgSlug"
+          @changed="refreshOrgTeams"
         />
       </SectionCard>
       <MemberTeamsGuideModal v-model:visible="showGuide" />

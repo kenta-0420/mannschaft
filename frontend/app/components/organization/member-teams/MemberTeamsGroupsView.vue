@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { OrgTeamGroupList } from '~/composables/useOrgTeamMembershipApi'
+import { createLatestGuard } from '~/utils/latestRequest'
 
 /**
  * F01.2.1 8-C — チームグループ管理 view（member-teams?view=groups）。
  *
- * グループの作成・改名・並び替え・削除と、加盟チームへの割当（単体・一括）をまとめる。
+ * グループの作成・改名・並び替え・削除を行う（加盟チームへの割当は所属チーム一覧側。設計書 §13）。
  * 組織 ADMIN・管理レンズ ON のときだけ親（member-teams）が描画する。
  *
  * グループ一覧 API が 409（ORG_067）を返すのはグループ機能が off の組織。その場合は管理 UI を出さず、
@@ -14,30 +15,53 @@ const props = defineProps<{
   orgSlug: string
 }>()
 
+const emit = defineEmits<{
+  /** グループの作成・改名・並び替え・削除が成立した（親は所属チーム一覧のグループ列を取り直す）。 */
+  changed: []
+}>()
+
 const { t } = useI18n()
 const { listTeamGroupList } = useOrgTeamMembershipApi()
 
 const list = ref<OrgTeamGroupList | null>(null)
 const loading = ref(true)
 const loadFailed = ref(false)
+const guard = createLatestGuard()
 
-/** 一覧を取得する。初回以外はスピナーに切り替えず、画面を保ったまま差し替える。 */
+/**
+ * 一覧を取得する。初回以外はスピナーに切り替えず、画面を保ったまま差し替える。
+ * 組織の切替や連続操作で応答が前後しても、最新の要求の応答だけを反映する。
+ */
 async function load() {
+  const isLatest = guard.next()
   loadFailed.value = false
   try {
-    list.value = await listTeamGroupList(props.orgSlug)
+    const result = await listTeamGroupList(props.orgSlug)
+    if (!isLatest()) return
+    list.value = result
   }
   catch {
+    if (!isLatest()) return
     // 取得失敗は「機能 off」「グループなし」に見せず、エラー表示にする（症状を隠さない）。
     list.value = null
     loadFailed.value = true
   }
   finally {
-    loading.value = false
+    if (isLatest()) loading.value = false
   }
 }
 
+function onChanged() {
+  void load()
+  emit('changed')
+}
+
 onMounted(() => void load())
+watch(() => props.orgSlug, () => {
+  loading.value = true
+  list.value = null
+  void load()
+})
 </script>
 
 <template>
@@ -79,13 +103,11 @@ onMounted(() => void load())
         :org-slug="orgSlug"
         :groups="list.groups"
         :limit="list.limit"
-        @changed="load"
+        @changed="onChanged"
       />
-      <MemberTeamsGroupAssignments
-        :org-slug="orgSlug"
-        :groups="list.groups"
-        @changed="load"
-      />
+      <p class="text-xs text-surface-500">
+        {{ t('orgMemberTeams.groups.assign_hint') }}
+      </p>
     </div>
   </div>
 </template>

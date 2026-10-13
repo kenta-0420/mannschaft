@@ -16,6 +16,7 @@
       "rename_title": "Edit group",
       "delete_title": "Delete this group?",
       "empty": "There are no team groups yet. Add one with \"Create team group\".",
+      "assign_hint": "Assign teams from the \"Teams\" list (you can also tick teams and assign them in bulk)",
       "error": {
         "ORG_065": "A group with the same name already exists",
         "ORG_066": "The group limit has been reached",
@@ -37,7 +38,6 @@
         "team-missing": "A target team is no longer affiliated. The latest list is shown",
         "too-many": "You can assign up to {max} teams at once"
       },
-      "assign_load_error": "Could not load the affiliated teams. Please try again later.",
       "assign_empty": "No affiliated teams match"
     },
     "pager": {
@@ -107,7 +107,7 @@
       },
       "groups": {
         "title": "Manage team groups",
-        "body": "In \"Team groups\" you can create, rename, reorder and delete groups, and assign affiliated teams to them. Teams in a deleted group go back to \"Unassigned\". You can also tick teams and assign them in bulk."
+        "body": "In \"Team groups\" you can create, rename, reorder and delete groups. Teams in a deleted group go back to \"Unassigned\". Assign teams from the \"Teams\" list, one by one or by ticking several and assigning in bulk."
       }
     }
   }
