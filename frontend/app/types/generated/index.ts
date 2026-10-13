@@ -170897,7 +170897,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamSlug: number;
+                teamSlug: string;
                 orgSlug: string;
             };
             cookie?: never;
