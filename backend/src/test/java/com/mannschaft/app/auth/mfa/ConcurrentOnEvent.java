@@ -16,9 +16,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -53,6 +57,8 @@ final class ConcurrentOnEvent implements AutoCloseable {
     /** 後続のロック待ちを観測するまでの上限。 */
     static final Duration OBSERVE_LIMIT = Duration.ofSeconds(15);
     private static final long POLL_INTERVAL_MILLIS = 100L;
+    /** {@link #close()} で後続処理（別 TX）の終了を待つ上限。InnoDB のロック待ち既定上限（50 秒）より長く取る。 */
+    static final Duration FOLLOWER_FINISH_LIMIT = Duration.ofSeconds(90);
 
     /** 先行の接続（スレッド ID）が持つトランザクションに塞がれて待っているトランザクション。 */
     private static final String WAITERS_BLOCKED_BY_LEADER_SQL = """
@@ -189,9 +195,46 @@ final class ConcurrentOnEvent implements AutoCloseable {
         return follower;
     }
 
+    /**
+     * 購読を外し、後続処理（別 TX）の終了を上限付きで<b>必ず</b>待つ。
+     *
+     * <p>前提アサーションが失敗した経路（観測 SQL の例外・観測の時間切れ）では、テストは {@link #follower()} の結果を
+     * 待たずに try-with-resources を抜ける。ここで後続の終了を待たないと、後続 TX が {@code @AfterEach} の後始末と
+     * 競合して削除後に行を書いたり、接続・スレッドが次のテストまで残ったりする。try-with-resources では本メソッドが
+     * 元の例外の伝播<b>前</b>に呼ばれるため、元の失敗は後続の終了を待ってから伝わり、本メソッドの例外は
+     * suppressed として元の失敗に添えられる（元の原因は消えない）。</p>
+     *
+     * <p>後続が例外で終わったこと自体はここでは失敗にしない（その結果はテストが {@link #follower()} で検証する）。
+     * 上限 {@link #FOLLOWER_FINISH_LIMIT} を過ぎても終わらない場合は、黙って先へ進めず例外で明示する。</p>
+     *
+     * @throws IllegalStateException 後続が上限内に終わらない・待機中に割り込まれた場合
+     */
     @Override
     public void close() {
         multicaster.removeApplicationListener(listener);
-        executor.shutdownNow();
+        executor.shutdown();
+        Future<?> f = follower;
+        try {
+            if (f != null) {
+                try {
+                    f.get(FOLLOWER_FINISH_LIMIT.toMillis(), TimeUnit.MILLISECONDS);
+                } catch (ExecutionException | CancellationException e) {
+                    // 後続の業務上の失敗（AUTH_078 等）はテストが follower() で検証する。ここでは終了したことだけを確かめる
+                } catch (TimeoutException e) {
+                    executor.shutdownNow();
+                    throw new IllegalStateException("後続 TX が " + FOLLOWER_FINISH_LIMIT.toSeconds()
+                            + " 秒以内に終わらない（後始末と競合しうるため打ち切る）: " + observation, e);
+                }
+            }
+            if (!executor.awaitTermination(FOLLOWER_FINISH_LIMIT.toMillis(), TimeUnit.MILLISECONDS)) {
+                executor.shutdownNow();
+                throw new IllegalStateException("後続のスレッドが " + FOLLOWER_FINISH_LIMIT.toSeconds()
+                        + " 秒以内に終了しない: " + observation);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            executor.shutdownNow();
+            throw new IllegalStateException("後続の終了待ちの間に割り込まれた: " + observation, e);
+        }
     }
 }
