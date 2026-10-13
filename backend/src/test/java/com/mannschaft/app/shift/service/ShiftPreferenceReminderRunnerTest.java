@@ -79,30 +79,24 @@ class ShiftPreferenceReminderRunnerTest {
     }
 
     @Test
-    @DisplayName("markSent: 48h の印だけを立てて保存する")
-    void markSent48h() {
-        ShiftScheduleEntity schedule = collecting();
-        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+    @DisplayName("claim: 更新件数 1 のときだけ取得できる（48h / 24h で別の更新）")
+    void claimOnlyWhenUpdated() {
+        given(scheduleRepository.claimReminder48h(SCHEDULE_ID)).willReturn(1, 0);
+        given(scheduleRepository.claimReminder24h(SCHEDULE_ID)).willReturn(1);
 
-        assertThat(runner.markSent(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_48H)).isTrue();
-
-        assertThat(schedule.getIsReminderSent48h()).isTrue();
-        assertThat(schedule.getIsReminderSent()).isFalse();
-        verify(scheduleRepository).save(schedule);
+        assertThat(runner.claim(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_48H)).isTrue();
+        assertThat(runner.claim(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_48H)).as("2 回目は他の配送が担当済み").isFalse();
+        assertThat(runner.claim(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_24H)).isTrue();
     }
 
     @Test
-    @DisplayName("markSent: 24h の印だけを立てる。既に立っていれば何もしない")
-    void markSent24hAndIdempotent() {
-        ShiftScheduleEntity schedule = collecting();
-        given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+    @DisplayName("release: 種別に応じたフラグを戻す")
+    void releaseResetsFlag() {
+        runner.release(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_48H);
+        runner.release(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_24H);
 
-        assertThat(runner.markSent(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_24H)).isTrue();
-        assertThat(runner.markSent(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_24H)).isFalse();
-
-        assertThat(schedule.getIsReminderSent()).isTrue();
-        assertThat(schedule.getIsReminderSent48h()).isFalse();
-        verify(scheduleRepository, org.mockito.Mockito.times(1)).save(schedule);
+        verify(scheduleRepository).releaseReminder48h(SCHEDULE_ID);
+        verify(scheduleRepository).releaseReminder24h(SCHEDULE_ID);
     }
 
     @Test

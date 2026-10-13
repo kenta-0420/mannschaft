@@ -9,6 +9,8 @@ import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.shift.dto.ManualRemindResponse;
 import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
+import com.mannschaft.app.shift.event.ShiftPreferenceReminderKind;
+import com.mannschaft.app.shift.event.ShiftPreferenceReminderNotificationEvent;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -65,10 +67,10 @@ import static org.mockito.Mockito.verify;
  *       ただし是正前の欠陥（通知の例外が業務TXの rollback-only になる）は、Runner が業務TXの外
  *       （AFTER_COMMIT・別スレッド）で呼ばれることで構造的に閉じていることを AC-A と合わせて固定する。</li>
  *   <li>AC-B2: 受信者が複数でも、1 人ぶんの失敗が他の受信者の通知行とフラグに影響しない。</li>
- *   <li>AC-D（送信済みの印 = {@code is_reminder_sent_48h} / {@code is_reminder_sent}。マスター裁可「配送後に印を立てる」）:
- *       項目TXは印を立てず publish のみ。配送リスナーが {@code sendOne} の後に印を立てる。
- *       全員例外失敗なら印なし（再実行で再送）／一部成功なら印あり（再実行で再送しない）／deny でも印あり／
- *       印の保存失敗は ERROR ログのみ（配送済みの行は残り印は立たない）。</li>
+ *   <li>AC-D（送信済みの印 = {@code is_reminder_sent_48h} / {@code is_reminder_sent}。マスター裁可「配送後に印を立てる」＋重複配送の排他）:
+ *       項目TXは印を立てず publish のみ。配送リスナーが配送の前に条件付き UPDATE で印を先取りし（取得できなければ何もしない）、
+ *       全員例外失敗なら印を戻す（再実行で再送）。一部成功・deny は印を残す（再送しない）。
+ *       同じイベントが 2 回発火しても通知行は受信者ごとに 1 件。戻す処理の失敗は ERROR ログのみ。</li>
  * </ul>
  *
  * <p>クラスに {@code @Transactional} は付けない（付けるとコミットが起きず AFTER_COMMIT が発火しない偽の緑になる）。
@@ -87,6 +89,7 @@ class ShiftReminderNotificationTransactionIT extends AbstractMySqlIntegrationTes
     @Autowired private FeatureFlagRepository featureFlagRepository;
     @Autowired private CacheManager cacheManager;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private org.springframework.context.ApplicationEventPublisher eventPublisher;
     @PersistenceContext private EntityManager em;
 
     @MockitoSpyBean private NotificationDeliveryRunner notificationDeliveryRunner;
@@ -148,7 +151,8 @@ class ShiftReminderNotificationTransactionIT extends AbstractMySqlIntegrationTes
 
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
                 verify(notificationDeliveryRunner, times(2)).sendOne(argThat(r -> r != null && fx.scheduleId.equals(r.sourceId()))));
-        assertThat(flag48h(fx.scheduleId)).as("全員失敗なので印は立たない（次回再送）").isFalse();
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(flag48h(fx.scheduleId)).as("全員失敗なので先取りした印は戻る（次回再送）").isFalse());
         for (Long member : fx.memberIds) {
             assertThat(reminderRows(member, fx.scheduleId)).isEmpty();
         }
@@ -162,7 +166,8 @@ class ShiftReminderNotificationTransactionIT extends AbstractMySqlIntegrationTes
         batchService.processReminders();
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
                 verify(notificationDeliveryRunner, times(2)).sendOne(argThat(r -> r != null && fx.scheduleId.equals(r.sourceId()))));
-        assertThat(flag48h(fx.scheduleId)).isFalse();
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(flag48h(fx.scheduleId)).isFalse());
 
         // 障害が解消したものとして実処理に戻す。
         willAnswer(inv -> inv.callRealMethod()).given(notificationDeliveryRunner).sendOne(any());
@@ -195,7 +200,8 @@ class ShiftReminderNotificationTransactionIT extends AbstractMySqlIntegrationTes
             assertThat(reminderRows(healthy.memberIds.get(0), healthy.scheduleId)).hasSize(1);
             assertThat(flag48h(healthy.scheduleId)).as("無事な側は配送後にフラグが立つ").isTrue();
         });
-        assertThat(flag48h(failing.scheduleId)).as("全滅した側は立たない").isFalse();
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(flag48h(failing.scheduleId)).as("全滅した側は戻る").isFalse());
         assertThat(reminderRows(failing.memberIds.get(0), failing.scheduleId)).isEmpty();
     }
 
@@ -251,21 +257,45 @@ class ShiftReminderNotificationTransactionIT extends AbstractMySqlIntegrationTes
     }
 
     @Test
-    @DisplayName("AC-D: フラグの保存が失敗したら ERROR ログのみで、配送済みの通知行は残りフラグは立たない（次回再送されうる）")
-    void flagSaveFailureAfterDeliveryLeavesFlagUnset() {
-        Fx fx = fixture("d-save", 2);
-        willThrow(new RuntimeException("模擬フラグ保存失敗"))
-                .given(scheduleRepository).save(argThat(s -> s != null && fx.scheduleId.equals(s.getId())));
+    @DisplayName("AC-D: 同じスケジュールの配送要求が 2 回発火しても（重複 publish）、通知行は受信者ごとに 1 件だけ")
+    void duplicateEventsDeliverOnlyOnce() {
+        Fx fx = fixture("d-dup", 2);
+        ShiftPreferenceReminderNotificationEvent event = new ShiftPreferenceReminderNotificationEvent(
+                ShiftPreferenceReminderKind.REMINDER_48H, fx.scheduleId, fx.teamId, "dup", fx.memberIds);
 
-        batchService.processReminders();
+        // 2 つの項目TXが同じスケジュールを publish した状況（次回 cron / 管理画面からの再実行が配送完了前に走った）を再現する。
+        transactionTemplate.executeWithoutResult(tx -> eventPublisher.publishEvent(event));
+        transactionTemplate.executeWithoutResult(tx -> eventPublisher.publishEvent(event));
 
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
             for (Long member : fx.memberIds) {
                 assertThat(reminderRows(member, fx.scheduleId)).hasSize(1);
             }
+            assertThat(flag48h(fx.scheduleId)).isTrue();
         });
-        assertThat(flag48h(fx.scheduleId)).isFalse();
+        await().during(2, TimeUnit.SECONDS).atMost(6, TimeUnit.SECONDS).untilAsserted(() -> {
+            for (Long member : fx.memberIds) {
+                assertThat(reminderRows(member, fx.scheduleId)).hasSize(1);
+            }
+        });
+        verify(notificationDeliveryRunner, times(2)).sendOne(argThat(r -> r != null && fx.scheduleId.equals(r.sourceId())));
     }
+
+    @Test
+    @DisplayName("AC-D: 全員失敗でも印を戻す処理が失敗したら ERROR ログのみで、印は残り再送されない")
+    void releaseFailureLeavesFlag() {
+        Fx fx = fixture("d-rel", 2);
+        willThrow(new RuntimeException("模擬通知配送失敗")).given(notificationDeliveryRunner).sendOne(any());
+        willThrow(new RuntimeException("模擬フラグ戻し失敗"))
+                .given(scheduleRepository).releaseReminder48h(fx.scheduleId);
+
+        batchService.processReminders();
+
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(notificationDeliveryRunner, times(2)).sendOne(argThat(r -> r != null && fx.scheduleId.equals(r.sourceId()))));
+        assertThat(flag48h(fx.scheduleId)).as("戻せなかったので先取りした印が残る").isTrue();
+    }
+
     // ─────────────────────────────────────────────
     // 手動リマインド
     // ─────────────────────────────────────────────

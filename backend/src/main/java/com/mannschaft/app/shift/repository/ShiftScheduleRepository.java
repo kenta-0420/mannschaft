@@ -6,6 +6,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -113,6 +114,29 @@ public interface ShiftScheduleRepository extends JpaRepository<ShiftScheduleEnti
     List<ShiftScheduleEntity> findFor24hReminder(
             @Param("now") LocalDateTime now,
             @Param("threshold24h") LocalDateTime threshold24h);
+
+    /**
+     * 48h リマインドの送信済みフラグを条件付きで取得（先取り）する。更新件数が 1 のときだけ取得できたことを意味する。
+     * 配送リスナーが配送前に呼び、並行・重複した配送を排他する（Issue #2997 G6）。
+     */
+    @Modifying
+    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent48h = TRUE WHERE s.id = :id AND s.isReminderSent48h = FALSE")
+    int claimReminder48h(@Param("id") Long id);
+
+    /** 24h リマインドの送信済みフラグを条件付きで取得（先取り）する。 */
+    @Modifying
+    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent = TRUE WHERE s.id = :id AND s.isReminderSent = FALSE")
+    int claimReminder24h(@Param("id") Long id);
+
+    /** 48h リマインドのフラグを戻す（全員配送失敗時。次回バッチで再送される）。 */
+    @Modifying
+    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent48h = FALSE WHERE s.id = :id AND s.isReminderSent48h = TRUE")
+    int releaseReminder48h(@Param("id") Long id);
+
+    /** 24h リマインドのフラグを戻す（全員配送失敗時）。 */
+    @Modifying
+    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent = FALSE WHERE s.id = :id AND s.isReminderSent = TRUE")
+    int releaseReminder24h(@Param("id") Long id);
 
     /**
      * 自動アーカイブ対象: PUBLISHED かつ endDate が cutoffDate より前。

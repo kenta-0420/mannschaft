@@ -42,8 +42,9 @@ import java.util.stream.Collectors;
  * <p>定期バッチ {@link #processReminders} は<b>非トランザクションのオーケストレータ</b>で、スケジュール 1 件ごとに
  * {@link ShiftPreferenceReminderRunner#remindOne}（{@code REQUIRES_NEW}）で配送要求を publish する。
  * 実通知は {@code AFTER_COMMIT} の {@code ShiftPreferenceReminderNotificationListener} が行い、
- * 配送後に送信済みフラグを立てる（全員失敗ならフラグは立たず次回再送）。通知の失敗が他スケジュールの状態を
- * 巻き戻すことはない。バッチ実行の重なりは {@code @SchedulerLock} が防ぐ（旧実装と同じ）。手動リマインド {@link #triggerManualReminder} も
+ * 配送の前に送信済みフラグを条件付き UPDATE で先取りして重複配送を排他し、全員失敗ならフラグを戻す
+ * （次回再送）。{@code @SchedulerLock} は publish までしか守らないため、非同期配送中の再実行による重複はこの先取りで防ぐ。
+ * 通知の失敗が他スケジュールの状態を巻き戻すことはない。手動リマインド {@link #triggerManualReminder} も
  * 業務TX内では publish のみを行う。</p>
  * TODO: Phase 4-1 で低提出率アラート（isLowSubmissionAlerted）を実装
  */

@@ -258,15 +258,17 @@
 # Issue #2997 第1陣 G6（shift / ticket）: ShiftPreferenceReminderBatchService#sendReminderToUnsubmittedMembers / #triggerManualReminder /
 # TicketExpiryBatchService#expireTickets / #sendExpiryNotifications（いずれも TX_NOTIFY_BARE | ROLLBACK_COUPLED）を是正。
 #   shift 定期: processReminders から @Transactional を外し非トランザクションのオーケストレータにした。1 スケジュール = 1 項目TX
-#     （ShiftPreferenceReminderRunner#remindOne / REQUIRES_NEW）で送信済み印（is_reminder_sent_48h / is_reminder_sent）を確定し、
-#     同じTXで ShiftPreferenceReminderNotificationEvent を publish。実通知は新設の ShiftPreferenceReminderNotificationListener
-#     （AFTER_COMMIT + @Async("event-pool") + NotificationDeliveryRunner#sendOne）。
+#     （ShiftPreferenceReminderRunner#remindOne / REQUIRES_NEW）で ShiftPreferenceReminderNotificationEvent を publish（印は立てない）。
+#     実通知は新設の ShiftPreferenceReminderNotificationListener（AFTER_COMMIT + @Async("event-pool") + NotificationDeliveryRunner#sendOne）。
+#     配送の前に送信済み印（is_reminder_sent_48h / is_reminder_sent）を条件付き UPDATE で先取りして重複配送を排他する。
 #   shift 手動: triggerManualReminder は業務TX内で同イベントの publish のみ。
 #   ticket 期限切れ: expireTickets から @Transactional を外し、1 冊 = 1 項目TX（TicketExpiryRunner#expireOne / REQUIRES_NEW）で
 #     book.expire() を確定し TicketExpiredNotificationEvent を publish。事前通知 sendExpiryNotifications は読み取りTX内で
 #     TicketExpiryWarningNotificationEvent を publish するのみ。配送は新設の TicketExpiryNotificationListener。
 #   実DB検証: ShiftReminderNotificationTransactionIT / TicketExpiryNotificationTransactionIT。
-#   送信済みの印の契約（AC-D）: 印の保存失敗 -> 通知なし・印なし（次回再試行）、deny でも印は立つ、部分成功後の再実行で再送しない。
+#   送信済みの印の契約（AC-D・マスター裁可「配送後に印」＋重複配送の排他）: 全員が例外で失敗したら先取りした印を戻す（次回再送）、
+#     deny・一部成功では印を残す（再送しない）、同じイベントが2回発火しても配送は1回、戻す処理の失敗は ERROR ログのみ。
+#     既知の限界: 先取りの後でプロセスが落ちるとそのリマインドは失われる。
 # 裏取り: 凍結エントリ 22 + REMOVED 8 = 30 -> 18 + 8 = 26、分類済み 19 -> 15（4件とも ROLLBACK_COUPLED の分類済み行）。
 # CENSUS_FLOOR: 26
 

@@ -24,17 +24,21 @@ import java.util.List;
  * 通知は業務TXに参加する（{@code REQUIRED}）ため、1 件の失敗が rollback-only を残し、
  * catch して続行した<b>他スケジュールの送信済みフラグもコミット時にまとめて巻き戻って</b>いた。</p>
  *
- * <h2>送信済みの印の契約（AC-D・マスター裁可「配送後に印を立てる」）</h2>
+ * <h2>送信済みの印の契約（AC-D・マスター裁可「配送後に印を立てる」＋重複配送の排他）</h2>
  * <p>印は {@code is_reminder_sent_48h} / {@code is_reminder_sent}。</p>
  * <ul>
  *   <li>{@link #remindOne}（項目TX）は<b>印を立てず</b>、配送要求の publish だけを行う
  *       （未提出者が 0 人のときだけは、通知するものが無いので旧挙動どおりその場で印を立てる）。</li>
- *   <li>印は配送リスナーが {@code sendOne} を終えた後に {@link #markSent}（別の {@code REQUIRES_NEW}）で立てる。
- *       1 人以上に配送できた、または deny のときは立て、全員が例外で失敗したときは立てない
- *       （次のバッチ実行で再送される）。一部だけ失敗したときは立てる。</li>
+ *   <li>配送リスナーは配送の<b>前</b>に {@link #claim}（別の {@code REQUIRES_NEW}、条件付き UPDATE
+ *       {@code SET 印=true WHERE id=? AND 印=false}）で印を先取りする。更新が 0 件なら他の配送が担当済みなので何もしない。
+ *       {@code @SchedulerLock} は publish までしか守らず、非同期配送の完了までは守らないため、
+ *       次回 cron や管理画面からの再実行で同じスケジュールが再 publish されても、配送は 1 回だけになる。</li>
+ *   <li>配送後に<b>全員が例外で失敗</b>したときだけ {@link #release} で印を戻す（次のバッチ実行で再送される）。
+ *       1 人以上の成功・deny・一部失敗のときは立てたまま残す（再送しない）。</li>
+ *   <li>戻す処理が失敗したら ERROR ログのみ（印が残るので再送されない）。</li>
  *   <li>publish 後に項目TXがロールバックすれば配送要求は発火せず、印も立たない。</li>
- *   <li>印の保存（{@link #markSent}）自体が失敗すると、配送済みなのに印が無く、次回に再送されうる。
- *       旧実装は印と通知が同一TXで一緒に巻き戻っていたため、この方向の重複は新たに生じうる（リスナーで ERROR ログ）。</li>
+ *   <li><b>既知の限界</b>: 先取りの後でプロセスが落ちると、そのリマインドは失われる（印が立ったまま配送されない）。
+ *       スキーマを増やさずに重複配送を防ぐための引き換えであり、旧実装（通知と印が同一TX）にはなかった。</li>
  * </ul>
  */
 @Slf4j
@@ -79,19 +83,27 @@ public class ShiftPreferenceReminderRunner {
     }
 
     /**
-     * 配送後に送信済みの印を独立トランザクションで立てる（配送リスナーから呼ぶ）。
+     * 配送の前に送信済みの印を先取りする（配送リスナーから呼ぶ）。
      *
-     * @return 立てた場合 {@code true}、既に立っている・対象外なら {@code false}
+     * @return 取得できた場合 {@code true}。他の配送が担当済み（または対象外）なら {@code false}
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public boolean markSent(Long scheduleId, ShiftPreferenceReminderKind kind) {
-        ShiftScheduleEntity schedule = scheduleRepository.findById(scheduleId).orElse(null);
-        if (schedule == null || isMarked(schedule, kind)) {
-            return false;
+    public boolean claim(Long scheduleId, ShiftPreferenceReminderKind kind) {
+        return switch (kind) {
+            case REMINDER_48H -> scheduleRepository.claimReminder48h(scheduleId) == 1;
+            case REMINDER_24H -> scheduleRepository.claimReminder24h(scheduleId) == 1;
+            default -> throw new IllegalArgumentException("定期バッチの対象外のリマインド種別: " + kind);
+        };
+    }
+
+    /** 全員の配送が失敗したときに印を戻す（次回バッチで再送される）。 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void release(Long scheduleId, ShiftPreferenceReminderKind kind) {
+        switch (kind) {
+            case REMINDER_48H -> scheduleRepository.releaseReminder48h(scheduleId);
+            case REMINDER_24H -> scheduleRepository.releaseReminder24h(scheduleId);
+            default -> throw new IllegalArgumentException("定期バッチの対象外のリマインド種別: " + kind);
         }
-        mark(schedule, kind);
-        scheduleRepository.save(schedule);
-        return true;
     }
 
     private static boolean isMarked(ShiftScheduleEntity schedule, ShiftPreferenceReminderKind kind) {

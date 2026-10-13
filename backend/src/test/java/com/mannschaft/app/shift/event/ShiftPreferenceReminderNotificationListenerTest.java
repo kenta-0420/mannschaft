@@ -63,6 +63,7 @@ class ShiftPreferenceReminderNotificationListenerTest {
                 notificationDeliveryRunner, userLocaleCache, messageSource, reminderRunner);
         Mockito.lenient().when(userLocaleCache.getLocales(anyList()))
                 .thenReturn(Map.of(USER_A, "ja", USER_B, "en"));
+        Mockito.lenient().when(reminderRunner.claim(any(), any())).thenReturn(true);
         Mockito.lenient().when(notificationDeliveryRunner.sendOne(any()))
                 .thenReturn(NotificationDeliveryResult.DELIVERED);
     }
@@ -180,28 +181,54 @@ class ShiftPreferenceReminderNotificationListenerTest {
     }
 
     @Test
-    @DisplayName("AC-D: 全員配送できたら配送後に印を立てる")
-    void marksSentAfterDelivery() {
+    @DisplayName("AC-D: 配送の前に印を先取りし、配送できたら戻さない")
+    void claimsBeforeDeliveryAndKeepsOnSuccess() {
         listener.onShiftPreferenceReminderNotification(
                 event(ShiftPreferenceReminderKind.REMINDER_48H, USER_A, USER_B));
 
-        verify(reminderRunner).markSent(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_48H);
+        org.mockito.InOrder order = Mockito.inOrder(reminderRunner, notificationDeliveryRunner);
+        order.verify(reminderRunner).claim(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_48H);
+        order.verify(notificationDeliveryRunner, times(2)).sendOne(any());
+        verify(reminderRunner, Mockito.never()).release(any(), any());
     }
 
     @Test
-    @DisplayName("AC-D: 全員が例外で失敗したら印を立てない（次回バッチで再送）")
-    void allFailedDoesNotMark() {
+    @DisplayName("AC-D: 先取りできなければ（他の配送が担当済み）何も配送しない")
+    void notClaimedDeliversNothing() {
+        given(reminderRunner.claim(any(), any())).willReturn(false);
+
+        listener.onShiftPreferenceReminderNotification(
+                event(ShiftPreferenceReminderKind.REMINDER_48H, USER_A, USER_B));
+
+        Mockito.verifyNoInteractions(notificationDeliveryRunner);
+        verify(reminderRunner, Mockito.never()).release(any(), any());
+    }
+
+    @Test
+    @DisplayName("AC-D: 先取り自体が失敗したら配送せず、例外も投げない")
+    void claimFailureSkipsDelivery() {
+        given(reminderRunner.claim(any(), any())).willThrow(new RuntimeException("模擬DB障害"));
+
+        assertThatCode(() -> listener.onShiftPreferenceReminderNotification(
+                event(ShiftPreferenceReminderKind.REMINDER_48H, USER_A))).doesNotThrowAnyException();
+
+        Mockito.verifyNoInteractions(notificationDeliveryRunner);
+    }
+
+    @Test
+    @DisplayName("AC-D: 全員が例外で失敗したら印を戻す（次回バッチで再送）")
+    void allFailedReleases() {
         given(notificationDeliveryRunner.sendOne(any())).willThrow(new RuntimeException("模擬DB例外"));
 
         listener.onShiftPreferenceReminderNotification(
                 event(ShiftPreferenceReminderKind.REMINDER_48H, USER_A, USER_B));
 
-        Mockito.verifyNoInteractions(reminderRunner);
+        verify(reminderRunner).release(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_48H);
     }
 
     @Test
-    @DisplayName("AC-D: 一部だけ失敗なら印を立てる（成功済みにも失敗者にも再送しない）")
-    void partialFailureMarks() {
+    @DisplayName("AC-D: 一部だけ失敗なら印は戻さない（再送しない）")
+    void partialFailureKeepsClaim() {
         given(notificationDeliveryRunner.sendOne(any()))
                 .willThrow(new RuntimeException("模擬DB例外"))
                 .willReturn(NotificationDeliveryResult.DELIVERED);
@@ -209,31 +236,32 @@ class ShiftPreferenceReminderNotificationListenerTest {
         listener.onShiftPreferenceReminderNotification(
                 event(ShiftPreferenceReminderKind.REMINDER_24H, USER_A, USER_B));
 
-        verify(reminderRunner).markSent(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_24H);
+        verify(reminderRunner, Mockito.never()).release(any(), any());
     }
 
     @Test
-    @DisplayName("AC-D: 全員 deny でも印を立てる")
-    void denyMarks() {
+    @DisplayName("AC-D: 全員 deny でも印は戻さない")
+    void denyKeepsClaim() {
         given(notificationDeliveryRunner.sendOne(any())).willReturn(NotificationDeliveryResult.VISIBILITY_DENIED);
 
         listener.onShiftPreferenceReminderNotification(event(ShiftPreferenceReminderKind.REMINDER_48H, USER_A));
 
-        verify(reminderRunner).markSent(SCHEDULE_ID, ShiftPreferenceReminderKind.REMINDER_48H);
+        verify(reminderRunner, Mockito.never()).release(any(), any());
     }
 
     @Test
-    @DisplayName("AC-D: 印の保存が失敗してもリスナーは例外を投げない")
-    void markFailureIsContained() {
-        given(reminderRunner.markSent(any(), any())).willThrow(new RuntimeException("模擬保存失敗"));
+    @DisplayName("AC-D: 印を戻す処理が失敗してもリスナーは例外を投げない")
+    void releaseFailureIsContained() {
+        given(notificationDeliveryRunner.sendOne(any())).willThrow(new RuntimeException("模擬DB例外"));
+        Mockito.doThrow(new RuntimeException("模擬戻し失敗")).when(reminderRunner).release(any(), any());
 
         assertThatCode(() -> listener.onShiftPreferenceReminderNotification(
                 event(ShiftPreferenceReminderKind.REMINDER_48H, USER_A))).doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("手動リマインドは印を持たないので markSent を呼ばない")
-    void manualDoesNotMark() {
+    @DisplayName("手動リマインドは印を持たないので claim / release を呼ばない")
+    void manualDoesNotClaim() {
         listener.onShiftPreferenceReminderNotification(event(ShiftPreferenceReminderKind.MANUAL, USER_A));
 
         Mockito.verifyNoInteractions(reminderRunner);

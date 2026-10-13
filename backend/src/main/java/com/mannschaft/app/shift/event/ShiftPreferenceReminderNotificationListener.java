@@ -41,15 +41,16 @@ import java.util.Map;
  *       {@code VISIBILITY_DENIED} として返り、この受信者ぶんは送られない（是正前の絞り込みと同じ結果）。</li>
  * </ul>
  *
- * <h2>送信済みフラグとの関係（AC-D・マスター裁可「配送後に印を立てる」）</h2>
- * <p>定期バッチ（48h / 24h）では、受信者ごとの {@code sendOne} を終えた<b>後</b>に
- * {@link ShiftPreferenceReminderRunner#markSent}（別の {@code REQUIRES_NEW}）で印を立てる。</p>
+ * <h2>送信済みフラグとの関係（AC-D・マスター裁可「配送後に印を立てる」＋重複配送の排他）</h2>
+ * <p>定期バッチ（48h / 24h）では、配送の<b>前</b>に {@link ShiftPreferenceReminderRunner#claim}（条件付き UPDATE の先取り）で
+ * 印を取得する。取得できなければ他の配送が担当済みなので何もしない（{@code @SchedulerLock} は非同期配送の完了まで
+ * 守らないため、再実行で同じイベントが再 publish されても配送は 1 回だけになる）。</p>
  * <ul>
- *   <li>1 人以上に配送できた、または deny があれば立てる。一部の受信者だけ失敗しても立てる
+ *   <li>1 人以上に配送できた、または deny があれば、取得した印を立てたまま残す。一部の受信者だけ失敗しても残す
  *       （成功済みにも失敗した受信者にも再送しない）。</li>
- *   <li>全員が例外で失敗したときは立てない。次のバッチ実行で再送される。</li>
- *   <li>印の保存が失敗したときは ERROR ログのみ。配送済みで印が無いため次回に再送されうる
- *       （旧実装は通知と印が同一TXで一緒に巻き戻っていた）。</li>
+ *   <li>全員が例外で失敗したときは {@link ShiftPreferenceReminderRunner#release} で印を戻す。次のバッチ実行で再送される。</li>
+ *   <li>戻す処理が失敗したときは ERROR ログのみ（印が残るので再送されない）。</li>
+ *   <li><b>既知の限界</b>: 先取りの後でプロセスが落ちると、そのリマインドは失われる。</li>
  *   <li>手動リマインドは印を持たないので何もしない。</li>
  * </ul>
  */
@@ -66,14 +67,31 @@ public class ShiftPreferenceReminderNotificationListener {
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
             gateKeys = {"FEATURE_SHIFT_ENABLED"},
             reason = "シフトは棚卸し台帳で beta=停止・gate_key=FEATURE_SHIFT_ENABLED を持つ隔離対象であり、"
-                    + "機能停止中に提出リマインドだけが利用者へ飛ぶことを避ける。送信済みフラグは"
-                    + "業務TX側で確定済みで、ドロップされるのは通知だけであるため整合性は壊れない")
+                    + "機能停止中に提出リマインドだけが利用者へ飛ぶことを避ける。ドロップ時は印を先取りする前に"
+                    + "戻るため印は立たず、機能再開後のバッチで再送される")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onShiftPreferenceReminderNotification(ShiftPreferenceReminderNotificationEvent event) {
         List<Long> recipients = event.recipientUserIds();
         if (recipients == null || recipients.isEmpty()) {
             return;
+        }
+
+        boolean claimed = false;
+        if (event.kind() != ShiftPreferenceReminderKind.MANUAL) {
+            // 配送の前に印を先取りする。取得できなければ他の配送が担当済みなので何もしない。
+            try {
+                if (!reminderRunner.claim(event.scheduleId(), event.kind())) {
+                    log.info("シフト希望リマインドは配送済みまたは他の配送が担当済みのためスキップ: scheduleId={}, type={}",
+                            event.scheduleId(), event.kind().notificationType());
+                    return;
+                }
+                claimed = true;
+            } catch (Exception e) {
+                log.error("シフト希望リマインドの送信済みフラグ先取りに失敗したため配送しません（次回バッチで再試行）: "
+                        + "scheduleId={}, type={}", event.scheduleId(), event.kind().notificationType(), e);
+                return;
+            }
         }
 
         // locale は一括解決（N+1 防止）。解決自体の失敗は既定 locale で継続する。
@@ -116,7 +134,9 @@ public class ShiftPreferenceReminderNotificationListener {
             }
         }
 
-        markSentIfDelivered(event, delivered, denied);
+        if (claimed && delivered == 0 && denied == 0) {
+            releaseClaim(event);
+        }
 
         // 集計ログのレベルは個別ログと揃える。deny は正常系なので WARN、例外が1件でもあれば ERROR。
         String summary = "シフト希望リマインドの一括配送結果: type={}, scheduleId={}, total={}, failed={}, denied={}, "
@@ -133,15 +153,12 @@ public class ShiftPreferenceReminderNotificationListener {
         }
     }
 
-    /** 配送後の印。1 人以上に配送できた、または deny があるときだけ立てる（全員例外失敗なら立てず再送に回す）。 */
-    private void markSentIfDelivered(ShiftPreferenceReminderNotificationEvent event, int delivered, int denied) {
-        if (event.kind() == ShiftPreferenceReminderKind.MANUAL || (delivered == 0 && denied == 0)) {
-            return;
-        }
+    /** 全員が例外で失敗したとき、先取りした印を戻して次回バッチで再送されるようにする。 */
+    private void releaseClaim(ShiftPreferenceReminderNotificationEvent event) {
         try {
-            reminderRunner.markSent(event.scheduleId(), event.kind());
+            reminderRunner.release(event.scheduleId(), event.kind());
         } catch (Exception e) {
-            log.error("シフト希望リマインドの送信済みフラグ保存に失敗しました（次回バッチで再送されうる）: "
+            log.error("シフト希望リマインドの送信済みフラグを戻せませんでした（全員配送失敗だが再送されない）: "
                     + "scheduleId={}, type={}", event.scheduleId(), event.kind().notificationType(), e);
         }
     }
