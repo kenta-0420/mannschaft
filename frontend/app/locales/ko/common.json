@@ -2,7 +2,20 @@
   "skill": {
     "list": {
       "loadDetailFailed": "스킬 상세 정보를 불러오지 못했습니다",
-      "loadCategoriesFailed": "카테고리를 불러오지 못했습니다"
+      "loadCategoriesFailed": "카테고리를 불러오지 못했습니다",
+      "mineTitle": "내 스킬·자격",
+      "deleteConfirm": "\"{name}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "deleteConfirmHeader": "자격 삭제"
+    },
+    "category": {
+      "deleteConfirm": "\"{name}\" 카테고리를 삭제하시겠습니까?",
+      "deleteConfirmHeader": "카테고리 삭제"
+    },
+    "page": {
+      "permissionLoadFailed": "권한 정보를 불러오지 못했습니다. 잠시 후 다시 불러오세요",
+      "forbidden": "이 팀의 멤버만 스킬·자격을 이용할 수 있습니다",
+      "mineTab": "내 스킬·자격",
+      "categoriesReloadFailed": "카테고리를 다시 불러오지 못했습니다"
     }
   },
   "chat": {
