@@ -40,19 +40,16 @@ const AUDIENCE_KEYS = ['targetMode', 'targetTeamIds', 'targetGroupIds', 'targetG
 /** 宛先が変わるたびに進める世代。遅れて返ったテンプレート確認の応答が、新しい選択を上書きしないための判定に使う */
 let audienceGen = 0
 
-/**
- * 削除で個別グループが全部除外され、範囲・未分類も無いテンプレート（BE の emptiedByRemoval）。
- * 宛先を明示せず templateId だけを送ると、BE が直属メンバー宛てとして解決する。
- */
-const templateEmptied = ref(false)
+/** 削除で個別グループが全部除外されたテンプレート（BE の emptiedByRemoval）。フォーム状態に持つので、ステップ2から戻っても失われない */
+const templateEmptied = computed(() => props.modelValue.templateEmptied)
 
 function update(patch: Partial<WizardFormState>) {
   const touchesAudience = AUDIENCE_KEYS.some(k => k in patch)
   if (touchesAudience) {
     audienceGen++
-    templateEmptied.value = false
   }
   const next = { ...props.modelValue, ...patch }
+  if (touchesAudience && !('templateEmptied' in patch)) next.templateEmptied = false
   // 宛先を手で変えたら、テンプレートの宛先が復元されないよう templateId を外す
   // （「すべてのチーム」など宛先項目が空になると、BE は templateId だけの送信をテンプレート解決とみなす）。
   if (touchesAudience && !('templateId' in patch)) next.templateId = null
@@ -336,9 +333,11 @@ function templateHasGroupItems(template: AnnouncementTemplate): boolean {
 
 async function onTemplateApply(template: AnnouncementTemplate) {
   templateNotice.value = null
-  templateEmptied.value = false
+  // 世代はグループ一覧の待機より前に採番する（待機中に宛先を手で変えたら、この適用は捨てる）
+  const gen = ++audienceGen
   // グループ一覧（機能 on/off の判定を含む）が揃う前に適用すると、グループ付きテンプレートを誤って「すべて」にしてしまう
   await groupsReady
+  if (gen !== audienceGen) return
   const hasGroups = isOrg.value && groupsEnabled.value && templateHasGroupItems(template)
   const mode: BroadcastTargetMode = template.targetTeamIds != null ? 'TEAMS' : hasGroups ? 'GROUPS' : 'ALL'
   const next: WizardFormState = {
@@ -349,12 +348,12 @@ async function onTemplateApply(template: AnnouncementTemplate) {
     targetGroupIds: mode === 'GROUPS' ? (template.targetGroupIds ?? []) : [],
     targetGroupRange: mode === 'GROUPS' ? (template.targetGroupRange ?? null) : null,
     includeUnassigned: mode === 'GROUPS' && template.includeUnassigned === true,
+    templateEmptied: false,
     // preferred_channel が設定されていればステップ2のチャネル初期選択に使う
     selectedChannel: template.preferredChannel ?? props.modelValue.selectedChannel,
     // グループ付きなのに画面で扱えない（機能 off）ときは templateId を残さない（BE が旧宛先を復元してしまう）
     templateId: mode === 'ALL' && templateHasGroupItems(template) ? null : template.id,
   }
-  const gen = ++audienceGen
   emit('update:modelValue', next)
   if (mode !== 'GROUPS') return
 
@@ -373,9 +372,8 @@ async function onTemplateApply(template: AnnouncementTemplate) {
       const alive = new Set(groups.value.map(g => g.id))
       const kept = next.targetGroupIds.filter(id => alive.has(id))
       const emptied = kept.length === 0 && next.targetGroupRange === null && !next.includeUnassigned
-      emit('update:modelValue', { ...props.modelValue, targetGroupIds: kept })
       // 全部除外されても BE は直属メンバー宛てとして許可する。選択が空に見えても次へ進めるようにする
-      templateEmptied.value = emptied
+      emit('update:modelValue', { ...props.modelValue, targetGroupIds: kept, templateEmptied: emptied })
     }
   }
   catch (e: unknown) {

@@ -30,6 +30,7 @@ function baseModelValue(overrides: Partial<WizardFormState> = {}): WizardFormSta
     targetGroupIds: [],
     targetGroupRange: null,
     includeUnassigned: false,
+    templateEmptied: false,
     selectedChannel: 'BULLETIN_THREAD',
     templateId: null,
     priority: 'NORMAL',

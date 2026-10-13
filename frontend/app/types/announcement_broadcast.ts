@@ -176,6 +176,8 @@ export interface WizardFormState {
   targetGroupIds: string[]
   targetGroupRange: BroadcastGroupRange | null
   includeUnassigned: boolean
+  /** 削除で個別グループが全部除外されたテンプレート（templateId だけで直属メンバー宛てとして送る）。ステップを戻っても保持する */
+  templateEmptied: boolean
   selectedChannel: BroadcastChannel | null
   templateId: number | null
   priority: BroadcastPriority

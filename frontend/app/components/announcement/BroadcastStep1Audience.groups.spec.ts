@@ -65,6 +65,7 @@ function baseState(over: Partial<WizardFormState> = {}): WizardFormState {
     targetGroupIds: [],
     targetGroupRange: null,
     includeUnassigned: false,
+    templateEmptied: false,
     selectedChannel: null,
     templateId: null,
     priority: 'NORMAL',
@@ -450,5 +451,29 @@ describe('テンプレート（AC-J02/J03）', () => {
     const last = previewCalls().at(-1) as [string, { body: Record<string, unknown> }]
     expect(last[1].body.templateId).toBe(5)
     expect(last[1].body.targetGroupIds).toBeUndefined()
+  })
+
+  it('High(2巡目): グループ一覧の取得待ち中に手で変えた宛先は、取得後の古いテンプレート適用で上書きされない', async () => {
+    let release: (v: unknown) => void = () => {}
+    mockApi.mockImplementation((url: string, opts?: { method?: string }) => {
+      if (String(url).endsWith('/team-groups')) return new Promise(r => { release = r })
+      return route(url, opts)
+    })
+    latest = baseState({ targetMode: 'GROUPS' })
+    wrapper = await mountSuspended(BroadcastStep1Audience, {
+      props: {
+        modelValue: latest, scopeType: 'ORGANIZATION', scopeId: 'acme', isAdmin: true,
+        'onUpdate:modelValue': (v: WizardFormState) => { latest = v; void wrapper?.setProps({ modelValue: v }) },
+      },
+    })
+    ;(wrapper.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template())
+    await flushPromises()
+    // 取得待ちの間に、利用者が宛先をすべてのチームへ変える
+    await emitFrom(wrapper, 'broadcast-target-mode-all', 'ALL')
+    release({ data: GROUPS, meta: { unassignedTeamCount: 2, limit: 100 } })
+    await flushPromises()
+    expect(latest.targetMode).toBe('ALL')
+    expect(latest.templateId).toBeNull()
+    expect(latest.targetGroupIds).toEqual([])
   })
 })

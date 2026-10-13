@@ -17,6 +17,7 @@ function state(partial: Partial<WizardFormState> = {}): WizardFormState {
     targetGroupIds: [],
     targetGroupRange: null,
     includeUnassigned: false,
+    templateEmptied: false,
     selectedChannel: null,
     templateId: null,
     priority: 'NORMAL',

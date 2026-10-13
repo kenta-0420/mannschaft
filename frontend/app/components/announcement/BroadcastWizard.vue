@@ -44,6 +44,7 @@ const initialFormState: WizardFormState = {
   targetGroupIds: [],
   targetGroupRange: null,
   includeUnassigned: false,
+  templateEmptied: false,
   selectedChannel: null,
   templateId: null,
   priority: 'NORMAL',

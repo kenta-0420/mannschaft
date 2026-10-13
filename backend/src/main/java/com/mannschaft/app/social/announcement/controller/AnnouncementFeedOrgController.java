@@ -96,8 +96,11 @@ public class AnnouncementFeedOrgController {
         AnnouncementFeedService.AnnouncementFeedResult result = announcementFeedService.getAnnouncementFeed(
                 AnnouncementScopeType.ORGANIZATION, orgId, userId, viewerRole.name(), cursor, limit);
 
+        // 宛先の記録（グループ名・チーム数）は、グループを閲覧してよい者にだけ返す（F01.2.1 §3.1・§10.1）
+        boolean includeTargetAudience = announcementFeedService.canViewTargetAudience(
+                userId, AnnouncementScopeType.ORGANIZATION, orgId);
         List<AnnouncementFeedItemDto> items = result.data().stream()
-                .map(AnnouncementFeedItemDto::from)
+                .map(item -> AnnouncementFeedItemDto.from(item, includeTargetAudience))
                 .toList();
 
         AnnouncementFeedResponseDto response = AnnouncementFeedResponseDto.builder()

@@ -119,6 +119,18 @@ public class AnnouncementFeedItemDto {
      * @return 変換済み DTO
      */
     public static AnnouncementFeedItemDto from(AnnouncementFeedService.AnnouncementFeedItem item) {
+        return from(item, false);
+    }
+
+    /**
+     * 宛先の記録を出すかどうかを、呼び出し側が閲覧者ごとに判定した結果として受け取って変換する。
+     * 権限の判断は DTO に埋め込まない（{@link AnnouncementFeedService#canViewTargetAudience}）。
+     *
+     * @param item                  Service が返すフィードアイテム
+     * @param includeTargetAudience 閲覧者がチームグループを閲覧してよいか（false なら targetAudience は null）
+     */
+    public static AnnouncementFeedItemDto from(AnnouncementFeedService.AnnouncementFeedItem item,
+                                               boolean includeTargetAudience) {
         var feed = item.feed();
         boolean locked = "LOCKED".equals(item.accessState());
         return AnnouncementFeedItemDto.builder()
@@ -140,7 +152,7 @@ public class AnnouncementFeedItemDto {
                 .expiresAt(formatDateTime(feed.getExpiresAt()))
                 .isRead(item.isRead())
                 .accessState(item.accessState())
-                .targetAudience(locked ? null : parseTargetAudience(feed.getTargetAudience()))
+                .targetAudience(locked || !includeTargetAudience ? null : parseTargetAudience(feed.getTargetAudience()))
                 .createdAt(formatDateTime(feed.getCreatedAt()))
                 .updatedAt(formatDateTime(feed.getUpdatedAt()))
                 .build();

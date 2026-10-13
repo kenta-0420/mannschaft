@@ -34,7 +34,7 @@ class AnnouncementFeedItemDtoTargetAudienceTest {
     void exposesRecordedAudience() throws Exception {
         var item = new AnnouncementFeedService.AnnouncementFeedItem(feed(AUDIENCE_JSON), false);
 
-        JsonNode json = objectMapper.valueToTree(AnnouncementFeedItemDto.from(item));
+        JsonNode json = objectMapper.valueToTree(AnnouncementFeedItemDto.from(item, true));
 
         JsonNode audience = json.get("targetAudience");
         assertThat(audience).isNotNull();
@@ -52,7 +52,7 @@ class AnnouncementFeedItemDtoTargetAudienceTest {
     void nullWhenNoRecord() {
         var item = new AnnouncementFeedService.AnnouncementFeedItem(feed(null), false);
 
-        assertThat(AnnouncementFeedItemDto.from(item).getTargetAudience()).isNull();
+        assertThat(AnnouncementFeedItemDto.from(item, true).getTargetAudience()).isNull();
     }
 
     @Test
@@ -60,7 +60,7 @@ class AnnouncementFeedItemDtoTargetAudienceTest {
     void hiddenWhenLocked() {
         var item = new AnnouncementFeedService.AnnouncementFeedItem(feed(AUDIENCE_JSON), false, "LOCKED", null);
 
-        assertThat(AnnouncementFeedItemDto.from(item).getTargetAudience()).isNull();
+        assertThat(AnnouncementFeedItemDto.from(item, true).getTargetAudience()).isNull();
     }
 
     @Test
@@ -68,7 +68,16 @@ class AnnouncementFeedItemDtoTargetAudienceTest {
     void failsLoudlyOnCorruptRecord() {
         var item = new AnnouncementFeedService.AnnouncementFeedItem(feed("{not json"), false);
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> AnnouncementFeedItemDto.from(item))
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> AnnouncementFeedItemDto.from(item, true))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("閲覧権限がない（既定・false）なら、記録があっても出さない")
+    void hiddenWithoutPermission() {
+        var item = new AnnouncementFeedService.AnnouncementFeedItem(feed(AUDIENCE_JSON), false);
+
+        assertThat(AnnouncementFeedItemDto.from(item).getTargetAudience()).isNull();
+        assertThat(AnnouncementFeedItemDto.from(item, false).getTargetAudience()).isNull();
     }
 }
