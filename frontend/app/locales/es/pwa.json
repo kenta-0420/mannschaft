@@ -1,8 +1,8 @@
 {
   "offline": {
-    "status_banner": "Modo sin conexion — Los datos se guardan localmente",
-    "back_online": "De vuelta en linea",
-    "saved_locally": "Guardado sin conexion. Se enviara automaticamente cuando vuelvas a estar en linea"
+    "status_banner": "Modo sin conexión — Los datos se guardan localmente",
+    "back_online": "De vuelta en línea",
+    "saved_locally": "Guardado sin conexión. Se enviará automáticamente cuando vuelvas a estar en línea"
   },
   "sync": {
     "in_progress": "Sincronizando...",
@@ -41,11 +41,11 @@
     "diff_highlight": "Diferencia"
   },
   "pwa": {
-    "install_prompt": "Agrega a la pantalla de inicio para usarlo como una aplicacion",
+    "install_prompt": "Agrega a la pantalla de inicio para usarlo como una aplicación",
     "install_button": "Instalar",
     "update_available": "Hay una nueva version disponible",
     "update_button": "Actualizar",
-    "later": "Mas tarde",
+    "later": "Más tarde",
     "installed": "Instalado",
     "install_success": "Instalacion completada!",
     "ios": {
@@ -57,7 +57,7 @@
       "close": "Cerrar",
       "note": "No se puede agregar desde Chrome/Firefox",
       "memo_shortcut_title": "Abre Nota Rapida con un toque",
-      "memo_shortcut_step1": "Abre la pagina de notas (/quick-memos) en Safari",
+      "memo_shortcut_step1": "Abre la página de notas (/quick-memos) en Safari",
       "memo_shortcut_step2": "Toca el boton de compartir (cuadrado con flecha hacia arriba)",
       "memo_shortcut_step3": "Selecciona 'Agregar a pantalla de inicio' y cambia el nombre (ej: 'Nota')",
       "memo_shortcut_step4": "Toca 'Agregar' — aparecera un icono dedicado en tu pantalla de inicio"

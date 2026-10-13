@@ -70,6 +70,22 @@ public class MembershipStatsQueryService {
     }
 
     /**
+     * 指定スコープの現役メンバー数を、指定ユーザー（告知の送信者本人）を除いて数える（F01.2.1 6-A の直属メンバー数）。
+     *
+     * @param scopeType         スコープ種別
+     * @param scopeId           スコープ ID
+     * @param includeSupporters false なら純 SUPPORTER（role_kind = SUPPORTER）を数えない
+     * @param excludeUserId     数えないユーザー（null なら誰も除かない）
+     * @return 現役メンバー数（DISTINCT user_id）
+     */
+    @Transactional(readOnly = true)
+    public long countActiveMembersExcluding(
+            ScopeType scopeType, Long scopeId, boolean includeSupporters, Long excludeUserId) {
+        return membershipRepository.countActiveDistinctUsersByScopeExcluding(
+                scopeType, scopeId, includeSupporters, excludeUserId == null ? -1L : excludeUserId);
+    }
+
+    /**
      * メンバー統計のドメインローカル集計。
      *
      * @param totalCount       会員総数（active な DISTINCT user_id 件数・管理者含む）

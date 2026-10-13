@@ -6,6 +6,7 @@ import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobRepository;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobStatus;
 import com.mannschaft.app.notification.fanout.NotificationFanoutWorker;
+import com.mannschaft.app.notification.outbox.NotificationOutboxRelay;
 import com.mannschaft.app.team.entity.TeamOrgAffiliationDirection;
 import com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionKind;
 import com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionReason;
@@ -86,6 +87,10 @@ class TeamOrgApplicationCommittedIT extends TeamAffiliationItSupport {
 
     @Autowired
     private NotificationFanoutWorker worker;
+
+    /** 通知 outbox の relay（OB21: 試験プロファイルでは起こしを止めてあるので、ジョブを見る前に drain を挟む）。 */
+    @Autowired
+    private NotificationOutboxRelay relay;
 
     @AfterEach
     void cleanUp() {
@@ -247,6 +252,7 @@ class TeamOrgApplicationCommittedIT extends TeamAffiliationItSupport {
         Result created = apply(users[0], team.slug(), org.slug());
         assertThat(created.status()).isEqualTo(201);
         long membershipId = created.id();
+        relay.drainAll(); // OB21: outbox → fan-out ジョブ
 
         UUID jobId = jobIdOf(membershipId);
         NotificationFanoutJob job = jobRepository.findById(jobId).orElseThrow();
@@ -282,6 +288,7 @@ class TeamOrgApplicationCommittedIT extends TeamAffiliationItSupport {
         });
         Result created = apply(admin, team.slug(), org.slug());
         assertThat(created.status()).isEqualTo(201);
+        relay.drainAll(); // OB21: outbox → fan-out ジョブ
         UUID jobId = jobIdOf(created.id());
 
         // 配信を必ず失敗させる（受信者の解決キーが数値として読めない）。申請とは別のトランザクションで起きる失敗

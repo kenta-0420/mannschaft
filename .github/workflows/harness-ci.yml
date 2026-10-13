@@ -1,0 +1,31 @@
+name: Harness CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: harness-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  harness-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout PR merge result
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run harness and guard coverage tests
+        run: >-
+          node --test
+          scripts/harness-doctor.test.mjs
+          scripts/harness-benchmark.test.mjs
+          scripts/completion-evidence.test.mjs
+          scripts/guard-coverage.test.mjs

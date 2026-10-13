@@ -1,5 +1,6 @@
 package com.mannschaft.app.recruitment.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -13,7 +14,13 @@ public class RecruitmentPenaltySettingResponse {
     private final Long id;
     private final String scopeType;
     private final Long scopeId;
-    private final boolean isEnabled;
+    /**
+     * 有効フラグ。JSON キーは画面・API 契約どおり {@code isEnabled}。
+     * Lombok の getter は {@code isEnabled()} となり Jackson は暗黙名を {@code enabled} と解釈するため、
+     * フィールド名を {@code enabled} に揃えたうえで {@link JsonProperty} で JSON 名を明示する。
+     */
+    @JsonProperty("isEnabled")
+    private final boolean enabled;
     private final int thresholdCount;
     private final int thresholdPeriodDays;
     private final int penaltyDurationDays;
