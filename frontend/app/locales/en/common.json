@@ -1,6 +1,19 @@
 {
   "skill": {
+    "form": {
+      "noCategoryAdmin": "このチームにはまだ有効なカテゴリがありません。「カテゴリ管理」タブでカテゴリを作成してください。",
+      "noCategoryMember": "このチームにはまだ有効なカテゴリがありません。チームの管理者にカテゴリの作成を依頼してください。"
+    },
+    "matrix": {
+      "legendPendingNote": "確認待ちの資格は未登録として表示されます"
+    },
     "list": {
+      "actions": {
+        "verify": "承認",
+        "edit": "編集",
+        "delete": "削除",
+        "certificate": "証明書を表示"
+      },
       "loadDetailFailed": "Failed to load the skill details",
       "loadCategoriesFailed": "Failed to load the categories",
       "mineTitle": "My skills and certifications",
@@ -8,6 +21,10 @@
       "deleteConfirmHeader": "Delete certification"
     },
     "category": {
+      "actions": {
+        "edit": "編集",
+        "delete": "削除"
+      },
       "deleteConfirm": "Delete the category \"{name}\"?",
       "deleteConfirmHeader": "Delete category"
     },

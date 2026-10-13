@@ -1,6 +1,19 @@
 {
   "skill": {
+    "form": {
+      "noCategoryAdmin": "このチームにはまだ有効なカテゴリがありません。「カテゴリ管理」タブでカテゴリを作成してください。",
+      "noCategoryMember": "このチームにはまだ有効なカテゴリがありません。チームの管理者にカテゴリの作成を依頼してください。"
+    },
+    "matrix": {
+      "legendPendingNote": "確認待ちの資格は未登録として表示されます"
+    },
     "list": {
+      "actions": {
+        "verify": "承認",
+        "edit": "編集",
+        "delete": "削除",
+        "certificate": "証明書を表示"
+      },
       "loadDetailFailed": "스킬 상세 정보를 불러오지 못했습니다",
       "loadCategoriesFailed": "카테고리를 불러오지 못했습니다",
       "mineTitle": "내 스킬·자격",
@@ -8,6 +21,10 @@
       "deleteConfirmHeader": "자격 삭제"
     },
     "category": {
+      "actions": {
+        "edit": "編集",
+        "delete": "削除"
+      },
       "deleteConfirm": "\"{name}\" 카테고리를 삭제하시겠습니까?",
       "deleteConfirmHeader": "카테고리 삭제"
     },
