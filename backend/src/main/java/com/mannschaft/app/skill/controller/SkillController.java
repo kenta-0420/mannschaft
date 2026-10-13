@@ -58,7 +58,7 @@ public class SkillController {
     @GetMapping("/me")
     public ApiResponse<List<MemberSkillResponse>> getMySkills(@PathVariable Long teamId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(userId, teamId, "TEAM");
+        accessControlService.checkRegularMemberOrAbove(userId, teamId, "TEAM");
 
         List<MemberSkillEntity> skills =
                 memberSkillService.getMySkills(userId, "TEAM", teamId).getData();
@@ -75,7 +75,7 @@ public class SkillController {
             @PathVariable Long teamId,
             @Valid @RequestBody RegisterSkillRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(userId, teamId, "TEAM");
+        accessControlService.checkRegularMemberOrAbove(userId, teamId, "TEAM");
 
         MemberSkillEntity entity = memberSkillService.registerSkill(
                 userId, "TEAM", teamId,
@@ -142,7 +142,7 @@ public class SkillController {
     @PostMapping("/upload-url")
     public ApiResponse<UploadUrlResponse> generateUploadUrl(@PathVariable Long teamId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(userId, teamId, "TEAM");
+        accessControlService.checkRegularMemberOrAbove(userId, teamId, "TEAM");
 
         String s3Key = "skills/teams/" + teamId + "/users/" + userId
                 + "/certificates/" + UUID.randomUUID() + ".pdf";

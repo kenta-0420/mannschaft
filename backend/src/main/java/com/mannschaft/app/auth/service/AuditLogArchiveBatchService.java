@@ -7,6 +7,7 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.AuditLogEntity;
 import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -15,7 +16,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,6 +71,8 @@ public class AuditLogArchiveBatchService {
     private final StorageService storageService;
     private final ObjectMapper objectMapper;
     private final JdbcTemplate jdbcTemplate;
+    /** 基準日時は UTC 壁時計（audit_logs.created_at の格納基準）で測る。{@code utcClock}（@Primary）が注入される。*/
+    private final Clock clock;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
             reason = "止めると監査ログが本表に滞留し続け、アーカイブされないまま肥大化して監査記録の保全と参照性能が壊れる")
@@ -75,13 +80,16 @@ public class AuditLogArchiveBatchService {
     @Scheduled(cron = "0 0 2 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "auditLogArchiveBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")
     public void archiveOldLogs() {
-        LocalDateTime threshold = LocalDateTime.now().minusYears(RETENTION_YEARS);
-        log.info("[AuditLogArchiveBatch] アーカイブ開始: 基準日時={}", threshold);
+        // 以降の「月」はすべて UTC 壁時計で数える。audit_logs は created_at を UTC 壁時計で格納し、
+        // パーティション p_YYYY_MM も UTC の月で切られている。JVM ゾーン（JST）の月で走査すると、
+        // 月境界付近の 9 時間分が「アーカイブした月」と「DROP される月」でずれ、未アーカイブの行が消える。
+        LocalDateTime thresholdUtc = LocalDateTime.now(clock).minusYears(RETENTION_YEARS);
+        log.info("[AuditLogArchiveBatch] アーカイブ開始: 基準日時(UTC)={}", thresholdUtc);
 
         long totalArchived = 0;
         long totalDeleted = 0;
 
-        LocalDateTime oldest = auditLogRepository.findOldestCreatedAtBefore(threshold);
+        LocalDateTime oldest = auditLogRepository.findOldestCreatedAtBefore(toBindValue(thresholdUtc));
         if (oldest == null) {
             log.info("[AuditLogArchiveBatch] アーカイブ対象なし。スキップします");
             return;
@@ -89,14 +97,14 @@ public class AuditLogArchiveBatchService {
 
         // 閾値を含む月は「まだ経過しきっていない」ため、パーティションを落とすと
         // 閾値より新しい行まで巻き込む。当該月は次回以降のバッチへ持ち越す。
-        YearMonth cutoffMonth = YearMonth.from(threshold.toLocalDate());
+        YearMonth cutoffMonth = YearMonth.from(thresholdUtc.toLocalDate());
 
         // 失敗した月を記録して次月へ進む。1ヶ月の失敗で残りの月まで巻き添えに打ち切ると、
         // 古い月ほど再試行の機会を失って滞留する。最後にまとめて例外を送出することで、
         // 手動起動（@BatchEndpoint 経由）でも失敗が呼び手に伝わる。
         List<String> failedMonths = new ArrayList<>();
 
-        for (YearMonth ym = YearMonth.from(oldest.toLocalDate());
+        for (YearMonth ym = YearMonth.from(toUtcWallClock(oldest).toLocalDate());
              ym.isBefore(cutoffMonth);
              ym = ym.plusMonths(1)) {
 
@@ -146,8 +154,8 @@ public class AuditLogArchiveBatchService {
      * @return 当該月で R2 へ書き出した件数（0 なら対象行なし）
      */
     private long archiveMonth(YearMonth ym) {
-        LocalDateTime from = ym.atDay(1).atStartOfDay();
-        LocalDateTime to = ym.plusMonths(1).atDay(1).atStartOfDay();
+        LocalDateTime from = toBindValue(ym.atDay(1).atStartOfDay());
+        LocalDateTime to = toBindValue(ym.plusMonths(1).atDay(1).atStartOfDay());
 
         long cursor = 0L;
         int part = 0;
@@ -204,6 +212,26 @@ public class AuditLogArchiveBatchService {
         }
 
         storageService.upload(r2Key, jsonBytes, "application/json");
+    }
+
+    /**
+     * UTC 壁時計を、JPA（Hibernate）へ束縛すべき {@code LocalDateTime} に変換する。
+     *
+     * <p>Hibernate は {@code LocalDateTime} を JVM 既定ゾーン（{@link UserZoneLocalDateTimeParser#SERVER_ZONE}）の
+     * 壁時計とみなし、{@code hibernate.jdbc.time_zone=UTC} へ変換して DB に渡す。したがって
+     * 「DB 上の UTC 壁時計 X」を指すには、X を SERVER_ZONE の壁時計へ直した値を渡す必要がある。</p>
+     */
+    private static LocalDateTime toBindValue(LocalDateTime utcWallClock) {
+        return utcWallClock.atOffset(ZoneOffset.UTC)
+                .atZoneSameInstant(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                .toLocalDateTime();
+    }
+
+    /** JPA が読み戻した {@code LocalDateTime}（SERVER_ZONE 壁時計）を、DB 格納基準の UTC 壁時計へ戻す。*/
+    private static LocalDateTime toUtcWallClock(LocalDateTime readBack) {
+        return readBack.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                .withZoneSameInstant(ZoneOffset.UTC)
+                .toLocalDateTime();
     }
 
     /**
