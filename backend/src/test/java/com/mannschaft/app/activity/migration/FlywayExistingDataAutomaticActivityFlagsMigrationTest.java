@@ -16,6 +16,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** 既存activity移行金型と同じ専用MySQLで、236系の実既存行を237のDDLへ移行する。 */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class FlywayExistingDataAutomaticActivityFlagsMigrationTest {
+    private static final String FLAGS_MIGRATION_TARGET = "237.20261008035358";
+
     @Test
     void 既存通常と削除行の実績とversionを保持し二flagsはfalseになる() throws Exception {
         try (var mysql = new MySQLContainer<>("mysql:8.0").withDatabaseName("automatic_flags_migration")
@@ -44,9 +46,10 @@ class FlywayExistingDataAutomaticActivityFlagsMigrationTest {
                 assertThat(existing).hasSize(2);
             }
             var after = Flyway.configure().dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
+                    // 後続の別機能migrationを含めず、flags追加だけの既存値保全を検証する。
                     .locations("classpath:db/migration").outOfOrder(false)
                     // 237 の移行だけを検証する（後続の migration が足されても 1 件のまま。target なしだと V238 以降で壊れる）
-                    .target(MigrationVersion.fromVersion("237.20261008035358")).load().migrate();
+                    .target(MigrationVersion.fromVersion(FLAGS_MIGRATION_TARGET)).load().migrate();
             assertThat(after.success).isTrue();
             assertThat(after.migrationsExecuted).isEqualTo(1);
             try (var connection = DriverManager.getConnection(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())) {

@@ -904,7 +904,13 @@ public void dispatch() { ... }
 | 本番 DB や外部 API に直接接続するテスト | Testcontainers またはモックを使用する |
 | テスト専用の `if (isTest)` 分岐をプロダクションコードに入れる | DI やプロファイルで切り替える |
 | `@Disabled` を理由なく放置する | 一時的な無効化は許容するが、理由をコメントに記載し、1スプリント以内に解決する |
-| 手書きの INSERT SQL でテストデータを作成する | TestFixture 経由で作成する（`backend/BACKEND_CODING_CONVENTION.md` テストデータ作成パターン参照） |
+| 業務フローの fixture を手書き INSERT SQL で作成する | TestFixture / Repository 経由で作成する。旧スキーマ移行 fixture と移行後の現 Entity 検証の分類・制約は下記を参照（`backend/BACKEND_CODING_CONVENTION.md` テストデータ作成パターンと同一規則） |
 | **Controller を `@Autowired` して直接メソッド呼び出しでテストする** | HTTP 層を迂回し、URL パス・HTTP メソッド・enum バインド・JSON 形状・`@Valid`・例外→ステータス変換を一切検証できない。村ドメインで契約不一致 17 件を素通しにした実害あり。MockMvc を使うこと（**§3.1.1** に詳細）|
 | **ArchUnit を使うテストに `@Tag(ArchUnitTestTag.ARCHUNIT)`（`@AnalyzeClasses` なら `@ArchTag(ArchUnitTestTag.ARCHUNIT)`）を付けない／タグ付きテストで Spring のテストコンテキストを使う** | ArchUnit の本番取り込み（約 1.1GB）が Spring 系 IT と同じ JVM に乗り、shard 5 が OOM した（CMP-261002-1606）。ArchUnit テストは通常の `test` から除外され、専用タスク `archTest`（別 JVM・shard 分割なし）で走る。番人 `ArchUnitTestTagGuardTest` がタグ漏れ・Spring 混在・shard 重み表への混入を拒否する（詳細: `backend/.claudecode.md` §30）|
 | **ArchUnit で本番全体を `ClassFileImporter` で手動取り込みする／`JavaClasses` を static フィールドで保持する** | 取り込み結果が JVM 内に何コピーも残り、全量 CI の shard が `Java heap space` で落ちた（CMP-261002-1606）。本番全体は共有ホルダ `ProductionClasses.get()` だけを使う。番人 `ProductionClassImportGuardTest` が拒否する（詳細: `backend/.claudecode.md` §30）|
+
+テストデータ作成は次の試験種別で分類する。個別の戦役・クラス名による免除にはしない。
+
+- **業務フローの fixture**: 従来どおり TestFixture で Entity を作り、Repository 経由で保存する。手書きの INSERT SQL は禁止する。
+- **旧スキーマの移行 fixture**: 現在の Entity / Repository では移行前のスキーマ・当時の型を忠実に再現できない場合に限り、Flyway 実スキーマを所有する Testcontainers MySQL の対象 migration 前後の Callback 内で、JDBC による固定データ投入を許可する。用途は移行前の既存行の準備と、移行後の DB デフォルト値の観測に限定する。fixture は対象 migration・固定テーブル・所有行の範囲・必要理由を明記し、実 migration 前後の全列保全を検証して投入行を削除する。外部キー検査の一時変更は `finally` で元の値へ復元する。本番・共有DBへの接続と対象外行の更新は禁止する。
+- **移行後の現 Entity 検証**: Flyway 実スキーマとの型解決・楽観ロックを検証する場合に限り、その試験が所有する既存 MySQL に相乗りする実 Hibernate Session の Entity persist / read / update を許可する。旧スキーマを作る Callback 内の JDBC 投入とは区別し、生成された所有行の ID だけを操作する。独自 Spring context・別コンテナ・Bean mock を増やさず、業務試験一般の Repository 必須ルールは維持する。

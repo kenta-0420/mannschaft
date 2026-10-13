@@ -2014,6 +2014,7 @@ D&D UI 用の差分割当 API。個別ユーザーの追加・削除を `shift_s
 ```
 
 - **権限フィルタ**: MEMBER は自分の依頼のみ返却（バックエンドで強制適用。URL 直打ちで他人の一覧は取得不可）。ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）はスケジュール全体を閲覧可能
+- 一覧・詳細の各変更依頼は実エンティティの `version`（SIGNED BIGINT / Java Long、初回 0）を返す。既存のネストされた情報も保持する。
 - **管理画面ソート**: `status = OPEN` を先頭に、続いて `created_at DESC` の複合ソート（未処理を優先表示）
 
 **エラーレスポンス**
@@ -2042,36 +2043,62 @@ D&D UI 用の差分割当 API。個別ユーザーの追加・削除を `shift_s
 
 #### `PATCH /api/v1/shifts/change-requests/{id}/review`【v2.1 新規】
 
-管理者が変更依頼を受諾（ACCEPTED）または却下（REJECTED）する。
+管理者が OPEN の変更依頼を受諾（ACCEPTED）または却下（REJECTED）する。認証は Controller、チームの管理権限は `ShiftChangeRequestFacade#review` の既存 Gate で検査する。
 
-**リクエストボディ**
+**リクエストボディ（ReviewChangeRequestRequest）**
 ```json
 {
-  "action": "ACCEPTED",
-  "admin_note": "別日で調整しました。ご確認ください",
+  "decision": "ACCEPTED",
+  "reviewComment": "別日で調整しました。ご確認ください",
   "version": 0
 }
 ```
 
-- `action`: 必須。`ACCEPTED` または `REJECTED`
-- `admin_note`: 任意（`REJECTED` の場合は実質必須運用。「理由なし却下は避ける」旨を UI で促す）
-- `version`: 必須。楽観的ロック
+- `decision`: 必須。`ACCEPTED` または `REJECTED`。
+- `reviewComment`: 任意・最大500文字。
+- `version`: 必須。直前の一覧・詳細で取得した実版（Java Long）を送信する。初回 0 も有効で、2^31 以上を Integer へ狭めない。
 
-**レスポンス（200 OK）**: 更新後の change_request を返却
+**レスポンス（200 OK、ApiResponse<ChangeRequestResponse>）**
+```json
+{
+  "data": {
+    "id": 501,
+    "scheduleId": 1,
+    "slotId": 101,
+    "version": 1,
+    "requestInfo": {
+      "requestType": "PRE_CONFIRM_EDIT",
+      "reason": "別日の勤務を希望します",
+      "requestedBy": 10
+    },
+    "reviewInfo": {
+      "status": "ACCEPTED",
+      "reviewerId": 12,
+      "reviewComment": "別日で調整しました。ご確認ください",
+      "reviewedAt": "2026-10-08T10:00:00"
+    },
+    "timing": {
+      "expiresAt": null,
+      "createdAt": "2026-10-08T09:00:00"
+    }
+  }
+}
+```
 
-- **重要（ACCEPTED の運用）**: 本 API は `status` フラグの更新のみで、**実スロットの変更は別途管理者が D&D UI や `PATCH /slots/{id}/assignments` で実施する**。本ボタンは「その作業が終わった」宣言として使う設計。理由: 依頼内容が多岐にわたる（単純な交代 / 別日移動 / スロット削除等）ため、画面上で自由に編集してから「この依頼を受諾した」と記録する方が柔軟
-- 依頼者にプッシュ + アプリ内通知（「変更依頼が受諾されました」「変更依頼が却下されました: {admin_note}」）
-- ApplicationEvent: `ShiftChangeRequestReviewedEvent`
-- 監査ログ: `SHIFT_CHANGE_REQUEST_REVIEWED`（`action`, `reviewed_by`, `admin_note` を記録）
+- 明示 flush 後の確定版を返す。画面は `requestInfo` / `reviewInfo` / `timing` を含む応答全体で依頼を置換する。GET・一覧も同じネスト構造と実版を返す。
+- 本 API は依頼の審査状態を更新する。実スロットの割当変更は別途 D&D UI または `PATCH /api/v1/shifts/slots/{id}/assignments` で行う。
+- 画面は版の欠落・非安全整数・負値を検知した場合に審査リクエストを送らない。既定値 0 に置換しない。競合 409 は一度通知し、元の例外と画面の依頼を保持する。自動再送は行わない。
 
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
-| 400 | `action` が ACCEPTED / REJECTED 以外 |
-| 403 | ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）ではない |
-| 404 | 依頼が存在しない |
-| 409 | `status != 'OPEN'`（二重審査防止）/ 楽観的ロック競合 |
+| 400 | 必須 decision/version の欠落、JSON 型・Long 範囲不正、reviewComment が500文字超などの入力検証失敗 |
+| 401 | 匿名（実認証フィルター） |
+| 403 | 当該チームの一般メンバーで管理権限がない（COMMON_002） |
+| 404 | 依頼不在、非所属・他チーム管理者による越境（SHIFT_030）。実在と不在を同じ応答で秘匿する |
+| 409 | `status != OPEN`、ACCEPTED/REJECTED 以外の既知 decision（SHIFT_031）、または実版不一致（SHIFT_018） |
 
+- 必須版欠落400と stale 409、匿名401・越境404は依頼行と既存関連割当履歴を変更しない。
 ---
 
 #### `DELETE /api/v1/shifts/change-requests/{id}`【v2.1 新規】

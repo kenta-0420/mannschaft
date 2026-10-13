@@ -79,7 +79,7 @@ class ShiftChangeRequestServiceAuthzTest {
     }
 
     private ReviewChangeRequestRequest reviewReq() {
-        return new ReviewChangeRequestRequest(ChangeRequestStatus.ACCEPTED, "承認", 0);
+        return new ReviewChangeRequestRequest(ChangeRequestStatus.ACCEPTED, "承認", 0L);
     }
 
     @Test

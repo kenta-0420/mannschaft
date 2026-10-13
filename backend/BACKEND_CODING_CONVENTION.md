@@ -812,8 +812,10 @@ public class TestFixture {
 ```
 
 #### ルール
-- DB に保存する場合は **Repository 経由**で行う: `userRepository.save(TestFixture.defaultUser())`
-- **手書きの INSERT SQL は禁止**（エンティティの変更に追従できなくなるため）
+- テストデータ作成は試験種別で分類する（`TEST_CONVENTION.md` §10）。個別の戦役・クラス名による免除にはしない。
+    - **業務フローの fixture**: TestFixture で Entity を作り、**Repository 経由**で保存する（`userRepository.save(TestFixture.defaultUser())`）。手書きの INSERT SQL は禁止する。
+    - **旧スキーマの移行 fixture**: 現在の Entity / Repository では移行前のスキーマ・当時の型を忠実に再現できない場合に限り、Flyway 実スキーマを所有する Testcontainers MySQL の対象 migration 前後の Callback 内で、JDBC による固定データ投入を許可する。用途は移行前の既存行の準備と、移行後の DB デフォルト値の観測に限定する。対象 migration・固定テーブル・所有行の範囲・必要理由を fixture に明記し、実 migration 前後の全列を比較して既存値の保全を検証し、投入行を削除する。外部キー検査を一時変更したら元の値を `finally` で復元する。本番・共有DBへの接続や対象外行の更新は禁止する。
+    - **移行後の現 Entity 検証**: Flyway 実スキーマとの型解決・楽観ロックを検証する場合に限り、その試験が所有する既存 MySQL に相乗りする実 Hibernate Session の Entity persist / read / update を許可する。旧スキーマを作る Callback 内の JDBC 投入とは区別し、生成された所有行の ID だけを読み書きする。独自 Spring context・別コンテナ・Bean mock を増やさず、業務試験一般の Repository 必須ルールは維持する。
 - テスト間でデータが干渉しないよう、`@Transactional`（自動ロールバック）または `@BeforeEach` でクリーンアップする
 - テストメソッド名は日本語を許容する（例: `void 管理者のみチーム作成が可能()`）。テストの意図を明確にすることを優先する
 

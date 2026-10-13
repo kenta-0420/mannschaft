@@ -17,6 +17,7 @@ public class ChangeRequestResponse {
     Long id;
     Long scheduleId;
     Long slotId;
+    Long version;
 
     ChangeRequestTypeDto   requestInfo;  // requestType, reason, requestedBy
     ChangeRequestStatusDto reviewInfo;   // status, reviewerId, reviewComment, reviewedAt

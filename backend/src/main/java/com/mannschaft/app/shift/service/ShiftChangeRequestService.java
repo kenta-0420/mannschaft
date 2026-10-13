@@ -182,6 +182,7 @@ public class ShiftChangeRequestService {
         }
 
         entity = changeRequestRepository.save(entity);
+        changeRequestRepository.flush();
         log.info("シフト変更依頼審査: id={}, decision={}, reviewerId={}", id, request.decision(), userId);
         return toResponse(entity);
     }
@@ -294,6 +295,7 @@ public class ShiftChangeRequestService {
                 .id(entity.getId())
                 .scheduleId(entity.getScheduleId())
                 .slotId(entity.getSlotId())
+                .version(entity.getVersion())
                 .requestInfo(new ChangeRequestResponse.ChangeRequestTypeDto(
                         entity.getRequestType(), entity.getReason(), entity.getRequestedBy()))
                 .reviewInfo(new ChangeRequestResponse.ChangeRequestStatusDto(

@@ -48,13 +48,16 @@ export function useChangeRequest(scheduleId: Ref<number>) {
     id: number,
     decision: 'ACCEPTED' | 'REJECTED',
     comment?: string,
-    version = 0,
   ): Promise<void> {
     try {
+      const target = requests.value.find((request) => request.id === id)
+      if (!target || !Number.isSafeInteger(target.version) || target.version < 0) {
+        throw new Error('変更依頼の版番号を取得し直してください')
+      }
       const updated = await shiftApi.reviewChangeRequest(id, {
         decision,
         reviewComment: comment,
-        version,
+        version: target.version,
       })
       const idx = requests.value.findIndex((r) => r.id === id)
       if (idx !== -1) {
@@ -65,9 +68,12 @@ export function useChangeRequest(scheduleId: Ref<number>) {
           ? t('shift.changeRequest.approve')
           : t('shift.changeRequest.reject'),
       )
-    } catch {
-      showError(t('shift.changeRequest.fetchError'))
-      throw new Error('review failed')
+    } catch (error) {
+      const apiError = error as { data?: { error?: { code?: string } } }
+      showError(t(apiError?.data?.error?.code === 'SHIFT_018'
+        ? 'error.COMMON_003'
+        : 'shift.notification.errorUpdate'))
+      throw error
     }
   }
 
