@@ -8,6 +8,7 @@ import com.mannschaft.app.mail.outbox.EmailTransport;
 import net.javacrumbs.shedlock.core.LockAssert;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -106,17 +108,22 @@ class MfaEmailOutboxDeliveryIT extends MfaEmailOtpItSupport {
     }
 
     /** 実 Worker を、指定行が PENDING を抜けるまで同期で回す（1 回 50 件。他テストの残り行があっても届くまで）。 */
-    private void drainWorkerUntilProcessed(UUID outboxId) throws InterruptedException {
+    private void drainWorkerUntilProcessed(UUID outboxId) {
         LockAssert.TestHelper.makeAllAssertsPass(true);
         try {
             // 行の next_attempt_at は enqueue 側 JVM の壁時計（EmailOutboxEntity#prepareForEnqueue）で、取得条件は DB の NOW(3)。
-            // JVM と DB コンテナ（WSL2 等）の時計差で、投入直後の数百 ms は「まだ対象外」になりうるため、待ちを挟んで再試行する。
-            for (int i = 0; i < 40 && "PENDING".equals(outboxStatus(outboxId)); i++) {
-                emailOutboxWorker.poll();
-                if ("PENDING".equals(outboxStatus(outboxId))) {
-                    Thread.sleep(250);
-                }
-            }
+            // JVM と DB コンテナ（WSL2 等）の時計差で、投入直後の数百 ms は「まだ対象外」になりうるため、
+            // PENDING を抜けるまで Worker を回し直す（TEST_CONVENTION: 待機は Thread.sleep ではなく Awaitility）。
+            Awaitility.await("outbox 行が Worker 処理で PENDING を抜ける")
+                    .atMost(Duration.ofSeconds(10))
+                    .pollDelay(Duration.ZERO)
+                    .pollInterval(Duration.ofMillis(250))
+                    .until(() -> {
+                        if ("PENDING".equals(outboxStatus(outboxId))) {
+                            emailOutboxWorker.poll();
+                        }
+                        return !"PENDING".equals(outboxStatus(outboxId));
+                    });
         } finally {
             LockAssert.TestHelper.makeAllAssertsPass(false);
         }
@@ -198,7 +205,11 @@ class MfaEmailOutboxDeliveryIT extends MfaEmailOtpItSupport {
 
         assertThat(failed.getResponse().getStatus()).as("AC-50 enqueue 失敗を成功と偽らない: %s", body(failed))
                 .isNotEqualTo(200).isNotEqualTo(429);
-        Thread.sleep(300);
+        // 失敗した要求から遅れて行が現れないことを一定時間確かめる（Thread.sleep ではなく Awaitility の during）
+        Awaitility.await("AC-50 失敗した送信要求の outbox 行は現れない")
+                .during(Duration.ofMillis(300))
+                .atMost(Duration.ofSeconds(2))
+                .until(() -> otpOutboxCount(u.userId()) == 0);
         assertThat(otpOutboxCount(u.userId())).as("AC-50 行は作られていない").isZero();
 
         String fixed = "mfa-it-" + UUID.randomUUID() + "@example.com";

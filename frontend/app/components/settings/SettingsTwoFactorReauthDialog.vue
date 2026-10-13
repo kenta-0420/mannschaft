@@ -2,10 +2,14 @@
 import type { TwoFactorFactor, TwoFactorReauthInput } from '~/composables/useAccountSecurity'
 
 /**
- * 2FA の無効化・バックアップコード再生成で使う本人確認ダイアログ（AC-34/AC-44）。
+ * 2FA の無効化・バックアップコード再生成で使う本人確認ダイアログ（AC-30/AC-34/AC-44）。
  *
- * パスワードを持つ利用者はパスワードと要素（TOTP / 本人確認メールOTP / バックアップコード）の両方を求める。
- * パスワードを持たない利用者（OAuth のみ等）にはパスワード欄を出さず、要素のみを求める。
+ * 本人確認の契約は mode ごとに BE と揃える。
+ * - 無効化（disable・AC-30）: パスワードを持つ利用者はパスワードと要素（TOTP / 本人確認メールOTP /
+ *   バックアップコード）の**両方**、パスワードを持たない利用者（OAuth のみ等）は要素のみを必須とする。
+ * - 再生成（regenerate・AC-44）: パスワード**または**要素の**どちらか**でよい。示したものはすべて正しくなければ
+ *   ならない（BE が照合する）ため、入力されたものだけを送る。途中まで入力したコードは送らせない。
+ *   パスワードを持たない利用者は要素のみ。
  */
 const props = defineProps<{
   visible: boolean
@@ -46,12 +50,29 @@ const factorOptions = computed(() => {
 })
 
 const isOtpFactor = computed(() => factor.value !== 'BACKUP_CODE')
+const normalizedCode = computed(() => (isOtpFactor.value ? code.value : code.value.replace(/[\s-]/g, '')))
+const codeEntered = computed(() => normalizedCode.value.length > 0)
 const codeReady = computed(() =>
-  isOtpFactor.value ? /^\d{6}$/.test(code.value) : code.value.replace(/[\s-]/g, '').length > 0,
+  isOtpFactor.value ? /^\d{6}$/.test(code.value) : normalizedCode.value.length > 0,
 )
-const canSubmit = computed(
-  () => codeReady.value && (!props.hasPassword || password.value.length > 0) && !props.busy,
-)
+const passwordEntered = computed(() => props.hasPassword && password.value.length > 0)
+/** 本人確認として成立する入力が揃っているか（mode ごとの BE 契約）。 */
+const reauthReady = computed(() => {
+  if (props.mode === 'disable') {
+    // AC-30: パスワード保持者はパスワード＋要素の両方
+    return codeReady.value && (!props.hasPassword || passwordEntered.value)
+  }
+  // AC-44: パスワードまたは要素のどちらか。途中まで入力したコード（6 桁未満の OTP 等）は送らせない
+  if (codeEntered.value && !codeReady.value) return false
+  return codeReady.value || passwordEntered.value
+})
+const canSubmit = computed(() => reauthReady.value && !props.busy)
+const description = computed(() => {
+  if (props.mode === 'disable') return t('settings.security.two_fa.reauth.disable_description')
+  return props.hasPassword
+    ? t('settings.security.two_fa.reauth.regenerate_description')
+    : t('settings.security.two_fa.reauth.regenerate_description_no_password')
+})
 const title = computed(() =>
   props.mode === 'disable'
     ? t('settings.security.two_fa.reauth.disable_title')
@@ -109,10 +130,10 @@ onUnmounted(stopTimer)
 
 function submit() {
   if (!canSubmit.value) return
+  // 入力されたものだけを送る（再生成で未入力の要素・パスワードを「提示した」扱いにしない）
   emit('submit', {
-    method: factor.value,
-    code: isOtpFactor.value ? code.value : code.value.replace(/[\s-]/g, ''),
-    currentPassword: props.hasPassword ? password.value : undefined,
+    ...(codeReady.value ? { method: factor.value, code: normalizedCode.value } : {}),
+    ...(passwordEntered.value ? { currentPassword: password.value } : {}),
   })
 }
 </script>
@@ -127,8 +148,8 @@ function submit() {
     @update:visible="emit('update:visible', $event)"
   >
     <form class="space-y-4" @submit.prevent="submit">
-      <p class="text-sm text-surface-500">
-        {{ $t('settings.security.two_fa.reauth.description') }}
+      <p class="text-sm text-surface-500" data-testid="two-fa-reauth-description">
+        {{ description }}
       </p>
 
       <div v-if="hasPassword" class="flex flex-col gap-2">

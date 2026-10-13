@@ -502,7 +502,7 @@
       "privacy": {
         "title": "Datenschutzerklärung",
         "last_updated": "Zuletzt aktualisiert",
-        "version_notice": "Version 1.1.1 / Aktualisiert am 13. Oktober 2026",
+        "version_notice": "Version {version} / Aktualisiert am 13. Oktober 2026",
         "section1_title": "Artikel 1: Über uns",
         "section1_content": "Mannschaft (nachfolgend „das Unternehmen“) ist der Schutz Ihrer personenbezogenen Daten ein besonderes Anliegen. Diese Datenschutzerklärung („die Erklärung“) regelt den Umgang mit personenbezogenen Daten in Verbindung mit der Teamverwaltungsplattform „Mannschaft“ („der Dienst“). Ihre Zustimmung zu dieser Erklärung ist für die Nutzung des Dienstes erforderlich.",
         "section2_title": "Artikel 2: Daten, die wir erheben",

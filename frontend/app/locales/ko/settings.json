@@ -235,7 +235,9 @@
         "reauth": {
           "disable_title": "2단계 인증 해제",
           "regenerate_title": "백업 코드 다시 생성",
-          "description": "본인 확인을 위해 아래 정보를 입력해 주세요. 다시 생성하면 이전 코드는 모두 사용할 수 없습니다.",
+          "disable_description": "본인 확인을 위해 다음 정보를 모두 입력해 주세요.",
+          "regenerate_description": "본인 확인을 위해 현재 비밀번호 또는 인증 코드 중 하나를 입력해 주세요(둘 다 입력한 경우 둘 다 정확해야 합니다). 재생성하면 이전 백업 코드는 모두 사용할 수 없게 됩니다.",
+          "regenerate_description_no_password": "본인 확인을 위해 인증 코드를 입력해 주세요. 재생성하면 이전 백업 코드는 모두 사용할 수 없게 됩니다.",
           "password_label": "현재 비밀번호",
           "method_label": "확인 방법",
           "method_totp": "인증 앱",

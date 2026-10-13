@@ -127,6 +127,31 @@ class MfaRecoveryFlowIT extends MfaDisableRecoveryItSupport {
             assertThat(refreshTokenCount(u.userId())).as("AC-48 トークン発行なし").isEqualTo(refreshBefore);
         }
 
+        /**
+         * AC-48（Codex 検分指摘）: 回復の再要求が 2 本並列に来ても、有効な（未使用の）回復トークンは 1 本だけ。
+         *
+         * <p>再要求は 2FA 行をロックしてから旧トークン失効 → 新トークン発行を行う。直列化されていないと、
+         * 2 本が共に「失効させる旧トークンは無い」と読んで 2 本のトークンがどちらも有効になる。</p>
+         */
+        @Test
+        @DisplayName("AC-48 回復の再要求の並列2件でも有効な回復トークンは1本")
+        void 回復の再要求の並列2件でも有効なトークンは1本() throws Exception {
+            MfaUser u = createTotpUser();
+            String session = loginForMfaSession(u);
+
+            List<String> failures = new ArrayList<>();
+            int successes = runConcurrently(
+                    () -> auth2faService.requestMfaRecovery(session),
+                    () -> auth2faService.requestMfaRecovery(session),
+                    failures);
+
+            assertThat(successes).as("前提: 再要求は 2 件とも受け付ける（失敗: %s）", failures).isEqualTo(2);
+            Integer unused = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM mfa_recovery_tokens WHERE user_id = ? AND used_at IS NULL",
+                    Integer.class, u.userId());
+            assertThat(unused).as("AC-48 有効な回復トークンは最新の 1 本だけ").isEqualTo(1);
+        }
+
         /** AC-48: 同一トークンを 2 スレッドで同時に確認しても成功は 1 件、発行トークンも 1 組。 */
         @Test
         @DisplayName("AC-48 同一回復トークンの並列確認は成功1件")

@@ -19,6 +19,18 @@ public interface MfaRecoveryTokenRepository extends JpaRepository<MfaRecoveryTok
     Optional<MfaRecoveryTokenEntity> findByTokenHash(String tokenHash);
 
     /**
+     * 回復トークンの所有者 ID だけをスカラー射影で引く（エンティティを永続コンテキストへ載せない）。
+     *
+     * <p>回復確認でロック順を「2FA 行 → 回復トークン行」に揃えるため、ロック前に所有者を知る用途。
+     * エンティティを読み込まないので、後続の {@link #findByTokenHashForUpdate} が一次キャッシュの古い写しを返さない。</p>
+     *
+     * @param tokenHash トークンの SHA-256
+     * @return 所有者のユーザー ID
+     */
+    @Query("select t.userId from MfaRecoveryTokenEntity t where t.tokenHash = :tokenHash")
+    Optional<Long> findUserIdByTokenHash(@Param("tokenHash") String tokenHash);
+
+    /**
      * 悲観ロック（{@code PESSIMISTIC_WRITE}）付きで回復トークンを取得する（CMP-261012-0910 AC-48）。
      *
      * <p>同一トークンの並列確認を DB 行ロックで直列化する。後着側はロック解放後に最新の {@code used_at} を

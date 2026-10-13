@@ -13,6 +13,8 @@ import com.mannschaft.app.mail.outbox.EmailTemplateKind;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -77,6 +79,28 @@ public class ValkeyMfaEmailOtpService implements MfaEmailOtpService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
+    /**
+     * 照合と消費を 1 コマンドで行う compare-and-delete（{@code ValkeyRateLimiter} の Lua 原子化に倣う）。
+     * KEYS[1] = コード保持キー、ARGV[1] = 提示コードのハッシュ。保存値が一致したときだけ DEL し 1 を返す。
+     *
+     * <p>GET → 比較 → DEL を別コマンドで行うと、間に再送（新コードで上書き）が挟まったとき、検証側の DEL が
+     * <b>新しいコード</b>を消し、旧コードで成功してしまう（Codex 検分指摘）。比較と削除を Valkey 内で原子化して、
+     * 「いま保存されている値と一致したときだけ消す」を保証する。</p>
+     */
+    private static final String COMPARE_AND_DELETE_LUA = """
+            if redis.call('GET', KEYS[1]) == ARGV[1] then
+              return redis.call('DEL', KEYS[1])
+            end
+            return 0
+            """;
+
+    /**
+     * {@link #COMPARE_AND_DELETE_LUA} のスクリプト。公開しているのは試練の Valkey 代役（{@code MfaValkeyFake}）が
+     * SHA1 でこのスクリプトを識別し、同じ意味の原子操作を再現するため（本番コードから参照する必要はない）。
+     */
+    public static final RedisScript<Long> COMPARE_AND_DELETE_SCRIPT =
+            new DefaultRedisScript<>(COMPARE_AND_DELETE_LUA, Long.class);
+
     private final StringRedisTemplate redisTemplate;
     private final UserRepository userRepository;
     private final EmailOutboxService emailOutboxService;
@@ -132,9 +156,9 @@ public class ValkeyMfaEmailOtpService implements MfaEmailOtpService {
                 return VerifyOutcome.EXHAUSTED;
             }
         }
-        if (matches(purpose, subject, code, codeKey)
-                // DEL の戻り値で消費者を 1 人に決める（同一コードの並列提示で成功は 1 件）
-                && Boolean.TRUE.equals(redisTemplate.delete(codeKey))) {
+        // 一致したときだけ原子的に消す。戻り値で消費者を 1 人に決める（同一コードの並列提示で成功は 1 件。
+        // 再送で上書きされた後の旧コードは保存値と一致しないため成功せず、新コードも消さない）
+        if (compareAndDelete(codeKey, hash(purpose, subject, code))) {
             if (counted) {
                 redisTemplate.delete(MfaEmailOtpKeys.attemptCountKey(purpose, subject));
             }
@@ -190,13 +214,18 @@ public class ValkeyMfaEmailOtpService implements MfaEmailOtpService {
     // 内部
     // ─────────────────────────────────────────────────────────────
 
-    private boolean matches(MfaEmailOtpPurpose purpose, String subject, String code, String codeKey) {
-        String stored = redisTemplate.opsForValue().get(codeKey);
-        if (stored == null) {
-            return false;
+    /**
+     * 保存値が {@code expectedHash} と一致したときだけコード保持キーを原子的に削除する。
+     *
+     * @return この呼び出しが一致したコードを消費できたなら true
+     */
+    private boolean compareAndDelete(String codeKey, String expectedHash) {
+        Long deleted = redisTemplate.execute(COMPARE_AND_DELETE_SCRIPT, List.of(codeKey), expectedHash);
+        if (deleted == null) {
+            // パイプライン/トランザクション中のみ null。消費を確定できないまま成功にしない（フェイルクローズ）
+            throw new IllegalStateException("メールOTP の compare-and-delete が値を返さなかった");
         }
-        return MessageDigest.isEqual(stored.getBytes(StandardCharsets.UTF_8),
-                hash(purpose, subject, code).getBytes(StandardCharsets.UTF_8));
+        return deleted > 0L;
     }
 
     /**

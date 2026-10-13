@@ -158,6 +158,20 @@ describe('useTwoFactorSettings', () => {
     expect(tf.backupCodes.value).toEqual(['n1', 'n2'])
   })
 
+  it('AC-44: 再生成はパスワードだけでも送れ、未入力の要素は送らない', async () => {
+    apiMock.mockResolvedValueOnce({ data: { backupCodes: ['n1'] } }).mockResolvedValueOnce(ENABLED)
+    const tf = useTwoFactorSettings()
+    expect(await tf.regenerateBackupCodes({ currentPassword: 'pw' })).toBe(true)
+    expect(apiMock.mock.calls[0]![1].body).toEqual({ currentPassword: 'pw' })
+  })
+
+  it('AC-44: 再生成は要素だけでも送れ、未入力のパスワードは送らない', async () => {
+    apiMock.mockResolvedValueOnce({ data: { backupCodes: ['n1'] } }).mockResolvedValueOnce(ENABLED)
+    const tf = useTwoFactorSettings()
+    expect(await tf.regenerateBackupCodes({ method: 'TOTP', code: '123456' })).toBe(true)
+    expect(apiMock.mock.calls[0]![1].body).toEqual({ method: 'TOTP', code: '123456' })
+  })
+
   it('AC-44: 本人確認に失敗したらコードは表示されずエラーが出る', async () => {
     apiMock.mockRejectedValueOnce(apiError(400, 'AUTH_080'))
     const tf = useTwoFactorSettings()

@@ -1,13 +1,16 @@
 package com.mannschaft.app.auth.mfa;
 
+import com.mannschaft.app.auth.service.ValkeyMfaEmailOtpService;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.RedisScript;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BrokenBarrierException;
@@ -22,6 +25,7 @@ import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -41,7 +45,15 @@ import static org.mockito.BDDMockito.willAnswer;
  * <p>本代役は Valkey の<b>単一コマンドの原子性</b>（GET / SET / SET NX / SET XX / INCR / GETDEL / DEL / EXPIRE）を
  * {@code synchronized} で再現する。原子化はこれらのプリミティブ（{@code setIfAbsent} / {@code increment} /
  * {@code getAndDelete} / {@code delete} の戻り値）で行うこと。Lua スクリプト（{@code execute(RedisScript, ...)}）は
- * 本代役では解釈しない（Mock 既定の null が返る）。</p>
+ * 本代役が意味を知っているもの（メールOTP の compare-and-delete
+ * {@link ValkeyMfaEmailOtpService#COMPARE_AND_DELETE_SCRIPT}）だけを 1 コマンドの原子操作として再現し、
+ * それ以外は従来どおり Mock 既定の null を返す（共通フィルタの {@code ValkeyRateLimiter} の INCR スクリプトは
+ * null を「結果なし」として fail-open する既存挙動のため、ここで落とすと無関係な IT が壊れる）。</p>
+ *
+ * <h2>割り込みの決定的再現（{@link #armInterleaveOnAccess}）</h2>
+ * <p>「GET → 比較 → DEL」のような非原子の照合に、別要求の書き込み（再送による上書き等）が挟まる窓を作る。
+ * 指定キーへの最初のアクセスが<b>読み取り</b>なら読んだ<b>直後</b>に、<b>原子スクリプト</b>ならその<b>直前</b>に
+ * 割り込み処理を 1 回だけ走らせる（原子操作の途中には割り込めない＝実 Valkey と同じ）。</p>
  *
  * <h2>競合の決定的再現（{@link #armReadBarrier}）</h2>
  * <p>「読んでから書く」非原子実装（{@code hasKey} → {@code set} 等）は、2 スレッドが同時に読む窓を作らないと
@@ -60,6 +72,8 @@ public final class MfaValkeyFake {
     private volatile String barrierPrefix;
     private volatile CyclicBarrier barrier;
     private final AtomicInteger barrierRemaining = new AtomicInteger();
+    private volatile String interleaveKey;
+    private volatile Runnable interleaveAction;
 
     private record Entry(String value, Long expiresAtMillis) {
     }
@@ -103,6 +117,8 @@ public final class MfaValkeyFake {
             return ms < 0 ? ms / 1000 : ((TimeUnit) inv.getArgument(1)).convert(ms, TimeUnit.MILLISECONDS);
         }).given(redisTemplate).getExpire(anyString(), any(TimeUnit.class));
         willAnswer(inv -> fake.keys(inv.getArgument(0))).given(redisTemplate).keys(anyString());
+        willAnswer(inv -> fake.executeScript(inv.getArgument(0), inv.getArgument(1), inv.getArguments()))
+                .given(redisTemplate).execute(any(RedisScript.class), anyList(), any());
         return fake;
     }
 
@@ -123,6 +139,22 @@ public final class MfaValkeyFake {
         this.barrier = new CyclicBarrier(parties);
         this.barrierRemaining.set(parties);
         this.barrierPrefix = keyPrefix;
+    }
+
+    /**
+     * 指定キーへの次のアクセスに割り込み処理を 1 回だけ差し込む（読み取りなら読んだ直後、原子スクリプトなら直前）。
+     *
+     * @param key    対象キー（完全一致）
+     * @param action 割り込ませる処理（別要求の書き込みの模擬）
+     */
+    public void armInterleaveOnAccess(String key, Runnable action) {
+        this.interleaveKey = key;
+        this.interleaveAction = action;
+    }
+
+    /** テストから値を直接置く（別要求の書き込みの模擬）。 */
+    public synchronized void rawSet(String key, String value, Duration ttl) {
+        store.put(key, new Entry(value, ttl == null ? null : now() + ttl.toMillis()));
     }
 
     /** 現在の生存キー（期限切れ除く）のうち、正規表現に一致するもの。 */
@@ -187,15 +219,51 @@ public final class MfaValkeyFake {
         }
     }
 
+    /** 割り込みが仕掛けられたキーなら 1 回だけ実行する。 */
+    private void fireInterleave(String key) {
+        Runnable action = interleaveAction;
+        if (action == null || !key.equals(interleaveKey)) {
+            return;
+        }
+        interleaveAction = null;
+        interleaveKey = null;
+        action.run();
+    }
+
+    /** 意味を知っている Lua スクリプトだけを原子的に再現する。 */
+    private Object executeScript(RedisScript<?> script, List<String> keys, Object[] allArgs) {
+        if (!ValkeyMfaEmailOtpService.COMPARE_AND_DELETE_SCRIPT.getSha1().equals(script.getSha1())) {
+            // 模していないスクリプトは本代役導入前と同じ Mock 既定値（null）。メールOTP の照合側は null を
+            // フェイルクローズ（例外）で扱うため、未対応のスクリプトで照合が黙って通ることはない
+            return null;
+        }
+        String key = keys.get(0);
+        String expected = String.valueOf(allArgs[2]);
+        // 原子操作の途中には割り込めない。割り込みは操作の直前に入る
+        fireInterleave(key);
+        synchronized (this) {
+            Entry e = lookup(key);
+            if (e != null && expected.equals(e.value())) {
+                store.remove(key);
+                return 1L;
+            }
+            return 0L;
+        }
+    }
+
     private synchronized Boolean del(String key) {
         return lookup(key) != null && store.remove(key) != null;
     }
 
     private Boolean hasKey(String key) {
         maybeAwaitBarrier(key);
+        boolean present;
         synchronized (this) {
-            return lookup(key) != null;
+            present = lookup(key) != null;
         }
+        // 「確かめてから進む」に別要求の書き込みが挟まる窓（読んだ直後）
+        fireInterleave(key);
+        return present;
     }
 
     private synchronized Boolean expire(String key, long millis) {
@@ -229,9 +297,13 @@ public final class MfaValkeyFake {
                     if (n == 1) {
                         String key = (String) args[0];
                         maybeAwaitBarrier(key);
+                        String value;
                         synchronized (MfaValkeyFake.this) {
-                            return rawGet(key);
+                            value = rawGet(key);
                         }
+                        // 非原子の「読んでから書く」に別要求の書き込みが挟まる窓（読んだ直後）
+                        fireInterleave(key);
+                        return value;
                     }
                     break;
                 case "set":

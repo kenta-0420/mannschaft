@@ -235,7 +235,9 @@
         "reauth": {
           "disable_title": "停用双重认证",
           "regenerate_title": "重新生成备用码",
-          "description": "为确认是您本人操作，请输入以下信息。重新生成后，之前的备用码将全部失效。",
+          "disable_description": "为确认您的身份，请填写以下全部信息。",
+          "regenerate_description": "为确认您的身份，请输入当前密码或验证码中的任意一项（如两项都填写，则两项都必须正确）。重新生成后，之前的所有备用码都将失效。",
+          "regenerate_description_no_password": "为确认您的身份，请输入验证码。重新生成后，之前的所有备用码都将失效。",
           "password_label": "当前密码",
           "method_label": "验证方式",
           "method_totp": "验证器应用",

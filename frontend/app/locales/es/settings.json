@@ -235,7 +235,9 @@
         "reauth": {
           "disable_title": "Desactivar la autenticación de dos factores",
           "regenerate_title": "Regenerar códigos de respaldo",
-          "description": "Verifique su identidad. Al regenerar, los códigos anteriores dejarán de ser válidos.",
+          "disable_description": "Para verificar tu identidad, introduce toda la información siguiente.",
+          "regenerate_description": "Para verificar tu identidad, introduce tu contraseña actual o un código de verificación (si introduces ambos, los dos deben ser correctos). Al regenerar, todos los códigos de respaldo anteriores dejarán de funcionar.",
+          "regenerate_description_no_password": "Para verificar tu identidad, introduce un código de verificación. Al regenerar, todos los códigos de respaldo anteriores dejarán de funcionar.",
           "password_label": "Contraseña actual",
           "method_label": "Método de verificación",
           "method_totp": "App de autenticación",

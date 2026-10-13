@@ -1,6 +1,9 @@
 package com.mannschaft.app.auth.mfa;
 
+import com.mannschaft.app.auth.dto.BackupCodesResponse;
 import com.mannschaft.app.auth.event.MfaEnabledEvent;
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -10,7 +13,17 @@ import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -52,5 +65,69 @@ class TotpSetupGuardIT extends MfaItSupport {
         assertThat(errorCode(result)).as("AC-1 有効化済みのエラーコード").isEqualTo("AUTH_078");
         assertThat(backupCodesJson(u.userId())).as("AC-1 バックアップコードは差し替わらない").isEqualTo(before);
         assertThat(events.stream(MfaEnabledEvent.class).count()).as("AC-1 MfaEnabledEvent は発行されない").isZero();
+    }
+
+    /**
+     * AC-1（Codex 検分指摘）: 同一ユーザーの確定 2 本が並列に来ても成功は 1 件、2 本目は AUTH_078。
+     * 保存されたバックアップコードは成功側が返したものと一致する（後着側に上書きされない）。
+     *
+     * <p>確定は 2FA 行を行ロックしてから「有効化済みか」を読む。ロックなしで読むと両方が「未有効」を読んで成功し、
+     * 後から保存された方が先に返したバックアップコードを黙って上書きする。2 本は ±1 ウィンドウで共に有効な
+     * 別々のコード（現在・次ウィンドウ）を使い、TOTP 使用済み印では止まらないようにしている。</p>
+     */
+    @Test
+    @DisplayName("AC-1 同一ユーザーの確定の並列2件は成功1件・2件目はAUTH_078・返したバックアップコードが保存される")
+    void 確定の並列2件は成功1件() throws Exception {
+        long userId = createPlainUser();
+        String secret = auth2faService.setupTotp(userId).getData().getSecret();
+        String now = currentTotp(secret);
+        String next = totpAt(secret, Instant.now().plusSeconds(30));
+
+        List<Object> successes = new ArrayList<>();
+        List<String> failures = new ArrayList<>();
+        runConcurrently(
+                () -> auth2faService.verifyTotpSetup(userId, now),
+                () -> auth2faService.verifyTotpSetup(userId, next),
+                successes, failures);
+
+        assertThat(successes).as("成功は 1 件だけ（失敗: %s）", failures).hasSize(1);
+        assertThat(failures).as("2 件目は有効化済み").containsExactly("AUTH_078");
+        @SuppressWarnings("unchecked")
+        List<String> returned = ((ApiResponse<BackupCodesResponse>) successes.get(0)).getData().getBackupCodes();
+        List<String> storedHashes = objectMapper.readValue(backupCodesJson(userId),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+        assertThat(storedHashes).as("保存件数").hasSize(returned.size());
+        for (int i = 0; i < returned.size(); i++) {
+            assertThat(passwordEncoder.matches(returned.get(i), storedHashes.get(i)))
+                    .as("成功側が返したバックアップコード %d が保存されている（上書きされていない）", i).isTrue();
+        }
+    }
+
+    /** 2 つの処理を同時に開始させ、戻り値と失敗（BusinessException）のコードを集める。 */
+    private static void runConcurrently(Callable<?> a, Callable<?> b,
+                                        List<Object> successes, List<String> failureCodes) throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<?>> futures = new ArrayList<>();
+            for (Callable<?> task : List.of(a, b)) {
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    return task.call();
+                }));
+            }
+            start.countDown();
+            for (Future<?> f : futures) {
+                try {
+                    successes.add(f.get(60, TimeUnit.SECONDS));
+                } catch (ExecutionException ex) {
+                    Throwable cause = ex.getCause();
+                    failureCodes.add(cause instanceof BusinessException be
+                            ? be.getErrorCode().getCode() : String.valueOf(cause));
+                }
+            }
+        } finally {
+            pool.shutdownNow();
+        }
     }
 }

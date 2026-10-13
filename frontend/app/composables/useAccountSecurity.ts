@@ -133,11 +133,15 @@ type MfaEmailSend = Schemas['MfaEmailSendResponse']
 /** 本人確認に使える要素。 */
 export type TwoFactorFactor = 'TOTP' | 'BACKUP_CODE' | 'EMAIL'
 
-/** 無効化・バックアップコード再生成で BE へ渡す本人確認情報。 */
+/**
+ * 無効化・バックアップコード再生成で BE へ渡す本人確認情報。
+ * 無効化（AC-30）は要素が必須（パスワード保持者はパスワードも）。再生成（AC-44）はパスワードか要素のどちらかでよく、
+ * 提示しなかった側は undefined のまま送らない（示したものはすべて BE で照合される）。
+ */
 export interface TwoFactorReauthInput {
-  method: TwoFactorFactor
-  code: string
-  /** パスワードを持つ利用者のみ。持たない利用者（OAuth のみ等）は undefined。 */
+  method?: TwoFactorFactor
+  code?: string
+  /** 入力した場合のみ。パスワードを持たない利用者（OAuth のみ等）は常に undefined。 */
   currentPassword?: string
 }
 
@@ -315,8 +319,7 @@ export function useTwoFactorSettings() {
 
   function reauthBody(input: TwoFactorReauthInput) {
     return {
-      method: input.method,
-      code: input.code,
+      ...(input.method && input.code ? { method: input.method, code: input.code } : {}),
       ...(input.currentPassword ? { currentPassword: input.currentPassword } : {}),
     }
   }

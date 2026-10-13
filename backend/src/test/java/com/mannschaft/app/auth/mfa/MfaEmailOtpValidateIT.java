@@ -1,9 +1,11 @@
 package com.mannschaft.app.auth.mfa;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.mannschaft.app.auth.MfaEmailOtpPurpose;
 import com.mannschaft.app.auth.TwoFactorMethod;
 import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
 import com.mannschaft.app.auth.event.LoginSuccessEvent;
+import com.mannschaft.app.auth.service.MfaEmailOtpKeys;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -13,6 +15,7 @@ import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -419,5 +422,34 @@ class MfaEmailOtpValidateIT extends MfaEmailOtpItSupport {
 
         assertThat(send.getResponse().getStatus()).as("AC-24: %s", body(send)).isEqualTo(400);
         assertThat(errorCode(send)).isEqualTo("AUTH_081");
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // 照合と消費の原子性（Codex 検分指摘: GET → 比較 → DEL の間に再送が挟まる競合）
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 照合の途中に再送（新しいコードでの上書き）が挟まっても、旧コードでは成功せず、新しいコードも消されない。
+     *
+     * <p>非原子の「GET → 比較 → DEL」では、GET の直後に上書きが入ると比較は旧値で一致し、DEL が<b>新しいコード</b>を
+     * 消してしまう（旧コードで成功・新コードは届いたのに使えない）。代役の割り込みは、読み取りなら読んだ直後、
+     * 原子スクリプトならその直前に入る（原子操作の途中には入れない＝実 Valkey と同じ）。</p>
+     */
+    @Test
+    @DisplayName("照合の途中に再送の上書きが挟まっても旧コードは通らず新しいコードは残る")
+    void 照合途中の再送上書きで新コードは消えない() throws Exception {
+        MfaUser u = totpUser();
+        String session = loginForMfaSession(u);
+        String oldCode = sendLoginOtpAndGetCode(u, session);
+        String codeKey = MfaEmailOtpKeys.codeKey(MfaEmailOtpPurpose.LOGIN, authTokenService.hashToken(session));
+        assertThat(valkey.rawGet(codeKey)).as("前提: コードが保存されている").isNotNull();
+        String newerHash = "newer-code-hash-written-by-resend";
+        valkey.armInterleaveOnAccess(codeKey, () -> valkey.rawSet(codeKey, newerHash, Duration.ofMinutes(10)));
+
+        MvcResult r = validate(session, "EMAIL", oldCode);
+
+        assertThat(r.getResponse().getStatus()).as("上書き後の旧コードは不一致: %s", body(r)).isEqualTo(400);
+        assertThat(errorCode(r)).isEqualTo("AUTH_074");
+        assertThat(valkey.rawGet(codeKey)).as("新しいコードは消されない").isEqualTo(newerHash);
     }
 }

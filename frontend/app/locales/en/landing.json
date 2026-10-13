@@ -502,7 +502,7 @@
       "privacy": {
         "title": "Privacy Policy",
         "last_updated": "Last Updated",
-        "version_notice": "Version 1.1.1 / Updated October 13, 2026",
+        "version_notice": "Version {version} / Updated October 13, 2026",
         "section1_title": "Article 1: About Us",
         "section1_content": "Mannschaft (hereinafter \"the Company\") is committed to protecting your personal information. This Privacy Policy (\"the Policy\") governs the handling of personal information in connection with the team management platform \"Mannschaft\" (\"the Service\"). Your consent to this Policy is required to use the Service.",
         "section2_title": "Article 2: Information We Collect",

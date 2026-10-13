@@ -236,7 +236,7 @@ class Auth2faServiceTest {
         @DisplayName("異常系: 2FA設定が存在しない場合AUTH_016例外")
         void verifyTotpSetup_設定不在_AUTH016例外() {
             // Given
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.empty());
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.empty());
 
             // When / Then
             assertThatThrownBy(() -> auth2faService.verifyTotpSetup(TEST_USER_ID, TEST_TOTP_CODE))
@@ -250,7 +250,7 @@ class Auth2faServiceTest {
         void verifyTotpSetup_TOTPコード不正_AUTH018例外() {
             // Given
             TwoFactorAuthEntity twoFactorAuth = createDisabledTwoFactorAuth();
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
             given(encryptionService.decrypt(TEST_ENCRYPTED_SECRET)).willReturn(TEST_TOTP_SECRET);
 
             // When / Then（不正なTOTPコード: verifyTotpCodeが失敗する）
@@ -265,7 +265,7 @@ class Auth2faServiceTest {
         void verifyTotpSetup_nullコード_AUTH018例外() {
             // Given
             TwoFactorAuthEntity twoFactorAuth = createDisabledTwoFactorAuth();
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
             given(encryptionService.decrypt(TEST_ENCRYPTED_SECRET)).willReturn(TEST_TOTP_SECRET);
 
             // When / Then
@@ -280,7 +280,7 @@ class Auth2faServiceTest {
         void verifyTotpSetup_6桁以外_AUTH018例外() {
             // Given
             TwoFactorAuthEntity twoFactorAuth = createDisabledTwoFactorAuth();
-            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
             given(encryptionService.decrypt(TEST_ENCRYPTED_SECRET)).willReturn(TEST_TOTP_SECRET);
 
             // When / Then
@@ -365,6 +365,30 @@ class Auth2faServiceTest {
         }
 
         @Test
+        @DisplayName("異常系: 行ロック待ちの間に掛かったユーザーロックを行ロック取得後に検出しAUTH_003（照合もトークン発行もしない）")
+        void validateMfaLogin_行ロック後の再確認でロック検出_AUTH003例外() {
+            // Given: 入口の確認は未ロック、行ロック取得後の再確認ではロック済み（並列の先行側が 10 回目の失敗でロック）
+            given(mfaSessionService.resolve(TEST_MFA_SESSION_TOKEN)).willReturn(TEST_SESSION);
+            given(mfaSessionService.beginAttempt(TEST_SESSION)).willReturn(1L);
+            org.mockito.Mockito.doNothing()
+                    .doThrow(new BusinessException(com.mannschaft.app.auth.AuthErrorCode.AUTH_003))
+                    .when(mfaSessionService).assertNotLocked(TEST_USER_ID);
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID))
+                    .willReturn(Optional.of(createEnabledTwoFactorAuth()));
+
+            // When / Then
+            assertThatThrownBy(() -> auth2faService.validateMfaLogin(
+                    TEST_MFA_SESSION_TOKEN, MfaVerificationMethod.TOTP, TEST_TOTP_CODE, TEST_IP, TEST_UA))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_003"));
+            verify(mfaSessionService, times(2)).assertNotLocked(TEST_USER_ID);
+            verify(encryptionService, never()).decrypt(any());
+            verify(mfaSessionService, never()).consume(any());
+            verify(refreshTokenRepository, never()).save(any());
+        }
+
+        @Test
         @DisplayName("異常系: TOTPコード不正でAUTH_074例外・失敗を監査と試行に計上（旧 AUTH_018）")
         void validateTotp_TOTPコード不正_AUTH074例外() {
             // Given
@@ -425,6 +449,9 @@ class Auth2faServiceTest {
                     .willReturn(String.valueOf(TEST_USER_ID));
             doNothing().when(authTokenService).checkRateLimit(anyString(), anyInt(), any());
             given(userRepository.findById(TEST_USER_ID)).willReturn(Optional.of(createActiveUser()));
+            // 再要求の直列化（Codex 検分指摘）: 2FA 行をロックしてから旧トークン失効・新トークン発行
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID))
+                    .willReturn(Optional.of(createEnabledTwoFactorAuth()));
             given(authTokenService.hashToken(anyString())).willReturn(TEST_SESSION_HASH, "hashed-recovery-token");
             given(mfaRecoveryTokenRepository.save(any(MfaRecoveryTokenEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
@@ -494,6 +521,7 @@ class Auth2faServiceTest {
                     .tokenHash(tokenHash)
                     .expiresAt(LocalDateTime.now().plusHours(1))
                     .build();
+            given(mfaRecoveryTokenRepository.findUserIdByTokenHash(tokenHash)).willReturn(Optional.of(TEST_USER_ID));
             given(mfaRecoveryTokenRepository.findByTokenHashForUpdate(tokenHash)).willReturn(Optional.of(recoveryToken));
             given(mfaRecoveryTokenRepository.save(any(MfaRecoveryTokenEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
@@ -532,6 +560,7 @@ class Auth2faServiceTest {
                     .tokenHash(tokenHash)
                     .expiresAt(LocalDateTime.now().plusHours(1))
                     .build();
+            given(mfaRecoveryTokenRepository.findUserIdByTokenHash(tokenHash)).willReturn(Optional.of(TEST_USER_ID));
             given(mfaRecoveryTokenRepository.findByTokenHashForUpdate(tokenHash)).willReturn(Optional.of(recoveryToken));
             given(mfaRecoveryTokenRepository.save(any(MfaRecoveryTokenEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
@@ -580,7 +609,7 @@ class Auth2faServiceTest {
             // Given
             String rawToken = "nonexistent-token";
             given(authTokenService.hashToken(rawToken)).willReturn("hashed-nonexistent");
-            given(mfaRecoveryTokenRepository.findByTokenHashForUpdate("hashed-nonexistent"))
+            given(mfaRecoveryTokenRepository.findUserIdByTokenHash("hashed-nonexistent"))
                     .willReturn(Optional.empty());
 
             // When / Then
@@ -603,7 +632,10 @@ class Auth2faServiceTest {
                     .tokenHash(tokenHash)
                     .expiresAt(LocalDateTime.now().minusHours(1))
                     .build();
+            given(mfaRecoveryTokenRepository.findUserIdByTokenHash(tokenHash)).willReturn(Optional.of(TEST_USER_ID));
             given(mfaRecoveryTokenRepository.findByTokenHashForUpdate(tokenHash)).willReturn(Optional.of(expiredToken));
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID))
+                    .willReturn(Optional.of(createEnabledTwoFactorAuth()));
 
             // When / Then
             assertThatThrownBy(() -> auth2faService.confirmMfaRecovery(rawToken))
@@ -626,7 +658,10 @@ class Auth2faServiceTest {
                     .expiresAt(LocalDateTime.now().plusHours(1))
                     .build();
             usedToken.markUsed();
+            given(mfaRecoveryTokenRepository.findUserIdByTokenHash(tokenHash)).willReturn(Optional.of(TEST_USER_ID));
             given(mfaRecoveryTokenRepository.findByTokenHashForUpdate(tokenHash)).willReturn(Optional.of(usedToken));
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID))
+                    .willReturn(Optional.of(createEnabledTwoFactorAuth()));
 
             // When / Then
             assertThatThrownBy(() -> auth2faService.confirmMfaRecovery(rawToken))
@@ -643,14 +678,8 @@ class Auth2faServiceTest {
             String tokenHash = "hashed-recovery-token";
             given(authTokenService.hashToken(rawToken)).willReturn(tokenHash);
 
-            MfaRecoveryTokenEntity recoveryToken = MfaRecoveryTokenEntity.builder()
-                    .userId(TEST_USER_ID)
-                    .tokenHash(tokenHash)
-                    .expiresAt(LocalDateTime.now().plusHours(1))
-                    .build();
-            given(mfaRecoveryTokenRepository.findByTokenHashForUpdate(tokenHash)).willReturn(Optional.of(recoveryToken));
-            given(mfaRecoveryTokenRepository.save(any(MfaRecoveryTokenEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
+            // ロック順は 2FA 行 → 回復トークン行。2FA が無ければトークン行に触れずに AUTH_023
+            given(mfaRecoveryTokenRepository.findUserIdByTokenHash(tokenHash)).willReturn(Optional.of(TEST_USER_ID));
             given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.empty());
 
             // When / Then

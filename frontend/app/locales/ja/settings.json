@@ -235,7 +235,9 @@
         "reauth": {
           "disable_title": "2段階認証を無効化",
           "regenerate_title": "バックアップコードを再生成",
-          "description": "本人確認のため、次の情報を入力してください。再生成すると以前のコードはすべて使えなくなります。",
+          "disable_description": "本人確認のため、次の情報をすべて入力してください。",
+          "regenerate_description": "本人確認のため、現在のパスワードと確認コードのどちらかを入力してください（両方入力した場合は、両方とも正しい必要があります）。再生成すると以前のコードはすべて使えなくなります。",
+          "regenerate_description_no_password": "本人確認のため、確認コードを入力してください。再生成すると以前のコードはすべて使えなくなります。",
           "password_label": "現在のパスワード",
           "method_label": "確認方法",
           "method_totp": "認証アプリ",

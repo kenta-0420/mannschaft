@@ -235,7 +235,9 @@
         "reauth": {
           "disable_title": "Zwei-Faktor-Authentifizierung deaktivieren",
           "regenerate_title": "Backup-Codes neu erzeugen",
-          "description": "Bitte bestätigen Sie Ihre Identität. Beim Neuerzeugen werden alle bisherigen Codes ungültig.",
+          "disable_description": "Bitte bestätigen Sie Ihre Identität, indem Sie alle folgenden Angaben machen.",
+          "regenerate_description": "Bitte bestätigen Sie Ihre Identität mit Ihrem aktuellen Passwort oder einem Bestätigungscode (wenn Sie beides eingeben, muss beides korrekt sein). Durch das Neugenerieren werden alle bisherigen Backup-Codes ungültig.",
+          "regenerate_description_no_password": "Bitte bestätigen Sie Ihre Identität mit einem Bestätigungscode. Durch das Neugenerieren werden alle bisherigen Backup-Codes ungültig.",
           "password_label": "Aktuelles Passwort",
           "method_label": "Bestätigungsmethode",
           "method_totp": "Authenticator-App",

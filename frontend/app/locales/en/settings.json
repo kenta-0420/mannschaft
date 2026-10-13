@@ -235,7 +235,9 @@
         "reauth": {
           "disable_title": "Disable two-factor authentication",
           "regenerate_title": "Regenerate backup codes",
-          "description": "Please verify your identity. Regenerating invalidates all previous backup codes.",
+          "disable_description": "Please verify your identity by entering all of the following.",
+          "regenerate_description": "Please verify your identity with either your current password or a verification code (if you enter both, both must be correct). Regenerating invalidates all previous backup codes.",
+          "regenerate_description_no_password": "Please verify your identity with a verification code. Regenerating invalidates all previous backup codes.",
           "password_label": "Current password",
           "method_label": "Verification method",
           "method_totp": "Authenticator app",

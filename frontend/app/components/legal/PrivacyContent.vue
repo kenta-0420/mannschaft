@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { PRIVACY_POLICY_VERSION } from '~/constants/legalPolicy'
+
 /** プライバシーポリシーの本文。ページ（privacy.vue）とモーダル（PrivacyModal.vue）の両方から利用する。 */
 const { t } = useI18n()
 
@@ -31,7 +33,7 @@ const sections: SectionKey[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10
 
     <div class="mt-10 border-t border-surface-100 pt-6 dark:border-surface-700">
       <p class="text-xs text-surface-400">
-        {{ t('landing.legal.privacy.version_notice') }}
+        {{ t('landing.legal.privacy.version_notice', { version: PRIVACY_POLICY_VERSION }) }}
       </p>
     </div>
   </div>

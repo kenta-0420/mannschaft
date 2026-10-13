@@ -502,7 +502,7 @@
       "privacy": {
         "title": "Política de privacidad",
         "last_updated": "Última actualización",
-        "version_notice": "Versión 1.1.1 / Actualizado el 13 de octubre de 2026",
+        "version_notice": "Versión {version} / Actualizado el 13 de octubre de 2026",
         "section1_title": "Artículo 1: Sobre nosotros",
         "section1_content": "Mannschaft (en adelante «la Empresa») está comprometida a proteger su información personal. Esta Política de privacidad («la Política») rige el manejo de la información personal en relación con la plataforma de gestión de equipos «Mannschaft» («el Servicio»). Su consentimiento a esta Política es necesario para usar el Servicio.",
         "section2_title": "Artículo 2: Información que recopilamos",

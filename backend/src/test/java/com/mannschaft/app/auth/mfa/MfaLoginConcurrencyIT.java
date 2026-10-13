@@ -1,22 +1,26 @@
 package com.mannschaft.app.auth.mfa;
 
 import com.mannschaft.app.auth.MfaVerificationMethod;
+import com.mannschaft.app.auth.service.MfaSessionService;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 /**
  * CMP-261012-0910 試練: 2FA ログイン検証の並列競合（実際に 2 スレッドで同時実行する）。
@@ -153,6 +157,58 @@ class MfaLoginConcurrencyIT extends MfaItSupport {
         assertThat(o.failureCodes).as("AC-9 負けた側は不正コード扱い").containsExactly("AUTH_074");
         assertThat(backupCodeCount(u.userId())).as("AC-9 削除は 1 件").isEqualTo(7);
         assertThat(refreshTokenCount(u.userId())).as("AC-9 発行トークンは 1 組").isEqualTo(1);
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    // AC-16/AC-46 ユーザーロックと並列検証（Codex 検分指摘）
+    // ═════════════════════════════════════════════════════════════
+
+    /**
+     * 失敗 9 回の状態で検証 2 本が並列に走り、B がロック確認を通った直後に A の 10 回目の失敗でロックが掛かったら、
+     * B は正しい TOTP を持っていても照合を進めず AUTH_003、トークンも発行されない。
+     *
+     * <p>B のロック確認（{@code hasKey(account_lock)}）の直後に代役の割り込みで A を<b>別スレッド</b>（別 TX）で
+     * 最後まで走らせ、ロックが掛かった状態から B を再開させる。ロック確認が行ロック取得前の 1 回だけだと、
+     * B はそのまま照合してトークン発行まで行ける（入口の確認が古い）。</p>
+     */
+    @Test
+    @DisplayName("AC-16 AC-46 並列側の10回目の失敗でロックが掛かったら後続の検証は正しいコードでもAUTH_003")
+    void 並列側の10回目の失敗でロック後は後続も通らない() throws Exception {
+        MfaUser u = createTotpUser();
+        String sessionA = loginForMfaSession(u);
+        String sessionB = loginForMfaSession(u);
+        valkey.rawSet("mannschaft:auth:mfa_fail_count:" + u.userId(), "9", Duration.ofMinutes(30));
+        String lockKey = MfaSessionService.accountLockKey(u.userId());
+        String wrong = wrongTotp(u.totpSecret());
+        String correct = currentTotp(u.totpSecret());
+        List<String> aFailures = new ArrayList<>();
+        ExecutorService other = Executors.newSingleThreadExecutor();
+        try {
+            valkey.armInterleaveOnAccess(lockKey, () -> {
+                Future<?> a = other.submit(() -> auth2faService.validateMfaLogin(
+                        sessionA, MfaVerificationMethod.TOTP, wrong, IP, USER_AGENT));
+                try {
+                    a.get(60, TimeUnit.SECONDS);
+                    aFailures.add("SUCCESS");
+                } catch (ExecutionException ex) {
+                    aFailures.add(ex.getCause() instanceof BusinessException be
+                            ? be.getErrorCode().getCode() : String.valueOf(ex.getCause()));
+                } catch (Exception ex) {
+                    aFailures.add(String.valueOf(ex));
+                }
+            });
+
+            Throwable b = catchThrowable(() -> auth2faService.validateMfaLogin(
+                    sessionB, MfaVerificationMethod.TOTP, correct, IP, USER_AGENT));
+
+            assertThat(aFailures).as("前提: A は 10 回目の失敗（AUTH_074）でロックを掛けた").containsExactly("AUTH_074");
+            assertThat(valkey.rawGet(lockKey)).as("前提: ロックが掛かっている").isNotNull();
+            assertThat(b).as("B はロック後に照合を進めない").isInstanceOf(BusinessException.class);
+            assertThat(((BusinessException) b).getErrorCode().getCode()).as("B はロック中").isEqualTo("AUTH_003");
+            assertThat(refreshTokenCount(u.userId())).as("トークンは発行されない").isZero();
+        } finally {
+            other.shutdownNow();
+        }
     }
 
     // ═════════════════════════════════════════════════════════════

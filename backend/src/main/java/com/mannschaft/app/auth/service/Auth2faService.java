@@ -168,7 +168,10 @@ public class Auth2faService {
      */
     @Transactional
     public ApiResponse<BackupCodesResponse> verifyTotpSetup(Long userId, String totpCode) {
-        TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserId(userId)
+        // 行ロックをこの TX の最初の読取りで取り、同一ユーザーの確定を直列化する（Codex 検分指摘）。
+        // ロックなしで読むと並列の確定が両方とも「未有効」を読んで成功し、後から保存された方が
+        // 先に返したバックアップコードを黙って上書きする。後着側はロック解放後に最新の is_enabled を読み AUTH_078 になる。
+        TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_016));
 
         // CMP-261012-0910 AC-1: 有効化済みの再有効化を拒否する（バックアップコードの黙った全差し替え・
@@ -248,6 +251,14 @@ public class Auth2faService {
 
         UserEntity user = findUserOrThrow(userId);
 
+        // 2FA 行をロックして、同一ユーザーの再要求（旧トークン失効 → 新トークン発行）を直列化する（Codex 検分指摘）。
+        // ロックなしでは並列の 2 本が共に「失効させる旧トークンは無い」と読み、2 本のトークンがどちらも有効になる。
+        // ロック順は「2FA 行 → 回復トークン行」で無効化・再設定・回復確認と揃え、デッドロックを作らない。
+        // 2FA が既に無い（ログイン後に無効化された等）なら回復で外すものが無く、このセッションは回復に使えない。
+        twoFactorAuthRepository.findByUserIdForUpdate(userId)
+                .filter(tfa -> Boolean.TRUE.equals(tfa.getIsEnabled()))
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_019));
+
         // CMP-261012-0910 AC-48: 再要求したら旧トークンは失効させ、最新の 1 通だけを有効にする
         revokeUnusedRecoveryTokens(userId);
 
@@ -281,6 +292,16 @@ public class Auth2faService {
         }
         String tokenHash = authTokenService.hashToken(token);
 
+        // 0. ロック順を「2FA 行 → 回復トークン行」に揃える（回復の再要求・無効化・再設定と同じ順。逆順だと
+        //    再要求と確認が互いの行を待ち合うデッドロックになる）。所有者 ID はエンティティを読み込まない
+        //    スカラー射影で引く（先にエンティティを読むと、後の FOR UPDATE が一次キャッシュの古い写しを返すため）。
+        Long ownerId = mfaRecoveryTokenRepository.findUserIdByTokenHash(tokenHash)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_023));
+        // 2FA が既に無い（無効化済み等）なら、このトークンでは何も外せない＝無効トークンと同じ扱い（AC-48）
+        TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserIdForUpdate(ownerId)
+                .filter(tfa -> Boolean.TRUE.equals(tfa.getIsEnabled()))
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_023));
+
         // 1. トークン検証（CMP-261012-0910 AC-48: 行ロックで同一トークンの並列確認を直列化し、成功を 1 件に限る）
         MfaRecoveryTokenEntity recoveryToken = mfaRecoveryTokenRepository.findByTokenHashForUpdate(tokenHash)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_023));
@@ -299,10 +320,6 @@ public class Auth2faService {
         Long userId = recoveryToken.getUserId();
 
         // 2. 2FAを無効化（CMP-261012-0910 AC-52: 有効フラグだけ倒すと秘密鍵・バックアップコードが残るため行ごと消す）。
-        // 2FA が既に無い（無効化済み等）なら、このトークンでは何も外せない＝無効トークンと同じ扱い（AC-48）
-        TwoFactorAuthEntity twoFactorAuth = twoFactorAuthRepository.findByUserIdForUpdate(userId)
-                .filter(tfa -> Boolean.TRUE.equals(tfa.getIsEnabled()))
-                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_023));
         TwoFactorMethod disabledMethod = twoFactorAuth.getMethod();
         removeTwoFactor(twoFactorAuth);
 
@@ -386,6 +403,11 @@ public class Auth2faService {
             mfaSessionService.terminate(session);
             throw new BusinessException(AuthErrorCode.AUTH_073);
         }
+        // 行ロック取得「後」にロック状態を確かめ直す（Codex 検分指摘）。上の確認だけでは、失敗 9 回の状態で
+        // 並列の 2 本が共に「未ロック」を読んだ後、先行側の 10 回目の失敗でロックが掛かっても、行ロック待ちだった
+        // 後続側が照合を進めてトークン発行まで行けてしまう。先行側はロックを掛けてから TX を終える（＝行ロックを放す）
+        // ため、行ロックを取った後の再確認で必ずロックが見える。
+        mfaSessionService.assertNotLocked(userId);
 
         Integer backupCodesRemaining = null;
         boolean verified;
