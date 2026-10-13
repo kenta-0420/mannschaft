@@ -86,7 +86,7 @@ describe('SkillMatrix: BE の実形（rows / cells）で描画する', () => {
     expect(cell(w, 10, 2).attributes('data-status')).toBe('EXPIRED')
   })
 
-  it('確認待ちのセルも状態を出す', async () => {
+  it('確認待ち（PENDING_REVIEW）は BE 仕様どおり「未登録」として扱う', async () => {
     api.getSkillMatrix.mockResolvedValue({
       data: {
         categories: [category(1, '運転')],
@@ -94,7 +94,7 @@ describe('SkillMatrix: BE の実形（rows / cells）で描画する', () => {
       },
     })
     const w = await render()
-    expect(cell(w, 10, 1).attributes('data-status')).toBe('PENDING_REVIEW')
+    expect(cell(w, 10, 1).attributes('data-status')).toBe('NONE')
   })
 
   it('cells にキーが無いカテゴリは「未登録」になる', async () => {
@@ -136,5 +136,17 @@ describe('SkillMatrix: 空・失敗', () => {
     api.getSkillMatrix.mockRejectedValue(new Error('403'))
     await render()
     expect(notify.error).toHaveBeenCalled()
+  })
+})
+
+describe('SkillMatrix: ALIC-4 凡例は実際に現れる状態だけを出す', () => {
+  it('凡例に「確認待ち」が無い（BE は確認待ちを未登録として返すため決して現れない）', async () => {
+    const w = await render()
+    expect(w.text()).not.toContain('確認待ち')
+  })
+
+  it('確認待ちは未登録として表示される旨の注記を出す', async () => {
+    const w = await render()
+    expect(w.text()).toContain('skill.matrix.legendPendingNote')
   })
 })
