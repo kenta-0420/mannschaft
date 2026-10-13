@@ -705,7 +705,10 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （{@code ./gradlew build}、{@code --tests} 絞り込みなし）で実測した値へ追随。</p>
      * <p>正式1e8の全量解析と原因検分で確認した旧原因17件の削減（2063→2046）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2046;
+    // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
+    //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
+    //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 2）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2044;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -730,7 +733,10 @@ class ArchUnitFreezeStoreIntegrityTest {
     // Issue #2997 G8: 1317 -> 1308（-9）。ActionMemoReminderBatchService と TodoDueReminderBatch が
     //   業務TX（クラス/メソッドの @Transactional）を持たなくなり、UserRepository / NotificationRepository への
     //   依存行が各3件ずつ消えた。CI shard1・2 の実測 -9 件と一致。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1308;
+    // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
+    //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
+    //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1304;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -846,14 +852,25 @@ class ArchUnitFreezeStoreIntegrityTest {
     // 内訳: distributeFriendListing 9・confirmApplication 5・publish 5・sendPublishedNotifications 7（改名で+2のため実減は26-2）。
     // D-1 API境界（93124b52）も distributeFriendListing の Entity 露出1行が消え 603→602。
     // D-3（他の6ストア）は CI の整合性テストが不一致を報告していないため変更なし。
+
     // Issue #2997 G8: 軽量バッチ群の付随通知を業務TXから切り離し 7264 -> 7238（-26。G1 と併せた最終値は 7213）。
     //   @Transactional を外した actionmemo execute 3 / repairplan execute 3 / todo 2メソッド 10 /
     //   reflection processDueReminders 5、および sendRemind が NotificationHelper を呼ばなくなり
     //   到達しなくなった 5（UserRepository と通知系4）。sendRemind の RoleRepository/UserRoleRepository は
     //   AccessControlService 経由で残る。CI shard1 の実測 -26 件と一致。
-    // G2(recruitment)との合算後のmain実数7189から、CMP-260821-1027のcancel/agreeが解消した
-    // roleのRoleRepository/UserRoleRepository到達4行を除外し、期待値を7185にする。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7185;
+    // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
+    //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
+    //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 2）。
+    // G2(recruitment)との合算: 7213 - 24 = 7189（ストア実数と一致）。
+    // main: CMP-260821-1027 の cancel/agree が解消した role の RoleRepository/UserRoleRepository 到達4行を除外し 7185。
+    // Issue #2997 G6(shift / ticket): 付随通知を業務TXから切り離し 7185 -> 7163（-22）。
+    //   ShiftPreferenceReminderBatchService.processReminders は @Transactional を外したため 7、
+    //   triggerManualReminder は通知を AFTER_COMMIT リスナーへ移したため UserRepository と通知系4の 5
+    //   （UserRoleRepository・AuditLogRepository への到達は監査ログ・未提出者抽出という業務由来のため残す）、
+    //   TicketExpiryBatchService.expireTickets は @Transactional を外したため 5、sendExpiryNotifications は
+    //   通知を呼ばなくなったため 5。追加 0・削除 22（解消済みの main 側4行は残していない）。
+    // CMP-261012-0313: main の 7163 から SkillMatrixService を主語とする 2 行が解消し 7161（ストア実数と一致）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7158;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -937,7 +954,10 @@ class ArchUnitFreezeStoreIntegrityTest {
      * {@code TeamSubscriptionEntity} は実際の継続課金を担っていない旧テーブルのガワであり、参照ごと廃止した。</p>
      * <p>正式1e8の全量解析と原因検分で確認した旧原因73件の削減（1938→1865）。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1862;
+    // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
+    //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
+    //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 1858;
 
     /**
      * ServiceAPIの正本行数。更新は実削減の原因検分と同一コミットに限る。

@@ -109,6 +109,8 @@ class MatchProposalCancelScopeContractIT extends AbstractMySqlIntegrationTest {
     private final List<Long> proposalIds = new ArrayList<>();
     private final List<Long> requestingAdmins = new ArrayList<>();
     private final List<Long> proposingAdmins = new ArrayList<>();
+    /** この IT が新規作成した roles 行。既存行を get した場合は含めない（他 IT の get-or-create 前提を壊さないため）。 */
+    private final List<Long> createdRoleIds = new ArrayList<>();
     private Long requestingTeam, proposingTeam, outsider, foreignAdmin, requestingMember, proposingMember;
     private Long system, systemAdmin, dualAdmin;
     private Long flagId;
@@ -172,6 +174,7 @@ class MatchProposalCancelScopeContractIT extends AbstractMySqlIntegrationTest {
                     em.createNativeQuery("DELETE FROM memberships WHERE user_id IN (:ids)").setParameter("ids", userIds).executeUpdate();
                     users.deleteAllById(userIds);
                 }
+                roles.deleteAllById(createdRoleIds);
                 teams.deleteAllById(teamIds);
                 return null;
             });
@@ -604,8 +607,12 @@ class MatchProposalCancelScopeContractIT extends AbstractMySqlIntegrationTest {
     }
     private RoleEntity role(String name) {
         // 共有の固定ロールを既存の正準priorityでseedする。手書きINSERTは使わない。
-        return roles.findByName(name).orElseGet(() -> roles.save(RoleEntity.builder().name(name)
-                .displayName(name).priority(RolePriority.priority(name)).isSystem(false).build()));
+        return roles.findByName(name).orElseGet(() -> {
+            RoleEntity created = roles.save(RoleEntity.builder().name(name)
+                    .displayName(name).priority(RolePriority.priority(name)).isSystem(false).build());
+            createdRoleIds.add(created.getId());
+            return created;
+        });
     }
     private void assignRole(Long user, String name, Long team) {
         userRoles.save(UserRoleEntity.builder().userId(user).roleId(role(name).getId()).teamId(team).build());

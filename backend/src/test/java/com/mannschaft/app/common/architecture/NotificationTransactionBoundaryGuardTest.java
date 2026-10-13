@@ -2397,14 +2397,22 @@ class NotificationTransactionBoundaryGuardTest {
      * 余裕はゼロである。</p>
      */
     /**
-     * Issue #2997 G2（recruitment）: 実数 168 / 148 / 94 に固定（G8 を取り込んだ最新 main 上の実測）。
+     * Issue #2997 G6（shift リマインド・ticket 期限切れ）: 実数 166 / 146 / 94 に固定（G2 を取り込んだ最新 main 上の実測）。
+     * 消えた 4 件（{@code ShiftPreferenceReminderBatchService} の {@code notificationHelper.notifyAllLocalized} 2 箇所、
+     * {@code TicketExpiryBatchService} の {@code notificationHelper.notify} 2 箇所）と、
+     * 増えた 2 件（{@code ShiftPreferenceReminderNotificationListener} / {@code TicketExpiryNotificationListener} の
+     * {@code notificationDeliveryRunner.sendOne} 各 1 箇所）で差し引き -2。構造条件を通過した発火点（STRUCTURAL）も同じ差分（-2）。
+     * 通知発火点を持つファイルは 2 減 2 増で差し引きゼロのため {@link #NOTIFY_BEARING_FILES_MIN} は 94 のまま。
+     * 語彙（{@link #NOTIFY_METHOD_VOCABULARY}）も構造条件（{@link #notifyCallOffsets}）も無変更。下限は余裕ゼロで実数に合わせる。
+     *
+     * <p>Issue #2997 G2（recruitment）: 実数 168 / 148 / 94 に固定（G8 を取り込んだ最新 main 上の実測）。
      * 消えた 3 件（{@code RecruitmentListingService} の {@code notificationHelper.notifyAllLocalized} /
      * {@code notificationHelper.notify}、{@code MarketFriendTargetService} の {@code notifyAllLocalized}）と、
      * 増えた 1 件（{@code RecruitmentNotificationListener} の {@code notificationDeliveryRunner.sendOne}）で差し引き -2、
      * 通知発火点を持つファイルは 2 減 1 増で -1。下限は余裕ゼロで実数に合わせる。
-     * 構造条件を通過した発火点（STRUCTURAL）も同じ差分（-2）。
+     * 構造条件を通過した発火点（STRUCTURAL）も同じ差分（-2）。</p>
      */
-    static final long RAW_CANDIDATE_HITS_MIN = 168L;
+    static final long RAW_CANDIDATE_HITS_MIN = 166L;
 
     /**
      * 実測 149（2026-09-04 / Issue #2990 L5 の是正後）。158 -> 149 の根拠は
@@ -2429,7 +2437,7 @@ class NotificationTransactionBoundaryGuardTest {
      *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 148L;
+    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 146L;
 
     /**
      * 実測 17309（2026-09-01 main 取り込み後）。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。

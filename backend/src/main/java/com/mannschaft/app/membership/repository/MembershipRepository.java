@@ -304,6 +304,20 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("scopeId") Long scopeId);
 
     /**
+     * CMP-261012-0313: 指定スコープに指定の {@link RoleKind} で<b>在籍中</b>のメンバーの user_id 集合（DISTINCT）を返す。
+     *
+     * <p>{@link #findActiveDistinctUserIdsByScope} の所属種別つき版。資格のスキルマトリクスの行
+     * （正式メンバーのみ。SUPPORTER を除く）を 1 クエリで引くために用いる。</p>
+     */
+    @Query("SELECT DISTINCT m.userId FROM MembershipEntity m " +
+            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.roleKind = :roleKind " +
+            "AND m.leftAt IS NULL")
+    List<Long> findActiveDistinctUserIdsByScopeAndRoleKind(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("roleKind") RoleKind roleKind);
+
+    /**
      * 認可根治 Wave6: 指定した複数スコープ（TEAM / ORGANIZATION 混在）のアクティブ会員の
      * user_id 集合（DISTINCT）を返す。
      *
