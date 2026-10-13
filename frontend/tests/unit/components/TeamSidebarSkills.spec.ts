@@ -18,6 +18,8 @@ import { ref, computed } from 'vue'
  *  TEAM-SB-SKL-005: SYSTEM_ADMIN でもゲート ON ならリンクが出る
  *  TEAM-SB-SKL-006: member_intro モジュール無効ならリンクは出ない
  *  TEAM-SB-SKL-007: ゲート OFF でも既存項目（メンバー紹介）は回帰せず出る
+ *  TEAM-SB-SKL-009: SUPPORTER / GUEST にはリンクが出ない
+ *  TEAM-SB-SKL-010: MEMBER / DEPUTY_ADMIN / ADMIN にはリンクが出る
  *  TEAM-SB-SKL-008: 6言語すべてのロケールに teamSidebar.item.skills がある
  */
 
@@ -114,6 +116,24 @@ describe('TeamSidebar スキル・資格導線', () => {
     const wrapper = await mountSidebar()
     expect(wrapper.html()).toContain(PROFILES_HREF)
   })
+
+  it.each(['SUPPORTER', 'GUEST'])(
+    'TEAM-SB-SKL-009: %s にはゲート ON・member_intro 有効でもスキル・資格リンクは出ない',
+    async (role) => {
+      roleName.value = role
+      const wrapper = await mountSidebar()
+      expect(wrapper.html()).not.toContain(SKILLS_HREF)
+    },
+  )
+
+  it.each(['MEMBER', 'DEPUTY_ADMIN', 'ADMIN'])(
+    'TEAM-SB-SKL-010: %s にはゲート ON・member_intro 有効ならスキル・資格リンクが出る',
+    async (role) => {
+      roleName.value = role
+      const wrapper = await mountSidebar()
+      expect(wrapper.html()).toContain(SKILLS_HREF)
+    },
+  )
 
   it('TEAM-SB-SKL-008: 6言語すべてに teamSidebar.item.skills がある', () => {
     for (const locale of ['ja', 'en', 'zh', 'ko', 'es', 'de']) {
