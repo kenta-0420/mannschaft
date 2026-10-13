@@ -14636,23 +14636,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/shifts/slots/{slotId}/assignments/move": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** スロット間の割当移動 */
-        post: operations["moveSlotAssignment"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/shifts/schedules": {
         parameters: {
             query?: never;
@@ -46987,23 +46970,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{teamSlug}/organizations/{orgSlug}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** 組織からの離脱（チームの加盟操作者） */
-        delete: operations["leave_1"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/teams/{teamSlug}/org-applications/{membershipId}": {
         parameters: {
             query?: never;
@@ -47744,23 +47710,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{slug}/teams/{teamSlug}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** 加盟チームの除名（組織 ADMIN） */
-        delete: operations["remove"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/organizations/{slug}/team-invites/{teamSlug}": {
         parameters: {
             query?: never;
@@ -48191,7 +48140,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 共有先解除 */
-        delete: operations["remove_1"];
+        delete: operations["remove"];
         options?: never;
         head?: never;
         patch?: never;
@@ -63946,57 +63895,6 @@ export interface components {
             action: string;
             adminNote?: string;
         };
-        SlotAssignmentMoveRequest: {
-            /** Format: int64 */
-            sourceSlotVersion: number;
-            /** Format: int64 */
-            targetSlotId: number;
-            /** Format: int64 */
-            targetSlotVersion: number;
-            /** Format: int64 */
-            userId: number;
-        };
-        ApiResponseSlotAssignmentMoveResponse: {
-            data?: components["schemas"]["SlotAssignmentMoveResponse"];
-        };
-        ShiftAssignmentWarningDto: {
-            code?: string;
-            conflictingSlotIds?: number[];
-        };
-        ShiftSlotPositionDto: {
-            /** Format: int64 */
-            positionId?: number;
-            positionName?: string;
-            /** Format: int32 */
-            requiredCount?: number;
-        };
-        ShiftSlotResponse: {
-            assignedUserIds?: number[];
-            assignmentMasked?: boolean;
-            /** Format: int64 */
-            id?: number;
-            note?: string;
-            position?: components["schemas"]["ShiftSlotPositionDto"];
-            /** Format: int64 */
-            scheduleId?: number;
-            time?: components["schemas"]["ShiftSlotTimeDto"];
-            /** Format: int64 */
-            version?: number;
-            warnings?: components["schemas"]["ShiftAssignmentWarningDto"][];
-        };
-        ShiftSlotTimeDto: {
-            /** @example 14:30:00 */
-            endTime?: string;
-            endsNextDay?: boolean;
-            /** Format: date */
-            slotDate?: string;
-            /** @example 14:30:00 */
-            startTime?: string;
-        };
-        SlotAssignmentMoveResponse: {
-            source?: components["schemas"]["ShiftSlotResponse"];
-            target?: components["schemas"]["ShiftSlotResponse"];
-        };
         CreateShiftScheduleRequest: {
             /** Format: date */
             endDate: string;
@@ -64065,6 +63963,38 @@ export interface components {
         };
         ApiResponseShiftSlotResponse: {
             data?: components["schemas"]["ShiftSlotResponse"];
+        };
+        ShiftAssignmentWarningDto: {
+            code?: string;
+            conflictingSlotIds?: number[];
+        };
+        ShiftSlotPositionDto: {
+            /** Format: int64 */
+            positionId?: number;
+            positionName?: string;
+            /** Format: int32 */
+            requiredCount?: number;
+        };
+        ShiftSlotResponse: {
+            assignedUserIds?: number[];
+            assignmentMasked?: boolean;
+            /** Format: int64 */
+            id?: number;
+            note?: string;
+            position?: components["schemas"]["ShiftSlotPositionDto"];
+            /** Format: int64 */
+            scheduleId?: number;
+            time?: components["schemas"]["ShiftSlotTimeDto"];
+            warnings?: components["schemas"]["ShiftAssignmentWarningDto"][];
+        };
+        ShiftSlotTimeDto: {
+            /** @example 14:30:00 */
+            endTime?: string;
+            endsNextDay?: boolean;
+            /** Format: date */
+            slotDate?: string;
+            /** @example 14:30:00 */
+            startTime?: string;
         };
         BulkCreateShiftSlotRequest: {
             slots?: components["schemas"]["CreateShiftSlotRequest"][];
@@ -64242,7 +64172,6 @@ export interface components {
             /** Format: int64 */
             id?: number;
             requestInfo?: components["schemas"]["ChangeRequestTypeDto"];
-            requesterName?: string;
             reviewInfo?: components["schemas"]["ChangeRequestStatusDto"];
             /** Format: int64 */
             scheduleId?: number;
@@ -117197,41 +117126,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseSwapRequestResponse"];
-                };
-            };
-        };
-    };
-    moveSlotAssignment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slotId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SlotAssignmentMoveRequest"];
-            };
-        };
-        responses: {
-            /** @description 移動成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseSlotAssignmentMoveResponse"];
-                };
-            };
-            /** @description 競合（楽観ロック・移動元に不在・重複） */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseSlotAssignmentMoveResponse"];
                 };
             };
         };
@@ -170965,48 +170859,6 @@ export interface operations {
             };
         };
     };
-    leave_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                teamSlug: string;
-                orgSlug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 離脱成功（加盟の行を削除） */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 加盟操作権限なし */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description TEAM_070（加盟していない組織・存在しない組織の slug・離脱済みは同じ応答） */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description TEAM_071（加盟が成立していない＝申請・招待の処理中） */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     withdraw_5: {
         parameters: {
             query?: never;
@@ -171940,48 +171792,6 @@ export interface operations {
             };
         };
     };
-    remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-                teamSlug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 除名成功（加盟の行を削除） */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description 組織 ADMIN ではない */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description TEAM_070（加盟していないチーム・存在しないチームの slug・除名済みは同じ応答） */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description TEAM_071（加盟が成立していない＝申請・招待の処理中） */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     cancel_18: {
         parameters: {
             query?: never;
@@ -172535,7 +172345,7 @@ export interface operations {
             };
         };
     };
-    remove_1: {
+    remove: {
         parameters: {
             query?: never;
             header?: never;
