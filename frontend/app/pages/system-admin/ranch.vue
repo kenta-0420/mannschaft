@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 const auth = useAuthStore()
 const commandState = useNuxtApp().$ranchCommandMemory.scopes['ranch-admin']
 let generation = 0
