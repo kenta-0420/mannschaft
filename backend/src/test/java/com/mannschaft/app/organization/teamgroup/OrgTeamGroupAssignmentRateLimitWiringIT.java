@@ -56,7 +56,12 @@ class OrgTeamGroupAssignmentRateLimitWiringIT extends AbstractOrgTeamGroupAssign
         willAnswer(invocation -> {
             List<?> keys = invocation.getArgument(1);
             String redisKey = String.valueOf(keys.get(0));
-            return counters.computeIfAbsent(redisKey, k -> new AtomicLong()).incrementAndGet();
+            // 時刻依存フレークの根治: redisKey は mannschaft:rate:{zone}:{key}:{windowStart}（壁時計の分）。
+            // 21回のリクエスト中に分の境界をまたぐと windowStart が変わりカウントが1に戻って
+            // X-RateLimit-Remaining が割れる。本テストはフィルタ結線とヘッダ値の検証が責務であり、
+            // 固定ウィンドウ境界の挙動は ValkeyRateLimiterTest の責務なので、windowStart を落として集計する。
+            String counterKey = redisKey.substring(0, redisKey.lastIndexOf(':'));
+            return counters.computeIfAbsent(counterKey, k -> new AtomicLong()).incrementAndGet();
         }).given(redisTemplate).execute(any(RedisScript.class), anyList(), any());
 
         org = newOrg(true);

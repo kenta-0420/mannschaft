@@ -405,136 +405,136 @@
       "back": "Volver a editar"
     },
     "hourlyRate": {
-      "title": "時給設定",
-      "description": "メンバーごとの時給を登録します。時給が未設定のメンバーのシフトは、シフト予算の消化額に反映されません。",
-      "missingWarning": "時給が未設定のメンバーが {count} 名います。このままではシフトを公開しても予算の消化額に反映されません。",
-      "unset": "未設定",
-      "setButton": "設定",
-      "perHour": "{amount}円/h",
-      "saved": "時給を保存しました",
-      "saveFailed": "時給の保存に失敗しました",
-      "loadFailed": "時給の取得に失敗しました",
-      "historyLoadFailed": "時給履歴の取得に失敗しました",
-      "permissionLoadFailed": "権限の取得に失敗しました",
-      "forbidden": "この画面を表示する権限がありません",
-      "noMembers": "メンバーがいません",
-      "dialogTitle": "{name} の時給設定",
-      "effectiveFromHint": "指定した日から適用されます。過去の設定は履歴として残ります。同じ日付で登録し直すと、その日の設定を訂正します。",
-      "historyTitle": "時給履歴",
-      "noHistory": "時給の登録履歴はありません",
+      "title": "Configuración de tarifa por hora",
+      "description": "Registra la tarifa por hora de cada miembro. Los turnos de los miembros sin tarifa por hora no se reflejan en el consumo del presupuesto de turnos.",
+      "missingWarning": "{count} miembro(s) no tienen tarifa por hora. Sus turnos no se reflejarán en el consumo del presupuesto al publicar el turno.",
+      "unset": "Sin definir",
+      "setButton": "Establecer",
+      "perHour": "{amount} JPY/h",
+      "saved": "Tarifa por hora guardada",
+      "saveFailed": "No se pudo guardar la tarifa por hora",
+      "loadFailed": "No se pudieron cargar las tarifas por hora",
+      "historyLoadFailed": "No se pudo cargar el historial de tarifas por hora",
+      "permissionLoadFailed": "No se pudieron cargar los permisos",
+      "forbidden": "No tienes permiso para ver esta página",
+      "noMembers": "No hay miembros",
+      "dialogTitle": "Tarifa por hora de {name}",
+      "effectiveFromHint": "Se aplica a partir de la fecha indicada. Los ajustes anteriores se conservan como historial. Si se vuelve a registrar con la misma fecha, se corrige el ajuste de ese día.",
+      "historyTitle": "Historial de tarifas por hora",
+      "noHistory": "Aún no se ha registrado ninguna tarifa por hora",
       "column": {
-        "member": "メンバー",
-        "rate": "時給",
-        "effectiveFrom": "適用開始日"
+        "member": "Miembro",
+        "rate": "Tarifa por hora",
+        "effectiveFrom": "Vigente desde"
       },
       "validation": {
-        "rateRequired": "時給を入力してください",
-        "ratePositive": "時給は1円以上で入力してください"
+        "rateRequired": "Introduce una tarifa por hora",
+        "ratePositive": "Introduce una tarifa por hora de al menos 1 JPY"
       }
     }
   },
   "my_shift_guide": {
-    "title": "シフトページの使い方",
-    "description": "このページでは、自分にアサインされた確定シフトの確認や、交代依頼の申請ができます。",
+    "title": "Cómo usar la página de turnos",
+    "description": "En esta página puedes consultar los turnos confirmados que se te han asignado y enviar solicitudes de cambio.",
     "view_shifts": {
-      "title": "確定シフトを確認する",
-      "body": "ログインユーザーにアサインされた確定済みシフトを、月次カレンダーまたは週次リストで表示します。シフトがない日付は空欄のまま表示されます。",
+      "title": "Consultar los turnos confirmados",
+      "body": "Muestra los turnos confirmados asignados al usuario con sesión iniciada en un calendario mensual o en una lista semanal. Las fechas sin turnos se muestran en blanco.",
       "steps": {
-        "step1": "「/my/shift」ページを開きます",
-        "step2": "ページが自動的に確定シフトを読み込み、カレンダーまたはリストに表示します",
-        "step3": "シフトがない場合は「シフトがありません」と表示されます"
+        "step1": "Abre la página «/my/shift»",
+        "step2": "La página carga automáticamente tus turnos confirmados y los muestra en el calendario o en la lista",
+        "step3": "Si no hay turnos, se muestra «No hay turnos»"
       }
     },
     "switch_view": {
-      "title": "表示を切り替える",
-      "body": "月次カレンダー（全体把握向き）と週次リスト（詳細確認向き）の2つのビューを切り替えられます。矢印ボタンで前後の月・週に移動できます。",
+      "title": "Cambiar la vista",
+      "body": "Puedes alternar entre dos vistas: el calendario mensual (ideal para una visión general) y la lista semanal (ideal para ver los detalles). Con los botones de flecha te mueves al mes o la semana anterior o siguiente.",
       "steps": {
-        "step1": "画面上部の「月ビュー」「週ビュー」ボタンで表示形式を切り替えます",
-        "step2": "◀ ▶ ボタンで前月・次月（または前週・次週）に移動します",
-        "step3": "「今日」ボタンで今日を含む月・週に戻ります"
+        "step1": "Cambia el formato de visualización con los botones «Vista mensual» y «Vista semanal» de la parte superior de la pantalla",
+        "step2": "Usa los botones ◀ ▶ para ir al mes anterior o siguiente (o a la semana anterior o siguiente)",
+        "step3": "Con el botón «Hoy» vuelves al mes o la semana que incluye el día de hoy"
       }
     },
     "filter_team": {
-      "title": "チームで絞り込む",
-      "body": "複数のチームに所属している場合、特定チームのシフトのみを表示できます。「全て」ボタンを選ぶと全チームのシフトが表示されます。",
+      "title": "Filtrar por equipo",
+      "body": "Si perteneces a varios equipos, puedes mostrar solo los turnos de un equipo concreto. Al seleccionar el botón «Todos» se muestran los turnos de todos los equipos.",
       "steps": {
-        "step1": "画面上部「チーム:」欄の「全て」またはチーム名ボタンをタップします",
-        "step2": "選択したチームのシフトのみ表示されます",
-        "step3": "「全て」を再度タップすると絞り込みが解除されます"
+        "step1": "Toca «Todos» o el botón con el nombre de un equipo en el campo «Equipo:» de la parte superior de la pantalla",
+        "step2": "Solo se muestran los turnos del equipo seleccionado",
+        "step3": "Vuelve a tocar «Todos» para quitar el filtro"
       }
     },
     "view_detail": {
-      "title": "シフト詳細を確認する",
-      "body": "特定の日付をタップすると、そのシフトのチーム名・ポジション・時刻・スケジュール名などの詳細を確認できます。",
+      "title": "Consultar los detalles del turno",
+      "body": "Toca una fecha concreta para ver los detalles de ese turno, como el nombre del equipo, el puesto, el horario y el nombre del calendario.",
       "steps": {
-        "step1": "【月次ビュー】日付セルをタップすると、画面右側に詳細パネルが開きます",
-        "step2": "【週次ビュー】日付カードのヘッダーをタップすると、カードが展開してシフト一覧が表示されます",
-        "step3": "月次ビューでは同じ日付をもう一度タップすると詳細パネルが閉じます"
+        "step1": "[Vista mensual] Toca una celda de fecha para abrir el panel de detalles en el lado derecho de la pantalla",
+        "step2": "[Vista semanal] Toca el encabezado de una tarjeta de fecha para expandirla y mostrar la lista de turnos",
+        "step3": "En la vista mensual, vuelve a tocar la misma fecha para cerrar el panel de detalles"
       }
     },
     "swap_request": {
-      "title": "交代依頼を申請する",
-      "body": "確定シフトを他のメンバーと交代したい場合、3つの方式で依頼を送れます。送信後は自動的にシフト一覧が更新されます。",
+      "title": "Enviar una solicitud de cambio",
+      "body": "Si quieres cambiar un turno confirmado con otro miembro, puedes enviar la solicitud de tres maneras. Tras enviarla, la lista de turnos se actualiza automáticamente.",
       "steps": {
-        "step1": "シフト詳細内の「交代依頼を作成」ボタンをクリックします",
-        "step2": "送信方式を選びます：「メンバーを指定」（1名以上選択）／「シフト帯でまとめて」（同日の昼または夜シフト担当者全員）／「全員に公開」（誰でも立候補可）",
-        "step3": "必要であれば理由を記入します（任意）",
-        "step4": "「提出」ボタンをクリックして送信します"
+        "step1": "Haz clic en el botón «Crear solicitud de cambio» en los detalles del turno",
+        "step2": "Elige el método de envío: «Indicar miembros» (selecciona uno o más) / «Por franja de turno» (todas las personas del turno de día o de noche del mismo día) / «Abierto a todos» (cualquiera puede ofrecerse)",
+        "step3": "Si lo necesitas, escribe un motivo (opcional)",
+        "step4": "Haz clic en el botón «Enviar» para enviar la solicitud"
       },
-      "note": "提出後は確定シフト一覧が自動的に更新されます。送信中はボタンが無効になりますので、完了するまでそのままお待ちください。"
+      "note": "Tras enviar la solicitud, la lista de turnos confirmados se actualiza automáticamente. Durante el envío el botón queda desactivado, así que espera hasta que termine."
     }
   },
   "shift_guide": {
-    "title": "シフト管理の使い方",
-    "description": "シフト管理では、チームのシフトスケジュールを作成・公開し、メンバーの希望を収集して調整できます。",
+    "title": "Cómo usar la gestión de turnos",
+    "description": "En la gestión de turnos puedes crear y publicar los calendarios de turnos del equipo, además de recopilar y ajustar las preferencias de los miembros.",
     "overview": {
-      "title": "シフトスケジュール一覧を確認する",
-      "body": "このページでは、チームのシフトスケジュール一覧を管理します。ステータスバッジで進捗が一目で分かります。",
+      "title": "Consultar la lista de calendarios de turnos",
+      "body": "Esta página gestiona la lista de calendarios de turnos del equipo. Las insignias de estado muestran el progreso de un vistazo.",
       "steps": {
-        "step1": "ステータスフィルタ（下書き・収集中・調整中・公開済みなど）で絞り込む",
-        "step2": "各カードの提出率バーでメンバーの希望提出状況を確認する",
-        "step3": "カードをクリックして詳細ページへ移動する"
+        "step1": "Filtra por estado (borrador, recopilando, ajustando, publicado, etc.)",
+        "step2": "Consulta el estado de entrega de las preferencias de los miembros con la barra de tasa de entrega de cada tarjeta",
+        "step3": "Haz clic en una tarjeta para ir a su página de detalles"
       }
     },
     "create": {
-      "title": "新しいシフトスケジュールを作成する",
-      "body": "チームの管理者がシフトスケジュールを新規作成できます。タイトルと期間を設定してスタートしましょう。",
+      "title": "Crear un nuevo calendario de turnos",
+      "body": "Los administradores del equipo pueden crear un nuevo calendario de turnos. Empieza indicando un título y un período.",
       "steps": {
-        "step1": "右上の「新規作成」ボタンをクリックする",
-        "step2": "タイトル・開始日・終了日を入力する（必須）",
-        "step3": "希望締切・メモを必要に応じて入力する",
-        "step4": "「作成」ボタンで確定する（ステータス：下書きで作成）"
+        "step1": "Haz clic en el botón «Crear» de la esquina superior derecha",
+        "step2": "Introduce el título, la fecha de inicio y la fecha de fin (obligatorios)",
+        "step3": "Introduce la fecha límite de preferencias y una nota si lo necesitas",
+        "step4": "Confirma con el botón «Crear» (se crea con el estado «Borrador»)"
       }
     },
     "status": {
-      "title": "ステータスを進めてシフトを確定させる",
-      "body": "シフトは5段階のステータスで管理されます。詳細ページのステッパーで現在のフェーズを確認し、順番に進めましょう。",
+      "title": "Avanzar el estado para confirmar los turnos",
+      "body": "Los turnos se gestionan mediante cinco estados. Consulta la fase actual en el indicador de pasos de la página de detalles y avanza en orden.",
       "steps": {
-        "step1": "「下書き」：スロットや制約を設定する準備段階",
-        "step2": "「収集中」：メンバーにシフト希望の提出を依頼する",
-        "step3": "「調整中」：希望を元にシフトを調整・作成する",
-        "step4": "「公開済み」：確定シフトをメンバーに公開する",
-        "step5": "「完了」：終了したシフトをアーカイブする"
+        "step1": "«Borrador»: la fase de preparación en la que se configuran los turnos y las restricciones",
+        "step2": "«Recopilando»: se pide a los miembros que envíen sus preferencias de turno",
+        "step3": "«Ajustando»: se ajustan y elaboran los turnos a partir de las preferencias",
+        "step4": "«Publicado»: se publican los turnos confirmados para los miembros",
+        "step5": "«Completado»: se archivan los turnos finalizados"
       }
     },
     "requests": {
-      "title": "メンバーのシフト希望を収集・確認する",
-      "body": "「収集中」ステータスになるとメンバーが希望を提出できます。詳細ページの「希望一覧」タブで全員の状況をマトリクスで確認できます。",
+      "title": "Recopilar y revisar las preferencias de turno de los miembros",
+      "body": "Cuando el estado pasa a «Recopilando», los miembros pueden enviar sus preferencias. En la pestaña «Lista de preferencias» de la página de detalles puedes ver el estado de todos en una matriz.",
       "steps": {
-        "step1": "詳細ページの「希望一覧」タブをクリックする",
-        "step2": "サマリーカードで提出率・未提出人数を確認する",
-        "step3": "マトリクス表で各メンバーの日付ごとの希望強度を確認する",
-        "step4": "「出勤希望・指定なし・出れなくはない・できれば休み・絶対休み」の5段階で表示される"
+        "step1": "Haz clic en la pestaña «Lista de preferencias» de la página de detalles",
+        "step2": "Consulta en las tarjetas de resumen la tasa de entrega y el número de miembros que no han enviado nada",
+        "step3": "Consulta en la tabla matriz el nivel de preferencia de cada miembro para cada fecha",
+        "step4": "Se muestra en cinco niveles: «Quiere trabajar / Sin preferencia / Podría trabajar / Prefiere descansar / Debe descansar»"
       }
     },
     "slots": {
-      "title": "スロットと勤務制約を設定する",
-      "body": "シフトの時間帯（スロット）を登録し、チーム・メンバー別の勤務制約を設定します。",
+      "title": "Configurar los turnos y las restricciones laborales",
+      "body": "Registra las franjas horarias (turnos) y configura las restricciones laborales del equipo y de cada miembro.",
       "steps": {
-        "step1": "「編集」タブでスロット（日付・開始〜終了時刻・ポジション・必要人数）を作成する",
-        "step2": "「一括作成」ボタンで日付範囲・曜日指定による複数スロットの一括登録も可能",
-        "step3": "「制約」タブでチームデフォルトの勤務制約（月最大時間・連続勤務日数など）を設定する",
-        "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
+        "step1": "En la pestaña «Editar», crea los turnos (fecha, hora de inicio a hora de fin, puesto y número de personas necesarias)",
+        "step2": "También puedes registrar varios turnos a la vez con el botón «Creación masiva», indicando un rango de fechas y los días de la semana",
+        "step3": "En la pestaña «Restricciones», configura las restricciones laborales predeterminadas del equipo (horas máximas al mes, días de trabajo consecutivos, etc.)",
+        "step4": "Para miembros concretos, puedes sobrescribir las restricciones de forma individual con «Excepciones por miembro»"
       }
     }
   }

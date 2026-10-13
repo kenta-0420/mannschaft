@@ -527,13 +527,8 @@ public class AccessControlService {
             throw new IllegalArgumentException(
                     "checkAdminOrHasPermission は ORGANIZATION スコープ専用です: " + scopeType);
         }
-        // 1. ADMIN なら無条件許可
-        if (isAdmin(userId, scopeId, scopeType)) {
-            return;
-        }
-        // 2. DEPUTY_ADMIN かつ Permission 保有なら許可
-        if (userRoleRepository.existsDeputyAdminWithPermissionInOrganization(
-                userId, scopeId, permissionName)) {
+        // 判断基準は hasAdminOrPermissionInScope に一本化（ADMIN 無条件許可 / DEPUTY_ADMIN は Permission 保有時のみ）。
+        if (hasAdminOrPermissionInScope(userId, scopeId, scopeType, permissionName)) {
             return;
         }
         // 3. それ以外は拒否

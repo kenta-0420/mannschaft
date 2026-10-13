@@ -322,11 +322,28 @@ class OracleWave1HttpContractIT extends AbstractMySqlIntegrationTest {
 
         @ParameterizedTest
         @ValueSource(strings = {"GET", "PUT", "DELETE", "CERTIFICATE"})
-        void S3_同team一覧で既知のIDでも他人詳細の003は維持する(String operation) throws Exception {
+        void S3_同team一覧で既知のIDの他人詳細は403_COMMON_002(String operation) throws Exception {
+            // CMP-261010-2226: 同一チームの所属者には一覧で存在が既知のため秘匿せず 403 COMMON_002。
+            // denial() は 404 固定のため、S3 専用に 403 の status・code・message を検証する。
             MemberSkillEntity own = skill(ownTeam.getId());
             http(payer, "GET", skillPath("search"), null).andExpect(status().isOk())
                     .andExpect(jsonPath("$.data[0].memberSkillId").value(own.getId()));
-            denial(skillHttp(payer, operation, own.getId()), "SKILL_003", "アクセス権限がありません");
+            skillHttp(payer, operation, own.getId())
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"))
+                    .andExpect(jsonPath("$.error.message").value("この操作を行う権限がありません"));
+            assertThat(inTx(() -> skills.findById(own.getId()).map(MemberSkillEntity::getName).orElse(null)))
+                    .isEqualTo("試練資格");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"GET", "PUT", "DELETE", "CERTIFICATE"})
+        void S6_資格個別操作の未認証は実在IDでも401(String operation) throws Exception {
+            // CMP-261010-2226 AC-9: 実 SecurityFilterChain で、実在 ID への未認証アクセスは 401（副作用なし）。
+            MemberSkillEntity own = skill(ownTeam.getId());
+            skillHttp(null, operation, own.getId()).andExpect(status().isUnauthorized());
+            assertThat(inTx(() -> skills.findById(own.getId()).map(MemberSkillEntity::getName).orElse(null)))
+                    .isEqualTo("試練資格");
         }
 
         @Test

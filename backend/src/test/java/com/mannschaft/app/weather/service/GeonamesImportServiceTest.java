@@ -42,6 +42,16 @@ class GeonamesImportServiceTest {
     }
 
     @Test
+    @DisplayName("CMP-260910-0045: postal_codes の時刻列は UTC_TIMESTAMP() で充填され、セッションTZ依存の NOW() を使わない")
+    void upsertSql_fillsTimeColumnsWithUtcTimestamp() {
+        String sql = (String) ReflectionTestUtils.getField(GeonamesImportService.class, "UPSERT_SQL");
+
+        assertThat(sql).doesNotContainIgnoringCase("NOW()");
+        assertThat(sql).contains("?, UTC_TIMESTAMP())");
+        assertThat(sql).contains("updated_at = UTC_TIMESTAMP()");
+    }
+
+    @Test
     @DisplayName("JP の hyphen 入り郵便番号は正規化形（7 桁・ハイフン無）で書き込まれる")
     void parseLine_normalizesJpPostalCode() {
         GeonamesImportService service =

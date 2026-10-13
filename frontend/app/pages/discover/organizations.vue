@@ -15,11 +15,16 @@ definePageMeta({
 })
 
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const { searchPublicOrganizations } = usePublicApi()
 
 // フィルタ状態
 const keyword = ref('')
 const prefecture = ref('')
+// F01.2.1: 「チーム加盟を受付中」絞り込み。URL クエリ acceptingTeamApplications=true を初期状態として読む
+// （チームの「加盟先の組織を探す」からこのクエリ付きで遷移してくる）。
+const acceptingOnly = ref(route.query.acceptingTeamApplications === 'true')
 const currentPage = ref(0)
 const pageSize = 20
 
@@ -30,6 +35,7 @@ const { data: resultsPage, pending, refresh } = await useAsyncData<SpringPage<Pu
     searchPublicOrganizations({
       keyword: keyword.value || undefined,
       prefecture: prefecture.value || undefined,
+      acceptingTeamApplications: acceptingOnly.value || undefined,
       page: currentPage.value,
       size: pageSize,
     }),
@@ -43,6 +49,15 @@ const totalElements = computed(() => resultsPage.value?.totalElements ?? 0)
 async function handleSearch() {
   currentPage.value = 0
   await refresh()
+}
+
+/** 絞り込みチップの切替。再検索し、URL クエリも更新して共有・再読込で同じ絞り込みになるようにする。 */
+async function toggleAccepting() {
+  acceptingOnly.value = !acceptingOnly.value
+  await router.replace({
+    query: acceptingOnly.value ? { acceptingTeamApplications: 'true' } : {},
+  })
+  await handleSearch()
 }
 
 async function goPage(next: number) {
@@ -111,6 +126,17 @@ useSeoPublicPage({
             </template>
           </Select>
         </div>
+
+        <!-- チーム加盟を受付中（F01.2.1） -->
+        <Button
+          :label="t('teamAffiliation.filter_accepting')"
+          :icon="acceptingOnly ? 'pi pi-check' : undefined"
+          :severity="acceptingOnly ? undefined : 'secondary'"
+          :outlined="!acceptingOnly"
+          :aria-pressed="acceptingOnly ? 'true' : 'false'"
+          data-testid="filter-accepting-chip"
+          @click="toggleAccepting"
+        />
 
         <!-- 検索ボタン -->
         <Button

@@ -44,7 +44,9 @@ class FlywayExistingDataAutomaticActivityFlagsMigrationTest {
                 assertThat(existing).hasSize(2);
             }
             var after = Flyway.configure().dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
-                    .locations("classpath:db/migration").outOfOrder(false).load().migrate();
+                    .locations("classpath:db/migration").outOfOrder(false)
+                    // 237 の移行だけを検証する（後続の migration が足されても 1 件のまま。target なしだと V238 以降で壊れる）
+                    .target(MigrationVersion.fromVersion("237.20261008035358")).load().migrate();
             assertThat(after.success).isTrue();
             assertThat(after.migrationsExecuted).isEqualTo(1);
             try (var connection = DriverManager.getConnection(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())) {

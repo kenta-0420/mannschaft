@@ -129,7 +129,7 @@ public class TeamOrgAffiliationCommandService {
             throw new BusinessException(TeamErrorCode.TEAM_066, e);
         }
 
-        // 8. 通知（組織 ADMIN 全員。同じトランザクションで enqueue するだけ）と監査
+        // 8. 通知（組織 ADMIN 全員。同じトランザクションで team の outbox に予約するだけ）と監査
         notifier.enqueue(TeamAffiliationNotice.applicationReceived(
                 organizationId, organization.slug(), team.getName(), organization.name(),
                 saved.getId(), operatorUserId));

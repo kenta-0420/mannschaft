@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-10-08T14:14:30+00:00",
+  "synchronizedAt": "2026-10-12T00:26:57+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -396,7 +396,9 @@
     ],
     "CMP-260821-1027": [
       2887,
-      3624
+      3624,
+      3661,
+      3681
     ],
     "CMP-260821-1235": [
       2895,
@@ -419,7 +421,9 @@
     "CMP-260822-1006": [
       2970
     ],
-    "CMP-260824-2217": [],
+    "CMP-260824-2217": [
+      2934
+    ],
     "CMP-260822-1730": [
       2922
     ],
@@ -437,7 +441,9 @@
     ],
     "CMP-260826-1921": [
       2956,
-      3573
+      3573,
+      3664,
+      3698
     ],
     "CMP-260901-1538": [
       3037,
@@ -588,7 +594,8 @@
     "CMP-260821-1148": [],
     "CMP-260822-1243": [
       2919,
-      3583
+      3583,
+      3780
     ],
     "CMP-260825-0639": [
       2909
@@ -602,10 +609,24 @@
       1076,
       1169,
       1209,
+      1316,
+      1317,
       1490,
       1502,
       2353,
-      3607
+      3607,
+      3683,
+      3684,
+      3685,
+      3686,
+      3687,
+      3688,
+      3689,
+      3691,
+      3692,
+      3693,
+      3694,
+      3695
     ],
     "CMP-260826-1455": [
       3572
@@ -621,7 +642,8 @@
       3099,
       3123,
       3129,
-      3132
+      3132,
+      3603
     ],
     "CMP-260826-2128": [
       1209,
@@ -1048,7 +1070,9 @@
     "CMP-260929-0654": [
       3518,
       3555,
-      3579
+      3579,
+      3668,
+      3759
     ],
     "CMP-260928-1233": [
       3502,
@@ -1248,10 +1272,20 @@
     "CMP-261004-1940": [],
     "CMP-261004-1941": [],
     "CMP-261004-1942": [
-      3627
+      3627,
+      3670
     ],
-    "CMP-261004-1943": [],
-    "CMP-261004-1944": [],
+    "CMP-261004-1943": [
+      3670
+    ],
+    "CMP-261004-1944": [
+      3766,
+      3771,
+      3773,
+      3776,
+      3785,
+      3786
+    ],
     "CMP-261004-1945": [],
     "CMP-261004-1946": [
       3627
@@ -1270,7 +1304,11 @@
     "CMP-261005-2154": [
       3663
     ],
-    "CMP-261005-2209": [],
+    "CMP-261005-2209": [
+      3673,
+      3675,
+      3676
+    ],
     "CMP-261006-0303": [
       3670
     ],
@@ -1288,7 +1326,12 @@
     "CMP-261006-1012": [
       3678
     ],
-    "CMP-261006-0421": [],
+    "CMP-261006-0421": [
+      3455,
+      3472,
+      3750,
+      3758
+    ],
     "CMP-261007-1125": [],
     "CMP-261007-1243": [
       3706,
@@ -1305,8 +1348,12 @@
     "CMP-261007-2052": [
       3719
     ],
-    "CMP-261007-2053": [],
-    "CMP-261008-1203": [],
+    "CMP-261007-2053": [
+      3755
+    ],
+    "CMP-261008-1203": [
+      3729
+    ],
     "CMP-261008-1253": [],
     "CMP-261008-1407": [],
     "CMP-261008-1700": [],
@@ -1315,11 +1362,69 @@
     "CMP-261008-1703": [],
     "CMP-261008-1704": [],
     "CMP-261008-1705": [],
-    "CMP-261008-2151": [],
+    "CMP-261008-2151": [
+      3733
+    ],
     "CMP-261008-2305": [
       3732,
       3734
-    ]
+    ],
+    "CMP-261008-1817": [],
+    "CMP-261009-0010": [],
+    "CMP-261009-0616": [],
+    "CMP-261010-0006": [
+      3746
+    ],
+    "CMP-261006-1342": [
+      3678,
+      3679
+    ],
+    "CMP-261006-1551": [
+      3676
+    ],
+    "CMP-261006-1552": [
+      3673
+    ],
+    "CMP-261010-1127": [],
+    "CMP-261010-1128": [],
+    "CMP-261010-1129": [],
+    "CMP-261010-1130": [],
+    "CMP-261010-1131": [],
+    "CMP-261010-1132": [],
+    "CMP-261010-1133": [],
+    "CMP-261010-1134": [
+      3752
+    ],
+    "CMP-261010-1614": [
+      3761
+    ],
+    "CMP-261010-1615": [],
+    "CMP-261010-1811": [],
+    "CMP-261010-1812": [],
+    "CMP-261010-1813": [],
+    "CMP-261010-1814": [],
+    "CMP-261010-1815": [],
+    "CMP-261010-1432": [
+      3663
+    ],
+    "CMP-261010-2226": [],
+    "CMP-261011-0035": [
+      3565,
+      3567,
+      3638,
+      3640,
+      3643,
+      3660,
+      3775
+    ],
+    "CMP-261011-0124": [
+      3780
+    ],
+    "CMP-261011-1237": [
+      3788
+    ],
+    "CMP-261011-2205": [],
+    "CMP-261011-2206": []
   },
   "items": {
     "261": {
@@ -1500,6 +1605,32 @@
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "1316": {
+      "number": 1316,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "chore(deps-dev): bump nuxt-security from 1.4.3 to 2.6.0 in /frontend",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/1316",
+      "updatedAt": "2026-07-08T23:38:29Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "1317": {
+      "number": 1317,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "chore(deps-dev): bump cheerio from 1.0.0-rc.12 to 1.2.0 in /frontend",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/1317",
+      "updatedAt": "2026-10-10T13:16:09Z",
+      "ci": {
+        "status": "failure",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }
@@ -4021,6 +4152,20 @@
         "source": "GraphQL statusCheckRollup"
       }
     },
+    "2934": {
+      "number": 2934,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "予約管理UIとキャンセル待ち制御を改善",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/2934",
+      "updatedAt": "2026-08-24T17:02:09Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
     "2951": {
       "number": 2951,
       "kind": "pull_request",
@@ -4259,7 +4404,7 @@
       "state": "open",
       "title": "CMP-056 全域機械走査: 未変換の付随通知が18箇所リスト外に多数残存（NotificationHelper直呼び）",
       "url": "https://github.com/kenta-0420/mannschaft/issues/2997",
-      "updatedAt": "2026-10-03T21:20:27Z",
+      "updatedAt": "2026-10-11T10:30:37Z",
       "ci": null
     },
     "3008": {
@@ -6989,6 +7134,33 @@
         "source": "GraphQL statusCheckRollup"
       }
     },
+    "3565": {
+      "number": 3565,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "F01.2.1 2-B2 組織側の加盟申請の一覧・承認・拒否（試練+出陣）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3565",
+      "updatedAt": "2026-10-11T22:35:29Z",
+      "ci": {
+        "status": "pending",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3567": {
+      "number": 3567,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "F01.2.1 6-A 告知の宛先解決（試練+出陣）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3567",
+      "updatedAt": "2026-10-10T03:10:27Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
     "3569": {
       "number": 3569,
       "kind": "pull_request",
@@ -7006,12 +7178,13 @@
     "3572": {
       "number": 3572,
       "kind": "pull_request",
-      "state": "open",
+      "state": "merged",
       "title": "修正: 村メンバー操作と自己降格の現役メンバー認可 (CMP-260826-1455)",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3572",
-      "updatedAt": "2026-10-03T19:10:49Z",
+      "updatedAt": "2026-10-11T22:59:12Z",
       "ci": {
-        "status": "failure",
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }
@@ -7120,9 +7293,9 @@
       "state": "open",
       "title": "feat: 存在秘匿を維持する本人の村参加申請履歴",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3590",
-      "updatedAt": "2026-10-04T06:13:18Z",
+      "updatedAt": "2026-10-11T23:26:54Z",
       "ci": {
-        "status": "success",
+        "status": "pending",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }
@@ -7161,7 +7334,7 @@
       "state": "merged",
       "title": "CMP-260820-1018: 代理入力同意書・履歴の組合管理を実装",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3595",
-      "updatedAt": "2026-10-08T11:59:42Z",
+      "updatedAt": "2026-10-09T02:51:25Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
@@ -7322,6 +7495,48 @@
         "source": "GraphQL statusCheckRollup"
       }
     },
+    "3638": {
+      "number": 3638,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "F01.2.1 6-C 告知の表示判定",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3638",
+      "updatedAt": "2026-10-10T11:49:03Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3640": {
+      "number": 3640,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "F01.2.1 6-B 範囲テンプレートのグループ項目",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3640",
+      "updatedAt": "2026-10-11T10:16:42Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3643": {
+      "number": 3643,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "F01.2.1 8-A 組織の加盟設定画面と申請 UI",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3643",
+      "updatedAt": "2026-10-11T11:34:30Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
     "3648": {
       "number": 3648,
       "kind": "pull_request",
@@ -7364,6 +7579,33 @@
         "source": "GraphQL statusCheckRollup"
       }
     },
+    "3660": {
+      "number": 3660,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "F01.2.1 2-D 離脱・除名・アーカイブの片付け",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3660",
+      "updatedAt": "2026-10-05T04:05:33Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3661": {
+      "number": 3661,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "保管庫と議事録の不在・越境応答契約を補強する",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3661",
+      "updatedAt": "2026-10-05T11:08:17Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
     "3663": {
       "number": 3663,
       "kind": "pull_request",
@@ -7378,15 +7620,30 @@
         "source": "GraphQL statusCheckRollup"
       }
     },
+    "3664": {
+      "number": 3664,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正: CMP1921のスコープOpenAPI契約を最新mainへ追従",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3664",
+      "updatedAt": "2026-10-05T14:20:29Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
     "3668": {
       "number": 3668,
       "kind": "pull_request",
-      "state": "open",
+      "state": "merged",
       "title": "修正: 大会詳細の部門タブ導線欠落と apply-template の存在オラクル (CMP-260929-0654)",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3668",
-      "updatedAt": "2026-10-06T02:09:02Z",
+      "updatedAt": "2026-10-10T05:20:23Z",
       "ci": {
-        "status": "failure",
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }
@@ -7419,6 +7676,48 @@
         "source": "GraphQL statusCheckRollup"
       }
     },
+    "3673": {
+      "number": 3673,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "テスト: 存在オラクル是正の IT に user_roles のみ管理者・SUPPORTER の主体を追加",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3673",
+      "updatedAt": "2026-10-06T03:29:19Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3675": {
+      "number": 3675,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正: ペナルティ設定の有効フラグがJSONから入らず無効にできない不具合",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3675",
+      "updatedAt": "2026-10-10T06:23:31Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3676": {
+      "number": 3676,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正: キャンセル料免除・一覧で権限の無い主体に500が返り応答が不一致になる不具合",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3676",
+      "updatedAt": "2026-10-10T06:23:28Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
     "3678": {
       "number": 3678,
       "kind": "pull_request",
@@ -7426,6 +7725,204 @@
       "title": "ブログの閲覧・本人編集導線、告知文言と共通ナビの操作領域を修正",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3678",
       "updatedAt": "2026-10-06T15:06:19Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3679": {
+      "number": 3679,
+      "kind": "pull_request",
+      "state": "closed",
+      "title": "依存関係: simple-git系の脆弱性を期限付きの監査例外でつなぎ、他の新規advisoryを修正版へ引き上げ",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3679",
+      "updatedAt": "2026-10-10T02:10:08Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3681": {
+      "number": 3681,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "試験: セルフチェックイン拠点の存在秘匿を実CookieとHMACで固定",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3681",
+      "updatedAt": "2026-10-07T00:42:19Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3683": {
+      "number": 3683,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "Bump actions/upload-artifact from 4 to 7",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3683",
+      "updatedAt": "2026-10-10T13:17:11Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3684": {
+      "number": 3684,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "Bump cloudflare/cloudflare from 4.52.7 to 5.26.0 in /infra/terraform/envs/prod",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3684",
+      "updatedAt": "2026-10-06T10:43:51Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3685": {
+      "number": 3685,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "Bump hashicorp/setup-terraform from 3 to 4",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3685",
+      "updatedAt": "2026-10-10T13:17:15Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3686": {
+      "number": 3686,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "Bump vue-tsc from 3.3.7 to 3.3.12 in /frontend",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3686",
+      "updatedAt": "2026-10-10T13:18:01Z",
+      "ci": {
+        "status": "failure",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3687": {
+      "number": 3687,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "Bump actions/setup-java from 4 to 6",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3687",
+      "updatedAt": "2026-10-10T13:17:55Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3688": {
+      "number": 3688,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "Bump zod from 3.25.76 to 4.6.5 in /frontend",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3688",
+      "updatedAt": "2026-10-08T12:02:37Z",
+      "ci": {
+        "status": "failure",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3689": {
+      "number": 3689,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "Bump com.tngtech.archunit:archunit-junit5 from 1.3.0 to 1.5.1 in /backend",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3689",
+      "updatedAt": "2026-10-10T13:18:26Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3691": {
+      "number": 3691,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "Bump hashicorp/aws from 5.100.0 to 6.67.0 in /infra/terraform/bootstrap",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3691",
+      "updatedAt": "2026-10-06T10:44:28Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3692": {
+      "number": 3692,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "Bump org.apache.pdfbox:pdfbox from 3.0.3 to 3.0.8 in /backend",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3692",
+      "updatedAt": "2026-10-10T13:19:19Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3693": {
+      "number": 3693,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "Bump hashicorp/aws from 5.100.0 to 6.67.0 in /infra/terraform/envs/prod",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3693",
+      "updatedAt": "2026-10-06T10:44:39Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3694": {
+      "number": 3694,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "Bump com.stripe:stripe-java from 28.2.0 to 34.0.0 in /backend",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3694",
+      "updatedAt": "2026-10-06T10:44:44Z",
+      "ci": {
+        "status": "failure",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3695": {
+      "number": 3695,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "Bump org.springframework.boot from 3.5.13 to 4.1.1 in /backend",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3695",
+      "updatedAt": "2026-10-06T10:45:09Z",
+      "ci": {
+        "status": "failure",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3698": {
+      "number": 3698,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "試験: CMP1921の実HTTP契約を33GETで確認",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3698",
+      "updatedAt": "2026-10-08T20:13:44Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",
@@ -7531,15 +8028,44 @@
         "source": "GraphQL statusCheckRollup"
       }
     },
+    "3729": {
+      "number": 3729,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "予定から活動記録を自動生成し、終了後の完了と記録削除に対応",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3729",
+      "updatedAt": "2026-10-09T02:54:10Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
     "3732": {
       "number": 3732,
       "kind": "pull_request",
-      "state": "open",
+      "state": "merged",
       "title": "CMP-261008-2305 完了台帳・棚卸更新と空insights自己検証修正",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3732",
-      "updatedAt": "2026-10-08T14:13:36Z",
+      "updatedAt": "2026-10-09T02:51:25Z",
       "ci": {
-        "status": "success",
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3733": {
+      "number": 3733,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "GDPR削除完了証跡のSQL型とJDBC mapping整合",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3733",
+      "updatedAt": "2026-10-08T18:58:02Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
         "checks": [],
         "source": "GraphQL statusCheckRollup"
       }
@@ -7550,7 +8076,230 @@
       "state": "merged",
       "title": "CMP-261008-2305 棚卸更新・空insights自己検証修正の登録",
       "url": "https://github.com/kenta-0420/mannschaft/pull/3734",
-      "updatedAt": "2026-10-08T14:12:17Z",
+      "updatedAt": "2026-10-09T02:51:24Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3746": {
+      "number": 3746,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "CMP-261010-0006 ハーネスの完了証拠・診断・再現性計測を整備",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3746",
+      "updatedAt": "2026-10-09T15:47:54Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3750": {
+      "number": 3750,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "孤児回収: スコープ別フィードのカーソルページング統合テストを回収",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3750",
+      "updatedAt": "2026-10-10T05:26:45Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3752": {
+      "number": 3752,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "テスト追加: スコープヘッダ人数表示の実機E2E spec 収容 (CMP-261010-1134)",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3752",
+      "updatedAt": "2026-10-10T05:21:50Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3755": {
+      "number": 3755,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "PrimeVue既定文言と404ページを表示言語に追従させる（CMP-261007-2053）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3755",
+      "updatedAt": "2026-10-10T09:21:50Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3758": {
+      "number": 3758,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "テスト追加: チームタイムラインのカーソル続き読み込みをロール横断で実機E2E (CMP-261006-0421)",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3758",
+      "updatedAt": "2026-10-10T11:48:46Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3759": {
+      "number": 3759,
+      "kind": "pull_request",
+      "state": "open",
+      "title": "修正: 大会エントリー管理モーダルの取得不発・応答包み・チーム名空欄・閉じるキー誤り (CMP-260929-0654)",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3759",
+      "updatedAt": "2026-10-10T16:32:37Z",
+      "ci": {
+        "status": "success",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3761": {
+      "number": 3761,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "修正: 投稿詳細の取得失敗時に永久に読み込み中になる不具合 (CMP-261010-1614)",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3761",
+      "updatedAt": "2026-10-10T11:48:43Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3766": {
+      "number": 3766,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "翻訳: billing.json の日本語残存を5言語で訳す（CMP-261004-1944）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3766",
+      "updatedAt": "2026-10-10T13:02:55Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3771": {
+      "number": 3771,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "翻訳: dashboard 他6ファイルの日本語残存を5言語で訳す・es アクセント修正（CMP-261004-1944）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3771",
+      "updatedAt": "2026-10-10T17:26:03Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3773": {
+      "number": 3773,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "翻訳: village / team_affiliation / admin_console の日本語残存を5言語で訳す（CMP-261004-1944）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3773",
+      "updatedAt": "2026-10-10T17:44:36Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3775": {
+      "number": 3775,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "試練: 通知 push 予約の outbox 化 P1（共通土台＋team 移行）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3775",
+      "updatedAt": "2026-10-11T17:08:58Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3776": {
+      "number": 3776,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "翻訳: common.json の日本語残存を5言語で訳す（CMP-261004-1944）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3776",
+      "updatedAt": "2026-10-10T18:22:02Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3780": {
+      "number": 3780,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "退会者のカスタム公開範囲テンプレートを30日後の強匿名化で消去（CMP-260822-1243）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3780",
+      "updatedAt": "2026-10-10T22:24:02Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3785": {
+      "number": 3785,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "番人: 非jaロケールの日本語残存を検査し、i18n 規約を6言語訳必須へ改定（CMP-261004-1944）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3785",
+      "updatedAt": "2026-10-10T19:08:06Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3786": {
+      "number": 3786,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "実機E2E: 非jaロケールの表示言語確認とキープ画面のモバイル表示崩れ修繕（CMP-261004-1944）",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3786",
+      "updatedAt": "2026-10-11T12:56:03Z",
+      "ci": {
+        "status": "unavailable",
+        "reason": "終了済みPRのCIは同期対象外",
+        "checks": [],
+        "source": "GraphQL statusCheckRollup"
+      }
+    },
+    "3788": {
+      "number": 3788,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "機能追加: フレンドチームページに使い方モーダルを追加",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/3788",
+      "updatedAt": "2026-10-11T23:07:31Z",
       "ci": {
         "status": "unavailable",
         "reason": "終了済みPRのCIは同期対象外",

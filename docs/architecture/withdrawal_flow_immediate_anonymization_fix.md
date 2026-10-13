@@ -234,10 +234,11 @@ public void withdrawUser(Long userId) {
 | AccountPurgedEvent | `com.mannschaft.app.timetable.notes.event.TimetableNoteFieldsPurgeEventListener` | timetable.notes | `timetable_slot_user_note_fields`を物理削除し、所有TXのcommit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.timetable.personal.event.PersonalTimetableSettingsPurgeEventListener` | timetable.personal | `personal_timetable_settings`を物理削除し、所有TXのcommit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.user.event.UserBlockPurgeEventListener` | user | `user_blocks`を物理削除し、所有TXのcommit後に完了記録（両端の退会者参照を削除、他者間は保持） |
+| AccountPurgedEvent | `com.mannschaft.app.visibility.event.VisibilityTemplatePurgeEventListener` | visibility | `visibility_template_rules`、`visibility_templates`（owner が退会者のカスタム分のみ。システムプリセット・他人分は保持）を物理削除し、所有TXのcommit後に完了記録 |
 | AccountPurgedEvent | `com.mannschaft.app.weather.event.WeatherLocationCleanupListener` | weather | `user_weather_locations`を物理削除し、所有TXのcommit後に完了記録 |
 <!-- GDPR_EVENT_LISTENER_LEDGER_END -->
 
-実装同期時点の件数は `UserAnonymizedEvent` 18クラス、`AccountPurgedEvent` 37クラス、両方を購読する11クラス、ユニーク44クラスである。件数は説明用であり、番人は固定件数ではなく購読者の集合そのものを照合する。
+実装同期時点の件数は `UserAnonymizedEvent` 18クラス、`AccountPurgedEvent` 38クラス、両方を購読する11クラス、ユニーク45クラスである。件数は説明用であり、番人は固定件数ではなく購読者の集合そのものを照合する。
 
 この番人が保証するのは、**既に実装された2イベントの購読者と本台帳のドリフトが無いこと**である。新しい個人データ表にリスナー自体を実装し忘れた場合、既存リスナー内の対象表だけを変更した場合、または実装と台帳を同時に誤って削除した場合までは検出できない。「全個人データ表の削除経路が存在すること」の保証には、`@PersonalData`・削除方式・CASCADE・外部リソースを含む別の宣言的マニフェストが必要になる。
 
@@ -748,6 +749,26 @@ GDPR Art.17 Recital 65 は「データ主体の要求から **1 ヶ月以内（�
 
 **家老推奨:** A。原則 4 の真意は「投稿・履歴を物理削除しない」が主であり、PII 消去のタイミングは GDPR 30 日タイムリミット内であれば許容と解釈。CLAUDE.md 改訂の文面案を W-A の同時 PR に含める。
 
+### 13.13（マスター裁可 / 2026-10-11）— CMP-260822-1243 残件: 公開範囲テンプレートの強消去と共有記録の扱い
+
+**決定事項（マスター裁可 2026-10-11）:**
+
+1. **カスタム公開範囲テンプレートは消す。** 退会者が作った `visibility_templates` とその子 `visibility_template_rules` を消し、そのテンプレートを参照していた本人の投稿は「非公開（PRIVATE 相当）」に落とす。F01.7 の元設計（ON DELETE SET NULL → PRIVATE フォールバック）と同じ結果である。
+2. **個人設定類を消すのは 30 日後の強匿名化（`AccountPurgeService` / `AccountPurgedEvent` 経路）。** 退会直後の弱匿名化では消さない。退会を取り消せる期間中は設定を残す（テンプレートも同じ）。
+3. **他人と共有している記録（チームの予定・掲示板・コメント等）に退会者が書いた本文は残し、書いた人の表示だけを「退会したユーザー」等に匿名化する。**
+
+**実装（決定 1・2）:** `com.mannschaft.app.visibility.event.VisibilityTemplatePurgeEventListener`（domain=`visibility`）を `AccountPurgedEvent` の購読者として追加し、`account_purge_completion_status` と手動 retry（`GdprSettingsPurgeRetryService`）の対象ドメインに加えた（本人設定は 28 ドメイン、旧 8 と合わせて 36）。ユーザー行は物理削除されず FK の CASCADE が発火せず、`visibility_template_id` の SET NULL FK も V110.001 で撤廃済みのため、purge で明示削除する。参照先の消えた `visibility_template_id` は NULL 化せず孤児のまま残し、`VisibilityTemplateEvaluator#canView` の fail-closed（テンプレート不存在 → false）で本人以外に見えなくなる。システムプリセット（owner NULL）と他人のテンプレートは対象外。試練: `VisibilityTemplateAccountPurgeIT`。
+
+**共有記録の現況確認（決定 3 / 代表 3 ドメインの実査・本タスクでは改修しない）:**
+
+| ドメイン | 本文 | 退会者の著者表示 | 判定 |
+|---|---|---|---|
+| bulletin（`BulletinThreadService`） | 残る | 「不明なユーザー」（`NameResolverService` が `@SQLRestriction("deleted_at IS NULL")` で退会者を解決できずフォールバック） | 本文保持は適合。ラベルが「退会したユーザー」ではない |
+| timeline（`TimelinePostService`） | 残る | 「不明なユーザー」（同上） | 同上 |
+| schedule コメント（`ScheduleCommentService`） | 残る | `author = null`（解決できない著者は欠落） | 本文保持は適合。著者表示が欠落し、ラベルも無い |
+
+退会者は退会受付の時点（`deleted_at` 設定）から `NameResolverService` で解決されなくなるため、上記の表示は猶予期間中から始まる。公開側（`IdentityVisibilityResolver` / `PublicPostCommentService`）は「退会済みユーザー」ラベルを返しており、画面によってラベルが不統一である。センチネルユーザー（`deleted@system.internal`、表示名「退会済みユーザー」）はあるが共有記録の著者解決には使われていない。**全面改修は別戦役**（`NameResolverService` 側で退会者を共通ラベルへ解決するのが根治）。
+
 ---
 
 ## 関連ドキュメント
@@ -776,3 +797,4 @@ GDPR Art.17 Recital 65 は「データ主体の要求から **1 ヶ月以内（�
 | 2026-05-18 | 検分修正反映 #2: §13 補強 6 件追加 — 13.7 Favorite TX 伝播差異 / 13.8 案 ε のキャンセル UX 部分復帰 / 13.9 弱匿名化リスナー切替の不可逆性 / 13.10 event-pool 枯渇 + Google Calendar 外部 revoke / 13.11 WithdrawalCancelledEvent 発火欠落（殿 verify 確定）/ 13.12 CLAUDE.md 原則 4 と案 ε の整合性宣言 | 殿（家老検分反映 + 殿 verify）|
 | 2026-05-18 | マスター「よきにはからえ」一括裁定反映: §13 全 12 項目を採用形に確定（案 ε / 法務必須 / 仕分け確定 / `requiresReconfiguration` / W-D 親 B 同時 / Favorite TX 伝播揃え / UX 部分復帰許容 / カナリア 1% × 7 日 / withdrawal-pool 分離 + Google revoke / WithdrawalCancelledEvent 早馬 / CLAUDE.md 原則 4 緩める）。残論点ゼロ・出陣可能状態 | 殿（マスター御裁可反映）|
 | 2026-05-18 | Phase W-A 実装 PR `_TBD_` で実施: ①`AsyncConfig` に `withdrawal-pool` Bean 追加（§13.10 A）/ ②`FavoriteAnonymizationEventListener` の TX 伝播を他リスナーと同型に揃え（§13.7）/ ③CLAUDE.md 原則 4 に「PII 消去は GDPR 30 日内段階実施可」追記＋二段モデル明文化（§13.12）| 足軽（Phase W-A 第一陣）|
+| 2026-10-11 | マスター裁可 3 点を §13.13 に決定事項として記録（公開範囲テンプレートは 30 日後の強匿名化で消す／個人設定の削除は強匿名化のみ／共有記録は本文を残し著者表示のみ匿名化）。`VisibilityTemplatePurgeEventListener` を §3 台帳へ追加、共有記録 3 ドメインの現況を実査（CMP-260822-1243） | 足軽 |

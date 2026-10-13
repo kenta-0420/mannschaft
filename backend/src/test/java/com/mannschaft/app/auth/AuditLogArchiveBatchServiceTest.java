@@ -6,12 +6,13 @@ import com.mannschaft.app.auth.entity.AuditLogEntity;
 import com.mannschaft.app.auth.repository.AuditLogRepository;
 import com.mannschaft.app.auth.service.AuditLogArchiveBatchService;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -19,8 +20,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDate;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -64,8 +67,32 @@ class AuditLogArchiveBatchServiceTest {
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    @InjectMocks
+    /** 固定時刻 2026-10-12T00:00Z（UTC）。基準日時(UTC)は 2024-10-12T00:00。*/
+    private static final Instant NOW = Instant.parse("2026-10-12T00:00:00Z");
+
     private AuditLogArchiveBatchService sut;
+
+    @BeforeEach
+    void setUp() {
+        sut = newSut(NOW);
+    }
+
+    private AuditLogArchiveBatchService newSut(Instant now) {
+        return new AuditLogArchiveBatchService(auditLogRepository, storageService, objectMapper,
+                jdbcTemplate, Clock.fixed(now, ZoneOffset.UTC));
+    }
+
+    /** DB 格納基準の UTC 壁時計を、JPA が読み戻す値（JVM 既定ゾーン = SERVER_ZONE の壁時計）へ変換する。*/
+    private static LocalDateTime readBack(LocalDateTime utcWallClock) {
+        return utcWallClock.atOffset(ZoneOffset.UTC)
+                .atZoneSameInstant(UserZoneLocalDateTimeParser.SERVER_ZONE).toLocalDateTime();
+    }
+
+    /** 読み戻された値から、DB 上の UTC 壁時計へ戻す。*/
+    private static LocalDateTime utcOf(LocalDateTime readBack) {
+        return readBack.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+    }
 
     /** 年月 → その月に存在する監査ログ（id 昇順）。{@link #givenLogs} で組み立てる。*/
     private final Map<YearMonth, List<AuditLogEntity>> fixture = new HashMap<>();
@@ -272,7 +299,7 @@ class AuditLogArchiveBatchServiceTest {
         @DisplayName("閾値と同じ月のパーティションはDROPしない（未経過分を巻き込むため）")
         void 閾値の月はDROPしない() {
             // given: 閾値（now-2年）と同じ月にログがある
-            YearMonth cutoffMonth = YearMonth.from(LocalDate.now().minusYears(2));
+            YearMonth cutoffMonth = YearMonth.of(2024, 10);
             givenLogs(cutoffMonth, 1L, 5);
             stubRepository();
 
@@ -280,6 +307,71 @@ class AuditLogArchiveBatchServiceTest {
             sut.archiveOldLogs();
 
             // then: 当該月は次回以降に持ち越すため、アップロードも DROP もしない
+            verify(storageService, never()).upload(any(), any(byte[].class), any());
+            verify(jdbcTemplate, never()).execute(any(String.class));
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // CMP-260910-0044: 時刻基準は UTC 壁時計（パーティションと同じ基準）
+    // ─────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("時刻基準（UTC 壁時計）")
+    class UtcBasis {
+
+        @Test
+        @DisplayName("基準日時は UTC 壁時計で作り、JPA 束縛値(JST壁時計)へ変換して渡す")
+        void 基準日時はUTC基準() {
+            when(auditLogRepository.findOldestCreatedAtBefore(any())).thenReturn(null);
+
+            sut.archiveOldLogs();
+
+            // UTC 2024-10-12T00:00 = JST 2024-10-12T09:00
+            verify(auditLogRepository).findOldestCreatedAtBefore(LocalDateTime.of(2024, 10, 12, 9, 0));
+        }
+
+        @Test
+        @DisplayName("月境界: UTC 1/31 16:00(JST 2/1 01:00)の最古ログは UTC の1月として処理し p_2020_01 を DROP する")
+        void 最古ログの月はUTCで判定する() {
+            LocalDateTime utcCreated = LocalDateTime.of(2020, 1, 31, 16, 0);
+            AuditLogEntity e = createAuditLog(1L, readBack(utcCreated));
+            fixture.put(YearMonth.of(2020, 1), List.of(e));
+            stubRepository();
+
+            sut.archiveOldLogs();
+
+            verify(storageService).upload(eq("audit-archive/2020/01/audit-2020-01.json"),
+                    any(byte[].class), any());
+            verify(jdbcTemplate).execute(contains("p_2020_01"));
+            verify(jdbcTemplate, never()).execute(contains("p_2020_02"));
+        }
+
+        @Test
+        @DisplayName("月スライスの境界は UTC 月初(JST 09:00)で束縛する")
+        void 月スライス境界はUTC月初() {
+            givenLogs(YearMonth.of(2020, 1), 1L, 1);
+            stubRepository();
+
+            sut.archiveOldLogs();
+
+            verify(auditLogRepository).findMonthSliceAfterId(
+                    eq(LocalDateTime.of(2020, 1, 1, 9, 0)),
+                    eq(LocalDateTime.of(2020, 2, 1, 9, 0)),
+                    eq(0L), any());
+        }
+
+        @Test
+        @DisplayName("JST では翌月でも UTC ではまだ当月: 閾値月(UTC 2024-09)は DROP しない")
+        void 閾値月はUTCで判定する() {
+            // UTC 2026-09-30T20:00 = JST 2026-10-01T05:00。JST で数えると閾値月は 2024-10 になり、
+            // UTC の 2024-09（閾値より新しい行を含む）を誤って DROP してしまう。
+            AuditLogArchiveBatchService boundary = newSut(Instant.parse("2026-09-30T20:00:00Z"));
+            givenLogs(YearMonth.of(2024, 9), 1L, 3);
+            stubRepository();
+
+            boundary.archiveOldLogs();
+
             verify(storageService, never()).upload(any(), any(byte[].class), any());
             verify(jdbcTemplate, never()).execute(any(String.class));
         }
@@ -328,7 +420,7 @@ class AuditLogArchiveBatchServiceTest {
         List<AuditLogEntity> logs = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             // 月内に収まるよう日付は 1〜28 日で循環させる
-            LocalDateTime createdAt = ym.atDay(1 + (i % 28)).atTime(10, 0);
+            LocalDateTime createdAt = readBack(ym.atDay(1 + (i % 28)).atTime(10, 0));
             logs.add(createAuditLog(startId + i, createdAt));
         }
         fixture.put(ym, logs);
@@ -351,7 +443,7 @@ class AuditLogArchiveBatchServiceTest {
                     Long cursor = invocation.getArgument(2);
                     Pageable pageable = invocation.getArgument(3);
                     List<AuditLogEntity> monthLogs =
-                            fixture.getOrDefault(YearMonth.from(from.toLocalDate()), List.of());
+                            fixture.getOrDefault(YearMonth.from(utcOf(from).toLocalDate()), List.of());
                     return monthLogs.stream()
                             .filter(e -> e.getId() > cursor)
                             .limit(pageable.getPageSize())

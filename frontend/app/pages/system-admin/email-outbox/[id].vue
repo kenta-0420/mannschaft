@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { EmailOutboxDetail } from '~/composables/useEmailOutboxAdminApi'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const route = useRoute()
 const router = useRouter()

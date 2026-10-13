@@ -1,6 +1,8 @@
 package com.mannschaft.app.social.announcement.dto;
 
 import com.mannschaft.app.social.announcement.AnnouncementRangeTemplateEntity;
+import com.mannschaft.app.social.announcement.audience.TargetGroupRange;
+import com.mannschaft.app.social.announcement.audience.TemplateGroupItemsCodec;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,6 +11,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -40,6 +43,15 @@ public class TemplateResponseDto {
 
     /** 組織告知でのチーム絞り込み対象 ID リスト（null = 全チーム対象）。 */
     private List<Long> targetTeamIds;
+
+    /** 個別に選んだチームグループ ID（null = 個別選択なし。F01.2.1 §5.6）。 */
+    private List<UUID> targetGroupIds;
+
+    /** 並び順の範囲指定（null = 範囲指定なし）。 */
+    private TargetGroupRange targetGroupRange;
+
+    /** 未分類のチームを含めるか。 */
+    private Boolean includeUnassigned;
 
     /** 優先チャネル（BULLETIN_THREAD / TIMELINE_POST / BLOG_POST / TODO / SCHEDULE / SURVEY）。 */
     private String preferredChannel;
@@ -81,6 +93,9 @@ public class TemplateResponseDto {
                 .name(entity.getName())
                 .targetRole(entity.getTargetRole())
                 .targetTeamIds(ids)
+                .targetGroupIds(TemplateGroupItemsCodec.parseGroupIds(entity.getTargetGroupIds()))
+                .targetGroupRange(TemplateGroupItemsCodec.parseRange(entity.getTargetGroupRange()))
+                .includeUnassigned(Boolean.TRUE.equals(entity.getIncludeUnassigned()))
                 .preferredChannel(entity.getPreferredChannel())
                 .isDefault(entity.getIsDefault())
                 .createdBy(entity.getCreatedBy())

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261007-2053",
+  "scope": "app",
+  "implementation": {
+    "pr": 3755,
+    "sha": "8f21a4edd80b828ffe719415126b50a7af1c572a"
+  },
+  "acceptanceCriteria": [
+    { "id": "AC-1", "description": "6言語の PrimeVue 辞書が既定の全キー（aria・ネスト含む）を持つ。", "tests": [ { "name": "primevue-locale-parity AC-1", "evidence": "frontend/tests/unit/i18n/primevue-locale-parity.spec.ts" } ] },
+    { "id": "AC-1b", "description": "値の型が既定と一致し、非空・曜日7件・月12件・firstDayOfWeek 0〜6・補間変数を保持する。", "tests": [ { "name": "primevue-locale-parity AC-1b", "evidence": "frontend/tests/unit/i18n/primevue-locale-parity.spec.ts" } ] },
+    { "id": "AC-2", "description": "en 以外の5言語で close/next/today 等の列挙キーが英語既定と異なる。", "tests": [ { "name": "primevue-locale-parity AC-2", "evidence": "frontend/tests/unit/i18n/primevue-locale-parity.spec.ts" } ] },
+    { "id": "AC-3", "description": "de 適用で aria.close が Schließen、ja→de→en 切替で前言語の値が残らない。", "tests": [ { "name": "plugins/primevue-locale AC-3", "evidence": "frontend/tests/unit/plugins/primevue-locale.spec.ts" } ] },
+    { "id": "AC-4", "description": "未知・空・null の言語は ja にフォールバックし例外を投げない。", "tests": [ { "name": "plugins/primevue-locale AC-4", "evidence": "frontend/tests/unit/plugins/primevue-locale.spec.ts" } ] },
+    { "id": "AC-5", "description": "Cookie=de の SSR HTML で Dialog 閉じるボタンの aria-label が de。", "tests": [ { "name": "e2e primevue-locale AC-5", "evidence": "frontend/tests/e2e/i18n/primevue-locale.spec.ts" }, { "name": "plugins/primevue-locale AC-5（universal plugin）", "evidence": "frontend/tests/unit/plugins/primevue-locale.spec.ts" } ] },
+    { "id": "AC-6", "description": "言語切替後、再読み込みなしで Dialog/Drawer/Tabs/DatePicker/Paginator が新言語に追従する。", "tests": [ { "name": "e2e primevue-locale AC-6", "evidence": "frontend/tests/e2e/i18n/primevue-locale.spec.ts" }, { "name": "plugins/primevue-locale AC-6", "evidence": "frontend/tests/unit/plugins/primevue-locale.spec.ts" } ] },
+    { "id": "AC-6b", "description": "メッセージ読込の遅延・失敗時も文言・Cookie・PrimeVue 言語が食い違ったまま固まらない。", "tests": [ { "name": "plugins/primevue-locale AC-6b", "evidence": "frontend/tests/unit/plugins/primevue-locale.spec.ts" } ] },
+    { "id": "AC-7", "description": "存在しない URL で error.vue が6言語で表示され、英語固定の既定文言が見えない。", "tests": [ { "name": "error.spec AC-7", "evidence": "frontend/app/error.spec.ts" }, { "name": "e2e error-page-locale AC-7/8", "evidence": "frontend/tests/e2e/i18n/error-page-locale.spec.ts" } ] },
+    { "id": "AC-7b", "description": "Cookie=de・アカウント=ja のログイン済みで SSR は de、適用後は ja。", "tests": [ { "name": "e2e error-page-locale AC-7b（5回連続 green）", "evidence": "frontend/tests/e2e/i18n/error-page-locale.spec.ts" } ] },
+    { "id": "AC-7c", "description": "不存在 URL と所属外 URL の404が同じ汎用文言で、内部情報を表示しない。", "tests": [ { "name": "error.spec AC-7c", "evidence": "frontend/app/error.spec.ts" }, { "name": "e2e error-page-locale AC-7c", "evidence": "frontend/tests/e2e/i18n/error-page-locale.spec.ts" } ] },
+    { "id": "AC-8", "description": "404 でも html lang が現在言語（SSR を含む）。", "tests": [ { "name": "e2e error-page-locale AC-7/8", "evidence": "frontend/tests/e2e/i18n/error-page-locale.spec.ts" } ] },
+    { "id": "AC-9", "description": "ホームへ戻るで clearError({redirect:'/'}) し、認証ストア未初期化でも描画が落ちない。", "tests": [ { "name": "error.spec AC-9", "evidence": "frontend/app/error.spec.ts" }, { "name": "e2e error-page-locale AC-9", "evidence": "frontend/tests/e2e/i18n/error-page-locale.spec.ts" } ] },
+    { "id": "AC-9b", "description": "i18n 初期化失敗時もフォールバック文言と復帰操作を描画する。", "tests": [ { "name": "error-i18n-fallback AC-9b", "evidence": "frontend/tests/unit/pages/error-i18n-fallback.spec.ts" } ] },
+    { "id": "AC-10", "description": "404 以外は汎用文言で、statusCode 以外の内部情報を出さない。", "tests": [ { "name": "error.spec AC-10", "evidence": "frontend/app/error.spec.ts" } ] },
+    { "id": "AC-11", "description": "error.vue の新キーが6言語 common.json にあり、裸の @ を含まない。", "tests": [ { "name": "error-page-locale-parity AC-11", "evidence": "frontend/tests/unit/i18n/error-page-locale-parity.spec.ts" } ] }
+  ],
+  "ci": [
+    { "runId": 38039375242 },
+    { "runId": 38039375204 }
+  ],
+  "stages": {
+    "review": { "status": "passed", "evidence": "docs/evidence/CMP-261007-2053.md" },
+    "real": { "status": "passed", "evidence": "docs/evidence/CMP-261007-2053.md" },
+    "exploratory": { "status": "passed", "evidence": "docs/evidence/CMP-261007-2053.md" }
+  },
+  "regressions": []
+}

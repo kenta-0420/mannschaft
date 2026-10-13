@@ -51,6 +51,9 @@ class AnnouncementBroadcastControllerTest {
     @MockitoBean
     private AnnouncementBroadcastService broadcastService;
 
+    @MockitoBean
+    private com.mannschaft.app.social.announcement.audience.BroadcastAudienceResolver audienceResolver;
+
     // フィルタ/メソッドセキュリティ コンテキストの依存解決用
     @MockitoBean
     private AuthTokenService authTokenService;

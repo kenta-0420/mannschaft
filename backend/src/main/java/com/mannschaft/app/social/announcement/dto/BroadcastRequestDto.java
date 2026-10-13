@@ -2,6 +2,8 @@ package com.mannschaft.app.social.announcement.dto;
 
 import com.mannschaft.app.social.announcement.AnnouncementChannel;
 import com.mannschaft.app.social.announcement.AnnouncementContentRequest;
+import com.mannschaft.app.social.announcement.audience.BroadcastAudienceSpec;
+import com.mannschaft.app.social.announcement.audience.TargetGroupRange;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -12,6 +14,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * F02.8 告知ウィザード実行リクエスト DTO。
@@ -45,6 +48,21 @@ public class BroadcastRequestDto {
     private List<Long> targetTeamIds;
 
     /**
+     * 「チームグループで選ぶ」の個別チェック（F01.2.1 §8.1。組織告知のみ。targetTeamIds とは併用不可）。
+     */
+    private List<UUID> targetGroupIds;
+
+    /**
+     * 「チームグループで選ぶ」の範囲（並び順で開始〜終了。F01.2.1 §8.1）。
+     */
+    private TargetGroupRange targetGroupRange;
+
+    /**
+     * 未分類のチームも宛先に含めるか（F01.2.1 §8.1）。
+     */
+    private Boolean includeUnassigned;
+
+    /**
      * 範囲テンプレート ID（省略可）。
      * 指定した場合、スコープに紐づくテンプレートであることを検証する。
      */
@@ -66,4 +84,10 @@ public class BroadcastRequestDto {
     @NotNull
     @Valid
     private AnnouncementContentRequest content;
+
+    /** 宛先項目だけを取り出す。 */
+    public BroadcastAudienceSpec toAudienceSpec() {
+        return new BroadcastAudienceSpec(
+                targetTeamIds, targetGroupIds, targetGroupRange, includeUnassigned, templateId, targetRole);
+    }
 }

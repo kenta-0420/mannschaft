@@ -6,7 +6,7 @@ import type {
   PageMeta,
 } from '~/composables/useEmailOutboxAdminApi'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const { fetchList, fetchMetrics, retryDeadLetter, cancelPending } = useEmailOutboxAdminApi()

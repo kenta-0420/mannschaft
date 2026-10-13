@@ -10,7 +10,7 @@ import type { AdUserReport } from '~/types/adModeration'
 import type { AdReportReason } from '~/types/adPreferences'
 import type { AdUserReportListParams } from '~/composables/useSystemAdminAdCampaignApi'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const { formatDateTime } = useDatetime()

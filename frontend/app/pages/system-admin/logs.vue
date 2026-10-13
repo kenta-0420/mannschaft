@@ -2,7 +2,7 @@
 // F10.6 Phase 10-γ-③-b: システムログページ
 import type { SystemLogFileResponse, SystemLogType } from '~/types/system-log'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const { fetchLogFiles } = useSystemLogApi()

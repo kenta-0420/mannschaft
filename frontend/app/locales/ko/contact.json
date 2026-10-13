@@ -99,9 +99,9 @@
     "online_option": {
       "nobody": "아무에게도 보이지 않음",
       "contacts_only": "연락처만",
-      "everyone": "全員"
+      "everyone": "전체"
     },
-    "save": "保存",
+    "save": "저장",
     "saved": "개인정보 설정을 저장했습니다",
     "save_failed": "저장에 실패했습니다",
     "guide": {

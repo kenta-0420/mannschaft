@@ -218,7 +218,7 @@ class SurveyServiceTest {
             given(surveyMapper.toSurveyResponse(entity)).willReturn(response);
 
             // When
-            surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID);
+            surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, false);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SurveyStatus.PUBLISHED);
@@ -239,7 +239,7 @@ class SurveyServiceTest {
             given(surveyMapper.toSurveyResponse(entity)).willReturn(response);
 
             // When
-            surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID);
+            surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, false);
 
             // Then: 公開時通知は AFTER_COMMIT・非同期化のため、ここでは SurveyPublishedEvent の
             // 発火のみを検証する（母集団解決・notifyAll はリスナー側）。
@@ -264,7 +264,7 @@ class SurveyServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID))
+            assertThatThrownBy(() -> surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, false))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SurveyErrorCode.INVALID_SURVEY_STATUS));
@@ -281,7 +281,7 @@ class SurveyServiceTest {
             given(questionRepository.countBySurveyId(SURVEY_ID)).willReturn(0L);
 
             // When & Then
-            assertThatThrownBy(() -> surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID))
+            assertThatThrownBy(() -> surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, false))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SurveyErrorCode.NO_QUESTIONS));

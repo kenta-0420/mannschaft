@@ -21,6 +21,7 @@ import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,8 @@ import java.util.UUID;
  *   <li><b>書き込みの前</b>: 入力検証、招待先チームの可視性、組織の状態（削除・アーカイブ）とグループの検証
  *       （組織ドメインの読み取り。{@link TeamAffiliationOrganizationPort}）</li>
  *   <li><b>書き込み</b>: チーム行のロック → 制限・既存の加盟 → INSERT／UPDATE／DELETE（team ドメインのみ）</li>
- *   <li><b>コミットの後</b>: 組織の状態の読み直し（招待のみ）、通知の enqueue と監査ログ（4-A の監査と同じ形）</li>
+ *   <li><b>コミットの後</b>: 組織の状態の読み直し（招待のみ）、監査ログ（4-A の監査と同じ形）、
+ *       招待の通知の予約（team の別 tx で outbox に書く）</li>
  * </ol>
  *
  * <p>認可（組織側は組織 ADMIN、チーム側はチームの加盟操作者であること）は呼び出し元の Controller が先に行う。</p>
@@ -50,13 +52,19 @@ import java.util.UUID;
  * （既存のチーム不在 404 {@code TEAM_001}）を返す。以降の判定（制限・既存の加盟・申請の有無）は見えるチームに対してだけ
  * 行うので、非公開チームの存在・加盟状況・制限状況を応答の違いから推測できない。</p>
  *
- * <h2>通知と監査はコミットの後（原子的ではない）</h2>
- * <p>通知の登録・監査の記録は、書き込みのコミット後にそれぞれのドメインのトランザクションで行う。どちらが失敗しても
- * 招待などの操作は巻き戻らない。順序は<b>監査 → 通知</b>で、通知の登録が失敗（例外として呼び出し元へ伝わる）しても
- * 先に記録した監査は残る（再試行は状態判定で拒否されるため、監査を後から回復できない）。一方、監査の保存失敗は
- * {@code AuditLogService#recordSync} の既存の挙動どおり<b>例外にならずログ（ERROR）に残るだけ</b>で、呼び出し元へは伝わらない
- * （共通サービスの挙動であり、2-C では変えない）。</p>
+ * <h2>通知の予約（team ドメインの outbox。docs/architecture/notification_outbox.md §10）</h2>
+ * <ul>
+ *   <li><b>承諾</b>: 承諾の書き込みと同じ tx で outbox に書く（承諾と通知の予約が同時に確定し、outbox の書き込みが
+ *       失敗すれば承諾も巻き戻る。OB14）。</li>
+ *   <li><b>招待</b>: コミット後の組織の読み直し（閉鎖なら招待を取り下げる。§6.9）を<b>通過した後</b>に、team の別の tx
+ *       （{@link TeamOrgInviteCommandService#appendInviteReceivedNotice}）で招待の行が PENDING のまま残っていることを
+ *       {@code FOR UPDATE} で確かめてから outbox に書く（OB13a〜c）。招待のコミットから outbox の書き込みまでの間に
+ *       プロセスが落ちると招待の通知は消えうる（照合バッチは作らない。設計書 §10）。</li>
+ * </ul>
+ * <p>監査の記録はコミット後に行う。監査の保存失敗は {@code AuditLogService#recordSync} の既存の挙動どおり
+ * <b>例外にならずログ（ERROR）に残るだけ</b>で、呼び出し元へは伝わらない（共通サービスの挙動であり、2-C では変えない）。</p>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TeamOrgInviteService {
@@ -73,7 +81,6 @@ public class TeamOrgInviteService {
     private final TeamAffiliationOrganizationPort organizationPort;
     private final TeamOrgInviteCommandService commandService;
     private final TeamOrgAffiliationAssembler assembler;
-    private final TeamAffiliationNotifier notifier;
     private final TeamAffiliationAuditRecorder auditRecorder;
 
     // =====================================================================
@@ -126,8 +133,9 @@ public class TeamOrgInviteService {
         metadata.put("group_id", groupId == null ? null : groupId.toString());
         auditRecorder.record(AuditEventType.TEAM_ORG_INVITE_SENT, operatorUserId, teamId, organizationId, metadata);
 
-        // 監査の後に通知する（通知の登録が失敗しても、確定した操作の監査は残る）
-        notifier.enqueueAfterCommit(new TeamAffiliationNotice(
+        // 読み直しを通過した後に、招待の行が PENDING のまま残っていることを確かめてから outbox に通知を予約する
+        // （team ドメインの tx。読み直しの後に取り消された招待には何も書かない。F01.2.1 §6.7・設計書 §10 C 案）
+        boolean appended = commandService.appendInviteReceivedNotice(created.id(), teamId, new TeamAffiliationNotice(
                 NotificationType.TEAM_ORG_INVITE_RECEIVED,
                 FanoutMessageKind.TEAM_ORG_INVITE_RECEIVED,
                 List.of(organization.name(), created.teamName()),
@@ -137,6 +145,9 @@ public class TeamOrgInviteService {
                 created.id(),
                 operatorUserId,
                 "/teams/" + created.teamSlug() + "/affiliations?view=invites"));
+        if (!appended) {
+            log.info("招待が通知の予約の前に取り消された（辞退・取消・承諾）ので通知を書かない: membershipId={}", created.id());
+        }
 
         // コミット後に行を取り直さない（その間に辞退・取消で消えると 500 になる）。確定した値から組み立てる
         return assembler.assembleRowsForTeam(teamId, List.of(created.toRow())).get(0);
@@ -211,11 +222,12 @@ public class TeamOrgInviteService {
                 && organizationPort.isAliveGroupOfOrganization(organizationId, requested)
                 ? requested : null;
 
-        // 4. 書き込み（team ドメインのトランザクション）
+        // 4. 書き込み（team ドメインのトランザクション）。承諾の通知（組織 ADMIN 全員）は同じ tx で outbox に予約する（OB14）
         TeamOrgInviteCommandService.AcceptedInvite accepted = commandService.accept(
-                teamId, membershipId, operatorUserId, organizationId, confirmedGroupId);
+                teamId, membershipId, operatorUserId, organizationId, confirmedGroupId,
+                organization.name(), organization.slug());
 
-        // 5. コミットの後: 監査 → 通知（組織 ADMIN 全員）の順。通知の登録が失敗しても、確定した操作の監査は残る
+        // 5. コミットの後: 監査
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("via", TeamOrgAffiliationDirection.ORG_INVITE.name());
         metadata.put("membership_id", membershipId);
@@ -224,17 +236,6 @@ public class TeamOrgInviteService {
         metadata.put("group_id", confirmedGroupId == null ? null : confirmedGroupId.toString());
         auditRecorder.record(AuditEventType.TEAM_ORG_MEMBERSHIP_CREATED,
                 operatorUserId, teamId, organizationId, metadata);
-
-        notifier.enqueueAfterCommit(new TeamAffiliationNotice(
-                NotificationType.TEAM_ORG_INVITE_ACCEPTED,
-                FanoutMessageKind.TEAM_ORG_INVITE_ACCEPTED,
-                List.of(accepted.teamName(), organization.name()),
-                TeamAffiliationNotice.RecipientScope.ORGANIZATION_ADMINS,
-                organizationId,
-                organizationId,
-                membershipId,
-                operatorUserId,
-                "/organizations/" + organization.slug() + "/member-teams"));
 
         return assembler.assembleRowsForTeam(teamId, List.of(accepted.row())).get(0);
     }

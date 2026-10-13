@@ -16,6 +16,9 @@ import java.util.UUID;
  */
 public interface VillageJoinRequestRepository extends JpaRepository<VillageJoinRequestEntity, UUID> {
 
+    /** 認証本人が申請した履歴。呼び出し元は認証情報から解決したrequesterだけを渡す。 */
+    Page<VillageJoinRequestEntity> findByRequesterUserId(Long requesterUserId, Pageable pageable);
+
     /** 同一主体の PENDING 申請を取得（二重申請防止）。 */
     Optional<VillageJoinRequestEntity> findByVillageIdAndSubjectTypeAndSubjectIdAndStatus(
             UUID villageId, VillageSubjectType subjectType, Long subjectId, VillageRequestStatus status);

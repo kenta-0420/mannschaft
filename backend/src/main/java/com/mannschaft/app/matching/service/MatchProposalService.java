@@ -25,6 +25,7 @@ import com.mannschaft.app.matching.repository.MatchProposalDateRepository;
 import com.mannschaft.app.matching.repository.MatchProposalRepository;
 import com.mannschaft.app.matching.repository.MatchRequestRepository;
 import com.mannschaft.app.matching.repository.NgTeamRepository;
+import com.mannschaft.app.matching.service.MatchProposalCancellationWriter.Context;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -35,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 応募サービス。応募のCRUD・承諾・拒否・取り下げ・キャンセルを担当する。
@@ -42,7 +44,6 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class MatchProposalService {
 
     private static final int MAX_PROPOSED_DATES = 5;
@@ -54,6 +55,7 @@ public class MatchProposalService {
     private final NgTeamRepository ngTeamRepository;
     private final MatchingMapper matchingMapper;
     private final AccessControlService accessControlService;
+    private final MatchProposalCancellationWriter cancellationWriter;
 
     /**
      * 募集への応募を作成する。
@@ -127,6 +129,7 @@ public class MatchProposalService {
     /**
      * 募集への応募一覧を取得する。
      */
+    @Transactional(readOnly = true)
     public Page<ProposalResponse> listProposals(Long requestId, Long currentUserId, Pageable pageable) {
         MatchRequestEntity matchRequest = requestRepository.findById(requestId)
                 .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
@@ -145,6 +148,7 @@ public class MatchProposalService {
     /**
      * 自チームの応募一覧を取得する。
      */
+    @Transactional(readOnly = true)
     public Page<ProposalResponse> listTeamProposals(Long teamId, String statusStr, Pageable pageable) {
         Page<MatchProposalEntity> page;
         if (statusStr != null) {
@@ -274,85 +278,66 @@ public class MatchProposalService {
     /**
      * マッチング成立後のキャンセルを行う。
      */
-    @Transactional
     public ProposalStatusResponse cancelProposal(Long proposalId, Long actorUserId, CancelProposalRequest request) {
         MatchProposalEntity proposal = findProposalOrThrow(proposalId);
-
+        ReadAccess read = checkProposalReadAccess(proposal, actorUserId);
         if (proposal.getStatus() != MatchProposalStatus.ACCEPTED) {
             throw new BusinessException(MatchingErrorCode.INVALID_PROPOSAL_STATUS);
         }
-
-        MatchRequestEntity matchRequest = requestRepository.findById(proposal.getRequestId())
-                .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
-
-        // 募集チームまたは応募チームの管理者/副管理者のみ（userID≠teamID の誤比較を撤廃）。
-        // キャンセル実行チームは actor が管理する側とする（記録用の cancelledByTeamId）。
-        Long actingTeamId;
-        if (accessControlService.isAdminOrAbove(actorUserId, matchRequest.getTeamId(), "TEAM")) {
-            actingTeamId = matchRequest.getTeamId();
-        } else if (accessControlService.isAdminOrAbove(actorUserId, proposal.getProposingTeamId(), "TEAM")) {
-            actingTeamId = proposal.getProposingTeamId();
-        } else {
-            throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
-        }
-
-        boolean mutual = request.getMutual() != null && request.getMutual();
-        proposal.cancel(actingTeamId, request.getReason(), mutual);
-        proposalRepository.save(proposal);
-
-        // 募集をOPENに復元
-        matchRequest.reopenAfterCancel();
-        matchRequest.incrementCancelCount();
-        requestRepository.save(matchRequest);
-
-        log.info("マッチングキャンセル: proposalId={}, cancellationType={}", proposalId,
-                mutual ? "MUTUAL_PENDING" : "UNILATERAL");
-        return new ProposalStatusResponse(proposalId, "CANCELLED");
+        return cancellationWriter.cancel(cancellationContext(proposalId, proposal, actorUserId, read), request);
     }
 
-    /**
-     * 合意キャンセルを承認する。
-     */
-    @Transactional
+    /** 合意承認の閲覧・変更権限をmatchingの更新TX外で判定する。 */
     public AgreeCancelResponse agreeCancellation(Long proposalId, Long actorUserId) {
         MatchProposalEntity proposal = findProposalOrThrow(proposalId);
-
+        ReadAccess read = checkProposalReadAccess(proposal, actorUserId);
         if (proposal.getStatus() != MatchProposalStatus.CANCELLED) {
             throw new BusinessException(MatchingErrorCode.INVALID_PROPOSAL_STATUS);
         }
         if (proposal.getCancellationType() != CancellationType.MUTUAL_PENDING) {
             throw new BusinessException(MatchingErrorCode.INVALID_CANCELLATION_TYPE);
         }
-
-        MatchRequestEntity matchRequest = requestRepository.findById(proposal.getRequestId())
-                .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
-
-        // 権限チェック（userID≠teamID の誤比較を撤廃）: 合意承認できるのは「キャンセルを実行した相手チーム」の
-        // 管理者/副管理者のみ。キャンセル実行チーム側の管理者は自分のキャンセルを承認できない。
-        Long cancellerTeamId = proposal.getCancelledByTeamId();
-        Long counterpartyTeamId = cancellerTeamId.equals(matchRequest.getTeamId())
-                ? proposal.getProposingTeamId() : matchRequest.getTeamId();
-        if (!accessControlService.isAdminOrAbove(actorUserId, counterpartyTeamId, "TEAM")) {
-            if (accessControlService.isAdminOrAbove(actorUserId, cancellerTeamId, "TEAM")) {
-                throw new BusinessException(MatchingErrorCode.CANNOT_AGREE_OWN_CANCEL);
-            }
-            throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
-        }
-
-        proposal.agreeCancellation();
-        proposalRepository.save(proposal);
-
-        // cancel_countを戻す
-        matchRequest.decrementCancelCount();
-        requestRepository.save(matchRequest);
-
-        log.info("合意キャンセル承認: proposalId={}", proposalId);
-        return new AgreeCancelResponse(proposalId, "MUTUAL", proposal.getMutualAgreedAt());
+        return cancellationWriter.agree(cancellationContext(proposalId, proposal, actorUserId, read));
     }
+
+    private Context cancellationContext(Long proposalId, MatchProposalEntity proposal, Long actorUserId, ReadAccess read) {
+        // 独立readerだけ親取得を状態診断後へ遅延する。募集側readerは先の取得を再利用する。
+        Optional<MatchRequestEntity> parent = read.independentReader()
+                ? requestRepository.findById(proposal.getRequestId()) : read.parent();
+        Long requestingTeamId = parent.map(MatchRequestEntity::getTeamId).orElse(null);
+        boolean requestingAdmin = requestingTeamId != null
+                && accessControlService.isAdminOrAbove(actorUserId, requestingTeamId, "TEAM");
+        boolean proposingAdmin = accessControlService.isAdminOrAbove(actorUserId, proposal.getProposingTeamId(), "TEAM");
+        Long canceller = proposal.getCancelledByTeamId();
+        boolean cancellerAdmin = canceller != null && (canceller.equals(requestingTeamId) ? requestingAdmin
+                : canceller.equals(proposal.getProposingTeamId()) ? proposingAdmin
+                : accessControlService.isAdminOrAbove(actorUserId, canceller, "TEAM"));
+        return new Context(proposalId, proposal.getRequestId(), proposal.getProposingTeamId(), requestingTeamId,
+                read.independentReader(), requestingAdmin, proposingAdmin, canceller, cancellerAdmin);
+    }
+
+    /** readerの由来を保持し、募集親が消えた場合の002と既存診断→001を区別する。 */
+    private ReadAccess checkProposalReadAccess(MatchProposalEntity proposal, Long actorUserId) {
+        if (accessControlService.isSystemAdmin(actorUserId)
+                || accessControlService.isAdminOrAbove(actorUserId, proposal.getProposingTeamId(), "TEAM")
+                || accessControlService.isMember(actorUserId, proposal.getProposingTeamId(), "TEAM")) {
+            return new ReadAccess(true, Optional.empty());
+        }
+        Optional<MatchRequestEntity> parent = requestRepository.findById(proposal.getRequestId());
+        if (parent.isPresent()
+                && (accessControlService.isAdminOrAbove(actorUserId, parent.get().getTeamId(), "TEAM")
+                || accessControlService.isMember(actorUserId, parent.get().getTeamId(), "TEAM"))) {
+            return new ReadAccess(false, parent);
+        }
+        throw new BusinessException(MatchingErrorCode.PROPOSAL_NOT_FOUND);
+    }
+
+    private record ReadAccess(boolean independentReader, Optional<MatchRequestEntity> parent) { }
 
     /**
      * チームのキャンセル履歴一覧を取得する。
      */
+    @Transactional(readOnly = true)
     public CancellationSummaryResponse getCancellationHistory(Long teamId, Pageable pageable) {
         LocalDateTime since = LocalDateTime.now().minusYears(REVIEW_RETENTION_YEARS);
         long cancelCount = proposalRepository.countCancellationsByTeam(teamId, since);

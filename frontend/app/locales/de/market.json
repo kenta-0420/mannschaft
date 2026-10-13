@@ -1,6 +1,6 @@
 {
   "market": {
-    "title": "市（いち）",
+    "title": "Ichi (Marktplatz)",
     "listing": {
       "label": "Aushang",
       "count": "{count} Aushänge",
@@ -297,67 +297,67 @@
       }
     },
     "market_guide": {
-      "page_title": "市の使い方",
+      "page_title": "So nutzen Sie Ichi",
       "what": {
-        "title": "市とは？",
-        "body": "市は、個人・チーム・組織が公開する活動や参加者募集の札を探せる場所です。",
+        "title": "Was ist Ichi?",
+        "body": "Ichi ist ein Ort, an dem Sie Einträge zu Aktivitäten und Teilnehmersuchen finden, die von Einzelpersonen, Teams und Organisationen veröffentlicht werden.",
         "steps": {
-          "step1": "札の内容を確認し、自分に合う活動や募集を探します",
-          "step2": "気になる札を開いて、応募または札の作成へ進みます"
+          "step1": "Prüfen Sie den Inhalt der Einträge und suchen Sie passende Aktivitäten oder Gesuche",
+          "step2": "Öffnen Sie einen interessanten Eintrag und fahren Sie mit der Bewerbung oder dem Erstellen eines Eintrags fort"
         }
       },
       "search": {
-        "title": "絞り込み検索",
-        "body": "都道府県・市区町村・ジャンル・札主・キーワードで条件を絞り込めます。",
+        "title": "Gefilterte Suche",
+        "body": "Sie können die Ergebnisse nach Präfektur, Stadt, Genre, Ersteller und Stichwort eingrenzen.",
         "steps": {
-          "step1": "都道府県を選び、市区町村を選択します",
-          "step2": "ジャンル、札主、自由入力キーワードを設定します",
-          "step3": "締切が近い順または遠い順を選びます",
-          "step4": "検索ボタンを押して条件に合う札を表示します",
-          "step5": "絞り込み条件はURLに保存されるため、リンクで共有・ブックマークが可能です"
+          "step1": "Wählen Sie eine Präfektur und anschließend eine Stadt",
+          "step2": "Legen Sie Genre, Ersteller und freies Stichwort fest",
+          "step3": "Wählen Sie die Sortierung nach nächster oder fernster Frist",
+          "step4": "Klicken Sie auf die Suchschaltfläche, um passende Einträge anzuzeigen",
+          "step5": "Die Filterbedingungen werden in der URL gespeichert, sodass Sie sie per Link teilen oder als Lesezeichen speichern können"
         }
       },
       "apply": {
-        "title": "札に応じる（応募する）",
-        "body": "気になる札をクリックして内容を確認し、OPENの札へ応募できます。応募にはログインが必要です。",
+        "title": "Auf einen Eintrag antworten (Bewerben)",
+        "body": "Klicken Sie auf einen interessanten Eintrag, um die Details zu prüfen, und bewerben Sie sich auf Einträge mit dem Status OPEN. Für die Bewerbung ist eine Anmeldung erforderlich.",
         "steps": {
-          "step1": "一覧から気になる札をクリックして詳細ページを開く",
-          "step2": "開催日時・開催場所・応募締切・定員・地域を確認する",
-          "step3": "チーム募集では応募するチームを選び、「札に応じる」を押します。応募済みの札には再応募できません"
+          "step1": "Klicken Sie in der Liste auf einen Eintrag, um die Detailseite zu öffnen",
+          "step2": "Prüfen Sie Datum und Uhrzeit, Veranstaltungsort, Bewerbungsfrist, Teilnehmerzahl und Region",
+          "step3": "Bei Teamgesuchen wählen Sie das bewerbende Team aus und klicken auf \"Auf Eintrag antworten\". Auf bereits beworbene Einträge können Sie sich nicht erneut bewerben"
         }
       },
       "personal_create": {
-        "title": "個人札を下書きから公開する",
-        "body": "個人の札は、まず非公開の下書きとして作成し、内容を編集してから公開します。",
+        "title": "Persönlichen Eintrag aus einem Entwurf veröffentlichen",
+        "body": "Ein persönlicher Eintrag wird zunächst als nicht öffentlicher Entwurf erstellt und nach der Bearbeitung veröffentlicht.",
         "steps": {
-          "step1": "マイ市で必要な内容を入力し、下書きを作成します",
-          "step2": "タイトル、開催日時、必須の開催場所などを確認して編集します",
-          "step3": "公開範囲を選び、内容を確認して公開します"
+          "step1": "Geben Sie in Mein Ichi die erforderlichen Angaben ein und erstellen Sie einen Entwurf",
+          "step2": "Prüfen und bearbeiten Sie Titel, Datum und Uhrzeit sowie den erforderlichen Veranstaltungsort",
+          "step3": "Wählen Sie die Sichtbarkeit, prüfen Sie den Inhalt und veröffentlichen Sie ihn"
         }
       },
       "visibility": {
-        "title": "公開範囲と表示名",
-        "body": "個人札では公開範囲を選べます。下書きは公開されません。",
+        "title": "Sichtbarkeit und Anzeigename",
+        "body": "Bei persönlichen Einträgen können Sie die Sichtbarkeit wählen. Entwürfe werden nicht veröffentlicht.",
         "steps": {
-          "step1": "所属チーム・組織のメンバーには登録済みの実名が表示されます",
-          "step2": "それ以外の人にはニックネームが表示されます",
-          "step3": "公開、選択したチーム・組織への公開、下書きの非公開を使い分けます"
+          "step1": "Mitglieder Ihrer Teams und Organisationen sehen Ihren registrierten Klarnamen",
+          "step2": "Alle anderen sehen Ihren Spitznamen",
+          "step3": "Nutzen Sie je nach Bedarf öffentlich, öffentlich für ausgewählte Teams und Organisationen oder nicht öffentliche Entwürfe"
         }
       },
       "team_organization": {
-        "title": "チーム・組織の札作成と応募者管理",
-        "body": "チーム・組織の札の作成と応募者の管理には、対象の管理権限が必要です。",
+        "title": "Einträge für Teams und Organisationen erstellen und Bewerber verwalten",
+        "body": "Zum Erstellen von Einträgen für ein Team oder eine Organisation und zum Verwalten von Bewerbern ist die entsprechende Verwaltungsberechtigung erforderlich.",
         "steps": {
-          "step1": "チームまたは組織の画面から札を作成します",
-          "step2": "公開後は応募者を確認し、必要に応じて参加状況を管理します"
+          "step1": "Erstellen Sie einen Eintrag über die Team- oder Organisationsseite",
+          "step2": "Prüfen Sie nach der Veröffentlichung die Bewerber und verwalten Sie bei Bedarf den Teilnahmestatus"
         }
       },
       "cancellation": {
-        "title": "成立と取消",
-        "body": "札の成立状況を確認し、不要になった札は取り消せます。",
+        "title": "Zustandekommen und Stornierung",
+        "body": "Sie können prüfen, ob ein Eintrag zustande gekommen ist, und nicht mehr benötigte Einträge stornieren.",
         "steps": {
-          "step1": "応募状況と定員を確認して、成立に必要な対応を行います",
-          "step2": "公開済みの札を取り消すと、応募者に影響するため内容を確認してから実行します"
+          "step1": "Prüfen Sie Bewerbungsstand und Teilnehmerzahl und treffen Sie die für das Zustandekommen erforderlichen Maßnahmen",
+          "step2": "Die Stornierung eines veröffentlichten Eintrags betrifft die Bewerber. Prüfen Sie den Inhalt daher vor der Ausführung"
         }
       }
     }

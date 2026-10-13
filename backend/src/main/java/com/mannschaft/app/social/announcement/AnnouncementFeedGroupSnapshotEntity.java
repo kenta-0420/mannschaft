@@ -3,7 +3,11 @@ package com.mannschaft.app.social.announcement;
 import com.mannschaft.app.common.entity.UuidV7Entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -11,6 +15,8 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 /**
  * グループ宛てお知らせの送信時スナップショット（F01.2.1 §5.6・§8.2）。
@@ -48,4 +54,18 @@ public class AnnouncementFeedGroupSnapshotEntity extends UuidV7Entity {
     /** 送信時点でそのグループに ACTIVE で所属していたチーム ID。 */
     @Column(name = "team_id", nullable = false)
     private Long teamId;
+
+    /**
+     * {@code feed_id} の FK（{@code fk_afgs_feed}・ON DELETE CASCADE）を Entity にも写すための読み取り専用の関連。
+     *
+     * <p>IT のスキーマは Flyway でなく Entity から Hibernate が作るため、ここで宣言しないと IT だけ
+     * CASCADE が効かず本番とずれる（AC-H26）。値の書き込みは {@link #feedId} だけで行い、本関連は参照しない。</p>
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "feed_id", insertable = false, updatable = false,
+            foreignKey = @ForeignKey(name = "fk_afgs_feed"))
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @Getter(AccessLevel.NONE)
+    @EqualsAndHashCode.Exclude
+    private AnnouncementFeedEntity feed;
 }

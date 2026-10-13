@@ -4,6 +4,8 @@ definePageMeta({ middleware: 'auth' })
 const scopeStore = useScopeStore()
 const scopeType = computed(() => scopeStore.current.type as 'team' | 'organization')
 const scopeId = computed(() => scopeStore.current.id ?? '')
+// 個人スコープは対象外。scopeId が確定せず load() が走らないため、案内を出してスピナー固着を防ぐ（CMP-260903-1358）。
+const isPersonalScope = computed(() => scopeStore.current.type === 'personal')
 // checkAdminOrAbove（DEPUTY_ADMIN 以上）要求。直リンク防御（CMP-260917-1351 課題B）。
 useAdminScopeGuard('DEPUTY_ADMIN')
 const { success, error: showError } = useNotification()
@@ -103,12 +105,14 @@ onMounted(() => { if (scopeId.value) load() })
         <PageHeader title="LINE設定"><p class="text-sm text-surface-500">LINE Messaging API との連携設定</p></PageHeader>
       </div>
       <div class="flex gap-2">
-        <Button v-if="config" label="削除" severity="danger" outlined size="small" @click="remove" />
-        <Button label="保存" icon="pi pi-check" :loading="saving" @click="save" />
+        <Button v-if="config && !isPersonalScope" label="削除" severity="danger" outlined size="small" @click="remove" />
+        <Button v-if="!isPersonalScope" label="保存" icon="pi pi-check" :loading="saving" @click="save" />
       </div>
     </div>
 
-    <PageLoading v-if="loading" />
+    <PersonalScopeUnsupportedNotice v-if="isPersonalScope" />
+
+    <PageLoading v-else-if="loading" />
 
     <div v-else class="flex flex-col gap-4">
       <!-- 現在の状態 -->

@@ -56,4 +56,47 @@ public record TeamAffiliationNotice(NotificationType notificationType,
                 actorUserId,
                 "/organizations/" + organizationSlug + "/member-teams?view=applications");
     }
+
+    /**
+     * 加盟申請が承認された通知（{@code TEAM_ORG_APPLICATION_APPROVED}。受信者はチームの加盟操作者。§6.2 step 6）。
+     *
+     * @param groupLabel 確定したグループ名（未分類なら既定の文言）
+     */
+    public static TeamAffiliationNotice applicationApproved(Long teamId, String teamSlug, Long organizationId,
+                                                            String organizationName, String groupLabel,
+                                                            Long membershipId, Long actorUserId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_APPLICATION_APPROVED,
+                FanoutMessageKind.TEAM_ORG_APPLICATION_APPROVED,
+                List.of(organizationName, groupLabel),
+                RecipientScope.TEAM_AFFILIATION_OPERATORS,
+                teamId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/teams/" + teamSlug + "/affiliations");
+    }
+
+    /**
+     * 加盟申請が拒否された通知（{@code TEAM_ORG_APPLICATION_REJECTED}。受信者はチームの加盟操作者。§6.3 step 5）。
+     * 理由があれば理由入りの本文にする。
+     *
+     * @param reason 拒否の理由（任意。null なら理由なしの本文）
+     */
+    public static TeamAffiliationNotice applicationRejected(Long teamId, String teamSlug, Long organizationId,
+                                                            String organizationName, String reason,
+                                                            Long membershipId, Long actorUserId) {
+        boolean withReason = reason != null;
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_APPLICATION_REJECTED,
+                withReason ? FanoutMessageKind.TEAM_ORG_APPLICATION_REJECTED_WITH_REASON
+                        : FanoutMessageKind.TEAM_ORG_APPLICATION_REJECTED,
+                withReason ? List.of(organizationName, reason) : List.of(organizationName),
+                RecipientScope.TEAM_AFFILIATION_OPERATORS,
+                teamId,
+                organizationId,
+                membershipId,
+                actorUserId,
+                "/teams/" + teamSlug + "/affiliations?view=applications");
+    }
 }

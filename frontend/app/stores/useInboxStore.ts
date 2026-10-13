@@ -68,6 +68,11 @@ interface InboxStoreState {
   selectedKeys: Set<string>
 }
 
+/** 件数マップ（`{ KEY: 件数 }`）の形か。配列・null・undefined は不可。 */
+function isCountMap(value: unknown): value is Record<string, number> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 export const useInboxStore = defineStore('inbox', {
   state: (): InboxStoreState => ({
     items: [],
@@ -172,9 +177,16 @@ export const useInboxStore = defineStore('inbox', {
       try {
         const api = useInboxApi()
         const res = await api.getSummary()
-        this.summaryByState = res.data.byState
-        this.summaryByPriority = res.data.byPriority
-        this.summaryBySourceType = res.data.bySourceType
+        // 契約: BE の InboxSummaryResponse は 3 つの件数マップを常に返す（空でも `{}`）。
+        // 契約違反の応答を代入するとゲッターが undefined を添字参照して TypeError になるため、
+        // 境界で形を検証し、違反は握りつぶさずエラーとして記録する（取得済みの件数は壊さない）。
+        const data = res?.data
+        if (!data || !isCountMap(data.byState) || !isCountMap(data.byPriority) || !isCountMap(data.bySourceType)) {
+          throw new Error('inbox summary response violates contract: byState/byPriority/bySourceType must be objects')
+        }
+        this.summaryByState = data.byState
+        this.summaryByPriority = data.byPriority
+        this.summaryBySourceType = data.bySourceType
       } catch (error) {
         this._handleError(error)
       } finally {

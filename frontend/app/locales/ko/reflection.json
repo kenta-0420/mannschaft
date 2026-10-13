@@ -125,11 +125,11 @@
           "keypoint": "기억할 요점"
         },
         "vocab": {
-          "cards": "今日の単語"
+          "cards": "오늘의 단어"
         }
       },
-      "VOCAB": "単語帳",
-      "vocab_desc": "語句と意味を暗記カードとして登録し、想起テストで交互に出題する"
+      "VOCAB": "단어장",
+      "vocab_desc": "어구와 뜻을 암기 카드로 등록하고 회상 테스트에서 번갈아 출제합니다"
     },
     "entry": {
       "list_heading": "회고 목록",
@@ -187,7 +187,7 @@
       "history_empty": "아직 상기 기록이 없습니다.",
       "not_masked": "이 항목은 마스크되지 않았습니다. 정상적으로 편집할 수 있습니다.",
       "back_to_entry": "회고로 돌아가기",
-      "card_answer_placeholder": "答えを入力...",
+      "card_answer_placeholder": "답을 입력하세요...",
       "outline_scaffold": {
         "panel_heading": "발판 힌트",
         "main_theme_label": "테마",
@@ -251,51 +251,51 @@
     },
     "section": {
       "type": {
-        "outline": "アウトライン",
-        "term_card": "暗記カード"
+        "outline": "아웃라인",
+        "term_card": "암기 카드"
       },
-      "type_label": "中見出しの型",
-      "expand": "展開する",
-      "collapse": "折りたたむ",
-      "summary_subsections": "小見出し{n}件",
-      "summary_cards": "カード{n}枚"
+      "type_label": "중간 제목 유형",
+      "expand": "펼치기",
+      "collapse": "접기",
+      "summary_subsections": "소제목 {n}건",
+      "summary_cards": "카드 {n}장"
     },
     "card": {
-      "term_label": "語句",
-      "meaning_label": "意味",
-      "add": "カードを追加",
-      "remove": "カードを削除"
+      "term_label": "어구",
+      "meaning_label": "뜻",
+      "add": "카드 추가",
+      "remove": "카드 삭제"
     },
     "vocab": {
-      "title": "単語帳（期間横断）",
-      "period_from": "開始日",
-      "period_to": "終了日",
-      "filter_theme": "テーマで絞り込み",
-      "filter_subject": "科目で絞り込み",
+      "title": "단어장(기간 횡단)",
+      "period_from": "시작일",
+      "period_to": "종료일",
+      "filter_theme": "테마로 필터링",
+      "filter_subject": "과목으로 필터링",
       "mode": {
-        "view": "一覧",
-        "quiz": "自己クイズ"
+        "view": "목록",
+        "quiz": "셀프 퀴즈"
       },
       "direction": {
-        "meaning_to_term": "意味→語句",
-        "term_to_meaning": "語句→意味",
-        "shuffle": "シャッフル"
+        "meaning_to_term": "뜻→어구",
+        "term_to_meaning": "어구→뜻",
+        "shuffle": "셔플"
       },
-      "flip": "めくる",
-      "empty": "この期間に暗記カードはありません",
-      "total_cards": "{n}枚のカード",
-      "source_label": "出典",
-      "subjects_all": "全教科",
-      "subjects_filter": "教科フィルター",
-      "shuffle": "シャッフル",
-      "shuffle_note": "取得のたびに順番が変わります",
-      "card_limit_warning": "カードが多すぎます。教科または期間を絞ってください（最大500件）",
+      "flip": "뒤집기",
+      "empty": "이 기간에는 암기 카드가 없습니다",
+      "total_cards": "카드 {n}장",
+      "source_label": "출처",
+      "subjects_all": "전체 과목",
+      "subjects_filter": "과목 필터",
+      "shuffle": "셔플",
+      "shuffle_note": "불러올 때마다 순서가 바뀝니다",
+      "card_limit_warning": "카드가 너무 많습니다. 과목 또는 기간을 좁혀 주세요(최대 500건)",
       "inline": {
-        "title": "＋単語を追加",
-        "term_placeholder": "語句 (例: apple)",
-        "meaning_placeholder": "意味 (例: りんご)",
-        "add_button": "追加",
-        "added": "追加しました"
+        "title": "+ 단어 추가",
+        "term_placeholder": "어구 (예: apple)",
+        "meaning_placeholder": "뜻 (예: 사과)",
+        "add_button": "추가",
+        "added": "추가했습니다"
       }
     }
   }

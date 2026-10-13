@@ -434,107 +434,107 @@
     }
   },
   "my_shift_guide": {
-    "title": "シフトページの使い方",
-    "description": "このページでは、自分にアサインされた確定シフトの確認や、交代依頼の申請ができます。",
+    "title": "How to use the Shifts page",
+    "description": "On this page you can check the confirmed shifts assigned to you and submit swap requests.",
     "view_shifts": {
-      "title": "確定シフトを確認する",
-      "body": "ログインユーザーにアサインされた確定済みシフトを、月次カレンダーまたは週次リストで表示します。シフトがない日付は空欄のまま表示されます。",
+      "title": "Check your confirmed shifts",
+      "body": "Shows the confirmed shifts assigned to the logged-in user in a monthly calendar or a weekly list. Dates without shifts are left blank.",
       "steps": {
-        "step1": "「/my/shift」ページを開きます",
-        "step2": "ページが自動的に確定シフトを読み込み、カレンダーまたはリストに表示します",
-        "step3": "シフトがない場合は「シフトがありません」と表示されます"
+        "step1": "Open the \"/my/shift\" page",
+        "step2": "The page automatically loads your confirmed shifts and shows them in the calendar or list",
+        "step3": "If there are no shifts, \"No shifts\" is displayed"
       }
     },
     "switch_view": {
-      "title": "表示を切り替える",
-      "body": "月次カレンダー（全体把握向き）と週次リスト（詳細確認向き）の2つのビューを切り替えられます。矢印ボタンで前後の月・週に移動できます。",
+      "title": "Switch the view",
+      "body": "You can switch between two views: a monthly calendar (good for the big picture) and a weekly list (good for details). Use the arrow buttons to move to the previous or next month or week.",
       "steps": {
-        "step1": "画面上部の「月ビュー」「週ビュー」ボタンで表示形式を切り替えます",
-        "step2": "◀ ▶ ボタンで前月・次月（または前週・次週）に移動します",
-        "step3": "「今日」ボタンで今日を含む月・週に戻ります"
+        "step1": "Use the \"Month view\" and \"Week view\" buttons at the top of the screen to change the display format",
+        "step2": "Use the ◀ ▶ buttons to move to the previous or next month (or week)",
+        "step3": "Use the \"Today\" button to return to the month or week that contains today"
       }
     },
     "filter_team": {
-      "title": "チームで絞り込む",
-      "body": "複数のチームに所属している場合、特定チームのシフトのみを表示できます。「全て」ボタンを選ぶと全チームのシフトが表示されます。",
+      "title": "Filter by team",
+      "body": "If you belong to multiple teams, you can show only the shifts of a specific team. Select the \"All\" button to show the shifts of all teams.",
       "steps": {
-        "step1": "画面上部「チーム:」欄の「全て」またはチーム名ボタンをタップします",
-        "step2": "選択したチームのシフトのみ表示されます",
-        "step3": "「全て」を再度タップすると絞り込みが解除されます"
+        "step1": "Tap \"All\" or a team name button in the \"Team:\" field at the top of the screen",
+        "step2": "Only the shifts of the selected team are shown",
+        "step3": "Tap \"All\" again to clear the filter"
       }
     },
     "view_detail": {
-      "title": "シフト詳細を確認する",
-      "body": "特定の日付をタップすると、そのシフトのチーム名・ポジション・時刻・スケジュール名などの詳細を確認できます。",
+      "title": "Check shift details",
+      "body": "Tap a specific date to see details of that shift, such as the team name, position, time, and schedule name.",
       "steps": {
-        "step1": "【月次ビュー】日付セルをタップすると、画面右側に詳細パネルが開きます",
-        "step2": "【週次ビュー】日付カードのヘッダーをタップすると、カードが展開してシフト一覧が表示されます",
-        "step3": "月次ビューでは同じ日付をもう一度タップすると詳細パネルが閉じます"
+        "step1": "[Month view] Tap a date cell to open the detail panel on the right side of the screen",
+        "step2": "[Week view] Tap the header of a date card to expand the card and show the list of shifts",
+        "step3": "In the month view, tap the same date again to close the detail panel"
       }
     },
     "swap_request": {
-      "title": "交代依頼を申請する",
-      "body": "確定シフトを他のメンバーと交代したい場合、3つの方式で依頼を送れます。送信後は自動的にシフト一覧が更新されます。",
+      "title": "Submit a swap request",
+      "body": "If you want to swap a confirmed shift with another member, you can send a request in one of three ways. After sending, the shift list is updated automatically.",
       "steps": {
-        "step1": "シフト詳細内の「交代依頼を作成」ボタンをクリックします",
-        "step2": "送信方式を選びます：「メンバーを指定」（1名以上選択）／「シフト帯でまとめて」（同日の昼または夜シフト担当者全員）／「全員に公開」（誰でも立候補可）",
-        "step3": "必要であれば理由を記入します（任意）",
-        "step4": "「提出」ボタンをクリックして送信します"
+        "step1": "Click the \"Create swap request\" button in the shift details",
+        "step2": "Choose how to send it: \"Specify members\" (select one or more) / \"By shift period\" (everyone working the day or night shift on the same day) / \"Open to everyone\" (anyone can volunteer)",
+        "step3": "Enter a reason if needed (optional)",
+        "step4": "Click the \"Submit\" button to send"
       },
-      "note": "提出後は確定シフト一覧が自動的に更新されます。送信中はボタンが無効になりますので、完了するまでそのままお待ちください。"
+      "note": "The list of confirmed shifts is updated automatically after submission. The button is disabled while sending, so please wait until it finishes."
     }
   },
   "shift_guide": {
-    "title": "シフト管理の使い方",
-    "description": "シフト管理では、チームのシフトスケジュールを作成・公開し、メンバーの希望を収集して調整できます。",
+    "title": "How to use Shift Management",
+    "description": "In Shift Management you can create and publish your team's shift schedules, and collect and adjust members' preferences.",
     "overview": {
-      "title": "シフトスケジュール一覧を確認する",
-      "body": "このページでは、チームのシフトスケジュール一覧を管理します。ステータスバッジで進捗が一目で分かります。",
+      "title": "Check the list of shift schedules",
+      "body": "This page manages the list of your team's shift schedules. Status badges show progress at a glance.",
       "steps": {
-        "step1": "ステータスフィルタ（下書き・収集中・調整中・公開済みなど）で絞り込む",
-        "step2": "各カードの提出率バーでメンバーの希望提出状況を確認する",
-        "step3": "カードをクリックして詳細ページへ移動する"
+        "step1": "Filter by status (Draft, Collecting, Adjusting, Published, etc.)",
+        "step2": "Check how many preferences members have submitted using the submission-rate bar on each card",
+        "step3": "Click a card to go to its detail page"
       }
     },
     "create": {
-      "title": "新しいシフトスケジュールを作成する",
-      "body": "チームの管理者がシフトスケジュールを新規作成できます。タイトルと期間を設定してスタートしましょう。",
+      "title": "Create a new shift schedule",
+      "body": "Team administrators can create a new shift schedule. Get started by setting a title and a period.",
       "steps": {
-        "step1": "右上の「新規作成」ボタンをクリックする",
-        "step2": "タイトル・開始日・終了日を入力する（必須）",
-        "step3": "希望締切・メモを必要に応じて入力する",
-        "step4": "「作成」ボタンで確定する（ステータス：下書きで作成）"
+        "step1": "Click the \"Create\" button at the top right",
+        "step2": "Enter the title, start date, and end date (required)",
+        "step3": "Enter the preference deadline and a memo as needed",
+        "step4": "Confirm with the \"Create\" button (it is created with the status Draft)"
       }
     },
     "status": {
-      "title": "ステータスを進めてシフトを確定させる",
-      "body": "シフトは5段階のステータスで管理されます。詳細ページのステッパーで現在のフェーズを確認し、順番に進めましょう。",
+      "title": "Advance the status to finalize shifts",
+      "body": "Shifts are managed through five statuses. Check the current phase in the stepper on the detail page and advance in order.",
       "steps": {
-        "step1": "「下書き」：スロットや制約を設定する準備段階",
-        "step2": "「収集中」：メンバーにシフト希望の提出を依頼する",
-        "step3": "「調整中」：希望を元にシフトを調整・作成する",
-        "step4": "「公開済み」：確定シフトをメンバーに公開する",
-        "step5": "「完了」：終了したシフトをアーカイブする"
+        "step1": "\"Draft\": the preparation stage where you set up slots and constraints",
+        "step2": "\"Collecting\": ask members to submit their shift preferences",
+        "step3": "\"Adjusting\": adjust and build the shifts based on the preferences",
+        "step4": "\"Published\": publish the confirmed shifts to members",
+        "step5": "\"Completed\": archive shifts that have ended"
       }
     },
     "requests": {
-      "title": "メンバーのシフト希望を収集・確認する",
-      "body": "「収集中」ステータスになるとメンバーが希望を提出できます。詳細ページの「希望一覧」タブで全員の状況をマトリクスで確認できます。",
+      "title": "Collect and review members' shift preferences",
+      "body": "Once the status is \"Collecting\", members can submit their preferences. In the \"Preferences\" tab on the detail page you can see everyone's status in a matrix.",
       "steps": {
-        "step1": "詳細ページの「希望一覧」タブをクリックする",
-        "step2": "サマリーカードで提出率・未提出人数を確認する",
-        "step3": "マトリクス表で各メンバーの日付ごとの希望強度を確認する",
-        "step4": "「出勤希望・指定なし・出れなくはない・できれば休み・絶対休み」の5段階で表示される"
+        "step1": "Click the \"Preferences\" tab on the detail page",
+        "step2": "Check the submission rate and the number of members who have not submitted on the summary cards",
+        "step3": "Check each member's preference level for each date in the matrix table",
+        "step4": "Shown in five levels: \"Wants to work / No preference / Can work if needed / Prefers off / Must be off\""
       }
     },
     "slots": {
-      "title": "スロットと勤務制約を設定する",
-      "body": "シフトの時間帯（スロット）を登録し、チーム・メンバー別の勤務制約を設定します。",
+      "title": "Set up slots and work constraints",
+      "body": "Register the time slots of the shift and set work constraints for the team and for individual members.",
       "steps": {
-        "step1": "「編集」タブでスロット（日付・開始〜終了時刻・ポジション・必要人数）を作成する",
-        "step2": "「一括作成」ボタンで日付範囲・曜日指定による複数スロットの一括登録も可能",
-        "step3": "「制約」タブでチームデフォルトの勤務制約（月最大時間・連続勤務日数など）を設定する",
-        "step4": "特定メンバーには「メンバー別の例外設定」で個別制約を上書き設定できる"
+        "step1": "In the \"Edit\" tab, create slots (date, start to end time, position, required headcount)",
+        "step2": "You can also register multiple slots at once with the \"Bulk create\" button by date range and weekdays",
+        "step3": "In the \"Constraints\" tab, set the team's default work constraints (maximum monthly hours, consecutive working days, etc.)",
+        "step4": "For specific members, you can override constraints individually with \"Per-member exceptions\""
       }
     }
   }

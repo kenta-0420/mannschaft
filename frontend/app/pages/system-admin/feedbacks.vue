@@ -12,6 +12,7 @@ import type { FeedbackResponse } from '~/types/feedback'
 // ─── ページメタ ───────────────────────────────────────────────────────────────
 definePageMeta({
   layout: 'default',
+  middleware: ['auth', 'system-admin'],
 })
 
 const { t } = useI18n()

@@ -158,7 +158,7 @@ public class SurveyController {
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         surveyAccessGuard.checkCanManage(
                 SecurityUtils.getCurrentUserId(), canonicalScopeType, resolvedScopeId, surveyId);
-        SurveyResponse response = surveyService.publishSurvey(canonicalScopeType, resolvedScopeId, surveyId);
+        SurveyResponse response = surveyService.publishSurvey(canonicalScopeType, resolvedScopeId, surveyId, false);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

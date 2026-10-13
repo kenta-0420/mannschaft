@@ -13,9 +13,17 @@ package com.mannschaft.app.memberinfo.event;
  * @param teamId          チームID（通知スコープおよびアクションURL）
  * @param recipientUserId 受信者ユーザーID
  * @param fieldId         通知本文に名称を埋めるフィールドのID（期限切れ・未回答の先頭フィールド）
+ * @param actorId         通知の実行者ID（管理者の手動リマインド {@code MemberInfoResponseService#sendRemind} が
+ *                        依頼者を載せる。定期バッチは {@code null}＝システムトリガー）
  */
 public record MemberInfoUpdateReminderNotificationEvent(
         Long teamId,
         Long recipientUserId,
-        Long fieldId) {
+        Long fieldId,
+        Long actorId) {
+
+    /** 定期バッチ用（実行者なし＝システムトリガー）。 */
+    public MemberInfoUpdateReminderNotificationEvent(Long teamId, Long recipientUserId, Long fieldId) {
+        this(teamId, recipientUserId, fieldId, null);
+    }
 }

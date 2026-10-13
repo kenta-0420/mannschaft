@@ -924,16 +924,16 @@ class RecruitmentListingServiceTest {
     }
 
     // ========================================
-    // confirmApplication - Issue #2715 ロットA: 通知 i18n 化
+    // confirmApplication - Issue #2997: 通知は AFTER_COMMIT リスナーへ移設（イベント publish のみ）
     // ========================================
 
     @Nested
-    @DisplayName("confirmApplication - 受信者locale対応通知（Issue #2715）")
+    @DisplayName("confirmApplication - 通知イベントの publish（Issue #2997）")
     class ConfirmApplication {
 
         @Test
-        @DisplayName("正常系: 受信者localeに従って RECRUITMENT_CONFIRMED 通知の件名・本文が切り替わる")
-        void confirmApplication_localeAware_buildsMessageInRecipientLocale() throws Exception {
+        @DisplayName("正常系: RECRUITMENT_CONFIRMED の通知イベントを publish する（文面の locale 切替はリスナー側の責務）")
+        void confirmApplication_publishesNotificationEvent() throws Exception {
             Long participantId = 900L;
             Long applicantUserId = 5L;
             RecruitmentListingEntity listing = buildListingWithConfirmed(0);
@@ -950,20 +950,15 @@ class RecruitmentListingServiceTest {
 
             given(participantRepository.findByIdForUpdate(participantId)).willReturn(Optional.of(participant));
             given(listingRepository.findByIdForUpdate(LISTING_ID)).willReturn(Optional.of(listing));
-            given(userLocaleCache.getLocale(applicantUserId)).willReturn("en");
-            given(messageSource.getMessage(eq("notification.recruitment.confirmed.title"), any(), any(),
-                    eq(java.util.Locale.forLanguageTag("en"))))
-                    .willReturn("Participation confirmed");
-            given(messageSource.getMessage(eq("notification.recruitment.confirmed.body"), any(), any(),
-                    eq(java.util.Locale.forLanguageTag("en"))))
-                    .willReturn("Your participation in test has been confirmed.");
 
             service.confirmApplication(participantId, USER_ID);
 
-            verify(notificationHelper).notify(
-                    eq(applicantUserId), eq("RECRUITMENT_CONFIRMED"),
-                    eq("Participation confirmed"), eq("Your participation in test has been confirmed."),
-                    any(), any(), any(), any(), any(), any());
+            verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.argThat((Object event) ->
+                    event instanceof com.mannschaft.app.recruitment.event.RecruitmentNotificationEvent e
+                            && e.kind() == com.mannschaft.app.recruitment.event.RecruitmentNotificationEvent.Kind.CONFIRMED
+                            && LISTING_ID.equals(e.listingId())
+                            && java.util.List.of(applicantUserId).equals(e.recipientUserIds())
+                            && USER_ID.equals(e.actorId())));
         }
     }
 

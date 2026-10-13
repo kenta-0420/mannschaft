@@ -19,7 +19,7 @@ import type {
  * retry 成功時は緑色トースト + 詳細再取得、失敗時は赤色トースト + retryCount 更新。
  * 一覧テーブルには retryCount 列を追加（>0 はオレンジ色で強調）。</p>
  */
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const notification = useNotification()

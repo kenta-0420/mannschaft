@@ -1,5 +1,10 @@
 {
   "tournament": {
+    "detail": {
+      "noDivisions": "尚未登记任何组别",
+      "divisionsLoadError": "加载组别列表失败",
+      "loadError": "加载赛事信息失败"
+    },
     "sport": {
       "label": "运动项目",
       "help": "选择本赛事的运动项目。直接录入比分时创建的比赛将使用该项目。",

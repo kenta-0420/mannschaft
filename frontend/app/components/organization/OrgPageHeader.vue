@@ -145,6 +145,8 @@ const overflowMenuItems = computed(() => {
           :entity-id="String(org.id)"
           :entity-name="displayName"
         />
+        <!-- F01.2.1: チームとして加盟を申請（表示は BE の eligibility に従う） -->
+        <TeamAffiliationApplyButton :org-slug="orgId" />
         <Button
           v-if="roleName"
           :label="$t('market.management.title')"

@@ -237,7 +237,7 @@ public class AccountPurgeService {
                 "contact", "user", "appearance", "navsettings", "gamification",
                 "reflection", "timetable.personal", "cms", "chat", "knowledgebase",
                 "favorite", "membership", "weather", "inbox", "timetable.notes",
-                "seal", "schedule");
+                "seal", "schedule", "visibility");
         LocalDateTime purgeAttemptedAt = LocalDateTime.now();
         purgeTargetDomains.forEach(domain -> {
             AccountPurgeCompletionStatusEntity pending = new AccountPurgeCompletionStatusEntity();

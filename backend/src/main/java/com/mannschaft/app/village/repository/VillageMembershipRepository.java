@@ -82,8 +82,18 @@ public interface VillageMembershipRepository extends JpaRepository<VillageMember
     Optional<VillageMembershipEntity> findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc(
             UUID villageId, VillageRole role);
 
-    /** 村内の指定ロールの現役メンバー件数（最後の HEADMAN 判定用）。 */
-    long countByVillageIdAndRoleAndLeftAtIsNull(UUID villageId, VillageRole role);
+    /**
+     * 村内の指定ロールで最古参の<strong>現役</strong>メンバー（{@code leftAt IS NULL} かつ {@code bannedAt IS NULL}）を 1 件取得する。
+     *
+     * <p>HEADMAN の後継者選出（退出時・退会バッチ）専用。BAN 済みを後継に昇格させると、
+     * BAN された者が村長権限を得てしまう（CMP-260826-1455）。後継候補の取得には
+     * {@link #findFirstByVillageIdAndRoleAndLeftAtIsNullOrderByJoinedAtAsc} ではなくこちらを使うこと。</p>
+     */
+    Optional<VillageMembershipEntity> findFirstByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNullOrderByJoinedAtAsc(
+            UUID villageId, VillageRole role);
+
+    /** 村内の指定ロールの現役メンバー件数（退村・BAN 済みを除外、最後の HEADMAN 判定用）。 */
+    long countByVillageIdAndRoleAndLeftAtIsNullAndBannedAtIsNull(UUID villageId, VillageRole role);
 
     // ====================================================================
     // F17.1 Phase 1 B10 — 村内 MEMBER 検索（読み取り専用）

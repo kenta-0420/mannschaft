@@ -18,7 +18,7 @@ import Tag from 'primevue/tag'
 
 import type { ProvisioningInvitationResponse } from '~/composables/useProvisioningAdminApi'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const authStore = useAuthStore()

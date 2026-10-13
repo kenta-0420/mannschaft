@@ -310,7 +310,7 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     // F03.4.5 §5.2: 呼称の動的差し込み。resourceNameType 未設定（DEFAULT）は
     // 従来どおり「Bookable Item」相当のフォールバックのため、テキストは実質不変。
     expect(tabs[2]!.text()).toBe('Bookable Item Management')
-    expect(tabs[3]!.text()).toBe('緊急休業')
+    expect(tabs[3]!.text()).toBe('Emergency closure')
   })
 
   it('管理者がメンバー表示へ切り替えた場合は予約と自分の予約だけを表示する', async () => {

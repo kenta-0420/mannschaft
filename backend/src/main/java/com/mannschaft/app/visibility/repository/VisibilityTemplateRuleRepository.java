@@ -2,6 +2,9 @@ package com.mannschaft.app.visibility.repository;
 
 import com.mannschaft.app.visibility.entity.VisibilityTemplateRuleEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -36,4 +39,15 @@ public interface VisibilityTemplateRuleRepository extends JpaRepository<Visibili
      * @return ルール数
      */
     long countByTemplateId(Long templateId);
+
+    /**
+     * 強匿名化専用。指定ユーザーが所有するテンプレートの全ルールを物理削除する。
+     *
+     * @param ownerUserId テンプレート所有ユーザーID
+     * @return 削除件数
+     */
+    @Modifying
+    @Query("DELETE FROM VisibilityTemplateRuleEntity r WHERE r.template.id IN "
+            + "(SELECT vt.id FROM VisibilityTemplateEntity vt WHERE vt.ownerUserId = :ownerUserId)")
+    int deleteAllByOwnerUserId(@Param("ownerUserId") Long ownerUserId);
 }

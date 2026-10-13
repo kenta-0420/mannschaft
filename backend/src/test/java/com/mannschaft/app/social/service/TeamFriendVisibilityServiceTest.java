@@ -9,6 +9,8 @@ import com.mannschaft.app.social.repository.TeamFriendRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,6 +28,8 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.never;
 
 /**
  * {@link TeamFriendVisibilityService} の単体テスト（リファクタリング第4弾 Phase 4-B で分離）。
@@ -85,6 +89,7 @@ class TeamFriendVisibilityServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY));
+        verifyNoInteractions(teamFriendRepository, auditLogService);
     }
 
     @Test
@@ -103,9 +108,10 @@ class TeamFriendVisibilityServiceTest {
                         .isEqualTo(SocialErrorCode.FRIEND_RELATION_NOT_FOUND));
     }
 
-    @Test
-    @DisplayName("異常系: 他チームの teamFriendId → BusinessException(FRIEND_VISIBILITY_ADMIN_ONLY)")
-    void IDOR_他チーム関係_例外() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    @DisplayName("私的な他チーム関係は要求公開値によらず不在コードで拒否する")
+    void IDOR_私的他チーム関係_不在と同じ例外(boolean requestedPublic) {
         // given
         Long teamFriendId = 1L;
         // 自チーム=999 として、teamFriendEntity は他チームのペア
@@ -115,10 +121,30 @@ class TeamFriendVisibilityServiceTest {
 
         // when & then
         assertThatThrownBy(() ->
-                teamFriendVisibilityService.setVisibility(TEAM_ID, teamFriendId, true, USER_ID))
+                teamFriendVisibilityService.setVisibility(TEAM_ID, teamFriendId, requestedPublic, USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                        .isEqualTo(SocialErrorCode.FRIEND_RELATION_NOT_FOUND));
+        assertThat(otherFriend.getIsPublic()).isFalse();
+        verify(teamFriendRepository, never()).save(any());
+        verifyNoInteractions(auditLogService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    @DisplayName("公開済み他チーム関係の既存拒否コードを維持する")
+    void IDOR_公開他チーム関係_既存例外(boolean requestedPublic) {
+        TeamFriendEntity friend = buildTeamFriend(100L, 200L, 1L);
+        friend.changePublicity(true);
+        given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(teamFriendRepository.findById(1L)).willReturn(Optional.of(friend));
+        assertThatThrownBy(() -> teamFriendVisibilityService.setVisibility(TEAM_ID, 1L, requestedPublic, USER_ID))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY));
+        assertThat(friend.getIsPublic()).isTrue();
+        verify(teamFriendRepository, never()).save(any());
+        verifyNoInteractions(auditLogService);
     }
 
     private TeamFriendEntity buildTeamFriend(Long teamAId, Long teamBId, Long id) {

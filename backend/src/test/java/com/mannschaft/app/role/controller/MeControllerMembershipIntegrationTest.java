@@ -94,11 +94,19 @@ class MeControllerMembershipIntegrationTest extends AbstractMySqlIntegrationTest
     @BeforeEach
     void setUp() {
         // 各テストは独立性のため全関連テーブルを掃除する（singleton container で DB は共有される）。
+        // roles は IDENTITY 採番で save の INSERT が即時実行される一方、deleteAll の DELETE は flush まで保留される。
+        // 他の IT が roles にコミットした行（SYSTEM_ADMIN 等）が残っていると INSERT が先に走って一意制約違反になるため、
+        // 再作成の前に DELETE を確定させる（roles が空である前提に頼らない）。
         userRoleRepository.deleteAll();
+        userRoleRepository.flush();
         membershipRepository.deleteAll();
+        membershipRepository.flush();
         teamRepository.deleteAll();
+        teamRepository.flush();
         organizationRepository.deleteAll();
+        organizationRepository.flush();
         roleRepository.deleteAll();
+        roleRepository.flush();
         seedRoles();
     }
 

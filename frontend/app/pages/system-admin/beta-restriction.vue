@@ -2,7 +2,7 @@
 import dayjs from 'dayjs'
 import type { BetaRestrictionConfigResponse } from '~/types/system-admin'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const systemAdminApi = useSystemAdminApi()
