@@ -49,7 +49,8 @@ const pendingIssuer = `${tag}-承認待ち発行元`
 const activeSkillName = `${tag}-有効資格`
 const activeIssuer = `${tag}-有効発行元`
 
-const SKILL_API = /\/teams\/[^/]+\/(skills|skill-categories|skill-matrix)(\/|\?|$)/
+// FE のページ URL（/teams/e2e/skills）には当たらないよう、BE の API パス（/api/v1/teams/ 配下）に限る
+const SKILL_API = /\/api\/v1\/teams\/[^/]+\/(skills|skill-categories|skill-matrix)(\/|\?|$)/
 
 
 async function openSession(browser: Browser, ctxs: BrowserContext[], c: { email: string, password: string }): Promise<Session> {
