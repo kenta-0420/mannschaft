@@ -427,9 +427,10 @@ class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
     }
 
     private void insertSystemAdminRole(long userId) {
+        // 本番 seed（V2.014）と同じ priority で入れる。roles は singleton container で全 IT が共有する参照表で、コミットした行は後続の IT にも残る（違う priority を残すと MeControllerMembershipIntegrationTest 等の前提を壊す）
         jdbc.update("""
                 INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at)
-                VALUES ('SYSTEM_ADMIN', 'SYSTEM_ADMIN', 100, 1, NOW(), NOW())
+                VALUES ('SYSTEM_ADMIN', 'システム管理者', 1, 1, NOW(), NOW())
                 ON DUPLICATE KEY UPDATE name = VALUES(name)
                 """);
         Long roleId = jdbc.queryForObject(
