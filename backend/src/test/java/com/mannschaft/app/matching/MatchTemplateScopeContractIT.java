@@ -87,6 +87,8 @@ class MatchTemplateScopeContractIT extends AbstractMySqlIntegrationTest {
     private final List<Long> teamIds = new ArrayList<>();
     private final List<Long> templateIds = new ArrayList<>();
     private final List<Long> writers = new ArrayList<>();
+    /** この IT が新規作成した roles 行。既存行を get した場合は含めない（他 IT の get-or-create 前提を壊さないため）。 */
+    private final List<Long> createdRoleIds = new ArrayList<>();
     private Long ownTeam;
     private Long foreignTeam;
     private Long ownTemplate;
@@ -143,6 +145,7 @@ class MatchTemplateScopeContractIT extends AbstractMySqlIntegrationTest {
                     em.createNativeQuery("DELETE FROM memberships WHERE user_id IN (:ids)").setParameter("ids", userIds).executeUpdate();
                     users.deleteAllById(userIds);
                 }
+                roles.deleteAllById(createdRoleIds);
                 teams.deleteAllById(teamIds);
                 return null;
             });
@@ -326,8 +329,12 @@ class MatchTemplateScopeContractIT extends AbstractMySqlIntegrationTest {
     }
 
     private Long role(String name) {
-        return roles.findByName(name).orElseGet(() -> roles.save(RoleEntity.builder()
-                .name(name).displayName(name).priority(RolePriority.priority(name)).isSystem(false).build())).getId();
+        return roles.findByName(name).orElseGet(() -> {
+            RoleEntity created = roles.save(RoleEntity.builder()
+                    .name(name).displayName(name).priority(RolePriority.priority(name)).isSystem(false).build());
+            createdRoleIds.add(created.getId());
+            return created;
+        }).getId();
     }
 
     private void userRole(Long actor, String name, Long team) {
