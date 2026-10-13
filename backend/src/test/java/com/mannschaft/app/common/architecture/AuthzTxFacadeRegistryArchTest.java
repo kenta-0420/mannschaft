@@ -164,7 +164,8 @@ class AuthzTxFacadeRegistryArchTest {
                 "listSchedules", "getSchedule", "createSchedule", "updateSchedule", "deleteSchedule", "transitionStatus",
                 "getScheduleSummary", "remindUnsubmitted", "duplicateSchedule");
         add(list, "W6a", SHIFT + "controller.ShiftSlotController", SHIFT + "service.ShiftSlotFacade",
-                "listSlots", "createSlot", "bulkCreateSlots", "updateSlot", "deleteSlot", "patchSlotAssignments");
+                "listSlots", "createSlot", "bulkCreateSlots", "updateSlot", "deleteSlot", "patchSlotAssignments",
+                "moveSlotAssignment"); // moveSlotAssignment: CMP-261010-1432 枠間移動
         add(list, "W6a", SHIFT + "controller.ShiftPdfController", SHIFT + "service.ShiftPdfFacade", "exportPdf");
         // W7: 資格 API（個別 ID の取得・更新・削除・証明書 URL。CMP-261010-2226）
         add(list, "W7", SKL + "controller.SkillController", SKL + "service.MemberSkillFacade",
@@ -267,9 +268,9 @@ class AuthzTxFacadeRegistryArchTest {
         Map<String, Long> byWave = ENTRIES.stream()
                 .collect(Collectors.groupingBy(Entry::wave, TreeMap::new, Collectors.counting()));
         assertThat(byWave).containsExactlyInAnyOrderEntriesOf(Map.of(
-                "W1", 9L, "W2", 16L, "W3a", 1L, "W3b", 2L, "W4", 6L, "W5", 11L, "W5周辺", 1L, "W6a", 16L, "W7", 4L));
-        assertThat(ENTRIES).hasSize(66);
-        assertThat(ENTRIES.stream().map(Entry::key).distinct().count()).as("登録表に重複が無い").isEqualTo(66);
+                "W1", 9L, "W2", 16L, "W3a", 1L, "W3b", 2L, "W4", 6L, "W5", 11L, "W5周辺", 1L, "W6a", 17L, "W7", 4L)); // W6a: CMP-261010-1432 枠間移動で +1
+        assertThat(ENTRIES).hasSize(67); // CMP-261010-1432 枠間移動で +1
+        assertThat(ENTRIES.stream().map(Entry::key).distinct().count()).as("登録表に重複が無い").isEqualTo(67);
         assertThat(ENTRIES.stream().map(Entry::facade).collect(Collectors.toSet()))
                 .as("登録表の Facade と tx 本体の表の Facade が一致する").isEqualTo(TX_BODIES.keySet());
     }
