@@ -116,14 +116,16 @@ public class TeamOrgInviteService {
         }
 
         TeamOrgInviteCommandService.CreatedInvite created = commandService.invite(
-                teamId, organizationId, operatorUserId, groupId, message);
+                teamId, organizationId, operatorUserId, groupId, message, organization.closureGeneration());
 
         // コミットの後で組織の状態を読み直す。書き込みの間にアーカイブ・削除されていたら、作った招待を取り下げる（§6.9）。
         // 組織行の共有ロックで読むので、並行する組織のアーカイブがロックを持っている間は待ち、そのコミット後の状態を見る
-        // （待たずに未アーカイブを見て 201 を返した後でアーカイブがコミットされる、という順序を作らない。2-D・AC-E08）
+        // （待たずに未アーカイブを見て 201 を返した後でアーカイブがコミットされる、という順序を作らない。2-D・AC-E08）。
+        // 閉鎖の世代が招待に記録した値（書き込みの前に読んだ値）より進んでいれば、その間にアーカイブ → 解除（削除 → 復元）
+        // された。招待は閉鎖より前に作られた行（§4.5）なので、いま開いていても取り下げる（解除で復元しない）
         TeamAffiliationOrganizationPort.OrganizationAffiliationState current =
                 organizationPort.recheckAffiliationStateLocked(organizationId).orElse(null);
-        if (current == null || current.archived()) {
+        if (current == null || current.archived() || current.closedSince(organization.closureGeneration())) {
             commandService.withdrawInviteOfClosedOrganization(created.id(), organizationId);
             throw new BusinessException(current == null ? OrgErrorCode.ORG_001 : OrgErrorCode.ORG_003);
         }
@@ -227,7 +229,7 @@ public class TeamOrgInviteService {
         // 4. 書き込み（team ドメインのトランザクション）。承諾の通知（組織 ADMIN 全員）は同じ tx で outbox に予約する（OB14）
         TeamOrgInviteCommandService.AcceptedInvite accepted = commandService.accept(
                 teamId, membershipId, operatorUserId, organizationId, confirmedGroupId,
-                organization.name(), organization.slug(), organization.lastClosedAt());
+                organization.name(), organization.slug());
 
         // 5. コミットの後: 監査
         Map<String, Object> metadata = new LinkedHashMap<>();

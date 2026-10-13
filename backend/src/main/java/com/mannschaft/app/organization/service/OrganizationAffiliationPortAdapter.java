@@ -111,7 +111,7 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
 
     private static OrganizationClosureState toClosureState(OrganizationEntity org) {
         return new OrganizationClosureState(org.getId(), org.getSlug(), org.getName(),
-                org.getArchivedAt() != null, org.getDeletedAt() != null, org.getLastClosedAt());
+                org.getArchivedAt() != null, org.getDeletedAt() != null, org.getClosureGeneration());
     }
 
     private static OrganizationAffiliationState toState(OrganizationEntity org) {
@@ -123,7 +123,7 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
                 Boolean.TRUE.equals(org.getTeamApplicationEnabled()),
                 Boolean.TRUE.equals(org.getTeamGroupsEnabled()),
                 org.getTeamApplicationGroupMode(),
-                org.getLastClosedAt());
+                org.getClosureGeneration());
     }
 
     private static OrganizationRef toRef(OrganizationEntity org) {

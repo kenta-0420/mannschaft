@@ -559,20 +559,13 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
     // 2-D 検分差し戻し（2巡目）①: 片付けの前にアーカイブ解除されても、閉鎖より前の PENDING を復元しない（§4.5）
     // =====================================================================
 
-    /** 組織を「アーカイブ（閉鎖時刻を記録）→ 片付けの前に解除」した状態にする（イベントは出さない）。 */
+    /** 組織を「アーカイブ（閉鎖の世代を +1）→ 片付けの前に解除」した状態にする（イベントは出さない）。 */
     private void archiveThenUnarchiveWithoutCleanup(long orgId) {
         inTxVoid(() -> em.createNativeQuery("UPDATE organizations SET archived_at = UTC_TIMESTAMP(), "
-                        + "last_closed_at = UTC_TIMESTAMP() WHERE id = :id")
+                        + "closure_generation = closure_generation + 1 WHERE id = :id")
                 .setParameter("id", orgId).executeUpdate());
         inTxVoid(() -> em.createNativeQuery("UPDATE organizations SET archived_at = NULL WHERE id = :id")
                 .setParameter("id", orgId).executeUpdate());
-    }
-
-    /** 加盟行をアーカイブより前に作られたものにする（作成日時を UTC 壁時計の1時間前にする。§4.6 の格納基準）。 */
-    private void backdate(long membershipId) {
-        inTxVoid(() -> em.createNativeQuery("UPDATE team_org_memberships "
-                        + "SET created_at = TIMESTAMPADD(HOUR, -1, UTC_TIMESTAMP()) WHERE id = :id")
-                .setParameter("id", membershipId).executeUpdate());
     }
 
     @Test
@@ -584,8 +577,6 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         TeamWithAdmin inviteTeam = extraTeam();
         long oldApply = membership(applyTeam.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
         long oldInvite = membership(inviteTeam.team().id(), fx.org().id(), "PENDING", "ORG_INVITE", null);
-        backdate(oldApply);
-        backdate(oldInvite);
 
         archiveThenUnarchiveWithoutCleanup(fx.org().id());
         Result applied = apply(fx.ta(), fx.team().slug(), fx.org().slug());
@@ -621,9 +612,7 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         TeamWithAdmin applyTeam = extraTeam();
         OrgFx aliveOrg = inTx(() -> newOrg(true, false, "OFF", "PUBLIC"));
         long oldApply = membership(applyTeam.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
-        backdate(oldApply);
         long alivePending = membership(applyTeam.team().id(), aliveOrg.id(), "PENDING", "TEAM_APPLY", null);
-        backdate(alivePending);
 
         archiveThenUnarchiveWithoutCleanup(fx.org().id());
         Result applied = apply(fx.ta(), fx.team().slug(), fx.org().slug());
@@ -642,16 +631,13 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
     }
 
     @Test
-    @DisplayName("2-D 差し戻し（2巡目）①: 組織のアーカイブ API の経路で閉鎖時刻（last_closed_at）が記録され、アーカイブ解除しても消えない")
-    void 組織のアーカイブ解除で閉鎖時刻は消えない() {
+    @DisplayName("2-D 差し戻し（2巡目）①・4巡目: 組織の論理削除の経路でも閉鎖の世代が +1 される")
+    void 組織の論理削除で閉鎖の世代が進む() {
         Fixture fx = fixture();
-        organizationService.archiveOrganization(fx.org().id());
-        organizationService.unarchiveOrganization(fx.org().id());
+        organizationService.deleteOrganization(fx.org().id(), fx.xa());
 
-        Map<String, Object> row = jdbc.queryForMap(
-                "SELECT archived_at, last_closed_at FROM organizations WHERE id = ?", fx.org().id());
-        assertThat(row.get("archived_at")).as("解除済み").isNull();
-        assertThat(row.get("last_closed_at")).as("最後の閉鎖時刻は解除しても残る").isNotNull();
+        assertThat(jdbc.queryForObject("SELECT closure_generation FROM organizations WHERE id = ?", Long.class,
+                fx.org().id())).isEqualTo(1L);
     }
 
     @Test
@@ -682,10 +668,10 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
     // 2-D 検分差し戻し（3巡目）High 1: 解除の後に片付けの削除が永続化コンテキストをクリアしても、解除がコミットされる
     // =====================================================================
 
-    /** チームを「アーカイブ（閉鎖時刻を記録）→ 片付けの前に解除」した状態にする（イベントも片付けも走らせない）。 */
+    /** チームを「アーカイブ（閉鎖の世代を +1）→ 片付けの前に解除」した状態にする（イベントも片付けも走らせない）。 */
     private void archiveTeamThenUnarchiveWithoutCleanup(long teamId) {
         inTxVoid(() -> em.createNativeQuery("UPDATE teams SET archived_at = UTC_TIMESTAMP(), "
-                        + "last_closed_at = UTC_TIMESTAMP() WHERE id = :id")
+                        + "closure_generation = closure_generation + 1 WHERE id = :id")
                 .setParameter("id", teamId).executeUpdate());
         inTxVoid(() -> em.createNativeQuery("UPDATE teams SET archived_at = NULL WHERE id = :id")
                 .setParameter("id", teamId).executeUpdate());
@@ -698,15 +684,15 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
 
     @Test
     @DisplayName("2-D 差し戻し（3巡目）High 1: 片付けをモックせず、PENDING が残ったアーカイブ済みチームをチームの解除 API で解除すると、"
-            + "解除がコミットされてチームが ACTIVE（未アーカイブ）に戻り、残った PENDING は消えて取消が予約される。閉鎖時刻は残る")
+            + "解除がコミットされてチームが ACTIVE（未アーカイブ）に戻り、残った PENDING は消えて取消が予約される。閉鎖の世代は戻らない")
     void チームの解除APIは片付けの後も解除がコミットされる() throws Exception {
         Fixture fx = fixture();
         OrgFx keeper = inTx(() -> newOrg(true, false, "OFF", "PUBLIC"));
         long apply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
         long active = membership(fx.team().id(), keeper.id(), "ACTIVE", "ORG_INVITE", null);
-        // 他ドメインの tx からのアーカイブの片付けが走らなかった状況（閉鎖時刻は記録される）
+        // 他ドメインの tx からのアーカイブの片付けが走らなかった状況（閉鎖の世代は進む）
         inTxVoid(() -> em.createNativeQuery("UPDATE teams SET archived_at = UTC_TIMESTAMP(), "
-                        + "last_closed_at = UTC_TIMESTAMP() WHERE id = :id")
+                        + "closure_generation = closure_generation + 1 WHERE id = :id")
                 .setParameter("id", fx.team().id()).executeUpdate());
 
         Result result = unarchiveTeamApi(fx.ta(), fx.team().slug());
@@ -716,8 +702,8 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         assertThat(statusOf(apply)).as("残った PENDING は解除で復元しない").isNull();
         assertThat(statusOf(active)).as("ACTIVE は残す").isEqualTo("ACTIVE");
         assertThat(jobIdsOf(apply, CANCELLED)).hasSize(1);
-        assertThat(jdbc.queryForObject("SELECT last_closed_at IS NOT NULL FROM teams WHERE id = ?", Boolean.class,
-                fx.team().id())).as("最後の閉鎖時刻は解除しても残る").isTrue();
+        assertThat(jdbc.queryForObject("SELECT closure_generation FROM teams WHERE id = ?", Long.class,
+                fx.team().id())).as("閉鎖の世代は解除しても戻らない").isEqualTo(1L);
 
         // 解除後は申請できる（解除後の申請は閉鎖前ではない）
         Result applied = apply(fx.ta(), fx.team().slug(), fx.org().slug());
@@ -725,7 +711,7 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
     }
 
     @Test
-    @DisplayName("2-D 差し戻し（3巡目）High 1: チーム自身のアーカイブ API も、片付けの削除の後でアーカイブと閉鎖時刻がコミットされている")
+    @DisplayName("2-D 差し戻し（3巡目）High 1: チーム自身のアーカイブ API も、片付けの削除の後でアーカイブと閉鎖の世代がコミットされている")
     void チームのアーカイブAPIは片付けの後もアーカイブがコミットされる() throws Exception {
         Fixture fx = fixture();
         long apply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
@@ -734,8 +720,8 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
 
         assertThat(result.status()).as("アーカイブ API: %s", result).isEqualTo(200);
         assertThat(teamArchived(fx.team().id())).isTrue();
-        assertThat(jdbc.queryForObject("SELECT last_closed_at IS NOT NULL FROM teams WHERE id = ?", Boolean.class,
-                fx.team().id())).as("閉鎖時刻が記録される").isTrue();
+        assertThat(jdbc.queryForObject("SELECT closure_generation FROM teams WHERE id = ?", Long.class,
+                fx.team().id())).as("閉鎖の世代が +1 される").isEqualTo(1L);
         assertThat(statusOf(apply)).isNull();
     }
 
@@ -749,7 +735,6 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
     void 組織の閉鎖前の申請は解除後も承認できない() throws Exception {
         Fixture fx = fixture();
         long oldApply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
-        backdate(oldApply);
         archiveThenUnarchiveWithoutCleanup(fx.org().id());
 
         Result result = approve(fx.xa(), fx.org().slug(), oldApply);
@@ -770,7 +755,6 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
     void 組織の閉鎖前の招待は解除後も承諾できない() throws Exception {
         Fixture fx = fixture();
         long oldInvite = membership(fx.team().id(), fx.org().id(), "PENDING", "ORG_INVITE", null);
-        backdate(oldInvite);
         archiveThenUnarchiveWithoutCleanup(fx.org().id());
 
         Result result = acceptInvite(fx.ta(), fx.team().slug(), oldInvite);
@@ -783,7 +767,7 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
     }
 
     @Test
-    @DisplayName("2-D 差し戻し（3巡目）High 2・§4.5: 解除後に作った申請・招待は、閉鎖時刻が残っていても承認・承諾できる（閉鎖前と見なさない）")
+    @DisplayName("2-D 差し戻し（3巡目）High 2・§4.5: 解除後に API で作った申請・招待は、閉鎖の世代が進んでいても承認・承諾できる（閉鎖前と見なさない）")
     void 解除後の申請と招待は承認と承諾ができる() throws Exception {
         Fixture fx = fixture();
         TeamWithAdmin inviteTeam = extraTeam();
@@ -793,7 +777,9 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         long newApply = jdbc.queryForObject(
                 "SELECT id FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
                 Long.class, fx.team().id(), fx.org().id());
-        long newInvite = membership(inviteTeam.team().id(), fx.org().id(), "PENDING", "ORG_INVITE", null);
+        Result invited = invite(fx.xa(), fx.org().slug(), inviteTeam.team().slug());
+        assertThat(invited.status()).as("解除後の招待: %s", invited).isEqualTo(201);
+        long newInvite = membershipIdOf(inviteTeam.team().id(), fx.org().id());
 
         Result approved = approve(fx.xa(), fx.org().slug(), newApply);
         assertThat(approved.status()).as("解除後の申請の承認: %s", approved).isEqualTo(200);
@@ -810,9 +796,7 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         Fixture fx = fixture();
         TeamWithAdmin other = extraTeam();
         long oldApply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
-        backdate(oldApply);
         long otherOld = membership(other.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
-        backdate(otherOld);
         archiveTeamThenUnarchiveWithoutCleanup(fx.team().id());
         archiveTeamThenUnarchiveWithoutCleanup(other.team().id());
 
@@ -840,10 +824,9 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         Fixture fx = fixture();
         OrgFx orgY = inTx(() -> newOrg(true, false, "OFF", "PUBLIC"));
         long oldApply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
-        backdate(oldApply);
         // 他ドメインの tx からのアーカイブ（片付けが走らなかった）
         inTxVoid(() -> em.createNativeQuery("UPDATE teams SET archived_at = UTC_TIMESTAMP(), "
-                        + "last_closed_at = UTC_TIMESTAMP() WHERE id = :id")
+                        + "closure_generation = closure_generation + 1 WHERE id = :id")
                 .setParameter("id", fx.team().id()).executeUpdate());
 
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
@@ -873,10 +856,9 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
     void 組織の解除はイベントで閉鎖前のPENDINGを片付ける() throws Exception {
         Fixture fx = fixture();
         long oldApply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
-        backdate(oldApply);
         // アーカイブ（片付けのイベントは走らなかった）
         inTxVoid(() -> em.createNativeQuery("UPDATE organizations SET archived_at = UTC_TIMESTAMP(), "
-                        + "last_closed_at = UTC_TIMESTAMP() WHERE id = :id")
+                        + "closure_generation = closure_generation + 1 WHERE id = :id")
                 .setParameter("id", fx.org().id()).executeUpdate());
 
         organizationService.unarchiveOrganization(fx.org().id());
@@ -895,7 +877,7 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         blockRestriction(fx.team().id(), keeper.id(), "TEAM_APPLY");
         // 論理削除（片付けのイベントは走らなかった）
         inTxVoid(() -> em.createNativeQuery("UPDATE teams SET deleted_at = UTC_TIMESTAMP(), "
-                        + "last_closed_at = UTC_TIMESTAMP() WHERE id = :id")
+                        + "closure_generation = closure_generation + 1 WHERE id = :id")
                 .setParameter("id", fx.team().id()).executeUpdate());
 
         teamService.restoreTeam(fx.team().id());
@@ -906,5 +888,237 @@ class TeamOrgLifecycleCleanupCommittedIT extends TeamOrgLifecycleCommittedItSupp
         assertThat(statusOf(active)).as("削除前の ACTIVE も戻さない").isNull();
         assertThat(restrictionCountOfTeam(fx.team().id())).isZero();
         assertThat(jobIdsOf(apply, CANCELLED)).hasSize(1);
+    }
+
+    // =====================================================================
+    // 2-D 検分差し戻し（4巡目）: 閉鎖前の判定は時刻ではなく閉鎖の世代番号で行う（同じ秒の境界でも破れない）
+    // =====================================================================
+
+    /**
+     * 加盟行の作成日時を「いま」（閉鎖の後）に書き換える。時刻の比較（作成日時 &lt; 閉鎖時刻）で判定する実装なら、
+     * この行は閉鎖の後に作られた行に見えて素通りする。世代で判定する実装は、作成時点に記録した世代で閉鎖前と見分ける。
+     * 作成・閉鎖・解除を同じ秒の中で行う境界（DATETIME の秒丸め・切り捨てで前後が逆転しうる）を、時刻に頼らず再現する。
+     */
+    private void stampCreatedAtNow(long membershipId) {
+        inTxVoid(() -> em.createNativeQuery("UPDATE team_org_memberships SET created_at = UTC_TIMESTAMP() WHERE id = :id")
+                .setParameter("id", membershipId).executeUpdate());
+    }
+
+    private long membershipIdOf(long teamId, long orgId) {
+        return jdbc.queryForObject("SELECT id FROM team_org_memberships WHERE team_id = ? AND organization_id = ?",
+                Long.class, teamId, orgId);
+    }
+
+    private long generationOf(String table, long id) {
+        return jdbc.queryForObject("SELECT closure_generation FROM " + table + " WHERE id = ?", Long.class, id);
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し（4巡目）: 組織の閉鎖の世代は、アーカイブ・論理削除の API の経路で +1 され、アーカイブ解除・復元では戻らない。"
+            + "申請・招待の API は作成時点の組織・チームの世代を行に記録する")
+    void 組織の閉鎖の世代はアーカイブで進み解除では戻らない() throws Exception {
+        Fixture fx = fixture();
+        TeamWithAdmin inviteTeam = extraTeam();
+        assertThat(generationOf("organizations", fx.org().id())).isZero();
+
+        organizationService.archiveOrganization(fx.org().id());
+        assertThat(generationOf("organizations", fx.org().id())).as("アーカイブで +1").isEqualTo(1L);
+        organizationService.unarchiveOrganization(fx.org().id());
+        assertThat(jdbc.queryForObject("SELECT archived_at IS NULL FROM organizations WHERE id = ?", Boolean.class,
+                fx.org().id())).as("解除済み").isTrue();
+        assertThat(generationOf("organizations", fx.org().id())).as("解除では戻らない").isEqualTo(1L);
+
+        Result applied = apply(fx.ta(), fx.team().slug(), fx.org().slug());
+        assertThat(applied.status()).as("解除後の申請: %s", applied).isEqualTo(201);
+        Result invited = invite(fx.xa(), fx.org().slug(), inviteTeam.team().slug());
+        assertThat(invited.status()).as("解除後の招待: %s", invited).isEqualTo(201);
+        for (long id : List.of(membershipIdOf(fx.team().id(), fx.org().id()),
+                membershipIdOf(inviteTeam.team().id(), fx.org().id()))) {
+            Map<String, Object> row = jdbc.queryForMap(
+                    "SELECT org_closure_generation, team_closure_generation FROM team_org_memberships WHERE id = ?", id);
+            assertThat(((Number) row.get("org_closure_generation")).longValue()).as("作成時点の組織の世代").isEqualTo(1L);
+            assertThat(((Number) row.get("team_closure_generation")).longValue()).as("作成時点のチームの世代").isZero();
+        }
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し（4巡目）・境界: API で作った申請の直後（同じ秒の中）に組織を閉鎖 → 片付けの前に解除しても、"
+            + "承認は 404 TEAM_070 で拒み ACTIVE にせず、ロールバックの後に片付けて回復バッチの後も戻らない。解除後の申請は承認できる")
+    void 同じ秒の境界でも組織の閉鎖前の申請は承認できない() throws Exception {
+        Fixture fx = fixture();
+        Result applied = apply(fx.ta(), fx.team().slug(), fx.org().slug());
+        assertThat(applied.status()).as("申請: %s", applied).isEqualTo(201);
+        long oldApply = membershipIdOf(fx.team().id(), fx.org().id());
+        archiveThenUnarchiveWithoutCleanup(fx.org().id());
+        stampCreatedAtNow(oldApply);
+
+        Result result = approve(fx.xa(), fx.org().slug(), oldApply);
+
+        assertThat(result.status()).as("閉鎖前の申請の承認: %s", result).isEqualTo(404);
+        assertThat(result.errorCode()).isEqualTo("TEAM_070");
+        assertThat(statusOf(oldApply)).as("ACTIVE にしない").isNotEqualTo("ACTIVE");
+        awaitCondition("ロールバックの後に閉鎖前の申請が片付く", () -> statusOf(oldApply) == null);
+        assertThat(jobIdsOf(oldApply, CANCELLED)).hasSize(1);
+        cleanupBatch.cleanUp();
+        assertThat(rowCount(fx.team().id(), fx.org().id())).as("回復バッチの後も行は戻らない").isZero();
+
+        Result reapplied = apply(fx.ta(), fx.team().slug(), fx.org().slug());
+        assertThat(reapplied.status()).as("解除後の申請: %s", reapplied).isEqualTo(201);
+        long newApply = membershipIdOf(fx.team().id(), fx.org().id());
+        Result approved = approve(fx.xa(), fx.org().slug(), newApply);
+        assertThat(approved.status()).as("解除後の申請の承認: %s", approved).isEqualTo(200);
+        assertThat(statusOf(newApply)).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し（4巡目）・境界: API で作った招待の直後（同じ秒の中）に組織を閉鎖 → 片付けの前に解除しても、"
+            + "承諾は 404 TEAM_070 で拒み ACTIVE にせず、ロールバックの後に片付ける。解除後の招待は承諾できる")
+    void 同じ秒の境界でも組織の閉鎖前の招待は承諾できない() throws Exception {
+        Fixture fx = fixture();
+        TeamWithAdmin inviteTeam = extraTeam();
+        Result invited = invite(fx.xa(), fx.org().slug(), inviteTeam.team().slug());
+        assertThat(invited.status()).as("招待: %s", invited).isEqualTo(201);
+        long oldInvite = membershipIdOf(inviteTeam.team().id(), fx.org().id());
+        archiveThenUnarchiveWithoutCleanup(fx.org().id());
+        stampCreatedAtNow(oldInvite);
+
+        Result result = acceptInvite(inviteTeam.admin(), inviteTeam.team().slug(), oldInvite);
+
+        assertThat(result.status()).as("閉鎖前の招待の承諾: %s", result).isEqualTo(404);
+        assertThat(result.errorCode()).isEqualTo("TEAM_070");
+        assertThat(statusOf(oldInvite)).as("ACTIVE にしない").isNotEqualTo("ACTIVE");
+        awaitCondition("ロールバックの後に閉鎖前の招待が片付く", () -> statusOf(oldInvite) == null);
+        assertThat(jobIdsOf(oldInvite, CANCELLED)).hasSize(1);
+        cleanupBatch.cleanUp();
+        assertThat(rowCount(inviteTeam.team().id(), fx.org().id())).as("回復バッチの後も行は戻らない").isZero();
+
+        Result reinvited = invite(fx.xa(), fx.org().slug(), inviteTeam.team().slug());
+        assertThat(reinvited.status()).as("解除後の招待: %s", reinvited).isEqualTo(201);
+        long newInvite = membershipIdOf(inviteTeam.team().id(), fx.org().id());
+        Result accepted = acceptInvite(inviteTeam.admin(), inviteTeam.team().slug(), newInvite);
+        assertThat(accepted.status()).as("解除後の招待の承諾: %s", accepted).isEqualTo(200);
+        assertThat(statusOf(newInvite)).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し（4巡目）・境界: API で作った申請・招待の直後（同じ秒の中）に組織を閉鎖 → 片付けの前に解除しても、"
+            + "片付け（イベントと同じ入口）と回復バッチは閉鎖前の行を消し、解除後の申請・招待は残す")
+    void 同じ秒の境界でも組織の閉鎖前のPENDINGは片付けと回復バッチで消える() throws Exception {
+        Fixture fx = fixture();
+        TeamWithAdmin applyTeam = extraTeam();
+        TeamWithAdmin inviteTeam = extraTeam();
+        TeamWithAdmin laterTeam = extraTeam();
+        OrgFx orgB = inTx(() -> newOrg(true, false, "OFF", "PUBLIC"));
+        long orgBAdmin = inTx(() -> {
+            long u = newUser();
+            makeOrgAdmin(u, orgB.id());
+            return u;
+        });
+
+        // 組織 X: 片付けの入口（cleanUpOrganization）で確かめる
+        assertThat(apply(applyTeam.admin(), applyTeam.team().slug(), fx.org().slug()).status()).isEqualTo(201);
+        assertThat(invite(fx.xa(), fx.org().slug(), inviteTeam.team().slug()).status()).isEqualTo(201);
+        long oldApply = membershipIdOf(applyTeam.team().id(), fx.org().id());
+        long oldInvite = membershipIdOf(inviteTeam.team().id(), fx.org().id());
+        // 組織 B: 回復バッチで確かめる
+        assertThat(apply(applyTeam.admin(), applyTeam.team().slug(), orgB.slug()).status()).isEqualTo(201);
+        assertThat(invite(orgBAdmin, orgB.slug(), inviteTeam.team().slug()).status()).isEqualTo(201);
+        long oldApplyB = membershipIdOf(applyTeam.team().id(), orgB.id());
+        long oldInviteB = membershipIdOf(inviteTeam.team().id(), orgB.id());
+
+        archiveThenUnarchiveWithoutCleanup(fx.org().id());
+        archiveThenUnarchiveWithoutCleanup(orgB.id());
+        for (long id : List.of(oldApply, oldInvite, oldApplyB, oldInviteB)) {
+            stampCreatedAtNow(id);
+        }
+        assertThat(apply(laterTeam.admin(), laterTeam.team().slug(), fx.org().slug()).status()).isEqualTo(201);
+        assertThat(invite(orgBAdmin, orgB.slug(), laterTeam.team().slug()).status()).isEqualTo(201);
+        long laterApply = membershipIdOf(laterTeam.team().id(), fx.org().id());
+        long laterInviteB = membershipIdOf(laterTeam.team().id(), orgB.id());
+
+        assertThat(cleanupService.cleanUpOrganization(fx.org().id())).as("閉鎖前の2件だけを消す").isEqualTo(2);
+        assertThat(statusOf(oldApply)).isNull();
+        assertThat(statusOf(oldInvite)).isNull();
+        assertThat(statusOf(laterApply)).as("解除後の申請は残る").isEqualTo("PENDING");
+
+        cleanupBatch.cleanUp();
+        assertThat(statusOf(oldApplyB)).as("回復バッチが閉鎖前の申請を拾う").isNull();
+        assertThat(statusOf(oldInviteB)).as("回復バッチが閉鎖前の招待を拾う").isNull();
+        assertThat(jobIdsOf(oldApplyB, CANCELLED)).hasSize(1);
+        assertThat(jobIdsOf(oldInviteB, CANCELLED)).hasSize(1);
+        assertThat(statusOf(laterInviteB)).as("解除後の招待は残る").isEqualTo("PENDING");
+        assertThat(statusOf(laterApply)).as("回復バッチも解除後の申請を消さない").isEqualTo("PENDING");
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し（4巡目）・境界: API で作った申請・招待の直後（同じ秒の中）にチームを閉鎖 → 片付けの前に解除しても、"
+            + "承認・承諾は 404 で拒み ACTIVE にせず、回復バッチも閉鎖前の行を消す。解除後の申請・招待は承認・承諾できる")
+    void 同じ秒の境界でもチームの閉鎖前のPENDINGは承認承諾できず片付く() throws Exception {
+        Fixture fx = fixture();
+        TeamWithAdmin inviteTeam = extraTeam();
+        TeamWithAdmin batchTeam = extraTeam();
+        assertThat(apply(fx.ta(), fx.team().slug(), fx.org().slug()).status()).isEqualTo(201);
+        assertThat(invite(fx.xa(), fx.org().slug(), inviteTeam.team().slug()).status()).isEqualTo(201);
+        assertThat(apply(batchTeam.admin(), batchTeam.team().slug(), fx.org().slug()).status()).isEqualTo(201);
+        long oldApply = membershipIdOf(fx.team().id(), fx.org().id());
+        long oldInvite = membershipIdOf(inviteTeam.team().id(), fx.org().id());
+        long oldBatch = membershipIdOf(batchTeam.team().id(), fx.org().id());
+        for (long teamId : List.of(fx.team().id(), inviteTeam.team().id(), batchTeam.team().id())) {
+            archiveTeamThenUnarchiveWithoutCleanup(teamId);
+        }
+        for (long id : List.of(oldApply, oldInvite, oldBatch)) {
+            stampCreatedAtNow(id);
+        }
+
+        Result approved = approve(fx.xa(), fx.org().slug(), oldApply);
+        assertThat(approved.status()).as("チームの閉鎖前の申請の承認: %s", approved).isEqualTo(404);
+        assertThat(approved.errorCode()).isEqualTo("TEAM_070");
+        Result accepted = acceptInvite(inviteTeam.admin(), inviteTeam.team().slug(), oldInvite);
+        assertThat(accepted.status()).as("チームの閉鎖前の招待の承諾: %s", accepted).isEqualTo(404);
+        assertThat(accepted.errorCode()).isEqualTo("TEAM_070");
+        assertThat(statusOf(oldApply)).isNotEqualTo("ACTIVE");
+        assertThat(statusOf(oldInvite)).isNotEqualTo("ACTIVE");
+        awaitCondition("ロールバックの後に閉鎖前の申請・招待が片付く",
+                () -> statusOf(oldApply) == null && statusOf(oldInvite) == null);
+
+        assertThat(statusOf(oldBatch)).as("イベントを伴わない行は回復バッチまで残る").isEqualTo("PENDING");
+        cleanupBatch.cleanUp();
+        assertThat(statusOf(oldBatch)).as("回復バッチがチームの閉鎖前の申請を拾う").isNull();
+        UUID job = singleJob(oldBatch, CANCELLED);
+        assertThat(jobRow(job).get("scope_type")).isEqualTo("ORGANIZATION_ADMINS");
+
+        Result reapplied = apply(fx.ta(), fx.team().slug(), fx.org().slug());
+        assertThat(reapplied.status()).as("解除後の申請: %s", reapplied).isEqualTo(201);
+        long newApply = membershipIdOf(fx.team().id(), fx.org().id());
+        assertThat(approve(fx.xa(), fx.org().slug(), newApply).status()).as("解除後の申請の承認").isEqualTo(200);
+        Result reinvited = invite(fx.xa(), fx.org().slug(), inviteTeam.team().slug());
+        assertThat(reinvited.status()).as("解除後の招待: %s", reinvited).isEqualTo(201);
+        long newInvite = membershipIdOf(inviteTeam.team().id(), fx.org().id());
+        assertThat(acceptInvite(inviteTeam.admin(), inviteTeam.team().slug(), newInvite).status())
+                .as("解除後の招待の承諾").isEqualTo(200);
+        assertThat(statusOf(newApply)).isEqualTo("ACTIVE");
+        assertThat(statusOf(newInvite)).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    @DisplayName("2-D 差し戻し（4巡目）・境界: 他ドメインの tx からの「アーカイブ → 解除」を API で作った申請の直後に1つの tx で行っても"
+            + "（片付けはどちらもコミット後）、チームの世代が進んで閉鎖前の申請は片付き ACTIVE にならない")
+    void 同じtxでアーカイブと解除をしても閉鎖前の申請は片付く() throws Exception {
+        Fixture fx = fixture();
+        assertThat(apply(fx.ta(), fx.team().slug(), fx.org().slug()).status()).isEqualTo(201);
+        long oldApply = membershipIdOf(fx.team().id(), fx.org().id());
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            teamService.archiveTeamDeferringAffiliationCleanup(fx.team().id());
+            teamService.unarchiveTeamDeferringAffiliationCleanup(fx.team().id());
+        });
+        assertThat(teamArchived(fx.team().id())).isFalse();
+        assertThat(generationOf("teams", fx.team().id())).as("アーカイブで +1・解除で戻らない").isEqualTo(1L);
+
+        awaitCondition("コミット後に閉鎖前の申請が片付く", () -> statusOf(oldApply) == null);
+        assertThat(jobIdsOf(oldApply, CANCELLED)).hasSize(1);
+        Result reapplied = apply(fx.ta(), fx.team().slug(), fx.org().slug());
+        assertThat(reapplied.status()).as("解除後の申請: %s", reapplied).isEqualTo(201);
+        assertThat(cleanupService.cleanUpTeam(fx.team().id())).as("解除後の申請は消さない").isZero();
     }
 }

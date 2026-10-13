@@ -755,7 +755,10 @@ public class TeamService {
             @CacheEvict(value = "teamFriendList", allEntries = true)
     })
     public void deleteTeam(Long teamId, Long userId) {
-        TeamEntity team = findTeamOrThrow(teamId);
+        // F01.2.1 §4.5: 閉鎖の世代番号（closure_generation）をチーム行のロックの下で進める。申請・招待の作成（どちらも最初に
+        // チーム行を取る）と直列化され、削除より前に作られた PENDING は必ず古い世代を持つ
+        TeamEntity team = teamRepository.findByIdForUpdate(teamId)
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
         team.softDelete();
 
         // 監査ログ用イベント発行
@@ -847,8 +850,9 @@ public class TeamService {
      *
      * <p>解除そのものは {@link #unarchiveTeam} と同じ（チーム行のロック）だが、加盟（PENDING）の片付けを呼び出し元の
      * トランザクションに持ち込まない（CLAUDE.md 原則5・D-3T）。代わりに {@link TeamUnarchivedEvent} を発行し、team ドメインが
-     * コミット後に自分のトランザクションで、チームの最後の閉鎖（{@code teams.last_closed_at}。解除しても消えない）より前に
-     * 作られた PENDING を片付ける（{@code TeamOrgLifecycleListener}。取りこぼしは {@code TeamOrgLifecycleCleanupBatch} が拾う）。
+     * コミット後に自分のトランザクションで、チームの閉鎖より前に作られた PENDING（記録したチームの世代が
+     * {@code teams.closure_generation} より古い行。世代は解除しても戻らない）を片付ける
+     * （{@code TeamOrgLifecycleListener}。取りこぼしは {@code TeamOrgLifecycleCleanupBatch} が拾う）。
      * 片付けまでの間に閉鎖前の PENDING を承認・承諾しようとしても、同じ規則で無効として拒む（ACTIVE にしない。§4.5）。</p>
      */
     @Transactional

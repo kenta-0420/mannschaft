@@ -2,7 +2,6 @@ package com.mannschaft.app.team.service;
 
 import com.mannschaft.app.organization.TeamApplicationGroupMode;
 
-import java.time.Instant;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -118,12 +117,12 @@ public interface TeamAffiliationOrganizationPort {
      * @param applicationEnabled チームからの加盟申請を受け付けているか
      * @param groupsEnabled      チームグループ機能が有効か
      * @param groupMode          申請時のグループ選択の<b>保存値</b>（実効値は {@link #effectiveGroupMode()}）
-     * @param lastClosedAt       最後にアーカイブまたは論理削除した瞬間（{@code organizations.last_closed_at}。解除・復元しても
-     *                           消えない。一度も閉じていなければ null）
+     * @param closureGeneration  閉鎖の世代番号（{@code organizations.closure_generation}。アーカイブ・論理削除のたびに +1、
+     *                           解除・復元では変えない。加盟の PENDING は作成時点のこの値を記録する）
      */
     record OrganizationAffiliationState(Long id, String slug, String name, boolean archived,
                                         boolean applicationEnabled, boolean groupsEnabled,
-                                        TeamApplicationGroupMode groupMode, Instant lastClosedAt) {
+                                        TeamApplicationGroupMode groupMode, long closureGeneration) {
 
         /** 実効モード（§5.5）: グループ機能が off のときは保存値にかかわらず OFF として扱う。 */
         public TeamApplicationGroupMode effectiveGroupMode() {
@@ -131,11 +130,12 @@ public interface TeamAffiliationOrganizationPort {
         }
 
         /**
-         * 指定の時刻に作られた PENDING が、組織の最後の閉鎖より前に作られたか（F01.2.1 §4.5。
-         * {@link TeamOrgClosureWatermark} と同じ規則）。承認・承諾は、これが true の PENDING を無効として扱う。
+         * 指定の世代を記録した PENDING の作成の後に、組織が閉鎖されたか（F01.2.1 §4.5。{@link TeamOrgClosureGeneration} と同じ規則）。
+         *
+         * @param recordedGeneration 加盟行が作成時点に記録した組織の世代
          */
-        public boolean createdBeforeLastClosure(java.time.LocalDateTime createdAt) {
-            return TeamOrgClosureWatermark.createdBefore(createdAt, lastClosedAt);
+        public boolean closedSince(long recordedGeneration) {
+            return TeamOrgClosureGeneration.closedSince(recordedGeneration, closureGeneration);
         }
     }
 
@@ -147,11 +147,11 @@ public interface TeamAffiliationOrganizationPort {
      * @param name         組織名（取消の通知の文面に使う。論理削除済みでも引ける）
      * @param archived     アーカイブ済みか
      * @param deleted      論理削除済みか
-     * @param lastClosedAt 最後にアーカイブまたは論理削除した瞬間（{@code organizations.last_closed_at}。解除・復元しても消えない。
-     *                     一度も閉じていなければ null）
+     * @param closureGeneration 閉鎖の世代番号（{@code organizations.closure_generation}。アーカイブ・論理削除のたびに +1、
+     *                          解除・復元では変えない）
      */
     record OrganizationClosureState(Long id, String slug, String name, boolean archived, boolean deleted,
-                                    Instant lastClosedAt) {
+                                    long closureGeneration) {
 
         /** 申請・招待を受け付けない状態（アーカイブ済みか論理削除済み）か。 */
         public boolean closed() {
@@ -159,13 +159,15 @@ public interface TeamAffiliationOrganizationPort {
         }
 
         /**
-         * 指定の時刻に作られた PENDING が、最後の閉鎖（アーカイブ・論理削除）より前に作られたか（F01.2.1 §4.5）。
+         * 指定の世代を記録した PENDING の作成の後に、組織が閉鎖（アーカイブ・論理削除）されたか（F01.2.1 §4.5）。
          * 片付けの前にアーカイブ解除・復元されても、閉鎖より前の申請・招待はこれで見分けて消す。
-         * 規則は {@link TeamOrgClosureWatermark}（承認・承諾の判定と同じ）。閉鎖の後に作られた行（解除後の申請・招待）は
-         * 必ず false になる（同じ秒に作られた閉鎖前の行は見分けられない）。
+         * 規則は {@link TeamOrgClosureGeneration}（承認・承諾の判定と同じ）。閉鎖の後に作られた行（解除後の申請・招待）は
+         * いまの世代を記録しているので必ず false になる（作成と閉鎖が同じ秒でも見分けられる）。
+         *
+         * @param recordedGeneration 加盟行が作成時点に記録した組織の世代
          */
-        public boolean createdBeforeLastClosure(java.time.LocalDateTime createdAt) {
-            return TeamOrgClosureWatermark.createdBefore(createdAt, lastClosedAt);
+        public boolean closedSince(long recordedGeneration) {
+            return TeamOrgClosureGeneration.closedSince(recordedGeneration, closureGeneration);
         }
     }
 

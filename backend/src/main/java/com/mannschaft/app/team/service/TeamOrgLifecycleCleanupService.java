@@ -35,12 +35,12 @@ import java.util.stream.Collectors;
  *       組織がまだ閉じていれば、それらは閉鎖より前の申請・招待である（閉じた組織への申請は組織行のロックの下で拒否され、
  *       招待はコミット後の読み直しで取り下げられる。§6.9）。</li>
  *   <li>アーカイブも論理削除もされていなければ、解除後の申請・招待は消さない（アーカイブ → 解除 → 新しい申請、の後に古い契機で
- *       呼ばれても、解除後の申請を消さない）。ただし<b>閉鎖より前の</b> PENDING は解除で復元しない（§4.5）: 組織側は、組織が
- *       最後に閉じた時刻（{@code organizations.last_closed_at}。解除・復元しても消えない）より前に作られた PENDING を消す。
- *       チーム側も同じ規則（{@code teams.last_closed_at}）で見分ける。加えてチーム自身のアーカイブ解除
+ *       呼ばれても、解除後の申請を消さない）。ただし<b>閉鎖より前の</b> PENDING は解除で復元しない（§4.5）: 組織側は、
+ *       PENDING が作成時点に記録した組織の閉鎖の世代が、組織のいまの世代（{@code organizations.closure_generation}。閉鎖のたびに
+ *       +1、解除・復元では戻らない）より古い行を消す。チーム側も同じ規則（{@code teams.closure_generation}）で見分ける。加えてチーム自身のアーカイブ解除
  *       （{@code TeamService#unarchiveTeam}）はチーム行のロックの下で残った PENDING を同じ tx で消し（{@link #cancelPendingOfArchivedTeam}）、
  *       論理削除の取消（{@code TeamService#restoreTeam}）は復元の前に削除の片付けを同じ tx で済ませる。</li>
- *   <li>承認・承諾も同じ規則（{@link TeamOrgClosureWatermark}）で閉鎖前の PENDING を無効として拒み（ACTIVE にしない）、
+ *   <li>承認・承諾も同じ規則（{@link TeamOrgClosureGeneration}）で閉鎖前の PENDING を無効として拒み（ACTIVE にしない）、
  *       ロールバックの後にこの片付けを呼ぶ（{@code TeamOrgLifecycleListener#onStalePendingDetected}）。</li>
  *   <li>同じ契機で何度呼ばれても結果は同じ（消す行が無ければ 0 件・通知なし）。</li>
  * </ul>
@@ -65,9 +65,9 @@ import java.util.stream.Collectors;
  *   <tr><td>組織のアーカイブ</td><td>{@link #cleanUpOrganization}</td><td>削除・チームへ通知</td><td>残す</td><td>残す</td></tr>
  *   <tr><td>組織の論理削除</td><td>同上</td><td>削除・チームへ通知</td><td>触らない（対象外）</td><td>物理削除</td></tr>
  *   <tr><td>チームのアーカイブ（チーム自身の API）</td><td>{@link #cancelPendingOfArchivedTeam}（{@code TeamService#archiveTeam} と同じ tx）</td><td>削除・組織へ通知</td><td>残す</td><td>残す</td></tr>
- *   <tr><td>組織のアーカイブ解除・復元（片付けの前）</td><td>{@link #cleanUpOrganization}</td><td>最後の閉鎖より前に作られた行だけ削除・チームへ通知</td><td>残す</td><td>残す</td></tr>
+ *   <tr><td>組織のアーカイブ解除・復元（片付けの前）</td><td>{@link #cleanUpOrganization}</td><td>閉鎖より前に作られた行（記録した世代が古い行）だけ削除・チームへ通知</td><td>残す</td><td>残す</td></tr>
  *   <tr><td>チームのアーカイブ解除（チーム自身の API・片付けの前）</td><td>{@link #cancelPendingOfArchivedTeam}（{@code TeamService#unarchiveTeam} と同じ tx・解除の後）</td><td>削除・組織へ通知</td><td>残す</td><td>残す</td></tr>
- *   <tr><td>チームのアーカイブ解除（システム管理者の強制解除など他ドメインの tx から・片付けの前）</td><td>{@link #cleanUpTeam}（コミット後）</td><td>最後の閉鎖より前に作られた行だけ削除・組織へ通知</td><td>残す</td><td>残す</td></tr>
+ *   <tr><td>チームのアーカイブ解除（システム管理者の強制解除など他ドメインの tx から・片付けの前）</td><td>{@link #cleanUpTeam}（コミット後）</td><td>閉鎖より前に作られた行（記録した世代が古い行）だけ削除・組織へ通知</td><td>残す</td><td>残す</td></tr>
  *   <tr><td>チームの論理削除の取消（片付けの前）</td><td>{@link #cleanUpTeam}（{@code TeamService#restoreTeam} と同じ tx・復元の前）</td><td>削除・組織へ通知</td><td>削除</td><td>物理削除</td></tr>
  *   <tr><td>チームのアーカイブ（後継者不在の自動アーカイブなど他ドメインの tx から）</td><td>{@link #cleanUpTeam}（コミット後）</td><td>削除・組織へ通知</td><td>残す</td><td>残す</td></tr>
  *   <tr><td>チームの論理削除</td><td>{@link #cleanUpTeam}</td><td>削除・組織へ通知</td><td>削除</td><td>物理削除</td></tr>
@@ -132,8 +132,8 @@ public class TeamOrgLifecycleCleanupService {
      * <ul>
      *   <li>論理削除済み（または行が無い）なら、PENDING・ACTIVE・制限を消し、PENDING の相手（組織 ADMIN）へ取消を予約する</li>
      *   <li>アーカイブ済みなら、PENDING を消して相手へ取消を予約する（ACTIVE・制限は残す）</li>
-     *   <li>どちらでもなければ（アーカイブ解除・復元済み）、<b>最後の閉鎖より前に作られた</b> PENDING
-     *       （{@code created_at < teams.last_closed_at}）だけを消して相手へ取消を予約する（他ドメインの tx からのアーカイブの
+     *   <li>どちらでもなければ（アーカイブ解除・復元済み）、<b>閉鎖より前に作られた</b> PENDING
+     *       （記録したチームの世代 &lt; {@code teams.closure_generation}）だけを消して相手へ取消を予約する（他ドメインの tx からのアーカイブの
      *       片付けの前に解除されても、閉鎖より前の申請・招待を残さない。§4.5。解除後の申請・招待は消さない）</li>
      * </ul>
      *
@@ -147,12 +147,12 @@ public class TeamOrgLifecycleCleanupService {
         String teamName = locked.map(TeamEntity::getName).orElse(null);
         List<TeamOrgMembershipEntity> rows = membershipRepository.findAllByTeamIdForUpdate(teamId);
         if (!deleted && !archived) {
-            // アーカイブ解除・復元済み。最後の閉鎖より前に作られた PENDING だけを消す（チーム行のロックの下なので、
-            // 解除後の申請・招待は created_at が閉鎖より後であり、消さない）
-            java.time.Instant lastClosedAt = locked.map(TeamEntity::getLastClosedAt).orElse(null);
+            // アーカイブ解除・復元済み。閉鎖より前に作られた PENDING（記録したチームの世代がいまの世代より古い行）だけを消す
+            // （チーム行のロックの下なので世代は動かない。解除後の申請・招待はいまの世代を記録しているので消さない）
+            long teamGeneration = locked.map(TeamEntity::getClosureGeneration).orElse(0L);
             List<TeamOrgMembershipEntity> beforeClosure = rows.stream()
                     .filter(m -> m.getStatus() == TeamOrgMembershipEntity.Status.PENDING)
-                    .filter(m -> TeamOrgClosureWatermark.createdBefore(m.getCreatedAt(), lastClosedAt))
+                    .filter(m -> m.createdBeforeTeamClosure(teamGeneration))
                     .toList();
             int removed = deleteAndNotifyOrganizations(teamName, beforeClosure, List.of());
             if (removed > 0) {
@@ -185,8 +185,8 @@ public class TeamOrgLifecycleCleanupService {
      * <ul>
      *   <li>論理削除済み（または行が無い）なら、制限を物理削除し、PENDING を消して相手（チームの加盟操作者）へ取消を予約する</li>
      *   <li>アーカイブ済みなら、PENDING を消して相手へ取消を予約する（ACTIVE・制限は残す）</li>
-     *   <li>どちらでもなければ（アーカイブ解除・復元済み）、<b>最後の閉鎖より前に作られた</b> PENDING
-     *       （{@code created_at < organizations.last_closed_at}）だけを消して相手へ取消を予約する。片付けの前に解除されても
+     *   <li>どちらでもなければ（アーカイブ解除・復元済み）、<b>閉鎖より前に作られた</b> PENDING
+     *       （記録した組織の世代 &lt; {@code organizations.closure_generation}）だけを消して相手へ取消を予約する。片付けの前に解除されても
      *       閉鎖より前の申請・招待を残さず（解除で復元しない。§4.5）、解除後の新しい申請・招待は消さない</li>
      * </ul>
      * ACTIVE には触らない（組織の論理削除時の ACTIVE の扱いは 2-D の対象外）。
@@ -200,15 +200,15 @@ public class TeamOrgLifecycleCleanupService {
         List<TeamOrgMembershipEntity> pending = membershipRepository.findPendingByOrganizationIdForUpdate(organizationId);
         // 2. ロックの後で、組織の最新のコミット済みの状態を組織ドメインの新しい tx で確かめる。ロックした行はこの時点より
         //    前に作られた行だけなので、まだアーカイブ・論理削除済みなら、それらは閉鎖より前の申請・招待である。
-        //    解除・復元済みなら、作成日時を組織の最後の閉鎖時刻（解除しても消えない）と比べて見分ける
+        //    解除・復元済みなら、行が記録した組織の閉鎖の世代を組織のいまの世代（解除しても戻らない）と比べて見分ける
         Optional<TeamAffiliationOrganizationPort.OrganizationClosureState> state =
                 organizationPort.findClosureStateIncludingDeleted(organizationId);
         if (state.isPresent() && !state.get().closed()) {
             // アーカイブ解除・復元済み。最後の閉鎖より前に作られた PENDING だけを消す（片付けの前に解除されても
-            // 閉鎖より前の申請・招待を残さない。解除後の申請・招待は created_at が閉鎖より後なので残る）
+            // 閉鎖より前の申請・招待を残さない。解除後の申請・招待はいまの世代を記録しているので残る）
             TeamAffiliationOrganizationPort.OrganizationClosureState reopened = state.get();
             List<TeamOrgMembershipEntity> beforeClosure = pending.stream()
-                    .filter(m -> reopened.createdBeforeLastClosure(m.getCreatedAt()))
+                    .filter(m -> reopened.closedSince(m.getOrgClosureGeneration()))
                     .toList();
             int removed = deleteAndNotifyTeams(organizationId, beforeClosure, reopened.name());
             if (removed > 0) {

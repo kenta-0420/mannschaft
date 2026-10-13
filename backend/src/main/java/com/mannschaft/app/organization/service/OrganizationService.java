@@ -716,7 +716,10 @@ public class OrganizationService {
     // TODO: OrganizationドメインとRoleドメインをまたいでいる。将来はOrganizationDeletedEventで分離予定
     @CacheEvict(value = "org-detail", allEntries = true)
     public void deleteOrganization(Long orgId, Long userId) {
-        OrganizationEntity org = findOrganizationOrThrow(orgId);
+        // F01.2.1 §4.5: 閉鎖の世代番号（closure_generation）を組織行のロックの下で進める。申請の作成（チーム行 → 組織行）・
+        // 招待のコミット後の読み直し（組織行の共有ロック）と直列化され、削除より前に作られた PENDING は必ず古い世代を持つ
+        OrganizationEntity org = organizationRepository.findByIdForUpdate(orgId)
+                .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
         org.softDelete();
 
         // 招待トークン一括失効
@@ -775,7 +778,8 @@ public class OrganizationService {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         org.unarchive();
         // F01.2.1 §4.5: 閉鎖の片付けがまだ済んでいなくても、閉鎖より前の PENDING は解除で復元しない。片付けは team ドメインが
-        // AFTER_COMMIT で行う（最後の閉鎖 last_closed_at より前に作られた行だけを消す。解除後の申請・招待には触れない）
+        // AFTER_COMMIT で行う（閉鎖の世代番号 closure_generation が記録より進んだ行＝閉鎖より前に作られた行だけを消す。
+        // 解除後の申請・招待はいまの世代を記録しているので触れない）
         eventPublisher.publishEvent(new OrganizationReopenedEvent(orgId));
         log.info("組織アーカイブ解除完了: orgId={}", orgId);
     }

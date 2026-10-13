@@ -345,6 +345,9 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
      * {@code TIMESTAMPADD} で UTC 壁時計へ戻す（2-B2 の承認・{@code TeamOrgAffiliationRestrictionRepository} と同じ作法）。
      * 作成した行の ID は {@link #lastInsertId()} で読む。</p>
      *
+     * <p>作成時点の組織・チームの閉鎖の世代（{@code org_closure_generation}・{@code team_closure_generation}）を記録する
+     * （F01.2.1 §4.5・{@code TeamOrgClosureGeneration}）。</p>
+     *
      * @param groupId 加盟後に所属させるグループ（未分類なら {@link #insertPendingInviteUnassigned} を使う）
      * @return 挿入した行数（1）
      */
@@ -352,19 +355,22 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     @Query(value = """
             INSERT INTO team_org_memberships
                 (team_id, organization_id, status, direction, group_id, message, invited_by,
-                 invited_at, created_at, updated_at)
+                 invited_at, created_at, updated_at, org_closure_generation, team_closure_generation)
             VALUES
                 (:teamId, :organizationId, 'PENDING', 'ORG_INVITE', :groupId, :message, :invitedBy,
                  TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
                  TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
-                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'))
+                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
+                 :orgClosureGeneration, :teamClosureGeneration)
             """, nativeQuery = true)
     int insertPendingInvite(@Param("teamId") Long teamId,
                             @Param("organizationId") Long organizationId,
                             @Param("groupId") java.util.UUID groupId,
                             @Param("message") String message,
                             @Param("invitedBy") Long invitedBy,
-                            @Param("invitedAtEpochSecond") long invitedAtEpochSecond);
+                            @Param("invitedAtEpochSecond") long invitedAtEpochSecond,
+                            @Param("orgClosureGeneration") long orgClosureGeneration,
+                            @Param("teamClosureGeneration") long teamClosureGeneration);
 
     /**
      * {@link #insertPendingInvite} の未分類（{@code group_id = NULL}）版。型のない null のバインドを避けるため分けている。
@@ -375,18 +381,21 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     @Query(value = """
             INSERT INTO team_org_memberships
                 (team_id, organization_id, status, direction, group_id, message, invited_by,
-                 invited_at, created_at, updated_at)
+                 invited_at, created_at, updated_at, org_closure_generation, team_closure_generation)
             VALUES
                 (:teamId, :organizationId, 'PENDING', 'ORG_INVITE', NULL, :message, :invitedBy,
                  TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
                  TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
-                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'))
+                 TIMESTAMPADD(SECOND, :invitedAtEpochSecond, '1970-01-01 00:00:00'),
+                 :orgClosureGeneration, :teamClosureGeneration)
             """, nativeQuery = true)
     int insertPendingInviteUnassigned(@Param("teamId") Long teamId,
                                       @Param("organizationId") Long organizationId,
                                       @Param("message") String message,
                                       @Param("invitedBy") Long invitedBy,
-                                      @Param("invitedAtEpochSecond") long invitedAtEpochSecond);
+                                      @Param("invitedAtEpochSecond") long invitedAtEpochSecond,
+                                      @Param("orgClosureGeneration") long orgClosureGeneration,
+                                      @Param("teamClosureGeneration") long teamClosureGeneration);
 
     /**
      * 同じ接続で直前に INSERT した行の AUTO_INCREMENT 値（{@link #insertPendingInvite} の直後に同じトランザクションで呼ぶ）。
@@ -660,27 +669,29 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
     int markInviteNotified(@Param("id") Long id, @Param("epochSecond") long epochSecond);
 
     /**
-     * 片付けの回復バッチ（{@code TeamOrgLifecycleCleanupBatch}）: PENDING の行がある組織ごとに、最も古い PENDING の作成日時を
-     * 組織 ID の昇順に返す（組織の状態は organization ドメインのポートで確かめる。組織の表は team ドメインから JOIN しない）。
-     * 「最後の閉鎖より前に作られた PENDING が残っている」組織を、アーカイブ解除済みでも拾うのに使う（§4.5）。
+     * 片付けの回復バッチ（{@code TeamOrgLifecycleCleanupBatch}）: PENDING の行がある組織ごとに、PENDING が記録した組織の
+     * 閉鎖の世代の最小値を組織 ID の昇順に返す（組織の状態は organization ドメインのポートで確かめる。組織の表は team ドメインから
+     * JOIN しない）。「閉鎖より前に作られた PENDING が残っている」組織（最小値 &lt; 組織のいまの世代）を、アーカイブ解除済みでも
+     * 拾うのに使う（§4.5）。
      */
-    @Query("SELECT m.organizationId AS organizationId, MIN(m.createdAt) AS oldestCreatedAt "
+    @Query("SELECT m.organizationId AS organizationId, MIN(m.orgClosureGeneration) AS oldestOrgClosureGeneration "
         + "FROM TeamOrgMembershipEntity m "
         + "WHERE m.status = com.mannschaft.app.team.entity.TeamOrgMembershipEntity$Status.PENDING "
         + "GROUP BY m.organizationId ORDER BY m.organizationId")
-    List<OldestPendingByOrganizationRow> findOldestPendingCreatedAtByOrganization();
+    List<PendingClosureGenerationByOrganizationRow> findOldestPendingOrgClosureGenerationByOrganization();
 
     /**
      * 片付けの回復バッチ: 片付けが残っているチームの ID を昇順に返す。アーカイブ済みのチームの PENDING と、
      * 論理削除済み（または行の無い）チームの加盟（PENDING・ACTIVE とも）と、アーカイブ解除・復元済みのチームに残った
-     * 最後の閉鎖（{@code teams.last_closed_at}）より前に作られた PENDING が対象（チームの表は同じ team ドメイン。
-     * {@code @SQLRestriction} を通さず削除済みを見るためネイティブで読む。時刻は DB の列どうしで比べ、Java の値を束縛しない）。
+     * 閉鎖より前に作られた PENDING（記録したチームの世代 &lt; {@code teams.closure_generation}）が対象（チームの表は同じ
+     * team ドメイン。{@code @SQLRestriction} を通さず削除済みを見るためネイティブで読む）。
      */
     @Query(value = "SELECT DISTINCT m.team_id FROM team_org_memberships m "
             + "LEFT JOIN teams t ON t.id = m.team_id "
             + "WHERE t.id IS NULL OR t.deleted_at IS NOT NULL "
             + "OR (t.archived_at IS NOT NULL AND m.status = 'PENDING') "
-            + "OR (m.status = 'PENDING' AND m.created_at < t.last_closed_at) ORDER BY m.team_id", nativeQuery = true)
+            + "OR (m.status = 'PENDING' AND m.team_closure_generation < t.closure_generation) ORDER BY m.team_id",
+            nativeQuery = true)
     List<Number> findTeamIdsNeedingLifecycleCleanup();
 
     /**

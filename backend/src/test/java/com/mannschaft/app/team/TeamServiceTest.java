@@ -395,12 +395,13 @@ class TeamServiceTest {
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
                     .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
             team.archive();
+            assertThat(team.getClosureGeneration()).as("アーカイブ（閉鎖）で閉鎖の世代が進む").isEqualTo(1L);
             given(teamRepository.findByIdForUpdate(TEAM_ID)).willReturn(Optional.of(team));
 
             service.unarchiveTeamDeferringAffiliationCleanup(TEAM_ID);
 
             assertThat(team.getArchivedAt()).isNull();
-            assertThat(team.getLastClosedAt()).as("最後の閉鎖時刻は解除しても残る").isNotNull();
+            assertThat(team.getClosureGeneration()).as("閉鎖の世代は解除しても戻らない").isEqualTo(1L);
             org.mockito.Mockito.verifyNoInteractions(teamOrgLifecycleCleanupService);
             org.mockito.ArgumentCaptor<Object> event = org.mockito.ArgumentCaptor.forClass(Object.class);
             org.mockito.Mockito.verify(eventPublisher).publishEvent(event.capture());

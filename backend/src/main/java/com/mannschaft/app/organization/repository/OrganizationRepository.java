@@ -211,7 +211,7 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
 
     /**
      * 論理削除済みを含めて ID 集合で検索する（F01.2.1 2-D・加盟の片付けの回復バッチの候補選び）。
-     * 時刻の列（{@code last_closed_at} など）を JPA と同じ変換で読むため、Entity で返す。
+     * 閉鎖の状態（{@code archived_at}・{@code deleted_at}・{@code closure_generation}）を JPA と同じ変換で読むため、Entity で返す。
      */
     @Query(value = "SELECT * FROM organizations WHERE id IN (:ids)", nativeQuery = true)
     List<OrganizationEntity> findAllByIdInIncludingDeleted(@Param("ids") java.util.Collection<Long> ids);
