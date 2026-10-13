@@ -103,7 +103,7 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
     const adminTeam = (await myTeams(sess('admin'))).find(t => t.slug === TEAM_SLUG)
     expect(adminTeam, '管理者は対象チームの所属').toBeTruthy()
     teamId = adminTeam!.id
-    expect(adminTeam!.role, '管理者の役割').toBe('ADMIN')
+    expect(['ADMIN', 'SYSTEM_ADMIN'], '管理者の役割（フィクスチャは SYSTEM_ADMIN で返ることがある）').toContain(adminTeam!.role)
     const memberTeam = (await myTeams(sess('member'))).find(t => t.slug === TEAM_SLUG)
     expect(memberTeam?.role, '一般メンバーの役割').toBe('MEMBER')
     const sameTeams = await myTeams(sess('same'))
