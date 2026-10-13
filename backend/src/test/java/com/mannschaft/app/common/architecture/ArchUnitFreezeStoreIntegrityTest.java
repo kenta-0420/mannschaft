@@ -860,9 +860,16 @@ class ArchUnitFreezeStoreIntegrityTest {
     // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
     //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
     //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 2）。
-    // G2(recruitment)との合算後のmain実数7189から、CMP-260821-1027のcancel/agreeが解消したroleの
-    //   RoleRepository/UserRoleRepository到達4行を除いた7185（origin/main）から本戦役の -2 を引いて 7183（ストア実数と一致）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7183;
+    // G2(recruitment)との合算: 7213 - 24 = 7189（ストア実数と一致）。
+    // main: CMP-260821-1027 の cancel/agree が解消した role の RoleRepository/UserRoleRepository 到達4行を除外し 7185。
+    // Issue #2997 G6(shift / ticket): 付随通知を業務TXから切り離し 7185 -> 7163（-22）。
+    //   ShiftPreferenceReminderBatchService.processReminders は @Transactional を外したため 7、
+    //   triggerManualReminder は通知を AFTER_COMMIT リスナーへ移したため UserRepository と通知系4の 5
+    //   （UserRoleRepository・AuditLogRepository への到達は監査ログ・未提出者抽出という業務由来のため残す）、
+    //   TicketExpiryBatchService.expireTickets は @Transactional を外したため 5、sendExpiryNotifications は
+    //   通知を呼ばなくなったため 5。追加 0・削除 22（解消済みの main 側4行は残していない）。
+    // CMP-261012-0313: main の 7163 から SkillMatrixService を主語とする 2 行が解消し 7161（ストア実数と一致）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7161;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
