@@ -34,6 +34,8 @@ const state = {
   roleName: null as string | null,
   /** 指定時は isScopeAdmin を直接指定する（未指定は isAdmin に従う）。 */
   scopeAdmin: null as boolean | null,
+  teamsLoading: false,
+  teamsError: false,
 }
 const refreshOrgTeams = vi.fn()
 // useRouter を差し替えると Nuxt 本体（afterEach 等）が壊れるため、実ルーターのメソッドを spy する。
@@ -51,6 +53,8 @@ vi.mock('~/composables/useOrgShellContext', () => ({
     // 対象組織の ADMIN 割当の有無（roleName とは独立。SYSTEM_ADMIN との兼任は roleName=SYSTEM_ADMIN かつ true）。
     isScopeAdmin: computed(() => state.scopeAdmin ?? state.isAdmin),
     adminLens: ref(state.adminLens),
+    orgTeamsLoading: computed(() => state.teamsLoading),
+    orgTeamsError: computed(() => state.teamsError),
     refreshOrgTeams,
   }),
 }))
@@ -68,9 +72,9 @@ const viewStub = (testid: string) => ({
 
 const stubs = {
   MemberTeamsTeamList: {
-    props: ['orgSlug', 'teams', 'canAssign'],
-    emits: ['changed'],
-    template: `<div data-testid="org-team-grid" :data-can-assign="String(canAssign)"><button data-testid="teamlist-changed" @click="$emit('changed')" /></div>`,
+    props: ['orgSlug', 'teams', 'canAssign', 'refreshing', 'loadFailed'],
+    emits: ['changed', 'retry'],
+    template: `<div data-testid="org-team-grid" :data-can-assign="String(canAssign)" :data-refreshing="String(refreshing)" :data-load-failed="String(loadFailed)"><button data-testid="teamlist-changed" @click="$emit('changed')" /><button data-testid="teamlist-retry" @click="$emit('retry')" /></div>`,
   },
   NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
   MemberTeamsApplicationsView: viewStub('applications-view'),
@@ -93,6 +97,8 @@ describe('pages/organizations/[slug]/member-teams.vue', () => {
     state.query = {}
     state.roleName = null
     state.scopeAdmin = null
+    state.teamsLoading = false
+    state.teamsError = false
     refreshOrgTeams.mockReset()
     refreshOrgTeams.mockResolvedValue(undefined)
     replaceSpy.mockReset()
@@ -270,6 +276,17 @@ describe('pages/organizations/[slug]/member-teams.vue', () => {
       const wrapper = await mountPage()
       await wrapper.find('[data-testid="teamlist-changed"]').trigger('click')
       await flushPromises()
+      expect(refreshOrgTeams).toHaveBeenCalledTimes(1)
+    })
+
+    it('MT-20: 所属チームの取得状態（取得中・失敗）を一覧へ渡し、再試行で取り直す', async () => {
+      state.teamsLoading = true
+      state.teamsError = true
+      const wrapper = await mountPage()
+      const list = wrapper.find('[data-testid="org-team-grid"]')
+      expect(list.attributes('data-refreshing')).toBe('true')
+      expect(list.attributes('data-load-failed')).toBe('true')
+      await wrapper.find('[data-testid="teamlist-retry"]').trigger('click')
       expect(refreshOrgTeams).toHaveBeenCalledTimes(1)
     })
 

@@ -230,6 +230,29 @@ describe('MemberTeamsTeamList', () => {
     expect(options).not.toContain('旧組織のグループ')
   })
 
+  it('TL-17: 親が一覧を再取得している間は、割当操作（単体・選択・一括）を受け付けない', async () => {
+    const wrapper = await mountList({ canAssign: true, refreshing: true })
+    expect(wrapper.find('[data-testid="team-assign-team-2"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="team-select-team-2"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="bulk-submit"]').attributes('disabled')).toBeDefined()
+    await wrapper.setProps({ refreshing: false })
+    expect(wrapper.find('[data-testid="team-assign-team-2"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('TL-18: 一覧の取得失敗は「該当チームなし」に見せず、エラーと再試行を出す。選択は消さない', async () => {
+    const wrapper = await mountList({ canAssign: true })
+    await wrapper.find('[data-testid="team-select-team-2"]').setValue(true)
+    await wrapper.setProps({ loadFailed: true })
+    expect(wrapper.find('[data-testid="teamlist-load-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="teamlist-empty"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-testid="team-row"]')).toHaveLength(0)
+    await wrapper.find('[data-testid="teamlist-retry"]').trigger('click')
+    expect(wrapper.emitted('retry')).toHaveLength(1)
+    // 回復したら選択は残っている
+    await wrapper.setProps({ loadFailed: false })
+    expect(wrapper.find('[data-testid="bulk-selected-count"]').text()).toContain('1')
+  })
+
   it('TL-16: 一括割当に成功したら選択が空になる', async () => {
     const wrapper = await mountList({ canAssign: true })
     await wrapper.find('[data-testid="team-select-team-2"]').setValue(true)
