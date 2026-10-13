@@ -476,4 +476,34 @@ describe('テンプレート（AC-J02/J03）', () => {
     expect(latest.templateId).toBeNull()
     expect(latest.targetGroupIds).toEqual([])
   })
+
+  async function mountWaiting(): Promise<(v: unknown) => void> {
+    let release: (v: unknown) => void = () => {}
+    mockApi.mockImplementation((url: string, opts?: { method?: string }) => {
+      if (String(url).endsWith('/team-groups')) return new Promise(r => { release = r })
+      return route(url, opts)
+    })
+    latest = baseState({ targetMode: 'GROUPS' })
+    wrapper = await mountSuspended(BroadcastStep1Audience, {
+      props: {
+        modelValue: latest, scopeType: 'ORGANIZATION', scopeId: 'acme', isAdmin: true,
+        'onUpdate:modelValue': (v: WizardFormState) => { latest = v; void wrapper?.setProps({ modelValue: v }) },
+      },
+    })
+    return (v: unknown) => release(v)
+  }
+
+  it('High(3巡目): 取得待ち中に対象ロール（公開範囲）を変えたら、取得後の古いテンプレートの公開範囲で上書きされない', async () => {
+    const release = await mountWaiting()
+    ;(wrapper!.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template({ targetRole: 'PUBLIC' }))
+    await flushPromises()
+    // 取得待ちの間に、利用者が公開範囲を絞る（テンプレートは PUBLIC）
+    await wrapper!.get('#target_role_SUPPORTERS_AND_ABOVE').setValue(true)
+    await flushPromises()
+    expect(latest.targetRole).toBe('SUPPORTERS_AND_ABOVE')
+    release({ data: GROUPS, meta: { unassignedTeamCount: 2, limit: 100 } })
+    await flushPromises()
+    expect(latest.targetRole).toBe('SUPPORTERS_AND_ABOVE')
+    expect(latest.templateId).toBeNull() // 適用ごと捨てられた
+  })
 })

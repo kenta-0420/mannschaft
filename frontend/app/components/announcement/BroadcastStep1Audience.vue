@@ -37,6 +37,13 @@ const isOrg = computed(() => props.scopeType === 'ORGANIZATION')
 /** 宛先を決める項目。これらが変わると、テンプレートの応答待ち・テンプレートによる宛先復元は無効になる */
 const AUDIENCE_KEYS = ['targetMode', 'targetTeamIds', 'targetGroupIds', 'targetGroupRange', 'includeUnassigned', 'templateId'] as const
 
+/**
+ * テンプレート適用（onTemplateApply）が書き換えるフォーム項目。ここを唯一の定義とし、
+ * 世代を進める条件はこの集合から導く（適用中にこれらを利用者が変えたら、遅れて返った適用は捨てる）。
+ * onTemplateApply の next に項目を足したら、ここにも足すこと。
+ */
+const TEMPLATE_WRITTEN_KEYS = [...AUDIENCE_KEYS, 'targetRole', 'selectedChannel', 'templateEmptied'] as const satisfies readonly (keyof WizardFormState)[]
+
 /** 宛先が変わるたびに進める世代。遅れて返ったテンプレート確認の応答が、新しい選択を上書きしないための判定に使う */
 let audienceGen = 0
 
@@ -45,7 +52,7 @@ const templateEmptied = computed(() => props.modelValue.templateEmptied)
 
 function update(patch: Partial<WizardFormState>) {
   const touchesAudience = AUDIENCE_KEYS.some(k => k in patch)
-  if (touchesAudience) {
+  if (TEMPLATE_WRITTEN_KEYS.some(k => k in patch)) {
     audienceGen++
   }
   const next = { ...props.modelValue, ...patch }
