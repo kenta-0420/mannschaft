@@ -269,19 +269,21 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
     await page.getByRole('dialog').getByRole('button', { name: '作成', exact: true }).click()
     const catCard = (name: string) => page.locator('div.rounded-xl').filter({ has: page.locator('h3', { hasText: name }) })
     await expect(catCard(created), '作成したカテゴリが管理タブに出る').toBeVisible()
-    // 作成直後のカテゴリに自分の資格を API で 1 件付け、一覧の名称解決を確かめる（同一ページのまま）
-    const newCatId = (await (await ctx.request.get(`${API}/api/v1/teams/${teamId}/skill-categories`)).json() as { data: CategoryRow[] }).data.find(x => x.name === created)?.id
-    expect(newCatId, '作成したカテゴリが API にも存在する').toBeTruthy()
-    const sk = await ctx.request.post(`${API}/api/v1/teams/${teamId}/skills`, {
-      data: { skillCategoryId: newCatId, name: `${tag}-新カテゴリ資格`, issuer: `${tag}-新カテゴリ発行元` },
-    })
-    expect(sk.status(), await sk.text()).toBe(201)
+    // 作成直後のカテゴリで、画面の登録フォームから資格を登録する（選択肢に再読込なしで出ることの確認を兼ねる）。
+    // 登録成功で一覧が再取得されるので、改名の反映確認の前提がそろう
+    const newIssuer = `${tag}-新カテゴリ発行元`
     await page.getByRole('tab', { name: 'スキル一覧' }).click()
     await page.getByRole('button', { name: 'スキル登録' }).click()
-    await page.getByRole('dialog').getByRole('combobox').first().click()
+    const form = page.getByRole('dialog')
+    await form.getByRole('combobox').first().click()
     await expect(page.getByRole('option', { name: created, exact: true }), '再読込なしで登録フォームの選択肢に出る').toBeVisible()
-    await page.keyboard.press('Escape')
-    await page.getByRole('dialog').getByRole('button', { name: 'キャンセル' }).click()
+    await page.getByRole('option', { name: created, exact: true }).click()
+    await form.getByPlaceholder('例: 普通自動車免許').fill(`${tag}-新カテゴリ資格`)
+    await form.getByPlaceholder('例: 公安委員会').fill(newIssuer)
+    await form.getByRole('button', { name: '登録', exact: true }).click()
+    await expect(card(page, newIssuer), '登録した資格が一覧に出る').toBeVisible()
+    await card(page, newIssuer).scrollIntoViewIfNeeded()
+    await expect(card(page, newIssuer).getByText(created, { exact: true }), '一覧のカードに新カテゴリ名が出る').toBeVisible()
 
     // 改名 → 一覧のカテゴリ名に反映（再読込なし）
     await page.getByRole('tab', { name: 'カテゴリ管理' }).click()
@@ -290,7 +292,8 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
     await page.getByRole('dialog').getByRole('button', { name: '更新', exact: true }).click()
     await expect(catCard(renamed)).toBeVisible()
     await page.getByRole('tab', { name: 'スキル一覧' }).click()
-    await expect(card(page, `${tag}-新カテゴリ発行元`).getByText(renamed), '一覧のカテゴリ名が改名後に変わる').toBeVisible()
+    await card(page, newIssuer).scrollIntoViewIfNeeded()
+    await expect(card(page, newIssuer).getByText(renamed, { exact: true }), '一覧のカテゴリ名が改名後に変わる').toBeVisible()
     expect(await page.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload), 'ページ再読込なし').toBe(true)
 
     // 削除は確認ダイアログを経る（先に資格を消して、キャンセル→承諾の順）
