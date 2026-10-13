@@ -7,7 +7,6 @@ import com.mannschaft.app.auth.MfaEmailOtpPurpose;
 import com.mannschaft.app.auth.TwoFactorMethod;
 import com.mannschaft.app.auth.dto.BackupCodesResponse;
 import com.mannschaft.app.auth.dto.MfaEmailSendResponse;
-import com.mannschaft.app.auth.entity.MfaRecoveryTokenEntity;
 import com.mannschaft.app.auth.entity.TwoFactorAuthEntity;
 import com.mannschaft.app.auth.event.MfaEnabledEvent;
 import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
@@ -20,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -161,12 +161,8 @@ public class MfaEmailTwoFactorService {
      * Repository を直接使う。
      */
     private void revokeUnusedRecoveryTokens(Long userId) {
-        List<MfaRecoveryTokenEntity> unused = mfaRecoveryTokenRepository.findByUserIdAndUsedAtIsNull(userId);
-        if (unused.isEmpty()) {
-            return;
-        }
-        unused.forEach(MfaRecoveryTokenEntity::markUsed);
-        mfaRecoveryTokenRepository.saveAll(unused);
+        // 一括 UPDATE（current read）で最新の未使用行を失効させる（読取りビュー固定後に commit された行も漏らさない）
+        mfaRecoveryTokenRepository.revokeAllUnusedByUserId(userId, LocalDateTime.now());
     }
 
     private void assertEmailMethodEnabled() {

@@ -1,13 +1,19 @@
 package com.mannschaft.app.auth.mfa;
 
+import com.mannschaft.app.auth.MfaVerificationMethod;
+import com.mannschaft.app.auth.event.LoginSuccessEvent;
+import com.mannschaft.app.auth.event.MfaRecoveryRequestedEvent;
 import com.mannschaft.app.common.BusinessException;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +48,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("CMP-261012-0910 2FA 回復フロー（AC-39・AC-48・AC-52）")
 class MfaRecoveryFlowIT extends MfaDisableRecoveryItSupport {
+
+    /** 先行 TX を commit させずに待たせる時間（後続が行ロックで待たされることの観測窓）。 */
+    private static final Duration HOLD = Duration.ofSeconds(3);
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     // ═════════════════════════════════════════════════════════════
     // AC-39 回復メールの実 enqueue
@@ -128,28 +140,71 @@ class MfaRecoveryFlowIT extends MfaDisableRecoveryItSupport {
         }
 
         /**
-         * AC-48（Codex 検分指摘）: 回復の再要求が 2 本並列に来ても、有効な（未使用の）回復トークンは 1 本だけ。
+         * AC-48（Codex 検分指摘）: 回復の再要求が並列に来ても、有効な（未使用の）回復トークンは 1 本だけ。
          *
-         * <p>再要求は 2FA 行をロックしてから旧トークン失効 → 新トークン発行を行う。直列化されていないと、
-         * 2 本が共に「失効させる旧トークンは無い」と読んで 2 本のトークンがどちらも有効になる。</p>
+         * <p>競合の順序を固定する: 先行の再要求が新トークンを書いて回復メールのイベントを出した瞬間（commit 前）に、
+         * 後続の再要求を別スレッド（別 TX）で開始し、先行をしばらく commit させない（{@link ConcurrentOnEvent}）。</p>
+         * <ul>
+         *   <li>直列化が無い実装: 後続は先行の未 commit のトークンを見ずに失効対象「なし」と読み、先行の commit 前に
+         *       自分のトークンを発行して終わる → 未使用 2 本。</li>
+         *   <li>行ロック前に通常 SELECT（ユーザー取得等）を打つ実装: 後続の読取りビューがロック待ちの前に固定され、
+         *       先行の commit 後もその通常 SELECT からは先行のトークンが見えず、失効し損ねる → 未使用 2 本。</li>
+         * </ul>
+         * <p>正しい実装（最初の DB 読取りを 2FA 行ロックにし、失効は一括 UPDATE＝current read）では、後続は先行の
+         * commit まで待たされ、先行のトークンを失効させてから自分のトークンを発行する → 未使用 1 本。</p>
          */
         @Test
-        @DisplayName("AC-48 回復の再要求の並列2件でも有効な回復トークンは1本")
+        @DisplayName("AC-48 回復の再要求が先行のcommit待ちで並んでも有効な回復トークンは1本")
         void 回復の再要求の並列2件でも有効なトークンは1本() throws Exception {
             MfaUser u = createTotpUser();
             String session = loginForMfaSession(u);
 
-            List<String> failures = new ArrayList<>();
-            int successes = runConcurrently(
-                    () -> auth2faService.requestMfaRecovery(session),
-                    () -> auth2faService.requestMfaRecovery(session),
-                    failures);
+            try (ConcurrentOnEvent race = ConcurrentOnEvent.arm(applicationContext, MfaRecoveryRequestedEvent.class,
+                    () -> auth2faService.requestMfaRecovery(session), HOLD)) {
+                auth2faService.requestMfaRecovery(session);
 
-            assertThat(successes).as("前提: 再要求は 2 件とも受け付ける（失敗: %s）", failures).isEqualTo(2);
+                assertThat(race.fired()).as("前提: 先行の commit 前に後続を開始した").isTrue();
+                assertThat(race.completedWhileHeld()).as("後続は先行の 2FA 行ロックで待たされる（直列化）").isFalse();
+                race.follower().get(60, TimeUnit.SECONDS);
+            }
+
             Integer unused = jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM mfa_recovery_tokens WHERE user_id = ? AND used_at IS NULL",
                     Integer.class, u.userId());
             assertThat(unused).as("AC-48 有効な回復トークンは最新の 1 本だけ").isEqualTo(1);
+        }
+
+        /**
+         * 回復確認の全セッション失効（Codex 検分指摘 P1）: 回復確認が 2FA 行ロックを待っている間に、別 TX のログイン
+         * （2FA 検証）が Refresh Token を発行して commit しても、そのトークンも失効させる。
+         *
+         * <p>競合の順序を固定する: 先行の 2FA ログイン検証が Refresh Token を発行して LoginSuccessEvent を出した瞬間
+         * （commit 前・2FA 行をロック中）に回復確認を別スレッドで開始する。回復確認はトークン所有者を通常 SELECT で引いた
+         * （＝読取りビューが固定された）後に 2FA 行ロックで待たされ、先行の commit 後に進む。失効対象を通常 SELECT で
+         * 列挙する実装では、固定済みのビューから先行のトークンが見えず生き残る。</p>
+         */
+        @Test
+        @DisplayName("回復確認のロック待ち中に別TXが発行・commitしたRefresh Tokenも失効させる")
+        void 回復確認はロック待ち中に発行されたRefreshTokenも失効させる() throws Exception {
+            MfaUser u = createTotpUser();
+            String recoveryToken = requestRecoveryAndReadToken(u, loginForMfaSession(u));
+            String loginSession = loginForMfaSession(u);
+            assertThat(activeRefreshTokenCount(u.userId())).as("前提: 有効な Refresh Token なし").isZero();
+
+            try (ConcurrentOnEvent race = ConcurrentOnEvent.arm(applicationContext, LoginSuccessEvent.class,
+                    () -> auth2faService.confirmMfaRecovery(recoveryToken), HOLD)) {
+                auth2faService.validateMfaLogin(loginSession, MfaVerificationMethod.BACKUP_CODE,
+                        u.backupCodes().get(0), "203.0.113.20", USER_AGENT);
+
+                assertThat(race.fired()).as("前提: ログインの commit 前に回復確認を開始した").isTrue();
+                assertThat(race.completedWhileHeld()).as("回復確認はログイン側の 2FA 行ロックで待たされる").isFalse();
+                race.follower().get(60, TimeUnit.SECONDS);
+            }
+
+            assertThat(refreshTokenCount(u.userId())).as("前提: ログイン分と回復確認分の 2 本が発行された").isEqualTo(2);
+            assertThat(activeRefreshTokenCount(u.userId()))
+                    .as("ロック待ち中に commit されたログインのトークンも失効し、有効なのは回復確認の 1 本だけ").isEqualTo(1);
+            assertThat(twoFactorRowCount(u.userId())).as("2FA は外れている").isZero();
         }
 
         /** AC-48: 同一トークンを 2 スレッドで同時に確認しても成功は 1 件、発行トークンも 1 組。 */

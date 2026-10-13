@@ -8,24 +8,21 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -45,6 +42,9 @@ class TotpSetupGuardIT extends MfaItSupport {
 
     @Autowired
     private ApplicationEvents events;
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     /**
      * AC-1: 有効化済みで POST /2fa/verify → 409（AUTH_078）。バックアップコードは不変、MfaEnabledEvent は出ない。
@@ -68,66 +68,48 @@ class TotpSetupGuardIT extends MfaItSupport {
     }
 
     /**
-     * AC-1（Codex 検分指摘）: 同一ユーザーの確定 2 本が並列に来ても成功は 1 件、2 本目は AUTH_078。
+     * AC-1（Codex 検分指摘）: 同一ユーザーの確定が並列に来ても成功は 1 件、後着は AUTH_078。
      * 保存されたバックアップコードは成功側が返したものと一致する（後着側に上書きされない）。
      *
-     * <p>確定は 2FA 行を行ロックしてから「有効化済みか」を読む。ロックなしで読むと両方が「未有効」を読んで成功し、
-     * 後から保存された方が先に返したバックアップコードを黙って上書きする。2 本は ±1 ウィンドウで共に有効な
+     * <p>競合の順序を固定する: 先行の確定が有効化してイベントを出した瞬間（commit 前）に、後続の確定を別スレッド
+     * （別 TX）で開始し、先行をしばらく commit させない（{@link ConcurrentOnEvent}）。2 本は ±1 ウィンドウで共に有効な
      * 別々のコード（現在・次ウィンドウ）を使い、TOTP 使用済み印では止まらないようにしている。</p>
+     * <ul>
+     *   <li>行をロックせずに「有効化済みか」を読む実装: 後続は先行の未 commit の有効化を見ずに「未有効」と読んで
+     *       進み、先行の commit 後に自分のバックアップコードで上書きして成功する（成功 2 件）。</li>
+     *   <li>行ロックで読む実装: 後続は先行の commit まで待たされ、commit 後の「有効化済み」を読んで AUTH_078。</li>
+     * </ul>
      */
     @Test
-    @DisplayName("AC-1 同一ユーザーの確定の並列2件は成功1件・2件目はAUTH_078・返したバックアップコードが保存される")
+    @DisplayName("AC-1 確定が先行のcommit待ちで並んでも成功1件・後着はAUTH_078・返したバックアップコードが保存される")
     void 確定の並列2件は成功1件() throws Exception {
         long userId = createPlainUser();
         String secret = auth2faService.setupTotp(userId).getData().getSecret();
         String now = currentTotp(secret);
         String next = totpAt(secret, Instant.now().plusSeconds(30));
 
-        List<Object> successes = new ArrayList<>();
-        List<String> failures = new ArrayList<>();
-        runConcurrently(
-                () -> auth2faService.verifyTotpSetup(userId, now),
-                () -> auth2faService.verifyTotpSetup(userId, next),
-                successes, failures);
+        ApiResponse<BackupCodesResponse> leader;
+        Throwable followerFailure;
+        try (ConcurrentOnEvent race = ConcurrentOnEvent.arm(applicationContext, MfaEnabledEvent.class,
+                () -> auth2faService.verifyTotpSetup(userId, next), Duration.ofSeconds(3))) {
+            leader = auth2faService.verifyTotpSetup(userId, now);
 
-        assertThat(successes).as("成功は 1 件だけ（失敗: %s）", failures).hasSize(1);
-        assertThat(failures).as("2 件目は有効化済み").containsExactly("AUTH_078");
-        @SuppressWarnings("unchecked")
-        List<String> returned = ((ApiResponse<BackupCodesResponse>) successes.get(0)).getData().getBackupCodes();
+            assertThat(race.fired()).as("前提: 先行の commit 前に後続を開始した").isTrue();
+            assertThat(race.completedWhileHeld()).as("後続は先行の行ロックで待たされる（直列化）").isFalse();
+            followerFailure = catchThrowable(() -> race.follower().get(60, TimeUnit.SECONDS));
+        }
+
+        assertThat(followerFailure).as("後着は失敗する").isInstanceOf(ExecutionException.class);
+        assertThat(followerFailure.getCause()).isInstanceOf(BusinessException.class);
+        assertThat(((BusinessException) followerFailure.getCause()).getErrorCode().getCode())
+                .as("後着は有効化済み").isEqualTo("AUTH_078");
+        List<String> returned = leader.getData().getBackupCodes();
         List<String> storedHashes = objectMapper.readValue(backupCodesJson(userId),
                 objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
         assertThat(storedHashes).as("保存件数").hasSize(returned.size());
         for (int i = 0; i < returned.size(); i++) {
             assertThat(passwordEncoder.matches(returned.get(i), storedHashes.get(i)))
                     .as("成功側が返したバックアップコード %d が保存されている（上書きされていない）", i).isTrue();
-        }
-    }
-
-    /** 2 つの処理を同時に開始させ、戻り値と失敗（BusinessException）のコードを集める。 */
-    private static void runConcurrently(Callable<?> a, Callable<?> b,
-                                        List<Object> successes, List<String> failureCodes) throws Exception {
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-        CountDownLatch start = new CountDownLatch(1);
-        try {
-            List<Future<?>> futures = new ArrayList<>();
-            for (Callable<?> task : List.of(a, b)) {
-                futures.add(pool.submit(() -> {
-                    start.await();
-                    return task.call();
-                }));
-            }
-            start.countDown();
-            for (Future<?> f : futures) {
-                try {
-                    successes.add(f.get(60, TimeUnit.SECONDS));
-                } catch (ExecutionException ex) {
-                    Throwable cause = ex.getCause();
-                    failureCodes.add(cause instanceof BusinessException be
-                            ? be.getErrorCode().getCode() : String.valueOf(cause));
-                }
-            }
-        } finally {
-            pool.shutdownNow();
         }
     }
 }

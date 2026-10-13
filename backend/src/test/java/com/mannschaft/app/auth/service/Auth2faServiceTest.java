@@ -490,6 +490,9 @@ class Auth2faServiceTest {
             given(valueOperations.get("mannschaft:auth:mfa_session_token:" + TEST_SESSION_HASH))
                     .willReturn(String.valueOf(TEST_USER_ID));
             doNothing().when(authTokenService).checkRateLimit(anyString(), anyInt(), any());
+            // 2FA 行ロックを最初の DB 読取りにしたため、ユーザー取得はロック取得後
+            given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID))
+                    .willReturn(Optional.of(createEnabledTwoFactorAuth()));
             given(userRepository.findById(TEST_USER_ID)).willReturn(Optional.empty());
 
             // When / Then
@@ -532,7 +535,6 @@ class Auth2faServiceTest {
             given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
             given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
-            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(TEST_USER_ID)).willReturn(List.of());
             given(refreshTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
             // When
@@ -568,24 +570,9 @@ class Auth2faServiceTest {
             TwoFactorAuthEntity twoFactorAuth = createEnabledTwoFactorAuth();
             given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
 
-            // 既存の active Refresh Token が 2 件あるシナリオ
-            com.mannschaft.app.auth.entity.RefreshTokenEntity existingToken1 =
-                    com.mannschaft.app.auth.entity.RefreshTokenEntity.builder()
-                            .userId(TEST_USER_ID)
-                            .tokenHash("existing-hash-1")
-                            .rememberMe(false)
-                            .expiresAt(LocalDateTime.now().plusDays(7))
-                            .build();
-            com.mannschaft.app.auth.entity.RefreshTokenEntity existingToken2 =
-                    com.mannschaft.app.auth.entity.RefreshTokenEntity.builder()
-                            .userId(TEST_USER_ID)
-                            .tokenHash("existing-hash-2")
-                            .rememberMe(false)
-                            .expiresAt(LocalDateTime.now().plusDays(7))
-                            .build();
-            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(TEST_USER_ID))
-                    .willReturn(List.of(existingToken1, existingToken2));
-            given(refreshTokenRepository.saveAll(any())).willAnswer(invocation -> invocation.getArgument(0));
+            // 既存の active Refresh Token が 2 件あるシナリオ（一括 UPDATE の戻り値で表す）
+            given(refreshTokenRepository.revokeAllActiveByUserId(eq(TEST_USER_ID), any(LocalDateTime.class)))
+                    .willReturn(2);
 
             given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
@@ -595,10 +582,9 @@ class Auth2faServiceTest {
             // When
             auth2faService.confirmMfaRecovery(rawToken);
 
-            // Then: 既存 Refresh Token が saveAll で保存される（revoke済み）
-            verify(refreshTokenRepository).saveAll(argThat(tokens ->
-                    ((java.util.Collection<?>) tokens).size() == 2
-            ));
+            // Then: 既存 Refresh Token は一括 UPDATE（current read）で失効させる（ロック待ち中に commit された行も対象）
+            verify(refreshTokenRepository).revokeAllActiveByUserId(eq(TEST_USER_ID), any(LocalDateTime.class));
+            verify(refreshTokenRepository, never()).findByUserIdAndRevokedAtIsNull(any());
             // user_invalidated_at が更新される（JWT を即時失効させる）
             verify(authTokenService).setUserInvalidationTimestamp(TEST_USER_ID);
         }

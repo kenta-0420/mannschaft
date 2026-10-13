@@ -114,7 +114,10 @@ class MfaEmailOutboxDeliveryIT extends MfaEmailOtpItSupport {
             // 行の next_attempt_at は enqueue 側 JVM の壁時計（EmailOutboxEntity#prepareForEnqueue）で、取得条件は DB の NOW(3)。
             // JVM と DB コンテナ（WSL2 等）の時計差で、投入直後の数百 ms は「まだ対象外」になりうるため、
             // PENDING を抜けるまで Worker を回し直す（TEST_CONVENTION: 待機は Thread.sleep ではなく Awaitility）。
+            // 条件（Worker.poll）はテストスレッドで評価する。LockAssert.TestHelper の許可はスレッドローカルのため、
+            // Awaitility 既定の別スレッド評価では「The task is not locked.」で落ちる
             Awaitility.await("outbox 行が Worker 処理で PENDING を抜ける")
+                    .pollInSameThread()
                     .atMost(Duration.ofSeconds(10))
                     .pollDelay(Duration.ZERO)
                     .pollInterval(Duration.ofMillis(250))

@@ -249,17 +249,20 @@ public class Auth2faService {
                 Duration.ofHours(24)
         );
 
-        UserEntity user = findUserOrThrow(userId);
-
         // 2FA 行をロックして、同一ユーザーの再要求（旧トークン失効 → 新トークン発行）を直列化する（Codex 検分指摘）。
         // ロックなしでは並列の 2 本が共に「失効させる旧トークンは無い」と読み、2 本のトークンがどちらも有効になる。
         // ロック順は「2FA 行 → 回復トークン行」で無効化・再設定・回復確認と揃え、デッドロックを作らない。
         // 2FA が既に無い（ログイン後に無効化された等）なら回復で外すものが無く、このセッションは回復に使えない。
+        // この TX の最初の DB 読取りをロック付きにする（先に通常 SELECT を打つと REPEATABLE READ の読取りビューが
+        // ロック待ちの前に固定され、待っている間に他 TX が commit した行が以後の通常 SELECT から見えなくなる）。
         twoFactorAuthRepository.findByUserIdForUpdate(userId)
                 .filter(tfa -> Boolean.TRUE.equals(tfa.getIsEnabled()))
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_019));
 
+        UserEntity user = findUserOrThrow(userId);
+
         // CMP-261012-0910 AC-48: 再要求したら旧トークンは失効させ、最新の 1 通だけを有効にする
+        // （一括 UPDATE＝current read で最新の未使用行を対象にする。ロック待ちの間に commit された先行要求のトークンも漏らさない）
         revokeUnusedRecoveryTokens(userId);
 
         // 2. MfaRecoveryToken生成（1h有効）
@@ -295,6 +298,8 @@ public class Auth2faService {
         // 0. ロック順を「2FA 行 → 回復トークン行」に揃える（回復の再要求・無効化・再設定と同じ順。逆順だと
         //    再要求と確認が互いの行を待ち合うデッドロックになる）。所有者 ID はエンティティを読み込まない
         //    スカラー射影で引く（先にエンティティを読むと、後の FOR UPDATE が一次キャッシュの古い写しを返すため）。
+        //    注: この通常 SELECT で読取りビューが固定されるため、ロック待ちの間に他 TX が commit した行は以後の
+        //    通常 SELECT から見えない。よって以降の判定・失効はすべてロック付き読取りか一括 UPDATE（current read）で行う。
         Long ownerId = mfaRecoveryTokenRepository.findUserIdByTokenHash(tokenHash)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_023));
         // 2FA が既に無い（無効化済み等）なら、このトークンでは何も外せない＝無効トークンと同じ扱い（AC-48）
@@ -326,9 +331,10 @@ public class Auth2faService {
         // 3. 既存セッションを全て無効化（MFA無効化後の不正ログイン防止）
         // パスワードが漏洩していた場合、MFA無効化後に攻撃者が即ログインできてしまうため、
         // 全 Refresh Token を失効させ JWT の user_invalidated_at を更新する。
-        List<RefreshTokenEntity> activeTokens = refreshTokenRepository.findByUserIdAndRevokedAtIsNull(userId);
-        activeTokens.forEach(RefreshTokenEntity::revoke);
-        refreshTokenRepository.saveAll(activeTokens);
+        // 失効対象は一括 UPDATE（InnoDB の current read）で最新の状態から決める（Codex 検分指摘）。通常 SELECT で
+        // 列挙すると、上の 2FA 行ロックを待つ間に commit されたログイン（2FA 検証は同じ 2FA 行をロックしてから
+        // Refresh Token を発行する）のトークンが、固定済みの読取りビューから見えずに生き残る。
+        refreshTokenRepository.revokeAllActiveByUserId(userId, LocalDateTime.now());
         authTokenService.setUserInvalidationTimestamp(userId);
 
         // 4. Access Token + Refresh Token発行
@@ -652,14 +658,10 @@ public class Auth2faService {
 
     /**
      * 未使用の回復トークンをすべて使用済みにする（再要求・無効化・再設定時。裁定: 旧回復トークンで 2FA を外させない）。
+     * 一括 UPDATE（current read）で行い、読取りビュー固定後に commit された行も対象にする。
      */
     private void revokeUnusedRecoveryTokens(Long userId) {
-        List<MfaRecoveryTokenEntity> unused = mfaRecoveryTokenRepository.findByUserIdAndUsedAtIsNull(userId);
-        if (unused.isEmpty()) {
-            return;
-        }
-        unused.forEach(MfaRecoveryTokenEntity::markUsed);
-        mfaRecoveryTokenRepository.saveAll(unused);
+        mfaRecoveryTokenRepository.revokeAllUnusedByUserId(userId, LocalDateTime.now());
     }
 
     // === 2FA ログイン検証の部品（CMP-261012-0910） ===

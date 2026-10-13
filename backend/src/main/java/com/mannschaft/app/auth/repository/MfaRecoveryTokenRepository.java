@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,6 +51,22 @@ public interface MfaRecoveryTokenRepository extends JpaRepository<MfaRecoveryTok
      * @return 未使用（{@code used_at IS NULL}）のトークン
      */
     List<MfaRecoveryTokenEntity> findByUserIdAndUsedAtIsNull(Long userId);
+
+    /**
+     * 指定ユーザーの未使用の回復トークンを一括で使用済みにする（CMP-261012-0910 AC-48。再要求・無効化・再設定・回復確認時）。
+     *
+     * <p>一括 UPDATE は InnoDB の current read（最新のコミット済み行をロックして読む）になるため、同じ TX で先に通常
+     * SELECT を打って REPEATABLE READ の読取りビューが固定されていても、その後に他 TX が commit した未使用行まで
+     * 確実に失効できる（通常 SELECT で列挙してから更新すると、固定済みビューから見えない行を取りこぼす）。
+     * 保留中の変更は実行前に flush する。</p>
+     *
+     * @param userId ユーザー ID
+     * @param now    使用済み時刻
+     * @return 失効させた件数
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("update MfaRecoveryTokenEntity t set t.usedAt = :now where t.userId = :userId and t.usedAt is null")
+    int revokeAllUnusedByUserId(@Param("userId") Long userId, @Param("now") LocalDateTime now);
 
     /**
      * 指定ユーザーのMFAリカバリートークンを全件物理削除する（GDPR退会バッチ用）。
