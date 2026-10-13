@@ -32,6 +32,8 @@ const state = {
   query: {} as Record<string, string>,
   /** 指定時は isAdmin より優先（SYSTEM_ADMIN のみのケース用）。 */
   roleName: null as string | null,
+  /** 指定時は isScopeAdmin を直接指定する（未指定は isAdmin に従う）。 */
+  scopeAdmin: null as boolean | null,
 }
 const refreshOrgTeams = vi.fn()
 // useRouter を差し替えると Nuxt 本体（afterEach 等）が壊れるため、実ルーターのメソッドを spy する。
@@ -46,6 +48,8 @@ vi.mock('~/composables/useOrgShellContext', () => ({
     // shell の isAdmin は SYSTEM_ADMIN も含む（ページは roleName === 'ADMIN' で見る）。
     isAdmin: computed(() => state.isAdmin || state.roleName === 'SYSTEM_ADMIN'),
     roleName: computed(() => state.roleName ?? (state.isAdmin ? 'ADMIN' : 'MEMBER')),
+    // 対象組織の ADMIN 割当の有無（roleName とは独立。SYSTEM_ADMIN との兼任は roleName=SYSTEM_ADMIN かつ true）。
+    isScopeAdmin: computed(() => state.scopeAdmin ?? state.isAdmin),
     adminLens: ref(state.adminLens),
     refreshOrgTeams,
   }),
@@ -84,6 +88,7 @@ describe('pages/organizations/[slug]/member-teams.vue', () => {
     state.adminLens = true
     state.query = {}
     state.roleName = null
+    state.scopeAdmin = null
     refreshOrgTeams.mockReset()
     refreshOrgTeams.mockResolvedValue(undefined)
     replaceSpy.mockReset()
@@ -210,6 +215,7 @@ describe('pages/organizations/[slug]/member-teams.vue', () => {
     it('MT-14: SYSTEM_ADMIN のみ（対象組織の ADMIN でない）は view=applications を直打ちしても一覧へ戻し、切替・件数・設定リンクも出さない', async () => {
       state.isAdmin = false
       state.roleName = 'SYSTEM_ADMIN'
+      state.scopeAdmin = false
       state.query = { view: 'applications' }
       const wrapper = await mountPage()
       expect(wrapper.find('[data-testid="applications-view"]').exists()).toBe(false)
@@ -218,6 +224,28 @@ describe('pages/organizations/[slug]/member-teams.vue', () => {
       expect(wrapper.find('[data-testid="team-affiliation-settings-link"]').exists()).toBe(false)
       expect(listApplications).not.toHaveBeenCalled()
       expect(replaceSpy).toHaveBeenCalledWith({ query: {} })
+    })
+
+    it('MT-16: SYSTEM_ADMIN と対象組織 ADMIN の兼任者（roleName は SYSTEM_ADMIN）は管理 view・切替・設定リンクが使える', async () => {
+      state.isAdmin = false
+      state.roleName = 'SYSTEM_ADMIN'
+      state.scopeAdmin = true
+      state.query = { view: 'applications' }
+      const wrapper = await mountPage()
+      expect(wrapper.find('[data-testid="applications-view"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="view-tab-applications"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="team-affiliation-settings-link"]').exists()).toBe(true)
+      expect(replaceSpy.mock.calls.filter(([arg]) => typeof arg === 'object')).toHaveLength(0)
+    })
+
+    it('MT-17: 他組織の ADMIN だけの者（対象組織では ADMIN 割当なし）は管理 view に入れない', async () => {
+      state.isAdmin = false
+      state.roleName = 'MEMBER'
+      state.scopeAdmin = false
+      state.query = { view: 'invites' }
+      const wrapper = await mountPage()
+      expect(wrapper.find('[data-testid="invites-view"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="org-team-grid"]').exists()).toBe(true)
     })
 
     it('MT-15: 承認・拒否が成立したら、親シェルの所属チーム一覧も取り直す', async () => {

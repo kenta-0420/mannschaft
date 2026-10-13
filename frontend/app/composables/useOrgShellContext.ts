@@ -48,6 +48,8 @@ export interface OrgShellContext {
   roleName: Ref<string | null>
   /** 管理権限（ADMIN / SYSTEM_ADMIN）を持つか。 */
   isAdmin: ComputedRef<boolean>
+  /** 対象組織の ADMIN 割当があるか（SYSTEM_ADMIN のみは false。兼任者は true）。組織 ADMIN 専用の操作の出し分け用。 */
+  isScopeAdmin: ComputedRef<boolean>
   /** 管理者または副管理者か。 */
   isAdminOrDeputy: ComputedRef<boolean>
   /** ScopeDashboard に渡す実効 viewerRole（レンズ OFF 時は MEMBER）。 */

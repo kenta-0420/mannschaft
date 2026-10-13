@@ -41,6 +41,7 @@ const {
   loading: roleLoading,
   loadPermissions,
   isAdmin,
+  isScopeAdmin,
   isAdminOrDeputy,
 } = useRoleAccess('organization', orgSlug)
 
@@ -437,6 +438,7 @@ provideOrgShellContext({
   displayName,
   roleName,
   isAdmin,
+  isScopeAdmin,
   isAdminOrDeputy,
   effectiveViewerRole,
   adminLens,
