@@ -1,11 +1,11 @@
 package com.mannschaft.app.skill.controller;
 
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.skill.SkillStatus;
 import com.mannschaft.app.skill.service.SkillCsvService;
 import com.mannschaft.app.skill.service.SkillSearchService;
+import com.mannschaft.app.skill.service.SkillViewerAccessGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,11 +29,11 @@ public class SkillSearchController {
 
     private final SkillSearchService skillSearchService;
     private final SkillCsvService skillCsvService;
-    private final AccessControlService accessControlService;
+    private final SkillViewerAccessGuard skillViewerAccessGuard;
 
     /**
      * スコープ内のメンバーをスキル条件で検索する。
-     * 認可: MEMBER以上（全員）
+     * 認可: ADMIN・SYSTEM_ADMIN・MANAGE_MEMBER を持つ DEPUTY_ADMIN（F07.5 §2。CMP-261012-0313）
      */
     @GetMapping("/search")
     public ApiResponse<List<Map<String, Object>>> searchSkills(
@@ -43,19 +43,19 @@ public class SkillSearchController {
             @RequestParam(defaultValue = "false") boolean includeExpired,
             @RequestParam(required = false) String keyword) {
         Long userId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkMembership(userId, teamId, "TEAM");
+        skillViewerAccessGuard.checkCanViewTeamMemberSkills(userId, teamId);
         return skillSearchService.searchMembers(
                 "TEAM", teamId, categoryId, status, includeExpired, keyword);
     }
 
     /**
      * スコープ内の全資格データをCSVとして非同期エクスポートする。
-     * 認可: ADMIN
+     * 認可: ADMIN・SYSTEM_ADMIN・MANAGE_MEMBER を持つ DEPUTY_ADMIN（F07.5 §2。CMP-261012-0313）
      */
     @GetMapping("/export")
     public ResponseEntity<ApiResponse<Void>> exportCsv(@PathVariable Long teamId) {
         Long userId = SecurityUtils.getCurrentUserId();
-        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+        skillViewerAccessGuard.checkCanViewTeamMemberSkills(userId, teamId);
         skillCsvService.exportAsync("TEAM", teamId, userId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(null));
     }
