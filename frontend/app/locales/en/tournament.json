@@ -1,5 +1,10 @@
 {
   "tournament": {
+    "detail": {
+      "noDivisions": "No divisions are registered",
+      "divisionsLoadError": "Failed to load the divisions",
+      "loadError": "Failed to load the tournament"
+    },
     "sport": {
       "label": "Sport",
       "help": "Choose the sport for this tournament. Matches created via direct score entry will use this sport.",

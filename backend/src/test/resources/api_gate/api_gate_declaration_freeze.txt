@@ -357,6 +357,7 @@ HTTP|com.mannschaft.app.onboarding.controller.TeamOnboardingProgressController|2
 HTTP|com.mannschaft.app.onboarding.controller.TeamOnboardingTemplateController|2|2
 HTTP|com.mannschaft.app.organization.controller.OrgAffiliationEligibilityController|0|1
 HTTP|com.mannschaft.app.organization.controller.OrgTeamAffiliationRestrictionController|0|2
+HTTP|com.mannschaft.app.organization.controller.OrgTeamApplicationController|0|3
 HTTP|com.mannschaft.app.organization.controller.OrgTeamInviteController|0|3
 HTTP|com.mannschaft.app.organization.controller.OrganizationController|40|40
 HTTP|com.mannschaft.app.organization.controller.OrganizationExtendedProfileController|12|12
@@ -612,7 +613,7 @@ HTTP|com.mannschaft.app.skill.controller.SkillCategoryController|4|4
 HTTP|com.mannschaft.app.skill.controller.SkillController|8|8
 HTTP|com.mannschaft.app.skill.controller.SkillMatrixController|1|1
 HTTP|com.mannschaft.app.skill.controller.SkillSearchController|2|2
-HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementBroadcastController|2|2
+HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementBroadcastController|2|3
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementFeedController|6|6
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementFeedOrgController|6|6
 HTTP|com.mannschaft.app.social.announcement.controller.AnnouncementPreviewController|0|2
@@ -733,7 +734,7 @@ HTTP|com.mannschaft.app.village.controller.VillageEventArchiveController|1|1
 HTTP|com.mannschaft.app.village.controller.VillageFeedController|1|1
 HTTP|com.mannschaft.app.village.controller.VillageFestivalController|10|10
 HTTP|com.mannschaft.app.village.controller.VillageInvitationController|0|4
-HTTP|com.mannschaft.app.village.controller.VillageJoinRequestController|6|6
+HTTP|com.mannschaft.app.village.controller.VillageJoinRequestController|6|7
 HTTP|com.mannschaft.app.village.controller.VillageLobbyController|3|3
 HTTP|com.mannschaft.app.village.controller.VillageLobbyPresenceController|1|1
 HTTP|com.mannschaft.app.village.controller.VillageMatchRecruitController|11|11

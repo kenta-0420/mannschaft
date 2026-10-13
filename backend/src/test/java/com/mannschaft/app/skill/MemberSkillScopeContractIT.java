@@ -30,6 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -48,6 +49,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p><b>象限</b>: 非権限（同一チーム内で本人でも ADMIN でもない）/ 越境 BOLA（別チーム ADMIN が
  * 他チームの skillId を path teamId 配下と偽って叩く）/ 正当（本人 or 同チーム ADMIN）。</p>
+ *
+ * <p>CMP-261010-2226 で「非権限」の期待を 404（SKILL_003）から 403（COMMON_002）へ改めた。
+ * 同一チームの所属者には資格の存在が既知のため秘匿の対象外であり、越境（非メンバー）だけを
+ * 不在と完全一致させる（{@code docs/security/01_authorization_baseline.md} §3.3.2）。
+ * 非メンバー・SYSTEM_ADMIN・親チーム削除・証明書・登録カテゴリの契約は
+ * {@code MemberSkillAccessConcealmentContractIT} が受け持つ。</p>
  */
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
@@ -120,11 +127,12 @@ class MemberSkillScopeContractIT extends AbstractMySqlIntegrationTest {
     class GetSkill {
 
         @Test
-        @DisplayName("非権限: 同一チームの本人でもADMINでもない第三者は404（SKILL_003・存在秘匿）")
-        void 非権限は404() throws Exception {
+        @DisplayName("非権限: 同一チームの本人でもADMINでもない第三者は403（COMMON_002・所属者には存在が既知のため秘匿しない）")
+        void 非権限は403() throws Exception {
             setAuth(otherMemberTeamAId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/skills/{id}", teamAId, skillTeamAId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
         }
 
         @Test
@@ -132,7 +140,8 @@ class MemberSkillScopeContractIT extends AbstractMySqlIntegrationTest {
         void 越境BOLAは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(get("/api/v1/teams/{teamId}/skills/{id}", teamBId, skillTeamAId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SKILL_002"));
         }
 
         @Test
@@ -161,13 +170,14 @@ class MemberSkillScopeContractIT extends AbstractMySqlIntegrationTest {
     class UpdateSkill {
 
         @Test
-        @DisplayName("非権限: 第三者は404（SKILL_003・存在秘匿）")
-        void 非権限は404() throws Exception {
+        @DisplayName("非権限: 同一チームの第三者は403（COMMON_002）")
+        void 非権限は403() throws Exception {
             setAuth(otherMemberTeamAId);
             mockMvc.perform(put("/api/v1/teams/{teamId}/skills/{id}", teamAId, skillTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(updateBody())))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
         }
 
         @Test
@@ -177,7 +187,8 @@ class MemberSkillScopeContractIT extends AbstractMySqlIntegrationTest {
             mockMvc.perform(put("/api/v1/teams/{teamId}/skills/{id}", teamBId, skillTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(updateBody())))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SKILL_002"));
         }
 
         @Test
@@ -207,11 +218,12 @@ class MemberSkillScopeContractIT extends AbstractMySqlIntegrationTest {
     class DeleteSkill {
 
         @Test
-        @DisplayName("非権限: 第三者は404（SKILL_003・存在秘匿）")
-        void 非権限は404() throws Exception {
+        @DisplayName("非権限: 同一チームの第三者は403（COMMON_002）")
+        void 非権限は403() throws Exception {
             setAuth(otherMemberTeamAId);
             mockMvc.perform(delete("/api/v1/teams/{teamId}/skills/{id}", teamAId, skillTeamAId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
         }
 
         @Test
@@ -219,7 +231,8 @@ class MemberSkillScopeContractIT extends AbstractMySqlIntegrationTest {
         void 越境BOLAは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(delete("/api/v1/teams/{teamId}/skills/{id}", teamBId, skillTeamAId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SKILL_002"));
         }
 
         @Test
@@ -252,7 +265,8 @@ class MemberSkillScopeContractIT extends AbstractMySqlIntegrationTest {
         void 越境BOLAは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(patch("/api/v1/teams/{teamId}/skills/{id}/verify", teamBId, skillTeamAId))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("SKILL_002"));
         }
 
         @Test
@@ -278,73 +292,84 @@ class MemberSkillScopeContractIT extends AbstractMySqlIntegrationTest {
 
         private static final Long NON_EXISTENT_SKILL_ID = 999_999_999L;
 
+        /**
+         * 不在応答の絶対値（status|error.code）。CMP-261010-2226 で比較を code・message まで拡張した。
+         * message の絶対値（ロケール依存）は Accept-Language を固定する
+         * {@code MemberSkillAccessConcealmentContractIT} が受け持ち、ここでは不在との完全一致で担保する。
+         */
+        private static final String CONCEALED_PREFIX = "404|SKILL_002|";
+
         @Test
-        @DisplayName("GetSkill: 不在IDと越境IDの応答ステータスが一致する")
+        @DisplayName("GetSkill: 不在IDと越境IDの応答（status・error.code・error.message）が一致する")
         void getSkillは不在と越境で同一ステータス() throws Exception {
             setAuth(adminTeamAId);
-            int notFoundStatus = mockMvc.perform(
+            String notFoundStatus = statusCodeMessage(mockMvc.perform(
                             get("/api/v1/teams/{teamId}/skills/{id}", teamAId, NON_EXISTENT_SKILL_ID))
-                    .andReturn().getResponse().getStatus();
+                    .andReturn().getResponse());
 
             setAuth(adminTeamBId);
-            int crossScopeStatus = mockMvc.perform(
+            String crossScopeStatus = statusCodeMessage(mockMvc.perform(
                             get("/api/v1/teams/{teamId}/skills/{id}", teamBId, skillTeamAId))
-                    .andReturn().getResponse().getStatus();
+                    .andReturn().getResponse());
 
+            org.assertj.core.api.Assertions.assertThat(notFoundStatus).startsWith(CONCEALED_PREFIX);
             org.assertj.core.api.Assertions.assertThat(crossScopeStatus).isEqualTo(notFoundStatus);
         }
 
         @Test
-        @DisplayName("UpdateSkill: 不在IDと越境IDの応答ステータスが一致する")
+        @DisplayName("UpdateSkill: 不在IDと越境IDの応答（status・error.code・error.message）が一致する")
         void updateSkillは不在と越境で同一ステータス() throws Exception {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("name", "SKILLAUTHZ 更新後資格名");
             body.put("version", skillVersion);
 
             setAuth(adminTeamAId);
-            int notFoundStatus = mockMvc.perform(put("/api/v1/teams/{teamId}/skills/{id}", teamAId, NON_EXISTENT_SKILL_ID)
+            String notFoundStatus = statusCodeMessage(mockMvc.perform(put("/api/v1/teams/{teamId}/skills/{id}", teamAId, NON_EXISTENT_SKILL_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(body)))
-                    .andReturn().getResponse().getStatus();
+                    .andReturn().getResponse());
 
             setAuth(adminTeamBId);
-            int crossScopeStatus = mockMvc.perform(put("/api/v1/teams/{teamId}/skills/{id}", teamBId, skillTeamAId)
+            String crossScopeStatus = statusCodeMessage(mockMvc.perform(put("/api/v1/teams/{teamId}/skills/{id}", teamBId, skillTeamAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(body)))
-                    .andReturn().getResponse().getStatus();
+                    .andReturn().getResponse());
 
+            org.assertj.core.api.Assertions.assertThat(notFoundStatus).startsWith(CONCEALED_PREFIX);
             org.assertj.core.api.Assertions.assertThat(crossScopeStatus).isEqualTo(notFoundStatus);
         }
 
         @Test
-        @DisplayName("DeleteSkill: 不在IDと越境IDの応答ステータスが一致する")
+        @DisplayName("DeleteSkill: 不在IDと越境IDの応答（status・error.code・error.message）が一致する")
         void deleteSkillは不在と越境で同一ステータス() throws Exception {
             setAuth(adminTeamAId);
-            int notFoundStatus = mockMvc.perform(
+            String notFoundStatus = statusCodeMessage(mockMvc.perform(
                             delete("/api/v1/teams/{teamId}/skills/{id}", teamAId, NON_EXISTENT_SKILL_ID))
-                    .andReturn().getResponse().getStatus();
+                    .andReturn().getResponse());
 
             setAuth(adminTeamBId);
-            int crossScopeStatus = mockMvc.perform(
+            String crossScopeStatus = statusCodeMessage(mockMvc.perform(
                             delete("/api/v1/teams/{teamId}/skills/{id}", teamBId, skillTeamAId))
-                    .andReturn().getResponse().getStatus();
+                    .andReturn().getResponse());
 
+            org.assertj.core.api.Assertions.assertThat(notFoundStatus).startsWith(CONCEALED_PREFIX);
             org.assertj.core.api.Assertions.assertThat(crossScopeStatus).isEqualTo(notFoundStatus);
         }
 
         @Test
-        @DisplayName("VerifySkill: 不在IDと越境IDの応答ステータスが一致する")
+        @DisplayName("VerifySkill: 不在IDと越境IDの応答（status・error.code・error.message）が一致する")
         void verifySkillは不在と越境で同一ステータス() throws Exception {
             setAuth(adminTeamAId);
-            int notFoundStatus = mockMvc.perform(
+            String notFoundStatus = statusCodeMessage(mockMvc.perform(
                             patch("/api/v1/teams/{teamId}/skills/{id}/verify", teamAId, NON_EXISTENT_SKILL_ID))
-                    .andReturn().getResponse().getStatus();
+                    .andReturn().getResponse());
 
             setAuth(adminTeamBId);
-            int crossScopeStatus = mockMvc.perform(
+            String crossScopeStatus = statusCodeMessage(mockMvc.perform(
                             patch("/api/v1/teams/{teamId}/skills/{id}/verify", teamBId, skillTeamAId))
-                    .andReturn().getResponse().getStatus();
+                    .andReturn().getResponse());
 
+            org.assertj.core.api.Assertions.assertThat(notFoundStatus).startsWith(CONCEALED_PREFIX);
             org.assertj.core.api.Assertions.assertThat(crossScopeStatus).isEqualTo(notFoundStatus);
         }
     }
@@ -352,6 +377,13 @@ class MemberSkillScopeContractIT extends AbstractMySqlIntegrationTest {
     // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
+
+    /** 応答を「status|error.code|error.message」へ畳む（存在オラクルは status だけでなく本文でも割れるため）。 */
+    private String statusCodeMessage(org.springframework.mock.web.MockHttpServletResponse response) throws Exception {
+        com.fasterxml.jackson.databind.JsonNode error = objectMapper
+                .readTree(response.getContentAsString(java.nio.charset.StandardCharsets.UTF_8)).path("error");
+        return response.getStatus() + "|" + error.path("code").asText() + "|" + error.path("message").asText();
+    }
 
     private void setAuth(Long userId) {
         SecurityContextHolder.getContext().setAuthentication(

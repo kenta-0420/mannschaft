@@ -48,6 +48,7 @@ class FlywayExistingDataAutomaticActivityFlagsMigrationTest {
             var after = Flyway.configure().dataSource(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword())
                     // 後続の別機能migrationを含めず、flags追加だけの既存値保全を検証する。
                     .locations("classpath:db/migration").outOfOrder(false)
+                    // 237 の移行だけを検証する（後続の migration が足されても 1 件のまま。target なしだと V238 以降で壊れる）
                     .target(MigrationVersion.fromVersion(FLAGS_MIGRATION_TARGET)).load().migrate();
             assertThat(after.success).isTrue();
             assertThat(after.migrationsExecuted).isEqualTo(1);

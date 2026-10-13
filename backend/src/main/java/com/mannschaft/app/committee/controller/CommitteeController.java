@@ -13,6 +13,7 @@ import com.mannschaft.app.committee.entity.CommitteeRole;
 import com.mannschaft.app.committee.entity.CommitteeStatus;
 import com.mannschaft.app.committee.service.CommitteeService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,7 +35,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 /**
  * F04.10 組織委員会コントローラー。
@@ -47,6 +48,7 @@ import java.util.stream.Collectors;
 public class CommitteeController {
 
     private final CommitteeService committeeService;
+    private final NameResolverService nameResolverService;
 
     // ========================================
     // 委員会 CRUD
@@ -177,11 +179,7 @@ public class CommitteeController {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         List<CommitteeMemberEntity> members = committeeService.listMembers(committeeId, currentUserId);
 
-        List<CommitteeMemberResponse> response = members.stream()
-                .map(CommitteeMemberResponse::of)
-                .collect(Collectors.toList());
-
-        return ApiResponse.of(response);
+        return ApiResponse.of(toMemberResponses(members));
     }
 
     /**
@@ -198,7 +196,7 @@ public class CommitteeController {
         CommitteeMemberEntity member = committeeService.updateMemberRole(
                 committeeId, userId, request.getRole(), currentUserId);
 
-        return ApiResponse.of(CommitteeMemberResponse.of(member));
+        return ApiResponse.of(toMemberResponses(List.of(member)).get(0));
     }
 
     /**
@@ -227,5 +225,19 @@ public class CommitteeController {
         committeeService.leaveCommittee(committeeId, currentUserId);
 
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * メンバーエンティティを、表示名・アバター URL を一括解決（N+1 回避）して Response 化する。
+     */
+    private List<CommitteeMemberResponse> toMemberResponses(List<CommitteeMemberEntity> members) {
+        List<Long> userIds = members.stream().map(CommitteeMemberEntity::getUserId).toList();
+        Map<Long, String> displayNames = nameResolverService.resolveUserFullNames(userIds);
+        Map<Long, String> avatarUrls = nameResolverService.resolveUserAvatarUrls(userIds);
+        return members.stream()
+                .map(m -> CommitteeMemberResponse.of(m,
+                        displayNames.getOrDefault(m.getUserId(), "不明なユーザー"),
+                        avatarUrls.get(m.getUserId())))
+                .toList();
     }
 }

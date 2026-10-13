@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li>告知ウィザード実行 ({@code POST /api/v1/(teams|organizations)/*&#47;broadcast}):
  *       5分あたり5件 / ユーザー</li>
+ *   <li>宛先プレビュー ({@code POST /api/v1/organizations/*&#47;broadcast/audience-preview}):
+ *       1分あたり60件 / ユーザー（F01.2.1 §10.10。送信とは別の枠）</li>
  * </ul>
  *
  * <p>認証済みユーザーのみが対象（{@link #shouldNotFilter} で未認証リクエストを除外）。
@@ -42,6 +44,17 @@ public class BroadcastRateLimitFilter extends AbstractRateLimitFilter {
 
     private static final String ZONE = "broadcast:send";
 
+    /** 宛先プレビュー（F01.2.1 §10.10・AC-G102）を判定するパターン。 */
+    private static final Pattern PREVIEW_PATTERN =
+            Pattern.compile("^/api/v1/organizations/[^/]+/broadcast/audience-preview$");
+
+    /** 宛先プレビュー: 1分間で60件（ウィザードが入力のたびに 300ms デバウンスで呼ぶため送信より緩い）。 */
+    private static final int PREVIEW_LIMIT = 60;
+
+    private static final Duration PREVIEW_WINDOW = Duration.ofMinutes(1);
+
+    private static final String PREVIEW_ZONE = "broadcast:preview";
+
     public BroadcastRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
         super(rateLimiterProvider);
     }
@@ -58,15 +71,19 @@ public class BroadcastRateLimitFilter extends AbstractRateLimitFilter {
             return true;
         }
 
-        // broadcast エンドポイント以外はスキップ
-        return !BROADCAST_PATTERN.matcher(request.getServletPath()).matches();
+        // broadcast・宛先プレビュー以外はスキップ
+        return resolveRule(request) == null;
     }
 
     @Override
     protected RateLimitRule resolveRule(HttpServletRequest request) {
-        if (!BROADCAST_PATTERN.matcher(request.getServletPath()).matches()) {
-            return null;
+        String path = request.getServletPath();
+        if (BROADCAST_PATTERN.matcher(path).matches()) {
+            return new RateLimitRule(ZONE, LIMIT, WINDOW);
         }
-        return new RateLimitRule(ZONE, LIMIT, WINDOW);
+        if (PREVIEW_PATTERN.matcher(path).matches()) {
+            return new RateLimitRule(PREVIEW_ZONE, PREVIEW_LIMIT, PREVIEW_WINDOW);
+        }
+        return null;
     }
 }

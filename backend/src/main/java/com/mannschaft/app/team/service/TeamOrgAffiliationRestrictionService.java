@@ -114,4 +114,26 @@ public class TeamOrgAffiliationRestrictionService {
             row.replaceWith(kind, until, reason, createdBy);
         }
     }
+
+    /**
+     * いま記録されている制限（合成後の値）を返す。{@link #record} の直後に呼び、止めた側へ返す応答に使う
+     * （BLOCK の上に COOLDOWN を重ねても BLOCK のまま、などの合成結果をそのまま見せる。§10.5）。
+     *
+     * @return 制限が無ければ空
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public java.util.Optional<RestrictionView> currentRestriction(Long organizationId, Long teamId,
+                                                                 TeamOrgAffiliationDirection direction) {
+        return repository.findForUpdate(organizationId, teamId, direction)
+                .map(row -> new RestrictionView(row.getKind(), row.getRestrictedUntil()));
+    }
+
+    /**
+     * 制限の種別と期限。
+     *
+     * @param kind            COOLDOWN / BLOCK
+     * @param restrictedUntil COOLDOWN の期限。BLOCK は null
+     */
+    public record RestrictionView(TeamOrgAffiliationRestrictionKind kind, Instant restrictedUntil) {
+    }
 }

@@ -11,8 +11,8 @@
     },
     "cards": {
       "teamAffiliation": {
-        "title": "チーム加盟の設定",
-        "desc": "チームからの加盟申請の受付とチームグループを設定します"
+        "title": "Einstellungen zur Team-Zugehörigkeit",
+        "desc": "Lege fest, ob Zugehörigkeitsanträge von Teams angenommen werden, und verwalte Teamgruppen"
       },
       "reservations": {
         "title": "Reservierungen",
