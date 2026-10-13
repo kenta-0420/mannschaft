@@ -120,4 +120,37 @@ describe('pages/teams/[slug]/nav.vue — フレンドチームタブのツール
       expect(cls).toContain('shrink-0')
     }
   })
+
+  // CMP-261013-1226 AC-13: 360px・de でもショートカットの文字が切れない（折返し可・1列化）
+  it('AC-13: 管理者ショートカットは狭幅で1列化し、ボタンは折返し可・高さ自動', async () => {
+    const w = await mountNav()
+    const grid = w.find('[data-testid="friend-admin-shortcuts"]')
+    expect(grid.exists()).toBe(true)
+    expect(grid.classes()).toContain('grid-cols-1')
+    expect(grid.classes()).toContain('sm:grid-cols-2')
+    for (const id of ['folders', 'feed', 'forward-exports']) {
+      const cls = w.find(`[data-testid="friend-shortcut-${id}"]`).classes()
+      expect(cls).toContain('!whitespace-normal')
+      expect(cls).toContain('!h-auto')
+      expect(cls).not.toContain('whitespace-nowrap')
+    }
+  })
+
+  // AC-14: 部外者・GUEST・他テナントは空状態ではなく権限なし案内
+  it.each(['GUEST', null])('AC-14: roleName=%s では空状態ではなく権限なし案内(forbidden)が出る', async (role) => {
+    setRole(role ?? 'MEMBER')
+    shell.roleName = role
+    const w = await mountNav()
+    expect(w.find('[data-testid="friend-forbidden"]').exists()).toBe(true)
+    expect(w.find('[data-testid="friend-toolbar"]').exists()).toBe(false)
+    expect(w.findComponent({ name: 'TeamFriendList' }).exists()).toBe(false)
+  })
+
+  // AC-16: SUPPORTER にはショートカットとフォローを出さない
+  it('AC-16: SUPPORTER には管理者ショートカットとフォローボタンが出ない', async () => {
+    setRole('SUPPORTER')
+    const w = await mountNav()
+    expect(w.find('[data-testid="friend-admin-shortcuts"]').exists()).toBe(false)
+    expect(w.find('[data-testid="friend-follow-button"]').exists()).toBe(false)
+  })
 })
