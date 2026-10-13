@@ -14,7 +14,6 @@ import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -72,7 +71,7 @@ class TotpSetupGuardIT extends MfaItSupport {
      * 保存されたバックアップコードは成功側が返したものと一致する（後着側に上書きされない）。
      *
      * <p>競合の順序を固定する: 先行の確定が有効化してイベントを出した瞬間（commit 前）に、後続の確定を別スレッド
-     * （別 TX）で開始し、先行をしばらく commit させない（{@link ConcurrentOnEvent}）。2 本は ±1 ウィンドウで共に有効な
+     * （別 TX）で開始し、後続が先行のロックを待つのを MySQL で観測してから先行を commit させる（{@link ConcurrentOnEvent}）。2 本は ±1 ウィンドウで共に有効な
      * 別々のコード（現在・次ウィンドウ）を使い、TOTP 使用済み印では止まらないようにしている。</p>
      * <ul>
      *   <li>行をロックせずに「有効化済みか」を読む実装: 後続は先行の未 commit の有効化を見ずに「未有効」と読んで
@@ -91,11 +90,13 @@ class TotpSetupGuardIT extends MfaItSupport {
         ApiResponse<BackupCodesResponse> leader;
         Throwable followerFailure;
         try (ConcurrentOnEvent race = ConcurrentOnEvent.arm(applicationContext, MfaEnabledEvent.class,
-                () -> auth2faService.verifyTotpSetup(userId, next), Duration.ofSeconds(3))) {
+                () -> auth2faService.verifyTotpSetup(userId, next), MYSQL.getJdbcUrl(), "root", MYSQL.getPassword())) {
             leader = auth2faService.verifyTotpSetup(userId, now);
 
             assertThat(race.fired()).as("前提: 先行の commit 前に後続を開始した").isTrue();
-            assertThat(race.completedWhileHeld()).as("後続は先行の行ロックで待たされる（直列化）").isFalse();
+            assertThat(race.observedLockWait())
+                    .as("前提: 先行の commit 前に、後続が先行のロックを待つのを MySQL で観測した（%s）", race.observation())
+                    .isTrue();
             followerFailure = catchThrowable(() -> race.follower().get(60, TimeUnit.SECONDS));
         }
 

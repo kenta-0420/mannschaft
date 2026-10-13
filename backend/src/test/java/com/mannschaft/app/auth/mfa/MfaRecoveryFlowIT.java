@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,9 +47,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("CMP-261012-0910 2FA 回復フロー（AC-39・AC-48・AC-52）")
 class MfaRecoveryFlowIT extends MfaDisableRecoveryItSupport {
-
-    /** 先行 TX を commit させずに待たせる時間（後続が行ロックで待たされることの観測窓）。 */
-    private static final Duration HOLD = Duration.ofSeconds(3);
 
     @Autowired
     private ApplicationContext applicationContext;
@@ -143,7 +139,7 @@ class MfaRecoveryFlowIT extends MfaDisableRecoveryItSupport {
          * AC-48（Codex 検分指摘）: 回復の再要求が並列に来ても、有効な（未使用の）回復トークンは 1 本だけ。
          *
          * <p>競合の順序を固定する: 先行の再要求が新トークンを書いて回復メールのイベントを出した瞬間（commit 前）に、
-         * 後続の再要求を別スレッド（別 TX）で開始し、先行をしばらく commit させない（{@link ConcurrentOnEvent}）。</p>
+         * 後続の再要求を別スレッド（別 TX）で開始し、後続が先行のロックを待つのを MySQL で観測してから先行を commit させる（{@link ConcurrentOnEvent}）。</p>
          * <ul>
          *   <li>直列化が無い実装: 後続は先行の未 commit のトークンを見ずに失効対象「なし」と読み、先行の commit 前に
          *       自分のトークンを発行して終わる → 未使用 2 本。</li>
@@ -160,11 +156,14 @@ class MfaRecoveryFlowIT extends MfaDisableRecoveryItSupport {
             String session = loginForMfaSession(u);
 
             try (ConcurrentOnEvent race = ConcurrentOnEvent.arm(applicationContext, MfaRecoveryRequestedEvent.class,
-                    () -> auth2faService.requestMfaRecovery(session), HOLD)) {
+                    () -> auth2faService.requestMfaRecovery(session), MYSQL.getJdbcUrl(), "root", MYSQL.getPassword())) {
                 auth2faService.requestMfaRecovery(session);
 
                 assertThat(race.fired()).as("前提: 先行の commit 前に後続を開始した").isTrue();
-                assertThat(race.completedWhileHeld()).as("後続は先行の 2FA 行ロックで待たされる（直列化）").isFalse();
+                assertThat(race.observedLockWait())
+                        .as("前提: 先行の commit 前に、後続が先行の 2FA 行ロックを待つのを MySQL で観測した（%s）",
+                                race.observation())
+                        .isTrue();
                 race.follower().get(60, TimeUnit.SECONDS);
             }
 
@@ -192,12 +191,16 @@ class MfaRecoveryFlowIT extends MfaDisableRecoveryItSupport {
             assertThat(activeRefreshTokenCount(u.userId())).as("前提: 有効な Refresh Token なし").isZero();
 
             try (ConcurrentOnEvent race = ConcurrentOnEvent.arm(applicationContext, LoginSuccessEvent.class,
-                    () -> auth2faService.confirmMfaRecovery(recoveryToken), HOLD)) {
+                    () -> auth2faService.confirmMfaRecovery(recoveryToken), MYSQL.getJdbcUrl(), "root",
+                    MYSQL.getPassword())) {
                 auth2faService.validateMfaLogin(loginSession, MfaVerificationMethod.BACKUP_CODE,
                         u.backupCodes().get(0), "203.0.113.20", USER_AGENT);
 
                 assertThat(race.fired()).as("前提: ログインの commit 前に回復確認を開始した").isTrue();
-                assertThat(race.completedWhileHeld()).as("回復確認はログイン側の 2FA 行ロックで待たされる").isFalse();
+                assertThat(race.observedLockWait())
+                        .as("前提: ログインの commit 前に、回復確認がログイン側の 2FA 行ロックを待つのを MySQL で観測した（%s）",
+                                race.observation())
+                        .isTrue();
                 race.follower().get(60, TimeUnit.SECONDS);
             }
 
