@@ -1,4 +1,23 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "No se pudieron cargar los detalles de la habilidad",
+      "loadCategoriesFailed": "No se pudieron cargar las categorías",
+      "mineTitle": "Mis habilidades y certificaciones",
+      "deleteConfirm": "¿Eliminar \"{name}\"? Esta acción no se puede deshacer.",
+      "deleteConfirmHeader": "Eliminar certificación"
+    },
+    "category": {
+      "deleteConfirm": "¿Eliminar la categoría \"{name}\"?",
+      "deleteConfirmHeader": "Eliminar categoría"
+    },
+    "page": {
+      "permissionLoadFailed": "No se pudo obtener la información de permisos. Vuelva a cargar más tarde",
+      "forbidden": "Solo los miembros de este equipo pueden usar habilidades y certificaciones",
+      "mineTab": "Mis habilidades y certificaciones",
+      "categoriesReloadFailed": "No se pudieron recargar las categorías"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "Responder en hilo",
@@ -2629,7 +2648,8 @@
   "scopeSwitch": {
     "hint": "Para cambiar, abre un equipo u organización desde el menú «Equipos» / «Organizaciones» de la parte superior. El que abras pasa a ser el ámbito actual.",
     "goTeams": "Elegir un equipo",
-    "goOrganizations": "Elegir una organización"
+    "goOrganizations": "Elegir una organización",
+    "personalUnsupported": "Esta configuración solo está disponible en un ámbito de equipo u organización. No se puede mostrar en el ámbito personal."
   },
   "joinRequest": {
     "apply": "Solicitud de ingreso",

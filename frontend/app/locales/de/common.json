@@ -1,4 +1,23 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "Die Details der Qualifikation konnten nicht geladen werden",
+      "loadCategoriesFailed": "Die Kategorien konnten nicht geladen werden",
+      "mineTitle": "Meine Fähigkeiten und Zertifikate",
+      "deleteConfirm": "„{name}“ löschen? Dies kann nicht rückgängig gemacht werden.",
+      "deleteConfirmHeader": "Zertifikat löschen"
+    },
+    "category": {
+      "deleteConfirm": "Kategorie „{name}“ löschen?",
+      "deleteConfirmHeader": "Kategorie löschen"
+    },
+    "page": {
+      "permissionLoadFailed": "Die Berechtigungen konnten nicht geladen werden. Bitte später neu laden",
+      "forbidden": "Nur Mitglieder dieses Teams können Fähigkeiten und Zertifikate nutzen",
+      "mineTab": "Meine Fähigkeiten und Zertifikate",
+      "categoriesReloadFailed": "Die Kategorien konnten nicht neu geladen werden"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "Im Thread antworten",
@@ -2629,7 +2648,8 @@
   "scopeSwitch": {
     "hint": "Zum Wechseln öffnen Sie oben im Menü „Teams“ / „Organisationen“ das gewünschte Team bzw. die Organisation. Das geöffnete wird zum aktuellen Bereich.",
     "goTeams": "Team auswählen",
-    "goOrganizations": "Organisation auswählen"
+    "goOrganizations": "Organisation auswählen",
+    "personalUnsupported": "Diese Einstellung ist nur im Team- oder Organisationsbereich verfügbar. Im persönlichen Bereich kann sie nicht angezeigt werden."
   },
   "joinRequest": {
     "apply": "Beitrittsanfrage",

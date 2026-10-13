@@ -30,6 +30,12 @@ interface MyPageCard {
  */
 const cards = computed<MyPageCard[]>(() => [
   {
+    label: t('village.myJoinRequests.title'),
+    description: t('village.myJoinRequests.description'),
+    icon: 'pi pi-file',
+    to: '/my/village-join-requests',
+  },
+  {
     label: t('myPage.cards.onboarding.label'),
     description: t('myPage.cards.onboarding.description'),
     icon: 'pi pi-check-circle',

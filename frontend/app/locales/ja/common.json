@@ -1,4 +1,23 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "スキルの詳細取得に失敗しました",
+      "loadCategoriesFailed": "カテゴリの取得に失敗しました",
+      "mineTitle": "自分のスキル・資格",
+      "deleteConfirm": "「{name}」を削除しますか？この操作は取り消せません。",
+      "deleteConfirmHeader": "資格の削除"
+    },
+    "category": {
+      "deleteConfirm": "カテゴリ「{name}」を削除しますか？",
+      "deleteConfirmHeader": "カテゴリの削除"
+    },
+    "page": {
+      "permissionLoadFailed": "権限情報の取得に失敗しました。時間をおいて再読み込みしてください",
+      "forbidden": "このチームのメンバーのみ、スキル・資格を利用できます",
+      "mineTab": "自分のスキル・資格",
+      "categoriesReloadFailed": "カテゴリの再取得に失敗しました"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "スレッドで返信",
@@ -2629,7 +2648,8 @@
   "scopeSwitch": {
     "hint": "切り替えは、画面上部の「チーム」「組織」メニューから対象を選んで開くと行われます。開いた団体が、そのまま現在のスコープになります。",
     "goTeams": "チームを選ぶ",
-    "goOrganizations": "組織を選ぶ"
+    "goOrganizations": "組織を選ぶ",
+    "personalUnsupported": "この設定はチームまたは組織のスコープでのみ利用できます。個人スコープでは表示できません。"
   },
   "joinRequest": {
     "apply": "参加申請",

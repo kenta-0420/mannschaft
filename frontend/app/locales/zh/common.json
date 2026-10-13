@@ -1,4 +1,23 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "加载技能详情失败",
+      "loadCategoriesFailed": "加载分类失败",
+      "mineTitle": "我的技能与资格",
+      "deleteConfirm": "确定要删除“{name}”吗？此操作无法撤销。",
+      "deleteConfirmHeader": "删除资格"
+    },
+    "category": {
+      "deleteConfirm": "确定要删除分类“{name}”吗？",
+      "deleteConfirmHeader": "删除分类"
+    },
+    "page": {
+      "permissionLoadFailed": "获取权限信息失败，请稍后重新加载",
+      "forbidden": "只有本团队成员才能使用技能与资格",
+      "mineTab": "我的技能与资格",
+      "categoriesReloadFailed": "重新加载分类失败"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "在话题中回复",
@@ -2629,7 +2648,8 @@
   "scopeSwitch": {
     "hint": "切换方式：在页面上方的“团队”“组织”菜单中选择并打开对象。所打开的团体即为当前范围。",
     "goTeams": "选择团队",
-    "goOrganizations": "选择组织"
+    "goOrganizations": "选择组织",
+    "personalUnsupported": "此设置仅可在团队或组织范围内使用，无法在个人范围内显示。"
   },
   "joinRequest": {
     "apply": "加入申请",

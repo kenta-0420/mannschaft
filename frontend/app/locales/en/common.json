@@ -1,4 +1,23 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "Failed to load the skill details",
+      "loadCategoriesFailed": "Failed to load the categories",
+      "mineTitle": "My skills and certifications",
+      "deleteConfirm": "Delete \"{name}\"? This cannot be undone.",
+      "deleteConfirmHeader": "Delete certification"
+    },
+    "category": {
+      "deleteConfirm": "Delete the category \"{name}\"?",
+      "deleteConfirmHeader": "Delete category"
+    },
+    "page": {
+      "permissionLoadFailed": "Failed to load your permissions. Please reload later",
+      "forbidden": "Only members of this team can use skills and certifications",
+      "mineTab": "My skills and certifications",
+      "categoriesReloadFailed": "Failed to reload the categories"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "Reply in Thread",
@@ -2629,7 +2648,8 @@
   "scopeSwitch": {
     "hint": "To switch, open a team or organization from the \"Teams\" / \"Organizations\" menu at the top of the screen. Whichever you open becomes the current scope.",
     "goTeams": "Choose a team",
-    "goOrganizations": "Choose an organization"
+    "goOrganizations": "Choose an organization",
+    "personalUnsupported": "This setting is only available in a team or organization scope. It cannot be shown in your personal scope."
   },
   "joinRequest": {
     "apply": "Join request",

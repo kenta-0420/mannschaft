@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import type { MemberSkillResponse, SkillCategoryResponse, SkillStatus } from '~/types/skill'
+import type { MemberSkillResponse, SkillCategoryResponse, SkillSearchItem, SkillStatus } from '~/types/skill'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   teamId: string
   canManage?: boolean
-}>()
+  /**
+   * 'all'  = 全員の資格（GET /skills/search。ADMIN・SYSTEM_ADMIN・MANAGE_MEMBER を持つ DEPUTY_ADMIN だけ BE が許す）
+   * 'mine' = 自分の資格だけ（GET /skills/me。MEMBER 以上）。search は呼ばない
+   */
+  scope?: 'all' | 'mine'
+}>(), { canManage: false, scope: 'all' })
 
 const emit = defineEmits<{
   edit: [skill: MemberSkillResponse]
@@ -12,11 +17,14 @@ const emit = defineEmits<{
   verify: [skill: MemberSkillResponse]
 }>()
 
-const { searchSkills, deleteSkill, verifySkill, getCertificateUrl } = useSkillApi()
+const { searchSkills, getMySkills, getSkill, deleteSkill, verifySkill, getCertificateUrl, getSkillCategories } = useSkillApi()
 const notification = useNotification()
+const { confirmAction } = useConfirmDialog()
 const { formatDate } = useDatetime()
+const { t } = useI18n()
+const authStore = useAuthStore()
 
-const items = ref<MemberSkillResponse[]>([])
+const items = ref<SkillSearchItem[]>([])
 const categories = ref<SkillCategoryResponse[]>([])
 const loading = ref(false)
 
@@ -31,24 +39,63 @@ const statusOptions = [
   { label: '確認待ち', value: 'PENDING_REVIEW' as SkillStatus },
 ]
 
-async function loadCategories() {
+/** @returns 取得に成功したか（失敗時は通知済み） */
+async function loadCategories(): Promise<boolean> {
   try {
-    const { getSkillCategories } = useSkillApi()
-    const res = await getSkillCategories(props.teamId)
+    // 無効化済みカテゴリに属する資格の名前解決のため、無効も含めて取得する
+    const res = await getSkillCategories(props.teamId, true)
     categories.value = res.data
+    return true
   } catch {
-    // categories are optional for filtering
+    notification.error(t('skill.list.loadCategoriesFailed'))
+    return false
+  }
+}
+
+/**
+ * カテゴリの作成・改名・削除後に親から呼ばれる。名前解決と絞り込みの選択肢を取り直し、
+ * 絞り込み中のカテゴリが無効化・削除されていればフィルタを解除する（解除すると watch が一覧を取り直す）。
+ */
+async function refreshCategories(): Promise<void> {
+  const ok = await loadCategories()
+  if (!ok) return
+  const selected = selectedCategoryId.value
+  if (selected !== null && !categories.value.some((c) => c.id === selected && c.isActive)) {
+    selectedCategoryId.value = null
   }
 }
 
 const categoryOptions = computed(() => [
   { label: 'すべてのカテゴリ', value: null },
-  ...categories.value.map((c) => ({ label: c.name, value: c.id })),
+  ...categories.value.filter((c) => c.isActive).map((c) => ({ label: c.name, value: c.id })),
 ])
+
+/** /skills/me の完全な形を一覧表示用（検索API の形）へ寄せる。 */
+function toListItem(skill: MemberSkillResponse): SkillSearchItem {
+  return {
+    memberSkillId: skill.id,
+    userId: skill.userId,
+    displayName: null,
+    categoryId: skill.skillCategoryId,
+    skillName: skill.name,
+    issuer: skill.issuer,
+    acquiredOn: skill.acquiredOn,
+    expiresAt: skill.expiresAt,
+    status: skill.status,
+    hasCertificate: skill.hasCertificate,
+    verifiedAt: skill.verifiedAt,
+    expiringSoon: false,
+  }
+}
 
 async function loadItems() {
   loading.value = true
   try {
+    if (props.scope === 'mine') {
+      const mine = await getMySkills(props.teamId)
+      items.value = mine.data.map(toListItem)
+      return
+    }
     const params: Record<string, unknown> = {}
     if (selectedCategoryId.value) params.categoryId = selectedCategoryId.value
     if (selectedStatus.value) params.status = selectedStatus.value
@@ -61,6 +108,17 @@ async function loadItems() {
   } finally {
     loading.value = false
   }
+}
+
+function getCategoryName(categoryId: number): string {
+  return categories.value.find((c) => c.id === categoryId)?.name ?? ''
+}
+
+/** BE は編集・削除・証明書を本人または ADMIN/DEPUTY_ADMIN のみに許す。 */
+function canOperate(skill: SkillSearchItem): boolean {
+  const currentUserId = authStore.currentUser?.id
+  const isOwner = typeof currentUserId === 'number' && skill.userId === currentUserId
+  return isOwner || !!props.canManage
 }
 
 function getStatusClass(status: SkillStatus): string {
@@ -86,19 +144,35 @@ function formatSkillDate(dateStr: string | null): string {
   return formatDate(dateStr)
 }
 
-async function handleDelete(skill: MemberSkillResponse) {
+async function handleEdit(skill: SkillSearchItem) {
   try {
-    await deleteSkill(props.teamId, skill.id)
-    notification.success('スキルを削除しました')
-    await loadItems()
+    const res = await getSkill(props.teamId, skill.memberSkillId)
+    emit('edit', res.data)
   } catch {
-    notification.error('スキルの削除に失敗しました')
+    notification.error(t('skill.list.loadDetailFailed'))
   }
 }
 
-async function handleVerify(skill: MemberSkillResponse) {
+function handleDelete(skill: SkillSearchItem) {
+  confirmAction({
+    message: t('skill.list.deleteConfirm', { name: skill.skillName }),
+    header: t('skill.list.deleteConfirmHeader'),
+    onAccept: async () => {
+      try {
+        await deleteSkill(props.teamId, skill.memberSkillId)
+      } catch {
+        notification.error('スキルの削除に失敗しました')
+        return
+      }
+      notification.success('スキルを削除しました')
+      await loadItems()
+    },
+  })
+}
+
+async function handleVerify(skill: SkillSearchItem) {
   try {
-    await verifySkill(props.teamId, skill.id)
+    await verifySkill(props.teamId, skill.memberSkillId)
     notification.success('スキルを承認しました')
     await loadItems()
   } catch {
@@ -106,10 +180,10 @@ async function handleVerify(skill: MemberSkillResponse) {
   }
 }
 
-async function handleDownloadCertificate(skill: MemberSkillResponse) {
+async function handleDownloadCertificate(skill: SkillSearchItem) {
   try {
-    const res = await getCertificateUrl(props.teamId, skill.id)
-    window.open(res.data.url, '_blank')
+    const res = await getCertificateUrl(props.teamId, skill.memberSkillId)
+    window.open(res.data, '_blank')
   } catch {
     notification.error('証明書の取得に失敗しました')
   }
@@ -121,17 +195,17 @@ onMounted(async () => {
   await Promise.all([loadItems(), loadCategories()])
 })
 
-defineExpose({ refresh: loadItems })
+defineExpose({ refresh: loadItems, refreshCategories })
 </script>
 
 <template>
   <div>
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <h2 class="text-lg font-semibold">スキル一覧</h2>
-      <Button v-if="canManage" label="スキル登録" icon="pi pi-plus" @click="emit('create')" />
+      <h2 class="text-lg font-semibold">{{ scope === 'mine' ? t('skill.list.mineTitle') : 'スキル一覧' }}</h2>
+      <Button label="スキル登録" icon="pi pi-plus" @click="emit('create')" />
     </div>
 
-    <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+    <div v-if="scope === 'all'" class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
       <InputText
         v-model="keyword"
         placeholder="キーワード検索"
@@ -169,7 +243,7 @@ defineExpose({ refresh: loadItems })
     <div v-else class="space-y-2">
       <div
         v-for="skill in items"
-        :key="skill.id"
+        :key="skill.memberSkillId"
         class="flex items-center gap-3 rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-600 dark:bg-surface-800"
       >
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-100 dark:bg-surface-700">
@@ -184,14 +258,12 @@ defineExpose({ refresh: loadItems })
               {{ getStatusLabel(skill.status) }}
             </span>
             <span class="rounded bg-surface-100 px-1.5 py-0.5 text-xs text-surface-500 dark:bg-surface-700">
-              {{ skill.categoryName }}
+              {{ getCategoryName(skill.categoryId) }}
             </span>
           </div>
-          <h3 class="text-sm font-semibold">{{ skill.name }}</h3>
+          <h3 class="text-sm font-semibold">{{ skill.skillName }}</h3>
           <div class="text-xs text-surface-400">
             <span v-if="skill.issuer">{{ skill.issuer }}</span>
-            <span v-if="skill.issuer && skill.credentialNumber"> / </span>
-            <span v-if="skill.credentialNumber">{{ skill.credentialNumber }}</span>
             <span v-if="skill.acquiredOn"> ・ 取得: {{ formatSkillDate(skill.acquiredOn) }}</span>
             <span v-if="skill.expiresAt"> ・ 有効期限: {{ formatSkillDate(skill.expiresAt) }}</span>
           </div>
@@ -201,7 +273,7 @@ defineExpose({ refresh: loadItems })
         </div>
         <div class="flex shrink-0 gap-1">
           <Button
-            v-if="skill.hasCertificate"
+            v-if="canOperate(skill) && skill.hasCertificate"
             v-tooltip.top="'証明書を表示'"
             icon="pi pi-download"
             size="small"
@@ -219,13 +291,14 @@ defineExpose({ refresh: loadItems })
             @click="handleVerify(skill)"
           />
           <Button
+            v-if="canOperate(skill)"
             icon="pi pi-pencil"
             size="small"
             text
-            @click="emit('edit', skill)"
+            @click="handleEdit(skill)"
           />
           <Button
-            v-if="canManage"
+            v-if="canOperate(skill)"
             icon="pi pi-trash"
             size="small"
             text

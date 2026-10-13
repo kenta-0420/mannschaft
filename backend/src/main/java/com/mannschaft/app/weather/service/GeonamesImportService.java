@@ -59,7 +59,7 @@ public class GeonamesImportService {
             INSERT INTO postal_codes
               (country_code, postal_code, place_name, admin1_name, admin2_name,
                latitude, longitude, accuracy, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())
             ON DUPLICATE KEY UPDATE
               place_name = VALUES(place_name),
               admin1_name = VALUES(admin1_name),
@@ -67,7 +67,7 @@ public class GeonamesImportService {
               latitude = VALUES(latitude),
               longitude = VALUES(longitude),
               accuracy = VALUES(accuracy),
-              updated_at = NOW()
+              updated_at = UTC_TIMESTAMP()
             """;
 
     private final JdbcTemplate jdbcTemplate;

@@ -277,7 +277,7 @@ public class JobContractService {
     public JobContractEntity findById(Long contractId, Long userId) {
         JobContractEntity contract = findContractOrThrow(contractId);
         if (!isParticipant(userId, contract)) {
-            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+            throw new BusinessException(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND);
         }
         return contract;
     }

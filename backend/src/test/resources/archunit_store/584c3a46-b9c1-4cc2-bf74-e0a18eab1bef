@@ -1667,8 +1667,6 @@ com.mannschaft.app.shiftbudget.service.TodoBudgetLinkService (domain 'shiftbudge
 com.mannschaft.app.shiftbudget.service.TodoBudgetLinkService (domain 'shiftbudget') depends on other-domain entity com.mannschaft.app.todo.entity.TodoEntity (domain 'todo')
 com.mannschaft.app.shiftbudget.service.TodoBudgetLinkService (domain 'shiftbudget') depends on other-domain entity com.mannschaft.app.todo.entity.TodoEntity (domain 'todo')
 com.mannschaft.app.shiftbudget.service.TodoBudgetLinkService (domain 'shiftbudget') depends on other-domain entity com.mannschaft.app.todo.entity.TodoEntity (domain 'todo')
-com.mannschaft.app.skill.service.SkillMatrixService (domain 'skill') depends on other-domain entity com.mannschaft.app.role.entity.UserRoleEntity (domain 'role')
-com.mannschaft.app.skill.service.SkillMatrixService (domain 'skill') depends on other-domain entity com.mannschaft.app.role.entity.UserRoleEntity (domain 'role')
 com.mannschaft.app.social.announcement.AnnouncementCreationService (domain 'social') depends on other-domain entity com.mannschaft.app.proxy.entity.ProxyInputRecordEntity (domain 'proxy')
 com.mannschaft.app.social.announcement.AnnouncementCreationService (domain 'social') depends on other-domain entity com.mannschaft.app.proxy.entity.ProxyInputRecordEntity (domain 'proxy')
 com.mannschaft.app.social.announcement.AnnouncementCreationService (domain 'social') depends on other-domain entity com.mannschaft.app.proxy.entity.ProxyInputRecordEntity$InputSource (domain 'proxy')
