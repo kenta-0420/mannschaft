@@ -25,7 +25,11 @@ function baseModelValue(overrides: Partial<WizardFormState> = {}): WizardFormSta
   return {
     step: 3,
     targetRole: 'MEMBERS_AND_ABOVE',
+    targetMode: 'ALL',
     targetTeamIds: null,
+    targetGroupIds: [],
+    targetGroupRange: null,
+    includeUnassigned: false,
     selectedChannel: 'BULLETIN_THREAD',
     templateId: null,
     priority: 'NORMAL',

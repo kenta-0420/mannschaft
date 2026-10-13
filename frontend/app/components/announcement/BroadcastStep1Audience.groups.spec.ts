@@ -18,7 +18,7 @@ mockNuxtImport('useI18n', () => () => ({
   t: (key: string, params?: Record<string, unknown>) => (params ? `${key}:${JSON.stringify(params)}` : key),
   tm: () => ({}),
 }))
-mockNuxtImport('useNotification', () => () => ({ success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }))
+mockNuxtImport('useNotification', () => () => ({ success: vi.fn(), error: vi.fn(), warning: vi.fn(), warn: vi.fn(), info: vi.fn() }))
 
 const GROUPS = [
   { id: 'g1', name: '平成18年度', sortOrder: 0, teamCount: 3 },
@@ -95,6 +95,13 @@ async function render(over: Partial<WizardFormState> = {}) {
   return wrapper
 }
 
+/** data-testid の PrimeVue 部品に v-model の更新を流し込む（Select / RadioButton の操作の代わり） */
+async function emitFrom(w: VueWrapper, testid: string, value: unknown) {
+  const c = w.getComponent(`[data-testid="${testid}"]`) as unknown as VueWrapper
+  c.vm.$emit('update:modelValue', value)
+  await flushPromises()
+}
+
 beforeEach(() => {
   mockApi.mockReset()
   mockApi.mockImplementation(route)
@@ -157,38 +164,29 @@ describe('グループ選択がモデルに反映される（送信値の元）'
 
   it('範囲「〜以前」で {from: null, to: A}、「〜以降」で {from: A, to: null}、「A〜B」で両端を送る', async () => {
     const w = await render({ targetMode: 'GROUPS' })
-    const kind = () => w.getComponent('[data-testid="broadcast-range-kind"]')
-    await kind().vm.$emit('update:modelValue', 'UP_TO')
-    await flushPromises()
-    await w.getComponent('[data-testid="broadcast-range-to"]').vm.$emit('update:modelValue', 'g2')
-    await flushPromises()
+    await emitFrom(w, 'broadcast-range-kind', 'UP_TO')
+    await emitFrom(w, 'broadcast-range-to', 'g2')
     expect(latest.targetGroupRange).toEqual({ fromGroupId: null, toGroupId: 'g2' })
 
-    await kind().vm.$emit('update:modelValue', 'FROM')
-    await flushPromises()
-    await w.getComponent('[data-testid="broadcast-range-from"]').vm.$emit('update:modelValue', 'g2')
-    await flushPromises()
+    await emitFrom(w, 'broadcast-range-kind', 'FROM')
+    await emitFrom(w, 'broadcast-range-from', 'g2')
     expect(latest.targetGroupRange).toEqual({ fromGroupId: 'g2', toGroupId: null })
 
-    await kind().vm.$emit('update:modelValue', 'BETWEEN')
-    await flushPromises()
-    await w.getComponent('[data-testid="broadcast-range-from"]').vm.$emit('update:modelValue', 'g1')
-    await w.getComponent('[data-testid="broadcast-range-to"]').vm.$emit('update:modelValue', 'g3')
-    await flushPromises()
+    await emitFrom(w, 'broadcast-range-kind', 'BETWEEN')
+    await emitFrom(w, 'broadcast-range-from', 'g1')
+    await emitFrom(w, 'broadcast-range-to', 'g3')
     expect(latest.targetGroupRange).toEqual({ fromGroupId: 'g1', toGroupId: 'g3' })
   })
 
   it('範囲の種類を選んだだけ（端が未選択）の間は範囲を送らない', async () => {
     const w = await render({ targetMode: 'GROUPS' })
-    await w.getComponent('[data-testid="broadcast-range-kind"]').vm.$emit('update:modelValue', 'UP_TO')
-    await flushPromises()
+    await emitFrom(w, 'broadcast-range-kind', 'UP_TO')
     expect(latest.targetGroupRange).toBeNull()
   })
 
   it('モードを切り替えると他モードの選択は持ち越さない', async () => {
     const w = await render({ targetMode: 'GROUPS', targetGroupIds: ['g1'], includeUnassigned: true })
-    await w.getComponent('[data-testid="broadcast-target-mode-teams"]').vm.$emit('update:modelValue', 'TEAMS')
-    await flushPromises()
+    await emitFrom(w, 'broadcast-target-mode-teams', 'TEAMS')
     expect(latest.targetMode).toBe('TEAMS')
     expect(latest.targetGroupIds).toEqual([])
     expect(latest.includeUnassigned).toBe(false)
@@ -302,7 +300,7 @@ describe('テンプレート（AC-J02/J03）', () => {
   it('AC-J02: 削除済みグループが除外された警告を出し、選択からも外す', async () => {
     previewResponse = () => preview({ warnings: ['TEMPLATE_GROUPS_REMOVED:1'] })
     const w = await render()
-    w.getComponent(BroadcastTemplateSelector).vm.$emit('apply', template())
+    ;(w.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template())
     await flushPromises()
     expect(latest.targetMode).toBe('GROUPS')
     expect(latest.targetGroupIds).toEqual(['g1'])
@@ -315,7 +313,7 @@ describe('テンプレート（AC-J02/J03）', () => {
   it('AC-J03: 範囲の端が削除済み（BROADCAST_013）なら範囲を空にして選び直させる', async () => {
     previewResponse = () => apiError(400, 'BROADCAST_013', '範囲の端が削除されています')
     const w = await render()
-    w.getComponent(BroadcastTemplateSelector).vm.$emit('apply', template({
+    ;(w.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template({
       targetGroupIds: [], targetGroupRange: { fromGroupId: 'gX', toGroupId: 'g3' },
     }))
     await flushPromises()
@@ -329,7 +327,7 @@ describe('テンプレート（AC-J02/J03）', () => {
 
   it('チームを選ぶテンプレートはチームモードで適用される（従来互換）', async () => {
     const w = await render()
-    w.getComponent(BroadcastTemplateSelector).vm.$emit('apply', template({
+    ;(w.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template({
       targetTeamIds: ['11'], targetGroupIds: null, includeUnassigned: false,
     }))
     await flushPromises()

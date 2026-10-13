@@ -132,7 +132,7 @@ async function handleSubmit() {
     notification.success(t('announcement.broadcast_success'))
     emit('success', result)
     if ((result.warnings ?? []).some(w => w.startsWith('TEMPLATE_GROUPS_REMOVED'))) {
-      notification.warning(t('announcement.template_deleted_groups_removed'))
+      notification.warn(t('announcement.template_deleted_groups_removed'))
     }
     if (result.targetAudience) {
       // 宛先を絞った告知: 送信時の宛先と注記を見せてから閉じる
