@@ -171,7 +171,11 @@ class OrgAffiliationEligibilityApiIT extends AbstractMySqlIntegrationTest {
             willAnswer(invocation -> {
                 List<?> keys = invocation.getArgument(1);
                 String redisKey = String.valueOf(keys.get(0));
-                return counters.computeIfAbsent(redisKey, k -> new AtomicLong()).incrementAndGet();
+                // æå»ä¾å­ãã¬ã¼ã¯ã®æ ¹æ²»: redisKey ã¯ mannschaft:rate:{zone}:{key}:{windowStart}ãé£ç¶å¼ã³åºãã®éä¸­ã§çªã®å¢çã
+                // ã¾ããã¨ windowStart ãå¤ããã«ã¦ã³ãã1ã«æ»ã£ã¦ 429 ãåºãªããåºå®ã¦ã£ã³ãã¦å¢çã®æåã¯
+                // ValkeyRateLimiterTest ã®è²¬åãªã®ã§ãæ¬ãã¹ãã¯ windowStart ãè½ã¨ãã¦éè¨ããã
+                String counterKey = redisKey.substring(0, redisKey.lastIndexOf(':'));
+                return counters.computeIfAbsent(counterKey, k -> new AtomicLong()).incrementAndGet();
             }).given(redisTemplate).execute(any(RedisScript.class), anyList(), any());
         }
 
