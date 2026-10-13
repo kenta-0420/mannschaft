@@ -283,6 +283,35 @@ class ShiftReminderNotificationTransactionIT extends AbstractMySqlIntegrationTes
     }
 
     @Test
+    @DisplayName("受付終了後: 配送待ちの間に PUBLISHED へ遷移したら claim は 0 件で version は進まず、配送もされず、アーカイブ相当の保存も楽観ロック例外にならない")
+    void claimAfterPublishedDoesNothingAndKeepsVersion() {
+        Fx fx = fixture("v-pub", 1);
+        transactionTemplate.executeWithoutResult(tx -> em.createNativeQuery(
+                "UPDATE shift_schedules SET status = 'PUBLISHED' WHERE id = :id")
+                .setParameter("id", fx.scheduleId).executeUpdate());
+        Long versionPublished = transactionTemplate.execute(tx ->
+                scheduleRepository.findById(fx.scheduleId).orElseThrow().getVersion());
+
+        // 配送待ちだったイベントが遅れて届く。
+        ShiftPreferenceReminderNotificationEvent event = new ShiftPreferenceReminderNotificationEvent(
+                ShiftPreferenceReminderKind.REMINDER_48H, fx.scheduleId, fx.teamId, "late", fx.memberIds);
+        transactionTemplate.executeWithoutResult(tx -> eventPublisher.publishEvent(event));
+        assertThat(reminderRunner.claim(fx.scheduleId, ShiftPreferenceReminderKind.REMINDER_48H)).isFalse();
+        reminderRunner.release(fx.scheduleId, ShiftPreferenceReminderKind.REMINDER_48H);
+
+        await().during(2, TimeUnit.SECONDS).atMost(6, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(reminderRows(fx.memberIds.get(0), fx.scheduleId)).isEmpty());
+        verify(notificationDeliveryRunner, never()).sendOne(argThat(r -> r != null && fx.scheduleId.equals(r.sourceId())));
+        // アーカイブ相当の保存が楽観ロック例外にならない = version が進んでいない。
+        transactionTemplate.executeWithoutResult(tx -> {
+            ShiftScheduleEntity e = scheduleRepository.findById(fx.scheduleId).orElseThrow();
+            assertThat(e.getVersion()).isEqualTo(versionPublished);
+            e.markLowSubmissionAlerted();
+            scheduleRepository.saveAndFlush(e);
+        });
+    }
+
+    @Test
     @DisplayName("楽観ロック: 印を読んだ通常編集の途中で claim がコミットされたら、編集の保存は楽観ロック例外で印は戻らない")
     void editRacingWithClaimFailsOptimisticallyAndKeepsFlag() {
         Fx fx = fixture("v-claim", 1);

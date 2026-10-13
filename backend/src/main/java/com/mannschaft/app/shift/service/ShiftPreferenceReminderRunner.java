@@ -35,6 +35,8 @@ import java.util.List;
  *       次回 cron や管理画面からの再実行で同じスケジュールが再 publish されても、配送は 1 回だけになる。</li>
  *   <li>配送後に<b>全員が例外で失敗</b>したときだけ {@link #release} で印を戻す（次のバッチ実行で再送される）。
  *       1 人以上の成功・deny・一部失敗のときは立てたまま残す（再送しない）。</li>
+ *   <li>claim / release の UPDATE は<b>受付中（COLLECTING）に限る</b>。受付を終えたスケジュールの version を進めない
+ *       （進めると自動アーカイブの一括保存が楽観ロック例外になる）。0 件なら配送せず、release の 0 件はエラーにしない。</li>
  *   <li>戻す処理が失敗したら ERROR ログのみ（印が残るので再送されない）。</li>
  *   <li>publish 後に項目TXがロールバックすれば配送要求は発火せず、印も立たない。</li>
  *   <li><b>既知の限界</b>: 先取りの後でプロセスが落ちると、そのリマインドは失われる（印が立ったまま配送されない）。
@@ -99,10 +101,15 @@ public class ShiftPreferenceReminderRunner {
     /** 全員の配送が失敗したときに印を戻す（次回バッチで再送される）。 */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void release(Long scheduleId, ShiftPreferenceReminderKind kind) {
-        switch (kind) {
+        int updated = switch (kind) {
             case REMINDER_48H -> scheduleRepository.releaseReminder48h(scheduleId);
             case REMINDER_24H -> scheduleRepository.releaseReminder24h(scheduleId);
             default -> throw new IllegalArgumentException("定期バッチの対象外のリマインド種別: " + kind);
+        };
+        if (updated == 0) {
+            // 受付を終えている（COLLECTING でない）等。再送は不要なのでエラー扱いにしない。
+            log.info("シフト希望リマインドの印は戻さなかった（受付中でない等）: scheduleId={}, type={}",
+                    scheduleId, kind.notificationType());
         }
     }
 
