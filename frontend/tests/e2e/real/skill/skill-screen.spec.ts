@@ -1,4 +1,4 @@
-import { expect, test, type BrowserContext, type Page } from '@playwright/test'
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import { loginViaApi } from '../../fixtures/auth'
 import { waitForHydration } from '../../helpers/wait'
 
@@ -6,6 +6,15 @@ import { waitForHydration } from '../../helpers/wait'
  * CMP-261012-0313: チームの資格画面（/teams/{slug}/skills）の実機E2E（モックなし・実BE・実FE）。
  * 操作と確認は必ず画面（クリック・入力・表示）で行う。API はログイン・前提データ作成・後始末だけに使う。
  * 資格は新規登録で PENDING_REVIEW となり、ADMIN の承認で ACTIVE になる（マトリクスは ACTIVE/EXPIRED のみ）。
+ *
+ * 【この spec で扱わないもの】
+ * - SUPPORTER にサイドバーの「スキル・資格」が出ないこと: SUPPORTER を用意する正規経路がこの環境に無いため外した。
+ *   フォロー（POST /teams/e2e/follow）は対象チームが dummy ユーザーから見えず 403 VISIBILITY_001 になる。
+ *   role PATCH で SUPPORTER にしても RoleService は MEMBER の membership を作るだけで、本物の SUPPORTER にならない。
+ *   項目は TeamSidebar.vue で requiredRole: 'MEMBER' と宣言されている。vitest の frontend/tests/unit/components/TeamSidebarSkills.spec.ts は
+ *   機能ゲート・モジュール有効・6言語のラベルを検査するが、SUPPORTER/GUEST 非表示（requiredRole）そのものは検査していない（未カバー）。
+ * - GUEST: チームの GUEST を付与する API 経路が無いため扱わない（SUPPORTER と同じく未カバー）。
+ * - ロールの用意に依存する DEPUTY_ADMIN の検証は、失敗しても他を巻き込まないよう別 describe に分けている。
  */
 test.use({ storageState: { cookies: [], origins: [] } })
 
@@ -17,15 +26,14 @@ const member = { email: process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft
 const sameOrgNonMember = { email: 'e2e-dummy-1@test.mannschaft.local', password: pw }
 // 対象組織に所属しない他テナントのユーザー
 const otherTenant = { email: process.env.TEST_OUTSIDER_EMAIL ?? 'e2e-outsider@test.mannschaft.local', password: pw }
-// このテストで DEPUTY_ADMIN / SUPPORTER にするユーザー（afterAll で元に戻す）
+// DEPUTY_ADMIN にするユーザー（afterAll で元に戻す）
 const deputyUser = { email: 'e2e-dummy-10@test.mannschaft.local', password: pw }
-const supporterUser = { email: 'e2e-dummy-9@test.mannschaft.local', password: pw }
 const TEAM_SLUG = 'e2e'
 const ROLE_ID = { DEPUTY_ADMIN: 3, MEMBER: 4 } as const
 
 interface MyTeam { id: number, slug: string, organizationId: number | null, role: string }
 interface Session { ctx: BrowserContext, page: Page, userId: number }
-type SessionKey = 'admin' | 'member' | 'same' | 'other' | 'deputy' | 'supporter'
+type SessionKey = 'admin' | 'member' | 'same' | 'other'
 interface SkillRow { id: number, name: string }
 interface CategoryRow { id: number, name: string }
 
@@ -42,6 +50,20 @@ const activeSkillName = `${tag}-有効資格`
 const activeIssuer = `${tag}-有効発行元`
 
 const SKILL_API = /\/teams\/[^/]+\/(skills|skill-categories|skill-matrix)(\/|\?|$)/
+
+
+async function openSession(browser: Browser, ctxs: BrowserContext[], c: { email: string, password: string }): Promise<Session> {
+  const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+  ctxs.push(ctx)
+  const page = await ctx.newPage()
+  page.setDefaultTimeout(20_000)
+  page.setDefaultNavigationTimeout(60_000)
+  await loginViaApi(page, c, { apiBaseUrl: API })
+  const me = await page.request.get(`${API}/api/v1/users/me`)
+  expect(me.status()).toBe(200)
+  const userId = ((await me.json()) as { data: { id: number } }).data.id
+  return { ctx, page, userId }
+}
 
 const card = (page: Page, issuer: string) => page.locator('div.rounded-xl').filter({ hasText: issuer })
 
@@ -73,34 +95,13 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
   let teamId = 0
   let categoryId = 0
   let categoryBId = 0
-  // ロール付与の状態（afterAll で元に戻すための記録）
-  let deputyReady = false
-  let deputyJoinedByTest = false
-  let supporterReady = false
-  let supporterSetupError: string | null = null
-  let deputySetupError: string | null = null
-  let deputyOriginalRoleId: number | null = null
-  let supporterFollowedByTest = false
 
   test.beforeAll(async ({ browser }) => {
-    const open = async (c: { email: string, password: string }): Promise<Session> => {
-      const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
-      ctxs.push(ctx)
-      const page = await ctx.newPage()
-      page.setDefaultTimeout(20_000)
-      page.setDefaultNavigationTimeout(60_000)
-      await loginViaApi(page, c, { apiBaseUrl: API })
-      const me = await page.request.get(`${API}/api/v1/users/me`)
-      expect(me.status()).toBe(200)
-      const userId = ((await me.json()) as { data: { id: number } }).data.id
-      return { ctx, page, userId }
-    }
+    const open = (c: { email: string, password: string }) => openSession(browser, ctxs, c)
     sessions.admin = await open(admin)
     sessions.member = await open(member)
     sessions.same = await open(sameOrgNonMember)
     sessions.other = await open(otherTenant)
-    sessions.deputy = await open(deputyUser)
-    sessions.supporter = await open(supporterUser)
 
     const myTeams = async (s: Session) => (await (await s.ctx.request.get(`${API}/api/v1/me/teams`)).json() as { data: MyTeam[] }).data
     const adminTeam = (await myTeams(sess('admin'))).find(t => t.slug === TEAM_SLUG)
@@ -142,78 +143,6 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
     const verify = await a.patch(`${API}/api/v1/teams/${teamId}/skills/${activeId}/verify`)
     expect(verify.status(), await verify.text()).toBe(200)
 
-    // DEPUTY_ADMIN（MANAGE_MEMBER 権限なし）の用意。失敗理由は deputySetupError に残し、テスト 7 が明示的に落ちる
-    const fail = async (what: string, res: { status: () => number, text: () => Promise<string> }) =>
-      `${what}: HTTP ${res.status()} ${(await res.text()).slice(0, 200)}`
-    const deputyTeam = (await myTeams(sess('deputy'))).find(t => t.slug === TEAM_SLUG)
-    if (deputyTeam?.role === 'DEPUTY_ADMIN') {
-      deputyReady = true
-    } else if (deputyTeam) {
-      // 既存の所属がある場合は role PATCH で昇格し、afterAll で元のロールへ戻す
-      const originalRoleId = ({ MEMBER: ROLE_ID.MEMBER } as Record<string, number>)[deputyTeam.role]
-      if (originalRoleId === undefined) {
-        deputySetupError = `DEPUTY_ADMIN にするユーザーが既に ${deputyTeam.role} として所属しており、元のロールへ戻せない`
-      } else {
-        const promote = await a.patch(`${API}/api/v1/teams/${TEAM_SLUG}/members/${sess('deputy').userId}/role`, { data: { roleId: ROLE_ID.DEPUTY_ADMIN } })
-        if (promote.status() === 200) {
-          deputyOriginalRoleId = originalRoleId
-          deputyReady = true
-        } else {
-          deputySetupError = await fail('既存メンバーの昇格', promote)
-        }
-      }
-    } else {
-      const inv = await a.post(`${API}/api/v1/teams/${TEAM_SLUG}/invite-tokens`, { data: { roleId: ROLE_ID.MEMBER, maxUses: 1 } })
-      if (inv.status() !== 201) {
-        deputySetupError = await fail('招待トークン作成', inv)
-      } else {
-        const token = ((await inv.json()) as { data: { token: string } }).data.token
-        const join = await sess('deputy').ctx.request.post(`${API}/api/v1/invite/${token}/join`)
-        if (![200, 201].includes(join.status())) {
-          deputySetupError = await fail('招待での参加', join)
-        } else {
-          deputyJoinedByTest = true
-          const promote = await a.patch(`${API}/api/v1/teams/${TEAM_SLUG}/members/${sess('deputy').userId}/role`, { data: { roleId: ROLE_ID.DEPUTY_ADMIN } })
-          if (promote.status() === 200) deputyReady = true
-          else deputySetupError = await fail('DEPUTY_ADMIN への昇格', promote)
-        }
-      }
-    }
-
-    // SUPPORTER の用意: フォロー → 手動承認設定なら PENDING 申請になるため、管理者 API で承認する。
-    // 成否は /me/teams ではなく follow/status（SUPPORTER メンバーシップ保持 = APPROVED）で判定する
-    const followStatus = async () => ((await (await sess('supporter').ctx.request.get(`${API}/api/v1/teams/${TEAM_SLUG}/follow/status`)).json()) as { data: { status: string } }).data.status
-    const supTeam = (await myTeams(sess('supporter'))).find(t => t.slug === TEAM_SLUG)
-    if (supTeam && supTeam.role !== 'SUPPORTER') {
-      supporterSetupError = `SUPPORTER にするユーザーが既に ${supTeam.role} として対象チームに所属している`
-    } else if (await followStatus() === 'APPROVED') {
-      supporterReady = true
-    } else {
-      if (await followStatus() !== 'PENDING') {
-        const follow = await sess('supporter').ctx.request.post(`${API}/api/v1/teams/${TEAM_SLUG}/follow`)
-        if (![200, 201].includes(follow.status())) supporterSetupError = await fail('フォロー', follow)
-        else supporterFollowedByTest = true
-      } else {
-        supporterFollowedByTest = true
-      }
-      if (supporterSetupError === null && await followStatus() === 'PENDING') {
-        const apps = await a.get(`${API}/api/v1/teams/${TEAM_SLUG}/supporter-applications?size=200`)
-        const list = apps.status() === 200
-          ? (await apps.json() as { data: { id: number, userId: number, status: string }[] }).data
-          : []
-        const mine = list.find(x => x.userId === sess('supporter').userId && x.status === 'PENDING')
-        if (!mine) supporterSetupError = await fail('サポーター申請一覧に自分の PENDING 申請が無い', apps)
-        else {
-          const ap = await a.post(`${API}/api/v1/teams/${TEAM_SLUG}/supporter-applications/${mine.id}/approve`)
-          if (ap.status() !== 204) supporterSetupError = await fail('サポーター申請の承認', ap)
-        }
-      }
-      if (supporterSetupError === null) {
-        const st = await followStatus()
-        if (st === 'APPROVED') supporterReady = true
-        else supporterSetupError = `フォロー後の状態が APPROVED でない: ${st}`
-      }
-    }
   })
 
   test.afterAll(async () => {
@@ -249,18 +178,6 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
       } else {
         cleanupErrors.push(`カテゴリ一覧: HTTP ${cats.status()}`)
       }
-      if (deputyJoinedByTest && sessions.deputy) {
-        const d = await r.delete(`${API}/api/v1/teams/${TEAM_SLUG}/members/${sessions.deputy.userId}`)
-        if (![200, 204, 404].includes(d.status())) cleanupErrors.push(`DEPUTY_ADMIN 除名: HTTP ${d.status()}`)
-      }
-      if (deputyOriginalRoleId !== null && sessions.deputy) {
-        const d = await r.patch(`${API}/api/v1/teams/${TEAM_SLUG}/members/${sessions.deputy.userId}/role`, { data: { roleId: deputyOriginalRoleId } })
-        if (d.status() !== 200) cleanupErrors.push(`DEPUTY_ADMIN を元のロールへ戻す: HTTP ${d.status()}`)
-      }
-    }
-    if (supporterFollowedByTest && sessions.supporter) {
-      const d = await sessions.supporter.ctx.request.delete(`${API}/api/v1/teams/${TEAM_SLUG}/follow`)
-      if (![200, 204, 404].includes(d.status())) cleanupErrors.push(`サポーター解除: HTTP ${d.status()}`)
     }
     for (const c of ctxs) {
       try {
@@ -283,19 +200,6 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
     await expect(page).toHaveURL(new RegExp(`/teams/${TEAM_SLUG}/skills$`))
     await expect(page.getByRole('heading', { name: 'スキル・資格' }).first()).toBeVisible()
     await expect(page.getByRole('tab', { name: '自分のスキル・資格' })).toBeVisible()
-  })
-
-  test('1b. 導線: SUPPORTER にはサイドバーに「スキル・資格」が出ない', async () => {
-    expect(supporterReady, `SUPPORTER の用意に失敗: ${supporterSetupError}`).toBe(true)
-    const { page } = sess('supporter')
-    await page.goto(`/teams/${TEAM_SLUG}`, { waitUntil: 'domcontentloaded' })
-    await waitForHydration(page)
-    const toggle = page.getByTestId('scope-sidebar-toggle')
-    if (await toggle.isVisible()) {
-      await toggle.click()
-      await expect(page.getByRole('link', { name: 'スキル・資格' })).toHaveCount(0)
-    }
-    await expect(page.getByRole('link', { name: 'スキル・資格' }), 'どの表示でも導線は無い').toHaveCount(0)
   })
 
   test('2. 一般メンバー: 自分の資格だけが出て、登録でき、削除は確認ダイアログを経る', async () => {
@@ -454,6 +358,115 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
     })
   }
 
+})
+
+// ロールの用意（招待参加・昇格）に依存するため、主要な describe とは分けて独立させる（失敗しても他のテストを巻き込まない）。
+test.describe('資格画面: MANAGE_MEMBER を持たない DEPUTY_ADMIN', () => {
+  test.setTimeout(300_000)
+  const ctxs: BrowserContext[] = []
+  const cleanupErrors: string[] = []
+  const sessions: Partial<Record<'admin' | 'deputy', Session>> = {}
+  const sess = (key: 'admin' | 'deputy'): Session => {
+    const s = sessions[key]
+    if (!s) throw new Error(`セッション未確立: ${key}`)
+    return s
+  }
+  const dTag = `${tag}-D`
+  let teamId = 0
+  let deputyReady = false
+  let deputyJoinedByTest = false
+  let deputySetupError: string | null = null
+  let deputyOriginalRoleId: number | null = null
+  let dCategoryId = 0
+
+  test.beforeAll(async ({ browser }) => {
+    sessions.admin = await openSession(browser, ctxs, admin)
+    sessions.deputy = await openSession(browser, ctxs, deputyUser)
+    const myTeams = async (s: Session) => (await (await s.ctx.request.get(`${API}/api/v1/me/teams`)).json() as { data: MyTeam[] }).data
+    const adminTeam = (await myTeams(sess('admin'))).find(t => t.slug === TEAM_SLUG)
+    expect(adminTeam, '管理者は対象チームの所属').toBeTruthy()
+    teamId = adminTeam!.id
+    const a = sess('admin').ctx.request
+    // 他人（管理者）の資格を 1 件置く。DEPUTY_ADMIN の一覧に出てはならない
+    const cat = await a.post(`${API}/api/v1/teams/${teamId}/skill-categories`, { data: { name: `${dTag}-cat` } })
+    expect(cat.status(), await cat.text()).toBe(201)
+    dCategoryId = (await cat.json() as { data: { id: number } }).data.id
+    const sk = await a.post(`${API}/api/v1/teams/${teamId}/skills`, { data: { skillCategoryId: dCategoryId, name: `${dTag}-資格`, issuer: `${dTag}-発行元` } })
+    expect(sk.status(), await sk.text()).toBe(201)
+
+    // DEPUTY_ADMIN（MANAGE_MEMBER 権限なし）の用意。失敗理由は deputySetupError に残し、テスト 7 が明示的に落ちる
+    const fail = async (what: string, res: { status: () => number, text: () => Promise<string> }) =>
+      `${what}: HTTP ${res.status()} ${(await res.text()).slice(0, 200)}`
+    const deputyTeam = (await myTeams(sess('deputy'))).find(t => t.slug === TEAM_SLUG)
+    if (deputyTeam?.role === 'DEPUTY_ADMIN') {
+      deputyReady = true
+    } else if (deputyTeam) {
+      // 既存の所属がある場合は role PATCH で昇格し、afterAll で元のロールへ戻す
+      const originalRoleId = ({ MEMBER: ROLE_ID.MEMBER } as Record<string, number>)[deputyTeam.role]
+      if (originalRoleId === undefined) {
+        deputySetupError = `DEPUTY_ADMIN にするユーザーが既に ${deputyTeam.role} として所属しており、元のロールへ戻せない`
+      } else {
+        const promote = await a.patch(`${API}/api/v1/teams/${TEAM_SLUG}/members/${sess('deputy').userId}/role`, { data: { roleId: ROLE_ID.DEPUTY_ADMIN } })
+        if (promote.status() === 200) {
+          deputyOriginalRoleId = originalRoleId
+          deputyReady = true
+        } else {
+          deputySetupError = await fail('既存メンバーの昇格', promote)
+        }
+      }
+    } else {
+      const inv = await a.post(`${API}/api/v1/teams/${TEAM_SLUG}/invite-tokens`, { data: { roleId: ROLE_ID.MEMBER, maxUses: 1 } })
+      if (inv.status() !== 201) {
+        deputySetupError = await fail('招待トークン作成', inv)
+      } else {
+        const token = ((await inv.json()) as { data: { token: string } }).data.token
+        const join = await sess('deputy').ctx.request.post(`${API}/api/v1/invite/${token}/join`)
+        if (![200, 201].includes(join.status())) {
+          deputySetupError = await fail('招待での参加', join)
+        } else {
+          deputyJoinedByTest = true
+          const promote = await a.patch(`${API}/api/v1/teams/${TEAM_SLUG}/members/${sess('deputy').userId}/role`, { data: { roleId: ROLE_ID.DEPUTY_ADMIN } })
+          if (promote.status() === 200) deputyReady = true
+          else deputySetupError = await fail('DEPUTY_ADMIN への昇格', promote)
+        }
+      }
+    }
+
+  })
+
+  test.afterAll(async () => {
+    const r = sessions.admin?.ctx.request
+    if (r && teamId) {
+      if (deputyJoinedByTest && sessions.deputy) {
+        const d = await r.delete(`${API}/api/v1/teams/${TEAM_SLUG}/members/${sessions.deputy.userId}`)
+        if (![200, 204, 404].includes(d.status())) cleanupErrors.push(`DEPUTY_ADMIN 除名: HTTP ${d.status()}`)
+      }
+      if (deputyOriginalRoleId !== null && sessions.deputy) {
+        const d = await r.patch(`${API}/api/v1/teams/${TEAM_SLUG}/members/${sessions.deputy.userId}/role`, { data: { roleId: deputyOriginalRoleId } })
+        if (d.status() !== 200) cleanupErrors.push(`DEPUTY_ADMIN を元のロールへ戻す: HTTP ${d.status()}`)
+      }
+      const mine = await r.get(`${API}/api/v1/teams/${teamId}/skills/me`)
+      if (mine.status() === 200) {
+        for (const row of (await mine.json() as { data: SkillRow[] }).data.filter(x => (x.name ?? '').startsWith(dTag))) {
+          const d = await r.delete(`${API}/api/v1/teams/${teamId}/skills/${row.id}`)
+          if (![200, 204, 404].includes(d.status())) cleanupErrors.push(`資格 ${row.id}: HTTP ${d.status()}`)
+        }
+      }
+      if (dCategoryId) {
+        const d = await r.delete(`${API}/api/v1/teams/${teamId}/skill-categories/${dCategoryId}`)
+        if (![200, 204, 404].includes(d.status())) cleanupErrors.push(`カテゴリ ${dCategoryId}: HTTP ${d.status()}`)
+      }
+    }
+    for (const c of ctxs) {
+      try {
+        await c.close()
+      } catch (error) {
+        cleanupErrors.push(`context close: ${String(error)}`)
+      }
+    }
+    expect(cleanupErrors, `後始末失敗: ${cleanupErrors.join(' / ')}`).toEqual([])
+  })
+
   test('7. MANAGE_MEMBER を持たない DEPUTY_ADMIN: マトリクス・全員一覧が出ず、自分の資格だけ', async () => {
     expect(deputyReady, `DEPUTY_ADMIN の用意に失敗: ${deputySetupError}`).toBe(true)
     const { page } = sess('deputy')
@@ -468,7 +481,7 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
       await expect(page.getByRole('tab', { name: 'スキル一覧' })).toHaveCount(0)
       await expect(page.getByRole('tab', { name: 'スキルマトリクス' })).toHaveCount(0)
       await expect(page.getByRole('tab', { name: 'カテゴリ管理' })).toHaveCount(0)
-      await expect(card(page, activeIssuer), '他人の資格は出ない').toHaveCount(0)
+      await expect(card(page, `${dTag}-発行元`), '他人の資格は出ない').toHaveCount(0)
       await page.waitForTimeout(2_000)
       await expect(page.locator('.p-toast-message'), '失敗トーストは出ない').toHaveCount(0)
       expect(calls, `閲覧権限の無い API を呼んだ: ${calls.join(', ')}`).toEqual([])
@@ -477,5 +490,4 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
     }
   })
 
-  // GUEST は作れる範囲に無い（チームの GUEST 付与手段が API にない）ため、ここでは扱わない。
 })
