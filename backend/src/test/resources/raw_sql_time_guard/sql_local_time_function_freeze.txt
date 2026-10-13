@@ -24,4 +24,3 @@ SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.schedule.repository.UserIcalTo
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.shift.repository.ShiftChangeRequestRepository|2
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.social.announcement.AnnouncementFeedQueryRepository|1
 SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.todo.repository.ProjectRepository|1
-SQL_LOCAL_TIME_FUNCTION_IN_SQL|com.mannschaft.app.weather.service.GeonamesImportService|2

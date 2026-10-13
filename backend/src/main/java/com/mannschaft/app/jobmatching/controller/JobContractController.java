@@ -90,9 +90,10 @@ public class JobContractController {
      * 契約詳細を取得する。Requester または Worker 本人のみ閲覧可。
      *
      * <p><b>認可の所在</b>: {@code JobContractService#findById}
-     * （{@code jobmatching/service/JobContractService.java:284}）が対象契約を実体としてロードし、
-     * {@code isParticipant}（同 {@code :315}）で契約の {@code requester_user_id} /
-     * {@code worker_user_id} と認証主体の一致を検証する。不一致は {@code JOB_PERMISSION_DENIED}（404。越境の存在秘匿）。</p>
+     * （{@code jobmatching/service/JobContractService.java:277}）が対象契約を実体としてロードし、
+     * {@code isParticipant}（同 {@code :304}）で契約の {@code requester_user_id} /
+     * {@code worker_user_id} と認証主体の一致を検証する。不一致は不在契約と同じ
+     * 404 / {@code JOB_CONTRACT_NOT_FOUND} /「契約が見つかりません」を返す。</p>
      */
     @AuthorizedInService
     @GetMapping("/contracts/{id}")

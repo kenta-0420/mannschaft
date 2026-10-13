@@ -193,6 +193,19 @@ class CommitteeAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").isArray());
         }
+
+        @Test
+        @DisplayName("一覧の各メンバーに displayName が含まれる（FE の member.displayName.charAt の TypeError 防止）")
+        void 一覧の各メンバーにdisplayNameが含まれる() throws Exception {
+            setAuthentication(memberAId);
+            mockMvc.perform(get("/api/v1/committees/{id}/members", committeeAId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(4))
+                    .andExpect(jsonPath("$.data[*].displayName",
+                            org.hamcrest.Matchers.hasSize(4)))
+                    .andExpect(jsonPath("$.data[*].displayName",
+                            org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("委員会契約 テスト"))));
+        }
     }
 
     @Nested
