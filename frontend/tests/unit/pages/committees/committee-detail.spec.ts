@@ -15,6 +15,7 @@ import CommitteeDetailPage from '~/pages/committees/[id]/index.vue'
  *   CDT-001 取得失敗時に committee-detail-error-state が描画される
  *   CDT-002（対照）取得成功時は委員会名が表示され、エラー状態は出ない
  *   CDT-003 再試行は初回と同じ取得処理（loadData: getCommittee + listMembers）を呼ぶ
+ *   CDT-004 メンバー欄が BE 契約（displayName / avatarUrl 付き）で TypeError なく描画される（CMP-260930-1534）
  */
 
 const getCommittee = vi.fn()
@@ -97,6 +98,22 @@ describe('pages/committees/[id]/index.vue — 取得失敗時のエラー状態'
     expect(listMembers.mock.calls.length).toBe(callsBefore + 1)
     expect(wrapper.find('[data-testid="committee-detail-error-state"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('テスト委員会')
+  })
+
+  it('CDT-004: メンバーの表示名が描画され、アバター未設定でも頭文字フォールバックで落ちない', async () => {
+    getCommittee.mockResolvedValue({ data: committeeData })
+    listMembers.mockResolvedValue({
+      data: [
+        { userId: 10, displayName: '山田太郎', avatarUrl: null, role: 'CHAIR', joinedAt: '2026-10-01T00:00:00', leftAt: null, invitedBy: null },
+        { userId: 11, displayName: '佐藤花子', avatarUrl: 'https://example.com/a.png', role: 'MEMBER', joinedAt: '2026-10-01T00:00:00', leftAt: null, invitedBy: 10 },
+      ],
+    })
+    const wrapper = await mountSuspended(CommitteeDetailPage)
+    await flushMicrotasks()
+
+    expect(wrapper.find('[data-testid="committee-detail-error-state"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('山田太郎')
+    expect(wrapper.text()).toContain('佐藤花子')
   })
 })
 
