@@ -5,10 +5,12 @@
       "noCategoryMember": "このチームにはまだ有効なカテゴリがありません。チームの管理者にカテゴリの作成を依頼してください。"
     },
     "matrix": {
+      "refresh": "更新",
       "legendPendingNote": "確認待ちの資格は未登録として表示されます"
     },
     "list": {
       "actions": {
+        "search": "検索",
         "verify": "承認",
         "edit": "編集",
         "delete": "削除",

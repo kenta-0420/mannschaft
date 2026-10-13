@@ -232,7 +232,7 @@ defineExpose({ refresh: loadItems, refreshCategories })
         placeholder="ステータス"
         class="w-full sm:w-40"
       />
-      <Button icon="pi pi-search" severity="secondary" @click="loadItems" />
+      <Button :aria-label="t('skill.list.actions.search')" icon="pi pi-search" severity="secondary" @click="loadItems" />
     </div>
 
     <div v-if="loading" class="flex justify-center py-8">

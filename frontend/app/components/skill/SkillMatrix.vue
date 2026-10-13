@@ -78,6 +78,7 @@ defineExpose({ refresh: loadMatrix })
     <div class="mb-4 flex items-center justify-between">
       <h2 class="text-lg font-semibold">スキルマトリクス</h2>
       <Button
+        :aria-label="t('skill.matrix.refresh')"
         icon="pi pi-refresh"
         severity="secondary"
         text
