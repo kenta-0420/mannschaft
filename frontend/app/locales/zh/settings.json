@@ -202,6 +202,69 @@
         "delete_key_error": "删除安全密钥失败",
         "rename_success": "设备名称已更新",
         "rename_error": "更新设备名称失败"
+      },
+      "two_fa": {
+        "loading": "加载中...",
+        "status_disabled": "未设置",
+        "status_totp": "已启用（验证器应用）",
+        "status_email": "已启用（邮件）",
+        "backup_remaining": "剩余备用码 {count} 个",
+        "backup_low": "备用码所剩不多，请重新生成新的备用码。",
+        "setup_email_button": "通过邮件启用",
+        "disable_button": "停用双重认证",
+        "enable_button": "启用",
+        "retry_button": "重新加载",
+        "totp": {
+          "code_label": "验证器应用中显示的6位验证码",
+          "copy_secret": "复制密钥",
+          "secret_copied": "已复制密钥"
+        },
+        "email": {
+          "sent": "已向 {email} 发送6位验证码（有效期约 {minutes} 分钟）。",
+          "code_label": "邮件中的6位验证码",
+          "resend_button": "重新发送验证码",
+          "resend_wait": "{seconds} 秒后可重新发送"
+        },
+        "backup": {
+          "copy_button": "复制",
+          "download_button": "下载",
+          "copied": "已复制备用码",
+          "copy_failed": "无法复制到剪贴板",
+          "saved_check": "我已将备用码保存在安全的地方"
+        },
+        "reauth": {
+          "disable_title": "停用双重认证",
+          "regenerate_title": "重新生成备用码",
+          "description": "为确认是您本人操作，请输入以下信息。重新生成后，之前的备用码将全部失效。",
+          "password_label": "当前密码",
+          "method_label": "验证方式",
+          "method_totp": "验证器应用",
+          "method_email": "邮件",
+          "method_backup": "备用码",
+          "send_email_button": "通过邮件发送验证码",
+          "code_label_otp": "6位验证码",
+          "code_label_backup": "备用码",
+          "disable_submit": "停用",
+          "regenerate_submit": "重新生成"
+        },
+        "toast": {
+          "enabled": "已启用双重认证",
+          "disabled": "已停用双重认证"
+        },
+        "error": {
+          "invalid_code": "验证码不正确",
+          "resend_wait": "请稍等片刻再重新发送验证码",
+          "send_limit": "验证码发送次数已达上限，请稍后再试",
+          "already_enabled": "双重认证已启用",
+          "not_enabled": "双重认证尚未启用",
+          "reauth_failed": "身份验证失败，请检查密码和验证码",
+          "email_missing": "未登记邮箱地址，无法使用邮件验证码",
+          "email_unavailable": "目前无法使用邮件方式的双重认证",
+          "rate_limited": "操作过于频繁，请在 {seconds} 秒后重试",
+          "rate_limited_unknown": "操作过于频繁，请稍后再试",
+          "status_load": "无法获取双重认证状态",
+          "generic": "处理失败，请稍后再试"
+        }
       }
     },
     "linked_accounts": {
