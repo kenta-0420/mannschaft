@@ -1,4 +1,10 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "加载技能详情失败",
+      "loadCategoriesFailed": "加载分类失败"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "在话题中回复",
