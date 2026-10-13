@@ -31,7 +31,7 @@ import type {
   IncidentSuggestionResponse,
 } from '~/composables/useIncidentBannerAdmin'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const authStore = useAuthStore()
