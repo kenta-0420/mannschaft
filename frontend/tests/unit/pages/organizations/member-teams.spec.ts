@@ -26,7 +26,14 @@ import MemberTeamsPage from '~/pages/organizations/[slug]/member-teams.vue'
  *   MT-13 view の中身で承認などが起きたら件数を取り直す
  */
 
-const state = { isAdmin: true, adminLens: true, query: {} as Record<string, string> }
+const state = {
+  isAdmin: true,
+  adminLens: true,
+  query: {} as Record<string, string>,
+  /** 指定時は isAdmin より優先（SYSTEM_ADMIN のみのケース用）。 */
+  roleName: null as string | null,
+}
+const refreshOrgTeams = vi.fn()
 // useRouter を差し替えると Nuxt 本体（afterEach 等）が壊れるため、実ルーターのメソッドを spy する。
 const replaceSpy = vi.fn()
 const pushSpy = vi.fn()
@@ -36,8 +43,11 @@ vi.mock('~/composables/useOrgShellContext', () => ({
   useOrgShellContext: () => ({
     orgTeams: ref([]),
     showTeamSearchLink: computed(() => false),
-    isAdmin: computed(() => state.isAdmin),
+    // shell の isAdmin は SYSTEM_ADMIN も含む（ページは roleName === 'ADMIN' で見る）。
+    isAdmin: computed(() => state.isAdmin || state.roleName === 'SYSTEM_ADMIN'),
+    roleName: computed(() => state.roleName ?? (state.isAdmin ? 'ADMIN' : 'MEMBER')),
     adminLens: ref(state.adminLens),
+    refreshOrgTeams,
   }),
 }))
 
@@ -73,6 +83,9 @@ describe('pages/organizations/[slug]/member-teams.vue', () => {
     state.isAdmin = true
     state.adminLens = true
     state.query = {}
+    state.roleName = null
+    refreshOrgTeams.mockReset()
+    refreshOrgTeams.mockResolvedValue(undefined)
     replaceSpy.mockReset()
     pushSpy.mockReset()
     const router = useNuxtApp().$router
@@ -192,6 +205,28 @@ describe('pages/organizations/[slug]/member-teams.vue', () => {
       await flushPromises()
       expect(listApplications.mock.calls.length).toBe(before + 1)
       expect(wrapper.find('[data-testid="view-tab-badge"]').text()).toBe('1')
+    })
+
+    it('MT-14: SYSTEM_ADMIN のみ（対象組織の ADMIN でない）は view=applications を直打ちしても一覧へ戻し、切替・件数・設定リンクも出さない', async () => {
+      state.isAdmin = false
+      state.roleName = 'SYSTEM_ADMIN'
+      state.query = { view: 'applications' }
+      const wrapper = await mountPage()
+      expect(wrapper.find('[data-testid="applications-view"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="org-team-grid"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="view-tab-applications"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="team-affiliation-settings-link"]').exists()).toBe(false)
+      expect(listApplications).not.toHaveBeenCalled()
+      expect(replaceSpy).toHaveBeenCalledWith({ query: {} })
+    })
+
+    it('MT-15: 承認・拒否が成立したら、親シェルの所属チーム一覧も取り直す', async () => {
+      state.query = { view: 'applications' }
+      const wrapper = await mountPage()
+      expect(refreshOrgTeams).not.toHaveBeenCalled()
+      await wrapper.find('[data-testid="applications-view-changed"]').trigger('click')
+      await flushPromises()
+      expect(refreshOrgTeams).toHaveBeenCalledTimes(1)
     })
   })
 })

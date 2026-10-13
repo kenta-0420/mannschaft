@@ -74,6 +74,8 @@ export interface OrgShellContext {
   showChildrenTab: ComputedRef<boolean>
   /** 組織内チーム検索ページへの導線を表示するか。 */
   showTeamSearchLink: ComputedRef<boolean>
+  /** 所属チーム一覧の再取得（承認で加盟チームが増えたときなど）。 */
+  refreshOrgTeams: () => Promise<void>
   /** 組織再取得（状態同期用）。 */
   refresh: () => Promise<void>
   /** 親 org ref を部分更新するミューテータ群。 */

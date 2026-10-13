@@ -31,14 +31,18 @@ const route = useRoute()
 const router = useRouter()
 const orgSlug = computed(() => String(route.params.slug))
 
-const { orgTeams, showTeamSearchLink, isAdmin, adminLens } = useOrgShellContext()
+const { orgTeams, showTeamSearchLink, roleName, adminLens, refreshOrgTeams } = useOrgShellContext()
 const { listApplications } = useOrgTeamMembershipApi()
 
+// 対象組織の ADMIN 割当を持つか。shell の isAdmin は SYSTEM_ADMIN も含むが、BE は対象組織の
+// ADMIN 割当で判定して 403 を返すため、roleName === 'ADMIN' で見る（SYSTEM_ADMIN のみは対象外）。
+const isOrgAdmin = computed(() => roleName.value === 'ADMIN')
+
 // F01.2.1 8-A: 加盟の設定への入口。組織 ADMIN かつ管理レンズ ON のときだけ出す（設計書 §13）。
-const showAffiliationSettingsLink = computed(() => isAdmin.value && adminLens.value)
+const showAffiliationSettingsLink = computed(() => isOrgAdmin.value && adminLens.value)
 
 /** 申請・招待・制限・グループの操作と切替を出してよいか。 */
-const canManage = computed(() => isAdmin.value && adminLens.value)
+const canManage = computed(() => isOrgAdmin.value && adminLens.value)
 
 const activeView = computed<MemberTeamsView>(() => resolveMemberTeamsView(route.query.view, canManage.value))
 
@@ -87,6 +91,11 @@ async function refreshPendingCount() {
 function onApplicationsLoaded(total: number) {
   pendingCount.value = total
   countError.value = false
+}
+
+/** 承認・拒否が成立した。件数に加え、承認で増えた加盟チームを親シェルの所属チーム一覧へ反映する。 */
+async function onApplicationsChanged() {
+  await Promise.all([refreshPendingCount(), refreshOrgTeams()])
 }
 
 onMounted(() => void refreshPendingCount())
@@ -154,7 +163,7 @@ const viewTitleKey = computed(() => `teamAffiliation.view.${activeView.value}`)
           v-if="activeView === 'applications'"
           :org-slug="orgSlug"
           @loaded="onApplicationsLoaded"
-          @changed="refreshPendingCount"
+          @changed="onApplicationsChanged"
         />
         <MemberTeamsInvitesView
           v-else-if="activeView === 'invites'"

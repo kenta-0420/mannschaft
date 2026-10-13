@@ -450,6 +450,7 @@ provideOrgShellContext({
   permissionGroups,
   showChildrenTab,
   showTeamSearchLink,
+  refreshOrgTeams: fetchOrgTeams,
   refresh,
   mutators: orgMutators,
 })

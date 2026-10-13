@@ -122,6 +122,24 @@ describe('TeamInviteDialog', () => {
     expect(inviteTeam.mock.calls[0]![1].groupId).toBe(GROUP_A)
   })
 
+  it('IV-10: 検索結果が複数ページなら次ページへ移れ、2 ページ目のチームも招待できる', async () => {
+    searchPublicTeams.mockImplementation(async ({ page }: { page?: number }) => ({
+      ...pageOf(page === 1 ? { slug: 'team-21', name: '21番目のチーム' } : { slug: 'team-x', name: 'タイガース' }),
+      totalPages: 2,
+      number: page ?? 0,
+    }))
+    const wrapper = await mountDialog()
+    await search(wrapper)
+    expect(wrapper.find('[data-testid="invite-result-team-21"]').exists()).toBe(false)
+    await wrapper.find('[data-testid="pager-next"]').trigger('click')
+    await flushPromises()
+    expect(searchPublicTeams).toHaveBeenLastCalledWith(expect.objectContaining({ keyword: 'タイガース', page: 1 }))
+    await wrapper.find('[data-testid="invite-result-team-21"]').trigger('click')
+    await submit(wrapper).trigger('click')
+    await flushPromises()
+    expect(inviteTeam.mock.calls[0]![1].teamSlug).toBe('team-21')
+  })
+
   it('IV-06: 検索結果が 0 件なら「見つかりません」を出す', async () => {
     searchPublicTeams.mockResolvedValue(pageOf())
     const wrapper = await mountDialog()

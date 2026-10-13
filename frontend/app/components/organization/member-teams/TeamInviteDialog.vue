@@ -32,6 +32,9 @@ const SEARCH_SIZE = 20
 const keyword = ref('')
 const results = ref<PublicTeamSearchResult[]>([])
 const searched = ref(false)
+const searchedKeyword = ref('')
+const searchPage = ref(0)
+const totalPages = ref(1)
 const searching = ref(false)
 const searchFailed = ref(false)
 const selectedSlug = ref<string | null>(null)
@@ -73,6 +76,9 @@ watch(
     keyword.value = ''
     results.value = []
     searched.value = false
+    searchedKeyword.value = ''
+    searchPage.value = 0
+    totalPages.value = 1
     searchFailed.value = false
     selectedSlug.value = null
     selectedGroup.value = UNASSIGNED_GROUP_VALUE
@@ -83,14 +89,31 @@ watch(
   { immediate: true },
 )
 
+/** 新しいキーワードで 1 ページ目から検索する。 */
 async function search() {
   if (!canSearch.value) return
+  searchedKeyword.value = keyword.value.trim()
+  await fetchPage(0)
+}
+
+/** 同じキーワードで別ページへ移る（21 件目以降のチームも選べるようにする）。 */
+async function goToPage(pageIndex: number) {
+  await fetchPage(pageIndex)
+}
+
+async function fetchPage(pageIndex: number) {
   searching.value = true
   searchFailed.value = false
   selectedSlug.value = null
   try {
-    const page = await searchPublicTeams({ keyword: keyword.value.trim(), page: 0, size: SEARCH_SIZE })
-    results.value = page.content
+    const result = await searchPublicTeams({
+      keyword: searchedKeyword.value,
+      page: pageIndex,
+      size: SEARCH_SIZE,
+    })
+    results.value = result.content
+    totalPages.value = result.totalPages
+    searchPage.value = pageIndex
     searched.value = true
   }
   catch {
@@ -199,6 +222,13 @@ async function submit() {
       <Message v-if="groupsLoadFailed" severity="error" data-testid="invite-groups-load-error">
         {{ t('orgMemberTeams.groups_load_error') }}
       </Message>
+
+      <MemberTeamsPager
+        v-if="results.length > 0"
+        :page="searchPage"
+        :total-pages="totalPages"
+        @update:page="goToPage"
+      />
 
       <div v-if="groups !== null">
         <label class="mb-1 block text-sm font-medium" for="invite-group-select">
