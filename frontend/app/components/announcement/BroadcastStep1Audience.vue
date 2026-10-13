@@ -309,7 +309,21 @@ watch(
   { immediate: true },
 )
 
-onBeforeUnmount(clearPreviewTimer)
+/**
+ * 進行中（未完了）のテンプレート適用の templateId。適用が完了・失効するまで入れておく。
+ * セレクターは apply より先に templateId を保存するため、適用が終わる前は「未適用の templateId」がフォームにある。
+ */
+const applyingTemplateIds = ref<number[]>([])
+
+onBeforeUnmount(() => {
+  clearPreviewTimer()
+  // ステップ1が適用の途中で消える（「次へ」・ダイアログを閉じる等）と、適用の後始末（失効時の templateId 解除）は
+  // emit できず破棄される。未適用の templateId が送信され BE に宛先を復元されないよう、emit が生きている今ここで外す。
+  const current = props.modelValue.templateId
+  if (current !== null && applyingTemplateIds.value.includes(current)) {
+    emit('update:modelValue', { ...props.modelValue, templateId: null })
+  }
+})
 
 const resolvedEmpty = computed(
   () => preview.value !== null && preview.value.resolvedTeamCount === 0 && preview.value.directMemberCount === 0,
@@ -317,6 +331,8 @@ const resolvedEmpty = computed(
 
 /** 宛先を絞ったのに該当が無い・確認中・確認に失敗した間は「次へ」を押せない（AC-H06） */
 const nextDisabled = computed(() => {
+  // テンプレートの適用が終わるまでは進めない（未適用の templateId のまま送信されるのを防ぐ）
+  if (applyingTemplateIds.value.length > 0) return true
   if (!isOrg.value || props.modelValue.targetMode === 'ALL') return false
   if (!(hasAudienceSelection(props.modelValue) || templateEmptied.value)) return true
   return previewPending.value || previewError.value !== null || preview.value === null || resolvedEmpty.value
@@ -342,6 +358,17 @@ function templateHasGroupItems(template: AnnouncementTemplate): boolean {
 let applySeq = 0
 
 async function onTemplateApply(template: AnnouncementTemplate) {
+  applyingTemplateIds.value.push(template.id)
+  try {
+    await runTemplateApply(template)
+  }
+  finally {
+    const i = applyingTemplateIds.value.indexOf(template.id)
+    if (i >= 0) applyingTemplateIds.value.splice(i, 1)
+  }
+}
+
+async function runTemplateApply(template: AnnouncementTemplate) {
   templateNotice.value = null
   const seq = ++applySeq
   // 世代はグループ一覧の待機より前に採番する（待機中に宛先を手で変えたら、この適用は捨てる）

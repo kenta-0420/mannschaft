@@ -4,6 +4,7 @@ import { defineComponent } from 'vue'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import BroadcastWizard from './BroadcastWizard.vue'
 import BroadcastTemplateSelector from './BroadcastTemplateSelector.vue'
+import BroadcastStep1Audience from './BroadcastStep1Audience.vue'
 
 /**
  * F01.2.1 8-E: 通常導線をウィザード全体でたどる（ステップ1 → 2 → 3 と戻り）。
@@ -199,6 +200,65 @@ describe('実際のテンプレートセレクター経由（update:modelValue �
     await click(w, 'broadcast-step2-next')
     await w.get('[data-testid="s3"]').trigger('click')
     await flushPromises()
+    const body = sentBody()
+    expect(body).toBeDefined()
+    expect(body?.templateId ?? null).toBeNull()
+    expect(body?.targetRole).toBe('SUPPORTERS_AND_ABOVE')
+    expect(body?.targetGroupIds ?? []).toEqual([])
+    expect(body?.targetTeamIds ?? null).toBeNull()
+  })
+
+  async function mountPending(): Promise<{ w: VueWrapper, release: () => Promise<void> }> {
+    let resolveGroups: (v: unknown) => void = () => {}
+    mockApi.mockImplementation((url: string, opts?: { method?: string, body?: Record<string, unknown> }) => {
+      if (url.endsWith('/team-groups')) return new Promise(r => { resolveGroups = r })
+      if (url.endsWith('/announcement-templates')) return Promise.resolve({ data: [TEMPLATE] })
+      if (url.endsWith('/broadcast') && opts?.method === 'POST') {
+        return Promise.resolve({ data: { announcementFeedId: 1, channel: 'BULLETIN_THREAD', contentId: 2, contentUrl: '/x', targetRole: 'SUPPORTERS_AND_ABOVE', targetTeamIds: null, priority: 'NORMAL', createdAt: '2026-10-14T00:00:00', warnings: [] } })
+      }
+      return route(url, opts)
+    })
+    wrapper = await mountSuspended(BroadcastWizard, {
+      props: { visible: true, scopeType: 'ORGANIZATION', scopeId: 'acme', isAdmin: true },
+      global: { stubs: { Dialog, BroadcastGuideContent: true, BroadcastStep3Content: Step3Stub } },
+    })
+    const w = wrapper
+    await flushPromises()
+    w.getComponent(BroadcastTemplateSelector).findComponent({ name: 'Select' }).vm.$emit('update:modelValue', 5)
+    await flushPromises()
+    await w.get('#target_role_SUPPORTERS_AND_ABOVE').setValue(true)
+    await flushPromises()
+    return {
+      w,
+      release: async () => {
+        resolveGroups({ data: GROUPS, meta: { unassignedTeamCount: 0, limit: 100 } })
+        await flushPromises()
+        await settle()
+      },
+    }
+  }
+
+  async function sendFromStep2(w: VueWrapper) {
+    await click(w, 'broadcast-channel-BULLETIN_THREAD')
+    await click(w, 'broadcast-step2-next')
+    await w.get('[data-testid="s3"]').trigger('click')
+    await flushPromises()
+  }
+
+  it('Medium(5巡目): テンプレート適用が終わるまで「次へ」は押せず、終わると押せる', async () => {
+    const { w, release } = await mountPending()
+    expect(w.get('[data-testid="broadcast-step1-next"]').attributes('disabled')).toBeDefined()
+    await release()
+    expect(w.get('[data-testid="broadcast-step1-next"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('Medium(5巡目): 適用の途中でステップ1が消えても、未適用の templateId は送信されず宛先は画面どおり', async () => {
+    const { w, release } = await mountPending()
+    // ボタンは押せない。それでも適用の途中でステップ1が消える経路（ステップ移動）を強制して二重防御を確かめる
+    ;(w.getComponent(BroadcastStep1Audience) as unknown as VueWrapper).vm.$emit('next')
+    await flushPromises()
+    await release()
+    await sendFromStep2(w)
     const body = sentBody()
     expect(body).toBeDefined()
     expect(body?.templateId ?? null).toBeNull()
