@@ -543,6 +543,28 @@ class OrganizationControllerTest {
     }
 
     @Test
+    @DisplayName("getMyPermissions: SYSTEM_ADMIN と対象組織 ADMIN の兼任者は roleName が SYSTEM_ADMIN でも scopeAdmin=true")
+    void getMyPermissions_systemAdminAlsoOrgAdmin_scopeAdminTrue() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        given(roleService.resolveEffectivePermissions(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(List.of());
+        given(accessControlService.getRoleName(USER_ID, ORG_ID, "ORGANIZATION")).willReturn("SYSTEM_ADMIN");
+        given(accessControlService.isAdmin(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+        EffectivePermissionsResponse body = controller.getMyPermissions(ORG_SLUG).getBody().getData();
+        assertThat(body.getRoleName()).isEqualTo("SYSTEM_ADMIN");
+        assertThat(body.isScopeAdmin()).isTrue();
+    }
+
+    @Test
+    @DisplayName("getMyPermissions: SYSTEM_ADMIN のみ（対象組織の ADMIN 割当なし）は scopeAdmin=false")
+    void getMyPermissions_systemAdminOnly_scopeAdminFalse() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        given(roleService.resolveEffectivePermissions(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(List.of());
+        given(accessControlService.getRoleName(USER_ID, ORG_ID, "ORGANIZATION")).willReturn("SYSTEM_ADMIN");
+        given(accessControlService.isAdmin(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+        assertThat(controller.getMyPermissions(ORG_SLUG).getBody().getData().isScopeAdmin()).isFalse();
+    }
+
+    @Test
     @DisplayName("leaveOrganization: 204 No Content")
     void leaveOrganization_204() {
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);

@@ -226721,6 +226721,9 @@
           },
           "roleName": {
             "type": "string"
+          },
+          "scopeAdmin": {
+            "type": "boolean"
           }
         }
       },
