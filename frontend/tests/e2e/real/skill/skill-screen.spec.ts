@@ -267,7 +267,10 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
     await page.getByRole('button', { name: 'カテゴリ追加' }).click()
     await page.getByRole('dialog').getByPlaceholder('例: 運転免許').fill(created)
     await page.getByRole('dialog').getByRole('button', { name: '作成', exact: true }).click()
-    const catCard = (name: string) => page.locator('div.rounded-xl').filter({ has: page.locator('h3', { hasText: name }) })
+    // カテゴリ管理タブ（表示中の tabpanel）の中だけを、見出し完全一致で探す（一覧タブの資格カードに部分一致させない）
+    const catCard = (name: string) => page.getByRole('tabpanel')
+      .locator('div.rounded-xl')
+      .filter({ has: page.getByRole('heading', { name, exact: true }) })
     await expect(catCard(created), '作成したカテゴリが管理タブに出る').toBeVisible()
     // 作成直後のカテゴリで、画面の登録フォームから資格を登録する（選択肢に再読込なしで出ることの確認を兼ねる）。
     // 登録成功で一覧が再取得されるので、改名の反映確認の前提がそろう
