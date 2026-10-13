@@ -103,6 +103,8 @@ class SuccessionCovenantScopeContractIT extends AbstractSuccessionIntegrationTes
     private final List<Long> organizationIds = new ArrayList<>();
     private final List<Long> dwellingIds = new ArrayList<>();
     private final List<Long> residentIds = new ArrayList<>();
+    /** この IT が新規作成した roles 行。既存行を get した場合は含めない（他 IT の get-or-create 前提を壊さないため）。 */
+    private final List<Long> createdRoleIds = new ArrayList<>();
     private final List<UUID> covenantIds = new ArrayList<>();
     private Long signer;
     private Long nonAdmin;
@@ -176,7 +178,7 @@ class SuccessionCovenantScopeContractIT extends AbstractSuccessionIntegrationTes
                 }
                 em.flush();
                 if (!actorIds.isEmpty()) {
-                    // 範囲はこのtestが採番したuserだけ。共有roleカタログは削除しない。
+                    // 範囲はこのtestが採番したuserだけ。roleはこのtestが新規作成した行だけを後で削除する（既存の共有roleは消さない）。
                     em.createNativeQuery("DELETE FROM audit_logs WHERE user_id IN (:ids)")
                             .setParameter("ids", actorIds).executeUpdate();
                     em.createNativeQuery("DELETE FROM user_roles WHERE user_id IN (:ids)")
@@ -185,6 +187,7 @@ class SuccessionCovenantScopeContractIT extends AbstractSuccessionIntegrationTes
                             .setParameter("ids", actorIds).executeUpdate();
                     users.deleteAllById(actorIds);
                 }
+                roles.deleteAllById(createdRoleIds);
                 if (!organizationIds.isEmpty()) {
                     organizations.deleteAllById(organizationIds);
                 }
@@ -395,7 +398,11 @@ class SuccessionCovenantScopeContractIT extends AbstractSuccessionIntegrationTes
     }
 
     private Long fixtureRole(String name) {
-        return roles.findByName(name).orElseGet(() -> roles.save(CovenantFixtures.role(name))).getId();
+        return roles.findByName(name).orElseGet(() -> {
+            RoleEntity created = roles.save(CovenantFixtures.role(name));
+            createdRoleIds.add(created.getId());
+            return created;
+        }).getId();
     }
 
     private void fixtureMembership(Long actor, Long orgId) {
