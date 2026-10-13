@@ -158,12 +158,14 @@ defineExpose({ refresh: loadCategories })
         </div>
         <div class="flex shrink-0 gap-1">
           <Button
+            :aria-label="t('skill.category.actions.edit')"
             icon="pi pi-pencil"
             size="small"
             text
             @click="openEdit(cat)"
           />
           <Button
+            :aria-label="t('skill.category.actions.delete')"
             icon="pi pi-trash"
             size="small"
             text
