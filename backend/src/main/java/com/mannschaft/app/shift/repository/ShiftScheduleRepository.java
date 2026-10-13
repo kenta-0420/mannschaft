@@ -6,6 +6,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -113,6 +114,35 @@ public interface ShiftScheduleRepository extends JpaRepository<ShiftScheduleEnti
     List<ShiftScheduleEntity> findFor24hReminder(
             @Param("now") LocalDateTime now,
             @Param("threshold24h") LocalDateTime threshold24h);
+
+    /**
+     * 48h リマインドの送信済みフラグを条件付きで取得（先取り）する。更新件数が 1 のときだけ取得できたことを意味する。
+     * 配送リスナーが配送前に呼び、並行・重複した配送を排他する（Issue #2997 G6）。
+     * bulk UPDATE は @Version を自動では進めないため {@code version = version + 1} を明示する
+     * <b>受付中（COLLECTING）に限る</b>: 受付を終えた（PUBLISHED 等）スケジュールには version を進めない。
+     * 遅れて走った claim / release が version を進めると、{@code ShiftAutoArchiveBatchService} が 1 TX で全件保存する際に
+     * 楽観ロック例外で全件巻き戻るため。受付を終えていればリマインドは不要で、更新 0 件 = 配送しない。
+     * （古い version を持つ通常編集の保存が楽観ロック例外になり、フラグを巻き戻さない。例外は既存の
+     * GlobalExceptionHandler が ObjectOptimisticLockingFailureException として写像する）。
+     */
+    @Modifying
+    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent48h = TRUE, s.version = s.version + 1 WHERE s.id = :id AND s.status = 'COLLECTING' AND s.isReminderSent48h = FALSE")
+    int claimReminder48h(@Param("id") Long id);
+
+    /** 24h リマインドの送信済みフラグを条件付きで取得（先取り）する。 */
+    @Modifying
+    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent = TRUE, s.version = s.version + 1 WHERE s.id = :id AND s.status = 'COLLECTING' AND s.isReminderSent = FALSE")
+    int claimReminder24h(@Param("id") Long id);
+
+    /** 48h リマインドのフラグを戻す（全員配送失敗時。次回バッチで再送される）。 */
+    @Modifying
+    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent48h = FALSE, s.version = s.version + 1 WHERE s.id = :id AND s.status = 'COLLECTING' AND s.isReminderSent48h = TRUE")
+    int releaseReminder48h(@Param("id") Long id);
+
+    /** 24h リマインドのフラグを戻す（全員配送失敗時）。 */
+    @Modifying
+    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent = FALSE, s.version = s.version + 1 WHERE s.id = :id AND s.status = 'COLLECTING' AND s.isReminderSent = TRUE")
+    int releaseReminder24h(@Param("id") Long id);
 
     /**
      * 自動アーカイブ対象: PUBLISHED かつ endDate が cutoffDate より前。
