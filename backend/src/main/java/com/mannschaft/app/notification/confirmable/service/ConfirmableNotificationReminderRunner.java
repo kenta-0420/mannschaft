@@ -112,13 +112,13 @@ public class ConfirmableNotificationReminderRunner {
                 .orElseThrow(() -> new IllegalStateException(
                         "リマインドバッチ: 確認通知が見つからない notificationId=" + notificationId));
         List<Long> confirmedUserIds = confirmed.stream().map(ConfirmableNotificationRecipientEntity::getRecipientUserId).toList();
-        List<NotificationEntity> inserted = insertReminderNotifications(notification, confirmedUserIds, isFirstReminder);
+        List<NotificationEntity> inserted = insertReminderNotifications(notification, confirmedUserIds, isFirstReminder, now);
         return new ReminderCommit(confirmedUserIds, inserted);
     }
 
     /** リマインド用の notifications 多値 INSERT（受信者数に比例した文数にしない・§9.4）。採番 id を戻す。 */
     private List<NotificationEntity> insertReminderNotifications(
-            ConfirmableNotificationEntity notification, List<Long> userIds, boolean isFirstReminder) {
+            ConfirmableNotificationEntity notification, List<Long> userIds, boolean isFirstReminder, LocalDateTime createdAt) {
         String notificationType = isFirstReminder
                 ? "CONFIRMABLE_NOTIFICATION_REMINDER_1" : "CONFIRMABLE_NOTIFICATION_REMINDER_2";
         NotificationScopeType scopeType = toNotificationScopeType(notification);
@@ -159,7 +159,6 @@ public class ConfirmableNotificationReminderRunner {
         }, keyHolder);
 
         List<Map<String, Object>> keyRows = keyHolder.getKeyList();
-        LocalDateTime createdAt = LocalDateTime.now();
         List<NotificationEntity> result = new ArrayList<>(userIds.size());
         for (int i = 0; i < userIds.size(); i++) {
             Long id = null;
