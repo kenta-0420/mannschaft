@@ -148788,6 +148788,47 @@
         }
       }
     },
+    "/api/v1/teams/{teamSlug}/organizations/{orgSlug}": {
+      "delete": {
+        "tags": [
+          "チームの加盟（離脱）"
+        ],
+        "summary": "組織からの離脱（チームの加盟操作者）",
+        "operationId": "leave_1",
+        "parameters": [
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "離脱成功（加盟の行を削除）"
+          },
+          "403": {
+            "description": "加盟操作権限なし"
+          },
+          "404": {
+            "description": "TEAM_070（加盟していない組織・存在しない組織の slug・離脱済みは同じ応答）"
+          },
+          "409": {
+            "description": "TEAM_071（加盟が成立していない＝申請・招待の処理中）"
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamSlug}/org-applications/{membershipId}": {
       "delete": {
         "tags": [
@@ -150226,6 +150267,47 @@
         }
       }
     },
+    "/api/v1/organizations/{slug}/teams/{teamSlug}": {
+      "delete": {
+        "tags": [
+          "組織の加盟チーム（除名）"
+        ],
+        "summary": "加盟チームの除名（組織 ADMIN）",
+        "operationId": "remove",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "除名成功（加盟の行を削除）"
+          },
+          "403": {
+            "description": "組織 ADMIN ではない"
+          },
+          "404": {
+            "description": "TEAM_070（加盟していないチーム・存在しないチームの slug・除名済みは同じ応答）"
+          },
+          "409": {
+            "description": "TEAM_071（加盟が成立していない＝申請・招待の処理中）"
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{slug}/team-invites/{teamSlug}": {
       "delete": {
         "tags": [
@@ -151134,7 +151216,7 @@
           "個人時間割共有先"
         ],
         "summary": "共有先解除",
-        "operationId": "remove",
+        "operationId": "remove_1",
         "parameters": [
           {
             "name": "personalTimetableId",

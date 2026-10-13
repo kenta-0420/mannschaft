@@ -46987,6 +46987,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamSlug}/organizations/{orgSlug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 組織からの離脱（チームの加盟操作者） */
+        delete: operations["leave_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamSlug}/org-applications/{membershipId}": {
         parameters: {
             query?: never;
@@ -47727,6 +47744,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{slug}/teams/{teamSlug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 加盟チームの除名（組織 ADMIN） */
+        delete: operations["remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{slug}/team-invites/{teamSlug}": {
         parameters: {
             query?: never;
@@ -48157,7 +48191,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 共有先解除 */
-        delete: operations["remove"];
+        delete: operations["remove_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -170931,6 +170965,48 @@ export interface operations {
             };
         };
     };
+    leave_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamSlug: string;
+                orgSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 離脱成功（加盟の行を削除） */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 加盟操作権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TEAM_070（加盟していない組織・存在しない組織の slug・離脱済みは同じ応答） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TEAM_071（加盟が成立していない＝申請・招待の処理中） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     withdraw_5: {
         parameters: {
             query?: never;
@@ -171864,6 +171940,48 @@ export interface operations {
             };
         };
     };
+    remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                teamSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 除名成功（加盟の行を削除） */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 組織 ADMIN ではない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TEAM_070（加盟していないチーム・存在しないチームの slug・除名済みは同じ応答） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TEAM_071（加盟が成立していない＝申請・招待の処理中） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     cancel_18: {
         parameters: {
             query?: never;
@@ -172417,7 +172535,7 @@ export interface operations {
             };
         };
     };
-    remove: {
+    remove_1: {
         parameters: {
             query?: never;
             header?: never;

@@ -1,6 +1,7 @@
 package com.mannschaft.app.team.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.notification.NotificationType;
 import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.team.TeamErrorCode;
@@ -14,6 +15,7 @@ import com.mannschaft.app.team.repository.TeamOrgAffiliationRestrictionRepositor
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,10 @@ import java.util.UUID;
  * 予約する（承諾は {@link #accept} の中、招待は読み直しの後の {@link #appendInviteReceivedNotice}。
  * docs/architecture/notification_outbox.md §10）。</p>
  *
+ * <p>例外として、承諾（{@link #accept}）は加盟行をロックした<b>後</b>に、組織の最新のコミット済みの閉鎖の状態をポート越しに
+ * 組織ドメインの<b>新しい</b>読み取り tx（{@link TeamAffiliationOrganizationPort#findClosureStateIncludingDeleted}）で確かめる。
+ * 組織の表をこの tx に持ち込まず、ロックも取らない（F01.2.1 §4.5。理由は {@link #accept}）。</p>
+ *
  * <h2>ロックの順序（デッドロックしない理由）</h2>
  * <ul>
  *   <li>招待の作成: 最初の文で<b>チーム行</b>を {@code FOR UPDATE} で取る。同じチームへの招待と申請（§6.1。チーム行 → 組織行）は
@@ -57,6 +63,8 @@ public class TeamOrgInviteCommandService {
     private final TeamOrgAffiliationRestrictionService restrictionService;
     private final TeamOrgAffiliationRestrictionRepository restrictionRepository;
     private final TeamAffiliationNotifier notifier;
+    private final TeamAffiliationOrganizationPort organizationPort;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
     private final Duration declineCooldown;
     private final Duration resendCooldown;
@@ -67,6 +75,8 @@ public class TeamOrgInviteCommandService {
             TeamOrgAffiliationRestrictionService restrictionService,
             TeamOrgAffiliationRestrictionRepository restrictionRepository,
             TeamAffiliationNotifier notifier,
+            TeamAffiliationOrganizationPort organizationPort,
+            ApplicationEventPublisher eventPublisher,
             Clock clock,
             @Value("${mannschaft.affiliation.reject-cooldown-days:30}") long declineCooldownDays,
             @Value("${mannschaft.affiliation.resend-cooldown-hours:24}") long resendCooldownHours) {
@@ -75,6 +85,8 @@ public class TeamOrgInviteCommandService {
         this.restrictionService = restrictionService;
         this.restrictionRepository = restrictionRepository;
         this.notifier = notifier;
+        this.organizationPort = organizationPort;
+        this.eventPublisher = eventPublisher;
         this.clock = clock;
         this.declineCooldown = Duration.ofDays(declineCooldownDays);
         this.resendCooldown = Duration.ofHours(resendCooldownHours);
@@ -91,10 +103,13 @@ public class TeamOrgInviteCommandService {
      * @param operatorUserId 操作者
      * @param groupId        加盟後に所属させるグループ（任意。組織の生存グループであることを確認済み）
      * @param message        添え書き（正規化・長さ検証済み。任意）
+     * @param organizationClosureGeneration 事前に読んだ組織の閉鎖の世代（{@code organizations.closure_generation}）。
+     *                                      加盟行に記録する。組織行はロックしないので、呼び出し側はコミットの後に組織行の
+     *                                      共有ロックで世代を読み直し、進んでいれば作った招待を取り下げる（§4.5・§6.9）
      */
     @Transactional
     public CreatedInvite invite(Long teamId, Long organizationId, Long operatorUserId, UUID groupId,
-                                String message) {
+                                String message, long organizationClosureGeneration) {
         // 1. 最初の文でチーム行をロックし、ロック取得後にチームの状態を再確認する（削除 404・アーカイブ）
         TeamEntity team = teamRepository.findByIdForUpdate(teamId)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
@@ -115,14 +130,16 @@ public class TeamOrgInviteCommandService {
 
         // 4. INSERT。招待の瞬間は DATETIME（秒精度）に合わせて秒へ丸め、応答と DB の値を一致させる。
         //    ロックの内側なので一意制約違反は通常起きないが、起きたら並行した招待・申請として 409 TEAM_066
+        //    作成時点の閉鎖の世代を記録する（F01.2.1 §4.5・TeamOrgClosureGeneration）。チームの世代はチーム行のロックの下で読んだ値
         Instant invitedAt = Instant.now(clock).truncatedTo(ChronoUnit.SECONDS);
+        long teamClosureGeneration = team.getClosureGeneration();
         try {
             if (groupId == null) {
                 membershipRepository.insertPendingInviteUnassigned(teamId, organizationId, message, operatorUserId,
-                        invitedAt.getEpochSecond());
+                        invitedAt.getEpochSecond(), organizationClosureGeneration, teamClosureGeneration);
             } else {
                 membershipRepository.insertPendingInvite(teamId, organizationId, groupId, message, operatorUserId,
-                        invitedAt.getEpochSecond());
+                        invitedAt.getEpochSecond(), organizationClosureGeneration, teamClosureGeneration);
             }
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(TeamErrorCode.TEAM_066, e);
@@ -138,7 +155,7 @@ public class TeamOrgInviteCommandService {
      *
      * <p>招待の作成は組織行をロックしないため、「組織の状態を確認 → 組織がアーカイブされ片付けが走る → 招待を INSERT」の
      * 順に進むと、アーカイブ済みの組織に PENDING が残りうる。そこで呼び出し側はコミットの後で組織の状態を読み直し、
-     * 生存していなければ本メソッドで消す。読み直しの時点で組織のアーカイブがまだコミットされていなければ、
+     * 生存していないか、閉鎖の世代が事前に読んだ値より進んでいれば（その間にアーカイブ → 解除された。§4.5）本メソッドで消す。読み直しの時点で組織のアーカイブがまだコミットされていなければ、
      * 後でコミットされたアーカイブの片付け（{@code OrganizationArchivedEvent}）がこの行を消すので、どちらの順でも残らない。</p>
      *
      * @return 消した行数（承諾などで既に PENDING でなければ 0）
@@ -153,7 +170,8 @@ public class TeamOrgInviteCommandService {
      *
      * <p>最初の文で招待の行を {@code FOR UPDATE} で読み、まだこのチームの PENDING / ORG_INVITE であるときだけ書く。
      * 読み直しの後に辞退・取消・承諾で行が変わっていれば何も書かない（取り消された招待の通知を出さない）。
-     * 辞退・取消・承諾も同じ行を {@code FOR UPDATE} で取るので、確認と書き込みの間に状態は変わらない。</p>
+     * 辞退・取消・承諾も同じ行を {@code FOR UPDATE} で取るので、確認と書き込みの間に状態は変わらない。
+     * 予約と同じ tx で {@code invite_notified_at} を立てる（2-D。組織の閉鎖の片付けが「チームが知っている招待か」を判定する）。</p>
      *
      * @return 予約したら true。招待の行が PENDING の招待として残っていなければ false
      */
@@ -165,6 +183,10 @@ public class TeamOrgInviteCommandService {
                 || row.get().getDirection() != TeamOrgAffiliationDirection.ORG_INVITE) {
             return false;
         }
+        // 受信通知を予約した印を同じ tx で残す（F01.2.1 2-D）。組織のアーカイブ・削除の片付けは、この印の無い招待
+        // （チームがまだ知らない招待）には取消の通知を送らない。片付けも同じ行を FOR UPDATE で取るので、印と予約は不可分
+        membershipRepository.markInviteNotified(membershipId,
+                Instant.now(clock).truncatedTo(ChronoUnit.SECONDS).getEpochSecond());
         notifier.enqueue(notice);
         return true;
     }
@@ -174,8 +196,10 @@ public class TeamOrgInviteCommandService {
      *
      * <p>組織の状態の確認（トランザクションの外）に組織 ID が要るため、書き込みの前に行を一度読む。
      * 判定表はトランザクションの中（{@link #accept}）でもロックを取ってから改めて当てる。</p>
+     *
+     * <p>プライマリで読む（readOnly にしない。レプリカへ振られると、作った直後の招待を複製遅延で 404 にしうる。2-D 検分5巡目）。</p>
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public InviteTarget findPendingInvite(Long teamId, Long membershipId) {
         TeamOrgMembershipEntity row = membershipRepository.findByIdAndTeamId(membershipId, teamId)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_070));
@@ -195,6 +219,13 @@ public class TeamOrgInviteCommandService {
      *
      * <p>承諾の通知（{@code TEAM_ORG_INVITE_ACCEPTED}・組織 ADMIN 全員）は同じトランザクションで outbox に予約する。
      * 予約が失敗すれば承諾ごと巻き戻る（OB14）。</p>
+     *
+     * <p>組織・チームの閉鎖より前に作られた招待（§4.5。記録した閉鎖の世代がいまの世代より古い行）は承諾しない。
+     * チームの世代はチーム行のロックの下で読む。組織行はこの経路ではロックしない（ロックの順序を崩さない）ので、組織の世代は
+     * 加盟行をロックした<b>後</b>に、組織の最新のコミット済みの状態をポート越しの新しい読み取り tx で読む。こうすると、
+     * 読む前にコミットされた閉鎖（とその後の解除）は必ず見え、読んだ後にコミットされた閉鎖の片付けは、この加盟行のロックを
+     * 待ってから承諾済み（ACTIVE）の行を見る（閉鎖より前に承諾が成立した、という順序になる）。事前に tx の外で読んだ
+     * 組織の状態だけに頼ると、その読み取りと承諾の間に「閉鎖 → 解除」が挟まったとき閉鎖前の招待を ACTIVE にしてしまう。</p>
      *
      * @param expectedOrganizationId 事前に読んだ組織（行の組織と一致することを確かめる）
      * @param confirmedGroupId       確定グループ（null なら未分類）
@@ -220,6 +251,19 @@ public class TeamOrgInviteCommandService {
         if (team.getArchivedAt() != null) {
             throw new BusinessException(TeamErrorCode.TEAM_002);
         }
+        // 組織の最新のコミット済みの閉鎖の状態を、加盟行のロックの後に組織ドメインの新しい読み取り tx で確かめる（上記）。
+        // 論理削除済み（行が無い）は行が無いのと同じ 404、アーカイブ済みは既存のアーカイブ拒否（行は片付けで消える）
+        TeamAffiliationOrganizationPort.OrganizationClosureState organization = organizationPort
+                .findClosureStateIncludingDeleted(expectedOrganizationId)
+                .filter(state -> !state.deleted())
+                .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_070));
+        if (organization.archived()) {
+            throw new BusinessException(OrgErrorCode.ORG_003);
+        }
+        // 組織・チームの閉鎖より前に作られた招待は、閉鎖の片付けの前に解除・復元されて残った無効な行（§4.5。
+        // 解除で復元しない）。承諾せず（ACTIVE にしない）、行が無いのと同じ 404 で拒み、ロールバックの後に片付けさせる
+        TeamOrgClosureGeneration.rejectIfCreatedBeforeClosure(
+                row, organization.closureGeneration(), team, eventPublisher);
         TeamOrgAffiliationAssembler.AffiliationRow requested = TeamOrgAffiliationAssembler.AffiliationRow.from(row);
 
         // 3. 条件付き UPDATE。行ロックを保持しているので必ず1行に当たる。0 件ならロックの前提が崩れているため握り潰さない

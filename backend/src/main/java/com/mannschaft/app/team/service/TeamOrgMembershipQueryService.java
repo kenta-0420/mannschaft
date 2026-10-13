@@ -44,6 +44,32 @@ public class TeamOrgMembershipQueryService {
     }
 
     /**
+     * GDPR の個人データ収集（F01.2.1 §15・AC-G127）: そのユーザーが起こした（{@code invited_by}）か応答した
+     * （{@code responded_by}）加盟を、Entity を外へ渡さず値だけで返す（ID 昇順）。添え書き（{@code message}）は
+     * 申請・招待した側の入力なので、起こした本人の行にだけ含める。
+     */
+    public List<Map<String, Object>> collectPersonalData(Long userId) {
+        if (userId == null) {
+            return List.of();
+        }
+        return teamOrgMembershipRepository.findByOperatorUserId(userId).stream().map(m -> {
+            Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("membershipId", m.getId());
+            row.put("teamId", m.getTeamId());
+            row.put("organizationId", m.getOrganizationId());
+            row.put("status", m.getStatus().name());
+            row.put("direction", m.getDirection().name());
+            row.put("involvement", userId.equals(m.getInvitedBy())
+                    ? (userId.equals(m.getRespondedBy()) ? "INVITED_AND_RESPONDED" : "INVITED")
+                    : "RESPONDED");
+            row.put("invitedAt", m.getInvitedAt() == null ? null : m.getInvitedAt().toString());
+            row.put("respondedAt", m.getRespondedAt() == null ? null : m.getRespondedAt().toString());
+            row.put("message", userId.equals(m.getInvitedBy()) ? m.getMessage() : null);
+            return row;
+        }).toList();
+    }
+
+    /**
      * チームが所属する ACTIVE な組織の ID 一覧を返す（無所属なら空リスト）。
      *
      * <p>F20.1 のチーム営利/非営利導出に用いる（無所属チーム＝非営利扱い・README §3.3 / R-2・AC-13）。</p>

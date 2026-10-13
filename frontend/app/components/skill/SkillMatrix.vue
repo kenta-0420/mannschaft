@@ -7,6 +7,7 @@ const props = defineProps<{
 
 const { getSkillMatrix } = useSkillApi()
 const notification = useNotification()
+const { t } = useI18n()
 
 const matrixData = ref<SkillMatrixResponse | null>(null)
 const loading = ref(false)
@@ -14,22 +15,26 @@ const loading = ref(false)
 const categories = computed(() => matrixData.value?.categories ?? [])
 const rows = computed<SkillMatrixRow[]>(() => matrixData.value?.rows ?? [])
 
-/** セルの状態。cells にキーが無い・status が null は「未登録」(NONE)。 */
-type CellState = SkillStatus | 'NONE'
+/**
+ * セルの状態。cells にキーが無い・status が null は「未登録」(NONE)。
+ * 確認待ち（PENDING_REVIEW）はマトリクスでは未登録として扱う（BE 仕様: F07.5 matrix 節）ため、独立した状態を持たない。
+ */
+type CellState = Exclude<SkillStatus, 'PENDING_REVIEW'> | 'NONE'
 
 function getCell(row: SkillMatrixRow, categoryId: number): SkillMatrixCell | undefined {
   return row.cells[categoryId]
 }
 
 function getCellState(row: SkillMatrixRow, categoryId: number): CellState {
-  return getCell(row, categoryId)?.status ?? 'NONE'
+  const status = getCell(row, categoryId)?.status
+  if (!status || status === 'PENDING_REVIEW') return 'NONE'
+  return status
 }
 
 function getCellClass(state: CellState): string {
   switch (state) {
     case 'ACTIVE': return 'bg-green-100 dark:bg-green-900'
     case 'EXPIRED': return 'bg-red-100 dark:bg-red-900'
-    case 'PENDING_REVIEW': return 'bg-yellow-100 dark:bg-yellow-900'
     default: return 'bg-surface-50 dark:bg-surface-900'
   }
 }
@@ -38,7 +43,6 @@ function getCellIcon(state: CellState): string {
   switch (state) {
     case 'ACTIVE': return 'pi pi-check text-green-600 dark:text-green-400'
     case 'EXPIRED': return 'pi pi-times text-red-600 dark:text-red-400'
-    case 'PENDING_REVIEW': return 'pi pi-clock text-yellow-600 dark:text-yellow-400'
     default: return ''
   }
 }
@@ -48,7 +52,6 @@ function getCellTooltip(row: SkillMatrixRow, categoryId: number): string {
   const labels: Record<CellState, string> = {
     ACTIVE: '有効',
     EXPIRED: '期限切れ',
-    PENDING_REVIEW: '確認待ち',
     NONE: '未登録',
   }
   return labels[state]
@@ -75,6 +78,7 @@ defineExpose({ refresh: loadMatrix })
     <div class="mb-4 flex items-center justify-between">
       <h2 class="text-lg font-semibold">スキルマトリクス</h2>
       <Button
+        :aria-label="t('skill.matrix.refresh')"
         icon="pi pi-refresh"
         severity="secondary"
         text
@@ -143,13 +147,10 @@ defineExpose({ refresh: loadMatrix })
         期限切れ
       </span>
       <span class="flex items-center gap-1">
-        <span class="inline-block h-3 w-3 rounded bg-yellow-100 dark:bg-yellow-900" />
-        確認待ち
-      </span>
-      <span class="flex items-center gap-1">
         <span class="inline-block h-3 w-3 rounded bg-surface-50 dark:bg-surface-900" />
         未登録
       </span>
+      <span class="text-surface-400">{{ t('skill.matrix.legendPendingNote') }}</span>
     </div>
   </div>
 </template>
