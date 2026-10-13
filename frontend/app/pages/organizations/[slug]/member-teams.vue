@@ -13,6 +13,7 @@
  *  管理系 view は組織 ADMIN かつ管理レンズ ON のときだけ。権限のない者が直打ちしたら
  *  `view` を外した一覧表示へ戻す（AC-K02。BE も組織 ADMIN 専用で 403 を返す）。
  */
+import type { LocationQueryRaw } from 'vue-router'
 import { useOrgShellContext } from '~/composables/useOrgShellContext'
 import {
   hasViewQuery,
@@ -42,8 +43,8 @@ const canManage = computed(() => isAdmin.value && adminLens.value)
 const activeView = computed<MemberTeamsView>(() => resolveMemberTeamsView(route.query.view, canManage.value))
 
 /** 権限がない・未知の値で `view` が付いていたら、`view` を外した一覧表示へ戻す。 */
-function omitView(query: typeof route.query): Record<string, unknown> {
-  const rest: Record<string, unknown> = {}
+function omitView(query: typeof route.query): LocationQueryRaw {
+  const rest: LocationQueryRaw = {}
   for (const [key, value] of Object.entries(query)) {
     if (key !== 'view') rest[key] = value
   }
