@@ -3,16 +3,14 @@ package com.mannschaft.app.ticket.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.ticket.entity.TicketBookEntity;
+import com.mannschaft.app.ticket.event.TicketExpiryWarningNotificationEvent;
 import com.mannschaft.app.ticket.repository.TicketBookRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.MessageSource;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,13 +19,18 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 /**
  * チケット期限切れバッチサービス。
  *
  * <p>日次で実行し、期限切れチケットのステータス遷移と PENDING クリーンアップを行う。</p>
+ *
+ * <h2>通知のトランザクション境界（Issue #2997 / CMP-260827-1152 G6）</h2>
+ * <p>{@link #expireTickets} は<b>非トランザクションのオーケストレータ</b>で、1 冊ごとに
+ * {@link TicketExpiryRunner#expireOne}（{@code REQUIRES_NEW}）で EXPIRED 遷移を確定し、同じトランザクションで
+ * 配送要求を publish する。{@link #sendExpiryNotifications} は状態を更新しない読み取りTXの中で配送要求を publish
+ * するだけ。実通知はどちらも {@code AFTER_COMMIT} の {@code TicketExpiryNotificationListener} が行うため、
+ * 通知の失敗が遷移を巻き戻すことはない。</p>
  */
 @Slf4j
 @Service
@@ -35,10 +38,10 @@ import java.util.Map;
 public class TicketExpiryBatchService {
 
     private final TicketBookRepository bookRepository;
-    private final NotificationHelper notificationHelper;
-    /** Issue #2715 ロットB: 受信者 locale の解決（D-5: auth の UserRepository を直接呼ばない）。 */
-    private final UserLocaleCache userLocaleCache;
-    private final MessageSource messageSource;
+    /** 1 冊ぶんの期限切れ遷移の項目TX（遷移の確定 + 配送要求の publish）。 */
+    private final TicketExpiryRunner expiryRunner;
+    /** 事前通知の配送要求の publish 用。 */
+    private final ApplicationEventPublisher eventPublisher;
     @Qualifier("wallClock")
     private final Clock wallClock;
 
@@ -51,7 +54,6 @@ public class TicketExpiryBatchService {
     @Scheduled(cron = "0 30 0 * * *", zone = "Asia/Tokyo")
     // 起動間隔は日次 00:30。期限切れチケットの一括状態遷移でチケット数に比例する。余裕を取り 1 時間を上限とする。
     @SchedulerLock(name = "ticketExpiryDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
-    @Transactional
     public void expireTickets() {
         LocalDateTime now = LocalDateTime.now(wallClock);
         List<TicketBookEntity> expiredBooks = bookRepository.findExpiredActiveBooks(now);
@@ -61,25 +63,19 @@ public class TicketExpiryBatchService {
             return;
         }
 
-        // locale を一括解決（N+1 防止。Issue #2715 ロットB）。
-        Map<Long, String> locales = userLocaleCache.getLocales(
-                expiredBooks.stream().map(TicketBookEntity::getUserId).toList());
-
+        int expired = 0;
         for (TicketBookEntity book : expiredBooks) {
-            book.expire();
-            bookRepository.save(book);
-            Locale locale = Locale.forLanguageTag(locales.getOrDefault(book.getUserId(), "ja"));
-            String title = messageSource.getMessage(
-                    "notification.ticket.expired.title", null, "チケット期限切れ", locale);
-            String body = messageSource.getMessage(
-                    "notification.ticket.expired.body", null, "お持ちのチケットが期限切れになりました。", locale);
-            notificationHelper.notify(book.getUserId(), "TICKET_EXPIRED",
-                    title, body,
-                    "TICKET_BOOK", book.getId(), NotificationScopeType.PERSONAL, null,
-                    "/tickets/my", null);
+            try {
+                // 1 冊 = 1 独立TX。失敗しても他の冊の遷移と通知には影響しない（次回バッチで再試行）。
+                if (expiryRunner.expireOne(book.getId(), now)) {
+                    expired++;
+                }
+            } catch (Exception e) {
+                log.error("期限切れチケットの遷移に失敗しました（スキップ）: bookId={}", book.getId(), e);
+            }
         }
 
-        log.info("期限切れチケット処理完了: {}件", expiredBooks.size());
+        log.info("期限切れチケット処理完了: {}件", expired);
     }
 
     /**
@@ -129,20 +125,10 @@ public class TicketExpiryBatchService {
             LocalDateTime from = targetDate.atStartOfDay();
             LocalDateTime to = targetDate.plusDays(1).atStartOfDay();
             List<TicketBookEntity> books = bookRepository.findBooksExpiringBetween(from, to);
-            Map<Long, String> locales = userLocaleCache.getLocales(
-                    books.stream().map(TicketBookEntity::getUserId).toList());
             for (TicketBookEntity book : books) {
-                Locale locale = Locale.forLanguageTag(locales.getOrDefault(book.getUserId(), "ja"));
-                String title = messageSource.getMessage(
-                        "notification.ticket.expiryWarning.title", null, "チケット期限切れ予告", locale);
-                String body = messageSource.getMessage(
-                        "notification.ticket.expiryWarning.body", new Object[]{days},
-                        "お持ちのチケットが" + days + "日後に期限切れになります。", locale);
-                notificationHelper.notify(book.getUserId(), "TICKET_EXPIRY_WARNING",
-                        title,
-                        body,
-                        "TICKET_BOOK", book.getId(), NotificationScopeType.PERSONAL, null,
-                        "/tickets/my", null);
+                // 業務TX内では配送要求の publish のみ。実通知は AFTER_COMMIT のリスナーが行う。
+                eventPublisher.publishEvent(new TicketExpiryWarningNotificationEvent(
+                        book.getId(), book.getUserId(), days));
                 log.debug("期限切れ事前通知: bookId={}, days={}", book.getId(), days);
             }
             if (!books.isEmpty()) {

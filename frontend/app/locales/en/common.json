@@ -2,7 +2,20 @@
   "skill": {
     "list": {
       "loadDetailFailed": "Failed to load the skill details",
-      "loadCategoriesFailed": "Failed to load the categories"
+      "loadCategoriesFailed": "Failed to load the categories",
+      "mineTitle": "My skills and certifications",
+      "deleteConfirm": "Delete \"{name}\"? This cannot be undone.",
+      "deleteConfirmHeader": "Delete certification"
+    },
+    "category": {
+      "deleteConfirm": "Delete the category \"{name}\"?",
+      "deleteConfirmHeader": "Delete category"
+    },
+    "page": {
+      "permissionLoadFailed": "Failed to load your permissions. Please reload later",
+      "forbidden": "Only members of this team can use skills and certifications",
+      "mineTab": "My skills and certifications",
+      "categoriesReloadFailed": "Failed to reload the categories"
     }
   },
   "chat": {
