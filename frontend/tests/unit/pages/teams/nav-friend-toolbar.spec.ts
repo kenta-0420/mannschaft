@@ -137,9 +137,10 @@ describe('pages/teams/[slug]/nav.vue — フレンドチームタブのツール
   })
 
   // AC-14: 部外者・GUEST・他テナントは空状態ではなく権限なし案内
-  it.each(['GUEST', null])('AC-14: roleName=%s では空状態ではなく権限なし案内(forbidden)が出る', async (role) => {
-    setRole(role ?? 'MEMBER')
-    shell.roleName = role
+  // 部外者(roleName=null)は本文を出さず、一覧取得の 403 は TeamFriendList.spec で forbidden に倒すことを検証。
+  // GUEST は BE が非 null で返すためガードを素通りしていた経路。
+  it('AC-14: GUEST では本文を出さず権限なし案内(forbidden)が出る', async () => {
+    setRole('GUEST')
     const w = await mountNav()
     expect(w.find('[data-testid="friend-forbidden"]').exists()).toBe(true)
     expect(w.find('[data-testid="friend-toolbar"]').exists()).toBe(false)
