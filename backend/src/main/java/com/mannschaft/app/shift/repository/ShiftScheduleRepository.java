@@ -118,24 +118,27 @@ public interface ShiftScheduleRepository extends JpaRepository<ShiftScheduleEnti
     /**
      * 48h リマインドの送信済みフラグを条件付きで取得（先取り）する。更新件数が 1 のときだけ取得できたことを意味する。
      * 配送リスナーが配送前に呼び、並行・重複した配送を排他する（Issue #2997 G6）。
+     * bulk UPDATE は @Version を自動では進めないため {@code version = version + 1} を明示する
+     * （古い version を持つ通常編集の保存が楽観ロック例外になり、フラグを巻き戻さない。例外は既存の
+     * GlobalExceptionHandler が ObjectOptimisticLockingFailureException として写像する）。
      */
     @Modifying
-    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent48h = TRUE WHERE s.id = :id AND s.isReminderSent48h = FALSE")
+    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent48h = TRUE, s.version = s.version + 1 WHERE s.id = :id AND s.isReminderSent48h = FALSE")
     int claimReminder48h(@Param("id") Long id);
 
     /** 24h リマインドの送信済みフラグを条件付きで取得（先取り）する。 */
     @Modifying
-    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent = TRUE WHERE s.id = :id AND s.isReminderSent = FALSE")
+    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent = TRUE, s.version = s.version + 1 WHERE s.id = :id AND s.isReminderSent = FALSE")
     int claimReminder24h(@Param("id") Long id);
 
     /** 48h リマインドのフラグを戻す（全員配送失敗時。次回バッチで再送される）。 */
     @Modifying
-    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent48h = FALSE WHERE s.id = :id AND s.isReminderSent48h = TRUE")
+    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent48h = FALSE, s.version = s.version + 1 WHERE s.id = :id AND s.isReminderSent48h = TRUE")
     int releaseReminder48h(@Param("id") Long id);
 
     /** 24h リマインドのフラグを戻す（全員配送失敗時）。 */
     @Modifying
-    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent = FALSE WHERE s.id = :id AND s.isReminderSent = TRUE")
+    @Query("UPDATE ShiftScheduleEntity s SET s.isReminderSent = FALSE, s.version = s.version + 1 WHERE s.id = :id AND s.isReminderSent = TRUE")
     int releaseReminder24h(@Param("id") Long id);
 
     /**

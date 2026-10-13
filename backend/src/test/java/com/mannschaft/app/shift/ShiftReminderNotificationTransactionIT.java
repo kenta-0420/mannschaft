@@ -92,6 +92,7 @@ class ShiftReminderNotificationTransactionIT extends AbstractMySqlIntegrationTes
     @Autowired private org.springframework.context.ApplicationEventPublisher eventPublisher;
     @PersistenceContext private EntityManager em;
 
+    @Autowired private com.mannschaft.app.shift.service.ShiftPreferenceReminderRunner reminderRunner;
     @MockitoSpyBean private NotificationDeliveryRunner notificationDeliveryRunner;
     @MockitoSpyBean private ShiftScheduleRepository scheduleRepository;
 
@@ -279,6 +280,39 @@ class ShiftReminderNotificationTransactionIT extends AbstractMySqlIntegrationTes
             }
         });
         verify(notificationDeliveryRunner, times(2)).sendOne(argThat(r -> r != null && fx.scheduleId.equals(r.sourceId())));
+    }
+
+    @Test
+    @DisplayName("楽観ロック: 印を読んだ通常編集の途中で claim がコミットされたら、編集の保存は楽観ロック例外で印は戻らない")
+    void editRacingWithClaimFailsOptimisticallyAndKeepsFlag() {
+        Fx fx = fixture("v-claim", 1);
+
+        assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(tx -> {
+            ShiftScheduleEntity stale = scheduleRepository.findById(fx.scheduleId).orElseThrow();
+            // 編集の途中で配送側が印を先取りしてコミットする（別TX）。
+            assertThat(reminderRunner.claim(fx.scheduleId, ShiftPreferenceReminderKind.REMINDER_48H)).isTrue();
+            stale.markLowSubmissionAlerted();
+            scheduleRepository.saveAndFlush(stale);
+        })).isInstanceOf(org.springframework.dao.OptimisticLockingFailureException.class);
+
+        assertThat(flag48h(fx.scheduleId)).as("古い値（false）で上書きされない").isTrue();
+    }
+
+    @Test
+    @DisplayName("楽観ロック: release の後に古い version の編集が保存されても、印は戻されたまま（上書きされない）")
+    void staleEditAfterReleaseDoesNotRestoreFlag() {
+        Fx fx = fixture("v-rel", 1);
+        assertThat(reminderRunner.claim(fx.scheduleId, ShiftPreferenceReminderKind.REMINDER_48H)).isTrue();
+
+        assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(tx -> {
+            ShiftScheduleEntity stale = scheduleRepository.findById(fx.scheduleId).orElseThrow();
+            // 編集の途中で配送側が全員失敗として印を戻してコミットする（別TX）。
+            reminderRunner.release(fx.scheduleId, ShiftPreferenceReminderKind.REMINDER_48H);
+            stale.markLowSubmissionAlerted();
+            scheduleRepository.saveAndFlush(stale);
+        })).isInstanceOf(org.springframework.dao.OptimisticLockingFailureException.class);
+
+        assertThat(flag48h(fx.scheduleId)).as("古い値（true）で上書きされない").isFalse();
     }
 
     @Test

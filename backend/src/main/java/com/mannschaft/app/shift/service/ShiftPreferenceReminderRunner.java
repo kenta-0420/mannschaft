@@ -76,7 +76,7 @@ public class ShiftPreferenceReminderRunner {
             scheduleRepository.save(schedule);
             return true;
         }
-        // 印は立てない。配送リスナーが配送後に markSent で立てる。
+        // 印は立てない。配送リスナーが配送の前に claim で先取りし、全員失敗なら release で戻す。
         eventPublisher.publishEvent(new ShiftPreferenceReminderNotificationEvent(
                 kind, schedule.getId(), schedule.getTeamId(), schedule.getTitle(), List.copyOf(unsubmitted)));
         return true;
