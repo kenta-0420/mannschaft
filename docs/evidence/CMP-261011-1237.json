@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261011-1237",
+  "scope": "app",
+  "implementation": {
+    "pr": 3829,
+    "sha": "39ea5fb07477fdd0e4201388ba55eef9db1de4e4"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "フレンドチームのタブから使い方モーダルが開き、実在機能のみを5カードで案内する。",
+      "tests": [
+        {
+          "name": "nav-friend-toolbar NAVF（タブ /nav に使い方を統合）",
+          "evidence": "frontend/tests/unit/pages/teams/nav-friend-toolbar.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "6言語を本翻訳し、i18n 残存番人を通す。",
+      "tests": [
+        {
+          "name": "locale-no-japanese-residue",
+          "evidence": "frontend/tests/unit/i18n/locale-no-japanese-residue.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "ADMIN と MANAGE_FRIEND_TEAMS を持つ DEPUTY にだけフォローボタンとフォロー解除が出る。",
+      "tests": [
+        {
+          "name": "nav-friend-toolbar NAVF-007（DEPUTY 権限）",
+          "evidence": "frontend/tests/unit/pages/teams/nav-friend-toolbar.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "旧 /teams/{slug}/friends は /nav へリダイレクトする。",
+      "tests": [
+        {
+          "name": "nav-friend-toolbar NAVF（/friends リダイレクト）",
+          "evidence": "frontend/tests/unit/pages/teams/nav-friend-toolbar.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "モバイル 390/360 x ja/de でツールバーに文字切れ・横はみ出しが無い（実機で確認。スクショはローカル証跡 C:\\Claude\\mannschaft\\.claude\\worktrees\\recheck-3829\\frontend\\test-results\\recheck-3829\\）。",
+      "tests": [
+        {
+          "name": "実機再確認 R1〜R5（390x844・360x800 x ja/de）",
+          "evidence": "https://github.com/kenta-0420/mannschaft/pull/3829"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    { "runId": 38214752352 },
+    { "runId": 38214752490 },
+    { "runId": 38214752480 }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3788"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3829"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3829"
+    }
+  },
+  "regressions": [
+    {
+      "description": "ALIC-1/2: フレンドチームのタブから使い方・フォローへ到達できなかった（アリシゼーションで発見、PR #3829 で修正）。使い方モーダル本体は PR #3788。範囲外の観測: 360px・de で既存の管理者ショートカット（Freundesordner / Ausgehende Weiterleitungen）の文字切れがあるが、#3829 以前からの既存 UI で本戦役の対象外。ALIC-3 は CMP-261012-0315 として別戦役に登録済み。",
+      "test": "frontend/tests/unit/pages/teams/nav-friend-toolbar.spec.ts NAVF-001〜007",
+      "redEvidence": "修正前に 6件中5件が失敗。DEPUTY 権限の追加テスト NAVF-007 は修正前に expected 'true' to be 'false' で失敗。https://github.com/kenta-0420/mannschaft/pull/3829",
+      "greenEvidence": "修正後 3 spec で 54 件 passed。PR #3829 の CI 緑。https://github.com/kenta-0420/mannschaft/pull/3829"
+    }
+  ]
+}
