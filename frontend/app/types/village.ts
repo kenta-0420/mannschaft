@@ -138,6 +138,19 @@ export interface JoinRequestResponse {
   createdAt: string
 }
 
+/** 申請先の村の現在の状態（`MyJoinRequestResponse.villageState`）。 */
+export type MyJoinRequestVillageState = 'ACTIVE' | 'ARCHIVED' | 'DELETED'
+
+/**
+ * 認証本人の申請履歴 1 件。`GET /api/v1/village-join-requests/me` が返す。
+ * 本人が申請した村に限り BE が `villageName` を付与する。村が削除・凍結されても行は残り、
+ * `villageState` で示す。村の行が無い場合は `villageName=null` かつ `DELETED`。
+ */
+export interface MyJoinRequestResponse extends JoinRequestResponse {
+  villageName: string | null
+  villageState: MyJoinRequestVillageState
+}
+
 /**
  * §4.5 村参加申請一覧レスポンス。
  * BE: `GET /api/v1/villages/{villageId}/join-requests` は `ApiResponse<Page<JoinRequestResponse>>` を返す。

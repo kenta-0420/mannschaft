@@ -328,6 +328,37 @@ describe('useInboxStore', () => {
       expect(store.archivedCount).toBe(10)
     })
 
+    it.each([
+      ['data が空オブジェクト', { data: {} }],
+      ['byState が欠落', { data: { byPriority: {}, bySourceType: {} } }],
+      ['data が null', { data: null }],
+      ['byState が配列', { data: { byState: [], byPriority: {}, bySourceType: {} } }],
+    ])('契約違反のサマリ応答（%s）でもゲッターが TypeError にならず、エラーとして記録される', async (_label, body) => {
+      apiMock.getSummary.mockResolvedValueOnce(body)
+      const store = useInboxStore()
+      await store.fetchSummary()
+
+      expect(store.error).toBe('common.error.unknown')
+      expect(store.summaryLoading).toBe(false)
+      expect(() => store.inboxCount).not.toThrow()
+      expect(store.inboxCount).toBe(0)
+      expect(store.snoozedCount).toBe(0)
+      expect(store.archivedCount).toBe(0)
+    })
+
+    it('不正なサマリ応答は取得済みの件数を壊さない', async () => {
+      apiMock.getSummary.mockResolvedValueOnce({
+        data: { byState: { INBOX: 3 }, byPriority: {}, bySourceType: {} },
+      })
+      const store = useInboxStore()
+      await store.fetchSummary()
+      apiMock.getSummary.mockResolvedValueOnce({ data: {} })
+      await store.fetchSummary()
+
+      expect(store.inboxCount).toBe(3)
+      expect(store.error).toBe('common.error.unknown')
+    })
+
     it('サマリ未取得時は 0 を返す', () => {
       const store = useInboxStore()
       expect(store.inboxCount).toBe(0)

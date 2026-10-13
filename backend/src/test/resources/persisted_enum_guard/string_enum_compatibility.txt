@@ -415,6 +415,10 @@ com.mannschaft.app.committee.entity.DistributionScope#PARENT_ORG
 com.mannschaft.app.committee.entity.DistributionScope#PARENT_ORG_AND_CHILDREN
 com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind#ORGANIZATION
 com.mannschaft.app.common.duplicatename.DuplicateNameScopeKind#TEAM
+com.mannschaft.app.common.outbox.OutboxStatus#DEAD
+com.mannschaft.app.common.outbox.OutboxStatus#PENDING
+com.mannschaft.app.common.outbox.OutboxStatus#RELAYED
+com.mannschaft.app.common.outbox.OutboxStatus#RELAYING
 com.mannschaft.app.common.storage.acl.StorageAclMode#CONTENT_BOUND
 com.mannschaft.app.common.storage.acl.StorageAclMode#PERSONAL
 com.mannschaft.app.common.storage.acl.StorageAclMode#PUBLIC

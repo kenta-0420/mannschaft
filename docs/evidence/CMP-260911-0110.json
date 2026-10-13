@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-260911-0110",
+  "scope": "app",
+  "implementation": {
+    "pr": 3801,
+    "sha": "300b19cc081a8c067a28afe25c05cb8f896f31da"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "有効化時に PATCH で { moduleId, enabled: true } を本文に送る",
+      "tests": [
+        {
+          "name": "有効化: PATCH で { moduleId, enabled: true } を本文に送る",
+          "evidence": "frontend/tests/unit/composables/useModuleApi.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "無効化時に PATCH で { moduleId, enabled: false } を本文に送る",
+      "tests": [
+        {
+          "name": "無効化: PATCH で { moduleId, enabled: false } を本文に送る",
+          "evidence": "frontend/tests/unit/composables/useModuleApi.spec.ts"
+        }
+      ]
+    }
+  ],
+  "ci": [
+    {
+      "runId": 38183209926
+    }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "https://github.com/kenta-0420/mannschaft/pull/3801"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260911-0110.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-260911-0110.md"
+    }
+  },
+  "regressions": []
+}

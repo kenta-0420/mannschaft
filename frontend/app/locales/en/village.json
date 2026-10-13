@@ -194,6 +194,19 @@
       "rejectSuccess": "Request rejected",
       "reviewFailed": "Failed to process review"
     },
+    "myJoinRequests": {
+      "title": "My village join requests",
+      "description": "View the requests you submitted and their review status.",
+      "submittedAt": "Submitted at",
+      "empty": "You have not submitted any join requests",
+      "fetchError": "Could not load your join request history",
+      "village": "Village",
+      "unknownVillage": "Village name unavailable",
+      "villageState": {
+        "ARCHIVED": "Archived",
+        "DELETED": "Deleted"
+      }
+    },
     "joinRequest": {
       "title": "Join request",
       "message": "Request message (optional)",
