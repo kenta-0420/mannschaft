@@ -124,7 +124,7 @@ public class AnnouncementFeedItemDto {
 
     /**
      * 宛先の記録を出すかどうかを、呼び出し側が閲覧者ごとに判定した結果として受け取って変換する。
-     * 権限の判断は DTO に埋め込まない（{@link AnnouncementFeedService#canViewTargetAudience}）。
+     * 権限の判断は DTO に埋め込まない（組織一覧 Controller の canViewTargetAudience）。
      *
      * @param item                  Service が返すフィードアイテム
      * @param includeTargetAudience 閲覧者がチームグループを閲覧してよいか（false なら targetAudience は null）

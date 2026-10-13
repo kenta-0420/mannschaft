@@ -64,21 +64,6 @@ import com.mannschaft.app.payment.spi.ContentGateTarget;
 @Transactional(readOnly = true)
 public class AnnouncementFeedService {
 
-    /**
-     * 閲覧者が、お知らせの宛先の記録（チームグループ名・チーム数）を見てよいか。
-     *
-     * <p>チームグループの閲覧 API（{@code GET /organizations/{slug}/team-groups}）と同じ判定:
-     * 組織の MEMBER 以上または SYSTEM_ADMIN（F01.2.1 §3.1・§10.1）。組織お知らせ一覧は非メンバーにも
-     * PUBLIC 告知を返すが、グループ構成までは渡さない。チームスコープの告知にグループ宛ては無い。</p>
-     */
-    public boolean canViewTargetAudience(Long userId, AnnouncementScopeType scopeType, Long scopeId) {
-        if (userId == null || scopeType != AnnouncementScopeType.ORGANIZATION) {
-            return false;
-        }
-        return accessControlService.isSystemAdmin(userId)
-                || accessControlService.hasRoleOrAbove(userId, scopeId, "ORGANIZATION", "MEMBER");
-    }
-
     /** デフォルト取得件数 */
     private static final int DEFAULT_LIMIT = 20;
 

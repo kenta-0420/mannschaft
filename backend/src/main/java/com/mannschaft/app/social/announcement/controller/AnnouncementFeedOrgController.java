@@ -1,5 +1,6 @@
 package com.mannschaft.app.social.announcement.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.EnumInputParser;
 import com.mannschaft.app.common.SecurityUtils;
@@ -67,6 +68,7 @@ public class AnnouncementFeedOrgController {
 
     private final AnnouncementFeedService announcementFeedService;
     private final RoleResolver roleResolver;
+    private final AccessControlService accessControlService;
 
     // ═════════════════════════════════════════════════════════════
     // GET /api/v1/organizations/{orgId}/announcements — 一覧取得
@@ -97,8 +99,7 @@ public class AnnouncementFeedOrgController {
                 AnnouncementScopeType.ORGANIZATION, orgId, userId, viewerRole.name(), cursor, limit);
 
         // 宛先の記録（グループ名・チーム数）は、グループを閲覧してよい者にだけ返す（F01.2.1 §3.1・§10.1）
-        boolean includeTargetAudience = announcementFeedService.canViewTargetAudience(
-                userId, AnnouncementScopeType.ORGANIZATION, orgId);
+        boolean includeTargetAudience = canViewTargetAudience(userId, orgId);
         List<AnnouncementFeedItemDto> items = result.data().stream()
                 .map(item -> AnnouncementFeedItemDto.from(item, includeTargetAudience))
                 .toList();
@@ -281,5 +282,21 @@ public class AnnouncementFeedOrgController {
                 .markedCount(outcome.markedCount())
                 .hasMoreUnread(outcome.hasMoreUnread())
                 .build()));
+    }
+
+    /**
+     * 閲覧者が、お知らせの宛先の記録（チームグループ名・チーム数）を見てよいか。
+     *
+     * <p>チームグループの閲覧 API（{@code GET /organizations/{slug}/team-groups}）と同じ判定:
+     * 組織の MEMBER 以上または SYSTEM_ADMIN（F01.2.1 §3.1・§10.1）。組織お知らせ一覧は非メンバーにも
+     * PUBLIC 告知を返すが、グループ構成までは渡さない。
+     * Service の {@code @Transactional} 内に置くと他ドメイン Repository へ到達する（D-3T）ため、入口の Controller で判定する。</p>
+     */
+    private boolean canViewTargetAudience(Long userId, Long orgId) {
+        if (userId == null) {
+            return false;
+        }
+        return accessControlService.isSystemAdmin(userId)
+                || accessControlService.hasRoleOrAbove(userId, orgId, "ORGANIZATION", "MEMBER");
     }
 }
