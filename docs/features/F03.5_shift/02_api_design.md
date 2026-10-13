@@ -1753,52 +1753,52 @@ status を既定の `PENDING` のままにしており、`OPEN_CALL` へ遷移�
 
 #### `PATCH /api/v1/shifts/slots/{id}/assignments`【v2 新規】
 
-D&D UI 用の差分割当 API。個別ユーザーの追加・削除を `shift_slots.assigned_user_ids` に即時反映する。**楽観的更新（optimistic UI）対応**: クライアント側で即座に UI を更新し、サーバ検証で失敗したら差し戻す。
+D&D UI 用の差分割当 API。個別ユーザーの追加・削除を `shift_slots.assigned_user_ids` に反映する。クライアントは成功応答の枠全体を保存し、次の操作ではその実版を送る（CMP-261008-1253）。
 
-**リクエストボディ**
+**リクエストボディ**（実 JSON 名）
 ```json
 {
-  "add_user_ids": [12],
-  "remove_user_ids": [10],
-  "slot_version": 3
+  "addUserIds": [12],
+  "removeUserIds": [10],
+  "slotVersion": 3
 }
 ```
 
-- `add_user_ids`: 追加する user_id の配列（0件可）
-- `remove_user_ids`: 削除する user_id の配列（0件可）
-- `slot_version`: 必須。スロットの楽観的ロック
-- 両配列が空の場合は 400 エラー
+- `addUserIds` / `removeUserIds`: 追加・削除するユーザーID配列（省略・空配列可）。
+- `slotVersion`: 必須、Java `Long`。一覧・単体取得・更新応答の `version` をそのまま送信する。Integer 上限を越える版も扱う。
+- 版が一致しなければ `SHIFT_018`（409）。枠と割当履歴は変更しない。自動再送・固定0へのフォールバックは行わない。
+- FE は版欠落・負数・非整数・JavaScript の安全整数範囲外なら HTTP を送らず通知する。同じ枠への移動も送信しない。
 
-**レスポンス（200 OK）**
+**レスポンス（200 OK）**: 一覧・単体と同じ `ShiftSlotResponse`。明示 flush 後の `version` と割当警告を返す。
 ```json
 {
   "data": {
-    "slot_id": 101,
-    "assigned_user_ids": [11, 12, 13],
-    "slot_version": 4,
-    "warnings": [
-      {
-        "type": "CONSTRAINT_VIOLATION",
-        "user_id": 12,
-        "constraint": "MAX_CONSECUTIVE_DAYS",
-        "expected": 5,
-        "actual": 6,
-        "message": "田中太郎さんが6連勤になります"
-      }
-    ]
+    "id": 101,
+    "scheduleId": 1,
+    "version": 4,
+    "time": { "slotDate": "2026-03-09", "startTime": "09:00:00", "endTime": "17:00:00", "endsNextDay": false },
+    "position": { "positionId": 1, "positionName": "ホール", "requiredCount": 3 },
+    "assignedUserIds": [11, 12, 13],
+    "assignmentMasked": false,
+    "note": null,
+    "warnings": [{ "code": "ASSIGNMENT_OVERLAP", "conflictingSlotIds": [102] }]
   }
 }
 ```
 
-- `warnings`: ハード制約違反（`ABSOLUTE_REST`）は 409 で失敗。ソフト制約（連勤・月次時間等）は警告のみで成功
+- `version` は GET と通常の枠更新応答にも含まれる。note のみの更新でも flush 後の確定版を返す。
+- `warnings`: 手動割当の時間重複警告。同一時間帯の完全重複は409、それ以外の重なりは警告のみで保存成功。警告なしは空配列、参照応答は未判定の null。
+- 枠間移動は削除・追加の2 PATCH。各成功を保存し、第2操作に失敗しても第1成功を取り消した状態に見せない。GETで実状態へ同期し、再取得失敗でも確定状態と元の操作エラーを保持する。
+- 先に開始した古い GET は後の PATCH 成功を上書きしない。画面のスケジュール切替後に届いた旧 PATCH 応答も、新画面の枠・ローカル割当へ混入させない。
 
 **エラーレスポンス**
 | ステータス | 条件 |
 |-----------|------|
-| 400 | バリデーションエラー（add/remove 両方空、無効な user_id 等） |
-| 403 | ADMIN / DEPUTY_ADMIN（MANAGE_SHIFTS）ではない |
-| 404 | スロットが存在しない |
-| 409 | 楽観的ロック競合 / 追加対象ユーザーが ABSOLUTE_REST を提出している / PUBLISHED 状態で時間帯・必要人数変更に該当する操作 |
+| 400 | 必須版欠落などのバリデーションエラー |
+| 401 | 匿名 |
+| 403 | 更新権限がない |
+| 404 | スロット不存在、非所属・他チーム（実在/不存在で同じ応答） |
+| 409 | 楽観的ロック競合、必要人数超過、同一時間帯の完全重複 |
 
 ---
 

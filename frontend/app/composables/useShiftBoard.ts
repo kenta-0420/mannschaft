@@ -1,99 +1,80 @@
-export function useShiftBoard(scheduleId: Ref<number>) {
+import type { ShiftSlotResponse } from '~/types/shift'
+
+export function useShiftBoard(scheduleId: Ref<number>, slots: Ref<ShiftSlotResponse[]>) {
   const shiftApi = useShiftApi()
-  // slotId -> userIds のローカル状態（楽観的更新用）
   const localAssignments = ref<Record<number, number[]>>({})
-  const pendingOperations = ref<Map<string, AbortController>>(new Map())
 
-  function initSlot(slotId: number, userIds: number[]): void {
-    if (!localAssignments.value[slotId]) {
-      localAssignments.value[slotId] = [...userIds]
-    }
-  }
-
-  async function moveUser(
-    fromSlotId: number,
-    toSlotId: number,
-    userId: number,
-    toSlotVersion: number,
-  ): Promise<void> {
-    // 楽観的更新
-    const prevFrom = [...(localAssignments.value[fromSlotId] ?? [])]
-    const prevTo = [...(localAssignments.value[toSlotId] ?? [])]
-    localAssignments.value[fromSlotId] = prevFrom.filter((id) => id !== userId)
-    if (!localAssignments.value[toSlotId]) {
-      localAssignments.value[toSlotId] = []
-    }
-    if (!localAssignments.value[toSlotId].includes(userId)) {
-      localAssignments.value[toSlotId] = [...localAssignments.value[toSlotId], userId]
-    }
-
-    try {
-      // 移動元から削除
-      await shiftApi.patchSlotAssignments(fromSlotId, {
-        removeUserIds: [userId],
-        slotVersion: 0, // バックエンドはslotVersionをfromSlotIdのものとして処理
-      })
-      // 移動先に追加
-      await shiftApi.patchSlotAssignments(toSlotId, {
-        addUserIds: [userId],
-        slotVersion: toSlotVersion,
-      })
-    } catch (e) {
-      // エラー時はロールバック
-      localAssignments.value[fromSlotId] = prevFrom
-      localAssignments.value[toSlotId] = prevTo
-      // 元のエラーをそのまま再スローする。素の Error に差し替えると
-      // data.error.code / message（例: SHIFT_017 シフト枠の必要人数を超過しています）が
-      // 失われ、呼び出し元が利用者に理由を伝えられなくなる。
-      throw e
-    }
-  }
-
-  async function addUser(slotId: number, userId: number, slotVersion: number): Promise<void> {
-    const prev = [...(localAssignments.value[slotId] ?? [])]
-    // 楽観的更新
-    if (!localAssignments.value[slotId]) {
-      localAssignments.value[slotId] = []
-    }
-    if (!localAssignments.value[slotId].includes(userId)) {
-      localAssignments.value[slotId] = [...localAssignments.value[slotId], userId]
-    }
-
-    try {
-      await shiftApi.patchSlotAssignments(slotId, { addUserIds: [userId], slotVersion })
-    } catch (e) {
-      localAssignments.value[slotId] = prev
-      // 元のエラーをそのまま再スロー（理由を握りつぶさない）
-      throw e
-    }
-  }
-
-  async function removeUser(slotId: number, userId: number, slotVersion: number): Promise<void> {
-    const prev = [...(localAssignments.value[slotId] ?? [])]
-    // 楽観的更新
-    localAssignments.value[slotId] = (localAssignments.value[slotId] ?? []).filter(
-      (id) => id !== userId,
+  function syncAssignments(): void {
+    localAssignments.value = Object.fromEntries(
+      slots.value.map((slot) => [slot.id, [...slot.assignedUserIds]]),
     )
+  }
 
+  async function loadSlots(): Promise<void> {
+    const requestedSchedule = scheduleId.value
+    const before = slots.value
+    const res = await shiftApi.getShiftSlots(requestedSchedule)
+    // PATCH の確定応答や別スケジュールを、先に開始した GET で上書きしない。
+    if (requestedSchedule !== scheduleId.value || slots.value !== before) return
+    slots.value = res.data
+    syncAssignments()
+  }
+
+  function versionOf(slotId: number): number {
+    const version = slots.value.find((slot) => slot.id === slotId)?.version
+    if (typeof version !== 'number' || !Number.isSafeInteger(version) || version < 0) {
+      throw new Error('シフト枠の版を取得できません。再読み込みしてください。')
+    }
+    return version
+  }
+
+  function applySlot(slot: ShiftSlotResponse): void {
+    // 切替前の API 成功は取り消さず、応答だけを現在の別スケジュールへ混入させない。
+    if (slot.scheduleId !== scheduleId.value || !slots.value.some((current) => current.id === slot.id)) return
+    // 警告・マスクを含む応答全体と、次の操作で送る実版を保持する。
+    slots.value = slots.value.map((current) => current.id === slot.id ? slot : current)
+    localAssignments.value[slot.id] = [...slot.assignedUserIds]
+  }
+
+  async function patch(
+    slotId: number,
+    slotVersion: number,
+    change: { addUserIds?: number[]; removeUserIds?: number[] },
+  ): Promise<void> {
+    const res = await shiftApi.patchSlotAssignments(slotId, { ...change, slotVersion })
+    applySlot(res.data)
+  }
+
+  async function moveUser(fromSlotId: number, toSlotId: number, userId: number): Promise<void> {
+    if (fromSlotId === toSlotId) return
+    // 両方の版を最初に確認し、片側の版不足で削除だけを実行しない。
+    const fromVersion = versionOf(fromSlotId)
+    const toVersion = versionOf(toSlotId)
     try {
-      await shiftApi.patchSlotAssignments(slotId, { removeUserIds: [userId], slotVersion })
-    } catch (e) {
-      localAssignments.value[slotId] = prev
-      // 元のエラーをそのまま再スロー（理由を握りつぶさない）
-      throw e
+      await patch(fromSlotId, fromVersion, { removeUserIds: [userId] })
+      await patch(toSlotId, toVersion, { addUserIds: [userId] })
+    } catch (error) {
+      try {
+        await loadSlots()
+      } catch {
+        // 再取得失敗でも、確定した第1 PATCH の状態と元の操作エラーを保持する。
+      }
+      throw error
     }
   }
 
-  // コンポーネントのアンマウント時にペンディング操作をキャンセル
-  onUnmounted(() => {
-    pendingOperations.value.forEach((controller) => controller.abort())
-    pendingOperations.value.clear()
-  })
+  async function addUser(slotId: number, userId: number): Promise<void> {
+    await patch(slotId, versionOf(slotId), { addUserIds: [userId] })
+  }
 
-  // scheduleId が変わったらローカル状態をリセット
+  async function removeUser(slotId: number, userId: number): Promise<void> {
+    await patch(slotId, versionOf(slotId), { removeUserIds: [userId] })
+  }
+
   watch(scheduleId, () => {
+    slots.value = []
     localAssignments.value = {}
   })
 
-  return { localAssignments, initSlot, moveUser, addUser, removeUser }
+  return { localAssignments, loadSlots, moveUser, addUser, removeUser }
 }

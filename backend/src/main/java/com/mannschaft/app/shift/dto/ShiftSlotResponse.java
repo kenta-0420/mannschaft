@@ -16,6 +16,7 @@ public class ShiftSlotResponse {
 
     Long id;
     Long scheduleId;
+    Long version;
 
     ShiftSlotTimeDto     time;      // slotDate, startTime, endTime, endsNextDay
     ShiftSlotPositionDto position;  // positionId, positionName, requiredCount

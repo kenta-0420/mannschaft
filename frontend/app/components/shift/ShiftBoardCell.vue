@@ -14,6 +14,8 @@
         :has-warning="hasWarning(assignment.userId)"
         :warning-message="getWarningMessage(assignment.userId)"
         removable
+        draggable="true"
+        @dragstart="onDragStart($event, assignment.userId)"
         @remove="$emit('removeUser', assignment.userId)"
       />
     </div>
@@ -48,11 +50,12 @@ interface Props {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  drop: [userId: number]
+  drop: [payload: { fromSlotId: number | null; userId: number }]
   removeUser: [userId: number]
   addUser: []
 }>()
 
+const sourceSlotType = 'application/x-mannschaft-shift-slot-id'
 const isDragOver = ref(false)
 
 const dropZoneClass = computed(() => ({
@@ -76,11 +79,25 @@ function onDragLeave(): void {
   isDragOver.value = false
 }
 
+function onDragStart(event: DragEvent, userId: number): void {
+  if (!event.dataTransfer) return
+  event.dataTransfer.setData('text/plain', String(userId))
+  event.dataTransfer.setData(sourceSlotType, String(props.slotId))
+  event.dataTransfer.effectAllowed = 'move'
+}
+
 function onDrop(event: DragEvent): void {
   isDragOver.value = false
-  const userId = Number(event.dataTransfer?.getData('text/plain'))
-  if (!isNaN(userId) && userId > 0) {
-    emit('drop', userId)
+  const transfer = event.dataTransfer
+  if (!transfer) return
+  const userId = Number(transfer.getData('text/plain'))
+  if (!Number.isSafeInteger(userId) || userId <= 0) return
+
+  let fromSlotId: number | null = null
+  if (Array.from(transfer.types).includes(sourceSlotType)) {
+    fromSlotId = Number(transfer.getData(sourceSlotType))
+    if (!Number.isSafeInteger(fromSlotId) || fromSlotId <= 0 || fromSlotId === props.slotId) return
   }
+  emit('drop', { fromSlotId, userId })
 }
 </script>
