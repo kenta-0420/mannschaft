@@ -139,7 +139,14 @@ describe('SkillMatrix: 空・失敗', () => {
   })
 })
 
-describe('SkillMatrix: ALIC-4 凡例は実際に現れる状態だけを出す', () => {
+describe('SkillMatrix: ALIC-3 更新ボタンにアクセシブルネーム（aria-label）がある', () => {
+  it('pi-refresh ボタンの aria-label は skill.matrix.refresh', async () => {
+    const w = await render()
+    expect(w.find('button[data-icon="pi pi-refresh"]').attributes('aria-label')).toBe('skill.matrix.refresh')
+  })
+})
+
+describe('SkillMatrix: ALIC-4凡例は実際に現れる状態だけを出す', () => {
   it('凡例に「確認待ち」が無い（BE は確認待ちを未登録として返すため決して現れない）', async () => {
     const w = await render()
     expect(w.text()).not.toContain('確認待ち')

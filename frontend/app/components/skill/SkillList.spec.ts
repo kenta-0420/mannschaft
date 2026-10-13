@@ -378,4 +378,9 @@ describe('SkillList: ALIC-3 アイコンだけのボタンにアクセシブル�
     const w = await render(true)
     expect(btn(w, icon).attributes('aria-label')).toBe(key)
   })
+
+  it('検索ボタン（pi-search）にも aria-label がある', async () => {
+    const w = await render(true)
+    expect(btn(w, 'pi pi-search').attributes('aria-label')).toBe('skill.list.actions.search')
+  })
 })
