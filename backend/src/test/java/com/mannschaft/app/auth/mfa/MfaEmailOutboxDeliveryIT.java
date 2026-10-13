@@ -106,11 +106,16 @@ class MfaEmailOutboxDeliveryIT extends MfaEmailOtpItSupport {
     }
 
     /** 実 Worker を、指定行が PENDING を抜けるまで同期で回す（1 回 50 件。他テストの残り行があっても届くまで）。 */
-    private void drainWorkerUntilProcessed(UUID outboxId) {
+    private void drainWorkerUntilProcessed(UUID outboxId) throws InterruptedException {
         LockAssert.TestHelper.makeAllAssertsPass(true);
         try {
-            for (int i = 0; i < 20 && "PENDING".equals(outboxStatus(outboxId)); i++) {
+            // 行の next_attempt_at は enqueue 側 JVM の壁時計（EmailOutboxEntity#prepareForEnqueue）で、取得条件は DB の NOW(3)。
+            // JVM と DB コンテナ（WSL2 等）の時計差で、投入直後の数百 ms は「まだ対象外」になりうるため、待ちを挟んで再試行する。
+            for (int i = 0; i < 40 && "PENDING".equals(outboxStatus(outboxId)); i++) {
                 emailOutboxWorker.poll();
+                if ("PENDING".equals(outboxStatus(outboxId))) {
+                    Thread.sleep(250);
+                }
             }
         } finally {
             LockAssert.TestHelper.makeAllAssertsPass(false);
