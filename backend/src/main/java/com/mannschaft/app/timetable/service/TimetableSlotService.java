@@ -135,7 +135,10 @@ public class TimetableSlotService {
                         timetableId,
                         timetable.getTeamId(),
                         s.getSubjectName(),
-                        after));
+                        after,
+                        s.getDayOfWeek(),
+                        s.getPeriodNumber(),
+                        s.getWeekPattern()));
             }
         }
 

@@ -736,7 +736,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
     //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
     //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 4）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1304;
+    // Issue #2997 G7-a: 1304 -> 1298（-6）。DigestAsyncExecutor と TeamSlotNoteNotifyListener が @Transactional を外した（各 3 行、追加 0・削除 6）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3 = 1298;
 
     /**
      * 推移的クロスドメイン {@code @Transactional} 番人（D-3T）の初期凍結行数。
@@ -869,7 +870,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     //   TicketExpiryBatchService.expireTickets は @Transactional を外したため 5、sendExpiryNotifications は
     //   通知を呼ばなくなったため 5。追加 0・削除 22（解消済みの main 側4行は残していない）。
     // CMP-261012-0313: main の 7163 から SkillMatrixService を主語とする 2 行が解消し 7161（ストア実数と一致）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7161;
+    // Issue #2997 G7-a: 7161 -> 7149（-12）。DigestAsyncExecutor と TeamSlotNoteNotifyListener が @Transactional を外した（各 6 行、追加 0・削除 12）。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7149;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
