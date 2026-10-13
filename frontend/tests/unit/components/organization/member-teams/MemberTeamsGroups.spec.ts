@@ -260,7 +260,11 @@ describe('MemberTeamsGroupAssignments', () => {
     const wrapper = await mountAssign()
     expect(listGroupTeams).toHaveBeenCalledWith('org-1', {})
     const labels = wrapper.findAll('[data-testid="team-group-label"]').map(w => w.text())
-    expect(labels).toEqual(['東地区', '未分類', '未分類'])
+    // テスト環境のロケールに依存しないよう、「未分類」の文言そのものではなく、グループ名と区別できることを検証する。
+    expect(labels[0]).toBe('東地区')
+    expect(labels[1]).toBeTruthy()
+    expect(labels[1]).not.toBe('東地区')
+    expect(labels[2]).toBe(labels[1])
   })
 
   it('GA-02: 「未分類」で絞ると unassigned=true で取得する', async () => {

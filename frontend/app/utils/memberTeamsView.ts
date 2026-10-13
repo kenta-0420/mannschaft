@@ -28,6 +28,9 @@ export function resolveMemberTeamsView(raw: unknown, canManage: boolean): Member
 /** グループ選択ドロップダウンで「未分類」を表す値（groupId=null を select の値として持てないため）。 */
 export const UNASSIGNED_GROUP_VALUE = '__unassigned__'
 
+/** 加盟チーム一覧の絞り込みで「すべてのグループ」を表す値。 */
+export const ALL_GROUPS_VALUE = '__all__'
+
 /** 申請・招待・制限の日時表示。値が無い・不正なら空文字。 */
 export function formatAffiliationDate(iso: string | undefined, locale: string): string {
   if (!iso) return ''
