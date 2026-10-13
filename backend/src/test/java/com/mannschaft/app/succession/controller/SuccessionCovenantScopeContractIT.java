@@ -7,17 +7,23 @@ import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthTokenService;
+import com.mannschaft.app.common.visibility.RolePriority;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.resident.entity.DwellingUnitEntity;
 import com.mannschaft.app.resident.entity.ResidentRegistryEntity;
 import com.mannschaft.app.resident.repository.DwellingUnitRepository;
 import com.mannschaft.app.resident.repository.ResidentRegistryRepository;
+import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.RoleRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.succession.entity.SuccessionCovenantEntity;
 import com.mannschaft.app.succession.repository.SuccessionCovenantRepository;
-import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
@@ -83,6 +89,9 @@ class SuccessionCovenantScopeContractIT extends AbstractSuccessionIntegrationTes
     @Autowired private PlatformTransactionManager txManager;
     @PersistenceContext private EntityManager em;
     @Autowired private UserRepository users;
+    @Autowired private MembershipRepository memberships;
+    @Autowired private RoleRepository roles;
+    @Autowired private UserRoleRepository userRoles;
     @Autowired private OrganizationRepository organizations;
     @Autowired private DwellingUnitRepository dwellings;
     @Autowired private ResidentRegistryRepository residents;
@@ -130,11 +139,11 @@ class SuccessionCovenantScopeContractIT extends AbstractSuccessionIntegrationTes
             ownOrg = fixtureOrganization("own");
             foreignOrg = fixtureOrganization("foreign");
             for (Long actor : List.of(signer, nonAdmin, admin, deputy)) {
-                MembershipTestHelper.insertMembership(em, actor, ScopeType.ORGANIZATION, ownOrg, RoleKind.MEMBER);
+                fixtureMembership(actor, ownOrg);
             }
-            MembershipTestHelper.insertMembership(em, foreignSigner, ScopeType.ORGANIZATION, foreignOrg, RoleKind.MEMBER);
-            MembershipTestHelper.insertUserRole(em, admin, "ADMIN", null, ownOrg);
-            MembershipTestHelper.insertUserRole(em, deputy, "DEPUTY_ADMIN", null, ownOrg);
+            fixtureMembership(foreignSigner, foreignOrg);
+            fixtureUserRole(admin, "ADMIN", ownOrg);
+            fixtureUserRole(deputy, "DEPUTY_ADMIN", ownOrg);
             ownCovenant = fixtureCovenant(ownOrg, signer, "own");
             foreignCovenant = fixtureCovenant(foreignOrg, foreignSigner, "foreign");
             em.flush();
@@ -385,6 +394,19 @@ class SuccessionCovenantScopeContractIT extends AbstractSuccessionIntegrationTes
         return id;
     }
 
+    private Long fixtureRole(String name) {
+        return roles.findByName(name).orElseGet(() -> roles.save(CovenantFixtures.role(name))).getId();
+    }
+
+    private void fixtureMembership(Long actor, Long orgId) {
+        fixtureRole("MEMBER");
+        memberships.save(CovenantFixtures.membership(actor, orgId));
+    }
+
+    private void fixtureUserRole(Long actor, String name, Long orgId) {
+        userRoles.save(CovenantFixtures.userRole(actor, fixtureRole(name), orgId));
+    }
+
     private Long fixtureOrganization(String label) {
         Long id = organizations.save(CovenantFixtures.organization(label)).getId();
         organizationIds.add(id);
@@ -414,6 +436,20 @@ class SuccessionCovenantScopeContractIT extends AbstractSuccessionIntegrationTes
 
     /** 領域内fixtureの型と必須値を一箇所に置く。既Oracleのuser/org生成形を限定再利用。 */
     private static final class CovenantFixtures {
+        private static RoleEntity role(String name) {
+            return RoleEntity.builder().name(name).displayName(name)
+                    .priority(RolePriority.priority(name)).isSystem(false).build();
+        }
+
+        private static MembershipEntity membership(Long actor, Long orgId) {
+            return MembershipEntity.builder().userId(actor).scopeType(ScopeType.ORGANIZATION)
+                    .scopeId(orgId).roleKind(RoleKind.MEMBER).build();
+        }
+
+        private static UserRoleEntity userRole(Long actor, Long roleId, Long orgId) {
+            return UserRoleEntity.builder().userId(actor).roleId(roleId).organizationId(orgId).build();
+        }
+
         private static UserEntity user(String label) {
             return UserEntity.builder().email("succession-oracle-" + label + "-" + UUID.randomUUID() + "@example.com")
                     .lastName("試練").firstName(label).displayName(label).isSearchable(false)

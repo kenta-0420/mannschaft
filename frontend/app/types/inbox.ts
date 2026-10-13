@@ -95,7 +95,11 @@ export interface InboxListResponse {
   }
 }
 
-/** サマリレスポンス（InboxSummaryResponse を ApiResponse でラップしたもの）。 */
+/**
+ * サマリレスポンス（InboxSummaryResponse を ApiResponse でラップしたもの）。
+ * BE の record は 3 マップを常に返す（空でも `{}`）ため必須。生成型が optional なのは springdoc が
+ * required を出さないためで、実契約ではない。useInboxStore.fetchSummary が境界で検証する。
+ */
 export interface InboxSummary {
   data: {
     byState: Record<string, number>

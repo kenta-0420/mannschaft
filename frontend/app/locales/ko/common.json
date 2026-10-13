@@ -1,4 +1,10 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "스킬 상세 정보를 불러오지 못했습니다",
+      "loadCategoriesFailed": "카테고리를 불러오지 못했습니다"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "스레드에서 답장",
@@ -2629,7 +2635,8 @@
   "scopeSwitch": {
     "hint": "전환하려면 화면 상단의 「팀」「조직」 메뉴에서 대상을 선택해 열어 주세요. 연 단체가 그대로 현재 스코프가 됩니다.",
     "goTeams": "팀 선택",
-    "goOrganizations": "조직 선택"
+    "goOrganizations": "조직 선택",
+    "personalUnsupported": "이 설정은 팀 또는 조직 범위에서만 사용할 수 있습니다. 개인 범위에서는 표시할 수 없습니다."
   },
   "joinRequest": {
     "apply": "가입 신청",
