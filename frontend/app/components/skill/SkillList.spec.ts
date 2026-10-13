@@ -12,13 +12,16 @@ const api = vi.hoisted(() => ({
   verifySkill: vi.fn(),
   getCertificateUrl: vi.fn(),
   getSkillCategories: vi.fn(),
+  getMySkills: vi.fn(),
 }))
+const confirm = vi.hoisted(() => ({ confirmAction: vi.fn() }))
 const notify = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }))
 const auth = vi.hoisted(() => ({ currentUser: { id: 10 } as { id: number } | null }))
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 mockNuxtImport('useSkillApi', () => () => api)
 mockNuxtImport('useNotification', () => () => notify)
+mockNuxtImport('useConfirmDialog', () => () => confirm)
 mockNuxtImport('useDatetime', () => () => ({ formatDate: (v: string) => v }))
 mockNuxtImport('useAuthStore', () => () => auth)
 
@@ -30,10 +33,10 @@ const searchItem = (over: Record<string, unknown> = {}) => ({
   categoryId: 7,
   skillName: '普通自動車免許',
   issuer: '公安委員会',
-  credentialNumber: 'No.123',
   acquiredOn: '2026-01-01',
   expiresAt: '2030-01-01',
   status: 'PENDING_REVIEW',
+  hasCertificate: true,
   verifiedAt: null,
   expiringSoon: false,
   ...over,
@@ -55,16 +58,24 @@ const Button = defineComponent({
 })
 const Select = defineComponent({
   props: { options: { type: Array, default: () => [] }, placeholder: { type: String, default: '' } },
-  setup(p) {
-    return () => h('div', { 'data-ph': p.placeholder }, (p.options as { label: string }[]).map((o) => o.label).join('|'))
+  emits: ['update:modelValue'],
+  setup(p, { emit }) {
+    return () =>
+      h(
+        'div',
+        { 'data-ph': p.placeholder },
+        (p.options as { label: string; value: unknown }[]).map((o) =>
+          h('button', { type: 'button', 'data-v': String(o.value), onClick: () => emit('update:modelValue', o.value) }, o.label),
+        ),
+      )
   },
 })
 const stubs = { Button, InputText: true, Select, LoadingBounce: true }
 
 let wrapper: VueWrapper | undefined
-async function render(canManage = false) {
+async function render(canManage = false, scope: 'all' | 'mine' = 'all') {
   wrapper = mount(SkillList, {
-    props: { teamId: 'e2e', canManage },
+    props: { teamId: 'e2e', canManage, scope },
     global: { stubs, directives: { tooltip: {} } },
   })
   await flushPromises()
@@ -80,6 +91,8 @@ beforeEach(() => {
   api.getSkill.mockResolvedValue({ data: fullSkill })
   api.deleteSkill.mockResolvedValue({})
   api.verifySkill.mockResolvedValue({ data: fullSkill })
+  api.getMySkills.mockResolvedValue({ data: [fullSkill] })
+  confirm.confirmAction.mockImplementation((o: { onAccept: () => void }) => o.onAccept())
   api.getCertificateUrl.mockResolvedValue({ data: 'https://example.invalid/c.pdf' })
 })
 afterEach(() => {
@@ -192,6 +205,133 @@ describe('SkillList: カテゴリ取得', () => {
   it('取得に失敗したら握りつぶさずエラー通知する', async () => {
     api.getSkillCategories.mockRejectedValue(new Error('500'))
     await render(true)
+    expect(notify.error).toHaveBeenCalledWith('skill.list.loadCategoriesFailed')
+  })
+})
+
+describe('SkillList: F-AC7 証明書は hasCertificate のときだけ・資格番号は出さない', () => {
+  it('hasCertificate=false なら本人でも証明書ボタンを出さない', async () => {
+    api.searchSkills.mockResolvedValue({ data: [searchItem({ hasCertificate: false })] })
+    const w = await render(true)
+    expect(btn(w, 'pi pi-download').exists()).toBe(false)
+    expect(btn(w, 'pi pi-pencil').exists()).toBe(true)
+  })
+
+  it('hasCertificate=true でも本人でも管理者でもなければ証明書ボタンを出さない', async () => {
+    auth.currentUser = { id: 99 }
+    const w = await render(false)
+    expect(btn(w, 'pi pi-download').exists()).toBe(false)
+  })
+
+  it('hasCertificate=true かつ本人なら証明書ボタンを出す', async () => {
+    const w = await render(false)
+    expect(btn(w, 'pi pi-download').exists()).toBe(true)
+  })
+
+  it('資格番号は（API が返してきても）表示しない', async () => {
+    api.searchSkills.mockResolvedValue({ data: [searchItem({ credentialNumber: 'No.SECRET-999' })] })
+    const w = await render(true)
+    expect(w.text()).not.toContain('No.SECRET-999')
+  })
+})
+
+describe('SkillList: F-AC8 削除は確認ダイアログを経る', () => {
+  it('削除ボタンで useConfirmDialog().confirmAction が呼ばれ、承諾前は API を呼ばない', async () => {
+    confirm.confirmAction.mockImplementation(() => {})
+    const w = await render(true)
+    await btn(w, 'pi pi-trash').trigger('click')
+    await flushPromises()
+    expect(confirm.confirmAction).toHaveBeenCalledTimes(1)
+    expect(api.deleteSkill).not.toHaveBeenCalled()
+  })
+
+  it('キャンセル（onReject）なら削除 API を呼ばない', async () => {
+    confirm.confirmAction.mockImplementation((o: { onReject?: () => void }) => o.onReject?.())
+    const w = await render(true)
+    await btn(w, 'pi pi-trash').trigger('click')
+    await flushPromises()
+    expect(api.deleteSkill).not.toHaveBeenCalled()
+  })
+
+  it('承諾すると削除 API を呼び、成功通知して一覧を再取得する', async () => {
+    const w = await render(true)
+    await btn(w, 'pi pi-trash').trigger('click')
+    await flushPromises()
+    expect(api.deleteSkill).toHaveBeenCalledWith('e2e', 501)
+    expect(notify.success).toHaveBeenCalled()
+    expect(api.searchSkills).toHaveBeenCalledTimes(2)
+  })
+
+  it('削除 API が失敗したら行を消さずエラー通知する', async () => {
+    api.deleteSkill.mockRejectedValue(new Error('500'))
+    const w = await render(true)
+    await btn(w, 'pi pi-trash').trigger('click')
+    await flushPromises()
+    expect(notify.error).toHaveBeenCalled()
+    expect(api.searchSkills).toHaveBeenCalledTimes(1)
+    expect(w.text()).toContain('普通自動車免許')
+  })
+})
+
+describe('SkillList: F-AC3 scope=mine は自分の資格（/skills/me）だけを使う', () => {
+  it('search を呼ばず getMySkills で取得し、資格名とカテゴリ名を出す', async () => {
+    const w = await render(false, 'mine')
+    expect(api.getMySkills).toHaveBeenCalledWith('e2e')
+    expect(api.searchSkills).not.toHaveBeenCalled()
+    expect(w.text()).toContain('普通自動車免許')
+    expect(w.text()).toContain('運転')
+  })
+
+  it('一般メンバーでも「スキル登録」ボタンが出て create を emit する', async () => {
+    const w = await render(false, 'mine')
+    await btn(w, 'pi pi-plus').trigger('click')
+    expect(w.emitted('create')).toHaveLength(1)
+  })
+
+  it('取得失敗は握りつぶさずエラー通知する', async () => {
+    api.getMySkills.mockRejectedValue(new Error('500'))
+    await render(false, 'mine')
+    expect(notify.error).toHaveBeenCalled()
+  })
+
+  it('mine でも hasCertificate=false なら証明書ボタンは出ない', async () => {
+    api.getMySkills.mockResolvedValue({ data: [{ ...fullSkill, hasCertificate: false }] })
+    const w = await render(false, 'mine')
+    expect(btn(w, 'pi pi-download').exists()).toBe(false)
+  })
+})
+
+describe('SkillList: F-AC6 カテゴリ再取得', () => {
+  const cat = (id: number, name: string) => ({ id, name, description: null, icon: null, sortOrder: id, isActive: true, createdAt: '' })
+  const refresh = (w: VueWrapper) => (w.vm as unknown as { refreshCategories: () => Promise<void> }).refreshCategories()
+
+  it('refreshCategories でカテゴリを再取得し、新カテゴリ名が名前解決・選択肢に反映される', async () => {
+    api.getSkillCategories.mockResolvedValue({ data: [cat(7, '運転')] })
+    const w = await render(true)
+    api.getSkillCategories.mockResolvedValue({ data: [cat(7, '運転（改）'), cat(9, '新規')] })
+    await refresh(w)
+    await flushPromises()
+    expect(w.text()).toContain('運転（改）')
+    expect(w.find('[data-ph="カテゴリ"]').text()).toContain('新規')
+  })
+
+  it('選択中のカテゴリが削除されたらフィルタを解除して一覧を取り直す', async () => {
+    api.getSkillCategories.mockResolvedValue({ data: [cat(7, '運転'), cat(8, '救急')] })
+    const w = await render(true)
+    await w.find('[data-ph="カテゴリ"] button[data-v="8"]').trigger('click')
+    await flushPromises()
+    expect(api.searchSkills.mock.calls.at(-1)?.[1]).toMatchObject({ categoryId: 8 })
+    api.getSkillCategories.mockResolvedValue({ data: [cat(7, '運転')] })
+    await refresh(w)
+    await flushPromises()
+    expect(api.searchSkills.mock.calls.at(-1)?.[1]).not.toHaveProperty('categoryId')
+  })
+
+  it('再取得に失敗したら握りつぶさずエラー通知する', async () => {
+    const w = await render(true)
+    notify.error.mockClear()
+    api.getSkillCategories.mockRejectedValue(new Error('500'))
+    await refresh(w)
     expect(notify.error).toHaveBeenCalledWith('skill.list.loadCategoriesFailed')
   })
 })
