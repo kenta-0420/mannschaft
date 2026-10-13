@@ -519,6 +519,8 @@ onUnmounted(() => {
 
 UI に表示する文字列は **直書き禁止**。必ずロケールファイル（`app/locales/{ja,en,zh,ko,es,de}/*.json`）に追加してから `$t('key')` / `t('key')` で参照する。デフォルトロケールは `ja`。対応言語は日本語・英語・中国語（簡体）・韓国語・スペイン語・ドイツ語の 6 言語。
 
+**PrimeVue 既定文言**（aria-label・日付・ページ送り等）は `app/utils/primevueLocales.ts` で 6 言語の完全辞書として管理し、`plugins/primevue-locale.ts` が `i18n.locale` に追従させる（SSR 対応）。`app/error.vue` の文言は `common.json` の `error_page.*`。
+
 ### ロケール別フォーマット関数を呼ぶ際の注意
 
 `toLocaleDateString` / `toLocaleString` / `Intl.DateTimeFormat` 等にロケールを渡す場合、`useI18n()` から取り出した `locale` は `WritableComputedRef<string>` なので、**必ず `locale.value` を渡すこと**。`locale` をそのまま渡すと実行時に `Ref` オブジェクトが toString されて `[object Object]` となる、または `RangeError: Invalid language tag` を投げる恐れがある。
@@ -541,7 +543,7 @@ date.toLocaleDateString(locale.value, { weekday: 'short' })
 
 新規追加時の確認手順:
 
-1. **6 言語すべて**（ja/en/zh/ko/es/de）に同じファイル名で JSON を配置する（未翻訳ならひとまず日本語と同じ値で可、後で翻訳でもよい）。
+1. **6 言語すべて**（ja/en/zh/ko/es/de）に同じファイル名で JSON を配置し、各言語にその言語の訳を入れる（ja 以外に日本語を置かない。キー集合・プレースホルダ・複数形区切りも ja と揃える）。番人 `tests/unit/i18n/locale-no-japanese-residue.spec.ts` が CI で日本語の残存と構造の不一致を検出する。意図的に日本語を残す値（例: API へ日本語のまま送る入力例）は `tests/unit/i18n/locale-residue-allowlist.json` に理由付きで載せる。
 2. `nuxt.config.ts` の各ロケール定義の `files:` 配列にファイル名を追加する（6 箇所）。
 3. `npm run dev` で該当画面を目視し、キーが実テキストに解決されていることを確認する。
 

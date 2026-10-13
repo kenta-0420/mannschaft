@@ -4,12 +4,9 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.ErrorResponse;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.market.MarketErrorCode;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentDistributionTargetType;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
@@ -39,6 +36,7 @@ import com.mannschaft.app.recruitment.entity.RecruitmentTemplateEntity;
 import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import com.mannschaft.app.recruitment.event.RecruitmentCancelledEvent;
 import com.mannschaft.app.recruitment.event.RecruitmentCancelledNotificationEvent;
+import com.mannschaft.app.recruitment.event.RecruitmentNotificationEvent;
 import com.mannschaft.app.recruitment.repository.RecruitmentCategoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentDistributionTargetRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
@@ -54,7 +52,6 @@ import com.mannschaft.app.social.repository.FollowRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -65,7 +62,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -101,12 +97,7 @@ public class RecruitmentListingService {
     private final MembershipScopeQueryService membershipScopeQueryService;
     private final UserRoleRepository userRoleRepository;
     private final FollowRepository followRepository;
-    private final NotificationHelper notificationHelper;
     private final AccessControlService accessControlService;
-    // Issue #2715 ロットA: 通知本文の i18n 化。auth の UserRepository を直接呼ばず、
-    // common.i18n 配下の共有サービス経由で受信者 locale を解決する（ArchUnit D-5 対応）。
-    private final UserLocaleCache userLocaleCache;
-    private final MessageSource messageSource;
     private final RecruitmentMapper mapper;
     private final RecruitmentTemplateService templateService;
     private final RecruitmentTemplateRepository templateRepository;
@@ -583,8 +574,17 @@ public class RecruitmentListingService {
                 throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
             }
             RecruitmentListingEntity saved = listingRepository.save(entity);
-            // フレンドチーム管理者へ「届いた札」配信（§7）。
-            marketFriendTargetService.distributeFriendListing(saved);
+            // フレンドチーム管理者へ「届いた札」配信（§7）。Issue #2997: 業務TXは受信者を確定して
+            // publishEvent するのみ。通知の作成・配送は AFTER_COMMIT の RecruitmentNotificationListener が行う。
+            // （フレンド宛は TEAM スコープの札のみ成立する）
+            if (saved.getScopeType() == RecruitmentScopeType.TEAM) {
+                Set<Long> friendRecipients = marketFriendTargetService
+                        .resolveFriendListingRecipientUserIds(saved.getScopeId(), saved.getId());
+                if (!friendRecipients.isEmpty()) {
+                    eventPublisher.publishEvent(RecruitmentNotificationEvent.friendListing(
+                            saved.getId(), new ArrayList<>(friendRecipients)));
+                }
+            }
             log.info("F22.1 市: フレンド宛非公開札を公開: id={} → OPEN", listingId);
             return marketResponseEnricher.enrich(mapper.toListingResponse(saved), saved);
         }
@@ -607,8 +607,15 @@ public class RecruitmentListingService {
 
         RecruitmentListingEntity saved = listingRepository.save(entity);
 
-        // Phase 2: RECRUITMENT_PUBLISHED 通知送信
-        sendPublishedNotifications(saved, targets);
+        // Phase 2: RECRUITMENT_PUBLISHED 通知。Issue #2997: 業務TXは受信者を確定して publishEvent するのみ。
+        // 通知の作成・配送は AFTER_COMMIT の RecruitmentNotificationListener が行う。
+        List<Long> publishedRecipients = resolvePublishedRecipients(saved, targets);
+        if (!publishedRecipients.isEmpty()) {
+            eventPublisher.publishEvent(
+                    RecruitmentNotificationEvent.published(saved.getId(), publishedRecipients));
+        }
+        log.info("F03.11 RECRUITMENT_PUBLISHED 通知対象: listingId={}, targetUsers={}",
+                saved.getId(), publishedRecipients.size());
 
         log.info("F03.11 募集枠公開: id={} → OPEN, targets={}", listingId, targetCount);
         return marketResponseEnricher.enrich(mapper.toListingResponse(saved), saved);
@@ -752,28 +759,11 @@ public class RecruitmentListingService {
                     .build());
         }
 
-        // RECRUITMENT_CONFIRMED 通知送信
+        // RECRUITMENT_CONFIRMED 通知。Issue #2997: 業務TXは publishEvent のみ。
+        // 文面組み立て・配送は AFTER_COMMIT の RecruitmentNotificationListener が行う。
         if (participant.getUserId() != null) {
-            NotificationScopeType scopeType = listing.getScopeType() == RecruitmentScopeType.TEAM
-                    ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
-            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(participant.getUserId()));
-            String title = messageSource.getMessage(
-                    "notification.recruitment.confirmed.title", null, "参加が確定しました", locale);
-            String body = messageSource.getMessage(
-                    "notification.recruitment.confirmed.body", new Object[]{listing.getTitle()},
-                    listing.getTitle() + " の参加が確定しました。", locale);
-            notificationHelper.notify(
-                    participant.getUserId(),
-                    "RECRUITMENT_CONFIRMED",
-                    title,
-                    body,
-                    "RECRUITMENT_LISTING",
-                    listing.getId(),
-                    scopeType,
-                    listing.getScopeId(),
-                    "/recruitment-listings/" + listing.getId(),
-                    adminId
-            );
+            eventPublisher.publishEvent(RecruitmentNotificationEvent.confirmed(
+                    listing.getId(), participant.getUserId(), adminId));
         }
 
         log.info("F03.11 申込確定: participantId={}, listingId={}", participantId, listing.getId());
@@ -1033,17 +1023,15 @@ public class RecruitmentListingService {
     }
 
     /**
-     * RECRUITMENT_PUBLISHED 通知を配信対象ユーザーに送信する。
+     * RECRUITMENT_PUBLISHED の受信者（配信対象ユーザー）を解決する。通知は作らない（Issue #2997）。
      */
-    private void sendPublishedNotifications(
+    private List<Long> resolvePublishedRecipients(
             RecruitmentListingEntity listing,
             List<RecruitmentDistributionTargetEntity> targets) {
-        NotificationScopeType scopeType = listing.getScopeType() == RecruitmentScopeType.TEAM
-                ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
         String scopeTypeName = listing.getScopeType().name();
         Long scopeId = listing.getScopeId();
 
-        Set<Long> notifiedUserIds = new java.util.LinkedHashSet<>();
+        Set<Long> notifiedUserIds = new LinkedHashSet<>();
 
         for (RecruitmentDistributionTargetEntity target : targets) {
             List<Long> userIds;
@@ -1070,36 +1058,7 @@ public class RecruitmentListingService {
             }
             notifiedUserIds.addAll(userIds);
         }
-
-        String actionUrl = "/recruitment-listings/" + listing.getId();
-
-        // Issue #2715 ロットA / 検分是正(PR #2764): 受信者ごとに locale を解決して本文を組み立てる必要が
-        // あるため、単一文面固定の notifyAll ではなく NotificationHelper#notifyAllLocalized を用いる。
-        // 訂正(2026-08-14): 当初「notify を受信者数分ループで直呼びすると可視性フィルタを迂回し
-        // 情報漏洩する」としていたが、これは誤り。NotificationService#createNotification は単発経路
-        // でも canView による可視性ガードを既に担保しており、notify 直呼びループでも漏洩は無かった。
-        // notifyAllLocalized を使う本当の理由は (1) 一括経路でも受信者別 locale の本文を組み立てられる
-        // ようにすること、(2) locale をまとめて解決し N+1 を避けること、(3) 前段の
-        // filterAccessibleRecipients で閲覧不可ユーザーを先に除外し、どのみち createNotification 側の
-        // 可視性ガードで捨てられる分の本文組み立て・notify 呼び出しを無駄に行わないこと、の 3 点。
-        // ロットB・C の同種要求にも同じ経路を使う。
-        notificationHelper.notifyAllLocalized(
-                new ArrayList<>(notifiedUserIds),
-                "RECRUITMENT_PUBLISHED",
-                "RECRUITMENT_LISTING", listing.getId(),
-                scopeType, scopeId,
-                actionUrl, listing.getCreatedBy(),
-                (userId, locale) -> {
-                    String title = messageSource.getMessage(
-                            "notification.recruitment.published.title", new Object[]{listing.getTitle()},
-                            "新着募集: " + listing.getTitle(), locale);
-                    String body = messageSource.getMessage(
-                            "notification.recruitment.published.body", new Object[]{listing.getTitle()},
-                            listing.getTitle() + " の募集が公開されました。", locale);
-                    return new NotificationHelper.LocalizedMessage(title, body);
-                });
-        log.info("F03.11 RECRUITMENT_PUBLISHED 通知送信: listingId={}, targetUsers={}",
-                listing.getId(), notifiedUserIds.size());
+        return new ArrayList<>(notifiedUserIds);
     }
 
     // ===========================================

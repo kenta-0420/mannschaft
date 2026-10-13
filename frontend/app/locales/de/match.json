@@ -455,12 +455,12 @@
     },
     "org_select": {
       "label": "Organisation",
-      "invalid": "指定された組織は無効です（このチームの組織ではありません）。組織を選び直してください",
-      "placeholder": "組織を選択"
+      "invalid": "Die angegebene Organisation ist ungültig (keine Organisation dieses Teams). Bitte wählen Sie die Organisation erneut aus",
+      "placeholder": "Organisation auswählen"
     },
     "org_context": {
       "resolve_failed": "Team-/Organisationsinfo konnte nicht aufgelöst werden. Bitte prüfe deine Mitgliedschaften",
-      "not_member_of_org": "このチームはこの大会の組織に加盟していないため、試合を記録できません"
+      "not_member_of_org": "Dieses Team ist nicht Mitglied der Organisation dieses Turniers, daher kann das Spiel nicht erfasst werden"
     },
     "entry": {
       "record_from_schedule": "Dieses Spiel aufzeichnen",

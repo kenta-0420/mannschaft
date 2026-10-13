@@ -3,8 +3,6 @@ package com.mannschaft.app.tournament.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EnumInputParser;
-import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
-import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.tournament.ParticipantStatus;
 import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.TournamentMapper;
@@ -32,7 +30,7 @@ import java.util.List;
  *
  * <h2>認可（認可根治戦役 Wave2 トランシェ2C）</h2>
  * <ul>
- *   <li>閲覧（一覧）: 親大会（{@code tId}）の F00 可視性判定に委譲。不可視は 404（IDOR 秘匿）。</li>
+ *   <li>閲覧（一覧）: 親大会（{@code tId}）の可視性判定は Controller が {@link TournamentViewAccessGate} で行う（不可視は 404・IDOR 秘匿）。</li>
  *   <li>変更（作成／更新／削除）: {@code tId} が path {@code orgId} 配下であることを検証した上で、
  *       主催組織 ADMIN/DEPUTY_ADMIN を要求する。他組織の大会 ID を自組織 URL に指定した越境
  *       （BOLA）は 404（存在秘匿）で遮断する。</li>
@@ -50,7 +48,6 @@ public class DivisionService {
     private final TournamentRepository tournamentRepository;
     private final TournamentMapper mapper;
     private final AccessControlService accessControlService;
-    private final ContentVisibilityChecker contentVisibilityChecker;
     /**
      * F08.7.1 連絡機能: ディビジョン作成時に連絡スペース（掲示板＋チャット）を自動払い出しする。
      * TODO: tournament ドメインから chat/bulletin ドメインを直接呼ぶ越境（原則5）。
@@ -71,10 +68,9 @@ public class DivisionService {
 
     /**
      * ディビジョン一覧を取得する（閲覧系）。
-     * 親大会（tournamentId）の F00 可視性判定に委譲し、不可視は 404（IDOR 秘匿）。
+     * 認可（親大会の閲覧可否。不可視は 404）は公開入口の Controller が {@link TournamentViewAccessGate} で行う。
      */
-    public List<DivisionResponse> listDivisions(Long tournamentId, Long viewerUserId) {
-        verifyTournamentVisible(tournamentId, viewerUserId);
+    public List<DivisionResponse> listDivisions(Long tournamentId) {
         return divisionRepository.findByTournamentIdOrderByLevelAscSortOrderAsc(tournamentId)
                 .stream().map(mapper::toDivisionResponse).toList();
     }
@@ -156,11 +152,10 @@ public class DivisionService {
 
     /**
      * 参加チーム一覧を取得する（閲覧系）。
-     * 親大会（tournamentId）の可視性に加え、divId が tournamentId 配下であることを束縛検証する
+     * 親大会の閲覧可否は Controller が {@link TournamentViewAccessGate} で検証済み。ここでは divId が tournamentId 配下であることを束縛検証する
      * （公開大会の tId を踏み台にした非公開大会 divId の閲覧を遮断・台帳指摘の穴）。
      */
-    public List<ParticipantResponse> listParticipants(Long tournamentId, Long divisionId, Long viewerUserId) {
-        verifyTournamentVisible(tournamentId, viewerUserId);
+    public List<ParticipantResponse> listParticipants(Long tournamentId, Long divisionId) {
         findDivisionOrThrow(tournamentId, divisionId);
         return participantRepository.findByDivisionIdOrderBySeedAsc(divisionId)
                 .stream().map(mapper::toParticipantResponse).toList();
@@ -243,16 +238,6 @@ public class DivisionService {
             throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
         }
         return tournament;
-    }
-
-    /**
-     * 大会 visibility ガード（閲覧系）。認証ユーザー（未認証なら null）が当該 tournament を
-     * 閲覧できるか F00 共通可視性 Resolver で判定し、不可視なら 404 を投げる。
-     */
-    private void verifyTournamentVisible(Long tournamentId, Long viewerUserId) {
-        if (!contentVisibilityChecker.canView(ReferenceType.TOURNAMENT, tournamentId, viewerUserId)) {
-            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
-        }
     }
 
     TournamentDivisionEntity findDivisionOrThrow(Long tournamentId, Long divId) {

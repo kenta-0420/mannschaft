@@ -1,44 +1,44 @@
 {
   "security_help": {
-    "title": "セキュリティの使い方ガイド",
-    "description": "二要素認証・アクティブセッション・セキュリティキーの使い方と、不審なログインを見つけたときの対処方法をまとめました。",
-    "link_label": "❔ 使い方ガイド",
+    "title": "Guía de seguridad",
+    "description": "Aquí se explica cómo usar la autenticación en dos pasos, las sesiones activas y las llaves de seguridad, y qué hacer si detectas un inicio de sesión sospechoso.",
+    "link_label": "❔ Guía de uso",
     "twofa": {
-      "title": "二要素認証（2FA）",
-      "intro": "パスワードに加えて、もう一段階の本人確認を追加してアカウントを守るしくみです。万が一パスワードが漏れても、第三者だけではログインできなくなります。",
-      "setup_title": "有効化のしかた",
+      "title": "Autenticación en dos pasos (2FA)",
+      "intro": "Es un mecanismo que protege tu cuenta añadiendo un paso más de verificación de identidad además de la contraseña. Aunque tu contraseña se filtre, un tercero no podrá iniciar sesión solo con ella.",
+      "setup_title": "Cómo activarla",
       "setup_steps": {
-        "step1": "認証アプリ（Google Authenticator など）をスマートフォンに用意します。",
-        "step2": "「2FAをセットアップ」を押すと、QRコードとシークレットキーが表示されます。",
-        "step3": "認証アプリでそのQRコードを読み取ります（読み取れない場合はシークレットキーを手入力します）。",
-        "step4": "認証アプリに表示された6桁のコードを入力して有効化を完了します。"
+        "step1": "Ten preparada en tu smartphone una aplicación de autenticación (como Google Authenticator).",
+        "step2": "Pulsa «Configurar 2FA» y se mostrarán un código QR y una clave secreta.",
+        "step3": "Escanea el código QR con la aplicación de autenticación (si no puedes escanearlo, introduce la clave secreta manualmente).",
+        "step4": "Introduce el código de 6 dígitos que muestra la aplicación de autenticación para completar la activación."
       },
-      "backup_title": "バックアップコードについて",
-      "backup_desc": "バックアップコードは、スマートフォンを紛失するなどして認証アプリが使えなくなったときの予備の入り口です。安全な場所に保管してください。各コードは一度だけ使えます。「バックアップコード再生成」を押すと新しいコードが発行され、古いコードはすべて無効になります。"
+      "backup_title": "Acerca de los códigos de respaldo",
+      "backup_desc": "Los códigos de respaldo son una vía de acceso de reserva para cuando ya no puedes usar la aplicación de autenticación, por ejemplo si pierdes el smartphone. Guárdalos en un lugar seguro. Cada código solo se puede usar una vez. Al pulsar «Regenerar códigos de respaldo» se emiten códigos nuevos y todos los anteriores quedan invalidados."
     },
     "sessions": {
-      "title": "アクティブセッション",
-      "intro": "いま自分のアカウントにログインしている端末の一覧です。心当たりのない端末がないか、ここで確認できます。",
-      "row_desc": "各行は1つの端末を表し、ブラウザ／OSの情報・IPアドレス・ログインした日時が並びます。先頭の英字の羅列は、使われたブラウザとOSの情報です。",
-      "current_tag_desc": "「現在」タグが付いている行は、いま見ているこの端末です。",
-      "revoke_desc": "怪しい行は「×」ボタンで個別に無効化（ログアウト）できます。",
-      "revoke_all_desc": "「全てログアウト」を押すと、ほかの端末をまとめて締め出せます。",
-      "current_note": "いま使っているこのセッションは、誤操作で自分を締め出さないように個別では削除できません（その操作はサーバー側で拒否されます）。すべて締め出したいときは「全てログアウト」を使ってください。"
+      "title": "Sesiones activas",
+      "intro": "Lista de los dispositivos que tienen la sesión iniciada en tu cuenta en este momento. Aquí puedes comprobar si hay alguno que no reconozcas.",
+      "row_desc": "Cada fila representa un dispositivo y muestra la información del navegador/SO, la dirección IP y la fecha y hora de inicio de sesión. La cadena de letras del principio es la información del navegador y el SO utilizados.",
+      "current_tag_desc": "La fila con la etiqueta «Actual» es el dispositivo que estás usando ahora.",
+      "revoke_desc": "Puedes invalidar (cerrar la sesión de) una fila sospechosa individualmente con el botón «×».",
+      "revoke_all_desc": "Al pulsar «Cerrar todas las sesiones» se cierra la sesión de todos los demás dispositivos a la vez.",
+      "current_note": "La sesión que estás usando ahora no se puede eliminar individualmente para que no te bloquees por error (el servidor rechaza esa acción). Si quieres cerrar todas las sesiones, usa «Cerrar todas las sesiones»."
     },
     "webauthn": {
-      "title": "セキュリティキー（WebAuthn）",
-      "intro": "指紋認証・顔認証や、物理的なセキュリティキー（FIDO2）を使ってログインできるしくみです。パスワードを入力せず、すばやく安全にログインできます。",
-      "manage_desc": "登録した鍵には分かりやすい名前を付けられます（リネーム）。使わなくなった鍵は削除できます。"
+      "title": "Llaves de seguridad (WebAuthn)",
+      "intro": "Un método para iniciar sesión con huella digital, reconocimiento facial o una llave de seguridad física (FIDO2). Puedes iniciar sesión de forma rápida y segura sin escribir la contraseña.",
+      "manage_desc": "Puedes ponerles a las llaves registradas nombres fáciles de reconocer (renombrar). Las llaves que ya no uses se pueden eliminar."
     },
     "suspicious": {
-      "title": "身に覚えのないログインを見つけたら",
-      "intro": "アクティブセッションに知らない端末があるなど、不審な点に気づいたら、上から順に対処してください。",
+      "title": "Si detectas un inicio de sesión que no reconoces",
+      "intro": "Si notas algo sospechoso, como un dispositivo desconocido en las sesiones activas, sigue estos pasos de arriba abajo.",
       "steps": {
-        "step1": "心当たりのないセッションを「×」で無効化する",
-        "step2": "不安なら「全てログアウト」で全端末から締め出す",
-        "step3": "パスワードを変更する",
-        "step4": "二要素認証（2FA）を有効化する",
-        "step5": "バックアップコードを安全な場所に保管する"
+        "step1": "Invalida con «×» las sesiones que no reconozcas",
+        "step2": "Si tienes dudas, cierra la sesión en todos los dispositivos con «Cerrar todas las sesiones»",
+        "step3": "Cambia tu contraseña",
+        "step4": "Activa la autenticación en dos pasos (2FA)",
+        "step5": "Guarda los códigos de respaldo en un lugar seguro"
       }
     }
   },
@@ -69,110 +69,110 @@
   },
   "qa": {
     "title": "Preguntas frecuentes (Q&A)",
-    "description": "Respuestas a preguntas comunes sobre el uso de Mannschaft, la instalacion de la PWA y mas.",
+    "description": "Respuestas a preguntas comunes sobre el uso de Mannschaft, la instalación de la PWA y más.",
     "search_placeholder": "Buscar preguntas...",
     "no_results": "No se encontraron preguntas coincidentes",
     "result_count": "{count} pregunta(s)",
     "category": {
       "all": "Todas",
-      "basic": "Basicas",
-      "pwa": "PWA e instalacion",
-      "offline": "Sin conexion",
-      "troubleshooting": "Solucion de problemas"
+      "basic": "Básicas",
+      "pwa": "PWA e instalación",
+      "offline": "Sin conexión",
+      "troubleshooting": "Solución de problemas"
     },
     "tutorial_banner": {
-      "title": "Nuevo en Mannschaft?",
-      "description": "Revisa las operaciones basicas con el tutorial",
+      "title": "¿Nuevo en Mannschaft?",
+      "description": "Revisa las operaciones básicas con el tutorial",
       "button": "Ver tutorial"
     },
     "pwa_cta": {
-      "title": "Es aun mas comodo como aplicacion!",
-      "description": "Agregalo a la pantalla de inicio para usarlo sin conexion y recibir notificaciones push."
+      "title": "¡Es aún más cómodo como aplicación!",
+      "description": "Agrégalo a la pantalla de inicio para usarlo sin conexión y recibir notificaciones push."
     },
     "items": {
       "basic": {
         "q1": {
-          "question": "Hay diferencias de funciones entre PC y smartphone?",
-          "answer": "Las funciones basicas son las mismas en todos los dispositivos. Los smartphones estan optimizados para el uso tactil y pueden agregarse a la pantalla de inicio como PWA. Los PC permiten ver varias informaciones a la vez en una pantalla grande y usar atajos de teclado para escribir rapido."
+          "question": "¿Hay diferencias de funciones entre PC y smartphone?",
+          "answer": "Las funciones básicas son las mismas en todos los dispositivos. Los smartphones están optimizados para el uso táctil y pueden agregarse a la pantalla de inicio como PWA. Los PC permiten ver varias informaciones a la vez en una pantalla grande y usar atajos de teclado para escribir rápido."
         },
         "q2": {
-          "question": "Cual es la forma recomendada de usarlo en un smartphone?",
-          "answer": "Instala la PWA y abrela desde la pantalla de inicio. La barra de direcciones del navegador desaparece y podras usarla como una aplicacion nativa. Usa los menus de pulsacion larga para acciones rapidas, desliza para cambiar de pantalla y toca las notificaciones para ir directo a la pantalla relacionada."
+          "question": "¿Cuál es la forma recomendada de usarlo en un smartphone?",
+          "answer": "Instala la PWA y ábrela desde la pantalla de inicio. La barra de direcciones del navegador desaparece y podrás usarla como una aplicación nativa. Usa los menús de pulsación larga para acciones rápidas, desliza para cambiar de pantalla y toca las notificaciones para ir directo a la pantalla relacionada."
         },
         "q3": {
-          "question": "Como cambio mi foto de perfil?",
-          "answer": "Toca el icono de la esquina superior derecha, abre Configuracion -> Perfil y sube una imagen con el boton de cambio."
+          "question": "¿Cómo cambio mi foto de perfil?",
+          "answer": "Toca el icono de la esquina superior derecha, abre Configuración -> Perfil y sube una imagen con el botón de cambio."
         },
         "q4": {
-          "question": "Como cambio el idioma de visualizacion?",
-          "answer": "Desde Configuracion -> Idioma puedes alternar entre los 6 idiomas: japones, ingles, chino, coreano, espanol y aleman."
+          "question": "¿Cómo cambio el idioma de visualización?",
+          "answer": "Desde Configuración -> Idioma puedes alternar entre los 6 idiomas: japonés, inglés, chino, coreano, español y alemán."
         },
         "q5": {
-          "question": "Donde puedo cerrar sesion?",
-          "answer": "Desde el boton Cerrar sesion en la barra de navegacion, o en movil desde Cerrar sesion dentro del menu."
+          "question": "¿Dónde puedo cerrar sesión?",
+          "answer": "Desde el botón Cerrar sesión en la barra de navegación, o en móvil desde Cerrar sesión dentro del menú."
         }
       },
       "pwa": {
         "q1": {
-          "question": "Que es una PWA?",
-          "answer": "Una PWA (Progressive Web App) permite usar un sitio web como una aplicacion. Al agregarla a la pantalla de inicio, se inicia como una app normal y funciona tambien sin conexion. No es necesario instalarla desde Google Play o la App Store."
+          "question": "¿Qué es una PWA?",
+          "answer": "Una PWA (Progressive Web App) permite usar un sitio web como una aplicación. Al agregarla a la pantalla de inicio, se inicia como una app normal y funciona también sin conexión. No es necesario instalarla desde Google Play o la App Store."
         },
         "q2": {
-          "question": "Cuales son los beneficios de instalar la PWA?",
-          "answer": "- Se inicia con un toque desde la pantalla de inicio\n- Puedes navegar y crear borradores sin conexion\n- Puedes recibir notificaciones push\n- La barra de direcciones del navegador desaparece y se usa toda la pantalla\n- Inicio rapido\n- Menor consumo de datos"
+          "question": "¿Cuáles son los beneficios de instalar la PWA?",
+          "answer": "- Se inicia con un toque desde la pantalla de inicio\n- Puedes navegar y crear borradores sin conexión\n- Puedes recibir notificaciones push\n- La barra de direcciones del navegador desaparece y se usa toda la pantalla\n- Inicio rápido\n- Menor consumo de datos"
         },
         "q3": {
-          "question": "Como se instala en un telefono Android?",
-          "answer": "Abre esta pagina en Chrome y toca el boton Instalar en la parte superior de esta pagina de Q&A. Cuando aparezca el dialogo 'Agregar a pantalla de inicio', selecciona 'Agregar'."
+          "question": "¿Cómo se instala en un teléfono Android?",
+          "answer": "Abre esta página en Chrome y toca el botón Instalar en la parte superior de esta página de Q&A. Cuando aparezca el diálogo 'Agregar a pantalla de inicio', selecciona 'Agregar'."
         },
         "q4": {
-          "question": "Como se instala en un iPhone?",
-          "answer": "Abrela con Safari, toca el boton de compartir abajo (cuadrado con flecha hacia arriba) -> 'Agregar a pantalla de inicio' -> 'Agregar'. Ten en cuenta que no se puede agregar desde Chrome/Firefox."
+          "question": "¿Cómo se instala en un iPhone?",
+          "answer": "Ábrela con Safari, toca el botón de compartir abajo (cuadrado con flecha hacia arriba) -> 'Agregar a pantalla de inicio' -> 'Agregar'. Ten en cuenta que no se puede agregar desde Chrome/Firefox."
         }
       },
       "offline": {
         "q1": {
-          "question": "Puedo usar la app sin conexion?",
-          "answer": "Si. Si instalas la PWA, las pantallas principales se pueden mostrar sin conexion. Las acciones de entrada como notas de accion, notas rapidas y agregar TODOs se guardan en el dispositivo y se envian automaticamente al volver en linea."
+          "question": "¿Puedo usar la app sin conexión?",
+          "answer": "Sí. Si instalas la PWA, las pantallas principales se pueden mostrar sin conexión. Las acciones de entrada como notas de acción, notas rápidas y agregar TODOs se guardan en el dispositivo y se envían automáticamente al volver en línea."
         },
         "q2": {
-          "question": "Que pasa con los datos que edito sin conexion?",
-          "answer": "Se sincronizan automaticamente al volver en linea. Si otro dispositivo u otro miembro edito primero los mismos datos, puedes seleccionar manualmente desde la pantalla de Resolucion de conflictos."
+          "question": "¿Qué pasa con los datos que edité sin conexión?",
+          "answer": "Se sincronizan automáticamente al volver en línea. Si otro dispositivo u otro miembro editó primero los mismos datos, puedes seleccionar manualmente desde la pantalla de Resolución de conflictos."
         }
       },
       "troubleshooting": {
         "q1": {
           "question": "No me llegan las notificaciones.",
-          "answer": "Es necesario instalar la PWA y 'permitir' las notificaciones en el primer inicio. Verifica que las notificaciones no esten bloqueadas en la configuracion del navegador o del sistema operativo. iOS admite notificaciones PWA desde iOS 16.4."
+          "answer": "Es necesario instalar la PWA y 'permitir' las notificaciones en el primer inicio. Verifica que las notificaciones no estén bloqueadas en la configuración del navegador o del sistema operativo. iOS admite notificaciones PWA desde iOS 16.4."
         },
         "q2": {
-          "question": "La pagina no carga o el comportamiento es extrano.",
-          "answer": "Primero borra la cache del navegador. Si no mejora, prueba a desinstalar y reinstalar la PWA. Si aun asi no se soluciona, contacta con soporte."
+          "question": "La página no carga o el comportamiento es extraño.",
+          "answer": "Primero borra la caché del navegador. Si no mejora, prueba a desinstalar y reinstalar la PWA. Si aun así no se soluciona, contacta con soporte."
         }
       }
     }
   },
   "calendar_sync_help": {
-    "title": "Como usar la integracion con Google Calendar",
-    "description": "Sincroniza automaticamente tus horarios con Google Calendar para poder consultarlos desde tu telefono u otras aplicaciones.",
+    "title": "Cómo usar la integración con Google Calendar",
+    "description": "Sincroniza automáticamente tus horarios con Google Calendar para poder consultarlos desde tu teléfono u otras aplicaciones.",
     "what": {
-      "title": "Que es la integracion con Google Calendar",
-      "body": "Los horarios de Mannschaft (personal, de equipo y de organizacion) se reflejan automaticamente en Google Calendar. Una vez conectado, siempre puedes consultar tus horarios desde cualquier dispositivo o app compatible con Google Calendar."
+      "title": "Qué es la integración con Google Calendar",
+      "body": "Los horarios de Mannschaft (personal, de equipo y de organización) se reflejan automáticamente en Google Calendar. Una vez conectado, siempre puedes consultar tus horarios desde cualquier dispositivo o app compatible con Google Calendar."
     },
     "connect": {
       "title": "Conectar tu cuenta",
-      "body": "Pulsa \"Conectar cuenta de Google\" para ir a la pantalla de inicio de sesion de Google. Al conceder acceso al calendario se completa la conexion. Puedes desconectarte en cualquier momento con el boton \"Desconectar\"."
+      "body": "Pulsa \"Conectar cuenta de Google\" para ir a la pantalla de inicio de sesión de Google. Al conceder acceso al calendario se completa la conexión. Puedes desconectarte en cualquier momento con el botón \"Desconectar\"."
     },
     "toggles": {
-      "title": "Activar/desactivar la sincronizacion de forma individual",
-      "body": "Puedes activar o desactivar la sincronizacion por separado para el \"Calendario personal\", los \"Calendarios de equipo\" y los \"Calendarios de organizacion\". Los cambios se aplican de inmediato, no hay boton de guardar.",
+      "title": "Activar/desactivar la sincronización de forma individual",
+      "body": "Puedes activar o desactivar la sincronización por separado para el \"Calendario personal\", los \"Calendarios de equipo\" y los \"Calendarios de organización\". Los cambios se aplican de inmediato, no hay botón de guardar.",
       "item_personal": "Calendario personal: sincroniza tus propios horarios personales",
       "item_team": "Calendarios de equipo: sincroniza los horarios de los equipos a los que perteneces",
-      "item_org": "Calendarios de organizacion: sincroniza los horarios de las organizaciones a las que perteneces"
+      "item_org": "Calendarios de organización: sincroniza los horarios de las organizaciones a las que perteneces"
     },
     "sync_behavior": {
-      "title": "Cuando ocurre la sincronizacion",
-      "body": "Al activar la sincronizacion se sincronizan de una vez todos los horarios que aun no estaban sincronizados (backfill). Si son muchos, puede tardar unos minutos. Usa el boton \"Sincronizacion manual\" siempre que quieras reflejar el estado mas reciente de inmediato."
+      "title": "Cuándo ocurre la sincronización",
+      "body": "Al activar la sincronización se sincronizan de una vez todos los horarios que aún no estaban sincronizados (backfill). Si son muchos, puede tardar unos minutos. Usa el botón \"Sincronización manual\" siempre que quieras reflejar el estado más reciente de inmediato."
     }
   }
 }

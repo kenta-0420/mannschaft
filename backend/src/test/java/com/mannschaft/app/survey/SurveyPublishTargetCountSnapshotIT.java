@@ -109,7 +109,7 @@ class SurveyPublishTargetCountSnapshotIT extends AbstractMySqlIntegrationTest {
         }
 
         Long surveyId = createPublishableSurvey("ORGANIZATION", orgId, DistributionMode.ALL, false);
-        surveyService.publishSurvey("ORGANIZATION", orgId, surveyId);
+        surveyService.publishSurvey("ORGANIZATION", orgId, surveyId, false);
 
         assertThat(reloadTargetCount(surveyId))
                 .as("組織直属メンバー3名がスナップショットされること")
@@ -127,7 +127,7 @@ class SurveyPublishTargetCountSnapshotIT extends AbstractMySqlIntegrationTest {
         }
 
         Long surveyId = createPublishableSurvey("TEAM", teamId, DistributionMode.ALL, false);
-        surveyService.publishSurvey("TEAM", teamId, surveyId);
+        surveyService.publishSurvey("TEAM", teamId, surveyId, false);
 
         assertThat(reloadTargetCount(surveyId))
                 .as("チームメンバー2名がスナップショットされること")
@@ -163,7 +163,7 @@ class SurveyPublishTargetCountSnapshotIT extends AbstractMySqlIntegrationTest {
                 .as("従来どおり addTargets の時点で名簿件数（2）が入ること")
                 .isEqualTo(2);
 
-        surveyService.publishSurvey("TEAM", teamId, surveyId);
+        surveyService.publishSurvey("TEAM", teamId, surveyId, false);
 
         assertThat(reloadTargetCount(surveyId))
                 .as("公開後も TARGETED は survey_targets の件数（2）であり、スコープ母集団（5）ではないこと")
@@ -187,7 +187,7 @@ class SurveyPublishTargetCountSnapshotIT extends AbstractMySqlIntegrationTest {
         }
 
         Long surveyId = createPublishableSurvey("TEAM", teamId, DistributionMode.ALL, false);
-        surveyService.publishSurvey("TEAM", teamId, surveyId);
+        surveyService.publishSurvey("TEAM", teamId, surveyId, false);
         assertThat(reloadTargetCount(surveyId)).as("公開時点の母集団は2名").isEqualTo(2);
 
         // 公開後に 3 名加入し、1 名が退会する（母集団は 2 → 4 に変化する）。
@@ -218,7 +218,7 @@ class SurveyPublishTargetCountSnapshotIT extends AbstractMySqlIntegrationTest {
         Long orgId = txTemplate.execute(s -> insertOrganization(uniq("c42eo")));
         Long surveyId = createPublishableSurvey("ORGANIZATION", orgId, DistributionMode.ALL, false);
 
-        surveyService.publishSurvey("ORGANIZATION", orgId, surveyId);
+        surveyService.publishSurvey("ORGANIZATION", orgId, surveyId, false);
 
         assertThat(reloadTargetCount(surveyId)).as("0名でも例外にならず 0 が記録されること").isZero();
         assertThat(reloadStatus(surveyId)).isEqualTo(SurveyStatus.PUBLISHED);
@@ -236,10 +236,10 @@ class SurveyPublishTargetCountSnapshotIT extends AbstractMySqlIntegrationTest {
         Long orgIncl = seedOrgWithMembersAndSupporter(2, 1);
 
         Long exclSurvey = createPublishableSurvey("ORGANIZATION", orgExcl, DistributionMode.ALL, false);
-        surveyService.publishSurvey("ORGANIZATION", orgExcl, exclSurvey);
+        surveyService.publishSurvey("ORGANIZATION", orgExcl, exclSurvey, false);
 
         Long inclSurvey = createPublishableSurvey("ORGANIZATION", orgIncl, DistributionMode.ALL, true);
-        surveyService.publishSurvey("ORGANIZATION", orgIncl, inclSurvey);
+        surveyService.publishSurvey("ORGANIZATION", orgIncl, inclSurvey, false);
 
         assertThat(reloadTargetCount(exclSurvey))
                 .as("includeSupporters=false は応援者を除外し MEMBER 2 名のみ").isEqualTo(2);
@@ -287,7 +287,7 @@ class SurveyPublishTargetCountSnapshotIT extends AbstractMySqlIntegrationTest {
                 .status(SurveyStatus.DRAFT).distributionMode(DistributionMode.ALL)
                 .createdBy(1L).build()).getId());
 
-        assertThatThrownBy(() -> surveyService.publishSurvey("TEAM", teamId, surveyId))
+        assertThatThrownBy(() -> surveyService.publishSurvey("TEAM", teamId, surveyId, false))
                 .isInstanceOf(BusinessException.class);
 
         assertThat(reloadStatus(surveyId)).as("status は DRAFT のまま").isEqualTo(SurveyStatus.DRAFT);
@@ -320,7 +320,7 @@ class SurveyPublishTargetCountSnapshotIT extends AbstractMySqlIntegrationTest {
         String seriesId = uniq("c42sr");
         Long surveyId = createPublishableSurvey("TEAM", teamId, DistributionMode.ALL, false, seriesId);
         Long questionId = firstQuestionId(surveyId);
-        surveyService.publishSurvey("TEAM", teamId, surveyId);
+        surveyService.publishSurvey("TEAM", teamId, surveyId, false);
 
         // 1 名が回答 → 回答率 1/5 = 20.0%
         txTemplate.executeWithoutResult(s -> {
@@ -354,7 +354,7 @@ class SurveyPublishTargetCountSnapshotIT extends AbstractMySqlIntegrationTest {
                 MembershipTestHelper.insertMembership(em, creatorId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER));
 
         Long surveyId = createPublishableSurvey("ORGANIZATION", orgId, DistributionMode.ALL, false, null, creatorId);
-        surveyService.publishSurvey("ORGANIZATION", orgId, surveyId);
+        surveyService.publishSurvey("ORGANIZATION", orgId, surveyId, false);
 
         // 公開直後・メンバー増減なしの同一データで突き合わせる。
         List<RespondentResponse> respondents = surveyResultService.getRespondents(surveyId, creatorId);
@@ -429,7 +429,7 @@ class SurveyPublishTargetCountSnapshotIT extends AbstractMySqlIntegrationTest {
                 MembershipTestHelper.insertMembership(em, creatorId, ScopeType.TEAM, teamId, RoleKind.MEMBER));
 
         Long surveyId = createPublishableSurvey("TEAM", teamId, DistributionMode.ALL, false, null, creatorId);
-        surveyService.publishSurvey("TEAM", teamId, surveyId);
+        surveyService.publishSurvey("TEAM", teamId, surveyId, false);
         assertThat(reloadTargetCount(surveyId)).as("公開時点の母集団は3名").isEqualTo(3);
 
         Long latecomerId = txTemplate.execute(s -> insertUser(uniq("c42al") + "@example.com"));

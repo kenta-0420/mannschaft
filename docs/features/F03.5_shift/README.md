@@ -9,6 +9,7 @@
 
 ## 変更履歴
 
+- **v2.5.1 (2026-10-10)**: 破棄された旧案「シフト希望への時刻カラム追加」（`06_request_time_window.md`）を `archive/06_request_time_window_旧案.md` に参考保存（CMP-261006-0421）。正本ではない。章一覧は変更なし
 - **v2.5 (2026-09-09)**: **方針転換** — 自動割当をいったん停止し、シフトは手動作成を前提とする作成支援へ舵を切る（マスター裁可）。`06_manual_authoring.md`（§11 手動シフト作成支援）と `07_authoring_cost.md`（§12 人件費（概算））を追補。あわせて CMP-260909-1142 の「シフト希望への時刻カラム追加」は破棄し、CMP-260909-1143（同日 2 枠目の希望が出せない）の是正を §11 の射程へ取り込んだ。実装は未着手
 - **v2.4 (2026-09-03)**: 未公開シフト表（DRAFT/COLLECTING/ADJUSTING/未公開 ARCHIVED）の API 遮断方針を `05_unpublished_visibility.md` として追補（CMP-260826-2127）。実装は未着手
 - **v2.3.2 (2026-05-17)**: API 乖離スキャナ Stage 3 第二陣 2-α triage 反映。§4 API 仕様表のメソッド/パスを実装に整合（PUT→PATCH 4 件、PATCH→POST 統合 5 件、`/shifts/my` → `/shifts/my/requests`、work-constraints をチームスコープに階層化、`POST /shifts/schedules/{id}/duplicate` `GET /shifts/requests/summary` `DELETE /shifts/availability` を追記、未実装の `summary`/`remind`/`hourly-rates 複数形` に注記）。詳細は `docs/internal/triage_log/shifts.md` 参照
