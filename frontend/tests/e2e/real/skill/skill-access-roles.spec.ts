@@ -171,9 +171,9 @@ test.describe('資格画面のロール横断と越境応答の一致', () => {
     await expect(card(page, uiIssuer).locator('h3'), '編集が一覧に反映される').toHaveText(editedName)
 
     await card(page, uiIssuer).locator('button:has(.pi-trash)').click()
-    // 削除は確認ダイアログ（role=alertdialog）を経る。承諾（p-button-danger）で初めて消える
+    // 削除は確認ダイアログ（role=alertdialog）を経る。承諾（p-confirmdialog-accept-button）で初めて消える
     await expect(page.getByRole('alertdialog')).toBeVisible()
-    await page.getByRole('alertdialog').locator('button.p-button-danger').click()
+    await page.getByRole('alertdialog').locator('button.p-confirmdialog-accept-button').click()
     await expect(card(page, uiIssuer), '削除すると一覧から消える').toHaveCount(0)
   })
 

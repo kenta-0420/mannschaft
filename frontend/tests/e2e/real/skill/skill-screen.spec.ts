@@ -77,7 +77,7 @@ async function gotoSkills(page: Page) {
   await expect(page.locator('.pi-spin, .p-progressspinner')).toHaveCount(0, { timeout: 30_000 })
 }
 
-/** 確認ダイアログ（PrimeVue ConfirmDialog。role=alertdialog）。承諾は p-button-danger、キャンセルは p-button-text。 */
+/** 確認ダイアログ（PrimeVue ConfirmDialog。role=alertdialog）。承諾は .p-confirmdialog-accept-button、キャンセルは .p-confirmdialog-reject-button（右上の閉じるボタンと区別する）。 */
 const confirmDialog = (page: Page) => page.getByRole('alertdialog')
 
 test.describe('資格画面の実機E2E（導線・ロール別表示・管理操作）', () => {
@@ -229,7 +229,7 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
     // 削除: キャンセルでは消えない
     await c.locator('button:has(.pi-trash)').click()
     await expect(confirmDialog(page)).toBeVisible()
-    await confirmDialog(page).locator('button.p-button-text').click()
+    await confirmDialog(page).locator('button.p-confirmdialog-reject-button').click()
     await expect(confirmDialog(page)).toHaveCount(0)
     await expect(card(page, uiIssuer), 'キャンセルしたので消えない').toBeVisible()
     const stillThere = await page.request.get(`${API}/api/v1/teams/${teamId}/skills/me`)
@@ -238,7 +238,7 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
     // 削除: 承諾すると消える
     await card(page, uiIssuer).locator('button:has(.pi-trash)').click()
     await expect(confirmDialog(page)).toBeVisible()
-    await confirmDialog(page).locator('button.p-button-danger').click()
+    await confirmDialog(page).locator('button.p-confirmdialog-accept-button').click()
     await expect(card(page, uiIssuer), '承諾したので消える').toHaveCount(0)
   })
 
@@ -301,10 +301,10 @@ test.describe('資格画面の実機E2E（導線・ロール別表示・管理�
     await page.getByRole('tab', { name: 'カテゴリ管理' }).click()
     await catCard(renamed).locator('button:has(.pi-trash)').click()
     await expect(confirmDialog(page)).toBeVisible()
-    await confirmDialog(page).locator('button.p-button-text').click()
+    await confirmDialog(page).locator('button.p-confirmdialog-reject-button').click()
     await expect(catCard(renamed), 'キャンセルでは消えない').toBeVisible()
     await catCard(renamed).locator('button:has(.pi-trash)').click()
-    await confirmDialog(page).locator('button.p-button-danger').click()
+    await confirmDialog(page).locator('button.p-confirmdialog-accept-button').click()
     await expect(catCard(renamed), '承諾すると消える').toHaveCount(0)
   })
 
