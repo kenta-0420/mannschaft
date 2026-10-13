@@ -196,8 +196,10 @@ public class TeamOrgInviteCommandService {
      *
      * <p>組織の状態の確認（トランザクションの外）に組織 ID が要るため、書き込みの前に行を一度読む。
      * 判定表はトランザクションの中（{@link #accept}）でもロックを取ってから改めて当てる。</p>
+     *
+     * <p>プライマリで読む（readOnly にしない。レプリカへ振られると、作った直後の招待を複製遅延で 404 にしうる。2-D 検分5巡目）。</p>
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public InviteTarget findPendingInvite(Long teamId, Long membershipId) {
         TeamOrgMembershipEntity row = membershipRepository.findByIdAndTeamId(membershipId, teamId)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_070));

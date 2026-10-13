@@ -58,8 +58,11 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Optional<OrganizationAffiliationState> findAffiliationState(Long organizationId) {
+        // プライマリ固定（F01.2.1 §4.5・2-D 検分5巡目）: 判定に使う読み取りなので readOnly にしない。readOnly = true は
+        // ReplicaRoutingAspect がレプリカへ振り、複製遅延で古い閉鎖の状態・世代を読むと、閉鎖前の招待を ACTIVE にしたり
+        // 解除後の PENDING を消したりしうる。書き込みはしない（ロックも取らない）
         // チームの書き込みトランザクションの外から呼ばれ、組織ドメインの読み取りトランザクションで閉じる。
         // 論理削除済みは Entity の @SQLRestriction が除外する。承諾前（PROVISIONED）は不在と同じ扱い
         return organizationRepository.findById(organizationId)
@@ -88,8 +91,11 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<OrganizationClosureState> findClosureStateIncludingDeleted(Long organizationId) {
+        // プライマリ固定（F01.2.1 §4.5・2-D 検分5巡目）: 判定に使う読み取りなので readOnly にしない。readOnly = true は
+        // ReplicaRoutingAspect がレプリカへ振り、複製遅延で古い閉鎖の状態・世代を読むと、閉鎖前の招待を ACTIVE にしたり
+        // 解除後の PENDING を消したりしうる。書き込みはしない（ロックも取らない）
         // 呼び出し側（team ドメインの片付け）の tx には参加せず、組織ドメインの新しい読み取り tx で最新のコミット済みの
         // 状態を読む。論理削除済みも読む（ネイティブ）
         return organizationRepository.findByIdIncludingDeleted(organizationId)
@@ -97,8 +103,11 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Map<Long, OrganizationClosureState> findClosureStatesIncludingDeleted(Collection<Long> organizationIds) {
+        // プライマリ固定（F01.2.1 §4.5・2-D 検分5巡目）: 判定に使う読み取りなので readOnly にしない。readOnly = true は
+        // ReplicaRoutingAspect がレプリカへ振り、複製遅延で古い閉鎖の状態・世代を読むと、閉鎖前の招待を ACTIVE にしたり
+        // 解除後の PENDING を消したりしうる。書き込みはしない（ロックも取らない）
         if (organizationIds == null || organizationIds.isEmpty()) {
             return Map.of();
         }
@@ -132,8 +141,11 @@ public class OrganizationAffiliationPortAdapter implements TeamAffiliationOrgani
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public boolean isAliveGroupOfOrganization(Long organizationId, UUID groupId) {
+        // プライマリ固定（F01.2.1 §4.5・2-D 検分5巡目）: 判定に使う読み取りなので readOnly にしない。readOnly = true は
+        // ReplicaRoutingAspect がレプリカへ振り、複製遅延で古い閉鎖の状態・世代を読むと、閉鎖前の招待を ACTIVE にしたり
+        // 解除後の PENDING を消したりしうる。書き込みはしない（ロックも取らない）
         return orgTeamGroupRepository.findByIdAndOrganizationIdAndDeletedAtIsNull(groupId, organizationId)
                 .isPresent();
     }
