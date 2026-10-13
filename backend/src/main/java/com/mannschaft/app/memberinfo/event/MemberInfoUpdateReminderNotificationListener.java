@@ -122,6 +122,6 @@ public class MemberInfoUpdateReminderNotificationListener {
                 NotificationScopeType.TEAM,
                 event.teamId(),
                 "/teams/" + event.teamId() + "/member-info",
-                null);
+                event.actorId());
     }
 }

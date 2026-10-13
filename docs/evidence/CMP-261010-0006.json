@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "cmpId": "CMP-261010-0006",
+  "scope": "tooling",
+  "implementation": {
+    "pr": 3746,
+    "sha": "e0ced53ea54f17dbd24befa9f92cb84b47cf9b98"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-1",
+      "description": "完了遷移と証拠の追加・改変・削除、過去完了行、7列台帳、重複ID、エスケープを検査する。",
+      "tests": [
+        { "name": "台帳7列・CMP重複・完了遷移・過去完了証拠の保護を検証", "evidence": "scripts/completion-evidence.test.mjs" }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "description": "実装PRのmerge状態・head SHA・CI成功を照合し、trusted baseのvalidatorだけを実行してPR由来データをコード実行しない。",
+      "tests": [
+        { "name": "PR scope、merge条件、trusted baseとPR head非実行を検証", "evidence": "scripts/completion-evidence.test.mjs" },
+        { "name": "実装PR headのCI run成功をGitHub APIで照合", "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/37952639366" }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "description": "確定不具合のred回帰とgreen修正証拠を正本ワークフローに記録する。",
+      "tests": [
+        { "name": "linked worktreeで共有hookを書き換えない回帰テスト", "evidence": "scripts/harness-doctor.test.mjs" },
+        { "name": "修正前redの再現記録", "evidence": "docs/evidence/CMP-261010-0006-hook-regression.md" }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "description": "doctorを既定read-only・秘密値非表示にし、不足を診断する。hook導入は明示時のみで既存hookを上書きしない。",
+      "tests": [
+        { "name": "read-only、秘密値非表示、ツール不足・timeout診断、明示hook導入とlinked worktree保護", "evidence": "scripts/harness-doctor.test.mjs" }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "description": "既存YAMLと全Vueから検査範囲・未検査route・不存在routeを表示し、不正台帳を非0で終了する。",
+      "tests": [
+        { "name": "Vue数・route変換・追跡範囲・未検査routeと台帳負例を検証", "evidence": "scripts/guard-coverage.test.mjs" }
+      ]
+    },
+    {
+      "id": "AC-6",
+      "description": "条件を固定したcase別反復集計で、空・0・null・欠測費用・未完了や失敗runを正しく扱い、CLIから実AIを呼ばない。",
+      "tests": [
+        { "name": "case別集計、0 runs、null費用、未完了run、重複・不正値を検証", "evidence": "scripts/harness-benchmark.test.mjs" }
+      ]
+    },
+    {
+      "id": "AC-7",
+      "description": "全CLIの正負例を確認し、正本文書に短い入口を用意し、依存を追加しない。",
+      "tests": [
+        { "name": "completion CLIのGit fixture正常系と削除拒否を検証", "evidence": "scripts/completion-evidence.test.mjs" },
+        { "name": "coverageの正例・台帳負例を検証", "evidence": "scripts/guard-coverage.test.mjs" },
+        { "name": "benchmark CLIの正例・不正入力を検証", "evidence": "scripts/harness-benchmark.test.mjs" }
+      ]
+    }
+  ],
+  "ci": [
+    { "runId": 37952639366 }
+  ],
+  "stages": {
+    "review": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261010-0006.md"
+    },
+    "real": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261010-0006.md"
+    },
+    "exploratory": {
+      "status": "passed",
+      "evidence": "docs/evidence/CMP-261010-0006.md"
+    }
+  },
+  "regressions": [
+    {
+      "description": "linked worktreeのdoctorが共有Git hookへchmodし、共有領域へ書き込む。",
+      "test": "linked worktreeから共有pre-commitの実行bitを変更しない",
+      "redEvidence": "docs/evidence/CMP-261010-0006-hook-regression.md",
+      "greenEvidence": "docs/evidence/CMP-261010-0006.md"
+    }
+  ]
+}

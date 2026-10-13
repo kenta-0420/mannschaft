@@ -40,7 +40,7 @@ public enum AnnouncementErrorCode implements ErrorCode {
     /** target_team_ids に無効なチームIDが含まれています（400） */
     BROADCAST_002("BROADCAST_002", "target_team_idsに無効なチームIDが含まれています", Severity.WARN),
 
-    /** テンプレートが見つかりません（404） */
+    /** テンプレートが見つかりません（400。F01.2.1 §8.6。他スコープ・不在を区別しない） */
     BROADCAST_003("BROADCAST_003", "テンプレートが見つかりません", Severity.WARN),
 
     /** 指定されたチャネルアダプターが登録されていません（500） */

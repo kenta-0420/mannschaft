@@ -14,7 +14,7 @@ import type {
  *
  * <p>非同期実行は即座にトーストで通知し、結果は通知タブ / バックエンドの完了イベント経由で受動的に拾える設計。</p>
  */
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ middleware: ['auth', 'system-admin'] })
 
 const { t } = useI18n()
 const notification = useNotification()

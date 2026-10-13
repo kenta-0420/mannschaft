@@ -1,4 +1,10 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "スキルの詳細取得に失敗しました",
+      "loadCategoriesFailed": "カテゴリの取得に失敗しました"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "スレッドで返信",
@@ -623,6 +629,19 @@
     }
   },
   "timeline": {
+    "detail": {
+      "back": "戻る",
+      "loadFailed": "投稿を取得できませんでした",
+      "repliesLoadFailed": "返信の取得に失敗しました",
+      "replySuccess": "返信しました",
+      "replyFailed": "返信に失敗しました",
+      "bookmarkFailed": "ブックマークに失敗しました",
+      "replyPlaceholder": "返信を入力...",
+      "replySubmit": "返信",
+      "replyCount": "返信 {count}件",
+      "loadMoreReplies": "さらに返信を読み込む",
+      "notFound": "投稿が見つからないか、表示できません"
+    },
     "videoProcessing": "動画を処理中...",
     "videoFailed": "動画を再生できません",
     "videoUploadButton": "動画を添付",
@@ -2616,7 +2635,8 @@
   "scopeSwitch": {
     "hint": "切り替えは、画面上部の「チーム」「組織」メニューから対象を選んで開くと行われます。開いた団体が、そのまま現在のスコープになります。",
     "goTeams": "チームを選ぶ",
-    "goOrganizations": "組織を選ぶ"
+    "goOrganizations": "組織を選ぶ",
+    "personalUnsupported": "この設定はチームまたは組織のスコープでのみ利用できます。個人スコープでは表示できません。"
   },
   "joinRequest": {
     "apply": "参加申請",
@@ -2860,5 +2880,12 @@
     "minutesAgo": "{count}分前",
     "hoursAgo": "{count}時間前",
     "daysAgo": "{count}日前"
+  },
+  "error_page": {
+    "not_found_title": "このページは見つかりませんでした",
+    "not_found_description": "お探しのページは存在しないか、移動または削除された可能性があります。",
+    "generic_title": "エラーが発生しました",
+    "generic_description": "しばらくしてからもう一度お試しください。問題が続く場合は、管理者へお問い合わせください。",
+    "back_home": "ホームへ戻る"
   }
 }

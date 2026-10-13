@@ -16,6 +16,7 @@ const {
   addBookmark,
   removeBookmark,
 } = useTimelineApi()
+const { t } = useI18n()
 const { showSuccess, showError } = useNotification()
 
 const post = ref<(TimelinePostResponse & { recentReplies: TimelinePostResponse[] }) | null>(null)
@@ -25,8 +26,13 @@ const submittingReply = ref(false)
 const loadingMore = ref(false)
 const replyCursor = ref<number | null>(null)
 const hasMoreReplies = ref(false)
+// 取得状態: loading / error(不在・権限なしを区別しない) / loaded(post が非 null)
+const loadingPost = ref(true)
+const loadFailed = ref(false)
 
 async function loadPost() {
+  loadingPost.value = true
+  loadFailed.value = false
   try {
     const res = await getPost(postId)
     post.value = res.data
@@ -38,7 +44,12 @@ async function loadPost() {
     hasMoreReplies.value = total > recent.length
     replyCursor.value = recent.length > 0 ? recent[recent.length - 1]!.id : null
   } catch {
-    showError('投稿の取得に失敗しました')
+    // 不在(404)と権限なしを区別せず同じ表示にする（存在を漏らさない）
+    post.value = null
+    loadFailed.value = true
+    showError(t('timeline.detail.loadFailed'))
+  } finally {
+    loadingPost.value = false
   }
 }
 
@@ -51,7 +62,7 @@ async function loadMoreReplies() {
     replyCursor.value = res.meta.nextCursor
     hasMoreReplies.value = res.meta.hasNext
   } catch {
-    showError('返信の取得に失敗しました')
+    showError(t('timeline.detail.repliesLoadFailed'))
   } finally {
     loadingMore.value = false
   }
@@ -65,9 +76,9 @@ async function onReply() {
     replies.value.unshift(res.data)
     if (post.value?.stats) post.value.stats.replyCount++
     replyContent.value = ''
-    showSuccess('返信しました')
+    showSuccess(t('timeline.detail.replySuccess'))
   } catch {
-    showError('返信に失敗しました')
+    showError(t('timeline.detail.replyFailed'))
   } finally {
     submittingReply.value = false
   }
@@ -93,12 +104,18 @@ async function onBookmark(targetId: number) {
       target.isBookmarked = true
     }
   } catch {
-    showError('ブックマークに失敗しました')
+    showError(t('timeline.detail.bookmarkFailed'))
   }
 }
 
 function goBack() {
-  router.back()
+  // vue-router が積む history.state.back はアプリ内の直前ルート（URL 直開きなら null）。
+  // history.length 判定はアプリ外ページが履歴にあると誤るため使わない。
+  if (window.history.state?.back) {
+    router.back()
+  } else {
+    router.push('/timeline')
+  }
 }
 
 onMounted(() => loadPost())
@@ -107,7 +124,7 @@ onMounted(() => loadPost())
 <template>
   <div class="mx-auto max-w-2xl">
     <!-- 戻るボタン -->
-    <Button icon="pi pi-arrow-left" label="戻る" text size="small" class="mb-4" @click="goBack" />
+    <Button icon="pi pi-arrow-left" :label="t('timeline.detail.back')" text size="small" class="mb-4" @click="goBack" />
 
     <div v-if="post">
       <!-- メイン投稿 -->
@@ -123,14 +140,14 @@ onMounted(() => loadPost())
       <div class="mt-4 rounded-xl border border-surface-300 bg-surface-0 p-4">
         <Textarea
           v-model="replyContent"
-          placeholder="返信を入力..."
+          :placeholder="t('timeline.detail.replyPlaceholder')"
           auto-resize
           rows="2"
           class="mb-2 w-full"
         />
         <div class="flex justify-end">
           <Button
-            label="返信"
+            :label="t('timeline.detail.replySubmit')"
             size="small"
             :loading="submittingReply"
             :disabled="!replyContent.trim()"
@@ -142,7 +159,7 @@ onMounted(() => loadPost())
       <!-- リプライ一覧 -->
       <div class="mt-4 flex flex-col gap-3">
         <p v-if="replies.length > 0" class="text-sm font-medium text-surface-500">
-          返信 {{ post.stats?.replyCount }}件
+          {{ t('timeline.detail.replyCount', { count: post.stats?.replyCount ?? 0 }) }}
         </p>
         <TimelinePostCard
           v-for="reply in replies"
@@ -155,7 +172,7 @@ onMounted(() => loadPost())
         />
         <Button
           v-if="hasMoreReplies"
-          label="さらに返信を読み込む"
+          :label="t('timeline.detail.loadMoreReplies')"
           text
           :loading="loadingMore"
           @click="loadMoreReplies"
@@ -163,7 +180,16 @@ onMounted(() => loadPost())
       </div>
     </div>
 
+    <!-- 取得失敗（不在・権限なし共通） -->
+    <div
+      v-else-if="loadFailed"
+      data-testid="timeline-post-not-found"
+      class="rounded border border-dashed border-surface-300 p-8 text-center text-surface-500 dark:border-surface-600"
+    >
+      {{ t('timeline.detail.notFound') }}
+    </div>
+
     <!-- ローディング -->
-    <PageLoading v-else size="40px" />
+    <PageLoading v-else-if="loadingPost" size="40px" />
   </div>
 </template>

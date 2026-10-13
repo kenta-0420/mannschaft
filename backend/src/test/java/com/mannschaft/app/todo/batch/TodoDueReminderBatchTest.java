@@ -318,4 +318,33 @@ class TodoDueReminderBatchTest {
                 .userId(userId)
                 .build();
     }
+
+    // ─── Issue #2997 G8 AC-B2: 1 人分の通知失敗が他の担当者へ波及しない ───────────────
+
+    @Test
+    @DisplayName("Issue #2997 G8: 1 人の createNotification が例外でも、他の担当者へは通知・配信される")
+    void sendDueTomorrowReminders_oneRecipientFailure_doesNotAffectOthers() {
+        // 実行時刻に依存しないよう、ちょうど現地 08 時台になるオフセットを選ぶ。
+        int utcHour = java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC).getHour();
+        String zoneAtEight = java.time.ZoneOffset.ofHours(8 - utcHour).getId();
+        given(userRepository.findTimezoneById(anyLong())).willReturn(Optional.of(zoneAtEight));
+        given(todoRepository.findDueTomorrowForReminder(any(LocalDate.class)))
+                .willReturn(List.of(todoWithAssignees));
+        given(todoAssigneeRepository.findByTodoId(10L)).willReturn(List.of(
+                assignee(10L, 101L),
+                assignee(10L, 102L)));
+        given(notificationService.createNotification(eq(101L), anyString(),
+                any(NotificationPriority.class), anyString(), anyString(),
+                anyString(), anyLong(), any(NotificationScopeType.class),
+                anyLong(), anyString(), any()))
+                .willThrow(new RuntimeException("通知の永続化失敗（模擬）"));
+
+        batch.sendDueTomorrowReminders();
+
+        verify(notificationService, times(1)).createNotification(eq(102L), anyString(),
+                any(NotificationPriority.class), anyString(), anyString(),
+                anyString(), anyLong(), any(NotificationScopeType.class),
+                anyLong(), anyString(), any());
+        verify(notificationDispatchService, times(1)).dispatch(any(NotificationEntity.class));
+    }
 }
