@@ -56,8 +56,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>テスト環境は {@code application-test.yml} の {@code ddl-auto=create} + {@code flyway.enabled=false} のため
  * {@code roles} テーブルが seed されない。{@link AccessControlService#resolveEffectiveRoleName} が
- * roles の priority を引くため、各テストの冒頭で固定 6 ロールを本番 seed（V2.014）と同一 priority で用意する
- * （他の IT がコミットした行があれば再利用する。roles は共有マスタのため消さない）。</p>
+ * roles の priority を引くため、各テストの冒頭で固定 6 ロールを本番 seed（V2.014）と同一 priority で投入する。</p>
  */
 @AutoConfigureMockMvc
 @DisplayName("MeController 所属一覧 memberships 統合 API 契約テスト")
@@ -95,46 +94,39 @@ class MeControllerMembershipIntegrationTest extends AbstractMySqlIntegrationTest
     @BeforeEach
     void setUp() {
         // 各テストは独立性のため全関連テーブルを掃除する（singleton container で DB は共有される）。
+        // roles は IDENTITY 採番で save の INSERT が即時実行される一方、deleteAll の DELETE は flush まで保留される。
+        // 他の IT が roles にコミットした行（SYSTEM_ADMIN 等）が残っていると INSERT が先に走って一意制約違反になるため、
+        // 再作成の前に DELETE を確定させる（roles が空である前提に頼らない）。
         userRoleRepository.deleteAll();
+        userRoleRepository.flush();
         membershipRepository.deleteAll();
+        membershipRepository.flush();
         teamRepository.deleteAll();
+        teamRepository.flush();
         organizationRepository.deleteAll();
-        // roles は全テストで共有するグローバル参照表であり、ここでは消さない。コミットを伴う他の IT
-        // （insertRoleIfAbsent 等）が同じ singleton container に roles 行を残すのは正規の作法で、
-        // 「deleteAll → save」は IDENTITY 採番の INSERT が保留中の DELETE より先に走るため、既存行と
-        // UNIQUE(name) で衝突する（CI shard 再編成で同居クラスが変わると顕在化する）。存在すれば再利用する。
+        organizationRepository.flush();
+        roleRepository.deleteAll();
+        roleRepository.flush();
         seedRoles();
     }
 
-    /** 本番 V2.014 と同一 priority で固定 6 ロールを用意する（priority 小 = 強。既存行は再利用）。 */
+    /** 本番 V2.014 と同一 priority で固定 6 ロールを投入する（priority 小 = 強）。 */
     private void seedRoles() {
-        ensureRole("SYSTEM_ADMIN", "システム管理者", 1, true);
-        adminRoleId = ensureRole("ADMIN", "管理者", 2, false);
-        ensureRole("DEPUTY_ADMIN", "副管理者", 3, false);
-        memberRoleId = ensureRole("MEMBER", "メンバー", 4, false);
-        ensureRole("SUPPORTER", "サポーター", 5, false);
-        ensureRole("GUEST", "ゲスト", 6, false);
+        saveRole("SYSTEM_ADMIN", "システム管理者", 1, true);
+        adminRoleId = saveRole("ADMIN", "管理者", 2, false);
+        saveRole("DEPUTY_ADMIN", "副管理者", 3, false);
+        memberRoleId = saveRole("MEMBER", "メンバー", 4, false);
+        saveRole("SUPPORTER", "サポーター", 5, false);
+        saveRole("GUEST", "ゲスト", 6, false);
     }
 
-    /**
-     * ロール行を冪等に用意して id を返す。既存行の priority が本番 seed と食い違う場合は、AC3（priority 最強で解決）の
-     * 前提が崩れているため黙って使わず失敗させる（共有マスタを壊した側を突き止めるため）。
-     */
-    private Long ensureRole(String name, String displayName, int priority, boolean isSystem) {
-        return roleRepository.findByName(name)
-                .map(existing -> {
-                    if (existing.getPriority() == null || existing.getPriority() != priority) {
-                        throw new IllegalStateException("roles." + name + " の priority が本番 seed と異なる: "
-                                + existing.getPriority() + "（期待値 " + priority + "）");
-                    }
-                    return existing.getId();
-                })
-                .orElseGet(() -> roleRepository.save(RoleEntity.builder()
-                        .name(name)
-                        .displayName(displayName)
-                        .priority(priority)
-                        .isSystem(isSystem)
-                        .build()).getId());
+    private Long saveRole(String name, String displayName, int priority, boolean isSystem) {
+        return roleRepository.save(RoleEntity.builder()
+                .name(name)
+                .displayName(displayName)
+                .priority(priority)
+                .isSystem(isSystem)
+                .build()).getId();
     }
 
     // ───────────────────────────────────────────────────────────────────

@@ -1,4 +1,10 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "스킬 상세 정보를 불러오지 못했습니다",
+      "loadCategoriesFailed": "카테고리를 불러오지 못했습니다"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "스레드에서 답장",

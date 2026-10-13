@@ -1,4 +1,10 @@
 {
+  "skill": {
+    "list": {
+      "loadDetailFailed": "Die Details der Qualifikation konnten nicht geladen werden",
+      "loadCategoriesFailed": "Die Kategorien konnten nicht geladen werden"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "Im Thread antworten",

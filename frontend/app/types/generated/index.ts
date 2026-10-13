@@ -68133,6 +68133,8 @@ export interface components {
             data?: components["schemas"]["CommitteeMemberResponse"];
         };
         CommitteeMemberResponse: {
+            avatarUrl?: string;
+            displayName?: string;
             /** Format: int64 */
             invitedBy?: number;
             /** Format: date-time */
