@@ -2,7 +2,20 @@
   "skill": {
     "list": {
       "loadDetailFailed": "No se pudieron cargar los detalles de la habilidad",
-      "loadCategoriesFailed": "No se pudieron cargar las categorías"
+      "loadCategoriesFailed": "No se pudieron cargar las categorías",
+      "mineTitle": "Mis habilidades y certificaciones",
+      "deleteConfirm": "¿Eliminar \"{name}\"? Esta acción no se puede deshacer.",
+      "deleteConfirmHeader": "Eliminar certificación"
+    },
+    "category": {
+      "deleteConfirm": "¿Eliminar la categoría \"{name}\"?",
+      "deleteConfirmHeader": "Eliminar categoría"
+    },
+    "page": {
+      "permissionLoadFailed": "No se pudo obtener la información de permisos. Vuelva a cargar más tarde",
+      "forbidden": "Solo los miembros de este equipo pueden usar habilidades y certificaciones",
+      "mineTab": "Mis habilidades y certificaciones",
+      "categoriesReloadFailed": "No se pudieron recargar las categorías"
     }
   },
   "chat": {
