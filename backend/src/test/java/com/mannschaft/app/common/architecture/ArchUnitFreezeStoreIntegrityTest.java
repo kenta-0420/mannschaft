@@ -852,6 +852,7 @@ class ArchUnitFreezeStoreIntegrityTest {
     // 内訳: distributeFriendListing 9・confirmApplication 5・publish 5・sendPublishedNotifications 7（改名で+2のため実減は26-2）。
     // D-1 API境界（93124b52）も distributeFriendListing の Entity 露出1行が消え 603→602。
     // D-3（他の6ストア）は CI の整合性テストが不一致を報告していないため変更なし。
+
     // Issue #2997 G8: 軽量バッチ群の付随通知を業務TXから切り離し 7264 -> 7238（-26。G1 と併せた最終値は 7213）。
     //   @Transactional を外した actionmemo execute 3 / repairplan execute 3 / todo 2メソッド 10 /
     //   reflection processDueReminders 5、および sendRemind が NotificationHelper を呼ばなくなり
@@ -869,7 +870,7 @@ class ArchUnitFreezeStoreIntegrityTest {
     //   TicketExpiryBatchService.expireTickets は @Transactional を外したため 5、sendExpiryNotifications は
     //   通知を呼ばなくなったため 5。追加 0・削除 22（解消済みの main 側4行は残していない）。
     // CMP-261012-0313: main の 7163 から SkillMatrixService を主語とする 2 行が解消し 7161（ストア実数と一致）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7161;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7158;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
