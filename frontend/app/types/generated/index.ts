@@ -76134,6 +76134,7 @@ export interface components {
         EffectivePermissionsResponse: {
             permissions?: string[];
             roleName?: string;
+            scopeAdmin?: boolean;
         };
         ApiResponseListInviteTokenResponse: {
             data?: components["schemas"]["InviteTokenResponse"][];
