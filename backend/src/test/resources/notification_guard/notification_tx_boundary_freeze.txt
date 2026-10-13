@@ -55,7 +55,7 @@
 # 番人は「一度付けた分類が黙って外れること」だけを機械的に止める（# CLASSIFIED_FLOOR）。
 # 分類を増やしたら CLASSIFIED_FLOOR も同じPRで上げること。
 #
-# CLASSIFIED_FLOOR: 19
+# CLASSIFIED_FLOOR: 15
 #
 # 分類は綴りだけでなく「ソースの実際の注釈」と機械照合される（任務4）。
 # TX_NOTIFY_VIA_DELEGATE / TX_NOTIFY_BARE / TX_NOTIFY_IN_TRY について呼び先の宣言から区分を導出し、
@@ -255,7 +255,22 @@
 # （AFTER_COMMIT + @Async("event-pool") + NotificationDeliveryRunner#sendOne）へ移した。実DB検証: RecruitmentNotificationTransactionIT。
 # 4件とも RecruitmentListingService / MarketFriendTargetService から通知呼び出しが消えたため削除（publish は委譲先が消えた連動）。
 # 裏取り: G2 単独: 凍結エントリ 31 + REMOVED 8 = 39 -> 27 + 8 = 35、分類済み 28 -> 24。G8（main）との合算の最終実数: 凍結エントリ 22 + REMOVED 8 = 30、分類済み 19。
-# CENSUS_FLOOR: 30
+# Issue #2997 第1陣 G6（shift / ticket）: ShiftPreferenceReminderBatchService#sendReminderToUnsubmittedMembers / #triggerManualReminder /
+# TicketExpiryBatchService#expireTickets / #sendExpiryNotifications（いずれも TX_NOTIFY_BARE | ROLLBACK_COUPLED）を是正。
+#   shift 定期: processReminders から @Transactional を外し非トランザクションのオーケストレータにした。1 スケジュール = 1 項目TX
+#     （ShiftPreferenceReminderRunner#remindOne / REQUIRES_NEW）で ShiftPreferenceReminderNotificationEvent を publish（印は立てない）。
+#     実通知は新設の ShiftPreferenceReminderNotificationListener（AFTER_COMMIT + @Async("event-pool") + NotificationDeliveryRunner#sendOne）。
+#     配送の前に送信済み印（is_reminder_sent_48h / is_reminder_sent）を条件付き UPDATE で先取りして重複配送を排他する。
+#   shift 手動: triggerManualReminder は業務TX内で同イベントの publish のみ。
+#   ticket 期限切れ: expireTickets から @Transactional を外し、1 冊 = 1 項目TX（TicketExpiryRunner#expireOne / REQUIRES_NEW）で
+#     book.expire() を確定し TicketExpiredNotificationEvent を publish。事前通知 sendExpiryNotifications は読み取りTX内で
+#     TicketExpiryWarningNotificationEvent を publish するのみ。配送は新設の TicketExpiryNotificationListener。
+#   実DB検証: ShiftReminderNotificationTransactionIT / TicketExpiryNotificationTransactionIT。
+#   送信済みの印の契約（AC-D・マスター裁可「配送後に印」＋重複配送の排他）: 全員が例外で失敗したら先取りした印を戻す（次回再送）、
+#     deny・一部成功では印を残す（再送しない）、同じイベントが2回発火しても配送は1回、戻す処理の失敗は ERROR ログのみ。
+#     既知の限界: 先取りの後でプロセスが落ちるとそのリマインドは失われる。
+# 裏取り: 凍結エントリ 22 + REMOVED 8 = 30 -> 18 + 8 = 26、分類済み 19 -> 15（4件とも ROLLBACK_COUPLED の分類済み行）。
+# CENSUS_FLOOR: 26
 
 # --- ここから凍結エントリ（L0 の初回実測で投入） ---
 
@@ -271,12 +286,8 @@ com.mannschaft.app.reservation.service.EmergencyClosureService#sendClosure -> TX
 com.mannschaft.app.reservation.service.ReservationPendingExpireService#notifyApplicant -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.ReservationReminderDispatchBatchService#sendReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.reservation.service.ReservationWaitlistService#notifySlotReopened -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
-com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#sendReminderToUnsubmittedMembers -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService#triggerManualReminder -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.survey.service.SurveyRemindService#remind -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.survey.service.SurveyService#extendDeadline -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.ticket.service.TicketExpiryBatchService#expireTickets -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
-com.mannschaft.app.ticket.service.TicketExpiryBatchService#sendExpiryNotifications -> TX_NOTIFY_BARE | ROLLBACK_COUPLED
 com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> PLAIN_EVENT_LISTENER
 com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener#onSlotNoteUpdated -> TX_NOTIFY_IN_TRY | ROLLBACK_COUPLED
 
