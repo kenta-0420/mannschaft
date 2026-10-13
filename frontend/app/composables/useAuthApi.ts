@@ -39,9 +39,15 @@ export function useAuthApi() {
     })
   }
 
-  async function regenerateBackupCodes() {
+  // 再生成は本人確認（パスワード＋有効要素）が必須（AC-44）。body を省略すると BE は 400 を返す。
+  async function regenerateBackupCodes(body: {
+    method: 'TOTP' | 'BACKUP_CODE' | 'EMAIL'
+    code: string
+    currentPassword?: string
+  }) {
     return api<{ data: BackupCodesResponse }>('/api/v1/auth/2fa/backup-codes/regenerate', {
       method: 'POST',
+      body,
     })
   }
 
@@ -164,7 +170,7 @@ export function useAuthApi() {
 
   // === 2FA Setup Verify ===
   async function verifyTotpSetup(code: string) {
-    return api<{ data: MessageResponse }>('/api/v1/auth/2fa/verify', {
+    return api<{ data: BackupCodesResponse }>('/api/v1/auth/2fa/verify', {
       method: 'POST',
       body: { totpCode: code },
     })

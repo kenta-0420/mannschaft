@@ -202,6 +202,69 @@
         "delete_key_error": "セキュリティキーの削除に失敗しました",
         "rename_success": "デバイス名を更新しました",
         "rename_error": "デバイス名の更新に失敗しました"
+      },
+      "two_fa": {
+        "loading": "読み込み中...",
+        "status_disabled": "未設定",
+        "status_totp": "有効（認証アプリ）",
+        "status_email": "有効（メール）",
+        "backup_remaining": "バックアップコード 残り {count} 件",
+        "backup_low": "バックアップコードの残りが少なくなっています。新しいコードを再生成してください。",
+        "setup_email_button": "メールで有効化",
+        "disable_button": "2FAを無効化",
+        "enable_button": "有効化する",
+        "retry_button": "再読み込み",
+        "totp": {
+          "code_label": "認証アプリに表示された6桁のコード",
+          "copy_secret": "シークレットキーをコピー",
+          "secret_copied": "シークレットキーをコピーしました"
+        },
+        "email": {
+          "sent": "{email} に6桁のコードを送信しました（有効期限 約{minutes}分）。",
+          "code_label": "メールに届いた6桁のコード",
+          "resend_button": "コードを再送",
+          "resend_wait": "再送まで {seconds} 秒"
+        },
+        "backup": {
+          "copy_button": "コピー",
+          "download_button": "ダウンロード",
+          "copied": "バックアップコードをコピーしました",
+          "copy_failed": "クリップボードにコピーできませんでした",
+          "saved_check": "バックアップコードを安全な場所に保存しました"
+        },
+        "reauth": {
+          "disable_title": "2段階認証を無効化",
+          "regenerate_title": "バックアップコードを再生成",
+          "description": "本人確認のため、次の情報を入力してください。再生成すると以前のコードはすべて使えなくなります。",
+          "password_label": "現在のパスワード",
+          "method_label": "確認方法",
+          "method_totp": "認証アプリ",
+          "method_email": "メール",
+          "method_backup": "バックアップコード",
+          "send_email_button": "確認コードをメールで送信",
+          "code_label_otp": "6桁の確認コード",
+          "code_label_backup": "バックアップコード",
+          "disable_submit": "無効化する",
+          "regenerate_submit": "再生成する"
+        },
+        "toast": {
+          "enabled": "2段階認証を有効にしました",
+          "disabled": "2段階認証を無効にしました"
+        },
+        "error": {
+          "invalid_code": "確認コードが正しくありません",
+          "resend_wait": "確認コードの再送は少し時間をおいてからお試しください",
+          "send_limit": "確認コードの送信回数が上限に達しました。しばらく時間をおいてお試しください",
+          "already_enabled": "2段階認証は既に有効になっています",
+          "not_enabled": "2段階認証が有効になっていません",
+          "reauth_failed": "本人確認に失敗しました。パスワードと確認コードをご確認ください",
+          "email_missing": "メールアドレスが登録されていないため、メールは利用できません",
+          "email_unavailable": "メールでの2段階認証は現在ご利用いただけません",
+          "rate_limited": "操作が多すぎます。{seconds} 秒後にもう一度お試しください",
+          "rate_limited_unknown": "操作が多すぎます。しばらく時間をおいてお試しください",
+          "status_load": "2段階認証の状態を取得できませんでした",
+          "generic": "処理に失敗しました。時間をおいて再度お試しください"
+        }
       }
     },
     "linked_accounts": {
