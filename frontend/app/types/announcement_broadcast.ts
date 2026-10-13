@@ -3,6 +3,19 @@
  */
 
 import type { AnnouncementScopeType } from '~/types/announcement'
+import type { components } from '~/types/generated'
+
+/** 送信時の宛先指定の記録（送信履歴の「宛先: …（送信時 N チーム）」。生成型を使う） */
+export type BroadcastTargetAudience = components['schemas']['TargetAudience']
+
+/** 宛先の選び方（F01.2.1 §8.1）。GROUPS は組織・グループ機能 on のときだけ選べる */
+export type BroadcastTargetMode = 'ALL' | 'TEAMS' | 'GROUPS'
+
+/** 並び順の範囲指定。「以前」は from=null、「以降」は to=null */
+export interface BroadcastGroupRange {
+  fromGroupId: string | null
+  toGroupId: string | null
+}
 
 /** 告知ウィザードで選択可能なチャネル */
 export type BroadcastChannel =
@@ -89,6 +102,10 @@ export interface BroadcastRequest {
   channel: BroadcastChannel
   targetRole: BroadcastTargetRole
   targetTeamIds?: string[] | null
+  /** 「チームグループで選ぶ」の個別チェック（targetTeamIds とは併用不可） */
+  targetGroupIds?: string[]
+  targetGroupRange?: BroadcastGroupRange
+  includeUnassigned?: boolean
   templateId?: number | null
   priority?: BroadcastPriority
   expiresAt?: string | null
@@ -103,6 +120,12 @@ export interface BroadcastResponse {
   contentUrl: string
   targetRole: BroadcastTargetRole
   targetTeamIds: string[] | null
+  targetGroupIds?: string[] | null
+  includeUnassigned?: boolean
+  /** 送信時の宛先指定の記録（絞り込みなしなら null / 未設定） */
+  targetAudience?: BroadcastTargetAudience | null
+  /** 警告（例: TEMPLATE_GROUPS_REMOVED:2） */
+  warnings?: string[]
   priority: BroadcastPriority
   createdAt: string
 }
@@ -119,6 +142,9 @@ export interface AnnouncementTemplate {
   name: string
   targetRole: BroadcastTargetRole
   targetTeamIds: string[] | null
+  targetGroupIds?: string[] | null
+  targetGroupRange?: BroadcastGroupRange | null
+  includeUnassigned?: boolean
   preferredChannel: BroadcastChannel | null
   isDefault: boolean
   createdBy: TemplateCreatedBy | null
@@ -130,6 +156,9 @@ export interface AnnouncementTemplateRequest {
   name: string
   targetRole: BroadcastTargetRole
   targetTeamIds?: string[] | null
+  targetGroupIds?: string[]
+  targetGroupRange?: BroadcastGroupRange
+  includeUnassigned?: boolean
   preferredChannel?: BroadcastChannel | null
   isDefault?: boolean
 }
@@ -141,7 +170,12 @@ export type WizardStep = 1 | 2 | 3
 export interface WizardFormState {
   step: WizardStep
   targetRole: BroadcastTargetRole
+  targetMode: BroadcastTargetMode
+  /** TEAMS モードのときだけ配列。ALL / GROUPS では null */
   targetTeamIds: string[] | null
+  targetGroupIds: string[]
+  targetGroupRange: BroadcastGroupRange | null
+  includeUnassigned: boolean
   selectedChannel: BroadcastChannel | null
   templateId: number | null
   priority: BroadcastPriority

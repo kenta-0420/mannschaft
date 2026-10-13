@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import type { AnnouncementScopeType } from '~/types/announcement'
-import type { AnnouncementTemplate, AnnouncementTemplateRequest, BroadcastTargetRole, WizardFormState } from '~/types/announcement_broadcast'
+import type {
+  AnnouncementTemplate,
+  AnnouncementTemplateRequest,
+  BroadcastGroupRange,
+  BroadcastTargetMode,
+  BroadcastTargetRole,
+  WizardFormState,
+} from '~/types/announcement_broadcast'
+import type { AudiencePreview, OrgTeamGroup } from '~/composables/useBroadcastAudience'
+import { buildAudienceFields, hasAudienceSelection } from '~/utils/broadcastAudience'
 
 const props = defineProps<{
   modelValue: WizardFormState
@@ -14,17 +23,27 @@ const emit = defineEmits<{
   next: []
 }>()
 
+/** 宛先プレビューのデバウンス（F01.2.1 §8.4） */
+const PREVIEW_DEBOUNCE_MS = 300
+
 const { t } = useI18n()
 const notification = useNotification()
 const { getTeamsInOrg } = useOrganizationApi()
 const { createTemplate, saving } = useAnnouncementTemplates(props.scopeType, props.scopeId)
+const { fetchTeamGroups, previewAudience } = useBroadcastAudience(props.scopeId)
+
+const isOrg = computed(() => props.scopeType === 'ORGANIZATION')
+
+function update(patch: Partial<WizardFormState>) {
+  emit('update:modelValue', { ...props.modelValue, ...patch })
+}
 
 const targetRole = computed({
   get() {
     return props.modelValue.targetRole
   },
   set(value: BroadcastTargetRole) {
-    emit('update:modelValue', { ...props.modelValue, targetRole: value })
+    update({ targetRole: value })
   },
 })
 
@@ -34,55 +53,300 @@ const targetRoleOptions: { label: string; value: BroadcastTargetRole }[] = [
   { label: t('announcement.target_role_public'), value: 'PUBLIC' },
 ]
 
-/** 「すべてのチーム」チェックボックスの状態 */
-const allTeams = computed({
+// ── 宛先の選び方（すべて / チームを選ぶ / チームグループで選ぶ） ──
+
+/** チームグループ機能が使えるか（組織のグループ機能 off では 409 ORG_067 が返り false になる） */
+const groupsEnabled = ref(false)
+const groups = ref<OrgTeamGroup[]>([])
+const unassignedTeamCount = ref(0)
+const groupsLoadError = ref<string | null>(null)
+
+const targetMode = computed<BroadcastTargetMode>({
   get() {
-    return props.modelValue.targetTeamIds === null
+    return props.modelValue.targetMode
   },
-  set(value: boolean) {
-    if (value) {
-      emit('update:modelValue', { ...props.modelValue, targetTeamIds: null })
-    } else {
-      emit('update:modelValue', { ...props.modelValue, targetTeamIds: [] })
-    }
+  set(mode) {
+    if (mode === props.modelValue.targetMode) return
+    resetRangeInputs()
+    templateNotice.value = null
+    update({
+      targetMode: mode,
+      // 他モードの選択は持ち越さない（併用は BE が 400 BROADCAST_011 で拒否する）
+      targetTeamIds: mode === 'TEAMS' ? [] : null,
+      targetGroupIds: [],
+      targetGroupRange: null,
+      includeUnassigned: false,
+    })
   },
 })
 
-/** 組織配下のチーム一覧（ORGANIZATION スコープのみ使用。id と name のみ利用） */
+/** 組織配下のチーム一覧（「チームを選ぶ」用。id と name のみ利用） */
 const orgTeams = ref<Array<{ id: string; name: string }>>([])
 
-// scopeType === 'ORGANIZATION' のときにチーム一覧を取得
 watchEffect(async () => {
-  if (props.scopeType === 'ORGANIZATION') {
+  if (isOrg.value) {
     const res = await getTeamsInOrg(props.scopeId)
-    orgTeams.value = res.data.map(t => ({ id: String(t.id), name: t.name }))
+    orgTeams.value = res.data.map(team => ({ id: String(team.id), name: team.name }))
   }
 })
+
+async function loadGroups() {
+  groupsLoadError.value = null
+  try {
+    const res = await fetchTeamGroups()
+    groupsEnabled.value = res.enabled
+    groups.value = res.groups
+    unassignedTeamCount.value = res.unassignedTeamCount
+  }
+  catch (e: unknown) {
+    // 409 ORG_067 以外の失敗は「機能 off」と区別して見せる（握りつぶさない）
+    const { code, message } = readApiError(e)
+    groupsLoadError.value = message ? (code ? `${message} (${code})` : message) : t('announcement.groups_load_failed')
+    groupsEnabled.value = true
+  }
+}
+
+if (isOrg.value) {
+  void loadGroups()
+}
 
 /** 個別チームのチェック状態 */
 function isTeamChecked(teamId: string): boolean {
   return props.modelValue.targetTeamIds?.includes(teamId) ?? false
 }
 
-/** 個別チームのチェックを切り替える */
 function toggleTeam(teamId: string, checked: boolean) {
   const current = props.modelValue.targetTeamIds ?? []
-  const next = checked
-    ? [...current, teamId]
-    : current.filter((id) => id !== teamId)
-  emit('update:modelValue', { ...props.modelValue, targetTeamIds: next })
+  update({ targetTeamIds: checked ? [...current, teamId] : current.filter(id => id !== teamId) })
 }
 
-/** テンプレート適用時にフォーム状態を上書き */
-function onTemplateApply(template: AnnouncementTemplate) {
-  emit('update:modelValue', {
+function isGroupChecked(groupId: string): boolean {
+  return props.modelValue.targetGroupIds.includes(groupId)
+}
+
+function toggleGroup(groupId: string, checked: boolean) {
+  const current = props.modelValue.targetGroupIds
+  update({ targetGroupIds: checked ? [...current, groupId] : current.filter(id => id !== groupId) })
+}
+
+const includeUnassigned = computed({
+  get() {
+    return props.modelValue.includeUnassigned
+  },
+  set(value: boolean) {
+    update({ includeUnassigned: value })
+  },
+})
+
+// ── 範囲（並び順で 〜以前 / 〜以降 / A〜B） ──
+
+type RangeKind = 'UP_TO' | 'FROM' | 'BETWEEN'
+
+const rangeKind = ref<RangeKind | null>(null)
+const rangeFrom = ref<string | null>(null)
+const rangeTo = ref<string | null>(null)
+
+const rangeKindOptions = computed(() => [
+  { label: t('announcement.target_range_kind_up_to'), value: 'UP_TO' },
+  { label: t('announcement.target_range_kind_from'), value: 'FROM' },
+  { label: t('announcement.target_range_kind_between'), value: 'BETWEEN' },
+])
+
+const groupOptions = computed(() => groups.value.map(g => ({ label: g.name ?? '', value: g.id ?? '' })))
+
+function resetRangeInputs() {
+  rangeKind.value = null
+  rangeFrom.value = null
+  rangeTo.value = null
+}
+
+/** 端がそろった範囲だけをモデルへ反映する（端が未選択の間は範囲を送らない） */
+function pushRange() {
+  let range: BroadcastGroupRange | null = null
+  if (rangeKind.value === 'UP_TO' && rangeTo.value) {
+    range = { fromGroupId: null, toGroupId: rangeTo.value }
+  }
+  else if (rangeKind.value === 'FROM' && rangeFrom.value) {
+    range = { fromGroupId: rangeFrom.value, toGroupId: null }
+  }
+  else if (rangeKind.value === 'BETWEEN' && rangeFrom.value && rangeTo.value) {
+    range = { fromGroupId: rangeFrom.value, toGroupId: rangeTo.value }
+  }
+  update({ targetGroupRange: range })
+}
+
+function onRangeKind(value: RangeKind | null) {
+  rangeKind.value = value
+  pushRange()
+}
+
+function onRangeFrom(value: string | null) {
+  rangeFrom.value = value
+  pushRange()
+}
+
+function onRangeTo(value: string | null) {
+  rangeTo.value = value
+  pushRange()
+}
+
+/** 外部（テンプレート適用）から範囲が入ったとき、入力欄をそれに合わせる */
+watch(
+  () => props.modelValue.targetGroupRange,
+  (range) => {
+    if (!range) return
+    rangeFrom.value = range.fromGroupId
+    rangeTo.value = range.toGroupId
+    rangeKind.value = range.fromGroupId && range.toGroupId ? 'BETWEEN' : range.toGroupId ? 'UP_TO' : 'FROM'
+  },
+  { immediate: true },
+)
+
+// ── 宛先プレビュー（300ms デバウンス・F01.2.1 §8.4） ──
+
+const preview = ref<AudiencePreview | null>(null)
+const previewError = ref<string | null>(null)
+const previewPending = ref(false)
+let previewTimer: ReturnType<typeof setTimeout> | null = null
+let previewSeq = 0
+
+/** push の可否の判定にはチャネルが要るが、ステップ1ではまだ未選択。アンケート（push を出すチャネル）として問い合わせる */
+const PUSH_PROBE_CHANNEL = 'SURVEY' as const
+
+function clearPreviewTimer() {
+  if (previewTimer !== null) {
+    clearTimeout(previewTimer)
+    previewTimer = null
+  }
+}
+
+function describeError(e: unknown): string {
+  const { code, message } = readApiError(e)
+  if (message) return code ? `${message} (${code})` : message
+  return t('announcement.preview_failed')
+}
+
+async function runPreview() {
+  const seq = ++previewSeq
+  const s = props.modelValue
+  try {
+    const result = await previewAudience({
+      channel: s.selectedChannel ?? PUSH_PROBE_CHANNEL,
+      targetRole: s.targetRole,
+      ...buildAudienceFields(s),
+    })
+    if (seq !== previewSeq) return
+    preview.value = result
+    previewError.value = null
+  }
+  catch (e: unknown) {
+    if (seq !== previewSeq) return
+    preview.value = null
+    previewError.value = describeError(e)
+  }
+  finally {
+    if (seq === previewSeq) previewPending.value = false
+  }
+}
+
+function schedulePreview() {
+  clearPreviewTimer()
+  previewSeq++
+  const s = props.modelValue
+  if (!isOrg.value || s.targetMode === 'ALL' || !hasAudienceSelection(s)) {
+    // 宛先を絞らない・未選択のときはプレビュー結果を持ち越さない
+    preview.value = null
+    previewError.value = null
+    previewPending.value = false
+    return
+  }
+  previewPending.value = true
+  previewTimer = setTimeout(() => {
+    previewTimer = null
+    void runPreview()
+  }, PREVIEW_DEBOUNCE_MS)
+}
+
+watch(
+  () => JSON.stringify([
+    props.modelValue.targetMode,
+    props.modelValue.targetRole,
+    props.modelValue.selectedChannel,
+    buildAudienceFields(props.modelValue),
+  ]),
+  schedulePreview,
+  { immediate: true },
+)
+
+onBeforeUnmount(clearPreviewTimer)
+
+const resolvedEmpty = computed(
+  () => preview.value !== null && preview.value.resolvedTeamCount === 0 && preview.value.directMemberCount === 0,
+)
+
+/** 宛先を絞ったのに該当が無い・確認中・確認に失敗した間は「次へ」を押せない（AC-H06） */
+const nextDisabled = computed(() => {
+  if (!isOrg.value || props.modelValue.targetMode === 'ALL') return false
+  if (!hasAudienceSelection(props.modelValue)) return true
+  return previewPending.value || previewError.value !== null || preview.value === null || resolvedEmpty.value
+})
+
+const pushDisabledNote = computed(() => preview.value !== null && preview.value.pushEnabled === false)
+
+// ── テンプレート ──
+
+/** 'removed' = 削除済みグループを除外した / 'range_invalid' = 範囲の端が削除済み（範囲を選び直す） */
+const templateNotice = ref<'removed' | 'range_invalid' | null>(null)
+
+function templateHasGroupItems(template: AnnouncementTemplate): boolean {
+  return (template.targetGroupIds?.length ?? 0) > 0
+    || template.targetGroupRange != null
+    || template.includeUnassigned === true
+}
+
+async function onTemplateApply(template: AnnouncementTemplate) {
+  templateNotice.value = null
+  const hasGroups = isOrg.value && groupsEnabled.value && templateHasGroupItems(template)
+  const mode: BroadcastTargetMode = template.targetTeamIds != null ? 'TEAMS' : hasGroups ? 'GROUPS' : 'ALL'
+  const next: WizardFormState = {
     ...props.modelValue,
     targetRole: template.targetRole,
-    targetTeamIds: template.targetTeamIds,
+    targetMode: mode,
+    targetTeamIds: mode === 'TEAMS' ? template.targetTeamIds : null,
+    targetGroupIds: mode === 'GROUPS' ? (template.targetGroupIds ?? []) : [],
+    targetGroupRange: mode === 'GROUPS' ? (template.targetGroupRange ?? null) : null,
+    includeUnassigned: mode === 'GROUPS' && template.includeUnassigned === true,
     // preferred_channel が設定されていればステップ2のチャネル初期選択に使う
     selectedChannel: template.preferredChannel ?? props.modelValue.selectedChannel,
     templateId: template.id,
-  })
+  }
+  emit('update:modelValue', next)
+  if (mode !== 'GROUPS') return
+
+  // テンプレートはグループの指定だけを保存している。削除済みグループの除外（警告）と
+  // 範囲の端の削除（BROADCAST_013）は、サーバーに templateId で解決させて知る（F01.2.1 §8.6）。
+  try {
+    const result = await previewAudience({
+      channel: next.selectedChannel ?? PUSH_PROBE_CHANNEL,
+      targetRole: next.targetRole,
+      templateId: template.id,
+    })
+    if ((result.warnings ?? []).some(w => w.startsWith('TEMPLATE_GROUPS_REMOVED'))) {
+      templateNotice.value = 'removed'
+      const alive = new Set(groups.value.map(g => g.id))
+      emit('update:modelValue', { ...next, targetGroupIds: next.targetGroupIds.filter(id => alive.has(id)) })
+    }
+  }
+  catch (e: unknown) {
+    if (readApiError(e).code === 'BROADCAST_013') {
+      // 範囲の端が削除済み: 範囲を空にして選び直させる。templateId を外し、再送でも 013 に戻らないようにする
+      templateNotice.value = 'range_invalid'
+      resetRangeInputs()
+      emit('update:modelValue', { ...next, targetGroupRange: null, templateId: null })
+      return
+    }
+    previewError.value = describeError(e)
+  }
 }
 
 const templateId = computed({
@@ -90,7 +354,7 @@ const templateId = computed({
     return props.modelValue.templateId
   },
   set(value: number | null) {
-    emit('update:modelValue', { ...props.modelValue, templateId: value })
+    update({ templateId: value })
   },
 })
 
@@ -113,10 +377,11 @@ async function saveAsTemplate() {
   const name = newTemplateName.value.trim()
   if (name.length === 0) return
 
+  const fields = buildAudienceFields(props.modelValue)
   const request: AnnouncementTemplateRequest = {
     name,
     targetRole: props.modelValue.targetRole,
-    targetTeamIds: props.modelValue.targetTeamIds,
+    ...fields,
     preferredChannel: props.modelValue.selectedChannel,
   }
 
@@ -160,13 +425,29 @@ async function saveAsTemplate() {
       </p>
       <div class="flex flex-col gap-2">
         <div class="flex items-center gap-2">
-          <Checkbox v-model="allTeams" input-id="all_teams" :binary="true" />
-          <label for="all_teams" class="cursor-pointer font-medium">
-            {{ t('announcement.target_teams_all') }}
+          <RadioButton
+            v-model="targetMode"
+            input-id="target_mode_all"
+            value="ALL"
+            data-testid="broadcast-target-mode-all"
+          />
+          <label for="target_mode_all" class="cursor-pointer font-medium">
+            {{ t('announcement.target_mode_all') }}
           </label>
         </div>
-        <!-- チーム個別選択（allTeams=false のときのみ表示） -->
-        <template v-if="!allTeams && orgTeams.length > 0">
+        <div class="flex items-center gap-2">
+          <RadioButton
+            v-model="targetMode"
+            input-id="target_mode_teams"
+            value="TEAMS"
+            data-testid="broadcast-target-mode-teams"
+          />
+          <label for="target_mode_teams" class="cursor-pointer font-medium">
+            {{ t('announcement.target_mode_teams') }}
+          </label>
+        </div>
+        <!-- チーム個別選択（TEAMS のときのみ表示） -->
+        <template v-if="targetMode === 'TEAMS' && orgTeams.length > 0">
           <div
             v-for="team in orgTeams"
             :key="team.id"
@@ -183,7 +464,168 @@ async function saveAsTemplate() {
             </label>
           </div>
         </template>
+        <div v-if="groupsEnabled" class="flex items-center gap-2">
+          <RadioButton
+            v-model="targetMode"
+            input-id="target_mode_groups"
+            value="GROUPS"
+            data-testid="broadcast-target-mode-groups"
+          />
+          <label for="target_mode_groups" class="cursor-pointer font-medium">
+            {{ t('announcement.target_mode_groups') }}
+          </label>
+        </div>
       </div>
+
+      <p
+        v-if="groupsLoadError"
+        class="mt-3 text-sm text-red-600 dark:text-red-400"
+        role="alert"
+        data-testid="broadcast-groups-error"
+      >
+        {{ groupsLoadError }}
+      </p>
+
+      <!-- チームグループで選ぶ: 個別チェック・範囲・未分類 -->
+      <div v-if="targetMode === 'GROUPS'" class="mt-4 flex flex-col gap-4 border-t border-surface-200 pt-4 dark:border-surface-700">
+        <div>
+          <p class="mb-2 text-sm font-medium text-surface-700 dark:text-surface-300">
+            {{ t('announcement.target_groups_label') }}
+          </p>
+          <div class="flex flex-col gap-2">
+            <div
+              v-for="g in groups"
+              :key="g.id"
+              class="flex items-center gap-2 pl-2"
+              :data-testid="`broadcast-group-item-${g.id}`"
+            >
+              <Checkbox
+                :input-id="`group_${g.id}`"
+                :model-value="isGroupChecked(g.id ?? '')"
+                :binary="true"
+                @update:model-value="(val) => toggleGroup(g.id ?? '', val as boolean)"
+              />
+              <label :for="`group_${g.id}`" class="cursor-pointer text-sm">{{ g.name }}</label>
+            </div>
+          </div>
+          <p class="mt-2 text-xs text-surface-500">
+            {{ t('announcement.target_order_hint') }}
+          </p>
+        </div>
+
+        <div>
+          <p class="mb-2 text-sm font-medium text-surface-700 dark:text-surface-300">
+            {{ t('announcement.target_range_label') }}
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <Select
+              :model-value="rangeKind"
+              :options="rangeKindOptions"
+              option-label="label"
+              option-value="value"
+              :placeholder="t('announcement.target_range_label')"
+              :show-clear="true"
+              class="w-40"
+              data-testid="broadcast-range-kind"
+              @update:model-value="onRangeKind"
+            />
+            <Select
+              v-if="rangeKind === 'FROM' || rangeKind === 'BETWEEN'"
+              :model-value="rangeFrom"
+              :options="groupOptions"
+              option-label="label"
+              option-value="value"
+              :placeholder="t('announcement.target_range_pick_group')"
+              class="w-48"
+              data-testid="broadcast-range-from"
+              @update:model-value="onRangeFrom"
+            />
+            <span v-if="rangeKind === 'BETWEEN'" class="text-sm">〜</span>
+            <Select
+              v-if="rangeKind === 'UP_TO' || rangeKind === 'BETWEEN'"
+              :model-value="rangeTo"
+              :options="groupOptions"
+              option-label="label"
+              option-value="value"
+              :placeholder="t('announcement.target_range_pick_group')"
+              class="w-48"
+              data-testid="broadcast-range-to"
+              @update:model-value="onRangeTo"
+            />
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2" data-testid="broadcast-include-unassigned">
+          <Checkbox v-model="includeUnassigned" input-id="include_unassigned" :binary="true" />
+          <label for="include_unassigned" class="cursor-pointer text-sm">
+            {{ t('announcement.target_include_unassigned') }}
+          </label>
+        </div>
+
+        <p class="text-xs text-surface-500">
+          {{ t('announcement.target_direct_members_note') }}
+        </p>
+      </div>
+
+      <!-- 宛先プレビュー（グループ・チームを絞ったとき） -->
+      <div
+        v-if="targetMode !== 'ALL'"
+        class="mt-4 flex flex-col gap-2"
+        aria-live="polite"
+      >
+        <p
+          v-if="previewError"
+          class="text-sm text-red-600 dark:text-red-400"
+          role="alert"
+          data-testid="broadcast-preview-error"
+        >
+          {{ previewError }}
+        </p>
+        <p
+          v-else-if="preview"
+          class="text-sm font-medium"
+          :class="resolvedEmpty ? 'text-red-600 dark:text-red-400' : 'text-surface-700 dark:text-surface-300'"
+          data-testid="broadcast-resolved-count"
+        >
+          {{
+            resolvedEmpty
+              ? t('announcement.target_resolved_empty')
+              : t('announcement.target_resolved_count', { teams: preview.resolvedTeamCount, members: preview.directMemberCount })
+          }}
+        </p>
+        <p
+          v-else-if="previewPending"
+          class="text-sm text-surface-500"
+          data-testid="broadcast-preview-loading"
+        >
+          {{ t('announcement.preview_loading') }}
+        </p>
+        <p
+          v-if="pushDisabledNote"
+          class="text-sm text-amber-700 dark:text-amber-400"
+          data-testid="broadcast-push-disabled-note"
+        >
+          {{ t('announcement.push_disabled_note') }}
+        </p>
+      </div>
+    </div>
+
+    <!-- テンプレートの警告（削除済みグループの除外・範囲の端の削除） -->
+    <div
+      v-if="templateNotice === 'removed'"
+      class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
+      role="status"
+      data-testid="broadcast-template-warning"
+    >
+      {{ t('announcement.template_deleted_groups_removed') }}
+    </div>
+    <div
+      v-if="templateNotice === 'range_invalid'"
+      class="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300"
+      role="alert"
+      data-testid="broadcast-template-range-invalid"
+    >
+      {{ t('announcement.template_range_invalid') }}
     </div>
 
     <!-- テンプレート選択 -->
@@ -237,7 +679,14 @@ async function saveAsTemplate() {
 
     <!-- ナビゲーション -->
     <div class="flex justify-end pt-2">
-      <Button :label="$t('button.next')" icon="pi pi-arrow-right" icon-pos="right" @click="emit('next')" />
+      <Button
+        :label="$t('button.next')"
+        icon="pi pi-arrow-right"
+        icon-pos="right"
+        :disabled="nextDisabled"
+        data-testid="broadcast-step1-next"
+        @click="emit('next')"
+      />
     </div>
   </div>
 </template>
