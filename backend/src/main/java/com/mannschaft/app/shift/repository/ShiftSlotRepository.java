@@ -54,6 +54,20 @@ public interface ShiftSlotRepository extends JpaRepository<ShiftSlotEntity, Long
     int softDeleteById(@Param("slotId") Long slotId);
 
     /**
+     * スケジュールの全シフト枠を共有ロック付き（現在読み取り）で日付・開始時刻順に取得する。
+     *
+     * <p>割当の重なり判定（完全一致の二重割当の拒否）専用。MySQL の REPEATABLE READ では通常の SELECT は
+     * トランザクション最初の読み取りで確定したスナップショットを返すため、親スケジュールのロック待機中に
+     * 別操作がコミットした割当を見逃す。ロッキングリード（FOR SHARE）はスナップショットではなく最新のコミット済み
+     * 状態を読むので、<b>親スケジュールを FOR UPDATE で取得した後</b>に呼ぶこと。親ロックで割当操作は直列化済みのため、
+     * 書込ロックではなく共有ロックで足りる。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("SELECT s FROM ShiftSlotEntity s WHERE s.scheduleId = :scheduleId "
+            + "ORDER BY s.slotDate ASC, s.startTime ASC, s.id ASC")
+    List<ShiftSlotEntity> findByScheduleIdForShare(@Param("scheduleId") Long scheduleId);
+
+    /**
      * スケジュールの全シフト枠を日付・開始時刻順で取得する。
      */
     List<ShiftSlotEntity> findByScheduleIdOrderBySlotDateAscStartTimeAsc(Long scheduleId);

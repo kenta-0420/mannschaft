@@ -332,8 +332,9 @@ public class ShiftSlotService {
             return List.of();
         }
         Set<Long> conflictingSlotIds = new LinkedHashSet<>();
-        for (ShiftSlotEntity other : slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(
-                entity.getScheduleId())) {
+        // 現在読み取り（FOR SHARE）。親ロック待機中に別操作がコミットした割当を、REPEATABLE READ の
+        // スナップショットで見逃さないため。呼び出し元は必ず親スケジュールを FOR UPDATE で取得済みであること。
+        for (ShiftSlotEntity other : slotRepository.findByScheduleIdForShare(entity.getScheduleId())) {
             if (other.getId().equals(entity.getId()) || other.getId().equals(excludedSlotId)) {
                 continue;
             }

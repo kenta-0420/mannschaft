@@ -139,7 +139,7 @@ class ShiftSlotServiceTest {
         void シフト枠一覧取得_正常_リスト返却() {
             // Given
             ShiftSlotEntity entity = createSlotEntity();
-            given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+            given(slotRepository.findByScheduleIdForShare(SCHEDULE_ID))
                     .willReturn(List.of(entity));
             given(positionRepository.findById(POSITION_ID))
                     .willReturn(Optional.of(createPositionEntity()));
@@ -164,7 +164,7 @@ class ShiftSlotServiceTest {
                     .positionId(null)
                     .requiredCount(1)
                     .build();
-            given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+            given(slotRepository.findByScheduleIdForShare(SCHEDULE_ID))
                     .willReturn(List.of(entity));
 
             // When
@@ -268,7 +268,7 @@ class ShiftSlotServiceTest {
         void listSlotsは可視性を再判定する() {
             ShiftSlotEntity slot = createSlotEntity();
             ReflectionTestUtils.setField(slot, "assignedUserIds", "[7]");
-            given(slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(SCHEDULE_ID))
+            given(slotRepository.findByScheduleIdForShare(SCHEDULE_ID))
                     .willReturn(List.of(slot));
             given(positionRepository.findById(POSITION_ID)).willReturn(Optional.of(createPositionEntity()));
 
