@@ -52,6 +52,9 @@ const categories: SidebarCategory[] = [
     icon: 'pi pi-users',
     items: [
       { labelKey: 'teamSidebar.item.member_profiles', icon: 'pi pi-id-card', path: 'member-profiles', moduleSlug: 'member_intro', requiredRole: 'MEMBER' },
+      // CMP-261012-0313: 資格画面（/teams/*/skills）は FEATURE_SKILL_RESUME_ENABLED のゲート対象。
+      // ゲートが閉じている間は導線を出さない（GATE_ROUTE_MAP と同じ gate_key）。
+      { labelKey: 'teamSidebar.item.skills', icon: 'pi pi-star', path: 'skills', moduleSlug: 'member_intro', requiredRole: 'MEMBER', gateKey: 'FEATURE_SKILL_RESUME_ENABLED' },
       { labelKey: 'teamSidebar.item.circulation', icon: 'pi pi-envelope', path: 'circulation', moduleSlug: 'circulation', requiredRole: 'MEMBER' },
       // クイック確認（F04.9）は日常の連絡手段として回覧板の隣に置く。
       // 既存URLと checkAdminOrAbove に合わせた権限は後方互換のため維持する。

@@ -1,8 +1,40 @@
 {
   "skill": {
+    "form": {
+      "noCategoryAdmin": "This team has no active categories yet. Create one in the \"Category management\" tab.",
+      "noCategoryMember": "This team has no active categories yet. Ask a team administrator to create one."
+    },
+    "matrix": {
+      "refresh": "Refresh",
+      "legendPendingNote": "Certifications pending review are shown as not registered"
+    },
     "list": {
+      "actions": {
+        "search": "Search",
+        "verify": "Approve",
+        "edit": "Edit",
+        "delete": "Delete",
+        "certificate": "View certificate"
+      },
       "loadDetailFailed": "Failed to load the skill details",
-      "loadCategoriesFailed": "Failed to load the categories"
+      "loadCategoriesFailed": "Failed to load the categories",
+      "mineTitle": "My skills and certifications",
+      "deleteConfirm": "Delete \"{name}\"? This cannot be undone.",
+      "deleteConfirmHeader": "Delete certification"
+    },
+    "category": {
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "deleteConfirm": "Delete the category \"{name}\"?",
+      "deleteConfirmHeader": "Delete category"
+    },
+    "page": {
+      "permissionLoadFailed": "Failed to load your permissions. Please reload later",
+      "forbidden": "Only members of this team can use skills and certifications",
+      "mineTab": "My skills and certifications",
+      "categoriesReloadFailed": "Failed to reload the categories"
     }
   },
   "chat": {

@@ -51,6 +51,8 @@ class ShiftChangeRequestServiceAuthzTest {
     private ShiftSlotRepository slotRepository;
     @Mock
     private AccessControlService accessControlService;
+    @Mock
+    private com.mannschaft.app.common.NameResolverService nameResolverService;
 
     /** 認可は Facade（tx の外）が行い、通ったものを tx 本体が実行する。応答の契約は両者の合成で検証する。 */
     private ShiftChangeRequestFacade service;
@@ -61,7 +63,7 @@ class ShiftChangeRequestServiceAuthzTest {
         ShiftChangeRequestService txService = new ShiftChangeRequestService(
                 changeRequestRepository, scheduleRepository, slotRepository);
         service = new ShiftChangeRequestFacade(txService, new ScopeConcealingAccessGate(accessControlService),
-                accessControlService);
+                accessControlService, nameResolverService);
     }
 
     private static final Long REQUEST_ID = 500L;

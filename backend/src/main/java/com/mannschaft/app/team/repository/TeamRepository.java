@@ -161,6 +161,15 @@ public interface TeamRepository
     Optional<TeamEntity> findByIdIncludingDeleted(@Param("id") Long id);
 
     /**
+     * 論理削除済みを含めてチーム行を {@code SELECT ... FOR UPDATE} で取る（F01.2.1 2-D・加盟の片付け）。
+     *
+     * <p>片付けは、ロックの下でチームの<b>現在の</b>状態（アーカイブ・論理削除）を確かめてから行を消す。
+     * 申請・招待の作成（最初にチーム行を取る）・アーカイブ解除と直列化される。</p>
+     */
+    @Query(value = "SELECT * FROM teams WHERE id = :id FOR UPDATE", nativeQuery = true)
+    Optional<TeamEntity> findByIdIncludingDeletedForUpdate(@Param("id") Long id);
+
+    /**
      * 論理削除済みチームを復元する。deleted_at を NULL に戻す。
      * @return 更新件数（0 = 対象なし or 削除済みでない）
      */
