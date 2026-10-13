@@ -44,9 +44,22 @@ public class SurveyPublishedEvent extends BaseEvent {
     /** 公開操作の実行者ユーザーID（通知の actorId に用いる）。 */
     private final Long actorId;
 
+    /**
+     * push の宛先を告知ウィザード（{@code AnnouncementBroadcastService}）が制御しているか（F01.2.1 §8.5.3）。
+     * 真のとき、リスナーは fan-out を enqueue しない（push は告知ウィザードの1件に一本化する。
+     * 送信者に push 権限が無い場合も真のままで、その場合は push を出さない）。
+     */
+    private final boolean audienceControlledByBroadcast;
+
     public SurveyPublishedEvent(long surveyId, String scopeType, long scopeId, String title,
                                 DistributionMode distributionMode, boolean includeSupporters,
                                 Long actorId) {
+        this(surveyId, scopeType, scopeId, title, distributionMode, includeSupporters, actorId, false);
+    }
+
+    public SurveyPublishedEvent(long surveyId, String scopeType, long scopeId, String title,
+                                DistributionMode distributionMode, boolean includeSupporters,
+                                Long actorId, boolean audienceControlledByBroadcast) {
         super();
         this.surveyId = surveyId;
         this.scopeType = scopeType;
@@ -55,5 +68,6 @@ public class SurveyPublishedEvent extends BaseEvent {
         this.distributionMode = distributionMode;
         this.includeSupporters = includeSupporters;
         this.actorId = actorId;
+        this.audienceControlledByBroadcast = audienceControlledByBroadcast;
     }
 }
