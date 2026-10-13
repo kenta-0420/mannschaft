@@ -95,14 +95,14 @@ public class TeamOrgMembershipEntity {
      * 組織の世代がこれより進んでいれば（{@link #createdBeforeOrganizationClosure}）、この行は組織の閉鎖より前に作られた行で、
      * 片付け・承認・承諾で無効として扱う（{@code TeamOrgClosureGeneration}）。
      */
-    @Column(name = "org_closure_generation", nullable = false, updatable = false)
+    @Column(name = "org_closure_generation", nullable = false, updatable = false, columnDefinition = "BIGINT NOT NULL DEFAULT 0")
     private long orgClosureGeneration;
 
     /**
      * 作成時点のチームの閉鎖の世代（{@code teams.closure_generation}。F01.2.1 2-D・§4.5）。作成後は変えない。
      * チームの世代がこれより進んでいれば（{@link #createdBeforeTeamClosure}）、この行はチームの閉鎖より前に作られた行。
      */
-    @Column(name = "team_closure_generation", nullable = false, updatable = false)
+    @Column(name = "team_closure_generation", nullable = false, updatable = false, columnDefinition = "BIGINT NOT NULL DEFAULT 0")
     private long teamClosureGeneration;
 
     /**

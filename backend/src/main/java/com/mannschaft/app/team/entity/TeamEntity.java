@@ -129,7 +129,7 @@ public class TeamEntity extends BaseEntity {
      * 承諾で無効として扱う（片付けの前に解除・復元されても、閉鎖より前の申請・招待を復元しない）。時刻の比較は秒精度で同じ秒の
      * 前後を見分けられないので使わない。書き換えはチーム行のロック（{@code TeamRepository#findByIdForUpdate}）の下で行う。
      */
-    @Column(name = "closure_generation", nullable = false)
+    @Column(name = "closure_generation", nullable = false, columnDefinition = "BIGINT NOT NULL DEFAULT 0")
     private long closureGeneration;
 
     /**

@@ -103,7 +103,7 @@ public class OrganizationEntity extends BaseEntity {
      * 片付け・承認・承諾で無効として扱う（ポート越しに読む）。時刻の比較は秒精度で同じ秒の前後を見分けられないので使わない。
      * 書き換えは組織行のロック（{@code OrganizationRepository#findByIdForUpdate}）の下で行う。
      */
-    @Column(name = "closure_generation", nullable = false)
+    @Column(name = "closure_generation", nullable = false, columnDefinition = "BIGINT NOT NULL DEFAULT 0")
     private long closureGeneration;
 
     // --- F01.2 拡張プロフィールフィールド ---
