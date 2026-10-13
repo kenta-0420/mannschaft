@@ -67,7 +67,11 @@ const viewStub = (testid: string) => ({
 })
 
 const stubs = {
-  OrgTeamGrid: { template: '<div data-testid="org-team-grid" />' },
+  MemberTeamsTeamList: {
+    props: ['orgSlug', 'teams', 'canAssign'],
+    emits: ['changed'],
+    template: `<div data-testid="org-team-grid" :data-can-assign="String(canAssign)"><button data-testid="teamlist-changed" @click="$emit('changed')" /></div>`,
+  },
   NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' },
   MemberTeamsApplicationsView: viewStub('applications-view'),
   MemberTeamsInvitesView: viewStub('invites-view'),
@@ -246,6 +250,27 @@ describe('pages/organizations/[slug]/member-teams.vue', () => {
       const wrapper = await mountPage()
       expect(wrapper.find('[data-testid="invites-view"]').exists()).toBe(false)
       expect(wrapper.find('[data-testid="org-team-grid"]').exists()).toBe(true)
+    })
+
+    it('MT-18: 一覧の割当 UI は ADMIN・管理レンズ ON のときだけ有効（canAssign）', async () => {
+      const admin = await mountPage()
+      expect(admin.find('[data-testid="org-team-grid"]').attributes('data-can-assign')).toBe('true')
+
+      state.adminLens = false
+      const lensOff = await mountPage()
+      expect(lensOff.find('[data-testid="org-team-grid"]').attributes('data-can-assign')).toBe('false')
+
+      state.adminLens = true
+      state.isAdmin = false
+      const member = await mountPage()
+      expect(member.find('[data-testid="org-team-grid"]').attributes('data-can-assign')).toBe('false')
+    })
+
+    it('MT-19: 一覧で割当が成立したら、親シェルの所属チーム一覧を取り直す', async () => {
+      const wrapper = await mountPage()
+      await wrapper.find('[data-testid="teamlist-changed"]').trigger('click')
+      await flushPromises()
+      expect(refreshOrgTeams).toHaveBeenCalledTimes(1)
     })
 
     it('MT-15: 承認・拒否が成立したら、親シェルの所属チーム一覧も取り直す', async () => {

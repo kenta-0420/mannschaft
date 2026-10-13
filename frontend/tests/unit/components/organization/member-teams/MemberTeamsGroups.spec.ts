@@ -4,7 +4,6 @@ import { flushPromises } from '@vue/test-utils'
 import type { OrgTeamGroup } from '~/composables/useOrgTeamMembershipApi'
 import MemberTeamsGroupsView from '~/components/organization/member-teams/MemberTeamsGroupsView.vue'
 import MemberTeamsGroupList from '~/components/organization/member-teams/MemberTeamsGroupList.vue'
-import MemberTeamsGroupAssignments from '~/components/organization/member-teams/MemberTeamsGroupAssignments.vue'
 import { GROUP_A, GROUP_B, primeStubs } from './stubs'
 
 /**
@@ -13,17 +12,12 @@ import { GROUP_A, GROUP_B, primeStubs } from './stubs'
  * 検証観点（設計書 AC-L04 / AC-G01 / AC-F08 / AC-G143）:
  *   GV-01 グループ一覧と未分類件数が出る                 GV-02 機能 off（一覧が null）は誘導カードと設定への導線
  *   GV-03 取得失敗はエラー表示（機能 off や空に見せない）   GV-04 機能 off のときは管理 UI を出さない
+ *   GV-05 組織が切り替わったとき、古い組織の遅れた応答が新しい組織の一覧を上書きしない
  *   GL-01 作成: 名前を送って changed 発火                 GL-02 名前が空なら送らない
  *   GL-03 同名(ORG_065)は専用メッセージ                   GL-04 上限(ORG_066)は専用メッセージ。上限到達で作成ボタン無効
  *   GL-05 改名: 変更を送って changed 発火                 GL-06 削除は所属件数つきの確認を挟み、確定で削除
  *   GL-07 並び替え(↑↓)は全 ID を新しい順で送る            GL-08 先頭の↑・末尾の↓は無効
  *   GL-09 二重送信しない                                   GL-10 機能 off(ORG_067)になったら changed を発火
- *   GA-01 加盟チームにグループ列（未分類を含む）が出る     GA-02 「未分類」で絞ると unassigned=true で取得
- *   GA-03 グループで絞ると teamGroupId で取得              GA-04 単体割当で API を呼んで再取得し changed 発火
- *   GA-05 未分類へ戻す(groupId=null)                      GA-06 一括割当は選択したチームだけを送る
- *   GA-07 未選択なら一括割当は押せない                     GA-08 割当失敗はエラー表示（成功に見せない）
- *   GA-09 一括割当の 429 は専用メッセージ                  GA-10 取得失敗はエラー表示 / 0 件は空表示
- *   GA-11 ORG_064（グループが消えていた）は changed を発火して親に再取得させる
  */
 
 const listTeamGroupList = vi.fn()
@@ -31,9 +25,6 @@ const createTeamGroup = vi.fn()
 const updateTeamGroup = vi.fn()
 const deleteTeamGroup = vi.fn()
 const reorderTeamGroups = vi.fn()
-const listGroupTeams = vi.fn()
-const assignTeamGroup = vi.fn()
-const bulkAssignTeamGroup = vi.fn()
 
 vi.mock('~/composables/useOrgTeamMembershipApi', () => ({
   useOrgTeamMembershipApi: () => ({
@@ -42,9 +33,6 @@ vi.mock('~/composables/useOrgTeamMembershipApi', () => ({
     updateTeamGroup,
     deleteTeamGroup,
     reorderTeamGroups,
-    listGroupTeams,
-    assignTeamGroup,
-    bulkAssignTeamGroup,
   }),
 }))
 
@@ -67,9 +55,7 @@ const stubs = { ...primeStubs }
 describe('MemberTeamsGroupsView', () => {
   beforeEach(() => {
     listTeamGroupList.mockReset()
-    listGroupTeams.mockReset()
     listTeamGroupList.mockResolvedValue(groupList())
-    listGroupTeams.mockResolvedValue([])
   })
 
   async function mountView() {
@@ -104,11 +90,30 @@ describe('MemberTeamsGroupsView', () => {
     expect(wrapper.findAll('[data-testid="group-row"]')).toHaveLength(0)
   })
 
-  it('GV-04: 機能 off のときは管理 UI（作成・割当）を出さない', async () => {
+  it('GV-04: 機能 off のときは管理 UI（作成）を出さない', async () => {
     listTeamGroupList.mockResolvedValue(null)
     const wrapper = await mountView()
     expect(wrapper.find('[data-testid="group-create-open"]').exists()).toBe(false)
-    expect(listGroupTeams).not.toHaveBeenCalled()
+  })
+
+  it('GV-05: 組織が切り替わったら、古い組織の遅れた応答は捨てて新しい組織の一覧を出す', async () => {
+    let resolveOld: (v: unknown) => void = () => {}
+    listTeamGroupList.mockReset()
+    listTeamGroupList
+      .mockReturnValueOnce(new Promise((r) => { resolveOld = r }))
+      .mockResolvedValueOnce(groupList([group(GROUP_B, '新組織のグループ', 0)], 0))
+    const wrapper = await mountSuspended(MemberTeamsGroupsView, {
+      props: { orgSlug: 'org-old' },
+      global: { stubs },
+    })
+    await wrapper.setProps({ orgSlug: 'org-new' })
+    await flushPromises()
+    expect(wrapper.text()).toContain('新組織のグループ')
+    // 古い組織の応答が最後に届いても、画面は新しい組織のまま
+    resolveOld(groupList([group(GROUP_A, '旧組織のグループ', 0)], 9))
+    await flushPromises()
+    expect(wrapper.text()).toContain('新組織のグループ')
+    expect(wrapper.text()).not.toContain('旧組織のグループ')
   })
 })
 
@@ -229,126 +234,6 @@ describe('MemberTeamsGroupList', () => {
     await openCreate(wrapper, '北地区')
     await wrapper.find('[data-testid="group-form-submit"]').trigger('click')
     await flushPromises()
-    expect(wrapper.emitted('changed')).toHaveLength(1)
-  })
-})
-
-describe('MemberTeamsGroupAssignments', () => {
-  const TEAMS = [
-    { id: 't1', slug: 'team-1', name: 'チーム1', teamGroup: { id: GROUP_A, name: '東地区', sortOrder: 0 } },
-    { id: 't2', slug: 'team-2', name: 'チーム2' },
-    { id: 't3', slug: 'team-3', name: 'チーム3' },
-  ]
-
-  beforeEach(() => {
-    for (const fn of [listGroupTeams, assignTeamGroup, bulkAssignTeamGroup]) fn.mockReset()
-    listGroupTeams.mockResolvedValue(TEAMS)
-    assignTeamGroup.mockResolvedValue(undefined)
-    bulkAssignTeamGroup.mockResolvedValue({ updatedCount: 2 })
-  })
-
-  async function mountAssign() {
-    const wrapper = await mountSuspended(MemberTeamsGroupAssignments, {
-      props: { orgSlug: 'org-1', groups: GROUPS },
-      global: { stubs },
-    })
-    await flushPromises()
-    return wrapper
-  }
-
-  it('GA-01: 加盟チームにグループ列が出て、グループなしは「未分類」になる', async () => {
-    const wrapper = await mountAssign()
-    expect(listGroupTeams).toHaveBeenCalledWith('org-1', {})
-    const labels = wrapper.findAll('[data-testid="team-group-label"]').map(w => w.text())
-    // テスト環境のロケールに依存しないよう、「未分類」の文言そのものではなく、グループ名と区別できることを検証する。
-    expect(labels[0]).toBe('東地区')
-    expect(labels[1]).toBeTruthy()
-    expect(labels[1]).not.toBe('東地区')
-    expect(labels[2]).toBe(labels[1])
-  })
-
-  it('GA-02: 「未分類」で絞ると unassigned=true で取得する', async () => {
-    const wrapper = await mountAssign()
-    await wrapper.find('[data-testid="assign-filter"]').setValue('__unassigned__')
-    await flushPromises()
-    expect(listGroupTeams).toHaveBeenLastCalledWith('org-1', { unassigned: true })
-  })
-
-  it('GA-03: グループで絞ると teamGroupId で取得する', async () => {
-    const wrapper = await mountAssign()
-    await wrapper.find('[data-testid="assign-filter"]').setValue(GROUP_B)
-    await flushPromises()
-    expect(listGroupTeams).toHaveBeenLastCalledWith('org-1', { teamGroupId: GROUP_B })
-  })
-
-  it('GA-04: 単体割当は API を呼び、一覧を再取得して changed を発火する', async () => {
-    const wrapper = await mountAssign()
-    await wrapper.find('[data-testid="team-assign-team-2"]').setValue(GROUP_B)
-    await flushPromises()
-    expect(assignTeamGroup).toHaveBeenCalledWith('org-1', 'team-2', GROUP_B)
-    expect(listGroupTeams).toHaveBeenCalledTimes(2)
-    expect(wrapper.emitted('changed')).toHaveLength(1)
-  })
-
-  it('GA-05: 「未分類」を選ぶと groupId=null で割り当てる', async () => {
-    const wrapper = await mountAssign()
-    await wrapper.find('[data-testid="team-assign-team-1"]').setValue('__unassigned__')
-    await flushPromises()
-    expect(assignTeamGroup).toHaveBeenCalledWith('org-1', 'team-1', null)
-  })
-
-  it('GA-06: 一括割当は選択したチームだけを送る', async () => {
-    const wrapper = await mountAssign()
-    await wrapper.find('[data-testid="team-select-team-2"]').setValue(true)
-    await wrapper.find('[data-testid="team-select-team-3"]').setValue(true)
-    await wrapper.find('[data-testid="bulk-target"]').setValue(GROUP_B)
-    await wrapper.find('[data-testid="bulk-submit"]').trigger('click')
-    await flushPromises()
-    expect(bulkAssignTeamGroup).toHaveBeenCalledWith('org-1', GROUP_B, ['team-2', 'team-3'])
-    expect(wrapper.emitted('changed')).toHaveLength(1)
-  })
-
-  it('GA-07: チーム未選択なら一括割当は押せない', async () => {
-    const wrapper = await mountAssign()
-    expect(wrapper.find('[data-testid="bulk-submit"]').attributes('disabled')).toBeDefined()
-  })
-
-  it('GA-08: 割当の失敗はエラー表示になり、成功に見せない', async () => {
-    assignTeamGroup.mockRejectedValue(apiError(500, 'COMMON_500'))
-    const wrapper = await mountAssign()
-    await wrapper.find('[data-testid="team-assign-team-2"]').setValue(GROUP_B)
-    await flushPromises()
-    expect(wrapper.find('[data-testid="assign-error"]').exists()).toBe(true)
-    expect(wrapper.emitted('changed')).toBeUndefined()
-  })
-
-  it('GA-09: 一括割当の 429 は専用メッセージを出す', async () => {
-    bulkAssignTeamGroup.mockRejectedValue({ statusCode: 429, data: {} })
-    const wrapper = await mountAssign()
-    await wrapper.find('[data-testid="team-select-team-2"]').setValue(true)
-    await wrapper.find('[data-testid="bulk-target"]').setValue(GROUP_B)
-    await wrapper.find('[data-testid="bulk-submit"]').trigger('click')
-    await flushPromises()
-    expect(wrapper.find('[data-testid="assign-error"]').attributes('data-error-kind')).toBe('rate-limited')
-  })
-
-  it('GA-10: 取得失敗はエラー表示、0 件は空表示', async () => {
-    listGroupTeams.mockRejectedValue(apiError(500, 'COMMON_500'))
-    const failed = await mountAssign()
-    expect(failed.find('[data-testid="assign-load-error"]').exists()).toBe(true)
-    expect(failed.find('[data-testid="assign-empty"]').exists()).toBe(false)
-
-    listGroupTeams.mockResolvedValue([])
-    const empty = await mountAssign()
-    expect(empty.find('[data-testid="assign-empty"]').exists()).toBe(true)
-  })
-
-  it('GA-11: ORG_064（グループが消えていた）は changed を発火して親に再取得させる', async () => {
-    assignTeamGroup.mockRejectedValue(apiError(404, 'ORG_064'))
-    const wrapper = await mountAssign()
-    await wrapper.find('[data-testid="team-assign-team-2"]').setValue(GROUP_B)
-    await flushPromises()
-    expect(wrapper.find('[data-testid="assign-error"]').attributes('data-error-kind')).toBe('group-missing')
     expect(wrapper.emitted('changed')).toHaveLength(1)
   })
 })
