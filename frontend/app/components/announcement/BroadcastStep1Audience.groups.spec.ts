@@ -263,18 +263,31 @@ describe('宛先プレビュー（AC-H15・300ms デバウンス）と「次へ�
     expect(w.get('[data-testid="broadcast-step1-next"]').attributes('disabled')).toBeUndefined()
   })
 
-  it('pushEnabled=false なら「push 通知は送られません」の注記を出し、true なら出さない', async () => {
+  it('pushEnabled=false なら「push 通知は送られません」の注記を出し、true なら出さない（実チャネル選択済み）', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    previewResponse = () => preview({ pushEnabled: false })
+    const w = await render({ targetMode: 'GROUPS', targetGroupIds: ['g1'], selectedChannel: 'BULLETIN_THREAD' })
+    await vi.advanceTimersByTimeAsync(350)
+    await flushPromises()
+    expect(w.get('[data-testid="broadcast-push-disabled-note"]').text()).toBe('announcement.push_disabled_note')
+    const body = (previewCalls()[0] as [string, { body: Record<string, unknown> }])[1].body
+    expect(body.channel).toBe('BULLETIN_THREAD')
+
+    previewResponse = () => preview({ pushEnabled: true })
+    await w.setProps({ modelValue: baseState({ targetMode: 'GROUPS', targetGroupIds: ['g1', 'g2'], selectedChannel: 'BULLETIN_THREAD' }) })
+    await vi.advanceTimersByTimeAsync(350)
+    await flushPromises()
+    expect(w.find('[data-testid="broadcast-push-disabled-note"]').exists()).toBe(false)
+  })
+
+  it('チャネル未選択のステップ1では仮のチャネルで push 可否を判定せず、注記も出さない', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     previewResponse = () => preview({ pushEnabled: false })
     const w = await render({ targetMode: 'GROUPS', targetGroupIds: ['g1'] })
     await vi.advanceTimersByTimeAsync(350)
     await flushPromises()
-    expect(w.get('[data-testid="broadcast-push-disabled-note"]').text()).toBe('announcement.push_disabled_note')
-
-    previewResponse = () => preview({ pushEnabled: true })
-    await w.setProps({ modelValue: baseState({ targetMode: 'GROUPS', targetGroupIds: ['g1', 'g2'] }) })
-    await vi.advanceTimersByTimeAsync(350)
-    await flushPromises()
+    const body = (previewCalls()[0] as [string, { body: Record<string, unknown> }])[1].body
+    expect(body.channel).toBeUndefined()
     expect(w.find('[data-testid="broadcast-push-disabled-note"]').exists()).toBe(false)
   })
 })
@@ -333,5 +346,109 @@ describe('テンプレート（AC-J02/J03）', () => {
     await flushPromises()
     expect(latest.targetMode).toBe('TEAMS')
     expect(latest.targetTeamIds).toEqual(['11'])
+  })
+
+  // ── Codex 検分1巡目の回帰 ──
+
+  it('High1: テンプレート適用後に宛先を変えたら templateId を外す（BE が旧宛先を復元しない）', async () => {
+    const w = await render()
+    ;(w.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template())
+    await flushPromises()
+    expect(latest.templateId).toBe(5)
+    await emitFrom(w, 'broadcast-target-mode-all', 'ALL')
+    expect(latest.targetMode).toBe('ALL')
+    expect(latest.templateId).toBeNull()
+  })
+
+  it('High1: グループの手動チェックでも templateId を外す', async () => {
+    const w = await render()
+    ;(w.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template())
+    await flushPromises()
+    await w.get('[data-testid="broadcast-group-item-g2"] input').setValue(true)
+    expect(latest.templateId).toBeNull()
+  })
+
+  it('High1: グループ一覧の取得前に適用しても、取得を待ってグループ宛てとして適用する', async () => {
+    let release: (v: unknown) => void = () => {}
+    mockApi.mockImplementation((url: string, opts?: { method?: string }) => {
+      if (String(url).endsWith('/team-groups')) return new Promise(r => { release = r })
+      return route(url, opts)
+    })
+    latest = baseState()
+    wrapper = await mountSuspended(BroadcastStep1Audience, {
+      props: {
+        modelValue: latest, scopeType: 'ORGANIZATION', scopeId: 'acme', isAdmin: true,
+        'onUpdate:modelValue': (v: WizardFormState) => { latest = v; void wrapper?.setProps({ modelValue: v }) },
+      },
+    })
+    ;(wrapper.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template())
+    await flushPromises()
+    expect(latest.templateId).toBeNull() // 適用は一覧の取得待ち
+    release({ data: GROUPS, meta: { unassignedTeamCount: 2, limit: 100 } })
+    await flushPromises()
+    expect(latest.targetMode).toBe('GROUPS')
+    expect(latest.templateId).toBe(5)
+  })
+
+  it('High2: 遅れて返った古いテンプレートの応答（013）は、新しい手動選択を上書きしない', async () => {
+    let reject: (e: unknown) => void = () => {}
+    const w = await render()
+    mockApi.mockImplementation((url: string, opts?: { method?: string, body?: { templateId?: number } }) => {
+      if (String(url).endsWith('/broadcast/audience-preview') && opts?.body?.templateId === 5) {
+        return new Promise((_r, rej) => { reject = rej })
+      }
+      return route(url, opts)
+    })
+    ;(w.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template({
+      targetGroupIds: [], targetGroupRange: { fromGroupId: 'gX', toGroupId: 'g3' },
+    }))
+    await flushPromises()
+    // 応答待ちの間に、利用者が別の宛先を選ぶ
+    await w.get('[data-testid="broadcast-group-item-g2"] input').setValue(true)
+    expect(latest.targetGroupIds).toEqual(['g2'])
+    reject(apiError(400, 'BROADCAST_013', '範囲の端が削除されています'))
+    await flushPromises()
+    expect(latest.targetGroupIds).toEqual(['g2'])
+    expect(w.find('[data-testid="broadcast-template-range-invalid"]').exists()).toBe(false)
+  })
+
+  it('High2: 遅れて返った古い警告の応答も、新しい選択を上書きしない', async () => {
+    let resolve: (v: unknown) => void = () => {}
+    const w = await render()
+    mockApi.mockImplementation((url: string, opts?: { method?: string, body?: { templateId?: number } }) => {
+      if (String(url).endsWith('/broadcast/audience-preview') && opts?.body?.templateId === 5) {
+        return new Promise(r => { resolve = r })
+      }
+      return route(url, opts)
+    })
+    ;(w.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template())
+    await flushPromises()
+    await emitFrom(w, 'broadcast-target-mode-teams', 'TEAMS')
+    resolve(preview({ warnings: ['TEMPLATE_GROUPS_REMOVED:1'] }))
+    await flushPromises()
+    expect(latest.targetMode).toBe('TEAMS')
+    expect(latest.targetGroupIds).toEqual([])
+    expect(w.find('[data-testid="broadcast-template-warning"]').exists()).toBe(false)
+  })
+
+  it('Medium(J02): 削除で個別グループが全部除外されても、templateId だけで直属メンバー宛てとして次へ進める', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    previewResponse = () => preview({ warnings: ['TEMPLATE_GROUPS_REMOVED:1'], resolvedTeamCount: 0, directMemberCount: 2 })
+    const w = await render()
+    ;(w.getComponent(BroadcastTemplateSelector) as unknown as VueWrapper).vm.$emit('apply', template({
+      targetGroupIds: ['gX'], includeUnassigned: false,
+    }))
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(350)
+    await flushPromises()
+    expect(latest.targetMode).toBe('GROUPS')
+    expect(latest.targetGroupIds).toEqual([])
+    expect(latest.templateId).toBe(5)
+    expect(w.find('[data-testid="broadcast-template-warning"]').exists()).toBe(true)
+    expect(w.get('[data-testid="broadcast-step1-next"]').attributes('disabled')).toBeUndefined()
+    // 通常プレビューも宛先を明示せず templateId だけで問い合わせる
+    const last = previewCalls().at(-1) as [string, { body: Record<string, unknown> }]
+    expect(last[1].body.templateId).toBe(5)
+    expect(last[1].body.targetGroupIds).toBeUndefined()
   })
 })

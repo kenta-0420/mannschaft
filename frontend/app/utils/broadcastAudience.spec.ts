@@ -111,4 +111,24 @@ describe('formatAudienceLabel（送信履歴の宛先。送信時の名前で残
   it('チームを選ぶモード', () => {
     expect(formatAudienceLabel({ mode: 'TEAMS', groups: [], includeUnassigned: false, teamCount: 2 }, t)).toBe('announcement.target_mode_teams')
   })
+  it('範囲と範囲外の個別グループの併用は和集合（範囲＋範囲外のグループ名）で表す', () => {
+    const label = formatAudienceLabel({
+      mode: 'GROUPS',
+      groups: [{ id: 'g1', name: 'G1' }, { id: 'g2', name: 'G2' }, { id: 'g4', name: 'G4' }],
+      range: { toGroupId: 'g2', toGroupName: 'G2' },
+      includeUnassigned: true,
+      teamCount: 9,
+    }, t)
+    expect(label).toBe('announcement.target_range_up_to:{"name":"G2"}、G4、announcement.target_include_unassigned')
+  })
+  it('以降の範囲では範囲より前の個別グループが追加分になる', () => {
+    const label = formatAudienceLabel({
+      mode: 'GROUPS',
+      groups: [{ id: 'g1', name: 'G1' }, { id: 'g3', name: 'G3' }, { id: 'g4', name: 'G4' }],
+      range: { fromGroupId: 'g3', fromGroupName: 'G3' },
+      includeUnassigned: false,
+      teamCount: 9,
+    }, t)
+    expect(label).toBe('announcement.target_range_from:{"name":"G3"}、G1')
+  })
 })

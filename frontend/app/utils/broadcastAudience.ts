@@ -47,14 +47,31 @@ export function hasAudienceSelection(state: WizardFormState): boolean {
 type Translate = (key: string, params?: Record<string, unknown>) => string
 
 /**
+ * 範囲に含まれるグループの ID 集合。groups は送信時に並び順で展開された記録なので、
+ * 範囲の端（無ければ先頭／末尾）の間にある連続区間が範囲の分になる。端が記録に無ければ null（区別できない）。
+ */
+function groupIdsInRange(audience: BroadcastTargetAudience): Set<string> | null {
+  const range = audience.range
+  const groups = audience.groups ?? []
+  if (!range) return null
+  const ids = groups.map(g => g.id ?? '')
+  const from = range.fromGroupId ? ids.indexOf(range.fromGroupId) : 0
+  const to = range.toGroupId ? ids.lastIndexOf(range.toGroupId) : ids.length - 1
+  if (from < 0 || to < 0 || from > to) return null
+  return new Set(ids.slice(from, to + 1))
+}
+
+/**
  * 送信履歴の宛先ラベル（送信時の名前で残る）。
- * 範囲があれば範囲の言い方（「A 以前」「A 以降」「A 〜 B」）、無ければ個別グループ名を並べ、未分類を足す。
+ * 範囲があれば範囲の言い方（「A 以前」「A 以降」「A 〜 B」）に、範囲の外にある個別グループ名と未分類を足した和集合を表す。
+ * 範囲が無ければ個別グループ名を並べる。
  */
 export function formatAudienceLabel(audience: BroadcastTargetAudience, t: Translate): string {
   if (audience.mode === 'TEAMS') return t('announcement.target_mode_teams')
 
   const parts: string[] = []
   const range = audience.range
+  const inRange = groupIdsInRange(audience)
   if (range) {
     if (range.fromGroupId && range.toGroupId) {
       parts.push(t('announcement.target_range_between', { from: range.fromGroupName ?? '', to: range.toGroupName ?? '' }))
@@ -66,10 +83,10 @@ export function formatAudienceLabel(audience: BroadcastTargetAudience, t: Transl
       parts.push(t('announcement.target_range_from', { name: range.fromGroupName ?? '' }))
     }
   }
-  if (parts.length === 0) {
-    const names = (audience.groups ?? []).map(g => g.name ?? '')
-    if (names.length > 0) parts.push(names.join('、'))
-  }
+  // 範囲の外にある個別グループ（範囲が無ければ全グループ）
+  const allGroups = audience.groups ?? []
+  const extras = inRange ? allGroups.filter(g => !inRange.has(g.id ?? '')) : range ? [] : allGroups
+  if (extras.length > 0) parts.push(extras.map(g => g.name ?? '').join('、'))
   if (audience.includeUnassigned) parts.push(t('announcement.target_include_unassigned'))
   return parts.join('、')
 }

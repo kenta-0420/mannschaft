@@ -34,8 +34,29 @@ const { fetchTeamGroups, previewAudience } = useBroadcastAudience(props.scopeId)
 
 const isOrg = computed(() => props.scopeType === 'ORGANIZATION')
 
+/** 宛先を決める項目。これらが変わると、テンプレートの応答待ち・テンプレートによる宛先復元は無効になる */
+const AUDIENCE_KEYS = ['targetMode', 'targetTeamIds', 'targetGroupIds', 'targetGroupRange', 'includeUnassigned', 'templateId'] as const
+
+/** 宛先が変わるたびに進める世代。遅れて返ったテンプレート確認の応答が、新しい選択を上書きしないための判定に使う */
+let audienceGen = 0
+
+/**
+ * 削除で個別グループが全部除外され、範囲・未分類も無いテンプレート（BE の emptiedByRemoval）。
+ * 宛先を明示せず templateId だけを送ると、BE が直属メンバー宛てとして解決する。
+ */
+const templateEmptied = ref(false)
+
 function update(patch: Partial<WizardFormState>) {
-  emit('update:modelValue', { ...props.modelValue, ...patch })
+  const touchesAudience = AUDIENCE_KEYS.some(k => k in patch)
+  if (touchesAudience) {
+    audienceGen++
+    templateEmptied.value = false
+  }
+  const next = { ...props.modelValue, ...patch }
+  // 宛先を手で変えたら、テンプレートの宛先が復元されないよう templateId を外す
+  // （「すべてのチーム」など宛先項目が空になると、BE は templateId だけの送信をテンプレート解決とみなす）。
+  if (touchesAudience && !('templateId' in patch)) next.templateId = null
+  emit('update:modelValue', next)
 }
 
 const targetRole = computed({
@@ -90,6 +111,8 @@ watchEffect(async () => {
   }
 })
 
+let groupsReady: Promise<void> = Promise.resolve()
+
 async function loadGroups() {
   groupsLoadError.value = null
   try {
@@ -107,7 +130,7 @@ async function loadGroups() {
 }
 
 if (isOrg.value) {
-  void loadGroups()
+  groupsReady = loadGroups()
 }
 
 /** 個別チームのチェック状態 */
@@ -210,9 +233,6 @@ const previewPending = ref(false)
 let previewTimer: ReturnType<typeof setTimeout> | null = null
 let previewSeq = 0
 
-/** push の可否の判定にはチャネルが要るが、ステップ1ではまだ未選択。アンケート（push を出すチャネル）として問い合わせる */
-const PUSH_PROBE_CHANNEL = 'SURVEY' as const
-
 function clearPreviewTimer() {
   if (previewTimer !== null) {
     clearTimeout(previewTimer)
@@ -230,10 +250,15 @@ async function runPreview() {
   const seq = ++previewSeq
   const s = props.modelValue
   try {
+    // 削除で空になったテンプレートは、宛先を明示せず templateId だけで解決させる（BE の emptiedByRemoval）
+    const audience = templateEmptied.value && s.templateId !== null
+      ? { templateId: s.templateId }
+      : buildAudienceFields(s)
     const result = await previewAudience({
-      channel: s.selectedChannel ?? PUSH_PROBE_CHANNEL,
+      // チャネル未選択（ステップ1）では送らない。push の可否は実チャネルが分かるときだけ使う
+      channel: s.selectedChannel ?? undefined,
       targetRole: s.targetRole,
-      ...buildAudienceFields(s),
+      ...audience,
     })
     if (seq !== previewSeq) return
     preview.value = result
@@ -253,7 +278,7 @@ function schedulePreview() {
   clearPreviewTimer()
   previewSeq++
   const s = props.modelValue
-  if (!isOrg.value || s.targetMode === 'ALL' || !hasAudienceSelection(s)) {
+  if (!isOrg.value || s.targetMode === 'ALL' || !(hasAudienceSelection(s) || templateEmptied.value)) {
     // 宛先を絞らない・未選択のときはプレビュー結果を持ち越さない
     preview.value = null
     previewError.value = null
@@ -272,6 +297,8 @@ watch(
     props.modelValue.targetMode,
     props.modelValue.targetRole,
     props.modelValue.selectedChannel,
+    props.modelValue.templateId,
+    templateEmptied.value,
     buildAudienceFields(props.modelValue),
   ]),
   schedulePreview,
@@ -287,11 +314,14 @@ const resolvedEmpty = computed(
 /** 宛先を絞ったのに該当が無い・確認中・確認に失敗した間は「次へ」を押せない（AC-H06） */
 const nextDisabled = computed(() => {
   if (!isOrg.value || props.modelValue.targetMode === 'ALL') return false
-  if (!hasAudienceSelection(props.modelValue)) return true
+  if (!(hasAudienceSelection(props.modelValue) || templateEmptied.value)) return true
   return previewPending.value || previewError.value !== null || preview.value === null || resolvedEmpty.value
 })
 
-const pushDisabledNote = computed(() => preview.value !== null && preview.value.pushEnabled === false)
+/** push の可否はチャネルごとに違う。実チャネルが決まっているときだけ注記を出す（未選択の仮判定は出さない） */
+const pushDisabledNote = computed(
+  () => preview.value !== null && preview.value.pushEnabled === false && props.modelValue.selectedChannel !== null,
+)
 
 // ── テンプレート ──
 
@@ -306,6 +336,9 @@ function templateHasGroupItems(template: AnnouncementTemplate): boolean {
 
 async function onTemplateApply(template: AnnouncementTemplate) {
   templateNotice.value = null
+  templateEmptied.value = false
+  // グループ一覧（機能 on/off の判定を含む）が揃う前に適用すると、グループ付きテンプレートを誤って「すべて」にしてしまう
+  await groupsReady
   const hasGroups = isOrg.value && groupsEnabled.value && templateHasGroupItems(template)
   const mode: BroadcastTargetMode = template.targetTeamIds != null ? 'TEAMS' : hasGroups ? 'GROUPS' : 'ALL'
   const next: WizardFormState = {
@@ -318,31 +351,40 @@ async function onTemplateApply(template: AnnouncementTemplate) {
     includeUnassigned: mode === 'GROUPS' && template.includeUnassigned === true,
     // preferred_channel が設定されていればステップ2のチャネル初期選択に使う
     selectedChannel: template.preferredChannel ?? props.modelValue.selectedChannel,
-    templateId: template.id,
+    // グループ付きなのに画面で扱えない（機能 off）ときは templateId を残さない（BE が旧宛先を復元してしまう）
+    templateId: mode === 'ALL' && templateHasGroupItems(template) ? null : template.id,
   }
+  const gen = ++audienceGen
   emit('update:modelValue', next)
   if (mode !== 'GROUPS') return
 
   // テンプレートはグループの指定だけを保存している。削除済みグループの除外（警告）と
   // 範囲の端の削除（BROADCAST_013）は、サーバーに templateId で解決させて知る（F01.2.1 §8.6）。
+  // 応答待ちの間に宛先・テンプレートが変わったら（gen が進む）、古い応答は捨てる。
   try {
     const result = await previewAudience({
-      channel: next.selectedChannel ?? PUSH_PROBE_CHANNEL,
+      channel: next.selectedChannel ?? undefined,
       targetRole: next.targetRole,
       templateId: template.id,
     })
+    if (gen !== audienceGen) return
     if ((result.warnings ?? []).some(w => w.startsWith('TEMPLATE_GROUPS_REMOVED'))) {
       templateNotice.value = 'removed'
       const alive = new Set(groups.value.map(g => g.id))
-      emit('update:modelValue', { ...next, targetGroupIds: next.targetGroupIds.filter(id => alive.has(id)) })
+      const kept = next.targetGroupIds.filter(id => alive.has(id))
+      const emptied = kept.length === 0 && next.targetGroupRange === null && !next.includeUnassigned
+      emit('update:modelValue', { ...props.modelValue, targetGroupIds: kept })
+      // 全部除外されても BE は直属メンバー宛てとして許可する。選択が空に見えても次へ進めるようにする
+      templateEmptied.value = emptied
     }
   }
   catch (e: unknown) {
+    if (gen !== audienceGen) return
     if (readApiError(e).code === 'BROADCAST_013') {
       // 範囲の端が削除済み: 範囲を空にして選び直させる。templateId を外し、再送でも 013 に戻らないようにする
       templateNotice.value = 'range_invalid'
       resetRangeInputs()
-      emit('update:modelValue', { ...next, targetGroupRange: null, templateId: null })
+      emit('update:modelValue', { ...props.modelValue, targetGroupRange: null, templateId: null })
       return
     }
     previewError.value = describeError(e)
