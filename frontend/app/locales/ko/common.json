@@ -1,20 +1,20 @@
 {
   "skill": {
     "form": {
-      "noCategoryAdmin": "このチームにはまだ有効なカテゴリがありません。「カテゴリ管理」タブでカテゴリを作成してください。",
-      "noCategoryMember": "このチームにはまだ有効なカテゴリがありません。チームの管理者にカテゴリの作成を依頼してください。"
+      "noCategoryAdmin": "이 팀에는 아직 사용할 수 있는 카테고리가 없습니다. \"카테고리 관리\" 탭에서 카테고리를 만들어 주세요.",
+      "noCategoryMember": "이 팀에는 아직 사용할 수 있는 카테고리가 없습니다. 팀 관리자에게 카테고리 생성을 요청해 주세요."
     },
     "matrix": {
-      "refresh": "更新",
-      "legendPendingNote": "確認待ちの資格は未登録として表示されます"
+      "refresh": "새로고침",
+      "legendPendingNote": "확인 대기 중인 자격은 미등록으로 표시됩니다"
     },
     "list": {
       "actions": {
-        "search": "検索",
-        "verify": "承認",
-        "edit": "編集",
-        "delete": "削除",
-        "certificate": "証明書を表示"
+        "search": "검색",
+        "verify": "승인",
+        "edit": "편집",
+        "delete": "삭제",
+        "certificate": "증명서 보기"
       },
       "loadDetailFailed": "스킬 상세 정보를 불러오지 못했습니다",
       "loadCategoriesFailed": "카테고리를 불러오지 못했습니다",
@@ -24,8 +24,8 @@
     },
     "category": {
       "actions": {
-        "edit": "編集",
-        "delete": "削除"
+        "edit": "편집",
+        "delete": "삭제"
       },
       "deleteConfirm": "\"{name}\" 카테고리를 삭제하시겠습니까?",
       "deleteConfirmHeader": "카테고리 삭제"

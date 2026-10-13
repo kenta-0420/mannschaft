@@ -1,20 +1,20 @@
 {
   "skill": {
     "form": {
-      "noCategoryAdmin": "このチームにはまだ有効なカテゴリがありません。「カテゴリ管理」タブでカテゴリを作成してください。",
-      "noCategoryMember": "このチームにはまだ有効なカテゴリがありません。チームの管理者にカテゴリの作成を依頼してください。"
+      "noCategoryAdmin": "此团队还没有可用的分类。请在“分类管理”标签页中创建分类。",
+      "noCategoryMember": "此团队还没有可用的分类。请联系团队管理员创建分类。"
     },
     "matrix": {
-      "refresh": "更新",
-      "legendPendingNote": "確認待ちの資格は未登録として表示されます"
+      "refresh": "刷新",
+      "legendPendingNote": "待确认的资格将显示为未登记"
     },
     "list": {
       "actions": {
-        "search": "検索",
-        "verify": "承認",
-        "edit": "編集",
-        "delete": "削除",
-        "certificate": "証明書を表示"
+        "search": "搜索",
+        "verify": "批准",
+        "edit": "编辑",
+        "delete": "删除",
+        "certificate": "查看证书"
       },
       "loadDetailFailed": "加载技能详情失败",
       "loadCategoriesFailed": "加载分类失败",
@@ -24,8 +24,8 @@
     },
     "category": {
       "actions": {
-        "edit": "編集",
-        "delete": "削除"
+        "edit": "编辑",
+        "delete": "删除"
       },
       "deleteConfirm": "确定要删除分类“{name}”吗？",
       "deleteConfirmHeader": "删除分类"

@@ -1,20 +1,20 @@
 {
   "skill": {
     "form": {
-      "noCategoryAdmin": "このチームにはまだ有効なカテゴリがありません。「カテゴリ管理」タブでカテゴリを作成してください。",
-      "noCategoryMember": "このチームにはまだ有効なカテゴリがありません。チームの管理者にカテゴリの作成を依頼してください。"
+      "noCategoryAdmin": "Dieses Team hat noch keine aktiven Kategorien. Erstellen Sie im Tab „Kategorienverwaltung“ eine Kategorie.",
+      "noCategoryMember": "Dieses Team hat noch keine aktiven Kategorien. Bitten Sie einen Team-Administrator, eine Kategorie zu erstellen."
     },
     "matrix": {
-      "refresh": "更新",
-      "legendPendingNote": "確認待ちの資格は未登録として表示されます"
+      "refresh": "Aktualisieren",
+      "legendPendingNote": "Zertifikate, die noch geprüft werden, werden als nicht registriert angezeigt"
     },
     "list": {
       "actions": {
-        "search": "検索",
-        "verify": "承認",
-        "edit": "編集",
-        "delete": "削除",
-        "certificate": "証明書を表示"
+        "search": "Suchen",
+        "verify": "Genehmigen",
+        "edit": "Bearbeiten",
+        "delete": "Löschen",
+        "certificate": "Zertifikat anzeigen"
       },
       "loadDetailFailed": "Die Details der Qualifikation konnten nicht geladen werden",
       "loadCategoriesFailed": "Die Kategorien konnten nicht geladen werden",
@@ -24,8 +24,8 @@
     },
     "category": {
       "actions": {
-        "edit": "編集",
-        "delete": "削除"
+        "edit": "Bearbeiten",
+        "delete": "Löschen"
       },
       "deleteConfirm": "Kategorie „{name}“ löschen?",
       "deleteConfirmHeader": "Kategorie löschen"
