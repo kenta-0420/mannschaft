@@ -2,7 +2,20 @@
   "skill": {
     "list": {
       "loadDetailFailed": "加载技能详情失败",
-      "loadCategoriesFailed": "加载分类失败"
+      "loadCategoriesFailed": "加载分类失败",
+      "mineTitle": "我的技能与资格",
+      "deleteConfirm": "确定要删除“{name}”吗？此操作无法撤销。",
+      "deleteConfirmHeader": "删除资格"
+    },
+    "category": {
+      "deleteConfirm": "确定要删除分类“{name}”吗？",
+      "deleteConfirmHeader": "删除分类"
+    },
+    "page": {
+      "permissionLoadFailed": "获取权限信息失败，请稍后重新加载",
+      "forbidden": "只有本团队成员才能使用技能与资格",
+      "mineTab": "我的技能与资格",
+      "categoriesReloadFailed": "重新加载分类失败"
     }
   },
   "chat": {

@@ -171,7 +171,11 @@ class OrgAffiliationEligibilityApiIT extends AbstractMySqlIntegrationTest {
             willAnswer(invocation -> {
                 List<?> keys = invocation.getArgument(1);
                 String redisKey = String.valueOf(keys.get(0));
-                return counters.computeIfAbsent(redisKey, k -> new AtomicLong()).incrementAndGet();
+                // 時刻依存フレークの根治: redisKey は mannschaft:rate:{zone}:{key}:{windowStart}。連続呼び出しの途中で窓の境界を
+                // またぐと windowStart が変わりカウントが1に戻って 429 が出ない。固定ウィンドウ境界の挙動は
+                // ValkeyRateLimiterTest の責務なので、本テストは windowStart を落として集計する。
+                String counterKey = redisKey.substring(0, redisKey.lastIndexOf(':'));
+                return counters.computeIfAbsent(counterKey, k -> new AtomicLong()).incrementAndGet();
             }).given(redisTemplate).execute(any(RedisScript.class), anyList(), any());
         }
 
