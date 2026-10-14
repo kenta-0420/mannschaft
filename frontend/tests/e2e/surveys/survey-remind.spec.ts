@@ -170,7 +170,7 @@ test.describe('SURVEY-003: 督促送信（詳細ページ → 回答者セクシ
             surveyId: SURVEY_ID,
             remindedCount: 2,
             remainingRemindQuota: 2,
-            message: '督促を送信しました',
+            message: '2名の未回答メンバーにリマインドの送信を受け付けました。',
           },
         },
       },

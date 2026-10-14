@@ -96,6 +96,31 @@ class SurveyReminderNotificationTransactionIT extends AbstractMySqlIntegrationTe
     void 前テストの非同期処理が完了してから始める() {
         awaitEventPoolIdle();
         statementCounter.register(INSERT_NOTIFICATIONS, s -> s.startsWith("insert into notifications ("));
+        // JDBC/DataSource 層の失敗注入: 武装中、通知バルク INSERT の「先頭の 1 文」だけを実行前に SQLException で失敗させる。
+        // 試行された各 INSERT の行数（= チャンク人数）を記録するので、注入点（チャンクTX内の JDBC）への到達の証拠になる。
+        failFirstInsertArmed.set(false);
+        attemptedInsertRows.clear();
+        statementCounter.register("g5-fail-first-insert", sql -> {
+            if (!sql.startsWith("insert into notifications (")) {
+                return false;
+            }
+            int rows = (sql.length() - sql.replace("utc_timestamp()", "").length()) / "utc_timestamp()".length();
+            attemptedInsertRows.add(rows);
+            if (failFirstInsertArmed.compareAndSet(true, false)) {
+                sneakyThrow(new java.sql.SQLException("模擬 INSERT 失敗（先頭チャンクの JDBC 段・G5検証用）"));
+            }
+            return false;
+        });
+    }
+
+    private final java.util.concurrent.atomic.AtomicBoolean failFirstInsertArmed =
+            new java.util.concurrent.atomic.AtomicBoolean();
+    private final java.util.List<Integer> attemptedInsertRows =
+            new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    @SuppressWarnings("unchecked")
+    private static <E extends Throwable> void sneakyThrow(Throwable t) throws E {
+        throw (E) t;
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -158,37 +183,67 @@ class SurveyReminderNotificationTransactionIT extends AbstractMySqlIntegrationTe
     }
 
     @Test
-    @DisplayName("remind 同一 locale 501人: 先頭チャンクが失敗しても後続の1人には届く（チャンク単位分離）")
+    @DisplayName("remind 同一 locale 501人: 先頭チャンクの INSERT が JDBC 層で失敗しても、後続の1人にだけ届く（チャンク単位分離）")
     void remind_先頭チャンク失敗でも後続チャンクは届く() {
         Fixture f = fixture("r-501", 501, "ja");
-        failFirstChunkOnly();
+        failFirstInsertArmed.set(true);
 
         remindService.remind(f.surveyId(), f.creatorId());
 
-        awaitChunkCalls(2); // 先頭（500人・失敗注入）と後続（1人）の双方が注入点へ到達した証拠
-        awaitNotificationCount(f.surveyId(), 1);
-        List<Long> delivered = notificationUserIds(f.surveyId());
-        assertThat(delivered).hasSize(1);
-        assertThat(f.recipientIds()).containsAll(delivered);
+        // 注入点への到達の証拠: チャンクTX内の JDBC に 500人・1人の 2 文が試行された（先頭は失敗、後続は成功）。
+        await().atMost(60, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(attemptedInsertRows).containsExactly(500, 1));
+        awaitEventPoolIdle();
+        List<List<Long>> chunks = observedChunks();
+        assertThat(chunks).hasSize(2);
+        List<Long> failedChunk = chunks.get(0);
+        List<Long> survivingChunk = chunks.get(1);
+        assertThat(failedChunk).hasSize(500);
+        assertThat(survivingChunk).hasSize(1);
+        assertThat(java.util.stream.Stream.concat(failedChunk.stream(), survivingChunk.stream()).toList())
+                .as("観測したチャンク引数の和が受信者全員").containsExactlyInAnyOrderElementsOf(f.recipientIds());
+        // 通知行は後続チャンクの1人ちょうど。先頭チャンクの500人には1件も無い。
+        assertThat(notificationUserIds(f.surveyId())).containsExactlyElementsOf(survivingChunk);
     }
 
     @Test
-    @DisplayName("remind 別 locale 継続: ja グループが失敗しても en グループには届く")
+    @DisplayName("remind 別 locale 継続: 先頭 locale の INSERT が失敗しても後続 locale の全員にだけ届く")
     void remind_別localeは継続する() {
         List<Long> ja = new ArrayList<>();
         List<Long> en = new ArrayList<>();
         Fixture f = fixtureTwoLocales("r-loc", 2, 3, ja, en);
-        failFirstChunkOnly();
+        failFirstInsertArmed.set(true);
 
         remindService.remind(f.surveyId(), f.creatorId());
 
-        awaitChunkCalls(2);
-        // 先頭に処理されたロケールは失敗し、もう一方は届く。失敗した側が誰かは受信者順に依存するため、
-        // 「全員が欠落しない」ではなく「後続ロケールの全員が届き、先頭ロケールの全員は欠落」を確認する。
+        await().atMost(60, TimeUnit.SECONDS).untilAsserted(() ->
+                assertThat(attemptedInsertRows).hasSize(2));
         awaitEventPoolIdle();
-        List<Long> delivered = notificationUserIds(f.surveyId());
-        assertThat(delivered).as("届いたのは片方のロケールの全員のみ").hasSizeBetween(2, 3);
-        assertThat(delivered.size() == ja.size() || delivered.size() == en.size()).isTrue();
+        List<List<Long>> chunks = observedChunks();
+        assertThat(chunks).hasSize(2);
+        // チャンクは locale ごとに分かれ、各 locale の集合どおりである。
+        assertThat(chunks).anySatisfy(c -> assertThat(c).containsExactlyInAnyOrderElementsOf(ja));
+        assertThat(chunks).anySatisfy(c -> assertThat(c).containsExactlyInAnyOrderElementsOf(en));
+        // 先頭（失敗）の locale 集合には 0 件、後続 locale の集合ちょうどに届く。
+        assertThat(notificationUserIds(f.surveyId()))
+                .containsExactlyInAnyOrderElementsOf(chunks.get(1));
+        assertThat(notificationUserIds(f.surveyId())).doesNotContainAnyElementsOf(chunks.get(0));
+    }
+
+    @Test
+    @DisplayName("remind locale 別チャンク: 失敗が無ければ ja / en それぞれの集合どおりに 2 チャンクで全員に届く")
+    void remind_locale別チャンクは各localeの集合どおり() {
+        List<Long> ja = new ArrayList<>();
+        List<Long> en = new ArrayList<>();
+        Fixture f = fixtureTwoLocales("r-loc2", 2, 3, ja, en);
+
+        remindService.remind(f.surveyId(), f.creatorId());
+
+        awaitNotificationUsers(f.surveyId(), f.recipientIds());
+        List<List<Long>> chunks = observedChunks();
+        assertThat(chunks).hasSize(2);
+        assertThat(chunks).anySatisfy(c -> assertThat(c).containsExactlyInAnyOrderElementsOf(ja));
+        assertThat(chunks).anySatisfy(c -> assertThat(c).containsExactlyInAnyOrderElementsOf(en));
     }
 
     @Test
@@ -395,18 +450,22 @@ class SurveyReminderNotificationTransactionIT extends AbstractMySqlIntegrationTe
                 .when(bulkFanoutService));
     }
 
-    private void failFirstChunkOnly() {
-        invokeAnyChunk(Mockito.doThrow(new DataIntegrityViolationException("模擬通知永続化失敗（先頭チャンクのみ）"))
-                .doCallRealMethod()
-                .when(bulkFanoutService));
-    }
-
     /** {@code insertAndDispatchChunk(List<Long>, ...)}（12引数版）を any マッチャで呼ぶ（stubbing 用）。 */
     private static void invokeAnyChunk(NotificationBulkFanoutService stub) {
         stub.insertAndDispatchChunk(ArgumentMatchers.<Long>anyList(),
                 ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(),
                 ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(),
                 ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
+    }
+
+    /** spy が観測した {@code insertAndDispatchChunk(List<Long>, ...)}（12引数版）のチャンク引数（受信者 ID）を呼び出し順に返す。 */
+    @SuppressWarnings("unchecked")
+    private List<List<Long>> observedChunks() {
+        return Mockito.mockingDetails(bulkFanoutService).getInvocations().stream()
+                .filter(i -> "insertAndDispatchChunk".equals(i.getMethod().getName()))
+                .filter(i -> i.getArguments().length == 12)
+                .map(i -> List.copyOf((List<Long>) i.getArgument(0)))
+                .toList();
     }
 
     private long chunkCalls() {
