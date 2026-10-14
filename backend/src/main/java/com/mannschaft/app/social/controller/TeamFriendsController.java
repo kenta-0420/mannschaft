@@ -9,6 +9,7 @@ import com.mannschaft.app.social.dto.PastForwardHandling;
 import com.mannschaft.app.social.dto.SetVisibilityRequest;
 import com.mannschaft.app.social.dto.TeamFriendListResponse;
 import com.mannschaft.app.social.dto.UnfollowRequest;
+import com.mannschaft.app.social.service.TeamFriendFollowBySlugService;
 import com.mannschaft.app.social.service.TeamFriendsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -66,6 +67,7 @@ public class TeamFriendsController {
     private static final String SCOPE_TEAM = "TEAM";
 
     private final TeamFriendsService teamFriendsService;
+    private final TeamFriendFollowBySlugService teamFriendFollowBySlugService;
     private final AccessControlService accessControlService;
 
     // ═════════════════════════════════════════════════════════════
@@ -94,7 +96,7 @@ public class TeamFriendsController {
         Long userId = SecurityUtils.getCurrentUserId();
         // targetTeamSlug / targetTeamId はちょうど一方だけ指定される（DTO の Bean Validation で保証）
         FollowTeamResponse response = (request.getTargetTeamSlug() != null)
-                ? teamFriendsService.followBySlug(teamId, request.getTargetTeamSlug(), userId)
+                ? teamFriendFollowBySlugService.followBySlug(teamId, request.getTargetTeamSlug(), userId)
                 : teamFriendsService.follow(teamId, request.getTargetTeamId(), userId);
 
         HttpStatus status = (response.getRetryAfterSeconds() != null)

@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * <h2>実装側が満たすべき契約</h2>
  * <ul>
- *   <li>{@code TeamFriendsService#followBySlug(Long teamId, String targetTeamSlug, Long userId)}。</li>
+ *   <li>{@code TeamFriendFollowBySlugService#followBySlug(Long teamId, String targetTeamSlug, Long userId)}（権限→slug解決→{@code TeamFriendsService#follow} に委譲）。</li>
  *   <li>MEMBER・SUPPORTER・MANAGE_FRIEND_TEAMS 未付与の DEPUTY_ADMIN・非メンバー・他チームの ADMIN は
  *       403 COMMON_002、follows 行を作らない。権限グループで MANAGE_FRIEND_TEAMS を得た DEPUTY_ADMIN は成功。</li>
  *   <li>アーカイブ済み（archived_at あり・lifecycle_status は ACTIVE のまま）・PROVISIONED・論理削除済みの
@@ -53,6 +53,8 @@ class TeamFriendFollowSlugIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private TeamFriendsService teamFriendsService;
+    @Autowired
+    private TeamFriendFollowBySlugService followBySlugService;
 
     /** 操作主体のチーム（フォロー元）。 */
     private Long teamId;
@@ -87,7 +89,7 @@ class TeamFriendFollowSlugIT extends AbstractMySqlIntegrationTest {
         void ac1_slug指定でフォローできる() {
             Long admin = userWithRole("ADMIN", teamId);
 
-            FollowTeamResponse res = teamFriendsService.followBySlug(teamId, targetSlug, admin);
+            FollowTeamResponse res = followBySlugService.followBySlug(teamId, targetSlug, admin);
 
             assertThat(res.getFollowedTeamId()).isEqualTo(targetId);
             assertThat(followCount(teamId, targetId)).isEqualTo(1L);
@@ -110,7 +112,7 @@ class TeamFriendFollowSlugIT extends AbstractMySqlIntegrationTest {
             Long admin = userWithRole("ADMIN", teamId);
             String ownSlug = slugOf(teamId);
 
-            assertError(() -> teamFriendsService.followBySlug(teamId, ownSlug, admin),
+            assertError(() -> followBySlugService.followBySlug(teamId, ownSlug, admin),
                     SocialErrorCode.FRIEND_CANNOT_SELF_FOLLOW);
             assertThat(followCountFrom(teamId)).isZero();
         }
@@ -120,7 +122,7 @@ class TeamFriendFollowSlugIT extends AbstractMySqlIntegrationTest {
         void ac2_不在slugは404() {
             Long admin = userWithRole("ADMIN", teamId);
 
-            assertError(() -> teamFriendsService.followBySlug(teamId, "no-such-team-x", admin),
+            assertError(() -> followBySlugService.followBySlug(teamId, "no-such-team-x", admin),
                     SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND);
             assertThat(followCountFrom(teamId)).isZero();
         }
@@ -181,7 +183,7 @@ class TeamFriendFollowSlugIT extends AbstractMySqlIntegrationTest {
             em.flush();
             em.clear();
 
-            FollowTeamResponse res = teamFriendsService.followBySlug(teamId, targetSlug, deputy);
+            FollowTeamResponse res = followBySlugService.followBySlug(teamId, targetSlug, deputy);
 
             assertThat(res.getFollowedTeamId()).isEqualTo(targetId);
             assertThat(followCount(teamId, targetId)).isEqualTo(1L);
@@ -190,7 +192,7 @@ class TeamFriendFollowSlugIT extends AbstractMySqlIntegrationTest {
         private void assertForbiddenBothPaths(Long actor) {
             em.flush();
             em.clear();
-            assertError(() -> teamFriendsService.followBySlug(teamId, targetSlug, actor),
+            assertError(() -> followBySlugService.followBySlug(teamId, targetSlug, actor),
                     CommonErrorCode.COMMON_002);
             assertError(() -> teamFriendsService.follow(teamId, targetId, actor),
                     CommonErrorCode.COMMON_002);
@@ -229,7 +231,7 @@ class TeamFriendFollowSlugIT extends AbstractMySqlIntegrationTest {
             em.flush();
             em.clear();
 
-            assertError(() -> teamFriendsService.followBySlug(teamId, unavailable.slug(), admin),
+            assertError(() -> followBySlugService.followBySlug(teamId, unavailable.slug(), admin),
                     SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND);
             assertError(() -> teamFriendsService.follow(teamId, unavailable.id(), admin),
                     SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND);

@@ -111,18 +111,6 @@ class TeamFriendListCacheEvictionCoverageTest {
         assertEvictsAllEntries(TeamFriendsService.class, "follow", Long.class, Long.class, Long.class);
     }
 
-    /**
-     * CMP-261012-0315: slug 指定のフォロー入口も相互成立でフレンドを増やす。
-     * 内部で {@code this.follow(...)} を自己呼び出しすると {@code follow} 側の
-     * {@code @CacheEvict} / {@code @Transactional} はプロキシを通らず効かないため、
-     * 入口メソッド自身に宣言することを要求する。
-     */
-    @Test
-    @DisplayName("CMP-261012-0315: followBySlug（slug 指定フォロー）も teamFriendList を allEntries で失効させる")
-    void followBySlug_が失効させる() {
-        assertEvictsAllEntries(TeamFriendsService.class, "followBySlug", Long.class, String.class, Long.class);
-    }
-
     @Test
     @DisplayName("unfollow（フレンド解消）が teamFriendList を allEntries で失効させる")
     void unfollow_が失効させる() {

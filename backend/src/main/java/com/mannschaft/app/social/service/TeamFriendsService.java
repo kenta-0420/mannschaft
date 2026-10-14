@@ -16,8 +16,7 @@ import com.mannschaft.app.social.entity.TeamFriendEntity;
 import com.mannschaft.app.social.repository.FollowRepository;
 import com.mannschaft.app.social.repository.FriendContentForwardRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
-import com.mannschaft.app.team.entity.TeamEntity;
-import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
@@ -80,7 +79,7 @@ public class TeamFriendsService {
     private final TeamFriendRepository teamFriendRepository;
     private final FriendContentForwardRepository friendContentForwardRepository;
     private final TimelinePostRepository timelinePostRepository;
-    private final TeamRepository teamRepository;
+    private final TeamService teamService;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
     private final TeamFriendQueryService teamFriendQueryService;
@@ -141,68 +140,9 @@ public class TeamFriendsService {
         // 2. 権限チェック（ADMIN または MANAGE_FRIEND_TEAMS 保持 DEPUTY_ADMIN）
         requireManageFriendTeams(userId, teamId);
 
-        // 3. 対象チームの存在確認（論理削除済みは @SQLRestriction により自動除外）
-        TeamEntity targetTeam = teamRepository.findById(targetTeamId)
-                .orElseThrow(() -> new BusinessException(SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND));
-
-        return followResolvedTeam(teamId, targetTeamId, targetTeam, userId);
-    }
-
-    /**
-     * フォロー先を slug で指定して自チームが他チームをフォローする（CMP-261012-0315）。
-     *
-     * <p>検証順は ① 権限 → ② slug 解決 → ③ 自チーム → ④ フォロー先の可否 → ⑤ 既フォロー。
-     * 権限チェックを slug 解決より先に行うのは、権限の無い者に slug の実在を
-     * 404/400 の差で教えないため。以降の処理は数値 ID 経路 {@link #follow} と共通
-     * （{@link #followResolvedTeam}）。</p>
-     *
-     * <p>入口メソッド自身に {@code @Transactional} / {@code @CacheEvict} を付けている。
-     * {@code this.follow(...)} への自己呼び出しではプロキシを通らず効かないため。</p>
-     *
-     * @param teamId         自チーム ID（パスパラメータ {@code {id}}）
-     * @param targetTeamSlug フォロー先チーム slug
-     * @param userId         操作実行者のユーザー ID
-     * @return フォロー結果
-     * @throws BusinessException 権限不足・対象チーム不存在（アーカイブ・非 ACTIVE 含む）・自己フォロー・フォロー重複時
-     */
-    @Transactional(isolation = Isolation.REPEATABLE_READ)
-    // TODO: follow と同様、Social ドメインが Auth・Notification・Role・Team・Timeline ドメインをまたいでいる。
-    @CacheEvict(value = "teamFriendList", allEntries = true)
-    public FollowTeamResponse followBySlug(Long teamId, String targetTeamSlug, Long userId) {
-        if (teamId == null || targetTeamSlug == null) {
-            throw new BusinessException(SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND);
-        }
-
-        // 1. 権限チェックを slug 解決より先に行う
-        requireManageFriendTeams(userId, teamId);
-
-        // 2. slug 解決（論理削除済みは除外。ACTIVE かつ未アーカイブかは followResolvedTeam で判定）
-        TeamEntity targetTeam = teamRepository.findBySlugAndDeletedAtIsNull(targetTeamSlug)
-                .orElseThrow(() -> new BusinessException(SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND));
-
-        return followResolvedTeam(teamId, targetTeam.getId(), targetTeam, userId);
-    }
-
-    /**
-     * 解決済みのフォロー先チームに対するフォロー処理（数値 ID 経路・slug 経路の共通部）。
-     *
-     * @param teamId       自チーム ID
-     * @param targetTeamId フォロー先チーム ID
-     * @param targetTeam   解決済みのフォロー先チーム
-     * @param userId       操作実行者のユーザー ID
-     * @return フォロー結果
-     */
-    private FollowTeamResponse followResolvedTeam(
-            Long teamId, Long targetTeamId, TeamEntity targetTeam, Long userId) {
-
-        // 自チームはフォローできない（slug 経路は解決後にここで判定する）
-        if (teamId.equals(targetTeamId)) {
-            throw new BusinessException(SocialErrorCode.FRIEND_CANNOT_SELF_FOLLOW);
-        }
-
-        // フォロー先の可否: アーカイブ済み・ACTIVE 以外（PROVISIONED）は存在しないものとして扱う（404）
-        if (targetTeam.getArchivedAt() != null
-                || targetTeam.getLifecycleStatus() != TeamEntity.LifecycleStatus.ACTIVE) {
+        // 3. フォロー先の可否確認。不在・論理削除済み・アーカイブ済み・ACTIVE 以外（PROVISIONED）は
+        //    いずれも存在しないものとして 404 にする（判定は team ドメインの公開 Service に委ねる。CMP-261012-0315）
+        if (!teamService.isFollowableTeam(targetTeamId)) {
             throw new BusinessException(SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND);
         }
 

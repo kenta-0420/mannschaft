@@ -10,6 +10,7 @@ import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.social.SocialErrorCode;
 import com.mannschaft.app.social.dto.FollowTeamResponse;
+import com.mannschaft.app.social.service.TeamFriendFollowBySlugService;
 import com.mannschaft.app.social.service.TeamFriendsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -52,7 +53,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       ハイフン、3〜30 文字、先頭末尾ハイフン不可、連続ハイフン不可、数字のみ不可）も <b>400 COMMON_001</b>。
  *       いずれも Service を一切呼ばない。</li>
  *   <li>Controller は {@code targetTeamSlug} 指定時に
- *       {@code TeamFriendsService#followBySlug(teamId, targetTeamSlug, userId)} を、{@code targetTeamId} 指定時に
+ *       {@code TeamFriendFollowBySlugService#followBySlug(teamId, targetTeamSlug, userId)} を、{@code targetTeamId} 指定時に
  *       従来の {@code follow(teamId, targetTeamId, userId)} を呼ぶ。成功は従来どおり 201（NOWAIT 時 202）。</li>
  * </ul>
  */
@@ -72,6 +73,8 @@ class TeamFriendsControllerFollowSlugTest {
 
     @MockitoBean
     private TeamFriendsService teamFriendsService;
+    @MockitoBean
+    private TeamFriendFollowBySlugService followBySlugService;
     @MockitoBean
     private AccessControlService accessControlService;
     @MockitoBean
@@ -114,14 +117,14 @@ class TeamFriendsControllerFollowSlugTest {
         @Test
         @DisplayName("AC-1: targetTeamSlug 指定は followBySlug に委譲して 201 Created")
         void ac1_slug指定は201() throws Exception {
-            given(teamFriendsService.followBySlug(TEAM_ID, TARGET_SLUG, USER_ID)).willReturn(oneWay());
+            given(followBySlugService.followBySlug(TEAM_ID, TARGET_SLUG, USER_ID)).willReturn(oneWay());
 
             postFollow("{\"targetTeamSlug\":\"rival-fc\",\"comment\":\"よろしく\"}")
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.followId").value(100))
                     .andExpect(jsonPath("$.data.followedTeamId").value(20));
 
-            verify(teamFriendsService).followBySlug(TEAM_ID, TARGET_SLUG, USER_ID);
+            verify(followBySlugService).followBySlug(TEAM_ID, TARGET_SLUG, USER_ID);
         }
 
         @Test
@@ -145,7 +148,7 @@ class TeamFriendsControllerFollowSlugTest {
         @DisplayName("AC-2: 不在の slug は 404 SOCIAL_104")
         void ac2_不在slugは404() throws Exception {
             willThrow(new BusinessException(SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND))
-                    .given(teamFriendsService).followBySlug(eq(TEAM_ID), eq("no-such-team"), eq(USER_ID));
+                    .given(followBySlugService).followBySlug(eq(TEAM_ID), eq("no-such-team"), eq(USER_ID));
 
             postFollow("{\"targetTeamSlug\":\"no-such-team\"}")
                     .andExpect(status().isNotFound())
@@ -156,7 +159,7 @@ class TeamFriendsControllerFollowSlugTest {
         @DisplayName("AC-3: 自チームの slug は 400 SOCIAL_101")
         void ac3_自チームslugは400() throws Exception {
             willThrow(new BusinessException(SocialErrorCode.FRIEND_CANNOT_SELF_FOLLOW))
-                    .given(teamFriendsService).followBySlug(eq(TEAM_ID), eq("my-team"), eq(USER_ID));
+                    .given(followBySlugService).followBySlug(eq(TEAM_ID), eq("my-team"), eq(USER_ID));
 
             postFollow("{\"targetTeamSlug\":\"my-team\"}")
                     .andExpect(status().isBadRequest())
@@ -167,7 +170,7 @@ class TeamFriendsControllerFollowSlugTest {
         @DisplayName("AC-6: 権限不足の slug 指定は 403 COMMON_002")
         void ac6_権限不足は403() throws Exception {
             willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(teamFriendsService).followBySlug(eq(TEAM_ID), eq(TARGET_SLUG), eq(USER_ID));
+                    .given(followBySlugService).followBySlug(eq(TEAM_ID), eq(TARGET_SLUG), eq(USER_ID));
 
             postFollow("{\"targetTeamSlug\":\"rival-fc\"}")
                     .andExpect(status().isForbidden())
@@ -178,7 +181,7 @@ class TeamFriendsControllerFollowSlugTest {
         @DisplayName("AC-7: アーカイブ済み等のフォロー先（slug）は 404 SOCIAL_104")
         void ac7_利用不可slugは404() throws Exception {
             willThrow(new BusinessException(SocialErrorCode.FRIEND_TARGET_TEAM_NOT_FOUND))
-                    .given(teamFriendsService).followBySlug(eq(TEAM_ID), eq("archived-fc"), eq(USER_ID));
+                    .given(followBySlugService).followBySlug(eq(TEAM_ID), eq("archived-fc"), eq(USER_ID));
 
             postFollow("{\"targetTeamSlug\":\"archived-fc\"}")
                     .andExpect(status().isNotFound())
@@ -197,7 +200,7 @@ class TeamFriendsControllerFollowSlugTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error.code").value("COMMON_001"));
 
-            verifyNoInteractions(teamFriendsService);
+            verifyNoInteractions(teamFriendsService, followBySlugService);
         }
 
         @Test
@@ -207,7 +210,7 @@ class TeamFriendsControllerFollowSlugTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error.code").value("COMMON_001"));
 
-            verifyNoInteractions(teamFriendsService);
+            verifyNoInteractions(teamFriendsService, followBySlugService);
         }
     }
 
@@ -235,15 +238,15 @@ class TeamFriendsControllerFollowSlugTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error.code").value("COMMON_001"));
 
-            verifyNoInteractions(teamFriendsService);
+            verifyNoInteractions(teamFriendsService, followBySlugService);
         }
 
         @Test
         @DisplayName("AC-18: 境界（3文字・30文字）の正しい slug は受け付ける")
         void ac18_境界の正しいslugは受け付ける() throws Exception {
             String thirty = "abcdefghij-abcdefghij-abcdefgh"; // 30 文字
-            given(teamFriendsService.followBySlug(TEAM_ID, "abc", USER_ID)).willReturn(oneWay());
-            given(teamFriendsService.followBySlug(TEAM_ID, thirty, USER_ID)).willReturn(oneWay());
+            given(followBySlugService.followBySlug(TEAM_ID, "abc", USER_ID)).willReturn(oneWay());
+            given(followBySlugService.followBySlug(TEAM_ID, thirty, USER_ID)).willReturn(oneWay());
 
             postFollow("{\"targetTeamSlug\":\"abc\"}").andExpect(status().isCreated());
             postFollow("{\"targetTeamSlug\":\"" + thirty + "\"}").andExpect(status().isCreated());
