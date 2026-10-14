@@ -1,0 +1,138 @@
+{
+  "teamAffiliations": {
+    "title": "Affiliated organizations",
+    "discover": "Find organizations to join",
+    "switcher_label": "Switch view",
+    "count_error": "Could not load the invitation count",
+    "view": {
+      "organizations": "Organizations",
+      "invites": "Received invitations",
+      "applications": "Pending applications",
+      "restrictions": "Invitation blocks"
+    },
+    "organizations": {
+      "load_error": "Could not load the organizations. Please try again later.",
+      "empty": "This team has not joined any organization",
+      "group": "Group: {group}",
+      "leave": "Leave",
+      "leave_confirm_title": "Leave this organization?",
+      "leave_confirm": "You will leave \"{org}\". Announcements from this organization will no longer reach the team. To join again, a new application or invitation is needed.",
+      "leave_error": "Could not leave. Please try again later.",
+      "left": "Left the organization"
+    },
+    "invites": {
+      "load_error": "Could not load the invitations. Please try again later.",
+      "empty": "No invitations waiting for a reply",
+      "group": "Group: {group}",
+      "invited_at": "Invited on: {date}",
+      "expires_at": "Automatically canceled if there is no reply by {date}",
+      "accept": "Accept",
+      "decline": "Decline",
+      "accepted": "Invitation accepted. The team has joined the organization",
+      "declined": "Invitation declined",
+      "action_error": "Could not process it. It may have been canceled or already handled. The list has been refreshed",
+      "decline_title": "Decline the invitation from {org}",
+      "decline_hint": "If you decline, this organization cannot invite the team again for a while. Choose \"Do not accept in future\" to block it indefinitely (you can lift it later in \"Invitation blocks\").",
+      "decline_block": "Do not accept invitations from this organization in future",
+      "decline_error": "Could not decline. It may have been canceled or already handled"
+    },
+    "applications": {
+      "load_error": "Could not load the pending applications. Please try again later.",
+      "empty": "There are no pending applications",
+      "group": "Preferred group: {group}",
+      "requested_at": "Applied on: {date}",
+      "expires_at": "Automatically withdrawn if there is no reply by {date}",
+      "withdraw": "Withdraw",
+      "withdrawn": "Application withdrawn",
+      "withdraw_confirm_title": "Withdraw this application?",
+      "withdraw_confirm": "You will withdraw the application to \"{org}\". After withdrawing, the team cannot apply to this organization again for a while.",
+      "withdraw_error": "Could not withdraw. It may already have been approved or rejected. The list has been refreshed"
+    },
+    "restrictions": {
+      "hint": "These are invitations from organizations that the team has blocked by declining. Lifting a block lets that organization invite the team again.",
+      "action_error": "Could not lift it. It may have expired or already been lifted. The list has been refreshed",
+      "load_error": "Could not load the invitation blocks. Please try again later.",
+      "empty": "No invitations are blocked",
+      "kind_blocked": "Indefinite (do not accept in future)",
+      "kind_cooldown": "Temporary",
+      "until": "Until {date}",
+      "created_at": "Recorded on: {date}",
+      "lift": "Lift",
+      "lifted": "Block lifted"
+    },
+    "guide": {
+      "title": "How to use affiliated organizations",
+      "description": "Check and leave the organizations the team belongs to, and handle invitations and applications with organizations here. Only team admins and people entrusted with affiliation operations can use it.",
+      "organizations": {
+        "title": "Organizations",
+        "body": "The organizations the team currently belongs to. Press \"Leave\" to leave after confirming. Once left, announcements from that organization no longer reach the team."
+      },
+      "invites": {
+        "title": "Received invitations",
+        "body": "Membership invitations sent by organizations. \"Accept\" to join, \"Decline\" to refuse. When declining you can choose \"Do not accept in future\" to block invitations from that organization."
+      },
+      "applications": {
+        "title": "Pending applications",
+        "body": "Applications the team has sent to organizations. While waiting for a reply you can cancel them with \"Withdraw\". Once approved, the organization appears under Organizations."
+      },
+      "restrictions": {
+        "title": "Invitation blocks",
+        "body": "Invitations you have blocked by declining. Press \"Lift\" to let that organization invite the team again."
+      }
+    },
+    "permission_groups": {
+      "title": "Permission groups",
+      "hint": "The team's permission groups. People in a group that includes \"Manage organization affiliation\" can apply to organizations and accept invitations without being an admin. Grant or remove it with the \"Permission groups\" button for each member on the member list (team admins only).",
+      "load_error": "Could not load the permission groups. Please try again later.",
+      "create": "Create permission group",
+      "go_members": "Assign from the member list",
+      "admin_only_notice": "Creating, changing or assigning groups with admin-only permissions (such as \"Manage organization affiliation\") can only be done by the team admin themselves, not when also a SYSTEM_ADMIN"
+    },
+    "permission_group_list": {
+      "empty": "No permission groups have been created yet",
+      "count": "{count} permissions",
+      "target_role": "Target: {role}",
+      "affiliation_mark": "Manage organization affiliation",
+      "edit": "Edit {name}"
+    },
+    "member_menu": {
+      "permission_groups": "Permission groups",
+      "permission_groups_aria": "Change permission groups for {name}",
+      "title": "Permission groups for {name}",
+      "hint": "Checked items are the current assignment. Changes are shown below. Saving makes the selected groups this member's assignment (unchecking all removes them).",
+      "load_error": "Could not load the permission groups. Please try again later.",
+      "empty": "There are no permission groups yet. Create one first.",
+      "save": "Save",
+      "saved": "Permission groups updated",
+      "save_error": "Could not save. Please try again later.",
+      "diff_add": "Add: {groups}",
+      "diff_remove": "Remove: {groups}",
+      "current_unknown": "The current assignment could not be loaded, so saving is disabled to avoid removing existing groups. Reload the member list and try again.",
+      "admin_only_reason": "Groups that include admin-only permissions such as \"Manage organization affiliation\" can only be granted by the team admin themselves (not when also a SYSTEM_ADMIN). Those groups cannot be selected",
+      "admin_only_locked": "This member already has a group with admin-only permissions. Changes involving admin-only permissions (including removing them) can only be made by the team admin themselves (not when also a SYSTEM_ADMIN)",
+      "role_mismatch": "Target role mismatch (this member is {role})",
+      "role_mismatch_remove": "Groups whose target role no longer matches are still assigned ({groups}). Uncheck them before saving (they cannot be checked again)"
+    },
+    "group_form": {
+      "create_title": "Create permission group",
+      "edit_title": "Edit permission group",
+      "name": "Name",
+      "target_role": "Target role",
+      "target_role_hint": "The role of members this group can be assigned to",
+      "target_role_deputy": "Deputy admin",
+      "target_role_member": "Member",
+      "permissions": "Permissions",
+      "admin_only": "Team admin only",
+      "load_error": "Could not load the permissions. Please try again later.",
+      "save": "Save",
+      "save_error": "Could not save. Please try again later.",
+      "saved": "Permission group saved",
+      "saved_hint": "Use the \"Permission groups\" button for each member on the member list to assign this group.",
+      "go_members": "Assign from the member list",
+      "admin_only_reason": "Admin-only permissions such as \"Manage organization affiliation\" can only be granted by the team admin themselves (not when also a SYSTEM_ADMIN). Those permissions cannot be selected",
+      "admin_only_locked": "This group includes admin-only permissions. Changes (including removing permissions) can only be made by the team admin themselves (not when also a SYSTEM_ADMIN)",
+      "role_reason": "Cannot be granted to this target role (billing permissions are for deputy admins only)",
+      "role_conflict": "This group includes permissions that cannot be granted to the selected target role, so it could not be assigned to anyone. Review the target role or the permissions"
+    }
+  }
+}
