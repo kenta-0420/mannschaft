@@ -40,7 +40,15 @@ async function load(method: Method, cursor?: string) {
   group.failed = true; handleApiError(error, 'DiagnosisResults')
  } finally { if (api.isCurrent() && group.run === run) group.loading = false }
 }
-onMounted(() => { for (const method of methods) void load(method); void loadPending() })
+async function loadInitial() {
+ // 保存済み診断の再開を優先し、初期GET同士の受付競合を避ける。
+ await loadPending()
+ for (const method of methods) {
+  if (!api.isCurrent()) return
+  await load(method)
+ }
+}
+onMounted(() => { void loadInitial() })
 </script>
 <template>
  <div class="space-y-5">
