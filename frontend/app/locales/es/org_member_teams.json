@@ -1,5 +1,15 @@
 {
   "orgMemberTeams": {
+    "remove": {
+      "title": "¿Expulsar a este equipo?",
+      "error": {
+        "generic": "No se pudo expulsar al equipo. Vuelva a intentarlo más tarde.",
+        "missing": "Este equipo ya no está afiliado. Recargue la lista de equipos.",
+        "forbidden": "No tiene permiso para expulsar equipos de esta organización. Compruebe sus permisos."
+      },
+      "success": "El equipo ha sido expulsado"
+    },
+
     "switcher_label": "Cambiar vista",
     "count_error": "No se pudo obtener el número de solicitudes pendientes",
     "groups_load_error": "No se pudieron cargar los grupos de equipos. Inténtelo de nuevo más tarde.",

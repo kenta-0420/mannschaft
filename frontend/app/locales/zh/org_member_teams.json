@@ -1,5 +1,15 @@
 {
   "orgMemberTeams": {
+    "remove": {
+      "title": "确定除名此团队吗？",
+      "error": {
+        "generic": "无法将团队除名。请稍后重试。",
+        "missing": "此团队已不再加盟。请重新加载团队列表。",
+        "forbidden": "您无权从此组织中除名团队。请检查权限后重试。"
+      },
+      "success": "已将团队除名"
+    },
+
     "switcher_label": "切换显示",
     "count_error": "无法获取待处理的申请数量",
     "groups_load_error": "无法加载团队分组。请稍后再试。",
