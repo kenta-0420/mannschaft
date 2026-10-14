@@ -42,7 +42,8 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3645);   // main 3643 + F01.2.1 2-D 離脱1（TeamOrgMembershipLeaveController）・除名1（OrgTeamMembershipRemovalController）
+                .isEqualTo(3646);   // 3645 + F01.2.1 8-D 権限カタログ GET /api/v1/permissions 1本（PermissionCatalogController・@AlwaysReachable(CORE) 宣言済みで未宣言数は増えない 0|1）
+                                    // 3645 = main 3643 + F01.2.1 2-D 離脱1（TeamOrgMembershipLeaveController）・除名1（OrgTeamMembershipRemovalController）
                                     // main 3643 = 3642 + CMP-261010-1432 シフト枠間移動1（ShiftSlotController の既存 EP と同じく未宣言 7|7）
                                     // main 3642 = 3639 + F01.2.1 2-B2 組織側の受信申請3（OrgTeamApplicationController: 一覧・承認・拒否）
                                     // main 3639 = 3638 + CMP-260826-1456 本人参加申請履歴1

@@ -1,0 +1,138 @@
+{
+  "teamAffiliations": {
+    "title": "Zugehörige Organisationen verwalten",
+    "discover": "Organisationen zum Beitreten finden",
+    "switcher_label": "Ansicht wechseln",
+    "count_error": "Die Anzahl der Einladungen konnte nicht geladen werden",
+    "view": {
+      "organizations": "Organisationen",
+      "invites": "Erhaltene Einladungen",
+      "applications": "Offene Anträge",
+      "restrictions": "Einladungssperren"
+    },
+    "organizations": {
+      "load_error": "Die Organisationsliste konnte nicht geladen werden. Bitte später erneut versuchen.",
+      "empty": "Dieses Team gehört keiner Organisation an",
+      "group": "Gruppe: {group}",
+      "leave": "Austreten",
+      "leave_confirm_title": "Aus der Organisation austreten?",
+      "leave_confirm": "Sie treten aus „{org}“ aus. Mitteilungen dieser Organisation erreichen das Team dann nicht mehr. Für einen erneuten Beitritt ist ein neuer Antrag oder eine neue Einladung nötig.",
+      "leave_error": "Austritt nicht möglich. Bitte später erneut versuchen.",
+      "left": "Aus der Organisation ausgetreten"
+    },
+    "invites": {
+      "load_error": "Die Einladungsliste konnte nicht geladen werden. Bitte später erneut versuchen.",
+      "empty": "Keine Einladungen, die auf Antwort warten",
+      "group": "Gruppe: {group}",
+      "invited_at": "Eingeladen am: {date}",
+      "expires_at": "Wird automatisch zurückgezogen, wenn bis {date} keine Antwort erfolgt",
+      "accept": "Annehmen",
+      "decline": "Ablehnen",
+      "accepted": "Einladung angenommen. Das Team ist der Organisation beigetreten",
+      "declined": "Einladung abgelehnt",
+      "action_error": "Nicht möglich. Sie wurde evtl. zurückgezogen oder bereits bearbeitet. Die Liste wurde aktualisiert",
+      "decline_title": "Einladung von {org} ablehnen",
+      "decline_hint": "Nach dem Ablehnen kann diese Organisation das Team eine Weile nicht erneut einladen. Mit „Künftig nicht annehmen“ gilt die Sperre unbefristet (später unter „Einladungssperren“ aufhebbar).",
+      "decline_block": "Einladungen dieser Organisation künftig nicht annehmen",
+      "decline_error": "Ablehnen nicht möglich. Die Einladung wurde evtl. zurückgezogen oder bereits bearbeitet"
+    },
+    "applications": {
+      "load_error": "Die Liste der offenen Anträge konnte nicht geladen werden. Bitte später erneut versuchen.",
+      "empty": "Keine offenen Beitrittsanträge",
+      "group": "Gewünschte Gruppe: {group}",
+      "requested_at": "Beantragt am: {date}",
+      "expires_at": "Wird automatisch zurückgezogen, wenn bis {date} keine Antwort erfolgt",
+      "withdraw": "Zurückziehen",
+      "withdrawn": "Beitrittsantrag zurückgezogen",
+      "withdraw_confirm_title": "Beitrittsantrag zurückziehen?",
+      "withdraw_confirm": "Sie ziehen den Antrag an „{org}“ zurück. Danach kann das Team sich eine Weile nicht erneut bei dieser Organisation bewerben.",
+      "withdraw_error": "Zurückziehen nicht möglich. Der Antrag wurde evtl. bereits genehmigt oder abgelehnt. Die Liste wurde aktualisiert"
+    },
+    "restrictions": {
+      "hint": "Dies sind Einladungen von Organisationen, die das Team durch Ablehnen gesperrt hat. Nach dem Aufheben kann die Organisation das Team wieder einladen.",
+      "action_error": "Aufheben nicht möglich. Die Sperre ist evtl. abgelaufen oder bereits aufgehoben. Die Liste wurde aktualisiert",
+      "load_error": "Die Liste der Einladungssperren konnte nicht geladen werden. Bitte später erneut versuchen.",
+      "empty": "Keine gesperrten Einladungen",
+      "kind_blocked": "Unbefristet (künftig nicht annehmen)",
+      "kind_cooldown": "Befristet",
+      "until": "Bis {date}",
+      "created_at": "Erfasst am: {date}",
+      "lift": "Aufheben",
+      "lifted": "Sperre aufgehoben"
+    },
+    "guide": {
+      "title": "So nutzen Sie die Organisationsansicht",
+      "description": "Hier sehen Sie die Organisationen des Teams, können austreten und Einladungen und Anträge bearbeiten. Nutzbar nur für Team-Admins und Personen mit Berechtigung für Beitrittsaktionen.",
+      "organizations": {
+        "title": "Organisationen",
+        "body": "Die Organisationen, denen das Team derzeit angehört. Mit „Austreten“ verlassen Sie nach Bestätigung die Organisation. Danach erreichen deren Mitteilungen das Team nicht mehr."
+      },
+      "invites": {
+        "title": "Erhaltene Einladungen",
+        "body": "Beitrittseinladungen von Organisationen. „Annehmen“ zum Beitreten, „Ablehnen“ zum Absagen. Beim Ablehnen können Sie „Künftig nicht annehmen“ wählen, um Einladungen dieser Organisation zu sperren."
+      },
+      "applications": {
+        "title": "Offene Anträge",
+        "body": "Anträge, die das Team an Organisationen gesendet hat. Bis zur Antwort können Sie sie mit „Zurückziehen“ stornieren. Nach Genehmigung erscheint die Organisation unter Organisationen."
+      },
+      "restrictions": {
+        "title": "Einladungssperren",
+        "body": "Durch Ablehnen gesperrte Einladungen. Mit „Aufheben“ kann die Organisation das Team wieder einladen."
+      }
+    },
+    "permission_groups": {
+      "title": "Berechtigungsgruppen",
+      "hint": "Berechtigungsgruppen des Teams. Wer in einer Gruppe mit „Organisationsbeitritt verwalten“ ist, kann auch ohne Admin-Rolle Anträge stellen und Einladungen annehmen. Vergeben und entziehen Sie das über die Schaltfläche „Berechtigungsgruppen“ je Mitglied in der Mitgliederliste (nur Team-Admins).",
+      "load_error": "Die Berechtigungsgruppen konnten nicht geladen werden. Bitte später erneut versuchen.",
+      "create": "Berechtigungsgruppe erstellen",
+      "go_members": "In der Mitgliederliste zuweisen",
+      "admin_only_notice": "Gruppen mit Admin-Berechtigungen (etwa „Organisationsbeitritt verwalten“) erstellen, ändern oder zuweisen kann nur der Team-Admin selbst, nicht wer zugleich SYSTEM_ADMIN ist"
+    },
+    "permission_group_list": {
+      "empty": "Es wurden noch keine Berechtigungsgruppen erstellt",
+      "count": "{count} Berechtigungen",
+      "target_role": "Ziel: {role}",
+      "affiliation_mark": "Organisationsbeitritt verwalten",
+      "edit": "{name} bearbeiten"
+    },
+    "member_menu": {
+      "permission_groups": "Berechtigungsgruppen",
+      "permission_groups_aria": "Berechtigungsgruppen von {name} ändern",
+      "title": "Berechtigungsgruppen von {name}",
+      "hint": "Markierte Einträge sind die aktuelle Zuweisung. Änderungen stehen unten. Speichern macht die gewählten Gruppen zur Zuweisung dieses Mitglieds (alles abwählen entfernt sie).",
+      "load_error": "Die Berechtigungsgruppen konnten nicht geladen werden. Bitte später erneut versuchen.",
+      "empty": "Es gibt noch keine Berechtigungsgruppen. Erstellen Sie zuerst eine.",
+      "save": "Speichern",
+      "saved": "Berechtigungsgruppen aktualisiert",
+      "save_error": "Speichern nicht möglich. Bitte später erneut versuchen.",
+      "diff_add": "Hinzufügen: {groups}",
+      "diff_remove": "Entfernen: {groups}",
+      "current_unknown": "Die aktuelle Zuweisung konnte nicht geladen werden; Speichern ist deaktiviert, damit keine bestehenden Zuweisungen gelöscht werden. Laden Sie die Mitgliederliste neu und versuchen Sie es erneut.",
+      "admin_only_reason": "Gruppen mit nur für Admins vorgesehenen Berechtigungen wie „Organisationsbeitritt verwalten“ kann nur der Team-Admin selbst vergeben (nicht, wenn er zugleich SYSTEM_ADMIN ist). Diese Gruppen sind nicht auswählbar",
+      "admin_only_locked": "Diesem Mitglied ist bereits eine Gruppe mit Admin-Berechtigungen zugewiesen. Änderungen, die solche Berechtigungen betreffen (auch das Entfernen), kann nur der Team-Admin selbst vornehmen (nicht, wenn er zugleich SYSTEM_ADMIN ist)",
+      "role_mismatch": "Zielrolle stimmt nicht überein (dieses Mitglied ist {role})",
+      "role_mismatch_remove": "Es sind noch Gruppen zugewiesen, deren Zielrolle nicht mehr passt ({groups}). Entfernen Sie die Markierung vor dem Speichern (sie kann nicht erneut gesetzt werden)"
+    },
+    "group_form": {
+      "create_title": "Berechtigungsgruppe erstellen",
+      "edit_title": "Berechtigungsgruppe bearbeiten",
+      "name": "Name",
+      "target_role": "Zielrolle",
+      "target_role_hint": "Rolle der Mitglieder, denen diese Gruppe zugewiesen werden kann",
+      "target_role_deputy": "Stellvertretende Leitung",
+      "target_role_member": "Mitglied",
+      "permissions": "Berechtigungen",
+      "admin_only": "Nur für Team-Admins",
+      "load_error": "Die Berechtigungen konnten nicht geladen werden. Bitte später erneut versuchen.",
+      "save": "Speichern",
+      "save_error": "Speichern nicht möglich. Bitte später erneut versuchen.",
+      "saved": "Berechtigungsgruppe gespeichert",
+      "saved_hint": "Mit der Schaltfläche „Berechtigungsgruppen“ je Mitglied in der Mitgliederliste können Sie diese Gruppe zuweisen.",
+      "go_members": "In der Mitgliederliste zuweisen",
+      "admin_only_reason": "Nur für Admins vorgesehene Berechtigungen wie „Organisationsbeitritt verwalten“ kann nur der Team-Admin selbst vergeben (nicht, wenn er zugleich SYSTEM_ADMIN ist). Sie sind nicht auswählbar",
+      "admin_only_locked": "Diese Gruppe enthält Admin-Berechtigungen. Änderungen (auch das Entfernen von Berechtigungen) kann nur der Team-Admin selbst vornehmen (nicht, wenn er zugleich SYSTEM_ADMIN ist)",
+      "role_reason": "Für diese Zielrolle nicht vergebbar (Abrechnungsberechtigungen nur für stellvertretende Leitung)",
+      "role_conflict": "Diese Gruppe enthält Berechtigungen, die der gewählten Zielrolle nicht zugewiesen werden können, und wäre daher niemandem zuweisbar. Prüfen Sie Zielrolle oder Berechtigungen"
+    }
+  }
+}

@@ -536,9 +536,19 @@ public class AccessControlService {
 
     /** F09.14 の wallet/委任 mutation 用。scope ADMIN 本人だけを許可し、SYSTEM_ADMIN は監査 read-only とする。 */
     public void checkScopeAdminOnly(Long userId, Long scopeId, String scopeType) {
-        if (isSystemAdmin(userId) || !isAdmin(userId, scopeId, scopeType)) {
+        if (!canActAsScopeAdminOnly(userId, scopeId, scopeType)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
+    }
+
+    /**
+     * {@link #checkScopeAdminOnly} が通る条件（スコープ ADMIN 本人で、かつ SYSTEM_ADMIN でない）を真偽で返す。
+     * ADMIN 専用権限（MANAGE_ORG_AFFILIATION 等）を権限グループへ含めて付与・剥奪できるかを、
+     * {@code /me/permissions} の {@code canGrantAdminOnlyPermissions} として FE へ返すために使う。
+     * 判定の正本はここ 1 箇所で、{@link #checkScopeAdminOnly} もこれを使う（BE の拒否と FE の表示が食い違わない）。
+     */
+    public boolean canActAsScopeAdminOnly(Long userId, Long scopeId, String scopeType) {
+        return !isSystemAdmin(userId) && isAdmin(userId, scopeId, scopeType);
     }
 
     /**

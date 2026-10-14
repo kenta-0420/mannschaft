@@ -195,6 +195,25 @@ public interface TeamOrgAffiliationRestrictionRepository
     int deleteAllByTeamId(@Param("teamId") Long teamId);
 
     /**
+     * 期限切れバッチ（F01.2.1 §5.4・§6.8・7-A）の候補: 期限の過ぎた COOLDOWN の ID を返す（ロックしない）。BLOCK は対象外。
+     */
+    @Query("SELECT r.id FROM TeamOrgAffiliationRestrictionEntity r "
+            + "WHERE r.kind = com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionKind.COOLDOWN "
+            + "AND r.restrictedUntil < :now")
+    java.util.List<UUID> findExpiredCooldownIds(@Param("now") Instant now);
+
+    /**
+     * 期限の過ぎた COOLDOWN を1行消す（条件付き DELETE。候補を選んだ後に期限が延びた・BLOCK に変わった行は条件で外れて残る）。
+     *
+     * @return 削除した行数（0 または 1）
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM TeamOrgAffiliationRestrictionEntity r WHERE r.id = :id "
+            + "AND r.kind = com.mannschaft.app.team.entity.TeamOrgAffiliationRestrictionKind.COOLDOWN "
+            + "AND r.restrictedUntil < :now")
+    int deleteExpiredCooldown(@Param("id") UUID id, @Param("now") Instant now);
+
+    /**
      * 片付けの回復バッチ（{@code TeamOrgLifecycleCleanupBatch}）: 制限の行がある組織の ID を昇順に返す
      * （組織の状態は organization ドメインのポートで確かめる。組織の表は team ドメインから JOIN しない）。
      */
