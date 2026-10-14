@@ -53,6 +53,8 @@ const {
 const {
   org,
   orgTeams,
+  orgTeamsError,
+  orgTeamsLoading,
   permissionGroups,
   loading,
   joinRequestStatus,
@@ -452,6 +454,8 @@ provideOrgShellContext({
   permissionGroups,
   showChildrenTab,
   showTeamSearchLink,
+  orgTeamsError,
+  orgTeamsLoading,
   refreshOrgTeams: fetchOrgTeams,
   refresh,
   mutators: orgMutators,

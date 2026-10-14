@@ -9,7 +9,7 @@
  *
  * # view 切替（F01.2.1 8-B）
  *  クエリ `view` で一覧 / 加盟申請（applications）/ 送った招待（invites）/ 申請の制限（restrictions）/
- *  チームグループ（groups。中身は 8-C）を切り替える。子ルートは作らない（設計書 §13）。
+ *  チームグループ（groups。8-C）を切り替える。子ルートは作らない（設計書 §13）。
  *  管理系 view は組織 ADMIN かつ管理レンズ ON のときだけ。権限のない者が直打ちしたら
  *  `view` を外した一覧表示へ戻す（AC-K02。BE も組織 ADMIN 専用で 403 を返す）。
  */
@@ -31,7 +31,15 @@ const route = useRoute()
 const router = useRouter()
 const orgSlug = computed(() => String(route.params.slug))
 
-const { orgTeams, showTeamSearchLink, isScopeAdmin, adminLens, refreshOrgTeams } = useOrgShellContext()
+const {
+  orgTeams,
+  orgTeamsError,
+  orgTeamsLoading,
+  showTeamSearchLink,
+  isScopeAdmin,
+  adminLens,
+  refreshOrgTeams,
+} = useOrgShellContext()
 const { listApplications } = useOrgTeamMembershipApi()
 
 // 対象組織の ADMIN 割当を持つか。shell の isAdmin / roleName は SYSTEM_ADMIN を優先して返すため使わない。
@@ -98,6 +106,11 @@ async function onApplicationsChanged() {
   await Promise.all([refreshPendingCount(), refreshOrgTeams()])
 }
 
+/** 除名の送信後に view が変わっても、同じ組織の常駐シェルの一覧を同期する。 */
+async function refreshAfterRemoval(removedOrgSlug: string) {
+  if (orgSlug.value === removedOrgSlug) await refreshOrgTeams()
+}
+
 onMounted(() => void refreshPendingCount())
 watch(canManage, (allowed) => {
   if (allowed) void refreshPendingCount()
@@ -147,7 +160,17 @@ const viewTitleKey = computed(() => `teamAffiliation.view.${activeView.value}`)
           {{ $t('organizationTeamSearch.title') }}
         </NuxtLink>
       </div>
-      <OrgTeamGrid :teams="orgTeams" />
+      <!-- グループ列・絞り込みは閲覧者全員（機能 on のとき）、割当 UI は組織 ADMIN・管理レンズ ON のみ（設計書 §13） -->
+      <MemberTeamsTeamList
+        :org-slug="orgSlug"
+        :teams="orgTeams"
+        :can-assign="canManage"
+        :refreshing="orgTeamsLoading"
+        :load-failed="orgTeamsError"
+        :refresh-after-removal="refreshAfterRemoval"
+        @changed="refreshOrgTeams"
+        @retry="refreshOrgTeams"
+      />
     </template>
 
     <div v-else class="mt-4 space-y-4">
@@ -176,6 +199,7 @@ const viewTitleKey = computed(() => `teamAffiliation.view.${activeView.value}`)
         <MemberTeamsGroupsView
           v-else
           :org-slug="orgSlug"
+          @changed="refreshOrgTeams"
         />
       </SectionCard>
       <MemberTeamsGuideModal v-model:visible="showGuide" />

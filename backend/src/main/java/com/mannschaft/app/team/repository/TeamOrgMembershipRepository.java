@@ -694,6 +694,45 @@ public interface TeamOrgMembershipRepository extends JpaRepository<TeamOrgMember
             nativeQuery = true)
     List<Number> findTeamIdsNeedingLifecycleCleanup();
 
+    // ========================================================================
+    // F01.2.1 7-A: PENDING の期限切れバッチ（§6.8）と孤児 group_id の修復バッチ（§7.3）
+    // ========================================================================
+
+    /**
+     * 期限切れバッチの候補: 作成日時（{@code invited_at}。UTC の壁時計）が期限より前の PENDING（申請・招待の両方向）の ID を
+     * 昇順に返す（ロックしない。最終の判定は {@link #findExpiredPendingByIdForUpdate} がロックの下で行う）。
+     * 期限はエポック秒で渡し、{@code TIMESTAMPADD} で UTC の壁時計へ戻す（§4.6。JDBC のタイムゾーン変換に依存しない）。
+     * 索引 {@code (status, invited_at)} を使う。
+     */
+    @Query(value = "SELECT m.id FROM team_org_memberships m WHERE m.status = 'PENDING' "
+            + "AND m.invited_at < TIMESTAMPADD(SECOND, :thresholdEpochSecond, '1970-01-01 00:00:00') ORDER BY m.id",
+            nativeQuery = true)
+    List<Number> findExpiredPendingIds(@Param("thresholdEpochSecond") long thresholdEpochSecond);
+
+    /**
+     * 加盟行のチーム ID だけを読む（期限切れでチーム行 → 加盟行の順にロックするため。Entity を永続化コンテキストに載せない）。
+     */
+    @Query("SELECT m.teamId FROM TeamOrgMembershipEntity m WHERE m.id = :id")
+    Optional<Long> findTeamIdById(@Param("id") Long id);
+
+    /**
+     * 期限切れの再確認: 加盟行を {@code SELECT ... FOR UPDATE} で取り、ロックの下でまだ PENDING で作成日時が期限より前のときだけ
+     * 返す（承認・承諾・拒否・取下げ・片付けが先に確定していれば空。§6.8）。
+     */
+    @Query(value = "SELECT * FROM team_org_memberships WHERE id = :id AND status = 'PENDING' "
+            + "AND invited_at < TIMESTAMPADD(SECOND, :thresholdEpochSecond, '1970-01-01 00:00:00') FOR UPDATE",
+            nativeQuery = true)
+    Optional<TeamOrgMembershipEntity> findExpiredPendingByIdForUpdate(
+            @Param("id") Long id, @Param("thresholdEpochSecond") long thresholdEpochSecond);
+
+    /**
+     * 孤児修復バッチの候補: グループが割り当てられている (組織, グループ) の組を重複なく返す（ACTIVE・PENDING とも。ロックしない）。
+     * グループの生存は organization ドメインのポートで確かめる（グループの表は team ドメインから JOIN しない）。
+     */
+    @Query("SELECT DISTINCT m.organizationId AS organizationId, m.groupId AS groupId FROM TeamOrgMembershipEntity m "
+        + "WHERE m.groupId IS NOT NULL")
+    List<TeamOrgGroupProjection> findDistinctOrganizationGroupPairs();
+
     /**
      * GDPR の個人データ収集（F01.2.1 §15・AC-G127）: そのユーザーが起こした（{@code invited_by}）か応答した
      * （{@code responded_by}）加盟を ID 昇順に返す。

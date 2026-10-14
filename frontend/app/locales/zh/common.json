@@ -2478,6 +2478,21 @@
     }
   },
   "teamShell": {
+    "archive": {
+      "syncError": "更改已完成，但无法同步列表。请重新加载。",
+      "archive": "归档团队",
+      "unarchive": "取消团队归档",
+      "archiveConfirm": "要归档此团队吗？待处理的加入申请和邀请将被取消，已生效的加入关系将保留。归档后将无法查看团队详情。您可以在团队列表的已归档团队中取消归档。",
+      "unarchiveConfirm": "要取消团队归档吗？已取消的加入申请和邀请以及已失效的邀请链接不会恢复。",
+      "archived": "团队已归档",
+      "unarchived": "团队已取消归档",
+      "changed": "团队状态或操作权限已更改，请重新加载列表。",
+      "listTitle": "已归档团队",
+      "showList": "显示已归档团队",
+      "hideList": "关闭列表",
+      "fetchError": "无法加载已归档团队。",
+      "empty": "没有已归档团队。"
+    },
     "tab": {
       "affiliations": "所属组织",
       "permissionGroups": "权限组",

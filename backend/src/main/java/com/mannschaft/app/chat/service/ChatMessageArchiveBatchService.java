@@ -11,8 +11,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-
 /**
  * チャットメッセージアーカイブバッチ。
  *
@@ -39,6 +37,11 @@ public class ChatMessageArchiveBatchService {
 
     private static final int RETENTION_MONTHS = 6;
     private static final int BATCH_SIZE = 5_000;
+    /**
+     * 退避の閾値。created_at / deleted_at は UTC 壁時計で格納される（hibernate.jdbc.time_zone=UTC）ため、
+     * Java 側で JST 壁時計を作って束縛せず、SQL 側の UTC_TIMESTAMP() で算出する（9時間ずれの根治）。
+     */
+    private static final String UTC_THRESHOLD = "UTC_TIMESTAMP() - INTERVAL " + RETENTION_MONTHS + " MONTH";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -48,18 +51,17 @@ public class ChatMessageArchiveBatchService {
     @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "chatMessageArchiveBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT5M")
     public void archiveOldMessages() {
-        LocalDateTime threshold = LocalDateTime.now().minusMonths(RETENTION_MONTHS);
-        log.info("[ChatMessageArchiveBatch] アーカイブ開始: 基準日時={}", threshold);
+        log.info("[ChatMessageArchiveBatch] アーカイブ開始: 保持期間={}か月（基準日時は DB 側の UTC_TIMESTAMP() で算出）", RETENTION_MONTHS);
 
         long totalArchived = 0;
         long totalDeleted = 0;
 
         try {
             while (true) {
-                int archived = insertIntoArchive(threshold);
+                int archived = insertIntoArchive();
                 if (archived == 0) break;
 
-                int deleted = deleteArchived(threshold, archived);
+                int deleted = deleteArchived(archived);
                 totalArchived += archived;
                 totalDeleted += deleted;
 
@@ -77,7 +79,7 @@ public class ChatMessageArchiveBatchService {
     }
 
     @Transactional
-    public int insertIntoArchive(LocalDateTime threshold) {
+    public int insertIntoArchive() {
         return jdbcTemplate.update(
                 "INSERT IGNORE INTO chat_messages_archive " +
                 "  (id, channel_id, sender_id, parent_id, body, forwarded_from_id, " +
@@ -87,19 +89,19 @@ public class ChatMessageArchiveBatchService {
                 "       is_edited, is_system, scheduled_at, reply_count, reaction_count, " +
                 "       is_pinned, created_at, updated_at, deleted_at " +
                 "FROM chat_messages " +
-                "WHERE created_at < ? AND deleted_at IS NOT NULL " +
+                "WHERE created_at < " + UTC_THRESHOLD + " AND deleted_at IS NOT NULL " +
                 "ORDER BY created_at ASC " +
                 "LIMIT ?",
-                threshold, BATCH_SIZE);
+                BATCH_SIZE);
     }
 
     @Transactional
-    public int deleteArchived(LocalDateTime threshold, int limit) {
+    public int deleteArchived(int limit) {
         return jdbcTemplate.update(
                 "DELETE FROM chat_messages " +
-                "WHERE created_at < ? AND deleted_at IS NOT NULL " +
-                "  AND id IN (SELECT id FROM chat_messages_archive WHERE created_at < ?) " +
+                "WHERE created_at < " + UTC_THRESHOLD + " AND deleted_at IS NOT NULL " +
+                "  AND id IN (SELECT id FROM chat_messages_archive WHERE created_at < " + UTC_THRESHOLD + ") " +
                 "LIMIT ?",
-                threshold, threshold, limit);
+                limit);
     }
 }

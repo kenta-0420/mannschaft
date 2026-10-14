@@ -188858,6 +188858,9 @@
           "startsAt": {
             "type": "string"
           },
+          "targetAudience": {
+            "$ref": "#/components/schemas/TargetAudience"
+          },
           "titleCache": {
             "type": "string"
           },
@@ -238388,6 +238391,9 @@
         "type": "object",
         "properties": {
           "archived": {
+            "type": "boolean"
+          },
+          "canManageArchive": {
             "type": "boolean"
           },
           "iconUrl": {

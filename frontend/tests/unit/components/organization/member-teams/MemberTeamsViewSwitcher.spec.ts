@@ -5,7 +5,7 @@ import MemberTeamsViewSwitcher from '~/components/organization/member-teams/Memb
 /**
  * F01.2.1 8-B — view 切替（MemberTeamsViewSwitcher）の FE-UT。
  *
- *   SW-01 一覧・加盟申請・送った招待・申請の制限の4つを出す（groups は 8-C まで出さない）
+ *   SW-01 一覧・加盟申請・送った招待・申請の制限・チームグループの5つを出す
  *   SW-02 現在の view が aria-current になる
  *   SW-03 未処理の申請件数をバッジに出す（0 件・未取得では出さない）
  *   SW-04 件数の取得に失敗したら、バッジの代わりにエラー印を出す
@@ -19,12 +19,11 @@ async function mountSwitcher(props: Record<string, unknown> = {}) {
 }
 
 describe('MemberTeamsViewSwitcher', () => {
-  it('SW-01: 一覧・加盟申請・送った招待・申請の制限の4つを出す', async () => {
+  it('SW-01: 一覧・加盟申請・送った招待・申請の制限・チームグループの5つを出す（8-C で groups を追加）', async () => {
     const wrapper = await mountSwitcher()
-    for (const view of ['teams', 'applications', 'invites', 'restrictions']) {
+    for (const view of ['teams', 'applications', 'invites', 'restrictions', 'groups']) {
       expect(wrapper.find(`[data-testid="view-tab-${view}"]`).exists()).toBe(true)
     }
-    expect(wrapper.find('[data-testid="view-tab-groups"]').exists()).toBe(false)
   })
 
   it('SW-02: 現在の view が aria-current になる', async () => {

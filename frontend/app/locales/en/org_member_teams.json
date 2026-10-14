@@ -1,9 +1,56 @@
 {
   "orgMemberTeams": {
+    "remove": {
+      "title": "Remove this team?",
+      "error": {
+        "generic": "The team could not be removed. Try Remove again later.",
+        "missing": "This team is no longer affiliated. Reload the team list.",
+        "forbidden": "You do not have permission to remove teams from this organization. Check your permissions and try again."
+      },
+      "success": "The team was removed"
+    },
+
     "switcher_label": "Switch view",
     "count_error": "Could not load the number of pending applications",
     "groups_load_error": "Could not load the team groups. Please try again later.",
-    "groups_placeholder": "The team group management screen is coming soon",
+    "teams_load_error": "Could not load the team list. Please try again later.",
+    "groups": {
+      "retry": "Reload",
+      "open_settings": "Enable team groups in affiliation settings",
+      "renamed": "Group updated",
+      "created": "Group created",
+      "deleted": "Group deleted",
+      "limit_reached": "You can have up to {limit} team groups",
+      "move_up": "Move up",
+      "move_down": "Move down",
+      "rename": "Edit",
+      "rename_title": "Edit group",
+      "delete_title": "Delete this group?",
+      "empty": "There are no team groups yet. Add one with \"Create team group\".",
+      "assign_hint": "Assign teams from the \"Teams\" list (you can also tick teams and assign them in bulk)",
+      "error": {
+        "ORG_065": "A group with the same name already exists",
+        "ORG_066": "The group limit has been reached",
+        "ORG_067": "Team groups are turned off. The screen has been refreshed",
+        "ORG_064": "This group was not found (it may have been deleted). The screen has been refreshed",
+        "ORG_068": "Someone else changed the groups, so the order could not be saved. The latest list is shown",
+        "generic": "The operation failed. Please try again later."
+      },
+      "assign_title": "Groups of affiliated teams",
+      "filter_label": "Filter by group",
+      "assigned": "Group changed",
+      "bulk_assigned": "Changed the group of {count} teams",
+      "select_all": "Select all shown teams",
+      "selected_count": "{count} teams selected",
+      "assign_error": {
+        "generic": "Could not change the group. Please try again later.",
+        "rate-limited": "Too many requests. Please wait about a minute and try again.",
+        "group-missing": "The selected group was not found. The latest list is shown",
+        "team-missing": "A target team is no longer affiliated. The latest list is shown",
+        "too-many": "You can assign up to {max} teams at once"
+      },
+      "assign_empty": "No affiliated teams match"
+    },
     "pager": {
       "prev": "Previous",
       "next": "Next",
@@ -68,6 +115,10 @@
       "restrictions": {
         "title": "Lift an application restriction",
         "body": "A rejected team cannot apply for a 30-day cooldown, or indefinitely if blocked. You can lift the restriction at any time under \"Application restrictions\"."
+      },
+      "groups": {
+        "title": "Manage team groups",
+        "body": "In \"Team groups\" you can create, rename, reorder and delete groups. Teams in a deleted group go back to \"Unassigned\". Assign teams from the \"Teams\" list, one by one or by ticking several and assigning in bulk."
       }
     }
   }
