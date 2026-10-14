@@ -4,7 +4,10 @@ import type { MemberResponse } from '~/types/member'
 /** チームの権限グループ（生成型 PermissionGroupResponse の必須項目を確定させた形）。 */
 export type TeamPermissionGroup = Required<
   Pick<components['schemas']['PermissionGroupResponse'], 'id' | 'name' | 'permissions'>
-> & Pick<components['schemas']['PermissionGroupResponse'], 'targetRole' | 'createdAt'>
+> & Pick<components['schemas']['PermissionGroupResponse'], 'targetRole' | 'createdAt'> & {
+  /** ADMIN 専用権限を含むか（生成型の差し替え前の暫定。BE の PermissionGroupResponse.containsAdminOnlyPermission）。 */
+  containsAdminOnlyPermission?: boolean
+}
 
 interface InviteTokenResponse {
   id: number

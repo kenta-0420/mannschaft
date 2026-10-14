@@ -85,7 +85,8 @@
       "hint": "Grupos de permisos del equipo. Quien esté en un grupo con «Gestionar afiliación a organizaciones» puede solicitar el ingreso y aceptar invitaciones sin ser administrador. Concede o retira el permiso con el botón «Grupos de permisos» de cada miembro en la lista de miembros (solo administradores del equipo).",
       "load_error": "No se pudo cargar la lista de grupos de permisos. Inténtalo de nuevo más tarde.",
       "create": "Crear grupo de permisos",
-      "go_members": "Asignar desde la lista de miembros"
+      "go_members": "Asignar desde la lista de miembros",
+      "admin_only_notice": "Crear, cambiar o asignar grupos con permisos solo de administrador (como «Gestionar afiliación a organizaciones») solo lo puede hacer el propio administrador del equipo, no quien además sea SYSTEM_ADMIN"
     },
     "permission_group_list": {
       "empty": "Aún no se ha creado ningún grupo de permisos",
@@ -106,7 +107,9 @@
       "save_error": "No se pudo guardar. Inténtalo de nuevo más tarde.",
       "diff_add": "Añadir: {groups}",
       "diff_remove": "Quitar: {groups}",
-      "current_unknown": "No se pudo obtener la asignación actual, así que no se puede guardar para no borrar las existentes. Recarga la lista de miembros e inténtalo de nuevo."
+      "current_unknown": "No se pudo obtener la asignación actual, así que no se puede guardar para no borrar las existentes. Recarga la lista de miembros e inténtalo de nuevo.",
+      "admin_only_reason": "Los grupos con permisos solo de administrador, como «Gestionar afiliación a organizaciones», solo puede concederlos el propio administrador del equipo (no si también es SYSTEM_ADMIN). No se pueden seleccionar",
+      "admin_only_locked": "Este miembro ya tiene un grupo con permisos solo de administrador. Los cambios que afecten a estos permisos (incluido quitarlos) solo los puede hacer el propio administrador del equipo (no si también es SYSTEM_ADMIN)"
     },
     "group_form": {
       "create_title": "Crear grupo de permisos",
@@ -123,7 +126,9 @@
       "save_error": "No se pudo guardar. Inténtalo de nuevo más tarde.",
       "saved": "Grupo de permisos guardado",
       "saved_hint": "Puedes asignar este grupo con el botón «Grupos de permisos» de cada miembro en la lista de miembros.",
-      "go_members": "Asignar desde la lista de miembros"
+      "go_members": "Asignar desde la lista de miembros",
+      "admin_only_reason": "Los permisos solo de administrador, como «Gestionar afiliación a organizaciones», solo puede concederlos el propio administrador del equipo (no si también es SYSTEM_ADMIN). No se pueden seleccionar",
+      "admin_only_locked": "Este grupo incluye permisos solo de administrador. Los cambios (incluido quitar permisos) solo los puede hacer el propio administrador del equipo (no si también es SYSTEM_ADMIN)"
     }
   }
 }

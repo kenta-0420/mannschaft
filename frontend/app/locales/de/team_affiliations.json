@@ -85,7 +85,8 @@
       "hint": "Berechtigungsgruppen des Teams. Wer in einer Gruppe mit „Organisationsbeitritt verwalten“ ist, kann auch ohne Admin-Rolle Anträge stellen und Einladungen annehmen. Vergeben und entziehen Sie das über die Schaltfläche „Berechtigungsgruppen“ je Mitglied in der Mitgliederliste (nur Team-Admins).",
       "load_error": "Die Berechtigungsgruppen konnten nicht geladen werden. Bitte später erneut versuchen.",
       "create": "Berechtigungsgruppe erstellen",
-      "go_members": "In der Mitgliederliste zuweisen"
+      "go_members": "In der Mitgliederliste zuweisen",
+      "admin_only_notice": "Gruppen mit Admin-Berechtigungen (etwa „Organisationsbeitritt verwalten“) erstellen, ändern oder zuweisen kann nur der Team-Admin selbst, nicht wer zugleich SYSTEM_ADMIN ist"
     },
     "permission_group_list": {
       "empty": "Es wurden noch keine Berechtigungsgruppen erstellt",
@@ -106,7 +107,9 @@
       "save_error": "Speichern nicht möglich. Bitte später erneut versuchen.",
       "diff_add": "Hinzufügen: {groups}",
       "diff_remove": "Entfernen: {groups}",
-      "current_unknown": "Die aktuelle Zuweisung konnte nicht geladen werden; Speichern ist deaktiviert, damit keine bestehenden Zuweisungen gelöscht werden. Laden Sie die Mitgliederliste neu und versuchen Sie es erneut."
+      "current_unknown": "Die aktuelle Zuweisung konnte nicht geladen werden; Speichern ist deaktiviert, damit keine bestehenden Zuweisungen gelöscht werden. Laden Sie die Mitgliederliste neu und versuchen Sie es erneut.",
+      "admin_only_reason": "Gruppen mit nur für Admins vorgesehenen Berechtigungen wie „Organisationsbeitritt verwalten“ kann nur der Team-Admin selbst vergeben (nicht, wenn er zugleich SYSTEM_ADMIN ist). Diese Gruppen sind nicht auswählbar",
+      "admin_only_locked": "Diesem Mitglied ist bereits eine Gruppe mit Admin-Berechtigungen zugewiesen. Änderungen, die solche Berechtigungen betreffen (auch das Entfernen), kann nur der Team-Admin selbst vornehmen (nicht, wenn er zugleich SYSTEM_ADMIN ist)"
     },
     "group_form": {
       "create_title": "Berechtigungsgruppe erstellen",
@@ -123,7 +126,9 @@
       "save_error": "Speichern nicht möglich. Bitte später erneut versuchen.",
       "saved": "Berechtigungsgruppe gespeichert",
       "saved_hint": "Mit der Schaltfläche „Berechtigungsgruppen“ je Mitglied in der Mitgliederliste können Sie diese Gruppe zuweisen.",
-      "go_members": "In der Mitgliederliste zuweisen"
+      "go_members": "In der Mitgliederliste zuweisen",
+      "admin_only_reason": "Nur für Admins vorgesehene Berechtigungen wie „Organisationsbeitritt verwalten“ kann nur der Team-Admin selbst vergeben (nicht, wenn er zugleich SYSTEM_ADMIN ist). Sie sind nicht auswählbar",
+      "admin_only_locked": "Diese Gruppe enthält Admin-Berechtigungen. Änderungen (auch das Entfernen von Berechtigungen) kann nur der Team-Admin selbst vornehmen (nicht, wenn er zugleich SYSTEM_ADMIN ist)"
     }
   }
 }

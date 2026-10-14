@@ -217,7 +217,8 @@ public class TeamController {
     }
 
     /**
-     * 管理者（DEPUTY_ADMIN 以上）が閲覧するときだけ、各メンバーの割当済み権限グループを載せる
+     * 対象チームの ADMIN/DEPUTY_ADMIN 割当を持つ閲覧者にだけ、各メンバーの割当済み権限グループを載せる
+     * （権限グループ一覧 API と同じ {@code isAdminOrAbove}。{@code hasRoleOrAbove} は所属の無い SYSTEM_ADMIN でも真になるため使わない）
      * （F01.2 02_api_design.md の返却フィールドのロール別制限。F01.2.1 8-D）。
      *
      * <p>権限グループは DEPUTY_ADMIN・MEMBER にだけ割り当てられるので、それ以外のロールは空配列。
@@ -227,7 +228,7 @@ public class TeamController {
     private List<MemberResponse> attachPermissionGroupsForAdminViewer(Long teamId, List<MemberResponse> members) {
         Long viewerId = SecurityUtils.getCurrentUserIdOrNull();
         if (viewerId == null || members.isEmpty()
-                || !accessControlService.hasRoleOrAbove(viewerId, teamId, SCOPE_TYPE, "DEPUTY_ADMIN")) {
+                || !accessControlService.isAdminOrAbove(viewerId, teamId, SCOPE_TYPE)) {
             return members;
         }
         var groupsByUser = permissionGroupService.findAssignedGroupsByUser(
@@ -589,7 +590,9 @@ public class TeamController {
         List<String> permissions = roleService.resolveEffectivePermissions(userId, id, SCOPE_TYPE);
         String roleName = accessControlService.getRoleName(userId, id, SCOPE_TYPE);
         boolean scopeAdmin = accessControlService.isAdmin(userId, id, SCOPE_TYPE);
-        return ResponseEntity.ok(ApiResponse.of(new EffectivePermissionsResponse(roleName, permissions, scopeAdmin)));
+        boolean canGrantAdminOnly = accessControlService.canActAsScopeAdminOnly(userId, id, SCOPE_TYPE);
+        return ResponseEntity.ok(ApiResponse.of(
+                new EffectivePermissionsResponse(roleName, permissions, scopeAdmin, canGrantAdminOnly)));
     }
 
     /**

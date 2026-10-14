@@ -63,6 +63,11 @@ export interface TeamShellContext {
   /** 権限グループの画面・メンバー一覧の割当を出してよいか（F01.2.1 8-D。チーム ADMIN・管理者レンズ ON のとき）。 */
   canManagePermissionGroups: ComputedRef<boolean>
   /**
+   * ADMIN 専用権限（MANAGE_ORG_AFFILIATION 等）を含む権限グループを作成・更新・割当できるか（BE の checkScopeAdminOnly と同じ結果）。
+   * SYSTEM_ADMIN とチーム ADMIN の兼任者は false（画面は出るが、ADMIN 専用権限が絡む操作は理由つきで不可にする）。
+   */
+  canGrantAdminOnlyPermissions: ComputedRef<boolean>
+  /**
    * ScopeDashboard に渡す実効 viewerRole。
    * 管理者レンズ OFF 時は 'MEMBER'、ON 時は roleName（未確定は 'PUBLIC'）。
    */

@@ -22,6 +22,21 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PermissionCatalogService {
 
+    /**
+     * 権限グループ（チーム・組織とも）に含められる権限の分類。{@code permissions.scope} は認可判定では参照されない分類列で、
+     * TEAM と ORGANIZATION の両方で使う権限は主たる 1 値で登録されている（docs/security/README.md §4.3 ルール 3。
+     * 例: 組織 DEPUTY_ADMIN への委任に使う MANAGE_CONTENT は TEAM 分類）。そのためチームでも組織でも
+     * TEAM/ORGANIZATION 分類を合わせて対象とし、PLATFORM 分類（プラットフォーム運営の権限）は含めない。
+     * 権限グループの作成・更新の検証（{@link PermissionGroupService}）と権限カタログはこの 1 つの判定を共用する。
+     */
+    public static final java.util.Set<PermissionEntity.Scope> GROUP_ASSIGNABLE_SCOPES =
+            java.util.EnumSet.of(PermissionEntity.Scope.TEAM, PermissionEntity.Scope.ORGANIZATION);
+
+    /** 権限グループに含められる権限か。 */
+    public static boolean isGroupAssignable(PermissionEntity permission) {
+        return GROUP_ASSIGNABLE_SCOPES.contains(permission.getScope());
+    }
+
     private final PermissionRepository permissionRepository;
 
     /**
@@ -36,13 +51,14 @@ public class PermissionCatalogService {
     }
 
     /**
-     * 指定スコープ向けの権限を名前順で返す。
+     * 指定スコープの権限グループに含められる権限を名前順で返す。チーム・組織のどちらで問い合わせても、
+     * 作成・更新 API が受け付ける集合（{@link #GROUP_ASSIGNABLE_SCOPES}）と同じ。
      *
      * @param scopeType {@code TEAM} / {@code ORGANIZATION}
      */
     public List<PermissionCatalogItemResponse> list(String scopeType) {
-        PermissionEntity.Scope scope = requireGroupScope(scopeType);
-        return permissionRepository.findByScope(scope).stream()
+        requireGroupScope(scopeType);
+        return permissionRepository.findByScopeIn(GROUP_ASSIGNABLE_SCOPES).stream()
                 .sorted(Comparator.comparing(PermissionEntity::getName))
                 .map(p -> new PermissionCatalogItemResponse(
                         p.getId(), p.getName(), p.getDisplayName(), p.getScope().name(),

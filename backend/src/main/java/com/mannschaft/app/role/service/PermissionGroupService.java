@@ -512,6 +512,10 @@ public class PermissionGroupService {
         if (found.size() != permissionIds.size()) {
             throw new BusinessException(RoleErrorCode.ROLE_007);
         }
+        // 権限カタログ（GET /api/v1/permissions）と同じ判定: 権限グループに含められるのは TEAM/ORGANIZATION 分類の権限だけ。
+        if (!found.stream().allMatch(PermissionCatalogService::isGroupAssignable)) {
+            throw new BusinessException(RoleErrorCode.ROLE_007);
+        }
     }
 
     private void savePermissionGroupPermissions(Long groupId, List<Long> permissionIds) {
@@ -545,6 +549,7 @@ public class PermissionGroupService {
 
         return new PermissionGroupResponse(
                 group.getId(), group.getName(), group.getTargetRole().name(),
-                permissions, group.getCreatedAt());
+                permissions, group.getCreatedAt(),
+                permissions.stream().anyMatch(ADMIN_ONLY_GRANTABLE_PERMISSIONS::contains));
     }
 }

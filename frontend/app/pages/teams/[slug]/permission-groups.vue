@@ -22,7 +22,7 @@ const { t } = useI18n()
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
 
-const { canManagePermissionGroups, team } = useTeamShellContext()
+const { canManagePermissionGroups, canGrantAdminOnlyPermissions, team } = useTeamShellContext()
 const { getPermissionGroups } = useTeamMembers()
 
 const groups = ref<TeamPermissionGroup[]>([])
@@ -81,6 +81,14 @@ onBeforeUnmount(() => {
       <p class="mb-2 text-sm text-surface-500">
         {{ t('teamAffiliations.permission_groups.hint') }}
       </p>
+      <Message
+        v-if="!canGrantAdminOnlyPermissions"
+        severity="info"
+        class="mb-2"
+        data-testid="permission-groups-admin-only-notice"
+      >
+        {{ t('teamAffiliations.permission_groups.admin_only_notice') }}
+      </Message>
       <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
         <NuxtLink
           :to="`/teams/${teamSlug}/members`"
@@ -120,6 +128,7 @@ onBeforeUnmount(() => {
       :team-slug="teamSlug"
       :team-id="team?.numericId ?? null"
       :group="editingGroup"
+      :can-grant-admin-only="canGrantAdminOnlyPermissions"
       @saved="load"
     />
   </div>

@@ -114,7 +114,10 @@
 
 #### パーミッションカタログ（`GET /api/v1/permissions`）
 
-権限グループの作成・更新（`permissionIds`）で選べる権限の一覧。`permissions` マスタのうち、問い合わせたスコープ向けの権限を名前順で返す。
+権限グループの作成・更新（`permissionIds`）で選べる権限の一覧。**権限グループの作成・更新 API が受け付ける `permissionIds` の集合と同じ**を、名前順で返す。
+
+- 対象は `permissions.scope` が `TEAM` または `ORGANIZATION` の権限。`PLATFORM` 分類（プラットフォーム運営の権限）は含めず、作成・更新側も同じ判定で拒否する（`ROLE_007`）。判定は `PermissionCatalogService.isGroupAssignable` の 1 箇所で、カタログと作成・更新の検証が共用する。
+- `scope` 列は認可判定では参照されない分類列で、TEAM と ORGANIZATION の両方で使う権限は主たるスコープ 1 値で登録されている（`docs/security/README.md` §4.3 ルール 3。例: 組織 DEPUTY_ADMIN への委任に使う `MANAGE_CONTENT` は TEAM 分類）。そのため、`scopeType` がチームでも組織でも返す集合は同じ。`scopeType` は認可（どのスコープの ADMIN+ か）の確認にだけ使う。
 
 | クエリ | 型 | 必須 | 説明 |
 |---|---|---|---|
@@ -133,7 +136,7 @@
 
 #### メンバー一覧の `permissionGroups`（`GET /api/v1/teams/{slug}/members` と `/members/all`）
 
-管理者（DEPUTY_ADMIN 以上）が閲覧したときだけ、各メンバーに `permissionGroups: [{ "id": 1, "name": "受付・安否確認" }]` を載せる（下記「返却フィールドのロール別制限」）。
+対象チームの ADMIN/DEPUTY_ADMIN 割当を持つ閲覧者（`AccessControlService.isAdminOrAbove`。権限グループ一覧 API と同じ判定。所属の無い SYSTEM_ADMIN 単独は含まない）が閲覧したときだけ、各メンバーに `permissionGroups: [{ "id": 1, "name": "受付・安否確認" }]` を載せる（下記「返却フィールドのロール別制限」）。
 DEPUTY_ADMIN・MEMBER 以外のロール、および未割当のメンバーは空配列。一般メンバー・非メンバー向けの応答にはフィールド自体を出さない。割当はページ内（または全件）のユーザーぶんを 1 回の一括取得で解決し、当該チームの権限グループ以外（他チームのグループ）は含めない。
 `PUT /api/v1/teams/{slug}/members/{userId}/permission-groups` は割当の**全置換**なので、クライアントはこの値で現在の割当を初期化してから差分を送る。
 
@@ -1397,3 +1400,12 @@ officers と同じ仕様・エラーハンドリング（数値上限のみ 20 �
 
 ---
 
+
+#### 自分の有効権限（`GET /api/v1/{teams|organizations}/{slug}/me/permissions`）の追加項目
+
+| フィールド | 型 | 説明 |
+|---|---|---|
+| `scopeAdmin` | Boolean | 対象スコープの ADMIN 割当があるか（SYSTEM_ADMIN の有無とは独立）|
+| `canGrantAdminOnlyPermissions` | Boolean | ADMIN 専用権限（`PermissionGroupService.ADMIN_ONLY_GRANTABLE_PERMISSIONS`）を含む権限グループの作成・更新・割当（付与・剥奪とも）ができるか。`AccessControlService.canActAsScopeAdminOnly`（スコープ ADMIN 本人で、かつ SYSTEM_ADMIN でない）。SYSTEM_ADMIN とスコープ ADMIN の兼任者は `scopeAdmin=true` でも `false`（`checkScopeAdminOnly` が拒否するため）|
+
+権限グループ一覧の各要素には `containsAdminOnlyPermission`（そのグループが ADMIN 専用権限を含むか）を載せる。含むグループの更新・削除・割当（外す操作も）は `canGrantAdminOnlyPermissions=true` の操作者だけができる。

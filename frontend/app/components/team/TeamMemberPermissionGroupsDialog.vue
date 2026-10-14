@@ -10,6 +10,10 @@ import { MANAGE_ORG_AFFILIATION } from '~/utils/teamAffiliationAccess'
  * （permissionGroups）でチェック状態を初期化し、追加・削除の差分を見せてから保存する。
  * 既存の割当を黙って消さない。全部外すと空配列で保存する（AC-P05）。
  * 現在の割当が分からない（permissionGroups が無い）ときは、置き換えで既存を消さないよう保存させない。
+ *
+ * BE は割当の前後の権限集合（現在の全割当と新しい全割当）に ADMIN 専用権限が含まれると、チーム ADMIN 本人
+ * （SYSTEM_ADMIN 不可）だけに許す。付与できない操作者には、ADMIN 専用権限を含むグループを選べなくし、
+ * 既にそのグループが割り当て済みのメンバーは外す操作も含めて変更させない（理由を表示）。
  */
 const props = defineProps<{
   teamSlug: string
@@ -19,6 +23,8 @@ const props = defineProps<{
     roleName: string
     permissionGroups?: { id: number, name: string }[]
   } | null
+  /** ADMIN 専用権限を含む権限グループを付与・剥奪できる操作者か（チーム ADMIN 本人。SYSTEM_ADMIN 兼任者は不可）。 */
+  canGrantAdminOnly: boolean
 }>()
 
 const visible = defineModel<boolean>('visible', { default: false })
@@ -85,6 +91,15 @@ onBeforeUnmount(() => {
 const groupName = (id: number) => groups.value.find(g => g.id === id)?.name ?? String(id)
 const added = computed(() => [...selected.value].filter(id => !current.value.has(id)).sort((a, b) => a - b))
 const removed = computed(() => [...current.value].filter(id => !selected.value.has(id)).sort((a, b) => a - b))
+/** ADMIN 専用権限を含むグループか。 */
+const isAdminOnlyGroup = (g: TeamPermissionGroup) => g.containsAdminOnlyPermission === true
+/** 付与できない操作者で、メンバーに ADMIN 専用権限のグループが既に割り当て済み（外す操作も BE は 403）。 */
+const lockedByAssignedAdminOnly = computed(() =>
+  !props.canGrantAdminOnly && groups.value.some(g => current.value.has(g.id) && isAdminOnlyGroup(g)))
+/** 付与できない操作者向けに、ADMIN 専用権限のグループがある（選べない旨の理由を出す）。 */
+const hasAdminOnlyGroups = computed(() => !props.canGrantAdminOnly && groups.value.some(isAdminOnlyGroup))
+const isDisabled = (g: TeamPermissionGroup) =>
+  lockedByAssignedAdminOnly.value || (!props.canGrantAdminOnly && isAdminOnlyGroup(g))
 const changed = computed(() => added.value.length > 0 || removed.value.length > 0)
 
 function toggle(groupId: number, checked: boolean) {
@@ -95,7 +110,7 @@ function toggle(groupId: number, checked: boolean) {
 }
 
 async function save() {
-  if (!props.member || saving.value || !currentKnown.value || !changed.value) return
+  if (!props.member || saving.value || !currentKnown.value || !changed.value || lockedByAssignedAdminOnly.value) return
   saving.value = true
   saveFailed.value = false
   try {
@@ -146,6 +161,7 @@ async function save() {
             <Checkbox
               binary
               :model-value="selected.has(group.id)"
+              :disabled="isDisabled(group)"
               :data-testid="`pg-check-${group.id}`"
               @update:model-value="(v: boolean) => toggle(group.id, v)"
             />
@@ -164,6 +180,13 @@ async function save() {
         </li>
       </ul>
 
+      <Message v-if="lockedByAssignedAdminOnly" severity="warn" data-testid="pg-admin-only-locked">
+        {{ t('teamAffiliations.member_menu.admin_only_locked') }}
+      </Message>
+      <Message v-else-if="hasAdminOnlyGroups" severity="info" data-testid="pg-admin-only-reason">
+        {{ t('teamAffiliations.member_menu.admin_only_reason') }}
+      </Message>
+
       <div v-if="changed" class="space-y-1 rounded-lg bg-surface-50 p-2 dark:bg-surface-800" data-testid="pg-diff">
         <p v-if="added.length > 0" class="text-green-700 dark:text-green-400" data-testid="pg-diff-add">
           {{ t('teamAffiliations.member_menu.diff_add', { groups: added.map(groupName).join(', ') }) }}
@@ -180,7 +203,7 @@ async function save() {
     <template #footer>
       <Button :label="t('button.cancel')" text @click="visible = false" />
       <Button
-        v-if="!loading && !loadFailed && groups.length > 0 && currentKnown"
+        v-if="!loading && !loadFailed && groups.length > 0 && currentKnown && !lockedByAssignedAdminOnly"
         :label="t('teamAffiliations.member_menu.save')"
         :loading="saving"
         :disabled="saving || !changed"

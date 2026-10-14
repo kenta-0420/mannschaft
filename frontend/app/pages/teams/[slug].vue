@@ -55,6 +55,7 @@ const {
   loadPermissions,
   isAdmin,
   isScopeAdmin,
+  canGrantAdminOnlyPermissions,
   isAdminOrDeputy,
 } = useRoleAccess('team', teamSlug)
 
@@ -594,6 +595,7 @@ provideTeamShellContext({
   isAdminOrDeputy,
   canManageOrgAffiliation,
   canManagePermissionGroups,
+  canGrantAdminOnlyPermissions,
   effectiveViewerRole,
   adminLens,
   widgetVisibilitySettings,

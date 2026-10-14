@@ -8,6 +8,9 @@ import { usePermissionCatalogApi, type PermissionCatalogItem } from '~/composabl
  * チーム ADMIN 割当・管理レンズ ON のときだけ親（permission-groups）が開く。権限は権限カタログ
  * （GET /api/v1/permissions）から選ぶ。加盟操作権限（MANAGE_ORG_AFFILIATION）などチーム ADMIN だけが
  * 含められる権限には印を付ける（DEPUTY_ADMIN が含めると BE が 403 にする）。
+ * BE は ADMIN 専用権限が変更の前後どちらかに含まれる更新・作成を、チーム ADMIN 本人（SYSTEM_ADMIN 不可）だけに許す。
+ * 付与できない操作者（SYSTEM_ADMIN 兼任など）には ADMIN 専用権限を選べなくし、既に ADMIN 専用権限を含む
+ * グループは外す操作も含めて編集させない（理由を表示）。
  * 保存後は成功表示に切り替え、メンバー一覧（割当の入口）への案内を出す（作成→割当の導線）。
  */
 const props = defineProps<{
@@ -16,6 +19,8 @@ const props = defineProps<{
   teamId: number | null
   /** 編集対象。null なら新規作成。 */
   group: { id: number, name: string, targetRole?: string, permissions: string[] } | null
+  /** ADMIN 専用権限を含む権限グループを作成・更新できる操作者か（チーム ADMIN 本人。SYSTEM_ADMIN 兼任者は不可）。 */
+  canGrantAdminOnly: boolean
 }>()
 
 const visible = defineModel<boolean>('visible', { default: false })
@@ -95,10 +100,20 @@ function toggle(id: number, checked: boolean) {
   selected.value = next
 }
 
+/** 付与できない操作者が、既に ADMIN 専用権限を含むグループを開いた（外す操作も BE は 403）。 */
+const lockedByAdminOnly = computed(() => {
+  if (props.canGrantAdminOnly || !props.group) return false
+  const adminOnlyNames = new Set(catalog.value.filter(i => i.adminOnlyGrantable).map(i => i.name))
+  return props.group.permissions.some(name => adminOnlyNames.has(name))
+})
+const hasAdminOnlyItems = computed(() => !props.canGrantAdminOnly && catalog.value.some(i => i.adminOnlyGrantable))
+const isItemDisabled = (item: PermissionCatalogItem) =>
+  lockedByAdminOnly.value || (!props.canGrantAdminOnly && item.adminOnlyGrantable)
+
 const valid = computed(() => name.value.trim().length > 0 && selected.value.size > 0)
 
 async function save() {
-  if (saving.value || !valid.value) return
+  if (saving.value || !valid.value || lockedByAdminOnly.value) return
   saving.value = true
   saveFailed.value = false
   const body = {
@@ -155,7 +170,13 @@ async function save() {
       <template v-else>
         <label class="block space-y-1">
           <span class="font-medium">{{ t('teamAffiliations.group_form.name') }}</span>
-          <InputText v-model="name" class="w-full" maxlength="100" data-testid="pf-name" />
+          <InputText
+            v-model="name"
+            class="w-full"
+            maxlength="100"
+            :disabled="lockedByAdminOnly"
+            data-testid="pf-name"
+          />
         </label>
 
         <label class="block space-y-1">
@@ -166,6 +187,7 @@ async function save() {
             option-label="label"
             option-value="value"
             class="w-full"
+            :disabled="lockedByAdminOnly"
             data-testid="pf-target-role"
           />
           <span class="block text-xs text-surface-500">{{ t('teamAffiliations.group_form.target_role_hint') }}</span>
@@ -179,6 +201,7 @@ async function save() {
             <Checkbox
               binary
               :model-value="selected.has(item.id)"
+              :disabled="isItemDisabled(item)"
               :data-testid="`pf-perm-${item.id}`"
               @update:model-value="(v: boolean) => toggle(item.id, v)"
             />
@@ -196,6 +219,13 @@ async function save() {
           </label>
         </fieldset>
 
+        <Message v-if="lockedByAdminOnly" severity="warn" data-testid="pf-admin-only-locked">
+          {{ t('teamAffiliations.group_form.admin_only_locked') }}
+        </Message>
+        <Message v-else-if="hasAdminOnlyItems" severity="info" data-testid="pf-admin-only-reason">
+          {{ t('teamAffiliations.group_form.admin_only_reason') }}
+        </Message>
+
         <Message v-if="saveFailed" severity="error" data-testid="pf-error">
           {{ t('teamAffiliations.group_form.save_error') }}
         </Message>
@@ -205,7 +235,7 @@ async function save() {
     <template #footer>
       <Button :label="savedOk ? t('button.close') : t('button.cancel')" text @click="visible = false" />
       <Button
-        v-if="!savedOk && !loading && !loadFailed"
+        v-if="!savedOk && !loading && !loadFailed && !lockedByAdminOnly"
         :label="t('teamAffiliations.group_form.save')"
         :loading="saving"
         :disabled="saving || !valid"
