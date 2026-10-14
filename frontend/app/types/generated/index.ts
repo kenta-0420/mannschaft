@@ -62336,6 +62336,7 @@ export interface components {
             sourceId: number;
             sourceType: string;
             startsAt?: string;
+            targetAudience?: components["schemas"]["TargetAudience"];
             titleCache: string;
             updatedAt?: string;
             visibility?: string;

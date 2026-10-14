@@ -4,7 +4,7 @@ import type { MemberTeamsView } from '~/utils/memberTeamsView'
 /**
  * F01.2.1 8-B — member-teams の view 切替（一覧 / 加盟申請 / 送った招待 / 申請の制限）。
  *
- * 組織 ADMIN・管理レンズ ON のときだけ親が描画する。groups は 8-C が足すまで出さない。
+ * 組織 ADMIN・管理レンズ ON のときだけ親が描画する。groups（チームグループ）は 8-C で追加。
  * 切替はクエリ `view` で行い、子ルートは作らない（設計書 §13）。
  */
 defineProps<{
@@ -24,6 +24,7 @@ const tabs: { view: MemberTeamsView, labelKey: string }[] = [
   { view: 'applications', labelKey: 'teamAffiliation.view.applications' },
   { view: 'invites', labelKey: 'teamAffiliation.view.invites' },
   { view: 'restrictions', labelKey: 'teamAffiliation.view.restrictions' },
+  { view: 'groups', labelKey: 'teamAffiliation.view.groups' },
 ]
 </script>
 
