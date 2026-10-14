@@ -224,6 +224,21 @@ public class TeamFriendsService {
     }
 
     /**
+     * フォロー先を slug で指定して自チームが他チームをフォローする（CMP-261012-0315）。
+     *
+     * <p>試練（red）用の最小スタブ。実装は後続の出陣で行う。契約は
+     * {@code TeamFriendsServiceFollowBySlugTest} 冒頭のコメントを参照。</p>
+     *
+     * @param teamId         自チーム ID
+     * @param targetTeamSlug フォロー先チーム slug
+     * @param userId         操作実行者のユーザー ID
+     * @return フォロー結果
+     */
+    public FollowTeamResponse followBySlug(Long teamId, String targetTeamSlug, Long userId) {
+        throw new UnsupportedOperationException("CMP-261012-0315: followBySlug は未実装（試練 red スタブ）");
+    }
+
+    /**
      * {@link TeamFriendEntity} を生成し保存する。{@code team_a_id &lt; team_b_id} の
      * 正規化を行い、UNIQUE 制約違反（並行成立による二重 INSERT レース）時は
      * 既存レコードを取得して返却する（冪等性担保）。
