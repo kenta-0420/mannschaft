@@ -46,9 +46,9 @@ def check_source(repo, key, selector):
     require(raw[-1]==b'' and (len(raw)-1)%3==0,'ATTRIBUTES_SHAPE')
     attributes={path:{} for path in binding['sourceFiles']}
     for i in range(0,len(raw)-1,3):
-        path,key,value=[part.decode('utf-8') for part in raw[i:i+3]]
-        require(path in attributes and key in attr_keys,'ATTRIBUTES_PATH_OR_KEY')
-        attributes[path][key]=value
+        path,attr_key,value=[part.decode('utf-8') for part in raw[i:i+3]]
+        require(path in attributes and attr_key in attr_keys,'ATTRIBUTES_PATH_OR_KEY')
+        attributes[path][attr_key]=value
     require(attributes==binding['gitAttributes'] and all(values==dict.fromkeys(attr_keys,'unspecified') for values in attributes.values()),'UNDECLARED_CHECKOUT_TRANSFORM')
     observations={}
     for rel,digest in binding['sourceFiles'].items():
