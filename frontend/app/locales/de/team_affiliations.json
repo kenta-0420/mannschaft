@@ -83,24 +83,47 @@
     "permission_groups": {
       "title": "Berechtigungsgruppen",
       "hint": "Berechtigungsgruppen des Teams. Wer in einer Gruppe mit „Organisationsbeitritt verwalten“ ist, kann auch ohne Admin-Rolle Anträge stellen und Einladungen annehmen. Vergeben und entziehen Sie das über die Schaltfläche „Berechtigungsgruppen“ je Mitglied in der Mitgliederliste (nur Team-Admins).",
-      "load_error": "Die Berechtigungsgruppen konnten nicht geladen werden. Bitte später erneut versuchen."
+      "load_error": "Die Berechtigungsgruppen konnten nicht geladen werden. Bitte später erneut versuchen.",
+      "create": "Berechtigungsgruppe erstellen",
+      "go_members": "In der Mitgliederliste zuweisen"
     },
     "permission_group_list": {
       "empty": "Es wurden noch keine Berechtigungsgruppen erstellt",
       "count": "{count} Berechtigungen",
       "target_role": "Ziel: {role}",
-      "affiliation_mark": "Organisationsbeitritt verwalten"
+      "affiliation_mark": "Organisationsbeitritt verwalten",
+      "edit": "{name} bearbeiten"
     },
     "member_menu": {
       "permission_groups": "Berechtigungsgruppen",
       "permission_groups_aria": "Berechtigungsgruppen von {name} ändern",
       "title": "Berechtigungsgruppen von {name}",
-      "hint": "Die gewählten Gruppen werden zur Zuweisung dieses Mitglieds. Die aktuelle Zuweisung wird nicht angezeigt; Speichern ersetzt sie durch Ihre Auswahl. Speichern ohne Auswahl entfernt alle.",
+      "hint": "Markierte Einträge sind die aktuelle Zuweisung. Änderungen stehen unten. Speichern macht die gewählten Gruppen zur Zuweisung dieses Mitglieds (alles abwählen entfernt sie).",
       "load_error": "Die Berechtigungsgruppen konnten nicht geladen werden. Bitte später erneut versuchen.",
       "empty": "Es gibt noch keine Berechtigungsgruppen. Erstellen Sie zuerst eine.",
       "save": "Speichern",
       "saved": "Berechtigungsgruppen aktualisiert",
-      "save_error": "Speichern nicht möglich. Bitte später erneut versuchen."
+      "save_error": "Speichern nicht möglich. Bitte später erneut versuchen.",
+      "diff_add": "Hinzufügen: {groups}",
+      "diff_remove": "Entfernen: {groups}",
+      "current_unknown": "Die aktuelle Zuweisung konnte nicht geladen werden; Speichern ist deaktiviert, damit keine bestehenden Zuweisungen gelöscht werden. Laden Sie die Mitgliederliste neu und versuchen Sie es erneut."
+    },
+    "group_form": {
+      "create_title": "Berechtigungsgruppe erstellen",
+      "edit_title": "Berechtigungsgruppe bearbeiten",
+      "name": "Name",
+      "target_role": "Zielrolle",
+      "target_role_hint": "Rolle der Mitglieder, denen diese Gruppe zugewiesen werden kann",
+      "target_role_deputy": "Stellvertretende Leitung",
+      "target_role_member": "Mitglied",
+      "permissions": "Berechtigungen",
+      "admin_only": "Nur für Team-Admins",
+      "load_error": "Die Berechtigungen konnten nicht geladen werden. Bitte später erneut versuchen.",
+      "save": "Speichern",
+      "save_error": "Speichern nicht möglich. Bitte später erneut versuchen.",
+      "saved": "Berechtigungsgruppe gespeichert",
+      "saved_hint": "Mit der Schaltfläche „Berechtigungsgruppen“ je Mitglied in der Mitgliederliste können Sie diese Gruppe zuweisen.",
+      "go_members": "In der Mitgliederliste zuweisen"
     }
   }
 }

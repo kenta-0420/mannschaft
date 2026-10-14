@@ -14,7 +14,7 @@ const emit = defineEmits<{
   roleChanged: []
   memberRemoved: []
   /** 「権限グループ」ボタンが押された。ダイアログは親が開く。 */
-  assignPermissionGroups: [member: { userId: number, displayName: string, roleName: string }]
+  assignPermissionGroups: [member: { userId: number, displayName: string, roleName: string, permissionGroups?: { id: number, name: string }[] }]
 }>()
 
 interface Member {
@@ -24,6 +24,7 @@ interface Member {
   roleName: string
   joinedAt: string
   calendarColor?: string | null
+  permissionGroups?: { id: number, name: string }[]
 }
 
 interface PagedMembers {
@@ -278,7 +279,7 @@ defineExpose({ refresh: loadMembers, changeRole: onChangeRole })
             :aria-label="t('teamAffiliations.member_menu.permission_groups_aria', { name: data.displayName })"
             :title="t('teamAffiliations.member_menu.permission_groups')"
             :data-testid="`member-permission-groups-${data.userId}`"
-            @click="emit('assignPermissionGroups', { userId: data.userId, displayName: data.displayName, roleName: data.roleName })"
+            @click="emit('assignPermissionGroups', { userId: data.userId, displayName: data.displayName, roleName: data.roleName, permissionGroups: data.permissionGroups })"
           />
           <Button
             v-if="canRemove"

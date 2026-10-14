@@ -22,10 +22,22 @@ const { t } = useI18n()
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
 
-const { canManagePermissionGroups } = useTeamShellContext()
+const { canManagePermissionGroups, team } = useTeamShellContext()
 const { getPermissionGroups } = useTeamMembers()
 
 const groups = ref<TeamPermissionGroup[]>([])
+const showForm = ref(false)
+const editingGroup = ref<TeamPermissionGroup | null>(null)
+
+function openCreate() {
+  editingGroup.value = null
+  showForm.value = true
+}
+
+function openEdit(group: { id: number }) {
+  editingGroup.value = groups.value.find(g => g.id === group.id) ?? null
+  showForm.value = true
+}
 const loading = ref(false)
 const loadFailed = ref(false)
 
@@ -69,6 +81,22 @@ onBeforeUnmount(() => {
       <p class="mb-2 text-sm text-surface-500">
         {{ t('teamAffiliations.permission_groups.hint') }}
       </p>
+      <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <NuxtLink
+          :to="`/teams/${teamSlug}/members`"
+          class="text-sm text-primary-600 hover:underline"
+          data-testid="permission-groups-go-members"
+        >
+          {{ t('teamAffiliations.permission_groups.go_members') }}
+        </NuxtLink>
+        <Button
+          :label="t('teamAffiliations.permission_groups.create')"
+          icon="pi pi-plus"
+          size="small"
+          data-testid="permission-group-create"
+          @click="openCreate"
+        />
+      </div>
       <div v-if="loading" class="flex justify-center py-8">
         <ProgressSpinner style="width: 2rem; height: 2rem" />
       </div>
@@ -85,7 +113,14 @@ onBeforeUnmount(() => {
           @click="load"
         />
       </div>
-      <OrgPermissionGroupList v-else :groups="groups" />
+      <OrgPermissionGroupList v-else :groups="groups" editable @edit="openEdit" />
     </SectionCard>
+    <TeamPermissionGroupFormDialog
+      v-model:visible="showForm"
+      :team-slug="teamSlug"
+      :team-id="team?.numericId ?? null"
+      :group="editingGroup"
+      @saved="load"
+    />
   </div>
 </template>

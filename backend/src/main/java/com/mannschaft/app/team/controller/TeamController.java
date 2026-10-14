@@ -211,7 +211,33 @@ public class TeamController {
         // 非メンバーがメンバー情報（userId/displayName/role/joinedAt）を列挙する漏洩を塞ぐ。
         contentVisibilityChecker.assertCanView(
                 ReferenceType.TEAM, id, SecurityUtils.getCurrentUserIdOrNull());
-        return ResponseEntity.ok(teamService.getMembers(id, pageable));
+        PagedResponse<MemberResponse> members = teamService.getMembers(id, pageable);
+        return ResponseEntity.ok(PagedResponse.of(
+                attachPermissionGroupsForAdminViewer(id, members.getData()), members.getMeta()));
+    }
+
+    /**
+     * 管理者（DEPUTY_ADMIN 以上）が閲覧するときだけ、各メンバーの割当済み権限グループを載せる
+     * （F01.2 02_api_design.md の返却フィールドのロール別制限。F01.2.1 8-D）。
+     *
+     * <p>権限グループは DEPUTY_ADMIN・MEMBER にだけ割り当てられるので、それ以外のロールは空配列。
+     * 割当は 1 回の一括取得で解決し（N+1 にしない）、チーム内のグループ以外は混ぜない。
+     * 一般メンバー・非メンバーには載せない（null のまま・JSON にも出ない）。</p>
+     */
+    private List<MemberResponse> attachPermissionGroupsForAdminViewer(Long teamId, List<MemberResponse> members) {
+        Long viewerId = SecurityUtils.getCurrentUserIdOrNull();
+        if (viewerId == null || members.isEmpty()
+                || !accessControlService.hasRoleOrAbove(viewerId, teamId, SCOPE_TYPE, "DEPUTY_ADMIN")) {
+            return members;
+        }
+        var groupsByUser = permissionGroupService.findAssignedGroupsByUser(
+                teamId, SCOPE_TYPE, members.stream().map(MemberResponse::getUserId).toList());
+        return members.stream()
+                .map(member -> member.withPermissionGroups(
+                        "DEPUTY_ADMIN".equals(member.getRoleName()) || "MEMBER".equals(member.getRoleName())
+                                ? groupsByUser.getOrDefault(member.getUserId(), List.of())
+                                : List.of()))
+                .toList();
     }
 
     @GetMapping("/{slug}/members/all")
@@ -231,7 +257,8 @@ public class TeamController {
         // 一括化しても露出する情報は増えないため、認可条件も同じで揃える。
         contentVisibilityChecker.assertCanView(
                 ReferenceType.TEAM, id, SecurityUtils.getCurrentUserIdOrNull());
-        return ResponseEntity.ok(ApiResponse.of(teamService.getAllMembers(id)));
+        return ResponseEntity.ok(ApiResponse.of(
+                attachPermissionGroupsForAdminViewer(id, teamService.getAllMembers(id))));
     }
 
     @PatchMapping("/{slug}/members/{userId}/role")

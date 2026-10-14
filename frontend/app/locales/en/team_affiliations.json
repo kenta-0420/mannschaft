@@ -83,24 +83,47 @@
     "permission_groups": {
       "title": "Permission groups",
       "hint": "The team's permission groups. People in a group that includes \"Manage organization affiliation\" can apply to organizations and accept invitations without being an admin. Grant or remove it with the \"Permission groups\" button for each member on the member list (team admins only).",
-      "load_error": "Could not load the permission groups. Please try again later."
+      "load_error": "Could not load the permission groups. Please try again later.",
+      "create": "Create permission group",
+      "go_members": "Assign from the member list"
     },
     "permission_group_list": {
       "empty": "No permission groups have been created yet",
       "count": "{count} permissions",
       "target_role": "Target: {role}",
-      "affiliation_mark": "Manage organization affiliation"
+      "affiliation_mark": "Manage organization affiliation",
+      "edit": "Edit {name}"
     },
     "member_menu": {
       "permission_groups": "Permission groups",
       "permission_groups_aria": "Change permission groups for {name}",
       "title": "Permission groups for {name}",
-      "hint": "The groups you choose become this member's assignment. The current assignment is not shown, so saving replaces it with your selection. Saving with nothing selected removes all of them.",
+      "hint": "Checked items are the current assignment. Changes are shown below. Saving makes the selected groups this member's assignment (unchecking all removes them).",
       "load_error": "Could not load the permission groups. Please try again later.",
       "empty": "There are no permission groups yet. Create one first.",
       "save": "Save",
       "saved": "Permission groups updated",
-      "save_error": "Could not save. Please try again later."
+      "save_error": "Could not save. Please try again later.",
+      "diff_add": "Add: {groups}",
+      "diff_remove": "Remove: {groups}",
+      "current_unknown": "The current assignment could not be loaded, so saving is disabled to avoid removing existing groups. Reload the member list and try again."
+    },
+    "group_form": {
+      "create_title": "Create permission group",
+      "edit_title": "Edit permission group",
+      "name": "Name",
+      "target_role": "Target role",
+      "target_role_hint": "The role of members this group can be assigned to",
+      "target_role_deputy": "Deputy admin",
+      "target_role_member": "Member",
+      "permissions": "Permissions",
+      "admin_only": "Team admin only",
+      "load_error": "Could not load the permissions. Please try again later.",
+      "save": "Save",
+      "save_error": "Could not save. Please try again later.",
+      "saved": "Permission group saved",
+      "saved_hint": "Use the \"Permission groups\" button for each member on the member list to assign this group.",
+      "go_members": "Assign from the member list"
     }
   }
 }

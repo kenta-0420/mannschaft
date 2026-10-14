@@ -15,6 +15,7 @@ import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.role.dto.PermissionGroupRequest;
 import com.mannschaft.app.role.dto.PermissionGroupResponse;
 import com.mannschaft.app.role.dto.UserPermissionGroupAssignRequest;
@@ -24,6 +25,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -220,6 +224,38 @@ public class PermissionGroupService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    /**
+     * メンバー一覧に載せる、ユーザーごとの割当済み権限グループを一括で取得する（管理者向けの permission_groups）。
+     *
+     * <p>スコープ内のグループ一覧とユーザー割当をそれぞれ 1 クエリで取得し、スコープ外（他チーム・他組織）の
+     * グループへの割当は混ぜない。割当が無いユーザーはキー自体が無い。</p>
+     *
+     * @param scopeId   チームまたは組織の ID
+     * @param scopeType {@code TEAM} / {@code ORGANIZATION}
+     * @param userIds   対象ユーザー ID
+     * @return ユーザー ID → 割当済みグループ（グループ ID 昇順）
+     */
+    public Map<Long, List<MemberResponse.PermissionGroupRef>> findAssignedGroupsByUser(
+            Long scopeId, String scopeType, Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> scopeGroupNames = new HashMap<>();
+        for (PermissionGroupEntity group : findByScope(scopeId, scopeType)) {
+            scopeGroupNames.put(group.getId(), group.getName());
+        }
+        if (scopeGroupNames.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<MemberResponse.PermissionGroupRef>> result = new HashMap<>();
+        userPermissionGroupRepository.findByUserIdIn(userIds).stream()
+                .filter(row -> scopeGroupNames.containsKey(row.getGroupId()))
+                .sorted(java.util.Comparator.comparing(UserPermissionGroupEntity::getGroupId))
+                .forEach(row -> result.computeIfAbsent(row.getUserId(), k -> new ArrayList<>())
+                        .add(new MemberResponse.PermissionGroupRef(row.getGroupId(), scopeGroupNames.get(row.getGroupId()))));
+        return result;
     }
 
     /**

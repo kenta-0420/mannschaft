@@ -438,14 +438,13 @@ watch(teamSlug, () => {
 const canManageOrgAffiliation = computed(() => resolveCanManageOrgAffiliation({
   adminLens: adminLens.value,
   isScopeAdmin: isScopeAdmin.value,
-  roleName: roleName.value,
   permissions: permissions.value,
 }))
 
-/** 権限グループの画面・メンバー一覧の割当を出してよいか（チーム ADMIN・管理者レンズ ON）。 */
+/** 権限グループの画面・メンバー一覧の割当を出してよいか（チーム ADMIN 割当・管理者レンズ ON。SYSTEM_ADMIN のみは不可）。 */
 const canManagePermissionGroups = computed(() => resolveCanManagePermissionGroups({
   adminLens: adminLens.value,
-  isAdmin: isAdmin.value,
+  isScopeAdmin: isScopeAdmin.value,
 }))
 
 /** 管理系タブ key（レンズ OFF・非管理者では滞在させない）。 */

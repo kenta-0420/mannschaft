@@ -50,7 +50,7 @@
 | POST | `/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/accept` | 必要（指名相手）| 組織委譲を承諾 |
 | POST | `/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}/decline` | 必要（指名相手）| 組織委譲を辞退 |
 | DELETE | `/api/v1/organizations/{slug}/transfer-ownership-offers/{offerId}` | 必要（発行者/ADMIN）| 組織委譲オファーを取消 |
-| GET | `/api/v1/permissions` | 必要（ADMIN+）| パーミッションカタログ一覧 |
+| GET | `/api/v1/permissions?scopeType={TEAM\|ORGANIZATION}&scopeId={id}` | 必要（指定スコープの ADMIN+）| パーミッションカタログ一覧（権限グループの作成・更新で選ぶ権限。DTO は「パーミッションカタログ」節）|
 | GET | `/api/v1/me/teams` | 必要 | 自分が所属するチーム一覧（ロール・参加日時付き）|
 | GET | `/api/v1/me/organizations` | 必要 | 自分が所属する組織一覧（ロール・参加日時付き）|
 | POST | `/api/v1/teams/{slug}/follow` | 必要 | チームをフォロー（SUPPORTER 自己登録・招待コード不要）|
@@ -111,6 +111,31 @@
 > **チーム加盟の書き込み API（F01.2.1 で正式化・2026-09-25）**: 上表の招待系に加えて、チーム→組織の加盟申請（`POST/GET /teams/{slug}/org-applications`、`DELETE /teams/{slug}/org-applications/{membershipId}`）、組織側の申請一覧・承認・拒否（`/organizations/{slug}/team-applications/**`）、申請受付設定（`/organizations/{slug}/team-affiliation-settings`）、申請フォーム（`GET /organizations/{slug}/team-application-form`）、再申請の制限一覧・解除、チームグループ（`/organizations/{slug}/team-groups/**`・割当）を定義した。契約（フィールド・型・null 可否・認可・ページング・エラーコード）の正本は [F01.2.1 §10](../F01.2.1_org_team_groups.md) とし、ここには重複して書かない。2026-09-25 時点で加盟の**書き込み API は1本も実装されていない**（参照系の `GET /organizations/{slug}/teams` と `GET /teams/{slug}/organizations` だけが実装済み）。
 
 ### リクエスト／レスポンス仕様
+
+#### パーミッションカタログ（`GET /api/v1/permissions`）
+
+権限グループの作成・更新（`permissionIds`）で選べる権限の一覧。`permissions` マスタのうち、問い合わせたスコープ向けの権限を名前順で返す。
+
+| クエリ | 型 | 必須 | 説明 |
+|---|---|---|---|
+| `scopeType` | String | ✅ | `TEAM` または `ORGANIZATION`。`PLATFORM` や未定義値は 400（`COMMON_001`）。認可チェックの前に検証する |
+| `scopeId` | Long | ✅ | 対象チーム/組織の内部 ID。認可は**このスコープの ADMIN+**（`AccessControlService.checkAdminOrAbove`）。満たさなければ 403 |
+
+レスポンス（200 OK）: `{"data": [PermissionCatalogItemResponse, ...]}`
+
+| フィールド | 型 | 説明 |
+|---|---|---|
+| `id` | Long | 権限 ID。権限グループ作成・更新リクエストの `permissionIds` に渡す |
+| `name` | String | 権限名（コード。例: `MANAGE_ORG_AFFILIATION`）|
+| `displayName` | String | 表示名 |
+| `scope` | String | 権限の対象スコープ（`TEAM` / `ORGANIZATION`）|
+| `adminOnlyGrantable` | Boolean | スコープの ADMIN だけが権限グループへ含められる権限か（`PermissionGroupService.ADMIN_ONLY_GRANTABLE_PERMISSIONS`。DEPUTY_ADMIN が含めると作成・更新・割当が 403）|
+
+#### メンバー一覧の `permissionGroups`（`GET /api/v1/teams/{slug}/members` と `/members/all`）
+
+管理者（DEPUTY_ADMIN 以上）が閲覧したときだけ、各メンバーに `permissionGroups: [{ "id": 1, "name": "受付・安否確認" }]` を載せる（下記「返却フィールドのロール別制限」）。
+DEPUTY_ADMIN・MEMBER 以外のロール、および未割当のメンバーは空配列。一般メンバー・非メンバー向けの応答にはフィールド自体を出さない。割当はページ内（または全件）のユーザーぶんを 1 回の一括取得で解決し、当該チームの権限グループ以外（他チームのグループ）は含めない。
+`PUT /api/v1/teams/{slug}/members/{userId}/permission-groups` は割当の**全置換**なので、クライアントはこの値で現在の割当を初期化してから差分を送る。
 
 #### `POST /api/v1/teams`
 

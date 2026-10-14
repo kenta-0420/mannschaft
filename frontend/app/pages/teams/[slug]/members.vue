@@ -24,10 +24,12 @@ const teamSlug = computed(() => String(route.params.slug))
 const { isAdminOrDeputy, displayName, refresh, isAdmin, canManagePermissionGroups } = useTeamShellContext()
 
 /** 権限グループ割当ダイアログ（F01.2.1 8-D。チーム ADMIN・管理レンズ ON のときだけ入口を出す）。 */
-const permissionGroupTarget = ref<{ userId: number, displayName: string, roleName: string } | null>(null)
+type PermissionGroupTarget = { userId: number, displayName: string, roleName: string, permissionGroups?: { id: number, name: string }[] }
+const permissionGroupTarget = ref<PermissionGroupTarget | null>(null)
+const memberTable = ref<{ refresh: () => Promise<void> } | null>(null)
 const showPermissionGroups = ref(false)
 
-function openPermissionGroups(member: { userId: number, displayName: string, roleName: string }) {
+function openPermissionGroups(member: PermissionGroupTarget) {
   permissionGroupTarget.value = member
   showPermissionGroups.value = true
 }
@@ -69,6 +71,7 @@ async function onOfferResolved() {
         @resolved="onOfferResolved"
       />
       <MemberTable
+        ref="memberTable"
         scope-type="team"
         :scope-id="teamSlug"
         :can-change-role="isAdminOrDeputy"
@@ -81,6 +84,7 @@ async function onOfferResolved() {
         v-model:visible="showPermissionGroups"
         :team-slug="teamSlug"
         :member="permissionGroupTarget"
+        @assigned="memberTable?.refresh()"
       />
       <!-- オーナー委譲の打診は ADMIN 本人のみ。権限変更は相手の承諾時に行う。 -->
       <TransferOwnershipPanel

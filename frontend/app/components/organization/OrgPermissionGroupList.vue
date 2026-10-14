@@ -8,9 +8,15 @@ import { MANAGE_ORG_AFFILIATION } from '~/utils/teamAffiliationAccess'
  *
  * - チームの権限グループは対象ロール（targetRole）を持つので、あれば出す（組織側は持たない）
  * - `MANAGE_ORG_AFFILIATION`（チームの加盟操作権限。付与できるのはチーム ADMIN だけ）を含むグループには印を出す
+ * - `editable` のときだけ各グループに編集ボタンを出し、押すと `edit` を発火する（組織側は既定 false で従来どおり）
  */
 defineProps<{
   groups: PermissionGroupListItem[]
+  editable?: boolean
+}>()
+
+const emit = defineEmits<{
+  edit: [group: PermissionGroupListItem]
 }>()
 </script>
 
@@ -49,6 +55,16 @@ defineProps<{
               icon="pi pi-sitemap"
               class="text-xs"
               :data-testid="`group-affiliation-mark-${group.id}`"
+            />
+            <Button
+              v-if="editable"
+              icon="pi pi-pencil"
+              text
+              rounded
+              size="small"
+              :aria-label="$t('teamAffiliations.permission_group_list.edit', { name: group.name })"
+              :data-testid="`group-edit-${group.id}`"
+              @click="emit('edit', group)"
             />
             <span class="text-sm text-gray-500" :data-testid="`group-count-${group.id}`">{{ $t('teamAffiliations.permission_group_list.count', { count: group.permissions.length }) }}</span>
           </div>

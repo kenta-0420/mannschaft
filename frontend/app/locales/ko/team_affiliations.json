@@ -83,24 +83,47 @@
     "permission_groups": {
       "title": "권한 그룹",
       "hint": "팀의 권한 그룹입니다. 「조직 가입 조작」이 포함된 그룹이 있는 사람은 관리자가 아니어도 조직에 신청하거나 초대를 수락할 수 있습니다. 부여와 해제는 멤버 목록의 각 멤버 「권한 그룹」 버튼에서 합니다(팀 관리자만).",
-      "load_error": "권한 그룹 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요"
+      "load_error": "권한 그룹 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요",
+      "create": "권한 그룹 만들기",
+      "go_members": "멤버 목록에서 할당"
     },
     "permission_group_list": {
       "empty": "아직 권한 그룹이 만들어지지 않았습니다",
       "count": "{count}개의 권한",
       "target_role": "대상: {role}",
-      "affiliation_mark": "조직 가입 조작"
+      "affiliation_mark": "조직 가입 조작",
+      "edit": "{name} 편집"
     },
     "member_menu": {
       "permission_groups": "권한 그룹",
       "permission_groups_aria": "{name}의 권한 그룹 변경",
       "title": "{name}의 권한 그룹",
-      "hint": "선택한 권한 그룹이 이 멤버의 할당이 됩니다. 현재 할당은 표시되지 않으므로 저장하면 선택한 내용으로 바뀝니다. 아무것도 선택하지 않고 저장하면 모두 해제됩니다.",
+      "hint": "체크된 항목이 현재 할당입니다. 변경 사항은 아래에 표시됩니다. 저장하면 선택한 권한 그룹이 이 멤버의 할당이 됩니다(모두 해제하면 할당 없음).",
       "load_error": "권한 그룹 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요",
       "empty": "권한 그룹이 아직 없습니다. 먼저 권한 그룹을 만들어 주세요",
       "save": "저장",
       "saved": "권한 그룹을 업데이트했습니다",
-      "save_error": "저장하지 못했습니다. 잠시 후 다시 시도해 주세요"
+      "save_error": "저장하지 못했습니다. 잠시 후 다시 시도해 주세요",
+      "diff_add": "추가: {groups}",
+      "diff_remove": "삭제: {groups}",
+      "current_unknown": "현재 할당을 가져오지 못해 기존 할당이 지워지지 않도록 저장할 수 없습니다. 멤버 목록을 다시 불러온 뒤 시도해 주세요."
+    },
+    "group_form": {
+      "create_title": "권한 그룹 만들기",
+      "edit_title": "권한 그룹 편집",
+      "name": "이름",
+      "target_role": "대상 역할",
+      "target_role_hint": "이 권한 그룹을 할당할 수 있는 멤버의 역할입니다",
+      "target_role_deputy": "부관리자",
+      "target_role_member": "멤버",
+      "permissions": "권한",
+      "admin_only": "팀 관리자 전용",
+      "load_error": "권한 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요",
+      "save": "저장",
+      "save_error": "저장하지 못했습니다. 잠시 후 다시 시도해 주세요",
+      "saved": "권한 그룹을 저장했습니다",
+      "saved_hint": "멤버 목록의 각 멤버 「권한 그룹」 버튼에서 이 그룹을 할당할 수 있습니다.",
+      "go_members": "멤버 목록에서 할당"
     }
   }
 }
