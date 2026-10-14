@@ -39,6 +39,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -50,6 +51,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -82,6 +84,9 @@ public class Auth2faService {
     private final MfaEmailOtpService mfaEmailOtpService;
     private final MfaFailureAuditRecorder mfaFailureAuditRecorder;
     private final MfaEmailTwoFactorService mfaEmailTwoFactorService;
+    /** LocalDateTime 列（revoked_at / used_at）と突き合わせる現在時刻の源（壁時計。datetime_policy_utc_instant_vs_wallclock.md）。 */
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -334,7 +339,7 @@ public class Auth2faService {
         // 失効対象は一括 UPDATE（InnoDB の current read）で最新の状態から決める（Codex 検分指摘）。通常 SELECT で
         // 列挙すると、上の 2FA 行ロックを待つ間に commit されたログイン（2FA 検証は同じ 2FA 行をロックしてから
         // Refresh Token を発行する）のトークンが、固定済みの読取りビューから見えずに生き残る。
-        refreshTokenRepository.revokeAllActiveByUserId(userId, LocalDateTime.now());
+        refreshTokenRepository.revokeAllActiveByUserId(userId, LocalDateTime.now(wallClock));
         authTokenService.setUserInvalidationTimestamp(userId);
 
         // 4. Access Token + Refresh Token発行
@@ -661,7 +666,7 @@ public class Auth2faService {
      * 一括 UPDATE（current read）で行い、読取りビュー固定後に commit された行も対象にする。
      */
     private void revokeUnusedRecoveryTokens(Long userId) {
-        mfaRecoveryTokenRepository.revokeAllUnusedByUserId(userId, LocalDateTime.now());
+        mfaRecoveryTokenRepository.revokeAllUnusedByUserId(userId, LocalDateTime.now(wallClock));
     }
 
     // === 2FA ログイン検証の部品（CMP-261012-0910） ===

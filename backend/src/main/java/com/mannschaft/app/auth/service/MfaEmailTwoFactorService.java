@@ -13,12 +13,14 @@ import com.mannschaft.app.auth.repository.MfaRecoveryTokenRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -53,6 +55,8 @@ public class MfaEmailTwoFactorService {
     private final PasswordEncoder passwordEncoder;
     private final DomainEventPublisher eventPublisher;
     private final boolean emailMethodEnabled;
+    /** LocalDateTime 列（used_at）と突き合わせる現在時刻の源（壁時計。datetime_policy_utc_instant_vs_wallclock.md）。 */
+    private final Clock wallClock;
 
     public MfaEmailTwoFactorService(
             TwoFactorAuthRepository twoFactorAuthRepository,
@@ -60,13 +64,15 @@ public class MfaEmailTwoFactorService {
             MfaEmailOtpService mfaEmailOtpService,
             PasswordEncoder passwordEncoder,
             DomainEventPublisher eventPublisher,
-            @Value("${mannschaft.auth.mfa.email-method-enabled:false}") boolean emailMethodEnabled) {
+            @Value("${mannschaft.auth.mfa.email-method-enabled:false}") boolean emailMethodEnabled,
+            @Qualifier("wallClock") Clock wallClock) {
         this.twoFactorAuthRepository = twoFactorAuthRepository;
         this.mfaRecoveryTokenRepository = mfaRecoveryTokenRepository;
         this.mfaEmailOtpService = mfaEmailOtpService;
         this.passwordEncoder = passwordEncoder;
         this.eventPublisher = eventPublisher;
         this.emailMethodEnabled = emailMethodEnabled;
+        this.wallClock = wallClock;
     }
 
     /**
@@ -162,7 +168,7 @@ public class MfaEmailTwoFactorService {
      */
     private void revokeUnusedRecoveryTokens(Long userId) {
         // 一括 UPDATE（current read）で最新の未使用行を失効させる（読取りビュー固定後に commit された行も漏らさない）
-        mfaRecoveryTokenRepository.revokeAllUnusedByUserId(userId, LocalDateTime.now());
+        mfaRecoveryTokenRepository.revokeAllUnusedByUserId(userId, LocalDateTime.now(wallClock));
     }
 
     private void assertEmailMethodEnabled() {

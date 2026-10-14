@@ -96,8 +96,18 @@ class Auth2faServiceTest {
     @Mock
     private MfaFailureAuditRecorder mfaFailureAuditRecorder;
 
+    // LocalDateTime 列と突き合わせる壁時計（失効時刻の採取に使う）
+    @Mock
+    private java.time.Clock wallClock;
+
     @InjectMocks
     private Auth2faService auth2faService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUpWallClock() {
+        lenient().when(wallClock.instant()).thenReturn(java.time.Instant.parse("2026-10-14T00:00:00Z"));
+        lenient().when(wallClock.getZone()).thenReturn(java.time.ZoneOffset.UTC);
+    }
 
     // ========================================
     // テスト用定数・ヘルパー

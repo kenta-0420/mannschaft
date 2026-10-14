@@ -47,7 +47,7 @@ class MfaEmailTwoFactorServiceTest {
     private MfaEmailTwoFactorService service(boolean emailMethodEnabled) {
         return new MfaEmailTwoFactorService(
                 twoFactorAuthRepository, mfaRecoveryTokenRepository, mfaEmailOtpService, passwordEncoder,
-                eventPublisher, emailMethodEnabled);
+                eventPublisher, emailMethodEnabled, java.time.Clock.systemUTC());
     }
 
     @Test
