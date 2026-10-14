@@ -92,8 +92,10 @@ public class TeamFriendsController {
             @PathVariable("id") Long teamId,
             @Valid @RequestBody FollowTeamRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        FollowTeamResponse response = teamFriendsService.follow(
-                teamId, request.getTargetTeamId(), userId);
+        // targetTeamSlug / targetTeamId はちょうど一方だけ指定される（DTO の Bean Validation で保証）
+        FollowTeamResponse response = (request.getTargetTeamSlug() != null)
+                ? teamFriendsService.followBySlug(teamId, request.getTargetTeamSlug(), userId)
+                : teamFriendsService.follow(teamId, request.getTargetTeamId(), userId);
 
         HttpStatus status = (response.getRetryAfterSeconds() != null)
                 ? HttpStatus.ACCEPTED

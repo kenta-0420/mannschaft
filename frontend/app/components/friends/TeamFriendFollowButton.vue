@@ -9,10 +9,10 @@
  * - 3回失敗時はエラートーストを表示し、親にリトライスケジュール終了を通知する。
  *
  * Props:
- *   teamId       — 自チーム ID
- *   targetTeamId — フォロー先チーム ID
- *   comment      — 任意の挨拶コメント（最大300文字）
- *   disabled     — ボタンを無効化するか
+ *   teamId         — 自チーム slug
+ *   targetTeamSlug — フォロー先チームの slug（URL 名。数値 ID は利用者が知り得ないため使わない）
+ *   comment        — 任意の挨拶コメント（最大300文字）
+ *   disabled       — ボタンを無効化するか
  *
  * Emits:
  *   followed        — フォロー成功時（FollowTeamResponse を渡す）
@@ -22,7 +22,7 @@ import type { FollowTeamResponse } from '~/types/friends'
 
 const props = defineProps<{
   teamId: string
-  targetTeamId: number
+  targetTeamSlug: string
   comment?: string
   disabled?: boolean
 }>()
@@ -54,7 +54,7 @@ async function execute() {
   submitting.value = true
   try {
     const response = await follow(props.teamId, {
-      targetTeamId: props.targetTeamId,
+      targetTeamSlug: props.targetTeamSlug,
       comment: props.comment,
     })
 

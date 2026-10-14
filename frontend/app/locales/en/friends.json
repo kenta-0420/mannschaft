@@ -11,6 +11,15 @@
       "target_team_id": "Target team ID",
       "comment_label": "Greeting message (optional)"
     },
+    "follow_dialog": {
+      "search_label": "Search by team name",
+      "search_placeholder": "Enter at least 2 characters of the team name",
+      "slug_input_label": "Specify by URL name",
+      "slug_input_hint": "If the team does not appear in the results, enter its URL name (the last part of its address) in the field below",
+      "no_results": "No matching teams were found",
+      "search_error": "The search failed. Check your connection and try again",
+      "retry": "Search again"
+    },
     "actions": {
       "follow": "Follow",
       "unfollow": "Unfollow",
@@ -41,7 +50,7 @@
       "follow": {
         "title": "Follow a team to become friends",
         "step1": "Press the \"Follow\" button at the top of the Friend Teams tab",
-        "step2": "Enter the ID (number) of the team you want to follow",
+        "step2": "Search by team name and pick the team you want to follow. If you cannot find it, type the team's URL name (the last part of its address) directly",
         "step3": "Enter a greeting message (optional, up to 300 characters)",
         "step4": "Press \"Follow\" in the dialog",
         "mutual": "When the other team follows you back, \"you are now friend teams\" is displayed and the friend team relationship is established.",
