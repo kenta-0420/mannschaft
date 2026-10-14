@@ -7,14 +7,20 @@ import { primeStubs } from '../organization/member-teams/stubs'
 /**
  * F01.2.1 8-D — メンバー一覧の操作メニュー「権限グループ」ダイアログ（§3.2・AC-P03〜P05）。
  *
- *   PD-01 開くと権限グループ一覧を取得し、チェックリストで出す（MANAGE_ORG_AFFILIATION を含むものに印）
- *   PD-02 選んで保存すると assign API を選択 ID 全部で呼び、assigned を発火して閉じる
- *   PD-03 何も選ばずに保存すると空配列（全割当解除）で呼ぶ
+ * BE の PUT は割当の全置換なので、現在の割当（メンバー一覧の permissionGroups）で初期化し、
+ * 追加・削除の差分を見せてから保存する（既存割当を黙って消さない）。
+ *
+ *   PD-01 開くと一覧を取得し、現在の割当にチェックが入った状態で出る（MANAGE_ORG_AFFILIATION を含むものに印）
+ *   PD-02 既存割当を保持したまま1件追加すると、PUT は既存+追加の全 ID で呼ばれ、差分に追加が出る
+ *   PD-03 変更が無ければ保存できない（無用な全置換をしない）
  *   PD-04 保存失敗はダイアログ内にエラーを残し、閉じない
  *   PD-05 保存の二重送信を防ぐ
  *   PD-06 一覧の取得失敗はエラー表示し、保存できない
  *   PD-07 グループが 0 件なら案内を出し、保存できない
  *   PD-08 member が null のときは何も取得しない
+ *   PD-09 既存割当を外すと差分に削除が出て、PUT から除かれる（全部外すと空配列）
+ *   PD-10 現在の割当が分からない（permissionGroups 未提供）ときは保存させない
+ *   PD-11 別メンバーを開き直したら、そのメンバーの割当で初期化される
  */
 
 const getPermissionGroups = vi.fn()
@@ -25,7 +31,12 @@ vi.mock('~/composables/team/useTeamMembers', () => ({
 }))
 
 const stubs = { ...primeStubs }
-const member = { userId: 42, displayName: '山田', roleName: 'MEMBER' }
+const member = {
+  userId: 42,
+  displayName: '山田',
+  roleName: 'MEMBER',
+  permissionGroups: [{ id: 2, name: '予定担当' }],
+}
 const groups = [
   { id: 1, name: '加盟担当', targetRole: 'MEMBER', permissions: ['MANAGE_ORG_AFFILIATION'] },
   { id: 2, name: '予定担当', targetRole: 'MEMBER', permissions: ['MANAGE_SCHEDULES'] },
@@ -40,6 +51,9 @@ async function mountDialog(props: Record<string, unknown> = {}) {
   return w
 }
 
+const checked = (w: Awaited<ReturnType<typeof mountDialog>>, id: number) =>
+  (w.find(`[data-testid="pg-check-${id}"]`).element as HTMLInputElement).checked
+
 describe('TeamMemberPermissionGroupsDialog', () => {
   beforeEach(() => {
     getPermissionGroups.mockReset()
@@ -47,37 +61,39 @@ describe('TeamMemberPermissionGroupsDialog', () => {
     getPermissionGroups.mockResolvedValue({ data: groups })
   })
 
-  it('PD-01: 一覧を取得してチェックリストで出す', async () => {
+  it('PD-01: 現在の割当にチェックが入った状態でチェックリストが出る', async () => {
     const w = await mountDialog()
     expect(getPermissionGroups).toHaveBeenCalledWith('team-1')
-    expect(w.find('[data-testid="pg-check-1"]').exists()).toBe(true)
-    expect(w.find('[data-testid="pg-check-2"]').exists()).toBe(true)
+    expect(checked(w, 2)).toBe(true)
+    expect(checked(w, 1)).toBe(false)
     expect(w.find('[data-testid="pg-affiliation-mark-1"]').exists()).toBe(true)
     expect(w.find('[data-testid="pg-affiliation-mark-2"]').exists()).toBe(false)
   })
 
-  it('PD-02: 保存で選択 ID を assign API に渡し、assigned を発火', async () => {
+  it('PD-02: 既存割当を保持して1件追加すると、既存+追加の全 ID で PUT し、差分に追加が出る', async () => {
     assignPermissionGroups.mockResolvedValue(undefined)
     const w = await mountDialog()
     await w.find('[data-testid="pg-check-1"]').setValue(true)
+    expect(w.find('[data-testid="pg-diff-add"]').text()).toContain('加盟担当')
+    expect(w.find('[data-testid="pg-diff-remove"]').exists()).toBe(false)
     await w.find('[data-testid="pg-assign-submit"]').trigger('click')
     await flushPromises()
-    expect(assignPermissionGroups).toHaveBeenCalledWith('team-1', 42, [1])
+    expect(assignPermissionGroups).toHaveBeenCalledWith('team-1', 42, [1, 2])
     expect(w.emitted('assigned')).toHaveLength(1)
     expect(w.emitted('update:visible')?.at(-1)).toEqual([false])
   })
 
-  it('PD-03: 何も選ばなければ空配列で呼ぶ', async () => {
-    assignPermissionGroups.mockResolvedValue(undefined)
+  it('PD-03: 変更が無ければ保存できない', async () => {
     const w = await mountDialog()
     await w.find('[data-testid="pg-assign-submit"]').trigger('click')
     await flushPromises()
-    expect(assignPermissionGroups).toHaveBeenCalledWith('team-1', 42, [])
+    expect(assignPermissionGroups).not.toHaveBeenCalled()
   })
 
   it('PD-04: 保存失敗はエラーを残し閉じない', async () => {
     assignPermissionGroups.mockRejectedValue(new Error('403'))
     const w = await mountDialog()
+    await w.find('[data-testid="pg-check-1"]').setValue(true)
     await w.find('[data-testid="pg-assign-submit"]').trigger('click')
     await flushPromises()
     expect(w.find('[data-testid="pg-assign-error"]').exists()).toBe(true)
@@ -89,6 +105,7 @@ describe('TeamMemberPermissionGroupsDialog', () => {
     let resolve!: () => void
     assignPermissionGroups.mockReturnValue(new Promise<void>((r) => { resolve = r }))
     const w = await mountDialog()
+    await w.find('[data-testid="pg-check-1"]').setValue(true)
     const submit = w.find('[data-testid="pg-assign-submit"]')
     await submit.trigger('click')
     await submit.trigger('click')
@@ -114,5 +131,29 @@ describe('TeamMemberPermissionGroupsDialog', () => {
   it('PD-08: member が null なら取得しない', async () => {
     await mountDialog({ member: null })
     expect(getPermissionGroups).not.toHaveBeenCalled()
+  })
+
+  it('PD-09: 既存割当を外すと差分に削除が出て、PUT から除かれる（全部外すと空配列）', async () => {
+    assignPermissionGroups.mockResolvedValue(undefined)
+    const w = await mountDialog()
+    await w.find('[data-testid="pg-check-2"]').setValue(false)
+    expect(w.find('[data-testid="pg-diff-remove"]').text()).toContain('予定担当')
+    await w.find('[data-testid="pg-assign-submit"]').trigger('click')
+    await flushPromises()
+    expect(assignPermissionGroups).toHaveBeenCalledWith('team-1', 42, [])
+  })
+
+  it('PD-10: 現在の割当が分からないときは保存させない', async () => {
+    const w = await mountDialog({ member: { userId: 42, displayName: '山田', roleName: 'MEMBER' } })
+    expect(w.find('[data-testid="pg-current-unknown"]').exists()).toBe(true)
+    expect(w.find('[data-testid="pg-assign-submit"]').exists()).toBe(false)
+  })
+
+  it('PD-11: 別メンバーを開き直したら、そのメンバーの割当で初期化される', async () => {
+    const w = await mountDialog()
+    await w.setProps({ member: { userId: 43, displayName: '佐藤', roleName: 'MEMBER', permissionGroups: [{ id: 1, name: '加盟担当' }] } })
+    await flushPromises()
+    expect(checked(w, 1)).toBe(true)
+    expect(checked(w, 2)).toBe(false)
   })
 })

@@ -140,6 +140,43 @@ class PermissionGroupServiceTest {
     }
 
     // ========================================
+    // findAssignedGroupsByUser（メンバー一覧の permission_groups・F01.2.1 8-D）
+    // ========================================
+
+    @Nested
+    @DisplayName("findAssignedGroupsByUser")
+    class FindAssignedGroupsByUser {
+
+        private UserPermissionGroupEntity assignment(Long userId, Long groupId) {
+            return UserPermissionGroupEntity.builder().userId(userId).groupId(groupId).build();
+        }
+
+        @Test
+        @DisplayName("対象スコープのグループだけをユーザーごとに返す（他テナントのグループ割当は混ぜない）。クエリは一括")
+        void returnsOnlyInScopeGroupsInBulk() {
+            given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of(
+                    createGroupEntity(10L, "加盟担当"), createGroupEntity(11L, "予定担当")));
+            given(userPermissionGroupRepository.findByUserIdIn(List.of(USER_ID, USER_ID_2))).willReturn(List.of(
+                    assignment(USER_ID, 10L), assignment(USER_ID, 999L), assignment(USER_ID_2, 11L)));
+
+            var result = permissionGroupService.findAssignedGroupsByUser(SCOPE_ID, "TEAM", List.of(USER_ID, USER_ID_2));
+
+            assertThat(result.get(USER_ID)).extracting(g -> g.id()).containsExactly(10L);
+            assertThat(result.get(USER_ID)).extracting(g -> g.name()).containsExactly("加盟担当");
+            assertThat(result.get(USER_ID_2)).extracting(g -> g.id()).containsExactly(11L);
+            verify(userPermissionGroupRepository, times(1)).findByUserIdIn(anyList());
+            verify(permissionGroupRepository, times(1)).findByTeamId(SCOPE_ID);
+        }
+
+        @Test
+        @DisplayName("ユーザーが空なら何も検索しない")
+        void emptyUsersSkipsQueries() {
+            assertThat(permissionGroupService.findAssignedGroupsByUser(SCOPE_ID, "TEAM", List.of())).isEmpty();
+            verifyNoInteractions(permissionGroupRepository, userPermissionGroupRepository);
+        }
+    }
+
+    // ========================================
     // createPermissionGroup
     // ========================================
 
