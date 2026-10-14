@@ -132,22 +132,19 @@ jobs:
                 if (!Number.isInteger(prNumber) || implementations[prNumber]) continue;
                 const response = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
                 const implementationPr = response.data;
-                const checkRuns = await github.paginate(github.rest.checks.listForRef, { owner, repo, ref: implementationPr.head.sha, per_page: 100 });
+                // 同じhead SHAから後で開かれた別PRのcheckを混ぜないよう、全check suiteを取得してマージ時点の世代だけで判定する。
+                const checkRuns = await github.paginate(github.rest.checks.listForRef, { owner, repo, ref: implementationPr.head.sha, filter: 'all', per_page: 100 });
                 const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, { owner, repo, ref: implementationPr.head.sha, per_page: 100 });
-                const latestChecks = new Map();
-                for (const check of [...checkRuns].sort((a, b) => Date.parse(b.completed_at || b.started_at || b.created_at) - Date.parse(a.completed_at || a.started_at || a.created_at))) {
-                  if (!latestChecks.has(check.name)) latestChecks.set(check.name, check.conclusion);
-                }
-                const latestStatuses = new Map();
-                for (const status of [...statuses].sort((a, b) => Date.parse(b.updated_at || b.created_at) - Date.parse(a.updated_at || a.created_at))) {
-                  if (!latestStatuses.has(status.context)) latestStatuses.set(status.context, status.state === 'success' ? 'success' : status.state);
+                const implementationFiles = await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: prNumber, per_page: 100 });
+                if (implementationFiles.length !== implementationPr.changed_files) {
+                  throw new Error(`Implementation PR #${prNumber} file list is incomplete (${implementationFiles.length}/${implementationPr.changed_files}); scope cannot be inferred.`);
                 }
                 implementations[prNumber] = {
                   repository: implementationPr.base.repo?.full_name,
                   merged: Boolean(implementationPr.merged_at),
                   sha: implementationPr.head.sha,
-                  checks: [...latestChecks.values(), ...latestStatuses.values()],
-                  files: (await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: prNumber, per_page: 100 })).map(file => file.filename),
+                  checks: implementationPr.merged_at ? trustedValidator.summarizeImplementationChecks({ checkRuns, statuses, mergedAt: implementationPr.merged_at }) : [],
+                  files: implementationFiles.map(file => ({ filename: file.filename, previous_filename: file.previous_filename, status: file.status })),
                 };
               }
               const runs = [];
