@@ -187,6 +187,74 @@ class TeamOrgAffiliationBatchesCommittedIT extends TeamOrgLifecycleCommittedItSu
     }
 
     // =====================================================================
+    // §4.5・§6.7・AC-E05 閉鎖の片付け対象は期限切れにせず、片付けに残す（通知は取消の1種類だけ）
+    // =====================================================================
+
+    @Test
+    @DisplayName("§4.5・AC-E05 期限を過ぎた通知済みの招待でも、組織がアーカイブ済み（閉鎖イベントの取りこぼし）なら期限切れバッチは消さず、"
+            + "続く片付けバッチが消してチームへ取消（TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM）だけを届ける。期限切れの通知・監査は出ない")
+    void 組織が閉鎖中の期限切れは片付けに残す() throws Exception {
+        Fixture fx = fixture();
+        long invite = membership(fx.team().id(), fx.org().id(), "PENDING", "ORG_INVITE", null);
+        shiftInvitedAtDaysAgo(invite, 61);
+        closeOrganizationWithoutEvent(fx.org().id(), true);
+
+        assertExpiryLeavesRowToCleanup(invite, fx.team().id());
+    }
+
+    @Test
+    @DisplayName("§4.5・AC-E05 期限を過ぎた申請でも、チームがアーカイブ済み（他ドメインの tx からのアーカイブの片付けの取りこぼし）なら"
+            + "期限切れバッチは消さず、続く片付けバッチが消して組織へ取消だけを届ける")
+    void チームが閉鎖中の期限切れは片付けに残す() throws Exception {
+        Fixture fx = fixture();
+        long apply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
+        shiftInvitedAtDaysAgo(apply, 61);
+        inTxVoid(() -> em.createNativeQuery("UPDATE teams SET archived_at = UTC_TIMESTAMP(), "
+                        + "closure_generation = closure_generation + 1 WHERE id = :id")
+                .setParameter("id", fx.team().id()).executeUpdate());
+
+        assertExpiryLeavesRowToCleanup(apply, fx.team().id());
+    }
+
+    @Test
+    @DisplayName("§4.5・AC-E05 期限を過ぎた申請が、組織の閉鎖 → 片付けの前に解除で閉鎖前の世代のまま残っていれば、期限切れバッチは消さず、"
+            + "続く片付けバッチが消してチームへ取消だけを届ける")
+    void 閉鎖前の世代の期限切れは片付けに残す() throws Exception {
+        Fixture fx = fixture();
+        long apply = membership(fx.team().id(), fx.org().id(), "PENDING", "TEAM_APPLY", null);
+        shiftInvitedAtDaysAgo(apply, 61);
+        // アーカイブ → 片付けの前に解除（世代だけが進み、いまは開いている）
+        closeOrganizationWithoutEvent(fx.org().id(), false);
+
+        assertExpiryLeavesRowToCleanup(apply, fx.team().id());
+    }
+
+    /** 期限切れバッチ → 片付けバッチの順に流し、行は片付けで消え、取消の通知だけが1件出ることを確かめる。 */
+    private void assertExpiryLeavesRowToCleanup(long membershipId, long teamId) throws Exception {
+        assertThat(trigger(EXPIRY)).isEqualTo(200);
+        assertThat(statusOf(membershipId)).as("閉鎖の片付け対象は期限切れにしない").isEqualTo("PENDING");
+        assertThat(jobIdsOf(membershipId, EXPIRED)).isEmpty();
+
+        assertThat(trigger(LIFECYCLE_CLEANUP)).isEqualTo(200);
+        assertThat(statusOf(membershipId)).as("片付けで消える").isNull();
+        assertThat(jobIdsOf(membershipId, CANCELLED)).as("取消の通知だけが1件").hasSize(1);
+        assertThat(jobIdsOf(membershipId, EXPIRED)).as("期限切れの通知は出ない").isEmpty();
+        assertThat(expiredAudits(teamId)).isEmpty();
+
+        // 続けて期限切れを流しても何も起きない
+        assertThat(trigger(EXPIRY)).isEqualTo(200);
+        assertThat(jobIdsOf(membershipId, EXPIRED)).isEmpty();
+    }
+
+    /** 組織の閉鎖（世代 +1）をイベントを出さずにコミットする。{@code stillArchived=false} は片付けの前の解除。 */
+    private void closeOrganizationWithoutEvent(long orgId, boolean stillArchived) {
+        inTxVoid(() -> em.createNativeQuery("UPDATE organizations SET archived_at = "
+                        + (stillArchived ? "UTC_TIMESTAMP()" : "NULL")
+                        + ", closure_generation = closure_generation + 1 WHERE id = :id")
+                .setParameter("id", orgId).executeUpdate());
+    }
+
+    // =====================================================================
     // AC-F11 孤児 group_id の修復
     // =====================================================================
 
