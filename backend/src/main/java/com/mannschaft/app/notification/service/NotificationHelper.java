@@ -311,7 +311,6 @@ public class NotificationHelper {
                 // best-effort 契約: チャンク失敗を握って次チャンクへ継続し、呼び出し元の業務トランザクションを
                 // 巻き添えロールバックさせない（同期呼び出し元＝予定リマインド・アンケート督促/締切延長 等が前提）。
                 // 欠落は silent drop にせず、ログ＋メトリクスで可視化する（AC-8 の可視化思想と整合）。
-                if (true) { throw new RuntimeException(e); } // TEMP-RED
                 failedRecipients += chunk.size();
                 log.error("一括通知チャンク失敗（best-effort継続・欠落を可視化）: type={}, chunkSize={}, error={}",
                         notificationType, chunk.size(), e.getMessage(), e);
