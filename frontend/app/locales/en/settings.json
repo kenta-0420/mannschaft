@@ -535,7 +535,8 @@
       },
       "security": {
         "label": "Security",
-        "description": "2FA, session management, security keys"
+        "description": "2FA, session management, security keys",
+        "keywords": "backup backup code two-factor 2-step two-step 2fa authenticator totp"
       },
       "email": {
         "description": "Change your email address"

@@ -231,6 +231,8 @@ export function useTwoFactorSettings() {
 
   /** 共通: busy 管理とエラー表示つきで API 呼び出しを実行し、成功時に結果を返す（失敗は null）。 */
   async function run<T>(action: () => Promise<T>): Promise<T | null> {
+    // 送信中の連打・二重実行は黙って捨てる（同じ要求を 2 回送らない。ALIC-2）。エラー表示も出さない。
+    if (busy.value) return null
     busy.value = true
     errorMessage.value = ''
     try {

@@ -535,7 +535,8 @@
       },
       "security": {
         "label": "セキュリティ",
-        "description": "2FA・セッション管理・セキュリティキー"
+        "description": "2FA・セッション管理・セキュリティキー",
+        "keywords": "バックアップ バックアップコード 二要素 二要素認証 2段階 2段階認証 二段階認証 2fa 認証アプリ totp"
       },
       "email": {
         "description": "メールアドレスの変更"

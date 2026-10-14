@@ -52,6 +52,15 @@ const suspiciousSteps = computed<string[]>(() => resolveSteps('security_help.sus
             </ol>
           </div>
 
+          <div class="mb-3 rounded-lg bg-surface-50 p-3 dark:bg-surface-800" data-testid="security-help-email-2fa">
+            <p class="mb-1 text-xs font-semibold text-surface-700 dark:text-surface-200">
+              {{ t('security_help.twofa.email_title') }}
+            </p>
+            <p class="text-sm leading-relaxed text-surface-600 dark:text-surface-300">
+              {{ t('security_help.twofa.email_desc') }}
+            </p>
+          </div>
+
           <div class="rounded-lg bg-surface-50 p-3 dark:bg-surface-800">
             <p class="mb-1 text-xs font-semibold text-surface-700 dark:text-surface-200">
               {{ t('security_help.twofa.backup_title') }}

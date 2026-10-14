@@ -78,6 +78,58 @@ describe('2fa-verify.vue (AC-13 / AC-28 / AC-38)', () => {
   })
 })
 
+describe('ALIC-2 / ALIC-3 / UX-1: 送信ガード・文言・導線', () => {
+  it('2fa-verify の handleVerify は送信中なら入口で return する（連打で validate を二重送信しない）', () => {
+    expect(verify).toMatch(/if \(!mfaSessionToken\.value \|\| !canSubmit\.value \|\| loading\.value\) return/)
+  })
+
+  it('2fa-recovery の request / confirm も送信中なら入口で return する', () => {
+    expect(recovery).toMatch(/if \(!mfaSessionToken\.value \|\| loading\.value\) return/)
+    expect(recovery).toMatch(/if \(!recoveryToken\.value \|\| loading\.value\) return/)
+  })
+
+  it('メール方式の送信前は「送るボタンを押す」文言を出す（自動送信しない）', () => {
+    expect(verify).toContain("selectedMethod.value === 'EMAIL' && !emailSent.value")
+    expect(verify).toContain('auth.mfa.subtitle_email_unsent')
+    expect(verify.match(/handleSendEmail\(\)/g)?.length).toBe(1) // 定義のみ。onMounted 等から呼ばない
+  })
+
+  it('バックアップコードへ切り替えたら入力欄へフォーカスする', () => {
+    expect(verify).toContain('ref="backupInputRef"')
+    expect(verify).toContain("method === 'BACKUP_CODE'")
+    expect(verify).toContain('backupInputRef.value?.$el?.focus')
+  })
+
+  it('本人確認ダイアログのエラーは本文の先頭（説明より前）に置く', () => {
+    const dialog = read('app/components/settings/SettingsTwoFactorReauthDialog.vue')
+    const template = dialog.slice(dialog.indexOf('<template>'))
+    expect(template.indexOf('two-fa-reauth-error')).toBeGreaterThan(-1)
+    expect(template.indexOf('two-fa-reauth-error')).toBeLessThan(template.indexOf('two-fa-reauth-description'))
+  })
+
+  it('設定検索はキーワードを見る', () => {
+    const hub = read('app/pages/settings/index.vue')
+    expect(hub).toContain("keywords: t('settings.hub.security.keywords')")
+    expect(hub).toContain('item.keywords')
+  })
+
+  it.each(LANGS)('%s: 検索語・使い方のメール方式説明・文言キーが揃い、リンク名が行き先と一致する', (lang) => {
+    const settings = JSON.parse(read(`app/locales/${lang}/settings.json`)) as { settings: { hub: { security: { keywords?: string } } } }
+    expect(settings.settings.hub.security.keywords).toBeTruthy()
+    const help = JSON.parse(read(`app/locales/${lang}/help.json`)) as { security_help: { twofa: Record<string, string> } }
+    expect(help.security_help.twofa.email_title).toBeTruthy()
+    expect(help.security_help.twofa.email_desc).toBeTruthy()
+    const mfa = mfaKeys(lang) as Record<string, string>
+    expect(mfa.subtitle_email_unsent).toBeTruthy()
+  })
+
+  it('ja の検索語に「バックアップ」「二要素」「2段階」を含む', () => {
+    const ja = JSON.parse(read('app/locales/ja/settings.json')) as { settings: { hub: { security: { keywords: string } } } }
+    for (const w of ['バックアップ', '二要素', '2段階']) expect(ja.settings.hub.security.keywords).toContain(w)
+    expect(mfaKeys('ja').use_recovery).toBe('メールでアカウントを回復する')
+  })
+})
+
 describe('2fa-recovery.vue (AC-52 / AC-38)', () => {
   it('メールのリンクの ?token= を読み、セッション無しでも開ける', () => {
     expect(recovery).toContain('route.query.token')

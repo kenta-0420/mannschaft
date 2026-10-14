@@ -535,7 +535,8 @@
       },
       "security": {
         "label": "Sicherheit",
-        "description": "2FA, Sitzungsverwaltung, Sicherheitsschlüssel"
+        "description": "2FA, Sitzungsverwaltung, Sicherheitsschlüssel",
+        "keywords": "backup backup-code zwei-faktor zwei-schritt zwei-schritt-bestätigung 2fa authenticator totp"
       },
       "email": {
         "description": "E-Mail-Adresse ändern"

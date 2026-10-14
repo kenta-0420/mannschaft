@@ -535,7 +535,8 @@
       },
       "security": {
         "label": "보안",
-        "description": "2FA・세션 관리・보안 키"
+        "description": "2FA・세션 관리・보안 키",
+        "keywords": "백업 백업 코드 2단계 인증 이중 인증 2fa 인증 앱 totp"
       },
       "email": {
         "description": "이메일 주소 변경"

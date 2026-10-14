@@ -188,4 +188,26 @@ describe('useTwoFactorSettings', () => {
     expect(tf.errorMessage.value).toContain('rate_limited')
     expect(tf.errorMessage.value).toContain('30')
   })
+
+  it('ALIC-2: 送信中の連打・二重実行は API を 1 回しか呼ばない', async () => {
+    let resolveApi: (v: unknown) => void = () => {}
+    apiMock.mockImplementationOnce(() => new Promise((r) => { resolveApi = r }))
+    const tf = useTwoFactorSettings()
+    const first = tf.sendReauthEmail()
+    // 1 回目が未完了のうちに、同じ操作・別の操作を続けて送る
+    const second = tf.sendReauthEmail()
+    const third = tf.disableTwoFactor({ method: 'TOTP', code: '123456' })
+    const fourth = tf.regenerateBackupCodes({ method: 'TOTP', code: '123456' })
+    const fifth = tf.confirmEmailSetup('123456')
+    expect(await Promise.all([second, third, fourth, fifth])).toEqual([false, false, false, false])
+    expect(apiMock).toHaveBeenCalledTimes(1)
+    resolveApi({ data: { maskedEmail: 'a***@example.com' } })
+    expect(await first).toBe(true)
+    // 破棄した要求はエラー表示を出さない
+    expect(tf.errorMessage.value).toBe('')
+    // 完了後は再び送れる
+    apiMock.mockResolvedValueOnce({ data: {} })
+    await tf.sendReauthEmail()
+    expect(apiMock).toHaveBeenCalledTimes(2)
+  })
 })

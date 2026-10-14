@@ -148,6 +148,11 @@ function submit() {
     @update:visible="emit('update:visible', $event)"
   >
     <form class="space-y-4" @submit.prevent="submit">
+      <!-- エラーは本文の先頭に置く。末尾だと狭い画面でフッターの陰に隠れて利用者に見えない（ALIC-3）。 -->
+      <Message v-if="errorMessage" severity="error" :closable="false" data-testid="two-fa-reauth-error">
+        {{ errorMessage }}
+      </Message>
+
       <p class="text-sm text-surface-500" data-testid="two-fa-reauth-description">
         {{ description }}
       </p>
@@ -217,10 +222,6 @@ function submit() {
         <InputOtp v-if="isOtpFactor" :key="factor" v-model="code" :length="6" integer-only data-testid="two-fa-reauth-otp" />
         <InputText v-else v-model="code" autocomplete="off" fluid data-testid="two-fa-reauth-backup-input" />
       </div>
-
-      <Message v-if="errorMessage" severity="error" :closable="false" data-testid="two-fa-reauth-error">
-        {{ errorMessage }}
-      </Message>
 
       <div class="flex justify-end gap-2">
         <Button

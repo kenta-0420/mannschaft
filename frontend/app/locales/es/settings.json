@@ -535,7 +535,8 @@
       },
       "security": {
         "label": "Seguridad",
-        "description": "2FA, gestión de sesiones, claves de seguridad"
+        "description": "2FA, gestión de sesiones, claves de seguridad",
+        "keywords": "respaldo copia de seguridad código de respaldo dos factores dos pasos verificación en dos pasos 2fa autenticador totp"
       },
       "email": {
         "description": "Cambiar tu dirección de correo electrónico"

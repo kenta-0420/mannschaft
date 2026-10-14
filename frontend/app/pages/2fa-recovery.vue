@@ -38,7 +38,7 @@ onMounted(() => {
 })
 
 async function handleRequestRecovery() {
-  if (!mfaSessionToken.value) return
+  if (!mfaSessionToken.value || loading.value) return
 
   loading.value = true
   try {
@@ -53,7 +53,7 @@ async function handleRequestRecovery() {
 }
 
 async function handleConfirmRecovery() {
-  if (!recoveryToken.value) return
+  if (!recoveryToken.value || loading.value) return
 
   loading.value = true
   confirmFailed.value = false

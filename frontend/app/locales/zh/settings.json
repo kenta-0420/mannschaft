@@ -535,7 +535,8 @@
       },
       "security": {
         "label": "安全",
-        "description": "双重验证、会话管理、安全密钥"
+        "description": "双重验证、会话管理、安全密钥",
+        "keywords": "备份 备份码 两步验证 双重验证 二步验证 2fa 验证器 totp"
       },
       "email": {
         "description": "更改电子邮件地址"

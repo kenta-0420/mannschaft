@@ -205,8 +205,15 @@ const canSubmit = computed(
     && (selectedMethod.value !== 'EMAIL' || (emailSent.value && !emailExpired.value)),
 )
 
-watch(selectedMethod, () => {
+const backupInputRef = ref<{ $el?: HTMLElement } | null>(null)
+
+watch(selectedMethod, async (method) => {
   inlineError.value = ''
+  // バックアップコードへ切り替えたら、そのまま打てるよう入力欄へフォーカスを移す。
+  if (method === 'BACKUP_CODE') {
+    await nextTick()
+    backupInputRef.value?.$el?.focus?.()
+  }
 })
 
 function clearCurrentCode() {
@@ -216,7 +223,7 @@ function clearCurrentCode() {
 }
 
 async function handleVerify() {
-  if (!mfaSessionToken.value || !canSubmit.value) return
+  if (!mfaSessionToken.value || !canSubmit.value || loading.value) return
 
   loading.value = true
   inlineError.value = ''
@@ -296,14 +303,15 @@ async function handleVerify() {
   }
 }
 
-const subtitleKey = computed(
-  () =>
-    ({
-      TOTP: 'auth.mfa.subtitle_totp',
-      EMAIL: 'auth.mfa.subtitle_email',
-      BACKUP_CODE: 'auth.mfa.subtitle_backup_code',
-    })[selectedMethod.value],
-)
+const subtitleKey = computed(() => {
+  // メール方式は送信前にコード入力欄が無い。次の一手（送信ボタン）を案内する。
+  if (selectedMethod.value === 'EMAIL' && !emailSent.value) return 'auth.mfa.subtitle_email_unsent'
+  return {
+    TOTP: 'auth.mfa.subtitle_totp',
+    EMAIL: 'auth.mfa.subtitle_email',
+    BACKUP_CODE: 'auth.mfa.subtitle_backup_code',
+  }[selectedMethod.value]
+})
 
 // リカバリーリンクはセッションを引き継ぐ（AC-38）。引き継がないと 2fa-recovery が /login へ弾き返す。
 const recoveryLink = computed(() => ({
@@ -414,6 +422,7 @@ const recoveryLink = computed(() => ({
         <!-- バックアップコード -->
         <div v-else class="flex w-full flex-col gap-2">
           <InputText
+            ref="backupInputRef"
             v-model="backupCode"
             inputmode="numeric"
             autocomplete="one-time-code"
