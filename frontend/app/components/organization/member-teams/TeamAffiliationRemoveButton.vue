@@ -37,16 +37,21 @@ onUnmounted(() => {
 
 function askRemove() {
   if (!props.canRemove || props.disabled || busy.value || !props.team.slug) return
+  // 別groupの確認を残さず、専用の除名確認だけを開く。
+  confirm.close()
   const requestedRevision = revision
   const orgSlug = props.orgSlug
   const teamSlug = props.team.slug
   const refreshAfterRemoval = props.refreshAfterRemoval
   confirm.require({
+    group: 'team-affiliation-remove',
     header: t('orgMemberTeams.remove.title'),
     message: t('teamAffiliation.remove.confirm', { team: props.team.nickname1 || props.team.name }),
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: t('teamAffiliation.remove.button'),
     rejectLabel: t('button.cancel'),
+    acceptClass: 'min-h-11 min-w-11',
+    rejectClass: 'min-h-11 min-w-11',
     acceptProps: { severity: 'danger' },
     rejectProps: { text: true },
     accept: async () => {

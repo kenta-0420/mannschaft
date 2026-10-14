@@ -10,10 +10,11 @@ const mocks = vi.hoisted(() => ({
   removeTeam: vi.fn(),
   listTeamGroupList: vi.fn(),
   require: vi.fn(),
+  close: vi.fn(),
   success: vi.fn(),
   handleApiError: vi.fn(),
 }))
-mockNuxtImport('useConfirm', () => () => ({ require: mocks.require }))
+mockNuxtImport('useConfirm', () => () => ({ require: mocks.require, close: mocks.close }))
 mockNuxtImport('useNotification', () => () => ({ success: mocks.success }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError: mocks.handleApiError }))
 vi.mock('~/composables/useOrgTeamMembershipApi', () => ({
@@ -63,6 +64,9 @@ describe('加盟チームの除名（AC-E02/E03/P08 の FE 契約）', () => {
     const wrapper = await mountList()
     expect(wrapper.find('[data-testid="team-remove-team-1"]').exists()).toBe(true)
     await wrapper.find('[data-testid="team-remove-team-1"]').trigger('click')
+    expect(mocks.close).toHaveBeenCalledTimes(1)
+    expect(mocks.close.mock.invocationCallOrder[0]).toBeLessThan(mocks.require.mock.invocationCallOrder[0]!)
+    expect(confirmation().group).toBe('team-affiliation-remove')
     expect(confirmation().message).toContain(TEAM.name)
     expect(confirmation().rejectLabel).toBeTruthy()
     expect(mocks.removeTeam).not.toHaveBeenCalled()
