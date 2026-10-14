@@ -137,6 +137,44 @@ public record TeamAffiliationNotice(NotificationType notificationType,
     }
 
     /**
+     * チームが起こした申請が期限切れで消えた通知（{@code TEAM_ORG_PENDING_EXPIRED}。受信者は起こした側＝チームの加盟操作者。
+     * §6.7・§6.8）。期限切れはシステムの遷移なので操作者は無い。
+     */
+    public static TeamAffiliationNotice applicationExpired(Long teamId, String teamSlug, Long organizationId,
+                                                           String teamName, String organizationName,
+                                                           Long membershipId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_PENDING_EXPIRED,
+                FanoutMessageKind.TEAM_ORG_PENDING_EXPIRED,
+                List.of(teamName, organizationName),
+                RecipientScope.TEAM_AFFILIATION_OPERATORS,
+                teamId,
+                organizationId,
+                membershipId,
+                null,
+                "/teams/" + teamSlug + "/affiliations?view=applications");
+    }
+
+    /**
+     * 組織が起こした招待が期限切れで消えた通知（{@code TEAM_ORG_PENDING_EXPIRED}。受信者は起こした側＝組織 ADMIN 全員。
+     * §6.7・§6.8）。開く画面は組織の所属チーム画面の招待一覧（{@code member-teams?view=invites}）。
+     */
+    public static TeamAffiliationNotice inviteExpired(Long organizationId, String organizationSlug,
+                                                      String teamName, String organizationName,
+                                                      Long membershipId) {
+        return new TeamAffiliationNotice(
+                NotificationType.TEAM_ORG_PENDING_EXPIRED,
+                FanoutMessageKind.TEAM_ORG_PENDING_EXPIRED,
+                List.of(teamName, organizationName),
+                RecipientScope.ORGANIZATION_ADMINS,
+                organizationId,
+                organizationId,
+                membershipId,
+                null,
+                "/organizations/" + organizationSlug + "/member-teams?view=invites");
+    }
+
+    /**
      * 組織側のアーカイブ・論理削除で PENDING が取り消された通知（{@code TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM}。§4.5・§6.7）。
      * 受信者は残った側＝チームの加盟操作者。開く画面は申請なら {@code ?view=applications}、招待なら {@code ?view=invites}。
      *

@@ -116,6 +116,11 @@ public enum AuditEventType {
      * 加盟 ID・group_id）。
      */
     TEAM_ORG_MEMBERSHIP_REMOVED(AuditEventCategory.TEAM),
+    /**
+     * F01.2.1 §4.1・§6.8（7-A）: 応答の無いまま期限（既定60日）を過ぎた PENDING（申請・招待）を夜間バッチが消した
+     * （操作者なし。metadata: 加盟 ID・組織・チーム・direction・group_id）。
+     */
+    TEAM_ORG_PENDING_EXPIRED(AuditEventCategory.TEAM),
 
     // ─── ORGANIZATION (Phase 2+) ──────────────────────────────
     ORGANIZATION_CREATED(AuditEventCategory.ORGANIZATION),
