@@ -17,6 +17,7 @@ import { primeStubs } from '../organization/member-teams/stubs'
  *   PF-08 ADMIN 専用権限を付与できない操作者（SYSTEM_ADMIN 兼任など）は、ADMIN 専用権限を選べず理由が出る（他の権限は選べる）
  *   PF-09 編集対象が既に ADMIN 専用権限を含み、付与できない操作者なら、編集全体を不可にする（外す操作も BE は 403）
  *   PF-10 カタログの assignableTargetRoles に選択中の対象ロールが無い権限（課金権限は DEPUTY_ADMIN のみ）は選べず理由が出る。対象ロールを切り替えると該当の選択は外れる
+ *   PF-12 不適合な既存権限（MEMBER 向けグループの課金権限）は「解除のみ可」: チェック済みでも外せ、外すと保存でき、外した後は再チェックできない
  *   PF-11 既存グループが対象ロールと権限の組合せ制約に反している（誰にも割り当てられない）ときは保存させず理由を出す
  */
 
@@ -183,6 +184,31 @@ describe('TeamPermissionGroupFormDialog', () => {
     await w.find('[data-testid="pf-submit"]').trigger('click')
     await flushPromises()
     expect(updatePermissionGroup).not.toHaveBeenCalled()
+  })
+
+  it('PF-12: 不適合な既存権限は外せて、外すと保存でき、外した後は再チェックできない', async () => {
+    updatePermissionGroup.mockResolvedValue({})
+    const group = { id: 9, name: '予定+課金', targetRole: 'MEMBER', permissions: ['MANAGE_SCHEDULES', 'MANAGE_TEAM_BILLING'] }
+    const w = await mountDialog({ group })
+    const box = (id: number) => w.find(`[data-testid="pf-perm-${id}"]`)
+    // 不整合（課金×MEMBER）。チェック済みの課金権限は無効ではなく外せる。保存はできない
+    expect(w.find('[data-testid="pf-role-conflict"]').exists()).toBe(true)
+    expect((box(3).element as HTMLInputElement).checked).toBe(true)
+    expect((box(3).element as HTMLInputElement).disabled).toBe(false)
+    await w.find('[data-testid="pf-submit"]').trigger('click')
+    await flushPromises()
+    expect(updatePermissionGroup).not.toHaveBeenCalled()
+    // 外すと整合して保存できる
+    await box(3).setValue(false)
+    expect(w.find('[data-testid="pf-role-conflict"]').exists()).toBe(false)
+    expect((box(3).element as HTMLInputElement).disabled).toBe(true)
+    await w.find('[data-testid="pf-submit"]').trigger('click')
+    await flushPromises()
+    expect(updatePermissionGroup).toHaveBeenCalledWith('team-1', 9, {
+      name: '予定+課金',
+      targetRole: 'MEMBER',
+      permissionIds: [2],
+    })
   })
 
   it('PF-07: 保存後に「メンバー一覧で割り当てる」案内が出る', async () => {
