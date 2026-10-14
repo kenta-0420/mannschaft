@@ -10,7 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -43,8 +42,14 @@ class ShiftHourlyRateServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
-    @InjectMocks
     private ShiftHourlyRateService shiftHourlyRateService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        // 認可判定は ShiftHourlyRateAuthorizer に一本化されている。モックの AccessControlService を実際の判定へ通す。
+        shiftHourlyRateService = new ShiftHourlyRateService(hourlyRateRepository, shiftMapper,
+                accessControlService, new com.mannschaft.app.shift.service.ShiftHourlyRateAuthorizer(accessControlService));
+    }
 
     // ========================================
     // テスト用定数・ヘルパー
@@ -173,25 +178,6 @@ class ShiftHourlyRateServiceTest {
             assertThat(result).isNotNull();
             verify(hourlyRateRepository).upsertHourlyRate(
                     USER_ID, TEAM_ID, new BigDecimal("1500.00"), effectiveFrom);
-        }
-    }
-
-    // ========================================
-    // deleteHourlyRate
-    // ========================================
-
-    @Nested
-    @DisplayName("deleteHourlyRate")
-    class DeleteHourlyRate {
-
-        @Test
-        @DisplayName("時給設定削除_正常_deleteByIdが呼ばれる")
-        void 時給設定削除_正常_deleteByIdが呼ばれる() {
-            // When
-            shiftHourlyRateService.deleteHourlyRate(RATE_ID);
-
-            // Then
-            verify(hourlyRateRepository).deleteById(RATE_ID);
         }
     }
 

@@ -42,9 +42,12 @@ class ApiGateDeclarationGuardTest {
         assertThat(scan.entries()).isNotEmpty();
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.HTTP).count())
                 .as("HTTP mapped method の走査総数。parser 退行を台帳比較とは独立に検知する")
-                .isEqualTo(3684);   // Ranch統合側3681 + F01.2.1 2-B2 組織受信申請3本。
-                                    // OrgTeamApplicationController: 一覧・承認・拒否（全3本 CORE 宣言済み）。
-                                    // main 3642 = 3639 + 組織受信申請3、牧場/診断の42本も保持。
+                .isEqualTo(3688);   // main 3646 + 牧場/診断42本。双方のHTTP台帳を保持。
+                                    // 3646 = 3645 + F01.2.1 8-D 権限カタログ GET /api/v1/permissions 1本（PermissionCatalogController・@AlwaysReachable(CORE) 宣言済みで未宣言数は増えない 0|1）
+                                    // 3645 = main 3643 + F01.2.1 2-D 離脱1（TeamOrgMembershipLeaveController）・除名1（OrgTeamMembershipRemovalController）
+                                    // main 3643 = 3642 + CMP-261010-1432 シフト枠間移動1（ShiftSlotController の既存 EP と同じく未宣言 7|7）
+                                    // main 3642 = 3639 + F01.2.1 2-B2 組織側の受信申請3（OrgTeamApplicationController: 一覧・承認・拒否）
+                                    // main 3639 = 3638 + CMP-260826-1456 本人参加申請履歴1
                                     // main 3638 = 3637 + F01.2.1 6-A 組織告知の宛先プレビュー1
                                     // main 3637 = 3632 + CMP-261007-1510 予定由来作成1 + TEAM/ORGリンク・同期preview各2
                                     // 既存内訳: 3566 + 2 + 2 + 3 + 3 + 2 + 12 + 11 + 1 + 2（CMP-260919-1140 Phase 1）+ 5（F01.2.1 4-A）+ 3（F01.2.1 2-B1）+ 4（F01.2.1 2-A）+ 1（F01.2.1 3-D）+ 2（F01.2.1 4-B）+ 10（F01.2.1 2-C）= 3629
@@ -90,6 +93,9 @@ class ApiGateDeclarationGuardTest {
                                     //   @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（2|3）
                                     // + F01.2.1 2-B2 組織側の受信申請（OrgTeamApplicationController: 一覧・承認・拒否の3本）。
                                     //   3本とも @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（0|3）
+                                    // + F01.2.1 2-D 離脱（TeamOrgMembershipLeaveController: DELETE /teams/{teamSlug}/organizations/{orgSlug}）と
+                                    //   除名（OrgTeamMembershipRemovalController: DELETE /organizations/{slug}/teams/{teamSlug}）の2本。
+                                    //   どちらも @AlwaysReachable(CORE) を宣言済みのため未宣言数は増えない（0|1・0|1）
         assertThat(scan.entries().stream().filter(entry -> entry.type() == Type.STOMP).count())
                 .as("STOMP @MessageMapping の走査総数。Chat 2件と VillageLobbyPresence 3件")
                 .isEqualTo(5);

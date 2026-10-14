@@ -12,9 +12,11 @@ import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.gdpr.dto.DataExportRequest;
 import com.mannschaft.app.gdpr.dto.DataExportResponse;
 import com.mannschaft.app.gdpr.dto.DeletionPreviewResponse;
+import com.mannschaft.app.gdpr.dto.PrefetchedPersonalData;
 import com.mannschaft.app.gdpr.dto.UserEmailInfo;
 import com.mannschaft.app.gdpr.entity.DataExportEntity;
 import com.mannschaft.app.gdpr.service.DataExportService;
+import com.mannschaft.app.gdpr.service.PersonalDataPrefetcher;
 import com.mannschaft.app.auth.AuthErrorCode;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,6 +51,7 @@ public class GdprController {
     private final MemberPaymentRepository memberPaymentRepository;
     private final UserRepository userRepository;
     private final com.mannschaft.app.role.service.RoleSuccessionService roleSuccessionService;
+    private final PersonalDataPrefetcher personalDataPrefetcher;
 
     /**
      * POST /api/v1/account/data-export
@@ -70,11 +73,15 @@ public class GdprController {
     public ResponseEntity<ApiResponse<DataExportResponse>> requestExport(
             @Valid @RequestBody DataExportRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        DataExportEntity entity = dataExportService.requestExport(userId, request.getCategories());
-        // ユーザー情報をコントローラー層で先取り（DataExportService から auth.UserRepository を呼ばないドメイン境界設計）
+        // ユーザー情報をコントローラー層で先取り（DataExportService から auth.UserRepository を呼ばないドメイン境界設計）。
+        // 他ドメインの個人データの一部も、エクスポートの tx の外で先に取得して渡す（F01.2.1 2-D・D-3T）。
+        // 先取りはエクスポートの行（PENDING）を作る<b>前</b>に行う。後に行うと、先取りが例外で終わったときに非同期処理が
+        // 起動せず、PENDING の行だけが残る（回復処理 recoverStuckExports は PROCESSING しか拾わない）
+        PrefetchedPersonalData prefetched = personalDataPrefetcher.prefetch(userId, request.getCategories());
         UserEmailInfo userInfo = userRepository.findById(userId)
-                .map(u -> new UserEmailInfo(u.getId(), u.getEmail(), u.getLastName(), u.getFirstName()))
+                .map(u -> new UserEmailInfo(u.getId(), u.getEmail(), u.getLastName(), u.getFirstName(), prefetched))
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
+        DataExportEntity entity = dataExportService.requestExport(userId, request.getCategories());
         dataExportService.processExportAsync(entity.getId(), userInfo, request.getCategories());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.of(toResponse(entity)));
     }

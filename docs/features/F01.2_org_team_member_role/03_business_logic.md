@@ -983,15 +983,15 @@ WHERE o.archived_at IS NULL
 
 **チームの場合:**
 ```
-1. PATCH /api/v1/teams/{id}/archive を受付
-2. ADMIN 権限チェック → ADMIN 未満は 403
+1. PATCH /api/v1/teams/{slug}/archive を受付
+2. 対象チームの ADMIN / DEPUTY_ADMIN 割当チェック → それ以外は 403
 3. archived_at IS NOT NULL → すでにアーカイブ済み → 422
 4. teams.archived_at = NOW() で UPDATE
 5. invite_tokens を一括失効:
      UPDATE invite_tokens SET revoked_at = NOW()
      WHERE team_id = 対象ID AND revoked_at IS NULL
 6. audit_logs に TEAM_ARCHIVED（reason: MANUAL）を記録
-7. 204 No Content を返す
+7. 200 OK を返す
 ```
 
 **組織の場合（カスケードあり）:**
@@ -1014,6 +1014,14 @@ WHERE o.archived_at IS NULL
 ```
 
 ---
+
+### チーム画面の操作導線（CMP-261011-0035）
+
+- チームヘッダーのアーカイブ操作は、デスクトップのボタンとモバイルの「その他」メニューから開く。確認を承諾するまで PATCH は送らない。
+- 操作可否は `GET /api/v1/me/teams` の `canManageArchive` を使う。これは生存・ACTIVE な本人の対象チーム ADMIN / DEPUTY_ADMIN 割当から求める。SYSTEM_ADMIN 単独は false、同時に対象チームの ADMIN / DEPUTY_ADMIN を持つ本人は true。表示用 `role=SYSTEM_ADMIN` とは独立している。既に取得した本人のチーム割当を使い、ロールマスタと利用者状態は一覧全体で一括解決する。
+- アーカイブで PENDING の加盟申請・招待は取り消すが、ACTIVE の加盟は維持する（F01.2.1 §4.5）。通常の管理者はアーカイブ済み詳細を取得できないため、成功後は `/teams` へ移動する。
+- `/teams` の「アーカイブ済みチームを表示」は `GET /api/v1/me/teams?includeArchived=true` の `isArchived=true` の行を表示する。操作可否が true の行から解除を確認し、既存 `PATCH /api/v1/teams/{slug}/unarchive`（対象チームの ADMIN / DEPUTY_ADMIN、200 OK）を実行する。成功後に正規一覧を再取得する。取り消した PENDING と失効済み招待リンクは解除しても復元しない。
+- 更新直前にも本人の正規一覧で状態と操作権限を確認する。二重送信、確認中のチーム切替・権限剥奪を防ぎ、取得・更新失敗は明示エラーとして表示する。
 
 ### アーカイブ解除フロー（チーム / 組織共通）
 

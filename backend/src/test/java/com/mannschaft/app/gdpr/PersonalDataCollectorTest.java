@@ -189,7 +189,9 @@ class PersonalDataCollectorTest {
 
             given(ranchPersonalDataExportService.exportUser(anyLong())).willReturn("{}");
 
-            Map<String, String> result = collector.collect(1L, null);
+            // memberships は事前取得が必要（F01.2.1 2-D）。0 件の事前取得を渡す
+            Map<String, String> result = collector.collect(1L, null,
+                    new com.mannschaft.app.gdpr.dto.PrefetchedPersonalData(List.of()));
 
             assertThat(result).hasSize(20);
             assertThat(result.keySet()).containsExactlyInAnyOrder(
@@ -214,6 +216,32 @@ class PersonalDataCollectorTest {
 
             assertThat(result).hasSize(2);
             assertThat(result.keySet()).containsExactlyInAnyOrder("account.json", "payments.json");
+        }
+
+        @Test
+        @DisplayName("異常系: memberships の事前取得が欠けていたら \"[]\" に畳まず失敗を伝播する（F01.2.1 2-D・AC-G127）")
+        void 異常_memberships事前取得欠落_失敗を伝播() {
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> collector.collect(1L, Set.of("memberships"),
+                            com.mannschaft.app.gdpr.dto.PrefetchedPersonalData.none()))
+                    .isInstanceOf(IllegalStateException.class);
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> collector.collect(1L, Set.of("memberships"), null))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
+        @DisplayName("異常系: 事前取得なしの2引数版で memberships を要求したら失敗する（全カテゴリ指定を含む）")
+        void 異常_2引数版でmemberships要求_失敗() {
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> collector.collect(1L, Set.of("memberships")))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
+        @DisplayName("正常系: memberships の事前取得が 0 件なら \"[]\" を書き出す（欠落とは区別する）")
+        void 正常_memberships事前取得0件_空配列() {
+            Map<String, String> result = collector.collect(1L, Set.of("memberships"),
+                    new com.mannschaft.app.gdpr.dto.PrefetchedPersonalData(List.of()));
+
+            assertThat(result).containsEntry("memberships.json", "[]");
         }
 
         @Test

@@ -160,7 +160,9 @@ class ShiftAvailabilityServiceTest {
 
             // Then
             assertThat(result).hasSize(1);
-            verify(availabilityRepository).deleteByUserIdAndTeamId(USER_ID, TEAM_ID);
+            // CMP-261010-1432 H: 削除対象は FOR UPDATE で読んだ行（並行保存の直列化）
+            verify(availabilityRepository).findAllForUpdateByUserIdAndTeamId(USER_ID, TEAM_ID);
+            verify(availabilityRepository).deleteAll(anyList());
             verify(availabilityRepository).saveAll(anyList());
         }
     }

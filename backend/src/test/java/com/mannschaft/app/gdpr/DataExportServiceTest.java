@@ -155,6 +155,29 @@ class DataExportServiceTest {
     }
 
     @Nested
+    @DisplayName("processExportAsync")
+    class ProcessExportAsync {
+
+        @Test
+        @DisplayName("異常系: memberships の事前取得が欠けて収集が失敗したら COMPLETED にせず FAILED にする（F01.2.1 2-D）")
+        void 異常_事前取得欠落_FAILED() {
+            DataExportEntity entity = DataExportEntity.builder()
+                    .userId(USER_ID).status("PENDING").progressPercent(0).build();
+            given(dataExportRepository.findById(10L)).willReturn(Optional.of(entity));
+            given(personalDataCollector.collect(any(), any(), any()))
+                    .willThrow(new IllegalStateException("memberships は PersonalDataPrefetcher による事前取得が必要"));
+            com.mannschaft.app.gdpr.dto.UserEmailInfo userInfo = new com.mannschaft.app.gdpr.dto.UserEmailInfo(
+                    USER_ID, "u@example.com", "山田", "太郎",
+                    com.mannschaft.app.gdpr.dto.PrefetchedPersonalData.none());
+
+            service.processExportAsync(10L, userInfo, java.util.Set.of("memberships"));
+
+            assertThat(entity.getStatus()).isEqualTo("FAILED");
+            org.mockito.Mockito.verify(storageService, org.mockito.Mockito.never()).upload(any(), any(), any());
+        }
+    }
+
+    @Nested
     @DisplayName("recoverStuckExports")
     class RecoverStuckExports {
 

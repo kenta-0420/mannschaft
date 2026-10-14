@@ -108,8 +108,18 @@ class OrganizationServiceTest {
     @Mock
     private DuplicateNameGuardService duplicateNameGuardService;
 
+    /** F01.2.1 2-D: 組織の論理削除でチームグループを同じ tx で論理削除する。 */
+    @Mock
+    private com.mannschaft.app.organization.teamgroup.repository.OrgTeamGroupRepository orgTeamGroupRepository;
+
     @InjectMocks
     private OrganizationService organizationService;
+
+    @BeforeEach
+    void injectClock() {
+        // Clock は Mockito で作れない（abstract の JDK 型を spy しない）ので、実時計を差し込む
+        ReflectionTestUtils.setField(organizationService, "clock", java.time.Clock.systemUTC());
+    }
 
     /**
      * 検分 P1-2 是正: {@code checkForCreateAndRun} は「候補判定→createAction 実行」を
@@ -522,7 +532,7 @@ class OrganizationServiceTest {
         @DisplayName("正常削除_論理削除と招待トークン失効が実行される")
         void 正常削除_論理削除と招待トークン失効が実行される() {
             OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.findByIdForUpdate(ORG_ID)).willReturn(Optional.of(org));
 
             InviteTokenEntity token = InviteTokenEntity.builder()
                     .id(1L).token("abc").organizationId(ORG_ID).roleId(1L).usedCount(0).build();
@@ -532,13 +542,14 @@ class OrganizationServiceTest {
             organizationService.deleteOrganization(ORG_ID, USER_ID);
 
             assertThat(org.getDeletedAt()).isNotNull();
+            assertThat(org.getClosureGeneration()).as("F01.2.1 §4.5: 論理削除（閉鎖）で閉鎖の世代が進む").isEqualTo(1L);
             assertThat(token.getRevokedAt()).isNotNull();
         }
 
         @Test
         @DisplayName("組織不在_ORG_001例外")
         void 組織不在_ORG_001例外() {
-            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+            given(organizationRepository.findByIdForUpdate(999L)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> organizationService.deleteOrganization(999L, USER_ID))
                     .isInstanceOf(BusinessException.class)
@@ -550,7 +561,7 @@ class OrganizationServiceTest {
         @DisplayName("正常系: 招待トークンなしでも正常に削除される")
         void 招待トークンなし_正常削除() {
             OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.findByIdForUpdate(ORG_ID)).willReturn(Optional.of(org));
             given(inviteTokenRepository.findByOrganizationIdAndRevokedAtIsNull(ORG_ID))
                     .willReturn(List.of());
 
@@ -572,18 +583,19 @@ class OrganizationServiceTest {
         @DisplayName("正常アーカイブ_archivedAtが設定される")
         void 正常アーカイブ_archivedAtが設定される() {
             OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.findByIdForUpdate(ORG_ID)).willReturn(Optional.of(org));
 
             organizationService.archiveOrganization(ORG_ID);
 
             assertThat(org.getArchivedAt()).isNotNull();
+            assertThat(org.getClosureGeneration()).as("F01.2.1 §4.5: アーカイブ（閉鎖）で閉鎖の世代が進む").isEqualTo(1L);
         }
 
         @Test
         @DisplayName("既にアーカイブ済み_ORG_003例外")
         void 既にアーカイブ済み_ORG_003例外() {
             OrganizationEntity org = createArchivedOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.findByIdForUpdate(ORG_ID)).willReturn(Optional.of(org));
 
             assertThatThrownBy(() -> organizationService.archiveOrganization(ORG_ID))
                     .isInstanceOf(BusinessException.class)
@@ -594,7 +606,7 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("組織不在_ORG_001例外")
         void 組織不在_ORG_001例外() {
-            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+            given(organizationRepository.findByIdForUpdate(999L)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> organizationService.archiveOrganization(999L))
                     .isInstanceOf(BusinessException.class)
@@ -612,10 +624,12 @@ class OrganizationServiceTest {
         void 正常アーカイブ解除_archivedAtがnullになる() {
             OrganizationEntity org = createArchivedOrganization();
             given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            long generation = org.getClosureGeneration();
 
             organizationService.unarchiveOrganization(ORG_ID);
 
             assertThat(org.getArchivedAt()).isNull();
+            assertThat(org.getClosureGeneration()).as("F01.2.1 §4.5: 解除では閉鎖の世代を戻さない").isEqualTo(generation);
         }
 
         @Test

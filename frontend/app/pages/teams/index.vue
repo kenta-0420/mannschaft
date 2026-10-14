@@ -239,6 +239,8 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
       </div>
     </template>
 
+    <TeamArchivedList />
+
     <EntityCreateDialog
       entity-type="team"
       :visible="showCreateDialog"

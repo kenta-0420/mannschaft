@@ -51,6 +51,7 @@ const canProceed = computed(() => props.modelValue.selectedChannel !== null)
         v-for="ch in channels"
         :key="ch.key"
         type="button"
+        :data-testid="`broadcast-channel-${ch.key}`"
         class="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 p-4 transition-colors"
         :class="
           isSelected(ch.key)
@@ -66,12 +67,13 @@ const canProceed = computed(() => props.modelValue.selectedChannel !== null)
 
     <!-- ナビゲーション -->
     <div class="flex justify-between pt-2">
-      <Button :label="$t('button.back')" icon="pi pi-arrow-left" severity="secondary" text @click="emit('back')" />
+      <Button :label="$t('button.back')" icon="pi pi-arrow-left" severity="secondary" text data-testid="broadcast-step2-back" @click="emit('back')" />
       <Button
         :label="$t('button.next')"
         icon="pi pi-arrow-right"
         icon-pos="right"
         :disabled="!canProceed"
+        data-testid="broadcast-step2-next"
         @click="emit('next')"
       />
     </div>

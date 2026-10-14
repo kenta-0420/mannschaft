@@ -1,8 +1,40 @@
 {
   "skill": {
+    "form": {
+      "noCategoryAdmin": "Este equipo aún no tiene categorías activas. Cree una en la pestaña \"Gestión de categorías\".",
+      "noCategoryMember": "Este equipo aún no tiene categorías activas. Pida a un administrador del equipo que cree una."
+    },
+    "matrix": {
+      "refresh": "Actualizar",
+      "legendPendingNote": "Las certificaciones pendientes de revisión se muestran como no registradas"
+    },
     "list": {
+      "actions": {
+        "search": "Buscar",
+        "verify": "Aprobar",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "certificate": "Ver certificado"
+      },
       "loadDetailFailed": "No se pudieron cargar los detalles de la habilidad",
-      "loadCategoriesFailed": "No se pudieron cargar las categorías"
+      "loadCategoriesFailed": "No se pudieron cargar las categorías",
+      "mineTitle": "Mis habilidades y certificaciones",
+      "deleteConfirm": "¿Eliminar \"{name}\"? Esta acción no se puede deshacer.",
+      "deleteConfirmHeader": "Eliminar certificación"
+    },
+    "category": {
+      "actions": {
+        "edit": "Editar",
+        "delete": "Eliminar"
+      },
+      "deleteConfirm": "¿Eliminar la categoría \"{name}\"?",
+      "deleteConfirmHeader": "Eliminar categoría"
+    },
+    "page": {
+      "permissionLoadFailed": "No se pudo obtener la información de permisos. Vuelva a cargar más tarde",
+      "forbidden": "Solo los miembros de este equipo pueden usar habilidades y certificaciones",
+      "mineTab": "Mis habilidades y certificaciones",
+      "categoriesReloadFailed": "No se pudieron recargar las categorías"
     }
   },
   "chat": {
@@ -2446,6 +2478,21 @@
     }
   },
   "teamShell": {
+    "archive": {
+      "syncError": "El cambio se ha completado, pero no se pudo sincronizar la lista. Vuelva a cargarla.",
+      "archive": "Archivar equipo",
+      "unarchive": "Restaurar equipo",
+      "archiveConfirm": "¿Archivar este equipo? Se cancelarán las solicitudes de afiliación pendientes y las invitaciones. Las afiliaciones activas se mantendrán. Los detalles del equipo dejarán de estar disponibles. Puede restaurarlo desde Equipos archivados en la lista de equipos.",
+      "unarchiveConfirm": "¿Restaurar este equipo? No se recuperarán las solicitudes de afiliación ni las invitaciones canceladas, incluidos los enlaces de invitación caducados.",
+      "archived": "Equipo archivado",
+      "unarchived": "Equipo restaurado",
+      "changed": "El estado del equipo o sus permisos han cambiado. Vuelva a cargar la lista.",
+      "listTitle": "Equipos archivados",
+      "showList": "Mostrar equipos archivados",
+      "hideList": "Cerrar lista",
+      "fetchError": "No se pudieron cargar los equipos archivados.",
+      "empty": "No hay equipos archivados."
+    },
     "tab": {
       "affiliations": "Organizaciones afiliadas",
       "permissionGroups": "Grupos de permisos",

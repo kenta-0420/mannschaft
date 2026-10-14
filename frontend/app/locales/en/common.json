@@ -1,8 +1,40 @@
 {
   "skill": {
+    "form": {
+      "noCategoryAdmin": "This team has no active categories yet. Create one in the \"Category management\" tab.",
+      "noCategoryMember": "This team has no active categories yet. Ask a team administrator to create one."
+    },
+    "matrix": {
+      "refresh": "Refresh",
+      "legendPendingNote": "Certifications pending review are shown as not registered"
+    },
     "list": {
+      "actions": {
+        "search": "Search",
+        "verify": "Approve",
+        "edit": "Edit",
+        "delete": "Delete",
+        "certificate": "View certificate"
+      },
       "loadDetailFailed": "Failed to load the skill details",
-      "loadCategoriesFailed": "Failed to load the categories"
+      "loadCategoriesFailed": "Failed to load the categories",
+      "mineTitle": "My skills and certifications",
+      "deleteConfirm": "Delete \"{name}\"? This cannot be undone.",
+      "deleteConfirmHeader": "Delete certification"
+    },
+    "category": {
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "deleteConfirm": "Delete the category \"{name}\"?",
+      "deleteConfirmHeader": "Delete category"
+    },
+    "page": {
+      "permissionLoadFailed": "Failed to load your permissions. Please reload later",
+      "forbidden": "Only members of this team can use skills and certifications",
+      "mineTab": "My skills and certifications",
+      "categoriesReloadFailed": "Failed to reload the categories"
     }
   },
   "chat": {
@@ -2446,6 +2478,21 @@
     }
   },
   "teamShell": {
+    "archive": {
+      "syncError": "The change is complete, but the list could not be synchronized. Reload it.",
+      "archive": "Archive team",
+      "unarchive": "Restore team",
+      "archiveConfirm": "Archive this team? Pending affiliation requests and invitations will be canceled. Active affiliations will remain. Team details will no longer be accessible. You can restore it from Archived teams in the team list.",
+      "unarchiveConfirm": "Restore this team? Canceled affiliation requests and invitations, including expired invitation links, will not be restored.",
+      "archived": "Team archived",
+      "unarchived": "Team restored",
+      "changed": "The team status or your permission has changed. Reload the list.",
+      "listTitle": "Archived teams",
+      "showList": "Show archived teams",
+      "hideList": "Close list",
+      "fetchError": "Could not load archived teams.",
+      "empty": "No archived teams."
+    },
     "tab": {
       "affiliations": "Affiliated organizations",
       "permissionGroups": "Permission groups",

@@ -196,13 +196,14 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 
 ### セキュリティ・認証
 
-> 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟡 実装中: 申請受付設定・申請フォーム・申請ボタン判定・公開 API の受付フラグは実装済み） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
+> 📄 詳細設計: [docs/features/F01.1_auth.md](docs/features/F01.1_auth.md) | [docs/features/F01.2_org_team_member_role.md](docs/features/F01.2_org_team_member_role.md) | [docs/features/F01.2.1_org_team_groups.md](docs/features/F01.2.1_org_team_groups.md)（チーム加盟の双方向化・チームグループ／🟡 実装中: 申請受付設定・申請フォーム・申請ボタン判定・公開 API の受付フラグ・所属チーム一覧からの除名 UI は実装済み。除名は組織 ADMIN の管理レンズで確認後に実行でき、グループ機能 off でも利用可能） | [docs/features/F01.5_team_friend_relationships.md](docs/features/F01.5_team_friend_relationships.md)
 
 - **2要素認証 (2FA)**: TOTP（Google Authenticator等）対応。SYSTEM_ADMIN・ADMINには必須化
 - **OAuth2ソーシャルログイン**: Google / LINE / Apple によるワンクリック登録・ログイン
 - **パスワードリセット**: メールによるリセットフロー。トークン有効期限は **30分**
 - **レート制限・ブルートフォース対策**: ログイン試行を IP + アカウント単位で Valkey カウンター管理。5回失敗でアカウントを **30分** ロック。パスワードリセット・2FA検証エンドポイントにも同様のレート制限を適用する
 - **アカウント凍結・退会フロー**: 管理者によるアカウント凍結、ユーザー自身の退会申請。退会申請後30日間は論理削除（猶予期間）、その後個人情報を物理削除。決済履歴は税法に基づき7年間保持。詳細は `.claudecode.md` §8「データ保持・削除規約」を参照
+- **チームの手動アーカイブ・解除**: 対象チームの管理者・副管理者はヘッダー（モバイルでは「その他」）から確認後にアーカイブできる。解除はチーム一覧の「アーカイブ済みチーム」から行う。PENDING の加盟申請・招待は取り消され、成立済みの加盟は維持される。解除しても取り消された申請・招待は復元しない。本人の所属チーム一覧 API は表示ロールとは独立した `canManageArchive` を返す（SYSTEM_ADMIN 単独は操作不可）。
 - **非アクティブアーカイブ**: 一定期間ログインがないユーザー・チーム・組織を段階的にアーカイブする。アーカイブ前にメール通知を送り、ログインで即時解除可能
 
   | 対象 | アーカイブトリガー | 根拠 |
@@ -762,6 +763,7 @@ Mannschaft は「チーム・組織内は実名表示」を基本思想とする
 - 確定後はメンバーへプッシュ通知、個人ダッシュボードへ自動反映
 - スタッフ別・日付別の一覧表示
 - **Phase 1 MVP 完了**（2026-04-24 / PR #128）: スケジュール・スロット・希望提出・変更依頼・勤務制約の基盤 API 実装、5段階希望強度（PREFERRED=+100 / WEAK_REST=-30 ほか）、マイシフト画面／デフォルト可否プロファイル設定画面を提供。Phase 2 で自動割当本体（Strategy パターン・貪欲法 MVP）と PDF 出力に着手予定
+- ボードの割当移動は 1 トランザクションの移動 API（`POST /api/v1/shifts/slots/{id}/assignments/move`）で行い、枠の応答は楽観ロック用の `version` を返す。変更依頼は公開（PUBLISHED）前のシフト表だけで受け付け、依頼者本人による審査はできない（取り下げで代替）
 
 #### 8. 議決権行使・委任状
 - **2つの決議モード**: 総会決議（MEETING: 当日リアルタイム投票）と書面決議（WRITTEN: 非同期投票期間）

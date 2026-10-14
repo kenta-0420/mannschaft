@@ -14796,6 +14796,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shifts/slots/{slotId}/assignments/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** スロット間の割当移動 */
+        post: operations["moveSlotAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shifts/schedules": {
         parameters: {
             query?: never;
@@ -40217,6 +40234,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 権限カタログ一覧（スコープの ADMIN+） */
+        get: operations["list_94"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/performance/metric-templates": {
         parameters: {
             query?: never;
@@ -40472,7 +40506,7 @@ export interface paths {
             cookie?: never;
         };
         /** 組織が止めている申請の一覧（組織 ADMIN） */
-        get: operations["list_94"];
+        get: operations["list_95"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42002,7 +42036,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_95"];
+        get: operations["list_96"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42414,7 +42448,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_96"];
+        get: operations["list_97"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42585,7 +42619,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_97"];
+        get: operations["list_98"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42965,7 +42999,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村でなれる投稿主体一覧を取得する（村人のみ） */
-        get: operations["list_98"];
+        get: operations["list_99"];
         put?: never;
         post?: never;
         delete?: never;
@@ -43033,7 +43067,7 @@ export interface paths {
             cookie?: never;
         };
         /** メモ添付一覧 */
-        get: operations["list_99"];
+        get: operations["list_100"];
         put?: never;
         post?: never;
         delete?: never;
@@ -44237,7 +44271,7 @@ export interface paths {
          * 請求書一覧
          * @description 指定スコープの請求書を period_end 降順で返す。cursor は不透明値。
          */
-        get: operations["list_100"];
+        get: operations["list_101"];
         put?: never;
         post?: never;
         delete?: never;
@@ -44768,7 +44802,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_101"];
+        get: operations["list_102"];
         put?: never;
         post?: never;
         delete?: never;
@@ -47546,6 +47580,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamSlug}/organizations/{orgSlug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 組織からの離脱（チームの加盟操作者） */
+        delete: operations["leave_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamSlug}/org-applications/{membershipId}": {
         parameters: {
             query?: never;
@@ -48286,6 +48337,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{slug}/teams/{teamSlug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 加盟チームの除名（組織 ADMIN） */
+        delete: operations["remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{slug}/team-invites/{teamSlug}": {
         parameters: {
             query?: never;
@@ -48716,7 +48784,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 共有先解除 */
-        delete: operations["remove"];
+        delete: operations["remove_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -56661,6 +56729,7 @@ export interface components {
             data?: components["schemas"]["PermissionGroupResponse"];
         };
         PermissionGroupResponse: {
+            containsAdminOnlyPermission?: boolean;
             /** Format: date-time */
             createdAt?: string;
             /** Format: int64 */
@@ -63044,6 +63113,7 @@ export interface components {
             sourceId: number;
             sourceType: string;
             startsAt?: string;
+            targetAudience?: components["schemas"]["TargetAudience"];
             titleCache: string;
             updatedAt?: string;
             visibility?: string;
@@ -64741,6 +64811,57 @@ export interface components {
             action: string;
             adminNote?: string;
         };
+        SlotAssignmentMoveRequest: {
+            /** Format: int64 */
+            sourceSlotVersion: number;
+            /** Format: int64 */
+            targetSlotId: number;
+            /** Format: int64 */
+            targetSlotVersion: number;
+            /** Format: int64 */
+            userId: number;
+        };
+        ApiResponseSlotAssignmentMoveResponse: {
+            data?: components["schemas"]["SlotAssignmentMoveResponse"];
+        };
+        ShiftAssignmentWarningDto: {
+            code?: string;
+            conflictingSlotIds?: number[];
+        };
+        ShiftSlotPositionDto: {
+            /** Format: int64 */
+            positionId?: number;
+            positionName?: string;
+            /** Format: int32 */
+            requiredCount?: number;
+        };
+        ShiftSlotResponse: {
+            assignedUserIds?: number[];
+            assignmentMasked?: boolean;
+            /** Format: int64 */
+            id?: number;
+            note?: string;
+            position?: components["schemas"]["ShiftSlotPositionDto"];
+            /** Format: int64 */
+            scheduleId?: number;
+            time?: components["schemas"]["ShiftSlotTimeDto"];
+            /** Format: int64 */
+            version?: number;
+            warnings?: components["schemas"]["ShiftAssignmentWarningDto"][];
+        };
+        ShiftSlotTimeDto: {
+            /** @example 14:30:00 */
+            endTime?: string;
+            endsNextDay?: boolean;
+            /** Format: date */
+            slotDate?: string;
+            /** @example 14:30:00 */
+            startTime?: string;
+        };
+        SlotAssignmentMoveResponse: {
+            source?: components["schemas"]["ShiftSlotResponse"];
+            target?: components["schemas"]["ShiftSlotResponse"];
+        };
         CreateShiftScheduleRequest: {
             /** Format: date */
             endDate: string;
@@ -64809,38 +64930,6 @@ export interface components {
         };
         ApiResponseShiftSlotResponse: {
             data?: components["schemas"]["ShiftSlotResponse"];
-        };
-        ShiftAssignmentWarningDto: {
-            code?: string;
-            conflictingSlotIds?: number[];
-        };
-        ShiftSlotPositionDto: {
-            /** Format: int64 */
-            positionId?: number;
-            positionName?: string;
-            /** Format: int32 */
-            requiredCount?: number;
-        };
-        ShiftSlotResponse: {
-            assignedUserIds?: number[];
-            assignmentMasked?: boolean;
-            /** Format: int64 */
-            id?: number;
-            note?: string;
-            position?: components["schemas"]["ShiftSlotPositionDto"];
-            /** Format: int64 */
-            scheduleId?: number;
-            time?: components["schemas"]["ShiftSlotTimeDto"];
-            warnings?: components["schemas"]["ShiftAssignmentWarningDto"][];
-        };
-        ShiftSlotTimeDto: {
-            /** @example 14:30:00 */
-            endTime?: string;
-            endsNextDay?: boolean;
-            /** Format: date */
-            slotDate?: string;
-            /** @example 14:30:00 */
-            startTime?: string;
         };
         BulkCreateShiftSlotRequest: {
             slots?: components["schemas"]["CreateShiftSlotRequest"][];
@@ -65018,6 +65107,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             requestInfo?: components["schemas"]["ChangeRequestTypeDto"];
+            requesterName?: string;
             reviewInfo?: components["schemas"]["ChangeRequestStatusDto"];
             /** Format: int64 */
             scheduleId?: number;
@@ -77189,6 +77279,11 @@ export interface components {
              */
             trialExpiresAt?: string;
         };
+        MemberPermissionGroupRef: {
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+        };
         PagedResponseScopeMemberResponse: {
             data?: components["schemas"]["ScopeMemberResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -77199,6 +77294,7 @@ export interface components {
             displayName?: string;
             /** Format: date-time */
             joinedAt?: string;
+            permissionGroups?: components["schemas"]["MemberPermissionGroupRef"][];
             roleName?: string;
             /** Format: int64 */
             userId?: number;
@@ -77238,8 +77334,10 @@ export interface components {
             data?: components["schemas"]["EffectivePermissionsResponse"];
         };
         EffectivePermissionsResponse: {
+            canGrantAdminOnlyPermissions?: boolean;
             permissions?: string[];
             roleName?: string;
+            scopeAdmin?: boolean;
         };
         ApiResponseListInviteTokenResponse: {
             data?: components["schemas"]["InviteTokenResponse"][];
@@ -80325,6 +80423,18 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        ApiResponseListPermissionCatalogItemResponse: {
+            data?: components["schemas"]["PermissionCatalogItemResponse"][];
+        };
+        PermissionCatalogItemResponse: {
+            adminOnlyGrantable?: boolean;
+            assignableTargetRoles?: string[];
+            displayName?: string;
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            scope?: string;
+        };
         ApiResponseTemplateListResponse: {
             data?: components["schemas"]["TemplateListResponse"];
         };
@@ -81702,6 +81812,7 @@ export interface components {
         };
         MyTeamResponse: {
             archived?: boolean;
+            canManageArchive?: boolean;
             iconUrl?: string;
             /** Format: int64 */
             id?: number;
@@ -118737,6 +118848,41 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseSwapRequestResponse"];
+                };
+            };
+        };
+    };
+    moveSlotAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slotId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SlotAssignmentMoveRequest"];
+            };
+        };
+        responses: {
+            /** @description 移動成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSlotAssignmentMoveResponse"];
+                };
+            };
+            /** @description 競合（楽観ロック・移動元に不在・重複） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSlotAssignmentMoveResponse"];
                 };
             };
         };
@@ -163029,6 +163175,47 @@ export interface operations {
             };
         };
     };
+    list_94: {
+        parameters: {
+            query: {
+                scopeType: string;
+                scopeId: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功（名前順） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPermissionCatalogItemResponse"];
+                };
+            };
+            /** @description scopeType が TEAM / ORGANIZATION でない */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPermissionCatalogItemResponse"];
+                };
+            };
+            /** @description 指定スコープの ADMIN+ でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPermissionCatalogItemResponse"];
+                };
+            };
+        };
+    };
     listTemplates_11: {
         parameters: {
             query?: {
@@ -163414,7 +163601,7 @@ export interface operations {
             };
         };
     };
-    list_94: {
+    list_95: {
         parameters: {
             query?: {
                 page?: number;
@@ -165635,7 +165822,7 @@ export interface operations {
             };
         };
     };
-    list_95: {
+    list_96: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -166209,7 +166396,7 @@ export interface operations {
             };
         };
     };
-    list_96: {
+    list_97: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -166448,7 +166635,7 @@ export interface operations {
             };
         };
     };
-    list_97: {
+    list_98: {
         parameters: {
             query?: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -166954,7 +167141,7 @@ export interface operations {
             };
         };
     };
-    list_98: {
+    list_99: {
         parameters: {
             query?: never;
             header?: never;
@@ -167038,7 +167225,7 @@ export interface operations {
             };
         };
     };
-    list_99: {
+    list_100: {
         parameters: {
             query?: never;
             header?: never;
@@ -168665,7 +168852,7 @@ export interface operations {
             };
         };
     };
-    list_100: {
+    list_101: {
         parameters: {
             query: {
                 scopeKind: "USER" | "TEAM" | "ORG";
@@ -169368,7 +169555,7 @@ export interface operations {
             };
         };
     };
-    list_101: {
+    list_102: {
         parameters: {
             query?: never;
             header?: never;
@@ -173134,6 +173321,48 @@ export interface operations {
             };
         };
     };
+    leave_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamSlug: string;
+                orgSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 離脱成功（加盟の行を削除） */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 加盟操作権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TEAM_070（加盟していない組織・存在しない組織の slug・離脱済みは同じ応答） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TEAM_071（加盟が成立していない＝申請・招待の処理中） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     withdraw_5: {
         parameters: {
             query?: never;
@@ -174067,6 +174296,48 @@ export interface operations {
             };
         };
     };
+    remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                teamSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 除名成功（加盟の行を削除） */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 組織 ADMIN ではない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TEAM_070（加盟していないチーム・存在しないチームの slug・除名済みは同じ応答） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TEAM_071（加盟が成立していない＝申請・招待の処理中） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     cancel_19: {
         parameters: {
             query?: never;
@@ -174620,7 +174891,7 @@ export interface operations {
             };
         };
     };
-    remove: {
+    remove_1: {
         parameters: {
             query?: never;
             header?: never;

@@ -1,0 +1,138 @@
+{
+  "teamAffiliations": {
+    "title": "所属组织管理",
+    "discover": "寻找可加入的组织",
+    "switcher_label": "切换显示",
+    "count_error": "无法获取收到的邀请数量",
+    "view": {
+      "organizations": "所属组织",
+      "invites": "收到的邀请",
+      "applications": "申请中",
+      "restrictions": "邀请限制"
+    },
+    "organizations": {
+      "load_error": "无法加载所属组织列表，请稍后再试",
+      "empty": "该团队尚未加入任何组织",
+      "group": "分组：{group}",
+      "leave": "退出",
+      "leave_confirm_title": "确定退出该组织吗？",
+      "leave_confirm": "您将退出“{org}”。该组织的公告将不再送达团队。若要再次加入，需要重新申请或接受邀请。",
+      "leave_error": "无法退出，请稍后再试",
+      "left": "已退出组织"
+    },
+    "invites": {
+      "load_error": "无法加载收到的邀请列表，请稍后再试",
+      "empty": "没有等待回复的邀请",
+      "group": "分组：{group}",
+      "invited_at": "邀请时间：{date}",
+      "expires_at": "若在 {date} 前未回复，邀请将自动取消",
+      "accept": "接受",
+      "decline": "拒绝",
+      "accepted": "已接受邀请，团队已加入该组织",
+      "declined": "已拒绝邀请",
+      "action_error": "无法处理。邀请可能已被取消或已处理。列表已更新",
+      "decline_title": "拒绝来自 {org} 的邀请",
+      "decline_hint": "拒绝后，该组织在一段时间内无法再次邀请此团队。选择“今后不再接受”则无限期生效（之后可在“邀请限制”中解除）。",
+      "decline_block": "今后不再接受该组织的邀请",
+      "decline_error": "无法拒绝。邀请可能已被取消或已处理"
+    },
+    "applications": {
+      "load_error": "无法加载申请中列表，请稍后再试",
+      "empty": "没有申请中的加入申请",
+      "group": "希望分组：{group}",
+      "requested_at": "申请时间：{date}",
+      "expires_at": "若在 {date} 前未回复，申请将自动撤回",
+      "withdraw": "撤回",
+      "withdrawn": "已撤回加入申请",
+      "withdraw_confirm_title": "确定撤回加入申请吗？",
+      "withdraw_confirm": "您将撤回对“{org}”的加入申请。撤回后，一段时间内无法再次向该组织申请。",
+      "withdraw_error": "无法撤回。申请可能已被批准或拒绝。列表已更新"
+    },
+    "restrictions": {
+      "hint": "这是团队通过拒绝而限制的组织邀请。解除后，该组织可再次邀请此团队。",
+      "action_error": "无法解除。限制可能已到期或已被解除。列表已更新",
+      "load_error": "无法加载邀请限制列表，请稍后再试",
+      "empty": "没有被限制的邀请",
+      "kind_blocked": "无限期（今后不再接受）",
+      "kind_cooldown": "限时",
+      "until": "至 {date}",
+      "created_at": "记录时间：{date}",
+      "lift": "解除",
+      "lifted": "已解除限制"
+    },
+    "guide": {
+      "title": "所属组织的使用方法",
+      "description": "在这里确认和退出团队所属的组织，并处理与组织之间的邀请和申请。只有团队管理员和被委托加入操作的成员可以使用。",
+      "organizations": {
+        "title": "所属组织",
+        "body": "当前已加入的组织列表。点击“退出”并确认后即可退出。退出后，该组织的公告将不再送达团队。"
+      },
+      "invites": {
+        "title": "收到的邀请",
+        "body": "组织发来的加入邀请。“接受”即加入，“拒绝”即谢绝。拒绝时选择“今后不再接受”可阻止该组织的邀请。"
+      },
+      "applications": {
+        "title": "申请中",
+        "body": "团队向组织提交的加入申请列表。等待回复期间可通过“撤回”取消。获批后将加入所属组织。"
+      },
+      "restrictions": {
+        "title": "邀请限制",
+        "body": "因拒绝而被限制的组织邀请列表。点击“解除”后，该组织可再次邀请。"
+      }
+    },
+    "permission_groups": {
+      "title": "权限组",
+      "hint": "团队的权限组。拥有包含“组织加入操作”的权限组的成员，即使不是管理员也可以向组织申请或接受邀请。授予和移除请在成员列表中使用各成员的“权限组”按钮（仅团队管理员）。",
+      "load_error": "无法加载权限组列表，请稍后再试",
+      "create": "创建权限组",
+      "go_members": "在成员列表中分配",
+      "admin_only_notice": "创建、更改或分配包含仅管理员权限（如“组织加入操作”）的权限组，只能由团队管理员本人进行；兼任 SYSTEM_ADMIN 时不可"
+    },
+    "permission_group_list": {
+      "empty": "尚未创建权限组",
+      "count": "{count} 项权限",
+      "target_role": "对象：{role}",
+      "affiliation_mark": "组织加入操作",
+      "edit": "编辑 {name}"
+    },
+    "member_menu": {
+      "permission_groups": "权限组",
+      "permission_groups_aria": "更改 {name} 的权限组",
+      "title": "{name} 的权限组",
+      "hint": "已勾选的是当前分配。变更内容显示在下方。保存后，所选权限组将成为该成员的分配（全部取消则无分配）。",
+      "load_error": "无法加载权限组列表，请稍后再试",
+      "empty": "还没有权限组，请先创建",
+      "save": "保存",
+      "saved": "已更新权限组",
+      "save_error": "无法保存，请稍后再试",
+      "diff_add": "添加：{groups}",
+      "diff_remove": "移除：{groups}",
+      "current_unknown": "无法获取当前分配，为避免删除现有分配，无法保存。请重新加载成员列表后再试。",
+      "admin_only_reason": "包含“组织加入操作”等仅管理员权限的权限组，只能由团队管理员本人授予（兼任 SYSTEM_ADMIN 时不可）。无法选择这些权限组",
+      "admin_only_locked": "该成员已被分配包含仅管理员权限的权限组。涉及仅管理员权限的更改（包括移除）只能由团队管理员本人进行（兼任 SYSTEM_ADMIN 时不可）",
+      "role_mismatch": "对象角色不匹配（该成员为 {role}）",
+      "role_mismatch_remove": "仍分配着对象角色已不匹配的权限组（{groups}）。请先取消勾选再保存（无法再次勾选）"
+    },
+    "group_form": {
+      "create_title": "创建权限组",
+      "edit_title": "编辑权限组",
+      "name": "名称",
+      "target_role": "对象角色",
+      "target_role_hint": "可分配此权限组的成员角色",
+      "target_role_deputy": "副管理员",
+      "target_role_member": "成员",
+      "permissions": "权限",
+      "admin_only": "仅团队管理员",
+      "load_error": "无法加载权限列表，请稍后再试",
+      "save": "保存",
+      "save_error": "无法保存，请稍后再试",
+      "saved": "已保存权限组",
+      "saved_hint": "可通过成员列表中各成员的“权限组”按钮分配此权限组。",
+      "go_members": "在成员列表中分配",
+      "admin_only_reason": "“组织加入操作”等仅管理员权限只能由团队管理员本人授予（兼任 SYSTEM_ADMIN 时不可）。无法选择这些权限",
+      "admin_only_locked": "该权限组包含仅管理员权限。更改（包括移除权限）只能由团队管理员本人进行（兼任 SYSTEM_ADMIN 时不可）",
+      "role_reason": "无法授予该对象角色（计费权限仅限副管理员）",
+      "role_conflict": "该权限组包含无法授予所选对象角色的权限，因此无法分配给任何人。请检查对象角色或权限"
+    }
+  }
+}

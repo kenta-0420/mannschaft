@@ -50,4 +50,13 @@ describe('本文プレビューの一覧・元リンク契約', () => {
     expect(parseAnnouncementRouteId('31')).toBe(31)
     expect(parseAnnouncementRouteId(undefined)).toBeUndefined()
   })
+
+  it('AC-H17: 送信時の宛先の記録を一覧アイテムへ引き継ぎ、LOCKED では秘匿する', () => {
+    const audience = { mode: 'GROUPS', groups: [{ id: 'g1', name: '平成18年度' }], includeUnassigned: false, teamCount: 3 }
+    const full = toAnnouncementItem({ id: 1, scopeType: 'ORGANIZATION', scopeId: 7, targetAudience: audience })
+    expect(full.targetAudience).toEqual(audience)
+    expect(toAnnouncementItem({ id: 1, scopeType: 'ORGANIZATION', scopeId: 7 }).targetAudience).toBeNull()
+    const locked = toAnnouncementItem({ id: 1, scopeType: 'ORGANIZATION', scopeId: 7, accessState: 'LOCKED', targetAudience: audience })
+    expect(locked.targetAudience).toBeNull()
+  })
 })
