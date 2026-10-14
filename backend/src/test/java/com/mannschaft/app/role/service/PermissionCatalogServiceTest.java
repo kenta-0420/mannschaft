@@ -67,9 +67,9 @@ class PermissionCatalogServiceTest {
     @Test
     @DisplayName("グループ可否の判定は作成・更新と共用: PLATFORM は不可、TEAM/ORGANIZATION は可")
     void assignabilityRuleIsShared() {
-        assertThat(PermissionCatalogService.isGroupAssignable(permission(1, "A", PermissionEntity.Scope.TEAM))).isTrue();
-        assertThat(PermissionCatalogService.isGroupAssignable(permission(1, "A", PermissionEntity.Scope.ORGANIZATION))).isTrue();
-        assertThat(PermissionCatalogService.isGroupAssignable(permission(1, "A", PermissionEntity.Scope.PLATFORM))).isFalse();
+        assertThat(PermissionCatalogService.isGroupAssignable(PermissionEntity.Scope.TEAM)).isTrue();
+        assertThat(PermissionCatalogService.isGroupAssignable(PermissionEntity.Scope.ORGANIZATION)).isTrue();
+        assertThat(PermissionCatalogService.isGroupAssignable(PermissionEntity.Scope.PLATFORM)).isFalse();
     }
 
     @Test

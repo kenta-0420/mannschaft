@@ -33,8 +33,8 @@ public class PermissionCatalogService {
             java.util.EnumSet.of(PermissionEntity.Scope.TEAM, PermissionEntity.Scope.ORGANIZATION);
 
     /** 権限グループに含められる権限か。 */
-    public static boolean isGroupAssignable(PermissionEntity permission) {
-        return GROUP_ASSIGNABLE_SCOPES.contains(permission.getScope());
+    public static boolean isGroupAssignable(PermissionEntity.Scope scope) {
+        return GROUP_ASSIGNABLE_SCOPES.contains(scope);
     }
 
     private final PermissionRepository permissionRepository;

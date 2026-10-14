@@ -513,7 +513,7 @@ public class PermissionGroupService {
             throw new BusinessException(RoleErrorCode.ROLE_007);
         }
         // 権限カタログ（GET /api/v1/permissions）と同じ判定: 権限グループに含められるのは TEAM/ORGANIZATION 分類の権限だけ。
-        if (!found.stream().allMatch(PermissionCatalogService::isGroupAssignable)) {
+        if (!found.stream().allMatch(p -> PermissionCatalogService.isGroupAssignable(p.getScope()))) {
             throw new BusinessException(RoleErrorCode.ROLE_007);
         }
     }
