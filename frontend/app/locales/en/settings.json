@@ -202,6 +202,72 @@
         "delete_key_error": "Failed to delete security key",
         "rename_success": "Device name updated",
         "rename_error": "Failed to update device name"
+      },
+      "two_fa": {
+        "loading": "Loading...",
+        "status_disabled": "Not set up",
+        "status_totp": "Enabled (authenticator app)",
+        "status_email": "Enabled (email)",
+        "backup_remaining": "{count} backup codes remaining",
+        "backup_low": "You are running low on backup codes. Please regenerate new ones.",
+        "setup_email_button": "Enable with email",
+        "disable_button": "Disable 2FA",
+        "enable_button": "Enable",
+        "retry_button": "Reload",
+        "totp": {
+          "code_label": "6-digit code shown in your authenticator app",
+          "copy_secret": "Copy secret key",
+          "secret_copied": "Secret key copied"
+        },
+        "email": {
+          "sent": "We sent a 6-digit code to {email} (valid for about {minutes} min).",
+          "code_label": "6-digit code from the email",
+          "resend_button": "Resend code",
+          "resend_wait": "Resend in {seconds}s"
+        },
+        "backup": {
+          "copy_button": "Copy",
+          "download_button": "Download",
+          "copied": "Backup codes copied",
+          "copy_failed": "Could not copy to the clipboard",
+          "saved_check": "I have saved my backup codes in a safe place"
+        },
+        "reauth": {
+          "disable_title": "Disable two-factor authentication",
+          "regenerate_title": "Regenerate backup codes",
+          "disable_description": "Please verify your identity by entering all of the following.",
+          "regenerate_description": "Please verify your identity with either your current password or a verification code (if you enter both, both must be correct). Regenerating invalidates all previous backup codes.",
+          "regenerate_description_no_password": "Please verify your identity with a verification code. Regenerating invalidates all previous backup codes.",
+          "password_label": "Current password",
+          "method_label": "Verification method",
+          "method_totp": "Authenticator app",
+          "method_email": "Email",
+          "method_backup": "Backup code",
+          "send_email_button": "Send code by email",
+          "code_label_otp": "6-digit verification code",
+          "code_label_backup": "Backup code",
+          "disable_submit": "Disable",
+          "regenerate_submit": "Regenerate"
+        },
+        "toast": {
+          "enabled": "Two-factor authentication enabled",
+          "disabled": "Two-factor authentication disabled"
+        },
+        "error": {
+          "invalid_code": "The verification code is incorrect",
+          "code_already_used": "This verification code has already been used. Please wait for a new code to appear",
+          "resend_wait": "Please wait a moment before requesting another code",
+          "send_limit": "Code sending limit reached. Please try again later",
+          "already_enabled": "Two-factor authentication is already enabled",
+          "not_enabled": "Two-factor authentication is not enabled",
+          "reauth_failed": "Verification failed. Check your password and code",
+          "email_missing": "No email address is registered, so email codes are unavailable",
+          "email_unavailable": "Two-factor authentication by email is currently unavailable",
+          "rate_limited": "Too many attempts. Please try again in {seconds} seconds",
+          "rate_limited_unknown": "Too many attempts. Please try again later",
+          "status_load": "Could not load the two-factor authentication status",
+          "generic": "Something went wrong. Please try again later"
+        }
       }
     },
     "linked_accounts": {

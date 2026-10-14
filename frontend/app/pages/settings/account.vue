@@ -66,11 +66,6 @@ const {
 const {
   sessions,
   credentials,
-  totpSetup,
-  backupCodes,
-  showBackupCodesDialog,
-  setting2fa,
-  regenerating,
   renameDialog,
   newDeviceName,
   loginHistory,
@@ -79,8 +74,6 @@ const {
   loadingMoreHistory,
   loadSecurity,
   loadLoginHistory,
-  handleSetup2fa,
-  handleRegenerateBackupCodes,
   handleRevokeSession,
   handleRevokeAllSessions,
   handleDeleteCredential,
@@ -207,18 +200,13 @@ onMounted(async () => {
         <NotificationPreferences />
       </SectionCard>
 
+      <SettingsTwoFactorSection :has-password="profile.hasPassword" />
+
       <SettingsSecuritySection
-        v-model:show-backup-codes-dialog="showBackupCodesDialog"
         v-model:rename-dialog="renameDialog"
         v-model:new-device-name="newDeviceName"
-        :totp-setup="totpSetup"
-        :setting2fa="setting2fa"
-        :regenerating="regenerating"
         :sessions="sessions"
         :credentials="credentials"
-        :backup-codes="backupCodes"
-        @setup2fa="handleSetup2fa"
-        @regenerate-backup-codes="handleRegenerateBackupCodes"
         @revoke-session="handleRevokeSession"
         @revoke-all-sessions="handleRevokeAllSessions"
         @delete-credential="handleDeleteCredential"

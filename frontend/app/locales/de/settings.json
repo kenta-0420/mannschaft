@@ -202,6 +202,72 @@
         "delete_key_error": "Sicherheitsschlüssel konnte nicht gelöscht werden",
         "rename_success": "Gerätename aktualisiert",
         "rename_error": "Gerätename konnte nicht aktualisiert werden"
+      },
+      "two_fa": {
+        "loading": "Wird geladen...",
+        "status_disabled": "Nicht eingerichtet",
+        "status_totp": "Aktiv (Authenticator-App)",
+        "status_email": "Aktiv (E-Mail)",
+        "backup_remaining": "Noch {count} Backup-Codes übrig",
+        "backup_low": "Es sind nur noch wenige Backup-Codes übrig. Bitte erzeugen Sie neue Codes.",
+        "setup_email_button": "Per E-Mail aktivieren",
+        "disable_button": "2FA deaktivieren",
+        "enable_button": "Aktivieren",
+        "retry_button": "Neu laden",
+        "totp": {
+          "code_label": "6-stelliger Code aus Ihrer Authenticator-App",
+          "copy_secret": "Geheimen Schlüssel kopieren",
+          "secret_copied": "Geheimer Schlüssel kopiert"
+        },
+        "email": {
+          "sent": "Wir haben einen 6-stelligen Code an {email} gesendet (ca. {minutes} Min. gültig).",
+          "code_label": "6-stelliger Code aus der E-Mail",
+          "resend_button": "Code erneut senden",
+          "resend_wait": "Erneut senden in {seconds} s"
+        },
+        "backup": {
+          "copy_button": "Kopieren",
+          "download_button": "Herunterladen",
+          "copied": "Backup-Codes kopiert",
+          "copy_failed": "Kopieren in die Zwischenablage fehlgeschlagen",
+          "saved_check": "Ich habe die Backup-Codes an einem sicheren Ort gespeichert"
+        },
+        "reauth": {
+          "disable_title": "Zwei-Faktor-Authentifizierung deaktivieren",
+          "regenerate_title": "Backup-Codes neu erzeugen",
+          "disable_description": "Bitte bestätigen Sie Ihre Identität, indem Sie alle folgenden Angaben machen.",
+          "regenerate_description": "Bitte bestätigen Sie Ihre Identität mit Ihrem aktuellen Passwort oder einem Bestätigungscode (wenn Sie beides eingeben, muss beides korrekt sein). Durch das Neugenerieren werden alle bisherigen Backup-Codes ungültig.",
+          "regenerate_description_no_password": "Bitte bestätigen Sie Ihre Identität mit einem Bestätigungscode. Durch das Neugenerieren werden alle bisherigen Backup-Codes ungültig.",
+          "password_label": "Aktuelles Passwort",
+          "method_label": "Bestätigungsmethode",
+          "method_totp": "Authenticator-App",
+          "method_email": "E-Mail",
+          "method_backup": "Backup-Code",
+          "send_email_button": "Code per E-Mail senden",
+          "code_label_otp": "6-stelliger Bestätigungscode",
+          "code_label_backup": "Backup-Code",
+          "disable_submit": "Deaktivieren",
+          "regenerate_submit": "Neu erzeugen"
+        },
+        "toast": {
+          "enabled": "Zwei-Faktor-Authentifizierung aktiviert",
+          "disabled": "Zwei-Faktor-Authentifizierung deaktiviert"
+        },
+        "error": {
+          "invalid_code": "Der Bestätigungscode ist falsch",
+          "code_already_used": "Dieser Bestätigungscode wurde bereits verwendet. Bitte warten Sie, bis ein neuer Code angezeigt wird",
+          "resend_wait": "Bitte warten Sie einen Moment, bevor Sie einen neuen Code anfordern",
+          "send_limit": "Das Limit für den Codeversand ist erreicht. Bitte versuchen Sie es später erneut",
+          "already_enabled": "Die Zwei-Faktor-Authentifizierung ist bereits aktiviert",
+          "not_enabled": "Die Zwei-Faktor-Authentifizierung ist nicht aktiviert",
+          "reauth_failed": "Bestätigung fehlgeschlagen. Prüfen Sie Passwort und Code",
+          "email_missing": "Es ist keine E-Mail-Adresse hinterlegt, daher sind E-Mail-Codes nicht verfügbar",
+          "email_unavailable": "Die Zwei-Faktor-Authentifizierung per E-Mail ist derzeit nicht verfügbar",
+          "rate_limited": "Zu viele Versuche. Bitte versuchen Sie es in {seconds} Sekunden erneut",
+          "rate_limited_unknown": "Zu viele Versuche. Bitte versuchen Sie es später erneut",
+          "status_load": "Der Status der Zwei-Faktor-Authentifizierung konnte nicht geladen werden",
+          "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es später erneut"
+        }
       }
     },
     "linked_accounts": {

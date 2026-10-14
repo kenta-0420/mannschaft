@@ -62,6 +62,13 @@ public enum AuditEventType {
     MFA_BACKUP_CODES_REGENERATED(AuditEventCategory.MFA),
     MFA_RECOVERY_REQUESTED(AuditEventCategory.MFA),
     MFA_RECOVERY_COMPLETED(AuditEventCategory.MFA),
+    /** CMP-261012-0910: ログイン時にバックアップコードを 1 件消費した（AC-12）。 */
+    MFA_BACKUP_CODE_USED(AuditEventCategory.MFA),
+    /**
+     * CMP-261012-0910: 2FA 検証に失敗した（ログイン時の TOTP / バックアップコード / メールOTP 不一致）。
+     * 失敗応答の TX ロールバックで消えないよう、記録経路は失敗 TX から独立させる（AC-49）。
+     */
+    MFA_FAILED(AuditEventCategory.MFA),
 
     // ─── ADMIN_ACTION ────────────────────────────────────────
     USER_FROZEN(AuditEventCategory.ADMIN_ACTION),
