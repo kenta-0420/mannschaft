@@ -1,6 +1,21 @@
 {
   "skill": {
+    "form": {
+      "noCategoryAdmin": "Este equipo aún no tiene categorías activas. Cree una en la pestaña \"Gestión de categorías\".",
+      "noCategoryMember": "Este equipo aún no tiene categorías activas. Pida a un administrador del equipo que cree una."
+    },
+    "matrix": {
+      "refresh": "Actualizar",
+      "legendPendingNote": "Las certificaciones pendientes de revisión se muestran como no registradas"
+    },
     "list": {
+      "actions": {
+        "search": "Buscar",
+        "verify": "Aprobar",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "certificate": "Ver certificado"
+      },
       "loadDetailFailed": "No se pudieron cargar los detalles de la habilidad",
       "loadCategoriesFailed": "No se pudieron cargar las categorías",
       "mineTitle": "Mis habilidades y certificaciones",
@@ -8,6 +23,10 @@
       "deleteConfirmHeader": "Eliminar certificación"
     },
     "category": {
+      "actions": {
+        "edit": "Editar",
+        "delete": "Eliminar"
+      },
       "deleteConfirm": "¿Eliminar la categoría \"{name}\"?",
       "deleteConfirmHeader": "Eliminar categoría"
     },

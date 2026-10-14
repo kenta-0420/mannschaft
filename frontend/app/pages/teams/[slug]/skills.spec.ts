@@ -50,10 +50,19 @@ const passthrough = (name: string) =>
 const SkillList = defineComponent({
   name: 'SkillList',
   props: { teamId: String, canManage: Boolean, scope: { type: String, default: 'all' } },
-  emits: ['create', 'edit', 'verify'],
-  setup(p, { expose }) {
+  emits: ['create', 'edit', 'verify', 'changed'],
+  setup(p, { expose, emit }) {
     expose({ refresh: spies.listRefresh, refreshCategories: spies.listRefreshCategories })
-    return () => h('div', { 'data-test': 'skill-list', 'data-scope': p.scope })
+    return () => h('div', { 'data-test': 'skill-list', 'data-scope': p.scope, onClick: () => emit('changed') })
+  },
+})
+const SkillForm = defineComponent({
+  name: 'SkillForm',
+  props: { teamId: String, skill: null, categories: { type: Array, default: () => [] }, visible: Boolean, canManageCategories: Boolean },
+  emits: ['saved', 'update:visible'],
+  setup(p, { emit }) {
+    return () =>
+      h('button', { 'data-test': 'skill-form', 'data-can-manage': String(p.canManageCategories), onClick: () => emit('saved') })
   },
 })
 const SkillMatrix = defineComponent({
@@ -90,7 +99,7 @@ const stubs = {
   SkillMatrix,
   SkillCategoryManager,
   DashboardEmptyState,
-  SkillForm: true,
+  SkillForm,
   PageHeader: true,
   PageLoading: true,
   Tabs: passthrough('Tabs'),
@@ -240,5 +249,45 @@ describe('skills.vue: F-AC6 カテゴリ変更の反映', () => {
     await w.find('[data-test="category-manager"]').trigger('click')
     await flushPromises()
     expect(notify.error).toHaveBeenCalled()
+  })
+})
+
+describe('skills.vue: ALIC-2 資格の登録・承認・削除の後にマトリクスも最新にする', () => {
+  it('一覧から changed（承認・削除の成功）を受けたらマトリクスを再取得する', async () => {
+    setRole('ADMIN', ['MANAGE_MEMBER'])
+    const w = await render()
+    await w.find('[data-test="skill-list"]').trigger('click')
+    await flushPromises()
+    expect(spies.matrixRefresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('登録・編集フォームの saved を受けたら一覧とマトリクスを再取得する', async () => {
+    setRole('ADMIN', ['MANAGE_MEMBER'])
+    const w = await render()
+    await w.find('[data-test="skill-form"]').trigger('click')
+    await flushPromises()
+    expect(spies.listRefresh).toHaveBeenCalledTimes(1)
+    expect(spies.matrixRefresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('マトリクスを持たない一般メンバーが changed / saved を発火しても落ちない', async () => {
+    setRole('MEMBER')
+    const w = await render()
+    await w.find('[data-test="skill-list"]').trigger('click')
+    await w.find('[data-test="skill-form"]').trigger('click')
+    await flushPromises()
+    expect(spies.listRefresh).toHaveBeenCalledTimes(1)
+    expect(notify.error).not.toHaveBeenCalled()
+  })
+})
+
+describe('skills.vue: ALIC-1 フォームへカテゴリ管理の可否を渡す', () => {
+  it.each([
+    ['ADMIN', ['MANAGE_MEMBER'], 'true'],
+    ['MEMBER', [], 'false'],
+  ])('ロール %s のとき canManageCategories は（期待値 %#）', async (role, perms, expected) => {
+    setRole(role, perms)
+    const w = await render()
+    expect(w.find('[data-test="skill-form"]').attributes('data-can-manage')).toBe(expected)
   })
 })
