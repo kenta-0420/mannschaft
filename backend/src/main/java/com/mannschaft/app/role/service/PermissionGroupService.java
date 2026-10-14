@@ -131,6 +131,8 @@ public class PermissionGroupService {
 
         // パーミッション紐付けを差し替え
         permissionGroupPermissionRepository.deleteByGroupId(groupId);
+        // IDENTITY の INSERT が先行して uq_pgp に衝突しないよう、同一TX内で既存行の DELETE を先に反映する。
+        permissionGroupPermissionRepository.flush();
         savePermissionGroupPermissions(groupId, req.getPermissionIds());
         cacheGenerationService.incrementGeneration(scopeType(group), scopeId(group));
         if (billingProtected) {

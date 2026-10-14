@@ -123,6 +123,7 @@ onMounted(() => void load())
           :label="t('teamAffiliations.organizations.leave')"
           icon="pi pi-sign-out"
           size="small"
+          class="min-h-11 min-w-11"
           severity="danger"
           outlined
           :data-testid="`org-leave-${org.slug}`"
@@ -136,6 +137,7 @@ onMounted(() => void load())
       modal
       :header="t('teamAffiliations.organizations.leave_confirm_title')"
       class="w-full max-w-md"
+      :pt="{ pcCloseButton: { root: { class: 'min-h-11 min-w-11' } } }"
     >
       <div class="space-y-3 text-sm">
         <p>{{ t('teamAffiliations.organizations.leave_confirm', { org: leaveTarget?.name ?? '' }) }}</p>
@@ -144,10 +146,11 @@ onMounted(() => void load())
         </Message>
       </div>
       <template #footer>
-        <Button :label="t('button.cancel')" text @click="showLeaveConfirm = false" />
+        <Button :label="t('button.cancel')" class="min-h-11 min-w-11" text @click="showLeaveConfirm = false" />
         <Button
           :label="t('teamAffiliations.organizations.leave')"
           severity="danger"
+          class="min-h-11 min-w-11"
           :loading="leaving"
           :disabled="leaving"
           data-testid="org-leave-confirm"
