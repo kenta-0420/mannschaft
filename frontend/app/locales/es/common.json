@@ -2478,6 +2478,21 @@
     }
   },
   "teamShell": {
+    "archive": {
+      "syncError": "El cambio se ha completado, pero no se pudo sincronizar la lista. Vuelva a cargarla.",
+      "archive": "Archivar equipo",
+      "unarchive": "Restaurar equipo",
+      "archiveConfirm": "¿Archivar este equipo? Se cancelarán las solicitudes de afiliación pendientes y las invitaciones. Las afiliaciones activas se mantendrán. Los detalles del equipo dejarán de estar disponibles. Puede restaurarlo desde Equipos archivados en la lista de equipos.",
+      "unarchiveConfirm": "¿Restaurar este equipo? No se recuperarán las solicitudes de afiliación ni las invitaciones canceladas, incluidos los enlaces de invitación caducados.",
+      "archived": "Equipo archivado",
+      "unarchived": "Equipo restaurado",
+      "changed": "El estado del equipo o sus permisos han cambiado. Vuelva a cargar la lista.",
+      "listTitle": "Equipos archivados",
+      "showList": "Mostrar equipos archivados",
+      "hideList": "Cerrar lista",
+      "fetchError": "No se pudieron cargar los equipos archivados.",
+      "empty": "No hay equipos archivados."
+    },
     "tab": {
       "affiliations": "Organizaciones afiliadas",
       "permissionGroups": "Grupos de permisos",
