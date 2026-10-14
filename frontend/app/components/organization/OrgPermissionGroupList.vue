@@ -1,8 +1,16 @@
 <script setup lang="ts">
-import type { OrgPermissionGroup } from '~/types/organization'
+import type { PermissionGroupListItem } from '~/types/organization'
+import { MANAGE_ORG_AFFILIATION } from '~/utils/teamAffiliationAccess'
 
+/**
+ * 権限グループの一覧表示。組織（/organizations/{slug}/permission-groups）とチーム
+ * （/teams/{slug}/permission-groups。F01.2.1 8-D）で共用するスコープ非依存の表示部品。
+ *
+ * - チームの権限グループは対象ロール（targetRole）を持つので、あれば出す（組織側は持たない）
+ * - `MANAGE_ORG_AFFILIATION`（チームの加盟操作権限。付与できるのはチーム ADMIN だけ）を含むグループには印を出す
+ */
 defineProps<{
-  groups: OrgPermissionGroup[]
+  groups: PermissionGroupListItem[]
 }>()
 </script>
 
@@ -11,9 +19,10 @@ defineProps<{
     <div
       v-if="groups.length === 0"
       class="rounded-lg border border-dashed border-gray-300 p-8 text-center text-gray-500"
+      data-testid="group-list-empty"
     >
       <i class="pi pi-shield mb-2 text-3xl" />
-      <p>権限グループはまだ作成されていません</p>
+      <p>{{ $t('teamAffiliations.permission_group_list.empty') }}</p>
     </div>
     <div v-else class="space-y-3">
       <div
@@ -21,13 +30,28 @@ defineProps<{
         :key="group.id"
         class="rounded-lg border p-4"
       >
-        <div class="mb-2 flex items-center justify-between">
+        <div class="mb-2 flex items-center justify-between gap-2">
           <h3 class="font-semibold">
             {{ group.name }}
           </h3>
-          <span class="text-sm text-gray-500"
-            >{{ group.permissions.length }}件の権限</span
-          >
+          <div class="flex items-center gap-2">
+            <Tag
+              v-if="group.targetRole"
+              :value="$t('teamAffiliations.permission_group_list.target_role', { role: group.targetRole })"
+              severity="info"
+              class="text-xs"
+              :data-testid="`group-target-role-${group.id}`"
+            />
+            <Tag
+              v-if="group.permissions.includes(MANAGE_ORG_AFFILIATION)"
+              :value="$t('teamAffiliations.permission_group_list.affiliation_mark')"
+              severity="warn"
+              icon="pi pi-sitemap"
+              class="text-xs"
+              :data-testid="`group-affiliation-mark-${group.id}`"
+            />
+            <span class="text-sm text-gray-500" :data-testid="`group-count-${group.id}`">{{ $t('teamAffiliations.permission_group_list.count', { count: group.permissions.length }) }}</span>
+          </div>
         </div>
         <p v-if="group.description" class="mb-2 text-sm text-gray-600">
           {{ group.description }}

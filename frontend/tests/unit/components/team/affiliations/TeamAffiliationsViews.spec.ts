@@ -267,7 +267,7 @@ describe('TeamAffiliationsRestrictionsView', () => {
     listRestrictions.mockReset()
     liftRestriction.mockReset()
     listRestrictions.mockResolvedValue(
-      page([{ id: 'r-1', kind: 'BLOCKED', direction: 'ORG_INVITE', organization: { slug: 'org-x', name: '組織X' }, createdAt: '2026-10-01T09:00:00Z' }]),
+      page([{ id: 'r-1', kind: 'BLOCK', direction: 'ORG_INVITE', organization: { slug: 'org-x', name: '組織X' }, createdAt: '2026-10-01T09:00:00Z' }]),
     )
   })
 

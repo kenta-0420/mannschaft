@@ -119,6 +119,18 @@ export interface OrgTeam {
   memberCount: number
 }
 
+/**
+ * 権限グループ一覧（OrgPermissionGroupList）が表示に使う最小の形。組織・チームで共用する。
+ * チームの権限グループは対象ロール（targetRole）を持つ。
+ */
+export interface PermissionGroupListItem {
+  id: number
+  name: string
+  description?: string | null
+  permissions: string[]
+  targetRole?: string
+}
+
 export interface OrgPermissionGroup {
   id: number
   name: string

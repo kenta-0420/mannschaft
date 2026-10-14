@@ -6,11 +6,15 @@ const props = defineProps<{
   scopeId: string
   canChangeRole: boolean
   canRemove: boolean
+  /** チームの権限グループ割当（F01.2.1 8-D）の入口を操作列に出す。チーム ADMIN・管理レンズ ON のときだけ親が true にする。 */
+  canAssignPermissionGroups?: boolean
 }>()
 
 const emit = defineEmits<{
   roleChanged: []
   memberRemoved: []
+  /** 「権限グループ」ボタンが押された。ダイアログは親が開く。 */
+  assignPermissionGroups: [member: { userId: number, displayName: string, roleName: string }]
 }>()
 
 interface Member {
@@ -262,9 +266,20 @@ defineExpose({ refresh: loadMembers, changeRole: onChangeRole })
         </div>
       </template>
     </Column>
-    <Column v-if="canChangeRole || canRemove" header="操作" style="width: 100px">
+    <Column v-if="canChangeRole || canRemove || canAssignPermissionGroups" header="操作" style="width: 140px">
       <template #body="{ data }">
         <div class="flex gap-1">
+          <Button
+            v-if="canAssignPermissionGroups"
+            icon="pi pi-shield"
+            text
+            rounded
+            size="small"
+            :aria-label="t('teamAffiliations.member_menu.permission_groups_aria', { name: data.displayName })"
+            :title="t('teamAffiliations.member_menu.permission_groups')"
+            :data-testid="`member-permission-groups-${data.userId}`"
+            @click="emit('assignPermissionGroups', { userId: data.userId, displayName: data.displayName, roleName: data.roleName })"
+          />
           <Button
             v-if="canRemove"
             icon="pi pi-trash"

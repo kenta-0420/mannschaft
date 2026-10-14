@@ -56,6 +56,13 @@ export interface TeamShellContext {
   /** 管理者または副管理者か。 */
   isAdminOrDeputy: ComputedRef<boolean>
   /**
+   * チームの加盟操作者か（F01.2.1 8-D。ADMIN、または MANAGE_ORG_AFFILIATION を付与された者。管理者レンズ ON のときだけ）。
+   * 「所属組織」タブの表示・子ページの描画・管理 API の呼び出し可否に使う。
+   */
+  canManageOrgAffiliation: ComputedRef<boolean>
+  /** 権限グループの画面・メンバー一覧の割当を出してよいか（F01.2.1 8-D。チーム ADMIN・管理者レンズ ON のとき）。 */
+  canManagePermissionGroups: ComputedRef<boolean>
+  /**
    * ScopeDashboard に渡す実効 viewerRole。
    * 管理者レンズ OFF 時は 'MEMBER'、ON 時は roleName（未確定は 'PUBLIC'）。
    */

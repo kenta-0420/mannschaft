@@ -17,13 +17,13 @@ describe('OrgPermissionGroupList', () => {
     const w = await mountSuspended(OrgPermissionGroupList, { props: { groups: [orgGroup] } })
     expect(w.text()).toContain('会計係')
     expect(w.text()).toContain('会計を扱う')
-    expect(w.text()).toContain('2件の権限')
+    expect(w.find('[data-testid="group-count-1"]').text()).toContain('2')
     expect(w.text()).toContain('VIEW_BILLING')
   })
 
   it('PGL-02', async () => {
     const w = await mountSuspended(OrgPermissionGroupList, { props: { groups: [] } })
-    expect(w.text()).toContain('権限グループはまだ作成されていません')
+    expect(w.find('[data-testid="group-list-empty"]').exists()).toBe(true)
   })
 
   it('PGL-03', async () => {
