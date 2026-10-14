@@ -365,7 +365,12 @@ const overflowMenuItems = computed(() => {
             :aria-label="$t('common.moreActions')"
             @click="toggleOverflowMenu"
           />
-          <Menu ref="overflowMenu" :model="overflowMenuItems" popup />
+          <Menu
+            ref="overflowMenu"
+            :model="overflowMenuItems"
+            :pt="{ itemLink: { class: 'min-h-11 min-w-11' } }"
+            popup
+          />
         </div>
       </div>
     </div>
