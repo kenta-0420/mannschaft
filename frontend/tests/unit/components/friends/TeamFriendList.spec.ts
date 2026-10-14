@@ -27,7 +27,10 @@ async function mountList() {
 }
 
 describe('components/friends/TeamFriendList.vue — 取得失敗の表示', () => {
-  beforeEach(() => api.listFriends.mockReset())
+  // 波括弧必須: アロー式で mock を返すと vitest が後始末関数として呼び出し、拒否値が漏れる
+  beforeEach(() => {
+    api.listFriends.mockReset()
+  })
 
   it('AC-14: 403 は空状態ではなく forbidden 案内を出す', async () => {
     api.listFriends.mockRejectedValue({ statusCode: 403 })

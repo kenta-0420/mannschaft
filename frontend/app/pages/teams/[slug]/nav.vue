@@ -36,6 +36,7 @@ const canManageFriends = computed(
 )
 // 本文を見せてよいのは在籍ロール（GUEST は在籍なしのため除外）
 const canViewTab = computed(() => !!roleName.value && roleName.value !== 'GUEST')
+const isGuestView = computed(() => roleName.value === 'GUEST')
 const isSupporterView = computed(() => roleName.value === 'SUPPORTER')
 
 async function onFollowSuccess(_response: FollowTeamResponse) {
@@ -111,7 +112,7 @@ onMounted(() => {
       <FriendTeamGuideModal v-model:visible="showGuide" />
     </template>
     <DashboardErrorState
-      v-else-if="roleName === 'GUEST'"
+      v-else-if="isGuestView"
       testid="friend-forbidden"
       kind="forbidden"
     />
