@@ -5,6 +5,9 @@ on:
     branches:
       - 'feature/ranch-page-state-4a0f69d1-20261014-01'
 
+env:
+  NODE_VERSION: "22.23.2"
+
 permissions:
   contents: read
 
@@ -92,3 +95,68 @@ jobs:
           name: ranch-page-state-4a0f69d1-20261014-01
           path: ci-ranch-state/
           if-no-files-found: error
+
+  canonical_frontend:
+    name: Canonical frontend checks on fixed ranch source
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+        with:
+          ref: '4a0f69d12c1440bdbfc3986bb20e4d1bec514e78'
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 依存関係の既知脆弱性スキャン（OWASP A06）。
+      # 設計書 docs/security/04_dependency_and_supply_chain.md §4/§6 に基づく。
+      # high レベルの脆弱性が 0 件のためブロッキング化（2026-06-02）。
+      - name: Audit gate regression tests
+        run: node --test scripts/audit-with-exemption.test.mjs scripts/patch-nuxt-devtools-simple-git.test.mjs
+
+      - name: npm audit (依存脆弱性スキャン)
+      # 【期限付き除外】GHSA-86w9-cpqp-85rv（node-forge）と GHSA-vfj7-8cjw-p6xm（braces）を名指しで除外（期限 2026-10-16、超過で exit 1）。
+      # 理由: 両依存の修正版が未公開。限定調査の範囲と非到達未証明の留保は security04 §4.3/§4.4 を参照。
+      # 解除条件: 各修正版の導入または依存撤去で該当例外を削除し、全解除後に npm audit --audit-level=high に戻す。
+      # audit-level を下げることは禁止。詳細は scripts/audit-with-exemption.mjs 冒頭と docs/task-list.md。
+        run: node scripts/audit-with-exemption.mjs
+
+      - name: Generate OpenAPI types
+        run: npm run generate:types
+
+      - name: Check for type drift
+        run: |
+          if ! git diff --quiet app/types/generated/index.ts; then
+            echo "::error::openapi.json と生成型が乖離しています。npm run generate:types を実行してください"
+            git diff app/types/generated/index.ts
+            exit 1
+          fi
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        # nuxt typecheck (vue-tsc) はプロジェクト成長で node 既定ヒープ(約4GB)を超過し
+        # CI ランナーで OOM(exit 134) する。ubuntu-latest は 16GB RAM のためヒープを 8GB に引き上げる。
+        run: npm run typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      # ユニットテスト（Issue #2609 後続）。ワーカー過剰供給是正のため
+      # vitest.config.ts の maxWorkers はコア数8未満（本ランナーは2〜4コア）
+      # では未指定（vitest既定）のまま動くため、typecheck と同様の
+      # メモリ配慮は不要（多コア機のみで踏む問題のため）。
+      - name: Unit test (vitest)
+        run: npm run test:unit
+
