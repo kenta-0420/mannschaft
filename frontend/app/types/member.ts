@@ -7,6 +7,8 @@ export interface MemberResponse {
   roleName: RoleName
   joinedAt: string
   calendarColor?: string | null
+  /** 割り当て済みの権限グループ。管理者（DEPUTY_ADMIN 以上）向けの一覧だけに含まれる。 */
+  permissionGroups?: { id: number, name: string }[]
 }
 
 export interface RoleChangeRequest {

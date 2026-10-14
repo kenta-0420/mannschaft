@@ -23,9 +23,12 @@ const props = withDefaults(defineProps<{
   refreshing?: boolean
   /** 所属チーム一覧の取得に失敗している（「該当チームなし」と区別してエラーと再試行を出す）。 */
   loadFailed?: boolean
+  /** 常駐シェルが持つ一覧を同期する。view 切替で本一覧が消えても送信済み除名の結果を反映する。 */
+  refreshAfterRemoval?: (orgSlug: string) => Promise<void>
 }>(), {
   refreshing: false,
   loadFailed: false,
+  refreshAfterRemoval: undefined,
 })
 
 const emit = defineEmits<{
@@ -47,6 +50,11 @@ const bulkTarget = ref<string>(UNASSIGNED_GROUP_VALUE)
 const busy = ref(false)
 /** 自分の割当中、または親の再取得中は操作できない。 */
 const locked = computed(() => busy.value || props.refreshing)
+
+async function synchronizeRemoval(orgSlug: string) {
+  if (props.refreshAfterRemoval) await props.refreshAfterRemoval(orgSlug)
+  else emit('changed')
+}
 type AssignErrorKind = 'generic' | 'rate-limited' | 'group-missing' | 'team-missing' | 'too-many'
 const errorKind = ref<AssignErrorKind | null>(null)
 
@@ -232,7 +240,19 @@ async function assignBulk() {
       />
     </div>
 
-    <OrgTeamGrid v-else-if="groups === null" :teams="teams" />
+    <OrgTeamGrid v-else-if="groups === null" :teams="teams">
+      <template v-if="canAssign" #actions="{ team }">
+        <TeamAffiliationRemoveButton
+          :key="`${orgSlug}/${team.slug}`"
+          :org-slug="orgSlug"
+          :team="team"
+          :can-remove="canAssign"
+          :disabled="locked || loadFailed"
+          :refresh-after-removal="synchronizeRemoval"
+          @reload="emit('retry')"
+        />
+      </template>
+    </OrgTeamGrid>
 
     <section v-else class="mt-4" data-testid="member-teams-team-list">
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -336,6 +356,15 @@ async function assignBulk() {
               :aria-label="t('teamGroup.assign')"
               :data-testid="`team-assign-${team.slug}`"
               @update:model-value="assignOne(team, $event)"
+            />
+            <TeamAffiliationRemoveButton
+              :key="`${orgSlug}/${filter}/${team.slug}`"
+              :org-slug="orgSlug"
+              :team="team"
+              :can-remove="canAssign"
+              :disabled="locked || loadFailed"
+              :refresh-after-removal="synchronizeRemoval"
+              @reload="emit('retry')"
             />
           </li>
         </ul>

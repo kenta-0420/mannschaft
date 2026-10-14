@@ -11,6 +11,7 @@ import com.mannschaft.app.role.dto.MyOrganizationResponse;
 import com.mannschaft.app.role.dto.MyTeamResponse;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -49,6 +50,7 @@ import java.util.Set;
 public class MeController {
 
     private final UserRoleRepository userRoleRepository;
+    private final RoleRepository roleRepository;
     private final TeamRepository teamRepository;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
     private final OrganizationRepository organizationRepository;
@@ -117,6 +119,31 @@ public class MeController {
             teamScopes.add(new ScopeKey("TEAM", teamId));
         }
         var roleSnapshot = membershipBatchQueryService.snapshotForUser(userId, teamScopes, Set.of());
+        // SYSTEM_ADMIN の snapshot はスコープロールを持たないため、既に取得した本人の
+        // user_roles を使う。checkAdminOrAbove と同じ ACTIVE 利用者・対象割当・ADMIN/DEPUTY 判定。
+        // ロールマスタと利用者状態は一覧全体で最大1回ずつ解決し、チームごとのSQLを増やさない。
+        Set<Long> archiveManageableTeamIds = new LinkedHashSet<>();
+        if (!teamRoles.isEmpty() && userRoleRepository.isActiveUser(userId)) {
+            Set<Long> roleIds = new LinkedHashSet<>();
+            for (UserRoleEntity assignment : teamRoles) {
+                if (assignment.getRoleId() != null) {
+                    roleIds.add(assignment.getRoleId());
+                }
+            }
+            Set<Long> archiveRoleIds = new LinkedHashSet<>();
+            if (!roleIds.isEmpty()) {
+                for (var role : roleRepository.findAllById(roleIds)) {
+                    if ("ADMIN".equals(role.getName()) || "DEPUTY_ADMIN".equals(role.getName())) {
+                        archiveRoleIds.add(role.getId());
+                    }
+                }
+            }
+            for (UserRoleEntity assignment : teamRoles) {
+                if (archiveRoleIds.contains(assignment.getRoleId())) {
+                    archiveManageableTeamIds.add(assignment.getTeamId());
+                }
+            }
+        }
         Map<Long, Integer> memberCountByTeamId =
                 accessControlService.countActiveDistinctMembersByScopes("TEAM", teamIds);
 
@@ -158,6 +185,7 @@ public class MeController {
                     roleName,
                     joinedAtByTeamId.get(teamId),
                     team.getArchivedAt() != null,
+                    archiveManageableTeamIds.contains(teamId),
                     team.getTemplate()));
         }
         teams.sort(Comparator.comparing(MyTeamResponse::getJoinedAt));

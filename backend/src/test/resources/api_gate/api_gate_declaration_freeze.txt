@@ -542,6 +542,7 @@ HTTP|com.mannschaft.app.role.controller.InviteQrPdfController|1|1
 HTTP|com.mannschaft.app.role.controller.MeController|2|2
 HTTP|com.mannschaft.app.role.controller.MeInvitableScopesController|0|1
 HTTP|com.mannschaft.app.role.controller.OwnershipTransferOfferController|0|11
+HTTP|com.mannschaft.app.role.controller.PermissionCatalogController|0|1
 HTTP|com.mannschaft.app.safetycheck.controller.SafetyAdminController|8|8
 HTTP|com.mannschaft.app.safetycheck.controller.SafetyCheckController|11|11
 HTTP|com.mannschaft.app.safetycheck.controller.SafetyFollowupController|1|1
