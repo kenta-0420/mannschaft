@@ -42,6 +42,8 @@ public class MyTeamResponse {
     private final LocalDateTime joinedAt;
     @JsonProperty("isArchived")
     private final boolean isArchived;
+    /** 本人の対象チーム ADMIN / DEPUTY_ADMIN 割当に基づくアーカイブ・解除の操作可否。 */
+    private final boolean canManageArchive;
     /**
      * チームテンプレートスラッグ（"family", "school", "university" 等）。
      * F03.15 Phase 5b で家族チーム判定用に追加。
