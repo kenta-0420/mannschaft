@@ -255,6 +255,7 @@
         },
         "error": {
           "invalid_code": "El código de verificación es incorrecto",
+          "code_already_used": "Este código de verificación ya se ha utilizado. Espera a que aparezca un código nuevo",
           "resend_wait": "Espere un momento antes de solicitar otro código",
           "send_limit": "Se alcanzó el límite de envíos de códigos. Inténtelo más tarde",
           "already_enabled": "La autenticación de dos factores ya está activada",

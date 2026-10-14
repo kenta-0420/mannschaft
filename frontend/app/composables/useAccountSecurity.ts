@@ -160,6 +160,8 @@ export interface TwoFactorErrorInfo {
 }
 
 const ERROR_KEY_BY_CODE: Record<string, string> = {
+  // TOTP 設定確定・ログイン検証で使用済みのコードを再提示した（誤ったコードは AUTH_074）
+  AUTH_018: 'code_already_used',
   AUTH_074: 'invalid_code',
   AUTH_076: 'resend_wait',
   AUTH_077: 'send_limit',

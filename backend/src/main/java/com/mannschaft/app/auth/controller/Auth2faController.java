@@ -21,6 +21,8 @@ import com.mannschaft.app.auth.dto.TotpSetupResponse;
 import com.mannschaft.app.auth.dto.ValidateTotpLoginRequest;
 import com.mannschaft.app.auth.dto.VerifyTotpRequest;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.featuregate.AlwaysReachable;
+import com.mannschaft.app.common.featuregate.AlwaysReachableCategory;
 import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
@@ -207,6 +209,8 @@ public class Auth2faController {
      * メール送信という副作用を伴うため、Service 層で IP・セッション・ユーザー単位のレート制限を課す（AC-20）。</p>
      */
     @IntentionallyPublic({"/api/v1/auth/2fa/email/send"})
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "2FAログインの完了経路（メールOTP送信）をGate状態にかかわらず維持するため")
     @PostMapping("/email/send")
     @Operation(summary = "2FAログイン用メールOTP送信")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "送信受付")
@@ -227,6 +231,8 @@ public class Auth2faController {
     @SelfScopedEndpoint(
             "SecurityUtils.getCurrentUserId() のみで設定対象ユーザーを解決する"
                     + "（Auth2faController#startEmailSetup）")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "アカウント保護の2FA設定（メール方式の開始）をGate状態にかかわらず維持するため")
     @PostMapping("/email/setup")
     @Operation(summary = "メール2FA設定開始（設定用コード送信）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "送信受付")
@@ -246,6 +252,8 @@ public class Auth2faController {
     @SelfScopedEndpoint(
             "SecurityUtils.getCurrentUserId() のみで有効化対象ユーザーを解決する"
                     + "（Auth2faController#enableEmailTwoFactor）")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "アカウント保護の2FA設定（メール方式の有効化）をGate状態にかかわらず維持するため")
     @PostMapping("/email/enable")
     @Operation(summary = "メール2FA有効化")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "有効化成功")
@@ -266,6 +274,8 @@ public class Auth2faController {
     @SelfScopedEndpoint(
             "SecurityUtils.getCurrentUserId() のみで本人確認対象ユーザーを解決する"
                     + "（Auth2faController#sendReauthEmailOtp）")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "2FAの無効化・再生成に要る本人確認をGate状態にかかわらず維持するため")
     @PostMapping("/reauth/email/send")
     @Operation(summary = "本人確認用メールOTP送信（無効化・再生成用）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "送信受付")
@@ -286,6 +296,8 @@ public class Auth2faController {
     @SelfScopedEndpoint(
             "SecurityUtils.getCurrentUserId() のみで無効化対象ユーザーを解決する"
                     + "（Auth2faController#disableTwoFactor）")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "本人による2FA無効化をGate状態にかかわらず維持するため")
     @PostMapping("/disable")
     @Operation(summary = "2FA無効化")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "無効化成功")
@@ -305,6 +317,8 @@ public class Auth2faController {
     @SelfScopedEndpoint(
             "SecurityUtils.getCurrentUserId() のみで参照対象ユーザーを解決する"
                     + "（Auth2faController#getTwoFactorStatus）")
+    @AlwaysReachable(category = AlwaysReachableCategory.CORE,
+            reason = "本人の2FA設定状態の確認をGate状態にかかわらず維持するため")
     @GetMapping("/status")
     @Operation(summary = "2FA設定状態取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

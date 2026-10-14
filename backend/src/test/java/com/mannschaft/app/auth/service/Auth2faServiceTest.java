@@ -256,8 +256,8 @@ class Auth2faServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: TOTPコード不正でAUTH_018例外")
-        void verifyTotpSetup_TOTPコード不正_AUTH018例外() {
+        @DisplayName("異常系: TOTPコード不正でAUTH_074例外（誤コードは使用済みではない）")
+        void verifyTotpSetup_TOTPコード不正_AUTH074例外() {
             // Given
             TwoFactorAuthEntity twoFactorAuth = createDisabledTwoFactorAuth();
             given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
@@ -267,12 +267,12 @@ class Auth2faServiceTest {
             assertThatThrownBy(() -> auth2faService.verifyTotpSetup(TEST_USER_ID, "000000"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_018"));
+                            .isEqualTo("AUTH_074"));
         }
 
         @Test
-        @DisplayName("異常系: nullのTOTPコードでAUTH_018例外")
-        void verifyTotpSetup_nullコード_AUTH018例外() {
+        @DisplayName("異常系: nullのTOTPコードでAUTH_074例外（誤コードは使用済みではない）")
+        void verifyTotpSetup_nullコード_AUTH074例外() {
             // Given
             TwoFactorAuthEntity twoFactorAuth = createDisabledTwoFactorAuth();
             given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
@@ -282,12 +282,12 @@ class Auth2faServiceTest {
             assertThatThrownBy(() -> auth2faService.verifyTotpSetup(TEST_USER_ID, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_018"));
+                            .isEqualTo("AUTH_074"));
         }
 
         @Test
-        @DisplayName("異常系: 6桁以外のTOTPコードでAUTH_018例外")
-        void verifyTotpSetup_6桁以外_AUTH018例外() {
+        @DisplayName("異常系: 6桁以外のTOTPコードでAUTH_074例外（誤コードは使用済みではない）")
+        void verifyTotpSetup_6桁以外_AUTH074例外() {
             // Given
             TwoFactorAuthEntity twoFactorAuth = createDisabledTwoFactorAuth();
             given(twoFactorAuthRepository.findByUserIdForUpdate(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
@@ -297,7 +297,7 @@ class Auth2faServiceTest {
             assertThatThrownBy(() -> auth2faService.verifyTotpSetup(TEST_USER_ID, "12345"))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_018"));
+                            .isEqualTo("AUTH_074"));
         }
     }
 

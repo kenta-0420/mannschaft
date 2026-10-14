@@ -67,6 +67,47 @@ class TotpSetupGuardIT extends MfaItSupport {
     }
 
     /**
+     * 実機 E2E 指摘: 設定確定で誤ったコードを入れたら「確認コードが正しくありません」（AUTH_074。ログイン検証の誤コードと同じ）。
+     * 「使用済み」（AUTH_018）と誤案内しない。2FA は有効化されない。
+     */
+    @Test
+    @DisplayName("設定確定の誤コードはAUTH_074（使用済みのAUTH_018ではない）で有効化されない")
+    void 設定確定の誤コードはAUTH_074() throws Exception {
+        long userId = createPlainUser();
+        String secret = auth2faService.setupTotp(userId).getData().getSecret();
+
+        MvcResult r = verify(userId, wrongTotp(secret));
+
+        assertThat(r.getResponse().getStatus()).as("誤コード: %s", body(r)).isEqualTo(400);
+        assertThat(errorCode(r)).as("誤コードは「正しくない」").isEqualTo("AUTH_074");
+        assertThat(jdbcTemplate.queryForObject("SELECT is_enabled FROM two_factor_auth WHERE user_id = ?",
+                Boolean.class, userId)).as("有効化されない").isFalse();
+    }
+
+    /** 使用済みの（正しい）コードの再提示は AUTH_018（使用済み）のまま。 */
+    @Test
+    @DisplayName("設定確定で使用済みのコードを再提示するとAUTH_018")
+    void 設定確定の使用済みコードはAUTH_018() throws Exception {
+        long userId = createPlainUser();
+        String secret = auth2faService.setupTotp(userId).getData().getSecret();
+        String code = currentTotp(secret);
+        valkey.rawSet(TOTP_USED_KEY_PREFIX + userId + ":" + code, "1", java.time.Duration.ofSeconds(90));
+
+        MvcResult r = verify(userId, code);
+
+        assertThat(r.getResponse().getStatus()).as("使用済み: %s", body(r)).isEqualTo(400);
+        assertThat(errorCode(r)).as("使用済みは AUTH_018").isEqualTo("AUTH_018");
+    }
+
+    private MvcResult verify(long userId, String code) throws Exception {
+        return mockMvc.perform(post(VERIFY_PATH).servletPath(VERIFY_PATH)
+                        .with(user(String.valueOf(userId)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("totpCode", code))))
+                .andReturn();
+    }
+
+    /**
      * AC-1（Codex 検分指摘）: 同一ユーザーの確定が並列に来ても成功は 1 件、後着は AUTH_078。
      * 保存されたバックアップコードは成功側が返したものと一致する（後着側に上書きされない）。
      *

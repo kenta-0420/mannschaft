@@ -255,6 +255,7 @@
         },
         "error": {
           "invalid_code": "The verification code is incorrect",
+          "code_already_used": "This verification code has already been used. Please wait for a new code to appear",
           "resend_wait": "Please wait a moment before requesting another code",
           "send_limit": "Code sending limit reached. Please try again later",
           "already_enabled": "Two-factor authentication is already enabled",

@@ -29,6 +29,7 @@ describe('describeTwoFactorError', () => {
   })
   it('エラーコードを個別キーへ写像し、未知は generic', () => {
     expect(describeTwoFactorError(apiError(400, 'AUTH_074')).key).toBe('invalid_code')
+    expect(describeTwoFactorError(apiError(400, 'AUTH_018')).key).toBe('code_already_used')
     expect(describeTwoFactorError(apiError(400, 'AUTH_080')).key).toBe('reauth_failed')
     expect(describeTwoFactorError(apiError(400, 'AUTH_082')).key).toBe('email_unavailable')
     expect(describeTwoFactorError(apiError(500)).key).toBe('generic')

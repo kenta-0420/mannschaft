@@ -192,9 +192,10 @@ public class Auth2faService {
         // AES-256-GCM で秘密鍵を復号化
         String secret = encryptionService.decrypt(twoFactorAuth.getTotpSecret());
 
-        // 1. TOTP検証
+        // 1. TOTP検証。誤り・形式違反は「確認コードが正しくありません」（ログイン検証の誤コードと同じ AUTH_074）。
+        //    AUTH_018（使用済み）を流用すると、打ち間違えた利用者に「使用済み」と誤った案内をしてしまう（実機 E2E 指摘）
         if (!verifyTotpCode(secret, totpCode)) {
-            throw new BusinessException(AuthErrorCode.AUTH_018);
+            throw new BusinessException(AuthErrorCode.AUTH_074);
         }
 
         // 2. 使用済み印を原子的に取る（取れなければ使用済み。AC-6）

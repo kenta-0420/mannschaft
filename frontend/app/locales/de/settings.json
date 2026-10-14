@@ -255,6 +255,7 @@
         },
         "error": {
           "invalid_code": "Der Bestätigungscode ist falsch",
+          "code_already_used": "Dieser Bestätigungscode wurde bereits verwendet. Bitte warten Sie, bis ein neuer Code angezeigt wird",
           "resend_wait": "Bitte warten Sie einen Moment, bevor Sie einen neuen Code anfordern",
           "send_limit": "Das Limit für den Codeversand ist erreicht. Bitte versuchen Sie es später erneut",
           "already_enabled": "Die Zwei-Faktor-Authentifizierung ist bereits aktiviert",

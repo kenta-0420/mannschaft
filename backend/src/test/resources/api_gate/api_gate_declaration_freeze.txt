@@ -76,7 +76,7 @@ HTTP|com.mannschaft.app.appearance.controller.AppearanceSettingsController|2|2
 HTTP|com.mannschaft.app.auth.controller.AgeGroupSettingsController|2|2
 HTTP|com.mannschaft.app.auth.controller.AuditLogAdminController|0|2
 HTTP|com.mannschaft.app.auth.controller.AuditLogScopeController|0|2
-HTTP|com.mannschaft.app.auth.controller.Auth2faController|6|6
+HTTP|com.mannschaft.app.auth.controller.Auth2faController|6|12
 HTTP|com.mannschaft.app.auth.controller.AuthLoginController|12|12
 HTTP|com.mannschaft.app.auth.controller.AuthOAuthCallbackController|0|1
 HTTP|com.mannschaft.app.auth.controller.AuthOAuthController|0|3

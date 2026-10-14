@@ -289,9 +289,8 @@ public class GlobalExceptionHandler {
             // 自己スコープの「不在」は 404（IDOR ではなく単純な not-found だが、既存 EP 契約と揃える）
             Map.entry("AUTH_029", HttpStatus.NOT_FOUND),    // OAuthプロバイダー未連携（解除対象が存在しない）
             // 状態競合 → 409（AUTH_032 は上記の別ブロックで既に登録済み）
-            // AUTH_018 は Auth2faService 内で「TOTPコード不正」（verifyTotpCode 失敗）と
-            // 「TOTPコード使用済み」（リプレイ検出）の意味の異なる 2 箇所から throw されており、
-            // 定数の意味が割れているため変更を見送る（Severity.WARN 既定の 400 のまま）。
+            // AUTH_018 は「TOTPコード使用済み」（リプレイ検出）専用（CMP-261012-0910 で TOTP 設定確定の誤コードは
+            // AUTH_074 に分離した）。入力した確認コードの不備として Severity.WARN 既定の 400 のまま据え置く。
             // AUTH_021（バックアップコード全使用済み）は throw 元が存在しない未使用定数のため対象外。
             Map.entry("AUTH_025", HttpStatus.CONFLICT),     // WebAuthnデバイス重複登録
             Map.entry("AUTH_030", HttpStatus.CONFLICT),     // OAuth連携解除時ログイン手段喪失

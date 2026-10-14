@@ -255,6 +255,7 @@
         },
         "error": {
           "invalid_code": "验证码不正确",
+          "code_already_used": "此验证码已被使用。请等待新的验证码出现",
           "resend_wait": "请稍等片刻再重新发送验证码",
           "send_limit": "验证码发送次数已达上限，请稍后再试",
           "already_enabled": "双重认证已启用",
