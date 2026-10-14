@@ -150,8 +150,8 @@ describe('change-requests.vue 取得失敗（AC-E1〜E4 / AC-J5）', () => {
     expect(wrapper.find('[data-testid="change-request-form"]').exists()).toBe(false)
   })
 
-  it('AC-E2: 404 は再試行ボタンを出さない', async () => {
-    mocks.getSchedule.mockRejectedValue({ statusCode: 404 })
+  it('AC-E2: 一覧取得が 404 なら再試行ボタンを出さない', async () => {
+    mocks.listChangeRequests.mockRejectedValue({ statusCode: 404 })
     const wrapper = await mountPage()
     expect(wrapper.find('[data-testid="change-request-load-error"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="change-request-load-error-retry"]').exists()).toBe(false)
@@ -205,6 +205,25 @@ describe('change-requests.vue 検分差し戻し（権限取得失敗・再取�
     await wrapper.find('[data-testid="change-request-withdraw-2"]').trigger('click')
     await flushPromises()
 
+    expect(wrapper.find('[data-testid="change-request-load-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="change-request-list"]').exists()).toBe(false)
+  })
+})
+
+describe('change-requests.vue 公開前アーカイブ（シフト表 404 でも一覧は取れる）', () => {
+  it('シフト表が 404 でも一覧が取れれば依頼の閲覧と本人の取り下げは出し、作成フォームとシフト表詳細は出さない', async () => {
+    mocks.getSchedule.mockRejectedValue({ statusCode: 404 })
+    const wrapper = await mountPage()
+    expect(wrapper.find('[data-testid="change-request-load-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="change-request-list"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="change-request-withdraw-2"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="change-request-form"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="change-request-closed-notice"]').exists()).toBe(true)
+  })
+
+  it('シフト表が 5xx なら 404 ではないので握りつぶさず取得エラーにする', async () => {
+    mocks.getSchedule.mockRejectedValue({ statusCode: 500 })
+    const wrapper = await mountPage()
     expect(wrapper.find('[data-testid="change-request-load-error"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="change-request-list"]').exists()).toBe(false)
   })
