@@ -20,6 +20,16 @@ const step = ref<'request' | 'done' | 'confirm'>(linkToken.value ? 'confirm' : '
 const loading = ref(false)
 const recoveryToken = ref(linkToken.value)
 const confirmFailed = ref(false)
+// MFA セッションが不在・期限切れ（AUTH_073）。このセッションでは回復を要求できないので、ログインからやり直させる。
+const sessionExpired = ref(false)
+
+interface ApiErrorShape {
+  data?: { error?: { code?: string } }
+}
+
+function errorCodeOf(e: unknown): string | undefined {
+  return (e as ApiErrorShape)?.data?.error?.code
+}
 
 // SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
 // ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
@@ -45,7 +55,13 @@ async function handleRequestRecovery() {
     await requestMfaRecovery(mfaSessionToken.value)
     step.value = 'done'
     notification.success(t('auth.mfa.recovery.sent'))
-  } catch {
+  } catch (e: unknown) {
+    // AUTH_073: MFA セッションの不在・期限切れ（/2fa/validate と同じ。ALIC-4）。再試行しても通らないので再ログインへ誘導する。
+    if (errorCodeOf(e) === 'AUTH_073') {
+      sessionExpired.value = true
+      notification.error(t('auth.mfa.error_session_expired'))
+      return
+    }
     notification.error(t('auth.mfa.recovery.request_failed'))
   } finally {
     loading.value = false
@@ -86,7 +102,17 @@ async function handleConfirmRecovery() {
       <p class="text-center text-sm text-surface-500">
         {{ t('auth.mfa.recovery.request_description') }}
       </p>
+      <Message
+        v-if="sessionExpired"
+        severity="error"
+        :closable="false"
+        class="w-full"
+        data-testid="mfa-recovery-session-expired"
+      >
+        {{ t('auth.mfa.error_session_expired') }}
+      </Message>
       <Button
+        v-else
         :label="t('auth.mfa.recovery.request_submit')"
         icon="pi pi-envelope"
         :loading="loading"
@@ -139,7 +165,7 @@ async function handleConfirmRecovery() {
 
     <div class="flex flex-col items-center gap-2 text-sm">
       <NuxtLink
-        v-if="mfaSessionToken"
+        v-if="mfaSessionToken && !sessionExpired"
         :to="{
           path: '/2fa-verify',
           query: {

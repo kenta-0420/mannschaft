@@ -57,6 +57,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -98,7 +99,6 @@ public class Auth2faService {
      * 90 秒保持して有効期間の終わりでの再利用を防ぐ（F01.1 §TOTP コード検証フロー / AC-6）。
      */
     private static final Duration TOTP_USED_TTL = Duration.ofSeconds(90);
-    private static final String MFA_SESSION_KEY_PREFIX = MfaSessionService.SESSION_KEY_PREFIX;
     private static final String MFA_RECOVERY_RATE_KEY_PREFIX = "mannschaft:auth:mfa_recovery_attempt:";
     /** 2FA 無効化の試行回数（AC-30: 5 回/15 分）。 */
     private static final String MFA_DISABLE_RATE_KEY_PREFIX = "mannschaft:auth:mfa_disable_attempt:";
@@ -120,16 +120,17 @@ public class Auth2faService {
      */
     @Transactional
     public ApiResponse<TotpSetupResponse> setupTotp(Long userId) {
-        UserEntity user = findUserOrThrow(userId);
+        // CMP-261012-0910 ALIC-1: 既存行の「削除 → 新規作成」をやめ、未有効の既存行を再利用する。
+        // 同一 TX で delete と save(新規) を並べると、flush 順序（INSERT が DELETE より先）で
+        // uq_two_factor_auth_user の一意制約違反となり、「設定開始 → 放棄 → 再度設定開始」が常に 500 になっていた。
+        // 有効化済みの判定は行ロック下で行う（verifyTotpSetup と同じく、この TX の最初の読取りでロックを取る。
+        // 並列の確定・有効化と直列化し、有効化直後の行の秘密鍵を差し替えない）。
+        Optional<TwoFactorAuthEntity> existing = twoFactorAuthRepository.findByUserIdForUpdate(userId);
+        if (existing.map(tfa -> Boolean.TRUE.equals(tfa.getIsEnabled())).orElse(false)) {
+            throw new BusinessException(AuthErrorCode.AUTH_017);
+        }
 
-        // 既に有効な2FAが存在するかチェック
-        twoFactorAuthRepository.findByUserId(userId).ifPresent(existing -> {
-            if (existing.getIsEnabled()) {
-                throw new BusinessException(AuthErrorCode.AUTH_017);
-            }
-            // 未有効化の設定を削除して再作成
-            twoFactorAuthRepository.delete(existing);
-        });
+        UserEntity user = findUserOrThrow(userId);
 
         // 1. TOTP秘密鍵生成（Base32エンコード）
         String secret = generateBase32Secret();
@@ -137,12 +138,18 @@ public class Auth2faService {
         // AES-256-GCM で秘密鍵を暗号化して保存
         String encodedSecret = encryptionService.encrypt(secret);
 
-        // 2. TwoFactorAuthEntity作成（is_enabled=false）
-        TwoFactorAuthEntity twoFactorAuth = TwoFactorAuthEntity.builder()
-                .userId(userId)
+        // 2. 未有効の TOTP 設定行（is_enabled=false）。既存行があれば秘密鍵を差し替えて再利用する。
+        //    method は TOTP、バックアップコードは未発行（空配列。確定 verifyTotpSetup で発行）、verifiedAt は未確定に戻す
+        //    （無効化・回復は行ごと削除するため、ここで再利用するのは「設定開始したが確定していない行」だけである）。
+        TwoFactorAuthEntity.TwoFactorAuthEntityBuilder<?, ?> builder = existing.isPresent()
+                ? existing.get().toBuilder()
+                : TwoFactorAuthEntity.builder().userId(userId);
+        TwoFactorAuthEntity twoFactorAuth = builder
+                .method(TwoFactorMethod.TOTP)
                 .totpSecret(encodedSecret)
                 .backupCodes("[]")
                 .isEnabled(false)
+                .verifiedAt(null)
                 .build();
         twoFactorAuthRepository.save(twoFactorAuth);
 
@@ -236,17 +243,9 @@ public class Auth2faService {
     @Transactional
     public ApiResponse<MessageResponse> requestMfaRecovery(String mfaSessionToken) {
         // MFAセッショントークンからuserIdを取得（削除はしない。リカバリーフローで再利用可能にする）
-        if (mfaSessionToken == null || mfaSessionToken.isBlank()) {
-            throw new BusinessException(AuthErrorCode.AUTH_019);
-        }
-        String sessionHash = authTokenService.hashToken(mfaSessionToken);
-        String sessionKey = MFA_SESSION_KEY_PREFIX + sessionHash;
-        String userIdStr = redisTemplate.opsForValue().get(sessionKey);
-        if (userIdStr == null) {
-            throw new BusinessException(AuthErrorCode.AUTH_019);
-        }
-
-        Long userId = Long.valueOf(userIdStr);
+        // CMP-261012-0910 ALIC-4: 不在・期限切れ・空のセッションは /2fa/validate と同じ AUTH_073（再ログイン要）。
+        // 旧実装は AUTH_019「2段階認証がまだ有効化されていません」を返し、利用者を誤った案内に導いていた。
+        Long userId = mfaSessionService.resolve(mfaSessionToken).userId();
 
         // 1. レートリミット（24h/3回）
         authTokenService.checkRateLimit(
@@ -259,11 +258,12 @@ public class Auth2faService {
         // ロックなしでは並列の 2 本が共に「失効させる旧トークンは無い」と読み、2 本のトークンがどちらも有効になる。
         // ロック順は「2FA 行 → 回復トークン行」で無効化・再設定・回復確認と揃え、デッドロックを作らない。
         // 2FA が既に無い（ログイン後に無効化された等）なら回復で外すものが無く、このセッションは回復に使えない。
+        // その場合も validateMfaLogin と同じ AUTH_073（再ログイン要）とし、「セッション無効」と「2FA 無効」を応答で区別させない（ALIC-4）。
         // この TX の最初の DB 読取りをロック付きにする（先に通常 SELECT を打つと REPEATABLE READ の読取りビューが
         // ロック待ちの前に固定され、待っている間に他 TX が commit した行が以後の通常 SELECT から見えなくなる）。
         twoFactorAuthRepository.findByUserIdForUpdate(userId)
                 .filter(tfa -> Boolean.TRUE.equals(tfa.getIsEnabled()))
-                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_019));
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_073));
 
         UserEntity user = findUserOrThrow(userId);
 
