@@ -1,6 +1,21 @@
 {
   "skill": {
+    "form": {
+      "noCategoryAdmin": "이 팀에는 아직 사용할 수 있는 카테고리가 없습니다. \"카테고리 관리\" 탭에서 카테고리를 만들어 주세요.",
+      "noCategoryMember": "이 팀에는 아직 사용할 수 있는 카테고리가 없습니다. 팀 관리자에게 카테고리 생성을 요청해 주세요."
+    },
+    "matrix": {
+      "refresh": "새로고침",
+      "legendPendingNote": "확인 대기 중인 자격은 미등록으로 표시됩니다"
+    },
     "list": {
+      "actions": {
+        "search": "검색",
+        "verify": "승인",
+        "edit": "편집",
+        "delete": "삭제",
+        "certificate": "증명서 보기"
+      },
       "loadDetailFailed": "스킬 상세 정보를 불러오지 못했습니다",
       "loadCategoriesFailed": "카테고리를 불러오지 못했습니다",
       "mineTitle": "내 스킬·자격",
@@ -8,6 +23,10 @@
       "deleteConfirmHeader": "자격 삭제"
     },
     "category": {
+      "actions": {
+        "edit": "편집",
+        "delete": "삭제"
+      },
       "deleteConfirm": "\"{name}\" 카테고리를 삭제하시겠습니까?",
       "deleteConfirmHeader": "카테고리 삭제"
     },

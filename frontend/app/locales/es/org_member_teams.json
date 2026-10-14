@@ -1,0 +1,74 @@
+{
+  "orgMemberTeams": {
+    "switcher_label": "Cambiar vista",
+    "count_error": "No se pudo obtener el número de solicitudes pendientes",
+    "groups_load_error": "No se pudieron cargar los grupos de equipos. Inténtelo de nuevo más tarde.",
+    "groups_placeholder": "La pantalla de gestión de grupos de equipos estará disponible próximamente",
+    "pager": {
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "info": "Página {page} / {total}"
+    },
+    "applications": {
+      "load_error": "No se pudieron cargar las solicitudes. Inténtelo de nuevo más tarde.",
+      "empty": "No hay solicitudes pendientes",
+      "requested_by": "Solicitante: {name}",
+      "requested_group": "Grupo solicitado: {group}",
+      "requested_at": "Solicitud: {date}"
+    },
+    "approve": {
+      "error": "No se pudo aprobar. Inténtelo de nuevo más tarde."
+    },
+    "reject": {
+      "title": "Rechazar la solicitud de {team}",
+      "hint": "Tras el rechazo, este equipo no podrá volver a solicitar a esta organización durante 30 días. Con \"No aceptar solicitudes en adelante\" el bloqueo es indefinido (puede levantarlo luego en \"Restricciones de solicitud\").",
+      "error": "No se pudo rechazar. Inténtelo de nuevo más tarde."
+    },
+    "invites": {
+      "load_error": "No se pudieron cargar las invitaciones enviadas. Inténtelo de nuevo más tarde.",
+      "empty": "No hay invitaciones pendientes de respuesta",
+      "group": "Grupo: {group}",
+      "invited_at": "Invitación: {date}",
+      "expires_at": "Se cancelará automáticamente si no hay respuesta antes del {date}",
+      "cancelled": "Invitación cancelada",
+      "cancel_confirm_title": "¿Cancelar la invitación?",
+      "cancel_confirm": "Se cancelará la invitación a \"{team}\" y desaparecerá de las invitaciones recibidas del equipo.",
+      "cancel_error": "No se pudo cancelar la invitación. Inténtelo de nuevo más tarde."
+    },
+    "invite_dialog": {
+      "title": "Invitar a un equipo a afiliarse",
+      "search_label": "Buscar un equipo público",
+      "search_placeholder": "Buscar por nombre del equipo",
+      "search": "Buscar",
+      "search_error": "La búsqueda falló. Inténtelo de nuevo más tarde.",
+      "no_results": "No se encontraron equipos públicos",
+      "member_count": "{count} miembros",
+      "group": "Grupo de equipos (opcional)",
+      "submit": "Invitar",
+      "success": "Invitación enviada",
+      "error": "No se pudo invitar. Puede que el equipo ya esté invitado o afiliado, o que no se pueda invitar ahora."
+    },
+    "restrictions": {
+      "load_error": "No se pudieron cargar las restricciones. Inténtelo de nuevo más tarde.",
+      "empty": "No hay equipos con restricción de solicitud",
+      "lifted": "Restricción levantada",
+      "lift_error": "No se pudo levantar la restricción. Inténtelo de nuevo más tarde."
+    },
+    "guide": {
+      "title": "Cómo usar solicitudes, invitaciones y restricciones",
+      "description": "En la pantalla de equipos afiliados puede tramitar las solicitudes de los equipos, invitar equipos y gestionar las restricciones.",
+      "applications": {
+        "title": "Tramitar solicitudes",
+        "body": "Las solicitudes de los equipos aparecen en \"Solicitudes\". \"Aprobar\" confirma el grupo y admite al equipo; \"Rechazar\" lo declina con un motivo opcional. El número se muestra como insignia en el selector."
+      },
+      "invites": {
+        "title": "Invitar a un equipo",
+        "body": "Con \"Invitar a un equipo\" en \"Invitaciones enviadas\" puede buscar equipos públicos y enviar una invitación. Las invitaciones sin respuesta se pueden cancelar aquí."
+      },
+      "restrictions": {
+        "title": "Levantar una restricción",
+        "body": "Un equipo rechazado no puede solicitar durante 30 días o, si se bloquea, de forma indefinida. Puede levantar la restricción en cualquier momento en \"Restricciones de solicitud\"."
+      }
+    }
+  }
+}

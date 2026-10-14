@@ -359,6 +359,7 @@ HTTP|com.mannschaft.app.organization.controller.OrgAffiliationEligibilityControl
 HTTP|com.mannschaft.app.organization.controller.OrgTeamAffiliationRestrictionController|0|2
 HTTP|com.mannschaft.app.organization.controller.OrgTeamApplicationController|0|3
 HTTP|com.mannschaft.app.organization.controller.OrgTeamInviteController|0|3
+HTTP|com.mannschaft.app.organization.controller.OrgTeamMembershipRemovalController|0|1
 HTTP|com.mannschaft.app.organization.controller.OrganizationController|40|40
 HTTP|com.mannschaft.app.organization.controller.OrganizationExtendedProfileController|12|12
 HTTP|com.mannschaft.app.organization.controller.TeamAffiliationSettingsController|0|3
@@ -597,7 +598,7 @@ HTTP|com.mannschaft.app.shift.controller.ShiftPdfController|1|1
 HTTP|com.mannschaft.app.shift.controller.ShiftPositionController|4|4
 HTTP|com.mannschaft.app.shift.controller.ShiftRequestController|6|6
 HTTP|com.mannschaft.app.shift.controller.ShiftScheduleController|0|9
-HTTP|com.mannschaft.app.shift.controller.ShiftSlotController|6|6
+HTTP|com.mannschaft.app.shift.controller.ShiftSlotController|7|7
 HTTP|com.mannschaft.app.shift.controller.ShiftSwapController|5|5
 HTTP|com.mannschaft.app.shiftbudget.controller.BudgetThresholdAlertController|0|2
 HTTP|com.mannschaft.app.shiftbudget.controller.MonthlyShiftBudgetCloseController|0|1
@@ -645,6 +646,7 @@ HTTP|com.mannschaft.app.team.controller.TeamExtendedProfileController|12|12
 HTTP|com.mannschaft.app.team.controller.TeamOrgAffiliationRestrictionController|0|2
 HTTP|com.mannschaft.app.team.controller.TeamOrgApplicationController|3|3
 HTTP|com.mannschaft.app.team.controller.TeamOrgInviteController|0|3
+HTTP|com.mannschaft.app.team.controller.TeamOrgMembershipLeaveController|0|1
 HTTP|com.mannschaft.app.team.controller.TeamShiftSettingsController|2|2
 HTTP|com.mannschaft.app.template.controller.ModuleController|2|2
 HTTP|com.mannschaft.app.template.controller.OrganizationModuleController|3|3

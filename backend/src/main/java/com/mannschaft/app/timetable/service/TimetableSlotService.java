@@ -129,7 +129,7 @@ public class TimetableSlotService {
             String key = notesKey(s.getDayOfWeek(), s.getPeriodNumber(), s.getWeekPattern());
             String before = previousNotes.getOrDefault(key, "");
             String after = s.getNotes() == null ? "" : s.getNotes();
-            if (!before.equals(after) && !after.isEmpty()) {
+            if (!before.equals(after) && !after.isBlank()) {
                 eventPublisher.publishEvent(new TimetableSlotNoteUpdatedEvent(
                         s.getId(),
                         timetableId,

@@ -4,10 +4,12 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.ChangeRequestStatus;
 import com.mannschaft.app.shift.ChangeRequestType;
 import com.mannschaft.app.shift.ShiftErrorCode;
+import com.mannschaft.app.shift.ShiftScheduleStatus;
 import com.mannschaft.app.shift.dto.ChangeRequestResponse;
 import com.mannschaft.app.shift.dto.CreateChangeRequestRequest;
 import com.mannschaft.app.shift.dto.ReviewChangeRequestRequest;
 import com.mannschaft.app.shift.entity.ShiftChangeRequestEntity;
+import com.mannschaft.app.shift.entity.ShiftScheduleEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftChangeRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
@@ -64,7 +66,15 @@ public class ShiftChangeRequestService {
     public ChangeRequestResponse create(CreateChangeRequestRequest request, Long userId) {
         // 認可は Facade 済み。認可の後・tx の前にスケジュールが消えた競合を 404 にするため読み直す
         // （不在なら Facade の解決時と同じ SHIFT_SCHEDULE_NOT_FOUND・DB 不変）。
-        resolveTeamId(request.scheduleId());
+        ShiftScheduleStatus scheduleStatus = resolveSchedule(request.scheduleId()).getStatus();
+        // CMP-261010-1432 J3a: 変更依頼の受付は公開（PUBLISHED）まで。仕様
+        // docs/features/F03.5_shift/01_db_design.md（shift_change_requests「受付対象ステータス」「提出可能期間」）は
+        // 「DRAFT / COLLECTING / ADJUSTING のみ新規作成可能。PUBLISHED / ARCHIVED は shift_swap_requests の
+        // 管轄のため受け付けない（Service 層で 409）」と定めるが、従来は状態を見ずに作成していた。
+        // 認可（Facade・非メンバーは不在と同一応答）の後に判定するので、状態の観測は所属者に限られる。
+        if (scheduleStatus == ShiftScheduleStatus.PUBLISHED || scheduleStatus == ShiftScheduleStatus.ARCHIVED) {
+            throw new BusinessException(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
+        }
         checkSlotBelongsToSchedule(request.slotId(), request.scheduleId());
 
         // オープンコールの月次上限チェック
@@ -120,6 +130,7 @@ public class ShiftChangeRequestService {
         } else {
             entities = changeRequestRepository.findAllByRequestedByAndScheduleId(userId, scheduleId);
         }
+        // 依頼者名（requesterName）は tx の外の Facade が一覧 1 回のバッチで付ける（CMP-261010-1432 M）。
         return entities.stream().map(this::toResponse).toList();
     }
 
@@ -273,9 +284,13 @@ public class ShiftChangeRequestService {
      * @return 所属チーム ID
      */
     private Long resolveTeamId(Long scheduleId) {
+        return resolveSchedule(scheduleId).getTeamId();
+    }
+
+    /** スケジュールを読む。不在・論理削除済みなら {@code SHIFT_SCHEDULE_NOT_FOUND}。 */
+    private ShiftScheduleEntity resolveSchedule(Long scheduleId) {
         return scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
-                .getTeamId();
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
     }
 
     /**
