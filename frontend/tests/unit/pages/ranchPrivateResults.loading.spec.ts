@@ -7,7 +7,7 @@ import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import ResultsPage from '~/pages/my/ranch/results/index.vue'
 import ResultDetailPage from '~/pages/my/ranch/results/[resultId].vue'
-import type { DiagnosisResult } from '~/types/ranch'
+import type { DiagnosisResult, DiagnosisSession } from '~/types/ranch'
 import DecorationsPage from '~/pages/my/ranch/decorations.vue'
 import { useAuthStore } from '~/stores/useAuthStore'
 
@@ -120,6 +120,70 @@ beforeEach(async () => {
 })
 afterEach(() => { for (const wrapper of wrappers.splice(0)) wrapper.unmount(); vi.restoreAllMocks() })
 describe('独立診断結果と装飾loadingの実ページ先行赤候補', () => {
+ it('同時1件の受付でも保存済み診断を再開でき、両方式の結果を取得する', async () => {
+  const session: DiagnosisSession = {
+   id: '44444444-4444-4444-8444-444444444444', status: 'STARTED', version: '2', answerRevision: '1',
+   questionnaireVersion: 'draft-20261003-v1', scoringVersion: 'signed-centered-v1', questions: [],
+   answers: [{ questionId: 'saved-question', value: 1 }], tieQuestions: [], resultId: null,
+  }
+  const requests: string[] = []; const rejected: string[] = []
+  let occupied = false
+  const releases: (() => void)[] = []
+  // 各許可GETの応答を保持し、重複要求が同じ1permitで拒否される境界を作る。
+  external.fetch.mockImplementation(async request => {
+   const url = new URL(String(request)); const path = url.pathname
+   requests.push(path === '/api/v1/me/diagnoses/results' ? `results:${url.searchParams.get('method')}` : path)
+   if (occupied) {
+    rejected.push(path)
+    return new Response(JSON.stringify({ error: { code: 'AUTHOPERATION_001', message: 'SYNTHETIC_ADMISSION_BUSY' } }), { status: 503, headers: { 'Content-Type': 'application/json' } })
+   }
+   occupied = true
+   await new Promise<void>(done => { releases.push(done) })
+   occupied = false
+   if (path === `/api/v1/me/diagnoses/sessions/${session.id}`) return json({ data: session })
+   if (path === '/api/v1/me/diagnoses/results') return json(empty)
+   throw new Error(`UNEXPECTED_TRANSPORT ${path}`)
+  })
+  try {
+   const wrapper = await mountSuspended(ResultsPage, { route: `/my/ranch/results?session=${session.id}` })
+   wrappers.push(wrapper); await flushPromises()
+   for (let index = 0; index < 3; index += 1) { releases.shift()?.(); await flushPromises() }
+   expect(wrapper.find(`a[href="/my/ranch/diagnosis?session=${session.id}"]`).exists()).toBe(true)
+   expect(requests).toEqual([`/api/v1/me/diagnoses/sessions/${session.id}`, 'results:DIAGNOSIS', 'results:BIRTH_STYLE'])
+   expect(rejected).toEqual([])
+   expect(wrapper.text().split(useNuxtApp().$i18n.t('ranch.diagnosisResults.notCompleted')).length - 1).toBe(2)
+  } finally { for (const release of releases.splice(0)) release(); await flushPromises() }
+ }, 60000)
+ it('未完了診断の取得失敗後も両方式を取得し、失敗を未診断にしない', async () => {
+  const methods: (string | null)[] = []
+  external.fetch.mockImplementation(async request => {
+   const url = new URL(String(request))
+   if (url.pathname === '/api/v1/me/diagnoses/sessions/pending') return new Response(JSON.stringify({ error: { code: 'COMMON_001', message: 'SYNTHETIC_PENDING_FAILURE' } }), { status: 400, headers: { 'Content-Type': 'application/json' } })
+   expect(url.pathname).toBe('/api/v1/me/diagnoses/results')
+   methods.push(url.searchParams.get('method')); return json(empty)
+  })
+  const wrapper = await mountSuspended(ResultsPage)
+  wrappers.push(wrapper); await flushPromises()
+  expect(methods).toEqual(['DIAGNOSIS', 'BIRTH_STYLE'])
+  expect(wrapper.findComponent({ name: 'DashboardErrorState' }).exists()).toBe(true)
+  expect(wrapper.text().split(useNuxtApp().$i18n.t('ranch.diagnosisResults.notCompleted')).length - 1).toBe(2)
+ }, 60000)
+ it('初回GET中にページを破棄したら後続の本人結果GETを送信しない', async () => {
+  const requests: string[] = []
+  let release: ((response: Response) => void) | undefined
+  external.fetch.mockImplementation(async request => {
+   const path = new URL(String(request)).pathname; requests.push(path)
+   if (path === '/api/v1/me/diagnoses/sessions/pending') return new Promise<Response>(done => { release = done })
+   if (path === '/api/v1/me/diagnoses/results') return json(empty)
+   throw new Error(`UNEXPECTED_TRANSPORT ${path}`)
+  })
+  const wrapper = await mountSuspended(ResultsPage)
+  wrappers.push(wrapper); await flushPromises()
+  try {
+   wrapper.unmount(); release?.(json({ data: null })); await flushPromises()
+   expect(requests).toEqual(['/api/v1/me/diagnoses/sessions/pending'])
+  } finally { release?.(json({ data: null })); await flushPromises() }
+ }, 60000)
  it('本人結果が読めたら牧場GET待機中も結果本文を表示する', async () => {
   const result = syntheticResult('PRIVATE_RESULT_READY')
   let resolve: ((response: Response) => void) | undefined
