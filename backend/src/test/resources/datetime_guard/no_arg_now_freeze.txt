@@ -146,7 +146,6 @@ NO_ARG_NOW|com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity|1
 NO_ARG_NOW|com.mannschaft.app.chat.entity.ChatMessageBookmarkEntity|1
 NO_ARG_NOW|com.mannschaft.app.chat.entity.ChatMessageEntity|1
 NO_ARG_NOW|com.mannschaft.app.chat.entity.ChatMessageReactionEntity|1
-NO_ARG_NOW|com.mannschaft.app.chat.service.ChatMessageArchiveBatchService|1
 NO_ARG_NOW|com.mannschaft.app.chat.service.ChatMessageService|2
 NO_ARG_NOW|com.mannschaft.app.chat.service.ChatScheduledMessageBatchService|1
 NO_ARG_NOW|com.mannschaft.app.circulation.entity.CirculationAttachmentEntity|1

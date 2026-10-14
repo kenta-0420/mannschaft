@@ -164,3 +164,13 @@ describe('SkillCategoryManager: F-AC8 削除は確認ダイアログを経る', 
     expect(w.text()).toContain('運転')
   })
 })
+
+describe('SkillCategoryManager: ALIC-3 アイコンボタンにアクセシブルネーム（aria-label）がある', () => {
+  it.each([
+    ['pi pi-pencil', 'skill.category.actions.edit'],
+    ['pi pi-trash', 'skill.category.actions.delete'],
+  ])('%s ボタンの aria-label は %s', async (icon, key) => {
+    const w = await render()
+    expect(btn(w, icon).attributes('aria-label')).toBe(key)
+  })
+})

@@ -87,7 +87,8 @@ class ProvisioningAcceptanceIT extends AbstractMySqlIntegrationTest {
     void setUp() {
         insertRole("SYSTEM_ADMIN", "システム管理者", 1);
         insertRole("ADMIN", "管理者", 2);
-        insertRole("MEMBER", "メンバー", 3);
+        // 本番 seed（V2.014）と同じ priority で入れる。roles は singleton container で全 IT が共有する参照表で、コミットした行は後続の IT にも残る（違う priority を残すと MeControllerMembershipIntegrationTest 等の前提を壊す）
+        insertRole("MEMBER", "メンバー", 4);
         systemAdminId = insertUser("prov-sysadmin-" + System.nanoTime() + "@example.com");
         em.createNativeQuery(
                         "INSERT INTO user_roles (user_id, role_id, team_id, organization_id, created_at, updated_at) "

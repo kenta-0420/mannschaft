@@ -15,6 +15,8 @@ const emit = defineEmits<{
   edit: [skill: MemberSkillResponse]
   create: []
   verify: [skill: MemberSkillResponse]
+  /** 承認・削除が成功し一覧が変わった（親がスキルマトリクスなど関連表示を取り直す） */
+  changed: []
 }>()
 
 const { searchSkills, getMySkills, getSkill, deleteSkill, verifySkill, getCertificateUrl, getSkillCategories } = useSkillApi()
@@ -166,6 +168,7 @@ function handleDelete(skill: SkillSearchItem) {
       }
       notification.success('スキルを削除しました')
       await loadItems()
+      emit('changed')
     },
   })
 }
@@ -175,6 +178,7 @@ async function handleVerify(skill: SkillSearchItem) {
     await verifySkill(props.teamId, skill.memberSkillId)
     notification.success('スキルを承認しました')
     await loadItems()
+    emit('changed')
   } catch {
     notification.error('スキルの承認に失敗しました')
   }
@@ -228,7 +232,7 @@ defineExpose({ refresh: loadItems, refreshCategories })
         placeholder="ステータス"
         class="w-full sm:w-40"
       />
-      <Button icon="pi pi-search" severity="secondary" @click="loadItems" />
+      <Button :aria-label="t('skill.list.actions.search')" icon="pi pi-search" severity="secondary" @click="loadItems" />
     </div>
 
     <div v-if="loading" class="flex justify-center py-8">
@@ -274,7 +278,8 @@ defineExpose({ refresh: loadItems, refreshCategories })
         <div class="flex shrink-0 gap-1">
           <Button
             v-if="canOperate(skill) && skill.hasCertificate"
-            v-tooltip.top="'証明書を表示'"
+            v-tooltip.top="t('skill.list.actions.certificate')"
+            :aria-label="t('skill.list.actions.certificate')"
             icon="pi pi-download"
             size="small"
             text
@@ -283,7 +288,8 @@ defineExpose({ refresh: loadItems, refreshCategories })
           />
           <Button
             v-if="canManage && skill.status === 'PENDING_REVIEW'"
-            v-tooltip.top="'承認'"
+            v-tooltip.top="t('skill.list.actions.verify')"
+            :aria-label="t('skill.list.actions.verify')"
             icon="pi pi-check"
             size="small"
             text
@@ -292,6 +298,7 @@ defineExpose({ refresh: loadItems, refreshCategories })
           />
           <Button
             v-if="canOperate(skill)"
+            :aria-label="t('skill.list.actions.edit')"
             icon="pi pi-pencil"
             size="small"
             text
@@ -299,6 +306,7 @@ defineExpose({ refresh: loadItems, refreshCategories })
           />
           <Button
             v-if="canOperate(skill)"
+            :aria-label="t('skill.list.actions.delete')"
             icon="pi pi-trash"
             size="small"
             text

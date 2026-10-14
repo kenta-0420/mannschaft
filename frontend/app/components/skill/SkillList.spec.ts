@@ -335,3 +335,52 @@ describe('SkillList: F-AC6 カテゴリ再取得', () => {
     expect(notify.error).toHaveBeenCalledWith('skill.list.loadCategoriesFailed')
   })
 })
+
+describe('SkillList: ALIC-2 承認・削除の成功を親へ changed で知らせる（マトリクス再取得のため）', () => {
+  it('承認に成功したら changed を emit する', async () => {
+    const w = await render(true)
+    await btn(w, 'pi pi-check').trigger('click')
+    await flushPromises()
+    expect(w.emitted('changed')).toHaveLength(1)
+  })
+
+  it('削除に成功したら changed を emit する', async () => {
+    const w = await render(true)
+    await btn(w, 'pi pi-trash').trigger('click')
+    await flushPromises()
+    expect(w.emitted('changed')).toHaveLength(1)
+  })
+
+  it('承認に失敗したら changed を emit しない', async () => {
+    api.verifySkill.mockRejectedValue(new Error('500'))
+    const w = await render(true)
+    await btn(w, 'pi pi-check').trigger('click')
+    await flushPromises()
+    expect(w.emitted('changed')).toBeUndefined()
+  })
+
+  it('削除に失敗したら changed を emit しない', async () => {
+    api.deleteSkill.mockRejectedValue(new Error('500'))
+    const w = await render(true)
+    await btn(w, 'pi pi-trash').trigger('click')
+    await flushPromises()
+    expect(w.emitted('changed')).toBeUndefined()
+  })
+})
+
+describe('SkillList: ALIC-3 アイコンだけのボタンにアクセシブルネーム（aria-label）がある', () => {
+  it.each([
+    ['pi pi-check', 'skill.list.actions.verify'],
+    ['pi pi-pencil', 'skill.list.actions.edit'],
+    ['pi pi-trash', 'skill.list.actions.delete'],
+    ['pi pi-download', 'skill.list.actions.certificate'],
+  ])('%s ボタンの aria-label は %s', async (icon, key) => {
+    const w = await render(true)
+    expect(btn(w, icon).attributes('aria-label')).toBe(key)
+  })
+
+  it('検索ボタン（pi-search）にも aria-label がある', async () => {
+    const w = await render(true)
+    expect(btn(w, 'pi pi-search').attributes('aria-label')).toBe('skill.list.actions.search')
+  })
+})

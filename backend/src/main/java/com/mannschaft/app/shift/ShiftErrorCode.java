@@ -127,7 +127,22 @@ public enum ShiftErrorCode implements ErrorCode {
      * デフォルト勤務可能時間の一括設定で、同一 {@code dayOfWeek} の行が重複している
      *（CMP-260912-1758・400）。
      */
-    DUPLICATE_AVAILABILITY_DAY_OF_WEEK("SHIFT_044", "同じ曜日の勤務可能時間が複数指定されています", Severity.WARN);
+    DUPLICATE_AVAILABILITY_DAY_OF_WEEK("SHIFT_044", "同じ曜日の勤務可能時間が複数指定されています", Severity.WARN),
+
+    /**
+     * 変更依頼の依頼者本人による審査（自己審査）の禁止（CMP-261010-1432・403）。
+     *
+     * <p>マスター決裁（2026-10-12）により SYSTEM_ADMIN も例外にしない。自分の依頼は取下げで代替する。
+     * 判定は status・version の照合より先に行う。</p>
+     */
+    SELF_REVIEW_FORBIDDEN("SHIFT_045", "自分の変更依頼は審査できません。取り下げをご利用ください", Severity.WARN),
+
+    /**
+     * 枠間移動で、移動元の枠に当該メンバーが割り当てられていない（CMP-261010-1432・409）。
+     *
+     * <p>画面の表示が古いまま操作した状態競合として 409 にする（version 不一致の SHIFT_018 と同じ扱い）。</p>
+     */
+    MOVE_SOURCE_NOT_ASSIGNED("SHIFT_046", "移動元の枠にこのメンバーは割り当てられていません。最新の状態を読み込み直してください", Severity.WARN);
 
     private final String code;
     private final String message;

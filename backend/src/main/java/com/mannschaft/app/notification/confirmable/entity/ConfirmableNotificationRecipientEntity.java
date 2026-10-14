@@ -249,4 +249,15 @@ public class ConfirmableNotificationRecipientEntity {
 
         return true;
     }
+
+    /**
+     * 受信者の {@code users.id} だけを {@code Long} で返す。
+     *
+     * <p>{@link #getUser()} は {@link UserEntity} 型を露出するため、他ドメインのクラスがこれを呼ぶと
+     * クロスドメイン Entity 依存として {@code CrossDomainEntityImportArchTest} に新規違反として検知される。
+     * ID だけが必要な呼び出し元（リマインドバッチ等）はこちらを使うこと。</p>
+     */
+    public Long getRecipientUserId() {
+        return this.user == null ? null : this.user.getId();
+    }
 }

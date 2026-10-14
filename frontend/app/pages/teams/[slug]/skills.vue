@@ -76,7 +76,13 @@ async function reloadCategories() {
 
 async function onSaved() {
   listRef.value?.refresh()
+  matrixRef.value?.refresh()
   await reloadCategories()
+}
+
+/** 一覧での承認・削除の成功後: マトリクスの表示（有効・期限切れ・未登録）を最新にする。 */
+function onSkillChanged() {
+  matrixRef.value?.refresh()
 }
 
 /** カテゴリの作成・改名・削除後: 登録フォーム・一覧（名前解決と絞り込み）・マトリクス列を最新にする。 */
@@ -124,6 +130,7 @@ onMounted(loadData)
               :scope="canViewAll ? 'all' : 'mine'"
               @create="openCreate"
               @edit="openEdit"
+              @changed="onSkillChanged"
             />
           </TabPanel>
           <TabPanel v-if="canViewAll" value="1">
@@ -140,6 +147,7 @@ onMounted(loadData)
         :team-id="teamSlug"
         :skill="editingSkill"
         :categories="categories"
+        :can-manage-categories="canViewAll"
         @saved="onSaved"
       />
     </template>
