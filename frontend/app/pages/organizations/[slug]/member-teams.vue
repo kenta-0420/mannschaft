@@ -106,6 +106,11 @@ async function onApplicationsChanged() {
   await Promise.all([refreshPendingCount(), refreshOrgTeams()])
 }
 
+/** 除名の送信後に view が変わっても、同じ組織の常駐シェルの一覧を同期する。 */
+async function refreshAfterRemoval(removedOrgSlug: string) {
+  if (orgSlug.value === removedOrgSlug) await refreshOrgTeams()
+}
+
 onMounted(() => void refreshPendingCount())
 watch(canManage, (allowed) => {
   if (allowed) void refreshPendingCount()
@@ -162,6 +167,7 @@ const viewTitleKey = computed(() => `teamAffiliation.view.${activeView.value}`)
         :can-assign="canManage"
         :refreshing="orgTeamsLoading"
         :load-failed="orgTeamsError"
+        :refresh-after-removal="refreshAfterRemoval"
         @changed="refreshOrgTeams"
         @retry="refreshOrgTeams"
       />

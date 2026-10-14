@@ -72,7 +72,7 @@ const viewStub = (testid: string) => ({
 
 const stubs = {
   MemberTeamsTeamList: {
-    props: ['orgSlug', 'teams', 'canAssign', 'refreshing', 'loadFailed'],
+    props: ['orgSlug', 'teams', 'canAssign', 'refreshing', 'loadFailed', 'refreshAfterRemoval'],
     emits: ['changed', 'retry'],
     template: `<div data-testid="org-team-grid" :data-can-assign="String(canAssign)" :data-refreshing="String(refreshing)" :data-load-failed="String(loadFailed)"><button data-testid="teamlist-changed" @click="$emit('changed')" /><button data-testid="teamlist-retry" @click="$emit('retry')" /></div>`,
   },
@@ -288,6 +288,21 @@ describe('pages/organizations/[slug]/member-teams.vue', () => {
       expect(list.attributes('data-load-failed')).toBe('true')
       await wrapper.find('[data-testid="teamlist-retry"]').trigger('click')
       expect(refreshOrgTeams).toHaveBeenCalledTimes(1)
+    })
+
+    it('MT-21: 送信済み除名の同期callbackはページを離れても同じ組織の常駐一覧を再取得する', async () => {
+      const wrapper = await mountPage()
+      const synchronize = wrapper.findComponent(stubs.MemberTeamsTeamList).props('refreshAfterRemoval') as (slug: string) => Promise<void>
+      wrapper.unmount()
+      await synchronize('org-1')
+      expect(refreshOrgTeams).toHaveBeenCalledTimes(1)
+    })
+
+    it('MT-22: 別組織の除名結果では現在の組織の一覧を再取得しない', async () => {
+      const wrapper = await mountPage()
+      const synchronize = wrapper.findComponent(stubs.MemberTeamsTeamList).props('refreshAfterRemoval') as (slug: string) => Promise<void>
+      await synchronize('other-org')
+      expect(refreshOrgTeams).not.toHaveBeenCalled()
     })
 
     it('MT-15: 承認・拒否が成立したら、親シェルの所属チーム一覧も取り直す', async () => {
