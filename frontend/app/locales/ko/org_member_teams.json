@@ -3,6 +3,7 @@
     "switcher_label": "보기 전환",
     "count_error": "처리 대기 중인 신청 수를 가져오지 못했습니다",
     "groups_load_error": "팀 그룹 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "teams_load_error": "소속 팀 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
     "groups": {
       "retry": "다시 불러오기",
       "open_settings": "가맹 설정에서 팀 그룹 기능 켜기",

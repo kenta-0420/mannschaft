@@ -3,6 +3,7 @@
     "switcher_label": "Ansicht wechseln",
     "count_error": "Die Anzahl offener Anträge konnte nicht geladen werden",
     "groups_load_error": "Die Teamgruppen konnten nicht geladen werden. Bitte später erneut versuchen.",
+    "teams_load_error": "Die Teamliste konnte nicht geladen werden. Bitte versuchen Sie es später erneut.",
     "groups": {
       "retry": "Neu laden",
       "open_settings": "Teamgruppen in den Beitrittseinstellungen aktivieren",

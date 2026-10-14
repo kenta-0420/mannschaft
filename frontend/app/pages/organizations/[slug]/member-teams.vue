@@ -31,7 +31,15 @@ const route = useRoute()
 const router = useRouter()
 const orgSlug = computed(() => String(route.params.slug))
 
-const { orgTeams, showTeamSearchLink, isScopeAdmin, adminLens, refreshOrgTeams } = useOrgShellContext()
+const {
+  orgTeams,
+  orgTeamsError,
+  orgTeamsLoading,
+  showTeamSearchLink,
+  isScopeAdmin,
+  adminLens,
+  refreshOrgTeams,
+} = useOrgShellContext()
 const { listApplications } = useOrgTeamMembershipApi()
 
 // 対象組織の ADMIN 割当を持つか。shell の isAdmin / roleName は SYSTEM_ADMIN を優先して返すため使わない。
@@ -152,7 +160,10 @@ const viewTitleKey = computed(() => `teamAffiliation.view.${activeView.value}`)
         :org-slug="orgSlug"
         :teams="orgTeams"
         :can-assign="canManage"
+        :refreshing="orgTeamsLoading"
+        :load-failed="orgTeamsError"
         @changed="refreshOrgTeams"
+        @retry="refreshOrgTeams"
       />
     </template>
 

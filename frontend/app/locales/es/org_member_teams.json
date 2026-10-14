@@ -3,6 +3,7 @@
     "switcher_label": "Cambiar vista",
     "count_error": "No se pudo obtener el número de solicitudes pendientes",
     "groups_load_error": "No se pudieron cargar los grupos de equipos. Inténtelo de nuevo más tarde.",
+    "teams_load_error": "No se pudo cargar la lista de equipos. Inténtalo de nuevo más tarde.",
     "groups": {
       "retry": "Recargar",
       "open_settings": "Activar los grupos de equipos en la configuración de afiliación",

@@ -3,6 +3,7 @@
     "switcher_label": "切换显示",
     "count_error": "无法获取待处理的申请数量",
     "groups_load_error": "无法加载团队分组。请稍后再试。",
+    "teams_load_error": "无法加载所属团队列表，请稍后重试。",
     "groups": {
       "retry": "重新加载",
       "open_settings": "在加盟设置中启用团队分组",

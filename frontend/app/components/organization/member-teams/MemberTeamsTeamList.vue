@@ -15,14 +15,22 @@ import { ALL_GROUPS_VALUE, UNASSIGNED_GROUP_VALUE } from '~/utils/memberTeamsVie
  * - 一括割当は 1 回 500 件まで・1 分 20 回まで（BE の制限。超えると 429）。全部か無しかで反映される。
  * - 割当が成立したら `changed` を発火し、親に一覧を取り直させる。
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   orgSlug: string
   teams: OrgTeam[]
   canAssign: boolean
-}>()
+  /** 親が所属チーム一覧を再取得している間は割当操作を止める（古い所属で操作しない）。 */
+  refreshing?: boolean
+  /** 所属チーム一覧の取得に失敗している（「該当チームなし」と区別してエラーと再試行を出す）。 */
+  loadFailed?: boolean
+}>(), {
+  refreshing: false,
+  loadFailed: false,
+})
 
 const emit = defineEmits<{
   changed: []
+  retry: []
 }>()
 
 const BULK_MAX = 500
@@ -37,6 +45,8 @@ const filter = ref<string>(ALL_GROUPS_VALUE)
 const selected = ref<Set<string>>(new Set())
 const bulkTarget = ref<string>(UNASSIGNED_GROUP_VALUE)
 const busy = ref(false)
+/** 自分の割当中、または親の再取得中は操作できない。 */
+const locked = computed(() => busy.value || props.refreshing)
 type AssignErrorKind = 'generic' | 'rate-limited' | 'group-missing' | 'team-missing' | 'too-many'
 const errorKind = ref<AssignErrorKind | null>(null)
 
@@ -153,7 +163,7 @@ async function onFailure(e: unknown) {
 }
 
 async function assignOne(team: OrgTeam, value: string | null) {
-  if (busy.value || (value ?? UNASSIGNED_GROUP_VALUE) === currentValue(team)) return
+  if (locked.value || (value ?? UNASSIGNED_GROUP_VALUE) === currentValue(team)) return
   busy.value = true
   errorKind.value = null
   try {
@@ -170,7 +180,7 @@ async function assignOne(team: OrgTeam, value: string | null) {
 }
 
 async function assignBulk() {
-  if (busy.value || selected.value.size === 0 || tooMany.value) return
+  if (locked.value || selected.value.size === 0 || tooMany.value) return
   // 画面に見えているチームだけを送る（選択が古くなっていても、見えないチームを巻き込まない）。
   const visible = new Set(visibleTeams.value.map(team => team.slug))
   const slugs = [...selected.value].filter(s => visible.has(s))
@@ -202,7 +212,27 @@ async function assignBulk() {
       {{ t('orgMemberTeams.groups_load_error') }}
     </Message>
 
-    <OrgTeamGrid v-if="groups === null" :teams="teams" />
+    <!-- 取得失敗は「該当チームなし」に見せない。選択は保持し、回復すれば続けられる。 -->
+    <div
+      v-if="loadFailed"
+      class="mt-4 space-y-3"
+      data-testid="teamlist-load-error"
+    >
+      <Message severity="error">
+        {{ t('orgMemberTeams.teams_load_error') }}
+      </Message>
+      <Button
+        :label="t('orgMemberTeams.groups.retry')"
+        icon="pi pi-refresh"
+        size="small"
+        outlined
+        :loading="refreshing"
+        data-testid="teamlist-retry"
+        @click="emit('retry')"
+      />
+    </div>
+
+    <OrgTeamGrid v-else-if="groups === null" :teams="teams" />
 
     <section v-else class="mt-4" data-testid="member-teams-team-list">
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -240,6 +270,7 @@ async function assignBulk() {
           <label class="flex items-center gap-2 text-sm">
             <Checkbox
               :model-value="allSelected"
+              :disabled="locked"
               binary
               data-testid="team-select-all"
               @update:model-value="toggleAll(!!$event)"
@@ -262,7 +293,7 @@ async function assignBulk() {
             icon="pi pi-check"
             size="small"
             :loading="busy"
-            :disabled="selected.size === 0 || tooMany || busy"
+            :disabled="selected.size === 0 || tooMany || locked"
             data-testid="bulk-submit"
             @click="assignBulk"
           />
@@ -282,6 +313,7 @@ async function assignBulk() {
             <Checkbox
               v-if="canAssign"
               :model-value="selected.has(team.slug)"
+              :disabled="locked"
               binary
               :aria-label="team.name"
               :data-testid="`team-select-${team.slug}`"
@@ -300,7 +332,7 @@ async function assignBulk() {
               :options="targetOptions"
               option-label="name"
               option-value="id"
-              :disabled="busy"
+              :disabled="locked"
               :aria-label="t('teamGroup.assign')"
               :data-testid="`team-assign-${team.slug}`"
               @update:model-value="assignOne(team, $event)"

@@ -3,6 +3,7 @@
     "switcher_label": "Switch view",
     "count_error": "Could not load the number of pending applications",
     "groups_load_error": "Could not load the team groups. Please try again later.",
+    "teams_load_error": "Could not load the team list. Please try again later.",
     "groups": {
       "retry": "Reload",
       "open_settings": "Enable team groups in affiliation settings",
