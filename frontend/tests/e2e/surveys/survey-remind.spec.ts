@@ -196,7 +196,7 @@ test.describe('SURVEY-003: 督促送信（詳細ページ → 回答者セクシ
     await refreshRequestPromise
 
     // 成功通知トーストが表示される（remindSuccess の本文）
-    await expect(page.getByText(/2名にリマインドを送信しました/)).toBeVisible()
+    await expect(page.getByText(/2名の未回答メンバーにリマインドの送信を受け付けました/)).toBeVisible()
   })
 
   test('SURVEY-003-2: クールダウン中 — showError + 一覧不変', async ({ page }) => {
