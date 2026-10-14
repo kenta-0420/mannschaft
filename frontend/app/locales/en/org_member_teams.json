@@ -1,5 +1,15 @@
 {
   "orgMemberTeams": {
+    "remove": {
+      "title": "Remove this team?",
+      "error": {
+        "generic": "The team could not be removed. Try Remove again later.",
+        "missing": "This team is no longer affiliated. Reload the team list.",
+        "forbidden": "You do not have permission to remove teams from this organization. Check your permissions and try again."
+      },
+      "success": "The team was removed"
+    },
+
     "switcher_label": "Switch view",
     "count_error": "Could not load the number of pending applications",
     "groups_load_error": "Could not load the team groups. Please try again later.",
