@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ShiftScheduleResponse } from '~/types/shift'
 import { isAcceptingChangeRequests } from '~/utils/shiftStatus'
-import { getLoadErrorHttpStatus } from '~/utils/loadError'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
@@ -46,16 +45,8 @@ async function load(): Promise<void> {
   loading.value = true
   initialError.value = null
   try {
-    // シフト表の取得結果は理由で分岐する（握りつぶさない）。
-    // 公開前のシフト表をアーカイブした場合、一般メンバーへの getSchedule は BE の
-    // ShiftScheduleVisibilityPolicy（HIDDEN）で 404 になる一方、変更依頼の一覧・本人の取り下げは許可される。
-    // そのため 404 だけは「シフト表の詳細は見せない」扱いにして画面全体は落とさず、可否は一覧 API の結果で決める。
-    // 403・5xx・通信断など 404 以外は従来どおり取得エラーにする。
-    const [scheduleOutcome, teamRes, fetchFailure, permissions] = await Promise.all([
-      getSchedule(scheduleId.value).then(
-        (value) => ({ ok: true as const, value }),
-        (error: unknown) => ({ ok: false as const, error }),
-      ),
+    const [scheduleRes, teamRes, fetchFailure, permissions] = await Promise.all([
+      getSchedule(scheduleId.value),
       getTeam(teamSlug.value),
       fetchRequests(),
       loadPermissions(),
@@ -69,10 +60,6 @@ async function load(): Promise<void> {
       initialError.value = permissions.error
       return
     }
-    if (!scheduleOutcome.ok && getLoadErrorHttpStatus(scheduleOutcome.error) !== 404) {
-      initialError.value = scheduleOutcome.error
-      return
-    }
     // URL の slug のチームとシフト表のチームが食い違う画面は存在しないものとして扱う
     // （他チームのシフト表 ID を slug 違いで開かせない。存在オラクルを作らないため 404 相当）。
     const urlTeamId = teamRes.data.numericId
@@ -80,16 +67,11 @@ async function load(): Promise<void> {
       initialError.value = new Error('team_numeric_id_missing')
       return
     }
-    // シフト表が 404（秘匿）のときは schedule を持たない（詳細情報は出さず、作成フォームも出さない）。
-    if (scheduleOutcome.ok) {
-      if (scheduleOutcome.value.teamId !== urlTeamId) {
-        initialError.value = { statusCode: 404 }
-        return
-      }
-      schedule.value = scheduleOutcome.value
-    } else {
-      schedule.value = null
+    if (scheduleRes.teamId !== urlTeamId) {
+      initialError.value = { statusCode: 404 }
+      return
     }
+    schedule.value = scheduleRes
   } catch (error) {
     initialError.value = error
   } finally {
