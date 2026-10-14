@@ -874,7 +874,12 @@ class ArchUnitFreezeStoreIntegrityTest {
     // CMP-261012-0313: main の 7163 から SkillMatrixService を主語とする 2 行が解消し 7161（ストア実数と一致）。
     // CMP-260925-0905: ConfirmableNotificationReminderBatchService#processAlertIfNeeded の@Transactional解消で1行減。7158→7157。
     // Issue #2997 G7-a: 最新 main の 7157 -> 7145（-12）。DigestAsyncExecutor と TeamSlotNoteNotifyListener が @Transactional を外した（各 6 行、追加 0・削除 12）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7145;
+    // Issue #2997 G5(survey / role): 付随通知を業務TXから切り離し 7145 -> 7129（-16）。
+    //   SurveyRemindService.remind は UserRepository と通知系3の 4、SurveyService.extendDeadline は 4、
+    //   OwnershipTransferOfferService.createOffer は 4、declineOffer は 4 が、通知を業務TX内で呼ばなくなったため解消
+    //   （追加 0・削除 16。Organization / Role / UserRole への到達は母集団解決・認可という業務由来のため残る）。
+    //   G7-a を取り込んだ最新 main 上で ./gradlew archUnitTest（--tests 絞込みなし）を実行して実測した値。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7129;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。

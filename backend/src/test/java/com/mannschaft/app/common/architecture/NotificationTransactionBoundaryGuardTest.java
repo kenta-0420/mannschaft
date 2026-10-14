@@ -2427,7 +2427,20 @@ class NotificationTransactionBoundaryGuardTest {
     //   増えた 2 件（DigestGenerationNotificationListener / TeamSlotNoteNotifyListener の notificationDeliveryRunner.sendOne 各 1 箇所）で
     //   差し引き -1。構造条件を通過した発火点も同じ差分（-1）。通知発火点を持つファイルは DigestAsyncExecutor が消え
     //   DigestGenerationNotificationListener が増えて差し引きゼロのため NOTIFY_BEARING_FILES_MIN は 94 のまま。
-    static final long RAW_CANDIDATE_HITS_MIN = 164L;
+    /**
+     * Issue #2997 G5（survey / role）: 実数 162 / 142 / 93 に固定（G7-a を取り込んだ最新 main 上の実測。G7-a の 164 / 144 / 94 から -2 / -2 / -1）。
+     * 消えた 4 件（{@code SurveyRemindService#remind} / {@code SurveyService#extendDeadline} の
+     * {@code notificationHelper.notifyAllPreAuthorizedLocalized}、{@code OwnershipTransferOfferService} の
+     * {@code createOffer} / {@code declineOffer} の {@code notificationHelper.notify}）と、
+     * 増えた 2 件（{@code SurveyReminderNotificationListener} の {@code notifyAllPreAuthorizedLocalized} 1 箇所、
+     * {@code OwnershipTransferNotificationListener} の {@code notificationDeliveryRunner.sendOne} 1 箇所）で差し引き -2。
+     * survey の 2 箇所は 1 つのリスナーに集約された（督促と締切延長を種別で分岐）ための減少である。
+     * 構造条件を通過した発火点（STRUCTURAL）も同じ差分（-2）。通知発火点を持つファイルは
+     * 3 減（SurveyRemindService / SurveyService / OwnershipTransferOfferService）2 増
+     * （各リスナー）の差し引き -1 で {@link #NOTIFY_BEARING_FILES_MIN} は 93。
+     * 語彙（{@link #NOTIFY_METHOD_VOCABULARY}）も構造条件（{@link #notifyCallOffsets}）も無変更。下限は余裕ゼロで実数に合わせる。
+     */
+    static final long RAW_CANDIDATE_HITS_MIN = 162L;
 
     /**
      * 実測 149（2026-09-04 / Issue #2990 L5 の是正後）。158 -> 149 の根拠は
@@ -2452,7 +2465,7 @@ class NotificationTransactionBoundaryGuardTest {
      *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 144L;
+    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 142L;
 
     /**
      * 実測 17309（2026-09-01 main 取り込み後）。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。
@@ -2541,7 +2554,7 @@ class NotificationTransactionBoundaryGuardTest {
      *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long NOTIFY_BEARING_FILES_MIN = 94L;
+    static final long NOTIFY_BEARING_FILES_MIN = 93L;
 
     /** 検出力の実測値。 */
     record DetectionPower(long rawCandidateHits, long structuralNotifyCalls, long parsedMethods) {}
