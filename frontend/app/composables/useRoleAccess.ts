@@ -3,12 +3,19 @@ type RoleName = 'SYSTEM_ADMIN' | 'ADMIN' | 'DEPUTY_ADMIN' | 'MEMBER' | 'SUPPORTE
 interface EffectivePermissions {
   roleName: RoleName
   permissions: string[]
+  /**
+   * 対象スコープの ADMIN 割当があるか（BE の AccessControlService.isAdmin と同じ判定）。
+   * roleName は SYSTEM_ADMIN を優先して返すため、SYSTEM_ADMIN との兼任者は roleName だけでは判定できない。
+   * 旧 BE は返さない（undefined）。
+   */
+  scopeAdmin?: boolean
 }
 
 export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<string> | string) {
   const api = useApi()
   const permissions = ref<string[]>([])
   const roleName = ref<RoleName | null>(null)
+  const scopeAdminFromApi = ref<boolean | null>(null)
   const loading = ref(false)
 
   const resolvedId = computed(() => isRef(scopeId) ? scopeId.value : scopeId)
@@ -57,6 +64,7 @@ export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<s
       if (isCurrent()) {
         permissions.value = response.data.permissions
         roleName.value = response.data.roleName
+        scopeAdminFromApi.value = response.data.scopeAdmin ?? null
       }
       result = { ok: true }
     }
@@ -65,6 +73,7 @@ export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<s
       if (isCurrent()) {
         permissions.value = []
         roleName.value = null
+        scopeAdminFromApi.value = null
       }
       result = { ok: false, error }
     }
@@ -83,6 +92,15 @@ export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<s
 
   const isAdmin = computed(() =>
     roleName.value === 'ADMIN' || roleName.value === 'SYSTEM_ADMIN',
+  )
+
+  /**
+   * 対象スコープの ADMIN 割当があるか。スコープ ADMIN 専用の画面・操作の出し分けに使う
+   * （BE が対象スコープの ADMIN 割当で 403 を返す操作）。isAdmin は SYSTEM_ADMIN も含むため使わない。
+   * scopeAdmin を返さない旧 BE では roleName === 'ADMIN' で代用する（SYSTEM_ADMIN は不可）。
+   */
+  const isScopeAdmin = computed(() =>
+    scopeAdminFromApi.value ?? roleName.value === 'ADMIN',
   )
 
   const isAdminOrDeputy = computed(() =>
@@ -108,6 +126,7 @@ export function useRoleAccess(scopeType: 'team' | 'organization', scopeId: Ref<s
     loadPermissions,
     can,
     isAdmin,
+    isScopeAdmin,
     isAdminOrDeputy,
     isMember,
   }

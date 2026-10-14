@@ -1,4 +1,42 @@
 {
+  "skill": {
+    "form": {
+      "noCategoryAdmin": "이 팀에는 아직 사용할 수 있는 카테고리가 없습니다. \"카테고리 관리\" 탭에서 카테고리를 만들어 주세요.",
+      "noCategoryMember": "이 팀에는 아직 사용할 수 있는 카테고리가 없습니다. 팀 관리자에게 카테고리 생성을 요청해 주세요."
+    },
+    "matrix": {
+      "refresh": "새로고침",
+      "legendPendingNote": "확인 대기 중인 자격은 미등록으로 표시됩니다"
+    },
+    "list": {
+      "actions": {
+        "search": "검색",
+        "verify": "승인",
+        "edit": "편집",
+        "delete": "삭제",
+        "certificate": "증명서 보기"
+      },
+      "loadDetailFailed": "스킬 상세 정보를 불러오지 못했습니다",
+      "loadCategoriesFailed": "카테고리를 불러오지 못했습니다",
+      "mineTitle": "내 스킬·자격",
+      "deleteConfirm": "\"{name}\"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "deleteConfirmHeader": "자격 삭제"
+    },
+    "category": {
+      "actions": {
+        "edit": "편집",
+        "delete": "삭제"
+      },
+      "deleteConfirm": "\"{name}\" 카테고리를 삭제하시겠습니까?",
+      "deleteConfirmHeader": "카테고리 삭제"
+    },
+    "page": {
+      "permissionLoadFailed": "권한 정보를 불러오지 못했습니다. 잠시 후 다시 불러오세요",
+      "forbidden": "이 팀의 멤버만 스킬·자격을 이용할 수 있습니다",
+      "mineTab": "내 스킬·자격",
+      "categoriesReloadFailed": "카테고리를 다시 불러오지 못했습니다"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "스레드에서 답장",
@@ -2629,7 +2667,8 @@
   "scopeSwitch": {
     "hint": "전환하려면 화면 상단의 「팀」「조직」 메뉴에서 대상을 선택해 열어 주세요. 연 단체가 그대로 현재 스코프가 됩니다.",
     "goTeams": "팀 선택",
-    "goOrganizations": "조직 선택"
+    "goOrganizations": "조직 선택",
+    "personalUnsupported": "이 설정은 팀 또는 조직 범위에서만 사용할 수 있습니다. 개인 범위에서는 표시할 수 없습니다."
   },
   "joinRequest": {
     "apply": "가입 신청",
