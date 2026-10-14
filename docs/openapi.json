@@ -238393,6 +238393,9 @@
           "archived": {
             "type": "boolean"
           },
+          "canManageArchive": {
+            "type": "boolean"
+          },
           "iconUrl": {
             "type": "string"
           },

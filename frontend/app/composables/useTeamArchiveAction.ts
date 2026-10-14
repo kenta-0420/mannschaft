@@ -3,7 +3,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import type { components } from '~/types/generated'
 
 /** 旧 BE は操作フラグを返さないため通常のスコープロールだけを許可する。 */
-export type ArchiveTeamSummary = components['schemas']['MyTeamResponse'] & { canManageArchive?: boolean }
+export type ArchiveTeamSummary = components['schemas']['MyTeamResponse']
 export function canManageTeamArchive(team: ArchiveTeamSummary): boolean {
   return team.canManageArchive ?? (team.role === 'ADMIN' || team.role === 'DEPUTY_ADMIN')
 }

@@ -80618,6 +80618,7 @@ export interface components {
         };
         MyTeamResponse: {
             archived?: boolean;
+            canManageArchive?: boolean;
             iconUrl?: string;
             /** Format: int64 */
             id?: number;

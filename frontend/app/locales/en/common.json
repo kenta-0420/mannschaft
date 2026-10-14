@@ -2479,19 +2479,19 @@
   },
   "teamShell": {
     "archive": {
-      "syncError": "変更は完了しましたが、一覧を同期できませんでした。再取得してください。",
-      "archive": "チームをアーカイブ",
-      "unarchive": "アーカイブを解除",
-      "archiveConfirm": "このチームをアーカイブします。加盟申請・招待は取り消され、成立済みの加盟は維持されます。チーム詳細は閲覧できなくなります。解除はチーム一覧の「アーカイブ済みチーム」から行えます。",
-      "unarchiveConfirm": "アーカイブを解除します。取り消された加盟申請・招待や失効した招待リンクは復元されません。",
-      "archived": "チームをアーカイブしました",
-      "unarchived": "アーカイブを解除しました",
-      "changed": "チームの状態または操作権限が変わりました。一覧を再取得してください。",
-      "listTitle": "アーカイブ済みチーム",
-      "showList": "アーカイブ済みチームを表示",
-      "hideList": "一覧を閉じる",
-      "fetchError": "アーカイブ済みチームを取得できませんでした。",
-      "empty": "アーカイブ済みチームはありません。"
+      "syncError": "The change is complete, but the list could not be synchronized. Reload it.",
+      "archive": "Archive team",
+      "unarchive": "Restore team",
+      "archiveConfirm": "Archive this team? Pending affiliation requests and invitations will be canceled. Active affiliations will remain. Team details will no longer be accessible. You can restore it from Archived teams in the team list.",
+      "unarchiveConfirm": "Restore this team? Canceled affiliation requests and invitations, including expired invitation links, will not be restored.",
+      "archived": "Team archived",
+      "unarchived": "Team restored",
+      "changed": "The team status or your permission has changed. Reload the list.",
+      "listTitle": "Archived teams",
+      "showList": "Show archived teams",
+      "hideList": "Close list",
+      "fetchError": "Could not load archived teams.",
+      "empty": "No archived teams."
     },
     "tab": {
       "affiliations": "Affiliated organizations",

@@ -2479,19 +2479,19 @@
   },
   "teamShell": {
     "archive": {
-      "syncError": "変更は完了しましたが、一覧を同期できませんでした。再取得してください。",
-      "archive": "チームをアーカイブ",
-      "unarchive": "アーカイブを解除",
-      "archiveConfirm": "このチームをアーカイブします。加盟申請・招待は取り消され、成立済みの加盟は維持されます。チーム詳細は閲覧できなくなります。解除はチーム一覧の「アーカイブ済みチーム」から行えます。",
-      "unarchiveConfirm": "アーカイブを解除します。取り消された加盟申請・招待や失効した招待リンクは復元されません。",
-      "archived": "チームをアーカイブしました",
-      "unarchived": "アーカイブを解除しました",
-      "changed": "チームの状態または操作権限が変わりました。一覧を再取得してください。",
-      "listTitle": "アーカイブ済みチーム",
-      "showList": "アーカイブ済みチームを表示",
-      "hideList": "一覧を閉じる",
-      "fetchError": "アーカイブ済みチームを取得できませんでした。",
-      "empty": "アーカイブ済みチームはありません。"
+      "syncError": "Die Änderung ist abgeschlossen, aber die Liste konnte nicht synchronisiert werden. Laden Sie sie erneut.",
+      "archive": "Team archivieren",
+      "unarchive": "Team wiederherstellen",
+      "archiveConfirm": "Dieses Team archivieren? Offene Beitrittsanträge und Einladungen werden storniert. Aktive Zugehörigkeiten bleiben bestehen. Die Teamdetails sind danach nicht mehr zugänglich. Sie können das Team unter Archivierte Teams in der Teamliste wiederherstellen.",
+      "unarchiveConfirm": "Dieses Team wiederherstellen? Stornierte Beitrittsanträge und Einladungen sowie abgelaufene Einladungslinks werden nicht wiederhergestellt.",
+      "archived": "Team archiviert",
+      "unarchived": "Team wiederhergestellt",
+      "changed": "Der Teamstatus oder Ihre Berechtigung hat sich geändert. Laden Sie die Liste erneut.",
+      "listTitle": "Archivierte Teams",
+      "showList": "Archivierte Teams anzeigen",
+      "hideList": "Liste schließen",
+      "fetchError": "Archivierte Teams konnten nicht geladen werden.",
+      "empty": "Keine archivierten Teams."
     },
     "tab": {
       "affiliations": "Zugehörige Organisationen",
