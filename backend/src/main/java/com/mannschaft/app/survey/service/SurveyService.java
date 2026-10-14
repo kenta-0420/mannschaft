@@ -612,7 +612,7 @@ public class SurveyService {
                     saved.getTitle(),
                     recipients,
                     currentUserId,
-                    newDeadline));
+                    newDeadline.atZone(java.time.ZoneId.systemDefault()).toInstant()));
         }
 
         log.info("アンケート締切延長: surveyId={}, newDeadline={}, by={}", surveyId, newDeadline, currentUserId);

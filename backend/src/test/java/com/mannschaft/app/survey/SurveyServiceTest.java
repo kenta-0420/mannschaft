@@ -459,7 +459,7 @@ class SurveyServiceTest {
             assertThat(event.scopeType()).isEqualTo(orgScopeType);
             assertThat(event.scopeId()).isEqualTo(SCOPE_ID);
             assertThat(event.actorId()).isEqualTo(USER_ID);
-            assertThat(event.newDeadline()).isEqualTo(newDeadline);
+            assertThat(event.newDeadline()).isEqualTo(newDeadline.atZone(java.time.ZoneId.systemDefault()).toInstant());
         }
 
         @Test

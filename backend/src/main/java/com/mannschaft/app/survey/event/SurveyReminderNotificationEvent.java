@@ -1,6 +1,6 @@
 package com.mannschaft.app.survey.event;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -19,7 +19,10 @@ import java.util.List;
  * @param title            アンケート名（利用者が書いた文字列）
  * @param recipientUserIds 受信者（配信母集団で事前認可済み・業務TX内で確定済み）
  * @param actorId          実行者ID
- * @param newDeadline      新しい締切（{@link Kind#DEADLINE_EXTENDED} のみ。それ以外は null）
+ * @param newDeadline      新しい締切（{@link Kind#DEADLINE_EXTENDED} のみ。それ以外は null）。
+ *                         元データ（{@code surveys.expires_at}）は JVM 既定ゾーン（JST 固定）の壁時計 {@code LocalDateTime}。
+ *                         イベントには瞬間（{@link Instant}）として載せ、リスナーが同じ既定ゾーンで壁時計へ戻して文面にする
+ *                         （方針: docs/architecture/datetime_policy_utc_instant_vs_wallclock.md）
  */
 public record SurveyReminderNotificationEvent(
         Kind kind,
@@ -29,7 +32,7 @@ public record SurveyReminderNotificationEvent(
         String title,
         List<Long> recipientUserIds,
         Long actorId,
-        LocalDateTime newDeadline) {
+        Instant newDeadline) {
 
     /** 通知の種別。 */
     public enum Kind {
