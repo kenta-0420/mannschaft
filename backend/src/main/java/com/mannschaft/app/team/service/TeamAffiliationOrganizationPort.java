@@ -60,6 +60,15 @@ public interface TeamAffiliationOrganizationPort {
     Map<UUID, GroupRef> findAliveGroupRefs(Collection<UUID> groupIds);
 
     /**
+     * 指定のチームグループのうち<b>生存している</b>ものについて、グループ ID → 所属組織 ID を返す（削除済み・行の無いものは含めない。
+     * F01.2.1 7-A・孤児 group_id の修復バッチの判定）。
+     *
+     * <p>判定に使う読み取りなので {@code readOnly} にせずプライマリで読む（レプリカ遅延で、作ったばかりのグループを削除済みと
+     * 見誤って割当を消さないため。2-D と同じ）。書き込み・ロックはしない。</p>
+     */
+    Map<UUID, Long> findAliveGroupOrganizationIds(Collection<UUID> groupIds);
+
+    /**
      * 組織の現在の状態を<b>ロックせずに</b>読む（F01.2.1 2-C）。組織ドメインの読み取りトランザクションで完結し、
      * 呼び出し側のトランザクションには参加させない（チームの書き込みトランザクションの外で呼ぶ）。
      *

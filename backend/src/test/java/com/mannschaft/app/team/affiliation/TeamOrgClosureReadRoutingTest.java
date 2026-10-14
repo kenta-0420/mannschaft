@@ -56,6 +56,8 @@ class TeamOrgClosureReadRoutingTest {
                         UUID.class),
                 // 招待のコミット後の読み直し（共有ロック）
                 OrganizationAffiliationPortAdapter.class.getMethod("recheckAffiliationStateLocked", Long.class),
+                // 孤児 group_id の修復バッチ（7-A）のグループの生存判定（レプリカ遅延で新しいグループを削除済みと見誤らない）
+                OrganizationAffiliationPortAdapter.class.getMethod("findAliveGroupOrganizationIds", Collection.class),
                 // 承諾の前段（招待行の判定表）
                 TeamOrgInviteCommandService.class.getMethod("findPendingInvite", Long.class, Long.class));
     }
