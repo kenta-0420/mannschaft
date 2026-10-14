@@ -708,7 +708,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     // CMP-261012-0313: SkillMatrixService がマトリクスの行を role の UserRoleRepository（UserRoleEntity）から引くのをやめ、
     //   在籍メンバーの userId を tx の外（SkillMatrixController → AccessControlService#listActiveRegularMemberIds）で
     //   解決して渡す形にしたため、SkillMatrixService を主語とする行がすべて解消（追加 0・削除 2）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2044;
+    // CMP-260925-0905: ConfirmableNotificationReminderBatchService が UserEntity に依存しなくなり6行減。2044→2038。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2038;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -870,7 +871,8 @@ class ArchUnitFreezeStoreIntegrityTest {
     //   TicketExpiryBatchService.expireTickets は @Transactional を外したため 5、sendExpiryNotifications は
     //   通知を呼ばなくなったため 5。追加 0・削除 22（解消済みの main 側4行は残していない）。
     // CMP-261012-0313: main の 7163 から SkillMatrixService を主語とする 2 行が解消し 7161（ストア実数と一致）。
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7158;
+    // CMP-260925-0905: ConfirmableNotificationReminderBatchService#processAlertIfNeeded の@Transactional解消で1行減。7158→7157。
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_TX_D3T = 7157;
 
     /**
      * {@code UuidV7Entity} 継承ストア（D-2b）の期待行数。
@@ -969,7 +971,8 @@ class ArchUnitFreezeStoreIntegrityTest {
      */
     // CMP-260820-1018: Proxy 一覧を Page<ProxyInputConsentResponse> に変更し、公開APIのEntity露出1件を解消。
     // Issue #2997 recruitment(G2): MarketFriendTargetService#distributeFriendListing の Entity 露出が消え 603→602。
-    private static final int EXPECTED_LINES_SERVICE_API = 602;
+    // CMP-260925-0905: ConfirmableNotificationReminderBatchService の processAlertIfNeeded / processReminders 削除で2行減。602→600。
+    private static final int EXPECTED_LINES_SERVICE_API = 600;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

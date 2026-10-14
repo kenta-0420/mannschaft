@@ -92,7 +92,7 @@ public interface ConfirmableNotificationRecipientRepository
      * @return リマインド対象受信者リスト
      */
     @Query("SELECT r FROM ConfirmableNotificationRecipientEntity r " +
-           "JOIN r.confirmableNotification n " +
+           "JOIN FETCH r.confirmableNotification n " +
            "WHERE n.status = 'ACTIVE' AND r.isConfirmed = false AND r.excludedAt IS NULL " +
            "AND n.id = :notificationId")
     List<ConfirmableNotificationRecipientEntity> findActiveUnconfirmedByNotificationId(

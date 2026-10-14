@@ -2412,7 +2412,17 @@ class NotificationTransactionBoundaryGuardTest {
      * 通知発火点を持つファイルは 2 減 1 増で -1。下限は余裕ゼロで実数に合わせる。
      * 構造条件を通過した発火点（STRUCTURAL）も同じ差分（-2）。</p>
      */
-    static final long RAW_CANDIDATE_HITS_MIN = 166L;
+    /**
+     * CMP-260925-0905（確認型通知リマインダーのTX境界修正）: 実数 165 / 145 / 94 に固定（最新 main 上の実測）。
+     * 消えた 2 件（{@code ConfirmableNotificationReminderBatchService} の {@code notificationHelper.notify}
+     * 1回目リマインド・2回目リマインドの 2 箇所。旧 126 / 148 行）と、
+     * 増えた 1 件（1回目・2回目を集約した commit 後の {@code dispatchService.dispatchBatch} 1 箇所）で差し引き -1
+     * （送信者アラートの {@code notificationHelper.notify} は旧 220 行から残存）。
+     * つまりリマインド 2 箇所が 1 箇所の dispatchBatch に集約されたことによる減少であり、説明の付かない消失は無い。
+     * 構造条件を通過した発火点（STRUCTURAL）も同じ差分（-1）。通知発火点を持つファイル数は不変。
+     * 語彙（{@link #NOTIFY_METHOD_VOCABULARY}）も構造条件（{@link #notifyCallOffsets}）も無変更。下限は余裕ゼロで実数に合わせる。
+     */
+    static final long RAW_CANDIDATE_HITS_MIN = 165L;
 
     /**
      * 実測 149（2026-09-04 / Issue #2990 L5 の是正後）。158 -> 149 の根拠は
@@ -2437,7 +2447,7 @@ class NotificationTransactionBoundaryGuardTest {
      *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 146L;
+    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 145L;
 
     /**
      * 実測 17309（2026-09-01 main 取り込み後）。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。

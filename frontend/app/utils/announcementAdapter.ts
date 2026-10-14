@@ -3,7 +3,7 @@ import type { AnnouncementFeedDto, AnnouncementFeedItem } from '~/types/announce
 /** generated DTO から表示名だけを変換する。古い実在 sourceUrl は保持し、URL を捏造しない。 */
 type FeedInput = Partial<AnnouncementFeedDto> & Partial<Pick<AnnouncementFeedItem,
   'title' | 'excerpt' | 'sourceUrl' | 'author' | 'sourceMeta' | 'pinnedAt' | 'contentPreviewAvailable'
-  | 'isAdvertisement' | 'advertiserAccountId' | 'messagingCampaignId' | 'channelType'>>
+  | 'targetAudience' | 'isAdvertisement' | 'advertiserAccountId' | 'messagingCampaignId' | 'channelType'>>
 
 export function toAnnouncementItem(input: FeedInput): AnnouncementFeedItem {
   if (!input.id || !input.scopeId || !['TEAM', 'ORGANIZATION'].includes(input.scopeType ?? '')) {
@@ -27,6 +27,7 @@ export function toAnnouncementItem(input: FeedInput): AnnouncementFeedItem {
     visibility: (input.visibility ?? 'PUBLIC') as AnnouncementFeedItem['visibility'],
     author: input.author ?? null,
     sourceMeta: locked ? null : input.sourceMeta ?? null,
+    targetAudience: locked ? null : input.targetAudience ?? null,
     startsAt: input.startsAt ?? null,
     expiresAt: input.expiresAt ?? null,
     createdAt: input.createdAt ?? '',
