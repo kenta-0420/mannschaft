@@ -3,7 +3,44 @@
     "switcher_label": "Ansicht wechseln",
     "count_error": "Die Anzahl offener Anträge konnte nicht geladen werden",
     "groups_load_error": "Die Teamgruppen konnten nicht geladen werden. Bitte später erneut versuchen.",
-    "groups_placeholder": "Die Verwaltung der Teamgruppen folgt in Kürze",
+    "teams_load_error": "Die Teamliste konnte nicht geladen werden. Bitte versuchen Sie es später erneut.",
+    "groups": {
+      "retry": "Neu laden",
+      "open_settings": "Teamgruppen in den Beitrittseinstellungen aktivieren",
+      "renamed": "Gruppe aktualisiert",
+      "created": "Gruppe erstellt",
+      "deleted": "Gruppe gelöscht",
+      "limit_reached": "Es sind höchstens {limit} Teamgruppen möglich",
+      "move_up": "Nach oben",
+      "move_down": "Nach unten",
+      "rename": "Bearbeiten",
+      "rename_title": "Gruppe bearbeiten",
+      "delete_title": "Diese Gruppe löschen?",
+      "empty": "Es gibt noch keine Teamgruppen. Fügen Sie eine mit „Teamgruppe erstellen“ hinzu.",
+      "assign_hint": "Teams werden in der Liste „Teams“ zugewiesen (auch mehrere angekreuzt gesammelt möglich)",
+      "error": {
+        "ORG_065": "Eine Gruppe mit diesem Namen existiert bereits",
+        "ORG_066": "Das Gruppenlimit ist erreicht",
+        "ORG_067": "Teamgruppen sind deaktiviert. Die Ansicht wurde aktualisiert",
+        "ORG_064": "Diese Gruppe wurde nicht gefunden (evtl. gelöscht). Die Ansicht wurde aktualisiert",
+        "ORG_068": "Jemand hat die Gruppen geändert, die Reihenfolge konnte nicht gespeichert werden. Die aktuelle Liste wird angezeigt",
+        "generic": "Der Vorgang ist fehlgeschlagen. Bitte versuchen Sie es später erneut."
+      },
+      "assign_title": "Gruppen der beigetretenen Teams",
+      "filter_label": "Nach Gruppe filtern",
+      "assigned": "Gruppe geändert",
+      "bulk_assigned": "Gruppe von {count} Teams geändert",
+      "select_all": "Alle angezeigten Teams auswählen",
+      "selected_count": "{count} Teams ausgewählt",
+      "assign_error": {
+        "generic": "Die Gruppe konnte nicht geändert werden. Bitte versuchen Sie es später erneut.",
+        "rate-limited": "Zu viele Anfragen. Bitte etwa eine Minute warten und erneut versuchen.",
+        "group-missing": "Die gewählte Gruppe wurde nicht gefunden. Die aktuelle Liste wird angezeigt",
+        "team-missing": "Ein Zielteam gehört nicht mehr zur Organisation. Die aktuelle Liste wird angezeigt",
+        "too-many": "Es können höchstens {max} Teams gleichzeitig zugewiesen werden"
+      },
+      "assign_empty": "Keine passenden beigetretenen Teams"
+    },
     "pager": {
       "prev": "Zurück",
       "next": "Weiter",
@@ -68,6 +105,10 @@
       "restrictions": {
         "title": "Antragssperre aufheben",
         "body": "Ein abgelehntes Team kann 30 Tage lang oder bei Blockierung unbefristet keinen Antrag stellen. Unter „Antragssperren“ können Sie die Sperre jederzeit aufheben."
+      },
+      "groups": {
+        "title": "Teamgruppen verwalten",
+        "body": "Unter „Teamgruppen“ können Sie Gruppen erstellen, umbenennen, sortieren und löschen. Teams einer gelöschten Gruppe kommen zurück zu „Nicht zugeordnet“. Die Zuweisung erfolgt in der Liste „Teams“, einzeln oder angekreuzt gesammelt."
       }
     }
   }

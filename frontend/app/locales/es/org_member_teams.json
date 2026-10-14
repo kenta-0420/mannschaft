@@ -3,7 +3,44 @@
     "switcher_label": "Cambiar vista",
     "count_error": "No se pudo obtener el número de solicitudes pendientes",
     "groups_load_error": "No se pudieron cargar los grupos de equipos. Inténtelo de nuevo más tarde.",
-    "groups_placeholder": "La pantalla de gestión de grupos de equipos estará disponible próximamente",
+    "teams_load_error": "No se pudo cargar la lista de equipos. Inténtalo de nuevo más tarde.",
+    "groups": {
+      "retry": "Recargar",
+      "open_settings": "Activar los grupos de equipos en la configuración de afiliación",
+      "renamed": "Grupo actualizado",
+      "created": "Grupo creado",
+      "deleted": "Grupo eliminado",
+      "limit_reached": "Puedes tener hasta {limit} grupos de equipos",
+      "move_up": "Subir",
+      "move_down": "Bajar",
+      "rename": "Editar",
+      "rename_title": "Editar grupo",
+      "delete_title": "¿Eliminar este grupo?",
+      "empty": "Aún no hay grupos de equipos. Añade uno con \"Crear grupo de equipos\".",
+      "assign_hint": "Los equipos se asignan desde la lista \"Equipos\" (también puedes marcar varios y asignarlos en bloque)",
+      "error": {
+        "ORG_065": "Ya existe un grupo con el mismo nombre",
+        "ORG_066": "Se alcanzó el límite de grupos",
+        "ORG_067": "Los grupos de equipos están desactivados. Se actualizó la pantalla",
+        "ORG_064": "No se encontró este grupo (puede haberse eliminado). Se actualizó la pantalla",
+        "ORG_068": "Otra persona cambió los grupos y no se pudo guardar el orden. Se muestra la lista más reciente",
+        "generic": "No se pudo completar la operación. Inténtalo de nuevo más tarde."
+      },
+      "assign_title": "Grupos de los equipos afiliados",
+      "filter_label": "Filtrar por grupo",
+      "assigned": "Grupo cambiado",
+      "bulk_assigned": "Se cambió el grupo de {count} equipos",
+      "select_all": "Seleccionar todos los equipos mostrados",
+      "selected_count": "{count} equipos seleccionados",
+      "assign_error": {
+        "generic": "No se pudo cambiar el grupo. Inténtalo de nuevo más tarde.",
+        "rate-limited": "Demasiadas solicitudes. Espera un minuto e inténtalo de nuevo.",
+        "group-missing": "No se encontró el grupo seleccionado. Se muestra la lista más reciente",
+        "team-missing": "Un equipo de destino ya no está afiliado. Se muestra la lista más reciente",
+        "too-many": "Puedes asignar hasta {max} equipos a la vez"
+      },
+      "assign_empty": "No hay equipos afiliados que coincidan"
+    },
     "pager": {
       "prev": "Anterior",
       "next": "Siguiente",
@@ -68,6 +105,10 @@
       "restrictions": {
         "title": "Levantar una restricción",
         "body": "Un equipo rechazado no puede solicitar durante 30 días o, si se bloquea, de forma indefinida. Puede levantar la restricción en cualquier momento en \"Restricciones de solicitud\"."
+      },
+      "groups": {
+        "title": "Gestionar los grupos de equipos",
+        "body": "En \"Grupos de equipos\" puedes crear, renombrar, reordenar y eliminar grupos. Los equipos de un grupo eliminado vuelven a \"Sin clasificar\". La asignación de equipos se hace en la lista \"Equipos\", uno a uno o marcando varios para asignarlos en bloque."
       }
     }
   }
