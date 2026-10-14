@@ -60,6 +60,10 @@ export interface OrgShellContext {
   widgetVisibilitySettings: Ref<WidgetVisibilitySetting[]>
   /** 所属チーム一覧（所属チームタブ用）。 */
   orgTeams: Ref<OrgTeam[]>
+  /** 所属チーム一覧の直近の取得が失敗した（「該当チームなし」と区別するため。直前の一覧は残る）。 */
+  orgTeamsError: Ref<boolean>
+  /** 所属チーム一覧を取得中か（最新の要求が終わるまで true）。 */
+  orgTeamsLoading: Ref<boolean>
   /** 祖先組織（パンくず・基本情報タブ用）。 */
   ancestors: Ref<AncestorOrganization[]>
   /** 直近の子組織（下位組織タブ用）。 */

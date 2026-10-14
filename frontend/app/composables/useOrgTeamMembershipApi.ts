@@ -12,6 +12,13 @@
  * - GET    /api/v1/organizations/{slug}/team-affiliation-restrictions           … 組織が止めている申請
  * - DELETE /api/v1/organizations/{slug}/team-affiliation-restrictions/{id}      … 制限の解除
  * - GET    /api/v1/organizations/{slug}/team-groups                             … グループ一覧（機能 off は 409）
+ * - POST   /api/v1/organizations/{slug}/team-groups                             … グループ作成（8-C）
+ * - PATCH  /api/v1/organizations/{slug}/team-groups/{groupId}                   … 改名・説明変更（8-C）
+ * - DELETE /api/v1/organizations/{slug}/team-groups/{groupId}                   … 削除（所属チームは未分類へ。8-C）
+ * - PUT    /api/v1/organizations/{slug}/team-groups/order                       … 並び替え（8-C）
+ * （加盟チーム一覧 GET /organizations/{slug}/teams は親シェルの orgTeams が teamGroup 付きで持つ。絞り込みはその一覧を FE で行う）
+ * - PUT    /api/v1/organizations/{slug}/teams/{teamSlug}/team-group             … 単体割当（groupId=null で未分類）
+ * - PUT    /api/v1/organizations/{slug}/team-group-assignments                  … 一括割当
  */
 import type { components } from '~/types/generated'
 import { getLoadErrorHttpStatus } from '~/utils/loadError'
@@ -21,6 +28,15 @@ type Schemas = components['schemas']
 export type TeamOrgAffiliation = Schemas['TeamOrgAffiliationResponse']
 export type TeamOrgAffiliationRestriction = Schemas['TeamOrgAffiliationRestrictionResponse']
 export type OrgTeamGroup = Schemas['OrgTeamGroupResponse']
+export type CreateOrgTeamGroupRequest = Schemas['CreateOrgTeamGroupRequest']
+export type UpdateOrgTeamGroupRequest = Schemas['UpdateOrgTeamGroupRequest']
+
+/** グループ一覧と、その meta（未分類のチーム数・グループ数の上限）。 */
+export interface OrgTeamGroupList {
+  groups: OrgTeamGroup[]
+  unassignedTeamCount: number
+  limit: number
+}
 export type ApproveTeamApplicationRequest = Schemas['ApproveTeamApplicationRequest']
 export type RejectTeamApplicationRequest = Schemas['RejectTeamApplicationRequest']
 export type InviteTeamToOrganizationRequest = Schemas['InviteTeamToOrganizationRequest']
@@ -109,18 +125,80 @@ export function useOrgTeamMembershipApi() {
   }
 
   /**
-   * チームグループ一覧。グループ機能が off の組織は BE が 409（ORG_067）を返すため、
-   * それだけを「グループなし」（null）として扱う。それ以外の失敗は呼び出し側へ投げる。
+   * チームグループ一覧（meta つき）。グループ機能が off の組織は BE が 409（ORG_067）を返すため、
+   * それだけを「機能 off」（null）として扱う。それ以外の失敗は呼び出し側へ投げる。
    */
-  async function listTeamGroups(orgSlug: string): Promise<OrgTeamGroup[] | null> {
+  async function listTeamGroupList(orgSlug: string): Promise<OrgTeamGroupList | null> {
     try {
-      const res = await api<{ data?: OrgTeamGroup[] }>(`${base(orgSlug)}/team-groups`)
-      return res.data ?? []
+      const res = await api<{ data?: OrgTeamGroup[], meta?: { unassignedTeamCount?: number, limit?: number } }>(
+        `${base(orgSlug)}/team-groups`,
+      )
+      return {
+        groups: res.data ?? [],
+        unassignedTeamCount: res.meta?.unassignedTeamCount ?? 0,
+        limit: res.meta?.limit ?? 100,
+      }
     }
     catch (e) {
       if (getLoadErrorHttpStatus(e) === 409) return null
       throw e
     }
+  }
+
+  /** グループ一覧のみ。機能 off は null。 */
+  async function listTeamGroups(orgSlug: string): Promise<OrgTeamGroup[] | null> {
+    return (await listTeamGroupList(orgSlug))?.groups ?? null
+  }
+
+  async function createTeamGroup(orgSlug: string, body: CreateOrgTeamGroupRequest): Promise<OrgTeamGroup | undefined> {
+    const res = await api<{ data?: OrgTeamGroup }>(`${base(orgSlug)}/team-groups`, { method: 'POST', body })
+    return res.data
+  }
+
+  async function updateTeamGroup(
+    orgSlug: string,
+    groupId: string,
+    body: UpdateOrgTeamGroupRequest,
+  ): Promise<OrgTeamGroup | undefined> {
+    const res = await api<{ data?: OrgTeamGroup }>(
+      `${base(orgSlug)}/team-groups/${encodeURIComponent(groupId)}`,
+      { method: 'PATCH', body },
+    )
+    return res.data
+  }
+
+  async function deleteTeamGroup(orgSlug: string, groupId: string): Promise<void> {
+    await api(`${base(orgSlug)}/team-groups/${encodeURIComponent(groupId)}`, { method: 'DELETE' })
+  }
+
+  /** 生存グループ全件の ID を新しい順で送る。 */
+  async function reorderTeamGroups(orgSlug: string, groupIds: string[]): Promise<OrgTeamGroup[]> {
+    const res = await api<{ data?: OrgTeamGroup[] }>(`${base(orgSlug)}/team-groups/order`, {
+      method: 'PUT',
+      body: { groupIds },
+    })
+    return res.data ?? []
+  }
+
+  /** 1 チームを割り当てる。groupId=null で未分類へ戻す。 */
+  async function assignTeamGroup(orgSlug: string, teamSlug: string, groupId: string | null): Promise<void> {
+    await api(`${base(orgSlug)}/teams/${encodeURIComponent(teamSlug)}/team-group`, {
+      method: 'PUT',
+      body: { groupId },
+    })
+  }
+
+  /** 複数チームを一括で割り当てる（全部か無しか。1 回 500 件まで）。 */
+  async function bulkAssignTeamGroup(
+    orgSlug: string,
+    groupId: string | null,
+    teamSlugs: string[],
+  ): Promise<{ updatedCount: number }> {
+    const res = await api<{ data?: { updatedCount?: number } }>(`${base(orgSlug)}/team-group-assignments`, {
+      method: 'PUT',
+      body: { groupId, teamSlugs },
+    })
+    return { updatedCount: res.data?.updatedCount ?? 0 }
   }
 
   return {
@@ -133,5 +211,12 @@ export function useOrgTeamMembershipApi() {
     listRestrictions,
     liftRestriction,
     listTeamGroups,
+    listTeamGroupList,
+    createTeamGroup,
+    updateTeamGroup,
+    deleteTeamGroup,
+    reorderTeamGroups,
+    assignTeamGroup,
+    bulkAssignTeamGroup,
   }
 }
