@@ -9,8 +9,8 @@ export function provideRanchState(ranch: ReturnType<typeof useRanchState>) {
  provide(ranchStateKey, ranch)
 }
 
-export function useRanchWidgetState() {
- return inject(ranchStateKey, null) ?? useRanchState()
+export function useProvidedRanchState() {
+ return inject(ranchStateKey, null)
 }
 
 export function useRanchState() {

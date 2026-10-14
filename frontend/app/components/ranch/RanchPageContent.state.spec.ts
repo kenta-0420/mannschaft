@@ -2,6 +2,7 @@
 // 実ページ・Widget・private state・本人Piniaを使い、外部HTTPと周辺store・エラー報告を隔離する。
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setActivePinia } from 'pinia'
+import { defineComponent, h, type PropType } from 'vue'
 import { useNuxtApp } from '#app'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
@@ -10,7 +11,7 @@ import WidgetRanch from '~/components/widgets/WidgetRanch.vue'
 import RanchWidgetContent from '~/components/ranch/RanchWidgetContent.vue'
 import RanchStatusPanel from '~/components/ranch/RanchStatusPanel.vue'
 import { useAuthStore } from '~/stores/useAuthStore'
-import type { RanchState } from '~/types/ranch'
+import type { DinosaurSummary, RanchState } from '~/types/ranch'
 
 const external = vi.hoisted(() => ({ fetch: vi.fn<typeof fetch>(), report: vi.fn() }))
 vi.mock('ofetch', async importOriginal => {
@@ -22,6 +23,15 @@ mockNuxtImport('useErrorReport', () => () => ({ capture: external.report, captur
 mockNuxtImport('useProxyDeskStore', () => () => ({ isPinned: false }))
 mockNuxtImport('useGuardianshipSwitchStore', () => () => ({ isActingAs: false }))
 mockNuxtImport('useAdminImpersonationStore', () => () => ({ isImpersonating: false }))
+// Sceneの描画・音は対象外。Widgetが利用するrefの公開契約は維持する。
+const SceneStub = defineComponent({
+  name: 'DinosaurScene',
+  props: { dinosaur: { type: Object as PropType<DinosaurSummary>, required: true } },
+  setup(_props, { expose }) {
+    expose({ prepareTouchSound: () => null, cancelTouchSound: () => {} })
+    return () => h('div')
+  },
+})
 const wrappers: VueWrapper[] = []
 const user = (id: number) => ({ id, email: 'synthetic@example.invalid', fullName: 'Synthetic', profileImageUrl: null })
 // JSON transportにより、各GETは独立snapshotとなる。共有mutable objectは返さない。
@@ -81,7 +91,7 @@ beforeEach(async () => {
 })
 afterEach(() => { for (const wrapper of wrappers.splice(0)) wrapper.unmount(); vi.restoreAllMocks() })
 async function mountPage() {
-  const wrapper = await mountSuspended(RanchPage, { global: { stubs: { DinosaurScene: true } } })
+  const wrapper = await mountSuspended(RanchPage, { global: { stubs: { DinosaurScene: SceneStub } } })
   wrappers.push(wrapper); await flushPromises()
   return wrapper
 }
@@ -89,6 +99,12 @@ async function click(wrapper: VueWrapper, key: string) {
   const button = wrapper.findAll('button').find(item => item.text() === useNuxtApp().$i18n.t(key))
   if (!button) throw new Error(`BUTTON_NOT_FOUND ${key}`)
   await button.trigger('click'); await flushPromises()
+}
+function growthXp(wrapper: VueWrapper) {
+  const label = useNuxtApp().$i18n.t('ranch.status.growth')
+  const row = wrapper.getComponent(RanchStatusPanel).findAll('dl > div').find(item => item.get('dt').text() === label)
+  if (!row) throw new Error('GROWTH_STATUS_NOT_FOUND')
+  return row.get('dd').text()
 }
 
 describe('牧場ページ内のprivate state同期', () => {
@@ -110,11 +126,11 @@ describe('牧場ページ内のprivate state同期', () => {
   it('ごはんとTOUCH後にようすが更新され、続くpauseは最新versionを送る', async () => {
     const wrapper = await mountPage()
     const t = useNuxtApp().$i18n.t
-    expect(wrapper.getComponent(RanchStatusPanel).text()).toContain('0 XP')
+    expect(growthXp(wrapper)).toBe('0 XP')
 
     await click(wrapper, 'ranch.care.food')
     const status = wrapper.getComponent(RanchStatusPanel)
-    expect(status.text()).toContain('20 XP')
+    expect(growthXp(wrapper)).toBe('20 XP')
     expect(status.text()).toContain(t('ranch.status.careRemaining', { remaining: '80', cap: '100' }))
     expect(wrapper.getComponent(RanchWidgetContent).text()).toContain(t('ranch.care.fed', { xp: '20' }))
     await click(wrapper, 'ranch.care.touch')
@@ -125,23 +141,23 @@ describe('牧場ページ内のprivate state同期', () => {
 
   it('操作後GET待機でもWidgetを維持し、version更新後の成功feedbackを失わない', async () => {
     const wrapper = await mountPage()
-    const widget = wrapper.getComponent(RanchWidgetContent).vm
+    const widget = wrapper.get('[data-widget-collapsed]').element
     let release: (() => void) | undefined
     holdRead = snapshot => new Promise<Response>(done => { release = () => done(snapshot) })
     try {
       await click(wrapper, 'ranch.care.food')
       expect(release).toBeDefined()
-      expect(wrapper.getComponent(RanchWidgetContent).vm).toBe(widget)
-      expect(wrapper.getComponent(RanchStatusPanel).text()).toContain('0 XP')
+      expect(wrapper.get('[data-widget-collapsed]').element === widget).toBe(true)
+      expect(growthXp(wrapper)).toBe('0 XP')
       const t = useNuxtApp().$i18n.t
       for (const key of ['ranch.care.food', 'ranch.care.touch', 'ranch.pause']) {
         const button = wrapper.findAll('button').find(item => item.text() === t(key))
         expect(button?.attributes('disabled')).toBeDefined()
       }
       release?.(); await flushPromises()
-      expect(wrapper.getComponent(RanchWidgetContent).vm).toBe(widget)
+      expect(wrapper.get('[data-widget-collapsed]').element === widget).toBe(true)
       expect(wrapper.getComponent(RanchWidgetContent).text()).toContain(useNuxtApp().$i18n.t('ranch.care.fed', { xp: '20' }))
-      expect(wrapper.getComponent(RanchStatusPanel).text()).toContain('20 XP')
+      expect(growthXp(wrapper)).toBe('20 XP')
     } finally { release?.(); await flushPromises() }
   })
 
@@ -157,11 +173,11 @@ describe('牧場ページ内のprivate state同期', () => {
   it('本人変更でAのstateとfeedbackを破棄し、Bの新scopeを取得する', async () => {
     const wrapper = await mountPage()
     await click(wrapper, 'ranch.care.food')
-    const widgetA = wrapper.getComponent(RanchWidgetContent).vm
+    const widgetA = wrapper.get('[data-widget-collapsed]').element
     serverState = initialState(2)
     await useAuthStore().setUser(user(2)); await flushPromises()
-    expect(wrapper.getComponent(RanchWidgetContent).vm).not.toBe(widgetA)
-    expect(wrapper.getComponent(RanchStatusPanel).text()).toContain('0 XP')
+    expect(wrapper.get('[data-widget-collapsed]').element === widgetA).toBe(false)
+    expect(growthXp(wrapper)).toBe('0 XP')
     expect(wrapper.getComponent(RanchWidgetContent).text()).not.toContain(useNuxtApp().$i18n.t('ranch.care.fed', { xp: '20' }))
     useAuthStore().$reset(); await flushPromises()
     expect(wrapper.findComponent(RanchStatusPanel).exists()).toBe(false)
@@ -169,8 +185,8 @@ describe('牧場ページ内のprivate state同期', () => {
   })
 
   it('page providerのないdashboard Widgetは独立stateを取得する', async () => {
-    const first = await mountSuspended(WidgetRanch, { global: { stubs: { DinosaurScene: true } } })
-    const second = await mountSuspended(WidgetRanch, { global: { stubs: { DinosaurScene: true } } })
+    const first = await mountSuspended(WidgetRanch, { global: { stubs: { DinosaurScene: SceneStub } } })
+    const second = await mountSuspended(WidgetRanch, { global: { stubs: { DinosaurScene: SceneStub } } })
     wrappers.push(first, second); await flushPromises()
     expect(reads).toBe(2)
     await click(first, 'ranch.care.food')

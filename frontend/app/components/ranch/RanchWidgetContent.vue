@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRanchWidgetState } from '~/composables/useRanchState'
+import { useProvidedRanchState } from '~/composables/useRanchState'
 import { productionRanchAssetsRegistered } from '~/utils/ranch-assets'
 const props = withDefaults(defineProps<{ active?: boolean; collapsed?: boolean }>(), { active: true, collapsed: undefined })
 const emit = defineEmits<{ 'update:collapsed': [collapsed: boolean] }>()
@@ -9,7 +9,8 @@ const assetContext = { production: !import.meta.dev, isolatedDevelopment: config
 const reaction = shallowRef<{ key: string; dinosaurId: string; sequence: number; soundToken: number | null } | null>(null)
 let reactionSequence = 0
 const scene = ref<{ prepareTouchSound: () => number | null; cancelTouchSound: (token: number | null) => void } | null>(null)
-const ranch = useRanchWidgetState()
+const provided = useProvidedRanchState()
+const ranch = provided ?? useRanchState()
 const authStore = useAuthStore()
 const localCollapsed = ref(false)
 const collapsed = computed({
@@ -25,7 +26,7 @@ let requestedInitialState = false
 function loadWhenActive() {
  if (!mounted.value || !props.active || collapsed.value || !pageVisible.value || requestedInitialState) return
  requestedInitialState = true
- if (!ranch.state.value && !ranch.loading.value) void ranch.load()
+ if (!provided) void ranch.load()
 }
 function updateVisibility() {
  pageVisible.value = document.visibilityState !== 'hidden'
