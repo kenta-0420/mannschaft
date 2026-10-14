@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { provideRanchState } from '~/composables/useRanchState'
 import type { RanchSettings } from '~/types/ranch'
 
 const { t } = useI18n(); useHead({ title: t('ranch.title') })
 const ranch = useRanchState(); const visibility = useRanchVisibility()
+provideRanchState(ranch)
 const message = ref(''); const visibilityFailed = ref(false)
 const guideVisible = ref(false)
 const busy = computed(() => ranch.loading.value || ranch.api.command.running.value)
@@ -42,10 +44,10 @@ onMounted(ranch.load)
    </template>
   </PageHeader>
   <NuxtLink to="/my/ranch/results" class="inline-flex min-h-11 items-center text-primary">{{ t('ranch.diagnosisResults.title') }}</NuxtLink>
-  <PageLoading v-if="ranch.loading.value" />
+  <PageLoading v-if="ranch.loading.value && !ranch.state.value" />
   <DashboardErrorState v-else-if="ranch.failed.value" @retry="ranch.load" />
   <template v-else-if="ranch.state.value">
-   <WidgetRanch v-if="ranch.state.value.dinosaur" :key="ranch.state.value.owner?.version" :active="true" />
+   <WidgetRanch v-if="ranch.state.value.dinosaur" :active="true" />
    <RanchStatusPanel :state="ranch.state.value" />
    <Button v-if="ranch.state.value.owner" class="min-h-11" :disabled="busy" :label="t('ranch.admin.refresh')" @click="ranch.load" />
    <p v-if="ranch.state.value.dinosaur?.egg" role="status">{{ t(`ranch.egg.${ranch.state.value.dinosaur.egg.crackStage}`) }}</p>

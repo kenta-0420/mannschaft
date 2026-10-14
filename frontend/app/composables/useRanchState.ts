@@ -1,5 +1,17 @@
-import { getCurrentScope, onScopeDispose, ref, watch } from 'vue'
+import { getCurrentScope, inject, onScopeDispose, provide, ref, watch } from 'vue'
+import type { InjectionKey } from 'vue'
 import type { RanchState } from '~/types/ranch'
+
+const ranchStateKey: InjectionKey<ReturnType<typeof useRanchState>> = Symbol('ranch-page-state')
+
+// 本人private stateはページのVue scope内だけで共有し、画面を跨いで保持しない。
+export function provideRanchState(ranch: ReturnType<typeof useRanchState>) {
+ provide(ranchStateKey, ranch)
+}
+
+export function useRanchWidgetState() {
+ return inject(ranchStateKey, null) ?? useRanchState()
+}
 
 export function useRanchState() {
  const api = useRanchApi()
