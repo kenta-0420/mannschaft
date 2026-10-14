@@ -39802,6 +39802,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 権限カタログ一覧（スコープの ADMIN+） */
+        get: operations["list_94"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/performance/metric-templates": {
         parameters: {
             query?: never;
@@ -40057,7 +40074,7 @@ export interface paths {
             cookie?: never;
         };
         /** 組織が止めている申請の一覧（組織 ADMIN） */
-        get: operations["list_94"];
+        get: operations["list_95"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41587,7 +41604,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_95"];
+        get: operations["list_96"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41999,7 +42016,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_96"];
+        get: operations["list_97"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42170,7 +42187,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_97"];
+        get: operations["list_98"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42550,7 +42567,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村でなれる投稿主体一覧を取得する（村人のみ） */
-        get: operations["list_98"];
+        get: operations["list_99"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42618,7 +42635,7 @@ export interface paths {
             cookie?: never;
         };
         /** メモ添付一覧 */
-        get: operations["list_99"];
+        get: operations["list_100"];
         put?: never;
         post?: never;
         delete?: never;
@@ -43678,7 +43695,7 @@ export interface paths {
          * 請求書一覧
          * @description 指定スコープの請求書を period_end 降順で返す。cursor は不透明値。
          */
-        get: operations["list_100"];
+        get: operations["list_101"];
         put?: never;
         post?: never;
         delete?: never;
@@ -44209,7 +44226,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_101"];
+        get: operations["list_102"];
         put?: never;
         post?: never;
         delete?: never;
@@ -55953,6 +55970,7 @@ export interface components {
             data?: components["schemas"]["PermissionGroupResponse"];
         };
         PermissionGroupResponse: {
+            containsAdminOnlyPermission?: boolean;
             /** Format: date-time */
             createdAt?: string;
             /** Format: int64 */
@@ -76156,6 +76174,11 @@ export interface components {
              */
             trialExpiresAt?: string;
         };
+        MemberPermissionGroupRef: {
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+        };
         PagedResponseScopeMemberResponse: {
             data?: components["schemas"]["ScopeMemberResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -76166,6 +76189,7 @@ export interface components {
             displayName?: string;
             /** Format: date-time */
             joinedAt?: string;
+            permissionGroups?: components["schemas"]["MemberPermissionGroupRef"][];
             roleName?: string;
             /** Format: int64 */
             userId?: number;
@@ -76205,6 +76229,7 @@ export interface components {
             data?: components["schemas"]["EffectivePermissionsResponse"];
         };
         EffectivePermissionsResponse: {
+            canGrantAdminOnlyPermissions?: boolean;
             permissions?: string[];
             roleName?: string;
             scopeAdmin?: boolean;
@@ -79242,6 +79267,18 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        ApiResponseListPermissionCatalogItemResponse: {
+            data?: components["schemas"]["PermissionCatalogItemResponse"][];
+        };
+        PermissionCatalogItemResponse: {
+            adminOnlyGrantable?: boolean;
+            assignableTargetRoles?: string[];
+            displayName?: string;
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            scope?: string;
+        };
         ApiResponseTemplateListResponse: {
             data?: components["schemas"]["TemplateListResponse"];
         };
@@ -80619,6 +80656,7 @@ export interface components {
         };
         MyTeamResponse: {
             archived?: boolean;
+            canManageArchive?: boolean;
             iconUrl?: string;
             /** Format: int64 */
             id?: number;
@@ -161060,6 +161098,47 @@ export interface operations {
             };
         };
     };
+    list_94: {
+        parameters: {
+            query: {
+                scopeType: string;
+                scopeId: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功（名前順） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPermissionCatalogItemResponse"];
+                };
+            };
+            /** @description scopeType が TEAM / ORGANIZATION でない */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPermissionCatalogItemResponse"];
+                };
+            };
+            /** @description 指定スコープの ADMIN+ でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPermissionCatalogItemResponse"];
+                };
+            };
+        };
+    };
     listTemplates_11: {
         parameters: {
             query?: {
@@ -161445,7 +161524,7 @@ export interface operations {
             };
         };
     };
-    list_94: {
+    list_95: {
         parameters: {
             query?: {
                 page?: number;
@@ -163666,7 +163745,7 @@ export interface operations {
             };
         };
     };
-    list_95: {
+    list_96: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -164240,7 +164319,7 @@ export interface operations {
             };
         };
     };
-    list_96: {
+    list_97: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -164479,7 +164558,7 @@ export interface operations {
             };
         };
     };
-    list_97: {
+    list_98: {
         parameters: {
             query?: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -164985,7 +165064,7 @@ export interface operations {
             };
         };
     };
-    list_98: {
+    list_99: {
         parameters: {
             query?: never;
             header?: never;
@@ -165069,7 +165148,7 @@ export interface operations {
             };
         };
     };
-    list_99: {
+    list_100: {
         parameters: {
             query?: never;
             header?: never;
@@ -166498,7 +166577,7 @@ export interface operations {
             };
         };
     };
-    list_100: {
+    list_101: {
         parameters: {
             query: {
                 scopeKind: "USER" | "TEAM" | "ORG";
@@ -167201,7 +167280,7 @@ export interface operations {
             };
         };
     };
-    list_101: {
+    list_102: {
         parameters: {
             query?: never;
             header?: never;

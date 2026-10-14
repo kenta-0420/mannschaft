@@ -2422,7 +2422,12 @@ class NotificationTransactionBoundaryGuardTest {
      * 構造条件を通過した発火点（STRUCTURAL）も同じ差分（-1）。通知発火点を持つファイル数は不変。
      * 語彙（{@link #NOTIFY_METHOD_VOCABULARY}）も構造条件（{@link #notifyCallOffsets}）も無変更。下限は余裕ゼロで実数に合わせる。
      */
-    static final long RAW_CANDIDATE_HITS_MIN = 165L;
+    // Issue #2997 G7-a（digest / timetable）: 上記（165 / 145 / 94）から 164 / 144 / 94 へ（最新 main 上の実測）。
+    //   消えた 3 件（DigestAsyncExecutor の notificationHelper.notify 2 箇所、TeamSlotNoteNotifyListener の notify 1 箇所）と、
+    //   増えた 2 件（DigestGenerationNotificationListener / TeamSlotNoteNotifyListener の notificationDeliveryRunner.sendOne 各 1 箇所）で
+    //   差し引き -1。構造条件を通過した発火点も同じ差分（-1）。通知発火点を持つファイルは DigestAsyncExecutor が消え
+    //   DigestGenerationNotificationListener が増えて差し引きゼロのため NOTIFY_BEARING_FILES_MIN は 94 のまま。
+    static final long RAW_CANDIDATE_HITS_MIN = 164L;
 
     /**
      * 実測 149（2026-09-04 / Issue #2990 L5 の是正後）。158 -> 149 の根拠は
@@ -2447,7 +2452,7 @@ class NotificationTransactionBoundaryGuardTest {
      *
      * @see #RAW_CANDIDATE_HITS_MIN
      */
-    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 145L;
+    static final long STRUCTURAL_NOTIFY_CALLS_MIN = 144L;
 
     /**
      * 実測 17309（2026-09-01 main 取り込み後）。<b>ここだけは 6% ほどの余裕を持たせて 16000 とする</b>。

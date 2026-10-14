@@ -2478,6 +2478,21 @@
     }
   },
   "teamShell": {
+    "archive": {
+      "syncError": "The change is complete, but the list could not be synchronized. Reload it.",
+      "archive": "Archive team",
+      "unarchive": "Restore team",
+      "archiveConfirm": "Archive this team? Pending affiliation requests and invitations will be canceled. Active affiliations will remain. Team details will no longer be accessible. You can restore it from Archived teams in the team list.",
+      "unarchiveConfirm": "Restore this team? Canceled affiliation requests and invitations, including expired invitation links, will not be restored.",
+      "archived": "Team archived",
+      "unarchived": "Team restored",
+      "changed": "The team status or your permission has changed. Reload the list.",
+      "listTitle": "Archived teams",
+      "showList": "Show archived teams",
+      "hideList": "Close list",
+      "fetchError": "Could not load archived teams.",
+      "empty": "No archived teams."
+    },
     "tab": {
       "affiliations": "Affiliated organizations",
       "permissionGroups": "Permission groups",

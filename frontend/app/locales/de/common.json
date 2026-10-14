@@ -2478,6 +2478,21 @@
     }
   },
   "teamShell": {
+    "archive": {
+      "syncError": "Die Änderung ist abgeschlossen, aber die Liste konnte nicht synchronisiert werden. Laden Sie sie erneut.",
+      "archive": "Team archivieren",
+      "unarchive": "Team wiederherstellen",
+      "archiveConfirm": "Dieses Team archivieren? Offene Beitrittsanträge und Einladungen werden storniert. Aktive Zugehörigkeiten bleiben bestehen. Die Teamdetails sind danach nicht mehr zugänglich. Sie können das Team unter Archivierte Teams in der Teamliste wiederherstellen.",
+      "unarchiveConfirm": "Dieses Team wiederherstellen? Stornierte Beitrittsanträge und Einladungen sowie abgelaufene Einladungslinks werden nicht wiederhergestellt.",
+      "archived": "Team archiviert",
+      "unarchived": "Team wiederhergestellt",
+      "changed": "Der Teamstatus oder Ihre Berechtigung hat sich geändert. Laden Sie die Liste erneut.",
+      "listTitle": "Archivierte Teams",
+      "showList": "Archivierte Teams anzeigen",
+      "hideList": "Liste schließen",
+      "fetchError": "Archivierte Teams konnten nicht geladen werden.",
+      "empty": "Keine archivierten Teams."
+    },
     "tab": {
       "affiliations": "Zugehörige Organisationen",
       "permissionGroups": "Berechtigungsgruppen",
