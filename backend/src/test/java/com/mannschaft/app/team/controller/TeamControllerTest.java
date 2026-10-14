@@ -207,7 +207,7 @@ class TeamControllerTest {
                         new MemberResponse(2L, "担当", null, "MEMBER", LocalDateTime.now()),
                         new MemberResponse(3L, "未割当", null, "MEMBER", LocalDateTime.now())),
                 new PagedResponse.PageMeta(3L, 0, 10, 1)));
-        given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "DEPUTY_ADMIN")).willReturn(true);
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
         given(permissionGroupService.findAssignedGroupsByUser(TEAM_ID, "TEAM", List.of(1L, 2L, 3L)))
                 .willReturn(java.util.Map.of(1L, List.of(ref(9, "ignored-for-admin-role")),
                         2L, List.of(ref(5, "加盟担当"))));
@@ -247,7 +247,7 @@ class TeamControllerTest {
         stubTeamMembers();
         given(teamService.getAllMembers(TEAM_ID)).willReturn(
                 List.of(new MemberResponse(2L, "担当", null, "DEPUTY_ADMIN", LocalDateTime.now())));
-        given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "DEPUTY_ADMIN")).willReturn(true);
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
         given(permissionGroupService.findAssignedGroupsByUser(TEAM_ID, "TEAM", List.of(2L)))
                 .willReturn(java.util.Map.of(2L, List.of(ref(5, "加盟担当"))));
 
@@ -255,10 +255,32 @@ class TeamControllerTest {
         assertThat(admin).isNotNull();
         assertThat(admin.getData().get(0).getPermissionGroups()).hasSize(1);
 
-        given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "DEPUTY_ADMIN")).willReturn(false);
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
         var member = controller.getAllTeamMembers(TEAM_SLUG).getBody();
         assertThat(member).isNotNull();
         assertThat(member.getData().get(0).getPermissionGroups()).isNull();
+    }
+
+    @Test
+    @DisplayName("getMembers: 対象チームの ADMIN/DEPUTY 割当が無い SYSTEM_ADMIN 単独には載せない（権限グループ一覧と同じスコープ管理者判定）")
+    void getMembers_omitsPermissionGroups_forSystemAdminWithoutTeamRole() {
+        Pageable pageable = PageRequest.of(0, 10);
+        stubTeamMembers();
+        given(teamService.getMembers(TEAM_ID, pageable)).willReturn(PagedResponse.of(
+                List.of(new MemberResponse(2L, "担当", null, "MEMBER", LocalDateTime.now())),
+                new PagedResponse.PageMeta(1L, 0, 10, 1)));
+        // hasRoleOrAbove は SYSTEM_ADMIN を最強ロールとして解決するため、所属の無い SYSTEM_ADMIN でも真になる
+        org.mockito.Mockito.lenient().when(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "DEPUTY_ADMIN"))
+                .thenReturn(true);
+        given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        var body = controller.getMembers(TEAM_SLUG, pageable).getBody();
+
+        assertThat(body).isNotNull();
+        assertThat(body.getData().get(0).getPermissionGroups()).isNull();
+        verify(permissionGroupService, Mockito.never()).findAssignedGroupsByUser(
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyCollection());
     }
 
     @Test

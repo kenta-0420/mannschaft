@@ -14,6 +14,8 @@ import { primeStubs } from '../organization/member-teams/stubs'
  *   PF-05 保存失敗はダイアログ内にエラーを残し閉じない / 二重送信しない
  *   PF-06 カタログ取得失敗はエラー表示し、保存できない
  *   PF-07 作成→割当の導線: 保存後に「メンバー一覧で割り当てる」案内が出る
+ *   PF-08 ADMIN 専用権限を付与できない操作者（SYSTEM_ADMIN 兼任など）は、ADMIN 専用権限を選べず理由が出る（他の権限は選べる）
+ *   PF-09 編集対象が既に ADMIN 専用権限を含み、付与できない操作者なら、編集全体を不可にする（外す操作も BE は 403）
  */
 
 const listPermissionCatalog = vi.fn()
@@ -36,7 +38,7 @@ const stubs = { ...primeStubs, NuxtLink: { props: ['to'], template: '<a :href="t
 
 async function mountDialog(props: Record<string, unknown> = {}) {
   const w = await mountSuspended(TeamPermissionGroupFormDialog, {
-    props: { visible: true, teamSlug: 'team-1', teamId: 77, group: null, ...props },
+    props: { visible: true, teamSlug: 'team-1', teamId: 77, group: null, canGrantAdminOnly: true, ...props },
     global: { stubs },
   })
   await flushPromises()
@@ -129,6 +131,28 @@ describe('TeamPermissionGroupFormDialog', () => {
     const w = await mountDialog()
     expect(w.find('[data-testid="pf-load-error"]').exists()).toBe(true)
     expect(w.find('[data-testid="pf-submit"]').exists()).toBe(false)
+  })
+
+  it('PF-08: 付与できない操作者は ADMIN 専用権限を選べず、理由が出る。他の権限は選べる', async () => {
+    createPermissionGroup.mockResolvedValue({})
+    const w = await mountDialog({ canGrantAdminOnly: false })
+    expect((w.find('[data-testid="pf-perm-1"]').element as HTMLInputElement).disabled).toBe(true)
+    expect((w.find('[data-testid="pf-perm-2"]').element as HTMLInputElement).disabled).toBe(false)
+    expect(w.find('[data-testid="pf-admin-only-reason"]').exists()).toBe(true)
+    await w.find('[data-testid="pf-name"]').setValue('予定')
+    await w.find('[data-testid="pf-perm-2"]').setValue(true)
+    await w.find('[data-testid="pf-submit"]').trigger('click')
+    await flushPromises()
+    expect(createPermissionGroup).toHaveBeenCalledWith('team-1', { name: '予定', targetRole: 'MEMBER', permissionIds: [2] })
+  })
+
+  it('PF-09: 既に ADMIN 専用権限を含むグループは、付与できない操作者には編集させない', async () => {
+    const group = { id: 9, name: '加盟担当', targetRole: 'MEMBER', permissions: ['MANAGE_ORG_AFFILIATION'] }
+    const w = await mountDialog({ group, canGrantAdminOnly: false })
+    expect(w.find('[data-testid="pf-admin-only-locked"]').exists()).toBe(true)
+    expect(w.find('[data-testid="pf-submit"]').exists()).toBe(false)
+    expect((w.find('[data-testid="pf-name"]').element as HTMLInputElement).disabled).toBe(true)
+    expect(updatePermissionGroup).not.toHaveBeenCalled()
   })
 
   it('PF-07: 保存後に「メンバー一覧で割り当てる」案内が出る', async () => {

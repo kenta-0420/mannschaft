@@ -21,6 +21,9 @@ import { primeStubs } from '../organization/member-teams/stubs'
  *   PD-09 既存割当を外すと差分に削除が出て、PUT から除かれる（全部外すと空配列）
  *   PD-10 現在の割当が分からない（permissionGroups 未提供）ときは保存させない
  *   PD-11 別メンバーを開き直したら、そのメンバーの割当で初期化される
+ *   PD-12 ADMIN 専用権限を含むグループを付与できない操作者（SYSTEM_ADMIN 兼任など）には、そのグループを選べなくし理由を出す
+ *   PD-13 ADMIN 専用権限を含むグループが既に割り当て済みのメンバーは、付与できない操作者には一切変更させない（外す操作も BE は 403）
+ *   PD-14 付与できる操作者（チーム ADMIN）は ADMIN 専用権限のグループも選べる
  */
 
 const getPermissionGroups = vi.fn()
@@ -44,7 +47,7 @@ const groups = [
 
 async function mountDialog(props: Record<string, unknown> = {}) {
   const w = await mountSuspended(TeamMemberPermissionGroupsDialog, {
-    props: { visible: true, teamSlug: 'team-1', member, ...props },
+    props: { visible: true, teamSlug: 'team-1', member, canGrantAdminOnly: true, ...props },
     global: { stubs },
   })
   await flushPromises()
@@ -147,6 +150,44 @@ describe('TeamMemberPermissionGroupsDialog', () => {
     const w = await mountDialog({ member: { userId: 42, displayName: '山田', roleName: 'MEMBER' } })
     expect(w.find('[data-testid="pg-current-unknown"]').exists()).toBe(true)
     expect(w.find('[data-testid="pg-assign-submit"]').exists()).toBe(false)
+  })
+
+  const adminOnlyGroups = [
+    { id: 1, name: '加盟担当', targetRole: 'MEMBER', permissions: ['MANAGE_ORG_AFFILIATION'], containsAdminOnlyPermission: true },
+    { id: 2, name: '予定担当', targetRole: 'MEMBER', permissions: ['MANAGE_SCHEDULES'], containsAdminOnlyPermission: false },
+  ]
+
+  it('PD-12: 付与できない操作者には ADMIN 専用権限のグループを選べなくし、理由を出す', async () => {
+    getPermissionGroups.mockResolvedValue({ data: adminOnlyGroups })
+    const w = await mountDialog({ canGrantAdminOnly: false })
+    expect((w.find('[data-testid="pg-check-1"]').element as HTMLInputElement).disabled).toBe(true)
+    expect((w.find('[data-testid="pg-check-2"]').element as HTMLInputElement).disabled).toBe(false)
+    expect(w.find('[data-testid="pg-admin-only-reason"]').exists()).toBe(true)
+  })
+
+  it('PD-13: ADMIN 専用権限のグループが割り当て済みなら、付与できない操作者には一切変更させない', async () => {
+    getPermissionGroups.mockResolvedValue({ data: adminOnlyGroups })
+    const w = await mountDialog({
+      canGrantAdminOnly: false,
+      member: { ...member, permissionGroups: [{ id: 1, name: '加盟担当' }] },
+    })
+    expect((w.find('[data-testid="pg-check-2"]').element as HTMLInputElement).disabled).toBe(true)
+    expect((w.find('[data-testid="pg-check-1"]').element as HTMLInputElement).disabled).toBe(true)
+    expect(w.find('[data-testid="pg-admin-only-locked"]').exists()).toBe(true)
+    expect(w.find('[data-testid="pg-assign-submit"]').exists()).toBe(false)
+    expect(assignPermissionGroups).not.toHaveBeenCalled()
+  })
+
+  it('PD-14: 付与できる操作者（チーム ADMIN）は ADMIN 専用権限のグループも選べる', async () => {
+    getPermissionGroups.mockResolvedValue({ data: adminOnlyGroups })
+    assignPermissionGroups.mockResolvedValue(undefined)
+    const w = await mountDialog({ canGrantAdminOnly: true })
+    expect((w.find('[data-testid="pg-check-1"]').element as HTMLInputElement).disabled).toBe(false)
+    expect(w.find('[data-testid="pg-admin-only-reason"]').exists()).toBe(false)
+    await w.find('[data-testid="pg-check-1"]').setValue(true)
+    await w.find('[data-testid="pg-assign-submit"]').trigger('click')
+    await flushPromises()
+    expect(assignPermissionGroups).toHaveBeenCalledWith('team-1', 42, [1, 2])
   })
 
   it('PD-11: 別メンバーを開き直したら、そのメンバーの割当で初期化される', async () => {

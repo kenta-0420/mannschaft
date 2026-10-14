@@ -13,14 +13,16 @@ import TeamPermissionGroupsPage from '~/pages/teams/[slug]/permission-groups.vue
  *   TPG-05 「グループを作成」で作成ダイアログが開き、保存後に一覧を取り直す（AC-P03/P04 の作成の入口）
  *   TPG-06 一覧の編集ボタンで、そのグループの編集ダイアログが開く
  *   TPG-07 作成後にメンバー一覧（割当の入口）へのリンクがある（作成→割当の導線）
+ *   TPG-08 ADMIN 専用権限を付与できない操作者には理由の案内を出し、作成ダイアログへ canGrantAdminOnly=false を渡す
  */
 
-const state = { canGroups: true }
+const state = { canGroups: true, canGrant: true }
 const getPermissionGroups = vi.fn()
 
 vi.mock('~/composables/useTeamShellContext', () => ({
   useTeamShellContext: () => ({
     canManagePermissionGroups: computed(() => state.canGroups),
+    canGrantAdminOnlyPermissions: computed(() => state.canGrant),
     displayName: computed(() => 'チームA'),
     team: computed(() => ({ numericId: 77 })),
   }),
@@ -38,9 +40,9 @@ const stubs = {
     template: '<ul data-testid="group-list"><li v-for="g in groups" :key="g.id">{{ g.name }}<button :data-testid="`group-edit-${g.id}`" @click="$emit(\'edit\', g)" /></li></ul>',
   },
   TeamPermissionGroupFormDialog: {
-    props: ['visible', 'teamSlug', 'teamId', 'group'],
+    props: ['visible', 'teamSlug', 'teamId', 'group', 'canGrantAdminOnly'],
     emits: ['saved', 'update:visible'],
-    template: '<div v-if="visible" data-testid="group-form" :data-group-id="group?.id" :data-team-id="teamId"><button data-testid="group-form-saved" @click="$emit(\'saved\')" /></div>',
+    template: '<div v-if="visible" data-testid="group-form" :data-group-id="group?.id" :data-team-id="teamId" :data-can-grant="canGrantAdminOnly"><button data-testid="group-form-saved" @click="$emit(\'saved\')" /></div>',
   },
 }
 
@@ -53,6 +55,7 @@ async function mountPage() {
 describe('pages/teams/[slug]/permission-groups.vue', () => {
   beforeEach(() => {
     state.canGroups = true
+    state.canGrant = true
     getPermissionGroups.mockReset()
     getPermissionGroups.mockResolvedValue({ data: [{ id: 1, name: '加盟担当', targetRole: 'MEMBER', permissions: [] }] })
   })
@@ -97,6 +100,14 @@ describe('pages/teams/[slug]/permission-groups.vue', () => {
     const w = await mountPage()
     await w.find('[data-testid="group-edit-1"]').trigger('click')
     expect(w.find('[data-testid="group-form"]').attributes('data-group-id')).toBe('1')
+  })
+
+  it('TPG-08: 付与できない操作者には理由を出し、ダイアログへ false を渡す', async () => {
+    state.canGrant = false
+    const w = await mountPage()
+    expect(w.find('[data-testid="permission-groups-admin-only-notice"]').exists()).toBe(true)
+    await w.find('[data-testid="permission-group-create"]').trigger('click')
+    expect(w.find('[data-testid="group-form"]').attributes('data-can-grant')).toBe('false')
   })
 
   it('TPG-07: メンバー一覧（割当の入口）へのリンクがある', async () => {

@@ -240,6 +240,68 @@ class PermissionGroupServiceTest {
     }
 
     // ========================================
+    // 権限カタログと作成・更新の受け付け集合の一致（F01.2.1 8-D・security/README §4.3）
+    // ========================================
+
+    @Nested
+    @DisplayName("作成・更新が受け付ける権限の集合（権限カタログと同じ判定）")
+    class AcceptedPermissionSet {
+
+        private PermissionEntity scoped(Long id, String name, PermissionEntity.Scope scope) {
+            return PermissionEntity.builder().id(id).name(name).displayName(name).scope(scope)
+                    .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+        }
+
+        @Test
+        @DisplayName("PLATFORM 分類の権限は権限グループに含められない（ROLE_007）。権限カタログにも出ない")
+        void createRejectsPlatformScopedPermission() {
+            PermissionGroupRequest req = new PermissionGroupRequest("g", "MEMBER", List.of(PERM_ID_1, PERM_ID_2));
+            given(permissionRepository.findByIdIn(req.getPermissionIds())).willReturn(List.of(
+                    scoped(PERM_ID_1, "MANAGE_SCHEDULES", PermissionEntity.Scope.TEAM),
+                    scoped(PERM_ID_2, "PLATFORM_ONLY", PermissionEntity.Scope.PLATFORM)));
+
+            assertThatThrownBy(() -> permissionGroupService.createPermissionGroup(SCOPE_ID, "TEAM", req, CREATED_BY))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode()).isEqualTo("ROLE_007"));
+            verify(permissionGroupRepository, never()).save(any(PermissionGroupEntity.class));
+        }
+
+        @Test
+        @DisplayName("一覧の各グループに containsAdminOnlyPermission を載せる（ADMIN 専用権限を含むか。FE が編集・割当の可否表示に使う）")
+        void listFlagsGroupsContainingAdminOnlyPermission() {
+            given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of(
+                    createGroupEntity(10L, "加盟担当"), createGroupEntity(11L, "予定担当")));
+            given(permissionGroupPermissionRepository.findByGroupId(10L)).willReturn(List.of(
+                    PermissionGroupPermissionEntity.builder().groupId(10L).permissionId(PERM_ID_1).build()));
+            given(permissionGroupPermissionRepository.findByGroupId(11L)).willReturn(List.of(
+                    PermissionGroupPermissionEntity.builder().groupId(11L).permissionId(PERM_ID_2).build()));
+            given(permissionRepository.findById(PERM_ID_1)).willReturn(Optional.of(
+                    scoped(PERM_ID_1, "MANAGE_ORG_AFFILIATION", PermissionEntity.Scope.TEAM)));
+            given(permissionRepository.findById(PERM_ID_2)).willReturn(Optional.of(
+                    scoped(PERM_ID_2, "MANAGE_SCHEDULES", PermissionEntity.Scope.TEAM)));
+
+            List<PermissionGroupResponse> result = permissionGroupService.getPermissionGroups(SCOPE_ID, "TEAM");
+
+            assertThat(result.get(0).isContainsAdminOnlyPermission()).isTrue();
+            assertThat(result.get(1).isContainsAdminOnlyPermission()).isFalse();
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION 分類の権限もチームの権限グループに含められる（scope は認可判定に使わない分類列）")
+        void createAcceptsOrganizationClassifiedPermissionForTeamGroup() {
+            PermissionGroupRequest req = new PermissionGroupRequest("g", "MEMBER", List.of(PERM_ID_1));
+            given(permissionRepository.findByIdIn(req.getPermissionIds())).willReturn(List.of(
+                    scoped(PERM_ID_1, "MANAGE_CONTENT", PermissionEntity.Scope.ORGANIZATION)));
+            given(permissionGroupRepository.save(any(PermissionGroupEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            permissionGroupService.createPermissionGroup(SCOPE_ID, "TEAM", req, CREATED_BY);
+
+            verify(permissionGroupRepository).save(any(PermissionGroupEntity.class));
+        }
+    }
+
+    // ========================================
     // updatePermissionGroup
     // ========================================
 
