@@ -28,8 +28,12 @@ import java.util.UUID;
  *
  * <h2>通知</h2>
  * <p>起こした側へ {@code TEAM_ORG_PENDING_EXPIRED} を、削除と<b>同じトランザクション</b>で team の outbox に書く（§6.7）。
- * 申請（TEAM_APPLY）はチームの加盟操作者へ、招待（ORG_INVITE）は組織 ADMIN へ。受信側が論理削除済みなら受信者が居ないので
- * 送らない（ログに残す）。冪等キーは種別＋加盟 ID なので、同じ行の期限切れが二重に予約されることはない。</p>
+ * 申請（TEAM_APPLY）はチームの加盟操作者へ、招待（ORG_INVITE）は組織 ADMIN へ。冪等キーは種別＋加盟 ID なので、同じ行の期限切れが二重に予約されることはない。</p>
+ *
+ * <h2>閉鎖の片付けの対象は消さない</h2>
+ * <p>相手（組織・チーム）がアーカイブ・論理削除中か、閉鎖より前の世代を記録した行（解除・復元済みでも）は、閉鎖の片付け
+ * （{@code TeamOrgLifecycleCleanupService}・回復バッチ）の対象なので期限切れにせず残す（{@link TeamOrgClosureGeneration#isLifecycleCleanupTarget}）。
+ * 片付けが残った側へ取消（{@code TEAM_ORG_PENDING_CANCELLED_BY_SYSTEM}）を届けるので、通知は1種類だけになる（§4.5・§6.7）。</p>
  *
  * <p>判定に使う組織の読み取り（名前・論理削除）はポートの {@code findClosureStateIncludingDeleted}（REQUIRES_NEW・readOnly にしない＝プライマリ）
  * で行う（レプリカ遅延対策。2-D と同じ）。</p>
@@ -79,8 +83,15 @@ public class TeamOrgPendingExpiryCommandService {
         // 値をプライマリから読む（この tx に組織の表を持ち込まない）
         TeamAffiliationOrganizationPort.OrganizationClosureState organization = organizationPort
                 .findClosureStateIncludingDeleted(row.getOrganizationId()).orElse(null);
+        // 閉鎖の片付けの対象（相手が閉鎖中・閉鎖前の世代の行）は期限切れにせず、片付けに残す（§4.5）。片付けが残った側へ取消を
+        // 届けるので、ここで消すと取消が永久に届かず、期限切れとの二重通知にもなりうる。判定は片付け・承認・承諾と同じ規則
+        if (TeamOrgClosureGeneration.isLifecycleCleanupTarget(row, team.orElse(null), organization)) {
+            log.info("閉鎖の片付けの対象なので期限切れにしない（片付けバッチ・イベントが取消とともに消す）: membershipId={}",
+                    membershipId);
+            return Optional.empty();
+        }
         membershipRepository.deleteByIdIn(List.of(row.getId()));
-        notifyInitiator(expired, team.orElse(null), organization);
+        notifyInitiator(expired, team.get(), organization);
         return Optional.of(expired);
     }
 
@@ -94,26 +105,16 @@ public class TeamOrgPendingExpiryCommandService {
         return restrictionRepository.deleteExpiredCooldown(restrictionId, now) > 0;
     }
 
+    /**
+     * 起こした側へ期限切れを通知する。ここに来る行はチーム・組織とも開いている（閉鎖中・閉鎖前の世代の行は
+     * {@link TeamOrgClosureGeneration#isLifecycleCleanupTarget} で片付けに残した）ので、受信者は必ず居る。
+     */
     private void notifyInitiator(Expired expired, TeamEntity team,
                                  TeamAffiliationOrganizationPort.OrganizationClosureState organization) {
-        if (team == null || organization == null) {
-            // 行そのものが無い（物理削除）。文面に使う名前が無いので通知できない
-            log.warn("チームまたは組織の行が無く期限切れの通知の文面を作れない: membershipId={}, teamId={}, organizationId={}",
-                    expired.membershipId(), expired.teamId(), expired.organizationId());
-            return;
-        }
         if (expired.direction() == TeamOrgAffiliationDirection.TEAM_APPLY) {
-            if (team.getDeletedAt() != null) {
-                log.info("期限切れの通知の受信者（チーム）が論理削除済みなので通知しない: membershipId={}", expired.membershipId());
-                return;
-            }
             notifier.enqueue(TeamAffiliationNotice.applicationExpired(team.getId(), team.getSlug(),
                     expired.organizationId(), team.getName(), organization.name(), expired.membershipId()));
         } else {
-            if (organization.deleted()) {
-                log.info("期限切れの通知の受信者（組織）が論理削除済みなので通知しない: membershipId={}", expired.membershipId());
-                return;
-            }
             notifier.enqueue(TeamAffiliationNotice.inviteExpired(expired.organizationId(), organization.slug(),
                     team.getName(), organization.name(), expired.membershipId()));
         }
