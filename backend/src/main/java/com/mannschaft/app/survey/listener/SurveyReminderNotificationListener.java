@@ -15,7 +15,6 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -82,7 +81,7 @@ public class SurveyReminderNotificationListener {
                     "notification.survey.deadlineExtended.deadlinePattern", null,
                     "yyyy年M月d日 HH:mm", locale);
             // 元データは JVM 既定ゾーンの壁時計（surveys.expires_at）。同じゾーンへ戻すので表記は従来と同一。
-            String formattedDeadline = LocalDateTime.ofInstant(event.newDeadline(), ZoneId.systemDefault())
+            String formattedDeadline = LocalDateTime.ofInstant(event.newDeadline(), com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE)
                     .format(DateTimeFormatter.ofPattern(deadlinePattern, locale));
             return new NotificationHelper.LocalizedMessage(
                     messageSource.getMessage(

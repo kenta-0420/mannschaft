@@ -8,7 +8,6 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.context.support.StaticMessageSource;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 
@@ -40,7 +39,7 @@ class SurveyReminderNotificationListenerTest {
 
         listener.onSurveyReminderNotification(new SurveyReminderNotificationEvent(
                 SurveyReminderNotificationEvent.Kind.DEADLINE_EXTENDED, 1L, "TEAM", 2L, "調査",
-                List.of(10L), 3L, wallClock.atZone(ZoneId.systemDefault()).toInstant()));
+                List.of(10L), 3L, wallClock.atZone(com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()));
 
         ArgumentCaptor<NotificationHelper.LocalizedMessageBuilder> captor =
                 ArgumentCaptor.forClass(NotificationHelper.LocalizedMessageBuilder.class);
