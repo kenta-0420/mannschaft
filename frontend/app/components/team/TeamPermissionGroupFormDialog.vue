@@ -107,8 +107,13 @@ const lockedByAdminOnly = computed(() => {
   return props.group.permissions.some(name => adminOnlyNames.has(name))
 })
 const hasAdminOnlyItems = computed(() => !props.canGrantAdminOnly && catalog.value.some(i => i.adminOnlyGrantable))
+/**
+ * チェックボックスの無効判定。制約に反する選択（ADMIN 専用権限・対象ロールに付与できない権限）を新規に加えることはできないが、
+ * 既に選択されている不適合な権限は外せる（既存の違反を解消する方向の操作は許す）。外した後は再チェックできない。
+ */
 const isItemDisabled = (item: PermissionCatalogItem) =>
-  lockedByAdminOnly.value || (!props.canGrantAdminOnly && item.adminOnlyGrantable) || !roleAllows(item)
+  lockedByAdminOnly.value
+  || (!selected.value.has(item.id) && ((!props.canGrantAdminOnly && item.adminOnlyGrantable) || !roleAllows(item)))
 
 /** 選択中の対象ロールに付与できない権限か（課金権限は DEPUTY_ADMIN 向けのみ等。BE が 400 にする組合せ）。 */
 const roleAllows = (item: PermissionCatalogItem) =>

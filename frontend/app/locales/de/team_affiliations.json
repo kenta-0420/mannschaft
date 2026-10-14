@@ -110,7 +110,8 @@
       "current_unknown": "Die aktuelle Zuweisung konnte nicht geladen werden; Speichern ist deaktiviert, damit keine bestehenden Zuweisungen gelöscht werden. Laden Sie die Mitgliederliste neu und versuchen Sie es erneut.",
       "admin_only_reason": "Gruppen mit nur für Admins vorgesehenen Berechtigungen wie „Organisationsbeitritt verwalten“ kann nur der Team-Admin selbst vergeben (nicht, wenn er zugleich SYSTEM_ADMIN ist). Diese Gruppen sind nicht auswählbar",
       "admin_only_locked": "Diesem Mitglied ist bereits eine Gruppe mit Admin-Berechtigungen zugewiesen. Änderungen, die solche Berechtigungen betreffen (auch das Entfernen), kann nur der Team-Admin selbst vornehmen (nicht, wenn er zugleich SYSTEM_ADMIN ist)",
-      "role_mismatch": "Zielrolle stimmt nicht überein (dieses Mitglied ist {role})"
+      "role_mismatch": "Zielrolle stimmt nicht überein (dieses Mitglied ist {role})",
+      "role_mismatch_remove": "Es sind noch Gruppen zugewiesen, deren Zielrolle nicht mehr passt ({groups}). Entfernen Sie die Markierung vor dem Speichern (sie kann nicht erneut gesetzt werden)"
     },
     "group_form": {
       "create_title": "Berechtigungsgruppe erstellen",

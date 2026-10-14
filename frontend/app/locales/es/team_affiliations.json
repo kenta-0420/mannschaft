@@ -110,7 +110,8 @@
       "current_unknown": "No se pudo obtener la asignación actual, así que no se puede guardar para no borrar las existentes. Recarga la lista de miembros e inténtalo de nuevo.",
       "admin_only_reason": "Los grupos con permisos solo de administrador, como «Gestionar afiliación a organizaciones», solo puede concederlos el propio administrador del equipo (no si también es SYSTEM_ADMIN). No se pueden seleccionar",
       "admin_only_locked": "Este miembro ya tiene un grupo con permisos solo de administrador. Los cambios que afecten a estos permisos (incluido quitarlos) solo los puede hacer el propio administrador del equipo (no si también es SYSTEM_ADMIN)",
-      "role_mismatch": "El rol de destino no coincide (este miembro es {role})"
+      "role_mismatch": "El rol de destino no coincide (este miembro es {role})",
+      "role_mismatch_remove": "Siguen asignados grupos cuyo rol de destino ya no coincide ({groups}). Desmárcalos antes de guardar (no se podrán volver a marcar)"
     },
     "group_form": {
       "create_title": "Crear grupo de permisos",

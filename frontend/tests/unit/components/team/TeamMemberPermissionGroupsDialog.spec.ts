@@ -235,11 +235,11 @@ describe('TeamMemberPermissionGroupsDialog', () => {
     // 外すと保存でき、PUT から不一致 ID が除かれる
     await box(1).setValue(false)
     expect(w.find('[data-testid="pg-role-mismatch-remove"]').exists()).toBe(false)
+    // 外した後は再チェックできない
+    expect((box(1).element as HTMLInputElement).disabled).toBe(true)
     await w.find('[data-testid="pg-assign-submit"]').trigger('click')
     await flushPromises()
     expect(assignPermissionGroups).toHaveBeenCalledWith('team-1', 42, [2])
-    // 外した後は再チェックできない
-    expect((box(1).element as HTMLInputElement).disabled).toBe(true)
   })
 
   it('PD-11: 別メンバーを開き直したら、そのメンバーの割当で初期化される', async () => {

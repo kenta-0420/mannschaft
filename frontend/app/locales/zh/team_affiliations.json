@@ -110,7 +110,8 @@
       "current_unknown": "无法获取当前分配，为避免删除现有分配，无法保存。请重新加载成员列表后再试。",
       "admin_only_reason": "包含“组织加入操作”等仅管理员权限的权限组，只能由团队管理员本人授予（兼任 SYSTEM_ADMIN 时不可）。无法选择这些权限组",
       "admin_only_locked": "该成员已被分配包含仅管理员权限的权限组。涉及仅管理员权限的更改（包括移除）只能由团队管理员本人进行（兼任 SYSTEM_ADMIN 时不可）",
-      "role_mismatch": "对象角色不匹配（该成员为 {role}）"
+      "role_mismatch": "对象角色不匹配（该成员为 {role}）",
+      "role_mismatch_remove": "仍分配着对象角色已不匹配的权限组（{groups}）。请先取消勾选再保存（无法再次勾选）"
     },
     "group_form": {
       "create_title": "创建权限组",

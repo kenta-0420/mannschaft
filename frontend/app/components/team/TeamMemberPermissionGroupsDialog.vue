@@ -104,8 +104,15 @@ const hasAdminOnlyGroups = computed(() => !props.canGrantAdminOnly && groups.val
  */
 const isRoleMismatch = (g: TeamPermissionGroup) =>
   props.member !== null && g.targetRole !== props.member.roleName
+/** 不一致のまま選択に残っているグループ（保存すると BE が 404 で保存全体を失敗させる）。 */
+const mismatchedSelected = computed(() => groups.value.filter(g => selected.value.has(g.id) && isRoleMismatch(g)))
+/**
+ * チェックボックスの無効判定。「制約に反する選択を新規に加えられない」が、既存の違反を解消する方向（外す）は常に許す:
+ * 選択済みのものは（ADMIN 専用ロック時を除き）外せる。外した後は再チェックできない。
+ */
 const isDisabled = (g: TeamPermissionGroup) =>
-  lockedByAssignedAdminOnly.value || (!props.canGrantAdminOnly && isAdminOnlyGroup(g)) || isRoleMismatch(g)
+  lockedByAssignedAdminOnly.value
+  || (!selected.value.has(g.id) && ((!props.canGrantAdminOnly && isAdminOnlyGroup(g)) || isRoleMismatch(g)))
 const changed = computed(() => added.value.length > 0 || removed.value.length > 0)
 
 function toggle(groupId: number, checked: boolean) {
@@ -116,7 +123,7 @@ function toggle(groupId: number, checked: boolean) {
 }
 
 async function save() {
-  if (!props.member || saving.value || !currentKnown.value || !changed.value || lockedByAssignedAdminOnly.value) return
+  if (!props.member || saving.value || !currentKnown.value || !changed.value || lockedByAssignedAdminOnly.value || mismatchedSelected.value.length > 0) return
   saving.value = true
   saveFailed.value = false
   try {
@@ -191,6 +198,10 @@ async function save() {
         </li>
       </ul>
 
+      <Message v-if="mismatchedSelected.length > 0" severity="warn" data-testid="pg-role-mismatch-remove">
+        {{ t('teamAffiliations.member_menu.role_mismatch_remove', { groups: mismatchedSelected.map(g => g.name).join(', ') }) }}
+      </Message>
+
       <Message v-if="lockedByAssignedAdminOnly" severity="warn" data-testid="pg-admin-only-locked">
         {{ t('teamAffiliations.member_menu.admin_only_locked') }}
       </Message>
@@ -217,7 +228,7 @@ async function save() {
         v-if="!loading && !loadFailed && groups.length > 0 && currentKnown && !lockedByAssignedAdminOnly"
         :label="t('teamAffiliations.member_menu.save')"
         :loading="saving"
-        :disabled="saving || !changed"
+        :disabled="saving || !changed || mismatchedSelected.length > 0"
         data-testid="pg-assign-submit"
         @click="save"
       />
