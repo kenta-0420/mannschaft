@@ -1,5 +1,15 @@
 {
   "orgMemberTeams": {
+    "remove": {
+      "title": "Dieses Team ausschließen?",
+      "error": {
+        "generic": "Das Team konnte nicht ausgeschlossen werden. Versuchen Sie es später erneut.",
+        "missing": "Dieses Team ist nicht mehr Mitglied. Laden Sie die Teamliste neu.",
+        "forbidden": "Sie dürfen Teams aus dieser Organisation nicht ausschließen. Prüfen Sie Ihre Berechtigungen."
+      },
+      "success": "Das Team wurde ausgeschlossen"
+    },
+
     "switcher_label": "Ansicht wechseln",
     "count_error": "Die Anzahl offener Anträge konnte nicht geladen werden",
     "groups_load_error": "Die Teamgruppen konnten nicht geladen werden. Bitte später erneut versuchen.",

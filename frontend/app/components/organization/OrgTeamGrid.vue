@@ -44,6 +44,9 @@ const { templateLabel } = useScopeLabels()
         <div class="text-sm text-gray-500">
           <i class="pi pi-users mr-1" />{{ team.memberCount }}人
         </div>
+        <div v-if="$slots.actions" class="mt-3" @click.stop>
+          <slot name="actions" :team="team" />
+        </div>
       </div>
     </div>
   </div>

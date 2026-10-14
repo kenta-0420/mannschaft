@@ -11,6 +11,7 @@
  * - DELETE /api/v1/organizations/{slug}/team-invites/{teamSlug}                 … 招待の取消
  * - GET    /api/v1/organizations/{slug}/team-affiliation-restrictions           … 組織が止めている申請
  * - DELETE /api/v1/organizations/{slug}/team-affiliation-restrictions/{id}      … 制限の解除
+ * - DELETE /api/v1/organizations/{slug}/teams/{teamSlug}                        … 成立済みチームの除名
  * - GET    /api/v1/organizations/{slug}/team-groups                             … グループ一覧（機能 off は 409）
  * - POST   /api/v1/organizations/{slug}/team-groups                             … グループ作成（8-C）
  * - PATCH  /api/v1/organizations/{slug}/team-groups/{groupId}                   … 改名・説明変更（8-C）
@@ -65,6 +66,11 @@ export function useOrgTeamMembershipApi() {
   const api = useApi()
 
   const base = (orgSlug: string) => `/api/v1/organizations/${encodeURIComponent(orgSlug)}`
+
+  /** 成立済みの加盟だけを解除する。204（body なし）。グループ機能には依存しない。 */
+  async function removeTeam(orgSlug: string, teamSlug: string): Promise<void> {
+    await api(`${base(orgSlug)}/teams/${encodeURIComponent(teamSlug)}`, { method: 'DELETE' })
+  }
 
   function pageQuery(page: number, size: number): string {
     return `page=${page}&size=${size}`
@@ -202,6 +208,7 @@ export function useOrgTeamMembershipApi() {
   }
 
   return {
+    removeTeam,
     listApplications,
     approveApplication,
     rejectApplication,
