@@ -112,7 +112,8 @@ public class DataExportService {
             entity.updateProgress(10, "collecting_data");
             dataExportRepository.save(entity);
 
-            Map<String, String> collectedData = personalDataCollector.collect(userId, categories);
+            // 他ドメインの一部カテゴリは呼び出し元がこの tx の外で事前取得したもの（userInfo.prefetched()。D-3T）
+            Map<String, String> collectedData = personalDataCollector.collect(userId, categories, userInfo.prefetched());
 
             entity.updateProgress(60, "generating_zip");
             dataExportRepository.save(entity);

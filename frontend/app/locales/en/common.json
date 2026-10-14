@@ -1,4 +1,42 @@
 {
+  "skill": {
+    "form": {
+      "noCategoryAdmin": "This team has no active categories yet. Create one in the \"Category management\" tab.",
+      "noCategoryMember": "This team has no active categories yet. Ask a team administrator to create one."
+    },
+    "matrix": {
+      "refresh": "Refresh",
+      "legendPendingNote": "Certifications pending review are shown as not registered"
+    },
+    "list": {
+      "actions": {
+        "search": "Search",
+        "verify": "Approve",
+        "edit": "Edit",
+        "delete": "Delete",
+        "certificate": "View certificate"
+      },
+      "loadDetailFailed": "Failed to load the skill details",
+      "loadCategoriesFailed": "Failed to load the categories",
+      "mineTitle": "My skills and certifications",
+      "deleteConfirm": "Delete \"{name}\"? This cannot be undone.",
+      "deleteConfirmHeader": "Delete certification"
+    },
+    "category": {
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "deleteConfirm": "Delete the category \"{name}\"?",
+      "deleteConfirmHeader": "Delete category"
+    },
+    "page": {
+      "permissionLoadFailed": "Failed to load your permissions. Please reload later",
+      "forbidden": "Only members of this team can use skills and certifications",
+      "mineTab": "My skills and certifications",
+      "categoriesReloadFailed": "Failed to reload the categories"
+    }
+  },
   "chat": {
     "contextMenu": {
       "replyInThread": "Reply in Thread",
@@ -2629,7 +2667,8 @@
   "scopeSwitch": {
     "hint": "To switch, open a team or organization from the \"Teams\" / \"Organizations\" menu at the top of the screen. Whichever you open becomes the current scope.",
     "goTeams": "Choose a team",
-    "goOrganizations": "Choose an organization"
+    "goOrganizations": "Choose an organization",
+    "personalUnsupported": "This setting is only available in a team or organization scope. It cannot be shown in your personal scope."
   },
   "joinRequest": {
     "apply": "Join request",

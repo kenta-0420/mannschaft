@@ -58008,6 +58008,58 @@
         }
       }
     },
+    "/api/v1/shifts/slots/{slotId}/assignments/move": {
+      "post": {
+        "tags": [
+          "シフト枠管理"
+        ],
+        "summary": "スロット間の割当移動",
+        "operationId": "moveSlotAssignment",
+        "parameters": [
+          {
+            "name": "slotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlotAssignmentMoveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "移動成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSlotAssignmentMoveResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "競合（楽観ロック・移動元に不在・重複）",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSlotAssignmentMoveResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/shifts/schedules": {
       "get": {
         "tags": [
@@ -148919,6 +148971,47 @@
         }
       }
     },
+    "/api/v1/teams/{teamSlug}/organizations/{orgSlug}": {
+      "delete": {
+        "tags": [
+          "チームの加盟（離脱）"
+        ],
+        "summary": "組織からの離脱（チームの加盟操作者）",
+        "operationId": "leave_1",
+        "parameters": [
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orgSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "離脱成功（加盟の行を削除）"
+          },
+          "403": {
+            "description": "加盟操作権限なし"
+          },
+          "404": {
+            "description": "TEAM_070（加盟していない組織・存在しない組織の slug・離脱済みは同じ応答）"
+          },
+          "409": {
+            "description": "TEAM_071（加盟が成立していない＝申請・招待の処理中）"
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamSlug}/org-applications/{membershipId}": {
       "delete": {
         "tags": [
@@ -150357,6 +150450,47 @@
         }
       }
     },
+    "/api/v1/organizations/{slug}/teams/{teamSlug}": {
+      "delete": {
+        "tags": [
+          "組織の加盟チーム（除名）"
+        ],
+        "summary": "加盟チームの除名（組織 ADMIN）",
+        "operationId": "remove",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "teamSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "除名成功（加盟の行を削除）"
+          },
+          "403": {
+            "description": "組織 ADMIN ではない"
+          },
+          "404": {
+            "description": "TEAM_070（加盟していないチーム・存在しないチームの slug・除名済みは同じ応答）"
+          },
+          "409": {
+            "description": "TEAM_071（加盟が成立していない＝申請・招待の処理中）"
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{slug}/team-invites/{teamSlug}": {
       "delete": {
         "tags": [
@@ -151265,7 +151399,7 @@
           "個人時間割共有先"
         ],
         "summary": "共有先解除",
-        "operationId": "remove",
+        "operationId": "remove_1",
         "parameters": [
           {
             "name": "personalTimetableId",
@@ -188907,6 +189041,9 @@
           "startsAt": {
             "type": "string"
           },
+          "targetAudience": {
+            "$ref": "#/components/schemas/TargetAudience"
+          },
           "titleCache": {
             "type": "string"
           },
@@ -193220,6 +193357,145 @@
           "action"
         ]
       },
+      "SlotAssignmentMoveRequest": {
+        "type": "object",
+        "properties": {
+          "sourceSlotVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetSlotId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetSlotVersion": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "sourceSlotVersion",
+          "targetSlotId",
+          "targetSlotVersion",
+          "userId"
+        ]
+      },
+      "ApiResponseSlotAssignmentMoveResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SlotAssignmentMoveResponse"
+          }
+        }
+      },
+      "ShiftAssignmentWarningDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "conflictingSlotIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      },
+      "ShiftSlotPositionDto": {
+        "type": "object",
+        "properties": {
+          "positionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "positionName": {
+            "type": "string"
+          },
+          "requiredCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ShiftSlotResponse": {
+        "type": "object",
+        "properties": {
+          "assignedUserIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "assignmentMasked": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "note": {
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/components/schemas/ShiftSlotPositionDto"
+          },
+          "scheduleId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "time": {
+            "$ref": "#/components/schemas/ShiftSlotTimeDto"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShiftAssignmentWarningDto"
+            }
+          }
+        }
+      },
+      "ShiftSlotTimeDto": {
+        "type": "object",
+        "properties": {
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "endsNextDay": {
+            "type": "boolean"
+          },
+          "slotDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          }
+        }
+      },
+      "SlotAssignmentMoveResponse": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/ShiftSlotResponse"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ShiftSlotResponse"
+          }
+        }
+      },
       "CreateShiftScheduleRequest": {
         "type": "object",
         "properties": {
@@ -193394,95 +193670,6 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/ShiftSlotResponse"
-          }
-        }
-      },
-      "ShiftAssignmentWarningDto": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "conflictingSlotIds": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        }
-      },
-      "ShiftSlotPositionDto": {
-        "type": "object",
-        "properties": {
-          "positionId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "positionName": {
-            "type": "string"
-          },
-          "requiredCount": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
-      "ShiftSlotResponse": {
-        "type": "object",
-        "properties": {
-          "assignedUserIds": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          "assignmentMasked": {
-            "type": "boolean"
-          },
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "note": {
-            "type": "string"
-          },
-          "position": {
-            "$ref": "#/components/schemas/ShiftSlotPositionDto"
-          },
-          "scheduleId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "time": {
-            "$ref": "#/components/schemas/ShiftSlotTimeDto"
-          },
-          "warnings": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ShiftAssignmentWarningDto"
-            }
-          }
-        }
-      },
-      "ShiftSlotTimeDto": {
-        "type": "object",
-        "properties": {
-          "endTime": {
-            "type": "string",
-            "example": "14:30:00"
-          },
-          "endsNextDay": {
-            "type": "boolean"
-          },
-          "slotDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "startTime": {
-            "type": "string",
-            "example": "14:30:00"
           }
         }
       },
@@ -193977,6 +194164,9 @@
           },
           "requestInfo": {
             "$ref": "#/components/schemas/ChangeRequestTypeDto"
+          },
+          "requesterName": {
+            "type": "string"
           },
           "reviewInfo": {
             "$ref": "#/components/schemas/ChangeRequestStatusDto"
@@ -226869,6 +227059,9 @@
           },
           "roleName": {
             "type": "string"
+          },
+          "scopeAdmin": {
+            "type": "boolean"
           }
         }
       },

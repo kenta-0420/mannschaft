@@ -100,7 +100,6 @@ NO_ARG_NOW|com.mannschaft.app.auth.entity.UserEntity|5
 NO_ARG_NOW|com.mannschaft.app.auth.entity.UserInterestTagEntity|1
 NO_ARG_NOW|com.mannschaft.app.auth.entity.WebAuthnCredentialEntity|3
 NO_ARG_NOW|com.mannschaft.app.auth.guardianship.GuardianshipTransitionNotificationEntity|1
-NO_ARG_NOW|com.mannschaft.app.auth.service.AuditLogArchiveBatchService|1
 NO_ARG_NOW|com.mannschaft.app.auth.service.AuditLogArchiveDbService|1
 NO_ARG_NOW|com.mannschaft.app.auth.service.Auth2faService|3
 NO_ARG_NOW|com.mannschaft.app.auth.service.AuthCleanupBatchService|1
@@ -147,7 +146,6 @@ NO_ARG_NOW|com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity|1
 NO_ARG_NOW|com.mannschaft.app.chat.entity.ChatMessageBookmarkEntity|1
 NO_ARG_NOW|com.mannschaft.app.chat.entity.ChatMessageEntity|1
 NO_ARG_NOW|com.mannschaft.app.chat.entity.ChatMessageReactionEntity|1
-NO_ARG_NOW|com.mannschaft.app.chat.service.ChatMessageArchiveBatchService|1
 NO_ARG_NOW|com.mannschaft.app.chat.service.ChatMessageService|2
 NO_ARG_NOW|com.mannschaft.app.chat.service.ChatScheduledMessageBatchService|1
 NO_ARG_NOW|com.mannschaft.app.circulation.entity.CirculationAttachmentEntity|1

@@ -1,32 +1,32 @@
 package com.mannschaft.app.ticket;
 
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.ticket.entity.TicketBookEntity;
+import com.mannschaft.app.ticket.event.TicketExpiryWarningNotificationEvent;
 import com.mannschaft.app.ticket.repository.TicketBookRepository;
 import com.mannschaft.app.ticket.service.TicketExpiryBatchService;
+import com.mannschaft.app.ticket.service.TicketExpiryRunner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.MessageSource;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
@@ -36,6 +36,11 @@ import static org.mockito.Mockito.verify;
 
 /**
  * {@link TicketExpiryBatchService} の単体テスト。
+ *
+ * <p>Issue #2997（CMP-260827-1152 G6）: 通知は業務TXの外（{@code AFTER_COMMIT} リスナー）へ移ったため、
+ * 本クラスは「期限切れ遷移を 1 冊ずつ項目TX（{@link TicketExpiryRunner}）へ委ねること」と
+ * 「事前通知が暦日窓で抽出して配送要求を publish すること」を固定する。配送の意味論（文面・locale）は
+ * {@code TicketExpiryNotificationListenerTest}、TX 境界は {@code TicketExpiryNotificationTransactionIT} が持つ。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TicketExpiryBatchService 単体テスト")
@@ -48,23 +53,24 @@ class TicketExpiryBatchServiceTest {
             .toInstant();
 
     @Mock private TicketBookRepository bookRepository;
-    @Mock private NotificationHelper notificationHelper;
-    @Mock private UserLocaleCache userLocaleCache;
-    @Mock private MessageSource messageSource;
+    @Mock private TicketExpiryRunner expiryRunner;
+    @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private Clock wallClock;
 
     @InjectMocks
     private TicketExpiryBatchService service;
 
-    // Issue #2715 ロットB: 依存追加に伴う mock 漏れ対策。
     @BeforeEach
-    void setUpLocaleStubs() {
-        lenient().when(userLocaleCache.getLocales(any())).thenReturn(Map.of());
-        lenient().when(userLocaleCache.getLocale(org.mockito.ArgumentMatchers.anyLong())).thenReturn("ja");
-        lenient().when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
-                .thenAnswer(inv -> inv.getArgument(2));
+    void setUpClock() {
         lenient().when(wallClock.instant()).thenReturn(CURRENT_INSTANT);
         lenient().when(wallClock.getZone()).thenReturn(UserZoneLocalDateTimeParser.SERVER_ZONE);
+    }
+
+    private TicketBookEntity book(Long id, Long userId) {
+        TicketBookEntity book = TicketBookEntity.builder()
+                .teamId(1L).userId(userId).totalTickets(10).build();
+        ReflectionTestUtils.setField(book, "id", id);
+        return book;
     }
 
     @Nested
@@ -79,46 +85,31 @@ class TicketExpiryBatchServiceTest {
             service.expireTickets();
 
             verify(bookRepository).findExpiredActiveBooks(eq(CURRENT_TIME));
-            verify(bookRepository, never()).save(any());
+            verify(expiryRunner, never()).expireOne(anyLong(), any());
         }
 
         @Test
-        @DisplayName("正常系: 期限切れチケットが処理される")
+        @DisplayName("正常系: 期限切れチケットが 1 冊ずつ項目TXで処理される")
         void 期限切れチケット処理() {
-            TicketBookEntity book = TicketBookEntity.builder()
-                    .teamId(1L).userId(100L).totalTickets(10).build();
-            given(bookRepository.findExpiredActiveBooks(any())).willReturn(List.of(book));
-            given(bookRepository.save(any())).willReturn(book);
+            given(bookRepository.findExpiredActiveBooks(any()))
+                    .willReturn(List.of(book(1L, 100L), book(2L, 200L)));
 
             service.expireTickets();
 
-            verify(bookRepository).save(any());
-            verify(notificationHelper).notify(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(expiryRunner).expireOne(1L, CURRENT_TIME);
+            verify(expiryRunner).expireOne(2L, CURRENT_TIME);
         }
 
         @Test
-        @DisplayName("Issue #2715 ロットB: 受信者 locale が en の場合、通知件名・本文が英語で組み立てられプレースホルダが残らない")
-        void 受信者ロケールがenなら英語件名本文になる() {
-            var realMessageSource = new org.springframework.context.support.ResourceBundleMessageSource();
-            realMessageSource.setBasename("messages");
-            realMessageSource.setDefaultEncoding("UTF-8");
-            org.springframework.test.util.ReflectionTestUtils.setField(service, "messageSource", realMessageSource);
-
-            TicketBookEntity book = TicketBookEntity.builder()
-                    .teamId(1L).userId(200L).totalTickets(10).build();
-            given(bookRepository.findExpiredActiveBooks(any())).willReturn(List.of(book));
-            given(bookRepository.save(any())).willReturn(book);
-            given(userLocaleCache.getLocales(any())).willReturn(Map.of(200L, "en"));
+        @DisplayName("AC-B2: 1 冊の項目TXが例外でも、他の冊の処理は続行されバッチは例外を投げない")
+        void 一冊の失敗が他の冊を巻き込まない() {
+            given(bookRepository.findExpiredActiveBooks(any()))
+                    .willReturn(List.of(book(1L, 100L), book(2L, 200L)));
+            given(expiryRunner.expireOne(eq(1L), any())).willThrow(new RuntimeException("項目TX失敗"));
 
             service.expireTickets();
 
-            org.mockito.ArgumentCaptor<String> titleCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
-            org.mockito.ArgumentCaptor<String> bodyCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
-            verify(notificationHelper).notify(
-                    eq(200L), eq("TICKET_EXPIRED"), titleCaptor.capture(), bodyCaptor.capture(),
-                    any(), any(), any(), any(), any(), any());
-            assertThat(titleCaptor.getValue()).isEqualTo("Ticket expired");
-            assertThat(bodyCaptor.getValue()).doesNotContain("{0}");
+            verify(expiryRunner).expireOne(2L, CURRENT_TIME);
         }
     }
 
@@ -143,7 +134,7 @@ class TicketExpiryBatchServiceTest {
     class SendExpiryNotifications {
 
         @Test
-        @DisplayName("正常系: 30/7/3/1日前の各暦日区間でチケットを検索し通知する")
+        @DisplayName("正常系: 30/7/3/1日前の各暦日区間でチケットを検索する")
         void 期限切れ事前通知_暦日区間で検索() {
             // Given: 全区間で空を返す（検索区間の正しさを検証する）
             given(bookRepository.findBooksExpiringBetween(any(), any())).willReturn(List.of());
@@ -158,49 +149,26 @@ class TicketExpiryBatchServiceTest {
             LocalDateTime from30 = TODAY.plusDays(30).atStartOfDay();
             LocalDateTime to30 = TODAY.plusDays(31).atStartOfDay();
             verify(bookRepository).findBooksExpiringBetween(eq(from30), eq(to30));
-            verify(notificationHelper, never())
-                    .notify(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(eventPublisher, never()).publishEvent(any(TicketExpiryWarningNotificationEvent.class));
         }
 
         @Test
-        @DisplayName("正常系: 該当チケットがある場合は通知を送る")
-        void 期限切れ事前通知_該当ありで通知() {
-            // Given: 1 区間でのみ 1 件ヒットさせる
-            TicketBookEntity book = TicketBookEntity.builder()
-                    .teamId(1L).userId(100L).totalTickets(10).build();
+        @DisplayName("正常系: 該当チケットがある場合は所有者宛ての配送要求を日数つきで publish する")
+        void 期限切れ事前通知_該当ありで配送要求() {
+            // Given: 1 区間（30 日前）でのみ 1 件ヒットさせる
             given(bookRepository.findBooksExpiringBetween(any(), any()))
-                    .willReturn(List.of(book), List.of(), List.of(), List.of());
+                    .willReturn(List.of(book(5L, 100L)), List.of(), List.of(), List.of());
 
             // When
             service.sendExpiryNotifications();
 
             // Then
-            verify(notificationHelper, times(1))
-                    .notify(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
-            assertThat(book).isNotNull();
-        }
-
-        @Test
-        @DisplayName("Issue #2715 ロットB: locale=en で {0}(日数) が置換された英語本文になる")
-        void locale_enで日数プレースホルダが置換される() {
-            var realMessageSource = new org.springframework.context.support.ResourceBundleMessageSource();
-            realMessageSource.setBasename("messages");
-            realMessageSource.setDefaultEncoding("UTF-8");
-            org.springframework.test.util.ReflectionTestUtils.setField(service, "messageSource", realMessageSource);
-
-            TicketBookEntity book = TicketBookEntity.builder()
-                    .teamId(1L).userId(300L).totalTickets(10).build();
-            given(bookRepository.findBooksExpiringBetween(any(), any()))
-                    .willReturn(List.of(book), List.of(), List.of(), List.of());
-            given(userLocaleCache.getLocales(any())).willReturn(Map.of(300L, "en"));
-
-            service.sendExpiryNotifications();
-
-            org.mockito.ArgumentCaptor<String> bodyCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
-            verify(notificationHelper).notify(
-                    eq(300L), eq("TICKET_EXPIRY_WARNING"), any(), bodyCaptor.capture(),
-                    any(), any(), any(), any(), any(), any());
-            assertThat(bodyCaptor.getValue()).doesNotContain("{0}").contains("30");
+            ArgumentCaptor<TicketExpiryWarningNotificationEvent> captor =
+                    ArgumentCaptor.forClass(TicketExpiryWarningNotificationEvent.class);
+            verify(eventPublisher, times(1)).publishEvent(captor.capture());
+            assertThat(captor.getValue().bookId()).isEqualTo(5L);
+            assertThat(captor.getValue().userId()).isEqualTo(100L);
+            assertThat(captor.getValue().daysBefore()).isEqualTo(30);
         }
     }
 }
