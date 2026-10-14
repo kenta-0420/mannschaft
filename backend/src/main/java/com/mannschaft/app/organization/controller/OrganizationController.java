@@ -581,7 +581,9 @@ public class OrganizationController {
         List<String> permissions = roleService.resolveEffectivePermissions(userId, id, SCOPE_TYPE);
         String roleName = accessControlService.getRoleName(userId, id, SCOPE_TYPE);
         boolean scopeAdmin = accessControlService.isAdmin(userId, id, SCOPE_TYPE);
-        return ResponseEntity.ok(ApiResponse.of(new EffectivePermissionsResponse(roleName, permissions, scopeAdmin)));
+        boolean canGrantAdminOnly = accessControlService.canActAsScopeAdminOnly(userId, id, SCOPE_TYPE);
+        return ResponseEntity.ok(ApiResponse.of(
+                new EffectivePermissionsResponse(roleName, permissions, scopeAdmin, canGrantAdminOnly)));
     }
 
     /**
