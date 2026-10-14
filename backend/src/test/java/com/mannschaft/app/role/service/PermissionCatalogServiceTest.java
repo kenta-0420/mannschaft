@@ -62,6 +62,19 @@ class PermissionCatalogServiceTest {
         assertThat(forTeam.get(2).getId()).isEqualTo(1L);
         assertThat(forTeam.get(2).getDisplayName()).isEqualTo("MANAGE_ORG_AFFILIATION 表示名");
         assertThat(forTeam.get(2).getScope()).isEqualTo("TEAM");
+        // 付与可能な対象ロール: 通常の権限は DEPUTY_ADMIN・MEMBER の両方
+        assertThat(forTeam.get(0).getAssignableTargetRoles()).containsExactly("DEPUTY_ADMIN", "MEMBER");
+    }
+
+    @Test
+    @DisplayName("課金権限は付与可能な対象ロールが DEPUTY_ADMIN だけ（BillingPermissionGroupGuard の規則と同一の定義を使う）")
+    void billingPermissionsAreDeputyOnly() {
+        given(permissionRepository.findByScopeIn(PermissionCatalogService.GROUP_ASSIGNABLE_SCOPES)).willReturn(List.of(
+                permission(1, "MANAGE_TEAM_BILLING", PermissionEntity.Scope.TEAM),
+                permission(2, "MANAGE_ORGANIZATION_BILLING", PermissionEntity.Scope.ORGANIZATION)));
+
+        assertThat(service.list("TEAM")).allSatisfy(item ->
+                assertThat(item.getAssignableTargetRoles()).containsExactly("DEPUTY_ADMIN"));
     }
 
     @Test

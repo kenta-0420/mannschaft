@@ -24,6 +24,7 @@ import { primeStubs } from '../organization/member-teams/stubs'
  *   PD-12 ADMIN 専用権限を含むグループを付与できない操作者（SYSTEM_ADMIN 兼任など）には、そのグループを選べなくし理由を出す
  *   PD-13 ADMIN 専用権限を含むグループが既に割り当て済みのメンバーは、付与できない操作者には一切変更させない（外す操作も BE は 403）
  *   PD-14 付与できる操作者（チーム ADMIN）は ADMIN 専用権限のグループも選べる
+ *   PD-15 対象メンバーのロールと targetRole が一致するグループだけ選べる（BE は不一致を 404 にし保存全体が失敗する）。不一致は理由つきで無効
  */
 
 const getPermissionGroups = vi.fn()
@@ -188,6 +189,24 @@ describe('TeamMemberPermissionGroupsDialog', () => {
     await w.find('[data-testid="pg-assign-submit"]').trigger('click')
     await flushPromises()
     expect(assignPermissionGroups).toHaveBeenCalledWith('team-1', 42, [1, 2])
+  })
+
+  it('PD-15: メンバーのロールと targetRole が不一致のグループは選べず、理由を出す', async () => {
+    getPermissionGroups.mockResolvedValue({
+      data: [
+        { id: 1, name: '副管理者向け', targetRole: 'DEPUTY_ADMIN', permissions: ['MANAGE_TEAM_BILLING'] },
+        { id: 2, name: 'メンバー向け', targetRole: 'MEMBER', permissions: ['MANAGE_SCHEDULES'] },
+      ],
+    })
+    const w = await mountDialog({ member: { userId: 42, displayName: '山田', roleName: 'MEMBER', permissionGroups: [] } })
+    expect((w.find('[data-testid="pg-check-1"]').element as HTMLInputElement).disabled).toBe(true)
+    expect((w.find('[data-testid="pg-check-2"]').element as HTMLInputElement).disabled).toBe(false)
+    expect(w.find('[data-testid="pg-role-mismatch-1"]').exists()).toBe(true)
+    expect(w.find('[data-testid="pg-role-mismatch-2"]').exists()).toBe(false)
+
+    const deputy = await mountDialog({ member: { userId: 43, displayName: '佐藤', roleName: 'DEPUTY_ADMIN', permissionGroups: [] } })
+    expect((deputy.find('[data-testid="pg-check-1"]').element as HTMLInputElement).disabled).toBe(false)
+    expect((deputy.find('[data-testid="pg-check-2"]').element as HTMLInputElement).disabled).toBe(true)
   })
 
   it('PD-11: 別メンバーを開き直したら、そのメンバーの割当で初期化される', async () => {

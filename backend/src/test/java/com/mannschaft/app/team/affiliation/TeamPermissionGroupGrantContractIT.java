@@ -58,6 +58,7 @@ class TeamPermissionGroupGrantContractIT extends TeamAffiliationItSupport {
     private long sysAndTa;
     private long orgAdmin;
     private String orgPerm;
+    private String billingPerm;
     private String platformPerm;
     private String sfx;
 
@@ -83,6 +84,11 @@ class TeamPermissionGroupGrantContractIT extends TeamAffiliationItSupport {
         orgPerm = "IT8D_ORG_" + sfx;
         platformPerm = "IT8D_PLATFORM_" + sfx;
         insertPermission(orgPerm, "ORGANIZATION");
+        billingPerm = "MANAGE_TEAM_BILLING";
+        em.createNativeQuery("INSERT INTO permissions (name, display_name, scope, created_at, updated_at) "
+                        + "SELECT :n, :n, 'TEAM', NOW(), NOW() FROM DUAL WHERE NOT EXISTS "
+                        + "(SELECT 1 FROM permissions WHERE name = :n)")
+                .setParameter("n", billingPerm).executeUpdate();
         insertPermission(platformPerm, "PLATFORM");
         em.flush();
         em.clear();
@@ -116,8 +122,12 @@ class TeamPermissionGroupGrantContractIT extends TeamAffiliationItSupport {
     }
 
     private int createGroup(long actor, String name, long permissionId) throws Exception {
+        return createGroup(actor, name, "MEMBER", permissionId);
+    }
+
+    private int createGroup(long actor, String name, String targetRole, long permissionId) throws Exception {
         String body = objectMapper.writeValueAsString(Map.of(
-                "name", name, "targetRole", "MEMBER", "permissionIds", List.of(permissionId)));
+                "name", name, "targetRole", targetRole, "permissionIds", List.of(permissionId)));
         return mockMvc.perform(post("/api/v1/teams/{slug}/permission-groups", team.slug())
                         .with(user(String.valueOf(actor)))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
@@ -151,14 +161,16 @@ class TeamPermissionGroupGrantContractIT extends TeamAffiliationItSupport {
         MvcResult result = mockMvc.perform(get("/api/v1/permissions")
                         .param("scopeType", "TEAM").param("scopeId", String.valueOf(team.id()))
                         .with(user(String.valueOf(ta)))).andReturn();
-        List<Long> ids = new ArrayList<>();
+        Map<Long, String> roleById = new java.util.LinkedHashMap<>();
         for (JsonNode node : json(result).get("data")) {
-            ids.add(node.get("id").asLong());
+            // 付与可能な対象ロールの先頭（課金権限は DEPUTY_ADMIN のみ）で作る
+            roleById.put(node.get("id").asLong(), node.get("assignableTargetRoles").get(0).asText());
         }
-        assertThat(ids).isNotEmpty();
+        assertThat(roleById).isNotEmpty();
         int i = 0;
-        for (long id : ids) {
-            assertThat(createGroup(ta, "cat-" + sfx + "-" + i++, id)).as("permissionId=%d", id).isEqualTo(201);
+        for (Map.Entry<Long, String> e : roleById.entrySet()) {
+            assertThat(createGroup(ta, "cat-" + sfx + "-" + i++, e.getValue(), e.getKey()))
+                    .as("permissionId=%d", e.getKey()).isEqualTo(201);
         }
 
         String rejected = "plat-" + sfx;
@@ -185,6 +197,39 @@ class TeamPermissionGroupGrantContractIT extends TeamAffiliationItSupport {
                         .param("scopeType", "PLATFORM").param("scopeId", String.valueOf(team.id()))
                         .with(user(String.valueOf(ta)))).andReturn().getResponse().getStatus();
         assertThat(bad).isEqualTo(400);
+    }
+
+    // ---------------------------------------------------------------
+    // カタログの assignableTargetRoles ＝ BE の作成 API が受け付ける対象ロール
+    // ---------------------------------------------------------------
+
+    @Test
+    @DisplayName("カタログの assignableTargetRoles と、作成 API が受け付ける targetRole が全項目×全ロールで一致する（課金権限は DEPUTY_ADMIN のみ。MEMBER 向けは 400）")
+    void カタログの付与可能ロールと作成APIの対象ロール制約が一致する() throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/permissions")
+                        .param("scopeType", "TEAM").param("scopeId", String.valueOf(team.id()))
+                        .with(user(String.valueOf(ta)))).andReturn();
+        int n = 0;
+        boolean sawBilling = false;
+        for (JsonNode item : json(result).get("data")) {
+            long id = item.get("id").asLong();
+            // 課金権限は BillingPermissionGroupGuard により操作者が ADMIN 本人のときだけ通る（ta は ADMIN）
+            List<String> allowed = new ArrayList<>();
+            item.get("assignableTargetRoles").forEach(r -> allowed.add(r.asText()));
+            if (item.get("name").asText().equals(billingPerm)) {
+                sawBilling = true;
+                assertThat(allowed).containsExactly("DEPUTY_ADMIN");
+            }
+            for (String role : List.of("DEPUTY_ADMIN", "MEMBER")) {
+                int status = createGroup(ta, "role-" + sfx + "-" + n++, role, id);
+                if (allowed.contains(role)) {
+                    assertThat(status).as("許可された組合せ perm=%s role=%s", item.get("name"), role).isEqualTo(201);
+                } else {
+                    assertThat(status).as("拒否される組合せ perm=%s role=%s", item.get("name"), role).isEqualTo(400);
+                }
+            }
+        }
+        assertThat(sawBilling).as("課金権限がカタログにある").isTrue();
     }
 
     // ---------------------------------------------------------------

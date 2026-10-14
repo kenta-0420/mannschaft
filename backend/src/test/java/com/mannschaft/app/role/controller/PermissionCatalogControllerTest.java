@@ -56,7 +56,7 @@ class PermissionCatalogControllerTest {
     @DisplayName("対象スコープの ADMIN+ は 200 で一覧を得る（認可は指定スコープで確認する）")
     void adminGetsCatalog() {
         given(service.list("TEAM")).willReturn(List.of(
-                new PermissionCatalogItemResponse(1L, "MANAGE_ORG_AFFILIATION", "組織への加盟操作", "TEAM", true)));
+                new PermissionCatalogItemResponse(1L, "MANAGE_ORG_AFFILIATION", "組織への加盟操作", "TEAM", true, List.of("DEPUTY_ADMIN", "MEMBER"))));
 
         var response = controller.list("TEAM", 10L);
 

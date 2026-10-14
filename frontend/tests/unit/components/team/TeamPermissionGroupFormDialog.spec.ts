@@ -16,6 +16,8 @@ import { primeStubs } from '../organization/member-teams/stubs'
  *   PF-07 作成→割当の導線: 保存後に「メンバー一覧で割り当てる」案内が出る
  *   PF-08 ADMIN 専用権限を付与できない操作者（SYSTEM_ADMIN 兼任など）は、ADMIN 専用権限を選べず理由が出る（他の権限は選べる）
  *   PF-09 編集対象が既に ADMIN 専用権限を含み、付与できない操作者なら、編集全体を不可にする（外す操作も BE は 403）
+ *   PF-10 カタログの assignableTargetRoles に選択中の対象ロールが無い権限（課金権限は DEPUTY_ADMIN のみ）は選べず理由が出る。対象ロールを切り替えると該当の選択は外れる
+ *   PF-11 既存グループが対象ロールと権限の組合せ制約に反している（誰にも割り当てられない）ときは保存させず理由を出す
  */
 
 const listPermissionCatalog = vi.fn()
@@ -29,9 +31,11 @@ vi.mock('~/composables/team/useTeamMembers', () => ({
   useTeamMembers: () => ({ createPermissionGroup, updatePermissionGroup }),
 }))
 
+const BOTH = ['DEPUTY_ADMIN', 'MEMBER']
 const catalog = [
-  { id: 1, name: 'MANAGE_ORG_AFFILIATION', displayName: '組織への加盟操作', scope: 'TEAM', adminOnlyGrantable: true },
-  { id: 2, name: 'MANAGE_SCHEDULES', displayName: '予定管理', scope: 'TEAM', adminOnlyGrantable: false },
+  { id: 1, name: 'MANAGE_ORG_AFFILIATION', displayName: '組織への加盟操作', scope: 'TEAM', adminOnlyGrantable: true, assignableTargetRoles: BOTH },
+  { id: 2, name: 'MANAGE_SCHEDULES', displayName: '予定管理', scope: 'TEAM', adminOnlyGrantable: false, assignableTargetRoles: BOTH },
+  { id: 3, name: 'MANAGE_TEAM_BILLING', displayName: 'チーム課金管理', scope: 'TEAM', adminOnlyGrantable: false, assignableTargetRoles: ['DEPUTY_ADMIN'] },
 ]
 
 const stubs = { ...primeStubs, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } }
@@ -152,6 +156,32 @@ describe('TeamPermissionGroupFormDialog', () => {
     expect(w.find('[data-testid="pf-admin-only-locked"]').exists()).toBe(true)
     expect(w.find('[data-testid="pf-submit"]').exists()).toBe(false)
     expect((w.find('[data-testid="pf-name"]').element as HTMLInputElement).disabled).toBe(true)
+    expect(updatePermissionGroup).not.toHaveBeenCalled()
+  })
+
+  it('PF-10: 対象ロールに付与できない権限（課金権限は DEPUTY_ADMIN のみ）は選べず、ロール切替で選択が外れる', async () => {
+    createPermissionGroup.mockResolvedValue({})
+    const w = await mountDialog()
+    // 既定の対象ロールは MEMBER: 課金権限は選べない
+    expect((w.find('[data-testid="pf-perm-3"]').element as HTMLInputElement).disabled).toBe(true)
+    expect(w.find('[data-testid="pf-role-reason-3"]').exists()).toBe(true)
+    expect((w.find('[data-testid="pf-perm-2"]').element as HTMLInputElement).disabled).toBe(false)
+    // DEPUTY_ADMIN にすると選べる
+    await w.find('[data-testid="pf-target-role"]').setValue('DEPUTY_ADMIN')
+    expect((w.find('[data-testid="pf-perm-3"]').element as HTMLInputElement).disabled).toBe(false)
+    await w.find('[data-testid="pf-perm-3"]').setValue(true)
+    expect((w.find('[data-testid="pf-perm-3"]').element as HTMLInputElement).checked).toBe(true)
+    // MEMBER に戻すと、付与できなくなった選択は外れる
+    await w.find('[data-testid="pf-target-role"]').setValue('MEMBER')
+    expect((w.find('[data-testid="pf-perm-3"]').element as HTMLInputElement).checked).toBe(false)
+  })
+
+  it('PF-11: 既に組合せ制約に反しているグループは保存させず、理由を出す', async () => {
+    const group = { id: 9, name: '課金', targetRole: 'MEMBER', permissions: ['MANAGE_TEAM_BILLING'] }
+    const w = await mountDialog({ group })
+    expect(w.find('[data-testid="pf-role-conflict"]').exists()).toBe(true)
+    await w.find('[data-testid="pf-submit"]').trigger('click')
+    await flushPromises()
     expect(updatePermissionGroup).not.toHaveBeenCalled()
   })
 

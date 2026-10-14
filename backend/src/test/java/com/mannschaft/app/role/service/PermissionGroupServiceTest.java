@@ -287,6 +287,33 @@ class PermissionGroupServiceTest {
         }
 
         @Test
+        @DisplayName("課金権限（MANAGE_TEAM_BILLING）を含むグループは対象ロール DEPUTY_ADMIN 専用: MEMBER 向けの作成は 400（誰にも割り当てられないグループを作らせない）")
+        void createRejectsBillingPermissionForMemberTargetRole() {
+            PermissionGroupRequest req = new PermissionGroupRequest("g", "MEMBER", List.of(PERM_ID_1));
+            given(permissionRepository.findByIdIn(req.getPermissionIds())).willReturn(List.of(
+                    scoped(PERM_ID_1, "MANAGE_TEAM_BILLING", PermissionEntity.Scope.TEAM)));
+
+            assertThatThrownBy(() -> permissionGroupService.createPermissionGroup(SCOPE_ID, "TEAM", req, CREATED_BY))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode()).isEqualTo("COMMON_001"));
+            verify(permissionGroupRepository, never()).save(any(PermissionGroupEntity.class));
+        }
+
+        @Test
+        @DisplayName("課金権限を含むグループでも DEPUTY_ADMIN 向けなら作成できる")
+        void createAcceptsBillingPermissionForDeputyTargetRole() {
+            PermissionGroupRequest req = new PermissionGroupRequest("g", "DEPUTY_ADMIN", List.of(PERM_ID_1));
+            given(permissionRepository.findByIdIn(req.getPermissionIds())).willReturn(List.of(
+                    scoped(PERM_ID_1, "MANAGE_TEAM_BILLING", PermissionEntity.Scope.TEAM)));
+            given(permissionGroupRepository.save(any(PermissionGroupEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            permissionGroupService.createPermissionGroup(SCOPE_ID, "TEAM", req, CREATED_BY);
+
+            verify(permissionGroupRepository).save(any(PermissionGroupEntity.class));
+        }
+
+        @Test
         @DisplayName("ORGANIZATION 分類の権限もチームの権限グループに含められる（scope は認可判定に使わない分類列）")
         void createAcceptsOrganizationClassifiedPermissionForTeamGroup() {
             PermissionGroupRequest req = new PermissionGroupRequest("g", "MEMBER", List.of(PERM_ID_1));
