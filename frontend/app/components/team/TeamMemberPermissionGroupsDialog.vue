@@ -98,8 +98,14 @@ const lockedByAssignedAdminOnly = computed(() =>
   !props.canGrantAdminOnly && groups.value.some(g => current.value.has(g.id) && isAdminOnlyGroup(g)))
 /** 付与できない操作者向けに、ADMIN 専用権限のグループがある（選べない旨の理由を出す）。 */
 const hasAdminOnlyGroups = computed(() => !props.canGrantAdminOnly && groups.value.some(isAdminOnlyGroup))
+/**
+ * 対象メンバーのロールと targetRole が一致しないグループ。BE（PermissionGroupService#validateAssignmentTarget）は
+ * 不一致を 404 にして保存全体を失敗させるため、選べなくする。
+ */
+const isRoleMismatch = (g: TeamPermissionGroup) =>
+  props.member !== null && g.targetRole !== props.member.roleName
 const isDisabled = (g: TeamPermissionGroup) =>
-  lockedByAssignedAdminOnly.value || (!props.canGrantAdminOnly && isAdminOnlyGroup(g))
+  lockedByAssignedAdminOnly.value || (!props.canGrantAdminOnly && isAdminOnlyGroup(g)) || isRoleMismatch(g)
 const changed = computed(() => added.value.length > 0 || removed.value.length > 0)
 
 function toggle(groupId: number, checked: boolean) {
@@ -168,6 +174,11 @@ async function save() {
             <span class="min-w-0">
               <span class="font-medium">{{ group.name }}</span>
               <span class="ml-2 text-xs text-surface-500">{{ group.targetRole }}</span>
+              <span
+                v-if="isRoleMismatch(group)"
+                class="ml-2 text-xs text-amber-600"
+                :data-testid="`pg-role-mismatch-${group.id}`"
+              >{{ t('teamAffiliations.member_menu.role_mismatch', { role: member?.roleName ?? '' }) }}</span>
               <Tag
                 v-if="group.permissions.includes(MANAGE_ORG_AFFILIATION)"
                 :value="t('teamAffiliations.permission_group_list.affiliation_mark')"

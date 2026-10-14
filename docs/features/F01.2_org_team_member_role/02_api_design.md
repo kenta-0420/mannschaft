@@ -116,7 +116,7 @@
 
 権限グループの作成・更新（`permissionIds`）で選べる権限の一覧。**権限グループの作成・更新 API が受け付ける `permissionIds` の集合と同じ**を、名前順で返す。
 
-- 対象は `permissions.scope` が `TEAM` または `ORGANIZATION` の権限。`PLATFORM` 分類（プラットフォーム運営の権限）は含めず、作成・更新側も同じ判定で拒否する（`ROLE_007`）。判定は `PermissionCatalogService.isGroupAssignable` の 1 箇所で、カタログと作成・更新の検証が共用する。
+- 対象は `permissions.scope` が `TEAM` または `ORGANIZATION` の権限。`PLATFORM` 分類（プラットフォーム運営の権限）は含めず、作成・更新側も同じ判定で拒否する（`ROLE_007`）。さらに、権限と `targetRole` の組合せが `assignableTargetRoles` に反する作成・更新（例: 課金権限を含む MEMBER 向けグループ）は **400（`COMMON_001`）** で拒否する。既存データは変更しないが、そのようなグループは更新時に同じ検証で拒否される。判定は `PermissionCatalogService.isGroupAssignable` の 1 箇所で、カタログと作成・更新の検証が共用する。
 - `scope` 列は認可判定では参照されない分類列で、TEAM と ORGANIZATION の両方で使う権限は主たるスコープ 1 値で登録されている（`docs/security/README.md` §4.3 ルール 3。例: 組織 DEPUTY_ADMIN への委任に使う `MANAGE_CONTENT` は TEAM 分類）。そのため、`scopeType` がチームでも組織でも返す集合は同じ。`scopeType` は認可（どのスコープの ADMIN+ か）の確認にだけ使う。
 
 | クエリ | 型 | 必須 | 説明 |
@@ -133,6 +133,7 @@
 | `displayName` | String | 表示名 |
 | `scope` | String | 権限の対象スコープ（`TEAM` / `ORGANIZATION`）|
 | `adminOnlyGrantable` | Boolean | スコープの ADMIN だけが権限グループへ含められる権限か（`PermissionGroupService.ADMIN_ONLY_GRANTABLE_PERMISSIONS`。DEPUTY_ADMIN が含めると作成・更新・割当が 403）|
+| `assignableTargetRoles` | String[] | この権限を含められる権限グループの対象ロール（`DEPUTY_ADMIN` / `MEMBER`）。通常の権限は両方、**課金権限（`MANAGE_TEAM_BILLING` / `MANAGE_ORGANIZATION_BILLING`）は `DEPUTY_ADMIN` のみ**（`BillingPermissionGroupGuard` は課金権限の割当先を DEPUTY_ADMIN に限定するため、MEMBER 向けに含めると誰にも割り当てられないグループになる）。定義は `BillingPermissionGroupGuard.assignableTargetRoles` の 1 箇所で、カタログと作成・更新の検証が共用する |
 
 #### メンバー一覧の `permissionGroups`（`GET /api/v1/teams/{slug}/members` と `/members/all`）
 

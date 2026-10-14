@@ -13,6 +13,11 @@ export interface PermissionCatalogItem {
   scope: string
   /** スコープの ADMIN だけが権限グループへ含められる権限か。 */
   adminOnlyGrantable: boolean
+  /**
+   * この権限を含められる権限グループの対象ロール（DEPUTY_ADMIN / MEMBER）。課金権限は DEPUTY_ADMIN のみ。
+   * BE の作成・更新 API はこれに反する組合せを 400 で拒否する。旧 BE は返さない（undefined。制約なしとして扱う）。
+   */
+  assignableTargetRoles?: string[]
 }
 
 export function usePermissionCatalogApi() {

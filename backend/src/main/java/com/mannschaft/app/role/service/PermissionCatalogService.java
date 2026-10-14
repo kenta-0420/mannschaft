@@ -62,7 +62,8 @@ public class PermissionCatalogService {
                 .sorted(Comparator.comparing(PermissionEntity::getName))
                 .map(p -> new PermissionCatalogItemResponse(
                         p.getId(), p.getName(), p.getDisplayName(), p.getScope().name(),
-                        PermissionGroupService.ADMIN_ONLY_GRANTABLE_PERMISSIONS.contains(p.getName())))
+                        PermissionGroupService.ADMIN_ONLY_GRANTABLE_PERMISSIONS.contains(p.getName()),
+                        com.mannschaft.app.role.security.BillingPermissionGroupGuard.assignableTargetRoles(p.getName())))
                 .toList();
     }
 }

@@ -15,6 +15,7 @@ import com.mannschaft.app.role.RoleErrorCode;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.role.dto.MemberResponse;
 import com.mannschaft.app.role.dto.PermissionGroupRequest;
 import com.mannschaft.app.role.dto.PermissionGroupResponse;
@@ -71,7 +72,7 @@ public class PermissionGroupService {
         requireMutationAuthority(createdBy, scopeId, scopeType, req.getPermissionIds());
 
         // パーミッション存在確認
-        validatePermissionIds(req.getPermissionIds());
+        validatePermissionIds(req.getPermissionIds(), req.getTargetRole());
 
         var builder = PermissionGroupEntity.builder()
                 .name(req.getName())
@@ -119,7 +120,7 @@ public class PermissionGroupService {
         requireMutationAuthority(actorUserId, group, union(oldPermissionIds, req.getPermissionIds()));
 
         // パーミッション存在確認
-        validatePermissionIds(req.getPermissionIds());
+        validatePermissionIds(req.getPermissionIds(), req.getTargetRole());
 
         // 既存のグループを更新（toBuilderで新オブジェクト作成）
         PermissionGroupEntity updated = group.toBuilder()
@@ -507,7 +508,7 @@ public class PermissionGroupService {
         }
     }
 
-    private void validatePermissionIds(List<Long> permissionIds) {
+    private void validatePermissionIds(List<Long> permissionIds, String targetRole) {
         List<PermissionEntity> found = permissionRepository.findByIdIn(permissionIds);
         if (found.size() != permissionIds.size()) {
             throw new BusinessException(RoleErrorCode.ROLE_007);
@@ -515,6 +516,13 @@ public class PermissionGroupService {
         // 権限カタログ（GET /api/v1/permissions）と同じ判定: 権限グループに含められるのは TEAM/ORGANIZATION 分類の権限だけ。
         if (!found.stream().allMatch(p -> PermissionCatalogService.isGroupAssignable(p.getScope()))) {
             throw new BusinessException(RoleErrorCode.ROLE_007);
+        }
+        // 権限と対象ロールの組合せ制約（権限カタログの assignableTargetRoles と同じ定義）。例: 課金権限は DEPUTY_ADMIN 向けのみ。
+        // 反する組合せは誰にも割り当てられないグループになるため 400 で拒否する。
+        for (PermissionEntity permission : found) {
+            if (!BillingPermissionGroupGuard.assignableTargetRoles(permission.getName()).contains(targetRole)) {
+                throw new BusinessException(CommonErrorCode.COMMON_001);
+            }
         }
     }
 

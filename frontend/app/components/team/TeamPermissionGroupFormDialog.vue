@@ -108,9 +108,23 @@ const lockedByAdminOnly = computed(() => {
 })
 const hasAdminOnlyItems = computed(() => !props.canGrantAdminOnly && catalog.value.some(i => i.adminOnlyGrantable))
 const isItemDisabled = (item: PermissionCatalogItem) =>
-  lockedByAdminOnly.value || (!props.canGrantAdminOnly && item.adminOnlyGrantable)
+  lockedByAdminOnly.value || (!props.canGrantAdminOnly && item.adminOnlyGrantable) || !roleAllows(item)
 
-const valid = computed(() => name.value.trim().length > 0 && selected.value.size > 0)
+/** 選択中の対象ロールに付与できない権限か（課金権限は DEPUTY_ADMIN 向けのみ等。BE が 400 にする組合せ）。 */
+const roleAllows = (item: PermissionCatalogItem) =>
+  item.assignableTargetRoles === undefined || item.assignableTargetRoles.includes(targetRole.value)
+const conflictItems = computed(() => catalog.value.filter(i => selected.value.has(i.id) && !roleAllows(i)))
+const roleConflict = computed(() => conflictItems.value.length > 0)
+
+// 対象ロールを切り替えたら、そのロールに付与できなくなった権限の選択を外す。
+watch(targetRole, () => {
+  if (!roleConflict.value) return
+  const next = new Set(selected.value)
+  for (const item of conflictItems.value) next.delete(item.id)
+  selected.value = next
+})
+
+const valid = computed(() => name.value.trim().length > 0 && selected.value.size > 0 && !roleConflict.value)
 
 async function save() {
   if (saving.value || !valid.value || lockedByAdminOnly.value) return
@@ -208,6 +222,11 @@ async function save() {
             <span class="min-w-0">
               <span>{{ item.displayName }}</span>
               <span class="ml-2 text-xs text-surface-500">{{ item.name }}</span>
+              <span
+                v-if="!roleAllows(item)"
+                class="ml-2 text-xs text-amber-600"
+                :data-testid="`pf-role-reason-${item.id}`"
+              >{{ t('teamAffiliations.group_form.role_reason') }}</span>
               <Tag
                 v-if="item.adminOnlyGrantable"
                 :value="t('teamAffiliations.group_form.admin_only')"
@@ -218,6 +237,10 @@ async function save() {
             </span>
           </label>
         </fieldset>
+
+        <Message v-if="roleConflict" severity="warn" data-testid="pf-role-conflict">
+          {{ t('teamAffiliations.group_form.role_conflict') }}
+        </Message>
 
         <Message v-if="lockedByAdminOnly" severity="warn" data-testid="pf-admin-only-locked">
           {{ t('teamAffiliations.group_form.admin_only_locked') }}

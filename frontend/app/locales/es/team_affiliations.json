@@ -109,7 +109,8 @@
       "diff_remove": "Quitar: {groups}",
       "current_unknown": "No se pudo obtener la asignación actual, así que no se puede guardar para no borrar las existentes. Recarga la lista de miembros e inténtalo de nuevo.",
       "admin_only_reason": "Los grupos con permisos solo de administrador, como «Gestionar afiliación a organizaciones», solo puede concederlos el propio administrador del equipo (no si también es SYSTEM_ADMIN). No se pueden seleccionar",
-      "admin_only_locked": "Este miembro ya tiene un grupo con permisos solo de administrador. Los cambios que afecten a estos permisos (incluido quitarlos) solo los puede hacer el propio administrador del equipo (no si también es SYSTEM_ADMIN)"
+      "admin_only_locked": "Este miembro ya tiene un grupo con permisos solo de administrador. Los cambios que afecten a estos permisos (incluido quitarlos) solo los puede hacer el propio administrador del equipo (no si también es SYSTEM_ADMIN)",
+      "role_mismatch": "El rol de destino no coincide (este miembro es {role})"
     },
     "group_form": {
       "create_title": "Crear grupo de permisos",
@@ -128,7 +129,9 @@
       "saved_hint": "Puedes asignar este grupo con el botón «Grupos de permisos» de cada miembro en la lista de miembros.",
       "go_members": "Asignar desde la lista de miembros",
       "admin_only_reason": "Los permisos solo de administrador, como «Gestionar afiliación a organizaciones», solo puede concederlos el propio administrador del equipo (no si también es SYSTEM_ADMIN). No se pueden seleccionar",
-      "admin_only_locked": "Este grupo incluye permisos solo de administrador. Los cambios (incluido quitar permisos) solo los puede hacer el propio administrador del equipo (no si también es SYSTEM_ADMIN)"
+      "admin_only_locked": "Este grupo incluye permisos solo de administrador. Los cambios (incluido quitar permisos) solo los puede hacer el propio administrador del equipo (no si también es SYSTEM_ADMIN)",
+      "role_reason": "No se puede conceder a este rol de destino (los permisos de facturación son solo para administradores adjuntos)",
+      "role_conflict": "Este grupo incluye permisos que no se pueden conceder al rol de destino elegido, así que no se podría asignar a nadie. Revisa el rol de destino o los permisos"
     }
   }
 }

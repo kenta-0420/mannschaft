@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.util.List;
+
 /**
  * 権限カタログの 1 件（{@code GET /api/v1/permissions}）。権限グループの作成・更新で選ぶ権限の一覧に使う。
  */
@@ -26,4 +28,10 @@ public class PermissionCatalogItemResponse {
 
     /** スコープの ADMIN だけが権限グループへ含められる権限か（DEPUTY_ADMIN 以下は 403）。 */
     private final boolean adminOnlyGrantable;
+
+    /**
+     * この権限を含められる権限グループの対象ロール（{@code DEPUTY_ADMIN} / {@code MEMBER}）。
+     * 課金権限は DEPUTY_ADMIN のみ。作成・更新 API はこれに反する組合せを 400 で拒否する。
+     */
+    private final List<String> assignableTargetRoles;
 }
