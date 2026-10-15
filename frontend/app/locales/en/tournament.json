@@ -1,6 +1,12 @@
 {
   "tournament": {
     "detail": {
+      "backToList": "Back to tournaments",
+      "noParticipants": "No participating teams",
+      "teamName": "Team name",
+      "entryCount": "Entries",
+      "actions": "Actions",
+      "manageEntry": "Manage entries",
       "noDivisions": "No divisions are registered",
       "divisionsLoadError": "Failed to load the divisions",
       "loadError": "Failed to load the tournament"
@@ -20,6 +26,8 @@
       }
     },
     "entry": {
+      "name": "Name",
+      "overwriteExisting": "Overwrite existing entries",
       "title": "Entry Management",
       "memberCount": "{count} members",
       "countRange": "{min}〜{max} members",
