@@ -12,12 +12,12 @@
       "description": "招待プレビューが実APIのtargetName/targetType/valid契約を読み、有効なTEAM招待から参加できる。無効招待と通信・認証失敗を区別し、通信失敗は再試行できる。",
       "tests": [
         {
-          "name": "招待ページ単体テスト30件中のAPI契約・有効/無効・失敗分類・再試行ケース",
+          "name": "招待ページ単体テスト13件のAPI契約・有効/無効・失敗分類・再試行ケース（関連単体テスト合計30件）",
           "evidence": "frontend/app/pages/invite/[token].spec.ts"
         },
         {
-          "name": "mock E2E 2件（成功・ログイン復帰）、未定義API要求0",
-          "evidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38688941514"
+          "name": "mock E2E 2件をローカル実走し、未定義API要求0",
+          "evidence": "docs/evidence/CMP-261015-1155-review.md"
         }
       ]
     },
@@ -34,7 +34,7 @@
           "evidence": "frontend/app/pages/verify-email.spec.ts"
         },
         {
-          "name": "招待redirect unitと認証済み/未認証招待E2E",
+          "name": "招待redirect unit、AUTH-009a未認証案内、AUTH-009b認証済み実API参加の回帰ケース",
           "evidence": "frontend/tests/e2e/auth/invite.spec.ts"
         }
       ]
@@ -107,7 +107,7 @@
       "description": "実APIはtargetName/targetType/validを返すが旧画面がname/type/isValidを読み、有効招待を無効表示していた。",
       "test": "frontend/app/pages/invite/[token].spec.ts: 実APIのTEAMを表示して任意フォルダ付きで参加する",
       "redEvidence": "docs/evidence/CMP-261015-1155-review.md",
-      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38688941752",
+      "greenEvidence": "docs/evidence/CMP-261015-1155-review.md",
       "redResult": "修正前valid=true応答で無効招待DOMとなり、参加先名assertionが失敗。",
       "greenResult": "契約修正後に同じcase成功。"
     },
@@ -123,7 +123,7 @@
       "description": "認証済み招待のSSR初期状態とclient復元後のDOMが一致せずhydration警告を出していた（ALIC-1）。",
       "test": "frontend/tests/e2e/auth/invite.spec.ts: AUTH-009b hydration warning/error不在assertion",
       "redEvidence": "docs/evidence/CMP-261015-1155-review.md",
-      "greenEvidence": "https://github.com/kenta-0420/mannschaft/actions/runs/38688941752",
+      "greenEvidence": "docs/evidence/CMP-261015-1155-review.md",
       "redResult": "修正前、招待表示は成功したがhydration警告2件の不在assertionが失敗。",
       "greenResult": "初期loading stateの復旧後、直列E2E2件成功・警告0、関連unit13件成功。"
     }
