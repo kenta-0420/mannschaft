@@ -17,7 +17,7 @@ describe('MemberCardAdminList', () => {
       props: { cards, busy: false },
       global: { stubs: {
         SectionCard: { props: ['title'], template: '<section><h2>{{ title }}</h2><slot /></section>' },
-        Button: { props: ['label'], template: '<button @click="$emit(\'click\')">{{ label }}</button>' },
+        Button: { props: ['label'], emits: ['click'], template: '<button @click="$emit(\'click\')">{{ label }}</button>' },
         SelectButton: true,
       } },
     })

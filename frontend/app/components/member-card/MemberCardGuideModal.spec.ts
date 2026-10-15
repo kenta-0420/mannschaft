@@ -8,7 +8,7 @@ describe('MemberCardGuideModal', () => {
       props: { visible: true, team: true },
       global: { stubs: {
         Dialog: { template: '<div><slot /><slot name="footer" /></div>' },
-        Button: { template: '<button @click="$emit(\'click\')">close</button>' },
+        Button: { emits: ['click'], template: '<button @click="$emit(\'click\')">close</button>' },
         MemberCardGuideContent: true,
       } },
     })

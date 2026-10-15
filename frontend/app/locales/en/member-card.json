@@ -42,7 +42,7 @@
   },
   "memberCardGuide": {
     "title": "How to manage QR membership cards",
-    "description": "Manage card status and visit history for your members. Use Member management to add members or change roles.",
+    "description": "Manage card status and visit history for your members. Use Member management to change roles or remove members.",
     "cards": {
       "title": "Find a card and change its status",
       "body": "Each entry shows the member name, card number, status and check-in count. Members display their own QR code from their account membership-card settings.",

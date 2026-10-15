@@ -28,7 +28,7 @@
       },
       "members": {
         "title": "Miembros",
-        "desc": "Gestiona la lista de miembros, los cambios de rol, las tarjetas de miembro y los perfiles"
+        "desc": "Consulta los miembros, cambia sus roles y elimina miembros"
       },
       "settings": {
         "title": "Configuración",

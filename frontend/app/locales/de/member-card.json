@@ -42,7 +42,7 @@
   },
   "memberCardGuide": {
     "title": "Anleitung zur Ausweisverwaltung",
-    "description": "Verwalten Sie den Status und die Besuchshistorie Ihrer Mitglieder. Zum Hinzufügen oder Ändern von Rollen verwenden Sie die Mitgliederverwaltung.",
+    "description": "Verwalten Sie den Status und die Besuchshistorie Ihrer Mitglieder. Zum Ändern von Rollen oder Entfernen von Mitgliedern verwenden Sie die Mitgliederverwaltung.",
     "cards": {
       "title": "Ausweis finden und Status ändern",
       "body": "Jeder Eintrag zeigt Namen, Ausweisnummer, Status und Check-in-Anzahl. Den eigenen QR-Code öffnen Mitglieder in den Ausweiseinstellungen ihres Kontos.",

@@ -42,7 +42,7 @@
   },
   "memberCardGuide": {
     "title": "Cómo gestionar las tarjetas QR",
-    "description": "Gestione el estado de las tarjetas y las visitas de sus socios. Para añadir miembros o cambiar roles, use Gestión de miembros.",
+    "description": "Gestione el estado de las tarjetas y las visitas de sus socios. Para cambiar roles o eliminar miembros, use Gestión de miembros.",
     "cards": {
       "title": "Buscar una tarjeta y cambiar su estado",
       "body": "Cada tarjeta muestra nombre, número, estado y número de entradas. El socio muestra su propio QR desde las tarjetas de su configuración de cuenta.",
