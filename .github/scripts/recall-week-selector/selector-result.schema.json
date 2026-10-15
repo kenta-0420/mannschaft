@@ -1,0 +1,904 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "recall-week-exact-selector-result-v1"
+    },
+    "sourceHead": {
+      "const": "d695c9cb731a4f32d12821b0b53e1d2059c94821"
+    },
+    "sourceTree": {
+      "const": "9538f0f36d0b099f77ed08cebfb973350b6bd6e0"
+    },
+    "sourceFiles": {
+      "const": {
+        ".github/workflows/backend-ci.yml": "46a3513ac2a3ac4500a86ed7459e5f2077b785b995507d3c0b53073984259f0a",
+        "backend/build.gradle.kts": "859000e1d63c1c765c1914d47914ae810b7a1d16e96e45fff26a8a0a1fc6f268",
+        "backend/gradle/wrapper/gradle-wrapper.properties": "aef287d114ce3153c3d535697a61928f5034990d570cbb2e93df549e9671483d",
+        "backend/src/test/java/com/mannschaft/app/reflection/RecallRewardWeekTemporalIT.java": "1ffb2bf0456cd4538b68cb57dd6cc33650fb76d0691f16602ced04de7589f806",
+        "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java": "55d7002d6d9d0d534a74d151918c24ea421cc147462bd1be8dd24f83f3392417",
+        "backend/src/test/resources/application-test.yml": "059327e4ab8f9862d9faa80fd72477a2ab92eabb0843dca4970d94b73eb6eb3a",
+        "backend/src/main/java/com/mannschaft/app/config/TimeZoneConfig.java": "5a7dd25894d8f456bd13023bea499e5dd76ab4770c87b65342de8b0f4855fad9",
+        "backend/src/main/java/com/mannschaft/app/config/ClockConfig.java": "f59aa21a32a66dd89377a9d47ff629d879690e91b53b2a36983dc5a9834a0aa2",
+        "backend/src/main/java/com/mannschaft/app/reflection/entity/RecallSessionEntity.java": "47fb91ebcf40a9034689383f56227a21b1c4182e19c65848ab2383130e2a299c",
+        "backend/src/main/java/com/mannschaft/app/reflection/service/RecallSessionOperationFacade.java": "6ea3dce953c3870ba75120882687346486c3a35d1cc2633e305bf5a77183a2b5",
+        "backend/src/main/java/com/mannschaft/app/reflection/service/RecallSessionWriter.java": "904692d2e463948dde8258e66d70fd920dd9517e723c5082d0b236fca504c473",
+        "backend/src/main/java/com/mannschaft/app/reflection/service/ReflectionRecallRewardQueue.java": "2a26705d36ba01c1e1b2b838c9c6d1213bc6dbe9baa9998b91d206e8ef55220b",
+        "backend/src/main/java/com/mannschaft/app/reflection/service/ReflectionRanchTransportWriter.java": "b47f7f0a90b197f1e3c55db066cbf7c84ca0ea33acbabe070280576e7ea6b0d7",
+        "backend/src/main/java/com/mannschaft/app/reflection/dto/ReflectionRecallRewardPayload.java": "45ccdb2b60f8c4308a885f959b688b82e37ae15a8cf0f075110df0543cad8c3f",
+        "backend/src/main/java/com/mannschaft/app/ranch/reward/api/RanchRewardEnvelope.java": "a68c24da7dba4a85408969a8cb8c3b9a803a9a0fba1596c9754209390c26a286"
+      }
+    },
+    "selector": {
+      "const": "com.mannschaft.app.reflection.RecallRewardWeekTemporalIT.physicalWeekAndNativeGetSurviveCompletionAndNextWeekReplay"
+    },
+    "key": {
+      "enum": [
+        "utc-initial",
+        "jst-initial"
+      ]
+    },
+    "initialJvmTimezone": {
+      "enum": [
+        "UTC",
+        "Asia/Tokyo"
+      ]
+    },
+    "sourcePinKind": {
+      "const": "GIT_CANONICAL_BLOB_SHA256"
+    },
+    "checkoutPolicy": {
+      "const": "EXACT_CANONICAL_BLOB_NO_DECLARED_EOL_CONVERSION"
+    },
+    "checkoutPhysicalObservations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        ".github/workflows/backend-ci.yml": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/build.gradle.kts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/gradle/wrapper/gradle-wrapper.properties": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/test/java/com/mannschaft/app/reflection/RecallRewardWeekTemporalIT.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/test/resources/application-test.yml": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/config/TimeZoneConfig.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/config/ClockConfig.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/reflection/entity/RecallSessionEntity.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/reflection/service/RecallSessionOperationFacade.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/reflection/service/RecallSessionWriter.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/reflection/service/ReflectionRecallRewardQueue.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/reflection/service/ReflectionRanchTransportWriter.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/reflection/dto/ReflectionRecallRewardPayload.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/ranch/reward/api/RanchRewardEnvelope.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        }
+      },
+      "required": [
+        ".github/workflows/backend-ci.yml",
+        "backend/build.gradle.kts",
+        "backend/gradle/wrapper/gradle-wrapper.properties",
+        "backend/src/test/java/com/mannschaft/app/reflection/RecallRewardWeekTemporalIT.java",
+        "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java",
+        "backend/src/test/resources/application-test.yml",
+        "backend/src/main/java/com/mannschaft/app/config/TimeZoneConfig.java",
+        "backend/src/main/java/com/mannschaft/app/config/ClockConfig.java",
+        "backend/src/main/java/com/mannschaft/app/reflection/entity/RecallSessionEntity.java",
+        "backend/src/main/java/com/mannschaft/app/reflection/service/RecallSessionOperationFacade.java",
+        "backend/src/main/java/com/mannschaft/app/reflection/service/RecallSessionWriter.java",
+        "backend/src/main/java/com/mannschaft/app/reflection/service/ReflectionRecallRewardQueue.java",
+        "backend/src/main/java/com/mannschaft/app/reflection/service/ReflectionRanchTransportWriter.java",
+        "backend/src/main/java/com/mannschaft/app/reflection/dto/ReflectionRecallRewardPayload.java",
+        "backend/src/main/java/com/mannschaft/app/ranch/reward/api/RanchRewardEnvelope.java"
+      ]
+    },
+    "gitAttributes": {
+      "const": {
+        ".github/workflows/backend-ci.yml": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/build.gradle.kts": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/gradle/wrapper/gradle-wrapper.properties": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/test/java/com/mannschaft/app/reflection/RecallRewardWeekTemporalIT.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/test/resources/application-test.yml": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/config/TimeZoneConfig.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/config/ClockConfig.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/reflection/entity/RecallSessionEntity.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/reflection/service/RecallSessionOperationFacade.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/reflection/service/RecallSessionWriter.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/reflection/service/ReflectionRecallRewardQueue.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/reflection/service/ReflectionRanchTransportWriter.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/reflection/dto/ReflectionRecallRewardPayload.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/ranch/reward/api/RanchRewardEnvelope.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        }
+      }
+    },
+    "trackedGitAttributesBlobSha256": {
+      "const": {
+        "backend/.gitattributes": "193fbf6c445dea576a6f238c5262320931945a2ea03bae24b161b30856919a09",
+        "backend/src/test/resources/ranch/approved/asset-packs/.gitattributes": "89dddfc52a6d1b734a50dacfb9ba5ae46fbdd74c9e619fef3567a0301950b9f1"
+      }
+    },
+    "expectedTestCount": {
+      "const": 2
+    },
+    "runId": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "runAttempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workflowSha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "workflowRef": {
+      "const": "refs/heads/feature/ranch-recall-week-fixed-d695c9cb-20261015-01"
+    },
+    "eventName": {
+      "const": "push"
+    },
+    "wholeAcceptanceGreen": {
+      "const": false
+    },
+    "formalPublicGateOpen": {
+      "const": false
+    },
+    "runTestsActualExit": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "actualTestCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selector": {
+          "const": "com.mannschaft.app.reflection.RecallRewardWeekTemporalIT.physicalWeekAndNativeGetSurviveCompletionAndNextWeekReplay"
+        },
+        "testCount": {
+          "const": 2
+        },
+        "successfulTestCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "failedTestCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "skippedTestCount": {
+          "const": 0
+        },
+        "descriptors": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "className": {
+                "const": "com.mannschaft.app.reflection.RecallRewardWeekTemporalIT"
+              },
+              "name": {
+                "enum": [
+                  "SUNDAY_CONTROL",
+                  "MONDAY_BOUNDARY"
+                ]
+              }
+            },
+            "required": [
+              "className",
+              "name"
+            ]
+          }
+        }
+      },
+      "required": [
+        "selector",
+        "testCount",
+        "successfulTestCount",
+        "failedTestCount",
+        "skippedTestCount",
+        "descriptors"
+      ]
+    },
+    "effectiveFilter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selector": {
+          "const": "com.mannschaft.app.reflection.RecallRewardWeekTemporalIT.physicalWeekAndNativeGetSurviveCompletionAndNextWeekReplay"
+        },
+        "includePatterns": {
+          "const": [
+            "com.mannschaft.app.reflection.RecallRewardWeekTemporalIT.physicalWeekAndNativeGetSurviveCompletionAndNextWeekReplay"
+          ]
+        },
+        "failOnNoMatchingTests": {
+          "const": true
+        },
+        "testCacheDisabled": {
+          "const": true
+        },
+        "testUpToDateDisabled": {
+          "const": true
+        },
+        "initialJvmTimezone": {
+          "enum": [
+            "UTC",
+            "Asia/Tokyo"
+          ]
+        },
+        "expectedJvmTimezone": {
+          "enum": [
+            "UTC",
+            "Asia/Tokyo"
+          ]
+        }
+      },
+      "required": [
+        "selector",
+        "includePatterns",
+        "failOnNoMatchingTests",
+        "testCacheDisabled",
+        "testUpToDateDisabled",
+        "initialJvmTimezone",
+        "expectedJvmTimezone"
+      ]
+    },
+    "rawXmlSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "finiteXmlSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "className": {
+            "const": "com.mannschaft.app.reflection.RecallRewardWeekTemporalIT"
+          },
+          "name": {
+            "enum": [
+              "SUNDAY_CONTROL",
+              "MONDAY_BOUNDARY"
+            ]
+          },
+          "failure": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "boolean"
+          },
+          "skipped": {
+            "const": false
+          }
+        },
+        "required": [
+          "className",
+          "name",
+          "failure",
+          "error",
+          "skipped"
+        ]
+      }
+    },
+    "assertionCategories": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "COMPLETE_ACK": {
+          "type": "boolean"
+        },
+        "SQL_PHYSICAL_DATE": {
+          "type": "boolean"
+        },
+        "NATIVE_GET_WEEK": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "COMPLETE_ACK",
+        "SQL_PHYSICAL_DATE",
+        "NATIVE_GET_WEEK"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "TWO_CASES_PASSED",
+        "TEST_FAILURE_OBSERVED"
+      ]
+    },
+    "evidenceComplete": {
+      "const": true
+    },
+    "rawLogPublished": {
+      "const": false
+    },
+    "productAcceptanceProven": {
+      "const": false
+    }
+  },
+  "required": [
+    "schema",
+    "sourceHead",
+    "sourceTree",
+    "sourceFiles",
+    "selector",
+    "key",
+    "initialJvmTimezone",
+    "sourcePinKind",
+    "checkoutPolicy",
+    "checkoutPhysicalObservations",
+    "gitAttributes",
+    "trackedGitAttributesBlobSha256",
+    "expectedTestCount",
+    "runId",
+    "runAttempt",
+    "workflowSha",
+    "workflowRef",
+    "eventName",
+    "wholeAcceptanceGreen",
+    "formalPublicGateOpen",
+    "runTestsActualExit",
+    "actualTestCounts",
+    "effectiveFilter",
+    "rawXmlSha256",
+    "finiteXmlSha256",
+    "cases",
+    "assertionCategories",
+    "outcome",
+    "evidenceComplete",
+    "rawLogPublished",
+    "productAcceptanceProven"
+  ]
+}
