@@ -103,9 +103,11 @@ const form = ref({
 
 const { t } = useI18n()
 
-/** チームの公開範囲を変えず、旧組織下書きの非公開値だけを移行する。 */
+/** チームの値を保ち、旧組織下書きの非公開意図と有効な公開範囲を復元する。 */
 function requestVisibility(value: string): string {
-  return !isTeam.value && value === 'MEMBERS_AND_ABOVE' ? 'PRIVATE' : value
+  if (isTeam.value) return value
+  if (value === 'MEMBERS_AND_ABOVE') return 'PRIVATE'
+  return ['PUBLIC', 'PRIVATE'].includes(value) ? value : 'PUBLIC'
 }
 
 // === useFormDraft（ADHD配慮・チーム/組織作成フォームの自動保存）===
@@ -271,10 +273,17 @@ const visibilityOptions = computed(() => {
     ]
   }
   return [
-    { label: t('team_visibility.PUBLIC'), value: 'PUBLIC' },
-    { label: t('label.visibilityPrivate'), value: 'PRIVATE' },
+    // BE OrganizationEntity.Visibility の実値（PUBLIC / PRIVATE）のみ。
+    { label: t('organization_visibility.PUBLIC'), value: 'PUBLIC' },
+    { label: t('organization_visibility.PRIVATE'), value: 'PRIVATE' },
   ]
 })
+
+// 対応する入力欄の近くに個別表示するフィールド。これ以外の fieldErrors は一覧で必ず表示する。
+const INLINE_ERROR_FIELDS = ['name', 'slug', 'visibility']
+const otherFieldErrors = computed(() =>
+  Object.entries(fieldErrors.value).filter(([field]) => !INLINE_ERROR_FIELDS.includes(field)),
+)
 
 const templateOptions = [
   { label: 'クラブ・サークル', value: 'CLUB' },
@@ -333,7 +342,7 @@ function buildRequestBody(): EntityCreateBody {
     description: form.value.description || undefined,
     prefecture: form.value.prefecture || undefined,
     city: form.value.city || undefined,
-    visibility: requestVisibility(form.value.visibility),
+    visibility: form.value.visibility,
     supporterEnabled: form.value.supporterEnabled,
   }
   if (isTeam.value) {
@@ -473,6 +482,7 @@ function close() {
     :visible="visible"
     :header="title"
     :style="{ width: '500px' }"
+    :pt="{ pcCloseButton: { root: { class: 'min-h-11 min-w-11' } } }"
     modal
     @update:visible="close"
   >
@@ -482,7 +492,7 @@ function close() {
         <label class="mb-1 block text-sm font-medium"
           >名前 <span class="text-red-500">*</span></label
         >
-        <InputText v-model="form.name" class="w-full" :class="{ 'p-invalid': fieldErrors.name }" />
+        <InputText v-model="form.name" class="min-h-11 w-full" :class="{ 'p-invalid': fieldErrors.name }" />
         <small v-if="fieldErrors.name" class="text-red-500">{{ fieldErrors.name }}</small>
       </div>
 
@@ -491,7 +501,7 @@ function close() {
         <label class="mb-1 block text-sm font-medium">{{ t('slug.label') }}</label>
         <InputText
           v-model="slug"
-          class="w-full"
+          class="min-h-11 w-full"
           :placeholder="t('slug.placeholder')"
           :class="{ 'p-invalid': slugBlocksSubmit || !!fieldErrors.slug }"
           data-testid="entity-create-slug"
@@ -524,13 +534,13 @@ function close() {
       <!-- 名前（カナ） -->
       <div>
         <label class="mb-1 block text-sm font-medium">名前（カナ）</label>
-        <InputText v-model="form.nameKana" class="w-full" />
+        <InputText v-model="form.nameKana" class="min-h-11 w-full" />
       </div>
 
       <!-- ニックネーム -->
       <div>
         <label class="mb-1 block text-sm font-medium">ニックネーム</label>
-        <InputText v-model="form.nickname1" class="w-full" />
+        <InputText v-model="form.nickname1" class="min-h-11 w-full" />
       </div>
 
       <!-- ジャンル（チームのみ） -->
@@ -541,7 +551,7 @@ function close() {
           :options="templateOptions"
           option-label="label"
           option-value="value"
-          class="w-full"
+          class="min-h-11 w-full"
         />
       </div>
 
@@ -553,7 +563,7 @@ function close() {
           :options="orgTypeOptions"
           option-label="label"
           option-value="value"
-          class="w-full"
+          class="min-h-11 w-full"
         />
       </div>
 
@@ -565,8 +575,13 @@ function close() {
           :options="visibilityOptions"
           option-label="label"
           option-value="value"
-          class="w-full"
+          class="min-h-11 w-full"
+          :class="{ 'p-invalid': fieldErrors.visibility }"
+          data-testid="entity-create-visibility"
         />
+        <small v-if="fieldErrors.visibility" class="text-red-500">{{
+          fieldErrors.visibility
+        }}</small>
       </div>
 
       <!-- 都道府県 + 市区町村 -->
@@ -581,7 +596,7 @@ function close() {
             filter
             filter-placeholder="都道府県を検索"
             show-clear
-            class="w-full"
+            class="min-h-11 w-full"
           />
         </div>
         <div>
@@ -596,7 +611,7 @@ function close() {
             show-clear
             :disabled="!selectedPref || citiesLoading"
             :loading="citiesLoading"
-            class="w-full"
+            class="min-h-11 w-full"
           />
         </div>
       </div>
@@ -609,14 +624,34 @@ function close() {
 
       <!-- サポーター有効 -->
       <div class="flex items-center gap-2">
-        <ToggleSwitch v-model="form.supporterEnabled" />
-        <label class="text-sm">サポーター機能を有効にする</label>
+        <ToggleSwitch v-model="form.supporterEnabled" input-id="entity-create-supporter" />
+        <label
+          for="entity-create-supporter"
+          class="inline-flex min-h-11 min-w-11 items-center text-sm"
+          data-testid="entity-create-supporter-label"
+          >{{ t('entity_create.supporter_label') }}</label
+        >
+      </div>
+
+      <!-- 対応する入力欄が無い項目のエラーも取りこぼさず表示する -->
+      <div
+        v-if="otherFieldErrors.length"
+        class="rounded border border-red-300 p-2 text-sm text-red-500"
+        data-testid="entity-create-other-errors"
+      >
+        <p class="font-medium">{{ t('entity_create.error_heading') }}</p>
+        <ul class="list-disc pl-5">
+          <li v-for="[field, message] in otherFieldErrors" :key="field">
+            {{ field }}: {{ message }}
+          </li>
+        </ul>
       </div>
     </div>
 
     <template #footer>
-      <Button label="キャンセル" text @click="close" />
+      <Button label="キャンセル" class="min-h-11 min-w-11" text @click="close" />
       <Button
+        class="min-h-11 min-w-11"
         :label="title"
         icon="pi pi-check"
         :loading="submitting"
@@ -632,6 +667,7 @@ function close() {
     :visible="duplicateConfirmVisible"
     :header="t('duplicate_name.title', { entity: isTeam ? 'チーム' : '組織' })"
     :style="{ width: '480px' }"
+    :pt="{ pcCloseButton: { root: { class: 'min-h-11 min-w-11' } } }"
     modal
     data-testid="duplicate-name-confirm-dialog"
     @update:visible="cancelDuplicateConfirm"
@@ -655,12 +691,14 @@ function close() {
 
     <template #footer>
       <Button
+        class="min-h-11 min-w-11"
         :label="t('duplicate_name.cancel')"
         text
         data-testid="duplicate-name-cancel"
         @click="cancelDuplicateConfirm"
       />
       <Button
+        class="min-h-11 min-w-11"
         :label="t('duplicate_name.confirm')"
         icon="pi pi-check"
         severity="warn"

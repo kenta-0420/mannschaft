@@ -1814,8 +1814,8 @@
     },
     "menu": "Menü",
     "scopeShell": {
-      "memberCount": "{count} Mitglieder",
-      "supporterCount": "{count} Unterstützer",
+      "memberCount": "{count} Mitglied | {count} Mitglieder",
+      "supporterCount": "{count} Unterstützer | {count} Unterstützer",
       "supporter_cancel_confirm_title": "Unterstützung beenden?",
       "supporter_cancel_confirm_body": "Du beendest die Unterstützung von {name}. Bist du sicher?",
       "supporter_cancel_action": "Beenden",
@@ -2418,6 +2418,14 @@
     "GUESTS_AND_ABOVE": "Gäste und höher",
     "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
     "MEMBERS_AND_ABOVE": "Mitglieder und höher"
+  },
+  "organization_visibility": {
+    "PUBLIC": "Öffentlich",
+    "PRIVATE": "Eingeschränkt"
+  },
+  "entity_create": {
+    "error_heading": "Bitte überprüfen Sie Ihre Eingaben",
+    "supporter_label": "Unterstützer-Funktion aktivieren"
   },
   "module_settings": {
     "enabled_count": "Aktive Funktionen: {count} / {limit}",

@@ -1816,8 +1816,8 @@
     "moreActions": "More actions",
     "openNavigation": "Open navigation",
     "scopeShell": {
-      "memberCount": "{count} members",
-      "supporterCount": "{count} supporters",
+      "memberCount": "{count} member | {count} members",
+      "supporterCount": "{count} supporter | {count} supporters",
       "supporter_cancel_confirm_title": "Stop supporting?",
       "supporter_cancel_confirm_body": "Stop supporting {name}. Are you sure?",
       "supporter_cancel_action": "Stop",
@@ -2418,6 +2418,14 @@
     "GUESTS_AND_ABOVE": "Guests and above",
     "SUPPORTERS_AND_ABOVE": "Supporters and above",
     "MEMBERS_AND_ABOVE": "Members and above"
+  },
+  "organization_visibility": {
+    "PUBLIC": "Public",
+    "PRIVATE": "Restricted"
+  },
+  "entity_create": {
+    "error_heading": "Please check your input",
+    "supporter_label": "Enable supporter feature"
   },
   "module_settings": {
     "enabled_count": "Enabled features: {count} / {limit}",

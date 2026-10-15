@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import type { PropType } from 'vue'
+import type { ComponentPublicInstance, PropType } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import EntityCreateDialog from './EntityCreateDialog.vue'
@@ -58,9 +58,18 @@ const stubs = {
     template: '<button :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>',
   },
   InputText: true,
-  Select: true,
+  Select: {
+    props: ['modelValue', 'options'],
+    emits: ['update:modelValue'],
+    template:
+      "<div class=\"select-stub\" :data-values=\"(options ?? []).map((o) => o.value ?? o.name).join(',')\" />",
+  },
   Textarea: true,
-  ToggleSwitch: true,
+  ToggleSwitch: {
+    props: ['modelValue', 'inputId'],
+    emits: ['update:modelValue'],
+    template: '<input type="checkbox" :id="inputId" />',
+  },
 }
 
 /** DUPNAME_001（409）を模したエラーオブジェクト（ofetch FetchError 互換の data.error 形状）。 */
@@ -221,11 +230,11 @@ async function visibilityDialog(entityType: 'team' | 'organization', visible = t
 }
 
 describe('EntityCreateDialog 公開範囲の API 契約', () => {
-  it('組織の既存非公開ラベルを描画し PRIVATE を送信する', async () => {
+  it('組織専用の非公開ラベルを描画し PRIVATE を送信する', async () => {
     apiMock.mockResolvedValue({ data: { id: '20', name: 'x', slug: 'x' } })
     const wrapper = await visibilityDialog('organization')
     const visibility = wrapper.findAll('select').find(select => select.find('option[value="PRIVATE"]').exists())!
-    expect(visibility.get('option[value="PRIVATE"]').text()).toBe('label.visibilityPrivate')
+    expect(visibility.get('option[value="PRIVATE"]').text()).toBe('organization_visibility.PRIVATE')
     expect(visibility.find('option[value="MEMBERS_AND_ABOVE"]').exists()).toBe(false)
     await visibility.setValue('PRIVATE')
     await wrapper.get('[data-testid="entity-create-submit"]').trigger('click')
@@ -264,6 +273,18 @@ describe('EntityCreateDialog 公開範囲の API 契約', () => {
     expect(apiMock.mock.calls[0]![1].body).toMatchObject({ name: 'draft', visibility: 'PRIVATE' })
   })
 
+  it('未知の組織下書き公開範囲は PUBLIC に戻して送信する', async () => {
+    restoreDraftMock.mockReturnValue({ visibility: 'INVALID_VISIBILITY', name: 'draft' })
+    apiMock.mockResolvedValue({ data: { id: '20', name: 'x', slug: 'x' } })
+    const wrapper = await visibilityDialog('organization', false)
+    await wrapper.setProps({ visible: true })
+    const visibility = wrapper.findAll('select').find(select => select.find('option[value="PRIVATE"]').exists())!
+    expect((visibility.element as HTMLSelectElement).value).toBe('PUBLIC')
+    await wrapper.get('[data-testid="entity-create-submit"]').trigger('click')
+    await flushPromises()
+    expect(apiMock.mock.calls[0]![1].body).toMatchObject({ name: 'draft', visibility: 'PUBLIC' })
+  })
+
   it('チームの4段階を保持し、種類の切替時に公開範囲を初期化する', async () => {
     apiMock.mockResolvedValue({ data: { id: '20', name: 'x', slug: 'x' } })
     const wrapper = await visibilityDialog('team')
@@ -297,5 +318,62 @@ describe('EntityCreateDialog 作成対象と同名確認の境界', () => {
     await wrapper.setProps({ entityType: 'organization' })
     expect(wrapper.find('[data-testid="duplicate-name-confirm-dialog"]').exists()).toBe(false)
     expect(apiMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+// CMP-261010-1129: 組織作成の公開範囲・fieldErrors 表示・サポーター label 結線。
+describe('EntityCreateDialog 組織作成の公開範囲とエラー表示 (CMP-261010-1129)', () => {
+  const valuesOf = (w: Awaited<ReturnType<typeof mountDialog>>) =>
+    w.get('[data-testid="entity-create-visibility"]').attributes('data-values')
+
+  it('AC1: 組織の公開範囲選択肢は BE の組織列挙値 PUBLIC,PRIVATE のみ', async () => {
+    const wrapper = await mountDialog()
+    expect(valuesOf(wrapper)).toBe('PUBLIC,PRIVATE')
+  })
+
+  it('AC1: チームの公開範囲選択肢は従来のまま', async () => {
+    const wrapper = await mountSuspended(EntityCreateDialog, {
+      props: { entityType: 'team', visible: true },
+      global: { stubs },
+    })
+    expect(valuesOf(wrapper)).toBe(
+      'PUBLIC,GUESTS_AND_ABOVE,SUPPORTERS_AND_ABOVE,MEMBERS_AND_ABOVE',
+    )
+  })
+
+  it('AC2: PRIVATE を選ぶと visibility=PRIVATE で POST される', async () => {
+    apiMock.mockResolvedValueOnce({ data: { id: '1', name: 'x', slug: 'x' } })
+    const wrapper = await mountDialog()
+    wrapper
+      .getComponent<ComponentPublicInstance>('[data-testid="entity-create-visibility"]')
+      .vm.$emit('update:modelValue', 'PRIVATE')
+    await flushPromises()
+    await wrapper.get('[data-testid="entity-create-submit"]').trigger('click')
+    await flushPromises()
+    expect(apiMock.mock.calls[0]![1].body.visibility).toBe('PRIVATE')
+  })
+
+  it('AC3: fieldErrors は対応入力が無い項目も含め全て画面に表示され、通知で握りつぶされない', async () => {
+    apiMock.mockRejectedValueOnce({ data: { error: { code: 'COMMON_001', fieldErrors: [] } } })
+    getFieldErrorsMock.mockReturnValue({
+      name: 'ERR_NAME',
+      visibility: 'ERR_VISIBILITY',
+      orgType: 'ERR_ORGTYPE',
+      unknownField: 'ERR_UNKNOWN',
+    })
+    const wrapper = await mountDialog()
+    await wrapper.get('[data-testid="entity-create-submit"]').trigger('click')
+    await flushPromises()
+    const text = wrapper.text()
+    for (const m of ['ERR_NAME', 'ERR_VISIBILITY', 'ERR_ORGTYPE', 'ERR_UNKNOWN']) {
+      expect(text).toContain(m)
+    }
+  })
+
+  it('AC4: サポーター機能トグルの label は入力 id と結ばれている', async () => {
+    const wrapper = await mountDialog()
+    const forAttr = wrapper.get('[data-testid="entity-create-supporter-label"]').attributes('for')
+    expect(forAttr).toBeTruthy()
+    expect(wrapper.find(`input[id="${forAttr}"]`).exists()).toBe(true)
   })
 })
