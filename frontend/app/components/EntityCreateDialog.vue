@@ -147,7 +147,12 @@ watch(
       form.value.nameKana = saved.nameKana ?? ''
       form.value.nickname1 = saved.nickname1 ?? ''
       form.value.description = saved.description ?? ''
-      form.value.visibility = saved.visibility ?? 'PUBLIC'
+      // 旧版の下書きに組織で無効な値（MEMBERS_AND_ABOVE 等）が残っていても送信しない。
+      const savedVisibility = saved.visibility ?? 'PUBLIC'
+      form.value.visibility =
+        !isTeam.value && !['PUBLIC', 'PRIVATE'].includes(savedVisibility)
+          ? 'PUBLIC'
+          : savedVisibility
       form.value.supporterEnabled = saved.supporterEnabled ?? false
       form.value.template = saved.template ?? 'OTHER'
       form.value.orgType = saved.orgType ?? 'OTHER'
@@ -266,10 +271,17 @@ const visibilityOptions = computed(() => {
     ]
   }
   return [
-    { label: t('team_visibility.PUBLIC'), value: 'PUBLIC' },
-    { label: t('team_visibility.MEMBERS_AND_ABOVE'), value: 'MEMBERS_AND_ABOVE' },
+    // BE OrganizationEntity.Visibility の実値（PUBLIC / PRIVATE）のみ。
+    { label: t('organization_visibility.PUBLIC'), value: 'PUBLIC' },
+    { label: t('organization_visibility.PRIVATE'), value: 'PRIVATE' },
   ]
 })
+
+// 対応する入力欄の近くに個別表示するフィールド。これ以外の fieldErrors は一覧で必ず表示する。
+const INLINE_ERROR_FIELDS = ['name', 'slug', 'visibility']
+const otherFieldErrors = computed(() =>
+  Object.entries(fieldErrors.value).filter(([field]) => !INLINE_ERROR_FIELDS.includes(field)),
+)
 
 const templateOptions = [
   { label: 'クラブ・サークル', value: 'CLUB' },
@@ -551,7 +563,12 @@ function close() {
           option-label="label"
           option-value="value"
           class="w-full"
+          :class="{ 'p-invalid': fieldErrors.visibility }"
+          data-testid="entity-create-visibility"
         />
+        <small v-if="fieldErrors.visibility" class="text-red-500">{{
+          fieldErrors.visibility
+        }}</small>
       </div>
 
       <!-- 都道府県 + 市区町村 -->
@@ -594,8 +611,27 @@ function close() {
 
       <!-- サポーター有効 -->
       <div class="flex items-center gap-2">
-        <ToggleSwitch v-model="form.supporterEnabled" />
-        <label class="text-sm">サポーター機能を有効にする</label>
+        <ToggleSwitch v-model="form.supporterEnabled" input-id="entity-create-supporter" />
+        <label
+          for="entity-create-supporter"
+          class="text-sm"
+          data-testid="entity-create-supporter-label"
+          >{{ t('entity_create.supporter_label') }}</label
+        >
+      </div>
+
+      <!-- 対応する入力欄が無い項目のエラーも取りこぼさず表示する -->
+      <div
+        v-if="otherFieldErrors.length"
+        class="rounded border border-red-300 p-2 text-sm text-red-500"
+        data-testid="entity-create-other-errors"
+      >
+        <p class="font-medium">{{ t('entity_create.error_heading') }}</p>
+        <ul class="list-disc pl-5">
+          <li v-for="[field, message] in otherFieldErrors" :key="field">
+            {{ field }}: {{ message }}
+          </li>
+        </ul>
       </div>
     </div>
 

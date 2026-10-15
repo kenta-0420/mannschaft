@@ -2419,6 +2419,14 @@
     "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
     "MEMBERS_AND_ABOVE": "Mitglieder und höher"
   },
+  "organization_visibility": {
+    "PUBLIC": "Öffentlich",
+    "PRIVATE": "Eingeschränkt"
+  },
+  "entity_create": {
+    "error_heading": "Bitte überprüfen Sie Ihre Eingaben",
+    "supporter_label": "Unterstützer-Funktion aktivieren"
+  },
   "module_settings": {
     "enabled_count": "Aktive Funktionen: {count} / {limit}",
     "fetch_error": "Die Funktionsliste konnte nicht geladen werden",
