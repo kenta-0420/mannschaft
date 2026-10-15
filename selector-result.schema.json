@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ranch-native-week-three-selector-result-v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema", "sourceHead", "sourceTree", "eventCommit", "runId", "runAttempt", "selectors", "runTestsActualExit", "actualTestCounts", "caseResults", "overallOutcome", "wholeAcceptanceGreen", "formalPublicGateOpen", "rawLogsPublished", "rawXmlPublished"],
+  "properties": {
+    "schema": {"const": "ranch-native-week-three-selector-result-v1"},
+    "sourceHead": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sourceTree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "eventCommit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "runId": {"type": "integer", "minimum": 1},
+    "runAttempt": {"type": "integer", "minimum": 1},
+    "selectors": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": {"type": "string"}},
+    "runTestsActualExit": {"type": "integer", "minimum": 0, "maximum": 255},
+    "actualTestCounts": {"type": "object"},
+    "caseResults": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "object"}},
+    "overallOutcome": {"enum": ["EXPECTED_NATIVE_WEEK_THREE_CASE_RED", "NATIVE_WEEK_THREE_CASE_GREEN", "MIXED_OR_UNCLASSIFIED_NOT_ACCEPTED"]},
+    "wholeAcceptanceGreen": {"const": false},
+    "formalPublicGateOpen": {"const": false},
+    "rawLogsPublished": {"const": false},
+    "rawXmlPublished": {"const": false}
+  }
+}

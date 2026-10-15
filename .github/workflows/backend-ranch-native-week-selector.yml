@@ -1,0 +1,101 @@
+name: Backend — Ranch native-week three-selector source verification
+
+on:
+  push:
+    branches:
+      - feature/ranch-native-week-red-three-selector-20261016-02
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ranch-native-week-three-selector-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  native-week-methods:
+    name: Native week (3 exact methods)
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: product/backend
+        shell: bash
+    steps:
+      - name: 検分済みhelperをevent commitから取得
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: harness
+          persist-credentials: false
+      - name: test-only source commitを固定checkout
+        uses: actions/checkout@v7
+        with:
+          ref: b1577a39d38b73e8f52bb18f440a206efbbe90ef
+          path: product
+          persist-credentials: false
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: temurin
+      - name: Set up Gradle（依存取得のみ、test成果物は再利用しない）
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+          gradle-home-cache-includes: |
+            caches
+            notifications
+      - name: source・3 exact selectorsのidentity headerを採取
+        run: |
+          python3 ../../harness/evidence.py prepare \
+            --repo-root .. \
+            --selector 'com.mannschaft.app.timeline.service.TimelineRanchNativeTransportIT.同一UTC週の同本文別投稿は生成時既定TZが異なる接続でも二重受付されない' \
+            --selector 'com.mannschaft.app.cms.service.BlogRanchNativeTransportIT.同一UTC週の同タイトル本文別記事は生成時既定TZが異なる接続でも二重受付されない' \
+            --selector 'com.mannschaft.app.reflection.ReflectionRanchTransportIT.同一UTC週の同entry別完了は生成時既定TZが異なる接続でも例外なく重複を拒否する' \
+            --run-id '${{ github.run_id }}' --run-attempt '${{ github.run_attempt }}' \
+            --workflow-sha '${{ github.sha }}' --workflow-ref '${{ github.ref }}' \
+            --event-name '${{ github.event_name }}' --output-dir build/native-week-selector
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+      - name: 3 exact methodsを実走（test task cache・up-to-date禁止）
+        id: run-tests
+        run: |
+          set +e
+          ./gradlew test --no-daemon --build-cache --max-workers=2 \
+            -x archUnitTest -x archUnitFreezeStoreIntegrityTest \
+            --init-script ../../harness/selector.init.gradle \
+            -Pdate.selectors='com.mannschaft.app.timeline.service.TimelineRanchNativeTransportIT.同一UTC週の同本文別投稿は生成時既定TZが異なる接続でも二重受付されない;com.mannschaft.app.cms.service.BlogRanchNativeTransportIT.同一UTC週の同タイトル本文別記事は生成時既定TZが異なる接続でも二重受付されない;com.mannschaft.app.reflection.ReflectionRanchTransportIT.同一UTC週の同entry別完了は生成時既定TZが異なる接続でも例外なく重複を拒否する' \
+            --tests 'com.mannschaft.app.timeline.service.TimelineRanchNativeTransportIT.同一UTC週の同本文別投稿は生成時既定TZが異なる接続でも二重受付されない' \
+            --tests 'com.mannschaft.app.cms.service.BlogRanchNativeTransportIT.同一UTC週の同タイトル本文別記事は生成時既定TZが異なる接続でも二重受付されない' \
+            --tests 'com.mannschaft.app.reflection.ReflectionRanchTransportIT.同一UTC週の同entry別完了は生成時既定TZが異なる接続でも例外なく重複を拒否する' \
+            > build/native-week-selector/gradle.private.log 2>&1
+          test_exit=$?
+          set -e
+          printf '%s\n' "$test_exit" > build/native-week-selector/run-tests-exit.txt
+          printf 'GRADLE_TEST_EXIT=%s\n' "$test_exit"
+          exit "$test_exit"
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "false"
+      - name: 3 class・3 method・count・finite DATE outcomeを検証
+        if: always()
+        run: |
+          python3 ../../harness/evidence.py verify \
+            --repo-root .. \
+            --selector 'com.mannschaft.app.timeline.service.TimelineRanchNativeTransportIT.同一UTC週の同本文別投稿は生成時既定TZが異なる接続でも二重受付されない' \
+            --selector 'com.mannschaft.app.cms.service.BlogRanchNativeTransportIT.同一UTC週の同タイトル本文別記事は生成時既定TZが異なる接続でも二重受付されない' \
+            --selector 'com.mannschaft.app.reflection.ReflectionRanchTransportIT.同一UTC週の同entry別完了は生成時既定TZが異なる接続でも例外なく重複を拒否する' \
+            --run-id '${{ github.run_id }}' --run-attempt '${{ github.run_attempt }}' \
+            --workflow-sha '${{ github.sha }}' --workflow-ref '${{ github.ref }}' \
+            --event-name '${{ github.event_name }}' --output-dir build/native-week-selector
+      - name: 有限identity・case outcome・raw XML hashだけをartifact化
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ranch-native-week-three-selector-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: |
+            product/backend/build/native-week-selector/*.json
+            product/backend/build/native-week-selector/run-tests-exit.txt
+            product/backend/build/native-week-selector/finite-junit-*.xml
+          retention-days: 7
+          if-no-files-found: error

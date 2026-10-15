@@ -1,0 +1,57 @@
+import groovy.json.JsonOutput
+import org.gradle.api.GradleException
+import org.gradle.api.tasks.testing.Test
+
+// Product build/test semantics remain in the fixed source checkout.
+gradle.projectsEvaluated { currentGradle ->
+    def productProject = currentGradle.rootProject
+    productProject.tasks.named('test', Test).configure { task ->
+        List<String> expected = [
+            'com.mannschaft.app.timeline.service.TimelineRanchNativeTransportIT.同一UTC週の同本文別投稿は生成時既定TZが異なる接続でも二重受付されない',
+            'com.mannschaft.app.cms.service.BlogRanchNativeTransportIT.同一UTC週の同タイトル本文別記事は生成時既定TZが異なる接続でも二重受付されない',
+            'com.mannschaft.app.reflection.ReflectionRanchTransportIT.同一UTC週の同entry別完了は生成時既定TZが異なる接続でも例外なく重複を拒否する'
+        ]
+        String raw = productProject.findProperty('date.selectors')?.toString()
+        List<String> selectors = raw == null ? [] : raw.split(';', -1) as List<String>
+        if (selectors.size() != 3 || selectors.toSet() != expected.toSet() || selectors.toSet().size() != 3) {
+            throw new GradleException('SELECTORS_NOT_EXACT_THREE')
+        }
+        selectors.each { task.filter.includeTestsMatching(it) }
+        task.filter.failOnNoMatchingTests = true
+        task.maxParallelForks = 1
+        task.outputs.cacheIf { false }
+        task.outputs.upToDateWhen { false }
+        task.doFirst {
+            if ((task.filter.includePatterns as Set) != expected.toSet() || task.maxParallelForks != 1
+                    || productProject.gradle.startParameter.maxWorkerCount != 2) {
+                throw new GradleException('FILTER_NOT_EXACT_THREE')
+            }
+            File dir = productProject.file('build/native-week-selector')
+            dir.mkdirs()
+            new File(dir, 'effective-filter.json').setText(JsonOutput.toJson([
+                selectors: expected,
+                includePatterns: task.filter.includePatterns.toList().sort(),
+                failOnNoMatchingTests: task.filter.failOnNoMatchingTests,
+                testCacheDisabled: true,
+                testUpToDateDisabled: true,
+                maxParallelForks: task.maxParallelForks,
+                maxGradleWorkers: productProject.gradle.startParameter.maxWorkerCount
+            ]), 'UTF-8')
+        }
+        def descriptors = []
+        task.beforeTest { descriptor -> descriptors.add([className: descriptor.className, name: descriptor.name]) }
+        task.afterSuite { descriptor, result ->
+            if (descriptor.parent == null) {
+                new File(productProject.file('build/native-week-selector'), 'actual-test-counts.json').setText(
+                    JsonOutput.toJson([
+                        selectors: expected,
+                        testCount: result.testCount,
+                        successfulTestCount: result.successfulTestCount,
+                        failedTestCount: result.failedTestCount,
+                        skippedTestCount: result.skippedTestCount,
+                        descriptors: descriptors
+                    ]), 'UTF-8')
+            }
+        }
+    }
+}
