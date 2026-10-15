@@ -16,6 +16,7 @@ import com.mannschaft.app.auth.dto.WebAuthnReauthenticateCompleteRequest;
 import com.mannschaft.app.auth.dto.WebAuthnReauthenticateCompleteResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterBeginResponse;
 import com.mannschaft.app.auth.dto.WebAuthnRegisterCompleteRequest;
+import com.mannschaft.app.auth.event.LoginFailedEvent;
 import com.mannschaft.app.auth.event.WebAuthnCredentialRemovedEvent;
 import com.mannschaft.app.auth.event.WebAuthnLoginEvent;
 import com.mannschaft.app.auth.event.WebAuthnLoginFailedEvent;
@@ -40,6 +41,7 @@ import com.webauthn4j.verifier.exception.MaliciousCounterValueException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -352,9 +354,36 @@ public class AuthWebAuthnService {
             throw new BusinessException(AuthErrorCode.AUTH_026);
         }
 
+        // 署名検証済みの入口で利用状態を確認し、復帰後の状態からJWT rolesを解決する。
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
+        if (user.getStatus() == UserEntity.UserStatus.PENDING_VERIFICATION) {
+            eventPublisher.publish(new LoginFailedEvent(
+                    user.getEmail(), ipAddress, userAgent, "PENDING_VERIFICATION"));
+            throw new BusinessException(AuthErrorCode.AUTH_002);
+        }
+        if (user.getStatus() == UserEntity.UserStatus.FROZEN) {
+            eventPublisher.publish(new LoginFailedEvent(user.getEmail(), ipAddress, userAgent, "FROZEN"));
+            throw new BusinessException(AuthErrorCode.AUTH_003);
+        }
+        // 既存パスワードログインと同じValkey障害時fail-open方針でロックを確認する。
+        try {
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(AuthService.ACCOUNT_LOCK_KEY_PREFIX + userId))) {
+                eventPublisher.publish(new LoginFailedEvent(user.getEmail(), ipAddress, userAgent, "ACCOUNT_LOCKED"));
+                throw new BusinessException(AuthErrorCode.AUTH_003);
+            }
+        } catch (DataAccessException e) {
+            log.warn("アカウントロックチェックをスキップ（Valkey接続失敗）: {}", e.getMessage());
+        }
+        if (user.getStatus() == UserEntity.UserStatus.ARCHIVED) {
+            user.unarchive();
+            // RoleClaimResolverのnative queryがACTIVE状態を読む前にDBへ反映する。
+            userRepository.saveAndFlush(user);
+        }
+
         credential.recordAuthentication(verifiedSignCount, clock.instant());
         TokenResponse tokenResponse = authService.completePasskeyLogin(
-                userId, ipAddress, userAgent, roleClaimResolver.resolveRoles(userId));
+                user, ipAddress, userAgent, roleClaimResolver.resolveRoles(userId));
 
         // 共通のLoginSuccessEventはAuthServiceから1回だけ発行する。
         eventPublisher.publish(new WebAuthnLoginEvent(userId, ipAddress, userAgent, req.getCredentialId()));

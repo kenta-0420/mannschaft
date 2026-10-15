@@ -342,6 +342,22 @@ class PasskeyLoginContractIT extends AbstractMySqlIntegrationTest {
     }
 
     @Test
+    void AC4_AC11_ARCHIVED管理者は復帰後の管理者ロールでトークンを発行する() throws Exception {
+        RoleEntity admin = roles.findByName("SYSTEM_ADMIN").orElseGet(() -> roles.save(RoleEntity.builder()
+                .name("SYSTEM_ADMIN").displayName("システム管理者").priority(100).isSystem(true).build()));
+        userRoles.save(UserRoleEntity.builder().userId(user.getId()).roleId(admin.getId()).build());
+        user.archive();
+        users.save(user);
+
+        MvcResult result = complete(assertion(begin(user), 5, 1, 1));
+
+        assertSuccess(result);
+        assertThat(users.findById(user.getId()).orElseThrow().getStatus()).isEqualTo(UserEntity.UserStatus.ACTIVE);
+        assertThat(tokenService.parseAccessToken(data(result).path("accessToken").asText())
+                .get("roles", List.class)).contains("SYSTEM_ADMIN");
+    }
+
+    @Test
     void AC14_資格情報数が増えても一括検索一回で開始する() throws Exception {
         for (int index = 0; index < 20; index++) {
             saveCredential(user, new PasskeyAssertionFixture(), 0);

@@ -89,7 +89,7 @@ public class AuthService {
     // アカウントロック設定
     private static final int ACCOUNT_LOCK_THRESHOLD = 5;
     private static final Duration ACCOUNT_LOCK_DURATION = Duration.ofMinutes(30);
-    private static final String ACCOUNT_LOCK_KEY_PREFIX = "mannschaft:auth:account_lock:";
+    static final String ACCOUNT_LOCK_KEY_PREFIX = "mannschaft:auth:account_lock:";
     private static final String LOGIN_FAIL_COUNT_KEY_PREFIX = "mannschaft:auth:login_fail_count:";
     private static final String MFA_SESSION_KEY_PREFIX = "mannschaft:auth:mfa_session_token:";
 
@@ -252,37 +252,15 @@ public class AuthService {
     }
 
     /**
-     * UV/UPと署名の検証を完了したパスキーでログインする。
-     * 論理削除ユーザーを復帰させず、通常ログインと同じ利用状態・ロックを確認する。
+     * 同auth.service内でパスキーの検証済みユーザーへ、通常ログインと共通のセッションを発行する。
+     * 署名・UP/UV・利用状態確認とARCHIVED復帰は認証入口で完了していること。
      * UV済みパスキーは独立した二要素認証方式のためTOTPを追加要求しない（F01.1）。
-     * @param resolvedRoles 署名検証済みの認証入口がRoleClaimResolverで解決したroles（HTTP入力は禁止）
+     * @param user 認証入口で検証・復帰済みの管理対象エンティティ
+     * @param resolvedRoles 復帰後にRoleClaimResolverで解決したroles（HTTP入力は禁止）
      */
     @Transactional
-    public TokenResponse completePasskeyLogin(Long userId, String ipAddress, String userAgent,
+    TokenResponse completePasskeyLogin(UserEntity user, String ipAddress, String userAgent,
                                               List<String> resolvedRoles) {
-        UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_015));
-        if (user.getStatus() == UserEntity.UserStatus.PENDING_VERIFICATION) {
-            eventPublisher.publish(new LoginFailedEvent(
-                    user.getEmail(), ipAddress, userAgent, "PENDING_VERIFICATION"));
-            throw new BusinessException(AuthErrorCode.AUTH_002);
-        }
-        if (user.getStatus() == UserEntity.UserStatus.FROZEN) {
-            eventPublisher.publish(new LoginFailedEvent(user.getEmail(), ipAddress, userAgent, "FROZEN"));
-            throw new BusinessException(AuthErrorCode.AUTH_003);
-        }
-        // 既存パスワードログインと同じValkey障害時fail-open方針でロックを確認する。
-        try {
-            if (Boolean.TRUE.equals(redisTemplate.hasKey(ACCOUNT_LOCK_KEY_PREFIX + userId))) {
-                eventPublisher.publish(new LoginFailedEvent(user.getEmail(), ipAddress, userAgent, "ACCOUNT_LOCKED"));
-                throw new BusinessException(AuthErrorCode.AUTH_003);
-            }
-        } catch (DataAccessException e) {
-            log.warn("アカウントロックチェックをスキップ（Valkey接続失敗）: {}", e.getMessage());
-        }
-        if (user.getStatus() == UserEntity.UserStatus.ARCHIVED) {
-            user.unarchive();
-        }
         return issueLoginSession(user, null, false, ipAddress, userAgent, "WEBAUTHN", resolvedRoles);
     }
 
