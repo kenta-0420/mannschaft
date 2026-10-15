@@ -462,17 +462,21 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
         { name: '備考', box: await selectedRow.getByPlaceholder('備考').boundingBox() },
         { name: '保存', box: await saveBtn.boundingBox() },
         { name: '閉じる', box: await closeBtn.boundingBox() },
+        { name: 'ヘッダー閉じる', box: await dialog.locator('.p-dialog-close-button').boundingBox() },
       ]
+      const checkboxBox = await selectedRow.locator('.p-checkbox').boundingBox()
+      const checkboxLabelBox = await selectedRow.locator('label[for^="member-"]').boundingBox()
       console.info('[entry-mobile-touch-targets]', JSON.stringify({
         viewport: viewportWidth, targets: touchTargets,
-        checkbox: await selectedRow.locator('.p-checkbox').boundingBox(),
-        checkboxLabel: await selectedRow.locator('label[for^="member-"]').boundingBox(),
+        checkbox: checkboxBox, checkboxLabel: checkboxLabelBox,
       }))
-      for (const target of touchTargets) {
-        expect(target.box, `${target.name}のヒット領域`).not.toBeNull()
-        expect(target.box!.width, `${target.name}の幅`).toBeGreaterThanOrEqual(44)
-        expect(target.box!.height, `${target.name}の高さ`).toBeGreaterThanOrEqual(44)
+      const hasMinimumTouchTarget = (box: { width: number; height: number } | null) =>
+        box !== null && box.width >= 44 && box.height >= 44
+      const insufficientTargets = touchTargets.filter(target => !hasMinimumTouchTarget(target.box)).map(target => target.name)
+      if (!hasMinimumTouchTarget(checkboxBox) && !hasMinimumTouchTarget(checkboxLabelBox)) {
+        insufficientTargets.push('選択チェックボックスまたは関連ラベル')
       }
+      expect(insufficientTargets, '各操作領域は関連ラベルを含め44×44px以上').toEqual([])
 
       // ALIC-1: 何も変えずに保存しても、既存エントリーは全消しにならない
       await saveBtn.click()
