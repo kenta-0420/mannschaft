@@ -374,7 +374,8 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const rowCheckbox = row.locator('.p-checkbox').first()
     if (!(await row.locator('input[type="checkbox"]').first().isChecked())) await rowCheckbox.click()
     await row.getByPlaceholder('ポジション').fill('MF')
-    await row.getByPlaceholder('備考').fill(`ui-notes-${SUFFIX}`)
+    await row.getByPlaceholder('備考').fill(NOTES200)
+    await expect(row.getByPlaceholder('備考')).toHaveValue(NOTES200)
     await dialog.getByRole('button', { name: 'エントリーを保存' }).last().click()
     await expect(user.getByText('エントリーを保存しました')).toBeVisible({ timeout: 20_000 })
 
@@ -382,10 +383,10 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const a1 = await api(user.request, 'get', base(ORG_A, tIdA, divA, pA1))
     const a2 = await api(user.request, 'get', base(ORG_A, tIdA, divA, pA2))
     const all = [...(a1.body.data.entryMembers as { notes: string | null; position: string | null }[]), ...(a2.body.data.entryMembers as { notes: string | null; position: string | null }[])]
-    expect(all.some((m) => m.notes === `ui-notes-${SUFFIX}` && m.position === 'MF'), JSON.stringify(all)).toBe(true)
+    expect(all.some((m) => m.notes === NOTES200 && m.position === 'MF'), JSON.stringify(all)).toBe(true)
 
     // 一覧に反映され、エラートーストが無い
-    await expect(dialog.getByText(`ui-notes-${SUFFIX}`)).toBeVisible({ timeout: 20_000 })
+    await expect(dialog.getByText(NOTES200)).toBeVisible({ timeout: 20_000 })
     await expect(user.locator('.p-toast-message-error')).toHaveCount(0)
     expect(errs.server, errs.server.join('\n')).toHaveLength(0)
     expect(errs.consoleErrors, errs.consoleErrors.join('\n')).toHaveLength(0)

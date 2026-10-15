@@ -322,6 +322,7 @@ watch(
     :header="t('tournament.entry.title')"
     :style="{ width: '700px' }"
     :breakpoints="{ '768px': '95vw' }"
+    :close-button-props="{ class: 'min-h-11 min-w-11' }"
     modal
     @update:visible="emit('close')"
   >
@@ -409,7 +410,7 @@ watch(
 
           <div class="flex items-center gap-2">
             <Checkbox v-model="overwriteExisting" binary input-id="overwrite" />
-            <label for="overwrite" class="text-sm cursor-pointer">
+            <label for="overwrite" class="inline-flex min-h-11 min-w-11 cursor-pointer items-center text-sm">
               {{ t('tournament.entry.overwriteExisting') }}
             </label>
           </div>
@@ -443,7 +444,7 @@ watch(
             :class="{ 'bg-surface-50 dark:bg-surface-800': form.selected }"
           >
             <Checkbox v-model="form.selected" binary :input-id="`member-${form.userId}`" />
-            <label :for="`member-${form.userId}`" class="min-w-0 flex-1 cursor-pointer truncate text-sm font-medium sm:w-32 sm:flex-none">
+            <label :for="`member-${form.userId}`" class="min-h-11 min-w-0 flex-1 cursor-pointer truncate py-3 text-sm font-medium sm:w-32 sm:flex-none">
               {{ form.displayName }}
               <span v-if="form.memberNumber" class="ml-1 text-xs text-surface-400">#{{ form.memberNumber }}</span>
             </label>
@@ -459,7 +460,7 @@ watch(
                 :min="1"
                 :max="999"
                 class="w-24 shrink-0"
-                input-class="w-full min-w-0"
+                input-class="min-h-11 w-full min-w-0"
                 size="small"
               />
 
@@ -467,7 +468,7 @@ watch(
                 v-model="form.position"
                 :placeholder="t('tournament.entry.position')"
                 :disabled="!form.selected"
-                class="min-w-0 flex-1 sm:w-28 sm:flex-none"
+                class="min-h-11 min-w-0 flex-1 sm:w-28 sm:flex-none"
                 size="small"
                 maxlength="30"
               />
@@ -477,9 +478,9 @@ watch(
               v-model="form.notes"
               :placeholder="t('tournament.entry.notes')"
               :disabled="!form.selected"
-              class="w-full min-w-0 sm:w-auto sm:flex-1"
+              class="min-h-11 w-full min-w-0 sm:w-auto sm:flex-1"
               size="small"
-              maxlength="100"
+              maxlength="200"
             />
           </div>
 
@@ -487,6 +488,7 @@ watch(
             <Button
               :label="t('tournament.entry.saveMembers')"
               :loading="saving"
+              class="min-h-11 min-w-11"
               @click="onSaveMembers"
             />
           </div>
