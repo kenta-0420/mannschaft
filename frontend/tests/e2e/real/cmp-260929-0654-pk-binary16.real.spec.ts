@@ -456,6 +456,23 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
       const pb = await pos.boundingBox()
       expect(jb!.x + jb!.width).toBeLessThanOrEqual(pb!.x + 1) // 背番号欄がポジション欄に重ならない
       await test.info().attach('entry-mobile-layout', { body: await user.screenshot(), contentType: 'image/png' })
+      const touchTargets = [
+        { name: '背番号', box: jb },
+        { name: 'ポジション', box: pb },
+        { name: '備考', box: await selectedRow.getByPlaceholder('備考').boundingBox() },
+        { name: '保存', box: await saveBtn.boundingBox() },
+        { name: '閉じる', box: await closeBtn.boundingBox() },
+      ]
+      console.info('[entry-mobile-touch-targets]', JSON.stringify({
+        viewport: viewportWidth, targets: touchTargets,
+        checkbox: await selectedRow.locator('.p-checkbox').boundingBox(),
+        checkboxLabel: await selectedRow.locator('label[for^="member-"]').boundingBox(),
+      }))
+      for (const target of touchTargets) {
+        expect(target.box, `${target.name}のヒット領域`).not.toBeNull()
+        expect(target.box!.width, `${target.name}の幅`).toBeGreaterThanOrEqual(44)
+        expect(target.box!.height, `${target.name}の高さ`).toBeGreaterThanOrEqual(44)
+      }
 
       // ALIC-1: 何も変えずに保存しても、既存エントリーは全消しにならない
       await saveBtn.click()
