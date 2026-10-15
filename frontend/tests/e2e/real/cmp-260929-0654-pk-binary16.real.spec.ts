@@ -471,13 +471,15 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const tplA2 = `/organizations/${ORG_A}/teams/${TEAM_A2}/entry-templates`
 
     const t1 = await api(user.request, 'post', tplA1, { name: `PKB16-x1-${SUFFIX}`, members: [{ userId: USER_ID, position: 'A' }] })
-    const t2 = await api(user.request, 'post', tplA2, { name: `PKB16-x2-${SUFFIX}`, members: [{ userId: USER_ID, position: 'B' }] })
     expect(t1.status, t1.text).toBe(201)
-    expect(t2.status, t2.text).toBe(201)
     const id1 = String(t1.body.data.id)
+    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: id1 })
+    console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: TEAM_A1, id: id1 }))
+    const t2 = await api(user.request, 'post', tplA2, { name: `PKB16-x2-${SUFFIX}`, members: [{ userId: USER_ID, position: 'B' }] })
+    expect(t2.status, t2.text).toBe(201)
     const id2 = String(t2.body.data.id)
-    createdTemplates.push({ org: ORG_A, team: TEAM_A1, id: id1 }, { org: ORG_A, team: TEAM_A2, id: id2 })
-    console.info('[entry-real-created-template]', JSON.stringify([{ org: ORG_A, team: TEAM_A1, id: id1 }, { org: ORG_A, team: TEAM_A2, id: id2 }]))
+    createdTemplates.push({ org: ORG_A, team: TEAM_A2, id: id2 })
+    console.info('[entry-real-created-template]', JSON.stringify({ org: ORG_A, team: TEAM_A2, id: id2 }))
 
     // 他チーム（同一組織）のテンプレート ID: 取得・更新・削除・適用すべて 404、相手のテンプレートは無傷
     expect((await api(user.request, 'get', `${tplA1}/${id2}`)).status).toBe(404)
