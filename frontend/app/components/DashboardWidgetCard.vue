@@ -95,7 +95,7 @@ watch(collapsed, value => emit('collapse-change', value), { flush: 'sync' })
           v-if="icon"
           class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover/title:bg-primary/15 dark:bg-primary/15"
         >
-          <i :class="icon" class="text-sm" />
+          <i :class="icon" class="text-sm" aria-hidden="true" />
         </span>
         <h3
           class="text-sm font-semibold tracking-wide text-surface-600 transition-colors group-hover/title:text-primary dark:text-surface-300"
@@ -104,6 +104,7 @@ watch(collapsed, value => emit('collapse-change', value), { flush: 'sync' })
         </h3>
         <i
           class="pi pi-external-link text-xs text-surface-400 opacity-0 transition-opacity group-hover/title:opacity-100"
+          aria-hidden="true"
         />
       </NuxtLink>
       <div v-else class="flex items-center gap-2.5">
