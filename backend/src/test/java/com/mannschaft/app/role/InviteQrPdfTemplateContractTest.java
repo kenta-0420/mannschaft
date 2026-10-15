@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class InviteQrPdfTemplateContractTest {
 
     private static final String INVITE_URL = "https://app.mannschaft.example/invite/0f9c2b7a-3d4e-4f10-9a2b-7c8d9e0f1a2b";
-    private static final Path EVIDENCE = Path.of("build", "qr-print-preview");
+    private static final Path EVIDENCE = Path.of("build", "qr-print-adjusted-preview");
     private PdfGeneratorService generator;
 
     @BeforeEach

@@ -135,12 +135,12 @@ function buildBadgedSvg(rawSvg: string): string {
 
   const fontSize = w * 0.052
   const padX = w * 0.05
-  const padY = w * 0.04
+  const padY = w * 0.025
   const textW = fontSize * 0.6 * props.centerLabel.length
   const badgeW = Math.min(textW + padX * 2, w * 0.46)
   const badgeH = fontSize + padY * 2
   const cx = w / 2
-  const cy = w / 2 + badgeH * 0.1
+  const cy = w * 0.54
   const rx = badgeH / 2
   const strokeW = Math.max(w * 0.009, w / 160)
   const rectX = cx - badgeW / 2
@@ -170,14 +170,14 @@ function buildBadgedSvg(rawSvg: string): string {
  * 中央ブランドバッジの寸法を size に比例させるインラインスタイル。
  * scoped CSS で固定 px にすると小さい QR で比率が崩れるため、
  * フォント・パディング・縁取り幅・角丸・白ハローをすべて size 連動にする。
- * 例: size=320 → fontSize≈17px / padding≈13px 16px / border≈3px / 左右半円。
+ * 例: size=320 → fontSize≈17px / padding≈8px 16px / border≈3px / 左右半円。
  * 枠線色・文字色は frameColor（灰色）を適用する。
  */
 const badgeStyle = computed(() => {
   const s = props.size
   return {
     fontSize: `${Math.round(s * 0.052)}px`,
-    padding: `${Math.round(s * 0.04)}px ${Math.round(s * 0.05)}px`,
+    padding: `${Math.round(s * 0.025)}px ${Math.round(s * 0.05)}px`,
     borderWidth: `${Math.max(2, Math.round(s * 0.009))}px`,
     borderRadius: '9999px',
     boxShadow: `0 0 0 ${Math.max(3, Math.round(s * 0.013))}px #fff`,
@@ -234,11 +234,9 @@ defineExpose({
  */
 .qr-code-image__badge {
   position: absolute;
-  top: 50%;
+  top: 54.3%;
   left: 50%;
-  /* 水平は中央維持。垂直は translateY=10%（中央から自身の高さ0.6個分下）。
-     中央=translateY(-50%)、1個分=100% → 0.6個分下 = -50% + 60% = 10%。
-     translateY(%) は要素自身の高さ基準なので size 非依存。 */
+  /* 上下余白の縮小で中心が上がる分を補い、従来位置からQR全高の約2.5%下へ寄せる。 */
   transform: translate(-50%, 10%);
   display: inline-flex;
   align-items: center;
