@@ -1,0 +1,99 @@
+{
+  "schema": "purge-exact-selector-source-binding-v2",
+  "sourceHead": "1c6411fcb13cbee4cfd4de7e2a972a2426746735",
+  "sourceTree": "4db5181aaa860916c2edb0a09de6e04c766dc92b",
+  "sourceFiles": {
+    ".github/workflows/backend-ci.yml": "d1c4ce915c9c4f6591a033c60d84d6b07a475b6dfa6aadd5e591cb7f28187ec7",
+    "backend/build.gradle.kts": "859000e1d63c1c765c1914d47914ae810b7a1d16e96e45fff26a8a0a1fc6f268",
+    "backend/gradle/wrapper/gradle-wrapper.properties": "aef287d114ce3153c3d535697a61928f5034990d570cbb2e93df549e9671483d",
+    "backend/src/test/java/com/mannschaft/app/ranch/RanchPurgeServiceIT.java": "856b09f8b9c799aaae3ecfe43004ebf77b2b391e76dbc1a90fae917b38c0c2a1",
+    "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java": "55d7002d6d9d0d534a74d151918c24ea421cc147462bd1be8dd24f83f3392417",
+    "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchCareWeekBudgetEntity.java": "fe41247526bcd633c66eabd2a4ad4c6dcc58f9bf44bf695b5567cdbbd9c1341a",
+    "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchWeekBudgetEntity.java": "b8549106b466de97d141b608958724e6000447b2a5df84a9e3343dca26f056ed",
+    "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchAffinityUnitEntity.java": "4874f2ce48d97aeeb7f4c43d527703521f9089461e9fe06bfff0c55e3bdadbbd",
+    "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchRewardDecisionEntity.java": "2d3b4af8fb650dc1e1f946d26674ed8c2b17bb224111cefad1a36f215bc82881"
+  },
+  "trackedGitAttributesFiles": [
+    "backend/.gitattributes",
+    "backend/src/test/resources/ranch/approved/asset-packs/.gitattributes"
+  ],
+  "trackedGitAttributesBlobSha256": {
+    "backend/.gitattributes": "193fbf6c445dea576a6f238c5262320931945a2ea03bae24b161b30856919a09",
+    "backend/src/test/resources/ranch/approved/asset-packs/.gitattributes": "89dddfc52a6d1b734a50dacfb9ba5ae46fbdd74c9e619fef3567a0301950b9f1"
+  },
+  "gitAttributes": {
+    ".github/workflows/backend-ci.yml": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/build.gradle.kts": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/gradle/wrapper/gradle-wrapper.properties": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/test/java/com/mannschaft/app/ranch/RanchPurgeServiceIT.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchCareWeekBudgetEntity.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchWeekBudgetEntity.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchAffinityUnitEntity.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchRewardDecisionEntity.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    }
+  },
+  "checkoutPolicy": "EXACT_CANONICAL_BLOB_NO_DECLARED_EOL_CONVERSION"
+}

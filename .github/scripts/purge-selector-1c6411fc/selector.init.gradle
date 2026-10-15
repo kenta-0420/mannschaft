@@ -1,0 +1,46 @@
+import groovy.json.JsonOutput
+import java.util.concurrent.CopyOnWriteArrayList
+import org.gradle.api.tasks.testing.Test
+import org.gradle.api.GradleException
+
+// 試験assert・タグ・DB・heap・fork方針はproductの固定build.gradle.ktsへ委ねる。
+gradle.projectsEvaluated { currentGradle ->
+    def productProject = currentGradle.rootProject
+    productProject.tasks.named('test', Test).configure { task ->
+        String selector = productProject.findProperty('purge.selector')
+        def allowed = [
+            'com.mannschaft.app.ranch.RanchPurgeServiceIT.退会取消と再申請は元参加状態を保ち旧配送で復帰しない',
+            'com.mannschaft.app.ranch.RanchPurgeServiceIT.名前XP残高と所有配置済み置物は退会申請中操作を拒否して取消後に同値復帰する'
+        ]
+        if (!allowed.contains(selector)) throw new GradleException('SELECTOR_NOT_ALLOWED')
+        task.filter.includeTestsMatching(selector)
+        task.filter.failOnNoMatchingTests = true
+        // compileのbuild-cacheは維持し、testのFROM-CACHE/UP-TO-DATEだけを禁止。
+        task.outputs.cacheIf { false }
+        task.outputs.upToDateWhen { false }
+        def descriptors = new CopyOnWriteArrayList()
+        task.doFirst {
+            if ((task.filter.includePatterns as Set) != ([selector] as Set)) {
+                throw new GradleException('FILTER_NOT_EXACT_SELECTOR')
+            }
+            File dir = productProject.file('build/purge-selector-1c6411fc')
+            dir.mkdirs()
+            new File(dir, 'effective-filter.json').setText(JsonOutput.toJson([
+                selector: selector, includePatterns: task.filter.includePatterns,
+                failOnNoMatchingTests: task.filter.failOnNoMatchingTests,
+                testCacheDisabled: true, testUpToDateDisabled: true
+            ]), 'UTF-8')
+        }
+        task.beforeTest { descriptor ->
+            descriptors.add([className:descriptor.className, name:descriptor.name])
+        }
+        task.afterSuite { descriptor, result ->
+            if (descriptor.parent == null) {
+                new File(productProject.file('build/purge-selector-1c6411fc'), 'actual-test-counts.json').setText(
+                    JsonOutput.toJson([selector:selector, testCount:result.testCount,
+                        successfulTestCount:result.successfulTestCount, failedTestCount:result.failedTestCount,
+                        skippedTestCount:result.skippedTestCount, descriptors:descriptors]), 'UTF-8')
+            }
+        }
+    }
+}
