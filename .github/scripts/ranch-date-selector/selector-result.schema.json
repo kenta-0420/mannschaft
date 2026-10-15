@@ -1,0 +1,744 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "ranch-date-exact-selector-result-v1"
+    },
+    "sourceHead": {
+      "const": "2b6ee65337982ae36723da41f160679ddf4a11b0"
+    },
+    "sourceTree": {
+      "const": "358c29f1fae43fb8d0f8797827f12291e7e3b6be"
+    },
+    "sourceFiles": {
+      "const": {
+        ".github/workflows/backend-ci.yml": "d1c4ce915c9c4f6591a033c60d84d6b07a475b6dfa6aadd5e591cb7f28187ec7",
+        "backend/build.gradle.kts": "859000e1d63c1c765c1914d47914ae810b7a1d16e96e45fff26a8a0a1fc6f268",
+        "backend/gradle/wrapper/gradle-wrapper.properties": "aef287d114ce3153c3d535697a61928f5034990d570cbb2e93df549e9671483d",
+        "backend/src/test/java/com/mannschaft/app/ranch/RanchCareDateRoundTripHttpIT.java": "73c518095e97608756368230db187d7ec3a90257aeea523a9da168c482f19181",
+        "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java": "55d7002d6d9d0d534a74d151918c24ea421cc147462bd1be8dd24f83f3392417",
+        "backend/src/main/java/com/mannschaft/app/config/TimeZoneConfig.java": "5a7dd25894d8f456bd13023bea499e5dd76ab4770c87b65342de8b0f4855fad9",
+        "backend/src/main/java/com/mannschaft/app/ranch/service/RanchStateReader.java": "d29c2f9400d520896f272d7f4cba058276622f6c8c4fe2ec837358671a43ec12",
+        "backend/src/main/java/com/mannschaft/app/ranch/service/RanchStateAssembler.java": "83931213f1248c2f41fb62464b86d327ebe92656d3a17c4aed8c3f0ac6ad002e",
+        "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchCareWeekBudgetEntity.java": "7de90fb0707c8544f1905fd8ec48b927af0625ac2ef6ad0b58551b15f7dff1fa"
+      }
+    },
+    "selector": {
+      "const": "com.mannschaft.app.ranch.RanchCareDateRoundTripHttpIT.無料care保存後のDATEと本人GETがUTC週を保ち再操作でも親密度は一日一回"
+    },
+    "key": {
+      "enum": [
+        "utc-red",
+        "jst-control"
+      ]
+    },
+    "initialJvmTimezone": {
+      "enum": [
+        "UTC",
+        "Asia/Tokyo"
+      ]
+    },
+    "sourcePinKind": {
+      "const": "GIT_CANONICAL_BLOB_SHA256"
+    },
+    "checkoutPolicy": {
+      "const": "EXACT_CANONICAL_BLOB_NO_DECLARED_EOL_CONVERSION"
+    },
+    "checkoutPhysicalObservations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        ".github/workflows/backend-ci.yml": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/build.gradle.kts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/gradle/wrapper/gradle-wrapper.properties": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/test/java/com/mannschaft/app/ranch/RanchCareDateRoundTripHttpIT.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/config/TimeZoneConfig.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/ranch/service/RanchStateReader.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/ranch/service/RanchStateAssembler.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        },
+        "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchCareWeekBudgetEntity.java": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "physicalSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "canonicalBlobSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "physicalCrLfCount": {
+              "const": 0
+            },
+            "physicalEqualsCanonical": {
+              "const": true
+            },
+            "normalizationUsed": {
+              "const": false
+            }
+          },
+          "required": [
+            "physicalSha256",
+            "canonicalBlobSha256",
+            "physicalCrLfCount",
+            "physicalEqualsCanonical",
+            "normalizationUsed"
+          ]
+        }
+      },
+      "required": [
+        ".github/workflows/backend-ci.yml",
+        "backend/build.gradle.kts",
+        "backend/gradle/wrapper/gradle-wrapper.properties",
+        "backend/src/test/java/com/mannschaft/app/ranch/RanchCareDateRoundTripHttpIT.java",
+        "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java",
+        "backend/src/main/java/com/mannschaft/app/config/TimeZoneConfig.java",
+        "backend/src/main/java/com/mannschaft/app/ranch/service/RanchStateReader.java",
+        "backend/src/main/java/com/mannschaft/app/ranch/service/RanchStateAssembler.java",
+        "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchCareWeekBudgetEntity.java"
+      ]
+    },
+    "gitAttributes": {
+      "const": {
+        ".github/workflows/backend-ci.yml": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/build.gradle.kts": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/gradle/wrapper/gradle-wrapper.properties": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/test/java/com/mannschaft/app/ranch/RanchCareDateRoundTripHttpIT.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/config/TimeZoneConfig.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/ranch/service/RanchStateReader.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/ranch/service/RanchStateAssembler.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        },
+        "backend/src/main/java/com/mannschaft/app/ranch/entity/RanchCareWeekBudgetEntity.java": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "filter": "unspecified",
+          "working-tree-encoding": "unspecified",
+          "ident": "unspecified",
+          "crlf": "unspecified"
+        }
+      }
+    },
+    "trackedGitAttributesBlobSha256": {
+      "const": {
+        "backend/.gitattributes": "193fbf6c445dea576a6f238c5262320931945a2ea03bae24b161b30856919a09",
+        "backend/src/test/resources/ranch/approved/asset-packs/.gitattributes": "89dddfc52a6d1b734a50dacfb9ba5ae46fbdd74c9e619fef3567a0301950b9f1"
+      }
+    },
+    "expectedTestCount": {
+      "const": 1
+    },
+    "runId": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "runAttempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workflowSha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "workflowRef": {
+      "const": "refs/heads/feature/ranch-date-roundtrip-8ced-20261015-01"
+    },
+    "eventName": {
+      "const": "push"
+    },
+    "wholeAcceptanceGreen": {
+      "const": false
+    },
+    "formalPublicGateOpen": {
+      "const": false
+    },
+    "runTestsActualExit": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "actualTestCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selector": {
+          "const": "com.mannschaft.app.ranch.RanchCareDateRoundTripHttpIT.無料care保存後のDATEと本人GETがUTC週を保ち再操作でも親密度は一日一回"
+        },
+        "testCount": {
+          "const": 1
+        },
+        "successfulTestCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "failedTestCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "skippedTestCount": {
+          "const": 0
+        },
+        "descriptors": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "className": {
+                "const": "com.mannschaft.app.ranch.RanchCareDateRoundTripHttpIT"
+              },
+              "name": {
+                "const": "無料care保存後のDATEと本人GETがUTC週を保ち再操作でも親密度は一日一回()"
+              }
+            },
+            "required": [
+              "className",
+              "name"
+            ]
+          }
+        }
+      },
+      "required": [
+        "selector",
+        "testCount",
+        "successfulTestCount",
+        "failedTestCount",
+        "skippedTestCount",
+        "descriptors"
+      ]
+    },
+    "effectiveFilter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selector": {
+          "const": "com.mannschaft.app.ranch.RanchCareDateRoundTripHttpIT.無料care保存後のDATEと本人GETがUTC週を保ち再操作でも親密度は一日一回"
+        },
+        "includePatterns": {
+          "const": [
+            "com.mannschaft.app.ranch.RanchCareDateRoundTripHttpIT.無料care保存後のDATEと本人GETがUTC週を保ち再操作でも親密度は一日一回"
+          ]
+        },
+        "failOnNoMatchingTests": {
+          "const": true
+        },
+        "testCacheDisabled": {
+          "const": true
+        },
+        "testUpToDateDisabled": {
+          "const": true
+        },
+        "initialJvmTimezone": {
+          "enum": [
+            "UTC",
+            "Asia/Tokyo"
+          ]
+        },
+        "expectedJvmTimezone": {
+          "enum": [
+            "UTC",
+            "Asia/Tokyo"
+          ]
+        }
+      },
+      "required": [
+        "selector",
+        "includePatterns",
+        "failOnNoMatchingTests",
+        "testCacheDisabled",
+        "testUpToDateDisabled",
+        "initialJvmTimezone",
+        "expectedJvmTimezone"
+      ]
+    },
+    "rawXmlSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "finiteXmlSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "className": {
+            "const": "com.mannschaft.app.ranch.RanchCareDateRoundTripHttpIT"
+          },
+          "name": {
+            "const": "無料care保存後のDATEと本人GETがUTC週を保ち再操作でも親密度は一日一回()"
+          },
+          "failure": {
+            "type": "boolean"
+          },
+          "error": {
+            "const": false
+          },
+          "skipped": {
+            "const": false
+          }
+        },
+        "required": [
+          "className",
+          "name",
+          "failure",
+          "error",
+          "skipped"
+        ]
+      }
+    },
+    "runtimeDateConditions": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "driverVersion": {
+              "enum": [
+                "9.6.0",
+                "OTHER_VERSION"
+              ]
+            },
+            "jvmDefault": {
+              "const": "Asia/Tokyo"
+            },
+            "connectionTimeZone": {
+              "const": "UTC"
+            },
+            "driverDefault": {
+              "enum": [
+                "UTC",
+                "GMT",
+                "Etc/UTC",
+                "Asia/Tokyo",
+                "GMT+09:00"
+              ]
+            },
+            "dbOffset": {
+              "const": "UTC"
+            }
+          },
+          "required": [
+            "driverVersion",
+            "jvmDefault",
+            "connectionTimeZone",
+            "driverDefault",
+            "dbOffset"
+          ]
+        }
+      ]
+    },
+    "assertionCategories": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rawWeek": {
+          "type": "boolean"
+        },
+        "rawDay": {
+          "type": "boolean"
+        },
+        "jpaWeek": {
+          "type": "boolean"
+        },
+        "independentGet": {
+          "type": "boolean"
+        },
+        "cleanupFailure": {
+          "type": "boolean"
+        },
+        "get500": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "rawWeek",
+        "rawDay",
+        "jpaWeek",
+        "independentGet",
+        "cleanupFailure",
+        "get500"
+      ]
+    },
+    "knownDateTokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "2026-10-04": {
+          "type": "boolean"
+        },
+        "2026-10-05": {
+          "type": "boolean"
+        },
+        "2026-10-10": {
+          "type": "boolean"
+        },
+        "2026-10-11": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "2026-10-04",
+        "2026-10-05",
+        "2026-10-10",
+        "2026-10-11"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "EXPECTED_BUSINESS_RED",
+        "CONTROL_GREEN",
+        "UTC_GREEN_NO_RED",
+        "OTHER_FAILURE_NOT_RED",
+        "CONTROL_FAILED",
+        "REPRODUCTION_CONDITION_MISSING"
+      ]
+    },
+    "evidenceComplete": {
+      "const": true
+    },
+    "rawLogPublished": {
+      "const": false
+    },
+    "productAcceptanceProven": {
+      "const": false
+    }
+  },
+  "required": [
+    "schema",
+    "sourceHead",
+    "sourceTree",
+    "sourceFiles",
+    "selector",
+    "key",
+    "initialJvmTimezone",
+    "sourcePinKind",
+    "checkoutPolicy",
+    "checkoutPhysicalObservations",
+    "gitAttributes",
+    "trackedGitAttributesBlobSha256",
+    "expectedTestCount",
+    "runId",
+    "runAttempt",
+    "workflowSha",
+    "workflowRef",
+    "eventName",
+    "wholeAcceptanceGreen",
+    "formalPublicGateOpen",
+    "runTestsActualExit",
+    "actualTestCounts",
+    "effectiveFilter",
+    "rawXmlSha256",
+    "finiteXmlSha256",
+    "cases",
+    "runtimeDateConditions",
+    "assertionCategories",
+    "knownDateTokens",
+    "outcome",
+    "evidenceComplete",
+    "rawLogPublished",
+    "productAcceptanceProven"
+  ]
+}
