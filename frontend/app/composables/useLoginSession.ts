@@ -25,9 +25,6 @@ export function useLoginSession() {
   ): Promise<string> {
     let navigationTarget: string | null = null
     authStore.setTokens(tokens.accessToken, tokens.refreshToken)
-    // ログイン成功直後に先回りリフレッシュタイマーを武装する（capture 済み runtimeConfig を渡す）。
-    armProactiveRefresh(runtimeConfig, authStore)
-
     // /api/v1/users/me でフルプロフィール（systemRole・locale・avatarUrl 等）を一括取得
     try {
       const profile = await api<{
@@ -79,6 +76,9 @@ export function useLoginSession() {
         profileImageUrl: null,
       })
     }
+
+    // 本人復元とlocale適用による世代更新が終わってから、先回り更新を武装する。
+    armProactiveRefresh(runtimeConfig, authStore)
 
     // 保護者同意待ちで遷移先が既に決まっている場合は、設定同期も遷移先の再決定も行わない。
     if (!navigationTarget) {

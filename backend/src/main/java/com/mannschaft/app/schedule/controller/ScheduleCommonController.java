@@ -43,6 +43,9 @@ public class ScheduleCommonController {
     private final ScheduleService scheduleService;
     private final ScheduleAttendanceService attendanceService;
     private final ScheduleReminderService reminderService;
+    private final com.mannschaft.app.schedule.service.ScheduleRanchNativeOperationFacade ranchNative;
+    private final jakarta.servlet.http.HttpServletRequest servletRequest;
+    private final com.mannschaft.app.proxy.ProxyInputContext proxyInputContext;
 
 
     /**
@@ -54,8 +57,12 @@ public class ScheduleCommonController {
     public ResponseEntity<ApiResponse<AttendanceResponse>> respondAttendance(
             @PathVariable Long scheduleId,
             @Valid @RequestBody AttendanceRequest request) {
-        AttendanceResponse response = attendanceService.respondAttendance(
-                scheduleId, SecurityUtils.getCurrentUserId(), request);
+        Long actor = SecurityUtils.getCurrentUserId();
+        request.captureRanchResponseOrigin(servletRequest.getAttribute("originalAdminId") == null
+                && !proxyInputContext.isProxy());
+        AttendanceResponse response = ranchNative.respond(scheduleId, actor, request,
+                servletRequest.getAttribute("originalAdminId") != null, proxyInputContext.isProxy())
+                .orElseGet(() -> attendanceService.respondAttendance(scheduleId, actor, request));
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

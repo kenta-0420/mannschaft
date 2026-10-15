@@ -255,6 +255,8 @@ const searchResults = computed(() => {
       <InputText v-model="searchQuery" :placeholder="t('settings.hub.searchPlaceholder')" class="w-full" />
     </IconField>
 
+    <SettingsRanchSection class="mb-6" />
+
     <!-- 検索結果モード -->
     <template v-if="isSearching">
       <div class="space-y-3">
