@@ -58,8 +58,8 @@ class BrandedQrImageWriterTest {
         assertThat(top).isLessThan(bottom);
         int height = bottom - top;
         assertThat(height).as("上下余白を詰めたバッジ高").isBetween(35, 45);
-        assertThat((top + bottom) / 2.0).as("バッジ中心はQR全高の54%付近")
-                .isBetween(350 * 0.54 - 2, 350 * 0.54 + 2);
+        assertThat((top + bottom) / 2.0).as("バッジ中心は全高54%から高さ半分だけ下")
+                .isBetween(350 * 0.54 + height / 2.0 - 2, 350 * 0.54 + height / 2.0 + 2);
         int nearTop = leftGrayPixel(image, top + Math.max(1, height / 10));
         int middle = leftGrayPixel(image, (top + bottom) / 2);
 
