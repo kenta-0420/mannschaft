@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ComponentPublicInstance } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import EntityCreateDialog from './EntityCreateDialog.vue'
@@ -226,7 +227,7 @@ describe('EntityCreateDialog 組織作成の公開範囲とエラー表示 (CMP-
     apiMock.mockResolvedValueOnce({ data: { id: '1', name: 'x', slug: 'x' } })
     const wrapper = await mountDialog()
     wrapper
-      .getComponent('[data-testid="entity-create-visibility"]')
+      .getComponent<ComponentPublicInstance>('[data-testid="entity-create-visibility"]')
       .vm.$emit('update:modelValue', 'PRIVATE')
     await flushPromises()
     await wrapper.get('[data-testid="entity-create-submit"]').trigger('click')
