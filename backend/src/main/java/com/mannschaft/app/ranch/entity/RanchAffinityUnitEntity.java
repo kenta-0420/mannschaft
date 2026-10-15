@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.AccessLevel;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.type.descriptor.jdbc.LocalDateJdbcType;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -24,6 +26,8 @@ public class RanchAffinityUnitEntity extends RanchEntity {
     private Long userId;
     @Column(name = "dinosaur_id", nullable = false)
     private UUID dinosaurId;
+    // SQL DATEの暦日を直接扱い、接続作成後のJVM既定TZ変更による日付ずれを防ぐ。
+    @JdbcType(LocalDateJdbcType.class)
     @Column(name = "earned_on", nullable = false)
     private LocalDate earnedOn;
     @Column(name = "kind", nullable = false, length = 10)

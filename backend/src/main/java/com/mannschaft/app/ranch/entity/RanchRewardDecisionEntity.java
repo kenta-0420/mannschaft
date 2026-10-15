@@ -11,6 +11,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.type.descriptor.jdbc.LocalDateJdbcType;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -36,6 +38,8 @@ public class RanchRewardDecisionEntity extends RanchEntity {
     private byte[] canonicalKeyHash;
     @Column(name = "canonical_key", nullable = false, columnDefinition = "varbinary(240)")
     private byte[] canonicalKey;
+    // SQL DATEの暦日を直接扱い、接続作成後のJVM既定TZ変更による日付ずれを防ぐ。
+    @JdbcType(LocalDateJdbcType.class)
     @Column(name = "reward_week", nullable = false)
     private LocalDate rewardWeek;
     @Column(name = "policy_id")

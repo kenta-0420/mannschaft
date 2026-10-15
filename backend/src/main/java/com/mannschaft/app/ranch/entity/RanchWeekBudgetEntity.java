@@ -7,6 +7,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.type.descriptor.jdbc.LocalDateJdbcType;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -22,6 +24,8 @@ public class RanchWeekBudgetEntity extends RanchEntity {
     private UUID ownerId;
     @Column(name = "user_id", nullable = false, columnDefinition = "BIGINT UNSIGNED")
     private Long userId;
+    // SQL DATEの暦日を直接扱い、接続作成後のJVM既定TZ変更による日付ずれを防ぐ。
+    @JdbcType(LocalDateJdbcType.class)
     @Column(name = "week_starts_on", nullable = false)
     private LocalDate weekStartsOn;
     @Column(name = "policy_id", nullable = false)
