@@ -252,7 +252,7 @@ async function handleLogin() {
         :disabled="busy"
         :aria-busy="loading || undefined"
         data-login-submit
-        class="mt-2"
+        class="mt-2 min-h-11"
       />
       <div class="flex flex-col items-center gap-2">
         <NuxtLink to="/forgot-password" class="text-sm text-primary hover:underline">
@@ -288,7 +288,7 @@ async function handleLogin() {
         icon="pi pi-google"
         severity="secondary"
         outlined
-        class="w-full"
+        class="min-h-11 w-full"
         :loading="googleLoading"
         :disabled="busy"
         @click="loginWithGoogle"

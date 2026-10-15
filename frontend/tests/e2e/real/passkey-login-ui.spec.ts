@@ -12,8 +12,15 @@ test('不正形式のメールではパスキー開始APIを呼ばずログイ�
   page.on('request', request => {
     if (request.url().includes('/api/v1/auth/webauthn/login/begin')) beginRequests.push(request.url())
   })
-  await page.goto('/login')
+  await page.goto('/login', { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    for (const button of await page.locator('#login-form button').all()) {
+      const bounds = await button.boundingBox()
+      expect(bounds?.height, `${width}px幅の${await button.innerText()}の高さ`).toBeGreaterThanOrEqual(44)
+    }
+  }
   const emailInput = page.locator('#email')
   await emailInput.fill('not-an-email')
 
@@ -38,7 +45,7 @@ test('パスキーを設定画面で登録しログアウト後のログイン�
   let registrationAttempted = false
   let registrationConfirmed = false
   try {
-    await page.goto('/login?redirect=/settings/security')
+    await page.goto('/login?redirect=/settings/security', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('#email').fill(email)
     await page.locator('#password').fill(password)
@@ -59,7 +66,7 @@ test('パスキーを設定画面で登録しログアウト後のログイン�
 
     await page.locator('header button').filter({ has: page.locator('.pi-sign-out') }).first().click()
     await expect(page).toHaveURL(/\/login$/, { timeout: 30_000 })
-    await page.goto('/login?redirect=/settings/security')
+    await page.goto('/login?redirect=/settings/security', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('#email').fill(email)
     await expect(page.locator('#password')).toHaveValue('')
@@ -73,7 +80,7 @@ test('パスキーを設定画面で登録しログアウト後のログイン�
     await expect(page).toHaveURL(/\/settings\/security$/, { timeout: 60_000 })
     await expect(page.getByText(deviceName, { exact: true })).toBeVisible()
 
-    await page.reload()
+    await page.reload({ waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await expect(page).toHaveURL(/\/settings\/security$/)
     await expect(page.getByText(deviceName, { exact: true })).toBeVisible({ timeout: 30_000 })
