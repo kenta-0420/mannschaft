@@ -44,8 +44,11 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -95,6 +98,8 @@ class PasskeyLoginContractIT extends AbstractMySqlIntegrationTest {
     @Autowired private RefreshTokenRepository refreshTokens;
     @Autowired private TwoFactorAuthRepository twoFactors;
     @Autowired private AuthTokenService tokenService;
+    @Autowired private AuthWebAuthnService webAuthnService;
+    @Autowired private Clock clock;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ApplicationEvents events;
@@ -167,14 +172,21 @@ class PasskeyLoginContractIT extends AbstractMySqlIntegrationTest {
     @CsvSource({"0,0,5", "0,1,5", "7,8,5", "4294967294,4294967295,5", "0,0,29"})
     void AC7_署名済みカウンタの有効な遷移が成功して永続化する(long stored, long signed, int flags) throws Exception {
         setStoredCounter(stored);
-        String challenge = begin(user);
-        MvcResult result = complete(assertion(challenge, flags, signed, signed));
+        Clock fixedClock = Clock.fixed(Instant.parse("2031-12-31T15:30:00Z"), ZoneOffset.UTC);
+        ReflectionTestUtils.setField(webAuthnService, "clock", fixedClock);
+        try {
+            String challenge = begin(user);
+            MvcResult result = complete(assertion(challenge, flags, signed, signed));
 
-        assertSuccess(result);
-        WebAuthnCredentialEntity reloaded = credentials.findById(credential.getId()).orElseThrow();
-        assertThat(reloaded.getSignCount()).isEqualTo(signed);
-        assertThat(reloaded.getLastUsedAt()).isNotNull();
-        assertThat(credentials.findByUserId(user.getId())).hasSize(1);
+            assertSuccess(result);
+            WebAuthnCredentialEntity reloaded = credentials.findById(credential.getId()).orElseThrow();
+            assertThat(reloaded.getSignCount()).isEqualTo(signed);
+            // UTCの瞬間を既存列のJST壁時計へ変換し、年・日境界を越えてもずれない。
+            assertThat(reloaded.getLastUsedAt()).isEqualTo(LocalDateTime.of(2032, 1, 1, 0, 30));
+            assertThat(credentials.findByUserId(user.getId())).hasSize(1);
+        } finally {
+            ReflectionTestUtils.setField(webAuthnService, "clock", clock);
+        }
     }
 
     @Test

@@ -29,6 +29,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 
@@ -76,6 +77,9 @@ class AuthWebAuthnServiceTest {
 
     @Mock
     private AuthService authService;
+
+    @Mock
+    private Clock clock;
 
     @InjectMocks
     private AuthWebAuthnService authWebAuthnService;

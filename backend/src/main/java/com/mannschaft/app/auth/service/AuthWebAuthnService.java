@@ -45,6 +45,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.List;
@@ -68,6 +69,7 @@ public class AuthWebAuthnService {
     private final UserRepository userRepository;
     private final AuthService authService;
     private final RoleClaimResolver roleClaimResolver;
+    private final Clock clock;
     private final StringRedisTemplate redisTemplate;
     private final DomainEventPublisher eventPublisher;
 
@@ -350,7 +352,7 @@ public class AuthWebAuthnService {
             throw new BusinessException(AuthErrorCode.AUTH_026);
         }
 
-        credential.recordAuthentication(verifiedSignCount);
+        credential.recordAuthentication(verifiedSignCount, clock.instant());
         TokenResponse tokenResponse = authService.completePasskeyLogin(
                 userId, ipAddress, userAgent, roleClaimResolver.resolveRoles(userId));
 
