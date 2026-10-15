@@ -27,7 +27,7 @@ public class BlogRanchTransportRepository {
                 +"AND canonical_source_id=? FOR UPDATE",source).isEmpty()) return InsertOutcome.DUPLICATE;
         var keyId=HexFormat.of().parseHex(fingerprint.keyId());
         var digest=HexFormat.of().parseHex(fingerprint.digest());
-        var week=java.sql.Date.valueOf(fingerprint.week());
+        var week=fingerprint.week();
         // 旧鍵が利用できない同週履歴はUNKNOWN。同一本文の無条件新winnerにしない。
         var priorKeys=jdbc.queryForList("SELECT content_key_id FROM blog_ranch_witnesses "
                 +"WHERE recipient_user_id=? AND content_week=? AND kind='QUALIFIED' FOR UPDATE",byte[].class,
@@ -43,7 +43,7 @@ public class BlogRanchTransportRepository {
                     +"VALUES (?,'LONG',?,?,'QUALIFIED',?,?,?,?,?,?,UTC_TIMESTAMP(6),UTC_TIMESTAMP(6))");
             statement.setBytes(1,bytes(UuidV7.generate()));statement.setBytes(2,source);statement.setLong(3,fact.recipientUserId());
             statement.setTimestamp(4,Timestamp.from(fact.occurredAt()),JdbcUtcCalendar.fresh());
-            statement.setBytes(5,bytes(fact.eventId()));statement.setDate(6,week);statement.setString(7,fingerprint.version());
+            statement.setBytes(5,bytes(fact.eventId()));statement.setObject(6,week,java.sql.Types.DATE);statement.setString(7,fingerprint.version());
             statement.setBytes(8,keyId);statement.setBytes(9,digest);return statement;
         });
         byte[] canonical=("BLOG_FIRST_PUBLISH|LONG|"+fact.canonicalSourceId()).getBytes(StandardCharsets.US_ASCII);

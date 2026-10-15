@@ -24,7 +24,7 @@ public class ReflectionRanchTransportRepository {
         byte[] source=fact.canonicalSourceId().getBytes(StandardCharsets.US_ASCII);
         var prior=jdbc.queryForList("SELECT id FROM reflection_ranch_witnesses WHERE recipient_user_id=? "
                 +"AND source_id_type='UUID' AND canonical_source_id=? AND reward_week=? FOR UPDATE",
-                fact.recipientUserId(),source,java.sql.Date.valueOf(fact.facts().completionWeek()));
+                fact.recipientUserId(),source,fact.facts().completionWeek());
         if(!prior.isEmpty()) return false;
         jdbc.update(connection -> {
             var statement=connection.prepareStatement("INSERT INTO reflection_ranch_witnesses "
@@ -32,7 +32,7 @@ public class ReflectionRanchTransportRepository {
                     +"VALUES (?,'UUID',?,?,'QUALIFIED',?,?,?,UTC_TIMESTAMP(6),UTC_TIMESTAMP(6))");
             statement.setBytes(1,bytes(UuidV7.generate()));statement.setBytes(2,source);statement.setLong(3,fact.recipientUserId());
             statement.setTimestamp(4,Timestamp.from(fact.occurredAt()),JdbcUtcCalendar.fresh());statement.setBytes(5,bytes(fact.eventId()));
-            statement.setDate(6,java.sql.Date.valueOf(fact.facts().completionWeek()));return statement;
+            statement.setObject(6,fact.facts().completionWeek(),java.sql.Types.DATE);return statement;
         });
         byte[] key=("PERSONAL_RECALL_COMPLETE|UUID|"+fact.canonicalSourceId()+"|"+fact.recipientUserId()+"|"+fact.facts().completionWeek())
                 .getBytes(StandardCharsets.US_ASCII);

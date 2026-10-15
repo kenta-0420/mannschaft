@@ -39,6 +39,8 @@ STARTED時のreward_week/completed_atはNULL。初めてCOMPLETEDへ遷移する
 
 rewardWeekはサーバーのoccurredAtをUTCで月曜日00:00へ切り下げた `DATE`。`[start,end)`、endは7日後。user TZ変更、夏時間、週の途中で所属追加は枠を増やさない。遅延配送は元occurredAtの週を使い、次週へ移さない。ポイント残高は週を越えて失効しない。上限は「その週に新たに与える量」で、装飾交換で消費しても枠が戻らない。
 
+SQL `DATE` の週キーは `LocalDate` を直接bindし、検索引数にも同じ値を渡す。挿入はJDBC 4.2の `setObject(..., LocalDate, Types.DATE)` を使い、接続生成時にcacheされた既定TZがUTC/JSTで混在してもUTC月曜日の日付を保持する。JVM全体のTZ変更や `java.sql.Date` への変換で補正しない。
+
 policyはUTC週境界の `effectiveAt` で有効化する不変version。週行にはその週policy ID/hash、cap、四源enabled/amount/countLimitを保存する。週途中に量を変更せず、次週以降を新versionで予約する。worker処理時の最新policyを過去factへ当てない。
 
 運営は出欠/TL/Blogを個別OFF可能。正のglobalCapで報酬を有効にするpolicyは、無料PERSONAL_RECALL_COMPLETEをONにし、個人想起の量/件数も同じ不変設定へ固定する（全利用者quotaを跨ぐ満額保証のpublish invariantは設けない）。件数とポイント量を混ぜない。sourceCount>=countLimitならSOURCE_COUNT_CAPPEDで0、未達なら `awardedPoints=min(amountPoints,globalCap-awardedTotal)`。残0は正常のCAPPEDで0。異なるcanonical factをterminal decisionにして再送/翌週再解釈を禁止する。
