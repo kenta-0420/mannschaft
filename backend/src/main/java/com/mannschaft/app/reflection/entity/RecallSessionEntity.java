@@ -12,6 +12,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.type.descriptor.jdbc.LocalDateJdbcType;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -25,6 +27,8 @@ public class RecallSessionEntity extends UuidV7Entity {
     @Column(name="user_id",nullable=false,columnDefinition="BIGINT UNSIGNED") private Long userId;
     @Column(name="entry_id_type",nullable=false,length=8) private String entryIdType;
     @Column(name="entry_source_id",nullable=false,length=80) private String entrySourceId;
+    // SQL DATEの暦日を直接扱い、接続作成後のJVM既定TZ変更による日付ずれを防ぐ。
+    @JdbcType(LocalDateJdbcType.class)
     @Column(name="reward_week") private LocalDate rewardWeek;
     @Enumerated(EnumType.STRING) @Column(name="status",nullable=false,length=20) private RecallSessionStatus status;
     @Column(name="prompt_snapshot",nullable=false,columnDefinition="JSON") private String promptSnapshot;
