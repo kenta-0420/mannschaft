@@ -40,12 +40,18 @@ const ORG_A = 9
 const ORG_A_SLUG = 'org-000009'
 const TEAM_A1 = 1
 const TEAM_A2 = 2
-// 権限なし側: org 4 / team 4（USER は両方 MEMBER）。entry-members 側も org 1 に自分専用大会を作って使う
+// 権限なし側: org 4 / team 4（USER は両方 MEMBER）。entry-members 側は専用の新組織・新チームを使う
 const ORG_B = 4
 const TEAM_B = 4
-const ORG_C = 1
-const TEAM_C = 1
-const ORG_C_SLUG = 'org-000001'
+let ORG_C = 0
+let TEAM_C = 0
+let ORG_C_SLUG = ''
+let teamCSlug = ''
+let orgCTokenId = 0
+let teamCTokenId = 0
+let userJoinedOrgC = false
+let userJoinedTeamC = false
+let affiliationC: 'none' | 'invited' | 'active' = 'none'
 
 const USER_ID = 23
 const ADMIN_USER_ID = 24
@@ -123,8 +129,53 @@ async function ensureParticipant(req: APIRequestContext, orgId: number, tId: num
   return id
 }
 
-async function ensureMemberScopeFixture(admin: Page): Promise<void> {
+async function ensureMemberScopeFixture(admin: Page, user: Page): Promise<void> {
   if (pC1 > 0) return
+  // 既存組織の所属・通知先を変えず、seed 2名だけの専用スコープで MEMBER 境界を検証する。
+  const org = await api(admin.request, 'post', '/organizations', {
+    name: `PKB16-member-org-${SUFFIX}`, orgType: 'COMMUNITY', visibility: 'PRIVATE', parentOrganizationId: null,
+  })
+  expect(org.status, org.text).toBe(201)
+  ORG_C = Number(org.body.data.numericId)
+  ORG_C_SLUG = String(org.body.data.slug)
+  console.info('[entry-real-created-organization]', JSON.stringify({ id: ORG_C, slug: ORG_C_SLUG }))
+  const team = await api(admin.request, 'post', '/teams', {
+    name: `PKB16-member-team-${SUFFIX}`, template: 'SPORTS', visibility: 'MEMBERS_AND_ABOVE',
+  })
+  expect(team.status, team.text).toBe(201)
+  TEAM_C = Number(team.body.data.numericId)
+  teamCSlug = String(team.body.data.slug)
+  console.info('[entry-real-created-team]', JSON.stringify({ id: TEAM_C, slug: teamCSlug }))
+
+  // 招待リンクはメモリ内だけで受諾し、トークン値を出力しない。
+  const orgToken = await api(admin.request, 'post', `/organizations/${ORG_C_SLUG}/invite-tokens`, { roleId: 4, expiresIn: '1d', maxUses: 1 })
+  expect(orgToken.status).toBe(201)
+  orgCTokenId = Number(orgToken.body.data.id)
+  const joinOrg = await api(user.request, 'post', `/invite/${String(orgToken.body.data.token)}/join`, {})
+  expect(joinOrg.status, joinOrg.text).toBe(200)
+  userJoinedOrgC = true
+  const teamToken = await api(admin.request, 'post', `/teams/${teamCSlug}/invite-tokens`, { roleId: 4, expiresIn: '1d', maxUses: 1 })
+  expect(teamToken.status).toBe(201)
+  teamCTokenId = Number(teamToken.body.data.id)
+  const joinTeam = await api(user.request, 'post', `/invite/${String(teamToken.body.data.token)}/join`, {})
+  expect(joinTeam.status, joinTeam.text).toBe(200)
+  userJoinedTeamC = true
+  for (const scope of [`organizations/${ORG_C_SLUG}`, `teams/${teamCSlug}`]) {
+    const member = await api(user.request, 'get', `/${scope}/me/permissions`)
+    expect(member.status, member.text).toBe(200)
+    expect(member.body.data).toMatchObject({ roleName: 'MEMBER', scopeAdmin: false })
+    const owner = await api(admin.request, 'get', `/${scope}/me/permissions`)
+    expect(owner.status, owner.text).toBe(200)
+    expect(owner.body.data.scopeAdmin).toBe(true)
+  }
+
+  const invite = await api(admin.request, 'post', `/organizations/${ORG_C_SLUG}/team-invites`, { teamSlug: teamCSlug, groupId: null, message: null })
+  expect(invite.status, invite.text).toBe(201)
+  affiliationC = 'invited'
+  const accept = await api(admin.request, 'post', `/teams/${teamCSlug}/org-invites/${Number(invite.body.data.id)}/accept`, {})
+  expect(accept.status, accept.text).toBe(200)
+  affiliationC = 'active'
+  expect(accept.body.data.status).toBe('ACTIVE')
   // 権限なし側も自分専用の大会・部門・参加行を作り、既存エントリー表を全置換しない。
   const tc = await api(admin.request, 'post', `/organizations/${ORG_C}/tournaments`, {
     name: `PKB16-member-${SUFFIX}`, format: 'LEAGUE', season: '2026', startDate: '2026-10-10', endDate: '2026-12-30',
@@ -140,6 +191,11 @@ async function ensureMemberScopeFixture(admin: Page): Promise<void> {
   divC = Number(dc.body.data?.id)
   console.info('[entry-real-created-division]', JSON.stringify({ org: ORG_C, tournament: tIdC, id: divC }))
   pC1 = await ensureParticipant(admin.request, ORG_C, tIdC, divC, TEAM_C, 'admin')
+  // DRAFT は MEMBER に見えないため、正規の状態遷移後に画面・閲覧 AC の前提を確認する。
+  const opened = await api(admin.request, 'patch', `/organizations/${ORG_C}/tournaments/${tIdC}/status`, { status: 'OPEN' })
+  expect(opened.status, opened.text).toBe(200)
+  expect((await api(user.request, 'get', `/organizations/${ORG_C}/tournaments/${tIdC}`)).status).toBe(200)
+  expect((await api(user.request, 'get', base(ORG_C, tIdC, divC, pC1))).status).toBe(200)
 }
 
 test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', () => {
@@ -426,7 +482,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   test('AC4 [API+画面] 権限なし（org/team とも MEMBER の USER）は作成・更新・削除・登録が 403、閲覧は 200。画面に管理ボタンが出ない', async ({ browser }) => {
     const admin = await newPage(browser, adminCred)
     const user = await newPage(browser, userCred)
-    await ensureMemberScopeFixture(admin)
+    await ensureMemberScopeFixture(admin, user)
     const tplBaseB = `/organizations/${ORG_B}/teams/${TEAM_B}/entry-templates`
 
     // 権限あり（SYSTEM_ADMIN）が org 4 / team 4 にテンプレートを作る → 201
@@ -447,7 +503,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     const still = await api(admin.request, 'get', `${tplBaseB}/${tid}`)
     expect(still.body.data.name).toBe(`PKB16-b-${SUFFIX}`)
 
-    // エントリー表: 権限なし（org 1 MEMBER / team 1 MEMBER）は登録・全削除・一括ロード・テンプレ適用が 403、閲覧は 200
+    // エントリー表: 権限なし（専用組織 MEMBER / 専用チーム MEMBER）は登録・全削除・一括ロード・テンプレ適用が 403、閲覧は 200
     const eb = base(ORG_C, tIdC, divC, pC1)
     const memberPut = await api(user.request, 'put', eb, { members: [{ userId: USER_ID, position: 'FW' }] })
     expect(memberPut.status).toBe(403)
@@ -480,7 +536,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   test('AC4 [API] 他チーム・他組織のテンプレート ID／エントリーメンバー ID を指定すると 404', async ({ browser }) => {
     const user = await newPage(browser, userCred)
     const admin = await newPage(browser, adminCred)
-    await ensureMemberScopeFixture(admin)
+    await ensureMemberScopeFixture(admin, user)
     const tplA1 = `/organizations/${ORG_A}/teams/${TEAM_A1}/entry-templates`
     const tplA2 = `/organizations/${ORG_A}/teams/${TEAM_A2}/entry-templates`
 
@@ -521,7 +577,7 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     expect(seed.status, seed.text).toBe(200)
     const emId = String((seed.body.data.entryMembers as { id: string }[])[0]!.id)
     expect((await api(user.request, 'delete', `${base(ORG_A, tIdA, divA, pA2)}/${emId}`)).status).toBe(404)
-    // 他組織の大会・participant 経由（org 1 の participant を org 9 のパスで指定）: 404
+    // 他組織の大会・participant 経由（専用組織の participant を org 9 のパスで指定）: 404
     expect((await api(user.request, 'delete', `${base(ORG_A, tIdC, divC, pC1)}/${emId}`)).status).toBe(404)
     expect((await api(user.request, 'get', base(ORG_A, tIdC, divC, pC1))).status).toBe(404)
     expect((await api(user.request, 'put', base(ORG_A, tIdC, divC, pC1), { members: [{ userId: USER_ID }] })).status).toBe(404)
@@ -534,13 +590,13 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   })
 
   // ---------------------------------------------------------------- AC4（他テナントの URL 直打ち）
-  test('AC4 [画面] 他テナント（org 1 の大会・ディビジョン・participant）を org 9 の URL で直打ちしても弾かれ、エントリーが見えない', async ({ browser }) => {
+  test('AC4 [画面] 他テナント（専用組織の大会・ディビジョン・participant）を org 9 の URL で直打ちしても弾かれ、エントリーが見えない', async ({ browser }) => {
     const user = await newPage(browser, userCred)
     const errs = watchErrors(user)
-    // org 9 の ADMIN である USER が、org 1 の大会 ID を org 9 の slug 配下で開く（ID は API で引いた実在のもの）
+    // org 9 の ADMIN である USER が、専用組織の大会 ID を org 9 の slug 配下で開く（ID は API で引いた実在のもの）
     if (pC1 === 0) {
       const admin = await newPage(browser, adminCred)
-      await ensureMemberScopeFixture(admin)
+      await ensureMemberScopeFixture(admin, user)
       await admin.context().close()
     }
     const ids = `tIdC=${tIdC} divC=${divC} pC1=${pC1}`
@@ -569,9 +625,9 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
   })
 
   // 既知の欠陥（範囲外・台帳起票待ち）: 部門・参加チームの GET は path の orgId を Service へ渡さず、
-  // 越境パス（org 9 の配下で org 1 の大会）でも 200 になる。この spec は現状の挙動を正としない。
+  // 越境パス（org 9 の配下で 専用組織の大会）でも 200 になる。この spec は現状の挙動を正としない。
   // 修正されたら fixme を外し、404 + TOUR_001 を期待値とする。
-  test.fixme('AC4 [API] 既知の欠陥: 部門一覧・参加チーム一覧が越境パス（org 9 配下の org 1 の大会）で 404 にならない', async ({ browser }) => {
+  test.fixme('AC4 [API] 既知の欠陥: 部門一覧・参加チーム一覧が越境パス（org 9 配下の 専用組織の大会）で 404 にならない', async ({ browser }) => {
     const user = await newPage(browser, userCred)
     const divs = await api(user.request, 'get', `/organizations/${ORG_A}/tournaments/${tIdC}/divisions`)
     expect(divs.status, divs.text).toBe(404)
@@ -625,6 +681,37 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     }
     if (tIdC > 0) {
       const removed = await api(admin.request, 'delete', `/organizations/${ORG_C}/tournaments/${tIdC}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (orgCTokenId > 0) {
+      const removed = await api(admin.request, 'delete', `/organizations/${ORG_C_SLUG}/invite-tokens/${orgCTokenId}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (teamCTokenId > 0) {
+      const removed = await api(admin.request, 'delete', `/teams/${teamCSlug}/invite-tokens/${teamCTokenId}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (userJoinedTeamC) {
+      const removed = await api(user.request, 'delete', `/teams/${teamCSlug}/me`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (userJoinedOrgC) {
+      const removed = await api(user.request, 'delete', `/organizations/${ORG_C_SLUG}/me`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (affiliationC === 'active') {
+      const removed = await api(admin.request, 'delete', `/teams/${teamCSlug}/organizations/${ORG_C_SLUG}`)
+      expect(removed.status, removed.text).toBe(204)
+    } else if (affiliationC === 'invited') {
+      const removed = await api(admin.request, 'delete', `/organizations/${ORG_C_SLUG}/team-invites/${teamCSlug}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (TEAM_C > 0) {
+      const removed = await api(admin.request, 'delete', `/teams/${teamCSlug}`)
+      expect(removed.status, removed.text).toBe(204)
+    }
+    if (ORG_C > 0) {
+      const removed = await api(admin.request, 'delete', `/organizations/${ORG_C_SLUG}`)
       expect(removed.status, removed.text).toBe(204)
     }
     await admin.context().close()
