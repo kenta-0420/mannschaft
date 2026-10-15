@@ -379,10 +379,14 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     // ALIC-2: 選択済み行のポジション欄が、背番号欄に覆われずクリックできる（trial は他要素に遮られると失敗する）
     const selectedRow = dialog.locator('div.rounded.border').filter({ has: user.locator('input[type="checkbox"]:checked') }).first()
     const pos = selectedRow.getByPlaceholder('ポジション')
+    const jersey = selectedRow.getByPlaceholder('背番号')
+    console.info('[entry-mobile-geometry]', JSON.stringify({
+      viewport: 390, dialog: await dialog.boundingBox(), row: await selectedRow.boundingBox(),
+      jersey: await jersey.boundingBox(), position: await pos.boundingBox(),
+    }))
     await pos.click({ trial: true, timeout: 10_000 })
     await pos.click()
     await pos.focus()
-    const jersey = selectedRow.getByPlaceholder('背番号')
     const jb = await jersey.boundingBox()
     const pb = await pos.boundingBox()
     expect(jb!.x + jb!.width).toBeLessThanOrEqual(pb!.x + 1) // 背番号欄がポジション欄に重ならない
