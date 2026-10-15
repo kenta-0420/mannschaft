@@ -387,7 +387,12 @@ test.describe.serial('CMP-260929-0654 主キー BINARY(16) 移行 実機E2E', ()
     expect(all.some((m) => m.notes === NOTES200 && m.position === 'MF'), JSON.stringify(all)).toBe(true)
 
     // 一覧に反映され、エラートーストが無い
-    await expect(dialog.getByText(NOTES200)).toBeVisible({ timeout: 20_000 })
+    // 今回保存した MF の登録済み行で、位置と備考200文字の同時反映を確認する。
+    const savedRow = dialog.getByRole('row').filter({ has: user.getByRole('cell', { name: 'MF', exact: true }) })
+    const savedNotes = savedRow.getByRole('cell', { name: NOTES200, exact: true })
+    await expect(savedNotes).toBeVisible({ timeout: 20_000 })
+    await savedNotes.scrollIntoViewIfNeeded()
+    await test.info().attach('entry-notes200-saved', { body: await user.screenshot(), contentType: 'image/png' })
     await expect(user.locator('.p-toast-message-error')).toHaveCount(0)
     expect(errs.server, errs.server.join('\n')).toHaveLength(0)
     expect(errs.consoleErrors, errs.consoleErrors.join('\n')).toHaveLength(0)
