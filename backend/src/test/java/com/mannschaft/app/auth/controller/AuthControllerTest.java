@@ -19,6 +19,7 @@ import com.mannschaft.app.auth.service.AuthOAuthService;
 import com.mannschaft.app.auth.service.AuthWebAuthnService;
 import com.mannschaft.app.common.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -211,6 +212,9 @@ class AuthControllerTest {
         @Mock
         private AuthWebAuthnService authWebAuthnService;
 
+        @Mock
+        private AuthTokenService authTokenService;
+
         @InjectMocks
         private AuthWebAuthnController authWebAuthnController;
 
@@ -262,7 +266,8 @@ class AuthControllerTest {
 
             // When
             ResponseEntity<ApiResponse<WebAuthnLoginBeginResponse>> response =
-                    authWebAuthnController.beginLogin("test@example.com");
+                    authWebAuthnController.beginLogin("test@example.com",
+                            new MockHttpServletRequest());
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
