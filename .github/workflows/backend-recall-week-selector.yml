@@ -1,0 +1,102 @@
+name: Backend — Recall reward week (source 1278585)
+
+on:
+  push:
+    branches:
+      - feature/ranch-recall-week-20327-20261015-01
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recall-week-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  recall-week-method:
+    name: Recall week (${{ matrix.key }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - key: utc-initial
+            timezone: UTC
+          - key: jst-initial
+            timezone: Asia/Tokyo
+    defaults:
+      run:
+        working-directory: product/backend
+        shell: bash
+    steps:
+      - name: 検分済みhelperをevent commitから取得
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: harness
+          persist-credentials: false
+      - name: 採用済みtestだけを追加したsource commitを固定checkout
+        uses: actions/checkout@v7
+        with:
+          ref: 1278585d251319333901402a3a42b2ca1aa48402
+          path: product
+          persist-credentials: false
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: temurin
+      - name: Set up Gradle（依存取得のみ、test成果物を再利用しない）
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+          gradle-home-cache-includes: |
+            caches
+            notifications
+      - name: 固定source・method・初期timezoneのheaderを採取
+        run: |
+          python3 ../../harness/.github/scripts/recall-week-selector/evidence.py prepare \
+            --repo-root .. --key '${{ matrix.key }}' --selector 'com.mannschaft.app.reflection.RecallRewardWeekTemporalIT.physicalWeekAndNativeGetSurviveCompletionAndNextWeekReplay' \
+            --run-id '${{ github.run_id }}' --run-attempt '${{ github.run_attempt }}' \
+            --workflow-sha '${{ github.sha }}' --workflow-ref '${{ github.ref }}' \
+            --event-name '${{ github.event_name }}' --output-dir build/recall-week-selector
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+      - name: Exact methodを指定初期timezoneで実走（cache・up-to-date禁止）
+        id: run-tests
+        run: |
+          set +e
+          ./gradlew test --no-daemon --no-build-cache --rerun-tasks -x jacocoTestReport \
+            --init-script ../../harness/.github/scripts/recall-week-selector/selector.init.gradle \
+            -Ptest.timezone='${{ matrix.timezone }}' -Precall.selector='com.mannschaft.app.reflection.RecallRewardWeekTemporalIT.physicalWeekAndNativeGetSurviveCompletionAndNextWeekReplay' \
+            --tests 'com.mannschaft.app.reflection.RecallRewardWeekTemporalIT.physicalWeekAndNativeGetSurviveCompletionAndNextWeekReplay' > build/recall-week-selector/gradle.private.log 2>&1
+          test_exit=$?
+          set -e
+          printf '%s\n' "$test_exit" > build/recall-week-selector/run-tests-exit.txt
+          printf 'GRADLE_TEST_EXIT=%s\n' "$test_exit"
+          exit "$test_exit"
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "false"
+      - name: 実2case・実数・exit・失敗分類だけを有限投影
+        if: always()
+        run: |
+          python3 ../../harness/.github/scripts/recall-week-selector/evidence.py verify \
+            --repo-root .. --key '${{ matrix.key }}' --selector 'com.mannschaft.app.reflection.RecallRewardWeekTemporalIT.physicalWeekAndNativeGetSurviveCompletionAndNextWeekReplay' \
+            --run-id '${{ github.run_id }}' --run-attempt '${{ github.run_attempt }}' \
+            --workflow-sha '${{ github.sha }}' --workflow-ref '${{ github.ref }}' \
+            --event-name '${{ github.event_name }}' --output-dir build/recall-week-selector
+      - name: 有限identity・actualexit・case分類だけをartifact化（private log/生XMLは送信しない）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recall-week-selector-${{ matrix.key }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: |
+            product/backend/build/recall-week-selector/source-selector-header.json
+            product/backend/build/recall-week-selector/effective-filter.json
+            product/backend/build/recall-week-selector/selector-result.json
+            product/backend/build/recall-week-selector/selector-rejection.json
+            product/backend/build/recall-week-selector/run-tests-exit.txt
+            product/backend/build/recall-week-selector/finite-junit.xml
+          retention-days: 7
+          if-no-files-found: error

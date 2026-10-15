@@ -1,0 +1,153 @@
+{
+  "schema": "recall-week-exact-selector-source-binding-v1",
+  "sourceHead": "1278585d251319333901402a3a42b2ca1aa48402",
+  "sourceTree": "5ae6a775c1ffb6d8f745602eec4c271f751f138c",
+  "sourceFiles": {
+    ".github/workflows/backend-ci.yml": "46a3513ac2a3ac4500a86ed7459e5f2077b785b995507d3c0b53073984259f0a",
+    "backend/build.gradle.kts": "859000e1d63c1c765c1914d47914ae810b7a1d16e96e45fff26a8a0a1fc6f268",
+    "backend/gradle/wrapper/gradle-wrapper.properties": "aef287d114ce3153c3d535697a61928f5034990d570cbb2e93df549e9671483d",
+    "backend/src/test/java/com/mannschaft/app/reflection/RecallRewardWeekTemporalIT.java": "1ffb2bf0456cd4538b68cb57dd6cc33650fb76d0691f16602ced04de7589f806",
+    "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java": "55d7002d6d9d0d534a74d151918c24ea421cc147462bd1be8dd24f83f3392417",
+    "backend/src/test/resources/application-test.yml": "059327e4ab8f9862d9faa80fd72477a2ab92eabb0843dca4970d94b73eb6eb3a",
+    "backend/src/main/java/com/mannschaft/app/config/TimeZoneConfig.java": "5a7dd25894d8f456bd13023bea499e5dd76ab4770c87b65342de8b0f4855fad9",
+    "backend/src/main/java/com/mannschaft/app/config/ClockConfig.java": "f59aa21a32a66dd89377a9d47ff629d879690e91b53b2a36983dc5a9834a0aa2",
+    "backend/src/main/java/com/mannschaft/app/reflection/entity/RecallSessionEntity.java": "b1e4ccb8b32eb0d148d37e6490a951b3c97b5819e038efc1da68bf609e90cf99",
+    "backend/src/main/java/com/mannschaft/app/reflection/service/RecallSessionOperationFacade.java": "6ea3dce953c3870ba75120882687346486c3a35d1cc2633e305bf5a77183a2b5",
+    "backend/src/main/java/com/mannschaft/app/reflection/service/RecallSessionWriter.java": "904692d2e463948dde8258e66d70fd920dd9517e723c5082d0b236fca504c473",
+    "backend/src/main/java/com/mannschaft/app/reflection/service/ReflectionRecallRewardQueue.java": "2a26705d36ba01c1e1b2b838c9c6d1213bc6dbe9baa9998b91d206e8ef55220b",
+    "backend/src/main/java/com/mannschaft/app/reflection/service/ReflectionRanchTransportWriter.java": "b47f7f0a90b197f1e3c55db066cbf7c84ca0ea33acbabe070280576e7ea6b0d7",
+    "backend/src/main/java/com/mannschaft/app/reflection/dto/ReflectionRecallRewardPayload.java": "45ccdb2b60f8c4308a885f959b688b82e37ae15a8cf0f075110df0543cad8c3f",
+    "backend/src/main/java/com/mannschaft/app/ranch/reward/api/RanchRewardEnvelope.java": "a68c24da7dba4a85408969a8cb8c3b9a803a9a0fba1596c9754209390c26a286"
+  },
+  "trackedGitAttributesFiles": [
+    "backend/.gitattributes",
+    "backend/src/test/resources/ranch/approved/asset-packs/.gitattributes"
+  ],
+  "trackedGitAttributesBlobSha256": {
+    "backend/.gitattributes": "193fbf6c445dea576a6f238c5262320931945a2ea03bae24b161b30856919a09",
+    "backend/src/test/resources/ranch/approved/asset-packs/.gitattributes": "89dddfc52a6d1b734a50dacfb9ba5ae46fbdd74c9e619fef3567a0301950b9f1"
+  },
+  "gitAttributes": {
+    ".github/workflows/backend-ci.yml": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/build.gradle.kts": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/gradle/wrapper/gradle-wrapper.properties": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/test/java/com/mannschaft/app/reflection/RecallRewardWeekTemporalIT.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/test/java/com/mannschaft/app/support/test/AbstractMySqlIntegrationTest.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/test/resources/application-test.yml": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/config/TimeZoneConfig.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/config/ClockConfig.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/reflection/entity/RecallSessionEntity.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/reflection/service/RecallSessionOperationFacade.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/reflection/service/RecallSessionWriter.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/reflection/service/ReflectionRecallRewardQueue.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/reflection/service/ReflectionRanchTransportWriter.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/reflection/dto/ReflectionRecallRewardPayload.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    },
+    "backend/src/main/java/com/mannschaft/app/ranch/reward/api/RanchRewardEnvelope.java": {
+      "text": "unspecified",
+      "eol": "unspecified",
+      "filter": "unspecified",
+      "working-tree-encoding": "unspecified",
+      "ident": "unspecified",
+      "crlf": "unspecified"
+    }
+  },
+  "checkoutPolicy": "EXACT_CANONICAL_BLOB_NO_DECLARED_EOL_CONVERSION"
+}
