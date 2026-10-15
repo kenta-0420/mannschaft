@@ -399,10 +399,9 @@ jobs:
     needs: detect
     if: needs.detect.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
-    # 通常PRは従来の75分を維持する。Flyway再生が必要なPRでは、CMP-008の
-    # shard 1 が2回とも75分上限でテスト失敗なしにキャンセルされたため、
-    # テストを省略せず後処理まで完了できる105分の枠を確保する。
-    timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 105 || 75 }}
+    # 通常PRは75分を維持。cache5診断（run38682333037）はmigration込みで
+    # job105分27秒／test97分46秒だったため、後処理に15分の余裕を確保する。
+    timeout-minutes: ${{ needs.detect.outputs.migrations_changed == 'true' && 120 || 75 }}
     defaults:
       run:
         working-directory: ./backend
@@ -458,12 +457,15 @@ jobs:
       #   （65 クラス・計測テスト時間の 72〜88% を占める）を除外する。
       #   migration を触る PR では false となり従来どおり全件実行する。
       #   除外分は backend-nightly-full.yml が毎晩フル実行して担保する。
+      # cache5診断のshard0完走を踏まえcontext保持を5に制限する。
+      # heap/fork・テスト選別は維持し、ローカル既定10は変更しない。
       - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
         run: >-
           ./gradlew test --no-daemon --continue --build-cache
           -Pshard.total=${{ env.SHARD_TOTAL }}
           -Pshard.index=${{ matrix.shard }}
           -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }}
+          -Pspring.test.context.cache.maxSize=5
         env:
           TESTCONTAINERS_RYUK_DISABLED: "false"
 
